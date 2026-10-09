@@ -1,0 +1,43 @@
+<title>Prueba de carga</title>
+<style>
+:root { --bg: #f8f9fb; --ink: #1b2430; --ok: #2e7d4f; --bad: #b42318; --rule: #c3ccd6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #171c23; --ink: #e3e8ee; --ok: #7fd1a0; --bad: #ff8a80; --rule: #333c48; } }
+:root[data-theme="dark"] { --bg: #171c23; --ink: #e3e8ee; --ok: #7fd1a0; --bad: #ff8a80; --rule: #333c48; }
+body { background: var(--bg); color: var(--ink); font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; margin: 0; padding: 16px; }
+h1 { font: 600 18px system-ui, sans-serif; margin: 0 0 12px; }
+div { padding: 3px 0; border-bottom: 1px solid var(--rule); word-break: break-all; }
+.ok { color: var(--ok); } .bad { color: var(--bad); }
+</style>
+<h1>¿Puede la página leer texto de un CDN?</h1>
+<section id="log"></section>
+<script>
+const log = (m, c) => { const d = document.createElement("div"); d.textContent = m; d.className = c || ""; document.getElementById("log").appendChild(d); };
+const pruebas = [
+  ["fetch npm (jsDelivr)", "https://cdn.jsdelivr.net/npm/scittle@0.7.30/package.json"],
+  ["fetch GitHub (jsDelivr gh)", "https://cdn.jsdelivr.net/gh/babashka/scittle@main/README.md"],
+  ["fetch unpkg", "https://unpkg.com/scittle@0.7.30/package.json"],
+  ["fetch raw.githubusercontent", "https://raw.githubusercontent.com/babashka/scittle/main/README.md"],
+  ["fetch gist", "https://gist.githubusercontent.com/borkdude/0f1b1b9b4c3a0f06cbbcbd4d4c4a1c9e/raw"]
+];
+(async () => {
+  for (const [nombre, url] of pruebas) {
+    try {
+      const r = await fetch(url);
+      const t = await r.text();
+      log(nombre + " → " + r.status + " · " + t.length + " caracteres", r.ok ? "ok" : "bad");
+    } catch (e) { log(nombre + " → bloqueado: " + (e.message || e), "bad"); }
+  }
+  try {
+    const m = await import("https://cdn.jsdelivr.net/npm/scittle@0.7.30/package.json", { with: { type: "json" } });
+    log("import JSON (jsDelivr) → " + m.default.name, "ok");
+  } catch (e) { log("import JSON (jsDelivr) → falló: " + (e.message || e), "bad"); }
+  for (const [nombre, url] of [
+    ["import módulo npm", "https://cdn.jsdelivr.net/npm/scittle@0.7.30/package.json/+esm"],
+    ["import módulo GitHub (gh)", "https://cdn.jsdelivr.net/gh/jquery/jquery@3.7.1/dist/jquery.min.js"],
+    ["import módulo GitHub +esm", "https://cdn.jsdelivr.net/gh/lodash/lodash@4.17.21/lodash.js/+esm"]]) {
+    try { const m = await import(url); log(nombre + " → cargado · exporta: " + Object.keys(m).slice(0, 5).join(", "), "ok"); }
+    catch (e) { log(nombre + " → falló: " + (e.message || e), "bad"); }
+  }
+  document.title = "Prueba de carga · lista";
+})();
+</script>

@@ -1,0 +1,573 @@
+<title>Kairotic Partitura</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: work table. Two synchronized views of one musical object (piano roll above, engraved score on paper below) and its text projections at the side; REPL along the foot. */
+:root {
+  --paper: #eef1f4;
+  --sheet: #f8f9fb;
+  --grid: #d9dfe6;
+  --ink: #1b2430;
+  --ink-soft: #5a6676;
+  --rule: #c3ccd6;
+  --box: #ffffff;
+  --row: #f2f4f7;
+  --row-blk: #e3e7ec;
+  --accent: #2f55d4;
+  --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e;
+  --error: #b42318;
+  --ok: #2e7d4f;
+  --score-paper: #fcfbf7;
+  --score-ink: #1a1a1a;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --row: #1b2129; --row-blk: #151a20; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --score-paper: #f4f2ec; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --row: #1b2129; --row-blk: #151a20; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --score-paper: #f4f2ec; color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; }
+.app { box-sizing: border-box; min-height: 100%; display: grid; gap: 12px; padding-inline: 16px; padding-block: 14px 16px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.transport .pos { font-family: var(--f-code); font-size: 13px; min-width: 150px; font-variant-numeric: tabular-nums; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 5px; overflow: hidden; }
+.seg button { font: inherit; font-size: 12.5px; padding: 4px 10px; border: 0; background: var(--box); color: var(--ink); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+.work { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 12px; min-height: 0; }
+@media (max-width: 900px) { .work { grid-template-columns: minmax(0, 1fr); } }
+.views { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.views.v-pianoroll .pane-nt, .views.v-partitura .pane-pr { display: none; }
+.pane { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.pane-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
+.pane-head .label { font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+.pane-head .hint { margin-left: auto; text-align: right; }
+
+/* piano roll */
+.pr-wrap { overflow: auto; max-height: 340px; }
+#pr { display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+#pr .ruler { fill: var(--sheet); cursor: col-resize; }
+#pr .row { fill: var(--row); }
+#pr .row.blk { fill: var(--row-blk); }
+#pr .key { fill: var(--box); stroke: var(--rule); stroke-width: 0.5; }
+#pr .key.blk { fill: var(--ink-soft); }
+#pr .klabel { font-family: var(--f-code); font-size: 9.5px; fill: var(--ink); pointer-events: none; }
+#pr .num { font-family: var(--f-code); font-size: 11px; fill: var(--ink-soft); pointer-events: none; }
+#pr .beat { stroke: var(--grid); stroke-width: 1; }
+#pr .bar { stroke: var(--rule); stroke-width: 1.5; }
+#pr .nota { fill: var(--accent); fill-opacity: 0.82; stroke: var(--accent); stroke-width: 1; cursor: grab; }
+#pr .nota.sel { fill: var(--kairos); stroke: var(--ink); stroke-width: 1.5; fill-opacity: 0.95; }
+#pr .cursor { stroke: var(--kairos); stroke-width: 2; pointer-events: none; }
+
+/* engraved score on paper (keeps a paper look in both themes) */
+.nt { position: relative; background: var(--score-paper); color: var(--score-ink); min-height: 180px; overflow: hidden; border-radius: 0 0 6px 6px; }
+#nt-svg svg { display: block; max-width: 100%; height: auto; }
+#nt-svg g.note, #nt-svg g.rest { cursor: pointer; }
+#nt-svg g.note.sel, #nt-svg g.note.sel * { fill: #c2410c; stroke: #c2410c; color: #c2410c; }
+.nt-cursor { position: absolute; width: 2px; background: #b4472e; opacity: 0.85; pointer-events: none; display: none; }
+.nt-msg { padding: 18px; color: #5a6676; font-size: 13px; }
+
+.tabs { display: flex; gap: 2px; }
+.tab { font: inherit; font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--ink-soft); padding: 2px 8px 4px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#code { flex: 1; min-height: 360px; resize: none; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 12.5px; line-height: 1.6; padding: 10px 12px; white-space: pre; overflow: auto; }
+#code:focus { outline: none; background: var(--accent-soft); }
+.code-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
+.code-bar .state.dirty { color: var(--kairos); font-weight: 500; }
+.code-bar .spacer { flex: 1; }
+button.act { font: inherit; font-size: 12.5px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--rule); background: var(--box); color: var(--ink); cursor: pointer; }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act[disabled] { opacity: 0.45; cursor: default; }
+pre.view { margin: 0; flex: 1; min-height: 360px; max-height: 560px; overflow: auto; padding: 10px 12px; font-family: var(--f-code); font-size: 12px; line-height: 1.55; color: var(--ink); white-space: pre; }
+ol.log { margin: 0; padding: 8px 12px 8px 44px; flex: 1; min-height: 360px; max-height: 560px; overflow: auto; font-family: var(--f-code); font-size: 12px; line-height: 1.7; }
+ol.log .empty { list-style: none; margin-left: -32px; color: var(--ink-soft); font-family: var(--f-ui); }
+
+.repl { min-height: 0; }
+#repl-out { max-height: 150px; min-height: 80px; overflow: auto; padding: 8px 12px; font-family: var(--f-code); font-size: 12.5px; line-height: 1.55; }
+#repl-out .in { color: var(--ink); }
+#repl-out .in .p { color: var(--accent); margin-right: 6px; }
+#repl-out .in.from-patch { color: var(--ink-soft); }
+#repl-out .in.from-patch .p { color: var(--kairos); }
+#repl-out .out { color: var(--ink-soft); padding-left: 20px; white-space: pre-wrap; word-break: break-word; }
+#repl-out .err { color: var(--error); padding-left: 20px; white-space: pre-wrap; }
+.repl-line { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--rule); padding: 6px 12px; }
+.repl-line label { font-family: var(--f-code); color: var(--accent); font-weight: 600; }
+#repl-in { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 13px; padding: 6px 0; }
+#repl-in:focus { outline: none; }
+.help { padding: 6px 12px 10px; font-size: 12px; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.help code { font-family: var(--f-code); color: var(--ink); }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Kairotic Partitura</h1>
+    <span class="sub">Ensayo 3 · un mismo objeto musical, dos vistas sincronizadas por su relación tiempo ⇄ espacio</span>
+    <span class="status" id="status">cargando ClojureScript…</span>
+  </header>
+
+  <div class="transport">
+    <button class="act primary" id="play">▶ Reproducir</button>
+    <button class="act" id="stop">■ Parar</button>
+    <span class="pos" id="pos">compás 1 · pulso 1</span>
+    <div class="seg" role="group" aria-label="Vista">
+      <button data-vista="ambas" aria-pressed="true">Ambas</button>
+      <button data-vista="pianoroll" aria-pressed="false">Piano roll</button>
+      <button data-vista="partitura" aria-pressed="false">Partitura</button>
+    </div>
+  </div>
+
+  <div class="work">
+    <div class="views" id="views">
+      <section class="pane pane-pr" aria-label="Piano roll">
+        <div class="pane-head">
+          <span class="label">Piano roll</span>
+          <span class="hint">Doble clic: nota nueva · arrastra para mover · borde derecho: duración · regla: cursor · Supr: borrar</span>
+        </div>
+        <div class="pr-wrap" id="pr-wrap">
+          <svg id="pr" xmlns="http://www.w3.org/2000/svg" width="600" height="300"></svg>
+        </div>
+      </section>
+      <section class="pane pane-nt" aria-label="Partitura">
+        <div class="pane-head">
+          <span class="label">Partitura</span>
+          <span class="hint">Notación con Verovio · clic en una nota: seleccionarla y llevar el cursor</span>
+        </div>
+        <div class="nt" id="nt">
+          <div class="nt-msg" id="nt-msg">Cargando el motor de notación (Verovio, unos 8 MB)…</div>
+          <div id="nt-svg"></div>
+          <div class="nt-cursor" id="nt-cursor"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="pane" aria-label="Proyecciones">
+      <div class="pane-head">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" data-tab="code" aria-selected="true">Código</button>
+          <button class="tab" role="tab" data-tab="edn" aria-selected="false">EDN</button>
+          <button class="tab" role="tab" data-tab="mei" aria-selected="false">MEI</button>
+          <button class="tab" role="tab" data-tab="log" aria-selected="false">Eventos</button>
+        </div>
+      </div>
+      <div class="panel" id="panel-code">
+        <textarea id="code" spellcheck="false" aria-label="Código de la partitura"></textarea>
+        <div class="code-bar">
+          <span class="state" id="code-state">sincronizado</span>
+          <span class="spacer"></span>
+          <button class="act" id="code-revert" disabled>Descartar cambios</button>
+          <button class="act primary" id="code-run" disabled>Ejecutar · Ctrl+Enter</button>
+        </div>
+      </div>
+      <div class="panel" id="panel-edn" hidden><pre class="view" id="edn"></pre></div>
+      <div class="panel" id="panel-mei" hidden><pre class="view" id="mei"></pre></div>
+      <div class="panel" id="panel-log" hidden>
+        <ol class="log" id="log"></ol>
+        <div class="code-bar"><span id="log-count">0 eventos</span><span class="spacer"></span><button class="act" id="undo-btn">Deshacer · Ctrl+Z</button></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="pane repl" aria-label="REPL">
+    <div class="pane-head"><span class="label">REPL</span><span class="hint">ClojureScript (Scittle) · ↑ ↓ historial · espacio: reproducir / parar</span></div>
+    <div id="repl-out" aria-live="polite"></div>
+    <div class="repl-line">
+      <label for="repl-in">λ</label>
+      <input id="repl-in" autocomplete="off" spellcheck="false" placeholder='(melodia "c5/1 b4/.5 a4/.5 g4/2")'>
+    </div>
+    <div class="help">
+      <span><code>(nota t "c4" dur)</code></span>
+      <span><code>(melodia "c4/1 e4+g4/2 r/1")</code></span>
+      <span><code>(mover :e3 t "d4")</code></span>
+      <span><code>(duracion :e3 2)</code></span>
+      <span><code>(borrar :e3)</code></span>
+      <span><code>(tempo 120)</code></span>
+      <span><code>(cursor 4)</code> · <code>(play)</code> · <code>(stop)</code></span>
+      <span><code>(vista :partitura)</code></span>
+      <span><code>(partitura)</code> · <code>(mei)</code></span>
+      <span><code>(undo)</code></span>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// Verovio (notación) se descarga después de pintar la página; el toolkit queda en una promesa.
+window.kairoticVerovio = new Promise(function (resolve, reject) {
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/verovio@5.7.0/dist/verovio-toolkit-wasm.js";
+  s.onload = function () {
+    try {
+      var m = verovio.module;
+      if (m.calledRun) { resolve(new verovio.toolkit()); }
+      else { m.onRuntimeInitialized = function () { resolve(new verovio.toolkit()); }; }
+    } catch (e) { reject(e); }
+  };
+  s.onerror = function () { reject(new Error("No se pudo descargar Verovio")); };
+  document.head.appendChild(s);
+});
+</script>
+<script type="application/x-scittle" src="kairotic/nucleo.cljs"></script>
+<script type="application/x-scittle" src="kairotic/partitura.cljs"></script>
+<script type="application/x-scittle">
+(ns user
+  (:require [clojure.string :as str]
+            [kairotic.nucleo :as k]
+            [kairotic.partitura :as p]))
+
+(defn $ [id] (js/document.getElementById id))
+
+;; ───────── estado ─────────
+
+(defonce world (atom {:score p/vacia :log [] :past []}))
+(defonce scratch (atom nil))
+(defonce ui (atom {:sel nil :drag nil :cursor 0 :vista "ambas" :playing nil :dirty false}))
+(defonce vrv (atom nil))
+(defonce nota-state (atom {:anclas [] :piezas [] :status "cargando"}))
+
+(defn score [] (or @scratch (:score @world)))
+(defn fail [m] (throw (js/Error. m)))
+
+(defn dispatch! [ev]
+  (if @scratch
+    (swap! scratch p/step ev)
+    (swap! world (fn [w] (-> w
+                             (update :past conj (:score w))
+                             (update :log conj ev)
+                             (assoc :score (p/step (:score w) ev)))))))
+
+;; ───────── comandos ─────────
+
+(defn need [id] (or (get-in (score) [:eventos id]) (fail (str "No existe la nota " id))))
+(defn alt! [a] (or (p/altura a) (fail (str "No entiendo la altura " (pr-str a) ". Usa 60, \"c4\", \"f#3\"…"))))
+(defn num! [x what] (if (and (number? x) (not (js/isNaN x))) x (fail (str what " debe ser un número"))))
+
+(defn nota
+  ([t a dur] (nota (p/next-id (score)) t a dur))
+  ([id t a dur]
+   (when-not (keyword? id) (fail "El id de una nota es una palabra clave, p. ej. :e3"))
+   (dispatch! [:nota id (num! t "El pulso") (alt! a) (num! dur "La duración")])
+   id))
+
+(defn mover [id t a] (need id) (dispatch! [:mover id (num! t "El pulso") (alt! a)]) id)
+(defn duracion [id d] (need id) (dispatch! [:duracion id (num! d "La duración")]) id)
+(defn borrar [id]
+  (need id)
+  (when (= id (:sel @ui)) (swap! ui assoc :sel nil))
+  (dispatch! [:borrar id])
+  :ok)
+(defn tempo [b] (when-not (and (number? b) (<= 20 b 300)) (fail "El tempo va de 20 a 300 pulsos por minuto")) (dispatch! [:tempo b]) b)
+(defn limpiar [] (dispatch! [:limpiar]) :ok)
+
+(defn melodia
+  "Añade notas desde el pulso t0 (por defecto, al final). \"c4/1 d4/.5 r/1 c4+e4+g4/2\""
+  ([txt] (melodia txt (p/fin (score))))
+  ([txt t0] (vec (for [[t a d] (p/parse-melodia txt t0)] (nota t a d)))))
+
+(defn undo []
+  (let [w @world]
+    (if (empty? (:past w))
+      :nada-que-deshacer
+      (do (reset! world (-> w (assoc :score (peek (:past w))) (update :past pop) (update :log pop)))
+          :deshecho))))
+
+(defn partitura [] (score))
+(defn mei [] (:mei (p/->mei (score))))
+
+(defn vista [v]
+  (let [v (name v)]
+    (when-not (#{"ambas" "pianoroll" "partitura"} v) (fail "Vistas posibles: :ambas, :pianoroll, :partitura"))
+    (swap! ui assoc :vista v)
+    (keyword v)))
+
+(defn cursor [t] (swap! ui assoc :cursor (max 0 (num! t "El pulso"))) t)
+
+(defn stop []
+  (when-let [h (:playing @ui)] (p/callar! h) (swap! ui assoc :playing nil))
+  :parado)
+
+(defn tick [_]
+  (when-let [h (:playing @ui)]
+    (let [t (p/pulso-actual h)]
+      (if (> t (+ (:end h) 0.25))
+        (swap! ui assoc :playing nil :cursor (:t0 h))
+        (do (swap! ui assoc :cursor (max (:t0 h) t))
+            (js/requestAnimationFrame tick))))))
+
+(defn play []
+  (stop)
+  (let [t0 (if (>= (:cursor @ui) (p/fin (score))) 0 (:cursor @ui))
+        h (p/sonar! (score) t0)]
+    (swap! ui assoc :playing h :cursor t0)
+    (js/requestAnimationFrame tick)
+    :sonando))
+
+(defn build [code]
+  (reset! scratch p/vacia)
+  (try
+    (k/eval-str (str "(do " code "\n nil)"))
+    (let [s @scratch] (reset! scratch nil) s)
+    (catch :default e (reset! scratch nil) (throw e))))
+
+(defn run-code! [code] (dispatch! [:cargar (build code)]) :ok)
+
+(def ejemplo "
+(tempo 96)
+(melodia \"e4/1 g4/1 a4/.5 g4/.5 e4/1 d4/1.5 e4/.5 c4/2 r/1 g4/.5 a4/.5 b4/1 c5/1 b4/.5 a4/.5 g4/2\" 0)
+(melodia \"c3+g3/4 a2+e3/4 f2+c3/4 g2+d3/4\" 0)")
+
+(defn cargar-ejemplo [] (run-code! ejemplo))
+
+;; ───────── dibujo ─────────
+
+(defn pos-text [t]
+  (let [bar (/ (p/bar-slots (score)) 4)
+        m (inc (js/Math.floor (/ t bar)))
+        b (inc (- t (* bar (dec m))))]
+    (str "compás " m " · pulso " (p/fmt (/ (js/Math.round (* b 100)) 100)))))
+
+(defn draw-cursor! []
+  (let [t (:cursor @ui) g (p/geom (score))]
+    (when-let [l ($ "pr-cursor")]
+      (.setAttribute l "x1" (p/t->x g t))
+      (.setAttribute l "x2" (p/t->x g t)))
+    (let [c ($ "nt-cursor") pos (p/t->pos (:anclas @nota-state) t)]
+      (if pos
+        (do (set! (.. c -style -display) "block")
+            (set! (.. c -style -left) (str (:x pos) "px"))
+            (set! (.. c -style -top) (str (:y0 pos) "px"))
+            (set! (.. c -style -height) (str (- (:y1 pos) (:y0 pos)) "px")))
+        (set! (.. c -style -display) "none")))
+    (set! (.-textContent ($ "pos")) (pos-text t))))
+
+(defn render-pianoroll! []
+  (let [s (score) g (p/geom s) svg ($ "pr") d (:drag @ui)]
+    (.setAttribute svg "width" (:w g))
+    (.setAttribute svg "height" (:h g))
+    (set! (.-innerHTML svg) (p/pianoroll-svg s g (:sel @ui) (when (and d (:preview d)) {(:id d) (:preview d)})))
+    (draw-cursor!)))
+
+(defn mark-sel-notation! []
+  (doseq [el (array-seq (.querySelectorAll ($ "nt-svg") "g.note.sel"))]
+    (.remove (.-classList el) "sel"))
+  (when-let [sel (:sel @ui)]
+    (doseq [pz (:piezas @nota-state) :when (= (:ev pz) sel)]
+      (when-let [el ($ (:id pz))] (.add (.-classList el) "sel")))))
+
+(defn render-notation! []
+  (when-let [tk @vrv]
+    (let [box ($ "nt")
+          {:keys [mei piezas]} (p/->mei (score))
+          w (max 320 (- (.-clientWidth box) 2))
+          scale 40]
+      (when (pos? (.-clientWidth box))
+        (try
+          (.setOptions tk (clj->js {:pageWidth (js/Math.round (/ (* w 100) scale)) :pageHeight 60000
+                                    :adjustPageHeight true :breaks "auto" :scale scale
+                                    :header "none" :footer "none"
+                                    :pageMarginTop 30 :pageMarginBottom 30 :pageMarginLeft 24 :pageMarginRight 24}))
+          (.loadData tk mei)
+          (set! (.-innerHTML ($ "nt-svg")) (.renderToSVG tk 1))
+          (set! (.-hidden ($ "nt-msg")) true)
+          (swap! nota-state assoc :piezas piezas :anclas (p/anclas box piezas) :status "ok")
+          (mark-sel-notation!)
+          (draw-cursor!)
+          (catch :default e
+            (set! (.-hidden ($ "nt-msg")) false)
+            (set! (.-textContent ($ "nt-msg")) (str "No se pudo dibujar la notación: " (or (.-message e) e)))))))))
+
+(defonce nt-timer (atom nil))
+(defn schedule-notation! []
+  (when @nt-timer (js/clearTimeout @nt-timer))
+  (reset! nt-timer (js/setTimeout render-notation! 120)))
+
+(defn render-panels! []
+  (let [s (score) {:keys [log]} @world]
+    (when-not (:dirty @ui) (set! (.-value ($ "code")) (p/->codigo s)))
+    (set! (.-textContent ($ "edn")) (p/->edn s))
+    (set! (.-textContent ($ "mei")) (str/replace (:mei (p/->mei s)) #"><" ">\n<"))
+    (let [st ($ "code-state") dirty (:dirty @ui)]
+      (set! (.-textContent st) (if dirty "editado: ejecuta para aplicarlo" "sincronizado con las vistas"))
+      (set! (.-className st) (if dirty "state dirty" "state"))
+      (set! (.-disabled ($ "code-run")) (not dirty))
+      (set! (.-disabled ($ "code-revert")) (not dirty)))
+    (set! (.-innerHTML ($ "log"))
+          (if (empty? log)
+            "<li class=\"empty\">Aún no hay eventos: edita en el piano roll o escribe en la REPL.</li>"
+            (apply str (for [ev (reverse log)]
+                         (str "<li>" (k/esc (if (= :cargar (first ev))
+                                              (str "[:cargar {" (count (:eventos (second ev))) " notas}]")
+                                              (pr-str ev))) "</li>")))))
+    (set! (.-textContent ($ "log-count")) (str (count log) (if (= 1 (count log)) " evento" " eventos")))
+    (set! (.-textContent ($ "status"))
+          (str (count (:eventos s)) " notas · tempo " (:tempo s) " · " (js/Math.ceil (/ (p/fin s) (/ (p/bar-slots s) 4))) " compases"))))
+
+(defn apply-vista! []
+  (let [v (:vista @ui)]
+    (set! (.-className ($ "views")) (str "views v-" v))
+    (doseq [b (array-seq (.querySelectorAll js/document "[data-vista]"))]
+      (.setAttribute b "aria-pressed" (str (= v (.. b -dataset -vista)))))
+    (schedule-notation!)))
+
+(add-watch world ::render (fn [_ _ _ _] (render-pianoroll!) (render-panels!) (schedule-notation!)))
+(add-watch ui ::render
+  (fn [_ _ o n]
+    (when (or (not= (:sel o) (:sel n)) (not= (:drag o) (:drag n))) (render-pianoroll!))
+    (when (not= (:sel o) (:sel n)) (mark-sel-notation!))
+    (when (not= (:cursor o) (:cursor n)) (draw-cursor!))
+    (when (not= (:vista o) (:vista n)) (apply-vista!))
+    (when (not= (:dirty o) (:dirty n)) (render-panels!))
+    (when (not= (some? (:playing o)) (some? (:playing n)))
+      (set! (.-textContent ($ "play")) (if (:playing n) "▶ Desde el cursor" "▶ Reproducir")))))
+
+;; ───────── gestos: piano roll ─────────
+
+(def prsvg ($ "pr"))
+
+(defn pr-pt [e]
+  (let [r (.getBoundingClientRect prsvg)]
+    [(- (.-clientX e) (.-left r)) (- (.-clientY e) (.-top r))]))
+
+(.addEventListener prsvg "pointerdown"
+  (fn [e]
+    (let [[x y] (pr-pt e) g (p/geom (score)) el (.closest (.-target e) ".nota")]
+      (cond
+        (< y p/ruler)
+        (k/gesture! (str "(cursor " (max 0 (p/snap (p/x->t g x))) ")"))
+
+        el
+        (let [id (keyword (.. el -dataset -id)) ev (get-in (score) [:eventos id])
+              edge? (> x (- (p/t->x g (+ (:t ev) (:dur ev))) 7))]
+          (.setPointerCapture prsvg (.-pointerId e))
+          (swap! ui assoc :sel id :drag {:id id :mode (if edge? :dur :move) :x0 x :y0 y :ev ev :preview nil}))
+
+        :else (swap! ui assoc :sel nil)))))
+
+(.addEventListener prsvg "pointermove"
+  (fn [e]
+    (when-let [d (:drag @ui)]
+      (let [[x y] (pr-pt e) ev (:ev d)
+            pv (if (= :dur (:mode d))
+                 {:dur (max 0.25 (p/snap (+ (:dur ev) (/ (- x (:x0 d)) p/ppb))))}
+                 {:t (max 0 (+ (:t ev) (p/snap (/ (- x (:x0 d)) p/ppb))))
+                  :altura (+ (:altura ev) (js/Math.round (/ (- (:y0 d) y) p/rowh)))})]
+        (when (not= pv (:preview d)) (swap! ui assoc-in [:drag :preview] pv))))))
+
+(defn end-drag! [_]
+  (when-let [d (:drag @ui)]
+    (swap! ui assoc :drag nil)
+    (when-let [pv (:preview d)]
+      (let [ev (:ev d) id (:id d)]
+        (if (= :dur (:mode d))
+          (when (not= (:dur pv) (:dur ev))
+            (k/gesture! (str "(duracion " id " " (p/fmt (:dur pv)) ")")))
+          (when (or (not= (:t pv) (:t ev)) (not= (:altura pv) (:altura ev)))
+            (k/gesture! (str "(mover " id " " (p/fmt (:t pv)) " " (:altura pv) ")   ; " (p/nombre (:altura pv))))))))))
+
+(.addEventListener prsvg "pointerup" end-drag!)
+(.addEventListener prsvg "pointercancel" end-drag!)
+
+(.addEventListener prsvg "dblclick"
+  (fn [e]
+    (let [[x y] (pr-pt e) g (p/geom (score))]
+      (when (and (> y p/ruler) (> x p/kbw) (not (.closest (.-target e) ".nota")))
+        (let [t (/ (js/Math.floor (* (p/x->t g x) 4)) 4) a (p/y->alt g y)]
+          (k/gesture! (str "(nota " (p/fmt t) " " a " 1)   ; " (p/nombre a))))))))
+
+;; ───────── gestos: partitura ─────────
+
+(.addEventListener ($ "nt") "click"
+  (fn [e]
+    (when-let [el (.closest (.-target e) "g.note, g.rest")]
+      (when-let [pz (first (filter (fn [pz] (= (:id pz) (.-id el))) (:piezas @nota-state)))]
+        (swap! ui assoc :sel (:ev pz))
+        (k/gesture! (str "(cursor " (p/fmt (:t pz)) ")"))))))
+
+;; ───────── controles ─────────
+
+(.addEventListener ($ "play") "click" (fn [_] (k/gesture! "(play)")))
+(.addEventListener ($ "stop") "click" (fn [_] (k/gesture! "(stop)")))
+(doseq [b (array-seq (.querySelectorAll js/document "[data-vista]"))]
+  (.addEventListener b "click" (fn [_] (k/gesture! (str "(vista :" (.. b -dataset -vista) ")")))))
+
+(doseq [t (array-seq (.querySelectorAll js/document ".tab"))]
+  (.addEventListener t "click"
+    (fn [_]
+      (let [tab (.. t -dataset -tab)]
+        (doseq [x (array-seq (.querySelectorAll js/document ".tab"))]
+          (.setAttribute x "aria-selected" (str (= x t))))
+        (doseq [[kk pid] [["code" "panel-code"] ["edn" "panel-edn"] ["mei" "panel-mei"] ["log" "panel-log"]]]
+          (set! (.-hidden ($ pid)) (not= kk tab)))))))
+
+(defn run-panel-code! []
+  (try
+    (run-code! (.-value ($ "code")))
+    (swap! ui assoc :dirty false)
+    (k/repl-print! "out" "; código ejecutado: la partitura se ha reconstruido (1 evento :cargar)")
+    (catch :default e
+      (k/repl-print! "err" (k/esc (str "Error en el código: " (or (.-message e) e)))))))
+
+(.addEventListener ($ "code") "input" (fn [_] (when-not (:dirty @ui) (swap! ui assoc :dirty true))))
+(.addEventListener ($ "code") "keydown"
+  (fn [e] (when (and (= (.-key e) "Enter") (or (.-ctrlKey e) (.-metaKey e))) (.preventDefault e) (run-panel-code!))))
+(.addEventListener ($ "code-run") "click" (fn [_] (run-panel-code!)))
+(.addEventListener ($ "code-revert") "click" (fn [_] (swap! ui assoc :dirty false)))
+(.addEventListener ($ "undo-btn") "click" (fn [_] (k/gesture! "(undo)")))
+
+(.addEventListener js/document "keydown"
+  (fn [e]
+    (let [tag (.. js/document -activeElement -tagName) key (.-key e)]
+      (when-not (#{"INPUT" "TEXTAREA"} tag)
+        (cond
+          (and (#{"Delete" "Backspace"} key) (:sel @ui))
+          (do (.preventDefault e) (k/gesture! (str "(borrar " (:sel @ui) ")")))
+          (and (= (str/lower-case key) "z") (or (.-ctrlKey e) (.-metaKey e)))
+          (do (.preventDefault e) (k/gesture! "(undo)"))
+          (= key " ")
+          (do (.preventDefault e) (k/gesture! (if (:playing @ui) "(stop)" "(play)"))))))))
+
+(.addEventListener js/window "resize" (fn [_] (schedule-notation!)))
+
+;; ───────── arranque ─────────
+
+(k/montar-repl! "repl-out" "repl-in")
+(reset! world {:score (build ejemplo) :log [] :past []})
+(apply-vista!)
+
+(defn center-pianoroll!
+  "Desplaza el piano roll para que se vean las notas."
+  []
+  (let [s (score) g (p/geom s) as (map :altura (vals (:eventos s)))]
+    (when (seq as)
+      (set! (.-scrollTop ($ "pr-wrap")) (max 0 (- (p/alt->y g (+ (apply max as) 3)) 4))))))
+
+(center-pianoroll!)
+(k/repl-print! "out" "; Kairotic Partitura: el piano roll y la partitura son dos vistas del mismo objeto. Cada gesto se escribe aquí como código (⟵).")
+
+(-> (.-kairoticVerovio js/window)
+    (.then (fn [tk]
+             (reset! vrv tk)
+             (render-notation!)))
+    (.catch (fn [e]
+              (set! (.-textContent ($ "nt-msg"))
+                    (str "No se pudo cargar el motor de notación: " (or (.-message e) e) ". El piano roll sigue funcionando.")))))
+</script>

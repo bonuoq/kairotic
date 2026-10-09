@@ -1,0 +1,66 @@
+<title>Prueba Faust</title>
+<style>
+:root { --bg: #f8f9fb; --ink: #1b2430; --soft: #5a6676; --ok: #2e7d4f; --bad: #b42318; --rule: #c3ccd6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #171c23; --ink: #e3e8ee; --soft: #95a1b0; --ok: #7fd1a0; --bad: #ff8a80; --rule: #333c48; } }
+:root[data-theme="dark"] { --bg: #171c23; --ink: #e3e8ee; --soft: #95a1b0; --ok: #7fd1a0; --bad: #ff8a80; --rule: #333c48; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace; margin: 0; padding: 16px; }
+h1 { font: 600 18px system-ui, sans-serif; margin: 0 0 8px; }
+p { color: var(--soft); margin: 0 0 12px; font-family: system-ui, sans-serif; }
+button { font: inherit; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 4px; background: transparent; color: var(--ink); cursor: pointer; margin-right: 6px; }
+#log div { padding: 2px 0; border-bottom: 1px solid var(--rule); white-space: pre-wrap; word-break: break-word; }
+.ok { color: var(--ok); } .bad { color: var(--bad); }
+</style>
+<h1>Prueba de Faust en un artefacto</h1>
+<p>Carga el compilador de Faust (WebAssembly), compila un oscilador y lo crea como AudioWorklet o, si no se puede, como ScriptProcessor. El analizador mide si sale señal.</p>
+<button id="go">Compilar y sonar</button><button id="stop">Parar</button>
+<div id="log"></div>
+<script type="module">
+const log = (m, cls) => { const d = document.createElement("div"); d.textContent = m; if (cls) d.className = cls; document.getElementById("log").appendChild(d); };
+const t0 = performance.now();
+const ms = () => Math.round(performance.now() - t0) + " ms";
+let F = null, compiler = null, ctx = null, node = null;
+try {
+  F = await import("https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js");
+  log("módulo cargado · " + ms(), "ok");
+  const mod = await F.instantiateFaustModule();
+  const lib = new F.LibFaust(mod);
+  compiler = new F.FaustCompiler(lib);
+  log("compilador listo · versión " + compiler.version() + " · " + ms(), "ok");
+} catch (e) { log("no se pudo cargar Faust: " + (e && e.message || e), "bad"); }
+
+const code = `import("stdfaust.lib");
+freq = hslider("freq", 440, 50, 2000, 0.01);
+gain = hslider("gain", 0.1, 0, 1, 0.01);
+process = os.osc(freq) * gain;`;
+
+document.getElementById("go").onclick = async () => {
+  if (!compiler) return;
+  ctx = ctx || new AudioContext();
+  await ctx.resume();
+  const gen = new F.FaustMonoDspGenerator();
+  const t1 = performance.now();
+  try {
+    await gen.compile(compiler, "prueba", code, "-ftz 2");
+    log("compilado en " + Math.round(performance.now() - t1) + " ms", "ok");
+  } catch (e) { log("error de compilación: " + (e && e.message || e), "bad"); return; }
+  for (const sp of [false, true]) {
+    try {
+      node = await gen.createNode(ctx, "prueba", undefined, sp, 1024);
+      if (node) { log((sp ? "ScriptProcessor" : "AudioWorklet") + " creado", "ok"); break; }
+      log((sp ? "ScriptProcessor" : "AudioWorklet") + " devolvió null", "bad");
+    } catch (e) { log((sp ? "ScriptProcessor" : "AudioWorklet") + " falló: " + (e && e.message || e), "bad"); }
+  }
+  if (!node) return;
+  log("entradas " + node.getNumInputs() + " · salidas " + node.getNumOutputs() + " · parámetros " + JSON.stringify(node.getParams()));
+  const an = ctx.createAnalyser(); an.fftSize = 2048;
+  node.connect(an); an.connect(ctx.destination);
+  node.setParamValue("/prueba/freq", 330);
+  setTimeout(() => {
+    const buf = new Float32Array(an.fftSize); an.getFloatTimeDomainData(buf);
+    let rms = 0; for (const v of buf) rms += v * v; rms = Math.sqrt(rms / buf.length);
+    log("señal RMS = " + rms.toFixed(4) + (rms > 0.01 ? " → suena" : " → silencio"), rms > 0.01 ? "ok" : "bad");
+    document.title = "Prueba Faust · RMS " + rms.toFixed(3);
+  }, 600);
+};
+document.getElementById("stop").onclick = () => { if (node) { node.disconnect(); node = null; log("parado"); } };
+</script>

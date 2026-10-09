@@ -1,0 +1,2371 @@
+<title>Kairotic Lienzo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: work table. Patch (score paper) and its code projection on top, the branching history as a full-width timeline band, REPL along the foot. */
+:root {
+  --paper: #eef1f4;
+  --sheet: #f8f9fb;
+  --grid: #d9dfe6;
+  --ink: #1b2430;
+  --ink-soft: #5a6676;
+  --rule: #c3ccd6;
+  --box: #ffffff;
+  --accent: #2f55d4;
+  --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e;
+  --error: #b42318;
+  --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #232a33; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #232a33; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; }
+.app { box-sizing: border-box; min-height: 100%; display: grid; grid-template-rows: auto auto auto auto; gap: 12px; padding-inline: 16px; padding-block: 14px 16px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+header .status b { font-weight: 500; }
+header .status b.on { color: var(--ok); }
+header .status b.off { color: var(--kairos); }
+.work { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 12px; min-height: 0; }
+@media (max-width: 860px) { .work { grid-template-columns: minmax(0, 1fr); } }
+.pane { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.pane-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
+.pane-head .label { font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+.pane-head .hint { margin-left: auto; text-align: right; }
+.canvas-wrap { position: relative; overflow: auto; flex: 1; min-height: 420px; max-height: 560px; }
+#canvas { display: block; width: 900px; height: 640px; max-width: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+#canvas .bg { fill: url(#grid); }
+#canvas .box rect.body { fill: var(--box); stroke: var(--ink); stroke-width: 1; }
+#canvas .box.kairos rect.body { stroke: var(--kairos); stroke-width: 1.25; }
+#canvas .box.sel rect.body { stroke: var(--accent); stroke-width: 2; fill: var(--accent-soft); }
+#canvas .box.drop rect.body { stroke: var(--accent); stroke-dasharray: 3 3; }
+#canvas .box > text, #canvas .box text.lbl { font-family: var(--f-code); font-size: 12.5px; fill: var(--ink); pointer-events: none; }
+#canvas .box text.lbl.info { font-size: 11px; fill: var(--ink-soft); }
+#canvas .mus rect.head { fill: var(--accent-soft); stroke: none; }
+#canvas .mus-body { cursor: crosshair; }
+#canvas .rbg { fill: var(--sheet); }
+#canvas .rrow.blk { fill: var(--ink); fill-opacity: 0.06; }
+#canvas .rbeat { stroke: var(--grid); stroke-width: 1; }
+#canvas .rbar { stroke: var(--rule); stroke-width: 1.25; }
+#canvas .box text.rlabel { font-family: var(--f-code); font-size: 9px; fill: var(--ink-soft); pointer-events: none; }
+#canvas .rnota { fill: var(--accent); fill-opacity: 0.85; stroke: var(--accent); stroke-width: 1; cursor: grab; }
+#canvas .rnota.sel { fill: var(--kairos); stroke: var(--ink); stroke-width: 1.25; }
+#canvas .paper { fill: #fbfaf6; stroke: var(--rule); }
+#canvas .score-slot { color: #1b2430; fill: #1b2430; }
+#canvas .score-slot g.note, #canvas .score-slot g.rest { cursor: pointer; }
+#canvas .score-slot g.note.sel, #canvas .score-slot g.note.sel * { fill: #c2410c; stroke: #c2410c; color: #c2410c; }
+#canvas .box text.wait { font-family: var(--f-ui); font-size: 12px; fill: #5a6676; }
+#canvas .cur { stroke: var(--kairos); stroke-width: 2; pointer-events: none; }
+#canvas .cur2 { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; pointer-events: none; }
+#canvas .suena { fill: var(--kairos); stroke: var(--sheet); stroke-width: 1.5; pointer-events: none; }
+#canvas .lbg { fill: var(--sheet); cursor: crosshair; }
+#canvas .lgx0, #canvas .lgy0 { stroke: var(--grid); stroke-width: 1; }
+#canvas .lgx1, #canvas .lgy1 { stroke: var(--rule); stroke-width: 1.25; }
+#canvas .lgx2 { stroke: var(--ink-soft); stroke-width: 1.25; stroke-opacity: 0.7; }
+#canvas .trazo { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+#canvas .trazo.sel { stroke: var(--kairos); stroke-width: 3.5; }
+#canvas .trazo.nuevo { stroke: var(--kairos); stroke-dasharray: 5 3; }
+#canvas .trazo-hit { fill: none; stroke: transparent; stroke-width: 11; stroke-linecap: round; cursor: grab; }
+#canvas .box.act .grip { fill: var(--ink); fill-opacity: 0.18; cursor: grab; }
+#canvas .box.act { cursor: pointer; }
+#canvas .box.act.numero { cursor: ns-resize; }
+#canvas .box.act.msg rect.body { fill: var(--accent-soft); }
+#canvas .box .bangc { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+#canvas .flash { fill: var(--kairos); fill-opacity: 0.35; pointer-events: none; }
+#canvas text.valor { font-family: var(--f-code); font-size: 12.5px; fill: var(--ink); pointer-events: none; }
+#canvas .wire.buffer { stroke-dasharray: 6 3; stroke: var(--kairos); }
+.transport { display: inline-flex; align-items: center; gap: 4px; }
+.transport button { font-family: var(--f-code); min-width: 34px; }
+.transport button.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+#transport-info { font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+#canvas .box { cursor: grab; }
+#canvas .port { fill: var(--ink); }
+#canvas .port.out { cursor: crosshair; }
+#canvas .box.kairos .port { fill: var(--kairos); }
+#canvas .port.in.target { fill: var(--accent); }
+#canvas .wire { stroke: var(--ink); stroke-width: 1.5; }
+#canvas .wire.sel { stroke: var(--accent); stroke-width: 2.5; }
+#canvas .wire-hit { stroke: transparent; stroke-width: 12; cursor: pointer; }
+#canvas .wire.temp { stroke: var(--accent); stroke-dasharray: 4 4; pointer-events: none; }
+.edit { position: absolute; font-family: var(--f-code); font-size: 12.5px; padding: 4px 8px; border: 2px solid var(--accent); border-radius: 3px; background: var(--box); color: var(--ink); outline: none; min-width: 140px; }
+.tabs { display: flex; gap: 2px; }
+.tab { font: inherit; font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--ink-soft); padding: 2px 8px 4px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#code { flex: 1; min-height: 300px; resize: none; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 12.5px; line-height: 1.6; padding: 10px 12px; white-space: pre; overflow: auto; tab-size: 2; }
+#code:focus { outline: none; background: var(--accent-soft); }
+.code-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
+.code-bar .state.dirty { color: var(--kairos); font-weight: 500; }
+.code-bar .spacer { flex: 1; }
+button.act { font: inherit; font-size: 12.5px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--rule); background: var(--box); color: var(--ink); cursor: pointer; }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act[disabled] { opacity: 0.45; cursor: default; }
+pre.view { margin: 0; flex: 1; min-height: 300px; overflow: auto; padding: 10px 12px; font-family: var(--f-code); font-size: 12px; line-height: 1.55; color: var(--ink); }
+
+/* history band */
+.hist-nav { display: flex; gap: 4px; }
+.hist-nav button { font-family: var(--f-code); min-width: 34px; }
+.peers { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; padding: 2px 9px 2px 6px; border-radius: 999px; border: 1px solid var(--rule); background: var(--box); color: var(--ink); cursor: pointer; }
+.chip .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.chip.me { cursor: default; }
+.chip.following { border-color: var(--accent); background: var(--accent-soft); }
+.hist-wrap { overflow: auto; max-height: 230px; min-height: 96px; }
+#tree { display: block; }
+#tree .lane { stroke-width: 2.5; stroke-linecap: round; fill: none; }
+#tree .fork { stroke-width: 1.25; fill: none; stroke-dasharray: 2 3; }
+#tree .ev { cursor: pointer; }
+#tree .ev:hover { stroke: var(--ink); stroke-width: 2; }
+#tree .origin { fill: var(--sheet); stroke: var(--ink-soft); stroke-width: 1.5; cursor: pointer; }
+#tree .here { fill: none; stroke: var(--accent); stroke-width: 2.5; pointer-events: none; }
+#tree .peer { fill: none; stroke-width: 2; pointer-events: none; }
+#tree .merge { fill: none; stroke-width: 1.5; stroke-dasharray: 5 3; }
+#tree .mergemark { stroke: var(--sheet); stroke-width: 1.5; }
+.opt { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink); white-space: nowrap; }
+.opt input[type="number"] { width: 64px; font: inherit; font-family: var(--f-code); padding: 2px 4px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); }
+.picking #tree .ev, .picking #tree .origin { cursor: copy; }
+#tree .axis { fill: var(--ink-soft); font-family: var(--f-code); font-size: 10.5px; }
+#tree .tick { stroke: var(--grid); }
+.hist-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 10px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
+.hist-foot .ahead { color: var(--kairos); }
+.empty-hist { padding: 14px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--ink-soft); }
+
+.work-bar { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+.work-bar b { color: var(--ink); font-weight: 600; }
+
+/* session manager */
+.manager { position: fixed; inset: 0; z-index: 20; background: rgba(18, 22, 28, 0.42); display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: calc(24px + env(safe-area-inset-top, 0px)) 16px 24px; }
+.mgr-panel { box-sizing: border-box; width: 100%; max-width: 920px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); }
+.mgr-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding: 16px 18px 12px; border-bottom: 1px solid var(--rule); }
+.mgr-head h2 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; }
+.mgr-sub { color: var(--ink-soft); font-size: 13px; flex: 1; min-width: 220px; }
+#mgr-body { padding: 14px 18px 18px; }
+.mgr-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 720px) { .mgr-cols { grid-template-columns: minmax(0, 1fr); } }
+.mgr-col h3 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+.mgr-hint { margin: 4px 0 10px; color: var(--ink-soft); font-size: 12px; }
+.mgr-note, .mgr-empty { color: var(--ink-soft); font-size: 13px; }
+.mgr-busy { color: var(--accent); font-size: 13px; margin: 0 0 10px; }
+.mgr-foot { margin: 16px 0 0; }
+.items { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--box); }
+.item.current { border-color: var(--accent); }
+.item.invited { border-color: var(--kairos); }
+.item-main { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 2px; }
+.item-name { font-weight: 500; overflow-wrap: anywhere; }
+.item-meta { font-size: 12px; color: var(--ink-soft); }
+.item-meta b { color: var(--ok); font-weight: 500; }
+.item-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+button.act.danger { color: var(--error); }
+button.act.danger.armed { background: var(--error); border-color: var(--error); color: #fff; }
+.invite { padding: 10px 12px; margin-bottom: 14px; border: 1px solid var(--kairos); border-radius: 6px; background: var(--box); }
+form.new { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); }
+
+.repl { min-height: 0; }
+#repl-out { max-height: 150px; min-height: 80px; overflow: auto; padding: 8px 12px; font-family: var(--f-code); font-size: 12.5px; line-height: 1.55; }
+#repl-out .in { color: var(--ink); }
+#repl-out .in .p { color: var(--accent); margin-right: 6px; }
+#repl-out .in.from-patch { color: var(--ink-soft); }
+#repl-out .in.from-patch .p { color: var(--kairos); }
+#repl-out .out { color: var(--ink-soft); padding-left: 20px; white-space: pre-wrap; word-break: break-word; }
+#repl-out .err { color: var(--error); padding-left: 20px; white-space: pre-wrap; }
+.repl-line { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--rule); padding: 6px 12px; }
+.repl-line label { font-family: var(--f-code); color: var(--accent); font-weight: 600; }
+#repl-in { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 13px; padding: 6px 0; }
+#repl-in:focus { outline: none; }
+.help { padding: 6px 12px 10px; font-size: 12px; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.help code { font-family: var(--f-code); color: var(--ink); }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Kairotic Lienzo</h1>
+    <span class="sub">Ensayo 5 · el lienzo es frecuencia sobre tiempo; un lector lo recorre según la posición que le llegue</span>
+    <span class="status" id="status">cargando ClojureScript…</span>
+    <span class="work-bar"><span id="work-name">Sin obra abierta</span><button class="act" id="open-manager">Sesiones</button></span>
+  </header>
+
+  <div class="manager" id="manager" role="dialog" aria-modal="true" aria-labelledby="mgr-title">
+    <div class="mgr-panel">
+      <div class="mgr-head">
+        <h2 id="mgr-title">Sesiones</h2>
+        <span class="mgr-sub">Trabaja en solitario o comparte una sala. Puedes pasar de una a otra copiando la obra con su historia.</span>
+        <button class="act" id="mgr-close" title="Volver a la obra abierta (Esc)">Cerrar</button>
+      </div>
+      <div id="mgr-body"><p class="mgr-note">Cargando…</p></div>
+    </div>
+  </div>
+
+  <div class="work">
+    <section class="pane" aria-label="Patch">
+      <div class="pane-head">
+        <span class="label">Patch</span>
+        <span class="transport">
+          <button class="act" id="play" title="Poner en marcha el motor y disparar los loadbang (espacio)">▶</button>
+          <button class="act" id="stop" title="Parar el motor: silencio y estado inicial">■</button>
+          <span id="transport-info">motor parado</span>
+        </span>
+        <span class="hint">Lienzo: arrastra = trazo · ⇧ recta · ⌥ a mano · clic = pedir esa posición · ↑↓←→ + − Supr sobre el trazo elegido · numero, msg y bang se pulsan; se mueven por su asa</span>
+      </div>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="1" fill="var(--grid)"></circle>
+            </pattern>
+          </defs>
+          <rect class="bg" x="0" y="0" width="100%" height="100%"></rect>
+          <g id="scene"></g>
+          <g id="cursors"></g>
+        </svg>
+      </div>
+    </section>
+
+    <section class="pane" aria-label="Proyecciones">
+      <div class="pane-head">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tab-code" data-tab="code" aria-selected="true">Código</button>
+          <button class="tab" role="tab" id="tab-edn" data-tab="edn" aria-selected="false">EDN</button>
+        </div>
+      </div>
+      <div class="panel" id="panel-code">
+        <textarea id="code" spellcheck="false" aria-label="Código del patch"></textarea>
+        <div class="code-bar">
+          <span class="state" id="code-state">sincronizado con el patch</span>
+          <span class="spacer"></span>
+          <button class="act" id="code-revert" disabled>Descartar cambios</button>
+          <button class="act primary" id="code-run" disabled>Ejecutar · Ctrl+Enter</button>
+        </div>
+      </div>
+      <div class="panel" id="panel-edn" hidden>
+        <pre class="view" id="edn"></pre>
+      </div>
+    </section>
+  </div>
+
+  <section class="pane" aria-label="Historia">
+    <div class="pane-head">
+      <span class="label">Historia</span>
+      <div class="hist-nav">
+        <button class="act" id="nav-back" title="Retroceder un evento (Ctrl+Z)">◀</button>
+        <button class="act" id="nav-fwd" title="Avanzar un evento">▶</button>
+        <button class="act" id="nav-tip" title="Ir a la punta de esta rama">⇥</button>
+      </div>
+      <label class="opt" title="Avanzar automáticamente con los gestos de cualquiera"><input type="checkbox" id="auto" checked> Seguir el frente</label>
+      <label class="opt" title="Dos gestos más cercanos que este intervalo se consideran paralelos y bifurcan">Simultaneidad <input type="number" id="simul" min="0" max="10000" step="100" value="1500"> ms</label>
+      <button class="act" id="merge-btn" title="Traer aquí los eventos de otra rama compatible">Mezclar…</button>
+      <div class="peers" id="peers"></div>
+      <span class="hint" id="hist-hint">Clic en un punto para viajar a ese momento</span>
+    </div>
+    <div class="hist-wrap" id="hist-wrap">
+      <svg id="tree" xmlns="http://www.w3.org/2000/svg" width="320" height="80"></svg>
+      <div class="empty-hist" id="hist-empty" hidden>
+        <span>La historia compartida está vacía. El primer gesto crea su raíz.</span>
+        <button class="act primary" id="start-example">Empezar con la obra de ejemplo</button>
+      </div>
+    </div>
+    <div class="hist-foot" id="hist-foot"></div>
+  </section>
+
+  <section class="pane repl" aria-label="REPL">
+    <div class="pane-head"><span class="label">REPL</span><span class="hint">ClojureScript (Scittle) · ↑ ↓ historial</span></div>
+    <div id="repl-out" aria-live="polite"></div>
+    <div class="repl-line">
+      <label for="repl-in">λ</label>
+      <input id="repl-in" autocomplete="off" spellcheck="false" placeholder='(afinacion :b1 "19-tet")  ·  (enviar :b5 2.5)  ·  (trazo :b1 [[0 300] [2 450]])'>
+    </div>
+    <div class="help">
+      <span><code>(trazo :b1 [[t hz] …])</code> · <code>(nota :b1 t "c4" dur)</code> · <code>(grado :b1 t n dur)</code> · <code>(melodia :b1 "c4/1 e4/.5")</code></span>
+      <span><code>(mover-trazo :b1 :t1 dt cents)</code> · <code>(estirar :b1 :t1 2)</code> · <code>(borrar-trazo :b1 :t1)</code></span>
+      <span><code>(rejilla-x :b1 0.25 "3+3+2")</code> · <code>(afinacion :b1 "31-tet" 261.63)</code> · <code>(escalas)</code> · <code>(leer :b1 2)</code></span>
+      <span><code>(play)</code> · <code>(stop)</code> · <code>(enviar :b5 2.5)</code></span>
+      <span>clases: <code>lienzo score lector rampa metro contador numero msg bang loadbang + - * / mtof ftom print synth~ osc~ gain~ dac~</code></span>
+      <span><code>(box "texto" x y)</code></span>
+      <span><code>(connect :b1 0 :b2 0)</code></span>
+      <span><code>(move :b1 x y)</code></span>
+      <span><code>(delete :b1)</code></span>
+      <span><code>(rewind)</code> · <code>(rewind n)</code></span>
+      <span><code>(forward)</code></span>
+      <span><code>(tip)</code></span>
+      <span><code>(goto "id" n)</code></span>
+      <span><code>(here)</code></span>
+      <span><code>(branches)</code></span>
+      <span><code>(frente true)</code></span>
+      <span><code>(simultaneidad 1500)</code></span>
+      <span><code>(merge-from "id" n)</code></span>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// Si el ClojureScript falla al cargar, el error se muestra en la cabecera en vez de perderse en la consola.
+window.addEventListener("error", function (e) {
+  var st = document.getElementById("status");
+  var msg = "Error: " + (e.message || e.error);
+  if (st) { st.textContent = msg; st.style.color = "var(--error)"; }
+  var mb = document.getElementById("mgr-body");
+  if (mb && /Cargando/.test(mb.textContent)) { mb.textContent = msg; mb.style.color = "var(--error)"; }
+});
+</script>
+<script>
+// Verovio (notación) se descarga después de pintar la página; el toolkit queda en una promesa.
+window.kairoticVerovio = new Promise(function (resolve, reject) {
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/verovio@5.7.0/dist/verovio-toolkit-wasm.js";
+  s.onload = function () {
+    try {
+      var m = verovio.module;
+      if (m.calledRun) { resolve(new verovio.toolkit()); }
+      else { m.onRuntimeInitialized = function () { resolve(new verovio.toolkit()); }; }
+    } catch (e) { reject(e); }
+  };
+  s.onerror = function () { reject(new Error("No se pudo descargar Verovio")); };
+  document.head.appendChild(s);
+});
+</script>
+<script>
+// El ClojureScript se evalúa aquí (y no con las etiquetas automáticas de Scittle) para que un error
+// llegue con su mensaje: primero los módulos (partitura, lienzo, motor), luego el programa de la página.
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) {
+    var msg = "Error: " + ((e && e.message) || e);
+    var st = document.getElementById("status");
+    if (st) { st.textContent = msg; st.style.color = "var(--error)"; }
+    var mb = document.getElementById("mgr-body");
+    if (mb && /Cargando/.test(mb.textContent)) { mb.textContent = msg; mb.style.color = "var(--error)"; }
+    console.error(e);
+  }
+  var mods = ["kairotic/partitura.cljs", "kairotic/lienzo.cljs", "kairotic/motor.cljs"];
+  Promise.all(mods.map(function (m) {
+    return fetch(m).then(function (r) { if (!r.ok) throw new Error("no se pudo leer " + m + " (" + r.status + ")"); return r.text(); });
+  }))
+    .then(function (srcs) {
+      srcs.forEach(function (src, i) {
+        try { scittle.core.eval_string(src); } catch (e) { throw new Error(mods[i] + ": " + (e.message || e)); }
+      });
+      scittle.core.eval_string(document.getElementById("main-cljs").textContent);
+    })
+    .catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="main-cljs">
+(ns user (:require [clojure.string :as str] [clojure.set] [kairotic.partitura :as mus] [kairotic.lienzo :as lz] [kairotic.motor :as motor]))
+
+;; ───────────────────────── modelo de la obra ─────────────────────────
+
+(def empty-patch {:boxes (sorted-map) :lines []})
+
+(def specs {"loadbang" [0 1] "bang" [1 1] "msg" [1 1] "numero" [1 1] "print" [1 0]
+            "metro" [2 1] "contador" [2 1] "rampa" [2 1] "mtof" [1 1] "ftom" [1 1]
+            "+" [2 1] "-" [2 1] "*" [2 1] "/" [2 1]
+            "lienzo" [1 2] "score" [1 2] "lector" [2 2]
+            "synth~" [2 1] "osc~" [2 1] "gain~" [2 1] "dac~" [2 0] "faust~" [2 1] "noise~" [0 1]
+            "estado" [1 1] "transicion" [2 1] "consigna" [1 0] "region" [1 1]})
+
+;; cajas con un buffer gráfico dentro (datos de kairotic.lienzo en :data): score es otra vista del mismo buffer
+(def music-classes #{"lienzo" "score"})
+;; cajas que actúan al pulsarlas (se mueven por su asa izquierda)
+(def action-classes #{"numero" "msg" "bang"})
+
+(def kairos-classes #{"estado" "transicion" "consigna" "region"})
+
+(defn klass [text] (first (str/split (str/trim (str text)) #"\s+")))
+(defn io [text] (get specs (klass text) [1 1]))
+
+(defn prune-lines [p]
+  (let [bx (:boxes p)
+        ok? (fn [[a o b i]]
+              (and (contains? bx a) (contains? bx b)
+                   (< o (second (io (get-in bx [a :text]))))
+                   (< i (first (io (get-in bx [b :text]))))))]
+    (update p :lines (fn [ls] (vec (filter ok? ls))))))
+
+(defn sane-patch
+  "Los eventos pueden venir de otras personas: se normaliza lo que llega."
+  [x]
+  (if (map? x)
+    {:boxes (into (sorted-map)
+                  (for [[k b] (:boxes x) :when (and (keyword? k) (map? b))]
+                    [k (cond-> {:text (str (:text b)) :x (or (:x b) 0) :y (or (:y b) 0)}
+                         (map? (:data b)) (assoc :data (lz/step lz/vacio [:cargar (:data b)])))]))
+     :lines (vec (filter (fn [l] (and (vector? l) (= 4 (count l)))) (:lines x)))}
+    empty-patch))
+
+(defn step [p [op & args]]
+  (case op
+    :box        (let [[id text x y] args] (if (keyword? id) (assoc-in p [:boxes id] {:text (str text) :x x :y y}) p))
+    :text       (let [[id text] args] (if (get-in p [:boxes id]) (prune-lines (assoc-in p [:boxes id :text] (str text))) p))
+    :move       (let [[id x y] args] (if (get-in p [:boxes id]) (update-in p [:boxes id] assoc :x x :y y) p))
+    :connect    (let [l (vec args)] (if (some #{l} (:lines p)) p (update p :lines conj l)))
+    :disconnect (let [l (vec args)] (update p :lines (fn [ls] (vec (remove #{l} ls)))))
+    :delete     (let [[id] args]
+                  (-> p (update :boxes dissoc id)
+                      (update :lines (fn [ls] (vec (remove (fn [[a _ b _]] (or (= a id) (= b id))) ls))))))
+    ;; evento dirigido al buffer de una caja: [:en :b2 [:trazo :t1 [[0 440] [1 440]]]]
+    :en         (let [[id ev] args]
+                  (if (and (get-in p [:boxes id]) (vector? ev))
+                    (update-in p [:boxes id :data] (fn [d] (lz/step (or d lz/vacio) ev)))
+                    p))
+    :load       (sane-patch (first args))
+    :clear      empty-patch
+    p))
+
+;; ───────────────────────── codificación EDN ⇄ JSON ─────────────────────────
+;; db guarda JSON; las palabras clave y los mapas se marcan para volver a EDN sin evaluar nada.
+
+(defn enc [x]
+  (cond (keyword? x) {"k" (name x)}
+        (map? x) {"m" (mapv (fn [[k v]] [(enc k) (enc v)]) x)}
+        (sequential? x) (mapv enc x)
+        :else x))
+
+(defn dec* [x]
+  (cond (map? x) (cond (contains? x "k") (keyword (str (get x "k")))
+                       (contains? x "m") (into {} (for [kv (get x "m") :when (and (sequential? kv) (= 2 (count kv)))]
+                                                    [(dec* (first kv)) (dec* (second kv))]))
+                       :else nil)
+        (sequential? x) (mapv dec* x)
+        :else x))
+
+;; ───────────────────────── historia: árbol de tramos ─────────────────────────
+;; nodo = tramo de eventos consecutivos de una persona: {:id :parent :at :author :t :events}
+;; posición = [id-de-nodo n] = después de los n primeros eventos de ese nodo.
+
+(def max-events 64)
+
+(defonce hist (atom {:nodes {} :loaded false :mode :connecting :writable false}))
+(defonce world (atom {:pos nil :auto true :prev-pos nil :jumped-at 0}))
+(defonce me (atom {:id nil}))
+(defonce peers (atom []))
+(defonce profiles (atom {}))
+(defonce scratch (atom nil))
+(defonce cache (atom {}))
+(defonce dbref (atom nil))
+(defonce roomref (atom nil))
+(defonce userref (atom nil))
+(defonce settings (atom {:simul-ms 1500}))
+
+;; una sesión = una pestaña; sobrevive a recargas de esa pestaña
+(def session-id
+  (or (try (.getItem js/sessionStorage "kairotic-session") (catch :default _ nil))
+      (let [s (str "s" (.toString (js/Math.floor (* (js/Math.random) 2176782336)) 36))]
+        (try (.setItem js/sessionStorage "kairotic-session" s) (catch :default _ nil))
+        s)))
+
+(defn my-author [] (or (:id @me) "local"))
+(defn node [nid] (get-in @hist [:nodes nid]))
+(defn node-session [n] (or (:session n) (:author n)))
+
+(defn norm
+  "Una posición al principio de un nodo hijo es la misma que su punto de bifurcación."
+  [pos]
+  (loop [[nid idx :as pos] pos guard 0]
+    (let [n (node nid)]
+      (cond (or (nil? pos) (nil? n) (> guard 512)) pos
+            (and (zero? idx) (:parent n) (node (:parent n))) (recur [(:parent n) (:at n)] (inc guard))
+            :else [nid (max 0 (min idx (count (:events n))))]))))
+
+(defn patch-at
+  ([pos] (patch-at pos 0))
+  ([pos depth]
+   (if (or (nil? pos) (> depth 512))
+     empty-patch
+     (or (get @cache pos)
+         (let [[nid idx] pos n (node nid)]
+           (if (nil? n)
+             empty-patch
+             (let [base (if (and (:parent n) (node (:parent n))) (patch-at [(:parent n) (:at n)] (inc depth)) empty-patch)
+                   p (reduce step base (take idx (:events n)))]
+               (swap! cache assoc pos p)
+               p)))))))
+
+(defn current [] (or @scratch (patch-at (:pos @world))))
+
+(defn start-of
+  "Profundidad (número de eventos desde la raíz) en la que empieza un nodo."
+  ([nid] (start-of nid 0))
+  ([nid depth]
+   (let [n (node nid)]
+     (if (and n (:parent n) (node (:parent n)) (< depth 512))
+       (+ (start-of (:parent n) (inc depth)) (:at n))
+       0))))
+
+(defn depth-of [[nid idx]] (+ (start-of nid) idx))
+
+(defn tip-of [nid] [nid (count (:events (node nid)))])
+
+(defn newest-tip []
+  (let [ns (vals (:nodes @hist))]
+    (when (seq ns) (tip-of (:id (apply max-key (fn [n] (or (:t n) 0)) ns))))))
+
+;; ───────────────────────── almacenamiento ─────────────────────────
+
+(defonce queues (atom {}))
+
+(defn repl-print! [cls html]
+  (let [out (js/document.getElementById "repl-out") d (js/document.createElement "div")]
+    (set! (.-className d) cls)
+    (set! (.-innerHTML d) html)
+    (.appendChild out d)
+    (set! (.-scrollTop out) (.-scrollHeight out))))
+
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
+
+(defn db-failed! [e]
+  (let [code (or (.-code e) "error")]
+    (when (#{"invalid_argument" "revoked" "not_granted"} code)
+      (swap! hist assoc :writable false :mode :readonly))
+    (repl-print! "err" (esc (str "No se pudo guardar en la historia compartida (" code "). Tus gestos siguen en esta pestaña.")))))
+
+(defn enqueue! [k f]
+  (let [prev (get @queues k (js/Promise.resolve nil))
+        p (-> prev (.then (fn [_] (f))) (.catch db-failed!))]
+    (swap! queues assoc k p)))
+
+(defn node->js [n]
+  (clj->js {:parent (:parent n) :at (:at n) :author (:author n) :session (:session n) :t (:t n)
+            :merge (:merge n) :events (mapv enc (:events n))}))
+
+;; ───────────────────────── obras: salas compartidas y trabajo en solitario ─────────────────────────
+;; sala:     salas/<id>                    (metadatos)  ·  salas/<id>/historia/<tramo>
+;; solitario: data/users/<uid>/<id>        (privado)    ·  data/users/<uid>/<id>/historia/<tramo>
+
+(defonce work (atom {:kind nil :id nil :name nil}))
+
+(defn uid [] (:id @me))
+
+(defn base-of [kind id]
+  (case kind
+    :sala (str "salas/" id)
+    :solo (when (uid) (str "data/users/" (uid) "/" id))
+    nil))
+
+(defn work-base [] (base-of (:kind @work) (:id @work)))
+(defn hist-path [] (when-let [b (work-base)] (str b "/historia")))
+
+(defn persist? []
+  (and @dbref (:writable @hist) (#{:sala :solo} (:kind @work)) (hist-path)))
+
+(defn new-id []
+  (if (persist?)
+    (.-id (.doc (.collection @dbref (hist-path))))
+    (str "local-" (.toString (js/Math.floor (* (js/Math.random) 2176782336)) 36) (.toString (js/Date.now) 36))))
+
+(defn new-node! [parent at evs merge]
+  (let [id (new-id)
+        n {:id id :parent parent :at at :author (my-author) :session session-id :t (js/Date.now)
+           :merge merge :events (vec evs)}]
+    (swap! hist assoc-in [:nodes id] n)
+    (when (and (persist?) (not (str/starts-with? id "local-")))
+      (let [path (str (hist-path) "/" id) body (node->js n)]
+        (enqueue! path (fn [] (.set (.doc @dbref path) body)))))
+    id))
+
+(defn append-event! [nid ev]
+  (swap! hist update-in [:nodes nid] (fn [n] (-> n (update :events conj ev) (assoc :t (js/Date.now)))))
+  (when (and (persist?) (not (str/starts-with? nid "local-")))
+    (let [n (node nid)
+          path (str (hist-path) "/" nid)
+          body (clj->js {:events (mapv enc (:events n)) :t (:t n)})]
+      (enqueue! path (fn [] (.update (.doc @dbref path) body))))))
+
+(defn own-open-tip? [[nid idx]]
+  (let [n (node nid)]
+    (and n (= (node-session n) session-id) (= idx (count (:events n))) (< idx max-events))))
+
+(defn commit!
+  "Añade un evento donde estás. Si acabas de avanzar por un evento ajeno hace menos que el
+   intervalo de simultaneidad, tu evento se considera paralelo y sale desde donde estabas (rama)."
+  [ev]
+  (let [{:keys [pos prev-pos jumped-at]} @world
+        parallel? (and prev-pos (< (- (js/Date.now) jumped-at) (:simul-ms @settings)))
+        base (if parallel? prev-pos pos)]
+    (if (and base (own-open-tip? base))
+      (do (append-event! (first base) ev)
+          (swap! world assoc :pos [(first base) (inc (second base))] :auto true :prev-pos nil))
+      (let [id (new-node! (first base) (if base (second base) 0) [ev] nil)]
+        (swap! world assoc :pos [id 1] :auto true :prev-pos nil)))))
+
+;; ───────────────────────── caminos, frente y mezcla ─────────────────────────
+
+(defn segments
+  "Camino desde la raíz hasta una posición, como [[tramo n] ...]."
+  [pos]
+  (loop [[nid idx :as p] pos acc () guard 0]
+    (let [n (node nid)]
+      (if (and n (:parent n) (node (:parent n)) (< guard 512))
+        (recur [(:parent n) (:at n)] (cons p acc) (inc guard))
+        (vec (cons p acc))))))
+
+(defn reaches?
+  "¿Se llega a `tip` avanzando desde `pos`?"
+  [pos tip]
+  (let [[pn pi] pos]
+    (boolean (some (fn [[sn sc]] (and (= sn pn) (>= sc pi))) (segments tip)))))
+
+(defn front-from
+  "La punta más reciente a la que se llega avanzando desde pos."
+  [pos]
+  (let [cands (filter (fn [t] (reaches? pos t)) (map (fn [n] (tip-of (:id n))) (vals (:nodes @hist))))]
+    (when (seq cands) (apply max-key (fn [[nid _]] (or (:t (node nid)) 0)) cands))))
+
+(defn seg-events [[nid n] from]
+  (let [evs (vec (take n (:events (node nid))))]
+    (subvec evs (min from (count evs)))))
+
+(defn diverge
+  "Punto común de dos caminos y los eventos que cada uno añade desde ahí."
+  [ts ss]
+  (loop [i 0]
+    (let [t (nth ts i nil) s (nth ss i nil)]
+      (when (and t s (= (first t) (first s)))
+        (let [nt (nth ts (inc i) nil) nx (nth ss (inc i) nil)]
+          (if (and (= (second t) (second s)) nt nx (= (first nt) (first nx)))
+            (recur (inc i))
+            (let [k (min (second t) (second s))
+                  extra (fn [segs] (vec (concat (seg-events (nth segs i) k) (mapcat (fn [g] (seg-events g 0)) (drop (inc i) segs)))))]
+              {:base [(first t) k] :t-extra (extra ts) :s-extra (extra ss)})))))))
+
+(defn summarize [evs]
+  (reduce (fn [acc [op & args]]
+            (case op
+              (:box :text :move) (update acc :mod conj (first args))
+              :delete (-> acc (update :mod conj (first args)) (update :del conj (first args)))
+              (:connect :disconnect) (update acc :ref into [(first args) (nth args 2 nil)])
+              :load (assoc acc :load true)
+              ;; en un lienzo, cada trazo es su propia unidad de cambio, y también cada rejilla;
+              ;; limpiar o cargar afecta a todo el lienzo
+              :en (let [[id [iop eid]] args]
+                    (case iop
+                      (:trazo :mover :estirar :borrar) (-> acc (update :mod conj [id eid]) (update :ref conj id))
+                      :rejilla-x (-> acc (update :mod conj [id :rejilla-x]) (update :ref conj id))
+                      :afinacion (-> acc (update :mod conj [id :afinacion]) (update :ref conj id))
+                      (-> acc (update :mod conj id) (update :ref conj id) (update :whole conj id))))
+              acc))
+          {:mod #{} :ref #{} :del #{} :whole #{} :load false} evs))
+
+(defn remap-ev [m [op & args :as e]]
+  (let [f (fn [x] (get m x x))]
+    (case op
+      (:box :text :move :delete) (into [op (f (first args))] (rest args))
+      :en (let [[id inner] args]
+            [op (f id) (if-let [ne (get-in m [:notas [id (second inner)]])] (assoc inner 1 ne) inner)])
+      (:connect :disconnect) (let [[a o b i] args] [op (f a) o (f b) i])
+      e)))
+
+(defn free-box-id [used]
+  (loop [k 1] (let [id (keyword (str "b" k))] (if (used id) (recur (inc k)) id))))
+
+(defn plan-merge
+  "Qué eventos de la rama `src` hay que traer a `tgt`, o por qué no se puede."
+  [tgt src]
+  (let [ts (segments tgt) ss (segments src)
+        ;; lo que ya se trajo en mezclas anteriores no se vuelve a traer
+        merged (keep (fn [g] (:merge (node (first g)))) ts)
+        done (last (filter (fn [m] (and (vector? m) (node (first m)) (reaches? m src))) merged))
+        d (diverge ts ss)
+        s-extra (if done (or (:s-extra (diverge (segments done) ss)) []) (:s-extra d))]
+    (cond
+      (nil? d) {:error "Esas dos posiciones no comparten origen."}
+      (empty? s-extra) {:error "Esa rama no tiene nada nuevo para traer aquí: ya está incluida."}
+      :else
+      (let [base (patch-at (:base d))
+            base-ids (set (keys (:boxes base)))
+            in-base? (fn [x] (if (vector? x)
+                               (or (#{:rejilla-x :afinacion} (second x)) (get-in base [:boxes (first x) :data :trazos (second x)]))
+                               (base-ids x)))
+            S (summarize s-extra) T (summarize (:t-extra d))
+            note-boxes (fn [X] (set (keep (fn [x] (when (vector? x) (first x))) (:mod X))))
+            clash (filter in-base? (concat (clojure.set/intersection (:mod S) (:mod T))
+                                           (clojure.set/intersection (:ref S) (:del T))
+                                           (clojure.set/intersection (:ref T) (:del S))
+                                           (clojure.set/intersection (:whole S) (note-boxes T))
+                                           (clojure.set/intersection (:whole T) (note-boxes S))))
+            clash-name (fn [x] (cond (not (vector? x)) (str x)
+                                     (#{:rejilla-x :afinacion} (second x)) (str "la " (name (second x)) " de " (first x))
+                                     :else (str "el trazo " (second x) " de " (first x))))]
+        (cond
+          (or (and (:load S) (seq (:t-extra d))) (and (:load T) (seq s-extra)))
+          {:error "No son compatibles: una de las ramas reconstruye la obra entera (:load)."}
+          (seq clash)
+          {:error (str "No son compatibles: las dos ramas cambian " (str/join ", " (map clash-name (distinct clash))) ".")}
+          :else
+          (let [target (patch-at tgt)
+                created (distinct (keep (fn [[op id]] (when (and (= op :box) (not (base-ids id))) id)) s-extra))
+                m (loop [[c & more] created used (into (set (keys (:boxes target))) created) m {}]
+                    (cond (nil? c) m
+                          (contains? (:boxes target) c) (let [nid (free-box-id used)] (recur more (conj used nid) (assoc m c nid)))
+                          :else (recur more used m)))
+                ;; notas nuevas en las dos ramas con el mismo id: las que llegan se renombran
+                tbox (fn [id] (get-in target [:boxes (get m id id) :data :trazos]))
+                created-notes (distinct (keep (fn [[op id inner]]
+                                                (when (and (= op :en) (vector? inner) (= :trazo (first inner))
+                                                           (not (get-in base [:boxes id :data :trazos (second inner)])))
+                                                  [id (second inner)]))
+                                              s-extra))
+                nm (loop [[[id eid :as c] & more] created-notes used {} nm {}]
+                     (cond (nil? c) nm
+                           (contains? (tbox id) eid)
+                           (let [taken (into (set (keys (tbox id))) (get used id))
+                                 ne (loop [k 1] (let [x (keyword (str "t" k))] (if (taken x) (recur (inc k)) x)))]
+                             (recur more (update used id (fnil conj #{}) ne eid) (assoc nm c ne)))
+                           :else (recur more (update used id (fnil conj #{}) eid) nm)))]
+            {:events (vec (cons [:merge-from (first src) (second src)] (map (fn [e] (remap-ev (assoc m :notas nm) e)) s-extra)))
+             :renamed (merge m (into {} (for [[[id eid] ne] nm] [(keyword (str (name id) "." (name eid))) ne])))}))))))
+
+;; ───────────────────────── comandos ─────────────────────────
+
+(defonce ui (atom {:sel nil :drag nil :wire nil :hover-in nil :dirty false :hist [] :hidx nil :follow nil}))
+
+(defn fail [msg] (throw (js/Error. msg)))
+
+(defn dispatch! [ev]
+  (cond
+    @scratch (swap! scratch step ev)
+    (= :connecting (:mode @hist)) (fail "Todavía conectando con la historia compartida; inténtalo en un momento.")
+    (= :none (:mode @hist)) (fail "Abre o crea una obra desde el gestor de sesiones.")
+    :else (do (when (:follow @ui) (swap! ui assoc :follow nil))
+              (commit! ev))))
+
+(defn need-box [id]
+  (or (get-in (current) [:boxes id]) (fail (str "No existe la caja " id))))
+
+(defn next-id []
+  (let [nums (keep (fn [k] (let [m (re-matches #"b(\d+)" (name k))] (when m (js/parseInt (second m) 10))))
+                   (keys (:boxes (current))))]
+    (keyword (str "b" (inc (if (seq nums) (apply max nums) 0))))))
+
+(defn auto-pos []
+  (let [n (count (:boxes (current)))]
+    [(+ 40 (* 24 (mod n 12))) (+ 40 (* 36 (mod n 12)))]))
+
+(defn box
+  ([text] (let [[x y] (auto-pos)] (box (next-id) text x y)))
+  ([text x y] (box (next-id) text x y))
+  ([id text x y]
+   (when-not (keyword? id) (fail "El id de una caja es una palabra clave, p. ej. :b3"))
+   (dispatch! [:box id (str text) (js/Math.round x) (js/Math.round y)])
+   id))
+
+(defn connect [a o b i]
+  (let [[_ outs] (io (:text (need-box a)))
+        [ins _] (io (:text (need-box b)))]
+    (when-not (< -1 o outs) (fail (str a " no tiene salida " o " (tiene " outs ")")))
+    (when-not (< -1 i ins) (fail (str b " no tiene entrada " i " (tiene " ins ")")))
+    (when (= a b) (fail "Una caja no puede conectarse consigo misma"))
+    (dispatch! [:connect a o b i])
+    [a o b i]))
+
+(defn disconnect [a o b i] (dispatch! [:disconnect a o b i]) :ok)
+(defn move [id x y] (need-box id) (dispatch! [:move id (js/Math.round x) (js/Math.round y)]) [x y])
+(defn text! [id text] (need-box id) (dispatch! [:text id (str text)]) id)
+(defn delete [id] (need-box id) (dispatch! [:delete id]) :ok)
+
+(declare box-num box-num-e)
+
+;; lienzos: cada caja lienzo (o su vista score) guarda un buffer gráfico frecuencia × tiempo;
+;; sus eventos le llegan envueltos en [:en caja evento]
+
+(defn music? [b] (contains? music-classes (klass (:text b))))
+
+(defn need-lienzo [id]
+  (let [b (need-box id)]
+    (when-not (music? b) (fail (str id " no es un lienzo (ni un score)")))
+    b))
+
+(defn datos
+  "El buffer de un lienzo: {:trazos {:t1 {:pts [[t hz] ...]}} :rx rejilla-x :ry afinación}."
+  [id] (or (:data (need-lienzo id)) lz/vacio))
+
+(defn need-trazo [id tid]
+  (or (get-in (datos id) [:trazos tid]) (fail (str id " no tiene el trazo " tid))))
+
+(defn need-alt [a]
+  (or (mus/altura a) (fail (str "No entiendo la altura " (pr-str a) ". Usa 60, \"c4\", \"f#3\" o \"bb2\"."))))
+
+(defn need-pts [pts]
+  (or (lz/sane-pts pts)
+      (fail "Un trazo son al menos dos puntos [t hz] con tiempos crecientes, p. ej. [[0 440] [1 440]]")))
+
+(defn trazo
+  "Dibuja (o reescribe) un trazo: (trazo :b1 [[0 440] [1 440]]) o (trazo :b1 :t4 [[0 440] [2 660]])."
+  ([id pts] (trazo id (lz/next-id (datos id)) pts))
+  ([id tid pts]
+   (need-lienzo id)
+   (when-not (keyword? tid) (fail "El id de un trazo es una palabra clave, p. ej. :t3"))
+   (dispatch! [:en id [:trazo tid (need-pts pts)]])
+   tid))
+
+(defn nota
+  "Un trazo horizontal: (nota :b1 t \"c4\" dur), con la altura en MIDI o por nombre (la4 = 440 Hz)."
+  [id t alt dur]
+  (when-not (and (number? t) (number? dur) (>= t 0) (pos? dur)) (fail "Una nota es (nota caja t altura duración)"))
+  (let [f (lz/redondear (lz/midi->hz (need-alt alt)) 3)]
+    (trazo id [[t f] [(+ t dur) f]])))
+
+(defn grado
+  "Un trazo horizontal en el grado n de la afinación del lienzo (0 = la referencia)."
+  [id t n dur]
+  (let [ry (or (:ry (datos id)) (fail (str id " no tiene afinación: usa (afinacion " id " \"12-tet\")")))
+        f (lz/redondear (lz/grado->hz ry n) 3)]
+    (when-not (and (number? t) (number? dur) (>= t 0) (pos? dur)) (fail "Un grado es (grado caja t n duración)"))
+    (trazo id [[t f] [(+ t dur) f]])))
+
+(defn melodia
+  "Una línea de notas desde t0 (por defecto, donde acaba el lienzo): \"c4/1 d4/.5 r/1 c4+e4/2\"."
+  ([id txt] (melodia id txt (lz/fin (datos id))))
+  ([id txt t0]
+   (need-lienzo id)
+   (doall (for [[t a d] (mus/parse-melodia txt t0)] (nota id t a d)))))
+
+(defn mover-trazo
+  "Desplaza un trazo dt unidades de tiempo y dc cents."
+  [id tid dt dc]
+  (need-trazo id tid)
+  (dispatch! [:en id [:mover tid dt dc]])
+  tid)
+
+(defn estirar
+  "Alarga (k > 1) o acorta (k < 1) un trazo en el tiempo, desde su inicio."
+  [id tid k]
+  (need-trazo id tid)
+  (when-not (and (number? k) (pos? k)) (fail "El factor de estiramiento es un número positivo"))
+  (dispatch! [:en id [:estirar tid k]])
+  tid)
+
+(defn borrar-trazo [id tid] (need-trazo id tid) (dispatch! [:en id [:borrar tid]]) :ok)
+
+(defn limpiar [id] (need-lienzo id) (dispatch! [:en id [:limpiar]]) :ok)
+
+(defn rejilla-x
+  "Rejilla del tiempo: (rejilla-x :b1 0.25 [4]) · (rejilla-x :b1 0.5 \"3+3+2\") · (rejilla-x :b1 nil).
+   El paso cuantiza al dibujar; los ciclos agrupan (como compases, simples o aditivos)."
+  ([id rx] (if (nil? rx) (do (need-lienzo id) (dispatch! [:en id [:rejilla-x nil]]) :sin-rejilla) (fail "Usa (rejilla-x caja paso ciclos) o nil")))
+  ([id paso ciclos]
+   (need-lienzo id)
+   (let [rx (lz/sane-rx {:paso paso :ciclos ciclos})]
+     (when-not rx (fail "El paso es un número positivo"))
+     (dispatch! [:en id [:rejilla-x rx]])
+     rx)))
+
+(defn escalas
+  "Afinaciones disponibles por nombre (además de cualquier .scl de Scala pegado como texto)."
+  [] (vec (sort (keys lz/escalas))))
+
+(defn afinacion
+  "Rejilla de la frecuencia: un nombre de (escalas), el texto de un .scl o {:nombre :cents}, y la
+   frecuencia de referencia del grado 0 (por defecto do4 = 261.63 Hz). Con nil, frecuencia continua."
+  ([id esc] (afinacion id esc lz/ref-defecto))
+  ([id esc ref]
+   (need-lienzo id)
+   (if (nil? esc)
+     (do (dispatch! [:en id [:afinacion nil]]) :continua)
+     (let [base (cond (map? esc) esc
+                      (and (string? esc) (get lz/escalas (str/lower-case esc))) (get lz/escalas (str/lower-case esc))
+                      (string? esc) (lz/parse-scl esc)
+                      :else (fail "Usa un nombre de (escalas), el texto de un .scl o un mapa {:nombre :cents}"))
+           ry (lz/sane-ry (assoc base :ref ref))]
+       (when-not ry (fail "Esa afinación no es válida"))
+       (dispatch! [:en id [:afinacion ry]])
+       (select-keys ry [:nombre :ref])))))
+
+(defn leer
+  "Lo que suena en el lienzo en el instante t: [[trazo hz] ...]."
+  [id t] (lz/leer (datos id) t))
+
+(defn patch [] (current))
+
+(defn boxes
+  ([] (keys (:boxes (current))))
+  ([s] (keep (fn [[id b]] (when (str/includes? (:text b) s) id)) (:boxes (current)))))
+
+;; navegación por la historia (no crea eventos: solo cambia dónde estás)
+
+(defn here []
+  (let [p (norm (:pos @world))]
+    (if p {:tramo (first p) :n (second p) :momento (depth-of p)} :sin-eventos)))
+
+(defn stop-follow! [] (when (:follow @ui) (swap! ui assoc :follow nil)))
+
+(defn children-at [nid idx]
+  (filter (fn [n] (and (= (:parent n) nid) (= (:at n) idx))) (vals (:nodes @hist))))
+
+(defn leaf? [[nid idx]]
+  (and (node nid) (= idx (count (:events (node nid)))) (empty? (children-at nid idx))))
+
+(defn auto-advance!
+  "Con el frente activado, avanza a la punta más reciente que continúa tu línea."
+  []
+  (let [{:keys [pos auto]} @world]
+    (when (and auto pos (not (:follow @ui)))
+      (let [p (norm pos) f (front-from p)]
+        (when (and f (not= (norm f) p))
+          (swap! world assoc :prev-pos p :pos f :jumped-at (js/Date.now)))))))
+
+(defn frente
+  "Activa o desactiva avanzar automáticamente con los gestos de cualquiera."
+  [on?]
+  (swap! world assoc :auto (boolean on?) :prev-pos nil)
+  (when on? (auto-advance!))
+  (boolean on?))
+
+(defn goto [nid n]
+  (when-not (node nid) (fail (str "No existe el tramo " (pr-str nid))))
+  (stop-follow!)
+  (let [p (norm [nid n])]
+    (swap! world assoc :pos p :auto (leaf? p) :prev-pos nil))
+  (here))
+
+(defn rewind
+  ([] (rewind 1))
+  ([k]
+   (stop-follow!)
+   (swap! world assoc :auto false :prev-pos nil)
+   (dotimes [_ k]
+     (let [p (norm (:pos @world))]
+       (when (and p (pos? (second p)))
+         (swap! world assoc :pos (norm [(first p) (dec (second p))])))))
+   (here)))
+
+(defn undo [] (rewind 1))
+
+(defn forward
+  ([] (forward 1))
+  ([k]
+   (stop-follow!)
+   (swap! world assoc :auto false :prev-pos nil)
+   (dotimes [_ k]
+     (let [p (norm (:pos @world))]
+       (when p
+         (let [[nid idx] p n (node nid)]
+           (if (< idx (count (:events n)))
+             (swap! world assoc :pos [nid (inc idx)])
+             (when-let [c (last (sort-by :t (children-at nid idx)))]
+               (swap! world assoc :pos [(:id c) 1])))))))
+   (here)))
+
+(defn tip []
+  (stop-follow!)
+  (when-let [p (norm (:pos @world))] (swap! world assoc :pos (tip-of (first p)) :auto true :prev-pos nil))
+  (auto-advance!)
+  (here))
+
+(defn merge-from
+  "Trae a donde estás los eventos de la rama que pasa por [tramo n]. La mezcla es un evento más."
+  [nid n]
+  (when-not (node nid) (fail (str "No existe el tramo " (pr-str nid))))
+  (when (#{:connecting :none} (:mode @hist)) (fail "Abre una obra antes de mezclar."))
+  (let [src (norm [nid n]) tgt (norm (:pos @world))]
+    (when-not tgt (fail "Primero sitúate en algún punto de la historia."))
+    (let [{:keys [error events renamed]} (plan-merge tgt src)]
+      (when error (fail error))
+      (stop-follow!)
+      (let [id (new-node! (first tgt) (second tgt) events src)]
+        (swap! world assoc :pos [id (count events)] :auto true :prev-pos nil))
+      (cond-> {:eventos-traidos (dec (count events))}
+        (seq renamed) (assoc :renombradas renamed)))))
+
+(defn simultaneidad
+  "Intervalo (ms) por debajo del cual dos gestos se consideran paralelos y bifurcan."
+  ([] (:simul-ms @settings))
+  ([ms]
+   (when-not (and (number? ms) (<= 0 ms 10000)) (fail "Usa un número de milisegundos entre 0 y 10000."))
+   (swap! settings assoc :simul-ms ms)
+   (when (persist?)
+     (let [path (work-base)]
+       (enqueue! path (fn [] (.update (.doc @dbref path) (clj->js {:simultaneidad_ms ms}))))))
+   ms))
+
+(defn branches []
+  (let [ns (vals (:nodes @hist))
+        parents (set (keep :parent ns))]
+    {:tramos (count ns)
+     :puntas (count (remove (fn [n] (parents (:id n))) ns))
+     :eventos (reduce + (map (comp count :events) ns))}))
+
+;; ───────────────────────── proyecciones ─────────────────────────
+
+(defn box-num [k] (let [m (re-matches #"b(\d+)" (name k))] (if m (js/parseInt (second m) 10) 1e9)))
+
+(defn patch->code [p]
+  (let [ids (sort-by box-num (keys (:boxes p)))]
+    (str/join "\n"
+              (concat [";; cajas"]
+                      (for [id ids :let [{:keys [text x y]} (get-in p [:boxes id])]]
+                        (str "(box " id " " (pr-str text) " " x " " y ")"))
+                      (when (seq (:lines p)) ["" ";; conexiones"])
+                      (for [[a o b i] (:lines p)]
+                        (str "(connect " a " " o " " b " " i ")"))
+                      (mapcat (fn [id]
+                                (let [ls (lz/->codigo id (get-in p [:boxes id :data]))]
+                                  (when (seq ls) (concat ["" (str ";; buffer de " id)] ls))))
+                              (filter (fn [id] (music? (get-in p [:boxes id]))) ids))))))
+
+(defn patch->edn [p]
+  (str "{:boxes\n {"
+       (str/join "\n  " (for [id (sort-by box-num (keys (:boxes p)))]
+                          (let [b (get-in p [:boxes id])]
+                            (if (:data b)
+                              (str id " " (pr-str (dissoc b :data)) "\n     ;; :data\n     "
+                                   (pr-str (update (:data b) :trazos (fn [es] (into (sorted-map-by (fn [a c] (compare [(box-num-e a) (name a)] [(box-num-e c) (name c)]))) es)))))
+                              (str id " " (pr-str b))))))
+       "}\n :lines\n ["
+       (str/join "\n  " (map pr-str (:lines p)))
+       "]}"))
+
+;; ───────────────────────── evaluación ─────────────────────────
+
+(defn eval-str [code] (js/scittle.core.eval_string code))
+
+(def example "
+(box :b1 \"lienzo\" 40 70)
+(box :b2 \"score\" 40 300)
+(box :b3 \"msg 0 8 4\" 500 20)
+(box :b4 \"rampa 0 8 4\" 500 60)
+(box :b5 \"numero 0\" 620 60)
+(box :b6 \"msg 1\" 720 20)
+(box :b7 \"msg 0\" 780 20)
+(box :b8 \"metro 500\" 720 60)
+(box :b9 \"contador 0.5 8\" 720 100)
+(box :b10 \"lector\" 500 160)
+(box :b11 \"synth~\" 500 220)
+(box :b12 \"lector\" 500 330)
+(box :b13 \"synth~\" 500 390)
+(box :b14 \"dac~\" 500 470)
+(connect :b3 0 :b4 0)
+(connect :b4 0 :b10 0)
+(connect :b5 0 :b10 0)
+(connect :b6 0 :b8 0)
+(connect :b7 0 :b8 0)
+(connect :b8 0 :b9 0)
+(connect :b9 0 :b10 0)
+(connect :b1 0 :b10 0)
+(connect :b1 1 :b10 1)
+(connect :b2 0 :b12 0)
+(connect :b10 0 :b11 0)
+(connect :b10 1 :b11 1)
+(connect :b4 0 :b12 0)
+(connect :b2 1 :b12 1)
+(connect :b12 0 :b13 0)
+(connect :b12 1 :b13 1)
+(connect :b11 0 :b14 0)
+(connect :b13 0 :b14 1)
+(afinacion :b1 \"12-tet\")
+(rejilla-x :b1 0.25 [4])
+(melodia :b1 \"e5/1 d5/.5 c5/.5 d5/1 g4/1\")
+(trazo :b1 [[5 392] [6 587.33]])
+(trazo :b1 [[6 587.33] [6.5 554.37] [7 622.25] [7.5 523.25] [8 523.25]])
+(afinacion :b2 \"12-tet\")
+(rejilla-x :b2 0.25 [4])
+(melodia :b2 \"c3/2 g2/2 a2/2 e2/1 g2/1\")")
+
+(defn box-num-e [k] (lz/id-num k))
+
+(defn build
+  "Evalúa código en un borrador y devuelve el patch resultante, sin tocar la historia."
+  [code]
+  (reset! scratch empty-patch)
+  (try
+    (eval-str (str "(do " code "\n nil)"))
+    (let [p @scratch] (reset! scratch nil) p)
+    (catch :default e (reset! scratch nil) (throw e))))
+
+(defn run-code!
+  "Reconstruye el patch desde el código: queda como un único evento :load."
+  [code]
+  (let [p (build code)] (dispatch! [:load p]) :ok))
+
+(defn load-example [] (run-code! example))
+
+;; ───────────────────────── interfaz: patch ─────────────────────────
+
+(defn $ [id] (js/document.getElementById id))
+
+(def box-h 24)
+(def pw 10)
+(defn box-w [text] (max 56 (+ 20 (* 7.6 (count text)))))
+(defn port-x [w n i] (if (<= n 1) 0 (* i (/ (- w pw) (dec n)))))
+
+;; ───── cajas de buffer (lienzo, score) y cajas de acción (numero, msg, bang) ─────
+
+(def hdr 20)
+(def grip 8)
+(defonce score-cache (atom {}))   ; caja → {:key datos :node <g> :h alto :piezas [...] :anclas [...]}
+(defonce vrv (atom nil))
+(defonce vrv-status (atom :cargando))
+
+(defn box-dims [id b]
+  (let [t (:text b)]
+    (case (klass t)
+      "lienzo" [lz/W lz/H]
+      "score" [lz/W (max 90 (+ hdr 8 (or (get-in @score-cache [id :h]) 70)))]
+      "bang" [34 26]
+      "numero" [76 box-h]
+      "msg" [(max 44 (+ grip 14 (* 7.6 (count (str/trim (subs (str/trim t) 3)))))) box-h]
+      [(box-w t) box-h])))
+
+(defn box-pos [id b]
+  (let [d (:drag @ui)]
+    (if (and d (= (:id d) id) (:moved d)) [(:x d) (:y d)] [(:x b) (:y b)])))
+
+(defn out-xy [p id o]
+  (let [b (get-in p [:boxes id]) [x y] (box-pos id b) [w h] (box-dims id b) [_ n] (io (:text b))]
+    [(+ x (port-x w n o) (/ pw 2)) (+ y h)]))
+
+(defn in-xy [p id i]
+  (let [b (get-in p [:boxes id]) [x y] (box-pos id b) [w _] (box-dims id b) [n _] (io (:text b))]
+    [(+ x (port-x w n i) (/ pw 2)) y]))
+
+(defn lienzo-geom [d] (lz/geom (or d lz/vacio) hdr))
+
+;; score: Verovio dibuja una aproximación del buffer; el nodo SVG se guarda y se vuelve a colocar en cada repintado
+(defn score-entry! [id b]
+  (let [d (or (:data b) lz/vacio) c (get @score-cache id)]
+    (cond
+      (and c (= (:key c) d)) c
+      (nil? @vrv) nil
+      :else
+      (try
+        (let [tk @vrv scale 30
+              {:keys [mei piezas]} (mus/->mei-voz (lz/->voz d) (str (name id) "-"))
+              g (js/document.createElementNS "http://www.w3.org/2000/svg" "g")]
+          (.setOptions tk (clj->js {:pageWidth (js/Math.round (/ (* (- lz/W 8) 100) scale)) :pageHeight 60000
+                                    :adjustPageHeight true :breaks "auto" :scale scale
+                                    :header "none" :footer "none" :lyricSize 3.2
+                                    :pageMarginTop 24 :pageMarginBottom 12 :pageMarginLeft 20 :pageMarginRight 20}))
+          (.loadData tk mei)
+          (set! (.-innerHTML g) (.renderToSVG tk 1))
+          (let [sv (.querySelector g "svg")
+                h (if sv (js/parseFloat (.getAttribute sv "height")) 70)
+                e {:key d :node g :h (if (js/isNaN h) 70 h) :piezas piezas :anclas nil}]
+            (swap! score-cache assoc id e)
+            e))
+        (catch :default ex
+          (let [e {:key d :node nil :h 40 :error (or (.-message ex) (str ex))}]
+            (swap! score-cache assoc id e)
+            e))))))
+
+(defn local-box
+  "Caja de un elemento SVG en las coordenadas de `ref` (sin pasar por píxeles de pantalla,
+   que cambian si la página se ve ampliada o reducida)."
+  [el ref]
+  (let [b (.getBBox el)
+        m (.multiply (.inverse (.getScreenCTM ref)) (.getScreenCTM el))
+        tp (fn [x y] (let [q (.createSVGPoint ($ "canvas"))] (set! (.-x q) x) (set! (.-y q) y) (.matrixTransform q m)))
+        a (tp (.-x b) (.-y b))
+        c (tp (+ (.-x b) (.-width b)) (+ (.-y b) (.-height b)))]
+    {:left (.-x a) :top (.-y a) :right (.-x c) :bottom (.-y c) :w (- (.-x c) (.-x a))}))
+
+(defn score-anclas
+  "Anclajes tiempo ⇄ espacio de una partitura ya colocada, en coordenadas de su caja."
+  [node piezas]
+  (when (and node (.querySelector node "svg") (.-isConnected node))
+    (->> piezas
+         (keep (fn [{:keys [id t]}]
+                 (when-let [el (.querySelector node (str "#" id))]
+                   (let [head (or (.querySelector el ".notehead") el)
+                         r (local-box head node)
+                         sys (or (.closest el ".system") el)
+                         sr (local-box sys node)]
+                     (when (pos? (:w r))
+                       {:t t :x (:left r) :y0 (- (:top sr) 6) :y1 (+ (:bottom sr) 6) :right (:right sr)})))))
+         (group-by :t)
+         (map (fn [[_ as]] (apply min-key :x as)))
+         (sort-by :t)
+         vec)))
+
+;; ───── capa viva: valores de numero, destellos, cursores de lectura ─────
+
+(defn ultima-vista
+  "Lo último que mostró una caja: con el motor en marcha, hasta el instante que suena ahora."
+  [id]
+  (if (motor/en-marcha?)
+    (motor/vista-en id (motor/ahora))
+    (last (get-in @motor/rt [:vistas id]))))
+
+(defn reciente? [[at _]] (and at (motor/en-marcha?) (< (- (motor/ahora) at) 0.15)))
+
+(defn cursor-en
+  "Una línea vertical en el instante t de la caja `bid` (lienzo o score), con puntos en lo que suena."
+  [p bid t cls puntos?]
+  (when-let [b (get-in p [:boxes bid])]
+    (let [[x y] (box-pos bid b) d (or (:data b) lz/vacio)]
+      (case (klass (:text b))
+        "lienzo" (let [g (lienzo-geom d) cx (+ x (lz/t->x g (min t (:T g))))]
+                   (str "<line class=\"" cls "\" x1=\"" cx "\" x2=\"" cx "\" y1=\"" (+ y (:y0 g)) "\" y2=\"" (+ y (:y0 g) (:h g)) "\"></line>"
+                        (when puntos?
+                          (apply str (for [[_ f] (lz/leer d t)]
+                                       (str "<circle class=\"suena\" cx=\"" cx "\" cy=\"" (+ y (lz/f->y g f)) "\" r=\"4\"></circle>"))))))
+        "score" (when-let [a (mus/t->pos (get-in @score-cache [bid :anclas]) t)]
+                  (let [cx (+ x 4 (:x a)) oy (+ y hdr 4)]
+                    (str "<line class=\"" cls "\" x1=\"" cx "\" x2=\"" cx "\" y1=\"" (+ oy (max 0 (:y0 a))) "\" y2=\"" (+ oy (:y1 a)) "\"></line>")))
+        nil))))
+
+(defn render-overlay! []
+  (let [p (current)
+        on (motor/en-marcha?)
+        parts (for [[id b] (:boxes p) :let [kc (klass (:text b)) [x y] (box-pos id b) [w h] (box-dims id b)]]
+                (case kc
+                  "numero" (let [v (or (second (ultima-vista id)) (get-in @motor/rt [:estados id])
+                                       (motor/num-de (first (motor/args-de (:text b)))) 0)]
+                             (str "<text class=\"valor\" x=\"" (+ x grip 8) "\" y=\"" (+ y 16) "\">▸ " (esc (if (number? v) (lz/fmt v) (pr-str v))) "</text>"))
+                  ("msg" "bang") (when (reciente? (ultima-vista id))
+                                   (str "<rect class=\"flash\" x=\"" (+ x grip) "\" y=\"" y "\" width=\"" (- w grip) "\" height=\"" h "\" rx=\"3\"></rect>"))
+                  "lector" (when on
+                             (when-let [[_ {:keys [t de]}] (ultima-vista id)]
+                               (when (and de (number? t)) (cursor-en p de t "cur" true))))
+                  ("lienzo" "score") (when on
+                                       (when-let [[at {:keys [t]}] (ultima-vista id)]
+                                         (when (and (number? t) (< (- (motor/ahora) at) 2)) (cursor-en p id t "cur2" false))))
+                  nil))]
+    (set! (.-innerHTML ($ "cursors")) (apply str parts))))
+
+(defn box-header [id b w]
+  (str "<rect class=\"head\" x=\"0.5\" y=\"0.5\" width=\"" (- w 1) "\" height=\"" (- hdr 1) "\"></rect>"
+       "<text class=\"lbl\" x=\"8\" y=\"14\">" (esc (:text b)) "</text>"
+       "<text class=\"lbl info\" x=\"" (- w 8) "\" y=\"14\" text-anchor=\"end\">"
+       (esc (str (when (= "score" (klass (:text b))) "aprox. · ") (lz/resumen (or (:data b) lz/vacio)))) "</text>"))
+
+(defn render-scene [p]
+  (let [{:keys [sel wire hover-in nsel ldrag]} @ui
+        _ (doseq [[id b] (:boxes p) :when (= "score" (klass (:text b)))] (score-entry! id b))
+        lines (map-indexed
+               (fn [idx [a o b i :as l]]
+                 (if (and (get-in p [:boxes a]) (get-in p [:boxes b]))
+                   (let [[x1 y1] (out-xy p a o) [x2 y2] (in-xy p b i)
+                         s (if (= sel [:line l]) " sel" "")
+                         buf (and (= i 1) (music-classes (klass (get-in p [:boxes a :text]))))]
+                     (str "<line class=\"wire" s (when buf " buffer") "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"></line>"
+                          "<line class=\"wire-hit\" data-line=\"" idx "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"></line>"))
+                   ""))
+               (:lines p))
+        bxs (for [[id b] (:boxes p)]
+              (let [[x y] (box-pos id b) t (:text b) [w h] (box-dims id b) [ins outs] (io t)
+                    kc (klass t)
+                    mbox? (contains? music-classes kc)
+                    abox? (contains? action-classes kc)
+                    cls (str "box" (when (kairos-classes kc) " kairos") (when mbox? " mus") (when abox? (str " act " kc))
+                             (when (= sel [:box id]) " sel") (when (= id (first hover-in)) " drop"))
+                    idn (esc (name id))
+                    d (or (:data b) lz/vacio)
+                    content (case kc
+                              "lienzo" (let [dr (when (and ldrag (= (:box ldrag) id)) ldrag)
+                                             g (if dr (:g dr) (lienzo-geom d))]
+                                         (lz/svg idn d g (when (= (first nsel) id) (second nsel))
+                                                 (when (and dr (= :mover (:kind dr)) (:moved dr)) {(:tid dr) (:pts dr)})
+                                                 (when (and dr (= :dibujar (:kind dr))) (:pts dr))))
+                              "score" (let [c (get @score-cache id)]
+                                        (str "<rect class=\"paper mus-body\" data-box=\"" idn "\" x=\"2\" y=\"" hdr "\" width=\"" (- w 4) "\" height=\"" (- h hdr 2) "\"></rect>"
+                                             "<g class=\"score-slot\" data-box=\"" idn "\" transform=\"translate(4," (+ hdr 4) ")\"></g>"
+                                             (cond
+                                               (nil? c) (str "<text class=\"wait\" x=\"12\" y=\"" (+ hdr 26) "\">"
+                                                             (if (= :error @vrv-status)
+                                                               "No se pudo cargar Verovio: conviértela en lienzo para verla"
+                                                               "Cargando la notación (Verovio, unos 8 MB)…")
+                                                             "</text>")
+                                               (:error c) (str "<text class=\"wait\" x=\"12\" y=\"" (+ hdr 26) "\">"
+                                                               (esc (str "No se pudo dibujar: " (:error c))) "</text>"))))
+                              "bang" (str "<circle class=\"bangc\" cx=\"" (+ grip (/ (- w grip) 2)) "\" cy=\"" (/ h 2) "\" r=\"7\"></circle>")
+                              "msg" (str "<text x=\"" (+ grip 6) "\" y=\"16\">" (esc (str/trim (subs (str/trim t) 3))) "</text>")
+                              nil)]
+                (str "<g class=\"" cls "\" data-box=\"" idn "\" transform=\"translate(" x "," y ")\">"
+                     "<rect class=\"body\" width=\"" w "\" height=\"" h "\" rx=\"3\"></rect>"
+                     (cond mbox? (str (box-header id b w) content)
+                           abox? (str "<rect class=\"grip\" x=\"0\" y=\"0\" width=\"" grip "\" height=\"" h "\" rx=\"2\"></rect>" content)
+                           :else (str "<text x=\"10\" y=\"16\">" (esc t) "</text>"))
+                     (apply str (for [i (range ins)]
+                                  (str "<rect class=\"port in" (when (= hover-in [id i]) " target") "\" data-box=\"" idn "\" data-in=\"" i "\" x=\"" (port-x w ins i) "\" y=\"-1\" width=\"" pw "\" height=\"4\"></rect>")))
+                     (apply str (for [o (range outs)]
+                                  (str "<rect class=\"port out\" data-box=\"" idn "\" data-out=\"" o "\" x=\"" (port-x w outs o) "\" y=\"" (- h 3) "\" width=\"" pw "\" height=\"4\"></rect>")))
+                     "</g>")))
+        temp (when (and wire (get-in p [:boxes (:from wire)]))
+               (let [[x1 y1] (out-xy p (:from wire) (:out wire))]
+                 (str "<line class=\"wire temp\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" (:x wire) "\" y2=\"" (:y wire) "\"></line>")))]
+    (set! (.-innerHTML ($ "scene")) (str (apply str lines) (apply str bxs) temp))
+    ;; las partituras ya dibujadas se vuelven a colocar en su caja, con el trazo elegido marcado
+    (doseq [slot (array-seq (.querySelectorAll ($ "scene") ".score-slot"))]
+      (let [id (keyword (.. slot -dataset -box)) c (get @score-cache id)]
+        (when-let [node (:node c)]
+          (.appendChild slot node)
+          (when (empty? (:anclas c))
+            (swap! score-cache assoc-in [id :anclas] (score-anclas node (:piezas c))))
+          (doseq [el (array-seq (.querySelectorAll node "g.note.sel"))] (.remove (.-classList el) "sel"))
+          (when (= (first nsel) id)
+            (doseq [el (array-seq (.querySelectorAll node (str "[id^=\"n-" (name id) "-" (name (second nsel)) "-\"]")))]
+              (.add (.-classList el) "sel"))))))
+    (render-overlay!)))
+
+;; ───── motor: marcha, parada y mensajes ─────
+
+(defn transport-info! []
+  (let [on (motor/en-marcha?)]
+    (set! (.-textContent ($ "transport-info")) (if on "motor en marcha" "motor parado"))
+    (.toggle (.-classList ($ "play")) "on" on)))
+
+(defn vivo! []
+  (when (motor/en-marcha?)
+    (render-overlay!)
+    (let [ps (motor/sacar-prints!)]
+      (doseq [[_ v] (take 12 ps)] (repl-print! "out" (esc (str "print: " (pr-str v)))))
+      (when (> (count ps) 12) (repl-print! "out" (esc (str "print: … y " (- (count ps) 12) " más")))))
+    (js/requestAnimationFrame (fn [_] (vivo!)))))
+
+(defn play
+  "Pone en marcha el motor y dispara las cajas loadbang. Lo demás actúa cuando le llegan mensajes."
+  []
+  (let [ya (motor/en-marcha?)]
+    (motor/arrancar! (fn [] (current)) true)
+    (transport-info!)
+    (when-not ya (js/requestAnimationFrame (fn [_] (vivo!))))
+    :en-marcha))
+
+(defn stop
+  "Para el motor: silencio, y las rampas, metros y contadores vuelven a su estado inicial."
+  []
+  (motor/parar!)
+  (transport-info!)
+  (render-overlay!)
+  :parado)
+
+(defn enviar
+  "Manda un mensaje a una caja, como si llegara por una conexión: (enviar :b5 2.5) · (enviar :b4 0 [0 8 2]) · (enviar :b8 :bang)."
+  ([id v] (enviar id 0 v))
+  ([id entrada v]
+   (need-box id)
+   (let [ya (motor/en-marcha?)]
+     (motor/inyectar! (fn [] (current)) id entrada v)
+     (when-not ya (transport-info!) (js/requestAnimationFrame (fn [_] (vivo!))))
+     v)))
+
+(defn render-code [p]
+  (let [{:keys [dirty]} @ui]
+    (when-not dirty (set! (.-value ($ "code")) (patch->code p)))
+    (set! (.-textContent ($ "edn")) (patch->edn p))
+    (let [st ($ "code-state")]
+      (set! (.-textContent st) (if dirty "editado: ejecuta para aplicarlo al patch" "sincronizado con el patch"))
+      (set! (.-className st) (if dirty "state dirty" "state")))
+    (set! (.-disabled ($ "code-run")) (not dirty))
+    (set! (.-disabled ($ "code-revert")) (not dirty))))
+
+;; ───────────────────────── interfaz: historia ─────────────────────────
+
+(def palette ["#2f55d4" "#b4472e" "#2e7d4f" "#8a4fbf" "#b07a12" "#167c88" "#c0457e"])
+
+(defn hash-color [s]
+  (nth palette (mod (reduce (fn [a c] (mod (+ (* a 31) (.charCodeAt c 0)) 1000003)) 7 (str s)) (count palette))))
+
+(defn author-color [a] (or (not-empty (get-in @profiles [a :color])) (hash-color a)))
+(defn session-color [s] (hash-color (str "sesion" s)))
+(defn peer-color [p] (session-color (or (:session p) (:peer p))))
+(defn person-name [a] (or (not-empty (get-in @profiles [a :name])) (if (= a (my-author)) "tú" "alguien")))
+
+(defn valid-pos? [p] (and (vector? p) (= 2 (count p)) (string? (first p)) (number? (second p))))
+
+(defn lane-layout
+  "Un carril por línea: el primer tramo que continúa en la punta de otro comparte su carril;
+   los demás hijos (ramas) abren carril nuevo."
+  []
+  (let [ns (vals (:nodes @hist))
+        ids (set (map :id ns))
+        kids (group-by :parent ns)
+        roots (sort-by (fn [n] (or (:t n) 0)) (filter (fn [n] (or (nil? (:parent n)) (not (ids (:parent n))))) ns))
+        lane-of (atom {})
+        order (atom [])
+        counter (atom -1)
+        visit (fn visit [n lane seen]
+                (when-not (seen (:id n))
+                  (swap! lane-of assoc (:id n) lane)
+                  (swap! order conj n)
+                  (let [cs (sort-by (fn [c] [(:at c) (or (:t c) 0)]) (get kids (:id n)))
+                        cont (first (filter (fn [c] (= (:at c) (count (:events n)))) cs))
+                        seen2 (conj seen (:id n))]
+                    (when cont (visit cont lane seen2))
+                    (doseq [c cs :when (not= (:id c) (:id cont))]
+                      (visit c (swap! counter inc) seen2)))))]
+    (doseq [r roots] (visit r (swap! counter inc) #{}))
+    {:order @order :lane-of @lane-of :lanes (inc @counter)}))
+
+(def hx 18)
+(def hy 26)
+(def hx0 30)
+(def hy0 34)
+
+(defn render-tree! []
+  (let [{:keys [order lane-of lanes]} (lane-layout)
+        ls order
+        svg ($ "tree")
+        h @hist
+        show-empty (and (empty? ls) (:loaded h) (#{:shared :readonly :solo} (:mode h)))]
+    (set! (.-hidden ($ "hist-empty")) (not show-empty))
+    (set! (.. svg -style -display) (if (empty? ls) "none" "block"))
+    (when (seq ls)
+      (let [starts (into {} (for [n ls] [(:id n) (start-of (:id n))]))
+            X (fn [d] (+ hx0 (* d hx)))
+            Y (fn [i] (+ hy0 (* i hy)))
+            maxd (apply max 1 (for [n ls] (+ (starts (:id n)) (count (:events n)))))
+            w (+ (X maxd) 48)
+            ht (+ (Y (dec lanes)) 24)
+            ticks (for [d (range 0 (inc maxd) 8)]
+                    (str "<line class=\"tick\" x1=\"" (X d) "\" x2=\"" (X d) "\" y1=\"20\" y2=\"" (- ht 6) "\"></line>"
+                         "<text class=\"axis\" x=\"" (X d) "\" y=\"13\" text-anchor=\"middle\">" d "</text>"))
+            body (for [n ls]
+                   (let [i (lane-of (:id n)) s (starts (:id n)) cnt (count (:events n)) y (Y i)
+                         c (session-color (node-session n)) nid (esc (:id n))
+                         who (person-name (:author n))
+                         pl (when (:parent n) (lane-of (:parent n)))
+                         [mn mk] (when (vector? (:merge n)) (:merge n))
+                         ml (when mn (lane-of mn))]
+                     (str (when (and pl (not= pl i))
+                            (str "<path class=\"fork\" stroke=\"" c "\" d=\"M" (X s) " " (Y pl) " V" y "\"></path>"))
+                          (when (and ml (starts mn))
+                            (let [x1 (X (+ (starts mn) mk)) y1 (Y ml) x2 (X (+ s 1))]
+                              (str "<path class=\"merge\" stroke=\"" c "\" d=\"M" x1 " " y1 " C" (+ x1 30) " " y1 " " (- x2 30) " " y " " x2 " " y "\"></path>")))
+                          (when (pos? cnt)
+                            (str "<line class=\"lane\" stroke=\"" c "\" stroke-opacity=\"0.5\" x1=\"" (X s) "\" x2=\"" (X (+ s cnt)) "\" y1=\"" y "\" y2=\"" y "\"></line>"))
+                          (when-not pl
+                            (str "<circle class=\"origin\" data-goto=\"" nid "|0\" cx=\"" (X s) "\" cy=\"" y "\" r=\"4.5\"><title>origen</title></circle>"))
+                          (apply str
+                                 (map-indexed
+                                  (fn [k ev]
+                                    (let [mark? (= :merge-from (first ev))]
+                                      (str "<" (if mark? "rect" "circle") " class=\"ev" (when mark? " mergemark") "\" data-goto=\"" nid "|" (inc k) "\""
+                                           (if mark?
+                                             (str " x=\"" (- (X (+ s k 1)) 5) "\" y=\"" (- y 5) "\" width=\"10\" height=\"10\" transform=\"rotate(45 " (X (+ s k 1)) " " y ")\"")
+                                             (str " cx=\"" (X (+ s k 1)) "\" cy=\"" y "\" r=\"4.5\""))
+                                           " fill=\"" c "\">"
+                                           "<title>" (esc (str who " · " (if mark? "mezcla" (let [t (pr-str ev)] (if (> (count t) 90) (str (subs t 0 90) "…") t))))) "</title></"
+                                           (if mark? "rect" "circle") ">")))
+                                  (:events n))))))
+            mark (fn [pos r cls color]
+                   (let [p (norm pos)]
+                     (when (and p (lane-of (first p)))
+                       (str "<circle class=\"" cls "\" cx=\"" (X (+ (starts (first p)) (second p))) "\" cy=\"" (Y (lane-of (first p)))
+                            "\" r=\"" r "\"" (when color (str " stroke=\"" color "\"")) "></circle>"))))
+            others (filter (fn [p] (and (not (:same p)) (:pos p))) @peers)
+            peer-marks (map-indexed (fn [k p] (mark (:pos p) (+ 11 (* 3 k)) "peer" (peer-color p))) others)]
+        (.setAttribute svg "width" w)
+        (.setAttribute svg "height" ht)
+        (set! (.-innerHTML svg)
+              (str (apply str ticks) (apply str body) (apply str peer-marks) (mark (:pos @world) 8 "here" nil)))))))
+
+(defn scroll-to-here! []
+  (let [p (norm (:pos @world)) wrap ($ "hist-wrap")]
+    (when p
+      (let [x (+ hx0 (* hx (depth-of p)))
+            l (.-scrollLeft wrap) vw (.-clientWidth wrap)]
+        (when (or (< x (+ l 30)) (> x (- (+ l vw) 30)))
+          (set! (.-scrollLeft wrap) (max 0 (- x (/ vw 2)))))))))
+
+(defn render-peers! []
+  (let [others (remove (fn [p] (or (:same p) (= "agent" (:kind p)))) @peers)
+        f (:follow @ui)]
+    (set! (.-innerHTML ($ "peers"))
+          (str "<span class=\"chip me\"><span class=\"dot\" style=\"background:" (esc (session-color session-id)) "\"></span>tú</span>"
+               (apply str
+                      (for [p others]
+                        (let [nm (if (:me p) "tú, otra pestaña" (or (not-empty (get-in @profiles [(:by p) :name])) "Alguien"))
+                              col (peer-color p)
+                              on (= f (:peer p))]
+                          (str "<button class=\"chip" (when on " following") "\" data-peer=\"" (esc (:peer p))
+                               "\" title=\"" (if on "Dejar de seguir" "Seguir su posición en la historia") "\">"
+                               "<span class=\"dot\" style=\"background:" (esc col) "\"></span>" (esc nm) (when on " · siguiendo") "</button>"))))))))
+
+(defn render-foot! []
+  (let [{:keys [mode nodes]} @hist
+        p (norm (:pos @world))
+        total (reduce + (map (comp count :events) (vals nodes)))
+        n (when p (node (first p)))
+        ahead (when n (- (count (:events n)) (second p)))
+        mine? (and n (= (node-session n) session-id))
+        who (when n (if mine? "de esta sesión" (str "de " (person-name (:author n)) (when (= (:author n) (my-author)) ", otra sesión"))))
+        kids (when (and n (zero? ahead)) (children-at (first p) (second p)))]
+    (set! (.-innerHTML ($ "hist-foot"))
+          (str "<span>" (if p (str "Momento " (depth-of p) " · tramo " (esc who)) "Sin eventos todavía") "</span>"
+               "<span>" (count nodes) (if (= 1 (count nodes)) " tramo · " " tramos · ") total " eventos</span>"
+               (cond
+                 (:merge-pick @ui)
+                 "<span class=\"ahead\">Elige en el árbol el punto de la rama que quieres traer aquí · Esc para cancelar</span>"
+                 (and ahead (pos? ahead))
+                 (str "<span class=\"ahead\">" ahead (if (= 1 ahead) " evento" " eventos") " más adelante en esta rama: si actúas aquí, abres una rama nueva</span>")
+                 (seq kids)
+                 "<span class=\"ahead\">Esta línea continúa más adelante: si actúas aquí, abres una rama nueva</span>"
+                 (:auto @world)
+                 "<span>Siguiendo el frente: avanzas con los gestos de cualquiera</span>")
+               "<span style=\"margin-left:auto\">"
+               (case mode
+                 :shared "Sala compartida: quien entre en ella ve y amplía el mismo árbol."
+                 :solo "En solitario: solo tú ves esta obra."
+                 :readonly "Puedes recorrer la historia; tus ramas se quedan en esta pestaña."
+                 :local "Modo local: la historia vive solo en esta pestaña."
+                 :none "Abre o crea una obra desde el gestor de sesiones."
+                 "Conectando con la historia compartida…")
+               "</span>"))))
+
+(defn render-status! []
+  (let [{:keys [mode]} @hist p (current) n (count (remove :same @peers))]
+    (set! (.-innerHTML ($ "status"))
+          (str (case mode
+                 :shared "<b class=\"on\">● sala compartida</b>"
+                 :solo "<b class=\"on\">● en solitario</b>"
+                 :readonly "<b class=\"off\">● solo lectura</b>"
+                 :local "<b class=\"off\">● local</b>"
+                 :none "<b>○ sin obra abierta</b>"
+                 "<b>○ conectando…</b>")
+               " · " (count (:boxes p)) " cajas · " (count (:lines p)) " conexiones"
+               (when (pos? n) (str " · " (inc n) " en la sala"))))))
+
+(defn render-all! []
+  (let [p (current)]
+    (render-scene p)
+    (render-code p)
+    (render-tree!)
+    (render-peers!)
+    (render-foot!)
+    (render-status!)))
+
+;; ───────────────────────── presencia y seguimiento ─────────────────────────
+
+(defonce named-room (atom nil))
+
+(defn publish-presence! []
+  (when-let [room @named-room]
+    (when-let [p (:pos @world)]
+      (.catch (.presence room (clj->js {:pos p :session session-id})) (fn [_] nil)))))
+
+(defn sync-follow! []
+  (when-let [f (:follow @ui)]
+    (if-let [p (first (filter (fn [p] (= (:peer p) f)) @peers))]
+      (let [pos (:pos p)]
+        (when (and (valid-pos? pos) (node (first pos)) (not= pos (:pos @world)))
+          (swap! world assoc :pos pos)))
+      (swap! ui assoc :follow nil))))
+
+(defonce asked (atom #{}))
+
+(defn want-profiles! []
+  (when-let [u @userref]
+    (let [ids (disj (set (concat (keep :author (vals (:nodes @hist))) (keep :by @peers))) "local" nil)]
+      (when (and (seq ids) (not= ids @asked))
+        (reset! asked ids)
+        (-> (.profiles u (clj->js (vec ids)))
+            (.then (fn [ps]
+                     (reset! profiles
+                             (into {} (for [k (array-seq (.keys js/Object ps))]
+                                        (let [p (aget ps k)] [k {:name (.-name p) :color (.-color p)}])))))))))))
+
+(defn render-controls! []
+  (set! (.-checked ($ "auto")) (boolean (:auto @world)))
+  (let [inp ($ "simul")]
+    (when-not (= inp (.-activeElement js/document))
+      (set! (.-value inp) (str (:simul-ms @settings)))))
+  (let [b ($ "merge-btn")]
+    (set! (.-textContent b) (if (:merge-pick @ui) "Cancelar mezcla" "Mezclar…"))
+    (.toggle (.-classList b) "primary" (boolean (:merge-pick @ui)))))
+
+(add-watch hist ::render (fn [_ _ _ _] (reset! cache {}) (auto-advance!) (render-all!) (want-profiles!)))
+(add-watch world ::render (fn [_ _ o n] (render-all!) (render-controls!) (scroll-to-here!) (when (not= (:pos o) (:pos n)) (publish-presence!))))
+(add-watch settings ::render (fn [_ _ _ _] (render-controls!)))
+(add-watch peers ::render (fn [_ _ _ _] (sync-follow!) (render-tree!) (render-peers!) (render-status!) (want-profiles!)))
+(add-watch profiles ::render (fn [_ _ _ _] (render-tree!) (render-peers!) (render-foot!)))
+(add-watch ui ::render
+  (fn [_ _ o n]
+    (when (not= (select-keys o [:sel :drag :wire :hover-in :nsel :ldrag]) (select-keys n [:sel :drag :wire :hover-in :nsel :ldrag]))
+      (render-scene (current)))
+    (when (not= (:follow o) (:follow n)) (render-peers!))
+    (when (not= (:merge-pick o) (:merge-pick n)) (render-controls!) (render-foot!))))
+
+;; ───────────────────────── REPL ─────────────────────────
+
+(defn repl-eval! [code source]
+  (repl-print! (str "in" (when (= source :patch) " from-patch"))
+               (str "<span class=\"p\">" (if (= source :patch) "⟵" "λ") "</span>" (esc code)))
+  (try
+    (let [v (eval-str code)]
+      (when (= source :repl) (repl-print! "out" (esc (pr-str v)))))
+    (catch :default e
+      (repl-print! "err" (esc (or (.-message e) (str e)))))))
+
+(defn gesture! [code] (repl-eval! code :patch))
+
+(.addEventListener ($ "repl-in") "keydown"
+  (fn [e]
+    (let [k (.-key e) inp ($ "repl-in")]
+      (cond
+        (= k "Enter")
+        (let [code (str/trim (.-value inp))]
+          (when (seq code)
+            (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
+            (set! (.-value inp) "")
+            (repl-eval! code :repl)))
+        (or (= k "ArrowUp") (= k "ArrowDown"))
+        (let [{:keys [hist hidx]} @ui n (count hist)]
+          (when (pos? n)
+            (.preventDefault e)
+            (let [i (if (= k "ArrowUp")
+                      (if (nil? hidx) (dec n) (max 0 (dec hidx)))
+                      (if (nil? hidx) nil (if (>= (inc hidx) n) nil (inc hidx))))]
+              (swap! ui assoc :hidx i)
+              (set! (.-value inp) (if (nil? i) "" (nth hist i))))))))))
+
+;; ───────────────────────── panel de código ─────────────────────────
+
+(defn run-panel-code! []
+  (let [code (.-value ($ "code"))]
+    (try
+      (run-code! code)
+      (swap! ui assoc :dirty false)
+      (render-code (current))
+      (repl-print! "out" "; código ejecutado: el patch se ha reconstruido (1 evento :load)")
+      (catch :default e
+        (repl-print! "err" (esc (str "Error en el código: " (or (.-message e) (str e)))))))))
+
+(.addEventListener ($ "code") "input" (fn [_] (when-not (:dirty @ui) (swap! ui assoc :dirty true) (render-code (current)))))
+(.addEventListener ($ "code") "keydown"
+  (fn [e] (when (and (= (.-key e) "Enter") (or (.-ctrlKey e) (.-metaKey e)))
+            (.preventDefault e) (run-panel-code!))))
+(.addEventListener ($ "code-run") "click" (fn [_] (run-panel-code!)))
+(.addEventListener ($ "code-revert") "click" (fn [_] (swap! ui assoc :dirty false) (render-code (current))))
+
+(doseq [t (array-seq (.querySelectorAll js/document ".tab"))]
+  (.addEventListener t "click"
+    (fn [_]
+      (let [tab (.. t -dataset -tab)]
+        (doseq [x (array-seq (.querySelectorAll js/document ".tab"))]
+          (.setAttribute x "aria-selected" (str (= x t))))
+        (doseq [[k pid] [["code" "panel-code"] ["edn" "panel-edn"]]]
+          (set! (.-hidden ($ pid)) (not= k tab)))))))
+
+;; ───────────────────────── gestos en la historia ─────────────────────────
+
+(.addEventListener ($ "nav-back") "click" (fn [_] (gesture! "(rewind)")))
+(.addEventListener ($ "nav-fwd") "click" (fn [_] (gesture! "(forward)")))
+(.addEventListener ($ "nav-tip") "click" (fn [_] (gesture! "(tip)")))
+(.addEventListener ($ "start-example") "click" (fn [_] (gesture! "(load-example)")))
+
+(.addEventListener ($ "tree") "click"
+  (fn [e]
+    (when-let [el (.closest (.-target e) "[data-goto]")]
+      (let [[nid k] (str/split (.getAttribute el "data-goto") #"\|")]
+        (if (:merge-pick @ui)
+          (do (swap! ui assoc :merge-pick false)
+              (.remove (.-classList ($ "hist-wrap")) "picking")
+              (gesture! (str "(merge-from " (pr-str nid) " " k ")")))
+          (gesture! (str "(goto " (pr-str nid) " " k ")")))))))
+
+(.addEventListener ($ "merge-btn") "click"
+  (fn [_]
+    (let [on (not (:merge-pick @ui))]
+      (swap! ui assoc :merge-pick on)
+      (.toggle (.-classList ($ "hist-wrap")) "picking" on))))
+
+(.addEventListener ($ "auto") "change"
+  (fn [e] (gesture! (str "(frente " (.. e -target -checked) ")"))))
+
+(.addEventListener ($ "simul") "change"
+  (fn [e]
+    (let [v (js/parseInt (.. e -target -value) 10)]
+      (if (js/isNaN v)
+        (render-controls!)
+        (gesture! (str "(simultaneidad " v ")"))))))
+
+(.addEventListener ($ "peers") "click"
+  (fn [e]
+    (when-let [el (.closest (.-target e) "[data-peer]")]
+      (let [pr (.getAttribute el "data-peer")]
+        (swap! ui assoc :follow (if (= pr (:follow @ui)) nil pr))
+        (sync-follow!)))))
+
+;; ───────────────────────── gestos en el patch ─────────────────────────
+
+(def svg ($ "canvas"))
+
+(defn pt
+  "Posición del puntero en coordenadas del patch (aunque el lienzo se vea escalado)."
+  [e]
+  (let [p (.createSVGPoint svg)]
+    (set! (.-x p) (.-clientX e))
+    (set! (.-y p) (.-clientY e))
+    (let [q (.matrixTransform p (.inverse (.getScreenCTM svg)))]
+      [(.-x q) (.-y q)])))
+
+(defn closest [e sel] (.closest (.-target e) sel))
+
+;; en pantallas táctiles el puntero queda capturado: se mira qué hay bajo el dedo
+(defn under [e sel]
+  (when-let [el (.elementFromPoint js/document (.-clientX e) (.-clientY e))] (.closest el sel)))
+
+(defn drop-target
+  "Caja bajo el puntero (distinta de la de origen) y su entrada más cercana al cursor."
+  [e wire]
+  (when-let [el (under e ".box")]
+    (let [id (keyword (.. el -dataset -box)) b (get-in (current) [:boxes id])]
+      (when (and b (not= id (:from wire)))
+        (let [[ins _] (io (:text b)) [w _] (box-dims id b) [x _] (pt e)]
+          (when (pos? ins)
+            [id (apply min-key (fn [i] (js/Math.abs (- x (+ (:x b) (port-x w ins i) (/ pw 2))))) (range ins))]))))))
+
+(defn open-editor! [{:keys [id x y text]}]
+  (when-let [old ($ "box-edit")] (.remove old))
+  (let [inp (js/document.createElement "input") done (atom false)
+        finish (fn [commit?]
+                 (when-not @done
+                   (reset! done true)
+                   (let [v (str/trim (.-value inp))]
+                     (.remove inp)
+                     (when (and commit? (seq v) (not= v text))
+                       (if id
+                         (gesture! (str "(text! " id " " (pr-str v) ")"))
+                         (gesture! (str "(box " (pr-str v) " " (js/Math.round x) " " (js/Math.round y) ")")))))))]
+    (set! (.-id inp) "box-edit")
+    (set! (.-className inp) "edit")
+    (set! (.-value inp) (or text ""))
+    (set! (.-placeholder inp) "lienzo, lector, rampa 0 8 4, numero, msg 1, synth~…")
+    (set! (.. inp -style -left) (str x "px"))
+    (set! (.. inp -style -top) (str (- y 4) "px"))
+    (.appendChild ($ "canvas-wrap") inp)
+    (.focus inp)
+    (.select inp)
+    (.addEventListener inp "keydown" (fn [e] (case (.-key e) "Enter" (finish true) "Escape" (finish false) nil)))
+    (.addEventListener inp "blur" (fn [_] (finish true)))))
+
+(defn el-box [el]
+  (let [id (keyword (.. el -dataset -box))] [id (get-in (current) [:boxes id])]))
+
+(defn pos-click!
+  "Pedirle a un buffer una posición exacta: la caja la manda por su salida izquierda (y la marca)."
+  [id t]
+  (gesture! (str "(enviar " id " " (lz/fmt (max 0 t)) ")")))
+
+(defn pts-code [pts] (str "[" (str/join " " (map (fn [[t f]] (str "[" (lz/fmt t) " " (lz/fmt f) "]")) pts)) "]"))
+
+(defn score-click!
+  "Clic en un score: una nota elige su trazo; en otro sitio, se pide la posición más cercana de ese sistema."
+  [e id b x y]
+  (let [gn (.closest (.-target e) "g.note")
+        m (when gn (re-matches #"n-([^-]+)-([^-]+)-(\d+)" (str (.-id gn))))
+        tid (when m (keyword (nth m 2)))]
+    (if (and tid (get-in b [:data :trazos tid]))
+      (swap! ui assoc :sel nil :nsel [id tid])
+      (let [lx (- x (:x b) 4) ly (- y (:y b) hdr 4)
+            as (filter (fn [a] (<= (:y0 a) ly (:y1 a))) (get-in @score-cache [id :anclas]))]
+        (swap! ui assoc :sel nil :nsel nil)
+        (when (seq as)
+          (pos-click! id (:t (apply min-key (fn [a] (js/Math.abs (- (:x a) lx))) as))))))))
+
+(defn snap-t [d t] (max 0 (lz/cuantizar-t (:rx d) t)))
+(defn snap-f [d f] (lz/cuantizar-f (:ry d) f))
+
+(defn valor-numero [id b]
+  (let [v (or (second (ultima-vista id)) (get-in @motor/rt [:estados id]) (motor/num-de (first (motor/args-de (:text b)))) 0)]
+    (if (number? v) v 0)))
+
+(.addEventListener svg "pointerdown"
+  (fn [e]
+    (let [[x y] (pt e)]
+      (cond
+        (closest e ".port.out")
+        (let [el (closest e ".port.out")]
+          (.preventDefault e)
+          (swap! ui assoc :wire {:from (keyword (.. el -dataset -box)) :out (js/parseInt (.. el -dataset -out) 10) :x x :y y}))
+
+        ;; cajas de acción: el asa las mueve, el cuerpo actúa
+        (and (closest e ".box.act") (not (closest e ".grip")) (not (closest e ".port")))
+        (let [[id b] (el-box (closest e ".box.act"))]
+          (when b
+            (.preventDefault e)
+            (swap! ui assoc :sel nil :nsel nil)
+            (if (= "numero" (klass (:text b)))
+              (swap! ui assoc :numdrag {:id id :y0 y :v0 (valor-numero id b) :v nil})
+              (gesture! (str "(enviar " id " :bang)")))))
+
+        (closest e ".trazo-hit")
+        (let [el (closest e ".trazo-hit") [id b] (el-box el) tid (keyword (.. el -dataset -trazo))
+              d (or (:data b) lz/vacio) tr (get-in d [:trazos tid])]
+          (when tr
+            (.preventDefault e)
+            (swap! ui assoc :sel nil :nsel [id tid]
+                   :ldrag {:kind :mover :box id :tid tid :g (lienzo-geom d) :d d :x0 x :y0 y
+                           :pts0 (:pts tr) :pts (:pts tr) :dt 0 :dc 0 :moved false})))
+
+        (closest e ".score-slot")
+        (let [[id b] (el-box (closest e ".score-slot"))]
+          (when b (score-click! e id b x y)))
+
+        (closest e ".mus-body")
+        (let [[id b] (el-box (closest e ".mus-body"))]
+          (when b
+            (case (klass (:text b))
+              "lienzo" (let [d (or (:data b) lz/vacio) g (lienzo-geom d)
+                             lx (- x (:x b)) ly (- y (:y b))
+                             t0 (snap-t d (lz/x->t g lx)) f0 (snap-f d (lz/y->f g ly))
+                             modo (cond (.-altKey e) :libre (.-shiftKey e) :recta :else :nota)]
+                         (.preventDefault e)
+                         (swap! ui assoc :sel nil :nsel nil
+                                :ldrag {:kind :dibujar :modo modo :box id :g g :d d :x0 x :y0 y :bx (:x b) :by (:y b)
+                                        :t0 t0 :f0 f0 :click-t (lz/x->t g lx) :raw [[lx ly]] :pts nil :moved false}))
+              "score" (score-click! e id b x y)
+              nil)))
+
+        (closest e ".box")
+        (let [el (closest e ".box") id (keyword (.. el -dataset -box)) b (get-in (current) [:boxes id])]
+          (when b
+            (swap! ui assoc :sel [:box id] :nsel nil :drag {:id id :dx (- x (:x b)) :dy (- y (:y b)) :x (:x b) :y (:y b) :moved false})))
+
+        (closest e ".wire-hit")
+        (let [idx (js/parseInt (.. (closest e ".wire-hit") -dataset -line) 10)]
+          (swap! ui assoc :sel [:line (nth (:lines (current)) idx)] :nsel nil))
+
+        :else (swap! ui assoc :sel nil :nsel nil)))))
+
+(defn mover-ldrag [ld x y]
+  (let [{:keys [g d x0 y0 pts0]} ld
+        [t0 f0] (first pts0)
+        dt (- (snap-t d (+ t0 (* (- x x0) (/ (:T g) (:w g))))) t0)
+        ft (snap-f d (lz/y->f g (+ (lz/f->y g f0) (- y y0))))
+        dc (lz/redondear (lz/hz->cents ft f0) 3)
+        k (js/Math.pow 2 (/ dc 1200))]
+    (assoc ld :moved true :dt dt :dc dc :pts (mapv (fn [[t f]] [(+ t dt) (* f k)]) pts0))))
+
+(defn dibujar-ldrag [ld x y]
+  (let [{:keys [g d modo t0 f0 bx by raw]} ld
+        lx (- x bx) ly (- y by)]
+    (case modo
+      :nota (assoc ld :pts [[t0 f0] [(snap-t d (lz/x->t g lx)) f0]])
+      :recta (assoc ld :pts [[t0 f0] [(snap-t d (lz/x->t g lx)) (snap-f d (lz/y->f g ly))]])
+      :libre (let [raw (if (> lx (+ (first (peek raw)) 1)) (conj raw [lx ly]) raw)]
+               (assoc ld :raw raw :pts (mapv (fn [[px py]] [(lz/x->t g px) (lz/y->f g py)]) raw))))))
+
+(.addEventListener svg "pointermove"
+  (fn [e]
+    (let [[x y] (pt e) {:keys [drag wire ldrag numdrag]} @ui]
+      (cond
+        numdrag (let [paso (if (.-shiftKey e) 0.01 0.1)
+                      v (lz/redondear (+ (:v0 numdrag) (* paso (js/Math.round (- (:y0 numdrag) y)))) 4)]
+                  (when (not= v (or (:v numdrag) (:v0 numdrag)))
+                    (swap! ui assoc :numdrag (assoc numdrag :v v))
+                    (let [ya (motor/en-marcha?)]
+                      (motor/inyectar! (fn [] (current)) (:id numdrag) 0 v)
+                      (when-not ya (transport-info!) (js/requestAnimationFrame (fn [_] (vivo!)))))
+                    (render-overlay!)))
+        ldrag (let [far (> (+ (js/Math.abs (- x (:x0 ldrag))) (js/Math.abs (- y (:y0 ldrag)))) 3)]
+                (when (or (:moved ldrag) far)
+                  (swap! ui assoc :ldrag
+                         (if (= :mover (:kind ldrag))
+                           (mover-ldrag ldrag x y)
+                           (assoc (dibujar-ldrag ldrag x y) :moved true)))))
+        drag (let [nx (max 0 (- x (:dx drag))) ny (max 0 (- y (:dy drag)))]
+               (when (or (:moved drag) (> (+ (js/Math.abs (- nx (:x drag))) (js/Math.abs (- ny (:y drag)))) 2))
+                 (swap! ui assoc :drag (assoc drag :x nx :y ny :moved true))))
+        wire (swap! ui assoc :wire (assoc wire :x x :y y) :hover-in (drop-target e wire))))))
+
+(defn fin-dibujo! [{:keys [box modo d g pts raw moved click-t]}]
+  (if-not moved
+    (pos-click! box click-t)
+    (let [minimo (if (:rx d) (lz/paso-x (:rx d)) 0.05)
+          pts (case modo
+                :libre (let [px (lz/simplificar raw 1.5)]
+                         (mapv (fn [[px py]] [(lz/redondear (lz/x->t g px) 3) (lz/redondear (lz/y->f g py) 2)]) px))
+                (sort-by first pts))
+          ps (lz/sane-pts pts)]
+      (when (and ps (>= (- (first (peek ps)) (ffirst ps)) (* 0.99 minimo)))
+        (gesture! (str "(trazo " box " " (pts-code ps) ")"))))))
+
+(defn end-gesture! [e]
+  (let [{:keys [drag wire ldrag numdrag]} @ui]
+    (cond
+      numdrag
+      (do (swap! ui assoc :numdrag nil)
+          (gesture! (str "(enviar " (:id numdrag) " " (if (:v numdrag) (lz/fmt (:v numdrag)) ":bang") ")")))
+      ldrag
+      (do (swap! ui assoc :ldrag nil)
+          (if (= :mover (:kind ldrag))
+            (when (and (:moved ldrag) (or (not (zero? (:dt ldrag))) (not (zero? (:dc ldrag)))))
+              (gesture! (str "(mover-trazo " (:box ldrag) " " (:tid ldrag) " " (lz/fmt (:dt ldrag)) " " (lz/fmt (:dc ldrag)) ")")))
+            (fin-dibujo! ldrag)))
+      (and drag (:moved drag))
+      (do (swap! ui assoc :drag nil)
+          (gesture! (str "(move " (:id drag) " " (js/Math.round (:x drag)) " " (js/Math.round (:y drag)) ")")))
+      drag (swap! ui assoc :drag nil)
+      wire
+      (let [[to in] (when e (drop-target e wire))]
+        (swap! ui assoc :wire nil :hover-in nil)
+        (when to
+          (gesture! (str "(connect " (:from wire) " " (:out wire) " " to " " in ")")))))))
+
+(.addEventListener svg "pointerup" end-gesture!)
+(.addEventListener svg "pointerleave" (fn [_] (when (or (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui)) (end-gesture! nil))))
+
+(.addEventListener svg "dblclick"
+  (fn [e]
+    (let [[x y] (pt e)]
+      (cond
+        (or (closest e ".trazo-hit") (closest e ".score-slot") (closest e ".mus-body")) nil
+        (and (closest e ".box.act") (not (closest e ".grip"))) nil
+        (closest e ".box")
+        (let [el (closest e ".box") id (keyword (.. el -dataset -box)) b (get-in (current) [:boxes id])]
+          (when b (open-editor! {:id id :x (:x b) :y (:y b) :text (:text b)})))
+        :else (open-editor! {:x x :y y})))))
+
+(defn tecla-trazo!
+  "Flechas, + − y Supr sobre el trazo elegido, respetando las rejillas del lienzo."
+  [e k [id tid]]
+  (let [d (get-in (current) [:boxes id :data]) tr (get-in d [:trazos tid]) sh (.-shiftKey e)]
+    (if (nil? tr)
+      (swap! ui assoc :nsel nil)
+      (let [pts (:pts tr) [t0 f0] (first pts) dur (- (first (peek pts)) t0)
+            ry (:ry d) paso (lz/paso-x (:rx d)) cic (lz/ciclo (:rx d))
+            dc (fn [dir] (if ry
+                           (lz/redondear (lz/hz->cents (lz/grado->hz ry (+ (lz/hz->grado ry f0) (* dir (if sh (count (lz/grados ry)) 1)))) f0) 3)
+                           (* dir (if sh 1200 100))))
+            mover (fn [dt c] (gesture! (str "(mover-trazo " id " " tid " " (lz/fmt dt) " " (lz/fmt c) ")")))
+            estirar (fn [nd] (gesture! (str "(estirar " id " " tid " " (lz/fmt (/ nd dur)) ")")))]
+        (case k
+          "ArrowUp" (mover 0 (dc 1))
+          "ArrowDown" (mover 0 (dc -1))
+          "ArrowLeft" (when (pos? t0) (mover (- (min t0 (if sh cic paso))) 0))
+          "ArrowRight" (mover (if sh cic paso) 0)
+          ("+" "=") (estirar (+ dur paso))
+          "-" (when (> dur paso) (estirar (- dur paso)))
+          ("Delete" "Backspace") (do (swap! ui assoc :nsel nil) (gesture! (str "(borrar-trazo " id " " tid ")")))
+          "Escape" (swap! ui assoc :nsel nil)
+          nil)))))
+
+(.addEventListener js/document "keydown"
+  (fn [e]
+    (let [tag (.. js/document -activeElement -tagName) k (.-key e) mod? (or (.-ctrlKey e) (.-metaKey e))]
+      (when (and (= k "Escape") (:merge-pick @ui))
+        (swap! ui assoc :merge-pick false)
+        (.remove (.-classList ($ "hist-wrap")) "picking"))
+      (when-not (#{"INPUT" "TEXTAREA"} tag)
+        (cond
+          (and (:nsel @ui) (not mod?)
+               (#{"ArrowUp" "ArrowDown" "ArrowLeft" "ArrowRight" "+" "=" "-" "Delete" "Backspace" "Escape"} k))
+          (do (.preventDefault e) (tecla-trazo! e k (:nsel @ui)))
+          (and (= k " ") (not= tag "BUTTON") (.-hidden ($ "manager")))
+          (do (.preventDefault e) (gesture! (if (motor/en-marcha?) "(stop)" "(play)")))
+          (and (#{"Delete" "Backspace"} k) (:sel @ui))
+          (let [[kind v] (:sel @ui)]
+            (.preventDefault e)
+            (swap! ui assoc :sel nil)
+            (if (= kind :box)
+              (gesture! (str "(delete " v ")"))
+              (gesture! (str "(disconnect " (str/join " " v) ")"))))
+          (and mod? (= (str/lower-case k) "z") (.-shiftKey e))
+          (do (.preventDefault e) (gesture! "(forward)"))
+          (and mod? (= (str/lower-case k) "z"))
+          (do (.preventDefault e) (gesture! "(rewind)"))
+          (and mod? (= (str/lower-case k) "y"))
+          (do (.preventDefault e) (gesture! "(forward)")))))))
+
+;; ───────────────────────── conexión con la historia compartida ─────────────────────────
+
+(defn js->node [d]
+  (let [m (js->clj (.data d))
+        at (get m "at") parent (get m "parent") evs (get m "events") t (get m "t")
+        sess (get m "session") mg (get m "merge")]
+    {:id (.-id d)
+     :parent (when (string? parent) parent)
+     :at (if (number? at) at 0)
+     :author (str (get m "author"))
+     :session (when (string? sess) sess)
+     :merge (when (valid-pos? mg) mg)
+     :t (if (number? t) t 0)
+     :events (if (sequential? evs)
+               (vec (keep (fn [x] (let [v (dec* x)] (when (and (vector? v) (keyword? (first v))) v))) evs))
+               [])}))
+
+(defn on-history [snap]
+  (let [incoming (into {} (for [d (array-seq (.-docs snap)) :when (.-exists d)]
+                            (let [n (js->node d)] [(:id n) n])))]
+    (swap! hist
+           (fn [h]
+             (let [local (:nodes h)
+                   mine? (fn [n] (= (:author n) (my-author)))
+                   pending (into {} (filter (fn [[k n]] (and (not (contains? incoming k)) (mine? n))) local))
+                   merged (into pending
+                                (for [[k r] incoming :let [l (get local k)]]
+                                  [k (if (and l (mine? l) (> (count (:events l)) (count (:events r)))) l r)]))]
+               (assoc h :nodes merged :loaded true))))
+    (when (nil? (:pos @world))
+      (when-let [t (newest-tip)] (swap! world assoc :pos t)))))
+
+(defn start-local! []
+  (swap! hist assoc :mode :local :loaded true)
+  (when (empty? (:nodes @hist))
+    (let [id (new-node! nil 0 [[:load (build example)]] nil)]
+      (swap! world assoc :pos [id 1]))))
+
+(defn setup-room!
+  "Presencia dentro de la sala abierta (una sala con nombre por obra compartida)."
+  [room]
+  (.onPeers room
+            (fn [ch]
+              (reset! peers
+                      (vec (for [p (array-seq (.-peers ch)) :when (not= "agent" (.-kind p))]
+                             {:peer (.-peer p) :by (.-by p) :me (.-isMe p) :same (.-sameTab p) :kind (.-kind p)
+                              :session (let [s (.. p -presence -session)] (when (string? s) s))
+                              :pos (let [pp (js->clj (.. p -presence -pos))] (when (valid-pos? pp) pp))}))))
+            (fn [_] nil))
+  (publish-presence!))
+
+(defn cuse [nm]
+  (if-let [c (.-claude js/window)]
+    (.catch (.use c nm) (fn [_] nil))
+    (js/Promise.resolve nil)))
+
+;; ───────────────────────── gestor de sesiones ─────────────────────────
+
+(defonce salas (atom {}))
+(defonce obras (atom {}))
+(defonce lobby-peers (atom []))
+(defonce subs (atom []))
+(defonce mgr (atom {:open true :confirm nil :busy nil :invite nil}))
+
+(defn room-name [id] (str "sala-" (str/lower-case id)))
+
+(defn meta-of [d]
+  (let [m (js->clj (.data d))]
+    {:id (.-id d)
+     :nombre (let [n (get m "nombre")] (if (and (string? n) (seq n)) n "Sin nombre"))
+     :creada (let [t (get m "creada")] (if (number? t) t 0))
+     :origen (let [o (get m "origen")] (when (string? o) o))}))
+
+(defn lobby-presence! []
+  (when-let [r @roomref]
+    (.catch (.presence r (clj->js {:sala (when (= :sala (:kind @work)) (:id @work))})) (fn [_] nil))))
+
+(defn people-in [id] (count (filter (fn [p] (= (:sala p) id)) @lobby-peers)))
+
+(defn unsub-all! []
+  (doseq [u @subs] (u))
+  (reset! subs []))
+
+(defn leave-room! []
+  (when-let [r @named-room]
+    (.catch (.leave r) (fn [_] nil))
+    (reset! named-room nil))
+  (reset! peers []))
+
+(defn set-hash! [h]
+  (try (if (seq h)
+         (set! (.-hash js/location) h)
+         (.replaceState js/history nil "" (str (.-pathname js/location) (.-search js/location))))
+       (catch :default _ nil)))
+
+(defn show-manager! [] (swap! mgr assoc :open true :confirm nil))
+(defn hide-manager! [] (when (:kind @work) (swap! mgr assoc :open false :confirm nil)))
+
+(defn on-meta [d]
+  (when (.-exists d)
+    (let [m (js->clj (.data d)) v (get m "simultaneidad_ms") n (get m "nombre")]
+      (when (string? n) (swap! work assoc :name n))
+      (when (and (number? v) (<= 0 v 10000) (not= v (:simul-ms @settings)))
+        (swap! settings assoc :simul-ms v)))))
+
+(defn reset-work-state! [mode]
+  (unsub-all!)
+  (leave-room!)
+  (reset! queues {})
+  (reset! cache {})
+  (reset! settings {:simul-ms 1500})
+  (swap! ui assoc :follow nil :merge-pick false :sel nil :drag nil :wire nil)
+  (.remove (.-classList ($ "hist-wrap")) "picking")
+  (reset! world {:pos nil :auto true :prev-pos nil :jumped-at 0})
+  (swap! hist assoc :nodes {} :loaded false :mode mode))
+
+(defn open-work!
+  "Abre una obra: :sala (compartida), :solo (privada) o :local (sin guardar)."
+  [kind id nm]
+  (reset! work {:kind kind :id id :name nm})
+  (reset-work-state! (case kind
+                       :sala (if (:writable @hist) :shared :readonly)
+                       :solo :solo
+                       :local))
+  (swap! mgr assoc :open false :confirm nil :invite nil)
+  (set-hash! (if (= kind :sala) (str "sala-" id) ""))
+  (lobby-presence!)
+  (if (= kind :local)
+    (start-local!)
+    (let [db @dbref]
+      (swap! subs conj (.onSnapshot (.collection db (hist-path)) on-history db-failed!))
+      (swap! subs conj (.onSnapshot (.doc db (work-base)) on-meta (fn [_] nil)))
+      (when (and (= kind :sala) @roomref)
+        (-> (.join @roomref (room-name id))
+            (.then (fn [r]
+                     (if (and (= :sala (:kind @work)) (= id (:id @work)))
+                       (do (reset! named-room r) (setup-room! r))
+                       (.catch (.leave r) (fn [_] nil)))))
+            (.catch (fn [_] nil))))))
+  (repl-print! "out" (esc (str "; " (case kind :sala "Sala compartida" :solo "Obra en solitario" "Obra local") ": «" nm "»"))))
+
+(defn close-work! []
+  (reset! work {:kind nil :id nil :name nil})
+  (reset-work-state! :none)
+  (set-hash! "")
+  (lobby-presence!)
+  (show-manager!))
+
+(defn coll-for [kind] (case kind :sala "salas" :solo (str "data/users/" (uid))))
+
+(defn busy! [msg] (swap! mgr assoc :busy msg))
+
+(defn mgr-fail! [e]
+  (busy! nil)
+  (db-failed! e))
+
+(defn create-work! [kind nm example?]
+  (let [db @dbref
+        ref (.doc (.collection db (coll-for kind)))
+        id (.-id ref)]
+    (busy! "Creando…")
+    (-> (.set ref (clj->js {:nombre nm :creada (js/Date.now) :autor (uid) :simultaneidad_ms 1500}))
+        (.then (fn [_]
+                 (busy! nil)
+                 (open-work! kind id nm)
+                 (when example? (gesture! "(load-example)"))))
+        (.catch mgr-fail!))))
+
+(defn plain [o] (js/JSON.parse (js/JSON.stringify o)))
+
+(defn copy-work!
+  "Copia una obra con toda su historia a una obra nueva (de sala a solitario o al revés)."
+  [from-kind from-id to-kind nm]
+  (let [db @dbref
+        src (str (base-of from-kind from-id) "/historia")
+        ref (.doc (.collection db (coll-for to-kind)))
+        id (.-id ref)
+        dst (str (coll-for to-kind) "/" id "/historia")]
+    (busy! "Copiando la historia…")
+    (-> (.set ref (clj->js {:nombre nm :creada (js/Date.now) :autor (uid) :simultaneidad_ms 1500
+                            :origen (str (name from-kind) ":" from-id)}))
+        (.then (fn [_] (.get (.collection db src))))
+        (.then (fn [snap]
+                 (reduce (fn [p d] (.then p (fn [_] (.set (.doc db (str dst "/" (.-id d))) (plain (.data d))))))
+                         (js/Promise.resolve nil)
+                         (array-seq (.-docs snap)))))
+        (.then (fn [_] (busy! nil) (open-work! to-kind id nm)))
+        (.catch mgr-fail!))))
+
+(defn delete-work!
+  "Borra una obra y toda su historia."
+  [kind id]
+  (let [db @dbref base (base-of kind id)]
+    (when (and (= kind (:kind @work)) (= id (:id @work))) (close-work!))
+    (busy! "Borrando…")
+    (-> (.get (.collection db (str base "/historia")))
+        (.then (fn [snap]
+                 (reduce (fn [p d] (.then p (fn [_] (.delete (.doc db (str base "/historia/" (.-id d)))))))
+                         (js/Promise.resolve nil)
+                         (array-seq (.-docs snap)))))
+        (.then (fn [_] (.delete (.doc db base))))
+        (.then (fn [_] (busy! nil) (swap! mgr assoc :confirm nil)))
+        (.catch mgr-fail!))))
+
+(defn fmt-date [t]
+  (if (pos? t)
+    (let [d (js/Date. t)]
+      (str (.toLocaleDateString d "es-ES" #js {:day "numeric" :month "short"}) " · "
+           (.toLocaleTimeString d "es-ES" #js {:hour "2-digit" :minute "2-digit"})))
+    ""))
+
+(defn item-html [kind {:keys [id nombre creada origen]}]
+  (let [k (name kind)
+        current? (and (= kind (:kind @work)) (= id (:id @work)))
+        confirm? (= (:confirm @mgr) [k id])
+        n (when (= kind :sala) (people-in id))
+        can-write (:writable @hist)]
+    (str "<li class=\"item" (when current? " current") (when (= id (:invite @mgr)) " invited") "\">"
+         "<div class=\"item-main\"><span class=\"item-name\">" (esc nombre) "</span>"
+         "<span class=\"item-meta\">" (fmt-date creada)
+         (when origen (str " · copia"))
+         (when (and n (pos? n)) (str " · <b>" n (if (= 1 n) " persona dentro" " personas dentro") "</b>"))
+         (when current? " · abierta ahora")
+         "</span></div>"
+         "<div class=\"item-acts\">"
+         "<button class=\"act primary\" data-act=\"open\" data-kind=\"" k "\" data-id=\"" (esc id) "\">" (if current? "Volver" "Abrir") "</button>"
+         (when can-write
+           (str (if (= kind :solo)
+                  (str "<button class=\"act\" data-act=\"copy\" data-kind=\"" k "\" data-to=\"sala\" data-id=\"" (esc id) "\" title=\"Crea una sala compartida con una copia de esta obra y su historia\">Compartir copia</button>")
+                  (str "<button class=\"act\" data-act=\"copy\" data-kind=\"" k "\" data-to=\"solo\" data-id=\"" (esc id) "\" title=\"Crea una obra en solitario con una copia de esta sala y su historia\">Copia para mí</button>"))
+                "<button class=\"act danger" (when confirm? " armed") "\" data-act=\"delete\" data-kind=\"" k "\" data-id=\"" (esc id) "\">"
+                (if confirm? "¿Seguro? Borrar" "Borrar") "</button>"))
+         "</div></li>")))
+
+(defn render-manager! []
+  (let [{:keys [open busy invite]} @mgr
+        el ($ "manager")
+        db? (some? @dbref)
+        can-write (:writable @hist)
+        connecting? (= :connecting (:mode @hist))
+        solo-list (sort-by :creada > (vals @obras))
+        sala-list (sort-by (fn [s] [(if (= (:id s) invite) 0 1) (- (people-in (:id s))) (- (:creada s))]) (vals @salas))
+        inv (when invite (get @salas invite))]
+    (set! (.-hidden el) (not open))
+    (set! (.-innerHTML ($ "work-name"))
+          (if (:kind @work)
+            (str (case (:kind @work) :sala "Sala" :solo "En solitario" "Local") " · <b>" (esc (or (:name @work) "")) "</b>")
+            "Sin obra abierta"))
+    (when open
+      ;; las listas se actualizan en vivo: se conserva lo que estés escribiendo en los formularios
+      (let [keep (into {} (for [k ["new-solo" "new-sala"] :let [i ($ k)] :when i] [k (.-value i)]))
+            keep-ex (into {} (for [k ["new-solo-ex" "new-sala-ex"] :let [i ($ k)] :when i] [k (.-checked i)]))
+            focus (.. js/document -activeElement -id)]
+        (js/setTimeout
+         (fn []
+           (doseq [[k v] keep] (when-let [i ($ k)] (set! (.-value i) v)))
+           (doseq [[k v] keep-ex] (when-let [i ($ k)] (set! (.-checked i) v)))
+           (when (and (seq focus) ($ focus) (contains? keep focus)) (.focus ($ focus))))
+         0))
+      (set! (.-innerHTML ($ "mgr-body"))
+            (str
+             (when busy (str "<p class=\"mgr-busy\">" (esc busy) "</p>"))
+             (cond
+               connecting? "<p class=\"mgr-note\">Conectando…</p>"
+               (not db?)
+               (str "<p class=\"mgr-note\">Esta vista no tiene base de datos (fuera de claude.ai o sin sesión iniciada): solo puedes trabajar en local, sin guardar.</p>"
+                    "<button class=\"act primary\" data-act=\"local\">Empezar en local</button>")
+               :else
+               (str
+                (when inv
+                  (str "<div class=\"invite\">Te han invitado a la sala <b>" (esc (:nombre inv)) "</b>."
+                       " <button class=\"act primary\" data-act=\"open\" data-kind=\"sala\" data-id=\"" (esc (:id inv)) "\">Entrar</button></div>"))
+                (when-not can-write
+                  "<p class=\"mgr-note\">Puedes entrar en las salas y recorrer su historia, pero no crear ni cambiar obras: tu acceso a este artefacto es de solo lectura.</p>")
+                "<div class=\"mgr-cols\">"
+                "<section class=\"mgr-col\"><h3>En solitario</h3><p class=\"mgr-hint\">Solo tú ves estas obras, ni siquiera quien comparte el artefacto.</p>"
+                (if (seq solo-list)
+                  (str "<ul class=\"items\">" (apply str (map (fn [o] (item-html :solo o)) solo-list)) "</ul>")
+                  "<p class=\"mgr-empty\">Todavía no tienes obras en solitario.</p>")
+                (when (and can-write (uid))
+                  "<form class=\"new\" data-kind=\"solo\"><input id=\"new-solo\" placeholder=\"Nombre de la obra\" maxlength=\"60\" required><label class=\"opt\"><input type=\"checkbox\" id=\"new-solo-ex\"> con la obra de ejemplo</label><button class=\"act primary\">Crear</button></form>")
+                "</section>"
+                "<section class=\"mgr-col\"><h3>Salas compartidas</h3><p class=\"mgr-hint\">Las ve y puede entrar cualquiera con acceso a este artefacto.</p>"
+                (if (seq sala-list)
+                  (str "<ul class=\"items\">" (apply str (map (fn [s] (item-html :sala s)) sala-list)) "</ul>")
+                  "<p class=\"mgr-empty\">Todavía no hay salas.</p>")
+                (when can-write
+                  "<form class=\"new\" data-kind=\"sala\"><input id=\"new-sala\" placeholder=\"Nombre de la sala\" maxlength=\"60\" required><label class=\"opt\"><input type=\"checkbox\" id=\"new-sala-ex\"> con la obra de ejemplo</label><button class=\"act primary\">Crear</button></form>")
+                "</section></div>"
+                "<p class=\"mgr-foot\"><button class=\"act\" data-act=\"local\">Probar en local, sin guardar</button></p>")))))))
+
+(add-watch mgr ::render (fn [_ _ _ _] (render-manager!)))
+(add-watch salas ::render (fn [_ _ _ _] (render-manager!)))
+(add-watch obras ::render (fn [_ _ _ _] (render-manager!)))
+(add-watch lobby-peers ::render (fn [_ _ _ _] (when (:open @mgr) (render-manager!))))
+(add-watch work ::render (fn [_ _ _ _] (render-manager!)))
+
+(.addEventListener ($ "mgr-body") "click"
+  (fn [e]
+    (when-let [b (.closest (.-target e) "[data-act]")]
+      (let [act (.. b -dataset -act)
+            kind (keyword (.. b -dataset -kind))
+            id (.. b -dataset -id)
+            item (get (if (= kind :sala) @salas @obras) id)]
+        (case act
+          "open" (if (and (= kind (:kind @work)) (= id (:id @work)))
+                   (hide-manager!)
+                   (open-work! kind id (:nombre item)))
+          "copy" (let [to (keyword (.. b -dataset -to))]
+                   (copy-work! kind id to (str (:nombre item) (if (= to :sala) " (compartida)" " (mi copia)"))))
+          "delete" (if (= (:confirm @mgr) [(name kind) id])
+                     (delete-work! kind id)
+                     (do (swap! mgr assoc :confirm [(name kind) id])
+                         (js/setTimeout (fn [] (when (= (:confirm @mgr) [(name kind) id]) (swap! mgr assoc :confirm nil))) 4000)))
+          "local" (open-work! :local "local" "Local")
+          nil)))))
+
+(.addEventListener ($ "mgr-body") "submit"
+  (fn [e]
+    (.preventDefault e)
+    (let [f (.-target e)
+          kind (keyword (.. f -dataset -kind))
+          nm (str/trim (.-value ($ (str "new-" (name kind)))))
+          ex (.-checked ($ (str "new-" (name kind) "-ex")))]
+      (when (seq nm) (create-work! kind nm ex)))))
+
+(.addEventListener ($ "open-manager") "click" (fn [_] (show-manager!)))
+(.addEventListener ($ "mgr-close") "click" (fn [_] (hide-manager!)))
+(.addEventListener js/document "keydown"
+  (fn [e] (when (and (= (.-key e) "Escape") (:open @mgr) (:kind @work) (not (:merge-pick @ui))) (hide-manager!))))
+
+;; ───────────────────────── transporte ─────────────────────────
+
+(.addEventListener ($ "play") "click" (fn [_] (gesture! "(play)")))
+(.addEventListener ($ "stop") "click" (fn [_] (gesture! "(stop)")))
+
+(-> (.-kairoticVerovio js/window)
+    (.then (fn [tk]
+             (reset! vrv tk)
+             (reset! vrv-status :ok)
+             (reset! score-cache {})
+             (render-scene (current))))
+    (.catch (fn [_]
+              (reset! vrv-status :error)
+              (render-scene (current)))))
+
+;; ───────────────────────── arranque ─────────────────────────
+
+(render-all!)
+(render-controls!)
+(render-manager!)
+(repl-print! "out" "; Kairotic Lienzo: elige o crea una obra en el gestor de sesiones. Un lienzo es frecuencia sobre tiempo; un lector lo recorre con la posición que le llega (numero, rampa, metro → contador o un clic) y manda las frecuencias a un synth~.")
+
+(let [h (.-hash js/location) m (re-matches #"#sala-(.+)" (str h))]
+  (when m (swap! mgr assoc :invite (second m))))
+
+(-> (js/Promise.all #js [(cuse "db") (cuse "user") (cuse "room")])
+    (.then (fn [arr]
+             (let [db (aget arr 0) user (aget arr 1) room (aget arr 2)]
+               (reset! userref user)
+               (reset! roomref room)
+               (when room
+                 (.onPeers room
+                           (fn [ch]
+                             (reset! lobby-peers
+                                     (vec (for [p (array-seq (.-peers ch))]
+                                            {:me (.-isMe p) :sala (let [s (.. p -presence -sala)] (when (string? s) s))}))))
+                           (fn [_] nil))
+                 (lobby-presence!))
+               (if (nil? db)
+                 (do (swap! hist assoc :mode :none :writable false) (render-manager!))
+                 (-> (js/Promise.all #js [(if user (.id user) (js/Promise.resolve nil))
+                                          (if user (.can user "data.write") (js/Promise.resolve nil))])
+                     (.then (fn [r]
+                              (let [id (aget r 0) can (aget r 1)
+                                    writable (boolean (and id (not (false? can))))]
+                                (swap! me assoc :id id)
+                                (reset! dbref db)
+                                (swap! hist assoc :mode :none :writable writable)
+                                (.onSnapshot (.collection db "salas")
+                                             (fn [snap] (reset! salas (into {} (for [d (array-seq (.-docs snap)) :when (.-exists d)] (let [s (meta-of d)] [(:id s) s])))))
+                                             db-failed!)
+                                (when id
+                                  (.onSnapshot (.collection db (str "data/users/" id))
+                                               (fn [snap] (reset! obras (into {} (for [d (array-seq (.-docs snap)) :when (.-exists d)] (let [s (meta-of d)] [(:id s) s])))))
+                                               (fn [_] nil)))
+                                (render-manager!)))))))))
+    (.catch (fn [_] (swap! hist assoc :mode :none) (render-manager!))))
+</script>
