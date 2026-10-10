@@ -51,7 +51,7 @@ Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `c
 
 | es | en |
 |---|---|
-| lienzo | canvas |
+| lienzo | canvas (Study 9–11: frequency over time; from Study 12 a generic canvas, and **freqt** for frequency over time) |
 | score | score |
 | lector | reader |
 | rampa | ramp |
@@ -173,6 +173,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | (frente) (simultaneidad 1500) | (front) (simultaneity 1500) |
 | — | (enter :b5) (up) (top) (inside :b5 …) (abstract :b5 "voice") (Study 10) |
 | — | (present :b4 x y) (unpresent :b4) (presentation true) (send-to! :b7.b4 v) (Study 11) |
+| — | (axis :b6 :y -1 1) (grid-y :b6 0.25) (read-at :b6 :y 0.5) · classes freqt, pan~, space~; dac~ 1 2 … (Study 12) |
 | (rewind) (forward) (tip) (goto …) (here) (branches) (merge-from …) | (same) |
 
 ## Storage · Almacenamiento (new artifact, new database)

@@ -1,19 +1,28 @@
 ;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · canvas
-;; A graphic buffer: frequency over time. It neither sounds nor advances by itself; it is only a
-;; representation that other components read (kairotic.engine, box `reader`).
+;; A graphic buffer: strokes in a plane. It neither sounds nor advances by itself; it is only a
+;; representation that other components read (kairotic.engine, box `reader`), along X or along Y.
 ;;
-;; data: {:strokes {:t1 {:pts [[t hz] ...]}}
-;;        :gx {:step 0.25 :cycles [4]}                         ; X grid (optional)
-;;        :gy {:name "12-tet" :cents [100 ... 1200] :ref 261.63}}  ; Y grid = tuning (optional)
-;; Time is in abstract units: its meaning is given by whoever reads it.
-;; Between two points of a stroke the frequency is interpolated on a logarithmic scale (pitch).
+;; Two kinds of box share this model:
+;;  · canvas — generic: any numeric data. Its axes have a range and a scale (linear or log), strokes
+;;    go in any direction, and reading at x (or y) gives every crossing of every stroke.
+;;      {:strokes {:t1 {:pts [[x y] ...]}}
+;;       :ax {:x {:lo 0 :hi 8 :log false} :y {:lo 0 :hi 1 :log false}}
+;;       :gx {:step 0.5 :cycles [4]}  :gy {:step 0.1}}          ; grids (optional)
+;;  · freqt — frequency over time: no :ax; time goes from 0, frequency is on a log scale, strokes go
+;;    forward in time, and :gy can be a tuning {:name "12-tet" :cents [100 ... 1200] :ref 261.63}.
+;; Between two points the value is interpolated on the scale of its axis (log → geometric, as pitch).
 
 (ns kairotic.canvas
   (:refer-clojure :exclude [empty cycle])
   (:require [clojure.string :as str]))
 
 (def empty {:strokes {} :gx nil :gy nil})
+
+(def default-ax {:x {:lo 0 :hi 8 :log false} :y {:lo 0 :hi 1 :log false}})
+(def generic-empty (assoc empty :ax default-ax))
+
+(defn generic? "A generic canvas (with axes), not a freqt." [d] (map? (:ax d)))
 
 (defn num? [x] (and (number? x) (not (js/isNaN x)) (js/isFinite x)))
 (defn round-to [x d] (let [k (js/Math.pow 10 d)] (/ (js/Math.round (* x k)) k)))
@@ -90,7 +99,13 @@
         i (- n (* k m))]
     (cents->hz (+ (* k (period gy)) (nth gs i)) (:ref gy))))
 
-(defn quantize-f [gy hz] (if gy (degree->hz gy (hz->degree gy hz)) hz))
+(defn quantize-f
+  "A value on the Y grid: the nearest degree of a tuning, or the nearest multiple of a regular step."
+  [gy v]
+  (cond (nil? gy) v
+        (:cents gy) (degree->hz gy (hz->degree gy v))
+        (:step gy) (round-to (* (:step gy) (js/Math.round (/ v (:step gy)))) 6)
+        :else v))
 
 ;; ───────── X grid ─────────
 
@@ -126,38 +141,82 @@
 
 (defn sane-gy [gy]
   (when (map? gy)
+    (if (and (nil? (:cents gy)) (num? (:step gy)) (pos? (:step gy)))
+      {:step (:step gy)}
     (let [cs (:cents gy) ref (:ref gy)]
       (when (and (sequential? cs) (seq cs) (every? num? cs) (pos? (peek (vec cs))) (< (count cs) 400))
-        {:name (str (or (:name gy) "scale")) :cents (vec cs) :ref (if (and (num? ref) (< 1 ref 20000)) ref default-ref)}))))
+        {:name (str (or (:name gy) "scale")) :cents (vec cs) :ref (if (and (num? ref) (< 1 ref 20000)) ref default-ref)})))))
 
-(defn transform [pts f] (sane-pts (mapv f pts)))
+(defn sane-axis [a dflt]
+  (let [a (if (map? a) a {}) lo (:lo a) hi (:hi a) log? (boolean (:log a))]
+    (if (and (num? lo) (num? hi) (< lo hi) (or (not log?) (pos? lo)))
+      {:lo lo :hi hi :log log?}
+      dflt)))
+
+(defn sane-ax [ax]
+  (when (map? ax)
+    {:x (sane-axis (:x ax) (:x default-ax)) :y (sane-axis (:y ax) (:y default-ax))}))
+
+(defn x-log? [d] (and (generic? d) (boolean (get-in d [:ax :x :log]))))
+(defn y-log? [d] (if (generic? d) (boolean (get-in d [:ax :y :log])) true))
+
+(defn sane-free-pts
+  "Points of a stroke of a generic canvas: any direction, at least two different points."
+  [d pts]
+  (when (sequential? pts)
+    (let [ps (->> pts
+                  (filter (fn [p] (and (sequential? p) (= 2 (count p)) (num? (first p)) (num? (second p))
+                                       (or (not (x-log? d)) (pos? (first p)))
+                                       (or (not (y-log? d)) (pos? (second p))))))
+                  (map (fn [[x y]] [(round-to x 4) (round-to y 4)]))
+                  dedupe
+                  vec)]
+      (when (>= (count ps) 2) ps))))
+
+(defn sane-pts-for "The right points check for this canvas." [d pts]
+  (if (generic? d) (sane-free-pts d pts) (sane-pts pts)))
+
+(defn shift-y
+  "A value moved by dy: in cents on a log axis, added on a linear one."
+  [d v dy] (if (y-log? d) (* v (js/Math.pow 2 (/ dy 1200))) (+ v dy)))
+
+(defn delta-y
+  "How far b is from a, in the units of shift-y."
+  [d b a] (if (y-log? d) (hz->cents b a) (- b a)))
+
+(defn transform [d pts f] (sane-pts-for d (mapv f pts)))
 
 (defn step
   "Data + event → data. Every change to a canvas goes through here."
   [d [op & args]]
   (let [d (or d empty)]
     (case op
-      :stroke  (let [[id pts] args ps (sane-pts pts)]
+      :stroke  (let [[id pts] args ps (sane-pts-for d pts)]
                  (if (and (keyword? id) ps) (assoc-in d [:strokes id] {:pts ps}) d))
+      ;; [:move id dx dy]: dy in cents on a log axis (freqt), in units on a linear one
       :move    (let [[id dt dc] args pts (get-in d [:strokes id :pts])]
                  (if (and pts (num? dt) (num? dc))
-                   (let [dt (max dt (- (ffirst pts))) k (js/Math.pow 2 (/ dc 1200))]
-                     (if-let [ps (transform pts (fn [[t f]] [(+ t dt) (* f k)]))] (assoc-in d [:strokes id :pts] ps) d))
+                   (let [dt (if (generic? d) dt (max dt (- (ffirst pts))))]
+                     (if-let [ps (transform d pts (fn [[t f]] [(+ t dt) (shift-y d f dc)]))] (assoc-in d [:strokes id :pts] ps) d))
                    d))
       :stretch (let [[id k] args pts (get-in d [:strokes id :pts])]
                  (if (and pts (num? k) (pos? k))
                    (let [t0 (ffirst pts)]
-                     (if-let [ps (transform pts (fn [[t f]] [(+ t0 (* k (- t t0))) f]))] (assoc-in d [:strokes id :pts] ps) d))
+                     (if-let [ps (transform d pts (fn [[t f]] [(+ t0 (* k (- t t0))) f]))] (assoc-in d [:strokes id :pts] ps) d))
                    d))
       :erase   (update d :strokes dissoc (first args))
       :clear   (assoc d :strokes {})
       :grid-x  (assoc d :gx (sane-gx (first args)))
       :tuning  (assoc d :gy (sane-gy (first args)))
+      :grid-y  (assoc d :gy (sane-gy (first args)))
+      :axis    (if (generic? d) (assoc d :ax (sane-ax (first args))) d)
       :load    (let [[x] args]
                  (if (map? x)
-                   {:strokes (into {} (for [[k s] (:strokes x) :let [ps (and (keyword? k) (map? s) (sane-pts (:pts s)))] :when ps] [k {:pts ps}]))
-                    :gx (sane-gx (:gx x))
-                    :gy (sane-gy (:gy x))}
+                   (let [base (cond-> {:gx (sane-gx (:gx x)) :gy (sane-gy (:gy x))}
+                                (or (generic? d) (map? (:ax x))) (assoc :ax (or (sane-ax (:ax x)) default-ax)))]
+                     (assoc base :strokes (into {} (for [[k s] (:strokes x)
+                                                         :let [ps (and (keyword? k) (map? s) (sane-pts-for base (:pts s)))] :when ps]
+                                                     [k {:pts ps}]))))
                    d))
       d)))
 
@@ -169,25 +228,45 @@
 
 (defn sorted-strokes [d] (sort-by (fn [[id s]] [(ffirst (:pts s)) (id-num id)]) (:strokes d)))
 
-(defn end-t [d] (reduce max 0 (map (fn [s] (first (peek (:pts s)))) (vals (:strokes d)))))
+(defn end-t [d] (reduce max 0 (map (fn [s] (apply max (map first (:pts s)))) (vals (:strokes d)))))
 
 ;; ───────── reading ─────────
+;; Reading at x = v (or y = v) gives, for each stroke, the other coordinate wherever the stroke
+;; crosses that line. A segment counts from its start up to, not including, its end, so a stroke
+;; going forward has an open end (as before) and a turning point is counted once.
+
+(defn axis-u [log? v] (if log? (log2 v) v))
+(defn axis-v [log? u] (if log? (js/Math.pow 2 u) u))
+
+(defn crossings
+  "Values of the other coordinate where the polyline pts crosses coordinate k (0 = x, 1 = y) = v."
+  [pts k v logs]
+  (let [o (- 1 k) lk (nth logs k) lo (nth logs o)
+        uv (axis-u lk v)]
+    (vec (keep (fn [[a b]]
+                 (let [ca (axis-u lk (nth a k)) cb (axis-u lk (nth b k))]
+                   (when (or (and (< ca cb) (<= ca uv) (< uv cb))
+                             (and (> ca cb) (< cb uv) (<= uv ca)))
+                     (let [r (/ (- uv ca) (- cb ca))
+                           oa (axis-u lo (nth a o)) ob (axis-u lo (nth b o))]
+                       (axis-v lo (+ oa (* r (- ob oa))))))))
+               (partition 2 1 pts)))))
+
+(defn read-along
+  "Everything a canvas holds at x = v (axis :x) or y = v (axis :y): [[id value] ...] in stroke order.
+   A stroke that crosses more than once gives :t1, :t1-2, :t1-3 …"
+  [d axis v]
+  (let [logs [(x-log? d) (y-log? d)] k (if (= axis :y) 1 0)]
+    (vec (mapcat (fn [[id s]]
+                   (map-indexed (fn [i val] [(if (zero? i) id (keyword (str (name id) "-" (inc i)))) val])
+                                (crossings (:pts s) k v logs)))
+                 (sorted-strokes d)))))
+
+(defn read-at "Everything that sounds at time t (reading along X)." [d t] (read-along d :x t))
 
 (defn value-at
-  "Frequency of a stroke at time t, or nil if the stroke does not pass there (the end is open)."
-  [pts t]
-  (let [t0 (ffirst pts) t1 (first (peek pts))]
-    (when (and (>= t t0) (< t t1))
-      (loop [[[ta fa] & more] pts]
-        (let [[tb fb] (first more)]
-          (cond (nil? tb) fa
-                (< t tb) (if (= tb ta) fb (* fa (js/Math.pow (/ fb fa) (/ (- t ta) (- tb ta)))))
-                :else (recur more)))))))
-
-(defn read-at
-  "Everything that sounds at time t: [[id hz] ...] in stroke order."
-  [d t]
-  (vec (keep (fn [[id s]] (when-let [f (value-at (:pts s) t)] [id f])) (sorted-strokes d))))
+  "Value of a stroke at x = t, or nil if it does not pass there (the end is open)."
+  [pts t] (first (crossings pts 0 t [false true])))
 
 ;; ───────── geometry and drawing ─────────
 
@@ -206,37 +285,85 @@
         span (max 1.6 (- chi clo)) mid (/ (+ clo chi) 2)]
     {:T T :lf0 (- mid (/ span 2)) :lf1 (+ mid (/ span 2))}))
 
+(defn ranges
+  "What the box shows: x from xa to xb and y from ya to yb, each on its scale."
+  [d]
+  (if (generic? d)
+    (let [{:keys [x y]} (:ax d)]
+      {:xa (:lo x) :xb (:hi x) :xlog (:log x) :ya (:lo y) :yb (:hi y) :ylog (:log y) :T (:hi x)})
+    (let [{:keys [T lf0 lf1]} (f-range d)]
+      {:xa 0 :xb T :xlog false :ya (js/Math.pow 2 lf0) :yb (js/Math.pow 2 lf1) :ylog true :T T :lf0 lf0 :lf1 lf1})))
+
 (defn geom [d hdr]
   (let [y0 (+ hdr 3)]
-    (merge (f-range d) {:x0 x0 :y0 y0 :w (- W x0 6) :h (- H y0 6)})))
+    (merge (ranges d) {:x0 x0 :y0 y0 :w (- W x0 6) :h (- H y0 6)})))
 
-(defn t->x [g t] (+ (:x0 g) (* (/ t (:T g)) (:w g))))
-(defn x->t [g x] (* (:T g) (/ (- x (:x0 g)) (:w g))))
-(defn f->y [g f] (+ (:y0 g) (* (/ (- (:lf1 g) (log2 f)) (- (:lf1 g) (:lf0 g))) (:h g))))
-(defn y->f [g y] (js/Math.pow 2 (- (:lf1 g) (* (/ (- y (:y0 g)) (:h g)) (- (:lf1 g) (:lf0 g))))))
+(defn t->x [g t]
+  (let [a (axis-u (:xlog g) (:xa g)) b (axis-u (:xlog g) (:xb g))]
+    (+ (:x0 g) (* (/ (- (axis-u (:xlog g) t) a) (- b a)) (:w g)))))
+(defn x->t [g x]
+  (let [a (axis-u (:xlog g) (:xa g)) b (axis-u (:xlog g) (:xb g))]
+    (axis-v (:xlog g) (+ a (* (/ (- x (:x0 g)) (:w g)) (- b a))))))
+(defn f->y [g f]
+  (let [a (axis-u (:ylog g) (:ya g)) b (axis-u (:ylog g) (:yb g))]
+    (+ (:y0 g) (* (/ (- b (axis-u (:ylog g) f)) (- b a)) (:h g)))))
+(defn y->f [g y]
+  (let [a (axis-u (:ylog g) (:ya g)) b (axis-u (:ylog g) (:yb g))]
+    (axis-v (:ylog g) (- b (* (/ (- y (:y0 g)) (:h g)) (- b a))))))
+
+(defn nice-step
+  "A round step (1, 2 or 5 × 10^k) that cuts span into about n parts."
+  [span n]
+  (let [raw (/ span (max 1 n)) k (js/Math.pow 10 (js/Math.floor (/ (js/Math.log raw) (js/Math.log 10))))
+        m (/ raw k)]
+    (* k (cond (< m 1.5) 1 (< m 3.5) 2 (< m 7.5) 5 :else 10))))
+
+(defn ticks
+  "[[v level label]] every nice step between a and b."
+  [a b n]
+  (let [p (nice-step (- b a) n)]
+    (for [k (range (js/Math.ceil (/ a p)) (inc (js/Math.floor (/ b p))))
+          :let [v (round-to (* k p) 6)]]
+      [v (if (zero? v) 1 0) (fmt v)])))
 
 (defn lines-x
   "[[t level label]]: level 0 = step, 1 = group, 2 = start of cycle."
   [gx g]
-  (let [T (:T g) px-per-unit (/ (:w g) T)]
-    (if-not gx
+  (let [a (:xa g) T (:xb g) px-per-unit (/ (:w g) (- T a))]
+    (cond
+      (and (not gx) (or (:xlog g) (not= a 0) (not (:lf0 g))))
+      (if (:xlog g)
+        (for [k (range (js/Math.ceil (log2 a)) (inc (js/Math.floor (log2 T)))) :let [v (js/Math.pow 2 k)]] [v 1 (fmt v)])
+        (ticks a T 8))
+      (not gx)
       (for [t (range 0 (inc T))] [t (if (zero? (mod t 4)) 1 0) nil])
+      :else
       (let [p (:step gx) cs (or (seq (:cycles gx)) [4]) L (reduce + cs)
             bounds (butlast (reductions + 0 cs))
             steps (when (>= (* p px-per-unit) 5)
-                    (for [k (range 0 (inc (js/Math.floor (/ T p))))] [(* k p) 0 nil]))]
+                    (for [k (range (js/Math.ceil (/ a p)) (inc (js/Math.floor (/ T p))))] [(* k p) 0 nil]))]
         (concat steps
-                (for [c (range 0 (inc (js/Math.floor (/ T L)))) b bounds :let [t (+ (* c L) b)] :when (<= t T)]
+                (for [c (range (js/Math.floor (/ a L)) (inc (js/Math.floor (/ T L)))) b bounds
+                      :let [t (+ (* c L) b)] :when (<= a t T)]
                   [t (if (zero? b) 2 1) (when (zero? b) (inc c))]))))))
 
 (defn lines-y
   "[[hz level label]] within the visible range."
   [gy g]
-  (let [f0 (js/Math.pow 2 (:lf0 g)) f1 (js/Math.pow 2 (:lf1 g))]
-    (if-not gy
+  (let [f0 (:ya g) f1 (:yb g)]
+    (cond
+      (and (:step gy) (not (:cents gy)))
+      (let [p (:step gy) n (/ (- f1 f0) p) every (max 1 (js/Math.ceil (/ n (/ (:h g) 14))))]
+        (for [k (range (js/Math.ceil (/ f0 p)) (inc (js/Math.floor (/ f1 p))))
+              :let [v (round-to (* k p) 6)]]
+          [v (if (zero? (mod k every)) 1 0) (when (zero? (mod k every)) (fmt v))]))
+      (and (not gy) (not (:ylog g)))
+      (ticks f0 f1 6)
+      (not gy)
       (for [k (range (js/Math.ceil (log2 (/ f0 55))) (inc (js/Math.floor (log2 (/ f1 55)))))
             :let [f (* 55 (js/Math.pow 2 k))]]
         [f 1 (str (round-to f 1))])
+      :else
       (let [m (count (degrees gy)) a (hz->degree gy f0) b (hz->degree gy f1)
             dense? (> (/ (- b a) (max 1 (/ (:h g) 3.5))) 1)
             tet12? (= (:cents gy) (:cents (get tunings "12-tet")))]
@@ -271,14 +398,18 @@
                           :let [pts (or (get previews id) (:pts s)) dd (path-d g pts) ids (name id)]]
                       (str "<path class=\"stroke" (when (= sel id) " sel") "\" d=\"" dd "\"></path>"
                            "<path class=\"stroke-hit\" data-box=\"" idn "\" data-stroke=\"" ids "\" d=\"" dd "\"><title>"
-                           ids " · " (fmt (ffirst pts)) "→" (fmt (first (peek pts))) " · " (fmt (second (first pts))) " Hz</title></path>")))
+                           ids " · " (fmt (ffirst pts)) "→" (fmt (first (peek pts))) " · " (fmt (second (first pts)))
+                           (when-not (generic? d) " Hz") "</title></path>")))
          (when (and new-pts (>= (count new-pts) 2))
            (str "<path class=\"stroke new\" d=\"" (path-d g new-pts) "\"></path>")))))
 
 (defn summary [d]
+  (if (generic? d)
+    (let [{:keys [x y]} (:ax d) rng (fn [a] (str (fmt (:lo a)) "…" (fmt (:hi a)) (when (:log a) " log")))]
+      (str "x " (rng x) " · y " (rng y) " · " (count (:strokes d)) " strokes"))
   (str (if-let [gy (:gy d)] (:name gy) "continuous Hz")
        " · " (if-let [gx (:gx d)] (str "step " (fmt (:step gx)) " · cycle " (str/join "+" (map fmt (or (seq (:cycles gx)) [4])))) "free time")
-       " · " (count (:strokes d)) " strokes"))
+       " · " (count (:strokes d)) " strokes")))
 
 ;; ───────── projections ─────────
 
@@ -286,7 +417,12 @@
   "Lines of code that rebuild the canvas of box `id`."
   [id d]
   (concat
-   (when-let [gy (:gy d)]
+   (when (and (generic? d) (not= (:ax d) default-ax))
+     (for [k [:x :y] :let [a (get-in d [:ax k])] :when (not= a (get default-ax k))]
+       (str "(axis " id " " k " " (fmt (:lo a)) " " (fmt (:hi a)) (when (:log a) " :log") ")")))
+   (when-let [gy (and (:step (:gy d)) (not (:cents (:gy d))) (:gy d))]
+     [(str "(grid-y " id " " (fmt (:step gy)) ")")])
+   (when-let [gy (and (:cents (:gy d)) (:gy d))]
      (let [preset (some (fn [[k v]] (when (= (:cents v) (:cents gy)) k)) tunings)]
        [(str "(tuning " id " " (if preset (pr-str preset) (pr-str {:name (:name gy) :cents (:cents gy)})) " " (fmt (:ref gy)) ")")]))
    (when-let [gx (:gx d)]

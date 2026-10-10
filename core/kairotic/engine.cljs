@@ -108,7 +108,7 @@
       (doseq [[id sig] boxes :when (not (get-in @rt [:nodes id]))]
         (let [b (get-in p [:boxes id]) d (comp/lookup (comp/klass (:text b)))]
           (try
-            (when-let [node ((get-in d [:audio :create]) (ctx) (comp/box-info b) {:master (:master @rt)})]
+            (when-let [node ((get-in d [:audio :create]) (ctx) (comp/box-info b) (:env @rt))]
               (swap! rt assoc-in [:nodes id] (assoc node :signature sig :def d)))
             (catch :default e (js/console.error "could not create the audio of" (str id) e)))))
       (doseq [[_ node] (:nodes @rt) [n _] (:outlets node)] (try (.disconnect n) (catch :default _ nil)))
@@ -131,7 +131,7 @@
   "The canvas (or score) connected to the right inlet of a box: [id data]."
   [p id]
   (some (fn [[a _ b i]]
-          (when (and (= b id) (= i 1) (#{"canvas" "score"} (comp/klass (get-in p [:boxes a :text]))))
+          (when (and (= b id) (= i 1) (#{"canvas" "freqt" "score"} (comp/klass (get-in p [:boxes a :text]))))
             [a (or (get-in p [:boxes a :data]) cv/empty)]))
         (:lines p)))
 
@@ -184,18 +184,45 @@
 
 (defn running? [] (boolean (:on @rt)))
 
+;; ───────── output: one input per channel of the sound card ─────────
+;; Every channel has its own mono input (dac~ 1 → channel 1); they meet in a merger, go through the
+;; master gain and, in stereo, through a gentle compressor. The sound card's channels are used if it
+;; has more than two.
+
+(defn explicit! [node n interpretation]
+  (set! (.-channelCount node) n)
+  (set! (.-channelCountMode node) "explicit")
+  (set! (.-channelInterpretation node) interpretation))
+
+(defn output! [ac]
+  (let [dest (.-destination ac)
+        n (max 2 (min 32 (or (.-maxChannelCount dest) 2)))]
+    (try (explicit! dest n "discrete") (catch :default _ nil))
+    (let [n (or (.-channelCount dest) 2)
+          merger (.createChannelMerger ac n)
+          master (.createGain ac)
+          silent (.createGain ac)
+          ins (vec (for [i (range n)]
+                     (let [g (.createGain ac)] (explicit! g 1 "speakers") (.connect g merger 0 i) g)))]
+      (set! (.. master -gain -value) 0.8)
+      (set! (.. silent -gain -value) 0)
+      (explicit! master n "discrete")
+      (.connect merger master)
+      (if (= n 2)
+        (let [c (.createDynamicsCompressor ac)] (.connect master c) (.connect c dest) {:master master :comp c :ins ins :n n :silent silent})
+        (do (.connect master dest) {:master master :ins ins :n n :silent silent})))))
+
 (defn start!
   "Starts the engine (if it was not running). With `loadbang?`, fires the loadbang boxes."
   [patch-fn loadbang?]
   (let [ac (ctx)]
     (.resume ac)
     (when-not (:on @rt)
-      (let [master (.createGain ac) compr (.createDynamicsCompressor ac)]
-        (set! (.. master -gain -value) 0.8)
-        (.connect master compr)
-        (.connect compr (.-destination ac))
+      (let [{:keys [master] :as out} (output! ac)]
         (swap! rt assoc :on true :patch-fn patch-fn :states {} :nodes {} :queue [] :signature nil
-               :master master :comp compr :prints [])
+               :master master :out out :prints []
+               :env {:master master :channels (:n out) :silent (:silent out)
+                     :channel (fn [i] (get (:ins out) i))})
         (sync!)
         (swap! rt assoc :timer (js/setInterval tick! 25))))
     (when loadbang?

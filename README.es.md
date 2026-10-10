@@ -29,7 +29,7 @@ componentes que cualquiera puede escribir y compartir.
 core/kairotic/        módulos actuales del sistema (ClojureScript)
   components.cljs     registro de componentes, clases del núcleo, utilidades para escribir componentes
   engine.cljs         ejecución: mensajes, cola temporal sobre el reloj de audio, nodos Web Audio
-  canvas.cljs         buffer gráfico frecuencia × tiempo, rejillas, afinaciones Scala
+  canvas.cljs         buffers gráficos: canvas genérico (cualquier dato, se lee en X o en Y) y freqt (frecuencia × tiempo, afinaciones Scala)
   score.cljs          voz → MEI para Verovio, tiempo ⇄ espacio
   code.cljs           cajas de código: compiladores por lenguaje, script (ClojureScript)
   faust.cljs          faust~: Faust compilado en el navegador (faustwasm) como AudioWorklet
@@ -59,6 +59,7 @@ paquete anterior (`kairotic-componentes`), ya sustituido por `kairotic-component
 | 9 | Sections | todo en inglés; componentes por secciones (`:args`, lógica, plantilla `:view`) |
 | 10 | Subpatches | patches dentro de patches: cajas `patch` con `inlet`/`outlet`, abstracciones con `$1`, `(abstract …)` |
 | 11 | Presentation | una vista para quien interpreta (`(present …)`, botón Present) y sub-patches vistos como paneles de sus controles |
+| 12 | Space | un `canvas` genérico que se lee en X o en Y (y `freqt` para frecuencia sobre tiempo); `dac~` con canales reales, `pan~`, `space~` binaural |
 
 ## Probarlo
 
@@ -66,7 +67,7 @@ Los ensayos se publicaron como artefactos de claude.ai, que aportan la base de d
 compartidas. Fuera de claude.ai funcionan en **modo local** (sin guardar ni compartir):
 
 ```sh
-cd studies/11-presentation && python3 -m http.server 8000
+cd studies/12-space && python3 -m http.server 8000
 # abre http://localhost:8000 y elige «Try locally, without saving»
 ```
 

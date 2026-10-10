@@ -262,11 +262,12 @@
           (num-of value) (let [v (num-of value)] {:state v :out [[0 v]] :show v})
           :else {:state cur})))
 
-(defn reader [{:keys [inlet value buffer buffer-id]}]
+(defn reader [{:keys [inlet value buffer buffer-id args]}]
   (if (and (zero? inlet) (num-of value))
-    (let [t (num-of value) r (if buffer (cv/read-at buffer t) [])]
-      ;; as in Max, first the right outlet (ids) and then the left one (frequencies)
-      {:out [[1 (mapv first r)] [0 (mapv second r)]] :show {:t t :from buffer-id :n (count r)}})
+    (let [axis (if (some #{:y} args) :y :x)
+          t (num-of value) r (if buffer (cv/read-along buffer axis t) [])]
+      ;; as in Max, first the right outlet (ids) and then the left one (values)
+      {:out [[1 (mapv first r)] [0 (mapv second r)]] :show {:t t :from buffer-id :n (count r) :axis axis}})
     {}))
 
 (defn canvas-box [{:keys [inlet value]}]
@@ -274,7 +275,8 @@
     {:out [[0 (num-of value)]] :show {:t (num-of value)}}
     {}))
 
-(def canvas-model {:empty cv/empty :step cv/step :load (fn [x] (cv/step cv/empty [:load x])) :code cv/->code})
+(def canvas-model {:empty cv/generic-empty :step cv/step :load (fn [x] (cv/step cv/generic-empty [:load x])) :code cv/->code})
+(def freqt-model {:empty cv/empty :step cv/step :load (fn [x] (cv/step cv/empty [:load x])) :code cv/->code})
 
 (define! "loadbang" {:doc "Sends a bang when the engine starts (▶)." :io [0 1] :receive (fn [_] {:out [[0 :bang]]})})
 (define! "bang" {:doc "A button: when pressed (or on receiving anything) it sends a bang." :io [1 1] :display :bang
@@ -293,10 +295,13 @@
 (define! "metro" {:doc "Sends periodic bangs: 1 or bang starts it, 0 or stop stops it." :usage "metro ms" :io [2 1] :receive metro})
 (define! "counter" {:doc "Each bang sends the value and advances one step; goes back to the minimum on reaching the maximum." :usage "counter step [max] [min]" :io [2 1] :receive counter})
 (define! "ramp" {:doc "Linear motion: a bang (or [a b s]) goes from a to b in s seconds; a number jumps there." :usage "ramp a b s [loop]" :io [2 1] :receive ramp})
-(define! "canvas" {:doc "Graphic buffer of frequency over time. A number on the inlet (or a click) comes out on the left; the right outlet is the buffer for a reader."
+(define! "canvas" {:doc "Graphic buffer for any numeric data: strokes in a plane with axes of any range, linear or log ((axis :b1 :y -1 1)). A number on the inlet (or a click) comes out on the left; the right outlet is the buffer for a reader, which can read it along X or Y."
                    :io [1 2] :display :canvas :receive canvas-box :model canvas-model})
-(define! "score" {:doc "The same buffer as a canvas, drawn as an approximate score." :io [1 2] :display :score :receive canvas-box :model canvas-model})
-(define! "reader" {:doc "Reads the buffer connected to its right inlet at the position that comes in on the left: ids on the right and Hz on the left."
+(define! "freqt" {:doc "Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids. A number on the inlet (or a click) comes out on the left; the right outlet is the buffer for a reader."
+                  :io [1 2] :display :canvas :receive canvas-box :model freqt-model})
+(define! "score" {:doc "The same buffer as a freqt, drawn as an approximate score." :io [1 2] :display :score :receive canvas-box :model freqt-model})
+(define! "reader" {:doc "Reads the buffer (canvas, freqt, score) connected to its right inlet at the position that comes in on the left — along X, or along Y with `reader y`: ids on the right and the values on the left (every crossing)."
+                   :usage "reader [x|y]"
                    :io [2 2] :receive reader :reads-buffer true})
 (doseq [[n io] [["state" [1 1]] ["transition" [2 1]] ["instruction" [1 0]] ["region" [1 1]]]]
   (define! n {:doc "Kairotic class with no semantics yet." :io io}))
@@ -358,9 +363,76 @@
                   :audio {:create (fn [ac c _] (let [g (.createGain ac)] (set! (.. g -gain -value) (or (num-of (first (:args c))) 0.5))
                                                  {:g g :inlets [[g 0]] :outlets [[g 0]]}))
                           :effects {:gain (fn [node x at] (.setTargetAtTime (.-gain (:g node)) x at 0.01))}}})
-(define! "dac~" {:doc "Audio output (both inlets go to the speakers)." :io [2 0]
+(defn dac-channels
+  "The output channels of a dac~ (1-based): its numbers, or 1 2."
+  [b] (let [cs (filterv (fn [x] (and (number? x) (>= x 1))) (:args b))] (if (seq cs) cs [1 2])))
+
+(define! "dac~" {:doc "Audio output: each inlet is an output channel, the ones written after it (dac~ 1 2 by default; dac~ 1 2 3 4 … if the sound card has them)."
+                 :usage "dac~ [channel …]"
+                 :io (fn [b] [(count (dac-channels b)) 0]) :dynamic-io true
                  :receive (fn [_] {})
-                 :audio {:create (fn [_ _ env] {:inlets [[(:master env) 0] [(:master env) 0]] :outlets []})}})
+                 :audio {:create (fn [_ b env]
+                                   {:inlets (vec (for [c (dac-channels b)]
+                                                   [(or ((:channel env) (dec c)) (:silent env)) 0]))
+                                    :outlets []})
+                         :key (fn [b] (dac-channels b))}})
+
+;; ───────── core: space ─────────
+
+(defn split-stereo [ac src]
+  (let [sp (.createChannelSplitter ac 2)] (.connect src sp) [[sp 0] [sp 1]]))
+
+(define! "pan~" {:doc "Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right."
+                 :usage "pan~ [position]"
+                 :io [2 2]
+                 :receive (fn [{:keys [inlet value]}]
+                            (if (and (= 1 inlet) (num-of value)) {:effects [[:pan (clamp (num-of value) -1 1)]] :show (num-of value)} {}))
+                 :audio {:create (fn [ac b _]
+                                   (let [p (.createStereoPanner ac)]
+                                     (set! (.. p -pan -value) (clamp (or (num-of (first (:args b))) 0) -1 1))
+                                     {:p p :inlets [[p 0]] :outlets (split-stereo ac p)}))
+                         :effects {:pan (fn [node x at] (.setTargetAtTime (.-pan (:p node)) x at 0.01))}}})
+
+(defn space-pos [v] (when (and (sequential? v) (= 2 (count v)) (every? number? v)) [(clamp (first v) -1 1) (clamp (second v) -1 1)]))
+
+(define! "space~" {:doc "A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones."
+                   :usage "space~ [x y]"
+                   :io [1 2]
+                   :size [104 104]
+                   :receive (fn [{:keys [value state args]}]
+                              (if-let [p (space-pos value)]
+                                {:state p :show p :effects [[:pos p]]}
+                                (let [p (or state (space-pos (filterv number? args)) [0 1])]
+                                  (if (= value :bang) {:state p :show p :effects [[:pos p]]} {:state p}))))
+                   :gesture (fn [{:keys [x y]}]
+                              [(/ (js/Math.round (* 100 (clamp (/ (- x 52) 46) -1 1))) 100)
+                               (/ (js/Math.round (* 100 (clamp (/ (- 52 y) 46) -1 1))) 100)])
+                   :derive (fn [{:keys [shown args]}]
+                             (let [[x y] (or (space-pos shown) (space-pos (filterv number? args)) [0 1])]
+                               {:px (+ 52 (* 46 x)) :py (- 52 (* 46 y))
+                                :label (str (nice x) " · " (nice y))}))
+                   :view [[:rect {:x 2 :y 2 :w 100 :h 100 :r 4 :stroke :grid :fill :bg}]
+                          [:line {:x1 52 :y1 6 :x2 52 :y2 98 :stroke :grid}]
+                          [:line {:x1 6 :y1 52 :x2 98 :y2 52 :stroke :grid}]
+                          [:circle {:cx 52 :cy 52 :r 30 :stroke :grid}]
+                          [:path {:points [[47 50] [52 43] [57 50]] :closed true :fill :soft}]
+                          [:circle {:cx 52 :cy 52 :r 5 :stroke :soft :fill :bg}]
+                          [:line {:x1 52 :y1 52 :x2 :$px :y2 :$py :stroke :accent :weight 1}]
+                          [:circle {:cx :$px :cy :$py :r 6 :fill :accent}]
+                          [:text {:x 6 :y 98 :size 9 :fill :soft} :$label]]
+                   :audio {:create (fn [ac b _]
+                                     (let [p (.createPanner ac)
+                                           [x y] (or (space-pos (filterv number? (:args b))) [0 1])]
+                                       (set! (.-panningModel p) "HRTF")
+                                       (set! (.-distanceModel p) "inverse")
+                                       (set! (.-refDistance p) 1)
+                                       (set! (.. p -positionX -value) (* 2 x))
+                                       (set! (.. p -positionY -value) 0)
+                                       (set! (.. p -positionZ -value) (* -2 y))
+                                       {:p p :inlets [[p 0]] :outlets (split-stereo ac p)}))
+                           :effects {:pos (fn [node [x y] at]
+                                            (.setTargetAtTime (.-positionX (:p node)) (* 2 x) at 0.02)
+                                            (.setTargetAtTime (.-positionZ (:p node)) (* -2 y) at 0.02))}}})
 
 ;; ───────── core: ports of a sub-patch ─────────
 ;; Seen from inside, an inlet only has an outlet and an outlet only has an inlet; seen from
