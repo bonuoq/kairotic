@@ -153,6 +153,15 @@ after the class name:
 `detune 1.5` is then a fifth above. The engine replaces every sub-patch by its boxes (`:b5.b2`…),
 so they cost nothing at run time.
 
+### Seen from outside: panels
+
+Mark boxes inside a sub-patch with `(present :b4 x y)` (or just `(present :b4)`) and the sub-patch is
+drawn from outside as a **panel** of them, like a bpatcher in Max: its knobs can be played without
+opening it. This also works for abstractions, since `:present` travels inside `:patch`. In the work
+itself, the presented boxes make up the **presentation**: press *Present* (or `(presentation true)`)
+to see only them, where the performer needs them. Moving a box there changes its presentation place,
+not its place in the patch.
+
 ## 7. Sharing it
 
 - **In the work:** the `component` box travels with the work and its history.

@@ -156,6 +156,15 @@ escritas después del nombre de la clase:
 `detune 1.5` sube entonces una quinta. El motor sustituye cada sub-patch por sus cajas (`:b5.b2`…),
 así que no cuestan nada al sonar.
 
+### Vistos desde fuera: paneles
+
+Marca cajas dentro de un sub-patch con `(present :b4 x y)` (o solo `(present :b4)`) y el sub-patch se
+dibuja desde fuera como un **panel** con ellas, como un bpatcher de Max: sus knobs se pueden tocar sin
+abrirlo. También funciona con las abstracciones, porque `:present` viaja dentro de `:patch`. En la
+obra, las cajas presentadas forman la **presentación**: pulsa *Present* (o `(presentation true)`) para
+ver solo esas, donde las necesita quien interpreta. Mover una caja ahí cambia su lugar en la
+presentación, no su lugar en el patch.
+
 ## 7. Compartirlo
 
 - **En la obra:** la caja `component` viaja con la obra y su historia.

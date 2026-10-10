@@ -29,6 +29,7 @@ Esta tabla relaciona los nombres en castellano (hasta el Ensayo 8) con los nombr
 | figuras | shapes |
 | núcleo | core |
 | sub-patch, abstracción | sub-patch, abstraction |
+| presentación, panel | presentation, panel |
 
 ## Namespaces · Espacios de nombres
 
@@ -171,6 +172,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | (importar "npm:…") (publicar :b5) (biblioteca) (usar "quinta") | (import! "npm:…") (publish :b5) (library) (use! "fifth") |
 | (frente) (simultaneidad 1500) | (front) (simultaneity 1500) |
 | — | (enter :b5) (up) (top) (inside :b5 …) (abstract :b5 "voice") (Study 10) |
+| — | (present :b4 x y) (unpresent :b4) (presentation true) (send-to! :b7.b4 v) (Study 11) |
 | (rewind) (forward) (tip) (goto …) (here) (branches) (merge-from …) | (same) |
 
 ## Storage · Almacenamiento (new artifact, new database)

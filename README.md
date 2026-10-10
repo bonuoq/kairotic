@@ -53,6 +53,7 @@ and interface are in English. The [glossary](docs/glossary.md) maps the old name
 | 8 | Controls | a component's own view: knobs playing a faust~ |
 | 9 | Sections | everything in English; components in sections (`:args`, logic, `:view` template) |
 | 10 | Subpatches | patches inside patches: `patch` boxes with `inlet`/`outlet`, abstractions with `$1`, `(abstract …)` |
+| 11 | Presentation | a performer's view (`(present …)`, Present button) and sub-patches seen as panels of their controls |
 
 ## Trying it
 
@@ -60,7 +61,7 @@ The studies were published as claude.ai artifacts, which provide the database an
 rooms. Outside claude.ai they work in **local mode** (no saving or sharing):
 
 ```sh
-cd studies/10-subpatches && python3 -m http.server 8000
+cd studies/11-presentation && python3 -m http.server 8000
 # open http://localhost:8000 and choose "Try locally, without saving"
 ```
 
