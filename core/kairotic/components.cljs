@@ -263,11 +263,22 @@
           :else {:state cur})))
 
 (defn reader [{:keys [inlet value buffer buffer-id args]}]
-  (if (and (zero? inlet) (num-of value))
+  (cond
+    ;; reader path [stroke]: a position from 0 to 1 along a stroke, in the order it was drawn → [x y]
+    (and (zero? inlet) (num-of value) (some #{:path} args))
+    (let [sid (first (remove #{:path} (filter keyword? args)))
+          u (clamp (num-of value) 0 1)
+          pts (when buffer (cv/stroke-for buffer sid))
+          pt (when pts (cv/point-along buffer pts u))]
+      (if pt
+        {:out [[0 pt]] :show {:t u :from buffer-id :axis :path :pt pt}}
+        {}))
+    (and (zero? inlet) (num-of value))
     (let [axis (if (some #{:y} args) :y :x)
           t (num-of value) r (if buffer (cv/read-along buffer axis t) [])]
       ;; as in Max, first the right outlet (ids) and then the left one (values)
       {:out [[1 (mapv first r)] [0 (mapv second r)]] :show {:t t :from buffer-id :n (count r) :axis axis}})
+    :else
     {}))
 
 (defn canvas-box [{:keys [inlet value]}]
@@ -300,8 +311,8 @@
 (define! "freqt" {:doc "Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids. A number on the inlet (or a click) comes out on the left; the right outlet is the buffer for a reader."
                   :io [1 2] :display :canvas :receive canvas-box :model freqt-model})
 (define! "score" {:doc "The same buffer as a freqt, drawn as an approximate score." :io [1 2] :display :score :receive canvas-box :model freqt-model})
-(define! "reader" {:doc "Reads the buffer (canvas, freqt, score) connected to its right inlet at the position that comes in on the left — along X, or along Y with `reader y`: ids on the right and the values on the left (every crossing)."
-                   :usage "reader [x|y]"
+(define! "reader" {:doc "Reads the buffer (canvas, freqt, score) connected to its right inlet at the position that comes in on the left — along X, or along Y with `reader y`: ids on the right and the values on the left (every crossing). With `reader path [stroke]` a position from 0 to 1 travels along a stroke in the order it was drawn and gives [x y]."
+                   :usage "reader [x|y|path [stroke]]"
                    :io [2 2] :receive reader :reads-buffer true})
 (doseq [[n io] [["state" [1 1]] ["transition" [2 1]] ["instruction" [1 0]] ["region" [1 1]]]]
   (define! n {:doc "Kairotic class with no semantics yet." :io io}))
@@ -349,20 +360,27 @@
                                                   {:outlets [[out 0]] :out out :voices (atom {})}))
                            :effects {:voices voices!}
                            :dispose (fn [node] (doseq [[_ v] @(:voices node)] (try (.stop (:osc v)) (catch :default _ nil))))}})
-(define! "osc~" {:doc "Sine oscillator; a number on the left changes its frequency." :usage "osc~ [hz]" :io [2 1]
+(define! "osc~" {:doc "Sine oscillator. A number on the left changes its frequency; a signal on the left (from reader~, sig~…) is its frequency in Hz."
+                 :usage "osc~ [hz]" :io [2 1]
                  :receive (fn [{:keys [inlet value]}] (if (and (zero? inlet) (num-of value)) {:effects [[:freq (num-of value)]]} {}))
-                 :audio {:create (fn [ac c _] (let [o (.createOscillator ac) g (.createGain ac)]
-                                                (set! (.. o -frequency -value) (or (num-of (first (:args c))) 440))
+                 :audio {:create (fn [ac c _] (let [o (.createOscillator ac) g (.createGain ac)
+                                                    base (atom (or (num-of (first (:args c))) 440))]
+                                                (set! (.. o -frequency -value) @base)
                                                 (set! (.. g -gain -value) 0.15)
                                                 (.connect o g) (.start o)
-                                                {:osc o :outlets [[g 0]]}))
-                         :effects {:freq (fn [node x at] (.linearRampToValueAtTime (.-frequency (:osc node)) x at))}
+                                                {:osc o :base base :inlets [[(.-frequency o) 0]] :outlets [[g 0]]}))
+                         :effects {:freq (fn [node x at] (reset! (:base node) x) (.linearRampToValueAtTime (.-frequency (:osc node)) x at))}
+                         ;; with a signal on the left the frequency is only that signal
+                         :wired (fn [node ins] (set! (.. (:osc node) -frequency -value) (if (contains? ins 0) 0 @(:base node))))
                          :dispose (fn [node] (try (.stop (:osc node)) (catch :default _ nil)))}})
-(define! "gain~" {:doc "Gain: signal on the left, factor on the right." :usage "gain~ [factor]" :io [2 1]
+(define! "gain~" {:doc "Gain: signal on the left, factor on the right — a number, or a signal (an envelope, a reader~) that then is the factor."
+                  :usage "gain~ [factor]" :io [2 1]
                   :receive (fn [{:keys [inlet value]}] (if (and (= 1 inlet) (num-of value)) {:effects [[:gain (num-of value)]]} {}))
-                  :audio {:create (fn [ac c _] (let [g (.createGain ac)] (set! (.. g -gain -value) (or (num-of (first (:args c))) 0.5))
-                                                 {:g g :inlets [[g 0]] :outlets [[g 0]]}))
-                          :effects {:gain (fn [node x at] (.setTargetAtTime (.-gain (:g node)) x at 0.01))}}})
+                  :audio {:create (fn [ac c _] (let [g (.createGain ac) base (atom (or (num-of (first (:args c))) 0.5))]
+                                                 (set! (.. g -gain -value) @base)
+                                                 {:g g :base base :inlets [[g 0] [(.-gain g) 0]] :outlets [[g 0]]}))
+                          :effects {:gain (fn [node x at] (reset! (:base node) x) (.setTargetAtTime (.-gain (:g node)) x at 0.01))}
+                          :wired (fn [node ins] (set! (.. (:g node) -gain -value) (if (contains? ins 1) 0 @(:base node))))}})
 (defn dac-channels
   "The output channels of a dac~ (1-based): its numbers, or 1 2."
   [b] (let [cs (filterv (fn [x] (and (number? x) (>= x 1))) (:args b))] (if (seq cs) cs [1 2])))

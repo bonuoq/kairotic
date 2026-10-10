@@ -264,6 +264,57 @@
 
 (defn read-at "Everything that sounds at time t (reading along X)." [d t] (read-along d :x t))
 
+;; ───────── trajectories ─────────
+;; A stroke can also be read as a path: position u from 0 to 1 along it, in the order it was drawn,
+;; proportionally to its length as it is seen (each axis on its own scale, both of the same size).
+
+(declare ranges)
+
+(defn stroke-for
+  "The points of stroke `sid` (a keyword), or of the first stroke if sid is nil or not there."
+  [d sid]
+  (or (when sid (get-in d [:strokes sid :pts]))
+      (:pts (second (first (sorted-strokes d))))))
+
+(defn point-along
+  "The point [x y] at fraction u (0…1) of the length of a path."
+  [d pts u]
+  (when (>= (count pts) 2)
+    (let [{:keys [xa xb ya yb xlog ylog]} (ranges d)
+          nx (fn [x] (/ (- (axis-u xlog x) (axis-u xlog xa)) (- (axis-u xlog xb) (axis-u xlog xa))))
+          ny (fn [y] (/ (- (axis-u ylog y) (axis-u ylog ya)) (- (axis-u ylog yb) (axis-u ylog ya))))
+          segs (map (fn [[a b]] [a b (js/Math.hypot (- (nx (first b)) (nx (first a))) (- (ny (second b)) (ny (second a))))])
+                    (partition 2 1 pts))
+          total (reduce + (map #(nth % 2) segs))
+          target (* (max 0 (min 1 u)) total)]
+      (if (zero? total)
+        (first pts)
+        (loop [[[a b len] & more] segs acc 0]
+          (if (or (empty? more) (<= target (+ acc len)))
+            (let [r (if (pos? len) (max 0 (min 1 (/ (- target acc) len))) 0)
+                  lerp (fn [log? p q] (axis-v log? (+ (axis-u log? p) (* r (- (axis-u log? q) (axis-u log? p))))))]
+              [(lerp xlog (first a) (first b)) (lerp ylog (second a) (second b))])
+            (recur more (+ acc len))))))))
+
+(defn x-range
+  "The span read along X by a position from 0 to 1: the X axis of a canvas, or 0 … end of a freqt."
+  [d]
+  (if (generic? d)
+    (let [{:keys [lo hi log]} (get-in d [:ax :x])] [lo hi (boolean log)])
+    [0 (max 1e-6 (end-t d)) false]))
+
+(defn y-range
+  "The span read along Y: the Y axis of a canvas, or the lowest … highest frequency of a freqt."
+  [d]
+  (if (generic? d)
+    (let [{:keys [lo hi log]} (get-in d [:ax :y])] [lo hi (boolean log)])
+    (let [fs (map second (mapcat :pts (vals (:strokes d))))]
+      (if (seq fs) [(apply min fs) (max (+ (apply min fs) 1e-6) (apply max fs)) true] [100 1000 true]))))
+
+(defn at-unit
+  "The value at fraction u of a span [lo hi log?]."
+  [[lo hi log?] u] (axis-v log? (+ (axis-u log? lo) (* u (- (axis-u log? hi) (axis-u log? lo))))))
+
 (defn value-at
   "Value of a stroke at x = t, or nil if it does not pass there (the end is open)."
   [pts t] (first (crossings pts 0 t [false true])))

@@ -114,7 +114,12 @@
       (doseq [[_ node] (:nodes @rt) [n _] (:outlets node)] (try (.disconnect n) (catch :default _ nil)))
       (doseq [[a o b i] lines]
         (let [[sn so] (get-in @rt [:nodes a :outlets o]) [dn di] (get-in @rt [:nodes b :inlets i])]
-          (when (and sn dn) (try (.connect sn dn so di) (catch :default e (js/console.error e))))))
+          ;; an inlet can also be an AudioParam (a frequency, a gain): the signal is added to its value
+          (when (and sn dn) (try (if (instance? js/AudioParam dn) (.connect sn dn so) (.connect sn dn so di))
+                                 (catch :default e (js/console.error e))))))
+      ;; every node learns which of its inlets receive a signal (osc~ and gain~ then let it take over)
+      (doseq [[id node] (:nodes @rt) :let [f (get-in node [:def :audio :wired])] :when f]
+        (try (f node (set (keep (fn [[_ _ b i]] (when (= b id) i)) lines))) (catch :default e (js/console.error e))))
       (swap! rt update :states (fn [ss] (into {} (filter (fn [[id _]] (get-in p [:boxes id])) ss))))
       (swap! rt assoc :signature s))))
 
@@ -132,7 +137,7 @@
   [p id]
   (some (fn [[a _ b i]]
           (when (and (= b id) (= i 1) (#{"canvas" "freqt" "score"} (comp/klass (get-in p [:boxes a :text]))))
-            [a (or (get-in p [:boxes a :data]) cv/empty)]))
+            [a (or (get-in p [:boxes a :data]) (:empty (comp/model-of (get-in p [:boxes a]))) cv/empty)]))
         (:lines p)))
 
 (defn show! [id at v]
@@ -168,10 +173,21 @@
                       :when (and (= a id) (= oo o))]
                 (deliver! p bb ii v at)))))))))
 
+(defn feed!
+  "Audio nodes that read a buffer (:audio :feed) get it again whenever it changes."
+  []
+  (let [p (patch)]
+    (doseq [[id node] (:nodes @rt) :let [f (get-in node [:def :audio :feed])] :when (and f (:fed node))]
+      (let [[_ data] (buffer-of p id)]
+        (when-not (identical? data @(:fed node))
+          (reset! (:fed node) data)
+          (try (f node data) (catch :default e (js/console.error e))))))))
+
 (defn tick! []
   (when (:on @rt)
     (try
       (sync!)
+      (feed!)
       (reset! counter 0)
       (let [limit (+ (now) lookahead) p (patch)]
         (loop []

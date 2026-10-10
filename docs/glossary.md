@@ -23,6 +23,7 @@ Esta tabla relaciona los nombres en castellano (hasta el Ensayo 8) con los nombr
 | rejilla | grid |
 | afinación | tuning |
 | lector | reader |
+| recorrido (trayectoria) | path |
 | componente | component |
 | biblioteca | library |
 | motor | engine |
@@ -64,6 +65,7 @@ Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `c
 | estado / transicion / consigna / region | state / transition / instruction / region |
 | perilla | knob |
 | — | patch (sub-patch), inlet, outlet, inlet~, outlet~ (Study 10) |
+| — | phasor~, reader~ (audio rate), sig~; `reader path [stroke]` (Study 13) |
 | quinta | fifth |
 | deriva | drift |
 
@@ -90,7 +92,7 @@ Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `c
 | :plantilla | :template | initial source of a code box |
 | :parametros | :params | |
 | :lee-buffer | :reads-buffer | |
-| :audio {:crear :efectos :clave :desechar} | :audio {:create :effects :key :dispose} | |
+| :audio {:crear :efectos :clave :desechar} | :audio {:create :effects :key :dispose :wired :feed} | `:wired (fn [node inlets])`: which inlets receive a signal; `:feed (fn [node data])`: the buffer, for audio nodes that read it (Study 13). An inlet can be an AudioParam: `:inlets [[(.-frequency o) 0]]` |
 | :origen (:nucleo :obra :usuario) | :origin (:core :work :user) | |
 | :desde | :from | box that defines a work class |
 

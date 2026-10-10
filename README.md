@@ -27,6 +27,7 @@ core/kairotic/        current modules of the system (ClojureScript)
   canvas.cljs         graphic buffers: generic canvas (any data, read along X or Y) and freqt (frequency × time, Scala tunings)
   score.cljs          voice → MEI for Verovio, time ⇄ space
   code.cljs           code boxes: compilers per language, script (ClojureScript)
+  signal.cljs         reading at audio rate: phasor~, reader~ (AudioWorklet), sig~
   faust.cljs          faust~: Faust compiled in the browser (faustwasm) as an AudioWorklet
   library.cljs        component box, importing published components
   shapes.cljs         a component's own view: shapes as data → SVG, templates with holes
@@ -55,6 +56,7 @@ and interface are in English. The [glossary](docs/glossary.md) maps the old name
 | 10 | Subpatches | patches inside patches: `patch` boxes with `inlet`/`outlet`, abstractions with `$1`, `(abstract …)` |
 | 11 | Presentation | a performer's view (`(present …)`, Present button) and sub-patches seen as panels of their controls |
 | 12 | Space | a generic `canvas` read along X or Y (and `freqt` for frequency over time); `dac~` with real channels, `pan~`, binaural `space~` |
+| 13 | Signal | reading at audio rate (`phasor~` → `reader~`, an AudioWorklet; signals into `osc~`/`gain~` parameters) and along 2D paths (`reader path`) |
 
 ## Trying it
 
@@ -62,7 +64,7 @@ The studies were published as claude.ai artifacts, which provide the database an
 rooms. Outside claude.ai they work in **local mode** (no saving or sharing):
 
 ```sh
-cd studies/12-space && python3 -m http.server 8000
+cd studies/13-signal && python3 -m http.server 8000
 # open http://localhost:8000 and choose "Try locally, without saving"
 ```
 
