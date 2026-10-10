@@ -27,7 +27,63 @@
 (defn def-of [p id] (comp/lookup (comp/klass (get-in p [:boxes id :text]))))
 (defn audio? [p id] (boolean (:audio (def-of p id))))
 
-(defn patch [] (if-let [f (:patch-fn @rt)] (f) {:boxes {} :lines []}))
+;; ───────── sub-patches: the engine works on a flat patch ─────────
+;; Every embedded `patch` box and every instance of an abstraction is replaced by its boxes, with
+;; ids prefixed by the path (:b5 inside :b2 → :b2.b5). A line to port i of a sub-patch goes to its
+;; i-th inlet box, and a line from port o comes from its o-th outlet box.
+
+(def max-depth 8)
+
+(defn flat-id
+  "The id of box `id` of the sub-patch at `path` in the flat patch."
+  [path id]
+  (if (empty? path) id (keyword (str (str/join "." (map name path)) "." (name id)))))
+
+(defn substitute
+  "$1 $2 … in a box text → the words written after the class of the instance."
+  [text words]
+  (str/replace (str text) #"\$(\d)"
+               (fn [[_ n]] (or (get words (dec (js/parseInt n 10))) "0"))))
+
+(defn inner-patch
+  "The patch inside a box: the data of an embedded `patch`, or the :patch of an abstraction with its
+   $-arguments filled in. nil for any other box."
+  [b]
+  (let [k (comp/klass (:text b)) d (comp/lookup k)]
+    (cond
+      (= k "patch") (or (:data b) {:boxes {} :lines []})
+      (map? (:patch d)) (let [words (vec (rest (str/split (str/trim (str (:text b))) #"\s+")))]
+                          (update (:patch d) :boxes
+                                  (fn [bs] (into {} (for [[id ib] bs] [id (update ib :text substitute words)])))))
+      :else nil)))
+
+(defn flatten-patch
+  ([p] (flatten-patch p [] 0))
+  ([p path depth]
+   (let [subs (into {} (for [[id b] (:boxes p) :let [inner (when (< depth max-depth) (inner-patch b))] :when inner]
+                         [id inner]))
+         ports (into {} (for [[id inner] subs] [id (comp/patch-ports inner)]))
+         flats (for [[id inner] subs] (flatten-patch inner (conj path id) (inc depth)))
+         own (into {} (for [[id b] (:boxes p) :when (not (contains? subs id))] [(flat-id path id) b]))
+         from (fn [a o] (if-let [pt (get ports a)]
+                          (when-let [x (get (:outlets pt) o)] [(flat-id (conj path a) x) 0])
+                          [(flat-id path a) o]))
+         to (fn [b i] (if-let [pt (get ports b)]
+                        (when-let [x (get (:inlets pt) i)] [(flat-id (conj path b) x) 0])
+                        [(flat-id path b) i]))]
+     {:boxes (apply merge own (map :boxes flats))
+      :lines (vec (concat (keep (fn [[a o b i]] (let [s (from a o) t (to b i)] (when (and s t) (into s t)))) (:lines p))
+                          (mapcat :lines flats)))})))
+
+(defonce flat-cache (atom [nil nil]))
+
+(defn flat
+  "flatten-patch, remembered for the last patch (the engine asks for it on every tick)."
+  [p]
+  (let [[k v] @flat-cache]
+    (if (identical? k p) v (let [f (flatten-patch p)] (reset! flat-cache [p f]) f))))
+
+(defn patch [] (if-let [f (:patch-fn @rt)] (flat (f)) {:boxes {} :lines []}))
 
 ;; ───────── audio ─────────
 

@@ -52,6 +52,7 @@ and interface are in English. The [glossary](docs/glossary.md) maps the old name
 | 7 | Library | components defined in the work, shared library, importing |
 | 8 | Controls | a component's own view: knobs playing a faust~ |
 | 9 | Sections | everything in English; components in sections (`:args`, logic, `:view` template) |
+| 10 | Subpatches | patches inside patches: `patch` boxes with `inlet`/`outlet`, abstractions with `$1`, `(abstract …)` |
 
 ## Trying it
 
@@ -59,7 +60,7 @@ The studies were published as claude.ai artifacts, which provide the database an
 rooms. Outside claude.ai they work in **local mode** (no saving or sharing):
 
 ```sh
-cd studies/09-sections && python3 -m http.server 8000
+cd studies/10-subpatches && python3 -m http.server 8000
 # open http://localhost:8000 and choose "Try locally, without saving"
 ```
 

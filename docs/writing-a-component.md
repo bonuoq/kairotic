@@ -120,7 +120,40 @@ anything. Read the whole [knob](../components/src/knob.cljs).
 Helpers available in the logic: `comp/clamp`, `comp/nice` (sensible rounding), `comp/to-unit` and
 `comp/from-unit` (a value ⇄ 0…1, linear or logarithmic).
 
-## 6. Sharing it
+## 6. A component made of a patch
+
+Not every class needs code. A **sub-patch** is a `patch` box: double-click it to open it (or
+`(enter :b5)`, and `(up)` to come back). Inside, `inlet` / `outlet` (messages) and `inlet~` /
+`outlet~` (audio) boxes are its ports, numbered from left to right. In code it reads:
+
+```clojure
+(box :b5 "patch voice" 40 360)
+(inside :b5
+  (box :b1 "inlet" 20 20)
+  (box :b2 "synth~" 20 80)
+  (box :b3 "outlet~" 20 140)
+  (connect :b1 0 :b2 0)
+  (connect :b2 0 :b3 0))
+```
+
+`(abstract :b5 "voice")` turns it into a class: a `component` box with a `:patch` instead of
+`:receive`, and `:b5` becomes an instance. In the texts inside, `$1 $2 …` take the words written
+after the class name:
+
+```clojure
+{:class "detune"
+ :doc "Multiplies every frequency by a ratio ($1)."
+ :usage "detune ratio"
+ :patch {:boxes {:b1 {:text "inlet" :x 20 :y 20}
+                 :b2 {:text "* $1" :x 20 :y 70}
+                 :b3 {:text "outlet" :x 20 :y 120}}
+         :lines [[:b1 0 :b2 0] [:b2 0 :b3 0]]}}
+```
+
+`detune 1.5` is then a fifth above. The engine replaces every sub-patch by its boxes (`:b5.b2`…),
+so they cost nothing at run time.
+
+## 7. Sharing it
 
 - **In the work:** the `component` box travels with the work and its history.
 - **In the library of the space:** `(publish :bN)` and, in another work, `(use! "class")`.

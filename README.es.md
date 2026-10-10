@@ -57,6 +57,7 @@ paquete anterior (`kairotic-componentes`), ya sustituido por `kairotic-component
 | 7 | Biblioteca | componentes definidos en la obra, biblioteca compartida, importación |
 | 8 | Controles | vista propia de un componente: perillas que tocan un faust~ |
 | 9 | Sections | todo en inglés; componentes por secciones (`:args`, lógica, plantilla `:view`) |
+| 10 | Subpatches | patches dentro de patches: cajas `patch` con `inlet`/`outlet`, abstracciones con `$1`, `(abstract …)` |
 
 ## Probarlo
 
@@ -64,7 +65,7 @@ Los ensayos se publicaron como artefactos de claude.ai, que aportan la base de d
 compartidas. Fuera de claude.ai funcionan en **modo local** (sin guardar ni compartir):
 
 ```sh
-cd studies/09-sections && python3 -m http.server 8000
+cd studies/10-subpatches && python3 -m http.server 8000
 # abre http://localhost:8000 y elige «Try locally, without saving»
 ```
 

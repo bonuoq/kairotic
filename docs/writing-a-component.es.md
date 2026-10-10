@@ -123,7 +123,40 @@ nada. Lee la [knob](../components/src/knob.cljs) completa.
 Utilidades disponibles en la lógica: `comp/clamp`, `comp/nice` (redondeo razonable),
 `comp/to-unit` y `comp/from-unit` (un valor ⇄ 0…1, lineal o logarítmico).
 
-## 6. Compartirlo
+## 6. Un componente hecho de un patch
+
+No todas las clases necesitan código. Un **sub-patch** es una caja `patch`: doble clic para abrirla
+(o `(enter :b5)`, y `(up)` para volver). Dentro, las cajas `inlet` / `outlet` (mensajes) e
+`inlet~` / `outlet~` (audio) son sus puertos, numerados de izquierda a derecha. En código se lee:
+
+```clojure
+(box :b5 "patch voice" 40 360)
+(inside :b5
+  (box :b1 "inlet" 20 20)
+  (box :b2 "synth~" 20 80)
+  (box :b3 "outlet~" 20 140)
+  (connect :b1 0 :b2 0)
+  (connect :b2 0 :b3 0))
+```
+
+`(abstract :b5 "voice")` lo convierte en clase: una caja `component` con `:patch` en vez de
+`:receive`, y `:b5` pasa a ser una instancia. En los textos de dentro, `$1 $2 …` toman las palabras
+escritas después del nombre de la clase:
+
+```clojure
+{:class "detune"
+ :doc "Multiplies every frequency by a ratio ($1)."
+ :usage "detune ratio"
+ :patch {:boxes {:b1 {:text "inlet" :x 20 :y 20}
+                 :b2 {:text "* $1" :x 20 :y 70}
+                 :b3 {:text "outlet" :x 20 :y 120}}
+         :lines [[:b1 0 :b2 0] [:b2 0 :b3 0]]}}
+```
+
+`detune 1.5` sube entonces una quinta. El motor sustituye cada sub-patch por sus cajas (`:b5.b2`…),
+así que no cuestan nada al sonar.
+
+## 7. Compartirlo
 
 - **En la obra:** la caja `component` viaja con la obra y su historia.
 - **En la biblioteca del espacio:** `(publish :bN)` y, en otra obra, `(use! "clase")`.

@@ -31,7 +31,9 @@
     (not (map? m)) "a component's source is a map {:class … :receive …}"
     (not (and (string? (:class m)) (re-matches #"[^\s()\[\]{}\"]+" (:class m)))) "missing :class (one word, e.g. \"fifth\")"
     (= :core (:origin (comp/lookup (:class m)))) (str "«" (:class m) "» is a core class; use another name")
-    (not (or (fn? (:receive m)) (map? (:audio m)))) "missing :receive (fn [m] …) or :audio"
+    (not (or (fn? (:receive m)) (map? (:audio m)) (map? (:patch m)))) "missing :receive (fn [m] …), :audio or :patch"
+    (and (contains? m :patch) (not (and (map? (:patch m)) (map? (:boxes (:patch m))))))
+    ":patch is a patch {:boxes {…} :lines […]}"
     (and (contains? m :io) (not (or (fn? (:io m)) (and (vector? (:io m)) (= 2 (count (:io m))) (every? number? (:io m))))))
     ":io is [inlets outlets] or a function"
     :else nil))

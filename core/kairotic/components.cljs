@@ -42,6 +42,10 @@
 ;;  :template "…"                           initial source of a code box
 ;;  :params   …                             parameters
 ;;  :reads-buffer true                      receives in m the canvas connected to its right inlet
+;;  :patch    {:boxes … :lines …}          an abstraction: the class is a patch. Its inlet/inlet~ and
+;;                                           outlet/outlet~ boxes, ordered left to right, are its ports, and
+;;                                           $1 $2 … in the texts of its boxes take the words of the box text.
+;;                                           The engine expands it in place (kairotic.engine/flatten-patch)
 ;;  :origin   :core | :work | :user
 ;;  :from     :bN}                          the box that defines a work class
 
@@ -51,10 +55,16 @@
 
 (defonce registry (atom {}))
 
+(declare patch-io)
+
 (defn define!
-  "Registers (or replaces) a component. Returns its name."
+  "Registers (or replaces) a component. Returns its name. An abstraction (:patch) gets its ports
+   from its inlet and outlet boxes."
   [klass-name d]
-  (swap! registry assoc klass-name (merge {:display :text :origin :core :io [1 1]} d {:class klass-name}))
+  (let [d (if (map? (:patch d))
+            (assoc d :io (fn [_] (patch-io (:patch d))) :dynamic-io true :abstraction true)
+            d)]
+    (swap! registry assoc klass-name (merge {:display :text :origin :core :io [1 1]} d {:class klass-name})))
   klass-name)
 
 (defn lookup [klass-name] (get @registry klass-name))
@@ -99,6 +109,32 @@
     (if (and (sequential? s) (= 2 (count s)) (every? number? s))
       [(max 24 (min 480 (first s))) (max 16 (min 480 (second s)))]
       [64 64])))
+
+;; ───────── patches inside patches ─────────
+;; A sub-patch (an embedded `patch` box, or an instance of an abstraction) talks to the outside
+;; through its inlet/outlet boxes: message ones (inlet, outlet) and audio ones (inlet~, outlet~)
+;; share the numbering, ordered by their position from left to right, as in Max.
+
+(def inlet-classes #{"inlet" "inlet~"})
+(def outlet-classes #{"outlet" "outlet~"})
+
+(defn patch-ports
+  "The ids of a patch's inlet and outlet boxes, in port order: {:inlets [...] :outlets [...]}."
+  [p]
+  (let [of (fn [classes]
+             (->> (:boxes p)
+                  (filter (fn [[_ b]] (contains? classes (klass (:text b)))))
+                  (sort-by (fn [[id b]] [(or (:x b) 0) (or (:y b) 0) (name id)]))
+                  (mapv first)))]
+    {:inlets (of inlet-classes) :outlets (of outlet-classes)}))
+
+(defn patch-io [p] (let [{:keys [inlets outlets]} (patch-ports p)] [(count inlets) (count outlets)]))
+
+(defn subpatch?
+  "Is the box a sub-patch (embedded or an abstraction)?"
+  [b]
+  (let [k (klass (:text b))]
+    (or (= k "patch") (map? (:patch (lookup k))))))
 
 ;; ───────── utilities for writing components ─────────
 
@@ -325,6 +361,24 @@
 (define! "dac~" {:doc "Audio output (both inlets go to the speakers)." :io [2 0]
                  :receive (fn [_] {})
                  :audio {:create (fn [_ _ env] {:inlets [[(:master env) 0] [(:master env) 0]] :outlets []})}})
+
+;; ───────── core: ports of a sub-patch ─────────
+;; Seen from inside, an inlet only has an outlet and an outlet only has an inlet; seen from
+;; the parent patch they are the ports of the sub-patch box. They just pass on what arrives.
+
+(defn pass-on [{:keys [value]}] {:out [[0 value]]})
+
+(defn pass-audio [ac _ _]
+  (let [g (.createGain ac)] {:inlets [[g 0]] :outlets [[g 0]] :g g}))
+
+(define! "inlet" {:doc "An inlet of the sub-patch it is in (inlets are numbered left to right). Passes on the messages that arrive at it."
+                  :io [0 1] :receive pass-on})
+(define! "outlet" {:doc "An outlet of the sub-patch it is in (numbered left to right). Sends out of the sub-patch what arrives at it."
+                   :io [1 0] :receive pass-on})
+(define! "inlet~" {:doc "An audio inlet of the sub-patch it is in (numbered left to right, together with the message inlets)."
+                   :io [0 1] :receive (fn [_] {}) :audio {:create pass-audio}})
+(define! "outlet~" {:doc "An audio outlet of the sub-patch it is in (numbered left to right, together with the message outlets)."
+                    :io [1 0] :receive (fn [_] {}) :audio {:create pass-audio}})
 
 (defn listing
   "The registered components: [[class doc usage origin] …]."

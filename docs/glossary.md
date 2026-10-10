@@ -28,6 +28,7 @@ Esta tabla relaciona los nombres en castellano (hasta el Ensayo 8) con los nombr
 | motor | engine |
 | figuras | shapes |
 | núcleo | core |
+| sub-patch, abstracción | sub-patch, abstraction |
 
 ## Namespaces · Espacios de nombres
 
@@ -61,6 +62,7 @@ Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `c
 | componente | component |
 | estado / transicion / consigna / region | state / transition / instruction / region |
 | perilla | knob |
+| — | patch (sub-patch), inlet, outlet, inlet~, outlet~ (Study 10) |
 | quinta | fifth |
 | deriva | drift |
 
@@ -168,6 +170,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | (componentes) (ayuda "rampa") | (components) (help "ramp") |
 | (importar "npm:…") (publicar :b5) (biblioteca) (usar "quinta") | (import! "npm:…") (publish :b5) (library) (use! "fifth") |
 | (frente) (simultaneidad 1500) | (front) (simultaneity 1500) |
+| — | (enter :b5) (up) (top) (inside :b5 …) (abstract :b5 "voice") (Study 10) |
 | (rewind) (forward) (tip) (goto …) (here) (branches) (merge-from …) | (same) |
 
 ## Storage · Almacenamiento (new artifact, new database)
