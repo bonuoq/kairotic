@@ -12,7 +12,7 @@ y `dist/index.mjs`. Dentro de claude.ai una página solo puede cargar módulos J
 través de jsDelivr, así que este es el formato publicado. En una obra:
 
 ```clojure
-(import! "npm:kairotic-components@0.1.0/dist/knob.mjs")
+(import! "npm:kairotic-components@0.1.1/dist/knob.mjs")
 ```
 
 La importación **copia** la definición en una caja `component` de la obra (con una cabecera de

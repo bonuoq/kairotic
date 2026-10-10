@@ -1,9 +1,15 @@
 {
   "name": "kairotic-components",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Kairotic components: ClojureScript definitions published as modules to import into a work",
   "author": "bonuoq",
   "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "components"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/components#readme",
   "type": "module",
   "files": [
     "dist",
