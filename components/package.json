@@ -1,0 +1,27 @@
+{
+  "name": "kairotic-components",
+  "version": "0.1.0",
+  "description": "Kairotic components: ClojureScript definitions published as modules to import into a work",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "README.es.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepublishOnly": "node scripts/build.mjs"
+  },
+  "keywords": [
+    "kairotic",
+    "music",
+    "improvisation",
+    "clojurescript",
+    "scittle",
+    "patcher",
+    "faust"
+  ]
+}

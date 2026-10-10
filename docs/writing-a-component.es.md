@@ -1,0 +1,135 @@
+# Escribir un componente
+
+*[Read in English](writing-a-component.md)*
+
+Cada caja de un patch de Kairotic es una instancia de un **componente**: un mapa de datos y
+funciones escrito en ClojureScript. Se puede escribir dentro de una obra (una caja `component`),
+compartir en la biblioteca de un espacio o publicar en npm. Esta guía construye uno pequeño paso a
+paso y después lee la `knob`, el primer componente con vista propia.
+
+El código y los nombres están en inglés (desde el Ensayo 9); el [glosario](glossary.md) da la
+equivalencia de cada término.
+
+## 1. El componente más pequeño
+
+Crea una caja `component`, haz doble clic en su código y escribe:
+
+```clojure
+{:class "twice"
+ :doc "Doubles every number it receives."
+ :io [1 1]
+ :receive (fn [{:keys [value]}]
+            (if (number? value) {:out [[0 (* 2 value)]]} {}))}
+```
+
+Aplícalo (Ctrl/⌘+Enter). La caja muestra `✓ defines «twice»` y ya puedes crear cajas `twice`.
+
+- `:class` es la primera palabra del texto de la caja.
+- `:io [entradas salidas]`.
+- `:receive` es una **función pura**: recibe un mensaje y devuelve lo que debe pasar.
+
+## 2. Mensajes
+
+`:receive` recibe un mapa:
+
+| clave | qué es |
+|---|---|
+| `:inlet` | la entrada por la que llega el mensaje (0 es la izquierda) |
+| `:value` | el mensaje: un número, una lista, una palabra como `:bang` |
+| `:state` | lo que la caja guardó la última vez (nil al principio) |
+| `:args` | los argumentos escritos en el texto de la caja |
+| `:at` | el instante del mensaje en el reloj de audio |
+
+…y devuelve un mapa con cualquiera de estas claves:
+
+| clave | qué hace |
+|---|---|
+| `:out [[salida valor] …]` | manda valores, en este orden |
+| `:state x` | guarda `x` para el siguiente mensaje |
+| `:later [[at entrada valor] …]` | programa mensajes a sí misma en el futuro |
+| `:effects [[k x] …]` | efectos en su nodo de audio, o `[:print x]` |
+| `:show v` | lo que muestra la caja (una caja number lo enseña; una vista propia lo dibuja) |
+
+## 3. Argumentos declarados
+
+Escribe los argumentos como una sección en vez de interpretar el texto a mano:
+
+```clojure
+ :args [[:factor 2]]
+```
+
+Ahora `twice 3` da `(:args m)` = `{:factor 3}`, y `twice` solo da `{:factor 2}`. El tipo del valor
+por defecto decide cómo se rellena cada argumento con las palabras de la caja:
+
+- un **número**, o la clave de un argumento anterior (`[:initial :min]`), toma el siguiente número;
+- `true` / `false` es un **interruptor**, activo si se escribe su nombre (`[:log false]` ↔ `knob 20 20000 log`);
+- cualquier otra cosa (`nil`, un texto) toma la siguiente **palabra** libre, como keyword (`[:name nil]` ↔ `knob 0 1 cutoff`).
+
+## 4. Una vista propia
+
+Un componente puede dibujarse en el patch y responder al arrastre. La vista son **datos**: una
+lista de figuras en coordenadas de la caja, no HTML. Los valores que cambian son **huecos**,
+keywords que empiezan por `$`, y `:derive` les da valor:
+
+```clojure
+ :size [72 78]
+ :derive (fn [{:keys [shown args]}] {:angle … :label …})
+ :view [[:arc  {:cx 36 :cy 33 :r 23 :from -135 :to :$angle :stroke :accent :weight 5}]
+        [:text {:x 36 :y 72 :anchor :middle} :$label]]
+```
+
+Figuras: `:rect` `:circle` `:line` `:arc` `:needle` `:path` `:text`. Los colores salen de una
+paleta que sigue el tema claro u oscuro: `:ink` `:soft` `:accent` `:kairos` `:bg` `:grid`, en
+`:stroke` y `:fill`; `:weight` es el grosor. Un hueco también puede nombrar un argumento (`:$min`) o
+`:shown`, `:w`, `:h`.
+
+`:shown` es lo último que la caja devolvió como `:show`. `:gesture` convierte un arrastre en un valor:
+
+```clojure
+ :gesture (fn [{:keys [start dy fine]}] …)   ; start = lo que se veía al pulsar, dy desde la pulsación
+```
+
+El valor llega a la entrada 0 de la propia caja mientras arrastras, y al soltar queda escrito en la
+historia como `(send! :bN valor)`.
+
+Para vistas difíciles de expresar como plantilla existe una salida de emergencia:
+`:draw (fn [m] figuras)`.
+
+## 5. Secciones
+
+Escribe las secciones en este orden, con una línea de comentario antes de cada una:
+
+```clojure
+;; knob · a rotary control with its own view in the patch
+{;; ── about ──
+ :class "knob" :license "MPL-2.0" :doc "…" :usage "knob [min max initial] [log] [name]"
+ :io [1 1] :size [72 78]
+
+ ;; ── arguments ──
+ :args [[:min 0] [:max 1] [:initial :min] [:log false] [:name nil]]
+
+ ;; ── logic ──
+ :receive (fn [m] …)
+ :gesture (fn [m] …)
+ :derive  (fn [m] …)
+
+ ;; ── view ──
+ :view [[:arc …] [:circle …] [:needle …] [:text … :$label]]}
+```
+
+Solo la lógica es código; el resto son datos que se pueden leer, comprobar y cambiar sin ejecutar
+nada. Lee la [knob](../components/src/knob.cljs) completa.
+
+Utilidades disponibles en la lógica: `comp/clamp`, `comp/nice` (redondeo razonable),
+`comp/to-unit` y `comp/from-unit` (un valor ⇄ 0…1, lineal o logarítmico).
+
+## 6. Compartirlo
+
+- **En la obra:** la caja `component` viaja con la obra y su historia.
+- **En la biblioteca del espacio:** `(publish :bN)` y, en otra obra, `(use! "clase")`.
+- **En npm:** añade `src/<nombre>.cljs` a [`components/`](../components/README.es.md) y publica una
+  versión; cualquiera podrá hacer `(import! "npm:kairotic-components@x.y.z/dist/<nombre>.mjs")`.
+
+Importar siempre **copia** la definición en una caja `component` de la obra, con una cabecera que
+dice de dónde viene y con qué licencia: la obra queda completa y suena igual aunque el paquete
+cambie después.

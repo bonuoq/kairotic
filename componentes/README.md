@@ -1,5 +1,7 @@
 # kairotic-componentes
 
+> **Obsoleto · Deprecated.** Sustituido por [`kairotic-components`](../components/README.es.md) desde el Ensayo 9; se conserva para las obras de los ensayos 7 y 8. · Replaced by [`kairotic-components`](../components/README.md) from Study 9 on.
+
 Componentes para [Kairotic](../README.md). Cada componente es un archivo `src/<nombre>.cljs` cuya
 fuente es una definición en ClojureScript con el mismo contrato que los del núcleo:
 
