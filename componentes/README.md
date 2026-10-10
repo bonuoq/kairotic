@@ -26,7 +26,7 @@ origen): la obra queda completa y suena igual aunque el paquete cambie.
 
 1. Sube la versión en `package.json` (`0.1.0` → `0.2.0`).
 2. Crea y sube una etiqueta `componentes-v0.2.0`.
-3. La Action `publicar-componentes` construye `dist/` y publica en npm (necesita el secreto `NPM_TOKEN`).
+3. La Action `publicar-componentes` construye `dist/` y publica en npm, con un token granular guardado como secreto `NPM_TOKEN` o, cuando el paquete ya exista, con *trusted publishing* (sin token).
 
 ## Componentes
 
