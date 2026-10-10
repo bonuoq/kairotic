@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · cajas de código
 ;; La base de cualquier componente programable: una caja cuyo dato es un texto fuente en un
 ;; lenguaje. El texto forma parte de la obra (viaja por la historia y por las salas); cada pestaña

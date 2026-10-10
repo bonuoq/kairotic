@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Un componente de Kairotic publicado como módulo: así se distribuiría en un paquete npm
 // (cdn.jsdelivr.net/npm/paquete@versión/deriva.mjs). La fuente es ClojureScript.
 export default {

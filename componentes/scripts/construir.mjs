@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: MPL-2.0
 // Construye un módulo JavaScript por componente a partir de src/<nombre>.cljs.
 // Dentro de claude.ai una página solo puede cargar módulos JS de npm (vía jsDelivr), así que cada
-// componente se publica como:  export default { clase, version, autor, doc, fuente }
+// componente se publica como:  export default { clase, version, autor, licencia, doc, fuente }
 // y además dist/indice.mjs con la lista de todos.
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -22,10 +23,11 @@ for (const archivo of readdirSync(join(raiz, "src")).filter((f) => f.endsWith(".
   const clase = leerCampo(fuente, "clase");
   if (!clase) throw new Error(archivo + ": falta :clase \"…\"");
   const nombre = archivo.replace(/\.cljs$/, "");
-  const comp = { clase, version: pkg.version, autor, doc: leerCampo(fuente, "doc") || "", fuente };
+  const licencia = leerCampo(fuente, "licencia") || pkg.license || "";
+  const comp = { clase, version: pkg.version, autor, licencia, doc: leerCampo(fuente, "doc") || "", fuente };
   writeFileSync(join(raiz, "dist", nombre + ".mjs"),
     "// Generado por scripts/construir.mjs a partir de src/" + archivo + "\nexport default " + JSON.stringify(comp, null, 2) + ";\n");
-  indice.push({ clase, doc: comp.doc, archivo: nombre + ".mjs" });
+  indice.push({ clase, licencia, doc: comp.doc, archivo: nombre + ".mjs" });
   console.log("✓ " + clase + " → dist/" + nombre + ".mjs");
 }
 writeFileSync(join(raiz, "dist", "indice.mjs"),

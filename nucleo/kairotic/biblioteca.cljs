@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · biblioteca
 ;; Componentes que no vienen del núcleo. Tres niveles, con el mismo formato:
 ;;   1. en la obra:   una caja `componente` cuya fuente es la definición; viaja con la obra y su historia
@@ -7,7 +8,7 @@
 ;; funciona sin conexión y suena igual aunque la biblioteca cambie después.
 ;;
 ;; Formato de un componente publicado (un módulo .mjs):
-;;   export default { clase: "deriva", version: "1.0.0", autor: "…", doc: "…",
+;;   export default { clase: "deriva", version: "1.0.0", autor: "…", licencia: "MPL-2.0", doc: "…",
 ;;                    fuente: `{:clase "deriva" :io [1 1] :recibir (fn [m] …)}` };
 
 (ns kairotic.biblioteca
@@ -95,8 +96,9 @@
       (str/starts-with? s "npm:") (str "https://cdn.jsdelivr.net/npm/" (subs s 4))
       :else s)))
 
-(defn cabecera [{:keys [clase version autor]} origen]
-  (str ";; " clase (when version (str " " version)) (when autor (str " · " autor)) "\n;; importado de " origen "\n"))
+(defn cabecera [{:keys [clase version autor licencia]} origen]
+  (str ";; " clase (when version (str " " version)) (when autor (str " · " autor))
+       (when (seq licencia) (str " · licencia " licencia)) "\n;; importado de " origen "\n"))
 
 (defn importar
   "Promesa del componente publicado en `origen`: {:clase :version :autor :doc :fuente}."

@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · motor
 ;; Hace que el patch funcione. Cada clase de caja es una función pura:
 ;;   {:estado :args :entrada :valor :at ...} → {:estado :salidas [[salida valor]] :luego [[at entrada valor]]

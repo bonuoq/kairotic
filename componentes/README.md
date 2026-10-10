@@ -5,13 +5,15 @@ fuente es una definición en ClojureScript con el mismo contrato que los del nú
 
 ```clojure
 {:clase "quinta"
+ :licencia "MPL-2.0"
  :doc "Añade una quinta justa (3/2) sobre cada frecuencia, como voz propia."
  :io [2 2]
  :recibir (fn [{:keys [entrada valor estado args at]}]
             {:salidas [[0 valor]] :estado … :luego [[at entrada valor]]})}
 ```
 
-`npm run build` genera `dist/<nombre>.mjs` (`export default {clase, version, autor, doc, fuente}`) y
+`:licencia` es un identificador [SPDX](https://spdx.org/licenses/) (si falta, se usa el del paquete).
+`npm run build` genera `dist/<nombre>.mjs` (`export default {clase, version, autor, licencia, doc, fuente}`) y
 `dist/indice.mjs`. Dentro de claude.ai una página solo puede cargar módulos JavaScript de npm a través
 de jsDelivr, así que este es el formato publicado. En una obra se importa con:
 
@@ -34,3 +36,7 @@ origen): la obra queda completa y suena igual aunque el paquete cambie.
 |---|---|
 | `quinta` | añade una quinta justa sobre cada frecuencia, como voz propia |
 | `deriva` | desafina cada frecuencia con un paseo aleatorio lento, distinto por voz |
+
+## Licencia
+
+MPL-2.0 (ver [LICENSE](../LICENSE)). Cada componente declara la suya con `:licencia`.

@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · faust~
 ;; Una caja de código en Faust. El compilador oficial (faustwasm, WebAssembly) se descarga la
 ;; primera vez que hace falta; cada fuente se compila en esta pestaña y se ejecuta como AudioWorklet.

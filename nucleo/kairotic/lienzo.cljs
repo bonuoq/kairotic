@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · lienzo
 ;; Un buffer gráfico: frecuencia sobre tiempo. No suena ni avanza por sí mismo; es solo una
 ;; representación que otros componentes leen (kairotic.motor, caja `lector`).

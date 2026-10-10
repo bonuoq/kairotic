@@ -1,4 +1,5 @@
 {:clase "quinta"
+ :licencia "MPL-2.0"
  :doc "Añade una quinta justa (3/2) sobre cada frecuencia, como voz propia."
  :uso "quinta"
  :io [2 2]

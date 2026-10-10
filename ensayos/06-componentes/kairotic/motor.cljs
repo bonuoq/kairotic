@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · motor
 ;; Hace que el patch funcione sin saber nada de clases concretas: todo lo pregunta al registro de
 ;; componentes (kairotic.componentes). Encamina las salidas por las conexiones, guarda una cola de

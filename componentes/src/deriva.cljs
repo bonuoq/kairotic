@@ -1,4 +1,5 @@
 {:clase "deriva"
+ :licencia "MPL-2.0"
  :doc "Desafina cada frecuencia con un paseo aleatorio lento (en cents), distinto para cada voz."
  :uso "deriva [cents-max]"
  :io [2 2]

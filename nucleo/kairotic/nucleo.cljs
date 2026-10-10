@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · núcleo común
 ;; Utilidades compartidas por todos los ensayos: escapar texto, codificar EDN ⇄ JSON
 ;; sin evaluar nada, y la REPL donde cada gesto se escribe como código.

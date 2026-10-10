@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · componente de partitura
 ;; Una obra musical en el tiempo como datos EDN, con vistas intercambiables (piano roll,
 ;; notación con Verovio) y una relación tiempo ⇄ espacio para cada vista, al estilo de INScore.

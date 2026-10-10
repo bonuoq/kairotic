@@ -3,9 +3,24 @@
   "version": "0.1.0",
   "description": "Componentes de Kairotic: definiciones en ClojureScript publicadas como módulos para importarlas en una obra",
   "author": "bonuoq",
-  "license": "UNLICENSED",
+  "license": "MPL-2.0",
   "type": "module",
-  "files": ["dist", "src", "README.md"],
-  "scripts": { "build": "node scripts/construir.mjs", "prepublishOnly": "node scripts/construir.mjs" },
-  "keywords": ["kairotic", "music", "improvisation", "clojurescript", "scittle", "patcher", "faust"]
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/construir.mjs",
+    "prepublishOnly": "node scripts/construir.mjs"
+  },
+  "keywords": [
+    "kairotic",
+    "music",
+    "improvisation",
+    "clojurescript",
+    "scittle",
+    "patcher",
+    "faust"
+  ]
 }

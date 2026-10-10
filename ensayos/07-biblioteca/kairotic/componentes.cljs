@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · componentes
 ;; Cada clase de caja es un componente: un mapa de datos y funciones, registrado por nombre.
 ;; El patch, el motor y la proyección a código solo consultan este registro, así que añadir

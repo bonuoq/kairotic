@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · biblioteca
 ;; Componentes que no vienen del núcleo. Tres niveles, con el mismo formato:
 ;;   1. en la obra:   una caja `componente` cuya fuente es la definición; viaja con la obra y su historia
