@@ -1,6 +1,6 @@
 {
   "name": "kairotic-componentes",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Componentes de Kairotic: definiciones en ClojureScript publicadas como módulos para importarlas en una obra",
   "author": "bonuoq",
   "license": "MPL-2.0",

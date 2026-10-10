@@ -1,13 +1,9 @@
 # Publica kairotic-componentes en npm al subir una etiqueta componentes-vX.Y.Z.
 #
-# Autenticación (una de las dos):
-#  · Token granular de npmjs.com con permiso "Read and write (publish and stage)", guardado como
-#    secreto NPM_TOKEN del repositorio (Settings → Secrets and variables → Actions).
-#  · Trusted publishing (recomendado una vez que el paquete exista): en npmjs.com, en los ajustes del
-#    paquete, autoriza este repositorio y este archivo (publicar-componentes.yml); entonces no hace
-#    falta ningún token y se puede borrar el secreto.
-# La procedencia (provenance) solo se genera desde repositorios públicos; mientras el repositorio sea
-# privado se publica sin ella.
+# Autenticación: trusted publishing (OIDC). En npmjs.com, en los ajustes del paquete, este repositorio
+# y este archivo (publicar-componentes.yml) figuran como publicador de confianza: no hace falta ningún
+# token. La procedencia (provenance) solo se genera desde repositorios públicos; mientras el repositorio
+# sea privado se publica sin ella. Si npm deja la versión en espera, se aprueba en npmjs.com.
 name: publicar-componentes
 
 on:
@@ -37,5 +33,3 @@ jobs:
           test "componentes-v$V" = "${GITHUB_REF_NAME}" || { echo "La etiqueta ${GITHUB_REF_NAME} no coincide con la versión $V"; exit 1; }
       - run: npm run build
       - run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

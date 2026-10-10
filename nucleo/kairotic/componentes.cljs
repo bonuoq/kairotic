@@ -16,6 +16,13 @@
 ;;             :desechar (fn [nodo])}
 ;;  :datos    {:vacio x :step (fn [d ev]) :cargar (fn [x]) :codigo (fn [id d] líneas)}   datos con historia propia
 ;;  :vista    :texto | :lienzo | :score | :codigo | :numero | :msg | :bang
+;;  :tam      [ancho alto] | (fn [caja] [w h])  una caja con vista propia (dibujo y gestos), sin contar el asa
+;;  :dibujo   (fn [m] figuras)                pura; m = {:vista :estado :args :texto :data :w :h}; :vista es lo
+;;                                            último que la caja devolvió como :vista. Figuras: kairotic.figuras
+;;  :gesto    (fn [m] valor)                  arrastre sobre la caja; m = el de :dibujo más {:inicio :x :y :dx :dy :fino}
+;;                                            (:inicio = la vista al pulsar; x, y locales; dx, dy desde la pulsación;
+;;                                            :fino con ⇧). El valor llega a la entrada 0 de la propia caja mientras se
+;;                                            arrastra, y al soltar queda en la historia como (enviar :bN valor)
 ;;  :lenguaje "faust"                         para las cajas de código
 ;;  :lee-buffer true                          recibe en m el lienzo conectado a su entrada derecha
 ;;  :origen   :nucleo | :usuario}
@@ -59,6 +66,19 @@
     (boolean (or (nil? d) (:io-dinamico d) (= :obra (:origen d))))))
 
 (defn datos-de [b] (:datos (de (klass (:text b)))))
+
+(defn control?
+  "¿La caja tiene vista propia (un :dibujo)?"
+  [b] (fn? (:dibujo (de (klass (:text b))))))
+
+(defn tam
+  "Tamaño de la vista propia de una caja, acotado a algo razonable."
+  [b]
+  (let [t (:tam (de (klass (:text b))))
+        t (if (fn? t) (try (t (caja b)) (catch :default _ nil)) t)]
+    (if (and (sequential? t) (= 2 (count t)) (every? number? t))
+      [(max 24 (min 480 (first t))) (max 16 (min 480 (second t)))]
+      [64 64])))
 
 ;; ───────── utilidades para escribir componentes ─────────
 

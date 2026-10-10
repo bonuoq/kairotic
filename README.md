@@ -27,6 +27,7 @@ nucleo/kairotic/      módulos actuales del sistema (ClojureScript)
   codigo.cljs         cajas de código: compiladores por lenguaje, script (ClojureScript)
   faust.cljs          faust~: Faust compilado en el navegador (faustwasm) como AudioWorklet
   biblioteca.cljs     caja componente, importación de componentes publicados
+  figuras.cljs        vista propia de un componente: figuras como datos → SVG
 ensayos/NN-nombre/    cada ensayo tal como se publicó (index.html + sus módulos)
 componentes/          paquete npm kairotic-componentes (src/*.cljs → dist/*.mjs)
 pruebas/              pruebas de viabilidad (Faust en artefactos, qué se puede cargar)
@@ -43,6 +44,7 @@ pruebas/              pruebas de viabilidad (Faust en artefactos, qué se puede 
 | 5 | Lienzo | frecuencia × tiempo, rejillas y Scala; lector, rampa, pasos; motor de mensajes |
 | 6 | Componentes | registro de componentes; cajas de código: faust~ y script |
 | 7 | Biblioteca | componentes definidos en la obra, biblioteca compartida, importación |
+| 8 | Controles | vista propia de un componente (`:tam` `:dibujo` `:gesto`): perillas que tocan un faust~ |
 
 ## Probarlo
 
@@ -50,14 +52,14 @@ Los ensayos se publicaron como artefactos de claude.ai, que aportan la base de d
 compartidas. Fuera de claude.ai funcionan en **modo local** (sin guardar ni compartir):
 
 ```sh
-cd ensayos/07-biblioteca && python3 -m http.server 8000
+cd ensayos/08-controles && python3 -m http.server 8000
 # abre http://localhost:8000 y elige «Probar en local, sin guardar»
 ```
 
 ## Componentes
 
 Ver [`componentes/`](componentes/README.md). Dentro de una obra se importan con
-`(importar "npm:kairotic-componentes@0.1.0/dist/quinta.mjs")`; dentro de claude.ai solo se pueden
+`(importar "npm:kairotic-componentes@0.2.0/dist/perilla.mjs")`; dentro de claude.ai solo se pueden
 cargar módulos JavaScript de npm a través de jsDelivr, por eso los componentes se publican así.
 
 ## Licencias y créditos
