@@ -35,7 +35,7 @@
       if (!tab || n < 2) { for (let c = 0; c < V; c++) out[c][i] = 0; continue; }
       let p = inp ? inp[i] : 0;
       p = p < 0 ? 0 : (p > 1 ? 1 : p);
-      const f = p * (n - 1), k = Math.floor(f), r = f - k, k2 = k + 1 < n ? k + 1 : k;
+      const f = p * (n - 1), k = Math.min(Math.floor(f), n - 2), r = f - k, k2 = k + 1;
       for (let c = 0; c < V; c++) {
         const a = tab[c * n + k], b = tab[c * n + k2];
         out[c][i] = isNaN(a) ? 0 : (isNaN(b) ? a : a + (b - a) * r);
