@@ -108,7 +108,8 @@
       (doseq [[id sig] boxes :when (not (get-in @rt [:nodes id]))]
         (let [b (get-in p [:boxes id]) d (comp/lookup (comp/klass (:text b)))]
           (try
-            (when-let [node ((get-in d [:audio :create]) (ctx) (comp/box-info b) (:env @rt))]
+            ;; :create gets the box (text, args, data) with its id and its current state
+            (when-let [node ((get-in d [:audio :create]) (ctx) (assoc (comp/box-info b) :id id :state (get-in @rt [:states id])) (:env @rt))]
               (swap! rt assoc-in [:nodes id] (assoc node :signature sig :def d)))
             (catch :default e (js/console.error "could not create the audio of" (str id) e)))))
       (doseq [[_ node] (:nodes @rt) [n _] (:outlets node)] (try (.disconnect n) (catch :default _ nil)))

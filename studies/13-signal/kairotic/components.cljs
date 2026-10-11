@@ -20,10 +20,13 @@
 ;;  :receive  (fn [m] result)                messages; pure. m = {:id :state :args :inlet :value :at :data
 ;;                                           :buffer :buffer-id}
 ;;                                           result = {:state :out [[o v]] :later [[at i v]] :effects [[k x]] :show v}
-;;  :audio    {:create  (fn [ac box env] node)     env = {:master …}
+;;  :audio    {:create  (fn [ac box env] node)     box = {:text :args (raw) :data :id :state}, env = {:master …}
 ;;                                                 node = {:inlets [[AudioNode i]] :outlets [[AudioNode o]] …}
+;;                                                 (an inlet can be an AudioParam: a signal is added to it)
 ;;             :effects {k (fn [node x at])}
 ;;             :key     (fn [box] x)        if it changes, the node is rebuilt
+;;             :wired   (fn [node inlets])  after wiring: the set of inlets that receive a signal
+;;             :feed    (fn [node data])    the buffer at its right inlet, whenever it changes (:reads-buffer)
 ;;             :dispose (fn [node])}
 ;;  :model    {:empty x :step (fn [d ev]) :load (fn [x]) :code (fn [id d] lines)}   box data with its own history
 ;;  :display  :text | :canvas | :score | :code | :number | :msg | :bang     how the patch shows built-in boxes

@@ -11,8 +11,12 @@
 ;;                                · y: along Y, the same
 ;;                                · path [stroke]: along a stroke, two outlets x and y
 ;;                                · gate: then one more outlet per voice (one for path): 1 where the
-;;                                  voice has something, 0 where not, rising and falling in 5 ms
+;;                                  voice has something, 0 where not (into an adsr~)
 ;;   sig~ [value]                 a constant signal; a number changes it
+;;   adsr~ [a d s r]              an envelope (a d r in ms, s from 0 to 1) that follows a gate: a signal
+;;                                (reader~ … gate) or numbers (above 0 attacks to that level, 0 releases);
+;;                                a bang plays attack and decay and releases; [a d s r] changes its shape,
+;;                                and so does dragging over it
 ;;
 ;; The position 0…1 covers the X axis of a canvas, or a freqt from 0 to its last point (y: the Y axis,
 ;; or the lowest … highest frequency). Where nothing passes a voice keeps its last value (so an
@@ -28,11 +32,11 @@
 (def worklet-source
   "class KairoticReader extends AudioWorkletProcessor {
   // tab: V value channels of n points (NaN where nothing passes). Outputs: the V values, held where
-  // nothing passes, then G gates (gate g follows value channel g) that rise and fall in 5 ms.
+  // nothing passes, then G gates (gate g follows value channel g): 1 where it has something, else 0.
   constructor(o) {
     super();
     this.tab = null; this.n = 0; this.V = 0; this.G = 0;
-    this.last = []; this.g = [];
+    this.last = [];
     this.port.onmessage = (e) => {
       const { tab, n, V, G } = e.data;
       this.tab = tab; this.n = n; this.V = V; this.G = G;
@@ -41,7 +45,6 @@
           let v = NaN; for (let i = 0; i < n; i++) { const x = tab[c * n + i]; if (!isNaN(x)) { v = x; break; } }
           this.last[c] = isNaN(v) ? 0 : v;
         }
-        if (this.g[c] === undefined) this.g[c] = 0;
       }
     };
   }
@@ -49,7 +52,6 @@
     const inp = inputs[0] && inputs[0][0];
     const out = outputs[0];
     const C = out.length, L = out[0].length, n = this.n, tab = this.tab, V = this.V, G = this.G;
-    const step = 1 / (0.005 * sampleRate);
     for (let i = 0; i < L; i++) {
       if (!tab || n < 2) { for (let c = 0; c < C; c++) out[c][i] = 0; continue; }
       let p = inp ? inp[i] : 0;
@@ -59,11 +61,7 @@
         const a = tab[c * n + k], b = tab[c * n + k + 1];
         if (!isNaN(a)) this.last[c] = isNaN(b) ? a : a + (b - a) * r;
         out[c][i] = this.last[c];
-        if (c < G && V + c < C) {
-          const t = isNaN(a) ? 0 : 1, g = this.g[c];
-          this.g[c] = g < t ? Math.min(t, g + step) : Math.max(t, g - step);
-          out[V + c][i] = this.g[c];
-        }
+        if (c < G && V + c < C) out[V + c][i] = isNaN(a) ? 0 : 1;
       }
     }
     return true;
@@ -82,8 +80,46 @@ class KairoticPhasor extends AudioWorkletProcessor {
     return true;
   }
 }
+class KairoticAdsr extends AudioWorkletProcessor {
+  // An envelope that follows a gate: the input signal plus the gate parameter. Above 0 it attacks
+  // (to the gate's level, from wherever it is), decays to sustain × that level and stays; at 0 it
+  // releases from wherever it is. Times in seconds, every segment linear.
+  static get parameterDescriptors() {
+    return [{ name: 'gate', defaultValue: 0 },
+            { name: 'a', defaultValue: 0.01, minValue: 0, automationRate: 'k-rate' },
+            { name: 'd', defaultValue: 0.1, minValue: 0, automationRate: 'k-rate' },
+            { name: 's', defaultValue: 0.7, minValue: 0, maxValue: 1, automationRate: 'k-rate' },
+            { name: 'r', defaultValue: 0.2, minValue: 0, automationRate: 'k-rate' }];
+  }
+  constructor() { super(); this.v = 0; this.stage = 0; this.on = false; this.peak = 1; this.rel = 0; }
+  process(inputs, outputs, params) {
+    const inp = inputs[0] && inputs[0][0], o = outputs[0][0], gp = params.gate;
+    const sr = sampleRate, a = params.a[0], d = params.d[0], s = params.s[0], r = params.r[0];
+    for (let i = 0; i < o.length; i++) {
+      const g = (inp ? inp[i] : 0) + (gp.length > 1 ? gp[i] : gp[0]);
+      if (g > 0 && !this.on) { this.on = true; this.peak = g; this.stage = 1; }
+      else if (g <= 0 && this.on) { this.on = false; this.stage = 4; this.rel = this.v / Math.max(1, r * sr); }
+      if (this.stage === 1) {
+        this.v += this.peak / Math.max(1, a * sr);
+        if (this.v >= this.peak) { this.v = this.peak; this.stage = 2; }
+      } else if (this.stage === 2) {
+        const lo = s * this.peak;
+        this.v -= (this.peak - lo) / Math.max(1, d * sr);
+        if (this.v <= lo) { this.v = lo; this.stage = 3; }
+      } else if (this.stage === 3) {
+        this.v = s * this.peak;
+      } else if (this.stage === 4) {
+        this.v -= this.rel;
+        if (this.v <= 0) { this.v = 0; this.stage = 0; }
+      }
+      o[i] = this.v;
+    }
+    return true;
+  }
+}
 registerProcessor('kairotic-reader', KairoticReader);
 registerProcessor('kairotic-phasor', KairoticPhasor);
+registerProcessor('kairotic-adsr', KairoticAdsr);
 ")
 
 (defonce modules (atom {}))
@@ -151,7 +187,7 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
 ;; ───────── classes ─────────
 
 (comp/define! "reader~"
-  {:doc "Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phasor~), the buffer on the right. One signal outlet per voice (along X, or Y with `reader~ y`), or x and y with `reader~ path`; where nothing passes a voice keeps its last value. With `gate`, one more outlet per voice: 1 where it has something, 0 where not (into a gain~)."
+  {:doc "Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phasor~), the buffer on the right. One signal outlet per voice (along X, or Y with `reader~ y`), or x and y with `reader~ path`; where nothing passes a voice keeps its last value. With `gate`, one more outlet per voice: 1 where it has something, 0 where not (into an adsr~, or a gain~)."
    :usage "reader~ [x|y|path [stroke]] [voices] [gate]"
    :io (fn [b] [2 (+ (voices-of (:args b)) (gates-of (:args b)))]) :dynamic-io true
    :reads-buffer true
@@ -222,3 +258,105 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
                        {:c c :outlets [[c 0]]}))
            :effects {:value (fn [node x at] (.setValueAtTime (.-offset (:c node)) x at))}
            :dispose (fn [node] (try (.stop (:c node)) (catch :default _ nil)))}})
+
+;; ───────── adsr~ ─────────
+;; [a d s r]: a, d and r in milliseconds, s (sustain) from 0 to 1 of the gate's level.
+
+(def adsr-default [10 100 0.7 200])
+
+(defn adsr-shape
+  "[a d s r] from a list of four numbers (nil if it is not one), kept within range."
+  [v]
+  (when (and (sequential? v) (= 4 (count v)) (every? number? v))
+    (let [[a d s r] v]
+      [(comp/clamp a 0 20000) (comp/clamp d 0 20000) (comp/clamp s 0 1) (comp/clamp r 0 20000)])))
+
+(defn adsr-of
+  "The shape a box has now: what it showed last, its state, or its arguments."
+  [{:keys [shown state args]}]
+  (or (adsr-shape shown) (adsr-shape state)
+      (if (map? args) (adsr-shape [(:a args) (:d args) (:s args) (:r args)]) (adsr-shape (filterv number? args)))
+      adsr-default))
+
+;; ── view: the envelope drawn in a 148 × 64 box; the sustain is held for a quarter of the rest ──
+(def adsr-x0 6) (def adsr-x1 142) (def adsr-top 8) (def adsr-bottom 46)
+
+(defn adsr-points [[a d s r]]
+  (let [total (max 1 (+ a d r)) hold (* 0.25 total)
+        k (/ (- adsr-x1 adsr-x0) (+ total hold))
+        xa (+ adsr-x0 (* k a)) xd (+ xa (* k d)) xs (+ xd (* k hold)) xr (+ xs (* k r))
+        ys (- adsr-bottom (* s (- adsr-bottom adsr-top)))]
+    [[adsr-x0 adsr-bottom] [xa adsr-top] [xd ys] [xs ys] [xr adsr-bottom]]))
+
+(defn ms-label [x] (if (>= x 1000) (str (comp/nice (/ x 1000)) "s") (str (js/Math.round x))))
+
+(defn adsr-gesture
+  "Dragging over the envelope: on the attack, decay or release a horizontal drag stretches it
+   (exponentially, ⇧ finer); a vertical drag on the decay or the sustain moves the sustain."
+  [{:keys [start x y dx dy fine] :as m}]
+  (let [[a d s r :as sh] (or (adsr-shape start) (adsr-of m))
+        [_ [xa] [xd] [xs]] (adsr-points sh)
+        x0 (- x dx) k (if fine 4 1)
+        stretch (fn [t] (js/Math.round (* (max t 1) (js/Math.pow 2 (/ dx (* 30 k))))))
+        sus (fn [] (/ (js/Math.round (* 100 (comp/clamp (- s (/ dy (* 40 k))) 0 1))) 100))]
+    (cond
+      (< x0 xa) [(stretch a) d s r]
+      (< x0 xd) [a (stretch d) (sus) r]
+      (< x0 xs) [a d (sus) r]
+      :else [a d s (stretch r)])))
+
+(defn adsr-set!
+  "Gives the worklet of an adsr~ its shape [a d s r] from time at."
+  [node [a d s r] at]
+  (when-let [w @(:worklet node)]
+    (doseq [[k v] [["a" (/ a 1000)] ["d" (/ d 1000)] ["s" s] ["r" (/ r 1000)]]]
+      (.setValueAtTime (.get (.-parameters w) k) v at))))
+
+(comp/define! "adsr~"
+  {:doc "An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer)."
+   :usage "adsr~ [a d s r]"
+   :io [1 1]
+   :args [[:a 10] [:d 100] [:s 0.7] [:r 200]]
+   :size [148 64]
+   :receive (fn [{:keys [value] :as m}]
+              (let [sh (adsr-of m)]
+                (cond
+                  (adsr-shape value) (let [v (adsr-shape value)] {:state v :show v :effects [[:shape v]]})
+                  (= value :bang) {:state sh :show sh :effects [[:bang sh]]}
+                  (comp/num-of value) {:state sh :show sh :effects [[:gate (max 0 (comp/num-of value))]]}
+                  :else {:state sh :show sh})))
+   :gesture adsr-gesture
+   :derive (fn [m]
+             (let [[a d s r :as sh] (adsr-of m)]
+               {:pts (adsr-points sh)
+                :label (str "a " (ms-label a) " · d " (ms-label d) " · s " (comp/nice s) " · r " (ms-label r))}))
+   :view [[:rect {:x 2 :y 2 :w 144 :h 60 :r 4 :stroke :grid :fill :bg}]
+          [:line {:x1 6 :y1 46 :x2 142 :y2 46 :stroke :grid}]
+          [:path {:points :$pts :stroke :accent :weight 1.5}]
+          [:text {:x 6 :y 58 :size 9 :fill :soft} :$label]]
+   :audio {:create (fn [ac b _]
+                     (let [in (.createGain ac) out (.createGain ac)
+                           shape (atom (or (adsr-shape (:state b)) (adsr-shape (filterv number? (:args b))) adsr-default))
+                           node {:in in :out out :shape shape :worklet (atom nil) :alive (atom true)
+                                 :inlets [[in 0]] :outlets [[out 0]]}]
+                       (-> (ready ac)
+                           (.then (fn [_]
+                                    (when @(:alive node)
+                                      (let [w (js/AudioWorkletNode. ac "kairotic-adsr"
+                                                                    #js {:numberOfInputs 1 :numberOfOutputs 1 :outputChannelCount #js [1]
+                                                                         :channelCount 1 :channelCountMode "explicit"})]
+                                        (.connect in w) (.connect w out)
+                                        (reset! (:worklet node) w)
+                                        (adsr-set! node @shape (.-currentTime ac))))))
+                           (.catch (fn [e] (js/console.error "adsr~" e))))
+                       node))
+           :effects {:shape (fn [node v at] (reset! (:shape node) v) (adsr-set! node v at))
+                     :gate (fn [node g at] (when-let [w @(:worklet node)] (.setValueAtTime (.get (.-parameters w) "gate") g at)))
+                     :bang (fn [node [a d] at]
+                             (when-let [w @(:worklet node)]
+                               (let [gp (.get (.-parameters w) "gate")]
+                                 (.setValueAtTime gp 1 at)
+                                 (.setValueAtTime gp 0 (+ at (/ (+ a d) 1000) 0.001)))))}
+           :dispose (fn [node]
+                      (reset! (:alive node) false)
+                      (when-let [w @(:worklet node)] (try (.disconnect w) (catch :default _ nil))))}})
