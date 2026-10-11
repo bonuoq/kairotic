@@ -167,6 +167,16 @@ itself, the presented boxes make up the **presentation**: press *Present* (or `(
 to see only them, where the performer needs them. Moving a box there changes its presentation place,
 not its place in the patch.
 
+## 6½. Asking Claude to write it
+
+From Study 15, the **Claude** tab (or `(ask-component "…")` in the REPL) writes a component from a
+description. Claude reads this same contract, the API and real components as examples, and before it
+answers it tries what it wrote with the page's tools: it evaluates and validates it, sends it
+messages and draws its view. The result is an ordinary `component` box, with a header saying it was
+written with Claude and what was asked; edit it like any other. With a component box selected,
+"change the selected component" asks for a change to it instead. It runs on the Claude account of
+whoever uses the page, who is asked for permission the first time.
+
 ## 7. Sharing it
 
 - **In the work:** the `component` box travels with the work and its history.

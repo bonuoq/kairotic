@@ -183,6 +183,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | — | (enter :b5) (up) (top) (inside :b5 …) (abstract :b5 "voice") (Study 10) |
 | — | (present :b4 x y) (unpresent :b4) (presentation true) (send-to! :b7.b4 v) (Study 11) |
 | — | (packages) (add-package! "@kairotic/synth") (Study 14) |
+| — | (ask-component "…") · the Claude tab (Study 15) |
 | — | (axis :b6 :y -1 1) (grid-y :b6 0.25) (read-at :b6 :y 0.5) · classes freqt, pan~, space~; dac~ 1 2 … (Study 12) |
 | (rewind) (forward) (tip) (goto …) (here) (branches) (merge-from …) | (same) |
 

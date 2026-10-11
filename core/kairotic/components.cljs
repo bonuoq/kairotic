@@ -40,12 +40,12 @@
 ;;  :draw     (fn [m] shapes)               escape hatch; pure; m = {:shown :state :args :text :data :w :h};
 ;;                                           :shown is the last thing the box returned as :show
 ;;  :gesture  (fn [m] value)                dragging over the box; m = the one of :draw plus {:start :x :y :dx :dy :fine}
-;;  :persist  (fn [value] {arg value})      with :args: what a gesture leaves in the box text. On release, instead of
-;;                                           (send! :bN value) the patch writes (text! :bN "class …") with these
-;;                                           arguments, so the change stays in the work
 ;;                                           (:start = what was shown on press; x, y local; dx, dy since the press;
 ;;                                           :fine with ⇧). The value reaches inlet 0 of the box itself while
 ;;                                           dragging, and on release stays in the history as (send :bN value)
+;;  :persist  (fn [value] {arg value})      with :args: what a gesture leaves in the box text. On release, instead of
+;;                                           (send! :bN value) the patch writes (text! :bN "class …") with these
+;;                                           arguments, so the change stays in the work
 ;;  :language "faust"                       for code boxes
 ;;  :template "…"                           initial source of a code box
 ;;  :params   …                             parameters

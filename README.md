@@ -22,6 +22,7 @@ that anyone can write and share.
 
 ```
 core/kairotic/        current modules of the system (ClojureScript)
+  assistant.cljs      writing components with Claude: the prompt and the tools Claude uses to try what it writes
   api.cljs            the Kairotic API: what components outside the core may use (api/…), versioned
   components.cljs     component registry, core classes, helpers for writing components
   engine.cljs         execution: messages, a time queue on the audio clock, Web Audio nodes
@@ -60,6 +61,7 @@ and interface are in English. The [glossary](docs/glossary.md) maps the old name
 | 12 | Space | a generic `canvas` read along X or Y (and `freqt` for frequency over time); `dac~` with real channels, `pan~`, binaural `space~` |
 | 13 | Signal | reading at audio rate (`phasor~` → `reader~`, an AudioWorklet; signals into `osc~`/`gain~` parameters) and along 2D paths (`reader path`); per-voice gates (`reader~ 2 gate`) into envelopes (`adsr~`); boxes edited from the patch (inspector), and gestures that rewrite the box text |
 | 14 | Packages | official packages by category (`@kairotic/synth`: adsr~, synth~ · `@kairotic/spatial`: pan~, space~), brought into a work when one of their classes is written; the Kairotic API (`api/…`) for components |
+| 15 | Claude | components written with Claude inside the work (the Claude tab, `(ask-component …)`), on the viewer's own Claude account; Claude tries what it writes with the page's tools before it arrives as a component box |
 
 ## Trying it
 
@@ -67,7 +69,7 @@ The studies were published as claude.ai artifacts, which provide the database an
 rooms. Outside claude.ai they work in **local mode** (no saving or sharing):
 
 ```sh
-cd studies/14-packages && python3 -m http.server 8000
+cd studies/15-claude && python3 -m http.server 8000
 # open http://localhost:8000 and choose "Try locally, without saving"
 ```
 

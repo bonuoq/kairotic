@@ -170,6 +170,16 @@ obra, las cajas presentadas forman la **presentación**: pulsa *Present* (o `(pr
 ver solo esas, donde las necesita quien interpreta. Mover una caja ahí cambia su lugar en la
 presentación, no su lugar en el patch.
 
+## 6½. Pedírselo a Claude
+
+Desde el Ensayo 15, la pestaña **Claude** (o `(ask-component "…")` en la REPL) escribe un componente a
+partir de una descripción. Claude lee este mismo contrato, la API y componentes reales como ejemplos, y
+antes de responder prueba lo que ha escrito con las herramientas de la página: lo evalúa y valida, le
+envía mensajes y dibuja su vista. El resultado es una caja `component` normal, con una cabecera que dice
+que se escribió con Claude y qué se pidió; se edita como cualquier otra. Con una caja de componente
+seleccionada, "change the selected component" pide un cambio sobre ella. Usa la cuenta de Claude de
+quien usa la página, a quien se pide permiso la primera vez.
+
 ## 7. Compartirlo
 
 - **En la obra:** la caja `component` viaja con la obra y su historia.
