@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/spatial",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Kairotic spatial components: pan~ (stereo panning), space~ (binaural placement around the listener)",
   "author": "bonuoq",
   "license": "MPL-2.0",

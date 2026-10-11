@@ -21,7 +21,7 @@ complete and sounds the same even if the package changes later. You can also bri
 ```clojure
 (packages)                         ; the official packages and their classes
 (add-package! "@kairotic/synth")
-(import! "npm:@kairotic/synth@0.1.0/dist/index.mjs")
+(import! "npm:@kairotic/synth@0.1.1/dist/index.mjs")
 ```
 
 ## Writing for a package

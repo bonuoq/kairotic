@@ -165,8 +165,8 @@
 ;; version is on npm, the page serves its own copy (:local).
 
 (def packages
-  {"@kairotic/synth"   {:version "0.1.0" :classes #{"adsr~" "synth~"}  :local "kairotic/packages/synth.mjs"}
-   "@kairotic/spatial" {:version "0.1.0" :classes #{"pan~" "space~"}   :local "kairotic/packages/spatial.mjs"}})
+  {"@kairotic/synth"   {:version "0.1.1" :classes #{"adsr~" "synth~"}  :local "kairotic/packages/synth.mjs"}
+   "@kairotic/spatial" {:version "0.1.1" :classes #{"pan~" "space~"}   :local "kairotic/packages/spatial.mjs"}})
 
 (defn package-of
   "The official package that defines class k: [name info], or nil."

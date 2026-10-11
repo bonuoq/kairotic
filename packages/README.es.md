@@ -21,7 +21,7 @@ igual aunque el paquete cambie después. También se puede traer a mano:
 ```clojure
 (packages)                         ; los paquetes oficiales y sus clases
 (add-package! "@kairotic/synth")
-(import! "npm:@kairotic/synth@0.1.0/dist/index.mjs")
+(import! "npm:@kairotic/synth@0.1.1/dist/index.mjs")
 ```
 
 ## Escribir para un paquete
