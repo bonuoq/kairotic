@@ -150,6 +150,13 @@ header .status b.off { color: var(--kairos); }
 #canvas .wire.sel { stroke: var(--accent); stroke-width: 2.5; }
 #canvas .wire-hit { stroke: transparent; stroke-width: 12; cursor: pointer; }
 #canvas .wire.temp { stroke: var(--accent); stroke-dasharray: 4 4; pointer-events: none; }
+#inspector { position: absolute; z-index: 6; width: max-content; max-width: 340px; padding: 6px 8px; background: var(--box); color: var(--ink); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.14); font: 12px var(--f-ui); }
+#inspector .insp-head span { color: var(--ink-soft); font-family: var(--f-code); font-size: 11px; }
+#inspector .insp-args { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 6px 0 4px; }
+#inspector label { font-family: var(--f-code); font-size: 11.5px; color: var(--ink-soft); white-space: nowrap; }
+#inspector input { font-family: var(--f-code); font-size: 12px; background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px; padding: 2px 4px; }
+#inspector input:focus { outline: none; border-color: var(--accent); }
+#inspector .insp-text { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; }
 .edit { position: absolute; font-family: var(--f-code); font-size: 12.5px; padding: 4px 8px; border: 2px solid var(--accent); border-radius: 3px; background: var(--box); color: var(--ink); outline: none; min-width: 140px; }
 .tabs { display: flex; gap: 2px; }
 .tab { font: inherit; font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--ink-soft); padding: 2px 8px 4px; cursor: pointer; }
@@ -274,7 +281,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
           <span id="transport-info">engine stopped</span>
           <button class="act" id="pres-toggle" title="Presentation: only the presented boxes, where the performer sees them (P)">Present</button>
         </span>
-        <span class="hint">Code boxes: double-click the code to edit (Ctrl+Enter applies) · their sliders can be dragged · Canvas: drag = stroke, ⇧ straight, ⌥ freehand, click = position</span>
+        <span class="hint">A selected box is edited below it: its arguments and its text (Enter applies) · Code boxes: double-click the code to edit (Ctrl+Enter applies) · their sliders can be dragged · Canvas: drag = stroke, ⇧ straight, ⌥ freehand, click = position</span>
       </div>
       <div class="canvas-wrap" id="canvas-wrap">
         <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
@@ -932,7 +939,7 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (defn disconnect [a o b i] (dispatch! [:disconnect a o b i]) :ok)
 (defn move [id x y] (need-box id) (dispatch! [:move id (js/Math.round x) (js/Math.round y)]) [x y])
-(defn text! [id text] (need-box id) (dispatch! [:text id (str text)]) id)
+(defn text! [id text] (need-box id) (dispatch! [:text id (str text)]) (eng/forget! (fid id)) id)
 (defn delete [id] (need-box id) (dispatch! [:delete id]) :ok)
 
 (declare child-dims)
@@ -1785,6 +1792,8 @@ window.addEventListener("DOMContentLoaded", function () {
 (.addEventListener ($ "crumbs") "click"
   (fn [e] (when-let [n (.. e -target -dataset -up)] (gesture! (str "(up " n ")")))))
 
+(declare render-inspector!)
+
 (defn render-scene [p]
   (let [p (scene-of p)
         {:keys [sel wire hover-in nsel ldrag]} @ui
@@ -1862,7 +1871,80 @@ window.addEventListener("DOMContentLoaded", function () {
           (when (= (first nsel) id)
             (doseq [el (array-seq (.querySelectorAll node (str "[id^=\"n-" (name id) "-" (name (second nsel)) "-\"]")))]
               (.add (.-classList el) "sel"))))))
-    (render-overlay!)))
+    (render-overlay!)
+    (render-inspector!)))
+
+;; ───── inspector: the selected box, editable from the patch ─────
+;; Under the selected box: its class and usage, one field per declared argument (:args) and its whole
+;; text. Changing a field rewrites the box with (text! …), as if it had been typed.
+
+(defonce insp-key (atom nil))
+
+(defn arg-kind [v] (cond (boolean? v) :flag (or (number? v) (keyword? v)) :num :else :word))
+
+(defn spec-of [d]
+  (let [sp (:args d)] (when (and (sequential? sp) (seq sp) (every? (fn [x] (and (vector? x) (keyword? (first x)))) sp)) sp)))
+
+(defn insp-field [a v cur]
+  (case (arg-kind v)
+    :flag (str "<label><input type=\"checkbox\" data-arg=\"" (name a) "\"" (when cur " checked") "> " (name a) "</label>")
+    :num (str "<label>" (name a) " <input data-arg=\"" (name a) "\" value=\"" (if (number? cur) (cv/fmt cur) "") "\" size=\"6\" inputmode=\"decimal\"></label>")
+    (str "<label>" (name a) " <input data-arg=\"" (name a) "\" value=\"" (esc (if (keyword? cur) (name cur) (str (or cur "")))) "\" size=\"8\"></label>")))
+
+(defonce insp-busy (atom false))
+
+(defn insp-commit! [input]
+  (let [id (first @insp-key) b (when id (get-in (current) [:boxes id]))]
+    (when b
+      (let [d (box-def b) role (.. input -dataset -role) arg (.. input -dataset -arg)]
+        (reset! insp-busy true)
+        (try (cond
+          (= role "text")
+          (let [v (str/trim (.-value input))]
+            (when (and (seq v) (not= v (:text b))) (gesture! (str "(text! " id " " (pr-str v) ")"))))
+          arg
+          (let [a (keyword arg) sv (some (fn [[k v]] (when (= k a) v)) (spec-of d))
+                vals (comp/args-for d (:text b)) raw (str/trim (.-value input))
+                nv (case (arg-kind sv)
+                     :flag (.-checked input)
+                     :num (let [n (js/parseFloat raw)] (if (js/isNaN n) (get vals a) n))
+                     (when (seq raw) (keyword raw)))
+                t (comp/args-text d (klass (:text b)) (assoc vals a nv))]
+            (when (not= t (:text b)) (gesture! (str "(text! " id " " (pr-str t) ")")))))
+          (finally (reset! insp-busy false)))))))
+
+(defn render-inspector! []
+  (let [old ($ "inspector") [kind id] (:sel @ui)
+        b (when (and (= kind :box) (not @pres-mode)) (get-in (current) [:boxes id]))
+        k (when b [id (:text b) (:x b) (:y b) (cmd-path)])
+        focused (.-activeElement js/document)]
+    ;; a field being edited is applied before the inspector goes away or is redrawn
+    (when (and old (not @insp-busy) (not= k @insp-key) (.contains old focused) (= "INPUT" (.-tagName focused)))
+      (insp-commit! focused))
+    (cond
+      (nil? b) (do (reset! insp-key nil) (when old (.remove old)))
+      (= k @insp-key) nil
+      :else
+      (let [d (box-def b) spec (spec-of d) vals (when spec (comp/args-for d (:text b)))
+            [_ h] (box-dims id b)
+            el (or old (let [el (js/document.createElement "div")]
+                         (set! (.-id el) "inspector")
+                         (.addEventListener el "change" (fn [e] (insp-commit! (.-target e))))
+                         (.addEventListener el "keydown"
+                           (fn [e] (case (.-key e)
+                                     "Enter" (.blur (.-target e))
+                                     "Escape" (do (reset! insp-key nil) (render-inspector!))
+                                     nil)))
+                         (.appendChild ($ "canvas-wrap") el)
+                         el))]
+        (reset! insp-key k)
+        (set! (.-title el) (or (:doc d) ""))
+        (set! (.. el -style -left) (str (:x b) "px"))
+        (set! (.. el -style -top) (str (+ (:y b) h 8) "px"))
+        (set! (.-innerHTML el)
+              (str "<div class=\"insp-head\"><b>" (esc (klass (:text b))) "</b> <span>" (esc (or (:usage d) "")) "</span></div>"
+                   (when spec (str "<div class=\"insp-args\">" (apply str (for [[a v] spec] (insp-field a v (get vals a)))) "</div>"))
+                   "<input class=\"insp-text\" data-role=\"text\" spellcheck=\"false\" value=\"" (esc (:text b)) "\">"))))))
 
 ;; ───── engine: start, stop and messages ─────
 
@@ -2554,12 +2636,13 @@ window.addEventListener("DOMContentLoaded", function () {
         (let [[id b] (el-box (closest e ".box.act"))]
           (when b
             (.preventDefault e)
-            (swap! ui assoc :sel nil :nsel nil)
+            (swap! ui assoc :sel [:box id] :nsel nil)
             (cond
               (= "number" (klass (:text b)))
               (swap! ui assoc :numdrag {:id id :y0 y :v0 (number-value id b) :v nil})
               (fn? (:gesture (box-def b)))
-              (start-ctl-drag! (fid id) b (+ (:x b) grip) (:y b) x y (str "(send! " id " "))
+              (do (start-ctl-drag! (fid id) b (+ (:x b) grip) (:y b) x y (str "(send! " id " "))
+                  (swap! ui #(-> % (assoc :sel [:box id]) (assoc-in [:ctldrag :id] id))))
               :else (gesture! (str "(send! " id " :bang)")))))
 
         ;; the first click selects the box and redraws it, so the double click is detected here
@@ -2698,8 +2781,14 @@ window.addEventListener("DOMContentLoaded", function () {
   (let [{:keys [drag wire ldrag numdrag paramdrag ctldrag]} @ui]
     (cond
       ctldrag
-      (do (swap! ui assoc :ctldrag nil)
-          (gesture! (str (:echo ctldrag) (let [v (:v ctldrag)] (cond (number? v) (cv/fmt v) (some? v) (pr-str v) :else ":bang")) ")")))
+      (let [v (:v ctldrag) id (:id ctldrag) b (when id (get-in (current) [:boxes id])) d (when b (box-def b))]
+        (swap! ui assoc :ctldrag nil)
+        (if (and b (:persist d))
+          ;; the change stays in the work: the box is rewritten with its new arguments
+          (when (some? v)
+            (let [t (comp/args-text d (klass (:text b)) (merge (comp/args-for d (:text b)) ((:persist d) v)))]
+              (when (not= t (:text b)) (gesture! (str "(text! " id " " (pr-str t) ")")))))
+          (gesture! (str (:echo ctldrag) (cond (number? v) (cv/fmt v) (some? v) (pr-str v) :else ":bang") ")"))))
       paramdrag
       (do (swap! ui assoc :paramdrag nil)
           (if (:button paramdrag)
@@ -3155,7 +3244,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (render-comp!)
 (render-controls!)
 (render-manager!)
-(repl-print! "out" "; Kairotic Signal: pick or create a work in the session manager. In the example a phasor~ reads a freqt at audio rate (reader~ 2 gate: two voices into two osc~; their gates play two adsr~ — the second voice rests between 1.5 and 2 s; drag over an adsr~ to reshape it), and the sound travels along the path drawn on the canvas (reader path → space~). Press ▶ — headphones recommended.")
+(repl-print! "out" "; Kairotic Signal: pick or create a work in the session manager. In the example a phasor~ reads a freqt at audio rate (reader~ 2 gate: two voices into two osc~; their gates play two adsr~ — the second voice rests between 1.5 and 2 s; drag over an adsr~ to reshape it: on release its text is rewritten. Click a box to edit its arguments from the patch), and the sound travels along the path drawn on the canvas (reader path → space~). Press ▶ — headphones recommended.")
 
 (let [h (.-hash js/location) m (re-matches #"#room-(.+)" (str h))]
   (when m (swap! mgr assoc :invite (second m))))

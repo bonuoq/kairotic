@@ -61,7 +61,7 @@ paquete anterior (`kairotic-componentes`), ya sustituido por `kairotic-component
 | 10 | Subpatches | patches dentro de patches: cajas `patch` con `inlet`/`outlet`, abstracciones con `$1`, `(abstract …)` |
 | 11 | Presentation | una vista para quien interpreta (`(present …)`, botón Present) y sub-patches vistos como paneles de sus controles |
 | 12 | Space | un `canvas` genérico que se lee en X o en Y (y `freqt` para frecuencia sobre tiempo); `dac~` con canales reales, `pan~`, `space~` binaural |
-| 13 | Signal | lectura a velocidad de audio (`phasor~` → `reader~`, un AudioWorklet; señales a los parámetros de `osc~`/`gain~`) y por recorridos 2D (`reader path`); puertas por voz (`reader~ 2 gate`) hacia envolventes (`adsr~`, que se redibujan arrastrando) |
+| 13 | Signal | lectura a velocidad de audio (`phasor~` → `reader~`, un AudioWorklet; señales a los parámetros de `osc~`/`gain~`) y por recorridos 2D (`reader path`); puertas por voz (`reader~ 2 gate`) hacia envolventes (`adsr~`); cajas editables desde el patch (inspector) y gestos que reescriben el texto de la caja |
 
 ## Probarlo
 

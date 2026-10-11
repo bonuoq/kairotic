@@ -91,17 +91,32 @@
   (try (when-let [f (get-in node [:def :audio :dispose])] (f node)) (catch :default e (js/console.error e)))
   (doseq [[n _] (:outlets node)] (try (.disconnect n) (catch :default _ nil))))
 
-(defn signature [p]
-  [(into (sorted-map)
-         (for [[id b] (:boxes p) :let [d (comp/lookup (comp/klass (:text b)))] :when (:audio d)]
-           [id [(:text b) (when-let [f (get-in d [:audio :key])] (f (comp/box-info b)))]]))
-   (vec (filter (fn [[a _ b _]] (and (audio? p a) (audio? p b))) (:lines p)))])
+(defn updates? [d] (fn? (get-in d [:audio :update])))
+
+(defn signature
+  "What the audio graph depends on: [boxes lines texts]. A box whose class can :update itself is known
+   by its class (and :key), so a new text does not rebuild it; its text goes in `texts` instead."
+  [p]
+  (let [audio (for [[id b] (:boxes p) :let [d (comp/lookup (comp/klass (:text b)))] :when (:audio d)] [id b d])]
+    [(into (sorted-map)
+           (for [[id b d] audio]
+             [id [(if (updates? d) (comp/klass (:text b)) (:text b))
+                  (when-let [f (get-in d [:audio :key])] (f (comp/box-info b)))]]))
+     (vec (filter (fn [[a _ b _]] (and (audio? p a) (audio? p b))) (:lines p)))
+     (into (sorted-map) (for [[id b d] audio :when (updates? d)] [id (:text b)]))]))
+
+(defn forget!
+  "Forgets what a box holds while it sounds (its state and what it showed): after its text changes,
+   the text is what counts."
+  [id]
+  (swap! rt (fn [r] (-> r (update :states dissoc id) (update :shows dissoc id)))))
 
 (defn sync!
-  "Fits the audio nodes to the patch: creates the missing ones, removes those left over or changed, redoes the connections."
+  "Fits the audio nodes to the patch: creates the missing ones, removes those left over or changed,
+   redoes the connections, and tells the nodes that :update themselves about a new text."
   []
-  (let [p (patch) [boxes lines :as s] (signature p)]
-    (when (not= s (:signature @rt))
+  (let [p (patch) [boxes lines texts :as s] (signature p) old (:signature @rt)]
+    (when (not= (take 2 s) (take 2 old))
       (doseq [[id node] (:nodes @rt) :when (not= (get boxes id) (:signature node))]
         (dispose! node)
         (swap! rt update :nodes dissoc id))
@@ -110,7 +125,7 @@
           (try
             ;; :create gets the box (text, args, data) with its id and its current state
             (when-let [node ((get-in d [:audio :create]) (ctx) (assoc (comp/box-info b) :id id :state (get-in @rt [:states id])) (:env @rt))]
-              (swap! rt assoc-in [:nodes id] (assoc node :signature sig :def d)))
+              (swap! rt assoc-in [:nodes id] (assoc node :signature sig :def d :text (:text b))))
             (catch :default e (js/console.error "could not create the audio of" (str id) e)))))
       (doseq [[_ node] (:nodes @rt) [n _] (:outlets node)] (try (.disconnect n) (catch :default _ nil)))
       (doseq [[a o b i] lines]
@@ -121,8 +136,15 @@
       ;; every node learns which of its inlets receive a signal (osc~ and gain~ then let it take over)
       (doseq [[id node] (:nodes @rt) :let [f (get-in node [:def :audio :wired])] :when f]
         (try (f node (set (keep (fn [[_ _ b i]] (when (= b id) i)) lines))) (catch :default e (js/console.error e))))
-      (swap! rt update :states (fn [ss] (into {} (filter (fn [[id _]] (get-in p [:boxes id])) ss))))
-      (swap! rt assoc :signature s))))
+      (swap! rt update :states (fn [ss] (into {} (filter (fn [[id _]] (get-in p [:boxes id])) ss)))))
+    ;; a new text for a node that updates itself: no new node, the node takes the new arguments
+    (when (not= (nth s 2) (nth old 2 nil))
+      (doseq [[id text] texts :let [node (get-in @rt [:nodes id])] :when (and node (not= text (:text node)))]
+        (forget! id)
+        (swap! rt assoc-in [:nodes id :text] text)
+        (try ((get-in node [:def :audio :update]) node (assoc (comp/box-info (get-in p [:boxes id])) :id id) (now))
+             (catch :default e (js/console.error e)))))
+    (swap! rt assoc :signature s)))
 
 (defn effect! [id [k x] at]
   (if (= k :print)

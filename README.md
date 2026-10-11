@@ -56,7 +56,7 @@ and interface are in English. The [glossary](docs/glossary.md) maps the old name
 | 10 | Subpatches | patches inside patches: `patch` boxes with `inlet`/`outlet`, abstractions with `$1`, `(abstract …)` |
 | 11 | Presentation | a performer's view (`(present …)`, Present button) and sub-patches seen as panels of their controls |
 | 12 | Space | a generic `canvas` read along X or Y (and `freqt` for frequency over time); `dac~` with real channels, `pan~`, binaural `space~` |
-| 13 | Signal | reading at audio rate (`phasor~` → `reader~`, an AudioWorklet; signals into `osc~`/`gain~` parameters) and along 2D paths (`reader path`); per-voice gates (`reader~ 2 gate`) into envelopes (`adsr~`, reshaped by dragging) |
+| 13 | Signal | reading at audio rate (`phasor~` → `reader~`, an AudioWorklet; signals into `osc~`/`gain~` parameters) and along 2D paths (`reader path`); per-voice gates (`reader~ 2 gate`) into envelopes (`adsr~`); boxes edited from the patch (inspector), and gestures that rewrite the box text |
 
 ## Trying it
 

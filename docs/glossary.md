@@ -33,6 +33,7 @@ Esta tabla relaciona los nombres en castellano (hasta el Ensayo 8) con los nombr
 | núcleo | core |
 | sub-patch, abstracción | sub-patch, abstraction |
 | presentación, panel | presentation, panel |
+| inspector | inspector |
 
 ## Namespaces · Espacios de nombres
 
@@ -89,12 +90,13 @@ Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `c
 | — | :derive | **new**: `(fn [m] {key value})` fills the holes of `:view` |
 | — | :args | **new**: declared arguments `[[:name default] …]` |
 | :gesto | :gesture | `(fn [m] value)` |
+| — | :persist | `(fn [value] {arg v})`: on release, the gesture rewrites the box text with these arguments (Study 13) |
 | :datos {:vacio :step :cargar :codigo} | :model {:empty :step :load :code} | box data with its own history |
 | :lenguaje | :language | code boxes |
 | :plantilla | :template | initial source of a code box |
 | :parametros | :params | |
 | :lee-buffer | :reads-buffer | |
-| :audio {:crear :efectos :clave :desechar} | :audio {:create :effects :key :dispose :wired :feed} | `:wired (fn [node inlets])`: which inlets receive a signal; `:feed (fn [node data])`: the buffer, for audio nodes that read it (Study 13). An inlet can be an AudioParam: `:inlets [[(.-frequency o) 0]]` |
+| :audio {:crear :efectos :clave :desechar} | :audio {:create :effects :key :dispose :wired :feed :update} | `:wired (fn [node inlets])`: which inlets receive a signal; `:feed (fn [node data])`: the buffer, for audio nodes that read it (Study 13). An inlet can be an AudioParam: `:inlets [[(.-frequency o) 0]]` |
 | :origen (:nucleo :obra :usuario) | :origin (:core :work :user) | |
 | :desde | :from | box that defines a work class |
 

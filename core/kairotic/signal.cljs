@@ -271,6 +271,11 @@ registerProcessor('kairotic-adsr', KairoticAdsr);
     (let [[a d s r] v]
       [(comp/clamp a 0 20000) (comp/clamp d 0 20000) (comp/clamp s 0 1) (comp/clamp r 0 20000)])))
 
+(defn adsr-raw
+  "The shape written in a box text (raw arguments), the missing ones from the default."
+  [args]
+  (let [ns (filterv number? args)] (adsr-shape (vec (take 4 (concat ns (drop (count ns) adsr-default)))))))
+
 (defn adsr-of
   "The shape a box has now: what it showed last, its state, or its arguments."
   [{:keys [shown state args]}]
@@ -313,10 +318,11 @@ registerProcessor('kairotic-adsr', KairoticAdsr);
       (.setValueAtTime (.get (.-parameters w) k) v at))))
 
 (comp/define! "adsr~"
-  {:doc "An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer)."
+  {:doc "An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box."
    :usage "adsr~ [a d s r]"
    :io [1 1]
    :args [[:a 10] [:d 100] [:s 0.7] [:r 200]]
+   :persist (fn [[a d s r]] {:a a :d d :s s :r r})
    :size [148 64]
    :receive (fn [{:keys [value] :as m}]
               (let [sh (adsr-of m)]
@@ -336,7 +342,7 @@ registerProcessor('kairotic-adsr', KairoticAdsr);
           [:text {:x 6 :y 58 :size 9 :fill :soft} :$label]]
    :audio {:create (fn [ac b _]
                      (let [in (.createGain ac) out (.createGain ac)
-                           shape (atom (or (adsr-shape (:state b)) (adsr-shape (filterv number? (:args b))) adsr-default))
+                           shape (atom (or (adsr-shape (:state b)) (adsr-raw (:args b))))
                            node {:in in :out out :shape shape :worklet (atom nil) :alive (atom true)
                                  :inlets [[in 0]] :outlets [[out 0]]}]
                        (-> (ready ac)
@@ -350,6 +356,8 @@ registerProcessor('kairotic-adsr', KairoticAdsr);
                                         (adsr-set! node @shape (.-currentTime ac))))))
                            (.catch (fn [e] (js/console.error "adsr~" e))))
                        node))
+           ;; a new text (dragging over it rewrites it): the new shape, without rebuilding the node
+           :update (fn [node b at] (let [v (adsr-raw (:args b))] (reset! (:shape node) v) (adsr-set! node v at)))
            :effects {:shape (fn [node v at] (reset! (:shape node) v) (adsr-set! node v at))
                      :gate (fn [node g at] (when-let [w @(:worklet node)] (.setValueAtTime (.get (.-parameters w) "gate") g at)))
                      :bang (fn [node [a d] at]

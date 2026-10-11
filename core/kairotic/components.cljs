@@ -25,6 +25,8 @@
 ;;                                                 (an inlet can be an AudioParam: a signal is added to it)
 ;;             :effects {k (fn [node x at])}
 ;;             :key     (fn [box] x)        if it changes, the node is rebuilt
+;;             :update  (fn [node box at])  with it, a new text does not rebuild the node: it gets the
+;;                                          new box (:text :args …) instead (and its state is forgotten)
 ;;             :wired   (fn [node inlets])  after wiring: the set of inlets that receive a signal
 ;;             :feed    (fn [node data])    the buffer at its right inlet, whenever it changes (:reads-buffer)
 ;;             :dispose (fn [node])}
@@ -38,6 +40,9 @@
 ;;  :draw     (fn [m] shapes)               escape hatch; pure; m = {:shown :state :args :text :data :w :h};
 ;;                                           :shown is the last thing the box returned as :show
 ;;  :gesture  (fn [m] value)                dragging over the box; m = the one of :draw plus {:start :x :y :dx :dy :fine}
+;;  :persist  (fn [value] {arg value})      with :args: what a gesture leaves in the box text. On release, instead of
+;;                                           (send! :bN value) the patch writes (text! :bN "class …") with these
+;;                                           arguments, so the change stays in the work
 ;;                                           (:start = what was shown on press; x, y local; dx, dy since the press;
 ;;                                           :fine with ⇧). The value reaches inlet 0 of the box itself while
 ;;                                           dragging, and on release stays in the history as (send :bN value)
@@ -158,6 +163,22 @@
           (or (number? d) (and (keyword? d) (contains? acc d)))
           (recur more (rest nums) free (assoc acc k (cond (seq nums) (first nums) (keyword? d) (get acc d) :else d)))
           :else (recur more nums (rest free) (assoc acc k (if (seq free) (first free) d))))))))
+
+(defn num-text [x] (if (== x (js/Math.round x)) (str (js/Math.round x)) (str (/ (js/Math.round (* x 10000)) 10000))))
+
+(defn args-text
+  "The text of a box of class k whose arguments are `vals` (a map), written in the order of the :args
+   spec of d: the numbers (those still at their default at the end are left out), then flags and words."
+  [d k vals]
+  (let [spec (:args d)
+        dflt (fn [x] (if (keyword? x) (get vals x) x))
+        nums (for [[a v] spec :when (or (number? v) (and (keyword? v) (not (boolean? v))))]
+               [(get vals a (dflt v)) (dflt v)])
+        nums (reverse (drop-while (fn [[v d0]] (= v d0)) (reverse nums)))
+        flags (for [[a v] spec :when (and (boolean? v) (get vals a))] (name a))
+        words (for [[a v] spec :when (not (or (number? v) (keyword? v) (boolean? v)))
+                    :let [w (get vals a)] :when w] (if (keyword? w) (name w) (str w)))]
+    (str/join " " (concat [k] (map (comp num-text first) nums) flags words))))
 
 (defn args-for
   "The :args a component receives: the parsed map if it declares :args, else the raw vector."
@@ -441,17 +462,19 @@
 (define! "space~" {:doc "A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones."
                    :usage "space~ [x y]"
                    :io [1 2]
+                   :args [[:x 0] [:y 1]]
+                   :persist (fn [[x y]] {:x x :y y})
                    :size [104 104]
                    :receive (fn [{:keys [value state args]}]
                               (if-let [p (space-pos value)]
                                 {:state p :show p :effects [[:pos p]]}
-                                (let [p (or state (space-pos (filterv number? args)) [0 1])]
+                                (let [p (or state (space-pos [(:x args) (:y args)]) [0 1])]
                                   (if (= value :bang) {:state p :show p :effects [[:pos p]]} {:state p}))))
                    :gesture (fn [{:keys [x y]}]
                               [(/ (js/Math.round (* 100 (clamp (/ (- x 52) 46) -1 1))) 100)
                                (/ (js/Math.round (* 100 (clamp (/ (- 52 y) 46) -1 1))) 100)])
                    :derive (fn [{:keys [shown args]}]
-                             (let [[x y] (or (space-pos shown) (space-pos (filterv number? args)) [0 1])]
+                             (let [[x y] (or (space-pos shown) (space-pos [(:x args) (:y args)]) [0 1])]
                                {:px (+ 52 (* 46 x)) :py (- 52 (* 46 y))
                                 :label (str (nice x) " · " (nice y))}))
                    :view [[:rect {:x 2 :y 2 :w 100 :h 100 :r 4 :stroke :grid :fill :bg}]
@@ -478,7 +501,11 @@
                                                          (.connect in p) (.connect p g) (.connect g out)
                                                          {:p p :g g})))]
                                        {:pair pair :live (atom {:a 0 :s -1}) :inlets [[in 0]] :outlets (split-stereo ac out)}))
-                           :effects {:pos (fn [node xy at] (space-move! node xy at))}}})
+                           :effects {:pos (fn [node xy at] (space-move! node xy at))}
+                           ;; a new text (dragging the dot rewrites it): the sound goes to the new place
+                           :update (fn [node b at]
+                                     (let [[x y] (concat (filterv number? (:args b)) (drop (count (filterv number? (:args b))) [0 1]))]
+                                       (space-move! node (space-pos [x y]) at)))}})
 
 ;; ───────── core: ports of a sub-patch ─────────
 ;; Seen from inside, an inlet only has an outlet and an outlet only has an inlet; seen from
