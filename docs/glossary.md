@@ -23,6 +23,7 @@ Esta tabla relaciona los nombres en castellano (hasta el Ensayo 8) con los nombr
 | rejilla | grid |
 | afinación | tuning |
 | lector | reader |
+| puerta | gate |
 | recorrido (trayectoria) | path |
 | componente | component |
 | biblioteca | library |
@@ -65,7 +66,7 @@ Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `c
 | estado / transicion / consigna / region | state / transition / instruction / region |
 | perilla | knob |
 | — | patch (sub-patch), inlet, outlet, inlet~, outlet~ (Study 10) |
-| — | phasor~, reader~ (audio rate), sig~; `reader path [stroke]` (Study 13) |
+| — | phasor~, reader~ (audio rate; `reader~ 2 gate` adds one gate outlet per voice), sig~; `reader path [stroke]` (Study 13) |
 | quinta | fifth |
 | deriva | drift |
 

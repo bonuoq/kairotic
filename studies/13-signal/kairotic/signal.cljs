@@ -5,14 +5,19 @@
 ;; an AudioWorklet whenever it changes, and the worklet interpolates the table while it plays.
 ;;
 ;;   phasor~ [hz]                 a ramp signal from 0 to 1, hz times per second (a number changes hz)
-;;   reader~ [x|y|path] [voices]  position signal (0…1) on the left, buffer on the right:
-;;                                · x (default): along X, one outlet per voice (the first crossings)
+;;   reader~ [x|y|path] [voices] [gate]
+;;                                position signal (0…1) on the left, buffer on the right:
+;;                                · x (default): along X, one outlet per voice
 ;;                                · y: along Y, the same
 ;;                                · path [stroke]: along a stroke, two outlets x and y
+;;                                · gate: then one more outlet per voice (one for path): 1 where the
+;;                                  voice has something, 0 where not, rising and falling in 5 ms
 ;;   sig~ [value]                 a constant signal; a number changes it
 ;;
 ;; The position 0…1 covers the X axis of a canvas, or a freqt from 0 to its last point (y: the Y axis,
-;; or the lowest … highest frequency). Where nothing passes the output is 0.
+;; or the lowest … highest frequency). Where nothing passes a voice keeps its last value (so an
+;; oscillator it drives does not fall to 0 Hz); the gate says whether it sounds. Voices are given like
+;; a synth gives them: a stroke keeps its voice while it lasts, and a new one takes the first free voice.
 
 (ns kairotic.signal
   (:require [kairotic.components :as comp]
@@ -22,23 +27,43 @@
 
 (def worklet-source
   "class KairoticReader extends AudioWorkletProcessor {
+  // tab: V value channels of n points (NaN where nothing passes). Outputs: the V values, held where
+  // nothing passes, then G gates (gate g follows value channel g) that rise and fall in 5 ms.
   constructor(o) {
     super();
-    this.tab = null; this.n = 0;
-    this.port.onmessage = (e) => { this.tab = e.data.tab; this.n = e.data.n; };
+    this.tab = null; this.n = 0; this.V = 0; this.G = 0;
+    this.last = []; this.g = [];
+    this.port.onmessage = (e) => {
+      const { tab, n, V, G } = e.data;
+      this.tab = tab; this.n = n; this.V = V; this.G = G;
+      for (let c = 0; c < V; c++) {
+        if (this.last[c] === undefined || isNaN(this.last[c])) {
+          let v = NaN; for (let i = 0; i < n; i++) { const x = tab[c * n + i]; if (!isNaN(x)) { v = x; break; } }
+          this.last[c] = isNaN(v) ? 0 : v;
+        }
+        if (this.g[c] === undefined) this.g[c] = 0;
+      }
+    };
   }
   process(inputs, outputs) {
     const inp = inputs[0] && inputs[0][0];
     const out = outputs[0];
-    const V = out.length, L = out[0].length, n = this.n, tab = this.tab;
+    const C = out.length, L = out[0].length, n = this.n, tab = this.tab, V = this.V, G = this.G;
+    const step = 1 / (0.005 * sampleRate);
     for (let i = 0; i < L; i++) {
-      if (!tab || n < 2) { for (let c = 0; c < V; c++) out[c][i] = 0; continue; }
+      if (!tab || n < 2) { for (let c = 0; c < C; c++) out[c][i] = 0; continue; }
       let p = inp ? inp[i] : 0;
       p = p < 0 ? 0 : (p > 1 ? 1 : p);
-      const f = p * (n - 1), k = Math.min(Math.floor(f), n - 2), r = f - k, k2 = k + 1;
-      for (let c = 0; c < V; c++) {
-        const a = tab[c * n + k], b = tab[c * n + k2];
-        out[c][i] = isNaN(a) ? 0 : (isNaN(b) ? a : a + (b - a) * r);
+      const f = p * (n - 1), k = Math.min(Math.floor(f), n - 2), r = f - k;
+      for (let c = 0; c < V && c < C; c++) {
+        const a = tab[c * n + k], b = tab[c * n + k + 1];
+        if (!isNaN(a)) this.last[c] = isNaN(b) ? a : a + (b - a) * r;
+        out[c][i] = this.last[c];
+        if (c < G && V + c < C) {
+          const t = isNaN(a) ? 0 : 1, g = this.g[c];
+          this.g[c] = g < t ? Math.min(t, g + step) : Math.max(t, g - step);
+          out[V + c][i] = this.g[c];
+        }
       }
     }
     return true;
@@ -79,7 +104,26 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
 (defn voices-of [args]
   (if (= :path (mode-of args)) 2 (max 1 (min 16 (or (comp/num-of (first (filter number? args))) 1)))))
 
-(defn stroke-of [args] (first (remove #{:path :x :y} (filter keyword? args))))
+(defn gate? [args] (boolean (some #{:gate} args)))
+
+(defn gates-of [args] (if (gate? args) (if (= :path (mode-of args)) 1 (voices-of args)) 0))
+
+(defn stroke-of [args] (first (remove #{:path :x :y :gate} (filter keyword? args))))
+
+(defn allocate
+  "Voices for a run of readings [[[id v] …] …]: a reading keeps the voice its id had at the step
+   before, a new id takes the first free voice (none if all V are taken). [{voice v} …]"
+  [readings V]
+  (first
+   (reduce (fn [[acc held] rd]
+             (let [ids (set (map first rd))
+                   kept (into {} (filter (fn [[vid _]] (ids vid)) held))
+                   held (reduce (fn [h [vid _]]
+                                  (if (contains? h vid) h
+                                      (if-let [free (first (remove (set (vals h)) (range V)))] (assoc h vid free) h)))
+                                kept rd)]
+               [(conj acc (into {} (keep (fn [[vid v]] (when-let [c (held vid)] [c v])) rd))) held]))
+           [[] {}] readings)))
 
 (defn table
   "The buffer d sampled for reader~: a Float32Array of voices × table-size (NaN where nothing passes)."
@@ -92,41 +136,40 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
                 (when-let [[x y] (cv/point-along d pts (/ i (dec n)))]
                   (aset tab i x)
                   (aset tab (+ n i) y))))
-      (let [span (if (= mode :y) (cv/y-range d) (cv/x-range d))]
-        (dotimes [i n]
-          (let [vals (cv/read-along d mode (cv/at-unit span (/ i (dec n))))]
-            (doseq [[c [_ v]] (map-indexed vector (take V vals))]
-              (aset tab (+ (* c n) i) v))))))
+      (let [span (if (= mode :y) (cv/y-range d) (cv/x-range d))
+            readings (for [i (range n)] (cv/read-along d mode (cv/at-unit span (/ i (dec n)))))]
+        (doseq [[i vs] (map-indexed vector (allocate readings V)) [c v] vs]
+          (aset tab (+ (* c n) i) v))))
     tab))
 
 (defn send-table! [node]
   (when-let [w @(:worklet node)]
     (when-let [t @(:pending node)]
-      (.postMessage (.-port w) #js {:tab t :n table-size})
+      (.postMessage (.-port w) #js {:tab t :n table-size :V (:V node) :G (:G node)})
       (reset! (:pending node) nil))))
 
 ;; ───────── classes ─────────
 
 (comp/define! "reader~"
-  {:doc "Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phasor~), the buffer on the right. One signal outlet per voice (along X, or Y with `reader~ y`), or x and y with `reader~ path`."
-   :usage "reader~ [x|y|path [stroke]] [voices]"
-   :io (fn [b] [2 (voices-of (:args b))]) :dynamic-io true
+  {:doc "Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phasor~), the buffer on the right. One signal outlet per voice (along X, or Y with `reader~ y`), or x and y with `reader~ path`; where nothing passes a voice keeps its last value. With `gate`, one more outlet per voice: 1 where it has something, 0 where not (into a gain~)."
+   :usage "reader~ [x|y|path [stroke]] [voices] [gate]"
+   :io (fn [b] [2 (+ (voices-of (:args b)) (gates-of (:args b)))]) :dynamic-io true
    :reads-buffer true
    :receive (fn [_] {})
    :audio {:create (fn [ac b _]
-                     (let [args (:args b) V (voices-of args)
+                     (let [args (:args b) V (voices-of args) G (gates-of args) C (+ V G)
                            in (.createGain ac)
-                           split (.createChannelSplitter ac V)
-                           node {:in in :split split :V V :mode (mode-of args) :stroke (stroke-of args)
+                           split (.createChannelSplitter ac C)
+                           node {:in in :split split :V V :G G :mode (mode-of args) :stroke (stroke-of args)
                                  :worklet (atom nil) :pending (atom nil) :fed (atom ::none) :alive (atom true)
                                  :inlets [[in 0]]
-                                 :outlets (vec (for [c (range V)] [split c]))}]
+                                 :outlets (vec (for [c (range C)] [split c]))}]
                        (-> (ready ac)
                            (.then (fn [_]
                                     (when @(:alive node)
                                       (let [w (js/AudioWorkletNode. ac "kairotic-reader"
                                                                     #js {:numberOfInputs 1 :numberOfOutputs 1
-                                                                         :outputChannelCount #js [V]
+                                                                         :outputChannelCount #js [C]
                                                                          :channelCount 1 :channelCountMode "explicit"})]
                                         (.connect in w)
                                         (.connect w split)
