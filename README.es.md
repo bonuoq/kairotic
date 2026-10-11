@@ -77,7 +77,7 @@ cd studies/13-signal && python3 -m http.server 8000
 
 Ver [`components/`](components/README.es.md) y la guía
 [Escribir un componente](docs/writing-a-component.es.md). En una obra se importan con
-`(import! "npm:kairotic-components@0.1.1/dist/knob.mjs")`; dentro de claude.ai una página solo
+`(import! "npm:kairotic-components@0.1.2/dist/knob.mjs")`; dentro de claude.ai una página solo
 puede cargar módulos JavaScript de npm a través de jsDelivr, por eso los componentes se publican así.
 
 ## Licencias y créditos

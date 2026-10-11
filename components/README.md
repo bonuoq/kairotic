@@ -11,7 +11,7 @@ and `dist/index.mjs`. Inside claude.ai a page can only load JavaScript modules f
 jsDelivr, so this is the published format. In a work:
 
 ```clojure
-(import! "npm:kairotic-components@0.1.1/dist/knob.mjs")
+(import! "npm:kairotic-components@0.1.2/dist/knob.mjs")
 ```
 
 Importing **copies** the definition into a `component` box of the work (with a header saying where

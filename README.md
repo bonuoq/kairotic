@@ -72,7 +72,7 @@ cd studies/13-signal && python3 -m http.server 8000
 
 See [`components/`](components/README.md) and the guide
 [Writing a component](docs/writing-a-component.md). Inside a work they are imported with
-`(import! "npm:kairotic-components@0.1.1/dist/knob.mjs")`; inside claude.ai a page can only load
+`(import! "npm:kairotic-components@0.1.2/dist/knob.mjs")`; inside claude.ai a page can only load
 JavaScript modules from npm through jsDelivr, which is why components are published that way.
 
 ## Licences and credits

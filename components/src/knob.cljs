@@ -21,6 +21,9 @@
                 (= value :bang) {:state current :out [[0 (outgoing current)]] :show current}
                 :else {:state current})))
 
+ ;; on release the value stays in the box text as its initial value (Kairotic Study 13 and later)
+ :persist (fn [v] {:initial (comp/nice v)})
+
  :gesture (fn [{:keys [start args dy fine]}]
             (let [{lo :min hi :max log? :log} args
                   u (comp/to-unit (if (number? start) start (:initial args)) lo hi log?)]
