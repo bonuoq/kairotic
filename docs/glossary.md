@@ -34,6 +34,8 @@ Esta tabla relaciona los nombres en castellano (hasta el Ensayo 8) con los nombr
 | sub-patch, abstracción | sub-patch, abstraction |
 | presentación, panel | presentation, panel |
 | inspector | inspector |
+| paquete (oficial) | package (official), `@kairotic/…` |
+| API de Kairotic | Kairotic API (`api/…`) |
 
 ## Namespaces · Espacios de nombres
 
@@ -69,6 +71,7 @@ Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `c
 | perilla | knob |
 | — | patch (sub-patch), inlet, outlet, inlet~, outlet~ (Study 10) |
 | — | phasor~, reader~ (audio rate; `reader~ 2 gate` adds one gate outlet per voice, 0 or 1), sig~, adsr~ [a d s r]; `reader path [stroke]` (Study 13) |
+| — | from Study 14 in packages: adsr~, synth~ → `@kairotic/synth`; pan~, space~ → `@kairotic/spatial` |
 | quinta | fifth |
 | deriva | drift |
 
@@ -179,6 +182,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | (frente) (simultaneidad 1500) | (front) (simultaneity 1500) |
 | — | (enter :b5) (up) (top) (inside :b5 …) (abstract :b5 "voice") (Study 10) |
 | — | (present :b4 x y) (unpresent :b4) (presentation true) (send-to! :b7.b4 v) (Study 11) |
+| — | (packages) (add-package! "@kairotic/synth") (Study 14) |
 | — | (axis :b6 :y -1 1) (grid-y :b6 0.25) (read-at :b6 :y 0.5) · classes freqt, pan~, space~; dac~ 1 2 … (Study 12) |
 | (rewind) (forward) (tip) (goto …) (here) (branches) (merge-from …) | (same) |
 

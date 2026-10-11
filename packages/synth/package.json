@@ -1,0 +1,37 @@
+{
+  "name": "@kairotic/synth",
+  "version": "0.1.0",
+  "description": "Kairotic synthesis components: adsr~ (an envelope that follows a gate), synth~ (a polyphonic synthesizer)",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/synth"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages#readme",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs synth",
+    "prepublishOnly": "node ../build.mjs synth"
+  },
+  "keywords": [
+    "kairotic",
+    "music",
+    "web audio",
+    "synthesis",
+    "envelope"
+  ]
+}

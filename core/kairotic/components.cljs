@@ -343,47 +343,8 @@
 
 ;; ───────── core: audio ─────────
 
-(defn voices!
-  "synth~: each id is a voice. A new id attacks, one that continues glides its frequency to the new
-   value at `at`, and one that disappears is switched off."
-  [node pairs at]
-  (let [ac (.-context (:out node)) vs @(:voices node) incoming (into {} pairs)]
-    (doseq [[vid {:keys [osc g]}] vs :when (not (contains? incoming vid))]
-      (.setTargetAtTime (.-gain g) 0 at 0.03)
-      (.stop osc (+ at 0.4)))
-    (reset! (:voices node)
-            (into {}
-                  (for [[vid hz] (take 16 pairs)]
-                    (if-let [v (get vs vid)]
-                      (do (.linearRampToValueAtTime (.-frequency (:osc v)) hz at) [vid v])
-                      (let [o (.createOscillator ac) g (.createGain ac)]
-                        (set! (.-type o) "triangle")
-                        (.setValueAtTime (.-frequency o) hz at)
-                        (.setValueAtTime (.-gain g) 0 at)
-                        (.linearRampToValueAtTime (.-gain g) 0.2 (+ at 0.015))
-                        (.connect o g)
-                        (.connect g (:out node))
-                        (.start o at)
-                        [vid {:osc o :g g}])))))))
+;; synth~ moved to the package @kairotic/synth (Study 14)
 
-(defn synth [{:keys [state inlet value]}]
-  (cond
-    (= inlet 1) {:state (assoc state :ids (if (sequential? value) (vec value) [value]))}
-    (number? value) {:state (dissoc state :ids) :effects [[:voices [[:v0 value]]]]}
-    (sequential? value)
-    (let [fs (filterv number? value)
-          ids (:ids state)
-          ids (if (= (count ids) (count fs)) ids (mapv (fn [i] (keyword (str "v" i))) (range (count fs))))]
-      {:state (dissoc state :ids) :effects [[:voices (mapv vector ids fs)]]})
-    (= value :stop) {:effects [[:voices []]]}
-    :else {}))
-
-(define! "synth~" {:doc "Polyphonic triangle-wave synthesizer: frequencies on the left, voice ids on the right."
-                   :io [2 1] :receive synth
-                   :audio {:create (fn [ac _ _] (let [out (.createGain ac)] (set! (.. out -gain -value) 0.3)
-                                                  {:outlets [[out 0]] :out out :voices (atom {})}))
-                           :effects {:voices voices!}
-                           :dispose (fn [node] (doseq [[_ v] @(:voices node)] (try (.stop (:osc v)) (catch :default _ nil))))}})
 (define! "osc~" {:doc "Sine oscillator. A number on the left changes its frequency; a signal on the left (from reader~, sig~…) is its frequency in Hz."
                  :usage "osc~ [hz]" :io [2 1]
                  :receive (fn [{:keys [inlet value]}] (if (and (zero? inlet) (num-of value)) {:effects [[:freq (num-of value)]]} {}))
@@ -419,93 +380,8 @@
                                     :outlets []})
                          :key (fn [b] (dac-channels b))}})
 
-;; ───────── core: space ─────────
-
-(defn split-stereo [ac src]
-  (let [sp (.createChannelSplitter ac 2)] (.connect src sp) [[sp 0] [sp 1]]))
-
-(define! "pan~" {:doc "Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right."
-                 :usage "pan~ [position]"
-                 :io [2 2]
-                 :receive (fn [{:keys [inlet value]}]
-                            (if (and (= 1 inlet) (num-of value)) {:effects [[:pan (clamp (num-of value) -1 1)]] :show (num-of value)} {}))
-                 :audio {:create (fn [ac b _]
-                                   (let [p (.createStereoPanner ac)]
-                                     (set! (.. p -pan -value) (clamp (or (num-of (first (:args b))) 0) -1 1))
-                                     {:p p :inlets [[p 0]] :outlets (split-stereo ac p)}))
-                         :effects {:pan (fn [node x at] (.setTargetAtTime (.-pan (:p node)) x at 0.01))}}})
-
-(defn space-pos [v] (when (and (sequential? v) (= 2 (count v)) (every? number? v)) [(clamp (first v) -1 1) (clamp (second v) -1 1)]))
-
-;; An HRTF panner clicks whenever its position changes (it swaps filters), so space~ keeps two:
-;; the silent one jumps to the new place and they crossfade, at most every `space-step` seconds.
-;; A move that comes sooner waits for the next crossfade (and the latest one wins). Measured offline:
-;; a path every 10 ms clicked 57 times in 8 s with one panner, none in 20 s like this.
-(def space-step 0.05)
-(def space-settle 0.01) ; the panner gets its new place a moment before it is heard
-
-(defn space-move! [node [x y] at]
-  (let [{:keys [a s]} @(:live node) pair (:pair node)
-        place! (fn [i t] (let [p (:p (pair i))]
-                           (doseq [prm [(.-positionX p) (.-positionZ p)]] (.cancelScheduledValues prm t))
-                           (.setValueAtTime (.-positionX p) (* 2 x) t)
-                           (.setValueAtTime (.-positionZ p) (* -2 y) t)))]
-    (if (< at s)
-      (place! a s)                                  ; a crossfade is already waiting: move its target
-      (let [t (max at (+ s space-step)) b (- 1 a)]
-        (place! b t)
-        (doseq [[i v] [[b 1] [a 0]] :let [g (.-gain (:g (pair i)))]]
-          (.cancelScheduledValues g t)
-          (.setTargetAtTime g v (+ t space-settle) (/ space-step 4)))
-        (reset! (:live node) {:a b :s t})))))
-
-(define! "space~" {:doc "A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones."
-                   :usage "space~ [x y]"
-                   :io [1 2]
-                   :args [[:x 0] [:y 1]]
-                   :persist (fn [[x y]] {:x x :y y})
-                   :size [104 104]
-                   :receive (fn [{:keys [value state args]}]
-                              (if-let [p (space-pos value)]
-                                {:state p :show p :effects [[:pos p]]}
-                                (let [p (or state (space-pos [(:x args) (:y args)]) [0 1])]
-                                  (if (= value :bang) {:state p :show p :effects [[:pos p]]} {:state p}))))
-                   :gesture (fn [{:keys [x y]}]
-                              [(/ (js/Math.round (* 100 (clamp (/ (- x 52) 46) -1 1))) 100)
-                               (/ (js/Math.round (* 100 (clamp (/ (- 52 y) 46) -1 1))) 100)])
-                   :derive (fn [{:keys [shown args]}]
-                             (let [[x y] (or (space-pos shown) (space-pos [(:x args) (:y args)]) [0 1])]
-                               {:px (+ 52 (* 46 x)) :py (- 52 (* 46 y))
-                                :label (str (nice x) " · " (nice y))}))
-                   :view [[:rect {:x 2 :y 2 :w 100 :h 100 :r 4 :stroke :grid :fill :bg}]
-                          [:line {:x1 52 :y1 6 :x2 52 :y2 98 :stroke :grid}]
-                          [:line {:x1 6 :y1 52 :x2 98 :y2 52 :stroke :grid}]
-                          [:circle {:cx 52 :cy 52 :r 30 :stroke :grid}]
-                          [:path {:points [[47 50] [52 43] [57 50]] :closed true :fill :soft}]
-                          [:circle {:cx 52 :cy 52 :r 5 :stroke :soft :fill :bg}]
-                          [:line {:x1 52 :y1 52 :x2 :$px :y2 :$py :stroke :accent :weight 1}]
-                          [:circle {:cx :$px :cy :$py :r 6 :fill :accent}]
-                          [:text {:x 6 :y 98 :size 9 :fill :soft} :$label]]
-                   :audio {:create (fn [ac b _]
-                                     (let [[x y] (or (space-pos (filterv number? (:args b))) [0 1])
-                                           in (.createGain ac) out (.createGain ac)
-                                           pair (vec (for [i [0 1]]
-                                                       (let [p (.createPanner ac) g (.createGain ac)]
-                                                         (set! (.-panningModel p) "HRTF")
-                                                         (set! (.-distanceModel p) "inverse")
-                                                         (set! (.-refDistance p) 1)
-                                                         (set! (.. p -positionX -value) (* 2 x))
-                                                         (set! (.. p -positionY -value) 0)
-                                                         (set! (.. p -positionZ -value) (* -2 y))
-                                                         (set! (.. g -gain -value) (if (zero? i) 1 0))
-                                                         (.connect in p) (.connect p g) (.connect g out)
-                                                         {:p p :g g})))]
-                                       {:pair pair :live (atom {:a 0 :s -1}) :inlets [[in 0]] :outlets (split-stereo ac out)}))
-                           :effects {:pos (fn [node xy at] (space-move! node xy at))}
-                           ;; a new text (dragging the dot rewrites it): the sound goes to the new place
-                           :update (fn [node b at]
-                                     (let [[x y] (concat (filterv number? (:args b)) (drop (count (filterv number? (:args b))) [0 1]))]
-                                       (space-move! node (space-pos [x y]) at)))}})
+;; ───────── space ─────────
+;; pan~ and space~ moved to the package @kairotic/spatial (Study 14)
 
 ;; ───────── core: ports of a sub-patch ─────────
 ;; Seen from inside, an inlet only has an outlet and an outlet only has an inlet; seen from

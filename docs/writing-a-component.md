@@ -117,8 +117,13 @@ Put the sections in this order, with a comment line before each one:
 Only the logic is code; the rest is data that can be read, checked and changed without running
 anything. Read the whole [knob](../components/src/knob.cljs).
 
-Helpers available in the logic: `comp/clamp`, `comp/nice` (sensible rounding), `comp/to-unit` and
-`comp/from-unit` (a value ⇄ 0…1, linear or logarithmic).
+Helpers available in the logic come from the **Kairotic API**, `api/…` (from Study 14; before it the
+same functions were `comp/…`): `api/clamp`, `api/nice` (sensible rounding), `api/num-of`,
+`api/to-unit` and `api/from-unit` (a value ⇄ 0…1, linear or logarithmic), `api/padded` (the numbers
+of a box text with defaults), and for audio `api/stereo-outlets`, `api/worklet-node` (an
+AudioWorklet whose JavaScript travels inside the component) and `api/param`. The API has a version
+(`api/version`): a package declares the one it was written for, and the core only breaks it with a
+new major version. See [`core/kairotic/api.cljs`](../core/kairotic/api.cljs).
 
 ## 6. A component made of a patch
 
@@ -168,6 +173,9 @@ not its place in the patch.
 - **In the library of the space:** `(publish :bN)` and, in another work, `(use! "class")`.
 - **On npm:** add `src/<name>.cljs` to [`components/`](../components/README.md) and publish a
   version; anyone can then `(import! "npm:kairotic-components@x.y.z/dist/<name>.mjs")`.
+- **In an official package** (Study 14): add it to `packages/<category>/src/` (see
+  [`packages/`](../packages/README.md)). A package travels as one `component` box, and writing one of
+  its classes in a work brings it in.
 
 Importing always **copies** the definition into a `component` box of the work, with a header that
 says where it came from and under which licence: the work stays complete and sounds the same even

@@ -120,8 +120,13 @@ Escribe las secciones en este orden, con una línea de comentario antes de cada 
 Solo la lógica es código; el resto son datos que se pueden leer, comprobar y cambiar sin ejecutar
 nada. Lee la [knob](../components/src/knob.cljs) completa.
 
-Utilidades disponibles en la lógica: `comp/clamp`, `comp/nice` (redondeo razonable),
-`comp/to-unit` y `comp/from-unit` (un valor ⇄ 0…1, lineal o logarítmico).
+Las utilidades disponibles en la lógica vienen de la **API de Kairotic**, `api/…` (desde el Ensayo 14;
+antes eran `comp/…`): `api/clamp`, `api/nice` (redondeo razonable), `api/num-of`, `api/to-unit` y
+`api/from-unit` (un valor ⇄ 0…1, lineal o logarítmico), `api/padded` (los números del texto de una
+caja con valores por defecto), y para audio `api/stereo-outlets`, `api/worklet-node` (un AudioWorklet
+cuyo JavaScript viaja dentro del componente) y `api/param`. La API tiene versión (`api/version`): un
+paquete declara para cuál se escribió, y el núcleo solo la rompe con una versión mayor nueva. Ver
+[`core/kairotic/api.cljs`](../core/kairotic/api.cljs).
 
 ## 6. Un componente hecho de un patch
 
@@ -171,6 +176,9 @@ presentación, no su lugar en el patch.
 - **En la biblioteca del espacio:** `(publish :bN)` y, en otra obra, `(use! "clase")`.
 - **En npm:** añade `src/<nombre>.cljs` a [`components/`](../components/README.es.md) y publica una
   versión; cualquiera podrá hacer `(import! "npm:kairotic-components@x.y.z/dist/<nombre>.mjs")`.
+- **En un paquete oficial** (Ensayo 14): añádelo a `packages/<categoría>/src/` (ver
+  [`packages/`](../packages/README.es.md)). Un paquete viaja como una sola caja `component`, y escribir
+  una de sus clases en una obra lo trae.
 
 Importar siempre **copia** la definición en una caja `component` de la obra, con una cabecera que
 dice de dónde viene y con qué licencia: la obra queda completa y suena igual aunque el paquete

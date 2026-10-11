@@ -22,6 +22,7 @@ that anyone can write and share.
 
 ```
 core/kairotic/        current modules of the system (ClojureScript)
+  api.cljs            the Kairotic API: what components outside the core may use (api/…), versioned
   components.cljs     component registry, core classes, helpers for writing components
   engine.cljs         execution: messages, a time queue on the audio clock, Web Audio nodes
   canvas.cljs         graphic buffers: generic canvas (any data, read along X or Y) and freqt (frequency × time, Scala tunings)
@@ -33,6 +34,7 @@ core/kairotic/        current modules of the system (ClojureScript)
   shapes.cljs         a component's own view: shapes as data → SVG, templates with holes
 studies/NN-name/      every study as it was published (index.html + its modules)
 components/           npm package kairotic-components (src/*.cljs → dist/*.mjs)
+packages/             official packages by category: @kairotic/synth, @kairotic/spatial (src/*.cljs → dist/*.mjs)
 docs/                 glossary (es ⇄ en) and guides, in English and Spanish
 tests/                feasibility tests (Faust in artifacts, what can be loaded)
 ```
@@ -57,6 +59,7 @@ and interface are in English. The [glossary](docs/glossary.md) maps the old name
 | 11 | Presentation | a performer's view (`(present …)`, Present button) and sub-patches seen as panels of their controls |
 | 12 | Space | a generic `canvas` read along X or Y (and `freqt` for frequency over time); `dac~` with real channels, `pan~`, binaural `space~` |
 | 13 | Signal | reading at audio rate (`phasor~` → `reader~`, an AudioWorklet; signals into `osc~`/`gain~` parameters) and along 2D paths (`reader path`); per-voice gates (`reader~ 2 gate`) into envelopes (`adsr~`); boxes edited from the patch (inspector), and gestures that rewrite the box text |
+| 14 | Packages | official packages by category (`@kairotic/synth`: adsr~, synth~ · `@kairotic/spatial`: pan~, space~), brought into a work when one of their classes is written; the Kairotic API (`api/…`) for components |
 
 ## Trying it
 
@@ -64,7 +67,7 @@ The studies were published as claude.ai artifacts, which provide the database an
 rooms. Outside claude.ai they work in **local mode** (no saving or sharing):
 
 ```sh
-cd studies/13-signal && python3 -m http.server 8000
+cd studies/14-packages && python3 -m http.server 8000
 # open http://localhost:8000 and choose "Try locally, without saving"
 ```
 

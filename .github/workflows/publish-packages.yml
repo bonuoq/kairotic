@@ -1,0 +1,37 @@
+# Publishes an official package (packages/<name>, npm @kairotic/<name>) when a tag <name>-vX.Y.Z is
+# pushed, for example by creating a GitHub release with that tag: synth-v0.1.0 → @kairotic/synth.
+#
+# Authentication: trusted publishing (OIDC), no tokens. npm only lets a trusted publisher be set on a
+# package that already exists, so the first version of each package is published by hand; then, on
+# npmjs.com, in that package's settings, this repository and this file (publish-packages.yml) are its
+# trusted publisher, with direct publishing enabled under "Allowed actions".
+name: publish-packages
+
+on:
+  push:
+    tags: ["synth-v*", "spatial-v*", "cac-v*", "notation-v*", "controls-v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Recent npm (trusted publishing needs npm ≥ 11.5.1)
+        run: npm install -g npm@latest
+      - name: Which package, and does the tag match its version
+        run: |
+          NAME="${GITHUB_REF_NAME%-v*}"
+          test -f "packages/$NAME/package.json" || { echo "No package packages/$NAME"; exit 1; }
+          V=$(node -p "require('./packages/$NAME/package.json').version")
+          test "$NAME-v$V" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} does not match version $V"; exit 1; }
+          echo "NAME=$NAME" >> "$GITHUB_ENV"
+      - run: node packages/build.mjs "$NAME"
+      - run: npm publish --access public
+        working-directory: packages/${{ env.NAME }}
