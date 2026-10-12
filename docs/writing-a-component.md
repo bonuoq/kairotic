@@ -177,6 +177,11 @@ written with Claude and what was asked; edit it like any other. With a component
 "change the selected component" asks for a change to it instead. It runs on the Claude account of
 whoever uses the page, who is asked for permission the first time.
 
+From Study 16 it can also write Faust (it compiles it to check it), abstractions with `faust~` boxes
+and knobs, and bpatchers (abstractions whose presented boxes make the panel of every instance), and a
+package when it needs several definitions together. It reads examples from the
+[catalog](../examples/README.md), which is how we teach it new kinds of components.
+
 ## 7. Sharing it
 
 - **In the work:** the `component` box travels with the work and its history.

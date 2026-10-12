@@ -180,6 +180,11 @@ que se escribió con Claude y qué se pidió; se edita como cualquier otra. Con 
 seleccionada, "change the selected component" pide un cambio sobre ella. Usa la cuenta de Claude de
 quien usa la página, a quien se pide permiso la primera vez.
 
+Desde el Ensayo 16 también escribe Faust (lo compila para comprobarlo), abstracciones con cajas `faust~`
+y knobs, y bpatchers (abstracciones cuyas cajas presentadas forman el panel de cada instancia), y un
+paquete cuando necesita varias definiciones juntas. Lee ejemplos del [catálogo](../examples/README.md),
+que es como le enseñamos nuevos tipos de componentes.
+
 ## 7. Compartirlo
 
 - **En la obra:** la caja `component` viaja con la obra y su historia.
