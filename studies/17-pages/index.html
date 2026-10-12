@@ -3063,6 +3063,19 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; (window.claude); anywhere else from a backend with the same shape (window.kairoticBackend: GUN for
 ;; data and rooms, Claude with your own API key — see kairotic/backends/gun-backend.js). Study 17.
 (defn backend [] (.-kairoticBackend js/window))
+(defn pages? "True outside claude.ai, when the page runs on its own backend (Kairotic Pages)."
+  [] (boolean (and (not (.-claude js/window)) (backend))))
+(defn relay-note
+  "On Pages, which relays the page syncs through (or that it works alone)."
+  []
+  (when (pages?)
+    (let [ps (js->clj (or (.-kairoticPeers js/window) #js []))]
+      (str "<p class=\"mgr-note\">"
+           (if (seq ps)
+             (str "Synced through " (str/join ", " (map #(str "<code>" (esc %) "</code>") ps))
+                  " (a free relay may take up to a minute to wake up).")
+             "No relay: works stay in this browser and rooms reach nobody else. Add <code>?peer=wss://…/gun</code> to the address.")
+           "</p>"))))
 
 (defn cuse [nm]
   (cond
@@ -3493,15 +3506,20 @@ window.addEventListener("DOMContentLoaded", function () {
                        " <button class=\"act primary\" data-act=\"open\" data-kind=\"room\" data-id=\"" (esc (:id inv)) "\">Enter</button></div>"))
                 (when-not can-write
                   "<p class=\"mgr-note\">You can enter the rooms and walk through their history, but not create or change works: your access to this artifact is read only.</p>")
+                (relay-note)
                 "<div class=\"mgr-cols\">"
-                "<section class=\"mgr-col\"><h3>Solo</h3><p class=\"mgr-hint\">Only you see these works, not even whoever shares the artifact.</p>"
+                (if (pages?)
+                  "<section class=\"mgr-col\"><h3>Solo</h3><p class=\"mgr-hint\">Only you see these works: they are encrypted with a key that stays in this browser.</p>"
+                  "<section class=\"mgr-col\"><h3>Solo</h3><p class=\"mgr-hint\">Only you see these works, not even whoever shares the artifact.</p>")
                 (if (seq solo-list)
                   (str "<ul class=\"items\">" (apply str (map (fn [o] (item-html :solo o)) solo-list)) "</ul>")
                   "<p class=\"mgr-empty\">You have no solo works yet.</p>")
                 (when (and can-write (uid))
                   "<form class=\"new\" data-kind=\"solo\"><input id=\"new-solo\" placeholder=\"Name of the work\" maxlength=\"60\" required><label class=\"opt\"><input type=\"checkbox\" id=\"new-solo-ex\"> with the example work</label><button class=\"act primary\">Create</button></form>")
                 "</section>"
-                "<section class=\"mgr-col\"><h3>Shared rooms</h3><p class=\"mgr-hint\">Anyone with access to this artifact sees them and can enter.</p>"
+                (if (pages?)
+                  "<section class=\"mgr-col\"><h3>Shared rooms</h3><p class=\"mgr-hint\">Anyone using this site with the same relay sees them and can enter.</p>"
+                  "<section class=\"mgr-col\"><h3>Shared rooms</h3><p class=\"mgr-hint\">Anyone with access to this artifact sees them and can enter.</p>")
                 (if (seq room-list)
                   (str "<ul class=\"items\">" (apply str (map (fn [s] (item-html :room s)) room-list)) "</ul>")
                   "<p class=\"mgr-empty\">No rooms yet.</p>")

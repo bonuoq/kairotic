@@ -6,5 +6,5 @@
 // A visitor can also choose relays for one visit with ?peer=wss://host/gun (several separated by
 // commas); they are remembered in this browser until ?peer= is given again (?peer=none clears them).
 window.KAIROTIC_PEERS = [
-  // "wss://your-relay.example.org/gun",
+  "wss://kairotic-relay.onrender.com/gun",   // Render, free instance (sleeps when idle, disk not kept)
 ];
