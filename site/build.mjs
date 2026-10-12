@@ -1,5 +1,5 @@
 // Kairotic Pages · build
-// Makes the GitHub Pages edition in _site/ from the current study (studies/17-pages): the same page
+// Makes the GitHub Pages edition in _site/ from the current study (studies/18-learn): the same page
 // and modules, plus GUN (vendored), the adapter and the boot script, loaded before the ClojureScript.
 //
 //   node site/build.mjs            → _site/
@@ -11,7 +11,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const study = join(root, "studies", "17-pages");
+const study = join(root, "studies", "18-learn");
 const out = resolve(root, process.argv[2] || "_site");
 
 rmSync(out, { recursive: true, force: true });
