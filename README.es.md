@@ -70,6 +70,7 @@ paquete anterior (`kairotic-componentes`), ya sustituido por `kairotic-component
 | 15 | Claude | componentes escritos con Claude dentro de la obra (la pestaña Claude, `(ask-component …)`), con la cuenta de Claude de quien lo usa; Claude prueba lo que escribe con las herramientas de la página antes de que llegue como caja de componente |
 | 16 | Faust | Claude escribe también Faust (lo compila para comprobarlo), abstracciones con cajas faust~ y knobs, y bpatchers cuyas instancias muestran sus knobs como panel; un catálogo de ejemplos por categorías que Claude lee con una herramienta ([examples/](examples/README.md)) |
 | 17 | Pages | la misma página fuera de claude.ai: un adaptador de backend (base de datos, salas, usuario, Claude) para que funcione en GitHub Pages con salas [GUN](https://gun.eco) a través de un [relay](relay/README.es.md) y Claude con la propia clave de API de Anthropic de cada persona ([docs/pages.es.md](docs/pages.es.md)) |
+| 18 | Learn | la pestaña Help: qué hace cada clase, entrada por entrada, con un patch de ayuda (**?** sobre una caja seleccionada, `:help` en un componente); tutoriales en castellano e inglés que se abren como lecciones — cada paso un punto de la historia, ◀ ▶ entre pasos, una rama tuya cuando cambias algo ([docs/tutorials/](docs/tutorials/README.es.md)) |
 
 ## Probarlo
 
@@ -77,7 +78,7 @@ Los ensayos se publicaron como artefactos de claude.ai, que aportan la base de d
 compartidas. Fuera de claude.ai funcionan en **modo local** (sin guardar ni compartir):
 
 ```sh
-cd studies/17-pages && python3 -m http.server 8000
+cd studies/18-learn && python3 -m http.server 8000
 # abre http://localhost:8000 y elige «Try locally, without saving»
 ```
 

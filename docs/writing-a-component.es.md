@@ -185,6 +185,22 @@ y knobs, y bpatchers (abstracciones cuyas cajas presentadas forman el panel de c
 paquete cuando necesita varias definiciones juntas. Lee ejemplos del [catálogo](../examples/README.md),
 que es como le enseñamos nuevos tipos de componentes.
 
+## 6¾. Su ayuda
+
+Desde el Ensayo 18 la pestaña Help (o **?** sobre una caja seleccionada) explica qué hace una clase,
+entrada por entrada, con un patch de ayuda que se abre como una lección. Un componente trae la suya con `:help`:
+
+```clojure
+:help {:inlets  ["un número: la frecuencia en Hz" "la profundidad, 0…1"]   ; una línea por entrada, desde 0
+       :outlets ["la señal"]
+       :messages [["bang" "vuelve a empezar"]]
+       :example "(box :b1 \"wobble~ 4\" 40 30)\n(box :b2 \"dac~\" 40 90)\n(connect :b1 0 :b2 0)"
+       :try "Pulsa ▶ y cambia la velocidad."
+       :see ["osc~" "gain~"]}
+```
+
+El ejemplo es código de patch, un gesto por línea: al abrir el patch de ayuda se hacen uno a uno.
+
 ## 7. Compartirlo
 
 - **En la obra:** la caja `component` viaja con la obra y su historia.

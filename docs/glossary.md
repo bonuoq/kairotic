@@ -185,6 +185,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | — | (packages) (add-package! "@kairotic/synth") (Study 14) |
 | — | (ask-component "…") · the Claude tab (Study 15) |
 | — | ?peer=wss://…/gun · API key row in the Claude tab (Study 17, Pages) |
+| — | ? or F1 on a box · (help "osc~") · (tutorial "patch-to-code") · the Help tab and the lesson bar (Study 18) |
 | — | (axis :b6 :y -1 1) (grid-y :b6 0.25) (read-at :b6 :y 0.5) · classes freqt, pan~, space~; dac~ 1 2 … (Study 12) |
 | (rewind) (forward) (tip) (goto …) (here) (branches) (merge-from …) | (same) |
 
@@ -205,3 +206,13 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | relay | relay (GUN peer server, `relay/`) |
 | clave propia (BYOK) | bring your own key (Anthropic API key, this browser only) |
 | edición Pages | Pages edition (`site/build.mjs` → `_site/`) |
+
+## Learning · Aprendizaje (Study 18)
+
+| es | en |
+|---|---|
+| ayuda (de un componente) | help (`:help`: inlets, outlets, messages, example, try, see) |
+| patch de ayuda | help patch |
+| tutorial · lección | tutorial · lesson (a local work built step by step) |
+| paso | step (a point of the history) |
+| itinerario | track |

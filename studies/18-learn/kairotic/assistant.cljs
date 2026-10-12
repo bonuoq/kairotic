@@ -264,7 +264,8 @@ browser. You may write:
 
 Write in English (names, :doc, comments). Keep it small and readable, in sections like the examples:
 about (:class :license \"MPL-2.0\" :doc :usage :io), arguments (:args, :persist), logic (:receive,
-:gesture), view (:derive, :view as data, :size), audio (:audio). Prefer :view (a data template with
+:gesture), view (:derive, :view as data, :size), audio (:audio), help (:help {:inlets [\"one line per inlet\" …]
+:outlets […] :try \"something to do with it\"}, shown in the Help tab). Prefer :view (a data template with
 $holes) over :draw. A class name is one word; audio classes end in ~. Do not reuse a core class name.
 :receive is pure: it returns data ({:out … :state … :show … :effects … :later …}); side effects on
 sound happen only through :audio :effects. Messages are numbers, keywords (:bang), strings or vectors.

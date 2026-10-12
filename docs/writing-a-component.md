@@ -182,6 +182,22 @@ and knobs, and bpatchers (abstractions whose presented boxes make the panel of e
 package when it needs several definitions together. It reads examples from the
 [catalog](../examples/README.md), which is how we teach it new kinds of components.
 
+## 6¾. Its help
+
+Since Study 18 the Help tab (or **?** on a selected box) shows what a class does port by port, with a
+help patch that opens as a lesson. A component brings its own with `:help`:
+
+```clojure
+:help {:inlets  ["a number: the frequency in Hz" "the depth, 0…1"]   ; one line per inlet, from 0
+       :outlets ["the signal"]
+       :messages [["bang" "starts again"]]
+       :example "(box :b1 \"wobble~ 4\" 40 30)\n(box :b2 \"dac~\" 40 90)\n(connect :b1 0 :b2 0)"
+       :try "Press ▶ and change the rate."
+       :see ["osc~" "gain~"]}
+```
+
+The example is patch code, one gesture per line: opening the help patch makes them one by one.
+
 ## 7. Sharing it
 
 - **In the work:** the `component` box travels with the work and its history.
