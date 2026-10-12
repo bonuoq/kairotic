@@ -1965,7 +1965,8 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (defn render-inspector! []
   (let [old ($ "inspector") [kind id] (:sel @ui)
-        b (when (and (= kind :box) (not @pres-mode)) (get-in (current) [:boxes id]))
+        moving? (let [d (:drag @ui)] (and d (:moved d)))   ; hidden while a box is being moved
+        b (when (and (= kind :box) (not @pres-mode) (not moving?)) (get-in (current) [:boxes id]))
         k (when b [id (:text b) (:x b) (:y b) (cmd-path)])
         focused (.-activeElement js/document)]
     ;; a field being edited is applied before the inspector goes away or is redrawn
