@@ -1901,6 +1901,14 @@ window.addEventListener("DOMContentLoaded", function () {
                (let [[x1 y1] (out-xy p (:from wire) (:out wire))]
                  (str "<line class=\"wire temp\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" (:x wire) "\" y2=\"" (:y wire) "\"></line>")))]
     (set! (.-innerHTML ($ "scene")) (str (apply str lines) (apply str bxs) temp))
+    ;; the paper grows with what is on it (with room to keep going), so nothing at the edge is cut off
+    (let [[mx my] (reduce (fn [[mx my] [id b]]
+                            (let [[x y] (box-pos id b) [w h] (box-dims id b)]
+                              [(max mx (+ x w)) (max my (+ y h))]))
+                          [0 0] (:boxes p))
+          st (.-style ($ "canvas"))]
+      (set! (.-width st) (str (max 900 (+ mx 160)) "px"))
+      (set! (.-height st) (str (max 680 (+ my 200)) "px")))
     (render-crumbs!)
     ;; scores already drawn are put back in their box, with the chosen stroke marked
     (doseq [slot (array-seq (.querySelectorAll ($ "scene") ".score-slot"))]
