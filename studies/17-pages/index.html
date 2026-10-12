@@ -3,6 +3,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <style>
+/* hidden must hide, even on elements whose class sets a display (claude.ai adds this rule around the page; elsewhere it is ours) */
+[hidden] { display: none !important; }
 /* Layout: work table. Patch (score paper) and its code projection on top, the branching history as a full-width timeline band, REPL along the foot. */
 :root {
   --paper: #eef1f4;
