@@ -1,0 +1,21 @@
+{
+  "name": "kairotic-relay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GUN relay for Kairotic Pages (rooms and saved works between browsers)",
+  "license": "MPL-2.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "gun": "github:amark/gun#054ca85f59d8a8fe6779c19fa34be985e16cfbc9",
+    "ws": "^7.5.10"
+  },
+  "overrides": {
+    "ws": "^7.5.10"
+  }
+}

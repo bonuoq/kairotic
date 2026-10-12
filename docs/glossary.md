@@ -184,6 +184,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | — | (present :b4 x y) (unpresent :b4) (presentation true) (send-to! :b7.b4 v) (Study 11) |
 | — | (packages) (add-package! "@kairotic/synth") (Study 14) |
 | — | (ask-component "…") · the Claude tab (Study 15) |
+| — | ?peer=wss://…/gun · API key row in the Claude tab (Study 17, Pages) |
 | — | (axis :b6 :y -1 1) (grid-y :b6 0.25) (read-at :b6 :y 0.5) · classes freqt, pan~, space~; dac~ 1 2 … (Study 12) |
 | (rewind) (forward) (tip) (goto …) (here) (branches) (merge-from …) | (same) |
 
@@ -195,3 +196,12 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | data/users/<uid>/<id> | data/users/<uid>/<id> |
 | …/historia/<tramo> | …/history/<segment> |
 | biblioteca/<clase> | library/<class> |
+
+## Backends · Backends (Study 17)
+
+| es | en |
+|---|---|
+| adaptador de backend | backend adapter (`window.kairoticBackend`: db, room, user, sample) |
+| relay | relay (GUN peer server, `relay/`) |
+| clave propia (BYOK) | bring your own key (Anthropic API key, this browser only) |
+| edición Pages | Pages edition (`site/build.mjs` → `_site/`) |

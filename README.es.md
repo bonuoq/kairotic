@@ -69,6 +69,7 @@ paquete anterior (`kairotic-componentes`), ya sustituido por `kairotic-component
 | 14 | Packages | paquetes oficiales por categorías (`@kairotic/synth`: adsr~, synth~ · `@kairotic/spatial`: pan~, space~), que llegan a la obra al escribir una de sus clases; la API de Kairotic (`api/…`) para componentes |
 | 15 | Claude | componentes escritos con Claude dentro de la obra (la pestaña Claude, `(ask-component …)`), con la cuenta de Claude de quien lo usa; Claude prueba lo que escribe con las herramientas de la página antes de que llegue como caja de componente |
 | 16 | Faust | Claude escribe también Faust (lo compila para comprobarlo), abstracciones con cajas faust~ y knobs, y bpatchers cuyas instancias muestran sus knobs como panel; un catálogo de ejemplos por categorías que Claude lee con una herramienta ([examples/](examples/README.md)) |
+| 17 | Pages | la misma página fuera de claude.ai: un adaptador de backend (base de datos, salas, usuario, Claude) para que funcione en GitHub Pages con salas [GUN](https://gun.eco) a través de un [relay](relay/README.es.md) y Claude con la propia clave de API de Anthropic de cada persona ([docs/pages.es.md](docs/pages.es.md)) |
 
 ## Probarlo
 
@@ -76,9 +77,12 @@ Los ensayos se publicaron como artefactos de claude.ai, que aportan la base de d
 compartidas. Fuera de claude.ai funcionan en **modo local** (sin guardar ni compartir):
 
 ```sh
-cd studies/16-faust && python3 -m http.server 8000
+cd studies/17-pages && python3 -m http.server 8000
 # abre http://localhost:8000 y elige «Try locally, without saving»
 ```
+
+La edición Pages (`node site/build.mjs` → `_site/`) guarda y comparte con GUN y usa Claude con tu
+propia clave de API: ver [Kairotic fuera de claude.ai](docs/pages.es.md).
 
 ## Componentes
 
