@@ -6,25 +6,39 @@
 ;; writes, Claude can call the page's tools defined here to check what it wrote — evaluate and
 ;; validate it, send it messages, draw its view — so what arrives in the work has been tried.
 ;; The result is an ordinary component box, created as gestures, in the history like any other.
+;;
+;; Study 16: Claude can also write Faust (checked by compiling it), abstractions — components that are
+;; a patch, with faust~ boxes, controls and a panel of presented boxes (a bpatcher) — and packages of
+;; several components. Real examples come from a catalog (examples/catalog.mjs) that Claude sees as a
+;; list and reads one by one with a tool, so it can grow without the prompt growing.
 
 (ns kairotic.assistant
   (:require [clojure.string :as str]
             [clojure.walk :as walk]
             [kairotic.components :as comp]
             [kairotic.shapes :as shp]
+            [kairotic.code :as code]
             [kairotic.library :as lib]))
 
 ;; ───────── evaluating a source ─────────
 
 (defn evaluate
-  "{:ok definition} or {:error reason} for a component source (one expression)."
+  "{:ok definition-or-package} or {:error reason} for a component source (one expression)."
   [source]
   (try
     (let [m (js/scittle.core.eval_string (str "(do " source "\n)"))]
-      (cond
-        (lib/package? m) {:error "write one component, not a package"}
-        :else (if-let [reason (lib/validate m)] {:error reason} {:ok m})))
+      (if-let [reason (lib/validate m)] {:error reason} {:ok m}))
     (catch :default e {:error (str "does not evaluate: " (or (.-message e) e))})))
+
+(defn definition
+  "{:ok definition} for class `cls` of a source (a component, or one of a package's), or {:error}."
+  [source cls]
+  (let [{:keys [ok error]} (evaluate source)]
+    (if error
+      {:error error}
+      (let [defs (lib/definitions ok)
+            d (if (seq (str cls)) (first (filter #(= (str cls) (:class %)) defs)) (first defs))]
+        (if d {:ok d} {:error (str "no class " cls " in this source (" (str/join ", " (map :class defs)) ")")})))))
 
 (defn read-edn
   "A value written as EDN by Claude (messages, a shown value)."
@@ -39,26 +53,123 @@
 
 ;; ───────── the tools ─────────
 
+(defn describe
+  "What one definition is, for Claude."
+  [m]
+  (let [io (:io m)]
+    (cond-> {:class (:class m)
+             :kind (if (:patch m) "abstraction" "component")
+             :io (if (fn? io) "computed" io)
+             :core-class-clash (= :core (:origin (comp/lookup (:class m))))}
+      (sequential? (:args m)) (assoc :args (pr-str (:args m)))
+      (not (:patch m)) (assoc :view (cond (:view m) "view template" (:draw m) "draw function" :else "text box")
+                              :gesture (boolean (:gesture m)) :persist (boolean (:persist m))
+                              :audio (when (map? (:audio m)) (vec (map name (keys (:audio m)))))))))
+
 (defn check
-  "What a source defines, or why it does not work."
+  "What a source defines, or why it does not work (synchronous: no Faust inside is compiled)."
   [source]
   (let [{:keys [ok error]} (evaluate source)]
     (if error
       {:ok false :error error}
-      (let [m ok io (:io m)]
-        {:ok true :class (:class m)
-         :io (if (fn? io) "computed" io)
-         :args (when (sequential? (:args m)) (pr-str (:args m)))
-         :view (cond (:view m) "view template" (:draw m) "draw function" :else "text box")
-         :gesture (boolean (:gesture m)) :persist (boolean (:persist m))
-         :audio (when (map? (:audio m)) (vec (map name (keys (:audio m)))))
-         :core-class-clash (= :core (:origin (comp/lookup (:class m))))}))))
+      (let [defs (lib/definitions ok)]
+        (assoc (describe (first defs)) :ok true
+               :classes (mapv :class defs)
+               :package (:package ok))))))
+
+;; ───────── Faust ─────────
+
+(defn compile-faust
+  "Promise of {:ok true :ins :outs :params} or {:ok false :error} for a Faust source, compiled with the
+   page's own compiler (the result stays in the cache, so the box that uses it starts at once)."
+  [source]
+  (if-let [f (get @code/compilers "faust")]
+    (-> (js/Promise.resolve nil)
+        (.then (fn [_] (f (str source))))
+        (.then (fn [r]
+                 (swap! code/cache assoc ["faust" (str source)] (assoc r :status :ok :n (swap! code/counter inc)))
+                 (let [i (:info r)]
+                   {:ok true :ins (:ins i) :outs (:outs i)
+                    :params (mapv (fn [p] (select-keys p [:label :type :min :max :init])) (:params i))})))
+        (.catch (fn [e] {:ok false :error (cut (or (.-message e) (str e)) 1500)})))
+    (js/Promise.resolve {:ok false :error "no Faust compiler in this page"})))
+
+;; ───────── abstractions ─────────
+
+(defn available?
+  "Whether class k can be used in a patch: known now, defined next to it, or brought from an official
+   package or single component when it is used."
+  [k siblings]
+  (boolean (or (comp/lookup k) (contains? siblings k) (lib/package-of k) (lib/single-of k))))
+
+(defn check-patch
+  "Errors of the :patch of an abstraction (boxes, classes, ports), and what it offers."
+  [m siblings]
+  (let [p (:patch m) bs (:boxes p) lines (:lines p)
+        k-of (fn [b] (comp/klass (str/replace (str (:text b)) #"\$\d" "0")))
+        box-errs (for [[id b] bs
+                       :let [k (k-of b)]
+                       err [(when-not (keyword? id) (str id ": box ids are keywords like :b1"))
+                            (when-not (string? (:text b)) (str id ": a box has :text"))
+                            (when-not (and (number? (:x b)) (number? (:y b))) (str id ": a box has :x and :y"))
+                            (when (and (string? (:text b)) (not (available? k siblings))) (str id ": no class «" k "»"))
+                            (when (and (= k "faust~") (str/blank? (str (get-in b [:data :source])))) (str id ": a faust~ needs :data {:source \"…\"}"))]
+                       :when err] err)
+        io-of (fn [id] (let [b (get bs id)] (when (and b (comp/lookup (k-of b)) (not (comp/dynamic? b)))
+                                             (comp/io (update b :text #(str/replace (str %) #"\$\d" "0"))))))
+        line-errs (for [l lines
+                        :let [[a o b i] (when (and (vector? l) (= 4 (count l))) l)
+                              [_ outs] (io-of a) [ins _] (io-of b)]
+                        err [(when-not a (str (pr-str l) ": a line is [from outlet to inlet]"))
+                             (when (and a (not (get bs a))) (str (pr-str l) ": no box " a))
+                             (when (and b (not (get bs b))) (str (pr-str l) ": no box " b))
+                             (when (and outs (>= o outs)) (str (pr-str l) ": " a " has " outs " outlets"))
+                             (when (and ins (>= i ins)) (str (pr-str l) ": " b " has " ins " inlets"))]
+                        :when err] err)
+        ports (fn [ks] (count (filter (fn [[_ b]] (ks (k-of b))) bs)))]
+    {:errors (vec (concat box-errs line-errs))
+     :inlets (ports #{"inlet" "inlet~"}) :outlets (ports #{"outlet" "outlet~"})
+     :presented (vec (for [[id b] bs :when (:present b)] (str (name id) " " (:text b))))
+     :faust (vec (for [[id b] bs :when (= "faust~" (k-of b))] [id (get-in b [:data :source])]))}))
+
+(defn check-full
+  "Promise of the whole check of a source, for Claude and before a result enters the work: it
+   evaluates and validates every definition, checks the patch of abstractions and compiles every
+   Faust source inside them."
+  [source]
+  (let [{:keys [ok error]} (evaluate source)]
+    (if error
+      (js/Promise.resolve {:ok false :error error})
+      (let [defs (vec (lib/definitions ok))
+            siblings (set (map :class defs))
+            patches (into {} (for [d defs :when (map? (:patch d))] [(:class d) (check-patch d siblings)]))
+            fausts (for [[cls r] patches [id src] (:faust r)] [cls id src])]
+        (-> (js/Promise.all (clj->js (for [[_ _ src] fausts] (compile-faust src))))
+            (.then (fn [results]
+                     (let [faust-errs (vec (keep (fn [[[cls id _] r]] (when-not (:ok r) (str cls " " (name id) ": Faust: " (:error r))))
+                                                 (map vector fausts (js->clj results :keywordize-keys true))))
+                           errs (vec (concat (mapcat (fn [[cls r]] (map #(str cls " " %) (:errors r))) patches) faust-errs))]
+                       {:ok (empty? errs)
+                        :package (:package ok)
+                        :definitions (mapv (fn [d] (merge (describe d)
+                                                          (when-let [r (get patches (:class d))]
+                                                            (select-keys r [:inlets :outlets :presented]))))
+                                           defs)
+                        :errors errs}))))))))
+
+(defn used-classes
+  "The classes that the abstractions of a source use (to bring the official ones into the work)."
+  [source]
+  (let [{:keys [ok]} (evaluate source)]
+    (when ok
+      (distinct (for [d (lib/definitions ok) :when (map? (:patch d)) [_ b] (:boxes (:patch d))]
+                  (comp/klass (str/replace (str (:text b)) #"\$\d" "0")))))))
 
 (defn try-receive
   "Sends messages ([[inlet value] …], as EDN) to the component, one after another, threading its
    state as the engine does. args-text: the words after the class in the box text."
-  [source args-text messages]
-  (let [{:keys [ok error]} (evaluate source)]
+  [source cls args-text messages]
+  (let [{:keys [ok error]} (definition source cls)]
     (cond
       error {:ok false :error error}
       (not (fn? (:receive ok))) {:ok false :error "it has no :receive"}
@@ -88,8 +199,8 @@
 (defn try-view
   "Draws the component's view for a shown value (EDN) and the box text, and checks it: shape kinds,
    holes without a value, numbers. With a gesture, also tries one drag and what it would persist."
-  [source args-text shown]
-  (let [{:keys [ok error]} (evaluate source)]
+  [source cls args-text shown]
+  (let [{:keys [ok error]} (definition source cls)]
     (cond
       error {:ok false :error error}
       (not (or (:view ok) (:draw ok))) {:ok true :note "no :view nor :draw: the box is shown as text"}
@@ -129,38 +240,62 @@
 ;; ───────── the prompt ─────────
 
 (def rules
-  "You write one Kairotic component: a box class for a visual patcher of music (like Max/Pd), whose
-patch and code are the same work, written in ClojureScript and run with Scittle (SCI, interpreted, no
-compiler) in the browser.
+  "You write box classes for Kairotic, a visual patcher of music (like Max/Pd) whose patch and code are
+the same work, written in ClojureScript and run with Scittle (SCI, interpreted, no compiler) in the
+browser. You may write:
 
-What to write: ONE ClojureScript expression that evaluates to the component's definition map. It may
-be `(let [helpers …] {…})` to share functions and constants. No `ns`, no `def`/`defn` at top level,
-no requires. Available: clojure.core, clojure.string as `str/`, the Kairotic API as `api/` (below),
-and JavaScript interop (`js/Math`, Web Audio objects you are given). Do NOT use any other kairotic
-namespace (`comp/`, `cv/`, `eng/`…). Never touch the DOM, the network or storage.
+1. A component: ONE ClojureScript expression that evaluates to the definition map. It may be
+   `(let [helpers …] {…})`. No `ns`, no top-level `def`/`defn`, no requires. Available: clojure.core,
+   clojure.string as `str/`, the Kairotic API as `api/` (below), and JavaScript interop (`js/Math`,
+   the Web Audio objects you are given). Do NOT use other kairotic namespaces (`comp/`, `cv/`, `eng/`…).
+   Never touch the DOM, the network or storage.
+2. An abstraction: a component whose class IS a patch — {:class :doc :usage :patch {:boxes {…} :lines […]}}.
+   Boxes: `:b1 {:text \"faust~\" :x 20 :y 140 :data {:source \"…Faust…\"}}`; lines: `[:b1 0 :b4 0]`
+   (from-box outlet to-box inlet). Its ports are its `inlet`/`outlet` (messages) and `inlet~`/`outlet~`
+   (audio) boxes, numbered left to right by :x. `$1 $2` in box texts take the words of each instance.
+   `:present [x y]` on a box puts it on the panel every instance shows (a bpatcher); only boxes with
+   their own view act there (knob, adsr~, space~, or components with a :view). Inside, use classes that
+   exist (`list_classes`); the official ones adsr~ synth~ pan~ space~ knob fifth drift are brought into
+   the work automatically. For audio DSP prefer a `faust~` box with Faust code: its audio ports are
+   those of `process`, and its left inlet takes parameters as messages `[:cutoff 800]` — exactly what
+   a named knob sends (`knob 40 12000 1200 log cutoff`); a list of Hz sets freq and gate = 1.
+3. A package, when you need several definitions together (a control of your own and the abstraction
+   that uses it): {:package \"work/<name>\" :version \"0.1.0\" :components [definition …]}.
 
 Write in English (names, :doc, comments). Keep it small and readable, in sections like the examples:
 about (:class :license \"MPL-2.0\" :doc :usage :io), arguments (:args, :persist), logic (:receive,
 :gesture), view (:derive, :view as data, :size), audio (:audio). Prefer :view (a data template with
 $holes) over :draw. A class name is one word; audio classes end in ~. Do not reuse a core class name.
 :receive is pure: it returns data ({:out … :state … :show … :effects … :later …}); side effects on
-sound happen only through :audio :effects. Messages are numbers, keywords (:bang), or vectors.
+sound happen only through :audio :effects. Messages are numbers, keywords (:bang), strings or vectors.
+Faust: `import(\"stdfaust.lib\");`, the standard libraries (os. fi. en. re. ef. si. ba. no. de.),
+hslider/button for parameters, `process = …;`. In ClojureScript source the Faust code is a string:
+escape its double quotes.
 
-Work method: write the source, then CHECK it with the tools before answering — `check_component`,
-then `try_messages` with representative messages, and `try_view` if it has a view. Fix what fails and
-check again. Use `list_classes` if you need to know what exists. Keep tool calls few.
+Work method: the catalog below lists real examples; read the ones close to the request with
+`read_example` before writing. Write, then CHECK before answering: `check_faust` for Faust code,
+`check_component` for the whole source (it also compiles the Faust inside abstractions), then
+`try_messages` with representative messages and `try_view` if it has a view. Fix what fails and check
+again. Keep tool calls few.
 
-Your final answer: one or two sentences saying what the component does and how to use it (inlets,
-outlets, arguments), then the complete source in ONE ```clojure fenced block. Nothing after it.")
+Your final answer: one or two sentences saying what it does and how to use it (inlets, outlets,
+arguments), then the complete source in ONE ```clojure fenced block. Nothing after it.")
+
+(defn catalog-text
+  "The catalog as Claude sees it: one line per example."
+  [examples]
+  (str/join "\n" (for [e examples] (str "- " (:name e) " (" (:category e) ", " (:kind e) "): " (:about e)))))
 
 (defn prompt
-  "The whole input for Claude. `change` is the source of an existing component to modify (or nil)."
-  [{:keys [request change contract api examples]}]
+  "The whole input for Claude. `change` is the source of an existing component to modify (or nil);
+   `always` are examples given whole; `examples` the catalog (read with read_example)."
+  [{:keys [request change contract api always examples]}]
   (str rules
        "\n\n━━━ The component contract (from kairotic/components.cljs) ━━━\n" contract
        "\n\n━━━ The Kairotic API (kairotic/api.cljs), usable as api/… ━━━\n" api
-       "\n\n━━━ Examples of real components ━━━\n"
-       (str/join "\n\n" (map (fn [[label src]] (str ";; ── example: " label " ──\n" src)) examples))
+       "\n\n━━━ Two examples, whole ━━━\n"
+       (str/join "\n\n" (map (fn [e] (str ";; ── example: " (:name e) " — " (:about e) " ──\n" (:source e))) always))
+       "\n\n━━━ The catalog of examples (read any with read_example) ━━━\n" (catalog-text examples)
        (when change (str "\n\n━━━ The component to change (keep what is not asked to change) ━━━\n" change))
        "\n\n━━━ The request ━━━\n" request "\n"))
 

@@ -35,6 +35,7 @@ core/kairotic/        current modules of the system (ClojureScript)
   shapes.cljs         a component's own view: shapes as data → SVG, templates with holes
 studies/NN-name/      every study as it was published (index.html + its modules)
 components/           npm package kairotic-components (src/*.cljs → dist/*.mjs)
+examples/             the catalog of examples Claude reads (controls, synth, spatial, faust, abstraction, cac, notation)
 packages/             official packages by category: @kairotic/synth, @kairotic/spatial (src/*.cljs → dist/*.mjs)
 docs/                 glossary (es ⇄ en) and guides, in English and Spanish
 tests/                feasibility tests (Faust in artifacts, what can be loaded)
@@ -62,6 +63,7 @@ and interface are in English. The [glossary](docs/glossary.md) maps the old name
 | 13 | Signal | reading at audio rate (`phasor~` → `reader~`, an AudioWorklet; signals into `osc~`/`gain~` parameters) and along 2D paths (`reader path`); per-voice gates (`reader~ 2 gate`) into envelopes (`adsr~`); boxes edited from the patch (inspector), and gestures that rewrite the box text |
 | 14 | Packages | official packages by category (`@kairotic/synth`: adsr~, synth~ · `@kairotic/spatial`: pan~, space~), brought into a work when one of their classes is written; the Kairotic API (`api/…`) for components |
 | 15 | Claude | components written with Claude inside the work (the Claude tab, `(ask-component …)`), on the viewer's own Claude account; Claude tries what it writes with the page's tools before it arrives as a component box |
+| 16 | Faust | Claude also writes Faust (compiling it to check it), abstractions with faust~ boxes and knobs, and bpatchers whose instances show their knobs as a panel; a catalog of examples by category that Claude reads with a tool ([examples/](examples/README.md)) |
 
 ## Trying it
 
@@ -69,7 +71,7 @@ The studies were published as claude.ai artifacts, which provide the database an
 rooms. Outside claude.ai they work in **local mode** (no saving or sharing):
 
 ```sh
-cd studies/15-claude && python3 -m http.server 8000
+cd studies/16-faust && python3 -m http.server 8000
 # open http://localhost:8000 and choose "Try locally, without saving"
 ```
 

@@ -40,6 +40,7 @@ core/kairotic/        módulos actuales del sistema (ClojureScript)
   shapes.cljs         vista propia de un componente: figuras como datos → SVG, plantillas con huecos
 studies/NN-nombre/    cada ensayo tal como se publicó (index.html + sus módulos)
 components/           paquete npm kairotic-components (src/*.cljs → dist/*.mjs)
+examples/             el catálogo de ejemplos que lee Claude (controles, síntesis, espacio, faust, abstracciones, cac, notación)
 packages/             paquetes oficiales por categorías: @kairotic/synth, @kairotic/spatial (src/*.cljs → dist/*.mjs)
 docs/                 glosario (es ⇄ en) y guías, en inglés y castellano
 tests/                pruebas de viabilidad (Faust en artefactos, qué se puede cargar)
@@ -67,6 +68,7 @@ paquete anterior (`kairotic-componentes`), ya sustituido por `kairotic-component
 | 13 | Signal | lectura a velocidad de audio (`phasor~` → `reader~`, un AudioWorklet; señales a los parámetros de `osc~`/`gain~`) y por recorridos 2D (`reader path`); puertas por voz (`reader~ 2 gate`) hacia envolventes (`adsr~`); cajas editables desde el patch (inspector) y gestos que reescriben el texto de la caja |
 | 14 | Packages | paquetes oficiales por categorías (`@kairotic/synth`: adsr~, synth~ · `@kairotic/spatial`: pan~, space~), que llegan a la obra al escribir una de sus clases; la API de Kairotic (`api/…`) para componentes |
 | 15 | Claude | componentes escritos con Claude dentro de la obra (la pestaña Claude, `(ask-component …)`), con la cuenta de Claude de quien lo usa; Claude prueba lo que escribe con las herramientas de la página antes de que llegue como caja de componente |
+| 16 | Faust | Claude escribe también Faust (lo compila para comprobarlo), abstracciones con cajas faust~ y knobs, y bpatchers cuyas instancias muestran sus knobs como panel; un catálogo de ejemplos por categorías que Claude lee con una herramienta ([examples/](examples/README.md)) |
 
 ## Probarlo
 
@@ -74,7 +76,7 @@ Los ensayos se publicaron como artefactos de claude.ai, que aportan la base de d
 compartidas. Fuera de claude.ai funcionan en **modo local** (sin guardar ni compartir):
 
 ```sh
-cd studies/15-claude && python3 -m http.server 8000
+cd studies/16-faust && python3 -m http.server 8000
 # abre http://localhost:8000 y elige «Try locally, without saving»
 ```
 

@@ -168,6 +168,23 @@
   {"@kairotic/synth"   {:version "0.1.1" :classes #{"adsr~" "synth~"}  :local "kairotic/packages/synth.mjs"}
    "@kairotic/spatial" {:version "0.1.1" :classes #{"pan~" "space~"}   :local "kairotic/packages/spatial.mjs"}})
 
+;; Single official components (the npm package kairotic-components, one module per class): writing
+;; one of them in a work that does not have it brings it, like a package.
+(def singles
+  {"knob"  {:origin "npm:kairotic-components@0.1.2/dist/knob.mjs"  :local "kairotic/library/knob.mjs"}
+   "fifth" {:origin "npm:kairotic-components@0.1.2/dist/fifth.mjs" :local "kairotic/library/fifth.mjs"}
+   "drift" {:origin "npm:kairotic-components@0.1.2/dist/drift.mjs" :local "kairotic/library/drift.mjs"}})
+
+(defn single-of "The official single component of class k: {:origin :local}, or nil." [k] (get singles k))
+
+(defn import-single
+  "Promise of [component origin] for an official single component: npm first, then the page's copy."
+  [k]
+  (let [{:keys [origin local]} (get singles k)]
+    (reduce (fn [p o] (.catch p (fn [_] (.then (import-module o) (fn [m] [m o])))))
+            (js/Promise.reject (js/Error. "no origin"))
+            (cond-> [origin] local (conj local)))))
+
 (defn package-of
   "The official package that defines class k: [name info], or nil."
   [k]
