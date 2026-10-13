@@ -560,7 +560,7 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; Box classes are components registered in kairotic.components: their ports, their view,
 ;; their data with its own history, their behaviour with messages and their audio all come from there.
 
-(declare show-help! refresh-help! tsel-piece-id refill-data!)   ; the Help tab (Study 18), defined further down
+(declare show-help! refresh-help! tsel-piece-id refill-data! forget-box!)   ; the Help tab (Study 18), defined further down
 (def klass comp/klass)
 (defn box-def [b] (comp/lookup (klass (:text b))))
 (defn display-of [b] (or (:display (box-def b)) :text))
@@ -1054,6 +1054,7 @@ window.addEventListener("DOMContentLoaded", function () {
   ([text x y] (box (next-id) text x y))
   ([id text x y]
    (when-not (keyword? id) (fail "A box id is a keyword, e.g. :b3"))
+   (forget-box! id)
    (dispatch! [:box id (str text) (js/Math.round x) (js/Math.round y)])
    (ensure-class! text)
    id))
@@ -1071,7 +1072,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn disconnect [a o b i] (dispatch! [:disconnect a o b i]) :ok)
 (defn move [id x y] (need-box id) (dispatch! [:move id (js/Math.round x) (js/Math.round y)]) [x y])
 (defn text! [id text] (need-box id) (dispatch! [:text id (str text)]) (eng/forget! (fid id)) (ensure-class! text) id)
-(defn delete [id] (need-box id) (dispatch! [:delete id]) :ok)
+(defn delete [id] (need-box id) (forget-box! id) (dispatch! [:delete id]) :ok)
 
 (declare child-dims)
 
@@ -2450,7 +2451,16 @@ window.addEventListener("DOMContentLoaded", function () {
   (let [p (eng/flat (work-patch))
         shape [(:lines p) (into {} (map (fn [[id b]] [id (:text b)])) (:boxes p))]]
     ;; a new line or a new text (mt transpose → mt retrograde) is a new path for the trees: they go again
-    (when (not= shape @sent-shape) (reset! sent-shape shape) (reset! sent-trees {}))
+    (when (not= shape @sent-shape)
+      ;; a box that is new, or whose text changed, starts empty: nothing of what an earlier box with
+      ;; that id showed or held
+      (let [before (second @sent-shape)]
+        (doseq [[f text] (second shape) :when (not= text (get before f))]
+          (eng/forget! f)
+          (swap! live-trees dissoc f)
+          (swap! score-cache dissoc f)))
+      (reset! sent-shape shape)
+      (reset! sent-trees {}))
     (doseq [[f b] (:boxes p)
             :when (and (= "tree" (klass (:text b))) (not (some #{:manual} (eng/args-of (:text b)))))]
       (let [t (mtb/tree-of (:data b))]
@@ -2464,6 +2474,15 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn schedule-emit! [] (when-not @emit-timer (reset! emit-timer (js/setTimeout emit-trees! 30))))
 
 (defn refill-data! "Every tree box sends its tree again (after ■)." [] (reset! sent-trees {}) (schedule-emit!))
+
+(defn forget-box!
+  "A box that is created or deleted starts from nothing: what a box with its id showed and held is forgotten."
+  [id]
+  (let [f (fid id)]
+    (eng/forget! f)
+    (swap! live-trees dissoc f)
+    (swap! sent-trees dissoc f)
+    (swap! score-cache dissoc id)))
 
 (defn resume!
   "Lets a tree box be changed by messages again, after a loop was stopped: (resume! :b2)."
@@ -3738,6 +3757,9 @@ window.addEventListener("DOMContentLoaded", function () {
         (swap! settings assoc :simul-ms v)))))
 
 (defn reset-work-state! [mode]
+  ;; what boxes of the previous work showed and held is forgotten (a new box with the same id starts empty)
+  (swap! eng/rt assoc :shows {} :states {} :loops #{})
+  (reset! score-cache {})
   (reset! live-trees {})
   (reset! sent-trees {})
   (reset! sent-shape nil)
