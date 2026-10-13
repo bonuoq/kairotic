@@ -318,3 +318,55 @@ arguments), then the complete source in ONE ```clojure fenced block. Nothing aft
   [text]
   (let [blocks (re-seq #"```(?:clojure|clj|cljs|edn)?\s*\n([\s\S]*?)```" (str text))]
     (some-> (last blocks) second str/trim)))
+
+;; ───────── patches (Study 23) ─────────
+;; Claude can also make a whole patch from a description, or change the one that is open. It answers
+;; with the patch's code — only the calls a patch is made of, as a link carries it — which the page
+;; checks (classes, ports, Faust compiled, components evaluated) and loads as one event of the history.
+
+(def patch-rules
+  "You make patches for Kairotic, a visual patcher of music (like Max/Pd) whose patch and code are the
+same work. A patch is written as a list of calls, one per line, with LITERAL arguments only (numbers,
+strings, keywords, vectors, maps) — no let, def, fn, str, arithmetic or any other form:
+
+  (box :b1 \"osc~ 440\" 40 60)        ; a box: id, text (class and arguments), x, y
+  (connect :b1 0 :b2 0)              ; from :b1 outlet 0 to :b2 inlet 0 (numbered from 0, left to right)
+  (code :b3 \"…source…\")             ; the source of a code box (faust~, script, component, tree)
+  (present :b4 20 20)                ; puts a box on the presentation (the performer's panel), at x y
+  (tree! :b5 [:voice \"c4/1 e4 g4/2\"]) ; the musical tree of a tree box
+  (stroke :b6 [[0 220] [1 440]]) (axis :b6 :x 0 4)  ; drawings of canvas/freqt boxes
+
+Rules:
+- Use only classes that exist (`list_classes`; `class_help` gives the inlets and outlets of one).
+  Official classes such as knob, synth~, adsr~, pan~, space~, fifth, drift come into the work by
+  themselves when a box uses them.
+- Messages flow without ▶; ▶ starts sound and time (metro, ramp, loadbang). Audio classes end in ~.
+  Send sound to `dac~ 1 2` (both channels: connect to inlets 0 and 1) through a `gain~` of 0.1–0.3:
+  never louder.
+- For sound that core classes do not make (FM, filters, effects, physical models…), use a `faust~` box
+  with Faust code: `(box :b3 \"faust~\" x y)` and `(code :b3 \"import(\\\"stdfaust.lib\\\"); …process = …;\")`.
+  Its audio ports are those of process; its LEFT inlet takes parameters as messages [:name value],
+  which is exactly what a named knob sends: `knob 50 2000 300 log carrier` sends [:carrier v] to an
+  hslider(\"carrier\", …). Write every parameter as hslider with sensible ranges and a smoothing
+  (si.smoo). Call `check_faust` on the Faust code before using it.
+- Lay it out top to bottom, following the signal: x from 20 to 900, about 60 px between rows,
+  controls on top. Code boxes are about 330 wide and 200 tall: leave them room.
+- Present the controls and displays a performer needs (`present`), in a compact panel.
+- When a patch is given to change, keep its boxes, ids and positions unless the request changes them;
+  new boxes take new ids (the next numbers).
+
+Work method: `list_classes` first if unsure; `check_faust` for each Faust source; then `check_patch`
+with the WHOLE code, fix what it reports and check again. Keep tool calls few.
+
+Your final answer: one or two sentences saying what the patch does and how to play it, then the
+WHOLE patch code in ONE ```clojure fenced block (only the calls above). Nothing after it.")
+
+(defn patch-prompt
+  "The whole input for Claude when it makes or changes a patch."
+  [{:keys [request current classes]}]
+  (str patch-rules
+       "\n\n━━━ The classes this work knows now (more official ones come when used) ━━━\n"
+       (str/join "\n" classes)
+       (when (seq (str/trim (str current)))
+         (str "\n\n━━━ The patch to change (keep what is not asked to change) ━━━\n" current))
+       "\n\n━━━ The request ━━━\n" request "\n"))

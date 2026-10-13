@@ -8,7 +8,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["studies/22-embed/**", "core/backends/**", "site/**", ".github/workflows/pages.yml"]
+    paths: ["studies/23-ask/**", "core/backends/**", "site/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:

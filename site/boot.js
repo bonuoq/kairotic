@@ -14,7 +14,11 @@
 
   // an embed (?embed, ?present) works on its own: no relay, nothing saved (Study 22)
   var params = new URLSearchParams(location.search);
-  if (params.has("embed") || params.has("present")) { window.kairoticPeers = []; return; }
+  if (params.has("embed") || params.has("present")) {
+    window.kairoticPeers = [];
+    window.kairoticBackend = { kind: "embed", sample: window.KairoticGun.sample({}) };   // Claude only, with the viewer's key
+    return;
+  }
 
   window.kairoticPeers = peers;
   window.kairoticBackend = window.KairoticGun.create({ peers: peers });

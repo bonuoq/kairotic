@@ -300,5 +300,6 @@
     return sample;
   }
 
-  window.KairoticGun = { create };
+  // an embed has no database nor rooms, but Claude (with the viewer's key) can still make its patch
+  window.KairoticGun = { create, sample: makeSample };
 })();
