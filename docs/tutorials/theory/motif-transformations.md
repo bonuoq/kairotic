@@ -8,27 +8,27 @@ In Kairotic a fragment of music can be written as a **tree** of data: `[:tag {at
 
 The same tree can be shown as a score, drawn on a freqt, played, and transformed by the `mt` boxes. In this lesson we take a motif through the classical transformations of counterpoint: transposition, inversion, retrograde, augmentation and canon.
 
-Start the engine with ▶ (or the space bar) before the next step: messages only travel with the engine on.
+A tree sends itself whenever it changes, so every score below follows it at once. ▶ (or the space bar) is only needed to hear it, at the end.
 @es
 En Kairotic un fragmento de música se puede escribir como un **árbol** de datos: `[:etiqueta {atributos} hijos…]`. Una `:voice` contiene `:measure` (compases), un compás contiene notas, silencios, acordes y grupos irregulares, y cualquier contenedor puede contener otros. Los textos como `"c4/1 e4/.5"` son una abreviatura de notas: altura / duración en pulsos (la negra = 1).
 
 El mismo árbol se puede ver como partitura, dibujar en un freqt, tocar y transformar con las cajas `mt`. En esta lección llevamos un motivo por las transformaciones clásicas del contrapunto: transposición, inversión, retrogradación, aumentación y canon.
 
-Pon en marcha el motor con ▶ (o la barra espaciadora) antes del paso siguiente: los mensajes solo viajan con el motor en marcha.
+Un árbol se envía solo cada vez que cambia, así que cada partitura lo sigue al momento. ▶ (o la barra espaciadora) solo hace falta para escucharlo, al final.
 
 ## The motif | El motivo
 @en
-The `tree` box holds the motif as EDN text: two bars of 4/4. Clicking the bang sends the tree to the `score`, which draws it bar by bar. (The second bar has no `:meter`: it keeps the one before.)
+The `tree` box holds the motif as EDN text: two bars of 4/4. It is connected to a `score`, which draws it bar by bar as soon as it arrives (the bang only sends it again). (The second bar has no `:meter`: it keeps the one before.)
 
 Double-click the code to edit it (Ctrl+Enter applies), or write a new one from the REPL with `(tree! :b2 [:voice [:measure {:meter [3 4]} "g4/1 a4 b4"]])`.
 @es
-La caja `tree` contiene el motivo como texto EDN: dos compases de 4/4. Al pulsar el bang, el árbol llega a la `score`, que lo dibuja compás a compás. (El segundo compás no lleva `:meter`: conserva el anterior.)
+La caja `tree` contiene el motivo como texto EDN: dos compases de 4/4. Está conectada a una `score`, que lo dibuja compás a compás en cuanto llega (el bang solo lo vuelve a enviar). (El segundo compás no lleva `:meter`: conserva el anterior.)
 
 Haz doble clic en el código para editarlo (Ctrl+Intro aplica), o escribe uno nuevo desde la REPL con `(tree! :b2 [:voice [:measure {:meter [3 4]} "g4/1 a4 b4"]])`.
 @try.en
-With the engine running, click the bang. Then change a note in the code and click it again.
+Change a note in the code and apply it: the score follows.
 @try.es
-Con el motor en marcha, pulsa el bang. Luego cambia una nota en el código y vuelve a pulsarlo.
+Cambia una nota en el código y aplícalo: la partitura lo sigue.
 ```kairotic
 (box :b1 "bang" 40 20)
 (box :b2 "tree" 40 60)
@@ -48,9 +48,9 @@ The number is in semitones; negative goes down, and decimals give microtones (`m
 
 El número está en semitonos; negativo baja, y los decimales dan microtonos (`mt transpose 0.5` es un cuarto de tono).
 @try.en
-Click the bang. Then select the `mt` box by its text, change 7 for -12 in the inspector, and click the bang again.
+Select the `mt` box and change 7 for -12 in the inspector: the second score follows.
 @try.es
-Pulsa el bang. Luego selecciona la caja `mt`, cambia 7 por -12 en el inspector y vuelve a pulsar el bang.
+Selecciona la caja `mt` y cambia 7 por -12 en el inspector: la segunda partitura lo sigue.
 ```kairotic
 (box :b4 "mt transpose 7" 480 150)
 (box :b5 "score" 480 190)
@@ -68,9 +68,9 @@ This step only changes the text of the `mt` box: the patch is the same, its mean
 
 Este paso solo cambia el texto de la caja `mt`: el patch es el mismo, su sentido es otro.
 @try.en
-Click the bang and compare both scores: the contours are mirror images.
+Compare both scores: the contours are mirror images.
 @try.es
-Pulsa el bang y compara las dos partituras: los contornos son imágenes especulares.
+Compara las dos partituras: los contornos son imágenes especulares.
 ```kairotic
 (text! :b4 "mt invert c4")
 ```
@@ -122,15 +122,15 @@ Prueba `mt canon 4 12` (a la octava) o `mt canon 2 7`: con un retardo de medio c
 @en
 `mt play` keeps the last tree it receives and plays it when it gets a bang: on its left outlet the frequencies of the notes sounding, on the second their voice ids — exactly what `synth~` needs, one voice per note.
 
-Click the first bang (to send the canon), then the second one (to play it). `mt play loop` plays it again and again.
+Start the engine with ▶ (sound and time need it) and click the bang next to `mt play`. `mt play loop` plays it again and again.
 @es
 `mt play` guarda el último árbol que recibe y lo toca cuando le llega un bang: por su salida izquierda, las frecuencias de las notas que suenan; por la segunda, sus ids de voz —justo lo que necesita `synth~`, una voz por nota.
 
-Pulsa el primer bang (para enviar el canon) y luego el segundo (para tocarlo). `mt play loop` lo repite una y otra vez.
+Pon en marcha el motor con ▶ (el sonido y el tiempo lo necesitan) y pulsa el bang junto a `mt play`. `mt play loop` lo repite una y otra vez.
 @try.en
-Go back in the lesson to the inversion or the retrograde, click both bangs, and listen to each transformation.
+Go back in the lesson to the inversion or the retrograde, click the bang of `mt play`, and listen to each transformation.
 @try.es
-Vuelve en la lección a la inversión o a la retrogradación, pulsa los dos bangs y escucha cada transformación.
+Vuelve en la lección a la inversión o a la retrogradación, pulsa el bang de `mt play` y escucha cada transformación.
 ```kairotic
 (box :b6 "bang" 480 420)
 (box :b7 "mt play" 540 420)

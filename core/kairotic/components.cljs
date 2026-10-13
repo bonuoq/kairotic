@@ -340,7 +340,8 @@
                    :io [1 2] :display :canvas :receive canvas-box :model canvas-model})
 (define! "freqt" {:doc "Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids. A number on the inlet (or a click) comes out on the left; the right outlet is the buffer for a reader."
                   :io [1 2] :display :canvas :receive canvas-box :model freqt-model})
-(define! "score" {:doc "The same buffer as a freqt, drawn as an approximate score." :io [1 2] :display :score :receive canvas-box :model freqt-model})
+(define! "score" {:doc "The same buffer as a freqt, drawn as an approximate score; or the musical tree it receives, measured. Its third outlet sends the edits you make on that tree's notes ([:edit …]): connect it back to the tree box."
+                  :io [1 3] :display :score :receive canvas-box :model freqt-model})
 (define! "reader" {:doc "Reads the buffer (canvas, freqt, score) connected to its right inlet at the position that comes in on the left — along X, or along Y with `reader y`: ids on the right and the values on the left (every crossing). With `reader path [stroke]` a position from 0 to 1 travels along a stroke in the order it was drawn and gives [x y]."
                    :usage "reader [x|y|path [stroke]]"
                    :io [2 2] :receive reader :reads-buffer true})

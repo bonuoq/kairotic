@@ -165,8 +165,8 @@ export default {
       "es": "La música como datos"
      },
      "note": {
-      "en": "In Kairotic a fragment of music can be written as a **tree** of data: `[:tag {attributes} children…]`. A `:voice` holds `:measure`s, a measure holds notes, rests, chords and tuplets, and any container can hold others. Strings like `\"c4/1 e4/.5\"` are a shorthand for notes: pitch / duration in beats (a quarter note = 1).\n\nThe same tree can be shown as a score, drawn on a freqt, played, and transformed by the `mt` boxes. In this lesson we take a motif through the classical transformations of counterpoint: transposition, inversion, retrograde, augmentation and canon.\n\nStart the engine with ▶ (or the space bar) before the next step: messages only travel with the engine on.",
-      "es": "En Kairotic un fragmento de música se puede escribir como un **árbol** de datos: `[:etiqueta {atributos} hijos…]`. Una `:voice` contiene `:measure` (compases), un compás contiene notas, silencios, acordes y grupos irregulares, y cualquier contenedor puede contener otros. Los textos como `\"c4/1 e4/.5\"` son una abreviatura de notas: altura / duración en pulsos (la negra = 1).\n\nEl mismo árbol se puede ver como partitura, dibujar en un freqt, tocar y transformar con las cajas `mt`. En esta lección llevamos un motivo por las transformaciones clásicas del contrapunto: transposición, inversión, retrogradación, aumentación y canon.\n\nPon en marcha el motor con ▶ (o la barra espaciadora) antes del paso siguiente: los mensajes solo viajan con el motor en marcha."
+      "en": "In Kairotic a fragment of music can be written as a **tree** of data: `[:tag {attributes} children…]`. A `:voice` holds `:measure`s, a measure holds notes, rests, chords and tuplets, and any container can hold others. Strings like `\"c4/1 e4/.5\"` are a shorthand for notes: pitch / duration in beats (a quarter note = 1).\n\nThe same tree can be shown as a score, drawn on a freqt, played, and transformed by the `mt` boxes. In this lesson we take a motif through the classical transformations of counterpoint: transposition, inversion, retrograde, augmentation and canon.\n\nA tree sends itself whenever it changes, so every score below follows it at once. ▶ (or the space bar) is only needed to hear it, at the end.",
+      "es": "En Kairotic un fragmento de música se puede escribir como un **árbol** de datos: `[:etiqueta {atributos} hijos…]`. Una `:voice` contiene `:measure` (compases), un compás contiene notas, silencios, acordes y grupos irregulares, y cualquier contenedor puede contener otros. Los textos como `\"c4/1 e4/.5\"` son una abreviatura de notas: altura / duración en pulsos (la negra = 1).\n\nEl mismo árbol se puede ver como partitura, dibujar en un freqt, tocar y transformar con las cajas `mt`. En esta lección llevamos un motivo por las transformaciones clásicas del contrapunto: transposición, inversión, retrogradación, aumentación y canon.\n\nUn árbol se envía solo cada vez que cambia, así que cada partitura lo sigue al momento. ▶ (o la barra espaciadora) solo hace falta para escucharlo, al final."
      },
      "try": {
       "en": "",
@@ -180,12 +180,12 @@ export default {
       "es": "El motivo"
      },
      "note": {
-      "en": "The `tree` box holds the motif as EDN text: two bars of 4/4. Clicking the bang sends the tree to the `score`, which draws it bar by bar. (The second bar has no `:meter`: it keeps the one before.)\n\nDouble-click the code to edit it (Ctrl+Enter applies), or write a new one from the REPL with `(tree! :b2 [:voice [:measure {:meter [3 4]} \"g4/1 a4 b4\"]])`.",
-      "es": "La caja `tree` contiene el motivo como texto EDN: dos compases de 4/4. Al pulsar el bang, el árbol llega a la `score`, que lo dibuja compás a compás. (El segundo compás no lleva `:meter`: conserva el anterior.)\n\nHaz doble clic en el código para editarlo (Ctrl+Intro aplica), o escribe uno nuevo desde la REPL con `(tree! :b2 [:voice [:measure {:meter [3 4]} \"g4/1 a4 b4\"]])`."
+      "en": "The `tree` box holds the motif as EDN text: two bars of 4/4. It is connected to a `score`, which draws it bar by bar as soon as it arrives (the bang only sends it again). (The second bar has no `:meter`: it keeps the one before.)\n\nDouble-click the code to edit it (Ctrl+Enter applies), or write a new one from the REPL with `(tree! :b2 [:voice [:measure {:meter [3 4]} \"g4/1 a4 b4\"]])`.",
+      "es": "La caja `tree` contiene el motivo como texto EDN: dos compases de 4/4. Está conectada a una `score`, que lo dibuja compás a compás en cuanto llega (el bang solo lo vuelve a enviar). (El segundo compás no lleva `:meter`: conserva el anterior.)\n\nHaz doble clic en el código para editarlo (Ctrl+Intro aplica), o escribe uno nuevo desde la REPL con `(tree! :b2 [:voice [:measure {:meter [3 4]} \"g4/1 a4 b4\"]])`."
      },
      "try": {
-      "en": "With the engine running, click the bang. Then change a note in the code and click it again.",
-      "es": "Con el motor en marcha, pulsa el bang. Luego cambia una nota en el código y vuelve a pulsarlo."
+      "en": "Change a note in the code and apply it: the score follows.",
+      "es": "Cambia una nota en el código y aplícalo: la partitura lo sigue."
      },
      "code": [
       "(box :b1 \"bang\" 40 20)",
@@ -206,8 +206,8 @@ export default {
       "es": "`mt transpose 7` sube todas las alturas siete semitonos: una quinta justa. La forma del motivo —sus intervalos y su ritmo— no cambia; solo su registro.\n\nEl número está en semitonos; negativo baja, y los decimales dan microtonos (`mt transpose 0.5` es un cuarto de tono)."
      },
      "try": {
-      "en": "Click the bang. Then select the `mt` box by its text, change 7 for -12 in the inspector, and click the bang again.",
-      "es": "Pulsa el bang. Luego selecciona la caja `mt`, cambia 7 por -12 en el inspector y vuelve a pulsar el bang."
+      "en": "Select the `mt` box and change 7 for -12 in the inspector: the second score follows.",
+      "es": "Selecciona la caja `mt` y cambia 7 por -12 en el inspector: la segunda partitura lo sigue."
      },
      "code": [
       "(box :b4 \"mt transpose 7\" 480 150)",
@@ -226,8 +226,8 @@ export default {
       "es": "`mt invert c4` refleja cada altura alrededor de c4: lo que subía un grado ahora baja un grado. Se conserva el tamaño de cada intervalo y se invierte su dirección. Sin eje, la primera nota es el eje.\n\nEste paso solo cambia el texto de la caja `mt`: el patch es el mismo, su sentido es otro."
      },
      "try": {
-      "en": "Click the bang and compare both scores: the contours are mirror images.",
-      "es": "Pulsa el bang y compara las dos partituras: los contornos son imágenes especulares."
+      "en": "Compare both scores: the contours are mirror images.",
+      "es": "Compara las dos partituras: los contornos son imágenes especulares."
      },
      "code": [
       "(text! :b4 \"mt invert c4\")"
@@ -290,12 +290,12 @@ export default {
       "es": "Escucharlo"
      },
      "note": {
-      "en": "`mt play` keeps the last tree it receives and plays it when it gets a bang: on its left outlet the frequencies of the notes sounding, on the second their voice ids — exactly what `synth~` needs, one voice per note.\n\nClick the first bang (to send the canon), then the second one (to play it). `mt play loop` plays it again and again.",
-      "es": "`mt play` guarda el último árbol que recibe y lo toca cuando le llega un bang: por su salida izquierda, las frecuencias de las notas que suenan; por la segunda, sus ids de voz —justo lo que necesita `synth~`, una voz por nota.\n\nPulsa el primer bang (para enviar el canon) y luego el segundo (para tocarlo). `mt play loop` lo repite una y otra vez."
+      "en": "`mt play` keeps the last tree it receives and plays it when it gets a bang: on its left outlet the frequencies of the notes sounding, on the second their voice ids — exactly what `synth~` needs, one voice per note.\n\nStart the engine with ▶ (sound and time need it) and click the bang next to `mt play`. `mt play loop` plays it again and again.",
+      "es": "`mt play` guarda el último árbol que recibe y lo toca cuando le llega un bang: por su salida izquierda, las frecuencias de las notas que suenan; por la segunda, sus ids de voz —justo lo que necesita `synth~`, una voz por nota.\n\nPon en marcha el motor con ▶ (el sonido y el tiempo lo necesitan) y pulsa el bang junto a `mt play`. `mt play loop` lo repite una y otra vez."
      },
      "try": {
-      "en": "Go back in the lesson to the inversion or the retrograde, click both bangs, and listen to each transformation.",
-      "es": "Vuelve en la lección a la inversión o a la retrogradación, pulsa los dos bangs y escucha cada transformación."
+      "en": "Go back in the lesson to the inversion or the retrograde, click the bang of `mt play`, and listen to each transformation.",
+      "es": "Vuelve en la lección a la inversión o a la retrogradación, pulsa el bang de `mt play` y escucha cada transformación."
      },
      "code": [
       "(box :b6 \"bang\" 480 420)",
@@ -342,8 +342,8 @@ export default {
       "es": "Una obra escrita como datos"
      },
      "note": {
-      "en": "A whole work can be one tree: a `:piece` holds `:section`s that follow one another, each section holds the `:voice`s that sound together, and a voice holds its measures. The score keeps one staff per voice, by name, from section to section.\n\nThe history of a tree box is made of **edits of nodes**: change one measure and only that measure changes in the history. That is what lets two people (or two of your own branches) work on different parts of the work and then bring them together.\n\nStart the engine (▶) before the next step.",
-      "es": "Una obra entera puede ser un solo árbol: una `:piece` contiene `:section`s que se suceden, cada sección contiene las `:voice`s que suenan a la vez, y una voz contiene sus compases. La partitura mantiene un pentagrama por voz, por su nombre, de una sección a otra.\n\nLa historia de una caja tree está hecha de **ediciones de nodos**: cambia un compás y en la historia solo cambia ese compás. Eso permite que dos personas (o dos ramas tuyas) trabajen en partes distintas de la obra y luego las junten.\n\nPon en marcha el motor (▶) antes del paso siguiente."
+      "en": "A whole work can be one tree: a `:piece` holds `:section`s that follow one another, each section holds the `:voice`s that sound together, and a voice holds its measures. The score keeps one staff per voice, by name, from section to section.\n\nThe history of a tree box is made of **edits of nodes**: change one measure and only that measure changes in the history. That is what lets two people (or two of your own branches) work on different parts of the work and then bring them together.\n\nThe tree sends itself whenever it changes: the score follows it without ▶ and without a bang.",
+      "es": "Una obra entera puede ser un solo árbol: una `:piece` contiene `:section`s que se suceden, cada sección contiene las `:voice`s que suenan a la vez, y una voz contiene sus compases. La partitura mantiene un pentagrama por voz, por su nombre, de una sección a otra.\n\nLa historia de una caja tree está hecha de **ediciones de nodos**: cambia un compás y en la historia solo cambia ese compás. Eso permite que dos personas (o dos ramas tuyas) trabajen en partes distintas de la obra y luego las junten.\n\nEl árbol se envía solo cada vez que cambia: la partitura lo sigue sin ▶ y sin bang."
      },
      "try": {
       "en": "",
@@ -357,8 +357,8 @@ export default {
       "es": "Dos secciones, dos voces"
      },
      "note": {
-      "en": "Section A and section B, each with a flute and a cello. Click the bang: the score shows the whole work, with the name of each section over its first bar and a double bar between them.\n\nLook at the Code tab: the tree box is one call, `(tree! :b2 …)`, with the tree laid out one container per line.",
-      "es": "La sección A y la sección B, cada una con flauta y violonchelo. Pulsa el bang: la partitura muestra toda la obra, con el nombre de cada sección sobre su primer compás y una doble barra entre ellas.\n\nMira la pestaña Code: la caja tree es una sola llamada, `(tree! :b2 …)`, con el árbol escrito un contenedor por línea."
+      "en": "Section A and section B, each with a flute and a cello. The score shows the whole work, with the name of each section over its first bar and a double bar between them.\n\nLook at the Code tab: the tree box is one call, `(tree! :b2 …)`, with the tree laid out one container per line.\n\nThe dashed line goes back from the score's third outlet to the tree: it carries the **edits** you make on the score. (When you connect a tree to a score with the mouse, it is drawn for you.)",
+      "es": "La sección A y la sección B, cada una con flauta y violonchelo. La partitura muestra toda la obra, con el nombre de cada sección sobre su primer compás y una doble barra entre ellas.\n\nMira la pestaña Code: la caja tree es una sola llamada, `(tree! :b2 …)`, con el árbol escrito un contenedor por línea.\n\nLa línea discontinua vuelve de la tercera salida de la partitura al tree: lleva las **ediciones** que hagas en la partitura. (Cuando conectas con el ratón un tree a una score, se dibuja sola.)"
      },
      "try": {
       "en": "",
@@ -370,7 +370,8 @@ export default {
       "(tree! :b2 [:piece {:tempo 80} [:section {:name \"A\"} [:voice {:name \"fl\"} [:measure {:meter [3 4]} \"e5/1 d5 c5\"] [:measure \"d5/2 g4/1\"]] [:voice {:name \"vc\"} [:measure \"c3/3\"] [:measure \"g2/3\"]]] [:section {:name \"B\"} [:voice {:name \"fl\"} [:measure \"e5/.5 f5 g5/2\"] [:measure \"c5/3\"]] [:voice {:name \"vc\"} [:measure \"a2/3\"] [:measure \"c3/3\"]]]])",
       "(box :b3 \"score\" 420 60)",
       "(connect :b1 0 :b2 0)",
-      "(connect :b2 0 :b3 0)"
+      "(connect :b2 0 :b3 0)",
+      "(connect :b3 2 :b2 0)"
      ]
     },
     {
@@ -383,8 +384,8 @@ export default {
       "es": "Un **camino** dice dónde está un nodo: la lista de índices de hijos desde la raíz. `[1 0 0 0]` es: la sección B (1), su flauta (0), su primer compás (0) y la melodía que contiene (0).\n\n`(tree-edit! :b2 [:set [1 0 0 0] \"e5/.5 f5 g5 a5 b5/1\"])` sustituye solo esa melodía. En la historia es un evento, y la REPL lo muestra tal como lo ves aquí. Las otras operaciones son `[:attrs camino {…}]`, `[:insert camino nodo]` y `[:remove camino]`."
      },
      "try": {
-      "en": "Click the bang to see the change. Then double-click the tree box, change a note in its text and apply with Ctrl+Enter: the REPL shows that it became a `tree!`, and the history only keeps the node that changed.",
-      "es": "Pulsa el bang para ver el cambio. Luego haz doble clic en la caja tree, cambia una nota en su texto y aplica con Ctrl+Intro: la REPL muestra que se convirtió en un `tree!`, y la historia solo guarda el nodo que cambió."
+      "en": "The score already shows the change. Double-click the tree box, change a note in its text and apply with Ctrl+Enter: the REPL shows that it became a `tree!`, and the history only keeps the node that changed.",
+      "es": "La partitura ya muestra el cambio. Haz doble clic en la caja tree, cambia una nota en su texto y aplica con Ctrl+Intro: la REPL muestra que se convirtió en un `tree!`, y la historia solo guarda el nodo que cambió."
      },
      "code": [
       "(tree-edit! :b2 [:set [1 0 0 0] \"e5/.5 f5 g5 a5 b5/1\"])"
@@ -396,8 +397,8 @@ export default {
       "es": "Editar desde la partitura"
      },
      "note": {
-      "en": "In a score that shows a tree, **click a note**: it is selected. Then:\n\n↑ ↓ change its pitch (⇧ an octave) · **+** **−** double or halve its duration · ← → select the previous or next note · **Delete** turns it into a rest · Esc deselects.\n\nEach change is a `(tree-edit! …)` of the tree box: you can see it in the REPL and in the history. A note written inside a melody string is first written out as notes, in the same event.",
-      "es": "En una partitura que muestra un árbol, **haz clic en una nota**: queda seleccionada. Después:\n\n↑ ↓ cambian su altura (⇧ una octava) · **+** **−** duplican o dividen su duración · ← → seleccionan la nota anterior o la siguiente · **Supr** la convierte en silencio · Esc quita la selección.\n\nCada cambio es un `(tree-edit! …)` de la caja tree: lo ves en la REPL y en la historia. Una nota escrita dentro de un texto de melodía se escribe primero como notas, en el mismo evento."
+      "en": "In a score that shows a tree, **click a note**: it is selected. Then:\n\n↑ ↓ change its pitch (⇧ an octave) · **+** **−** double or halve its duration · ← → select the previous or next note · **Delete** turns it into a rest · Esc deselects.\n\nEach change leaves the score by its edits outlet as `[:edit …]`, reaches the tree by the dashed line, and becomes a `(tree-edit! …)`: you can see it in the REPL and in the history. The tree, changed, comes back to the score. A note written inside a melody string is first written out as notes, in the same event.",
+      "es": "En una partitura que muestra un árbol, **haz clic en una nota**: queda seleccionada. Después:\n\n↑ ↓ cambian su altura (⇧ una octava) · **+** **−** duplican o dividen su duración · ← → seleccionan la nota anterior o la siguiente · **Supr** la convierte en silencio · Esc quita la selección.\n\nCada cambio sale de la partitura por su salida de ediciones como `[:edit …]`, llega al tree por la línea discontinua y se convierte en un `(tree-edit! …)`: lo ves en la REPL y en la historia. El árbol, cambiado, vuelve a la partitura. Una nota escrita dentro de un texto de melodía se escribe primero como notas, en el mismo evento."
      },
      "try": {
       "en": "Change the cello's last note of section A with ↑ ↓, and halve a flute note with −: the score warns (⚠ in the REPL) that its measure no longer adds up, until you fix it.",
@@ -430,8 +431,8 @@ export default {
       "es": "Este paso añade dos cosas en un evento: un fragmento `:cell` en los `:defs` de la pieza, y una sección C que lo usa dos veces, la segunda una cuarta más abajo: `[:use {:ref :cell :transpose -5}]`.\n\nLas notas que vienen de un fragmento no se editan desde la partitura (son del fragmento): cambia la definición y cambian todos sus usos."
      },
      "try": {
-      "en": "Click the bang. Then click `(tree-edit! :b2 [:attrs [] {:tempo 80 :defs {:cell \"g5/.5 f5 e5/2\"}}])`, press Enter in the REPL and click the bang again.",
-      "es": "Pulsa el bang. Luego haz clic en `(tree-edit! :b2 [:attrs [] {:tempo 80 :defs {:cell \"g5/.5 f5 e5/2\"}}])`, pulsa Intro en la REPL y vuelve a pulsar el bang."
+      "en": "Click `(tree-edit! :b2 [:attrs [] {:tempo 80 :defs {:cell \"g5/.5 f5 e5/2\"}}])`, and press Enter in the REPL: section C changes at once.",
+      "es": "Haz clic en `(tree-edit! :b2 [:attrs [] {:tempo 80 :defs {:cell \"g5/.5 f5 e5/2\"}}])` y pulsa Intro en la REPL: la sección C cambia al momento."
      },
      "code": [
       "(tree-edit! :b2 [:attrs [] {:tempo 80 :defs {:cell \"e5/.5 d5 c5/2\"}}] [:insert [2] [:section {:name \"C\"} [:voice {:name \"fl\"} [:measure [:use {:ref :cell}]] [:measure [:use {:ref :cell :transpose -5}]]] [:voice {:name \"vc\"} [:measure \"c3/3\"] [:measure \"c3/3\"]]]])"

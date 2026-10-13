@@ -123,7 +123,10 @@
     :see ["score" "canvas" "reader"]}
 
    "score"
-   {:inlets ["a time (or a click)"] :outlets ["the time" "the buffer"] :see ["freqt"]}
+   {:inlets ["a time (or a click) · a musical tree: it is shown, measured"]
+    :outlets ["the time" "the buffer, for a reader" "edits made on the notes of the tree it shows: [:edit …], for the tree box"]
+    :messages [["click a note of a tree" "↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest"] ["(keep! :bN)" "writes the tree it shows into its buffer"]]
+    :see ["tree" "freqt" "mt"]}
 
    "reader"
    {:inlets ["a position (along X, or Y with reader y; 0…1 with reader path)" "the buffer of a canvas, freqt or score"]
@@ -201,7 +204,8 @@
 
    "tree"
    {:inlets ["a bang (or anything): sends the tree"]
-    :outlets ["the tree, expanded (melody strings become notes, [:use …] the fragments it names)"]
+    :inlets ["a bang: sends the tree again · [:edit …] (from a score's edits outlet): changes it · a tree: replaces it"]
+    :outlets ["the tree, expanded (melody strings become notes, [:use …] the fragments it names), whenever it changes"]
     :messages [["double-click" "edit its text (Ctrl+Enter applies): only the nodes that changed go into the history"]
                ["(tree! :bN [:voice …])" "writes a tree into it, as edits of the nodes that change"]
                ["(tree-edit! :bN [:attrs [0 1 2] {…}])" "edits nodes by their path: [:set p x] [:attrs p {…}] [:insert p x] [:remove p]"]
@@ -210,8 +214,8 @@
                ["(as-tree :bN)" "reads it back as data"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)"
                     "(code :b2 \"[:voice\\n [:measure {:meter [3 4]} \\\"e5/1\\\" [:tuplet {:ratio [3 2]} \\\"d5/.5 c5 b4\\\"] [:note {:pitch \\\"a4\\\" :dur 1 :dyn \\\"p\\\"}]]\\n [:measure \\\"g4/3\\\"]]\")"
-                    "(box :b3 \"score\" 40 190)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)")
-    :try "Start the engine (▶) and click the bang: the score shows the tree, measure by measure. Double-click the code, change a note and click the bang again."
+                    "(box :b3 \"score\" 40 190)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 2 :b2 0)")
+    :try "The score already shows the tree, measure by measure. Double-click the code, change a note and apply it (Ctrl+Enter): the score follows. Click a note of the score and press ↑: the change comes back to the tree by the dashed line."
     :see ["mt" "score" "freqt"]}
 
    "mt"
@@ -225,7 +229,7 @@
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)" "(code :b2 \"\\\"c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2\\\"\")"
                     "(box :b4 \"number 7\" 220 140)" "(box :b3 \"mt transpose 7\" 40 170)" "(box :b5 \"score\" 40 220)"
                     "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b4 0 :b3 1)" "(connect :b3 0 :b5 0)")
-    :try "Start the engine and click the bang. Drag the number and click the bang again. Then change the box text to mt retrograde, mt invert c4 or mt augment 2."
+    :try "Change the box text to mt retrograde, mt invert c4 or mt augment 2: the score follows. (The number on the right inlet takes effect with the next tree: click the bang.)"
     :see ["tree" "score" "synth~"]}
 
    ;; ───── official packages (until they carry their own :help) ─────

@@ -5,6 +5,11 @@
 ;; future messages and processes everything a little ahead of the AudioContext clock, so that
 ;; sound effects are scheduled at the exact instant (`at`).
 ;; What is sounding lives in this tab and does not enter the history of the work.
+;;
+;; Messages and time (Study 21): messages travel whenever something sends them — a click, a gesture,
+;; a data box that changed — with or without ▶. ▶ starts what needs a clock: the sound (audio nodes) and
+;; time (the queue of future messages: metro, ramp, mt play, loadbang). A message that comes back to
+;; the same box too many times in one instant is a loop without time: it is cut, and said so.
 
 (ns kairotic.engine
   (:require [clojure.string :as str]
@@ -146,9 +151,14 @@
              (catch :default e (js/console.error e)))))
     (swap! rt assoc :signature s)))
 
+(defn print! [at x] (swap! rt update :prints (fn [ps] (conj (vec (take-last 200 ps)) [at x]))))
+
 (defn effect! [id [k x] at]
-  (if (= k :print)
-    (swap! rt update :prints (fn [ps] (conj (vec (take-last 200 ps)) [at x])))
+  (cond
+    (= k :print) (print! at x)
+    ;; effects for the page (a tree box asked to change its data: that is a gesture of the work)
+    (#{:tree-edit :tree-set} k) (when-let [f (:effect-hook @rt)] (f id [k x] at))
+    :else
     (when-let [node (get-in @rt [:nodes id])]
       (when-let [f (get-in node [:def :audio :effects k])]
         (try (f node x at) (catch :default e (js/console.error e)))))))
@@ -175,9 +185,26 @@
   (swap! rt update :queue (fn [q] (vec (sort-by first (conj (or q []) [at id inlet value]))))))
 
 (defonce counter (atom 0))
+(defonce visits (atom {}))          ; box → messages it got in this instant
+(def loop-limit 100)
+
+(defn fresh-instant! [] (reset! counter 0) (reset! visits {}))
+
+(defn loop-cut!
+  "Stops a message that came back to the same box too many times in one instant (a loop without time)."
+  [id at]
+  (when-not (contains? (:loops @rt) id)
+    (swap! rt update :loops (fnil conj #{}) id)
+    (print! at (str "loop cut at " (name id) ": a message came back to it " loop-limit
+                    " times in one instant. A loop needs time (metro, a delay) or a box that only sends what changed."))))
 
 (defn deliver! [p id inlet value at]
-  (when (< (swap! counter inc) 20000)
+  (cond
+    (>= (swap! counter inc) 20000)
+    (when (= 20000 @counter) (print! at "too many messages in one instant (20000): the rest are not delivered"))
+    (> (get (swap! visits update id (fnil inc 0)) id) loop-limit)
+    (loop-cut! id at)
+    :else
     (when-let [b (get-in p [:boxes id])]
       (let [d (comp/lookup (comp/klass (:text b)))]
         (when-let [f (:receive d)]
@@ -211,7 +238,7 @@
     (try
       (sync!)
       (feed!)
-      (reset! counter 0)
+      (fresh-instant!)
       (let [limit (+ (now) lookahead) p (patch)]
         (loop []
           (let [e (first (:queue @rt))]
@@ -266,7 +293,7 @@
         (swap! rt assoc :timer (js/setInterval tick! 25))))
     (when loadbang?
       (let [p (patch) at (+ (now) 0.05)]
-        (reset! counter 0)
+        (fresh-instant!)
         (doseq [[id b] (:boxes p) :when (= "loadbang" (comp/klass (:text b)))]
           (deliver! p id 0 :bang at))))))
 
@@ -277,13 +304,26 @@
     (try (.disconnect (:master @rt)) (catch :default _ nil))
     (swap! rt assoc :on false :queue [] :nodes {} :states {} :signature nil)))
 
+(defn message-time [] (if (:on @rt) (+ (now) 0.03) (now)))
+
 (defn inject!
-  "A gesture (or the REPL) sends a message to a box right now. Starts the engine if needed."
+  "A gesture (or the REPL) sends a message to a box right now. It travels with or without ▶; without it
+   there is no sound and no time (what a box asks for later only happens with ▶ on)."
   [patch-fn id inlet value]
-  (start! patch-fn false)
-  (sync!)
-  (reset! counter 0)
-  (deliver! (patch) id inlet value (+ (now) 0.03)))
+  (swap! rt assoc :patch-fn patch-fn :loops #{})
+  (when (:on @rt) (sync!))
+  (fresh-instant!)
+  (deliver! (patch) id inlet value (message-time)))
+
+(defn emit!
+  "A box sends a value out of its outlet o, as if it had produced it (a data box that changed)."
+  [patch-fn id o value]
+  (swap! rt assoc :patch-fn patch-fn)
+  (when (:on @rt) (sync!))
+  (fresh-instant!)
+  (let [p (patch) at (message-time)]
+    (doseq [[a oo bb ii] (:lines p) :when (and (= a id) (= oo o))]
+      (deliver! p bb ii value at))))
 
 (defn node [id] (get-in @rt [:nodes id]))
 

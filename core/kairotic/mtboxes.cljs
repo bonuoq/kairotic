@@ -60,17 +60,21 @@
                       (concat [(str "(tree! " id)] (map (fn [l] (str "  " l)) (str/split-lines (mt/pp t))) [")"])))})
 
 (comp/define! "tree"
-  {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]). A bang (or anything) sends it, expanded: strings become notes and [:use …] the fragments of :defs."
+  {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it."
    :usage "tree"
    :display :code :language "edn" :model model
    :io [1 1]
    :template "[:voice {:name \"motif\"}\n [:measure {:meter [4 4]} \"c4/1 d4/.5 e4 g4/1 e4\"]\n [:measure \"f4/.5 e4 d4 c4 d4/2\"]]"
    :receive (fn [m]
-              (let [t (tree-of (:data m))]
-                (if (some? t)
+              (let [t (tree-of (:data m)) v (:value m)]
+                (cond
+                  ;; edits and trees change the box: that is a gesture of the work, done by the page
+                  (and (vector? v) (= :edit (first v))) {:effects [[:tree-edit (second v)]]}
+                  (mt/node? v) {:effects [[:tree-set v]]}
+                  (some? t)
                   (try {:out [[0 (mt/expand-source t (:id m))]] :show :bang}
                        (catch :default e {:effects [[:print (str "tree: " (.-message e))]]}))
-                  {:effects [[:print "tree: empty, or text that does not read as EDN"]]})))})
+                  :else {:effects [[:print "tree: empty, or text that does not read as EDN"]]})))})
 
 ;; ───────── mt: operations ─────────
 
