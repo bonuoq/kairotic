@@ -1,0 +1,35 @@
+# The studies
+
+*[Leer en castellano](studies.es.md)* · [Documentation](README.md)
+
+Kairotic was built as a series of **studies**: each one a question, answered by a working page
+published as a claude.ai artifact, and kept as it was in [`studies/`](../studies). Studies 1–8 were
+written in Spanish; from Study 9 on, code and interface are in English (the [glossary](glossary.md)
+maps the old names to the new ones). From 0.1.0-alpha on, the app lives in [`app/`](../app) and grows
+as one.
+
+| | Study | What it tests |
+|---|---|---|
+| 1 | Patcher | code ⇄ patch, EDN, REPL |
+| 2 | History | collaborative event tree, front, simultaneity, merging, rooms |
+| 3 | Score | piano roll and notation (Verovio) synchronised by time ⇄ space |
+| 4 | Patch | editors as patch boxes, one voice per box |
+| 5 | Canvas | frequency × time, grids and Scala; reader, ramp, steps; message engine |
+| 6 | Components | component registry; code boxes: faust~ and script |
+| 7 | Library | components defined in the work, shared library, importing |
+| 8 | Controls | a component's own view: knobs playing a faust~ |
+| 9 | Sections | everything in English; components in sections (`:args`, logic, `:view` template) |
+| 10 | Subpatches | patches inside patches: `patch` boxes with `inlet`/`outlet`, abstractions with `$1`, `(abstract …)` |
+| 11 | Presentation | a performer's view (`(present …)`, Present button) and sub-patches seen as panels of their controls |
+| 12 | Space | a generic `canvas` read along X or Y (and `freqt` for frequency over time); `dac~` with real channels, `pan~`, binaural `space~` |
+| 13 | Signal | reading at audio rate (`phasor~` → `reader~`, an AudioWorklet; signals into `osc~`/`gain~` parameters) and along 2D paths (`reader path`); per-voice gates (`reader~ 2 gate`) into envelopes (`adsr~`); boxes edited from the patch (inspector), and gestures that rewrite the box text |
+| 14 | Packages | official packages by category (`@kairotic/synth`: adsr~, synth~ · `@kairotic/spatial`: pan~, space~), brought into a work when one of their classes is written; the Kairotic API (`api/…`) for components |
+| 15 | Claude | components written with Claude inside the work (the Claude tab, `(ask-component …)`), on the viewer's own Claude account; Claude tries what it writes with the page's tools before it arrives as a component box |
+| 16 | Faust | Claude also writes Faust (compiling it to check it), abstractions with faust~ boxes and knobs, and bpatchers whose instances show their knobs as a panel; a catalog of examples by category that Claude reads with a tool ([examples/](../examples/README.md)) |
+| 17 | Pages | the same page outside claude.ai: a backend adapter (db, rooms, user, Claude) so it runs on GitHub Pages with [GUN](https://gun.eco) rooms through a [relay](../relay/README.md) and Claude with each person's own Anthropic API key ([docs/pages.md](pages.md)) |
+| 18 | Learn | the Help tab: what each class does, inlet by inlet, with a help patch (**?** on a selected box, `:help` in a component); tutorials in Spanish and English that open as lessons — each step a point of the history, ◀ ▶ between steps, a branch of your own when you change something ([docs/tutorials/](tutorials/README.md)) |
+| 19 | Time | music as data: musical trees in EDN (hiccup, like bach's llll) with measures, tuplets, chords, dynamics, articulations, texts, parameter changes and reusable fragments; `tree` and `mt` boxes write, transform (transpose, invert, retrograde, augment, canon…) and play them; a score, freqt or canvas shows them live; a theory tutorial ([docs/mt.md](mt.md)) |
+| 20 | Work | the work as a tree: a `:piece` of `:section`s, each with its voices (a staff per voice across sections, section names, double bars); a tree box's history is made of node edits (`tree-edit!`, and the text editor or `tree!` write only the difference), so branches that change different nodes merge; scores edit the tree (click a note: ↑ ↓ + − ← → Delete); a composition tutorial |
+| 21 | Flow | data that flows: messages travel without ▶ (▶ is for sound and time); a tree sends itself when it changes (or the patch around it does); a score sends the edits made on it by a third outlet, back to the tree by a dashed line; loops without time are cut and reported ([docs/flow.md](flow.md)) |
+| 22 | Embed | Kairotic inside other pages (Notion, a blog): links that carry a patch (its code, compressed, read as data), a tutorial step or a help patch; `?embed` shows only the patch, `?present` only its presentation, filling the frame, with a fullscreen button; the Embed button and `(embed-link)` ([docs/embed.md](embed.md)) |
+| 23 | Ask | the Claude tab makes patches from a description, or changes the open one, checked with the page's tools (classes, ports, Faust, components) and loaded as one event; `?ask=` links carry a description — never a key — and whoever opens them makes the patch with their own Claude ([docs/ask.md](ask.md)) |

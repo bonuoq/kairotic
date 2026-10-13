@@ -1,6 +1,6 @@
 # Kairotic
 
-*[Leer en castellano](README.es.md)*
+*[Leer en castellano](README.es.md)* · **0.1.0-alpha** · [open the app](https://bonuoq.github.io/kairotic/) · [documentation](docs/README.md)
 
 A collaborative visual-acoustic space for musical improvisation, composition and performance:
 a patcher where **code and patch are the same work**, with a branching, shared history,
@@ -18,79 +18,55 @@ that anyone can write and share.
 - **Components.** Every box class is a map of data and functions with a common contract, written in sections: arguments, logic and a view made of data.
 - **Static.** ClojureScript interpreted with [Scittle](https://github.com/babashka/scittle) (no compiler), dependencies from a CDN and WebAssembly (Faust, Verovio).
 
+## Using it
+
+- **[Open the app](https://bonuoq.github.io/kairotic/)** (Kairotic Pages): solo works and rooms in GUN,
+  Claude with your own Anthropic API key. Inside claude.ai, the Kairotic artifact does the same with your
+  claude.ai account.
+- Start with the **[Guide](docs/guide.md)**, then [Concepts](docs/concepts.md); the Help tab has the
+  tutorials and a page for every class ([reference](docs/reference.md)).
+- Share what you make with Claude in the
+  [Gallery](https://github.com/bonuoq/kairotic/discussions/categories/gallery); ideas and questions in
+  [Discussions](https://github.com/bonuoq/kairotic/discussions).
+
 ## Layout
 
 ```
-core/kairotic/        current modules of the system (ClojureScript)
-  assistant.cljs      writing components with Claude: the prompt and the tools Claude uses to try what it writes
-  api.cljs            the Kairotic API: what components outside the core may use (api/…), versioned
-  components.cljs     component registry, core classes, helpers for writing components
-  engine.cljs         execution: messages, a time queue on the audio clock, Web Audio nodes
-  canvas.cljs         graphic buffers: generic canvas (any data, read along X or Y) and freqt (frequency × time, Scala tunings)
-  score.cljs          voice → MEI for Verovio, time ⇄ space
-  code.cljs           code boxes: compilers per language, script (ClojureScript)
-  signal.cljs         reading at audio rate: phasor~, reader~ (AudioWorklet), sig~
-  faust.cljs          faust~: Faust compiled in the browser (faustwasm) as an AudioWorklet
-  library.cljs        component box, importing published components
-  shapes.cljs         a component's own view: shapes as data → SVG, templates with holes
-studies/NN-name/      every study as it was published (index.html + its modules)
-components/           npm package kairotic-components (src/*.cljs → dist/*.mjs)
-examples/             the catalog of examples Claude reads (controls, synth, spatial, faust, abstraction, cac, notation)
-packages/             official packages by category: @kairotic/synth, @kairotic/spatial (src/*.cljs → dist/*.mjs)
-docs/                 glossary (es ⇄ en) and guides, in English and Spanish
-tests/                feasibility tests (Faust in artifacts, what can be loaded)
+app/                  the app: index.html (interface and styles) and page/*.cljs (the page's ClojureScript, in order)
+core/kairotic/        the modules: components, engine, canvas, score, mt (musical trees), links, assistant (Claude)…
+core/backends/        the GUN backend for Pages (db, rooms, user, Claude with your own key)
+site/                 the Pages edition: build.mjs, configuration (relays), GUN, the embed test page
+components/           npm package kairotic-components: knob, fifth, drift
+packages/             official packages: @kairotic/synth, @kairotic/spatial
+examples/             the catalog Claude reads when it writes
+docs/                 documentation (English and Spanish), tutorials, generated class reference
+tests/                tests (cljs/*.cljs), run in the browser (tests.html) and in CI
+relay/                a GUN relay for rooms
+studies/              the 23 studies of the prototype, as they were published
 ```
 
-Studies 1–8 were written in Spanish and are kept as they were published; from Study 9 on, code
-and interface are in English. The [glossary](docs/glossary.md) maps the old names to the new ones.
+## Development
 
-## Studies
-
-| | Study | What it tests |
-|---|---|---|
-| 1 | Patcher | code ⇄ patch, EDN, REPL |
-| 2 | History | collaborative event tree, front, simultaneity, merging, rooms |
-| 3 | Score | piano roll and notation (Verovio) synchronised by time ⇄ space |
-| 4 | Patch | editors as patch boxes, one voice per box |
-| 5 | Canvas | frequency × time, grids and Scala; reader, ramp, steps; message engine |
-| 6 | Components | component registry; code boxes: faust~ and script |
-| 7 | Library | components defined in the work, shared library, importing |
-| 8 | Controls | a component's own view: knobs playing a faust~ |
-| 9 | Sections | everything in English; components in sections (`:args`, logic, `:view` template) |
-| 10 | Subpatches | patches inside patches: `patch` boxes with `inlet`/`outlet`, abstractions with `$1`, `(abstract …)` |
-| 11 | Presentation | a performer's view (`(present …)`, Present button) and sub-patches seen as panels of their controls |
-| 12 | Space | a generic `canvas` read along X or Y (and `freqt` for frequency over time); `dac~` with real channels, `pan~`, binaural `space~` |
-| 13 | Signal | reading at audio rate (`phasor~` → `reader~`, an AudioWorklet; signals into `osc~`/`gain~` parameters) and along 2D paths (`reader path`); per-voice gates (`reader~ 2 gate`) into envelopes (`adsr~`); boxes edited from the patch (inspector), and gestures that rewrite the box text |
-| 14 | Packages | official packages by category (`@kairotic/synth`: adsr~, synth~ · `@kairotic/spatial`: pan~, space~), brought into a work when one of their classes is written; the Kairotic API (`api/…`) for components |
-| 15 | Claude | components written with Claude inside the work (the Claude tab, `(ask-component …)`), on the viewer's own Claude account; Claude tries what it writes with the page's tools before it arrives as a component box |
-| 16 | Faust | Claude also writes Faust (compiling it to check it), abstractions with faust~ boxes and knobs, and bpatchers whose instances show their knobs as a panel; a catalog of examples by category that Claude reads with a tool ([examples/](examples/README.md)) |
-| 17 | Pages | the same page outside claude.ai: a backend adapter (db, rooms, user, Claude) so it runs on GitHub Pages with [GUN](https://gun.eco) rooms through a [relay](relay/README.md) and Claude with each person's own Anthropic API key ([docs/pages.md](docs/pages.md)) |
-| 18 | Learn | the Help tab: what each class does, inlet by inlet, with a help patch (**?** on a selected box, `:help` in a component); tutorials in Spanish and English that open as lessons — each step a point of the history, ◀ ▶ between steps, a branch of your own when you change something ([docs/tutorials/](docs/tutorials/README.md)) |
-| 19 | Time | music as data: musical trees in EDN (hiccup, like bach's llll) with measures, tuplets, chords, dynamics, articulations, texts, parameter changes and reusable fragments; `tree` and `mt` boxes write, transform (transpose, invert, retrograde, augment, canon…) and play them; a score, freqt or canvas shows them live; a theory tutorial ([docs/mt.md](docs/mt.md)) |
-| 20 | Work | the work as a tree: a `:piece` of `:section`s, each with its voices (a staff per voice across sections, section names, double bars); a tree box's history is made of node edits (`tree-edit!`, and the text editor or `tree!` write only the difference), so branches that change different nodes merge; scores edit the tree (click a note: ↑ ↓ + − ← → Delete); a composition tutorial |
-| 21 | Flow | data that flows: messages travel without ▶ (▶ is for sound and time); a tree sends itself when it changes (or the patch around it does); a score sends the edits made on it by a third outlet, back to the tree by a dashed line; loops without time are cut and reported ([docs/flow.md](docs/flow.md)) |
-| 22 | Embed | Kairotic inside other pages (Notion, a blog): links that carry a patch (its code, compressed, read as data), a tutorial step or a help patch; `?embed` shows only the patch, `?present` only its presentation, filling the frame, with a fullscreen button; the Embed button and `(embed-link)` ([docs/embed.md](docs/embed.md)) |
-| 23 | Ask | the Claude tab makes patches from a description, or changes the open one, checked with the page's tools (classes, ports, Faust, components) and loaded as one event; `?ask=` links carry a description — never a key — and whoever opens them makes the patch with their own Claude ([docs/ask.md](docs/ask.md)) |
-
-## Trying it
-
-The studies were published as claude.ai artifacts, which provide the database and the shared
-rooms. Outside claude.ai they work in **local mode** (no saving or sharing):
+Kairotic is static: ClojureScript interpreted by [Scittle](https://github.com/babashka/scittle) in the
+browser, no compiler. Build and serve it locally:
 
 ```sh
-cd studies/23-ask && python3 -m http.server 8000
-# open http://localhost:8000 and choose "Try locally, without saving"
+node site/build.mjs                 # → _site/ (Pages edition) and _artifact/ (claude.ai edition)
+cd _site && python3 -m http.server 8000
+# http://localhost:8000          the app
+# http://localhost:8000/tests.html   the tests
 ```
 
-The Pages edition (`node site/build.mjs` → `_site/`) saves and shares with GUN and uses Claude with
-your own API key: see [Kairotic outside claude.ai](docs/pages.md).
+`site/build.mjs` builds the components, packages, Claude's examples and the tutorials first. On every
+push, GitHub Actions deploys Pages, runs the tests in a headless Chromium, and regenerates
+[docs/reference.md](docs/reference.md) from the help. See the [Changelog](CHANGELOG.md).
 
 ## Components
 
-See [`components/`](components/README.md) and the guide
-[Writing a component](docs/writing-a-component.md). Inside a work they are imported with
-`(import! "npm:kairotic-components@0.1.2/dist/knob.mjs")`; inside claude.ai a page can only load
-JavaScript modules from npm through jsDelivr, which is why components are published that way.
+See [Writing a component](docs/writing-a-component.md), [`components/`](components/README.md) and
+[`packages/`](packages/README.md). Inside a work, published components are imported with
+`(import! "npm:kairotic-components@0.1.2/dist/knob.mjs")`; official packages come by themselves when a
+box uses one of their classes.
 
 ## Licences and credits
 
