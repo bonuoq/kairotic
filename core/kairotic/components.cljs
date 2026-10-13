@@ -20,6 +20,10 @@
 ;;  :receive  (fn [m] result)                messages; pure. m = {:id :state :args :inlet :value :at :data
 ;;                                           :buffer :buffer-id}
 ;;                                           result = {:state :out [[o v]] :later [[at i v]] :effects [[k x]] :show v}
+;;                                           The same value again must change nothing that is going on: data
+;;                                           boxes send what they hold again after ■, when a line or a box
+;;                                           before it is new, or in a room. A player does not start over, a
+;;                                           learner does not learn it twice (compare with what :state keeps).
 ;;  :audio    {:create  (fn [ac box env] node)     box = {:text :args (raw) :data :id :state}, env = {:master …}
 ;;                                                 node = {:inlets [[AudioNode i]] :outlets [[AudioNode o]] …}
 ;;                                                 (an inlet can be an AudioParam: a signal is added to it)

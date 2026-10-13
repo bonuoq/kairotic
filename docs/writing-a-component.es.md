@@ -128,6 +128,20 @@ cuyo JavaScript viaja dentro del componente) y `api/param`. La API tiene versió
 paquete declara para cuál se escribió, y el núcleo solo la rompe con una versión mayor nueva. Ver
 [`core/kairotic/api.cljs`](../core/kairotic/api.cljs).
 
+## 5½. El mismo valor dos veces
+
+Una caja puede recibir otra vez el mismo valor: las cajas de datos (un `tree`) vuelven a enviar lo que
+tienen después de ■, cuando una línea hacia la caja es nueva o cambió una caja anterior, y cuando el
+gesto de otra persona llega en una sala. Recibirlo otra vez **no debe cambiar nada de lo que está en
+marcha**: un reproductor no vuelve a empezar, un acumulador no lo cuenta dos veces, un aprendiz no lo
+aprende dos veces. Compara el valor con lo que ya guarda `:state` y, si es el mismo, devuelve el estado
+tal cual:
+
+```clojure
+(cond (= value (:last state)) {:state state}          ; lo mismo otra vez: nada cambia
+      …)
+```
+
 ## 6. Un componente hecho de un patch
 
 No todas las clases necesitan código. Un **sub-patch** es una caja `patch`: doble clic para abrirla

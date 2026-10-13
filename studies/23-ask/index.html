@@ -2604,28 +2604,50 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (defonce sent-shape (atom nil))     ; the boxes and lines the trees were last sent through
 
-(defn emit-trees! []
+(defn reaching
+  "The boxes from which one of `goal` can be reached along `lines` (the goal boxes included)."
+  [lines goal]
+  (loop [acc (set goal)]
+    (let [more (into acc (keep (fn [[a _ b _]] (when (acc b) a)) lines))]
+      (if (= (count more) (count acc)) acc (recur more)))))
+
+(defn emit-trees!
+  "Every tree box sends its tree when it changed. When the patch changed (a new line, a box new or with a
+   new text), a tree goes again only toward what needs it: along its lines that lead to one of those
+   boxes (Study 23). Moving a knob — whose value stays in its text — sends nothing."
+  []
   (reset! emit-timer nil)
   (let [p (eng/flat (work-patch))
-        shape [(:lines p) (into {} (map (fn [[id b]] [id (:text b)])) (:boxes p))]]
-    ;; a new line or a new text (mt transpose → mt retrograde) is a new path for the trees: they go again
-    (when (not= shape @sent-shape)
+        shape [(:lines p) (into {} (map (fn [[id b]] [id (:text b)])) (:boxes p))]
+        [old-lines old-texts] @sent-shape
+        changed (when (not= shape @sent-shape)
+                  (into (set (for [[f text] (second shape) :when (not= text (get old-texts f))] f))
+                        (let [olds (set old-lines)] (for [l (:lines p) :when (not (olds l))] (nth l 2)))))
+        upstream (when (seq changed) (reaching (:lines p) changed))]
+    (when changed
       ;; a box that is new, or whose text changed, starts empty: nothing of what an earlier box with
       ;; that id showed or held
-      (let [before (second @sent-shape)]
-        (doseq [[f text] (second shape) :when (not= text (get before f))]
-          (eng/forget! f)
-          (swap! live-trees dissoc f)
-          (swap! score-cache dissoc f)))
-      (reset! sent-shape shape)
-      (reset! sent-trees {}))
+      (doseq [[f text] (second shape) :when (not= text (get old-texts f))]
+        (eng/forget! f)
+        (swap! live-trees dissoc f)
+        (swap! score-cache dissoc f))
+      (reset! sent-shape shape))
     (doseq [[f b] (:boxes p)
             :when (and (= "tree" (klass (:text b))) (not (some #{:manual} (eng/args-of (:text b)))))]
       (let [t (mtb/tree-of (:data b))]
-        (when (and (some? t) (not= t (get @sent-trees f)))
-          (swap! sent-trees assoc f t)
-          (try (eng/emit! (fn [] (work-patch)) f 0 (mt/expand-source t f))
-               (catch :default e (js/console.error e)))))))
+        (when (some? t)
+          (try
+            (cond
+              ;; the tree changed: it goes everywhere
+              (or (not= t (get @sent-trees f)) (contains? changed f))
+              (do (swap! sent-trees assoc f t)
+                  (eng/emit! (fn [] (work-patch)) f 0 (mt/expand-source t f)))
+              ;; the patch after it changed: only along the lines that lead there
+              upstream
+              (let [targets (set (for [[a o bb ii] (:lines p) :when (and (= a f) (= o 0) (upstream bb))] [bb ii]))]
+                (when (seq targets)
+                  (eng/emit-to! (fn [] (work-patch)) f 0 (mt/expand-source t f) targets))))
+            (catch :default e (js/console.error e)))))))
   (when (sync-live-trees!) (render-scene (current)))
   (drain-prints!))
 

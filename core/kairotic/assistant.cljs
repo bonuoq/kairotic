@@ -268,7 +268,9 @@ about (:class :license \"MPL-2.0\" :doc :usage :io), arguments (:args, :persist)
 :outlets […] :try \"something to do with it\"}, shown in the Help tab). Prefer :view (a data template with
 $holes) over :draw. A class name is one word; audio classes end in ~. Do not reuse a core class name.
 :receive is pure: it returns data ({:out … :state … :show … :effects … :later …}); side effects on
-sound happen only through :audio :effects. Messages are numbers, keywords (:bang), strings or vectors.
+sound happen only through :audio :effects. The same value arriving again must change nothing that is
+going on (data boxes send what they hold again after ■ or when the patch before them changes): a player
+does not start over, an accumulator does not count it twice — compare with what :state keeps. Messages are numbers, keywords (:bang), strings or vectors.
 Faust: `import(\"stdfaust.lib\");`, the standard libraries (os. fi. en. re. ef. si. ba. no. de.),
 hslider/button for parameters, `process = …;`. In ClojureScript source the Faust code is a string:
 escape its double quotes.

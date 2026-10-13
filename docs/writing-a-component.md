@@ -125,6 +125,19 @@ AudioWorklet whose JavaScript travels inside the component) and `api/param`. The
 (`api/version`): a package declares the one it was written for, and the core only breaks it with a
 new major version. See [`core/kairotic/api.cljs`](../core/kairotic/api.cljs).
 
+## 5½. The same value twice
+
+A box can receive the same value again: data boxes (a `tree`) send what they hold again after ■, when
+a line toward the box is new or a box before it changed, and when someone else's gesture reaches it in
+a room. Receiving it again must change **nothing that is going on**: a player does not start over, an
+accumulator does not count it twice, a learner does not learn it twice. Compare the value with what
+`:state` already keeps and, if it is the same, return the state as it is:
+
+```clojure
+(cond (= value (:last state)) {:state state}          ; the same again: nothing changes
+      …)
+```
+
 ## 6. A component made of a patch
 
 Not every class needs code. A **sub-patch** is a `patch` box: double-click it to open it (or

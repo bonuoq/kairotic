@@ -342,6 +342,17 @@
     (doseq [[a oo bb ii] (:lines p) :when (and (= a id) (= oo o))]
       (deliver! p bb ii value at))))
 
+(defn emit-to!
+  "Like emit!, but only along the lines from outlet o that reach one of `targets` ([box inlet] pairs):
+   a value sent again only where it is needed (a new line, a box that changed)."
+  [patch-fn id o value targets]
+  (swap! rt assoc :patch-fn patch-fn)
+  (when (:on @rt) (sync!))
+  (fresh-instant!)
+  (let [p (patch) at (message-time)]
+    (doseq [[a oo bb ii] (:lines p) :when (and (= a id) (= oo o) (contains? targets [bb ii]))]
+      (deliver! p bb ii value at))))
+
 (defn node [id] (get-in @rt [:nodes id]))
 
 (defn take-prints!

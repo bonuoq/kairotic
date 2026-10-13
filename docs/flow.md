@@ -15,7 +15,9 @@ initial state; the data boxes then send what they hold again.
 A `tree` box sends its tree **whenever it changes** — an edit of its text, `tree!`, `tree-edit!`, the
 history moving, someone else's edit in a room — and also when the patch around it changes (a new
 line, a new text such as `mt transpose` → `mt retrograde`), so what depends on it is always up to
-date. It sends at most once per moment and only if something really changed. A bang sends it again;
+date. It sends at most once per moment and only if something really changed. When the patch changes, the tree
+goes again only toward what needs it: along its lines that lead to a new line or to a box that is new or
+has a new text (Study 23). Moving a knob, whose value stays in its text, sends nothing. A bang sends it again;
 `tree manual` sends only on a bang (for live performance, when you prepare a change and launch it).
 
 ## Views that send their edits back
