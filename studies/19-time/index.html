@@ -558,7 +558,7 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; Box classes are components registered in kairotic.components: their ports, their view,
 ;; their data with its own history, their behaviour with messages and their audio all come from there.
 
-(declare show-help!)   ; the Help tab (Study 18), defined further down
+(declare show-help! refresh-help!)   ; the Help tab (Study 18), defined further down
 (def klass comp/klass)
 (defn box-def [b] (comp/lookup (klass (:text b))))
 (defn display-of [b] (or (:display (box-def b)) :text))
@@ -2659,7 +2659,9 @@ window.addEventListener("DOMContentLoaded", function () {
         (doseq [x (array-seq (.querySelectorAll js/document ".tab"))]
           (.setAttribute x "aria-selected" (str (= x t))))
         (doseq [[k pid] [["code" "panel-code"] ["edn" "panel-edn"] ["comp" "panel-comp"] ["claude" "panel-claude"] ["help" "panel-help"]]]
-          (set! (.-hidden ($ pid)) (not= k tab)))))))
+          (set! (.-hidden ($ pid)) (not= k tab)))
+        ;; opened by itself, the Help tab shows its index (or the page it was on)
+        (when (= tab "help") (refresh-help!))))))
 
 ;; ───────────────────────── gestures in the history ─────────────────────────
 
@@ -3884,6 +3886,10 @@ window.addEventListener("DOMContentLoaded", function () {
   (render-help!)
   (select-tab! "help")
   (set! (.-scrollTop ($ "help-view")) 0))
+
+(defn refresh-help!
+  "Draws the Help tab as it is (the index, or the page it was on), loading the tutorials if needed."
+  [] (load-tutorials!) (render-help!))
 
 (add-watch tutorials ::help (fn [_ _ _ _] (render-help!)))
 
