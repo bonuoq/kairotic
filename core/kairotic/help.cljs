@@ -203,8 +203,7 @@
    "outlet~" {:inlets ["the signal that leaves the sub-patch by this outlet"] :see ["patch" "inlet~"]}
 
    "tree"
-   {:inlets ["a bang (or anything): sends the tree"]
-    :inlets ["a bang: sends the tree again · [:edit …] (from a score's edits outlet): changes it · a tree: replaces it"]
+   {:inlets ["a bang: sends the tree again · [:edit …] (from a score's edits outlet): changes it · a tree: replaces it"]
     :outlets ["the tree, expanded (melody strings become notes, [:use …] the fragments it names), whenever it changes"]
     :messages [["double-click" "edit its text (Ctrl+Enter applies): only the nodes that changed go into the history"]
                ["(tree! :bN [:voice …])" "writes a tree into it, as edits of the nodes that change"]
