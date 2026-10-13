@@ -75,6 +75,7 @@ paquete anterior (`kairotic-componentes`), ya sustituido por `kairotic-component
 | 20 | Work | la obra como árbol: una `:piece` de `:section`s, cada una con sus voces (un pentagrama por voz a lo largo de las secciones, nombres de sección, dobles barras); la historia de una caja tree está hecha de ediciones de nodos (`tree-edit!`, y el editor de texto o `tree!` escriben solo la diferencia), así que las ramas que cambian nodos distintos se funden; las partituras editan el árbol (clic en una nota: ↑ ↓ + − ← → Supr); un tutorial de composición |
 | 21 | Flow | datos que fluyen: los mensajes viajan sin ▶ (▶ es para el sonido y el tiempo); un tree se envía solo cuando cambia (o cambia el patch a su alrededor); una score envía por una tercera salida las ediciones que se hacen en ella, de vuelta al tree por una línea discontinua; los bucles sin tiempo se cortan y se avisan ([docs/flow.es.md](docs/flow.es.md)) |
 | 22 | Embed | Kairotic dentro de otras páginas (Notion, un blog): enlaces que llevan un patch (su código, comprimido, leído como datos), un paso de tutorial o un patch de ayuda; `?embed` muestra solo el patch, `?present` solo su presentación, llenando el marco, con un botón de pantalla completa; el botón Embed y `(embed-link)` ([docs/embed.es.md](docs/embed.es.md)) |
+| 23 | Ask | la pestaña Claude hace patches a partir de una descripción, o cambia el abierto, comprobados con las herramientas de la página (clases, puertos, Faust, componentes) y cargados como un evento; los enlaces `?ask=` llevan una descripción —nunca una clave— y quien los abre hace el patch con su propio Claude ([docs/ask.es.md](docs/ask.es.md)) |
 
 ## Probarlo
 
@@ -82,7 +83,7 @@ Los ensayos se publicaron como artefactos de claude.ai, que aportan la base de d
 compartidas. Fuera de claude.ai funcionan en **modo local** (sin guardar ni compartir):
 
 ```sh
-cd studies/22-embed && python3 -m http.server 8000
+cd studies/23-ask && python3 -m http.server 8000
 # abre http://localhost:8000 y elige «Try locally, without saving»
 ```
 

@@ -261,3 +261,13 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | enlace que lleva el patch | link that carries the patch (`?code=…`, compressed) |
 | abrir en Kairotic | open in Kairotic (↗: the whole editor) |
 | definición oficial | official definition (a package as the page brings it: runs without asking) |
+
+## Ask · Pedir (Study 23)
+
+| es | en |
+|---|---|
+| pedir un patch | ask for a patch (Claude tab, *A patch*; `(ask-patch "…")`) |
+| cambiar el patch abierto | change the open patch |
+| comprobar el patch | `check_patch` (classes, ports, Faust, components) |
+| enlace con descripción | link with a description (`?ask=…`, `(ask-link "…")`) |
+| enlace del resultado | link of the result (`?code=…`: everyone sees the same patch) |

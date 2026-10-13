@@ -70,6 +70,7 @@ and interface are in English. The [glossary](docs/glossary.md) maps the old name
 | 20 | Work | the work as a tree: a `:piece` of `:section`s, each with its voices (a staff per voice across sections, section names, double bars); a tree box's history is made of node edits (`tree-edit!`, and the text editor or `tree!` write only the difference), so branches that change different nodes merge; scores edit the tree (click a note: ↑ ↓ + − ← → Delete); a composition tutorial |
 | 21 | Flow | data that flows: messages travel without ▶ (▶ is for sound and time); a tree sends itself when it changes (or the patch around it does); a score sends the edits made on it by a third outlet, back to the tree by a dashed line; loops without time are cut and reported ([docs/flow.md](docs/flow.md)) |
 | 22 | Embed | Kairotic inside other pages (Notion, a blog): links that carry a patch (its code, compressed, read as data), a tutorial step or a help patch; `?embed` shows only the patch, `?present` only its presentation, filling the frame, with a fullscreen button; the Embed button and `(embed-link)` ([docs/embed.md](docs/embed.md)) |
+| 23 | Ask | the Claude tab makes patches from a description, or changes the open one, checked with the page's tools (classes, ports, Faust, components) and loaded as one event; `?ask=` links carry a description — never a key — and whoever opens them makes the patch with their own Claude ([docs/ask.md](docs/ask.md)) |
 
 ## Trying it
 
@@ -77,7 +78,7 @@ The studies were published as claude.ai artifacts, which provide the database an
 rooms. Outside claude.ai they work in **local mode** (no saving or sharing):
 
 ```sh
-cd studies/22-embed && python3 -m http.server 8000
+cd studies/23-ask && python3 -m http.server 8000
 # open http://localhost:8000 and choose "Try locally, without saving"
 ```
 
