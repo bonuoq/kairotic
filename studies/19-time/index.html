@@ -3939,8 +3939,39 @@ window.addEventListener("DOMContentLoaded", function () {
       (swap! lesson assoc :at i)
       (render-lesson!))))
 
+(def box-class-re #"\(box\s+(?::\S+\s+)?\"([^\"\s]+)")
+
+(defn lesson-definitions
+  "Promise of [[name classes source] …]: the official packages and single components a lesson's boxes
+   need and the work does not define yet, fetched before the lesson is built (so that their
+   definitions are part of its history, in order, and not late arrivals on a branch of their own)."
+  [l]
+  (let [ks (distinct (for [st (:steps l) c (:code st) [_ k] (re-seq box-class-re c)] k))
+        ks (remove comp/lookup ks)
+        pkgs (distinct (keep (fn [k] (first (lib/package-of k))) ks))
+        singles (filter (fn [k] (and (lib/single-of k) (not (lib/package-of k)))) ks)]
+    (if (and (empty? pkgs) (empty? singles))
+      (js/Promise.resolve [])
+      (-> (js/Promise.all
+           (into-array
+            (concat (for [p pkgs] (.then (lib/import-package p) (fn [[m origin]] [p (set (map :class (:components m))) (lib/package-source m origin)])))
+                    (for [k singles] (.then (lib/import-single k) (fn [[m origin]] [k #{k} (str (lib/header m origin) (:source m))]))))))
+          (.then (fn [arr] (vec arr)))))))
+
+(declare build-lesson!)
+
 (defn open-lesson!
-  "Opens a lesson as a local work built step by step: the gestures of each step are made in order
+  "Opens a lesson: first the packages its boxes need, then the lesson itself (build-lesson!)."
+  [l]
+  (repl-print! "out" (esc (str "; " (if (es?) "Preparando la lección" "Preparing the lesson") "…")))
+  (-> (lesson-definitions l)
+      (.then (fn [defs] (build-lesson! (assoc l :defs defs))))
+      (.catch (fn [e]
+                (repl-print! "err" (esc (str "; " (or (.-message e) e) " · " (if (es?) "la lección se abre sin ese paquete" "the lesson opens without that package"))))
+                (build-lesson! l)))))
+
+(defn build-lesson!
+  "Builds a lesson as a local work, step by step: the gestures of each step are made in order
    (they appear in the REPL) and each step remembers its point in the history."
   [l]
   (when-not @lesson (reset! lesson-back {:work @work :hist @hist :world @world :settings @settings}))
@@ -3955,8 +3986,15 @@ window.addEventListener("DOMContentLoaded", function () {
   (lobby-presence!)
   (swap! hist assoc :mode :local :loaded true)
   (repl-print! "out" (esc (str "; " (if (es?) "Lección" "Lesson") ": «" (tr (:title l)) "»")))
-  (let [steps (reduce (fn [acc st]
-                        (doseq [c (:code st)] (gesture! c))
+  (let [defs (atom (:defs l))   ; [[name classes source] …] of packages and singles not yet in the work
+        steps (reduce (fn [acc st]
+                        (doseq [c (:code st)]
+                          ;; a class from a package: its definition goes in just before the box that uses it
+                          (let [used (set (map second (re-seq box-class-re c)))]
+                            (doseq [[nm cls src :as d] @defs :when (some used cls)]
+                              (new-definition! src)
+                              (swap! defs (fn [ds] (vec (remove #{d} ds))))))
+                          (gesture! c))
                         (conj acc (assoc st :pos (norm (:pos @world)))))
                       [] (:steps l))]
     (reset! lesson (assoc l :steps steps :at 0))
