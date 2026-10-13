@@ -153,6 +153,9 @@
                   (= op "play") (play m)
                   (= inlet 1) {:state (assoc state :r value)}
                   (mt/tree? value)
-                  (try {:state state :out [[0 (transform op (rest args) (:r state) value)]]}
+                  (try {:state state
+                        ;; the result remembers which tree box the tree comes from (a loop back to it is seen)
+                        :out [[0 (let [x (transform op (rest args) (:r state) value)]
+                                   (if (and (mt/node? x) (:from (meta value))) (vary-meta x assoc :from (:from (meta value))) x))]]}
                        (catch :default e {:state state :effects [[:print (str "mt " op ": " (.-message e))]]}))
                   :else {:state state})))})

@@ -2471,14 +2471,14 @@ window.addEventListener("DOMContentLoaded", function () {
   (js/setTimeout
    (fn []
      (let [id f now (js/Date.now)
-           times (filterv (fn [t] (> t (- now 2000))) (get @msg-edits id))]
+           times (filterv (fn [t] (> t (- now 10000))) (get @msg-edits id))]
        (cond
          (not (get-in (current) [:boxes id]))
          (repl-print! "err" (esc (str "; " (name f) " is inside a sub-patch: edits by message reach only tree boxes of the patch on screen")))
          (contains? (:stopped @msg-edits) id) nil
-         (>= (count times) 30)
+         (>= (count times) 20)
          (do (swap! msg-edits update :stopped (fnil conj #{}) id)
-             (repl-print! "err" (esc (str "; loop stopped: " id " was rewritten by messages 30 times in 2 seconds. Look for a line that brings its own tree back to it; (resume! " id ") lets messages change it again."))))
+             (repl-print! "err" (esc (str "; loop stopped: " id " was rewritten by messages 20 times in 10 seconds. Look for a line that brings its own tree back to it; (resume! " id ") lets messages change it again."))))
          :else
          (do (swap! msg-edits assoc id (conj times now))
              (case k
