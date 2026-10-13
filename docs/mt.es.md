@@ -64,6 +64,44 @@ trazo en un freqt.
 `[:use {:ref :celula :transpose 5}]` los escribe, variados. Una sección de una obra más grande puede
 ser una `:section`, colocada con `:at` dentro de una `:piece`.
 
+## La obra, su historia y su partitura (Ensayo 20)
+
+**Una obra como árbol.** En una `:piece` (y en una `:section`), las voces y los `:par` suenan a la vez
+desde su inicio, y todo lo demás —secciones en una pieza, compases en una sección— se sucede en orden:
+
+```clojure
+[:piece {:tempo 80}
+ [:section {:name "A"} [:voice {:name "fl"} [:measure {:meter [3 4]} "e5/1 d5 c5"]] [:voice {:name "vc"} [:measure "c3/3"]]]
+ [:section {:name "B"} [:voice {:name "fl"} [:measure "c5/3"]] [:voice {:name "vc"} [:measure "g2/3"]]]]
+```
+
+La partitura mantiene un pentagrama por nombre de voz a lo largo de las secciones, escribe el nombre de
+cada sección sobre su primer compás y una doble barra entre secciones.
+
+**Una historia de nodos.** El dato de una caja `tree` es el propio árbol, y cada evento de su historia es
+una lista de ediciones de nodos, señalados por su **camino** (los índices de hijos desde la raíz; los
+atributos no cuentan):
+
+| edición | |
+|---|---|
+| `[:set camino x]` | sustituye el nodo (o el texto de melodía) del camino |
+| `[:attrs camino {…}]` | sustituye sus atributos |
+| `[:insert camino x]` | inserta x para que quede en ese camino |
+| `[:remove camino]` | lo elimina |
+
+`(tree-edit! :b2 [:set [1 0 0 0] "e5/.5 f5 g5"])` escribe las ediciones tal cual; `(tree! :b2 árbol)` y
+editar el texto de la caja escriben la diferencia con lo que tenía (`mt/diff`). Dos ramas se pueden
+fundir cuando cambian nodos distintos; si una cambió un nodo y la otra ese nodo o algo dentro de él, la
+fusión dice cuál.
+
+**Editar desde la partitura.** Una partitura que muestra un árbol que viene de una caja tree sabe dónde
+está escrita cada nota. Haz clic en una nota y luego ↑ ↓ (altura, ⇧ una octava), + − (duración), ← →
+(anterior, siguiente), Supr (un silencio), Esc. Cada cambio es un `(tree-edit! …)`; una nota escrita en
+un texto de melodía se escribe primero como notas, en el mismo evento. Las notas que vienen de `:defs` se
+editan en su definición.
+
+Un compás que no cuadra es un aviso (⚠ en la REPL y en la caja), no un error, mientras escribes.
+
 ## Cajas
 
 | caja | |

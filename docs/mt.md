@@ -63,6 +63,44 @@ of a freqt is drawn.
 `[:use {:ref :cell :transpose 5}]` writes them, varied. A section of a larger work can be a `:section`,
 placed with `:at` in a `:piece`.
 
+## The work, its history and its score (Study 20)
+
+**A work as a tree.** In a `:piece` (and in a `:section`), voices and `:par` sound together from its
+start, and everything else — sections in a piece, measures in a section — follows in order:
+
+```clojure
+[:piece {:tempo 80}
+ [:section {:name "A"} [:voice {:name "fl"} [:measure {:meter [3 4]} "e5/1 d5 c5"]] [:voice {:name "vc"} [:measure "c3/3"]]]
+ [:section {:name "B"} [:voice {:name "fl"} [:measure "c5/3"]] [:voice {:name "vc"} [:measure "g2/3"]]]]
+```
+
+The score keeps one staff per voice name across sections, writes each section's name over its first
+bar and a double bar between sections.
+
+**A history of nodes.** The data of a `tree` box is the tree itself, and each event of its history is a
+list of edits of nodes, addressed by **path** (the child indices from the root; attributes are not
+counted):
+
+| edit | |
+|---|---|
+| `[:set path x]` | replaces the node (or melody string) at path |
+| `[:attrs path {…}]` | replaces its attributes |
+| `[:insert path x]` | inserts x so that it ends up at path |
+| `[:remove path]` | removes it |
+
+`(tree-edit! :b2 [:set [1 0 0 0] "e5/.5 f5 g5"])` writes edits as they are; `(tree! :b2 tree)` and editing
+the text of the box write the difference with what it had (`mt/diff`). Two branches can be merged when
+they change different nodes; if one changed a node and the other that node or something inside it,
+the merge says which.
+
+**Editing from the score.** A score that shows a tree coming from a tree box knows where each note is
+written. Click a note, then ↑ ↓ (pitch, ⇧ an octave), + − (duration), ← → (previous, next), Delete (a
+rest), Esc. Each change is one `(tree-edit! …)`; a note written in a melody string is first written out
+as notes, in the same event. Notes that come from `:defs` are edited in their definition.
+
+A measure that does not add up is a warning (⚠ in the REPL and on the box), not an error, while you
+write.
+
 ## Boxes
 
 | box | |

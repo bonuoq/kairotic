@@ -202,7 +202,12 @@
    "tree"
    {:inlets ["a bang (or anything): sends the tree"]
     :outlets ["the tree, expanded (melody strings become notes, [:use …] the fragments it names)"]
-    :messages [["double-click" "edit it (Ctrl+Enter applies)"] ["(tree! :bN [:voice …])" "writes a tree into it"] ["(as-tree :bN)" "reads it back as data"]]
+    :messages [["double-click" "edit its text (Ctrl+Enter applies): only the nodes that changed go into the history"]
+               ["(tree! :bN [:voice …])" "writes a tree into it, as edits of the nodes that change"]
+               ["(tree-edit! :bN [:attrs [0 1 2] {…}])" "edits nodes by their path: [:set p x] [:attrs p {…}] [:insert p x] [:remove p]"]
+               ["(node-at :bN [0 1])" "the node at a path"]
+               ["in a score: click a note" "↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest"]
+               ["(as-tree :bN)" "reads it back as data"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)"
                     "(code :b2 \"[:voice\\n [:measure {:meter [3 4]} \\\"e5/1\\\" [:tuplet {:ratio [3 2]} \\\"d5/.5 c5 b4\\\"] [:note {:pitch \\\"a4\\\" :dur 1 :dyn \\\"p\\\"}]]\\n [:measure \\\"g4/3\\\"]]\")"
                     "(box :b3 \"score\" 40 190)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)")
