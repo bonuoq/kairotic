@@ -911,9 +911,14 @@ window.addEventListener("DOMContentLoaded", function () {
                       :grid-x (-> acc (update :mod conj [id :grid-x]) (update :ref conj id))
                       :tuning (-> acc (update :mod conj [id :tuning]) (update :ref conj id))
                       ;; in a tree, each edited node is its own unit; inserting or removing changes its container
+                      ;; units: [box path kind] — :node (replaced), :kids (children added or removed, so their
+                      ;; indices move), :attrs (only its attributes)
                       :edit (-> acc
-                                (update :tree into (for [[op p] eid]
-                                                     [id (let [p (vec p)] (if (and (#{:insert :remove} op) (seq p)) (pop p) p))]))
+                                (update :tree into (for [[op p] eid :let [p (vec p)]]
+                                                     (case op
+                                                       :attrs [id p :attrs]
+                                                       (:insert :remove) [id (if (seq p) (pop p) p) :kids]
+                                                       [id p :node])))
                                 (update :ref conj id))
                       (-> acc (update :mod conj id) (update :ref conj id) (update :whole conj id))))
               acc))
@@ -931,14 +936,27 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn free-box-id [used]
   (loop [k 1] (let [id (keyword (str "b" k))] (if (used id) (recur (inc k)) id))))
 
+(defn tree-units-clash?
+  "Whether two edits of one tree touch the same thing: a replaced node and anything inside it, children
+   added or removed and anything below them (their indices move), or the attributes of the same node."
+  [[p kp] [q kq]]
+  (let [prefix? (fn [a b] (and (<= (count a) (count b)) (= a (subvec b 0 (count a)))))
+        proper? (fn [a b] (and (< (count a) (count b)) (prefix? a b)))
+        one-way (fn [[a ka] [b kb]]
+                  (case ka
+                    :node (prefix? a b)
+                    :kids (or (proper? a b) (and (= a b) (= kb :kids)))
+                    :attrs (and (= a b) (= kb :attrs))))]
+    (or (one-way [p kp] [q kq]) (one-way [q kq] [p kp]))))
+
 (defn tree-clash
-  "Edits of the same tree where one node is inside (or is) the other: [[box path] …]."
+  "Edits of the same tree that touch the same thing in both branches: [[box path] …]."
   [S T]
-  (let [prefix? (fn [p q] (and (<= (count p) (count q)) (= p (subvec q 0 (count p)))))]
-    (concat
-     (for [[i p] (:tree S) [j q] (:tree T) :when (and (= i j) (or (prefix? p q) (prefix? q p)))] [i (if (prefix? p q) p q)])
-     (for [[i p] (:tree S) :when (contains? (:whole T) i)] [i []])
-     (for [[i p] (:tree T) :when (contains? (:whole S) i)] [i []]))))
+  (concat
+   (for [[i p kp] (:tree S) [j q kq] (:tree T) :when (and (= i j) (tree-units-clash? [p kp] [q kq]))]
+     [i (if (<= (count p) (count q)) p q)])
+   (for [[i] (:tree S) :when (contains? (:whole T) i)] [i []])
+   (for [[i] (:tree T) :when (contains? (:whole S) i)] [i []])))
 
 (defn plan-merge
   "Which events of branch `src` must be brought to `tgt`, or why it cannot be done."
