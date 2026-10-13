@@ -140,7 +140,8 @@
                                  (catch :default e (js/console.error e))))))
       ;; every node learns which of its inlets receive a signal (osc~ and gain~ then let it take over)
       (doseq [[id node] (:nodes @rt) :let [f (get-in node [:def :audio :wired])] :when f]
-        (try (f node (set (keep (fn [[_ _ b i]] (when (= b id) i)) lines))) (catch :default e (js/console.error e))))
+        ;; only lines that carry a signal: a message line (a msg, a number) into gain~'s right inlet sets it, it does not take over
+        (try (f node (set (keep (fn [[a o b i]] (when (and (= b id) (get-in @rt [:nodes a :outlets o])) i)) lines))) (catch :default e (js/console.error e))))
       (swap! rt update :states (fn [ss] (into {} (filter (fn [[id _]] (get-in p [:boxes id])) ss)))))
     ;; a new text for a node that updates itself: no new node, the node takes the new arguments
     (when (not= (nth s 2) (nth old 2 nil))
@@ -165,12 +166,27 @@
 
 ;; ───────── messages ─────────
 
+(defonce tree-bufs (atom {}))   ; box → [tree buffer]: a tree turned into a buffer once, not on every tick
+
+(defn tree-buffer
+  "The buffer of the musical tree a canvas, freqt or score shows (Study 23): one stroke per note."
+  [id tree]
+  (let [[t b] (get @tree-bufs id)]
+    (if (identical? t tree)
+      b
+      (let [b (when-let [f @comp/tree-buffer] (try (f tree) (catch :default _ nil)))]
+        (swap! tree-bufs assoc id [tree b])
+        b))))
+
 (defn buffer-of
-  "The canvas (or score) connected to the right inlet of a box: [id data]."
+  "The canvas (or score) connected to the right inlet of a box: [id data]. A box that shows a musical
+   tree gives that tree as its buffer, so a reader~ plays what the score shows."
   [p id]
   (some (fn [[a _ b i]]
           (when (and (= b id) (= i 1) (#{"canvas" "freqt" "score"} (comp/klass (get-in p [:boxes a :text]))))
-            [a (or (get-in p [:boxes a :data]) (:empty (comp/model-of (get-in p [:boxes a]))) cv/empty)]))
+            (let [tree (get-in @rt [:states a :tree])]
+              [a (or (when tree (tree-buffer a tree))
+                     (get-in p [:boxes a :data]) (:empty (comp/model-of (get-in p [:boxes a]))) cv/empty)])))
         (:lines p)))
 
 (defn show! [id at v]

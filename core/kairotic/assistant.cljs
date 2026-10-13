@@ -349,6 +349,13 @@ Rules:
   which is exactly what a named knob sends: `knob 50 2000 300 log carrier` sends [:carrier v] to an
   hslider(\"carrier\", …). Write every parameter as hslider with sensible ranges and a smoothing
   (si.smoo). Call `check_faust` on the Faust code before using it.
+- Musical trees (tree boxes, notation): to PLAY one, prefer `tree` → `mt play` → `synth~` (mt play
+  sends Hz and voice ids at the tree's tempo once ▶ is on; see class_help). A score or freqt that
+  shows a tree is also a buffer: `phasor~` → `reader~` (left) with the score's outlet 1 on its right
+  inlet gives the pitch as a signal (Hz), e.g. into a faust~ whose process takes a frequency input.
+  A tree box sends its tree by itself: it needs no loadbang.
+- `gain~ 0.2` sets its factor as an argument; a message into its right inlet changes it, a signal
+  there replaces it. Do not leave a gain waiting for a message nobody sends.
 - Lay it out top to bottom, following the signal: x from 20 to 900, about 60 px between rows,
   controls on top. Code boxes are about 330 wide and 200 tall: leave them room.
 - Present the controls and displays a performer needs (`present`), in a compact panel.

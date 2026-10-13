@@ -14,6 +14,9 @@
 ;; ───────── tree: EDN data in the patch ─────────
 ;; Reading EDN evaluates nothing, so a tree box is safe in a shared room (no trust needed).
 
+;; a canvas, freqt or score that shows a tree gives it as its buffer (a reader~ plays it): Study 23
+(reset! comp/tree-buffer mt/->strokes)
+
 (cbox/register-language! "edn"
   (fn [source]
     (js/Promise.

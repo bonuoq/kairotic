@@ -62,6 +62,8 @@
             [kairotic.canvas :as cv]))
 
 (defonce registry (atom {}))
+;; how a musical tree becomes a buffer of strokes (set by kairotic.mtboxes; kairotic.mt is not required here)
+(defonce tree-buffer (atom nil))
 
 (declare patch-io)
 
