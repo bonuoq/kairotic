@@ -1734,6 +1734,14 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (def url-params (js/URLSearchParams. (.-search js/location)))
 (defn url-param [k] (.get url-params k))
+(defn raw-param
+  "A parameter as written in the address, where + stays + (code written by hand: ?src=…)."
+  [k]
+  (some (fn [part]
+          (let [i (.indexOf part "=")]
+            (when (and (pos? i) (= k (subs part 0 i)))
+              (try (js/decodeURIComponent (subs part (inc i))) (catch :default _ nil)))))
+        (str/split (subs (str (.-search js/location)) 1) #"&")))
 (def embed-mode (cond (.has url-params "present") :present (.has url-params "embed") :embed))
 
 (defn wrap-px
@@ -4725,10 +4733,10 @@ window.addEventListener("DOMContentLoaded", function () {
        (add-watch tutorials ::ready (fn [_ _ _ n] (when (sequential? n) (remove-watch tutorials ::ready) (res n))))))))
 
 (defn start-from-url!
-  "Opens what the address asks for (?code, ?tutorial & ?step, ?help); in an embed, a local work if nothing."
+  "Opens what the address asks for (?code, ?src, ?tutorial & ?step, ?help); in an embed, a local work if nothing."
   []
   (when-let [l (url-param "lang")] (when (#{"es" "en"} l) (reset! lang (keyword l)) (render-lesson!) (render-help!)))
-  (let [code (url-param "code") tut (url-param "tutorial") hc (url-param "help")
+  (let [code (url-param "code") src (raw-param "src") tut (url-param "tutorial") hc (url-param "help")
         step (js/parseInt (or (url-param "step") "1") 10)
         fallback (fn [e]
                    (when e (repl-print! "err" (esc (str "; " (or (.-message e) e)))))
@@ -4737,6 +4745,8 @@ window.addEventListener("DOMContentLoaded", function () {
     (-> (cond
           (seq code) (.then ((.-kairoticUnpack js/window) code)
                             (fn [src] (open-link-work! (if (es?) "Enlace" "Link") (link-code src))))
+          ;; the code itself, readable (written by hand, or by Claude in a Notion page)
+          (seq src) (.then (js/Promise.resolve nil) (fn [_] (open-link-work! (if (es?) "Enlace" "Link") (link-code src))))
           (seq tut) (.then (tutorials-ready)
                            (fn [_] (or (open-tutorial! tut) (throw (js/Error. (str "no tutorial " (pr-str tut)))))))
           (seq hc) (or (open-help-patch! hc) (js/Promise.reject (js/Error. (str "no help patch for " (pr-str hc)))))

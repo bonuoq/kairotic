@@ -24,7 +24,27 @@ link is a copy of that moment, not the live work.
 
 ## In Notion
 
-Type `/embed`, paste the link, and resize the block. In other pages, paste the iframe. The iframe
+Type `/embed` (or **+ → Embed**, in the *Embeds* group of the insert menu), paste the link, and
+resize the block. In other pages, paste the iframe.
+
+### Code written by hand: `?src=`
+
+Besides the compressed `?code=`, a link can carry the code as it is written:
+
+```
+https://bonuoq.github.io/kairotic/?embed&src=(box :b1 "osc~ 440" 20 20)(box :b2 "dac~" 20 80)(connect :b1 0 :b2 0)
+```
+
+Browsers and Notion encode the spaces and quotes themselves; `+` stays `+`. It is read the same
+way as `?code=` (as data, only patch calls). It is useful for short patches, and for anyone — or
+any assistant — writing a link without the Kairotic editor at hand.
+
+### A `/kairotic` command?
+
+Notion does not let integrations add their own `/` commands, and its Link Preview API (which turned
+links into live previews) is closed to new developers; its *custom blocks* are in private alpha. So
+today the paths are `/embed` with a link, or asking Claude, with the Notion connector, to put a
+Kairotic embed in a page from code written in it (a code block whose first line is `;; kairotic`). The iframe
 has `allow="fullscreen"`; where a page does not allow fullscreen inside its frames, ⛶ opens the
 presentation in a tab of its own.
 
@@ -33,6 +53,7 @@ presentation in a tab of its own.
 | | |
 |---|---|
 | `?code=…` | a patch (deflate-raw + base64url) |
+| `?src=…` | a patch, its code as written |
 | `?tutorial=id&step=n` | a tutorial at step n |
 | `?help=class` | the help patch of a class |
 | `?lang=es` / `?lang=en` | the language of lessons and help |

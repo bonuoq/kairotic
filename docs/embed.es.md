@@ -24,7 +24,28 @@ Lo que lleva el enlace depende de lo que está abierto: un tutorial en un paso
 
 ## En Notion
 
-Escribe `/embed`, pega el enlace y ajusta el tamaño del bloque. En otras páginas, pega el iframe. El
+Escribe `/embed` (o **+ → Insertar**, en el grupo *Integraciones* del menú de inserción), pega el
+enlace y ajusta el tamaño del bloque. En otras páginas, pega el iframe.
+
+### Código escrito a mano: `?src=`
+
+Además de `?code=` comprimido, un enlace puede llevar el código tal como se escribe:
+
+```
+https://bonuoq.github.io/kairotic/?embed&src=(box :b1 "osc~ 440" 20 20)(box :b2 "dac~" 20 80)(connect :b1 0 :b2 0)
+```
+
+Los navegadores y Notion codifican ellos mismos espacios y comillas; `+` se queda como `+`. Se lee
+igual que `?code=` (como datos, solo llamadas de patch). Sirve para patches cortos, y para quien —o
+el asistente que— escriba un enlace sin el editor de Kairotic a mano.
+
+### ¿Un comando `/kairotic`?
+
+Notion no deja que las integraciones añadan sus propios comandos `/`, y su API de Link Preview (que
+convertía enlaces en vistas vivas) está cerrada a nuevos desarrolladores; sus *bloques personalizados*
+están en alfa privada. Así que hoy los caminos son `/embed` con un enlace, o pedirle a Claude, con el
+conector de Notion, que ponga un embed de Kairotic en una página a partir del código escrito en ella
+(un bloque de código cuya primera línea es `;; kairotic`). El
 iframe lleva `allow="fullscreen"`; donde una página no permite pantalla completa dentro de sus marcos,
 ⛶ abre la presentación en una pestaña propia.
 
@@ -33,6 +54,7 @@ iframe lleva `allow="fullscreen"`; donde una página no permite pantalla complet
 | | |
 |---|---|
 | `?code=…` | un patch (deflate-raw + base64url) |
+| `?src=…` | un patch, su código tal como se escribe |
 | `?tutorial=id&step=n` | un tutorial en el paso n |
 | `?help=clase` | el patch de ayuda de una clase |
 | `?lang=es` / `?lang=en` | el idioma de lecciones y ayuda |
