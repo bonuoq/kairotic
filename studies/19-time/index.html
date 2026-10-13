@@ -3947,7 +3947,8 @@ window.addEventListener("DOMContentLoaded", function () {
    definitions are part of its history, in order, and not late arrivals on a branch of their own)."
   [l]
   (let [ks (distinct (for [st (:steps l) c (:code st) [_ k] (re-seq box-class-re c)] k))
-        ks (remove comp/lookup ks)
+        ;; a lesson starts from an empty history: every class of a package is needed, even if the
+        ;; work open before it had defined it
         pkgs (distinct (keep (fn [k] (first (lib/package-of k))) ks))
         singles (filter (fn [k] (and (lib/single-of k) (not (lib/package-of k)))) ks)]
     (if (and (empty? pkgs) (empty? singles))
