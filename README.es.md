@@ -74,6 +74,7 @@ paquete anterior (`kairotic-componentes`), ya sustituido por `kairotic-component
 | 19 | Time | la música como datos: árboles musicales en EDN (hiccup, como el llll de bach) con compases, grupos irregulares, acordes, dinámicas, articulaciones, textos, cambios de parámetro y fragmentos reutilizables; las cajas `tree` y `mt` los escriben, transforman (transponer, invertir, retrogradar, aumentar, canon…) y tocan; una score, un freqt o un canvas los muestran en vivo; un tutorial de teoría ([docs/mt.es.md](docs/mt.es.md)) |
 | 20 | Work | la obra como árbol: una `:piece` de `:section`s, cada una con sus voces (un pentagrama por voz a lo largo de las secciones, nombres de sección, dobles barras); la historia de una caja tree está hecha de ediciones de nodos (`tree-edit!`, y el editor de texto o `tree!` escriben solo la diferencia), así que las ramas que cambian nodos distintos se funden; las partituras editan el árbol (clic en una nota: ↑ ↓ + − ← → Supr); un tutorial de composición |
 | 21 | Flow | datos que fluyen: los mensajes viajan sin ▶ (▶ es para el sonido y el tiempo); un tree se envía solo cuando cambia (o cambia el patch a su alrededor); una score envía por una tercera salida las ediciones que se hacen en ella, de vuelta al tree por una línea discontinua; los bucles sin tiempo se cortan y se avisan ([docs/flow.es.md](docs/flow.es.md)) |
+| 22 | Embed | Kairotic dentro de otras páginas (Notion, un blog): enlaces que llevan un patch (su código, comprimido, leído como datos), un paso de tutorial o un patch de ayuda; `?embed` muestra solo el patch, `?present` solo su presentación, llenando el marco, con un botón de pantalla completa; el botón Embed y `(embed-link)` ([docs/embed.es.md](docs/embed.es.md)) |
 
 ## Probarlo
 
@@ -81,7 +82,7 @@ Los ensayos se publicaron como artefactos de claude.ai, que aportan la base de d
 compartidas. Fuera de claude.ai funcionan en **modo local** (sin guardar ni compartir):
 
 ```sh
-cd studies/21-flow && python3 -m http.server 8000
+cd studies/22-embed && python3 -m http.server 8000
 # abre http://localhost:8000 y elige «Try locally, without saving»
 ```
 

@@ -1,4 +1,4 @@
-<title>Kairotic Flow</title>
+<title>Kairotic Embed</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
@@ -65,7 +65,7 @@ header .status b.off { color: var(--kairos); }
 .pres #canvas { background-image: none; }
 #pres-toggle.on { background: var(--accent); color: var(--paper); }
 /* embedding (Study 22) */
-.embed-only { display: none; }
+body:not(.embed) .embed-only { display: none; }
 a.act { text-decoration: none; display: inline-block; }
 .embed-pop { margin: 8px 10px 0; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); font-size: 12px; display: grid; gap: 6px; }
 .embed-pop .ep-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }

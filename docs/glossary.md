@@ -251,3 +251,13 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | salida de ediciones · línea discontinua | edits outlet · dashed line (score → tree) |
 | bucle sin tiempo · cortado | loop without time · cut |
 | volver a aceptar mensajes | `(resume! :bN)` |
+
+## Embed · Insertar (Study 22)
+
+| es | en |
+|---|---|
+| insertar (en otra página) | embed (`?embed`, an iframe, Notion `/embed`) |
+| solo la presentación, a pantalla completa | presentation only, fullscreen (`?present`, ⛶) |
+| enlace que lleva el patch | link that carries the patch (`?code=…`, compressed) |
+| abrir en Kairotic | open in Kairotic (↗: the whole editor) |
+| definición oficial | official definition (a package as the page brings it: runs without asking) |
