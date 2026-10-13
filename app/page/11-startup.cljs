@@ -10,7 +10,6 @@
 (render-comp!)
 (render-controls!)
 (render-manager!)
-(def version "0.1.0-alpha")
 (repl-print! "out" (str "; Kairotic " version " — " (cond (.-claude js/window) "inside claude.ai: works, rooms and Claude come from claude.ai." (backend) "on its own: works and rooms in GUN (your solo works are encrypted in this browser), Claude with your own API key (Claude tab)." :else "without a database: local works only.")))
 (repl-print! "out" "; New here? The Help tab has the tutorials and a page for every class (select a box and press ?). The Claude tab makes patches and components from a description. Embed puts a patch in another page.")
 

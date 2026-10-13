@@ -6,6 +6,8 @@
                    [kairotic.components :as comp] [kairotic.api :as api] [kairotic.code :as cbox] [kairotic.faust] [kairotic.library :as lib] [kairotic.help :as hlp] [kairotic.mt :as mt] [kairotic.mtboxes :as mtb] [kairotic.assistant :as ai] [kairotic.engine :as eng]
                    [kairotic.shapes :as shp] [kairotic.signal] [kairotic.links :as links] [clojure.edn]))
 
+(def version "0.1.0-alpha")
+
 ;; kairotic.code is aliased `cbox` (not `code`) because `code` is a REPL command defined below.
 
 ;; ───────────────────────── model of the work ─────────────────────────

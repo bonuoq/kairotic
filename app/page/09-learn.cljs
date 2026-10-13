@@ -140,6 +140,36 @@
          (apply str (for [c (hlp/known)] (str "<span class=\"chip\" data-help=\"" (esc c) "\">" (esc c) "</span>")))
          "</div>")))
 
+(defn reference-md
+  "The reference of every class with a help page, as Markdown (docs/reference.md is made with it):
+   (reference-md)."
+  []
+  (let [md-ports (fn [label n names]
+                   (when (pos? n)
+                     (str "**" label "** " (if (= n (count names))
+                                              (str "\n" (apply str (map-indexed (fn [i x] (str "\n" i ". " x)) names)) "\n")
+                                              (str n (when (seq names) (str ": " (str/join " · " names))) "\n"))
+                          "\n")))
+        page (fn [cls]
+               (let [d (comp/lookup cls) h (hlp/of cls)
+                     doc (or (:doc d) (:doc h)) usage (or (:usage d) (:usage h))
+                     [ins outs] (if d (try (io cls) (catch :default _ [0 0])) [(count (:inlets h)) (count (:outlets h))])]
+                 (when (and doc (not (str/starts-with? (str doc) "Kairotic class with no semantics")))
+                   (str "### " cls (when-let [p (:package h)] (str " · `" p "`")) "\n\n"
+                        (when usage (str "`" usage "`\n\n"))
+                        doc "\n\n"
+                        (md-ports "Inlets" ins (:inlets h))
+                        (md-ports "Outlets" outs (:outlets h))
+                        (when (seq (:messages h))
+                          (str "**Messages and gestures**\n\n" (apply str (for [[w x] (:messages h)] (str "- `" (if (string? w) w (pr-str w)) "`: " x "\n"))) "\n"))
+                        (when-let [t (:try h)] (str "**Try:** " t "\n\n"))
+                        (when-let [e (:example h)] (str "```clojure\n" (str/trim e) "\n```\n\n"))
+                        (when (seq (:see h)) (str "See also: " (str/join ", " (map #(str "`" % "`") (:see h))) "\n\n"))))))]
+    (str "# Class reference\n\n"
+         "*Made from the help of Kairotic " version " (the Help tab shows the same, and the help of classes a work defines). "
+         "Generated: do not edit by hand — `(reference-md)` in the REPL writes it.*\n\n"
+         (str/join "" (keep page (hlp/known))))))
+
 (defn render-help! []
   (when-let [el ($ "help-view")]
     (set! (.-innerHTML el) (if @help-cls (help-page @help-cls) (help-index)))))
