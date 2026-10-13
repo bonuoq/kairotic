@@ -70,6 +70,9 @@
                 (cond
                   ;; edits and trees change the box: that is a gesture of the work, done by the page
                   (and (vector? v) (= :edit (first v))) {:effects [[:tree-edit (second v)]]}
+                  ;; its own tree come back (through mt boxes): a loop that would rewrite it for ever
+                  (and (mt/node? v) (= (:from (meta v)) (:id m)))
+                  {:effects [[:print (str "loop: " (name (:id m)) " received its own tree back; it does not change")]]}
                   (mt/node? v) {:effects [[:tree-set v]]}
                   (some? t)
                   (try {:out [[0 (mt/expand-source t (:id m))]] :show :bang}
