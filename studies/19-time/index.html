@@ -3988,12 +3988,17 @@ window.addEventListener("DOMContentLoaded", function () {
   (swap! hist assoc :mode :local :loaded true)
   (repl-print! "out" (esc (str "; " (if (es?) "Lección" "Lesson") ": «" (tr (:title l)) "»")))
   (let [defs (atom (:defs l))   ; [[name classes source] …] of packages and singles not yet in the work
+        ;; definition boxes get ids beyond any the lesson writes (lessons name their boxes)
+        free-id (atom (inc (reduce max 0 (for [st (:steps l) c (:code st) [_ n] (re-seq #":b(\d+)" c)] (js/parseInt n 10)))))
         steps (reduce (fn [acc st]
                         (doseq [c (:code st)]
                           ;; a class from a package: its definition goes in just before the box that uses it
                           (let [used (set (map second (re-seq box-class-re c)))]
                             (doseq [[nm cls src :as d] @defs :when (some used cls)]
-                              (new-definition! src)
+                              (let [id (keyword (str "b" @free-id)) [x y] (component-slot)]
+                                (swap! free-id inc)
+                                (gesture! (str "(box " id " \"component\" " x " " y ")"))
+                                (gesture! (str "(code " id " " (pr-str src) ")")))
                               (swap! defs (fn [ds] (vec (remove #{d} ds))))))
                           (gesture! c))
                         (conj acc (assoc st :pos (norm (:pos @world)))))
