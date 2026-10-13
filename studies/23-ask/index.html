@@ -4805,7 +4805,7 @@ window.addEventListener("DOMContentLoaded", function () {
   [src]
   (let [forms (clojure.edn/read-string (str "[" src "\n]"))
         bad (first (remove link-call? forms))]
-    (when bad (fail (str "a link can only make a patch; it cannot run " (let [t (pr-str bad)] (if (> (count t) 60) (str (subs t 0 60) "…") t)))))
+    (when bad (fail (str "a link can only make a patch; it cannot run " (let [t (pr-str bad)] (if (> (count t) 60) (str (clojure.core/subs t 0 60) "…") t)))))
     (str/join "\n" (map pr-str forms))))
 
 (defn script-boxes
@@ -5125,7 +5125,7 @@ window.addEventListener("DOMContentLoaded", function () {
             (apply str
                    (for [e es]
                      (str "<li data-ask=\"" (esc (:id e)) "\">"
-                          "<div class=\"ah-top\">" (esc (:kind e)) " · " (esc (subs (str (:t e)) 0 16)) " · <span class=\"" (esc (:status e)) "\">" (esc (:status e)) "</span>"
+                          "<div class=\"ah-top\">" (esc (:kind e)) " · " (esc (clojure.core/subs (str (:t e)) 0 16)) " · <span class=\"" (esc (:status e)) "\">" (esc (:status e)) "</span>"
                           (when (:work e) (str " · " (esc (:work e)))) "</div>"
                           "<div class=\"ah-q\">" (esc (ai/cut (:request e) 300)) "</div>"
                           "<div class=\"ah-acts\">"
