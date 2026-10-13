@@ -238,6 +238,13 @@ body.present .askbar { position: absolute; z-index: 6; left: 6px; top: 6px; marg
 #ask-text:focus { outline: none; border-color: var(--accent); }
 .ask-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ask-bar select { font: 12px var(--f-ui); background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px; padding: 3px 4px; }
+.ask-hist summary { cursor: pointer; font-size: 12px; color: var(--ink); }
+.ask-hist-list { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.ask-hist-list li { border: 1px solid var(--rule); border-radius: 5px; padding: 6px 8px; font-size: 12px; display: grid; gap: 3px; }
+.ask-hist-list .ah-top { color: var(--ink-soft); font: 11px var(--f-code); }
+.ask-hist-list .ah-top .made { color: var(--ok); } .ask-hist-list .ah-top .failed { color: var(--error); }
+.ask-hist-list .ah-q { color: var(--ink); }
+.ask-hist-list .ah-acts { display: flex; flex-wrap: wrap; gap: 4px; }
 .ask-log { margin: 0; padding-left: 18px; font: 11.5px/1.5 var(--f-code); color: var(--ink-soft); }
 .ask-log li.ok { color: var(--ok); } .ask-log li.err { color: var(--error); } .ask-log li.done { color: var(--ink); font-weight: 600; }
 .ask-key { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -484,6 +491,11 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
             <button class="act primary" id="ask-go">Make it</button>
           </div>
           <ol class="ask-log" id="ask-log"></ol>
+          <details class="ask-hist" id="ask-hist">
+            <summary>Your requests to Claude <span id="ask-hist-n"></span></summary>
+            <p class="ask-note">Kept only in this browser: what you asked, what Claude answered, and whether it worked. Nothing leaves it unless you share an entry (on GitHub, under your own account) or export them. <button class="act" id="ask-hist-export">Export (.jsonl)</button> <button class="act" id="ask-hist-clear">Clear</button></p>
+            <ol class="ask-hist-list" id="ask-hist-list"></ol>
+          </details>
           <pre class="ask-out" id="ask-out"></pre>
         </div>
       </div>
@@ -3702,7 +3714,45 @@ window.addEventListener("DOMContentLoaded", function () {
 (defonce ask-ctl (atom nil))
 (defonce ask-refs (atom nil))
 
+;; ───── the log of requests to Claude, kept in this browser (Study 23) ─────
+
+(def ask-log-key "kairotic.claude-log")
+(defonce asking (atom nil))   ; the request on its way: {:id :t :kind :request :change :tier :lines :status :code :answer}
+
+(defn ask-entries []
+  (or (try (some-> (.getItem js/localStorage ask-log-key) js/JSON.parse (js->clj :keywordize-keys true) vec)
+           (catch :default _ nil))
+      []))
+
+(defn save-ask-entries! [es]
+  (let [es (vec (take-last 200 es))]
+    (try (.setItem js/localStorage ask-log-key (js/JSON.stringify (clj->js es)))
+         (catch :default _
+           ;; full: the older half goes
+           (try (.setItem js/localStorage ask-log-key (js/JSON.stringify (clj->js (vec (take-last (quot (count es) 2) es)))))
+                (catch :default _ nil))))))
+
+(declare render-ask-history!)
+
+(defn begin-ask! [kind request change?]
+  (reset! asking {:id (str (js/Date.now)) :t (.toISOString (js/Date.)) :kind (name kind) :request request
+                  :change (boolean change?) :tier (some-> ($ "ask-tier") .-value) :work (:name @work)
+                  :lines [] :status "asked"}))
+
+(defn note-answer! [r src]
+  (when @asking (swap! asking assoc :answer (ai/cut (.-text r) 8000) :code src :model (.-modelTierApplied r))))
+
+(defn end-ask! []
+  (when-let [a @asking]
+    (reset! asking nil)
+    (save-ask-entries! (conj (ask-entries) a))
+    (render-ask-history!)))
+
 (defn ask-log! [cls text]
+  (when @asking
+    (swap! asking (fn [a] (cond-> (update a :lines conj (str (when (seq cls) (str cls ": ")) text))
+                            (= cls "done") (assoc :status "made")
+                            (and (= cls "err") (not= "made" (:status a))) (assoc :status "failed" :error text)))))
   ;; the bar of a link (?ask=) shows the last line too
   (when-let [st ($ "ab-status")] (set! (.-textContent st) text))
   (when-let [ol ($ "ask-log")]
@@ -3819,6 +3869,7 @@ window.addEventListener("DOMContentLoaded", function () {
          (set! (.-innerHTML ($ "ask-log")) "")
          (set! (.-textContent out) "")
          (ask-busy! true)
+         (begin-ask! :component request change)
          (ask-log! "" (if change (str "changing " (name (first change)) " · thinking…") "thinking…"))
          ;; everything inside the promise chain: whatever fails, the panel is released in .finally
          (-> (js/Promise.resolve nil)
@@ -3833,7 +3884,7 @@ window.addEventListener("DOMContentLoaded", function () {
                                    (and lim (.-tools lim)) (assoc :tools (ask-tools refs)))]
                         (s input (clj->js opts)))))
              (.then (fn [r]
-                      (let [src (ai/source-of (.-text r))]
+                      (let [src (ai/source-of (.-text r)) _ (note-answer! r src)]
                         (if (nil? src)
                           (ask-log! "err" "The answer has no source block: try again or ask differently.")
                           (-> (ai/check-full src)
@@ -3856,7 +3907,7 @@ window.addEventListener("DOMContentLoaded", function () {
                        (let [code (or (.-code e) "error")]
                          (when-not (= code "cancelled")
                            (ask-log! "err" (if (= code "error") (str "Error: " (or (.-message e) e)) (ask-error-copy code)))))))
-             (.finally (fn [] (ask-busy! false) (reset! ask-ctl nil)))))))
+             (.finally (fn [] (ask-busy! false) (reset! ask-ctl nil) (end-ask!)))))))
    :asking))
 
 (defn ask-what [] (if (.-checked (.querySelector js/document "input[name=ask-what][value=component]")) :component :patch))
@@ -3985,6 +4036,7 @@ window.addEventListener("DOMContentLoaded", function () {
         (set! (.-innerHTML ($ "ask-log")) "")
         (set! (.-textContent out) "")
         (ask-busy! true)
+        (begin-ask! :patch request current)
         (ask-log! "" (if current "changing the patch · thinking…" "making the patch · thinking…"))
         (-> (js/Promise.resolve nil)
             (.then (fn [_] (js/Promise.all #js [(load-ask-refs)
@@ -3997,7 +4049,7 @@ window.addEventListener("DOMContentLoaded", function () {
                                   (and lim (.-tools lim)) (assoc :tools (patch-tools refs)))]
                        (s input (clj->js opts)))))
             (.then (fn [r]
-                     (let [src (ai/source-of (.-text r))]
+                     (let [src (ai/source-of (.-text r)) _ (note-answer! r src)]
                        (if (nil? src)
                          (do (ask-log! "err" "The answer has no patch code: try again or ask differently.") nil)
                          (.then (check-patch-code src)
@@ -4013,7 +4065,7 @@ window.addEventListener("DOMContentLoaded", function () {
                         (when-not (= code "cancelled")
                           (ask-log! "err" (if (= code "error") (str "Error: " (or (.-message e) e)) (ask-error-copy code)))))
                       nil))
-            (.finally (fn [] (ask-busy! false) (reset! ask-ctl nil))))))))
+            (.finally (fn [] (ask-busy! false) (reset! ask-ctl nil) (end-ask!))))))))
 
 (defn ask!
   "The Claude tab's button: a patch or a component, as chosen."
@@ -5038,6 +5090,100 @@ window.addEventListener("DOMContentLoaded", function () {
      (repl-print! "out" (esc (str "; " u)))
      (.then (copy-text! u) (fn [ok] (repl-print! "out" (if ok "; (link copied)" "; (copy it from here)"))))
      :making-link)))
+
+
+;; ───── the log of requests to Claude: shown, loaded again, exported, shared ─────
+
+(defn ask-play-url
+  "Promise of a link that plays what an entry made: its patch, or a patch with its component."
+  [e]
+  (let [code (if (= "component" (:kind e))
+               (str "(box :b1 \"component\" 20 20)\n(code :b1 " (pr-str (str (:code e))) ")")
+               (str (:code e)))]
+    (.then ((.-kairoticPack js/window) code) (fn [z] (url-with [["code" z]] nil)))))
+
+(defn ask-markdown
+  "An entry as Markdown, to read or to share."
+  [e url max-code]
+  (let [code (str (:code e))]
+    (str "**Asked Claude** (" (:kind e) (when (:change e) ", changing the open one") " · " (:tier e) ") in Kairotic\n\n"
+         "> " (str/replace (str (:request e)) #"\n" "\n> ") "\n\n"
+         (when url (str "▶ [Open it in Kairotic](" url ")\n\n"))
+         (when (seq code)
+           (if (> (count code) max-code)
+             (str "_The code (" (count code) " characters) is in the link._\n\n")
+             (str "```clojure\n" code "\n```\n\n")))
+         "<details><summary>How it went: " (:status e) "</summary>\n\n"
+         (str/join "\n" (map #(str "- " %) (take 30 (:lines e))))
+         "\n</details>\n")))
+
+(defn render-ask-history! []
+  (when-let [ol ($ "ask-hist-list")]
+    (let [es (reverse (ask-entries))]
+      (set! (.-textContent ($ "ask-hist-n")) (str "(" (count es) ")"))
+      (set! (.-innerHTML ol)
+            (apply str
+                   (for [e es]
+                     (str "<li data-ask=\"" (esc (:id e)) "\">"
+                          "<div class=\"ah-top\">" (esc (:kind e)) " · " (esc (subs (str (:t e)) 0 16)) " · <span class=\"" (esc (:status e)) "\">" (esc (:status e)) "</span>"
+                          (when (:work e) (str " · " (esc (:work e)))) "</div>"
+                          "<div class=\"ah-q\">" (esc (ai/cut (:request e) 300)) "</div>"
+                          "<div class=\"ah-acts\">"
+                          (when (seq (:code e)) "<button class=\"act\" data-act=\"load\" title=\"Into the open work, as one event\">Load</button>")
+                          "<button class=\"act\" data-act=\"copy\" title=\"As Markdown\">Copy</button>"
+                          (when (seq (:code e)) "<button class=\"act\" data-act=\"share\" title=\"Opens a GitHub issue already written, in the Kairotic repository: you read it and publish it, under your own account\">Share on GitHub…</button>")
+                          "<button class=\"act\" data-act=\"del\" title=\"Delete this entry\">✕</button>"
+                          "</div></li>")))))))
+
+(def share-repo "https://github.com/bonuoq/kairotic")
+
+(.addEventListener ($ "ask-hist-list") "click"
+  (fn [ev]
+    (when-let [btn (.closest (.-target ev) "[data-act]")]
+      (let [id (.getAttribute (.closest btn "[data-ask]") "data-ask")
+            e (first (filter #(= id (:id %)) (ask-entries)))
+            act (.getAttribute btn "data-act")]
+        (when e
+          (case act
+            "load" (try
+                     (if (= "component" (:kind e))
+                       (let [src (str ";; written with Claude\n;; asked: " (str/replace (ai/cut (:request e) 300) #"\s+" " ") "\n" (:code e))]
+                         (swap! cbox/trusted conj src)
+                         (new-definition! src))
+                       (apply-patch-code! (:code e)))
+                     (catch :default x (repl-print! "err" (esc (str "; " (or (.-message x) x))))))
+            "copy" (-> (ask-play-url e)
+                       (.then (fn [u] (copy-text! (ask-markdown e u 20000))))
+                       (.then (fn [ok] (set! (.-textContent btn) (if ok "Copied" "Not copied")))))
+            "share" (let [w (js/window.open "about:blank" "_blank")]
+                      ;; the window is opened at the click (a popup blocker allows it), then filled
+                      (-> (ask-play-url e)
+                          (.then (fn [u]
+                                   (let [q (js/URLSearchParams.)]
+                                     (.set q "title" (str "[gallery] " (ai/cut (str/replace (str (:request e)) #"\s+" " ") 80)))
+                                     (.set q "body" (ask-markdown e u 3500))
+                                     (let [href (str share-repo "/issues/new?" (.toString q))]
+                                       (if w (set! (.. w -location -href) href) (js/window.open href "_blank"))))))))
+            "del" (do (save-ask-entries! (vec (remove #(= id (:id %)) (ask-entries))))
+                      (render-ask-history!))
+            nil))))))
+
+(.addEventListener ($ "ask-hist-export") "click"
+  (fn [_]
+    (let [text (str/join "\n" (map #(js/JSON.stringify (clj->js %)) (ask-entries)))
+          a (js/document.createElement "a")]
+      (set! (.-href a) (js/URL.createObjectURL (js/Blob. #js [text] #js {:type "application/x-ndjson"})))
+      (set! (.-download a) "kairotic-claude-log.jsonl")
+      (.click a))))
+
+(.addEventListener ($ "ask-hist-clear") "click"
+  (fn [_]
+    (let [b ($ "ask-hist-clear")]
+      (if (= "Sure?" (.-textContent b))
+        (do (save-ask-entries! []) (set! (.-textContent b) "Clear") (render-ask-history!))
+        (do (set! (.-textContent b) "Sure?") (js/setTimeout (fn [] (set! (.-textContent b) "Clear")) 3000))))))
+
+(render-ask-history!)
 
 (defn tutorials-ready []
   (js/Promise.
