@@ -142,8 +142,29 @@
                   k (explicit (if (and durable seqy) (update-attrs k assoc :dur d) k))]
               (recur (rest ks) (if (and durable seqy) d prev) (conj out k)))))))))
 
+(defn with-meters
+  "Writes in every measure the meter it takes from the previous one (4/4 at first)."
+  [tree]
+  (let [last-m (atom [4 4])]
+    (letfn [(go [n]
+              (cond
+                (not (node? n)) n
+                (= :measure (tag n)) (let [m (or (:meter (attrs n)) @last-m)]
+                                       (reset! last-m m)
+                                       (make :measure (assoc (attrs n) :meter m) (mapv go (kids n))))
+                :else (with-kids n (mapv go (kids n)))))]
+      (go tree))))
+
+(defn scale-meter
+  "The meter of a measure whose durations are multiplied by f: 4/4 × 2 = 8/4, 3/4 × 0.5 = 3/8."
+  [[p q] f]
+  (let [p2 (* p f) q2 (/ q f)]
+    (cond (= p2 (js/Math.round p2)) [p2 q]
+          (and (= q2 (js/Math.round q2)) (pos? q2)) [p q2]
+          :else [p2 q])))
+
 (defn augment
-  "Multiplies every duration (and offset) by f: 2 doubles, 0.5 halves."
+  "Multiplies every duration (and offset) by f: 2 doubles, 0.5 halves. Measures change their meter."
   [f tree]
   (letfn [(go [n]
             (if-not (node? n)
@@ -151,9 +172,10 @@
               (let [a (attrs n)
                     a (cond-> a
                         (number? (:dur a)) (update :dur * f)
-                        (number? (:at a)) (update :at * f))]
+                        (number? (:at a)) (update :at * f)
+                        (and (= :measure (tag n)) (vector? (:meter a))) (update :meter scale-meter f))]
                 (make (tag n) a (mapv go (kids n))))))]
-    (go (explicit (expand tree)))))
+    (go (with-meters (explicit (expand tree))))))
 
 (defn retrograde
   "Plays it backwards: the children of every sequence in reverse order (glissandi too)."
@@ -169,20 +191,33 @@
                                     n))
               (seq-tags (tag n)) (with-kids n (vec (reverse (mapv go (kids n)))))
               :else (with-kids n (mapv go (kids n)))))]
-    (go (explicit (expand tree)))))
+    (go (with-meters (explicit (expand tree))))))
 
 (defn rotate
   "Moves the first k elements of the top sequence to its end (negative k: the other way)."
   [k tree]
-  (let [t (explicit (expand tree)) ks (kids t) n (count ks)]
+  (let [t (with-meters (explicit (expand tree))) ks (kids t) n (count ks)]
     (if (zero? n) t (let [k (mod k n)] (with-kids t (vec (concat (drop k ks) (take k ks))))))))
 
+(declare measured? duration)
+
+(defn as-voice [t nm] (if (= :voice (tag t)) (update-attrs t assoc :name nm) [:voice {:name nm} t]))
+
 (defn canon
-  "The tree against itself, entering `delay` beats later and transposed by `interval`."
+  "The tree against itself, entering `delay` beats later and transposed by `interval`. When it is
+   written in measures and the delay is a whole number of them, the second voice enters after rest bars."
   ([delay tree] (canon delay 0 tree))
   ([delay interval tree]
-   (let [t (expand tree)]
-     [:par {:name "canon"} t [:seq {:at delay} (transpose interval t)]])))
+   (let [t (with-meters (explicit (expand tree)))
+         first-m (first (filter (fn [x] (and (node? x) (= :measure (tag x)))) (tree-seq node? kids t)))
+         [p q] (when first-m (:meter (attrs first-m)))
+         bar (when p (* p (/ 4 q)))
+         bars (when bar (/ delay bar))]
+     (if (and bars (pos? bars) (= bars (js/Math.round bars)))
+       (let [v2 (as-voice (transpose interval t) "comes")
+             rests (vec (repeat bars [:measure {:meter [p q]} [:rest {:dur bar}]]))]
+         [:par {:name "canon"} (as-voice t "dux") (with-kids v2 (into rests (kids v2)))])
+       [:par {:name "canon"} (as-voice t "dux") [:voice {:name "comes"} [:seq {:at delay} (transpose interval t)]]]))))
 
 (defn apply-ops
   "The variations a [:use …] or a box can ask for, in a fixed order."
@@ -206,7 +241,8 @@
     (let [a (attrs n) r (:ref a) k (if (string? r) (keyword r) r) d (get defs k)]
       (when (> depth 24) (throw (js/Error. (str "Fragments that use each other without end (" r ")"))))
       (when-not d (throw (js/Error. (str "No fragment " (pr-str r) " in :defs"))))
-      (let [body (first (expand* d defs (inc depth)))
+      (let [xs (expand* d defs (inc depth))
+            body (if (= 1 (count xs)) (first xs) (into [:seq] xs))
             varied (apply-ops a body)
             extra (apply dissoc a op-keys)]
         [(if (seq extra) [:seq extra varied] varied)]))
@@ -289,10 +325,13 @@
   [tree]
   (let [t (expand tree) acc (transient [])]
     (place t 0 1 {:path [] :voice nil} acc)
-    (vec (sort-by (juxt :t (fn [e] (- (or (:pitch e) 0)))) (persistent! acc)))))
+    (->> (persistent! acc)
+         (map (fn [e] (-> e (update :t cv/round-to 6) (update :dur cv/round-to 6))))
+         (sort-by (juxt :t (fn [e] (- (or (:pitch e) 0)))))
+         vec)))
 
 (defn duration "How long a tree lasts, in beats." [tree]
-  (let [t (expand tree) acc (transient [])] (place t 0 1 {:path []} acc)))
+  (let [t (expand tree) acc (transient [])] (cv/round-to (place t 0 1 {:path []} acc) 6)))
 
 (defn tempo-of [tree] (or (:tempo (attrs (expand tree))) 60))
 

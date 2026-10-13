@@ -1,4 +1,4 @@
-<title>Kairotic Learn</title>
+<title>Kairotic Time</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
@@ -303,7 +303,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
 <div class="app">
   <header>
     <h1>Kairotic</h1>
-    <span class="sub" id="edition">Study 18 · learning inside the work: the help of every component (? on a box) and tutorials that are histories you can walk and branch</span>
+    <span class="sub" id="edition">Study 19 · musical time as data: trees in EDN (hiccup) that tree and mt boxes write, transform and play, and that a score, freqt or canvas shows</span>
     <span class="status" id="status">loading ClojureScript…</span>
     <span class="work-bar"><span id="work-name">No work open</span><button class="act" id="open-manager">Sessions</button></span>
   </header>
@@ -4038,8 +4038,8 @@ window.addEventListener("DOMContentLoaded", function () {
 (render-comp!)
 (render-controls!)
 (render-manager!)
-(repl-print! "out" (str "; Kairotic, Study 18 — " (cond (.-claude js/window) "inside claude.ai: works, rooms and Claude come from claude.ai." (backend) "on its own: works and rooms in GUN (your solo works are encrypted in this browser), Claude with your own API key (Claude tab)." :else "without a database: local works only.")))
-(repl-print! "out" "; New: the Help tab. Select a box and press ? (or F1) to see what each of its inlets and outlets does, and open its help patch. Tutorials (in Spanish and English) open as lessons: each step is a point of the history, ◀ ▶ in the lesson bar travel between them, and changing something at any step starts a branch of your own. Start with (tutorial \"patch-to-code\") or Sessions → Learn.")
+(repl-print! "out" (str "; Kairotic, Study 19 — " (cond (.-claude js/window) "inside claude.ai: works, rooms and Claude come from claude.ai." (backend) "on its own: works and rooms in GUN (your solo works are encrypted in this browser), Claude with your own API key (Claude tab)." :else "without a database: local works only.")))
+(repl-print! "out" "; New: musical trees. [:voice [:measure {:meter [3 4]} \"c4/1 e4 g4\"]] is music as data (kairotic.mt): a tree box holds one, mt boxes transform it (mt transpose 7 · mt invert c4 · mt retrograde · mt augment 2 · mt canon 4 7) and play it (mt play → synth~), and a score, freqt or canvas that receives one shows it ((keep! :bN) writes it into its buffer). At the REPL: mt/transpose, mt/events, mt/pp… · (tree! :bN …) · (as-tree :bN). Tutorial: (tutorial \"motif-transformations\"). Help tab and ? on a box as before.")
 
 (let [h (.-hash js/location) m (re-matches #"#room-(.+)" (str h))]
   (when m (swap! mgr assoc :invite (second m))))

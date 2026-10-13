@@ -199,6 +199,30 @@
    "inlet~" {:outlets ["the signal that arrives at this inlet of the sub-patch"] :see ["patch" "outlet~"]}
    "outlet~" {:inlets ["the signal that leaves the sub-patch by this outlet"] :see ["patch" "inlet~"]}
 
+   "tree"
+   {:inlets ["a bang (or anything): sends the tree"]
+    :outlets ["the tree, expanded (melody strings become notes, [:use …] the fragments it names)"]
+    :messages [["double-click" "edit it (Ctrl+Enter applies)"] ["(tree! :bN [:voice …])" "writes a tree into it"] ["(as-tree :bN)" "reads it back as data"]]
+    :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)"
+                    "(code :b2 \"[:voice\\n [:measure {:meter [3 4]} \\\"e5/1\\\" [:tuplet {:ratio [3 2]} \\\"d5/.5 c5 b4\\\"] [:note {:pitch \\\"a4\\\" :dur 1 :dyn \\\"p\\\"}]]\\n [:measure \\\"g4/3\\\"]]\")"
+                    "(box :b3 \"score\" 40 190)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)")
+    :try "Start the engine (▶) and click the bang: the score shows the tree, measure by measure. Double-click the code, change a note and click the bang again."
+    :see ["mt" "score" "freqt"]}
+
+   "mt"
+   {:inlets ["a tree: it comes out transformed (for play: a tree to play, then bang, stop)"
+             "for transpose, invert, augment, rotate, canon: the amount · for seq, par: the tree to join"]
+    :outlets ["the result (for play: the Hz of the notes sounding, a list)"]
+    :messages [["mt transpose 7" "seven semitones up"] ["mt invert c4" "mirrored around c4"] ["mt retrograde" "backwards"]
+               ["mt augment 2" "twice as long"] ["mt rotate 1" "the first element goes to the end"] ["mt canon 2 7" "against itself, 2 beats later, a fifth up"]
+               ["mt seq · mt par" "the left tree followed by (or with) the right one"] ["mt events · mt pitches · mt duration" "the tree as data"]
+               ["mt play [loop]" "plays it: Hz (0) and voice ids (1) for synth~, parameters (2), dynamics and texts (3)"]]
+    :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)" "(code :b2 \"\\\"c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2\\\"\")"
+                    "(box :b4 \"number 7\" 220 140)" "(box :b3 \"mt transpose 7\" 40 170)" "(box :b5 \"score\" 40 220)"
+                    "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b4 0 :b3 1)" "(connect :b3 0 :b5 0)")
+    :try "Start the engine and click the bang. Drag the number and click the bang again. Then change the box text to mt retrograde, mt invert c4 or mt augment 2."
+    :see ["tree" "score" "synth~"]}
+
    ;; ───── official packages (until they carry their own :help) ─────
    "adsr~"
    {:package "@kairotic/synth" :usage "adsr~ [a d s r]"
