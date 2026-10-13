@@ -52,7 +52,7 @@ Algo que hacer en este paso (opcional).
 Después construye el catálogo que lee la página:
 
 ```sh
-node docs/tutorials/build.mjs studies/18-learn/kairotic/tutorials.mjs
+node docs/tutorials/build.mjs
 ```
 
 La construcción comprueba el formato (títulos, los dos idiomas, código equilibrado) y se detiene en el

@@ -47,7 +47,7 @@ What a relay sees: rooms in clear (as anyone in the room would), solo works encr
 ## Building and publishing
 
 ```sh
-node site/build.mjs            # → _site/ (the study page + GUN + adapter + config + boot)
+node site/build.mjs            # → _site/ (the app + GUN + adapter + config + boot)
 cd _site && python3 -m http.server 8000
 ```
 

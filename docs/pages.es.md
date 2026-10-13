@@ -49,7 +49,7 @@ Qué ve un relay: las salas en claro (como cualquiera en la sala), las obras sol
 ## Construir y publicar
 
 ```sh
-node site/build.mjs            # → _site/ (la página del ensayo + GUN + adaptador + config + boot)
+node site/build.mjs            # → _site/ (la app + GUN + adaptador + config + boot)
 cd _site && python3 -m http.server 8000
 ```
 

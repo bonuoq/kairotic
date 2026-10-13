@@ -49,10 +49,10 @@ Algo que hacer en este paso (opcional).
   the same point of the history.
 - Give boxes explicit ids (`:b1`) so later steps and notes can name them.
 
-Then build the catalog the page reads:
+Then build the catalog the app reads (`site/build.mjs` does it too, on every build):
 
 ```sh
-node docs/tutorials/build.mjs studies/18-learn/kairotic/tutorials.mjs
+node docs/tutorials/build.mjs
 ```
 
 The build checks the format (titles, both languages, balanced code) and stops at the first error.
