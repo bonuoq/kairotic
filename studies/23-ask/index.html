@@ -493,7 +493,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
           <ol class="ask-log" id="ask-log"></ol>
           <details class="ask-hist" id="ask-hist">
             <summary>Your requests to Claude <span id="ask-hist-n"></span></summary>
-            <p class="ask-note">Kept only in this browser: what you asked, what Claude answered, and whether it worked. Nothing leaves it unless you share an entry (on GitHub, under your own account) or export them. <button class="act" id="ask-hist-export">Export (.jsonl)</button> <button class="act" id="ask-hist-clear">Clear</button></p>
+            <p class="ask-note">Kept only in this browser: what you asked, what Claude answered, and whether it worked. Nothing leaves it unless you share an entry (in the <a href="https://github.com/bonuoq/kairotic/discussions/categories/gallery" target="_blank" rel="noopener">Gallery</a> on GitHub, under your own account) or export them. <button class="act" id="ask-hist-export">Export (.jsonl)</button> <button class="act" id="ask-hist-clear">Clear</button></p>
             <ol class="ask-hist-list" id="ask-hist-list"></ol>
           </details>
           <pre class="ask-out" id="ask-out"></pre>
@@ -5134,7 +5134,7 @@ window.addEventListener("DOMContentLoaded", function () {
                           "<div class=\"ah-acts\">"
                           (when (seq (:code e)) "<button class=\"act\" data-act=\"load\" title=\"Into the open work, as one event\">Load</button>")
                           "<button class=\"act\" data-act=\"copy\" title=\"As Markdown\">Copy</button>"
-                          (when (seq (:code e)) "<button class=\"act\" data-act=\"share\" title=\"Opens a GitHub issue already written, in the Kairotic repository: you read it and publish it, under your own account\">Share on GitHub…</button>")
+                          (when (seq (:code e)) "<button class=\"act\" data-act=\"share\" title=\"Opens a discussion already written in the Gallery of the Kairotic repository: you read it and publish it, under your own account\">Share on GitHub…</button>")
                           "<button class=\"act\" data-act=\"del\" title=\"Delete this entry\">✕</button>"
                           "</div></li>")))))))
 
@@ -5163,9 +5163,11 @@ window.addEventListener("DOMContentLoaded", function () {
                       (-> (ask-play-url e)
                           (.then (fn [u]
                                    (let [q (js/URLSearchParams.)]
-                                     (.set q "title" (str "[gallery] " (ai/cut (str/replace (str (:request e)) #"\s+" " ") 80)))
+                                     (.set q "category" "gallery")
+                                     (.set q "labels" "gallery")
+                                     (.set q "title" (ai/cut (str/replace (str (:request e)) #"\s+" " ") 90))
                                      (.set q "body" (ask-markdown e u 3500))
-                                     (let [href (str share-repo "/issues/new?" (.toString q))]
+                                     (let [href (str share-repo "/discussions/new?" (.toString q))]
                                        (if w (set! (.. w -location -href) href) (js/window.open href "_blank"))))))))
             "del" (do (save-ask-entries! (vec (remove #(= id (:id %)) (ask-entries))))
                       (render-ask-history!))

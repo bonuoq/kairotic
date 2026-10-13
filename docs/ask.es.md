@@ -46,8 +46,8 @@ opción *Carry a description instead*, y la REPL `(ask-link "…")`, `(ask-link 
 Cada petición a Claude —un patch o un componente— se guarda **solo en tu navegador**: lo que pediste,
 lo que respondió Claude, el código, las comprobaciones y si funcionó. En la pestaña Claude, *Your
 requests to Claude* las lista: **Load** vuelve a ponerla en la obra abierta, **Copy** la da en Markdown,
-**Export** las guarda todas en un archivo `.jsonl`, y **Share on GitHub…** abre un issue ya escrito en el
-repositorio de Kairotic —la petición, un enlace para tocarla y el código— que tú lees y publicas, con tu
+**Export** las guarda todas en un archivo `.jsonl`, y **Share on GitHub…** abre una discusión ya escrita en la
+[Gallery](https://github.com/bonuoq/kairotic/discussions/categories/gallery) del repositorio de Kairotic —la petición, un enlace para tocarla y el código— que tú lees y publicas, con tu
 propia cuenta, o no. Fuera de eso nada sale de tu navegador.
 
 ## Seguridad
