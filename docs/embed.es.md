@@ -45,7 +45,13 @@ Notion no deja que las integraciones añadan sus propios comandos `/`, y su API 
 convertía enlaces en vistas vivas) está cerrada a nuevos desarrolladores; sus *bloques personalizados*
 están en alfa privada. Así que hoy los caminos son `/embed` con un enlace, o pedirle a Claude, con el
 conector de Notion, que ponga un embed de Kairotic en una página a partir del código escrito en ella
-(un bloque de código cuya primera línea es `;; kairotic`). El
+(un bloque de código cuya primera línea es `;; kairotic`).
+
+Ese segundo camino está escrito como **skill de Notion**, *Kairotic: insertar un patch en la página
+(/kairotic)*: Notion AI, o cualquier asistente conectado a Notion, lee los bloques de código
+`;; kairotic` de una página y pone debajo de cada uno un embed con su enlace `?src=`
+(`;; kairotic present` para la presentación). Un asistente escribe el bloque embed por la API de
+Notion como `<embed src="…">`, y Notion lo muestra vivo, como si se hubiera pegado a mano. El
 iframe lleva `allow="fullscreen"`; donde una página no permite pantalla completa dentro de sus marcos,
 ⛶ abre la presentación en una pestaña propia.
 

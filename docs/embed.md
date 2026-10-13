@@ -44,7 +44,13 @@ any assistant — writing a link without the Kairotic editor at hand.
 Notion does not let integrations add their own `/` commands, and its Link Preview API (which turned
 links into live previews) is closed to new developers; its *custom blocks* are in private alpha. So
 today the paths are `/embed` with a link, or asking Claude, with the Notion connector, to put a
-Kairotic embed in a page from code written in it (a code block whose first line is `;; kairotic`). The iframe
+Kairotic embed in a page from code written in it (a code block whose first line is `;; kairotic`).
+
+That second path is written down as a **Notion skill**, *Kairotic: insertar un patch en la página
+(/kairotic)*: Notion AI, or any assistant connected to Notion, reads the `;; kairotic` code blocks of a
+page and puts below each one an embed with its `?src=` link (`;; kairotic present` for the
+presentation). An assistant writes the embed block through the Notion API as `<embed src="…">`, and
+Notion shows it live, as if it had been pasted by hand. The iframe
 has `allow="fullscreen"`; where a page does not allow fullscreen inside its frames, ⛶ opens the
 presentation in a tab of its own.
 
