@@ -40,6 +40,15 @@ asking Claude.
 `?ask=` can go with `?code=` or `?src=`: then Claude changes that patch. The Embed panel has a
 *Carry a description instead* option, and the REPL `(ask-link "…")`, `(ask-link "…" :present)`.
 
+## Your requests, kept
+
+Every request to Claude — a patch or a component — is kept **in your browser only**: what you asked,
+what Claude answered, the code, the checks and whether it worked. In the Claude tab, *Your requests to
+Claude* lists them: **Load** puts one again into the open work, **Copy** gives it as Markdown, **Export**
+saves them all as a `.jsonl` file, and **Share on GitHub…** opens an issue already written in the
+Kairotic repository — the request, a link to play it and the code — that you read and publish, under
+your own account, or not. Nothing leaves your browser otherwise.
+
 ## Safety
 
 The patch Claude makes is read like a link (only patch calls, literal arguments). Its own scripts and
