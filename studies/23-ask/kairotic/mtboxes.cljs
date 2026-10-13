@@ -124,20 +124,29 @@
                                    :later [[(+ (:t0 st) (first (nth sch nxt))) 0 [:tick g nxt]]]}
               loop? (let [t0 (+ (:t0 st) (:len st))]
                       {:state (assoc st :t0 t0) :out outs :later [[t0 0 [:tick g 0]]]})
-              :else {:state st :out outs}))
+              :else {:state (assoc st :playing false) :out outs}))
           {:state st}))
 
       (mt/tree? value)
-      (let [sch (mt/schedule value)]
-        {:state (assoc st :sch sch :len (* (/ 60 (mt/tempo-of value)) (mt/duration value)) :gen (inc (:gen st)))})
+      (let [sch (mt/schedule value)
+            len (* (/ 60 (mt/tempo-of value)) (mt/duration value))]
+        (cond
+          ;; the same music again (a tree box re-sends its tree when the patch around it changes, e.g. a
+          ;; knob that keeps its value in its text): nothing changes, and what is playing goes on
+          (= sch (:sch st)) {:state st}
+          ;; other music while playing: it goes on with the new one, from its beginning
+          (and (:playing st) (seq sch))
+          (let [g (inc (:gen st))]
+            {:state (assoc st :sch sch :len len :gen g :t0 at) :later [[(+ at (first (first sch))) 0 [:tick g 0]]]})
+          :else {:state (assoc st :sch sch :len len :gen (inc (:gen st)))}))
 
       (= value :stop)
-      {:state (update st :gen inc) :out [[1 []] [0 []]]}
+      {:state (-> st (update :gen inc) (assoc :playing false)) :out [[1 []] [0 []]]}
 
       (or (= value :bang) (= value :start) (number? value))
       (if (seq (:sch st))
         (let [g (inc (:gen st))]
-          {:state (assoc st :gen g :t0 at) :later [[(+ at (first (first (:sch st)))) 0 [:tick g 0]]]})
+          {:state (assoc st :gen g :t0 at :playing true) :later [[(+ at (first (first (:sch st)))) 0 [:tick g 0]]]})
         {:state st})
 
       :else {:state st})))
