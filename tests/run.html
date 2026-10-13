@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kairotic tests…</title>
+<style>
+  :root { --paper: #f6f4ef; --ink: #20242a; --soft: #5d6673; --ok: #2f8a57; --error: #c0392b; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --paper: #12161c; --ink: #e3e8ee; --soft: #95a1b0; --ok: #7fd1a0; --error: #ff8a80; } }
+  :root[data-theme="dark"] { --paper: #12161c; --ink: #e3e8ee; --soft: #95a1b0; --ok: #7fd1a0; --error: #ff8a80; }
+  body { background: var(--paper); color: var(--ink); font: 14px/1.5 ui-monospace, monospace; margin: 0; padding: 20px 16px; }
+  h1 { font: 600 18px system-ui, sans-serif; } .ok { color: var(--ok); } .fail { color: var(--error); } .soft { color: var(--soft); }
+</style>
+</head>
+<body>
+<h1>Kairotic tests</h1>
+<p id="summary" class="soft">running…</p>
+<ol id="results"></ol>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script>
+// The same modules as the app (the order of app/index.html), then the suites.
+window.kairoticImport = function (url) { return import(new URL(url, document.baseURI).href).then(function (m) { return m.default; }); };
+var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/mt.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
+            "kairotic/api.cljs", "kairotic/code.cljs", "kairotic/mtboxes.cljs", "kairotic/faust.cljs", "kairotic/library.cljs",
+            "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs", "kairotic/signal.cljs", "kairotic/links.cljs",
+            "tests/harness.cljs", "tests/links.cljs", "tests/mt.cljs", "tests/flow.cljs"];
+function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
+Promise.all(mods.map(function (m) {
+  return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error(m + " " + r.status); return r.text(); });
+})).then(function (srcs) {
+  srcs.forEach(function (src, i) {
+    try { scittle.core.eval_string(src); } catch (e) { throw new Error(mods[i] + ": " + (e.message || e)); }
+  });
+  var rs = JSON.parse(scittle.core.eval_string("(js/JSON.stringify (clj->js @kairotic.test/results))"));
+  var failed = rs.filter(function (r) { return !r.ok; });
+  document.getElementById("results").innerHTML = rs.map(function (r) {
+    return '<li class="' + (r.ok ? "ok" : "fail") + '">' + (r.ok ? "✓ " : "✗ ") + esc(r.suite + " · " + r.label) + (r.detail ? ' <span class="soft">— ' + esc(r.detail) + "</span>" : "") + "</li>";
+  }).join("");
+  document.getElementById("summary").textContent = failed.length ? failed.length + " of " + rs.length + " failed" : "all " + rs.length + " passed";
+  document.getElementById("summary").className = failed.length ? "fail" : "ok";
+  window.kairoticTests = { total: rs.length, failed: failed };
+  document.title = (failed.length ? "FAIL " : "PASS ") + rs.length;
+}).catch(function (e) {
+  document.getElementById("summary").textContent = "Error: " + (e.message || e);
+  document.getElementById("summary").className = "fail";
+  window.kairoticTests = { total: 0, failed: [{ label: String(e.message || e) }] };
+  document.title = "FAIL error";
+});
+</script>
+</body>
+</html>

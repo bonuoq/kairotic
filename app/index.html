@@ -1,0 +1,681 @@
+<title>Kairotic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* hidden must hide, even on elements whose class sets a display (claude.ai adds this rule around the page; elsewhere it is ours) */
+[hidden] { display: none !important; }
+/* Layout: work table. Patch (score paper) and its code projection on top, the branching history as a full-width timeline band, REPL along the foot. */
+:root {
+  --paper: #eef1f4;
+  --sheet: #f8f9fb;
+  --grid: #d9dfe6;
+  --ink: #1b2430;
+  --ink-soft: #5a6676;
+  --rule: #c3ccd6;
+  --box: #ffffff;
+  --accent: #2f55d4;
+  --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e;
+  --error: #b42318;
+  --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #232a33; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #232a33; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; }
+.app { box-sizing: border-box; min-height: 100%; display: grid; grid-template-rows: auto auto auto auto; gap: 12px; padding-inline: 16px; padding-block: 14px 16px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+header .status b { font-weight: 500; }
+header .status b.on { color: var(--ok); }
+header .status b.off { color: var(--kairos); }
+.work { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 12px; min-height: 0; }
+@media (max-width: 860px) { .work { grid-template-columns: minmax(0, 1fr); } }
+.pane { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.pane-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
+.pane-head .label { font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+.pane-head .hint { margin-left: auto; text-align: right; }
+.canvas-wrap { position: relative; overflow: auto; flex: 1; min-height: 420px; max-height: 560px; }
+#canvas { display: block; width: 900px; height: 680px; max-width: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+#canvas .bg { fill: url(#grid); }
+#canvas .box rect.body { fill: var(--box); stroke: var(--ink); stroke-width: 1; }
+#canvas .box.kairos rect.body { stroke: var(--kairos); stroke-width: 1.25; }
+#canvas .box.sub rect.body { stroke: var(--accent); stroke-width: 2; }
+#canvas .box.presented rect.body { stroke-dasharray: 5 3; }
+#canvas .box.panel rect.head { fill: var(--accent-soft); stroke: none; }
+#canvas .pres-area { fill: transparent; cursor: ns-resize; }
+#canvas .chip { fill: var(--sheet); stroke: var(--rule); }
+.pres .port, .pres .grip { display: none; }
+.pres #canvas { background-image: none; }
+#pres-toggle.on { background: var(--accent); color: var(--paper); }
+/* embedding (Study 22) */
+body:not(.embed) .embed-only { display: none; }
+a.act { text-decoration: none; display: inline-block; }
+.embed-pop { margin: 8px 10px 0; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); font-size: 12px; display: grid; gap: 6px; }
+.embed-pop .ep-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.embed-pop .ep-modes { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--ink-soft); }
+.embed-pop .spacer { flex: 1; }
+.embed-pop .ep-l { color: var(--ink-soft); }
+.embed-pop .ep-row { display: flex; gap: 6px; align-items: flex-start; }
+.embed-pop input, .embed-pop textarea { flex: 1; min-width: 0; font-family: var(--f-code); font-size: 11px; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 4px 6px; resize: vertical; }
+.embed-pop .ep-what, .embed-pop .ep-note { margin: 0; color: var(--ink-soft); }
+body.embed .app { height: 100vh; height: 100dvh; min-height: 0; padding: 0; gap: 0; grid-template-rows: minmax(0, 1fr); }
+body.embed header, body.embed .manager, body.embed .pane[aria-label="Projections"], body.embed .pane[aria-label="History"],
+body.embed .pane.repl, body.embed .pane-head .hint, body.embed #embed-btn, body.embed #embed-pop, body.embed #lesson-back { display: none !important; }
+body.embed .work { display: flex; min-height: 0; height: 100%; }
+body.embed .pane { flex: 1; border: 0; border-radius: 0; }
+body.embed .pane-head { padding: 5px 8px; }
+body.embed .embed-only { display: inline-block; }
+body.embed .canvas-wrap { min-height: 0; max-height: none; overflow: hidden; }
+body.embed #canvas .bg { display: none; }
+body.embed .lesson-note { max-height: 30vh; overflow: auto; }
+/* only the presentation: the controls float in a corner, over the patch */
+body.present .pane-head { position: absolute; z-index: 5; top: 6px; right: 6px; border: 1px solid var(--rule); border-radius: 6px; background: var(--sheet); opacity: 0.55; transition: opacity 0.2s; }
+body.present .pane-head:hover, body.present .pane-head:focus-within { opacity: 1; }
+body.present .pane-head .label, body.present #crumbs, body.present #transport-info, body.present #pres-toggle { display: none; }
+body.present .pane { position: relative; }
+body.present .lesson { display: none; }
+.trust-bar { margin: 6px 10px 0; padding: 6px 10px; border: 1px solid var(--kairos); border-radius: 6px; font-size: 12px; color: var(--ink); }
+body.present .trust-bar { position: absolute; z-index: 5; left: 6px; top: 6px; margin: 0; background: var(--sheet); max-width: 60%; }
+.crumbs { font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+.crumbs button { font: inherit; color: var(--accent); background: none; border: 0; padding: 0 2px; cursor: pointer; }
+.crumbs button:hover { text-decoration: underline; }
+.crumbs .here { color: var(--ink); }
+#canvas .box.sel rect.body { stroke: var(--accent); stroke-width: 2; fill: var(--accent-soft); }
+#canvas .box.drop rect.body { stroke: var(--accent); stroke-dasharray: 3 3; }
+#canvas .box > text, #canvas .box text.lbl { font-family: var(--f-code); font-size: 12.5px; fill: var(--ink); pointer-events: none; }
+#canvas .box text.lbl.info { font-size: 11px; fill: var(--ink-soft); }
+#canvas .mus rect.head { fill: var(--accent-soft); stroke: none; }
+#canvas .mus-body { cursor: crosshair; }
+#canvas .rbg { fill: var(--sheet); }
+#canvas .rrow.blk { fill: var(--ink); fill-opacity: 0.06; }
+#canvas .rbeat { stroke: var(--grid); stroke-width: 1; }
+#canvas .rbar { stroke: var(--rule); stroke-width: 1.25; }
+#canvas .box text.rlabel { font-family: var(--f-code); font-size: 9px; fill: var(--ink-soft); pointer-events: none; }
+#canvas .rnota { fill: var(--accent); fill-opacity: 0.85; stroke: var(--accent); stroke-width: 1; cursor: grab; }
+#canvas .rnota.sel { fill: var(--kairos); stroke: var(--ink); stroke-width: 1.25; }
+#canvas .paper { fill: #fbfaf6; stroke: var(--rule); }
+#canvas .score-slot { color: #1b2430; fill: #1b2430; }
+#canvas .score-slot g.note, #canvas .score-slot g.rest { cursor: pointer; }
+#canvas .score-slot g.note.sel, #canvas .score-slot g.note.sel * { fill: #c2410c; stroke: #c2410c; color: #c2410c; }
+#canvas .box text.wait { font-family: var(--f-ui); font-size: 12px; fill: #5a6676; }
+#canvas .cur { stroke: var(--kairos); stroke-width: 2; pointer-events: none; }
+#canvas .cur2 { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; pointer-events: none; }
+#canvas .sounding { fill: var(--kairos); stroke: var(--sheet); stroke-width: 1.5; pointer-events: none; }
+#canvas .lbg { fill: var(--sheet); cursor: crosshair; }
+#canvas .lgx0, #canvas .lgy0 { stroke: var(--grid); stroke-width: 1; }
+#canvas .lgx1, #canvas .lgy1 { stroke: var(--rule); stroke-width: 1.25; }
+#canvas .lgx2 { stroke: var(--ink-soft); stroke-width: 1.25; stroke-opacity: 0.7; }
+#canvas .stroke { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+#canvas .stroke.sel { stroke: var(--kairos); stroke-width: 3.5; }
+#canvas .stroke.new { stroke: var(--kairos); stroke-dasharray: 5 3; }
+#canvas .stroke-hit { fill: none; stroke: transparent; stroke-width: 11; stroke-linecap: round; cursor: grab; }
+#canvas .box.act .grip { fill: var(--ink); fill-opacity: 0.18; cursor: grab; }
+#canvas .box.act { cursor: pointer; }
+#canvas .box.act.number { cursor: ns-resize; }
+#canvas .box.act.ctl, #canvas .ctl-area { cursor: ns-resize; }
+#canvas .ctl-area { fill: transparent; }
+#canvas .shapes, #canvas .shapes * { pointer-events: none; }
+#canvas .shape { fill: none; stroke: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; font-family: var(--f-code); }
+#canvas .shape.s-ink { stroke: var(--ink); } #canvas .shape.f-ink { fill: var(--ink); }
+#canvas .shape.s-soft { stroke: var(--ink-soft); } #canvas .shape.f-soft { fill: var(--ink-soft); }
+#canvas .shape.s-accent { stroke: var(--accent); } #canvas .shape.f-accent { fill: var(--accent); }
+#canvas .shape.s-kairos { stroke: var(--kairos); } #canvas .shape.f-kairos { fill: var(--kairos); }
+#canvas .shape.s-bg { stroke: var(--sheet); } #canvas .shape.f-bg { fill: var(--sheet); }
+#canvas .shape.s-grid { stroke: var(--grid); } #canvas .shape.f-grid { fill: var(--grid); }
+#canvas .box.act.msg rect.body { fill: var(--accent-soft); }
+#canvas .box .bangc { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+#canvas .flash { fill: var(--kairos); fill-opacity: 0.35; pointer-events: none; }
+#canvas text.value { font-family: var(--f-code); font-size: 12.5px; fill: var(--ink); pointer-events: none; }
+#canvas .wire.buffer { stroke-dasharray: 6 3; stroke: var(--kairos); }
+#canvas .code-area { fill: var(--sheet); cursor: text; }
+#canvas .box text.code { font-family: var(--f-code); font-size: 11px; fill: var(--ink); white-space: pre; pointer-events: none; }
+#canvas .box text.lbl.st-ok { font-size: 11px; fill: var(--ok); }
+#canvas .box text.lbl.st-err { font-size: 11px; fill: var(--error); pointer-events: auto; }
+#canvas .box text.lbl.st-wait { font-size: 11px; fill: var(--ink-soft); }
+#canvas .box text.lbl.pname { font-size: 11px; fill: var(--ink-soft); }
+#canvas .param { fill: var(--grid); stroke: var(--rule); cursor: ew-resize; }
+#canvas .param.button { cursor: pointer; }
+#canvas .pfill { fill: var(--accent); fill-opacity: 0.55; pointer-events: none; }
+#canvas text.pval { font-family: var(--f-code); font-size: 11px; fill: var(--ink); pointer-events: none; }
+#canvas .box.code rect.head { fill: rgba(46, 125, 79, 0.14); }
+.comp-list { padding: 4px 12px 14px; overflow: auto; max-height: 520px; font-size: 13px; }
+.comp-list h4 { margin: 14px 0 6px; font-family: var(--f-head); font-weight: 600; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.comp-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.comp-list li { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 5px; background: var(--box); }
+.comp-list li span { flex: 1; min-width: 0; color: var(--ink-soft); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comp-list code { font-family: var(--f-code); font-size: 12px; color: var(--ink); }
+.comp-list .empty { color: var(--ink-soft); margin: 0; }
+.comp-list .core-defs { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0; }
+.comp-list form { display: flex; gap: 6px; }
+.comp-list .core-defs code.help-link { cursor: pointer; text-decoration: underline dotted; }
+/* Help tab (Study 18) */
+.help-view { padding: 6px 14px 16px; overflow: auto; max-height: 560px; font-size: 13px; line-height: 1.5; }
+.help-view h3 { margin: 6px 0 2px; font-family: var(--f-code); font-size: 16px; }
+.help-view h4 { margin: 14px 0 6px; font-family: var(--f-head); font-weight: 600; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.help-view .usage { font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+.help-view .pkg { font-size: 11px; color: var(--accent); margin-left: 6px; }
+.help-view ol, .help-view ul.msgs { margin: 0; padding-left: 20px; }
+.help-view ol li::marker { font-family: var(--f-code); color: var(--ink-soft); }
+.help-view table { border-collapse: collapse; font-size: 12px; }
+.help-view td { padding: 2px 10px 2px 0; vertical-align: top; }
+.help-view td:first-child { font-family: var(--f-code); }
+.help-view .chips { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.help-view .chip { font-family: var(--f-code); font-size: 12px; padding: 1px 6px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); cursor: pointer; }
+.help-view .chip:hover, .help-view .tut:hover { border-color: var(--accent); }
+.help-view .try { margin-top: 10px; padding: 6px 10px; border-left: 3px solid var(--accent); background: var(--accent-soft); }
+.help-view .tuts { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.help-view .tut { display: flex; gap: 8px; align-items: baseline; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 5px; background: var(--box); cursor: pointer; }
+.help-view .tut small { color: var(--ink-soft); }
+.help-view .back { font-size: 12px; }
+.help-view input.help-find { width: 100%; box-sizing: border-box; font: 12px var(--f-code); padding: 4px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); }
+/* lesson bar (Study 18): the note of the step you are at */
+#canvas line.wire.edits { stroke-dasharray: 5 4; }
+#canvas .score-slot .tsel, #canvas .score-slot .tsel * { fill: var(--accent) !important; stroke: var(--accent); }
+.lesson { border-bottom: 1px solid var(--rule); background: var(--accent-soft); padding: 6px 12px 8px; font-size: 13px; line-height: 1.5; }
+.lesson-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.lesson-head .t { font-weight: 600; }
+.lesson-head .n { font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+.lesson-head .spacer { flex: 1; }
+.lesson-head .lang button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.lesson-note p { margin: 6px 0 0; }
+.lesson-note .step-t { font-weight: 600; }
+.lesson-note .try { margin-top: 6px; color: var(--ink-soft); }
+.lesson-note .away { margin-top: 6px; font-style: italic; }
+.lesson-note code, .help-view code.run { font-family: var(--f-code); font-size: 12px; background: var(--box); border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px; }
+.lesson-note code.run, .help-view code.run { cursor: pointer; }
+.comp-list input { flex: 1; min-width: 0; font: inherit; font-family: var(--f-code); font-size: 12px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); }
+.code-edit { position: absolute; z-index: 5; box-sizing: border-box; font-family: var(--f-code); font-size: 12px; line-height: 1.45;
+             padding: 8px 10px; border: 2px solid var(--accent); border-radius: 4px; background: var(--box); color: var(--ink);
+             outline: none; resize: both; white-space: pre; tab-size: 2; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); }
+.transport { display: inline-flex; align-items: center; gap: 4px; }
+.transport button { font-family: var(--f-code); min-width: 34px; }
+.transport button.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+#transport-info { font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+#canvas .box { cursor: grab; }
+#canvas .port { fill: var(--ink); }
+#canvas .port.out { cursor: crosshair; }
+#canvas .box.kairos .port { fill: var(--kairos); }
+#canvas .port.in.target { fill: var(--accent); }
+#canvas .wire { stroke: var(--ink); stroke-width: 1.5; }
+#canvas .wire.sel { stroke: var(--accent); stroke-width: 2.5; }
+#canvas .wire-hit { stroke: transparent; stroke-width: 12; cursor: pointer; }
+#canvas .wire.temp { stroke: var(--accent); stroke-dasharray: 4 4; pointer-events: none; }
+#inspector { position: absolute; z-index: 6; width: max-content; max-width: 340px; padding: 6px 8px; background: var(--box); color: var(--ink); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.14); font: 12px var(--f-ui); }
+#inspector .insp-head span { color: var(--ink-soft); font-family: var(--f-code); font-size: 11px; }
+#inspector .insp-args { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 6px 0 4px; }
+#inspector label { font-family: var(--f-code); font-size: 11.5px; color: var(--ink-soft); white-space: nowrap; }
+#inspector input { font-family: var(--f-code); font-size: 12px; background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px; padding: 2px 4px; }
+#inspector input:focus { outline: none; border-color: var(--accent); }
+#inspector .insp-text { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; }
+.ask { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; overflow: auto; flex: 1; }
+.ask-note { margin: 0; font-size: 12px; color: var(--ink-soft); line-height: 1.45; }
+.ask-what { display: flex; gap: 14px; font-size: 12px; }
+.askbar { margin: 6px 10px 0; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 6px; font-size: 12px; display: grid; gap: 6px; background: var(--sheet); }
+.askbar .ab-q { color: var(--ink); line-height: 1.4; }
+.askbar .ab-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.askbar input { flex: 1; min-width: 160px; font-family: var(--f-code); font-size: 11px; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 4px 6px; }
+.askbar .ab-status { color: var(--ink-soft); font-family: var(--f-code); font-size: 11px; }
+.askbar .ab-note { margin: 0; color: var(--ink-soft); }
+body.present .askbar { position: absolute; z-index: 6; left: 6px; top: 6px; margin: 0; max-width: min(520px, 70%); }
+#ask-text { min-height: 92px; resize: vertical; font: 13px/1.45 var(--f-ui); color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 8px; }
+#ask-text:focus { outline: none; border-color: var(--accent); }
+.ask-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ask-bar select { font: 12px var(--f-ui); background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px; padding: 3px 4px; }
+.ask-hist summary { cursor: pointer; font-size: 12px; color: var(--ink); }
+.ask-hist-list { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.ask-hist-list li { border: 1px solid var(--rule); border-radius: 5px; padding: 6px 8px; font-size: 12px; display: grid; gap: 3px; }
+.ask-hist-list .ah-top { color: var(--ink-soft); font: 11px var(--f-code); }
+.ask-hist-list .ah-top .made { color: var(--ok); } .ask-hist-list .ah-top .failed { color: var(--error); }
+.ask-hist-list .ah-q { color: var(--ink); }
+.ask-hist-list .ah-acts { display: flex; flex-wrap: wrap; gap: 4px; }
+.ask-log { margin: 0; padding-left: 18px; font: 11.5px/1.5 var(--f-code); color: var(--ink-soft); }
+.ask-log li.ok { color: var(--ok); } .ask-log li.err { color: var(--error); } .ask-log li.done { color: var(--ink); font-weight: 600; }
+.ask-key { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ask-key input { flex: 1; min-width: 180px; font: 12px var(--f-code); background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px; padding: 4px 6px; }
+.ask-key-state { font-size: 11.5px; color: var(--ink-soft); }
+.ask-out { margin: 0; white-space: pre-wrap; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px; max-height: 360px; overflow: auto; }
+.ask-out:empty { display: none; }
+.edit { position: absolute; font-family: var(--f-code); font-size: 12.5px; padding: 4px 8px; border: 2px solid var(--accent); border-radius: 3px; background: var(--box); color: var(--ink); outline: none; min-width: 140px; }
+.tabs { display: flex; gap: 2px; }
+.tab { font: inherit; font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--ink-soft); padding: 2px 8px 4px; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tab:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#code { flex: 1; min-height: 300px; resize: none; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 12.5px; line-height: 1.6; padding: 10px 12px; white-space: pre; overflow: auto; tab-size: 2; }
+#code:focus { outline: none; background: var(--accent-soft); }
+.code-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
+.code-bar .state.dirty { color: var(--kairos); font-weight: 500; }
+.code-bar .spacer { flex: 1; }
+button.act { font: inherit; font-size: 12.5px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--rule); background: var(--box); color: var(--ink); cursor: pointer; }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act[disabled] { opacity: 0.45; cursor: default; }
+pre.view { margin: 0; flex: 1; min-height: 300px; overflow: auto; padding: 10px 12px; font-family: var(--f-code); font-size: 12px; line-height: 1.55; color: var(--ink); }
+
+/* history band */
+.hist-nav { display: flex; gap: 4px; }
+.hist-nav button { font-family: var(--f-code); min-width: 34px; }
+.peers { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; padding: 2px 9px 2px 6px; border-radius: 999px; border: 1px solid var(--rule); background: var(--box); color: var(--ink); cursor: pointer; }
+.chip .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.chip.me { cursor: default; }
+.chip.following { border-color: var(--accent); background: var(--accent-soft); }
+.hist-wrap { overflow: auto; max-height: 230px; min-height: 96px; }
+#tree { display: block; }
+#tree .lane { stroke-width: 2.5; stroke-linecap: round; fill: none; }
+#tree .fork { stroke-width: 1.25; fill: none; stroke-dasharray: 2 3; }
+#tree .ev { cursor: pointer; }
+#tree .ev:hover { stroke: var(--ink); stroke-width: 2; }
+#tree .origin { fill: var(--sheet); stroke: var(--ink-soft); stroke-width: 1.5; cursor: pointer; }
+#tree .here { fill: none; stroke: var(--accent); stroke-width: 2.5; pointer-events: none; }
+#tree .peer { fill: none; stroke-width: 2; pointer-events: none; }
+#tree .merge { fill: none; stroke-width: 1.5; stroke-dasharray: 5 3; }
+#tree .mergemark { stroke: var(--sheet); stroke-width: 1.5; }
+.opt { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink); white-space: nowrap; }
+.opt input[type="number"] { width: 64px; font: inherit; font-family: var(--f-code); padding: 2px 4px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); }
+.picking #tree .ev, .picking #tree .origin { cursor: copy; }
+#tree .axis { fill: var(--ink-soft); font-family: var(--f-code); font-size: 10.5px; }
+#tree .tick { stroke: var(--grid); }
+.hist-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 10px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
+.hist-foot .ahead { color: var(--kairos); }
+.empty-hist { padding: 14px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--ink-soft); }
+
+.work-bar { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+.work-bar b { color: var(--ink); font-weight: 600; }
+
+/* session manager */
+.manager { position: fixed; inset: 0; z-index: 20; background: rgba(18, 22, 28, 0.42); display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: calc(24px + env(safe-area-inset-top, 0px)) 16px 24px; }
+.mgr-panel { box-sizing: border-box; width: 100%; max-width: 920px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); }
+.mgr-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding: 16px 18px 12px; border-bottom: 1px solid var(--rule); }
+.mgr-head h2 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; }
+.mgr-sub { color: var(--ink-soft); font-size: 13px; flex: 1; min-width: 220px; }
+#mgr-body { padding: 14px 18px 18px; }
+.mgr-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 720px) { .mgr-cols { grid-template-columns: minmax(0, 1fr); } }
+.mgr-col h3 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
+.mgr-hint { margin: 4px 0 10px; color: var(--ink-soft); font-size: 12px; }
+.mgr-note, .mgr-empty { color: var(--ink-soft); font-size: 13px; }
+.mgr-busy { color: var(--accent); font-size: 13px; margin: 0 0 10px; }
+.mgr-foot { margin: 16px 0 0; }
+.items { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--box); }
+.item.current { border-color: var(--accent); }
+.item.invited { border-color: var(--kairos); }
+.item-main { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 2px; }
+.item-name { font-weight: 500; overflow-wrap: anywhere; }
+.item-meta { font-size: 12px; color: var(--ink-soft); }
+.item-meta b { color: var(--ok); font-weight: 500; }
+.item-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+button.act.danger { color: var(--error); }
+button.act.danger.armed { background: var(--error); border-color: var(--error); color: #fff; }
+.invite { padding: 10px 12px; margin-bottom: 14px; border: 1px solid var(--kairos); border-radius: 6px; background: var(--box); }
+form.new { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); }
+
+.repl { min-height: 0; }
+#repl-out { max-height: 150px; min-height: 80px; overflow: auto; padding: 8px 12px; font-family: var(--f-code); font-size: 12.5px; line-height: 1.55; }
+#repl-out .in { color: var(--ink); }
+#repl-out .in .p { color: var(--accent); margin-right: 6px; }
+#repl-out .in.from-patch { color: var(--ink-soft); }
+#repl-out .in.from-patch .p { color: var(--kairos); }
+#repl-out .out { color: var(--ink-soft); padding-left: 20px; white-space: pre-wrap; word-break: break-word; }
+#repl-out .err { color: var(--error); padding-left: 20px; white-space: pre-wrap; }
+.repl-line { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--rule); padding: 6px 12px; }
+.repl-line label { font-family: var(--f-code); color: var(--accent); font-weight: 600; }
+#repl-in { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 13px; padding: 6px 0; }
+#repl-in:focus { outline: none; }
+.help { padding: 6px 12px 10px; font-size: 12px; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.help code { font-family: var(--f-code); color: var(--ink); }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Kairotic</h1>
+    <span class="sub" id="edition">0.1.0-alpha · a collaborative patcher of music where the patch and its code are one work, with its whole history · <a href="https://github.com/bonuoq/kairotic/blob/main/docs/README.md" target="_blank" rel="noopener">docs</a></span>
+    <span class="status" id="status">loading ClojureScript…</span>
+    <span class="work-bar"><span id="work-name">No work open</span><button class="act" id="open-manager">Sessions</button></span>
+  </header>
+
+  <div class="manager" id="manager" role="dialog" aria-modal="true" aria-labelledby="mgr-title">
+    <div class="mgr-panel">
+      <div class="mgr-head">
+        <h2 id="mgr-title">Sessions</h2>
+        <span class="mgr-sub">Work solo or share a room. You can move from one to the other by copying the work with its history.</span>
+        <button class="act" id="mgr-close" title="Back to the open work (Esc)">Close</button>
+      </div>
+      <div id="mgr-body"><p class="mgr-note">Loading…</p></div>
+    </div>
+  </div>
+
+  <div class="work">
+    <section class="pane" aria-label="Patch">
+      <div class="pane-head">
+        <span class="label">Patch</span>
+        <span id="crumbs" class="crumbs"></span>
+        <span class="transport">
+          <button class="act" id="play" title="Start the engine and fire the loadbang boxes (space)">▶</button>
+          <button class="act" id="stop" title="Stop the engine: silence and initial state">■</button>
+          <span id="transport-info">engine stopped</span>
+          <button class="act" id="pres-toggle" title="Presentation: only the presented boxes, where the performer sees them (P)">Present</button>
+          <button class="act" id="embed-btn" title="Put this patch (or this tutorial step) in another page: a link and an iframe">Embed</button>
+          <button class="act embed-only" id="fs-btn" title="Fullscreen">⛶</button>
+          <a class="act embed-only" id="open-full" target="_blank" rel="noopener" title="Open it in Kairotic, with the whole editor">Kairotic ↗</a>
+        </span>
+        <span class="hint">Messages travel without ▶ (▶: sound and time) · a selected box is edited below it: its arguments and its text (Enter applies) · playable boxes (bang, msg, number, knobs…) are selected by their left grip; their body only plays · Code boxes: double-click the code to edit (Ctrl+Enter applies) · their sliders can be dragged · Canvas: drag = stroke, ⇧ straight, ⌥ freehand, click = position</span>
+      </div>
+      <div class="embed-pop" id="embed-pop" hidden>
+        <div class="ep-head">
+          <b>Embed</b>
+          <span class="ep-modes">
+            <label><input type="radio" name="ep-mode" value="embed" checked> Patch</label>
+            <label><input type="radio" name="ep-mode" value="present"> Presentation, fullscreen</label>
+          </span>
+          <span class="spacer"></span>
+          <button class="act" id="ep-close">Close</button>
+        </div>
+        <p class="ep-what" id="ep-what"></p>
+        <label class="ep-l"><input type="checkbox" id="ep-ask"> Carry a description instead: whoever opens it makes the patch with Claude (their own key or account)</label>
+        <div class="ep-row" id="ep-ask-row" hidden><input id="ep-ask-text" spellcheck="true" placeholder="a sine at 440 Hz with a volume knob, and a knob that does FM synthesis"></div>
+        <label class="ep-l">Link <small>(in Notion: type <code>/embed</code> and paste it)</small></label>
+        <div class="ep-row"><input id="ep-url" readonly spellcheck="false"><button class="act" data-copy="ep-url">Copy</button></div>
+        <label class="ep-l">iframe <small>(any page or blog)</small></label>
+        <div class="ep-row"><textarea id="ep-iframe" readonly spellcheck="false" rows="3"></textarea><button class="act" data-copy="ep-iframe">Copy</button></div>
+        <p class="ep-note">The link carries the patch itself (its code, compressed): it is a copy of this moment, not a live work. Whoever opens it plays it in their browser, without saving anything; “Kairotic ↗” opens it with the whole editor.</p>
+      </div>
+      <div class="askbar" id="askbar" hidden>
+        <div class="ab-q"><b>Claude</b> · <span id="ab-text"></span></div>
+        <div class="ab-row" id="ab-keyrow" hidden>
+          <input type="password" id="ab-key" autocomplete="off" spellcheck="false" placeholder="Your Anthropic API key (sk-ant-…)" aria-label="Anthropic API key">
+          <button class="act" id="ab-key-save">Save</button>
+        </div>
+        <div class="ab-row">
+          <button class="act primary" id="ab-go">Make it with Claude</button>
+          <button class="act" id="ab-fix" hidden title="A link with this result in it: everyone sees the same patch, and nobody spends anything">Copy the link of this result</button>
+          <button class="act" id="ab-hide" title="Hide this bar">✕</button>
+          <span class="ab-status" id="ab-status"></span>
+        </div>
+        <p class="ab-note" id="ab-note"></p>
+      </div>
+      <div class="trust-bar" id="trust-bar" hidden><span id="trust-text"></span> <button class="act" id="trust-run">Run them</button></div>
+      <div class="lesson" id="lesson" hidden>
+        <div class="lesson-head">
+          <span class="t" id="lesson-title"></span>
+          <span class="n" id="lesson-n"></span>
+          <button class="act" id="lesson-prev" title="Previous step">◀</button>
+          <button class="act" id="lesson-next" title="Next step">▶</button>
+          <span class="spacer"></span>
+          <span class="lang"><button class="act" data-lang="es">ES</button> <button class="act" data-lang="en">EN</button></span>
+          <button class="act" id="lesson-back" title="Close the lesson and go back to what you had open">Close</button>
+        </div>
+        <div class="lesson-note" id="lesson-note"></div>
+      </div>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="1" fill="var(--grid)"></circle>
+            </pattern>
+          </defs>
+          <rect class="bg" x="0" y="0" width="100%" height="100%"></rect>
+          <g id="scene"></g>
+          <g id="cursors"></g>
+        </svg>
+      </div>
+    </section>
+
+    <section class="pane" aria-label="Projections">
+      <div class="pane-head">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tab-code" data-tab="code" aria-selected="true">Code</button>
+          <button class="tab" role="tab" id="tab-edn" data-tab="edn" aria-selected="false">EDN</button>
+          <button class="tab" role="tab" id="tab-comp" data-tab="comp" aria-selected="false">Components</button>
+          <button class="tab" role="tab" id="tab-claude" data-tab="claude" aria-selected="false" hidden>Claude</button>
+          <button class="tab" role="tab" id="tab-help" data-tab="help" aria-selected="false" title="How each component works, and tutorials (? on a selected box)">Help</button>
+        </div>
+      </div>
+      <div class="panel" id="panel-code">
+        <textarea id="code" spellcheck="false" aria-label="Patch code"></textarea>
+        <div class="code-bar">
+          <span class="state" id="code-state">in sync with the patch</span>
+          <span class="spacer"></span>
+          <button class="act" id="code-revert" disabled>Discard changes</button>
+          <button class="act primary" id="code-run" disabled>Run · Ctrl+Enter</button>
+        </div>
+      </div>
+      <div class="panel" id="panel-edn" hidden>
+        <pre class="view" id="edn"></pre>
+      </div>
+      <div class="panel" id="panel-comp" hidden>
+        <div class="comp-list" id="comp-list"></div>
+      </div>
+      <div class="panel" id="panel-help" hidden>
+        <div class="help-view" id="help-view"></div>
+      </div>
+      <div class="panel" id="panel-claude" hidden>
+        <div class="ask">
+          <div class="ask-what" role="radiogroup" aria-label="What Claude makes">
+            <label><input type="radio" name="ask-what" value="patch" checked> A patch</label>
+            <label><input type="radio" name="ask-what" value="component"> A component</label>
+          </div>
+          <p class="ask-note" id="ask-note">Describe a patch and Claude makes it — or changes the open one — checks it and loads it as one event of the history. It uses <b>your own</b> Claude account: the first time, Claude asks you to allow this page.</p>
+          <div class="ask-key" id="ask-key" hidden>
+            <input type="password" id="ask-key-in" autocomplete="off" spellcheck="false" placeholder="Your Anthropic API key (sk-ant-…)" aria-label="Anthropic API key">
+            <button class="act" id="ask-key-save">Save</button>
+            <button class="act" id="ask-key-forget">Forget</button>
+            <span class="ask-key-state" id="ask-key-state"></span>
+          </div>
+          <textarea id="ask-text" spellcheck="true" placeholder="A stereo chorus in Faust with rate and depth knobs on its panel… · a resonant filter whose cutoff follows an envelope… · a Markov chain of pitch classes…"></textarea>
+          <div class="ask-bar">
+            <select id="ask-tier" aria-label="Model"><option value="default">Balanced</option><option value="complex">Most capable</option><option value="quick">Quick</option></select>
+            <label class="opt" id="ask-change-l"><input type="checkbox" id="ask-change" checked> <span id="ask-change-t">change the open patch</span></label>
+            <span class="spacer"></span>
+            <button class="act" id="ask-stop" disabled>Stop</button>
+            <button class="act primary" id="ask-go">Make it</button>
+          </div>
+          <ol class="ask-log" id="ask-log"></ol>
+          <details class="ask-hist" id="ask-hist">
+            <summary>Your requests to Claude <span id="ask-hist-n"></span></summary>
+            <p class="ask-note">Kept only in this browser: what you asked, what Claude answered, and whether it worked. Nothing leaves it unless you share an entry (in the <a href="https://github.com/bonuoq/kairotic/discussions/categories/gallery" target="_blank" rel="noopener">Gallery</a> on GitHub, under your own account) or export them. <button class="act" id="ask-hist-export">Export (.jsonl)</button> <button class="act" id="ask-hist-clear">Clear</button></p>
+            <ol class="ask-hist-list" id="ask-hist-list"></ol>
+          </details>
+          <pre class="ask-out" id="ask-out"></pre>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="pane" aria-label="History">
+    <div class="pane-head">
+      <span class="label">History</span>
+      <div class="hist-nav">
+        <button class="act" id="nav-back" title="Back one event (Ctrl+Z)">◀</button>
+        <button class="act" id="nav-fwd" title="Forward one event">▶</button>
+        <button class="act" id="nav-tip" title="Go to the tip of this branch">⇥</button>
+      </div>
+      <label class="opt" title="Move forward automatically with anyone's gestures"><input type="checkbox" id="auto" checked> Follow the front</label>
+      <label class="opt" title="Two gestures closer than this interval are considered parallel and branch">Simultaneity <input type="number" id="simul" min="0" max="10000" step="100" value="1500"> ms</label>
+      <button class="act" id="merge-btn" title="Bring here the events of another compatible branch">Merge…</button>
+      <div class="peers" id="peers"></div>
+      <span class="hint" id="hist-hint">Click a point to travel to that moment</span>
+    </div>
+    <div class="hist-wrap" id="hist-wrap">
+      <svg id="tree" xmlns="http://www.w3.org/2000/svg" width="320" height="80"></svg>
+      <div class="empty-hist" id="hist-empty" hidden>
+        <span>The shared history is empty. The first gesture creates its root.</span>
+        <button class="act primary" id="start-example">Start with the example work</button>
+      </div>
+    </div>
+    <div class="hist-foot" id="hist-foot"></div>
+  </section>
+
+  <section class="pane repl" aria-label="REPL">
+    <div class="pane-head"><span class="label">REPL</span><span class="hint">ClojureScript (Scittle) · ↑ ↓ history</span></div>
+    <div id="repl-out" aria-live="polite"></div>
+    <div class="repl-line">
+      <label for="repl-in">λ</label>
+      <input id="repl-in" autocomplete="off" spellcheck="false" placeholder='(import! "kairotic/library/knob.mjs")  ·  (publish :b5)  ·  (help "fifth")'>
+    </div>
+    <div class="help">
+      <span><code>(stroke :b1 [[t hz] …])</code> · <code>(note :b1 t "c4" dur)</code> · <code>(degree :b1 t n dur)</code> · <code>(melody :b1 "c4/1 e4/.5")</code></span>
+      <span><code>(move-stroke :b1 :t1 dt cents)</code> · <code>(stretch :b1 :t1 2)</code> · <code>(erase-stroke :b1 :t1)</code> · <code>(clear :b1)</code></span>
+      <span><code>(grid-x :b1 0.25 "3+3+2")</code> · <code>(tuning :b1 "31-tet" 261.63)</code> · <code>(tunings)</code> · <code>(read-at :b1 2)</code></span>
+      <span><code>(play)</code> · <code>(stop)</code> · <code>(send! :b5 2.5)</code></span>
+      <span><code>(components)</code> · <code>(help "ramp")</code> · <code>(code :b6 "process = …;")</code> · <code>(source :b6)</code> · <code>(compilation :b6)</code> · <code>(trust-scripts true)</code></span>
+      <span>code boxes: <code>faust~</code> (Faust, AudioWorklet) · <code>script [inlets] [outlets]</code> (ClojureScript: <code>(fn [m] {:out [[0 …]]})</code>) · <code>component</code> (defines a class: <code>{:class "x" :io [1 1] :receive (fn [m] …)}</code>)</span>
+      <span><code>(import! "kairotic/library/drift.mjs")</code> · <code>(import! "npm:package@1.0.0/comp.mjs")</code> · <code>(publish :b5)</code> · <code>(library)</code> · <code>(use! "fifth")</code></span>
+      <span>sub-patches: <code>patch [name]</code> (double-click to open, ⌥ double-click to rename) · inside: <code>inlet</code> <code>outlet</code> <code>inlet~</code> <code>outlet~</code> · <code>(enter :b5)</code> · <code>(up)</code> · <code>(top)</code> · <code>(inside :b5 (box …) (connect …))</code> · <code>(abstract :b5 "voice")</code> · abstractions take <code>$1 $2</code></span>
+      <span>canvas (any data): <code>(axis :b6 :y -1 1)</code> · <code>(axis :b6 :x 20 20000 :log)</code> · <code>(grid-y :b6 0.25)</code> · <code>reader y</code> reads along Y · <code>(read-at :b6 :y 0.5)</code> · freqt: frequency over time, with tunings · audio: <code>dac~ 1 2</code> (one inlet per channel) · <code>pan~ [pos]</code> · <code>space~ [x y]</code></span>
+      <span>signal: <code>phasor~ [hz]</code> · <code>reader~ [x|y|path] [voices] [gate]</code> (position signal 0…1 on the left, buffer on the right; a voice keeps its last value where nothing passes; <code>gate</code> adds one outlet per voice, 1 where it sounds, 0 where not) · <code>sig~ [value]</code> · <code>osc~</code> and <code>gain~</code> take a signal on their frequency / factor · trajectories: <code>reader path [stroke]</code> (0…1 along a stroke → [x y])</span>
+      <span>Claude: the <b>Claude</b> tab, or <code>(ask-component "a slow LFO with its waveform drawn")</code> · with a component box selected, “change the selected component” · it uses your own Claude account</span>
+      <span>packages: writing a class of an official package brings the package into the work, as one component box pinned to its version · <code>@kairotic/synth</code>: <code>adsr~ [a d s r]</code>, <code>synth~</code> · <code>@kairotic/spatial</code>: <code>pan~ [pos]</code>, <code>space~ [x y]</code> · <code>(packages)</code> · <code>(add-package! "@kairotic/synth")</code> · a component uses the core through <code>api/…</code> (<code>api/clamp</code>, <code>api/worklet-node</code>…)</span>
+      <span>presentation: <code>(present :b4 x y)</code> · <code>(present :b4)</code> · <code>(unpresent :b4)</code> · <code>(presentation true)</code> · a sub-patch with presented boxes is a panel of them · <code>(send-to! :b7.b4 0.5)</code></span>
+      <span><code>(box "text" x y)</code></span>
+      <span><code>(connect :b1 0 :b2 0)</code></span>
+      <span><code>(disconnect :b1 0 :b2 0)</code></span>
+      <span><code>(move :b1 x y)</code></span>
+      <span><code>(text! :b1 "text")</code></span>
+      <span><code>(delete :b1)</code></span>
+      <span><code>(rewind)</code> · <code>(rewind n)</code></span>
+      <span><code>(forward)</code></span>
+      <span><code>(tip)</code></span>
+      <span><code>(goto "id" n)</code></span>
+      <span><code>(here)</code></span>
+      <span><code>(branches)</code></span>
+      <span><code>(front true)</code></span>
+      <span><code>(simultaneity 1500)</code></span>
+      <span><code>(merge-from "id" n)</code></span>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// If the ClojureScript fails to load, the error is shown in the header instead of getting lost in the console.
+window.addEventListener("error", function (e) {
+  var st = document.getElementById("status");
+  var msg = "Error: " + (e.message || e.error);
+  if (st) { st.textContent = msg; st.style.color = "var(--error)"; }
+  var mb = document.getElementById("mgr-body");
+  if (mb && /Loading/.test(mb.textContent)) { mb.textContent = msg; mb.style.color = "var(--error)"; }
+});
+</script>
+<script>
+// Links that carry a patch (Study 22): its code, deflated (when the browser can) and in base64url.
+// "z…" is deflate-raw, "t…" plain text.
+(function () {
+  function toB64(bytes) {
+    var bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function fromB64(s) {
+    var b = s.replace(/-/g, "+").replace(/_/g, "/");
+    while (b.length % 4) b += "=";
+    var bin = atob(b), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+  function through(bytes, stream) {
+    return new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+  window.kairoticPack = function (text) {
+    var bytes = new TextEncoder().encode(text);
+    if (!window.CompressionStream) return Promise.resolve("t" + toB64(bytes));
+    return through(bytes, new CompressionStream("deflate-raw")).then(function (z) { return "z" + toB64(z); });
+  };
+  window.kairoticUnpack = function (s) {
+    return Promise.resolve().then(function () {
+      var bytes = fromB64(String(s).slice(1));
+      if (s[0] === "t") return bytes;
+      if (s[0] !== "z") throw new Error("this link does not carry a patch");
+      if (!window.DecompressionStream) throw new Error("this browser cannot open compressed links");
+      return through(bytes, new DecompressionStream("deflate-raw"));
+    }).then(function (bytes) { return new TextDecoder().decode(bytes); });
+  };
+})();
+</script>
+<script>
+// Verovio (notation) is downloaded after the page is painted; the toolkit is kept in a promise.
+window.kairoticVerovio = new Promise(function (resolve, reject) {
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/verovio@5.7.0/dist/verovio-toolkit-wasm.js";
+  s.onload = function () {
+    try {
+      var m = verovio.module;
+      if (m.calledRun) { resolve(new verovio.toolkit()); }
+      else { m.onRuntimeInitialized = function () { resolve(new verovio.toolkit()); }; }
+    } catch (e) { reject(e); }
+  };
+  s.onerror = function () { reject(new Error("Could not download Verovio")); };
+  document.head.appendChild(s);
+});
+</script>
+<script>
+// The ClojureScript is evaluated here (and not with Scittle's automatic tags) so that an error
+// arrives with its message: first the modules, then the page's program.
+// Faust (a WebAssembly compiler, about 8 MB) is only downloaded when a faust~ box asks for it.
+// A published component is a JavaScript module that exports {class, version, author, license, doc, source}:
+// inside claude.ai only npm modules via jsDelivr (or files of this page) can be loaded.
+window.kairoticImport = function (url) {
+  return import(new URL(url, document.baseURI).href).then(function (m) { return m.default; });
+};
+window.kairoticLoadFaust = function () {
+  return import("https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js")
+    .then(function (F) {
+      return F.instantiateFaustModule().then(function (mod) {
+        return { F: F, compiler: new F.FaustCompiler(new F.LibFaust(mod)) };
+      });
+    });
+};
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) {
+    var msg = "Error: " + ((e && e.message) || e);
+    var st = document.getElementById("status");
+    if (st) { st.textContent = msg; st.style.color = "var(--error)"; }
+    var mb = document.getElementById("mgr-body");
+    if (mb && /Loading/.test(mb.textContent)) { mb.textContent = msg; mb.style.color = "var(--error)"; }
+    console.error(e);
+  }
+  // dependency order: shapes has no dependencies; components needs canvas; code, faust and library need components
+  var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/mt.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
+              "kairotic/api.cljs", "kairotic/code.cljs", "kairotic/mtboxes.cljs", "kairotic/faust.cljs", "kairotic/library.cljs", "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs",
+              "kairotic/signal.cljs", "kairotic/links.cljs"];
+  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs"];
+  Promise.all(mods.map(function (m) {
+    return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
+  }))
+    .then(function (srcs) {
+      srcs.forEach(function (src, i) {
+        try { scittle.core.eval_string(src); } catch (e) { throw new Error(mods[i] + ": " + (e.message || e)); }
+      });
+      // then the page itself, its parts in order (app/page)
+      return Promise.all(page.map(function (m) {
+        return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
+      })).then(function (parts) {
+        parts.forEach(function (src, i) {
+          try { scittle.core.eval_string(src); } catch (e) { throw new Error(page[i] + ": " + (e.message || e)); }
+        });
+      });
+    })
+    .catch(show);
+});
+</script>
+

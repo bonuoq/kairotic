@@ -1,32 +1,53 @@
-// Kairotic Pages · build
-// Makes the GitHub Pages edition in _site/ from the current study (studies/23-ask): the same page
-// and modules, plus GUN (vendored), the adapter and the boot script, loaded before the ClojureScript.
+// SPDX-License-Identifier: MPL-2.0
+// Kairotic · build
+// Makes the app from its sources, in two editions:
 //
-//   node site/build.mjs            → _site/
-//   node site/build.mjs out/dir    → another folder
+//   _site/      Kairotic Pages (GitHub Pages): the app plus GUN (vendored), the adapter and the boot
+//               script, loaded before the ClojureScript — works and rooms in GUN, Claude with the
+//               visitor's own key.
+//   _artifact/  the same app for claude.ai, where works, rooms and Claude come from claude.ai.
 //
-// Nothing is downloaded: Scittle, Verovio and Faust still come from jsDelivr at run time, as in claude.ai.
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
+//   node site/build.mjs              → both
+//   node site/build.mjs out/dir      → the Pages edition in another folder
+//
+// Sources: app/ (the page: index.html and page/*.cljs), core/kairotic (the modules), and what is
+// generated from components/, packages/, examples/ and docs/tutorials/ (their own build scripts run
+// first). Scittle, Verovio and Faust still come from jsDelivr at run time.
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const study = join(root, "studies", "23-ask");
-const out = resolve(root, process.argv[2] || "_site");
+const pagesOut = resolve(root, process.argv[2] || "_site");
+const artifactOut = resolve(root, "_artifact");
 
-rmSync(out, { recursive: true, force: true });
-mkdirSync(out, { recursive: true });
+// 1. what is generated: published components, packages, Claude's examples, the tutorials
+for (const script of ["components/scripts/build.mjs", "packages/build.mjs", "examples/build.mjs", "docs/tutorials/build.mjs"])
+  execFileSync(process.execPath, [join(root, script)], { stdio: "ignore" });
 
-// the page's modules and libraries, as published in claude.ai
-cpSync(join(study, "kairotic"), join(out, "kairotic"), { recursive: true });
-// the adapter always from core (the study keeps a copy for claude.ai)
-cpSync(join(root, "core", "backends", "gun-backend.js"), join(out, "kairotic", "backends", "gun-backend.js"));
-cpSync(join(root, "site", "vendor"), join(out, "vendor"), { recursive: true });
-for (const f of ["config.js", "boot.js", "embed-test.html"]) cpSync(join(root, "site", f), join(out, f));
+// 2. the app, as both editions share it
+function assemble(out) {
+  rmSync(out, { recursive: true, force: true });
+  mkdirSync(join(out, "kairotic", "library"), { recursive: true });
+  mkdirSync(join(out, "kairotic", "packages"), { recursive: true });
+  cpSync(join(root, "app", "page"), join(out, "page"), { recursive: true });
+  for (const f of readdirSync(join(root, "core", "kairotic"))) cpSync(join(root, "core", "kairotic", f), join(out, "kairotic", f));
+  cpSync(join(root, "core", "backends"), join(out, "kairotic", "backends"), { recursive: true });
+  for (const f of readdirSync(join(root, "components", "dist"))) cpSync(join(root, "components", "dist", f), join(out, "kairotic", "library", f));
+  for (const p of readdirSync(join(root, "packages"), { withFileTypes: true }))
+    if (p.isDirectory() && existsSync(join(root, "packages", p.name, "dist", "index.mjs")))
+      cpSync(join(root, "packages", p.name, "dist", "index.mjs"), join(out, "kairotic", "packages", p.name + ".mjs"));
+  cpSync(join(root, "examples", "catalog.mjs"), join(out, "kairotic", "examples.mjs"));
+  cpSync(join(root, "docs", "tutorials", "catalog.mjs"), join(out, "kairotic", "tutorials.mjs"));
+  return readFileSync(join(root, "app", "index.html"), "utf8");
+}
 
 const scittle = '<script src="https://cdn.jsdelivr.net/npm/scittle@';
-let html = readFileSync(join(study, "index.html"), "utf8");
-if (!html.includes(scittle)) throw new Error("index.html: Scittle script tag not found");
+
+// 3. the Pages edition
+let html = assemble(pagesOut);
+if (!html.includes(scittle)) throw new Error("app/index.html: Scittle script tag not found");
 const inject = [
   "<!-- Pages edition: data in GUN, Claude with the visitor's own key -->",
   '<script src="vendor/gun/gun.js"></script>',
@@ -36,10 +57,21 @@ const inject = [
   '<script src="boot.js"></script>',
   "",
 ].join("\n");
-html = html.replace(scittle, inject + scittle);
-writeFileSync(join(out, "index.html"), html);
-writeFileSync(join(out, ".nojekyll"), "");   // serve files as they are
+writeFileSync(join(pagesOut, "index.html"), html.replace(scittle, inject + scittle));
+cpSync(join(root, "site", "vendor"), join(pagesOut, "vendor"), { recursive: true });
+for (const f of ["config.js", "boot.js", "embed-test.html"]) cpSync(join(root, "site", f), join(pagesOut, f));
+// the tests run against the same files (tests/run.html)
+cpSync(join(root, "tests", "run.html"), join(pagesOut, "tests.html"));
+cpSync(join(root, "tests", "cljs"), join(pagesOut, "tests"), { recursive: true });
+writeFileSync(join(pagesOut, ".nojekyll"), "");   // serve files as they are
 
-for (const f of ["index.html", "vendor/gun/gun.js", "vendor/gun/sea.js", "kairotic/core.cljs", "kairotic/backends/gun-backend.js"])
-  if (!existsSync(join(out, f))) throw new Error("missing " + f);
-console.log("Kairotic Pages →", out);
+// 4. the claude.ai edition (published as an artifact: index.html plus every other file)
+if (pagesOut === resolve(root, "_site")) {
+  assemble(artifactOut);
+  writeFileSync(join(artifactOut, "index.html"), html);
+}
+
+for (const f of ["index.html", "page/00-work.cljs", "kairotic/core.cljs", "kairotic/links.cljs", "kairotic/library/knob.mjs",
+                 "kairotic/packages/synth.mjs", "kairotic/tutorials.mjs", "vendor/gun/gun.js", "tests.html"])
+  if (!existsSync(join(pagesOut, f))) throw new Error("missing " + f);
+console.log("Kairotic →", pagesOut, existsSync(artifactOut) ? "and " + artifactOut : "");

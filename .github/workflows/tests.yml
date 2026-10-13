@@ -1,0 +1,26 @@
+# Runs the tests (tests/cljs, through tests/run.html) in a headless Chromium against the built app, on
+# every push and pull request that touches the app, its modules or the tests.
+name: tests
+
+on:
+  push:
+    paths: ["app/**", "core/**", "tests/**", "site/build.mjs", ".github/workflows/tests.yml"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node site/build.mjs
+      - run: npm install --no-save playwright@1.56.0 && npx playwright install --with-deps chromium
+      - name: Serve the built app
+        run: (cd _site && python3 -m http.server 8000 &) && sleep 2
+      - run: node tests/browser.mjs http://localhost:8000/tests.html

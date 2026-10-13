@@ -4,3 +4,4 @@ componentes/dist/
 components/dist/
 packages/*/dist/
 _site/
+_artifact/
