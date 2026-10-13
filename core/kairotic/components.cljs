@@ -305,10 +305,16 @@
     :else
     {}))
 
-(defn canvas-box [{:keys [inlet value]}]
-  (if (and (zero? inlet) (num-of value))
-    {:out [[0 (num-of value)]] :show {:t (num-of value)}}
-    {}))
+(defn canvas-box
+  "A number (or a click) comes out and moves the cursor; a musical tree (kairotic.mt) is shown, live,
+   over the buffer (Study 19): (keep! :bN) writes it into the buffer."
+  [{:keys [inlet value state]}]
+  (cond
+    (and (zero? inlet) (vector? value) (keyword? (first value)))
+    {:state (assoc state :tree value) :show {:tree value}}
+    (and (zero? inlet) (num-of value))
+    {:state state :out [[0 (num-of value)]] :show (cond-> {:t (num-of value)} (:tree state) (assoc :tree (:tree state)))}
+    :else {:state state}))
 
 (def canvas-model {:empty cv/generic-empty :step cv/step :load (fn [x] (cv/step cv/generic-empty [:load x])) :code cv/->code})
 (def freqt-model {:empty cv/empty :step cv/step :load (fn [x] (cv/step cv/empty [:load x])) :code cv/->code})
