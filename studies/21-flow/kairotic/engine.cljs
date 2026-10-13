@@ -285,7 +285,8 @@
     (.resume ac)
     (when-not (:on @rt)
       (let [{:keys [master] :as out} (output! ac)]
-        (swap! rt assoc :on true :patch-fn patch-fn :states {} :nodes {} :queue [] :signature nil
+        ;; the state boxes got from messages before ▶ (a tree kept by mt play) stays
+        (swap! rt assoc :on true :patch-fn patch-fn :nodes {} :queue [] :signature nil
                :master master :out out :prints []
                :env {:master master :channels (:n out) :silent (:silent out)
                      :channel (fn [i] (get (:ins out) i))})

@@ -560,7 +560,7 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; Box classes are components registered in kairotic.components: their ports, their view,
 ;; their data with its own history, their behaviour with messages and their audio all come from there.
 
-(declare show-help! refresh-help! tsel-piece-id)   ; the Help tab (Study 18), defined further down
+(declare show-help! refresh-help! tsel-piece-id refill-data!)   ; the Help tab (Study 18), defined further down
 (def klass comp/klass)
 (defn box-def [b] (comp/lookup (klass (:text b))))
 (defn display-of [b] (or (:display (box-def b)) :text))
@@ -2229,6 +2229,8 @@ window.addEventListener("DOMContentLoaded", function () {
   (eng/stop!)
   (transport-info!)
   (render-overlay!)
+  ;; back to the initial state: the data boxes send what they hold again, so what depends on them has it
+  (refill-data!)
   :stopped)
 
 (defn send!
@@ -2460,6 +2462,8 @@ window.addEventListener("DOMContentLoaded", function () {
   (drain-prints!))
 
 (defn schedule-emit! [] (when-not @emit-timer (reset! emit-timer (js/setTimeout emit-trees! 30))))
+
+(defn refill-data! "Every tree box sends its tree again (after ■)." [] (reset! sent-trees {}) (schedule-emit!))
 
 (defn resume!
   "Lets a tree box be changed by messages again, after a loop was stopped: (resume! :b2)."
