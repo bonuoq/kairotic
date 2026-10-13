@@ -1455,6 +1455,7 @@ window.addEventListener("DOMContentLoaded", function () {
   [on?]
   (reset! cbox/trust (boolean on?))
   (cbox/forget-language! "clojurescript")
+  (cbox/forget-language! "component")
   (render-all!)
   (boolean on?))
 
@@ -2809,7 +2810,9 @@ window.addEventListener("DOMContentLoaded", function () {
     (-> (lib/import-package pkg)
         (.then (fn [[m origin]]
                  (when-not (work-package? pkg)
-                   (let [id (new-definition! (lib/package-source m origin))]
+                   (let [src (lib/package-source m origin)
+                         _ (swap! cbox/trusted conj src)   ; official: it runs without asking
+                         id (new-definition! src)]
                      (repl-print! "out" (esc (str "; " pkg " " (:version m) " ("
                                                   (str/join ", " (map :class (:components m))) ") is now in the work: " id
                                                   (when-not (str/starts-with? origin "npm:") " · from this page"))))))))
@@ -2839,7 +2842,9 @@ window.addEventListener("DOMContentLoaded", function () {
     (-> (lib/import-single k)
         (.then (fn [[m origin]]
                  (when-not (work-class? k)
-                   (let [id (new-definition! (str (lib/header m origin) (:source m)))]
+                   (let [src (str (lib/header m origin) (:source m))
+                         _ (swap! cbox/trusted conj src)   ; official: it runs without asking
+                         id (new-definition! src)]
                      (repl-print! "out" (esc (str "; «" k "» is now in the work: " id)))))))
         (.catch (fn [e] (repl-print! "err" (esc (str "Could not bring " k ": " (or (.-message e) e))))))
         (.finally (fn [] (swap! fetching disj k)))))
@@ -4519,7 +4524,32 @@ window.addEventListener("DOMContentLoaded", function () {
     (when bad (fail (str "a link can only make a patch; it cannot run " (let [t (pr-str bad)] (if (> (count t) 60) (str (subs t 0 60) "…") t)))))
     (str/join "\n" (map pr-str forms))))
 
-(defn script-boxes [] (count (filter (fn [b] (#{"script" "component"} (klass (:text b)))) (vals (:boxes (eng/flat (root-patch)))))))
+(defn script-boxes
+  "The script and component boxes of the work that would run code nobody has allowed yet."
+  []
+  (count (filter (fn [b] (and (#{"script" "component"} (klass (:text b)))
+                              (not (cbox/allowed? (str (get-in b [:data :source]))))))
+                 (vals (:boxes (eng/flat (root-patch)))))))
+
+(defn trust-official!
+  "The component boxes of a link that are exactly an official package or single component (as this
+   page brings it) run without asking."
+  []
+  (let [srcs (keep (fn [b] (when (= "component" (klass (:text b))) (str (get-in b [:data :source]))))
+                   (vals (:boxes (eng/flat (root-patch)))))
+        pkgs (distinct (for [s srcs [_ p] (re-seq #":package \"([^\"]+)\"" s) :when (get lib/packages p)] p))
+        singles (distinct (for [s srcs [_ k] (re-seq #":class \"([^\"]+)\"" s) :when (and (lib/single-of k) (not (lib/package-of k)))] k))
+        wanted (set srcs)]
+    (-> (js/Promise.all
+         (into-array
+          (concat (for [p pkgs] (-> (lib/import-package p) (.then (fn [[m origin]] (lib/package-source m origin))) (.catch (fn [_] nil))))
+                  (for [k singles] (-> (lib/import-single k) (.then (fn [[m origin]] (str (lib/header m origin) (:source m)))) (.catch (fn [_] nil)))))))
+        (.then (fn [arr]
+                 (let [ok (filter wanted (array-seq arr))]
+                   (when (seq ok)
+                     (swap! cbox/trusted into ok)
+                     (cbox/forget-language! "component")
+                     (render-all!))))))))
 
 (defn update-trust-bar! []
   (when-let [el ($ "trust-bar")]
@@ -4548,6 +4578,7 @@ window.addEventListener("DOMContentLoaded", function () {
     (swap! hist assoc :mode :local :loaded true)
     (let [id (new-node! nil 0 [[:load p]] nil)]
       (swap! world assoc :pos [id 1]))
+    (trust-official!)
     (repl-print! "out" (esc (str "; " (if (es?) "Desde un enlace" "From a link") ": «" nm "» (" (if (es?) "local: no se guarda" "local: not saved") ")")))
     (render-all!)))
 

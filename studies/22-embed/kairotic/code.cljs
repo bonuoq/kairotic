@@ -74,12 +74,15 @@
 ;; it is not evaluated until this tab allows it: (trust-scripts true).
 
 (defonce trust (atom false))
+;; sources this page brought itself from the official library (Study 22): they run without asking
+(defonce trusted (atom #{}))
+(defn allowed? [source] (or @trust (contains? @trusted source)))
 
 (register-language! "clojurescript"
   (fn [source]
     (js/Promise.
      (fn [res rej]
-       (if-not @trust
+       (if-not (allowed? source)
          (rej (js/Error. "not run: this work is shared; (trust-scripts true) to evaluate its scripts"))
          (try
            (let [f (js/scittle.core.eval_string (str "(do " source "\n)"))]

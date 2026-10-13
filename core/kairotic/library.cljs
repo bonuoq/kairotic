@@ -72,7 +72,7 @@
   (fn [source]
     (js/Promise.
      (fn [res rej]
-       (if-not @code/trust
+       (if-not (code/allowed? source)
          (rej (js/Error. "not run: this work is shared; (trust-scripts true) to evaluate its components"))
          (try
            (let [m (js/scittle.core.eval_string (str "(do " source "\n)"))]
