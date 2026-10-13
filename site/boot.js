@@ -12,6 +12,10 @@
   var chosen = (stored(KEY) || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
   var peers = chosen.length ? chosen : (window.KAIROTIC_PEERS || []);
 
+  // an embed (?embed, ?present) works on its own: no relay, nothing saved (Study 22)
+  var params = new URLSearchParams(location.search);
+  if (params.has("embed") || params.has("present")) { window.kairoticPeers = []; return; }
+
   window.kairoticPeers = peers;
   window.kairoticBackend = window.KairoticGun.create({ peers: peers });
 })();

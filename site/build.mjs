@@ -1,5 +1,5 @@
 // Kairotic Pages · build
-// Makes the GitHub Pages edition in _site/ from the current study (studies/21-flow): the same page
+// Makes the GitHub Pages edition in _site/ from the current study (studies/22-embed): the same page
 // and modules, plus GUN (vendored), the adapter and the boot script, loaded before the ClojureScript.
 //
 //   node site/build.mjs            → _site/
@@ -11,7 +11,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const study = join(root, "studies", "21-flow");
+const study = join(root, "studies", "22-embed");
 const out = resolve(root, process.argv[2] || "_site");
 
 rmSync(out, { recursive: true, force: true });
@@ -22,7 +22,7 @@ cpSync(join(study, "kairotic"), join(out, "kairotic"), { recursive: true });
 // the adapter always from core (the study keeps a copy for claude.ai)
 cpSync(join(root, "core", "backends", "gun-backend.js"), join(out, "kairotic", "backends", "gun-backend.js"));
 cpSync(join(root, "site", "vendor"), join(out, "vendor"), { recursive: true });
-for (const f of ["config.js", "boot.js"]) cpSync(join(root, "site", f), join(out, f));
+for (const f of ["config.js", "boot.js", "embed-test.html"]) cpSync(join(root, "site", f), join(out, f));
 
 const scittle = '<script src="https://cdn.jsdelivr.net/npm/scittle@';
 let html = readFileSync(join(study, "index.html"), "utf8");
