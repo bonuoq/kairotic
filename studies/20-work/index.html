@@ -1287,7 +1287,8 @@ window.addEventListener("DOMContentLoaded", function () {
    its nodes, in one event of the history."
   [id t]
   (need-tree-box id)
-  (when-let [ps (seq (mt/problems t))] (fail (first ps)))
+  (when-let [ps (seq (mt/errors t))] (fail (first ps)))
+  (doseq [w (mt/warnings t)] (repl-print! "out" (esc (str "; ⚠ " w))))
   (let [old (tree-data id)
         ops (if (some? old) (mt/diff old t) [[:set [] t]])]
     (if (seq ops)
@@ -1303,7 +1304,8 @@ window.addEventListener("DOMContentLoaded", function () {
   (need-tree-box id)
   (let [t (tree-data id)
         t2 (try (reduce mt/apply-op t ops) (catch :default e (fail (.-message e))))]
-    (when-let [ps (seq (mt/problems t2))] (fail (first ps)))
+    (when-let [ps (seq (mt/errors t2))] (fail (first ps)))
+    (doseq [w (mt/warnings t2)] (repl-print! "out" (esc (str "; ⚠ " w))))
     (dispatch! [:in id [:edit (vec ops)]])
     (mt/summary t2)))
 

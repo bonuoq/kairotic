@@ -416,6 +416,12 @@
         (try (expand tree) (catch :default e (say (.-message e))))))
     @out))
 
+(defn warning? "A problem that does not stop the tree from being read and played (a measure that does not add up)." [msg]
+  (str/starts-with? msg "measure "))
+
+(defn errors "The problems that make a tree unusable." [t] (vec (remove warning? (problems t))))
+(defn warnings "The problems a tree can live with while it is being written." [t] (vec (filter warning? (problems t))))
+
 ;; ───────── reading (EDN text → tree) and writing (tree → text) ─────────
 
 (defn read-tree

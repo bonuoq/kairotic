@@ -19,10 +19,11 @@
     (js/Promise.
      (fn [res rej]
        (try
-         (let [t (mt/read-tree source) ps (when t (mt/problems t))]
+         (let [t (mt/read-tree source) ps (when t (mt/errors t)) ws (when t (mt/warnings t))]
            (cond (nil? t) (rej (js/Error. "empty"))
                  (seq ps) (rej (js/Error. (str (first ps) (when (> (count ps) 1) (str " (+" (dec (count ps)) " more)")))))
-                 :else (res {:value (mt/expand t) :info {:summary (mt/summary t)}})))
+                 :else (res {:value (mt/expand t)
+                             :info {:summary (str (mt/summary t) (when (seq ws) (str " · ⚠ " (first ws))))}})))
          (catch :default e (rej e)))))))
 
 ;; The data of a tree box is the tree itself: {:tree t :source text}. Its history events are edits of
