@@ -25,17 +25,51 @@
                  :else (res {:value (mt/expand t) :info {:summary (mt/summary t)}})))
          (catch :default e (rej e)))))))
 
+;; The data of a tree box is the tree itself: {:tree t :source text}. Its history events are edits of
+;; nodes ([:edit [[:attrs [0 1 2] {…}] …]], kairotic.mt/apply-op), so two branches that change different
+;; measures can be merged; the text is only how it is shown (and edited: an edit of the text becomes
+;; the node operations that make the difference, kairotic.mt/diff).
+
+(defn- parse [text] (try (mt/read-tree text) (catch :default _ nil)))
+
+(defn tree-of "The tree of a tree box's data (older works kept only its text)." [d]
+  (or (:tree d) (parse (:source d))))
+
+(defn- with-tree [t] {:tree t :source (if (some? t) (mt/pp t) "")})
+
+(defn step [d [op & args]]
+  (let [d (or d {:tree nil :source ""})]
+    (case op
+      :source (let [[text] args t (parse text)] (if (some? t) {:tree t :source (str text)} (assoc d :source (str text))))
+      :load (let [[x] args]
+              (cond (and (map? x) (contains? x :tree)) (with-tree (:tree x))
+                    (and (map? x) (string? (:source x))) (step nil [:source (:source x)])
+                    :else d))
+      :edit (let [[ops] args]
+              (try (with-tree (reduce mt/apply-op (tree-of d) ops))
+                   (catch :default _ d)))
+      d)))
+
+(def model
+  {:empty {:tree nil :source ""}
+   :step step
+   :load (fn [x] (step nil [:load x]))
+   ;; in the Code tab, the tree as one call: (tree! :b2 [:voice …])
+   :code (fn [id d] (when-let [t (tree-of d)]
+                      (concat [(str "(tree! " id)] (map (fn [l] (str "  " l)) (str/split-lines (mt/pp t))) [")"])))})
+
 (comp/define! "tree"
   {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]). A bang (or anything) sends it, expanded: strings become notes and [:use …] the fragments of :defs."
    :usage "tree"
-   :display :code :language "edn" :model cbox/model
+   :display :code :language "edn" :model model
    :io [1 1]
    :template "[:voice {:name \"motif\"}\n [:measure {:meter [4 4]} \"c4/1 d4/.5 e4 g4/1 e4\"]\n [:measure \"f4/.5 e4 d4 c4 d4/2\"]]"
    :receive (fn [m]
-              (let [r (cbox/compiled "edn" (get-in m [:data :source]))]
-                (if (= :ok (:status r))
-                  {:out [[0 (:value r)]] :show :bang}
-                  {:effects [[:print (str "tree: " (or (:error r) "not ready"))]]})))})
+              (let [t (tree-of (:data m))]
+                (if (some? t)
+                  (try {:out [[0 (mt/expand-source t (:id m))]] :show :bang}
+                       (catch :default e {:effects [[:print (str "tree: " (.-message e))]]}))
+                  {:effects [[:print "tree: empty, or text that does not read as EDN"]]})))})
 
 ;; ───────── mt: operations ─────────
 

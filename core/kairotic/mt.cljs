@@ -30,18 +30,22 @@
 
 ;; ───────── nodes ─────────
 
-(def seq-tags #{:seq :voice :section :measure :tuplet})
-(def par-tags #{:par :piece :chord})
+(def seq-tags #{:seq :voice :measure :tuplet})
+(def par-tags #{:par :chord})
+;; a work: in a :piece or a :section, voices (and :par) sound together from its start, and anything
+;; else — sections in a piece, measures in a section — follows in order
+(def block-tags #{:piece :section})
 (def mark-tags #{:param :dyn :text})
-(def known-tags (into (into (into #{:note :rest :use} seq-tags) par-tags) mark-tags))
+(def known-tags (into (into (into (into #{:note :rest :use} seq-tags) par-tags) block-tags) mark-tags))
 
 (defn node? [x] (and (vector? x) (keyword? (first x))))
 (defn tag [n] (when (node? n) (first n)))
 (defn attrs [n] (let [a (second n)] (if (map? a) a {})))
 (defn kids [n] (if (map? (second n)) (subvec n 2) (subvec n 1)))
 (defn make [t a ks] (into (if (seq a) [t a] [t]) ks))
-(defn with-attrs [n a] (make (tag n) a (kids n)))
-(defn with-kids [n ks] (make (tag n) (attrs n) ks))
+;; a node keeps its metadata (where it comes from in the written tree) when it changes
+(defn with-attrs [n a] (with-meta (make (tag n) a (kids n)) (meta n)))
+(defn with-kids [n ks] (with-meta (make (tag n) (attrs n) ks) (meta n)))
 (defn update-attrs [n f & args] (with-attrs n (apply f (attrs n) args)))
 
 (defn tree? "Is x a musical tree (or a string of melody)?" [x] (or (node? x) (string? x)))
@@ -190,6 +194,11 @@
                                                         (assoc :gliss (vec (reverse (mapv (fn [[x c]] [(- 1 x) (- c end)]) g)))))))
                                     n))
               (seq-tags (tag n)) (with-kids n (vec (reverse (mapv go (kids n)))))
+              (block-tags (tag n)) (let [ks (mapv go (kids n))
+                                         together? (fn [k] (or (not (node? k)) (#{:voice :par} (tag k)) (some? (:at (attrs k)))))
+                                         slots (vec (keep-indexed (fn [i k] (when-not (together? k) i)) ks))
+                                         moved (zipmap slots (reverse (map ks slots)))]
+                                     (with-kids n (vec (map-indexed (fn [i k] (get moved i k)) ks))))
               :else (with-kids n (mapv go (kids n)))))]
     (go (with-meters (explicit (expand tree))))))
 
@@ -232,23 +241,35 @@
 
 (def op-keys #{:ref :transpose :invert :retrograde :augment})
 
+(defn- from [x src] (if (node? x) (with-meta x src) x))
+
 (defn expand*
-  [n defs depth]
+  "Expands n; every node remembers where it was written: {:src path} (and {:sub [i …]} inside a
+   melody string); nodes that come from :defs have no :src."
+  ([n defs depth] (expand* n defs depth nil))
+  ([n defs depth path]
   (cond
-    (string? n) (melody n)
+    (string? n) (vec (map-indexed (fn [i x]
+                                    (let [x (if (= :chord (tag x))
+                                              (with-kids x (vec (map-indexed (fn [j k] (from k (when path {:src path :sub [i j]}))) (kids x))))
+                                              x)]
+                                      (from x (when path {:src path :sub [i]}))))
+                                  (melody n)))
     (not (node? n)) []
     (= :use (tag n))
     (let [a (attrs n) r (:ref a) k (if (string? r) (keyword r) r) d (get defs k)]
       (when (> depth 24) (throw (js/Error. (str "Fragments that use each other without end (" r ")"))))
       (when-not d (throw (js/Error. (str "No fragment " (pr-str r) " in :defs"))))
-      (let [xs (expand* d defs (inc depth))
+      (let [xs (expand* d defs (inc depth) nil)
             body (if (= 1 (count xs)) (first xs) (into [:seq] xs))
             varied (apply-ops a body)
             extra (apply dissoc a op-keys)]
-        [(if (seq extra) [:seq extra varied] varied)]))
+        [(from (if (seq extra) [:seq extra varied] varied) (if path {:src path :use true} (meta n)))]))
     :else
     (let [a (attrs n) defs (merge defs (:defs a))]
-      [(make (tag n) (dissoc a :defs) (vec (mapcat (fn [k] (expand* k defs depth)) (kids n))))])))
+      [(from (make (tag n) (dissoc a :defs)
+                   (vec (apply concat (map-indexed (fn [i k] (expand* k defs depth (when path (conj path i)))) (kids n)))))
+             (if path {:src path} (meta n)))]))))
 
 (defn expand
   "Strings become notes and [:use …] the fragments they name, varied. A list of nodes becomes a :seq."
@@ -256,7 +277,14 @@
   (cond
     (string? x) (into [:seq] (melody x))
     (and (sequential? x) (not (node? x))) (expand (into [:seq] x))
-    :else (first (expand* x {} 0))))
+    :else (first (expand* x {} 0 nil))))
+
+(defn expand-source
+  "Expands a written tree remembering, in each node's metadata, where it was written ({:src path},
+   {:sub [i]} inside a melody string), and in the root which box it comes from ({:from :b2}): a score
+   that shows it can then edit the written tree."
+  [t box-id]
+  (vary-meta (first (expand* t {} 0 [])) assoc :from box-id))
 
 ;; ───────── time: flattening ─────────
 
@@ -287,8 +315,22 @@
           (place k t 1 {:voice (:voice ctx) :dur d :path (conj (:path ctx) i)} acc))
         (+ t d))
 
+      (block-tags tg)
+      (let [ctx (cond-> ctx (:tempo a) (assoc :tempo (:tempo a)))]
+        (loop [ks (map-indexed vector (kids n)) cur t end t]
+          (if (empty? ks)
+            (max cur end)
+            (let [[i k] (first ks)]
+              (if-not (node? k)
+                (recur (rest ks) cur end)
+                (let [ka (attrs k) c2 (assoc ctx :path (conj (:path ctx) i) :dur nil)]
+                  (cond
+                    (some? (:at ka)) (recur (rest ks) cur (max end (place k (+ t (* scale (:at ka))) scale c2 acc)))
+                    (#{:voice :par} (tag k)) (recur (rest ks) cur (max end (place k t scale c2 acc)))
+                    :else (let [e (place k cur scale c2 acc)] (recur (rest ks) e (max end e))))))))))
+
       (par-tags tg)
-      (let [ctx (cond-> ctx (and (= :piece tg) (:tempo a)) (assoc :tempo (:tempo a)))]
+      (let [ctx ctx]
         (reduce (fn [end [i k]]
                   (if (node? k)
                     (let [at (:at (attrs k))
@@ -488,11 +530,26 @@
   "Measured notation of a tree. Returns {:mei text :pieces [{:id :t :staff}]} (ids → beats, for cursors)."
   [tree pre]
   (let [t (explicit (expand tree))
-        vs (voices-of t)
-        per-voice (mapv measures-of vs)
-        nbars (reduce max 1 (map count per-voice))
-        meter-at (fn [i] (or (some (fn [ms] (:meter (attrs (get ms i)))) per-voice)
-                             (some (fn [ms] (some (fn [m] (:meter (attrs m))) (take i ms))) per-voice)
+        ;; the work in sections (or one), each with its voices; a voice is a staff, by name, across sections
+        sections (letfn [(go [n] (cond (not (node? n)) []
+                                       (= :section (tag n)) [n]
+                                       :else (mapcat go (kids n))))]
+                   (let [ss (vec (go t))] (if (seq ss) ss [t])))
+        sec-voices (mapv (fn [sc] (vec (map-indexed (fn [i v] [(or (:name (attrs v)) (str "voice " (inc i))) v]) (voices-of sc))))
+                         sections)
+        staves (vec (distinct (mapcat (fn [vs] (map first vs)) sec-voices)))
+        staff-of (zipmap staves (map inc (range)))
+        bar-list (vec (mapcat (fn [si vs]
+                                (let [mss (mapv (fn [[k v]] [k (measures-of v)]) vs)
+                                      n (reduce max 1 (map (comp count second) mss))]
+                                  (for [i (range n)]
+                                    {:cells (into {} (for [[k ms] mss :let [m (get ms i)] :when m] [k m]))
+                                     :label (when (and (zero? i) (> (count sections) 1)) (:name (attrs (nth sections si))))
+                                     :end (and (= i (dec n)) (< si (dec (count sections))))})))
+                              (range) sec-voices))
+        nbars (count bar-list)
+        meter-at (fn [i] (or (some (fn [j] (some (fn [m] (:meter (attrs m))) (vals (:cells (nth bar-list j)))))
+                                   (reverse (range (inc (max 0 (min i (dec nbars)))))))
                              [4 4]))
         counter (atom 0)
         nid (fn [] (str "m-" pre (swap! counter inc)))
@@ -505,12 +562,12 @@
         where (fn [abs]                      ; absolute beat → [bar beat-in-bar]
                 (let [bar (or (last (filter (fn [i] (<= (get @bar-start i) (+ abs 1e-6))) (range nbars))) 0)]
                   [bar (- abs (get @bar-start bar))]))
-        note-xml (fn [a staff abs id durattr art?]
+        note-xml (fn [a staff abs id durattr art? src]
                    (let [m (midi-of a) mr (js/Math.round m) pc (mod mr 12) dv (js/Math.round (* 100 (- m mr)))
                          acc (case (nth pc-names pc) ("c#" "d#" "f#" "g#" "a#") "s" nil)
                          arts (when art? (let [x (:art a) xs (if (sequential? x) x (when x [x]))]
                                            (seq (keep (fn [k] (get artic-names (keyword k))) xs))))]
-                     (swap! pieces conj {:id id :t abs :staff staff})
+                     (swap! pieces conj {:id id :t abs :staff staff :src src})
                      (str "<note xml:id=\"" id "\" pname=\"" (subs (nth pc-names pc) 0 1) "\" oct=\"" (dec (js/Math.floor (/ mr 12))) "\""
                           (when acc (str " accid=\"" acc "\"")) durattr
                           (when arts (str " artic=\"" (str/join " " arts) "\""))
@@ -557,9 +614,9 @@
                                             durattr (str " dur=\"" du "\"" (when (pos? dots) " dots=\"1\""))
                                             first? (nil? prev-ids)
                                             [x ids] (case tg
-                                                      :rest (let [id (nid)] (swap! pieces conj {:id id :t pabs :staff staff})
+                                                      :rest (let [id (nid)] (swap! pieces conj {:id id :t pabs :staff staff :src (meta k)})
                                                               [(str "<rest xml:id=\"" id "\"" durattr "/>") nil])
-                                                      :note (let [id (nid)] [(note-xml a staff pabs id durattr first?) [id]])
+                                                      :note (let [id (nid)] [(note-xml a staff pabs id durattr first? (meta k)) [id]])
                                                       :chord (let [cid (nid)
                                                                    ns (filter (fn [n] (and (node? n) (= :note (tag n)) (midi-of (attrs n)))) (kids k))
                                                                    ids (mapv (fn [_] (nid)) ns)]
@@ -568,7 +625,7 @@
                                                                            arts (seq (keep (fn [kk] (get artic-names (keyword kk))) xs))]
                                                                        (when (and first? arts) (str " artic=\"" (str/join " " arts) "\"")))
                                                                      ">"
-                                                                     (apply str (map (fn [n id] (note-xml (attrs n) staff pabs id "" first?)) ns ids))
+                                                                     (apply str (map (fn [n id] (note-xml (attrs n) staff pabs id "" first? (meta n))) ns ids))
                                                                      "</chord>")
                                                                 ids]))]
                                         (when (and first? (seq ids)) (marks! a staff b (first ids)))
@@ -578,32 +635,38 @@
                                         (recur (rest ps) (+ pabs (* scale pb)) ids (str acc x)))))]
                           (recur (rest ks) (+ abs (* scale d)) (str out xml)))
                         :else (recur (rest ks) abs out))))))
-        clefs (mapv (fn [v] (let [ps (keep (fn [n] (when (= :note (tag n)) (midi-of (attrs n)))) (tree-seq node? kids v))
+        clefs (mapv (fn [k] (let [ps (for [vs sec-voices [kk v] vs :when (= kk k)
+                                           n (tree-seq node? kids v) :when (= :note (tag n))
+                                           :let [m (midi-of (attrs n))] :when m] m)
                                   mean (if (seq ps) (/ (reduce + ps) (count ps)) 64)]
                               (if (< mean 57) ["F" 4] ["G" 2])))
-                    vs)
-        bars (vec (for [i (range nbars)]
-                    (str "<measure n=\"" (inc i) "\">"
-                         (apply str
-                                (for [[si ms] (map-indexed vector per-voice)
-                                      :let [staff (inc si) m (get ms i)
-                                            [xml _] (if m (layer (kids m) staff i (get @bar-start i) 1) ["" 0])
-                                            [p q] (meter-at i)]]
-                                  (str "<staff n=\"" staff "\"><layer n=\"1\">"
-                                       (if (seq xml) xml (str "<mRest xml:id=\"" (nid) "\"/>"))
-                                       "</layer></staff>")))
-                         (apply str (get @ctrl i))
-                         "</measure>")))
+                    staves)
+        bars (vec (for [i (range nbars)
+                        :let [{:keys [cells label end]} (nth bar-list i)
+                              staff-xml (apply str
+                                               (for [k staves
+                                                     :let [staff (staff-of k) m (get cells k)
+                                                           [xml _] (if m (layer (kids m) staff i (get @bar-start i) 1) ["" 0])]]
+                                                 (str "<staff n=\"" staff "\"><layer n=\"1\">"
+                                                      (if (seq xml) xml (str "<mRest xml:id=\"" (nid) "\"/>"))
+                                                      "</layer></staff>")))]]
+                    (do (when (seq label)
+                          (ctl! i (str "<dir staff=\"1\" tstamp=\"1\" place=\"above\"><rend fontweight=\"bold\">" (esc-xml label) "</rend></dir>")))
+                        (str "<measure n=\"" (inc i) "\"" (when end " right=\"dbl\"") ">"
+                             staff-xml
+                             (apply str (get @ctrl i))
+                             "</measure>"))))
         [p0 q0] (meter-at 0)]
     {:mei (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                "<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">"
                "<meiHead><fileDesc><titleStmt><title>Kairotic</title></titleStmt><pubStmt/></fileDesc></meiHead>"
                "<music><body><mdiv><score>"
                "<scoreDef meter.count=\"" p0 "\" meter.unit=\"" q0 "\" key.sig=\"0\">"
-               "<staffGrp" (when (> (count vs) 1) " bar.thru=\"false\"") ">"
-               (apply str (for [[i [shape line]] (map-indexed vector clefs)]
+               "<staffGrp" (when (> (count staves) 1) " bar.thru=\"false\"") ">"
+               (apply str (for [[i [shape line]] (map-indexed vector clefs)
+                                :let [k (nth staves i)]]
                             (str "<staffDef n=\"" (inc i) "\" lines=\"5\" clef.shape=\"" shape "\" clef.line=\"" line "\""
-                                 (when-let [nm (:name (attrs (nth vs i)))] (str " label=\"" (esc-xml nm) "\""))
+                                 (when (or (> (count staves) 1) (not (str/starts-with? k "voice "))) (str " label=\"" (esc-xml k) "\""))
                                  "/>")))
                "</staffGrp></scoreDef><section>"
                (apply str
@@ -659,3 +722,87 @@
          (group-by first)
          (sort-by key)
          (mapv (fn [[t xs]] [t (vec (mapcat second xs))])))))
+
+;; ───────── editing: operations on paths, and the difference between two trees ─────────
+;; A path is the list of child indices from the root ([] is the root; attributes are not counted).
+;; These operations are the events of a tree box's history (Study 20), so an edit is one node:
+;;   [:set path x]        replaces the node (or string) at path
+;;   [:attrs path {…}]    replaces its attributes
+;;   [:insert path x]     inserts x so that it ends up at path
+;;   [:remove path]       removes the node at path
+
+(defn node-at "The node (or string) at path, or nil." [t path]
+  (reduce (fn [n i] (when (and (node? n) (integer? i)) (get (kids n) i))) t path))
+
+(defn- update-at [t path f]
+  (if (empty? path)
+    (f t)
+    (let [i (first path) ks (kids t)]
+      (if (and (node? t) (integer? i) (< -1 i (count ks)))
+        (with-kids t (assoc ks i (update-at (get ks i) (rest path) f)))
+        (throw (js/Error. (str "no node at " (pr-str path))))))))
+
+(defn apply-op
+  "The tree after one edit operation (or an error if its path does not exist)."
+  [t [op path x]]
+  (let [path (vec path)]
+    (case op
+      :set (update-at t path (constantly x))
+      :attrs (update-at t path (fn [n] (if (node? n) (with-attrs n (or x {})) n)))
+      :insert (do (when (empty? path) (throw (js/Error. "insert needs a parent")))
+                  (update-at t (pop path)
+                             (fn [n] (let [ks (kids n) i (max 0 (min (peek path) (count ks)))]
+                                       (with-kids n (into (conj (subvec ks 0 i) x) (subvec ks i)))))))
+      :remove (do (when (empty? path) (throw (js/Error. "the root cannot be removed")))
+                  (update-at t (pop path)
+                             (fn [n] (let [ks (kids n) i (peek path)]
+                                       (if (< -1 i (count ks)) (with-kids n (into (subvec ks 0 i) (subvec ks (inc i)))) n)))))
+      (throw (js/Error. (str "unknown edit " (pr-str op)))))))
+
+(defn- lcs-pairs
+  "Pairs [i j] of equal elements of a and b, in order (longest common subsequence)."
+  [a b]
+  (let [n (count a) m (count b)
+        dp (make-array (* (inc n) (inc m)))
+        at (fn [i j] (or (aget dp (+ (* i (inc m)) j)) 0))]
+    (doseq [i (range (dec n) -1 -1) j (range (dec m) -1 -1)]
+      (aset dp (+ (* i (inc m)) j)
+            (if (= (nth a i) (nth b j)) (inc (at (inc i) (inc j))) (max (at (inc i) j) (at i (inc j))))))
+    (loop [i 0 j 0 out []]
+      (cond (or (>= i n) (>= j m)) out
+            (= (nth a i) (nth b j)) (recur (inc i) (inc j) (conj out [i j]))
+            (>= (at (inc i) j) (at i (inc j))) (recur (inc i) j out)
+            :else (recur i (inc j) out)))))
+
+(declare diff)
+
+(defn- diff-kids [a b path]
+  (let [anchors (lcs-pairs a b)
+        bounds (concat [[-1 -1]] anchors [[(count a) (count b)]])
+        segments (map (fn [[[i0 j0] [i1 j1]]] [(inc i0) i1 (inc j0) j1]) (partition 2 1 bounds))]
+    ;; from right to left, so that the indices of what is still to do do not move
+    (vec (mapcat (fn [[os oe ns ne]]
+                   (let [olds (subvec a os oe) news (subvec b ns ne) k (min (count olds) (count news))]
+                     (concat
+                      (for [i (range (dec (count olds)) (dec k) -1)] [:remove (conj path (+ os i))])
+                      (for [i (range k (count news))] [:insert (conj path (+ os i)) (nth news i)])
+                      (mapcat (fn [i] (diff (nth olds i) (nth news i) (conj path (+ os i)))) (range (dec k) -1 -1)))))
+                 (reverse segments)))))
+
+(defn diff
+  "The edit operations that turn tree a into tree b, node by node (as few as it reasonably can)."
+  ([a b] (diff a b []))
+  ([a b path]
+   (cond
+     (= a b) []
+     (and (node? a) (node? b) (= (tag a) (tag b)))
+     (vec (concat (diff-kids (kids a) (kids b) path)
+                  (when (not= (attrs a) (attrs b)) [[:attrs path (attrs b)]])))
+     :else [[:set path b]])))
+
+(defn ops-summary "A short description of an edit, for the history and the REPL." [[op path x]]
+  (str (name op) " " (pr-str path)
+       (case op
+         (:set :insert) (str " " (let [t (pr-str x)] (if (> (count t) 60) (str (subs t 0 57) "…") t)))
+         :attrs (str " " (pr-str x))
+         "")))
