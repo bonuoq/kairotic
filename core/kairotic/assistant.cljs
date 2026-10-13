@@ -272,6 +272,11 @@ sound happen only through :audio :effects. Messages are numbers, keywords (:bang
 Faust: `import(\"stdfaust.lib\");`, the standard libraries (os. fi. en. re. ef. si. ba. no. de.),
 hslider/button for parameters, `process = …;`. In ClojureScript source the Faust code is a string:
 escape its double quotes.
+Musical data (notation, composition, CAC) travels as musical trees (kairotic.mt, alias mt/ in sources):
+hiccup vectors such as [:voice [:measure {:meter [4 4]} [:note {:pitch \"c4\" :dur 1}] \"d4/.5 e4\"]]
+(tags :piece :voice :section :seq :par :measure :tuplet {:ratio [3 2]} :chord :note :rest :param :dyn
+:text; any extra key is allowed). A component that makes or changes music sends a tree from :receive;
+use mt/events, mt/transpose, mt/pitch-name … rather than your own parsing. See the example notation/walk.
 
 Work method: the catalog below lists real examples; read the ones close to the request with
 `read_example` before writing. Write, then CHECK before answering: `check_faust` for Faust code,
