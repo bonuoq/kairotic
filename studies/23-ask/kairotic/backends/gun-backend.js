@@ -261,6 +261,9 @@
           if (res.status === 401 || res.status === 403) throw fail("not_granted", "The API key was refused: " + body.slice(0, 200));
           if (res.status === 429) throw fail("rate_limited", "Too many requests or out of credit: " + body.slice(0, 200), text || undefined);
           if (res.status === 400 && /prompt is too long/i.test(body)) throw fail("prompt_too_large", body.slice(0, 200));
+          if (/credit balance|billing/i.test(body)) throw fail("no_credit", body.slice(0, 300));
+          if (res.status === 529 || res.status === 503 || /overloaded/i.test(body)) throw fail("overloaded", res.status + " " + body.slice(0, 200), text || undefined);
+          if (res.status === 404 && /model/i.test(body)) throw fail("no_model", model + ": " + body.slice(0, 200));
           throw fail("upstream_error", res.status + " " + body.slice(0, 300), text || undefined);
         }
         const msg = await res.json();

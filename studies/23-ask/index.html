@@ -3850,6 +3850,9 @@ window.addEventListener("DOMContentLoaded", function () {
     "session_expired" "Sign in to Claude again."
     "refused" "Claude declined this request: try asking it differently."
     "prompt_too_large" "The request is too large."
+    "no_credit" "Your Anthropic account has no credit left (console.anthropic.com → Billing)."
+    "overloaded" "Claude is overloaded right now: try again in a moment."
+    "no_model" "The API does not know the model asked for."
     "tools_unavailable" "This view cannot let Claude try the component."
     (str "Claude could not answer (" code ").")))
 
@@ -3906,7 +3909,7 @@ window.addEventListener("DOMContentLoaded", function () {
              (.catch (fn [e]
                        (let [code (or (.-code e) "error")]
                          (when-not (= code "cancelled")
-                           (ask-log! "err" (if (= code "error") (str "Error: " (or (.-message e) e)) (ask-error-copy code)))))))
+                           (ask-log! "err" (if (= code "error") (str "Error: " (or (.-message e) e)) (str (ask-error-copy code) (when-let [m (.-message e)] (str " — " (ai/cut m 400))))))))))
              (.finally (fn [] (ask-busy! false) (reset! ask-ctl nil) (end-ask!)))))))
    :asking))
 
@@ -4063,7 +4066,7 @@ window.addEventListener("DOMContentLoaded", function () {
             (.catch (fn [e]
                       (let [code (or (.-code e) "error")]
                         (when-not (= code "cancelled")
-                          (ask-log! "err" (if (= code "error") (str "Error: " (or (.-message e) e)) (ask-error-copy code)))))
+                          (ask-log! "err" (if (= code "error") (str "Error: " (or (.-message e) e)) (str (ask-error-copy code) (when-let [m (.-message e)] (str " — " (ai/cut m 400))))))))
                       nil))
             (.finally (fn [] (ask-busy! false) (reset! ask-ctl nil) (end-ask!))))))))
 
