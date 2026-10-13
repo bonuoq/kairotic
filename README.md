@@ -68,6 +68,7 @@ and interface are in English. The [glossary](docs/glossary.md) maps the old name
 | 18 | Learn | the Help tab: what each class does, inlet by inlet, with a help patch (**?** on a selected box, `:help` in a component); tutorials in Spanish and English that open as lessons — each step a point of the history, ◀ ▶ between steps, a branch of your own when you change something ([docs/tutorials/](docs/tutorials/README.md)) |
 | 19 | Time | music as data: musical trees in EDN (hiccup, like bach's llll) with measures, tuplets, chords, dynamics, articulations, texts, parameter changes and reusable fragments; `tree` and `mt` boxes write, transform (transpose, invert, retrograde, augment, canon…) and play them; a score, freqt or canvas shows them live; a theory tutorial ([docs/mt.md](docs/mt.md)) |
 | 20 | Work | the work as a tree: a `:piece` of `:section`s, each with its voices (a staff per voice across sections, section names, double bars); a tree box's history is made of node edits (`tree-edit!`, and the text editor or `tree!` write only the difference), so branches that change different nodes merge; scores edit the tree (click a note: ↑ ↓ + − ← → Delete); a composition tutorial |
+| 21 | Flow | data that flows: messages travel without ▶ (▶ is for sound and time); a tree sends itself when it changes (or the patch around it does); a score sends the edits made on it by a third outlet, back to the tree by a dashed line; loops without time are cut and reported ([docs/flow.md](docs/flow.md)) |
 
 ## Trying it
 
@@ -75,7 +76,7 @@ The studies were published as claude.ai artifacts, which provide the database an
 rooms. Outside claude.ai they work in **local mode** (no saving or sharing):
 
 ```sh
-cd studies/20-work && python3 -m http.server 8000
+cd studies/21-flow && python3 -m http.server 8000
 # open http://localhost:8000 and choose "Try locally, without saving"
 ```
 

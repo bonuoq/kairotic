@@ -241,3 +241,13 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | diferencia | diff (`mt/diff`, `tree!`) |
 | editar desde la partitura | editing from the score (click a note; ↑ ↓ + − ← → Delete) |
 | aviso | warning (a measure that does not add up) |
+
+## Flow · Flujo (Study 21)
+
+| es | en |
+|---|---|
+| los mensajes viajan sin ▶ | messages travel without ▶ (▶: sound and time) |
+| se envía al cambiar | sends itself when it changes (`tree manual`: only on a bang) |
+| salida de ediciones · línea discontinua | edits outlet · dashed line (score → tree) |
+| bucle sin tiempo · cortado | loop without time · cut |
+| volver a aceptar mensajes | `(resume! :bN)` |
