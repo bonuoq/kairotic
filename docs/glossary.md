@@ -230,3 +230,14 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | fragmento · variación | fragment (`:defs`) · `[:use {:ref … :transpose …}]` |
 | transponer · invertir · retrogradar · aumentar | transpose · invert · retrograde · augment |
 | mostrar en vivo · fijar | shown live · `(keep! :bN)` |
+
+## The work as a tree · La obra como árbol (Study 20)
+
+| es | en |
+|---|---|
+| obra · sección | piece · section (`:piece`, `:section`) |
+| camino (de un nodo) | path (child indices from the root) |
+| edición de nodo | node edit (`[:set p x]` `[:attrs p {…}]` `[:insert p x]` `[:remove p]`, `tree-edit!`) |
+| diferencia | diff (`mt/diff`, `tree!`) |
+| editar desde la partitura | editing from the score (click a note; ↑ ↓ + − ← → Delete) |
+| aviso | warning (a measure that does not add up) |
