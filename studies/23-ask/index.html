@@ -3863,6 +3863,12 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (declare link-code)
 
+(defn ensure-classes!
+  "After a whole patch is loaded: the official classes its boxes use come into the work (a definition
+   that was there before the load may have gone with it)."
+  []
+  (doseq [b (vals (:boxes (eng/flat (root-patch))))] (ensure-class! (str (:text b)))))
+
 (defn check-patch-code
   "Promise of {:ok :errors :boxes}: whether patch code (as a link carries it) makes a patch that works —
    only patch calls, classes that exist, lines between ports that exist, Faust that compiles and
@@ -3937,6 +3943,7 @@ window.addEventListener("DOMContentLoaded", function () {
     (cbox/forget-language! "component")
     (cbox/forget-language! "clojurescript")
     (dispatch! [:load p])
+    (ensure-classes!)
     (render-all!)
     code))
 
@@ -4781,6 +4788,7 @@ window.addEventListener("DOMContentLoaded", function () {
     (swap! hist assoc :mode :local :loaded true)
     (let [id (new-node! nil 0 [[:load p]] nil)]
       (swap! world assoc :pos [id 1]))
+    (ensure-classes!)
     (trust-official!)
     (repl-print! "out" (esc (str "; " (if (es?) "Desde un enlace" "From a link") ": «" nm "» (" (if (es?) "local: no se guarda" "local: not saved") ")")))
     (render-all!)))
