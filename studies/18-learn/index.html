@@ -330,7 +330,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
           <span id="transport-info">engine stopped</span>
           <button class="act" id="pres-toggle" title="Presentation: only the presented boxes, where the performer sees them (P)">Present</button>
         </span>
-        <span class="hint">A selected box is edited below it: its arguments and its text (Enter applies) · Code boxes: double-click the code to edit (Ctrl+Enter applies) · their sliders can be dragged · Canvas: drag = stroke, ⇧ straight, ⌥ freehand, click = position</span>
+        <span class="hint">A selected box is edited below it: its arguments and its text (Enter applies) · playable boxes (bang, msg, number, knobs…) are selected by their left grip; their body only plays · Code boxes: double-click the code to edit (Ctrl+Enter applies) · their sliders can be dragged · Canvas: drag = stroke, ⇧ straight, ⌥ freehand, click = position</span>
       </div>
       <div class="lesson" id="lesson" hidden>
         <div class="lesson-head">
@@ -2820,18 +2820,18 @@ window.addEventListener("DOMContentLoaded", function () {
               (start-ctl-drag! (eng/flat-id (conj (cmd-path) id) kid) (:b k) kx ky x y
                                (str "(send-to! " (eng/flat-id [id] kid) " ")))))
 
-        ;; action boxes: the grip moves them, the body acts
+        ;; action boxes: the grip selects and moves them (the inspector appears), the body only plays
         (and (closest e ".box.act") (not (closest e ".grip")) (not (closest e ".port")))
         (let [[id b] (el-box (closest e ".box.act"))]
           (when b
             (.preventDefault e)
-            (swap! ui assoc :sel [:box id] :nsel nil)
+            (swap! ui (fn [u] (assoc u :nsel nil :sel (when-not (= (:sel u) [:box id]) (:sel u)))))
             (cond
               (= "number" (klass (:text b)))
               (swap! ui assoc :numdrag {:id id :y0 y :v0 (number-value id b) :v nil})
               (fn? (:gesture (box-def b)))
               (do (start-ctl-drag! (fid id) b (+ (:x b) grip) (:y b) x y (str "(send! " id " "))
-                  (swap! ui #(-> % (assoc :sel [:box id]) (assoc-in [:ctldrag :id] id))))
+                  (swap! ui assoc-in [:ctldrag :id] id))
               :else (gesture! (str "(send! " id " :bang)")))))
 
         ;; the first click selects the box and redraws it, so the double click is detected here
