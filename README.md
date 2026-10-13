@@ -66,6 +66,7 @@ and interface are in English. The [glossary](docs/glossary.md) maps the old name
 | 16 | Faust | Claude also writes Faust (compiling it to check it), abstractions with faust~ boxes and knobs, and bpatchers whose instances show their knobs as a panel; a catalog of examples by category that Claude reads with a tool ([examples/](examples/README.md)) |
 | 17 | Pages | the same page outside claude.ai: a backend adapter (db, rooms, user, Claude) so it runs on GitHub Pages with [GUN](https://gun.eco) rooms through a [relay](relay/README.md) and Claude with each person's own Anthropic API key ([docs/pages.md](docs/pages.md)) |
 | 18 | Learn | the Help tab: what each class does, inlet by inlet, with a help patch (**?** on a selected box, `:help` in a component); tutorials in Spanish and English that open as lessons — each step a point of the history, ◀ ▶ between steps, a branch of your own when you change something ([docs/tutorials/](docs/tutorials/README.md)) |
+| 19 | Time | music as data: musical trees in EDN (hiccup, like bach's llll) with measures, tuplets, chords, dynamics, articulations, texts, parameter changes and reusable fragments; `tree` and `mt` boxes write, transform (transpose, invert, retrograde, augment, canon…) and play them; a score, freqt or canvas shows them live; a theory tutorial ([docs/mt.md](docs/mt.md)) |
 
 ## Trying it
 
@@ -73,7 +74,7 @@ The studies were published as claude.ai artifacts, which provide the database an
 rooms. Outside claude.ai they work in **local mode** (no saving or sharing):
 
 ```sh
-cd studies/18-learn && python3 -m http.server 8000
+cd studies/19-time && python3 -m http.server 8000
 # open http://localhost:8000 and choose "Try locally, without saving"
 ```
 

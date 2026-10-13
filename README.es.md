@@ -71,6 +71,7 @@ paquete anterior (`kairotic-componentes`), ya sustituido por `kairotic-component
 | 16 | Faust | Claude escribe también Faust (lo compila para comprobarlo), abstracciones con cajas faust~ y knobs, y bpatchers cuyas instancias muestran sus knobs como panel; un catálogo de ejemplos por categorías que Claude lee con una herramienta ([examples/](examples/README.md)) |
 | 17 | Pages | la misma página fuera de claude.ai: un adaptador de backend (base de datos, salas, usuario, Claude) para que funcione en GitHub Pages con salas [GUN](https://gun.eco) a través de un [relay](relay/README.es.md) y Claude con la propia clave de API de Anthropic de cada persona ([docs/pages.es.md](docs/pages.es.md)) |
 | 18 | Learn | la pestaña Help: qué hace cada clase, entrada por entrada, con un patch de ayuda (**?** sobre una caja seleccionada, `:help` en un componente); tutoriales en castellano e inglés que se abren como lecciones — cada paso un punto de la historia, ◀ ▶ entre pasos, una rama tuya cuando cambias algo ([docs/tutorials/](docs/tutorials/README.es.md)) |
+| 19 | Time | la música como datos: árboles musicales en EDN (hiccup, como el llll de bach) con compases, grupos irregulares, acordes, dinámicas, articulaciones, textos, cambios de parámetro y fragmentos reutilizables; las cajas `tree` y `mt` los escriben, transforman (transponer, invertir, retrogradar, aumentar, canon…) y tocan; una score, un freqt o un canvas los muestran en vivo; un tutorial de teoría ([docs/mt.es.md](docs/mt.es.md)) |
 
 ## Probarlo
 
@@ -78,7 +79,7 @@ Los ensayos se publicaron como artefactos de claude.ai, que aportan la base de d
 compartidas. Fuera de claude.ai funcionan en **modo local** (sin guardar ni compartir):
 
 ```sh
-cd studies/18-learn && python3 -m http.server 8000
+cd studies/19-time && python3 -m http.server 8000
 # abre http://localhost:8000 y elige «Try locally, without saving»
 ```
 

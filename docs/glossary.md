@@ -216,3 +216,17 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | tutorial · lección | tutorial · lesson (a local work built step by step) |
 | paso | step (a point of the history) |
 | itinerario | track |
+
+## Musical trees · Árboles musicales (Study 19)
+
+| es | en |
+|---|---|
+| árbol musical | musical tree (kairotic.mt, hiccup EDN) |
+| compás | measure (`:measure {:meter [3 4]}`) |
+| grupo irregular (tresillo…) | tuplet (`:tuplet {:ratio [3 2]}`) |
+| acorde | chord |
+| silencio | rest |
+| regulador | hairpin (`:dyn {:mark "<" :dur 2}`) |
+| fragmento · variación | fragment (`:defs`) · `[:use {:ref … :transpose …}]` |
+| transponer · invertir · retrogradar · aumentar | transpose · invert · retrograde · augment |
+| mostrar en vivo · fijar | shown live · `(keep! :bN)` |
