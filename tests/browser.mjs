@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Runs tests/run.html (built as _site/tests.html) in a headless Chromium: node tests/browser.mjs [url]
 import { chromium } from "playwright";
+import { gestures } from "./gestures.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const browser = await chromium.launch();
@@ -23,6 +24,12 @@ const status = await app.evaluate(() => document.getElementById("status").textCo
 const loaded = await app.evaluate(() => { try { return scittle.core.eval_string("(in-ns 'user) (fn? feedback)") === true; } catch (_) { return false; } });
 if (!loaded || /Error/.test(status)) r.failed.push({ suite: "app", label: "the app loads", detail: status + " " + appErrors.join("; ") });
 r.total += 1;
+// gestures on the patch (tests/gestures.mjs), in the app just loaded
+if (loaded) {
+  const check = (label, ok, detail) => { r.total += 1; if (!ok) r.failed.push({ suite: "gestures", label, detail: detail || "" }); };
+  try { await gestures(app, check); } catch (e) { check("the gestures ran", false, String(e && e.message || e)); }
+  if (appErrors.length) check("no page errors during the gestures", false, appErrors.join("; "));
+}
 await browser.close();
 for (const f of r.failed) console.log("✗", f.suite ? f.suite + " · " : "", f.label, f.detail ? "— " + f.detail : "");
 console.log(r.failed.length ? `${r.failed.length} of ${r.total} failed` : `all ${r.total} passed`);
