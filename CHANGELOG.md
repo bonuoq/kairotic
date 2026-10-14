@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`keyboard`** in `@kairotic/controls`, from the Gallery ([#2](https://github.com/bonuoq/kairotic/discussions/2)):
+  a virtual MIDI keyboard that plugs straight into `synth~` (Hz 0→0, voice ids 1→1) or `faust~` (Hz and
+  `[:gain velocity]`), with a gate for `adsr~`. Press and release follow the mouse; ⇧ builds chords that
+  stay, `hold` latches. Gestures are now asked once more on release (`:up true`), so what stays in the
+  history is a release or the held chord, never a stuck note; ⇧ on the body of such a box reaches the
+  gesture and the grip still selects.
+
 - **`@kairotic/controls`**, a new official package: `knob` moves there (written against the Kairotic
   API) and comes into a work by itself when a box uses it, like `adsr~` or `pan~`. The app no longer
   uses the deprecated npm package `kairotic-components`; its sample components `fifth` and `drift` are

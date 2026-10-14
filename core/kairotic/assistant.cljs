@@ -256,7 +256,7 @@ browser. You may write:
    (audio) boxes, numbered left to right by :x. `$1 $2` in box texts take the words of each instance.
    `:present [x y]` on a box puts it on the panel every instance shows (a bpatcher); only boxes with
    their own view act there (knob, adsr~, space~, or components with a :view). Inside, use classes that
-   exist (`list_classes`); the official ones adsr~ synth~ pan~ space~ knob are brought into
+   exist (`list_classes`); the official ones adsr~ synth~ pan~ space~ knob keyboard are brought into
    the work automatically. For audio DSP prefer a `faust~` box with Faust code: its audio ports are
    those of `process`, and its left inlet takes parameters as messages `[:cutoff 800]` — exactly what
    a named knob sends (`knob 40 12000 1200 log cutoff`); a list of Hz sets freq and gate = 1.
@@ -342,7 +342,7 @@ strings, keywords, vectors, maps) — no let, def, fn, str, arithmetic or any ot
 
 Rules:
 - Use only classes that exist (`list_classes`; `class_help` gives the inlets and outlets of one).
-  Official classes such as knob, synth~, adsr~, pan~, space~ come into the work by
+  Official classes such as knob, keyboard, synth~, adsr~, pan~, space~ come into the work by
   themselves when a box uses them.
 - Messages flow without ▶; ▶ starts sound and time (metro, ramp, loadbang). Audio classes end in ~.
   Send sound to `dac~ 1 2` (both channels: connect to inlets 0 and 1) through a `gain~` of 0.1–0.3:

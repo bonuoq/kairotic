@@ -1,5 +1,6 @@
 ;; keyboard · a virtual MIDI keyboard with press and release tied to the mouse
-;; First made with Claude inside Kairotic (Gallery, discussion #2), reviewed for the library.
+;; Part of @kairotic/controls. Written against the Kairotic API (api/…).
+;; First made with Claude inside Kairotic (Gallery, discussion #2), reviewed for the package.
 (let [;; ── layout (shared by logic and view) ─────────────────
       white? #{0 2 4 5 7 9 11}
       names ["C" "C#" "D" "D#" "E" "F" "F#" "G" "G#" "A" "A#" "B"]

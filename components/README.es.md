@@ -27,7 +27,6 @@ origen): la obra queda completa y suena igual aunque el paquete cambie.
 | `knob` | mando giratorio con vista propia: rango lineal o logarítmico, nombre de parámetro opcional |
 | `fifth` | añade una quinta justa sobre cada frecuencia, como voz propia |
 | `drift` | desafina cada frecuencia con un paseo aleatorio lento, distinto por voz |
-| `keyboard` | teclado MIDI virtual: pulsar y soltar con el ratón, velocidad, acordes con ⇧, `hold`; salidas Hz, voice ids, gate y gain (para synth~ y faust~) |
 
 
 ## Licencia
