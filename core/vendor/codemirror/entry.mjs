@@ -22,7 +22,7 @@ import { EditorState, Prec, Compartment, Transaction } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, indentWithTab, insertNewlineAndIndent } from "@codemirror/commands";
 import { bracketMatching, indentOnInput, syntaxHighlighting, HighlightStyle, StreamLanguage, foldGutter,
          foldKeymap, indentUnit } from "@codemirror/language";
-import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, completionStatus } from "@codemirror/autocomplete";
+import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, completionStatus, currentCompletions } from "@codemirror/autocomplete";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { tags as t } from "@lezer/highlight";
 import { default_extensions as clojureExtensions, complete_keymap as clojureKeymap } from "@nextjournal/clojure-mode";
@@ -115,6 +115,7 @@ function wordsSource(words) {
     const m = cx.matchBefore(wordAt);
     if (!m || (m.from === m.to && !cx.explicit)) return null;
     const typed = cx.state.sliceDoc(m.from, m.to);
+    if (/^[\d.+-]/.test(typed) && !cx.explicit) return null;   // a number being written: nothing to offer
     const inText = new Set();
     const re = /[A-Za-z_][\w.\-~!?*+<>=/$]*/g;
     const text = cx.state.doc.toString();
@@ -180,7 +181,8 @@ export function createEditor({ parent, doc = "", language = "", words = [], onAp
     },
     cursorLine: () => view.state.doc.lineAt(view.state.selection.main.head).number,
     lineCount: () => view.state.doc.lines,
-    completing: () => completionStatus(view.state) !== null,
+    // a list of completions is showing (one that is still being computed, or empty, does not count)
+    completing: () => completionStatus(view.state) === "active" && currentCompletions(view.state).length > 0,
     newline: () => insertNewlineAndIndent(view),
     cursorToEnd: () => view.dispatch({ selection: { anchor: view.state.doc.length }, scrollIntoView: true }),
     setWords: (ws) => view.dispatch({ effects: completion.reconfigure(autocompletion({ override: [wordsSource(ws)] })) }),
