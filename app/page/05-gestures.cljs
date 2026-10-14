@@ -244,9 +244,21 @@
     (let [v (try ((:gesture (box-def b))
                   (assoc (ctl-m* f b) :start start :x (- x ox) :y (- y oy) :dx (- x x0) :dy (- y y0) :fine (boolean fine)))
                  (catch :default e (js/console.error "gesture" e) nil))]
+      (swap! ui update :ctldrag assoc :x x :y y :fine (boolean fine))
       (when (and (some? v) (not= v (:v cd)))
         (swap! ui assoc-in [:ctldrag :v] v)
         (send-flat-quiet! f v)))))
+
+(defn ctl-release-value
+  "On release, the :gesture of the box is asked once more with :up true; what it returns is the value
+  that stays in the history. A :gesture that ignores :up returns the last value, as before."
+  [{:keys [f b ox oy x0 y0 x y fine start v]}]
+  (let [x (or x x0) y (or y y0)
+        u (try ((:gesture (box-def b))
+                (assoc (ctl-m* f b) :start start :x (- x ox) :y (- y oy) :dx (- x x0) :dy (- y y0)
+                       :fine (boolean fine) :up true))
+               (catch :default e (js/console.error "gesture" e) v))]
+    (if (some? u) u v)))
 
 (defn send-to!
   "Sends a message to inlet 0 of a box inside a sub-patch of this view: (send-to! :b7.b4 0.5)."
@@ -256,10 +268,12 @@
     (when-not was-on (transport-info!) (js/requestAnimationFrame (fn [_] (live!))))
     v))
 
-(defn start-ctl-drag! [f b ox oy x y echo]
-  (swap! ui assoc :sel nil :nsel nil
-         :ctldrag {:f f :b b :ox ox :oy oy :x0 x :y0 y :start (second (shown-flat f)) :v nil :echo echo})
-  (ctl-gesture! x y false))
+(defn start-ctl-drag!
+  ([f b ox oy x y echo] (start-ctl-drag! f b ox oy x y echo false))
+  ([f b ox oy x y echo fine]
+   (swap! ui assoc :sel nil :nsel nil
+          :ctldrag {:f f :b b :ox ox :oy oy :x0 x :y0 y :start (second (shown-flat f)) :v nil :echo echo})
+   (ctl-gesture! x y fine)))
 
 ;; ───── selection: one box, several (⇧+click or a frame drawn on the paper), moved or deleted together ─────
 ;; A plain click selects a box and moves it; ⌘/Ctrl+click also opens its inspector (its arguments and text).
@@ -296,12 +310,14 @@
 
 (defn shift-pick
   "The box a ⇧+click adds to (or takes out of) the selection; nil where ⇧ already means something else
-   (on the drawing area of a canvas or a freqt it draws a straight stroke)."
+   (on the drawing area of a canvas or a freqt it draws a straight stroke; on the body of a box with a
+   :gesture it is part of the gesture, fine control or a chord: there the grip selects)."
   [e]
   (when (and (.-shiftKey e) (not (closest e ".port")))
     (when-let [el (closest e ".box")]
       (let [[id b] (el-box el)]
-        (when (and b (not (and (closest e ".mus-body") (#{"canvas" "freqt"} (klass (:text b))))))
+        (when (and b (not (and (closest e ".mus-body") (#{"canvas" "freqt"} (klass (:text b)))))
+                   (not (and (closest e ".box.act") (not (closest e ".grip")) (fn? (:gesture (box-def b))))))
           id)))))
 
 (defn toggle-box!
@@ -390,7 +406,7 @@
             (.preventDefault e)
             (let [[kx ky] (kid-origin (:x b) (:y b) k)]
               (start-ctl-drag! (eng/flat-id (conj (cmd-path) id) kid) (:b k) kx ky x y
-                               (str "(send-to! " (eng/flat-id [id] kid) " ")))))
+                               (str "(send-to! " (eng/flat-id [id] kid) " ") (.-shiftKey e)))))
 
         ;; action boxes: the grip selects and moves them (⌘/Ctrl+click opens the inspector), the body only plays
         (and (closest e ".box.act") (not (closest e ".grip")) (not (closest e ".port")))
@@ -402,7 +418,7 @@
               (= "number" (klass (:text b)))
               (swap! ui assoc :numdrag {:id id :y0 y :v0 (number-value id b) :v nil})
               (fn? (:gesture (box-def b)))
-              (do (start-ctl-drag! (fid id) b (+ (:x b) grip) (:y b) x y (str "(send! " id " "))
+              (do (start-ctl-drag! (fid id) b (+ (:x b) grip) (:y b) x y (str "(send! " id " ") (.-shiftKey e))
                   (swap! ui assoc-in [:ctldrag :id] id))
               :else (gesture! (str "(send! " id " :bang)")))))
 
@@ -562,7 +578,7 @@
       (and drag (:clicked drag))
       (swap! ui assoc :drag nil :sel [:box (:clicked drag)])
       ctldrag
-      (let [v (:v ctldrag) id (:id ctldrag) b (when id (get-in (current) [:boxes id])) d (when b (box-def b))]
+      (let [v (ctl-release-value ctldrag) id (:id ctldrag) b (when id (get-in (current) [:boxes id])) d (when b (box-def b))]
         (swap! ui assoc :ctldrag nil)
         (if (and b (:persist d))
           ;; the change stays in the work: the box is rewritten with its new arguments

@@ -26,6 +26,7 @@ it came from): the work stays complete and sounds the same even if the package c
 | `knob` | rotary control with its own view: linear or logarithmic range, optional parameter name |
 | `fifth` | adds a just fifth above every frequency, as a voice of its own |
 | `drift` | detunes every frequency with a slow random walk, different for every voice |
+| `keyboard` | virtual MIDI keyboard: press and release with the mouse, ⇧ chords, `hold`; outlets Hz, MIDI and gate |
 
 
 ## Licence

@@ -222,6 +222,7 @@
             gesture (when (:gesture m)
                       (try (let [v ((:gesture m) (assoc ctx :start shown :x (/ w 2) :y (/ h 2) :dx 10 :dy -10 :fine false))]
                              {:value (pr-str v)
+                              :on-release (pr-str ((:gesture m) (assoc ctx :start shown :x (/ w 2) :y (/ h 2) :dx 10 :dy -10 :fine false :up true)))
                               :persist (when (:persist m) (comp/args-text m (:class m) (merge (comp/args-for m text) ((:persist m) v))))})
                            (catch :default e {:error (or (.-message e) (str e))})))]
         {:ok (and (empty? missing) (empty? bad) (empty? nan) (not (:error gesture)))
@@ -264,7 +265,8 @@ browser. You may write:
 
 Write in English (names, :doc, comments). Keep it small and readable, in sections like the examples:
 about (:class :license \"MPL-2.0\" :doc :usage :io), arguments (:args, :persist), logic (:receive,
-:gesture), view (:derive, :view as data, :size), audio (:audio), help (:help {:inlets [\"one line per inlet\" …]
+:gesture, called once more with :up true on release: return a release message there if the
+component needs press and release), view (:derive, :view as data, :size), audio (:audio), help (:help {:inlets [\"one line per inlet\" …]
 :outlets […] :try \"something to do with it\"}, shown in the Help tab). Prefer :view (a data template with
 $holes) over :draw. A class name is one word; audio classes end in ~. Do not reuse a core class name.
 :receive is pure: it returns data ({:out … :state … :show … :effects … :later …}); side effects on

@@ -87,8 +87,10 @@ that follows the light or dark theme: `:ink` `:soft` `:accent` `:kairos` `:bg` `
  :gesture (fn [{:keys [start dy fine]}] …)   ; start = what was shown on press, dy since the press
 ```
 
-The value goes to the box's own inlet 0 while you drag, and when you let go it is written in the
-history as `(send! :bN value)`.
+The value goes to the box's own inlet 0 while you drag. When you let go, `:gesture` is called once
+more with `:up true`, and what it returns is written in the history as `(send! :bN value)`. A gesture
+that ignores `:up` (a knob) repeats its last value; one that needs press and release (a keyboard)
+returns a release message, so the history and the other people in a room never keep a note held.
 
 For views that are hard to express as a template there is an escape hatch, `:draw (fn [m] shapes)`.
 
