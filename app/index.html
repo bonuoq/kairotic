@@ -176,6 +176,17 @@ body.present .trust-bar { position: absolute; z-index: 5; left: 6px; top: 6px; m
 .help-view table { border-collapse: collapse; font-size: 12px; }
 .help-view td { padding: 2px 10px 2px 0; vertical-align: top; }
 .help-view td:first-child { font-family: var(--f-code); }
+.help-view .doc { max-width: 760px; }
+.help-view .doc .dh { font-family: var(--f-head); font-weight: 600; color: var(--ink); text-transform: none; letter-spacing: 0; margin: 16px 0 6px; }
+.help-view .doc h2.dh { font-size: 20px; } .help-view .doc h3.dh { font-size: 16px; } .help-view .doc h4.dh { font-size: 14px; } .help-view .doc h5.dh, .help-view .doc h6.dh { font-size: 13px; }
+.help-view .doc pre { font: 12px/1.45 var(--f-code); background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 8px 10px; overflow: auto; white-space: pre; margin: 6px 0; }
+.help-view .doc code { font-family: var(--f-code); font-size: 12px; }
+.help-view .doc ul, .help-view .doc ol { padding-left: 20px; margin: 6px 0; }
+.help-view .doc li { margin: 2px 0; }
+.help-view .doc blockquote { margin: 8px 0; padding: 4px 12px; border-left: 3px solid var(--rule); color: var(--ink-soft); }
+.help-view .doc table.dt { margin: 8px 0; } .help-view .doc table.dt th, .help-view .doc table.dt td { border-bottom: 1px solid var(--rule); padding: 3px 10px 3px 0; text-align: left; font-family: inherit; }
+.help-view .doc a { color: var(--accent); }
+.help-view .doc .doc-try { margin: 0 0 10px; }
 .help-view .chips { display: flex; flex-wrap: wrap; gap: 4px 8px; }
 .help-view .chip { font-family: var(--f-code); font-size: 12px; padding: 1px 6px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); cursor: pointer; }
 .help-view .chip:hover, .help-view .tut:hover { border-color: var(--accent); }

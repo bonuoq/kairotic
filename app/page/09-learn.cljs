@@ -122,6 +122,7 @@
          (if (es?) "Una clase: osc~, ramp, reader~…" "A class: osc~, ramp, reader~…") "\" spellcheck=\"false\">"
          "<datalist id=\"help-classes\">" (apply str (for [c (hlp/known)] (str "<option value=\"" (esc c) "\">"))) "</datalist>"
          "<p><small>" (if (es?) "Selecciona una caja y pulsa <b>?</b> para ver aquí su ayuda." "Select a box and press <b>?</b> to see its help here.") "</small></p>"
+         (docs-index)
          "<h4>" (if (es?) "Tutoriales" "Tutorials") "</h4>"
          (cond
            (= :loading ts) "<p>…</p>"
@@ -139,6 +140,152 @@
          "<h4>" (if (es?) "Componentes" "Components") "</h4><div class=\"chips\">"
          (apply str (for [c (hlp/known)] (str "<span class=\"chip\" data-help=\"" (esc c) "\">" (esc c) "</span>")))
          "</div>")))
+
+;; ───── the documentation in the Help tab (kairotic/docs.mjs, built from docs/) ─────
+
+(declare link-code open-link-work!)
+
+(defonce doc-pages (atom nil))   ; nil · :loading · {"id" {"en" text "es" text}}
+(defonce help-doc (atom nil))    ; the page of the documentation on screen, or nil
+
+(def doc-groups
+  [[{:en "Start here" :es "Para empezar"} ["guide" "concepts"]]
+   [{:en "Topics" :es "Temas"} ["mt" "flow" "ask" "embed" "pages"]]
+   [{:en "Extending" :es "Ampliarlo"} ["writing-a-component"]]
+   [{:en "Reference" :es "Referencia"} ["reference" "glossary"]]
+   [{:en "History" :es "Historia"} ["studies"]]])
+
+(defn load-docs! []
+  (when (nil? @doc-pages)
+    (reset! doc-pages :loading)
+    (-> ((.-kairoticImport js/window) (str "kairotic/docs.mjs?v=" (js/Date.now)))
+        (.then (fn [m] (reset! doc-pages (get (js->clj m) "pages"))))
+        (.catch (fn [e] (reset! doc-pages {})
+                  (repl-print! "err" (esc (str "Could not read the documentation: " (or (.-message e) e)))))))))
+
+(defn doc-text [id]
+  (let [p (when (map? @doc-pages) (get @doc-pages id))]
+    (or (when (es?) (get p "es")) (get p "en"))))
+
+(defn doc-title [id]
+  (or (some->> (doc-text id) (re-find #"(?m)^# (.+)$") second) id))
+
+(def docs-base "https://github.com/bonuoq/kairotic/blob/main/docs/")
+
+(defn md-link
+  "A link of the documentation: to another page (shown here, in its language), to the web (a new tab),
+   or to a file of the repository (on GitHub)."
+  [label href]
+  (let [[_ id es] (re-matches #"(?:\./)?([a-z-]+?)(\.es)?\.md(?:#.*)?" href)]
+    (cond
+      (and id (contains? (set (mapcat second doc-groups)) id))
+      (str "<a href=\"#\" data-doc=\"" id "\" data-lang=\"" (if es "es" "en") "\">" label "</a>")
+      (and id (= id "README")) (str "<a href=\"#\" data-help-index=\"1\">" label "</a>")
+      (str/starts-with? href "#") label
+      :else (let [u (if (re-find #"^https?:" href) href (.-href (js/URL. href docs-base)))]
+              (str "<a href=\"" u "\" target=\"_blank\" rel=\"noopener\">" label "</a>")))))
+
+(defn md-inline
+  "Inline Markdown: `code`, [links](…), **bold**, *italic*."
+  [s]
+  (let [parts (str/split (str s) #"`" -1)]
+    (apply str
+           (map-indexed
+            (fn [i p]
+              (if (odd? i)
+                (str "<code>" (esc p) "</code>")
+                (-> (esc p)
+                    (str/replace #"\[([^\]]+)\]\(([^)\s]+)\)" (fn [[_ l h]] (md-link l (str/replace h "&amp;" "&"))))
+                    (str/replace #"\*\*([^*]+)\*\*" "<b>$1</b>")
+                    (str/replace #"(^|[\s(])\*([^*\s][^*]*)\*" "$1<i>$2</i>"))))
+            parts))))
+
+(defn md-code [lang code]
+  (let [patch? (and (#{"clojure" "clj" ""} lang) (str/includes? code "(box ")
+                    (try (link-code code) true (catch :default _ false)))]
+    (str "<pre>" (esc code) "</pre>"
+         (when patch?
+           (str "<p class=\"doc-try\"><button class=\"act\" data-doc-patch=\"" (esc code) "\">"
+                (if (es?) "Abrir como patch local" "Open as a local patch") "</button></p>")))))
+
+(defn md-block-start? [l]
+  (or (str/starts-with? l "```") (re-matches #"#{1,6} .*" l) (str/starts-with? l "|") (str/starts-with? l "> ")
+      (re-matches #"([-*]|\d+\.) .*" l)))
+
+(defn md->html
+  "The Markdown of docs/ as HTML: headings, paragraphs, lists, tables, quotes, code blocks."
+  [text]
+  (let [ls (vec (str/split-lines (str text))) n (count ls)
+        take-while-from (fn [i pred] (loop [j i] (if (and (< j n) (pred (nth ls j))) (recur (inc j)) j)))]
+    (loop [i 0 out []]
+      (if (>= i n)
+        (apply str out)
+        (let [l (nth ls i)]
+          (cond
+            (str/starts-with? l "```")
+            (let [j (take-while-from (inc i) #(not (str/starts-with? % "```")))]
+              (recur (inc j) (conj out (md-code (str/trim (clojure.core/subs l 3)) (str/join "\n" (subvec ls (inc i) (min j n)))))))
+            (str/blank? l) (recur (inc i) out)
+            (re-matches #"#{1,6} .*" l)
+            (let [k (count (re-find #"^#+" l))]
+              (recur (inc i) (conj out (str "<h" (min 6 (inc k)) " class=\"dh\">" (md-inline (str/trim (clojure.core/subs l k))) "</h" (min 6 (inc k)) ">"))))
+            (str/starts-with? l "|")
+            (let [j (take-while-from i #(str/starts-with? % "|"))
+                  rows (remove #(re-matches #"\|[\s:|-]+\|?" %) (subvec ls i j))
+                  cells (fn [r] (map str/trim (butlast (rest (str/split r #"\|" -1)))))]
+              (recur j (conj out (str "<table class=\"dt\">"
+                                      (apply str (map-indexed (fn [k r] (str "<tr>" (apply str (for [c (cells r)] (str (if (zero? k) "<th>" "<td>") (md-inline c) (if (zero? k) "</th>" "</td>")))) "</tr>")) rows))
+                                      "</table>"))))
+            (str/starts-with? l "> ")
+            (let [j (take-while-from i #(str/starts-with? % ">"))]
+              (recur j (conj out (str "<blockquote>" (md-inline (str/join " " (map #(str/trim (clojure.core/subs % 1)) (subvec ls i j)))) "</blockquote>"))))
+            (re-matches #"([-*]|\d+\.) .*" l)
+            (let [ordered (re-matches #"\d+\. .*" l)
+                  j (take-while-from i #(or (re-matches #"\s*([-*]|\d+\.) .*" %) (re-matches #"\s+\S.*" %)))
+                  items (reduce (fn [acc x]
+                                  (if-let [[_ t] (re-matches #"\s*(?:[-*]|\d+\.) (.*)" x)]
+                                    (conj acc t)
+                                    (conj (pop acc) (str (peek acc) " " (str/trim x)))))
+                                [] (subvec ls i j))]
+              (recur j (conj out (str (if ordered "<ol>" "<ul>") (apply str (for [t items] (str "<li>" (md-inline t) "</li>"))) (if ordered "</ol>" "</ul>")))))
+            :else
+            (let [j (take-while-from (inc i) #(not (or (str/blank? %) (md-block-start? %))))]
+              (recur j (conj out (str "<p>" (md-inline (str/join " " (subvec ls i j))) "</p>"))))))))))
+
+(defn doc-page [id]
+  (str "<p class=\"back\"><a href=\"#\" data-help-index=\"1\">◀ Help</a></p>"
+       (cond
+         (= :loading @doc-pages) "<p>…</p>"
+         (doc-text id) (str "<div class=\"doc\">" (md->html (doc-text id)) "</div>")
+         :else (str "<p>" (esc (str "No page " id)) "</p>"))))
+
+(defn docs-index []
+  (str "<h4>" (if (es?) "Documentación" "Documentation") "</h4>"
+       (if (map? @doc-pages)
+         (apply str (for [[g ids] doc-groups]
+                      (str "<p><b>" (esc (tr g)) "</b></p><ul class=\"tuts\">"
+                           (apply str (for [id ids :when (doc-text id)]
+                                        (str "<li class=\"tut\" data-doc=\"" id "\"><span>" (esc (doc-title id)) "</span></li>")))
+                           "</ul>")))
+         "<p>…</p>")))
+
+(defn show-doc!
+  "Opens a page of the documentation in the Help tab."
+  [id]
+  (load-docs!)
+  (reset! help-cls nil)
+  (reset! help-doc id)
+  (render-help!)
+  (select-tab! "help")
+  (set! (.-scrollTop ($ "help-view")) 0))
+
+(defn docs
+  "The documentation in the Help tab: (docs) its index, (docs \"guide\") a page — guide, concepts, mt,
+   flow, ask, embed, pages, writing-a-component, reference, glossary, studies."
+  ([] (show-help! nil) (mapv first (mapcat (fn [[_ ids]] (map vector ids)) doc-groups)))
+  ([id] (show-doc! (str id)) (str id)))
+
+(add-watch doc-pages ::help (fn [_ _ _ _] (render-help!)))
 
 (defn reference-md
   "The reference of every class with a help page, as Markdown (docs/reference.md is made with it):
@@ -172,12 +319,16 @@
 
 (defn render-help! []
   (when-let [el ($ "help-view")]
-    (set! (.-innerHTML el) (if @help-cls (help-page @help-cls) (help-index)))))
+    (set! (.-innerHTML el) (cond @help-doc (doc-page @help-doc)
+                                 @help-cls (help-page @help-cls)
+                                 :else (help-index)))))
 
 (defn show-help!
   "Opens the Help tab: the page of a class, or the index (nil)."
   [cls]
   (load-tutorials!)
+  (load-docs!)
+  (reset! help-doc nil)
   (reset! help-cls (when (seq cls) cls))
   (render-help!)
   (select-tab! "help")
@@ -185,7 +336,7 @@
 
 (defn refresh-help!
   "Draws the Help tab as it is (the index, or the page it was on), loading the tutorials if needed."
-  [] (load-tutorials!) (render-help!))
+  [] (load-tutorials!) (load-docs!) (render-help!))
 
 (add-watch tutorials ::help (fn [_ _ _ _] (render-help!)))
 
@@ -358,6 +509,15 @@
     (let [t (.-target e)]
       (cond
         (.closest t "[data-help-index]") (do (.preventDefault e) (show-help! nil))
+        (.closest t "[data-doc]")
+        (let [el (.closest t "[data-doc]") l (.getAttribute el "data-lang")]
+          (.preventDefault e)
+          (when (and l (not= l (name @lang))) (reset! lang (keyword l)) (render-lesson!))
+          (show-doc! (.getAttribute el "data-doc")))
+        (.closest t "[data-doc-patch]")
+        (try (open-link-work! (if (es?) "Documentación" "Documentation")
+                              (link-code (.getAttribute (.closest t "[data-doc-patch]") "data-doc-patch")))
+             (catch :default x (repl-print! "err" (esc (str "; " (or (.-message x) x))))))
         (.closest t "[data-help-open]") (open-help-patch! (.getAttribute (.closest t "[data-help-open]") "data-help-open"))
         (.closest t "[data-help]") (show-help! (.getAttribute (.closest t "[data-help]") "data-help"))
         (.closest t "[data-tut]") (open-tutorial! (.getAttribute (.closest t "[data-tut]") "data-tut"))
