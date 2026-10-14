@@ -74,6 +74,10 @@ Every gesture is an event of the history, at the bottom of the page.
   inlet by inlet, with a help patch, and the **tutorials**. Select a box and press **?** (or F1) to see
   its page; `(docs "concepts")` in the REPL opens a page of the documentation.
 
+- **Feedback** — during the alpha: report what fails, propose an idea or ask a question. It writes a
+  GitHub issue for you, with the patch on screen, recent errors and your browser if you want; you
+  publish it on GitHub. The open issues are listed, so you can add to one instead of writing it twice.
+
 ## 6. Music as data
 
 A `tree` box holds music in EDN — voices, measures, notes, chords, dynamics:

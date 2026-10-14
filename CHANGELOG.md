@@ -31,6 +31,11 @@ From here on the app grows on itself: components, packages and features added to
   any page; links carry the patch as data (`?code`, `?src`) or a description for Claude (`?ask`), never
   a key.
 
+### Since the first build of 0.1.0-alpha
+
+- The documentation inside the app, in the Help tab.
+- A Feedback tab: bugs, ideas and questions written as GitHub issues.
+
 ### New in this version (since Study 23)
 
 - One app in `app/` (the page split in `app/page/*.cljs`) built with `core/` into Pages and the

@@ -75,6 +75,10 @@ Cada gesto es un evento de la historia, abajo en la página.
   entrada por entrada, con un patch de ayuda, y los **tutoriales**. Selecciona una caja y pulsa **?** (o
   F1) para ver su página; `(docs "concepts")` en la REPL abre una página de la documentación.
 
+- **Feedback** — durante la alfa: cuenta qué falla, propón una idea o haz una pregunta. Escribe por ti
+  un issue de GitHub, con el patch en pantalla, los errores recientes y tu navegador si quieres; tú lo
+  publicas en GitHub. Se listan los issues abiertos, para sumarte a uno en vez de escribirlo dos veces.
+
 ## 6. La música como datos
 
 Una caja `tree` guarda música en EDN —voces, compases, notas, acordes, dinámicas:
