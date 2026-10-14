@@ -9,14 +9,28 @@ export const cljs = (page, src) => page.evaluate((s) => {
   catch (e) { return "ERR " + (e.message || e); }
 }, src);
 
-// the centre of a box on screen, scrolled into view first
-const boxCentre = (page, id) => page.evaluate((id) => {
-  const el = document.querySelector('#scene .box[data-box="' + id + '"] rect.body');
-  if (!el) return null;
-  el.scrollIntoView({ block: "center", inline: "center" });
-  const r = el.getBoundingClientRect();
-  return [r.x + r.width / 2, r.y + r.height / 2];
-}, id);
+// the next painted frame (layout and scroll settled)
+const settled = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+
+// boxes drawn on the patch (their bodies are in the scene)
+const drawn = (page, ids) => page.waitForFunction((ids) =>
+  ids.every((id) => document.querySelector('#scene .box[data-box="' + id + '"] rect.body')), ids, { timeout: 10000 });
+
+// the centre of a box on screen, scrolled into view first (measured once the scroll is painted)
+const boxCentre = async (page, id) => {
+  const found = await page.evaluate((id) => {
+    const el = document.querySelector('#scene .box[data-box="' + id + '"] rect.body');
+    if (!el) return false;
+    el.scrollIntoView({ block: "center", inline: "center" });
+    return true;
+  }, id);
+  if (!found) return null;
+  await settled(page);
+  return page.evaluate((id) => {
+    const r = document.querySelector('#scene .box[data-box="' + id + '"] rect.body').getBoundingClientRect();
+    return [r.x + r.width / 2, r.y + r.height / 2];
+  }, id);
+};
 
 // a point of the patch (its own coordinates) on screen
 const onScreen = (page, x, y) => page.evaluate(([x, y]) => {
@@ -34,12 +48,14 @@ const drag = async (page, [x0, y0], [x1, y1], modifier) => {
   await page.mouse.move(x1, y1, { steps: 4 });
   await page.mouse.up();
   if (modifier) await page.keyboard.up(modifier);
+  await settled(page);
 };
 
 const click = async (page, [x, y], modifier) => {
   if (modifier) await page.keyboard.down(modifier);
   await page.mouse.click(x, y);
   if (modifier) await page.keyboard.up(modifier);
+  await settled(page);
 };
 
 export async function gestures(page, check) {
@@ -56,7 +72,10 @@ export async function gestures(page, check) {
   check("two boxes are created", Boolean(a && b), ids);
   if (!(a && b)) return;
   const na = a.slice(1), nb = b.slice(1);
-  await page.waitForTimeout(100);
+  // both drawn before any gesture (a fixed wait raced with rendering on slow runners)
+  const ready = await drawn(page, [na, nb]).then(() => true, () => false);
+  check("both boxes are drawn", ready);
+  if (!ready) return;
 
   // a frame from an empty place touches both: both are selected
   await boxCentre(page, na);
