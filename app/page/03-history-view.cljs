@@ -403,22 +403,30 @@
 
 (defn gesture! [code] (repl-eval! code :patch))
 
+(defn repl-submit!
+  "Evaluates what is written in the REPL line, keeps it in its history and empties the line."
+  []
+  (let [code (str/trim (repl-text))]
+    (when (seq code)
+      (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
+      (set-repl-text! "")
+      (repl-eval! code :repl))))
+
+(defn repl-recall!
+  "↑ / ↓ in the REPL line: the earlier or later expressions written there."
+  [up?]
+  (let [{:keys [hist hidx]} @ui n (count hist)]
+    (when (pos? n)
+      (let [i (if up?
+                (if (nil? hidx) (dec n) (max 0 (dec hidx)))
+                (if (nil? hidx) nil (if (>= (inc hidx) n) nil (inc hidx))))]
+        (swap! ui assoc :hidx i)
+        (set-repl-text! (if (nil? i) "" (nth hist i)))
+        true))))
+
 (.addEventListener ($ "repl-in") "keydown"
   (fn [e]
-    (let [k (.-key e) inp ($ "repl-in")]
+    (let [k (.-key e)]
       (cond
-        (= k "Enter")
-        (let [code (str/trim (.-value inp))]
-          (when (seq code)
-            (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
-            (set! (.-value inp) "")
-            (repl-eval! code :repl)))
-        (or (= k "ArrowUp") (= k "ArrowDown"))
-        (let [{:keys [hist hidx]} @ui n (count hist)]
-          (when (pos? n)
-            (.preventDefault e)
-            (let [i (if (= k "ArrowUp")
-                      (if (nil? hidx) (dec n) (max 0 (dec hidx)))
-                      (if (nil? hidx) nil (if (>= (inc hidx) n) nil (inc hidx))))]
-              (swap! ui assoc :hidx i)
-              (set! (.-value inp) (if (nil? i) "" (nth hist i))))))))))
+        (= k "Enter") (repl-submit!)
+        (or (= k "ArrowUp") (= k "ArrowDown")) (when (repl-recall! (= k "ArrowUp")) (.preventDefault e))))))

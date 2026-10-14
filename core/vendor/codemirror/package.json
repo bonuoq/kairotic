@@ -1,0 +1,21 @@
+{
+  "name": "kairotic-editor-bundle",
+  "private": true,
+  "description": "The code editor of Kairotic: CodeMirror 6 with Clojure (nextjournal clojure-mode) and Faust, bundled into one ES module (core/vendor/codemirror.mjs) by build.mjs. Rebuilt by .github/workflows/vendor.yml.",
+  "license": "MPL-2.0",
+  "type": "module",
+  "scripts": { "build": "node build.mjs" },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/search": "^6.5.0",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.14",
+    "@lezer/highlight": "^1.2.1",
+    "@nextjournal/clojure-mode": "0.3.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

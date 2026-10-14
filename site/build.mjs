@@ -33,6 +33,10 @@ function assemble(out) {
   cpSync(join(root, "app", "page"), join(out, "page"), { recursive: true });
   for (const f of readdirSync(join(root, "core", "kairotic"))) cpSync(join(root, "core", "kairotic", f), join(out, "kairotic", f));
   cpSync(join(root, "core", "backends"), join(out, "kairotic", "backends"), { recursive: true });
+  // the code editor, bundled by .github/workflows/vendor.yml (the page falls back to a text area without it)
+  mkdirSync(join(out, "kairotic", "vendor"), { recursive: true });
+  if (existsSync(join(root, "core", "vendor", "codemirror.mjs")))
+    cpSync(join(root, "core", "vendor", "codemirror.mjs"), join(out, "kairotic", "vendor", "codemirror.mjs"));
   for (const p of readdirSync(join(root, "packages"), { withFileTypes: true }))
     if (p.isDirectory() && existsSync(join(root, "packages", p.name, "dist", "index.mjs")))
       cpSync(join(root, "packages", p.name, "dist", "index.mjs"), join(out, "kairotic", "packages", p.name + ".mjs"));

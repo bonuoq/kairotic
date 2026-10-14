@@ -162,7 +162,7 @@ body.present .trust-bar { position: absolute; z-index: 5; left: 6px; top: 6px; m
 #canvas .flash { fill: var(--kairos); fill-opacity: 0.35; pointer-events: none; }
 #canvas text.value { font-family: var(--f-code); font-size: 12.5px; fill: var(--ink); pointer-events: none; }
 #canvas .wire.buffer { stroke-dasharray: 6 3; stroke: var(--kairos); }
-#canvas .code-area { fill: var(--sheet); cursor: text; }
+#canvas .code-area { fill: var(--sheet); cursor: pointer; }
 #canvas .box text.code { font-family: var(--f-code); font-size: 11px; fill: var(--ink); white-space: pre; pointer-events: none; }
 #canvas .box text.lbl.st-ok { font-size: 11px; fill: var(--ok); }
 #canvas .box text.lbl.st-err { font-size: 11px; fill: var(--error); pointer-events: auto; }
@@ -230,9 +230,32 @@ body.present .trust-bar { position: absolute; z-index: 5; left: 6px; top: 6px; m
 .lesson-note code, .help-view code.run { font-family: var(--f-code); font-size: 12px; background: var(--box); border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px; }
 .lesson-note code.run, .help-view code.run { cursor: pointer; }
 .comp-list input { flex: 1; min-width: 0; font: inherit; font-family: var(--f-code); font-size: 12px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); }
-.code-edit { position: absolute; z-index: 5; box-sizing: border-box; font-family: var(--f-code); font-size: 12px; line-height: 1.45;
-             padding: 8px 10px; border: 2px solid var(--accent); border-radius: 4px; background: var(--box); color: var(--ink);
-             outline: none; resize: both; white-space: pre; tab-size: 2; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); }
+/* the code editor (issue #8): a window over the page, moved by its bar, resized by its corner */
+.code-win { position: fixed; z-index: 40; display: flex; flex-direction: column; box-sizing: border-box; min-width: 300px; min-height: 180px;
+            max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); resize: both; overflow: hidden;
+            background: var(--box); color: var(--ink); border: 1px solid var(--rule); border-radius: 8px;
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.08); }
+.code-win:focus-within { border-color: var(--accent); }
+.cw-bar { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; background: var(--sheet); border-bottom: 1px solid var(--rule);
+          cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
+.cw-bar:active { cursor: grabbing; }
+.cw-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--f-code); font-size: 12.5px; }
+.cw-title b { font-weight: 600; color: var(--accent); }
+.cw-lang { font-family: var(--f-head); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+           border: 1px solid var(--rule); border-radius: 3px; padding: 0 5px; }
+.cw-bar .cw-x { padding: 2px 9px; font-size: 15px; line-height: 1; }
+.cw-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 12px; font-size: 12.5px;
+              background: var(--accent-soft); border-bottom: 1px solid var(--rule); }
+.cw-confirm[hidden] { display: none; }
+.cw-body { flex: 1; min-height: 0; overflow: hidden; }
+.cw-body .cm-editor { height: 100%; }
+.cw-plain { box-sizing: border-box; width: 100%; height: 100%; border: 0; outline: none; resize: none; padding: 8px 10px;
+            font-family: var(--f-code); font-size: 12.5px; line-height: 1.5; background: var(--box); color: var(--ink); white-space: pre; tab-size: 2; }
+.cw-foot { padding: 4px 12px; font-family: var(--f-code); font-size: 11.5px; color: var(--ink-soft); background: var(--sheet);
+           border-top: 1px solid var(--rule); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cw-foot.err { color: var(--error); }
+#canvas .code-area.open { fill: var(--accent-soft); stroke: var(--accent); }
+#canvas .box text.code.lines { fill: var(--ink-soft); font-size: 10.5px; }
 .transport { display: inline-flex; align-items: center; gap: 4px; }
 .transport button { font-family: var(--f-code); min-width: 34px; }
 .transport button.on { background: var(--ok); border-color: var(--ok); color: #fff; }
@@ -388,6 +411,15 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
 .repl-line label { font-family: var(--f-code); color: var(--accent); font-weight: 600; }
 #repl-in { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 13px; padding: 6px 0; }
 #repl-in:focus { outline: none; }
+/* the Code tab and the REPL line, with the code editor (14-editor.cljs) */
+.code-host { flex: 1; min-height: 300px; max-height: 560px; display: flex; min-width: 0; }
+.code-host .cm-editor { flex: 1; min-width: 0; background: transparent !important; }
+.code-host .cm-gutters { background: transparent !important; }
+.repl-host { flex: 1; min-width: 0; max-height: 30vh; overflow: auto; }
+.repl-host .cm-editor { background: transparent !important; font-size: 13px; }
+.repl-host .cm-content { padding: 5px 0 !important; }
+.repl-host .cm-line { padding: 0; }
+.repl-host .cm-placeholder { color: var(--ink-soft); }
 .help { padding: 6px 12px 10px; font-size: 12px; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .help code { font-family: var(--f-code); color: var(--ink); }
 </style>
@@ -427,7 +459,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
           <button class="act embed-only" id="fs-btn" title="Fullscreen">⛶</button>
           <a class="act embed-only" id="open-full" target="_blank" rel="noopener" title="Open it in Kairotic, with the whole editor">Kairotic ↗</a>
         </span>
-        <span class="hint">Messages travel without ▶ (▶: sound and time) · ⌘/Ctrl+click a box to edit it below: its arguments and its text (Enter applies) · ⇧+click or a frame drawn on the paper selects several: drag them together, Delete removes them, ⌘/Ctrl+A selects all · playable boxes (bang, msg, number, knobs…) are selected by their left grip; their body only plays · Code boxes: double-click the code to edit (Ctrl+Enter applies) · their sliders can be dragged · Canvas: drag = stroke, ⇧ straight, ⌥ freehand, click = position</span>
+        <span class="hint">Messages travel without ▶ (▶: sound and time) · ⌘/Ctrl+click a box to edit it below: its arguments and its text (Enter applies) · ⇧+click or a frame drawn on the paper selects several: drag them together, Delete removes them, ⌘/Ctrl+A selects all · playable boxes (bang, msg, number, knobs…) are selected by their left grip; their body only plays · Code boxes: double-click their code row to open the editor (a window you can move; Ctrl/⌘+Enter applies) · their sliders can be dragged · Canvas: drag = stroke, ⇧ straight, ⌥ freehand, click = position</span>
       </div>
       <div class="embed-pop" id="embed-pop" hidden>
         <div class="ep-head">
@@ -734,7 +766,7 @@ window.addEventListener("DOMContentLoaded", function () {
   var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/mt.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
               "kairotic/api.cljs", "kairotic/code.cljs", "kairotic/mtboxes.cljs", "kairotic/faust.cljs", "kairotic/library.cljs", "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs",
               "kairotic/signal.cljs", "kairotic/links.cljs"];
-  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs"];
+  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs"];
   Promise.all(mods.map(function (m) {
     return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
   }))

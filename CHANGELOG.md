@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Code editor** ([#8](https://github.com/bonuoq/kairotic/issues/8)): code boxes (`faust~`, `script`,
+  `component`, `tree`) are compact in the patch — one row of their code, their status and their
+  parameters — and their code opens with a double-click in a window you can move and resize. Inside is
+  CodeMirror 6: line numbers, automatic indentation, matching and closing brackets, structural editing
+  for Clojure (`@nextjournal/clojure-mode`), Faust highlighting, search and completion (Faust libraries,
+  `api/…`, `clojure.core`, tree tags). Ctrl/⌘+Enter applies and keeps it open. The editor is one
+  vendored module (`core/vendor/codemirror.mjs`, built by the `vendor` workflow), so Kairotic stays
+  static; without it, a plain text area does the same.
+  The **Code tab** and the **REPL** use the same editor: in the REPL, Enter evaluates once the brackets
+  are closed (otherwise a new line; ⇧+Enter always), ↑ ↓ bring back earlier expressions.
 - **Jams carry what is played** ([#11](https://github.com/bonuoq/kairotic/issues/11)): a knob turned,
   a number dragged or a `msg` clicked in a jam is played in the engines of the others too, not only
   drawn. And a control whose value stays in its text (`knob`) sends that value when the text changes

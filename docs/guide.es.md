@@ -32,7 +32,11 @@ a la derecha, vuelve a abrir esta ventana.
 - **Mover** una caja arrastrándola. Las cajas para tocar —`bang`, `msg`, `number`, knobs— se seleccionan
   por el asa de su izquierda; su cuerpo es para tocar.
 - **Editar el texto** de una caja: doble clic. Cajas de código (`faust~`, `script`, `component`, `tree`):
-  doble clic en el código, y Ctrl+Intro lo aplica.
+  en el patch muestran una fila de su código; con doble clic se abre el **editor de código**, una ventana
+  que se mueve por su barra y cambia de tamaño por su esquina, con números de línea, sangría automática,
+  paréntesis emparejados, edición estructural para Clojure (Ctrl+→ / Ctrl+← saltan entre formas, Alt+↑
+  amplía la selección), búsqueda (Ctrl/⌘+F) y autocompletado. Ctrl/⌘+Intro aplica el código y deja la
+  ventana abierta; Esc la cierra, preguntando antes si algo no está aplicado.
 
 Un primer patch:
 
@@ -48,6 +52,10 @@ Un primer patch:
 Puedes hacerlo con el ratón, escribirlo en la pestaña **Code** (Run · Ctrl+Intro) o en la REPL de abajo,
 una llamada cada vez. Las tres cosas son la misma obra: lo que dibujas aparece como código y lo que
 escribes aparece como cajas.
+
+La pestaña Code y la REPL usan el mismo editor que las cajas de código (paréntesis que se cierran y se
+emparejan, autocompletado de los comandos). En la REPL, Intro evalúa cuando todos los paréntesis están
+cerrados —si no, empieza una línea nueva, y ⇧+Intro siempre lo hace— y ↑ ↓ recuperan lo escrito antes.
 
 ## 3. Sonido y tiempo
 

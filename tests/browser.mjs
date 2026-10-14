@@ -3,6 +3,7 @@
 import { chromium } from "playwright";
 import { gestures } from "./gestures.mjs";
 import { perform } from "./perform.mjs";
+import { editor } from "./editor.mjs";
 import { jam } from "./jam.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
@@ -31,10 +32,14 @@ if (loaded) {
   const check = (label, ok, detail) => { r.total += 1; if (!ok) r.failed.push({ suite: "gestures", label, detail: detail || "" }); };
   try { await gestures(app, check); } catch (e) { check("the gestures ran", false, String(e && e.message || e)); }
   try { await perform(app, check); } catch (e) { check("the Perform tests ran", false, String(e && e.message || e)); }
+  try { await editor(app, check); } catch (e) { check("the editor tests ran", false, String(e && e.message || e)); }
   try { await jam(app, check); } catch (e) { check("the jam tests ran", false, String(e && e.message || e)); }
   if (appErrors.length) check("no page errors during the gestures", false, appErrors.join("; "));
 }
 await browser.close();
 for (const f of r.failed) console.log("✗", f.suite ? f.suite + " · " : "", f.label, f.detail ? "— " + f.detail : "");
+// on GitHub Actions, each failure is also an annotation of the run (readable without the log)
+if (process.env.GITHUB_ACTIONS)
+  for (const f of r.failed) console.log(`::error title=${(f.suite || "test").replace(/[:,\n]/g, " ")}::${(f.label + (f.detail ? " — " + f.detail : "")).replace(/\n/g, " ").slice(0, 900)}`);
 console.log(r.failed.length ? `${r.failed.length} of ${r.total} failed` : `all ${r.total} passed`);
 process.exit(r.failed.length || !r.total ? 1 : 0);

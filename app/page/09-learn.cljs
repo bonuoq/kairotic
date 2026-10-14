@@ -39,7 +39,7 @@
 (defn select-tab! [tab] (when-let [t ($ (str "tab-" tab))] (.click t)))
 
 (defn to-repl! [code]
-  (let [inp ($ "repl-in")] (set! (.-value inp) code) (.focus inp)))
+  (set-repl-text! code) (focus-repl!))
 
 ;; ───── tutorials (kairotic/tutorials.mjs, built from docs/tutorials) ─────
 
