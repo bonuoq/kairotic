@@ -397,21 +397,19 @@
 (def box-class-re #"\(box\s+(?::\S+\s+)?\"([^\"\s]+)")
 
 (defn lesson-definitions
-  "Promise of [[name classes source] …]: the official packages and single components a lesson's boxes
+  "Promise of [[name classes source] …]: the official packages a lesson's boxes
    need and the work does not define yet, fetched before the lesson is built (so that their
    definitions are part of its history, in order, and not late arrivals on a branch of their own)."
   [l]
   (let [ks (distinct (for [st (:steps l) c (:code st) [_ k] (re-seq box-class-re c)] k))
         ;; a lesson starts from an empty history: every class of a package is needed, even if the
         ;; work open before it had defined it
-        pkgs (distinct (keep (fn [k] (first (lib/package-of k))) ks))
-        singles (filter (fn [k] (and (lib/single-of k) (not (lib/package-of k)))) ks)]
-    (if (and (empty? pkgs) (empty? singles))
+        pkgs (distinct (keep (fn [k] (first (lib/package-of k))) ks))]
+    (if (empty? pkgs)
       (js/Promise.resolve [])
       (-> (js/Promise.all
            (into-array
-            (concat (for [p pkgs] (.then (lib/import-package p) (fn [[m origin]] [p (set (map :class (:components m))) (lib/package-source m origin)])))
-                    (for [k singles] (.then (lib/import-single k) (fn [[m origin]] [k #{k} (str (lib/header m origin) (:source m))]))))))
+            (for [p pkgs] (.then (lib/import-package p) (fn [[m origin]] [p (set (map :class (:components m))) (lib/package-source m origin)])))))
           (.then (fn [arr] (vec arr)))))))
 
 (declare build-lesson!)
@@ -442,7 +440,7 @@
   (lobby-presence!)
   (swap! hist assoc :mode :local :loaded true)
   (repl-print! "out" (esc (str "; " (if (es?) "Lección" "Lesson") ": «" (tr (:title l)) "»")))
-  (let [defs (atom (:defs l))   ; [[name classes source] …] of packages and singles not yet in the work
+  (let [defs (atom (:defs l))   ; [[name classes source] …] of packages not yet in the work
         ;; definition boxes get ids beyond any the lesson writes (lessons name their boxes)
         free-id (atom (inc (reduce max 0 (for [st (:steps l) c (:code st) [_ n] (re-seq #":b(\d+)" c)] (js/parseInt n 10)))))
         steps (reduce (fn [acc st]

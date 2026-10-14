@@ -118,7 +118,7 @@ Escribe las secciones en este orden, con una línea de comentario antes de cada 
 ```
 
 Solo la lógica es código; el resto son datos que se pueden leer, comprobar y cambiar sin ejecutar
-nada. Lee la [knob](../components/src/knob.cljs) completa.
+nada. Lee la [knob](../packages/controls/src/knob.cljs) completa (en `@kairotic/controls`).
 
 Las utilidades disponibles en la lógica vienen de la **API de Kairotic**, `api/…` (desde el Ensayo 14;
 antes eran `comp/…`): `api/clamp`, `api/nice` (redondeo razonable), `api/num-of`, `api/to-unit` y
@@ -219,8 +219,9 @@ El ejemplo es código de patch, un gesto por línea: al abrir el patch de ayuda 
 
 - **En la obra:** la caja `component` viaja con la obra y su historia.
 - **En la biblioteca del espacio:** `(publish :bN)` y, en otra obra, `(use! "clase")`.
-- **En npm:** añade `src/<nombre>.cljs` a [`components/`](../components/README.es.md) y publica una
-  versión; cualquiera podrá hacer `(import! "npm:kairotic-components@x.y.z/dist/<nombre>.mjs")`.
+- **En npm:** publica un módulo que exporte el componente (`export default {class, version, author,
+  license, doc, source}`, el formato que escribe [`packages/build.mjs`](../packages/build.mjs));
+  cualquiera podrá hacer `(import! "npm:<tu-paquete>@x.y.z/dist/<nombre>.mjs")`.
 - **En un paquete oficial** (Ensayo 14): añádelo a `packages/<categoría>/src/` (ver
   [`packages/`](../packages/README.es.md)). Un paquete viaja como una sola caja `component`, y escribir
   una de sus clases en una obra lo trae.

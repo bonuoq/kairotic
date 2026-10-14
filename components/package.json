@@ -1,7 +1,7 @@
 {
   "name": "kairotic-components",
   "version": "0.1.2",
-  "description": "Kairotic components: ClojureScript definitions published as modules to import into a work",
+  "description": "Deprecated: replaced by @kairotic/controls. Kairotic components: ClojureScript definitions published as modules to import into a work",
   "author": "bonuoq",
   "license": "MPL-2.0",
   "repository": {

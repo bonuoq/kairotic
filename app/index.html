@@ -588,7 +588,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
     <div id="repl-out" aria-live="polite"></div>
     <div class="repl-line">
       <label for="repl-in">λ</label>
-      <input id="repl-in" autocomplete="off" spellcheck="false" placeholder='(import! "kairotic/library/knob.mjs")  ·  (publish :b5)  ·  (help "fifth")'>
+      <input id="repl-in" autocomplete="off" spellcheck="false" placeholder='(add-package! "@kairotic/controls")  ·  (publish :b5)  ·  (help "knob")'>
     </div>
     <div class="help">
       <span><code>(stroke :b1 [[t hz] …])</code> · <code>(note :b1 t "c4" dur)</code> · <code>(degree :b1 t n dur)</code> · <code>(melody :b1 "c4/1 e4/.5")</code></span>
@@ -597,7 +597,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
       <span><code>(play)</code> · <code>(stop)</code> · <code>(send! :b5 2.5)</code></span>
       <span><code>(components)</code> · <code>(help "ramp")</code> · <code>(code :b6 "process = …;")</code> · <code>(source :b6)</code> · <code>(compilation :b6)</code> · <code>(trust-scripts true)</code></span>
       <span>code boxes: <code>faust~</code> (Faust, AudioWorklet) · <code>script [inlets] [outlets]</code> (ClojureScript: <code>(fn [m] {:out [[0 …]]})</code>) · <code>component</code> (defines a class: <code>{:class "x" :io [1 1] :receive (fn [m] …)}</code>)</span>
-      <span><code>(import! "kairotic/library/drift.mjs")</code> · <code>(import! "npm:package@1.0.0/comp.mjs")</code> · <code>(publish :b5)</code> · <code>(library)</code> · <code>(use! "fifth")</code></span>
+      <span><code>(import! "kairotic/packages/controls.mjs")</code> · <code>(import! "npm:package@1.0.0/comp.mjs")</code> · <code>(publish :b5)</code> · <code>(library)</code> · <code>(use! "my-class")</code></span>
       <span>sub-patches: <code>patch [name]</code> (double-click to open, ⌥ double-click to rename) · inside: <code>inlet</code> <code>outlet</code> <code>inlet~</code> <code>outlet~</code> · <code>(enter :b5)</code> · <code>(up)</code> · <code>(top)</code> · <code>(inside :b5 (box …) (connect …))</code> · <code>(abstract :b5 "voice")</code> · abstractions take <code>$1 $2</code></span>
       <span>canvas (any data): <code>(axis :b6 :y -1 1)</code> · <code>(axis :b6 :x 20 20000 :log)</code> · <code>(grid-y :b6 0.25)</code> · <code>reader y</code> reads along Y · <code>(read-at :b6 :y 0.5)</code> · freqt: frequency over time, with tunings · audio: <code>dac~ 1 2</code> (one inlet per channel) · <code>pan~ [pos]</code> · <code>space~ [x y]</code></span>
       <span>signal: <code>phasor~ [hz]</code> · <code>reader~ [x|y|path] [voices] [gate]</code> (position signal 0…1 on the left, buffer on the right; a voice keeps its last value where nothing passes; <code>gate</code> adds one outlet per voice, 1 where it sounds, 0 where not) · <code>sig~ [value]</code> · <code>osc~</code> and <code>gain~</code> take a signal on their frequency / factor · trajectories: <code>reader path [stroke]</code> (0…1 along a stroke → [x y])</span>

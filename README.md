@@ -35,13 +35,13 @@ app/                  the app: index.html (interface and styles) and page/*.cljs
 core/kairotic/        the modules: components, engine, canvas, score, mt (musical trees), links, assistant (Claude)…
 core/backends/        the GUN backend for Pages (db, rooms, user, Claude with your own key)
 site/                 the Pages edition: build.mjs, configuration (relays), GUN, the embed test page
-components/           npm package kairotic-components: knob, fifth, drift
-packages/             official packages: @kairotic/synth, @kairotic/spatial
+packages/             official packages: @kairotic/synth, @kairotic/spatial, @kairotic/controls
 examples/             the catalog Claude reads when it writes
 docs/                 documentation (English and Spanish), tutorials, generated class reference
 tests/                tests (cljs/*.cljs), run in the browser (tests.html) and in CI
 relay/                a GUN relay for rooms
 studies/              the 23 studies of the prototype, as they were published
+components/           deprecated npm package kairotic-components (studies 9–23), replaced by @kairotic/controls
 ```
 
 ## Development
@@ -56,16 +56,16 @@ cd _site && python3 -m http.server 8000
 # http://localhost:8000/tests.html   the tests
 ```
 
-`site/build.mjs` builds the components, packages, Claude's examples and the tutorials first. On every
+`site/build.mjs` builds the packages, Claude's examples and the tutorials first. On every
 push, GitHub Actions deploys Pages, runs the tests in a headless Chromium, and regenerates
 [docs/reference.md](docs/reference.md) from the help. See the [Changelog](CHANGELOG.md).
 
 ## Components
 
-See [Writing a component](docs/writing-a-component.md), [`components/`](components/README.md) and
-[`packages/`](packages/README.md). Inside a work, published components are imported with
-`(import! "npm:kairotic-components@0.1.2/dist/knob.mjs")`; official packages come by themselves when a
-box uses one of their classes.
+See [Writing a component](docs/writing-a-component.md) and [`packages/`](packages/README.md). Official
+packages come into a work by themselves when a box uses one of their classes (`knob` brings
+`@kairotic/controls`); any published component or package is imported with
+`(import! "npm:@kairotic/controls@0.1.0/dist/index.mjs")`.
 
 ## Licences and credits
 

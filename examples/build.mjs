@@ -16,7 +16,7 @@ const root = join(here, "..");
 
 // existing components used as examples, where they live
 const refs = [
-  { name: "knob", category: "controls", file: "components/src/knob.cljs",
+  { name: "knob", category: "controls", file: "packages/controls/src/knob.cljs",
     about: "a rotary control with its own view, declared arguments, a gesture and :persist" },
   { name: "adsr~", category: "synth", file: "packages/synth/src/adsr.cljs",
     about: "an envelope with an AudioWorklet carried inside, a drawn view and gestures that rewrite the box" },
@@ -26,10 +26,6 @@ const refs = [
     about: "the simplest audio component: one Web Audio node, a parameter set by messages, :update" },
   { name: "space~", category: "spatial", file: "packages/spatial/src/space.cljs",
     about: "binaural placement with a 2D pad view, crossfading two HRTF panners" },
-  { name: "fifth", category: "cac", file: "components/src/fifth.cljs",
-    about: "adds a just fifth above every frequency, keeping voice ids (reader → fifth → synth~)" },
-  { name: "drift", category: "cac", file: "components/src/drift.cljs",
-    about: "a slow random walk in pitch, different for every voice, with state" },
 ];
 
 const kindOf = (file, source) =>

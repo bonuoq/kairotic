@@ -51,7 +51,7 @@ Esta tabla relaciona los nombres en castellano (hasta el Ensayo 8) con los nombr
 | kairotic.figuras | kairotic.shapes | `shp` |
 | kairotic.nucleo | kairotic.core | |
 
-Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `components/` (npm package `kairotic-components`).
+Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `components/` (npm package `kairotic-components`, itself replaced by `@kairotic/controls` after 0.1.0-alpha).
 
 ## Box classes · Clases de caja
 

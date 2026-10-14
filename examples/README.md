@@ -15,7 +15,7 @@ puede crecer sin que crezca el encargo.
 | spatial | pan~, space~ |
 | faust | resonant-filter, fm-voice |
 | abstraction | filter-panel (a Faust filter with its knobs as a panel: a bpatcher) |
-| cac | fifth, drift, row (twelve-tone row and its forms) |
+| cac | row (twelve-tone row and its forms) |
 | notation | note-name (Hz or MIDI → note names with cents) |
 
 ## Adding one · Añadir uno

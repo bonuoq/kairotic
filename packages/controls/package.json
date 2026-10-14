@@ -1,0 +1,37 @@
+{
+  "name": "@kairotic/controls",
+  "version": "0.1.0",
+  "description": "Kairotic control components: knob (a rotary control with its own view in the patch)",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/controls"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages#readme",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs controls",
+    "prepublishOnly": "node ../build.mjs controls"
+  },
+  "keywords": [
+    "kairotic",
+    "music",
+    "controls",
+    "knob",
+    "patcher"
+  ]
+}

@@ -115,7 +115,7 @@ Put the sections in this order, with a comment line before each one:
 ```
 
 Only the logic is code; the rest is data that can be read, checked and changed without running
-anything. Read the whole [knob](../components/src/knob.cljs).
+anything. Read the whole [knob](../packages/controls/src/knob.cljs) (in `@kairotic/controls`).
 
 Helpers available in the logic come from the **Kairotic API**, `api/…` (from Study 14; before it the
 same functions were `comp/…`): `api/clamp`, `api/nice` (sensible rounding), `api/num-of`,
@@ -215,8 +215,9 @@ The example is patch code, one gesture per line: opening the help patch makes th
 
 - **In the work:** the `component` box travels with the work and its history.
 - **In the library of the space:** `(publish :bN)` and, in another work, `(use! "class")`.
-- **On npm:** add `src/<name>.cljs` to [`components/`](../components/README.md) and publish a
-  version; anyone can then `(import! "npm:kairotic-components@x.y.z/dist/<name>.mjs")`.
+- **On npm:** publish a module that exports the component (`export default {class, version, author,
+  license, doc, source}`, the format [`packages/build.mjs`](../packages/build.mjs) writes); anyone can
+  then `(import! "npm:<your-package>@x.y.z/dist/<name>.mjs")`.
 - **In an official package** (Study 14): add it to `packages/<category>/src/` (see
   [`packages/`](../packages/README.md)). A package travels as one `component` box, and writing one of
   its classes in a work brings it in.

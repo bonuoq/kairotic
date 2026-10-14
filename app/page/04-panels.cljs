@@ -32,7 +32,7 @@
 
 (defn import!
   "Copies a published component into the work: \"npm:package@version/path.mjs\" (jsDelivr) or a file
-   of this page (\"kairotic/library/drift.mjs\"). It stays as an editable component box."
+   of this page (\"kairotic/packages/controls.mjs\"). It stays as an editable component box."
   [origin]
   (-> (lib/import-module origin)
       (.then (fn [m]
@@ -83,40 +83,12 @@
   []
   (vec (for [[n p] (sort-by key lib/packages)] [n (:version p) (vec (sort (:classes p)))])))
 
-(defn work-class?
-  "Whether a component box of the work already defines class k."
-  [k]
-  (let [needle (str ":class " (pr-str k))]
-    (some (fn [p] (some (fn [[_ b]] (and (= "component" (klass (:text b)))
-                                          (str/includes? (str (get-in b [:data :source])) needle)))
-                        (:boxes p)))
-          [(current) (root-patch)])))
-
-(defn add-single!
-  "Brings an official single component (knob, fifth, drift) into the work as a component box."
-  [k]
-  (when-not (or (@fetching k) (work-class? k))
-    (swap! fetching conj k)
-    (-> (lib/import-single k)
-        (.then (fn [[m origin]]
-                 (when-not (work-class? k)
-                   (let [src (str (lib/header m origin) (:source m))
-                         _ (swap! cbox/trusted conj src)   ; official: it runs without asking
-                         id (new-definition! src)]
-                     (repl-print! "out" (esc (str "; «" k "» is now in the work: " id)))))))
-        (.catch (fn [e] (repl-print! "err" (esc (str "Could not bring " k ": " (or (.-message e) e))))))
-        (.finally (fn [] (swap! fetching disj k)))))
-  k)
-
 (defn ensure-class!
-  "If box text t uses a class nobody defines yet but an official package or single component does,
-   brings it into the work."
+  "If box text t uses a class nobody defines yet but an official package does, brings it into the work."
   [t]
   (let [k (klass t)]
-    (when-not (comp/lookup k)
-      (cond
-        (lib/package-of k) (add-package! (first (lib/package-of k)))
-        (lib/single-of k) (add-single! k)))))
+    (when-let [[pkg _] (and (not (comp/lookup k)) (lib/package-of k))]
+      (add-package! pkg))))
 
 (defn publish
   "Saves the definition of a component box to the shared library of this space (a new version)."
@@ -177,7 +149,7 @@
                         "</ul>")
                    "<p class=\"empty\">Empty: publish a definition of the work here to use it in others.</p>")
                  "<h4>Import</h4>"
-                 "<form id=\"comp-import\"><input id=\"comp-origin\" placeholder=\"npm:package@1.0.0/comp.mjs or kairotic/library/drift.mjs\" value=\"kairotic/library/drift.mjs\">"
+                 "<form id=\"comp-import\"><input id=\"comp-origin\" placeholder=\"npm:package@1.0.0/comp.mjs or kairotic/packages/controls.mjs\" value=\"kairotic/packages/controls.mjs\">"
                  "<button class=\"act\">Import</button></form>"
                  "<h4>Core</h4><p class=\"core-defs\">"
                  (str/join " " (for [[c d] core-defs] (str "<code class=\"help-link\" data-help=\"" (esc c) "\" title=\"" (esc (:doc d)) "\">" (esc c) "</code>")))
