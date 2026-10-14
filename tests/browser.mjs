@@ -36,5 +36,8 @@ if (loaded) {
 }
 await browser.close();
 for (const f of r.failed) console.log("✗", f.suite ? f.suite + " · " : "", f.label, f.detail ? "— " + f.detail : "");
+// on GitHub Actions, each failure is also an annotation of the run (readable without the log)
+if (process.env.GITHUB_ACTIONS)
+  for (const f of r.failed) console.log(`::error title=${(f.suite || "test").replace(/[:,\n]/g, " ")}::${(f.label + (f.detail ? " — " + f.detail : "")).replace(/\n/g, " ").slice(0, 900)}`);
 console.log(r.failed.length ? `${r.failed.length} of ${r.total} failed` : `all ${r.total} passed`);
 process.exit(r.failed.length || !r.total ? 1 : 0);
