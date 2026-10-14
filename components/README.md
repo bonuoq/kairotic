@@ -1,5 +1,7 @@
 # kairotic-components
 
+> **Deprecated.** Replaced by [`@kairotic/controls`](../packages/README.md) (`knob`); `fifth` and `drift` were small examples for the studies and are not carried on. Kept for the works of Studies 9–23. The app no longer uses it and no more versions are published.
+
 *[Leer en castellano](README.es.md)*
 
 Components for [Kairotic](../README.md). Each component is a file `src/<name>.cljs` whose source
@@ -25,14 +27,6 @@ it came from): the work stays complete and sounds the same even if the package c
 | `fifth` | adds a just fifth above every frequency, as a voice of its own |
 | `drift` | detunes every frequency with a slow random walk, different for every voice |
 
-## Publishing a version
-
-1. Raise the version in `package.json`.
-2. Create a GitHub release with the tag `components-vX.Y.Z` on `main`.
-3. The `publish-components` Action builds `dist/` and publishes to npm with *trusted publishing*
-   (OIDC, no tokens).
-
-This package replaces `kairotic-componentes` (Spanish names, up to Study 8).
 
 ## Licence
 

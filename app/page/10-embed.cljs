@@ -25,18 +25,16 @@
                  (vals (:boxes (eng/flat (root-patch)))))))
 
 (defn trust-official!
-  "The component boxes of a link that are exactly an official package or single component (as this
-   page brings it) run without asking."
+  "The component boxes of a link that are exactly an official package (as this page
+   brings it) run without asking."
   []
   (let [srcs (keep (fn [b] (when (= "component" (klass (:text b))) (str (get-in b [:data :source]))))
                    (vals (:boxes (eng/flat (root-patch)))))
         pkgs (distinct (for [s srcs [_ p] (re-seq #":package \"([^\"]+)\"" s) :when (get lib/packages p)] p))
-        singles (distinct (for [s srcs [_ k] (re-seq #":class \"([^\"]+)\"" s) :when (and (lib/single-of k) (not (lib/package-of k)))] k))
         wanted (set srcs)]
     (-> (js/Promise.all
          (into-array
-          (concat (for [p pkgs] (-> (lib/import-package p) (.then (fn [[m origin]] (lib/package-source m origin))) (.catch (fn [_] nil))))
-                  (for [k singles] (-> (lib/import-single k) (.then (fn [[m origin]] (str (lib/header m origin) (:source m)))) (.catch (fn [_] nil)))))))
+          (for [p pkgs] (-> (lib/import-package p) (.then (fn [[m origin]] (lib/package-source m origin))) (.catch (fn [_] nil))))))
         (.then (fn [arr]
                  (let [ok (filter wanted (array-seq arr))]
                    (when (seq ok)

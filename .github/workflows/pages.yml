@@ -1,5 +1,5 @@
 # Builds Kairotic Pages (site/build.mjs → _site/: the app of app/ with the modules of core/ and what
-# components/, packages/, examples/ and docs/tutorials/ generate) and deploys it to GitHub Pages on
+# packages/, examples/ and docs/tutorials/ generate) and deploys it to GitHub Pages on
 # every push to main that touches any of them, or by hand from the Actions tab.
 #
 # Needs, once: Settings → Pages → Source: "GitHub Actions". GitHub Pages works on public repositories
@@ -9,7 +9,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["app/**", "core/**", "site/**", "components/**", "packages/**", "examples/**", "docs/tutorials/**", "tests/**", ".github/workflows/pages.yml"]
+    paths: ["app/**", "core/**", "site/**", "packages/**", "examples/**", "docs/tutorials/**", "tests/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:

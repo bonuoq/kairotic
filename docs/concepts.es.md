@@ -38,7 +38,7 @@ Cada clase es un **componente**: un mapa de datos y funciones con un mismo contr
 (lo que se programa en el tiempo), `:audio` (nodos Web Audio), una `:view` hecha de formas, `:help`.
 
 Las clases vienen de cuatro sitios: el **núcleo**; los **paquetes** oficiales (`@kairotic/synth` con
-`adsr~` y `synth~`, `@kairotic/spatial` con `pan~` y `space~`, y los sueltos `knob`, `fifth`, `drift`), que
+`adsr~` y `synth~`, `@kairotic/spatial` con `pan~` y `space~`, `@kairotic/controls` con `knob`), que
 entran solos en la obra cuando una caja los usa; las **cajas component** que definen una clase dentro de
 la obra; y los componentes **importados** de npm. Una caja `patch` guarda un sub-patch, y una clase puede
 ser un patch (una **abstracción**, con `$1 $2` para sus argumentos y un panel de cajas presentadas). Ver

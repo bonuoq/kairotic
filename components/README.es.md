@@ -1,5 +1,7 @@
 # kairotic-components
 
+> **Obsoleto.** Sustituido por [`@kairotic/controls`](../packages/README.es.md) (`knob`); `fifth` y `drift` eran ejemplos pequeños de los ensayos y no continúan. Se conserva para las obras de los ensayos 9–23. La app ya no lo usa y no se publican más versiones.
+
 *[Read in English](README.md)*
 
 Componentes para [Kairotic](../README.es.md). Cada componente es un archivo `src/<nombre>.cljs`
@@ -26,14 +28,6 @@ origen): la obra queda completa y suena igual aunque el paquete cambie.
 | `fifth` | añade una quinta justa sobre cada frecuencia, como voz propia |
 | `drift` | desafina cada frecuencia con un paseo aleatorio lento, distinto por voz |
 
-## Publicar una versión
-
-1. Sube la versión en `package.json`.
-2. Crea un release en GitHub con la etiqueta `components-vX.Y.Z` sobre `main`.
-3. La Action `publish-components` construye `dist/` y publica en npm con *trusted publishing*
-   (OIDC, sin tokens).
-
-Este paquete sustituye a `kairotic-componentes` (nombres en castellano, hasta el Ensayo 8).
 
 ## Licencia
 

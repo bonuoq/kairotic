@@ -36,13 +36,13 @@ app/                  la app: index.html (interfaz y estilos) y page/*.cljs (el 
 core/kairotic/        los módulos: componentes, motor, canvas, partitura, mt (árboles musicales), enlaces, asistente (Claude)…
 core/backends/        el backend GUN de Pages (db, salas, usuario, Claude con tu propia clave)
 site/                 la edición Pages: build.mjs, configuración (relays), GUN, la página de prueba de embeds
-components/           paquete npm kairotic-components: knob, fifth, drift
-packages/             paquetes oficiales: @kairotic/synth, @kairotic/spatial
+packages/             paquetes oficiales: @kairotic/synth, @kairotic/spatial, @kairotic/controls
 examples/             el catálogo que Claude lee cuando escribe
 docs/                 documentación (inglés y castellano), tutoriales, referencia de clases generada
 tests/                pruebas (cljs/*.cljs), en el navegador (tests.html) y en CI
 relay/                un relay GUN para las salas
 studies/              los 23 ensayos del prototipo, tal como se publicaron
+components/           el paquete npm obsoleto kairotic-components (ensayos 9–23), sustituido por @kairotic/controls
 componentes/          el paquete anterior (kairotic-componentes), sustituido por kairotic-components
 ```
 
@@ -58,17 +58,17 @@ cd _site && python3 -m http.server 8000
 # http://localhost:8000/tests.html   las pruebas
 ```
 
-`site/build.mjs` construye primero los componentes, los paquetes, los ejemplos de Claude y los
+`site/build.mjs` construye primero los paquetes, los ejemplos de Claude y los
 tutoriales. En cada push, GitHub Actions despliega Pages, ejecuta las pruebas en un Chromium sin
 pantalla y regenera [docs/reference.md](docs/reference.md) a partir de la ayuda. Ver los
 [cambios](CHANGELOG.md).
 
 ## Componentes
 
-Ver [Escribir un componente](docs/writing-a-component.es.md), [`components/`](components/README.es.md) y
-[`packages/`](packages/README.es.md). Dentro de una obra, los componentes publicados se importan con
-`(import! "npm:kairotic-components@0.1.2/dist/knob.mjs")`; los paquetes oficiales llegan solos cuando una
-caja usa una de sus clases.
+Ver [Escribir un componente](docs/writing-a-component.es.md) y [`packages/`](packages/README.es.md). Los
+paquetes oficiales llegan solos a una obra cuando una caja usa una de sus clases (`knob` trae
+`@kairotic/controls`); cualquier componente o paquete publicado se importa con
+`(import! "npm:@kairotic/controls@0.1.0/dist/index.mjs")`.
 
 ## Licencias y créditos
 

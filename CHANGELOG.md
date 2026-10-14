@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`@kairotic/controls`**, a new official package: `knob` moves there (written against the Kairotic
+  API) and comes into a work by itself when a box uses it, like `adsr~` or `pan~`. The app no longer
+  uses the deprecated npm package `kairotic-components`; its sample components `fifth` and `drift` are
+  not carried on (they stay in `components/` and on npm for the works of the studies). Single official
+  components are gone: every official class now belongs to a package.
+
 - **Inspector on ⌘/Ctrl+click** ([#4](https://github.com/bonuoq/kairotic/issues/4)): a plain click
   selects and moves a box; ⌘/Ctrl+click opens its inspector (arguments and text). Esc closes it.
 - **Several boxes at once**: ⇧+click adds a box to the selection (or takes it out), a frame drawn

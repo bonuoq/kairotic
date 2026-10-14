@@ -11,7 +11,7 @@
 //   node site/build.mjs out/dir      → the Pages edition in another folder
 //
 // Sources: app/ (the page: index.html and page/*.cljs), core/kairotic (the modules), and what is
-// generated from components/, packages/, examples/ and docs/tutorials/ (their own build scripts run
+// generated from packages/, examples/ and docs/tutorials/ (their own build scripts run
 // first). Scittle, Verovio and Faust still come from jsDelivr at run time.
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -22,19 +22,17 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const pagesOut = resolve(root, process.argv[2] || "_site");
 const artifactOut = resolve(root, "_artifact");
 
-// 1. what is generated: published components, packages, Claude's examples, the tutorials
-for (const script of ["components/scripts/build.mjs", "packages/build.mjs", "examples/build.mjs", "docs/tutorials/build.mjs"])
+// 1. what is generated: the official packages, Claude's examples, the tutorials
+for (const script of ["packages/build.mjs", "examples/build.mjs", "docs/tutorials/build.mjs"])
   execFileSync(process.execPath, [join(root, script)], { stdio: "ignore" });
 
 // 2. the app, as both editions share it
 function assemble(out) {
   rmSync(out, { recursive: true, force: true });
-  mkdirSync(join(out, "kairotic", "library"), { recursive: true });
   mkdirSync(join(out, "kairotic", "packages"), { recursive: true });
   cpSync(join(root, "app", "page"), join(out, "page"), { recursive: true });
   for (const f of readdirSync(join(root, "core", "kairotic"))) cpSync(join(root, "core", "kairotic", f), join(out, "kairotic", f));
   cpSync(join(root, "core", "backends"), join(out, "kairotic", "backends"), { recursive: true });
-  for (const f of readdirSync(join(root, "components", "dist"))) cpSync(join(root, "components", "dist", f), join(out, "kairotic", "library", f));
   for (const p of readdirSync(join(root, "packages"), { withFileTypes: true }))
     if (p.isDirectory() && existsSync(join(root, "packages", p.name, "dist", "index.mjs")))
       cpSync(join(root, "packages", p.name, "dist", "index.mjs"), join(out, "kairotic", "packages", p.name + ".mjs"));
@@ -83,7 +81,7 @@ if (pagesOut === resolve(root, "_site")) {
   writeFileSync(join(artifactOut, "index.html"), html);
 }
 
-for (const f of ["index.html", "page/00-work.cljs", "kairotic/core.cljs", "kairotic/links.cljs", "kairotic/library/knob.mjs",
+for (const f of ["index.html", "page/00-work.cljs", "kairotic/core.cljs", "kairotic/links.cljs", "kairotic/packages/controls.mjs",
                  "kairotic/packages/synth.mjs", "kairotic/tutorials.mjs", "vendor/gun/gun.js", "tests.html"])
   if (!existsSync(join(pagesOut, f))) throw new Error("missing " + f);
 console.log("Kairotic →", pagesOut, existsSync(artifactOut) ? "and " + artifactOut : "");

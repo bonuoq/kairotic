@@ -9,8 +9,9 @@ publicados en npm bajo el ámbito `@kairotic` y servidos dentro de claude.ai por
 |---|---|
 | [`@kairotic/synth`](synth/) | `adsr~ [a d s r]` una envolvente que sigue una puerta · `synth~` un sintetizador polifónico |
 | [`@kairotic/spatial`](spatial/) | `pan~ [posición]` panorama estéreo · `space~ [x y]` colocación binaural alrededor de quien escucha |
+| [`@kairotic/controls`](controls/) | `knob [mín máx inicial] [log] [nombre]` un control giratorio con su propia vista en el patch |
 
-Previstos: `controls` (hoy [`kairotic-components`](../components/)), `cac`, `notation`.
+Previstos: `cac`, `notation`.
 
 ## En una obra
 

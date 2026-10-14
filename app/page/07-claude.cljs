@@ -255,7 +255,7 @@
                (let [p (build (link-code src))
                      bs (:boxes p)
                      k-of (fn [b] (klass (:text b)))
-                     known? (fn [k] (or (comp/lookup k) (lib/package-of k) (lib/single-of k)))
+                     known? (fn [k] (or (comp/lookup k) (lib/package-of k)))
                      unknown (vec (for [[id b] bs :let [k (k-of b)] :when (not (known? k))] (str (name id) ": no class «" k "»")))
                      fausts (vec (for [[id b] bs :when (= "faust~" (k-of b))] [id (str (get-in b [:data :source]))]))
                      comps (vec (for [[id b] bs :when (#{"component"} (k-of b))] [id (str (get-in b [:data :source]))]))]
@@ -298,7 +298,7 @@
               :inputSchema (clj->js {:type "object" :properties {:class {:type "string"}} :required ["class"]})
               :execute (logged "help"
                                (fn [i] (let [k (str (.-class i)) d (comp/lookup k) h (hlp/of k)]
-                                         (if (or d (seq h) (lib/package-of k) (lib/single-of k))
+                                         (if (or d (seq h) (lib/package-of k))
                                            {:ok true :class k :doc (or (:doc d) (:doc h)) :usage (:usage d)
                                             :io (let [x (:io d)] (if (vector? x) x "depends on its arguments"))
                                             :inlets (:inlets h) :outlets (:outlets h) :example (:example h)

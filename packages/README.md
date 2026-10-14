@@ -9,8 +9,9 @@ npm under the scope `@kairotic` and served inside claude.ai by jsDelivr.
 |---|---|
 | [`@kairotic/synth`](synth/) | `adsr~ [a d s r]` an envelope that follows a gate · `synth~` a polyphonic synthesizer |
 | [`@kairotic/spatial`](spatial/) | `pan~ [position]` stereo panning · `space~ [x y]` binaural placement around the listener |
+| [`@kairotic/controls`](controls/) | `knob [min max initial] [log] [name]` a rotary control with its own view in the patch |
 
-Planned: `controls` (today [`kairotic-components`](../components/)), `cac`, `notation`.
+Planned: `cac`, `notation`.
 
 ## In a work
 
