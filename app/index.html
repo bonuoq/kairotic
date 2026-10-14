@@ -98,6 +98,8 @@ body.present .trust-bar { position: absolute; z-index: 5; left: 6px; top: 6px; m
 .crumbs button:hover { text-decoration: underline; }
 .crumbs .here { color: var(--ink); }
 #canvas .box.sel rect.body { stroke: var(--accent); stroke-width: 2; fill: var(--accent-soft); }
+#canvas .box.hit rect.body { stroke: var(--accent); stroke-width: 1.5; }
+#canvas .marquee { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3; pointer-events: none; }
 #canvas .box.drop rect.body { stroke: var(--accent); stroke-dasharray: 3 3; }
 #canvas .box > text, #canvas .box text.lbl { font-family: var(--f-code); font-size: 12.5px; fill: var(--ink); pointer-events: none; }
 #canvas .box text.lbl.info { font-size: 11px; fill: var(--ink-soft); }
@@ -407,7 +409,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
           <button class="act embed-only" id="fs-btn" title="Fullscreen">⛶</button>
           <a class="act embed-only" id="open-full" target="_blank" rel="noopener" title="Open it in Kairotic, with the whole editor">Kairotic ↗</a>
         </span>
-        <span class="hint">Messages travel without ▶ (▶: sound and time) · a selected box is edited below it: its arguments and its text (Enter applies) · playable boxes (bang, msg, number, knobs…) are selected by their left grip; their body only plays · Code boxes: double-click the code to edit (Ctrl+Enter applies) · their sliders can be dragged · Canvas: drag = stroke, ⇧ straight, ⌥ freehand, click = position</span>
+        <span class="hint">Messages travel without ▶ (▶: sound and time) · ⌘/Ctrl+click a box to edit it below: its arguments and its text (Enter applies) · ⇧+click or a frame drawn on the paper selects several: drag them together, Delete removes them, ⌘/Ctrl+A selects all · playable boxes (bang, msg, number, knobs…) are selected by their left grip; their body only plays · Code boxes: double-click the code to edit (Ctrl+Enter applies) · their sliders can be dragged · Canvas: drag = stroke, ⇧ straight, ⌥ freehand, click = position</span>
       </div>
       <div class="embed-pop" id="embed-pop" hidden>
         <div class="ep-head">

@@ -8,6 +8,19 @@
 
 (defonce ui (atom {:sel nil :drag nil :wire nil :hover-in nil :dirty false :hist [] :hidx nil :follow nil}))
 
+;; What is selected: [:box id] · [:boxes #{id …}] (several, by ⇧+click or a frame) · [:line l] · nil.
+;; :insp is the box whose inspector is open (⌘/Ctrl+click): a plain click selects and moves, nothing more.
+
+(defn sel-ids
+  "The boxes selected now (a set)."
+  []
+  (let [[kind v] (:sel @ui)] (case kind :box #{v} :boxes v #{})))
+
+(defn sel-of
+  "The selection made of these boxes."
+  [ids]
+  (case (count ids) 0 nil 1 [:box (first ids)] [:boxes (set ids)]))
+
 (defn fail [msg] (throw (js/Error. msg)))
 
 (defn dispatch! [ev]
@@ -56,7 +69,34 @@
 (defn disconnect [a o b i] (dispatch! [:disconnect a o b i]) :ok)
 (defn move [id x y] (need-box id) (dispatch! [:move id (js/Math.round x) (js/Math.round y)]) [x y])
 (defn text! [id text] (need-box id) (dispatch! [:text id (str text)]) (eng/forget! (fid id)) (ensure-class! text) id)
-(defn delete [id] (need-box id) (forget-box! id) (dispatch! [:delete id]) :ok)
+
+(defn delete
+  "Deletes boxes, with their lines: (delete :b3) · (delete :b3 :b4 :b7)."
+  [& ids]
+  (when (empty? ids) (fail "Which box? (delete :b3)"))
+  (doseq [id ids] (need-box id))
+  (doseq [id (distinct ids)] (forget-box! id) (dispatch! [:delete id]))
+  :ok)
+
+(defn- shift-ids [ids dx dy where]
+  (when-not (and (sequential? ids) (seq ids)) (fail "Give the boxes as a vector: [:b1 :b2]"))
+  (when-not (and (number? dx) (number? dy)) (fail "dx and dy are numbers"))
+  (let [ids (distinct ids) p (current)]
+    (doseq [id ids] (need-box id))
+    (let [pos (for [id ids :let [b (get-in p [:boxes id])]]
+                [id (if (= where :present) (:present b) [(:x b) (:y b)])])]
+      (when (and (= where :present) (some (comp nil? second) pos))
+        (fail (str "Not in presentation: " (str/join " " (keep (fn [[id xy]] (when-not xy id)) pos)))))
+      ;; nobody goes past the top or the left edge: the group stops there together
+      (let [dx (max dx (- (apply min (map (comp first second) pos))))
+            dy (max dy (- (apply min (map (comp second second) pos))))]
+        (doseq [[id [x y]] pos]
+          (dispatch! [where id (js/Math.round (+ x dx)) (js/Math.round (+ y dy))]))
+        [(js/Math.round dx) (js/Math.round dy)]))))
+
+(defn move-by
+  "Moves several boxes together: (move-by [:b1 :b2 :b5] 40 0)."
+  [ids dx dy] (shift-ids ids dx dy :move))
 
 (declare child-dims)
 
@@ -74,6 +114,10 @@
    [x y]))
 
 (defn unpresent "Takes a box out of presentation." [id] (need-box id) (dispatch! [:present id nil]) :ok)
+
+(defn present-by
+  "Moves several presented boxes together in presentation: (present-by [:b1 :b5] 0 24)."
+  [ids dx dy] (shift-ids ids dx dy :present))
 
 (declare box-num box-num-e)
 

@@ -35,8 +35,8 @@ export default {
       "es": "Una caja es una línea de texto. La primera palabra es su **clase** (lo que es: `osc~`, un oscilador sinusoidal) y el resto son sus **argumentos** (aquí, 220 Hz). La ~ marca las clases que trabajan con señales de sonido.\n\nMira la pestaña Code: la caja es la línea `(box :b1 \"osc~ 220\" 40 110)` — su id `:b1`, su texto y dónde está (x 40, y 110). El patch y el código son dos vistas de lo mismo."
      },
      "try": {
-      "en": "Click the box: below it you can change its argument. Then look at the Code tab again.",
-      "es": "Haz clic en la caja: debajo puedes cambiar su argumento. Luego vuelve a mirar la pestaña Code."
+      "en": "⌘/Ctrl+click the box: below it you can change its argument. Then look at the Code tab again.",
+      "es": "Haz ⌘/Ctrl+clic en la caja: debajo puedes cambiar su argumento. Luego vuelve a mirar la pestaña Code."
      },
      "code": [
       "(box :b1 \"osc~ 220\" 40 110)"
@@ -206,8 +206,8 @@ export default {
       "es": "`mt transpose 7` sube todas las alturas siete semitonos: una quinta justa. La forma del motivo —sus intervalos y su ritmo— no cambia; solo su registro.\n\nEl número está en semitonos; negativo baja, y los decimales dan microtonos (`mt transpose 0.5` es un cuarto de tono)."
      },
      "try": {
-      "en": "Select the `mt` box and change 7 for -12 in the inspector: the second score follows.",
-      "es": "Selecciona la caja `mt` y cambia 7 por -12 en el inspector: la segunda partitura lo sigue."
+      "en": "⌘/Ctrl+click the `mt` box and change 7 for -12 in the inspector: the second score follows.",
+      "es": "Haz ⌘/Ctrl+clic en la caja `mt` y cambia 7 por -12 en el inspector: la segunda partitura lo sigue."
      },
      "code": [
       "(box :b4 \"mt transpose 7\" 480 150)",
