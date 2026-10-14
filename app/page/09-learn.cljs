@@ -145,7 +145,7 @@
 
 ;; ───── the documentation in the Help tab (kairotic/docs.mjs, built from docs/) ─────
 
-(declare link-code open-link-work!)
+(declare link-code open-link-work! render-help! show-help!)
 
 (defonce doc-pages (atom nil))   ; nil · :loading · {"id" {"en" text "es" text}}
 (defonce help-doc (atom nil))    ; the page of the documentation on screen, or nil
