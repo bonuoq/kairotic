@@ -44,7 +44,12 @@
        (catch :default _ nil)))
 
 (defn show-manager! [] (swap! mgr assoc :open true :confirm nil))
-(defn hide-manager! [] (when (:kind @work) (swap! mgr assoc :open false :confirm nil)))
+(defn hide-manager!
+  "Closes the session manager: back to the open work, or — when none is open yet — into a local one."
+  []
+  (if (:kind @work)
+    (swap! mgr assoc :open false :confirm nil)
+    (open-work! :local "local" "Local")))
 
 (defn on-meta [d]
   (when (.-exists d)
@@ -196,6 +201,33 @@
                 (if confirm? "Sure? Delete" "Delete") "</button>"))
          "</div></li>")))
 
+(defn welcome
+  "What the session manager says before any work is open: what Kairotic is, how to start, and that it is an alpha."
+  []
+  (if (es?)
+    (str "<div class=\"mgr-welcome\">"
+         "<p class=\"wt\">Te damos la bienvenida a <b>Kairotic</b> <span class=\"alpha\">0.1.0-alpha</span></p>"
+         "<p>Un espacio para componer, improvisar e interpretar música donde <b>el patch y su código son la misma obra</b>: cajas unidas por líneas, como en Max o Pure Data, cada gesto guardado en una historia que puedes recorrer, ramificar y compartir.</p>"
+         "<ul>"
+         "<li><b>Empieza</b> abajo: una obra <b>solo</b> (se guarda para ti), una <b>sala compartida</b> (con otras personas en la misma historia) o <b>en local</b>, sin guardar.</li>"
+         "<li><b>Doble clic</b> en un sitio vacío crea una caja (<code>osc~ 440</code>); arrastra de una salida a una entrada para conectar; <b>▶</b> pone en marcha el sonido.</li>"
+         "<li>La pestaña <b>Help</b> tiene la guía, los conceptos, los tutoriales y una página para cada caja; <b>Claude</b> hace patches a partir de lo que describes.</li>"
+         "</ul>"
+         "<p class=\"alpha-note\">Es una <b>versión alfa</b>: puede fallar, y cambiará. Lo que nos cuentes decide lo que viene después; la pestaña <b>Feedback</b> lo convierte en un aviso en GitHub. ¡Gracias por probarla!</p>"
+         "<p class=\"wb\"><button class=\"act primary\" data-act=\"guide\">Leer la guía</button> <button class=\"act\" data-act=\"local\">Empezar en local</button> <button class=\"act\" data-act=\"feedback\">Feedback</button></p>"
+         "</div>")
+    (str "<div class=\"mgr-welcome\">"
+         "<p class=\"wt\">Welcome to <b>Kairotic</b> <span class=\"alpha\">0.1.0-alpha</span></p>"
+         "<p>A space to compose, improvise and perform music where <b>the patch and its code are the same work</b>: boxes joined by lines, as in Max or Pure Data, every gesture kept in a history you can travel, branch and share.</p>"
+         "<ul>"
+         "<li><b>Start</b> below: a <b>solo</b> work (saved for you), a <b>shared room</b> (with others, in the same history) or <b>locally</b>, without saving.</li>"
+         "<li><b>Double-click</b> an empty place to create a box (<code>osc~ 440</code>); drag from an outlet to an inlet to connect; <b>▶</b> starts the sound.</li>"
+         "<li>The <b>Help</b> tab has the guide, the concepts, the tutorials and a page for every box; <b>Claude</b> makes patches from what you describe.</li>"
+         "</ul>"
+         "<p class=\"alpha-note\">This is an <b>alpha</b>: it may fail, and it will change. What you tell us decides what comes next; the <b>Feedback</b> tab turns it into a GitHub issue. Thank you for trying it!</p>"
+         "<p class=\"wb\"><button class=\"act primary\" data-act=\"guide\">Read the guide</button> <button class=\"act\" data-act=\"local\">Start locally</button> <button class=\"act\" data-act=\"feedback\">Feedback</button></p>"
+         "</div>")))
+
 (defn render-manager! []
   (let [{:keys [open busy invite]} @mgr
         el ($ "manager")
@@ -223,6 +255,7 @@
          0))
       (set! (.-innerHTML ($ "mgr-body"))
             (str
+             (when (nil? (:kind @work)) (welcome))
              (when busy (str "<p class=\"mgr-busy\">" (esc busy) "</p>"))
              (cond
                connecting? "<p class=\"mgr-note\">Connecting…</p>"
@@ -283,6 +316,8 @@
                          (js/setTimeout (fn [] (when (= (:confirm @mgr) [(name kind) id]) (swap! mgr assoc :confirm nil))) 4000)))
           "local" (open-work! :local "local" "Local")
           "learn" (do (open-work! :local "local" "Local") (show-help! nil))
+          "guide" (do (open-work! :local "local" "Local") (docs "guide"))
+          "feedback" (do (when-not (:kind @work) (open-work! :local "local" "Local")) (swap! mgr assoc :open false) (.click ($ "tab-feedback")))
           nil)))))
 
 (.addEventListener ($ "mgr-body") "submit"
@@ -297,7 +332,7 @@
 (.addEventListener ($ "open-manager") "click" (fn [_] (show-manager!)))
 (.addEventListener ($ "mgr-close") "click" (fn [_] (hide-manager!)))
 (.addEventListener js/document "keydown"
-  (fn [e] (when (and (= (.-key e) "Escape") (:open @mgr) (:kind @work) (not (:merge-pick @ui))) (hide-manager!))))
+  (fn [e] (when (and (= (.-key e) "Escape") (:open @mgr) (not (:merge-pick @ui))) (hide-manager!))))
 
 ;; when a compilation finishes, the status, ports and parameters of code boxes change
 (swap! cbox/listeners assoc :page (fn [] (render-all!)))

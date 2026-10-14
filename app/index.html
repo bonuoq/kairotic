@@ -337,6 +337,12 @@ pre.view { margin: 0; flex: 1; min-height: 300px; overflow: auto; padding: 10px 
 .mgr-note, .mgr-empty { color: var(--ink-soft); font-size: 13px; }
 .mgr-busy { color: var(--accent); font-size: 13px; margin: 0 0 10px; }
 .mgr-foot { margin: 16px 0 0; }
+.mgr-welcome { border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; margin: 0 0 14px; background: var(--sheet); font-size: 13px; line-height: 1.5; }
+.mgr-welcome p { margin: 6px 0; } .mgr-welcome ul { margin: 6px 0; padding-left: 18px; } .mgr-welcome li { margin: 3px 0; }
+.mgr-welcome .wt { font-family: var(--f-head); font-size: 17px; margin-top: 2px; }
+.mgr-welcome .alpha { font: 11px var(--f-code); color: var(--kairos); border: 1px solid var(--kairos); border-radius: 10px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+.mgr-welcome .alpha-note { color: var(--ink-soft); }
+.mgr-welcome code { font-family: var(--f-code); font-size: 12px; }
 .items { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--box); }
 .item.current { border-color: var(--accent); }
@@ -381,7 +387,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
       <div class="mgr-head">
         <h2 id="mgr-title">Sessions</h2>
         <span class="mgr-sub">Work solo or share a room. You can move from one to the other by copying the work with its history.</span>
-        <button class="act" id="mgr-close" title="Back to the open work (Esc)">Close</button>
+        <button class="act" id="mgr-close" title="Back to the open work, or start locally (Esc)">Close</button>
       </div>
       <div id="mgr-body"><p class="mgr-note">Loading…</p></div>
     </div>
