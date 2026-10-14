@@ -15,6 +15,6 @@ await build({
   minify: true,
   target: "es2020",
   legalComments: "eof",
-  banner: { js: "// Kairotic code editor: CodeMirror 6 (MIT, Marijn Haverbeke and others) and @nextjournal/clojure-mode (ISC), bundled by core/vendor/codemirror/build.mjs. Do not edit: edit entry.mjs." },
+  banner: { js: "// Kairotic code editor, bundled by core/vendor/codemirror/build.mjs (do not edit: edit entry.mjs). Contains CodeMirror 6 and Lezer (MIT, Marijn Haverbeke and others), @nextjournal/clojure-mode (EPL-2.0, Nextjournal GmbH), @nextjournal/lezer-clojure (ISC) and squint-cljs (EPL-1.0, Michiel Borkent); their sources are on npm at the versions in core/vendor/codemirror/package-lock.json." },
 });
 console.log("core/vendor/codemirror.mjs");
