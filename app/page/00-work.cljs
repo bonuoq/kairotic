@@ -182,6 +182,15 @@
   (jam-push!))
 
 (defn work-patch [] (or (:patch @perf) (patch-at (:pos @world))))
+
+(declare played!)
+
+(defn inject-local!
+  "A message played here (a gesture, the REPL) into box f of the engine. In a jam it is also played to the
+   others (issue #11): messages are not events of the take, so they travel apart (13-perform.cljs)."
+  [f inlet v]
+  (eng/inject! (fn [] (work-patch)) f inlet v)
+  (played! f inlet v))
 (defn root-patch [] (or @scratch (work-patch)))
 
 (defonce view-path (atom []))
