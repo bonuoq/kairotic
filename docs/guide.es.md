@@ -24,8 +24,11 @@ a la derecha, vuelve a abrir esta ventana.
   `osc~ 440`— y pulsa Intro. Las clases que acaban en `~` son sonido.
 - **Conectar**: arrastra desde una salida (las marcas pequeñas bajo una caja) hasta una entrada (encima
   de otra caja).
-- **Seleccionar** una caja o una línea con un clic; una caja seleccionada se edita debajo de ella (sus
+- **Seleccionar** una caja o una línea con un clic. **⌘/Ctrl+clic** en una caja la edita debajo (sus
   argumentos y su texto). **Supr** borra lo seleccionado.
+- **Seleccionar varias**: ⇧+clic añade una caja a la selección (o la quita); un marco dibujado desde un
+  sitio vacío del papel selecciona todas las cajas que toca (con ⇧ se añaden); ⌘/Ctrl+A las selecciona
+  todas. Al arrastrar una se mueven todas; Supr las borra todas.
 - **Mover** una caja arrastrándola. Las cajas para tocar —`bang`, `msg`, `number`, knobs— se seleccionan
   por el asa de su izquierda; su cuerpo es para tocar.
 - **Editar el texto** de una caja: doble clic. Cajas de código (`faust~`, `script`, `component`, `tree`):
@@ -105,7 +108,10 @@ arrastrándolas en modo presentación— como un panel para quien toca. **Edit**
 | | |
 |---|---|
 | doble clic en un sitio vacío | una caja nueva |
-| Supr / Retroceso | borra la caja o línea seleccionada |
+| Supr / Retroceso | borra las cajas o la línea seleccionadas |
+| ⌘/Ctrl+clic | edita una caja debajo de ella (sus argumentos y su texto) |
+| ⇧+clic · un marco · ⌘/Ctrl+A | selecciona varias cajas · todas |
+| Esc | deselecciona, o cierra el editor de la caja |
 | espacio | ▶ / ■ |
 | ? o F1 | ayuda de la caja seleccionada |
 | Ctrl+Z · Ctrl+Mayús+Z · Ctrl+Y | atrás · adelante en la historia |
