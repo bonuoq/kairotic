@@ -24,8 +24,11 @@ the top right, brings this window back.
 - **Create a box**: double-click an empty place, write its text — the class and its arguments, such as
   `osc~ 440` — and press Enter. Classes ending in `~` are sound.
 - **Connect**: drag from an outlet (the small marks under a box) to an inlet (above another box).
-- **Select** a box or a line by clicking it; a selected box is edited below it (its arguments, and
-  its text). **Delete** removes what is selected.
+- **Select** a box or a line by clicking it. **⌘/Ctrl+click** a box to edit it below (its arguments,
+  and its text). **Delete** removes what is selected.
+- **Select several**: ⇧+click adds a box to the selection (or takes it out); a frame drawn from an
+  empty place of the paper selects every box it touches (⇧ adds them); ⌘/Ctrl+A selects all. Drag one
+  of them and they all move; Delete removes them all.
 - **Move** a box by dragging it. Playable boxes — `bang`, `msg`, `number`, knobs — are selected by the
   grip on their left; their body is for playing.
 - **Edit a box's text**: double-click it. Code boxes (`faust~`, `script`, `component`, `tree`):
@@ -104,7 +107,10 @@ presentation mode — as a performer's panel. **Edit** goes back.
 | | |
 |---|---|
 | double-click empty space | a new box |
-| Delete / Backspace | delete the selected box or line |
+| Delete / Backspace | delete the selected boxes or line |
+| ⌘/Ctrl+click | edit a box below it (its arguments and text) |
+| ⇧+click · a frame · ⌘/Ctrl+A | select several boxes · all |
+| Esc | deselect, or close the box editor |
 | space | ▶ / ■ |
 | ? or F1 | help of the selected box |
 | Ctrl+Z · Ctrl+Shift+Z · Ctrl+Y | back · forward in the history |

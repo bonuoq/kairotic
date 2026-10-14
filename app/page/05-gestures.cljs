@@ -261,14 +261,126 @@
          :ctldrag {:f f :b b :ox ox :oy oy :x0 x :y0 y :start (second (shown-flat f)) :v nil :echo echo})
   (ctl-gesture! x y false))
 
+;; ───── selection: one box, several (⇧+click or a frame drawn on the paper), moved or deleted together ─────
+;; A plain click selects a box and moves it; ⌘/Ctrl+click also opens its inspector (its arguments and text).
+
+(defn scene-boxes
+  "The boxes on screen, where they are drawn (their presentation places, in presentation)."
+  [] (:boxes (scene-of (current))))
+
+(defn group-drag
+  "Several boxes start moving together from the pointer at x y (nil if none of them is on screen)."
+  [ids x y]
+  (let [bs (scene-boxes)
+        from (into {} (for [id ids :let [b (get bs id)] :when b] [id [(:x b) (:y b)]]))]
+    (when (seq from) {:ids from :x0 x :y0 y :gx 0 :gy 0 :moved false})))
+
+(defn pick-box!
+  "A plain click on a box: if it is one of several selected, they all start moving; otherwise it alone is
+   selected (its inspector closed) and starts moving. `extra` is merged into the ui state."
+  ([id b x y] (pick-box! id b x y nil))
+  ([id b x y extra]
+   (let [ids (sel-ids)]
+     (if (and (> (count ids) 1) (contains? ids id))
+       ;; released without moving, the click selects that box alone (see end-gesture!)
+       (swap! ui merge {:nsel nil :drag (some-> (group-drag ids x y) (assoc :clicked id))} extra)
+       (swap! ui merge {:sel [:box id] :insp nil :nsel nil
+                        :drag {:id id :dx (- x (:x b)) :dy (- y (:y b)) :x (:x b) :y (:y b) :moved false}}
+              extra)))))
+
+(defn inspect-box!
+  "⌘/Ctrl+click on a box: selects it, opens its inspector, and it can be moved."
+  [id b x y]
+  (swap! ui assoc :sel [:box id] :insp id :nsel nil :tsel nil
+         :drag {:id id :dx (- x (:x b)) :dy (- y (:y b)) :x (:x b) :y (:y b) :moved false}))
+
+(defn shift-pick
+  "The box a ⇧+click adds to (or takes out of) the selection; nil where ⇧ already means something else
+   (on the drawing area of a canvas or a freqt it draws a straight stroke)."
+  [e]
+  (when (and (.-shiftKey e) (not (closest e ".port")))
+    (when-let [el (closest e ".box")]
+      (let [[id b] (el-box el)]
+        (when (and b (not (and (closest e ".mus-body") (#{"canvas" "freqt"} (klass (:text b))))))
+          id)))))
+
+(defn toggle-box!
+  "⇧+click: the box joins the selection, or leaves it; what stays selected can be dragged at once."
+  [id x y]
+  (let [ids (sel-ids) now (if (contains? ids id) (disj ids id) (conj ids id))]
+    (swap! ui assoc :sel (sel-of now) :insp nil :nsel nil :tsel nil
+           :drag (when (contains? now id) (group-drag now x y)))))
+
+(defn group-offset
+  "The offset of a group being dragged, stopped so that no box goes past the top or the left edge."
+  [{:keys [ids x0 y0]} x y]
+  [(max (- x x0) (- (apply min (map first (vals ids)))))
+   (max (- y y0) (- (apply min (map second (vals ids)))))])
+
+;; the frame: drawn from an empty place of the paper, it selects every box it touches (⇧ adds to the selection)
+
+(defn marquee-rect [{:keys [x0 y0 x y]}]
+  [(min x0 x) (min y0 y) (js/Math.abs (- x x0)) (js/Math.abs (- y y0))])
+
+(defn marquee-hits
+  "The boxes on screen that the frame touches."
+  [m]
+  (let [[mx my mw mh] (marquee-rect m)]
+    (set (for [[id b] (scene-boxes)
+               :let [[w h] (box-dims id b)]
+               :when (and (< mx (+ (:x b) w)) (< (:x b) (+ mx mw)) (< my (+ (:y b) h)) (< (:y b) (+ my mh)))]
+           id))))
+
+(defn mark-hits!
+  "Marks on screen the boxes the frame is touching (without drawing the whole patch again)."
+  [hits]
+  (doseq [el (array-seq (.querySelectorAll ($ "scene") ".box"))]
+    (.toggle (.-classList el) "hit" (contains? hits (keyword (.. el -dataset -box))))))
+
+(defn draw-marquee! [m]
+  (let [r (or ($ "marquee")
+              (let [r (js/document.createElementNS "http://www.w3.org/2000/svg" "rect")]
+                (.setAttribute r "id" "marquee")
+                (.setAttribute r "class" "marquee")
+                (.appendChild svg r)
+                r))
+        [x y w h] (marquee-rect m)]
+    (.setAttribute r "x" x)
+    (.setAttribute r "y" y)
+    (.setAttribute r "width" w)
+    (.setAttribute r "height" h)
+    (mark-hits! (marquee-hits m))))
+
+(defn end-marquee! [m]
+  (when-let [r ($ "marquee")] (.remove r))
+  (mark-hits! #{})
+  (let [hits (if (:moved m) (marquee-hits m) #{})]
+    (swap! ui assoc :marquee nil :insp nil :sel (sel-of (if (:add m) (into (:base m) hits) hits)))))
+
+;; on a Mac, Ctrl+click is also a right click: on a box it opens the inspector, not the browser's menu
+(.addEventListener svg "contextmenu"
+  (fn [e] (when (and (.-ctrlKey e) (closest e ".box")) (.preventDefault e))))
+
 (.addEventListener svg "pointerdown"
   (fn [e]
-    (let [[x y] (pt e)]
+    (let [[x y] (pt e) mod? (or (.-metaKey e) (.-ctrlKey e))]
       (cond
         (closest e ".port.out")
         (let [el (closest e ".port.out")]
           (.preventDefault e)
           (swap! ui assoc :wire {:from (keyword (.. el -dataset -box)) :out (js/parseInt (.. el -dataset -out) 10) :x x :y y}))
+
+        ;; ⌘/Ctrl+click anywhere on a box: select it and open its inspector
+        (and mod? (closest e ".box") (not (closest e ".port")))
+        (let [[id b] (el-box (closest e ".box"))]
+          (when b
+            (.preventDefault e)
+            (inspect-box! id b x y)))
+
+        ;; ⇧+click: add the box to the selection, or take it out
+        (shift-pick e)
+        (do (.preventDefault e)
+            (toggle-box! (shift-pick e) x y))
 
         ;; a control presented in the panel of a sub-patch
         (closest e ".pres-area")
@@ -280,7 +392,7 @@
               (start-ctl-drag! (eng/flat-id (conj (cmd-path) id) kid) (:b k) kx ky x y
                                (str "(send-to! " (eng/flat-id [id] kid) " ")))))
 
-        ;; action boxes: the grip selects and moves them (the inspector appears), the body only plays
+        ;; action boxes: the grip selects and moves them (⌘/Ctrl+click opens the inspector), the body only plays
         (and (closest e ".box.act") (not (closest e ".grip")) (not (closest e ".port")))
         (let [[id b] (el-box (closest e ".box.act"))]
           (when b
@@ -302,8 +414,7 @@
               (do (.preventDefault e)
                   (swap! ui assoc :last-click nil :drag nil)
                   (js/setTimeout (fn [] (open-code-editor! id)) 0))
-              (swap! ui assoc :last-click [id now-ms] :sel [:box id] :nsel nil
-                     :drag {:id id :dx (- x (:x b)) :dy (- y (:y b)) :x (:x b) :y (:y b) :moved false}))))
+              (pick-box! id b x y {:last-click [id now-ms]}))))
 
         (closest e ".param")
         (let [el (closest e ".param") [id b] (el-box el) label (.. el -dataset -param) p (param-of b label)]
@@ -356,14 +467,17 @@
                 (do (.preventDefault e)
                     (swap! ui assoc :last-box-click nil :drag nil)
                     (js/setTimeout (fn [] (gesture! (str "(enter " id ")"))) 0))
-                (swap! ui assoc :last-box-click [id now] :sel [:box id] :nsel nil
-                       :drag {:id id :dx (- x (:x b)) :dy (- y (:y b)) :x (:x b) :y (:y b) :moved false})))))
+                (pick-box! id b x y {:last-box-click [id now]})))))
 
         (closest e ".wire-hit")
         (let [idx (js/parseInt (.. (closest e ".wire-hit") -dataset -line) 10)]
           (swap! ui assoc :sel [:line (nth (:lines (current)) idx)] :nsel nil))
 
-        :else (swap! ui assoc :sel nil :nsel nil :tsel nil)))))
+        ;; an empty place of the paper: a frame starts (a plain click there deselects)
+        :else (let [add? (.-shiftKey e)]
+                (swap! ui assoc :nsel nil :tsel nil :insp nil
+                       :sel (when add? (:sel @ui))
+                       :marquee {:x0 x :y0 y :x x :y y :moved false :add add? :base (if add? (sel-ids) #{})}))))))
 
 (defn move-ldrag [ld x y]
   (let [{:keys [g d x0 y0 pts0]} ld
@@ -386,8 +500,16 @@
 
 (.addEventListener svg "pointermove"
   (fn [e]
-    (let [[x y] (pt e) {:keys [drag wire ldrag numdrag paramdrag ctldrag]} @ui]
+    (let [[x y] (pt e) {:keys [drag wire ldrag numdrag paramdrag ctldrag marquee]} @ui]
       (cond
+        marquee (let [far (> (+ (js/Math.abs (- x (:x0 marquee))) (js/Math.abs (- y (:y0 marquee)))) 3)
+                      m (assoc marquee :x x :y y :moved (or (:moved marquee) far))]
+                  (swap! ui assoc :marquee m)
+                  (when (:moved m) (draw-marquee! m)))
+        (and drag (:ids drag))
+        (let [[gx gy] (group-offset drag x y)]
+          (when (or (:moved drag) (> (+ (js/Math.abs gx) (js/Math.abs gy)) 2))
+            (swap! ui assoc :drag (assoc drag :gx gx :gy gy :moved true))))
         ctldrag (ctl-gesture! x y (.-shiftKey e))
         paramdrag (when-not (:button paramdrag)
                     (let [b (get-in (current) [:boxes (:id paramdrag)]) v (value-at-x b (:p paramdrag) x)]
@@ -427,8 +549,18 @@
         (gesture! (str "(stroke " box " " (pts-code ps) ")"))))))
 
 (defn end-gesture! [e]
-  (let [{:keys [drag wire ldrag numdrag paramdrag ctldrag]} @ui]
+  (let [{:keys [drag wire ldrag numdrag paramdrag ctldrag marquee]} @ui]
     (cond
+      marquee (end-marquee! marquee)
+      (and drag (:ids drag) (:moved drag))
+      (let [{:keys [ids gx gy]} drag ks (sort-by box-num (keys ids)) r (fn [v] (js/Math.round v))]
+        (swap! ui assoc :drag nil)
+        (if (= 1 (count ks))
+          (let [[x0 y0] (get ids (first ks))]
+            (gesture! (str (if @pres-mode "(present " "(move ") (first ks) " " (r (+ x0 gx)) " " (r (+ y0 gy)) ")")))
+          (gesture! (str (if @pres-mode "(present-by [" "(move-by [") (str/join " " ks) "] " (r gx) " " (r gy) ")"))))
+      (and drag (:clicked drag))
+      (swap! ui assoc :drag nil :sel [:box (:clicked drag)])
       ctldrag
       (let [v (:v ctldrag) id (:id ctldrag) b (when id (get-in (current) [:boxes id])) d (when b (box-def b))]
         (swap! ui assoc :ctldrag nil)
@@ -471,7 +603,7 @@
               (repl-print! "out" (esc (str "; and back: the edits made on " to " go to " from " (the dashed line)"))))))))))
 
 (.addEventListener svg "pointerup" end-gesture!)
-(.addEventListener svg "pointerleave" (fn [_] (when (or (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui) (:paramdrag @ui) (:ctldrag @ui)) (end-gesture! nil))))
+(.addEventListener svg "pointerleave" (fn [_] (when (or (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui) (:paramdrag @ui) (:ctldrag @ui) (:marquee @ui)) (end-gesture! nil))))
 
 (.addEventListener svg "dblclick"
   (fn [e]
@@ -540,10 +672,16 @@
           (and (#{"Delete" "Backspace"} k) (:sel @ui))
           (let [[kind v] (:sel @ui)]
             (.preventDefault e)
-            (swap! ui assoc :sel nil)
-            (if (= kind :box)
-              (gesture! (str "(delete " v ")"))
+            (swap! ui assoc :sel nil :insp nil)
+            (case kind
+              :box (gesture! (str "(delete " v ")"))
+              :boxes (gesture! (str "(delete " (str/join " " (sort-by box-num v)) ")"))
               (gesture! (str "(disconnect " (str/join " " v) ")"))))
+          (and (= k "Escape") (or (:sel @ui) (:insp @ui)))
+          (swap! ui assoc :sel nil :insp nil)
+          ;; ⌘/Ctrl+A: every box on screen
+          (and mod? (= (str/lower-case k) "a") (.-hidden ($ "manager")))
+          (do (.preventDefault e) (swap! ui assoc :sel (sel-of (keys (scene-boxes))) :insp nil :nsel nil :tsel nil))
           (and mod? (= (str/lower-case k) "z") (.-shiftKey e))
           (do (.preventDefault e) (gesture! "(forward)"))
           (and mod? (= (str/lower-case k) "z"))

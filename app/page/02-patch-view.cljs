@@ -89,7 +89,12 @@
 
 (defn box-pos [id b]
   (let [d (:drag @ui)]
-    (if (and d (= (:id d) id) (:moved d)) [(:x d) (:y d)] [(:x b) (:y b)])))
+    (cond
+      ;; several boxes moving together: each from where it started, by the same offset
+      (and d (:moved d) (:ids d) (contains? (:ids d) id))
+      (let [[x0 y0] (get (:ids d) id)] [(+ x0 (:gx d)) (+ y0 (:gy d))])
+      (and d (= (:id d) id) (:moved d)) [(:x d) (:y d)]
+      :else [(:x b) (:y b)])))
 
 (defn out-xy [p id o]
   (let [b (get-in p [:boxes id]) [x y] (box-pos id b) [w h] (box-dims id b) [_ n] (io b)]
@@ -428,6 +433,7 @@
 (defn render-scene [p]
   (let [p (scene-of p)
         {:keys [sel wire hover-in nsel ldrag]} @ui
+        chosen (sel-ids)
         _ (doseq [[id b] (:boxes p) :when (= "score" (klass (:text b)))] (score-entry! id b))
         lines (map-indexed
                (fn [idx [a o b i :as l]]
@@ -449,7 +455,7 @@
                     action-box? (or ctl? (contains? action-classes kc))
                     cls (str "box" (when (kairos-classes kc) " kairos") (when (comp/subpatch? b) " sub") (when (or music-box? code-box?) " mus") (when code-box? " code")
                              (when action-box? (str " act " (if ctl? "ctl" kc)))
-                             (when (= sel [:box id]) " sel") (when (= id (first hover-in)) " drop")
+                             (when (contains? chosen id) " sel") (when (= id (first hover-in)) " drop")
                              (when (and (:present b) (not @pres-mode)) " presented") (when (panel-layout b) " panel"))
                     idn (esc (name id))
                     d (if (#{"canvas" "freqt"} kc) (shown-data id b) (canvas-data b))
@@ -535,8 +541,9 @@
     (render-inspector!)))
 
 ;; ───── inspector: the selected box, editable from the patch ─────
-;; Under the selected box: its class and usage, one field per declared argument (:args) and its whole
-;; text. Changing a field rewrites the box with (text! …), as if it had been typed.
+;; Under a box opened with ⌘/Ctrl+click (a plain click only selects and moves it): its class and usage,
+;; one field per declared argument (:args) and its whole text. Changing a field rewrites the box with
+;; (text! …), as if it had been typed.
 
 (defonce insp-key (atom nil))
 
@@ -576,7 +583,7 @@
 (defn render-inspector! []
   (let [old ($ "inspector") [kind id] (:sel @ui)
         moving? (let [d (:drag @ui)] (and d (:moved d)))   ; hidden while a box is being moved
-        b (when (and (= kind :box) (not @pres-mode) (not moving?)) (get-in (current) [:boxes id]))
+        b (when (and (= kind :box) (= id (:insp @ui)) (not @pres-mode) (not moving?)) (get-in (current) [:boxes id]))
         k (when b [id (:text b) (:x b) (:y b) (cmd-path)])
         focused (.-activeElement js/document)]
     ;; a field being edited is applied before the inspector goes away or is redrawn
@@ -594,7 +601,7 @@
                          (.addEventListener el "keydown"
                            (fn [e] (case (.-key e)
                                      "Enter" (.blur (.-target e))
-                                     "Escape" (do (reset! insp-key nil) (render-inspector!))
+                                     "Escape" (do (reset! insp-key nil) (swap! ui assoc :insp nil) (render-inspector!))
                                      nil)))
                          (.appendChild ($ "canvas-wrap") el)
                          el))]

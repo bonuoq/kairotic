@@ -26,9 +26,9 @@ Una caja es una línea de texto. La primera palabra es su **clase** (lo que es: 
 
 Mira la pestaña Code: la caja es la línea `(box :b1 "osc~ 220" 40 110)` — su id `:b1`, su texto y dónde está (x 40, y 110). El patch y el código son dos vistas de lo mismo.
 @try.en
-Click the box: below it you can change its argument. Then look at the Code tab again.
+⌘/Ctrl+click the box: below it you can change its argument. Then look at the Code tab again.
 @try.es
-Haz clic en la caja: debajo puedes cambiar su argumento. Luego vuelve a mirar la pestaña Code.
+Haz ⌘/Ctrl+clic en la caja: debajo puedes cambiar su argumento. Luego vuelve a mirar la pestaña Code.
 ```kairotic
 (box :b1 "osc~ 220" 40 110)
 ```

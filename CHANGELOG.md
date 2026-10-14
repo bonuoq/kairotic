@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **Inspector on ⌘/Ctrl+click** ([#4](https://github.com/bonuoq/kairotic/issues/4)): a plain click
+  selects and moves a box; ⌘/Ctrl+click opens its inspector (arguments and text). Esc closes it.
+- **Several boxes at once**: ⇧+click adds a box to the selection (or takes it out), a frame drawn
+  from an empty place of the paper selects every box it touches (⇧ adds), ⌘/Ctrl+A selects all.
+  The selection moves together (in the patch or in presentation) and Delete removes it. New REPL
+  commands: `(move-by [:b1 :b2] dx dy)`, `(present-by [:b1 :b2] dx dy)`, and `(delete :b1 :b2 …)`
+  takes several boxes.
+
 ## 0.1.0-alpha — 2026-10-14
 
 The first version of Kairotic as one app, after 23 studies ([docs/studies.md](docs/studies.md)).

@@ -48,9 +48,9 @@ The number is in semitones; negative goes down, and decimals give microtones (`m
 
 El número está en semitonos; negativo baja, y los decimales dan microtonos (`mt transpose 0.5` es un cuarto de tono).
 @try.en
-Select the `mt` box and change 7 for -12 in the inspector: the second score follows.
+⌘/Ctrl+click the `mt` box and change 7 for -12 in the inspector: the second score follows.
 @try.es
-Selecciona la caja `mt` y cambia 7 por -12 en el inspector: la segunda partitura lo sigue.
+Haz ⌘/Ctrl+clic en la caja `mt` y cambia 7 por -12 en el inspector: la segunda partitura lo sigue.
 ```kairotic
 (box :b4 "mt transpose 7" 480 150)
 (box :b5 "score" 480 190)

@@ -356,7 +356,7 @@
 (add-watch profiles ::render (fn [_ _ _ _] (render-tree!) (render-peers!) (render-foot!)))
 (add-watch ui ::render
   (fn [_ _ o n]
-    (when (not= (select-keys o [:sel :drag :wire :hover-in :nsel :ldrag]) (select-keys n [:sel :drag :wire :hover-in :nsel :ldrag]))
+    (when (not= (select-keys o [:sel :insp :drag :wire :hover-in :nsel :ldrag]) (select-keys n [:sel :insp :drag :wire :hover-in :nsel :ldrag]))
       (render-scene (current)))
     (when (not= (:follow o) (:follow n)) (render-peers!))
     (when (not= (:merge-pick o) (:merge-pick n)) (render-controls!) (render-foot!))))
