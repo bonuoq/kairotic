@@ -3,8 +3,7 @@
 *[Leer en castellano](README.es.md)* · **0.1.0-alpha** · [open the app](https://bonuoq.github.io/kairotic/) · [documentation](docs/README.md)
 
 A collaborative visual-acoustic space for musical improvisation, composition and performance:
-a patcher where **code and patch are the same work**, with a branching, shared history,
-frequency-over-time canvases, scores, code boxes (Faust, ClojureScript) and components
+a patcher where **code and patch are the same work**, with a branching, shared history, an EDN tree for extensible musical notation, Verovio integration, different graphical representations, DSP, code boxes (Faust, ClojureScript) and components
 that anyone can write and share.
 
 *kairos* + *chaotic*: the opportune moment and the divergence of timelines.
