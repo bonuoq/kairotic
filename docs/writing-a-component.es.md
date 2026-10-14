@@ -89,8 +89,11 @@ paleta que sigue el tema claro u oscuro: `:ink` `:soft` `:accent` `:kairos` `:bg
  :gesture (fn [{:keys [start dy fine]}] …)   ; start = lo que se veía al pulsar, dy desde la pulsación
 ```
 
-El valor llega a la entrada 0 de la propia caja mientras arrastras, y al soltar queda escrito en la
-historia como `(send! :bN valor)`.
+El valor llega a la entrada 0 de la propia caja mientras arrastras. Al soltar, `:gesture` se llama
+una vez más con `:up true`, y lo que devuelve queda escrito en la historia como `(send! :bN valor)`.
+Un gesto que ignora `:up` (un knob) repite su último valor; uno que necesita pulsar y soltar (un
+teclado) devuelve un mensaje de soltar, para que ni la historia ni el resto de la sala se queden con
+una nota pulsada.
 
 Para vistas difíciles de expresar como plantilla existe una salida de emergencia:
 `:draw (fn [m] figuras)`.

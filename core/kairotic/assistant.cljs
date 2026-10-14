@@ -222,6 +222,7 @@
             gesture (when (:gesture m)
                       (try (let [v ((:gesture m) (assoc ctx :start shown :x (/ w 2) :y (/ h 2) :dx 10 :dy -10 :fine false))]
                              {:value (pr-str v)
+                              :on-release (pr-str ((:gesture m) (assoc ctx :start shown :x (/ w 2) :y (/ h 2) :dx 10 :dy -10 :fine false :up true)))
                               :persist (when (:persist m) (comp/args-text m (:class m) (merge (comp/args-for m text) ((:persist m) v))))})
                            (catch :default e {:error (or (.-message e) (str e))})))]
         {:ok (and (empty? missing) (empty? bad) (empty? nan) (not (:error gesture)))
@@ -255,7 +256,7 @@ browser. You may write:
    (audio) boxes, numbered left to right by :x. `$1 $2` in box texts take the words of each instance.
    `:present [x y]` on a box puts it on the panel every instance shows (a bpatcher); only boxes with
    their own view act there (knob, adsr~, space~, or components with a :view). Inside, use classes that
-   exist (`list_classes`); the official ones adsr~ synth~ pan~ space~ knob are brought into
+   exist (`list_classes`); the official ones adsr~ synth~ pan~ space~ knob keyboard are brought into
    the work automatically. For audio DSP prefer a `faust~` box with Faust code: its audio ports are
    those of `process`, and its left inlet takes parameters as messages `[:cutoff 800]` — exactly what
    a named knob sends (`knob 40 12000 1200 log cutoff`); a list of Hz sets freq and gate = 1.
@@ -264,7 +265,8 @@ browser. You may write:
 
 Write in English (names, :doc, comments). Keep it small and readable, in sections like the examples:
 about (:class :license \"MPL-2.0\" :doc :usage :io), arguments (:args, :persist), logic (:receive,
-:gesture), view (:derive, :view as data, :size), audio (:audio), help (:help {:inlets [\"one line per inlet\" …]
+:gesture, called once more with :up true on release: return a release message there if the
+component needs press and release), view (:derive, :view as data, :size), audio (:audio), help (:help {:inlets [\"one line per inlet\" …]
 :outlets […] :try \"something to do with it\"}, shown in the Help tab). Prefer :view (a data template with
 $holes) over :draw. A class name is one word; audio classes end in ~. Do not reuse a core class name.
 :receive is pure: it returns data ({:out … :state … :show … :effects … :later …}); side effects on
@@ -340,7 +342,7 @@ strings, keywords, vectors, maps) — no let, def, fn, str, arithmetic or any ot
 
 Rules:
 - Use only classes that exist (`list_classes`; `class_help` gives the inlets and outlets of one).
-  Official classes such as knob, synth~, adsr~, pan~, space~ come into the work by
+  Official classes such as knob, keyboard, synth~, adsr~, pan~, space~ come into the work by
   themselves when a box uses them.
 - Messages flow without ▶; ▶ starts sound and time (metro, ramp, loadbang). Audio classes end in ~.
   Send sound to `dac~ 1 2` (both channels: connect to inlets 0 and 1) through a `gain~` of 0.1–0.3:

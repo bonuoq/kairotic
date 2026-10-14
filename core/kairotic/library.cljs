@@ -167,7 +167,7 @@
 (def packages
   {"@kairotic/synth"    {:version "0.1.1" :classes #{"adsr~" "synth~"}  :local "kairotic/packages/synth.mjs"}
    "@kairotic/spatial"  {:version "0.1.1" :classes #{"pan~" "space~"}   :local "kairotic/packages/spatial.mjs"}
-   "@kairotic/controls" {:version "0.1.0" :classes #{"knob"}            :local "kairotic/packages/controls.mjs"}})
+   "@kairotic/controls" {:version "0.1.0" :classes #{"knob" "keyboard"} :local "kairotic/packages/controls.mjs"}})
 
 (defn package-of
   "The official package that defines class k: [name info], or nil."
