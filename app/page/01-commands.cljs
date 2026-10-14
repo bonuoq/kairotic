@@ -27,6 +27,7 @@
   (let [ev (wrap-in (cmd-path) ev)]
   (cond
     @scratch (swap! scratch step ev)
+    @perf (perform-event! ev)
     (= :connecting (:mode @hist)) (fail "Still connecting to the shared history; try again in a moment.")
     (= :none (:mode @hist)) (fail "Open or create a work from the session manager.")
     :else (do (when (:follow @ui) (swap! ui assoc :follow nil))
@@ -453,7 +454,39 @@
   (when on? (auto-advance!))
   (boolean on?))
 
+(declare show-leave-dialog!)
+
+(defn not-performing!
+  "Travelling in the history leaves the take behind: in Perform, it is asked for first."
+  [] (when @perf
+       (show-leave-dialog!)
+       (fail "You are in Perform: leave it first with (compose), keeping the take or not.")))
+
+(defn perf-undo!
+  "In Perform, ◀ and Ctrl+Z take back your last changes of the take (and ▶ brings them again)."
+  [k]
+  (swap! perf (fn [st]
+                (loop [st st k k]
+                  (let [e (peek (:own st))]
+                    (if (or (zero? k) (nil? e) (<= (:t e) (or (:cut st) 0)))
+                      (perf-recompute st)
+                      (recur (-> st (update :own pop) (update :redo conj e)) (dec k)))))))
+  (jam-push!)
+  {:take (count (perf-events @perf))})
+
+(defn perf-redo! [k]
+  (swap! perf (fn [st]
+                (loop [st st k k]
+                  (let [e (peek (:redo st))]
+                    (if (or (zero? k) (nil? e))
+                      (perf-recompute st)
+                      ;; brought again now: it takes its place at the end of the take
+                      (recur (-> st (update :redo pop) (update :own conj (assoc e :t (js/Date.now)))) (dec k)))))))
+  (jam-push!)
+  {:take (count (perf-events @perf))})
+
 (defn goto [nid n]
+  (not-performing!)
   (when-not (node nid) (fail (str "There is no segment " (pr-str nid))))
   (stop-follow!)
   (let [p (norm [nid n])]
@@ -463,32 +496,37 @@
 (defn rewind
   ([] (rewind 1))
   ([k]
-   (stop-follow!)
-   (swap! world assoc :auto false :prev-pos nil)
-   (dotimes [_ k]
-     (let [p (norm (:pos @world))]
-       (when (and p (pos? (second p)))
-         (swap! world assoc :pos (norm [(first p) (dec (second p))])))))
-   (here)))
+   (if @perf
+     (perf-undo! k)
+     (do (stop-follow!)
+         (swap! world assoc :auto false :prev-pos nil)
+         (dotimes [_ k]
+           (let [p (norm (:pos @world))]
+             (when (and p (pos? (second p)))
+               (swap! world assoc :pos (norm [(first p) (dec (second p))])))))
+         (here)))))
 
 (defn undo [] (rewind 1))
 
 (defn forward
   ([] (forward 1))
   ([k]
-   (stop-follow!)
-   (swap! world assoc :auto false :prev-pos nil)
-   (dotimes [_ k]
-     (let [p (norm (:pos @world))]
-       (when p
-         (let [[nid idx] p n (node nid)]
-           (if (< idx (count (:events n)))
-             (swap! world assoc :pos [nid (inc idx)])
-             (when-let [c (last (sort-by :t (children-at nid idx)))]
-               (swap! world assoc :pos [(:id c) 1])))))))
-   (here)))
+   (if @perf
+     (perf-redo! k)
+     (do (stop-follow!)
+         (swap! world assoc :auto false :prev-pos nil)
+         (dotimes [_ k]
+           (let [p (norm (:pos @world))]
+             (when p
+               (let [[nid idx] p n (node nid)]
+                 (if (< idx (count (:events n)))
+                   (swap! world assoc :pos [nid (inc idx)])
+                   (when-let [c (last (sort-by :t (children-at nid idx)))]
+                     (swap! world assoc :pos [(:id c) 1])))))))
+         (here)))))
 
 (defn tip []
+  (not-performing!)
   (stop-follow!)
   (when-let [p (norm (:pos @world))] (swap! world assoc :pos (tip-of (first p)) :auto true :prev-pos nil))
   (auto-advance!)
@@ -497,6 +535,7 @@
 (defn merge-from
   "Brings to where you are the events of the branch that goes through [segment n]. The merge is one more event."
   [nid n]
+  (not-performing!)
   (when-not (node nid) (fail (str "There is no segment " (pr-str nid))))
   (when (#{:connecting :none} (:mode @hist)) (fail "Open a work before merging."))
   (let [src (norm [nid n]) tgt (norm (:pos @world))]

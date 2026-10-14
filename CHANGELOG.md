@@ -9,6 +9,14 @@
   The selection moves together (in the patch or in presentation) and Delete removes it. New REPL
   commands: `(move-by [:b1 :b2] dx dy)`, `(present-by [:b1 :b2] dx dy)`, and `(delete :b1 :b2 …)`
   takes several boxes.
+- **Compose and Perform** ([#5](https://github.com/bonuoq/kairotic/issues/5)): **Perform** opens a
+  take outside the history, from where you are, to rehearse, try and improvise; going back to Compose
+  keeps it as a new point (a branch) or discards it. Ctrl+Z works inside the take. In a shared room,
+  whoever performs from the same point plays one take together (a **jam**); the others get an
+  invitation to join. Commands: `(perform)`, `(compose)`, `(compose :keep)`, `(compose :discard)`,
+  `(jam "id")`.
+- **Snapshot**: ◆ in the history, or `(snapshot "name")`, writes a keyframe with the work as it is
+  now, in Compose or in Perform.
 
 ## 0.1.0-alpha — 2026-10-14
 

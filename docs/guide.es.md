@@ -66,6 +66,23 @@ Cada gesto es un evento de la historia, abajo en la página.
 - **Merge…** trae aquí los eventos de otra rama, cuando no chocan.
 - En una sala, los gestos de los demás llegan a la misma historia; *Follow the front* te mantiene en el
   punto más nuevo.
+- **◆ Snapshot** —`(snapshot)`, o `(snapshot "intro")` con un nombre— escribe un fotograma clave: un
+  punto de la historia con la obra tal como está ahora. Se dibuja como un cuadrado.
+
+### Componer y tocar (Compose y Perform)
+
+Componer es el modo habitual: cada cambio en la obra es un punto de la historia. **Perform** abre un
+tiempo propio para ensayar, probar e improvisar con la obra: lo que cambias forma una *toma* que parte
+de donde estás y queda fuera de la historia (el patch tiene un marco rojo mientras tocas).
+
+- Ctrl+Z / ◀ deshacen tus últimos cambios de la toma; ▶ los rehace.
+- Un snapshot en Perform escribe en la historia la toma hasta ahí, y la toma sigue desde ese punto.
+- Pulsar otra vez **Perform** vuelve a Compose: *Keep it as a new point* escribe la toma como una rama
+  desde donde empezó (cerrada por un cuadrado relleno), *Discard* vuelve a donde estabas.
+- En una sala, quienes tocan desde el mismo punto de la historia tocan la misma toma: una **jam**. Solo
+  ellos reciben los cambios de los demás; al resto se le invita a unirse.
+- Desde la REPL: `(perform)`, `(compose)`, `(compose :keep)`, `(compose :discard)`, `(jam "id")`.
+  Perform y Present son independientes: puedes tocar con el patch entero o con el panel.
 
 ## 5. Las pestañas de la derecha
 
@@ -114,6 +131,6 @@ arrastrándolas en modo presentación— como un panel para quien toca. **Edit**
 | Esc | deselecciona, o cierra el editor de la caja |
 | espacio | ▶ / ■ |
 | ? o F1 | ayuda de la caja seleccionada |
-| Ctrl+Z · Ctrl+Mayús+Z · Ctrl+Y | atrás · adelante en la historia |
+| Ctrl+Z · Ctrl+Mayús+Z · Ctrl+Y | atrás · adelante en la historia (en Perform, en la toma) |
 | Ctrl+Intro | aplica código (pestaña Code, cajas de código, pestaña Claude) |
 | ↑ ↓ + − ← → Supr | edita la nota seleccionada de una partitura, o el trazo de un canvas |

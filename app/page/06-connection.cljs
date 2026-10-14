@@ -51,7 +51,10 @@
                       (vec (for [p (array-seq (.-peers ch)) :when (not= "agent" (.-kind p))]
                              {:peer (.-peer p) :by (.-by p) :me (.-isMe p) :same (.-sameTab p) :kind (.-kind p)
                               :session (let [s (.. p -presence -session)] (when (string? s) s))
-                              :pos (let [pp (js->clj (.. p -presence -pos))] (when (valid-pos? pp) pp))}))))
+                              :pos (let [pp (js->clj (.. p -presence -pos))] (when (valid-pos? pp) pp))
+                              ;; performing in a jam (issue #5): its id and the point of the history it starts from
+                              :jam (let [j (.. p -presence -jam)] (when (string? j) j))
+                              :jam-at (let [pp (js->clj (.. p -presence -jamAt))] (when (valid-pos? pp) pp))}))))
             (fn [_] nil))
   (publish-presence!))
 
