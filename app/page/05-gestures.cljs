@@ -190,13 +190,13 @@
 
 (defn send-quiet! [id v]
   (let [was-on (eng/running?)]
-    (eng/inject! (fn [] (work-patch)) (fid id) 0 v)
+    (inject-local! (fid id) 0 v)
     (when-not was-on (transport-info!) (js/requestAnimationFrame (fn [_] (live!))))
     (render-overlay!)))
 
 (defn send-flat-quiet! [f v]
   (let [was-on (eng/running?)]
-    (eng/inject! (fn [] (work-patch)) f 0 v)
+    (inject-local! f 0 v)
     (when-not was-on (transport-info!) (js/requestAnimationFrame (fn [_] (live!))))
     (render-overlay!)))
 
@@ -227,7 +227,7 @@
   "Sends a message to inlet 0 of a box inside a sub-patch of this view: (send-to! :b7.b4 0.5)."
   [rel v]
   (let [was-on (eng/running?)]
-    (eng/inject! (fn [] (work-patch)) (eng/flat-id (cmd-path) rel) 0 v)
+    (inject-local! (eng/flat-id (cmd-path) rel) 0 v)
     (when-not was-on (transport-info!) (js/requestAnimationFrame (fn [_] (live!))))
     v))
 
@@ -500,7 +500,7 @@
                   (when (not= v (or (:v numdrag) (:v0 numdrag)))
                     (swap! ui assoc :numdrag (assoc numdrag :v v))
                     (let [was-on (eng/running?)]
-                      (eng/inject! (fn [] (work-patch)) (fid (:id numdrag)) 0 v)
+                      (inject-local! (fid (:id numdrag)) 0 v)
                       (when-not was-on (transport-info!) (js/requestAnimationFrame (fn [_] (live!)))))
                     (render-overlay!)))
         ldrag (let [far (> (+ (js/Math.abs (- x (:x0 ldrag))) (js/Math.abs (- y (:y0 ldrag)))) 3)]
@@ -547,6 +547,8 @@
           ;; the change stays in the work: the box is rewritten with its new arguments
           (when (some? v)
             (let [t (comp/args-text d (klass (:text b)) (merge (comp/args-for d (:text b)) ((:persist d) v)))]
+              ;; this tab already sent the value while dragging: the new text need not send it again
+              (swap! echoed assoc (:f ctldrag) t)
               (when (not= t (:text b)) (gesture! (str "(text! " id " " (pr-str t) ")")))))
           (gesture! (str (:echo ctldrag) (cond (number? v) (cv/fmt v) (some? v) (pr-str v) :else ":bang") ")"))))
       paramdrag

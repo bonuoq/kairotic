@@ -52,13 +52,62 @@
                            :events (mapv (fn [e] (enc [(:t e) (:ev e)])) own)})]
         (enqueue! jam-path (fn [] (.set (.doc @dbref jam-path) body)))))))
 
+;; ───── messages played in the jam (issue #11) ─────
+;; A knob turned, a number dragged, a msg clicked are messages, not changes of the take: they are written,
+;; a few at a time, to a second document of each performer (<jam>-<session>-live, the last ones), and the
+;; others play them in their engines as they arrive. What was there before you joined is not played.
+
+(def live-keep 48)
+(defonce live-buf (atom []))       ; your last messages: [{:t :f :i :v}]
+(defonce live-seen (atom {}))      ; session → the newest message of theirs already played here
+(defonce live-timer (atom nil))
+
+(defn live-path [] (when-let [p (:jam-path @perf)] (str p "-live")))
+
+(defn live-flush! []
+  (reset! live-timer nil)
+  (when-let [path (live-path)]
+    (when @dbref
+      (let [body (clj->js {:jam (:jam @perf) :kind "live" :session session-id :t (js/Date.now)
+                           :msgs (mapv (fn [{:keys [t f i v]}] (enc [t f i v])) @live-buf)})]
+        (enqueue! path (fn [] (.set (.doc @dbref path) body)))))))
+
+(defn played!
+  "A message played here: in a jam, it goes to the others too (sent every 60 ms at most)."
+  [f inlet v]
+  (when (and (:jam @perf) (:jam-path @perf))
+    (swap! live-buf (fn [b] (vec (take-last live-keep (conj b {:t (js/Date.now) :f f :i inlet :v v})))))
+    (when-not @live-timer (reset! live-timer (js/setTimeout live-flush! 60)))))
+
+(defn play-live!
+  "Plays here the new messages of another performer of the jam."
+  [s msgs]
+  (let [ms (sort-by first (filter (fn [[t f i]] (and (number? t) (keyword? f) (number? i))) msgs))
+        newest (reduce max 0 (map first ms))
+        seen (get @live-seen s)]
+    (when (seq ms)
+      (swap! live-seen assoc s (max newest (or seen 0)))
+      ;; the first time: what was played before you came is not played again
+      (when seen
+        (let [p (work-patch)]
+          (doseq [[t f i v] ms :when (> t seen)]
+            (when (get-in (eng/flat p) [:boxes f])
+              (try (eng/inject! (fn [] (work-patch)) f i v)
+                   (catch :default e (js/console.error "jam message" e))))))
+        (render-overlay!)))))
+
 (defn on-jam
-  "The documents of the jams of this work: the changes of the others in yours join the take."
+  "The documents of the jams of this work: the changes of the others in yours join the take, and their
+   messages are played here."
   [snap]
   (when-let [{:keys [jam]} @perf]
+    (doseq [d (array-seq (.-docs snap)) :when (.-exists d)
+            :let [m (js->clj (.data d)) s (get m "session")]
+            :when (and (= jam (get m "jam")) (= "live" (get m "kind")) (string? s) (not= s session-id))]
+      (play-live! s (map dec* (get m "msgs"))))
     (let [others (into {} (for [d (array-seq (.-docs snap)) :when (.-exists d)
                                 :let [m (js->clj (.data d)) s (get m "session")]
-                                :when (and (= jam (get m "jam")) (string? s) (not= s session-id))]
+                                :when (and (= jam (get m "jam")) (not= "live" (get m "kind")) (string? s) (not= s session-id))]
                             [s (vec (keep (fn [x]
                                             (let [[t ev] (dec* x)]
                                               (when (and (number? t) (vector? ev) (keyword? (first ev))) {:t t :s s :ev ev})))
@@ -125,7 +174,12 @@
   (let [st @perf]
     (when-let [f @jam-unsub] (f) (reset! jam-unsub nil))
     (when-let [path (:jam-path st)]
-      (when @dbref (enqueue! path (fn [] (.delete (.doc @dbref path))))))
+      (when @dbref
+        (enqueue! path (fn [] (.delete (.doc @dbref path))))
+        (let [lp (str path "-live")] (enqueue! lp (fn [] (.delete (.doc @dbref lp)))))))
+    (when-let [t @live-timer] (js/clearTimeout t) (reset! live-timer nil))
+    (reset! live-buf [])
+    (reset! live-seen {})
     (reset! perf nil)
     (hide-leave-dialog!)
     (publish-presence!)

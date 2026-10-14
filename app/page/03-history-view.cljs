@@ -195,6 +195,7 @@
 (defonce sent-trees (atom {}))     ; engine id → the tree it last sent
 (defonce emit-timer (atom nil))
 (defonce msg-edits (atom {}))      ; box → instants it was changed by messages; :stopped #{boxes}
+(defonce echoed (atom {}))         ; engine id → the text a gesture here wrote after sending its value
 
 (defn drain-prints!
   "What boxes printed (and the loops the engine cut), written in the REPL when the engine is off too."
@@ -219,7 +220,9 @@
 (defn emit-trees!
   "Every tree box sends its tree when it changed. When the patch changed (a new line, a box new or with a
    new text), a tree goes again only toward what needs it: along its lines that lead to one of those
-   boxes (Study 23). Moving a knob — whose value stays in its text — sends nothing."
+   boxes (Study 23). A control whose value stays in its text (:persist, a knob) sends it when that text
+   changes: from another tab, a jam or a moment of the history (issue #11); not after a drag here,
+   which already sent it."
   []
   (reset! emit-timer nil)
   (let [p (eng/flat (work-patch))
@@ -236,7 +239,14 @@
         (eng/forget! f)
         (swap! live-trees dissoc f)
         (swap! score-cache dissoc f))
-      (reset! sent-shape shape))
+      (reset! sent-shape shape)
+      (doseq [[f text] (second shape)
+              :when (and old-texts (contains? old-texts f) (not= text (get old-texts f))
+                         (:persist (comp/lookup (klass text))))]
+        (if (= text (get @echoed f))
+          (swap! echoed dissoc f)
+          (try (eng/inject! (fn [] (work-patch)) f 0 :bang)
+               (catch :default e (js/console.error e))))))
     (doseq [[f b] (:boxes p)
             :when (and (= "tree" (klass (:text b))) (not (some #{:manual} (eng/args-of (:text b)))))]
       (let [t (mtb/tree-of (:data b))]

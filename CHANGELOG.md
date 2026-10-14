@@ -12,6 +12,10 @@
   static; without it, a plain text area does the same.
   The **Code tab** and the **REPL** use the same editor: in the REPL, Enter evaluates once the brackets
   are closed (otherwise a new line; ⇧+Enter always), ↑ ↓ bring back earlier expressions.
+- **Jams carry what is played** ([#11](https://github.com/bonuoq/kairotic/issues/11)): a knob turned,
+  a number dragged or a `msg` clicked in a jam is played in the engines of the others too, not only
+  drawn. And a control whose value stays in its text (`knob`) sends that value when the text changes
+  from elsewhere — another tab of a room, a jam, or a moment of the history you travel to.
 - **`keyboard`** in `@kairotic/controls`, from the Gallery ([#2](https://github.com/bonuoq/kairotic/discussions/2)):
   a virtual MIDI keyboard that plugs straight into `synth~` (Hz 0→0, voice ids 1→1) or `faust~` (Hz and
   `[:gain velocity]`), with a gate for `adsr~`. Press and release follow the mouse; ⇧ builds chords that
