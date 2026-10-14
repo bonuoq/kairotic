@@ -17,7 +17,7 @@
 ;; Box classes are components registered in kairotic.components: their ports, their view,
 ;; their data with its own history, their behaviour with messages and their audio all come from there.
 
-(declare es? docs show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
+(declare es? docs open-work! show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
 (def klass comp/klass)
 (defn box-def [b] (comp/lookup (klass (:text b))))
 (defn display-of [b] (or (:display (box-def b)) :text))
