@@ -156,8 +156,33 @@
 ;; view-path is the sub-patch on screen ([] = the work, [:b5] = inside :b5 …); (inside :b5 …) adds to it
 ;; while its body runs. Commands read (current) and their events are wrapped as [:in :b5 event].
 
-(defn root-patch [] (or @scratch (patch-at (:pos @world))))
-(defn work-patch [] (patch-at (:pos @world)))
+;; ───── Perform (issue #5): a time of its own to rehearse, try and improvise with the work ─────
+;; In Perform the changes do not go to the history: they make a take that starts from a point of it
+;; (:origin), and the patch on screen (and in the engine) is that take. Leaving it (compose) keeps the
+;; take as a new point or discards it. In a shared room, the takes of those who perform from the same
+;; point are one jam: everyone's changes, in time order. 13-perform.cljs has the rest.
+;; {:from pos  :origin pos  :base patch  :patch patch  :own [{:t :s :ev}]  :others {session [{:t :s :ev}]}
+;;  :redo [entry]  :cut t  :jam id-or-nil}
+
+(declare jam-push!)
+
+(defonce perf (atom nil))
+
+(defn perf-events
+  "The changes of the take after its last snapshot (:cut), from everyone in the jam, in time order."
+  [{:keys [own others cut]}]
+  (sort-by (juxt :t :s) (filter (fn [e] (> (:t e) (or cut 0))) (concat own (apply concat (vals others))))))
+
+(defn perf-recompute [st] (assoc st :patch (reduce step (:base st) (map :ev (perf-events st)))))
+
+(defn perform-event!
+  "A change made in Perform: it goes to the take (and to the jam), not to the history."
+  [ev]
+  (swap! perf (fn [st] (-> st (update :own conj {:t (js/Date.now) :s session-id :ev ev}) (assoc :redo []) (update :patch step ev))))
+  (jam-push!))
+
+(defn work-patch [] (or (:patch @perf) (patch-at (:pos @world))))
+(defn root-patch [] (or @scratch (work-patch)))
 
 (defonce view-path (atom []))
 (def ^:dynamic *inside* [])

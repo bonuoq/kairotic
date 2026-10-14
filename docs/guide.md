@@ -65,6 +65,23 @@ Every gesture is an event of the history, at the bottom of the page.
 - **Merge…** brings the events of another branch here, when they do not clash.
 - In a room, the gestures of others arrive in the same history; *Follow the front* keeps you at the
   newest point.
+- **◆ Snapshot** — `(snapshot)`, or `(snapshot "intro")` with a name — writes a keyframe: a point of
+  the history with the work as it is now. It is drawn as a square.
+
+### Compose and Perform
+
+Composing is the usual mode: every change to the work is a point of the history. **Perform** opens a
+time of its own to rehearse, try and improvise with the work: what you change makes a *take* that
+starts from where you are and stays out of the history (the patch has a red frame while you perform).
+
+- Ctrl+Z / ◀ take back your last changes of the take; ▶ brings them again.
+- A snapshot in Perform writes the take so far into the history, and the take goes on from there.
+- Pressing **Perform** again goes back to Compose: *Keep it as a new point* writes the take as a branch
+  from where it started (closed by a filled square), *Discard* goes back to where you were.
+- In a room, whoever performs from the same point of the history plays the same take: a **jam**. Only
+  they receive each other's changes; the others are invited to join it.
+- From the REPL: `(perform)`, `(compose)`, `(compose :keep)`, `(compose :discard)`, `(jam "id")`.
+  Perform and Present are independent: you can perform with the whole patch or with the panel.
 
 ## 5. The tabs on the right
 
@@ -113,6 +130,6 @@ presentation mode — as a performer's panel. **Edit** goes back.
 | Esc | deselect, or close the box editor |
 | space | ▶ / ■ |
 | ? or F1 | help of the selected box |
-| Ctrl+Z · Ctrl+Shift+Z · Ctrl+Y | back · forward in the history |
+| Ctrl+Z · Ctrl+Shift+Z · Ctrl+Y | back · forward in the history (in Perform, in the take) |
 | Ctrl+Enter | apply code (Code tab, code boxes, Claude tab) |
 | ↑ ↓ + − ← → Delete | edit the selected note of a score, or the stroke of a canvas |

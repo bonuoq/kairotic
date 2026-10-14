@@ -64,6 +64,22 @@ header .status b.off { color: var(--kairos); }
 .pres .port, .pres .grip { display: none; }
 .pres #canvas { background-image: none; }
 #pres-toggle.on { background: var(--accent); color: var(--paper); }
+/* Perform (issue #5): the take is outside the history; the patch says so */
+#perform-toggle.on { background: var(--kairos); border-color: var(--kairos); color: var(--paper); }
+#perform-toggle.on::before { content: "● "; }
+.perform-info { font-family: var(--f-code); font-size: 12px; color: var(--kairos); }
+body.performing .canvas-wrap { box-shadow: inset 0 0 0 2px var(--kairos); }
+body.performing #canvas .bg { opacity: 0.6; }
+.perform-pop, .jam-invite { position: fixed; z-index: 60; max-width: min(440px, calc(100vw - 32px)); box-sizing: border-box; padding: 12px 14px;
+  background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-left: 3px solid var(--kairos); border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); font-size: 13px; }
+.perform-pop { top: 76px; left: 50%; transform: translateX(-50%); }
+.jam-invite { right: 16px; bottom: 16px; }
+.perform-pop p, .jam-invite p { margin: 0 0 10px; line-height: 1.45; }
+.pp-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+#tree .keyframe { fill: var(--sheet); stroke-width: 2.5; cursor: pointer; }
+#tree .keyframe.take { fill: var(--kairos); fill-opacity: 0.25; }
+#tree .perform-at { fill: none; stroke: var(--kairos); stroke-width: 2; stroke-dasharray: 3 3; pointer-events: none; }
 /* embedding (Study 22) */
 body:not(.embed) .embed-only { display: none; }
 a.act { text-decoration: none; display: inline-block; }
@@ -77,7 +93,7 @@ a.act { text-decoration: none; display: inline-block; }
 .embed-pop .ep-what, .embed-pop .ep-note { margin: 0; color: var(--ink-soft); }
 body.embed .app { height: 100vh; height: 100dvh; min-height: 0; padding: 0; gap: 0; grid-template-rows: minmax(0, 1fr); }
 body.embed header, body.embed .manager, body.embed .pane[aria-label="Projections"], body.embed .pane[aria-label="History"],
-body.embed .pane.repl, body.embed .pane-head .hint, body.embed #embed-btn, body.embed #embed-pop, body.embed #lesson-back { display: none !important; }
+body.embed .pane.repl, body.embed .pane-head .hint, body.embed #perform-toggle, body.embed #perform-info, body.embed #snap-btn, body.embed #embed-btn, body.embed #embed-pop, body.embed #lesson-back { display: none !important; }
 body.embed .work { display: flex; min-height: 0; height: 100%; }
 body.embed .pane { flex: 1; border: 0; border-radius: 0; }
 body.embed .pane-head { padding: 5px 8px; }
@@ -405,6 +421,8 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
           <button class="act" id="stop" title="Stop the engine: silence and initial state">■</button>
           <span id="transport-info">engine stopped</span>
           <button class="act" id="pres-toggle" title="Presentation: only the presented boxes, where the performer sees them (P)">Present</button>
+          <button class="act" id="perform-toggle" title="Perform: rehearse, try and improvise outside the history">Perform</button>
+          <span id="perform-info" class="perform-info" hidden></span>
           <button class="act" id="embed-btn" title="Put this patch (or this tutorial step) in another page: a link and an iframe">Embed</button>
           <button class="act embed-only" id="fs-btn" title="Fullscreen">⛶</button>
           <a class="act embed-only" id="open-full" target="_blank" rel="noopener" title="Open it in Kairotic, with the whole editor">Kairotic ↗</a>
@@ -567,6 +585,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
         <button class="act" id="nav-fwd" title="Forward one event">▶</button>
         <button class="act" id="nav-tip" title="Go to the tip of this branch">⇥</button>
       </div>
+      <button class="act" id="snap-btn" title="Snapshot: a keyframe in the history with the work as it is now (also in Perform)">◆ Snapshot</button>
       <label class="opt" title="Move forward automatically with anyone's gestures"><input type="checkbox" id="auto" checked> Follow the front</label>
       <label class="opt" title="Two gestures closer than this interval are considered parallel and branch">Simultaneity <input type="number" id="simul" min="0" max="10000" step="100" value="1500"> ms</label>
       <button class="act" id="merge-btn" title="Bring here the events of another compatible branch">Merge…</button>
@@ -715,7 +734,7 @@ window.addEventListener("DOMContentLoaded", function () {
   var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/mt.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
               "kairotic/api.cljs", "kairotic/code.cljs", "kairotic/mtboxes.cljs", "kairotic/faust.cljs", "kairotic/library.cljs", "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs",
               "kairotic/signal.cljs", "kairotic/links.cljs"];
-  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs"];
+  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs"];
   Promise.all(mods.map(function (m) {
     return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
   }))

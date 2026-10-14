@@ -84,14 +84,25 @@
                           (apply str
                                  (map-indexed
                                   (fn [k ev]
-                                    (let [mark? (= :merge-from (first ev))]
-                                      (str "<" (if mark? "rect" "circle") " class=\"ev" (when mark? " mergemark") "\" data-goto=\"" nid "|" (inc k) "\""
-                                           (if mark?
-                                             (str " x=\"" (- (X (+ s k 1)) 5) "\" y=\"" (- y 5) "\" width=\"10\" height=\"10\" transform=\"rotate(45 " (X (+ s k 1)) " " y ")\"")
-                                             (str " cx=\"" (X (+ s k 1)) "\" cy=\"" y "\" r=\"4.5\""))
-                                           " fill=\"" c "\">"
-                                           "<title>" (esc (str who " · " (if mark? "merge" (let [t (pr-str ev)] (if (> (count t) 90) (str (subs t 0 90) "…") t))))) "</title></"
-                                           (if mark? "rect" "circle") ">")))
+                                    (let [mark? (= :merge-from (first ev))
+                                          ;; a snapshot, or a take kept from Perform: a keyframe of the work
+                                          key? (= :mark (first ev))
+                                          xk (X (+ s k 1))]
+                                      (cond
+                                        key?
+                                        (let [{:keys [label kind]} (when (map? (second ev)) (second ev))]
+                                          (str "<rect class=\"ev keyframe" (when (= kind :take) " take") "\" data-goto=\"" nid "|" (inc k) "\""
+                                               " x=\"" (- xk 5.5) "\" y=\"" (- y 5.5) "\" width=\"11\" height=\"11\" rx=\"2\" stroke=\"" c "\">"
+                                               "<title>" (esc (str who " · " (if (= kind :take) "take kept from Perform" "snapshot")
+                                                                   (when (seq (str label)) (str ": " label)))) "</title></rect>"))
+                                        :else
+                                        (str "<" (if mark? "rect" "circle") " class=\"ev" (when mark? " mergemark") "\" data-goto=\"" nid "|" (inc k) "\""
+                                             (if mark?
+                                               (str " x=\"" (- xk 5) "\" y=\"" (- y 5) "\" width=\"10\" height=\"10\" transform=\"rotate(45 " xk " " y ")\"")
+                                               (str " cx=\"" xk "\" cy=\"" y "\" r=\"4.5\""))
+                                             " fill=\"" c "\">"
+                                             "<title>" (esc (str who " · " (if mark? "merge" (let [t (pr-str ev)] (if (> (count t) 90) (str (subs t 0 90) "…") t))))) "</title></"
+                                             (if mark? "rect" "circle") ">"))))
                                   (:events n))))))
             mark (fn [pos r cls color]
                    (let [p (norm pos)]
@@ -103,7 +114,9 @@
         (.setAttribute svg "width" w)
         (.setAttribute svg "height" ht)
         (set! (.-innerHTML svg)
-              (str (apply str ticks) (apply str body) (apply str peer-marks) (mark (:pos @world) 8 "here" nil)))))))
+              (str (apply str ticks) (apply str body) (apply str peer-marks) (mark (:pos @world) 8 "here" nil)
+                   ;; in Perform: the point the take starts from
+                   (when-let [st @perf] (mark (:origin st) 13 "perform-at" nil))))))))
 
 (defn scroll-to-here! []
   (let [p (norm (:pos @world)) wrap ($ "hist-wrap")]
@@ -317,7 +330,11 @@
 (defn publish-presence! []
   (when-let [room @named-room]
     (when-let [p (:pos @world)]
-      (.catch (.presence room (clj->js {:pos p :session session-id})) (fn [_] nil)))))
+      ;; in a jam (Perform in a shared room): from which point, so others can be invited to it
+      (let [{:keys [jam origin]} @perf]
+        (.catch (.presence room (clj->js (cond-> {:pos p :session session-id}
+                                           jam (assoc :jam jam :jamAt (or (:at @perf) origin)))))
+                (fn [_] nil))))))
 
 (defn sync-follow! []
   (when-let [f (:follow @ui)]
