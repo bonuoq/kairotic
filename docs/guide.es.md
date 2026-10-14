@@ -53,6 +53,10 @@ Puedes hacerlo con el ratón, escribirlo en la pestaña **Code** (Run · Ctrl+In
 una llamada cada vez. Las tres cosas son la misma obra: lo que dibujas aparece como código y lo que
 escribes aparece como cajas.
 
+La pestaña Code y la REPL usan el mismo editor que las cajas de código (paréntesis que se cierran y se
+emparejan, autocompletado de los comandos). En la REPL, Intro evalúa cuando todos los paréntesis están
+cerrados —si no, empieza una línea nueva, y ⇧+Intro siempre lo hace— y ↑ ↓ recuperan lo escrito antes.
+
 ## 3. Sonido y tiempo
 
 - **▶** (o la barra espaciadora) pone en marcha el sonido y el tiempo: audio, `metro`, `ramp`,

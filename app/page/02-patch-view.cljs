@@ -678,9 +678,21 @@
      (when-not was-on (transport-info!) (js/requestAnimationFrame (fn [_] (live!))))
      v)))
 
+;; ───── the Code tab and the REPL line: CodeMirror once it is loaded (14-editor.cljs), a textarea and an
+;; input until then (or if it cannot be loaded). Everything reads and writes them through these.
+
+(defonce code-ed (atom nil))   ; the editor of the Code tab
+(defonce repl-ed (atom nil))   ; the editor of the REPL line
+
+(defn code-text [] (if-let [e @code-ed] (.getValue e) (.-value ($ "code"))))
+(defn set-code-text! [v] (if-let [e @code-ed] (when (not= v (.getValue e)) (.setValue e v)) (set! (.-value ($ "code")) v)))
+(defn repl-text [] (if-let [e @repl-ed] (.getValue e) (.-value ($ "repl-in"))))
+(defn set-repl-text! [v] (if-let [e @repl-ed] (do (.setValue e v) (.cursorToEnd e)) (set! (.-value ($ "repl-in")) v)))
+(defn focus-repl! [] (if-let [e @repl-ed] (.focus e) (.focus ($ "repl-in"))))
+
 (defn render-code [p]
   (let [{:keys [dirty]} @ui]
-    (when-not dirty (set! (.-value ($ "code")) (patch->code p)))
+    (when-not dirty (set-code-text! (patch->code p)))
     (set! (.-textContent ($ "edn")) (patch->edn p))
     (let [st ($ "code-state")]
       (set! (.-textContent st) (if dirty "edited: run it to apply it to the patch" "in sync with the patch"))

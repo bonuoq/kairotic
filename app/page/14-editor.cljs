@@ -253,3 +253,74 @@
 (add-watch hist ::code-win (fn [_ _ _ _] (refresh-code-win!)))
 (add-watch perf ::code-win (fn [_ _ _ _] (refresh-code-win!)))
 (add-watch world ::code-win (fn [_ _ _ _] (refresh-code-win!)))
+
+;; ───────────────────────── the Code tab and the REPL line ─────────────────────────
+;; The same editor (CodeMirror, Clojure) replaces the text area of the Code tab and the input of the REPL
+;; once the bundle is loaded, a moment after the page starts. In the Code tab, Ctrl/⌘+Enter runs the code.
+;; In the REPL, Enter evaluates when the brackets are closed (otherwise it starts a new line; ⇧+Enter
+;; always does), and ↑ ↓ on the first or last line bring back what was written before.
+
+(defn command-words
+  "The commands of the page that have a doc string, for completion in the Code tab and the REPL."
+  []
+  (try (vec (sort (keep (fn [[s v]] (when (:doc (meta v)) (str s))) (ns-publics 'user))))
+       (catch :default _ [])))
+
+(defn balanced?
+  "Whether every bracket of a piece of code is closed (outside strings, comments and characters)."
+  [s]
+  (loop [cs (seq s) depth 0 in-str false]
+    (if-let [c (first cs)]
+      (cond
+        in-str (case c "\\" (recur (nnext cs) depth true) "\"" (recur (next cs) depth false) (recur (next cs) depth true))
+        (= c "\"") (recur (next cs) depth true)
+        (= c "\\") (recur (nnext cs) depth false)
+        (= c ";") (recur (drop-while (fn [x] (not= x "\n")) cs) depth false)
+        (#{"(" "[" "{"} c) (recur (next cs) (inc depth) false)
+        (#{")" "]" "}"} c) (recur (next cs) (dec depth) false)
+        :else (recur (next cs) depth false))
+      (and (<= depth 0) (not in-str)))))
+
+(defn host-for!
+  "A place for an editor next to element `el`, which hides: keys typed there stay there."
+  [el cls]
+  (let [h (js/document.createElement "div")]
+    (set! (.-className h) cls)
+    (.insertBefore (.-parentNode el) h el)
+    (set! (.-hidden el) true)
+    (.addEventListener h "keydown" (fn [e] (.stopPropagation e)))
+    h))
+
+(defn upgrade-code-tab! [cm]
+  (when-not @code-ed
+    (let [ta ($ "code") host (host-for! ta "code-host")
+          ed ((.-createEditor cm)
+              #js {:parent host :doc (.-value ta) :language "clojurescript" :words (clj->js (command-words))
+                   :onApply (fn [_] (run-panel-code!))
+                   :onChange (fn [_] (when-not (:dirty @ui) (swap! ui assoc :dirty true) (render-code (current))))})]
+      (.setAttribute (.-contentDOM (.-view ed)) "aria-label" "Patch code")
+      (reset! code-ed ed))))
+
+(defn upgrade-repl! [cm]
+  (when-not @repl-ed
+    (let [inp ($ "repl-in") host (host-for! inp "repl-host")
+          ed (atom nil)
+          free? (fn [] (not (.completing @ed)))]
+      (reset! ed ((.-createEditor cm)
+                  #js {:parent host :doc (.-value inp) :language "clojurescript" :gutter false
+                       :placeholder (.-placeholder inp)
+                       :words (clj->js (concat (command-words) (ns-names 'clojure.core "")))
+                       :keys #js [#js {:key "Enter" :run (fn [] (when (and (free?) (balanced? (.getValue @ed))) (repl-submit!) true))}
+                                  #js {:key "Shift-Enter" :run (fn [] (.newline @ed) true)}
+                                  #js {:key "ArrowUp" :run (fn [] (boolean (and (free?) (= 1 (.cursorLine @ed)) (repl-recall! true))))}
+                                  #js {:key "ArrowDown" :run (fn [] (boolean (and (free?) (= (.cursorLine @ed) (.lineCount @ed)) (repl-recall! false))))}]}))
+      (.setAttribute (.-contentDOM (.-view @ed)) "aria-label" "REPL")
+      (when-let [l (.querySelector js/document "label[for=repl-in]")]
+        (.addEventListener l "click" (fn [_] (.focus @ed))))
+      (reset! repl-ed @ed))))
+
+;; a moment after the page starts (not in an embed, which shows neither)
+(when-not embed-mode
+  (js/setTimeout
+   (fn [] (.then (load-cm) (fn [cm] (when cm (upgrade-code-tab! cm) (upgrade-repl! cm)))))
+   300))

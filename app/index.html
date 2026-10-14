@@ -411,6 +411,15 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
 .repl-line label { font-family: var(--f-code); color: var(--accent); font-weight: 600; }
 #repl-in { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 13px; padding: 6px 0; }
 #repl-in:focus { outline: none; }
+/* the Code tab and the REPL line, with the code editor (14-editor.cljs) */
+.code-host { flex: 1; min-height: 300px; max-height: 560px; display: flex; min-width: 0; }
+.code-host .cm-editor { flex: 1; min-width: 0; background: transparent !important; }
+.code-host .cm-gutters { background: transparent !important; }
+.repl-host { flex: 1; min-width: 0; max-height: 30vh; overflow: auto; }
+.repl-host .cm-editor { background: transparent !important; font-size: 13px; }
+.repl-host .cm-content { padding: 5px 0 !important; }
+.repl-host .cm-line { padding: 0; }
+.repl-host .cm-placeholder { color: var(--ink-soft); }
 .help { padding: 6px 12px 10px; font-size: 12px; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .help code { font-family: var(--f-code); color: var(--ink); }
 </style>

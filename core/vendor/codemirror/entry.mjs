@@ -2,23 +2,27 @@
 // Kairotic · the code editor: CodeMirror 6 set up for the languages of the code boxes. build.mjs bundles this
 // file into core/vendor/codemirror.mjs; the page imports it once, when an editor first opens (05-gestures.cljs).
 //
-//   createEditor({ parent, doc, language, words, onApply, onCancel, onChange }) → editor
+//   createEditor({ parent, doc, language, words, onApply, onCancel, onChange, gutter, keys, placeholder }) → editor
 //     language  "clojurescript" · "component" · "edn" (Clojure, with structural editing) · "faust" · other: plain
 //     words     names offered while typing, besides the words already in the text
-//     onApply   Ctrl/⌘+Enter          onCancel  Esc          onChange(text) after every edit
-//   editor: getValue() · setValue(text) · focus() · destroy() · view (the CodeMirror EditorView, to grow on)
+//     onApply   Ctrl/⌘+Enter          onCancel  Esc          onChange(text) after every edit by the person
+//     gutter    false: no line numbers nor folding (a REPL line)        placeholder  text shown while empty
+//     keys      [{key: "Enter", run: () => true|false}, …] before every other key (true: handled)
+//   editor: getValue() · setValue(text) (not an edit: no onChange, no undo step) · focus() · destroy()
+//           cursorLine() · lineCount() · completing() · newline() · cursorToEnd()
+//           view (the CodeMirror EditorView, to grow on)
 //
 // Line numbers, automatic indentation, matching and closing brackets, undo history, search (Ctrl/⌘+F) and
 // completion come for every language. Formatting, linting or a language server can be added here later as
 // more CodeMirror extensions, without touching the page.
 
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection,
-         dropCursor, rectangularSelection, crosshairCursor, highlightSpecialChars } from "@codemirror/view";
-import { EditorState, Prec, Compartment } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+         dropCursor, rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder as placeholderText } from "@codemirror/view";
+import { EditorState, Prec, Compartment, Transaction } from "@codemirror/state";
+import { defaultKeymap, history, historyKeymap, indentWithTab, insertNewlineAndIndent } from "@codemirror/commands";
 import { bracketMatching, indentOnInput, syntaxHighlighting, HighlightStyle, StreamLanguage, foldGutter,
          foldKeymap, indentUnit } from "@codemirror/language";
-import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
+import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, completionStatus } from "@codemirror/autocomplete";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { tags as t } from "@lezer/highlight";
 import { default_extensions as clojureExtensions, complete_keymap as clojureKeymap } from "@nextjournal/clojure-mode";
@@ -133,9 +137,12 @@ function languageExtensions(language) {
 
 // ───────── the editor ─────────
 
-export function createEditor({ parent, doc = "", language = "", words = [], onApply, onCancel, onChange } = {}) {
+export function createEditor({ parent, doc = "", language = "", words = [], onApply, onCancel, onChange,
+                               gutter = true, keys = [], placeholder = "" } = {}) {
   const lang = new Compartment(), completion = new Compartment();
+  let quiet = false;
   const own = Prec.highest(keymap.of([
+    ...Array.from(keys || []).map((k) => ({ key: k.key, run: () => !!k.run(), preventDefault: !!k.preventDefault })),
     { key: "Mod-Enter", run: () => { if (onApply) onApply(view.state.doc.toString()); return true; } },
     { key: "Mod-s", run: () => { if (onApply) onApply(view.state.doc.toString()); return true; }, preventDefault: true },
   ]));
@@ -146,23 +153,36 @@ export function createEditor({ parent, doc = "", language = "", words = [], onAp
       doc,
       extensions: [
         own,
-        lineNumbers(), highlightActiveLineGutter(), foldGutter(), highlightSpecialChars(), history(),
+        gutter ? [lineNumbers(), highlightActiveLineGutter(), foldGutter(), highlightActiveLine()] : [],
+        placeholder ? placeholderText(placeholder) : [],
+        highlightSpecialChars(), history(),
         drawSelection(), dropCursor(), EditorState.allowMultipleSelections.of(true), indentOnInput(),
-        bracketMatching(), closeBrackets(), rectangularSelection(), crosshairCursor(), highlightActiveLine(),
+        bracketMatching(), closeBrackets(), rectangularSelection(), crosshairCursor(),
         highlightSelectionMatches(), syntaxHighlighting(colours), look, EditorView.lineWrapping,
         completion.of(autocompletion({ override: [wordsSource(words)], activateOnTyping: true })),
         lang.of(languageExtensions(language)),
         keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap,
                    ...completionKeymap, indentWithTab]),
         escape,
-        EditorView.updateListener.of((u) => { if (u.docChanged && onChange) onChange(u.state.doc.toString()); }),
+        EditorView.updateListener.of((u) => { if (u.docChanged && onChange && !quiet) onChange(u.state.doc.toString()); }),
       ],
     }),
   });
   return {
     view,
     getValue: () => view.state.doc.toString(),
-    setValue: (text) => view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: String(text) } }),
+    setValue: (text) => {
+      quiet = true;
+      try {
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: String(text) },
+                        annotations: Transaction.addToHistory.of(false) });
+      } finally { quiet = false; }
+    },
+    cursorLine: () => view.state.doc.lineAt(view.state.selection.main.head).number,
+    lineCount: () => view.state.doc.lines,
+    completing: () => completionStatus(view.state) !== null,
+    newline: () => insertNewlineAndIndent(view),
+    cursorToEnd: () => view.dispatch({ selection: { anchor: view.state.doc.length }, scrollIntoView: true }),
     setWords: (ws) => view.dispatch({ effects: completion.reconfigure(autocompletion({ override: [wordsSource(ws)] })) }),
     setLanguage: (l) => view.dispatch({ effects: lang.reconfigure(languageExtensions(l)) }),
     focus: () => view.focus(),

@@ -10,6 +10,8 @@
   `api/…`, `clojure.core`, tree tags). Ctrl/⌘+Enter applies and keeps it open. The editor is one
   vendored module (`core/vendor/codemirror.mjs`, built by the `vendor` workflow), so Kairotic stays
   static; without it, a plain text area does the same.
+  The **Code tab** and the **REPL** use the same editor: in the REPL, Enter evaluates once the brackets
+  are closed (otherwise a new line; ⇧+Enter always), ↑ ↓ bring back earlier expressions.
 - **`keyboard`** in `@kairotic/controls`, from the Gallery ([#2](https://github.com/bonuoq/kairotic/discussions/2)):
   a virtual MIDI keyboard that plugs straight into `synth~` (Hz 0→0, voice ids 1→1) or `faust~` (Hz and
   `[:gain velocity]`), with a gate for `adsr~`. Press and release follow the mouse; ⇧ builds chords that

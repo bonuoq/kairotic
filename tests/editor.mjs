@@ -76,4 +76,38 @@ export async function editor(page, check) {
   check("the window moves with its bar", Math.round(after[0] - before[0]) === -60 && Math.round(after[1] - before[1]) === 40, JSON.stringify([before, after]));
   await cljs(page, "(close-code-win!)");
   await cljs(page, `(delete ${s})`);
+
+  // the same editor in the REPL line: Enter evaluates when the brackets are closed, ↑ brings it back
+  const repl = await page.waitForSelector(".repl-host .cm-editor", { timeout: 15000 }).then(() => true).catch(() => false);
+  check("the REPL line is the code editor", repl);
+  if (repl) {
+    await page.click(".repl-host .cm-content");
+    await page.keyboard.type("(+ 40 2");
+    check("in the REPL, a bracket closes itself", (await cljs(page, "(repl-text)")) === '"(+ 40 2)"', await cljs(page, "(repl-text)"));
+    check("spaces typed in the REPL do not reach the patch", (await cljs(page, "(eng/running?)")) === "false");
+    await page.keyboard.press("Enter");
+    const out = await page.evaluate(() => { const o = document.querySelectorAll("#repl-out .out"); return o.length ? o[o.length - 1].textContent : ""; });
+    check("Enter evaluates it", out === "42", out);
+    check("... and empties the line", (await cljs(page, "(repl-text)")) === '""');
+    await page.keyboard.press("ArrowUp");
+    check("↑ brings back what was written", (await cljs(page, "(repl-text)")) === '"(+ 40 2)"', await cljs(page, "(repl-text)"));
+    await cljs(page, '(set-repl-text! "(let [a 1]")');
+    await page.keyboard.press("Enter");
+    check("with a bracket open, Enter starts a new line", (await cljs(page, "(.lineCount @repl-ed)")) === "2", await cljs(page, "(repl-text)"));
+    await cljs(page, '(set-repl-text! "")');
+  }
+
+  // and in the Code tab: an edit marks it, Discard brings the patch's code back
+  const tab = await page.waitForSelector("#panel-code .code-host .cm-editor", { timeout: 15000 }).then(() => true).catch(() => false);
+  check("the Code tab is the code editor", tab);
+  if (tab) {
+    const before = await cljs(page, "(code-text)");
+    check("it shows the code of the patch", before === (await cljs(page, "(patch->code (current))")));
+    await page.click("#panel-code .cm-content");
+    await page.keyboard.press("Control+End");
+    await page.keyboard.type("\n;; a note");
+    check("an edit in the Code tab marks it as edited", (await page.textContent("#code-state")).startsWith("edited"));
+    await page.click("#code-revert");
+    check("Discard brings back the code of the patch", (await cljs(page, "(code-text)")) === before);
+  }
 }

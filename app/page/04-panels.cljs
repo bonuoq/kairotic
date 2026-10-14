@@ -175,7 +175,7 @@
 ;; ───────────────────────── code panel ─────────────────────────
 
 (defn run-panel-code! []
-  (let [code (.-value ($ "code"))]
+  (let [code (code-text)]
     (try
       (run-code! code)
       (swap! ui assoc :dirty false)

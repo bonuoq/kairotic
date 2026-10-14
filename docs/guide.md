@@ -53,6 +53,10 @@ You can make it with the mouse, or write it in the **Code** tab (Run · Ctrl+Ent
 the bottom, one call at a time. The three are the same work: what you draw appears as code, and what
 you write appears as boxes.
 
+The Code tab and the REPL use the same code editor as code boxes (brackets that close and match,
+completion of the commands). In the REPL, Enter evaluates when every bracket is closed — otherwise it
+starts a new line, and ⇧+Enter always does — and ↑ ↓ bring back what you wrote before.
+
 ## 3. Sound and time
 
 - **▶** (or the space bar) starts the sound and time: audio, `metro`, `ramp`, `loadbang`, `mt play`.
