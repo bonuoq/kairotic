@@ -32,7 +32,11 @@ the top right, brings this window back.
 - **Move** a box by dragging it. Playable boxes — `bang`, `msg`, `number`, knobs — are selected by the
   grip on their left; their body is for playing.
 - **Edit a box's text**: double-click it. Code boxes (`faust~`, `script`, `component`, `tree`):
-  double-click the code, and Ctrl+Enter applies it.
+  in the patch they show one row of their code; double-click it to open the **code editor**, a window
+  you can move by its bar and resize by its corner, with line numbers, automatic indentation, matching
+  brackets, structural editing for Clojure (Ctrl+→ / Ctrl+← move over forms, Alt+↑ widens the
+  selection), search (Ctrl/⌘+F) and completion. Ctrl/⌘+Enter applies the code and keeps the window
+  open; Esc closes it, asking first if something is not applied.
 
 A first patch:
 

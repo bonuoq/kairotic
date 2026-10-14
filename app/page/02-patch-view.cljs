@@ -50,9 +50,9 @@
 (defonce vrv (atom nil))
 (defonce vrv-status (atom :loading))
 
-(def code-w 330)
+(def code-w 260)
 (def code-lh 13)
-(def code-max 12)
+(def code-row 22)   ; a code box shows its code as one row (issue #8): the editor opens with a double-click
 (def param-h 18)
 
 (defn code-lines [b] (str/split-lines (let [f (str (get-in b [:data :source]))] (if (str/blank? f) " " f))))
@@ -61,14 +61,22 @@
   (when-let [f (:params (box-def b))] (f (comp/box-info b))))
 
 (defn code-geom
-  "Parts of a code box: height of the code, position of the status and of the parameters."
+  "Parts of a code box: its code row, the status of its compilation, its parameters. The code itself is
+   written in the editor (a double-click on the row), not in the patch (issue #8)."
   [b]
-  (let [n (min code-max (count (code-lines b)))
-        ch (+ 8 (* n code-lh))
+  (let [ch code-row
         y-st (+ hdr ch 13)
         y-par (+ hdr ch 20)
         ps (code-params b)]
-    {:n n :ch ch :y-st y-st :y-par y-par :params ps :h (+ y-par (* (count ps) param-h) 4)}))
+    {:ch ch :y-st y-st :y-par y-par :params ps :h (+ y-par (* (count ps) param-h) 4)}))
+
+(defn code-gist
+  "What the code row of a box shows: its first line that says something (not a comment), and how long it is."
+  [b]
+  (let [ls (code-lines b)
+        first-line (or (first (remove (fn [l] (or (str/blank? l) (re-find #"^\s*(;|//)" l))) ls)) "")
+        n (count (remove str/blank? ls))]
+    [(str/trim first-line) n]))
 
 (declare panel-layout)
 
@@ -316,27 +324,35 @@
    (render-all!)
    @pres-mode))
 
+(declare code-win-box)
+
 (defn code-view
   "SVG of a code box: the source text, the status of its compilation and its parameters."
   [id b w]
   (let [d (box-def b) idn (esc (name id))
-        {:keys [n ch y-st y-par params]} (code-geom b)
-        ls (code-lines b)
+        {:keys [ch y-st y-par params]} (code-geom b)
+        [gist n] (code-gist b)
         source (str (get-in b [:data :source]))
+        open? (= id (code-win-box))
         r (cbox/compiled (:language d) source)
         inf (:info r)
         [st cls] (case (:status r)
-                   :empty ["empty · double-click the code to write" "st-wait"]
+                   :empty ["empty · double-click to write" "st-wait"]
                    :compiling ["compiling…" "st-wait"]
                    :ok [(str "✓ " (or (:summary inf) "ready")) "st-ok"]
                    :error [(str "✗ " (first (str/split-lines (str (:error r))))) "st-err"]
                    ["" "st-wait"])]
     (str "<svg x=\"2\" y=\"" hdr "\" width=\"" (- w 4) "\" height=\"" ch "\" overflow=\"hidden\">"
-         "<rect class=\"code-area\" data-box=\"" idn "\" x=\"0\" y=\"0\" width=\"" (- w 4) "\" height=\"" ch "\"></rect>"
-         (apply str (map-indexed (fn [i l]
-                                   (str "<text class=\"code\" xml:space=\"preserve\" x=\"6\" y=\"" (+ 13 (* i code-lh)) "\">"
-                                        (esc (if (and (= i (dec code-max)) (> (count ls) code-max)) "…" l)) "</text>"))
-                                 (take n ls)))
+         "<rect class=\"code-area" (when open? " open") "\" data-box=\"" idn "\" x=\"0\" y=\"0\" width=\"" (- w 4) "\" height=\"" ch "\">"
+         "<title>Double-click to edit the code</title></rect>"
+         "<text class=\"code\" xml:space=\"preserve\" x=\"6\" y=\"15\">"
+         (esc (cond (str/blank? source) "{ } double-click to write"
+                    (> (count gist) 30) (str (subs gist 0 30) "…")
+                    :else gist))
+         "</text>"
+         (when (pos? n)
+           (str "<text class=\"code lines\" x=\"" (- w 10) "\" y=\"15\" text-anchor=\"end\">"
+                (if open? "✎ open" (str n (if (= 1 n) " line" " lines"))) "</text>"))
          "</svg>"
          "<text class=\"lbl " cls "\" x=\"8\" y=\"" y-st "\">" (esc (if (> (count st) 52) (str (subs st 0 52) "…") st))
          (when (= :error (:status r)) (str "<title>" (esc (:error r)) "</title>")) "</text>"

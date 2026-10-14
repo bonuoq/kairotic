@@ -1,0 +1,44 @@
+# Builds the code editor bundle (core/vendor/codemirror.mjs) from core/vendor/codemirror/ — CodeMirror 6 and
+# the language support Kairotic uses — and commits it, with its package-lock.json, to the branch that changed
+# it. The page imports the bundle as it is: Kairotic stays static, without a build step of its own.
+#
+# A commit made by this workflow does not start the other workflows (GitHub does not chain GITHUB_TOKEN
+# pushes): after it, push again (or re-run the tests) to test the new bundle.
+name: vendor
+
+on:
+  push:
+    paths: ["core/vendor/codemirror/**", ".github/workflows/vendor.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vendor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  editor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install (from the lock file once there is one)
+        working-directory: core/vendor/codemirror
+        run: if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - name: Bundle
+        run: node core/vendor/codemirror/build.mjs
+      - name: Commit the bundle if it changed
+        run: |
+          git add core/vendor/codemirror.mjs core/vendor/codemirror/package-lock.json
+          if git diff --cached --quiet; then
+            echo "The bundle is up to date."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+            git commit -m "vendor: code editor bundle (generated)"
+            git push
+          fi

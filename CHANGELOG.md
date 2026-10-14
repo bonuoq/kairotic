@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Code editor** ([#8](https://github.com/bonuoq/kairotic/issues/8)): code boxes (`faust~`, `script`,
+  `component`, `tree`) are compact in the patch — one row of their code, their status and their
+  parameters — and their code opens with a double-click in a window you can move and resize. Inside is
+  CodeMirror 6: line numbers, automatic indentation, matching and closing brackets, structural editing
+  for Clojure (`@nextjournal/clojure-mode`), Faust highlighting, search and completion (Faust libraries,
+  `api/…`, `clojure.core`, tree tags). Ctrl/⌘+Enter applies and keeps it open. The editor is one
+  vendored module (`core/vendor/codemirror.mjs`, built by the `vendor` workflow), so Kairotic stays
+  static; without it, a plain text area does the same.
 - **`keyboard`** in `@kairotic/controls`, from the Gallery ([#2](https://github.com/bonuoq/kairotic/discussions/2)):
   a virtual MIDI keyboard that plugs straight into `synth~` (Hz 0→0, voice ids 1→1) or `faust~` (Hz and
   `[:gain velocity]`), with a gate for `adsr~`. Press and release follow the mouse; ⇧ builds chords that

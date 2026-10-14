@@ -172,45 +172,8 @@
   (let [v (or (second (last-shown id)) (get-in @eng/rt [:states (fid id)]) (eng/num-of (first (eng/args-of (:text b)))) 0)]
     (if (number? v) v 0)))
 
-(defn open-code-editor!
-  "Editor for the source of a code box, over the box. Ctrl/⌘+Enter or leaving the editor
-   writes it as an event (code …); Esc discards it."
-  [id]
-  (when-let [old ($ "code-edit")] (.remove old))
-  (let [b (get-in (current) [:boxes id]) d (box-def b) [w _] (box-dims id b)
-        ta (js/document.createElement "textarea") done (atom false)
-        original (str (get-in b [:data :source]))
-        initial-text (if (str/blank? original) (or (:template d) "") original)
-        finish (fn [commit?]
-                 (when-not @done
-                   (reset! done true)
-                   (let [v (.-value ta)]
-                     (.remove ta)
-                     (when (and commit? (not= v original) (not (str/blank? v)))
-                       (gesture! (str "(code " id " " (pr-str v) ")"))))))]
-    (set! (.-id ta) "code-edit")
-    (set! (.-className ta) "code-edit")
-    (set! (.-spellcheck ta) false)
-    (set! (.-value ta) initial-text)
-    (let [[px py] (wrap-px (:x b) (+ (:y b) hdr))]
-      (set! (.. ta -style -left) (str px "px"))
-      (set! (.. ta -style -top) (str py "px")))
-    (set! (.. ta -style -width) (str (max w 440) "px"))
-    (set! (.. ta -style -height) (str (max 180 (+ 40 (* 16 (count (str/split-lines initial-text))))) "px"))
-    (.appendChild ($ "canvas-wrap") ta)
-    (.focus ta)
-    (.addEventListener ta "keydown"
-      (fn [e]
-        (let [k (.-key e)]
-          (cond
-            (and (= k "Enter") (or (.-ctrlKey e) (.-metaKey e))) (do (.preventDefault e) (finish true))
-            (= k "Escape") (do (.preventDefault e) (finish false))
-            (= k "Tab") (do (.preventDefault e)
-                            (let [a (.-selectionStart ta) z (.-selectionEnd ta) v (.-value ta)]
-                              (set! (.-value ta) (str (subs v 0 a) "  " (subs v z)))
-                              (set! (.-selectionStart ta) (+ a 2))
-                              (set! (.-selectionEnd ta) (+ a 2))))))))
-    (.addEventListener ta "blur" (fn [_] (finish true)))))
+;; the code of a box opens in the editor window (14-editor.cljs)
+(declare open-code-editor!)
 
 (defn param-k
   "How a parameter is named in a message: a keyword if possible (:cutoff), otherwise a string."
