@@ -658,7 +658,7 @@
   ([id inlet v]
    (need-box id)
    (let [was-on (eng/running?)]
-     (let [[tid ti] (target id inlet)] (eng/inject! (fn [] (work-patch)) tid ti v))
+     (let [[tid ti] (target id inlet)] (inject-local! tid ti v))
      (when-not was-on (transport-info!) (js/requestAnimationFrame (fn [_] (live!))))
      v)))
 
