@@ -225,7 +225,7 @@
       (let [tab (.. t -dataset -tab)]
         (doseq [x (array-seq (.querySelectorAll js/document ".tab"))]
           (.setAttribute x "aria-selected" (str (= x t))))
-        (doseq [[k pid] [["code" "panel-code"] ["edn" "panel-edn"] ["comp" "panel-comp"] ["claude" "panel-claude"] ["help" "panel-help"]]]
+        (doseq [[k pid] [["code" "panel-code"] ["edn" "panel-edn"] ["comp" "panel-comp"] ["claude" "panel-claude"] ["help" "panel-help"] ["feedback" "panel-feedback"]]]
           (set! (.-hidden ($ pid)) (not= k tab)))
         ;; opened by itself, the Help tab shows its index (or the page it was on)
         (when (= tab "help") (refresh-help!))))))

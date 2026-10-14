@@ -248,6 +248,17 @@ body.present .askbar { position: absolute; z-index: 6; left: 6px; top: 6px; marg
 #ask-text { min-height: 92px; resize: vertical; font: 13px/1.45 var(--f-ui); color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 8px; }
 #ask-text:focus { outline: none; border-color: var(--accent); }
 .ask-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fb { display: grid; gap: 8px; padding: 10px 14px 16px; overflow: auto; max-height: 560px; }
+.fb .fb-kind, .fb .fb-opts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; }
+.fb .fb-opts { color: var(--ink-soft); }
+.fb input#fb-title, .fb textarea { font: 13px var(--f-ui); color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 8px; }
+.fb textarea { min-height: 130px; resize: vertical; }
+.fb h4 { margin: 10px 0 0; font-family: var(--f-head); font-weight: 600; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.fb .fb-prev summary { cursor: pointer; font-size: 12px; color: var(--ink-soft); }
+.fb .fb-prev pre { font: 11px/1.45 var(--f-code); white-space: pre-wrap; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 8px; max-height: 220px; overflow: auto; }
+.fb .fb-list { margin: 0; padding-left: 18px; font-size: 12px; display: grid; gap: 3px; }
+.fb .fb-list a { color: var(--ink); } .fb .fb-list .lb { font: 10.5px var(--f-code); color: var(--ink-soft); margin-left: 6px; }
+.fb .soft { color: var(--ink-soft); }
 .ask-bar select { font: 12px var(--f-ui); background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px; padding: 3px 4px; }
 .ask-hist summary { cursor: pointer; font-size: 12px; color: var(--ink); }
 .ask-hist-list { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
@@ -460,6 +471,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
           <button class="tab" role="tab" id="tab-comp" data-tab="comp" aria-selected="false">Components</button>
           <button class="tab" role="tab" id="tab-claude" data-tab="claude" aria-selected="false" hidden>Claude</button>
           <button class="tab" role="tab" id="tab-help" data-tab="help" aria-selected="false" title="How each component works, and tutorials (? on a selected box)">Help</button>
+          <button class="tab" role="tab" id="tab-feedback" data-tab="feedback" aria-selected="false" title="Report a bug, propose an idea or ask a question (on GitHub)">Feedback</button>
         </div>
       </div>
       <div class="panel" id="panel-code">
@@ -476,6 +488,32 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
       </div>
       <div class="panel" id="panel-comp" hidden>
         <div class="comp-list" id="comp-list"></div>
+      </div>
+      <div class="panel" id="panel-feedback" hidden>
+        <div class="fb">
+          <p class="ask-note">Kairotic is in <b>alpha</b>: tell us what fails and what you miss. This writes a GitHub issue for you (with what you choose to add below); it is published only when you press the button on GitHub, under your own account. Nothing is sent from here, and never your API key.</p>
+          <div class="fb-kind" role="radiogroup" aria-label="Kind">
+            <label><input type="radio" name="fb-kind" value="bug" checked> Something fails</label>
+            <label><input type="radio" name="fb-kind" value="idea"> An idea for the next version</label>
+            <label><input type="radio" name="fb-kind" value="question"> A question</label>
+          </div>
+          <input id="fb-title" spellcheck="true" placeholder="A short title">
+          <textarea id="fb-text" spellcheck="true"></textarea>
+          <div class="fb-opts">
+            <label><input type="checkbox" id="fb-patch" checked> the patch on screen (as a link)</label>
+            <label><input type="checkbox" id="fb-errors" checked> recent errors <span id="fb-errn"></span></label>
+            <label><input type="checkbox" id="fb-env" checked> version and browser</label>
+          </div>
+          <div class="ask-bar">
+            <span class="spacer"></span>
+            <button class="act" id="fb-copy" title="The text, to paste wherever you like">Copy</button>
+            <button class="act primary" id="fb-go">Write it on GitHub…</button>
+          </div>
+          <details class="fb-prev"><summary>What will be written</summary><pre id="fb-preview"></pre></details>
+          <h4>Open issues</h4>
+          <p class="ask-note">Before writing, see if it is already here: a 👍 or a comment there helps as much.</p>
+          <ol class="fb-list" id="fb-list"><li class="soft">…</li></ol>
+        </div>
       </div>
       <div class="panel" id="panel-help" hidden>
         <div class="help-view" id="help-view"></div>
@@ -669,7 +707,7 @@ window.addEventListener("DOMContentLoaded", function () {
   var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/mt.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
               "kairotic/api.cljs", "kairotic/code.cljs", "kairotic/mtboxes.cljs", "kairotic/faust.cljs", "kairotic/library.cljs", "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs",
               "kairotic/signal.cljs", "kairotic/links.cljs"];
-  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs"];
+  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs"];
   Promise.all(mods.map(function (m) {
     return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
   }))

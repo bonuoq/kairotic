@@ -230,7 +230,13 @@
 
 (defonce queues (atom {}))
 
+(defonce recent-errors (atom []))   ; the last errors the REPL showed (for the Feedback tab)
+
 (defn repl-print! [cls html]
+  (when (= cls "err")
+    (let [d (js/document.createElement "div")]
+      (set! (.-innerHTML d) html)
+      (swap! recent-errors (fn [es] (vec (take-last 10 (conj es (.-textContent d))))))))
   (let [out (js/document.getElementById "repl-out") d (js/document.createElement "div")]
     (set! (.-className d) cls)
     (set! (.-innerHTML d) html)
