@@ -116,6 +116,8 @@
                 (apply str (for [c (:see h)] (str "<span class=\"chip\" data-help=\"" (esc c) "\">" (esc c) "</span>")))
                 "</div>")))))
 
+(declare docs-index)
+
 (defn help-index []
   (let [ts @tutorials]
     (str "<input class=\"help-find\" id=\"help-find\" list=\"help-classes\" placeholder=\""
