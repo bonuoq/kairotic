@@ -178,7 +178,7 @@
   "A link of the documentation: to another page (shown here, in its language), to the web (a new tab),
    or to a file of the repository (on GitHub)."
   [label href]
-  (let [[_ id es] (re-matches #"(?:\./)?([a-z-]+?)(\.es)?\.md(?:#.*)?" href)]
+  (let [[_ id es] (re-matches #"(?:\./)?(?:tutorials/)?([A-Za-z-]+?)(\.es)?\.md(?:#.*)?" href)]
     (cond
       (and id (contains? (set (mapcat second doc-groups)) id))
       (str "<a href=\"#\" data-doc=\"" id "\" data-lang=\"" (if es "es" "en") "\">" label "</a>")

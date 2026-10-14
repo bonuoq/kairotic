@@ -71,8 +71,9 @@ Cada gesto es un evento de la historia, abajo en la página.
 - **Components** — las clases que conoce esta obra; escribe las tuyas, importa las publicadas.
 - **Claude** — Claude hace un patch (o cambia el abierto), o escribe un componente, a partir de lo que
   describes. Ver [Pedírselo a Claude](ask.es.md).
-- **Help** — una página para cada clase, entrada por entrada, con un patch de ayuda, y los
-  **tutoriales**. Selecciona una caja y pulsa **?** (o F1) para ver su página.
+- **Help** — esta **documentación** (guía, conceptos, temas, referencia), una página para cada clase,
+  entrada por entrada, con un patch de ayuda, y los **tutoriales**. Selecciona una caja y pulsa **?** (o
+  F1) para ver su página; `(docs "concepts")` en la REPL abre una página de la documentación.
 
 ## 6. La música como datos
 

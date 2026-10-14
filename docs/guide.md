@@ -70,8 +70,9 @@ Every gesture is an event of the history, at the bottom of the page.
 - **Components** — the classes this work knows; write your own, import published ones.
 - **Claude** — Claude makes a patch (or changes the open one), or writes a component, from what you
   describe. See [Asking Claude](ask.md).
-- **Help** — a page for every class, inlet by inlet, with a help patch, and the **tutorials**.
-  Select a box and press **?** (or F1) to see its page.
+- **Help** — this **documentation** (guide, concepts, topics, reference), a page for every class,
+  inlet by inlet, with a help patch, and the **tutorials**. Select a box and press **?** (or F1) to see
+  its page; `(docs "concepts")` in the REPL opens a page of the documentation.
 
 ## 6. Music as data
 
