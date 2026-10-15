@@ -16,6 +16,12 @@
   a number dragged or a `msg` clicked in a jam is played in the engines of the others too, not only
   drawn. And a control whose value stays in its text (`knob`) sends that value when the text changes
   from elsewhere — another tab of a room, a jam, or a moment of the history you travel to.
+- **Functions of `clojure.core` as boxes** ([#12](https://github.com/bonuoq/kairotic/discussions/12)):
+  `into [440]`, `map inc`, `get :freq`, `conj % 440`, `str/upper-case`… are boxes by themselves. Their
+  words are EDN arguments; the message goes last (or where `%` is); each argument has a cold inlet; a
+  bang sends again. Only pure, finite functions (results of at most 4096 elements), so they are safe in
+  rooms. Components can now read their arguments from the whole text with `:parse`, and classes can be
+  supplied on demand (`comp/fallbacks`).
 - **`keyboard`** in `@kairotic/controls`, from the Gallery ([#2](https://github.com/bonuoq/kairotic/discussions/2)):
   a virtual MIDI keyboard that plugs straight into `synth~` (Hz 0→0, voice ids 1→1) or `faust~` (Hz and
   `[:gain velocity]`), with a gate for `adsr~`. Press and release follow the mouse; ⇧ builds chords that

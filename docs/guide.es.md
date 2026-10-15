@@ -57,6 +57,24 @@ La pestaña Code y la REPL usan el mismo editor que las cajas de código (parén
 emparejan, autocompletado de los comandos). En la REPL, Intro evalúa cuando todos los paréntesis están
 cerrados —si no, empieza una línea nueva, y ⇧+Intro siempre lo hace— y ↑ ↓ recuperan lo escrito antes.
 
+**Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
+`clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son
+sus argumentos, leídos como EDN, y el mensaje que llega va al final, como con `->>`. `%` lo pone en otro
+sitio.
+
+| caja | mensaje | envía |
+|---|---|---|
+| `into [440]` | `[1 2]` | `[440 1 2]` |
+| `conj % 440` | `[1 2]` | `[1 2 440]` |
+| `map inc` | `[1 2]` | `[2 3]` |
+| `get :freq` | `{:freq 440}` | `440` |
+| `str/upper-case` | `"do"` | `"DO"` |
+
+Cada argumento tiene una entrada a la derecha que lo sustituye sin enviar nada; un bang a la izquierda
+vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter`, `take`, `assoc`, `sort`,
+`frequencies`…), así que estas cajas son seguras en una sala compartida; una clase con el mismo nombre
+(`+`, `print`) va primero.
+
 ## 3. Sonido y tiempo
 
 - **▶** (o la barra espaciadora) pone en marcha el sonido y el tiempo: audio, `metro`, `ramp`,
