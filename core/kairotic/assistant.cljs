@@ -15,6 +15,7 @@
 (ns kairotic.assistant
   (:require [clojure.string :as str]
             [clojure.walk :as walk]
+            [kairotic.corefns :as cf]
             [kairotic.components :as comp]
             [kairotic.shapes :as shp]
             [kairotic.code :as code]
@@ -232,11 +233,15 @@
          :gesture gesture}))))
 
 (defn classes
-  "The classes the work knows now: \"class [in out] — first sentence of its doc\"."
+  "The classes the work knows now: \"class [in out] — first sentence of its doc\", and the functions of
+   clojure.core that are boxes by themselves."
   []
-  (vec (for [[k d] (sort-by key @comp/registry)
-             :let [io (:io d) doc (first (str/split (str (:doc d)) #"(?<=\.)\s"))]]
-         (str k " " (if (vector? io) (pr-str io) "") " — " (cut doc 110) " (" (name (or (:origin d) :core)) ")"))))
+  (conj (vec (for [[k d] (sort-by key @comp/registry)
+                   :let [io (:io d) doc (first (str/split (str (:doc d)) #"(?<=\.)\s"))]]
+               (str k " " (if (vector? io) (pr-str io) "") " — " (cut doc 110) " (" (name (or (:origin d) :core)) ")")))
+        (str "Also, without defining anything, a box named after one of these pure functions is that function: its "
+             "other words are its EDN arguments, the message goes last (or where % is), one more inlet per argument: "
+             (str/join " " (cf/names)))))
 
 ;; ───────── the prompt ─────────
 

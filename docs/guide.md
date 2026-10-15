@@ -57,6 +57,23 @@ The Code tab and the REPL use the same code editor as code boxes (brackets that 
 completion of the commands). In the REPL, Enter evaluates when every bracket is closed — otherwise it
 starts a new line, and ⇧+Enter always does — and ↑ ↓ bring back what you wrote before.
 
+**Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as
+`str/…`) is that function, with no component to write: its other words are its arguments, read as EDN,
+and the message that arrives goes last, as with `->>`. `%` puts it elsewhere.
+
+| box | message | sends |
+|---|---|---|
+| `into [440]` | `[1 2]` | `[440 1 2]` |
+| `conj % 440` | `[1 2]` | `[1 2 440]` |
+| `map inc` | `[1 2]` | `[2 3]` |
+| `get % :freq` | `{:freq 440}` | `440` |
+| `str/upper-case` | `"do"` | `"DO"` |
+
+Each argument has an inlet on the right that replaces it without sending; a bang on the left sends again
+with the last message. Only pure functions are there (`map`, `filter`, `take`, `assoc`, `sort`,
+`frequencies`…), so these boxes are safe in a shared room; a class with the same name (`+`, `print`)
+comes first.
+
 ## 3. Sound and time
 
 - **▶** (or the space bar) starts the sound and time: audio, `metro`, `ramp`, `loadbang`, `mt play`.

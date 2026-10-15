@@ -52,6 +52,8 @@
 ;;  :persist  (fn [value] {arg value})      with :args: what a gesture leaves in the box text. On release, instead of
 ;;                                           (send! :bN value) the patch writes (text! :bN "class …") with these
 ;;                                           arguments, so the change stays in the work
+;;  :parse    (fn [text] args)             instead of :args: reads the arguments from the whole box text (the
+;;                                           functions of clojure.core as boxes read theirs as EDN)
 ;;  :language "faust"                       for code boxes
 ;;  :template "…"                           initial source of a code box
 ;;  :params   …                             parameters
@@ -83,7 +85,13 @@
     (swap! registry assoc klass-name (merge {:display :text :origin :core :io [1 1]} d {:class klass-name})))
   klass-name)
 
-(defn lookup [klass-name] (get @registry klass-name))
+;; classes that are not registered but can be made when a box asks for them (kairotic.corefns: the
+;; functions of clojure.core): each is (fn [class-name] definition-or-nil). A registered class comes first.
+(defonce fallbacks (atom []))
+
+(defn lookup [klass-name]
+  (or (get @registry klass-name)
+      (some (fn [f] (f klass-name)) @fallbacks)))
 
 ;; ───────── text of a box ─────────
 
@@ -192,9 +200,10 @@
   "The :args a component receives: the parsed map if it declares :args, else the raw vector."
   [d text]
   (let [raw (args-of text) spec (:args d)]
-    (if (and (sequential? spec) (every? (fn [x] (and (vector? x) (keyword? (first x)))) spec))
-      (parse-args spec raw)
-      raw)))
+    (cond
+      (fn? (:parse d)) ((:parse d) text)
+      (and (sequential? spec) (every? (fn [x] (and (vector? x) (keyword? (first x)))) spec)) (parse-args spec raw)
+      :else raw)))
 
 (defn clamp
   "x between a and b (in either order)."
