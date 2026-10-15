@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/controls",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Kairotic control components: knob (a rotary control) and keyboard (a virtual MIDI keyboard), with their own views in the patch",
   "author": "bonuoq",
   "license": "MPL-2.0",
