@@ -23,7 +23,7 @@
     (t/eq "the message goes last" (run "into [440]" [0 [1 2]]) [[0 [440 1 2]]])
     (t/eq "% puts it elsewhere" (run "conj % 440" [0 [1 2]]) [[0 [1 2 440]]])
     (t/eq "a word naming a function is that function" (run "map inc" [0 [1 2]]) [[0 [2 3]]])
-    (t/eq "keywords work as arguments" (run "get :freq" [0 {:freq 440}]) [[0 440]])
+    (t/eq "keywords work as arguments" (run "get % :freq" [0 {:freq 440}]) [[0 440]])
     (t/eq "clojure.string too" (run "str/upper-case" [0 "do"]) [[0 "DO"]])
     (t/eq "a sequence goes on as a vector" (run "take 2" [0 [1 2 3]]) [[0 [1 2]]])
     (t/eq "the other inlets replace the arguments, without sending" (run "take 2" [1 1]) nil)

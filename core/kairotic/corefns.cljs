@@ -4,8 +4,8 @@
 ;; (discussion #12): a box whose first word is one of them is that function. Its other words are its
 ;; arguments, read as EDN; the message that arrives at the left inlet goes last, as with ->>:
 ;;
-;;   into [440]        [1 2] → [440 1 2]          take 3          [1 2 3 4] → (1 2 3)
-;;   map inc           [1 2] → [2 3]              get :freq       {:freq 440} → 440
+;;   into [440]        [1 2] → [440 1 2]          take 3          [1 2 3 4] → [1 2 3]
+;;   map inc           [1 2] → [2 3]              get % :freq     {:freq 440} → 440
 ;;   conj % 440        [1 2] → [1 2 440]          str/upper-case  "do" → "DO"
 ;;
 ;; % puts the message somewhere else: conj % 440, assoc % :freq 440. A word that names one of these

@@ -66,7 +66,7 @@ and the message that arrives goes last, as with `->>`. `%` puts it elsewhere.
 | `into [440]` | `[1 2]` | `[440 1 2]` |
 | `conj % 440` | `[1 2]` | `[1 2 440]` |
 | `map inc` | `[1 2]` | `[2 3]` |
-| `get :freq` | `{:freq 440}` | `440` |
+| `get % :freq` | `{:freq 440}` | `440` |
 | `str/upper-case` | `"do"` | `"DO"` |
 
 Each argument has an inlet on the right that replaces it without sending; a bang on the left sends again
