@@ -690,12 +690,26 @@
 (defn set-repl-text! [v] (if-let [e @repl-ed] (do (.setValue e v) (.cursorToEnd e)) (set! (.-value ($ "repl-in")) v)))
 (defn focus-repl! [] (if-let [e @repl-ed] (.focus e) (.focus ($ "repl-in"))))
 
+(defonce data-ed (atom nil))   ; the read-only editor of the Data view of the Code tab
+
+(defn data-view? [] (= :data (:code-view @ui)))
+
+(defn set-data-text! [v]
+  (if-let [e @data-ed]
+    (when (not= v (.getValue e)) (.setValue e v))
+    (when (not= v (.-textContent ($ "edn"))) (set! (.-textContent ($ "edn")) v))))
+
 (defn render-code [p]
-  (let [{:keys [dirty]} @ui]
+  (let [{:keys [dirty]} @ui data (data-view?)]
     (when-not dirty (set-code-text! (patch->code p)))
-    (set! (.-textContent ($ "edn")) (patch->edn p))
+    ;; the data is written only while it is shown: it is the whole state, pretty-printed
+    (when data (set-data-text! (patch->edn p)))
     (let [st ($ "code-state")]
-      (set! (.-textContent st) (if dirty "edited: run it to apply it to the patch" "in sync with the patch"))
-      (set! (.-className st) (if dirty "state dirty" "state")))
+      (set! (.-textContent st) (cond data "read-only: the state the history produces"
+                                     dirty "edited: run it to apply it to the patch"
+                                     :else "in sync with the patch"))
+      (set! (.-className st) (if (and dirty (not data)) "state dirty" "state")))
+    (set! (.-hidden ($ "code-run")) data)
+    (set! (.-hidden ($ "code-revert")) data)
     (set! (.-disabled ($ "code-run")) (not dirty))
     (set! (.-disabled ($ "code-revert")) (not dirty))))

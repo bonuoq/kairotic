@@ -110,8 +110,10 @@ starts from where you are and stays out of the history (the patch has a red fram
 
 ## 5. The tabs on the right
 
-- **Code** — the work as calls (`box`, `connect`, …), editable.
-- **EDN** — the work as data.
+- **Code** — the work as **Calls** (`box`, `connect`, …), editable: Ctrl/⌘+Enter runs them and rebuilds
+  the patch. **Data** shows the same work as data (EDN): the state the history produces, every key of
+  every box, read-only, to inspect it (folding and search with Ctrl/⌘+F). Edits not run yet stay in the
+  calls while you look at the data.
 - **Components** — the classes this work knows; write your own, import published ones.
 - **Claude** — Claude makes a patch (or changes the open one), or writes a component, from what you
   describe. See [Asking Claude](ask.md).

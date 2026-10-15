@@ -110,4 +110,28 @@ export async function editor(page, check) {
     await page.click("#code-revert");
     check("Discard brings back the code of the patch", (await cljs(page, "(code-text)")) === before);
   }
+
+  // Calls / Data (discussion #15): the same tab shows the work as data, read-only, in the editor
+  check("the work as data is pretty-printed in a natural order",
+        (await cljs(page, "(pp-edn {:b10 {:y 2 :data {:a 1} :x 1 :text \"t\"} :b2 {}})")) === '"{:b2 {} :b10 {:text \\"t\\" :x 1 :y 2 :data {:a 1}}}"',
+        await cljs(page, "(pp-edn {:b10 {:y 2 :data {:a 1} :x 1 :text \"t\"} :b2 {}})"));
+  check("... and long values are broken over lines",
+        (await cljs(page, "(every? (fn [l] (<= (count l) 72)) (str/split-lines (pp-edn {:boxes (into {} (for [i (range 12)] [(keyword (str \"b\" i)) {:text \"osc~ 440\" :x (* i 10) :y 20}]))})))")) === "true");
+  await page.click("#view-data");
+  const data = await page.waitForSelector("#panel-code .data-host .cm-editor", { state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
+  check("Data shows the work as data in the editor", data);
+  if (data) {
+    check("... the state of the patch, as EDN", (await cljs(page, "(= (.getValue @data-ed) (patch->edn (current)))")) === "true");
+    check("... instead of the calls", await page.evaluate(() => document.querySelector("#panel-code .code-host").hidden));
+    check("... with nothing to run", await page.evaluate(() => document.getElementById("code-run").hidden));
+    const v0 = await cljs(page, "(.getValue @data-ed)");
+    await page.click("#panel-code .data-host .cm-content");
+    await page.keyboard.type("x");
+    check("... read-only", (await cljs(page, "(.getValue @data-ed)")) === v0);
+    const b = (await cljs(page, '(box "osc~ 330" 1400 900)')).trim();
+    check("... and follows the patch", (await cljs(page, `(str/includes? (.getValue @data-ed) "${b.slice(1)}")`)) === "true");
+    await cljs(page, `(delete ${b})`);
+  }
+  await page.click("#view-calls");
+  check("Calls brings the code back", await page.evaluate(() => !document.querySelector("#panel-code .code-host").hidden && document.querySelector("#panel-code .data-host").hidden));
 }

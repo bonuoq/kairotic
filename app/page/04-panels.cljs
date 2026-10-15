@@ -191,13 +191,33 @@
 (.addEventListener ($ "code-run") "click" (fn [_] (run-panel-code!)))
 (.addEventListener ($ "code-revert") "click" (fn [_] (swap! ui assoc :dirty false) (render-code (current))))
 
+;; Calls / Data: the Code tab shows the work as calls (editable, run with Ctrl/⌘+Enter) or as data (the
+;; state the history produces, read-only). Edits not run yet stay in the calls while the data is shown.
+(defn show-code-view!
+  "Shows the work in the Code tab as :calls or :data."
+  [v]
+  (let [data (= v :data)
+        panel ($ "panel-code")
+        ;; once the editor is loaded, the hosts it put in place of the text area and the <pre>
+        calls-el (or (.querySelector panel ".code-host") ($ "code"))
+        data-el (or (.querySelector panel ".data-host") ($ "edn"))]
+    (swap! ui assoc :code-view (if data :data :calls))
+    (set! (.-hidden calls-el) data)
+    (set! (.-hidden data-el) (not data))
+    (.setAttribute ($ "view-calls") "aria-pressed" (str (not data)))
+    (.setAttribute ($ "view-data") "aria-pressed" (str data))
+    (render-code (current))))
+
+(.addEventListener ($ "view-calls") "click" (fn [_] (show-code-view! :calls)))
+(.addEventListener ($ "view-data") "click" (fn [_] (show-code-view! :data)))
+
 (doseq [t (array-seq (.querySelectorAll js/document ".tab"))]
   (.addEventListener t "click"
     (fn [_]
       (let [tab (.. t -dataset -tab)]
         (doseq [x (array-seq (.querySelectorAll js/document ".tab"))]
           (.setAttribute x "aria-selected" (str (= x t))))
-        (doseq [[k pid] [["code" "panel-code"] ["edn" "panel-edn"] ["comp" "panel-comp"] ["claude" "panel-claude"] ["help" "panel-help"] ["feedback" "panel-feedback"]]]
+        (doseq [[k pid] [["code" "panel-code"] ["comp" "panel-comp"] ["claude" "panel-claude"] ["help" "panel-help"] ["feedback" "panel-feedback"]]]
           (set! (.-hidden ($ pid)) (not= k tab)))
         ;; opened by itself, the Help tab shows its index (or the page it was on)
         (when (= tab "help") (refresh-help!))))))

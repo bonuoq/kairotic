@@ -301,6 +301,16 @@
       (.setAttribute (.-contentDOM (.-view ed)) "aria-label" "Patch code")
       (reset! code-ed ed))))
 
+(defn upgrade-data-view!
+  "The Data view of the Code tab: the same editor, read-only, with EDN colours, folding and search."
+  [cm]
+  (when-not @data-ed
+    (let [pre ($ "edn")
+          host (host-for! pre "data-host")
+          ed ((.-createEditor cm) #js {:parent host :doc (.-textContent pre) :language "edn" :readOnly true})]
+      (.setAttribute (.-contentDOM (.-view ed)) "aria-label" "The work as data (EDN)")
+      (reset! data-ed ed))))
+
 (defn upgrade-repl! [cm]
   (when-not @repl-ed
     (let [inp ($ "repl-in") host (host-for! inp "repl-host")
@@ -322,5 +332,7 @@
 ;; a moment after the page starts (not in an embed, which shows neither)
 (when-not embed-mode
   (js/setTimeout
-   (fn [] (.then (load-cm) (fn [cm] (when cm (upgrade-code-tab! cm) (upgrade-repl! cm)))))
+   (fn [] (.then (load-cm) (fn [cm] (when cm (upgrade-code-tab! cm) (upgrade-data-view! cm) (upgrade-repl! cm)
+                         ;; the hosts take the place of what was shown: show again the view that was chosen
+                         (show-code-view! (or (:code-view @ui) :calls))))))
    300))

@@ -2,12 +2,13 @@
 // Kairotic · the code editor: CodeMirror 6 set up for the languages of the code boxes. build.mjs bundles this
 // file into core/vendor/codemirror.mjs; the page imports it once, when an editor first opens (05-gestures.cljs).
 //
-//   createEditor({ parent, doc, language, words, onApply, onCancel, onChange, gutter, keys, placeholder }) → editor
+//   createEditor({ parent, doc, language, words, onApply, onCancel, onChange, gutter, keys, placeholder, readOnly }) → editor
 //     language  "clojurescript" · "component" · "edn" (Clojure, with structural editing) · "faust" · other: plain
 //     words     names offered while typing, besides the words already in the text
 //     onApply   Ctrl/⌘+Enter          onCancel  Esc          onChange(text) after every edit by the person
 //     gutter    false: no line numbers nor folding (a REPL line)        placeholder  text shown while empty
 //     keys      [{key: "Enter", run: () => true|false}, …] before every other key (true: handled)
+//     readOnly  true: a view to read, select, fold and search, not to edit (setValue still replaces it)
 //   editor: getValue() · setValue(text) (not an edit: no onChange, no undo step) · focus() · destroy()
 //           cursorLine() · lineCount() · completing() · newline() · cursorToEnd()
 //           view (the CodeMirror EditorView, to grow on)
@@ -139,7 +140,7 @@ function languageExtensions(language) {
 // ───────── the editor ─────────
 
 export function createEditor({ parent, doc = "", language = "", words = [], onApply, onCancel, onChange,
-                               gutter = true, keys = [], placeholder = "" } = {}) {
+                               gutter = true, keys = [], placeholder = "", readOnly = false } = {}) {
   const lang = new Compartment(), completion = new Compartment();
   let quiet = false;
   const own = Prec.highest(keymap.of([
@@ -154,13 +155,14 @@ export function createEditor({ parent, doc = "", language = "", words = [], onAp
       doc,
       extensions: [
         own,
+        readOnly ? [EditorState.readOnly.of(true)] : [],
         gutter ? [lineNumbers(), highlightActiveLineGutter(), foldGutter(), highlightActiveLine()] : [],
         placeholder ? placeholderText(placeholder) : [],
         highlightSpecialChars(), history(),
         drawSelection(), dropCursor(), EditorState.allowMultipleSelections.of(true), indentOnInput(),
         bracketMatching(), closeBrackets(), rectangularSelection(), crosshairCursor(),
         highlightSelectionMatches(), syntaxHighlighting(colours), look, EditorView.lineWrapping,
-        completion.of(autocompletion({ override: [wordsSource(words)], activateOnTyping: true })),
+        completion.of(readOnly ? [] : autocompletion({ override: [wordsSource(words)], activateOnTyping: true })),
         lang.of(languageExtensions(language)),
         keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap,
                    ...completionKeymap, indentWithTab]),

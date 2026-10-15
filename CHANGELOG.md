@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Calls / Data in the Code tab** ([#15](https://github.com/bonuoq/kairotic/discussions/15)): the EDN tab
+  is gone; the Code tab shows the work as **Calls** (editable, as before) or as **Data**, the state the
+  history produces as EDN, now in the code editor (read-only, with colours, folding and search) and
+  pretty-printed: one box per line, `:text :x :y` first and `:data` last, `:b2` before `:b10`, long
+  values broken over lines. The editor bundle takes a `readOnly` option for it.
 - **Code editor** ([#8](https://github.com/bonuoq/kairotic/issues/8)): code boxes (`faust~`, `script`,
   `component`, `tree`) are compact in the patch — one row of their code, their status and their
   parameters — and their code opens with a double-click in a window you can move and resize. Inside is
