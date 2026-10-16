@@ -112,8 +112,10 @@ de donde estás y queda fuera de la historia (el patch tiene un marco rojo mient
 
 ## 5. Las pestañas de la derecha
 
-- **Code** — la obra como llamadas (`box`, `connect`, …), editable.
-- **EDN** — la obra como datos.
+- **Code** — la obra como **Calls** (llamadas: `box`, `connect`, …), editable: Ctrl/⌘+Enter las ejecuta y
+  reconstruye el patch. **Data** muestra la misma obra como datos (EDN): el estado que produce la
+  historia, todas las claves de todas las cajas, en solo lectura, para inspeccionarlo (plegado y búsqueda
+  con Ctrl/⌘+F). Lo que hayas editado sin ejecutar sigue en las llamadas mientras miras los datos.
 - **Components** — las clases que conoce esta obra; escribe las tuyas, importa las publicadas.
 - **Claude** — Claude hace un patch (o cambia el abierto), o escribe un componente, a partir de lo que
   describes. Ver [Pedírselo a Claude](ask.es.md).

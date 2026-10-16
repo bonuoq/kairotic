@@ -590,17 +590,62 @@
                                   (when (seq ls) (concat ["" (str ";; data of " id)] ls))))
                               (filter (fn [id] (let [b (get-in p [:boxes id])] (and (:data b) (:code (comp/model-of b))))) ids))))))
 
+;; ───── the work as data, pretty: what the Data view of the Code tab shows ─────
+;; Collections that fit in the width stay on one line; the others put one entry per line, aligned.
+;; Keys come in a readable order: :text :x :y first, :data last, and :b2 before :b10.
+
+(def edn-width 72)
+(def key-rank {:class 0 :text 1 :x 2 :y 3 :present 4 :data 99})
+
+(defn natural-key
+  "A sort key for map keys: the rank of known keys, then the name split into text and numbers."
+  [k]
+  (let [nm (if (keyword? k) (str (when (namespace k) (str (namespace k) "/")) (name k)) (pr-str k))]
+    [(get key-rank k 50)
+     (if (keyword? k) 0 1)
+     (vec (map (fn [[_ txt num]] (if num [1 (js/parseInt num 10)] [0 txt]))
+               (re-seq #"(\D+)|(\d+)" nm)))]))
+
+(defn sorted-entries [m]
+  (try (sort-by (comp natural-key key) m)
+       (catch :default _ (seq m))))
+
+(defn edn-line
+  "EDN of x on one line, with the keys of its maps in the readable order."
+  [x]
+  (cond
+    (map? x) (str "{" (str/join " " (for [[k v] (sorted-entries x)] (str (edn-line k) " " (edn-line v)))) "}")
+    (vector? x) (str "[" (str/join " " (map edn-line x)) "]")
+    (set? x) (str "#{" (str/join " " (map edn-line x)) "}")
+    (seq? x) (str "(" (str/join " " (map edn-line x)) ")")
+    :else (pr-str x)))
+
+(defn pp-edn
+  "EDN of x, at most `edn-width` wide where it can be, indented from column `col`."
+  ([x] (pp-edn x 0))
+  ([x col]
+   (let [flat (edn-line x)]
+     (if (or (<= (+ col (count flat)) edn-width) (not (coll? x)) (empty? x))
+       flat
+       (let [pad (fn [n] (apply str (repeat n " ")))]
+         (cond
+           (map? x)
+           (str "{"
+                (str/join (str "\n" (pad (inc col)))
+                          (for [[k v] (sorted-entries x)]
+                            (let [ks (edn-line k)
+                                  vs (pp-edn v (+ col 2 (count ks)))]
+                              (if (and (coll? v) (seq v) (str/includes? vs "\n") (> (count ks) 12))
+                                (str ks "\n" (pad (+ col 2)) (pp-edn v (+ col 2)))
+                                (str ks " " vs)))))
+                "}")
+           :else
+           (let [[o c] (cond (vector? x) ["[" "]"] (set? x) ["#{" "}"] :else ["(" ")"])
+                 inner (+ col (count o))]
+             (str o (str/join (str "\n" (pad inner)) (map (fn [e] (pp-edn e inner)) x)) c))))))))
+
 (defn patch->edn [p]
-  (str "{:boxes\n {"
-       (str/join "\n  " (for [id (sort-by box-num (keys (:boxes p)))]
-                          (let [b (get-in p [:boxes id])]
-                            (if (:data b)
-                              (str id " " (pr-str (dissoc b :data)) "\n     ;; :data\n     "
-                                   (pr-str (update (:data b) :strokes (fn [es] (into (sorted-map-by (fn [a c] (compare [(box-num-e a) (name a)] [(box-num-e c) (name c)]))) es)))))
-                              (str id " " (pr-str b))))))
-       "}\n :lines\n ["
-       (str/join "\n  " (map pr-str (:lines p)))
-       "]}"))
+  (pp-edn {:boxes (:boxes p) :lines (vec (:lines p))}))
 
 ;; ───────────────────────── sub-patches ─────────────────────────
 ;; A `patch` box keeps a whole patch as its data, with its own history: editing inside it produces

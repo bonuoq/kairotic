@@ -332,6 +332,12 @@ button.act.primary { background: var(--accent); border-color: var(--accent); col
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
 button.act[disabled] { opacity: 0.45; cursor: default; }
 pre.view { margin: 0; flex: 1; min-height: 300px; overflow: auto; padding: 10px 12px; font-family: var(--f-code); font-size: 12px; line-height: 1.55; color: var(--ink); }
+/* Calls / Data: the two ways the Code tab shows the work */
+.code-views { display: inline-flex; }
+.code-views button.act { border-radius: 0; font-size: 12px; padding: 3px 9px; }
+.code-views button.act:first-child { border-radius: 4px 0 0 4px; }
+.code-views button.act:last-child { border-radius: 0 4px 4px 0; margin-left: -1px; }
+.code-views button.act[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; position: relative; }
 
 /* history band */
 .hist-nav { display: flex; gap: 4px; }
@@ -412,7 +418,10 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
 #repl-in { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 13px; padding: 6px 0; }
 #repl-in:focus { outline: none; }
 /* the Code tab and the REPL line, with the code editor (14-editor.cljs) */
-.code-host { flex: 1; min-height: 300px; max-height: 560px; display: flex; min-width: 0; }
+.code-host, .data-host { flex: 1; min-height: 300px; max-height: 560px; display: flex; min-width: 0; }
+.code-host[hidden], .data-host[hidden] { display: none; }
+.data-host .cm-editor { flex: 1; min-width: 0; background: transparent !important; }
+.data-host .cm-gutters { background: transparent !important; }
 .code-host .cm-editor { flex: 1; min-width: 0; background: transparent !important; }
 .code-host .cm-gutters { background: transparent !important; }
 .repl-host { flex: 1; min-width: 0; max-height: 30vh; overflow: auto; }
@@ -525,7 +534,6 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
       <div class="pane-head">
         <div class="tabs" role="tablist">
           <button class="tab" role="tab" id="tab-code" data-tab="code" aria-selected="true">Code</button>
-          <button class="tab" role="tab" id="tab-edn" data-tab="edn" aria-selected="false">EDN</button>
           <button class="tab" role="tab" id="tab-comp" data-tab="comp" aria-selected="false">Components</button>
           <button class="tab" role="tab" id="tab-claude" data-tab="claude" aria-selected="false" hidden>Claude</button>
           <button class="tab" role="tab" id="tab-help" data-tab="help" aria-selected="false" title="How each component works, and tutorials (? on a selected box)">Help</button>
@@ -534,15 +542,16 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
       </div>
       <div class="panel" id="panel-code">
         <textarea id="code" spellcheck="false" aria-label="Patch code"></textarea>
+        <pre class="view" id="edn" aria-label="The work as data (EDN)" hidden></pre>
         <div class="code-bar">
+          <span class="code-views" role="group" aria-label="Show the work as">
+            <button class="act" type="button" id="view-calls" aria-pressed="true" title="The work as calls (box, connect, …): edit it and run it">Calls</button><button class="act" type="button" id="view-data" aria-pressed="false" title="The work as data (EDN): the state the history produces, to read">Data</button>
+          </span>
           <span class="state" id="code-state">in sync with the patch</span>
           <span class="spacer"></span>
           <button class="act" id="code-revert" disabled>Discard changes</button>
           <button class="act primary" id="code-run" disabled>Run · Ctrl+Enter</button>
         </div>
-      </div>
-      <div class="panel" id="panel-edn" hidden>
-        <pre class="view" id="edn"></pre>
       </div>
       <div class="panel" id="panel-comp" hidden>
         <div class="comp-list" id="comp-list"></div>
