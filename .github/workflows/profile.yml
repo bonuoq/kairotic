@@ -1,0 +1,31 @@
+# Profiling run for a review branch (not for main): builds the app, runs tests/profile/d22.mjs in a
+# headless Chromium and commits the measurements to tests/profile/results.json on the same branch.
+name: profile
+
+on:
+  push:
+    branches: ["review/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node site/build.mjs
+      - run: npm install --no-save playwright@1.56.0 && npx playwright install --with-deps chromium
+      - name: Serve the built app
+        run: (cd _site && python3 -m http.server 8000 &) && sleep 2
+      - run: node tests/profile/d22.mjs http://localhost:8000/ tests/profile/results.json
+      - name: Commit the results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add tests/profile/results.json
+          git commit -m "profile: results (generated)" && git push || echo "nothing to commit"
