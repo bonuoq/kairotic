@@ -119,7 +119,24 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
                [(conj acc (into {} (keep (fn [[vid v]] (when-let [c (held vid)] [c v])) rd))) held]))
            [[] {}] readings)))
 
-(defn table
+(defn readings
+  "What the canvas holds at each of n points of the span (as cv/read-along gives it, in stroke order), but
+   each stroke is only asked where it can pass: between its lowest and highest coordinate on that axis.
+   A canvas of short notes is crossed by one or two strokes at a time, not by all of them."
+  [d mode span n]
+  (let [k (if (= mode :y) 1 0)
+        logs [(cv/x-log? d) (cv/y-log? d)]
+        strokes (vec (for [[id s] (cv/sorted-strokes d) :let [cs (map (fn [p] (nth p k)) (:pts s))]]
+                       [id (:pts s) (apply min cs) (apply max cs)]))]
+    (vec (for [i (range n)]
+           (let [v (cv/at-unit span (/ i (dec n)))]
+             (vec (mapcat (fn [[id pts lo hi]]
+                            (when (and (<= lo v) (<= v hi))
+                              (map-indexed (fn [j val] [(if (zero? j) id (keyword (str (name id) "-" (inc j)))) val])
+                                           (cv/crossings pts k v logs))))
+                          strokes)))))))
+
+(defn compute-table
   "The buffer d sampled for reader~: a Float32Array of voices × table-size (NaN where nothing passes)."
   [d mode V sid]
   (let [n table-size tab (js/Float32Array. (* V n))]
@@ -130,11 +147,22 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
                 (when-let [[x y] (cv/point-along d pts (/ i (dec n)))]
                   (aset tab i x)
                   (aset tab (+ n i) y))))
-      (let [span (if (= mode :y) (cv/y-range d) (cv/x-range d))
-            readings (for [i (range n)] (cv/read-along d mode (cv/at-unit span (/ i (dec n)))))]
-        (doseq [[i vs] (map-indexed vector (allocate readings V)) [c v] vs]
+      (let [span (if (= mode :y) (cv/y-range d) (cv/x-range d))]
+        (doseq [[i vs] (map-indexed vector (allocate (readings d mode span n) V)) [c v] vs]
           (aset tab (+ (* c n) i) v))))
     tab))
+
+;; Several reader~ often read the same canvas the same way, and a canvas that has not changed must not
+;; be sampled again: the tables are kept by what they depend on (the buffer compared by value).
+(defonce tables (atom []))   ; [[key table] …], the newest last
+(def tables-kept 16)
+
+(defn table [d mode V sid]
+  (let [k [d mode V sid]]
+    (or (some (fn [[k2 t]] (when (= k k2) t)) @tables)
+        (let [t (compute-table d mode V sid)]
+          (swap! tables (fn [ts] (vec (take-last tables-kept (conj ts [k t])))))
+          t))))
 
 (defn send-table! [node]
   (when-let [w @(:worklet node)]
