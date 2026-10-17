@@ -245,7 +245,8 @@
   (let [p (patch)]
     (doseq [[id node] (:nodes @rt) :let [f (get-in node [:def :audio :feed])] :when (and f (:fed node))]
       (let [[_ data] (buffer-of p id)]
-        (when-not (identical? data @(:fed node))
+        ;; by value: the same canvas rebuilt (the history recomputed after any change) is not new
+        (when-not (or (identical? data @(:fed node)) (= data @(:fed node)))
           (reset! (:fed node) data)
           (try (f node data) (catch :default e (js/console.error e))))))))
 

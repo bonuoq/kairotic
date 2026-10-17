@@ -67,11 +67,15 @@ await cljs(`(do (defonce prof (atom {:tables 0 :table-ms 0 :syncs 0 :sync-ms 0})
   (alter-var-root (var kairotic.signal/table)
     (fn [f] (fn [& a] (let [t (js/performance.now) r (apply f a)]
                         (swap! prof (fn [p] (-> p (update :tables inc) (update :table-ms + (- (js/performance.now) t))))) r))))
+  (when-let [v (resolve 'kairotic.signal/compute-table)]
+    (alter-var-root v
+      (fn [f] (fn [& a] (let [t (js/performance.now) r (apply f a)]
+                          (swap! prof (fn [p] (-> p (update :computed (fnil inc 0)) (update :compute-ms (fnil + 0) (- (js/performance.now) t))))) r)))))
   (alter-var-root (var kairotic.engine/sync!)
     (fn [f] (fn [& a] (let [t (js/performance.now) r (apply f a)]
                         (swap! prof (fn [p] (-> p (update :syncs inc) (update :sync-ms + (- (js/performance.now) t))))) r))))
   :ok)`);
-const counters = async () => cljs("(let [p @prof] (reset! prof {:tables 0 :table-ms 0 :syncs 0 :sync-ms 0}) (-> p (update :table-ms js/Math.round) (update :sync-ms js/Math.round)))");
+const counters = async () => cljs("(let [p @prof] (reset! prof {:tables 0 :table-ms 0 :syncs 0 :sync-ms 0}) (-> p (update :table-ms js/Math.round) (update :sync-ms js/Math.round) (update :compute-ms #(when % (js/Math.round %)))))");
 
 await cljs("(play)");
 await page.waitForTimeout(3000);
@@ -94,6 +98,10 @@ await median("sync! with nothing changed (every tick)", "(kairotic.engine/sync!)
 await median("feed! with nothing changed (every tick)", "(kairotic.engine/feed!)");
 await median("one tick of the engine", "(kairotic.engine/tick!)");
 await median("reader~ table of the canvas (one reader)", "(kairotic.signal/table (get-in (work-patch) [:boxes :b4 :data]) :x 3 nil)", 3);
+await median("reader~ table computed (no cache)", "((or (resolve 'kairotic.signal/compute-table) kairotic.signal/table) (get-in (work-patch) [:boxes :b4 :data]) :x 3 nil)", 3);
+R.sameReadingsAsBefore = await cljs(`(let [d (get-in (work-patch) [:boxes :b4 :data]) span (kairotic.canvas/x-range d) n 1024
+  old (vec (for [i (range n)] (kairotic.canvas/read-along d :x (kairotic.canvas/at-unit span (/ i (dec n))))))]
+  (if-let [f (resolve 'kairotic.signal/readings)] (= old (f d :x span n)) :no-new-readings))`);
 await median("render-overlay! (every frame while playing)", "(render-overlay!)");
 await median("render-scene (the whole patch SVG)", "(render-scene (current))", 5);
 await median("render-code (Code tab)", "(render-code (current))", 5);
