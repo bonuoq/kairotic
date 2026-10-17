@@ -1,0 +1,58 @@
+{
+  "errors": [],
+  "load": ":ok",
+  "compileSeconds": 1.175,
+  "compiled": "[:ok :ok :ok :ok :ok]",
+  "boxes": "16",
+  "audio": {
+    "state": "running",
+    "rate": 44100,
+    "baseLatency": 0.01
+  },
+  "countersAtStart": "{:tables 4, :table-ms 2460, :syncs 24, :sync-ms 22}",
+  "ops": {
+    "signature (every 25 ms tick)": 0.6,
+    "sync! with nothing changed (every tick)": 0.9,
+    "feed! with nothing changed (every tick)": 0.2,
+    "one tick of the engine": 0.7,
+    "reader~ table of the canvas (one reader)": 598,
+    "render-overlay! (every frame while playing)": 1.7,
+    "render-scene (the whole patch SVG)": 13.2,
+    "render-code (Code tab)": 1.5,
+    "patch->code": 1.6,
+    "work-patch from an empty cache": 1.6,
+    "send-flat-quiet! to the knob (one drag step)": 3.1,
+    "render-all! (after every history change)": 13
+  },
+  "countersAfterOps": "{:tables 7, :table-ms 4201, :syncs 34, :sync-ms 24}",
+  "idlePlaying5s": {
+    "ms": 5003,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "worstLongTask": 0,
+    "fps": 60,
+    "worstFrameGap": 17
+  },
+  "countersIdle": "{:tables 0, :table-ms 0, :syncs 200, :sync-ms 137}",
+  "knobDrag3s": {
+    "ms": 2885,
+    "longTasks": 0,
+    "longTaskMs": 0,
+    "worstLongTask": 0,
+    "fps": 60,
+    "worstFrameGap": 17
+  },
+  "countersDrag": "{:tables 0, :table-ms 0, :syncs 296, :sync-ms 177}",
+  "fiveKnobReleases": {
+    "ms": 12129,
+    "longTasks": 9,
+    "longTaskMs": 9683,
+    "worstLongTask": 2360,
+    "fps": 0.5,
+    "worstFrameGap": 2433
+  },
+  "countersReleases": "{:tables 20, :table-ms 11741, :syncs 11, :sync-ms 8}",
+  "timeOfOneRelease": 104.7,
+  "countersAfterOneRelease": "{:tables 4, :table-ms 2327, :syncs 3, :sync-ms 4}",
+  "oneFeedAfterRelease": 2346.9
+}
