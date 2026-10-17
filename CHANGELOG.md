@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`reader~` no longer freezes the page** (the patch of [discussion #22](https://github.com/bonuoq/kairotic/discussions/22)):
+  its table of a canvas was sampled again after every change of the history (a knob released: about
+  0.6 s per `reader~`, 2.4 s with four), because the canvas, rebuilt, was a new object. Buffers are now
+  compared by value, tables are kept by what they depend on (several readers of one canvas share one),
+  and sampling only asks the strokes that can pass at each point (≈30× faster). Profiling script:
+  `tests/profile/d22.mjs`.
 - **Calls / Data in the Code tab** ([#15](https://github.com/bonuoq/kairotic/discussions/15)): the EDN tab
   is gone; the Code tab shows the work as **Calls** (editable, as before) or as **Data**, the state the
   history produces as EDN, now in the code editor (read-only, with colours, folding and search) and
