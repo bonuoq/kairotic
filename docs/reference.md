@@ -515,6 +515,7 @@ A draggable number; sends it when it changes or on receiving a bang.
 **Messages and gestures**
 
 - `drag`: up and down changes it (and sends it)
+- `double-click`: type a number (Enter sends it, Esc closes); so too knobs and the sliders of faust~
 
 **Try:** Start the engine and drag the number: the oscillator follows.
 
