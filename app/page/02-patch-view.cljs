@@ -86,10 +86,10 @@
       (= :code (display-of b)) [code-w (:h (code-geom b))]
       (panel-layout b) (let [{:keys [w h]} (panel-layout b)] [w h])
       (own-view? b) (let [[w h] (comp/size-of b)] [(+ grip w) h])
+      (= :canvas (display-of b)) [cv/W cv/H]
+      (= :score (display-of b)) [cv/W (max 90 (+ hdr 8 (or (get-in @score-cache [id :h]) 70)))]
       :else
     (case (klass t)
-      ("canvas" "freqt") [cv/W cv/H]
-      "score" [cv/W (max 90 (+ hdr 8 (or (get-in @score-cache [id :h]) 70)))]
       "bang" [34 26]
       "number" [76 box-h]
       "msg" [(max 44 (+ grip 14 (* 7.6 (count (str/trim (subs (str/trim t) 3)))))) box-h]
@@ -114,9 +114,17 @@
 
 (defn canvas-geom [d] (cv/geom (or d cv/empty) hdr))
 
+;; a tree box shown as a score (discussion #30): its own tree, expanded, remembering where each note is
+;; written, so its notes edit it directly
+(defn own-tree [id b]
+  (when-let [t (mtb/tree-of (:data b))] (try (mt/expand-source t id) (catch :default _ nil))))
+
 ;; score: Verovio draws an approximation of the buffer; the SVG node is kept and put back on every repaint
 (defn score-entry! [id b]
-  (let [d0 (canvas-data b) lt (live-tree id) d [d0 lt] c (get @score-cache id)]
+  (let [tree-box? (= "tree" (klass (:text b)))
+        d0 (if tree-box? cv/empty (canvas-data b))
+        lt (if tree-box? (own-tree id b) (live-tree id))
+        d [d0 lt] c (get @score-cache id)]
     (cond
       (and c (= (:key c) d)) c
       (nil? @vrv) nil
@@ -192,8 +200,8 @@
   ([p bid t cls dots? axis pt]
   (when-let [b (get-in p [:boxes bid])]
     (let [[x y] (box-pos bid b) d (canvas-data b)]
-      (case (klass (:text b))
-        ("canvas" "freqt")
+      (case (display-of b)
+        :canvas
         (cond
           (= axis :path)
           (when pt
@@ -211,7 +219,7 @@
                         (when dots?
                           (apply str (for [[_ f] (cv/read-at d t)]
                                        (str "<circle class=\"sounding\" cx=\"" cx "\" cy=\"" (+ y (cv/f->y g f)) "\" r=\"4\"></circle>")))))))
-        "score" (when-let [a (sc/t->pos (get-in @score-cache [bid :anchors]) t)]
+        :score (when-let [a (sc/t->pos (get-in @score-cache [bid :anchors]) t)]
                   (let [cx (+ x 4 (:x a)) oy (+ y hdr 4)]
                     (str "<line class=\"" cls "\" x1=\"" cx "\" x2=\"" cx "\" y1=\"" (+ oy (max 0 (:y0 a))) "\" y2=\"" (+ oy (:y1 a)) "\"></line>")))
         nil)))))
@@ -410,15 +418,52 @@
                                   (cursor-at p from t "cur" true (or axis :x) pt))))))
                (apply str (for [[id b] (:boxes p) :when (panel-layout b) :let [[x y] (box-pos id b)]] (panel-overlay id b x y)))))))
 
+;; ───── the header of a box with data: ⇄ shows it in its next view, { } opens its data as text in the
+;;       code window (discussion #30) ─────
+
+(defn next-view
+  "The view after the one a box shows now, if its class has more than one."
+  [b]
+  (let [vs (vec (comp/views-of b)) cur (display-of b)]
+    (when (> (count vs) 1)
+      (nth vs (mod (inc (or (first (keep-indexed (fn [i v] (when (= v cur) i)) vs)) 0)) (count vs))))))
+
+(defn header-chips
+  "[[kind label title] …] for the header of a box: from right to left."
+  [id b]
+  (let [nv (next-view b)]
+    (cond-> []
+      (and (comp/source-of b) (not= :code (display-of b)))
+      (conj [:code "{ }" (str "Its data as text, in the code window: (source " id ")")])
+      nv (conj [:view (str "⇄ " (name nv)) (str "Show it as " (name nv) ": (view " id " " nv ")")]))))
+
+(def chip-ch 6.4)   ; width of a character of a chip (10.5px mono)
+
+(defn chips-svg
+  "The chips drawn from the right edge `x1` of the header; returns [svg width]."
+  [id chips x1]
+  (reduce (fn [[acc right] [kind label title]]
+            (let [cw (+ 10 (* chip-ch (count label))) x (- right cw)]
+              [(str acc "<g class=\"hchip\" data-chip=\"" (name kind) "\" data-box=\"" (esc (name id)) "\">"
+                    "<rect x=\"" x "\" y=\"3\" width=\"" cw "\" height=\"" (- hdr 6) "\" rx=\"3\"></rect>"
+                    "<text x=\"" (+ x (/ cw 2)) "\" y=\"" (- hdr 6) "\" text-anchor=\"middle\">" (esc label) "</text>"
+                    "<title>" (esc title) "</title></g>")
+               (- x 4)]))
+          ["" x1] chips))
+
 (defn box-header [id b w]
-  (str "<rect class=\"head\" x=\"0.5\" y=\"0.5\" width=\"" (- w 1) "\" height=\"" (- hdr 1) "\"></rect>"
-       "<text class=\"lbl\" x=\"8\" y=\"14\">" (esc (:text b)) "</text>"
-       "<text class=\"lbl info\" x=\"" (- w 8) "\" y=\"14\" text-anchor=\"end\">"
-       (esc (if (= :code (display-of b))
-              (str (:language (box-def b)) " · ✎")
-              (if-let [t (live-tree id)]
-                (str "tree · " (mt/summary t) " · (keep! " id ")")
-                (str (when (= "score" (klass (:text b))) "approx. · ") (cv/summary (canvas-data b)))))) "</text>"))
+  (let [tree-box? (= "tree" (klass (:text b)))
+        [chips x1] (chips-svg id (header-chips id b) (- w 4))]
+    (str "<rect class=\"head\" x=\"0.5\" y=\"0.5\" width=\"" (- w 1) "\" height=\"" (- hdr 1) "\"></rect>"
+         "<text class=\"lbl\" x=\"8\" y=\"14\">" (esc (:text b)) "</text>"
+         "<text class=\"lbl info\" x=\"" (- x1 (if (seq chips) 2 4)) "\" y=\"14\" text-anchor=\"end\">"
+         (esc (cond
+                (= :code (display-of b)) (str (:language (box-def b)) " · ✎")
+                tree-box? (if-let [t (mtb/tree-of (:data b))] (mt/summary t) "empty")
+                :else (if-let [t (live-tree id)]
+                        (str "tree · " (mt/summary t) " · (keep! " id ")")
+                        (str (when (= :score (display-of b)) "approx. · ") (cv/summary (canvas-data b)))))) "</text>"
+         chips)))
 
 (declare gesture!)
 
@@ -450,7 +495,7 @@
   (let [p (scene-of p)
         {:keys [sel wire hover-in nsel ldrag]} @ui
         chosen (sel-ids)
-        _ (doseq [[id b] (:boxes p) :when (= "score" (klass (:text b)))] (score-entry! id b))
+        _ (doseq [[id b] (:boxes p) :when (= :score (display-of b))] (score-entry! id b))
         lines (map-indexed
                (fn [idx [a o b i :as l]]
                  (if (and (get-in p [:boxes a]) (get-in p [:boxes b]))
@@ -465,7 +510,7 @@
         bxs (for [[id b] (:boxes p)]
               (let [[x y] (box-pos id b) t (:text b) [w h] (box-dims id b) [ins outs] (io b)
                     kc (klass t)
-                    music-box? (contains? music-classes kc)
+                    music-box? (contains? #{:canvas :score} (display-of b))
                     code-box? (= :code (display-of b))
                     ctl? (own-view? b)
                     action-box? (or ctl? (contains? action-classes kc))
@@ -474,20 +519,20 @@
                              (when (contains? chosen id) " sel") (when (= id (first hover-in)) " drop")
                              (when (and (:present b) (not @pres-mode)) " presented") (when (panel-layout b) " panel"))
                     idn (esc (name id))
-                    d (if (#{"canvas" "freqt"} kc) (shown-data id b) (canvas-data b))
-                    content (case kc
-                              ("canvas" "freqt") (let [dr (when (and ldrag (= (:box ldrag) id)) ldrag)
+                    d (if (music? b) (shown-data id b) (canvas-data b))
+                    content (case (if music-box? (display-of b) kc)
+                              :canvas (let [dr (when (and ldrag (= (:box ldrag) id)) ldrag)
                                              g (if dr (:g dr) (canvas-geom d))]
                                          (cv/svg idn d g (when (= (first nsel) id) (second nsel))
                                                  (when (and dr (= :move (:kind dr)) (:moved dr)) {(:tid dr) (:pts dr)})
                                                  (when (and dr (= :draw (:kind dr))) (:pts dr))))
-                              "score" (let [c (get @score-cache id)]
+                              :score (let [c (get @score-cache id)]
                                         (str "<rect class=\"paper mus-body\" data-box=\"" idn "\" x=\"2\" y=\"" hdr "\" width=\"" (- w 4) "\" height=\"" (- h hdr 2) "\"></rect>"
                                              "<g class=\"score-slot\" data-box=\"" idn "\" transform=\"translate(4," (+ hdr 4) ")\"></g>"
                                              (cond
                                                (nil? c) (str "<text class=\"wait\" x=\"12\" y=\"" (+ hdr 26) "\">"
                                                              (if (= :error @vrv-status)
-                                                               "Could not load Verovio: turn it into a canvas to see it"
+                                                               "Could not load Verovio (the notation): ⇄ shows it another way"
                                                                "Loading the notation (Verovio, about 8 MB)…")
                                                              "</text>")
                                                (:error c) (str "<text class=\"wait\" x=\"12\" y=\"" (+ hdr 26) "\">"

@@ -346,6 +346,7 @@ strings, keywords, vectors, maps) — no let, def, fn, str, arithmetic or any ot
   (connect :b1 0 :b2 0)              ; from :b1 outlet 0 to :b2 inlet 0 (numbered from 0, left to right)
   (code :b3 \"…source…\")             ; the source of a code box (faust~, script, component, tree)
   (present :b4 20 20)                ; puts a box on the presentation (the performer's panel), at x y
+  (view :b5 :score)                  ; shows a tree box as a score (or a freqt as :score), same data
   (tree! :b5 [:voice \"c4/1 e4 g4/2\"]) ; the musical tree of a tree box
   (stroke :b6 [[0 220] [1 440]]) (axis :b6 :x 0 4)  ; drawings of canvas/freqt boxes
 

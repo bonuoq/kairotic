@@ -139,12 +139,17 @@
                     nil)]
         (when (seq edits)
           (let [ops (into pre edits)]
-            ;; the edits leave the score by its third outlet: connected back to the tree box, they change it,
-            ;; and the tree, changed, comes back to the score
-            (when-not (some (fn [[a o]] (and (= a score) (= o 2))) (:lines (current)))
-              (fail (str "To edit " from " from this score, connect the score's third outlet (edits) to " from)))
-            (swap! ui assoc :tsel (assoc ts :src {:src (if (#{"Delete" "Backspace"} k) dur-path target)} :id nil))
-            (eng/emit! (fn [] (work-patch)) (fid score) 2 [:edit ops])
+            (if (= score from)
+              ;; a tree box shown as a score (discussion #30): its notes edit its own tree, directly
+              (do (swap! ui assoc :tsel (assoc ts :src {:src (if (#{"Delete" "Backspace"} k) dur-path target)} :id nil))
+                  (gesture! (str "(tree-edit! " from " " (str/join " " (map pr-str ops)) ")")))
+              ;; a score box: the edits leave it by its third outlet; connected back to the tree box, they
+              ;; change it, and the tree, changed, comes back to the score
+              (do (when-not (some (fn [[a o]] (and (= a score) (= o 2))) (:lines (current)))
+                    (fail (str "To edit " from " from this score, connect the score's third outlet (edits) to " from
+                               ", or show " from " itself as a score: (view " from " :score)")))
+                  (swap! ui assoc :tsel (assoc ts :src {:src (if (#{"Delete" "Backspace"} k) dur-path target)} :id nil))
+                  (eng/emit! (fn [] (work-patch)) (fid score) 2 [:edit ops])))
             (render-scene (current))))))))
 
 (defn score-click!
@@ -176,6 +181,14 @@
 
 ;; the code of a box opens in the editor window (14-editor.cljs)
 (declare open-code-editor!)
+
+(defn data-header?
+  "Is (x, y) on the right half of the header of a box whose data can be edited as text (not a code box,
+   whose code row opens it)? There a double-click opens its data in the code window (discussion #30)."
+  [id b x y]
+  (let [[w _] (box-dims id b)]
+    (boolean (and (comp/source-of b) (not= :code (display-of b))
+                  (<= (:y b) y (+ (:y b) hdr)) (> x (+ (:x b) (/ w 2)))))))
 
 (defn param-k
   "How a parameter is named in a message: a keyword if possible (:cutoff), otherwise a string."
@@ -281,7 +294,7 @@
   (when (and (.-shiftKey e) (not (closest e ".port")))
     (when-let [el (closest e ".box")]
       (let [[id b] (el-box el)]
-        (when (and b (not (and (closest e ".mus-body") (#{"canvas" "freqt"} (klass (:text b)))))
+        (when (and b (not (and (closest e ".mus-body") (= :canvas (display-of b))))
                    (not (and (closest e ".box.act") (not (closest e ".grip")) (fn? (:gesture (box-def b))))))
           id)))))
 
@@ -363,6 +376,17 @@
         (do (.preventDefault e)
             (toggle-box! (shift-pick e) x y))
 
+        ;; the chips of a header (discussion #30): ⇄ shows the box in its next view, { } opens its data as text
+        (closest e ".hchip")
+        (let [el (closest e ".hchip") [id b] (el-box el)]
+          (when b
+            (.preventDefault e)
+            (swap! ui assoc :drag nil)
+            (case (.. el -dataset -chip)
+              "view" (gesture! (str "(view " id " " (next-view b) ")"))
+              "code" (js/setTimeout (fn [] (open-code-editor! id)) 0)
+              nil)))
+
         ;; a control presented in the panel of a sub-patch
         (closest e ".pres-area")
         (let [el (closest e ".pres-area") [id b] (el-box el) kid (keyword (.. el -dataset -kid))
@@ -427,8 +451,8 @@
         (closest e ".mus-body")
         (let [[id b] (el-box (closest e ".mus-body"))]
           (when b
-            (case (klass (:text b))
-              ("canvas" "freqt") (let [d (canvas-data b) g (canvas-geom d)
+            (case (display-of b)
+              :canvas (let [d (canvas-data b) g (canvas-geom d)
                              lx (- x (:x b)) ly (- y (:y b))
                              t0 (snap-t d (cv/x->t g lx)) f0 (snap-f d (cv/y->f g ly))
                              mode (cond (.-altKey e) :free (.-shiftKey e) :line :else :note)]
@@ -436,19 +460,25 @@
                          (swap! ui assoc :sel nil :nsel nil
                                 :ldrag {:kind :draw :mode mode :box id :g g :d d :x0 x :y0 y :bx (:x b) :by (:y b)
                                         :t0 t0 :f0 f0 :click-t (cv/x->t g lx) :raw [[lx ly]] :pts nil :moved false}))
-              "score" (score-click! e id b x y)
+              :score (score-click! e id b x y)
               nil)))
 
         (closest e ".box")
         (let [el (closest e ".box") id (keyword (.. el -dataset -box)) b (some-> (get-in (current) [:boxes id]) view-box)]
           (when b
             ;; the first click redraws the box, so a double click on a patch box is detected here
-            (let [now (js/Date.now) [lid lt] (:last-box-click @ui)]
-              (if (and (= lid id) (< (- now lt) 450) (embedded? b) (not (.-altKey e)))
+            (let [now (js/Date.now) [lid lt] (:last-box-click @ui) again? (and (= lid id) (< (- now lt) 450))]
+              (cond
+                (and again? (embedded? b) (not (.-altKey e)))
                 (do (.preventDefault e)
                     (swap! ui assoc :last-box-click nil :drag nil)
                     (js/setTimeout (fn [] (gesture! (str "(enter " id ")"))) 0))
-                (pick-box! id b x y {:last-box-click [id now]})))))
+                ;; a double-click on the right of the header of a box with data opens it as text
+                (and again? (data-header? id b x y))
+                (do (.preventDefault e)
+                    (swap! ui assoc :last-box-click nil :drag nil)
+                    (js/setTimeout (fn [] (open-code-editor! id)) 0))
+                :else (pick-box! id b x y {:last-box-click [id now]})))))
 
         (closest e ".wire-hit")
         (let [idx (js/parseInt (.. (closest e ".wire-hit") -dataset -line) 10)]
@@ -595,10 +625,11 @@
         (closest e ".code-area") nil
         (or (closest e ".param") (closest e ".stroke-hit") (closest e ".score-slot") (closest e ".mus-body")) nil
         (and (closest e ".box.act") (not (closest e ".grip"))) nil
+        (closest e ".hchip") nil
         (closest e ".box")
         (let [el (closest e ".box") id (keyword (.. el -dataset -box)) b (get-in (current) [:boxes id])]
           (when b
-            (if (and (embedded? b) (not (.-altKey e)))
+            (if (or (and (embedded? b) (not (.-altKey e))) (data-header? id (view-box b) x y))
               nil
               (open-editor! {:id id :x (:x b) :y (:y b) :text (:text b)}))))
         :else (open-editor! {:x x :y y})))))
