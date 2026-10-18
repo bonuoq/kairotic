@@ -40,7 +40,8 @@
 
     ;; what cannot be read is said, not dropped
     (t/throws "not EDN" (fn [] (cv/read-source cv/empty "{:strokes")))
-    (t/throws "not a map" (fn [] (cv/read-source cv/empty "[1 2]")))
+    (t/throws "something after the map" (fn [] (cv/read-source cv/empty "{:strokes {}} oops")))
+    (t/throws "not a map"(fn [] (cv/read-source cv/empty "[1 2]")))
     (t/throws "an unknown key" (fn [] (cv/read-source cv/empty "{:strokez {}}")))
     (t/throws "a freqt has no axes" (fn [] (cv/read-source cv/empty "{:ax {:x {:lo 0 :hi 1}}}")))
     (t/throws "a frequency out of range" (fn [] (cv/read-source cv/empty "{:strokes {:t1 [[0 440] [1 90000]]}}")))

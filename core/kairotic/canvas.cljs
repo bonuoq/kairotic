@@ -530,7 +530,11 @@
   "EDN text → a buffer of the kind of `d` (a generic canvas or a freqt). Nothing is evaluated. Throws,
    saying what is wrong, rather than dropping what it cannot read."
   [d text]
-  (let [x (try (edn/read-string (str text)) (catch :default e (bad (str "That is not EDN: " (.-message e)))))
+  (let [forms (try (edn/read-string (str "[" text "\n]")) (catch :default e (bad (str "That is not EDN: " (.-message e)))))
+        _ (when (not= 1 (count forms))
+            (bad (if (empty? forms) "The text is empty: a buffer is a map {:strokes {…} :gx nil :gy nil}"
+                     (str "One map only: there is more after it (" (pr-str (second forms)) ")"))))
+        x (first forms)
         gen (generic? (or d empty))]
     (when-not (map? x) (bad "A buffer is a map: {:strokes {:t1 [[0 440] [1 440]]} :gx nil :gy nil}"))
     (when-let [k (first (remove #{:strokes :gx :gy :ax} (keys x)))]
