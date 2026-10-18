@@ -14,6 +14,8 @@
 ;;               :dyn {:mark "mf"} · {:mark "<" :dur 2}           a dynamic, or a hairpin
 ;;               :text {:text "dolce"}                            a text indication
 ;;               :use {:ref :motif :transpose 5}                  a fragment defined in :defs, varied
+;;               :rtm {:shares [1 [1 [1 1 1]] -1 2] :pitches "c4 d4 e4"}   proportional rhythm: shares of
+;;                    its :dur (or of its measure); note values and tuplets follow from shares and meter
 ;;   strings     "c4/1 e4/.5 r/1 c4+e4+g4/2"                      melody shorthand inside any container
 ;;
 ;; Any node may carry :at (an offset from the start of its parent; it does not move the parent's
@@ -36,7 +38,7 @@
 ;; else — sections in a piece, measures in a section — follows in order
 (def block-tags #{:piece :section})
 (def mark-tags #{:param :dyn :text})
-(def known-tags (into (into (into (into #{:note :rest :use} seq-tags) par-tags) block-tags) mark-tags))
+(def known-tags (into (into (into (into #{:note :rest :use :rtm} seq-tags) par-tags) block-tags) mark-tags))
 
 (defn node? [x] (and (vector? x) (keyword? (first x))))
 (defn tag [n] (when (node? n) (first n)))
@@ -243,11 +245,165 @@
 
 (defn- from [x src] (if (node? x) (with-meta x src) x))
 
+;; ───────── proportional rhythm (:rtm) ─────────
+;; A rhythm written as shares, as in the RTM trees of OpenMusic and PWGL (and Rastrum, for
+;; SuperCollider): a number is a share, a negative number a silence, and [weight [shares …]] divides a
+;; share further. Shares are relative (a common factor changes nothing); the :rtm lasts its :dur, or
+;; fills its measure. Note values and tuplets are not written: they follow from shares and meter. When
+;; the equal unit of a level is a written value (a power of two of a beat: 1, 1/2, 2…) the notes take
+;; it as it is; when not, the level becomes a tuplet of the smallest written value that is not shorter.
+;; Three shares of a 3/4 bar are quarters; three of a 4/4 bar, a 3:2 of halves.
+;; Pitches go to the notes in order and start again when they run out (talea and color).
+
+(defn- gcd [a b] (if (zero? b) (js/Math.abs a) (recur b (mod a b))))
+(defn- lcm [a b] (/ (* a b) (gcd a b)))
+(defn- r-norm [[n d]] (let [g (gcd n d)] [(/ n g) (/ d g)]))
+
+(defn- rat
+  "x as a fraction [n d] (d > 0): exact for the beats music uses (halves, thirds, fifths, eighths…)."
+  [x]
+  (let [s (if (neg? x) -1 1) x (js/Math.abs x)]
+    (loop [h1 1 h0 0 k1 0 k0 1 y x i 0]
+      (let [a (js/Math.floor y) h (+ (* a h1) h0) k (+ (* a k1) k0)]
+        (if (or (< (js/Math.abs (- x (/ h k))) 1e-9) (> i 40) (== y a))
+          [(* s h) k]
+          (recur h h1 k k1 (/ 1 (- y a)) (inc i)))))))
+
+(defn- pow2? [d] (loop [d d] (cond (= d 1) true (or (< d 1) (odd? d)) false :else (recur (/ d 2)))))
+
+(defn- pow2-at-least
+  "The smallest power of two (of a beat) that is not shorter than the fraction [n d], as a fraction."
+  [[n d]]
+  (let [ge (fn [[a b]] (>= (* a d) (* n b)))]
+    (if (ge [1 1])
+      (loop [p [1 1]] (let [h [(first p) (* 2 (second p))]] (if (ge h) (recur h) p)))
+      (loop [p [2 1]] (if (ge p) p (recur [(* 2 (first p)) 1]))))))
+
+(defn- read-shares [s] (if (string? s) (edn/read-string s) s))
+
+(defn- rtm-item [x]
+  (cond
+    (and (number? x) (not (zero? x))) {:w (js/Math.abs x) :rest (neg? x)}
+    (and (sequential? x) (= 2 (count x)) (number? (first x)) (pos? (first x)) (sequential? (second x)))
+    {:w (first x) :subs (second x)}
+    :else (throw (js/Error. (str "rtm: a share is a number (negative: a rest) or [weight [shares …]], not " (pr-str x))))))
+
+(defn- integer-weights
+  "Weights as whole numbers without a common factor: [2 2 2] → [1 1 1], [0.5 1] → [1 2]."
+  [ws]
+  (let [rs (mapv rat ws)
+        l (reduce lcm 1 (map second rs))
+        is (mapv (fn [[n d]] (* n (/ l d))) rs)
+        g (reduce gcd 0 is)]
+    (mapv (fn [i] (/ i g)) is)))
+
+(defn- rtm-nodes
+  "The nodes of shares that last total (a fraction of written beats); next-leaf makes each note."
+  [shares total next-leaf depth]
+  (let [shares (read-shares shares)]
+    (when (> depth 16) (throw (js/Error. "rtm: shares nested too deep")))
+    (when-not (and (sequential? shares) (seq shares))
+      (throw (js/Error. (str "rtm: :shares is a list of shares, like [1 [1 [1 1 1]] -1 2], not " (pr-str shares)))))
+    (let [items (mapv rtm-item shares)
+          ws (integer-weights (map :w items))
+          s (reduce + ws)
+          unit (r-norm [(first total) (* (second total) s)])
+          tup? (not (pow2? (second unit)))
+          u (if tup? (pow2-at-least unit) unit)
+          nodes (vec (mapcat (fn [it w]
+                               (let [d (r-norm [(* w (first u)) (second u)])
+                                     beats (/ (first d) (second d))]
+                                 (cond (:subs it) (rtm-nodes (:subs it) d next-leaf (inc depth))
+                                       (:rest it) [[:rest {:dur beats}]]
+                                       :else [(next-leaf beats)])))
+                             items ws))]
+      (if tup?
+        ;; s written units in the time of total: s:(total/u)
+        (let [[a b] (r-norm [(* (first total) (second u)) (* (second total) (first u))])
+              ratio (if (= b 1) [s a] (let [g (gcd (* s b) a)] [(/ (* s b) g) (/ a g)]))]
+          [(into [:tuplet {:ratio ratio}] nodes)])
+        nodes))))
+
+(defn- rtm-leaves
+  "A function that gives the next note of an :rtm, with a duration: its :pitches in turn (a melody
+   string, or a list of pitches), starting again when they run out; \"r\" there is a rest."
+  [a]
+  (let [src (:pitches a)
+        pool (vec (cond (string? src) (melody src)
+                        (sequential? src) (mapcat (fn [p] (cond (string? p) (melody p)
+                                                                (number? p) [[:note {:pitch p}]]
+                                                                (node? p) [p]
+                                                                :else []))
+                                                  src)
+                        :else []))
+        default [:note {:pitch (or (:pitch a) "c4")}]
+        i (volatile! 0)]
+    (fn [beats]
+      (let [n (if (seq pool) (nth pool (mod @i (count pool))) default)]
+        (vswap! i inc)
+        (update-attrs n assoc :dur beats)))))
+
+(defn- rtm-expand
+  "The nodes an :rtm stands for. Its notes remember the :rtm they come from ({:src path :rtm true})."
+  [n path bar]
+  (let [a (attrs n)
+        total (cond (some? (:dur a)) (:dur a)
+                    bar (let [[p q] bar] (* p (/ 4 q)))
+                    :else 4)
+        _ (when-not (and (number? total) (pos? total))
+            (throw (js/Error. (str "rtm: :dur is a positive number of beats, not " (pr-str total)))))
+        src (if path {:src path :rtm true} (meta n))
+        mark (fn mark [x] (if (node? x) (from (with-kids x (mapv mark (kids x))) src) x))
+        nodes (mapv mark (rtm-nodes (:shares a) (rat total) (rtm-leaves a) 0))
+        extra (dissoc a :shares :pitches :pitch :dur)]
+    (if (seq extra) [(from (into [:seq extra] nodes) src)] nodes)))
+
+;; ───────── proportional rhythm: cells (share lists → share lists) ─────────
+
+(defn cell-retrograde
+  "Shares backwards, at every level: [1 [2 [1 3]]] → [[2 [3 1]] 1]."
+  [shares]
+  (vec (reverse (map (fn [x] (if (sequential? x) [(first x) (cell-retrograde (second x))] x)) (read-shares shares)))))
+
+(defn cell-rotate
+  "Moves the first k shares to the end (negative k: the other way)."
+  [k shares]
+  (let [xs (vec (read-shares shares)) n (count xs)]
+    (if (zero? n) xs (let [k (mod k n)] (vec (concat (drop k xs) (take k xs)))))))
+
+(defn cell-at
+  "The share at path: [i] is the i-th share; [i j] the j-th inside the i-th, when it is divided."
+  [shares path]
+  (loop [xs (read-shares shares) p (seq path)]
+    (if (nil? p)
+      xs
+      (let [x (nth (vec xs) (first p) nil)]
+        (cond (nil? (next p)) x
+              (and (sequential? x) (sequential? (second x))) (recur (second x) (next p))
+              :else nil)))))
+
+(defn cell-replace-at
+  "Divides the share at path into cell, keeping its weight: a cell can grow inside itself
+   ((cell-replace-at seed [1] seed))."
+  [shares path cell]
+  (let [xs (vec (read-shares shares)) [i & more] path x (nth xs i nil)]
+    (when (nil? x) (throw (js/Error. (str "cell-replace-at: no share at " (pr-str path)))))
+    (assoc xs i
+           (if (seq more)
+             (if (and (sequential? x) (sequential? (second x)))
+               [(first x) (cell-replace-at (second x) more cell)]
+               (throw (js/Error. (str "cell-replace-at: the share at " (pr-str (vec (take 1 path))) " is not divided"))))
+             [(if (sequential? x) (first x) (js/Math.abs x)) (vec (read-shares cell))]))))
+
+;; ───────── expansion ─────────
+
 (defn expand*
   "Expands n; every node remembers where it was written: {:src path} (and {:sub [i …]} inside a
-   melody string); nodes that come from :defs have no :src."
+   melody string, {:rtm true} for what an :rtm stands for); nodes that come from :defs have no :src.
+   ctx carries the meter in force (as :with-meters reads it) so that an :rtm can fill its measure."
   ([n defs depth] (expand* n defs depth nil))
-  ([n defs depth path]
+  ([n defs depth path] (expand* n defs depth path {:meter (volatile! [4 4]) :bar nil}))
+  ([n defs depth path ctx]
   (cond
     (string? n) (vec (map-indexed (fn [i x]
                                     (let [x (if (= :chord (tag x))
@@ -260,31 +416,40 @@
     (let [a (attrs n) r (:ref a) k (if (string? r) (keyword r) r) d (get defs k)]
       (when (> depth 24) (throw (js/Error. (str "Fragments that use each other without end (" r ")"))))
       (when-not d (throw (js/Error. (str "No fragment " (pr-str r) " in :defs"))))
-      (let [xs (expand* d defs (inc depth) nil)
+      (let [xs (expand* d defs (inc depth) nil ctx)
             body (if (= 1 (count xs)) (first xs) (into [:seq] xs))
             varied (apply-ops a body)
             extra (apply dissoc a op-keys)]
         [(from (if (seq extra) [:seq extra varied] varied) (if path {:src path :use true} (meta n)))]))
+    (= :rtm (tag n)) (rtm-expand n path (:bar ctx))
     :else
-    (let [a (attrs n) defs (merge defs (:defs a))]
+    (let [a (attrs n) defs (merge defs (:defs a))
+          measure? (= :measure (tag n))
+          _ (when (and measure? (vector? (:meter a))) (vreset! (:meter ctx) (:meter a)))
+          ;; only the direct children of a measure fill it
+          kctx (assoc ctx :bar (when measure? @(:meter ctx)))]
       [(from (make (tag n) (dissoc a :defs)
-                   (vec (apply concat (map-indexed (fn [i k] (expand* k defs depth (when path (conj path i)))) (kids n)))))
+                   (vec (apply concat (mapv (fn [i k] (expand* k defs depth (when path (conj path i)) kctx))
+                                            (range) (kids n)))))
              (if path {:src path} (meta n)))]))))
 
+(defn- one-node [xs] (if (<= (count xs) 1) (first xs) (into [:seq] xs)))
+
 (defn expand
-  "Strings become notes and [:use …] the fragments they name, varied. A list of nodes becomes a :seq."
+  "Strings become notes, [:use …] the fragments they name, varied, and [:rtm …] its notes, rests and
+   tuplets. A list of nodes becomes a :seq."
   [x]
   (cond
     (string? x) (into [:seq] (melody x))
     (and (sequential? x) (not (node? x))) (expand (into [:seq] x))
-    :else (first (expand* x {} 0 nil))))
+    :else (one-node (expand* x {} 0 nil))))
 
 (defn expand-source
   "Expands a written tree remembering, in each node's metadata, where it was written ({:src path},
    {:sub [i]} inside a melody string), and in the root which box it comes from ({:from :b2}): a score
    that shows it can then edit the written tree."
   [t box-id]
-  (vary-meta (first (expand* t {} 0 [])) assoc :from box-id))
+  (vary-meta (one-node (expand* t {} 0 [])) assoc :from box-id))
 
 ;; ───────── time: flattening ─────────
 
@@ -407,7 +572,8 @@
                   (when (and (:dur a) (not (and (number? (:dur a)) (>= (:dur a) 0)))) (say "a duration is a number of beats at " (pr-str path)))
                   (when (and (= :measure tg) (vector? (:meter a)))
                     (let [[p q] (:meter a) want (* p (/ 4 q))
-                          got (try (duration (into [:seq] (kids n))) (catch :default _ nil))]
+                          ;; the measure itself, so that an :rtm in it fills its meter
+                          got (try (duration (make :measure (dissoc a :at) (kids n))) (catch :default _ nil))]
                       (when (and got (> (js/Math.abs (- got want)) 1e-6))
                         (say "measure " (pr-str path) " lasts " (cv/fmt got) " beats; its meter " p "/" q " asks for " (cv/fmt want)))))
                   (doseq [[i k] (map-indexed vector (kids n))] (go k (conj path i))))))]

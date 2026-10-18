@@ -284,7 +284,8 @@ escape its double quotes.
 Musical data (notation, composition, CAC) travels as musical trees (kairotic.mt, alias mt/ in sources):
 hiccup vectors such as [:voice [:measure {:meter [4 4]} [:note {:pitch \"c4\" :dur 1}] \"d4/.5 e4\"]]
 (tags :piece :voice :section :seq :par :measure :tuplet {:ratio [3 2]} :chord :note :rest :param :dyn
-:text; any extra key is allowed). A component that makes or changes music sends a tree from :receive;
+:text; any extra key is allowed). Proportional rhythm: [:rtm {:shares [1 [1 [1 1 1]] -1 2] :pitches \"c4 d4\"}]
+fills its measure (or its :dur) with those shares; note values and tuplets follow from the meter. A component that makes or changes music sends a tree from :receive;
 use mt/events, mt/transpose, mt/pitch-name … rather than your own parsing. See the example notation/walk.
 
 Work method: the catalog below lists real examples; read the ones close to the request with
