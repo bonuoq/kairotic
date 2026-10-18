@@ -63,6 +63,43 @@ of a freqt is drawn.
 `[:use {:ref :cell :transpose 5}]` writes them, varied. A section of a larger work can be a `:section`,
 placed with `:at` in a `:piece`.
 
+## Proportional rhythm (`:rtm`)
+
+A rhythm can be written as **shares** instead of durations, as in the rhythm trees (RTM) of OpenMusic
+and PWGL. The idea for Kairotic comes from [Rastrum](https://github.com/smoge/Rastrum) ([discussion
+#17](https://github.com/bonuoq/kairotic/discussions/17)):
+
+```clojure
+[:measure {:meter [4 4]}
+ [:rtm {:shares [1 [1 [1 1 1]] -1 2] :pitches "c4 d4 e4 f4 g4"}]]
+```
+
+- A number is a share; a negative number is a silence; `[weight [shares …]]` divides a share further.
+- Shares are relative: `[2 2 2]` is the same rhythm as `[1 1 1]`.
+- The `:rtm` lasts its `:dur` (in beats) or, without it, **fills its measure** (the meter in force,
+  also when the measure inherits it). Outside a measure and without `:dur`, it lasts 4 beats.
+- **Note values and tuplets are not written: they follow from the shares and the meter.** When the
+  equal unit of a level is a written value (a beat, half a beat, two beats…) the notes take it as it
+  is; when it is not, that level becomes a tuplet of the smallest written value that is not shorter.
+  Three shares of a 3/4 bar are quarters; three of a 4/4 bar, a 3:2 of halves; five in a beat, a 5:4
+  of sixteenths. The example above is a 5:4 of quarters with a triplet of eighths inside.
+- `:pitches` (a melody string, or a list of pitches) go to the notes in order and **start again when
+  they run out**, so rhythm and pitches can have different lengths (*talea* and *color*); `r` there
+  makes that note a rest. Without `:pitches`, every note takes `:pitch` (`"c4"` by default).
+- `:shares` can also be RTM text, `"(1 (1 (1 1 1)) -1 2)"`, or an EDN list.
+
+Rhythm and pitches stay apart, so a cell can be rotated or moved to another meter without touching
+its pitches. The functions `mt/cell-retrograde`, `mt/cell-rotate`, `mt/cell-at` and
+`mt/cell-replace-at` change the shares themselves; `cell-replace-at` divides a share into a cell, so
+a cell can grow inside itself:
+
+```clojure
+(def seed [2 [2 [1 1 1]] 3])
+(mt/cell-replace-at seed [1] seed)   ; [2 [2 [2 [2 [1 1 1]] 3]] 3]
+```
+
+The notes of an `:rtm` are not edited one by one from a score: edit its `:shares` or `:pitches`.
+
 ## The work, its history and its score (Study 20)
 
 **A work as a tree.** In a `:piece` (and in a `:section`), voices and `:par` sound together from its
@@ -119,7 +156,8 @@ articulations, texts, changes of meter). Without measures it shows an approximat
 
 The functions are in `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt/augment`, `mt/rotate`,
 `mt/canon`, `mt/expand`, `mt/events`, `mt/notes`, `mt/pitches`, `mt/duration`, `mt/problems`,
-`mt/pp`, `mt/->mei`, `mt/->strokes`, `mt/<-strokes`, `mt/schedule`. At the REPL:
+`mt/pp`, `mt/->mei`, `mt/->strokes`, `mt/<-strokes`, `mt/schedule`, and for proportional rhythm
+`mt/cell-retrograde`, `mt/cell-rotate`, `mt/cell-at`, `mt/cell-replace-at`. At the REPL:
 
 - `(tree! :b2 [:voice …])` writes a tree into a tree box;
 - `(as-tree :bN)` reads a tree box, or the tree a score is showing, or a freqt's strokes, as a tree;

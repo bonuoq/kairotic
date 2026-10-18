@@ -40,7 +40,8 @@
    "ba.selectn" "ma.SR" "ma.PI" "ma.EPSILON" "sp.panner" "pm.ks" "aa.tanh1"])
 
 (def tree-words
-  [":voice" ":measure" ":section" ":seq" ":par" ":piece" ":chord" ":note" ":rest" ":tuplet" ":meter" ":dur"
+  [":voice" ":measure" ":section" ":seq" ":par" ":piece" ":chord" ":note" ":rest" ":tuplet" ":rtm" ":shares"
+   ":pitches" ":meter" ":dur"
    ":pitch" ":tempo" ":key" ":dyn" ":defs" ":use" ":vel" ":ties"])
 
 (def component-words

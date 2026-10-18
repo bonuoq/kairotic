@@ -64,6 +64,44 @@ trazo en un freqt.
 `[:use {:ref :celula :transpose 5}]` los escribe, variados. Una sección de una obra más grande puede
 ser una `:section`, colocada con `:at` dentro de una `:piece`.
 
+## Ritmo proporcional (`:rtm`)
+
+Un ritmo puede escribirse como **proporciones** en vez de duraciones, como en los árboles rítmicos
+(RTM) de OpenMusic y PWGL. La idea para Kairotic viene de [Rastrum](https://github.com/smoge/Rastrum)
+([discusión #17](https://github.com/bonuoq/kairotic/discussions/17)):
+
+```clojure
+[:measure {:meter [4 4]}
+ [:rtm {:shares [1 [1 [1 1 1]] -1 2] :pitches "c4 d4 e4 f4 g4"}]]
+```
+
+- Un número es una proporción; un número negativo, un silencio; `[peso [proporciones …]]` divide una
+  proporción.
+- Las proporciones son relativas: `[2 2 2]` es el mismo ritmo que `[1 1 1]`.
+- El `:rtm` dura su `:dur` (en pulsos) o, sin él, **llena su compás** (el compás vigente, también si
+  lo hereda). Fuera de un compás y sin `:dur`, dura 4 pulsos.
+- **Las figuras y los grupos irregulares no se escriben: salen de las proporciones y del compás.**
+  Cuando la unidad igual de un nivel es una figura (un pulso, medio, dos…) las notas la toman tal cual;
+  cuando no, ese nivel se vuelve un grupo irregular de la figura más pequeña que no sea más corta.
+  Tres proporciones de un 3/4 son negras; de un 4/4, un 3:2 de blancas; cinco en un pulso, un 5:4 de
+  semicorcheas. El ejemplo de arriba es un 5:4 de negras con un tresillo de corcheas dentro.
+- `:pitches` (un texto de melodía, o una lista de alturas) van a las notas en orden y **vuelven a
+  empezar cuando se acaban**: ritmo y alturas pueden tener longitudes distintas (*talea* y *color*);
+  una `r` ahí hace de esa nota un silencio. Sin `:pitches`, cada nota toma `:pitch` (`"c4"` por defecto).
+- `:shares` también puede ser texto RTM, `"(1 (1 (1 1 1)) -1 2)"`, o una lista EDN.
+
+Ritmo y alturas van por separado: una célula puede rotarse o pasar a otro compás sin tocar sus alturas.
+Las funciones `mt/cell-retrograde`, `mt/cell-rotate`, `mt/cell-at` y `mt/cell-replace-at` cambian las
+proporciones mismas; `cell-replace-at` divide una proporción en una célula, así una célula puede crecer
+dentro de sí misma:
+
+```clojure
+(def semilla [2 [2 [1 1 1]] 3])
+(mt/cell-replace-at semilla [1] semilla)   ; [2 [2 [2 [2 [1 1 1]] 3]] 3]
+```
+
+Las notas de un `:rtm` no se editan una a una desde una partitura: edita sus `:shares` o `:pitches`.
+
 ## La obra, su historia y su partitura (Ensayo 20)
 
 **Una obra como árbol.** En una `:piece` (y en una `:section`), las voces y los `:par` suenan a la vez
@@ -121,7 +159,8 @@ sobre una rejilla de semicorcheas.
 
 Las funciones están en `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt/augment`, `mt/rotate`,
 `mt/canon`, `mt/expand`, `mt/events`, `mt/notes`, `mt/pitches`, `mt/duration`, `mt/problems`,
-`mt/pp`, `mt/->mei`, `mt/->strokes`, `mt/<-strokes`, `mt/schedule`. En la REPL:
+`mt/pp`, `mt/->mei`, `mt/->strokes`, `mt/<-strokes`, `mt/schedule`, y para el ritmo proporcional
+`mt/cell-retrograde`, `mt/cell-rotate`, `mt/cell-at`, `mt/cell-replace-at`. En la REPL:
 
 - `(tree! :b2 [:voice …])` escribe un árbol en una caja tree;
 - `(as-tree :bN)` lee como árbol una caja tree, el árbol que muestra una score, o los trazos de un freqt;

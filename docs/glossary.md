@@ -224,6 +224,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | árbol musical | musical tree (kairotic.mt, hiccup EDN) |
 | compás | measure (`:measure {:meter [3 4]}`) |
 | grupo irregular (tresillo…) | tuplet (`:tuplet {:ratio [3 2]}`) |
+| ritmo proporcional · proporciones · célula | proportional rhythm (`:rtm`) · shares · cell |
 | acorde | chord |
 | silencio | rest |
 | regulador | hairpin (`:dyn {:mark "<" :dur 2}`) |

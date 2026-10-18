@@ -87,9 +87,9 @@
 (defn writable-target
   "Edits that make a written note editable (a melody string becomes its nodes) and the path of the note:
    [ops path], or nil if it comes from a fragment (:defs)."
-  [t {:keys [src sub use]}]
+  [t {:keys [src sub use rtm]}]
   (cond
-    (or use (nil? src)) nil
+    (or use rtm (nil? src)) nil
     (nil? sub) [[] src]
     :else (let [s (mt/node-at t src) nodes (mt/melody s) parent (pop src) idx (peek src)]
             [(into [[:remove src]] (map-indexed (fn [k n] [:insert (conj parent (+ idx k)) n]) nodes))
@@ -111,7 +111,9 @@
       :else
       (let [t (tree-data from)
             [pre target] (or (writable-target t (:src ts))
-                             (fail "That note comes from a fragment (:defs): edit the fragment, or write it out"))
+                             (fail (if (:rtm (:src ts))
+                                     "That note comes from a proportional rhythm (:rtm): edit its :shares or :pitches"
+                                     "That note comes from a fragment (:defs): edit the fragment, or write it out")))
             t1 (reduce mt/apply-op t pre)
             n (mt/node-at t1 target)
             parent (mt/node-at t1 (pop target))

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Proportional rhythm in musical trees** ([discussion #17](https://github.com/bonuoq/kairotic/discussions/17),
+  after [Rastrum](https://github.com/smoge/Rastrum)): `[:rtm {:shares [1 [1 [1 1 1]] -1 2] :pitches "c4 d4"}]`
+  writes a rhythm as shares (negative: a rest; `[weight [shares]]` divides one) that fill their measure
+  or their `:dur`. Note values and tuplets follow from shares and meter (three shares of a 3/4 bar are
+  quarters, of a 4/4 bar a 3:2 of halves; common factors change nothing), nested tuplets included.
+  Pitches are given apart and start again when they run out (talea and color); shares can be RTM text.
+  `mt/cell-retrograde`, `mt/cell-rotate`, `mt/cell-at` and `mt/cell-replace-at` transform the shares
+  (a cell can grow inside itself). Docs: `docs/mt.md` · `docs/mt.es.md`.
 - **Fix an issue with Claude**: each open issue in the Feedback tab has a **Claude ↗** link that opens Claude
   Code on the web (claude.ai/code) with this repository and a prompt written for that issue — review it,
   fix it on a branch with tests, open a pull request. You read the prompt and send it yourself.
