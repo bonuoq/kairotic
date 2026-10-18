@@ -318,16 +318,55 @@
     (dispatch! [:in id [:source source]])
     (:status (cbox/compiled (:language d) source))))
 
+(defn data-source!
+  "Writes the data of a box from its text, as its model reads it (a canvas, freqt or score: the EDN of its
+   buffer). What changed, and only that, is one event of the history (discussion #30)."
+  [id text]
+  (let [b (need-box id) m (comp/model-of b)]
+    (when-not (and (fn? (:read m)) (fn? (:diff m))) (fail (str id " has no data that can be written as text")))
+    (when-not (string? text) (fail "The text is a string"))
+    (let [d (or (:data b) (:empty m))
+          d2 (try ((:read m) d text) (catch :default e (fail (.-message e))))
+          evs ((:diff m) d d2)]
+      (if (seq evs)
+        (do (dispatch! [:in id [:batch (vec evs)]])
+            (str (count evs) (if (= 1 (count evs)) " edit" " edits")))
+        :unchanged))))
+
 (defn code
   "Writes the source of a code box: (code :b7 \"process = os.osc(440) * 0.1;\"). For a tree box the text
-   is read as a tree, and what changed becomes edits of its nodes (tree!)."
+   is read as a tree, and what changed becomes edits of its nodes (tree!). For a canvas, freqt or score
+   it is the EDN of its buffer ((source :bN) gives it), and what changed becomes edits of its strokes."
   [id source]
-  (if (= "tree" (klass (:text (need-box id))))
-    (do (when-not (string? source) (fail "The source is a string"))
-        (tree! id (try (mt/read-tree source) (catch :default e (fail (str "That is not EDN: " (.-message e)))))))
-    (code-source! id source)))
+  (let [b (need-box id)]
+    (cond
+      (= "tree" (klass (:text b)))
+      (do (when-not (string? source) (fail "The source is a string"))
+          (tree! id (try (mt/read-tree source) (catch :default e (fail (str "That is not EDN: " (.-message e)))))))
+      (fn? (:read (comp/model-of b))) (data-source! id source)
+      :else (code-source! id source))))
 
-(defn source "The source of a code box." [id] (need-code-box id) (str (get-in (current) [:boxes id :data :source])))
+(defn source
+  "The source of a code box, or the data of a canvas, freqt or score as EDN text."
+  [id]
+  (or (comp/source-of (need-box id)) (fail (str id " has no code (faust~, script, tree…) nor a buffer (canvas, freqt, score)"))))
+
+(defn view
+  "How a box is shown, among the views of its class: (view :b2 :score) shows a tree as a score and
+   (view :b2 :code) as code again; a freqt can be a :canvas or a :score; :next is the next one. Its data
+   does not change: a tree shown as a score is edited from its notes, and its code opens from { }."
+  [id k]
+  (let [b (need-box id) vs (vec (comp/views-of b))]
+    (when (< (count vs) 2) (fail (str id " has one view only")))
+    (let [cur (display-of b)
+          k (if (= k :next)
+              (nth vs (mod (inc (or (first (keep-indexed (fn [i v] (when (= v cur) i)) vs)) 0)) (count vs)))
+              k)]
+      (when-not (or (nil? k) (some #{k} vs))
+        (fail (str id " can be shown as " (str/join " or " (map pr-str vs)))))
+      (when-not (= (or k (first vs)) cur)
+        (dispatch! [:view id (when-not (= k (first vs)) k)]))
+      (or k (first vs)))))
 
 ;; musical trees (Study 19): mt/… are the functions on trees (mt/transpose, mt/events, mt/pp …)
 ;; A tree box keeps its tree and its history is made of node edits (Study 20): tree! writes the
@@ -590,6 +629,10 @@
                           (concat ["" ";; presentation"]
                                   (for [id pr :let [[x y] (get-in p [:boxes id :present])]]
                                     (str "(present " id " " x " " y ")")))))
+                      (let [vw (filter (fn [id] (:view (get-in p [:boxes id]))) ids)]
+                        (when (seq vw)
+                          (concat ["" ";; views"]
+                                  (for [id vw] (str "(view " id " " (pr-str (get-in p [:boxes id :view])) ")")))))
                       (when (seq (:lines p)) ["" ";; lines"])
                       (for [[a o b i] (:lines p)]
                         (str "(connect " a " " o " " b " " i ")"))
@@ -604,7 +647,7 @@
 ;; Keys come in a readable order: :text :x :y first, :data last, and :b2 before :b10.
 
 (def edn-width 72)
-(def key-rank {:class 0 :text 1 :x 2 :y 3 :present 4 :data 99})
+(def key-rank {:class 0 :text 1 :x 2 :y 3 :present 4 :view 5 :data 99})
 
 (defn natural-key
   "A sort key for map keys: the rank of known keys, then the name split into text and numbers."

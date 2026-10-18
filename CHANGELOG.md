@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **One box, several views of its data; any buffer as text** ([discussion #30](https://github.com/bonuoq/kairotic/discussions/30)):
+  a class can offer `:views`, and each box keeps the one it shows — `(view :b2 :score)`, or **⇄** in its
+  header. A `tree` box can be shown as a score in the same box, and its notes (↑ ↓ + − Delete) edit its
+  own tree, with no edits wire; a `freqt` can be drawn as a score and a `score` as a canvas. A separate
+  `score` box is still the viewer of a transformed tree (`tree → mt … → score`). Models can write and
+  read their data as text (`:source`, `:read`, `:diff`): the buffer of a `canvas`, `freqt` or `score`
+  opens as EDN in the code window (**{ }** in the header, a double-click on its right, or `(source :bN)`),
+  and applying it (Ctrl+Enter, or `(code :bN "…")`) writes only what changed, as one event of the history.
+  Text that cannot be read is refused, saying why, and stays in the window. Tests: `tests/cljs/views.cljs`,
+  `tests/views.mjs`.
 - **Grouped meters and metric weight** ([discussion #17](https://github.com/bonuoq/kairotic/discussions/17)):
   a measure groups its units with `:groups [2 3]` or `{:meter "5/8[2+3]"}` (inherited with the meter,
   checked to add up). Scores write grouped meters as 2+3/8 and now **beam** eighths and shorter notes

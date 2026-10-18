@@ -119,6 +119,10 @@ body.present .trust-bar { position: absolute; z-index: 5; left: 6px; top: 6px; m
 #canvas .box.drop rect.body { stroke: var(--accent); stroke-dasharray: 3 3; }
 #canvas .box > text, #canvas .box text.lbl { font-family: var(--f-code); font-size: 12.5px; fill: var(--ink); pointer-events: none; }
 #canvas .box text.lbl.info { font-size: 11px; fill: var(--ink-soft); }
+#canvas .box .hchip { cursor: pointer; }
+#canvas .box .hchip rect { fill: var(--box); stroke: var(--rule); stroke-width: 1; }
+#canvas .box .hchip text { font-family: var(--f-code); font-size: 10.5px; fill: var(--accent); pointer-events: none; }
+#canvas .box .hchip:hover rect { fill: var(--accent-soft); stroke: var(--accent); }
 #canvas .mus rect.head { fill: var(--accent-soft); stroke: none; }
 #canvas .mus-body { cursor: crosshair; }
 #canvas .rbg { fill: var(--sheet); }

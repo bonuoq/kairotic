@@ -12,8 +12,10 @@
 ;; the names each language knows. Ctrl/⌘+Enter applies the code (one event of the history) and keeps the
 ;; window open, to go on; Esc or × closes it, asking first if something is not applied.
 ;; If the editor cannot be loaded, a plain text area does the same.
+;; The same window opens the data of a canvas, freqt or score as EDN (discussion #30: { } in its header,
+;; or a double-click on the right of it): applying it writes what changed as one event of the history.
 
-(defonce code-win (atom nil))   ; {:id :path :lang :ed :original :dirty :confirm}
+(defonce code-win (atom nil))   ; {:id :path :lang :data? :ed :original :dirty :confirm :error}
 (defonce cm-module (atom nil))  ; Promise of the bundle
 
 (defn code-win-box
@@ -44,6 +46,10 @@
    ":pitches" ":meter" ":groups" ":dur"
    ":pitch" ":tempo" ":key" ":dyn" ":defs" ":use" ":vel" ":ties"])
 
+(def buffer-words
+  (into [":strokes" ":gx" ":gy" ":ax" ":step" ":cycles" ":name" ":ref" ":cents" ":x" ":y" ":lo" ":hi" ":log"]
+        (map pr-str (sort (keys cv/tunings)))))
+
 (def component-words
   [":class" ":doc" ":usage" ":license" ":io" ":args" ":receive" ":view" ":derive" ":draw" ":gesture"
    ":persist" ":size" ":audio" ":patch" ":params" ":model" ":state" ":value" ":inlet" ":out" ":show"
@@ -69,10 +75,11 @@
 (defn cw-status!
   "The foot of the window: whether the code is applied, and how its compilation went."
   []
-  (when-let [{:keys [id dirty gone lang]} @code-win]
+  (when-let [{:keys [id dirty gone lang data? error]} @code-win]
     (when-let [el (.querySelector (cw-el) ".cw-foot")]
       (let [b (when-not gone (get-in (patch-in (root-patch) (:path @code-win)) [:boxes id]))
-            r (when b (cbox/compiled lang (str (get-in b [:data :source]))))
+            r (cond error {:status :error :error error}
+                    (and b (not data?)) (cbox/compiled lang (str (get-in b [:data :source]))))
             comp-st (case (:status r)
                       :ok (str "✓ " (or (get-in r [:info :summary]) "ready"))
                       :compiling "compiling…"
@@ -81,6 +88,7 @@
         (set! (.-className el) (str "cw-foot" (when (= :error (:status r)) " err")))
         (set! (.-textContent el)
               (cond gone "This box is not in the patch any more: copy what you need, then close."
+                    error (str "✗ " (first (str/split-lines (str error))))
                     dirty (str "edited · Ctrl/⌘+Enter applies" (when (seq comp-st) (str " · last applied: " comp-st)))
                     :else (str "applied" (when (seq comp-st) (str " · " comp-st)))))))))
 
@@ -95,15 +103,20 @@
     (reduce (fn [c id] (str "(inside " id " " c ")")) code (reverse (drop (count here) path)))))
 
 (defn apply-code! []
-  (when-let [{:keys [id path original gone]} @code-win]
+  (when-let [{:keys [id path original gone data?]} @code-win]
     (let [v (cw-text)]
       (cond
         gone nil
-        (= v original) (do (swap! code-win assoc :dirty false) (cw-status!))
+        (= v original) (do (swap! code-win assoc :dirty false :error nil) (cw-status!))
         (str/blank? v) (repl-print! "err" "; the code is empty: write something, or delete the box")
-        :else (do (gesture! (wrap-path path (str "(code " id " " (pr-str v) ")")))
-                  (swap! code-win assoc :original v :dirty false)
-                  (cw-status!))))))
+        :else (let [before @recent-errors
+                    _ (gesture! (wrap-path path (str "(code " id " " (pr-str v) ")")))
+                    err (when-not (identical? before @recent-errors) (last @recent-errors))]
+                (if err
+                  ;; what cannot be read is not applied: it stays here, edited, saying what is wrong
+                  (swap! code-win assoc :error (str "not applied: " err))
+                  (swap! code-win assoc :original v :dirty false :error nil))
+                (cw-status!))))))
 
 (defn close-code-win! []
   (when-let [w @code-win]
@@ -186,7 +199,7 @@
     (set! (.-spellcheck ta) false)
     (set! (.-value ta) text)
     (.appendChild body ta)
-    (.addEventListener ta "input" (fn [_] (swap! code-win assoc :dirty (not= (.-value ta) (:original @code-win))) (cw-status!)))
+    (.addEventListener ta "input" (fn [_] (swap! code-win assoc :dirty (not= (.-value ta) (:original @code-win)) :error nil) (cw-status!)))
     (.addEventListener ta "keydown"
       (fn [e]
         (let [k (.-key e)]
@@ -213,24 +226,26 @@
       :else
       (do
         (close-code-win!)
-        (let [lang (str (:language d))
-              original (str (get-in b [:data :source]))
-              text (if (str/blank? original) (or (:template d) "") original)
+        (let [data? (fn? (:source (comp/model-of b)))
+              lang (if data? "edn" (str (:language d)))
+              original (str (comp/source-of b))
+              text (if (and (not data?) (str/blank? original)) (or (:template d) "") original)
               el (window-shell id b lang)
               body (.querySelector el ".cw-body")]
           (.appendChild (.-body js/document) el)
           (place-window! el id b)
-          (reset! code-win {:id id :path (cmd-path) :lang lang :original original :dirty (not= text original)})
+          (reset! code-win {:id id :path (cmd-path) :lang lang :data? data? :original original :dirty (not= text original)})
           (cw-status!)
           (render-scene (current))
           (.then (load-cm)
                  (fn [cm]
                    (when (= (:id @code-win) id)
                      (if-let [create (and cm (.-createEditor cm))]
-                       (let [ed (create #js {:parent body :doc text :language lang :words (clj->js (words-for lang))
+                       (let [ed (create #js {:parent body :doc text :language lang
+                                             :words (clj->js (if data? buffer-words (words-for lang)))
                                              :onApply (fn [_] (apply-code!))
                                              :onCancel (fn [] (ask-close!))
-                                             :onChange (fn [v] (swap! code-win assoc :dirty (not= v (:original @code-win))) (cw-status!))})]
+                                             :onChange (fn [v] (swap! code-win assoc :dirty (not= v (:original @code-win)) :error nil) (cw-status!))})]
                          (swap! code-win assoc :ed ed)
                          (.focus ed))
                        (swap! code-win assoc :ta (textarea-editor! body text)))))))))))
@@ -243,7 +258,7 @@
     (let [b (get-in (patch-in (root-patch) path) [:boxes id])]
       (if (nil? b)
         (swap! code-win assoc :gone true)
-        (let [src (str (get-in b [:data :source]))]
+        (let [src (str (comp/source-of b))]
           (swap! code-win assoc :gone false)
           (when (and (not dirty) (not= src original) (not (str/blank? src)))
             (swap! code-win assoc :original src)

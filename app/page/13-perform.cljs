@@ -16,10 +16,10 @@
 ;; The state of the take is `perf` (00-work.cljs); the take is not kept if the page is reloaded.
 
 (defn layout-ev?
-  "A change of layout only: a box moved, or placed in presentation (also inside a sub-patch)."
+  "A change of layout only: a box moved, placed in presentation or shown in another view (also inside a sub-patch)."
   [p [op & args]]
   (case op
-    (:move :present) true
+    (:move :present :view) true
     :in (let [[id inner] args b (get-in p [:boxes id])]
           (boolean (and (embedded? b) (vector? inner) (layout-ev? (or (:data b) empty-patch) inner))))
     false))

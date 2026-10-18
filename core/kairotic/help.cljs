@@ -113,7 +113,8 @@
                ["[:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear]" "edit strokes by message"]
                ["[:axis :x lo hi] · [:axis :y lo hi :log] · [:grid-y step]" "axes and grid by message"]
                ["[:batch [[:clear] [:stroke pts] …]]" "several edits, one event of the history"]
-               ["[:read 0.5] · [:read :y 0.2] · [:strokes] · [:get :t1] · [:count] · [:range] · [:data]" "questions: the answer comes out on the left"]]
+               ["[:read 0.5] · [:read :y 0.2] · [:strokes] · [:get :t1] · [:count] · [:range] · [:data]" "questions: the answer comes out on the left"]
+               ["{ } in the header (or a double-click on its right) · (source :bN)" "the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event"]]
     :example (lines "(box :b1 \"canvas\" 40 60)" "(box :b2 \"loadbang\" 40 15)" "(box :b3 \"ramp 0 1 4 loop\" 120 15)"
                     "(box :b4 \"reader\" 40 290)" "(box :b5 \"print\" 40 340)"
                     "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)" "(connect :b1 1 :b4 1)" "(connect :b4 0 :b5 0)"
@@ -129,13 +130,18 @@
                ["[:move :t1 dt cents] · [:stretch :t1 k] · [:erase :t1] · [:clear]" "edit notes by message"]
                ["[:tuning \"19-tet\" 261.63] · [:grid-x 0.25 [4]]" "tuning and grid by message"]
                ["[:batch [[:clear] [:note 0 \"c4\" 1] …]]" "several edits, one event of the history"]
-               ["[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]" "questions: the answer comes out on the left"]]
+               ["[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]" "questions: the answer comes out on the left"]
+               ["⇄ score in the header · (view :bN :score)" "the same buffer, drawn as a score (⇄ canvas brings it back)"]
+               ["{ } in the header (or a double-click on its right) · (source :bN)" "the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event"]]
     :see ["score" "canvas" "reader"]}
 
    "score"
    {:inlets ["a time (or a click) · a musical tree: it is shown, measured"]
     :outlets ["the time" "the buffer, for a reader" "edits made on the notes of the tree it shows: [:edit …], for the tree box"]
-    :messages [["click a note of a tree" "↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest"] ["(keep! :bN)" "writes the tree it shows into its buffer"]]
+    :messages [["click a note of a tree" "↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest"] ["(keep! :bN)" "writes the tree it shows into its buffer"]
+               ["⇄ canvas in the header · (view :bN :canvas)" "the same buffer, drawn as a freqt (⇄ score brings it back)"]
+               ["{ } in the header · (source :bN)" "its buffer as EDN text, in the code window"]]
+    :try "A score is for a tree that comes transformed (tree → mt transpose 7 → score). To see and edit a tree box itself as a score, use ⇄ score in its header: no wire needed."
     :see ["tree" "freqt" "mt"]}
 
    "reader"
@@ -219,12 +225,13 @@
                ["(tree! :bN [:voice …])" "writes a tree into it, as edits of the nodes that change"]
                ["(tree-edit! :bN [:attrs [0 1 2] {…}])" "edits nodes by their path: [:set p x] [:attrs p {…}] [:insert p x] [:remove p]"]
                ["(node-at :bN [0 1])" "the node at a path"]
+               ["⇄ score in the header · (view :bN :score)" "the same tree drawn as a score, in this box (⇄ code brings the code back; { } opens it)"]
                ["in a score: click a note" "↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest"]
                ["(as-tree :bN)" "reads it back as data"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)"
                     "(code :b2 \"[:voice\\n [:measure {:meter [3 4]} \\\"e5/1\\\" [:tuplet {:ratio [3 2]} \\\"d5/.5 c5 b4\\\"] [:note {:pitch \\\"a4\\\" :dur 1 :dyn \\\"p\\\"}]]\\n [:measure \\\"g4/3\\\"]]\")"
                     "(box :b3 \"score\" 40 190)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 2 :b2 0)")
-    :try "The score already shows the tree, measure by measure. Double-click the code, change a note and apply it (Ctrl+Enter): the score follows. Click a note of the score and press ↑: the change comes back to the tree by the dashed line."
+    :try "The score already shows the tree, measure by measure. Double-click the code, change a note and apply it (Ctrl+Enter): the score follows. Click a note of the score and press ↑: the change comes back to the tree by the dashed line. Or press ⇄ score in the header of the tree box: the same tree as a score, in one box."
     :see ["mt" "score" "freqt"]}
 
    "mt"

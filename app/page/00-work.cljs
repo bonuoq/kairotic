@@ -20,7 +20,9 @@
 (declare es? docs open-work! show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
 (def klass comp/klass)
 (defn box-def [b] (comp/lookup (klass (:text b))))
-(defn display-of [b] (or (:display (box-def b)) :text))
+;; how a box is shown: the view it chose among those of its class (a tree as code or as a score, a freqt
+;; as a canvas or a score: discussion #30), or the :display of its class
+(defn display-of [b] (comp/shown-as b))
 (def own-view? comp/own-view?)
 
 (defn io
@@ -54,6 +56,7 @@
                     [k (cond-> {:text (str (:text b)) :x (or (:x b) 0) :y (or (:y b) 0)}
                          (and (vector? (:present b)) (= 2 (count (:present b))) (every? number? (:present b)))
                          (assoc :present (:present b))
+                         (keyword? (:view b)) (assoc :view (:view b))
                          (and (map? (:data b)) (comp/model-of b)) (assoc :data ((:load (comp/model-of b)) (:data b))))]))
      :lines (vec (filter (fn [l] (and (vector? l) (= 4 (count l)))) (:lines x)))}
     empty-patch))
@@ -68,6 +71,11 @@
                   (cond (not (get-in p [:boxes id])) p
                         (and (number? x) (number? y)) (assoc-in p [:boxes id :present] [x y])
                         :else (update-in p [:boxes id] dissoc :present)))
+    ;; how a box is shown, among the views of its class (discussion #30), or nil for its default
+    :view       (let [[id k] args]
+                  (cond (not (get-in p [:boxes id])) p
+                        (keyword? k) (assoc-in p [:boxes id :view] k)
+                        :else (update-in p [:boxes id] dissoc :view)))
     :connect    (let [l (vec args)] (if (some #{l} (:lines p)) p (update p :lines conj l)))
     :disconnect (let [l (vec args)] (update p :lines (fn [ls] (vec (remove #{l} ls)))))
     :delete     (let [[id] args]

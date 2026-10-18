@@ -15,7 +15,8 @@
 
 (ns kairotic.canvas
   (:refer-clojure :exclude [empty cycle])
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clojure.edn :as edn]))
 
 (def empty {:strokes {} :gx nil :gy nil})
 
@@ -482,6 +483,103 @@
      [(str "(grid-x " id " " (fmt (:step gx)) " " (pr-str (mapv (fn [c] (js/parseFloat (fmt c))) (:cycles gx))) ")")])
    (for [[sid s] (sorted-strokes d)]
      (str "(stroke " id " " sid " [" (str/join " " (map (fn [[t f]] (str "[" (fmt t) " " (fmt f) "]")) (:pts s))) "])"))))
+
+;; ───────── the buffer as text (discussion #30) ─────────
+;; Any buffer can be read and edited as EDN, in the same code window as a code box: ->source writes it,
+;; read-source takes the text back (checking it), and diff turns the change into the events of the
+;; buffer, so applying the text is one event of the history made of what really changed.
+;;   {:gx {:step 0.25 :cycles [4]}
+;;    :gy {:name "12-tet" :ref 261.6256}        ; a tuning by name: its cents come from `tunings`
+;;    :strokes {:t1 [[0 440] [1 440]]
+;;              :t2 [[1 330] [2 330]]}}
+;; A generic canvas also has :ax {:x {:lo 0 :hi 8 :log false} :y {…}}.
+
+(defn- num-src [x] (if (== x (js/Math.round x)) (str (js/Math.round x)) (str x)))
+
+(defn- pts-src [pts] (str "[" (str/join " " (map (fn [[a b]] (str "[" (num-src a) " " (num-src b) "]")) pts)) "]"))
+
+(defn- preset-of [gy] (some (fn [[k v]] (when (= (:cents v) (:cents gy)) k)) tunings))
+
+(defn- gy-src [gy]
+  (cond (nil? gy) "nil"
+        (:step gy) (str "{:step " (num-src (:step gy)) "}")
+        (preset-of gy) (str "{:name " (pr-str (preset-of gy)) " :ref " (num-src (:ref gy)) "}")
+        :else (str "{:name " (pr-str (:name gy)) " :ref " (num-src (:ref gy))
+                   " :cents [" (str/join " " (map num-src (:cents gy))) "]}")))
+
+(defn- gx-src [gx]
+  (if (nil? gx) "nil" (str "{:step " (num-src (:step gx)) " :cycles [" (str/join " " (map num-src (:cycles gx))) "]}")))
+
+(defn- ax-src [ax]
+  (let [a (fn [{:keys [lo hi log]}] (str "{:lo " (num-src lo) " :hi " (num-src hi) " :log " (boolean log) "}"))]
+    (str "{:x " (a (:x ax)) "\n      :y " (a (:y ax)) "}")))
+
+(defn ->source
+  "The buffer as EDN text, one stroke per line (read-source reads it back)."
+  [d]
+  (let [d (or d empty)
+        ss (sorted-strokes d)]
+    (str "{" (when (generic? d) (str ":ax " (ax-src (:ax d)) "\n "))
+         ":gx " (gx-src (:gx d)) "\n"
+         " :gy " (gy-src (:gy d)) "\n"
+         " :strokes {" (str/join "\n           " (map (fn [[id s]] (str id " " (pts-src (:pts s)))) ss)) "}}")))
+
+(defn- bad [msg] (throw (js/Error. msg)))
+
+(defn read-source
+  "EDN text → a buffer of the kind of `d` (a generic canvas or a freqt). Nothing is evaluated. Throws,
+   saying what is wrong, rather than dropping what it cannot read."
+  [d text]
+  (let [forms (try (edn/read-string (str "[" text "\n]")) (catch :default e (bad (str "That is not EDN: " (.-message e)))))
+        _ (when (not= 1 (count forms))
+            (bad (if (empty? forms) "The text is empty: a buffer is a map {:strokes {…} :gx nil :gy nil}"
+                     (str "One map only: there is more after it (" (pr-str (second forms)) ")"))))
+        x (first forms)
+        gen (generic? (or d empty))]
+    (when-not (map? x) (bad "A buffer is a map: {:strokes {:t1 [[0 440] [1 440]]} :gx nil :gy nil}"))
+    (when-let [k (first (remove #{:strokes :gx :gy :ax} (keys x)))]
+      (bad (str "Unknown key " (pr-str k) ": a buffer has :strokes, :gx, :gy" (when gen " and :ax"))))
+    (when (and (not gen) (some? (:ax x))) (bad "A freqt has no :ax: its axes are time and frequency"))
+    (let [ax (when gen (if (some? (:ax x))
+                         (let [a (sane-ax (:ax x))]
+                           (when-not (and a (every? (fn [k] (let [i (get-in x [:ax k])]
+                                                              (or (nil? i) (= (get a k) {:lo (:lo i) :hi (:hi i) :log (boolean (:log i))}))))
+                                                    [:x :y]))
+                             (bad ":ax is {:x {:lo 0 :hi 8 :log false} :y {:lo 0 :hi 1 :log false}} (lo < hi; both positive if :log)"))
+                           a)
+                         default-ax))
+          base (cond-> {:strokes {}} gen (assoc :ax ax))
+          gx (when (some? (:gx x)) (or (sane-gx (:gx x)) (bad ":gx is {:step 0.25 :cycles [4]} (or nil)")))
+          gy0 (:gy x)
+          gy0 (if-let [t (and (map? gy0) (nil? (:cents gy0)) (nil? (:step gy0)) (string? (:name gy0))
+                              (get tunings (str/lower-case (:name gy0))))]
+                (assoc t :ref (:ref gy0))
+                gy0)
+          gy (when (some? gy0) (or (sane-gy gy0) (bad (str ":gy is a tuning {:name \"12-tet\" :ref 261.63} (a name from "
+                                                         (str/join ", " (sort (keys tunings))) ", or with :cents), a grid {:step 0.1}, or nil"))))
+          ss (:strokes x)]
+      (when-not (or (nil? ss) (map? ss)) (bad ":strokes is a map: {:t1 [[0 440] [1 440]] :t2 …}"))
+      (assoc base :gx gx :gy gy
+             :strokes (into {} (for [[k s] ss]
+                                 (let [pts (if (map? s) (:pts s) s)]
+                                   (when-not (keyword? k) (bad (str "A stroke id is a keyword such as :t1, not " (pr-str k))))
+                                   [k {:pts (or (let [r (sane-pts-for base pts)]
+                                                  ;; a freqt drops points it cannot hold: here that is an error
+                                                  (when (and r (or gen (= (count r) (count pts)))) r))
+                                                (bad (str "Stroke " k ": "
+                                                          (if gen "at least two different points [x y]"
+                                                              "at least two points [t hz], times from 0 and growing, hz between 1 and 30000"))))}])))))))
+
+(defn diff
+  "The events that turn buffer a into buffer b: (reduce step a (diff a b)) is b."
+  [a b]
+  (let [a (or a empty)]
+    (vec (concat
+          (when (and (generic? b) (not= (:ax a) (:ax b))) [[:axis (:ax b)]])
+          (when (not= (:gx a) (:gx b)) [[:grid-x (:gx b)]])
+          (when (not= (:gy a) (:gy b)) [[:tuning (:gy b)]])
+          (for [[id _] (sorted-strokes a) :when (not (contains? (:strokes b) id))] [:erase id])
+          (for [[id s] (sorted-strokes b) :when (not= (:pts s) (get-in a [:strokes id :pts]))] [:stroke id (:pts s)])))))
 
 (defn ->voice
   "Approximation of the canvas as a kairotic.score voice: each stroke is a note on the

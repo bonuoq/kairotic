@@ -35,7 +35,13 @@
 ;;             :feed    (fn [node data])    the buffer at its right inlet, whenever it changes (:reads-buffer)
 ;;             :dispose (fn [node])}
 ;;  :model    {:empty x :step (fn [d ev]) :load (fn [x]) :code (fn [id d] lines)}   box data with its own history
+;;            With :source (fn [d] text), :read (fn [d text] d2) and :diff (fn [d d2] events) its data can
+;;            also be read and edited as text, in the code window (discussion #30): read throws on bad
+;;            text, and what diff returns is applied as one [:batch events] of the history.
 ;;  :display  :text | :canvas | :score | :code | :number | :msg | :bang     how the patch shows built-in boxes
+;;  :views    [:code :score]                 the displays a box of this class can switch between, the first
+;;                                           one its default: each box keeps its choice, (view :bN :score),
+;;                                           and its data stays the same (discussion #30)
 ;;  :size     [width height] | (fn [box] [w h])  a box with its own view (drawing and gestures), handle not counted
 ;;  :view     shapes                        a shapes template (kairotic.shapes) whose values can be holes,
 ;;                                           keywords starting with $ (:$angle). Plain data: preferred over :draw
@@ -119,6 +125,23 @@
     (boolean (or (nil? d) (:dynamic-io d) (= :work (:origin d))))))
 
 (defn model-of [b] (:model (lookup (klass (:text b)))))
+
+(defn views-of "The displays a box can switch between (none, or one, if its class has no :views)." [b]
+  (:views (lookup (klass (:text b)))))
+
+(defn shown-as
+  "How a box is shown: the view it chose, if its class offers it, or the :display of its class."
+  [b]
+  (let [d (lookup (klass (:text b))) v (:view b)]
+    (if (and (keyword? v) (some #{v} (:views d))) v (or (:display d) :text))))
+
+(defn source-of
+  "The data of a box as text, to edit (a code box's source, or what its model's :source writes), or nil."
+  [b]
+  (let [m (model-of b)]
+    (cond (fn? (:source m)) ((:source m) (or (:data b) (:empty m)))
+          (= :code (:display (lookup (klass (:text b))))) (str (get-in b [:data :source]))
+          :else nil)))
 
 (defn own-view?
   "Does the box have its own view (a :draw or a :view)?"
@@ -413,8 +436,10 @@
 
 (def canvas-box (canvas-receiver cv/empty))
 
-(def canvas-model {:empty cv/generic-empty :step cv/step :load (fn [x] (cv/step cv/generic-empty [:load x])) :code cv/->code})
-(def freqt-model {:empty cv/empty :step cv/step :load (fn [x] (cv/step cv/empty [:load x])) :code cv/->code})
+(def canvas-model {:empty cv/generic-empty :step cv/step :load (fn [x] (cv/step cv/generic-empty [:load x])) :code cv/->code
+                   :source cv/->source :read cv/read-source :diff cv/diff})
+(def freqt-model {:empty cv/empty :step cv/step :load (fn [x] (cv/step cv/empty [:load x])) :code cv/->code
+                  :source cv/->source :read cv/read-source :diff cv/diff})
 
 (define! "loadbang" {:doc "Sends a bang when the engine starts (▶)." :io [0 1] :receive (fn [_] {:out [[0 :bang]]})})
 (define! "bang" {:doc "A button: when pressed (or on receiving anything) it sends a bang." :io [1 1] :display :bang
@@ -436,9 +461,9 @@
 (define! "canvas" {:doc "Graphic buffer for any numeric data: strokes in a plane with axes of any range, linear or log ((axis :b1 :y -1 1)). A number on the inlet (or a click) comes out on the left; edits on the inlet ([:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read x], [:strokes], [:get :t1], [:data]) are answered on the left. The right outlet is the buffer for a reader, which can read it along X or Y."
                    :io [1 2] :display :canvas :receive (canvas-receiver cv/generic-empty) :model canvas-model})
 (define! "freqt" {:doc "Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids. A number on the inlet (or a click) comes out on the left; edits on the inlet ([:note t \"c4\" dur], [:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read t], [:strokes], [:end], [:data]) are answered on the left. The right outlet is the buffer for a reader."
-                  :io [1 2] :display :canvas :receive canvas-box :model freqt-model})
+                  :io [1 2] :display :canvas :views [:canvas :score] :receive canvas-box :model freqt-model})
 (define! "score" {:doc "The same buffer as a freqt, drawn as an approximate score; or the musical tree it receives, measured. Its third outlet sends the edits you make on that tree's notes ([:edit …]): connect it back to the tree box."
-                  :io [1 3] :display :score :receive canvas-box :model freqt-model})
+                  :io [1 3] :display :score :views [:score :canvas] :receive canvas-box :model freqt-model})
 (define! "reader" {:doc "Reads the buffer (canvas, freqt, score) connected to its right inlet at the position that comes in on the left — along X, or along Y with `reader y`: ids on the right and the values on the left (every crossing). With `reader path [stroke]` a position from 0 to 1 travels along a stroke in the order it was drawn and gives [x y]."
                    :usage "reader [x|y|path [stroke]]"
                    :io [2 2] :receive reader :reads-buffer true})
