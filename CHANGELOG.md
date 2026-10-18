@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Fix an issue with Claude**: each open issue in the Feedback tab has a **Claude ↗** link that opens Claude
+  Code on the web (claude.ai/code) with this repository and a prompt written for that issue — review it,
+  fix it on a branch with tests, open a pull request. You read the prompt and send it yourself.
 - **`reader~` no longer freezes the page** (the patch of [discussion #22](https://github.com/bonuoq/kairotic/discussions/22)):
   its table of a canvas was sampled again after every change of the history (a knob released: about
   0.6 s per `reader~`, 2.4 s with four), because the canvas, rebuilt, was a new object. Buffers are now
