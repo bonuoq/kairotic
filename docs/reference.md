@@ -426,9 +426,9 @@ See also: `number`, `bang`
 
 `mt <operation> [arguments]`
 
-Operations on musical trees: a tree on the left comes out transformed. transpose n · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval] · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks).
+Operations on musical trees: a tree on the left comes out transformed. transpose n · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval] · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks).
 
-**Inlets** 1: a tree: it comes out transformed (for play: a tree to play, then bang, stop) · for transpose, invert, augment, rotate, canon: the amount · for seq, par: the tree to join
+**Inlets** 1: a tree: it comes out transformed (for play: a tree to play, then bang, stop) · for transpose, invert, augment, rotate, canon, thin: the amount · for seq, par: the tree to join
 
 **Outlets** 
 
@@ -442,6 +442,7 @@ Operations on musical trees: a tree on the left comes out transformed. transpose
 - `mt augment 2`: twice as long
 - `mt rotate 1`: the first element goes to the end
 - `mt canon 2 7`: against itself, 2 beats later, a fifth up
+- `mt thin 0.5`: keeps half the notes of each measure, the ones on its strongest positions (metric weight)
 - `mt seq · mt par`: the left tree followed by (or with) the right one
 - `mt events · mt pitches · mt duration`: the tree as data
 - `mt play [loop]`: plays it: Hz (0) and voice ids (1) for synth~, parameters (2), dynamics and texts (3)
