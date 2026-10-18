@@ -366,7 +366,7 @@
 
 ;; ───── what a canvas, freqt or score takes on its left inlet (issue #26) ─────
 ;; · a number: comes out on the left and moves the cursor (as a click does)
-;; · a musical tree ([:voice …]): shown live over the buffer; (keep! :bN) writes it in
+;; · a musical tree ([:voice …]): shown live over the buffer; (keep! :bN) writes it in, with its recipe
 ;; · an edit: changes the buffer, as one event of the history (the same as the commands of the REPL)
 ;;     [:stroke [[x y] …]] · [:stroke :t3 [[x y] …]] · [:note t pitch dur] (pitch: MIDI or "c4")
 ;;     [:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear]

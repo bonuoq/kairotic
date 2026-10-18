@@ -191,14 +191,38 @@ Las funciones están en `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt
 
 - `(tree! :b2 [:voice …])` escribe un árbol en una caja tree;
 - `(as-tree :bN)` lee como árbol una caja tree, el árbol que muestra un freqt, o los trazos de un freqt;
-- `(keep! :bN)` y `(unlive! :bN)`.
+- `(keep! :bN)` y `(unlive! :bN)`;
+- `(recipe :bN)` y `(remake! :bN)` (abajo).
 
 Un componente puede enviar árboles desde su `:receive` y usar `mt/…`. Ver el ejemplo
 `examples/claude/notation/walk.cljs`.
+
+## Recetas: de dónde viene un buffer fijado
+
+`(keep! :bN)` escribe en su buffer, como trazos, el árbol que muestra un freqt o un canvas.
+El buffer son datos sin más, pero **junto a él la caja guarda la receta que lo hizo** (la idea viene de
+[Rastrum](https://github.com/smoge/Rastrum), [discusión #17](https://github.com/bonuoq/kairotic/discussions/17)):
+
+```clojure
+(recipe :b5)
+;; {:tree  [:voice [:measure {:meter [4 4]} …]]      el árbol tal como llegó
+;;  :calls "(box :b2 \"tree\" 40 60)\n(box :b3 \"mt transpose 7\" …)…"   las cajas y líneas de antes, como código
+;;  :from  :b3}                                       la caja de la que vino
+```
+
+- Mientras el buffer no cambie, un freqt **mostrado como partitura** sigue mostrando el árbol en notación medida (compases,
+  grupos irregulares, dinámicas), no una aproximación de sus trazos, y `(as-tree :bN)` da el árbol mismo.
+- En cuanto el buffer cambia (un trazo dibujado, un mensaje en su entrada), la receta se conserva pero
+  marcada `:stale`: dice de dónde vino el buffer, ya no lo que es. La cabecera dice *changed since kept*.
+- `(remake! :bN)` vuelve a escribir en el buffer el árbol de la receta (un evento), sin los cambios.
+- `:calls` es el código de las cajas de antes, así que la receta sigue diciendo cómo se hizo aunque esas
+  cajas se borren o cambien: pégalo en la pestaña Code para volver a construirlas.
+- El código de la obra (Calls) escribe cada receta como `(recipe :b5 {…})`, después de los datos; la
+  vista Data la muestra como `:recipe`, junto a `:data`.
 
 ## Historia
 
 Un árbol vive en la obra como el texto de una caja `tree`, así que cada edición es un evento, con su
 diff, en la historia ramificada. Un freqt que muestra un árbol no ha cambiado: su buffer solo cambia
-con `keep!`. Próximos pasos: un árbol que sea la obra entera, con secciones cuyas ediciones sean diffs
+con `keep!`, que guarda junto a él la receta. Próximos pasos: un árbol que sea la obra entera, con secciones cuyas ediciones sean diffs
 del propio árbol (nodo a nodo), y partituras que editen el árbol directamente.

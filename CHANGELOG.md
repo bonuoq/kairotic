@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Recipes beside kept buffers** ([discussion #17](https://github.com/bonuoq/kairotic/discussions/17), after
+  [Rastrum](https://github.com/smoge/Rastrum)): `(keep! :bN)` now keeps, beside the buffer it writes,
+  the recipe that made it: the tree as it arrived, the boxes and lines upstream as code, and the box it
+  came from, all in one event (`[:kept …]`). While the buffer is unchanged, a freqt shown as a score keeps showing the
+  tree in measured notation and `as-tree` returns it; once the buffer changes the recipe is marked
+  stale (the header says so). `(recipe :bN)` reads it, `(remake! :bN)` writes its tree back. The work's
+  code writes recipes as `(recipe :bN {…})`; the Data view shows `:recipe` beside `:data`; merges treat
+  a recipe as its own unit.
 - **No more `score` class: a score is a view of a `freqt`** ([discussion #30](https://github.com/bonuoq/kairotic/discussions/30)):
   `score` and `freqt` were the same buffer with the same behaviour, so only `freqt` remains. It is drawn
   as a canvas or as a score (`(view :bN :score)`, ⇄ in its header) and has the third outlet, **edits**,

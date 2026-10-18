@@ -188,13 +188,38 @@ The functions are in `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt/au
 
 - `(tree! :b2 [:voice …])` writes a tree into a tree box;
 - `(as-tree :bN)` reads a tree box, or the tree a score is showing, or a freqt's strokes, as a tree;
-- `(keep! :bN)` and `(unlive! :bN)`.
+- `(keep! :bN)` and `(unlive! :bN)`;
+- `(recipe :bN)` and `(remake! :bN)` (below).
 
 A component can send trees from its `:receive` and use `mt/…`. See the example `examples/claude/notation/walk.cljs`.
+
+## Recipes: where a kept buffer came from
+
+`(keep! :bN)` writes the tree a freqt or canvas is showing into its buffer, as strokes. The
+buffer is plain data, but **beside it the box keeps the recipe that made it** (the idea comes from
+[Rastrum](https://github.com/smoge/Rastrum), [discussion #17](https://github.com/bonuoq/kairotic/discussions/17)):
+
+```clojure
+(recipe :b5)
+;; {:tree  [:voice [:measure {:meter [4 4]} …]]      the tree as it arrived
+;;  :calls "(box :b2 \"tree\" 40 60)\n(box :b3 \"mt transpose 7\" …)…"   the boxes and lines upstream, as code
+;;  :from  :b3}                                       the box it came from
+```
+
+- While the buffer is unchanged, a freqt **shown as a score** keeps showing the tree as measured notation (measures,
+  tuplets, dynamics), not an approximation of its strokes, and `(as-tree :bN)` gives the tree itself.
+- Once the buffer changes (a stroke drawn, a message on its inlet), the recipe is kept but marked
+  `:stale`: it says where the buffer came from, no longer what it is. The header says *changed since
+  kept*.
+- `(remake! :bN)` writes the recipe's tree back into the buffer (one event), dropping the changes.
+- `:calls` is the code of the boxes upstream, so the recipe still says how it was made after those
+  boxes are deleted or changed: paste it into the Code tab to build them again.
+- The work's code (Calls) writes each recipe as `(recipe :b5 {…})`, after the data; the Data view
+  shows it as `:recipe`, beside `:data`.
 
 ## History
 
 A tree lives in the work as the text of a `tree` box, so each edit is one event, with its diff, in
 the branching history. A score that is showing a tree has not changed: its buffer only changes with
-`keep!`. Next steps: a tree that is the whole work, with sections whose edits are diffs of the tree
+`keep!`, which keeps the recipe beside it. Next steps: a tree that is the whole work, with sections whose edits are diffs of the tree
 itself (node by node), and scores that edit the tree directly.

@@ -233,6 +233,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | fragmento · variación | fragment (`:defs`) · `[:use {:ref … :transpose …}]` |
 | transponer · invertir · retrogradar · aumentar | transpose · invert · retrograde · augment |
 | mostrar en vivo · fijar | shown live · `(keep! :bN)` |
+| receta (de un buffer fijado) · rehacer | recipe (`(recipe :bN)`) · `(remake! :bN)` |
 
 ## The work as a tree · La obra como árbol (Study 20)
 

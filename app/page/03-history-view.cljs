@@ -276,6 +276,7 @@
   (let [f (fid id)]
     (eng/forget! f)
     (swap! live-trees dissoc f)
+    (swap! dismissed-trees dissoc f)
     (swap! sent-trees dissoc f)
     (swap! score-cache dissoc id)))
 
@@ -315,7 +316,8 @@
   (let [changed (atom false)]
     (doseq [[id b] (:boxes (current)) :when (#{"canvas" "freqt"} (klass (:text b)))]
       (let [f (fid id) t (:tree (second (shown-flat f)))]
-        (when (and t (not= t (get @live-trees f)))
+        (when (and t (not= t (get @live-trees f)) (not= t (get @dismissed-trees f)))
+          (swap! dismissed-trees dissoc f)
           (swap! live-trees assoc f t)
           (reset! changed true))))
     @changed))

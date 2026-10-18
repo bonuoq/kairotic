@@ -119,11 +119,16 @@
 (defn own-tree [id b]
   (when-let [t (mtb/tree-of (:data b))] (try (mt/expand-source t id) (catch :default _ nil))))
 
+(defn kept-tree
+  "The tree a buffer was kept from, while the buffer has not changed since (its recipe is not stale)."
+  [b] (let [r (:recipe b)] (when (and r (not (:stale r))) (:tree r))))
+
 ;; score: Verovio draws an approximation of the buffer; the SVG node is kept and put back on every repaint
 (defn score-entry! [id b]
   (let [tree-box? (= "tree" (klass (:text b)))
         d0 (if tree-box? cv/empty (canvas-data b))
-        lt (if tree-box? (own-tree id b) (live-tree id))
+        ;; a tree shown live, or the tree a buffer was kept from while it is unchanged (its recipe)
+        lt (if tree-box? (own-tree id b) (or (live-tree id) (kept-tree b)))
         d [d0 lt] c (get @score-cache id)]
     (cond
       (and c (= (:key c) d)) c
@@ -460,9 +465,12 @@
          (esc (cond
                 (= :code (display-of b)) (str (:language (box-def b)) " · ✎")
                 tree-box? (if-let [t (mtb/tree-of (:data b))] (mt/summary t) "empty")
-                :else (if-let [t (live-tree id)]
-                        (str "tree · " (mt/summary t) " · (keep! " id ")")
-                        (str (when (= :score (display-of b)) "approx. · ") (cv/summary (canvas-data b)))))) "</text>"
+                :else (cond
+                        (live-tree id) (str "tree · " (mt/summary (live-tree id)) " · (keep! " id ")")
+                        (kept-tree b) (str "kept · " (mt/summary (kept-tree b))
+                                           (when-let [f (:from (:recipe b))] (str " · from " f)))
+                        :else (str (when (= :score (display-of b)) "approx. · ") (cv/summary (canvas-data b))
+                                   (when (:recipe b) (str " · changed since kept (remake! " id ")")))))) "</text>"
          chips)))
 
 (declare gesture!)
