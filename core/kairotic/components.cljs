@@ -126,6 +126,24 @@
 
 (defn model-of [b] (:model (lookup (klass (:text b)))))
 
+;; classes that became a view of another one: a box written with the old name is read as the new
+;; class, in that view (discussion #30: a score box is a freqt shown as a score)
+(def renamed {"score" ["freqt" :score]})
+
+(defn upgrade-box
+  "A box of a renamed class, as its new class in the matching view (its arguments kept); others unchanged."
+  [b]
+  (let [t (str/trim (str (:text b))) k (klass t)]
+    (if-let [[nk v] (get renamed k)]
+      (let [b (assoc b :text (str nk (subs t (count k))))]
+        ;; the view it showed: its old default becomes v; another view it could show stays, if the new
+        ;; class has it and it is not that class's default
+        (if (or (nil? (:view b)) (= (:view b) v))
+          (assoc b :view v)
+          (let [vs (:views (lookup nk))]
+            (if (and (some #{(:view b)} vs) (not= (:view b) (first vs))) b (dissoc b :view)))))
+      b)))
+
 (defn views-of "The displays a box can switch between (none, or one, if its class has no :views)." [b]
   (:views (lookup (klass (:text b)))))
 
@@ -460,11 +478,9 @@
 (define! "ramp" {:doc "Linear motion: a bang (or [a b s]) goes from a to b in s seconds; a number jumps there." :usage "ramp a b s [loop]" :io [2 1] :receive ramp})
 (define! "canvas" {:doc "Graphic buffer for any numeric data: strokes in a plane with axes of any range, linear or log ((axis :b1 :y -1 1)). A number on the inlet (or a click) comes out on the left; edits on the inlet ([:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read x], [:strokes], [:get :t1], [:data]) are answered on the left. The right outlet is the buffer for a reader, which can read it along X or Y."
                    :io [1 2] :display :canvas :receive (canvas-receiver cv/generic-empty) :model canvas-model})
-(define! "freqt" {:doc "Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids. A number on the inlet (or a click) comes out on the left; edits on the inlet ([:note t \"c4\" dur], [:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read t], [:strokes], [:end], [:data]) are answered on the left. The right outlet is the buffer for a reader."
-                  :io [1 2] :display :canvas :views [:canvas :score] :receive canvas-box :model freqt-model})
-(define! "score" {:doc "The same buffer as a freqt, drawn as an approximate score; or the musical tree it receives, measured. Its third outlet sends the edits you make on that tree's notes ([:edit …]): connect it back to the tree box."
-                  :io [1 3] :display :score :views [:score :canvas] :receive canvas-box :model freqt-model})
-(define! "reader" {:doc "Reads the buffer (canvas, freqt, score) connected to its right inlet at the position that comes in on the left — along X, or along Y with `reader y`: ids on the right and the values on the left (every crossing). With `reader path [stroke]` a position from 0 to 1 travels along a stroke in the order it was drawn and gives [x y]."
+(define! "freqt" {:doc "Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids, drawn as a canvas or as a score ((view :b1 :score), ⇄ in its header). A number on the inlet (or a click) comes out on the left; edits on the inlet ([:note t \"c4\" dur], [:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read t], [:strokes], [:end], [:data]) are answered on the left. The second outlet is the buffer for a reader. A musical tree on the inlet is shown over it, measured; shown as a score, the edits you make on that tree's notes leave by the third outlet ([:edit …]): connect it back to the tree box."
+                  :io [1 3] :display :canvas :views [:canvas :score] :receive canvas-box :model freqt-model})
+(define! "reader" {:doc "Reads the buffer (canvas, freqt) connected to its right inlet at the position that comes in on the left — along X, or along Y with `reader y`: ids on the right and the values on the left (every crossing). With `reader path [stroke]` a position from 0 to 1 travels along a stroke in the order it was drawn and gives [x y]."
                    :usage "reader [x|y|path [stroke]]"
                    :io [2 2] :receive reader :reads-buffer true})
 (doseq [[n io] [["state" [1 1]] ["transition" [2 1]] ["instruction" [1 0]] ["region" [1 1]]]]

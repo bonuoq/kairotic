@@ -364,9 +364,11 @@ Rules:
   hslider(\"carrier\", …). Write every parameter as hslider with sensible ranges and a smoothing
   (si.smoo). Call `check_faust` on the Faust code before using it.
 - Musical trees (tree boxes, notation): to PLAY one, prefer `tree` → `mt play` → `synth~` (mt play
-  sends Hz and voice ids at the tree's tempo once ▶ is on; see class_help). A score or freqt that
-  shows a tree is also a buffer: `phasor~` → `reader~` (left) with the score's outlet 1 on its right
-  inlet gives the pitch as a signal (Hz), e.g. into a faust~ whose process takes a frequency input.
+  sends Hz and voice ids at the tree's tempo once ▶ is on; see class_help). To SHOW one as notation,
+  `(view :bN :score)` on the tree box itself, or a `freqt` with `(view :bN :score)` after `mt` boxes
+  (there is no score class: a score is a view of a freqt). A freqt that shows a tree is also a
+  buffer: `phasor~` → `reader~` (left) with the freqt's outlet 1 on its right inlet gives the pitch as
+  a signal (Hz), e.g. into a faust~ whose process takes a frequency input.
   A tree box sends its tree by itself: it needs no loadbang.
 - `gain~ 0.2` sets its factor as an argument; a message into its right inlet changes it, a signal
   there replaces it. Do not leave a gain waiting for a message nobody sends.

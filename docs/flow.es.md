@@ -24,12 +24,14 @@ cambio y lo lanzas tú).
 
 ## Vistas que devuelven sus ediciones
 
-Una `score` que muestra un árbol tiene una tercera salida, **ediciones**: cuando cambias una nota en ella
-(clic, y luego ↑ ↓ + − ← → Supr), envía `[:edit [[:attrs [0 1 2] {…}] …]]`. Conectada de vuelta a la caja
-tree —una **línea discontinua**, que se dibuja sola cuando conectas con el ratón un tree a una score— las
+Un `freqt` mostrado como partitura que muestra un árbol tiene una tercera salida, **ediciones**: cuando cambias una nota en él
+(clic, y luego ↑ ↓ + − ← → Supr), envía `[:edit [[:attrs [0 1 2] {…}] …]]`. Conectado de vuelta a la caja
+tree —una **línea discontinua**, que se dibuja sola cuando conectas con el ratón un tree a un freqt mostrado como partitura— las
 ediciones cambian el árbol (como `tree-edit!`, un evento de la historia), y el árbol, cambiado, vuelve a la
 partitura. Nada se acopla por detrás del patch: el bucle es una línea que se ve, en el patch y en el
-código.
+código. Una caja tree también puede mostrarse como partitura (⇄ en su cabecera, `(view :bN :score)`): entonces
+sus notas la editan directamente, sin cable. El bucle con cable es para una partitura que muestra el árbol
+después de cajas `mt`.
 
 Las ediciones nombran el nodo donde está escrita cada nota, así que funcionan a través de
 transformaciones: una partitura que muestra `mt transpose 7` de un árbol puede editar el propio árbol.

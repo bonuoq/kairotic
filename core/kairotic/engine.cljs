@@ -179,11 +179,11 @@
         b))))
 
 (defn buffer-of
-  "The canvas (or score) connected to the right inlet of a box: [id data]. A box that shows a musical
+  "The canvas (or freqt) connected to the right inlet of a box: [id data]. A box that shows a musical
    tree gives that tree as its buffer, so a reader~ plays what the score shows."
   [p id]
   (some (fn [[a _ b i]]
-          (when (and (= b id) (= i 1) (#{"canvas" "freqt" "score"} (comp/klass (get-in p [:boxes a :text]))))
+          (when (and (= b id) (= i 1) (#{"canvas" "freqt"} (comp/klass (get-in p [:boxes a :text]))))
             (let [tree (get-in @rt [:states a :tree])]
               [a (or (when tree (tree-buffer a tree))
                      (get-in p [:boxes a :data]) (:empty (comp/model-of (get-in p [:boxes a]))) cv/empty)])))

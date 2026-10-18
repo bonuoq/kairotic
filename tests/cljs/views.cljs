@@ -25,7 +25,14 @@
     (t/eq "a tree is code by default" (comp/shown-as {:text "tree"}) :code)
     (t/eq "a tree shown as a score" (comp/shown-as {:text "tree" :view :score}) :score)
     (t/eq "a view its class does not offer is ignored" (comp/shown-as {:text "tree" :view :canvas}) :code)
-    (t/eq "a score box can be drawn as a canvas" (comp/shown-as {:text "score" :view :canvas}) :canvas)
+    (t/is "there is no score class: a score is a view of a freqt" (nil? (comp/lookup "score")))
+    (t/eq "a score box of an older work is a freqt shown as a score" (comp/upgrade-box {:text "score" :x 1 :y 2})
+          {:text "freqt" :x 1 :y 2 :view :score})
+    (t/eq "... its arguments kept" (:text (comp/upgrade-box {:text " score  a b"})) "freqt  a b")
+    (t/eq "... a score that was drawn as a canvas is a plain freqt" (comp/upgrade-box {:text "score" :view :canvas}) {:text "freqt"})
+    (t/eq "... and shown as a score" (comp/shown-as (comp/upgrade-box {:text "score"})) :score)
+    (t/eq "other boxes are left as they are" (comp/upgrade-box {:text "freqt" :view :score}) {:text "freqt" :view :score})
+    (t/eq "a freqt has the edits outlet of the score it can be" (comp/io {:text "freqt"}) [1 3])
     (t/eq "a class without views keeps its display" (comp/shown-as {:text "bang" :view :score}) :bang)
 
     ;; any buffer as text, and back

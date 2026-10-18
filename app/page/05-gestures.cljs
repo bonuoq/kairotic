@@ -607,9 +607,10 @@
         (swap! ui assoc :wire nil :hover-in nil)
         (when to
           (gesture! (str "(connect " (:from wire) " " (:out wire) " " to " " in ")"))
-          ;; a tree into a score: the edits made on the score come back to the tree (a dashed line)
+          ;; a tree into a freqt shown as a score: the edits made on the score come back to the tree (a dashed line)
           (let [p (current) from (:from wire)]
-            (when (and (= "tree" (klass (get-in p [:boxes from :text]))) (= "score" (klass (get-in p [:boxes to :text])))
+            (when (and (= "tree" (klass (get-in p [:boxes from :text]))) (= "freqt" (klass (get-in p [:boxes to :text])))
+                       (= :score (display-of (get-in p [:boxes to])))
                        (zero? in)
                        (not (some (fn [[a o b]] (and (= a to) (= o 2) (= b from))) (:lines p))))
               (gesture! (str "(connect " to " 2 " from " 0)"))

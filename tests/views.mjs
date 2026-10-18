@@ -109,5 +109,11 @@ export async function views(page, check) {
     }
     await cljs(page, "(close-code-win!)");
   }
-  await cljs(page, `(delete ${tb} ${f})`);
+  // ── a score box (older works) is a freqt shown as a score ──
+  const sb = (await cljs(page, '(box "score" 1700 1300)')).trim();
+  check("(box \"score\" …) makes a freqt", (await cljs(page, `(:text (get-in (current) [:boxes ${sb}]))`)) === '"freqt"');
+  check("... shown as a score", (await cljs(page, `(display-of (get-in (current) [:boxes ${sb}]))`)) === ":score");
+  await cljs(page, `(text! ${sb} "score")`);
+  check("retyping a box as score does the same", (await cljs(page, `[(:text (get-in (current) [:boxes ${sb}])) (:view (get-in (current) [:boxes ${sb}]))]`)) === '["freqt" :score]');
+  await cljs(page, `(delete ${tb} ${f} ${sb})`);
 }

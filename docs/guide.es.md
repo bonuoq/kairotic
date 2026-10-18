@@ -130,7 +130,7 @@ de donde estás y queda fuera de la historia (el patch tiene un marco rojo mient
 ## 6. La música como datos
 
 Una caja `tree` guarda música en EDN —voces, compases, notas, acordes, dinámicas:
-`[:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]`. Conectada a una `score`, se dibuja como partitura;
+`[:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]`. Mostrada como partitura (⇄ en su cabecera), o conectada a un `freqt` mostrado como partitura, se dibuja como partitura;
 a través de cajas `mt` se transforma (`mt transpose 7`, `mt retrograde`, `mt canon 2 7`); con
 `mt play` → `synth~` suena. Haz clic en una nota de una partitura para editarla (↑ ↓ + − ← → Supr). Ver
 [Árboles musicales](mt.es.md).

@@ -310,10 +310,10 @@
 (js/setInterval (fn [] (when-not (eng/running?) (drain-prints!))) 200)
 
 (defn sync-live-trees!
-  "Takes the trees that canvases, freqts and scores have received from the engine. True if any changed."
+  "Takes the trees that canvases and freqts have received from the engine. True if any changed."
   []
   (let [changed (atom false)]
-    (doseq [[id b] (:boxes (current)) :when (#{"canvas" "freqt" "score"} (klass (:text b)))]
+    (doseq [[id b] (:boxes (current)) :when (#{"canvas" "freqt"} (klass (:text b)))]
       (let [f (fid id) t (:tree (second (shown-flat f)))]
         (when (and t (not= t (get @live-trees f)))
           (swap! live-trees assoc f t)

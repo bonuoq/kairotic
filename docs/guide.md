@@ -128,7 +128,7 @@ starts from where you are and stays out of the history (the patch has a red fram
 ## 6. Music as data
 
 A `tree` box holds music in EDN — voices, measures, notes, chords, dynamics:
-`[:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]`. Connected to a `score`, it is drawn as notation;
+`[:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]`. Shown as a score (⇄ in its header), or connected to a `freqt` shown as a score, it is drawn as notation;
 through `mt` boxes it is transformed (`mt transpose 7`, `mt retrograde`, `mt canon 2 7`); with
 `mt play` → `synth~` it sounds. Click a note in a score to edit it (↑ ↓ + − ← → Delete). See
 [Musical trees](mt.md).

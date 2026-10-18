@@ -30,7 +30,7 @@
   [b] (comp/io (if (string? b) {:text b} b)))
 
 ;; boxes with a graphic buffer inside: score is another view of the same buffer
-(def music-classes #{"canvas" "freqt" "score"})
+(def music-classes #{"canvas" "freqt"})
 ;; boxes that act when pressed (they are moved by their left grip)
 (def action-classes #{"number" "msg" "bang"})
 (def kairos-classes #{"state" "transition" "instruction" "region"})
@@ -52,7 +52,8 @@
   [x]
   (if (map? x)
     {:boxes (into (sorted-map)
-                  (for [[k b] (:boxes x) :when (and (keyword? k) (map? b))]
+                  (for [[k b0] (:boxes x) :when (and (keyword? k) (map? b0))
+                        :let [b (comp/upgrade-box b0)]]
                     [k (cond-> {:text (str (:text b)) :x (or (:x b) 0) :y (or (:y b) 0)}
                          (and (vector? (:present b)) (= 2 (count (:present b))) (every? number? (:present b)))
                          (assoc :present (:present b))
@@ -63,8 +64,13 @@
 
 (defn step [p [op & args]]
   (case op
-    :box        (let [[id text x y] args] (if (keyword? id) (assoc-in p [:boxes id] {:text (str text) :x x :y y}) p))
-    :text       (let [[id text] args] (if (get-in p [:boxes id]) (prune-lines (assoc-in p [:boxes id :text] (str text))) p))
+    ;; a box written with the name of a class that became a view of another one (score → freqt) is read
+    ;; as that class, in that view: older works and histories keep working
+    :box        (let [[id text x y] args] (if (keyword? id) (assoc-in p [:boxes id] (comp/upgrade-box {:text (str text) :x x :y y})) p))
+    :text       (let [[id text] args]
+                  (if (get-in p [:boxes id])
+                    (prune-lines (update-in p [:boxes id] (fn [b] (comp/upgrade-box (assoc b :text (str text))))))
+                    p))
     :move       (let [[id x y] args] (if (get-in p [:boxes id]) (update-in p [:boxes id] assoc :x x :y y) p))
     ;; where a box appears in presentation (and in the panel of the sub-patch it is in), or nil
     :present    (let [[id x y] args]
