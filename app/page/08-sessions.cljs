@@ -63,6 +63,7 @@
   (swap! eng/rt assoc :shows {} :states {} :loops #{})
   (reset! score-cache {})
   (reset! live-trees {})
+  (reset! dismissed-trees {})
   (reset! sent-trees {})
   (reset! sent-shape nil)
   (reset! msg-edits {})

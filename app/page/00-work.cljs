@@ -47,6 +47,19 @@
                    (or (comp/dynamic? (get bx b)) (< i (first (io (get bx b)))))))]
     (update p :lines (fn [ls] (vec (filter ok? ls))))))
 
+;; ───── recipes (discussion #17) ─────
+;; A buffer filled from a tree with (keep! :bN) keeps, beside its :data, the recipe that made it:
+;; {:tree the tree as it arrived (measures, tuplets, dynamics…), :calls the boxes and lines upstream as
+;; code, :from the box it came from, :stale true once the buffer has been changed since}. The recipe is
+;; not part of the buffer: the buffer stays plain data, and the recipe says where it came from.
+
+(defn sane-recipe [r]
+  (when (and (map? r) (or (vector? (:tree r)) (string? (:tree r))))
+    (cond-> {:tree (:tree r)}
+      (string? (:calls r)) (assoc :calls (:calls r))
+      (keyword? (:from r)) (assoc :from (:from r))
+      (true? (:stale r)) (assoc :stale true))))
+
 (defn sane-patch
   "Events may come from other people: whatever arrives is normalized."
   [x]
@@ -58,7 +71,8 @@
                          (and (vector? (:present b)) (= 2 (count (:present b))) (every? number? (:present b)))
                          (assoc :present (:present b))
                          (keyword? (:view b)) (assoc :view (:view b))
-                         (and (map? (:data b)) (comp/model-of b)) (assoc :data ((:load (comp/model-of b)) (:data b))))]))
+                         (and (map? (:data b)) (comp/model-of b)) (assoc :data ((:load (comp/model-of b)) (:data b)))
+                         (sane-recipe (:recipe b)) (assoc :recipe (sane-recipe (:recipe b))))]))
      :lines (vec (filter (fn [l] (and (vector? l) (= 4 (count l)))) (:lines x)))}
     empty-patch))
 
@@ -91,8 +105,23 @@
     ;; [:in :b2 [:stroke :t1 [[0 440] [1 440]]]] · [:in :b7 [:source "process = …;"]]
     :in         (let [[id ev] args dd (comp/model-of (get-in p [:boxes id]))]
                   (if (and dd (vector? ev))
-                    (update-in p [:boxes id :data] (fn [d] ((:step dd) (or d (:empty dd)) ev)))
+                    (let [d0 (get-in p [:boxes id :data])
+                          d1 ((:step dd) (or d0 (:empty dd)) ev)]
+                      (cond-> (assoc-in p [:boxes id :data] d1)
+                        ;; the buffer changed after it was kept: its recipe no longer made it
+                        (and (get-in p [:boxes id :recipe]) (not= d0 d1)) (assoc-in [:boxes id :recipe :stale] true)))
                     p))
+    ;; [:kept :b5 data recipe]: a buffer written from a tree, with the recipe that made it, as one event
+    :kept       (let [[id data r] args b (get-in p [:boxes id]) dd (comp/model-of b) r (sane-recipe r)]
+                  (if (and dd (map? data) r)
+                    (-> p (assoc-in [:boxes id :data] ((:load dd) data))
+                        (assoc-in [:boxes id :recipe] (dissoc r :stale)))
+                    p))
+    ;; [:recipe :b5 r] sets the recipe of a box (as the code of a work writes it); nil removes it
+    :recipe     (let [[id r] args]
+                  (cond (not (get-in p [:boxes id])) p
+                        (sane-recipe r) (assoc-in p [:boxes id :recipe] (sane-recipe r))
+                        :else (update-in p [:boxes id] dissoc :recipe)))
     :load       (sane-patch (first args))
     :clear      empty-patch
     p))
@@ -415,6 +444,9 @@
               :delete (-> acc (update :mod conj (first args)) (update :del conj (first args)))
               (:connect :disconnect) (update acc :ref into [(first args) (nth args 2 nil)])
               :load (assoc acc :load true)
+              ;; a kept buffer rewrites the whole box data; a recipe alone is its own unit
+              :kept (-> acc (update :mod conj (first args)) (update :ref conj (first args)) (update :whole conj (first args)))
+              :recipe (-> acc (update :mod conj [(first args) :recipe]) (update :ref conj (first args)))
               ;; in a canvas, each stroke is its own unit of change, and so is each grid;
               ;; clear or load affects the whole canvas
               :in (let [[id [iop eid]] args]
@@ -439,7 +471,7 @@
 (defn remap-ev [m [op & args :as e]]
   (let [f (fn [x] (get m x x))]
     (case op
-      (:box :text :move :delete) (into [op (f (first args))] (rest args))
+      (:box :text :move :delete :kept :recipe) (into [op (f (first args))] (rest args))
       :in (let [[id inner] args]
             [op (f id) (if-let [ne (get-in m [:stroke-ids [id (second inner)]])] (assoc inner 1 ne) inner)])
       (:connect :disconnect) (let [[a o b i] args] [op (f a) o (f b) i])

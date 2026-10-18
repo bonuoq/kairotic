@@ -141,6 +141,9 @@
 ;; touching the history; (keep! :bN) writes it into the buffer, as one event.
 
 (defonce live-trees (atom {}))   ; engine id → tree
+;; trees kept (keep!) or put away (unlive!): the engine still remembers them as the last thing the box
+;; received, so they are not shown again until a different tree arrives
+(defonce dismissed-trees (atom {}))   ; engine id → tree
 
 (defn live-tree [id] (get @live-trees (fid id)))
 
@@ -415,24 +418,78 @@
     (cond
       (= "tree" (klass (:text b))) (mt/expand (mtb/tree-of (:data b)))
       (live-tree id) (live-tree id)
+      ;; a buffer kept from a tree, unchanged since: the tree itself, not an approximation of its strokes
+      (and (:recipe b) (not (:stale (:recipe b)))) (:tree (:recipe b))
       (music? b) (mt/<-strokes (canvas-data b))
       :else (fail (str id " is not a tree, a canvas, a freqt or a score")))))
 
+(declare patch->code)
+
+(defn tree->buffer
+  "The buffer d with the strokes of tree t (and, in a generic canvas, axes that fit it)."
+  [d t]
+  (if (cv/generic? d)
+    (let [x (mt/->canvas t)] (assoc d :strokes (:strokes x) :ax (:ax x)))
+    (assoc d :strokes (:strokes (mt/->strokes t)))))
+
+(defn without-meta
+  "x without metadata (a tree remembers where it was written; its recipe keeps only the tree)."
+  [x]
+  (cond (map? x) (into {} (map (fn [[k v]] [(without-meta k) (without-meta v)]) x))
+        (vector? x) (mapv without-meta x)
+        (seq? x) (apply list (map without-meta x))
+        :else x))
+
+(defn upstream-of
+  "The boxes of patch p whose output reaches box id, through any chain of lines."
+  [p id]
+  (loop [front #{id} seen #{}]
+    (let [new (set (for [[a _ b _] (:lines p) :when (and (front b) (not= a id) (not (seen a)))] a))]
+      (if (empty? new) seen (recur new (into seen new))))))
+
+(defn recipe-for
+  "The recipe of tree t arriving at box id of the current patch: the tree, the boxes and lines upstream
+   as code (their own recipes left out), and the box it came from."
+  [id t]
+  (let [p (current)
+        up (upstream-of p id)
+        sub {:boxes (into (sorted-map) (for [k up :let [b (get-in p [:boxes k])] :when b] [k (dissoc b :recipe)]))
+             :lines (vec (filter (fn [[a _ b _]] (and (up a) (or (up b) (= b id)))) (:lines p)))}]
+    (cond-> {:tree (without-meta t)}
+      (seq up) (assoc :calls (patch->code sub))
+      (some (fn [[a _ b _]] (when (= b id) a)) (:lines p)) (assoc :from (some (fn [[a _ b _]] (when (= b id) a)) (:lines p))))))
+
 (defn keep!
-  "Writes the tree a canvas, freqt or score is showing into its buffer (one event in the history)."
+  "Writes the tree a canvas, freqt or score is showing into its buffer, keeping beside it the recipe that
+   made it (the tree and the boxes upstream): one event in the history."
   [id]
-  (let [b (need-canvas id) t (or (live-tree id) (fail (str id " is not showing a tree: send it one first")))
-        d (canvas-data b)
-        data (if (cv/generic? d)
-               (let [x (mt/->canvas t)] (assoc d :strokes (:strokes x) :ax (:ax x)))
-               (assoc d :strokes (:strokes (mt/->strokes t))))]
-    (dispatch! [:in id [:load data]])
+  (let [b (need-canvas id) t (or (live-tree id) (fail (str id " is not showing a tree: send it one first")))]
+    (dispatch! [:kept id (tree->buffer (canvas-data b) t) (recipe-for id t)])
+    (swap! dismissed-trees assoc (fid id) t)
     (swap! live-trees dissoc (fid id))
     (mt/summary t)))
 
+(defn recipe
+  "The recipe kept beside a buffer: (recipe :b5) → {:tree … :calls … :from … :stale true if the buffer
+   changed since}. (recipe :b5 r) sets it (the code of a work does), (recipe :b5 nil) removes it."
+  ([id] (:recipe (need-box id)))
+  ([id r] (need-box id) (dispatch! [:recipe id r]) (some? (sane-recipe r))))
+
+(defn remake!
+  "Writes the tree of a buffer's recipe back into the buffer (one event): what keep! wrote, without the
+   changes made since."
+  [id]
+  (let [b (need-canvas id)
+        r (or (:recipe b) (fail (str id " has no recipe: it was not kept from a tree")))]
+    (dispatch! [:kept id (tree->buffer (canvas-data b) (:tree r)) r])
+    (mt/summary (:tree r))))
+
 (defn unlive!
   "Stops showing the tree a box received: its buffer again."
-  [id] (swap! live-trees dissoc (fid id)) :ok)
+  [id]
+  (when-let [t (live-tree id)] (swap! dismissed-trees assoc (fid id) t))
+  (swap! live-trees dissoc (fid id))
+  :ok)
 
 (defn compilation
   "How the compilation of a code box went: {:status :error :info}."
@@ -640,14 +697,20 @@
                                 (let [b (get-in p [:boxes id])
                                       ls ((:code (comp/model-of b)) id (:data b))]
                                   (when (seq ls) (concat ["" (str ";; data of " id)] ls))))
-                              (filter (fn [id] (let [b (get-in p [:boxes id])] (and (:data b) (:code (comp/model-of b))))) ids))))))
+                              (filter (fn [id] (let [b (get-in p [:boxes id])] (and (:data b) (:code (comp/model-of b))))) ids))
+                      ;; beside the data, the recipe that made it (keep!)
+                      (mapcat (fn [id]
+                                (when-let [r (get-in p [:boxes id :recipe])]
+                                  ["" (str ";; recipe of " id (when (:stale r) " (stale: the buffer changed since)"))
+                                   (str "(recipe " id " " (pr-str r) ")")]))
+                              ids)))))
 
 ;; ───── the work as data, pretty: what the Data view of the Code tab shows ─────
 ;; Collections that fit in the width stay on one line; the others put one entry per line, aligned.
 ;; Keys come in a readable order: :text :x :y first, :data last, and :b2 before :b10.
 
 (def edn-width 72)
-(def key-rank {:class 0 :text 1 :x 2 :y 3 :present 4 :view 5 :data 99})
+(def key-rank {:class 0 :text 1 :x 2 :y 3 :present 4 :view 5 :data 98 :recipe 99})
 
 (defn natural-key
   "A sort key for map keys: the rank of known keys, then the name split into text and numbers."

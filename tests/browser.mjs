@@ -9,6 +9,7 @@ import { corefns } from "./corefns.mjs";
 import { feedback } from "./feedback.mjs";
 import { canvasmsg } from "./canvasmsg.mjs";
 import { views } from "./views.mjs";
+import { recipe } from "./recipe.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const browser = await chromium.launch();
@@ -42,6 +43,7 @@ if (loaded) {
   try { await feedback(app, check); } catch (e) { check("the feedback tests ran", false, String(e && e.message || e)); }
   try { await canvasmsg(app, check); } catch (e) { check("the canvas message tests ran", false, String(e && e.message || e)); }
   try { await views(app, check); } catch (e) { check("the view tests ran", false, String(e && e.message || e)); }
+  try { await recipe(app, check); } catch (e) { check("the recipe tests ran", false, String(e && e.message || e)); }
   if (appErrors.length) check("no page errors during the gestures", false, appErrors.join("; "));
 }
 await browser.close();
