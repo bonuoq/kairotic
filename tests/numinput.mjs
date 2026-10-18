@@ -100,7 +100,10 @@ export async function numinput(page, check) {
     await page.press("#num-edit", "Enter");
     const t = await until(page, `(:text (get-in (current) [:boxes ${k}]))`, '"knob 0 1000 440"');
     check("the typed value stays in the knob's text", t === '"knob 0 1000 440"', t);
-    check("... it is its value now", (await until(page, state(k), "440")) === "440", await cljs(page, state(k)));
+    // its value as the knob holds it: what it shows, or the initial value of its text (rewriting the text
+    // gives the box a new node, so its engine state starts empty, as after a drag)
+    const kval = `(some-> (ctl-number (fid ${k}) (get-in (current) [:boxes ${k}])) typed-str)`;
+    check("... it is its value now", (await until(page, kval, '"440"')) === '"440"', await cljs(page, kval));
     check("... as one event of the history, as a drag", Number(await cljs(page, events)) === before + 1, await cljs(page, events));
 
     await openOn(page, kn);
