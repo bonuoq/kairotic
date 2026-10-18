@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Fix an issue with Claude**: each open issue in the Feedback tab has a **Claude ↗** link that opens Claude
+  Code on the web (claude.ai/code) with this repository and a prompt written for that issue — review it,
+  fix it on a branch with tests, open a pull request. You read the prompt and send it yourself.
 - **Canvas, freqt and score answer and obey messages** ([#26](https://github.com/bonuoq/kairotic/issues/26)):
   on the left inlet, edits — `[:stroke pts]`, `[:note t "c4" dur]`, `[:move :t1 dx dy]`, `[:stretch :t1 k]`,
   `[:erase :t1]`, `[:clear]`, `[:axis :y lo hi :log]`, `[:grid-x 0.25 [4]]`, `[:tuning "19-tet"]`, or several

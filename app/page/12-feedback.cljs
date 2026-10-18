@@ -105,6 +105,32 @@
 ;; the open issues, read from GitHub's public API (where the page may reach it)
 (defonce fb-issues (atom nil))
 
+;; ───── an issue, to review and fix with Claude ─────
+;; Each issue has a button that opens Claude Code on the web (claude.ai/code) with the repository and a
+;; prompt about that issue already written: you read it, change it if you like, and send it. Nothing is
+;; sent from here. The prompt stays short, because it travels in the address.
+
+(def claude-code-url "https://claude.ai/code")
+(def fb-repo-slug "bonuoq/kairotic")
+
+(defn claude-prompt
+  "What Claude is asked about an issue: to read it in full on GitHub, review it and fix it in a pull request."
+  [{:keys [number title url body labels]}]
+  (str "Review issue #" number " of " fb-repo-slug ": \"" title "\"" (when (seq labels) (str " (" (str/join ", " labels) ")")) ".\n"
+       url "\n\n"
+       (when (seq (str/trim (str body)))
+         (str "It says:\n" (ai/cut (str/trim (str body)) 900) "\n\n"))
+       "Read the whole issue and its comments on GitHub first. Then tell me what you understand and how you would "
+       "solve it; if it is clear, fix it on a new branch, following the conventions of the repository (CHANGELOG, "
+       "the guide in English and Spanish, tests in tests/), check that the tests pass, and open a pull request that "
+       "closes the issue."))
+
+(defn claude-url [issue]
+  (let [q (js/URLSearchParams.)]
+    (.set q "prompt" (claude-prompt issue))
+    (.set q "repositories" fb-repo-slug)
+    (str claude-code-url "?" (.toString q))))
+
 (defn render-fb-issues! []
   (let [is @fb-issues]
     (set! (.-innerHTML ($ "fb-list"))
@@ -114,7 +140,10 @@
             (empty? is) "<li class=\"soft\">None yet.</li>"
             :else (str (apply str (for [i is]
                                     (str "<li><a href=\"" (esc (:url i)) "\" target=\"_blank\" rel=\"noopener\">" (esc (:title i)) "</a>"
-                                         (when (seq (:labels i)) (str "<span class=\"lb\">" (esc (str/join " · " (:labels i))) "</span>")) "</li>")))
+                                         (when (seq (:labels i)) (str "<span class=\"lb\">" (esc (str/join " · " (:labels i))) "</span>"))
+                                         "<a class=\"fb-claude\" href=\"" (esc (claude-url i)) "\" target=\"_blank\" rel=\"noopener\""
+                                         " title=\"Open Claude Code with this repository and a prompt to review and fix this issue (you send it)\">Claude ↗</a>"
+                                         "</li>")))
                        "<li class=\"soft\"><a href=\"" fb-repo "/issues\" target=\"_blank\" rel=\"noopener\">all of them…</a></li>")))))
 
 (defn load-fb-issues! []
@@ -124,7 +153,7 @@
         (.then (fn [a]
                  (reset! fb-issues
                          (vec (for [i (array-seq a) :when (nil? (.-pull_request i))]
-                                {:title (.-title i) :url (.-html_url i)
+                                {:title (.-title i) :url (.-html_url i) :number (.-number i) :body (.-body i)
                                  :labels (vec (for [l (array-seq (.-labels i))] (.-name l)))})))))
         (.catch (fn [_] (reset! fb-issues :error)))
         (.finally (fn [] (render-fb-issues!))))))
