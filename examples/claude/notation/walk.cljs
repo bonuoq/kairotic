@@ -3,7 +3,7 @@
 {;; ── about ──
  :class "walk"
  :license "MPL-2.0"
- :doc "On a bang, a random walk of n notes on a major scale from start, written as a musical tree: a voice in 4/4 measures of eighth notes (the last one completed with a rest). Send it to a score, to mt boxes or to mt play."
+ :doc "On a bang, a random walk of n notes on a major scale from start, written as a musical tree: a voice in 4/4 measures of eighth notes (the last one completed with a rest). Send it to a freqt shown as a score, to mt boxes or to mt play."
  :usage "walk [notes] [start]"
  :io [1 1]
 
@@ -13,7 +13,7 @@
  ;; ── help ──
  :help {:inlets ["bang: a new melody"]
         :outlets ["a musical tree [:voice [:measure …] …]"]
-        :try "Connect it to a score and click a bang: each click, another walk. Then put an mt retrograde between them."}
+        :try "Connect it to a freqt shown as a score ((view :bN :score)) and click a bang: each click, another walk. Then put an mt retrograde between them."}
 
  ;; ── logic ──
  ;; A tree is plain data: notes are [:note {:pitch "e4" :dur 0.5}] and the functions of kairotic.mt

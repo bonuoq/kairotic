@@ -403,7 +403,7 @@
                              (when-let [[_ {:keys [t from axis pt]}] (last-shown id)]
                                (when-let [from (and from (number? t) (local-id from))] (cursor-at p from t "cur" true (or axis :x) pt))))
                   ("faust~") (params-overlay id b x y w)
-                  ("canvas" "freqt" "score") (when on
+                  ("canvas" "freqt") (when on
                                        (when-let [[at {:keys [t]}] (last-shown id)]
                                          (when (and (number? t) (< (- (eng/now) at) 2)) (cursor-at p id t "cur2" false))))
                   (when (own-view? b) (ctl-overlay id b x y))))]
@@ -501,7 +501,7 @@
                  (if (and (get-in p [:boxes a]) (get-in p [:boxes b]))
                    (let [[x1 y1] (out-xy p a o) [x2 y2] (in-xy p b i)
                          s (str (if (= sel [:line l]) " sel" "")
-                                (when (and (= o 2) (= "score" (klass (get-in p [:boxes a :text])))) " edits"))
+                                (when (and (= o 2) (= "freqt" (klass (get-in p [:boxes a :text])))) " edits"))
                          buf (and (= i 1) (music-classes (klass (get-in p [:boxes a :text]))))]
                      (str "<line class=\"wire" s (when buf " buffer") "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"></line>"
                           "<line class=\"wire-hit\" data-line=\"" idx "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"></line>"))

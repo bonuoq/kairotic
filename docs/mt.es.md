@@ -4,7 +4,7 @@
 
 Desde el Ensayo 19, la música en Kairotic se puede escribir como **datos**: un árbol en EDN, al estilo
 *hiccup* `[:etiqueta {atributos} & hijos]`. Es el idioma común de la notación, la composición y la CAC:
-cajas y componentes reciben árboles y devuelven árboles, y una `score`, un `freqt` o un `canvas` pueden
+cajas y componentes reciben árboles y devuelven árboles, y un `freqt` (como lienzo o como partitura) o un `canvas` pueden
 mostrar uno. La idea viene del *llll* de [bach](https://www.bachproject.net) para Max: listas que se
 anidan libremente. La diferencia es que aquí los atributos tienen nombre, así que cualquier dato extra
 (los *slots* de bach) es una clave más.
@@ -175,9 +175,9 @@ Un compás que no cuadra es un aviso (⚠ en la REPL y en la caja), no un error,
 | `mt seq` · `mt par` | une el árbol de la izquierda con el de la derecha, uno detrás de otro o a la vez |
 | `mt events` · `mt pitches` · `mt duration` | el árbol como datos planos |
 | `mt play [loop]` | toca el último árbol al recibir un bang: Hz (0) e ids de voz (1) para `synth~`, parámetros `[nombre valor]` (2), dinámicas y textos (3) |
-| `score` · `freqt` · `canvas` | un árbol en su entrada **se muestra en vivo** sobre su buffer; `(keep! :bN)` lo escribe en el buffer como un evento de la historia |
+| `freqt` · `canvas` | un árbol en su entrada **se muestra en vivo** sobre su buffer; `(keep! :bN)` lo escribe en el buffer como un evento de la historia |
 
-Una score muestra un árbol escrito en `:measure` como notación medida (grupos irregulares, acordes,
+Un freqt mostrado como partitura muestra un árbol escrito en `:measure` como notación medida (grupos irregulares, acordes,
 silencios, dinámicas, articulaciones, textos, cambios de compás). Sin compases muestra una aproximación
 sobre una rejilla de semicorcheas.
 
@@ -190,7 +190,7 @@ Las funciones están en `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt
 `mt/meter-level`, `mt/indispensability`, `mt/indispensability-at`, `mt/pulses`, `mt/thin`. En la REPL:
 
 - `(tree! :b2 [:voice …])` escribe un árbol en una caja tree;
-- `(as-tree :bN)` lee como árbol una caja tree, el árbol que muestra una score, o los trazos de un freqt;
+- `(as-tree :bN)` lee como árbol una caja tree, el árbol que muestra un freqt, o los trazos de un freqt;
 - `(keep! :bN)` y `(unlive! :bN)`.
 
 Un componente puede enviar árboles desde su `:receive` y usar `mt/…`. Ver el ejemplo
@@ -199,6 +199,6 @@ Un componente puede enviar árboles desde su `:receive` y usar `mt/…`. Ver el 
 ## Historia
 
 Un árbol vive en la obra como el texto de una caja `tree`, así que cada edición es un evento, con su
-diff, en la historia ramificada. Una score que muestra un árbol no ha cambiado: su buffer solo cambia
+diff, en la historia ramificada. Un freqt que muestra un árbol no ha cambiado: su buffer solo cambia
 con `keep!`. Próximos pasos: un árbol que sea la obra entera, con secciones cuyas ediciones sean diffs
 del propio árbol (nodo a nodo), y partituras que editen el árbol directamente.

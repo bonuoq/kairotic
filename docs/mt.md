@@ -4,7 +4,7 @@
 
 Since Study 19, music in Kairotic can be written as **data**: a tree in EDN, in the *hiccup* style
 `[:tag {attributes} & children]`. It is the common language of notation, composition and CAC: boxes
-and components take trees and return trees, and a `score`, a `freqt` or a `canvas` can show one.
+and components take trees and return trees, and a `freqt` (as a canvas or as a score) or a `canvas` can show one.
 The idea comes from the *llll* of [bach](https://www.bachproject.net) for Max: lists that nest freely.
 The difference is that here attributes have names, so any extra data (bach's *slots*) is one more key.
 
@@ -156,7 +156,7 @@ the text of the box write the difference with what it had (`mt/diff`). Two branc
 they change different nodes; if one changed a node and the other that node or something inside it,
 the merge says which.
 
-**Editing from the score.** A score that shows a tree coming from a tree box knows where each note is
+**Editing from the score.** A tree box shown as a score (⇄ in its header), or a `freqt` shown as a score that receives a tree from a tree box, knows where each note is
 written. Click a note, then ↑ ↓ (pitch, ⇧ an octave), + − (duration), ← → (previous, next), Delete (a
 rest), Esc. Each change is one `(tree-edit! …)`; a note written in a melody string is first written out
 as notes, in the same event. Notes that come from `:defs` are edited in their definition.
@@ -173,7 +173,7 @@ write.
 | `mt seq` · `mt par` | joins the left tree with the right one, one after the other or at once |
 | `mt events` · `mt pitches` · `mt duration` | the tree as plain data |
 | `mt play [loop]` | plays the last tree on a bang: Hz (0) and voice ids (1) for `synth~`, parameters `[name value]` (2), dynamics and texts (3) |
-| `score` · `freqt` · `canvas` | a tree on their inlet is **shown live** over their buffer; `(keep! :bN)` writes it into the buffer as one event of the history |
+| `freqt` · `canvas` | a tree on their inlet is **shown live** over their buffer; `(keep! :bN)` writes it into the buffer as one event of the history |
 
 A score shows a tree written in `:measure`s as measured notation (tuplets, chords, rests, dynamics,
 articulations, texts, changes of meter). Without measures it shows an approximation on a sixteenth grid.

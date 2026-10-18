@@ -124,28 +124,23 @@
 
    "freqt"
    {:inlets ["a time (or a click): it comes out on the left · an edit ([:note t \"c4\" dur], [:stroke [[t hz] …]], [:erase :t1], [:clear], [:tuning \"19-tet\"], [:grid-x 0.25 [4]]… or [:batch [edits]]): it changes the buffer, as one event · a question ([:read t], [:strokes], [:get :t1], [:count], [:end], [:data]): the answer comes out on the left · a musical tree: shown over it"]
-    :outlets ["the time, or the answer to a question" "the buffer, for a reader or reader~"]
+    :outlets ["the time, or the answer to a question" "the buffer, for a reader or reader~"
+              "shown as a score: the edits made on the notes of the tree it shows ([:edit …]), for the tree box"]
     :messages [["(note :bN t \"c4\" dur)" "a note"] ["(tuning :bN \"31-tet\" 261.63)" "a tuning"] ["(grid-x :bN 0.25 \"3+3+2\")" "a bar grid"]
                ["[:note 0 \"c4\" 1] · [:note 1 64 0.5]" "a note by message (pitch as a name or MIDI)"]
                ["[:move :t1 dt cents] · [:stretch :t1 k] · [:erase :t1] · [:clear]" "edit notes by message"]
                ["[:tuning \"19-tet\" 261.63] · [:grid-x 0.25 [4]]" "tuning and grid by message"]
                ["[:batch [[:clear] [:note 0 \"c4\" 1] …]]" "several edits, one event of the history"]
                ["[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]" "questions: the answer comes out on the left"]
-               ["⇄ score in the header · (view :bN :score)" "the same buffer, drawn as a score (⇄ canvas brings it back)"]
+               ["⇄ score in the header · (view :bN :score)" "the same buffer, drawn as an approximate score (⇄ canvas brings it back)"]
+               ["shown as a score, click a note of a tree" "↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest"]
+               ["(keep! :bN)" "writes the tree it shows into its buffer"]
                ["{ } in the header (or a double-click on its right) · (source :bN)" "the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event"]]
-    :see ["score" "canvas" "reader"]}
-
-   "score"
-   {:inlets ["a time (or a click) · a musical tree: it is shown, measured"]
-    :outlets ["the time" "the buffer, for a reader" "edits made on the notes of the tree it shows: [:edit …], for the tree box"]
-    :messages [["click a note of a tree" "↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest"] ["(keep! :bN)" "writes the tree it shows into its buffer"]
-               ["⇄ canvas in the header · (view :bN :canvas)" "the same buffer, drawn as a freqt (⇄ score brings it back)"]
-               ["{ } in the header · (source :bN)" "its buffer as EDN text, in the code window"]]
-    :try "A score is for a tree that comes transformed (tree → mt transpose 7 → score). To see and edit a tree box itself as a score, use ⇄ score in its header: no wire needed."
-    :see ["tree" "freqt" "mt"]}
+    :try "A freqt shown as a score is the viewer of a tree that comes transformed (tree → mt transpose 7 → freqt). To see and edit a tree box itself as a score, use ⇄ score in its header: no wire needed. (A box written \"score\", from older works, is a freqt shown as a score.)"
+    :see ["canvas" "reader" "tree"]}
 
    "reader"
-   {:inlets ["a position (along X, or Y with reader y; 0…1 with reader path)" "the buffer of a canvas, freqt or score"]
+   {:inlets ["a position (along X, or Y with reader y; 0…1 with reader path)" "the buffer of a canvas or freqt"]
     :outlets ["the values where the position crosses something (a list)" "their ids (sent first), for voices"]
     :see ["canvas" "reader~"]}
 
@@ -219,7 +214,7 @@
    "outlet~" {:inlets ["the signal that leaves the sub-patch by this outlet"] :see ["patch" "inlet~"]}
 
    "tree"
-   {:inlets ["a bang: sends the tree again · [:edit …] (from a score's edits outlet): changes it · a tree: replaces it"]
+   {:inlets ["a bang: sends the tree again · [:edit …] (from the edits outlet of a freqt shown as a score): changes it · a tree: replaces it"]
     :outlets ["the tree, expanded (melody strings become notes, [:use …] the fragments it names), whenever it changes"]
     :messages [["double-click" "edit its text (Ctrl+Enter applies): only the nodes that changed go into the history"]
                ["(tree! :bN [:voice …])" "writes a tree into it, as edits of the nodes that change"]
@@ -230,9 +225,9 @@
                ["(as-tree :bN)" "reads it back as data"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)"
                     "(code :b2 \"[:voice\\n [:measure {:meter [3 4]} \\\"e5/1\\\" [:tuplet {:ratio [3 2]} \\\"d5/.5 c5 b4\\\"] [:note {:pitch \\\"a4\\\" :dur 1 :dyn \\\"p\\\"}]]\\n [:measure \\\"g4/3\\\"]]\")"
-                    "(box :b3 \"score\" 40 190)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 2 :b2 0)")
+                    "(box :b3 \"freqt\" 40 190)" "(view :b3 :score)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 2 :b2 0)")
     :try "The score already shows the tree, measure by measure. Double-click the code, change a note and apply it (Ctrl+Enter): the score follows. Click a note of the score and press ↑: the change comes back to the tree by the dashed line. Or press ⇄ score in the header of the tree box: the same tree as a score, in one box."
-    :see ["mt" "score" "freqt"]}
+    :see ["mt" "freqt"]}
 
    "mt"
    {:inlets ["a tree: it comes out transformed (for play: a tree to play, then bang, stop)"
@@ -244,10 +239,10 @@
                ["mt seq · mt par" "the left tree followed by (or with) the right one"] ["mt events · mt pitches · mt duration" "the tree as data"]
                ["mt play [loop]" "plays it: Hz (0) and voice ids (1) for synth~, parameters (2), dynamics and texts (3)"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)" "(code :b2 \"\\\"c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2\\\"\")"
-                    "(box :b4 \"number 7\" 220 140)" "(box :b3 \"mt transpose 7\" 40 170)" "(box :b5 \"score\" 40 220)"
+                    "(box :b4 \"number 7\" 220 140)" "(box :b3 \"mt transpose 7\" 40 170)" "(box :b5 \"freqt\" 40 220)" "(view :b5 :score)"
                     "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b4 0 :b3 1)" "(connect :b3 0 :b5 0)")
     :try "Change the box text to mt retrograde, mt invert c4 or mt augment 2: the score follows. (The number on the right inlet takes effect with the next tree: click the bang.)"
-    :see ["tree" "score" "synth~"]}
+    :see ["tree" "freqt" "synth~"]}
 
    ;; ───── official packages (until they carry their own :help) ─────
    "adsr~"

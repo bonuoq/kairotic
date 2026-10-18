@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **No more `score` class: a score is a view of a `freqt`** ([discussion #30](https://github.com/bonuoq/kairotic/discussions/30)):
+  `score` and `freqt` were the same buffer with the same behaviour, so only `freqt` remains. It is drawn
+  as a canvas or as a score (`(view :bN :score)`, ⇄ in its header) and has the third outlet, **edits**,
+  for the tree it shows as a score. A box written `"score"` — in older works and histories, in code, or
+  typed — is read as a `freqt` shown as a score (a score drawn as a canvas becomes a plain freqt), so
+  nothing breaks. Help, docs, tutorials and Claude's guidance now use `freqt` + `(view … :score)`.
 - **One box, several views of its data; any buffer as text** ([discussion #30](https://github.com/bonuoq/kairotic/discussions/30)):
   a class can offer `:views`, and each box keeps the one it shows — `(view :b2 :score)`, or **⇄** in its
   header. A `tree` box can be shown as a score in the same box, and its notes (↑ ↓ + − Delete) edit its

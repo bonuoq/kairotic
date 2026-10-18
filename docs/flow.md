@@ -22,11 +22,13 @@ has a new text (Study 23). Moving a knob, whose value stays in its text, sends n
 
 ## Views that send their edits back
 
-A `score` that shows a tree has a third outlet, **edits**: when you change a note on it (click, then
-↑ ↓ + − ← → Delete), it sends `[:edit [[:attrs [0 1 2] {…}] …]]`. Connected back to the tree box —
-a **dashed line**, drawn for you when you connect a tree to a score with the mouse — the edits
+A `freqt` shown as a score that shows a tree has a third outlet, **edits**: when you change a note on
+it (click, then ↑ ↓ + − ← → Delete), it sends `[:edit [[:attrs [0 1 2] {…}] …]]`. Connected back to the tree box —
+a **dashed line**, drawn for you when you connect a tree to a freqt shown as a score with the mouse — the edits
 change the tree (as `tree-edit!`, one event of the history), and the tree, changed, comes back to the
 score. Nothing is coupled behind the patch: the loop is a line you see, in the patch and in the code.
+A tree box can also show itself as a score (⇄ in its header, `(view :bN :score)`): then its notes
+edit it directly, with no wire. The wired loop is for a score that shows the tree after `mt` boxes.
 
 The edits name the node where each note is written, so they work through transformations: a score
 showing `mt transpose 7` of a tree can edit the tree itself. Edits are messages like any other: they

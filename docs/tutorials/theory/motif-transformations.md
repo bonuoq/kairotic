@@ -18,11 +18,11 @@ Un árbol se envía solo cada vez que cambia, así que cada partitura lo sigue a
 
 ## The motif | El motivo
 @en
-The `tree` box holds the motif as EDN text: two bars of 4/4. It is connected to a `score`, which draws it bar by bar as soon as it arrives (the bang only sends it again). (The second bar has no `:meter`: it keeps the one before.)
+The `tree` box holds the motif as EDN text: two bars of 4/4. It is connected to a `freqt` shown as a score, which draws it bar by bar as soon as it arrives (the bang only sends it again). (The second bar has no `:meter`: it keeps the one before.)
 
 Double-click the code to edit it (Ctrl+Enter applies), or write a new one from the REPL with `(tree! :b2 [:voice [:measure {:meter [3 4]} "g4/1 a4 b4"]])`.
 @es
-La caja `tree` contiene el motivo como texto EDN: dos compases de 4/4. Está conectada a una `score`, que lo dibuja compás a compás en cuanto llega (el bang solo lo vuelve a enviar). (El segundo compás no lleva `:meter`: conserva el anterior.)
+La caja `tree` contiene el motivo como texto EDN: dos compases de 4/4. Está conectada a un `freqt` mostrado como partitura, que lo dibuja compás a compás en cuanto llega (el bang solo lo vuelve a enviar). (El segundo compás no lleva `:meter`: conserva el anterior.)
 
 Haz doble clic en el código para editarlo (Ctrl+Intro aplica), o escribe uno nuevo desde la REPL con `(tree! :b2 [:voice [:measure {:meter [3 4]} "g4/1 a4 b4"]])`.
 @try.en
@@ -33,7 +33,8 @@ Cambia una nota en el código y aplícalo: la partitura lo sigue.
 (box :b1 "bang" 40 20)
 (box :b2 "tree" 40 60)
 (tree! :b2 [:voice {:name "motif"} [:measure {:meter [4 4]} "c4/1 d4/.5 e4 g4/1 e4"] [:measure "f4/.5 e4 d4 c4 d4/2"]])
-(box :b3 "score" 40 190)
+(box :b3 "freqt" 40 190)
+(view :b3 :score)
 (connect :b1 0 :b2 0)
 (connect :b2 0 :b3 0)
 ```
@@ -53,7 +54,8 @@ El número está en semitonos; negativo baja, y los decimales dan microtonos (`m
 Haz ⌘/Ctrl+clic en la caja `mt` y cambia 7 por -12 en el inspector: la segunda partitura lo sigue.
 ```kairotic
 (box :b4 "mt transpose 7" 480 150)
-(box :b5 "score" 480 190)
+(box :b5 "freqt" 480 190)
+(view :b5 :score)
 (connect :b2 0 :b4 0)
 (connect :b4 0 :b5 0)
 ```
