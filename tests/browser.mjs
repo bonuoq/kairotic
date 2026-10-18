@@ -7,6 +7,7 @@ import { editor } from "./editor.mjs";
 import { jam } from "./jam.mjs";
 import { corefns } from "./corefns.mjs";
 import { feedback } from "./feedback.mjs";
+import { canvasmsg } from "./canvasmsg.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const browser = await chromium.launch();
@@ -38,6 +39,7 @@ if (loaded) {
   try { await jam(app, check); } catch (e) { check("the jam tests ran", false, String(e && e.message || e)); }
   try { await corefns(app, check); } catch (e) { check("the function box tests ran", false, String(e && e.message || e)); }
   try { await feedback(app, check); } catch (e) { check("the feedback tests ran", false, String(e && e.message || e)); }
+  try { await canvasmsg(app, check); } catch (e) { check("the canvas message tests ran", false, String(e && e.message || e)); }
   if (appErrors.length) check("no page errors during the gestures", false, appErrors.join("; "));
 }
 await browser.close();

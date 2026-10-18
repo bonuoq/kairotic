@@ -5,6 +5,12 @@
 - **Fix an issue with Claude**: each open issue in the Feedback tab has a **Claude ↗** link that opens Claude
   Code on the web (claude.ai/code) with this repository and a prompt written for that issue — review it,
   fix it on a branch with tests, open a pull request. You read the prompt and send it yourself.
+- **Canvas, freqt and score answer and obey messages** ([#26](https://github.com/bonuoq/kairotic/issues/26)):
+  on the left inlet, edits — `[:stroke pts]`, `[:note t "c4" dur]`, `[:move :t1 dx dy]`, `[:stretch :t1 k]`,
+  `[:erase :t1]`, `[:clear]`, `[:axis :y lo hi :log]`, `[:grid-x 0.25 [4]]`, `[:tuning "19-tet"]`, or several
+  in `[:batch [...]]` — change the buffer as one event of the history (`canvas-edit!`); questions —
+  `[:read x]`, `[:read :y v]`, `[:strokes]`, `[:get :t1]`, `[:count]`, `[:end]`, `[:range]`, `[:data]` —
+  are answered on the left outlet. Numbers and musical trees work as before.
 - **`reader~` no longer freezes the page** (the patch of [discussion #22](https://github.com/bonuoq/kairotic/discussions/22)):
   its table of a canvas was sampled again after every change of the history (a knob released: about
   0.6 s per `reader~`, 2.4 s with four), because the canvas, rebuilt, was a new object. Buffers are now

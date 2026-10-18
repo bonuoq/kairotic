@@ -284,7 +284,7 @@
   [id] (swap! msg-edits (fn [m] (-> m (update :stopped disj id) (dissoc id)))) :ok)
 
 (defn tree-effect!
-  "A tree box asked (by a message) to change: done as a gesture, unless it keeps happening."
+  "A tree box or a canvas asked (by a message) to change: done as a gesture, unless it keeps happening."
   [f [k x] _]
   (js/setTimeout
    (fn []
@@ -292,7 +292,7 @@
            times (filterv (fn [t] (> t (- now 10000))) (get @msg-edits id))]
        (cond
          (not (get-in (current) [:boxes id]))
-         (repl-print! "err" (esc (str "; " (name f) " is inside a sub-patch: edits by message reach only tree boxes of the patch on screen")))
+         (repl-print! "err" (esc (str "; " (name f) " is inside a sub-patch: edits by message reach only the boxes of the patch on screen")))
          (contains? (:stopped @msg-edits) id) nil
          (>= (count times) 20)
          (do (swap! msg-edits update :stopped (fnil conj #{}) id)
@@ -302,6 +302,7 @@
              (case k
                :tree-edit (gesture! (str "(tree-edit! " id " " (str/join " " (map pr-str x)) ")"))
                :tree-set (gesture! (str "(tree! " id " " (pr-str x) ")"))
+               :canvas-edit (gesture! (str "(canvas-edit! " id " " (pr-str x) ")"))
                nil)))))
    0))
 

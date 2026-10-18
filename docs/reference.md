@@ -86,7 +86,7 @@ See also: `*`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
+An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
 
 **Inlets** 
 
@@ -143,21 +143,26 @@ See also: `msg`, `loadbang`, `metro`
 
 ### canvas
 
-Graphic buffer for any numeric data: strokes in a plane with axes of any range, linear or log ((axis :b1 :y -1 1)). A number on the inlet (or a click) comes out on the left; the right outlet is the buffer for a reader, which can read it along X or Y.
+Graphic buffer for any numeric data: strokes in a plane with axes of any range, linear or log ((axis :b1 :y -1 1)). A number on the inlet (or a click) comes out on the left; edits on the inlet ([:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read x], [:strokes], [:get :t1], [:data]) are answered on the left. The right outlet is the buffer for a reader, which can read it along X or Y.
 
 **Inlets** 
 
-0. a position (or a click): it comes out on the left
+0. a position (or a click): it comes out on the left · an edit ([:stroke [[x y] …]], [:erase :t1], [:clear], [:axis :y 0 1]… or [:batch [edits]]): it changes the buffer, as one event · a question ([:read x], [:strokes], [:get :t1], [:count], [:end], [:range], [:data]): the answer comes out on the left · a musical tree: shown over it
 
 **Outlets** 
 
-0. the position
+0. the position, or the answer to a question
 1. the buffer, for a reader or reader~ (on their right inlet)
 
 **Messages and gestures**
 
 - `(axis :bN :x -1 1)`: range of an axis, :log for logarithmic
 - `(stroke :bN [[x y] …])`: draws
+- `[:stroke [[0 0] [1 1]]] · [:stroke :t3 pts]`: a stroke by message (a new id, or that one)
+- `[:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear]`: edit strokes by message
+- `[:axis :x lo hi] · [:axis :y lo hi :log] · [:grid-y step]`: axes and grid by message
+- `[:batch [[:clear] [:stroke pts] …]]`: several edits, one event of the history
+- `[:read 0.5] · [:read :y 0.2] · [:strokes] · [:get :t1] · [:count] · [:range] · [:data]`: questions: the answer comes out on the left
 
 **Try:** Press ▶: the reader goes along X and prints the height of the stroke. Draw another stroke and listen to the list grow.
 
@@ -260,15 +265,15 @@ See also: `knob`, `component`, `script`
 
 ### freqt
 
-Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids. A number on the inlet (or a click) comes out on the left; the right outlet is the buffer for a reader.
+Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids. A number on the inlet (or a click) comes out on the left; edits on the inlet ([:note t "c4" dur], [:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read t], [:strokes], [:end], [:data]) are answered on the left. The right outlet is the buffer for a reader.
 
 **Inlets** 
 
-0. a time (or a click): it comes out on the left
+0. a time (or a click): it comes out on the left · an edit ([:note t "c4" dur], [:stroke [[t hz] …]], [:erase :t1], [:clear], [:tuning "19-tet"], [:grid-x 0.25 [4]]… or [:batch [edits]]): it changes the buffer, as one event · a question ([:read t], [:strokes], [:get :t1], [:count], [:end], [:data]): the answer comes out on the left · a musical tree: shown over it
 
 **Outlets** 
 
-0. the time
+0. the time, or the answer to a question
 1. the buffer, for a reader or reader~
 
 **Messages and gestures**
@@ -276,6 +281,11 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 - `(note :bN t "c4" dur)`: a note
 - `(tuning :bN "31-tet" 261.63)`: a tuning
 - `(grid-x :bN 0.25 "3+3+2")`: a bar grid
+- `[:note 0 "c4" 1] · [:note 1 64 0.5]`: a note by message (pitch as a name or MIDI)
+- `[:move :t1 dt cents] · [:stretch :t1 k] · [:erase :t1] · [:clear]`: edit notes by message
+- `[:tuning "19-tet" 261.63] · [:grid-x 0.25 [4]]`: tuning and grid by message
+- `[:batch [[:clear] [:note 0 "c4" 1] …]]`: several edits, one event of the history
+- `[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]`: questions: the answer comes out on the left
 
 See also: `score`, `canvas`, `reader`
 
@@ -564,7 +574,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
+Stereo panning with equal power.
 
 **Inlets** 
 
@@ -763,7 +773,7 @@ See also: `phasor~`, `osc~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
+A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
 
 **Inlets** 
 
@@ -780,7 +790,7 @@ See also: `pan~`, `reader`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
+Polyphonic triangle-wave synthesizer, one voice per id.
 
 **Inlets** 
 
