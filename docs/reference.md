@@ -266,7 +266,7 @@ See also: `knob`, `component`, `script`
 
 ### freqt
 
-Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids. A number on the inlet (or a click) comes out on the left; edits on the inlet ([:note t "c4" dur], [:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read t], [:strokes], [:end], [:data]) are answered on the left. The right outlet is the buffer for a reader.
+Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids, drawn as a canvas or as a score ((view :b1 :score), ⇄ in its header). A number on the inlet (or a click) comes out on the left; edits on the inlet ([:note t "c4" dur], [:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read t], [:strokes], [:end], [:data]) are answered on the left. The second outlet is the buffer for a reader. A musical tree on the inlet is shown over it, measured; shown as a score, the edits you make on that tree's notes leave by the third outlet ([:edit …]): connect it back to the tree box.
 
 **Inlets** 
 
@@ -276,6 +276,7 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 
 0. the time, or the answer to a question
 1. the buffer, for a reader or reader~
+2. shown as a score: the edits made on the notes of the tree it shows ([:edit …]), for the tree box
 
 **Messages and gestures**
 
@@ -287,10 +288,14 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 - `[:tuning "19-tet" 261.63] · [:grid-x 0.25 [4]]`: tuning and grid by message
 - `[:batch [[:clear] [:note 0 "c4" 1] …]]`: several edits, one event of the history
 - `[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]`: questions: the answer comes out on the left
-- `⇄ score in the header · (view :bN :score)`: the same buffer, drawn as a score (⇄ canvas brings it back)
+- `⇄ score in the header · (view :bN :score)`: the same buffer, drawn as an approximate score (⇄ canvas brings it back)
+- `shown as a score, click a note of a tree`: ↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest
+- `(keep! :bN)`: writes the tree it shows into its buffer
 - `{ } in the header (or a double-click on its right) · (source :bN)`: the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event
 
-See also: `score`, `canvas`, `reader`
+**Try:** A freqt shown as a score is the viewer of a tree that comes transformed (tree → mt transpose 7 → freqt). To see and edit a tree box itself as a score, use ⇄ score in its header: no wire needed. (A box written "score", from older works, is a freqt shown as a score.)
+
+See also: `canvas`, `reader`, `tree`
 
 ### ftom
 
@@ -458,14 +463,15 @@ Operations on musical trees: a tree on the left comes out transformed. transpose
 (code :b2 "\"c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2\"")
 (box :b4 "number 7" 220 140)
 (box :b3 "mt transpose 7" 40 170)
-(box :b5 "score" 40 220)
+(box :b5 "freqt" 40 220)
+(view :b5 :score)
 (connect :b1 0 :b2 0)
 (connect :b2 0 :b3 0)
 (connect :b4 0 :b3 1)
 (connect :b3 0 :b5 0)
 ```
 
-See also: `tree`, `score`, `synth~`
+See also: `tree`, `freqt`, `synth~`
 
 ### mtof
 
@@ -667,12 +673,12 @@ See also: `metro`, `reader`, `phasor~`
 
 `reader [x|y|path [stroke]]`
 
-Reads the buffer (canvas, freqt, score) connected to its right inlet at the position that comes in on the left — along X, or along Y with `reader y`: ids on the right and the values on the left (every crossing). With `reader path [stroke]` a position from 0 to 1 travels along a stroke in the order it was drawn and gives [x y].
+Reads the buffer (canvas, freqt) connected to its right inlet at the position that comes in on the left — along X, or along Y with `reader y`: ids on the right and the values on the left (every crossing). With `reader path [stroke]` a position from 0 to 1 travels along a stroke in the order it was drawn and gives [x y].
 
 **Inlets** 
 
 0. a position (along X, or Y with reader y; 0…1 with reader path)
-1. the buffer of a canvas, freqt or score
+1. the buffer of a canvas or freqt
 
 **Outlets** 
 
@@ -715,31 +721,6 @@ Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phaso
 ```
 
 See also: `phasor~`, `adsr~`, `freqt`, `reader`
-
-### score
-
-The same buffer as a freqt, drawn as an approximate score; or the musical tree it receives, measured. Its third outlet sends the edits you make on that tree's notes ([:edit …]): connect it back to the tree box.
-
-**Inlets** 
-
-0. a time (or a click) · a musical tree: it is shown, measured
-
-**Outlets** 
-
-0. the time
-1. the buffer, for a reader
-2. edits made on the notes of the tree it shows: [:edit …], for the tree box
-
-**Messages and gestures**
-
-- `click a note of a tree`: ↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest
-- `(keep! :bN)`: writes the tree it shows into its buffer
-- `⇄ canvas in the header · (view :bN :canvas)`: the same buffer, drawn as a freqt (⇄ score brings it back)
-- `{ } in the header · (source :bN)`: its buffer as EDN text, in the code window
-
-**Try:** A score is for a tree that comes transformed (tree → mt transpose 7 → score). To see and edit a tree box itself as a score, use ⇄ score in its header: no wire needed.
-
-See also: `tree`, `freqt`, `mt`
 
 ### script
 
@@ -819,7 +800,7 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 
 **Inlets** 
 
-0. a bang: sends the tree again · [:edit …] (from a score's edits outlet): changes it · a tree: replaces it
+0. a bang: sends the tree again · [:edit …] (from the edits outlet of a freqt shown as a score): changes it · a tree: replaces it
 
 **Outlets** 
 
@@ -841,11 +822,12 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 (box :b1 "bang" 40 20)
 (box :b2 "tree" 40 60)
 (code :b2 "[:voice\n [:measure {:meter [3 4]} \"e5/1\" [:tuplet {:ratio [3 2]} \"d5/.5 c5 b4\"] [:note {:pitch \"a4\" :dur 1 :dyn \"p\"}]]\n [:measure \"g4/3\"]]")
-(box :b3 "score" 40 190)
+(box :b3 "freqt" 40 190)
+(view :b3 :score)
 (connect :b1 0 :b2 0)
 (connect :b2 0 :b3 0)
 (connect :b3 2 :b2 0)
 ```
 
-See also: `mt`, `score`, `freqt`
+See also: `mt`, `freqt`
 
