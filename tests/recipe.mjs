@@ -38,7 +38,6 @@ export async function recipe(page, check) {
   check("a kept tree is not shown live again", (await cljs(page, `(boolean (live-tree ${sc}))`)) === "false");
   check("while unchanged, as-tree gives the tree itself (measured)", (await cljs(page, `(mt/measured? (as-tree ${sc}))`)) === "true");
   check("the work's code writes the recipe", (await cljs(page, `(str/includes? (patch->code (current)) "(recipe ${sc} ")`)) === "true");
-  check("... and builds it back", (await cljs(page, `(boolean (get-in (build (patch->code (current))) [:boxes ${sc} :recipe :tree]))`)) === "true");
 
   const n = await cljs(page, `(count (:strokes (box-data ${sc})))`);
   await cljs(page, `(send! ${sc} [:stroke [[5 440] [6 440]]])`);
@@ -49,5 +48,7 @@ export async function recipe(page, check) {
   check("remake! writes the recipe's tree back", (await cljs(page, `(count (:strokes (box-data ${sc})))`)) === n);
   check("... and the recipe is fresh again", (await cljs(page, `(boolean (:stale (recipe ${sc})))`)) === "false");
   check("a box without a recipe refuses remake!", /ERR/.test(await cljs(page, `(remake! ${tr})`)));
+  // last: building the code re-creates the boxes, and the tree box sends its tree again
+  check("the work's code builds the recipe back", (await cljs(page, `(boolean (get-in (build (patch->code (current))) [:boxes ${sc} :recipe :tree]))`)) === "true");
   await cljs(page, `(delete ${tb} ${tr} ${sc})`);
 }
