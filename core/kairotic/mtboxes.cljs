@@ -2,7 +2,7 @@
 ;; Kairotic · boxes for musical trees (Study 19)
 ;;   tree   a code box whose source is a tree in EDN (kairotic.mt): a bang sends it
 ;;   mt     operations on trees: mt transpose 7 · mt invert c4 · mt retrograde · mt augment 2 ·
-;;          mt rotate 1 · mt canon 2 7 · mt seq · mt par · mt events · mt pitches · mt duration · mt play
+;;          mt rotate 1 · mt canon 2 7 · mt thin 0.5 · mt seq · mt par · mt events · mt pitches · mt duration · mt play
 ;; A canvas, freqt or score that receives a tree shows it (kairotic.components/canvas-box).
 
 (ns kairotic.mtboxes
@@ -86,7 +86,7 @@
 
 (defn op-of [args] (some-> (first args) name))
 
-(def two-inlets #{"transpose" "invert" "augment" "rotate" "canon" "seq" "par"})
+(def two-inlets #{"transpose" "invert" "augment" "rotate" "canon" "thin" "seq" "par"})
 
 (defn num-arg [x d] (if (number? x) x d))
 
@@ -100,6 +100,7 @@
       "retrograde" (mt/retrograde t)
       "augment" (mt/augment (num-arg (or r a) 2) t)
       "rotate" (mt/rotate (num-arg (or r a) 1) t)
+      "thin" (mt/thin (num-arg (or r a) 0.5) t)
       "canon" (mt/canon (num-arg (or r a) 1) (num-arg b 0) t)
       "seq" [:seq (mt/expand t) (if (mt/tree? r) (mt/expand r) [:seq])]
       "par" [:par (mt/expand t) (if (mt/tree? r) (mt/expand r) [:seq])]
@@ -152,7 +153,7 @@
       :else {:state st})))
 
 (comp/define! "mt"
-  {:doc "Operations on musical trees: a tree on the left comes out transformed. transpose n · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval] · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks)."
+  {:doc "Operations on musical trees: a tree on the left comes out transformed. transpose n · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval] · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks)."
    :usage "mt <operation> [arguments]"
    :io (fn [b] (let [op (op-of (:args b))]
                  (cond (= op "play") [1 4]

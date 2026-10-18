@@ -33,7 +33,7 @@ seconds when the tree is played.
 | tag | children are… |
 |---|---|
 | `:seq` `:voice` `:section` | one after another |
-| `:measure {:meter [3 4]}` | one after another; a measure without `:meter` keeps the previous one |
+| `:measure {:meter [3 4]}` | one after another; a measure without `:meter` keeps the previous one; `:groups [2 3]` or `"5/8[2+3]"` groups its units |
 | `:tuplet {:ratio [3 2]}` | one after another, 3 in the time of 2 |
 | `:par` `:piece` | at the same time |
 | `:chord {:dur 1}` | notes at the same time, lasting the chord's duration |
@@ -100,6 +100,32 @@ a cell can grow inside itself:
 
 The notes of an `:rtm` are not edited one by one from a score: edit its `:shares` or `:pitches`.
 
+
+## Meters, groups and metric weight
+
+A measure can say how its units group: `{:meter [5 8] :groups [2 3]}`, or written as it reads,
+`{:meter "5/8[2+3]"}` (also `"7/8[2+2+3]"`, `"3/4"`). A measure without a meter keeps the previous
+meter and its groups; a new meter without groups has none. The groups must add up to the meter.
+
+The score writes a grouped meter as its groups (2+3 over 8) and **beams** eighths and shorter notes
+by group, or, without groups, by beat: quarters in 2/4, 3/4 and 4/4, dotted quarters in 6/8, 9/8 and
+12/8, the whole bar in 3/8. A tuplet beams its own notes. Rests break beams.
+
+**Metric weight** (after [Rastrum](https://github.com/smoge/Rastrum) and Clarence Barlow) is
+composition data, not notation:
+
+| function | |
+|---|---|
+| `(mt/meter-level meter beat)` | 0 at the bar, 1 at a group, deeper for each division: `[4 4]` in eighths → 0 3 2 3 1 3 2 3 |
+| `(mt/indispensability meter [pulse])` | Barlow's ranking of every pulse (the highest, the downbeat): `[3 4]` in eighths → 5 0 3 1 4 2, `[6 8]` → 5 0 2 4 1 3 |
+| `(mt/indispensability-at meter beat [pulse])` · `(mt/pulses meter [pulse])` | one position · where the pulses are, in beats |
+| `(mt/thin amount tree)` · box `mt thin 0.5` | keeps, in every measure, the notes on its strongest positions (a share of them, or how many) and turns the others into rests |
+
+3/4 and 6/8 hold the same six eighths and rank them differently, which is Barlow's argument: `mt thin 2`
+keeps the first and fifth eighths of a 3/4 bar, and the first and fourth of a 6/8 one. A meter can be
+given as `[p q]`, as text `"5/8[2+3]"` or as a measure. For a grouped meter Kairotic ranks by metric
+level, then by Barlow inside each group, then the earlier group.
+
 ## The work, its history and its score (Study 20)
 
 **A work as a tree.** In a `:piece` (and in a `:section`), voices and `:par` sound together from its
@@ -143,7 +169,7 @@ write.
 | box | |
 |---|---|
 | `tree` | holds a tree as EDN text (double-click to edit). A bang sends it. Reading EDN evaluates nothing, so a tree box is safe in a shared room |
-| `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` | transformations (the right inlet changes the amount) |
+| `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` · `mt thin 0.5` | transformations (the right inlet changes the amount) |
 | `mt seq` · `mt par` | joins the left tree with the right one, one after the other or at once |
 | `mt events` · `mt pitches` · `mt duration` | the tree as plain data |
 | `mt play [loop]` | plays the last tree on a bang: Hz (0) and voice ids (1) for `synth~`, parameters `[name value]` (2), dynamics and texts (3) |
@@ -157,7 +183,8 @@ articulations, texts, changes of meter). Without measures it shows an approximat
 The functions are in `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt/augment`, `mt/rotate`,
 `mt/canon`, `mt/expand`, `mt/events`, `mt/notes`, `mt/pitches`, `mt/duration`, `mt/problems`,
 `mt/pp`, `mt/->mei`, `mt/->strokes`, `mt/<-strokes`, `mt/schedule`, and for proportional rhythm
-`mt/cell-retrograde`, `mt/cell-rotate`, `mt/cell-at`, `mt/cell-replace-at`. At the REPL:
+`mt/cell-retrograde`, `mt/cell-rotate`, `mt/cell-at`, `mt/cell-replace-at`, and for meters `mt/meter-of`,
+`mt/meter-level`, `mt/indispensability`, `mt/indispensability-at`, `mt/pulses`, `mt/thin`. At the REPL:
 
 - `(tree! :b2 [:voice …])` writes a tree into a tree box;
 - `(as-tree :bN)` reads a tree box, or the tree a score is showing, or a freqt's strokes, as a tree;

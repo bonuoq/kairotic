@@ -59,3 +59,42 @@
     (t/eq "cell-replace-at grows a cell inside itself"
           (mt/cell-replace-at [2 [2 [1 1 1]] 3] [1] [2 [2 [1 1 1]] 3])
           [2 [2 [2 [2 [1 1 1]] 3]] 3])))
+
+(t/run! "grouped meters and metric weight"
+  (fn []
+    (let [eighths (fn [m n] (mapv (fn [i] (mt/meter-level m (* i 0.5))) (range n)))
+          mei (fn [tree] (:mei (mt/->mei tree "g")))
+          beams (fn [x] (count (re-seq #"<beam>" x)))]
+      (t/eq "a meter written as text" (mt/parse-meter "5/8[2+3]") {:meter [5 8] :groups [2 3]})
+      (t/eq "metric levels of 4/4 in eighths" (eighths [4 4] 8) [0 3 2 3 1 3 2 3])
+      (t/eq "metric levels of 6/8" (eighths [6 8] 6) [0 2 2 1 2 2])
+      (t/eq "metric levels of 3/4" (eighths [3 4] 6) [0 2 1 2 1 2])
+      (t/eq "the second group of 5/8[2+3] starts a group" (mt/meter-level "5/8[2+3]" 1) 1)
+      (t/eq "…and the same place in 5/8[3+2] is inside one" (mt/meter-level "5/8[3+2]" 1) 2)
+      (t/eq "Barlow: 3/4 in eighths" (mt/indispensability [3 4] 0.5) [5 0 3 1 4 2])
+      (t/eq "Barlow: 6/8 ranks the same eighths differently" (mt/indispensability [6 8]) [5 0 2 4 1 3])
+      (t/eq "Barlow: 5/8 and 7/8" [(mt/indispensability [5 8]) (mt/indispensability [7 8])] [[4 0 3 1 2] [6 0 4 2 5 1 3]])
+      (t/eq "Barlow: 4/4 in sixteenths" (mt/indispensability [4 4] 0.25) [15 0 8 4 12 2 10 6 14 1 9 5 13 3 11 7])
+      (t/eq "a grouped meter ranks by level, then inside its groups" (mt/indispensability "5/8[2+3]") [4 1 3 0 2])
+      (t/eq "indispensability at a position" [(mt/indispensability-at [3 4] 0) (mt/indispensability-at [3 4] 2) (mt/indispensability-at [3 4] 0.5)] [2 1 nil])
+      (t/eq "pulses" (mt/pulses [3 4] 0.5) [0 0.5 1 1.5 2 2.5])
+      (t/eq "a measure inherits meter and groups"
+            (mt/attrs (second (mt/kids (mt/with-meters [:voice [:measure {:meter "5/8[2+3]"} "c4/2.5"] [:measure "c4/2.5"]]))))
+            {:meter [5 8] :groups [2 3]})
+      (t/eq "a written meter is read on expansion" (mt/attrs (mt/expand [:measure {:meter "7/8[2+2+3]"} "c4/3.5"])) {:meter [7 8] :groups [2 2 3]})
+      (t/is "groups that do not add up are an error" (seq (mt/errors [:voice [:measure {:meter [5 8] :groups [2 2]} "c4/2.5"]])))
+      (t/is "a grouped measure that adds up has no problems" (empty? (mt/problems [:voice [:measure {:meter "5/8[2+3]"} "c4/1 d4/1.5"]])))
+      (t/eq "an :rtm fills a measure with a written meter" (mt/duration [:measure {:meter "6/8"} [:rtm {:shares [1 1]}]]) 3)
+      (let [x (mei [:voice [:measure {:meter "5/8[2+3]"} "c4/.5 d4 e4 f4 g4"]])]
+        (t/is "a grouped meter is written 2+3" (re-find #"meter.count=\"2\+3\" meter.unit=\"8\"" x))
+        (t/eq "eighths beamed by group: 2+3" (beams x) 2))
+      (t/eq "4/4: eighths beamed by beat" (beams (mei [:voice [:measure {:meter [4 4]} "c4/.5 d4 e4 f4 g4/2"]])) 2)
+      (t/eq "6/8: eighths beamed in threes" (beams (mei [:voice [:measure {:meter [6 8]} "c4/.5 d4 e4 f4 g4 a4"]])) 2)
+      (t/is "a triplet of eighths is beamed inside its bracket"
+            (re-find #"<tuplet[^>]*><beam>" (mei [:voice [:measure {:meter [2 4]} [:tuplet {:ratio [3 2]} "c4/.5 d4 e4"] "f4/1"]])))
+      (t/eq "thin keeps the strongest beats" (mt/pitches (mt/thin 2 [:measure {:meter [4 4]} "c4/1 d4 e4 f4"])) ["c4" "e4"])
+      (t/eq "thinning keeps the duration" (mt/duration (mt/thin 0.5 [:measure {:meter [4 4]} "c4/1 d4 e4 f4"])) 4)
+      (let [six "c4/.5 d4 e4 f4 g4 a4"]
+        (t/eq "thin in 3/4 and in 6/8 keeps different eighths"
+              [(mt/pitches (mt/thin 2 [:measure {:meter [3 4]} six])) (mt/pitches (mt/thin 2 [:measure {:meter [6 8]} six]))]
+              [["c4" "g4"] ["c4" "f4"]])))))

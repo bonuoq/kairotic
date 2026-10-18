@@ -34,7 +34,7 @@ en segundos al tocar el árbol.
 | etiqueta | sus hijos van… |
 |---|---|
 | `:seq` `:voice` `:section` | uno detrás de otro |
-| `:measure {:meter [3 4]}` | uno detrás de otro; un compás sin `:meter` conserva el anterior |
+| `:measure {:meter [3 4]}` | uno detrás de otro; un compás sin `:meter` conserva el anterior; `:groups [2 3]` o `"5/8[2+3]"` agrupa sus unidades |
 | `:tuplet {:ratio [3 2]}` | uno detrás de otro, 3 en el tiempo de 2 |
 | `:par` `:piece` | a la vez |
 | `:chord {:dur 1}` | notas a la vez, con la duración del acorde |
@@ -102,6 +102,32 @@ dentro de sí misma:
 
 Las notas de un `:rtm` no se editan una a una desde una partitura: edita sus `:shares` o `:pitches`.
 
+
+## Compases, grupos y peso métrico
+
+Un compás puede decir cómo se agrupan sus unidades: `{:meter [5 8] :groups [2 3]}`, o escrito como se
+lee, `{:meter "5/8[2+3]"}` (también `"7/8[2+2+3]"`, `"3/4"`). Un compás sin `:meter` conserva el compás
+anterior y sus grupos; un compás nuevo sin grupos no los tiene. Los grupos tienen que sumar el compás.
+
+La partitura escribe un compás agrupado como sus grupos (2+3 sobre 8) y **barra** las corcheas y figuras
+más breves por grupo o, sin grupos, por pulso: negras en 2/4, 3/4 y 4/4, negras con puntillo en 6/8, 9/8
+y 12/8, el compás entero en 3/8. Un grupo irregular barra sus propias notas. Los silencios cortan la barra.
+
+**El peso métrico** (a partir de [Rastrum](https://github.com/smoge/Rastrum) y de Clarence Barlow) es un
+dato de composición, no de notación:
+
+| función | |
+|---|---|
+| `(mt/meter-level compás pulso)` | 0 en el compás, 1 en un grupo, más profundo en cada división: `[4 4]` en corcheas → 0 3 2 3 1 3 2 3 |
+| `(mt/indispensability compás [pulso])` | la ordenación de Barlow de cada pulso (la más alta, la parte fuerte): `[3 4]` en corcheas → 5 0 3 1 4 2, `[6 8]` → 5 0 2 4 1 3 |
+| `(mt/indispensability-at compás pulso [pulso])` · `(mt/pulses compás [pulso])` | una posición · dónde están los pulsos, en pulsos |
+| `(mt/thin cantidad árbol)` · caja `mt thin 0.5` | conserva, en cada compás, las notas de sus posiciones más fuertes (una proporción, o cuántas) y hace silencio de las demás |
+
+3/4 y 6/8 tienen las mismas seis corcheas y las ordenan distinto, que es el argumento de Barlow: `mt thin 2`
+conserva la primera y la quinta corchea de un 3/4, y la primera y la cuarta de un 6/8. Un compás se puede
+dar como `[p q]`, como texto `"5/8[2+3]"` o como un compás del árbol. En un compás agrupado Kairotic ordena
+por nivel métrico, luego por Barlow dentro de cada grupo y luego el grupo anterior.
+
 ## La obra, su historia y su partitura (Ensayo 20)
 
 **Una obra como árbol.** En una `:piece` (y en una `:section`), las voces y los `:par` suenan a la vez
@@ -145,7 +171,7 @@ Un compás que no cuadra es un aviso (⚠ en la REPL y en la caja), no un error,
 | caja | |
 |---|---|
 | `tree` | contiene un árbol como texto EDN (doble clic para editarlo). Un bang lo envía. Leer EDN no evalúa nada, así que una caja tree es segura en una sala compartida |
-| `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` | transformaciones (la entrada derecha cambia la cantidad) |
+| `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` · `mt thin 0.5` | transformaciones (la entrada derecha cambia la cantidad) |
 | `mt seq` · `mt par` | une el árbol de la izquierda con el de la derecha, uno detrás de otro o a la vez |
 | `mt events` · `mt pitches` · `mt duration` | el árbol como datos planos |
 | `mt play [loop]` | toca el último árbol al recibir un bang: Hz (0) e ids de voz (1) para `synth~`, parámetros `[nombre valor]` (2), dinámicas y textos (3) |
@@ -160,7 +186,8 @@ sobre una rejilla de semicorcheas.
 Las funciones están en `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt/augment`, `mt/rotate`,
 `mt/canon`, `mt/expand`, `mt/events`, `mt/notes`, `mt/pitches`, `mt/duration`, `mt/problems`,
 `mt/pp`, `mt/->mei`, `mt/->strokes`, `mt/<-strokes`, `mt/schedule`, y para el ritmo proporcional
-`mt/cell-retrograde`, `mt/cell-rotate`, `mt/cell-at`, `mt/cell-replace-at`. En la REPL:
+`mt/cell-retrograde`, `mt/cell-rotate`, `mt/cell-at`, `mt/cell-replace-at`, y para los compases `mt/meter-of`,
+`mt/meter-level`, `mt/indispensability`, `mt/indispensability-at`, `mt/pulses`, `mt/thin`. En la REPL:
 
 - `(tree! :b2 [:voice …])` escribe un árbol en una caja tree;
 - `(as-tree :bN)` lee como árbol una caja tree, el árbol que muestra una score, o los trazos de un freqt;
