@@ -374,7 +374,12 @@
                        (let [y (+ y-par (* i param-h))]
                          (str "<text class=\"lbl pname\" x=\"8\" y=\"" (+ y 12) "\">" (esc (:label p)) "</text>"
                               "<rect class=\"param" (when (#{"button" "checkbox"} (:type p)) " button") "\" data-box=\"" idn "\" data-param=\"" (esc (:label p))
-                              "\" x=\"" param-x0 "\" y=\"" (+ y 3) "\" width=\"" (- w param-x0 64) "\" height=\"11\" rx=\"2\"></rect>")))
+                              "\" x=\"" param-x0 "\" y=\"" (+ y 3) "\" width=\"" (- w param-x0 64) "\" height=\"11\" rx=\"2\"></rect>"
+                              ;; its value (drawn on top, in the live layer): a double-click there types it (issue #32)
+                              (when-not (#{"button" "checkbox"} (:type p))
+                                (str "<rect class=\"pval-hit\" data-box=\"" idn "\" data-param=\"" (esc (:label p))
+                                     "\" x=\"" (- w 62) "\" y=\"" (+ y 1) "\" width=\"58\" height=\"15\">"
+                                     "<title>Double-click to type a value</title></rect>")))))
                      params)))))
 
 (defn param-value [id b p]

@@ -31,6 +31,11 @@ a la derecha, vuelve a abrir esta ventana.
   todas. Al arrastrar una se mueven todas; Supr las borra todas.
 - **Mover** una caja arrastrándola. Las cajas para tocar —`bang`, `msg`, `number`, knobs— se seleccionan
   por el asa de su izquierda; su cuerpo es para tocar.
+- **Escribir un valor**: doble clic en un control numérico —un `number`, un knob (o cualquier componente
+  que se arrastra para dar un número), un deslizador de una caja `faust~` o su valor— y escribe el
+  número: `440`, `-3.5`, `0,5`, `3/2`. Intro lo aplica, como lo haría un arrastre (un knob lo guarda en su
+  texto, dentro de su rango; un deslizador, entre su mínimo y su máximo); Esc cierra el campo y deja el
+  valor como estaba. Lo que no es un número se rechaza y el campo sigue abierto.
 - **Editar el texto** de una caja: doble clic. Cajas de código (`faust~`, `script`, `component`, `tree`):
   en el patch muestran una fila de su código; con doble clic se abre el **editor de código**, una ventana
   que se mueve por su barra y cambia de tamaño por su esquina, con números de línea, sangría automática,
@@ -153,6 +158,7 @@ arrastrándolas en modo presentación— como un panel para quien toca. **Edit**
 | | |
 |---|---|
 | doble clic en un sitio vacío | una caja nueva |
+| doble clic en un number, knob o deslizador | escribe su valor (Intro lo aplica, Esc cierra) |
 | Supr / Retroceso | borra las cajas o la línea seleccionadas |
 | ⌘/Ctrl+clic | edita una caja debajo de ella (sus argumentos y su texto) |
 | ⇧+clic · un marco · ⌘/Ctrl+A | selecciona varias cajas · todas |

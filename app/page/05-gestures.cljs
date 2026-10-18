@@ -58,6 +58,79 @@
     (.addEventListener inp "keydown" (fn [e] (case (.-key e) "Enter" (finish true) "Escape" (finish false) nil)))
     (.addEventListener inp "blur" (fn [_] (finish true)))))
 
+;; ───── typing a number into a numeric control (issue #32) ─────
+;; A double-click on a number box, on a component whose :gesture gives numbers (a knob), on a parameter
+;; of a code box (its slider or its value) or on such a control presented in the panel of a sub-patch
+;; opens a small field with its value. Enter, or leaving the field, applies what is typed as the same
+;; gesture a drag leaves in the history; Esc closes it with no change.
+
+(defn typed-number
+  "The number written in s, or nil: 440, -3.5, .25, 1e-3, a decimal comma (0,5) or a ratio (3/2)."
+  [s]
+  (let [t (str/replace (str/trim (str s)) #"\s+" "")
+        t (if (and (str/includes? t ",") (not (str/includes? t "."))) (str/replace t "," ".") t)
+        num (fn [u] (when (re-matches #"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?" u)
+                      (let [v (js/Number u)] (when (js/isFinite v) v))))]
+    (if-let [[_ a b] (re-matches #"([^/]+)/([^/]+)" t)]
+      (let [x (num a) y (num b)] (when (and x y (not (zero? y))) (/ x y)))
+      (num t))))
+
+(defn typed-str
+  "A typed number as it is written in the field and in the code of the gesture: up to six decimals, so
+   it is kept as typed (a drag rounds what it sends to three) without the noise of a float."
+  [v] (let [r (cv/round-to v 6)] (if (= r (js/Math.round r)) (str (js/Math.round r)) (str r))))
+
+(defn open-number-input!
+  "A small field over a numeric control at x y (patch coordinates), with its value. Enter, or leaving the
+   field, gives the number typed to commit!; Esc closes it and calls cancel!, if given (it undoes what
+   the first click of the double-click did). What is not a number is not applied: on Enter the field
+   stays open and says so; on leaving it, it closes as with Esc. The field opens after the click that
+   asked for it has ended, so that click does not take the focus away from it."
+  [{:keys [x y value commit! cancel!]}]
+  (js/setTimeout
+   (fn []
+     (when-let [old ($ "num-edit")] (.remove old))
+     (let [inp (js/document.createElement "input") done (atom false)
+           close! (fn [] (reset! done true) (.remove inp))
+           finish (fn [how]
+                    (when-not @done
+                      (let [v (typed-number (.-value inp))]
+                        (cond
+                          (and (not= how :cancel) (some? v)) (do (close!) (commit! v))
+                          (= how :enter) (do (.add (.-classList inp) "bad")
+                                             (set! (.-title inp) "Not a number (440, -3.5, 0,5, 3/2) · Esc closes"))
+                          :else (do (close!) (when cancel! (cancel!)))))))]
+       (set! (.-id inp) "num-edit")
+       (set! (.-className inp) "edit num")
+       (.setAttribute inp "inputmode" "decimal")
+       (.setAttribute inp "aria-label" "Value")
+       (set! (.-value inp) (if (number? value) (typed-str value) ""))
+       (let [[px py] (wrap-px x y)]
+         (set! (.. inp -style -left) (str px "px"))
+         (set! (.. inp -style -top) (str py "px")))
+       (.appendChild ($ "canvas-wrap") inp)
+       (.focus inp)
+       (.select inp)
+       (.addEventListener inp "input" (fn [_] (.remove (.-classList inp) "bad") (set! (.-title inp) "")))
+       (.addEventListener inp "keydown"
+         (fn [e] (case (.-key e)
+                   "Enter" (do (.preventDefault e) (finish :enter))
+                   "Escape" (do (.preventDefault e) (finish :cancel))
+                   nil)))
+       (.addEventListener inp "blur" (fn [_] (finish :blur)))))
+   0))
+
+(defn double-click-on
+  "When this pointerdown is the second of a double-click on control k, the first click [k ms before];
+   otherwise nil, and this click is remembered (with `before`, the value the control had before it). The
+   first click redraws the box, so the browser's dblclick does not reach it: as for the code row, the
+   double-click is detected here."
+  [k before]
+  (let [now (js/Date.now) [lk lt :as first-click] (:num-click @ui)]
+    (if (and (= lk k) (< (- now lt) 450))
+      (do (swap! ui assoc :num-click nil) first-click)
+      (do (swap! ui assoc :num-click [k now before]) nil))))
+
 (defn el-box [el]
   (let [id (keyword (.. el -dataset -box)) b (get-in (current) [:boxes id])] [id (when b (view-box b))]))
 
@@ -238,6 +311,21 @@
                (catch :default e (js/console.error "gesture" e) v))]
     (if (some? u) u v)))
 
+(defn ctl-commit!
+  "Leaves the value v of a control in the history, as its drag does on release: a box whose class keeps
+   it (:persist, a knob) is rewritten with its new arguments (this tab already sent the value); any other
+   sends it as a gesture, whose code starts with `echo` ((send! :b3 … or (send-to! :b7.b4 …), the number
+   written by `fmt`."
+  [{:keys [f id echo]} v fmt]
+  (let [b (when id (get-in (current) [:boxes id])) d (when b (box-def b))]
+    (if (and b (:persist d))
+      (when (some? v)
+        (let [t (comp/args-text d (klass (:text b)) (merge (comp/args-for d (:text b)) ((:persist d) v)))]
+          ;; this tab already sent the value: the new text need not send it again
+          (swap! echoed assoc f t)
+          (when (not= t (:text b)) (gesture! (str "(text! " id " " (pr-str t) ")")))))
+      (gesture! (str echo (cond (number? v) (fmt v) (some? v) (pr-str v) :else ":bang") ")")))))
+
 (defn send-to!
   "Sends a message to inlet 0 of a box inside a sub-patch of this view: (send-to! :b7.b4 0.5)."
   [rel v]
@@ -252,6 +340,62 @@
    (swap! ui assoc :sel nil :nsel nil
           :ctldrag {:f f :b b :ox ox :oy oy :x0 x :y0 y :start (second (shown-flat f)) :v nil :echo echo})
    (ctl-gesture! x y fine)))
+
+;; ───── the number typed, for each kind of control (issue #32) ─────
+
+(defn ctl-number
+  "The number a control with a :gesture (engine id f) holds now, or nil if its gesture does not give
+   numbers (a keyboard gives notes): what it last showed, its state, or what its gesture gives at rest."
+  [f b]
+  (let [g (:gesture (box-def b))]
+    (when (fn? g)
+      (let [m (ctl-m* f b)
+            at-rest (try (g (assoc m :start (:shown m) :x 0 :y 0 :dx 0 :dy 0 :fine false))
+                         (catch :default _ nil))]
+        (when (number? at-rest)
+          (first (filter number? [(:shown m) (:state m) at-rest])))))))
+
+(defn ctl-typed!
+  "A number typed into a control with a :gesture (cd as for a drag: :f :b :id :echo). One that keeps its
+   value in its text (a knob) gets it first, so the text keeps what its :receive made of it (a knob keeps
+   it between its min and max); any other is sent it by the gesture itself."
+  [{:keys [f b id] :as cd} v]
+  (if (and id (:persist (box-def b)))
+    (do (send-flat-quiet! f v)
+        (let [st (get-in @eng/rt [:states f])] (ctl-commit! cd (if (number? st) st v) typed-str)))
+    (ctl-commit! cd v typed-str)))
+
+(defn type-ctl!
+  "Opens the field over a control with a :gesture whose top-left corner is at x y and size [w h]."
+  [cd x y [w h] v]
+  (open-number-input! {:x x :y (+ y (max 0 (- (/ h 2) 13))) :value v :commit! (fn [n] (ctl-typed! cd n))}))
+
+(defn type-number-box!
+  "Opens the field over the number box id."
+  [id b]
+  (open-number-input! {:x (+ (:x b) grip) :y (- (:y b) 2) :value (number-value id b)
+                       :commit! (fn [n] (gesture! (str "(send! " id " " (typed-str n) ")")))}))
+
+(defn param-typed-value
+  "A typed value for parameter p of a code box, kept between its min and max (Faust clamps it too: so
+   the history keeps what sounds)."
+  [p v] (if (< (:min p) (:max p)) (max (:min p) (min (:max p) v)) v))
+
+(defn send-param! [id label v]
+  (gesture! (str "(send! " id " [" (pr-str (param-k label)) " " (typed-str v) "])")))
+
+(defn type-param!
+  "Opens the field over parameter `label` of code box id. `before` is the value it had before the first
+   click of the double-click (a click on the slider moves it there): Esc puts that back."
+  [id b label before]
+  (let [{:keys [y-par params]} (code-geom b)
+        i (or (first (keep-indexed (fn [i q] (when (= (:label q) label) i)) params)) 0)
+        p (nth params i nil)]
+    (when p
+      (open-number-input!
+       {:x (+ (:x b) param-x0) :y (+ (:y b) y-par (* i param-h) -4) :value before
+        :commit! (fn [n] (send-param! id label (param-typed-value p n)))
+        :cancel! (fn [] (when (and (number? before) (not= before (param-value id b p))) (send-param! id label before)))}))))
 
 ;; ───── selection: one box, several (⇧+click or a frame drawn on the paper), moved or deleted together ─────
 ;; A plain click selects a box and moves it; ⌘/Ctrl+click also opens its inspector (its arguments and text).
@@ -393,9 +537,14 @@
               k (when b (first (filter (fn [k] (= (:id k) kid)) (:kids (panel-layout b)))))]
           (when (and k (fn? (:gesture (box-def (:b k)))))
             (.preventDefault e)
-            (let [[kx ky] (kid-origin (:x b) (:y b) k)]
-              (start-ctl-drag! (eng/flat-id (conj (cmd-path) id) kid) (:b k) kx ky x y
-                               (str "(send-to! " (eng/flat-id [id] kid) " ") (.-shiftKey e)))))
+            (let [[kx ky] (kid-origin (:x b) (:y b) k)
+                  f (eng/flat-id (conj (cmd-path) id) kid)
+                  echo (str "(send-to! " (eng/flat-id [id] kid) " ")
+                  v (ctl-number f (:b k))]
+              ;; a double-click on a numeric control: its value is typed (issue #32)
+              (if (and (number? v) (double-click-on [:kid f] v))
+                (type-ctl! {:f f :b (:b k) :echo echo} kx ky [(:w k) (:h k)] v)
+                (start-ctl-drag! f (:b k) kx ky x y echo (.-shiftKey e))))))
 
         ;; action boxes: the grip selects and moves them (⌘/Ctrl+click opens the inspector), the body only plays
         (and (closest e ".box.act") (not (closest e ".grip")) (not (closest e ".port")))
@@ -403,13 +552,20 @@
           (when b
             (.preventDefault e)
             (swap! ui (fn [u] (assoc u :nsel nil :sel (when-not (= (:sel u) [:box id]) (:sel u)))))
-            (cond
-              (= "number" (klass (:text b)))
-              (swap! ui assoc :numdrag {:id id :y0 y :v0 (number-value id b) :v nil})
-              (fn? (:gesture (box-def b)))
-              (do (start-ctl-drag! (fid id) b (+ (:x b) grip) (:y b) x y (str "(send! " id " ") (.-shiftKey e))
-                  (swap! ui assoc-in [:ctldrag :id] id))
-              :else (gesture! (str "(send! " id " :bang)")))))
+            (let [num-box? (= "number" (klass (:text b)))
+                  ctl? (fn? (:gesture (box-def b)))
+                  cval (when (and ctl? (not num-box?)) (ctl-number (fid id) b))
+                  ;; a double-click on a number box, or on a control whose gesture gives numbers:
+                  ;; its value is typed (issue #32); the first click did what a click does
+                  again? (and (or num-box? (some? cval)) (some? (double-click-on [:box id] nil)))]
+              (cond
+                (and again? num-box?) (type-number-box! id b)
+                again? (type-ctl! {:f (fid id) :b b :id id :echo (str "(send! " id " ")}
+                                  (+ (:x b) grip) (:y b) (comp/size-of b) cval)
+                num-box? (swap! ui assoc :numdrag {:id id :y0 y :v0 (number-value id b) :v nil})
+                ctl? (do (start-ctl-drag! (fid id) b (+ (:x b) grip) (:y b) x y (str "(send! " id " ") (.-shiftKey e))
+                         (swap! ui assoc-in [:ctldrag :id] id))
+                :else (gesture! (str "(send! " id " :bang)"))))))
 
         ;; the first click selects the box and redraws it, so the double click is detected here
         (closest e ".code-area")
@@ -431,9 +587,22 @@
                            (swap! ui assoc :paramdrag {:id id :label label :button true}))
               "checkbox" (let [v (if (pos? (param-value id b p)) 0 1)]
                            (gesture! (str "(send! " id " [" (pr-str (param-k label)) " " v "])")))
-              (let [v (value-at-x b p x)]
-                (send-quiet! id [(param-k label) v])
-                (swap! ui assoc :paramdrag {:id id :label label :p p :v v})))))
+              ;; a slider: a double-click types its value (issue #32), the one it had before the first click
+              (if-let [[_ _ before] (double-click-on [:param id label] (param-value id b p))]
+                (type-param! id b label before)
+                (let [v (value-at-x b p x)]
+                  (send-quiet! id [(param-k label) v])
+                  (swap! ui assoc :paramdrag {:id id :label label :p p :v v}))))))
+
+        ;; the value written beside a slider: a click is a click on the box, a double-click types the value
+        (closest e ".pval-hit")
+        (let [el (closest e ".pval-hit") [id b] (el-box el) label (.. el -dataset -param) p (param-of b label)]
+          (when b
+            (if-let [[_ _ before] (when p (double-click-on [:param id label] (param-value id b p)))]
+              (do (.preventDefault e)
+                  (swap! ui assoc :drag nil)
+                  (type-param! id b label before))
+              (pick-box! id b x y))))
 
         (closest e ".stroke-hit")
         (let [el (closest e ".stroke-hit") [id b] (el-box el) tid (keyword (.. el -dataset -stroke))
@@ -573,16 +742,10 @@
       (and drag (:clicked drag))
       (swap! ui assoc :drag nil :sel [:box (:clicked drag)])
       ctldrag
-      (let [v (ctl-release-value ctldrag) id (:id ctldrag) b (when id (get-in (current) [:boxes id])) d (when b (box-def b))]
+      (let [v (ctl-release-value ctldrag)]
         (swap! ui assoc :ctldrag nil)
-        (if (and b (:persist d))
-          ;; the change stays in the work: the box is rewritten with its new arguments
-          (when (some? v)
-            (let [t (comp/args-text d (klass (:text b)) (merge (comp/args-for d (:text b)) ((:persist d) v)))]
-              ;; this tab already sent the value while dragging: the new text need not send it again
-              (swap! echoed assoc (:f ctldrag) t)
-              (when (not= t (:text b)) (gesture! (str "(text! " id " " (pr-str t) ")")))))
-          (gesture! (str (:echo ctldrag) (cond (number? v) (cv/fmt v) (some? v) (pr-str v) :else ":bang") ")"))))
+        ;; the change stays in the work (a knob is rewritten with its new arguments), or is sent as a gesture
+        (ctl-commit! ctldrag v cv/fmt))
       paramdrag
       (do (swap! ui assoc :paramdrag nil)
           (if (:button paramdrag)
@@ -624,7 +787,8 @@
     (let [[x y] (pt e)]
       (cond
         (closest e ".code-area") nil
-        (or (closest e ".param") (closest e ".stroke-hit") (closest e ".score-slot") (closest e ".mus-body")) nil
+        (or (closest e ".param") (closest e ".pval-hit") (closest e ".pres-area")
+            (closest e ".stroke-hit") (closest e ".score-slot") (closest e ".mus-body")) nil
         (and (closest e ".box.act") (not (closest e ".grip"))) nil
         (closest e ".hchip") nil
         (closest e ".box")

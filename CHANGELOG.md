@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Type the value of a numeric control** ([#32](https://github.com/bonuoq/kairotic/issues/32)): a
+  double-click on a `number` box, on a knob — or any component whose `:gesture` gives numbers (a keyboard
+  gives notes, so it plays as before) —, on a slider of a code box such as `faust~` or on the value
+  written beside it, or on such a control presented in the panel of a sub-patch, opens a small field
+  with its value. Enter (or leaving the field) applies the number as the same gesture a drag leaves in
+  the history: a knob is rewritten with it in its text, after its own `:receive` has kept it within its
+  range; a slider keeps it within its min and max; a number box sends it. Esc closes the field with no
+  change (on a slider it also undoes the jump of the first click). Accepted: `440`, `-3.5`, `.25`, a
+  decimal comma (`0,5`), `1e-3`, a ratio (`3/2`); anything else is refused and the field stays open.
+  Tests: `tests/numinput.mjs`.
 - **Recipes beside kept buffers** ([discussion #17](https://github.com/bonuoq/kairotic/discussions/17), after
   [Rastrum](https://github.com/smoge/Rastrum)): `(keep! :bN)` now keeps, beside the buffer it writes,
   the recipe that made it: the tree as it arrived, the boxes and lines upstream as code, and the box it

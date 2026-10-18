@@ -48,7 +48,8 @@
    "number"
    {:inlets ["a number sets it and sends it on; a bang sends it again"]
     :outlets ["the number"]
-    :messages [["drag" "up and down changes it (and sends it)"]]
+    :messages [["drag" "up and down changes it (and sends it)"]
+               ["double-click" "type a number (Enter sends it, Esc closes); so too knobs and the sliders of faust~"]]
     :example (lines "(box :b1 \"number 440\" 40 30)" "(box :b2 \"osc~ 440\" 40 90)" "(box :b3 \"gain~ 0.3\" 40 140)"
                     "(box :b4 \"dac~\" 40 190)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)"
                     "(connect :b3 0 :b4 0)" "(connect :b3 0 :b4 1)")

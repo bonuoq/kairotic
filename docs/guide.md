@@ -31,6 +31,11 @@ the top right, brings this window back.
   of them and they all move; Delete removes them all.
 - **Move** a box by dragging it. Playable boxes — `bang`, `msg`, `number`, knobs — are selected by the
   grip on their left; their body is for playing.
+- **Type a value**: double-click a numeric control — a `number`, a knob (or any component that is
+  dragged for a number), a slider of a `faust~` box or its value — and write the number: `440`, `-3.5`,
+  `0,5`, `3/2`. Enter applies it, as a drag would (a knob keeps it in its text, within its range; a
+  slider within its min and max); Esc closes the field and leaves the value as it was. What is not a
+  number is refused and the field stays open.
 - **Edit a box's text**: double-click it. Code boxes (`faust~`, `script`, `component`, `tree`):
   in the patch they show one row of their code; double-click it to open the **code editor**, a window
   you can move by its bar and resize by its corner, with line numbers, automatic indentation, matching
@@ -151,6 +156,7 @@ presentation mode — as a performer's panel. **Edit** goes back.
 | | |
 |---|---|
 | double-click empty space | a new box |
+| double-click a number, knob or slider | type its value (Enter applies, Esc closes) |
 | Delete / Backspace | delete the selected boxes or line |
 | ⌘/Ctrl+click | edit a box below it (its arguments and text) |
 | ⇧+click · a frame · ⌘/Ctrl+A | select several boxes · all |
