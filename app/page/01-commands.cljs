@@ -227,6 +227,15 @@
 
 (defn erase-stroke [id tid] (need-stroke id tid) (dispatch! [:in id [:erase tid]]) :ok)
 
+(defn canvas-edit!
+  "Several edits of a canvas as one event: (canvas-edit! :b1 [[:stroke :t5 [[0 1] [1 2]]] [:erase :t2]]).
+   What the messages on the left inlet of a canvas become (issue #26)."
+  [id evs]
+  (need-canvas id)
+  (when-not (and (sequential? evs) (every? vector? evs)) (fail "The edits are a vector of events: [[:stroke :t1 pts] …]"))
+  (dispatch! [:in id [:batch (vec evs)]])
+  (count evs))
+
 (defn clear [id] (need-canvas id) (dispatch! [:in id [:clear]]) :ok)
 
 (defn grid-x

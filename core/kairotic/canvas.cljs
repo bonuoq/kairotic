@@ -205,6 +205,8 @@
                      (if-let [ps (transform d pts (fn [[t f]] [(+ t0 (* k (- t t0))) f]))] (assoc-in d [:strokes id :pts] ps) d))
                    d))
       :erase   (update d :strokes dissoc (first args))
+      ;; several edits as one event (what a message on the inlet of a canvas makes, issue #26)
+      :batch   (reduce step d (filter vector? (first args)))
       :clear   (assoc d :strokes {})
       :grid-x  (assoc d :gx (sane-gx (first args)))
       :tuning  (assoc d :gy (sane-gy (first args)))
