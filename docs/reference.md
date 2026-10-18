@@ -290,7 +290,8 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 - `[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]`: questions: the answer comes out on the left
 - `⇄ score in the header · (view :bN :score)`: the same buffer, drawn as an approximate score (⇄ canvas brings it back)
 - `shown as a score, click a note of a tree`: ↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest
-- `(keep! :bN)`: writes the tree it shows into its buffer
+- `(keep! :bN)`: writes the tree it shows into its buffer, with its recipe beside it (the tree and the boxes that made it)
+- `(recipe :bN) · (remake! :bN)`: the recipe of a kept buffer · the tree written back, without the changes made since
 - `{ } in the header (or a double-click on its right) · (source :bN)`: the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event
 
 **Try:** A freqt shown as a score is the viewer of a tree that comes transformed (tree → mt transpose 7 → freqt). To see and edit a tree box itself as a score, use ⇄ score in its header: no wire needed. (A box written "score", from older works, is a freqt shown as a score.)
