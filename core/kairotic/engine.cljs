@@ -158,7 +158,7 @@
   (cond
     (= k :print) (print! at x)
     ;; effects for the page (a tree box asked to change its data: that is a gesture of the work)
-    (#{:tree-edit :tree-set} k) (when-let [f (:effect-hook @rt)] (f id [k x] at))
+    (#{:tree-edit :tree-set :canvas-edit} k) (when-let [f (:effect-hook @rt)] (f id [k x] at))
     :else
     (when-let [node (get-in @rt [:nodes id])]
       (when-let [f (get-in node [:def :audio :effects k])]

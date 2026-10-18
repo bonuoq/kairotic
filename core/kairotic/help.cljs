@@ -106,9 +106,14 @@
     :see ["metro" "reader" "phasor~"]}
 
    "canvas"
-   {:inlets ["a position (or a click): it comes out on the left"]
-    :outlets ["the position" "the buffer, for a reader or reader~ (on their right inlet)"]
-    :messages [["(axis :bN :x -1 1)" "range of an axis, :log for logarithmic"] ["(stroke :bN [[x y] …])" "draws"]]
+   {:inlets ["a position (or a click): it comes out on the left · an edit ([:stroke [[x y] …]], [:erase :t1], [:clear], [:axis :y 0 1]… or [:batch [edits]]): it changes the buffer, as one event · a question ([:read x], [:strokes], [:get :t1], [:count], [:end], [:range], [:data]): the answer comes out on the left · a musical tree: shown over it"]
+    :outlets ["the position, or the answer to a question" "the buffer, for a reader or reader~ (on their right inlet)"]
+    :messages [["(axis :bN :x -1 1)" "range of an axis, :log for logarithmic"] ["(stroke :bN [[x y] …])" "draws"]
+               ["[:stroke [[0 0] [1 1]]] · [:stroke :t3 pts]" "a stroke by message (a new id, or that one)"]
+               ["[:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear]" "edit strokes by message"]
+               ["[:axis :x lo hi] · [:axis :y lo hi :log] · [:grid-y step]" "axes and grid by message"]
+               ["[:batch [[:clear] [:stroke pts] …]]" "several edits, one event of the history"]
+               ["[:read 0.5] · [:read :y 0.2] · [:strokes] · [:get :t1] · [:count] · [:range] · [:data]" "questions: the answer comes out on the left"]]
     :example (lines "(box :b1 \"canvas\" 40 60)" "(box :b2 \"loadbang\" 40 15)" "(box :b3 \"ramp 0 1 4 loop\" 120 15)"
                     "(box :b4 \"reader\" 40 290)" "(box :b5 \"print\" 40 340)"
                     "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)" "(connect :b1 1 :b4 1)" "(connect :b4 0 :b5 0)"
@@ -117,9 +122,14 @@
     :see ["reader" "reader~" "freqt"]}
 
    "freqt"
-   {:inlets ["a time (or a click): it comes out on the left"]
-    :outlets ["the time" "the buffer, for a reader or reader~"]
-    :messages [["(note :bN t \"c4\" dur)" "a note"] ["(tuning :bN \"31-tet\" 261.63)" "a tuning"] ["(grid-x :bN 0.25 \"3+3+2\")" "a bar grid"]]
+   {:inlets ["a time (or a click): it comes out on the left · an edit ([:note t \"c4\" dur], [:stroke [[t hz] …]], [:erase :t1], [:clear], [:tuning \"19-tet\"], [:grid-x 0.25 [4]]… or [:batch [edits]]): it changes the buffer, as one event · a question ([:read t], [:strokes], [:get :t1], [:count], [:end], [:data]): the answer comes out on the left · a musical tree: shown over it"]
+    :outlets ["the time, or the answer to a question" "the buffer, for a reader or reader~"]
+    :messages [["(note :bN t \"c4\" dur)" "a note"] ["(tuning :bN \"31-tet\" 261.63)" "a tuning"] ["(grid-x :bN 0.25 \"3+3+2\")" "a bar grid"]
+               ["[:note 0 \"c4\" 1] · [:note 1 64 0.5]" "a note by message (pitch as a name or MIDI)"]
+               ["[:move :t1 dt cents] · [:stretch :t1 k] · [:erase :t1] · [:clear]" "edit notes by message"]
+               ["[:tuning \"19-tet\" 261.63] · [:grid-x 0.25 [4]]" "tuning and grid by message"]
+               ["[:batch [[:clear] [:note 0 \"c4\" 1] …]]" "several edits, one event of the history"]
+               ["[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]" "questions: the answer comes out on the left"]]
     :see ["score" "canvas" "reader"]}
 
    "score"

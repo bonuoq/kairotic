@@ -67,6 +67,7 @@
 
 (ns kairotic.components
   (:require [clojure.string :as str]
+            [kairotic.score :as sc]
             [kairotic.canvas :as cv]))
 
 (defonce registry (atom {}))
@@ -322,16 +323,95 @@
     :else
     {}))
 
-(defn canvas-box
-  "A number (or a click) comes out and moves the cursor; a musical tree (kairotic.mt) is shown, live,
-   over the buffer (Study 19): (keep! :bN) writes it into the buffer."
-  [{:keys [inlet value state]}]
-  (cond
-    (and (zero? inlet) (vector? value) (keyword? (first value)))
-    {:state (assoc state :tree value) :show {:tree value}}
-    (and (zero? inlet) (num-of value))
-    {:state state :out [[0 (num-of value)]] :show (cond-> {:t (num-of value)} (:tree state) (assoc :tree (:tree state)))}
-    :else {:state state}))
+;; ───── what a canvas, freqt or score takes on its left inlet (issue #26) ─────
+;; · a number: comes out on the left and moves the cursor (as a click does)
+;; · a musical tree ([:voice …]): shown live over the buffer; (keep! :bN) writes it in
+;; · an edit: changes the buffer, as one event of the history (the same as the commands of the REPL)
+;;     [:stroke [[x y] …]] · [:stroke :t3 [[x y] …]] · [:note t pitch dur] (pitch: MIDI or "c4")
+;;     [:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear]
+;;     [:axis :x lo hi] · [:axis :y lo hi :log] · [:grid-x step cycles] · [:grid-y step] · [:tuning "19-tet" ref]
+;;     [:batch [edit …]]: several at once, one event
+;; · a question: the answer comes out on the left, nothing changes
+;;     [:read x] (or [:read :y v]) → [[stroke value] …] · [:strokes] → [:t1 …] · [:get :t1] → its points
+;;     [:count] · [:end] (where the last stroke ends) · [:range] / [:range :y] → [lo hi] · [:data] → the buffer
+
+(def canvas-edits #{:stroke :note :move :stretch :erase :clear :axis :grid-x :grid-y :tuning :batch})
+(def canvas-questions #{:read :strokes :get :count :end :range :data})
+
+(defn canvas-edit?
+  "An edit for a canvas (and not a musical tree: [:note {…}] is a node of a tree, [:note 0 \"c4\" 1] an edit)."
+  [v]
+  (and (vector? v) (contains? canvas-edits (first v))
+       (or (not= :note (first v)) (cv/num? (second v)))))
+
+(defn canvas-question? [v] (and (vector? v) (contains? canvas-questions (first v))))
+
+(defn canvas-event
+  "One message as an event of the buffer d (ids given to new strokes), or nil if it does not read."
+  [d [op & args]]
+  (case op
+    :stroke (let [[a b] args] (if (keyword? a) [:stroke a b] [:stroke (cv/next-id d) a]))
+    :note (let [[t p dur] args
+                hz (cond (cv/num? p) (if (cv/generic? d) p (cv/midi->hz p))
+                         (string? p) (some-> (sc/pitch p) cv/midi->hz))]
+            (when (and (cv/num? t) (cv/num? dur) (pos? dur) hz)
+              [:stroke (cv/next-id d) [[t (cv/round-to hz 3)] [(+ t dur) (cv/round-to hz 3)]]]))
+    (:move :stretch :erase :clear) (into [op] args)
+    :axis (let [[k lo hi lg] args]
+            (cond (map? k) [:axis k]
+                  (#{:x :y} k) [:axis (assoc (or (:ax d) cv/default-ax) k {:lo lo :hi hi :log (= lg :log)})]))
+    :grid-x (let [[s cs] args] [:grid-x (if (map? s) s (when (cv/num? s) {:step s :cycles (or cs [])}))])
+    :grid-y (let [[s] args] [:grid-y (if (map? s) s (when (cv/num? s) {:step s}))])
+    :tuning (let [[x ref] args
+                  base (cond (map? x) x
+                             (string? x) (or (get cv/tunings (str/lower-case x)) (cv/parse-scl x)))]
+              (when base [:tuning (cond-> base (cv/num? ref) (assoc :ref ref) (not (cv/num? ref)) (update :ref #(or % cv/default-ref)))]))
+    nil))
+
+(defn canvas-events
+  "The messages (an edit, or [:batch [edits]]) as events of the buffer d, each one applied before the next
+   is read (so new strokes get new ids); those that change nothing are left out."
+  [d msg]
+  (let [msgs (if (= :batch (first msg)) (filter vector? (second msg)) [msg])]
+    (first (reduce (fn [[evs d] m]
+                     (let [e (canvas-event d m) d2 (when e (cv/step d e))]
+                       (if (and e (not= d2 d)) [(conj evs e) d2] [evs d])))
+                   [[] d] msgs))))
+
+(defn canvas-answer
+  "The answer to a question about the buffer d."
+  [d [q & args]]
+  (case q
+    :read (let [[a b] args] (if (#{:x :y} a) (cv/read-along d a b) (cv/read-along d :x a)))
+    :strokes (mapv first (cv/sorted-strokes d))
+    :get (get-in d [:strokes (first args) :pts])
+    :count (count (:strokes d))
+    :end (cv/end-t d)
+    :range (vec (take 2 (if (= :y (first args)) (cv/y-range d) (cv/x-range d))))
+    :data d
+    nil))
+
+(defn canvas-receiver
+  "The left inlet of a canvas (empty: its buffer before anything is drawn)."
+  [empty]
+  (fn [{:keys [inlet value state data]}]
+    (let [d (or data empty)]
+      (cond
+        (not (zero? inlet)) {:state state}
+        (canvas-edit? value)
+        (let [evs (canvas-events d value)]
+          (if (seq evs)
+            {:state state :effects [[:canvas-edit evs]]}
+            {:state state :effects [[:print (str "canvas: " (pr-str value) " changes nothing (an id that is not there, or points it cannot take)")]]}))
+        (canvas-question? value)
+        (let [a (canvas-answer d value)] {:state state :out (if (some? a) [[0 a]] [])})
+        (and (vector? value) (keyword? (first value)))
+        {:state (assoc state :tree value) :show {:tree value}}
+        (num-of value)
+        {:state state :out [[0 (num-of value)]] :show (cond-> {:t (num-of value)} (:tree state) (assoc :tree (:tree state)))}
+        :else {:state state}))))
+
+(def canvas-box (canvas-receiver cv/empty))
 
 (def canvas-model {:empty cv/generic-empty :step cv/step :load (fn [x] (cv/step cv/generic-empty [:load x])) :code cv/->code})
 (def freqt-model {:empty cv/empty :step cv/step :load (fn [x] (cv/step cv/empty [:load x])) :code cv/->code})
@@ -353,9 +433,9 @@
 (define! "metro" {:doc "Sends periodic bangs: 1 or bang starts it, 0 or stop stops it." :usage "metro ms" :io [2 1] :receive metro})
 (define! "counter" {:doc "Each bang sends the value and advances one step; goes back to the minimum on reaching the maximum." :usage "counter step [max] [min]" :io [2 1] :receive counter})
 (define! "ramp" {:doc "Linear motion: a bang (or [a b s]) goes from a to b in s seconds; a number jumps there." :usage "ramp a b s [loop]" :io [2 1] :receive ramp})
-(define! "canvas" {:doc "Graphic buffer for any numeric data: strokes in a plane with axes of any range, linear or log ((axis :b1 :y -1 1)). A number on the inlet (or a click) comes out on the left; the right outlet is the buffer for a reader, which can read it along X or Y."
-                   :io [1 2] :display :canvas :receive canvas-box :model canvas-model})
-(define! "freqt" {:doc "Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids. A number on the inlet (or a click) comes out on the left; the right outlet is the buffer for a reader."
+(define! "canvas" {:doc "Graphic buffer for any numeric data: strokes in a plane with axes of any range, linear or log ((axis :b1 :y -1 1)). A number on the inlet (or a click) comes out on the left; edits on the inlet ([:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read x], [:strokes], [:get :t1], [:data]) are answered on the left. The right outlet is the buffer for a reader, which can read it along X or Y."
+                   :io [1 2] :display :canvas :receive (canvas-receiver cv/generic-empty) :model canvas-model})
+(define! "freqt" {:doc "Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (Scala) and bar grids. A number on the inlet (or a click) comes out on the left; edits on the inlet ([:note t \"c4\" dur], [:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read t], [:strokes], [:end], [:data]) are answered on the left. The right outlet is the buffer for a reader."
                   :io [1 2] :display :canvas :receive canvas-box :model freqt-model})
 (define! "score" {:doc "The same buffer as a freqt, drawn as an approximate score; or the musical tree it receives, measured. Its third outlet sends the edits you make on that tree's notes ([:edit …]): connect it back to the tree box."
                   :io [1 3] :display :score :receive canvas-box :model freqt-model})
