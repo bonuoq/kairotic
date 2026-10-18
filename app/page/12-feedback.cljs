@@ -106,17 +106,17 @@
 (defonce fb-issues (atom nil))
 
 ;; ───── an issue, to review and fix with Claude ─────
-;; Each issue has a button that opens Claude Code on the web (claude.ai/code) with the repository and a
-;; prompt about that issue already written: you read it, change it if you like, and send it. Nothing is
-;; sent from here. The prompt stays short, because it travels in the address.
+;; Each issue has a button that opens a new Claude chat (claude.ai/new) with a prompt about that issue
+;; already written: you read it, change it if you like, and send it. Nothing is sent from here. The prompt
+;; stays short, because it travels in the address.
 
-(def claude-code-url "https://claude.ai/code")
+(def claude-chat-url "https://claude.ai/new")
 (def fb-repo-slug "bonuoq/kairotic")
 
 (defn claude-prompt
   "What Claude is asked about an issue: to read it in full on GitHub, review it and fix it in a pull request."
   [{:keys [number title url body labels]}]
-  (str "Review issue #" number " of " fb-repo-slug ": \"" title "\"" (when (seq labels) (str " (" (str/join ", " labels) ")")) ".\n"
+  (str "Review issue #" number " of the GitHub repository " fb-repo-slug " (" fb-repo "): \"" title "\"" (when (seq labels) (str " (" (str/join ", " labels) ")")) ".\n"
        url "\n\n"
        (when (seq (str/trim (str body)))
          (str "It says:\n" (ai/cut (str/trim (str body)) 900) "\n\n"))
@@ -127,9 +127,8 @@
 
 (defn claude-url [issue]
   (let [q (js/URLSearchParams.)]
-    (.set q "prompt" (claude-prompt issue))
-    (.set q "repositories" fb-repo-slug)
-    (str claude-code-url "?" (.toString q))))
+    (.set q "q" (claude-prompt issue))
+    (str claude-chat-url "?" (.toString q))))
 
 (defn render-fb-issues! []
   (let [is @fb-issues]
@@ -142,7 +141,7 @@
                                     (str "<li><a href=\"" (esc (:url i)) "\" target=\"_blank\" rel=\"noopener\">" (esc (:title i)) "</a>"
                                          (when (seq (:labels i)) (str "<span class=\"lb\">" (esc (str/join " · " (:labels i))) "</span>"))
                                          "<a class=\"fb-claude\" href=\"" (esc (claude-url i)) "\" target=\"_blank\" rel=\"noopener\""
-                                         " title=\"Open Claude Code with this repository and a prompt to review and fix this issue (you send it)\">Claude ↗</a>"
+                                         " title=\"Open a Claude chat with a prompt to review and fix this issue (you send it)\">Claude ↗</a>"
                                          "</li>")))
                        "<li class=\"soft\"><a href=\"" fb-repo "/issues\" target=\"_blank\" rel=\"noopener\">all of them…</a></li>")))))
 
