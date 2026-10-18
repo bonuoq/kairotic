@@ -8,6 +8,7 @@
 ;; Time is in beats (a quarter note = 1); :tempo (beats per minute, 60 by default) turns it into seconds.
 ;;
 ;;   sequential  :seq :voice :section :measure {:meter [3 4]} :tuplet {:ratio [3 2]}   children one after another
+;;               a measure groups its units with {:meter [5 8] :groups [2 3]}, or {:meter "5/8[2+3]"}
 ;;   simultaneous :par :piece :chord                                                 children at once
 ;;   leaves      :note {:pitch "c4" | 60.5 | :hz 440, :dur 1}   :rest {:dur 1}
 ;;               :param {:name :cutoff :value 400 :to 2000 :dur 4}   a parameter change (a ramp with :to)
@@ -99,6 +100,163 @@
                        (into [:chord {:dur dur}] (for [x ps] [:note {:pitch (str/lower-case x)}])))))]
         (recur (rest toks) dur (conj out node))))))
 
+;; ───────── numbers: exact fractions [n d] ─────────
+
+(defn- gcd [a b] (if (zero? b) (js/Math.abs a) (recur b (mod a b))))
+(defn- lcm [a b] (/ (* a b) (gcd a b)))
+(defn- r-norm [[n d]] (let [g (gcd n d)] [(/ n g) (/ d g)]))
+
+(defn- rat
+  "x as a fraction [n d] (d > 0): exact for the beats music uses (halves, thirds, fifths, eighths…)."
+  [x]
+  (let [s (if (neg? x) -1 1) x (js/Math.abs x)]
+    (loop [h1 1 h0 0 k1 0 k0 1 y x i 0]
+      (let [a (js/Math.floor y) h (+ (* a h1) h0) k (+ (* a k1) k0)]
+        (if (or (< (js/Math.abs (- x (/ h k))) 1e-9) (> i 40) (== y a))
+          [(* s h) k]
+          (recur h h1 k k1 (/ 1 (- y a)) (inc i)))))))
+
+(defn- r+ [[a b] [c d]] (r-norm [(+ (* a d) (* c b)) (* b d)]))
+(defn- r- [[a b] [c d]] (r-norm [(- (* a d) (* c b)) (* b d)]))
+(defn- r-div [[a b] [c d]] (r-norm [(* a d) (* b c)]))
+(defn- r< [[a b] [c d]] (< (* a d) (* c b)))
+
+(defn- prime-factors "12 → [2 2 3] (smallest first: a span halves before it thirds)." [n]
+  (loop [n n f 2 out []]
+    (cond (< n 2) out
+          (> (* f f) n) (conj out n)
+          (zero? (mod n f)) (recur (/ n f) f (conj out f))
+          :else (recur n (inc f) out))))
+
+;; ───────── meters: groups and metric weight ─────────
+;; A meter is [p q] (p units of 1/q), and a measure may group its units: {:meter [5 8] :groups [2 3]},
+;; also written "5/8[2+3]". Groups say where the beats fall (beams, metric weight); without them a
+;; meter groups as it is usually read (6/8 in two dotted quarters, 3/4 in three quarters).
+;;
+;; Metric level (after Rastrum, smoge/Rastrum): 0 at the start of the bar, 1 at the start of a group,
+;; and deeper for each division of a group (or of the bar) by the prime factors of its units, twos
+;; first, then halving. Indispensability: Clarence Barlow's ranking of how much each pulse is needed
+;; for the meter to be heard as itself (N−1 the downbeat … 0 the most dispensable). It is composition
+;; data, not notation: 3/4 and 6/8 hold the same six eighths and rank them differently. For a grouped
+;; meter Kairotic ranks by metric level, then by Barlow inside each group, then the earlier group.
+
+(defn parse-meter
+  "\"5/8[2+3]\" → {:meter [5 8] :groups [2 3]}; \"3/4\" → {:meter [3 4]}; nil if it is not a meter."
+  [s]
+  (when-let [[_ p q g] (re-matches #"\s*(\d+)\s*/\s*(\d+)\s*(?:\[\s*([\d\s+]+?)\s*\])?\s*" (str s))]
+    (cond-> {:meter [(js/parseInt p 10) (js/parseInt q 10)]}
+      g (assoc :groups (mapv (fn [x] (js/parseInt x 10)) (str/split (str/trim g) #"\s*\+\s*"))))))
+
+(defn meter-of
+  "A meter as {:meter [p q] :groups [a b …]} (no :groups when it has none), from [5 8], \"5/8[2+3]\",
+   {:meter … :groups …} or a measure."
+  [x]
+  (cond
+    (node? x) (meter-of (attrs x))
+    (string? x) (or (parse-meter x)
+                    (throw (js/Error. (str "a meter is [p q], \"p/q\" or \"p/q[a+b…]\", not " (pr-str x)))))
+    (map? x) (let [m (meter-of (or (:meter x) [4 4]))]
+               (if (seq (:groups x)) (assoc m :groups (vec (:groups x))) m))
+    (and (vector? x) (= 2 (count x)) (every? number? x) (every? pos? x)) {:meter x}
+    :else (throw (js/Error. (str "a meter is [p q], \"p/q\" or \"p/q[a+b…]\", not " (pr-str x))))))
+
+(defn- with-meter-attrs
+  "The attributes of a measure with its meter read: :meter \"5/8[2+3]\" → :meter [5 8] :groups [2 3]."
+  [a]
+  (if (string? (:meter a))
+    (let [m (meter-of (:meter a))]
+      (cond-> (assoc a :meter (:meter m)) (and (:groups m) (not (:groups a))) (assoc :groups (:groups m))))
+    a))
+
+(defn meter-level
+  "The metric level of a position (beats from the start of the bar): 0 the bar, 1 a group, then deeper;
+   20 for a position no division reaches (inside a tuplet)."
+  [meter pos]
+  (let [{[p q] :meter g :groups} (meter-of meter)
+        bar (* p (/ 4 q))
+        x (rat (let [m (mod pos bar)] (if (< (js/Math.abs (- m bar)) 1e-9) 0 m)))]
+    (if (zero? (first x))
+      0
+      (loop [gs (or (seq g) [p]) start [0 1]]
+        (if (empty? gs)
+          20
+          (let [n (first gs) span (r-norm [(* 4 n) q]) local (r- x start)]
+            (if-not (r< local span)
+              (recur (rest gs) (r+ start span))
+              (if (zero? (first local))
+                1
+                (loop [fs (concat (prime-factors n) (repeat 16 2)) step span i 1]
+                  (if (empty? fs)
+                    20
+                    (let [step (r-div step [(first fs) 1])]
+                      (if (= 1 (second (r-div local step)))
+                        (+ (if (seq g) 1 0) i)
+                        (recur (rest fs) step (inc i))))))))))))))
+
+(declare barlow-basic)
+
+(defn- barlow
+  "Barlow's indispensability ψ of pulse n (from 1) in a stratification (prime factors, top first)."
+  [n strata]
+  (let [z (count strata) total (reduce * 1 strata) ps (vec (concat [1] strata [1]))]
+    (reduce + 0 (for [r (range z)]
+                  (let [inner (reduce * 1 (map (fn [k] (ps (- (inc z) k))) (range (inc r))))
+                        outer (reduce * 1 (map ps (range (- z r))))
+                        m (ps (- z r))
+                        digit (inc (mod (inc (quot (mod (- n 2) total) inner)) m))]
+                    (* outer (barlow-basic digit m)))))))
+
+(defn- barlow-basic
+  "Barlow's basic indispensability Ψ of pulse n (from 1) in a prime p; primes above 3 build on p−1."
+  [n p]
+  (if (<= p 3)
+    (mod (+ p n -2) p)
+    (let [w (fn [x] (if (zero? x) 0 1))
+          q (barlow (+ n -1 (w (- p n))) (vec (reverse (prime-factors (dec p)))))
+          quarter (quot p 4)
+          beyond (w (- p n 1))]
+      (+ (* (+ q (w (quot q quarter))) beyond) (* quarter (- 1 beyond))))))
+
+(defn- pulse-count
+  "How many pulses of `pulse` beats fit in a unit of the meter (nil: the unit itself)."
+  [q pulse]
+  (let [per (if pulse (/ (/ 4 q) pulse) 1)]
+    (when-not (and (>= per 1) (< (js/Math.abs (- per (js/Math.round per))) 1e-9))
+      (throw (js/Error. (str "a pulse of " pulse " beats does not divide the unit of a " q "-meter"))))
+    (js/Math.round per)))
+
+(defn pulses
+  "The pulses of a bar, in beats from its start: one per unit, or per `pulse` beats."
+  ([meter] (pulses meter nil))
+  ([meter pulse]
+   (let [{[p q] :meter} (meter-of meter) per (pulse-count q pulse) pb (/ (/ 4 q) per)]
+     (mapv (fn [i] (* i pb)) (range (* p per))))))
+
+(defn indispensability
+  "Barlow's indispensability of every pulse of a bar (one per unit, or per `pulse` beats), in order:
+   3/4 in eighths → [5 0 3 1 4 2]; 6/8 → [5 0 2 4 1 3]. The downbeat is the highest."
+  ([meter] (indispensability meter nil))
+  ([meter pulse]
+   (let [{[p q] :meter g :groups :as m} (meter-of meter)
+         per (pulse-count q pulse)
+         n (* p per)
+         strata (fn [units] (vec (concat (prime-factors units) (prime-factors per))))]
+     (if-not (seq g)
+       (let [s (strata p)] (mapv (fn [i] (barlow (inc i) s)) (range n)))
+       (let [pb (/ (/ 4 q) per)
+             group-of (vec (mapcat (fn [gi k] (repeat (* k per) gi)) (range) g))
+             within (vec (mapcat (fn [k] (let [s (strata k)] (map (fn [i] (barlow (inc i) s)) (range (* k per))))) g))
+             order (sort-by (fn [i] [(meter-level m (* i pb)) (- (within i)) (group-of i)]) (range n))
+             rank (into {} (map-indexed (fn [r i] [i (- n 1 r)]) order))]
+         (mapv rank (range n)))))))
+
+(defn indispensability-at
+  "The indispensability of a position (beats from the start of the bar), or nil off the pulses."
+  ([meter pos] (indispensability-at meter pos nil))
+  ([meter pos pulse]
+   (let [{[_ q] :meter} (meter-of meter) pb (/ (/ 4 q) (pulse-count q pulse)) x (/ pos pb) i (js/Math.round x)]
+     (when (< (js/Math.abs (- x i)) 1e-6) (get (indispensability meter pulse) i)))))
+
 ;; ───────── transformations (tree → tree) ─────────
 
 (defn walk-notes
@@ -149,15 +307,21 @@
               (recur (rest ks) (if (and durable seqy) d prev) (conj out k)))))))))
 
 (defn with-meters
-  "Writes in every measure the meter it takes from the previous one (4/4 at first)."
+  "Writes in every measure the meter (and groups) it takes from the previous one (4/4 at first); a
+   meter written as \"5/8[2+3]\" becomes :meter [5 8] :groups [2 3]. A new meter without groups has none;
+   groups without a meter keep the meter."
   [tree]
-  (let [last-m (atom [4 4])]
+  (let [last-m (atom {:meter [4 4]})]
     (letfn [(go [n]
               (cond
                 (not (node? n)) n
-                (= :measure (tag n)) (let [m (or (:meter (attrs n)) @last-m)]
-                                       (reset! last-m m)
-                                       (make :measure (assoc (attrs n) :meter m) (mapv go (kids n))))
+                (= :measure (tag n))
+                (let [a (with-meter-attrs (attrs n))
+                      cur (cond (:meter a) (cond-> {:meter (:meter a)} (seq (:groups a)) (assoc :groups (vec (:groups a))))
+                                (seq (:groups a)) (assoc @last-m :groups (vec (:groups a)))
+                                :else @last-m)]
+                  (reset! last-m cur)
+                  (with-meta (make :measure (merge (dissoc a :groups) cur) (mapv go (kids n))) (meta n)))
                 :else (with-kids n (mapv go (kids n)))))]
       (go tree))))
 
@@ -179,7 +343,12 @@
                     a (cond-> a
                         (number? (:dur a)) (update :dur * f)
                         (number? (:at a)) (update :at * f)
-                        (and (= :measure (tag n)) (vector? (:meter a))) (update :meter scale-meter f))]
+                        (and (= :measure (tag n)) (vector? (:meter a))) (update :meter scale-meter f))
+                    ;; groups count units: they grow with the numerator
+                    a (let [p0 (first (:meter (attrs n))) p1 (first (:meter a))]
+                        (if (and (seq (:groups a)) (number? p0) (not= p0 p1))
+                          (update a :groups (fn [g] (mapv (fn [x] (* x (/ p1 p0))) g)))
+                          a))]
                 (make (tag n) a (mapv go (kids n))))))]
     (go (with-meters (explicit (expand tree))))))
 
@@ -254,20 +423,6 @@
 ;; it as it is; when not, the level becomes a tuplet of the smallest written value that is not shorter.
 ;; Three shares of a 3/4 bar are quarters; three of a 4/4 bar, a 3:2 of halves.
 ;; Pitches go to the notes in order and start again when they run out (talea and color).
-
-(defn- gcd [a b] (if (zero? b) (js/Math.abs a) (recur b (mod a b))))
-(defn- lcm [a b] (/ (* a b) (gcd a b)))
-(defn- r-norm [[n d]] (let [g (gcd n d)] [(/ n g) (/ d g)]))
-
-(defn- rat
-  "x as a fraction [n d] (d > 0): exact for the beats music uses (halves, thirds, fifths, eighths…)."
-  [x]
-  (let [s (if (neg? x) -1 1) x (js/Math.abs x)]
-    (loop [h1 1 h0 0 k1 0 k0 1 y x i 0]
-      (let [a (js/Math.floor y) h (+ (* a h1) h0) k (+ (* a k1) k0)]
-        (if (or (< (js/Math.abs (- x (/ h k))) 1e-9) (> i 40) (== y a))
-          [(* s h) k]
-          (recur h h1 k k1 (/ 1 (- y a)) (inc i)))))))
 
 (defn- pow2? [d] (loop [d d] (cond (= d 1) true (or (< d 1) (odd? d)) false :else (recur (/ d 2)))))
 
@@ -423,8 +578,9 @@
         [(from (if (seq extra) [:seq extra varied] varied) (if path {:src path :use true} (meta n)))]))
     (= :rtm (tag n)) (rtm-expand n path (:bar ctx))
     :else
-    (let [a (attrs n) defs (merge defs (:defs a))
-          measure? (= :measure (tag n))
+    (let [measure? (= :measure (tag n))
+          a (cond-> (attrs n) measure? with-meter-attrs)
+          defs (merge defs (:defs a))
           _ (when (and measure? (vector? (:meter a))) (vreset! (:meter ctx) (:meter a)))
           ;; only the direct children of a measure fill it
           kctx (assoc ctx :bar (when measure? @(:meter ctx)))]
@@ -566,7 +722,11 @@
                 (string? n) (try (melody n) (catch :default e (say (.-message e))))
                 (not (node? n)) (say "not a node at " (pr-str path) ": " (pr-str n))
                 :else
-                (let [tg (tag n) a (attrs n)]
+                (let [tg (tag n)
+                      a (if (= :measure tg)
+                          (try (with-meter-attrs (attrs n))
+                               (catch :default e (say (.-message e) " at " (pr-str path)) (dissoc (attrs n) :meter)))
+                          (attrs n))]
                   (when-not (known-tags tg) (say "unknown tag " tg " at " (pr-str path)))
                   (when (and (= :note tg) (nil? (midi-of a))) (say "a note without a pitch I understand at " (pr-str path) ": " (pr-str a)))
                   (when (and (:dur a) (not (and (number? (:dur a)) (>= (:dur a) 0)))) (say "a duration is a number of beats at " (pr-str path)))
@@ -578,6 +738,17 @@
                         (say "measure " (pr-str path) " lasts " (cv/fmt got) " beats; its meter " p "/" q " asks for " (cv/fmt want)))))
                   (doseq [[i k] (map-indexed vector (kids n))] (go k (conj path i))))))]
       (go tree [])
+      ;; groups must add up to the meter they group (inherited meters included)
+      (letfn [(gs [n path]
+                (when (node? n)
+                  (let [{[p q] :meter g :groups} (attrs n)]
+                    (when (and (= :measure (tag n)) (seq g))
+                      (cond (not (every? (fn [x] (and (number? x) (pos? x) (== x (js/Math.round x)))) g))
+                            (say "groups are whole numbers of units, at " (pr-str path) ": " (pr-str g))
+                            (not= p (reduce + g))
+                            (say "groups " (pr-str g) " at " (pr-str path) " add up to " (reduce + g) "; the meter " p "/" q " has " p " units"))))
+                  (doseq [[i k] (map-indexed vector (kids n))] (gs k (conj path i)))))]
+        (when (empty? @out) (try (gs (with-meters tree) []) (catch :default e (say (.-message e))))))
       (when (empty? @out)
         (try (expand tree) (catch :default e (say (.-message e))))))
     @out))
@@ -701,7 +872,7 @@
 (defn ->mei
   "Measured notation of a tree. Returns {:mei text :pieces [{:id :t :staff}]} (ids → beats, for cursors)."
   [tree pre]
-  (let [t (explicit (expand tree))
+  (let [t (with-meters (explicit (expand tree)))
         ;; the work in sections (or one), each with its voices; a voice is a staff, by name, across sections
         sections (letfn [(go [n] (cond (not (node? n)) []
                                        (= :section (tag n)) [n]
@@ -720,9 +891,14 @@
                                      :end (and (= i (dec n)) (< si (dec (count sections))))})))
                               (range) sec-voices))
         nbars (count bar-list)
-        meter-at (fn [i] (or (some (fn [j] (some (fn [m] (:meter (attrs m))) (vals (:cells (nth bar-list j)))))
-                                   (reverse (range (inc (max 0 (min i (dec nbars)))))))
-                             [4 4]))
+        ;; [meter groups] of a bar (every measure carries them: with-meters)
+        mg-at (fn [i] (or (some (fn [j] (some (fn [m] (let [a (attrs m)] (when (:meter a) [(:meter a) (seq (:groups a))])))
+                                              (vals (:cells (nth bar-list j)))))
+                                (reverse (range (inc (max 0 (min i (dec nbars)))))))
+                          [[4 4] nil]))
+        meter-at (fn [i] (first (mg-at i)))
+        ;; a grouped meter is written as its groups: 2+3/8
+        meter-count (fn [i] (let [[[p _] g] (mg-at i)] (if g (str/join "+" g) p)))
         counter (atom 0)
         nid (fn [] (str "m-" pre (swap! counter inc)))
         pieces (atom [])
@@ -731,6 +907,38 @@
         bar-start (atom {})
         _ (reduce (fn [acc i] (swap! bar-start assoc i acc) (let [[p q] (meter-at i)] (+ acc (* p (/ 4 q))))) 0 (range (inc nbars)))
         tstamp (fn [bar beat] (let [[_ q] (meter-at bar)] (cv/round-to (inc (* beat (/ q 4))) 4)))
+        ;; where beams may run in a bar: its groups, or its beats (dotted in 6/8, 9/8, 12/8; the whole
+        ;; bar in 2/8 and 3/8), as [start end] in absolute beats
+        beam-spans (fn [i]
+                     (let [[[p q] g] (mg-at i) u (/ 4 q) len (* p u)
+                           lens (cond g (map (fn [k] (* k u)) g)
+                                      (<= q 4) (repeat (js/Math.ceil len) 1)
+                                      (and (zero? (mod p 3)) (> p 3)) (repeat (quot p 3) (* 3 u))
+                                      (<= p 3) [len]
+                                      :else (concat (repeat (js/Math.floor len) 1)
+                                                    (let [r (- len (js/Math.floor len))] (when (> r 1e-9) [r]))))
+                           starts (reductions + (get @bar-start i) lens)]
+                       (vec (map vector starts (rest starts)))))
+        ;; consecutive notes and chords of an eighth or shorter, inside one span, under one <beam>
+        beam-join (fn [items spans]
+                    (let [inside (fn [x] (if (= spans :all)
+                                           0
+                                           (first (keep-indexed (fn [i [s0 e0]]
+                                                                  (when (and (> (:t0 x) (- s0 1e-6)) (< (:t0 x) (- e0 1e-6))
+                                                                             (<= (:t1 x) (+ e0 1e-6)))
+                                                                    i))
+                                                                spans))))
+                          flush-run (fn [out run] (if (>= (count run) 2)
+                                                (str out "<beam>" (apply str (map :xml run)) "</beam>")
+                                                (str out (apply str (map :xml run)))))]
+                      (loop [xs items run [] sp nil out ""]
+                        (if (empty? xs)
+                          (flush-run out run)
+                          (let [x (first xs) i (when (:beam x) (inside x))]
+                            (cond
+                              (nil? i) (recur (rest xs) [] nil (str (flush-run out run) (:xml x)))
+                              (or (empty? run) (= i sp)) (recur (rest xs) (conj run x) i out)
+                              :else (recur (rest xs) [x] i (flush-run out run))))))))
         where (fn [abs]                      ; absolute beat → [bar beat-in-bar]
                 (let [bar (or (last (filter (fn [i] (<= (get @bar-start i) (+ abs 1e-6))) (range nbars))) 0)]
                   [bar (- abs (get @bar-start bar))]))
@@ -749,14 +957,15 @@
         marks! (fn [a staff bar id]
                  (when-let [d (:dyn a)] (ctl! bar (str "<dynam staff=\"" staff "\" startid=\"#" id "\">" (esc-xml d) "</dynam>")))
                  (when-let [x (:text a)] (ctl! bar (str "<dir staff=\"" staff "\" startid=\"#" id "\"><rend fontstyle=\"italic\">" (esc-xml x) "</rend></dir>"))))
-        ;; writes the children of a container; scale converts written beats to sounding beats (tuplets)
-        layer (fn layer [ks staff bar abs scale]
-                (loop [ks ks abs abs out ""]
+        ;; writes the children of a container; scale converts written beats to sounding beats (tuplets);
+        ;; spans: where beams may run (:all inside a tuplet)
+        layer (fn layer [ks staff bar abs scale spans]
+                (loop [ks ks abs abs items []]
                   (if (empty? ks)
-                    [out abs]
+                    [(beam-join items spans) abs]
                     (let [k (first ks) a (attrs k) tg (tag k)]
                       (cond
-                        (not (node? k)) (recur (rest ks) abs out)
+                        (not (node? k)) (recur (rest ks) abs items)
                         (mark-tags tg)
                         (let [[b beat] (where abs)]
                           (case tg
@@ -768,45 +977,51 @@
                                      (ctl! b (str "<dynam staff=\"" staff "\" tstamp=\"" (tstamp b beat) "\">" (esc-xml mk) "</dynam>"))))
                             :text (ctl! b (str "<dir staff=\"" staff "\" tstamp=\"" (tstamp b beat) "\"><rend fontstyle=\"italic\">" (esc-xml (:text a)) "</rend></dir>"))
                             nil)
-                          (recur (rest ks) abs out))
+                          (recur (rest ks) abs items))
                         (= :tuplet tg)
                         (let [[p q] (or (:ratio a) [3 2])
-                              [inner end] (layer (kids k) staff bar abs (* scale (/ q p)))]
-                          (recur (rest ks) end (str out "<tuplet num=\"" p "\" numbase=\"" q "\" bracket.visible=\"true\" num.visible=\"true\">" inner "</tuplet>")))
+                              [inner end] (layer (kids k) staff bar abs (* scale (/ q p)) :all)]
+                          (recur (rest ks) end
+                                 (conj items {:t0 abs :t1 end
+                                              :xml (str "<tuplet num=\"" p "\" numbase=\"" q "\" bracket.visible=\"true\" num.visible=\"true\">" inner "</tuplet>")})))
                         (#{:seq :section :voice} tg)
-                        (let [[inner end] (layer (kids k) staff bar abs scale)] (recur (rest ks) end (str out inner)))
+                        (let [[inner end] (layer (kids k) staff bar abs scale spans)]
+                          (recur (rest ks) end (conj items {:t0 abs :t1 end :xml inner})))
                         (#{:note :rest :chord} tg)
                         (let [d (or (:dur a) 1)
                               parts (split-dur d)
                               [b _] (where abs)
-                              xml (loop [ps parts pabs abs prev-ids nil acc ""]
-                                    (if (empty? ps)
-                                      acc
-                                      (let [[pb du dots] (first ps)
-                                            durattr (str " dur=\"" du "\"" (when (pos? dots) " dots=\"1\""))
-                                            first? (nil? prev-ids)
-                                            [x ids] (case tg
-                                                      :rest (let [id (nid)] (swap! pieces conj {:id id :t pabs :staff staff :src (meta k)})
-                                                              [(str "<rest xml:id=\"" id "\"" durattr "/>") nil])
-                                                      :note (let [id (nid)] [(note-xml a staff pabs id durattr first? (meta k)) [id]])
-                                                      :chord (let [cid (nid)
-                                                                   ns (filter (fn [n] (and (node? n) (= :note (tag n)) (midi-of (attrs n)))) (kids k))
-                                                                   ids (mapv (fn [_] (nid)) ns)]
-                                                               [(str "<chord xml:id=\"" cid "\"" durattr
-                                                                     (let [x (:art a) xs (if (sequential? x) x (when x [x]))
-                                                                           arts (seq (keep (fn [kk] (get artic-names (keyword kk))) xs))]
-                                                                       (when (and first? arts) (str " artic=\"" (str/join " " arts) "\"")))
-                                                                     ">"
-                                                                     (apply str (map (fn [n id] (note-xml (attrs n) staff pabs id "" first? (meta n))) ns ids))
-                                                                     "</chord>")
-                                                                ids]))]
-                                        (when (and first? (seq ids)) (marks! a staff b (first ids)))
-                                        (when (and prev-ids ids)
-                                          (doseq [[s e] (map vector prev-ids ids)]
-                                            (ctl! b (str "<tie startid=\"#" s "\" endid=\"#" e "\"/>"))))
-                                        (recur (rest ps) (+ pabs (* scale pb)) ids (str acc x)))))]
-                          (recur (rest ks) (+ abs (* scale d)) (str out xml)))
-                        :else (recur (rest ks) abs out))))))
+                              part-items
+                              (loop [ps parts pabs abs prev-ids nil acc []]
+                                (if (empty? ps)
+                                  acc
+                                  (let [[pb du dots] (first ps)
+                                        durattr (str " dur=\"" du "\"" (when (pos? dots) " dots=\"1\""))
+                                        first? (nil? prev-ids)
+                                        [x ids] (case tg
+                                                  :rest (let [id (nid)] (swap! pieces conj {:id id :t pabs :staff staff :src (meta k)})
+                                                          [(str "<rest xml:id=\"" id "\"" durattr "/>") nil])
+                                                  :note (let [id (nid)] [(note-xml a staff pabs id durattr first? (meta k)) [id]])
+                                                  :chord (let [cid (nid)
+                                                               ns (filter (fn [n] (and (node? n) (= :note (tag n)) (midi-of (attrs n)))) (kids k))
+                                                               ids (mapv (fn [_] (nid)) ns)]
+                                                           [(str "<chord xml:id=\"" cid "\"" durattr
+                                                                 (let [x (:art a) xs (if (sequential? x) x (when x [x]))
+                                                                       arts (seq (keep (fn [kk] (get artic-names (keyword kk))) xs))]
+                                                                   (when (and first? arts) (str " artic=\"" (str/join " " arts) "\"")))
+                                                                 ">"
+                                                                 (apply str (map (fn [n id] (note-xml (attrs n) staff pabs id "" first? (meta n))) ns ids))
+                                                                 "</chord>")
+                                                            ids]))]
+                                    (when (and first? (seq ids)) (marks! a staff b (first ids)))
+                                    (when (and prev-ids ids)
+                                      (doseq [[s e] (map vector prev-ids ids)]
+                                        (ctl! b (str "<tie startid=\"#" s "\" endid=\"#" e "\"/>"))))
+                                    (recur (rest ps) (+ pabs (* scale pb)) ids
+                                           (conj acc {:t0 pabs :t1 (+ pabs (* scale pb)) :xml x
+                                                      :beam (and (not= :rest tg) (contains? #{"8" "16" "32" "64"} du))})))))]
+                          (recur (rest ks) (+ abs (* scale d)) (into items part-items)))
+                        :else (recur (rest ks) abs items))))))
         clefs (mapv (fn [k] (let [ps (for [vs sec-voices [kk v] vs :when (= kk k)
                                            n (tree-seq node? kids v) :when (= :note (tag n))
                                            :let [m (midi-of (attrs n))] :when m] m)
@@ -818,7 +1033,7 @@
                               staff-xml (apply str
                                                (for [k staves
                                                      :let [staff (staff-of k) m (get cells k)
-                                                           [xml _] (if m (layer (kids m) staff i (get @bar-start i) 1) ["" 0])]]
+                                                           [xml _] (if m (layer (kids m) staff i (get @bar-start i) 1 (beam-spans i)) ["" 0])]]
                                                  (str "<staff n=\"" staff "\"><layer n=\"1\">"
                                                       (if (seq xml) xml (str "<mRest xml:id=\"" (nid) "\"/>"))
                                                       "</layer></staff>")))]]
@@ -828,12 +1043,12 @@
                              staff-xml
                              (apply str (get @ctrl i))
                              "</measure>"))))
-        [p0 q0] (meter-at 0)]
+        [_ q0] (meter-at 0)]
     {:mei (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                "<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">"
                "<meiHead><fileDesc><titleStmt><title>Kairotic</title></titleStmt><pubStmt/></fileDesc></meiHead>"
                "<music><body><mdiv><score>"
-               "<scoreDef meter.count=\"" p0 "\" meter.unit=\"" q0 "\" key.sig=\"0\">"
+               "<scoreDef meter.count=\"" (meter-count 0) "\" meter.unit=\"" q0 "\" key.sig=\"0\">"
                "<staffGrp" (when (> (count staves) 1) " bar.thru=\"false\"") ">"
                (apply str (for [[i [shape line]] (map-indexed vector clefs)
                                 :let [k (nth staves i)]]
@@ -844,8 +1059,8 @@
                (apply str
                       (map-indexed (fn [i x]
                                      ;; a change of meter is written before its bar
-                                     (if (and (pos? i) (not= (meter-at i) (meter-at (dec i))))
-                                       (let [[p q] (meter-at i)] (str "<scoreDef meter.count=\"" p "\" meter.unit=\"" q "\"/>" x))
+                                     (if (and (pos? i) (not= (mg-at i) (mg-at (dec i))))
+                                       (let [[_ q] (meter-at i)] (str "<scoreDef meter.count=\"" (meter-count i) "\" meter.unit=\"" q "\"/>" x))
                                        x))
                                    bars))
                "</section></score></mdiv></body></music></mei>")
@@ -978,3 +1193,51 @@
          (:set :insert) (str " " (let [t (pr-str x)] (if (> (count t) 60) (str (subs t 0 57) "…") t)))
          :attrs (str " " (pr-str x))
          "")))
+
+;; ───────── metric weight in a tree ─────────
+
+(defn- leaf-onsets
+  "[[path onset] …] of the notes and chords of a measure (onsets in beats from its start)."
+  [m]
+  (let [acc (transient [])]
+    (place m 0 1 {:path [] :voice nil} acc)
+    (->> (persistent! acc)
+         (filter (fn [e] (= :note (:kind e))))
+         (map (fn [e] (let [p (:path e)] [(if (= :chord (tag (node-at m (pop p)))) (pop p) p) (:t e)])))
+         distinct
+         vec)))
+
+(defn- thin-measure [amount m]
+  (let [ls (leaf-onsets m)
+        n (count ls)
+        k (if (< amount 1) (js/Math.round (* amount n)) (min n (js/Math.round amount)))
+        {[_ q] :meter :as mtr} (meter-of (attrs m))
+        unit (/ 4 q)
+        ;; the coarsest pulse (the unit, halved up to six times) that holds every onset: Barlow ranks there
+        pulse (first (filter (fn [pb] (every? (fn [[_ t]] (let [x (/ t pb)] (< (js/Math.abs (- x (js/Math.round x))) 1e-6))) ls))
+                             (map (fn [e] (/ unit (js/Math.pow 2 e))) (range 7))))
+        ranks (when pulse (indispensability mtr pulse))
+        weight (fn [[_ t]] [(meter-level mtr t)
+                            (- (if ranks (nth ranks (js/Math.round (/ t pulse)) -1) -1))
+                            t])
+        kept (set (map first (take k (sort-by weight ls))))]
+    (reduce (fn [mm [path _]]
+              (if (kept path)
+                mm
+                (apply-op mm [:set path [:rest {:dur (:dur (attrs (node-at mm path)))}]])))
+            m ls)))
+
+(defn thin
+  "Keeps, in every measure, the notes on its strongest positions (metric level, then Barlow's
+   indispensability) and turns the others into rests: amount is a share of the notes (0.5) or how many
+   (3). Without measures, the whole tree is weighed as one bar of quarters."
+  [amount tree]
+  (let [t (with-meters (explicit (expand tree)))
+        measured (some (fn [x] (and (node? x) (= :measure (tag x)))) (tree-seq node? kids t))]
+    (letfn [(go [n]
+              (cond (not (node? n)) n
+                    (= :measure (tag n)) (thin-measure amount n)
+                    :else (with-kids n (mapv go (kids n)))))]
+      (if measured
+        (go t)
+        (first (kids (thin-measure amount [:measure {:meter [(max 1 (js/Math.ceil (duration t))) 4]} t])))))))

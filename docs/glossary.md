@@ -225,6 +225,8 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | compás | measure (`:measure {:meter [3 4]}`) |
 | grupo irregular (tresillo…) | tuplet (`:tuplet {:ratio [3 2]}`) |
 | ritmo proporcional · proporciones · célula | proportional rhythm (`:rtm`) · shares · cell |
+| compás agrupado (5/8 = 2+3) · barrado | grouped meter (`:groups [2 3]`, `"5/8[2+3]"`) · beaming |
+| peso métrico · indispensabilidad (Barlow) · aligerar | metric weight (`mt/meter-level`) · indispensability · thin (`mt thin`) |
 | acorde | chord |
 | silencio | rest |
 | regulador | hairpin (`:dyn {:mark "<" :dur 2}`) |

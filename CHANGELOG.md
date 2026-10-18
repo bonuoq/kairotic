@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Grouped meters and metric weight** ([discussion #17](https://github.com/bonuoq/kairotic/discussions/17)):
+  a measure groups its units with `:groups [2 3]` or `{:meter "5/8[2+3]"}` (inherited with the meter,
+  checked to add up). Scores write grouped meters as 2+3/8 and now **beam** eighths and shorter notes
+  by group, or by beat (dotted beats in 6/8, 9/8, 12/8); tuplets beam their own notes. Metric weight
+  as composition data: `mt/meter-level`, Barlow's `mt/indispensability` (3/4 and 6/8 rank the same
+  eighths differently), `mt/indispensability-at`, `mt/pulses`, and `mt/thin` / the box `mt thin 0.5`,
+  which keeps the notes on the strongest positions of each measure. Docs: `docs/mt.md` · `docs/mt.es.md`.
 - **Proportional rhythm in musical trees** ([discussion #17](https://github.com/bonuoq/kairotic/discussions/17),
   after [Rastrum](https://github.com/smoge/Rastrum)): `[:rtm {:shares [1 [1 [1 1 1]] -1 2] :pitches "c4 d4"}]`
   writes a rhythm as shares (negative: a rest; `[weight [shares]]` divides one) that fill their measure

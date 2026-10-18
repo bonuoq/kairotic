@@ -229,10 +229,11 @@
 
    "mt"
    {:inlets ["a tree: it comes out transformed (for play: a tree to play, then bang, stop)"
-             "for transpose, invert, augment, rotate, canon: the amount · for seq, par: the tree to join"]
+             "for transpose, invert, augment, rotate, canon, thin: the amount · for seq, par: the tree to join"]
     :outlets ["the result (for play: the Hz of the notes sounding, a list)"]
     :messages [["mt transpose 7" "seven semitones up"] ["mt invert c4" "mirrored around c4"] ["mt retrograde" "backwards"]
                ["mt augment 2" "twice as long"] ["mt rotate 1" "the first element goes to the end"] ["mt canon 2 7" "against itself, 2 beats later, a fifth up"]
+               ["mt thin 0.5" "keeps half the notes of each measure, the ones on its strongest positions (metric weight)"]
                ["mt seq · mt par" "the left tree followed by (or with) the right one"] ["mt events · mt pitches · mt duration" "the tree as data"]
                ["mt play [loop]" "plays it: Hz (0) and voice ids (1) for synth~, parameters (2), dynamics and texts (3)"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)" "(code :b2 \"\\\"c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2\\\"\")"

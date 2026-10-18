@@ -41,7 +41,7 @@
 
 (def tree-words
   [":voice" ":measure" ":section" ":seq" ":par" ":piece" ":chord" ":note" ":rest" ":tuplet" ":rtm" ":shares"
-   ":pitches" ":meter" ":dur"
+   ":pitches" ":meter" ":groups" ":dur"
    ":pitch" ":tempo" ":key" ":dyn" ":defs" ":use" ":vel" ":ties"])
 
 (def component-words
