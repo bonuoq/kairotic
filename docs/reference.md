@@ -163,6 +163,7 @@ Graphic buffer for any numeric data: strokes in a plane with axes of any range, 
 - `[:axis :x lo hi] · [:axis :y lo hi :log] · [:grid-y step]`: axes and grid by message
 - `[:batch [[:clear] [:stroke pts] …]]`: several edits, one event of the history
 - `[:read 0.5] · [:read :y 0.2] · [:strokes] · [:get :t1] · [:count] · [:range] · [:data]`: questions: the answer comes out on the left
+- `{ } in the header (or a double-click on its right) · (source :bN)`: the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event
 
 **Try:** Press ▶: the reader goes along X and prints the height of the stroke. Draw another stroke and listen to the list grow.
 
@@ -286,6 +287,8 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 - `[:tuning "19-tet" 261.63] · [:grid-x 0.25 [4]]`: tuning and grid by message
 - `[:batch [[:clear] [:note 0 "c4" 1] …]]`: several edits, one event of the history
 - `[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]`: questions: the answer comes out on the left
+- `⇄ score in the header · (view :bN :score)`: the same buffer, drawn as a score (⇄ canvas brings it back)
+- `{ } in the header (or a double-click on its right) · (source :bN)`: the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event
 
 See also: `score`, `canvas`, `reader`
 
@@ -731,6 +734,10 @@ The same buffer as a freqt, drawn as an approximate score; or the musical tree i
 
 - `click a note of a tree`: ↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest
 - `(keep! :bN)`: writes the tree it shows into its buffer
+- `⇄ canvas in the header · (view :bN :canvas)`: the same buffer, drawn as a freqt (⇄ score brings it back)
+- `{ } in the header · (source :bN)`: its buffer as EDN text, in the code window
+
+**Try:** A score is for a tree that comes transformed (tree → mt transpose 7 → score). To see and edit a tree box itself as a score, use ⇄ score in its header: no wire needed.
 
 See also: `tree`, `freqt`, `mt`
 
@@ -824,10 +831,11 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `(tree! :bN [:voice …])`: writes a tree into it, as edits of the nodes that change
 - `(tree-edit! :bN [:attrs [0 1 2] {…}])`: edits nodes by their path: [:set p x] [:attrs p {…}] [:insert p x] [:remove p]
 - `(node-at :bN [0 1])`: the node at a path
+- `⇄ score in the header · (view :bN :score)`: the same tree drawn as a score, in this box (⇄ code brings the code back; { } opens it)
 - `in a score: click a note`: ↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest
 - `(as-tree :bN)`: reads it back as data
 
-**Try:** The score already shows the tree, measure by measure. Double-click the code, change a note and apply it (Ctrl+Enter): the score follows. Click a note of the score and press ↑: the change comes back to the tree by the dashed line.
+**Try:** The score already shows the tree, measure by measure. Double-click the code, change a note and apply it (Ctrl+Enter): the score follows. Click a note of the score and press ↑: the change comes back to the tree by the dashed line. Or press ⇄ score in the header of the tree box: the same tree as a score, in one box.
 
 ```clojure
 (box :b1 "bang" 40 20)
