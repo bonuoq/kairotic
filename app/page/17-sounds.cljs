@@ -26,7 +26,7 @@
 (defn sound-of "The description of the sound of a sample box ({} if it is empty)." [id]
   (or (:data (need-sample id)) {}))
 
-(defn sound-file-name [d] (str "kairotic-" (subs (str (:audio d)) 0 8) ".wav"))
+(defn sound-file-name [d] (str "kairotic-" (.slice (str (:audio d)) 0 8) ".wav"))
 
 (defn save-sound
   "Saves the sound of a sample box as a WAV file (16 bits), if this browser has it: (save-sound :b4)."
