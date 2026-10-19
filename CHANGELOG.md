@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **`@kairotic/analysis` 0.1.1**, the first version published from GitHub with trusted publishing
+  (0.1.0 was published by hand): the same components. Works pin 0.1.1; the publishing workflow now
+  answers to `analysis-v*` tags.
 - **`@kairotic/analysis`**, a new official package (step 3 of audio input): from any signal into
   messages and pictures. `pitch~ [lo hi] [threshold]` — YIN in its own AudioWorklet, every 1024
   samples: Hz on the left (0 once when it stops hearing a pitch), clarity on the right, a view with the

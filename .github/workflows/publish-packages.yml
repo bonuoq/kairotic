@@ -9,7 +9,7 @@ name: publish-packages
 
 on:
   push:
-    tags: ["synth-v*", "spatial-v*", "cac-v*", "notation-v*", "controls-v*"]
+    tags: ["synth-v*", "spatial-v*", "cac-v*", "notation-v*", "controls-v*", "analysis-v*"]
 
 jobs:
   publish:
