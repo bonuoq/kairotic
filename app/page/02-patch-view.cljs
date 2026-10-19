@@ -80,14 +80,21 @@
 
 (declare panel-layout)
 
+(defn box-size
+  "The size a canvas, freqt or score box is drawn at: the one being dragged at its corner, its own (:size,
+   issue #40), or the default. For a score only the width counts: its height follows the notation."
+  [id b]
+  (let [r (:resize @ui)]
+    (if (and r (= (:id r) id)) [(:w r) (:h r)] (or (:size b) [cv/W cv/H]))))
+
 (defn box-dims [id b]
   (let [t (:text b)]
     (cond
       (= :code (display-of b)) [code-w (:h (code-geom b))]
       (panel-layout b) (let [{:keys [w h]} (panel-layout b)] [w h])
       (own-view? b) (let [[w h] (comp/size-of b)] [(+ grip w) h])
-      (= :canvas (display-of b)) [cv/W cv/H]
-      (= :score (display-of b)) [cv/W (max 90 (+ hdr 8 (or (get-in @score-cache [id :h]) 70)))]
+      (= :canvas (display-of b)) (box-size id b)
+      (= :score (display-of b)) [(first (box-size id b)) (max 90 (+ hdr 8 (or (get-in @score-cache [id :h]) 70)))]
       :else
     (case (klass t)
       "bang" [34 26]
@@ -112,7 +119,10 @@
   (let [b (get-in p [:boxes id]) [x y] (box-pos id b) [w _] (box-dims id b) [n _] (io b)]
     [(+ x (port-x w n i) (/ pw 2)) y]))
 
-(defn canvas-geom [d] (cv/geom (or d cv/empty) hdr))
+(defn canvas-geom
+  "Where a canvas draws its data (d), in the box b (its size: issue #40) or in one of the default size."
+  ([d] (cv/geom (or d cv/empty) hdr))
+  ([d id b] (cv/geom (or d cv/empty) hdr (box-size id b))))
 
 ;; a tree box shown as a score (discussion #30): its own tree, expanded, remembering where each note is
 ;; written, so its notes edit it directly
@@ -129,7 +139,8 @@
         d0 (if tree-box? cv/empty (canvas-data b))
         ;; a tree shown live, or the tree a buffer was kept from while it is unchanged (its recipe)
         lt (if tree-box? (own-tree id b) (or (live-tree id) (kept-tree b)))
-        d [d0 lt] c (get @score-cache id)]
+        sw (first (box-size id b))
+        d [d0 lt sw] c (get @score-cache id)]
     (cond
       (and c (= (:key c) d)) c
       (nil? @vrv) nil
@@ -140,7 +151,7 @@
                                      (mt/->score lt (str (name id) "-"))
                                      (sc/->mei-voice (cv/->voice d0) (str (name id) "-")))
               g (js/document.createElementNS "http://www.w3.org/2000/svg" "g")]
-          (.setOptions tk (clj->js {:pageWidth (js/Math.round (/ (* (- cv/W 8) 100) scale)) :pageHeight 60000
+          (.setOptions tk (clj->js {:pageWidth (js/Math.round (/ (* (- sw 8) 100) scale)) :pageHeight 60000
                                     :adjustPageHeight true :breaks "auto" :scale scale
                                     :header "none" :footer "none" :lyricSize 3.2
                                     :pageMarginTop 24 :pageMarginBottom 12 :pageMarginLeft 20 :pageMarginRight 20}))
@@ -210,16 +221,16 @@
         (cond
           (= axis :path)
           (when pt
-            (let [g (canvas-geom d)]
+            (let [g (canvas-geom d bid b)]
               (str "<circle class=\"sounding\" cx=\"" (+ x (cv/t->x g (first pt))) "\" cy=\"" (+ y (cv/f->y g (second pt))) "\" r=\"6\"></circle>")))
           (= axis :y)
-          (let [g (canvas-geom d) cy (+ y (cv/f->y g (max (:ya g) (min t (:yb g)))))]
+          (let [g (canvas-geom d bid b) cy (+ y (cv/f->y g (max (:ya g) (min t (:yb g)))))]
             (str "<line class=\"" cls "\" x1=\"" (+ x (:x0 g)) "\" x2=\"" (+ x (:x0 g) (:w g)) "\" y1=\"" cy "\" y2=\"" cy "\"></line>"
                  (when dots?
                    (apply str (for [[_ v] (cv/read-along d :y t)]
                                 (str "<circle class=\"sounding\" cx=\"" (+ x (cv/t->x g v)) "\" cy=\"" cy "\" r=\"4\"></circle>"))))))
           :else
-          (let [g (canvas-geom d) cx (+ x (cv/t->x g (max (:xa g) (min t (:xb g)))))]
+          (let [g (canvas-geom d bid b) cx (+ x (cv/t->x g (max (:xa g) (min t (:xb g)))))]
                    (str "<line class=\"" cls "\" x1=\"" cx "\" x2=\"" cx "\" y1=\"" (+ y (:y0 g)) "\" y2=\"" (+ y (:y0 g) (:h g)) "\"></line>"
                         (when dots?
                           (apply str (for [[_ f] (cv/read-at d t)]
@@ -580,7 +591,7 @@
                     d (if (music? b) (shown-data id b) (canvas-data b))
                     content (case (if music-box? (display-of b) kc)
                               :canvas (let [dr (when (and ldrag (= (:box ldrag) id)) ldrag)
-                                             g (if dr (:g dr) (canvas-geom d))]
+                                             g (if dr (:g dr) (canvas-geom d id b))]
                                          (cv/svg idn d g (when (= (first nsel) id) (second nsel))
                                                  (when (and dr (= :move (:kind dr)) (:moved dr)) {(:tid dr) (:pts dr)})
                                                  (when (and dr (= :draw (:kind dr))) (:pts dr))))
@@ -603,7 +614,12 @@
                 (str "<g class=\"" cls "\" data-box=\"" idn "\" transform=\"translate(" x "," y ")\">"
                      "<rect class=\"body\" width=\"" w "\" height=\"" h "\" rx=\"3\"></rect>"
                      (cond code-box? (str (box-header id b w) (code-view id b w))
-                           music-box? (str (box-header id b w) content)
+                           music-box? (str (box-header id b w) content
+                                           (when-not @pres-mode
+                                             (str "<path class=\"resize-corner\" data-box=\"" idn "\" d=\"M" (- w 14) " " (- h 3) " L" (- w 3) " " (- h 14)
+                                                  " L" (- w 3) " " (- h 3) " Z\"><title>Drag to resize"
+                                                  (when (= :score (display-of b)) " (its width; the height follows the notation)")
+                                                  " · double-click: default size</title></path>")))
                            (panel-layout b) (panel-svg id b w)
                            action-box? (str "<rect class=\"grip\" x=\"0\" y=\"0\" width=\"" grip "\" height=\"" h "\" rx=\"2\"></rect>" content)
                            :else (str "<text x=\"10\" y=\"16\">" (esc t) "</text>"))
@@ -636,7 +652,8 @@
           (set! (.-width st) "100%")
           (set! (.-height st) "100%"))
         (do (.removeAttribute cv "viewBox")
-            (set! (.-width st) (str (max 900 (+ mx 160)) "px"))
+            ;; at least as wide as the pane (wider with the panel on the right hidden: issue #40)
+            (set! (.-width st) (str (max 900 (or (some-> ($ "canvas-wrap") .-clientWidth) 0) (+ mx 160)) "px"))
             (set! (.-height st) (str (max 680 (+ my 200)) "px")))))
     (render-crumbs!)
     ;; scores already drawn are put back in their box, with the chosen stroke marked

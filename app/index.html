@@ -45,8 +45,26 @@ header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px;
 header .status b { font-weight: 500; }
 header .status b.on { color: var(--ok); }
 header .status b.off { color: var(--kairos); }
-.work { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 12px; min-height: 0; }
-@media (max-width: 860px) { .work { grid-template-columns: minmax(0, 1fr); } }
+.work { display: grid; grid-template-columns: minmax(0, 1.55fr) 12px minmax(0, 1fr); gap: 0; min-height: 0; }
+/* the panel on the right (issue #40): dragged to a width of its own, or hidden; the splitter between them */
+.work.sized { grid-template-columns: minmax(0, 1fr) 12px var(--side-w, 420px); }
+.work.side-off { grid-template-columns: minmax(0, 1fr) 12px; }
+.work.side-off > .side-pane { display: none; }
+.splitter { position: relative; cursor: col-resize; touch-action: none; display: flex; justify-content: center; }
+.splitter::before { content: ""; position: absolute; top: 0; bottom: 0; left: 5px; width: 2px; border-radius: 1px; background: transparent; transition: background 0.15s; }
+.splitter:hover::before, .splitter.dragging::before { background: var(--accent); }
+.side-off .splitter { cursor: default; }
+.side-off .splitter:hover::before { background: transparent; }
+.side-toggle { position: relative; z-index: 1; margin-top: 8px; width: 12px; height: 40px; padding: 0; border: 1px solid var(--rule); border-radius: 4px; background: var(--sheet); color: var(--ink-soft); font-size: 11px; line-height: 1; cursor: pointer; }
+.side-toggle:hover { color: var(--ink); border-color: var(--accent); }
+.side-hide { margin-left: auto; font: inherit; font-size: 13px; background: none; border: 0; color: var(--ink-soft); cursor: pointer; padding: 0 4px; }
+.side-hide:hover { color: var(--ink); }
+@media (max-width: 860px) {
+  .work, .work.sized, .work.side-off { grid-template-columns: minmax(0, 1fr); }
+  .splitter { cursor: default; height: 12px; align-items: center; }
+  .splitter::before { display: none; }
+  .side-toggle { margin-top: 0; width: 48px; height: 12px; }
+}
 .pane { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .pane-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
 .pane-head .label { font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
@@ -60,6 +78,8 @@ header .status b.off { color: var(--kairos); }
 #canvas .box.presented rect.body { stroke-dasharray: 5 3; }
 #canvas .box.panel rect.head { fill: var(--accent-soft); stroke: none; }
 #canvas .pres-area { fill: transparent; cursor: ns-resize; }
+#canvas .resize-corner { fill: var(--rule); cursor: nwse-resize; opacity: 0.6; }
+#canvas .box:hover .resize-corner { fill: var(--accent); opacity: 1; }
 #canvas .chip { fill: var(--sheet); stroke: var(--rule); }
 .pres .port, .pres .grip { display: none; }
 .pres #canvas { background-image: none; }
@@ -93,7 +113,7 @@ a.act { text-decoration: none; display: inline-block; }
 .embed-pop .ep-what, .embed-pop .ep-note { margin: 0; color: var(--ink-soft); }
 body.embed .app { height: 100vh; height: 100dvh; min-height: 0; padding: 0; gap: 0; grid-template-rows: minmax(0, 1fr); }
 body.embed header, body.embed .manager, body.embed .pane[aria-label="Projections"], body.embed .pane[aria-label="History"],
-body.embed .pane.repl, body.embed .pane-head .hint, body.embed #perform-toggle, body.embed #perform-info, body.embed #snap-btn, body.embed #embed-btn, body.embed #embed-pop, body.embed #lesson-back { display: none !important; }
+body.embed .pane.repl, body.embed #side-split, body.embed .pane-head .hint, body.embed #perform-toggle, body.embed #perform-info, body.embed #snap-btn, body.embed #embed-btn, body.embed #embed-pop, body.embed #lesson-back { display: none !important; }
 body.embed .work { display: flex; min-height: 0; height: 100%; }
 body.embed .pane { flex: 1; border: 0; border-radius: 0; }
 body.embed .pane-head { padding: 5px 8px; }
@@ -540,7 +560,11 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
       </div>
     </section>
 
-    <section class="pane" aria-label="Projections">
+    <div class="splitter" id="side-split" role="separator" aria-orientation="vertical" aria-controls="side-pane" title="Drag to resize the panel · double-click to hide or show it">
+      <button class="side-toggle" id="side-toggle" type="button" aria-expanded="true" title="Hide the panel">›</button>
+    </div>
+
+    <section class="pane side-pane" id="side-pane" aria-label="Projections">
       <div class="pane-head">
         <div class="tabs" role="tablist">
           <button class="tab" role="tab" id="tab-code" data-tab="code" aria-selected="true">Code</button>
@@ -549,6 +573,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
           <button class="tab" role="tab" id="tab-help" data-tab="help" aria-selected="false" title="How each component works, and tutorials (? on a selected box)">Help</button>
           <button class="tab" role="tab" id="tab-feedback" data-tab="feedback" aria-selected="false" title="Report a bug, propose an idea or ask a question (on GitHub)">Feedback</button>
         </div>
+        <button class="side-hide" id="side-hide" type="button" title="Hide the panel (it comes back with ‹, with help, or with (side-panel true))">»</button>
       </div>
       <div class="panel" id="panel-code">
         <textarea id="code" spellcheck="false" aria-label="Patch code"></textarea>
@@ -673,7 +698,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
       <span>signal: <code>phasor~ [hz]</code> · <code>reader~ [x|y|path] [voices] [gate]</code> (position signal 0…1 on the left, buffer on the right; a voice keeps its last value where nothing passes; <code>gate</code> adds one outlet per voice, 1 where it sounds, 0 where not) · <code>sig~ [value]</code> · <code>osc~</code> and <code>gain~</code> take a signal on their frequency / factor · trajectories: <code>reader path [stroke]</code> (0…1 along a stroke → [x y])</span>
       <span>Claude: the <b>Claude</b> tab, or <code>(ask-component "a slow LFO with its waveform drawn")</code> · with a component box selected, “change the selected component” · it uses your own Claude account</span>
       <span>packages: writing a class of an official package brings the package into the work, as one component box pinned to its version · <code>@kairotic/synth</code>: <code>adsr~ [a d s r]</code>, <code>synth~</code> · <code>@kairotic/spatial</code>: <code>pan~ [pos]</code>, <code>space~ [x y]</code> · <code>(packages)</code> · <code>(add-package! "@kairotic/synth")</code> · a component uses the core through <code>api/…</code> (<code>api/clamp</code>, <code>api/worklet-node</code>…)</span>
-      <span>presentation: <code>(present :b4 x y)</code> · <code>(present :b4)</code> · <code>(present-in-place :b3 :b4)</code> · <code>(unpresent :b4)</code> · <code>(presentation true)</code> · a sub-patch with presented boxes is a panel of them · <code>(send-to! :b7.b4 0.5)</code></span>
+      <span>presentation: <code>(present :b4 x y)</code> · <code>(present :b4)</code> · <code>(present-in-place :b3 :b4)</code> · <code>(resize :b3 640 300)</code> · <code>(side-panel false)</code> · <code>(unpresent :b4)</code> · <code>(presentation true)</code> · a sub-patch with presented boxes is a panel of them · <code>(send-to! :b7.b4 0.5)</code></span>
       <span><code>(box "text" x y)</code></span>
       <span><code>(connect :b1 0 :b2 0)</code></span>
       <span><code>(disconnect :b1 0 :b2 0)</code></span>

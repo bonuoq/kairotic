@@ -144,6 +144,12 @@ pad), sub-patches included. A `presets` box plays them:
 
 ## 5. The tabs on the right
 
+The panel on the right can make way for the patch: **»** in its header (or **›** on the bar between them)
+hides it, and **‹** brings it back; asking for a tab — **?** or F1 on a box, `(docs …)`, a tutorial —
+shows it too. Drag the bar between the patch and the panel to give it another width; a double-click on
+the bar hides or shows it. This browser remembers how you left it. From the REPL: `(side-panel false)`,
+`(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
+
 - **Code** — the work as **Calls** (`box`, `connect`, …), editable: Ctrl/⌘+Enter runs them and rebuilds
   the patch. **Data** shows the same work as data (EDN): the state the history produces, every key of
   every box, read-only, to inspect it (folding and search with Ctrl/⌘+F). Edits not run yet stay in the
@@ -166,6 +172,10 @@ A `tree` box holds music in EDN — voices, measures, notes, chords, dynamics:
 through `mt` boxes it is transformed (`mt transpose 7`, `mt retrograde`, `mt canon 2 7`); with
 `mt play` → `synth~` it sounds. Click a note in a score to edit it (↑ ↓ + − ← → Delete). See
 [Musical trees](mt.md).
+
+A `canvas`, a `freqt` and a score are resized by their bottom-right corner, as one event of the history
+(`(resize :b3 640 300)`); a double-click on the corner brings back their size. A score takes the width
+you give it and reflows its notation; its height follows the notation.
 
 ## 7. Presentation
 
@@ -194,6 +204,8 @@ history), *Present without them* leaves them out. From the REPL: `(present-in-pl
 | ⌘/Ctrl+click | edit a box below it (its arguments and text) |
 | ⇧+click · a frame · ⌘/Ctrl+A | select several boxes · all |
 | Esc | deselect, or close the box editor |
+| drag the corner of a canvas, freqt or score | resize it (double-click: its default size) |
+| drag the bar beside the panel · » · ‹ | resize the panel on the right · hide it · show it |
 | space | ▶ / ■ |
 | ? or F1 | help of the selected box |
 | Ctrl+Z · Ctrl+Shift+Z · Ctrl+Y | back · forward in the history (in Perform, in the take) |

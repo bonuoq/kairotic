@@ -118,6 +118,29 @@
    (dispatch! [:present id (js/Math.round x) (js/Math.round y)])
    [x y]))
 
+(def size-min [220 110])
+(def size-max [2400 1600])
+
+(defn resizable?
+  "Boxes drawn with a size of their own: a canvas, a freqt, and a score (a freqt or a tree shown as a score)."
+  [b] (contains? #{:canvas :score} (display-of b)))
+
+(defn resize
+  "Gives a canvas, freqt or score box a size of its own, as one event: (resize :b3 640 300). A score keeps
+   the height of its notation, and its width reflows it. (resize :b3) brings back its default size."
+  ([id]
+   (need-box id)
+   (dispatch! [:size id nil])
+   :default)
+  ([id w h]
+   (let [b (need-box id)]
+     (when-not (resizable? b) (fail (str id " is not drawn with a size of its own (a canvas, a freqt or a score is)")))
+     (when-not (and (number? w) (number? h)) (fail "A size is a width and a height: (resize :b3 640 300)"))
+     (let [[w0 h0] size-min [w1 h1] size-max
+           w (js/Math.round (max w0 (min w1 w))) h (js/Math.round (max h0 (min h1 h)))]
+       (dispatch! [:size id w h])
+       [w h]))))
+
 (defn present-in-place
   "Shows boxes in presentation where they are in the patch, as one event (issue #42): (present-in-place :b3 :b4)."
   [& ids]
@@ -702,6 +725,10 @@
                         (when (seq vw)
                           (concat ["" ";; views"]
                                   (for [id vw] (str "(view " id " " (pr-str (get-in p [:boxes id :view])) ")")))))
+                      (let [sz (filter (fn [id] (:size (get-in p [:boxes id]))) ids)]
+                        (when (seq sz)
+                          (concat ["" ";; sizes"]
+                                  (for [id sz :let [[w h] (get-in p [:boxes id :size])]] (str "(resize " id " " w " " h ")")))))
                       (when (seq (:lines p)) ["" ";; lines"])
                       (for [[a o b i] (:lines p)]
                         (str "(connect " a " " o " " b " " i ")"))
@@ -722,7 +749,7 @@
 ;; Keys come in a readable order: :text :x :y first, :data last, and :b2 before :b10.
 
 (def edn-width 72)
-(def key-rank {:class 0 :text 1 :x 2 :y 3 :present 4 :view 5 :data 98 :recipe 99})
+(def key-rank {:class 0 :text 1 :x 2 :y 3 :present 4 :view 5 :size 6 :data 98 :recipe 99})
 
 (defn natural-key
   "A sort key for map keys: the rank of known keys, then the name split into text and numbers."

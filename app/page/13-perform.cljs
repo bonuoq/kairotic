@@ -19,7 +19,7 @@
   "A change of layout only: a box moved, placed in presentation or shown in another view (also inside a sub-patch)."
   [p [op & args]]
   (case op
-    (:move :present :view) true
+    (:move :present :view :size) true
     :batch (let [[evs] args] (boolean (and (sequential? evs) (seq evs) (every? (fn [e] (and (vector? e) (layout-ev? p e))) evs))))
     :in (let [[id inner] args b (get-in p [:boxes id])]
           (boolean (and (embedded? b) (vector? inner) (layout-ev? (or (:data b) empty-patch) inner))))

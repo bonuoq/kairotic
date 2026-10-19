@@ -17,6 +17,17 @@
   (min and max per column), with the loops over samples in the worklet; `api/retap`, `api/db`. Docs:
   guide · guía, writing a component · escribir un componente. Tests: `tests/cljs/input.cljs`,
   `tests/audioin.mjs` (the test browser runs with a fake microphone).
+- **The panel on the right can be hidden and resized** ([#40](https://github.com/bonuoq/kairotic/issues/40)):
+  **»** in its header (or **›** on the bar beside it) hides it and the patch takes the room; **‹** brings
+  it back, and so does asking for a tab (? or F1 on a box, `(docs …)`, a tutorial, the Code tab). Drag
+  the bar between patch and panel to set its width (a double-click on it hides or shows it). Kept in this
+  browser, not in the work. REPL: `(side-panel false)`, `(side-panel true)`, `(side-panel 480)`,
+  `(side-panel :auto)`.
+- **Canvas, freqt and score boxes can be resized** ([#40](https://github.com/bonuoq/kairotic/issues/40)):
+  drag their bottom-right corner; the size stays in the work as one event, `[:size :bN w h]` (a change of
+  layout for Perform, its own unit for merges), and the work's code writes `(resize :bN w h)`. A score
+  reflows its notation to the width and keeps the height of the notation. A double-click on the corner,
+  or `(resize :bN)`, brings back the default size. Tests: `tests/layout.mjs`.
 - **Present the selection** ([#42](https://github.com/bonuoq/kairotic/issues/42)): pressing **Present**
   with boxes selected that are not in the presentation yet asks whether to present them; *Present the
   selection* puts them in it where they are in the patch, as one event of the history. REPL:
