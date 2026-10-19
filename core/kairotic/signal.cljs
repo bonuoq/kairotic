@@ -188,10 +188,11 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
     (reset! (:route node) which)))
 
 (defn play-sound!
-  "Gives a reader~ the sound described by d: from this browser's store, into its player."
+  "Gives a reader~ the sound described by d: from this browser's store (or fetched from its URL), into
+   its player."
   [node d]
   (reset! (:route node) :sound)
-  (-> (snd/sound (:audio d))
+  (-> (snd/sound-for d)
       (.then (fn [s]
                (when (and @(:alive node) (= d @(:fed node)))
                  (if-not s

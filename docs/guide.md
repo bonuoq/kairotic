@@ -94,7 +94,10 @@ comes first.
   — `!/ 1` turns its length (its left outlet) into the speed of the phasor~, and any other speed plays
   it faster, slower or backwards. The sound stays in this browser; the work keeps its picture, so a work
   opened elsewhere shows it and says it is not there. `(load-sound! :bN)` brings in a file,
-  `(save-sound :bN)` saves it as WAV.
+  `(save-sound :bN)` saves it as WAV. A sound **from a URL** — `(load-sound! :bN "https://…/voice.ogg")`,
+  a string sent to the sample, or `(sample! :bN {:url "…"})` in the code — is fetched by every browser that
+  opens the work, so a shared session or a link has the same sounds everywhere (a URL of another site
+  must allow it: CORS).
 - **Listening**: the package `@kairotic/analysis` (it comes into a work when one of its classes is
   written) turns what is heard into data: `pitch~` the pitch by YIN (Hz, and 0 when it stops hearing
   one), `onset~` a bang at each attack, `chroma~` the 12 pitch classes and the strongest one,

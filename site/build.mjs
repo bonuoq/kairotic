@@ -77,6 +77,8 @@ for (const f of ["config.js", "boot.js", "embed-test.html"]) cpSync(join(root, "
 // the tests run against the same files (tests/run.html)
 cpSync(join(root, "tests", "run.html"), join(pagesOut, "tests.html"));
 cpSync(join(root, "tests", "cljs"), join(pagesOut, "tests"), { recursive: true });
+// sounds the tests (and examples) load by URL: tests/assets/a440.wav
+cpSync(join(root, "tests", "assets"), join(pagesOut, "tests", "assets"), { recursive: true });
 writeFileSync(join(pagesOut, ".nojekyll"), "");   // serve files as they are
 
 // 4. the claude.ai edition (published as an artifact: index.html plus every other file)
