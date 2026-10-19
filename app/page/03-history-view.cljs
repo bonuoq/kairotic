@@ -47,6 +47,8 @@
 (def hx0 30)
 (def hy0 34)
 
+(declare mark-picked!)   ; 16-release.cljs: the points chosen to be forgotten (issue #45)
+
 (defn render-tree! []
   (let [{:keys [order lane-of lanes]} (lane-layout)
         ls order
@@ -116,7 +118,8 @@
         (set! (.-innerHTML svg)
               (str (apply str ticks) (apply str body) (apply str peer-marks) (mark (:pos @world) 8 "here" nil)
                    ;; in Perform: the point the take starts from
-                   (when-let [st @perf] (mark (:origin st) 13 "perform-at" nil))))))))
+                   (when-let [st @perf] (mark (:origin st) 13 "perform-at" nil))))
+        (mark-picked! svg)))))
 
 (defn scroll-to-here! []
   (let [p (norm (:pos @world)) wrap ($ "hist-wrap")]

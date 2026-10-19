@@ -48,7 +48,9 @@
             "There are no keyframes yet: ◆ Snapshot (or (snapshot \"name\")) keeps the work as it is now."
             (str "That needs " n " keyframes, and there " (if (= 1 (count kfs)) "is 1" (str "are " (count kfs))) ".")))))
 
-(defn keyframe-config [k] (pst/configuration (patch-at (:pos k))))
+(defn keyframe-config
+  "What a keyframe holds: the texts it keeps (a preset stored in a box: issue #45), or the work at its point."
+  [k] (if (:texts k) (:texts k) (pst/configuration (patch-at (:pos k)))))
 (defn now-config [] (pst/configuration (work-patch)))
 
 (defn moment-label [k] (str "keyframe " (:n k) (when (:label k) (str " (" (:label k) ")"))))
@@ -67,17 +69,29 @@
   [texts]
   (into (sorted-map) (keep (fn [[f t]] (when-let [c (pst/control t)] [f (:v c)])) texts)))
 
+(declare presets-list)
+
+(defn presets-box
+  "A presets box of the work by its engine id (:b18, or :b5.b2 inside a sub-patch)."
+  [f] (or (get-in (eng/flat (work-patch)) [:boxes f]) (fail (str "There is no presets box " f))))
+
 (defn recall
   "Recalls a keyframe as a preset: every box of the work that is also there takes the text it had there (its
    arguments, and the values its controls keep), as one event. Boxes added or removed since, lines and
-   buffers stay as they are. (recall 2) · (recall \"intro\")."
-  [ref]
-  (need-history!)
-  (let [kfs (keyframes) _ (need-keyframes kfs 1)
-        k (find-keyframe kfs ref)
-        changes (pst/recall-changes (now-config) (keyframe-config k))]
-    (write-texts! changes)
-    {:recalled (moment-label k) :changed (count changes)}))
+   buffers stay as they are. (recall 2) · (recall \"intro\") · (recall :b18 2), among the presets of that box."
+  ([ref]
+   (need-history!)
+   (let [kfs (keyframes) _ (need-keyframes kfs 1)
+         k (find-keyframe kfs ref)
+         changes (pst/recall-changes (now-config) (keyframe-config k))]
+     (write-texts! changes)
+     {:recalled (moment-label k) :changed (count changes)}))
+  ([f ref]
+   (let [kfs (presets-list (presets-box f)) _ (need-keyframes kfs 1)
+         k (find-keyframe kfs ref)
+         changes (pst/recall-changes (now-config) (keyframe-config k))]
+     (write-texts! changes)
+     {:recalled (moment-label k) :changed (count changes)})))
 
 (defonce last-morph (atom {}))   ; the values the last morph gave the controls: {engine-id value}
 
@@ -114,27 +128,59 @@
   "A new preset from the keyframes: what is the same in all of them stays; a number that changes takes a value
    within its range (geometric in a box written with log, whole if it always was); a word that changes is one
    of theirs. Written as one event. (generate) · (generate 42), a seed: the same seed, the same preset ·
-   (generate 42 [1 3]) from some keyframes only."
+   (generate 42 [1 3]) from some keyframes only · (generate :b18 42) among the presets of that box."
   ([] (generate (js/Math.floor (* (js/Math.random) 1e9))))
   ([seed] (generate seed nil))
-  ([seed refs]
-   (need-history!)
-   (when-not (number? seed) (fail "The seed is a number: (generate 42)."))
-   (let [all (keyframes)
-         kfs (if (seq refs) (mapv (fn [r] (find-keyframe all r)) refs) all)
-         _ (need-keyframes kfs 2)
-         changes (pst/generate-changes (now-config) (mapv keyframe-config kfs) (pst/rng seed))]
-     (write-texts! changes)
-     {:generated (count changes) :seed seed :from (mapv :n kfs)})))
+  ([x y]
+   (let [box (when (keyword? x) x)
+         seed (if box y x)
+         refs (when-not box y)]
+     (when-not box (need-history!))
+     (when-not (number? seed) (fail "The seed is a number: (generate 42)."))
+     (let [all (if box (presets-list (presets-box box)) (keyframes))
+           kfs (if (seq refs) (mapv (fn [r] (find-keyframe all r)) refs) all)
+           _ (need-keyframes kfs 2)
+           changes (pst/generate-changes (now-config) (mapv keyframe-config kfs) (pst/rng seed))]
+       (write-texts! changes)
+       {:generated (count changes) :seed seed :from (mapv :n kfs)}))))
 
 ;; ───── the presets box: what it asks for, done here ─────
 
-(defn- presets-list
-  "The keyframes a presets box uses: those its arguments name (numbers, labels), in that order, or all."
+(defn stored-keyframes
+  "The presets a box keeps in its data, as keyframes: [{:n :label :kind :texts}]."
+  [b] (vec (map-indexed (fn [i p] (assoc p :n (inc i))) (get-in b [:data :presets]))))
+
+(defn presets-list
+  "The keyframes a presets box uses: the presets it keeps, if any (issue #45: they were chosen when they were
+   kept), or, of the keyframes of the history, those its arguments name (numbers, labels), in that order, or all."
   [b]
-  (let [all (keyframes)
-        refs (map (fn [x] (if (keyword? x) (name x) x)) (comp/args-of (:text b)))]
-    (if (seq refs) (mapv (fn [r] (find-keyframe all r)) refs) all)))
+  (let [stored (stored-keyframes b)]
+    (if (seq stored)
+      stored
+      (let [_ (need-history!)
+            all (keyframes)
+            refs (map (fn [x] (if (keyword? x) (name x) x)) (comp/args-of (:text b)))]
+        (if (seq refs) (mapv (fn [r] (find-keyframe all r)) refs) all)))))
+
+(defn presets!
+  "Keeps presets in a presets box: (presets! :b18 [{:label \"calm\" :texts {:b13 \"knob 0.5 50 2 log strobe\"}} …]).
+   They are part of the patch: its code, links and embeds carry them. (presets! :b18 nil) forgets them."
+  [id v]
+  (let [b (need-box id)]
+    (when-not (= "presets" (klass (:text b))) (fail (str id " is not a presets box")))
+    (dispatch! [:in id (if (seq v) [:store v] [:clear])])
+    (count (rel/sane-presets v))))
+
+(defn store-presets!
+  "Keeps in a presets box the keyframes it uses from the history (only what changes between them), so they
+   travel with the patch: (store-presets! :b18)."
+  [id]
+  (let [b (need-box id)]
+    (when-not (= "presets" (klass (:text b))) (fail (str id " is not a presets box")))
+    (need-history!)
+    (let [kfs (presets-list (assoc b :data nil)) _ (need-keyframes kfs 1)
+          v (rel/stored-presets (mapv (fn [k] (assoc k :config (keyframe-config k))) kfs))]
+      (presets! id v))))
 
 (defn- emit-values! [f vals]
   (when (seq vals)
@@ -147,20 +193,22 @@
   (js/setTimeout
    (fn []
      (try
-       (need-history!)
        (let [b (or (get-in (eng/flat (work-patch)) [:boxes f]) (fail "the box is not in the work"))
-             kfs (presets-list b)]
+             kfs (presets-list b)
+             own? (seq (stored-keyframes b))]
          (case op
            :recall (let [_ (need-keyframes kfs 1)
                          k (find-keyframe kfs (first xs))
                          changes (pst/recall-changes (now-config) (keyframe-config k))]
-                     (gesture! (str "(recall " (:n k) ")"))
+                     (gesture! (if own? (str "(recall " f " " (:n k) ")") (str "(recall " (:n k) ")")))
                      (emit-values! f (control-values changes)))
            :generate (let [_ (need-keyframes kfs 2)
                            seed (or (first xs) (js/Math.floor (* (js/Math.random) 1e9)))
                            now (now-config)
                            changes (pst/generate-changes now (mapv keyframe-config kfs) (pst/rng seed))]
-                       (gesture! (str "(generate " seed (when (not= kfs (keyframes)) (str " " (pr-str (mapv :n kfs)))) ")"))
+                       (gesture! (if own?
+                                   (str "(generate " f " " seed ")")
+                                   (str "(generate " seed (when (not= kfs (keyframes)) (str " " (pr-str (mapv :n kfs)))) ")")))
                        (emit-values! f (control-values changes)))
            :keep (gesture! "(morph :keep)")
            ;; a position on the right inlet: 1.5 is halfway from the first keyframe of the box to the second.

@@ -11,7 +11,7 @@
 
 (def calls
   "The calls a patch is made of."
-  '#{box connect present view resize code stroke axis grid-x grid-y tuning tree! inside})
+  '#{box connect present view resize code stroke axis grid-x grid-y tuning tree! presets! inside})
 
 (defn literal?
   "Plain data all the way down: numbers, strings, keywords, booleans, nil, vectors, maps, sets."

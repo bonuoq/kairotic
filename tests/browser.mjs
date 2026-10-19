@@ -15,6 +15,7 @@ import { presets } from "./presets.mjs";
 import { present, presetsTutorial } from "./present.mjs";
 import { audioin } from "./audioin.mjs";
 import { layout } from "./layout.mjs";
+import { release } from "./release.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 // sound without a click, and a fake microphone (a beep) that is allowed without asking: for adc~
@@ -56,6 +57,8 @@ if (loaded) {
   try { await present(app, check); } catch (e) { check("the present tests ran", false, String(e && e.message || e)); }
   try { await audioin(app, check); } catch (e) { check("the audio input tests ran", false, String(e && e.message || e)); }
   try { await layout(app, check); } catch (e) { check("the layout tests ran", false, String(e && e.message || e)); }
+  // opens other works, then a local one again
+  try { await release(app, check); } catch (e) { check("the release tests ran", false, String(e && e.message || e)); }
   // opens a lesson (another local work): last
   try { await presetsTutorial(app, check); } catch (e) { check("the presets tutorial tests ran", false, String(e && e.message || e)); }
   if (appErrors.length) check("no page errors during the gestures", false, appErrors.join("; "));

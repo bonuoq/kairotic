@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Release, presets that travel, and points of the history forgotten** ([#45](https://github.com/bonuoq/kairotic/issues/45)):
+  - A `presets` box can keep its presets in its data — `(store-presets! :bN)` copies the keyframes it
+    uses, only what changes between them; `(presets! :bN […])` sets them. A box that keeps presets uses
+    them instead of the history, and they are part of the patch: its code, `?code=` links and embeds.
+  - **Release…** in the history bar (`(release)`) makes a new work (solo, or local without an account)
+    with a compact history: one point per keyframe, labels kept, each written as the changes from the one
+    before in one `[:batch …]`, then the work as it is, every presets box keeping its presets. The original
+    work is not touched.
+  - In a solo or local work, ⇧+click points of the history and **Forget…** them, after a warning: the
+    moments after them stay exactly as they are (runs of points become one change), the work at those
+    moments is lost. Tips of branches and branch points cannot be forgotten; rooms use a release instead.
+    REPL: `(forget-points [["id" k] …])`.
+  - New history event `[:data :bN d]`, the whole data of a box (merges treat it as the whole box), and
+    `kairotic.release/patch-diff`, the events that turn one patch into another. Tests:
+    `tests/cljs/release.cljs`, `tests/release.mjs`.
 - **Sound from outside, and back into messages** (step 1 of audio input, recording buffers and the
   `@kairotic/analysis` package): three core classes in a new module, `core/kairotic/input.cljs`.
   `adc~ [channel …]` is the audio input — the microphone or the sound card, one outlet per channel

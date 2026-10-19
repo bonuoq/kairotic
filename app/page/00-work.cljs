@@ -3,7 +3,7 @@
 ;; The page's ClojureScript, in the order it is evaluated (app/index.html lists the files).
 
 (ns user (:require [clojure.string :as str] [clojure.set] [kairotic.score :as sc] [kairotic.canvas :as cv]
-                   [kairotic.components :as comp] [kairotic.api :as api] [kairotic.code :as cbox] [kairotic.faust] [kairotic.library :as lib] [kairotic.help :as hlp] [kairotic.mt :as mt] [kairotic.mtboxes :as mtb] [kairotic.assistant :as ai] [kairotic.engine :as eng] [kairotic.presets :as pst]
+                   [kairotic.components :as comp] [kairotic.api :as api] [kairotic.code :as cbox] [kairotic.faust] [kairotic.library :as lib] [kairotic.help :as hlp] [kairotic.mt :as mt] [kairotic.mtboxes :as mtb] [kairotic.assistant :as ai] [kairotic.engine :as eng] [kairotic.presets :as pst] [kairotic.release :as rel]
                    [kairotic.shapes :as shp] [kairotic.signal] [kairotic.links :as links] [clojure.edn]))
 
 (def version "0.1.0-alpha")
@@ -129,6 +129,12 @@
                   (cond (not (get-in p [:boxes id])) p
                         (sane-recipe r) (assoc-in p [:boxes id :recipe] (sane-recipe r))
                         :else (update-in p [:boxes id] dissoc :recipe)))
+    ;; [:data :b5 d]: the whole data of a box (a release, points forgotten: issue #45), nil to empty it
+    :data       (let [[id d] args b (get-in p [:boxes id]) dd (comp/model-of b)]
+                  (cond (not b) p
+                        (and dd (map? d)) (assoc-in p [:boxes id :data] ((:load dd) d))
+                        (nil? d) (update-in p [:boxes id] dissoc :data)
+                        :else p))
     ;; [:batch [ev …]]: several changes as one event of the history (a preset recalled: issue #35)
     :batch      (let [[evs] args] (if (sequential? evs) (reduce step p (filter vector? evs)) p))
     :load       (sane-patch (first args))
@@ -459,6 +465,7 @@
               (:connect :disconnect) (update acc :ref into [(first args) (nth args 2 nil)])
               :load (assoc acc :load true)
               ;; a kept buffer rewrites the whole box data; a recipe alone is its own unit
+              :data (-> acc (update :mod conj (first args)) (update :ref conj (first args)) (update :whole conj (first args)))
               :kept (-> acc (update :mod conj (first args)) (update :ref conj (first args)) (update :whole conj (first args)))
               :recipe (-> acc (update :mod conj [(first args) :recipe]) (update :ref conj (first args)))
               ;; in a canvas, each stroke is its own unit of change, and so is each grid;
@@ -485,7 +492,7 @@
 (defn remap-ev [m [op & args :as e]]
   (let [f (fn [x] (get m x x))]
     (case op
-      (:box :text :move :size :delete :kept :recipe) (into [op (f (first args))] (rest args))
+      (:box :text :move :size :delete :kept :recipe :data) (into [op (f (first args))] (rest args))
       :in (let [[id inner] args]
             [op (f id) (if-let [ne (get-in m [:stroke-ids [id (second inner)]])] (assoc inner 1 ne) inner)])
       (:connect :disconnect) (let [[a o b i] args] [op (f a) o (f b) i])

@@ -142,6 +142,24 @@ pad), sub-patches included. A `presets` box plays them:
 - The tutorial *Presets: recall, morph, generate* (Help → tutorials, or `(tutorial "presets")`) walks
   through all of it with an FM synthesizer.
 
+### Release, and points forgotten
+
+Keyframes live in the history, and the patch's code, a link or an embed carry only the patch. To make
+presets travel, a `presets` box can **keep** them: `(store-presets! :b18)` copies into it the keyframes it
+uses, only what changes between them. A box that keeps presets uses them instead of the history, and the
+work's code writes them as `(presets! :b18 […])`, so they go wherever the patch goes. `(presets! :b18 nil)`
+forgets them.
+
+- **Release…** (in the history bar), or `(release)`, makes a **new work** with a compact history: one
+  point per keyframe, with its label, each written as the changes from the one before, and then the work
+  as it is. Every presets box keeps its presets in it. The work you released from stays as it was, with
+  all its history.
+- In a solo or local work you can **forget points**: ⇧+click them in the history, then **Forget…**. The
+  work at those moments is lost (and a snapshot there with it), and the moments after them stay exactly as
+  they are. The tip of a branch and a point where a branch starts cannot be forgotten, and in a shared room
+  the history belongs to everyone, so there a release is the way to a compact version. From the REPL:
+  `(forget-points [["segment" 3] …])`.
+
 ## 5. The tabs on the right
 
 The panel on the right can make way for the patch: **»** in its header (or **›** on the bar between them)
