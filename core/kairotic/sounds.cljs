@@ -40,11 +40,12 @@
   "A place a sound can be fetched from: an http(s) URL, a path of this page, or a data: or blob: URL.
    Never javascript:, no spaces, at most 2048 characters."
   [u]
-  (and (string? u) (<= 1 (count u) 2048) (not (re-find #"\s" u))
+  (boolean
+   (and (string? u) (<= 1 (count u) 2048) (not (re-find #"\s" u))
        (not (re-find #"(?i)^javascript:" u))
        (or (re-find #"(?i)^(https?|data|blob):" u)
            ;; a path of this page: no scheme, and a dot or a slash (sounds/voice.ogg, ./a.wav)
-           (and (not (re-find #"^[A-Za-z][A-Za-z0-9+.-]*:" u)) (re-find #"[./]" u)))))
+           (and (not (re-find #"^[A-Za-z][A-Za-z0-9+.-]*:" u)) (re-find #"[./]" u))))))
 
 (defn url-key
   "The key a sound from a URL is kept under: 16 hex characters from the URL (two FNV-1a hashes)."
