@@ -139,7 +139,10 @@ donde decide qué enviar, mostrar y guardar, como con cualquier otro mensaje. Pa
 muestras), un `:summary` (último valor, rms, pico) o un `:trace` (mínimo y máximo por columna, estable
 sobre un cruce por cero, para dibujarla); los bucles sobre las muestras se ejecutan en el worklet.
 `api/retap` cambia sus tamaños y `api/db` pasa un nivel a decibelios. Lee
-[`snapshot~` y `scope~`](../core/kairotic/input.cljs).
+[`snapshot~` y `scope~`](../core/kairotic/input.cljs). Un tap creado con `:active false` no entrega
+nada hasta `(api/retap w {:active true})`, y `{:flush true}` entrega en el acto lo oído desde su
+último bloque; `(api/effect! id [k x])` pide a la página un efecto de la caja incluso cuando el motor
+acaba de pararse — [`sample`](../core/kairotic/sounds.cljs) graba así.
 
 ## 5½. El mismo valor dos veces
 

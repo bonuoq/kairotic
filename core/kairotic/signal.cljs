@@ -21,7 +21,9 @@
 
 (ns kairotic.signal
   (:require [kairotic.components :as comp]
-            [kairotic.canvas :as cv]))
+            [kairotic.canvas :as cv]
+            [kairotic.api :as api]
+            [kairotic.sounds :as snd]))
 
 (def table-size 1024)
 
@@ -170,6 +172,40 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
       (.postMessage (.-port w) #js {:tab t :n table-size :V (:V node) :G (:G node)})
       (reset! (:pending node) nil))))
 
+;; ───────── a reader~ that reads a sound ─────────
+;; A sample box (kairotic.sounds) is a buffer too: then the reader~ plays it, the position 0…1 going from
+;; its start to its end, through a player worklet that takes the place of the table reader.
+
+(defn route!
+  "Puts the table reader (:table) or the player (:sound) between the position and the outlets."
+  [node which]
+  (let [w @(:worklet node) pl @(:player node) in (:in node)]
+    (doseq [x [w pl] :when x]
+      (try (.disconnect in x) (catch :default _ nil))
+      (try (.disconnect x) (catch :default _ nil)))
+    (when-let [x (if (= which :sound) pl w)]
+      (.connect in x) (.connect x (:split node)))
+    (reset! (:route node) which)))
+
+(defn play-sound!
+  "Gives a reader~ the sound described by d: from this browser's store, into its player."
+  [node d]
+  (reset! (:route node) :sound)
+  (-> (snd/sound (:audio d))
+      (.then (fn [s]
+               (when (and @(:alive node) (= d @(:fed node)))
+                 (if-not s
+                   (api/report! (:id node) {:error (str "reader~: the sound of the sample is not in this browser"
+                                                        " (recorded elsewhere): (load-sound! :bN) brings a file into it")} nil)
+                   (-> (or @(:player node) (snd/player (:ac node) (:V node) (:G node)))
+                       (js/Promise.resolve)
+                       (.then (fn [pl]
+                                (when @(:alive node)
+                                  (reset! (:player node) pl)
+                                  (snd/give! pl s)
+                                  (when (= :sound @(:route node)) (route! node :sound))))))))))
+      (.catch (fn [e] (api/report! (:id node) {:error (str "reader~: " (or (.-message e) e))} nil)))))
+
 ;; ───────── classes ─────────
 
 (comp/define! "reader~"
@@ -177,12 +213,14 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
    :usage "reader~ [x|y|path [stroke]] [voices] [gate]"
    :io (fn [b] [2 (+ (voices-of (:args b)) (gates-of (:args b)))]) :dynamic-io true
    :reads-buffer true
-   :receive (fn [_] {})
+   :receive (fn [{:keys [inlet value]}]
+              (if (and (= inlet :audio) (:error value)) {:effects [[:print (:error value)]]} {}))
    :audio {:create (fn [ac b _]
                      (let [args (:args b) V (voices-of args) G (gates-of args) C (+ V G)
                            in (.createGain ac)
                            split (.createChannelSplitter ac C)
                            node {:in in :split split :V V :G G :mode (mode-of args) :stroke (stroke-of args)
+                                 :ac ac :id (:id b) :player (atom nil) :route (atom :table)
                                  :worklet (atom nil) :pending (atom nil) :fed (atom ::none) :alive (atom true)
                                  :inlets [[in 0]]
                                  :outlets (vec (for [c (range C)] [split c]))}]
@@ -193,18 +231,20 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
                                                                     #js {:numberOfInputs 1 :numberOfOutputs 1
                                                                          :outputChannelCount #js [C]
                                                                          :channelCount 1 :channelCountMode "explicit"})]
-                                        (.connect in w)
-                                        (.connect w split)
                                         (reset! (:worklet node) w)
+                                        (when (= :table @(:route node)) (route! node :table))
                                         (send-table! node)))))
                            (.catch (fn [e] (js/console.error "reader~" e))))
                        node))
            :feed (fn [node d]
-                   (reset! (:pending node) (table (or d cv/empty) (:mode node) (:V node) (:stroke node)))
-                   (send-table! node))
+                   (if (snd/sample? d)
+                     (play-sound! node d)
+                     (do (when (= :sound @(:route node)) (route! node :table))
+                         (reset! (:pending node) (table (or d cv/empty) (:mode node) (:V node) (:stroke node)))
+                         (send-table! node))))
            :dispose (fn [node]
                       (reset! (:alive node) false)
-                      (when-let [w @(:worklet node)] (try (.disconnect w) (catch :default _ nil))))}})
+                      (doseq [x [@(:worklet node) @(:player node)] :when x] (try (.disconnect x) (catch :default _ nil))))}})
 
 (comp/define! "phasor~"
   {:doc "A ramp signal from 0 to 1, repeated hz times per second (0.25 = once every 4 seconds). A number on the left changes hz."

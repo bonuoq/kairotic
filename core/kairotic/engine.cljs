@@ -159,7 +159,7 @@
     (= k :print) (print! at x)
     ;; effects for the page (a tree box asked to change its data: that is a gesture of the work; a presets
     ;; box asked to recall, morph or generate: issue #35)
-    (#{:tree-edit :tree-set :canvas-edit :presets} k) (when-let [f (:effect-hook @rt)] (f id [k x] at))
+    (#{:tree-edit :tree-set :canvas-edit :presets :sample} k) (when-let [f (:effect-hook @rt)] (f id [k x] at))
     :else
     (when-let [node (get-in @rt [:nodes id])]
       (when-let [f (get-in node [:def :audio :effects k])]
@@ -184,7 +184,7 @@
    tree gives that tree as its buffer, so a reader~ plays what the score shows."
   [p id]
   (some (fn [[a _ b i]]
-          (when (and (= b id) (= i 1) (#{"canvas" "freqt"} (comp/klass (get-in p [:boxes a :text]))))
+          (when (and (= b id) (= i 1) (#{"canvas" "freqt" "sample"} (comp/klass (get-in p [:boxes a :text]))))
             (let [tree (get-in @rt [:states a :tree])]
               [a (or (when tree (tree-buffer a tree))
                      (get-in p [:boxes a :data]) (:empty (comp/model-of (get-in p [:boxes a]))) cv/empty)])))
@@ -250,6 +250,10 @@
     (enqueue! (if (number? at) at (now)) id :audio value)))
 
 (reset! comp/audio-report report!)
+
+;; an audio node asks the page for something itself (a recording to keep as the data of its box), even
+;; when the engine has just stopped and no message can reach its box any more
+(reset! comp/audio-effect (fn [id e] (effect! id e (now))))
 
 (defn feed!
   "Audio nodes that read a buffer (:audio :feed) get it again whenever it changes."

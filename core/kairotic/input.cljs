@@ -177,7 +177,7 @@
                            ms (snapshot-ms (:ms args))
                            node {:in in :hop hop :tap (atom nil) :alive (atom true) :inlets [[in 0]] :outlets []}]
                        (-> (api/tap ac {:mode :summary :size (hop ms) :hop (hop ms)}
-                                    (fn [data at _] (when @(:alive node) (api/report! (:id b) data at))))
+                                    (fn [data at & _] (when @(:alive node) (api/report! (:id b) data at))))
                            (.then (fn [w] (if @(:alive node) (do (.connect in w) (reset! (:tap node) w))
                                               (try (.disconnect w) (catch :default _ nil)))))
                            (.catch (fn [e] (js/console.error "snapshot~" e))))
@@ -255,7 +255,7 @@
                            node {:in in :samples samples :tap (atom nil) :alive (atom true) :inlets [[in 0]] :outlets []}]
                        ;; about 30 pictures a second
                        (-> (api/tap ac {:mode :trace :size (samples ms) :hop (js/Math.round (/ sr 30)) :columns scope-columns}
-                                    (fn [data at _] (when @(:alive node) (api/report! (:id b) data at))))
+                                    (fn [data at & _] (when @(:alive node) (api/report! (:id b) data at))))
                            (.then (fn [w] (if @(:alive node) (do (.connect in w) (reset! (:tap node) w))
                                               (try (.disconnect w) (catch :default _ nil)))))
                            (.catch (fn [e] (js/console.error "scope~" e))))

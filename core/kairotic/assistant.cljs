@@ -372,7 +372,9 @@ Rules:
   A tree box sends its tree by itself: it needs no loadbang.
 - Sound from outside: `adc~ 1` is the microphone (asked for at ▶). `snapshot~ 50` turns any signal into
   numbers (`snapshot~ 50 db` its level), `scope~` draws it. Never connect an adc~ to dac~ without a
-  `gain~` and a warning about headphones: it feeds back.
+  `gain~` and a warning about headphones: it feeds back. `sample [seconds]` records what reaches its
+  left inlet on `rec` until `stop`; its outlet 1 into the right inlet of `reader~`, with a `phasor~` at
+  1/length Hz on the left, plays it (its outlet 0 gives the length in seconds; `!/ 1` turns it into Hz).
 - `gain~ 0.2` sets its factor as an argument; a message into its right inlet changes it, a signal
   there replaces it. Do not leave a gain waiting for a message nobody sends.
 - Lay it out top to bottom, following the signal: x from 20 to 900, about 60 px between rows,

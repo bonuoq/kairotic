@@ -89,6 +89,12 @@ comes first.
   the browser asks for it once; its sound comes as it is, without the processing made for calls.
   `scope~` draws a signal and `snapshot~ 50 db` turns it into numbers (its level), so what is heard can
   drive the patch. Use headphones before sending an `adc~` to `dac~`: it feeds back.
+- **Recording**: a `sample` box records what reaches it on `rec` until `stop` (or its length:
+  `sample 10`), and a `reader~` with the sample on its right plays it at the position of a `phasor~`
+  — `!/ 1` turns its length (its left outlet) into the speed of the phasor~, and any other speed plays
+  it faster, slower or backwards. The sound stays in this browser; the work keeps its picture, so a work
+  opened elsewhere shows it and says it is not there. `(load-sound! :bN)` brings in a file,
+  `(save-sound :bN)` saves it as WAV.
 
 ## 4. The history
 

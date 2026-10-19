@@ -84,6 +84,8 @@
 ;; how an audio node gives its own box something found in the sound: (fn [id value at]) (set by
 ;; kairotic.engine, which is loaded after this; components reach it through kairotic.api/report!)
 (defonce audio-report (atom nil))
+;; how an audio node asks the page for an effect of its box ([:sample …]): (fn [id effect]) (kairotic.engine)
+(defonce audio-effect (atom nil))
 
 (declare patch-io)
 
@@ -477,6 +479,10 @@
 (define! "ftom" {:doc "Hz → MIDI pitch (lists too)." :receive (fn [{:keys [value]}] (if (or (number? value) (sequential? value)) {:out [[0 (map-num cv/hz->midi value)]]} {}))})
 (doseq [[op-name op] [["+" +] ["-" -] ["*" *] ["/" (fn [a b] (if (zero? b) 0 (/ a b)))]]]
   (define! op-name {:doc (str "Arithmetic: left inlet " op-name " argument (or the last thing that came in on the right); lists too.")
+                    :usage (str op-name " n") :io [2 1] :receive (arit op)}))
+;; the other way round, as in Max and Pd: !/ 1 turns a length in seconds into a frequency in Hz
+(doseq [[op-name op] [["!-" (fn [a b] (- b a))] ["!/" (fn [a b] (if (zero? a) 0 (/ b a)))]]]
+  (define! op-name {:doc (str "Arithmetic the other way round: argument " (subs op-name 1) " left inlet (" op-name " 1 turns seconds into Hz); lists too.")
                     :usage (str op-name " n") :io [2 1] :receive (arit op)}))
 (define! "metro" {:doc "Sends periodic bangs: 1 or bang starts it, 0 or stop stops it." :usage "metro ms" :io [2 1] :receive metro})
 (define! "counter" {:doc "Each bang sends the value and advances one step; goes back to the minimum on reaching the maximum." :usage "counter step [max] [min]" :io [2 1] :receive counter})

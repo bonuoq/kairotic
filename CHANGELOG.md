@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Recording buffers** (step 2 of audio input, after `adc~`): a new core class, `sample [seconds]`,
+  records what reaches its left inlet on `rec` until `stop` (or until it has `seconds`, 60 by default;
+  ■ keeps what was heard), `clear` empties it and a bang sends its length in seconds, as does every new
+  recording. Its right outlet is a buffer like a canvas's: a `reader~` plays it at the position of a
+  `phasor~` (0 its start, 1 its end), so speed, direction and scrubbing are a matter of the position
+  signal; the new `!/` (and `!-`), arithmetic the other way round, turns its length into Hz. The sound
+  stays in this browser (IndexedDB) under the hash of its samples; the history and the work's code keep
+  only its description, `(sample! :bN {:audio hash :sr :frames :channels :peaks})`, enough to draw
+  it anywhere and to say when its sound is not there. `(load-sound! :bN)` decodes a file into it,
+  `(save-sound :bN)` saves it as WAV. The native loops live in `core/kairotic/sounds.mjs`; the tap of
+  the API learns `:active` and `:flush`, and `api/effect!` lets an audio node ask the page for an effect
+  of its box. Tests: `tests/cljs/sounds.cljs`, `tests/sounds.mjs`.
 - **Release, presets that travel, and points of the history forgotten** ([#45](https://github.com/bonuoq/kairotic/issues/45)):
   - A `presets` box can keep its presets in its data — `(store-presets! :bN)` copies the keyframes it
     uses, only what changes between them; `(presets! :bN […])` sets them. A box that keeps presets uses
