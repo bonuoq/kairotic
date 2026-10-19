@@ -17,6 +17,21 @@
   - New history event `[:data :bN d]`, the whole data of a box (merges treat it as the whole box), and
     `kairotic.release/patch-diff`, the events that turn one patch into another. Tests:
     `tests/cljs/release.cljs`, `tests/release.mjs`.
+- **Sound from outside, and back into messages** (step 1 of audio input, recording buffers and the
+  `@kairotic/analysis` package): three core classes in a new module, `core/kairotic/input.cljs`.
+  `adc~ [channel …]` is the audio input — the microphone or the sound card, one outlet per channel
+  (`adc~ 1` by default) —; at ▶ it asks for the microphone once and takes its sound as it is, without
+  the echo cancellation, noise suppression and automatic gain made for calls; every `adc~` shares one
+  stream, closed a moment after the last one stops. `snapshot~ [ms] [rms|peak|db]` turns a signal into
+  numbers every ms: its value, or its level; it sends only what changed and has a small meter of its
+  own. `scope~ [ms] [zoom]` is an oscilloscope in the patch, steady on a rising zero crossing; dragging
+  over it zooms and changes the time, written in its text on release. Underneath, the **API** (still
+  version 1: only additions) opens the way back from the sound: `api/report!` lets an audio node give
+  its own box what it finds, which the box's `:receive` gets on inlet `:audio`; `api/tap` is a worklet
+  that hands a signal to the page every hop samples as frames, a summary (last, rms, peak) or a trace
+  (min and max per column), with the loops over samples in the worklet; `api/retap`, `api/db`. Docs:
+  guide · guía, writing a component · escribir un componente. Tests: `tests/cljs/input.cljs`,
+  `tests/audioin.mjs` (the test browser runs with a fake microphone).
 - **The panel on the right can be hidden and resized** ([#40](https://github.com/bonuoq/kairotic/issues/40)):
   **»** in its header (or **›** on the bar beside it) hides it and the patch takes the room; **‹** brings
   it back, and so does asking for a tab (? or F1 on a box, `(docs …)`, a tutorial, the Code tab). Drag

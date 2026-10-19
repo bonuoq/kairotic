@@ -127,6 +127,15 @@ AudioWorklet whose JavaScript travels inside the component) and `api/param`. The
 (`api/version`): a package declares the one it was written for, and the core only breaks it with a
 new major version. See [`core/kairotic/api.cljs`](../core/kairotic/api.cljs).
 
+**From the sound back to the messages.** An audio node cannot send messages: it *reports* what it
+finds to its own box with `(api/report! (:id b) value at)` (`b` is the box its `:create` got, `at` the
+time of the sound), and the box's `:receive` gets it on inlet `:audio`, where it decides what to send,
+show and keep, as with any other message. To listen to a signal, `(api/tap ac opts on-block)` gives a
+worklet that hands it over every `:hop` samples, as `:frames` (the samples), a `:summary` (last value,
+rms, peak) or a `:trace` (min and max per column, steady on a zero crossing, for a picture); the loops
+over samples run in the worklet. `api/retap` changes its sizes and `api/db` turns a level into
+decibels. Read [`snapshot~` and `scope~`](../core/kairotic/input.cljs).
+
 ## 5½. The same value twice
 
 A box can receive the same value again: data boxes (a `tree`) send what they hold again after ■, when

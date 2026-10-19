@@ -240,6 +240,17 @@
                       :when (and (= a id) (= oo o))]
                 (deliver! p bb ii v at)))))))))
 
+(defn report!
+  "From the sound back to the messages: an audio node gives its own box a value it found (a level, a
+   block of samples, an error). It reaches the box's :receive on inlet :audio at instant `at` (the time
+   of the sound it was found in), as one more message of the queue, so what the box does with it (:out,
+   :show, :state) stays in its pure logic. Only while the engine runs, and only for a box that sounds."
+  [id value at]
+  (when (and (:on @rt) (get-in @rt [:nodes id]))
+    (enqueue! (if (number? at) at (now)) id :audio value)))
+
+(reset! comp/audio-report report!)
+
 (defn feed!
   "Audio nodes that read a buffer (:audio :feed) get it again whenever it changes."
   []

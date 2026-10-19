@@ -24,6 +24,8 @@
 ;;                                           boxes send what they hold again after ■, when a line or a box
 ;;                                           before it is new, or in a room. A player does not start over, a
 ;;                                           learner does not learn it twice (compare with what :state keeps).
+;;                                           What its audio node finds in the sound (api/report!) arrives here
+;;                                           too, with :inlet :audio: a level, a block of samples, an error.
 ;;  :audio    {:create  (fn [ac box env] node)     box = {:text :args (raw) :data :id :state}, env = {:master …}
 ;;                                                 node = {:inlets [[AudioNode i]] :outlets [[AudioNode o]] …}
 ;;                                                 (an inlet can be an AudioParam: a signal is added to it)
@@ -79,6 +81,9 @@
 (defonce registry (atom {}))
 ;; how a musical tree becomes a buffer of strokes (set by kairotic.mtboxes; kairotic.mt is not required here)
 (defonce tree-buffer (atom nil))
+;; how an audio node gives its own box something found in the sound: (fn [id value at]) (set by
+;; kairotic.engine, which is loaded after this; components reach it through kairotic.api/report!)
+(defonce audio-report (atom nil))
 
 (declare patch-io)
 
