@@ -64,6 +64,12 @@
   [id value at]
   (when-let [f @comp/audio-report] (f id value at)))
 
+(defn effect!
+  "From an audio node: an effect of box `id` for the page, such as [:sample [:set d]] (keep a recording
+   as the data of the box). Unlike report!, it also works when the engine has just stopped."
+  [id e]
+  (when-let [f @comp/audio-effect] (f id e)))
+
 (def tap-source
   "class KairoticTap extends AudioWorkletProcessor {
   // Listens to its input and hands it to the page every `hop` samples, in one of three forms:
@@ -73,18 +79,28 @@
   //            rising zero crossing of the older half of a ring of 2 × size (a steady picture of a
   //            periodic wave; where there is none, the newest `size` samples)
   // with the AudioContext time of the last sample. No output: the input connected to it keeps it
-  // running. A message {size, hop, columns} changes them.
+  // running. A message {size, hop, columns} changes them; {active: false} stops handing (true starts again,
+  // from the next hop: frames with size = hop then hold only samples heard since); {flush: true} hands at
+  // once the samples heard since the last hand-over (frames only), marked last.
   constructor(o) {
     super();
     const p = (o && o.processorOptions) || {};
     this.C = Math.max(1, p.channels | 0 || 1);
     this.mode = p.mode || 'frames';
+    this.active = p.active !== false;
     this.columns = Math.max(2, p.columns | 0 || 128);
     this.resize(p.size | 0 || 2048, p.hop | 0 || 1024);
     this.port.onmessage = (e) => {
       const d = e.data || {};
       if (d.columns) this.columns = Math.max(2, Math.min(2000, d.columns | 0));
-      this.resize(d.size | 0 || this.size, d.hop | 0 || this.hop);
+      if (d.size || d.hop) this.resize(d.size | 0 || this.size, d.hop | 0 || this.hop);
+      if (d.flush) {
+        const data = [];
+        for (let c = 0; c < this.C; c++) data.push(this.ordered(c).slice(this.R - Math.min(this.count, this.R)));
+        this.port.postMessage({ data, at: currentTime, sr: sampleRate, last: true }, data.map((x) => x.buffer));
+        this.count = 0;
+      }
+      if (d.active !== undefined) { if (d.active && !this.active) this.count = 0; this.active = !!d.active; }
     };
   }
   resize(size, hop) {
@@ -129,8 +145,9 @@
       this.w = (this.w + 1) % this.R;
       if (++this.count >= this.hop) {
         this.count = 0;
+        if (!this.active) continue;
         const data = this.block();
-        this.port.postMessage({ data, at: currentTime + (i + 1) / sampleRate, sr: sampleRate },
+        this.port.postMessage({ data, at: currentTime + (i + 1) / sampleRate, sr: sampleRate, last: false },
                               data.filter((d) => d instanceof Float32Array).map((d) => d.buffer));
       }
     }
@@ -149,21 +166,24 @@ registerProcessor('kairotic-tap', KairoticTap);
      :trace   a Float32Array of `columns` pairs min, max over `size` samples, from a rising zero
               crossing (a steady oscilloscope picture)
    The loops over samples run in the worklet, so the page only handles small arrays (except :frames).
-   (retap w {:size n :hop n :columns n}) changes the sizes while it runs."
-  [ac {:keys [channels size hop mode columns]} on-block]
+   (retap w {:size n :hop n :columns n}) changes the sizes while it runs; {:active false} stops handing
+   blocks (:active true in the options starts it so) and {:flush true} hands at once, as :frames, what
+   was heard since the last block. on-block also gets a fourth argument, {:last true} for that block."
+  [ac {:keys [channels size hop mode columns active]} on-block]
   (.then (worklet-node ac "kairotic-tap" tap-source
                        {:numberOfInputs 1 :numberOfOutputs 0
                         :channelCount (or channels 1) :channelCountMode "explicit" :channelInterpretation "discrete"
                         :processorOptions {:channels (or channels 1) :size (or size 2048) :hop (or hop 1024)
-                                           :mode (name (or mode :frames)) :columns (or columns 128)}})
+                                           :mode (name (or mode :frames)) :columns (or columns 128)
+                                           :active (not (false? active))}})
          (fn [w]
            (set! (.. w -port -onmessage)
                  (fn [e] (let [d (.-data e)]
-                           (try (on-block (vec (array-seq (.-data d))) (.-at d) (.-sr d))
+                           (try (on-block (vec (array-seq (.-data d))) (.-at d) (.-sr d) {:last (true? (.-last d))})
                                 (catch :default ex (js/console.error ex))))))
            w)))
 
-(defn retap "New sizes for a tap while it runs: {:size n :hop n :columns n} (any of them)." [w sizes]
+(defn retap "A tap while it runs: new sizes {:size n :hop n :columns n}, {:active bool}, {:flush true}." [w sizes]
   (.postMessage (.-port w) (clj->js sizes)))
 
 (defn db "A level (0…1) in decibels, -100 for silence." [x]

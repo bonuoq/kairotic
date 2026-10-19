@@ -1,0 +1,41 @@
+;; SPDX-License-Identifier: MPL-2.0
+;; Kairotic · tests · sounds: the sample box, its description in the history, reading it with reader~
+(ns kairotic.test.sounds
+  (:require [kairotic.components :as comp]
+            [kairotic.sounds :as snd]
+            [kairotic.links :as links]
+            [kairotic.test :as t]))
+
+(def d {:audio "5a2c440a1aebc1a02229ceaa5e49df44" :sr 48000 :frames 96000 :channels 1 :peaks [[-0.5 0.4] [-0.1 0.2]]})
+
+(defn recv [m]
+  (let [def* (comp/lookup "sample")]
+    ((:receive def*) (merge {:args (comp/args-for def* "sample")} m))))
+
+(t/run! "sounds"
+  (fn []
+    (t/is "sample is a core class with two outlets" (= [1 2] (comp/io {:text "sample 10"})))
+    (t/eq "a description is kept as it is" (snd/sane d) d)
+    (t/eq "... and anything else is an empty sample" [(snd/sane {:audio "x"}) (snd/sane nil) (snd/sane (assoc d :sr -1))] [{} {} {}])
+    (t/eq "peaks out of range are clipped" (:peaks (snd/sane (assoc d :peaks [[-3 2] [0 "a"]]))) [[-1 1]])
+    (t/eq "its length in seconds" (snd/seconds d) 2)
+    (let [m (:model (comp/lookup "sample"))]
+      (t/eq "[:set d] sets it, [:clear] empties it" [((:step m) {} [:set d]) ((:step m) d [:clear])] [d {}])
+      (t/eq "the work's code writes it as (sample! …)" ((:code m) :b4 d) [(str "(sample! :b4 " (pr-str d) ")")])
+      (t/eq "... and nothing for an empty one" ((:code m) :b4 {}) nil))
+    (t/is "a link can carry (sample! …)" (links/call? (list 'sample! :b4 d)))
+
+    (t/eq "rec asks the node to record" (recv {:value :rec}) {:effects [[:rec true]]})
+    (t/eq "the node says it started: the box shows it" (recv {:inlet :audio :value {:started true}}) {:state {:rec true} :show {:rec 0}})
+    (t/eq "progress while it records" (:show (recv {:inlet :audio :value {:progress 1.5 :level 0.3} :state {:rec true}})) {:rec 1.5 :level 0.3})
+    (t/eq "... not after" (recv {:inlet :audio :value {:progress 1.5}}) {})
+    (t/eq "a take finished: its length on the left" (:out (recv {:inlet :audio :value {:done d} :state {:rec true}})) [[0 2]])
+    (t/eq "a bang asks its length" (:out (recv {:value :bang :data d})) [[0 2]])
+    (t/eq "clear empties it, through the page" (:effects (recv {:value :clear})) [[:sample [:clear]]])
+    (t/eq "an error is printed" (:effects (recv {:inlet :audio :value {:error "sample: nothing was recorded"}})) [[:print "sample: nothing was recorded"]])
+
+    (let [pts (snd/wave-points [[-0.5 0.5] [0 1]] 6 234 30 26)]
+      (t/eq "its picture: two points a column" (count pts) 4)
+      (t/eq "... from the first x to the last" [(ffirst pts) (first (last pts))] [6 234]))
+    (t/eq "!/ 1 turns seconds into Hz" (:out ((:receive (comp/lookup "!/")) {:args [1] :value 4})) [[0 0.25]])
+    (t/eq "!- the other way round" (:out ((:receive (comp/lookup "!-")) {:args [10] :value 4})) [[0 6]])))

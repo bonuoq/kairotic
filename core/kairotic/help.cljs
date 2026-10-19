@@ -81,7 +81,9 @@
         :see ["-" "*" "/"]}
    "-" {:inlets ["a number or a list: minus the right one" "the number to subtract (stored)"] :outlets ["the difference"] :see ["+"]}
    "*" {:inlets ["a number or a list: times the right one" "the factor (stored)"] :outlets ["the product"] :see ["+" "/"]}
-   "/" {:inlets ["a number or a list: divided by the right one (0 if it is 0)" "the divisor (stored)"] :outlets ["the quotient"] :see ["*"]}
+   "/" {:inlets ["a number or a list: divided by the right one (0 if it is 0)" "the divisor (stored)"] :outlets ["the quotient"] :see ["*" "!/"]}
+   "!/" {:inlets ["a number or a list: what divides the right one (0 if it is 0)" "the dividend (stored)"] :outlets ["the quotient: !/ 1 gives 1 / the number"] :see ["/" "sample"]}
+   "!-" {:inlets ["a number or a list: subtracted from the right one" "the minuend (stored)"] :outlets ["the difference"] :see ["-"]}
 
    "metro"
    {:inlets ["bang, 1 or start: starts · 0 or stop: stops" "the interval in ms"]
@@ -221,7 +223,7 @@
    {:inlets ["a number: the new constant value"] :outlets ["a constant signal"] :see ["phasor~" "osc~"]}
 
    "reader~"
-   {:inlets ["the position signal (0…1), usually a phasor~" "the buffer of a canvas or freqt"]
+   {:inlets ["the position signal (0…1), usually a phasor~" "the buffer of a canvas or freqt, or the sound of a sample (then it plays it, 0 its start and 1 its end)"]
     :outlets ["one signal per voice (the values it crosses)" "with gate: one more per voice, 1 where it sounds and 0 where not"]
     :example (lines "(box :b1 \"freqt\" 40 60)" "(box :b2 \"phasor~ 0.25\" 40 15)" "(box :b3 \"reader~ 1 gate\" 40 290)"
                     "(box :b4 \"osc~\" 40 340)" "(box :b5 \"gain~\" 40 390)" "(box :b6 \"dac~\" 40 440)"
@@ -229,7 +231,21 @@
                     "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
                     "(stroke :b1 [[0 220] [1 330] [1.5 293.66]])" "(stroke :b1 [[2.5 440] [4 220]])")
     :try "Press ▶: the drawing plays every four seconds, and is silent where nothing is drawn (the gate)."
-    :see ["phasor~" "adsr~" "freqt" "reader"]}
+    :see ["phasor~" "adsr~" "freqt" "reader" "sample"]}
+
+   "sample"
+   {:inlets ["the signal to record; rec starts, stop ends (or its length in seconds), clear empties it, a bang asks its length"]
+    :outlets ["its length in seconds (after each recording, and on a bang)" "the sound, for a reader~ (on its right inlet)"]
+    :messages [["rec" "records what reaches it, from the beginning"] ["stop" "keeps what was heard"]
+               ["clear" "empties it"] ["(load-sound! :bN)" "brings in a sound file"] ["(save-sound :bN)" "saves it as WAV"]]
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"msg rec\" 140 30)" "(box :b3 \"msg stop\" 200 30)"
+                    "(box :b4 \"sample 10\" 40 90)" "(box :b5 \"!/ 1\" 40 190)" "(box :b6 \"phasor~\" 40 240)"
+                    "(box :b7 \"reader~\" 40 290)" "(box :b8 \"gain~ 0.5\" 40 340)" "(box :b9 \"dac~\" 40 390)"
+                    "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)"
+                    "(connect :b5 0 :b6 0)" "(connect :b6 0 :b7 0)" "(connect :b4 1 :b7 1)" "(connect :b7 0 :b8 0)"
+                    "(connect :b8 0 :b9 0)" "(connect :b8 0 :b9 1)")
+    :try "Press ▶, click rec, sing a phrase, click stop: its length becomes the speed of the phasor~ (!/ 1: one over the seconds), and the reader~ plays it in a loop. Use headphones. Change the phasor~ to play it faster, slower or backwards."
+    :see ["reader~" "adc~" "phasor~"]}
 
    "faust~"
    {:inlets ["audio inputs of process (if any); the left one also takes parameters: [:freq 440]"]

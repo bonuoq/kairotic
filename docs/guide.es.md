@@ -91,6 +91,12 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   pulsar ▶ el navegador lo pide una vez; su sonido llega tal cual, sin el procesado pensado para
   llamadas. `scope~` dibuja una señal y `snapshot~ 50 db` la convierte en números (su nivel), para que
   lo que se oye mueva el patch. Usa auriculares antes de enviar un `adc~` a `dac~`: se realimenta.
+- **Grabar**: una caja `sample` graba lo que le llega con `rec` hasta `stop` (o hasta su duración:
+  `sample 10`), y un `reader~` con el sample a su derecha lo reproduce en la posición de un `phasor~`
+  — `!/ 1` convierte su duración (su outlet izquierdo) en la velocidad del phasor~, y cualquier otra
+  velocidad lo toca más rápido, más lento o al revés. El sonido se queda en este navegador; la obra
+  guarda su dibujo, así que una obra abierta en otro sitio lo muestra y dice que no está.
+  `(load-sound! :bN)` trae un archivo, `(save-sound :bN)` lo guarda como WAV.
 
 ## 4. La historia
 

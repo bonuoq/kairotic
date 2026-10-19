@@ -571,7 +571,7 @@
                    (let [[x1 y1] (out-xy p a o) [x2 y2] (in-xy p b i)
                          s (str (if (= sel [:line l]) " sel" "")
                                 (when (and (= o 2) (= "freqt" (klass (get-in p [:boxes a :text])))) " edits"))
-                         buf (and (= i 1) (music-classes (klass (get-in p [:boxes a :text]))))]
+                         buf (and (= i 1) (let [k (klass (get-in p [:boxes a :text]))] (or (music-classes k) (= "sample" k))))]
                      (str "<line class=\"wire" s (when buf " buffer") "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"></line>"
                           "<line class=\"wire-hit\" data-line=\"" idx "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"></line>"))
                    ""))

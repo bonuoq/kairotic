@@ -14,6 +14,7 @@ import { numinput } from "./numinput.mjs";
 import { presets } from "./presets.mjs";
 import { present, presetsTutorial } from "./present.mjs";
 import { audioin } from "./audioin.mjs";
+import { sounds } from "./sounds.mjs";
 import { layout } from "./layout.mjs";
 import { release } from "./release.mjs";
 
@@ -56,6 +57,7 @@ if (loaded) {
   try { await presets(app, check); } catch (e) { check("the presets tests ran", false, String(e && e.message || e)); }
   try { await present(app, check); } catch (e) { check("the present tests ran", false, String(e && e.message || e)); }
   try { await audioin(app, check); } catch (e) { check("the audio input tests ran", false, String(e && e.message || e)); }
+  try { await sounds(app, check); } catch (e) { check("the sound tests ran", false, String(e && e.message || e)); }
   try { await layout(app, check); } catch (e) { check("the layout tests ran", false, String(e && e.message || e)); }
   // opens other works, then a local one again
   try { await release(app, check); } catch (e) { check("the release tests ran", false, String(e && e.message || e)); }
