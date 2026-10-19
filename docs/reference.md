@@ -677,6 +677,7 @@ Presets from the keyframes of the history (◆ snapshots, takes kept): a number 
 - `keep`: writes the last morph into the texts of the controls, as one event
 - `bang · [:generate 42]`: a new preset: what is the same in every keyframe stays, what changes takes a value within its range
 - `(keyframes) · (recall 2) · (morph 1 2 0.5) · (morph :keep) · (generate 42)`: the same from the REPL, with every keyframe of the work
+- `(store-presets! :bN) · (presets! :bN […])`: keeps its keyframes in the box (only what changes): then it uses them, and they travel with the patch in its code, links and embeds
 
 **Try:** Press ◆ Snapshot, turn the lower knob and press ◆ again: two keyframes. Start the engine: 1 and 2 recall them, the knob on the right morphs between them, and the bang makes a new preset in between.
 
