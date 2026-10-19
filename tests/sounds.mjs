@@ -11,6 +11,10 @@ const until = async (page, src, ok, ms = 8000) => {
 };
 
 export async function sounds(page, check) {
+  const logs = [];
+  const onLog = (m) => { if (m.type() === "error" || m.type() === "warning") logs.push(m.text()); };
+  const onErr = (e) => logs.push("pageerror: " + (e.stack || e.message));
+  page.on("console", onLog); page.on("pageerror", onErr);
   if ((await cljs(page, "(:mode @hist)")) !== ":local") { check("a local work is open for the sound tests", false); return; }
   const osc = (await cljs(page, '(box "osc~ 220" 3600 100)')).trim();
   const s = (await cljs(page, '(box "sample 5" 3600 160)')).trim();
@@ -52,7 +56,9 @@ export async function sounds(page, check) {
   await cljs(page, `(-> (snd/lib) (.then (fn [L] (decode-sound! ${short} (.wav L #js [(js/Float32Array. 4800)] 48000)))))`);
   const loaded = await until(page, secs(short), (g) => Math.abs(Number(g) - 0.1) < 0.002);
   check("a sound file is decoded into a sample", Math.abs(Number(loaded) - 0.1) < 0.002, loaded);
-  check("save-sound names a WAV file", /kairotic-[0-9a-f]{8}\.wav/.test(await cljs(page, `(save-sound ${s})`)));
+  const saved = await cljs(page, `(save-sound ${s})`);
+  await page.waitForTimeout(500);
+  check("save-sound names a WAV file", /kairotic-[0-9a-f]{8}\.wav/.test(saved), saved + " " + logs.join(" | "));
 
   await cljs(page, `(send! ${short} :clear)`);
   const cleared = await until(page, secs(short), (g) => g === "0");
@@ -60,4 +66,6 @@ export async function sounds(page, check) {
 
   await cljs(page, "(stop)");
   await cljs(page, `(delete ${osc} ${s} ${short} ${ph} ${rd} ${lv})`);
+  page.off("console", onLog); page.off("pageerror", onErr);
+  check("no errors in the console during the sound tests", logs.length === 0, logs.join(" | ").slice(0, 800));
 }
