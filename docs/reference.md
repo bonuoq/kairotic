@@ -2,6 +2,40 @@
 
 *Made from the help of Kairotic 0.1.0-alpha (the Help tab shows the same, and the help of classes a work defines). Generated: do not edit by hand — `(reference-md)` in the REPL writes it.*
 
+### !-
+
+`!- n`
+
+Arithmetic the other way round: argument - left inlet (!- 1 turns seconds into Hz); lists too.
+
+**Inlets** 
+
+0. a number or a list: subtracted from the right one
+1. the minuend (stored)
+
+**Outlets** 
+
+0. the difference
+
+See also: `-`
+
+### !/
+
+`!/ n`
+
+Arithmetic the other way round: argument / left inlet (!/ 1 turns seconds into Hz); lists too.
+
+**Inlets** 
+
+0. a number or a list: what divides the right one (0 if it is 0)
+1. the dividend (stored)
+
+**Outlets** 
+
+0. the quotient: !/ 1 gives 1 / the number
+
+See also: `/`, `sample`
+
 ### *
 
 `* n`
@@ -80,7 +114,7 @@ Arithmetic: left inlet / argument (or the last thing that came in on the right);
 
 0. the quotient
 
-See also: `*`
+See also: `*`, `!/`
 
 ### adc~
 
@@ -110,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
+An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
 
 **Inlets** 
 
@@ -612,7 +646,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
+Stereo panning with equal power.
 
 **Inlets** 
 
@@ -772,7 +806,7 @@ Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phaso
 **Inlets** 
 
 0. the position signal (0…1), usually a phasor~
-1. the buffer of a canvas or freqt
+1. the buffer of a canvas or freqt, or the sound of a sample (then it plays it, 0 its start and 1 its end)
 
 **Outlets** 1: one signal per voice (the values it crosses) · with gate: one more per voice, 1 where it sounds and 0 where not
 
@@ -796,7 +830,56 @@ Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phaso
 (stroke :b1 [[2.5 440] [4 220]])
 ```
 
-See also: `phasor~`, `adsr~`, `freqt`, `reader`
+See also: `phasor~`, `adsr~`, `freqt`, `reader`, `sample`
+
+### sample
+
+`sample [seconds]`
+
+A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
+
+**Inlets** 
+
+0. the signal to record; rec starts, stop ends (or its length in seconds), clear empties it, a bang asks its length
+
+**Outlets** 
+
+0. its length in seconds (after each recording, and on a bang)
+1. the sound, for a reader~ (on its right inlet)
+
+**Messages and gestures**
+
+- `rec`: records what reaches it, from the beginning
+- `stop`: keeps what was heard
+- `clear`: empties it
+- `(load-sound! :bN)`: brings in a sound file
+- `(save-sound :bN)`: saves it as WAV
+
+**Try:** Press ▶, click rec, sing a phrase, click stop: its length becomes the speed of the phasor~ (!/ 1: one over the seconds), and the reader~ plays it in a loop. Use headphones. Change the phasor~ to play it faster, slower or backwards.
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "msg rec" 140 30)
+(box :b3 "msg stop" 200 30)
+(box :b4 "sample 10" 40 90)
+(box :b5 "!/ 1" 40 190)
+(box :b6 "phasor~" 40 240)
+(box :b7 "reader~" 40 290)
+(box :b8 "gain~ 0.5" 40 340)
+(box :b9 "dac~" 40 390)
+(connect :b1 0 :b4 0)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b4 0 :b5 0)
+(connect :b5 0 :b6 0)
+(connect :b6 0 :b7 0)
+(connect :b4 1 :b7 1)
+(connect :b7 0 :b8 0)
+(connect :b8 0 :b9 0)
+(connect :b8 0 :b9 1)
+```
+
+See also: `reader~`, `adc~`, `phasor~`
 
 ### scope~
 
@@ -893,7 +976,7 @@ See also: `adc~`, `scope~`, `phasor~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
+A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
 
 **Inlets** 
 
@@ -910,7 +993,7 @@ See also: `pan~`, `reader`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
+Polyphonic triangle-wave synthesizer, one voice per id.
 
 **Inlets** 
 
