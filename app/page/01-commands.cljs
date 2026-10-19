@@ -118,6 +118,14 @@
    (dispatch! [:present id (js/Math.round x) (js/Math.round y)])
    [x y]))
 
+(defn present-in-place
+  "Shows boxes in presentation where they are in the patch, as one event (issue #42): (present-in-place :b3 :b4)."
+  [& ids]
+  (when (empty? ids) (fail "Which boxes? (present-in-place :b3 :b4)"))
+  (let [evs (vec (for [id (distinct ids) :let [b (need-box id)]] [:present id (js/Math.round (:x b)) (js/Math.round (:y b))]))]
+    (dispatch! (if (= 1 (count evs)) (first evs) [:batch evs]))
+    (vec (distinct ids))))
+
 (defn unpresent "Takes a box out of presentation." [id] (need-box id) (dispatch! [:present id nil]) :ok)
 
 (defn present-by

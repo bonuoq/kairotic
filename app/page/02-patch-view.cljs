@@ -497,7 +497,52 @@
                                               (str "<button data-up=\"" (- (count path) i 1) "\">" label "</button>")))))
                              path)))))))
 
-(.addEventListener ($ "pres-toggle") "click" (fn [_] (gesture! (str "(presentation " (not @pres-mode) ")"))))
+;; ───── Present with boxes selected (issue #42): those not in the presentation yet can join it, where they are ─────
+
+(defn pres-ask-el []
+  (or ($ "pres-ask")
+      (let [el (js/document.createElement "div")]
+        (set! (.-id el) "pres-ask")
+        (set! (.-className el) "perform-pop")
+        (set! (.-hidden el) true)
+        (.appendChild (.-body js/document) el)
+        (.addEventListener el "click"
+          (fn [e]
+            (when-let [a (.. e -target -dataset -pres)]
+              (set! (.-hidden el) true)
+              (case a
+                "cancel" nil
+                "all" (gesture! "(presentation true)")
+                (do (gesture! (str "(present-in-place " a ")"))
+                    (gesture! "(presentation true)"))))))
+        el)))
+
+(defn unpresented-selection
+  "The selected boxes that are not in the presentation yet."
+  []
+  (let [p (current)] (vec (sort (filter (fn [id] (and (get-in p [:boxes id]) (not (get-in p [:boxes id :present])))) (sel-ids))))))
+
+(defn ask-present-selection!
+  "Asks whether the selected boxes `ids` should join the presentation, where they are in the patch."
+  [ids]
+  (let [el (pres-ask-el) n (count ids)]
+    (set! (.-innerHTML el)
+          (str "<p><b>Present</b> · " (if (= 1 n) "the selected box is" (str "the " n " selected boxes are"))
+               " not in the presentation yet. Present " (if (= 1 n) "it" "them") " where " (if (= 1 n) "it is" "they are") " in the patch?</p>"
+               "<div class=\"pp-actions\">"
+               "<button class=\"act primary\" data-pres=\"" (esc (str/join " " ids)) "\">Present the selection</button>"
+               "<button class=\"act\" data-pres=\"all\">Present without " (if (= 1 n) "it" "them") "</button>"
+               "<button class=\"act\" data-pres=\"cancel\">Cancel</button>"
+               "</div>"))
+    (set! (.-hidden el) false)))
+
+(.addEventListener ($ "pres-toggle") "click"
+  (fn [_]
+    (let [ids (when-not @pres-mode (unpresented-selection))]
+      (if (seq ids)
+        (ask-present-selection! ids)
+        (do (set! (.-hidden (pres-ask-el)) true)
+            (gesture! (str "(presentation " (not @pres-mode) ")")))))))
 
 (.addEventListener ($ "crumbs") "click"
   (fn [e] (when-let [n (.. e -target -dataset -up)] (gesture! (str "(up " n ")")))))

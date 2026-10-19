@@ -471,7 +471,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
           <button class="act" id="play" title="Start the engine and fire the loadbang boxes (space)">▶</button>
           <button class="act" id="stop" title="Stop the engine: silence and initial state">■</button>
           <span id="transport-info">engine stopped</span>
-          <button class="act" id="pres-toggle" title="Presentation: only the presented boxes, where the performer sees them (P)">Present</button>
+          <button class="act" id="pres-toggle" title="Presentation: only the presented boxes, where the performer sees them (with boxes selected, it offers to present them where they are)">Present</button>
           <button class="act" id="perform-toggle" title="Perform: rehearse, try and improvise outside the history">Perform</button>
           <span id="perform-info" class="perform-info" hidden></span>
           <button class="act" id="embed-btn" title="Put this patch (or this tutorial step) in another page: a link and an iframe">Embed</button>
@@ -673,7 +673,7 @@ form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 
       <span>signal: <code>phasor~ [hz]</code> · <code>reader~ [x|y|path] [voices] [gate]</code> (position signal 0…1 on the left, buffer on the right; a voice keeps its last value where nothing passes; <code>gate</code> adds one outlet per voice, 1 where it sounds, 0 where not) · <code>sig~ [value]</code> · <code>osc~</code> and <code>gain~</code> take a signal on their frequency / factor · trajectories: <code>reader path [stroke]</code> (0…1 along a stroke → [x y])</span>
       <span>Claude: the <b>Claude</b> tab, or <code>(ask-component "a slow LFO with its waveform drawn")</code> · with a component box selected, “change the selected component” · it uses your own Claude account</span>
       <span>packages: writing a class of an official package brings the package into the work, as one component box pinned to its version · <code>@kairotic/synth</code>: <code>adsr~ [a d s r]</code>, <code>synth~</code> · <code>@kairotic/spatial</code>: <code>pan~ [pos]</code>, <code>space~ [x y]</code> · <code>(packages)</code> · <code>(add-package! "@kairotic/synth")</code> · a component uses the core through <code>api/…</code> (<code>api/clamp</code>, <code>api/worklet-node</code>…)</span>
-      <span>presentation: <code>(present :b4 x y)</code> · <code>(present :b4)</code> · <code>(unpresent :b4)</code> · <code>(presentation true)</code> · a sub-patch with presented boxes is a panel of them · <code>(send-to! :b7.b4 0.5)</code></span>
+      <span>presentation: <code>(present :b4 x y)</code> · <code>(present :b4)</code> · <code>(present-in-place :b3 :b4)</code> · <code>(unpresent :b4)</code> · <code>(presentation true)</code> · a sub-patch with presented boxes is a panel of them · <code>(send-to! :b7.b4 0.5)</code></span>
       <span><code>(box "text" x y)</code></span>
       <span><code>(connect :b1 0 :b2 0)</code></span>
       <span><code>(disconnect :b1 0 :b2 0)</code></span>
