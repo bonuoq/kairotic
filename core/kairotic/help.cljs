@@ -128,6 +128,7 @@
    {:inlets ["a position (or a click): it comes out on the left · an edit ([:stroke [[x y] …]], [:erase :t1], [:clear], [:axis :y 0 1]… or [:batch [edits]]): it changes the buffer, as one event · a question ([:read x], [:strokes], [:get :t1], [:count], [:end], [:range], [:data]): the answer comes out on the left · a musical tree: shown over it"]
     :outlets ["the position, or the answer to a question" "the buffer, for a reader or reader~ (on their right inlet)"]
     :messages [["(axis :bN :x -1 1)" "range of an axis, :log for logarithmic"] ["(stroke :bN [[x y] …])" "draws"]
+               ["the corner · (resize :bN 640 300)" "drag its bottom-right corner to resize it; a double-click there brings back its size"]
                ["[:stroke [[0 0] [1 1]]] · [:stroke :t3 pts]" "a stroke by message (a new id, or that one)"]
                ["[:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear]" "edit strokes by message"]
                ["[:axis :x lo hi] · [:axis :y lo hi :log] · [:grid-y step]" "axes and grid by message"]
@@ -146,6 +147,7 @@
     :outlets ["the time, or the answer to a question" "the buffer, for a reader or reader~"
               "shown as a score: the edits made on the notes of the tree it shows ([:edit …]), for the tree box"]
     :messages [["(note :bN t \"c4\" dur)" "a note"] ["(tuning :bN \"31-tet\" 261.63)" "a tuning"] ["(grid-x :bN 0.25 \"3+3+2\")" "a bar grid"]
+               ["the corner · (resize :bN 640 300)" "drag its bottom-right corner to resize it (as a score, its width reflows the notation); a double-click there brings back its size"]
                ["[:note 0 \"c4\" 1] · [:note 1 64 0.5]" "a note by message (pitch as a name or MIDI)"]
                ["[:move :t1 dt cents] · [:stretch :t1 k] · [:erase :t1] · [:clear]" "edit notes by message"]
                ["[:tuning \"19-tet\" 261.63] · [:grid-x 0.25 [4]]" "tuning and grid by message"]

@@ -499,6 +499,8 @@
 (.addEventListener svg "contextmenu"
   (fn [e] (when (and (.-ctrlKey e) (closest e ".box")) (.preventDefault e))))
 
+(defonce corner-click (atom nil))   ; the last press on the corner of a box: {:id :t} (a double-click resets it)
+
 (.addEventListener svg "pointerdown"
   (fn [e]
     (let [[x y] (pt e) mod? (or (.-metaKey e) (.-ctrlKey e))]
@@ -507,6 +509,20 @@
         (let [el (closest e ".port.out")]
           (.preventDefault e)
           (swap! ui assoc :wire {:from (keyword (.. el -dataset -box)) :out (js/parseInt (.. el -dataset -out) 10) :x x :y y}))
+
+        ;; the corner of a canvas, freqt or score: drag to resize it (issue #40)
+        (closest e ".resize-corner")
+        (let [[id b] (el-box (closest e ".resize-corner"))]
+          (when b
+            (.preventDefault e)
+            (let [[w h] (box-size id b) now (js/Date.now) {pid :id pt :t} @corner-click]
+              (reset! corner-click {:id id :t now})
+              (if (and (= pid id) (< (- now pt) 400))
+                ;; a double-click on the corner: back to its default size
+                (do (reset! corner-click nil)
+                    (when (:size b) (gesture! (str "(resize " id ")"))))
+                (swap! ui assoc :sel nil :nsel nil :drag nil
+                       :resize {:id id :x0 x :y0 y :w0 w :h0 h :w w :h h :moved false})))))
 
         ;; ⌘/Ctrl+click anywhere on a box: select it and open its inspector
         (and mod? (closest e ".box") (not (closest e ".port")))
@@ -610,7 +626,7 @@
           (when tr
             (.preventDefault e)
             (swap! ui assoc :sel nil :nsel [id tid]
-                   :ldrag {:kind :move :box id :tid tid :g (canvas-geom d) :d d :x0 x :y0 y
+                   :ldrag {:kind :move :box id :tid tid :g (canvas-geom d id b) :d d :x0 x :y0 y
                            :pts0 (:pts tr) :pts (:pts tr) :dt 0 :dc 0 :moved false})))
 
         (closest e ".score-slot")
@@ -621,7 +637,7 @@
         (let [[id b] (el-box (closest e ".mus-body"))]
           (when b
             (case (display-of b)
-              :canvas (let [d (canvas-data b) g (canvas-geom d)
+              :canvas (let [d (canvas-data b) g (canvas-geom d id b)
                              lx (- x (:x b)) ly (- y (:y b))
                              t0 (snap-t d (cv/x->t g lx)) f0 (snap-f d (cv/y->f g ly))
                              mode (cond (.-altKey e) :free (.-shiftKey e) :line :else :note)]
@@ -680,8 +696,14 @@
 
 (.addEventListener svg "pointermove"
   (fn [e]
-    (let [[x y] (pt e) {:keys [drag wire ldrag numdrag paramdrag ctldrag marquee]} @ui]
+    (let [[x y] (pt e) {:keys [drag wire ldrag numdrag paramdrag ctldrag marquee resize]} @ui]
       (cond
+        resize (let [[w0 h0] size-min [w1 h1] size-max
+                     w (js/Math.round (max w0 (min w1 (+ (:w0 resize) (- x (:x0 resize))))))
+                     h (js/Math.round (max h0 (min h1 (+ (:h0 resize) (- y (:y0 resize))))))]
+                 (when (or (not= w (:w resize)) (not= h (:h resize)))
+                   (swap! ui assoc :resize (assoc resize :w w :h h :moved true))
+                   (render-scene (current))))
         marquee (let [far (> (+ (js/Math.abs (- x (:x0 marquee))) (js/Math.abs (- y (:y0 marquee)))) 3)
                       m (assoc marquee :x x :y y :moved (or (:moved marquee) far))]
                   (swap! ui assoc :marquee m)
@@ -729,8 +751,12 @@
         (gesture! (str "(stroke " box " " (pts-code ps) ")"))))))
 
 (defn end-gesture! [e]
-  (let [{:keys [drag wire ldrag numdrag paramdrag ctldrag marquee]} @ui]
+  (let [{:keys [drag wire ldrag numdrag paramdrag ctldrag marquee resize]} @ui]
     (cond
+      resize (do (swap! ui assoc :resize nil)
+                 (if (:moved resize)
+                   (gesture! (str "(resize " (:id resize) " " (:w resize) " " (:h resize) ")"))
+                   (render-scene (current))))
       marquee (end-marquee! marquee)
       (and drag (:ids drag) (:moved drag))
       (let [{:keys [ids gx gy]} drag ks (sort-by box-num (keys ids)) r (fn [v] (js/Math.round v))]
@@ -780,12 +806,13 @@
               (repl-print! "out" (esc (str "; and back: the edits made on " to " go to " from " (the dashed line)"))))))))))
 
 (.addEventListener svg "pointerup" end-gesture!)
-(.addEventListener svg "pointerleave" (fn [_] (when (or (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui) (:paramdrag @ui) (:ctldrag @ui) (:marquee @ui)) (end-gesture! nil))))
+(.addEventListener svg "pointerleave" (fn [_] (when (or (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui) (:paramdrag @ui) (:ctldrag @ui) (:marquee @ui) (:resize @ui)) (end-gesture! nil))))
 
 (.addEventListener svg "dblclick"
   (fn [e]
     (let [[x y] (pt e)]
       (cond
+        (closest e ".resize-corner") nil
         (closest e ".code-area") nil
         (or (closest e ".param") (closest e ".pval-hit") (closest e ".pres-area")
             (closest e ".stroke-hit") (closest e ".score-slot") (closest e ".mus-body")) nil
@@ -802,12 +829,12 @@
 (defn stroke-key!
   "Arrows, + − and Delete on the chosen stroke, respecting the grids of the canvas."
   [e k [id tid]]
-  (let [d (get-in (current) [:boxes id :data]) tr (get-in d [:strokes tid]) sh (.-shiftKey e)]
+  (let [b (get-in (current) [:boxes id]) d (:data b) tr (get-in d [:strokes tid]) sh (.-shiftKey e)]
     (if (nil? tr)
       (swap! ui assoc :nsel nil)
       (let [pts (:pts tr) [t0 f0] (first pts) dur (- (first (peek pts)) t0)
             gy (:gy d) stp (cv/step-x (:gx d)) cyc (cv/cycle (:gx d))
-            g (canvas-geom d)
+            g (canvas-geom d id b)
             dc (fn [dir] (cond
                            (cv/generic? d) (* dir (if sh 5 1) (or (:step gy) (cv/nice-step (- (:yb g) (:ya g)) 20)))
                            (:cents gy)
