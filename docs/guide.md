@@ -113,6 +113,29 @@ starts from where you are and stays out of the history (the patch has a red fram
 - From the REPL: `(perform)`, `(compose)`, `(compose :keep)`, `(compose :discard)`, `(jam "id")`.
   Perform and Present are independent: you can perform with the whole patch or with the panel.
 
+### Presets: keyframes to recall, morph and generate
+
+Every keyframe — a snapshot, or a take kept from Perform — is also a **preset** of the work: the text of
+each box at that moment (its arguments, and the values controls keep there: a knob, an envelope, a
+pad), sub-patches included. A `presets` box plays them:
+
+- A number or a label into its left inlet — `2`, `intro` — **recalls** that keyframe: every box that
+  is also there takes its text of then, as one event of the history (one Ctrl+Z undoes it). Boxes added
+  or removed since, lines and buffers stay as they are.
+- A position into its right inlet **morphs**: `1.5` puts the controls halfway between the first
+  keyframe and the second. They move as messages, as a drag does (live, and played in a jam), and
+  nothing is written until `keep`. A knob that drives the morph is not moved by it.
+- A **bang** makes a new preset from what changes and what remains: what is the same in every keyframe
+  stays; a number that changes takes a value within its range (geometric for a `log` knob, whole if it
+  always was); a word that changes is one of its words. `[:generate 42]` gives the same preset every
+  time; snapshot it to keep it as one more keyframe.
+- Its outlet sends the values of the controls it set, `{:b3 0.5 :b5 880}`.
+- Keyframes are numbered in order of moment, the same in every tab of a room. `presets intro verse`
+  uses only those snapshots, in that order.
+- From the REPL, with every keyframe of the work: `(keyframes)`, `(recall 2)`, `(recall "intro")`,
+  `(morph 1 2 0.5)`, `(morph :keep)`, `(generate)`, `(generate 42)`. In Perform, all of it goes to
+  the take, as any change does.
+
 ## 5. The tabs on the right
 
 - **Code** — the work as **Calls** (`box`, `connect`, …), editable: Ctrl/⌘+Enter runs them and rebuilds

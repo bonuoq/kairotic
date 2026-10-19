@@ -106,6 +106,24 @@
     :try "Press ▶: a glissando of two octaves in four seconds, again and again."
     :see ["metro" "reader" "phasor~"]}
 
+   "presets"
+   {:inlets ["a keyframe to recall: its number (1 = the first) or its label · bang: a new preset · [:generate seed] · [:morph a b t] · keep"
+             "a position between keyframes: 1.5 morphs halfway from the first to the second"]
+    :outlets ["the values of the controls it set: {:b3 0.5 :b5 880}"]
+    :messages [["2 · intro" "recalls that keyframe: every box takes its text of then, as one event of the history"]
+               ["1.5 (right)" "moves the controls (knobs, envelopes…) between two keyframes, as messages, as a drag does"]
+               ["keep" "writes the last morph into the texts of the controls, as one event"]
+               ["bang · [:generate 42]" "a new preset: what is the same in every keyframe stays, what changes takes a value within its range"]
+               ["(keyframes) · (recall 2) · (morph 1 2 0.5) · (morph :keep) · (generate 42)" "the same from the REPL, with every keyframe of the work"]]
+    :example (lines "(box :b1 \"msg 1\" 40 30)" "(box :b2 \"msg 2\" 100 30)" "(box :b3 \"bang\" 160 30)"
+                    "(box :b4 \"knob 1 2 1\" 230 20)" "(box :b5 \"presets\" 40 120)"
+                    "(box :b6 \"knob 100 1000 220 log\" 40 180)" "(box :b7 \"osc~ 220\" 40 280)"
+                    "(box :b8 \"gain~ 0.2\" 40 330)" "(box :b9 \"dac~\" 40 380)"
+                    "(connect :b1 0 :b5 0)" "(connect :b2 0 :b5 0)" "(connect :b3 0 :b5 0)" "(connect :b4 0 :b5 1)"
+                    "(connect :b6 0 :b7 0)" "(connect :b7 0 :b8 0)" "(connect :b8 0 :b9 0)" "(connect :b8 0 :b9 1)")
+    :try "Press ◆ Snapshot, turn the lower knob and press ◆ again: two keyframes. Start the engine: 1 and 2 recall them, the knob on the right morphs between them, and the bang makes a new preset in between."
+    :see ["knob" "patch"]}
+
    "canvas"
    {:inlets ["a position (or a click): it comes out on the left · an edit ([:stroke [[x y] …]], [:erase :t1], [:clear], [:axis :y 0 1]… or [:batch [edits]]): it changes the buffer, as one event · a question ([:read x], [:strokes], [:get :t1], [:count], [:end], [:range], [:data]): the answer comes out on the left · a musical tree: shown over it"]
     :outlets ["the position, or the answer to a question" "the buffer, for a reader or reader~ (on their right inlet)"]

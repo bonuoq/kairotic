@@ -22,8 +22,8 @@
 window.kairoticImport = function (url) { return import(new URL(url, document.baseURI).href).then(function (m) { return m.default; }); };
 var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/mt.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
             "kairotic/api.cljs", "kairotic/corefns.cljs", "kairotic/code.cljs", "kairotic/mtboxes.cljs", "kairotic/faust.cljs", "kairotic/library.cljs",
-            "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs", "kairotic/signal.cljs", "kairotic/links.cljs",
-            "tests/harness.cljs", "tests/links.cljs", "tests/mt.cljs", "tests/flow.cljs", "tests/corefns.cljs", "tests/canvasmsg.cljs", "tests/views.cljs"];
+            "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs", "kairotic/signal.cljs", "kairotic/links.cljs", "kairotic/presets.cljs",
+            "tests/harness.cljs", "tests/links.cljs", "tests/mt.cljs", "tests/flow.cljs", "tests/corefns.cljs", "tests/canvasmsg.cljs", "tests/views.cljs", "tests/presets.cljs"];
 function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
 Promise.all(mods.map(function (m) {
   return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error(m + " " + r.status); return r.text(); });

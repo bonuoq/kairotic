@@ -115,6 +115,29 @@ de donde estás y queda fuera de la historia (el patch tiene un marco rojo mient
 - Desde la REPL: `(perform)`, `(compose)`, `(compose :keep)`, `(compose :discard)`, `(jam "id")`.
   Perform y Present son independientes: puedes tocar con el patch entero o con el panel.
 
+### Presets: fotogramas clave para recuperar, transformar y generar
+
+Cada fotograma clave —un snapshot, o una toma guardada desde Perform— es también un **preset** de la
+obra: el texto de cada caja en ese momento (sus argumentos, y los valores que los controles guardan en
+él: un knob, una envolvente, un pad), con los subpatches incluidos. Una caja `presets` los toca:
+
+- Un número o una etiqueta en su entrada izquierda —`2`, `intro`— **recupera** ese fotograma: cada caja
+  que también está allí toma el texto que tenía entonces, como un solo evento de la historia (un Ctrl+Z
+  lo deshace). Las cajas añadidas o quitadas desde entonces, las líneas y los búferes quedan como están.
+- Una posición en su entrada derecha **transforma** (morph): `1.5` lleva los controles a medio camino
+  entre el primer fotograma y el segundo. Se mueven como mensajes, igual que al arrastrarlos (en vivo, y
+  se tocan en una jam), y no se escribe nada hasta `keep`. Un knob que conduce el morph no se mueve con él.
+- Un **bang** genera un preset nuevo a partir de lo que cambia y lo que permanece: lo que es igual en
+  todos los fotogramas se queda; un número que cambia toma un valor dentro de su rango (geométrico en un
+  knob `log`, entero si siempre lo fue); una palabra que cambia es una de las suyas. `[:generate 42]` da
+  siempre el mismo preset; haz un snapshot para guardarlo como un fotograma más.
+- Su salida envía los valores de los controles que ha cambiado, `{:b3 0.5 :b5 880}`.
+- Los fotogramas se numeran por orden de momento, igual en todas las pestañas de una sala.
+  `presets intro verse` usa solo esos snapshots, en ese orden.
+- Desde la REPL, con todos los fotogramas de la obra: `(keyframes)`, `(recall 2)`, `(recall "intro")`,
+  `(morph 1 2 0.5)`, `(morph :keep)`, `(generate)`, `(generate 42)`. En Perform, todo va a la toma,
+  como cualquier cambio.
+
 ## 5. Las pestañas de la derecha
 
 - **Code** — la obra como **Calls** (llamadas: `box`, `connect`, …), editable: Ctrl/⌘+Enter las ejecuta y

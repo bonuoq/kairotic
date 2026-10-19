@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Presets from the keyframes of the history** ([#35](https://github.com/bonuoq/kairotic/issues/35)):
+  every keyframe (◆ snapshot, or take kept from Perform) is a preset of the work — the text of each
+  box then, sub-patches included: its arguments and the values its controls keep (a knob, `adsr~`,
+  `space~`). The new core class `presets` plays them: a number or a label on the left **recalls** a
+  keyframe, as one event of the history (boxes added or removed since, lines and buffers are not
+  touched); a position on the right **morphs** — `1.5` is halfway from the first to the second — moving
+  the controls as messages, as a drag does (log knobs geometrically, envelopes element by element, the
+  knob that drives it left alone), until `keep` writes them; a **bang** (or `[:generate seed]`)
+  **generates** a new preset: what is the same in every keyframe stays, numbers that change take a
+  value within their range, words that change are one of theirs. Its outlet sends the values of the
+  controls it set. `presets intro verse` uses only those snapshots. REPL: `(keyframes)`, `(recall 2)`,
+  `(morph 1 2 0.5)`, `(morph :keep)`, `(generate 42)`. A new history event, `[:batch [ev …]]`, writes
+  several changes as one (merges and takes understand it). Docs: guide · guía. Tests:
+  `tests/cljs/presets.cljs`, `tests/presets.mjs`.
 - **Type the value of a numeric control** ([#32](https://github.com/bonuoq/kairotic/issues/32)): a
   double-click on a `number` box, on a knob — or any component whose `:gesture` gives numbers (a keyboard
   gives notes, so it plays as before) —, on a slider of a code box such as `faust~` or on the value
