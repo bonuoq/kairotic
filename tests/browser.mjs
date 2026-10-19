@@ -13,6 +13,7 @@ import { recipe } from "./recipe.mjs";
 import { numinput } from "./numinput.mjs";
 import { presets } from "./presets.mjs";
 import { present, presetsTutorial } from "./present.mjs";
+import { layout } from "./layout.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const browser = await chromium.launch();
@@ -50,6 +51,7 @@ if (loaded) {
   try { await numinput(app, check); } catch (e) { check("the number input tests ran", false, String(e && e.message || e)); }
   try { await presets(app, check); } catch (e) { check("the presets tests ran", false, String(e && e.message || e)); }
   try { await present(app, check); } catch (e) { check("the present tests ran", false, String(e && e.message || e)); }
+  try { await layout(app, check); } catch (e) { check("the layout tests ran", false, String(e && e.message || e)); }
   // opens a lesson (another local work): last
   try { await presetsTutorial(app, check); } catch (e) { check("the presets tutorial tests ran", false, String(e && e.message || e)); }
   if (appErrors.length) check("no page errors during the gestures", false, appErrors.join("; "));

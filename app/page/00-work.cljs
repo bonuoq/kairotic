@@ -71,6 +71,8 @@
                          (and (vector? (:present b)) (= 2 (count (:present b))) (every? number? (:present b)))
                          (assoc :present (:present b))
                          (keyword? (:view b)) (assoc :view (:view b))
+                         (and (vector? (:size b)) (= 2 (count (:size b))) (every? number? (:size b)))
+                         (assoc :size (:size b))
                          (and (map? (:data b)) (comp/model-of b)) (assoc :data ((:load (comp/model-of b)) (:data b)))
                          (sane-recipe (:recipe b)) (assoc :recipe (sane-recipe (:recipe b))))]))
      :lines (vec (filter (fn [l] (and (vector? l) (= 4 (count l)))) (:lines x)))}
@@ -96,6 +98,11 @@
                   (cond (not (get-in p [:boxes id])) p
                         (keyword? k) (assoc-in p [:boxes id :view] k)
                         :else (update-in p [:boxes id] dissoc :view)))
+    ;; the size of a box drawn with a size of its own (a canvas, a freqt, a score: issue #40), or nil for its default
+    :size       (let [[id w h] args]
+                  (cond (not (get-in p [:boxes id])) p
+                        (and (number? w) (number? h)) (assoc-in p [:boxes id :size] [w h])
+                        :else (update-in p [:boxes id] dissoc :size)))
     :connect    (let [l (vec args)] (if (some #{l} (:lines p)) p (update p :lines conj l)))
     :disconnect (let [l (vec args)] (update p :lines (fn [ls] (vec (remove #{l} ls)))))
     :delete     (let [[id] args]
@@ -447,7 +454,7 @@
 (defn summarize [evs]
   (reduce (fn [acc [op & args]]
             (case op
-              (:box :text :move) (update acc :mod conj (first args))
+              (:box :text :move :size) (update acc :mod conj (first args))
               :delete (-> acc (update :mod conj (first args)) (update :del conj (first args)))
               (:connect :disconnect) (update acc :ref into [(first args) (nth args 2 nil)])
               :load (assoc acc :load true)
@@ -478,7 +485,7 @@
 (defn remap-ev [m [op & args :as e]]
   (let [f (fn [x] (get m x x))]
     (case op
-      (:box :text :move :delete :kept :recipe) (into [op (f (first args))] (rest args))
+      (:box :text :move :size :delete :kept :recipe) (into [op (f (first args))] (rest args))
       :in (let [[id inner] args]
             [op (f id) (if-let [ne (get-in m [:stroke-ids [id (second inner)]])] (assoc inner 1 ne) inner)])
       (:connect :disconnect) (let [[a o b i] args] [op (f a) o (f b) i])

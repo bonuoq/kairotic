@@ -211,10 +211,97 @@
 (.addEventListener ($ "view-calls") "click" (fn [_] (show-code-view! :calls)))
 (.addEventListener ($ "view-data") "click" (fn [_] (show-code-view! :data)))
 
+;; ───── the panel on the right (issue #40): hidden or shown, and as wide as you drag it ─────
+;; {:open bool :w px-or-nil}: nil keeps the proportion of the page. It is a preference of this browser, kept in
+;; localStorage, not part of the work. Opening a tab (Help with ? or F1, the Code tab…) shows it again.
+
+(defonce side
+  (atom (merge {:open true :w nil}
+               (try (some-> (.getItem js/localStorage "kairotic.side") (clojure.edn/read-string)
+                            (select-keys [:open :w]))
+                    (catch :default _ nil)))))
+
+(def side-min 260)   ; the panel is never narrower than this
+(def patch-min 320)  ; nor the patch
+
+(defn side-width-ok
+  "A width for the panel that leaves room for the patch, in a page area `total` wide."
+  [w total] (js/Math.round (max side-min (min w (- total patch-min 12)))))
+
+(defn render-side! []
+  (let [{:keys [open w]} @side wk (.querySelector js/document ".work") t ($ "side-toggle")]
+    (when wk
+      (.toggle (.-classList wk) "side-off" (not open))
+      (.toggle (.-classList wk) "sized" (boolean (and open w)))
+      (if (and open w)
+        (.setProperty (.-style wk) "--side-w" (str (side-width-ok w (.-clientWidth wk)) "px"))
+        (.removeProperty (.-style wk) "--side-w")))
+    (when t
+      (set! (.-textContent t) (if open "›" "‹"))
+      (set! (.-title t) (if open "Hide the panel" "Show the panel (Code, Components, Help…)"))
+      (.setAttribute t "aria-expanded" (str (boolean open))))))
+
+(defn save-side! []
+  (try (.setItem js/localStorage "kairotic.side" (pr-str @side)) (catch :default _ nil)))
+
+(defn set-side! [m]
+  (when (not= (merge @side m) @side)
+    (swap! side merge m)
+    (save-side!)
+    (render-side!)
+    ;; the patch can use the room it gets (or gives back)
+    (js/requestAnimationFrame (fn [_] (render-scene (current))))))
+
+(defn side-panel
+  "The panel on the right: (side-panel false) hides it, (side-panel true) shows it, (side-panel 480) shows it
+   480 px wide, (side-panel :auto) back to its proportion of the page. Without arguments, how it is."
+  ([] @side)
+  ([x]
+   (cond (boolean? x) (set-side! {:open x})
+         (number? x) (set-side! {:open true :w x})
+         (= x :auto) (set-side! {:open true :w nil})
+         :else (fail "Use (side-panel true), (side-panel false), (side-panel 480) or (side-panel :auto)."))
+   @side))
+
+(.addEventListener ($ "side-toggle") "click" (fn [e] (.stopPropagation e) (side-panel (not (:open @side)))))
+(.addEventListener ($ "side-hide") "click" (fn [_] (side-panel false)))
+
+;; dragging the splitter: the panel takes the width from there to the right edge of the work
+(let [split ($ "side-split") drag (atom nil)]
+  (.addEventListener split "pointerdown"
+    (fn [e]
+      (when (and (:open @side) (not (.closest (.-target e) "button"))
+                 (not (.-matches (.matchMedia js/window "(max-width: 860px)"))))
+        (.preventDefault e)
+        (.setPointerCapture split (.-pointerId e))
+        (.add (.-classList split) "dragging")
+        (reset! drag true))))
+  (.addEventListener split "pointermove"
+    (fn [e]
+      (when @drag
+        (let [wk (.querySelector js/document ".work") r (.getBoundingClientRect wk)]
+          (swap! side assoc :w (side-width-ok (- (.-right r) (.-clientX e) 6) (.-width r)))
+          (render-side!)))))
+  (doseq [ev ["pointerup" "pointercancel"]]
+    (.addEventListener split ev
+      (fn [_]
+        (when @drag
+          (reset! drag nil)
+          (.remove (.-classList split) "dragging")
+          (save-side!)
+          (render-scene (current))))))
+  (.addEventListener split "dblclick"
+    (fn [e] (when-not (.closest (.-target e) "button") (side-panel (not (:open @side)))))))
+
+(.addEventListener js/window "resize" (fn [_] (render-side!)))
+(render-side!)
+
 (doseq [t (array-seq (.querySelectorAll js/document ".tab"))]
   (.addEventListener t "click"
     (fn [_]
       (let [tab (.. t -dataset -tab)]
+        ;; a tab asked for (a click, ? or F1, (docs …)) shows the panel if it was hidden
+        (when-not (:open @side) (set-side! {:open true}))
         (doseq [x (array-seq (.querySelectorAll js/document ".tab"))]
           (.setAttribute x "aria-selected" (str (= x t))))
         (doseq [[k pid] [["code" "panel-code"] ["comp" "panel-comp"] ["claude" "panel-claude"] ["help" "panel-help"] ["feedback" "panel-feedback"]]]

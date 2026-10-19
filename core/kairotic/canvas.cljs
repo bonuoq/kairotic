@@ -348,9 +348,12 @@
     (let [{:keys [T lf0 lf1]} (f-range d)]
       {:xa 0 :xb T :xlog false :ya (js/Math.pow 2 lf0) :yb (js/Math.pow 2 lf1) :ylog true :T T :lf0 lf0 :lf1 lf1})))
 
-(defn geom [d hdr]
-  (let [y0 (+ hdr 3)]
-    (merge (ranges d) {:x0 x0 :y0 y0 :w (- W x0 6) :h (- H y0 6)})))
+(defn geom
+  "Where a canvas box draws its data: in a box of W × H, or of the size it was given (issue #40)."
+  ([d hdr] (geom d hdr nil))
+  ([d hdr [bw bh]]
+   (let [y0 (+ hdr 3) bw (or bw W) bh (or bh H)]
+     (merge (ranges d) {:x0 x0 :y0 y0 :w (- bw x0 6) :h (- bh y0 6)}))))
 
 (defn t->x [g t]
   (let [a (axis-u (:xlog g) (:xa g)) b (axis-u (:xlog g) (:xb g))]

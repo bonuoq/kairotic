@@ -142,6 +142,12 @@ obra: el texto de cada caja en ese momento (sus argumentos, y los valores que lo
 
 ## 5. Las pestañas de la derecha
 
+El panel de la derecha puede dejar sitio al patch: **»** en su cabecera (o **›** en la barra entre ambos)
+lo oculta, y **‹** lo devuelve; pedir una pestaña —**?** o F1 sobre una caja, `(docs …)`, un tutorial—
+también lo muestra. Arrastra la barra entre el patch y el panel para darle otro ancho; un doble clic en
+la barra lo oculta o lo muestra. Este navegador recuerda cómo lo dejaste. Desde la REPL:
+`(side-panel false)`, `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
+
 - **Code** — la obra como **Calls** (llamadas: `box`, `connect`, …), editable: Ctrl/⌘+Enter las ejecuta y
   reconstruye el patch. **Data** muestra la misma obra como datos (EDN): el estado que produce la
   historia, todas las claves de todas las cajas, en solo lectura, para inspeccionarlo (plegado y búsqueda
@@ -164,6 +170,10 @@ Una caja `tree` guarda música en EDN —voces, compases, notas, acordes, dinám
 a través de cajas `mt` se transforma (`mt transpose 7`, `mt retrograde`, `mt canon 2 7`); con
 `mt play` → `synth~` suena. Haz clic en una nota de una partitura para editarla (↑ ↓ + − ← → Supr). Ver
 [Árboles musicales](mt.es.md).
+
+Un `canvas`, un `freqt` y una partitura se redimensionan desde su esquina inferior derecha, como un evento
+de la historia (`(resize :b3 640 300)`); un doble clic en la esquina les devuelve su tamaño. Una partitura
+toma el ancho que le das y redistribuye su notación; su altura sigue a la notación.
 
 ## 7. Presentación
 
@@ -192,6 +202,8 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 | ⌘/Ctrl+clic | edita una caja debajo de ella (sus argumentos y su texto) |
 | ⇧+clic · un marco · ⌘/Ctrl+A | selecciona varias cajas · todas |
 | Esc | deselecciona, o cierra el editor de la caja |
+| arrastrar la esquina de un canvas, freqt o partitura | la redimensiona (doble clic: su tamaño por defecto) |
+| arrastrar la barra junto al panel · » · ‹ | redimensiona el panel de la derecha · lo oculta · lo muestra |
 | espacio | ▶ / ■ |
 | ? o F1 | ayuda de la caja seleccionada |
 | Ctrl+Z · Ctrl+Mayús+Z · Ctrl+Y | atrás · adelante en la historia (en Perform, en la toma) |
