@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Embed: Release/Perform** (issue #50), in place of *Presentation, fullscreen*: its link always
+  carries a release of the patch (its presets boxes keeping their presets, as `(release)` makes it; also
+  from a tutorial or a help patch) and always opens in Perform, so what is played or changed in the
+  frame is a take, never the work. The link work is named «Link · release». `?present` stays its
+  address, so links made before open the same way; `(embed-link :release)` (or `:perform`, `:present`).
+  Tests: `tests/embed.mjs`, and a check in `tests/release.mjs`.
 - **`@kairotic/analysis` 0.1.1**, the first version published from GitHub with trusted publishing
   (0.1.0 was published by hand): the same components. Works pin 0.1.1; the publishing workflow now
   answers to `analysis-v*` tags.

@@ -11,12 +11,15 @@ In the editor, **Embed** (next to Present) opens a panel with two choices:
 
 - **Patch**: the patch, scaled to fit the frame, with ▶ ■, the lesson bar if it is a tutorial, and
   **Kairotic ↗**, which opens the same thing in the whole editor.
-- **Presentation, fullscreen**: only the presented boxes (see `(present :bN x y)`), filling the frame,
-  with small controls in a corner (▶ ■ ⛶ ↗) that fade while you play. The first touch starts the sound.
-  Without presented boxes, the whole patch.
+- **Release/Perform**: a **release** of the patch — its presets boxes keep their presets, as
+  `(release)` makes it — that always opens in **Perform**: whatever is played or changed there is a take,
+  never the work. Only the presented boxes (see `(present :bN x y)`), filling the frame, with small
+  controls in a corner (▶ ■ ⛶ ↗) that fade while you play. The first touch starts the sound. Without
+  presented boxes, the whole patch. This link always carries the patch, also from a tutorial or a help
+  patch.
 
 The panel gives the **link** and an **iframe**. From the REPL: `(embed-link)` and
-`(embed-link :present)` print both and copy the link.
+`(embed-link :release)` (also `:perform` or `:present`) print both and copy the link.
 
 What the link carries depends on what is open: a tutorial at a step (`?tutorial=work-tree&step=2`), a
 help patch (`?help=mt`) or, otherwise, **the patch itself** (`?code=…`, its code compressed). A patch
@@ -64,7 +67,7 @@ presentation in a tab of its own.
 | `?help=class` | the help patch of a class |
 | `?lang=es` / `?lang=en` | the language of lessons and help |
 | `?embed` | only the patch |
-| `?present` | only the presentation, filling the window |
+| `?present` | Release/Perform: in Perform, only the presentation, filling the window |
 
 Without `embed` or `present` the same addresses open in the whole editor, as a local work: from
 Sessions it can be copied into a solo work or a room.

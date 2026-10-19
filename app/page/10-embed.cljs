@@ -10,6 +10,11 @@
 ;; The code of a link is read as data and only a few calls are let through, with literal arguments:
 ;; a link cannot run code in this page. Its script and component boxes wait, as in a shared room,
 ;; until whoever opened it runs them.
+;; Release/Perform (issue #50): the link carries a release of the patch (its presets boxes keeping their
+;; presets, as `(release)` makes it) and opens in Perform, so what whoever plays it changes is a take,
+;; never the work. Old ?present links open the same way.
+
+(declare with-stored-presets perform)
 
 (def link-calls links/calls)
 (defn link-code
@@ -81,19 +86,36 @@
     (str (.-origin js/location) (.-pathname js/location))
     "https://bonuoq.github.io/kairotic/"))
 
+(defn release-code
+  "The code of the patch as a release carries it: its presets boxes keeping their presets (issue #50)."
+  []
+  (patch->code (try (with-stored-presets (work-patch)) (catch :default _ (work-patch)))))
+
+(defn link-mode
+  "The mode of a link: :present (Release/Perform; also asked as :release or :perform) or :embed."
+  [mode]
+  (if (#{:present :release :perform "present" "release" "perform"} mode) :present :embed))
+
+(defn packed-code
+  "Promise of the patch as a link carries it: in Release/Perform, its release."
+  [mode]
+  (-> (js/Promise.resolve nil)
+      (.then (fn [_] ((.-kairoticPack js/window) (if (= mode :present) (release-code) (patch->code (work-patch))))))))
+
 (defn link-params
   "Promise of the parameters that bring back what is shown now: the tutorial step, the help patch, or
-   the patch itself — or, if asked in the Embed panel, a description for Claude (Study 23)."
-  []
-  (let [l @lesson
-        ask (when (some-> ($ "ep-ask") .-checked) (str/trim (str (.-value ($ "ep-ask-text")))))]
-    (cond
-      (seq ask) (js/Promise.resolve [["ask" ask]])
-      (and l (:id l)) (js/Promise.resolve [["tutorial" (:id l)] ["step" (str (inc (:at l)))] ["lang" (name @lang)]])
-      (and l (:help l)) (js/Promise.resolve [["help" (:help l)] ["lang" (name @lang)]])
-      :else (-> (js/Promise.resolve nil)
-                (.then (fn [_] ((.-kairoticPack js/window) (patch->code (work-patch)))))
-                (.then (fn [z] [["code" z]]))))))
+   the patch itself — or, if asked in the Embed panel, a description for Claude (Study 23). In
+   Release/Perform (:present), always the release of the patch (issue #50)."
+  ([] (link-params :embed))
+  ([mode]
+   (let [l @lesson
+         ask (when (some-> ($ "ep-ask") .-checked) (str/trim (str (.-value ($ "ep-ask-text")))))]
+     (cond
+       (seq ask) (js/Promise.resolve [["ask" ask]])
+       (= mode :present) (.then (packed-code :present) (fn [z] [["code" z]]))
+       (and l (:id l)) (js/Promise.resolve [["tutorial" (:id l)] ["step" (str (inc (:at l)))] ["lang" (name @lang)]])
+       (and l (:help l)) (js/Promise.resolve [["help" (:help l)] ["lang" (name @lang)]])
+       :else (.then (packed-code :embed) (fn [z] [["code" z]]))))))
 
 (defn url-with [ps mode]
   (let [q (js/URLSearchParams.)]
@@ -112,12 +134,13 @@
       (.catch (fn [_] false))))
 
 (defn embed-link
-  "A link (and an iframe) that shows what is open now in another page: the patch, or with :present only
-   its presentation, fullscreen. The link is copied. In Notion: /embed and paste it."
+  "A link (and an iframe) that shows what is open now in another page: the patch, or with :release
+   (also :perform or :present) a release of it, in Perform, only its presentation, fullscreen. The link is
+   copied. In Notion: /embed and paste it."
   ([] (embed-link :embed))
   ([mode]
-   (let [mode (if (#{:present "present"} mode) :present :embed)]
-     (-> (link-params)
+   (let [mode (link-mode mode)]
+     (-> (link-params mode)
          (.then (fn [ps]
                   (let [u (url-with ps mode)]
                     (repl-print! "out" (esc (str "; " u)))
@@ -136,11 +159,11 @@
     (set! (.-value ($ "ep-ask-text")) (str/trim (str (.-value ($ "ask-text"))))))
   (let [mode (ep-mode) l @lesson]
     (set! (.-textContent ($ "ep-what"))
-          (cond (and l (:id l)) (str "This tutorial, at step " (inc (:at l)) ", with its lesson bar.")
+          (cond (= mode :present) "A release of this patch (its presets boxes keep their presets), opened in Perform: whatever is played or changed there is a take, never the work. Only the presented boxes, filling the frame, with a fullscreen button (without presented boxes, the whole patch)."
+                (and l (:id l)) (str "This tutorial, at step " (inc (:at l)) ", with its lesson bar.")
                 (and l (:help l)) (str "The help patch of " (:help l) ".")
-                (= mode :present) "Only the presented boxes, filling the frame, with a fullscreen button (without presented boxes, the whole patch)."
                 :else "This patch, scaled to the frame, with ▶ ■ and a link to open it in Kairotic."))
-    (-> (link-params)
+    (-> (link-params mode)
         (.then (fn [ps]
                  (let [u (url-with ps mode)]
                    (set! (.-value ($ "ep-url")) u)
@@ -204,11 +227,24 @@
         (js/clearTimeout @resize-timer)
         (reset! resize-timer (js/setTimeout (fn [] (render-scene (current))) 80))))))
 
+(defn perform-release!
+  "In ?present (Release/Perform, issue #50): the work opens in Perform, so what is played or changed there is
+   a take and the release stays as it came. Not in a lesson, which has steps of its own."
+  ([] (perform-release! 0))
+  ([tries]
+   (when (and (= embed-mode :present) (not @perf) (not @lesson))
+     (if (#{:connecting :none} (:mode @hist))
+       ;; the work is still opening: a moment later
+       (when (< tries 40) (js/setTimeout (fn [] (perform-release! (inc tries))) 150))
+       (try (perform)
+            (catch :default e (js/console.warn "Release/Perform: not in Perform" e)))))))
+
 (defn present-what!
-  "In ?present: the presentation if the patch has presented boxes (otherwise the whole patch); the first
-   touch starts the sound."
+  "In ?present (Release/Perform): in Perform, the presentation if the patch has presented boxes (otherwise
+   the whole patch); the first touch starts the sound."
   []
   (when (= embed-mode :present)
+    (perform-release!)
     (presentation (boolean (some :present (vals (:boxes (work-patch))))))
     (when-not @first-touch
       (reset! first-touch true)
@@ -280,7 +316,7 @@
               (when (seq v) (.setKey s v) (set! (.-value ($ "ab-key")) "") (render-askbar!) (render-key!))))))
 (.addEventListener ($ "ab-fix") "click"
   (fn [_]
-    (-> ((.-kairoticPack js/window) (patch->code (work-patch)))
+    (-> (packed-code (or embed-mode :embed))
         (.then (fn [z]
                  (let [u (url-with [["code" z]] (or embed-mode :embed))]
                    (.then (copy-text! u)
@@ -293,7 +329,7 @@
    (ask-link \"…\" :present). Whoever opens it makes the patch with their own key or account."
   ([text] (ask-link text :embed))
   ([text mode]
-   (let [u (url-with [["ask" (str text)]] (if (#{:present "present"} mode) :present :embed))]
+   (let [u (url-with [["ask" (str text)]] (link-mode mode))]
      (repl-print! "out" (esc (str "; " u)))
      (.then (copy-text! u) (fn [ok] (repl-print! "out" (if ok "; (link copied)" "; (copy it from here)"))))
      :making-link)))
@@ -408,16 +444,17 @@
   (when-let [l (url-param "lang")] (when (#{"es" "en"} l) (reset! lang (keyword l)) (render-lesson!) (render-help!)))
   (let [code (url-param "code") src (raw-param "src") ask (some-> (url-param "ask") str/trim not-empty) tut (url-param "tutorial") hc (url-param "help")
         step (js/parseInt (or (url-param "step") "1") 10)
+        link-name (str (if (es?) "Enlace" "Link") (when (= embed-mode :present) " · release"))
         fallback (fn [e]
                    (when e (repl-print! "err" (esc (str "; " (or (.-message e) e)))))
                    (when (and embed-mode (nil? (:kind @work))) (open-work! :local "local" "Local"))
                    (present-what!))]
     (-> (cond
           (seq code) (.then ((.-kairoticUnpack js/window) code)
-                            (fn [src] (open-link-work! (if (es?) "Enlace" "Link") (reset! link-base (link-code src)))))
+                            (fn [src] (open-link-work! link-name (reset! link-base (link-code src)))))
           ;; the code itself, readable (written by hand, or by Claude in a Notion page)
-          (seq src) (.then (js/Promise.resolve nil) (fn [_] (open-link-work! (if (es?) "Enlace" "Link") (reset! link-base (link-code src)))))
-          (seq ask) (.then (js/Promise.resolve nil) (fn [_] (open-link-work! (if (es?) "Enlace" "Link") "")))
+          (seq src) (.then (js/Promise.resolve nil) (fn [_] (open-link-work! link-name (reset! link-base (link-code src)))))
+          (seq ask) (.then (js/Promise.resolve nil) (fn [_] (open-link-work! link-name "")))
           (seq tut) (.then (tutorials-ready)
                            (fn [_] (or (open-tutorial! tut) (throw (js/Error. (str "no tutorial " (pr-str tut)))))))
           (seq hc) (or (open-help-patch! hc) (js/Promise.reject (js/Error. (str "no help patch for " (pr-str hc)))))

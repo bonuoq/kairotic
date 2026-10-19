@@ -18,6 +18,7 @@ import { sounds } from "./sounds.mjs";
 import { analysis } from "./analysis.mjs";
 import { layout } from "./layout.mjs";
 import { release } from "./release.mjs";
+import { embed } from "./embed.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 // sound without a click, and a fake microphone (a beep) that is allowed without asking: for adc~
@@ -66,6 +67,11 @@ if (loaded) {
   // opens a lesson (another local work): last
   try { await presetsTutorial(app, check); } catch (e) { check("the presets tutorial tests ran", false, String(e && e.message || e)); }
   if (appErrors.length) check("no page errors during the gestures", false, appErrors.join("; "));
+}
+// a Release/Perform embed (issue #50), in a page of its own
+{
+  const check = (label, ok, detail) => { r.total += 1; if (!ok) r.failed.push({ suite: "embed", label, detail: detail || "" }); };
+  try { await embed(browser, url.replace(/tests\.html.*$/, ""), check); } catch (e) { check("the embed tests ran", false, String(e && e.message || e)); }
 }
 await browser.close();
 for (const f of r.failed) console.log("✗", f.suite ? f.suite + " · " : "", f.label, f.detail ? "— " + f.detail : "");
