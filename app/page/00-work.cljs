@@ -3,7 +3,7 @@
 ;; The page's ClojureScript, in the order it is evaluated (app/index.html lists the files).
 
 (ns user (:require [clojure.string :as str] [clojure.set] [kairotic.score :as sc] [kairotic.canvas :as cv]
-                   [kairotic.components :as comp] [kairotic.api :as api] [kairotic.code :as cbox] [kairotic.faust] [kairotic.library :as lib] [kairotic.help :as hlp] [kairotic.mt :as mt] [kairotic.mtboxes :as mtb] [kairotic.assistant :as ai] [kairotic.engine :as eng]
+                   [kairotic.components :as comp] [kairotic.api :as api] [kairotic.code :as cbox] [kairotic.faust] [kairotic.library :as lib] [kairotic.help :as hlp] [kairotic.mt :as mt] [kairotic.mtboxes :as mtb] [kairotic.assistant :as ai] [kairotic.engine :as eng] [kairotic.presets :as pst]
                    [kairotic.shapes :as shp] [kairotic.signal] [kairotic.links :as links] [clojure.edn]))
 
 (def version "0.1.0-alpha")
@@ -122,6 +122,8 @@
                   (cond (not (get-in p [:boxes id])) p
                         (sane-recipe r) (assoc-in p [:boxes id :recipe] (sane-recipe r))
                         :else (update-in p [:boxes id] dissoc :recipe)))
+    ;; [:batch [ev …]]: several changes as one event of the history (a preset recalled: issue #35)
+    :batch      (let [[evs] args] (if (sequential? evs) (reduce step p (filter vector? evs)) p))
     :load       (sane-patch (first args))
     :clear      empty-patch
     p))
@@ -437,6 +439,11 @@
                   extra (fn [segs] (vec (concat (seg-events (nth segs i) k) (mapcat (fn [g] (seg-events g 0)) (drop (inc i) segs)))))]
               {:base [(first t) k] :t-extra (extra ts) :s-extra (extra ss)})))))))
 
+(defn unbatch
+  "The events of a history with the changes of every [:batch …] in its place."
+  [evs]
+  (mapcat (fn [e] (if (and (vector? e) (= :batch (first e)) (sequential? (second e))) (unbatch (second e)) [e])) evs))
+
 (defn summarize [evs]
   (reduce (fn [acc [op & args]]
             (case op
@@ -466,7 +473,7 @@
                                 (update :ref conj id))
                       (-> acc (update :mod conj id) (update :ref conj id) (update :whole conj id))))
               acc))
-          {:mod #{} :ref #{} :del #{} :whole #{} :tree #{} :load false} evs))
+          {:mod #{} :ref #{} :del #{} :whole #{} :tree #{} :load false} (unbatch evs)))
 
 (defn remap-ev [m [op & args :as e]]
   (let [f (fn [x] (get m x x))]
@@ -475,6 +482,7 @@
       :in (let [[id inner] args]
             [op (f id) (if-let [ne (get-in m [:stroke-ids [id (second inner)]])] (assoc inner 1 ne) inner)])
       (:connect :disconnect) (let [[a o b i] args] [op (f a) o (f b) i])
+      :batch [op (mapv (fn [x] (remap-ev m x)) (first args))]
       e)))
 
 (defn free-box-id [used]

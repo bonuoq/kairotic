@@ -23,15 +23,19 @@
 
 (defn fail [msg] (throw (js/Error. msg)))
 
-(defn dispatch! [ev]
-  (let [ev (wrap-in (cmd-path) ev)]
+(defn dispatch-root!
+  "An event of the whole work (its ids already lead from the top: [:in :b5 …] for a sub-patch), wherever the
+   view is: to the scratch patch, to the take in Perform, or to the history."
+  [ev]
   (cond
     @scratch (swap! scratch step ev)
     @perf (perform-event! ev)
     (= :connecting (:mode @hist)) (fail "Still connecting to the shared history; try again in a moment.")
     (= :none (:mode @hist)) (fail "Open or create a work from the session manager.")
     :else (do (when (:follow @ui) (swap! ui assoc :follow nil))
-              (commit! ev)))))
+              (commit! ev))))
+
+(defn dispatch! [ev] (dispatch-root! (wrap-in (cmd-path) ev)))
 
 (declare ensure-class!)
 

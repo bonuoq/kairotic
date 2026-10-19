@@ -20,6 +20,7 @@
   [p [op & args]]
   (case op
     (:move :present :view) true
+    :batch (let [[evs] args] (boolean (and (sequential? evs) (seq evs) (every? (fn [e] (and (vector? e) (layout-ev? p e))) evs))))
     :in (let [[id inner] args b (get-in p [:boxes id])]
           (boolean (and (embedded? b) (vector? inner) (layout-ev? (or (:data b) empty-patch) inner))))
     false))
