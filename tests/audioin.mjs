@@ -22,8 +22,9 @@ export async function audioin(page, check) {
   const running = await until(page, '(= "running" (.-state (eng/ctx)))', (g) => g === "true", 5000);
   check("the engine sounds in the test browser", running === "true", running);
 
-  const peak = await until(page, `(get-in @eng/rt [:states ${snap}])`, (g) => Number(g) > 0.9);
-  check("snapshot~ peak: the level of an osc~ comes back as a number", Number(peak) > 0.9 && Number(peak) <= 1.001, peak);
+  const peak = await until(page, `(get-in @eng/rt [:states ${snap}])`, (g) => Math.abs(Number(g) - 0.15) < 0.005);
+  // osc~ sounds at 0.15 (its own level)
+  check("snapshot~ peak: the level of an osc~ comes back as a number", Math.abs(Number(peak) - 0.15) < 0.005, peak);
   const pts = await until(page, `(count (:pts (second (last-shown ${scope}))))`, (g) => g === "320");
   check("scope~ shows a picture: a min and a max for each of 160 columns", pts === "320", pts);
   const svg = await cljs(page, `(boolean (re-find #"polyline" (str (.-innerHTML ($ "cursors")))))`);
