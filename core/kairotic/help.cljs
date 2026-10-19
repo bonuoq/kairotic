@@ -308,6 +308,55 @@
     :see ["tree" "freqt" "synth~"]}
 
    ;; ───── official packages (until they carry their own :help) ─────
+   "features~"
+   {:package "@kairotic/analysis" :usage "features~ [ms] [descriptor …]"
+    :doc "Descriptors of a signal every ms, one outlet per word: rms, energy, zcr, loudness, centroid, spread, flatness, rolloff, kurtosis, skewness, slope, crest, sharpness, perceptualSpread, mfcc, chroma (Meyda)."
+    :inlets ["the signal"]
+    :outlets ["one outlet per descriptor written, in order (rms centroid flatness without words); centroid, spread and rolloff in Hz"]
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"features~ 50 rms centroid\" 40 90)"
+                    "(box :b3 \"number\" 40 150)" "(box :b4 \"number\" 200 150)"
+                    "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)")
+    :try "Press ▶ and allow the microphone: whisper and then hum — the centroid (brightness) falls."
+    :see ["pitch~" "chroma~" "snapshot~"]}
+
+   "pitch~"
+   {:package "@kairotic/analysis" :usage "pitch~ [lo hi] [threshold]"
+    :doc "The pitch of a signal by YIN: Hz on the left (0 once when it stops hearing one), how clearly periodic on the right."
+    :inlets ["the signal"]
+    :outlets ["the frequency in Hz, only when it changes; 0 once when it no longer finds one" "the clarity, 0…1"]
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"pitch~ 80 1000\" 40 90)" "(box :b3 \"ftom\" 40 150)"
+                    "(box :b4 \"number\" 40 200)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)")
+    :try "Press ▶ and sing: the box shows the note and its cents, the number the MIDI pitch."
+    :see ["onset~" "ftom" "freqt"]}
+
+   "onset~"
+   {:package "@kairotic/analysis" :usage "onset~ [threshold] [ms]"
+    :doc "A bang at the beginning of each sound (a note, a stroke, a syllable), and its strength."
+    :inlets ["the signal"]
+    :outlets ["a bang for each onset" "its strength (the growth of the spectrum, 0…1)"]
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"onset~\" 40 90)" "(box :b3 \"counter 1\" 40 150)"
+                    "(box :b4 \"number\" 40 200)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)")
+    :try "Press ▶ and clap: the counter counts the claps. Raise the threshold if it counts too much."
+    :see ["pitch~" "sample" "counter"]}
+
+   "chroma~"
+   {:package "@kairotic/analysis" :usage "chroma~ [ms]"
+    :doc "How much of each pitch class a signal has: 12 values from C to B, and the strongest class as a word."
+    :inlets ["the signal"]
+    :outlets ["12 values, C to B, 0…1 (the strongest 1)" "the strongest pitch class (:c … :b), when it changes"]
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"chroma~\" 40 90)" "(box :b3 \"print\" 40 170)"
+                    "(connect :b1 0 :b2 0)" "(connect :b2 1 :b3 0)")
+    :try "Press ▶ and play a chord or a drone: the bars show its pitch classes; print writes the strongest."
+    :see ["pitch~" "mt" "features~"]}
+
+   "spectrum~"
+   {:package "@kairotic/analysis" :usage "spectrum~ [lo hi]"
+    :doc "The spectrum of a signal drawn in the patch, on a log scale of frequency (dB from -90 to 0)."
+    :inlets ["the signal"]
+    :example (lines "(box :b1 \"osc~ 220\" 40 30)" "(box :b2 \"spectrum~\" 40 90)" "(connect :b1 0 :b2 0)")
+    :try "Press ▶: one peak at 220 Hz. Connect an adc~ instead and sing a vowel: its partials and formants."
+    :see ["scope~" "features~"]}
+
    "adsr~"
    {:package "@kairotic/synth" :usage "adsr~ [a d s r]"
     :doc "An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape."

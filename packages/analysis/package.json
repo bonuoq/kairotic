@@ -1,0 +1,40 @@
+{
+  "name": "@kairotic/analysis",
+  "version": "0.1.0",
+  "description": "Kairotic analysis components: features~ (descriptors with Meyda), pitch~ (YIN), onset~, chroma~ and spectrum~, from any signal or adc~ into messages and pictures",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/analysis"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages#readme",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs analysis",
+    "prepublishOnly": "node ../build.mjs analysis"
+  },
+  "keywords": [
+    "kairotic",
+    "music",
+    "web audio",
+    "analysis",
+    "pitch",
+    "onset",
+    "chroma",
+    "meyda"
+  ]
+}

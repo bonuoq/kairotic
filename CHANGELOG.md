@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **`@kairotic/analysis`**, a new official package (step 3 of audio input): from any signal into
+  messages and pictures. `pitch~ [lo hi] [threshold]` — YIN in its own AudioWorklet, every 1024
+  samples: Hz on the left (0 once when it stops hearing a pitch), clarity on the right, a view with the
+  note and its cents. `onset~ [threshold] [ms]` — a bang at each attack and its strength, from the
+  growth of the spectrum against the median of the last frames. `chroma~ [ms]` — 12 values from C to B
+  and the strongest class as a word, with 12 bars. `features~ [ms] [descriptor …]` — one outlet per
+  descriptor (rms, energy, zcr, loudness, centroid, spread, flatness, rolloff, kurtosis, skewness,
+  slope, crest, sharpness, perceptualSpread, mfcc, chroma; centroid, spread and rolloff in Hz).
+  `spectrum~ [lo hi]` — the spectrum drawn on a log scale. Every box sends only what changed. The
+  descriptors are [Meyda](https://meyda.js.org)'s (MIT), loaded from jsDelivr the first time one is
+  used; all the boxes use frames of 2048 (Meyda keeps filter banks for one size). The API learns
+  `api/load-script` (a classic script, once per page; `npm:` through jsDelivr) and `api/hz->midi`,
+  `api/midi->hz`, `api/midi-name`, `api/pitch-class`. Essentia.js stays out (AGPL): a separate package
+  later, if wanted. Tests: `tests/analysis.mjs`.
 - **Recording buffers** (step 2 of audio input, after `adc~`): a new core class, `sample [seconds]`,
   records what reaches its left inlet on `rec` until `stop` (or until it has `seconds`, 60 by default;
   ■ keeps what was heard), `clear` empties it and a bang sends its length in seconds, as does every new

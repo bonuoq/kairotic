@@ -8,7 +8,9 @@
 ;; breaks a function here raises the major version; adding functions does not.
 
 (ns kairotic.api
-  (:require [kairotic.components :as comp]))
+  (:require [clojure.string :as str]
+            [kairotic.components :as comp]
+            [kairotic.canvas :as cv]))
 
 (def version 1)
 
@@ -188,3 +190,33 @@ registerProcessor('kairotic-tap', KairoticTap);
 
 (defn db "A level (0…1) in decibels, -100 for silence." [x]
   (if (> x 1e-5) (* 20 (/ (js/Math.log x) js/Math.LN10)) -100))
+
+;; ───────── pitch ─────────
+
+(defn hz->midi "A frequency as a MIDI pitch (fractional: 440 → 69)." [hz] (cv/hz->midi hz))
+(defn midi->hz "A MIDI pitch as a frequency (69 → 440)." [m] (cv/midi->hz m))
+(defn midi-name "The name of a whole MIDI pitch: 60 → \"C4\", 61 → \"C#4\"." [m] (cv/midi-name m))
+(defn pitch-class "The pitch class of a MIDI pitch as a keyword: 61 → :c#." [m]
+  (keyword (str/lower-case (nth cv/note-names (mod (js/Math.round m) 12)))))
+
+;; ───────── libraries ─────────
+
+(defonce scripts (atom {}))   ; url → Promise
+
+(defn load-script
+  "Promise that resolves when the classic script at `url` has run, once per page whoever asks first.
+   npm:package@version/path is served by jsDelivr (the only place a page inside claude.ai can load
+   code from). For libraries that put a global on window, such as Meyda: (.-Meyda js/window)."
+  [url]
+  (let [u (if (str/starts-with? url "npm:") (str "https://cdn.jsdelivr.net/npm/" (subs url 4)) url)]
+    (or (get @scripts u)
+        (let [p (js/Promise.
+                 (fn [ok fail]
+                   (let [s (.createElement js/document "script")]
+                     (set! (.-src s) u)
+                     (set! (.-async s) true)
+                     (set! (.-onload s) (fn [_] (ok true)))
+                     (set! (.-onerror s) (fn [_] (swap! scripts dissoc u) (fail (js/Error. (str "could not load " u)))))
+                     (.appendChild (.-head js/document) s))))]
+          (swap! scripts assoc u p)
+          p))))
