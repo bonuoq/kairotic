@@ -812,7 +812,7 @@ window.addEventListener("DOMContentLoaded", function () {
   // dependency order: shapes has no dependencies; components needs canvas; code, faust and library need components
   var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/mt.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
               "kairotic/api.cljs", "kairotic/corefns.cljs", "kairotic/code.cljs", "kairotic/mtboxes.cljs", "kairotic/faust.cljs", "kairotic/library.cljs", "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs",
-              "kairotic/signal.cljs", "kairotic/links.cljs", "kairotic/input.cljs", "kairotic/release.cljs", "kairotic/presets.cljs"];
+              "kairotic/signal.cljs", "kairotic/input.cljs", "kairotic/links.cljs", "kairotic/release.cljs", "kairotic/presets.cljs"];
   var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs", "page/15-presets.cljs", "page/16-release.cljs"];
   Promise.all(mods.map(function (m) {
     return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
