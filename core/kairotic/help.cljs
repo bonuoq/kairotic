@@ -183,7 +183,31 @@
     :example (lines "(box :b1 \"osc~ 330\" 40 30)" "(box :b2 \"gain~ 0.2\" 40 80)" "(box :b3 \"dac~ 1 2\" 40 130)"
                     "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)")
     :try "Only the left channel sounds: connect the gain~ to the right inlet too."
-    :see ["gain~" "pan~" "space~"]}
+    :see ["gain~" "pan~" "space~" "adc~"]}
+
+   "adc~"
+   {:outlets ["one signal per input channel: those written after it (1 by default)"]
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"scope~ 20\" 40 80)" "(box :b3 \"snapshot~ 50 db\" 240 80)"
+                    "(box :b4 \"print\" 240 140)"
+                    "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b3 0 :b4 0)")
+    :try "Press ▶ and allow the microphone: sing or clap and watch the scope and the level. It does not go to dac~, so it cannot feed back; send it through a gain~ to hear it (with headphones)."
+    :see ["dac~" "snapshot~" "scope~"]}
+
+   "snapshot~"
+   {:inlets ["the signal; a number changes ms, a bang sends the last value again"]
+    :outlets ["its value (or its level with rms, peak or db) every ms, only when it changed"]
+    :messages [["rms · peak · db" "written in the box: its level over each ms instead of its value"]]
+    :example (lines "(box :b1 \"phasor~ 0.5\" 40 30)" "(box :b2 \"snapshot~ 100\" 40 80)" "(box :b3 \"print\" 40 130)"
+                    "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)")
+    :try "Press ▶: the ramp of the phasor~ arrives as numbers ten times a second. Write snapshot~ 100 peak and connect an adc~ instead."
+    :see ["adc~" "scope~" "phasor~"]}
+
+   "scope~"
+   {:inlets ["the signal; a number changes the time shown (ms)"]
+    :messages [["drag up/down" "zoom (⇧ finer)"] ["drag sideways" "the time shown"]]
+    :example (lines "(box :b1 \"osc~ 220\" 40 30)" "(box :b2 \"scope~ 20\" 40 80)" "(connect :b1 0 :b2 0)")
+    :try "Press ▶: a sine wave stands still. Drag over it to zoom; connect an adc~ instead of the osc~."
+    :see ["adc~" "snapshot~"]}
 
    "phasor~"
    {:inlets ["a number: the frequency in Hz (0.25 = once every 4 seconds)"]
