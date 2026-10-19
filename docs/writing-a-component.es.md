@@ -131,6 +131,16 @@ cuyo JavaScript viaja dentro del componente) y `api/param`. La API tiene versió
 paquete declara para cuál se escribió, y el núcleo solo la rompe con una versión mayor nueva. Ver
 [`core/kairotic/api.cljs`](../core/kairotic/api.cljs).
 
+**Del sonido de vuelta a los mensajes.** Un nodo de audio no puede enviar mensajes: *informa* de lo que
+encuentra a su propia caja con `(api/report! (:id b) valor at)` (`b` es la caja que recibió su
+`:create`, `at` el instante del sonido), y el `:receive` de la caja lo recibe por el inlet `:audio`,
+donde decide qué enviar, mostrar y guardar, como con cualquier otro mensaje. Para escuchar una señal,
+`(api/tap ac opts on-block)` da un worklet que la entrega cada `:hop` muestras, como `:frames` (las
+muestras), un `:summary` (último valor, rms, pico) o un `:trace` (mínimo y máximo por columna, estable
+sobre un cruce por cero, para dibujarla); los bucles sobre las muestras se ejecutan en el worklet.
+`api/retap` cambia sus tamaños y `api/db` pasa un nivel a decibelios. Lee
+[`snapshot~` y `scope~`](../core/kairotic/input.cljs).
+
 ## 5½. El mismo valor dos veces
 
 Una caja puede recibir otra vez el mismo valor: las cajas de datos (un `tree`) vuelven a enviar lo que

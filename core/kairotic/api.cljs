@@ -52,3 +52,119 @@
          (fn [_] (js/AudioWorkletNode. ac name (clj->js opts)))))
 
 (defn param "The AudioParam `k` of an AudioWorkletNode." [w k] (.get (.-parameters w) k))
+
+;; ───────── from the sound back to the messages ─────────
+;; An audio node cannot send messages itself: it reports what it finds to its own box, whose :receive
+;; gets it on inlet :audio and decides what to send (:out), show (:show) or keep (:state).
+
+(defn report!
+  "From an audio node: gives box `id` (the :id of the box its :create got) a value found in the sound.
+   It arrives at the box's :receive as {:inlet :audio :value value :at at}, at instant `at` (an
+   AudioContext time; now if nil). Only while the engine runs."
+  [id value at]
+  (when-let [f @comp/audio-report] (f id value at)))
+
+(def tap-source
+  "class KairoticTap extends AudioWorkletProcessor {
+  // Listens to its input and hands it to the page every `hop` samples, in one of three forms:
+  //  frames  — the last `size` samples of each channel, oldest first
+  //  summary — for each channel its last sample, its level (rms) and its peak over the last `size`
+  //  trace   — for each channel `columns` pairs [min, max] over `size` samples, starting at the first
+  //            rising zero crossing of the older half of a ring of 2 × size (a steady picture of a
+  //            periodic wave; where there is none, the newest `size` samples)
+  // with the AudioContext time of the last sample. No output: the input connected to it keeps it
+  // running. A message {size, hop, columns} changes them.
+  constructor(o) {
+    super();
+    const p = (o && o.processorOptions) || {};
+    this.C = Math.max(1, p.channels | 0 || 1);
+    this.mode = p.mode || 'frames';
+    this.columns = Math.max(2, p.columns | 0 || 128);
+    this.resize(p.size | 0 || 2048, p.hop | 0 || 1024);
+    this.port.onmessage = (e) => {
+      const d = e.data || {};
+      if (d.columns) this.columns = Math.max(2, Math.min(2000, d.columns | 0));
+      this.resize(d.size | 0 || this.size, d.hop | 0 || this.hop);
+    };
+  }
+  resize(size, hop) {
+    this.size = Math.max(16, Math.min(1 << 17, size)); this.hop = Math.max(16, Math.min(1 << 17, hop));
+    this.R = this.mode === 'trace' ? 2 * this.size : this.size;
+    this.rings = []; for (let c = 0; c < this.C; c++) this.rings.push(new Float32Array(this.R));
+    this.w = 0; this.count = 0;
+  }
+  ordered(c) {
+    const r = this.rings[c], f = new Float32Array(this.R);
+    f.set(r.subarray(this.w)); f.set(r.subarray(0, this.w), this.R - this.w);
+    return f;
+  }
+  block() {
+    const out = [];
+    for (let c = 0; c < this.C; c++) {
+      if (this.mode === 'summary') {
+        const r = this.rings[c], N = this.R; let s = 0, pk = 0;
+        for (let i = 0; i < N; i++) { const x = r[i]; s += x * x; const a = x < 0 ? -x : x; if (a > pk) pk = a; }
+        out.push([r[(this.w + N - 1) % N], Math.sqrt(s / N), pk]);
+      } else if (this.mode === 'trace') {
+        const f = this.ordered(c), S = this.size, K = this.columns;
+        let t = S;
+        for (let i = 1; i < S; i++) if (f[i - 1] <= 0 && f[i] > 0) { t = i; break; }
+        const col = new Float32Array(2 * K);
+        for (let k = 0; k < K; k++) {
+          const a = t + Math.floor(k * S / K), b = Math.max(a + 1, t + Math.floor((k + 1) * S / K));
+          let lo = Infinity, hi = -Infinity;
+          for (let i = a; i < b && i < f.length; i++) { const x = f[i]; if (x < lo) lo = x; if (x > hi) hi = x; }
+          col[2 * k] = lo === Infinity ? 0 : lo; col[2 * k + 1] = hi === -Infinity ? 0 : hi;
+        }
+        out.push(col);
+      } else out.push(this.ordered(c));
+    }
+    return out;
+  }
+  process(inputs) {
+    const inp = inputs[0] || [];
+    const n = inp[0] ? inp[0].length : 128;
+    for (let i = 0; i < n; i++) {
+      for (let c = 0; c < this.C; c++) { const ch = inp[c] || inp[0]; this.rings[c][this.w] = ch ? ch[i] : 0; }
+      this.w = (this.w + 1) % this.R;
+      if (++this.count >= this.hop) {
+        this.count = 0;
+        const data = this.block();
+        this.port.postMessage({ data, at: currentTime + (i + 1) / sampleRate, sr: sampleRate },
+                              data.filter((d) => d instanceof Float32Array).map((d) => d.buffer));
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('kairotic-tap', KairoticTap);
+")
+
+(defn tap
+  "Promise of an AudioWorkletNode that listens to a signal and gives it to the page in blocks; connect
+   the signal to it. Every `hop` samples, (on-block data at sr) gets the AudioContext time of the last
+   sample, the sample rate and, one entry per channel, according to :mode
+     :frames  (default) a Float32Array of the last `size` samples, oldest first
+     :summary [last rms peak] over the last `size` samples
+     :trace   a Float32Array of `columns` pairs min, max over `size` samples, from a rising zero
+              crossing (a steady oscilloscope picture)
+   The loops over samples run in the worklet, so the page only handles small arrays (except :frames).
+   (retap w {:size n :hop n :columns n}) changes the sizes while it runs."
+  [ac {:keys [channels size hop mode columns]} on-block]
+  (.then (worklet-node ac "kairotic-tap" tap-source
+                       {:numberOfInputs 1 :numberOfOutputs 0
+                        :channelCount (or channels 1) :channelCountMode "explicit" :channelInterpretation "discrete"
+                        :processorOptions {:channels (or channels 1) :size (or size 2048) :hop (or hop 1024)
+                                           :mode (name (or mode :frames)) :columns (or columns 128)}})
+         (fn [w]
+           (set! (.. w -port -onmessage)
+                 (fn [e] (let [d (.-data e)]
+                           (try (on-block (vec (array-seq (.-data d))) (.-at d) (.-sr d))
+                                (catch :default ex (js/console.error ex))))))
+           w)))
+
+(defn retap "New sizes for a tap while it runs: {:size n :hop n :columns n} (any of them)." [w sizes]
+  (.postMessage (.-port w) (clj->js sizes)))
+
+(defn db "A level (0…1) in decibels, -100 for silence." [x]
+  (if (> x 1e-5) (* 20 (/ (js/Math.log x) js/Math.LN10)) -100))

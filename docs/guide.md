@@ -85,6 +85,10 @@ comes first.
   The first ▶ also asks the browser for permission to play sound.
 - **■** silences and brings every box back to its initial state.
 - Messages travel without ▶: a click on a `bang` or a `msg`, a number dragged, a data box that changed.
+- **Sound from outside**: `adc~ 1` is the microphone (or an input of the sound card: `adc~ 1 2`). At ▶
+  the browser asks for it once; its sound comes as it is, without the processing made for calls.
+  `scope~` draws a signal and `snapshot~ 50 db` turns it into numbers (its level), so what is heard can
+  drive the patch. Use headphones before sending an `adc~` to `dac~`: it feeds back.
 
 ## 4. The history
 
