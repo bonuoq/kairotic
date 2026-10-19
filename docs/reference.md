@@ -82,11 +82,35 @@ Arithmetic: left inlet / argument (or the last thing that came in on the right);
 
 See also: `*`
 
+### adc~
+
+`adc~ [channel …]`
+
+Audio input (the microphone or the sound card): one outlet per input channel, the ones written after it (adc~ 1 by default; adc~ 1 2 for stereo). At ▶ it asks for the microphone, and takes its sound as it is, without the echo cancellation, noise suppression and automatic gain made for speech. Every adc~ shares one stream.
+
+**Outlets** 
+
+0. one signal per input channel: those written after it (1 by default)
+
+**Try:** Press ▶ and allow the microphone: sing or clap and watch the scope and the level. It does not go to dac~, so it cannot feed back; send it through a gain~ to hear it (with headphones).
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "scope~ 20" 40 80)
+(box :b3 "snapshot~ 50 db" 240 80)
+(box :b4 "print" 240 140)
+(connect :b1 0 :b2 0)
+(connect :b1 0 :b3 0)
+(connect :b3 0 :b4 0)
+```
+
+See also: `dac~`, `snapshot~`, `scope~`
+
 ### adsr~ · `@kairotic/synth`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
+An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
 
 **Inlets** 
 
@@ -232,7 +256,7 @@ Audio output: each inlet is an output channel, the ones written after it (dac~ 1
 (connect :b2 0 :b3 0)
 ```
 
-See also: `gain~`, `pan~`, `space~`
+See also: `gain~`, `pan~`, `space~`, `adc~`
 
 ### faust~
 
@@ -588,7 +612,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power.
+Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
 
 **Inlets** 
 
@@ -773,6 +797,31 @@ Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phaso
 
 See also: `phasor~`, `adsr~`, `freqt`, `reader`
 
+### scope~
+
+`scope~ [ms] [zoom]`
+
+An oscilloscope in the patch: the last ms (20 by default) of the signal on its left, drawn from a rising zero crossing so a periodic wave stands still. zoom makes it taller. Drag up or down over it to zoom (⇧ finer) and sideways to change the time; on release both stay in the box text. A number on the left changes ms.
+
+**Inlets** 
+
+0. the signal; a number changes the time shown (ms)
+
+**Messages and gestures**
+
+- `drag up/down`: zoom (⇧ finer)
+- `drag sideways`: the time shown
+
+**Try:** Press ▶: a sine wave stands still. Drag over it to zoom; connect an adc~ instead of the osc~.
+
+```clojure
+(box :b1 "osc~ 220" 40 30)
+(box :b2 "scope~ 20" 40 80)
+(connect :b1 0 :b2 0)
+```
+
+See also: `adc~`, `snapshot~`
+
 ### script
 
 `script [inlets] [outlets]`
@@ -809,11 +858,41 @@ A constant signal (a frequency for osc~, a factor for gain~, a position for read
 
 See also: `phasor~`, `osc~`
 
+### snapshot~
+
+`snapshot~ [ms] [rms|peak|db]`
+
+A signal as numbers: every ms (50 by default) its last value, or with a word its level over that time — rms, peak, or db (the rms in decibels). It sends only what changed, so a constant signal sends once. A number on the left changes ms; a bang sends the last value again. With adc~ it is a level meter; with phasor~, an envelope or faust~ it brings a signal back into the messages.
+
+**Inlets** 
+
+0. the signal; a number changes ms, a bang sends the last value again
+
+**Outlets** 
+
+0. its value (or its level with rms, peak or db) every ms, only when it changed
+
+**Messages and gestures**
+
+- `rms · peak · db`: written in the box: its level over each ms instead of its value
+
+**Try:** Press ▶: the ramp of the phasor~ arrives as numbers ten times a second. Write snapshot~ 100 peak and connect an adc~ instead.
+
+```clojure
+(box :b1 "phasor~ 0.5" 40 30)
+(box :b2 "snapshot~ 100" 40 80)
+(box :b3 "print" 40 130)
+(connect :b1 0 :b2 0)
+(connect :b2 0 :b3 0)
+```
+
+See also: `adc~`, `scope~`, `phasor~`
+
 ### space~ · `@kairotic/spatial`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
+A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
 
 **Inlets** 
 
@@ -830,7 +909,7 @@ See also: `pan~`, `reader`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer, one voice per id.
+Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
 
 **Inlets** 
 
