@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
+An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
 
 **Inlets** 
 
@@ -730,7 +730,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power.
+Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
 
 **Inlets** 
 
@@ -1089,7 +1089,7 @@ See also: `adc~`, `scope~`, `phasor~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
+A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
 
 **Inlets** 
 
@@ -1126,7 +1126,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer, one voice per id.
+Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
 
 **Inlets** 
 
