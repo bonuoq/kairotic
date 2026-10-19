@@ -4,8 +4,11 @@
 ;; browser (IndexedDB) under the hash of the samples, and the history keeps only a description,
 ;;   {:audio "5a2c…" :sr 48000 :frames 96000 :channels 1 :peaks [[-0.4 0.38] …]}
 ;; whose peaks are enough to draw it anywhere. A work opened in another browser shows the sound and
-;; says it is not there; (load-sound! :bN) brings a file in. The loops over samples are JavaScript
-;; (kairotic/sounds.mjs).
+;; says it is not there; (load-sound! :bN) brings a file in. A sound can also come from a URL,
+;;   {:url "https://…/voice.ogg" …}   or only   {:url "…"}
+;; and then every browser that opens the work fetches it by itself (once: then it is kept like the rest,
+;; under a key made from the URL), which is how a shared session or a test has the same sounds
+;; everywhere. The loops over samples are JavaScript (kairotic/sounds.mjs).
 ;;
 ;;   sample [seconds]   a buffer of sound: what reaches its left inlet is recorded on `rec` until `stop`
 ;;                      (or until it has `seconds`, 60 by default). Its right outlet is the buffer for a
@@ -15,7 +18,8 @@
 (ns kairotic.sounds
   (:require [clojure.string :as str]
             [kairotic.components :as comp]
-            [kairotic.api :as api]))
+            [kairotic.api :as api]
+            [kairotic.engine :as eng]))
 
 ;; ───────── the store ─────────
 
@@ -25,28 +29,59 @@
   []
   (or @lib* (reset! lib* ((.-kairoticImport js/window) "kairotic/sounds.mjs"))))
 
-(defonce cache (atom {}))    ; hash → {:sr n :chans #js [Float32Array …]}
-(defonce status (atom {}))   ; hash → :here | :missing | :checking
+(defonce cache (atom {}))    ; key → {:sr n :chans #js [Float32Array …]}
+(defonce status (atom {}))   ; key → :here | :missing | :checking | :loading | :failed
+(defonce local (atom {}))    ; key → {:sr :frames :channels :peaks} of a sound this browser has
+(defonce failures (atom {})) ; key → why its URL could not be loaded
 
 (def peak-columns 120)
 
+(defn url?
+  "A place a sound can be fetched from: an http(s) URL, a path of this page, or a data: or blob: URL.
+   Never javascript:, no spaces, at most 2048 characters."
+  [u]
+  (and (string? u) (<= 1 (count u) 2048) (not (re-find #"\s" u))
+       (not (re-find #"(?i)^javascript:" u))
+       (or (re-find #"(?i)^(https?|data|blob):" u)
+           ;; a path of this page: no scheme, and a dot or a slash (sounds/voice.ogg, ./a.wav)
+           (and (not (re-find #"^[A-Za-z][A-Za-z0-9+.-]*:" u)) (re-find #"[./]" u)))))
+
+(defn url-key
+  "The key a sound from a URL is kept under: 16 hex characters from the URL (two FNV-1a hashes)."
+  [u]
+  (let [h (fn [seed] (reduce (fn [h c] (unsigned-bit-shift-right (js/Math.imul (bit-xor h (.charCodeAt c 0)) 16777619) 0))
+                             seed (seq u)))
+        hex (fn [x] (.padStart (.toString x 16) 8 "0"))]
+    (str (hex (h 2166136261)) (hex (h 3735928559)))))
+
 (defn sample?
   "A description of a sound (the data of a sample box), not an empty one."
-  [d] (and (map? d) (string? (:audio d)) (pos? (or (:frames d) 0))))
+  [d] (and (map? d) (string? (:audio d)) (or (pos? (or (:frames d) 0)) (url? (:url d)))))
 
-(defn seconds [d] (if (sample? d) (/ (:frames d) (:sr d)) 0))
+(defn about
+  "What is known of the sound of d: its description, completed with what this browser learnt when it
+   loaded it (a description that is only a URL learns its length and peaks so)."
+  [d] (merge (get @local (:audio d)) (select-keys d [:sr :frames :channels :peaks])))
+
+(defn seconds [d]
+  (let [{:keys [frames sr]} (when (sample? d) (about d))]
+    (if (and (number? frames) (number? sr) (pos? sr)) (/ frames sr) 0)))
 
 (defn sane
-  "The description of a sound as it may be kept in the history, or {} if it is not one."
+  "The description of a sound as it may be kept in the history, or {} if it is not one. A URL alone is
+   enough: its key is made from it."
   [d]
-  (let [n (fn [x] (and (number? x) (js/isFinite x) (pos? x)))]
-    (if (and (map? d) (string? (:audio d)) (re-matches #"[0-9a-f]{8,64}" (:audio d))
-             (n (:sr d)) (n (:frames d)))
-      {:audio (:audio d) :sr (:sr d) :frames (js/Math.floor (:frames d))
-       :channels (max 1 (min 32 (js/Math.floor (or (:channels d) 1))))
-       :peaks (vec (for [p (take 2000 (:peaks d)) :when (and (sequential? p) (= 2 (count p)) (every? number? p))]
-                     (mapv (fn [x] (comp/clamp x -1 1)) p)))}
-      {})))
+  (let [n (fn [x] (and (number? x) (js/isFinite x) (pos? x)))
+        url (when (and (map? d) (url? (:url d))) (:url d))]
+    (cond
+      (and (map? d) (string? (:audio d)) (re-matches #"[0-9a-f]{8,64}" (:audio d)) (n (:sr d)) (n (:frames d)))
+      (cond-> {:audio (:audio d) :sr (:sr d) :frames (js/Math.floor (:frames d))
+               :channels (max 1 (min 32 (js/Math.floor (or (:channels d) 1))))
+               :peaks (vec (for [p (take 2000 (:peaks d)) :when (and (sequential? p) (= 2 (count p)) (every? number? p))]
+                             (mapv (fn [x] (comp/clamp x -1 1)) p)))}
+        url (assoc :url url))
+      url {:audio (url-key url) :url url}
+      :else {})))
 
 (defn sound
   "Promise of the sound kept under hash h ({:sr :chans}), or nil if this browser does not have it."
@@ -61,27 +96,70 @@
                      (swap! cache assoc h s) (swap! status assoc h :here) s)
                    (do (swap! status assoc h :missing) nil)))))))
 
-(defn check!
-  "Finds out (once) whether this browser has the sound of hash h: (get @status h) then says it."
-  [h]
-  (when (and (string? h) (nil? (get @status h)))
-    (swap! status assoc h :checking)
-    (.catch (sound h) (fn [_] (swap! status assoc h :missing)))))
-
-(defn keep!
-  "Keeps a sound (sample rate, a JS array of Float32Array, one per channel) in this browser. Promise of
-   its description, the data of a sample box."
-  [sr chans]
+(defn store!
+  "Keeps a sound under key h in this browser (memory and IndexedDB). Promise of its description."
+  [h sr chans]
   (.then (lib)
          (fn [L]
-           (.then (.hash L chans sr)
-                  (fn [h]
-                    (.then (.put L h sr chans)
-                           (fn [_]
-                             (swap! cache assoc h {:sr sr :chans chans})
-                             (swap! status assoc h :here)
-                             {:audio h :sr sr :frames (.-length (aget chans 0)) :channels (.-length chans)
-                              :peaks (js->clj (.peaks L chans peak-columns))})))))))
+           (.then (.put L h sr chans)
+                  (fn [_]
+                    (let [d {:audio h :sr sr :frames (.-length (aget chans 0)) :channels (.-length chans)
+                             :peaks (js->clj (.peaks L chans peak-columns))}]
+                      (swap! cache assoc h {:sr sr :chans chans})
+                      (swap! local assoc h (dissoc d :audio))
+                      (swap! status assoc h :here)
+                      d))))))
+
+(defn keep!
+  "Keeps a sound (sample rate, a JS array of Float32Array, one per channel) in this browser, under the
+   hash of its samples. Promise of its description, the data of a sample box."
+  [sr chans]
+  (.then (lib) (fn [L] (.then (.hash L chans sr) (fn [h] (store! h sr chans))))))
+
+(defn decode
+  "Promise of a sound ({:sr :chans}, up to 8 channels) from the bytes of a file, decoded at the sample
+   rate of the engine."
+  [buf]
+  (.then (.decodeAudioData (eng/ctx) buf)
+         (fn [ab] {:sr (.-sampleRate ab)
+                   :chans (into-array (for [c (range (min 8 (.-numberOfChannels ab)))]
+                                        (js/Float32Array. (.getChannelData ab c))))})))
+
+(defonce fetching (atom {}))   ; key → Promise
+
+(defn fetch!
+  "Promise of the sound at url, fetched, decoded and kept under key h (once, whoever asks first)."
+  [h url]
+  (or (get @fetching h)
+      (let [p (-> (js/fetch url)
+                  (.then (fn [r] (if (.-ok r) (.arrayBuffer r) (throw (js/Error. (str "HTTP " (.-status r)))))))
+                  (.then decode)
+                  (.then (fn [{:keys [sr chans]}] (store! h sr chans)))
+                  (.then (fn [_] (get @cache h)))
+                  (.catch (fn [e]
+                            (swap! status assoc h :failed)
+                            (swap! failures assoc h (str (or (.-message e) e)))
+                            (swap! fetching dissoc h)
+                            (throw (js/Error. (str "could not load " url ": " (or (.-message e) e)))))))]
+        (swap! status assoc h :loading)
+        (swap! fetching assoc h p)
+        p)))
+
+(defn sound-for
+  "Promise of the sound of a description ({:sr :chans}): from this browser, or fetched from its URL if
+   it has one; nil if neither."
+  [d]
+  (let [h (:audio d)]
+    (.then (sound h) (fn [s] (if (or s (not (url? (:url d)))) s (fetch! h (:url d)))))))
+
+(defn check!
+  "Finds out (once) whether this browser has the sound of d, fetching it if it comes from a URL:
+   (get @status (:audio d)) then says it."
+  [d]
+  (let [h (:audio d)]
+    (when (and (string? h) (nil? (get @status h)))
+      (swap! status assoc h :checking)
+      (.catch (sound-for d) (fn [_] nil)))))
 
 ;; ───────── playing: the worklet a reader~ uses for a sound ─────────
 
@@ -193,7 +271,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
 (defn fmt-s [s] (str (comp/nice s) " s"))
 
 (comp/define! "sample"
-  {:doc "A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV."
+  {:doc "A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN \"https://…\")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV."
    :usage "sample [seconds]"
    :license "MPL-2.0"
    :io [1 2]
@@ -218,23 +296,32 @@ registerProcessor('kairotic-player', KairoticPlayer);
                   (= value :stop) {:effects [[:rec false]]}
                   (= value :bang) (if (sample? data) {:out [[0 (seconds data)]]} {})
                   (= value :clear) {:effects [[:sample [:clear]]]}
+                  ;; a URL (a string, or [:url "…"]): the page loads it and writes it as the data of the box
+                  (url? value) {:effects [[:sample [:url value]]]}
+                  (and (vector? value) (= :url (first value)) (url? (second value))) {:effects [[:sample [:url (second value)]]]}
                   :else {})))
+   ;; drawing it is also when this browser looks for its sound (and fetches it, if it comes from a URL)
    :draw (fn [{:keys [data shown w h]}]
-           (let [w (or w 240) h (or h 72) mid (/ (- h 12) 2) d (when (sample? data) data)
+           (let [w (or w 240) h (or h 72) mid (/ (- h 12) 2) d (when (sample? data) (merge data (about data)))
                  here (when d (get @status (:audio d)))]
-             (when d (check! (:audio d)))
+             (when d (check! data))
              [[:rect {:x 2 :y 2 :w (- w 4) :h (- h 4) :r 4 :stroke :grid :fill :bg}]
               [:line {:x1 6 :y1 (+ 2 mid) :x2 (- w 6) :y2 (+ 2 mid) :stroke :grid}]
-              (when d [:path {:points (wave-points (:peaks d) 6 (- w 6) (+ 2 mid) (- mid 4))
-                              :stroke (if (= here :missing) :soft :accent) :weight 1}])
+              (when (seq (:peaks d)) [:path {:points (wave-points (:peaks d) 6 (- w 6) (+ 2 mid) (- mid 4))
+                                             :stroke (if (#{:missing :failed} here) :soft :accent) :weight 1}])
               (if (:rec shown)
                 [:text {:x 8 :y (- h 7) :size 10 :fill :kairos} (str "● rec " (fmt-s (:rec shown)))]
                 [:text {:x 8 :y (- h 7) :size 9 :fill :soft}
-                 (if d
+                 (cond
+                   (and d (= here :loading)) "loading…"
+                   (and d (= here :failed)) "could not load its URL"
+                   (and d (number? (:sr d)))
                    (str (fmt-s (seconds d)) " · " (comp/nice (/ (:sr d) 1000)) " kHz"
-                        (when (> (:channels d) 1) (str " · " (:channels d) " ch"))
+                        (when (> (or (:channels d) 1) 1) (str " · " (:channels d) " ch"))
+                        (when (:url d) " · URL")
                         (when (= here :missing) " · not in this browser"))
-                   "empty · rec records what reaches it")])
+                   d "…"
+                   :else "empty · rec records what reaches it")])
               (when (and (:rec shown) (number? (:level shown)))
                 [:rect {:x (- w 70) :y (- h 13) :w (* 60 (comp/clamp (:level shown) 0 1)) :h 4 :r 1 :stroke nil :fill :kairos}])]))
    :audio {:create (fn [ac b _]

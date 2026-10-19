@@ -41,4 +41,19 @@
     (t/eq "!/ 1 turns seconds into Hz" (:out ((:receive (comp/lookup "!/")) {:args [1] :value 4})) [[0 0.25]])
     (t/eq "a code box keeps a source as long as a whole package"
           (count (:source ((:step code/model) nil [:source (apply str (repeat 60000 "x"))]))) 60000)
+    ;; sounds from URLs
+    (t/eq "what a sound can be loaded from"
+          (mapv snd/url? ["https://a.org/v.ogg" "tests/assets/a440.wav" "./a.wav" "data:audio/wav;base64,AA" "blob:https://x/1"
+                          "javascript:alert(1)" "ftp://a/b.wav" "hello" "a b.wav" ""])
+          [true true true true true false false false false false])
+    (let [k (snd/url-key "tests/assets/a440.wav")]
+      (t/is "a URL has a key of 16 hex characters" (re-matches #"[0-9a-f]{16}" k))
+      (t/eq "... always the same" k (snd/url-key "tests/assets/a440.wav"))
+      (t/is "... another for another URL" (not= k (snd/url-key "tests/assets/a441.wav")))
+      (t/eq "a URL alone is a description" (snd/sane {:url "tests/assets/a440.wav"}) {:audio k :url "tests/assets/a440.wav"})
+      (t/is "... of a sample" (snd/sample? (snd/sane {:url "tests/assets/a440.wav"}))))
+    (t/eq "a full description keeps its URL" (:url (snd/sane (assoc d :url "https://a.org/v.ogg"))) "https://a.org/v.ogg")
+    (t/eq "a javascript: URL is not kept" (snd/sane {:url "javascript:alert(1)"}) {})
+    (t/eq "a URL on the left asks the page to load it" (:effects (recv {:value "https://a.org/v.ogg"})) [[:sample [:url "https://a.org/v.ogg"]]])
+    (t/eq "... and so does [:url …]" (:effects (recv {:value [:url "sounds/v.wav"]})) [[:sample [:url "sounds/v.wav"]]])
     (t/eq "!- the other way round" (:out ((:receive (comp/lookup "!-")) {:args [10] :value 4})) [[0 6]])))

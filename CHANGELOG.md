@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Samples from URLs**: a `sample` can hold a sound from a URL — `(load-sound! :bN "https://…")`, a
+  string (or `[:url "…"]`) on its left, or `(sample! :bN {:url "…"})` in the work's code, links and
+  rooms. Every browser that opens the work fetches it by itself when the box is drawn (or a `reader~`
+  needs it), decodes it at the engine's rate and keeps it in IndexedDB under a key made from the URL, so
+  shared sessions and tests have the same sounds everywhere without sending audio through the history.
+  A description that is only a URL learns its length and peaks once loaded; the box says "loading…" or
+  "could not load its URL". Accepted: http(s), paths of the page (`sounds/voice.ogg`), `data:` and
+  `blob:`; never `javascript:`. A test sound, `tests/assets/a440.wav` (CC0), is served with the tests.
+  Tests: `tests/cljs/sounds.cljs`, `tests/sounds.mjs`.
 - **Embed: Release/Perform** (issue #50), in place of *Presentation, fullscreen*: its link always
   carries a release of the patch (its presets boxes keeping their presets, as `(release)` makes it; also
   from a tutorial or a help patch) and always opens in Perform, so what is played or changed in the
