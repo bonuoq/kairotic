@@ -86,7 +86,7 @@ See also: `*`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
+An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
 
 **Inlets** 
 
@@ -158,6 +158,7 @@ Graphic buffer for any numeric data: strokes in a plane with axes of any range, 
 
 - `(axis :bN :x -1 1)`: range of an axis, :log for logarithmic
 - `(stroke :bN [[x y] …])`: draws
+- `the corner · (resize :bN 640 300)`: drag its bottom-right corner to resize it; a double-click there brings back its size
 - `[:stroke [[0 0] [1 1]]] · [:stroke :t3 pts]`: a stroke by message (a new id, or that one)
 - `[:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear]`: edit strokes by message
 - `[:axis :x lo hi] · [:axis :y lo hi :log] · [:grid-y step]`: axes and grid by message
@@ -283,6 +284,7 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 - `(note :bN t "c4" dur)`: a note
 - `(tuning :bN "31-tet" 261.63)`: a tuning
 - `(grid-x :bN 0.25 "3+3+2")`: a bar grid
+- `the corner · (resize :bN 640 300)`: drag its bottom-right corner to resize it (as a score, its width reflows the notation); a double-click there brings back its size
 - `[:note 0 "c4" 1] · [:note 1 64 0.5]`: a note by message (pitch as a name or MIDI)
 - `[:move :t1 dt cents] · [:stretch :t1 k] · [:erase :t1] · [:clear]`: edit notes by message
 - `[:tuning "19-tet" 261.63] · [:grid-x 0.25 [4]]`: tuning and grid by message
@@ -586,7 +588,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
+Stereo panning with equal power.
 
 **Inlets** 
 
@@ -811,7 +813,7 @@ See also: `phasor~`, `osc~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
+A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
 
 **Inlets** 
 
@@ -828,7 +830,7 @@ See also: `pan~`, `reader`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
+Polyphonic triangle-wave synthesizer, one voice per id.
 
 **Inlets** 
 
