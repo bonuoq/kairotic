@@ -13,7 +13,8 @@ const until = async (page, src, ok, ms = 12000) => {
 export async function analysis(page, check) {
   if ((await cljs(page, "(:mode @hist)")) !== ":local") { check("a local work is open for the analysis tests", false); return; }
   const logs = [];
-  const onLog = (m) => { if (m.type() === "error") logs.push(m.text()); };
+  // a 404 is the package looked for on npm first, before the page's own copy (until it is published)
+  const onLog = (m) => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) logs.push(m.text()); };
   page.on("console", onLog);
   const osc = (await cljs(page, '(box "osc~ 220" 4200 100)')).trim();
   const pitch = (await cljs(page, '(box "pitch~" 4200 160)')).trim();
