@@ -243,6 +243,33 @@ Graphic buffer for any numeric data: strokes in a plane with axes of any range, 
 
 See also: `reader`, `reader~`, `freqt`
 
+### chroma~ · `@kairotic/analysis`
+
+`chroma~ [ms]`
+
+How much of each pitch class a signal has: 12 values from C to B, and the strongest class as a word.
+
+**Inlets** 
+
+0. the signal
+
+**Outlets** 
+
+0. 12 values, C to B, 0…1 (the strongest 1)
+1. the strongest pitch class (:c … :b), when it changes
+
+**Try:** Press ▶ and play a chord or a drone: the bars show its pitch classes; print writes the strongest.
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "chroma~" 40 90)
+(box :b3 "print" 40 170)
+(connect :b1 0 :b2 0)
+(connect :b2 1 :b3 0)
+```
+
+See also: `pitch~`, `mt`, `features~`
+
 ### component
 
 `component`
@@ -322,6 +349,34 @@ Faust code box: compiled in the page and played as an AudioWorklet. Its audio po
 ```
 
 See also: `knob`, `component`, `script`
+
+### features~ · `@kairotic/analysis`
+
+`features~ [ms] [descriptor …]`
+
+Descriptors of a signal every ms, one outlet per word: rms, energy, zcr, loudness, centroid, spread, flatness, rolloff, kurtosis, skewness, slope, crest, sharpness, perceptualSpread, mfcc, chroma (Meyda).
+
+**Inlets** 
+
+0. the signal
+
+**Outlets** 
+
+0. one outlet per descriptor written, in order (rms centroid flatness without words); centroid, spread and rolloff in Hz
+
+**Try:** Press ▶ and allow the microphone: whisper and then hum — the centroid (brightness) falls.
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "features~ 50 rms centroid" 40 90)
+(box :b3 "number" 40 150)
+(box :b4 "number" 200 150)
+(connect :b1 0 :b2 0)
+(connect :b2 0 :b3 0)
+(connect :b2 1 :b4 0)
+```
+
+See also: `pitch~`, `chroma~`, `snapshot~`
 
 ### freqt
 
@@ -592,6 +647,35 @@ A draggable number; sends it when it changes or on receiving a bang.
 
 See also: `msg`, `knob`
 
+### onset~ · `@kairotic/analysis`
+
+`onset~ [threshold] [ms]`
+
+A bang at the beginning of each sound (a note, a stroke, a syllable), and its strength.
+
+**Inlets** 
+
+0. the signal
+
+**Outlets** 
+
+0. a bang for each onset
+1. its strength (the growth of the spectrum, 0…1)
+
+**Try:** Press ▶ and clap: the counter counts the claps. Raise the threshold if it counts too much.
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "onset~" 40 90)
+(box :b3 "counter 1" 40 150)
+(box :b4 "number" 40 200)
+(connect :b1 0 :b2 0)
+(connect :b2 0 :b3 0)
+(connect :b3 0 :b4 0)
+```
+
+See also: `pitch~`, `sample`, `counter`
+
 ### osc~
 
 `osc~ [hz]`
@@ -688,6 +772,35 @@ A ramp signal from 0 to 1, repeated hz times per second (0.25 = once every 4 sec
 0. a ramp signal from 0 to 1
 
 See also: `reader~`, `sig~`
+
+### pitch~ · `@kairotic/analysis`
+
+`pitch~ [lo hi] [threshold]`
+
+The pitch of a signal by YIN: Hz on the left (0 once when it stops hearing one), how clearly periodic on the right.
+
+**Inlets** 
+
+0. the signal
+
+**Outlets** 
+
+0. the frequency in Hz, only when it changes; 0 once when it no longer finds one
+1. the clarity, 0…1
+
+**Try:** Press ▶ and sing: the box shows the note and its cents, the number the MIDI pitch.
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "pitch~ 80 1000" 40 90)
+(box :b3 "ftom" 40 150)
+(box :b4 "number" 40 200)
+(connect :b1 0 :b2 0)
+(connect :b2 0 :b3 0)
+(connect :b3 0 :b4 0)
+```
+
+See also: `onset~`, `ftom`, `freqt`
 
 ### presets
 
@@ -988,6 +1101,26 @@ A sound placed around the listener (binaural): drag the dot, or send [x y]. For 
 1. right
 
 See also: `pan~`, `reader`
+
+### spectrum~ · `@kairotic/analysis`
+
+`spectrum~ [lo hi]`
+
+The spectrum of a signal drawn in the patch, on a log scale of frequency (dB from -90 to 0).
+
+**Inlets** 
+
+0. the signal
+
+**Try:** Press ▶: one peak at 220 Hz. Connect an adc~ instead and sing a vowel: its partials and formants.
+
+```clojure
+(box :b1 "osc~ 220" 40 30)
+(box :b2 "spectrum~" 40 90)
+(connect :b1 0 :b2 0)
+```
+
+See also: `scope~`, `features~`
 
 ### synth~ · `@kairotic/synth`
 
