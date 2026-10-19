@@ -949,7 +949,7 @@ See also: `phasor~`, `adsr~`, `freqt`, `reader`, `sample`
 
 `sample [seconds]`
 
-A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
+A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN "https://…")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
 
 **Inlets** 
 
@@ -965,7 +965,10 @@ A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop`
 - `rec`: records what reaches it, from the beginning
 - `stop`: keeps what was heard
 - `clear`: empties it
+- `a URL (a string)`: loads the sound there; every browser that opens the work fetches it
 - `(load-sound! :bN)`: brings in a sound file
+- `(load-sound! :bN "https://…")`: loads it from a URL
+- `(sample! :bN {:url "…"})`: a sample that is only a URL, as a link or a shared session writes it
 - `(save-sound :bN)`: saves it as WAV
 
 **Try:** Press ▶, click rec, sing a phrase, click stop: its length becomes the speed of the phasor~ (!/ 1: one over the seconds), and the reader~ plays it in a loop. Use headphones. Change the phasor~ to play it faster, slower or backwards.
