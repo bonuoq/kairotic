@@ -316,15 +316,20 @@
 (.addEventListener ($ "nav-tip") "click" (fn [_] (gesture! "(tip)")))
 (.addEventListener ($ "start-example") "click" (fn [_] (gesture! "(load-example)")))
 
+(declare toggle-pick!)
+
 (.addEventListener ($ "tree") "click"
   (fn [e]
     (when-let [el (.closest (.-target e) "[data-goto]")]
       (let [[nid k] (str/split (.getAttribute el "data-goto") #"\|")]
-        (if (:merge-pick @ui)
+        (cond
+          ;; ⇧+click: a point chosen to be forgotten (issue #45)
+          (and (.-shiftKey e) (not (:merge-pick @ui))) (toggle-pick! nid (js/parseInt k 10))
+          (:merge-pick @ui)
           (do (swap! ui assoc :merge-pick false)
               (.remove (.-classList ($ "hist-wrap")) "picking")
               (gesture! (str "(merge-from " (pr-str nid) " " k ")")))
-          (gesture! (str "(goto " (pr-str nid) " " k ")")))))))
+          :else (gesture! (str "(goto " (pr-str nid) " " k ")")))))))
 
 (.addEventListener ($ "merge-btn") "click"
   (fn [_]

@@ -114,7 +114,8 @@
                ["1.5 (right)" "moves the controls (knobs, envelopes…) between two keyframes, as messages, as a drag does"]
                ["keep" "writes the last morph into the texts of the controls, as one event"]
                ["bang · [:generate 42]" "a new preset: what is the same in every keyframe stays, what changes takes a value within its range"]
-               ["(keyframes) · (recall 2) · (morph 1 2 0.5) · (morph :keep) · (generate 42)" "the same from the REPL, with every keyframe of the work"]]
+               ["(keyframes) · (recall 2) · (morph 1 2 0.5) · (morph :keep) · (generate 42)" "the same from the REPL, with every keyframe of the work"]
+               ["(store-presets! :bN) · (presets! :bN […])" "keeps its keyframes in the box (only what changes): then it uses them, and they travel with the patch in its code, links and embeds"]]
     :example (lines "(box :b1 \"msg 1\" 40 30)" "(box :b2 \"msg 2\" 100 30)" "(box :b3 \"bang\" 160 30)"
                     "(box :b4 \"knob 1 2 1\" 230 20)" "(box :b5 \"presets\" 40 120)"
                     "(box :b6 \"knob 100 1000 220 log\" 40 180)" "(box :b7 \"osc~ 220\" 40 280)"

@@ -13,7 +13,8 @@
 
 (ns kairotic.presets
   (:require [clojure.string :as str]
-            [kairotic.components :as comp]))
+            [kairotic.components :as comp]
+            [kairotic.release :as rel]))
 
 ;; ───────── configurations ─────────
 
@@ -200,6 +201,12 @@
   {:doc "Presets from the keyframes of the history (◆ snapshots, takes kept): a number or a label recalls one, a position on the right morphs between two, a bang makes a new one from what changes and what remains."
    :usage "presets [label or number …]"
    :io [2 1]
+   ;; presets kept in the box (issue #45): part of the patch, so they travel in its code, links and embeds.
+   ;; A box that keeps presets uses them instead of the keyframes of the history.
+   :model {:empty {:presets []}
+           :step (fn [d [op x]] (case op :store {:presets (rel/sane-presets x)} :clear {:presets []} d))
+           :load (fn [x] {:presets (rel/sane-presets (:presets x))})
+           :code (fn [id d] (when (seq (:presets d)) [(str "(presets! " id " " (pr-str (:presets d)) ")")]))}
    :receive (fn [{:keys [inlet value state]}]
               (if (= inlet 1)
                 (cond (not (number? value)) {}

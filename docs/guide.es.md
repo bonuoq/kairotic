@@ -140,6 +140,24 @@ obra: el texto de cada caja en ese momento (sus argumentos, y los valores que lo
 - El tutorial *Presets: recuperar, transformar, generar* (Help → tutoriales, o `(tutorial "presets")`)
   lo recorre todo con un sintetizador FM.
 
+### Release, y puntos olvidados
+
+Los fotogramas clave viven en la historia, y el código del patch, un enlace o una inserción solo llevan el
+patch. Para que los presets viajen, una caja `presets` puede **guardarlos**: `(store-presets! :b18)` copia en
+ella los fotogramas que usa, solo lo que cambia entre ellos. Una caja que guarda presets los usa en lugar de
+la historia, y el código de la obra los escribe como `(presets! :b18 […])`, así que van adonde vaya el
+patch. `(presets! :b18 nil)` los olvida.
+
+- **Release…** (en la barra de la historia), o `(release)`, hace una **obra nueva** con una historia
+  compacta: un punto por fotograma, con su etiqueta, cada uno escrito como los cambios desde el anterior, y
+  después la obra tal como está. Cada caja presets guarda en ella sus presets. La obra de la que partes
+  queda como estaba, con toda su historia.
+- En una obra solo o local puedes **olvidar puntos**: ⇧+clic sobre ellos en la historia, y luego
+  **Forget…**. La obra en esos momentos se pierde (y un snapshot que hubiera allí con ella), y los momentos
+  posteriores quedan exactamente como están. No se pueden olvidar la punta de una rama ni un punto donde
+  empieza una rama, y en una sala compartida la historia es de todos: allí el camino hacia una versión
+  compacta es un release. Desde la REPL: `(forget-points [["segmento" 3] …])`.
+
 ## 5. Las pestañas de la derecha
 
 El panel de la derecha puede dejar sitio al patch: **»** en su cabecera (o **›** en la barra entre ambos)
