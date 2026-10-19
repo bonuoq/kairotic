@@ -375,6 +375,9 @@ Rules:
   `gain~` and a warning about headphones: it feeds back. `sample [seconds]` records what reaches its
   left inlet on `rec` until `stop`; its outlet 1 into the right inlet of `reader~`, with a `phasor~` at
   1/length Hz on the left, plays it (its outlet 0 gives the length in seconds; `!/ 1` turns it into Hz).
+- Listening (package @kairotic/analysis, it comes by itself): `pitch~ [lo hi]` gives Hz (0 when it stops
+  hearing a pitch) and clarity; `onset~` a bang per attack; `chroma~` 12 pitch-class values and the
+  strongest class (:a …); `features~ [ms] rms centroid …` one outlet per descriptor; `spectrum~` draws.
 - `gain~ 0.2` sets its factor as an argument; a message into its right inlet changes it, a signal
   there replaces it. Do not leave a gain waiting for a message nobody sends.
 - Lay it out top to bottom, following the signal: x from 20 to 900, about 60 px between rows,

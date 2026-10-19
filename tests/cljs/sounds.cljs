@@ -4,6 +4,7 @@
   (:require [kairotic.components :as comp]
             [kairotic.sounds :as snd]
             [kairotic.links :as links]
+            [kairotic.code :as code]
             [kairotic.test :as t]))
 
 (def d {:audio "5a2c440a1aebc1a02229ceaa5e49df44" :sr 48000 :frames 96000 :channels 1 :peaks [[-0.5 0.4] [-0.1 0.2]]})
@@ -38,4 +39,6 @@
       (t/eq "its picture: two points a column" (count pts) 4)
       (t/eq "... from the first x to the last" [(ffirst pts) (first (last pts))] [6 234]))
     (t/eq "!/ 1 turns seconds into Hz" (:out ((:receive (comp/lookup "!/")) {:args [1] :value 4})) [[0 0.25]])
+    (t/eq "a code box keeps a source as long as a whole package"
+          (count (:source ((:step code/model) nil [:source (apply str (repeat 60000 "x"))]))) 60000)
     (t/eq "!- the other way round" (:out ((:receive (comp/lookup "!-")) {:args [10] :value 4})) [[0 6]])))

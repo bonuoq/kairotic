@@ -95,6 +95,10 @@ comes first.
   it faster, slower or backwards. The sound stays in this browser; the work keeps its picture, so a work
   opened elsewhere shows it and says it is not there. `(load-sound! :bN)` brings in a file,
   `(save-sound :bN)` saves it as WAV.
+- **Listening**: the package `@kairotic/analysis` (it comes into a work when one of its classes is
+  written) turns what is heard into data: `pitch~` the pitch by YIN (Hz, and 0 when it stops hearing
+  one), `onset~` a bang at each attack, `chroma~` the 12 pitch classes and the strongest one,
+  `features~ rms centroid flatness …` descriptors (with Meyda), and `spectrum~` draws the spectrum.
 
 ## 4. The history
 

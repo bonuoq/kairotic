@@ -97,6 +97,10 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   velocidad lo toca más rápido, más lento o al revés. El sonido se queda en este navegador; la obra
   guarda su dibujo, así que una obra abierta en otro sitio lo muestra y dice que no está.
   `(load-sound! :bN)` trae un archivo, `(save-sound :bN)` lo guarda como WAV.
+- **Escuchar**: el paquete `@kairotic/analysis` (llega a la obra al escribir una de sus clases)
+  convierte lo que se oye en datos: `pitch~` la altura por YIN (Hz, y 0 cuando deja de oír una),
+  `onset~` un bang en cada ataque, `chroma~` las 12 clases de altura y la más fuerte,
+  `features~ rms centroid flatness …` descriptores (con Meyda), y `spectrum~` dibuja el espectro.
 
 ## 4. La historia
 
