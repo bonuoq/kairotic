@@ -135,6 +135,8 @@ pad), sub-patches included. A `presets` box plays them:
 - From the REPL, with every keyframe of the work: `(keyframes)`, `(recall 2)`, `(recall "intro")`,
   `(morph 1 2 0.5)`, `(morph :keep)`, `(generate)`, `(generate 42)`. In Perform, all of it goes to
   the take, as any change does.
+- The tutorial *Presets: recall, morph, generate* (Help → tutorials, or `(tutorial "presets")`) walks
+  through all of it with an FM synthesizer.
 
 ## 5. The tabs on the right
 
@@ -165,6 +167,10 @@ through `mt` boxes it is transformed (`mt transpose 7`, `mt retrograde`, `mt can
 
 **Present** shows only the boxes you put in the presentation — `(present :b4 x y)`, or drag them in
 presentation mode — as a performer's panel. **Edit** goes back.
+
+If boxes are selected when you press **Present** and some of them are not in the presentation yet, it
+asks first: *Present the selection* puts them in it where they are in the patch (one event of the
+history), *Present without them* leaves them out. From the REPL: `(present-in-place :b3 :b4)`.
 
 ## 8. Share and embed
 

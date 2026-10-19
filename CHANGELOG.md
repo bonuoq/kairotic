@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Present the selection** ([#42](https://github.com/bonuoq/kairotic/issues/42)): pressing **Present**
+  with boxes selected that are not in the presentation yet asks whether to present them; *Present the
+  selection* puts them in it where they are in the patch, as one event of the history. REPL:
+  `(present-in-place :b3 :b4)`. Tests: `tests/present.mjs`.
+- **Tutorial: Presets — recall, morph, generate** (`(tutorial "presets")`, composition track), with the
+  FM synthesizer of [#42](https://github.com/bonuoq/kairotic/issues/42): three keyframes (calm, pulse,
+  storm), a `presets` box played by `msg 1 2 3`, a knob that morphs, `keep`, a bang that generates, and
+  the controls presented as a panel.
 - **Presets from the keyframes of the history** ([#35](https://github.com/bonuoq/kairotic/issues/35)):
   every keyframe (◆ snapshot, or take kept from Perform) is a preset of the work — the text of each
   box then, sub-patches included: its arguments and the values its controls keep (a knob, `adsr~`,

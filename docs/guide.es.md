@@ -137,6 +137,8 @@ obra: el texto de cada caja en ese momento (sus argumentos, y los valores que lo
 - Desde la REPL, con todos los fotogramas de la obra: `(keyframes)`, `(recall 2)`, `(recall "intro")`,
   `(morph 1 2 0.5)`, `(morph :keep)`, `(generate)`, `(generate 42)`. En Perform, todo va a la toma,
   como cualquier cambio.
+- El tutorial *Presets: recuperar, transformar, generar* (Help → tutoriales, o `(tutorial "presets")`)
+  lo recorre todo con un sintetizador FM.
 
 ## 5. Las pestañas de la derecha
 
@@ -167,6 +169,10 @@ a través de cajas `mt` se transforma (`mt transpose 7`, `mt retrograde`, `mt ca
 
 **Present** muestra solo las cajas que has puesto en la presentación —`(present :b4 x y)`, o
 arrastrándolas en modo presentación— como un panel para quien toca. **Edit** vuelve.
+
+Si hay cajas seleccionadas al pulsar **Present** y alguna aún no está en la presentación, primero
+pregunta: *Present the selection* las pone en ella donde están en el patch (un evento de la historia),
+*Present without them* las deja fuera. Desde la REPL: `(present-in-place :b3 :b4)`.
 
 ## 8. Compartir e insertar
 
