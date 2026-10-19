@@ -45,6 +45,9 @@ export async function release(page, check) {
   await cljs(page, '(snapshot "r-b")');
   await cljs(page, `(box "presets r-a r-b" 40 260)`);
   const pb2 = (await cljs(page, `(last (sort-by box-num (keys (:boxes (current)))))`)).trim();
+  // issue #50: a Release/Perform link carries the release of the patch, its presets boxes keeping their keyframes
+  check("a Release/Perform link carries the presets a presets box uses (the patch alone does not)",
+    (await cljs(page, `[(str/includes? (release-code) "(presets! ${pb2} [") (str/includes? (patch->code (work-patch)) "(presets! ${pb2} [")]`)) === "[true false]");
   check("(store-presets! box) keeps the keyframes it uses, only what changes",
     (await cljs(page, `(store-presets! ${pb2})`)) === "2" &&
     (await cljs(page, `(mapv (comp keys :texts) (:presets (:data (get-in (current) [:boxes ${pb2}]))))`)) === `[(${k} ${m}) (${k} ${m})]`,

@@ -11,12 +11,15 @@ En el editor, **Embed** (junto a Present) abre un panel con dos opciones:
 
 - **Patch**: el patch, escalado para caber en el marco, con ▶ ■, la barra de la lección si es un
   tutorial, y **Kairotic ↗**, que abre lo mismo en el editor completo.
-- **Presentación, pantalla completa**: solo las cajas presentadas (ver `(present :bN x y)`), llenando el
-  marco, con unos controles pequeños en una esquina (▶ ■ ⛶ ↗) que se atenúan mientras tocas. El
-  primer toque pone en marcha el sonido. Sin cajas presentadas, el patch entero.
+- **Release/Perform**: un **release** del patch —sus cajas presets guardan sus presets, como lo hace
+  `(release)`— que se abre siempre en **Perform**: lo que se toque o cambie ahí es una toma, nunca la
+  obra. Solo las cajas presentadas (ver `(present :bN x y)`), llenando el marco, con unos controles
+  pequeños en una esquina (▶ ■ ⛶ ↗) que se atenúan mientras tocas. El primer toque pone en marcha el
+  sonido. Sin cajas presentadas, el patch entero. Este enlace lleva siempre el patch, también desde un
+  tutorial o un patch de ayuda.
 
-El panel da el **enlace** y un **iframe**. Desde la REPL: `(embed-link)` y `(embed-link :present)`
-escriben ambos y copian el enlace.
+El panel da el **enlace** y un **iframe**. Desde la REPL: `(embed-link)` y `(embed-link :release)`
+(también `:perform` o `:present`) escriben ambos y copian el enlace.
 
 Lo que lleva el enlace depende de lo que está abierto: un tutorial en un paso
 (`?tutorial=work-tree&step=2`), un patch de ayuda (`?help=mt`) o, si no, **el propio patch**
@@ -65,7 +68,7 @@ iframe lleva `allow="fullscreen"`; donde una página no permite pantalla complet
 | `?help=clase` | el patch de ayuda de una clase |
 | `?lang=es` / `?lang=en` | el idioma de lecciones y ayuda |
 | `?embed` | solo el patch |
-| `?present` | solo la presentación, llenando la ventana |
+| `?present` | Release/Perform: en Perform, solo la presentación, llenando la ventana |
 
 Sin `embed` ni `present` las mismas direcciones se abren en el editor completo, como obra local: desde
 Sessions se puede copiar a una obra solo o a una sala.

@@ -218,7 +218,7 @@ history), *Present without them* leaves them out. From the REPL: `(present-in-pl
 
 - In a room, everyone is in the same work.
 - **Embed** gives a link and an iframe with this patch (or this tutorial step) for Notion, a blog or a
-  course; *Presentation, fullscreen* shows only the panel. See [Embedding](embed.md).
+  course; *Release/Perform* gives a release of it that opens in Perform, showing only the panel. See [Embedding](embed.md).
 - A request to Claude can be shared in the
   [Gallery](https://github.com/bonuoq/kairotic/discussions/categories/gallery).
 
