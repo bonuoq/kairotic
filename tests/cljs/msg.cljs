@@ -6,7 +6,7 @@
 
 (defn sends [text]
   (let [d (comp/lookup "msg")]
-    (ffirst (map second (:out ((:receive d) {:args (comp/args-for d text) :value :bang}))))))
+    (second (first (:out ((:receive d) {:args (comp/args-for d text) :value :bang}))))))
 
 (t/run! "msg"
   (fn []
