@@ -11,7 +11,7 @@
 (render-controls!)
 (render-manager!)
 (repl-print! "out" (str "; Kairotic " version " — " (cond (.-claude js/window) "inside claude.ai: works, rooms and Claude come from claude.ai." (backend) "on its own: works and rooms in GUN (your solo works are encrypted in this browser), Claude with your own API key (Claude tab)." :else "without a database: local works only.")))
-(repl-print! "out" "; New here? The Help tab has the tutorials and a page for every class (select a box and press ?). The Claude tab makes patches and components from a description. Embed puts a patch in another page.")
+(repl-print! "out" "; New here? The Help tab has the tutorials and a page for every class (select a box and press ?). The Claude tab makes patches and components from a description. Share/Export gives a link to a patch, or puts it in another page.")
 
 (let [h (.-hash js/location) m (re-matches #"#room-(.+)" (str h))]
   (when m (swap! mgr assoc :invite (second m))))

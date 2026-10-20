@@ -223,7 +223,7 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 ## 8. Compartir e insertar
 
 - En una sala, todos están en la misma obra.
-- **Embed** da un enlace y un iframe con este patch (o este paso de tutorial) para Notion, un blog o un
+- **Share/Export** da un enlace y un iframe con este patch (o este paso de tutorial) para Notion, un blog o un
   curso; *Release/Perform* da un release que se abre en Perform, mostrando solo el panel. Ver [Insertar](embed.es.md).
 - Una petición a Claude se puede compartir en la
   [Gallery](https://github.com/bonuoq/kairotic/discussions/categories/gallery).

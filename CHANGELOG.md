@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Share/Export** is the new name of the Embed button and its panel: a link to share the patch, or
+  an iframe to put it in another page. The class names and the commands stay (`embed-link`, `?embed`).
 - **Links after `#`** (issue #55): every link Kairotic makes (Embed, `(embed-link)`, `ask-link`, the
   links of the Claude log and of Feedback) carries its parameters after `#` — `…/kairotic/#code=…&present`
   — so a long patch is no longer refused by the server (414: the request line too long). The page reads

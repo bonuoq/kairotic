@@ -7,7 +7,7 @@ course — and still play there.
 
 ## Making the link
 
-In the editor, **Embed** (next to Present) opens a panel with two choices:
+In the editor, **Share/Export** (next to Present; it was called Embed) opens a panel with two choices:
 
 - **Patch**: the patch, scaled to fit the frame, with ▶ ■, the lesson bar if it is a tutorial, and
   **Kairotic ↗**, which opens the same thing in the whole editor.

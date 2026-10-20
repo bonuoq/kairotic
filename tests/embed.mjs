@@ -36,7 +36,9 @@ export async function embed(browser, base, check) {
     (await cljs(page, "(:text (get-in (work-patch) [:boxes :b2]))")) === '"metro 125"' && (await cljs(page, "(history-size)")) === before,
     await cljs(page, "[(history-size) (:text (get-in (work-patch) [:boxes :b2]))]"));
 
-  // the Embed panel: the option is called Release/Perform, and its link is always the patch, never a lesson
+  // the Share/Export panel (it was Embed): the option is called Release/Perform, and its link is always the patch
+  check("the action is called Share/Export",
+    (await page.evaluate(() => document.getElementById("embed-btn").textContent.trim())) === "Share/Export");
   const label = await page.evaluate(() => document.querySelector("input[name=ep-mode][value=present]").parentElement.textContent.trim());
   check("the embed option is called Release/Perform", label === "Release/Perform", label);
   check("(embed-link :release) and :perform mean Release/Perform",

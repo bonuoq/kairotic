@@ -104,7 +104,7 @@
 
 (defn link-params
   "Promise of the parameters that bring back what is shown now: the tutorial step, the help patch, or
-   the patch itself — or, if asked in the Embed panel, a description for Claude (Study 23). In
+   the patch itself — or, if asked in the Share/Export panel, a description for Claude (Study 23). In
    Release/Perform (:present), always the release of the patch (issue #50)."
   ([] (link-params :embed))
   ([mode]
@@ -151,7 +151,7 @@
          (.catch (fn [e] (repl-print! "err" (esc (str (or (.-message e) e)))))))
      :making-link)))
 
-;; ───── the Embed panel ─────
+;; ───── the Share/Export panel (it was Embed) ─────
 
 (defn ep-mode [] (if (.-checked (.querySelector js/document "input[name=ep-mode][value=present]")) :present :embed))
 

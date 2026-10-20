@@ -260,6 +260,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 
 | es | en |
 |---|---|
+| compartir / exportar (el botón; antes Embed) | Share/Export |
 | insertar (en otra página) | embed (`?embed`, an iframe, Notion `/embed`) |
 | solo la presentación, a pantalla completa | presentation only, fullscreen (⛶) |
 | release y perform (insertar) | Release/Perform (`?present`: a release, opened in Perform) |
