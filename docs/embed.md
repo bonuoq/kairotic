@@ -61,6 +61,11 @@ presentation in a tab of its own.
 
 | | |
 |---|---|
+Every parameter can also be written after `#` instead of `?`: `…/kairotic/#code=…&present`. The links
+Kairotic makes are written that way, since what is after `#` never reaches the server: a long patch
+is not refused there (a request too long is answered *414 URI Too Long*). After `#`, a parameter wins
+over the same one after `?`. Links made before, with `?`, open as they did.
+
 | `?code=…` | a patch (deflate-raw + base64url) |
 | `?src=…` | a patch, its code as written |
 | `?tutorial=id&step=n` | a tutorial at step n |

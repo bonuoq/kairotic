@@ -62,6 +62,11 @@ iframe lleva `allow="fullscreen"`; donde una página no permite pantalla complet
 
 | | |
 |---|---|
+Cada parámetro se puede escribir también después de `#` en vez de `?`: `…/kairotic/#code=…&present`.
+Los enlaces que hace Kairotic se escriben así, porque lo que va después de `#` nunca llega al servidor:
+un patch largo no se rechaza allí (una petición demasiado larga recibe *414 URI Too Long*). Después de
+`#`, un parámetro gana al mismo después de `?`. Los enlaces hechos antes, con `?`, se abren como antes.
+
 | `?code=…` | un patch (deflate-raw + base64url) |
 | `?src=…` | un patch, su código tal como se escribe |
 | `?tutorial=id&step=n` | un tutorial en el paso n |

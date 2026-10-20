@@ -13,16 +13,34 @@
 ;;   ?embed   only the patch, to put inside another page (an iframe, a Notion /embed block)
 ;;   ?present only the presentation, filling the window (with a fullscreen button)
 
-(def url-params (js/URLSearchParams. (.-search js/location)))
+;;   the same after # (issue #55): #code=…&present. What is after # never reaches the server, so a long patch
+;;   is not refused there (a request line too long is answered 414); after #, a parameter wins over ?.
+
+(defn hash-part [] (subs (str (.-hash js/location)) 1))
+
+(def url-params
+  (let [q (js/URLSearchParams. (.-search js/location))]
+    (.forEach (js/URLSearchParams. (hash-part)) (fn [v k] (.set q k v)))
+    q))
 (defn url-param [k] (.get url-params k))
 (defn raw-param
-  "A parameter as written in the address, where + stays + (code written by hand: ?src=…)."
+  "A parameter as written in the address, where + stays + (code written by hand: ?src=… or #src=…)."
   [k]
   (some (fn [part]
           (let [i (.indexOf part "=")]
             (when (and (pos? i) (= k (subs part 0 i)))
               (try (js/decodeURIComponent (subs part (inc i))) (catch :default _ nil)))))
-        (str/split (subs (str (.-search js/location)) 1) #"&")))
+        (concat (str/split (hash-part) #"&")
+                (str/split (subs (str (.-search js/location)) 1) #"&"))))
+
+(def link-keys
+  "The parameters that say what a link opens: a new one after # (pasted in the same tab) opens it."
+  #{"code" "src" "ask" "tutorial" "help" "embed" "present"})
+
+(.addEventListener js/window "hashchange"
+  (fn [_]
+    (let [ks (set (map (fn [part] (first (str/split part #"=" 2))) (str/split (hash-part) #"&")))]
+      (when (some link-keys ks) (.reload js/location)))))
 (def embed-mode (cond (.has url-params "present") :present (.has url-params "embed") :embed))
 
 (defn wrap-px
