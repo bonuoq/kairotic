@@ -212,6 +212,8 @@ you give it and reflows its notation; its height follows the notation.
 
 **Present** shows only the boxes you put in the presentation — `(present :b4 x y)`, or drag them in
 presentation mode — as a performer's panel. **Edit** goes back.
+In presentation the paper is for playing: a double-click creates no box and nothing is selected with
+the mouse (each box is dragged on its own).
 
 If boxes are selected when you press **Present** and some of them are not in the presentation yet, it
 asks first: *Present the selection* puts them in it where they are in the patch (one event of the

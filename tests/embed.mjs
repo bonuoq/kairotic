@@ -29,6 +29,19 @@ export async function embed(browser, base, check) {
   check("... as a release of the patch", (await cljs(page, "(str/includes? (str (:name @work)) \"release\")")) === "true", await cljs(page, "(:name @work)"));
   check("... showing its presentation", (await until(page, "@pres-mode", "true")) === "true");
   check("... with the patch it carries", (await cljs(page, "(set (keys (:boxes (work-patch))))")) === "#{:b1 :b2}");
+  // issue #57: in a Release/Perform embed a presented box does not move, and is not selected
+  {
+    const r = await page.evaluate(() => { const el = document.querySelector('#scene .box[data-box="b1"] rect.body');
+                                          if (!el) return null; const b = el.getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; });
+    if (r) {
+      await page.mouse.move(r[0] - 30, r[1]); await page.mouse.down();
+      await page.mouse.move(r[0] + 30, r[1] + 30, { steps: 6 }); await page.mouse.up();
+      await page.waitForTimeout(150);
+    }
+    check("in a Release/Perform embed a presented box is not moved nor selected",
+      !!r && (await cljs(page, "[(:present (get-in (work-patch) [:boxes :b1])) (:sel @ui)]")) === "[[10 10] nil]",
+      await cljs(page, "[(:present (get-in (work-patch) [:boxes :b1])) (:sel @ui)]"));
+  }
   // a change there is a take: the history of the release stays as it came
   const before = await cljs(page, "(history-size)");
   await cljs(page, '(text! :b2 "metro 125")');

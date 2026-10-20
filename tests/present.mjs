@@ -61,6 +61,53 @@ export async function present(page, check) {
   await page.click('#pres-ask button[data-pres="cancel"]');
   check("Cancel stays in the patch", (await cljs(page, "@pres-mode")) === "false" && !(await visible(page, "pres-ask")));
   await cljs(page, `(delete ${a} ${b} ${c})`);
+
+  await locked(page, check);
+}
+
+// Issue #57: in presentation the paper is for playing: no new boxes and no selection with the mouse
+const settled = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+const centre = async (page, id) => {
+  await page.evaluate((id) => { const el = document.querySelector('#scene .box[data-box="' + id + '"] rect.body');
+                                if (el) el.scrollIntoView({ block: "center", inline: "center" }); }, id);
+  await settled(page);
+  return page.evaluate((id) => { const el = document.querySelector('#scene .box[data-box="' + id + '"] rect.body');
+                                 if (!el) return null; const r = el.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, id);
+};
+
+async function locked(page, check) {
+  const p = (await cljs(page, '(box "print" 3300 700)')).trim();
+  await cljs(page, `(present ${p} 3300 700)`);
+  const n = Number(await cljs(page, "(count (:boxes (current)))"));
+  await cljs(page, `(swap! ui assoc :sel [:box ${p}])`);
+  await cljs(page, "(presentation true)");
+  check("switching to presentation clears the selection", (await cljs(page, "(:sel @ui)")) === "nil");
+  const at = await centre(page, p);
+  if (!at) { check("the presented box is on screen", false); await cljs(page, `(presentation false) (delete ${p})`); return; }
+  const empty = [at[0], at[1] + 140];
+
+  await page.mouse.dblclick(empty[0], empty[1]); await settled(page);
+  check("in presentation a double-click on the paper opens no box editor",
+    !(await page.evaluate(() => !!document.getElementById("box-edit"))));
+  await page.mouse.move(empty[0], empty[1]); await page.mouse.down();
+  await page.mouse.move(at[0] - 60, at[1] - 30, { steps: 6 }); await page.mouse.up(); await settled(page);
+  check("... a frame drawn with the mouse selects nothing", (await cljs(page, "(:sel @ui)")) === "nil" && !(await page.evaluate(() => !!document.getElementById("marquee"))));
+  await page.mouse.click(at[0], at[1]); await settled(page);
+  check("... a click on a box does not select it", (await cljs(page, "(:sel @ui)")) === "nil");
+  await page.keyboard.press("Delete");
+  check("... so Delete removes nothing", Number(await cljs(page, "(count (:boxes (current)))")) === n);
+  await page.keyboard.down("Shift"); await page.mouse.click(at[0], at[1]); await page.keyboard.up("Shift"); await settled(page);
+  check("... nor does ⇧+click", (await cljs(page, "(:sel @ui)")) === "nil");
+  await page.keyboard.down("Control"); await page.mouse.click(at[0], at[1]); await page.keyboard.press("a"); await page.keyboard.up("Control"); await settled(page);
+  check("... nor ⌘/Ctrl+click and ⌘/Ctrl+A", (await cljs(page, "[(:sel @ui) (:insp @ui)]")) === "[nil nil]");
+  await page.mouse.move(at[0], at[1]); await page.mouse.down();
+  await page.mouse.move(at[0] + 40, at[1] + 20, { steps: 6 }); await page.mouse.up(); await settled(page);
+  check("... but in the editor a presented box can still be dragged to a new place",
+    (await cljs(page, `(:present (get-in (current) [:boxes ${p}]))`)) !== "[3300 700]" && (await cljs(page, "(:sel @ui)")) === "nil",
+    await cljs(page, `(:present (get-in (current) [:boxes ${p}]))`));
+  check("... and no box was created", Number(await cljs(page, "(count (:boxes (current)))")) === n);
+  await cljs(page, "(presentation false)");
+  await cljs(page, `(delete ${p})`);
 }
 
 // the tutorial that demonstrates presets: it opens a lesson, so it runs last

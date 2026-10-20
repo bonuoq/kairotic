@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Presentation is for playing** (issue #57): in Present and in Release/Perform embeds a double-click
+  creates no box, no wires can be drawn, and nothing is selected with the mouse (no frame, ⇧+click,
+  ⌘/Ctrl+click, ⌘/Ctrl+A; a click on a box does not select it, so Delete removes nothing). Switching to
+  presentation clears the selection. In the editor's Present a box can still be dragged to a new place,
+  one at a time; in a Release/Perform embed it stays. Tests: `tests/present.mjs`, `tests/embed.mjs`.
 - **Share/Export** is the new name of the Embed button and its panel: a link to share the patch, or
   an iframe to put it in another page. The class names and the commands stay (`embed-link`, `?embed`).
 - **Links after `#`** (issue #55): every link Kairotic makes (Embed, `(embed-link)`, `ask-link`, the
