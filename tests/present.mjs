@@ -83,7 +83,7 @@ async function locked(page, check) {
   await cljs(page, `(swap! ui assoc :sel [:box ${p}])`);
   await cljs(page, "(presentation true)");
   check("switching to presentation clears the selection", (await cljs(page, "(:sel @ui)")) === "nil");
-  const at = await centre(page, p);
+  const at = await centre(page, p.replace(/^:/, ""));
   if (!at) { check("the presented box is on screen", false, await cljs(page, `[${p} @pres-mode (:present (get-in (current) [:boxes ${p}])) (count (:boxes (scene-of (current))))]`) + " " + await page.evaluate(() => [...document.querySelectorAll("#scene .box")].map((e) => e.getAttribute("data-box")).join(","))); await cljs(page, `(presentation false) (delete ${p})`); return; }
   const empty = [at[0], at[1] + 140];
 
