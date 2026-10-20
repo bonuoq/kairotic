@@ -411,15 +411,29 @@
         from (into {} (for [id ids :let [b (get bs id)] :when b] [id [(:x b) (:y b)]]))]
     (when (seq from) {:ids from :x0 x :y0 y :gx 0 :gy 0 :moved false})))
 
+;; In presentation (issue #57) the paper is for playing: no new boxes, no wires, no selection with the mouse
+;; (no frame, ⇧+click, ⌘/Ctrl+click, ⌘/Ctrl+A; a click does not select, so Delete cannot remove a box). In the
+;; editor's Present a box can still be dragged to a new place, one at a time; in a Release/Perform embed not.
+
+(defn locked? "In presentation: the paper is for playing." [] (boolean @pres-mode))
+
 (defn pick-box!
   "A plain click on a box: if it is one of several selected, they all start moving; otherwise it alone is
-   selected (its inspector closed) and starts moving. `extra` is merged into the ui state."
+   selected (its inspector closed) and starts moving. `extra` is merged into the ui state. In presentation
+   nothing is selected: in the editor the box can be dragged to a new place, in an embed it stays."
   ([id b x y] (pick-box! id b x y nil))
   ([id b x y extra]
    (let [ids (sel-ids)]
-     (if (and (> (count ids) 1) (contains? ids id))
+     (cond
+       (locked?)
+       (swap! ui merge {:sel nil :insp nil :nsel nil
+                        :drag (when-not embed-mode
+                                {:id id :dx (- x (:x b)) :dy (- y (:y b)) :x (:x b) :y (:y b) :moved false})}
+              extra)
+       (and (> (count ids) 1) (contains? ids id))
        ;; released without moving, the click selects that box alone (see end-gesture!)
        (swap! ui merge {:nsel nil :drag (some-> (group-drag ids x y) (assoc :clicked id))} extra)
+       :else
        (swap! ui merge {:sel [:box id] :insp nil :nsel nil
                         :drag {:id id :dx (- x (:x b)) :dy (- y (:y b)) :x (:x b) :y (:y b) :moved false}}
               extra)))))
@@ -435,7 +449,7 @@
    (on the drawing area of a canvas or a freqt it draws a straight stroke; on the body of a box with a
    :gesture it is part of the gesture, fine control or a chord: there the grip selects)."
   [e]
-  (when (and (.-shiftKey e) (not (closest e ".port")))
+  (when (and (.-shiftKey e) (not (closest e ".port")) (not (locked?)))
     (when-let [el (closest e ".box")]
       (let [[id b] (el-box el)]
         (when (and b (not (and (closest e ".mus-body") (= :canvas (display-of b))))
@@ -505,7 +519,7 @@
   (fn [e]
     (let [[x y] (pt e) mod? (or (.-metaKey e) (.-ctrlKey e))]
       (cond
-        (closest e ".port.out")
+        (and (closest e ".port.out") (not (locked?)))
         (let [el (closest e ".port.out")]
           (.preventDefault e)
           (swap! ui assoc :wire {:from (keyword (.. el -dataset -box)) :out (js/parseInt (.. el -dataset -out) 10) :x x :y y}))
@@ -525,7 +539,7 @@
                        :resize {:id id :x0 x :y0 y :w0 w :h0 h :w w :h h :moved false})))))
 
         ;; ⌘/Ctrl+click anywhere on a box: select it and open its inspector
-        (and mod? (closest e ".box") (not (closest e ".port")))
+        (and mod? (closest e ".box") (not (closest e ".port")) (not (locked?)))
         (let [[id b] (el-box (closest e ".box"))]
           (when b
             (.preventDefault e)
@@ -669,7 +683,8 @@
         (let [idx (js/parseInt (.. (closest e ".wire-hit") -dataset -line) 10)]
           (swap! ui assoc :sel [:line (nth (:lines (current)) idx)] :nsel nil))
 
-        ;; an empty place of the paper: a frame starts (a plain click there deselects)
+        ;; an empty place of the paper: a frame starts (a plain click there deselects); in presentation, nothing
+        (locked?) (swap! ui assoc :sel nil :nsel nil :tsel nil :insp nil)
         :else (let [add? (.-shiftKey e)]
                 (swap! ui assoc :nsel nil :tsel nil :insp nil
                        :sel (when add? (:sel @ui))
@@ -812,6 +827,8 @@
   (fn [e]
     (let [[x y] (pt e)]
       (cond
+        ;; in presentation no box is written or created
+        (locked?) nil
         (closest e ".resize-corner") nil
         (closest e ".code-area") nil
         (or (closest e ".param") (closest e ".pval-hit") (closest e ".pres-area")
@@ -875,7 +892,7 @@
           (do (.preventDefault e) (stroke-key! e k (:nsel @ui)))
           (and (= k " ") (not= tag "BUTTON") (.-hidden ($ "manager")))
           (do (.preventDefault e) (gesture! (if (eng/running?) "(stop)" "(play)")))
-          (and (#{"Delete" "Backspace"} k) (:sel @ui))
+          (and (#{"Delete" "Backspace"} k) (:sel @ui) (not (locked?)))
           (let [[kind v] (:sel @ui)]
             (.preventDefault e)
             (swap! ui assoc :sel nil :insp nil)
@@ -886,8 +903,10 @@
           (and (= k "Escape") (or (:sel @ui) (:insp @ui)))
           (swap! ui assoc :sel nil :insp nil)
           ;; ⌘/Ctrl+A: every box on screen
+          ;; (in presentation it selects nothing, and the browser does not select the page either)
           (and mod? (= (str/lower-case k) "a") (.-hidden ($ "manager")))
-          (do (.preventDefault e) (swap! ui assoc :sel (sel-of (keys (scene-boxes))) :insp nil :nsel nil :tsel nil))
+          (do (.preventDefault e)
+              (when-not (locked?) (swap! ui assoc :sel (sel-of (keys (scene-boxes))) :insp nil :nsel nil :tsel nil)))
           (and mod? (= (str/lower-case k) "z") (.-shiftKey e))
           (do (.preventDefault e) (gesture! "(forward)"))
           (and mod? (= (str/lower-case k) "z"))

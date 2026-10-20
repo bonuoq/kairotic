@@ -359,6 +359,8 @@
   ([] (presentation (not @pres-mode)))
   ([on]
    (reset! pres-mode (boolean on))
+   ;; in presentation nothing is selected (issue #57)
+   (when on (swap! ui assoc :sel nil :insp nil :nsel nil :tsel nil :marquee nil))
    (.toggle (.-classList ($ "canvas-wrap")) "pres" @pres-mode)
    (.toggle (.-classList ($ "pres-toggle")) "on" @pres-mode)
    (set! (.-textContent ($ "pres-toggle")) (if @pres-mode "Edit" "Present"))

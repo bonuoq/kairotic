@@ -215,6 +215,8 @@ toma el ancho que le das y redistribuye su notación; su altura sigue a la notac
 
 **Present** muestra solo las cajas que has puesto en la presentación —`(present :b4 x y)`, o
 arrastrándolas en modo presentación— como un panel para quien toca. **Edit** vuelve.
+En presentación el papel es para tocar: un doble clic no crea cajas y no se selecciona nada con el
+ratón (cada caja se arrastra por separado).
 
 Si hay cajas seleccionadas al pulsar **Present** y alguna aún no está en la presentación, primero
 pregunta: *Present the selection* las pone en ella donde están en el patch (un evento de la historia),
