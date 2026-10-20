@@ -240,6 +240,8 @@
                ["clear" "empties it"] ["a URL (a string)" "loads the sound there; every browser that opens the work fetches it"]
                ["(load-sound! :bN)" "brings in a sound file"] ["(load-sound! :bN \"https://…\")" "loads it from a URL"]
                ["(sample! :bN {:url \"…\"})" "a sample that is only a URL, as a link or a shared session writes it"]
+               ["github:owner/repo@ref/path.wav" "a file of a public GitHub repository (through jsDelivr: no CORS problem)"]
+               ["freesound:12345" "a sound of Freesound, with your API key: (freesound-key! \"…\"); (sounds \"kick\") searches; (credits) lists who made them"]
                ["(save-sound :bN)" "saves it as WAV"]]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"msg rec\" 140 30)" "(box :b3 \"msg stop\" 200 30)"
                     "(box :b4 \"sample 10\" 40 90)" "(box :b5 \"!/ 1\" 40 190)" "(box :b6 \"phasor~\" 40 240)"

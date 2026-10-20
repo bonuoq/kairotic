@@ -88,12 +88,25 @@ export async function sounds(page, check) {
   const failed = await until(page, st(u4), (g) => g === ":failed", 10000);
   check("a URL that does not answer says so", failed === ":failed", failed);
 
+  // sources: github: through jsDelivr (this repository, at the commit that added the test sound), and
+  // freesound: without a key, which says so
+  const g1 = (await cljs(page, '(box "sample" 4200 460)')).trim();
+  const g2 = (await cljs(page, '(box "sample" 4200 560)')).trim();
+  await cljs(page, `(freesound-key! nil)`);
+  await cljs(page, `(sample! ${g1} {:url "github:bonuoq/kairotic@fbcfa5fcb2208973eea6a71f49d8ac14bc308a9e/tests/assets/a440.wav"})`);
+  const glen = await until(page, secs(g1), (g) => Math.abs(Number(g) - 1) < 0.01, 20000);
+  check("github: loads a sound of a repository through jsDelivr", Math.abs(Number(glen) - 1) < 0.01, glen + " " + await cljs(page, st(g1)));
+  await cljs(page, `(sample! ${g2} {:url "freesound:12345"})`);
+  const nokey = await until(page, st(g2), (g) => g === ":failed", 5000);
+  const why = await cljs(page, `(get @snd/failures (:audio (:data (get-in (current) [:boxes ${g2}]))))`);
+  check("freesound: without an API key says it needs one", nokey === ":failed" && /API key/.test(why), nokey + " " + why);
+
   await cljs(page, `(send! ${short} :clear)`);
   const cleared = await until(page, secs(short), (g) => g === "0");
   check("clear empties it", cleared === "0", cleared);
 
   await cljs(page, "(stop)");
-  await cljs(page, `(delete ${osc} ${s} ${short} ${ph} ${rd} ${lv} ${u1} ${u2} ${u3} ${u4})`);
+  await cljs(page, `(delete ${osc} ${s} ${short} ${ph} ${rd} ${lv} ${u1} ${u2} ${u3} ${u4} ${g1} ${g2})`);
   page.off("console", onLog); page.off("pageerror", onErr);
   check("no errors in the console during the sound tests", logs.length === 0, logs.join(" | ").slice(0, 800));
 }

@@ -85,6 +85,52 @@
    (url-sound! id url)
    :loading))
 
+;; ───── sources of sounds: Freesound ─────
+;; github:owner/repo@ref/path needs nothing; freesound:id needs an API key of whoever opens the work (each
+;; person their own, from freesound.org/apiv2/apply), kept only in this browser.
+
+(defn freesound-key!
+  "Keeps your Freesound API key in this browser (never in a work, a link or a room): (freesound-key! \"…\").
+   (freesound-key! nil) forgets it. Get one at https://freesound.org/apiv2/apply"
+  [k]
+  (if (snd/set-freesound-key! (when (string? k) (str/trim k)))
+    (do (reset! snd/status {}) :kept-in-this-browser)
+    :forgotten))
+
+(defn sounds
+  "Searches Freesound: (sounds \"kick\") · (sounds \"rain\" {:max 30}) seconds at most · {:license \"cc0\"}
+   only CC0. Prints the first results, each with the line that loads it: (load-sound! :bN \"freesound:123\")."
+  ([q] (sounds q {}))
+  ([q {:keys [max license]}]
+   (let [filters (cond-> []
+                   (number? max) (conj (str "duration:[0 TO " max "]"))
+                   (= "cc0" (some-> license str str/lower-case)) (conj "license:\"Creative Commons 0\""))]
+     (-> (snd/freesound-get "search/text/"
+                            (cond-> {:query (str q) :fields "id,name,username,license,duration" :page_size 12}
+                              (seq filters) (assoc :filter (str/join " " filters))))
+         (.then (fn [j]
+                  (let [rs (:results j)]
+                    (repl-print! "out" (esc (str "; Freesound: " (:count j) " sounds for " (pr-str q)
+                                                 (when (seq rs) " — the first ones:"))))
+                    (doseq [x rs]
+                      (repl-print! "out" (esc (str "(load-sound! :bN \"freesound:" (:id x) "\")  ; "
+                                                   (:name x) " · " (:username x) " · " (snd/license-label (:license x))
+                                                   " · " (comp/nice (or (:duration x) 0)) " s")))))))
+         (.catch (fn [e] (repl-print! "err" (esc (str "; " (or (.-message e) e)))))))
+     :searching)))
+
+(defn credits
+  "The credits of the sounds of the work (those that brought theirs, from Freesound): one line each."
+  []
+  (let [walk (fn walk [p]
+               (mapcat (fn [[_ b]]
+                         (cond (= "patch" (klass (:text b))) (walk (:data b))
+                               (= "sample" (klass (:text b)))
+                               (when-let [c (:credit (merge (:data b) (snd/about (:data b))))] [c])))
+                       (:boxes p)))
+        cs (distinct (walk (work-patch)))]
+    (mapv (fn [{:keys [name author license page]}] (str "\"" name "\" by " author (when license (str " (" license ")")) " — " page)) cs)))
+
 ;; a sample box asked (a recording finished, or `clear`): done as a gesture, so it is an event of the history
 (let [before (:effect-hook @eng/rt)]
   (swap! eng/rt assoc :effect-hook

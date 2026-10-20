@@ -8,7 +8,12 @@
 ;;   {:url "https://…/voice.ogg" …}   or only   {:url "…"}
 ;; and then every browser that opens the work fetches it by itself (once: then it is kept like the rest,
 ;; under a key made from the URL), which is how a shared session or a test has the same sounds
-;; everywhere. The loops over samples are JavaScript (kairotic/sounds.mjs).
+;; everywhere. Two sources need no CORS of their own:
+;;   github:owner/repo[@ref]/path.wav   a file of a public GitHub repository, served by jsDelivr
+;;   freesound:12345                    a sound of Freesound (its preview), with the API key of whoever
+;;                                      opens the work, kept only in their browser: (freesound-key! "…")
+;; A Freesound sound brings its credit ({:name :author :license :page}), kept beside the description.
+;; The loops over samples are JavaScript (kairotic/sounds.mjs).
 ;;
 ;;   sample [seconds]   a buffer of sound: what reaches its left inlet is recorded on `rec` until `stop`
 ;;                      (or until it has `seconds`, 60 by default). Its right outlet is the buffer for a
@@ -36,16 +41,90 @@
 
 (def peak-columns 120)
 
+;; ───────── sources: where a URL of a sound points ─────────
+
+(defn github-spec
+  "github:owner/repo[@ref]/path → {:owner :repo :ref :path}, or nil. ref is a tag, a commit or a branch
+   without slashes (without it, jsDelivr serves the default branch, which can change: pin it)."
+  [u]
+  (when-let [[_ owner repo ref path] (and (string? u)
+                                          (re-matches #"github:([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)(?:@([A-Za-z0-9_.-]+))?/(.+)" u))]
+    (when-not (re-find #"\.\." path)
+      {:owner owner :repo repo :ref ref :path path})))
+
+(defn github-url
+  "The jsDelivr URL of a github: sound (it serves public repositories with CORS open)."
+  [{:keys [owner repo ref path]}]
+  (str "https://cdn.jsdelivr.net/gh/" owner "/" repo (when ref (str "@" ref)) "/"
+       (str/join "/" (map js/encodeURIComponent (str/split path #"/")))))
+
+(defn freesound-id "freesound:12345 → 12345, or nil." [u]
+  (when-let [[_ n] (and (string? u) (re-matches #"freesound:(\d{1,10})" u))] (js/parseInt n 10)))
+
 (defn url?
-  "A place a sound can be fetched from: an http(s) URL, a path of this page, or a data: or blob: URL.
-   Never javascript:, no spaces, at most 2048 characters."
+  "A place a sound can be fetched from: an http(s) URL, a path of this page, a data: or blob: URL, a
+   github:owner/repo/path or a freesound:id. Never javascript:, no spaces, at most 2048 characters."
   [u]
   (boolean
    (and (string? u) (<= 1 (count u) 2048) (not (re-find #"\s" u))
        (not (re-find #"(?i)^javascript:" u))
        (or (re-find #"(?i)^(https?|data|blob):" u)
+           (github-spec u)
+           (freesound-id u)
            ;; a path of this page: no scheme, and a dot or a slash (sounds/voice.ogg, ./a.wav)
            (and (not (re-find #"^[A-Za-z][A-Za-z0-9+.-]*:" u)) (re-find #"[./]" u))))))
+
+;; Freesound: every person uses their own API key (freesound.org/apiv2/apply), kept in their browser and
+;; never in a work, a link or a room
+(def freesound-api "https://freesound.org/apiv2/")
+(def key-storage "kairotic.freesound-key")
+
+(defn freesound-key []
+  (try (let [k (.getItem js/localStorage key-storage)] (when (seq k) k)) (catch :default _ nil)))
+
+(defn set-freesound-key! [k]
+  (try (if (seq k) (.setItem js/localStorage key-storage k) (.removeItem js/localStorage key-storage)) (catch :default _ nil))
+  (boolean (seq k)))
+
+(defn license-label
+  "A short name for a license URL: CC0, CC BY, CC BY-NC, Sampling+…"
+  [u]
+  (let [u (str/lower-case (str u))]
+    (cond (re-find #"publicdomain/zero|cc0" u) "CC0"
+          (re-find #"by-nc" u) "CC BY-NC"
+          (re-find #"/by/|attribution" u) "CC BY"
+          (re-find #"sampling" u) "Sampling+"
+          (seq u) "see license"
+          :else "")))
+
+(defn freesound-get
+  "Promise of the JSON (as a map) of a Freesound API path, with the key of this browser."
+  [path params]
+  (if-let [k (freesound-key)]
+    (-> (js/fetch (str freesound-api path "?"
+                       (str/join "&" (for [[a b] (assoc params :token k)] (str (name a) "=" (js/encodeURIComponent (str b)))))))
+        (.then (fn [r] (if (.-ok r) (.json r) (throw (js/Error. (str "Freesound answered " (.-status r)
+                                                                     (when (= 401 (.-status r)) ": the API key is not valid")))))))
+        (.then (fn [j] (js->clj j :keywordize-keys true))))
+    (js/Promise.reject (js/Error. "Freesound needs an API key, kept only in this browser: (freesound-key! \"…\") — get one at freesound.org/apiv2/apply"))))
+
+(defn freesound-credit [j]
+  {:name (str (:name j)) :author (str (:username j)) :license (license-label (:license j))
+   :page (str (or (:url j) (str "https://freesound.org/s/" (:id j) "/")))})
+
+(defn resolve-url
+  "Promise of {:href url-to-fetch :credit {…}?} for a URL of a sound."
+  [u]
+  (cond
+    (github-spec u) (js/Promise.resolve {:href (github-url (github-spec u))})
+    (freesound-id u)
+    (.then (freesound-get (str "sounds/" (freesound-id u) "/") {:fields "id,name,username,license,url,previews"})
+           (fn [j]
+             (let [pv (:previews j)
+                   href (or (get pv :preview-hq-mp3) (get pv :preview-hq-ogg) (get pv :preview-lq-mp3))]
+               (when-not href (throw (js/Error. "Freesound gave no preview for that sound")))
+               {:href href :credit (freesound-credit j)})))
+    :else (js/Promise.resolve {:href u})))
 
 (defn url-key
   "The key a sound from a URL is kept under: 16 hex characters from the URL (two FNV-1a hashes)."
@@ -62,7 +141,7 @@
 (defn about
   "What is known of the sound of d: its description, completed with what this browser learnt when it
    loaded it (a description that is only a URL learns its length and peaks so)."
-  [d] (merge (get @local (:audio d)) (select-keys d [:sr :frames :channels :peaks])))
+  [d] (merge (get @local (:audio d)) (select-keys d [:sr :frames :channels :peaks :credit])))
 
 (defn seconds [d]
   (let [{:keys [frames sr]} (when (sample? d) (about d))]
@@ -73,15 +152,21 @@
    enough: its key is made from it."
   [d]
   (let [n (fn [x] (and (number? x) (js/isFinite x) (pos? x)))
-        url (when (and (map? d) (url? (:url d))) (:url d))]
+        url (when (and (map? d) (url? (:url d))) (:url d))
+        credit (when (map? (:credit d))
+                 (let [c (into {} (for [k [:name :author :license :page] :let [v (get-in d [:credit k])]
+                                        :when (and (string? v) (seq v))]
+                                    [k (subs v 0 (min 300 (count v)))]))]
+                   (when (seq c) c)))]
     (cond
       (and (map? d) (string? (:audio d)) (re-matches #"[0-9a-f]{8,64}" (:audio d)) (n (:sr d)) (n (:frames d)))
       (cond-> {:audio (:audio d) :sr (:sr d) :frames (js/Math.floor (:frames d))
                :channels (max 1 (min 32 (js/Math.floor (or (:channels d) 1))))
                :peaks (vec (for [p (take 2000 (:peaks d)) :when (and (sequential? p) (= 2 (count p)) (every? number? p))]
                              (mapv (fn [x] (comp/clamp x -1 1)) p)))}
-        url (assoc :url url))
-      url {:audio (url-key url) :url url}
+        url (assoc :url url)
+        credit (assoc :credit credit))
+      url (cond-> {:audio (url-key url) :url url} credit (assoc :credit credit))
       :else {})))
 
 (defn sound
@@ -132,11 +217,17 @@
   "Promise of the sound at url, fetched, decoded and kept under key h (once, whoever asks first)."
   [h url]
   (or (get @fetching h)
-      (let [p (-> (js/fetch url)
+      (let [credit (atom nil)
+            p (-> (resolve-url url)
+                  (.then (fn [{:keys [href] c :credit}]
+                           (reset! credit c)
+                           (js/fetch href)))
                   (.then (fn [r] (if (.-ok r) (.arrayBuffer r) (throw (js/Error. (str "HTTP " (.-status r)))))))
                   (.then decode)
                   (.then (fn [{:keys [sr chans]}] (store! h sr chans)))
-                  (.then (fn [_] (get @cache h)))
+                  (.then (fn [_]
+                           (when-let [c @credit] (swap! local assoc-in [h :credit] c))
+                           (get @cache h)))
                   (.catch (fn [e]
                             (swap! status assoc h :failed)
                             (swap! failures assoc h (str (or (.-message e) e)))
@@ -160,7 +251,8 @@
   (let [h (:audio d)]
     (when (and (string? h) (nil? (get @status h)))
       (swap! status assoc h :checking)
-      (.catch (sound-for d) (fn [_] nil)))))
+      ;; why it could not be loaded is said once, in the REPL
+      (.catch (sound-for d) (fn [e] (eng/print! (eng/now) (str "sample: " (or (.-message e) e))))))))
 
 ;; ───────── playing: the worklet a reader~ uses for a sound ─────────
 
@@ -315,11 +407,14 @@ registerProcessor('kairotic-player', KairoticPlayer);
                 [:text {:x 8 :y (- h 7) :size 9 :fill :soft}
                  (cond
                    (and d (= here :loading)) "loading…"
-                   (and d (= here :failed)) "could not load its URL"
+                   (and d (= here :failed))
+                   (if (re-find #"API key" (str (get @failures (:audio d)))) "needs a Freesound API key" "could not load its URL")
                    (and d (number? (:sr d)))
                    (str (fmt-s (seconds d)) " · " (comp/nice (/ (:sr d) 1000)) " kHz"
                         (when (> (or (:channels d) 1) 1) (str " · " (:channels d) " ch"))
-                        (when (:url d) " · URL")
+                        (if-let [c (:credit d)]
+                          (str " · " (:author c) (when (seq (:license c)) (str " · " (:license c))))
+                          (when (:url d) " · URL"))
                         (when (= here :missing) " · not in this browser"))
                    d "…"
                    :else "empty · rec records what reaches it")])
