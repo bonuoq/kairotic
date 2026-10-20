@@ -85,6 +85,8 @@ comes first.
   The first ▶ also asks the browser for permission to play sound.
 - **■** silences and brings every box back to its initial state.
 - Messages travel without ▶: a click on a `bang` or a `msg`, a number dragged, a data box that changed.
+- A `msg` sends numbers (`msg 0 8 4`), words (`msg stop`) and **text between quotes as a string**
+  (`msg "https://…/voice.ogg"`, `msg "two words"`), alone or in a list (`msg url "github:…" 3`).
 - **Sound from outside**: `adc~ 1` is the microphone (or an input of the sound card: `adc~ 1 2`). At ▶
   the browser asks for it once; its sound comes as it is, without the processing made for calls.
   `scope~` draws a signal and `snapshot~ 50 db` turns it into numbers (its level), so what is heard can
