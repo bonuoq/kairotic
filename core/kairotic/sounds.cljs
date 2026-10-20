@@ -131,7 +131,8 @@
    msg \"https://…\": a keyword, maybe with its quotes). nil if it is not one."
   [v]
   (let [t (cond (string? v) v
-                (keyword? v) (str (when (namespace v) (str (namespace v) "/")) (name v))
+                ;; the whole text of the keyword: name and namespace split it at its first slash
+                (keyword? v) (subs (str v) 1)
                 (symbol? v) (str v)
                 :else nil)
         t (when t (str/trim t))
