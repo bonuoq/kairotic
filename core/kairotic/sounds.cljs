@@ -126,6 +126,18 @@
                {:href href :credit (freesound-credit j)})))
     :else (js/Promise.resolve {:href u})))
 
+(defn as-url
+  "A URL from what reaches a sample: a string, or a word as a msg box sends it (msg https://… or
+   msg \"https://…\": a keyword, maybe with its quotes). nil if it is not one."
+  [v]
+  (let [t (cond (string? v) v
+                (keyword? v) (str (when (namespace v) (str (namespace v) "/")) (name v))
+                (symbol? v) (str v)
+                :else nil)
+        t (when t (str/trim t))
+        t (if (and t (re-matches #"\".*\"|'.*'" t)) (subs t 1 (dec (count t))) t)]
+    (when (url? t) t)))
+
 (defn url-key
   "The key a sound from a URL is kept under: 16 hex characters from the URL (two FNV-1a hashes)."
   [u]
@@ -390,8 +402,14 @@ registerProcessor('kairotic-player', KairoticPlayer);
                   (= value :bang) (if (sample? data) {:out [[0 (seconds data)]]} {})
                   (= value :clear) {:effects [[:sample [:clear]]]}
                   ;; a URL (a string, or [:url "…"]): the page loads it and writes it as the data of the box
-                  (url? value) {:effects [[:sample [:url value]]]}
-                  (and (vector? value) (= :url (first value)) (url? (second value))) {:effects [[:sample [:url (second value)]]]}
+                  ;; msg https://… (or msg "https://…", or msg url "…") arrives as a word: as-url reads it
+                  (as-url value) {:effects [[:sample [:url (as-url value)]]]}
+                  (and (sequential? value) (= :url (first value)) (as-url (second value)))
+                  {:effects [[:sample [:url (as-url (second value))]]]}
+                  (and (sequential? value) (= :url (first value)))
+                  {:effects [[:print (str "sample: " (pr-str (second value)) " is not a URL a sound can be loaded from")]]}
+                  (or (string? value) (keyword? value))
+                  {:effects [[:print (str "sample: " (pr-str value) " is neither rec, stop, clear nor a URL (https://…, github:…, freesound:…)")]]}
                   :else {})))
    ;; drawing it is also when this browser looks for its sound (and fetches it, if it comes from a URL)
    :draw (fn [{:keys [data shown w h]}]

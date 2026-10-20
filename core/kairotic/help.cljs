@@ -237,7 +237,7 @@
    {:inlets ["the signal to record; rec starts, stop ends (or its length in seconds), clear empties it, a bang asks its length"]
     :outlets ["its length in seconds (after each recording, and on a bang)" "the sound, for a reader~ (on its right inlet)"]
     :messages [["rec" "records what reaches it, from the beginning"] ["stop" "keeps what was heard"]
-               ["clear" "empties it"] ["a URL (a string)" "loads the sound there; every browser that opens the work fetches it"]
+               ["clear" "empties it"] ["a URL (msg https://… · msg url github:… · a string)" "loads the sound there; every browser that opens the work fetches it"]
                ["(load-sound! :bN)" "brings in a sound file"] ["(load-sound! :bN \"https://…\")" "loads it from a URL"]
                ["(sample! :bN {:url \"…\"})" "a sample that is only a URL, as a link or a shared session writes it"]
                ["github:owner/repo@ref/path.wav" "a file of a public GitHub repository (through jsDelivr: no CORS problem)"]

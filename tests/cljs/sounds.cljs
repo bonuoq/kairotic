@@ -56,6 +56,14 @@
     (t/eq "a javascript: URL is not kept" (snd/sane {:url "javascript:alert(1)"}) {})
     (t/eq "a URL on the left asks the page to load it" (:effects (recv {:value "https://a.org/v.ogg"})) [[:sample [:url "https://a.org/v.ogg"]]])
     (t/eq "... and so does [:url …]" (:effects (recv {:value [:url "sounds/v.wav"]})) [[:sample [:url "sounds/v.wav"]]])
+    ;; what a msg box sends: its words as keywords (msg https://…, msg "https://…", msg url …)
+    (t/eq "a URL as a msg sends it"
+          (mapv snd/as-url [(keyword "https://a.org/v.ogg") (keyword "\"https://a.org/v.ogg\"") "'sounds/v.wav'"
+                            (keyword "github:a/b/c.wav") :freesound:12 :stop 440])
+          ["https://a.org/v.ogg" "https://a.org/v.ogg" "sounds/v.wav" "github:a/b/c.wav" "freesound:12" nil nil])
+    (t/eq "msg \"https://…\" loads it" (:effects (recv {:value (keyword "\"https://a.org/v.ogg\"")})) [[:sample [:url "https://a.org/v.ogg"]]])
+    (t/eq "msg url https://… loads it" (:effects (recv {:value [:url (keyword "https://a.org/v.ogg")]})) [[:sample [:url "https://a.org/v.ogg"]]])
+    (t/is "a word that is not understood is said so" (re-find #"neither" (str (:effects (recv {:value :play})))))
     ;; sources: github: (through jsDelivr) and freesound:
     (t/eq "github:owner/repo@ref/path"
           (snd/github-spec "github:tidalcycles/Dirt-Samples@master/bd/BT0A0A7.wav")

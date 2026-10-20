@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **A `msg` with a URL loads a sample**: `msg https://…`, `msg "https://…"` and `msg url github:…` now
+  work (a msg sends its words as keywords, which the sample ignored). A word or string the sample does
+  not understand is said in the REPL instead of doing nothing.
 - **Sources of sounds that work without CORS problems**: a sample's URL can be
   `github:owner/repo@ref/path.wav` — any file of a public GitHub repository, served by jsDelivr (the
   banks of Dirt-Samples, a repository of your own sounds) — or `freesound:id`, the preview of a
