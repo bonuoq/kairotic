@@ -104,7 +104,7 @@
 
 (defn link-params
   "Promise of the parameters that bring back what is shown now: the tutorial step, the help patch, or
-   the patch itself — or, if asked in the Embed panel, a description for Claude (Study 23). In
+   the patch itself — or, if asked in the Share/Export panel, a description for Claude (Study 23). In
    Release/Perform (:present), always the release of the patch (issue #50)."
   ([] (link-params :embed))
   ([mode]
@@ -117,11 +117,13 @@
        (and l (:help l)) (js/Promise.resolve [["help" (:help l)] ["lang" (name @lang)]])
        :else (.then (packed-code :embed) (fn [z] [["code" z]]))))))
 
-(defn url-with [ps mode]
+(defn url-with
+  "A link to the site with these parameters, after # (issue #55: a long patch is not refused by the server)."
+  [ps mode]
   (let [q (js/URLSearchParams.)]
     (doseq [[k v] ps] (.set q k v))
     (case mode :embed (.set q "embed" "") :present (.set q "present" "") nil)
-    (str (site-url) "?" (str/replace (.toString q) #"=(&|$)" "$1"))))
+    (str (site-url) "#" (str/replace (.toString q) #"=(&|$)" "$1"))))
 
 (defn iframe-of [url mode]
   (str "<iframe src=\"" (esc url) "\" width=\"100%\" height=\"" (if (= mode :present) 560 480)
@@ -149,7 +151,7 @@
          (.catch (fn [e] (repl-print! "err" (esc (str (or (.-message e) e)))))))
      :making-link)))
 
-;; ───── the Embed panel ─────
+;; ───── the Share/Export panel (it was Embed) ─────
 
 (defn ep-mode [] (if (.-checked (.querySelector js/document "input[name=ep-mode][value=present]")) :present :embed))
 
@@ -195,12 +197,12 @@
 (defn mode-url
   "This same address in another mode: nil (the whole editor), :embed or :present."
   [mode]
-  (let [q (js/URLSearchParams. (.-search js/location))]
+  (let [q (js/URLSearchParams. (.toString url-params))]
     (.delete q "embed")
     (.delete q "present")
     (case mode :embed (.set q "embed" "") :present (.set q "present" "") nil)
     (let [s (str/replace (.toString q) #"=(&|$)" "$1")]
-      (str (.-origin js/location) (.-pathname js/location) (when (seq s) (str "?" s))))))
+      (str (.-origin js/location) (.-pathname js/location) (when (seq s) (str "#" s))))))
 
 (defn fullscreen!
   "Fills the screen with the presentation (or leaves it). Where the frame does not allow it, the

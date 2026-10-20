@@ -38,7 +38,7 @@ el mismo patch sin volver a preguntar (**Make it again** pregunta de nuevo). **C
 result** da un enlace `?code=` con el patch dentro: ponlo en lugar de la descripción y todo el mundo
 verá el mismo patch sin preguntar a Claude.
 
-`?ask=` puede ir con `?code=` o `?src=`: entonces Claude cambia ese patch. El panel Embed tiene la
+`?ask=` puede ir con `?code=` o `?src=`: entonces Claude cambia ese patch. El panel Share/Export tiene la
 opción *Carry a description instead*, y la REPL `(ask-link "…")`, `(ask-link "…" :present)`.
 
 ## Tus peticiones, guardadas

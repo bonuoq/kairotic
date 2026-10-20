@@ -220,7 +220,7 @@ history), *Present without them* leaves them out. From the REPL: `(present-in-pl
 ## 8. Share and embed
 
 - In a room, everyone is in the same work.
-- **Embed** gives a link and an iframe with this patch (or this tutorial step) for Notion, a blog or a
+- **Share/Export** gives a link and an iframe with this patch (or this tutorial step) for Notion, a blog or a
   course; *Release/Perform* gives a release of it that opens in Perform, showing only the panel. See [Embedding](embed.md).
 - A request to Claude can be shared in the
   [Gallery](https://github.com/bonuoq/kairotic/discussions/categories/gallery).

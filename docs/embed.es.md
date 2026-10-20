@@ -7,7 +7,7 @@ Notion, un blog, un curso— y seguir sonando allí.
 
 ## Hacer el enlace
 
-En el editor, **Embed** (junto a Present) abre un panel con dos opciones:
+En el editor, **Share/Export** (junto a Present; antes se llamaba Embed) abre un panel con dos opciones:
 
 - **Patch**: el patch, escalado para caber en el marco, con ▶ ■, la barra de la lección si es un
   tutorial, y **Kairotic ↗**, que abre lo mismo en el editor completo.
@@ -62,6 +62,11 @@ iframe lleva `allow="fullscreen"`; donde una página no permite pantalla complet
 
 | | |
 |---|---|
+Cada parámetro se puede escribir también después de `#` en vez de `?`: `…/kairotic/#code=…&present`.
+Los enlaces que hace Kairotic se escriben así, porque lo que va después de `#` nunca llega al servidor:
+un patch largo no se rechaza allí (una petición demasiado larga recibe *414 URI Too Long*). Después de
+`#`, un parámetro gana al mismo después de `?`. Los enlaces hechos antes, con `?`, se abren como antes.
+
 | `?code=…` | un patch (deflate-raw + base64url) |
 | `?src=…` | un patch, su código tal como se escribe |
 | `?tutorial=id&step=n` | un tutorial en el paso n |

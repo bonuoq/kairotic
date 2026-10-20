@@ -7,7 +7,7 @@ course — and still play there.
 
 ## Making the link
 
-In the editor, **Embed** (next to Present) opens a panel with two choices:
+In the editor, **Share/Export** (next to Present; it was called Embed) opens a panel with two choices:
 
 - **Patch**: the patch, scaled to fit the frame, with ▶ ■, the lesson bar if it is a tutorial, and
   **Kairotic ↗**, which opens the same thing in the whole editor.
@@ -61,6 +61,11 @@ presentation in a tab of its own.
 
 | | |
 |---|---|
+Every parameter can also be written after `#` instead of `?`: `…/kairotic/#code=…&present`. The links
+Kairotic makes are written that way, since what is after `#` never reaches the server: a long patch
+is not refused there (a request too long is answered *414 URI Too Long*). After `#`, a parameter wins
+over the same one after `?`. Links made before, with `?`, open as they did.
+
 | `?code=…` | a patch (deflate-raw + base64url) |
 | `?src=…` | a patch, its code as written |
 | `?tutorial=id&step=n` | a tutorial at step n |

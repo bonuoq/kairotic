@@ -37,7 +37,7 @@ asking again (**Make it again** asks anew). **Copy the link of this result** giv
 with the patch in it: put it in place of the description, and everyone sees the same patch without
 asking Claude.
 
-`?ask=` can go with `?code=` or `?src=`: then Claude changes that patch. The Embed panel has a
+`?ask=` can go with `?code=` or `?src=`: then Claude changes that patch. The Share/Export panel has a
 *Carry a description instead* option, and the REPL `(ask-link "…")`, `(ask-link "…" :present)`.
 
 ## Your requests, kept

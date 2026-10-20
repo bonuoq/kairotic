@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Share/Export** is the new name of the Embed button and its panel: a link to share the patch, or
+  an iframe to put it in another page. The class names and the commands stay (`embed-link`, `?embed`).
+- **Links after `#`** (issue #55): every link Kairotic makes (Embed, `(embed-link)`, `ask-link`, the
+  links of the Claude log and of Feedback) carries its parameters after `#` — `…/kairotic/#code=…&present`
+  — so a long patch is no longer refused by the server (414: the request line too long). The page reads
+  the same parameters after `?` or `#` (after `#` wins), the Pages boot too (`#embed`, `#present`: no
+  relay), and a new link pasted in the same tab opens it. `?` links keep working.
+  Tests: `tests/embed.mjs` (a link after `#` with a patch of about 20 KB).
 - **Samples from URLs**: a `sample` can hold a sound from a URL — `(load-sound! :bN "https://…")`, a
   string (or `[:url "…"]`) on its left, or `(sample! :bN {:url "…"})` in the work's code, links and
   rooms. Every browser that opens the work fetches it by itself when the box is drawn (or a `reader~`
