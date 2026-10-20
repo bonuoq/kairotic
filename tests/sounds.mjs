@@ -84,6 +84,17 @@ export async function sounds(page, check) {
   await cljs(page, `(send! ${u3} ${url})`);
   const bystr = await until(page, `(:url (:data (get-in (current) [:boxes ${u3}])))`, (g) => g === url, 10000);
   check("a URL on the left of a sample loads it", bystr === url, bystr);
+  // what a msg box sends: its words as keywords, with or without quotes, or after url
+  const m1 = (await cljs(page, '(box "msg \\"tests/assets/a440.wav\\"" 3600 640)')).trim();
+  const m2 = (await cljs(page, '(box "msg url tests/assets/a440.wav" 3900 640)')).trim();
+  const s1 = (await cljs(page, '(box "sample" 3600 690)')).trim();
+  const s2 = (await cljs(page, '(box "sample" 3900 690)')).trim();
+  await cljs(page, `(connect ${m1} 0 ${s1} 0) (connect ${m2} 0 ${s2} 0)`);
+  await cljs(page, `(send! ${m1} :bang) (send! ${m2} :bang)`);
+  const viaMsg = await until(page, `[(:url (:data (get-in (current) [:boxes ${s1}]))) (:url (:data (get-in (current) [:boxes ${s2}])))]`,
+                             (g) => g === `[${url} ${url}]`, 10000);
+  check('msg "url" and msg url … load a sample', viaMsg === `[${url} ${url}]`, viaMsg);
+  await cljs(page, `(delete ${m1} ${m2} ${s1} ${s2})`);
   await cljs(page, `(sample! ${u4} {:url "tests/assets/nothing-here.wav"})`);
   const failed = await until(page, st(u4), (g) => g === ":failed", 10000);
   check("a URL that does not answer says so", failed === ":failed", failed);
