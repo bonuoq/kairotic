@@ -100,7 +100,13 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   URL** — `(load-sound! :bN "https://…/voz.ogg")`, una cadena enviada al sample o
   `(sample! :bN {:url "…"})` en el código — lo descarga cada navegador que abre la obra, así que una
   sesión compartida o un enlace tienen los mismos sonidos en todas partes (una URL de otro sitio debe
-  permitirlo: CORS).
+  permitirlo: CORS). Dos fuentes funcionan siempre: `github:dueño/repo@ref/ruta.wav`, cualquier archivo
+  de un repositorio público de GitHub, servido por jsDelivr (por ejemplo los bancos de
+  [Dirt-Samples](https://github.com/tidalcycles/Dirt-Samples): `github:tidalcycles/Dirt-Samples@master/bd/BT0A0A7.wav`),
+  y `freesound:id`, un sonido de [Freesound](https://freesound.org) con tu propia clave de API, guardada
+  solo en tu navegador (`(freesound-key! "…")`, en freesound.org/apiv2/apply). `(sounds "lluvia" {:max 10})`
+  busca en Freesound y escribe la línea que carga cada resultado; un sonido de Freesound guarda su autor
+  y su licencia, y `(credits)` los lista para la obra.
 - **Escuchar**: el paquete `@kairotic/analysis` (llega a la obra al escribir una de sus clases)
   convierte lo que se oye en datos: `pitch~` la altura por YIN (Hz, y 0 cuando deja de oír una),
   `onset~` un bang en cada ataque, `chroma~` las 12 clases de altura y la más fuerte,

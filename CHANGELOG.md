@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Sources of sounds that work without CORS problems**: a sample's URL can be
+  `github:owner/repo@ref/path.wav` — any file of a public GitHub repository, served by jsDelivr (the
+  banks of Dirt-Samples, a repository of your own sounds) — or `freesound:id`, the preview of a
+  Freesound sound fetched with the API key of whoever opens the work: each person their own,
+  `(freesound-key! "…")`, kept only in their browser and never in a work, a link or a room. A Freesound
+  sound keeps its credit (name, author, licence, page) beside its description and shows it in the box;
+  `(credits)` lists the credits of the work; `(sounds "kick" {:max 2 :license "cc0"})` searches
+  Freesound and prints the line that loads each result. Without a key the box says it needs one. Tests:
+  `tests/cljs/sounds.cljs`, `tests/sounds.mjs`.
 - **Presentation is for playing** (issue #57): in Present and in Release/Perform embeds a double-click
   creates no box, no wires can be drawn, and nothing is selected with the mouse (no frame, ⇧+click,
   ⌘/Ctrl+click, ⌘/Ctrl+A; a click on a box does not select it, so Delete removes nothing). Switching to

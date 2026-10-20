@@ -56,4 +56,24 @@
     (t/eq "a javascript: URL is not kept" (snd/sane {:url "javascript:alert(1)"}) {})
     (t/eq "a URL on the left asks the page to load it" (:effects (recv {:value "https://a.org/v.ogg"})) [[:sample [:url "https://a.org/v.ogg"]]])
     (t/eq "... and so does [:url …]" (:effects (recv {:value [:url "sounds/v.wav"]})) [[:sample [:url "sounds/v.wav"]]])
+    ;; sources: github: (through jsDelivr) and freesound:
+    (t/eq "github:owner/repo@ref/path"
+          (snd/github-spec "github:tidalcycles/Dirt-Samples@master/bd/BT0A0A7.wav")
+          {:owner "tidalcycles" :repo "Dirt-Samples" :ref "master" :path "bd/BT0A0A7.wav"})
+    (t/eq "... without a ref" (:ref (snd/github-spec "github:a/b/c.wav")) nil)
+    (t/eq "... served by jsDelivr"
+          (snd/github-url (snd/github-spec "github:a/b@v1/dir/my sound.wav"))
+          "https://cdn.jsdelivr.net/gh/a/b@v1/dir/my%20sound.wav")
+    (t/eq "... never above the repository" (snd/github-spec "github:a/b/../x.wav") nil)
+    (t/eq "freesound:id" [(snd/freesound-id "freesound:12345") (snd/freesound-id "freesound:abc")] [12345 nil])
+    (t/eq "both are places a sound can come from"
+          (mapv snd/url? ["github:a/b/c.wav" "freesound:1" "github:a" "freesound:"]) [true true false false])
+    (t/eq "licenses, in short"
+          (mapv snd/license-label ["http://creativecommons.org/publicdomain/zero/1.0/" "https://creativecommons.org/licenses/by/4.0/"
+                                   "http://creativecommons.org/licenses/by-nc/3.0/" "http://creativecommons.org/licenses/sampling+/1.0/"])
+          ["CC0" "CC BY" "CC BY-NC" "Sampling+"])
+    (let [c {:name "kick" :author "someone" :license "CC BY" :page "https://freesound.org/s/1/"}]
+      (t/eq "a description keeps the credit of its sound" (:credit (snd/sane {:url "freesound:1" :credit c})) c)
+      (t/eq "... only its four texts" (:credit (snd/sane {:url "freesound:1" :credit (assoc c :x 1 :name 3)}))
+            (dissoc c :name)))
     (t/eq "!- the other way round" (:out ((:receive (comp/lookup "!-")) {:args [10] :value 4})) [[0 6]])))

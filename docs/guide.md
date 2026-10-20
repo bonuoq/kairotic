@@ -97,7 +97,13 @@ comes first.
   `(save-sound :bN)` saves it as WAV. A sound **from a URL** — `(load-sound! :bN "https://…/voice.ogg")`,
   a string sent to the sample, or `(sample! :bN {:url "…"})` in the code — is fetched by every browser that
   opens the work, so a shared session or a link has the same sounds everywhere (a URL of another site
-  must allow it: CORS).
+  must allow it: CORS). Two sources always work: `github:owner/repo@ref/path.wav`, any file of a public
+  GitHub repository, served by jsDelivr (for instance the banks of
+  [Dirt-Samples](https://github.com/tidalcycles/Dirt-Samples): `github:tidalcycles/Dirt-Samples@master/bd/BT0A0A7.wav`),
+  and `freesound:id`, a sound of [Freesound](https://freesound.org) with your own API key, kept only in
+  your browser (`(freesound-key! "…")`, from freesound.org/apiv2/apply). `(sounds "rain" {:max 10})`
+  searches Freesound and prints the line that loads each result; a Freesound sound keeps its author and
+  licence, and `(credits)` lists them for the work.
 - **Listening**: the package `@kairotic/analysis` (it comes into a work when one of its classes is
   written) turns what is heard into data: `pitch~` the pitch by YIN (Hz, and 0 when it stops hearing
   one), `onset~` a bang at each attack, `chroma~` the 12 pitch classes and the strongest one,

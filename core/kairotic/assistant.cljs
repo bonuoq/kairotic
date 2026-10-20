@@ -376,6 +376,8 @@ Rules:
   left inlet on `rec` until `stop`; its outlet 1 into the right inlet of `reader~`, with a `phasor~` at
   1/length Hz on the left, plays it (its outlet 0 gives the length in seconds; `!/ 1` turns it into Hz).
   A sample can be a sound from a URL that every browser fetches: `(sample! :bN {:url \"https://…\"})`.
+  Prefer `github:owner/repo@ref/path.wav` (e.g. `github:tidalcycles/Dirt-Samples@master/bd/BT0A0A7.wav`,
+  served by jsDelivr) or `freesound:id`: most other sites refuse it (CORS).
 - Listening (package @kairotic/analysis, it comes by itself): `pitch~ [lo hi]` gives Hz (0 when it stops
   hearing a pitch) and clarity; `onset~` a bang per attack; `chroma~` 12 pitch-class values and the
   strongest class (:a …); `features~ [ms] rms centroid …` one outlet per descriptor; `spectrum~` draws.
