@@ -903,8 +903,10 @@
           (and (= k "Escape") (or (:sel @ui) (:insp @ui)))
           (swap! ui assoc :sel nil :insp nil)
           ;; ⌘/Ctrl+A: every box on screen
-          (and mod? (= (str/lower-case k) "a") (.-hidden ($ "manager")) (not (locked?)))
-          (do (.preventDefault e) (swap! ui assoc :sel (sel-of (keys (scene-boxes))) :insp nil :nsel nil :tsel nil))
+          ;; (in presentation it selects nothing, and the browser does not select the page either)
+          (and mod? (= (str/lower-case k) "a") (.-hidden ($ "manager")))
+          (do (.preventDefault e)
+              (when-not (locked?) (swap! ui assoc :sel (sel-of (keys (scene-boxes))) :insp nil :nsel nil :tsel nil)))
           (and mod? (= (str/lower-case k) "z") (.-shiftKey e))
           (do (.preventDefault e) (gesture! "(forward)"))
           (and mod? (= (str/lower-case k) "z"))
