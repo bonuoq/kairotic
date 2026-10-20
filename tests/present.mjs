@@ -68,6 +68,7 @@ export async function present(page, check) {
 // Issue #57: in presentation the paper is for playing: no new boxes and no selection with the mouse
 const settled = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 const centre = async (page, id) => {
+  await page.waitForFunction((id) => !!document.querySelector('#scene .box[data-box="' + id + '"] rect.body'), id, { timeout: 8000 }).catch(() => {});
   await page.evaluate((id) => { const el = document.querySelector('#scene .box[data-box="' + id + '"] rect.body');
                                 if (el) el.scrollIntoView({ block: "center", inline: "center" }); }, id);
   await settled(page);
@@ -83,7 +84,7 @@ async function locked(page, check) {
   await cljs(page, "(presentation true)");
   check("switching to presentation clears the selection", (await cljs(page, "(:sel @ui)")) === "nil");
   const at = await centre(page, p);
-  if (!at) { check("the presented box is on screen", false); await cljs(page, `(presentation false) (delete ${p})`); return; }
+  if (!at) { check("the presented box is on screen", false, await cljs(page, `[${p} @pres-mode (:present (get-in (current) [:boxes ${p}])) (count (:boxes (scene-of (current))))]`) + " " + await page.evaluate(() => [...document.querySelectorAll("#scene .box")].map((e) => e.getAttribute("data-box")).join(","))); await cljs(page, `(presentation false) (delete ${p})`); return; }
   const empty = [at[0], at[1] + 140];
 
   await page.mouse.dblclick(empty[0], empty[1]); await settled(page);
