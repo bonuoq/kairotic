@@ -71,7 +71,7 @@ export async function sounds(page, check) {
   await cljs(page, `(sample! ${u1} {:url ${url}})`);
   const st = (id) => `(get @snd/status (:audio (:data (get-in (current) [:boxes ${id}]))))`;
   const got = await until(page, st(u1), (g) => g === ":here", 10000);
-  check("a sample that is only a URL fetches its sound", got === ":here", got);
+  check("a sample that is only a URL fetches its sound", got === ":here", got + " " + await cljs(page, "(pr-str @snd/failures)"));
   const len = await until(page, secs(u1), (g) => Math.abs(Number(g) - 1) < 0.01);
   check("... and learns its length (one second)", Math.abs(Number(len) - 1) < 0.01, len);
   await cljs(page, `(connect ${ph} 0 ${rd} 0) (disconnect ${s} 1 ${rd} 1) (connect ${u1} 1 ${rd} 1)`);
