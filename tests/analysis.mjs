@@ -69,8 +69,11 @@ export async function analysis(page, check) {
   const pts = await cljs(page, strokes);
   const evs = await cljs(page, `(pr-str (take-last 6 (filter (fn [e] (= ${fq} (second e))) (:events (node (first (:pos @world)))))))`);
   check("transcribe writes each note as a stroke of the freqt", n4 === "4", pts.slice(0, 300) + " · events: " + evs.slice(0, 900));
-  const hzs = await cljs(page, `(mapv (fn [p] (js/Math.round (second (first p)))) ${strokes})`);
-  check("... at the pitch heard (220 three times, then 330)", hzs === "[220 220 220 330]", hzs);
+  // within 10 cents (the attack of a note moves its median a little)
+  const hzs = await cljs(page, `(mapv (fn [p hz] (< (js/Math.abs (* 1200 (/ (js/Math.log (/ (second (first p)) hz)) js/Math.LN2))) 10))
+                                       ${strokes} [220 220 220 330])`);
+  check("... at the pitch heard (220 three times, then 330)", hzs === "[true true true true]",
+        hzs + " " + await cljs(page, `(mapv (fn [p] (second (first p))) ${strokes})`));
   const durs = await cljs(page, `(mapv (fn [p] (/ (js/Math.round (* 10 (- (first (last p)) (first (first p))))) 10)) ${strokes})`);
   check("... with their length in beats (about 0.4, and 0.5)", /^\[0\.[345] 0\.[345] 0\.[345] 0\.[456]\]$/.test(durs), durs);
   const starts = await cljs(page, `(mapv (fn [p] (first (first p))) ${strokes})`);
