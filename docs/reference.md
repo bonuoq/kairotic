@@ -945,6 +945,42 @@ Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phaso
 
 See also: `phasor~`, `adsr~`, `freqt`, `reader`, `sample`
 
+### record
+
+`record [lo hi] [log] [tolerance]`
+
+Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer), stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation.
+
+**Inlets** 
+
+0. numbers (a knob, snapshot~, features~…); rec starts a take from 0, stop ends it
+1. a bang: the stroke being drawn ends, the next number begins another
+
+**Outlets** 
+
+0. edits for a canvas or freqt (its inlet): [:batch …], at most every 2 seconds
+
+**Messages and gestures**
+
+- `rec`: starts from 0; its first write clears the buffer
+- `stop`: writes what is left and stops
+
+**Try:** Press ▶, click rec, move the knob for a few seconds, click stop: the canvas holds the gesture. A phasor~ into a reader~ with the canvas on its right plays it back as an automation.
+
+```clojure
+(box :b1 "knob 0 1 0.5" 40 30)
+(box :b2 "msg rec" 140 30)
+(box :b3 "msg stop" 200 30)
+(box :b4 "record 0 1" 40 120)
+(box :b5 "canvas" 40 170)
+(connect :b1 0 :b4 0)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b4 0 :b5 0)
+```
+
+See also: `canvas`, `snapshot~`, `reader~`, `transcribe`
+
 ### sample
 
 `sample [seconds]`
