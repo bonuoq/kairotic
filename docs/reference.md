@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
+An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
 
 **Inlets** 
 
@@ -730,7 +730,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
+Stereo panning with equal power.
 
 **Inlets** 
 
@@ -949,7 +949,7 @@ See also: `phasor~`, `adsr~`, `freqt`, `reader`, `sample`
 
 `record [lo hi] [log] [tolerance]`
 
-Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer), stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation.
+Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer); rec t (msg rec 4) records from t seconds on, keeping what is before t and replacing what is after (punch-in); stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation.
 
 **Inlets** 
 
@@ -963,6 +963,7 @@ Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an
 **Messages and gestures**
 
 - `rec`: starts from 0; its first write clears the buffer
+- `rec t (msg rec 4)`: from t seconds: what is before t stays, what is after is replaced
 - `stop`: writes what is left and stops
 
 **Try:** Press ▶, click rec, move the knob for a few seconds, click stop: the canvas holds the gesture. A phasor~ into a reader~ with the canvas on its right plays it back as an automation.
@@ -985,7 +986,7 @@ See also: `canvas`, `snapshot~`, `reader~`, `transcribe`
 
 `sample [seconds]`
 
-A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN "https://…")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
+A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; rec t (msg rec 2.5) keeps its first t seconds and records from there (punch-in); `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN "https://…")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
 
 **Inlets** 
 
@@ -999,6 +1000,7 @@ A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop`
 **Messages and gestures**
 
 - `rec`: records what reaches it, from the beginning
+- `rec t (msg rec 2.5)`: keeps its first t seconds and records from there
 - `stop`: keeps what was heard
 - `clear`: empties it
 - `a URL (msg https://… · msg url github:… · a string)`: loads the sound there; every browser that opens the work fetches it
@@ -1130,7 +1132,7 @@ See also: `adc~`, `scope~`, `phasor~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
+A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
 
 **Inlets** 
 
@@ -1167,7 +1169,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
+Polyphonic triangle-wave synthesizer, one voice per id.
 
 **Inlets** 
 
@@ -1198,6 +1200,7 @@ Writes what pitch~ hears into a freqt, as strokes: notes at the pitch they hold 
 **Messages and gestures**
 
 - `rec`: starts a take from 0 (its first write clears the freqt)
+- `rec t (msg rec 8)`: from beat t: what is before t stays, what is after is replaced
 - `stop`: writes what is left and stops
 
 **Try:** Press ▶, click rec, sing a phrase, click stop: the freqt holds it. ⇄ shows it as a score. Write transcribe 60 glide to keep the slides.
