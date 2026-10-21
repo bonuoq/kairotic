@@ -48,7 +48,8 @@ export async function sounds(page, check) {
   // punch-in: rec 0.3 keeps the first 0.3 s and records from there (here at half the level)
   const gp = (await cljs(page, '(box "gain~ 1" 3300 100)')).trim();
   const sp = (await cljs(page, '(box "sample 5" 3300 160)')).trim();
-  await cljs(page, `(connect ${osc} 0 ${gp} 0) (connect ${gp} 0 ${sp} 0)`);
+  const gl = (await cljs(page, '(box "snapshot~ 50 peak" 3300 220)')).trim();
+  await cljs(page, `(connect ${osc} 0 ${gp} 0) (connect ${gp} 0 ${sp} 0) (connect ${gp} 0 ${gl} 0)`);
   await page.waitForTimeout(200);
   await cljs(page, `(send! ${sp} :rec)`); await page.waitForTimeout(600); await cljs(page, `(send! ${sp} :stop)`);
   await until(page, secs(sp), (g) => Number(g) > 0.4);
@@ -60,8 +61,9 @@ export async function sounds(page, check) {
                                         top (fn [xs] (apply max (map second xs)))]
                                     [(/ (js/Math.round (* 1000 (top (take (quot n 3) p)))) 1000)
                                      (/ (js/Math.round (* 1000 (top (take-last (quot n 3) p)))) 1000)])`);
-  check("... the first part at its level, the take after it at the new one", /^\[0\.1[45]\d? 0\.0[78]\d?\]$/.test(levels), levels);
-  await cljs(page, `(delete ${gp} ${sp})`);
+  check("... the first part at its level, the take after it at the new one", /^\[0\.1[45]\d? 0\.0[78]\d?\]$/.test(levels),
+        levels + " gain out: " + await cljs(page, `(get-in @eng/rt [:states ${gl}])`) + " " + await cljs(page, `(pr-str (:data (get-in (current) [:boxes ${sp}])))`).then((x) => x.slice(0, 300)));
+  await cljs(page, `(delete ${gp} ${sp} ${gl})`);
 
   // a reader~ plays it
   const ph = (await cljs(page, '(box "phasor~ 2" 3600 260)')).trim();
