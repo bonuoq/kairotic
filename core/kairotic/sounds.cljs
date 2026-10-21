@@ -112,19 +112,53 @@
   {:name (str (:name j)) :author (str (:username j)) :license (license-label (:license j))
    :page (str (or (:url j) (str "https://freesound.org/s/" (:id j) "/")))})
 
+(defn github-hrefs
+  "Where to look for a github: sound, in order. Without @ref jsDelivr serves the latest semver tag of the
+   repository (not its default branch), which may not have the file: then @main, then @master."
+  [spec]
+  (if (:ref spec)
+    [(github-url spec)]
+    (mapv (fn [ref] (github-url (assoc spec :ref ref))) [nil "main" "master"])))
+
 (defn resolve-url
-  "Promise of {:href url-to-fetch :credit {…}?} for a URL of a sound."
+  "Promise of {:hrefs [url-to-fetch …] :credit {…}?} for a URL of a sound: the hrefs are tried in order
+   while they answer 404."
   [u]
   (cond
-    (github-spec u) (js/Promise.resolve {:href (github-url (github-spec u))})
+    (github-spec u) (js/Promise.resolve {:hrefs (github-hrefs (github-spec u))})
     (freesound-id u)
     (.then (freesound-get (str "sounds/" (freesound-id u) "/") {:fields "id,name,username,license,url,previews"})
            (fn [j]
              (let [pv (:previews j)
                    href (or (get pv :preview-hq-mp3) (get pv :preview-hq-ogg) (get pv :preview-lq-mp3))]
                (when-not href (throw (js/Error. "Freesound gave no preview for that sound")))
-               {:href href :credit (freesound-credit j)})))
-    :else (js/Promise.resolve {:href u})))
+               {:hrefs [href] :credit (freesound-credit j)})))
+    :else (js/Promise.resolve {:hrefs [u]})))
+
+(defn fetch-first
+  "Promise of the bytes of the first of hrefs that answers; a 404 tries the next one. The error says
+   why, in words: not found (and for github: which version), refused by the site (CORS) or unreachable."
+  [u hrefs]
+  (let [github? (github-spec u)]
+    (letfn [(go [[href & more]]
+              (-> (js/fetch href)
+                  (.then (fn [r]
+                           (cond
+                             (.-ok r) (.arrayBuffer r)
+                             (and (= 404 (.-status r)) (seq more)) (go more)
+                             (= 404 (.-status r))
+                             (throw (js/Error. (if github?
+                                                 (str "not found (404): it is not in "
+                                                      (if (:ref github?) (str "@" (:ref github?)) "the latest tag, main or master")
+                                                      " of " (:owner github?) "/" (:repo github?) " — check the path, or add @branch or @commit")
+                                                 "not found (404)")))
+                             :else (throw (js/Error. (str "the site answered " (.-status r)))))))
+                  (.catch (fn [e]
+                            ;; fetch itself fails (a TypeError) when the site refuses the page or cannot be reached
+                            (throw (if (instance? js/TypeError e)
+                                     (js/Error. "the site does not let this page load it (CORS), or cannot be reached")
+                                     e))))))]
+      (go hrefs))))
 
 (defn as-url
   "A URL from what reaches a sample: a string, or a word as a msg box sends it (msg https://… or
@@ -232,11 +266,11 @@
   (or (get @fetching h)
       (let [credit (atom nil)
             p (-> (resolve-url url)
-                  (.then (fn [{:keys [href] c :credit}]
+                  (.then (fn [{:keys [hrefs] c :credit}]
                            (reset! credit c)
-                           (js/fetch href)))
-                  (.then (fn [r] (if (.-ok r) (.arrayBuffer r) (throw (js/Error. (str "HTTP " (.-status r)))))))
-                  (.then decode)
+                           (fetch-first url hrefs)))
+                  (.then (fn [buf] (.catch (decode buf)
+                                           (fn [_] (throw (js/Error. "it is not a sound this browser can decode"))))))
                   (.then (fn [{:keys [sr chans]}] (store! h sr chans)))
                   (.then (fn [_]
                            (when-let [c @credit] (swap! local assoc-in [h :credit] c))

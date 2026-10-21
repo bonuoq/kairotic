@@ -64,8 +64,7 @@
         (.then (fn [_] (let [full (merge (snd/about d) d)]
                          (gesture! (str "(sample! " id " " (pr-str full) ")"))
                          (snd/seconds full))))
-        (.catch (fn [e] (repl-print! "err" (esc (str "; " id ": " (or (.-message e) e)
-                                                      " (a URL of another site must allow it: CORS)"))))))))
+        (.catch (fn [e] (repl-print! "err" (esc (str "; " id ": " (or (.-message e) e)))))))))
 
 (defn load-sound!
   "Brings a sound into a sample box (wav, mp3, ogg, flac… whatever this browser can decode):
