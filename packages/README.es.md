@@ -10,7 +10,7 @@ publicados en npm bajo el ámbito `@kairotic` y servidos dentro de claude.ai por
 | [`@kairotic/synth`](synth/) | `adsr~ [a d s r]` una envolvente que sigue una puerta · `synth~` un sintetizador polifónico |
 | [`@kairotic/spatial`](spatial/) | `pan~ [posición]` panorama estéreo · `space~ [x y]` colocación binaural alrededor de quien escucha |
 | [`@kairotic/controls`](controls/) | `knob [mín máx inicial] [log] [nombre]` un control giratorio con su propia vista en el patch · `keyboard [grave teclas] [hold]` un teclado MIDI virtual con velocidad y acordes, para synth~ y faust~ |
-| [`@kairotic/analysis`](analysis/) | `features~ [ms] [descriptor …]` descriptores (rms, centroid, flatness, mfcc… con Meyda) · `pitch~ [lo hi]` la altura, por YIN · `onset~ [umbral] [ms]` los comienzos de los sonidos · `chroma~` las 12 clases de altura · `spectrum~ [lo hi]` el espectro, dibujado |
+| [`@kairotic/analysis`](analysis/) | `features~ [ms] [descriptor …]` descriptores (rms, centroid, flatness, mfcc… con Meyda) · `pitch~ [lo hi]` la altura, por YIN · `onset~ [umbral] [ms]` los comienzos de los sonidos · `chroma~` las 12 clases de altura · `spectrum~ [lo hi]` el espectro, dibujado · `transcribe [bpm] [notes|glide]` lo que oye pitch~, en un freqt |
 
 Previstos: `cac`, `notation`.
 

@@ -354,6 +354,20 @@
     :try "Press ▶ and play a chord or a drone: the bars show its pitch classes; print writes the strongest."
     :see ["pitch~" "mt" "features~"]}
 
+   "transcribe"
+   {:package "@kairotic/analysis" :usage "transcribe [bpm] [notes|glide] [ms]"
+    :doc "Writes what pitch~ hears into a freqt, as strokes: notes at the pitch they hold longest, or contours (glide)."
+    :inlets ["Hz from pitch~ (0: silence); rec starts from 0, stop ends" "a bang (from onset~): a new note, even on the same pitch"]
+    :outlets ["edits for a freqt: [:batch [[:stroke …] …]], at most every 2 seconds (one event of the history each)"]
+    :messages [["rec" "starts a take from 0 (its first write clears the freqt)"] ["stop" "writes what is left and stops"]]
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"pitch~ 80 1000\" 40 90)" "(box :b3 \"onset~\" 200 90)"
+                    "(box :b4 \"msg rec\" 330 90)" "(box :b5 \"msg stop\" 400 90)" "(box :b6 \"transcribe 60\" 40 160)"
+                    "(box :b7 \"freqt\" 40 220)"
+                    "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b2 0 :b6 0)" "(connect :b3 0 :b6 1)"
+                    "(connect :b4 0 :b6 0)" "(connect :b5 0 :b6 0)" "(connect :b6 0 :b7 0)")
+    :try "Press ▶, click rec, sing a phrase, click stop: the freqt holds it. ⇄ shows it as a score. Write transcribe 60 glide to keep the slides."
+    :see ["pitch~" "onset~" "freqt"]}
+
    "spectrum~"
    {:package "@kairotic/analysis" :usage "spectrum~ [lo hi]"
     :doc "The spectrum of a signal drawn in the patch, on a log scale of frequency (dB from -90 to 0)."
