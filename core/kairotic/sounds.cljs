@@ -151,17 +151,17 @@
     (letfn [(go [[href & more]]
               (-> (js/fetch href)
                   (.then (fn [r]
-                           (cond
-                             (.-ok r) (.arrayBuffer r)
-                             (seq more) (go more)
-                             (= 404 (.-status r)) (throw (not-found))
-                             :else (throw (js/Error. (str "the site answered " (.-status r)))))
-                         ;; fetch itself fails (a TypeError) when the site refuses the page or cannot be reached
-                         (fn [e]
-                           (cond
-                             (seq more) (go more)
-                             github? (throw (not-found))
-                             :else (throw (js/Error. "the site does not let this page load it (CORS), or cannot be reached"))))))))]
+                           (if (.-ok r)
+                             (.arrayBuffer r)
+                             (throw (if (= 404 (.-status r)) (not-found) (js/Error. (str "the site answered " (.-status r))))))))
+                  (.catch (fn [e]
+                            (cond
+                              (seq more) (go more)
+                              ;; fetch itself fails (a TypeError) when the site refuses the page or cannot be reached
+                              (instance? js/TypeError e)
+                              (throw (if github? (not-found)
+                                         (js/Error. "the site does not let this page load it (CORS), or cannot be reached")))
+                              :else (throw e))))))]
       (go hrefs))))
 
 (defn as-url
@@ -274,7 +274,7 @@
                            (reset! credit c)
                            (fetch-first url hrefs)))
                   (.then (fn [buf] (.catch (decode buf)
-                                           (fn [_] (throw (js/Error. "it is not a sound this browser can decode"))))))
+                                           (fn [e] (throw (js/Error. (str "it is not a sound this browser can decode (" (or (.-message e) e) ")")))))))
                   (.then (fn [{:keys [sr chans]}] (store! h sr chans)))
                   (.then (fn [_]
                            (when-let [c @credit] (swap! local assoc-in [h :credit] c))
