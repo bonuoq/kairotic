@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **A sound loaded in an earlier session keeps its length and picture**: read back from this browser's
+  store, it was not described again, so `(load-sound! :bN url)` wrote only `{:audio … :url …}` and the
+  box drew no waveform. Now it learns its sample rate, length, channels and peaks as when it was stored.
 - **`github:` without `@ref` finds the file**: jsDelivr then serves the latest semver tag of the
   repository, not its default branch, so a file added after that tag was not found (in this repository
   the only such tag is `v0.1.0-alpha`). Now it looks at `@main`, then `@master`, then that tag; a

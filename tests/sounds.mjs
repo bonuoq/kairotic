@@ -95,6 +95,16 @@ export async function sounds(page, check) {
                              (g) => g === `[${url} ${url}]`, 10000);
   check('msg "url" and msg url … load a sample', viaMsg === `[${url} ${url}]`, viaMsg);
   await cljs(page, `(delete ${m1} ${m2} ${s1} ${s2})`);
+  // a sound kept in an earlier session (in IndexedDB, not in memory) is described again when loaded
+  await cljs(page, "(reset! snd/cache {}) (reset! snd/local {}) (reset! snd/status {}) (reset! snd/fetching {})");
+  const again = (await cljs(page, '(box "sample" 4200 690)')).trim();
+  await cljs(page, `(load-sound! ${again} ${url})`);
+  // decoded at the rate of the engine: one second is as many frames as its rate
+  const desc = await until(page, `(let [d (:data (get-in (current) [:boxes ${again}]))] [(= (:sr d) (:frames d)) (count (:peaks d))])`,
+                           (g) => g === "[true 120]", 10000);
+  check("a sound loaded in an earlier session keeps its length and picture", desc === "[true 120]",
+        desc + " " + await cljs(page, `(pr-str (:data (get-in (current) [:boxes ${again}])))`));
+  await cljs(page, `(delete ${again})`);
   await cljs(page, `(sample! ${u4} {:url "tests/assets/nothing-here.wav"})`);
   const failed = await until(page, st(u4), (g) => g === ":failed", 10000);
   check("a URL that does not answer says so", failed === ":failed", failed);

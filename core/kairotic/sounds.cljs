@@ -226,11 +226,20 @@
   (if-let [s (get @cache h)]
     (js/Promise.resolve s)
     (-> (lib)
-        (.then (fn [L] (.get L h)))
-        (.then (fn [r]
+        (.then (fn [L] (.then (.get L h) (fn [r] [L r]))))
+        (.then (fn [[L r]]
                  (if r
-                   (let [s {:sr (.-sr r) :chans (.-chans r)}]
-                     (swap! cache assoc h s) (swap! status assoc h :here) s)
+                   (let [chans (.-chans r)
+                         s {:sr (.-sr r) :chans chans}]
+                     (swap! cache assoc h s)
+                     ;; what it is (length, picture), as when it was stored: a sound kept in an earlier
+                     ;; session is described again, so a description that is only a URL learns it too
+                     (when-not (:peaks (get @local h))
+                       (swap! local update h merge
+                              {:sr (.-sr r) :frames (.-length (aget chans 0)) :channels (.-length chans)
+                               :peaks (js->clj (.peaks L chans peak-columns))}))
+                     (swap! status assoc h :here)
+                     s)
                    (do (swap! status assoc h :missing) nil)))))))
 
 (defn store!
