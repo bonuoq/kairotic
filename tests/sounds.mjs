@@ -52,12 +52,13 @@ export async function sounds(page, check) {
   await cljs(page, `(connect ${osc} 0 ${gp} 0) (connect ${gp} 0 ${sp} 0) (connect ${gp} 0 ${gl} 0)`);
   await page.waitForTimeout(200);
   await cljs(page, `(send! ${sp} :rec)`); await page.waitForTimeout(600); await cljs(page, `(send! ${sp} :stop)`);
-  await until(page, secs(sp), (g) => Number(g) > 0.4);
+  const first = Number(await until(page, secs(sp), (g) => Number(g) > 0.4));
   await cljs(page, `(send! ${gp} 1 0.5)`); await page.waitForTimeout(200);
   const sent = await cljs(page, `(send! ${sp} [:rec 0.3])`); await page.waitForTimeout(150);
   const during = await cljs(page, `(let [n (eng/node ${sp})] [(some? n) (when n (pr-str (dissoc @(:rec n) :blocks :base))) (pr-str (last (get-in @eng/rt [:shows ${sp}])))])`);
   await page.waitForTimeout(250); await cljs(page, `(send! ${sp} :stop)`);
-  const plen = await until(page, secs(sp), (g) => Math.abs(Number(g) - 0.7) < 0.1, 8000);
+  // (the take of 0.6 s already passes for 0.7: wait for the new sound, written after it)
+  const plen = await until(page, secs(sp), (g) => Number(g) !== first && Math.abs(Number(g) - 0.7) < 0.1, 8000);
   check("rec t keeps the sound until t and records from there", Math.abs(Number(plen) - 0.7) < 0.1, plen);
   const levels = await cljs(page, `(let [p (:peaks (:data (get-in (current) [:boxes ${sp}]))) n (count p)
                                         top (fn [xs] (apply max (map second xs)))]
