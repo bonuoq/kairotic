@@ -404,7 +404,9 @@ registerProcessor('kairotic-player', KairoticPlayer);
         (.then (fn [d]
                  (api/effect! id [:sample [:set d]])
                  (api/report! id {:done d} nil)))
-        (.catch (fn [e] (api/report! id {:error (str "sample: " (or (.-message e) e))} nil))))))
+        (.catch (fn [e]
+                  (js/console.warn "sample:" e)
+                  (api/report! id {:error (str "sample: " (or (.-message e) e))} nil))))))
 
 (defn start!
   "rec: a new take (unless one is going on); the box hears that it started. With {:from t :base d} the
