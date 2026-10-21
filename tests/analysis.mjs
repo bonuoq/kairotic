@@ -50,9 +50,11 @@ export async function analysis(page, check) {
   check("onset~: a sound that starts three times makes onsets", Number(n) >= 2 && Number(n) <= 6, n);
 
   // transcribe: a sound that starts three times, then moves to another pitch, written into a freqt
+  // (the pitch~ above hears the osc~ itself: this one hears it through the gain~ that starts and stops it)
+  const p2 = (await cljs(page, '(box "pitch~" 5200 100)')).trim();
   const tr = (await cljs(page, '(box "transcribe 60" 5200 160)')).trim();
   const fq = (await cljs(page, '(box "freqt" 5200 220)')).trim();
-  await cljs(page, `(connect ${pitch} 0 ${tr} 0) (connect ${tr} 0 ${fq} 0)`);
+  await cljs(page, `(connect ${g} 0 ${p2} 0) (connect ${p2} 0 ${tr} 0) (connect ${tr} 0 ${fq} 0)`);
   await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(300);
   await cljs(page, `(send! ${tr} :rec)`);
   for (let i = 0; i < 3; i++) {
@@ -75,7 +77,7 @@ export async function analysis(page, check) {
   check("... from the beginning of the take", Number(JSON.parse(starts.replace(/ /g, ","))[0]) < 0.3, starts);
 
   await cljs(page, "(stop)");
-  await cljs(page, `(delete ${osc} ${pitch} ${feats} ${chroma} ${spec} ${g} ${onset} ${count} ${tr} ${fq})`);
+  await cljs(page, `(delete ${osc} ${pitch} ${feats} ${chroma} ${spec} ${g} ${onset} ${count} ${p2} ${tr} ${fq})`);
   page.off("console", onLog);
   check("no errors in the console during the analysis tests", logs.length === 0, logs.join(" | ").slice(0, 800));
 }
