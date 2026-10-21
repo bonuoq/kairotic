@@ -11,6 +11,7 @@ From any signal — an `adc~`, a `sample` played by a `reader~`, a `faust~` — 
 | `onset~ [threshold] [ms]` | a bang at the beginning of each sound (a note, a stroke, a syllable) and its strength |
 | `chroma~ [ms]` | 12 values from C to B and the strongest pitch class as a word (`:a`, `:c#`…) |
 | `spectrum~ [lo hi]` | the spectrum drawn in the patch, on a log scale of frequency |
+| `transcribe [bpm] [notes\|glide] [ms]` | what `pitch~` hears (and `onset~` splits), written into a `freqt` as strokes: flat notes at their median pitch, or contours that follow the voice; times in beats at bpm. `rec` starts from 0, `stop` ends |
 
 Each sends only what changed. `pitch~` runs YIN in its own AudioWorklet; the others take frames of 2048
 samples through the Kairotic API (`api/tap`) and compute them with
@@ -23,5 +24,8 @@ samples through the Kairotic API (`api/tap`) and compute them with
 (box :b4 "print" 40 200)
 (connect :b1 0 :b2 0) (connect :b2 0 :b3 0) (connect :b3 0 :b4 0)
 ```
+
+An improvisation into notation: `adc~` → `pitch~` → `transcribe` → `freqt`, with `onset~` on the right
+of `transcribe`; `rec`, play, `stop`; then `(view :bN :score)` on the freqt, or `(keep! …)` and `mt`.
 
 Writing one of its classes in a work brings the package into it. Licence: [MPL-2.0](../../LICENSE).

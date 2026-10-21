@@ -49,8 +49,32 @@ export async function analysis(page, check) {
   const n = await until(page, `(get-in @eng/rt [:states ${count}])`, (x) => Number(x) >= 2, 3000);
   check("onset~: a sound that starts three times makes onsets", Number(n) >= 2 && Number(n) <= 6, n);
 
+  // transcribe: a sound that starts three times, then moves to another pitch, written into a freqt
+  const tr = (await cljs(page, '(box "transcribe 60" 5200 160)')).trim();
+  const fq = (await cljs(page, '(box "freqt" 5200 220)')).trim();
+  await cljs(page, `(connect ${pitch} 0 ${tr} 0) (connect ${tr} 0 ${fq} 0)`);
+  await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(300);
+  await cljs(page, `(send! ${tr} :rec)`);
+  for (let i = 0; i < 3; i++) {
+    await cljs(page, `(send! ${g} 1 1)`); await page.waitForTimeout(400);
+    await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(300);
+  }
+  await cljs(page, `(send! ${osc} 330) (send! ${g} 1 1)`); await page.waitForTimeout(500);
+  await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(300);
+  await cljs(page, `(send! ${tr} :stop)`);
+  const strokes = `(mapv (fn [[_ s]] (:pts s)) (sort-by (fn [[_ s]] (ffirst (:pts s))) (:strokes (box-data ${fq}))))`;
+  const n4 = await until(page, `(count ${strokes})`, (x) => x === "4", 8000);
+  const pts = await cljs(page, strokes);
+  check("transcribe writes each note as a stroke of the freqt", n4 === "4", pts.slice(0, 400));
+  const hzs = await cljs(page, `(mapv (fn [p] (js/Math.round (second (first p)))) ${strokes})`);
+  check("... at the pitch heard (220 three times, then 330)", hzs === "[220 220 220 330]", hzs);
+  const durs = await cljs(page, `(mapv (fn [p] (/ (js/Math.round (* 10 (- (first (last p)) (first (first p))))) 10)) ${strokes})`);
+  check("... with their length in beats (about 0.4, and 0.5)", /^\[0\.[345] 0\.[345] 0\.[345] 0\.[456]\]$/.test(durs), durs);
+  const starts = await cljs(page, `(mapv (fn [p] (first (first p))) ${strokes})`);
+  check("... from the beginning of the take", Number(JSON.parse(starts.replace(/ /g, ","))[0]) < 0.3, starts);
+
   await cljs(page, "(stop)");
-  await cljs(page, `(delete ${osc} ${pitch} ${feats} ${chroma} ${spec} ${g} ${onset} ${count})`);
+  await cljs(page, `(delete ${osc} ${pitch} ${feats} ${chroma} ${spec} ${g} ${onset} ${count} ${tr} ${fq})`);
   page.off("console", onLog);
   check("no errors in the console during the analysis tests", logs.length === 0, logs.join(" | ").slice(0, 800));
 }

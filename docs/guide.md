@@ -110,6 +110,9 @@ comes first.
   written) turns what is heard into data: `pitch~` the pitch by YIN (Hz, and 0 when it stops hearing
   one), `onset~` a bang at each attack, `chroma~` the 12 pitch classes and the strongest one,
   `features~ rms centroid flatness …` descriptors (with Meyda), and `spectrum~` draws the spectrum.
+  `transcribe` writes what `pitch~` hears into a `freqt` — `rec`, play, `stop` — as notes at their pitch
+  or, with `transcribe 60 glide`, as contours that follow the voice (an `onset~` on its right splits
+  repeated notes); the freqt shown as a score is then the improvisation in notation.
 
 ## 4. The history
 

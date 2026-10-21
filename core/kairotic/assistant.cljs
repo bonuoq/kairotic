@@ -381,6 +381,8 @@ Rules:
 - Listening (package @kairotic/analysis, it comes by itself): `pitch~ [lo hi]` gives Hz (0 when it stops
   hearing a pitch) and clarity; `onset~` a bang per attack; `chroma~` 12 pitch-class values and the
   strongest class (:a …); `features~ [ms] rms centroid …` one outlet per descriptor; `spectrum~` draws.
+  To write what is played into notation: `pitch~` → `transcribe [bpm] [notes|glide]` (left; `onset~` on its
+  right) → a `freqt`'s inlet; `rec`/`stop` messages on transcribe's left.
 - `gain~ 0.2` sets its factor as an argument; a message into its right inlet changes it, a signal
   there replaces it. Do not leave a gain waiting for a message nobody sends.
 - Lay it out top to bottom, following the signal: x from 20 to 900, about 60 px between rows,
