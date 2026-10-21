@@ -64,7 +64,7 @@ export async function sounds(page, check) {
                                     [(/ (js/Math.round (* 1000 (top (take (quot n 3) p)))) 1000)
                                      (/ (js/Math.round (* 1000 (top (take-last (quot n 3) p)))) 1000)])`);
   check("... the first part at its level, the take after it at the new one", /^\[0\.1[45]\d? 0\.0[78]\d?\]$/.test(levels),
-        levels + " sent: " + sent + " during: " + during + " shows: " + await cljs(page, `(pr-str (take-last 4 (get-in @eng/rt [:shows ${sp}])))`) + " logs: " + logs.join(" | ") + " repl: " + await page.evaluate(() => [...document.querySelectorAll("#repl-out div")].slice(-6).map((d) => d.textContent).join(" | ")) + " gain out: " + await cljs(page, `(get-in @eng/rt [:states ${gl}])`) + " " + await cljs(page, `(pr-str (:data (get-in (current) [:boxes ${sp}])))`).then((x) => x.slice(0, 300)));
+        levels + " sent: " + sent + " during: " + during + " takes: " + await cljs(page, "(pr-str @snd/takes)") + " shows: " + await cljs(page, `(pr-str (take-last 4 (get-in @eng/rt [:shows ${sp}])))`) + " logs: " + logs.join(" | ") + " repl: " + await page.evaluate(() => [...document.querySelectorAll("#repl-out div")].slice(-6).map((d) => d.textContent).join(" | ")) + " gain out: " + await cljs(page, `(get-in @eng/rt [:states ${gl}])`) + " " + await cljs(page, `(pr-str (:data (get-in (current) [:boxes ${sp}])))`).then((x) => x.slice(0, 300)));
   await cljs(page, `(delete ${gp} ${sp} ${gl})`);
 
   // a reader~ plays it

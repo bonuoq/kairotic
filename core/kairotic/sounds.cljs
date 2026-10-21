@@ -379,21 +379,27 @@ registerProcessor('kairotic-player', KairoticPlayer);
          (.set out s n0)
          out)))))
 
+(defonce takes (atom []))   ; what the last takes did, step by step (for debugging and tests)
+(defn step! [x] (swap! takes (fn [t] (vec (take-last 30 (conj t x))))))
+
 (defn finish!
   "The end of a recording: its blocks become one sound, kept in this browser and written as the data
    of the box (through the page, an event of the history); the box hears it on inlet :audio."
   [node id]
   (when-let [{:keys [blocks sr max from base]} @(:rec node)]
     (reset! (:rec node) nil)
+    (step! [:finish id (count blocks) from])
     (-> (lib)
         (.then (fn [L]
                  (let [s (.concat L (clj->js blocks) max)]
+                   (step! [:joined id (.-length s)])
                    (cond
                      (zero? (.-length s)) (js/Promise.reject (js/Error. "nothing was recorded"))
                      ;; rec t: the sound it had until t, then the take (punch-in)
                      (some? from)
                      (.then (if (sample? base) (sound-for base) (js/Promise.resolve nil))
                             (fn [old]
+                              (step! [:old id (some? old) (:sr old)])
                               (cond
                                 (and (sample? base) (nil? old))
                                 (throw (js/Error. "the sound to record over is not in this browser"))
@@ -402,9 +408,11 @@ registerProcessor('kairotic-player', KairoticPlayer);
                                 :else (keep! sr (splice (:chans old) (js/Math.floor (* from sr)) s)))))
                      :else (keep! sr #js [s])))))
         (.then (fn [d]
+                 (step! [:kept id (:frames d)])
                  (api/effect! id [:sample [:set d]])
                  (api/report! id {:done d} nil)))
         (.catch (fn [e]
+                  (step! [:failed id (str (or (.-message e) e))])
                   (js/console.warn "sample:" e)
                   (api/report! id {:error (str "sample: " (or (.-message e) e))} nil))))))
 
@@ -422,6 +430,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
 (defn stop!
   "stop: what was heard until now (the worklet hands its last samples at once) becomes the take."
   [node]
+  (step! [:stop (:id node) (some? @(:rec node)) (some? @(:tap node))])
   (when @(:rec node)
     (if-let [w @(:tap node)]
       (api/retap w {:flush true :active false})
