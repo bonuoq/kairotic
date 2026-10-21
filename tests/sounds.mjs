@@ -54,7 +54,9 @@ export async function sounds(page, check) {
   await cljs(page, `(send! ${sp} :rec)`); await page.waitForTimeout(600); await cljs(page, `(send! ${sp} :stop)`);
   await until(page, secs(sp), (g) => Number(g) > 0.4);
   await cljs(page, `(send! ${gp} 1 0.5)`); await page.waitForTimeout(200);
-  await cljs(page, `(send! ${sp} [:rec 0.3])`); await page.waitForTimeout(400); await cljs(page, `(send! ${sp} :stop)`);
+  const sent = await cljs(page, `(send! ${sp} [:rec 0.3])`); await page.waitForTimeout(150);
+  const during = await cljs(page, `(let [n (eng/node ${sp})] [(some? n) (when n (pr-str (dissoc @(:rec n) :blocks :base))) (pr-str (last (get-in @eng/rt [:shows ${sp}])))])`);
+  await page.waitForTimeout(250); await cljs(page, `(send! ${sp} :stop)`);
   const plen = await until(page, secs(sp), (g) => Math.abs(Number(g) - 0.7) < 0.1, 8000);
   check("rec t keeps the sound until t and records from there", Math.abs(Number(plen) - 0.7) < 0.1, plen);
   const levels = await cljs(page, `(let [p (:peaks (:data (get-in (current) [:boxes ${sp}]))) n (count p)
@@ -62,7 +64,7 @@ export async function sounds(page, check) {
                                     [(/ (js/Math.round (* 1000 (top (take (quot n 3) p)))) 1000)
                                      (/ (js/Math.round (* 1000 (top (take-last (quot n 3) p)))) 1000)])`);
   check("... the first part at its level, the take after it at the new one", /^\[0\.1[45]\d? 0\.0[78]\d?\]$/.test(levels),
-        levels + " repl: " + await page.evaluate(() => [...document.querySelectorAll("#repl-out div")].slice(-6).map((d) => d.textContent).join(" | ")) + " gain out: " + await cljs(page, `(get-in @eng/rt [:states ${gl}])`) + " " + await cljs(page, `(pr-str (:data (get-in (current) [:boxes ${sp}])))`).then((x) => x.slice(0, 300)));
+        levels + " sent: " + sent + " during: " + during + " repl: " + await page.evaluate(() => [...document.querySelectorAll("#repl-out div")].slice(-6).map((d) => d.textContent).join(" | ")) + " gain out: " + await cljs(page, `(get-in @eng/rt [:states ${gl}])`) + " " + await cljs(page, `(pr-str (:data (get-in (current) [:boxes ${sp}])))`).then((x) => x.slice(0, 300)));
   await cljs(page, `(delete ${gp} ${sp} ${gl})`);
 
   // a reader~ plays it
