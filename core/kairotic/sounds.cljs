@@ -112,19 +112,57 @@
   {:name (str (:name j)) :author (str (:username j)) :license (license-label (:license j))
    :page (str (or (:url j) (str "https://freesound.org/s/" (:id j) "/")))})
 
+(defn github-hrefs
+  "Where to look for a github: sound, in order. Without @ref: @main, @master, then what jsDelivr serves
+   without a version — the latest semver tag of the repository, not its default branch, which may not
+   have the file."
+  [spec]
+  (if (:ref spec)
+    [(github-url spec)]
+    (mapv (fn [ref] (github-url (assoc spec :ref ref))) ["main" "master" nil])))
+
 (defn resolve-url
-  "Promise of {:href url-to-fetch :credit {…}?} for a URL of a sound."
+  "Promise of {:hrefs [url-to-fetch …] :credit {…}?} for a URL of a sound: the hrefs are tried in order
+   while they answer 404."
   [u]
   (cond
-    (github-spec u) (js/Promise.resolve {:href (github-url (github-spec u))})
+    (github-spec u) (js/Promise.resolve {:hrefs (github-hrefs (github-spec u))})
     (freesound-id u)
     (.then (freesound-get (str "sounds/" (freesound-id u) "/") {:fields "id,name,username,license,url,previews"})
            (fn [j]
              (let [pv (:previews j)
                    href (or (get pv :preview-hq-mp3) (get pv :preview-hq-ogg) (get pv :preview-lq-mp3))]
                (when-not href (throw (js/Error. "Freesound gave no preview for that sound")))
-               {:href href :credit (freesound-credit j)})))
-    :else (js/Promise.resolve {:href u})))
+               {:hrefs [href] :credit (freesound-credit j)})))
+    :else (js/Promise.resolve {:hrefs [u]})))
+
+(defn fetch-first
+  "Promise of the bytes of the first of hrefs that answers; if one fails the next is tried (jsDelivr
+   answers a file it does not have without the CORS header, so a missing file fails like a refused one).
+   The error says why, in words: not found (and for github: where it looked), refused by the site (CORS)
+   or unreachable."
+  [u hrefs]
+  (let [github? (github-spec u)
+        not-found (fn [] (js/Error. (if github?
+                                      (str "not found: it is not in "
+                                           (if (:ref github?) (str "@" (:ref github?)) "@main, @master or the latest tag")
+                                           " of " (:owner github?) "/" (:repo github?) " — check the path, or add @branch or @commit")
+                                      "not found (404)")))]
+    (letfn [(go [[href & more]]
+              (-> (js/fetch href)
+                  (.then (fn [r]
+                           (if (.-ok r)
+                             (.arrayBuffer r)
+                             (throw (if (= 404 (.-status r)) (not-found) (js/Error. (str "the site answered " (.-status r))))))))
+                  (.catch (fn [e]
+                            (cond
+                              (seq more) (go more)
+                              ;; fetch itself fails (a TypeError) when the site refuses the page or cannot be reached
+                              (instance? js/TypeError e)
+                              (throw (if github? (not-found)
+                                         (js/Error. "the site does not let this page load it (CORS), or cannot be reached")))
+                              :else (throw e))))))]
+      (go hrefs))))
 
 (defn as-url
   "A URL from what reaches a sample: a string, or a word as a msg box sends it (msg https://… or
@@ -232,11 +270,11 @@
   (or (get @fetching h)
       (let [credit (atom nil)
             p (-> (resolve-url url)
-                  (.then (fn [{:keys [href] c :credit}]
+                  (.then (fn [{:keys [hrefs] c :credit}]
                            (reset! credit c)
-                           (js/fetch href)))
-                  (.then (fn [r] (if (.-ok r) (.arrayBuffer r) (throw (js/Error. (str "HTTP " (.-status r)))))))
-                  (.then decode)
+                           (fetch-first url hrefs)))
+                  (.then (fn [buf] (.catch (decode buf)
+                                           (fn [e] (throw (js/Error. (str "it is not a sound this browser can decode (" (or (.-message e) e) ")")))))))
                   (.then (fn [{:keys [sr chans]}] (store! h sr chans)))
                   (.then (fn [_]
                            (when-let [c @credit] (swap! local assoc-in [h :credit] c))

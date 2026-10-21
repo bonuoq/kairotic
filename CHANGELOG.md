@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`github:` without `@ref` finds the file**: jsDelivr then serves the latest semver tag of the
+  repository, not its default branch, so a file added after that tag was not found (in this repository
+  the only such tag is `v0.1.0-alpha`). Now it looks at `@main`, then `@master`, then that tag; a
+  file jsDelivr does not have comes without the CORS header, so any failure tries the next place. Why a
+  sound could not be loaded is said in words — not found (and where it looked), refused by the site
+  (CORS) or unreachable, not a sound — instead of always suggesting CORS.
 - **`msg` sends strings**: text between quotes is a string — `msg "https://…"`, `msg "two words"`,
   `msg url "github:…" 3` — with `\"` and `\\` inside; numbers and words are as before (`msg stop` is
   still `:stop`). Until now every word was a keyword, so a box that takes text got `:"…"` with its quotes.

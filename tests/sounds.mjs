@@ -71,7 +71,7 @@ export async function sounds(page, check) {
   await cljs(page, `(sample! ${u1} {:url ${url}})`);
   const st = (id) => `(get @snd/status (:audio (:data (get-in (current) [:boxes ${id}]))))`;
   const got = await until(page, st(u1), (g) => g === ":here", 10000);
-  check("a sample that is only a URL fetches its sound", got === ":here", got);
+  check("a sample that is only a URL fetches its sound", got === ":here", got + " " + await cljs(page, "(pr-str @snd/failures)"));
   const len = await until(page, secs(u1), (g) => Math.abs(Number(g) - 1) < 0.01);
   check("... and learns its length (one second)", Math.abs(Number(len) - 1) < 0.01, len);
   await cljs(page, `(connect ${ph} 0 ${rd} 0) (disconnect ${s} 1 ${rd} 1) (connect ${u1} 1 ${rd} 1)`);
@@ -107,6 +107,17 @@ export async function sounds(page, check) {
   await cljs(page, `(sample! ${g1} {:url "github:bonuoq/kairotic@fbcfa5fcb2208973eea6a71f49d8ac14bc308a9e/tests/assets/a440.wav"})`);
   const glen = await until(page, secs(g1), (g) => Math.abs(Number(g) - 1) < 0.01, 20000);
   check("github: loads a sound of a repository through jsDelivr", Math.abs(Number(glen) - 1) < 0.01, glen + " " + await cljs(page, st(g1)));
+  // without @ref jsDelivr serves the latest semver tag (v0.1.0-alpha here, which has no tests/assets/): main first
+  const g3 = (await cljs(page, '(box "sample" 4500 460)')).trim();
+  const g4 = (await cljs(page, '(box "sample" 4500 560)')).trim();
+  await cljs(page, `(sample! ${g3} {:url "github:bonuoq/kairotic/tests/assets/a440.wav"})`);
+  const g3len = await until(page, secs(g3), (g) => Math.abs(Number(g) - 1) < 0.01, 40000);
+  check("github: without @ref looks at main", Math.abs(Number(g3len) - 1) < 0.01, g3len + " " + await cljs(page, st(g3)));
+  await cljs(page, `(sample! ${g4} {:url "github:bonuoq/kairotic@main/tests/assets/nothing-here.wav"})`);
+  await until(page, st(g4), (g) => g === ":failed", 40000);
+  const g4why = await cljs(page, `(get @snd/failures (:audio (:data (get-in (current) [:boxes ${g4}]))))`);
+  check("a github: file that is not there says where it looked", /not in @main of bonuoq\/kairotic/.test(g4why) && !/CORS/.test(g4why), g4why);
+  await cljs(page, `(delete ${g3} ${g4})`);
   await cljs(page, `(sample! ${g2} {:url "freesound:12345"})`);
   const nokey = await until(page, st(g2), (g) => g === ":failed", 5000);
   const why = await cljs(page, `(get @snd/failures (:audio (:data (get-in (current) [:boxes ${g2}]))))`);
