@@ -168,7 +168,7 @@
   {"@kairotic/synth"    {:version "0.1.1" :classes #{"adsr~" "synth~"}  :local "kairotic/packages/synth.mjs"}
    "@kairotic/spatial"  {:version "0.1.1" :classes #{"pan~" "space~"}   :local "kairotic/packages/spatial.mjs"}
    "@kairotic/controls" {:version "0.1.1" :classes #{"knob" "keyboard"} :local "kairotic/packages/controls.mjs"}
-   "@kairotic/analysis" {:version "0.2.0" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe"}
+   "@kairotic/analysis" {:version "0.2.1" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe"}
                          :local "kairotic/packages/analysis.mjs"}})
 
 (defn package-of

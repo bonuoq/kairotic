@@ -5,7 +5,9 @@
 ;; any drawing and read again with reader~, as an automation.
 ;;
 ;;   record [lo hi] [log] [tolerance]
-;;     left: numbers; rec starts a take from 0 (its first write clears the buffer), stop ends it
+;;     left: numbers; rec starts a take from 0 (its first write clears the buffer), stop ends it;
+;;           rec t (a msg rec 4, or [:rec 4]) records from t on: what was there before t stays, from t
+;;           on it is replaced (punch-in)
 ;;     right: a bang ends the stroke that is being drawn; the next number begins another
 ;;     out: edits for the canvas (or freqt) on its inlet
 ;;
@@ -59,7 +61,8 @@
   "The axes a canvas should have now, as edits (a freqt leaves them out)."
   [state]
   (let [t1 (max 1 (:t-end state 0))
-        lo (or (:lo state) (:min state)) hi (or (:hi state) (:max state))
+        ;; a take from t keeps the Y axis the canvas had (what is before t was drawn on it), unless lo hi
+        lo (or (:lo state) (when-not (:from state) (:min state))) hi (or (:hi state) (when-not (:from state) (:max state)))
         [lo hi] (cond (and lo hi (< lo hi)) (if (:lo state) [lo hi] (let [m (* 0.05 (- hi lo))] [(- lo m) (+ hi m)]))
                       (and lo hi) [(- lo 0.5) (+ hi 0.5)]
                       :else nil)]
@@ -83,7 +86,8 @@
         ;; a stroke of one point waits for the next one (nothing is written, nothing is marked as sent)
         (if (seq strokes)
           [(assoc state :dirty #{} :sent at :pending false :fresh false)
-           [:batch (vec (concat (when (:fresh state) [[:clear]]) (axes state) strokes))]
+           [:batch (vec (concat (when (:fresh state) [(if (:from state) [:cut (:from state)] [:clear])])
+                                (axes state) strokes))]
            nil]
           [state nil nil]))
       (:pending state) [state nil nil]
@@ -95,7 +99,9 @@
   [state v at]
   (let [t (- at (:t0 state))
         id (:cur state)
-        state (if id state (-> state (update :n inc) (as-> s (assoc s :cur (keyword (str "r" (:n s)))))))
+        ;; ids of a take from t carry the take, so they do not replace strokes kept from an earlier one
+        state (if id state (-> state (update :n inc)
+                               (as-> s (assoc s :cur (keyword (str "r" (when (:from s) (str (:take s) "-")) (:n s)))))))
         id (:cur state)
         pts (get-in state [:strokes id] [])
         [_ lv] (peek pts)
@@ -122,7 +128,7 @@
     later (assoc :later [later])))
 
 (comp/define! "record"
-  {:doc "Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer), stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation."
+  {:doc "Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer); rec t (msg rec 4) records from t seconds on, keeping what is before t and replacing what is after (punch-in); stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation."
    :usage "record [lo hi] [log] [tolerance]"
    :license "MPL-2.0"
    :io [2 1]
@@ -130,9 +136,12 @@
    :receive (fn [{:keys [inlet value state args at]}]
               (let [state (or state {})]
                 (cond
-                  (= value :rec)
-                  (let [{:keys [lo hi tol log]} (args-of args)]
-                    {:state {:on true :t0 at :lo lo :hi hi :tol tol :log log :n 0 :strokes {} :dirty #{} :fresh true}
+                  (or (= value :rec) (and (vector? value) (= :rec (first value))))
+                  (let [{:keys [lo hi tol log]} (args-of args)
+                        from (when (vector? value) (let [x (second value)] (when (and (number? x) (>= x 0)) x)))]
+                    {:state (cond-> {:on true :t0 (- at (or from 0)) :lo lo :hi hi :tol tol :log log :n 0 :strokes {}
+                                     :dirty #{} :fresh true}
+                              from (assoc :from from :take (js/Math.round (* 1000 at))))
                      :show {:on true :n 0}})
                   (not (:on state)) {}
                   (= value :stop)

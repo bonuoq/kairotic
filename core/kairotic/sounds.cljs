@@ -366,29 +366,54 @@ registerProcessor('kairotic-player', KairoticPlayer);
 
 (defn sample-seconds [x] (comp/clamp (or (comp/num-of x) 60) 0.1 600))
 
+(defn splice
+  "The channels of an old sound (a JS array of Float32Array, or nil) until frame n0 — silence where it is
+   shorter —, then the new samples s, in every channel."
+  [old n0 s]
+  (let [C (if old (max 1 (.-length old)) 1)]
+    (into-array
+     (for [c (range C)]
+       (let [out (js/Float32Array. (+ n0 (.-length s)))
+             o (when old (aget old c))]
+         (when o (.set out (.subarray o 0 (min n0 (.-length o)))))
+         (.set out s n0)
+         out)))))
+
 (defn finish!
   "The end of a recording: its blocks become one sound, kept in this browser and written as the data
    of the box (through the page, an event of the history); the box hears it on inlet :audio."
   [node id]
-  (when-let [{:keys [blocks sr max]} @(:rec node)]
+  (when-let [{:keys [blocks sr max from base]} @(:rec node)]
     (reset! (:rec node) nil)
     (-> (lib)
         (.then (fn [L]
                  (let [s (.concat L (clj->js blocks) max)]
-                   (if (zero? (.-length s))
-                     (js/Promise.reject (js/Error. "nothing was recorded"))
-                     (keep! sr #js [s])))))
+                   (cond
+                     (zero? (.-length s)) (js/Promise.reject (js/Error. "nothing was recorded"))
+                     ;; rec t: the sound it had until t, then the take (punch-in)
+                     (some? from)
+                     (.then (if (sample? base) (sound-for base) (js/Promise.resolve nil))
+                            (fn [old]
+                              (cond
+                                (and (sample? base) (nil? old))
+                                (throw (js/Error. "the sound to record over is not in this browser"))
+                                (and old (not= (:sr old) sr))
+                                (throw (js/Error. (str "the sound to record over is at " (:sr old) " Hz, the engine at " sr " Hz")))
+                                :else (keep! sr (splice (:chans old) (js/Math.floor (* from sr)) s)))))
+                     :else (keep! sr #js [s])))))
         (.then (fn [d]
                  (api/effect! id [:sample [:set d]])
                  (api/report! id {:done d} nil)))
         (.catch (fn [e] (api/report! id {:error (str "sample: " (or (.-message e) e))} nil))))))
 
 (defn start!
-  "rec: a new take (unless one is going on); the box hears that it started."
-  [node at]
+  "rec: a new take (unless one is going on); the box hears that it started. With {:from t :base d} the
+   take goes after the first t seconds of the sound d (punch-in)."
+  [node at opts]
   (when-not @(:rec node)
     (let [sr (.-sampleRate (:ac node))]
-      (reset! (:rec node) {:blocks [] :n 0 :sr sr :max (js/Math.floor (* sr @(:seconds node)))})
+      (reset! (:rec node) (merge {:blocks [] :n 0 :sr sr :max (js/Math.floor (* sr @(:seconds node)))}
+                                 (when (map? opts) (select-keys opts [:from :base]))))
       (when-let [w @(:tap node)] (api/retap w {:active true}))
       (api/report! (:id node) {:started true} at))))
 
@@ -410,7 +435,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
       (when full (when-let [w @(:tap node)] (api/retap w {:active false})))
       (if (or last full)
         (finish! node (:id node))
-        (api/report! (:id node) {:progress (/ (:n r) (:sr r)) :level (when-let [L @(:L node)] (.peak L b))} nil)))))
+        (api/report! (:id node) {:progress (+ (or (:from r) 0) (/ (:n r) (:sr r))) :level (when-let [L @(:L node)] (.peak L b))} nil)))))
 
 (defn wave-points
   "The waveform of a description: its peaks as a zigzag from x0 to x1 around the line at y mid."
@@ -424,7 +449,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
 (defn fmt-s [s] (str (comp/nice s) " s"))
 
 (comp/define! "sample"
-  {:doc "A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN \"https://…\")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV."
+  {:doc "A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; rec t (msg rec 2.5) keeps its first t seconds and records from there (punch-in); `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN \"https://…\")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV."
    :usage "sample [seconds]"
    :license "MPL-2.0"
    :io [1 2]
@@ -446,6 +471,9 @@ registerProcessor('kairotic-player', KairoticPlayer);
                     :else {})
                   ;; the node says when it starts (only while ▶ is on: without it there is no sound to record)
                   (= value :rec) {:effects [[:rec true]]}
+                  ;; rec t (msg rec 2.5): the sound until t stays, the take replaces what comes after (punch-in)
+                  (and (vector? value) (= :rec (first value)) (number? (second value)) (>= (second value) 0))
+                  {:effects [[:rec {:from (second value) :base (when (sample? data) data)}]]}
                   (= value :stop) {:effects [[:rec false]]}
                   (= value :bang) (if (sample? data) {:out [[0 (seconds data)]]} {})
                   (= value :clear) {:effects [[:sample [:clear]]]}
@@ -503,7 +531,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
                        node))
            :update (fn [node b _]
                      (reset! (:seconds node) (sample-seconds (:seconds (comp/args-for (comp/lookup "sample") (:text b))))))
-           :effects {:rec (fn [node on at] (if on (start! node at) (stop! node)))}
+           :effects {:rec (fn [node on at] (if on (start! node at on) (stop! node)))}
            ;; ■ while recording keeps what was heard until then
            :dispose (fn [node]
                       (reset! (:alive node) false)

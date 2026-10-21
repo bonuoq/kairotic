@@ -79,6 +79,19 @@ export async function analysis(page, check) {
   const starts = await cljs(page, `(mapv (fn [p] (first (first p))) ${strokes})`);
   check("... from the beginning of the take", Number(JSON.parse(starts.replace(/ /g, ","))[0]) < 0.3, starts);
 
+  // punch-in: rec 1 keeps what is before beat 1 (the second note cut there) and writes from it
+  await cljs(page, `(send! ${osc} 440) (send! ${tr} [:rec 1])`);
+  await cljs(page, `(send! ${g} 1 1)`); await page.waitForTimeout(500);
+  await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(300);
+  await cljs(page, `(send! ${tr} :stop)`);
+  const after = await until(page, `(mapv (fn [p] [(js/Math.round (second (first p))) (first (first p)) (first (last p))]) ${strokes})`,
+                            (x) => (x.match(/\[/g) || []).length === 4, 8000);
+  const ok = await cljs(page, `(let [s (mapv (fn [p] [(second (first p)) (first (first p)) (first (last p))]) ${strokes})
+                                     near (fn [a b] (< (js/Math.abs (* 1200 (/ (js/Math.log (/ a b)) js/Math.LN2))) 15))]
+                                 [(count s) (near (first (nth s 0)) 220) (near (first (nth s 1)) 220) (<= (nth (nth s 1) 2) 1)
+                                  (near (first (nth s 2)) 440) (>= (second (nth s 2)) 1)])`);
+  check("transcribe rec t keeps what is before t and writes from it", ok === "[3 true true true true true]", ok + " " + after);
+
   await cljs(page, "(stop)");
   await cljs(page, `(delete ${osc} ${pitch} ${feats} ${chroma} ${spec} ${g} ${onset} ${count} ${p2} ${tr} ${fq})`);
   page.off("console", onLog);

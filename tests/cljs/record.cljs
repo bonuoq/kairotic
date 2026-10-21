@@ -3,6 +3,7 @@
 (ns kairotic.test.record
   (:require [kairotic.components :as comp]
             [kairotic.record :as rec]
+            [kairotic.canvas :as cv]
             [kairotic.test :as t]))
 
 (defn recv [state m] ((:receive (comp/lookup "record")) (merge {:state state :args [] :inlet 0} m)))
@@ -43,4 +44,18 @@
     (let [[_ outs] (run [] (concat [[0 :rec 0]] (for [i (range 40)] [0 (mod i 2) (* i 0.1)])))]
       (t/is "while recording it writes at most every 2 seconds"
             (<= (count outs) 3)))
+    ;; rec t: from t on (punch-in)
+    (let [[st outs] (run [] [[0 [:rec 3] 10] [0 0.2 10.5] [0 0.8 11] [0 :stop 12]])
+          edits (second (first outs))
+          strokes (filter (fn [e] (= :stroke (first e))) (mapcat second outs))]
+      (t/eq "rec t: the first write cuts from t instead of clearing" (first edits) [:cut 3])
+      (t/is "... keeps the Y axis of the canvas" (not-any? (fn [e] (= [:axis :y] (take 2 e))) edits))
+      (t/eq "... and its times go on from t" (ffirst (nth (last strokes) 2)) 3.5)
+      (t/is "... with ids of its own" (re-matches #"r\d+-1" (name (second (last strokes))))))
+    (let [d {:strokes {:t1 {:pts [[0 1] [2 3]]} :t2 {:pts [[3 1] [4 1]]} :t3 {:pts [[0 5] [0.5 5]]}}
+             :ax {:x {:lo 0 :hi 4 :log false} :y {:lo 0 :hi 6 :log false}}}]
+      (t/eq "cut: a stroke that crosses t ends at t, one after t is erased, one before stays"
+            (set (cv/cut-events d 1)) #{[:stroke :t1 [[0 1] [1 2]]] [:erase :t2]}))
+    (let [f {:strokes {:t1 {:pts [[0 100] [2 400]]}}}]
+      (t/eq "... on a freqt the point at t is geometric (pitch)" (cv/cut-events f 1) [[:stroke :t1 [[0 100] [1 200]]]]))
     (t/eq "before rec it does nothing" (recv nil {:value 0.5 :at 1}) {})))

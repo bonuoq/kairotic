@@ -45,7 +45,8 @@
                 (or force (nil? (:sent state)) (>= (- at (:sent state)) flush-every))
                 ;; the first write of a take clears the freqt (as part of the same event)
                 [(assoc state :done [] :sent at :pending false :fresh false)
-                 [:batch (into (if (:fresh state) [[:clear]] []) (mapv (fn [pts] [:stroke pts]) (:done state)))] nil]
+                 [:batch (into (if (:fresh state) [(if (:from state) [:cut (:from state)] [:clear])] [])
+                               (mapv (fn [pts] [:stroke pts]) (:done state)))] nil]
                 (:pending state) [state nil nil]
                 :else [(assoc state :pending true) nil [(+ (:sent state) flush-every) 0 [:flush]]]))
       result (fn [state [st edit later]]
@@ -67,7 +68,7 @@
   {;; ── about ──
    :class "transcribe"
    :license "MPL-2.0"
-   :doc "Writes what pitch~ hears into a freqt, as strokes. Hz on the left (from pitch~: 0 when it hears none), rec to start from 0 (its first write clears the freqt) and stop to end; a bang on the right (from onset~) begins a new note even on the same pitch. In notes mode each note is a flat stroke at the pitch it holds longest (the freqt's tuning, or its score view, rounds it); in glide mode a stroke follows the pitch as it moves. Times are beats at bpm (60: one beat a second). Notes shorter than ms (60) are left out. It writes into the freqt at most every 2 seconds, each time one event of the history. Connect its outlet to the freqt's inlet."
+   :doc "Writes what pitch~ hears into a freqt, as strokes. Hz on the left (from pitch~: 0 when it hears none), rec to start from 0 (its first write clears the freqt) or rec t (msg rec 8) to start from beat t, keeping what is before it and stop to end; a bang on the right (from onset~) begins a new note even on the same pitch. In notes mode each note is a flat stroke at the pitch it holds longest (the freqt's tuning, or its score view, rounds it); in glide mode a stroke follows the pitch as it moves. Times are beats at bpm (60: one beat a second). Notes shorter than ms (60) are left out. It writes into the freqt at most every 2 seconds, each time one event of the history. Connect its outlet to the freqt's inlet."
    :usage "transcribe [bpm] [notes|glide] [ms]"
    :io [2 1]
    :size [124 30]
@@ -77,10 +78,15 @@
    :receive (fn [{:keys [inlet value state args at]}]
               (let [state (or state {})]
                 (cond
-                  (= value :rec)
-                  {:state {:on true :t0 at :bpm (api/clamp (:bpm args) 10 400) :mode (mode-of args)
-                           :min-ms (api/clamp (:min-ms args) 0 2000) :done [] :count 0 :fresh true}
-                   :show {:on true :count 0}}
+                  ;; rec: a take from 0 (its first write clears the freqt); [:rec t] (msg rec 8): from beat t on,
+                  ;; keeping what is before t (punch-in)
+                  (or (= value :rec) (and (vector? value) (= :rec (first value))))
+                  (let [bpm (api/clamp (:bpm args) 10 400)
+                        from (when (vector? value) (let [x (second value)] (when (and (number? x) (>= x 0)) x)))]
+                    {:state (cond-> {:on true :t0 (- at (* (or from 0) (/ 60 bpm))) :bpm bpm :mode (mode-of args)
+                                     :min-ms (api/clamp (:min-ms args) 0 2000) :done [] :count 0 :fresh true}
+                              from (assoc :from from))
+                     :show {:on true :count 0}})
                   (not (:on state)) {}
                   (= value :stop)
                   (let [st (end-note state (beats state at))

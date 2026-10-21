@@ -30,6 +30,13 @@ export async function record(page, check) {
   check("... and fits the axes of the canvas to the take", ax === "[true true true]", ax + " " + await cljs(page, `(pr-str (:ax (box-data ${c})))`));
   const hz = await until(page, `(mapv second (get-in (box-data ${f}) [:strokes :r1 :pts]))`, (g) => /440/.test(g), 6000);
   check("into a freqt: values in Hz", /^\[220 220 440 440 330 330\]$/.test(hz), hz);
+  // punch-in: rec 1 keeps the take until 1 s and replaces what comes after
+  await cljs(page, `(send! ${r} [:rec 1])`);
+  await cljs(page, `(send! ${r} 0.6)`); await page.waitForTimeout(400);
+  await cljs(page, `(send! ${r} :stop)`);
+  const kept = await until(page, `(let [s (:strokes (box-data ${c}))] [(count s) (first (last (get-in s [:r1 :pts]))) (some (fn [[k v]] (when (not= k :r1) (ffirst (:pts v)))) s)])`,
+                           (g) => /^\[2 1 1(\.\d+)?\]$/.test(g), 6000);
+  check("rec t keeps the take until t and records from there", /^\[2 1 1(\.\d+)?\]$/.test(kept), kept + " " + await cljs(page, `(pr-str (:strokes (box-data ${c})))`));
   // read back: a reader~ along the canvas gives the values again
   const ph = (await cljs(page, '(box "phasor~ 1" 5600 260)')).trim();
   const rd = (await cljs(page, '(box "reader~" 5600 310)')).trim();

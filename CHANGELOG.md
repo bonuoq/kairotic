@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Recording from a point (punch-in)**: `rec t` — `msg rec 4`, or `[:rec 4]` — on a `sample`, a
+  `record` or a `transcribe` keeps what was there before t and records from t on, replacing what came
+  after; plain `rec` still starts from 0 and clears. t is in seconds (beats for transcribe). A sample
+  joins its first t seconds (silence if it was shorter) with the take, in as many channels as it had; a
+  canvas or freqt gets the new edit `[:cut t]`, which erases the strokes that begin at t or later and
+  ends at t those that cross it (the point at t interpolated on the scale of the axis), in the same event
+  as the first strokes of the take. Strokes of a `record` take from t have ids of their own, so they do
+  not replace kept ones; its Y axis is left as it was. `@kairotic/analysis` 0.2.1. Tests:
+  `tests/cljs/record.cljs`, `tests/record.mjs`, `tests/sounds.mjs`, `tests/analysis.mjs`.
 - **`record [lo hi] [log] [tolerance]`**, a new core class: any stream of numbers into a canvas (or a
   freqt) as strokes over time — a knob, `snapshot~ 50 rms`, a descriptor of `features~`, a position.
   `rec` starts a take from 0 (its first write clears the buffer), `stop` ends it, a bang on the right

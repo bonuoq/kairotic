@@ -223,6 +223,26 @@
                    d))
       d)))
 
+(defn cut-events
+  "The events that remove everything of buffer d from time (x) t on: strokes that begin at t or later are
+   erased, those that cross t end at t (a point there, interpolated on the scale of the Y axis). What a
+   take that records from t writes first (punch-in)."
+  [d t]
+  (let [ylog (y-log? d)]
+    (vec (for [[id s] (:strokes d)
+               :let [pts (:pts s) [t0] (first pts)]
+               :when (some (fn [[x]] (> x t)) pts)
+               :let [before (vec (take-while (fn [[x]] (<= x t)) pts))
+                     after (first (drop (count before) pts))
+                     [xa ya] (peek before) [xb yb] after
+                     y (when (and xa xb (> xb xa))
+                         (let [u (/ (- t xa) (- xb xa))]
+                           (if (and ylog (pos? ya) (pos? yb)) (* ya (js/Math.pow (/ yb ya) u)) (+ ya (* u (- yb ya))))))
+                     kept (cond-> before (and y (< xa t)) (conj [t y]))]]
+           (if (or (>= t0 t) (< (count kept) 2) (not (> (first (peek kept)) (first (first kept)))))
+             [:erase id]
+             [:stroke id kept])))))
+
 (defn id-num [k] (let [m (re-matches #"t(\d+)" (name k))] (if m (js/parseInt (second m) 10) 1e9)))
 
 (defn next-id [d]

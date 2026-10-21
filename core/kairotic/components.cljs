@@ -376,14 +376,14 @@
 ;; · a musical tree ([:voice …]): shown live over the buffer; (keep! :bN) writes it in, with its recipe
 ;; · an edit: changes the buffer, as one event of the history (the same as the commands of the REPL)
 ;;     [:stroke [[x y] …]] · [:stroke :t3 [[x y] …]] · [:note t pitch dur] (pitch: MIDI or "c4")
-;;     [:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear]
+;;     [:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear] · [:cut t] (everything from t on)
 ;;     [:axis :x lo hi] · [:axis :y lo hi :log] · [:grid-x step cycles] · [:grid-y step] · [:tuning "19-tet" ref]
 ;;     [:batch [edit …]]: several at once, one event
 ;; · a question: the answer comes out on the left, nothing changes
 ;;     [:read x] (or [:read :y v]) → [[stroke value] …] · [:strokes] → [:t1 …] · [:get :t1] → its points
 ;;     [:count] · [:end] (where the last stroke ends) · [:range] / [:range :y] → [lo hi] · [:data] → the buffer
 
-(def canvas-edits #{:stroke :note :move :stretch :erase :clear :axis :grid-x :grid-y :tuning :batch})
+(def canvas-edits #{:stroke :note :move :stretch :erase :clear :cut :axis :grid-x :grid-y :tuning :batch})
 (def canvas-questions #{:read :strokes :get :count :end :range :data})
 
 (defn canvas-edit?
@@ -420,10 +420,15 @@
   "The messages (an edit, or [:batch [edits]]) as events of the buffer d, each one applied before the next
    is read (so new strokes get new ids); those that change nothing are left out."
   [d msg]
-  (let [msgs (if (= :batch (first msg)) (filter vector? (second msg)) [msg])]
+  (let [msgs (if (= :batch (first msg)) (filter vector? (second msg)) [msg])
+        ;; [:cut t]: everything from t on is removed, as the erases and shortened strokes it takes
+        msgs (mapcat (fn [m] (if (and (= :cut (first m)) (cv/num? (second m))) [[:cut-now (second m)]] [m])) msgs)]
     (first (reduce (fn [[evs d] m]
+                     (if (= :cut-now (first m))
+                       (let [es (cv/cut-events d (second m))]
+                         [(into evs es) (reduce cv/step d es)])
                      (let [e (canvas-event d m) d2 (when e (cv/step d e))]
-                       (if (and e (not= d2 d)) [(conj evs e) d2] [evs d])))
+                       (if (and e (not= d2 d)) [(conj evs e) d2] [evs d]))))
                    [[] d] msgs))))
 
 (defn canvas-answer
