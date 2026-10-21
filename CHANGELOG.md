@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`record [lo hi] [log] [tolerance]`**, a new core class: any stream of numbers into a canvas (or a
+  freqt) as strokes over time — a knob, `snapshot~ 50 rms`, a descriptor of `features~`, a position.
+  `rec` starts a take from 0 (its first write clears the buffer), `stop` ends it, a bang on the right
+  ends a stroke. A value holds until the next one (a staircase: senders like snapshot~ send only what
+  changed), simplified within `tolerance` (1% of the range without it). Time in seconds from rec; the
+  axes of a canvas follow the take (Y fixed with lo hi). At most one write every 2 seconds, each one
+  event of the history. Read back with `reader~` as an automation. Tests: `tests/cljs/record.cljs`,
+  `tests/record.mjs`.
 - **`transcribe`** (step 4 of audio input; `@kairotic/analysis` 0.2.0): writes what `pitch~` hears into
   a `freqt`. `rec` starts a take from 0 (its first write clears the freqt), `stop` writes what is left;
   in `notes` mode each note is a flat stroke at the pitch it holds longest (the freqt's tuning or score view

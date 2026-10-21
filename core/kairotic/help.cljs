@@ -214,6 +214,16 @@
     :try "Press ▶: a sine wave stands still. Drag over it to zoom; connect an adc~ instead of the osc~."
     :see ["adc~" "snapshot~"]}
 
+   "record"
+   {:inlets ["numbers (a knob, snapshot~, features~…); rec starts a take from 0, stop ends it" "a bang: the stroke being drawn ends, the next number begins another"]
+    :outlets ["edits for a canvas or freqt (its inlet): [:batch …], at most every 2 seconds"]
+    :messages [["rec" "starts from 0; its first write clears the buffer"] ["stop" "writes what is left and stops"]]
+    :example (lines "(box :b1 \"knob 0 1 0.5\" 40 30)" "(box :b2 \"msg rec\" 140 30)" "(box :b3 \"msg stop\" 200 30)"
+                    "(box :b4 \"record 0 1\" 40 120)" "(box :b5 \"canvas\" 40 170)"
+                    "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)")
+    :try "Press ▶, click rec, move the knob for a few seconds, click stop: the canvas holds the gesture. A phasor~ into a reader~ with the canvas on its right plays it back as an automation."
+    :see ["canvas" "snapshot~" "reader~" "transcribe"]}
+
    "phasor~"
    {:inlets ["a number: the frequency in Hz (0.25 = once every 4 seconds)"]
     :outlets ["a ramp signal from 0 to 1"]

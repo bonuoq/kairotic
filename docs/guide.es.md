@@ -116,6 +116,10 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   `transcribe` escribe lo que oye `pitch~` en un `freqt` — `rec`, tocar, `stop` — como notas a su
   altura o, con `transcribe 60 glide`, como contornos que siguen la voz (un `onset~` a su derecha separa
   las notas repetidas); el freqt visto como partitura es entonces la improvisación en notación.
+- **Grabar un gesto**: `record [lo hi]` escribe cualquier flujo de números en un `canvas` como trazos en
+  el tiempo — un knob, una envolvente (`snapshot~ 50 rms`), un descriptor (`features~ 20 centroid`) —:
+  `rec`, tocar, `stop`. Un valor se mantiene hasta el siguiente; los ejes siguen a la toma. Se edita
+  como cualquier dibujo y se vuelve a leer con `phasor~` → `reader~` como automatización.
 
 ## 4. La historia
 
