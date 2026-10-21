@@ -113,12 +113,13 @@
    :page (str (or (:url j) (str "https://freesound.org/s/" (:id j) "/")))})
 
 (defn github-hrefs
-  "Where to look for a github: sound, in order. Without @ref jsDelivr serves the latest semver tag of the
-   repository (not its default branch), which may not have the file: then @main, then @master."
+  "Where to look for a github: sound, in order. Without @ref: @main, @master, then what jsDelivr serves
+   without a version — the latest semver tag of the repository, not its default branch, which may not
+   have the file."
   [spec]
   (if (:ref spec)
     [(github-url spec)]
-    (mapv (fn [ref] (github-url (assoc spec :ref ref))) [nil "main" "master"])))
+    (mapv (fn [ref] (github-url (assoc spec :ref ref))) ["main" "master" nil])))
 
 (defn resolve-url
   "Promise of {:hrefs [url-to-fetch …] :credit {…}?} for a URL of a sound: the hrefs are tried in order
@@ -136,28 +137,31 @@
     :else (js/Promise.resolve {:hrefs [u]})))
 
 (defn fetch-first
-  "Promise of the bytes of the first of hrefs that answers; a 404 tries the next one. The error says
-   why, in words: not found (and for github: which version), refused by the site (CORS) or unreachable."
+  "Promise of the bytes of the first of hrefs that answers; if one fails the next is tried (jsDelivr
+   answers a file it does not have without the CORS header, so a missing file fails like a refused one).
+   The error says why, in words: not found (and for github: where it looked), refused by the site (CORS)
+   or unreachable."
   [u hrefs]
-  (let [github? (github-spec u)]
+  (let [github? (github-spec u)
+        not-found (fn [] (js/Error. (if github?
+                                      (str "not found: it is not in "
+                                           (if (:ref github?) (str "@" (:ref github?)) "@main, @master or the latest tag")
+                                           " of " (:owner github?) "/" (:repo github?) " — check the path, or add @branch or @commit")
+                                      "not found (404)")))]
     (letfn [(go [[href & more]]
               (-> (js/fetch href)
                   (.then (fn [r]
                            (cond
                              (.-ok r) (.arrayBuffer r)
-                             (and (= 404 (.-status r)) (seq more)) (go more)
-                             (= 404 (.-status r))
-                             (throw (js/Error. (if github?
-                                                 (str "not found (404): it is not in "
-                                                      (if (:ref github?) (str "@" (:ref github?)) "the latest tag, main or master")
-                                                      " of " (:owner github?) "/" (:repo github?) " — check the path, or add @branch or @commit")
-                                                 "not found (404)")))
-                             :else (throw (js/Error. (str "the site answered " (.-status r)))))))
-                  (.catch (fn [e]
-                            ;; fetch itself fails (a TypeError) when the site refuses the page or cannot be reached
-                            (throw (if (instance? js/TypeError e)
-                                     (js/Error. "the site does not let this page load it (CORS), or cannot be reached")
-                                     e))))))]
+                             (seq more) (go more)
+                             (= 404 (.-status r)) (throw (not-found))
+                             :else (throw (js/Error. (str "the site answered " (.-status r)))))
+                         ;; fetch itself fails (a TypeError) when the site refuses the page or cannot be reached
+                         (fn [e]
+                           (cond
+                             (seq more) (go more)
+                             github? (throw (not-found))
+                             :else (throw (js/Error. "the site does not let this page load it (CORS), or cannot be reached"))))))))]
       (go hrefs))))
 
 (defn as-url

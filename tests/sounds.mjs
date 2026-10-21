@@ -107,14 +107,14 @@ export async function sounds(page, check) {
   await cljs(page, `(sample! ${g1} {:url "github:bonuoq/kairotic@fbcfa5fcb2208973eea6a71f49d8ac14bc308a9e/tests/assets/a440.wav"})`);
   const glen = await until(page, secs(g1), (g) => Math.abs(Number(g) - 1) < 0.01, 20000);
   check("github: loads a sound of a repository through jsDelivr", Math.abs(Number(glen) - 1) < 0.01, glen + " " + await cljs(page, st(g1)));
-  // without @ref jsDelivr serves the latest semver tag (v0.1.0-alpha here, which has no tests/assets/): main next
+  // without @ref jsDelivr serves the latest semver tag (v0.1.0-alpha here, which has no tests/assets/): main first
   const g3 = (await cljs(page, '(box "sample" 4500 460)')).trim();
   const g4 = (await cljs(page, '(box "sample" 4500 560)')).trim();
   await cljs(page, `(sample! ${g3} {:url "github:bonuoq/kairotic/tests/assets/a440.wav"})`);
-  const g3len = await until(page, secs(g3), (g) => Math.abs(Number(g) - 1) < 0.01, 20000);
-  check("github: without @ref falls back to main", Math.abs(Number(g3len) - 1) < 0.01, g3len + " " + await cljs(page, st(g3)));
+  const g3len = await until(page, secs(g3), (g) => Math.abs(Number(g) - 1) < 0.01, 40000);
+  check("github: without @ref looks at main", Math.abs(Number(g3len) - 1) < 0.01, g3len + " " + await cljs(page, st(g3)));
   await cljs(page, `(sample! ${g4} {:url "github:bonuoq/kairotic@main/tests/assets/nothing-here.wav"})`);
-  await until(page, st(g4), (g) => g === ":failed", 20000);
+  await until(page, st(g4), (g) => g === ":failed", 40000);
   const g4why = await cljs(page, `(get @snd/failures (:audio (:data (get-in (current) [:boxes ${g4}]))))`);
   check("a github: file that is not there says where it looked", /not in @main of bonuoq\/kairotic/.test(g4why) && !/CORS/.test(g4why), g4why);
   await cljs(page, `(delete ${g3} ${g4})`);

@@ -72,9 +72,9 @@
     (t/eq "... served by jsDelivr"
           (snd/github-url (snd/github-spec "github:a/b@v1/dir/my sound.wav"))
           "https://cdn.jsdelivr.net/gh/a/b@v1/dir/my%20sound.wav")
-    (t/eq "without @ref: the latest tag, then main, then master"
+    (t/eq "without @ref: main, master, then the latest tag"
           (snd/github-hrefs (snd/github-spec "github:a/b/c.wav"))
-          ["https://cdn.jsdelivr.net/gh/a/b/c.wav" "https://cdn.jsdelivr.net/gh/a/b@main/c.wav" "https://cdn.jsdelivr.net/gh/a/b@master/c.wav"])
+          ["https://cdn.jsdelivr.net/gh/a/b@main/c.wav" "https://cdn.jsdelivr.net/gh/a/b@master/c.wav" "https://cdn.jsdelivr.net/gh/a/b/c.wav"])
     (t/eq "with @ref: only there" (snd/github-hrefs (snd/github-spec "github:a/b@v2/c.wav")) ["https://cdn.jsdelivr.net/gh/a/b@v2/c.wav"])
     (t/eq "... never above the repository" (snd/github-spec "github:a/b/../x.wav") nil)
     (t/eq "freesound:id" [(snd/freesound-id "freesound:12345") (snd/freesound-id "freesound:abc")] [12345 nil])
