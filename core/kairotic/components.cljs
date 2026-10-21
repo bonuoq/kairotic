@@ -469,8 +469,30 @@
 (define! "loadbang" {:doc "Sends a bang when the engine starts (▶)." :io [0 1] :receive (fn [_] {:out [[0 :bang]]})})
 (define! "bang" {:doc "A button: when pressed (or on receiving anything) it sends a bang." :io [1 1] :display :bang
                  :receive (fn [_] {:out [[0 :bang]] :show :bang})})
-(define! "msg" {:doc "Message: when pressed it sends its content (a value, a list or a word such as stop)." :usage "msg 0 8 4"
+(defn msg-words
+  "The content of a msg box, after its class: numbers, words (keywords: stop, rec) and text between
+   quotes as strings — \"https://…\", \"two words\", with \\\" and \\\\ inside. An unclosed quote takes the rest."
+  [text]
+  (let [t (str/trim (str text))
+        t (subs t (count (klass t)))
+        n (count t)]
+    (loop [i 0 out [] word nil quoted nil]
+      (if (>= i n)
+        (cond quoted (conj out quoted)
+              word (conj out (token word))
+              :else out)
+        (let [c (nth t i)]
+          (cond
+            (some? quoted) (cond (and (= c "\\") (< (inc i) n)) (recur (+ i 2) out word (str quoted (nth t (inc i))))
+                                 (= c "\"") (recur (inc i) (conj out quoted) nil nil)
+                                 :else (recur (inc i) out word (str quoted c)))
+            (re-matches #"\s" c) (recur (inc i) (if word (conj out (token word)) out) nil nil)
+            (and (= c "\"") (nil? word)) (recur (inc i) out nil "")
+            :else (recur (inc i) out (str word c) nil)))))))
+
+(define! "msg" {:doc "Message: when pressed it sends its content: a number, a word such as stop, text between quotes (\"https://…\", \"two words\") as a string, or a list of them." :usage "msg 0 8 4"
                 :io [1 1] :display :msg
+                :parse msg-words
                 :receive (fn [{:keys [args]}] {:out [[0 (case (count args) 0 :bang 1 (first args) (vec args))]] :show :bang})})
 (define! "number" {:doc "A draggable number; sends it when it changes or on receiving a bang." :usage "number [initial]"
                    :io [1 1] :display :number :receive number-box})

@@ -37,7 +37,7 @@
 
    "msg"
    {:inlets ["anything (or a click): sends its content"]
-    :outlets ["its content: a number, a list, or a word such as stop"]
+    :outlets ["its content: a number, a word such as stop, a string between quotes (\"https://…\"), or a list of them"]
     :example (lines "(box :b1 \"msg 60\" 40 30)" "(box :b2 \"msg 67\" 110 30)" "(box :b3 \"mtof\" 40 90)"
                     "(box :b4 \"osc~ 261.63\" 40 140)" "(box :b5 \"gain~ 0.3\" 40 190)" "(box :b6 \"dac~\" 40 240)"
                     "(connect :b1 0 :b3 0)" "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)"

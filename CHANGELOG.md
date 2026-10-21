@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **`msg` sends strings**: text between quotes is a string — `msg "https://…"`, `msg "two words"`,
+  `msg url "github:…" 3` — with `\"` and `\\` inside; numbers and words are as before (`msg stop` is
+  still `:stop`). Until now every word was a keyword, so a box that takes text got `:"…"` with its quotes.
+  Tests: `tests/cljs/msg.cljs`.
 - **A `msg` with a URL loads a sample**: `msg https://…`, `msg "https://…"` and `msg url github:…` now
   work (a msg sends its words as keywords, which the sample ignored). A word or string the sample does
   not understand is said in the REPL instead of doing nothing.

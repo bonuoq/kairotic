@@ -87,6 +87,8 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
 - **■** silencia y devuelve cada caja a su estado inicial.
 - Los mensajes viajan sin ▶: un clic en un `bang` o un `msg`, un número arrastrado, una caja de datos
   que cambió.
+- Un `msg` envía números (`msg 0 8 4`), palabras (`msg stop`) y **texto entre comillas como cadena**
+  (`msg "https://…/voz.ogg"`, `msg "dos palabras"`), solos o en una lista (`msg url "github:…" 3`).
 - **Sonido de fuera**: `adc~ 1` es el micrófono (o una entrada de la tarjeta de sonido: `adc~ 1 2`). Al
   pulsar ▶ el navegador lo pide una vez; su sonido llega tal cual, sin el procesado pensado para
   llamadas. `scope~` dibuja una señal y `snapshot~ 50 db` la convierte en números (su nivel), para que
