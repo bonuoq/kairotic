@@ -517,7 +517,7 @@ See also: `counter`, `ramp`, `loadbang`
 
 `msg 0 8 4`
 
-Message: when pressed it sends its content (a value, a list or a word such as stop).
+Message: when pressed it sends its content: a number, a word such as stop, text between quotes ("https://…", "two words") as a string, or a list of them.
 
 **Inlets** 
 
@@ -525,7 +525,7 @@ Message: when pressed it sends its content (a value, a list or a word such as st
 
 **Outlets** 
 
-0. its content: a number, a list, or a word such as stop
+0. its content: a number, a word such as stop, a string between quotes ("https://…"), or a list of them
 
 **Try:** Start the engine and click the two messages: two MIDI pitches become two frequencies.
 
