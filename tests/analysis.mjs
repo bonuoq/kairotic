@@ -65,7 +65,8 @@ export async function analysis(page, check) {
   const strokes = `(mapv (fn [[_ s]] (:pts s)) (sort-by (fn [[_ s]] (ffirst (:pts s))) (:strokes (box-data ${fq}))))`;
   const n4 = await until(page, `(count ${strokes})`, (x) => x === "4", 8000);
   const pts = await cljs(page, strokes);
-  check("transcribe writes each note as a stroke of the freqt", n4 === "4", pts.slice(0, 400));
+  const evs = await cljs(page, `(pr-str (take-last 6 (filter (fn [e] (= ${fq} (second e))) (:events (node (first (:pos @world)))))))`);
+  check("transcribe writes each note as a stroke of the freqt", n4 === "4", pts.slice(0, 300) + " · events: " + evs.slice(0, 900));
   const hzs = await cljs(page, `(mapv (fn [p] (js/Math.round (second (first p)))) ${strokes})`);
   check("... at the pitch heard (220 three times, then 330)", hzs === "[220 220 220 330]", hzs);
   const durs = await cljs(page, `(mapv (fn [p] (/ (js/Math.round (* 10 (- (first (last p)) (first (first p))))) 10)) ${strokes})`);
