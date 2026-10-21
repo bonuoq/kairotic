@@ -117,6 +117,9 @@ comes first.
   time — a knob, an envelope (`snapshot~ 50 rms`), a descriptor (`features~ 20 centroid`) —: `rec`,
   play, `stop`. A value holds until the next one; the axes follow the take. Edit it like any drawing and
   read it back with `phasor~` → `reader~` as an automation.
+- **Recording from a point**: `rec t` (`msg rec 4`) on a `sample`, `record` or `transcribe` keeps what
+  was there before t (seconds; beats for transcribe) and records from t on, replacing what came after —
+  a punch-in. A canvas or freqt takes `[:cut t]` for that: everything from t on is removed.
 
 ## 4. The history
 

@@ -88,4 +88,11 @@
       (t/eq "a description keeps the credit of its sound" (:credit (snd/sane {:url "freesound:1" :credit c})) c)
       (t/eq "... only its four texts" (:credit (snd/sane {:url "freesound:1" :credit (assoc c :x 1 :name 3)}))
             (dissoc c :name)))
+    (t/eq "splice: the old sound until a frame, then the new one"
+          (mapv (fn [c] (vec (array-seq c))) (snd/splice #js [(js/Float32Array. #js [1 2 3])] 2 (js/Float32Array. #js [9 9])))
+          [[1 2 9 9]])
+    (t/eq "... silence where the old one is shorter, in every channel"
+          (mapv (fn [c] (vec (array-seq c))) (snd/splice #js [(js/Float32Array. #js [1]) (js/Float32Array. #js [2])] 3 (js/Float32Array. #js [9])))
+          [[1 0 0 9] [2 0 0 9]])
+    (t/eq "... or only the new one after silence" (mapv (fn [c] (vec (array-seq c))) (snd/splice nil 1 (js/Float32Array. #js [9]))) [[0 9]])
     (t/eq "!- the other way round" (:out ((:receive (comp/lookup "!-")) {:args [10] :value 4})) [[0 6]])))

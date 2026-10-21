@@ -45,6 +45,29 @@ export async function sounds(page, check) {
   check("the work's code writes it as (sample! …)",
     /\(sample! /.test(await cljs(page, "(patch->code (current))")), "");
 
+  // punch-in: rec 0.3 keeps the first 0.3 s and records from there (here at half the level)
+  const gp = (await cljs(page, '(box "gain~ 1" 3300 100)')).trim();
+  const sp = (await cljs(page, '(box "sample 5" 3300 160)')).trim();
+  const gl = (await cljs(page, '(box "snapshot~ 50 peak" 3300 220)')).trim();
+  await cljs(page, `(connect ${osc} 0 ${gp} 0) (connect ${gp} 0 ${sp} 0) (connect ${gp} 0 ${gl} 0)`);
+  await page.waitForTimeout(200);
+  await cljs(page, `(send! ${sp} :rec)`); await page.waitForTimeout(600); await cljs(page, `(send! ${sp} :stop)`);
+  const first = Number(await until(page, secs(sp), (g) => Number(g) > 0.4));
+  await cljs(page, `(send! ${gp} 1 0.5)`); await page.waitForTimeout(200);
+  const sent = await cljs(page, `(send! ${sp} [:rec 0.3])`); await page.waitForTimeout(150);
+  const during = await cljs(page, `(let [n (eng/node ${sp})] [(some? n) (when n (pr-str (dissoc @(:rec n) :blocks :base))) (pr-str (last (get-in @eng/rt [:shows ${sp}])))])`);
+  await page.waitForTimeout(250); await cljs(page, `(send! ${sp} :stop)`);
+  // (the take of 0.6 s already passes for 0.7: wait for the new sound, written after it)
+  const plen = await until(page, secs(sp), (g) => Number(g) !== first && Math.abs(Number(g) - 0.7) < 0.1, 8000);
+  check("rec t keeps the sound until t and records from there", Math.abs(Number(plen) - 0.7) < 0.1, plen);
+  const levels = await cljs(page, `(let [p (:peaks (:data (get-in (current) [:boxes ${sp}]))) n (count p)
+                                        top (fn [xs] (apply max (map second xs)))]
+                                    [(/ (js/Math.round (* 1000 (top (take (quot n 3) p)))) 1000)
+                                     (/ (js/Math.round (* 1000 (top (take-last (quot n 3) p)))) 1000)])`);
+  check("... the first part at its level, the take after it at the new one", /^\[0\.1[45]\d? 0\.0[78]\d?\]$/.test(levels),
+        levels + " sent: " + sent + " during: " + during + " takes: " + await cljs(page, "(pr-str @snd/takes)") + " shows: " + await cljs(page, `(pr-str (take-last 4 (get-in @eng/rt [:shows ${sp}])))`) + " logs: " + logs.join(" | ") + " repl: " + await page.evaluate(() => [...document.querySelectorAll("#repl-out div")].slice(-6).map((d) => d.textContent).join(" | ")) + " gain out: " + await cljs(page, `(get-in @eng/rt [:states ${gl}])`) + " " + await cljs(page, `(pr-str (:data (get-in (current) [:boxes ${sp}])))`).then((x) => x.slice(0, 300)));
+  await cljs(page, `(delete ${gp} ${sp} ${gl})`);
+
   // a reader~ plays it
   const ph = (await cljs(page, '(box "phasor~ 2" 3600 260)')).trim();
   const rd = (await cljs(page, '(box "reader~" 3600 310)')).trim();

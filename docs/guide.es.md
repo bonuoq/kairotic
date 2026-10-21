@@ -120,6 +120,9 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   el tiempo — un knob, una envolvente (`snapshot~ 50 rms`), un descriptor (`features~ 20 centroid`) —:
   `rec`, tocar, `stop`. Un valor se mantiene hasta el siguiente; los ejes siguen a la toma. Se edita
   como cualquier dibujo y se vuelve a leer con `phasor~` → `reader~` como automatización.
+- **Grabar desde un punto**: `rec t` (`msg rec 4`) en un `sample`, `record` o `transcribe` conserva lo
+  que había antes de t (segundos; pulsos en transcribe) y graba desde t, sustituyendo lo que venía
+  después: un punch-in. Un canvas o freqt acepta `[:cut t]` para eso: se borra todo desde t.
 
 ## 4. La historia
 
