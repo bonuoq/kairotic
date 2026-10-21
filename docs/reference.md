@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
+An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
 
 **Inlets** 
 
@@ -730,7 +730,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power.
+Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
 
 **Inlets** 
 
@@ -1094,7 +1094,7 @@ See also: `adc~`, `scope~`, `phasor~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
+A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
 
 **Inlets** 
 
@@ -1131,7 +1131,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer, one voice per id.
+Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
 
 **Inlets** 
 
@@ -1143,6 +1143,47 @@ Polyphonic triangle-wave synthesizer, one voice per id.
 0. the sound
 
 See also: `reader`, `adsr~`
+
+### transcribe · `@kairotic/analysis`
+
+`transcribe [bpm] [notes|glide] [ms]`
+
+Writes what pitch~ hears into a freqt, as strokes: notes at the pitch they hold longest, or contours (glide).
+
+**Inlets** 
+
+0. Hz from pitch~ (0: silence); rec starts from 0, stop ends
+1. a bang (from onset~): a new note, even on the same pitch
+
+**Outlets** 
+
+0. edits for a freqt: [:batch [[:stroke …] …]], at most every 2 seconds (one event of the history each)
+
+**Messages and gestures**
+
+- `rec`: starts a take from 0 (its first write clears the freqt)
+- `stop`: writes what is left and stops
+
+**Try:** Press ▶, click rec, sing a phrase, click stop: the freqt holds it. ⇄ shows it as a score. Write transcribe 60 glide to keep the slides.
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "pitch~ 80 1000" 40 90)
+(box :b3 "onset~" 200 90)
+(box :b4 "msg rec" 330 90)
+(box :b5 "msg stop" 400 90)
+(box :b6 "transcribe 60" 40 160)
+(box :b7 "freqt" 40 220)
+(connect :b1 0 :b2 0)
+(connect :b1 0 :b3 0)
+(connect :b2 0 :b6 0)
+(connect :b3 0 :b6 1)
+(connect :b4 0 :b6 0)
+(connect :b5 0 :b6 0)
+(connect :b6 0 :b7 0)
+```
+
+See also: `pitch~`, `onset~`, `freqt`
 
 ### tree
 
