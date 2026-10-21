@@ -4,13 +4,22 @@
       flush-every 2          ; seconds between two writes into the freqt (each write is one event of the history)
       max-points 64          ; points of a stroke in glide mode
       cents (fn [a b] (* 1200 (/ (js/Math.log (/ b a)) js/Math.LN2)))
-      median (fn [xs] (let [v (vec (sort xs))] (when (seq v) (nth v (quot (count v) 2)))))
+      ;; the pitch a note holds longest: pitch~ only sends what changed, so a steady note is one point and
+      ;; its attack many; each pitch weighs the time until the next one
+      held (fn [pts t1]
+             (let [ws (map (fn [[t f] [t2 _]] [f (max 0 (- t2 t))]) pts (concat (rest pts) [[t1 nil]]))
+                   total (reduce + (map second ws))
+                   sorted (sort-by first ws)]
+               (if (pos? total)
+                 (loop [[[f w] & more] sorted acc 0]
+                   (let [acc (+ acc w)] (if (or (>= acc (/ total 2)) (empty? more)) f (recur more acc))))
+                 (second (last pts)))))
       mode-of (fn [args] (if (= :glide (:mode args)) :glide :notes))
       beats (fn [state at] (* (- at (:t0 state)) (/ (:bpm state) 60)))
       r3 (fn [x] (/ (js/Math.round (* x 1000)) 1000))
       ;; ── a note that ends: a stroke, if it lasted long enough ──
       stroke-of (fn [{:keys [pts]} t1 mode]
-                  (let [t0 (ffirst pts) hz (median (map second pts))]
+                  (let [t0 (ffirst pts) hz (held pts t1)]
                     (if (= mode :glide)
                       (let [kept (reduce (fn [acc [t f]]
                                            (if (> (js/Math.abs (cents (second (peek acc)) f)) 10) (conj acc [t f]) acc))
@@ -58,7 +67,7 @@
   {;; ── about ──
    :class "transcribe"
    :license "MPL-2.0"
-   :doc "Writes what pitch~ hears into a freqt, as strokes. Hz on the left (from pitch~: 0 when it hears none), rec to start from 0 (its first write clears the freqt) and stop to end; a bang on the right (from onset~) begins a new note even on the same pitch. In notes mode each note is a flat stroke at its median pitch (the freqt's tuning, or its score view, rounds it); in glide mode a stroke follows the pitch as it moves. Times are beats at bpm (60: one beat a second). Notes shorter than ms (60) are left out. It writes into the freqt at most every 2 seconds, each time one event of the history. Connect its outlet to the freqt's inlet."
+   :doc "Writes what pitch~ hears into a freqt, as strokes. Hz on the left (from pitch~: 0 when it hears none), rec to start from 0 (its first write clears the freqt) and stop to end; a bang on the right (from onset~) begins a new note even on the same pitch. In notes mode each note is a flat stroke at the pitch it holds longest (the freqt's tuning, or its score view, rounds it); in glide mode a stroke follows the pitch as it moves. Times are beats at bpm (60: one beat a second). Notes shorter than ms (60) are left out. It writes into the freqt at most every 2 seconds, each time one event of the history. Connect its outlet to the freqt's inlet."
    :usage "transcribe [bpm] [notes|glide] [ms]"
    :io [2 1]
    :size [124 30]

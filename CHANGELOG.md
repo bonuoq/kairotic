@@ -4,7 +4,7 @@
 
 - **`transcribe`** (step 4 of audio input; `@kairotic/analysis` 0.2.0): writes what `pitch~` hears into
   a `freqt`. `rec` starts a take from 0 (its first write clears the freqt), `stop` writes what is left;
-  in `notes` mode each note is a flat stroke at its median pitch (the freqt's tuning or score view
+  in `notes` mode each note is a flat stroke at the pitch it holds longest (the freqt's tuning or score view
   rounds it, so microtones stay), a new one when the pitch moves more than 0.6 of a semitone or an
   `onset~` bang arrives on the right; in `glide` mode a stroke follows the pitch (points every 10 cents,
   64 at most). Times are beats at bpm (60 by default: one beat a second); notes shorter than ms (60) are
