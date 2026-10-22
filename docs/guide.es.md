@@ -122,7 +122,10 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   como cualquier dibujo y se vuelve a leer con `phasor~` → `reader~` como automatización.
 - **Grabar desde un punto**: `rec t` (`msg rec 4`) en un `sample`, `record` o `transcribe` conserva lo
   que había antes de t (segundos; pulsos en transcribe) y graba desde t, sustituyendo lo que venía
-  después: un punch-in. Un canvas o freqt acepta `[:cut t]` para eso: se borra todo desde t.
+  después: un punch-in. `ovr t` (`msg ovr 4`; `ovr` solo, desde 0) sobrescribe solo lo que cubre la
+  toma, de t a donde se para, y conserva lo que venía después: un punch-in/out. Un canvas o freqt acepta
+  `[:cut t]` para eso (todo desde t) y `[:cut t1 t2]` (lo que hay entre ambos; un trazo que lo cruza se
+  parte en dos).
 
 ## 4. La historia
 

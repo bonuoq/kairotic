@@ -217,7 +217,7 @@
    "record"
    {:inlets ["numbers (a knob, snapshot~, features~…); rec starts a take from 0, stop ends it" "a bang: the stroke being drawn ends, the next number begins another"]
     :outlets ["edits for a canvas or freqt (its inlet): [:batch …], at most every 2 seconds"]
-    :messages [["rec" "starts from 0; its first write clears the buffer"] ["rec t (msg rec 4)" "from t seconds: what is before t stays, what is after is replaced"] ["stop" "writes what is left and stops"]]
+    :messages [["rec" "starts from 0; its first write clears the buffer"] ["rec t (msg rec 4)" "from t seconds: what is before t stays, what is after is replaced"] ["ovr t (msg ovr 4)" "from t seconds, over only what the take covers: what comes after it stays"] ["stop" "writes what is left and stops"]]
     :example (lines "(box :b1 \"knob 0 1 0.5\" 40 30)" "(box :b2 \"msg rec\" 140 30)" "(box :b3 \"msg stop\" 200 30)"
                     "(box :b4 \"record 0 1\" 40 120)" "(box :b5 \"canvas\" 40 170)"
                     "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)")
@@ -246,7 +246,7 @@
    "sample"
    {:inlets ["the signal to record; rec starts, stop ends (or its length in seconds), clear empties it, a bang asks its length"]
     :outlets ["its length in seconds (after each recording, and on a bang)" "the sound, for a reader~ (on its right inlet)"]
-    :messages [["rec" "records what reaches it, from the beginning"] ["rec t (msg rec 2.5)" "keeps its first t seconds and records from there"] ["stop" "keeps what was heard"]
+    :messages [["rec" "records what reaches it, from the beginning"] ["rec t (msg rec 2.5)" "keeps its first t seconds and records from there"] ["ovr t (msg ovr 2.5)" "replaces only what the take covers, keeping what comes after (ovr: from 0)"] ["stop" "keeps what was heard"]
                ["clear" "empties it"] ["a URL (msg https://… · msg url github:… · a string)" "loads the sound there; every browser that opens the work fetches it"]
                ["(load-sound! :bN)" "brings in a sound file"] ["(load-sound! :bN \"https://…\")" "loads it from a URL"]
                ["(sample! :bN {:url \"…\"})" "a sample that is only a URL, as a link or a shared session writes it"]
@@ -369,7 +369,7 @@
     :doc "Writes what pitch~ hears into a freqt, as strokes: notes at the pitch they hold longest, or contours (glide)."
     :inlets ["Hz from pitch~ (0: silence); rec starts from 0, stop ends" "a bang (from onset~): a new note, even on the same pitch"]
     :outlets ["edits for a freqt: [:batch [[:stroke …] …]], at most every 2 seconds (one event of the history each)"]
-    :messages [["rec" "starts a take from 0 (its first write clears the freqt)"] ["rec t (msg rec 8)" "from beat t: what is before t stays, what is after is replaced"] ["stop" "writes what is left and stops"]]
+    :messages [["rec" "starts a take from 0 (its first write clears the freqt)"] ["rec t (msg rec 8)" "from beat t: what is before t stays, what is after is replaced"] ["ovr t (msg ovr 8)" "from beat t, over only what the take covers: what comes after it stays"] ["stop" "writes what is left and stops"]]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"pitch~ 80 1000\" 40 90)" "(box :b3 \"onset~\" 200 90)"
                     "(box :b4 \"msg rec\" 330 90)" "(box :b5 \"msg stop\" 400 90)" "(box :b6 \"transcribe 60\" 40 160)"
                     "(box :b7 \"freqt\" 40 220)"

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Overwrite (punch-in/out)**: `ovr t` — `msg ovr 4`, or `[:ovr 4]`; `ovr` alone from 0 — on a
+  `sample`, a `record` or a `transcribe` replaces only what the take covers, from t to where it stops,
+  and keeps what came after it (`rec t` still replaces everything after t). A sample joins its first t
+  seconds, the take and the rest of its sound after the take; a record or transcribe cuts, at each
+  write, what the take covered since the last one, with the new edit `[:cut t1 t2]`: strokes inside are
+  erased, those that cross an edge end or begin there, one that spans the window is split in two (the
+  part after it a new stroke). `[:cut t]` keeps meaning everything from t on. `@kairotic/analysis` 0.2.2.
 - **Recording from a point (punch-in)**: `rec t` — `msg rec 4`, or `[:rec 4]` — on a `sample`, a
   `record` or a `transcribe` keeps what was there before t and records from t on, replacing what came
   after; plain `rec` still starts from 0 and clears. t is in seconds (beats for transcribe). A sample

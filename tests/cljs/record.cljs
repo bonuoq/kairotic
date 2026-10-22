@@ -58,4 +58,17 @@
             (set (cv/cut-events d 1)) #{[:stroke :t1 [[0 1] [1 2]]] [:erase :t2]}))
     (let [f {:strokes {:t1 {:pts [[0 100] [2 400]]}}}]
       (t/eq "... on a freqt the point at t is geometric (pitch)" (cv/cut-events f 1) [[:stroke :t1 [[0 100] [1 200]]]]))
+    ;; a window: [:cut t1 t2] (what ovr writes)
+    (let [d {:strokes {:t1 {:pts [[0 0] [4 4]]} :t2 {:pts [[1.5 1] [2.5 1]]} :t3 {:pts [[5 2] [6 2]]}}
+             :ax {:x {:lo 0 :hi 6 :log false} :y {:lo 0 :hi 6 :log false}}}]
+      (t/eq "cut t1 t2: a stroke that spans it is split, one inside is erased, one after stays"
+            (cv/cut-events d 1 3) [[:stroke :t1 [[0 0] [1 1]]] [:stroke :t4 [[3 3] [4 4]]] [:erase :t2]]))
+    (t/eq "clip-out: the pieces outside a window" (cv/clip-out [[0 0] [2 2] [2 5] [4 5]] 1 3 false)
+          [[[0 0] [1 1]] [[3 5] [4 5]]])
+    (let [[_ outs] (run [] [[0 [:ovr 1] 10] [0 0.5 10.5] [0 0.9 11] [0 :stop 11.5]])
+          edits (mapcat second outs)
+          cuts (filter (fn [e] (= :cut (first e))) edits)]
+      (t/eq "ovr t: each write cuts what the take covered since the last one" cuts [[:cut 1 2] [:cut 2 2.5]])
+      (t/is "... and leaves X as it was (what comes after the take stays)" (not-any? (fn [e] (= [:axis :x] (take 2 e))) edits)))
+    (t/eq "ovr alone: over the take from 0" (ffirst (filter (fn [e] (= :cut (first e))) (mapcat second (second (run [] [[0 :ovr 0] [0 1 0.2] [0 2 0.4] [0 :stop 1]]))))) :cut)
     (t/eq "before rec it does nothing" (recv nil {:value 0.5 :at 1}) {})))

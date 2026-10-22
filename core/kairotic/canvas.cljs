@@ -223,26 +223,6 @@
                    d))
       d)))
 
-(defn cut-events
-  "The events that remove everything of buffer d from time (x) t on: strokes that begin at t or later are
-   erased, those that cross t end at t (a point there, interpolated on the scale of the Y axis). What a
-   take that records from t writes first (punch-in)."
-  [d t]
-  (let [ylog (y-log? d)]
-    (vec (for [[id s] (:strokes d)
-               :let [pts (:pts s) [t0] (first pts)]
-               :when (some (fn [[x]] (> x t)) pts)
-               :let [before (vec (take-while (fn [[x]] (<= x t)) pts))
-                     after (first (drop (count before) pts))
-                     [xa ya] (peek before) [xb yb] after
-                     y (when (and xa xb (> xb xa))
-                         (let [u (/ (- t xa) (- xb xa))]
-                           (if (and ylog (pos? ya) (pos? yb)) (* ya (js/Math.pow (/ yb ya) u)) (+ ya (* u (- yb ya))))))
-                     kept (cond-> before (and y (< xa t)) (conj [t y]))]]
-           (if (or (>= t0 t) (< (count kept) 2) (not (> (first (peek kept)) (first (first kept)))))
-             [:erase id]
-             [:stroke id kept])))))
-
 (defn id-num [k] (let [m (re-matches #"t(\d+)" (name k))] (if m (js/parseInt (second m) 10) 1e9)))
 
 (defn next-id [d]
@@ -250,6 +230,61 @@
     (keyword (str "t" (inc (if (seq ns-ids) (apply max ns-ids) 0))))))
 
 (defn sorted-strokes [d] (sort-by (fn [[id s]] [(ffirst (:pts s)) (id-num id)]) (:strokes d)))
+
+(defn clip-out
+  "The pieces of polyline pts that lie outside the open window t1 < x < t2 (t2 nil: no end), each a vector
+   of points, in order. A segment that crosses an edge is cut there, its value interpolated on the scale
+   of the Y axis (geometric when ylog, as pitch)."
+  [pts t1 t2 ylog]
+  (let [inside? (fn [x] (and (> x t1) (or (nil? t2) (< x t2))))
+        at (fn [[xa ya] [xb yb] u]
+             [(+ xa (* u (- xb xa)))
+              (if (and ylog (pos? ya) (pos? yb)) (* ya (js/Math.pow (/ yb ya) u)) (+ ya (* u (- yb ya))))])
+        ;; the params (0…1) where segment a→b crosses x = t1 or x = t2
+        cuts (fn [[xa :as a] [xb :as b]]
+               (if (= xa xb)
+                 []
+                 (sort (filter (fn [u] (< 0 u 1)) (map (fn [t] (/ (- t xa) (- xb xa))) (remove nil? [t1 t2]))))))
+        close (fn [acc cur] (if (>= (count cur) 2) (conj acc cur) acc))]
+    (loop [[a b & more] pts acc [] cur (if (and (seq pts) (not (inside? (ffirst pts)))) [(first pts)] [])]
+      (if (nil? b)
+        (close acc cur)
+        (let [us (concat [0] (cuts a b) [1])
+              ;; each piece of the segment, with whether its middle is outside the window
+              [acc cur] (reduce (fn [[acc cur] [u0 u1]]
+                                  (let [p0 (at a b u0) p1 (at a b u1)
+                                        out (not (inside? (first (at a b (/ (+ u0 u1) 2)))))]
+                                    (if out
+                                      [acc (conj (if (seq cur) cur [p0]) p1)]
+                                      [(close acc cur) []])))
+                                [acc cur] (partition 2 1 us))]
+          (recur (cons b more) acc cur))))))
+
+(defn cut-events
+  "The events that remove what buffer d holds between times (x) t1 and t2 (t2 nil: to the end): strokes
+   inside are erased, those that cross an edge end or begin there, and one that spans the window is split
+   in two (the part after it is a new stroke). What a take that records over a buffer writes (rec t, ovr)."
+  ([d t] (cut-events d t nil))
+  ([d t1 t2]
+   (let [ylog (y-log? d)
+         valid (fn [ps] (and (>= (count ps) 2) (or (generic? d) (> (first (peek ps)) (first (first ps))))))]
+     (first
+      (reduce (fn [[evs d] [id s]]
+                (let [pts (:pts s)
+                      touched (some (fn [[x]] (and (> x t1) (or (nil? t2) (< x t2)))) pts)
+                      crosses (some (fn [[[xa] [xb]]] (< (min xa xb) t1 (max xa xb))) (partition 2 1 pts))
+                      crosses2 (and t2 (some (fn [[[xa] [xb]]] (< (min xa xb) t2 (max xa xb))) (partition 2 1 pts)))]
+                  (if-not (or touched crosses crosses2)
+                    [evs d]
+                    (let [pieces (filter valid (map (fn [ps] (mapv (fn [[x y]] [(round-to x 4) (round-to y 4)]) ps))
+                                                    (clip-out pts t1 t2 ylog)))
+                          es (if (empty? pieces)
+                               [[:erase id]]
+                               (into [[:stroke id (first pieces)]]
+                                     (second (reduce (fn [[d es] ps] (let [nid (next-id d) e [:stroke nid ps]] [(step d e) (conj es e)]))
+                                                     [(step d [:stroke id (first pieces)]) []] (rest pieces)))))]
+                      [(into evs es) (reduce step d es)]))))
+              [[] d] (sorted-strokes d))))))
 
 (defn end-t [d] (reduce max 0 (map (fn [s] (apply max (map first (:pts s)))) (vals (:strokes d)))))
 

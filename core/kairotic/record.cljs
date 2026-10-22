@@ -7,7 +7,8 @@
 ;;   record [lo hi] [log] [tolerance]
 ;;     left: numbers; rec starts a take from 0 (its first write clears the buffer), stop ends it;
 ;;           rec t (a msg rec 4, or [:rec 4]) records from t on: what was there before t stays, from t
-;;           on it is replaced (punch-in)
+;;           on it is replaced (punch-in); ovr t (msg ovr 4) overwrites only what the take covers, from t
+;;           to where it stops, and keeps what comes after (punch-in/out); ovr alone, from 0
 ;;     right: a bang ends the stroke that is being drawn; the next number begins another
 ;;     out: edits for the canvas (or freqt) on its inlet
 ;;
@@ -66,7 +67,8 @@
         [lo hi] (cond (and lo hi (< lo hi)) (if (:lo state) [lo hi] (let [m (* 0.05 (- hi lo))] [(- lo m) (+ hi m)]))
                       (and lo hi) [(- lo 0.5) (+ hi 0.5)]
                       :else nil)]
-    (cond-> [[:axis :x 0 (r4 t1)]]
+    ;; over a take (ovr) what comes after it stays: X is left as it was
+    (cond-> (if (:ovr state) [] [[:axis :x 0 (r4 t1)]])
       lo (conj (cond-> [:axis :y (r4 lo) (r4 hi)] (and (:log state) (pos? lo)) (conj :log))))))
 
 (defn stroke-edit [state [id pts]]
@@ -85,8 +87,13 @@
       (let [strokes (keep (fn [id] (stroke-edit state [id (get-in state [:strokes id])])) (sort-by name dirty))]
         ;; a stroke of one point waits for the next one (nothing is written, nothing is marked as sent)
         (if (seq strokes)
-          [(assoc state :dirty #{} :sent at :pending false :fresh false)
-           [:batch (vec (concat (when (:fresh state) [(if (:from state) [:cut (:from state)] [:clear])])
+          [(cond-> (assoc state :dirty #{} :sent at :pending false :fresh false)
+             (:ovr state) (assoc :cut-from (:t-end state)))
+           [:batch (vec (concat (cond
+                                  ;; ovr: what the take covered since the last write goes first (strokes kept
+                                  ;; from before end there, those after begin where the take stops)
+                                  (:ovr state) [[:cut (:cut-from state) (:t-end state)]]
+                                  (:fresh state) [(if (:from state) [:cut (:from state)] [:clear])])
                                 (axes state) strokes))]
            nil]
           [state nil nil]))
@@ -128,7 +135,7 @@
     later (assoc :later [later])))
 
 (comp/define! "record"
-  {:doc "Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer); rec t (msg rec 4) records from t seconds on, keeping what is before t and replacing what is after (punch-in); stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation."
+  {:doc "Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer); rec t (msg rec 4) records from t seconds on, keeping what is before t and replacing what is after (punch-in); ovr t (msg ovr 4) overwrites only what the take covers, from t to where it stops, keeping what comes after (punch-in/out); stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation."
    :usage "record [lo hi] [log] [tolerance]"
    :license "MPL-2.0"
    :io [2 1]
@@ -136,12 +143,15 @@
    :receive (fn [{:keys [inlet value state args at]}]
               (let [state (or state {})]
                 (cond
-                  (or (= value :rec) (and (vector? value) (= :rec (first value))))
+                  (or (#{:rec :ovr} value) (and (vector? value) (#{:rec :ovr} (first value))))
                   (let [{:keys [lo hi tol log]} (args-of args)
-                        from (when (vector? value) (let [x (second value)] (when (and (number? x) (>= x 0)) x)))]
+                        ovr (or (= value :ovr) (and (vector? value) (= :ovr (first value))))
+                        from (or (when (vector? value) (let [x (second value)] (when (and (number? x) (>= x 0)) x)))
+                                 (when ovr 0))]
                     {:state (cond-> {:on true :t0 (- at (or from 0)) :lo lo :hi hi :tol tol :log log :n 0 :strokes {}
                                      :dirty #{} :fresh true}
-                              from (assoc :from from :take (js/Math.round (* 1000 at))))
+                              from (assoc :from from :take (js/Math.round (* 1000 at)))
+                              ovr (assoc :ovr true :cut-from from))
                      :show {:on true :n 0}})
                   (not (:on state)) {}
                   (= value :stop)

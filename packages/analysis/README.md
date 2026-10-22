@@ -11,7 +11,7 @@ From any signal — an `adc~`, a `sample` played by a `reader~`, a `faust~` — 
 | `onset~ [threshold] [ms]` | a bang at the beginning of each sound (a note, a stroke, a syllable) and its strength |
 | `chroma~ [ms]` | 12 values from C to B and the strongest pitch class as a word (`:a`, `:c#`…) |
 | `spectrum~ [lo hi]` | the spectrum drawn in the patch, on a log scale of frequency |
-| `transcribe [bpm] [notes\|glide] [ms]` | what `pitch~` hears (and `onset~` splits), written into a `freqt` as strokes: flat notes at the pitch they hold longest, or contours that follow the voice; times in beats at bpm. `rec` starts from 0, `stop` ends |
+| `transcribe [bpm] [notes\|glide] [ms]` | what `pitch~` hears (and `onset~` splits), written into a `freqt` as strokes: flat notes at the pitch they hold longest, or contours that follow the voice; times in beats at bpm. `rec` starts from 0, `rec t` from beat t, `ovr t` over only what the take covers, `stop` ends |
 
 Each sends only what changed. `pitch~` runs YIN in its own AudioWorklet; the others take frames of 2048
 samples through the Kairotic API (`api/tap`) and compute them with

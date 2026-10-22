@@ -368,16 +368,21 @@ registerProcessor('kairotic-player', KairoticPlayer);
 
 (defn splice
   "The channels of an old sound (a JS array of Float32Array, or nil) until frame n0 — silence where it is
-   shorter —, then the new samples s, in every channel."
-  [old n0 s]
-  (let [C (if old (max 1 (.-length old)) 1)]
-    (into-array
-     (for [c (range C)]
-       (let [out (js/Float32Array. (+ n0 (.-length s)))
-             o (when old (aget old c))]
-         (when o (.set out (.subarray o 0 (min n0 (.-length o)))))
-         (.set out s n0)
-         out)))))
+   shorter —, then the new samples s, in every channel; with after, what the old sound had after the new
+   samples end follows them (punch-in/out)."
+  ([old n0 s] (splice old n0 s false))
+  ([old n0 s after]
+   (let [C (if old (max 1 (.-length old)) 1)
+         n1 (+ n0 (.-length s))
+         len (if (and after old) (max n1 (.-length (aget old 0))) n1)]
+     (into-array
+      (for [c (range C)]
+        (let [out (js/Float32Array. len)
+              o (when old (aget old c))]
+          (when o (.set out (.subarray o 0 (min n0 (.-length o)))))
+          (.set out s n0)
+          (when (and after o (> (.-length o) n1)) (.set out (.subarray o n1) n1))
+          out))))))
 
 (defonce takes (atom []))   ; what the last takes did, step by step (for debugging and tests)
 (defn step! [x] (swap! takes (fn [t] (vec (take-last 30 (conj t x))))))
@@ -386,7 +391,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
   "The end of a recording: its blocks become one sound, kept in this browser and written as the data
    of the box (through the page, an event of the history); the box hears it on inlet :audio."
   [node id]
-  (when-let [{:keys [blocks sr max from base]} @(:rec node)]
+  (when-let [{:keys [blocks sr max from base ovr]} @(:rec node)]
     (reset! (:rec node) nil)
     (step! [:finish id (count blocks) from])
     (-> (lib)
@@ -405,7 +410,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
                                 (throw (js/Error. "the sound to record over is not in this browser"))
                                 (and old (not= (:sr old) sr))
                                 (throw (js/Error. (str "the sound to record over is at " (:sr old) " Hz, the engine at " sr " Hz")))
-                                :else (keep! sr (splice (:chans old) (js/Math.floor (* from sr)) s)))))
+                                :else (keep! sr (splice (:chans old) (js/Math.floor (* from sr)) s ovr)))))
                      :else (keep! sr #js [s])))))
         (.then (fn [d]
                  (step! [:kept id (:frames d)])
@@ -423,7 +428,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
   (when-not @(:rec node)
     (let [sr (.-sampleRate (:ac node))]
       (reset! (:rec node) (merge {:blocks [] :n 0 :sr sr :max (js/Math.floor (* sr @(:seconds node)))}
-                                 (when (map? opts) (select-keys opts [:from :base]))))
+                                 (when (map? opts) (select-keys opts [:from :base :ovr]))))
       (when-let [w @(:tap node)] (api/retap w {:active true}))
       (api/report! (:id node) {:started true} at))))
 
@@ -460,7 +465,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
 (defn fmt-s [s] (str (comp/nice s) " s"))
 
 (comp/define! "sample"
-  {:doc "A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; rec t (msg rec 2.5) keeps its first t seconds and records from there (punch-in); `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN \"https://…\")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV."
+  {:doc "A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; rec t (msg rec 2.5) keeps its first t seconds and records from there (punch-in); ovr t (msg ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN \"https://…\")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV."
    :usage "sample [seconds]"
    :license "MPL-2.0"
    :io [1 2]
@@ -485,6 +490,9 @@ registerProcessor('kairotic-player', KairoticPlayer);
                   ;; rec t (msg rec 2.5): the sound until t stays, the take replaces what comes after (punch-in)
                   (and (vector? value) (= :rec (first value)) (number? (second value)) (>= (second value) 0))
                   {:effects [[:rec {:from (second value) :base (when (sample? data) data)}]]}
+                  ;; ovr t (msg ovr 2.5): only what the take covers is replaced, what comes after it stays (punch-in/out)
+                  (or (= value :ovr) (and (vector? value) (= :ovr (first value)) (number? (second value)) (>= (second value) 0)))
+                  {:effects [[:rec {:from (if (vector? value) (second value) 0) :base (when (sample? data) data) :ovr true}]]}
                   (= value :stop) {:effects [[:rec false]]}
                   (= value :bang) (if (sample? data) {:out [[0 (seconds data)]]} {})
                   (= value :clear) {:effects [[:sample [:clear]]]}
