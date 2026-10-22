@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
+An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
 
 **Inlets** 
 
@@ -513,6 +513,35 @@ Sends periodic bangs: 1 or bang starts it, 0 or stop stops it.
 
 See also: `counter`, `ramp`, `loadbang`
 
+### monitor · `@kairotic/analysis`
+
+`monitor [seconds] [name …]`
+
+Draws the messages that arrive over the last seconds, one lane per inlet: a number as a line, a list as a strip of cells, a bang or a word as a mark.
+
+**Inlets** 
+
+0. anything, drawn in the first lane; with names (monitor 6 rms centroid chroma) one inlet per name, left to right
+
+**Try:** Press ▶ and allow the microphone: speak, then sing a long note — the centroid falls, the chroma strip settles on one row, each syllable leaves a mark.
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "features~ 20 rms centroid" 40 90)
+(box :b3 "chroma~" 260 90)
+(box :b4 "onset~" 460 90)
+(box :b5 "monitor 6 rms centroid chroma onset" 40 180)
+(connect :b1 0 :b2 0)
+(connect :b1 0 :b3 0)
+(connect :b1 0 :b4 0)
+(connect :b2 0 :b5 0)
+(connect :b2 1 :b5 1)
+(connect :b3 0 :b5 2)
+(connect :b4 0 :b5 3)
+```
+
+See also: `features~`, `chroma~`, `onset~`, `print`
+
 ### msg
 
 `msg 0 8 4`
@@ -730,7 +759,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
+Stereo panning with equal power.
 
 **Inlets** 
 
@@ -1134,7 +1163,7 @@ See also: `adc~`, `scope~`, `phasor~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
+A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
 
 **Inlets** 
 
@@ -1171,7 +1200,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
+Polyphonic triangle-wave synthesizer, one voice per id.
 
 **Inlets** 
 
