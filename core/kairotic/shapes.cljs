@@ -12,7 +12,7 @@
 ;;   [:path   {:points [[x y] …] :closed true}]   a polyline (a waveform, an envelope…)
 ;;   [:text   {:x :y :anchor :start|:middle|:end :size 11} "text"]
 ;;
-;; All accept :stroke and :fill with a palette colour, and :weight in pixels.
+;; All accept :stroke and :fill with a palette colour, :weight in pixels and :opacity (0…1).
 ;; Palette: :ink :soft :accent :kairos :bg :grid (nil = no stroke or no fill).
 ;; nils in the list are ignored, so you can write (when cond [:text …]).
 ;;
@@ -40,7 +40,8 @@
   (let [s (if (contains? o :stroke) (:stroke o) stroke)
         f (if (contains? o :fill) (:fill o) fill)]
     (str " class=\"shape" (when (palette s) (str " s-" (name s))) (when (palette f) (str " f-" (name f))) "\""
-         (when (number? (:weight o)) (str " stroke-width=\"" (n (max 0 (min 24 (:weight o)))) "\"")))))
+         (when (number? (:weight o)) (str " stroke-width=\"" (n (max 0 (min 24 (:weight o)))) "\""))
+         (when (number? (:opacity o)) (str " opacity=\"" (n (max 0 (min 1 (:opacity o)))) "\"")))))
 
 (defn polar
   "Point at distance r from the centre, with the angle in degrees (0 up, clockwise)."

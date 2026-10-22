@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`monitor [seconds] [name …]`** (`@kairotic/analysis` 0.3.0): draws whatever arrives over the last
+  seconds (6 by default), one lane per inlet — one per name written after the seconds (`monitor 6 rms
+  centroid chroma` has 3 inlets), or one. A number is a line in the range it has had in the window, a
+  list of numbers a strip of cells with one row per element (chroma, mfcc), anything else (a bang, a
+  word) a mark. Time is that of the messages: the right edge is the last one. Lines keep about 150 points
+  in the window, strips 48 columns, marks the last 64; a clock that goes back (the engine started again)
+  starts it over. Tests: `tests/analysis.mjs`.
+- **Shapes: `:opacity`** (0…1) on any shape of a component's view (`kairotic.shapes`), for the cells
+  of `monitor`.
 - **Overwrite (punch-in/out)**: `ovr t` — `msg ovr 4`, or `[:ovr 4]`; `ovr` alone from 0 — on a
   `sample`, a `record` or a `transcribe` replaces only what the take covers, from t to where it stops,
   and keeps what came after it (`rec t` still replaces everything after t). A sample joins its first t

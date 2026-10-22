@@ -381,6 +381,8 @@ Rules:
 - Listening (package @kairotic/analysis, it comes by itself): `pitch~ [lo hi]` gives Hz (0 when it stops
   hearing a pitch) and clarity; `onset~` a bang per attack; `chroma~` 12 pitch-class values and the
   strongest class (:a …); `features~ [ms] rms centroid …` one outlet per descriptor; `spectrum~` draws.
+  To see any stream over time: `monitor [seconds] [name …]`, one inlet (and lane) per name — numbers as
+  lines, lists as strips, bangs and words as marks.
   To record any stream of numbers (a knob, `snapshot~ 50 rms`, a descriptor) as strokes: `record [lo hi]`
   → a `canvas` inlet, with `rec`/`stop`; a `reader~` reads it back as an automation.
   To write what is played into notation: `pitch~` → `transcribe [bpm] [notes|glide]` (left; `onset~` on its
