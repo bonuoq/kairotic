@@ -29,6 +29,12 @@ export async function analysis(page, check) {
   check("features~ has an outlet per descriptor", (await cljs(page, `(io (get-in (current) [:boxes ${feats}]))`)) === "[1 2]");
   await cljs(page, `(connect ${osc} 0 ${pitch} 0) (connect ${osc} 0 ${feats} 0) (connect ${osc} 0 ${chroma} 0)
                     (connect ${osc} 0 ${spec} 0) (connect ${osc} 0 ${g} 0) (connect ${g} 0 ${onset} 0) (connect ${onset} 0 ${count} 0)`);
+  // monitor: the rms of features~ as a line, the chroma as a strip, the onsets (below) as marks; connected
+  // before ▶ so that their first values reach it (they send only what changes, and the osc~ does not change)
+  const mon = (await cljs(page, '(box "monitor 6 rms chroma onset" 4600 300)')).trim();
+  check("monitor has an inlet per name", (await cljs(page, `(io (get-in (current) [:boxes ${mon}]))`)) === "[3 0]");
+  await cljs(page, `(connect ${feats} 0 ${mon} 0) (connect ${chroma} 0 ${mon} 1) (connect ${onset} 0 ${mon} 2)`);
+  const lane = (i) => `(get-in (second (last-shown ${mon})) [:lanes ${i}])`;
   await cljs(page, "(play)");
 
   const hz = await until(page, `(:hz (get-in @eng/rt [:states ${pitch}]))`, (x) => Math.abs(Number(x) - 220) < 1);
@@ -41,20 +47,22 @@ export async function analysis(page, check) {
   check("chroma~: the strongest class of an A is :a", top === ":a", top);
   const cols = await until(page, `(count (second (last-shown ${spec})))`, (x) => x === "116");
   check("spectrum~ draws 116 columns", cols === "116", cols);
-
-  // monitor: the rms of features~ as a line, the chroma as a strip, the onsets (below) as marks
-  const mon = (await cljs(page, '(box "monitor 6 rms chroma onset" 4600 300)')).trim();
-  check("monitor has an inlet per name", (await cljs(page, `(io (get-in (current) [:boxes ${mon}]))`)) === "[3 0]");
-  await cljs(page, `(connect ${feats} 0 ${mon} 0) (connect ${chroma} 0 ${mon} 1) (connect ${onset} 0 ${mon} 2)`);
-  const lane = (i) => `(get-in (second (last-shown ${mon})) [:lanes ${i}])`;
-  const nr = await until(page, `(count (filter (fn [[_ v]] (number? v)) ${lane(0)}))`, (x) => Number(x) > 3);
-  check("monitor keeps the numbers of its first lane", Number(nr) > 3, nr);
-  const nc = await until(page, `(count (filter (fn [[_ v]] (= 12 (count v))) ${lane(1)}))`, (x) => Number(x) > 0);
-  check("... and the lists of 12 of the second", Number(nc) > 0, nc);
+  const nr = await until(page, `(count (filter (fn [[_ v]] (number? v)) ${lane(0)}))`, (x) => Number(x) > 0);
+  check("monitor draws what features~ sends in its first lane", Number(nr) > 0, nr);
+  // and some values sent to it directly, for a line and a strip that are fresh in the window
+  for (let i = 0; i < 6; i++) {
+    await cljs(page, `(send! ${mon} 0 ${(0.1 + 0.05 * i).toFixed(2)}) (send! ${mon} 1 [${Array.from({ length: 12 }, (_, j) => ((i + j) % 12) / 11).map((x) => x.toFixed(2)).join(" ")}])`);
+    await page.waitForTimeout(120);
+  }
+  const nl = await cljs(page, `(count (filter (fn [[_ v]] (number? v)) ${lane(0)}))`);
+  check("... a line of the numbers it gets", Number(nl) >= 5, nl);
+  const nc = await cljs(page, `(count (filter (fn [[_ v]] (= 12 (count v))) ${lane(1)}))`);
+  check("... and of the lists of 12 in the second lane", Number(nc) >= 2, nc);
   const cells = await cljs(page, `(let [b (get-in (current) [:boxes ${mon}])]
                                     (count (filter (fn [f] (and (= :rect (first f)) (number? (:opacity (second f)))))
                                                    (ctl-shapes* (ctl-m ${mon} b) b))))`);
   check("... drawn as cells with an opacity", Number(cells) > 0, cells);
+
 
   for (let i = 0; i < 3; i++) {
     await cljs(page, `(send! ${g} 1 1)`); await page.waitForTimeout(350);
