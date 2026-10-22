@@ -119,7 +119,9 @@ comes first.
   read it back with `phasor~` → `reader~` as an automation.
 - **Recording from a point**: `rec t` (`msg rec 4`) on a `sample`, `record` or `transcribe` keeps what
   was there before t (seconds; beats for transcribe) and records from t on, replacing what came after —
-  a punch-in. A canvas or freqt takes `[:cut t]` for that: everything from t on is removed.
+  a punch-in. `ovr t` (`msg ovr 4`; `ovr` alone, from 0) overwrites only what the take covers, from t
+  to where it stops, and keeps what came after it — a punch-in/out. A canvas or freqt takes `[:cut t]`
+  for that (everything from t on) and `[:cut t1 t2]` (what is between them; a stroke across is split).
 
 ## 4. The history
 

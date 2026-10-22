@@ -377,6 +377,7 @@
 ;; · an edit: changes the buffer, as one event of the history (the same as the commands of the REPL)
 ;;     [:stroke [[x y] …]] · [:stroke :t3 [[x y] …]] · [:note t pitch dur] (pitch: MIDI or "c4")
 ;;     [:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear] · [:cut t] (everything from t on)
+;;     · [:cut t1 t2] (what is between t1 and t2)
 ;;     [:axis :x lo hi] · [:axis :y lo hi :log] · [:grid-x step cycles] · [:grid-y step] · [:tuning "19-tet" ref]
 ;;     [:batch [edit …]]: several at once, one event
 ;; · a question: the answer comes out on the left, nothing changes
@@ -421,11 +422,15 @@
    is read (so new strokes get new ids); those that change nothing are left out."
   [d msg]
   (let [msgs (if (= :batch (first msg)) (filter vector? (second msg)) [msg])
-        ;; [:cut t]: everything from t on is removed, as the erases and shortened strokes it takes
-        msgs (mapcat (fn [m] (if (and (= :cut (first m)) (cv/num? (second m))) [[:cut-now (second m)]] [m])) msgs)]
+        ;; [:cut t] removes everything from t on, [:cut t1 t2] what is between t1 and t2 (as the erases,
+        ;; shortened and split strokes it takes)
+        msgs (mapcat (fn [m] (if (and (= :cut (first m)) (cv/num? (second m)))
+                               [[:cut-now (second m) (let [t2 (get m 2)] (when (and (cv/num? t2) (> t2 (second m))) t2))]]
+                               [m]))
+                     msgs)]
     (first (reduce (fn [[evs d] m]
                      (if (= :cut-now (first m))
-                       (let [es (cv/cut-events d (second m))]
+                       (let [es (cv/cut-events d (second m) (get m 2))]
                          [(into evs es) (reduce cv/step d es)])
                      (let [e (canvas-event d m) d2 (when e (cv/step d e))]
                        (if (and e (not= d2 d)) [(conj evs e) d2] [evs d]))))

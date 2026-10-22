@@ -44,6 +44,23 @@ export async function record(page, check) {
   await cljs(page, `(connect ${ph} 0 ${rd} 0) (connect ${c} 1 ${rd} 1) (connect ${rd} 0 ${sn} 0)`);
   const peak = await until(page, `(get-in @eng/rt [:states ${sn}])`, (g) => Math.abs(Number(g) - 0.8) < 0.01, 8000);
   check("reader~ plays it back as an automation (its peak is 0.8)", Math.abs(Number(peak) - 0.8) < 0.01, peak);
+  // overwrite: ovr 0.3 replaces only what the take covers and keeps what came after
+  const r3 = (await cljs(page, '(box "record" 6200 100)')).trim();
+  const c3 = (await cljs(page, '(box "canvas" 6200 160)')).trim();
+  await cljs(page, `(connect ${r3} 0 ${c3} 0)`);
+  await cljs(page, `(send! ${r3} :rec) (send! ${r3} 0.2)`); await page.waitForTimeout(1200);
+  await cljs(page, `(send! ${r3} :stop)`);
+  await until(page, `(count (:strokes (box-data ${c3})))`, (g) => g === "1", 6000);
+  await cljs(page, `(send! ${r3} [:ovr 0.3]) (send! ${r3} 0.9)`); await page.waitForTimeout(400);
+  await cljs(page, `(send! ${r3} :stop)`);
+  const over = await until(page, `(let [ss (vals (:strokes (box-data ${c3})))
+                                         at (fn [v] (filter (fn [s] (some (fn [[_ y]] (= y v)) (:pts s))) ss))]
+                                     [(count ss) (count (at 0.9)) (boolean (some (fn [s] (> (ffirst (:pts s)) 0.6)) (at 0.2)))
+                                      (boolean (some (fn [s] (< (ffirst (:pts s)) 0.05)) (at 0.2)))])`,
+                          (g) => g === "[3 1 true true]", 6000);
+  check("ovr t overwrites only what the take covers, keeping what came after", over === "[3 1 true true]",
+        over + " " + await cljs(page, `(pr-str (:strokes (box-data ${c3})))`));
+
   await cljs(page, "(stop)");
-  await cljs(page, `(delete ${r} ${c} ${r2} ${f} ${ph} ${rd} ${sn})`);
+  await cljs(page, `(delete ${r} ${c} ${r2} ${f} ${ph} ${rd} ${sn} ${r3} ${c3})`);
 }

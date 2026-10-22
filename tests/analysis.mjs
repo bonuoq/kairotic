@@ -92,6 +92,20 @@ export async function analysis(page, check) {
                                   (near (first (nth s 2)) 440) (>= (second (nth s 2)) 1)])`);
   check("transcribe rec t keeps what is before t and writes from it", ok === "[3 true true true true true]", ok + " " + after);
 
+  // overwrite: ovr 0.6 writes a 330 over what was there from beat 0.6, and keeps the 440 after the take
+  await cljs(page, `(send! ${osc} 330) (send! ${tr} [:ovr 0.6])`);
+  await cljs(page, `(send! ${g} 1 1)`); await page.waitForTimeout(300);
+  await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(100);
+  await cljs(page, `(send! ${tr} :stop)`);
+  const ovr = await until(page, `(let [s (mapv (fn [p] [(second (first p)) (first (first p)) (first (last p))]) ${strokes})
+                                       near (fn [a b] (< (js/Math.abs (* 1200 (/ (js/Math.log (/ a b)) js/Math.LN2))) 15))
+                                       of (fn [hz] (filter (fn [x] (near (first x) hz)) s))]
+                                   [(count (of 330)) (boolean (some (fn [x] (>= (second x) 0.6)) (of 330)))
+                                    (count (of 440)) (boolean (some (fn [x] (< (second x) 0.1)) (of 220)))])`,
+                          (x) => x === "[1 true 1 true]", 8000);
+  check("transcribe ovr t writes over the take and keeps what came after", ovr === "[1 true 1 true]",
+        ovr + " " + await cljs(page, `(mapv (fn [p] [(js/Math.round (second (first p))) (first (first p)) (first (last p))]) ${strokes})`));
+
   await cljs(page, "(stop)");
   await cljs(page, `(delete ${osc} ${pitch} ${feats} ${chroma} ${spec} ${g} ${onset} ${count} ${p2} ${tr} ${fq})`);
   page.off("console", onLog);

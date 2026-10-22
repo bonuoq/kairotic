@@ -95,4 +95,11 @@
           (mapv (fn [c] (vec (array-seq c))) (snd/splice #js [(js/Float32Array. #js [1]) (js/Float32Array. #js [2])] 3 (js/Float32Array. #js [9])))
           [[1 0 0 9] [2 0 0 9]])
     (t/eq "... or only the new one after silence" (mapv (fn [c] (vec (array-seq c))) (snd/splice nil 1 (js/Float32Array. #js [9]))) [[0 9]])
+    (t/eq "splice with after: what the old sound had after the take follows it (punch-in/out)"
+          (mapv (fn [c] (vec (array-seq c))) (snd/splice #js [(js/Float32Array. #js [1 2 3 4 5])] 1 (js/Float32Array. #js [9 9]) true))
+          [[1 9 9 4 5]])
+    (t/eq "... longer than the old one: the take" (mapv (fn [c] (vec (array-seq c))) (snd/splice #js [(js/Float32Array. #js [1 2])] 1 (js/Float32Array. #js [9 9 9]) true))
+          [[1 9 9 9]])
+    (t/eq "ovr asks for a take over, keeping what comes after" (first (:effects (recv {:value [:ovr 0.5] :data d})))
+          [:rec {:from 0.5 :base d :ovr true}])
     (t/eq "!- the other way round" (:out ((:receive (comp/lookup "!-")) {:args [10] :value 4})) [[0 6]])))

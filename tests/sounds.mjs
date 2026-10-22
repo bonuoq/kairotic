@@ -66,6 +66,25 @@ export async function sounds(page, check) {
                                      (/ (js/Math.round (* 1000 (top (take-last (quot n 3) p)))) 1000)])`);
   check("... the first part at its level, the take after it at the new one", /^\[0\.1[45]\d? 0\.0[78]\d?\]$/.test(levels),
         levels + " sent: " + sent + " during: " + during + " takes: " + await cljs(page, "(pr-str @snd/takes)") + " shows: " + await cljs(page, `(pr-str (take-last 4 (get-in @eng/rt [:shows ${sp}])))`) + " logs: " + logs.join(" | ") + " repl: " + await page.evaluate(() => [...document.querySelectorAll("#repl-out div")].slice(-6).map((d) => d.textContent).join(" | ")) + " gain out: " + await cljs(page, `(get-in @eng/rt [:states ${gl}])`) + " " + await cljs(page, `(pr-str (:data (get-in (current) [:boxes ${sp}])))`).then((x) => x.slice(0, 300)));
+  // overwrite: ovr 0.1 replaces only what the take covers (at half the level again) and keeps what came after
+  const hash = `(:audio (:data (get-in (current) [:boxes ${sp}])))`;
+  await cljs(page, `(send! ${gp} 1 1)`); await page.waitForTimeout(200);
+  const h0 = await cljs(page, hash);
+  await cljs(page, `(send! ${sp} :rec)`); await page.waitForTimeout(800); await cljs(page, `(send! ${sp} :stop)`);
+  const h1 = await until(page, hash, (g) => g !== h0, 8000);
+  const full = Number(await cljs(page, secs(sp)));
+  await cljs(page, `(send! ${gp} 1 0.5)`); await page.waitForTimeout(200);
+  await cljs(page, `(send! ${sp} [:ovr 0.1])`); await page.waitForTimeout(250); await cljs(page, `(send! ${sp} :stop)`);
+  const h2 = await until(page, hash, (g) => g !== h1, 8000);
+  const olevels = await cljs(page, `(let [p (:peaks (:data (get-in (current) [:boxes ${sp}]))) n (count p)
+                                         top (fn [xs] (apply max (map second xs)))]
+                                     [(snd/seconds (:data (get-in (current) [:boxes ${sp}])))
+                                      (/ (js/Math.round (* 1000 (apply min (map second p)))) 1000)
+                                      (/ (js/Math.round (* 1000 (top (take-last (quot n 4) p)))) 1000)])`);
+  const [olen2, omin, otail] = JSON.parse(olevels.replace(/ /g, ","));
+  const olen = h2;
+  check("ovr t keeps the length and what came after the take", Math.abs(olen2 - full) < 0.02 && Math.abs(otail - 0.15) < 0.01, olevels + " " + full + " " + olen);
+  check("... and the take is in the middle, at its level", Math.abs(omin - 0.075) < 0.01, olevels);
   await cljs(page, `(delete ${gp} ${sp} ${gl})`);
 
   // a reader~ plays it

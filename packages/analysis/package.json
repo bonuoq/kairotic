@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/analysis",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Kairotic analysis components: features~ (descriptors with Meyda), pitch~ (YIN), onset~, chroma~ spectrum~ and transcribe (pitch~ into a freqt), from any signal or adc~ into messages and pictures",
   "author": "bonuoq",
   "license": "MPL-2.0",
