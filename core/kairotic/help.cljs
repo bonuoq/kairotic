@@ -386,6 +386,17 @@
     :try "Press ▶: one peak at 220 Hz. Connect an adc~ instead and sing a vowel: its partials and formants."
     :see ["scope~" "features~"]}
 
+   "monitor"
+   {:package "@kairotic/analysis" :usage "monitor [seconds] [name …]"
+    :doc "Draws the messages that arrive over the last seconds, one lane per inlet: a number as a line, a list as a strip of cells, a bang or a word as a mark."
+    :inlets ["anything, drawn in the first lane; with names (monitor 6 rms centroid chroma) one inlet per name, left to right"]
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"features~ 20 rms centroid\" 40 90)" "(box :b3 \"chroma~\" 260 90)"
+                    "(box :b4 \"onset~\" 460 90)" "(box :b5 \"monitor 6 rms centroid chroma onset\" 40 180)"
+                    "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b1 0 :b4 0)"
+                    "(connect :b2 0 :b5 0)" "(connect :b2 1 :b5 1)" "(connect :b3 0 :b5 2)" "(connect :b4 0 :b5 3)")
+    :try "Press ▶ and allow the microphone: speak, then sing a long note — the centroid falls, the chroma strip settles on one row, each syllable leaves a mark."
+    :see ["features~" "chroma~" "onset~" "print"]}
+
    "adsr~"
    {:package "@kairotic/synth" :usage "adsr~ [a d s r]"
     :doc "An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape."

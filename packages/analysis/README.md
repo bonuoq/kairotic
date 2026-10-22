@@ -12,6 +12,7 @@ From any signal — an `adc~`, a `sample` played by a `reader~`, a `faust~` — 
 | `chroma~ [ms]` | 12 values from C to B and the strongest pitch class as a word (`:a`, `:c#`…) |
 | `spectrum~ [lo hi]` | the spectrum drawn in the patch, on a log scale of frequency |
 | `transcribe [bpm] [notes\|glide] [ms]` | what `pitch~` hears (and `onset~` splits), written into a `freqt` as strokes: flat notes at the pitch they hold longest, or contours that follow the voice; times in beats at bpm. `rec` starts from 0, `rec t` from beat t, `ovr t` over only what the take covers, `stop` ends |
+| `monitor [seconds] [name …]` | whatever arrives, drawn over the last seconds (6), one lane per inlet: a lane for each name written (`monitor 6 rms centroid chroma` has 3 inlets), or one. A number is a line in the range it has had in the window, a list of numbers a strip with a row per element (chroma, mfcc), a bang or a word a mark. It sends nothing |
 
 Each sends only what changed. `pitch~` runs YIN in its own AudioWorklet; the others take frames of 2048
 samples through the Kairotic API (`api/tap`) and compute them with
@@ -23,6 +24,17 @@ samples through the Kairotic API (`api/tap`) and compute them with
 (box :b3 "ftom" 40 150)
 (box :b4 "print" 40 200)
 (connect :b1 0 :b2 0) (connect :b2 0 :b3 0) (connect :b3 0 :b4 0)
+```
+
+To watch what a sound does over time, several descriptors side by side:
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "features~ 20 rms centroid" 40 90)
+(box :b3 "chroma~" 260 90)
+(box :b4 "monitor 6 rms centroid chroma" 40 160)
+(connect :b1 0 :b2 0) (connect :b1 0 :b3 0)
+(connect :b2 0 :b4 0) (connect :b2 1 :b4 1) (connect :b3 0 :b4 2)
 ```
 
 An improvisation into notation: `adc~` → `pitch~` → `transcribe` → `freqt`, with `onset~` on the right

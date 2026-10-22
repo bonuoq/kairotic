@@ -113,6 +113,9 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   convierte lo que se oye en datos: `pitch~` la altura por YIN (Hz, y 0 cuando deja de oír una),
   `onset~` un bang en cada ataque, `chroma~` las 12 clases de altura y la más fuerte,
   `features~ rms centroid flatness …` descriptores (con Meyda), y `spectrum~` dibuja el espectro.
+  `monitor 6 rms centroid chroma` dibuja lo que llega a sus entradas en los últimos 6 segundos, un carril
+  por entrada: los números como líneas, las listas (chroma, mfcc) como franjas, los bangs y las palabras
+  como marcas.
   `transcribe` escribe lo que oye `pitch~` en un `freqt` — `rec`, tocar, `stop` — como notas a su
   altura o, con `transcribe 60 glide`, como contornos que siguen la voz (un `onset~` a su derecha separa
   las notas repetidas); el freqt visto como partitura es entonces la improvisación en notación.
