@@ -36,13 +36,13 @@ export async function theory(page, check) {
   const shown = await until(page, `(mapv first (second (last-shown ${d})))`, (x) => x === "[:circle :circle :text]", 4000);
   check("draw keeps the shapes that arrive (also as a msg writes them)", shown === "[:circle :circle :text]", shown);
   await cljs(page, `(send! ${d} [:set :label [:text {:x 10 :y 90} "again"]])`);
-  check("... [:set k …] replaces the shape called k", (await cljs(page, `(count (second (last-shown ${d})))`)) === "3");
+  check("... [:set k …] replaces the shape called k", (await until(page, `(mapv first (second (last-shown ${d})))`, (x) => x === "[:circle :circle :text]" , 3000)) === "[:circle :circle :text]");
   const sh = await cljs(page, `(let [b (get-in (current) [:boxes ${d}])] (count (filter (fn [f] (= :circle (first f))) (ctl-shapes* (ctl-m ${d} b) b))))`);
   check("... and draws them", sh === "2", sh);
   await cljs(page, `(send! ${d} [:pressed :moon])`);
   check("... pressing a shape with :hit sends it", (await until(page, "(pr-str (map second (:prints @eng/rt)))", (x) => x.includes(":moon"), 3000)).includes(":moon"), await printed(page));
   await cljs(page, `(send! ${d} :clear)`);
-  check("... clear empties it", (await cljs(page, `(count (second (last-shown ${d})))`)) === "0");
+  check("... clear empties it", (await until(page, `(count (second (last-shown ${d})))`, (x) => x === "0", 3000)) === "0");
 
   // @kairotic/theory
   const pc = (await cljs(page, '(box "pcclock" 7300 100)')).trim();
@@ -56,10 +56,10 @@ export async function theory(page, check) {
   check("pcclock: a major triad is the set (0 4 7)", (await until(page, `(:set (second (last-shown ${pc})))`, (x) => x === "[0 4 7]", 3000)) === "[0 4 7]");
   check("... whose prime form is (0 3 7)", (await printedHas(page, "[0 3 7]")).includes("[0 3 7]"), await printed(page));
   await cljs(page, `(send! ${pc} [0 3 6 9])`);
-  const axes = await cljs(page, `(let [b (get-in (current) [:boxes ${pc}])] (count (filter (fn [f] (and (= :line (first f)) (= :kairos (:stroke (second f))))) (ctl-shapes* (ctl-m ${pc} b) b))))`);
+  const axes = await until(page, `(let [b (get-in (current) [:boxes ${pc}])] (count (filter (fn [f] (and (= :line (first f)) (= :kairos (:stroke (second f))))) (ctl-shapes* (ctl-m ${pc} b) b))))`, (x) => x === "4", 3000);
   check("... a diminished seventh has four axes of symmetry", axes === "4", axes);
   await cljs(page, `(send! ${fo} [0 4 8])`);
-  const f3 = await cljs(page, `(let [[a b] (get-in (second (last-shown ${fo})) [:f 2])] (js/Math.round (* 100 (js/Math.hypot a b))))`);
+  const f3 = await until(page, `(let [[a b] (get-in (second (last-shown ${fo})) [:f 2])] (js/Math.round (* 100 (js/Math.hypot a b))))`, (x) => x === "100", 3000);
   check("fourier: the augmented triad is wholly triadic (|f3| = 1)", f3 === "100", f3);
   await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${tz} [60 64 67]) (send! ${tz} [60 63 67]) (send! ${tz} [60 63 68])`);
   const tri = await printedHas(page, ":C", ":cm", ":Ab");
