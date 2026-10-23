@@ -241,6 +241,36 @@ Graphic buffer for any numeric data: strokes in a plane with axes of any range, 
 (stroke :b1 [[0 0.2] [0.5 0.9] [1 0.4]])
 ```
 
+**An automation** — A reader~ goes along the canvas at audio rate: its value is a signal that can move a parameter, here the factor of a gain~ (a tremolo drawn by hand).
+
+*Try:* Press ▶: the stroke becomes the volume of the oscillator every two seconds. Draw a zigzag and listen to it.
+
+```clojure
+(box :b6 "phasor~ 0.5" 300 15)
+(box :b7 "reader~" 300 290)
+(box :b8 "osc~ 330" 420 290)
+(box :b9 "gain~ 0" 420 340)
+(box :b10 "dac~" 420 390)
+(connect :b6 0 :b7 0)
+(connect :b1 1 :b7 1)
+(connect :b8 0 :b9 0)
+(connect :b7 0 :b9 1)
+(connect :b9 0 :b10 0)
+(connect :b9 0 :b10 1)
+```
+
+**A path in two dimensions** — With reader path, the position (0…1) goes along a stroke, and both its X and Y come out: a trajectory, for space~ or for two parameters at once.
+
+*Try:* Press ▶: print writes [x y] as the reader goes around the shape. Connect its outlet to a space~ (see its help) to move a sound along it.
+
+```clojure
+(clear :b1)
+(axis :b1 :x -1 1)
+(axis :b1 :y -1 1)
+(stroke :b1 [[0 0.8] [0.7 0.4] [0.5 -0.6] [-0.6 -0.5] [-0.7 0.5] [0 0.8]])
+(text! :b4 "reader path")
+```
+
 See also: `reader`, `reader~`, `freqt`
 
 ### chroma~ · `@kairotic/analysis`
@@ -469,12 +499,63 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 - `[:batch [[:clear] [:note 0 "c4" 1] …]]`: several edits, one event of the history
 - `[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]`: questions: the answer comes out on the left
 - `⇄ score in the header · (view :bN :score)`: the same buffer, drawn as an approximate score (⇄ canvas brings it back)
-- `shown as a score, click a note of a tree`: ↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest
+- `shown as a score, click a note of a tree`: ↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest
+- `click a rest`: Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note
 - `(keep! :bN)`: writes the tree it shows into its buffer, with its recipe beside it (the tree and the boxes that made it)
 - `(recipe :bN) · (remake! :bN)`: the recipe of a kept buffer · the tree written back, without the changes made since
 - `{ } in the header (or a double-click on its right) · (source :bN)`: the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event
 
-**Try:** A freqt shown as a score is the viewer of a tree that comes transformed (tree → mt transpose 7 → freqt). To see and edit a tree box itself as a score, use ⇄ score in its header: no wire needed. (A box written "score", from older works, is a freqt shown as a score.)
+**Try:** Press ▶: the reader~ plays the four beats again and again. Draw a stroke of your own, straight or curved: it sounds at the frequency it passes through.
+
+```clojure
+(box :b1 "freqt" 40 60)
+(box :b2 "phasor~ 0.25" 40 15)
+(box :b3 "reader~ 1 gate" 40 290)
+(box :b4 "osc~" 40 340)
+(box :b5 "gain~" 40 390)
+(box :b6 "dac~" 40 440)
+(connect :b2 0 :b3 0)
+(connect :b1 1 :b3 1)
+(connect :b3 0 :b4 0)
+(connect :b3 1 :b5 1)
+(connect :b4 0 :b5 0)
+(connect :b5 0 :b6 0)
+(connect :b5 0 :b6 1)
+(melody :b1 "c4/1 e4/.5 d4/.5 g4/2" 0)
+```
+
+**A tuning and a grid** — A freqt can have a tuning (the lines of its Y axis: any equal division, just intonation, a Scala .scl) and a grid of time with its bars. Drawing snaps to both.
+
+*Try:* Draw a few notes: they fall on the 19 degrees of the octave and on the half beats. Try (tuning :b1 "just-5") or (tuning :b1 nil) to draw freely again.
+
+```clojure
+(tuning :b1 "19-tet")
+(grid-x :b1 0.5 [4])
+```
+
+**As a score** — The same buffer can be shown as an approximate score: ⇄ score in its header, or (view :b1 :score). Nothing changes in the data; ⇄ canvas brings the drawing back.
+
+*Try:* Press ▶: the score sounds the same as the drawing did. To edit notes one by one in a score, show a tree: see the help of tree.
+
+```clojure
+(tuning :b1 nil)
+(view :b1 :score)
+```
+
+**The viewer of a tree** — A freqt shown as a score is the viewer of a tree that comes transformed (tree → mt transpose 7 → freqt). Its third outlet sends the edits made on the notes back to the tree box. (A box written "score", from older works, is a freqt shown as a score.)
+
+*Try:* Click a note of the new score and press ↑ or ↓, + or −, Delete (a rest) and then Enter (a note again): the change goes back to the tree by the dashed line.
+
+```clojure
+(box :b7 "bang" 300 15)
+(box :b8 "tree" 300 60)
+(code :b8 "\"c5/1 b4/.5 a4 g4/2\"")
+(box :b9 "freqt" 300 160)
+(view :b9 :score)
+(connect :b7 0 :b8 0)
+(connect :b8 0 :b9 0)
+(connect :b9 2 :b8 0)
+```
 
 See also: `canvas`, `reader`, `tree`
 
@@ -679,6 +760,36 @@ Operations on musical trees: a tree on the left comes out transformed. transpose
 (connect :b2 0 :b3 0)
 (connect :b4 0 :b3 1)
 (connect :b3 0 :b5 0)
+```
+
+**Two voices: a canon** — mt canon d i puts the tree against itself, d beats later and i semitones away: two voices that the score shows as two staves.
+
+*Try:* Click the bang. Change it to mt canon 1 -12 (an octave below, one beat later) or mt canon 4 0.
+
+```clojure
+(text! :b3 "mt canon 2 7")
+(delete :b4)
+```
+
+**Playing it** — mt play reads a tree in time: the Hz of the notes that sound (left) and their voice ids (second) go to a synth~, which gives each voice its own note.
+
+*Try:* Press ▶, click the first bang (the tree goes to mt play) and then msg bang: the canon sounds in a loop; stop ends it.
+
+```clojure
+(box :b6 "msg bang" 300 170)
+(box :b7 "msg stop" 370 170)
+(box :b8 "mt play loop" 300 220)
+(box :b9 "synth~" 300 270)
+(box :b10 "gain~ 0.3" 300 320)
+(box :b11 "dac~" 300 370)
+(connect :b3 0 :b8 0)
+(connect :b6 0 :b8 0)
+(connect :b7 0 :b8 0)
+(connect :b8 0 :b9 0)
+(connect :b8 1 :b9 1)
+(connect :b9 0 :b10 0)
+(connect :b10 0 :b11 0)
+(connect :b10 0 :b11 1)
 ```
 
 See also: `tree`, `freqt`, `synth~`
@@ -1405,7 +1516,8 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `(tree-edit! :bN [:attrs [0 1 2] {…}])`: edits nodes by their path: [:set p x] [:attrs p {…}] [:insert p x] [:remove p]
 - `(node-at :bN [0 1])`: the node at a path
 - `⇄ score in the header · (view :bN :score)`: the same tree drawn as a score, in this box (⇄ code brings the code back; { } opens it)
-- `in a score: click a note`: ↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest
+- `in a score: click a note`: ↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest
+- `in a score: click a rest`: Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note
 - `(as-tree :bN)`: reads it back as data
 
 **Try:** The score already shows the tree, measure by measure. Double-click the code, change a note and apply it (Ctrl+Enter): the score follows. Click a note of the score and press ↑: the change comes back to the tree by the dashed line. Or press ⇄ score in the header of the tree box: the same tree as a score, in one box.
