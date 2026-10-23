@@ -99,6 +99,50 @@
           (dispatch! [where id (js/Math.round (+ x dx)) (js/Math.round (+ y dy))]))
         [(js/Math.round dx) (js/Math.round dy)]))))
 
+(defn next-mark-id []
+  (let [nums (keep (fn [k] (let [m (re-matches #"a(\d+)" (name k))] (when m (js/parseInt (second m) 10))))
+                   (keys (:marks (current))))]
+    (keyword (str "a" (inc (if (seq nums) (apply max nums) 0))))))
+
+(defn layer
+  "A layer of the patch, over or under its boxes, shown in the patch view and/or the presentation:
+   (layer :notes) · (layer :viz {:z :under :show #{:present}}) · (layer :viz nil) removes it, with its marks."
+  ([id] (layer id {}))
+  ([id opts]
+   (when-not (keyword? id) (fail "A layer is named with a keyword: (layer :notes)"))
+   (if (nil? opts)
+     (dispatch! [:layer id nil])
+     (dispatch! [:layer id (merge (or (get-in (current) [:layers id]) layer-default) opts)]))
+   id))
+
+(defn mark
+  "An annotation on a layer. Its points are anchored to a box ([:b4 dx dy] from its top-left corner) or to
+   the paper ([:patch x y]): (mark :notes :a1 {:kind :arrow :pts [[:b1 120 10] [:b4 -6 10]]}) ·
+   (mark :notes {:kind :text :at [:patch 300 40] :txt \"breathe\"}) · kinds :line (a stroke), :arrow, :text."
+  ([layer-id m] (mark layer-id (next-mark-id) m))
+  ([layer-id id m]
+   (when-not (keyword? layer-id) (fail "Which layer? (mark :notes …)"))
+   (when-not (keyword? id) (fail "A mark id is a keyword, e.g. :a3"))
+   (let [m (sane-mark (assoc m :layer layer-id))]
+     (when-not m (fail "A mark is {:kind :line or :arrow :pts [[anchor dx dy] …]} or {:kind :text :at [anchor dx dy] :txt \"…\"}; an anchor is a box (:b4) or :patch"))
+     (dispatch! [:annot id m])
+     id)))
+
+(defn unmark "Erases marks: (unmark :a3) · (unmark :a3 :a4)." [& ids] (doseq [id ids] (dispatch! [:annot id nil])) :ok)
+
+(defn project
+  "Draws the view of a box again on a layer, at another size: (project :b9 :viz [40 40 800 480]) ·
+   (unproject :b9). The box keeps its own place; the projection is drawn from what it shows."
+  [id layer-id [x y w h :as rect]]
+  (need-box id)
+  (when-not (keyword? layer-id) (fail "Which layer? (project :b9 :viz [x y w h])"))
+  (when-not (and (sequential? rect) (= 4 (count rect)) (every? number? rect)) (fail "Where: [x y width height]"))
+  (when-not (own-view? (need-box id)) (fail (str id " has no view of its own to project (a component drawn with shapes)")))
+  (dispatch! [:project id {:layer layer-id :rect (vec rect)}])
+  id)
+
+(defn unproject [id] (dispatch! [:project id nil]) :ok)
+
 (defn move-by
   "Moves several boxes together: (move-by [:b1 :b2 :b5] 40 0)."
   [ids dx dy] (shift-ids ids dx dy :move))
@@ -737,6 +781,15 @@
                                       ls ((:code (comp/model-of b)) id (:data b))]
                                   (when (seq ls) (concat ["" (str ";; data of " id)] ls))))
                               (filter (fn [id] (let [b (get-in p [:boxes id])] (and (:data b) (:code (comp/model-of b))))) ids))
+                      ;; layers, their projections and marks
+                      (when (or (:layers p) (:marks p) (:projections p))
+                        (concat ["" ";; layers"]
+                                (for [[id l] (sort-by key (:layers p)) :when (not= l layer-default)]
+                                  (str "(layer " id " " (pr-str l) ")"))
+                                (for [[id pr] (sort-by (comp box-num key) (:projections p))]
+                                  (str "(project " id " " (:layer pr) " " (pr-str (:rect pr)) ")"))
+                                (for [[id m] (:marks p)]
+                                  (str "(mark " (:layer m) " " id " " (pr-str (dissoc m :layer)) ")"))))
                       ;; beside the data, the recipe that made it (keep!)
                       (mapcat (fn [id]
                                 (when-let [r (get-in p [:boxes id :recipe])]

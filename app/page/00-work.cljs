@@ -60,10 +60,73 @@
       (keyword? (:from r)) (assoc :from (:from r))
       (true? (:stale r)) (assoc :stale true))))
 
+
+;; ───── layers: annotations and projections over or under the boxes (Study 26) ─────
+;; A patch can have layers, drawn over or under its boxes, in the patch view, in the presentation or in
+;; both. A layer holds marks — a line drawn by hand, an arrow, a text — whose points are anchored to a box
+;; ([:b4 dx dy], from its top-left corner: they follow it when it moves) or to the paper ([:patch x y]),
+;; and projections: the view of a box drawn again, at another size, somewhere on the paper.
+;;   :layers      {:notes {:z :over :show #{:patch :present}}}
+;;   :marks       {:a1 {:layer :notes :kind :line :pts [[:b4 -10 20] [:b7 0 -8] …]}
+;;                 :a2 {:layer :notes :kind :text :at [:patch 400 60] :txt "enters the clarinet"}}
+;;   :projections {:b9 {:layer :viz :rect [x y w h]}}
+;; A mark anchored to a box that is deleted stays where it was, anchored to the paper.
+
+(def layer-default {:z :over :show #{:patch :present}})
+
+(defn sane-layer [l]
+  (let [l (if (map? l) l {})
+        show (set (filter #{:patch :present} (if (coll? (:show l)) (:show l) [])))]
+    {:z (if (= :under (:z l)) :under :over)
+     :show (if (and (coll? (:show l)) (contains? l :show)) show (:show layer-default))}))
+
+(defn sane-anchor [a]
+  (when (and (sequential? a) (= 3 (count a)) (keyword? (first a)) (number? (second a)) (number? (nth a 2))
+             (js/isFinite (second a)) (js/isFinite (nth a 2)))
+    [(first a) (/ (js/Math.round (* 10 (second a))) 10) (/ (js/Math.round (* 10 (nth a 2))) 10)]))
+
+(defn sane-mark [m]
+  (when (and (map? m) (keyword? (:layer m)))
+    (case (:kind m)
+      (:line :arrow) (let [ps (vec (keep sane-anchor (take 400 (:pts m))))]
+                       (when (>= (count ps) 2) {:layer (:layer m) :kind (:kind m) :pts (if (= :arrow (:kind m)) [(first ps) (peek ps)] ps)}))
+      :text (when-let [a (sane-anchor (:at m))]
+              (let [t (str (:txt m))] (when (seq t) {:layer (:layer m) :kind :text :at a :txt (subs t 0 (min 200 (count t)))})))
+      nil)))
+
+(defn sane-projection [pr]
+  (let [[x y w h] (:rect pr)]
+    (when (and (map? pr) (keyword? (:layer pr)) (every? number? [x y w h]))
+      {:layer (:layer pr) :rect [(js/Math.round x) (js/Math.round y) (max 40 (min 2400 (js/Math.round w))) (max 30 (min 2400 (js/Math.round h)))]})))
+
+(defn with-layers
+  "The layers, marks and projections of x, normalized, into patch p (only those it has)."
+  [p x]
+  (let [ls (into {} (for [[k l] (:layers x) :when (keyword? k)] [k (sane-layer l)]))
+        ms (into (sorted-map) (for [[k m] (:marks x) :let [m (sane-mark m)] :when (and (keyword? k) m)] [k m]))
+        ps (into (sorted-map) (for [[k pr] (:projections x) :let [pr (sane-projection pr)] :when (and (keyword? k) pr)] [k pr]))]
+    (cond-> p (seq ls) (assoc :layers ls) (seq ms) (assoc :marks ms) (seq ps) (assoc :projections ps))))
+
+(defn ensure-layer [p id] (if (get-in p [:layers id]) p (assoc-in p [:layers id] layer-default)))
+
+(defn unanchor
+  "The marks anchored to box id, with those points on the paper where they were (the box is going)."
+  [p id]
+  (let [b (get-in p [:boxes id])
+        fix (fn [[a x y :as pt]] (if (and b (= a id)) [:patch (+ (:x b) x) (+ (:y b) y)] pt))]
+    (if-not (:marks p)
+      p
+      (update p :marks (fn [ms] (into (sorted-map) (for [[k m] ms]
+                                                      [k (cond-> m (:pts m) (update :pts (fn [ps] (mapv fix ps)))
+                                                                   (:at m) (update :at fix))])))))))
+
+(defn drop-empty [p k] (if (empty? (get p k)) (dissoc p k) p))
+
 (defn sane-patch
   "Events may come from other people: whatever arrives is normalized."
   [x]
   (if (map? x)
+    (with-layers
     {:boxes (into (sorted-map)
                   (for [[k b0] (:boxes x) :when (and (keyword? k) (map? b0))
                         :let [b (comp/upgrade-box b0)]]
@@ -76,6 +139,7 @@
                          (and (map? (:data b)) (comp/model-of b)) (assoc :data ((:load (comp/model-of b)) (:data b)))
                          (sane-recipe (:recipe b)) (assoc :recipe (sane-recipe (:recipe b))))]))
      :lines (vec (filter (fn [l] (and (vector? l) (= 4 (count l)))) (:lines x)))}
+    x)
     empty-patch))
 
 (defn step [p [op & args]]
@@ -106,8 +170,33 @@
     :connect    (let [l (vec args)] (if (some #{l} (:lines p)) p (update p :lines conj l)))
     :disconnect (let [l (vec args)] (update p :lines (fn [ls] (vec (remove #{l} ls)))))
     :delete     (let [[id] args]
-                  (-> p (update :boxes dissoc id)
-                      (update :lines (fn [ls] (vec (remove (fn [[a _ b _]] (or (= a id) (= b id))) ls))))))
+                  (-> p (unanchor id)
+                      (update :boxes dissoc id)
+                      (update :lines (fn [ls] (vec (remove (fn [[a _ b _]] (or (= a id) (= b id))) ls))))
+                      (update :projections dissoc id) (drop-empty :projections)))
+    ;; [:layer :notes {:z :under :show #{:present}}] · [:layer :notes nil] removes it with its marks and projections
+    :layer      (let [[id l] args]
+                  (cond (not (keyword? id)) p
+                        (nil? l) (-> p (update :layers dissoc id)
+                                     (update :marks (fn [ms] (into (sorted-map) (remove (fn [[_ m]] (= id (:layer m))) ms))))
+                                     (update :projections (fn [ps] (into (sorted-map) (remove (fn [[_ pr]] (= id (:layer pr))) ps))))
+                                     (drop-empty :layers) (drop-empty :marks) (drop-empty :projections))
+                        :else (assoc-in p [:layers id] (sane-layer l))))
+    ;; [:annot :a1 {:layer :notes :kind :line :pts […]}] (its layer is made if missing) · [:annot :a1 nil] erases it
+    ;; (not [:mark …]: that one is a point of the history, a snapshot or a take)
+    :annot      (let [[id m] args]
+                  (cond (not (keyword? id)) p
+                        (nil? m) (-> p (update :marks dissoc id) (drop-empty :marks))
+                        :else (if-let [m (sane-mark m)]
+                                (-> p (ensure-layer (:layer m)) (update :marks (fnil assoc (sorted-map)) id m))
+                                p)))
+    ;; [:project :b9 {:layer :viz :rect [x y w h]}] · [:project :b9 nil]
+    :project    (let [[id pr] args]
+                  (cond (not (get-in p [:boxes id])) (if (nil? pr) (-> p (update :projections dissoc id) (drop-empty :projections)) p)
+                        (nil? pr) (-> p (update :projections dissoc id) (drop-empty :projections))
+                        :else (if-let [pr (sane-projection pr)]
+                                (-> p (ensure-layer (:layer pr)) (update :projections (fnil assoc (sorted-map)) id pr))
+                                p)))
     ;; event addressed to the data of a box, interpreted by its component:
     ;; [:in :b2 [:stroke :t1 [[0 440] [1 440]]]] · [:in :b7 [:source "process = …;"]]
     :in         (let [[id ev] args dd (comp/model-of (get-in p [:boxes id]))]
@@ -461,6 +550,12 @@
   (reduce (fn [acc [op & args]]
             (case op
               (:box :text :move :size) (update acc :mod conj (first args))
+              ;; each mark, layer and projection is its own unit; a mark refers to the boxes it is anchored to
+              :annot (-> acc (update :mod conj [:annot (first args)])
+                        (update :ref into (let [m (second args)] (filter (fn [a] (and (keyword? a) (not= a :patch)))
+                                                                         (map first (concat (:pts m) (when (:at m) [(:at m)])))))))
+              :layer (update acc :mod conj [:layer (first args)])
+              :project (-> acc (update :mod conj [:project (first args)]) (update :ref conj (first args)))
               :delete (-> acc (update :mod conj (first args)) (update :del conj (first args)))
               (:connect :disconnect) (update acc :ref into [(first args) (nth args 2 nil)])
               :load (assoc acc :load true)
@@ -492,7 +587,9 @@
 (defn remap-ev [m [op & args :as e]]
   (let [f (fn [x] (get m x x))]
     (case op
-      (:box :text :move :size :delete :kept :recipe :data) (into [op (f (first args))] (rest args))
+      (:box :text :move :size :delete :kept :recipe :data :project) (into [op (f (first args))] (rest args))
+      :annot (let [[id m] args fa (fn [[a x y]] [(f a) x y])]
+              [op id (cond-> m (:pts m) (update :pts (fn [ps] (mapv fa ps))) (:at m) (update :at fa))])
       :in (let [[id inner] args]
             [op (f id) (if-let [ne (get-in m [:stroke-ids [id (second inner)]])] (assoc inner 1 ne) inner)])
       (:connect :disconnect) (let [[a o b i] args] [op (f a) o (f b) i])

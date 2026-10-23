@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: MPL-2.0
+// Shapes (:curve, :group, :hit), the draw box, and @kairotic/theory (pcclock, fourier, tonnetz). In the app
+// loaded by tests/browser.mjs with a local work open. check(label, ok, detail).
+import { cljs } from "./gestures.mjs";
+
+const until = async (page, src, ok, ms = 20000) => {
+  const t0 = Date.now(); let got;
+  while (Date.now() - t0 < ms) { got = await cljs(page, src); if (ok(got)) return got; await page.waitForTimeout(100); }
+  return got;
+};
+const printed = (page) => cljs(page, "(pr-str (map second (:prints @eng/rt)))");
+
+export async function theory(page, check) {
+  if ((await cljs(page, "(:mode @hist)")) !== ":local") { check("a local work is open for the theory tests", false); return; }
+  await cljs(page, "(stop)");
+  // shapes
+  const curve = await cljs(page, "(shp/svg [[:curve {:points [[0 0] [10 5] [20 0]] :stroke :accent}]])");
+  check("shapes: a :curve is a smooth path", curve.includes(" C"), curve);
+  const grp = await cljs(page, "(shp/svg [[:group {:x 10 :y 5 :rotate 90} [[:circle {:cx 0 :cy 0 :r 3}]]]])");
+  check("... a :group moves and turns its shapes", grp.includes("translate(10,5) rotate(90)") && grp.includes("<circle"), grp);
+  const hits = await cljs(page, `[(shp/hit-at [[:rect {:x 0 :y 0 :w 50 :h 50 :hit :back}] [:group {:x 20 :y 20 :hit :g} [[:circle {:cx 0 :cy 0 :r 5}]]]] [21 19])
+                                 (shp/hit-at [[:rect {:x 0 :y 0 :w 50 :h 50 :hit :back}] [:group {:x 20 :y 20 :hit :g} [[:circle {:cx 0 :cy 0 :r 5}]]]] [40 40])
+                                 (shp/hit-at [[:group {:x 30 :y 0 :rotate 90} [[:rect {:x 0 :y 0 :w 20 :h 4 :hit :bar}]]]] [28 10])
+                                 (shp/hit-at [[:circle {:cx 5 :cy 5 :r 3}]] [5 5])]`);
+  check("... and :hit finds the shape pressed (on top, inside groups, turned)", hits === "[:g :back :bar nil]", hits);
+
+  // draw
+  const d = (await cljs(page, '(box "draw 200 100" 7000 100)')).trim();
+  const out = (await cljs(page, '(box "print" 7000 260)')).trim();
+  await cljs(page, `(connect ${d} 0 ${out} 0)`);
+  await cljs(page, `(send! ${d} [:circle {:cx 20 :cy 20 :r 8 :fill :accent :hit :sun}])
+                    (send! ${d} [:circle 60 20 8 :kairos :hit :moon])
+                    (send! ${d} [:set :label :text 10 90 "hello"])`);
+  const shown = await cljs(page, `(mapv first (second (last-shown ${d})))`);
+  check("draw keeps the shapes that arrive (also as a msg writes them)", shown === "[:circle :circle :text]", shown);
+  await cljs(page, `(send! ${d} [:set :label [:text {:x 10 :y 90} "again"]])`);
+  check("... [:set k …] replaces the shape called k", (await cljs(page, `(count (second (last-shown ${d})))`)) === "3");
+  const sh = await cljs(page, `(let [b (get-in (current) [:boxes ${d}])] (count (filter (fn [f] (= :circle (first f))) (ctl-shapes* (ctl-m ${d} b) b))))`);
+  check("... and draws them", sh === "2", sh);
+  await cljs(page, `(send! ${d} [:pressed :moon])`);
+  check("... pressing a shape with :hit sends it", (await until(page, "(pr-str (map second (:prints @eng/rt)))", (x) => x.includes(":moon"), 3000)).includes(":moon"), await printed(page));
+  await cljs(page, `(send! ${d} :clear)`);
+  check("... clear empties it", (await cljs(page, `(count (second (last-shown ${d})))`)) === "0");
+
+  // @kairotic/theory
+  const pc = (await cljs(page, '(box "pcclock" 7300 100)')).trim();
+  const loaded = await until(page, '(boolean (comp/lookup "pcclock"))', (g) => g === "true");
+  check("pcclock brings @kairotic/theory", loaded === "true", loaded);
+  const fo = (await cljs(page, '(box "fourier" 7600 100)')).trim();
+  const tz = (await cljs(page, '(box "tonnetz" 7300 360)')).trim();
+  const p2 = (await cljs(page, '(box "print" 7300 640)')).trim();
+  await cljs(page, `(connect ${pc} 0 ${p2} 0) (connect ${tz} 0 ${p2} 0) (connect ${tz} 1 ${p2} 0)`);
+  await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${pc} [60 64 67])`);
+  check("pcclock: a major triad is the set (0 4 7)", (await cljs(page, `(:set (second (last-shown ${pc})))`)) === "[0 4 7]");
+  check("... whose prime form is (0 3 7)", (await printed(page)).includes("[0 3 7]"), await printed(page));
+  await cljs(page, `(send! ${pc} [0 3 6 9])`);
+  const axes = await cljs(page, `(let [b (get-in (current) [:boxes ${pc}])] (count (filter (fn [f] (and (= :line (first f)) (= :kairos (:stroke (second f))))) (ctl-shapes* (ctl-m ${pc} b) b))))`);
+  check("... a diminished seventh has four axes of symmetry", axes === "4", axes);
+  await cljs(page, `(send! ${fo} [0 4 8])`);
+  const f3 = await cljs(page, `(let [[a b] (get-in (second (last-shown ${fo})) [:f 2])] (js/Math.round (* 100 (js/Math.hypot a b))))`);
+  check("fourier: the augmented triad is wholly triadic (|f3| = 1)", f3 === "100", f3);
+  await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${tz} [60 64 67]) (send! ${tz} [60 63 67]) (send! ${tz} [60 63 68])`);
+  const tri = await printed(page);
+  check("tonnetz: C, c, A♭ are named as they come", tri.includes(":C") && tri.includes(":cm") && tri.includes(":Ab"), tri);
+  check("... and make a path of three triads", (await cljs(page, `(count (:path (second (last-shown ${tz}))))`)) === "3");
+  await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${tz} [:pressed 7])`);
+  check("... pressing a node sends its pitch class", (await printed(page)).includes("7"), await printed(page));
+  await cljs(page, `(delete ${d} ${out} ${pc} ${fo} ${tz} ${p2})`);
+}

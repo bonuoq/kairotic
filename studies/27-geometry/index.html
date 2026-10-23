@@ -1,0 +1,517 @@
+<title>Kairotic Study 27 · Geometry</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the score with its transport; then three views of the same moment (clock, DFT, Tonnetz). */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 12px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+select, input[type="text"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="text"] { font-family: var(--f-code); flex: 1; min-width: 0; }
+input[type="range"] { accent-color: var(--accent); }
+.grow { flex: 1 1 260px; display: flex; gap: 6px; min-width: 0; }
+.beat { font: 12px var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-width: 6.5em; }
+
+.sheet { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; min-height: 150px; }
+.score { color: var(--ink); fill: var(--ink); }
+.score svg { display: block; }
+.score svg path, .score svg polyline, .score svg line { stroke: var(--ink); }
+.score .now, .score .now * { fill: var(--accent); color: var(--accent); }
+.score .now path { stroke: var(--accent); }
+.loading { padding: 40px 16px; color: var(--ink-soft); font-size: 13px; }
+#scrub { width: 100%; margin: 8px 0 0; }
+
+/* the three views */
+.views { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1.35fr); gap: 14px; margin-top: 14px; }
+@media (max-width: 1000px) { .views { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .views .wide { grid-column: 1 / -1; } }
+@media (max-width: 620px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.view { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 6px; min-width: 0; align-content: start; }
+.view h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; display: flex; justify-content: space-between; gap: 8px; }
+.view h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; }
+.view svg { width: 100%; height: auto; display: block; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 3.1em; }
+.facts b { color: var(--ink); font-weight: 500; }
+
+/* the shapes vocabulary (kairotic.shapes) and the extensions tried here */
+.shape { fill: none; stroke: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; font-family: var(--f-code); }
+.shape.s-ink { stroke: var(--ink); } .shape.f-ink { fill: var(--ink); }
+.shape.s-soft { stroke: var(--ink-soft); } .shape.f-soft { fill: var(--ink-soft); }
+.shape.s-accent { stroke: var(--accent); } .shape.f-accent { fill: var(--accent); }
+.shape.s-kairos { stroke: var(--kairos); } .shape.f-kairos { fill: var(--kairos); }
+.shape.s-bg { stroke: var(--box); } .shape.f-bg { fill: var(--box); }
+.shape.s-grid { stroke: var(--grid); } .shape.f-grid { fill: var(--grid); }
+.hit { cursor: pointer; }
+.hit:hover .shape.s-grid, .hit:hover .shape.s-soft { stroke: var(--accent); }
+
+.note { margin-top: 14px; font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+</style>
+
+<header>
+  <h1>Study 27 · geometry</h1>
+  <span class="sub">Three mathematical views of the same moment of a score, drawn with the shapes of kairotic.shapes</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="bar">
+  <button class="act primary" id="play">Play</button>
+  <label class="inline" for="win">Pitches
+    <select id="win">
+      <option value="0">sounding now</option>
+      <option value="2">last 2 beats</option>
+      <option value="4" selected>last 4 beats</option>
+      <option value="-1">the whole work so far</option>
+    </select>
+  </label>
+  <span class="beat" id="beat">beat 0.00</span>
+  <div class="grow"><input type="text" id="melody" spellcheck="false" aria-label="Notes"><button class="act" id="melody-apply">Set notes</button></div>
+</div>
+<div class="sheet"><div class="score" id="score"><div class="loading">Loading the notation (Verovio)…</div></div></div>
+<input type="range" id="scrub" min="0" max="32" step="0.05" value="0" aria-label="Position in beats">
+
+<div class="views">
+  <section class="view">
+    <h2>Pitch-class clock <span>set, axes of symmetry</span></h2>
+    <svg id="v-clock" viewBox="0 0 260 260" role="img" aria-label="Pitch-class clock"></svg>
+    <div class="facts" id="f-clock"></div>
+  </section>
+  <section class="view">
+    <h2>Fourier coefficients <span>f1 … f6, trace of the work</span></h2>
+    <svg id="v-dft" viewBox="0 0 300 220" role="img" aria-label="DFT of the pitch-class distribution"></svg>
+    <div class="facts" id="f-dft"></div>
+  </section>
+  <section class="view wide">
+    <h2>Tonnetz <span>triads as triangles, the path of the harmony</span></h2>
+    <svg id="v-tonnetz" viewBox="-34 4 488 252" role="img" aria-label="Tonnetz"></svg>
+    <div class="facts" id="f-tonnetz"></div>
+  </section>
+</div>
+
+<p class="note">Click a pitch class on the clock or a node of the Tonnetz to hear it. Drag the slider to move through the work without playing. The example walks a hexatonic cycle (C, c, A♭, a♭, E, e) by single-note moves P and L, then a diatonic cadence: on the Tonnetz the first half turns around one spot and the second half travels. New shapes tried here, beyond the current vocabulary: <code>:opacity</code> on any shape, <code>:curve</code> (a smooth path through points), <code>[:group {:rotate :translate :scale} shapes]</code> and <code>:hit</code>, which names a shape the component receives when it is pressed.</p>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+window.libErrors = {};
+window.vrvReady = new Promise(function (res, rej) {
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/verovio@5.7.0/dist/verovio-toolkit-wasm.js";
+  s.onload = function () {
+    var m = verovio.module;
+    if (m.calledRun) res(new verovio.toolkit()); else m.onRuntimeInitialized = function () { res(new verovio.toolkit()); };
+  };
+  s.onerror = function () { rej(new Error("could not download Verovio")); };
+  document.head.appendChild(s);
+}).catch(function (e) { window.libErrors.verovio = String(e.message || e); return null; });
+
+window.KAudio = (function () {
+  var ctx = null, bus = null, srcs = [], wave = null;
+  function ensure() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) throw new Error("This browser has no Web Audio");
+    if (!ctx) {
+      ctx = new AC(); bus = ctx.createGain(); bus.gain.value = 0.7; bus.connect(ctx.destination);
+      wave = ctx.createPeriodicWave(new Float32Array(6), new Float32Array([0, 1, 0.3, 0.18, 0.07, 0.04]));
+    }
+    ctx.resume(); return ctx;
+  }
+  function note(a, dur, hz, amp) {
+    var o = ctx.createOscillator(), g = ctx.createGain(), e = a + dur;
+    o.setPeriodicWave(wave); o.frequency.value = hz;
+    g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(amp, a + 0.02);
+    g.gain.exponentialRampToValueAtTime(amp * 0.45, a + 0.3); g.gain.setValueAtTime(amp * 0.45, Math.max(a + 0.3, e - 0.05));
+    g.gain.linearRampToValueAtTime(0, e + 0.15);
+    o.connect(g); g.connect(bus); o.start(a); o.stop(e + 0.2); srcs.push(o);
+  }
+  // notes: [[startSec durSec hz] ...] starting `from` seconds into them
+  function play(notes, from) {
+    ensure(); stop();
+    var t0 = ctx.currentTime + 0.06 - from;
+    notes.forEach(function (n) { if (n[0] + n[1] > from) note(Math.max(ctx.currentTime + 0.05, t0 + n[0]), n[1] - Math.max(0, from - n[0]), n[2], 0.16); });
+    return t0;
+  }
+  function stop() { srcs.forEach(function (s) { try { s.stop(); } catch (e) {} }); srcs = []; }
+  function blip(hz) { ensure(); note(ctx.currentTime + 0.02, 0.5, hz, 0.25); }
+  return { play: play, stop: stop, blip: blip, now: function () { return ctx ? ctx.currentTime : 0; } };
+})();
+
+window.addEventListener("DOMContentLoaded", function () {
+  var st = document.getElementById("status");
+  function show(e) { st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  window.addEventListener("error", function (e) { if (/ResizeObserver loop/.test(String(e.message))) return; show(e.error || e.message); });
+  var mods = ["kairotic/shapes.cljs", "kairotic/score.cljs"];
+  Promise.all(mods.map(function (m) {
+    return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
+  })).then(function (srcs) {
+    srcs.forEach(function (src, i) { try { scittle.core.eval_string(src); } catch (e) { throw new Error(mods[i] + ": " + (e.message || e)); } });
+    scittle.core.eval_string(document.getElementById("main-cljs").textContent);
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="main-cljs">
+;; SPDX-License-Identifier: MPL-2.0
+;; Kairotic · Study 27 · geometry
+;; One moment of a score (the pitches sounding, or those of a window before it) seen three ways:
+;; on the pitch-class clock, by its Fourier coefficients and on the Tonnetz. Each view is a pure
+;; function of the music → a list of shapes, as a component's view would be.
+
+(ns study.geometry
+  (:require [kairotic.shapes :as shp]
+            [kairotic.score :as sc]
+            [clojure.string :as str]))
+
+(defn $ [id] (.getElementById js/document id))
+(defn num? [x] (and (number? x) (js/isFinite x)))
+(def TAU (* 2 js/Math.PI))
+(defn r2 [x] (/ (js/Math.round (* x 100)) 100))
+
+;; ════════ the shapes vocabulary, extended (proposals) ════════
+;;   any shape   :opacity 0…1, :hit <keyword>  (the component is told which one was pressed)
+;;   [:curve {:points [[x y] …] :stroke …}]    a smooth path through the points (Catmull–Rom)
+;;   [:group {:translate [x y] :rotate deg :scale k} [shapes …]]
+
+(defn curve-d [ps]
+  (let [ps (vec ps) n (count ps) P (fn [i] (nth ps (max 0 (min (dec n) i))))]
+    (when (>= n 2)
+      (str "M" (shp/n (first (P 0))) " " (shp/n (second (P 0)))
+           (apply str (for [i (range (dec n))]
+                        (let [[x0 y0] (P (dec i)) [x1 y1] (P i) [x2 y2] (P (inc i)) [x3 y3] (P (+ i 2))]
+                          (str " C" (shp/n (+ x1 (/ (- x2 x0) 6))) " " (shp/n (+ y1 (/ (- y2 y0) 6)))
+                               " " (shp/n (- x2 (/ (- x3 x1) 6))) " " (shp/n (- y2 (/ (- y3 y1) 6)))
+                               " " (shp/n x2) " " (shp/n y2)))))))))
+
+(declare shapes-svg)
+
+(defn shape+ [f]
+  (if-not (and (vector? f) (keyword? (first f)))
+    ""
+    (let [[k o more] f o (if (map? o) o {})
+          inner (case k
+                  :curve (if-let [d (curve-d (filter (fn [p] (and (sequential? p) (= 2 (count p)))) (take 2000 (:points o))))]
+                           (str "<path d=\"" d "\"" (shp/classes o :ink nil) "></path>") "")
+                  :group (let [[tx ty] (:translate o)]
+                           (str "<g transform=\"translate(" (shp/n (or tx 0)) "," (shp/n (or ty 0)) ") rotate(" (shp/n (or (:rotate o) 0))
+                                ") scale(" (shp/n (or (:scale o) 1)) ")\">" (shapes-svg more) "</g>"))
+                  (shp/shape [k (dissoc o :opacity :hit) more]))
+          inner (if (num? (:opacity o)) (str "<g opacity=\"" (shp/n (max 0 (min 1 (:opacity o)))) "\">" inner "</g>") inner)]
+      (if-let [h (:hit o)]
+        (str "<g class=\"hit\" data-hit=\"" (shp/esc (if (keyword? h) (name h) (str h))) "\">" inner "</g>")
+        inner))))
+
+(defn shapes-svg [shapes] (apply str (map shape+ (take shp/max-shapes (remove nil? shapes)))))
+
+;; ════════ the music ════════
+
+(def melody0 "c4+e4+g4/2 c4+eb4+g4/2 c4+eb4+ab4/2 b3+eb4+ab4/2 b3+e4+ab4/2 b3+e4+g4/2 c4+e4+g4/4 a3+c4+e4/2 f3+a3+c4/2 d4+f4+a4/2 g3+b3+d4+f4/2 c4+e4+g4/4")
+(def tempo 72)
+
+(defonce A (atom {:melody (or (try (.getItem js/localStorage "kairotic.study27.melody") (catch :default _ nil)) melody0)
+                  :b 0 :win 4 :playing nil}))
+
+(defn voice [m]
+  {:tempo tempo :meter [4 4]
+   :events (into {} (map-indexed (fn [i [t p d]] [(keyword (str "e" (inc i))) {:t t :pitch p :dur d}]) (sc/parse-melody m 0)))})
+
+(defn end-of [v] (reduce max 0 (map (fn [e] (+ (:t e) (:dur e))) (vals (:events v)))))
+
+;; the weight of each pitch class at beat b: duration sounding within the window (or now)
+(defn weights [v b win]
+  (let [[lo hi] (cond (neg? win) [0 b] (zero? win) [b b] :else [(max 0 (- b win)) b])
+        w (js/Array. 12)]
+    (.fill w 0)
+    (doseq [e (vals (:events v))]
+      (let [s (:t e) en (+ (:t e) (:dur e))
+            d (if (== lo hi) (if (and (<= s b) (< b en)) 1 0) (max 0 (- (min en hi) (max s lo))))]
+        (when (pos? d) (aset w (mod (:pitch e) 12) (+ (aget w (mod (:pitch e) 12)) d)))))
+    (vec w)))
+
+(defn pcset [w] (vec (keep-indexed (fn [i x] (when (> x 1e-6) i)) w)))
+
+;; ───── set theory ─────
+
+(def names ["C" "C♯" "D" "E♭" "E" "F" "F♯" "G" "A♭" "A" "B♭" "B"])
+
+(defn ivec [s] (let [c (frequencies (for [a s b s :when (< a b)] (let [d (mod (- b a) 12)] (min d (- 12 d)))))]
+                 (mapv (fn [k] (get c k 0)) (range 1 7))))
+
+(defn rotations [s] (let [s (vec (sort s)) n (count s)] (for [i (range n)] (vec (concat (subvec s i) (map (fn [x] (+ x 12)) (subvec s 0 i)))))))
+(defn zeroed [r] (mapv (fn [x] (- x (first r))) r))
+(defn better? [a b] (neg? (compare [(peek a) a] [(peek b) b])))
+(defn prime [s]
+  (when (seq s)
+    (reduce (fn [a b] (if (better? b a) b a))
+            (map zeroed (concat (rotations s) (rotations (map (fn [x] (mod (- 12 x) 12)) s)))))))
+
+(defn axes [s] (let [ss (set s)] (vec (for [n (range 12) :when (and (seq s) (= ss (set (map (fn [x] (mod (- n x) 12)) s))))] n))))
+
+(defn chord-name [s]
+  (let [ss (set s)]
+    (first (for [r (range 12) [q nm] [[[0 4 7] ""] [[0 3 7] "m"] [[0 4 7 10] "7"] [[0 3 6] "°"] [[0 4 8] "+"]]
+                 :when (= ss (set (map (fn [x] (mod (+ r x) 12)) q)))]
+             (str (nth names r) nm)))))
+
+;; ───── DFT of the distribution ─────
+
+(defn dft [w]
+  (let [tot (reduce + w)]
+    (vec (for [k (range 1 7)]
+           (if (pos? tot)
+             (let [re (reduce + (map-indexed (fn [p x] (* x (js/Math.cos (/ (* TAU k p) 12)))) w))
+                   im (reduce + (map-indexed (fn [p x] (* x (js/Math.sin (/ (* TAU k p) 12)))) w))]
+               [(/ re tot) (- (/ im tot))])
+             [0 0])))))
+
+;; ════════ view 1 · the clock ════════
+
+(defn polar [cx cy r p] (let [a (* p (/ TAU 12))] [(+ cx (* r (js/Math.sin a))) (- cy (* r (js/Math.cos a)))]))
+
+(defn clock-view [w trail]
+  (let [cx 130 cy 130 R 96 s (pcset w) mx (reduce max 1e-9 w)]
+    (concat
+     [[:circle {:cx cx :cy cy :r R :stroke :grid}]]
+     ;; the sets just before, fading
+     (for [[i t] (map-indexed vector trail) :when (> (count t) 1)]
+       [:path {:points (mapv (fn [p] (polar cx cy R p)) t) :closed true :stroke :accent :weight 1 :opacity (* 0.12 (inc i))}])
+     (for [n (axes s)]
+       (let [[x1 y1] (polar cx cy (+ R 18) (/ n 2)) [x2 y2] (polar cx cy (+ R 18) (+ 6 (/ n 2)))]
+         [:line {:x1 x1 :y1 y1 :x2 x2 :y2 y2 :stroke :kairos :weight 1 :opacity 0.8}]))
+     (when (> (count s) 1)
+       [[:path {:points (mapv (fn [p] (polar cx cy R p)) s) :closed true :stroke :accent :fill nil :weight 2}]])
+     (for [p (range 12)]
+       (let [[x y] (polar cx cy R p) [lx ly] (polar cx cy (+ R 20) p) on (pos? (nth w p))]
+         [:group {} [[:circle {:cx x :cy y :r (if on (+ 4 (* 4 (/ (nth w p) mx))) 3.5) :fill (if on :accent :bg) :stroke (if on :accent :soft) :hit (keyword (str "pc" p))}]
+                     [:text {:x lx :y (+ ly 4) :anchor :middle :size 11 :fill (if on :ink :soft)} (nth names p)]]])))))
+
+;; ════════ view 2 · the six coefficients ════════
+
+(def dft-names ["chromatic" "dyadic" "triadic" "octatonic" "diatonic" "whole-tone"])
+
+(defn dft-view [fs traces]
+  (apply concat
+         (for [k (range 6)]
+           (let [col (mod k 3) row (quot k 3) R 38 cx (+ 50 (* col 100)) cy (+ 56 (* row 106))
+                 [re im] (nth fs k) mag (js/Math.hypot re im)
+                 pt (fn [[a b]] [(+ cx (* R a)) (+ cy (* R b))])]
+             [[:circle {:cx cx :cy cy :r R :stroke :grid}]
+              [:line {:x1 (- cx R) :y1 cy :x2 (+ cx R) :y2 cy :stroke :grid :weight 0.6}]
+              [:curve {:points (mapv pt (nth traces k)) :stroke :accent :weight 1.2 :opacity 0.45}]
+              [:line {:x1 cx :y1 cy :x2 (first (pt [re im])) :y2 (second (pt [re im])) :stroke :accent :weight 1.6}]
+              [:circle {:cx (first (pt [re im])) :cy (second (pt [re im])) :r 3.6 :fill :accent}]
+              [:text {:x (- cx R) :y (- cy R 6) :size 10 :fill :ink} (str "f" (inc k))]
+              [:text {:x (+ cx R) :y (- cy R 6) :anchor :end :size 9 :fill :soft} (.toFixed mag 2)]
+              [:text {:x cx :y (+ cy R 13) :anchor :middle :size 9 :fill :soft} (nth dft-names k)]]))))
+
+;; ════════ view 3 · the Tonnetz ════════
+;; node (i, j): pitch class 7i + 4j; fifths to the right, major thirds up and to the right.
+
+(def U 44)
+(def I-range (range -4 5))
+(def J-range (range -2 3))
+(defn node-xy [i j] [(+ 200 (* i U) (* j (/ U 2))) (- 130 (* j U (js/Math.sin (/ js/Math.PI 3))))])
+(defn node-pc [i j] (mod (+ (* 7 i) (* 4 j)) 12))
+
+(def triangles
+  (vec (for [i I-range j J-range
+             [kind ns] [[:major [[i j] [(inc i) j] [i (inc j)]]] [:minor [[(inc i) j] [i (inc j)] [(inc i) (inc j)]]]]
+             :when (every? (fn [[a b]] (and (<= -4 a 4) (<= -2 b 2))) ns)]
+         (let [pts (mapv (fn [[a b]] (node-xy a b)) ns)]
+           {:kind kind :nodes ns :pcs (set (map (fn [[a b]] (node-pc a b)) ns))
+            :c [(/ (reduce + (map first pts)) 3) (/ (reduce + (map second pts)) 3)] :pts pts}))))
+
+(defn d2 [[a b] [c d]] (+ (* (- a c) (- a c)) (* (- b d) (- b d))))
+
+;; the path of the harmony: at each onset, a triad inside the sounding set, placed nearest the last one
+(defn harmonic-path [v]
+  (let [onsets (sort (distinct (map :t (vals (:events v)))))]
+    (loop [ts onsets prev [200 130] out []]
+      (if (empty? ts)
+        out
+        (let [t (first ts) s (set (pcset (weights v t 0)))
+              cands (filter (fn [tr] (every? s (:pcs tr))) triangles)
+              best (first (sort-by (fn [tr] (d2 (:c tr) prev)) cands))]
+          (if best (recur (rest ts) (:c best) (conj out [t best])) (recur (rest ts) prev out)))))))
+
+(defn tonnetz-view [w path b]
+  (let [on (set (pcset w))
+        done (filter (fn [[t]] (<= t b)) path)
+        cur (second (last done))]
+    (concat
+     ;; edges
+     (for [i I-range j J-range [di dj] [[1 0] [0 1] [-1 1]]
+           :let [a (+ i di) c (+ j dj)] :when (and (<= -4 a 4) (<= -2 c 2))]
+       (let [[x1 y1] (node-xy i j) [x2 y2] (node-xy a c)] [:line {:x1 x1 :y1 y1 :x2 x2 :y2 y2 :stroke :grid :weight 1}]))
+     ;; triads fully inside the set
+     (for [tr triangles :when (every? on (:pcs tr))]
+       [:path {:points (:pts tr) :closed true :fill (if (= :major (:kind tr)) :accent :kairos) :stroke nil :opacity 0.28}])
+     (when cur [[:path {:points (:pts cur) :closed true :stroke (if (= :major (:kind cur)) :accent :kairos) :weight 2.2}]])
+     ;; the path so far
+     (when (> (count done) 1) [[:curve {:points (mapv (fn [[_ tr]] (:c tr)) done) :stroke :ink :weight 1.3 :opacity 0.7}]])
+     (for [[k [_ tr]] (map-indexed vector done)] [:circle {:cx (first (:c tr)) :cy (second (:c tr)) :r 2.2 :fill :ink :opacity (if (= k (dec (count done))) 1 0.5)}])
+     ;; nodes
+     (for [i I-range j J-range]
+       (let [[x y] (node-xy i j) p (node-pc i j) lit (on p)]
+         [:group {} [[:circle {:cx x :cy y :r 11 :fill (if lit :accent :bg) :stroke (if lit :accent :grid) :hit (keyword (str "pc" p))}]
+                     [:text {:x x :y (+ y 4) :anchor :middle :size 10 :fill (if lit :bg :soft)} (nth names p)]]])))))
+
+;; ════════ score ════════
+
+(defonce vrv (atom nil))
+
+(defn render-score! []
+  (when-let [tk @vrv]
+    (try
+      (let [v (voice (:melody @A)) scale 36 w (.-width (.getBoundingClientRect ($ "score")))
+            {:keys [mei]} (sc/->mei-voice v "g-")]
+        (.setOptions tk (clj->js {:pageWidth (js/Math.round (/ (* w 100) scale)) :pageHeight 60000 :adjustPageHeight true
+                                  :breaks "auto" :scale scale :header "none" :footer "none"
+                                  :pageMarginTop 40 :pageMarginBottom 30 :pageMarginLeft 30 :pageMarginRight 30}))
+        (.loadData tk mei)
+        (set! (.-innerHTML ($ "score")) (.renderToSVG tk 1)))
+      (catch :default e (set! (.-textContent ($ "status")) (str "Score: " (.-message e)))))))
+
+;; ════════ render one moment ════════
+
+(defonce cache (atom {}))
+
+(defn analysis [melody win]
+  (let [k [melody win]]
+    (or (get @cache k)
+        (let [v (voice melody) end (end-of v)
+              samples (vec (for [i (range 0 (inc (js/Math.ceil (/ end 0.25))))] (let [b (* i 0.25)] [b (dft (weights v b win))])))
+              res {:v v :end end :samples samples :path (harmonic-path v)}]
+          (reset! cache {k res})
+          res))))
+
+(defn render! []
+  (let [{:keys [melody b win]} @A
+        {:keys [v end samples path]} (analysis melody win)
+        w (weights v b win) s (pcset w)
+        trail (vec (for [d [3 2.25 1.5 0.75] :let [bb (- b d)] :when (>= bb 0)] (pcset (weights v bb win))))
+        fs (dft w)
+        traces (vec (for [k (range 6)] (vec (keep (fn [[bb f]] (when (<= bb b) (nth f k))) samples))))]
+    (set! (.-innerHTML ($ "v-clock")) (shapes-svg (clock-view w trail)))
+    (set! (.-innerHTML ($ "v-dft")) (shapes-svg (dft-view fs traces)))
+    (set! (.-innerHTML ($ "v-tonnetz")) (shapes-svg (tonnetz-view w path b)))
+    (let [pf (prime s)]
+      (set! (.-innerHTML ($ "f-clock"))
+            (str "set <b>{" (str/join " " s) "}</b>" (when-let [c (chord-name s)] (str " · <b>" c "</b>"))
+                 "<br>prime form (" (str/join " " (or pf [])) ") · interval vector &lt;" (str/join "" (ivec s)) "&gt;"
+                 "<br>axes of symmetry: " (if (seq (axes s)) (count (axes s)) "none"))))
+    (let [mags (map (fn [[a c]] (js/Math.hypot a c)) fs) k (first (apply max-key second (map-indexed vector mags)))]
+      (set! (.-innerHTML ($ "f-dft"))
+            (str "strongest: <b>f" (inc k) " " (nth dft-names k) "</b> " (.toFixed (nth mags k) 2)
+                 "<br>magnitudes " (str/join " " (map (fn [m] (.toFixed m 2)) mags)))))
+    (let [done (filter (fn [[t]] (<= t b)) path) moves (count done)
+          cur (second (last done))]
+      (set! (.-innerHTML ($ "f-tonnetz"))
+            (str "triad: <b>" (if cur (str (str/join " " (sort (map (fn [p] (nth names p)) (:pcs cur)))) " · " (name (:kind cur))) "none") "</b>"
+                 "<br>" moves " of " (count path) " chords on the path")))
+    (set! (.-textContent ($ "beat")) (str "beat " (.toFixed b 2) " / " end))
+    (set! (.-max ($ "scrub")) end)
+    (when-not (:playing @A) (set! (.-value ($ "scrub")) b))
+    ;; notes sounding now, in the score
+    (doseq [el (array-seq (.querySelectorAll ($ "score") ".now"))] (.remove (.-classList el) "now"))
+    (doseq [[eid e] (:events v) :when (and (<= (:t e) b) (< b (+ (:t e) (:dur e))))
+            el (array-seq (.querySelectorAll ($ "score") (str "[id^=\"n-g-" (name eid) "-\"]")))]
+      (.add (.-classList el) "now"))
+    (set! (.-textContent ($ "status")) (str (count (:events v)) " notes · " (count path) " triads on the path"))))
+
+;; ════════ transport ════════
+
+(defonce play-id (atom 0))
+
+(defn stop! []
+  (swap! play-id inc) (.stop js/KAudio)
+  (swap! A assoc :playing nil) (set! (.-textContent ($ "play")) "Play"))
+
+(defn play! []
+  (if (:playing @A)
+    (stop!)
+    (try
+      (let [v (voice (:melody @A)) spb (/ 60 tempo) end (end-of v)
+            from (if (>= (:b @A) (- end 0.05)) 0 (:b @A))
+            t0 (.play js/KAudio (clj->js (for [e (vals (:events v))] [(* spb (:t e)) (* spb (:dur e)) (* 440 (js/Math.pow 2 (/ (- (:pitch e) 69) 12)))])) (* from spb))
+            id (swap! play-id inc)]
+        (swap! A assoc :playing true)
+        (set! (.-textContent ($ "play")) "Stop")
+        (letfn [(tick []
+                  (when (= id @play-id)
+                    (let [b (/ (- (.now js/KAudio) t0) spb)]
+                      (if (> b end)
+                        (do (swap! A assoc :b end) (stop!) (render!))
+                        (do (swap! A assoc :b (max 0 b)) (set! (.-value ($ "scrub")) b) (render!) (js/requestAnimationFrame tick))))))]
+          (js/requestAnimationFrame tick)))
+      (catch :default e (set! (.-textContent ($ "status")) (str "Sound: " (.-message e)))))))
+
+(defn on [id ev f] (.addEventListener ($ id) ev f))
+
+(defn on-hit [e]
+  (when-let [h (.closest (.-target e) "[data-hit]")]
+    (let [p (js/parseInt (subs (.. h -dataset -hit) 2) 10)]
+      (when (num? p) (.blip js/KAudio (* 261.6256 (js/Math.pow 2 (/ p 12))))))))
+
+(defn wire! []
+  (on "play" "click" (fn [_] (play!)))
+  (on "win" "change" (fn [e] (swap! A assoc :win (js/parseFloat (.. e -target -value))) (render!)))
+  (on "scrub" "input" (fn [e] (when (:playing @A) (stop!)) (swap! A assoc :b (js/parseFloat (.. e -target -value))) (render!)))
+  (set! (.-value ($ "melody")) (:melody @A))
+  (on "melody-apply" "click"
+      (fn [_] (let [m (.-value ($ "melody"))]
+                (try (voice m) (stop!)
+                     (swap! A assoc :melody m :b 0)
+                     (try (.setItem js/localStorage "kairotic.study27.melody" m) (catch :default _ nil))
+                     (render-score!) (render!)
+                     (catch :default e (set! (.-textContent ($ "status")) (.-message e)))))))
+  (doseq [id ["v-clock" "v-tonnetz"]] (.addEventListener ($ id) "pointerdown" on-hit))
+  (.observe (js/ResizeObserver. (let [w (atom 0)] (fn [_] (let [nw (.-width (.getBoundingClientRect ($ "score")))]
+                                                            (when (> (js/Math.abs (- nw @w)) 2) (reset! w nw) (render-score!) (render!))))))
+            ($ "score")))
+
+(defn start! []
+  (wire!)
+  (render!)
+  (-> (.-vrvReady js/window)
+      (.then (fn [tk] (if tk
+                        (do (reset! vrv tk) (render-score!) (render!))
+                        (set! (.-innerHTML ($ "score")) (str "<div class=\"loading\">Verovio did not load (" (.. js/window -libErrors -verovio) "); the views still work.</div>")))))))
+
+(start!)
+</script>

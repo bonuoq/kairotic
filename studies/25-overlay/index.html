@@ -1,0 +1,872 @@
+<title>Kairotic Study 25 · Overlay</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@1&display=swap">
+<style>
+/* Layout: Kairotic header; two working rows (A: notation + overlay, B: monitor), each a stage and a side panel. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --f-mark: "IBM Plex Serif", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #232a33; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #232a33; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; text-wrap: balance; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+h2.part { margin: 18px 0 8px; font: 600 15px var(--f-head); letter-spacing: 0.02em; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+h2.part span { font: 400 13px var(--f-ui); color: var(--ink-soft); }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: start; }
+@media (max-width: 860px) { .work { grid-template-columns: minmax(0, 1fr); } }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--box); }
+.seg button { border: 0; border-right: 1px solid var(--rule); background: transparent; color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 10px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+input[type="text"] { font: 13px var(--f-code); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 8px; min-width: 0; }
+input[type="range"] { accent-color: var(--accent); }
+.grow { flex: 1 1 220px; display: flex; gap: 6px; min-width: 0; }
+.grow input { flex: 1; }
+
+/* A · score stage: Verovio SVG, the overlay above it */
+.sheet { position: relative; background: var(--box); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; min-height: 220px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.score { color: var(--ink); fill: var(--ink); }
+.score svg { display: block; }
+.score svg path, .score svg polyline, .score svg line { stroke: var(--ink); }
+.score .playing path { stroke: var(--accent); }
+.score .playing, .score .playing * { fill: var(--accent); color: var(--accent); }
+.overlay { position: absolute; left: 0; top: 0; }
+.sheet[data-tool="draw"] .overlay { cursor: crosshair; }
+.sheet[data-tool="text"] .overlay { cursor: text; }
+.sheet[data-tool="erase"] .overlay { cursor: not-allowed; }
+.overlay .mark { fill: none; stroke: var(--kairos); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.overlay .mark.new { stroke: var(--accent); }
+.overlay .mark-txt { fill: var(--kairos); font: italic 15px var(--f-mark); }
+.overlay .head { fill: none; stroke: var(--kairos); stroke-width: 1; opacity: 0.45; stroke-dasharray: 2 3; }
+.overlay .ph { stroke: var(--accent); stroke-width: 2; }
+.overlay .sysband { fill: var(--accent-soft); }
+.loading { padding: 40px 16px; color: var(--ink-soft); font-size: 13px; }
+.hint { margin-top: 6px; font-size: 12px; color: var(--ink-soft); line-height: 1.5; max-width: 80ch; }
+
+/* B · monitor */
+.monitor { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.monitor canvas { display: block; width: 100%; }
+.empty { padding: 28px 16px; color: var(--ink-soft); font-size: 13px; }
+
+/* panels */
+.panel { display: grid; gap: 12px; min-width: 0; }
+.sec { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; min-width: 0; }
+.sec h3 { margin: 0; font: 600 12px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+textarea { width: 100%; min-height: 150px; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; white-space: pre; overflow: auto; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.err { font: 12px var(--f-code); color: var(--error); white-space: pre-wrap; }
+.err:empty { display: none; }
+.dirty { font-size: 12px; color: var(--kairos); }
+.feats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 8px; font-size: 13px; }
+.feats label { display: flex; gap: 6px; align-items: center; }
+.log { margin: 0; font: 11px/1.55 var(--f-code); color: var(--ink-soft); white-space: pre; overflow: hidden; min-height: 8.5em; font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 11px var(--f-code); padding: 2px 7px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-soft); }
+.chip.ok { border-color: var(--ok); color: var(--ok); }
+.chip.fail { border-color: var(--error); color: var(--error); }
+details summary { cursor: pointer; font: 600 12px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+details p { margin: 8px 0 0; font-size: 13px; line-height: 1.5; max-width: 65ch; }
+</style>
+
+<header>
+  <h1>Study 25 · overlay</h1>
+  <span class="sub">Graphic marks on a Verovio score, and a monitor for incoming messages</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<h2 class="part">A · Marks on notation <span>Each mark is stored in beats and staff steps, so it follows the score when the lines reflow.</span></h2>
+<div class="work">
+  <section>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Tool">
+        <button id="tool-draw" aria-pressed="true">Draw</button>
+        <button id="tool-text" aria-pressed="false">Text</button>
+        <button id="tool-erase" aria-pressed="false">Erase</button>
+      </div>
+      <div class="grow"><input type="text" id="txt" value="sul pont." aria-label="Text for the Text tool"></div>
+      <label class="inline" for="width">Line width <input type="range" id="width" min="45" max="100" value="100"></label>
+      <button class="act" id="undo">Undo</button>
+      <button class="act primary" id="play">Play</button>
+    </div>
+    <div class="bar">
+      <div class="grow" style="flex-basis: 100%">
+        <input type="text" id="melody" aria-label="Melody" spellcheck="false">
+        <button class="act" id="melody-apply">Set melody</button>
+      </div>
+    </div>
+    <div class="sheet" id="sheet" data-tool="draw">
+      <div class="score" id="score"><div class="loading">Loading the notation (Verovio, about 8 MB)…</div></div>
+      <svg class="overlay" id="overlay" aria-hidden="true"></svg>
+    </div>
+    <p class="hint">Draw over the staff, or click with Text. Then narrow the line width or change the melody: the score reflows and every mark follows its beats across the line breaks. A mark's height is in staff steps (0 is the middle line), so it keeps its place relative to the pitches.</p>
+  </section>
+  <aside class="panel">
+    <div class="sec">
+      <h3>Marks · EDN</h3>
+      <textarea id="marks-src" spellcheck="false" aria-label="Marks as EDN"></textarea>
+      <div class="btns">
+        <button class="act" id="marks-apply">Apply</button>
+        <button class="act" id="marks-reset">Reset to example</button>
+        <span class="dirty" id="marks-dirty" hidden>edited</span>
+      </div>
+      <div class="err" id="marks-err"></div>
+    </div>
+  </aside>
+</div>
+
+<h2 class="part">B · Monitor <span>Any stream of messages, drawn by what it carries: a number as a line, a list as a heat strip, a word or a bang as an event.</span></h2>
+<div class="work">
+  <section>
+    <div class="bar">
+      <label class="inline" for="file">Audio file <input type="file" id="file" accept="audio/*"></label>
+      <button class="act" id="play-file" disabled>Play file</button>
+      <span style="flex:1"></span>
+      <button class="act" id="pause">Freeze</button>
+      <button class="act" id="clear">Clear</button>
+    </div>
+    <div class="monitor" id="monitor">
+      <canvas id="mon"></canvas>
+      <div class="empty" id="mon-empty">Nothing has arrived yet. Press Play above (the score is analysed as it sounds), or load an audio file.</div>
+    </div>
+    <p class="hint">Descriptors come from Meyda on the sound itself, as in features~ of @kairotic/analysis. The notes arrive as messages from the score. Onset is a simple rise detector on rms.</p>
+  </section>
+  <aside class="panel">
+    <div class="sec">
+      <h3>Descriptors</h3>
+      <div class="feats" id="feats"></div>
+    </div>
+    <div class="sec">
+      <h3>View · EDN</h3>
+      <textarea id="mon-src" spellcheck="false" aria-label="Monitor view as EDN" style="min-height: 120px"></textarea>
+      <div class="btns"><button class="act" id="mon-apply">Apply</button></div>
+      <div class="err" id="mon-err"></div>
+    </div>
+    <div class="sec">
+      <h3>Last messages</h3>
+      <pre class="log" id="log"></pre>
+    </div>
+    <div class="sec">
+      <h3>Libraries</h3>
+      <div class="chips" id="checks"></div>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// Verovio and Meyda load in the background; each resolves to its object or to null with the reason kept.
+window.libErrors = {};
+function loadScript(url) {
+  return new Promise(function (res, rej) {
+    var s = document.createElement("script"); s.src = url;
+    s.onload = res; s.onerror = function () { rej(new Error("could not download " + url)); };
+    document.head.appendChild(s);
+  });
+}
+window.vrvReady = loadScript("https://cdn.jsdelivr.net/npm/verovio@5.7.0/dist/verovio-toolkit-wasm.js")
+  .then(function () {
+    return new Promise(function (resolve) {
+      var m = verovio.module;
+      if (m.calledRun) resolve(new verovio.toolkit());
+      else m.onRuntimeInitialized = function () { resolve(new verovio.toolkit()); };
+    });
+  })
+  .catch(function (e) { window.libErrors.verovio = String(e.message || e); return null; });
+window.meydaReady = loadScript("https://cdn.jsdelivr.net/npm/meyda@5.6.3/dist/web/meyda.min.js")
+  .then(function () { return window.Meyda; })
+  .catch(function (e) { window.libErrors.meyda = String(e.message || e); return null; });
+
+// ───────── audio: one bus that everything plays into; Meyda listens to the bus ─────────
+window.KAudio = (function () {
+  var ctx = null, bus = null, an = null, srcs = [], file = null;
+  function ensure() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) throw new Error("This browser has no Web Audio");
+    if (!ctx) {
+      ctx = new AC();
+      bus = ctx.createGain(); bus.gain.value = 0.8; bus.connect(ctx.destination);
+    }
+    ctx.resume();
+    return ctx;
+  }
+  function analyse(features, cb) {
+    if (!window.Meyda || !ctx) return false;
+    if (!an) {
+      an = Meyda.createMeydaAnalyzer({
+        audioContext: ctx, source: bus, bufferSize: 2048, hopSize: 1024,
+        featureExtractors: features, callback: function (f) { cb(f, ctx.sampleRate); }
+      });
+    }
+    an.start(features);
+    return true;
+  }
+  function stopAll() {
+    srcs.forEach(function (s) { try { s.stop(); } catch (e) {} });
+    srcs = [];
+  }
+  // notes: [[startSec durSec hz] ...]
+  function playNotes(notes) {
+    ensure(); stopAll();
+    var t0 = ctx.currentTime + 0.08;
+    var real = new Float32Array([0, 0, 0, 0, 0, 0]), imag = new Float32Array([0, 1, 0.35, 0.22, 0.08, 0.05]);
+    var wave = ctx.createPeriodicWave(real, imag);
+    notes.forEach(function (n) {
+      var o = ctx.createOscillator(), g = ctx.createGain(), a = t0 + n[0], e = a + n[1];
+      o.setPeriodicWave(wave); o.frequency.value = n[2];
+      g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(0.28, a + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.12, a + 0.25); g.gain.setValueAtTime(0.12, Math.max(a + 0.25, e - 0.05));
+      g.gain.linearRampToValueAtTime(0, e + 0.12);
+      o.connect(g); g.connect(bus); o.start(a); o.stop(e + 0.15); srcs.push(o);
+    });
+    return t0;
+  }
+  function loadFile(f) {
+    ensure();
+    return f.arrayBuffer().then(function (ab) { return ctx.decodeAudioData(ab); }).then(function (b) { file = b; return b.duration; });
+  }
+  function playFile() {
+    ensure(); stopAll();
+    if (!file) return null;
+    var s = ctx.createBufferSource(); s.buffer = file; s.connect(bus); s.start(); srcs.push(s);
+    return file.duration;
+  }
+  return { ensure: ensure, analyse: analyse, playNotes: playNotes, stopAll: stopAll, loadFile: loadFile, playFile: playFile,
+           now: function () { return ctx ? ctx.currentTime : 0; } };
+})();
+
+window.addEventListener("DOMContentLoaded", function () {
+  var st = document.getElementById("status");
+  function show(e) { st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  window.addEventListener("error", function (e) {
+    if (/ResizeObserver loop/.test(String(e.message))) return; // harmless: a reflow inside the observer
+    show(e.error || e.message);
+  });
+  fetch("kairotic/score.cljs", { cache: "no-cache" })
+    .then(function (r) { if (!r.ok) throw new Error("could not read kairotic/score.cljs (" + r.status + ")"); return r.text(); })
+    .then(function (src) {
+      try { scittle.core.eval_string(src); } catch (e) { throw new Error("kairotic/score.cljs: " + (e.message || e)); }
+      scittle.core.eval_string(document.getElementById("main-cljs").textContent);
+    })
+    .catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="main-cljs">
+;; SPDX-License-Identifier: MPL-2.0
+;; Kairotic · Study 25 · overlay
+;; A · A voice drawn by Verovio (kairotic.score → MEI) with a layer of graphic marks above it. A mark is
+;;     data in musical coordinates: beats along time and staff steps up and down (0 = middle line).
+;;     The page measures the drawn notation (where each beat is, where each staff line is) and places
+;;     the marks with that measure, so they survive any reflow.
+;;       {:m1 {:kind :line :pts [[t s] …]}  :m2 {:kind :text :at [t s] :txt "sul pont."}}
+;; B · monitor: a box that draws whatever messages arrive, by their shape.
+
+(ns study.overlay
+  (:require [kairotic.score :as sc]
+            [clojure.string :as str]
+            [clojure.edn :as edn]))
+
+(defn $ [id] (.getElementById js/document id))
+(defn num? [x] (and (number? x) (js/isFinite x)))
+(defn r3 [x] (/ (js/Math.round (* x 1000)) 1000))
+(defn safe-get [k] (try (.getItem js/localStorage k) (catch :default _ nil)))
+(defn safe-set! [k v] (try (.setItem js/localStorage k v) (catch :default _ nil)))
+
+(defonce checks (atom (sorted-map)))
+(defn render-checks! []
+  (set! (.-innerHTML ($ "checks"))
+        (str/join (for [[nm v] @checks]
+                    (str "<span class=\"chip " (if (= v :ok) "ok" "fail") "\" title=\""
+                         (str/replace (if (= v :ok) "works" (str v)) "\"" "'") "\">" nm "</span>")))))
+(add-watch checks :chips (fn [_ _ a b] (when (not= a b) (render-checks!))))
+
+;; ════════════════ A · score + marks ════════════════
+
+(def melody0 "e4/1 g4/.5 a4/.5 b4/2 r/1 d5/1 c5/.5 b4/.5 a4/1 g4/1 e4/2 f#4/1 g4/1 a4/3 r/1 b4/.5 c5/.5 d5/1 e5/2 b4/4")
+(def tempo 84)
+
+(def marks0
+  {:m1 {:kind :line :pts (vec (for [i (range 0 33)] [(r3 (* i 0.125)) (r3 (+ 9 (* 0.8 (js/Math.sin (* i 1.6)))))]))}
+   :m2 {:kind :text :at [0 -9] :txt "sul pont., senza vib."}
+   :m3 {:kind :line :pts [[9 -2] [11.5 -6] [13.5 -1]]}
+   :m4 {:kind :text :at [16 8.5] :txt "lontano"}
+   :m5 {:kind :line :pts (vec (for [i (range 0 41)]
+                                (let [a (* i 0.7)] [(r3 (+ 22 (* i 0.12) (* 0.35 (js/Math.cos a)))) (r3 (+ 2.5 (* 1.6 (js/Math.sin a))))])))}})
+
+(defn saved []
+  (try (let [x (edn/read-string (or (safe-get "kairotic.study25.v1") "nil"))] (when (map? x) x)) (catch :default _ nil)))
+
+(defonce A (atom (let [s (saved)]
+                   {:melody (or (:melody s) melody0)
+                    :marks (if (map? (:marks s)) (:marks s) marks0)
+                    :hist [] :tool :draw :width 100 :gesture nil :L nil :ph nil})))
+
+(defn save-A! [] (safe-set! "kairotic.study25.v1" (pr-str {:melody (:melody @A) :marks (:marks @A)})))
+
+(defn voice [melody]
+  {:tempo tempo :meter [4 4]
+   :events (into {} (map-indexed (fn [i [t p d]] [(keyword (str "e" (inc i))) {:t t :pitch p :dur d}])
+                                 (sc/parse-melody melody 0)))})
+
+(defn end-beat [v]
+  (let [e (reduce max 0 (map (fn [x] (+ (:t x) (:dur x))) (vals (:events v))))] (* 4 (max 2 (js/Math.ceil (/ e 4))))))
+
+;; ───── layout: what the drawn notation says about time and height ─────
+
+(defonce vrv (atom nil))
+(defonce placed (atom nil))
+
+(defn rel [r o] {:l (- (.-left r) (.-left o)) :t (- (.-top r) (.-top o)) :r (- (.-right r) (.-left o)) :b (- (.-bottom r) (.-top o))
+                 :cy (- (+ (.-top r) (/ (.-height r) 2)) (.-top o)) :cx (- (+ (.-left r) (/ (.-width r) 2)) (.-left o))})
+
+(defn staff-lines [staff]
+  (let [ps (filter (fn [c] (= "path" (str/lower-case (.-tagName c)))) (array-seq (.-children staff)))]
+    (when (>= (count ps) 5) (take 5 ps))))
+
+(defn measure-layout [v]
+  (let [root ($ "score") o (.getBoundingClientRect ($ "sheet"))
+        sys-els (vec (array-seq (.querySelectorAll root ".system")))
+        systems (vec (for [s sys-els]
+                       (let [staff (.querySelector s ".staff")
+                             ls (and staff (staff-lines staff))]
+                         (if ls
+                           (let [a (rel (.getBoundingClientRect (first ls)) o) z (rel (.getBoundingClientRect (last ls)) o)]
+                             {:top (:cy a) :bottom (:cy z) :mid (/ (+ (:cy a) (:cy z)) 2) :space (/ (- (:cy z) (:cy a)) 4)
+                              :left (:l a) :right (:r a)})
+                           (let [b (rel (.getBoundingClientRect s) o) mid (/ (+ (:t b) (:b b)) 2)]
+                             {:top (- mid 16) :bottom (+ mid 16) :mid mid :space 8 :left (:l b) :right (:r b)})))))
+        idx (fn [el] (let [s (.closest el ".system")] (first (keep-indexed (fn [i x] (when (identical? x s) i)) sys-els))))
+        anchors (->> @placed
+                     (keep (fn [{:keys [id t]}]
+                             (when-let [el (.querySelector root (str "#" id))]
+                               (let [head (or (.querySelector el ".notehead") el)
+                                     r (rel (.getBoundingClientRect head) o) i (idx el)]
+                                 (when (and i (pos? (- (:r r) (:l r)))) {:t t :x (:cx r) :sys i})))))
+                     (group-by :t) (map (fn [[_ as]] (apply min-key :x as))) (sort-by :t) vec)
+        endt (end-beat v)]
+    (when (and (seq systems) (seq anchors))
+      {:systems systems
+       :anchors (conj anchors {:t endt :x (- (:right (peek systems)) 4) :sys (dec (count systems))})
+       :end endt})))
+
+;; beat, staff step ⇄ pixels
+(defn t->xy [{:keys [systems anchors]} t s]
+  (let [a (last (filter (fn [x] (<= (:t x) t)) anchors))
+        b (first (filter (fn [x] (> (:t x) t)) anchors))
+        [x i] (cond
+                (nil? a) [(:x (first anchors)) (:sys (first anchors))]
+                (nil? b) [(:x a) (:sys a)]
+                :else (let [f (/ (- t (:t a)) (- (:t b) (:t a)))]
+                        (if (= (:sys a) (:sys b))
+                          [(+ (:x a) (* f (- (:x b) (:x a)))) (:sys a)]
+                          [(+ (:x a) (* f (- (- (:right (nth systems (:sys a))) 6) (:x a)))) (:sys a)])))
+        sy (nth systems i)]
+    [x (- (:mid sy) (* s (/ (:space sy) 2))) i]))
+
+(defn xy->ts [{:keys [systems anchors end]} x y]
+  (let [i (apply min-key (fn [i] (js/Math.abs (- (:mid (nth systems i)) y))) (range (count systems)))
+        sy (nth systems i)
+        here (filter (fn [a] (= i (:sys a))) anchors)
+        nxt (first (filter (fn [a] (> (:sys a) i)) anchors))
+        pts (vec (concat (map (juxt :x :t) here)
+                         (when nxt [[(- (:right sy) 6) (:t nxt)]])))
+        t (cond
+            (empty? pts) 0
+            (<= x (ffirst pts)) (second (first pts))
+            (>= x (first (peek pts))) (second (peek pts))
+            :else (let [[[xa ta] [xb tb]] (first (filter (fn [[[xa] [xb]]] (<= xa x xb)) (map vector pts (rest pts))))]
+                    (+ ta (* (/ (- x xa) (max 1e-6 (- xb xa))) (- tb ta)))))]
+    [(r3 (min end t)) (r3 (/ (- (:mid sy) y) (/ (:space sy) 2)))]))
+
+;; a line in musical coordinates → pieces of polyline in pixels (cut at line breaks)
+(defn densify [pts]
+  (vec (mapcat (fn [[[t0 s0] [t1 s1]]]
+                 (let [n (max 1 (js/Math.ceil (/ (js/Math.abs (- t1 t0)) 0.0625)))]
+                   (for [k (range n)] (let [f (/ k n)] [(+ t0 (* f (- t1 t0))) (+ s0 (* f (- s1 s0)))]))))
+               (map vector pts (rest pts)))))
+
+(defn line-px [L pts]
+  (let [ps (map (fn [[t s]] (t->xy L t s)) (conj (densify pts) (peek pts)))]
+    (->> (partition-by (fn [[_ _ i]] i) ps) (map (fn [g] (mapv (fn [[x y]] [x y]) g))) (filter (fn [g] (> (count g) 1))))))
+
+(defn d-of [px] (str/join " " (map-indexed (fn [i [x y]] (str (if (zero? i) "M" "L") (.toFixed x 1) " " (.toFixed y 1))) px)))
+
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace "\"" "&quot;")))
+
+(defn overlay-svg [s]
+  (let [L (:L s) g (:gesture s)]
+    (str
+     (when-let [[t] (:ph s)]
+       (let [[x _ i] (t->xy L t 0) sy (nth (:systems L) i)]
+         (str "<line class=\"ph\" x1=\"" x "\" x2=\"" x "\" y1=\"" (- (:top sy) 14) "\" y2=\"" (+ (:bottom sy) 14) "\"/>")))
+     (str/join
+      (for [[id m] (sort-by key (:marks s))]
+        (case (:kind m)
+          :line (str/join (for [px (line-px L (:pts m))] (str "<path class=\"mark\" data-id=\"" (name id) "\" d=\"" (d-of px) "\"/>")))
+          :text (let [[t sv] (:at m) [x y] (t->xy L t sv)]
+                  (str "<text class=\"mark-txt\" data-id=\"" (name id) "\" x=\"" (.toFixed x 1) "\" y=\"" (.toFixed y 1) "\">" (esc (:txt m)) "</text>"))
+          "")))
+     (when (= :draw (:kind g)) (str "<path class=\"mark new\" d=\"" (d-of (:px g)) "\"/>")))))
+
+(defn render-overlay! []
+  (let [s @A ov ($ "overlay") sv (.querySelector ($ "score") "svg")]
+    (when (and (:L s) sv)
+      (let [r (.getBoundingClientRect sv)]
+        (.setAttribute ov "width" (.-width r)) (.setAttribute ov "height" (.-height r))
+        (set! (.-innerHTML ov) (overlay-svg s))))))
+
+;; ───── marks as EDN ─────
+
+(defonce marks-dirty (atom false))
+
+(defn marks-src [ms]
+  (str "{" (str/join "\n " (for [[id m] (sort-by key ms)]
+                             (str id " " (pr-str (if (= :line (:kind m)) (update m :pts (fn [ps] (mapv (fn [[t s]] [(r3 t) (r3 s)]) ps))) m)))))
+       "}"))
+
+(defn sync-marks-src! []
+  (when-not @marks-dirty (set! (.-value ($ "marks-src")) (marks-src (:marks @A)))))
+
+(defn sane-marks [x]
+  (when-not (map? x) (throw (js/Error. "Marks are a map {:m1 {:kind :line :pts [[t s] …]} …}")))
+  (into {} (for [[k m] x]
+             (do (when-not (keyword? k) (throw (js/Error. (str "A mark id is a keyword such as :m1, not " (pr-str k)))))
+                 (case (:kind m)
+                   :line (let [ps (:pts m)]
+                           (when-not (and (sequential? ps) (>= (count ps) 2) (every? (fn [p] (and (sequential? p) (= 2 (count p)) (every? num? p))) ps))
+                             (throw (js/Error. (str "Mark " k ": a :line needs :pts, at least two [beat step] pairs"))))
+                           [k {:kind :line :pts (vec (map vec ps))}])
+                   :text (let [[t sv] (:at m)]
+                           (when-not (and (num? t) (num? sv)) (throw (js/Error. (str "Mark " k ": a :text needs :at [beat step]"))))
+                           [k {:kind :text :at [t sv] :txt (str (:txt m))}])
+                   (throw (js/Error. (str "Mark " k ": :kind is :line or :text"))))))))
+
+;; ───── edits: one event each, kept for undo ─────
+
+(defn next-id [ms]
+  (keyword (str "m" (inc (reduce max 0 (keep (fn [k] (let [m (re-matches #"m(\d+)" (name k))] (when m (js/parseInt (second m) 10)))) (keys ms)))))))
+
+(defn apply-ev [ms [op & args]]
+  (case op
+    :mark (let [[id m] args] (assoc ms id m))
+    :erase (dissoc ms (first args))
+    :load (first args)
+    ms))
+
+(defn dispatch! [ev]
+  (swap! A (fn [s] (-> s (update :hist conj (:marks s)) (update :marks apply-ev ev))))
+  (save-A!) (sync-marks-src!) (render-overlay!))
+
+(defn undo! []
+  (swap! A (fn [s] (if (empty? (:hist s)) s (assoc s :marks (peek (:hist s)) :hist (pop (:hist s))))))
+  (save-A!) (sync-marks-src!) (render-overlay!))
+
+;; ───── drawing the score ─────
+
+(defn sheet-width [] (.-width (.getBoundingClientRect ($ "sheet"))))
+
+(defn render-score! []
+  (when-let [tk @vrv]
+    (try
+      (let [s @A v (voice (:melody s)) scale 40
+            w (* (sheet-width) (/ (:width s) 100))
+            {:keys [mei pieces]} (sc/->mei-voice v "s-")]
+        (.setOptions tk (clj->js {:pageWidth (js/Math.round (/ (* w 100) scale)) :pageHeight 60000 :adjustPageHeight true
+                                  :breaks "auto" :scale scale :header "none" :footer "none"
+                                  :pageMarginTop 70 :pageMarginBottom 60 :pageMarginLeft 30 :pageMarginRight 30
+                                  :spacingSystem 14}))
+        (.loadData tk mei)
+        (set! (.-innerHTML ($ "score")) (.renderToSVG tk 1))
+        (reset! placed pieces)
+        (swap! A assoc :L (measure-layout v))
+        (render-overlay!)
+        (set! (.-textContent ($ "status")) (str (count (:events v)) " notes · " (count (:marks s)) " marks · " (count (get-in @A [:L :systems])) " lines")))
+      (catch :default e
+        (set! (.-textContent ($ "status")) (str "Score: " (.-message e)))))))
+
+;; ───── pointer ─────
+
+(defn local-xy [e] (let [r (.getBoundingClientRect ($ "sheet"))] [(- (.-clientX e) (.-left r)) (- (.-clientY e) (.-top r))]))
+
+(defn seg-dist [[px py] [ax ay] [bx by]]
+  (let [dx (- bx ax) dy (- by ay) L2 (+ (* dx dx) (* dy dy))
+        u (if (zero? L2) 0 (max 0 (min 1 (/ (+ (* (- px ax) dx) (* (- py ay) dy)) L2))))]
+    (js/Math.hypot (- px (+ ax (* u dx))) (- py (+ ay (* u dy))))))
+
+(defn hit [s p]
+  (let [L (:L s)]
+    (->> (:marks s)
+         (keep (fn [[id m]]
+                 (let [d (case (:kind m)
+                           :line (apply min 1e9 (for [px (line-px L (:pts m)) [a b] (map vector px (rest px))] (seg-dist p a b)))
+                           :text (let [[t sv] (:at m) [x y] (t->xy L t sv)]
+                                   (if (and (<= (- x 4) (first p) (+ x (* 7.5 (count (:txt m))))) (<= (- y 16) (second p) (+ y 5))) 0 1e9))
+                           1e9)]
+                   (when (< d 9) [d id]))))
+         (sort-by first) first second)))
+
+(defn on-down [e]
+  (let [s @A p (local-xy e)]
+    (when (:L s)
+      (.setPointerCapture (.-currentTarget e) (.-pointerId e))
+      (case (:tool s)
+        :draw (swap! A assoc :gesture {:kind :draw :px [p]})
+        :text (let [txt (str/trim (.-value ($ "txt")))]
+                (when (seq txt) (dispatch! [:mark (next-id (:marks s)) {:kind :text :at (xy->ts (:L s) (first p) (second p)) :txt txt}])))
+        :erase (do (swap! A assoc :gesture {:kind :erase})
+                   (when-let [id (hit s p)] (dispatch! [:erase id]))))
+      (render-overlay!))))
+
+(defn on-move [e]
+  (let [s @A g (:gesture s) [x y :as p] (local-xy e)]
+    (case (:kind g)
+      :draw (let [[lx ly] (peek (:px g))]
+              (when (> (js/Math.hypot (- x lx) (- y ly)) 3)
+                (swap! A update-in [:gesture :px] conj p) (render-overlay!)))
+      :erase (when-let [id (hit s p)] (dispatch! [:erase id]))
+      nil)))
+
+(defn on-up [_]
+  (let [s @A g (:gesture s)]
+    (swap! A assoc :gesture nil)
+    (when (and (= :draw (:kind g)) (> (count (:px g)) 1))
+      (dispatch! [:mark (next-id (:marks s)) {:kind :line :pts (mapv (fn [[x y]] (xy->ts (:L s) x y)) (:px g))}]))
+    (render-overlay!)))
+
+;; ════════════════ B · monitor ════════════════
+;; (push! stream value): a number, a list of numbers, a word or a bang (true). The view decides the
+;; rest: a window in seconds and, per stream, an optional fixed range and log scale.
+
+(def view0 {:window 6
+            :lanes {:rms {:range [0 0.3]}
+                    :centroid {:range [100 8000] :log true}
+                    :rolloff {:range [100 16000] :log true}
+                    :flatness {:range [0 0.6]}
+                    :note {:as :event}}})
+
+(defonce M (atom {:streams {} :order [] :paused false :view view0 :log []}))
+
+(defn kind-of [v] (cond (number? v) :scalar (sequential? v) :vector :else :event))
+
+(defn now [] (/ (.now js/performance) 1000))
+
+(defn push! [k v]
+  (when-not (:paused @M)
+    (let [t (now)]
+      (swap! M (fn [m]
+                 (let [m (if (get-in m [:streams k]) m
+                             (-> m (assoc-in [:streams k] {:kind (kind-of v) :buf #js []}) (update :order conj k)))]
+                   (.push (get-in m [:streams k :buf]) #js [t v])
+                   (assoc-in m [:streams k :last] v))))
+      (swap! M update :log (fn [l] (let [l (conj l [t k v])] (if (> (count l) 40) (subvec l 20) l)))))))
+
+(def note-names ["C" "C#" "D" "D#" "E" "F" "F#" "G" "G#" "A" "A#" "B"])
+(defn midi-name [m] (str (nth note-names (mod m 12)) (dec (js/Math.floor (/ m 12)))))
+
+(defn fmtv [k v]
+  (cond (number? v) (cond (and (= k :note)) (midi-name v)
+                          (>= (js/Math.abs v) 100) (str (js/Math.round v))
+                          :else (.toFixed v 3))
+        (sequential? v) (str "[" (count v) "]")
+        (true? v) "bang"
+        :else (str v)))
+
+(defonce colors (atom nil))
+(defn read-colors! []
+  (let [cs (js/getComputedStyle (.-documentElement js/document))
+        g (fn [k] (str/trim (.getPropertyValue cs k)))]
+    (reset! colors {:ink (g "--ink") :soft (g "--ink-soft") :grid (g "--grid") :rule (g "--rule") :accent (g "--accent")
+                    :kairos (g "--kairos") :sheet (g "--sheet") :code (g "--f-code")})))
+
+(defn lane-h [kind] (case kind :scalar 56 :vector 64 :event 30))
+(def LBL 118)
+
+(defn draw-monitor! []
+  (let [m @M c @colors cv ($ "mon") order (:order m)]
+    (set! (.-hidden ($ "mon-empty")) (seq order))
+    (set! (.-hidden cv) (empty? order))
+    (when (seq order)
+      (let [dpr (min 2 (or (.-devicePixelRatio js/window) 1))
+            W (.-clientWidth ($ "monitor"))
+            kind-at (fn [k] (or (#{:scalar :vector :event} (get-in m [:view :lanes k :as])) (get-in m [:streams k :kind])))
+            H (reduce + (map (fn [k] (+ 6 (lane-h (kind-at k)))) order))
+            _ (do (set! (.. cv -style -height) (str H "px"))
+                  (when (or (not= (.-width cv) (js/Math.round (* W dpr))) (not= (.-height cv) (js/Math.round (* H dpr))))
+                    (set! (.-width cv) (js/Math.round (* W dpr))) (set! (.-height cv) (js/Math.round (* H dpr)))))
+            x (.getContext cv "2d")
+            win (or (get-in m [:view :window]) 6)
+            tn (if (:paused m) (or (:frozen-at m) (now)) (now))
+            t0 (- tn win)
+            pw (- W LBL 10)
+            tx (fn [t] (+ LBL (* pw (/ (- t t0) win))))
+            font (str "11px " (:code c))]
+        (.setTransform x dpr 0 0 dpr 0 0)
+        (.clearRect x 0 0 W H)
+        (loop [ks order y 0]
+          (when-let [k (first ks)]
+            (let [{:keys [buf last]} (get-in m [:streams k])
+                  cfg (get-in m [:view :lanes k])
+                  kind (or (#{:scalar :vector :event} (:as cfg)) (get-in m [:streams k :kind]))
+                  h (lane-h kind)
+                  ;; drop what left the window
+                  _ (while (and (> (.-length buf) 1) (< (aget buf 1 0) (- t0 1))) (.shift buf))
+                  top (+ y 3)]
+              (set! (.-fillStyle x) (:ink c)) (set! (.-font x) (str "500 12px " (:code c)))
+              (.fillText x (name k) 8 (+ top 14))
+              (set! (.-fillStyle x) (:soft c)) (set! (.-font x) font)
+              (.fillText x (fmtv k last) 8 (+ top 30))
+              (set! (.-strokeStyle x) (:grid c)) (set! (.-lineWidth x) 1)
+              (.beginPath x) (.moveTo x LBL (+ y h 5.5)) (.lineTo x (- W 6) (+ y h 5.5)) (.stroke x)
+              (case kind
+                :scalar
+                (let [vs (keep (fn [p] (let [v (aget p 1)] (when (num? v) v))) (array-seq buf))
+                      log? (:log cfg)
+                      [lo hi] (or (:range cfg) (if (seq vs) [(apply min vs) (apply max vs)] [0 1]))
+                      [lo hi] (if (= lo hi) [(- lo 1) (+ hi 1)] [lo hi])
+                      u (fn [v] (if log? (js/Math.log (max 1e-9 v)) v))
+                      ty (fn [v] (+ top (* (- h 4) (- 1 (max 0 (min 1 (/ (- (u v) (u lo)) (- (u hi) (u lo))))))) 2))]
+                  (set! (.-fillStyle x) (:soft c))
+                  (.fillText x (fmtv k hi) (+ LBL 4) (+ top 10))
+                  (.fillText x (fmtv k lo) (+ LBL 4) (+ top h -2))
+                  (.beginPath x)
+                  (doseq [[i p] (map-indexed vector (array-seq buf))]
+                    (let [v (aget p 1)]
+                      (when (num? v)
+                        (if (zero? i) (.moveTo x (tx (aget p 0)) (ty v)) (.lineTo x (tx (aget p 0)) (ty v))))))
+                  (set! (.-strokeStyle x) (:accent c)) (set! (.-lineWidth x) 1.6) (.stroke x)
+                  (when (num? last)
+                    (set! (.-fillStyle x) (:accent c))
+                    (.beginPath x) (.arc x (tx (aget buf (dec (.-length buf)) 0)) (ty last) 2.6 0 (* 2 js/Math.PI)) (.fill x)))
+                :vector
+                (let [ps (vec (array-seq buf)) n (reduce max 1 (map (fn [p] (count (aget p 1))) ps))
+                      all (filter num? (mapcat (fn [p] (aget p 1)) ps))
+                      lo (if (seq all) (apply min all) 0) hi (if (seq all) (apply max all) 1)
+                      ch (/ (- h 4) n)]
+                  (set! (.-fillStyle x) (:accent c))
+                  (doseq [[a b] (map vector ps (concat (rest ps) [nil]))]
+                    (let [xa (tx (aget a 0)) xb (if b (tx (aget b 0)) (+ xa 3)) vs (aget a 1)]
+                      (doseq [[j v] (map-indexed vector vs)]
+                        (when (num? v)
+                          (set! (.-globalAlpha x) (* 0.95 (/ (- v lo) (max 1e-9 (- hi lo)))))
+                          (.fillRect x xa (+ top 2 (* (- n j 1) ch)) (+ 0.6 (- xb xa)) (- ch 0.5))))))
+                  (set! (.-globalAlpha x) 1))
+                :event
+                (doseq [p (array-seq buf)]
+                  (let [xt (tx (aget p 0)) v (aget p 1)]
+                    (set! (.-strokeStyle x) (:kairos c)) (set! (.-lineWidth x) 1.5)
+                    (.beginPath x) (.moveTo x xt (+ top 2)) (.lineTo x xt (+ top h -2)) (.stroke x)
+                    (when-not (true? v)
+                      (set! (.-fillStyle x) (:kairos c)) (set! (.-font x) font)
+                      (.fillText x (fmtv k v) (+ xt 3) (+ top 18))))))
+              (recur (rest ks) (+ y h 6)))))))))
+
+(defonce log-at (atom 0))
+(defn render-log! []
+  (let [t (now)]
+    (when (> (- t @log-at) 0.12)
+      (reset! log-at t)
+      (set! (.-textContent ($ "log"))
+            (str/join "\n" (for [[tt k v] (reverse (take-last 8 (:log @M)))]
+                             (str (.padStart (.toFixed (mod tt 1000) 2) 7) "  " (.padEnd (name k) 10) " "
+                                  (if (sequential? v) (str "[" (str/join " " (map (fn [a] (.toFixed a 2)) (take 4 v))) " …]") (fmtv k v)))))))))
+
+(defn frame! []
+  (draw-monitor!)
+  (render-log!)
+  (js/requestAnimationFrame frame!))
+
+;; ───── descriptors (as features~): Meyda frames → messages ─────
+
+(def feats [[:rms "rms" true] [:centroid "spectralCentroid" true] [:flatness "spectralFlatness" true]
+            [:rolloff "spectralRolloff" false] [:chroma "chroma" true] [:mfcc "mfcc" false]
+            [:onset nil true]])
+
+(defonce on-feats (atom (set (map first (filter (fn [[_ _ on]] on) feats)))))
+(defonce onset-st (atom {:avg 0 :last 0}))
+
+(defn meyda-list [] (clj->js (distinct (concat ["rms"] (keep (fn [[k m]] (when (and m (@on-feats k)) m)) feats)))))
+
+(defn on-frame [f sr]
+  (let [rms (.-rms f)]
+    (when (and (@on-feats :rms) (num? rms)) (push! :rms rms))
+    (when-let [v (and (@on-feats :centroid) (.-spectralCentroid f))] (when (and (num? v) (> rms 0.01)) (push! :centroid (* v (/ sr 2048)))))
+    (when-let [v (and (@on-feats :flatness) (.-spectralFlatness f))] (when (and (num? v) (> rms 0.01)) (push! :flatness v)))
+    (when-let [v (and (@on-feats :rolloff) (.-spectralRolloff f))] (when (and (num? v) (> rms 0.01)) (push! :rolloff v)))
+    (when-let [v (and (@on-feats :chroma) (.-chroma f))] (when (> rms 0.01) (push! :chroma (vec (array-seq v)))))
+    (when-let [v (and (@on-feats :mfcc) (.-mfcc f))] (when (> rms 0.01) (push! :mfcc (vec (array-seq v)))))
+    (when (and (@on-feats :onset) (num? rms))
+      (let [{:keys [avg last]} @onset-st t (now)]
+        (when (and (> rms 0.02) (> rms (* 1.6 avg)) (> (- t last) 0.09))
+          (push! :onset true) (swap! onset-st assoc :last t))
+        (swap! onset-st assoc :avg (+ (* 0.8 avg) (* 0.2 rms)))))))
+
+(defn start-analysis! []
+  (when (.analyse js/KAudio (meyda-list) on-frame) (swap! checks assoc "Meyda" :ok)))
+
+(defn render-feats! []
+  (set! (.-innerHTML ($ "feats"))
+        (str/join (for [[k _ _] feats]
+                    (str "<label for=\"f-" (name k) "\"><input type=\"checkbox\" id=\"f-" (name k) "\" data-k=\"" (name k) "\""
+                         (when (@on-feats k) " checked") "> " (name k) "</label>")))))
+
+;; ───── playback of the score: sound + note messages + playhead ─────
+
+(defonce play-id (atom 0))
+
+(defn stop-play! []
+  (swap! play-id inc)
+  (.stopAll js/KAudio)
+  (swap! A assoc :ph nil)
+  (doseq [el (array-seq (.querySelectorAll ($ "score") ".playing"))] (.remove (.-classList el) "playing"))
+  (set! (.-textContent ($ "play")) "Play")
+  (render-overlay!))
+
+(defn play! []
+  (if (:ph @A)
+    (stop-play!)
+    (try
+      (let [v (voice (:melody @A)) spb (/ 60 tempo)
+            evs (sort-by :t (vals (:events v)))
+            t0 (.playNotes js/KAudio (clj->js (for [e evs] [(* spb (:t e)) (* spb (:dur e)) (* 440 (js/Math.pow 2 (/ (- (:pitch e) 69) 12)))])))
+            id (swap! play-id inc)
+            endt (end-beat v)
+            sent (atom #{})]
+        (start-analysis!)
+        (set! (.-textContent ($ "play")) "Stop")
+        (letfn [(tick []
+                  (when (= id @play-id)
+                    (let [b (/ (- (.now js/KAudio) t0) spb)]
+                      (if (> b (+ (reduce max 0 (map (fn [e] (+ (:t e) (:dur e))) evs)) 0.5))
+                        (stop-play!)
+                        (do
+                          (doseq [[eid e] (:events v) :when (and (<= (:t e) b) (not (@sent eid)))]
+                            (swap! sent conj eid)
+                            (push! :note (:pitch e))
+                            (doseq [el (array-seq (.querySelectorAll ($ "score") (str "[id^=\"n-s-" (name eid) "-\"]")))]
+                              (.add (.-classList el) "playing")
+                              (js/setTimeout (fn [] (.remove (.-classList el) "playing")) (* 1000 spb (:dur e)))))
+                          (swap! A assoc :ph [(max 0 (min endt b))])
+                          (render-overlay!)
+                          (js/requestAnimationFrame tick))))))]
+          (js/requestAnimationFrame tick)))
+      (catch :default e (set! (.-textContent ($ "status")) (str "Sound: " (.-message e)))))))
+
+;; ───── wiring ─────
+
+(defn on [id ev f] (.addEventListener ($ id) ev f))
+
+(defn set-tool! [t]
+  (swap! A assoc :tool t)
+  (doseq [k [:draw :text :erase]] (.setAttribute ($ (str "tool-" (name k))) "aria-pressed" (str (= k t))))
+  (.setAttribute ($ "sheet") "data-tool" (name t)))
+
+(defn sync-mon-src! [] (set! (.-value ($ "mon-src")) (pr-str (:view @M))))
+
+(defn wire! []
+  (doseq [k [:draw :text :erase]] (on (str "tool-" (name k)) "click" (fn [_] (set-tool! k))))
+  (on "undo" "click" (fn [_] (undo!)))
+  (on "play" "click" (fn [_] (play!)))
+  (on "width" "input" (fn [e] (swap! A assoc :width (js/parseFloat (.. e -target -value))) (render-score!)))
+  (set! (.-value ($ "melody")) (:melody @A))
+  (on "melody-apply" "click"
+      (fn [_] (let [txt (.-value ($ "melody"))]
+                (try (voice txt) (swap! A assoc :melody txt) (save-A!) (stop-play!) (render-score!)
+                     (catch :default e (set! (.-textContent ($ "status")) (.-message e)))))))
+  (on "marks-src" "input" (fn [_] (reset! marks-dirty true) (set! (.-hidden ($ "marks-dirty")) false)))
+  (on "marks-apply" "click"
+      (fn [_] (try (let [ms (sane-marks (edn/read-string (.-value ($ "marks-src"))))]
+                     (reset! marks-dirty false) (set! (.-hidden ($ "marks-dirty")) true)
+                     (set! (.-textContent ($ "marks-err")) "")
+                     (dispatch! [:load ms]))
+                   (catch :default e (set! (.-textContent ($ "marks-err")) (.-message e))))))
+  (on "marks-reset" "click"
+      (fn [_] (reset! marks-dirty false) (set! (.-hidden ($ "marks-dirty")) true)
+        (swap! A assoc :melody melody0) (set! (.-value ($ "melody")) melody0)
+        (dispatch! [:load marks0]) (render-score!)))
+  (let [ov ($ "overlay")]
+    (.addEventListener ov "pointerdown" on-down)
+    (.addEventListener ov "pointermove" on-move)
+    (.addEventListener ov "pointerup" on-up)
+    (.addEventListener ov "pointercancel" on-up))
+  ;; B
+  (render-feats!)
+  (on "feats" "change" (fn [e] (let [k (keyword (.. e -target -dataset -k))]
+                                 (swap! on-feats (if (.. e -target -checked) conj disj) k)
+                                 (start-analysis!))))
+  (on "file" "change"
+      (fn [e] (when-let [f (aget (.. e -target -files) 0)]
+                (-> (.loadFile js/KAudio f)
+                    (.then (fn [d] (set! (.-disabled ($ "play-file")) false)
+                             (push! :file (str (.-name f) " · " (.toFixed d 1) " s"))))
+                    (.catch (fn [err] (set! (.-textContent ($ "status")) (str "That file could not be decoded: " (.-message err)))))))))
+  (on "play-file" "click" (fn [_] (stop-play!) (when (.playFile js/KAudio) (start-analysis!))))
+  (on "pause" "click" (fn [_] (swap! M (fn [m] (assoc m :paused (not (:paused m)) :frozen-at (now))))
+                        (set! (.-textContent ($ "pause")) (if (:paused @M) "Resume" "Freeze"))))
+  (on "clear" "click" (fn [_] (swap! M assoc :streams {} :order [] :log [])))
+  (sync-mon-src!)
+  (on "mon-apply" "click"
+      (fn [_] (try (let [v (edn/read-string (.-value ($ "mon-src")))]
+                     (when-not (and (map? v) (num? (:window v)) (pos? (:window v)))
+                       (throw (js/Error. "The view is a map {:window seconds :lanes {:rms {:range [0 0.3]} :centroid {:log true}}}")))
+                     (swap! M assoc :view v) (set! (.-textContent ($ "mon-err")) ""))
+                   (catch :default e (set! (.-textContent ($ "mon-err")) (.-message e))))))
+  (.observe (js/ResizeObserver. (let [w (atom 0)] (fn [_] (let [nw (sheet-width)] (when (> (js/Math.abs (- nw @w)) 2) (reset! w nw) (render-score!))))))
+            ($ "sheet"))
+  (let [retheme (fn [] (read-colors!))]
+    (.addEventListener (.matchMedia js/window "(prefers-color-scheme: dark)") "change" retheme)
+    (.observe (js/MutationObserver. retheme) (.-documentElement js/document) #js {:attributes true :attributeFilter #js ["data-theme"]})))
+
+(defn start! []
+  (read-colors!)
+  (wire!)
+  (sync-marks-src!)
+  (render-checks!)
+  (frame!)
+  (-> (.-vrvReady js/window)
+      (.then (fn [tk]
+               (if tk
+                 (do (reset! vrv tk) (swap! checks assoc "Verovio" :ok) (render-score!))
+                 (do (swap! checks assoc "Verovio" (str "did not load: " (.. js/window -libErrors -verovio)))
+                     (set! (.-innerHTML ($ "score")) "<div class=\"loading\">Verovio did not load, so there is no score to draw on.</div>"))))))
+  (-> (.-meydaReady js/window)
+      (.then (fn [m] (when-not m (swap! checks assoc "Meyda" (str "did not load: " (.. js/window -libErrors -meyda)))))))
+  (set! (.-textContent ($ "status")) "Loading Verovio…"))
+
+(start!)
+</script>

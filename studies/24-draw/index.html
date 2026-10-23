@@ -1,0 +1,784 @@
+<title>Kairotic Study 24 · Draw</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header, then a working row: the freqt stage (two stacked layers) and a side panel. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f;
+  /* the spectrum ramp: background → low → mid → high energy */
+  --spec-bg: #f8f9fb; --spec-1: #c7d2f4; --spec-2: #2f55d4; --spec-3: #b4472e;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #232a33; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0;
+    --spec-bg: #10141a; --spec-1: #24408f; --spec-2: #7d9bff; --spec-3: #f3c2ae;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #232a33; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0;
+  --spec-bg: #10141a; --spec-1: #24408f; --spec-2: #7d9bff; --spec-3: #f3c2ae;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 24px;
+}
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 12px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; text-wrap: balance; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: start; }
+@media (max-width: 860px) { .work { grid-template-columns: minmax(0, 1fr); } }
+
+/* toolbar */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--box); }
+.seg button { border: 0; border-right: 1px solid var(--rule); background: transparent; color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 10px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.seg button kbd { font: 11px var(--f-code); color: var(--ink-soft); margin-left: 4px; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+select { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+
+/* stage: GL canvas under, SVG ink over, playhead on top */
+.stage { position: relative; height: clamp(280px, 52vh, 470px); background: var(--spec-bg); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.stage canvas { position: absolute; display: block; }
+.stage .ink { position: absolute; inset: 0; }
+.stage .ink svg { display: block; }
+.stage[data-tool="draw"] .ink { cursor: crosshair; }
+.stage[data-tool="select"] .ink { cursor: default; }
+.stage[data-tool="erase"] .ink { cursor: not-allowed; }
+.playhead { position: absolute; top: 0; width: 2px; margin-left: -1px; background: var(--kairos); pointer-events: none; }
+.hint { margin-top: 6px; font-size: 12px; color: var(--ink-soft); }
+
+/* svg classes (thi.ng/geom shapes carry only class names: colors stay in the tokens) */
+.ink .plot { fill: none; stroke: var(--rule); }
+.ink .g0 { stroke: var(--grid); stroke-width: 1; opacity: 0.8; }
+.ink .g1 { stroke: var(--rule); stroke-width: 1; opacity: 0.9; }
+.ink .g2 { stroke: var(--ink-soft); stroke-width: 1; opacity: 0.55; }
+.ink .lbl { fill: var(--ink-soft); font: 10px var(--f-code); stroke: none; }
+.ink .lbl.y { text-anchor: end; dominant-baseline: middle; }
+.ink .lbl.x { text-anchor: start; }
+.ink .stroke { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ink .stroke.sel { stroke: var(--kairos); stroke-width: 2.6; }
+.ink .stroke.new { stroke: var(--accent); stroke-width: 2; }
+.ink .stroke.ghost { stroke: var(--kairos); stroke-dasharray: 4 3; opacity: 0.8; }
+.ink .handle { fill: var(--sheet); stroke: var(--kairos); stroke-width: 1.5; }
+
+/* side panel */
+.panel { display: grid; gap: 12px; min-width: 0; }
+.sec { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; min-width: 0; }
+.sec h2 { margin: 0; font: 600 12px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; font-size: 13px; }
+.row output { font: 12px var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+textarea { width: 100%; min-height: 190px; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; white-space: pre; overflow: auto; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.err { font: 12px var(--f-code); color: var(--error); white-space: pre-wrap; }
+.err:empty { display: none; }
+.dirty { font-size: 12px; color: var(--kairos); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 11px var(--f-code); padding: 2px 7px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-soft); }
+.chip.ok { border-color: var(--ok); color: var(--ok); }
+.chip.fail { border-color: var(--error); color: var(--error); }
+.view-edn { font: 11px/1.5 var(--f-code); color: var(--ink-soft); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+details summary { cursor: pointer; font: 600 12px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+details p { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--ink); max-width: 65ch; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header>
+  <h1>Study 24 · draw</h1>
+  <span class="sub">A freqt drawn twice from the same data: ink in SVG (thi.ng/geom), spectrum in WebGL</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="work">
+  <section>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Tool">
+        <button id="tool-draw" data-tool="draw" aria-pressed="true">Draw<kbd>D</kbd></button>
+        <button id="tool-select" data-tool="select" aria-pressed="false">Move<kbd>V</kbd></button>
+        <button id="tool-erase" data-tool="erase" aria-pressed="false">Erase<kbd>E</kbd></button>
+      </div>
+      <label class="inline" for="tuning">Y
+        <select id="tuning"></select>
+      </label>
+      <label class="inline" for="gridx">X
+        <select id="gridx">
+          <option value="free">free time</option>
+          <option value="0.5|4">step 0.5 · cycle 4</option>
+          <option value="0.25|4">step 0.25 · cycle 4</option>
+          <option value="0.5|3,2,2">step 0.5 · cycle 3+2+2</option>
+          <option value="1|5">step 1 · cycle 5</option>
+        </select>
+      </label>
+      <label class="inline" for="snap"><input type="checkbox" id="snap" checked> Snap to grids</label>
+      <span style="flex:1"></span>
+      <button class="act" id="undo" title="Undo (⌘Z)">Undo</button>
+      <button class="act primary" id="play" title="Play (space)">Play</button>
+    </div>
+    <div class="stage" id="stage" data-tool="draw">
+      <canvas id="spec" aria-hidden="true"></canvas>
+      <div class="ink" id="ink"></div>
+      <div class="playhead" id="playhead" hidden></div>
+    </div>
+    <p class="hint" id="hint">Draw a stroke: frequency up, time to the right. Each edit is one event of the history, the same events a freqt box receives.</p>
+  </section>
+
+  <aside class="panel">
+    <div class="sec">
+      <h2>Layers</h2>
+      <label class="row" for="ink-on"><span>Ink · SVG</span><input type="checkbox" id="ink-on" checked></label>
+      <label class="row" for="spec-on"><span>Spectrum · WebGL</span><input type="checkbox" id="spec-on" checked></label>
+      <div class="row"><label for="partials">Partials</label><output id="partials-v">6</output></div>
+      <input type="range" id="partials" min="1" max="16" step="1" value="6">
+      <div class="row"><label for="rolloff">Rolloff</label><output id="rolloff-v">0.60</output></div>
+      <input type="range" id="rolloff" min="0.2" max="0.95" step="0.01" value="0.6">
+      <pre class="view-edn" id="view-edn"></pre>
+    </div>
+    <div class="sec">
+      <h2>Buffer · EDN</h2>
+      <textarea id="src" spellcheck="false" aria-label="Buffer as EDN"></textarea>
+      <div class="btns">
+        <button class="act" id="apply">Apply</button>
+        <button class="act" id="revert">Revert</button>
+        <span class="dirty" id="dirty" hidden>edited</span>
+      </div>
+      <div class="err" id="src-err"></div>
+    </div>
+    <div class="sec">
+      <h2>Library check</h2>
+      <div class="chips" id="checks"></div>
+      <div class="btns"><button class="act" id="reset">Reset to example</button></div>
+    </div>
+    <details class="sec">
+      <summary>About this study</summary>
+      <p>One buffer, two renderers. The strokes are a freqt buffer from kairotic/canvas.cljs, changed only through its events. The ink layer turns them into thi.ng/geom shapes and serializes them to SVG. The spectrum layer turns the same strokes, with the partials and rolloff of the view, into a texture drawn by a WebGL2 shader. Playback uses those same partials, so what you hear matches what the spectrum shows.</p>
+      <p>The library check lists each thi.ng/geom function the study uses and whether it worked in this browser.</p>
+    </details>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// thi.ng/geom as an ES module from jsDelivr (no build): the page waits for it before the ClojureScript.
+window.thingGeomReady = import("https://cdn.jsdelivr.net/npm/@thi.ng/geom@8.3.35/+esm")
+  .then(function (m) { window.thingGeom = m; return m; });
+
+// ───────── WebGL2 spectrum layer + Web Audio playback (plain JS, called from the ClojureScript) ─────────
+window.KDraw = (function () {
+  var TW = 512, TH = 256;
+  var VS = "#version 300 es\nin vec2 p; out vec2 uv; void main(){ uv = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }";
+  var FS = [
+    "#version 300 es",
+    "precision highp float;",
+    "in vec2 uv; out vec4 o;",
+    "uniform sampler2D tex; uniform vec3 bg, c1, c2, c3; uniform float play, time;",
+    "float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }",
+    "void main(){",
+    "  vec2 px = 1.0 / vec2(textureSize(tex, 0));",
+    "  float a = texture(tex, uv).r * 0.5",
+    "    + (texture(tex, uv + vec2(px.x, 0.0)).r + texture(tex, uv - vec2(px.x, 0.0)).r",
+    "     + texture(tex, uv + vec2(0.0, px.y)).r + texture(tex, uv - vec2(0.0, px.y)).r) * 0.125;",
+    "  float d = play >= 0.0 ? exp(-pow((uv.x - play) * 80.0, 2.0)) : 0.0;",
+    "  a = clamp(a * (1.0 + 1.6 * d), 0.0, 1.0);",
+    "  vec3 c = mix(bg, c1, smoothstep(0.0, 0.32, a));",
+    "  c = mix(c, c2, smoothstep(0.28, 0.68, a));",
+    "  c = mix(c, c3, smoothstep(0.66, 1.0, a));",
+    "  c += (h(uv * vec2(913.0, 577.0) + fract(time)) - 0.5) * 0.02 * smoothstep(0.02, 0.3, a);",
+    "  o = vec4(c, 1.0);",
+    "}"].join("\n");
+
+  var gl = null, prog = null, tex = null, U = {}, canvas = null, colors = null, playU = -1;
+
+  function hex(s) {
+    s = (s || "").trim().replace("#", "");
+    if (s.length === 3) s = s.split("").map(function (c) { return c + c; }).join("");
+    var n = parseInt(s || "000000", 16);
+    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+  }
+  function readColors() {
+    var cs = getComputedStyle(document.documentElement);
+    colors = ["--spec-bg", "--spec-1", "--spec-2", "--spec-3"].map(function (k) { return hex(cs.getPropertyValue(k)); });
+  }
+  function sh(type, src) {
+    var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  function init(cv) {
+    canvas = cv;
+    gl = cv.getContext("webgl2", { antialias: false, premultipliedAlpha: false });
+    if (!gl) return false;
+    prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    gl.useProgram(prog);
+    var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    var loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    ["tex", "bg", "c1", "c2", "c3", "play", "time"].forEach(function (k) { U[k] = gl.getUniformLocation(prog, k); });
+    tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, TW, TH, 0, gl.RED, gl.UNSIGNED_BYTE, new Uint8Array(TW * TH));
+    readColors();
+    return true;
+  }
+
+  // Strokes in unit coordinates ([u v], u = time 0…1 across the plot, v = log-frequency 0…1 up) → energy.
+  // Each point of a stroke sounds `partials` harmonics (k·f, amplitude rolloff^(k-1)), with a short broadband
+  // attack where the stroke starts and a decaying tail after it ends.
+  function field(strokes, o) {
+    var acc = new Float32Array(TW * TH), P = Math.max(1, o.partials | 0), r = o.rolloff, span = o.span;
+    function stamp(x, v, amp, sig) {
+      var xi = Math.round(x); if (xi < 0 || xi >= TW) return;
+      var yc = v * TH; if (yc < -3 * sig || yc > TH + 3 * sig) return;
+      var y0 = Math.max(0, Math.floor(yc - 3 * sig)), y1 = Math.min(TH - 1, Math.ceil(yc + 3 * sig));
+      for (var y = y0; y <= y1; y++) { var d = (y - yc) / sig; acc[y * TW + xi] += amp * Math.exp(-0.5 * d * d); }
+    }
+    function partialsAt(x, v, gain, extra) {
+      for (var k = 1; k <= P; k++) {
+        var vk = v + Math.log2(k) / span; if (vk > 1.05) break;
+        stamp(x, vk, gain * Math.pow(r, k - 1), 1.0 + 0.22 * k + extra);
+      }
+    }
+    strokes.forEach(function (pts) {
+      if (pts.length < 2) return;
+      for (var i = 0; i < pts.length - 1; i++) {
+        var x0 = pts[i][0] * TW, x1 = pts[i + 1][0] * TW, v0 = pts[i][1], v1 = pts[i + 1][1];
+        var n = Math.max(1, Math.ceil(Math.abs(x1 - x0)));
+        for (var j = 0; j < n; j++) { var f = j / n; partialsAt(x0 + (x1 - x0) * f, v0 + (v1 - v0) * f, 1, 0); }
+      }
+      var xa = Math.round(pts[0][0] * TW), va = pts[0][1];
+      for (var c = 0; c < 5; c++) {
+        var xc = xa + c; if (xc < 0 || xc >= TW) continue;
+        for (var y = 0; y < TH; y++) acc[y * TW + xc] += 0.32 * Math.exp(-c / 1.4) * Math.exp(-Math.abs(y / TH - va) * 5);
+      }
+      var last = pts[pts.length - 1];
+      for (var t = 1; t <= 28; t++) partialsAt(last[0] * TW + t, last[1], Math.exp(-t / 7), t * 0.04);
+    });
+    var out = new Uint8Array(TW * TH);
+    for (var i2 = 0; i2 < out.length; i2++) out[i2] = Math.min(255, Math.round((1 - Math.exp(-acc[i2] * 1.5)) * 255));
+    return out;
+  }
+  function setField(strokes, o) {
+    if (!gl) return;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, TW, TH, gl.RED, gl.UNSIGNED_BYTE, field(strokes, o));
+  }
+  function place(x, y, w, h) {
+    if (!canvas) return;
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.style.left = x + "px"; canvas.style.top = y + "px";
+    canvas.style.width = w + "px"; canvas.style.height = h + "px";
+    var bw = Math.max(1, Math.round(w * dpr)), bh = Math.max(1, Math.round(h * dpr));
+    if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; }
+  }
+  function draw() {
+    if (!gl) return;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.uniform1i(U.tex, 0);
+    gl.uniform3fv(U.bg, colors[0]); gl.uniform3fv(U.c1, colors[1]); gl.uniform3fv(U.c2, colors[2]); gl.uniform3fv(U.c3, colors[3]);
+    gl.uniform1f(U.play, playU); gl.uniform1f(U.time, performance.now() / 1000);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  // ── sound: one oscillator per stroke, with the same partials and rolloff as the spectrum ──
+  var ctx = null, voices = [], master = null, t0 = 0;
+  function stop() {
+    voices.forEach(function (v) { try { v.stop(); } catch (e) {} });
+    voices = [];
+    if (master) { try { master.disconnect(); } catch (e) {} master = null; }
+  }
+  function play(strokes, o) {
+    stop();
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) throw new Error("This browser has no Web Audio");
+    ctx = ctx || new AC(); ctx.resume();
+    var P = Math.max(1, o.partials | 0), real = new Float32Array(P + 1), imag = new Float32Array(P + 1);
+    for (var k = 1; k <= P; k++) imag[k] = Math.pow(o.rolloff, k - 1);
+    var wave = ctx.createPeriodicWave(real, imag);
+    master = ctx.createGain(); master.gain.value = 0.45 / Math.sqrt(Math.max(1, strokes.length));
+    master.connect(ctx.destination);
+    var start = ctx.currentTime + 0.06; t0 = start;
+    strokes.forEach(function (p) {
+      var osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.setPeriodicWave(wave); g.gain.value = 0;
+      var a = start + p[0][0], e = start + p[p.length - 1][0];
+      osc.frequency.setValueAtTime(p[0][1], a);
+      for (var i = 1; i < p.length; i++) osc.frequency.exponentialRampToValueAtTime(p[i][1], start + p[i][0]);
+      g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(0.32, a + 0.02);
+      g.gain.setValueAtTime(0.32, Math.max(a + 0.02, e - 0.03)); g.gain.linearRampToValueAtTime(0, e + 0.25);
+      osc.connect(g); g.connect(master); osc.start(a); osc.stop(e + 0.3);
+      voices.push(osc);
+    });
+  }
+  function position() { return ctx ? ctx.currentTime - t0 : 0; }
+
+  return { init: init, setField: setField, place: place, draw: draw, readColors: readColors,
+           setPlay: function (u) { playU = u; }, play: play, stop: stop, position: position };
+})();
+
+// ───────── loader: thi.ng/geom, then the snapshot of kairotic/canvas.cljs, then the study ─────────
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) {
+    var st = document.getElementById("status");
+    st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)";
+    console.error(e);
+  }
+  var st = document.getElementById("status"), pending = { geom: true, canvas: true };
+  function note() { st.textContent = "Loading " + Object.keys(pending).filter(function (k) { return pending[k]; }).join(", ") + "…"; }
+  note();
+  window.addEventListener("error", function (e) { show(e.error || e.message); });
+  // thi.ng/geom is optional for the page to work: after 12 s the study starts without it (the library check says so)
+  var geom = Promise.race([
+    window.thingGeomReady,
+    new Promise(function (_, rej) { setTimeout(function () { rej(new Error("timeout")); }, 12000); })
+  ]).catch(function (e) { console.warn("thi.ng/geom did not load", e); window.thingGeomError = String((e && e.message) || e); return null; })
+    .then(function (m) { pending.geom = false; note(); return m; });
+  var src = fetch("kairotic/canvas.cljs", { cache: "no-cache" }).then(function (r) {
+      if (!r.ok) throw new Error("could not read kairotic/canvas.cljs (" + r.status + ")"); return r.text();
+    }).then(function (t) { pending.canvas = false; note(); return t; });
+  Promise.all([geom, src]).then(function (res) {
+    try { scittle.core.eval_string(res[1]); } catch (e) { throw new Error("kairotic/canvas.cljs: " + (e.message || e)); }
+    scittle.core.eval_string(document.getElementById("main-cljs").textContent);
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="main-cljs">
+;; SPDX-License-Identifier: MPL-2.0
+;; Kairotic · Study 24 · draw
+;; One freqt buffer (kairotic.canvas), two renderers that are pure functions of it:
+;;   ink      → thi.ng/geom shapes → SVG string
+;;   spectrum → partials texture   → WebGL2 shader
+;; The view (which layers, their parameters) lives beside the buffer, not inside it.
+
+(ns study.draw
+  (:require [kairotic.canvas :as cv]
+            [clojure.string :as str]
+            [clojure.edn :as edn]))
+
+(def G js/window.thingGeom)
+(def HDR 14)
+
+(defn $ [id] (.getElementById js/document id))
+
+;; ───────── library check: every thi.ng call goes through `lib` ─────────
+
+(defonce checks (atom (sorted-map)))
+
+(defn lib [nm f]
+  (if (nil? G)
+    (do (when-not (get @checks "@thi.ng/geom") (swap! checks assoc "@thi.ng/geom" (str "did not load: " js/window.thingGeomError))) nil)
+    (try (let [r (f)] (when-not (= :ok (get @checks nm)) (swap! checks assoc nm :ok)) r)
+         (catch :default e
+           (swap! checks assoc nm (str (.-message e))) nil))))
+
+;; ───────── data: the example buffer and the view ─────────
+
+(def wave
+  (vec (for [i (range 0 15)]
+         (let [t (+ 4 (* i 0.25))] [t (cv/round-to (* 440 (js/Math.pow 2 (* 0.09 (js/Math.sin (* i 1.25))))) 2)]))))
+
+(def example
+  (cv/step cv/empty
+           [:load {:gx {:step 0.5 :cycles [4]}
+                   :gy (assoc (get cv/tunings "12-tet") :ref cv/default-ref)
+                   :strokes {:t1 {:pts [[0 220] [1.5 220] [2 246.94] [3.5 246.94]]}
+                             :t2 {:pts [[0.5 329.63] [2.5 392] [3 369.99]]}
+                             :t3 {:pts wave}
+                             :t4 {:pts [[0 110] [7.5 110]]}}}]))
+
+(def view0 {:ink {:on true} :spectrum {:on true :partials 6 :rolloff 0.6}})
+
+(def store-key "kairotic.study24.v1")
+
+(defn load-saved []
+  (try (let [s (.getItem js/localStorage store-key)]
+         (when s (let [x (edn/read-string s)] (when (map? x) x))))
+       (catch :default _ nil)))
+
+(defonce st
+  (atom (let [saved (load-saved)
+              hist (or (when (vector? (:hist saved)) (:hist saved)) [])
+              view (if (map? (:view saved)) (merge-with merge view0 (:view saved)) view0)]
+          {:hist hist :d (reduce cv/step example hist) :view view
+           :tool :draw :snap true :sel nil :gesture nil :frozen nil :playing false})))
+
+(defn save! []
+  (try (.setItem js/localStorage store-key (pr-str {:hist (:hist @st) :view (:view @st)}))
+       (catch :default _ nil)))
+
+;; ───────── geometry ─────────
+
+(defn stage-size []
+  (let [r (.getBoundingClientRect ($ "stage"))] [(js/Math.round (.-width r)) (js/Math.round (.-height r))]))
+
+(defn current-g [] (or (:frozen @st) (cv/geom (:d @st) HDR (stage-size))))
+
+(defn ->px [g [t f]] [(cv/t->x g t) (cv/f->y g f)])
+
+;; ───────── ink layer: buffer → thi.ng/geom shapes → SVG ─────────
+
+(defn shape-line [x1 y1 x2 y2 cls]
+  (lib "line" (fn [] (.line G #js [x1 y1] #js [x2 y2] #js {"class" cls}))))
+
+(defn shape-text [x y s cls]
+  (lib "text" (fn [] (.text G #js [x y] (str s) #js {"class" cls}))))
+
+(defn grid-shapes [d g]
+  (let [{:keys [x0 y0 w h]} g x1 (+ x0 w) y1 (+ y0 h)]
+    (concat
+     (for [[t lv label] (cv/lines-x (:gx d) g)
+           :let [x (cv/t->x g t)] :when (<= (- x0 0.5) x (+ x1 0.5))
+           s [(shape-line x y0 x y1 (str "g" lv)) (when label (shape-text (+ x 3) (- y0 4) label "lbl x"))]]
+       s)
+     (for [[f lv label] (cv/lines-y (:gy d) g)
+           :let [y (cv/f->y g f)] :when (<= (- y0 0.5) y (+ y1 0.5))
+           s [(shape-line x0 y x1 y (if (pos? lv) "g1" "g0")) (when label (shape-text (- x0 5) y label "lbl y"))]]
+       s)
+     [(lib "rect" (fn [] (.rect G #js [x0 y0] #js [w h] #js {"class" "plot"})))])))
+
+(defn stroke-shape [pxs cls]
+  (lib "polyline" (fn [] (.polyline G (clj->js pxs) #js {"class" cls}))))
+
+(defn ink-shapes [d g s]
+  (let [{:keys [sel gesture]} s
+        preview (when (= :move (:kind gesture)) (:preview gesture))]
+    (concat
+     (for [[id st'] (cv/sorted-strokes d)
+           :let [pts (if (and preview (= id (:id gesture))) preview (:pts st'))]]
+       (stroke-shape (mapv (partial ->px g) pts) (str "stroke" (when (= id sel) " sel"))))
+     (when (and preview (:id gesture))
+       [(stroke-shape (mapv (partial ->px g) (get-in d [:strokes (:id gesture) :pts])) "stroke ghost")])
+     (when-let [pts (and sel (not preview) (get-in d [:strokes sel :pts]))]
+       (for [p pts :let [[x y] (->px g p)]]
+         (lib "circle" (fn [] (.circle G #js [x y] 3.2 #js {"class" "handle"})))))
+     (when (= :draw (:kind gesture))
+       [(stroke-shape (:px gesture) "stroke new")]))))
+
+(defn svg-string [d g s [bw bh]]
+  (let [shapes (concat (grid-shapes d g) (when (get-in s [:view :ink :on]) (ink-shapes d g s)))
+        arr (into-array (remove nil? shapes))
+        grp (lib "group" (fn [] (.group G #js {} arr)))
+        doc (lib "svgDoc" (fn [] (.svgDoc G #js {"width" bw "height" bh "viewBox" (str "0 0 " bw " " bh)} grp)))]
+    (or (lib "asSvg" (fn [] (.asSvg G doc)))
+        (str "<svg width=\"" bw "\" height=\"" bh "\"></svg>"))))
+
+;; ───────── spectrum layer: buffer → unit strokes → texture ─────────
+
+(defonce gl-ok (atom false))
+(defonce field-key (atom nil))
+
+(defn unit-strokes [d g]
+  (let [span-t (- (:xb g) (:xa g)) span-f (- (:lf1 g) (:lf0 g))]
+    (clj->js (for [[_ s] (cv/sorted-strokes d)]
+               (mapv (fn [[t f]] [(/ (- t (:xa g)) span-t) (/ (- (cv/log2 f) (:lf0 g)) span-f)]) (:pts s))))))
+
+(defn update-spectrum! [d g view]
+  (when @gl-ok
+    (let [{:keys [x0 y0 w h]} g
+          sp (:spectrum view)
+          k [d (:xa g) (:xb g) (:lf0 g) (:lf1 g) (:partials sp) (:rolloff sp)]]
+      (.place js/KDraw x0 y0 w h)
+      (when (not= k @field-key)
+        (reset! field-key k)
+        (.setField js/KDraw (unit-strokes d g) #js {:partials (:partials sp) :rolloff (:rolloff sp) :span (- (:lf1 g) (:lf0 g))}))
+      (.draw js/KDraw))))
+
+;; ───────── panel ─────────
+
+(defonce src-dirty (atom false))
+(defonce last-src-d (atom nil))
+
+(defn sync-source! [d]
+  (when (and (not @src-dirty) (not (identical? d @last-src-d)))
+    (reset! last-src-d d)
+    (set! (.-value ($ "src")) (cv/->source d))))
+
+(defn render-checks! []
+  (let [el ($ "checks")]
+    (set! (.-innerHTML el)
+          (str/join (for [[nm v] @checks]
+                      (str "<span class=\"chip " (if (= v :ok) "ok" "fail") "\" title=\""
+                           (str/replace (if (= v :ok) "works" (str v)) "\"" "'") "\">" nm "</span>"))))))
+
+(defn sync-controls! [s]
+  (let [d (:d s) v (:view s) sp (:spectrum v)]
+    (doseq [t [:draw :select :erase]]
+      (.setAttribute ($ (str "tool-" (name t))) "aria-pressed" (str (= t (:tool s)))))
+    (.setAttribute ($ "stage") "data-tool" (name (:tool s)))
+    (set! (.-checked ($ "snap")) (:snap s))
+    (set! (.-checked ($ "ink-on")) (boolean (get-in v [:ink :on])))
+    (set! (.-checked ($ "spec-on")) (boolean (:on sp)))
+    (set! (.-value ($ "partials")) (:partials sp))
+    (set! (.-textContent ($ "partials-v")) (str (:partials sp)))
+    (set! (.-value ($ "rolloff")) (:rolloff sp))
+    (set! (.-textContent ($ "rolloff-v")) (.toFixed (:rolloff sp) 2))
+    (set! (.-textContent ($ "view-edn")) (pr-str v))
+    (set! (.-value ($ "tuning"))
+          (if-let [gy (:gy d)] (or (some (fn [[k t]] (when (= (:cents t) (:cents gy)) k)) cv/tunings) "custom") "none"))
+    (set! (.-value ($ "gridx"))
+          (if-let [gx (:gx d)] (str (cv/fmt (:step gx)) "|" (str/join "," (map cv/fmt (:cycles gx)))) "free"))
+    (set! (.-hidden ($ "spec")) (not (and @gl-ok (:on sp))))
+    (set! (.-textContent ($ "play")) (if (:playing s) "Stop" "Play"))
+    (set! (.-textContent ($ "status")) (str (cv/summary d) " · " (count (:hist s)) " events"))))
+
+;; ───────── render ─────────
+
+(defn render! []
+  (let [s @st d (:d s) g (current-g) size (stage-size)]
+    (set! (.-innerHTML ($ "ink")) (svg-string d g s size))
+    (when (get-in s [:view :spectrum :on]) (update-spectrum! d g (:view s)))
+    (sync-source! d)
+    (sync-controls! s)))
+
+;; ───────── events: every change to the buffer is one event of kairotic.canvas ─────────
+
+(defn dispatch! [ev]
+  (swap! st (fn [s] (let [d (cv/step (:d s) ev)]
+                      (if (= d (:d s)) s (-> s (update :hist conj ev) (assoc :d d))))))
+  (save!)
+  (render!))
+
+(defn undo! []
+  (swap! st (fn [s] (if (empty? (:hist s)) s
+                        (let [h (pop (:hist s))] (assoc s :hist h :d (reduce cv/step example h) :sel nil)))))
+  (save!) (render!))
+
+(defn reset-all! []
+  (swap! st assoc :hist [] :d example :sel nil :view view0)
+  (reset! src-dirty false) (set! (.-hidden ($ "dirty")) true)
+  (save!) (render!))
+
+;; ───────── pointer ─────────
+
+(defn seg-dist [[px py] [ax ay] [bx by]]
+  (let [dx (- bx ax) dy (- by ay) L2 (+ (* dx dx) (* dy dy))
+        u (if (zero? L2) 0 (max 0 (min 1 (/ (+ (* (- px ax) dx) (* (- py ay) dy)) L2))))]
+    (js/Math.hypot (- px (+ ax (* u dx))) (- py (+ ay (* u dy))))))
+
+(defn dist-own [p pxs] (apply min (map (fn [a b] (seg-dist p a b)) pxs (rest pxs))))
+
+(defn dist-geom [[x y] pxs]
+  (let [q (.closestPoint G (.polyline G (clj->js pxs)) #js [x y])]
+    (js/Math.hypot (- (aget q 0) x) (- (aget q 1) y))))
+
+(defn hit [d g p]
+  (->> (:strokes d)
+       (keep (fn [[id s]]
+               (let [pxs (mapv (partial ->px g) (:pts s))
+                     dd (or (lib "closestPoint" (fn [] (dist-geom p pxs))) (dist-own p pxs))]
+                 (when (< dd 9) [dd id]))))
+       (sort-by first) first second))
+
+(defn local-xy [e]
+  (let [r (.getBoundingClientRect ($ "stage"))] [(- (.-clientX e) (.-left r)) (- (.-clientY e) (.-top r))]))
+
+(defn snap-dt [d dt] (if-let [gx (:gx d)] (* (:step gx) (js/Math.round (/ dt (:step gx)))) dt))
+(defn snap-dc [d dc]
+  (let [gy (:gy d)]
+    (if (:cents gy)
+      (let [q (/ (cv/period gy) (count (:cents gy)))] (* q (js/Math.round (/ dc q))))
+      dc)))
+
+(defn on-down [e]
+  (let [[x y :as p] (local-xy e) s @st d (:d s) g (cv/geom d HDR (stage-size))]
+    (.setPointerCapture (.-currentTarget e) (.-pointerId e))
+    (case (:tool s)
+      :draw (swap! st assoc :frozen g :gesture {:kind :draw :px [p]})
+      :select (let [id (hit d g p)]
+                (swap! st assoc :sel id :frozen g :gesture (when id {:kind :move :id id :from p :preview nil})))
+      :erase (do (swap! st assoc :frozen g :gesture {:kind :erase})
+                 (when-let [id (hit d g p)] (dispatch! [:erase id]))))
+    (render!)))
+
+(defn move-preview [s [x y]]
+  (let [{:keys [d frozen gesture snap]} s g frozen
+        [fx fy] (:from gesture)
+        dt (* (/ (- x fx) (:w g)) (- (:xb g) (:xa g)))
+        dc (cv/delta-y d (cv/y->f g y) (cv/y->f g fy))
+        [dt dc] (if snap [(snap-dt d dt) (snap-dc d dc)] [dt dc])]
+    [dt dc (get-in (cv/step d [:move (:id gesture) dt dc]) [:strokes (:id gesture) :pts])]))
+
+(defn on-move [e]
+  (let [s @st gst (:gesture s) p (local-xy e)]
+    (when gst
+      (case (:kind gst)
+        :draw (let [[lx ly] (peek (:px gst)) [x y] p]
+                (when (> (js/Math.hypot (- x lx) (- y ly)) 2)
+                  (swap! st update-in [:gesture :px] conj p)
+                  (render!)))
+        :move (let [[_ _ pts] (move-preview s p)]
+                (swap! st assoc-in [:gesture :preview] pts)
+                (render!))
+        :erase (when-let [id (hit (:d s) (:frozen s) p)] (dispatch! [:erase id]))
+        nil))))
+
+(defn commit-draw! [s]
+  (let [g (:frozen s) d (:d s)
+        simp (cv/simplify (vec (:px (:gesture s))) (if (:snap s) 3 1.5))
+        pts (mapv (fn [[x y]]
+                    (let [t (max 0 (cv/x->t g x)) f (cv/y->f g y)]
+                      (if (:snap s) [(cv/quantize-t (:gx d) t) (cv/quantize-f (:gy d) f)] [t f])))
+                  simp)]
+    (when (cv/sane-pts (vec (dedupe pts)))
+      (let [id (cv/next-id d)]
+        (swap! st assoc :sel nil)
+        (dispatch! [:stroke id (vec (dedupe pts))])))))
+
+(defn on-up [e]
+  (let [s @st gst (:gesture s)]
+    (swap! st assoc :gesture nil :frozen nil)
+    (when gst
+      (case (:kind gst)
+        :draw (commit-draw! s)
+        :move (let [[dt dc] (move-preview s (local-xy e))]
+                (when (or (not (zero? dt)) (not (zero? dc))) (dispatch! [:move (:id gst) dt dc])))
+        nil))
+    (render!)))
+
+;; ───────── playback ─────────
+
+(defn stop! []
+  (.stop js/KDraw) (.setPlay js/KDraw -1)
+  (swap! st assoc :playing false)
+  (set! (.-hidden ($ "playhead")) true)
+  (render!))
+
+(defn tick! []
+  (when (:playing @st)
+    (let [g (current-g) T (- (:xb g) (:xa g)) pos (.position js/KDraw) u (/ pos T)
+          ph ($ "playhead")]
+      (if (> pos (+ T 0.3))
+        (stop!)
+        (do (set! (.-hidden ph) (neg? u))
+            (set! (.. ph -style -left) (str (+ (:x0 g) (* (max 0 u) (:w g))) "px"))
+            (set! (.. ph -style -top) (str (:y0 g) "px"))
+            (set! (.. ph -style -height) (str (:h g) "px"))
+            (.setPlay js/KDraw (max 0 u))
+            (when (and @gl-ok (get-in @st [:view :spectrum :on])) (.draw js/KDraw))
+            (js/requestAnimationFrame tick!))))))
+
+(defn play! []
+  (let [s @st d (:d s) sp (get-in s [:view :spectrum])]
+    (if (:playing s)
+      (stop!)
+      (when (seq (:strokes d))
+        (try
+          (.play js/KDraw (clj->js (map (comp :pts second) (cv/sorted-strokes d)))
+                 #js {:partials (:partials sp) :rolloff (:rolloff sp)})
+          (swap! st assoc :playing true)
+          (render!)
+          (js/requestAnimationFrame tick!)
+          (catch :default e (set! (.-textContent ($ "status")) (str "Sound: " (.-message e)))))))))
+
+;; ───────── wiring ─────────
+
+(defn set-tool! [t] (swap! st assoc :tool t :sel (when (= t :select) (:sel @st))) (render!))
+
+(defn set-view! [path v] (swap! st assoc-in (into [:view] path) v) (save!) (render!))
+
+(defn typing? [e] (contains? #{"TEXTAREA" "INPUT" "SELECT"} (.. e -target -tagName)))
+
+(defn init-tuning-select! []
+  (set! (.-innerHTML ($ "tuning"))
+        (str "<option value=\"none\">continuous Hz</option>"
+             (str/join (for [k (sort (keys cv/tunings))] (str "<option value=\"" k "\">" k "</option>")))
+             "<option value=\"custom\" disabled>custom</option>")))
+
+(defn on [id ev f] (.addEventListener ($ id) ev f))
+
+(defn wire! []
+  (init-tuning-select!)
+  (doseq [t [:draw :select :erase]] (on (str "tool-" (name t)) "click" (fn [_] (set-tool! t))))
+  (on "snap" "change" (fn [e] (swap! st assoc :snap (.. e -target -checked)) (render!)))
+  (on "tuning" "change"
+      (fn [e] (let [v (.. e -target -value) ref (or (:ref (:gy (:d @st))) cv/default-ref)]
+                (dispatch! [:tuning (when-let [t (get cv/tunings v)] (assoc t :ref ref))]))))
+  (on "gridx" "change"
+      (fn [e] (let [v (.. e -target -value)]
+                (dispatch! [:grid-x (when (not= v "free")
+                                      (let [[step cyc] (str/split v #"\|")]
+                                        {:step (js/parseFloat step) :cycles (mapv js/parseFloat (str/split cyc #","))}))]))))
+  (on "undo" "click" (fn [_] (undo!)))
+  (on "play" "click" (fn [_] (play!)))
+  (on "reset" "click" (fn [_] (when (:playing @st) (stop!)) (reset-all!)))
+  (on "ink-on" "change" (fn [e] (set-view! [:ink :on] (.. e -target -checked))))
+  (on "spec-on" "change" (fn [e] (set-view! [:spectrum :on] (.. e -target -checked))))
+  (on "partials" "input" (fn [e] (set-view! [:spectrum :partials] (js/parseInt (.. e -target -value) 10))))
+  (on "rolloff" "input" (fn [e] (set-view! [:spectrum :rolloff] (js/parseFloat (.. e -target -value)))))
+  (on "src" "input" (fn [_] (reset! src-dirty true) (set! (.-hidden ($ "dirty")) false)))
+  (on "apply" "click"
+      (fn [_]
+        (try (let [d (:d @st) nd (cv/read-source d (.-value ($ "src"))) evs (cv/diff d nd)]
+               (reset! src-dirty false) (set! (.-hidden ($ "dirty")) true)
+               (set! (.-textContent ($ "src-err")) "")
+               (reset! last-src-d nil)
+               (if (seq evs) (dispatch! [:batch evs]) (render!)))
+             (catch :default e (set! (.-textContent ($ "src-err")) (.-message e))))))
+  (on "revert" "click"
+      (fn [_] (reset! src-dirty false) (reset! last-src-d nil) (set! (.-hidden ($ "dirty")) true)
+        (set! (.-textContent ($ "src-err")) "") (render!)))
+  (let [ink ($ "ink")]
+    (.addEventListener ink "pointerdown" on-down)
+    (.addEventListener ink "pointermove" on-move)
+    (.addEventListener ink "pointerup" on-up)
+    (.addEventListener ink "pointercancel" on-up))
+  (.addEventListener js/document "keydown"
+                     (fn [e]
+                       (when-not (typing? e)
+                         (let [k (str/lower-case (.-key e))]
+                           (cond
+                             (and (or (.-metaKey e) (.-ctrlKey e)) (= k "z")) (do (.preventDefault e) (undo!))
+                             (= k "d") (set-tool! :draw)
+                             (= k "v") (set-tool! :select)
+                             (= k "e") (set-tool! :erase)
+                             (= k " ") (do (.preventDefault e) (play!))
+                             (and (contains? #{"backspace" "delete"} k) (:sel @st))
+                             (do (.preventDefault e) (let [id (:sel @st)] (swap! st assoc :sel nil) (dispatch! [:erase id]))))))))
+  (.observe (js/ResizeObserver. (fn [_] (render!))) ($ "stage"))
+  ;; the spectrum ramp follows the theme
+  (let [retheme (fn [] (.readColors js/KDraw) (render!))]
+    (.addEventListener (.matchMedia js/window "(prefers-color-scheme: dark)") "change" retheme)
+    (.observe (js/MutationObserver. retheme) (.-documentElement js/document) #js {:attributes true :attributeFilter #js ["data-theme"]}))
+  (add-watch checks :panel (fn [_ _ a b] (when (not= a b) (render-checks!)))))
+
+(defn start! []
+  (reset! gl-ok (try (boolean (.init js/KDraw ($ "spec")))
+                     (catch :default e (js/console.error e) false)))
+  (swap! checks assoc "WebGL2" (if @gl-ok :ok "not available"))
+  (wire!)
+  (render!)
+  (render-checks!))
+
+(start!)
+</script>

@@ -60,6 +60,21 @@
    {:inlets ["anything: it is written in the REPL"]
     :see ["msg"]}
 
+   "draw"
+   {:inlets ["a shape ([:circle {:cx 40 :cy 40 :r 10 :fill :accent}]) is added; a list of shapes replaces them all; [:set k shape] adds or replaces the one called k; [:unset k] removes it; clear"]
+    :outlets ["the :hit of a shape pressed (a shape with :hit k sends k)"]
+    :messages [["[:circle {:cx :cy :r}]" "a circle (also :rect :line :arc :needle :path :curve :text and :group)"]
+               ["[[:line …] [:text …]]" "a list: replaces everything"]
+               ["[:set :cursor [:line …]]" "the shape called :cursor, added or moved"]
+               ["[:unset :cursor]" "removes it"] ["clear" "empties the view"]]
+    :example (lines "(box :b1 \"msg circle 60 55 22 accent hit sun\" 40 30)"
+                    "(box :b2 \"msg circle 160 55 14 kairos hit moon\" 250 30)"
+                    "(box :b3 \"msg set label text 20 100 \\\"press one of them\\\"\" 40 70)"
+                    "(box :b4 \"draw 240 120\" 40 120)" "(box :b5 \"print\" 40 270)"
+                    "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)")
+    :try "Click the three messages, then press the circles: print writes :sun or :moon. From code, any shape of kairotic.shapes: (send! :b4 [:curve {:points [[10 90] [80 20] [150 80] [230 30]] :stroke :accent}]). Shapes take the theme's colours (:ink :soft :accent :kairos :bg :grid) and :opacity."
+    :see ["monitor" "pcclock" "msg"]}
+
    "mtof"
    {:inlets ["a MIDI pitch (60 = middle C) or a list of them"]
     :outlets ["the frequency in Hz (or the list)"]
@@ -396,6 +411,37 @@
                     "(connect :b2 0 :b5 0)" "(connect :b2 1 :b5 1)" "(connect :b3 0 :b5 2)" "(connect :b4 0 :b5 3)")
     :try "Press ▶ and allow the microphone: speak, then sing a long note — the centroid falls, the chroma strip settles on one row, each syllable leaves a mark."
     :see ["features~" "chroma~" "onset~" "print"]}
+
+   "pcclock"
+   {:package "@kairotic/theory" :usage "pcclock [notes]"
+    :doc "A pitch-class set on the clock face: its polygon, the sets before it, its axes of symmetry; its prime form and interval vector go out."
+    :inlets ["a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma), or a number: a note, the last n notes (4) being the set; clear"]
+    :outlets ["the prime form, when the set changes" "the interval vector" "the pitch class pressed"]
+    :example (lines "(box :b1 \"msg 60 64 67\" 40 30)" "(box :b2 \"msg 60 63 66 69\" 140 30)" "(box :b3 \"pcclock\" 40 80)"
+                    "(box :b4 \"print\" 40 330)" "(connect :b1 0 :b3 0)" "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)")
+    :try "Click the major triad, then the diminished seventh: (0 3 7) has no axis, (0 3 6 9) has four. Press a pitch class on the clock: it comes out on the right."
+    :see ["fourier" "tonnetz" "chroma~"]}
+
+   "fourier"
+   {:package "@kairotic/theory" :usage "fourier [notes]"
+    :doc "The six Fourier coefficients of a pitch-class distribution (chromatic, dyadic, triadic, octatonic, diatonic, whole-tone), each a point in its circle with its trail."
+    :inlets ["a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, from chroma~), or a number: a note (the last n count: 4); clear"]
+    :outlets ["the six magnitudes, 0…1" "the six phases, in degrees"]
+    :example (lines "(box :b1 \"msg 60 62 64 65 67 69 71\" 40 30)" "(box :b2 \"msg 60 64 68\" 240 30)" "(box :b3 \"fourier\" 40 80)"
+                    "(connect :b1 0 :b3 0)" "(connect :b2 0 :b3 0)")
+    :try "The diatonic scale fills f5; the augmented triad, f3 and f6 at 1. With adc~ → chroma~ → fourier, sing or play and watch the trails."
+    :see ["pcclock" "tonnetz" "chroma~"]}
+
+   "tonnetz"
+   {:package "@kairotic/theory" :usage "tonnetz [notes]"
+    :doc "Triads on the Tonnetz (fifths across, thirds up) and the path of the harmony: each triad found joined to the ones before."
+    :inlets ["a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, above 0.5), or a number: a note (the last n count: 3); clear forgets the path"]
+    :outlets ["the triad, when it changes (:C, :am, :Ebm…)" "the pitch class pressed"]
+    :example (lines "(box :b1 \"msg 60 64 67\" 40 30)" "(box :b2 \"msg 60 63 67\" 130 30)" "(box :b3 \"msg 60 63 68\" 220 30)"
+                    "(box :b4 \"msg 59 63 68\" 310 30)" "(box :b5 \"tonnetz\" 40 80)" "(box :b6 \"print\" 40 340)"
+                    "(connect :b1 0 :b5 0)" "(connect :b2 0 :b5 0)" "(connect :b3 0 :b5 0)" "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)")
+    :try "Click the four messages in order: C, c, A♭, g♯ — P, L, P: each step crosses one edge of the lattice. Press a node to hear which class it is (its number comes out on the right)."
+    :see ["pcclock" "fourier" "mt"]}
 
    "adsr~"
    {:package "@kairotic/synth" :usage "adsr~ [a d s r]"
