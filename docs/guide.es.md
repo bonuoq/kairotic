@@ -18,6 +18,10 @@ ventana **Sessions** ofrece tres entradas:
 Una obra solo puede copiarse a una sala y una sala a una obra solo (con su historia). **Sessions**, arriba
 a la derecha, vuelve a abrir esta ventana.
 
+En Pages, las salas se sincronizan a través de un **relay**. **Relay**, en la misma ventana, muestra los
+que se usan y si responden; una comunidad puede tener el suyo (`npx @kairotic/relay`) y elegirlo ahí, y
+los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
+
 ## 2. Hacer un patch
 
 - **Crear una caja**: doble clic en un sitio vacío, escribe su texto —la clase y sus argumentos, como
@@ -216,7 +220,8 @@ la barra lo oculta o lo muestra. Este navegador recuerda cómo lo dejaste. Desde
 - **Claude** — Claude hace un patch (o cambia el abierto), o escribe un componente, a partir de lo que
   describes. Ver [Pedírselo a Claude](ask.es.md).
 - **Help** — esta **documentación** (guía, conceptos, temas, referencia), una página para cada clase,
-  entrada por entrada, con un patch de ayuda, y los **tutoriales**. Selecciona una caja y pulsa **?** (o
+  entrada por entrada, con un patch de ayuda (algunas tienen varios pasos, un uso cada uno, que ◀ ▶
+recorren como un tutorial), y los **tutoriales**. Selecciona una caja y pulsa **?** (o
   F1) para ver su página; `(docs "concepts")` en la REPL abre una página de la documentación.
 
 - **Feedback** — durante la alfa: cuenta qué falla, propón una idea o haz una pregunta. Escribe por ti
@@ -228,7 +233,7 @@ la barra lo oculta o lo muestra. Este navegador recuerda cómo lo dejaste. Desde
 Una caja `tree` guarda música en EDN —voces, compases, notas, acordes, dinámicas:
 `[:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]`. Mostrada como partitura (⇄ en su cabecera), o conectada a un `freqt` mostrado como partitura, se dibuja como partitura;
 a través de cajas `mt` se transforma (`mt transpose 7`, `mt retrograde`, `mt canon 2 7`); con
-`mt play` → `synth~` suena. Haz clic en una nota de una partitura para editarla (↑ ↓ + − ← → Supr). Ver
+`mt play` → `synth~` suena. Haz clic en una nota de una partitura para editarla (↑ ↓ + − ← → a…g Supr), o en un silencio para volverlo nota (Intro). Ver
 [Árboles musicales](mt.es.md).
 
 Un `canvas`, un `freqt` y una partitura se redimensionan desde su esquina inferior derecha, como un evento
@@ -275,9 +280,10 @@ sitio. `(unproject :b9)`.
 ## 8. Presentación
 
 **Present** muestra solo las cajas que has puesto en la presentación —`(present :b4 x y)`, o
-arrastrándolas en modo presentación— como un panel para quien toca. **Edit** vuelve.
+arrastrándolas con ⌥ en modo presentación— como un panel para quien toca. **Edit** vuelve.
 En presentación el papel es para tocar: un doble clic no crea cajas y no se selecciona nada con el
-ratón (cada caja se arrastra por separado).
+ratón. Un arrastre normal toca la caja (o no hace nada): para mover una caja presentada, arrástrala
+con ⌥/Alt pulsada, así un freqt, un canvas o un knob no se mueven por error desde su cabecera o su asa.
 
 Si hay cajas seleccionadas al pulsar **Present** y alguna aún no está en la presentación, primero
 pregunta: *Present the selection* las pone en ella donde están en el patch (un evento de la historia),
@@ -308,3 +314,4 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 | Ctrl+Z · Ctrl+Mayús+Z · Ctrl+Y | atrás · adelante en la historia (en Perform, en la toma) |
 | Ctrl+Intro | aplica código (pestaña Code, cajas de código, pestaña Claude) |
 | ↑ ↓ + − ← → Supr | edita la nota seleccionada de una partitura, o el trazo de un canvas |
+| Intro · a…g | el silencio seleccionado de una partitura se vuelve nota (a…g también cambia la altura de una nota) |

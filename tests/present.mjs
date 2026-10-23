@@ -103,7 +103,14 @@ async function locked(page, check) {
   check("... nor ⌘/Ctrl+click and ⌘/Ctrl+A", (await cljs(page, "[(:sel @ui) (:insp @ui)]")) === "[nil nil]");
   await page.mouse.move(at[0], at[1]); await page.mouse.down();
   await page.mouse.move(at[0] + 40, at[1] + 20, { steps: 6 }); await page.mouse.up(); await settled(page);
-  check("... but in the editor a presented box can still be dragged to a new place",
+  check("... a plain drag does not move a presented box",
+    (await cljs(page, `(:present (get-in (current) [:boxes ${p}]))`)) === "[3300 700]",
+    await cljs(page, `(:present (get-in (current) [:boxes ${p}]))`));
+  await page.keyboard.down("Alt");
+  await page.mouse.move(at[0], at[1]); await page.mouse.down();
+  await page.mouse.move(at[0] + 40, at[1] + 20, { steps: 6 }); await page.mouse.up(); await settled(page);
+  await page.keyboard.up("Alt");
+  check("... but in the editor ⌥+drag moves it to a new place",
     (await cljs(page, `(:present (get-in (current) [:boxes ${p}]))`)) !== "[3300 700]" && (await cljs(page, "(:sel @ui)")) === "nil",
     await cljs(page, `(:present (get-in (current) [:boxes ${p}]))`));
   check("... and no box was created", Number(await cljs(page, "(count (:boxes (current)))")) === n);

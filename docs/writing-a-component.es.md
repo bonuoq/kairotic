@@ -7,8 +7,7 @@ funciones escrito en ClojureScript. Se puede escribir dentro de una obra (una ca
 compartir en la biblioteca de un espacio o publicar en npm. Esta guía construye uno pequeño paso a
 paso y después lee la `knob`, el primer componente con vista propia.
 
-El código y los nombres están en inglés (desde el Ensayo 9); el [glosario](glossary.md) da la
-equivalencia de cada término.
+El código y los nombres están en inglés; el [glosario](glossary.md) da la equivalencia de cada término.
 
 ## 1. El componente más pequeño
 
@@ -128,8 +127,7 @@ Escribe las secciones en este orden, con una línea de comentario antes de cada 
 Solo la lógica es código; el resto son datos que se pueden leer, comprobar y cambiar sin ejecutar
 nada. Lee la [knob](../packages/controls/src/knob.cljs) completa (en `@kairotic/controls`).
 
-Las utilidades disponibles en la lógica vienen de la **API de Kairotic**, `api/…` (desde el Ensayo 14;
-antes eran `comp/…`): `api/clamp`, `api/nice` (redondeo razonable), `api/num-of`, `api/to-unit` y
+Las utilidades disponibles en la lógica vienen de la **API de Kairotic**, `api/…`: `api/clamp`, `api/nice` (redondeo razonable), `api/num-of`, `api/to-unit` y
 `api/from-unit` (un valor ⇄ 0…1, lineal o logarítmico), `api/padded` (los números del texto de una
 caja con valores por defecto), y para audio `api/stereo-outlets`, `api/worklet-node` (un AudioWorklet
 cuyo JavaScript viaja dentro del componente) y `api/param`. La API tiene versión (`api/version`): un
@@ -207,7 +205,7 @@ presentación, no su lugar en el patch.
 
 ## 6½. Pedírselo a Claude
 
-Desde el Ensayo 15, la pestaña **Claude** (o `(ask-component "…")` en la REPL) escribe un componente a
+La pestaña **Claude** (o `(ask-component "…")` en la REPL) escribe un componente a
 partir de una descripción. Claude lee este mismo contrato, la API y componentes reales como ejemplos, y
 antes de responder prueba lo que ha escrito con las herramientas de la página: lo evalúa y valida, le
 envía mensajes y dibuja su vista. El resultado es una caja `component` normal, con una cabecera que dice
@@ -215,14 +213,14 @@ que se escribió con Claude y qué se pidió; se edita como cualquier otra. Con 
 seleccionada, "change the selected component" pide un cambio sobre ella. Usa la cuenta de Claude de
 quien usa la página, a quien se pide permiso la primera vez.
 
-Desde el Ensayo 16 también escribe Faust (lo compila para comprobarlo), abstracciones con cajas `faust~`
+También escribe Faust (lo compila para comprobarlo), abstracciones con cajas `faust~`
 y knobs, y bpatchers (abstracciones cuyas cajas presentadas forman el panel de cada instancia), y un
 paquete cuando necesita varias definiciones juntas. Lee ejemplos del [catálogo](../examples/README.md),
 que es como le enseñamos nuevos tipos de componentes.
 
 ## 6¾. Su ayuda
 
-Desde el Ensayo 18 la pestaña Help (o **?** sobre una caja seleccionada) explica qué hace una clase,
+La pestaña Help (o **?** sobre una caja seleccionada) explica qué hace una clase,
 entrada por entrada, con un patch de ayuda que se abre como una lección. Un componente trae la suya con `:help`:
 
 ```clojure
@@ -243,7 +241,7 @@ El ejemplo es código de patch, un gesto por línea: al abrir el patch de ayuda 
 - **En npm:** publica un módulo que exporte el componente (`export default {class, version, author,
   license, doc, source}`, el formato que escribe [`packages/build.mjs`](../packages/build.mjs));
   cualquiera podrá hacer `(import! "npm:<tu-paquete>@x.y.z/dist/<nombre>.mjs")`.
-- **En un paquete oficial** (Ensayo 14): añádelo a `packages/<categoría>/src/` (ver
+- **En un paquete oficial**: añádelo a `packages/<categoría>/src/` (ver
   [`packages/`](../packages/README.es.md)). Un paquete viaja como una sola caja `component`, y escribir
   una de sus clases en una obra lo trae.
 

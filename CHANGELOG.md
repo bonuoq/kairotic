@@ -27,8 +27,29 @@ generic **`draw`** box; music theory becomes geometry in **`@kairotic/theory`**;
 - **`@kairotic/analysis` 0.3.0**: `monitor`; `transcribe` records from a point and over a take.
 - **Relays**: choose, test and share the relay from the session manager; `npx @kairotic/relay`.
 - **Storage**: the browser's copy of the graph in IndexedDB (no more `localStorage max!`).
+- **Before the release**: help patches with several steps, a rest of a score becomes a note again, parts
+  of a view easier to press, boxes never see-through, nothing moved by mistake in presentation.
 
 ### All the changes
+
+- **Help**: a help patch can have several steps, one use each (`:steps` in the help of a class): it
+  opens as a lesson, ◀ ▶ travel between them, and the Help tab lists them (a click opens that step).
+  `freqt` gets its help patch (drawing and playing it, a tuning and a grid, as a score, the viewer of a
+  tree); `canvas` (an automation, a path) and `mt` (a canon, playing it) more uses. The Help tab no
+  longer shows the history of the prototype (the studies and the glossary of old names stay in the
+  repository), nor mentions of the studies in its pages. Two new tutorials: *Harmony as geometry*
+  (`pcclock`, `fourier`, `tonnetz`) and *Annotations and layers* (marks, layers, `draw`).
+- **Score**: a rest can be selected and becomes a note again — Enter (the pitch of the note before
+  it in its staff), ↑ ↓ (a step above or below that one), a…g (the nearest note of that name); on a
+  note, a…g changes its pitch to the nearest one of that name.
+- **Patch**: boxes are always opaque (a selected box and a msg mixed their tint with the box colour), so
+  wires never show through them.
+- **Presentation**: a plain drag no longer moves a box — so a `freqt`, a `canvas` or a knob is not moved
+  by its header or its grip while playing; ⌥/Alt+drag moves it.
+- **Parts of a view** (`:hit`): a press near a small part finds it (the nearest within 10 px,
+  `shp/hit-near`), the part under the pointer is highlighted (`shp/only-hit`), and the pointer is the
+  same hand over every played view (no resize arrows on `draw`, `tonnetz`, `pcclock`, `fourier`, knobs
+  or numbers).
 
 - **Layers** (Study 26): a patch can have `:layers` (`{:z :over|:under :show #{:patch :present}}`),
   `:marks` (`{:layer :kind :line|:arrow|:text :pts|:at …}`, points `[:bN dx dy]` or `[:patch x y]`) and

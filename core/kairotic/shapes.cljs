@@ -203,6 +203,72 @@
                    (or inner g own found))))
              nil (take max-shapes (remove nil? shapes))))))
 
+(defn dist-to
+  "How far the point [x y] is from shape f (not a group): 0 when it covers it."
+  [f [x y :as p]]
+  (if (covers? f p)
+    0
+    (let [[kind o text] f o (if (map? o) o {})]
+      (case kind
+        :rect (let [x0 (num (:x o) 0) y0 (num (:y o) 0) x1 (+ x0 (num (:w o) 0)) y1 (+ y0 (num (:h o) 0))]
+                (js/Math.hypot (max (- x0 x) 0 (- x x1)) (max (- y0 y) 0 (- y y1))))
+        :circle (max 0 (- (js/Math.hypot (- x (num (:cx o) 0)) (- y (num (:cy o) 0))) (max 4 (num (:r o) 0))))
+        :arc (js/Math.abs (- (js/Math.hypot (- x (num (:cx o) 0)) (- y (num (:cy o) 0))) (num (:r o) 0)))
+        :line (seg-dist p [(num (:x1 o) 0) (num (:y1 o) 0)] [(num (:x2 o) 0) (num (:y2 o) 0)])
+        :needle (let [cx (num (:cx o) 0) cy (num (:cy o) 0) a (num (:angle o) 0)]
+                  (seg-dist p (polar cx cy (num (:r0 o) 0) a) (polar cx cy (num (:r o) 0) a)))
+        (:path :curve) (let [ps (vec (points-of o))]
+                         (if (< (count ps) 2) js/Infinity (apply min (map (fn [[a b]] (seg-dist p a b)) (map vector ps (rest ps))))))
+        :text (let [sz (max 7 (min 28 (num (:size o) 11))) w (* 0.62 sz (count (str text)))
+                    x0 (case (:anchor o) :middle (- (num (:x o) 0) (/ w 2)) :end (- (num (:x o) 0) w) (num (:x o) 0))
+                    y0 (- (num (:y o) 0) sz) y1 (+ (num (:y o) 0) 3)]
+                (js/Math.hypot (max (- x0 x) 0 (- x (+ x0 w))) (max (- y0 y) 0 (- y y1))))
+        js/Infinity))))
+
+(defn- hit-dists
+  "[[hit distance] …] of every shape with :hit (a group with :hit: its nearest shape), in the outside
+   coordinates (a scaled group scales its distances)."
+  [shapes p depth k]
+  (when (and (sequential? shapes) (< depth 5))
+    (mapcat (fn [f]
+              (when (and (vector? f) (keyword? (first f)))
+                (let [[kind o kids] f o (if (map? o) o {})]
+                  (if (= kind :group)
+                    (let [q (into-group o p)
+                          gk (* k (let [s (:scale o 1)] (if (and (number? s) (pos? s)) s 1)))
+                          inner (hit-dists kids q (inc depth) gk)]
+                      (concat inner
+                              (when (some? (:hit o))
+                                (let [ds (keep (fn [g] (when (and (vector? g) (keyword? (first g)) (not= :group (first g)))
+                                                         (* gk (dist-to g q))))
+                                               (take max-shapes (remove nil? kids)))]
+                                  (when (seq ds) [[(:hit o) (apply min ds)]])))))
+                    (when (some? (:hit o)) [[(:hit o) (* k (dist-to f p))]])))))
+            (take max-shapes (remove nil? shapes)))))
+
+(defn hit-near
+  "Like hit-at, but forgiving: when no shape with :hit is under [x y], the nearest one within tol px
+   (10 by default), so small parts (a node, a key, a point) are easy to press."
+  ([shapes p] (hit-near shapes p 10))
+  ([shapes p tol]
+   (or (hit-at shapes p)
+       (let [[h d] (first (sort-by second (hit-dists shapes p 0 1)))]
+         (when (and (some? h) (<= d tol)) h)))))
+
+(defn only-hit
+  "The shapes that make the part k of a view (those with :hit k, inside their groups), to draw it again
+   highlighted; a group with :hit k keeps all its shapes."
+  [shapes k]
+  (when (sequential? shapes)
+    (vec (keep (fn [f]
+                 (when (and (vector? f) (keyword? (first f)))
+                   (let [[kind o kids] f o (if (map? o) o {})]
+                     (cond
+                       (= (:hit o) k) f
+                       (= kind :group) (let [ks (only-hit kids k)] (when (seq ks) [:group o ks]))
+                       :else nil))))
+               (take max-shapes (remove nil? shapes))))))
+
 ;; ───────── templates ─────────
 
 (defn hole

@@ -1,4 +1,4 @@
-# Asking for a patch (Study 23)
+# Asking for a patch
 
 *[Versión en español](ask.es.md)*
 

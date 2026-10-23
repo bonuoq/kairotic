@@ -4,7 +4,7 @@
 
 (in-ns 'user)
 
-;; ───────────────────────── learning: help and lessons (Study 18) ─────────────────────────
+;; ───────────────────────── learning: help and lessons ─────────────────────────
 ;; The Help tab shows what each class does, port by port (its :help, or kairotic.help), with a help
 ;; patch. A lesson (a tutorial, or a help patch) opens as a local work built step by step: each step
 ;; leaves a point in the history, the lesson bar shows the note of the step you are at, ◀ ▶ travel
@@ -105,10 +105,17 @@
            (str "<h4>Messages and gestures</h4><table>"
                 (apply str (for [[w x] (:messages h)] (str "<tr><td>" (help-word w) "</td><td>" (esc x) "</td></tr>")))
                 "</table>"))
-         (when (:example h)
+         (when-let [steps (seq (hlp/patch-steps cls))]
            (str "<h4>Help patch</h4><p><button class=\"act primary\" data-help-open=\"" (esc cls) "\">Open the help patch</button> "
                 "<small>a local work you can play and change; Close (in the lesson bar) brings back what you had open</small></p>"
-                (when (:try h) (str "<div class=\"try\">" (esc (:try h)) "</div>"))))
+                (when (seq (:try h)) (str "<div class=\"try\">" (esc (:try h)) "</div>"))
+                (when (> (count steps) 1)
+                  (str "<p><small>" (count steps) " steps, each one a use of " (esc cls) " (◀ ▶ in the lesson bar):</small></p>"
+                       "<ol class=\"help-steps\">"
+                       (apply str (map-indexed (fn [i st] (str "<li><a href=\"#\" data-help-open=\"" (esc cls) "\" data-help-step=\"" i "\">"
+                                                               (esc (tr (:title st))) "</a></li>"))
+                                               steps))
+                       "</ol>"))))
          (when (and d (empty? h) (#{:work :user} (:origin d)))
            "<p><small>No help written yet: a component can carry its own, as <code>:help {:inlets […] :outlets […] :example \"…\"}</code> in its definition.</small></p>")
          (when (seq (:see h))
@@ -154,8 +161,7 @@
   [[{:en "Start here" :es "Para empezar"} ["guide" "concepts"]]
    [{:en "Topics" :es "Temas"} ["mt" "flow" "ask" "embed" "pages"]]
    [{:en "Extending" :es "Ampliarlo"} ["writing-a-component"]]
-   [{:en "Reference" :es "Referencia"} ["reference" "glossary"]]
-   [{:en "History" :es "Historia"} ["studies"]]])
+   [{:en "Reference" :es "Referencia"} ["reference"]]])
 
 (defn load-docs! []
   (when (nil? @doc-pages)
@@ -283,7 +289,7 @@
 
 (defn docs
   "The documentation in the Help tab: (docs) its index, (docs \"guide\") a page — guide, concepts, mt,
-   flow, ask, embed, pages, writing-a-component, reference, glossary, studies."
+   flow, ask, embed, pages, writing-a-component, reference."
   ([] (show-help! nil) (mapv first (mapcat (fn [[_ ids]] (map vector ids)) doc-groups)))
   ([id] (show-doc! (str id)) (str id)))
 
@@ -313,6 +319,10 @@
                           (str "**Messages and gestures**\n\n" (apply str (for [[w x] (:messages h)] (str "- `" (if (string? w) w (pr-str w)) "`: " x "\n"))) "\n"))
                         (when-let [t (:try h)] (str "**Try:** " t "\n\n"))
                         (when-let [e (:example h)] (str "```clojure\n" (str/trim e) "\n```\n\n"))
+                        (apply str (for [st (:steps h)]
+                                     (str "**" (tr (:title st)) "**" (when (seq (tr (:note st))) (str " — " (tr (:note st)))) "\n\n"
+                                          (when (seq (tr (:try st))) (str "*Try:* " (tr (:try st)) "\n\n"))
+                                          "```clojure\n" (str/trim (:example st)) "\n```\n\n")))
                         (when (seq (:see h)) (str "See also: " (str/join ", " (map #(str "`" % "`") (:see h))) "\n\n"))))))]
     (str "# Class reference\n\n"
          "*Made from the help of Kairotic " version " (the Help tab shows the same, and the help of classes a work defines). "
@@ -457,7 +467,7 @@
                         (conj acc (assoc st :pos (norm (:pos @world)))))
                       [] (:steps l))]
     (reset! lesson (assoc l :steps steps :at 0))
-    (lesson-go! 0)
+    (lesson-go! (or (:start l) 0))
     (render-all!)
     (render-lesson!)))
 
@@ -479,15 +489,16 @@
       :else (close-work!))
     (render-lesson!)))
 
-(defn open-help-patch! [cls]
-  (let [h (hlp/of cls) d (comp/lookup cls)]
-    (when (:example h)
-      (open-lesson! {:help cls
-                     :title {:en (str "Help · " cls) :es (str "Ayuda · " cls)}
-                     :steps [{:title cls
-                              :note (or (:doc d) (:doc h) "")
-                              :try (or (:try h) "")
-                              :code (->> (str/split-lines (:example h)) (map str/trim) (remove str/blank?) vec)}]}))))
+(defn open-help-patch!
+  "Opens the help patch of a class as a lesson (one step per use, when it has several), at step i."
+  ([cls] (open-help-patch! cls 0))
+  ([cls i]
+   (let [steps (hlp/patch-steps cls)]
+     (when (seq steps)
+       (open-lesson! {:help cls
+                      :title {:en (str "Help · " cls) :es (str "Ayuda · " cls)}
+                      :start i
+                      :steps steps})))))
 
 (defn open-tutorial! [id]
   (when-let [t (first (filter (fn [t] (= id (:id t))) (when (sequential? @tutorials) @tutorials)))]
@@ -518,7 +529,10 @@
         (try (open-link-work! (if (es?) "Documentación" "Documentation")
                               (link-code (.getAttribute (.closest t "[data-doc-patch]") "data-doc-patch")))
              (catch :default x (repl-print! "err" (esc (str "; " (or (.-message x) x))))))
-        (.closest t "[data-help-open]") (open-help-patch! (.getAttribute (.closest t "[data-help-open]") "data-help-open"))
+        (.closest t "[data-help-open]")
+        (let [el (.closest t "[data-help-open]")]
+          (.preventDefault e)
+          (open-help-patch! (.getAttribute el "data-help-open") (js/parseInt (or (.getAttribute el "data-help-step") "0") 10)))
         (.closest t "[data-help]") (show-help! (.getAttribute (.closest t "[data-help]") "data-help"))
         (.closest t "[data-tut]") (open-tutorial! (.getAttribute (.closest t "[data-tut]") "data-tut"))
         (.closest t "code.run") (to-repl! (.getAttribute (.closest t "code.run") "data-code"))))))

@@ -9,6 +9,9 @@
 ;;  :messages [["bang" "what it does"] …]          words and values it understands (optional)
 ;;  :example  "(box :b1 …)\n(connect …)"          a help patch, as patch code (optional)
 ;;  :try      "something to do with the example"    (optional)
+;;  :steps    [{:title "…" :note "…" :try "…" :example "…"} …]
+;;            more uses, after the :example: the help patch opens as a lesson, one step each, every
+;;            step adding its lines to the patch of the step before (◀ ▶ travel between them) (optional)
 ;;  :see      ["other" "classes"]                   (optional)
 ;;  :package  "@kairotic/synth"                     when the class comes from a package
 ;;  :doc :usage                                     only for classes the page may not have loaded yet}
@@ -158,6 +161,19 @@
                     "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)" "(connect :b1 1 :b4 1)" "(connect :b4 0 :b5 0)"
                     "(axis :b1 :x 0 1)" "(axis :b1 :y 0 1)" "(stroke :b1 [[0 0.2] [0.5 0.9] [1 0.4]])")
     :try "Press ▶: the reader goes along X and prints the height of the stroke. Draw another stroke and listen to the list grow."
+    :steps [{:title "An automation"
+             :note "A reader~ goes along the canvas at audio rate: its value is a signal that can move a parameter, here the factor of a gain~ (a tremolo drawn by hand)."
+             :example (lines "(box :b6 \"phasor~ 0.5\" 300 15)" "(box :b7 \"reader~\" 300 290)" "(box :b8 \"osc~ 330\" 420 290)"
+                             "(box :b9 \"gain~ 0\" 420 340)" "(box :b10 \"dac~\" 420 390)"
+                             "(connect :b6 0 :b7 0)" "(connect :b1 1 :b7 1)" "(connect :b8 0 :b9 0)" "(connect :b7 0 :b9 1)"
+                             "(connect :b9 0 :b10 0)" "(connect :b9 0 :b10 1)")
+             :try "Press ▶: the stroke becomes the volume of the oscillator every two seconds. Draw a zigzag and listen to it."}
+            {:title "A path in two dimensions"
+             :note "With reader path, the position (0…1) goes along a stroke, and both its X and Y come out: a trajectory, for space~ or for two parameters at once."
+             :example (lines "(clear :b1)" "(axis :b1 :x -1 1)" "(axis :b1 :y -1 1)"
+                             "(stroke :b1 [[0 0.8] [0.7 0.4] [0.5 -0.6] [-0.6 -0.5] [-0.7 0.5] [0 0.8]])"
+                             "(text! :b4 \"reader path\")")
+             :try "Press ▶: print writes [x y] as the reader goes around the shape. Connect its outlet to a space~ (see its help) to move a sound along it."}]
     :see ["reader" "reader~" "freqt"]}
 
    "freqt"
@@ -172,11 +188,31 @@
                ["[:batch [[:clear] [:note 0 \"c4\" 1] …]]" "several edits, one event of the history"]
                ["[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]" "questions: the answer comes out on the left"]
                ["⇄ score in the header · (view :bN :score)" "the same buffer, drawn as an approximate score (⇄ canvas brings it back)"]
-               ["shown as a score, click a note of a tree" "↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest"]
+               ["shown as a score, click a note of a tree" "↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest"]
+               ["click a rest" "Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note"]
                ["(keep! :bN)" "writes the tree it shows into its buffer, with its recipe beside it (the tree and the boxes that made it)"]
                ["(recipe :bN) · (remake! :bN)" "the recipe of a kept buffer · the tree written back, without the changes made since"]
                ["{ } in the header (or a double-click on its right) · (source :bN)" "the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event"]]
-    :try "A freqt shown as a score is the viewer of a tree that comes transformed (tree → mt transpose 7 → freqt). To see and edit a tree box itself as a score, use ⇄ score in its header: no wire needed. (A box written \"score\", from older works, is a freqt shown as a score.)"
+    :example (lines "(box :b1 \"freqt\" 40 60)" "(box :b2 \"phasor~ 0.25\" 40 15)" "(box :b3 \"reader~ 1 gate\" 40 290)"
+                    "(box :b4 \"osc~\" 40 340)" "(box :b5 \"gain~\" 40 390)" "(box :b6 \"dac~\" 40 440)"
+                    "(connect :b2 0 :b3 0)" "(connect :b1 1 :b3 1)" "(connect :b3 0 :b4 0)" "(connect :b3 1 :b5 1)"
+                    "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
+                    "(melody :b1 \"c4/1 e4/.5 d4/.5 g4/2\" 0)")
+    :try "Press ▶: the reader~ plays the four beats again and again. Draw a stroke of your own, straight or curved: it sounds at the frequency it passes through."
+    :steps [{:title "A tuning and a grid"
+             :note "A freqt can have a tuning (the lines of its Y axis: any equal division, just intonation, a Scala .scl) and a grid of time with its bars. Drawing snaps to both."
+             :example (lines "(tuning :b1 \"19-tet\")" "(grid-x :b1 0.5 [4])")
+             :try "Draw a few notes: they fall on the 19 degrees of the octave and on the half beats. Try (tuning :b1 \"just-5\") or (tuning :b1 nil) to draw freely again."}
+            {:title "As a score"
+             :note "The same buffer can be shown as an approximate score: ⇄ score in its header, or (view :b1 :score). Nothing changes in the data; ⇄ canvas brings the drawing back."
+             :example (lines "(tuning :b1 nil)" "(view :b1 :score)")
+             :try "Press ▶: the score sounds the same as the drawing did. To edit notes one by one in a score, show a tree: see the help of tree."}
+            {:title "The viewer of a tree"
+             :note "A freqt shown as a score is the viewer of a tree that comes transformed (tree → mt transpose 7 → freqt). Its third outlet sends the edits made on the notes back to the tree box. (A box written \"score\", from older works, is a freqt shown as a score.)"
+             :example (lines "(box :b7 \"bang\" 300 15)" "(box :b8 \"tree\" 300 60)" "(code :b8 \"\\\"c5/1 b4/.5 a4 g4/2\\\"\")"
+                             "(box :b9 \"freqt\" 300 160)" "(view :b9 :score)"
+                             "(connect :b7 0 :b8 0)" "(connect :b8 0 :b9 0)" "(connect :b9 2 :b8 0)")
+             :try "Click a note of the new score and press ↑ or ↓, + or −, Delete (a rest) and then Enter (a note again): the change goes back to the tree by the dashed line."}]
     :see ["canvas" "reader" "tree"]}
 
    "reader"
@@ -314,7 +350,8 @@
                ["(tree-edit! :bN [:attrs [0 1 2] {…}])" "edits nodes by their path: [:set p x] [:attrs p {…}] [:insert p x] [:remove p]"]
                ["(node-at :bN [0 1])" "the node at a path"]
                ["⇄ score in the header · (view :bN :score)" "the same tree drawn as a score, in this box (⇄ code brings the code back; { } opens it)"]
-               ["in a score: click a note" "↑ ↓ pitch (⇧ octave) · + − duration · ← → next · Delete → rest"]
+               ["in a score: click a note" "↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest"]
+               ["in a score: click a rest" "Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note"]
                ["(as-tree :bN)" "reads it back as data"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)"
                     "(code :b2 \"[:voice\\n [:measure {:meter [3 4]} \\\"e5/1\\\" [:tuplet {:ratio [3 2]} \\\"d5/.5 c5 b4\\\"] [:note {:pitch \\\"a4\\\" :dur 1 :dyn \\\"p\\\"}]]\\n [:measure \\\"g4/3\\\"]]\")"
@@ -335,6 +372,17 @@
                     "(box :b4 \"number 7\" 220 140)" "(box :b3 \"mt transpose 7\" 40 170)" "(box :b5 \"freqt\" 40 220)" "(view :b5 :score)"
                     "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b4 0 :b3 1)" "(connect :b3 0 :b5 0)")
     :try "Change the box text to mt retrograde, mt invert c4 or mt augment 2: the score follows. (The number on the right inlet takes effect with the next tree: click the bang.)"
+    :steps [{:title "Two voices: a canon"
+             :note "mt canon d i puts the tree against itself, d beats later and i semitones away: two voices that the score shows as two staves."
+             :example (lines "(text! :b3 \"mt canon 2 7\")" "(delete :b4)")
+             :try "Click the bang. Change it to mt canon 1 -12 (an octave below, one beat later) or mt canon 4 0."}
+            {:title "Playing it"
+             :note "mt play reads a tree in time: the Hz of the notes that sound (left) and their voice ids (second) go to a synth~, which gives each voice its own note."
+             :example (lines "(box :b6 \"msg bang\" 300 170)" "(box :b7 \"msg stop\" 370 170)" "(box :b8 \"mt play loop\" 300 220)"
+                             "(box :b9 \"synth~\" 300 270)" "(box :b10 \"gain~ 0.3\" 300 320)" "(box :b11 \"dac~\" 300 370)"
+                             "(connect :b3 0 :b8 0)" "(connect :b6 0 :b8 0)" "(connect :b7 0 :b8 0)" "(connect :b8 0 :b9 0)" "(connect :b8 1 :b9 1)"
+                             "(connect :b9 0 :b10 0)" "(connect :b10 0 :b11 0)" "(connect :b10 0 :b11 1)")
+             :try "Press ▶, click the first bang (the tree goes to mt play) and then msg bang: the canon sounds in a loop; stop ends it."}]
     :see ["tree" "freqt" "synth~"]}
 
    ;; ───── official packages (until they carry their own :help) ─────
@@ -481,6 +529,17 @@
   [cls]
   (let [d (comp/lookup cls)]
     (merge (get core cls) (:help d))))
+
+(defn patch-steps
+  "The steps of the help patch of a class: its :example (with :try) first, then its :steps.
+   [{:title :note :try :code [\"(box …)\" …]} …], empty when it has no help patch."
+  [cls]
+  (let [h (of cls)
+        code (fn [e] (->> (str/split-lines (str e)) (map str/trim) (remove str/blank?) vec))]
+    (vec (concat (when (:example h)
+                   [{:title cls :note (or (:doc (comp/lookup cls)) (:doc h) "") :try (or (:try h) "") :code (code (:example h))}])
+                 (for [st (:steps h)]
+                   {:title (or (:title st) cls) :note (or (:note st) "") :try (or (:try st) "") :code (code (:example st))})))))
 
 (defn known
   "Every class with a help page (registered or listed here)."

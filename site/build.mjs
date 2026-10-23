@@ -55,7 +55,8 @@ function assemble(out) {
 }
 
 // the pages of docs/ the app shows in its Help tab
-const docIds = ["guide", "concepts", "mt", "flow", "ask", "embed", "pages", "writing-a-component", "reference", "glossary", "studies"];
+const docIds = ["guide", "concepts", "mt", "flow", "ask", "embed", "pages", "writing-a-component", "reference"];
+// (glossary and studies tell the history of the prototype: they stay in the repository, not in the app)
 
 const scittle = '<script src="https://cdn.jsdelivr.net/npm/scittle@';
 

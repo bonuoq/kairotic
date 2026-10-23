@@ -2,7 +2,7 @@
 
 *[Versión en español](mt.es.md)*
 
-Since Study 19, music in Kairotic can be written as **data**: a tree in EDN, in the *hiccup* style
+Music in Kairotic can be written as **data**: a tree in EDN, in the *hiccup* style
 `[:tag {attributes} & children]`. It is the common language of notation, composition and CAC: boxes
 and components take trees and return trees, and a `freqt` (as a canvas or as a score) or a `canvas` can show one.
 The idea comes from the *llll* of [bach](https://www.bachproject.net) for Max: lists that nest freely.
@@ -126,7 +126,7 @@ keeps the first and fifth eighths of a 3/4 bar, and the first and fourth of a 6/
 given as `[p q]`, as text `"5/8[2+3]"` or as a measure. For a grouped meter Kairotic ranks by metric
 level, then by Barlow inside each group, then the earlier group.
 
-## The work, its history and its score (Study 20)
+## The work, its history and its score
 
 **A work as a tree.** In a `:piece` (and in a `:section`), voices and `:par` sound together from its
 start, and everything else — sections in a piece, measures in a section — follows in order:
@@ -157,8 +157,9 @@ they change different nodes; if one changed a node and the other that node or so
 the merge says which.
 
 **Editing from the score.** A tree box shown as a score (⇄ in its header), or a `freqt` shown as a score that receives a tree from a tree box, knows where each note is
-written. Click a note, then ↑ ↓ (pitch, ⇧ an octave), + − (duration), ← → (previous, next), Delete (a
-rest), Esc. Each change is one `(tree-edit! …)`; a note written in a melody string is first written out
+written. Click a note, then ↑ ↓ (pitch, ⇧ an octave), a…g (the nearest note of that name), + − (duration),
+← → (previous, next), Delete (a rest), Esc. A rest can be clicked too: Enter makes it a note again (the
+pitch of the note before it), ↑ ↓ a step above or below that one, a…g that note. Each change is one `(tree-edit! …)`; a note written in a melody string is first written out
 as notes, in the same event. Notes that come from `:defs` are edited in their definition.
 
 A measure that does not add up is a warning (⚠ in the REPL and on the box), not an error, while you

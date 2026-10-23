@@ -19,6 +19,10 @@ Open [the app](https://bonuoq.github.io/kairotic/) (or the Kairotic artifact ins
 A solo work can be copied into a room and a room into a solo work (with its history). **Sessions**, at
 the top right, brings this window back.
 
+On Pages, rooms sync through a **relay**. **Relay**, in the same window, shows the ones in use and
+whether they answer; a community can run its own (`npx @kairotic/relay`) and choose it there, and the
+links you share carry it. See [Kairotic Pages](pages.md).
+
 ## 2. Make a patch
 
 - **Create a box**: double-click an empty place, write its text — the class and its arguments, such as
@@ -211,7 +215,8 @@ the bar hides or shows it. This browser remembers how you left it. From the REPL
 - **Claude** — Claude makes a patch (or changes the open one), or writes a component, from what you
   describe. See [Asking Claude](ask.md).
 - **Help** — this **documentation** (guide, concepts, topics, reference), a page for every class,
-  inlet by inlet, with a help patch, and the **tutorials**. Select a box and press **?** (or F1) to see
+  inlet by inlet, with a help patch (some have several steps, one use each, that ◀ ▶ travel like a
+tutorial), and the **tutorials**. Select a box and press **?** (or F1) to see
   its page; `(docs "concepts")` in the REPL opens a page of the documentation.
 
 - **Feedback** — during the alpha: report what fails, propose an idea or ask a question. It writes a
@@ -223,7 +228,7 @@ the bar hides or shows it. This browser remembers how you left it. From the REPL
 A `tree` box holds music in EDN — voices, measures, notes, chords, dynamics:
 `[:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]`. Shown as a score (⇄ in its header), or connected to a `freqt` shown as a score, it is drawn as notation;
 through `mt` boxes it is transformed (`mt transpose 7`, `mt retrograde`, `mt canon 2 7`); with
-`mt play` → `synth~` it sounds. Click a note in a score to edit it (↑ ↓ + − ← → Delete). See
+`mt play` → `synth~` it sounds. Click a note in a score to edit it (↑ ↓ + − ← → a…g Delete), or a rest to make it a note again (Enter). See
 [Musical trees](mt.md).
 
 A `canvas`, a `freqt` and a score are resized by their bottom-right corner, as one event of the history
@@ -266,10 +271,11 @@ presentation, drawn from what it shows (not scaled), while the box keeps its pla
 
 ## 8. Presentation
 
-**Present** shows only the boxes you put in the presentation — `(present :b4 x y)`, or drag them in
+**Present** shows only the boxes you put in the presentation — `(present :b4 x y)`, or ⌥+drag them in
 presentation mode — as a performer's panel. **Edit** goes back.
 In presentation the paper is for playing: a double-click creates no box and nothing is selected with
-the mouse (each box is dragged on its own).
+the mouse. A plain drag plays a box (or does nothing): to move a presented box, drag it with ⌥/Alt
+held, so a freqt, a canvas or a knob is not moved by its header or its grip by mistake.
 
 If boxes are selected when you press **Present** and some of them are not in the presentation yet, it
 asks first: *Present the selection* puts them in it where they are in the patch (one event of the
@@ -300,3 +306,4 @@ history), *Present without them* leaves them out. From the REPL: `(present-in-pl
 | Ctrl+Z · Ctrl+Shift+Z · Ctrl+Y | back · forward in the history (in Perform, in the take) |
 | Ctrl+Enter | apply code (Code tab, code boxes, Claude tab) |
 | ↑ ↓ + − ← → Delete | edit the selected note of a score, or the stroke of a canvas |
+| Enter · a…g | the selected rest of a score becomes a note (a…g also re-pitches a note) |
