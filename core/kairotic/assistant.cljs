@@ -190,7 +190,7 @@
                                   :result (cut (pr-str (select-keys r [:out :show :effects :later :state])) 600)})
                        (+ t 0.1))))))))))
 
-(def shape-kinds #{:rect :circle :line :arc :needle :path :text})
+(def shape-kinds #{:rect :circle :line :arc :needle :path :text :curve :group})
 
 (defn holes [template]
   (let [acc (atom #{})]
@@ -383,6 +383,16 @@ Rules:
   strongest class (:a …); `features~ [ms] rms centroid …` one outlet per descriptor; `spectrum~` draws.
   To see any stream over time: `monitor [seconds] [name …]`, one inlet (and lane) per name — numbers as
   lines, lists as strips, bangs and words as marks.
+- Music theory as geometry (package @kairotic/theory, it comes by itself): `pcclock` (a pitch-class set on
+  the clock, its prime form on the left, interval vector in the middle), `fourier` (six Fourier magnitudes
+  on the left), `tonnetz` (triads and the path of the harmony; the triad as :C, :am… on the left); they take
+  lists of pitches, notes one by one, or a chroma from `chroma~`; pressing a pitch class sends it (right).
+- `draw [w h]` draws the shapes that reach it (the shapes of a component's view, or as a msg writes them:
+  `msg circle 40 40 10 accent hit sun`, `msg set cursor line 0 0 0 100`); a shape with :hit k sends k.
+- Annotations: `(mark :notes {:kind :text :at [:b3 0 -12] :txt \"…\"})`, `(mark :notes {:kind :arrow :pts
+  [[:b1 120 10] [:b4 -6 10]]})` — points anchored to a box ([:bN dx dy] from its top-left corner) or to the
+  paper ([:patch x y]); `(layer :notes {:z :over :show #{:patch :present}})`; `(project :bN :viz [x y w h])`
+  draws a box's view large on a layer. Explain a patch with a few marks when it helps.
   To record any stream of numbers (a knob, `snapshot~ 50 rms`, a descriptor) as strokes: `record [lo hi]`
   → a `canvas` inlet, with `rec`/`stop`; a `reader~` reads it back as an automation.
   To write what is played into notation: `pitch~` → `transcribe [bpm] [notes|glide]` (left; `onset~` on its

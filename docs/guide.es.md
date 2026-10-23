@@ -235,7 +235,40 @@ Un `canvas`, un `freqt` y una partitura se redimensionan desde su esquina inferi
 de la historia (`(resize :b3 640 300)`); un doble clic en la esquina les devuelve su tamaño. Una partitura
 toma el ancho que le das y redistribuye su notación; su altura sigue a la notación.
 
-## 7. Presentación
+**Verla como geometría.** El paquete `@kairotic/theory` dibuja lo que suena como teoría musical:
+`pcclock` un conjunto de clases de altura en la esfera del reloj (su forma prima, su vector interválico
+y sus ejes de simetría), `fourier` sus seis coeficientes de Fourier (cromático … diatónico, de tonos
+enteros), `tonnetz` las tríadas en el Tonnetz y el camino de la armonía. Reciben listas de alturas,
+notas de una en una o un chroma de `chroma~`, y sus partes se pueden pulsar (sale una clase de altura).
+
+**Dibujar a partir de mensajes.** Una caja `draw [w h]` dibuja las figuras que le llegan —las mismas que
+la vista de un componente: `[:circle {:cx 40 :cy 40 :r 10 :fill :accent}]`, `[:line …]`, `[:path …]`,
+`[:curve …]`, `[:text …]`, `[:group {:x :y :rotate} […]]`— o como las escribe un msg: `msg circle 40 40
+10 accent hit sun`. Una lista las sustituye todas, `[:set k figura]` mueve la llamada k, `clear` la
+vacía, y una figura con `:hit k` envía k cuando se pulsa.
+
+## 7. Anotaciones y capas
+
+**Annotate** (encima del patch) abre una barra para escribir sobre el patch: **Draw** una línea a mano,
+una flecha (**Arrow**), un texto (**Text**) o borrar (**Erase**). Cada punto se ancla a la caja más
+cercana —la marca la sigue cuando se mueve— o al papel si no hay ninguna cerca; una caja borrada deja sus
+marcas donde estaban. Lo dibujado va a una **capa** (`notes` si no nombras otra), encima o debajo de las
+cajas, visible en el patch, en la presentación o en ambos; cada marca es un evento de la historia y parte
+del código:
+
+```clojure
+(layer :notes {:z :over :show #{:patch :present}})
+(mark :notes :a1 {:kind :arrow :pts [[:b1 120 10] [:b4 -6 10]]})
+(mark :notes {:kind :text :at [:patch 300 40] :txt "respira"})
+(unmark :a1)
+```
+
+Una capa también puede tener **proyecciones**: la vista de una caja dibujada otra vez, a otro tamaño —
+`(project :b9 :viz [40 40 800 480])` pone un `monitor`, un `spectrum~` o un `tonnetz` en grande detrás
+de la presentación, dibujado a partir de lo que muestra (no escalado), mientras la caja sigue en su
+sitio. `(unproject :b9)`.
+
+## 8. Presentación
 
 **Present** muestra solo las cajas que has puesto en la presentación —`(present :b4 x y)`, o
 arrastrándolas en modo presentación— como un panel para quien toca. **Edit** vuelve.
@@ -246,7 +279,7 @@ Si hay cajas seleccionadas al pulsar **Present** y alguna aún no está en la pr
 pregunta: *Present the selection* las pone en ella donde están en el patch (un evento de la historia),
 *Present without them* las deja fuera. Desde la REPL: `(present-in-place :b3 :b4)`.
 
-## 8. Compartir e insertar
+## 9. Compartir e insertar
 
 - En una sala, todos están en la misma obra.
 - **Share/Export** da un enlace y un iframe con este patch (o este paso de tutorial) para Notion, un blog o un
@@ -254,7 +287,7 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 - Una petición a Claude se puede compartir en la
   [Gallery](https://github.com/bonuoq/kairotic/discussions/categories/gallery).
 
-## 9. Teclas
+## 10. Teclas
 
 | | |
 |---|---|

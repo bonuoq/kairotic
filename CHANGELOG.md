@@ -2,6 +2,55 @@
 
 ## Unreleased
 
+## 0.2.0-alpha — 2026-10-23
+
+The second cycle: the app learns to draw and to write on itself. After four new studies (24–27:
+draw, overlay, layers, geometry), a patch has **layers** with annotations anchored to its boxes and
+projections of their views; components get a richer **shapes** vocabulary, parts you can press and a
+generic **`draw`** box; music theory becomes geometry in **`@kairotic/theory`**; listening grows
+(`monitor`, recording from a point, overwriting a take); and each community can run **its own relay**.
+
+### Highlights
+
+- **Annotations and layers**: **Annotate** draws lines, arrows and texts on a layer, each point anchored
+  to the box nearest it (it follows the box; a deleted box leaves its marks on the paper). Layers go over
+  or under the boxes, in the patch view and/or the presentation. `(mark …)`, `(unmark …)`, `(layer …)`,
+  `(project …)`: one event each, part of the code and of links.
+- **Projections**: `(project :b9 :viz [x y w h])` draws a box's view again, at another size, on a layer
+  — a `monitor` or a `tonnetz` large behind the presentation.
+- **Shapes**: `:curve`, `:group` (moved, turned, scaled), `:opacity` and `:hit` (a part of a view that can
+  be pressed: the component's `:gesture` gets `:hit`).
+- **`draw [w h]`**: a view made of the shapes that arrive as messages (also written as a msg: `circle 40
+  40 10 accent hit sun`), with named shapes to move and shapes that send their `:hit` when pressed.
+- **`@kairotic/theory` 0.1.0**: `pcclock`, `fourier`, `tonnetz`.
+- **`@kairotic/analysis` 0.3.0**: `monitor`; `transcribe` records from a point and over a take.
+- **Relays**: choose, test and share the relay from the session manager; `npx @kairotic/relay`.
+- **Storage**: the browser's copy of the graph in IndexedDB (no more `localStorage max!`).
+
+### All the changes
+
+- **Layers** (Study 26): a patch can have `:layers` (`{:z :over|:under :show #{:patch :present}}`),
+  `:marks` (`{:layer :kind :line|:arrow|:text :pts|:at …}`, points `[:bN dx dy]` or `[:patch x y]`) and
+  `:projections` (`{:bN {:layer :rect [x y w h]}}`), changed by the events `[:layer id l]`,
+  `[:annot id m]` and `[:project id p]` (nil removes). Deleting a box moves its marks' points onto the
+  paper and drops its projection; merging keeps each mark, layer and projection as its own unit. In the
+  presentation a mark follows where its boxes are presented (and is not drawn if one of them is not).
+  The **Annotate** bar: Draw, Arrow, Text, Erase, the layer, over/under, patch/presentation;
+  `(annotate :arrow)` · `(annotate false)`. Tests: `tests/layers.mjs`.
+- **`kairotic.shapes`**: `[:curve {:points …}]`, `[:group {:x :y :rotate :scale} [shapes]]` (4 deep),
+  `:opacity` on groups too, and `:hit` on any shape; `shp/hit-at` finds the shape pressed from the
+  shapes themselves (on top wins; inside groups, turned or scaled). The `:gesture` of a component gets
+  `:hit`. Tests: `tests/theory.mjs`.
+- **`draw [w h]`** (core): a shape adds, a list of shapes replaces, `[:set k shape]` adds or replaces the
+  one called k, `[:unset k]`, `clear`; positional shapes for msg boxes (`circle cx cy r`, `rect`, `line`,
+  `arc`, `text x y "…"`, with a colour and `hit name`); a shape with `:hit k`, pressed, sends k.
+- **`@kairotic/theory` 0.1.0** (Study 27): `pcclock [notes]` (the set, the sets before it, axes of
+  symmetry; prime form, interval vector, the class pressed), `fourier [notes]` (six coefficients with
+  their trails; magnitudes and phases), `tonnetz [notes]` (lit nodes, triads, the path of the harmony on
+  the nearest copy of the lattice; the triad, the class pressed). Lists of pitches, notes one by one, or a
+  chroma. The first version is published by hand; then `theory-vX.Y.Z` tags publish it.
+- **Studies 24–27** in `studies/`: draw (thi.ng/geom and WebGL), overlay (marks on Verovio, monitor),
+  layers (marks, projections, a WebGL background), geometry (theory views and the new shapes).
 - **Choosing the relay (Pages)**: in the session manager, **Relay** shows the relays the page syncs
   through and whether each answers (connected, connecting, waiting for it); a relay can be tested
   (`wss://host/gun`, also written as `https://host` or `host`), used, removed, and the page can go back

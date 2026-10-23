@@ -1,6 +1,6 @@
 # Kairotic documentation
 
-*[Leer en castellano](README.es.md)* · Kairotic 0.1.0-alpha · [open the app](https://bonuoq.github.io/kairotic/)
+*[Leer en castellano](README.es.md)* · Kairotic 0.2.0-alpha · [open the app](https://bonuoq.github.io/kairotic/)
 
 ## Start here
 

@@ -76,10 +76,15 @@ shapes in box coordinates, not HTML. The values that change are **holes**, keywo
         [:text {:x 36 :y 72 :anchor :middle} :$label]]
 ```
 
-Shapes: `:rect` `:circle` `:line` `:arc` `:needle` `:path` `:text`. Colours come from a palette
-that follows the light or dark theme: `:ink` `:soft` `:accent` `:kairos` `:bg` `:grid`, in
-`:stroke` and `:fill`; `:weight` is the line width. Holes can also name an argument (`:$min`) or
-`:shown`, `:w`, `:h`.
+Shapes: `:rect` `:circle` `:line` `:arc` `:needle` `:path` `:text`, `:curve` (a smooth path through
+`:points`) and `:group` (`[:group {:x :y :rotate :scale} [shapes …]]`, shapes moved, turned and scaled
+together). Colours come from a palette that follows the light or dark theme: `:ink` `:soft` `:accent`
+`:kairos` `:bg` `:grid`, in `:stroke` and `:fill`; `:weight` is the line width and `:opacity` (0…1)
+makes any shape lighter. Holes can also name an argument (`:$min`) or `:shown`, `:w`, `:h`.
+
+A shape with **`:hit k`** can be pressed: the `:gesture` of the box receives `:hit k` (the shape on top
+under the press, or the group with `:hit` that holds it), so a view can have parts to click — the nodes of
+the Tonnetz in `@kairotic/theory`, the shapes of a `draw` box.
 
 `:shown` is the last thing the box returned as `:show`. `:gesture` turns a drag into a value:
 

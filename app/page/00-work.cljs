@@ -6,7 +6,7 @@
                    [kairotic.components :as comp] [kairotic.api :as api] [kairotic.code :as cbox] [kairotic.faust] [kairotic.library :as lib] [kairotic.help :as hlp] [kairotic.mt :as mt] [kairotic.mtboxes :as mtb] [kairotic.assistant :as ai] [kairotic.engine :as eng] [kairotic.presets :as pst] [kairotic.release :as rel] [kairotic.sounds :as snd]
                    [kairotic.shapes :as shp] [kairotic.signal] [kairotic.links :as links] [clojure.edn]))
 
-(def version "0.1.0-alpha")
+(def version "0.2.0-alpha")
 
 ;; kairotic.code is aliased `cbox` (not `code`) because `code` is a REPL command defined below.
 
@@ -236,7 +236,8 @@
 (defn enc [x]
   (cond (keyword? x) {"k" (name x)}
         (map? x) {"m" (mapv (fn [[k v]] [(enc k) (enc v)]) x)}
-        (sequential? x) (mapv enc x)
+        ;; a set (the views a layer is shown in) travels as a list: whoever reads it makes it a set again
+        (or (sequential? x) (set? x)) (mapv enc x)
         :else x))
 
 (defn dec* [x]
