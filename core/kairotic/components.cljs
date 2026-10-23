@@ -51,9 +51,9 @@
 ;;                                           Holes can also name an argument (:$min) or :shown, :w, :h
 ;;  :draw     (fn [m] shapes)               escape hatch; pure; m = {:shown :state :args :text :data :w :h};
 ;;                                           :shown is the last thing the box returned as :show
-;;  :gesture  (fn [m] value)                dragging over the box; m = the one of :draw plus {:start :x :y :dx :dy :fine}
+;;  :gesture  (fn [m] value)                dragging over the box; m = the one of :draw plus {:start :x :y :dx :dy :fine :hit}
 ;;                                           (:start = what was shown on press; x, y local; dx, dy since the press;
-;;                                           :fine with ⇧). The value reaches inlet 0 of the box itself while
+;;                                           :fine with ⇧; :hit = the :hit of the shape pressed, kairotic.shapes). The value reaches inlet 0 of the box itself while
 ;;                                           dragging. On release it is called once more with :up true, and
 ;;                                           what it returns stays in the history as (send :bN value) (a
 ;;                                           :gesture that ignores :up repeats its last value: knob, sliders)
@@ -507,6 +507,78 @@
 (define! "number" {:doc "A draggable number; sends it when it changes or on receiving a bang." :usage "number [initial]"
                    :io [1 1] :display :number :receive number-box})
 (define! "print" {:doc "Writes to the REPL whatever it receives." :io [1 0] :receive (fn [{:keys [value]}] {:effects [[:print value]]})})
+
+;; ───── draw: a view made of the messages that arrive (kairotic.shapes) ─────
+;; Shapes arrive as data and are drawn as the shapes of any component: SVG, in the theme's colours,
+;; without markup of their own. A shape with :hit k, pressed, sends k out.
+
+(def draw-kinds #{:rect :circle :line :arc :needle :path :text :curve :group})
+(def draw-max 600)
+
+(defn draw-shape? [x] (and (vector? x) (contains? draw-kinds (first x)) (or (nil? (second x)) (map? (second x)))))
+
+(def draw-palette #{:ink :soft :accent :kairos :bg :grid})
+
+(defn draw-positional
+  "A shape written as a msg can write it, its numbers in order: circle cx cy r · rect x y w h ·
+   line x1 y1 x2 y2 · arc cx cy r from to · text x y \"words\" — then, in any order, a colour of the
+   palette (accent, kairos…) and hit name. [:circle 60 50 18 :accent :hit :sun] → the shape, or nil."
+  [v]
+  (when (and (vector? v) (#{:circle :rect :line :arc :text} (first v)) (number? (second v)))
+    (let [[kind & more] v
+          nums (vec (take-while number? more)) words (drop (count nums) more)
+          colour (first (filter draw-palette words))
+          hit (second (drop-while (fn [w] (not= :hit w)) words))
+          txt (first (filter string? words))
+          o (fn [ks] (zipmap ks nums))]
+      (case kind
+        :circle (when (= 3 (count nums)) [:circle (cond-> (assoc (o [:cx :cy :r]) :fill (or colour :accent) :stroke nil) hit (assoc :hit hit))])
+        :rect (when (= 4 (count nums)) [:rect (cond-> (assoc (o [:x :y :w :h]) :fill (or colour :accent) :stroke nil) hit (assoc :hit hit))])
+        :line (when (= 4 (count nums)) [:line (cond-> (assoc (o [:x1 :y1 :x2 :y2]) :stroke (or colour :ink) :weight 2) hit (assoc :hit hit))])
+        :arc (when (= 5 (count nums)) [:arc (cond-> (assoc (o [:cx :cy :r :from :to]) :stroke (or colour :ink) :weight 2) hit (assoc :hit hit))])
+        :text (when (= 2 (count nums)) [:text (cond-> (assoc (o [:x :y]) :fill (or colour :ink) :size 12) hit (assoc :hit hit)) (or txt "")])))))
+
+(defn as-shape [x] (if (draw-shape? x) x (draw-positional x)))
+
+(defn draw-size [args]
+  (let [[w h] (filter number? args)]
+    [(clamp (or w 240) 40 480) (clamp (or h 160) 30 480)]))
+
+(defn draw-receive [{:keys [value state]}]
+  (let [st (or state {:named {} :order [] :n 0})
+        put (fn [st k f] (-> st (assoc-in [:named k] f) (update :order (fn [o] (if (some #{k} o) o (conj o k))))))
+        trim (fn [st] (if (> (count (:order st)) draw-max)
+                        (let [drop (take (- (count (:order st)) draw-max) (:order st))]
+                          (-> st (update :named (fn [m] (apply dissoc m drop))) (update :order (fn [o] (vec (drop-while (set drop) o))))))
+                        st))
+        shown (fn [st] (mapv (fn [k] (get-in st [:named k])) (:order st)))
+        done (fn [st] {:state st :show (shown st)})]
+    (cond
+      ;; a part of the view pressed (its own gesture): what that part is called goes out
+      (and (vector? value) (= :pressed (first value)) (some? (second value))) {:out [[0 (second value)]]}
+      (as-shape value) (let [k (keyword (str "s" (inc (:n st))))] (done (trim (put (assoc st :n (inc (:n st))) k (as-shape value)))))
+      (and (sequential? value) (seq value) (every? draw-shape? value))
+      (done (trim (reduce (fn [st [i f]] (put st (keyword (str "s" (inc i))) f))
+                          {:named {} :order [] :n (count value)} (map-indexed vector value))))
+      ;; [:set k shape], or as a msg writes it: set k circle 10 10 4 kairos
+      (and (vector? value) (= :set (first value)) (some? (second value))
+           (or (as-shape (nth value 2 nil)) (as-shape (vec (drop 2 value)))))
+      (done (trim (put st (second value) (or (as-shape (nth value 2 nil)) (as-shape (vec (drop 2 value)))))))
+      (and (vector? value) (#{:unset :remove} (first value)))
+      (done (-> st (update :named dissoc (second value)) (update :order (fn [o] (vec (remove #{(second value)} o))))))
+      (#{:clear "clear"} value) (done {:named {} :order [] :n 0})
+      :else {})))
+
+(define! "draw" {:doc "A view drawn from the messages that arrive: each shape of kairotic.shapes ([:circle {:cx 40 :cy 40 :r 10 :fill :accent}], [:line …], [:path {:points [[x y] …]}], [:text {:x :y} \"…\"], [:curve …], [:group {:x :y :rotate} [shapes]]) is added — or as a msg writes it: circle 40 40 10 accent, rect x y w h, line x1 y1 x2 y2, arc cx cy r from to, text x y \"words\", with a colour and hit name; a list of shapes replaces them all; [:set k shape] (set k circle …) adds or replaces the shape called k (to move a cursor), [:unset k] removes it, clear empties it. A shape with :hit k, pressed, sends k out."
+                 :usage "draw [width height]"
+                 :io [1 1]
+                 :size (fn [b] (draw-size (:args b)))
+                 :receive draw-receive
+                 :draw (fn [{:keys [shown w h]}]
+                         (into [[:rect {:x 0.5 :y 0.5 :w (- w 1) :h (- h 1) :r 3 :stroke :grid :fill nil}]]
+                               (if (sequential? shown) shown [])))
+                 ;; a press on a shape with :hit: sent once, on release, as [:pressed k]
+                 :gesture (fn [{:keys [up hit]}] (when (and up (some? hit)) [:pressed hit]))})
 (define! "mtof" {:doc "MIDI pitch → Hz (lists too)." :receive (fn [{:keys [value]}] (if (or (number? value) (sequential? value)) {:out [[0 (map-num cv/midi->hz value)]]} {}))})
 (define! "ftom" {:doc "Hz → MIDI pitch (lists too)." :receive (fn [{:keys [value]}] (if (or (number? value) (sequential? value)) {:out [[0 (map-num cv/hz->midi value)]]} {}))})
 (doseq [[op-name op] [["+" +] ["-" -] ["*" *] ["/" (fn [a b] (if (zero? b) 0 (/ a b)))]]]

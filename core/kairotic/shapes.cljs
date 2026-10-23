@@ -11,8 +11,14 @@
 ;;   [:needle {:cx :cy :r :angle :r0}]            a radial line from radius r0 (default 0) to r at `angle` degrees
 ;;   [:path   {:points [[x y] …] :closed true}]   a polyline (a waveform, an envelope…)
 ;;   [:text   {:x :y :anchor :start|:middle|:end :size 11} "text"]
+;;   [:curve  {:points [[x y] …]}]                 a smooth path through the points (Catmull–Rom)
+;;   [:group  {:x :y :rotate :scale} [shape …]]    shapes moved (x y), turned (degrees, clockwise) and scaled
+;;                                                  together; groups can hold groups (4 deep)
 ;;
 ;; All accept :stroke and :fill with a palette colour, :weight in pixels and :opacity (0…1).
+;; Any shape can also carry :hit k (a keyword or a number): pressing it, the component learns k (in the
+;; m of its :gesture, as :hit), so a view can have parts to click: the nodes of a graph, the keys of
+;; a scale. The last shape with :hit under the press wins (the one drawn on top).
 ;; Palette: :ink :soft :accent :kairos :bg :grid (nil = no stroke or no fill).
 ;; nils in the list are ignored, so you can write (when cond [:text …]).
 ;;
@@ -58,11 +64,36 @@
           (str "M" (n x1) " " (n y1) "A" (n r) " " (n r) " 0 " (if (> (js/Math.abs span) 180) 1 0) " " (if (pos? span) 1 0)
                " " (n x2) " " (n y2)))))))
 
-(defn shape [f]
+(defn curve-d
+  "The SVG path of a smooth curve through the points (Catmull–Rom as cubic Béziers)."
+  [ps]
+  (let [ps (vec ps) c (count ps) P (fn [i] (nth ps (max 0 (min (dec c) i))))]
+    (when (>= c 2)
+      (str "M" (n (first (P 0))) " " (n (second (P 0)))
+           (apply str (for [i (range (dec c))]
+                        (let [[x0 y0] (P (dec i)) [x1 y1] (P i) [x2 y2] (P (inc i)) [x3 y3] (P (+ i 2))]
+                          (str " C" (n (+ x1 (/ (- x2 x0) 6))) " " (n (+ y1 (/ (- y2 y0) 6)))
+                               " " (n (- x2 (/ (- x3 x1) 6))) " " (n (- y2 (/ (- y3 y1) 6)))
+                               " " (n x2) " " (n y2)))))))))
+
+(defn points-of [o] (filter (fn [p] (and (sequential? p) (= 2 (count p)))) (take 2000 (:points o))))
+
+(declare shapes-str)
+
+(defn shape
+  ([f] (shape f 0))
+  ([f depth]
   (if-not (and (vector? f) (keyword? (first f)))
     ""
     (let [[kind o text] f o (if (map? o) o {})]
       (case kind
+        :curve (if-let [d (curve-d (points-of o))] (str "<path d=\"" d "\"" (classes o :ink nil) "></path>") "")
+        :group (if (or (> depth 3) (not (sequential? text)))
+                 ""
+                 (str "<g transform=\"translate(" (n (:x o 0)) "," (n (:y o 0)) ") rotate(" (n (:rotate o 0)) ") scale("
+                      (n (let [k (:scale o 1)] (if (and (number? k) (pos? k)) (min 20 k) 1))) ")\""
+                      (when (number? (:opacity o)) (str " opacity=\"" (n (max 0 (min 1 (:opacity o)))) "\"")) ">"
+                      (shapes-str text (inc depth)) "</g>"))
         :rect (str "<rect x=\"" (n (:x o)) "\" y=\"" (n (:y o)) "\" width=\"" (n (max 0 (:w o 0))) "\" height=\"" (n (max 0 (:h o 0)))
                    "\" rx=\"" (n (:r o 0)) "\"" (classes o :ink nil) "></rect>")
         :circle (str "<circle cx=\"" (n (:cx o)) "\" cy=\"" (n (:cy o)) "\" r=\"" (n (max 0 (:r o 0))) "\"" (classes o :ink nil) "></circle>")
@@ -84,14 +115,93 @@
                    (case (:anchor o) :middle "middle" :end "end" "start") "\""
                    " font-size=\"" (n (max 7 (min 28 (or (:size o) 11)))) "\"" (classes o nil :ink) ">"
                    (esc (let [s (str text)] (if (> (count s) 80) (subs s 0 80) s))) "</text>")
-        ""))))
+        "")))))
+
+(defn shapes-str [shapes depth]
+  (if (sequential? shapes)
+    (apply str (map (fn [f] (shape f depth)) (take max-shapes (remove nil? shapes))))
+    ""))
 
 (defn svg
   "The SVG (as text) of a list of shapes."
   [shapes]
-  (if (sequential? shapes)
-    (apply str (map shape (take max-shapes (remove nil? shapes))))
-    ""))
+  (shapes-str shapes 0))
+
+;; ───────── pressing a shape (:hit) ─────────
+;; Where a press lands is worked out from the shapes themselves (the view is drawn above the patch and
+;; does not take the pointer), in the coordinates of the box.
+
+(defn- num [x d] (if (and (number? x) (js/isFinite x)) x d))
+
+(defn- seg-dist [[px py] [ax ay] [bx by]]
+  (let [dx (- bx ax) dy (- by ay) L2 (+ (* dx dx) (* dy dy))
+        u (if (zero? L2) 0 (max 0 (min 1 (/ (+ (* (- px ax) dx) (* (- py ay) dy)) L2))))]
+    (js/Math.hypot (- px (+ ax (* u dx))) (- py (+ ay (* u dy))))))
+
+(defn- inside-polygon? [[x y] ps]
+  (let [ps (vec ps) c (count ps)]
+    (loop [i 0 j (dec c) in false]
+      (if (>= i c)
+        in
+        (let [[xi yi] (nth ps i) [xj yj] (nth ps j)
+              cross (and (not= (> yi y) (> yj y))
+                         (< x (+ xi (/ (* (- xj xi) (- y yi)) (- yj yi)))))]
+          (recur (inc i) i (if cross (not in) in)))))))
+
+(defn covers?
+  "Whether shape f (not a group) covers the point [x y] of its own coordinates (strokes within 4 px)."
+  [f [x y :as p]]
+  (let [[kind o text] f o (if (map? o) o {})]
+    (case kind
+      :rect (and (<= (num (:x o) 0) x (+ (num (:x o) 0) (num (:w o) 0))) (<= (num (:y o) 0) y (+ (num (:y o) 0) (num (:h o) 0))))
+      :circle (<= (js/Math.hypot (- x (num (:cx o) 0)) (- y (num (:cy o) 0))) (max 4 (num (:r o) 0)))
+      :arc (let [d (js/Math.hypot (- x (num (:cx o) 0)) (- y (num (:cy o) 0)))] (< (js/Math.abs (- d (num (:r o) 0))) 5))
+      :line (< (seg-dist p [(num (:x1 o) 0) (num (:y1 o) 0)] [(num (:x2 o) 0) (num (:y2 o) 0)]) 4)
+      :needle (let [cx (num (:cx o) 0) cy (num (:cy o) 0) a (num (:angle o) 0)]
+                (< (seg-dist p (polar cx cy (num (:r0 o) 0) a) (polar cx cy (num (:r o) 0) a)) 4))
+      (:path :curve) (let [ps (vec (points-of o))]
+                       (or (and (:closed o) (> (count ps) 2) (inside-polygon? p ps))
+                           (some (fn [[a b]] (< (seg-dist p a b) 4)) (map vector ps (rest ps)))))
+      :text (let [sz (max 7 (min 28 (num (:size o) 11))) w (* 0.62 sz (count (str text)))
+                  x0 (case (:anchor o) :middle (- (num (:x o) 0) (/ w 2)) :end (- (num (:x o) 0) w) (num (:x o) 0))]
+              (and (<= x0 x (+ x0 w)) (<= (- (num (:y o) 0) sz) y (+ (num (:y o) 0) 3))))
+      false)))
+
+(defn- into-group
+  "The point p of the outside, in the coordinates inside a group (its translate, rotate and scale undone)."
+  [o [x y]]
+  (let [x (- x (num (:x o) 0)) y (- y (num (:y o) 0))
+        t (* (- (num (:rotate o) 0)) (/ js/Math.PI 180))
+        k (let [k (:scale o 1)] (if (and (number? k) (pos? k)) k 1))
+        xr (- (* x (js/Math.cos t)) (* y (js/Math.sin t)))
+        yr (+ (* x (js/Math.sin t)) (* y (js/Math.cos t)))]
+    [(/ xr k) (/ yr k)]))
+
+(defn- group-covers?
+  "Whether any shape of a group (or of the groups inside it) covers the point."
+  [kids p depth]
+  (and (sequential? kids) (< depth 4)
+       (some (fn [f]
+               (when (and (vector? f) (keyword? (first f)))
+                 (let [[kind o ks] f o (if (map? o) o {})]
+                   (if (= kind :group) (group-covers? ks (into-group o p) (inc depth)) (covers? f p)))))
+             (take max-shapes (remove nil? kids)))))
+
+(defn hit-at
+  "The :hit of the shape drawn on top at [x y] (box coordinates), or nil. A group with :hit is hit
+   wherever one of its shapes is; a :hit inside it, more precise, wins."
+  ([shapes p] (hit-at shapes p 0))
+  ([shapes p depth]
+   (when (sequential? shapes)
+     (reduce (fn [found f]
+               (if-not (and (vector? f) (keyword? (first f)))
+                 found
+                 (let [[kind o kids] f o (if (map? o) o {})
+                       inner (when (and (= kind :group) (< depth 4)) (hit-at kids (into-group o p) (inc depth)))
+                       own (when (and (some? (:hit o)) (not= kind :group) (covers? f p)) (:hit o))
+                       g (when (and (= kind :group) (some? (:hit o)) (group-covers? kids (into-group o p) depth)) (:hit o))]
+                   (or inner g own found))))
+             nil (take max-shapes (remove nil? shapes))))))
 
 ;; ───────── templates ─────────
 

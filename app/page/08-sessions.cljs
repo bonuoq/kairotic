@@ -215,7 +215,7 @@
   []
   (if (es?)
     (str "<div class=\"mgr-welcome\">"
-         "<p class=\"wt\">Te damos la bienvenida a <b>Kairotic</b> <span class=\"alpha\">0.1.0-alpha</span></p>"
+         "<p class=\"wt\">Te damos la bienvenida a <b>Kairotic</b> <span class=\"alpha\">0.2.0-alpha</span></p>"
          "<p>Un espacio para componer, improvisar e interpretar música donde <b>el patch y su código son la misma obra</b>: cajas unidas por líneas, como en Max o Pure Data, cada gesto guardado en una historia que puedes recorrer, ramificar y compartir.</p>"
          "<ul>"
          "<li><b>Empieza</b> abajo: una obra <b>solo</b> (se guarda para ti), una <b>sala compartida</b> (con otras personas en la misma historia) o <b>en local</b>, sin guardar.</li>"
@@ -226,7 +226,7 @@
          "<p class=\"wb\"><button class=\"act primary\" data-act=\"guide\">Leer la guía</button> <button class=\"act\" data-act=\"local\">Empezar en local</button> <button class=\"act\" data-act=\"feedback\">Feedback</button></p>"
          "</div>")
     (str "<div class=\"mgr-welcome\">"
-         "<p class=\"wt\">Welcome to <b>Kairotic</b> <span class=\"alpha\">0.1.0-alpha</span></p>"
+         "<p class=\"wt\">Welcome to <b>Kairotic</b> <span class=\"alpha\">0.2.0-alpha</span></p>"
          "<p>A space to compose, improvise and perform music where <b>the patch and its code are the same work</b>: boxes joined by lines, as in Max or Pure Data, every gesture kept in a history you can travel, branch and share.</p>"
          "<ul>"
          "<li><b>Start</b> below: a <b>solo</b> work (saved for you), a <b>shared room</b> (with others, in the same history) or <b>locally</b>, without saving.</li>"

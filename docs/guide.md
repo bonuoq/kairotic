@@ -230,7 +230,38 @@ A `canvas`, a `freqt` and a score are resized by their bottom-right corner, as o
 (`(resize :b3 640 300)`); a double-click on the corner brings back their size. A score takes the width
 you give it and reflows its notation; its height follows the notation.
 
-## 7. Presentation
+**Seeing it as geometry.** The package `@kairotic/theory` draws what sounds as music theory:
+`pcclock` a pitch-class set on the clock face (its prime form, interval vector and axes of symmetry),
+`fourier` its six Fourier coefficients (chromatic … diatonic, whole-tone), `tonnetz` the triads on the
+Tonnetz and the path of the harmony. They take lists of pitches, notes one by one, or a chroma from
+`chroma~`, and their parts can be pressed (a pitch class comes out).
+
+**Drawing from messages.** A `draw [w h]` box draws the shapes that reach it — the same shapes as a
+component's view: `[:circle {:cx 40 :cy 40 :r 10 :fill :accent}]`, `[:line …]`, `[:path …]`,
+`[:curve …]`, `[:text …]`, `[:group {:x :y :rotate} […]]` — or as a msg writes them: `msg circle 40 40 10
+accent hit sun`. A list replaces them all, `[:set k shape]` moves the one called k, `clear` empties it,
+and a shape with `:hit k` sends k when it is pressed.
+
+## 7. Annotations and layers
+
+**Annotate** (above the patch) opens a bar to write on the patch: **Draw** a line by hand, an
+**Arrow**, a **Text**, or **Erase**. Each point is anchored to the box nearest it — the mark follows the
+box when it moves — or to the paper when no box is near; a box deleted leaves its marks where they were.
+What is drawn goes to a **layer** (`notes` unless you name another), over or under the boxes, shown in the
+patch view, in the presentation or in both; each mark is one event of the history and part of the code:
+
+```clojure
+(layer :notes {:z :over :show #{:patch :present}})
+(mark :notes :a1 {:kind :arrow :pts [[:b1 120 10] [:b4 -6 10]]})
+(mark :notes {:kind :text :at [:patch 300 40] :txt "breathe"})
+(unmark :a1)
+```
+
+A layer can also hold **projections**: the view of a box drawn again, at another size —
+`(project :b9 :viz [40 40 800 480])` puts a `monitor`, a `spectrum~` or a `tonnetz` large behind the
+presentation, drawn from what it shows (not scaled), while the box keeps its place. `(unproject :b9)`.
+
+## 8. Presentation
 
 **Present** shows only the boxes you put in the presentation — `(present :b4 x y)`, or drag them in
 presentation mode — as a performer's panel. **Edit** goes back.
@@ -241,7 +272,7 @@ If boxes are selected when you press **Present** and some of them are not in the
 asks first: *Present the selection* puts them in it where they are in the patch (one event of the
 history), *Present without them* leaves them out. From the REPL: `(present-in-place :b3 :b4)`.
 
-## 8. Share and embed
+## 9. Share and embed
 
 - In a room, everyone is in the same work.
 - **Share/Export** gives a link and an iframe with this patch (or this tutorial step) for Notion, a blog or a
@@ -249,7 +280,7 @@ history), *Present without them* leaves them out. From the REPL: `(present-in-pl
 - A request to Claude can be shared in the
   [Gallery](https://github.com/bonuoq/kairotic/discussions/categories/gallery).
 
-## 9. Keys
+## 10. Keys
 
 | | |
 |---|---|

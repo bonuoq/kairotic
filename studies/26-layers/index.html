@@ -1,0 +1,751 @@
+<title>Kairotic Study 26 · Layers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Serif:ital@1&display=swap">
+<style>
+/* Layout: Kairotic header; a working row: the patch stage (GL background, SVG patch and layers) and a side panel. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --f-mark: "IBM Plex Serif", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #232a33; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #232a33; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 12px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+@media (max-width: 900px) { .work { grid-template-columns: minmax(0, 1fr); } }
+
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--box); }
+.seg button { border: 0; border-right: 1px solid var(--rule); background: transparent; color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 10px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+select, input[type="text"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="text"] { font-family: var(--f-code); min-width: 0; }
+input[type="range"] { accent-color: var(--accent); }
+
+/* stage: one WebGL canvas under everything, one SVG for the patch and its layers */
+.stage { position: relative; background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; aspect-ratio: 900 / 540; max-width: 100%; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: var(--bg-opacity, 0.55); }
+.stage svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage[data-tool="move"] svg { cursor: default; }
+.stage[data-tool="draw"] svg, .stage[data-tool="arrow"] svg { cursor: crosshair; }
+.stage[data-tool="text"] svg { cursor: text; }
+.stage[data-tool="erase"] svg { cursor: not-allowed; }
+
+/* the patch */
+.wire { stroke: var(--ink-soft); stroke-width: 1.4; fill: none; opacity: 0.7; }
+.frame { fill: var(--box); stroke: var(--rule); stroke-width: 1; }
+.frame.drag { stroke: var(--accent); }
+.title { fill: var(--ink-soft); font: 11px var(--f-code); }
+.port { fill: var(--ink-soft); }
+[data-mode="perform"] .frame { fill: transparent; stroke: transparent; }
+[data-mode="perform"] .title, [data-mode="perform"] .port { opacity: 0; }
+
+/* the shapes vocabulary of kairotic.shapes, coloured by the theme */
+.shape { fill: none; stroke: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; font-family: var(--f-code); }
+.shape.s-ink { stroke: var(--ink); } .shape.f-ink { fill: var(--ink); }
+.shape.s-soft { stroke: var(--ink-soft); } .shape.f-soft { fill: var(--ink-soft); }
+.shape.s-accent { stroke: var(--accent); } .shape.f-accent { fill: var(--accent); }
+.shape.s-kairos { stroke: var(--kairos); } .shape.f-kairos { fill: var(--kairos); }
+.shape.s-bg { stroke: var(--sheet); } .shape.f-bg { fill: var(--sheet); }
+.shape.s-grid { stroke: var(--grid); } .shape.f-grid { fill: var(--grid); }
+
+/* layers */
+.layer-proj { opacity: 0.85; }
+.proj-frame { fill: none; stroke: var(--accent); stroke-dasharray: 4 4; opacity: 0.5; }
+.mark { fill: none; stroke: var(--kairos); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mark.new { stroke: var(--accent); }
+.mark-txt { fill: var(--kairos); font: italic 15px var(--f-mark); }
+.arrowhead { fill: var(--kairos); }
+.anchor-dot { fill: var(--kairos); opacity: 0.5; }
+
+/* panel */
+.panel { display: grid; gap: 12px; min-width: 0; }
+.sec { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; min-width: 0; }
+.sec h3 { margin: 0; font: 600 12px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.layers { display: grid; gap: 6px; }
+.lrow { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 8px; align-items: center; font-size: 13px; }
+.lrow .nm { font-family: var(--f-code); }
+.lrow .z { font: 11px var(--f-code); color: var(--ink-soft); border: 1px solid var(--rule); border-radius: 4px; padding: 1px 6px; background: transparent; cursor: pointer; }
+.lrow label { font-size: 12px; color: var(--ink-soft); display: inline-flex; gap: 4px; align-items: center; }
+textarea { width: 100%; min-height: 220px; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; white-space: pre; overflow: auto; tab-size: 2; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.err { font: 12px var(--f-code); color: var(--error); white-space: pre-wrap; }
+.err:empty { display: none; }
+.code { margin: 0; font: 11px/1.55 var(--f-code); color: var(--ink); white-space: pre; overflow-x: auto; max-height: 260px; }
+.hint { margin-top: 6px; font-size: 12px; color: var(--ink-soft); line-height: 1.5; max-width: 85ch; }
+details summary { cursor: pointer; font: 600 12px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+details p { margin: 8px 0 0; font-size: 13px; line-height: 1.5; max-width: 65ch; }
+@media (prefers-reduced-motion: reduce) { .stage canvas { opacity: calc(var(--bg-opacity, 0.55) * 0.6); } }
+</style>
+
+<header>
+  <h1>Study 26 · layers</h1>
+  <span class="sub">Components in SVG only, annotation layers anchored to boxes, one WebGL background for the whole patch</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="work">
+  <section>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Mode">
+        <button id="mode-compose" aria-pressed="true">Compose</button>
+        <button id="mode-perform" aria-pressed="false">Perform</button>
+      </div>
+      <div class="seg" role="group" aria-label="Tool">
+        <button id="tool-move" aria-pressed="true">Move</button>
+        <button id="tool-draw" aria-pressed="false">Draw</button>
+        <button id="tool-arrow" aria-pressed="false">Arrow</button>
+        <button id="tool-text" aria-pressed="false">Text</button>
+        <button id="tool-erase" aria-pressed="false">Erase</button>
+      </div>
+      <label class="inline" for="into">into <select id="into"></select></label>
+      <input type="text" id="txt" value="more air here" aria-label="Text for the Text tool" style="flex: 1 1 120px">
+      <button class="act" id="undo">Undo</button>
+    </div>
+    <div class="stage" id="stage" data-tool="move" data-mode="compose">
+      <canvas id="gl" aria-hidden="true"></canvas>
+      <svg id="patch" viewBox="0 0 900 540" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Patch"></svg>
+    </div>
+    <p class="hint">Move the boxes: every mark is anchored to the box nearest each of its points and follows it. Turn the knob by dragging it up or down. In Perform the frames and wires go away, and the monitor is projected large on the under layer, drawn again at that size (not scaled). The background is one WebGL shader for the whole patch, fed by the values of the boxes it lists.</p>
+  </section>
+
+  <aside class="panel">
+    <div class="sec">
+      <h3>Layers</h3>
+      <div class="layers" id="layers"></div>
+    </div>
+    <div class="sec">
+      <h3>Background · GLSL</h3>
+      <div class="btns">
+        <label class="inline" for="bg-in">u_in from <input type="text" id="bg-in" value="b1 b2 b3" style="width: 9em"></label>
+        <label class="inline" for="bg-op">opacity <input type="range" id="bg-op" min="0" max="1" step="0.01" value="0.55"></label>
+      </div>
+      <textarea id="fs" spellcheck="false" aria-label="Fragment shader"></textarea>
+      <div class="btns">
+        <button class="act" id="fs-apply">Apply</button>
+        <button class="act" id="fs-reset">Reset</button>
+        <span class="hint" style="margin: 0">⌘/Ctrl + Enter applies</span>
+      </div>
+      <div class="err" id="fs-err"></div>
+    </div>
+    <div class="sec">
+      <h3>Patch as code</h3>
+      <pre class="code" id="code"></pre>
+      <div class="btns"><button class="act" id="reset">Reset to example</button></div>
+    </div>
+    <details class="sec">
+      <summary>About this study</summary>
+      <p>Three levels of graphics. Inside a box, a component describes its view as shapes (kairotic.shapes), here with one new shape, :heat, for lists of numbers. Above or under the patch, a layer holds marks anchored to boxes and projections of a box's view at another size. Behind everything, the patch may have one background shader, the only WebGL on the page.</p>
+      <p>Every edit is an event of the history; the knob's value is a parameter and stays out of it.</p>
+    </details>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// ───────── the one WebGL canvas: a full-screen shader, uniforms from the patch ─────────
+window.KGL = (function () {
+  var HEADER = [
+    "#version 300 es",
+    "precision highp float;",
+    "uniform float u_time;",
+    "uniform vec2 u_res;",
+    "uniform vec4 u_in;",
+    "uniform vec3 u_bg, u_ink, u_accent, u_kairos;",
+    "out vec4 color;",
+    ""].join("\n");
+  var HL = HEADER.split("\n").length - 1;
+  var VS = "#version 300 es\nin vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }";
+  var gl = null, canvas = null, prog = null, U = {}, cols = null, t0 = performance.now();
+
+  function compile(type, src) {
+    var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { var e = gl.getShaderInfoLog(s); gl.deleteShader(s); throw new Error(e); }
+    return s;
+  }
+  function init(cv) {
+    canvas = cv; gl = cv.getContext("webgl2", { antialias: false });
+    if (!gl) return false;
+    var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    return true;
+  }
+  // Returns null if it compiled, or the error with line numbers counted from the user's text.
+  function setShader(body) {
+    if (!gl) return "WebGL2 is not available in this browser";
+    try {
+      var vs = compile(gl.VERTEX_SHADER, VS), fs = compile(gl.FRAGMENT_SHADER, HEADER + body);
+      var p = gl.createProgram(); gl.attachShader(p, vs); gl.attachShader(p, fs);
+      gl.bindAttribLocation(p, 0, "p"); gl.linkProgram(p);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+      if (prog) gl.deleteProgram(prog);
+      prog = p; gl.useProgram(prog);
+      gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+      U = {};
+      ["u_time", "u_res", "u_in", "u_bg", "u_ink", "u_accent", "u_kairos"].forEach(function (k) { U[k] = gl.getUniformLocation(prog, k); });
+      return null;
+    } catch (e) {
+      return String(e.message || e).replace(/ERROR: 0:(\d+)/g, function (_, n) { return "line " + (parseInt(n, 10) - HL); }).trim();
+    }
+  }
+  function hex(s) {
+    s = (s || "").trim().replace("#", "");
+    if (s.length === 3) s = s.split("").map(function (c) { return c + c; }).join("");
+    var n = parseInt(s || "000000", 16);
+    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+  }
+  function readColors() {
+    var cs = getComputedStyle(document.documentElement);
+    cols = {};
+    [["u_bg", "--sheet"], ["u_ink", "--ink"], ["u_accent", "--accent"], ["u_kairos", "--kairos"]].forEach(function (p) { cols[p[0]] = hex(cs.getPropertyValue(p[1])); });
+  }
+  function frame(ins) {
+    if (!gl || !prog) return;
+    var dpr = Math.min(1.5, window.devicePixelRatio || 1);
+    var w = Math.max(1, Math.round(canvas.clientWidth * dpr)), h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    if (!cols) readColors();
+    gl.viewport(0, 0, w, h);
+    gl.uniform1f(U.u_time, (performance.now() - t0) / 1000);
+    gl.uniform2f(U.u_res, w, h);
+    gl.uniform4f(U.u_in, ins[0] || 0, ins[1] || 0, ins[2] || 0, ins[3] || 0);
+    gl.uniform3fv(U.u_bg, cols.u_bg); gl.uniform3fv(U.u_ink, cols.u_ink);
+    gl.uniform3fv(U.u_accent, cols.u_accent); gl.uniform3fv(U.u_kairos, cols.u_kairos);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  return { init: init, setShader: setShader, frame: frame, readColors: readColors };
+})();
+
+window.addEventListener("DOMContentLoaded", function () {
+  var st = document.getElementById("status");
+  function show(e) { st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  window.addEventListener("error", function (e) { if (/ResizeObserver loop/.test(String(e.message))) return; show(e.error || e.message); });
+  fetch("kairotic/shapes.cljs", { cache: "no-cache" })
+    .then(function (r) { if (!r.ok) throw new Error("could not read kairotic/shapes.cljs (" + r.status + ")"); return r.text(); })
+    .then(function (src) {
+      try { scittle.core.eval_string(src); } catch (e) { throw new Error("kairotic/shapes.cljs: " + (e.message || e)); }
+      scittle.core.eval_string(document.getElementById("main-cljs").textContent);
+    })
+    .catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="main-cljs">
+;; SPDX-License-Identifier: MPL-2.0
+;; Kairotic · Study 26 · layers
+;; Three levels of graphics in a patch:
+;;  1. a box draws its own view with shapes (kairotic.shapes), SVG only; :heat is a proposed new shape
+;;  2. layers above or under the boxes: marks anchored to boxes, and projections of a box's view
+;;  3. one WebGL background for the whole patch, a shader fed by the values of some boxes
+;; The patch is data; every edit is one event of its history.
+
+(ns study.layers
+  (:require [kairotic.shapes :as shp]
+            [clojure.string :as str]
+            [clojure.edn :as edn]))
+
+(defn $ [id] (.getElementById js/document id))
+(defn num? [x] (and (number? x) (js/isFinite x)))
+(defn r1 [x] (/ (js/Math.round (* x 10)) 10))
+(defn now [] (/ (.now js/performance) 1000))
+
+;; ════════ 1 · components: logic + a view made of shapes ════════
+;; :size the view (the box adds a title bar of 18), :tick (fn [state args dt t] {:state :out}),
+;; :receive (fn [state value from t] state), :draw (fn [{:keys [state args w h]}] shapes).
+
+(def TB 18)
+
+(defn wave-pts [w h ph]
+  (vec (for [i (range 0 41)] (let [u (/ i 40)] [(+ 4 (* u (- w 8))) (+ (/ h 2) (* (- (/ h 2) 8) (js/Math.sin (* 2 js/Math.PI (+ u ph)))))]))))
+
+(def classes
+  {"lfo" {:size [130 56]
+          :init (fn [_] {:v 0.5 :ph 0})
+          :tick (fn [s args dt _] (let [hz (or (first args) 0.2) ph (mod (+ (:ph s) (* hz dt)) 1)
+                                        v (+ 0.5 (* 0.5 (js/Math.sin (* 2 js/Math.PI ph))))]
+                                    {:state {:v v :ph ph} :out v}))
+          :draw (fn [{:keys [state w h]}]
+                  (let [ph (:ph state) x (+ 4 (* (- w 8) (mod (- 0.25 ph) 1)))]
+                    [[:path {:points (wave-pts w h ph) :stroke :soft}]
+                     [:line {:x1 4 :y1 (/ h 2) :x2 (- w 4) :y2 (/ h 2) :stroke :grid}]
+                     [:circle {:cx 4 :cy (- h 4 (* (- h 8) (:v state))) :r 4 :fill :accent}]
+                     [:text {:x (- w 4) :y 12 :anchor :end :size 9 :fill :soft} (.toFixed (:v state) 2)]]))}
+   "knob" {:size [86 80]
+           :init (fn [_] {:v 0.6})
+           :tick (fn [s _ _ _] {:state s :out (:v s)})
+           :draw (fn [{:keys [state w h]}]
+                   (let [cx (/ w 2) cy (+ (/ h 2) 4) r (- (/ (min w h) 2) 10) a (+ -135 (* 270 (:v state)))]
+                     [[:arc {:cx cx :cy cy :r r :from -135 :to 135 :stroke :grid :weight 4}]
+                      [:arc {:cx cx :cy cy :r r :from -135 :to a :stroke :accent :weight 4}]
+                      [:needle {:cx cx :cy cy :r (- r 6) :r0 4 :angle a :stroke :ink :weight 2}]
+                      [:text {:x cx :y (+ cy r 4) :anchor :middle :size 9 :fill :soft} (.toFixed (:v state) 2)]]))}
+   "bands" {:size [150 60]
+            :init (fn [args] {:vs (vec (repeat (or (first args) 8) 0.4))})
+            :tick (fn [s _ dt t] (let [vs (vec (map-indexed (fn [i v] (max 0 (min 1 (+ (* 0.96 v) (* 0.04 (+ 0.5 (* 0.45 (js/Math.sin (+ (* t (+ 0.3 (* 0.17 i))) (* i 1.7)))))) (* 0.03 (- (js/Math.random) 0.5))))))
+                                                (:vs s)))]
+                                   {:state {:vs vs} :out vs}))
+            :draw (fn [{:keys [state w h]}]
+                    (let [vs (:vs state) n (count vs) bw (/ (- w 8) n)]
+                      (vec (for [[i v] (map-indexed vector vs)]
+                             [:rect {:x (+ 4 (* i bw)) :y (- h 4 (* (- h 8) v)) :w (- bw 2) :h (* (- h 8) v) :fill :accent :stroke nil}]))))}
+   "monitor" {:size [320 214]
+              :init (fn [_] {:streams {} :order [] :last 0})
+              :receive (fn [s value from t]
+                         (let [s (if (get-in s [:streams from]) s (-> s (assoc-in [:streams from] []) (update :order conj from)))]
+                           ;; ten values a second are enough to see; older than the window are dropped
+                           (update-in s [:streams from]
+                                      (fn [b] (if (and (seq b) (< (- t (first (peek b))) 0.1))
+                                                b
+                                                (let [b (conj b [t value])] (if (> (- t (ffirst b)) 6.5) (subvec b 1) b)))))))
+              :draw nil}})
+
+;; the monitor: one lane per source; a number as a line, a list as a :heat strip
+(defn monitor-draw [{:keys [state args w h t]}]
+  (let [win (or (first args) 6) order (:order state) n (max 1 (count order))
+        lh (/ (- h 6) n) t0 (- t win) L 58
+        tx (fn [tt] (+ L (* (- w L 6) (/ (- tt t0) win))))]
+    (vec
+     (mapcat
+      (fn [[i src]]
+        (let [buf (get-in state [:streams src]) top (+ 3 (* i lh)) last-v (second (peek buf))]
+          (concat
+           [[:text {:x 4 :y (+ top 12) :size 10 :fill :ink} (name src)]
+            [:text {:x 4 :y (+ top 25) :size 9 :fill :soft}
+             (cond (number? last-v) (.toFixed last-v 2) (sequential? last-v) (str "[" (count last-v) "]") :else "")]
+            [:line {:x1 L :y1 (+ top lh -2) :x2 (- w 6) :y2 (+ top lh -2) :stroke :grid}]]
+           (if (sequential? last-v)
+             [[:heat {:x L :y (+ top 2) :w (- w L 6) :h (- lh 6) :cols (mapv (fn [[tt v]] [(tx tt) v]) buf) :fill :accent}]]
+             [[:path {:points (vec (keep (fn [[tt v]] (when (num? v) [(tx tt) (+ top 2 (* (- lh 8) (- 1 (max 0 (min 1 v)))))])) buf))
+                      :stroke :accent :weight 1.6}]]))))
+      (map-indexed vector order)))))
+
+;; :heat {:x :y :w :h :cols [[x [v …]] …]}: columns of cells whose opacity is the value (0…1)
+(defn heat-svg [{:keys [x y w h cols fill]}]
+  (let [n (reduce max 1 (map (fn [[_ vs]] (count vs)) cols)) ch (/ h n)
+        f (if (shp/palette fill) (str " f-" (name fill)) "")]
+    (apply str
+           (for [[[xa vs] [xb]] (map vector cols (concat (rest cols) [[(+ x w)]]))
+                 :when (>= xa x)
+                 [j v] (map-indexed vector vs) :when (and (num? v) (> v 0.02))]
+             (str "<rect class=\"shape" f "\" x=\"" (shp/n xa) "\" y=\"" (shp/n (+ y (* (- n j 1) ch))) "\" width=\""
+                  (shp/n (+ 0.6 (max 0 (- xb xa)))) "\" height=\"" (shp/n (- ch 1)) "\" fill-opacity=\"" (shp/n (min 1 v)) "\"></rect>")))))
+
+(defn shapes-svg [shapes]
+  (apply str (for [f (take shp/max-shapes (remove nil? shapes))]
+               (if (= :heat (first f)) (heat-svg (second f)) (shp/shape f)))))
+
+(defn parse-text [txt]
+  (let [[c & args] (str/split (str/trim txt) #"\s+")]
+    [c (vec (keep (fn [a] (let [x (js/parseFloat a)] (when (num? x) x))) args))]))
+
+(defn cls [b] (get classes (first (parse-text (:text b)))))
+(defn view-size [b] (:size (cls b) [100 50]))
+(defn box-rect [b] (let [[w h] (view-size b)] [(:x b) (:y b) w (+ h TB)]))
+
+(defn draw-view [b state w h t]
+  (let [c (cls b) [_ args] (parse-text (:text b)) m {:state state :args args :w w :h h :t t}]
+    (shapes-svg (if (= "monitor" (first (parse-text (:text b)))) (monitor-draw m) ((:draw c) m)))))
+
+;; ════════ the patch as data ════════
+
+(def fs0 "// u_in: the values of the boxes listed above (a list counts as its mean)
+// u_bg u_ink u_accent u_kairos: the theme's colours
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
+}
+float fbm(vec2 p) {
+  float a = 0.5, s = 0.0;
+  for (int k = 0; k < 5; k++) { s += a * noise(p); p *= 2.03; a *= 0.5; }
+  return s;
+}
+void main() {
+  vec2 uv = gl_FragCoord.xy / u_res.y;
+  float t = u_time * 0.06;
+  vec2 q = vec2(fbm(uv * 2.0 + t), fbm(uv * 2.0 - t + 3.1));
+  float f = fbm(uv * 2.6 + 2.2 * q + vec2(u_in.x * 0.8, u_in.z * 1.4));
+  vec3 c = mix(u_bg, u_accent, smoothstep(0.35, 0.95, f) * (0.15 + 0.85 * u_in.y));
+  c = mix(c, u_kairos, smoothstep(0.62, 0.9, f) * u_in.x * 0.55);
+  color = vec4(c, 1.0);
+}")
+
+(defn loop-pts [b cx cy rx ry]
+  (vec (for [i (range 0 37)] (let [a (* i (/ (* 2 js/Math.PI) 34))] [b (r1 (+ cx (* rx (js/Math.cos a)) (* 3 (js/Math.sin (* 3 a))))) (r1 (+ cy (* ry (js/Math.sin a))))]))))
+
+(def patch0
+  {:boxes {:b1 {:text "lfo 0.2" :x 60 :y 46}
+           :b2 {:text "knob" :x 70 :y 196}
+           :b3 {:text "bands 8" :x 50 :y 380}
+           :b4 {:text "monitor 6" :x 470 :y 120}}
+   :wires [[:b1 :b4] [:b2 :b4] [:b3 :b4]]
+   :layers {:notes {:z :over :modes #{:compose :perform}}
+            :viz {:z :under :modes #{:perform}}}
+   :marks {:a1 {:layer :notes :kind :text :at [:b2 100 44] :txt "brightness of the background"}
+           :a2 {:layer :notes :kind :arrow :pts [[:b1 136 40] [:b4 -8 40]]}
+           :a3 {:layer :notes :kind :line :pts (loop-pts :b3 75 48 98 46)}
+           :a4 {:layer :notes :kind :text :at [:b3 168 18] :txt "let them drift"}}
+   :projections {:p1 {:box :b4 :layer :viz :rect [24 24 852 492]}}
+   :background {:in [:b1 :b2 :b3] :fs fs0}})
+
+;; ───── events ─────
+
+(defn next-id [m prefix]
+  (keyword (str prefix (inc (reduce max 0 (keep (fn [k] (let [r (re-matches (re-pattern (str prefix "(\\d+)")) (name k))] (when r (js/parseInt (second r) 10)))) (keys m)))))))
+
+(defn step [p [op & args]]
+  (case op
+    :move-box (let [[id x y] args] (if (get-in p [:boxes id]) (-> p (assoc-in [:boxes id :x] x) (assoc-in [:boxes id :y] y)) p))
+    :mark (let [[id m] args] (assoc-in p [:marks id] m))
+    :erase (update p :marks dissoc (first args))
+    :layer (let [[id l] args] (assoc-in p [:layers id] l))
+    :background (assoc p :background (merge (:background p) (first args)))
+    :load (first args)
+    p))
+
+(def store-key "kairotic.study26.v1")
+(defn saved [] (try (let [x (edn/read-string (or (.getItem js/localStorage store-key) "nil"))] (when (map? (:patch x)) x)) (catch :default _ nil)))
+
+(defonce S (atom (let [sv (saved)]
+                   {:patch (or (:patch sv) patch0) :hist [] :mode :compose :tool :move :into :notes
+                    :rt {} :gesture nil :t 0})))
+
+(defn save! [] (try (.setItem js/localStorage store-key (pr-str {:patch (:patch @S)})) (catch :default _ nil)))
+
+(declare render-panel!)
+(defn dispatch! [ev]
+  (swap! S (fn [s] (let [p (step (:patch s) ev)] (if (= p (:patch s)) s (-> s (update :hist conj (:patch s)) (assoc :patch p))))))
+  (save!) (render-panel!))
+(defn undo! []
+  (swap! S (fn [s] (if (empty? (:hist s)) s (assoc s :patch (peek (:hist s)) :hist (pop (:hist s))))))
+  (save!) (render-panel!))
+
+;; ───── runtime: states of the boxes, ticked; outputs go along the wires ─────
+
+(defn ensure-rt! []
+  (swap! S (fn [s] (assoc s :rt (into {} (for [[id b] (get-in s [:patch :boxes])]
+                                             [id (or (get-in s [:rt id]) ((or (:init (cls b)) (constantly {})) (second (parse-text (:text b)))))]))))))
+
+(defn tick! [dt]
+  (let [t (now)]
+    (swap! S (fn [s]
+               (let [p (:patch s)
+                     [rt outs] (reduce (fn [[rt outs] [id b]]
+                                         (if-let [f (:tick (cls b))]
+                                           (let [{st :state o :out} (f (get rt id) (second (parse-text (:text b))) dt t)]
+                                             [(assoc rt id st) (assoc outs id o)])
+                                           [rt outs]))
+                                       [(:rt s) {}] (:boxes p))
+                     rt (reduce (fn [rt [from to]]
+                                  (let [b (get-in p [:boxes to]) f (:receive (cls b))]
+                                    (if (and f (contains? outs from)) (update rt to f (get outs from) from t) rt)))
+                                rt (:wires p))]
+                 (assoc s :rt rt :outs outs :t t))))))
+
+;; ════════ 2 · layers: anchors, marks, projections ════════
+
+(defn resolve-pt [p [a x y]]
+  (if-let [b (get-in p [:boxes a])] [(+ (:x b) x) (+ (:y b) y)] [x y]))
+
+(defn rect-dist [[x y] [rx ry rw rh]]
+  (js/Math.hypot (max 0 (- rx x) (- x (+ rx rw))) (max 0 (- ry y) (- y (+ ry rh)))))
+
+(defn anchor [p [x y]]
+  (let [best (first (sort-by first (for [[id b] (:boxes p)] [(rect-dist [x y] (box-rect b)) id])))]
+    (if (and best (< (first best) 150))
+      (let [b (get-in p [:boxes (second best)])] [(second best) (r1 (- x (:x b))) (r1 (- y (:y b)))])
+      [:patch (r1 x) (r1 y)])))
+
+(defn visible? [s lid] (contains? (get-in s [:patch :layers lid :modes] #{}) (:mode s)))
+
+(defn pts-str [ps] (str/join " " (map (fn [[x y]] (str (r1 x) "," (r1 y))) ps)))
+
+(defn esc [s] (shp/esc s))
+
+(defn mark-svg [p id m]
+  (case (:kind m)
+    :line (str "<polyline class=\"mark\" points=\"" (pts-str (map (partial resolve-pt p) (:pts m))) "\"/>")
+    :arrow (let [[[x1 y1] [x2 y2]] (map (partial resolve-pt p) (:pts m))
+                 a (js/Math.atan2 (- y2 y1) (- x2 x1)) L 11
+                 h1 [(- x2 (* L (js/Math.cos (- a 0.4)))) (- y2 (* L (js/Math.sin (- a 0.4))))]
+                 h2 [(- x2 (* L (js/Math.cos (+ a 0.4)))) (- y2 (* L (js/Math.sin (+ a 0.4))))]]
+             (str "<line class=\"mark\" x1=\"" (r1 x1) "\" y1=\"" (r1 y1) "\" x2=\"" (r1 x2) "\" y2=\"" (r1 y2) "\"/>"
+                  "<polygon class=\"arrowhead\" points=\"" (pts-str [[x2 y2] h1 h2]) "\"/>"))
+    :text (let [[x y] (resolve-pt p (:at m))]
+            (str "<text class=\"mark-txt\" x=\"" (r1 x) "\" y=\"" (r1 y) "\">" (esc (:txt m)) "</text>"))
+    ""))
+
+(defn proj-svg [s id pr]
+  (let [p (:patch s) b (get-in p [:boxes (:box pr)]) [x y w h] (:rect pr)]
+    (when b
+      (str "<g class=\"layer-proj\" transform=\"translate(" x "," y ")\">"
+           (draw-view b (get-in s [:rt (:box pr)]) w h (:t s))
+           "</g>"))))
+
+(defn layer-svg [s lid]
+  (let [p (:patch s)]
+    (str "<g data-layer=\"" (name lid) "\">"
+         (str/join (for [[id pr] (sort-by key (:projections p)) :when (= lid (:layer pr))] (proj-svg s id pr)))
+         (str/join (for [[id m] (sort-by key (:marks p)) :when (= lid (:layer m))] (mark-svg p id m)))
+         "</g>")))
+
+;; ════════ the whole picture ════════
+
+(defn wire-svg [p [a b]]
+  (let [ba (get-in p [:boxes a]) bb (get-in p [:boxes b])]
+    (when (and ba bb)
+      (let [[ax ay aw ah] (box-rect ba) [bx by] (box-rect bb)
+            x1 (+ ax 8) y1 (+ ay ah) x2 (+ bx 8) y2 by
+            c (max 40 (/ (js/Math.abs (- y2 y1)) 2))]
+        (str "<path class=\"wire\" d=\"M" x1 " " y1 " C" x1 " " (+ y1 c) " " x2 " " (- y2 c) " " x2 " " y2 "\"/>")))))
+
+(defn box-svg [s id b]
+  (let [[x y w h] (box-rect b) [vw vh] (view-size b)
+        drag? (= id (get-in s [:gesture :id]))]
+    (str "<g transform=\"translate(" x "," y ")\">"
+         "<rect class=\"frame" (when drag? " drag") "\" x=\"0\" y=\"0\" width=\"" w "\" height=\"" h "\" rx=\"4\"/>"
+         "<text class=\"title\" x=\"6\" y=\"13\">" (esc (:text b)) "</text>"
+         "<rect class=\"port\" x=\"4\" y=\"-1\" width=\"8\" height=\"2\"/><rect class=\"port\" x=\"4\" y=\"" (dec h) "\" width=\"8\" height=\"2\"/>"
+         "<g transform=\"translate(0," TB ")\">" (draw-view b (get-in s [:rt id]) vw vh (:t s)) "</g>"
+         "</g>")))
+
+(defn patch-svg [s]
+  (let [p (:patch s) ls (:layers p)
+        lay (fn [z] (str/join (for [[lid l] (sort-by key ls) :when (and (= z (:z l)) (visible? s lid))] (layer-svg s lid))))
+        g (:gesture s)]
+    (str (lay :under)
+         (when (= :compose (:mode s)) (str/join (map (partial wire-svg p) (:wires p))))
+         (str/join (for [[id b] (sort-by key (:boxes p))] (box-svg s id b)))
+         (lay :over)
+         (when (= :draw (:kind g)) (str "<polyline class=\"mark new\" points=\"" (pts-str (:px g)) "\"/>"))
+         (when (= :arrow (:kind g)) (str "<line class=\"mark new\" x1=\"" (r1 (ffirst (:px g))) "\" y1=\"" (r1 (second (first (:px g))))
+                                         "\" x2=\"" (r1 (first (peek (:px g)))) "\" y2=\"" (r1 (second (peek (:px g)))) "\"/>")))))
+
+;; ════════ 3 · the background: u_in from the boxes it lists ════════
+
+(defn as-num [v] (cond (number? v) v (and (sequential? v) (seq v)) (/ (reduce + v) (count v)) :else 0))
+
+(defonce gl-ok (atom false))
+
+(defn bg-frame! []
+  (when @gl-ok
+    (let [s @S ins (map (fn [id] (as-num (get-in s [:outs id]))) (get-in s [:patch :background :in]))]
+      (.frame js/KGL (clj->js (take 4 (concat ins [0 0 0 0])))))))
+
+;; ════════ panel ════════
+
+(defn patch-code [p]
+  (str/join "\n"
+            (concat
+             (for [[id b] (sort-by key (:boxes p))] (str "(box " id " " (pr-str (:text b)) " " (r1 (:x b)) " " (r1 (:y b)) ")"))
+             (for [[a b] (:wires p)] (str "(connect " a " 0 " b " 0)"))
+             (for [[id l] (sort-by key (:layers p))] (str "(layer " id " " (pr-str l) ")"))
+             (for [[id pr] (sort-by key (:projections p))] (str "(project " (:box pr) " " (:layer pr) " " (pr-str (:rect pr)) ")"))
+             (for [[id m] (sort-by key (:marks p))]
+               (str "(mark " (:layer m) " " id " " (pr-str (dissoc (if (= :line (:kind m)) (update m :pts (fn [ps] (if (> (count ps) 4) (conj (vec (take 3 ps)) (symbol "…")) ps))) m) :layer)) ")"))
+             [(str "(background {:in " (pr-str (get-in p [:background :in])) " :fs \"…\"})")])))
+
+(defn render-layers! []
+  (let [s @S ls (get-in s [:patch :layers])]
+    (set! (.-innerHTML ($ "layers"))
+          (str/join (for [[lid l] (sort-by key ls)]
+                      (str "<div class=\"lrow\"><span class=\"nm\">" (name lid) "</span><span></span>"
+                           "<button class=\"z\" data-l=\"" (name lid) "\" data-act=\"z\" title=\"Above or under the boxes\">" (name (:z l)) "</button>"
+                           (str/join (for [md [:compose :perform]]
+                                       (str "<label><input type=\"checkbox\" data-l=\"" (name lid) "\" data-act=\"" (name md) "\""
+                                            (when (contains? (:modes l) md) " checked") "> " (name md) "</label>"))) "</div>"))))
+    (let [sel ($ "into") cur (:into s)]
+      (set! (.-innerHTML sel) (str/join (for [[lid _] (sort-by key ls)] (str "<option value=\"" (name lid) "\">" (name lid) "</option>"))))
+      (set! (.-value sel) (name cur)))))
+
+(defn render-panel! []
+  (render-layers!)
+  (set! (.-textContent ($ "code")) (patch-code (:patch @S)))
+  (let [s @S]
+    (set! (.-textContent ($ "status")) (str (count (get-in s [:patch :boxes])) " boxes · " (count (get-in s [:patch :marks])) " marks · "
+                                            (count (:hist s)) " events"))))
+
+;; ════════ pointer ════════
+
+(defn svg-xy [e]
+  (let [sv ($ "patch") pt (.createSVGPoint sv)]
+    (set! (.-x pt) (.-clientX e)) (set! (.-y pt) (.-clientY e))
+    (let [q (.matrixTransform pt (.inverse (.getScreenCTM sv)))] [(.-x q) (.-y q)])))
+
+(defn box-at [p [x y]]
+  (first (for [[id b] (reverse (sort-by key (:boxes p)))
+               :let [[bx by bw bh] (box-rect b)] :when (and (<= bx x (+ bx bw)) (<= by y (+ by bh)))] id)))
+
+(defn seg-dist [[px py] [ax ay] [bx by]]
+  (let [dx (- bx ax) dy (- by ay) L2 (+ (* dx dx) (* dy dy))
+        u (if (zero? L2) 0 (max 0 (min 1 (/ (+ (* (- px ax) dx) (* (- py ay) dy)) L2))))]
+    (js/Math.hypot (- px (+ ax (* u dx))) (- py (+ ay (* u dy))))))
+
+(defn mark-hit [s q]
+  (let [p (:patch s)]
+    (->> (:marks p)
+         (filter (fn [[_ m]] (visible? s (:layer m))))
+         (keep (fn [[id m]]
+                 (let [d (case (:kind m)
+                           (:line :arrow) (let [ps (map (partial resolve-pt p) (:pts m))] (apply min 1e9 (map (fn [a b] (seg-dist q a b)) ps (rest ps))))
+                           :text (let [[x y] (resolve-pt p (:at m))]
+                                   (if (and (<= (- x 4) (first q) (+ x (* 7.5 (count (:txt m))))) (<= (- y 16) (second q) (+ y 5))) 0 1e9))
+                           1e9)]
+                   (when (< d 10) [d id]))))
+         (sort-by first) first second)))
+
+(defn on-down [e]
+  (let [s @S p (:patch s) q (svg-xy e)]
+    (.setPointerCapture (.-currentTarget e) (.-pointerId e))
+    (case (:tool s)
+      :move (when-let [id (box-at p q)]
+              (let [b (get-in p [:boxes id]) knob? (and (= "knob" (first (parse-text (:text b)))) (> (second q) (+ (:y b) TB)))]
+                (swap! S assoc :gesture (if knob?
+                                          {:kind :knob :id id :y0 (second q) :v0 (get-in s [:rt id :v])}
+                                          {:kind :box :id id :dx (- (first q) (:x b)) :dy (- (second q) (:y b)) :x (:x b) :y (:y b)}))))
+      :draw (swap! S assoc :gesture {:kind :draw :px [q]})
+      :arrow (swap! S assoc :gesture {:kind :arrow :px [q q]})
+      :text (let [txt (str/trim (.-value ($ "txt")))]
+              (when (seq txt) (dispatch! [:mark (next-id (:marks p) "a") {:layer (:into s) :kind :text :at (anchor p q) :txt txt}])))
+      :erase (do (swap! S assoc :gesture {:kind :erase})
+                 (when-let [id (mark-hit s q)] (dispatch! [:erase id]))))))
+
+(defn on-move [e]
+  (let [s @S g (:gesture s) [x y :as q] (svg-xy e)]
+    (case (:kind g)
+      :box (swap! S (fn [s] (-> s (assoc-in [:patch :boxes (:id g) :x] (r1 (max 0 (min 860 (- x (:dx g))))))
+                                (assoc-in [:patch :boxes (:id g) :y] (r1 (max 0 (min 520 (- y (:dy g)))))))))
+      :knob (swap! S assoc-in [:rt (:id g) :v] (max 0 (min 1 (+ (:v0 g) (/ (- (:y0 g) y) 150)))))
+      :draw (let [[lx ly] (peek (:px g))] (when (> (js/Math.hypot (- x lx) (- y ly)) 3) (swap! S update-in [:gesture :px] conj q)))
+      :arrow (swap! S assoc-in [:gesture :px 1] q)
+      :erase (when-let [id (mark-hit s q)] (dispatch! [:erase id]))
+      nil)))
+
+(defn on-up [_]
+  (let [s @S g (:gesture s) p (:patch s)]
+    (swap! S assoc :gesture nil)
+    (case (:kind g)
+      ;; the box was moved live; the history gets one event from where it was to where it is
+      :box (let [b (get-in p [:boxes (:id g)])]
+             (when (or (not= (:x b) (:x g)) (not= (:y b) (:y g)))
+               (swap! S (fn [s] (-> s (assoc-in [:patch :boxes (:id g) :x] (:x g)) (assoc-in [:patch :boxes (:id g) :y] (:y g)))))
+               (dispatch! [:move-box (:id g) (:x b) (:y b)])))
+      :draw (when (> (count (:px g)) 1)
+              (dispatch! [:mark (next-id (:marks p) "a") {:layer (:into s) :kind :line :pts (mapv (partial anchor p) (:px g))}]))
+      :arrow (let [[a b] (:px g)]
+               (when (> (js/Math.hypot (- (first b) (first a)) (- (second b) (second a))) 8)
+                 (dispatch! [:mark (next-id (:marks p) "a") {:layer (:into s) :kind :arrow :pts [(anchor p a) (anchor p b)]}])))
+      nil)))
+
+;; ════════ loop ════════
+
+(defonce last-t (atom nil))
+(defonce last-draw (atom 0))
+
+(defn frame! [ts]
+  (let [t (/ ts 1000) dt (if @last-t (min 0.1 (- t @last-t)) 0)]
+    (reset! last-t t)
+    (ensure-rt!)
+    (tick! dt)
+    (when (> (- t @last-draw) 0.03)
+      (reset! last-draw t)
+      (set! (.-innerHTML ($ "patch")) (patch-svg @S)))
+    (bg-frame!)
+    (js/requestAnimationFrame frame!)))
+
+;; ════════ wiring ════════
+
+(defn on [id ev f] (.addEventListener ($ id) ev f))
+
+(defn set-tool! [t]
+  (swap! S assoc :tool t)
+  (doseq [k [:move :draw :arrow :text :erase]] (.setAttribute ($ (str "tool-" (name k))) "aria-pressed" (str (= k t))))
+  (.setAttribute ($ "stage") "data-tool" (name t)))
+
+(defn set-mode! [m]
+  (swap! S assoc :mode m)
+  (doseq [k [:compose :perform]] (.setAttribute ($ (str "mode-" (name k))) "aria-pressed" (str (= k m))))
+  (.setAttribute ($ "stage") "data-mode" (name m)))
+
+(defn apply-fs! []
+  (let [txt (.-value ($ "fs")) err (.setShader js/KGL txt)]
+    (set! (.-textContent ($ "fs-err")) (or err ""))
+    (when-not err (dispatch! [:background {:fs txt}]))))
+
+(defn wire! []
+  (doseq [k [:move :draw :arrow :text :erase]] (on (str "tool-" (name k)) "click" (fn [_] (set-tool! k))))
+  (doseq [k [:compose :perform]] (on (str "mode-" (name k)) "click" (fn [_] (set-mode! k))))
+  (on "undo" "click" (fn [_] (undo!)))
+  (on "into" "change" (fn [e] (swap! S assoc :into (keyword (.. e -target -value)))))
+  (on "layers" "click"
+      (fn [e] (let [el (.-target e) l (keyword (.. el -dataset -l)) act (.. el -dataset -act)]
+                (when (and l act)
+                  (let [cur (get-in @S [:patch :layers l])]
+                    (case act
+                      "z" (dispatch! [:layer l (update cur :z (fn [z] (if (= z :over) :under :over)))])
+                      ("compose" "perform") (dispatch! [:layer l (update cur :modes (fn [ms] (if (.-checked el) (conj ms (keyword act)) (disj ms (keyword act)))))])
+                      nil))))))
+  (on "bg-in" "change" (fn [e] (dispatch! [:background {:in (vec (map keyword (remove str/blank? (str/split (.. e -target -value) #"[\s,:]+"))))}])))
+  (on "bg-op" "input" (fn [e] (.setProperty (.. ($ "stage") -style) "--bg-opacity" (.. e -target -value))))
+  (on "fs-apply" "click" (fn [_] (apply-fs!)))
+  (on "fs" "keydown" (fn [e] (when (and (= "Enter" (.-key e)) (or (.-metaKey e) (.-ctrlKey e))) (.preventDefault e) (apply-fs!))))
+  (on "fs-reset" "click" (fn [_] (set! (.-value ($ "fs")) fs0) (apply-fs!)))
+  (on "reset" "click" (fn [_] (dispatch! [:load patch0]) (set! (.-value ($ "fs")) fs0) (apply-fs!)
+                        (set! (.-value ($ "bg-in")) "b1 b2 b3")))
+  (let [sv ($ "patch")]
+    (.addEventListener sv "pointerdown" on-down)
+    (.addEventListener sv "pointermove" on-move)
+    (.addEventListener sv "pointerup" on-up)
+    (.addEventListener sv "pointercancel" on-up))
+  (.addEventListener js/document "keydown"
+                     (fn [e] (when-not (contains? #{"TEXTAREA" "INPUT" "SELECT"} (.. e -target -tagName))
+                               (when (and (or (.-metaKey e) (.-ctrlKey e)) (= "z" (str/lower-case (.-key e)))) (.preventDefault e) (undo!)))))
+  (let [retheme (fn [] (.readColors js/KGL))]
+    (.addEventListener (.matchMedia js/window "(prefers-color-scheme: dark)") "change" retheme)
+    (.observe (js/MutationObserver. retheme) (.-documentElement js/document) #js {:attributes true :attributeFilter #js ["data-theme"]})))
+
+(defn start! []
+  (reset! gl-ok (try (boolean (.init js/KGL ($ "gl"))) (catch :default e (js/console.error e) false)))
+  (let [p (:patch @S)]
+    (set! (.-value ($ "fs")) (get-in p [:background :fs] fs0))
+    (set! (.-value ($ "bg-in")) (str/join " " (map name (get-in p [:background :in])))))
+  (if @gl-ok
+    (when-let [err (.setShader js/KGL (.-value ($ "fs")))] (set! (.-textContent ($ "fs-err")) err))
+    (set! (.-textContent ($ "fs-err")) "WebGL2 is not available here: the patch works without its background."))
+  (wire!)
+  (render-panel!)
+  (js/requestAnimationFrame frame!))
+
+(start!)
+</script>

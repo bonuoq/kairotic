@@ -11,6 +11,7 @@ publicados en npm bajo el ámbito `@kairotic` y servidos dentro de claude.ai por
 | [`@kairotic/spatial`](spatial/) | `pan~ [posición]` panorama estéreo · `space~ [x y]` colocación binaural alrededor de quien escucha |
 | [`@kairotic/controls`](controls/) | `knob [mín máx inicial] [log] [nombre]` un control giratorio con su propia vista en el patch · `keyboard [grave teclas] [hold]` un teclado MIDI virtual con velocidad y acordes, para synth~ y faust~ |
 | [`@kairotic/analysis`](analysis/) | `features~ [ms] [descriptor …]` descriptores (rms, centroid, flatness, mfcc… con Meyda) · `pitch~ [lo hi]` la altura, por YIN · `onset~ [umbral] [ms]` los comienzos de los sonidos · `chroma~` las 12 clases de altura · `spectrum~ [lo hi]` el espectro, dibujado · `transcribe [bpm] [notes|glide]` lo que oye pitch~, en un freqt · `monitor [segundos] [nombre …]` cualquier flujo de mensajes, dibujado en el tiempo |
+| [`@kairotic/theory`](theory/) | `pcclock [notas]` un conjunto de clases de altura en la esfera del reloj, su forma prima, vector interválico y simetrías · `fourier [notas]` los seis coeficientes de Fourier de una distribución de clases de altura · `tonnetz [notas]` las tríadas en el Tonnetz y el camino de la armonía — dibujados en el patch, y se pueden pulsar |
 
 Previstos: `cac`, `notation`.
 

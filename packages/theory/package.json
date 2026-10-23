@@ -1,0 +1,40 @@
+{
+  "name": "@kairotic/theory",
+  "version": "0.1.0",
+  "description": "Kairotic music-theory views: pcclock (a pitch-class set on the clock, its prime form and symmetries), fourier (the six Fourier coefficients of a pitch-class distribution) and tonnetz (triads on the Tonnetz and the path of the harmony), drawn in the patch and clickable",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/theory"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages#readme",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs theory",
+    "prepublishOnly": "node ../build.mjs theory"
+  },
+  "keywords": [
+    "kairotic",
+    "music",
+    "music theory",
+    "pitch-class set",
+    "tonnetz",
+    "fourier",
+    "dft",
+    "neo-riemannian"
+  ]
+}

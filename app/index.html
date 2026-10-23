@@ -113,7 +113,7 @@ a.act { text-decoration: none; display: inline-block; }
 .embed-pop .ep-what, .embed-pop .ep-note { margin: 0; color: var(--ink-soft); }
 body.embed .app { height: 100vh; height: 100dvh; min-height: 0; padding: 0; gap: 0; grid-template-rows: minmax(0, 1fr); }
 body.embed header, body.embed .manager, body.embed .pane[aria-label="Projections"], body.embed .pane[aria-label="History"],
-body.embed .pane.repl, body.embed #side-split, body.embed .pane-head .hint, body.embed #perform-toggle, body.embed #perform-info, body.embed #snap-btn, body.embed #embed-btn, body.embed #embed-pop, body.embed #lesson-back { display: none !important; }
+body.embed .pane.repl, body.embed #side-split, body.embed .pane-head .hint, body.embed #perform-toggle, body.embed #annot-toggle, body.embed #annot-bar, body.embed #perform-info, body.embed #snap-btn, body.embed #embed-btn, body.embed #embed-pop, body.embed #lesson-back { display: none !important; }
 body.embed .work { display: flex; min-height: 0; height: 100%; }
 body.embed .pane { flex: 1; border: 0; border-radius: 0; }
 body.embed .pane-head { padding: 5px 8px; }
@@ -174,6 +174,22 @@ body.present .trust-bar { position: absolute; z-index: 5; left: 6px; top: 6px; m
 #canvas .box.act.ctl, #canvas .ctl-area { cursor: ns-resize; }
 #canvas .ctl-area { fill: transparent; }
 #canvas .shapes, #canvas .shapes * { pointer-events: none; }
+/* layers (Study 26): marks and projections, over or under the boxes; they do not take the pointer */
+#layers-under, #layers-over, #layers-under *, #layers-over * { pointer-events: none; }
+#canvas .amark { fill: none; stroke: var(--kairos); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#canvas .amark.new { stroke: var(--accent); stroke-dasharray: 4 3; }
+#canvas .ahead { fill: var(--kairos); stroke: none; }
+#canvas .atext { fill: var(--kairos); font: italic 15px var(--f-ui); }
+#canvas .proj { opacity: 0.9; }
+.annot-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 10px; border-bottom: 1px solid var(--rule); background: var(--box); font-size: 12px; }
+.annot-bar .spacer { flex: 1; }
+.annot-tools { display: inline-flex; gap: 4px; }
+.annot-tools .act[aria-pressed="true"] { border-color: var(--kairos); color: var(--kairos); }
+.annot-bar input:not([type]) { font: inherit; padding: 3px 6px; border: 1px solid var(--rule); border-radius: 4px; background: var(--sheet); color: var(--ink); min-width: 0; }
+#annot-text { flex: 1 1 160px; } #annot-layer { width: 8em; }
+.annot-l { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-soft); }
+body.annotating #canvas { cursor: crosshair; }
+#annot-toggle.on { border-color: var(--kairos); color: var(--kairos); }
 #canvas .shape { fill: none; stroke: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; font-family: var(--f-code); }
 #canvas .shape.s-ink { stroke: var(--ink); } #canvas .shape.f-ink { fill: var(--ink); }
 #canvas .shape.s-soft { stroke: var(--ink-soft); } #canvas .shape.f-soft { fill: var(--ink-soft); }
@@ -484,7 +500,7 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
 <div class="app">
   <header>
     <h1>Kairotic</h1>
-    <span class="sub" id="edition">0.1.0-alpha · a collaborative patcher of music where the patch and its code are one work, with its whole history · <a href="https://github.com/bonuoq/kairotic/blob/main/docs/README.md" target="_blank" rel="noopener">docs</a></span>
+    <span class="sub" id="edition">0.2.0-alpha · a collaborative patcher of music where the patch and its code are one work, with its whole history · <a href="https://github.com/bonuoq/kairotic/blob/main/docs/README.md" target="_blank" rel="noopener">docs</a></span>
     <span class="status" id="status">loading ClojureScript…</span>
     <span class="work-bar"><span id="work-name">No work open</span><button class="act" id="open-manager">Sessions</button></span>
   </header>
@@ -511,6 +527,7 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
           <span id="transport-info">engine stopped</span>
           <button class="act" id="pres-toggle" title="Presentation: only the presented boxes, where the performer sees them (with boxes selected, it offers to present them where they are)">Present</button>
           <button class="act" id="perform-toggle" title="Perform: rehearse, try and improvise outside the history">Perform</button>
+          <button class="act" id="annot-toggle" title="Annotate: draw lines, arrows and texts on a layer of the patch, anchored to the boxes nearest them">Annotate</button>
           <span id="perform-info" class="perform-info" hidden></span>
           <button class="act" id="embed-btn" title="Share or export this patch (or this tutorial step): a link, or an iframe to put it in another page">Share/Export</button>
           <button class="act embed-only" id="fs-btn" title="Fullscreen">⛶</button>
@@ -564,6 +581,22 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
         </div>
         <div class="lesson-note" id="lesson-note"></div>
       </div>
+      <div class="annot-bar" id="annot-bar" hidden>
+        <span class="annot-tools" role="group" aria-label="Annotation tool">
+          <button class="act" data-atool="draw" title="Draw a line by hand">Draw</button>
+          <button class="act" data-atool="arrow" title="An arrow, from where you press to where you let go">Arrow</button>
+          <button class="act" data-atool="text" title="Click where the text goes">Text</button>
+          <button class="act" data-atool="erase" title="Click or drag over marks to erase them">Erase</button>
+        </span>
+        <input id="annot-text" placeholder="text for Text" spellcheck="true" aria-label="Text of the next text mark">
+        <label class="annot-l">layer <input id="annot-layer" list="annot-layers" spellcheck="false" aria-label="Layer"></label>
+        <datalist id="annot-layers"></datalist>
+        <button class="act" id="annot-z" title="Over or under the boxes">over</button>
+        <label class="annot-l"><input type="checkbox" id="annot-show-patch"> patch</label>
+        <label class="annot-l"><input type="checkbox" id="annot-show-present"> presentation</label>
+        <span class="spacer"></span>
+        <button class="act" id="annot-done">Done</button>
+      </div>
       <div class="canvas-wrap" id="canvas-wrap">
         <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -572,8 +605,10 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
             </pattern>
           </defs>
           <rect class="bg" x="0" y="0" width="100%" height="100%"></rect>
+          <g id="layers-under"></g>
           <g id="scene"></g>
           <g id="cursors"></g>
+          <g id="layers-over"></g>
         </svg>
       </div>
     </section>
@@ -718,6 +753,7 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
       <span>signal: <code>phasor~ [hz]</code> · <code>reader~ [x|y|path] [voices] [gate]</code> (position signal 0…1 on the left, buffer on the right; a voice keeps its last value where nothing passes; <code>gate</code> adds one outlet per voice, 1 where it sounds, 0 where not) · <code>sig~ [value]</code> · <code>osc~</code> and <code>gain~</code> take a signal on their frequency / factor · trajectories: <code>reader path [stroke]</code> (0…1 along a stroke → [x y])</span>
       <span>Claude: the <b>Claude</b> tab, or <code>(ask-component "a slow LFO with its waveform drawn")</code> · with a component box selected, “change the selected component” · it uses your own Claude account</span>
       <span>packages: writing a class of an official package brings the package into the work, as one component box pinned to its version · <code>@kairotic/synth</code>: <code>adsr~ [a d s r]</code>, <code>synth~</code> · <code>@kairotic/spatial</code>: <code>pan~ [pos]</code>, <code>space~ [x y]</code> · <code>@kairotic/analysis</code>: <code>pitch~</code>, <code>onset~</code>, <code>chroma~</code>, <code>features~</code>, <code>spectrum~</code> · <code>(packages)</code> · <code>(add-package! "@kairotic/synth")</code> · a component uses the core through <code>api/…</code> (<code>api/clamp</code>, <code>api/worklet-node</code>…)</span>
+      <span>annotations (Annotate, above the patch): <code>(mark :notes {:kind :arrow :pts [[:b1 120 10] [:b4 -6 10]]})</code> · <code>(mark :notes {:kind :text :at [:patch 300 40] :txt "…"})</code> (points anchored to a box, <code>[:bN dx dy]</code>, or to the paper) · <code>(unmark :a1)</code> · <code>(layer :notes {:z :under :show #{:present}})</code> · <code>(project :b9 :viz [40 40 800 480])</code> · <code>(annotate :arrow)</code> · drawing: <code>draw [w h]</code> (shapes from messages: <code>msg circle 40 40 10 accent hit sun</code>) · theory: <code>pcclock</code> <code>fourier</code> <code>tonnetz</code> (<code>@kairotic/theory</code>)</span>
       <span>presentation: <code>(present :b4 x y)</code> · <code>(present :b4)</code> · <code>(present-in-place :b3 :b4)</code> · <code>(resize :b3 640 300)</code> · <code>(side-panel false)</code> · <code>(release)</code> · <code>(forget-points [["id" 3]])</code> · <code>(store-presets! :b18)</code> · <code>(unpresent :b4)</code> · <code>(presentation true)</code> · a sub-patch with presented boxes is a panel of them · <code>(send-to! :b7.b4 0.5)</code></span>
       <span><code>(box "text" x y)</code></span>
       <span><code>(connect :b1 0 :b2 0)</code></span>

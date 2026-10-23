@@ -291,9 +291,9 @@
 (defn ctl-gesture!
   "Calls the :gesture of the box being dragged; if the value changes, sends it to its inlet 0."
   [x y fine]
-  (when-let [{:keys [f b ox oy x0 y0 start] :as cd} (:ctldrag @ui)]
+  (when-let [{:keys [f b ox oy x0 y0 start hit] :as cd} (:ctldrag @ui)]
     (let [v (try ((:gesture (box-def b))
-                  (assoc (ctl-m* f b) :start start :x (- x ox) :y (- y oy) :dx (- x x0) :dy (- y y0) :fine (boolean fine)))
+                  (assoc (ctl-m* f b) :start start :x (- x ox) :y (- y oy) :dx (- x x0) :dy (- y y0) :fine (boolean fine) :hit hit))
                  (catch :default e (js/console.error "gesture" e) nil))]
       (swap! ui update :ctldrag assoc :x x :y y :fine (boolean fine))
       (when (and (some? v) (not= v (:v cd)))
@@ -303,11 +303,11 @@
 (defn ctl-release-value
   "On release, the :gesture of the box is asked once more with :up true; what it returns is the value
   that stays in the history. A :gesture that ignores :up returns the last value, as before."
-  [{:keys [f b ox oy x0 y0 x y fine start v]}]
+  [{:keys [f b ox oy x0 y0 x y fine start v hit]}]
   (let [x (or x x0) y (or y y0)
         u (try ((:gesture (box-def b))
                 (assoc (ctl-m* f b) :start start :x (- x ox) :y (- y oy) :dx (- x x0) :dy (- y y0)
-                       :fine (boolean fine) :up true))
+                       :fine (boolean fine) :up true :hit hit))
                (catch :default e (js/console.error "gesture" e) v))]
     (if (some? u) u v)))
 
@@ -338,7 +338,9 @@
   ([f b ox oy x y echo] (start-ctl-drag! f b ox oy x y echo false))
   ([f b ox oy x y echo fine]
    (swap! ui assoc :sel nil :nsel nil
-          :ctldrag {:f f :b b :ox ox :oy oy :x0 x :y0 y :start (second (shown-flat f)) :v nil :echo echo})
+          :ctldrag {:f f :b b :ox ox :oy oy :x0 x :y0 y :start (second (shown-flat f)) :v nil :echo echo
+                    ;; the part of its view pressed (a shape with :hit), worked out from the shapes themselves
+                    :hit (try (shp/hit-at (ctl-shapes* (ctl-m* f b) b) [(- x ox) (- y oy)]) (catch :default _ nil))})
    (ctl-gesture! x y fine)))
 
 ;; ───── the number typed, for each kind of control (issue #32) ─────
@@ -510,6 +512,139 @@
     (swap! ui assoc :marquee nil :insp nil :sel (sel-of (if (:add m) (into (:base m) hits) hits)))))
 
 ;; on a Mac, Ctrl+click is also a right click: on a box it opens the inspector, not the browser's menu
+;; ───── annotating (Study 26): marks drawn on a layer, anchored to the box nearest each point ─────
+;; (:annot @ui) = {:tool :draw|:arrow|:text|:erase :layer :notes} while the Annotate bar is open;
+;; (:adraw @ui) the mark being drawn. What is drawn stays in the history as (mark …).
+
+(defn drawn-boxes
+  "The boxes on screen now, with their place and size: [[id [x y w h]] …]."
+  []
+  (let [p (scene-of (current))]
+    (for [[id b] (:boxes p)] (let [[x y] (box-pos id b) [w h] (box-dims id b)] [id [x y w h]]))))
+
+(defn anchor-of
+  "Where a point of a mark is anchored: to the box nearest it (within 150 px), from its top-left corner, or to the paper."
+  [[x y]]
+  (let [d (fn [[bx by bw bh]] (js/Math.hypot (max 0 (- bx x) (- x (+ bx bw))) (max 0 (- by y) (- y (+ by bh)))))
+        [id [bx by] :as best] (first (sort-by (fn [[_ r]] (d r)) (drawn-boxes)))
+        r1 (fn [v] (/ (js/Math.round (* 10 v)) 10))]
+    (if (and best (< (d (second best)) 150))
+      [id (r1 (- x bx)) (r1 (- y by))]
+      [:patch (r1 x) (r1 y)])))
+
+(defn annot-layer [] (or (:layer (:annot @ui)) (first (keys (:layers (current)))) :notes))
+
+(defn mark-hit
+  "The mark of a shown layer under [x y], or nil."
+  [[x y :as q]]
+  (let [p (current)
+        sd (fn [[px py] [ax ay] [bx by]]
+             (let [dx (- bx ax) dy (- by ay) L2 (+ (* dx dx) (* dy dy))
+                   u (if (zero? L2) 0 (max 0 (min 1 (/ (+ (* (- px ax) dx) (* (- py ay) dy)) L2))))]
+               (js/Math.hypot (- px (+ ax (* u dx))) (- py (+ ay (* u dy))))))]
+    (->> (:marks p)
+         (filter (fn [[_ m]] (layer-shown? p (:layer m))))
+         (keep (fn [[id m]]
+                 (when-let [ps (mark-points p m)]
+                   (let [dist (if (= :text (:kind m))
+                                (let [[[tx ty]] ps] (if (and (<= (- tx 4) x (+ tx (* 8 (count (:txt m))))) (<= (- ty 16) y (+ ty 5))) 0 99))
+                                (apply min 99 (map (fn [a b] (sd q a b)) ps (rest ps))))]
+                     (when (< dist 8) [dist id])))))
+         (sort-by first) first second)))
+
+(defn annot-preview []
+  (when-let [{:keys [kind px]} (:adraw @ui)]
+    (let [pts (str/join " " (map (fn [[x y]] (str (js/Math.round x) "," (js/Math.round y))) px))]
+      (case kind
+        :draw (str "<polyline class=\"amark new\" points=\"" pts "\"></polyline>")
+        :arrow (str "<polyline class=\"amark new\" points=\"" pts "\"></polyline>")
+        ""))))
+
+(defn annot-down! [x y]
+  (let [{:keys [tool]} (:annot @ui) lid (annot-layer)]
+    (case tool
+      :draw (swap! ui assoc :adraw {:kind :draw :px [[x y]]})
+      :arrow (swap! ui assoc :adraw {:kind :arrow :px [[x y] [x y]]})
+      :text (let [t (str/trim (str (some-> ($ "annot-text") .-value)))]
+              (if (seq t)
+                (gesture! (str "(mark " lid " " (next-mark-id) " " (pr-str {:kind :text :at (anchor-of [x y]) :txt t}) ")"))
+                (some-> ($ "annot-text") .focus)))
+      :erase (do (swap! ui assoc :adraw {:kind :erase})
+                 (when-let [id (mark-hit [x y])] (gesture! (str "(unmark " id ")"))))
+      nil)
+    (render-layers!)))
+
+(defn annot-move! [x y]
+  (when-let [{:keys [kind px]} (:adraw @ui)]
+    (case kind
+      :draw (let [[lx ly] (peek px)]
+              (when (> (js/Math.hypot (- x lx) (- y ly)) 3)
+                (swap! ui update-in [:adraw :px] conj [x y])
+                (render-layers!)))
+      :arrow (do (swap! ui assoc-in [:adraw :px 1] [x y]) (render-layers!))
+      :erase (when-let [id (mark-hit [x y])] (gesture! (str "(unmark " id ")")))
+      nil)))
+
+(defn annot-up! []
+  (when-let [{:keys [kind px]} (:adraw @ui)]
+    (swap! ui assoc :adraw nil)
+    (let [lid (annot-layer)]
+      (case kind
+        :draw (when (> (count px) 1)
+                (let [ps (cv/simplify (vec px) 1.2)]
+                  (gesture! (str "(mark " lid " " (next-mark-id) " " (pr-str {:kind :line :pts (mapv anchor-of ps)}) ")"))))
+        :arrow (let [[a b] px]
+                 (when (> (js/Math.hypot (- (first b) (first a)) (- (second b) (second a))) 8)
+                   (gesture! (str "(mark " lid " " (next-mark-id) " " (pr-str {:kind :arrow :pts [(anchor-of a) (anchor-of b)]}) ")"))))
+        nil))
+    (render-layers!)))
+
+(defn render-annot-bar!
+  "The Annotate bar: its tool, its layer and how that layer is shown."
+  []
+  (let [bar ($ "annot-bar") a (:annot @ui)]
+    (when bar
+      (set! (.-hidden bar) (nil? a))
+      (.toggle (.-classList ($ "annot-toggle")) "on" (some? a))
+      (.toggle (.-classList js/document.body) "annotating" (some? (:tool a)))
+      (when a
+        (let [p (current) lid (annot-layer) l (or (get-in p [:layers lid]) layer-default)
+              inp ($ "annot-layer")]
+          (doseq [btn (array-seq (.querySelectorAll bar "[data-atool]"))]
+            (.setAttribute btn "aria-pressed" (str (= (name (or (:tool a) "")) (.. btn -dataset -atool)))))
+          (when-not (= inp (.-activeElement js/document)) (set! (.-value inp) (name lid)))
+          (set! (.-innerHTML ($ "annot-layers")) (apply str (for [k (sort (map name (keys (:layers p))))] (str "<option value=\"" (esc k) "\"></option>"))))
+          (set! (.-textContent ($ "annot-z")) (name (:z l)))
+          (set! (.-checked ($ "annot-show-patch")) (contains? (:show l) :patch))
+          (set! (.-checked ($ "annot-show-present")) (contains? (:show l) :present)))))))
+
+(defn annotate
+  "Opens the Annotate bar (with a tool: :draw :arrow :text :erase), or closes it: (annotate) · (annotate :arrow) · (annotate false)."
+  ([] (annotate (if (:annot @ui) false :draw)))
+  ([tool]
+   (if (false? tool)
+     (swap! ui assoc :annot nil :adraw nil)
+     (swap! ui assoc :annot {:tool (keyword tool) :layer (annot-layer)} :sel nil))
+   (render-layers!)
+   (boolean (:annot @ui))))
+
+(.addEventListener ($ "annot-toggle") "click" (fn [_] (annotate)))
+(.addEventListener ($ "annot-done") "click" (fn [_] (annotate false)))
+(.addEventListener ($ "annot-bar") "click"
+  (fn [e] (when-let [b (.closest (.-target e) "[data-atool]")] (annotate (.. b -dataset -atool)))))
+(.addEventListener ($ "annot-layer") "change"
+  (fn [e] (let [v (str/trim (.. e -target -value))]
+            (when (re-matches #"[A-Za-z][A-Za-z0-9_-]*" v) (swap! ui assoc-in [:annot :layer] (keyword v)))
+            (render-layers!))))
+(.addEventListener ($ "annot-z") "click"
+  (fn [_] (let [lid (annot-layer) l (or (get-in (current) [:layers lid]) layer-default)]
+            (gesture! (str "(layer " lid " {:z " (if (= :over (:z l)) ":under" ":over") "})")))))
+(doseq [[el k] [["annot-show-patch" :patch] ["annot-show-present" :present]]]
+  (.addEventListener ($ el) "change"
+    (fn [e] (let [lid (annot-layer) l (or (get-in (current) [:layers lid]) layer-default)
+                  show ((if (.. e -target -checked) conj disj) (:show l) k)]
+              (gesture! (str "(layer " lid " {:show " (pr-str show) "})"))))))
+
 (.addEventListener svg "contextmenu"
   (fn [e] (when (and (.-ctrlKey e) (closest e ".box")) (.preventDefault e))))
 
@@ -519,6 +654,10 @@
   (fn [e]
     (let [[x y] (pt e) mod? (or (.-metaKey e) (.-ctrlKey e))]
       (cond
+        ;; annotating: the pointer draws marks (the Annotate bar is open)
+        (and (:annot @ui) (:tool (:annot @ui)))
+        (do (.preventDefault e) (annot-down! x y))
+
         (and (closest e ".port.out") (not (locked?)))
         (let [el (closest e ".port.out")]
           (.preventDefault e)
@@ -711,8 +850,9 @@
 
 (.addEventListener svg "pointermove"
   (fn [e]
-    (let [[x y] (pt e) {:keys [drag wire ldrag numdrag paramdrag ctldrag marquee resize]} @ui]
+    (let [[x y] (pt e) {:keys [drag wire ldrag numdrag paramdrag ctldrag marquee resize adraw]} @ui]
       (cond
+        adraw (annot-move! x y)
         resize (let [[w0 h0] size-min [w1 h1] size-max
                      w (js/Math.round (max w0 (min w1 (+ (:w0 resize) (- x (:x0 resize))))))
                      h (js/Math.round (max h0 (min h1 (+ (:h0 resize) (- y (:y0 resize))))))]
@@ -766,8 +906,9 @@
         (gesture! (str "(stroke " box " " (pts-code ps) ")"))))))
 
 (defn end-gesture! [e]
-  (let [{:keys [drag wire ldrag numdrag paramdrag ctldrag marquee resize]} @ui]
+  (let [{:keys [drag wire ldrag numdrag paramdrag ctldrag marquee resize adraw]} @ui]
     (cond
+      adraw (annot-up!)
       resize (do (swap! ui assoc :resize nil)
                  (if (:moved resize)
                    (gesture! (str "(resize " (:id resize) " " (:w resize) " " (:h resize) ")"))
@@ -821,7 +962,7 @@
               (repl-print! "out" (esc (str "; and back: the edits made on " to " go to " from " (the dashed line)"))))))))))
 
 (.addEventListener svg "pointerup" end-gesture!)
-(.addEventListener svg "pointerleave" (fn [_] (when (or (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui) (:paramdrag @ui) (:ctldrag @ui) (:marquee @ui) (:resize @ui)) (end-gesture! nil))))
+(.addEventListener svg "pointerleave" (fn [_] (when (or (:adraw @ui) (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui) (:paramdrag @ui) (:ctldrag @ui) (:marquee @ui) (:resize @ui)) (end-gesture! nil))))
 
 (.addEventListener svg "dblclick"
   (fn [e]

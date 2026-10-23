@@ -1,6 +1,6 @@
 # Kairotic
 
-*[Read in English](README.md)* · **0.1.0-alpha** · [abrir la app](https://bonuoq.github.io/kairotic/) · [documentación](docs/README.es.md)
+*[Read in English](README.md)* · **0.2.0-alpha** · [abrir la app](https://bonuoq.github.io/kairotic/) · [documentación](docs/README.es.md)
 
 Un espacio colaborativo visual-acústico para improvisación, composición e interpretación musical:
 un patcher donde **código y patch son la misma obra**, con una historia ramificada y compartida,

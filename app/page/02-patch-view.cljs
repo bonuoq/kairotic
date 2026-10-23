@@ -430,6 +430,66 @@
                          "<text class=\"pval\" x=\"" (+ x (- w 8)) "\" y=\"" (+ yy 12) "\" text-anchor=\"end\">" (cv/fmt v) "</text>")))
                 params))))
 
+;; ───── layers (Study 26): marks anchored to boxes or to the paper, and projections ─────
+
+(defn view-name "Where the patch is seen now: :patch or :present (the presentation)." [] (if @pres-mode :present :patch))
+
+(defn layer-shown? [p lid] (contains? (get-in p [:layers lid :show] #{:patch :present}) (view-name)))
+
+(defn resolve-anchor
+  "Where an anchor is on screen now: [x y], or nil if its box is not drawn (not presented, or gone)."
+  [p [a x y]]
+  (if (= a :patch)
+    [x y]
+    (when-let [b (get-in p [:boxes a])]
+      ;; in the presentation a box is where it is presented, and one that is not presented is not there
+      (when-let [b (if @pres-mode (when (:present b) (view-box b)) b)]
+        (let [[bx by] (box-pos a b)] [(+ bx x) (+ by y)])))))
+
+(defn mark-points
+  "The points of a mark on screen, or nil if one of them is not (then the mark is not drawn)."
+  [p m]
+  (let [ps (map (fn [a] (resolve-anchor p a)) (if (= :text (:kind m)) [(:at m)] (:pts m)))]
+    (when (every? some? ps) (vec ps))))
+
+(defn mark-svg [p id m]
+  (when-let [ps (mark-points p m)]
+    (let [r (fn [v] (/ (js/Math.round (* 10 v)) 10)) pts (str/join " " (map (fn [[x y]] (str (r x) "," (r y))) ps))
+          idn (esc (name id))]
+      (case (:kind m)
+        :line (str "<polyline class=\"amark\" data-mark=\"" idn "\" points=\"" pts "\"></polyline>")
+        :arrow (let [[[x1 y1] [x2 y2]] ps a (js/Math.atan2 (- y2 y1) (- x2 x1)) L 11
+                     h (fn [d] [(- x2 (* L (js/Math.cos (+ a d)))) (- y2 (* L (js/Math.sin (+ a d))))])]
+                 (str "<line class=\"amark\" data-mark=\"" idn "\" x1=\"" (r x1) "\" y1=\"" (r y1) "\" x2=\"" (r x2) "\" y2=\"" (r y2) "\"></line>"
+                      "<polygon class=\"ahead\" points=\"" (str/join " " (map (fn [[x y]] (str (r x) "," (r y))) [[x2 y2] (h 0.4) (h -0.4)])) "\"></polygon>"))
+        :text (let [[[x y]] ps] (str "<text class=\"atext\" data-mark=\"" idn "\" x=\"" (r x) "\" y=\"" (r y) "\">" (esc (:txt m)) "</text>"))
+        ""))))
+
+(defn projection-svg
+  "The view of box id drawn again in rect, from what it shows now (its :draw or :view at that size)."
+  [p id {[x y w h] :rect}]
+  (when-let [b (get-in p [:boxes id])]
+    (when (own-view? b)
+      (let [sh (try (ctl-shapes* (assoc (ctl-m* (fid id) b) :w w :h h) b)
+                    (catch :default e [[:text {:x 8 :y 18 :fill :kairos :size 11} (str "✗ " (or (.-message e) e))]]))]
+        (str "<g class=\"proj shapes\" transform=\"translate(" x "," y ")\">" (shp/svg sh) "</g>")))))
+
+(defn layers-svg
+  "The layers of patch p that go at z (:over or :under the boxes), as seen now."
+  [p z]
+  (let [ls (filter (fn [[lid l]] (and (= z (:z l)) (layer-shown? p lid))) (sort-by key (:layers p)))
+        on (set (map first ls))]
+    (str (apply str (for [[id pr] (:projections p) :when (on (:layer pr))] (projection-svg p id pr)))
+         (apply str (for [[id m] (:marks p) :when (on (:layer m))] (mark-svg p id m))))))
+
+(declare annot-preview render-annot-bar!)
+
+(defn render-layers! []
+  (let [p (current) under ($ "layers-under") over ($ "layers-over")]
+    (when under (set! (.-innerHTML under) (layers-svg p :under)))
+    (when over (set! (.-innerHTML over) (str (layers-svg p :over) (annot-preview))))
+    (render-annot-bar!)))
+
 (defn render-overlay! []
   (let [p (scene-of (current))
         on (eng/running?)
@@ -448,6 +508,7 @@
                                        (when-let [[at {:keys [t]}] (last-shown id)]
                                          (when (and (number? t) (< (- (eng/now) at) 2)) (cursor-at p id t "cur2" false))))
                   (when (own-view? b) (ctl-overlay id b x y))))]
+    (render-layers!)
     (set! (.-innerHTML ($ "cursors"))
           (str (apply str parts)
                ;; in presentation the readers are usually hidden, but their cursors still show on the canvases

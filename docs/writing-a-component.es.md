@@ -78,10 +78,15 @@ keywords que empiezan por `$`, y `:derive` les da valor:
         [:text {:x 36 :y 72 :anchor :middle} :$label]]
 ```
 
-Figuras: `:rect` `:circle` `:line` `:arc` `:needle` `:path` `:text`. Los colores salen de una
-paleta que sigue el tema claro u oscuro: `:ink` `:soft` `:accent` `:kairos` `:bg` `:grid`, en
-`:stroke` y `:fill`; `:weight` es el grosor. Un hueco también puede nombrar un argumento (`:$min`) o
-`:shown`, `:w`, `:h`.
+Figuras: `:rect` `:circle` `:line` `:arc` `:needle` `:path` `:text`, `:curve` (un trazo suave que
+pasa por `:points`) y `:group` (`[:group {:x :y :rotate :scale} [figuras …]]`, figuras movidas, giradas y
+escaladas juntas). Los colores salen de una paleta que sigue el tema claro u oscuro: `:ink` `:soft`
+`:accent` `:kairos` `:bg` `:grid`, en `:stroke` y `:fill`; `:weight` es el grosor y `:opacity` (0…1)
+aclara cualquier figura. Un hueco también puede nombrar un argumento (`:$min`) o `:shown`, `:w`, `:h`.
+
+Una figura con **`:hit k`** se puede pulsar: el `:gesture` de la caja recibe `:hit k` (la figura de
+encima bajo la pulsación, o el grupo con `:hit` que la contiene), así una vista puede tener partes que se
+pulsan —los nodos del Tonnetz de `@kairotic/theory`, las figuras de una caja `draw`.
 
 `:shown` es lo último que la caja devolvió como `:show`. `:gesture` convierte un arrastre en un valor:
 

@@ -11,7 +11,7 @@ name: publish-packages
 
 on:
   push:
-    tags: ["synth-v*", "spatial-v*", "cac-v*", "notation-v*", "controls-v*", "analysis-v*", "relay-v*"]
+    tags: ["synth-v*", "spatial-v*", "cac-v*", "notation-v*", "controls-v*", "analysis-v*", "theory-v*", "relay-v*"]
 
 jobs:
   publish:

@@ -169,7 +169,8 @@
    "@kairotic/spatial"  {:version "0.1.1" :classes #{"pan~" "space~"}   :local "kairotic/packages/spatial.mjs"}
    "@kairotic/controls" {:version "0.1.1" :classes #{"knob" "keyboard"} :local "kairotic/packages/controls.mjs"}
    "@kairotic/analysis" {:version "0.3.0" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "monitor"}
-                         :local "kairotic/packages/analysis.mjs"}})
+                         :local "kairotic/packages/analysis.mjs"}
+   "@kairotic/theory"   {:version "0.1.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}})
 
 (defn package-of
   "The official package that defines class k: [name info], or nil."
