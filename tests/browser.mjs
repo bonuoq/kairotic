@@ -25,56 +25,90 @@ import { layers } from "./layers.mjs";
 import { theory } from "./theory.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
+const base = url.replace(/tests\.html.*$/, "");
 // sound without a click, and a fake microphone (a beep) that is allowed without asking: for adc~
 const browser = await chromium.launch({ args: ["--autoplay-policy=no-user-gesture-required",
                                                "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] });
-const page = await browser.newPage();
-page.on("pageerror", (e) => console.error("page error:", e.message));
-await page.goto(url);
-await page.waitForFunction(() => window.kairoticTests, null, { timeout: 90000 });
-const r = await page.evaluate(() => window.kairoticTests);
-// the app itself loads, every part of the page, without an error (e.g. a symbol used before it is defined)
-const app = await browser.newPage();
-const appErrors = [];
-app.on("pageerror", (e) => appErrors.push(e.message));
-// without a relay (?peer=off): the tests do not write to the site's relay, and do not depend on it
-await app.goto(url.replace(/tests\.html.*$/, "") + "?peer=off");
-await app.waitForFunction(() => {
-  try { return /local|Error|work/.test(document.getElementById("status").textContent) &&
-               scittle.core.eval_string("(in-ns 'user) (fn? feedback)") === true; }
-  catch (_) { return /Error/.test((document.getElementById("status") || {}).textContent || ""); }
-}, null, { timeout: 90000 }).catch(() => {});
-const status = await app.evaluate(() => document.getElementById("status").textContent);
-const loaded = await app.evaluate(() => { try { return scittle.core.eval_string("(in-ns 'user) (fn? feedback)") === true; } catch (_) { return false; } });
-if (!loaded || /Error/.test(status)) r.failed.push({ suite: "app", label: "the app loads", detail: status + " " + appErrors.join("; ") });
-r.total += 1;
-// gestures on the patch (tests/gestures.mjs), in the app just loaded
-if (loaded) {
-  const check = (label, ok, detail) => { r.total += 1; if (!ok) r.failed.push({ suite: "gestures", label, detail: detail || "" }); };
-  try { await gestures(app, check); } catch (e) { check("the gestures ran", false, String(e && e.message || e)); }
-  try { await perform(app, check); } catch (e) { check("the Perform tests ran", false, String(e && e.message || e)); }
-  try { await editor(app, check); } catch (e) { check("the editor tests ran", false, String(e && e.message || e)); }
-  try { await jam(app, check); } catch (e) { check("the jam tests ran", false, String(e && e.message || e)); }
-  try { await corefns(app, check); } catch (e) { check("the function box tests ran", false, String(e && e.message || e)); }
-  try { await feedback(app, check); } catch (e) { check("the feedback tests ran", false, String(e && e.message || e)); }
-  try { await canvasmsg(app, check); } catch (e) { check("the canvas message tests ran", false, String(e && e.message || e)); }
-  try { await views(app, check); } catch (e) { check("the view tests ran", false, String(e && e.message || e)); }
-  try { await recipe(app, check); } catch (e) { check("the recipe tests ran", false, String(e && e.message || e)); }
-  try { await numinput(app, check); } catch (e) { check("the number input tests ran", false, String(e && e.message || e)); }
-  try { await presets(app, check); } catch (e) { check("the presets tests ran", false, String(e && e.message || e)); }
-  try { await present(app, check); } catch (e) { check("the present tests ran", false, String(e && e.message || e)); }
-  try { await audioin(app, check); } catch (e) { check("the audio input tests ran", false, String(e && e.message || e)); }
-  try { await sounds(app, check); } catch (e) { check("the sound tests ran", false, String(e && e.message || e)); }
-  try { await analysis(app, check); } catch (e) { check("the analysis tests ran", false, String(e && e.message || e)); }
-  try { await record(app, check); } catch (e) { check("the record tests ran", false, String(e && e.message || e)); }
-  try { await layout(app, check); } catch (e) { check("the layout tests ran", false, String(e && e.message || e)); }
-  try { await relays(app, check); } catch (e) { check("the relay tests ran", false, String(e && e.message || e)); }
-  try { await layers(app, check); } catch (e) { check("the layer tests ran", false, String(e && e.message || e)); }
-  try { await theory(app, check); } catch (e) { check("the theory tests ran", false, String(e && e.message || e)); }
+const r = { total: 0, failed: [] };
+const checker = (suite) => (label, ok, detail) => { r.total += 1; if (!ok) r.failed.push({ suite, label, detail: detail || "" }); };
+const message = (e) => String(e && e.message || e);
+// how long each part takes, printed at the end (and in the run's summary on GitHub Actions)
+const timings = [];
+const timed = async (name, fn) => {
+  const t0 = Date.now();
+  try { return await fn(); } finally { timings.push({ name, ms: Date.now() - t0 }); }
+};
+
+// The four blocks below run at the same time: each has a browser context of its own (browser.newPage
+// makes one, browser.newContext too), so they share no page, localStorage or IndexedDB. Inside the app
+// block the suites still run one after another, in this order, on the same page.
+
+// 1. tests/run.html: the ClojureScript tests, in the page
+async function unit() {
+  const check = checker("tests.html");
+  try {
+    const page = await browser.newPage();
+    page.on("pageerror", (e) => console.error("page error:", e.message));
+    await page.goto(url);
+    await page.waitForFunction(() => window.kairoticTests, null, { timeout: 90000 });
+    const t = await page.evaluate(() => window.kairoticTests);
+    r.total += t.total;
+    r.failed.push(...t.failed);
+  } catch (e) { check("tests.html ran", false, message(e)); }
+}
+
+// 2. the app itself loads, every part of the page, without an error (e.g. a symbol used before it is
+// defined); then the gestures and the rest, one suite after another, in the app just loaded
+const appSuites = [
+  ["gestures", gestures, "the gestures ran"],
+  ["perform", perform, "the Perform tests ran"],
+  ["editor", editor, "the editor tests ran"],
+  ["jam", jam, "the jam tests ran"],
+  ["corefns", corefns, "the function box tests ran"],
+  ["feedback", feedback, "the feedback tests ran"],
+  ["canvasmsg", canvasmsg, "the canvas message tests ran"],
+  ["views", views, "the view tests ran"],
+  ["recipe", recipe, "the recipe tests ran"],
+  ["numinput", numinput, "the number input tests ran"],
+  ["presets", presets, "the presets tests ran"],
+  ["present", present, "the present tests ran"],
+  ["audioin", audioin, "the audio input tests ran"],
+  ["sounds", sounds, "the sound tests ran"],
+  ["analysis", analysis, "the analysis tests ran"],
+  ["record", record, "the record tests ran"],
+  ["layout", layout, "the layout tests ran"],
+  ["relays", relays, "the relay tests ran"],
+  ["layers", layers, "the layer tests ran"],
+  ["theory", theory, "the theory tests ran"],
   // opens other works, then a local one again
-  try { await release(app, check); } catch (e) { check("the release tests ran", false, String(e && e.message || e)); }
+  ["release", release, "the release tests ran"],
   // opens a lesson (another local work): last
-  try { await presetsTutorial(app, check); } catch (e) { check("the presets tutorial tests ran", false, String(e && e.message || e)); }
+  ["presetsTutorial", presetsTutorial, "the presets tutorial tests ran"],
+];
+async function app() {
+  const app = await browser.newPage();
+  const appErrors = [];
+  app.on("pageerror", (e) => appErrors.push(e.message));
+  const loaded = await timed("app · load", async () => {
+    // without a relay (?peer=off): the tests do not write to the site's relay, and do not depend on it
+    await app.goto(base + "?peer=off");
+    await app.waitForFunction(() => {
+      try { return /local|Error|work/.test(document.getElementById("status").textContent) &&
+                   scittle.core.eval_string("(in-ns 'user) (fn? feedback)") === true; }
+      catch (_) { return /Error/.test((document.getElementById("status") || {}).textContent || ""); }
+    }, null, { timeout: 90000 }).catch(() => {});
+    const status = await app.evaluate(() => document.getElementById("status").textContent);
+    const loaded = await app.evaluate(() => { try { return scittle.core.eval_string("(in-ns 'user) (fn? feedback)") === true; } catch (_) { return false; } });
+    if (!loaded || /Error/.test(status)) r.failed.push({ suite: "app", label: "the app loads", detail: status + " " + appErrors.join("; ") });
+    r.total += 1;
+    return loaded;
+  });
+  if (!loaded) return;
+  const check = checker("gestures");
+  for (const [name, suite, ran] of appSuites)
+    await timed("app · " + name, async () => {
+      try { await suite(app, check); } catch (e) { check(ran, false, message(e)); }
+    });
   // GUN keeps its copy of the graph in IndexedDB (RAD), not in localStorage, where 5 MB filled up
   // ("localStorage max!") and every save failed
   const store = await app.evaluate(() => ({ rad: !!window.RindexedDB, peers: (window.kairoticPeers || []).length,
@@ -83,19 +117,20 @@ if (loaded) {
   check("... and the tests ran without a relay", store.peers === 0, JSON.stringify(store));
   if (appErrors.length) check("no page errors during the gestures", false, appErrors.join("; "));
 }
-// a Release/Perform embed (issue #50), in a page of its own
-{
-  const check = (label, ok, detail) => { r.total += 1; if (!ok) r.failed.push({ suite: "embed", label, detail: detail || "" }); };
-  try { await embed(browser, url.replace(/tests\.html.*$/, ""), check); } catch (e) { check("the embed tests ran", false, String(e && e.message || e)); }
+
+// 3. a Release/Perform embed (issue #50), in a page of its own
+async function embedded() {
+  const check = checker("embed");
+  try { await embed(browser, base, check); } catch (e) { check("the embed tests ran", false, message(e)); }
 }
-// what an earlier version kept in localStorage ("gun/") reaches IndexedDB, in a browser of its own
-{
-  const check = (label, ok, detail) => { r.total += 1; if (!ok) r.failed.push({ suite: "storage", label, detail: detail || "" }); };
+
+// 4. what an earlier version kept in localStorage ("gun/") reaches IndexedDB, in a browser context of its own
+async function storage() {
+  const check = checker("storage");
   try {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
-    const base = url.replace(/tests\.html.*$/, "") + "?peer=off";
-    await page.goto(base);
+    await page.goto(base + "?peer=off");
     const soul = "kairotic-v1/data/migtest/doc1";
     await page.evaluate((soul) => {
       // the graph as GUN's localStorage adapter kept it: every node with its states, linked from the root
@@ -130,9 +165,24 @@ if (loaded) {
     });
     check("... and it is still there, from IndexedDB", again && again.hello === "localStorage", JSON.stringify(again));
     await ctx.close();
-  } catch (e) { check("the storage tests ran", false, String(e && e.message || e)); }
+  } catch (e) { check("the storage tests ran", false, message(e)); }
 }
+
+// KAIROTIC_TESTS_SERIAL=1 runs the blocks one after another, as before: to compare the times, or to
+// rule out that a failure comes from running them together
+const blocks = [["tests.html", unit], ["app", app], ["embed", embedded], ["storage", storage]];
+const t0 = Date.now();
+if (process.env.KAIROTIC_TESTS_SERIAL) for (const [name, fn] of blocks) await timed(name, fn);
+else await Promise.all(blocks.map(([name, fn]) => timed(name, fn)));
+const wall = Date.now() - t0;
 await browser.close();
+const secs = (ms) => (ms / 1000).toFixed(1) + " s";
+console.log("time:", timings.map((t) => `${t.name} ${secs(t.ms)}`).join(" · "), process.env.KAIROTIC_TESTS_SERIAL ? "· all, one after another:" : "· all, at the same time:", secs(wall));
+if (process.env.GITHUB_STEP_SUMMARY) {
+  const { appendFileSync } = await import("node:fs");
+  appendFileSync(process.env.GITHUB_STEP_SUMMARY, "### Browser tests: time\n\n| part | time |\n|---|---:|\n" +
+    timings.map((t) => `| ${t.name} | ${secs(t.ms)} |`).join("\n") + `\n| **all${process.env.KAIROTIC_TESTS_SERIAL ? ", one after another" : ", at the same time"}** | **${secs(wall)}** |\n`);
+}
 for (const f of r.failed) console.log("✗", f.suite ? f.suite + " · " : "", f.label, f.detail ? "— " + f.detail : "");
 // on GitHub Actions, each failure is also an annotation of the run (readable without the log)
 if (process.env.GITHUB_ACTIONS)
