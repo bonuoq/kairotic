@@ -1,0 +1,30 @@
+# Publishes the relay (relay/, npm @kairotic/relay) when a tag relay-vX.Y.Z is pushed, for example by
+# creating a GitHub release with that tag. Trusted publishing (OIDC), as publish-packages.yml: the first
+# version is published by hand once (cd relay && npm publish --access public), then on npmjs.com this
+# repository and this file (publish-relay.yml) are its trusted publisher.
+name: publish-relay
+
+on:
+  push:
+    tags: ["relay-v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Recent npm (trusted publishing needs npm ≥ 11.5.1)
+        run: npm install -g npm@latest
+      - name: Does the tag match the version
+        run: |
+          V=$(node -p "require('./relay/package.json').version")
+          test "relay-v$V" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} does not match version $V"; exit 1; }
+      - run: npm publish --access public
+        working-directory: relay

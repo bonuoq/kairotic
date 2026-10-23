@@ -10,7 +10,7 @@
 (defonce solo-works (atom {}))
 (defonce lobby-peers (atom []))
 (defonce subs (atom []))
-(defonce mgr (atom {:open true :confirm nil :busy nil :invite nil}))
+(defonce mgr (atom {:open true :confirm nil :busy nil :invite nil :relays false}))
 
 (defn room-name [id] (str "room-" (str/lower-case id)))
 
@@ -179,6 +179,11 @@
            (.toLocaleTimeString d "en-GB" #js {:hour "2-digit" :minute "2-digit"})))
     ""))
 
+(defn room-link
+  "A link to room id on this site, with this page's relays when they are not the site's."
+  [id]
+  (with-relay (str (.-origin js/location) (.-pathname js/location) "#room-" id)))
+
 (defn item-html [kind {:keys [id created origin] nm :name}]
   (let [k (name kind)
         current? (and (= kind (:kind @work)) (= id (:id @work)))
@@ -194,6 +199,9 @@
          "</span></div>"
          "<div class=\"item-acts\">"
          "<button class=\"act primary\" data-act=\"open\" data-kind=\"" k "\" data-id=\"" (esc id) "\">" (if current? "Back" "Open") "</button>"
+         (when (and (= kind :room) (pages?))
+           (str "<button class=\"act\" data-act=\"link\" data-kind=\"room\" data-id=\"" (esc id) "\" title=\"Copies a link to this room"
+                (when (relay-param) ", with the relay it is on") "\">Copy link</button>"))
          (when can-write
            (str (if (= kind :solo)
                   (str "<button class=\"act\" data-act=\"copy\" data-kind=\"" k "\" data-to=\"room\" data-id=\"" (esc id) "\" title=\"Creates a shared room with a copy of this work and its history\">Share a copy</button>")
@@ -245,7 +253,7 @@
             "No work open"))
     (when open
       ;; the lists update live: whatever you are typing in the forms is kept
-      (let [keep (into {} (for [k ["new-solo" "new-room"] :let [i ($ k)] :when i] [k (.-value i)]))
+      (let [keep (into {} (for [k ["new-solo" "new-room" "relay-url"] :let [i ($ k)] :when i] [k (.-value i)]))
             keep-ex (into {} (for [k ["new-solo-ex" "new-room-ex"] :let [i ($ k)] :when i] [k (.-checked i)]))
             focus (.. js/document -activeElement -id)]
         (js/setTimeout
@@ -270,7 +278,7 @@
                        " <button class=\"act primary\" data-act=\"open\" data-kind=\"room\" data-id=\"" (esc (:id inv)) "\">Enter</button></div>"))
                 (when-not can-write
                   "<p class=\"mgr-note\">You can enter the rooms and walk through their history, but not create or change works: your access to this artifact is read only.</p>")
-                (relay-note)
+                (relay-section (:relays @mgr))
                 "<div class=\"mgr-cols\">"
                 (if (pages?)
                   "<section class=\"mgr-col\"><h3>Solo</h3><p class=\"mgr-hint\">Only you see these works: they are encrypted with a key that stays in this browser.</p>"
@@ -316,6 +324,21 @@
                      (do (swap! mgr assoc :confirm [(name kind) id])
                          (js/setTimeout (fn [] (when (= (:confirm @mgr) [(name kind) id]) (swap! mgr assoc :confirm nil))) 4000)))
           "local" (open-work! :local "local" "Local")
+          "link" (let [u (room-link id)]
+                   (-> (js/Promise.resolve)
+                       (.then (fn [_] (.writeText (.-clipboard js/navigator) u)))
+                       (.then (fn [_] (set! (.-textContent b) "Copied")))
+                       (.catch (fn [_] (repl-print! "out" (esc (str "; " u)))
+                                 (set! (.-textContent b) "In the REPL")))
+                       (.then (fn [_] (js/setTimeout (fn [] (render-manager!)) 1500)))))
+          "relay-test" (let [u (normalize-relay (.-value ($ "relay-url")))]
+                         (if-let [why (relay-problem u)]
+                           (reset! relay-test {:url (str/trim (.-value ($ "relay-url"))) :state :fail :msg why})
+                           (test-relay! u)))
+          "relay-site" (choose-relays! "none")
+          "relay-off" (choose-relays! "off")
+          "relay-drop" (let [u (.. b -dataset -url)]
+                         (choose-relays! (let [left (remove #{u} (current-relays))] (if (seq left) (str/join "," left) "off"))))
           "learn" (do (open-work! :local "local" "Local") (show-help! nil))
           "guide" (do (open-work! :local "local" "Local") (docs "guide"))
           "feedback" (do (when-not (:kind @work) (open-work! :local "local" "Local")) (swap! mgr assoc :open false) (.click ($ "tab-feedback")))
@@ -325,10 +348,28 @@
   (fn [e]
     (.preventDefault e)
     (let [f (.-target e)
-          kind (keyword (.. f -dataset -kind))
-          nm (str/trim (.-value ($ (str "new-" (name kind)))))
-          ex (.-checked ($ (str "new-" (name kind) "-ex")))]
-      (when (seq nm) (create-work! kind nm ex)))))
+          kind (keyword (.. f -dataset -kind))]
+      (if (= kind :relay)
+        ;; use this relay (only it): the page reloads syncing through it
+        (let [typed (str/trim (.-value ($ "relay-url"))) u (normalize-relay typed)]
+          (if-let [why (relay-problem u)]
+            (reset! relay-test {:url typed :state :fail :msg why})
+            (choose-relays! u)))
+        (let [nm (str/trim (.-value ($ (str "new-" (name kind)))))
+              ex (.-checked ($ (str "new-" (name kind) "-ex")))]
+          (when (seq nm) (create-work! kind nm ex)))))))
+
+;; the relay section: open or closed stays as it was when the manager is drawn again, and while it is
+;; open its relays' state is looked at every two seconds
+(.addEventListener ($ "mgr-body") "toggle"
+  (fn [e] (let [t (.-target e)]
+            (when (and (= "relays" (.-id t)) (not= (boolean (.-open t)) (:relays @mgr)))
+              (swap! mgr assoc :relays (boolean (.-open t))))))
+  true)
+(add-watch relay-status ::render (fn [_ _ _ _] (when (:open @mgr) (render-manager!))))
+(add-watch relay-test ::render (fn [_ _ _ _] (when (:open @mgr) (render-manager!))))
+(defonce relay-timer
+  (js/setInterval (fn [] (when (and (:open @mgr) (pages?)) (refresh-relay-status!))) 2000))
 
 (.addEventListener ($ "open-manager") "click" (fn [_] (show-manager!)))
 (.addEventListener ($ "mgr-close") "click" (fn [_] (hide-manager!)))

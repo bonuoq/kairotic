@@ -1,0 +1,23 @@
+# Kairotic relay on Fly.io: from relay/, `fly launch --copy-config` (choose a name and region), then
+#   fly volumes create radata --size 1
+#   fly deploy
+# and use wss://<name>.fly.dev/gun in Kairotic (Sessions → Relay).
+app = "kairotic-relay"
+primary_region = "mad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8765"
+  RADATA = "/data"
+
+[mounts]
+  source = "radata"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8765
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 1

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Choosing the relay (Pages)**: in the session manager, **Relay** shows the relays the page syncs
+  through and whether each answers (connected, connecting, waiting for it); a relay can be tested
+  (`wss://host/gun`, also written as `https://host` or `host`), used, removed, and the page can go back
+  to the site's relays or work without one. Choosing reloads the page with `?peer=…`. While the relays
+  are not the site's, the address keeps `?peer=…` and each room has **Copy link**, which carries it: whoever
+  opens it syncs through the same relay and finds the room.
+- **`@kairotic/relay`**: the relay as an npm package, `npx @kairotic/relay [--port 8765] [--data ./radata]`
+  (`--help`), so each community can run its own; with a Dockerfile, `relay/fly.toml`, `render.yaml` and a
+  workflow that publishes it on a tag `relay-vX.Y.Z` (the first version by hand).
 - **Pages: the browser's copy of the graph in IndexedDB** (GUN's RAD, `site/vendor/gun/lib/`), not
   in localStorage. GUN's localStorage adapter kept everything the browser had seen — its works and the
   rooms a relay sent — as one JSON of at most 5 MB; once full, every save failed with

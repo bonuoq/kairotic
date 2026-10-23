@@ -273,7 +273,14 @@
       profiles: () => Promise.resolve({}),
     };
 
-    return { kind: "gun", gun, db, room, user, sample: makeSample(opts) };
+    // the relays this page syncs through, and how each one is now: open, connecting or waiting (GUN
+    // tries again on its own while one does not answer)
+    const relays = () => Object.keys(gun._.opt.peers || {}).map((url) => {
+      const w = (gun._.opt.peers[url] || {}).wire;
+      return { url, state: !w ? "waiting" : w.readyState === 1 ? "open" : w.readyState === 0 ? "connecting" : "waiting" };
+    });
+
+    return { kind: "gun", gun, db, room, user, relays, sample: makeSample(opts) };
   }
 
   // ───────── Claude with your own API key ─────────

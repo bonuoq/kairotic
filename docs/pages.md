@@ -39,7 +39,12 @@ GUN syncs through **relays**: small Node servers that pass the graph between bro
 copy so a room is still there when people come back. GitHub Pages only serves files, so a relay
 runs somewhere else ([relay/](../relay/README.md)). Without a relay each browser works alone.
 
-The site's relays are listed in `site/config.js`. A visitor can choose others for their browser
+The site's relays are listed in `site/config.js`. In the session manager, **Relay** shows the ones the
+page syncs through and whether each answers; there a visitor can test and use another (its own
+community's, [run with `npx @kairotic/relay`](../relay/README.md)), go back to the site's, or work
+without a relay. The page reloads with the choice, and while it is not the site's the address and the
+room links (**Copy link**) carry it, so whoever opens them syncs through the same relay. The same can
+be done in the address: a visitor can choose others for their browser
 with `?peer=wss://host/gun` (several separated by commas; `?peer=none` goes back to the site's);
 `?peer=off` works alone, without any relay, until another `?peer=` (the tests open the app this way).
 

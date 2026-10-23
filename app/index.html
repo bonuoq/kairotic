@@ -435,6 +435,23 @@ button.act.danger.armed { background: var(--error); border-color: var(--error); 
 .invite { padding: 10px 12px; margin-bottom: 14px; border: 1px solid var(--kairos); border-radius: 6px; background: var(--box); }
 form.new { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 form.new input:not([type]) { flex: 1; min-width: 140px; font: inherit; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); }
+/* the relays of Pages, in the session manager */
+.relays { border: 1px solid var(--rule); border-radius: 6px; padding: 8px 12px; margin: 0 0 14px; background: var(--box); font-size: 13px; }
+.relays > summary { cursor: pointer; color: var(--ink); }
+.relays .rlabel { font-family: var(--f-head); font-weight: 600; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-right: 4px; }
+.relays[open] > summary { margin-bottom: 4px; }
+.rlist { list-style: none; margin: 6px 0 10px; padding: 0; display: grid; gap: 4px; }
+.rlist li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rlist code, .relays .rtest code { font-family: var(--f-code); font-size: 12px; overflow-wrap: anywhere; }
+.rdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-soft); vertical-align: 1px; }
+.rdot.ok { background: var(--ok); } .rdot.wait { background: var(--kairos); }
+.rstate { color: var(--ink-soft); font-size: 12px; }
+.rtest { margin: 6px 0 0; font-size: 12px; color: var(--ink-soft); } .rtest.ok { color: var(--ok); } .rtest.fail { color: var(--error); }
+.rchoices { margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 6px; } .rchoices:empty { display: none; }
+.rown { margin-top: 8px; } .rown > summary { cursor: pointer; color: var(--accent); font-size: 12px; }
+.rown p { margin: 6px 0; line-height: 1.5; max-width: 72ch; }
+.rown pre { margin: 6px 0; padding: 6px 10px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; font: 12px var(--f-code); overflow-x: auto; }
+button.act.small { padding: 1px 8px; font-size: 12px; }
 
 .repl { min-height: 0; }
 #repl-out { max-height: 150px; min-height: 80px; overflow: auto; padding: 8px 12px; font-family: var(--f-code); font-size: 12.5px; line-height: 1.55; }
