@@ -2,7 +2,7 @@
 
 *[English version](mt.md)*
 
-Desde el Ensayo 19, la música en Kairotic se puede escribir como **datos**: un árbol en EDN, al estilo
+La música en Kairotic se puede escribir como **datos**: un árbol en EDN, al estilo
 *hiccup* `[:etiqueta {atributos} & hijos]`. Es el idioma común de la notación, la composición y la CAC:
 cajas y componentes reciben árboles y devuelven árboles, y un `freqt` (como lienzo o como partitura) o un `canvas` pueden
 mostrar uno. La idea viene del *llll* de [bach](https://www.bachproject.net) para Max: listas que se
@@ -128,7 +128,7 @@ conserva la primera y la quinta corchea de un 3/4, y la primera y la cuarta de u
 dar como `[p q]`, como texto `"5/8[2+3]"` o como un compás del árbol. En un compás agrupado Kairotic ordena
 por nivel métrico, luego por Barlow dentro de cada grupo y luego el grupo anterior.
 
-## La obra, su historia y su partitura (Ensayo 20)
+## La obra, su historia y su partitura
 
 **Una obra como árbol.** En una `:piece` (y en una `:section`), las voces y los `:par` suenan a la vez
 desde su inicio, y todo lo demás —secciones en una pieza, compases en una sección— se sucede en orden:
@@ -159,8 +159,10 @@ fundir cuando cambian nodos distintos; si una cambió un nodo y la otra ese nodo
 fusión dice cuál.
 
 **Editar desde la partitura.** Una partitura que muestra un árbol que viene de una caja tree sabe dónde
-está escrita cada nota. Haz clic en una nota y luego ↑ ↓ (altura, ⇧ una octava), + − (duración), ← →
-(anterior, siguiente), Supr (un silencio), Esc. Cada cambio es un `(tree-edit! …)`; una nota escrita en
+está escrita cada nota. Haz clic en una nota y luego ↑ ↓ (altura, ⇧ una octava), a…g (la nota más cercana con ese
+nombre), + − (duración), ← → (anterior, siguiente), Supr (un silencio), Esc. También se puede hacer clic
+en un silencio: Intro lo vuelve nota (la altura de la nota anterior), ↑ ↓ un paso por encima o por
+debajo, a…g esa nota. Cada cambio es un `(tree-edit! …)`; una nota escrita en
 un texto de melodía se escribe primero como notas, en el mismo evento. Las notas que vienen de `:defs` se
 editan en su definición.
 

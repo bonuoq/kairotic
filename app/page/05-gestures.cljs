@@ -145,6 +145,9 @@
 ;; A score that shows a tree coming from a tree box knows, for every note it draws, where that note is
 ;; written (kairotic.mt/expand-source). Click a note to select it; ↑ ↓ change its pitch (⇧ an octave),
 ;; + − double or halve its duration, ← → select the previous or next one, Delete turns it into a rest.
+;; A rest can be selected too: Enter makes it a note (the pitch of the note before it), ↑ ↓ a note a step
+;; above or below that one (⇧ an octave), and a letter a…g the nearest note of that name; on a note, a
+;; letter changes its pitch to the nearest one of that name.
 ;; Every change is one (tree-edit! …) of the tree box: a node edit in its history.
 
 (defn tsel-piece-id
@@ -168,8 +171,26 @@
             [(into [[:remove src]] (map-indexed (fn [k n] [:insert (conj parent (+ idx k)) n]) nodes))
              (into (conj parent (+ idx (first sub))) (rest sub))])))
 
+(defn piece-midi
+  "The pitch (MIDI) of a piece of a score drawn from a tree, read from the written tree t; nil for a rest."
+  [t {:keys [src sub]}]
+  (let [n (mt/node-at t src)
+        n (if (and sub (string? n))
+            (let [x (nth (mt/melody n) (first sub) nil)] (if (next sub) (nth (mt/kids x) (second sub) nil) x))
+            n)
+        n (if (= :chord (mt/tag n)) (first (filter (fn [k] (= :note (mt/tag k))) (mt/kids n))) n)]
+    (when (= :note (mt/tag n)) (mt/midi-of (mt/attrs n)))))
+
+(def letter-pcs {"c" 0 "d" 2 "e" 4 "f" 5 "g" 7 "a" 9 "b" 11})
+
+(defn nearest-pc
+  "The pitch nearest m whose pitch class is pc."
+  [m pc]
+  (let [r (js/Math.round m)]
+    (first (sort-by (fn [x] (js/Math.abs (- x m))) (filter (fn [x] (= pc (mod x 12))) (range (- r 6) (+ r 7)))))))
+
 (defn tree-key!
-  "A key on the selected note of a score."
+  "A key on the selected note (or rest) of a score."
   [k shift?]
   (let [{:keys [score from] :as ts} (:tsel @ui)
         pieces (get-in @score-cache [score :pieces])
@@ -198,7 +219,22 @@
             nxt (mt/node-at t1 nxt-path)
             keep-next (when (and (mt/node? nxt) (#{:note :rest :chord} (mt/tag nxt)) (nil? (:dur (mt/attrs nxt))))
                         [[:attrs nxt-path (assoc (mt/attrs nxt) :dur eff)]])
-            edits (case k
+            ;; the pitch a rest becomes: from the note before it in the score (or after it), else B4
+            staff (:staff (nth order (or i 0) nil))
+            same (fn [pcs] (filter (fn [pc] (= staff (:staff pc))) pcs))
+            near (or (last (keep (fn [pc] (piece-midi t (:src pc))) (same (take (or i 0) order))))
+                     (first (keep (fn [pc] (piece-midi t (:src pc))) (same (drop (inc (or i 0)) order))))
+                     71)
+            to-note (fn [m] [[:set dur-path (mt/make :note (assoc (dissoc (mt/attrs n) :dur) :pitch (mt/pitch-name (js/Math.round m)) :dur eff) [])]])
+            letter (get letter-pcs (str/lower-case k))
+            edits (case (if (and (= :rest (mt/tag n)) (#{"ArrowUp" "ArrowDown" "Enter"} k)) :rest->note (if letter :letter k))
+                    :rest->note
+                    (into (to-note (case k "ArrowUp" (+ near (if shift? 12 1)) "ArrowDown" (- near (if shift? 12 1)) near)) keep-next)
+                    :letter
+                    (case (mt/tag n)
+                      :rest (into (to-note (nearest-pc near letter)) keep-next)
+                      :note [[:attrs target (mt/set-midi (mt/attrs n) (nearest-pc (mt/midi-of (mt/attrs n)) letter))]]
+                      nil)
                     ("ArrowUp" "ArrowDown")
                     (when (= :note (mt/tag n))
                       (let [m (mt/midi-of (mt/attrs n)) d (* (if shift? 12 1) (if (= k "ArrowUp") 1 -1))]
@@ -228,7 +264,7 @@
 (defn score-click!
   "Click on a score: a note picks its stroke; elsewhere, the nearest position of that system is requested."
   [e id b x y]
-  (let [gn (.closest (.-target e) "g.note")
+  (let [gn (or (.closest (.-target e) "g.note") (.closest (.-target e) "g.rest"))
         m (when gn (re-matches #"n-([^-]+)-([^-]+)-(\d+)" (str (.-id gn))))
         tid (when m (keyword (nth m 2)))
         c (get @score-cache id)
@@ -340,7 +376,7 @@
    (swap! ui assoc :sel nil :nsel nil
           :ctldrag {:f f :b b :ox ox :oy oy :x0 x :y0 y :start (second (shown-flat f)) :v nil :echo echo
                     ;; the part of its view pressed (a shape with :hit), worked out from the shapes themselves
-                    :hit (try (shp/hit-at (ctl-shapes* (ctl-m* f b) b) [(- x ox) (- y oy)]) (catch :default _ nil))})
+                    :hit (try (shp/hit-near (ctl-shapes* (ctl-m* f b) b) [(- x ox) (- y oy)]) (catch :default _ nil))})
    (ctl-gesture! x y fine)))
 
 ;; ───── the number typed, for each kind of control (issue #32) ─────
@@ -419,17 +455,22 @@
 
 (defn locked? "In presentation: the paper is for playing." [] (boolean @pres-mode))
 
+;; ⌥/Alt held at the last press: in presentation, only ⌥+drag moves a box (a plain drag plays it, or
+;; does nothing), so that a freqt, a canvas or a knob is not moved by its header or its grip by mistake
+(defonce alt-press (atom false))
+
 (defn pick-box!
   "A plain click on a box: if it is one of several selected, they all start moving; otherwise it alone is
    selected (its inspector closed) and starts moving. `extra` is merged into the ui state. In presentation
-   nothing is selected: in the editor the box can be dragged to a new place, in an embed it stays."
+   nothing is selected: in the editor ⌥+drag moves the box to a new place (a plain drag leaves it where it
+   is), in an embed it stays."
   ([id b x y] (pick-box! id b x y nil))
   ([id b x y extra]
    (let [ids (sel-ids)]
      (cond
        (locked?)
        (swap! ui merge {:sel nil :insp nil :nsel nil
-                        :drag (when-not embed-mode
+                        :drag (when (and (not embed-mode) @alt-press)
                                 {:id id :dx (- x (:x b)) :dy (- y (:y b)) :x (:x b) :y (:y b) :moved false})}
               extra)
        (and (> (count ids) 1) (contains? ids id))
@@ -669,6 +710,7 @@
 
 (.addEventListener svg "pointerdown"
   (fn [e]
+    (reset! alt-press (boolean (.-altKey e)))
     (let [[x y] (pt e) mod? (or (.-metaKey e) (.-ctrlKey e))]
       (cond
         ;; annotating: the pointer draws marks (the Annotate bar is open)
@@ -865,6 +907,19 @@
                   raw (if far? (conj raw [lx ly]) raw)]
                (assoc ld :raw raw :pts (mapv (fn [[px py]] [(cv/x->t g px) (cv/y->f g py)]) raw))))))
 
+(defn hover-hit!
+  "The part of a component's view (a shape with :hit) the pointer is over or near, highlighted."
+  [e x y]
+  (let [el (closest e ".box.act")
+        [id b] (when el (el-box el))
+        h (when (and b (fn? (:gesture (box-def b))) (not (closest e ".grip")))
+            (let [f (fid id)
+                  k (try (shp/hit-near (ctl-shapes* (ctl-m* f b) b) [(- x (:x b) grip) (- y (:y b))]) (catch :default _ nil))]
+              (when (some? k) [id k])))]
+    (when (not= h (:hover-hit @ui))
+      (swap! ui assoc :hover-hit h)
+      (render-overlay!))))
+
 (.addEventListener svg "pointermove"
   (fn [e]
     (let [[x y] (pt e) {:keys [drag wire ldrag numdrag paramdrag ctldrag marquee resize adraw]} @ui]
@@ -907,7 +962,8 @@
         drag (let [nx (max 0 (- x (:dx drag))) ny (max 0 (- y (:dy drag)))]
                (when (or (:moved drag) (> (+ (js/Math.abs (- nx (:x drag))) (js/Math.abs (- ny (:y drag)))) 2))
                  (swap! ui assoc :drag (assoc drag :x nx :y ny :moved true))))
-        wire (swap! ui assoc :wire (assoc wire :x x :y y) :hover-in (drop-target e wire))))))
+        wire (swap! ui assoc :wire (assoc wire :x x :y y) :hover-in (drop-target e wire))
+        :else (hover-hit! e x y)))))
 
 (defn finish-drawing! [{:keys [box mode d g pts raw moved click-t]}]
   (if-not moved
@@ -979,7 +1035,7 @@
               (repl-print! "out" (esc (str "; and back: the edits made on " to " go to " from " (the dashed line)"))))))))))
 
 (.addEventListener svg "pointerup" end-gesture!)
-(.addEventListener svg "pointerleave" (fn [_] (when (or (:adraw @ui) (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui) (:paramdrag @ui) (:ctldrag @ui) (:marquee @ui) (:resize @ui)) (end-gesture! nil))))
+(.addEventListener svg "pointerleave" (fn [_] (when (:hover-hit @ui) (swap! ui assoc :hover-hit nil) (render-overlay!)) (when (or (:adraw @ui) (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui) (:paramdrag @ui) (:ctldrag @ui) (:marquee @ui) (:resize @ui)) (end-gesture! nil))))
 
 (.addEventListener svg "dblclick"
   (fn [e]
@@ -1041,7 +1097,8 @@
             (.preventDefault e)
             (show-help! (when b (klass (:text b)))))
           (and (:tsel @ui) (not mod?)
-               (#{"ArrowUp" "ArrowDown" "ArrowLeft" "ArrowRight" "+" "=" "-" "Delete" "Backspace" "Escape"} k))
+               (or (#{"ArrowUp" "ArrowDown" "ArrowLeft" "ArrowRight" "+" "=" "-" "Delete" "Backspace" "Escape" "Enter"} k)
+                   (letter-pcs (str/lower-case k))))
           (do (.preventDefault e)
               (try (tree-key! k (.-shiftKey e))
                    (catch :default ex (repl-print! "err" (esc (or (.-message ex) (str ex)))))))

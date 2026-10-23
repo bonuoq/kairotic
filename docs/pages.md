@@ -4,7 +4,7 @@
 
 Kairotic is a static page: HTML, ClojureScript evaluated by Scittle, and a few modules. Inside
 claude.ai the viewer gives it four things: a **database** (works and their history), **rooms**
-(presence of the people in a shared work), the **user** and **Claude**. From Study 17 the page asks
+(presence of the people in a shared work), the **user** and **Claude**. The page asks
 for them through one small layer, so the same page also runs elsewhere with another backend:
 
 | | inside claude.ai | Kairotic Pages (GitHub Pages) |

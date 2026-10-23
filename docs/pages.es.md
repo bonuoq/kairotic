@@ -4,8 +4,8 @@
 
 Kairotic es una página estática: HTML, ClojureScript evaluado por Scittle y unos pocos módulos.
 Dentro de claude.ai el visor le da cuatro cosas: una **base de datos** (las obras y su historia),
-**salas** (presencia de quienes están en una obra compartida), el **usuario** y **Claude**. Desde el
-Ensayo 17 la página las pide a través de una capa pequeña, así que la misma página funciona también
+**salas** (presencia de quienes están en una obra compartida), el **usuario** y **Claude**. La
+página las pide a través de una capa pequeña, así que la misma página funciona también
 en otro sitio con otro backend:
 
 | | dentro de claude.ai | Kairotic Pages (GitHub Pages) |

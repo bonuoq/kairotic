@@ -48,6 +48,22 @@ export async function views(page, check) {
     const p = await until(page, `(first (mt/pitches (tree-data ${tb})))`, (g) => g !== '"c4"');
     check("↑ on a note of a tree shown as a score edits the tree itself", p === '"c#4"' || p === '"db4"', p);
     check("... with no edits wire", (await cljs(page, `(count (filter (fn [[a]] (= a ${tb})) (:lines (current))))`)) === "0");
+    // a rest becomes a note again: Delete on the second note, then Enter (the pitch of the note before it)
+    const second = `(second (filter :src (get-in @score-cache [${tb} :pieces])))`;
+    await until(page, `(count (filter :src (get-in @score-cache [${tb} :pieces])))`, (g) => Number(g) >= 4, 15000);
+    await cljs(page, `(select-tree-note! ${tb} ${second} ${tb})`);
+    await cljs(page, '(tree-key! "Delete" false)');
+    const n3 = await until(page, `(count (mt/pitches (tree-data ${tb})))`, (g) => g === "3");
+    check("Delete turns a note of the score into a rest", n3 === "3", n3);
+    await until(page, `(some (fn [pc] (= (:src pc) (:src (:tsel @ui)))) (get-in @score-cache [${tb} :pieces]))`, (g) => g === "true", 15000);
+    const sel = await cljs(page, `(:tag (mt/node-at (tree-data ${tb}) (:src (:src (:tsel @ui)))))`);
+    await cljs(page, '(tree-key! "Enter" false)');
+    const back = await until(page, `(vec (mt/pitches (tree-data ${tb})))`, (g) => /^\[(\S+ ){3}\S+\]$/.test(g));
+    check("Enter on the selected rest makes it a note again, at the pitch of the note before it",
+      /^\["(c#4|db4)" "(c#4|db4)"/.test(back), back + " " + sel);
+    await cljs(page, '(tree-key! "d" false)');
+    const d = await until(page, `(second (mt/pitches (tree-data ${tb})))`, (g) => g === '"d4"');
+    check("a letter gives the selected note the nearest pitch of that name", d === '"d4"', d);
   } else check("the score of the tree box is drawn (Verovio)", false, pieces);
 
   // the header chips: ⇄ code brings the code back, { } opens it in the code window

@@ -1,4 +1,4 @@
-# Datos que fluyen (Ensayo 21)
+# Datos que fluyen
 
 *[English version](flow.md)*
 
@@ -18,7 +18,7 @@ historia que se mueve, la edición de otra persona en una sala— y también cua
 alrededor (un cable nuevo, un texto nuevo como `mt transpose` → `mt retrograde`), así que lo que depende
 de ella siempre está al día. Envía como mucho una vez por momento y solo si algo cambió de verdad. Cuando cambia el patch, el árbol
 vuelve a ir solo hacia lo que lo necesita: por sus líneas que llevan a una línea nueva o a una caja nueva
-o con un texto nuevo (Ensayo 23). Mover un knob, cuyo valor queda en su texto, no envía nada. Un
+o con un texto nuevo. Mover un knob, cuyo valor queda en su texto, no envía nada. Un
 bang lo vuelve a enviar; `tree manual` solo envía con un bang (para el directo, cuando preparas un
 cambio y lo lanzas tú).
 

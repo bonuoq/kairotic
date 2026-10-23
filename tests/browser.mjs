@@ -23,6 +23,7 @@ import { embed } from "./embed.mjs";
 import { relays } from "./relays.mjs";
 import { layers } from "./layers.mjs";
 import { theory } from "./theory.mjs";
+import { help } from "./help.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const base = url.replace(/tests\.html.*$/, "");
@@ -80,6 +81,8 @@ const appSuites = [
   ["release", release, "the release tests ran"],
   // opens a lesson (another local work): last
   ["presetsTutorial", presetsTutorial, "the presets tutorial tests ran"],
+  // help patches with several steps (lessons too)
+  ["help", help, "the help patch tests ran"],
 ];
 // 3. the suites that play sound, about half the time of the app's suites, in a second app of their
 // own: each only needs a local work open (opened here as gestures opens it in the first app), makes its boxes in a place of the patch of its own, and

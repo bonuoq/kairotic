@@ -61,13 +61,13 @@ La partitura ya muestra el cambio. Haz doble clic en la caja tree, cambia una no
 @en
 In a score that shows a tree, **click a note**: it is selected. Then:
 
-↑ ↓ change its pitch (⇧ an octave) · **+** **−** double or halve its duration · ← → select the previous or next note · **Delete** turns it into a rest · Esc deselects.
+↑ ↓ change its pitch (⇧ an octave) · **+** **−** double or halve its duration · ← → select the previous or next note · a…g the nearest note of that name · **Delete** turns it into a rest · Esc deselects. A rest can be selected too: **Enter** makes it a note again (the pitch of the note before it), ↑ ↓ a step above or below.
 
 Each change leaves the score by its edits outlet as `[:edit …]`, reaches the tree by the dashed line, and becomes a `(tree-edit! …)`: you can see it in the REPL and in the history. The tree, changed, comes back to the score. A note written inside a melody string is first written out as notes, in the same event.
 @es
 En una partitura que muestra un árbol, **haz clic en una nota**: queda seleccionada. Después:
 
-↑ ↓ cambian su altura (⇧ una octava) · **+** **−** duplican o dividen su duración · ← → seleccionan la nota anterior o la siguiente · **Supr** la convierte en silencio · Esc quita la selección.
+↑ ↓ cambian su altura (⇧ una octava) · **+** **−** duplican o dividen su duración · ← → seleccionan la nota anterior o la siguiente · a…g la nota más cercana con ese nombre · **Supr** la convierte en silencio · Esc quita la selección. También se puede seleccionar un silencio: **Intro** lo vuelve nota (la altura de la nota anterior), ↑ ↓ un paso por encima o por debajo.
 
 Cada cambio sale de la partitura por su salida de ediciones como `[:edit …]`, llega al tree por la línea discontinua y se convierte en un `(tree-edit! …)`: lo ves en la REPL y en la historia. El árbol, cambiado, vuelve a la partitura. Una nota escrita dentro de un texto de melodía se escribe primero como notas, en el mismo evento.
 @try.en

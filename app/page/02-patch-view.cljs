@@ -292,7 +292,15 @@
                         (catch :default e [[:text {:x 4 :y 14 :fill :kairos :size 10} (str "✗ " (or (.-message e) e))]]))]
     (str "<g class=\"shapes\" transform=\"translate(" x "," y ")\">" (shp/svg shape-list) "</g>")))
 
-(defn ctl-overlay [id b x y] (shapes-at (fid id) b (+ x grip) y))
+(defn ctl-overlay
+  "The own view of a component, and the part of it under (or near) the pointer, highlighted."
+  [id b x y]
+  (str (shapes-at (fid id) b (+ x grip) y)
+       (when-let [[hid k] (:hover-hit @ui)]
+         (when (= hid id)
+           (let [hs (try (shp/only-hit (ctl-shapes* (ctl-m id b) b) k) (catch :default _ nil))]
+             (when (seq hs)
+               (str "<g class=\"shapes hit-hover\" transform=\"translate(" (+ x grip) "," y ")\">" (shp/svg hs) "</g>")))))))
 
 ;; ───── panels: a sub-patch seen from outside shows the boxes presented inside it ─────
 

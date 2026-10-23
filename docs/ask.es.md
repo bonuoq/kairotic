@@ -1,4 +1,4 @@
-# Pedir un patch (Ensayo 23)
+# Pedir un patch
 
 *[English version](ask.md)*
 

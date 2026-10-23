@@ -1,4 +1,4 @@
-# Embedding Kairotic (Study 22)
+# Embedding Kairotic
 
 *[Versión en español](embed.es.md)*
 

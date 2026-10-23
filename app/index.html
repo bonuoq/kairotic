@@ -77,7 +77,7 @@ header .status b.off { color: var(--kairos); }
 #canvas .box.sub rect.body { stroke: var(--accent); stroke-width: 2; }
 #canvas .box.presented rect.body { stroke-dasharray: 5 3; }
 #canvas .box.panel rect.head { fill: var(--accent-soft); stroke: none; }
-#canvas .pres-area { fill: transparent; cursor: ns-resize; }
+#canvas .pres-area { fill: transparent; cursor: pointer; }
 #canvas .resize-corner { fill: var(--rule); cursor: nwse-resize; opacity: 0.6; }
 #canvas .box:hover .resize-corner { fill: var(--accent); opacity: 1; }
 #canvas .chip { fill: var(--sheet); stroke: var(--rule); }
@@ -133,7 +133,8 @@ body.present .trust-bar { position: absolute; z-index: 5; left: 6px; top: 6px; m
 .crumbs button { font: inherit; color: var(--accent); background: none; border: 0; padding: 0 2px; cursor: pointer; }
 .crumbs button:hover { text-decoration: underline; }
 .crumbs .here { color: var(--ink); }
-#canvas .box.sel rect.body { stroke: var(--accent); stroke-width: 2; fill: var(--accent-soft); }
+/* boxes are always opaque, so the wires never show through them (the tint mixed with the box colour) */
+#canvas .box.sel rect.body { stroke: var(--accent); stroke-width: 2; fill: color-mix(in srgb, var(--accent) 12%, var(--box)); }
 #canvas .box.hit rect.body { stroke: var(--accent); stroke-width: 1.5; }
 #canvas .marquee { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3; pointer-events: none; }
 #canvas .box.drop rect.body { stroke: var(--accent); stroke-dasharray: 3 3; }
@@ -170,8 +171,12 @@ body.present .trust-bar { position: absolute; z-index: 5; left: 6px; top: 6px; m
 #canvas .stroke-hit { fill: none; stroke: transparent; stroke-width: 11; stroke-linecap: round; cursor: grab; }
 #canvas .box.act .grip { fill: var(--ink); fill-opacity: 0.18; cursor: grab; }
 #canvas .box.act { cursor: pointer; }
-#canvas .box.act.number { cursor: ns-resize; }
-#canvas .box.act.ctl, #canvas .ctl-area { cursor: ns-resize; }
+/* one pointer for everything that is played (no resize arrows on views made of parts) */
+#canvas .box.act.number { cursor: pointer; }
+#canvas .box.act.ctl, #canvas .ctl-area { cursor: pointer; }
+/* the part of a component's view under (or near) the pointer */
+#canvas .hit-hover .shape { stroke: var(--accent) !important; stroke-width: 2.5px; fill: var(--accent) !important; fill-opacity: 0.28; }
+#canvas .hit-hover text.shape { fill-opacity: 1; stroke-width: 0.6px; }
 #canvas .ctl-area { fill: transparent; }
 #canvas .shapes, #canvas .shapes * { pointer-events: none; }
 /* layers (Study 26): marks and projections, over or under the boxes; they do not take the pointer */
@@ -198,7 +203,7 @@ body.annotating.annot-move #canvas { cursor: move; }
 #canvas .shape.s-kairos { stroke: var(--kairos); } #canvas .shape.f-kairos { fill: var(--kairos); }
 #canvas .shape.s-bg { stroke: var(--sheet); } #canvas .shape.f-bg { fill: var(--sheet); }
 #canvas .shape.s-grid { stroke: var(--grid); } #canvas .shape.f-grid { fill: var(--grid); }
-#canvas .box.act.msg rect.body { fill: var(--accent-soft); }
+#canvas .box.act.msg rect.body { fill: color-mix(in srgb, var(--accent) 12%, var(--box)); }
 #canvas .box .bangc { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
 #canvas .flash { fill: var(--kairos); fill-opacity: 0.35; pointer-events: none; }
 #canvas text.value { font-family: var(--f-code); font-size: 12.5px; fill: var(--ink); pointer-events: none; }
@@ -303,6 +308,10 @@ body.annotating.annot-move #canvas { cursor: move; }
 .transport button.on { background: var(--ok); border-color: var(--ok); color: #fff; }
 #transport-info { font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
 #canvas .box { cursor: grab; }
+/* in presentation a plain drag does not move a box (⌥+drag does) */
+#canvas-wrap.pres .box { cursor: default; }
+#canvas-wrap.pres .box.act, #canvas-wrap.pres .box .grip { cursor: pointer; }
+#canvas-wrap.pres .mus-body { cursor: crosshair; }
 #canvas .port { fill: var(--ink); }
 #canvas .port.out { cursor: crosshair; }
 #canvas .box.kairos .port { fill: var(--kairos); }

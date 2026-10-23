@@ -151,6 +151,101 @@ export default {
    ]
   },
   {
+   "id": "annotations",
+   "track": "patch-code",
+   "order": 2,
+   "title": {
+    "en": "Annotations and layers",
+    "es": "Anotaciones y capas"
+   },
+   "steps": [
+    {
+     "title": {
+      "en": "A patch to write on",
+      "es": "Un patch sobre el que escribir"
+     },
+     "note": {
+      "en": "A patch can carry its own notes: texts, lines and arrows drawn on **layers** over or under the boxes. They are part of the work like any box: each mark is one event of the history and a line of its code, and they travel in links and embeds.\n\nHere is a small patch to annotate: a number sets the frequency of an oscillator.",
+      "es": "Un patch puede llevar sus propias notas: textos, líneas y flechas dibujados en **capas** por encima o por debajo de las cajas. Forman parte de la obra como cualquier caja: cada marca es un evento de la historia y una línea de su código, y viajan en los enlaces y los embeds.\n\nAquí hay un patch pequeño para anotar: un número fija la frecuencia de un oscilador."
+     },
+     "try": {
+      "en": "",
+      "es": ""
+     },
+     "code": [
+      "(box :b1 \"number 220\" 60 60)",
+      "(box :b2 \"osc~ 220\" 60 130)",
+      "(box :b3 \"gain~ 0.2\" 60 190)",
+      "(box :b4 \"dac~\" 60 250)",
+      "(connect :b1 0 :b2 0)",
+      "(connect :b2 0 :b3 0)",
+      "(connect :b3 0 :b4 0)",
+      "(connect :b3 0 :b4 1)"
+     ]
+    },
+    {
+     "title": {
+      "en": "A text and an arrow",
+      "es": "Un texto y una flecha"
+     },
+     "note": {
+      "en": "`mark` draws on a layer (`:notes` here). Each point of a mark is **anchored**: to a box, as `[:b1 dx dy]` from its top-left corner, or to the paper, as `[:patch x y]`. A point anchored to a box follows it.\n\nWith the mouse: **Annotate** in the bar above the patch opens the tools (Draw, Arrow, Text, Move, Erase); each point drawn is anchored to the box nearest it.",
+      "es": "`mark` dibuja en una capa (aquí `:notes`). Cada punto de una marca está **anclado**: a una caja, como `[:b1 dx dy]` desde su esquina superior izquierda, o al papel, como `[:patch x y]`. Un punto anclado a una caja la sigue.\n\nCon el ratón: **Annotate** en la barra sobre el patch abre las herramientas (Draw, Arrow, Text, Move, Erase); cada punto dibujado se ancla a la caja más cercana."
+     },
+     "try": {
+      "en": "Drag the number box somewhere else: the arrow follows it, the text stays on the paper. Then try `(move-mark :a1 0 40)`.",
+      "es": "Arrastra la caja del número a otro sitio: la flecha la sigue, el texto se queda en el papel. Prueba después `(move-mark :a1 0 40)`."
+     },
+     "code": [
+      "(mark :notes :a1 {:kind :text :at [:patch 260 40] :txt \"drag up and down\"})",
+      "(mark :notes :a2 {:kind :arrow :pts [[:patch 255 46] [:b1 96 12]]})"
+     ]
+    },
+    {
+     "title": {
+      "en": "Layers",
+      "es": "Capas"
+     },
+     "note": {
+      "en": "A layer goes **over** or **under** the boxes, and shows in the patch view, in the presentation, or both: `(layer :guide {:z :under :show #{:patch :present}})`. Marks under the boxes are good for regions and paths; marks over them, for notes.\n\n`(layer :guide nil)` removes a layer with its marks; `(unmark :a3)` erases one.",
+      "es": "Una capa va **por encima** o **por debajo** de las cajas, y se ve en la vista del patch, en la presentación o en ambas: `(layer :guide {:z :under :show #{:patch :present}})`. Las marcas bajo las cajas sirven para regiones y recorridos; las de encima, para notas.\n\n`(layer :guide nil)` quita una capa con sus marcas; `(unmark :a3)` borra una."
+     },
+     "try": {
+      "en": "Delete the gain~ box: the end of the line anchored to it stays on the paper, where it was.",
+      "es": "Borra la caja gain~: el extremo de la línea anclado a ella se queda en el papel, donde estaba."
+     },
+     "code": [
+      "(layer :guide {:z :under :show #{:patch :present}})",
+      "(mark :guide :a3 {:kind :line :pts [[:b1 -20 -14] [:b3 160 -14] [:b4 160 50]]})",
+      "(mark :guide :a4 {:kind :text :at [:b4 0 60] :txt \"the signal path\"})"
+     ]
+    },
+    {
+     "title": {
+      "en": "Drawing from messages",
+      "es": "Dibujar con mensajes"
+     },
+     "note": {
+      "en": "Marks are written by you. A `draw` box draws what arrives to it: shapes as messages (`circle 60 55 22 accent hit sun`), or any shape of `kairotic.shapes` from code. A shape with `hit` is a part that can be pressed: it sends its name.\n\nSo a patch can draw its own score as it plays, or offer a performer a few things to touch.",
+      "es": "Las marcas las escribes tú. Una caja `draw` dibuja lo que le llega: figuras como mensajes (`circle 60 55 22 accent hit sun`), o cualquier figura de `kairotic.shapes` desde el código. Una figura con `hit` es una parte que se puede pulsar: envía su nombre.\n\nAsí un patch puede dibujar su propia partitura mientras suena, u ofrecer a quien toca unas pocas cosas que tocar."
+     },
+     "try": {
+      "en": "Click the two messages, then press the circles: print writes sun or moon. Connect the outlet of draw to a msg 330 and then to the number: a circle that changes the pitch.",
+      "es": "Haz clic en los dos mensajes y pulsa los círculos: print escribe sun o moon. Conecta la salida de draw a un msg 330 y este al número: un círculo que cambia la altura."
+     },
+     "code": [
+      "(box :b5 \"msg circle 60 55 22 accent hit sun\" 300 150)",
+      "(box :b6 \"msg circle 160 55 14 kairos hit moon\" 300 190)",
+      "(box :b7 \"draw 240 120\" 300 240)",
+      "(box :b8 \"print\" 300 390)",
+      "(connect :b5 0 :b7 0)",
+      "(connect :b6 0 :b7 0)",
+      "(connect :b7 0 :b8 0)"
+     ]
+    }
+   ]
+  },
+  {
    "id": "motif-transformations",
    "track": "theory",
    "order": 1,
@@ -330,6 +425,126 @@ export default {
    ]
   },
   {
+   "id": "harmony-geometry",
+   "track": "theory",
+   "order": 2,
+   "title": {
+    "en": "Harmony as geometry",
+    "es": "La armonía como geometría"
+   },
+   "steps": [
+    {
+     "title": {
+      "en": "Three pictures of a chord",
+      "es": "Tres imágenes de un acorde"
+     },
+     "note": {
+      "en": "Music theory has long drawn harmony as shapes: a set of pitch classes as a polygon on a clock, a scale by how evenly it divides the octave, triads as triangles of a lattice. The package `@kairotic/theory` draws them from what arrives as messages: lists of MIDI pitches, single notes, or a chroma (twelve weights, from `chroma~`).\n\nWriting one of its classes in a box brings the package into the work, as a `component` box beside the patch: that is the box that appeared on its own.\n\nThis lesson uses only messages: click them, nothing needs ▶.",
+      "es": "La teoría musical lleva mucho tiempo dibujando la armonía como formas: un conjunto de clases de altura como un polígono sobre un reloj, una escala por lo regular que divide la octava, las tríadas como triángulos de una red. El paquete `@kairotic/theory` las dibuja a partir de lo que le llega como mensajes: listas de alturas MIDI, notas sueltas o un croma (doce pesos, de `chroma~`).\n\nEscribir una de sus clases en una caja trae el paquete a la obra, como una caja `component` junto al patch: es la caja que ha aparecido sola.\n\nEsta lección solo usa mensajes: haz clic en ellos, no hace falta ▶."
+     },
+     "try": {
+      "en": "",
+      "es": ""
+     },
+     "code": []
+    },
+    {
+     "title": {
+      "en": "The clock",
+      "es": "El reloj"
+     },
+     "note": {
+      "en": "`pcclock` places each pitch class on a clock face (C at the top, a semitone per hour) and joins the ones that sound into a polygon. Its outlets give the **prime form** of the set (its normal shape, transposed to 0) and its **interval vector** (how many of each interval it contains); the dashed lines are its axes of symmetry.\n\nThe major triad has none: it is not the same read upwards and downwards. The diminished seventh has four, and the same polygon after any transposition by a minor third.",
+      "es": "`pcclock` coloca cada clase de altura en la esfera de un reloj (Do arriba, un semitono por hora) y une las que suenan en un polígono. Sus salidas dan la **forma prima** del conjunto (su forma normal, transportada a 0) y su **vector interválico** (cuántos intervalos de cada clase contiene); las líneas discontinuas son sus ejes de simetría.\n\nLa tríada mayor no tiene ninguno: no es la misma leída hacia arriba y hacia abajo. La séptima disminuida tiene cuatro, y es el mismo polígono tras cualquier transposición de tercera menor."
+     },
+     "try": {
+      "en": "Click the two messages and read print in the REPL. Press a pitch class on the clock: its number comes out of the right outlet.",
+      "es": "Haz clic en los dos mensajes y lee print en la REPL. Pulsa una clase de altura en el reloj: su número sale por la salida derecha."
+     },
+     "code": [
+      "(box :b1 \"msg 60 64 67\" 40 30)",
+      "(box :b2 \"msg 60 63 66 69\" 150 30)",
+      "(box :b3 \"pcclock\" 40 90)",
+      "(box :b4 \"print\" 40 360)",
+      "(connect :b1 0 :b3 0)",
+      "(connect :b2 0 :b3 0)",
+      "(connect :b3 0 :b4 0)"
+     ]
+    },
+    {
+     "title": {
+      "en": "The six coefficients",
+      "es": "Los seis coeficientes"
+     },
+     "note": {
+      "en": "`fourier` measures a set by the discrete Fourier transform of its twelve classes. Each of its six circles asks one question — how chromatic, how dyadic (tritones), how triadic (augmented), how octatonic, how **diatonic**, how whole-tone — and the point's distance from the centre is the answer (0…1). Its angle tells which transposition.\n\nThe diatonic scale is almost all f5; the augmented triad is all f3 and f6. The trail shows where the last sets were.",
+      "es": "`fourier` mide un conjunto con la transformada de Fourier discreta de sus doce clases. Cada uno de sus seis círculos hace una pregunta —cuán cromático, cuán diádico (tritonos), cuán triádico (aumentado), cuán octatónico, cuán **diatónico**, cuán de tonos enteros— y la distancia del punto al centro es la respuesta (0…1). Su ángulo dice qué transposición.\n\nLa escala diatónica es casi toda f5; la tríada aumentada es toda f3 y f6. El rastro muestra dónde estaban los últimos conjuntos."
+     },
+     "try": {
+      "en": "Click the scale, then the augmented triad, then the chords above: watch which circle each one fills.",
+      "es": "Haz clic en la escala, luego en la tríada aumentada, luego en los acordes de arriba: mira qué círculo llena cada uno."
+     },
+     "code": [
+      "(box :b5 \"msg 60 62 64 65 67 69 71\" 330 30)",
+      "(box :b6 \"msg 60 64 68\" 540 30)",
+      "(box :b7 \"fourier\" 330 90)",
+      "(connect :b5 0 :b7 0)",
+      "(connect :b6 0 :b7 0)",
+      "(connect :b1 0 :b7 0)",
+      "(connect :b2 0 :b7 0)",
+      "(connect :b5 0 :b3 0)",
+      "(connect :b6 0 :b3 0)"
+     ]
+    },
+    {
+     "title": {
+      "en": "The path on the Tonnetz",
+      "es": "El camino en el Tonnetz"
+     },
+     "note": {
+      "en": "On the **Tonnetz** fifths run across and thirds run up, so every triad is a triangle and two triads that share two notes share an edge. The neo-Riemannian moves are those edges: **P** (parallel: C ↔ c), **L** (leading-tone exchange: C ↔ e) and **R** (relative: C ↔ a).\n\n`tonnetz` lights the triad it receives and joins it to the ones before, on the nearest copy of the lattice: a progression becomes a path. C – c – A♭ – g♯ is P, L, P: three single steps.",
+      "es": "En el **Tonnetz** las quintas van en horizontal y las terceras hacia arriba, así que cada tríada es un triángulo y dos tríadas que comparten dos notas comparten un lado. Los movimientos neorriemannianos son esos lados: **P** (paralelo: Do ↔ do), **L** (intercambio de sensible: Do ↔ mi) y **R** (relativo: Do ↔ la).\n\n`tonnetz` ilumina la tríada que recibe y la une a las anteriores, sobre la copia más cercana de la red: una progresión se vuelve un camino. Do – do – La♭ – sol♯ es P, L, P: tres pasos sencillos."
+     },
+     "try": {
+      "en": "Click the four messages from left to right: print writes the name of each triad. Then click C and the major triad of F♯ (write it in a msg: 66 70 73): a long way across the lattice.",
+      "es": "Haz clic en los cuatro mensajes de izquierda a derecha: print escribe el nombre de cada tríada. Después Do y la tríada de Fa♯ (escríbela en un msg: 66 70 73): un camino largo por la red."
+     },
+     "code": [
+      "(box :b8 \"msg 60 63 67\" 120 430)",
+      "(box :b9 \"msg 60 63 68\" 230 430)",
+      "(box :b10 \"msg 59 63 68\" 340 430)",
+      "(box :b11 \"tonnetz\" 40 480)",
+      "(box :b12 \"print\" 40 760)",
+      "(connect :b1 0 :b11 0)",
+      "(connect :b8 0 :b11 0)",
+      "(connect :b9 0 :b11 0)",
+      "(connect :b10 0 :b11 0)",
+      "(connect :b11 0 :b12 0)"
+     ]
+    },
+    {
+     "title": {
+      "en": "What you play",
+      "es": "Lo que tocas"
+     },
+     "note": {
+      "en": "The three boxes also take a **chroma**: twelve weights, one per pitch class, as `chroma~` hears them in a signal. `adc~ 1` → `chroma~` → `pcclock`, `fourier` or `tonnetz` draws, as you sing or play, what the harmony is doing.\n\nA box can also be drawn again large on a layer, behind the presentation: `(project :b11 :viz [40 40 800 600])` (see the guide, *Annotations and layers*).",
+      "es": "Las tres cajas también aceptan un **croma**: doce pesos, uno por clase de altura, como los oye `chroma~` en una señal. `adc~ 1` → `chroma~` → `pcclock`, `fourier` o `tonnetz` dibuja, mientras cantas o tocas, lo que está haciendo la armonía.\n\nUna caja también se puede dibujar otra vez en grande sobre una capa, detrás de la presentación: `(project :b11 :viz [40 40 800 600])` (ver la guía, *Anotaciones y capas*)."
+     },
+     "try": {
+      "en": "Press ▶, allow the microphone and play a chord near it (an instrument, or a recording): the chroma lights the classes that sound.",
+      "es": "Pulsa ▶, permite el micrófono y toca un acorde cerca (un instrumento o una grabación): el croma ilumina las clases que suenan."
+     },
+     "code": [
+      "(box :b13 \"adc~ 1\" 640 430)",
+      "(box :b14 \"chroma~\" 640 480)",
+      "(connect :b13 0 :b14 0)",
+      "(connect :b14 0 :b7 0)"
+     ]
+    }
+   ]
+  },
+  {
    "id": "work-tree",
    "track": "composition",
    "order": 1,
@@ -400,8 +615,8 @@ export default {
       "es": "Editar desde la partitura"
      },
      "note": {
-      "en": "In a score that shows a tree, **click a note**: it is selected. Then:\n\n↑ ↓ change its pitch (⇧ an octave) · **+** **−** double or halve its duration · ← → select the previous or next note · **Delete** turns it into a rest · Esc deselects.\n\nEach change leaves the score by its edits outlet as `[:edit …]`, reaches the tree by the dashed line, and becomes a `(tree-edit! …)`: you can see it in the REPL and in the history. The tree, changed, comes back to the score. A note written inside a melody string is first written out as notes, in the same event.",
-      "es": "En una partitura que muestra un árbol, **haz clic en una nota**: queda seleccionada. Después:\n\n↑ ↓ cambian su altura (⇧ una octava) · **+** **−** duplican o dividen su duración · ← → seleccionan la nota anterior o la siguiente · **Supr** la convierte en silencio · Esc quita la selección.\n\nCada cambio sale de la partitura por su salida de ediciones como `[:edit …]`, llega al tree por la línea discontinua y se convierte en un `(tree-edit! …)`: lo ves en la REPL y en la historia. El árbol, cambiado, vuelve a la partitura. Una nota escrita dentro de un texto de melodía se escribe primero como notas, en el mismo evento."
+      "en": "In a score that shows a tree, **click a note**: it is selected. Then:\n\n↑ ↓ change its pitch (⇧ an octave) · **+** **−** double or halve its duration · ← → select the previous or next note · a…g the nearest note of that name · **Delete** turns it into a rest · Esc deselects. A rest can be selected too: **Enter** makes it a note again (the pitch of the note before it), ↑ ↓ a step above or below.\n\nEach change leaves the score by its edits outlet as `[:edit …]`, reaches the tree by the dashed line, and becomes a `(tree-edit! …)`: you can see it in the REPL and in the history. The tree, changed, comes back to the score. A note written inside a melody string is first written out as notes, in the same event.",
+      "es": "En una partitura que muestra un árbol, **haz clic en una nota**: queda seleccionada. Después:\n\n↑ ↓ cambian su altura (⇧ una octava) · **+** **−** duplican o dividen su duración · ← → seleccionan la nota anterior o la siguiente · a…g la nota más cercana con ese nombre · **Supr** la convierte en silencio · Esc quita la selección. También se puede seleccionar un silencio: **Intro** lo vuelve nota (la altura de la nota anterior), ↑ ↓ un paso por encima o por debajo.\n\nCada cambio sale de la partitura por su salida de ediciones como `[:edit …]`, llega al tree por la línea discontinua y se convierte en un `(tree-edit! …)`: lo ves en la REPL y en la historia. El árbol, cambiado, vuelve a la partitura. Una nota escrita dentro de un texto de melodía se escribe primero como notas, en el mismo evento."
      },
      "try": {
       "en": "Change the cello's last note of section A with ↑ ↓, and halve a flute note with −: the score warns (⚠ in the REPL) that its measure no longer adds up, until you fix it.",

@@ -1,4 +1,4 @@
-# Insertar Kairotic (Ensayo 22)
+# Insertar Kairotic
 
 *[English version](embed.md)*
 

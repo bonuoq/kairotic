@@ -124,8 +124,7 @@ Put the sections in this order, with a comment line before each one:
 Only the logic is code; the rest is data that can be read, checked and changed without running
 anything. Read the whole [knob](../packages/controls/src/knob.cljs) (in `@kairotic/controls`).
 
-Helpers available in the logic come from the **Kairotic API**, `api/…` (from Study 14; before it the
-same functions were `comp/…`): `api/clamp`, `api/nice` (sensible rounding), `api/num-of`,
+Helpers available in the logic come from the **Kairotic API**, `api/…`: `api/clamp`, `api/nice` (sensible rounding), `api/num-of`,
 `api/to-unit` and `api/from-unit` (a value ⇄ 0…1, linear or logarithmic), `api/padded` (the numbers
 of a box text with defaults), and for audio `api/stereo-outlets`, `api/worklet-node` (an
 AudioWorklet whose JavaScript travels inside the component) and `api/param`. The API has a version
@@ -201,7 +200,7 @@ not its place in the patch.
 
 ## 6½. Asking Claude to write it
 
-From Study 15, the **Claude** tab (or `(ask-component "…")` in the REPL) writes a component from a
+The **Claude** tab (or `(ask-component "…")` in the REPL) writes a component from a
 description. Claude reads this same contract, the API and real components as examples, and before it
 answers it tries what it wrote with the page's tools: it evaluates and validates it, sends it
 messages and draws its view. The result is an ordinary `component` box, with a header saying it was
@@ -209,14 +208,14 @@ written with Claude and what was asked; edit it like any other. With a component
 "change the selected component" asks for a change to it instead. It runs on the Claude account of
 whoever uses the page, who is asked for permission the first time.
 
-From Study 16 it can also write Faust (it compiles it to check it), abstractions with `faust~` boxes
+It can also write Faust (it compiles it to check it), abstractions with `faust~` boxes
 and knobs, and bpatchers (abstractions whose presented boxes make the panel of every instance), and a
 package when it needs several definitions together. It reads examples from the
 [catalog](../examples/README.md), which is how we teach it new kinds of components.
 
 ## 6¾. Its help
 
-Since Study 18 the Help tab (or **?** on a selected box) shows what a class does port by port, with a
+The Help tab (or **?** on a selected box) shows what a class does port by port, with a
 help patch that opens as a lesson. A component brings its own with `:help`:
 
 ```clojure
@@ -237,12 +236,10 @@ The example is patch code, one gesture per line: opening the help patch makes th
 - **On npm:** publish a module that exports the component (`export default {class, version, author,
   license, doc, source}`, the format [`packages/build.mjs`](../packages/build.mjs) writes); anyone can
   then `(import! "npm:<your-package>@x.y.z/dist/<name>.mjs")`.
-- **In an official package** (Study 14): add it to `packages/<category>/src/` (see
+- **In an official package**: add it to `packages/<category>/src/` (see
   [`packages/`](../packages/README.md)). A package travels as one `component` box, and writing one of
   its classes in a work brings it in.
 
 Importing always **copies** the definition into a `component` box of the work, with a header that
 says where it came from and under which licence: the work stays complete and sounds the same even
 if the package changes later.
-
-All the old and new names are in the [glossary](glossary.md).
