@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/relay",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A GUN relay for Kairotic: passes works and rooms between browsers and keeps a copy, so a community can collaborate through its own server",
   "author": "bonuoq",
   "license": "MPL-2.0",

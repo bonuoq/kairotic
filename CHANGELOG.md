@@ -11,6 +11,7 @@
 - **`@kairotic/relay`**: the relay as an npm package, `npx @kairotic/relay [--port 8765] [--data ./radata]`
   (`--help`), so each community can run its own; with a Dockerfile, `relay/fly.toml`, `render.yaml` and a
   workflow that publishes it on a tag `relay-vX.Y.Z` (the first version by hand).
+  0.1.1 is the same code as 0.1.0, published by that workflow (trusted publishing, with provenance).
 - **Pages: the browser's copy of the graph in IndexedDB** (GUN's RAD, `site/vendor/gun/lib/`), not
   in localStorage. GUN's localStorage adapter kept everything the browser had seen — its works and the
   rooms a relay sent — as one JSON of at most 5 MB; once full, every save failed with
