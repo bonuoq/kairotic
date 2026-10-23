@@ -1,9 +1,13 @@
 # Runs the tests (tests/cljs, through tests/run.html) in a headless Chromium against the built app, on
-# every push and pull request that touches the app, its modules or the tests.
+# every pull request and push to main that touches the app, its modules or the tests.
 name: tests
 
 on:
+  # Each commit of a pull request is tested once, by pull_request (its merge with main); push is only
+  # for main, which tests main as it is after the merge. A branch without a pull request is not tested
+  # when pushed: open the pull request (as a draft if need be) or run the workflow by hand.
   push:
+    branches: [main]
     # The same paths for pushes and pull requests (a YAML anchor, &paths, reused below as *paths): a pull
     # request that only touches docs, examples or other workflows doesn't run the browser.
     paths: &paths ["app/**", "core/**", "tests/**", "site/build.mjs", ".github/workflows/tests.yml"]
