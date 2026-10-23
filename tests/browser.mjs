@@ -39,9 +39,9 @@ const timed = async (name, fn) => {
   try { return await fn(); } finally { timings.push({ name, ms: Date.now() - t0 }); }
 };
 
-// The four blocks below run at the same time: each has a browser context of its own (browser.newPage
-// makes one, browser.newContext too), so they share no page, localStorage or IndexedDB. Inside the app
-// block the suites still run one after another, in this order, on the same page.
+// The blocks below run at the same time: each has a browser context of its own (browser.newPage makes
+// one, browser.newContext too), so they share no page, localStorage or IndexedDB. Inside each app block
+// the suites run one after another, in their order, on the same page.
 
 // 1. tests/run.html: the ClojureScript tests, in the page
 async function unit() {
@@ -72,10 +72,6 @@ const appSuites = [
   ["numinput", numinput, "the number input tests ran"],
   ["presets", presets, "the presets tests ran"],
   ["present", present, "the present tests ran"],
-  ["audioin", audioin, "the audio input tests ran"],
-  ["sounds", sounds, "the sound tests ran"],
-  ["analysis", analysis, "the analysis tests ran"],
-  ["record", record, "the record tests ran"],
   ["layout", layout, "the layout tests ran"],
   ["relays", relays, "the relay tests ran"],
   ["layers", layers, "the layer tests ran"],
@@ -85,11 +81,22 @@ const appSuites = [
   // opens a lesson (another local work): last
   ["presetsTutorial", presetsTutorial, "the presets tutorial tests ran"],
 ];
-async function app() {
+// 3. the suites that play sound, about half the time of the app's suites, in a second app of their
+// own: each only needs a local work open, makes its boxes in a place of the patch of its own, and
+// deletes them at the end
+const audioSuites = [
+  ["audioin", audioin, "the audio input tests ran"],
+  ["sounds", sounds, "the sound tests ran"],
+  ["analysis", analysis, "the analysis tests ran"],
+  ["record", record, "the record tests ran"],
+];
+
+// loads the app in a page of its own and runs suites in it; at the end, after(app, check) if given
+async function inApp(name, suites, suite, after) {
   const app = await browser.newPage();
   const appErrors = [];
   app.on("pageerror", (e) => appErrors.push(e.message));
-  const loaded = await timed("app · load", async () => {
+  const loaded = await timed(name + " · load", async () => {
     // without a relay (?peer=off): the tests do not write to the site's relay, and do not depend on it
     await app.goto(base + "?peer=off");
     await app.waitForFunction(() => {
@@ -99,32 +106,37 @@ async function app() {
     }, null, { timeout: 90000 }).catch(() => {});
     const status = await app.evaluate(() => document.getElementById("status").textContent);
     const loaded = await app.evaluate(() => { try { return scittle.core.eval_string("(in-ns 'user) (fn? feedback)") === true; } catch (_) { return false; } });
-    if (!loaded || /Error/.test(status)) r.failed.push({ suite: "app", label: "the app loads", detail: status + " " + appErrors.join("; ") });
+    if (!loaded || /Error/.test(status)) r.failed.push({ suite: name, label: "the app loads", detail: status + " " + appErrors.join("; ") });
     r.total += 1;
     return loaded;
   });
   if (!loaded) return;
-  const check = checker("gestures");
-  for (const [name, suite, ran] of appSuites)
-    await timed("app · " + name, async () => {
-      try { await suite(app, check); } catch (e) { check(ran, false, message(e)); }
+  const check = checker(suite);
+  for (const [n, fn, ran] of suites)
+    await timed(name + " · " + n, async () => {
+      try { await fn(app, check); } catch (e) { check(ran, false, message(e)); }
     });
+  if (after) await after(app, check);
+  if (appErrors.length) check("no page errors during the " + suite, false, appErrors.join("; "));
+}
+
+const app = () => inApp("app", appSuites, "gestures", async (app, check) => {
   // GUN keeps its copy of the graph in IndexedDB (RAD), not in localStorage, where 5 MB filled up
   // ("localStorage max!") and every save failed
   const store = await app.evaluate(() => ({ rad: !!window.RindexedDB, peers: (window.kairoticPeers || []).length,
                                             ls: (localStorage.getItem("gun/") || "").length }));
   check("GUN keeps its copy in IndexedDB, not in localStorage", store.rad && store.ls === 0, JSON.stringify(store));
   check("... and the tests ran without a relay", store.peers === 0, JSON.stringify(store));
-  if (appErrors.length) check("no page errors during the gestures", false, appErrors.join("; "));
-}
+});
+const audio = () => inApp("audio", audioSuites, "audio");
 
-// 3. a Release/Perform embed (issue #50), in a page of its own
+// 4. a Release/Perform embed (issue #50), in a page of its own
 async function embedded() {
   const check = checker("embed");
   try { await embed(browser, base, check); } catch (e) { check("the embed tests ran", false, message(e)); }
 }
 
-// 4. what an earlier version kept in localStorage ("gun/") reaches IndexedDB, in a browser context of its own
+// 5. what an earlier version kept in localStorage ("gun/") reaches IndexedDB, in a browser context of its own
 async function storage() {
   const check = checker("storage");
   try {
@@ -170,7 +182,7 @@ async function storage() {
 
 // KAIROTIC_TESTS_SERIAL=1 runs the blocks one after another, as before: to compare the times, or to
 // rule out that a failure comes from running them together
-const blocks = [["tests.html", unit], ["app", app], ["embed", embedded], ["storage", storage]];
+const blocks = [["tests.html", unit], ["app", app], ["audio", audio], ["embed", embedded], ["storage", storage]];
 const t0 = Date.now();
 if (process.env.KAIROTIC_TESTS_SERIAL) for (const [name, fn] of blocks) await timed(name, fn);
 else await Promise.all(blocks.map(([name, fn]) => timed(name, fn)));
