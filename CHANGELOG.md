@@ -14,8 +14,9 @@ generic **`draw`** box; music theory becomes geometry in **`@kairotic/theory`**;
 
 - **Annotations and layers**: **Annotate** draws lines, arrows and texts on a layer, each point anchored
   to the box nearest it (it follows the box; a deleted box leaves its marks on the paper). Layers go over
-  or under the boxes, in the patch view and/or the presentation. `(mark …)`, `(unmark …)`, `(layer …)`,
-  `(project …)`: one event each, part of the code and of links.
+  or under the boxes, in the patch view and/or the presentation. Marks can be moved, whole or by one
+  end. `(mark …)`, `(move-mark …)`, `(unmark …)`, `(layer …)`, `(project …)`: one event each, part of the
+  code and of links.
 - **Projections**: `(project :b9 :viz [x y w h])` draws a box's view again, at another size, on a layer
   — a `monitor` or a `tonnetz` large behind the presentation.
 - **Shapes**: `:curve`, `:group` (moved, turned, scaled), `:opacity` and `:hit` (a part of a view that can
@@ -35,8 +36,10 @@ generic **`draw`** box; music theory becomes geometry in **`@kairotic/theory`**;
   `[:annot id m]` and `[:project id p]` (nil removes). Deleting a box moves its marks' points onto the
   paper and drops its projection; merging keeps each mark, layer and projection as its own unit. In the
   presentation a mark follows where its boxes are presented (and is not drawn if one of them is not).
-  The **Annotate** bar: Draw, Arrow, Text, Erase, the layer, over/under, patch/presentation;
-  `(annotate :arrow)` · `(annotate false)`. Tests: `tests/layers.mjs`.
+  The **Annotate** bar: Draw, Arrow, Text, Move, Erase, the layer, over/under, patch/presentation;
+  `(annotate :arrow)` · `(annotate false)`. **Move** drags a mark — each point keeps its anchor, so one
+  anchored to a box still follows it — or one end of a line or an arrow, anchored again to the box
+  nearest where it is let go; `(move-mark :a1 dx dy)`. Tests: `tests/layers.mjs`.
 - **`kairotic.shapes`**: `[:curve {:points …}]`, `[:group {:x :y :rotate :scale} [shapes]]` (4 deep),
   `:opacity` on groups too, and `:hit` on any shape; `shp/hit-at` finds the shape pressed from the
   shapes themselves (on top wins; inside groups, turned or scaled). The `:gesture` of a component gets

@@ -250,7 +250,10 @@ vacía, y una figura con `:hit k` envía k cuando se pulsa.
 ## 7. Anotaciones y capas
 
 **Annotate** (encima del patch) abre una barra para escribir sobre el patch: **Draw** una línea a mano,
-una flecha (**Arrow**), un texto (**Text**) o borrar (**Erase**). Cada punto se ancla a la caja más
+una flecha (**Arrow**), un texto (**Text**), mover una marca (**Move**) o borrarla (**Erase**). Mover una
+marca mantiene el ancla de cada punto (un punto anclado a una caja la sigue siguiendo, desde donde lo
+dejas); arrastrar un extremo de una línea o una flecha mueve solo ese extremo, y lo ancla de nuevo a la
+caja más cercana al soltarlo. Cada punto se ancla a la caja más
 cercana —la marca la sigue cuando se mueve— o al papel si no hay ninguna cerca; una caja borrada deja sus
 marcas donde estaban. Lo dibujado va a una **capa** (`notes` si no nombras otra), encima o debajo de las
 cajas, visible en el patch, en la presentación o en ambos; cada marca es un evento de la historia y parte
@@ -260,6 +263,7 @@ del código:
 (layer :notes {:z :over :show #{:patch :present}})
 (mark :notes :a1 {:kind :arrow :pts [[:b1 120 10] [:b4 -6 10]]})
 (mark :notes {:kind :text :at [:patch 300 40] :txt "respira"})
+(move-mark :a1 20 -10)
 (unmark :a1)
 ```
 

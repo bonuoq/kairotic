@@ -122,6 +122,17 @@
 
 (defn drop-empty [p k] (if (empty? (get p k)) (dissoc p k) p))
 
+(defn shift-mark
+  "Mark m moved by dx dy: each point keeps its anchor (a box or the paper) and moves from it."
+  [m dx dy]
+  (let [f (fn [[a x y]] (sane-anchor [a (+ x dx) (+ y dy)]))]
+    (cond-> m (:pts m) (update :pts (fn [ps] (mapv f ps))) (:at m) (update :at f))))
+
+(defn set-point
+  "Mark m with its point i (of a line or an arrow) anchored as a, now [anchor dx dy]."
+  [m i a]
+  (if (and (:pts m) (< -1 i (count (:pts m))) (sane-anchor a)) (assoc-in m [:pts i] (sane-anchor a)) m))
+
 (defn sane-patch
   "Events may come from other people: whatever arrives is normalized."
   [x]
