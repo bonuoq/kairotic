@@ -513,7 +513,7 @@
 
 ;; on a Mac, Ctrl+click is also a right click: on a box it opens the inspector, not the browser's menu
 ;; ───── annotating (Study 26): marks drawn on a layer, anchored to the box nearest each point ─────
-;; (:annot @ui) = {:tool :draw|:arrow|:text|:erase :layer :notes} while the Annotate bar is open;
+;; (:annot @ui) = {:tool :draw|:arrow|:text|:move|:erase :layer :notes} while the Annotate bar is open;
 ;; (:adraw @ui) the mark being drawn. What is drawn stays in the history as (mark …).
 
 (defn drawn-boxes
@@ -571,6 +571,13 @@
                 (some-> ($ "annot-text") .focus)))
       :erase (do (swap! ui assoc :adraw {:kind :erase})
                  (when-let [id (mark-hit [x y])] (gesture! (str "(unmark " id ")"))))
+      ;; moving a mark: pressed near one end of a line or an arrow, only that end (it is anchored again where
+      ;; it is let go); anywhere else on the mark, all of it (each point keeps its anchor)
+      :move (when-let [id (mark-hit [x y])]
+              (let [p (current) m (get-in p [:marks id]) ps (when (:pts m) (mark-points p m))
+                    near (fn [i] (when-let [[px py] (and ps (nth ps i nil))] (< (js/Math.hypot (- x px) (- y py)) 9)))
+                    end (cond (not ps) nil (near 0) 0 (near (dec (count ps))) (dec (count ps)) :else nil)]
+                (swap! ui assoc :adraw {:kind :move :id id :x0 x :y0 y :x x :y y :end end})))
       nil)
     (render-layers!)))
 
@@ -582,11 +589,12 @@
                 (swap! ui update-in [:adraw :px] conj [x y])
                 (render-layers!)))
       :arrow (do (swap! ui assoc-in [:adraw :px 1] [x y]) (render-layers!))
+      :move (do (swap! ui update :adraw assoc :x x :y y) (render-layers!))
       :erase (when-let [id (mark-hit [x y])] (gesture! (str "(unmark " id ")")))
       nil)))
 
 (defn annot-up! []
-  (when-let [{:keys [kind px]} (:adraw @ui)]
+  (when-let [{:keys [kind px id x0 y0 x y end]} (:adraw @ui)]
     (swap! ui assoc :adraw nil)
     (let [lid (annot-layer)]
       (case kind
@@ -596,6 +604,14 @@
         :arrow (let [[a b] px]
                  (when (> (js/Math.hypot (- (first b) (first a)) (- (second b) (second a))) 8)
                    (gesture! (str "(mark " lid " " (next-mark-id) " " (pr-str {:kind :arrow :pts [(anchor-of a) (anchor-of b)]}) ")"))))
+        :move (let [r1 (fn [v] (/ (js/Math.round (* 10 v)) 10)) dx (r1 (- x x0)) dy (r1 (- y y0))
+                    p (current) m (get-in p [:marks id])]
+                (when (and m (> (+ (js/Math.abs dx) (js/Math.abs dy)) 2))
+                  (if (some? end)
+                    ;; one end: anchored again where it was let go (to the box nearest it, or to the paper)
+                    (let [[ex ey] (nth (mark-points p m) end)]
+                      (gesture! (str "(mark " (:layer m) " " id " " (pr-str (dissoc (set-point m end (anchor-of [(+ ex dx) (+ ey dy)])) :layer)) ")")))
+                    (gesture! (str "(move-mark " id " " dx " " dy ")")))))
         nil))
     (render-layers!)))
 
@@ -607,6 +623,7 @@
       (set! (.-hidden bar) (nil? a))
       (.toggle (.-classList ($ "annot-toggle")) "on" (some? a))
       (.toggle (.-classList js/document.body) "annotating" (some? (:tool a)))
+      (.toggle (.-classList js/document.body) "annot-move" (= :move (:tool a)))
       (when a
         (let [p (current) lid (annot-layer) l (or (get-in p [:layers lid]) layer-default)
               inp ($ "annot-layer")]

@@ -245,7 +245,9 @@ and a shape with `:hit k` sends k when it is pressed.
 ## 7. Annotations and layers
 
 **Annotate** (above the patch) opens a bar to write on the patch: **Draw** a line by hand, an
-**Arrow**, a **Text**, or **Erase**. Each point is anchored to the box nearest it — the mark follows the
+**Arrow**, a **Text**, **Move** a mark or **Erase** it. Moving a mark keeps the anchor of each point (a
+point anchored to a box still follows it, from where you left it); dragging one end of a line or an
+arrow moves only that end, and anchors it again to the box nearest where you let it go. Each point is anchored to the box nearest it — the mark follows the
 box when it moves — or to the paper when no box is near; a box deleted leaves its marks where they were.
 What is drawn goes to a **layer** (`notes` unless you name another), over or under the boxes, shown in the
 patch view, in the presentation or in both; each mark is one event of the history and part of the code:
@@ -254,6 +256,7 @@ patch view, in the presentation or in both; each mark is one event of the histor
 (layer :notes {:z :over :show #{:patch :present}})
 (mark :notes :a1 {:kind :arrow :pts [[:b1 120 10] [:b4 -6 10]]})
 (mark :notes {:kind :text :at [:patch 300 40] :txt "breathe"})
+(move-mark :a1 20 -10)
 (unmark :a1)
 ```
 

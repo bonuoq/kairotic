@@ -25,6 +25,24 @@ export async function layers(page, check) {
   await cljs(page, `(delete ${b})`);
   const left = await cljs(page, `(get-in (current) [:marks ${m} :pts])`);
   check("a box deleted leaves its marks on the paper, where they were", left === `[[${a} 60 10] [:patch 6394 208]]`, left);
+  // moving marks: all of a mark (each point keeps its anchor), or one end, anchored again where it lands
+  const c = (await cljs(page, '(box "print" 6400 300)')).trim();
+  const m2 = (await cljs(page, `(mark :notes {:kind :arrow :pts [[${a} 40 30] [:patch 6600 400]]})`)).trim();
+  await cljs(page, `(move-mark ${m2} 10 -5)`);
+  const mv = await cljs(page, `(get-in (current) [:marks ${m2} :pts])`);
+  check("(move-mark …) moves a mark, each point from its anchor", mv === `[[${a} 50 25] [:patch 6610 395]]`, mv);
+  // with the Move tool: pressed on the middle of the arrow, all of it
+  await cljs(page, "(annotate :move)");
+  const [[x1, y1], [x2, y2]] = JSON.parse((await cljs(page, `(mark-points (current) (get-in (current) [:marks ${m2}]))`)).replace(/ /g, ","));
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  await cljs(page, `(annot-down! ${mx} ${my}) (annot-move! ${mx + 20} ${my + 10}) (annot-up!)`);
+  const mv2 = await cljs(page, `(get-in (current) [:marks ${m2} :pts])`);
+  check("... the Move tool drags all of it", mv2 === `[[${a} 70 35] [:patch 6630 405]]`, mv2);
+  // pressed on its end, only the end: let go next to another box, it is anchored to that box
+  await cljs(page, `(annot-down! 6630 405) (annot-move! 6420 340) (annot-up!)`);
+  const mv3 = await cljs(page, `(get-in (current) [:marks ${m2} :pts])`);
+  check("... and one end, anchored again to the box it is let go next to", mv3 === `[[${a} 70 35] [${c} 20 40]]`, mv3);
+  await cljs(page, `(annotate false) (unmark ${m2}) (delete ${c})`);
   const t = (await cljs(page, `(mark :notes {:kind :text :at [${a} 0 -10] :txt "breathe"})`)).trim();
   check("a text mark", (await cljs(page, `(get-in (current) [:marks ${t} :txt])`)) === '"breathe"');
   await cljs(page, `(unmark ${t})`);

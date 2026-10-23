@@ -130,6 +130,15 @@
 
 (defn unmark "Erases marks: (unmark :a3) · (unmark :a3 :a4)." [& ids] (doseq [id ids] (dispatch! [:annot id nil])) :ok)
 
+(defn move-mark
+  "Moves a mark by dx dy: (move-mark :a3 20 -10). Each point keeps its anchor — a point anchored to a box
+   still follows it, from a little further — and a point on the paper moves on the paper."
+  [id dx dy]
+  (let [m (or (get-in (current) [:marks id]) (fail (str "There is no mark " id)))]
+    (when-not (and (number? dx) (number? dy)) (fail "dx and dy are numbers"))
+    (dispatch! [:annot id (shift-mark m dx dy)])
+    id))
+
 (defn project
   "Draws the view of a box again on a layer, at another size: (project :b9 :viz [40 40 800 480]) ·
    (unproject :b9). The box keeps its own place; the projection is drawn from what it shows."

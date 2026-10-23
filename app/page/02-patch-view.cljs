@@ -474,13 +474,24 @@
                     (catch :default e [[:text {:x 8 :y 18 :fill :kairos :size 11} (str "✗ " (or (.-message e) e))]]))]
         (str "<g class=\"proj shapes\" transform=\"translate(" x "," y ")\">" (shp/svg sh) "</g>")))))
 
+(defn as-dragged
+  "Mark id as it is while it is being moved with the Annotate bar (all of it, or one end), else m."
+  [id m]
+  (let [{:keys [kind x0 y0 x y end] did :id} (:adraw @ui)]
+    (if (and (= :move kind) (= did id) (number? x))
+      (let [dx (- x x0) dy (- y y0)]
+        (if (some? end)
+          (update-in m [:pts end] (fn [[a px py]] [a (+ px dx) (+ py dy)]))
+          (shift-mark m dx dy)))
+      m)))
+
 (defn layers-svg
   "The layers of patch p that go at z (:over or :under the boxes), as seen now."
   [p z]
   (let [ls (filter (fn [[lid l]] (and (= z (:z l)) (layer-shown? p lid))) (sort-by key (:layers p)))
         on (set (map first ls))]
     (str (apply str (for [[id pr] (:projections p) :when (on (:layer pr))] (projection-svg p id pr)))
-         (apply str (for [[id m] (:marks p) :when (on (:layer m))] (mark-svg p id m))))))
+         (apply str (for [[id m] (:marks p) :when (on (:layer m))] (mark-svg p id (as-dragged id m)))))))
 
 (declare annot-preview render-annot-bar!)
 
