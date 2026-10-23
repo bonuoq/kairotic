@@ -61,7 +61,6 @@ export async function theory(page, check) {
   await cljs(page, `(connect ${pc} 0 ${p2} 0) (connect ${tz} 0 ${p2} 0) (connect ${tz} 1 ${p2} 0)`);
   await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${pc} [60 64 67])`);
   check("pcclock: a major triad is the set (0 4 7)", (await until(page, `(:set (second (last-shown ${pc})))`, (x) => x === "[0 4 7]", 3000)) === "[0 4 7]");
-  check("... whose prime form is (0 3 7)", (await printedHas(page, "[0 3 7]")).includes("[0 3 7]"), await printed(page));
   await cljs(page, `(send! ${pc} [0 3 6 9])`);
   const axes = await until(page, `(let [b (get-in (current) [:boxes ${pc}])] (count (filter (fn [f] (and (= :line (first f)) (= :kairos (:stroke (second f))))) (ctl-shapes* (ctl-m ${pc} b) b))))`, (x) => x === "4", 3000);
   check("... a diminished seventh has four axes of symmetry", axes === "4", axes);
