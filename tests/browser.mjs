@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Runs tests/run.html (built as _site/tests.html) in a headless Chromium: node tests/browser.mjs [url]
 import { chromium } from "playwright";
-import { gestures } from "./gestures.mjs";
+import { gestures, cljs } from "./gestures.mjs";
 import { perform } from "./perform.mjs";
 import { editor } from "./editor.mjs";
 import { jam } from "./jam.mjs";
@@ -82,7 +82,7 @@ const appSuites = [
   ["presetsTutorial", presetsTutorial, "the presets tutorial tests ran"],
 ];
 // 3. the suites that play sound, about half the time of the app's suites, in a second app of their
-// own: each only needs a local work open, makes its boxes in a place of the patch of its own, and
+// own: each only needs a local work open (opened here as gestures opens it in the first app), makes its boxes in a place of the patch of its own, and
 // deletes them at the end
 const audioSuites = [
   ["audioin", audioin, "the audio input tests ran"],
@@ -91,8 +91,9 @@ const audioSuites = [
   ["record", record, "the record tests ran"],
 ];
 
-// loads the app in a page of its own and runs suites in it; at the end, after(app, check) if given
-async function inApp(name, suites, suite, after) {
+// loads the app in a page of its own and runs suites in it; before(app, check) first and after(app,
+// check) at the end, if given
+async function inApp(name, suites, suite, { before, after } = {}) {
   const app = await browser.newPage();
   const appErrors = [];
   app.on("pageerror", (e) => appErrors.push(e.message));
@@ -112,6 +113,7 @@ async function inApp(name, suites, suite, after) {
   });
   if (!loaded) return;
   const check = checker(suite);
+  if (before) await before(app, check);
   for (const [n, fn, ran] of suites)
     await timed(name + " · " + n, async () => {
       try { await fn(app, check); } catch (e) { check(ran, false, message(e)); }
@@ -120,15 +122,21 @@ async function inApp(name, suites, suite, after) {
   if (appErrors.length) check("no page errors during the " + suite, false, appErrors.join("; "));
 }
 
-const app = () => inApp("app", appSuites, "gestures", async (app, check) => {
+const app = () => inApp("app", appSuites, "gestures", { after: async (app, check) => {
   // GUN keeps its copy of the graph in IndexedDB (RAD), not in localStorage, where 5 MB filled up
   // ("localStorage max!") and every save failed
   const store = await app.evaluate(() => ({ rad: !!window.RindexedDB, peers: (window.kairoticPeers || []).length,
                                             ls: (localStorage.getItem("gun/") || "").length }));
   check("GUN keeps its copy in IndexedDB, not in localStorage", store.rad && store.ls === 0, JSON.stringify(store));
   check("... and the tests ran without a relay", store.peers === 0, JSON.stringify(store));
-});
-const audio = () => inApp("audio", audioSuites, "audio");
+} });
+// a local work, as tests/gestures.mjs opens it in the first app
+const audio = () => inApp("audio", audioSuites, "audio", { before: async (app, check) => {
+  await cljs(app, "(open-work! :local \"local\" \"Local\")");
+  await app.waitForFunction(() => document.getElementById("manager").hidden, null, { timeout: 10000 }).catch(() => {});
+  const mode = await cljs(app, "(:mode @hist)");
+  check("a local work opens for the audio tests", mode === ":local", mode);
+} });
 
 // 4. a Release/Perform embed (issue #50), in a page of its own
 async function embedded() {
