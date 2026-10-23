@@ -178,6 +178,9 @@ const wall = Date.now() - t0;
 await browser.close();
 const secs = (ms) => (ms / 1000).toFixed(1) + " s";
 console.log("time:", timings.map((t) => `${t.name} ${secs(t.ms)}`).join(" · "), process.env.KAIROTIC_TESTS_SERIAL ? "· all, one after another:" : "· all, at the same time:", secs(wall));
+// on GitHub Actions, also a notice on the run's page, readable without opening the log
+if (process.env.GITHUB_ACTIONS)
+  console.log("::notice title=Browser tests: time::" + timings.map((t) => `${t.name} ${secs(t.ms)}`).join(" · ") + " · all " + secs(wall));
 if (process.env.GITHUB_STEP_SUMMARY) {
   const { appendFileSync } = await import("node:fs");
   appendFileSync(process.env.GITHUB_STEP_SUMMARY, "### Browser tests: time\n\n| part | time |\n|---|---:|\n" +
