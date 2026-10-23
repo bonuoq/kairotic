@@ -4,23 +4,39 @@ name: tests
 
 on:
   push:
-    paths: ["app/**", "core/**", "tests/**", "site/build.mjs", ".github/workflows/tests.yml"]
+    # The same paths for pushes and pull requests (a YAML anchor, &paths, reused below as *paths): a pull
+    # request that only touches docs, examples or other workflows doesn't run the browser.
+    paths: &paths ["app/**", "core/**", "tests/**", "site/build.mjs", ".github/workflows/tests.yml"]
   pull_request:
+    paths: *paths
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# A new push to the same branch or pull request cancels the run still going for the previous one.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   browser:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Playwright's image already has Chromium and the system libraries it needs, plus Node 22 and curl:
+    # no `playwright install --with-deps` (apt and a browser download on every run) and no setup-node.
+    # Its tag must be the same version as the playwright installed below; change both together.
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.0-noble
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - run: node site/build.mjs
-      - run: npm install --no-save playwright@1.56.0 && npx playwright install --with-deps chromium
-      - name: Serve the built app
-        run: (cd _site && python3 -m http.server 8000 &) && sleep 2
-      - run: node tests/browser.mjs http://localhost:8000/tests.html
+      # Only the npm package (the browser is in the image).
+      - run: npm install --no-save playwright@1.56.0
+      # The image has no python3, so the built app is served with http-server. The server and the tests
+      # share a step, and the tests start once the page answers (up to 30 s), not after a fixed sleep.
+      - name: Serve the built app and run the tests
+        run: |
+          npx --yes http-server@14 _site -p 8000 -s &
+          for i in $(seq 1 30); do curl -sf http://localhost:8000/tests.html > /dev/null && break; sleep 1; done
+          node tests/browser.mjs http://localhost:8000/tests.html
