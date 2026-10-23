@@ -1,5 +1,7 @@
-# Publishes an official package (packages/<name>, npm @kairotic/<name>) when a tag <name>-vX.Y.Z is
-# pushed, for example by creating a GitHub release with that tag: synth-v0.1.0 → @kairotic/synth.
+# Publishes an official package (npm @kairotic/<name>) when a tag <name>-vX.Y.Z is pushed, for example by
+# creating a GitHub release with that tag: synth-v0.1.0 → @kairotic/synth. The packages live in
+# packages/<name> and are built with packages/build.mjs; the relay (relay-v0.1.1 → @kairotic/relay)
+# lives in relay/ and has nothing to build.
 #
 # Authentication: trusted publishing (OIDC), no tokens. npm only lets a trusted publisher be set on a
 # package that already exists, so the first version of each package is published by hand; then, on
@@ -9,7 +11,7 @@ name: publish-packages
 
 on:
   push:
-    tags: ["synth-v*", "spatial-v*", "cac-v*", "notation-v*", "controls-v*", "analysis-v*"]
+    tags: ["synth-v*", "spatial-v*", "cac-v*", "notation-v*", "controls-v*", "analysis-v*", "relay-v*"]
 
 jobs:
   publish:
@@ -28,10 +30,13 @@ jobs:
       - name: Which package, and does the tag match its version
         run: |
           NAME="${GITHUB_REF_NAME%-v*}"
-          test -f "packages/$NAME/package.json" || { echo "No package packages/$NAME"; exit 1; }
-          V=$(node -p "require('./packages/$NAME/package.json').version")
+          if [ "$NAME" = relay ]; then DIR=relay; else DIR="packages/$NAME"; fi
+          test -f "$DIR/package.json" || { echo "No package $DIR"; exit 1; }
+          V=$(node -p "require('./$DIR/package.json').version")
           test "$NAME-v$V" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} does not match version $V"; exit 1; }
           echo "NAME=$NAME" >> "$GITHUB_ENV"
-      - run: node packages/build.mjs "$NAME"
+          echo "DIR=$DIR" >> "$GITHUB_ENV"
+      - if: env.NAME != 'relay'
+        run: node packages/build.mjs "$NAME"
       - run: npm publish --access public
-        working-directory: packages/${{ env.NAME }}
+        working-directory: ${{ env.DIR }}
