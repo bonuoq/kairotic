@@ -9,6 +9,8 @@ const until = async (page, src, ok, ms = 20000) => {
   return got;
 };
 const printed = (page) => cljs(page, "(pr-str (map second (:prints @eng/rt)))");
+// what reached a print box, waiting a moment for it (a message may be due an instant later)
+const printedHas = (page, ...xs) => until(page, "(pr-str (map second (:prints @eng/rt)))", (p) => xs.every((x) => p.includes(x)), 3000);
 
 export async function theory(page, check) {
   if ((await cljs(page, "(:mode @hist)")) !== ":local") { check("a local work is open for the theory tests", false); return; }
@@ -51,8 +53,8 @@ export async function theory(page, check) {
   const p2 = (await cljs(page, '(box "print" 7300 640)')).trim();
   await cljs(page, `(connect ${pc} 0 ${p2} 0) (connect ${tz} 0 ${p2} 0) (connect ${tz} 1 ${p2} 0)`);
   await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${pc} [60 64 67])`);
-  check("pcclock: a major triad is the set (0 4 7)", (await cljs(page, `(:set (second (last-shown ${pc})))`)) === "[0 4 7]");
-  check("... whose prime form is (0 3 7)", (await printed(page)).includes("[0 3 7]"), await printed(page));
+  check("pcclock: a major triad is the set (0 4 7)", (await until(page, `(:set (second (last-shown ${pc})))`, (x) => x === "[0 4 7]", 3000)) === "[0 4 7]");
+  check("... whose prime form is (0 3 7)", (await printedHas(page, "[0 3 7]")).includes("[0 3 7]"), await printed(page));
   await cljs(page, `(send! ${pc} [0 3 6 9])`);
   const axes = await cljs(page, `(let [b (get-in (current) [:boxes ${pc}])] (count (filter (fn [f] (and (= :line (first f)) (= :kairos (:stroke (second f))))) (ctl-shapes* (ctl-m ${pc} b) b))))`);
   check("... a diminished seventh has four axes of symmetry", axes === "4", axes);
@@ -60,10 +62,10 @@ export async function theory(page, check) {
   const f3 = await cljs(page, `(let [[a b] (get-in (second (last-shown ${fo})) [:f 2])] (js/Math.round (* 100 (js/Math.hypot a b))))`);
   check("fourier: the augmented triad is wholly triadic (|f3| = 1)", f3 === "100", f3);
   await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${tz} [60 64 67]) (send! ${tz} [60 63 67]) (send! ${tz} [60 63 68])`);
-  const tri = await printed(page);
+  const tri = await printedHas(page, ":C", ":cm", ":Ab");
   check("tonnetz: C, c, A♭ are named as they come", tri.includes(":C") && tri.includes(":cm") && tri.includes(":Ab"), tri);
-  check("... and make a path of three triads", (await cljs(page, `(count (:path (second (last-shown ${tz}))))`)) === "3");
+  check("... and make a path of three triads", (await until(page, `(count (:path (second (last-shown ${tz}))))`, (x) => x === "3", 3000)) === "3");
   await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${tz} [:pressed 7])`);
-  check("... pressing a node sends its pitch class", (await printed(page)).includes("7"), await printed(page));
+  check("... pressing a node sends its pitch class", (await printedHas(page, "7")).includes("7"), await printed(page));
   await cljs(page, `(delete ${d} ${out} ${pc} ${fo} ${tz} ${p2})`);
 }
