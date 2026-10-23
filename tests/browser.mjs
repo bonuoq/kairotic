@@ -20,6 +20,7 @@ import { record } from "./record.mjs";
 import { layout } from "./layout.mjs";
 import { release } from "./release.mjs";
 import { embed } from "./embed.mjs";
+import { relays } from "./relays.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 // sound without a click, and a fake microphone (a beep) that is allowed without asking: for adc~
@@ -65,6 +66,7 @@ if (loaded) {
   try { await analysis(app, check); } catch (e) { check("the analysis tests ran", false, String(e && e.message || e)); }
   try { await record(app, check); } catch (e) { check("the record tests ran", false, String(e && e.message || e)); }
   try { await layout(app, check); } catch (e) { check("the layout tests ran", false, String(e && e.message || e)); }
+  try { await relays(app, check); } catch (e) { check("the relay tests ran", false, String(e && e.message || e)); }
   // opens other works, then a local one again
   try { await release(app, check); } catch (e) { check("the release tests ran", false, String(e && e.message || e)); }
   // opens a lesson (another local work): last

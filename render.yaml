@@ -1,0 +1,15 @@
+# A Kairotic relay on Render ("Deploy to Render" with this repository: render.com/deploy?repo=…).
+# The free plan sleeps when idle and loses its disk: fine for trying, not for keeping works. With a
+# paid plan, add a disk at /data (and keep RADATA=/data) so rooms survive a restart.
+# Then use wss://<name>.onrender.com/gun in Kairotic (Sessions → Relay).
+services:
+  - type: web
+    name: kairotic-relay
+    runtime: node
+    rootDir: relay
+    buildCommand: npm install --omit=dev --no-audit --no-fund
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: RADATA
+        value: radata

@@ -1,10 +1,24 @@
 {
-  "name": "kairotic-relay",
+  "name": "@kairotic/relay",
   "version": "0.1.0",
-  "private": true,
-  "description": "GUN relay for Kairotic Pages (rooms and saved works between browsers)",
+  "description": "A GUN relay for Kairotic: passes works and rooms between browsers and keeps a copy, so a community can collaborate through its own server",
+  "author": "bonuoq",
   "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "relay"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/relay#readme",
   "main": "server.js",
+  "bin": {
+    "kairotic-relay": "server.js"
+  },
+  "files": [
+    "server.js",
+    "README.md",
+    "README.es.md"
+  ],
   "scripts": {
     "start": "node server.js"
   },
@@ -17,5 +31,15 @@
   },
   "overrides": {
     "ws": "^7.5.10"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "kairotic",
+    "gun",
+    "relay",
+    "collaboration",
+    "music"
+  ]
 }

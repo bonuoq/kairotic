@@ -41,7 +41,12 @@ navegadores y guardan una copia para que una sala siga ahí cuando la gente vuel
 sirve archivos, así que el relay va en otro sitio ([relay/](../relay/README.es.md)). Sin relay, cada
 navegador trabaja solo.
 
-Los relays del sitio están en `site/config.js`. Quien visita puede elegir otros para su navegador con
+Los relays del sitio están en `site/config.js`. En el gestor de sesiones, **Relay** muestra por cuáles
+se sincroniza la página y si cada uno responde; ahí se puede probar y usar otro (el de la propia
+comunidad, [con `npx @kairotic/relay`](../relay/README.es.md)), volver a los del sitio o trabajar sin
+relay. La página se recarga con la elección, y mientras no sea la del sitio la dirección y los enlaces a
+salas (**Copy link**) la llevan, así que quien los abre se sincroniza por el mismo relay. Lo mismo se
+hace en la dirección: quien visita puede elegir otros para su navegador con
 `?peer=wss://host/gun` (varios separados por comas; `?peer=none` vuelve a los del sitio);
 `?peer=off` trabaja solo, sin ningún relay, hasta otro `?peer=` (así abren la app los tests).
 

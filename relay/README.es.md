@@ -3,15 +3,33 @@
 *[English version](README.md)*
 
 Un relay de [GUN](https://gun.eco) para Kairotic Pages: pasa el grafo entre navegadores (salas,
-presencia, obras guardadas) y guarda una copia en disco en `radata/`. Ver [docs/pages.es.md](../docs/pages.es.md).
+presencia, obras guardadas) y guarda una copia en disco. Cada comunidad puede tener el suyo y
+colaborar a través de él: las salas de un relay no se ven desde otro. Ver [docs/pages.es.md](../docs/pages.es.md).
 
 ```sh
-npm install
-npm start                 # ws://localhost:8765/gun
-PORT=9000 RADATA=/data/radata npm start
+npx @kairotic/relay                          # ws://localhost:8765/gun, datos en ./radata
+npx @kairotic/relay --port 9000 --data /srv/kairotic
+PORT=9000 RADATA=/srv/kairotic npx @kairotic/relay
 ```
 
-Después pon `wss://<tu host>/gun` en `site/config.js` (o abre el sitio con `?peer=wss://<tu host>/gun`).
+Desde esta carpeta: `npm install && npm start`. Node 18 o posterior, y git (GUN viene de su
+repositorio, en el commit que usa la página).
+
+Después, en Kairotic: **Sessions → Relay**, escribe `wss://<tu host>/gun` y **Use**. La página se
+recarga sincronizando a través de él, y mientras no sea el relay del sitio la dirección y los enlaces a
+salas lo llevan (`?peer=…`), así que quien los recibe llega al mismo relay. Para todo un sitio, ponlo en
+`site/config.js`.
+
+### Dónde ejecutarlo
+
+| | |
+|---|---|
+| Un VPS o un servidor propio | `npx @kairotic/relay --data /srv/kairotic` detrás de un proxy inverso con TLS (Caddy, nginx) |
+| Docker | `docker build -t kairotic-relay relay/` · `docker run -p 8765:8765 -v kairotic-radata:/data kairotic-relay` |
+| [Fly.io](https://fly.io) | desde `relay/`: `fly launch --copy-config`, `fly volumes create radata --size 1`, `fly deploy` ([fly.toml](fly.toml)) |
+| [Render](https://render.com/deploy?repo=https://github.com/bonuoq/kairotic) | el botón usa [render.yaml](../render.yaml); las instancias gratuitas se duermen y pierden el disco |
+| Railway | un servicio nuevo desde este repositorio con directorio raíz `relay` (encuentra el Dockerfile); añade un volumen en `/data` |
+| Tu ordenador | `npx @kairotic/relay` y un túnel con TLS (cloudflared, ngrok) para que otros lleguen |
 
 ## Notas
 
