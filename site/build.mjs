@@ -66,6 +66,11 @@ const inject = [
   "<!-- Pages edition: data in GUN, Claude with the visitor's own key -->",
   '<script src="vendor/gun/gun.js"></script>',
   '<script src="vendor/gun/sea.js"></script>',
+  // GUN's RAD on IndexedDB: the copy of the graph in this browser (localStorage holds only 5 MB)
+  '<script src="vendor/gun/lib/radix.js"></script>',
+  '<script src="vendor/gun/lib/radisk.js"></script>',
+  '<script src="vendor/gun/lib/store.js"></script>',
+  '<script src="vendor/gun/lib/rindexed.js"></script>',
   '<script src="kairotic/backends/gun-backend.js"></script>',
   '<script src="config.js"></script>',
   '<script src="boot.js"></script>',
@@ -88,6 +93,6 @@ if (pagesOut === resolve(root, "_site")) {
 }
 
 for (const f of ["index.html", "page/00-work.cljs", "kairotic/core.cljs", "kairotic/links.cljs", "kairotic/packages/controls.mjs",
-                 "kairotic/packages/synth.mjs", "kairotic/tutorials.mjs", "vendor/gun/gun.js", "tests.html"])
+                 "kairotic/packages/synth.mjs", "kairotic/tutorials.mjs", "vendor/gun/gun.js", "vendor/gun/lib/rindexed.js", "tests.html"])
   if (!existsSync(join(pagesOut, f))) throw new Error("missing " + f);
 console.log("Kairotic →", pagesOut, existsSync(artifactOut) ? "and " + artifactOut : "");

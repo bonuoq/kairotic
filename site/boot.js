@@ -10,7 +10,8 @@
   var q = new URLSearchParams(location.search).get("peer");
   if (q !== null) store(KEY, q === "none" || q === "" ? null : q);
   var chosen = (stored(KEY) || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
-  var peers = chosen.length ? chosen : (window.KAIROTIC_PEERS || []);
+  // ?peer=off: no relay at all, remembered like any other choice (as the tests run)
+  var peers = chosen.join(",") === "off" ? [] : chosen.length ? chosen : (window.KAIROTIC_PEERS || []);
 
   // an embed (?embed, ?present) works on its own: no relay, nothing saved (Study 22)
   var params = new URLSearchParams(location.search);

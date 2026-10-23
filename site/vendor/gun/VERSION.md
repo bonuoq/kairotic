@@ -1,4 +1,5 @@
-GUN browser files (gun.js, sea.js), vendored so the Pages edition does not depend on a CDN for
+GUN browser files (gun.js, sea.js, and lib/radix.js, lib/radisk.js, lib/store.js, lib/rindexed.js:
+RAD, its storage on IndexedDB), vendored so the Pages edition does not depend on a CDN for
 its data layer.
 
 - Source: https://github.com/amark/gun
@@ -6,4 +7,4 @@ its data layer.
 - License: MIT or Zlib or Apache-2.0, see LICENSE.md (Copyright (c) 2015 Mark Nadal)
 
 These are the exact files the adapter (core/backends/gun-backend.js) was tested with. To update,
-copy gun.js and sea.js from a newer checkout and run the two-browser test again.
+copy these files from a newer checkout and run the two-browser test again.

@@ -42,7 +42,13 @@ sirve archivos, así que el relay va en otro sitio ([relay/](../relay/README.es.
 navegador trabaja solo.
 
 Los relays del sitio están en `site/config.js`. Quien visita puede elegir otros para su navegador con
-`?peer=wss://host/gun` (varios separados por comas; `?peer=none` vuelve a los del sitio).
+`?peer=wss://host/gun` (varios separados por comas; `?peer=none` vuelve a los del sitio);
+`?peer=off` trabaja solo, sin ningún relay, hasta otro `?peer=` (así abren la app los tests).
+
+Cada navegador guarda su propia copia de lo que ha visto en IndexedDB (RAD de GUN), así que obras y
+salas se abren sin conexión y se sincronizan cuando vuelve. Las versiones anteriores la guardaban en
+localStorage, donde caben solo 5 MB (una vez lleno, no se podía guardar nada: «localStorage max!»);
+esa copia pasa a IndexedDB la primera vez que se abre la página.
 
 Qué ve un relay: las salas en claro (como cualquiera en la sala), las obras solo cifradas.
 
