@@ -87,8 +87,10 @@ const appSuites = [
 const audioSuites = [
   ["audioin", audioin, "the audio input tests ran"],
   ["sounds", sounds, "the sound tests ran"],
-  ["analysis", analysis, "the analysis tests ran"],
   ["record", record, "the record tests ran"],
+  // last: its transcriptions depend on timing, and by then the other blocks have (nearly) finished
+  // (alongside them, a take could start late and an overwrite check fail)
+  ["analysis", analysis, "the analysis tests ran"],
 ];
 
 // loads the app in a page of its own and runs suites in it; before(app, check) first and after(app,
