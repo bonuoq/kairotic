@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Pages: the browser's copy of the graph in IndexedDB** (GUN's RAD, `site/vendor/gun/lib/`), not
+  in localStorage. GUN's localStorage adapter kept everything the browser had seen — its works and the
+  rooms a relay sent — as one JSON of at most 5 MB; once full, every save failed with
+  `localStorage max!` (the intermittent failures of the tests). What an earlier version left there is
+  brought over the first time the page opens (merged by its states: what a relay has that is newer
+  stays), and leaves localStorage a minute later or more (other GUN apps of the same origin keep theirs).
+  Read from IndexedDB, a large document can arrive in parts: a read waits for the whole of it (json and
+  del), and subscriptions skip the parts.
+- **`?peer=off`**: no relay at all, remembered like any other choice (`?peer=none` still goes back to the
+  site's relays). The browser tests open the app this way, so they no longer write to, or depend on, the
+  public relay. Tests: `tests/browser.mjs` (storage).
 - **`monitor [seconds] [name …]`** (`@kairotic/analysis` 0.3.0): draws whatever arrives over the last
   seconds (6 by default), one lane per inlet — one per name written after the seconds (`monitor 6 rms
   centroid chroma` has 3 inlets), or one. A number is a line in the range it has had in the window, a

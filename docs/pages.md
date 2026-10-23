@@ -40,7 +40,13 @@ copy so a room is still there when people come back. GitHub Pages only serves fi
 runs somewhere else ([relay/](../relay/README.md)). Without a relay each browser works alone.
 
 The site's relays are listed in `site/config.js`. A visitor can choose others for their browser
-with `?peer=wss://host/gun` (several separated by commas; `?peer=none` goes back to the site's).
+with `?peer=wss://host/gun` (several separated by commas; `?peer=none` goes back to the site's);
+`?peer=off` works alone, without any relay, until another `?peer=` (the tests open the app this way).
+
+Each browser keeps its own copy of what it has seen in IndexedDB (GUN's RAD), so works and rooms
+open without a connection and sync when it comes back. Earlier versions kept it in localStorage,
+which holds only 5 MB (once full, nothing could be saved: "localStorage max!"); that copy is moved
+to IndexedDB the first time the page opens.
 
 What a relay sees: rooms in clear (as anyone in the room would), solo works encrypted.
 

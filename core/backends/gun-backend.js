@@ -31,12 +31,60 @@
     return Array.from(a, (b) => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("");
   };
 
+  // ───────── from GUN's localStorage to IndexedDB ─────────
+  // The localStorage adapter kept the graph under "gun/" as {soul: node}, nodes with their states: the
+  // shape GUN takes in an incoming put, so giving it back as one ('in') merges it by those states (what
+  // a relay has that is newer stays) and stores it in IndexedDB. Only the souls of this app are taken
+  // (other GUN apps of the same origin share that key). When the page opens again a minute later or more,
+  // those souls leave "gun/" (the key goes if nothing else is left), which frees the space.
+  function migrateLocalStorage(gun, app) {
+    const KEY = "gun/", DONE = "kairotic.gun-migrated";
+    const ours = (soul) => soul === app || soul.indexOf(app + "/") === 0;
+    let raw = null, graph = null;
+    try { raw = window.localStorage.getItem(KEY); } catch (_) { return; }
+    if (!raw) return;
+    try { graph = JSON.parse(raw); } catch (_) { return; }
+    if (!graph || typeof graph !== "object") return;
+    const souls = Object.keys(graph).filter(ours);
+    const done = Number(store.get(DONE)) || 0;
+    if (done) {
+      // brought over in an earlier visit (at least a minute ago, so IndexedDB has written it): free the space
+      if (Date.now() - done < 60000) return;
+      const rest = Object.keys(graph).filter((s) => !ours(s));
+      try {
+        if (!rest.length) window.localStorage.removeItem(KEY);
+        else if (souls.length) {
+          const kept = {};
+          rest.forEach((s) => { kept[s] = graph[s]; });
+          window.localStorage.setItem(KEY, JSON.stringify(kept));
+        }
+      } catch (_) { /* it stays: it is only read */ }
+      return;
+    }
+    if (!souls.length) { store.set(DONE, String(Date.now())); return; }
+    const put = {};
+    souls.forEach((s) => { put[s] = graph[s]; });
+    try {
+      gun._.on("in", { "#": rid(9), put: put });
+      store.set(DONE, String(Date.now()));
+      console.info("Kairotic: " + souls.length + " nodes moved from localStorage to IndexedDB");
+    } catch (e) { console.warn("Kairotic: the data in localStorage could not be moved to IndexedDB", e); }
+  }
+
   function create(opts) {
     opts = opts || {};
     const Gun = window.Gun, SEA = Gun && Gun.SEA;
     if (!Gun || !SEA) throw new Error("Kairotic: gun.js and sea.js must be loaded before gun-backend.js");
-    const gun = Gun({ peers: opts.peers || [], localStorage: opts.localStorage !== false });
-    const root = gun.get(opts.app || "kairotic-v1");
+    const app = opts.app || "kairotic-v1";
+    // Where this browser keeps its copy of the graph. GUN's own localStorage adapter keeps everything it
+    // has seen (the works, and the rooms that come from a relay) as one JSON of at most 5 MB: once full,
+    // every save fails with "localStorage max!". With GUN's RAD on IndexedDB (site/vendor/gun/lib/) there
+    // is room for much more; what an earlier version left in localStorage is brought over once.
+    const rad = !!window.RindexedDB && opts.localStorage !== true;
+    const gun = Gun({ peers: opts.peers || [], localStorage: !rad && opts.localStorage !== false,
+                      file: opts.file || "kairotic-radata" });
+    if (rad) migrateLocalStorage(gun, app);
+    const root = gun.get(app);
     const nodeAt = (path) => String(path).split("/").filter(Boolean).reduce((n, s) => n.get(s), root);
 
     // ───────── identity: a key pair kept in this browser ─────────
@@ -79,6 +127,9 @@
       });
     });
 
+    // a document as written (json and del): read from IndexedDB, a large one can arrive in parts
+    const whole = (data) => "json" in data && "del" in data;
+
     function docSnap(id, path, data) {
       return decode(path, data && !data.del ? data.json : null).then((obj) => ({
         id, exists: obj != null, data: () => obj,
@@ -93,11 +144,12 @@
         await this.set(Object.assign({}, cur.exists ? cur.data() : {}, obj));
       }
       async delete() { await put(nodeAt(this.path), { json: null, del: true, t: Date.now() }); }
-      // one read: the first value that arrives (GUN's once is unreliable without local storage), or
-      // "does not exist" after a moment
+      // one read: the first whole value that arrives (GUN's once is unreliable without local storage), or
+      // what has arrived after a moment. A document is whole when it has both json and del: read from
+      // IndexedDB (RAD), a large one can arrive in parts, and its first part may not have json yet
       get() {
         return new Promise((resolve) => {
-          let done = false;
+          let done = false, last = null;
           const chain = nodeAt(this.path);
           const finish = (data) => {
             if (done) return;
@@ -105,14 +157,18 @@
             try { chain.off(); } catch (_) { /* already off */ }
             resolve(docSnap(this.id, this.path, data));
           };
-          chain.on((data) => finish(data));
-          setTimeout(() => finish(null), 1200);
+          chain.on((data) => {
+            last = data;
+            if (data && whole(data)) finish(data);
+          });
+          setTimeout(() => finish(last), 1200);
         });
       }
       onSnapshot(cb, err) {
         const chain = nodeAt(this.path);
         let alive = true;
         chain.on((data) => {
+          if (data && !whole(data)) return;   // a part of it (see get): the rest is coming
           docSnap(this.id, this.path, data).then((s) => { if (alive) cb(s); }).catch((e) => err && err(e));
         });
         return () => { alive = false; chain.off(); };
@@ -150,7 +206,7 @@
           }, 40);
         };
         const chain = nodeAt(this.path).map();
-        chain.on((data, key) => { docs[key] = data; emit(); });
+        chain.on((data, key) => { if (data && !whole(data)) return; docs[key] = data; emit(); });
         emit();
         return () => { alive = false; chain.off(); };
       }
