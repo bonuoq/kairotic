@@ -1,6 +1,6 @@
 # Class reference
 
-*Made from the help of Kairotic 0.1.0-alpha (the Help tab shows the same, and the help of classes a work defines). Generated: do not edit by hand — `(reference-md)` in the REPL writes it.*
+*Made from the help of Kairotic 0.2.0-alpha (the Help tab shows the same, and the help of classes a work defines). Generated: do not edit by hand — `(reference-md)` in the REPL writes it.*
 
 ### !-
 
@@ -319,6 +319,44 @@ Audio output: each inlet is an output channel, the ones written after it (dac~ 1
 
 See also: `gain~`, `pan~`, `space~`, `adc~`
 
+### draw
+
+`draw [width height]`
+
+A view drawn from the messages that arrive: each shape of kairotic.shapes ([:circle {:cx 40 :cy 40 :r 10 :fill :accent}], [:line …], [:path {:points [[x y] …]}], [:text {:x :y} "…"], [:curve …], [:group {:x :y :rotate} [shapes]]) is added — or as a msg writes it: circle 40 40 10 accent, rect x y w h, line x1 y1 x2 y2, arc cx cy r from to, text x y "words", with a colour and hit name; a list of shapes replaces them all; [:set k shape] (set k circle …) adds or replaces the shape called k (to move a cursor), [:unset k] removes it, clear empties it. A shape with :hit k, pressed, sends k out.
+
+**Inlets** 
+
+0. a shape ([:circle {:cx 40 :cy 40 :r 10 :fill :accent}]) is added; a list of shapes replaces them all; [:set k shape] adds or replaces the one called k; [:unset k] removes it; clear
+
+**Outlets** 
+
+0. the :hit of a shape pressed (a shape with :hit k sends k)
+
+**Messages and gestures**
+
+- `[:circle {:cx :cy :r}]`: a circle (also :rect :line :arc :needle :path :curve :text and :group)
+- `[[:line …] [:text …]]`: a list: replaces everything
+- `[:set :cursor [:line …]]`: the shape called :cursor, added or moved
+- `[:unset :cursor]`: removes it
+- `clear`: empties the view
+
+**Try:** Click the three messages, then press the circles: print writes :sun or :moon. From code, any shape of kairotic.shapes: (send! :b4 [:curve {:points [[10 90] [80 20] [150 80] [230 30]] :stroke :accent}]). Shapes take the theme's colours (:ink :soft :accent :kairos :bg :grid) and :opacity.
+
+```clojure
+(box :b1 "msg circle 60 55 22 accent hit sun" 40 30)
+(box :b2 "msg circle 160 55 14 kairos hit moon" 250 30)
+(box :b3 "msg set label text 20 100 \"press one of them\"" 40 70)
+(box :b4 "draw 240 120" 40 120)
+(box :b5 "print" 40 270)
+(connect :b1 0 :b4 0)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b4 0 :b5 0)
+```
+
+See also: `monitor`, `pcclock`, `msg`
+
 ### faust~
 
 `faust~`
@@ -377,6 +415,33 @@ Descriptors of a signal every ms, one outlet per word: rms, energy, zcr, loudnes
 ```
 
 See also: `pitch~`, `chroma~`, `snapshot~`
+
+### fourier · `@kairotic/theory`
+
+`fourier [notes]`
+
+The six Fourier coefficients of a pitch-class distribution (chromatic, dyadic, triadic, octatonic, diatonic, whole-tone), each a point in its circle with its trail.
+
+**Inlets** 
+
+0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, from chroma~), or a number: a note (the last n count: 4); clear
+
+**Outlets** 
+
+0. the six magnitudes, 0…1
+1. the six phases, in degrees
+
+**Try:** The diatonic scale fills f5; the augmented triad, f3 and f6 at 1. With adc~ → chroma~ → fourier, sing or play and watch the trails.
+
+```clojure
+(box :b1 "msg 60 62 64 65 67 69 71" 40 30)
+(box :b2 "msg 60 64 68" 240 30)
+(box :b3 "fourier" 40 80)
+(connect :b1 0 :b3 0)
+(connect :b2 0 :b3 0)
+```
+
+See also: `pcclock`, `tonnetz`, `chroma~`
 
 ### freqt
 
@@ -785,6 +850,36 @@ An embedded sub-patch: double-click to open it. Its inlet / outlet boxes (number
 - `(abstract :bN "name")`: turns it into a class (an abstraction)
 
 See also: `inlet`, `outlet`
+
+### pcclock · `@kairotic/theory`
+
+`pcclock [notes]`
+
+A pitch-class set on the clock face: its polygon, the sets before it, its axes of symmetry; its prime form and interval vector go out.
+
+**Inlets** 
+
+0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma), or a number: a note, the last n notes (4) being the set; clear
+
+**Outlets** 
+
+0. the prime form, when the set changes
+1. the interval vector
+2. the pitch class pressed
+
+**Try:** Click the major triad, then the diminished seventh: (0 3 7) has no axis, (0 3 6 9) has four. Press a pitch class on the clock: it comes out on the right.
+
+```clojure
+(box :b1 "msg 60 64 67" 40 30)
+(box :b2 "msg 60 63 66 69" 140 30)
+(box :b3 "pcclock" 40 80)
+(box :b4 "print" 40 330)
+(connect :b1 0 :b3 0)
+(connect :b2 0 :b3 0)
+(connect :b3 0 :b4 0)
+```
+
+See also: `fourier`, `tonnetz`, `chroma~`
 
 ### phasor~
 
@@ -1212,6 +1307,39 @@ Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a lis
 0. the sound
 
 See also: `reader`, `adsr~`
+
+### tonnetz · `@kairotic/theory`
+
+`tonnetz [notes]`
+
+Triads on the Tonnetz (fifths across, thirds up) and the path of the harmony: each triad found joined to the ones before.
+
+**Inlets** 
+
+0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, above 0.5), or a number: a note (the last n count: 3); clear forgets the path
+
+**Outlets** 
+
+0. the triad, when it changes (:C, :am, :Ebm…)
+1. the pitch class pressed
+
+**Try:** Click the four messages in order: C, c, A♭, g♯ — P, L, P: each step crosses one edge of the lattice. Press a node to hear which class it is (its number comes out on the right).
+
+```clojure
+(box :b1 "msg 60 64 67" 40 30)
+(box :b2 "msg 60 63 67" 130 30)
+(box :b3 "msg 60 63 68" 220 30)
+(box :b4 "msg 59 63 68" 310 30)
+(box :b5 "tonnetz" 40 80)
+(box :b6 "print" 40 340)
+(connect :b1 0 :b5 0)
+(connect :b2 0 :b5 0)
+(connect :b3 0 :b5 0)
+(connect :b4 0 :b5 0)
+(connect :b5 0 :b6 0)
+```
+
+See also: `pcclock`, `fourier`, `mt`
 
 ### transcribe · `@kairotic/analysis`
 
