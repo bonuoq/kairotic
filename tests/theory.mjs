@@ -31,7 +31,7 @@ export async function theory(page, check) {
   await cljs(page, `(send! ${d} [:circle {:cx 20 :cy 20 :r 8 :fill :accent :hit :sun}])
                     (send! ${d} [:circle 60 20 8 :kairos :hit :moon])
                     (send! ${d} [:set :label :text 10 90 "hello"])`);
-  const shown = await cljs(page, `(mapv first (second (last-shown ${d})))`);
+  const shown = await until(page, `(mapv first (second (last-shown ${d})))`, (x) => x === "[:circle :circle :text]", 4000);
   check("draw keeps the shapes that arrive (also as a msg writes them)", shown === "[:circle :circle :text]", shown);
   await cljs(page, `(send! ${d} [:set :label [:text {:x 10 :y 90} "again"]])`);
   check("... [:set k …] replaces the shape called k", (await cljs(page, `(count (second (last-shown ${d})))`)) === "3");

@@ -38,7 +38,12 @@ export async function layers(page, check) {
   await cljs(page, `(send! ${d} [:circle 60 40 20 :accent])`);
   await cljs(page, `(project ${d} :viz [6000 500 480 320])`);
   check("(project …) keeps where it goes", (await cljs(page, `(get-in (current) [:projections ${d} :rect])`)) === "[6000 500 480 320]");
-  const svg = await cljs(page, `(projection-svg (current) ${d} (get-in (current) [:projections ${d}]))`);
+  // (with the engine running, what a box shows counts from the instant it is due: wait for it)
+  let svg = "";
+  for (let i = 0; i < 40 && !svg.includes("<circle"); i++) {
+    svg = await cljs(page, `(projection-svg (current) ${d} (get-in (current) [:projections ${d}]))`);
+    if (!svg.includes("<circle")) await page.waitForTimeout(100);
+  }
   check("... and draws the view again at that size", svg.includes("proj") && svg.includes("<circle"), svg.slice(0, 300));
   const noView = await cljs(page, `(project ${a} :viz [0 0 100 100])`);
   check("a box without a view of its own cannot be projected", noView.startsWith("ERR"), noView);
