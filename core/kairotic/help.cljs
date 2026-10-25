@@ -534,6 +534,31 @@
     :try "Start the engine and click the bang: a plucked note. Drag over the envelope to make it longer."
     :see ["gain~" "reader~" "synth~"]}
 
+   "gendy~"
+   {:package "@kairotic/synth" :usage "gendy~ [freq x-step y-min y-max y-step breakpoints]"
+    :doc "A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle — a pitch that drifts, a timbre that changes."
+    :inlets ["a number: the frequency in Hz · [:x-step 30], [:y-step 0.2]…: one parameter · a list of six: all of them · a signal: added to the frequency, in Hz (FM)"]
+    :outlets ["the sound (about ±0.15 by default: y-min and y-max are its barriers)"]
+    :messages [["220" "the frequency"] ["[:x-step 40]" "how far the durations wander (0–100 %): the pitch drifts"]
+               ["[:y-step 0.2]" "how far the amplitudes move each cycle: the timbre changes faster"]
+               ["[:breakpoints 6]" "fewer breakpoints, a simpler wave (more of them, a richer one); changing it keeps the wave"]
+               ["[220 10 -0.15 0.15 0.05 16]" "freq x-step y-min y-max y-step breakpoints"]]
+    :example "(box :b1 \"gendy~ 110\" 40 30)\n(box :b2 \"dac~\" 40 90)\n(box :b3 \"scope~ 30\" 160 90)\n(connect :b1 0 :b2 0)\n(connect :b1 0 :b2 1)\n(connect :b1 0 :b3 0)"
+    :try "Press ▶: a buzz whose pitch and colour never settle. Write gendy~ 110 0 in the box: with no wander of the durations, the pitch holds and only the timbre moves."
+    :steps [{:title "The two walks"
+             :note "x-step lets the durations wander (the pitch), y-step the amplitudes (the timbre). Two knobs send them by name."
+             :example "(box :b4 \"knob 0 100 10 x-step\" 300 20)\n(box :b5 \"knob 0 0.3 0.05 y-step\" 390 20)\n(connect :b4 0 :b1 0)\n(connect :b5 0 :b1 0)"
+             :try "Press ▶ and turn x-step up: the pitch scatters into noise. Turn it down and y-step up: one pitch, a restless colour."}
+            {:title "Breakpoints"
+             :note "Few breakpoints make a simple wave, close to a triangle or a square; many, a richer and noisier one. Changing their number keeps the wave, with no click."
+             :example "(box :b6 \"msg breakpoints 4\" 300 120)\n(box :b7 \"msg breakpoints 48\" 440 120)\n(connect :b6 0 :b1 0)\n(connect :b7 0 :b1 0)"
+             :try "Press ▶ and click both messages in turn, watching the scope."}
+            {:title "A signal on the inlet: FM"
+             :note "A signal connected to the inlet is added to the frequency, in Hz: a slow one makes a vibrato, a fast one frequency modulation."
+             :example "(box :b8 \"osc~ 5\" 300 200)\n(box :b9 \"gain~ 300\" 300 250)\n(connect :b8 0 :b9 0)\n(connect :b9 0 :b1 0)"
+             :try "Press ▶: 5 Hz around 110 Hz. Change osc~ 5 to osc~ 80 for a rougher sound."}]
+    :see ["osc~" "synth~" "faust~"]}
+
    "synth~"
    {:package "@kairotic/synth" :usage "synth~"
     :doc "Polyphonic triangle-wave synthesizer, one voice per id."

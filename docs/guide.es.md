@@ -93,6 +93,11 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   que cambió.
 - Un `msg` envía números (`msg 0 8 4`), palabras (`msg stop`) y **texto entre comillas como cadena**
   (`msg "https://…/voz.ogg"`, `msg "dos palabras"`), solos o en una lista (`msg url "github:…" 3`).
+- **Síntesis estocástica**: `gendy~ 110` (en `@kairotic/synth`) es un oscilador a partir del GENDY de
+  Xenakis: una onda de puntos de quiebre cuyas amplitudes y duraciones hacen paseos aleatorios ciclo a
+  ciclo — una altura que deriva, un timbre que no deja de cambiar. `[:x-step 40]` deja vagar la altura,
+  `[:y-step 0.2]` el timbre; una señal en su entrada modula su frecuencia. Su patch de ayuda tiene cuatro
+  pasos.
 - **Sonido de fuera**: `adc~ 1` es el micrófono (o una entrada de la tarjeta de sonido: `adc~ 1 2`). Al
   pulsar ▶ el navegador lo pide una vez; su sonido llega tal cual, sin el procesado pensado para
   llamadas. `scope~` dibuja una señal y `snapshot~ 50 db` la convierte en números (su nivel), para que

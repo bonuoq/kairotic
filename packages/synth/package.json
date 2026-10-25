@@ -1,7 +1,7 @@
 {
   "name": "@kairotic/synth",
-  "version": "0.1.1",
-  "description": "Kairotic synthesis components: adsr~ (an envelope that follows a gate), synth~ (a polyphonic synthesizer)",
+  "version": "0.2.0",
+  "description": "Kairotic synthesis components: adsr~ (an envelope that follows a gate), synth~ (a polyphonic synthesizer), gendy~ (a dynamic stochastic oscillator, after Xenakis)",
   "author": "bonuoq",
   "license": "MPL-2.0",
   "repository": {
@@ -32,6 +32,9 @@
     "music",
     "web audio",
     "synthesis",
-    "envelope"
+    "envelope",
+    "gendy",
+    "stochastic synthesis",
+    "xenakis"
   ]
 }
