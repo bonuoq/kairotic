@@ -9,7 +9,7 @@
 (defonce rooms (atom {}))
 (defonce solo-works (atom {}))
 (defonce lobby-peers (atom []))
-(defonce subs (atom []))
+(defonce snapshot-subs (atom []))   ; not `subs`: the page shares one namespace with components, and clojure.core/subs must stay a function there
 (defonce mgr (atom {:open true :confirm nil :busy nil :invite nil :relays false}))
 
 (defn room-name [id] (str "room-" (str/lower-case id)))
@@ -28,8 +28,8 @@
 (defn people-in [id] (count (filter (fn [p] (= (:room p) id)) @lobby-peers)))
 
 (defn unsub-all! []
-  (doseq [u @subs] (u))
-  (reset! subs []))
+  (doseq [u @snapshot-subs] (u))
+  (reset! snapshot-subs []))
 
 (defn leave-room! []
   (when-let [r @named-room]
@@ -97,8 +97,8 @@
   (if (= kind :local)
     (start-local!)
     (let [db @dbref]
-      (swap! subs conj (.onSnapshot (.collection db (hist-path)) on-history db-failed!))
-      (swap! subs conj (.onSnapshot (.doc db (work-base)) on-meta (fn [_] nil)))
+      (swap! snapshot-subs conj (.onSnapshot (.collection db (hist-path)) on-history db-failed!))
+      (swap! snapshot-subs conj (.onSnapshot (.doc db (work-base)) on-meta (fn [_] nil)))
       (when (and (= kind :room) @roomref)
         (-> (.join @roomref (room-name id))
             (.then (fn [r]

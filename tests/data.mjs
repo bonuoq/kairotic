@@ -84,18 +84,8 @@ export async function data(page, check) {
   const root = await until(page, `(:piece (:root (get-in @eng/rt [:states ${e}])))`, (x) => x === '"Kairos"', 3000);
   check("edn receives the value", root === '"Kairos"', root);
   const shapes = (expr) => cljs(page, safe(`(let [b (get-in (current) [:boxes ${e}])] ${expr})`));
-  // temporary: the helpers of edn, one by one, in the page
-  const src = await page.evaluate(async () => (await import("/kairotic/packages/data.mjs")).default.components.find((c) => c.class === "edn").source);
-  const cases = ['{:root {"2 voices" true}}', '{:root {:a true}}', '{:root {"k" 1}}', '{:root {:a "Kairos"}}', '{:root {:t ["a" "b"]}}', '{:root {:a 1} :top 0 :open #{}}', `(get-in @eng/rt [:states (fid ${e})])`];
-  const cases2 = ['{:root {:a "' + "x".repeat(80) + '"}}', '{:root {:v [{:a 1}]}}', '{:root {:v [{:a 1 :b "' + "y".repeat(80) + '"}]}}'];
-  const probeSrc = "(pr-str [" + [`(let [f (fn [s x] (let [m (js/Math.floor x)] (str (subs s 0 m) "…")))] (f "abcdefgh" 3.5))`, `(let [f (fn [s x] (let [m (js/Math.floor x)] (subs s 0 (dec m))))] (f "abcdefgh" 3.5))`, `(let [f (fn [s x] (let [m (js/Math.floor x)] (max 0 (dec m))))] (f "abcdefgh" 3.5))`, `(let [f (fn [s x] (let [k (js/Math.floor x)] (subs s 0 (max 0 (dec k)))))] (f "abcdefgh" 3.5))`, `(let [f (fn [s x] (let [m (js/Math.floor x)] (if (> (count s) m) "long" s)))] (f "abcdefgh" 3.5))`, `(let [f (fn [s x] (let [m (int x)] (subs s 0 (max 0 (dec m)))))] (f "abcdefgh" 3.5))`, `(let [f (fn [t x] (let [m (js/Math.floor x)] (subs t 0 (max 0 (dec m)))))] (f "abcdefgh" 3.5))`].map((v) => `(try ${v} (catch :default e (str "ERR " (.-message e))))`).join(" ") + "])";
-  const probe = await page.evaluate((s) => { try { return String(scittle.core.eval_string(s)); } catch (e) { return "EVAL ERR " + e.message; } }, probeSrc);
-  const tries = cases;
-  check("DIAGNOSTIC (temporary)", false, tries.map((t, k) => t).join(" | ") + " => " + probe);
   const lines = await shapes(`(count (filter (fn [s] (and (= :rect (first s)) (let [h (:hit (second s))] (and (number? h) (>= h 0))))) (ctl-shapes* (ctl-m ${e} b) b)))`);
   check("... one line per key, closed", lines === "5", lines);
-  const svg = await shapes(`(shp/svg (ctl-shapes* (ctl-m ${e} b) b))`);
-  console.log("edn view (closed):", svg.length, "characters");
   // the order is the printed order of the keys: "2 voices" :piece :tags :tempo :voices
   await cljs(page, `(send! ${e} [:edn-open [:voices] true])`);
   const open = await until(page, `(count (filter (fn [s] (and (= :rect (first s)) (let [h (:hit (second s))] (and (number? h) (>= h 0))))) (let [b (get-in (current) [:boxes ${e}])] (ctl-shapes* (ctl-m ${e} b) b))))`, (x) => x === "7", 3000);
