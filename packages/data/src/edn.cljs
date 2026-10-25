@@ -112,9 +112,9 @@
                               (+ t0 (* dy (/ n (* vis row-h))))
                               (- t0 (/ dy row-h)))]
                   (not up) nil
-                  (keyword? hit)
-                  (let [i (js/parseInt (subs (name hit) 1) 10) r (get rows i)]
-                    (when (and r (not= hit :bar)) [:edn-open (:path r) (not (:open? r))]))
+                  ;; a line is its index; its arrow, -1 - its index
+                  (and (number? hit) (neg? hit))
+                  (when-let [r (get rows (- -1 hit))] [:edn-open (:path r) (not (:open? r))])
                   (number? hit) (when-let [r (get rows hit)] (when-not (:more r) [:edn-pick (:path r)]))
                   :else nil)))
 
@@ -135,7 +135,7 @@
                             (concat
                              [[:rect {:x 2 :y y :w (- right 2) :h row-h :fill (if sel? :accent :bg) :opacity (if sel? 0.14 0) :hit i}]]
                              (when kind
-                               [[:rect {:x (- x 2) :y y :w 12 :h row-h :fill :bg :opacity 0 :hit (keyword (str "t" i))}]
+                               [[:rect {:x (- x 2) :y y :w 12 :h row-h :fill :bg :opacity 0 :hit (- -1 i)}]
                                 [:text {:x x :y base :size 9 :fill :soft} (if (:open? r) "▾" "▸")]])
                              (when (seq lbl)
                                [[:text {:x (+ x 12) :y base :size 9 :fill (if (:key? r) :accent :soft)} (cut lbl (+ x 12))]])

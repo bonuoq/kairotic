@@ -86,10 +86,10 @@ export async function data(page, check) {
   const shapes = (expr) => cljs(page, safe(`(let [b (get-in (current) [:boxes ${e}])] ${expr})`));
   // temporary: the helpers of edn, one by one, in the page
   const src = await page.evaluate(async () => (await import("/kairotic/packages/data.mjs")).default.components.find((c) => c.class === "edn").source);
-  const cases = ['{}', '{:root 3}', '{:root "s"}', '{:root {:a 1}}', '{:root [1 2]}', '{:root {:a [1]}}', '{:root {:a [1]} :open #{[:a]}}', '{:root {:a 1} :sel [:a]}'];
+  const cases = ['{:root {"2 voices" true}}', '{:root {:a true}}', '{:root {"k" 1}}', '{:root {:a "Kairos"}}', '{:root {:t ["a" "b"]}}', '{:root {:a 1} :top 0 :open #{}}', `(get-in @eng/rt [:states (fid ${e})])`];
   const probeSrc = "(let [d " + src + " m {:w 320 :h 240}] [" +
     cases.map((c) => `(try (count ((:draw d) (assoc m :state ${c}))) (catch :default e (str "ERR " (.-message e))))`).join(" ") + " " +
-    cases.map((c) => `(try (pr-str ((:gesture d) (assoc m :state ${c} :up true :hit :t0 :dy 0))) (catch :default e (str "ERR " (.-message e))))`).join(" ") + "])";
+    cases.map((c) => `(try (pr-str ((:gesture d) (assoc m :state ${c} :up true :hit -1 :dy 0))) (catch :default e (str "ERR " (.-message e))))`).join(" ") + "])";
   const probe = await page.evaluate((s) => { try { return String(scittle.core.eval_string(s)); } catch (e) { return "EVAL ERR " + e.message; } }, probeSrc);
   const tries = cases;
   check("DIAGNOSTIC (temporary)", false, tries.map((t, k) => t).join(" | ") + " => " + probe);
@@ -105,7 +105,7 @@ export async function data(page, check) {
   check("... the same message again changes nothing", (await cljs(page, `(count (:open (get-in @eng/rt [:states ${e}])))`)) === "1");
   // a press on a line, as the gesture gets it (the rows: "2 voices" :piece :tags :tempo :voices 0 1)
   const g = await shapes(`[((:gesture (comp/lookup "edn")) (assoc (ctl-m ${e} b) :up true :hit 6 :dy 0 :start {}))
-                           ((:gesture (comp/lookup "edn")) (assoc (ctl-m ${e} b) :up true :hit :t4 :dy 0 :start {}))
+                           ((:gesture (comp/lookup "edn")) (assoc (ctl-m ${e} b) :up true :hit -5 :dy 0 :start {}))
                            ((:gesture (comp/lookup "edn")) (assoc (ctl-m ${e} b) :up false :hit 2 :dy 30 :start {:top 0}))]`);
   check("... a line pressed picks it, its arrow closes it, a drag scrolls", g === "[[:edn-pick [:voices 1]] [:edn-open [:voices] false] [:edn-top -2.142857142857143]]", g);
   await cljs(page, `(send! ${e} [:edn-pick [:voices 1 :name]])`);
