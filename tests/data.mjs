@@ -47,7 +47,7 @@ export async function data(page, check) {
   await cljs(page, `(send! ${t} 1) (send! ${t} 2)`);
   await page.waitForTimeout(600);
   const late = await got(page, tp);
-  check("... the answer to an older request, arriving late, is dropped by the box", late === "[40 20]", late);
+  check("... the answer to an older request, arriving late, is dropped by the box", late === '"[40 20]"', late);
   await cljs(page, `(send! ${t} :boom)`);
   check("... a task that fails comes back as an error", (await gotHas(page, tp, "boom")).includes("boom"), await got(page, tp));
   check("a component with :tasks that are not functions is refused", (await cljs(page, `(lib/validate {:class "bad" :receive identity :tasks {:get 3}})`)).includes(":tasks"));
@@ -72,7 +72,8 @@ export async function data(page, check) {
   await page.waitForTimeout(400);
   check("... the URL it already keeps is not fetched again: no new event", Number(await cljs(page, events)) === before + 1, await cljs(page, events));
   await cljs(page, `(send! ${f} [:get :voices 1 :name])`);
-  check("... [:get …] sends a part of it", (await gotHas(page, p, "bass")).includes("bass"), await got(page, p));
+  const part = await until(page, `(:root (get-in @eng/rt [:states ${e}]))`, (x) => x.includes("bass"), 3000);
+  check("... [:get …] sends a part of it", part.includes("bass"), part);
   await cljs(page, `(send! ${f} ${JSON.stringify(origin + "/tests/assets/nothing-here.json")})`);
   const err = await until(page, `(pr-str (get-in @eng/rt [:states ${p}]))`, (x) => x.includes(":error"), 4000);
   check("... a URL that fails says why, on the right", err.includes("404"), err);
@@ -83,6 +84,18 @@ export async function data(page, check) {
   const root = await until(page, `(:piece (:root (get-in @eng/rt [:states ${e}])))`, (x) => x === '"Kairos"', 3000);
   check("edn receives the value", root === '"Kairos"', root);
   const shapes = (expr) => cljs(page, safe(`(let [b (get-in (current) [:boxes ${e}])] ${expr})`));
+  const diag = [];
+  for (const [label, src] of [
+    ["ctl-m", `(pr-str (dissoc (ctl-m ${e} b) :state))`],
+    ["draw nil", `(count ((:draw (comp/lookup "edn")) {:w 320 :h 240}))`],
+    ["draw state", `(count ((:draw (comp/lookup "edn")) {:w 320 :h 240 :state (get-in @eng/rt [:states (fid ${e})])}))`],
+    ["draw ctl-m", `(count ((:draw (comp/lookup "edn")) (ctl-m ${e} b)))`],
+    ["gesture nil", `(pr-str ((:gesture (comp/lookup "edn")) {:h 240 :up true :hit 0 :dy 0}))`],
+    ["gesture state", `(pr-str ((:gesture (comp/lookup "edn")) {:h 240 :up true :hit 0 :dy 0 :state (get-in @eng/rt [:states (fid ${e})])}))`],
+    ["state", `(pr-str (dissoc (get-in @eng/rt [:states (fid ${e})]) :root))`],
+    ["edn defs", `(count (filter (fn [[k d]] (= k "edn")) @comp/registry))`]])
+    diag.push(label + ": " + (await shapes(src)).slice(0, 300));
+  check("DIAGNOSTIC (temporary)", false, diag.join(" || "));
   const lines = await shapes(`(count (filter (fn [s] (and (= :rect (first s)) (number? (:hit (second s))))) (ctl-shapes* (ctl-m ${e} b) b)))`);
   check("... one line per key, closed", lines === "5", lines);
   const svg = await shapes(`(shp/svg (ctl-shapes* (ctl-m ${e} b) b))`);
