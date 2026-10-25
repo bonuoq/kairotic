@@ -87,19 +87,18 @@ export async function data(page, check) {
   // temporary: the helpers of edn, one by one, in the page
   const src = await page.evaluate(async () => (await import("/kairotic/packages/data.mjs")).default.components.find((c) => c.class === "edn").source);
   const cases = ['{:root {"2 voices" true}}', '{:root {:a true}}', '{:root {"k" 1}}', '{:root {:a "Kairos"}}', '{:root {:t ["a" "b"]}}', '{:root {:a 1} :top 0 :open #{}}', `(get-in @eng/rt [:states (fid ${e})])`];
-  const probeSrc = "(let [d " + src + " m {:w 320 :h 240}] [" +
-    cases.map((c) => `(try (count ((:draw d) (assoc m :state ${c}))) (catch :default e (str "ERR " (.-message e))))`).join(" ") + " " +
-    cases.map((c) => `(try (pr-str ((:gesture d) (assoc m :state ${c} :up true :hit -1 :dy 0))) (catch :default e (str "ERR " (.-message e))))`).join(" ") + "])";
+  const probeSrc = "(let [d " + src + " m {:w 320 :h 240} root (:root (get-in @eng/rt [:states (fid " + e + ")]))] " +
+    "(pr-str (into [(pr-str root) (pr-str (map type (vals root)))] (for [[k v] root] [k (try (count ((:draw d) (assoc m :state {:root {k v}}))) (catch :default e (str \"ERR \" (.-message e))))]))))";
   const probe = await page.evaluate((s) => { try { return String(scittle.core.eval_string(s)); } catch (e) { return "EVAL ERR " + e.message; } }, probeSrc);
   const tries = cases;
   check("DIAGNOSTIC (temporary)", false, tries.map((t, k) => t).join(" | ") + " => " + probe);
-  const lines = await shapes(`(count (filter (fn [s] (and (= :rect (first s)) (number? (:hit (second s))))) (ctl-shapes* (ctl-m ${e} b) b)))`);
+  const lines = await shapes(`(count (filter (fn [s] (and (= :rect (first s)) (let [h (:hit (second s))] (and (number? h) (>= h 0))))) (ctl-shapes* (ctl-m ${e} b) b)))`);
   check("... one line per key, closed", lines === "5", lines);
   const svg = await shapes(`(shp/svg (ctl-shapes* (ctl-m ${e} b) b))`);
   console.log("edn view (closed):", svg.length, "characters");
   // the order is the printed order of the keys: "2 voices" :piece :tags :tempo :voices
   await cljs(page, `(send! ${e} [:edn-open [:voices] true])`);
-  const open = await until(page, `(count (filter (fn [s] (and (= :rect (first s)) (number? (:hit (second s))))) (let [b (get-in (current) [:boxes ${e}])] (ctl-shapes* (ctl-m ${e} b) b))))`, (x) => x === "7", 3000);
+  const open = await until(page, `(count (filter (fn [s] (and (= :rect (first s)) (let [h (:hit (second s))] (and (number? h) (>= h 0))))) (let [b (get-in (current) [:boxes ${e}])] (ctl-shapes* (ctl-m ${e} b) b))))`, (x) => x === "7", 3000);
   check("... opening a branch shows its parts", open === "7", open);
   await cljs(page, `(send! ${e} [:edn-open [:voices] true])`);
   check("... the same message again changes nothing", (await cljs(page, `(count (:open (get-in @eng/rt [:states ${e}])))`)) === "1");

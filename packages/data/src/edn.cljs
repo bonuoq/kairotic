@@ -114,7 +114,7 @@
                   (not up) nil
                   ;; a line is its index; its arrow, -1 - its index
                   (and (number? hit) (neg? hit))
-                  (when-let [r (get rows (- -1 hit))] [:edn-open (:path r) (not (:open? r))])
+                  (when-let [r (get rows (- -1 hit))] (when (coll-kind (:v r)) [:edn-open (:path r) (not (:open? r))]))
                   (number? hit) (when-let [r (get rows hit)] (when-not (:more r) [:edn-pick (:path r)]))
                   :else nil)))
 
