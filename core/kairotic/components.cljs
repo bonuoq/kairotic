@@ -26,6 +26,14 @@
 ;;                                           learner does not learn it twice (compare with what :state keeps).
 ;;                                           What its audio node finds in the sound (api/report!) arrives here
 ;;                                           too, with :inlet :audio: a level, a block of samples, an error.
+;;                                           What one of its :tasks found arrives with :inlet :task:
+;;                                           {:task k :arg x :value v} or {:task k :arg x :error "…"}.
+;;  :tasks    {k (fn [x box] promise)}      what the box asks of the world (the network, a file…), outside
+;;                                           its pure logic: :receive returns the effect [k x], the engine
+;;                                           runs the task, with or without ▶, and its outcome comes back on
+;;                                           inlet :task. box = {:text :args :data :id :state}. The effect
+;;                                           [:keep d] then writes d as the data of the box (its :model :load
+;;                                           reads it), as a gesture: in the history, the same for everyone.
 ;;  :audio    {:create  (fn [ac box env] node)     box = {:text :args (raw) :data :id :state}, env = {:master …}
 ;;                                                 node = {:inlets [[AudioNode i]] :outlets [[AudioNode o]] …}
 ;;                                                 (an inlet can be an AudioParam: a signal is added to it)

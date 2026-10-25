@@ -307,6 +307,16 @@
                :tree-edit (gesture! (str "(tree-edit! " id " " (str/join " " (map pr-str x)) ")"))
                :tree-set (gesture! (str "(tree! " id " " (pr-str x) ")"))
                :canvas-edit (gesture! (str "(canvas-edit! " id " " (pr-str x) ")"))
+               ;; what a box found (a task's outcome), kept as its data: only if it can be written back as
+               ;; it is (the history is code) and is not too long for the history and the room
+               :keep (let [code (str "(keep! " id " " (pr-str x) ")")]
+                       (cond
+                         (> (count code) keep-limit)
+                         (repl-print! "err" (esc (str "; " id ": too long to keep in the work (" (count code) " characters, "
+                                                      keep-limit " at most); it is still sent, and kept only in this tab")))
+                         (not= x (try (clojure.edn/read-string (pr-str x)) (catch :default _ ::unreadable)))
+                         (repl-print! "err" (esc (str "; " id ": what it found cannot be written as EDN, so it is not kept in the work")))
+                         :else (gesture! code)))
                nil)))))
    0))
 

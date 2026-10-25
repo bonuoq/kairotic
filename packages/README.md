@@ -11,6 +11,7 @@ npm under the scope `@kairotic` and served inside claude.ai by jsDelivr.
 | [`@kairotic/spatial`](spatial/) | `pan~ [position]` stereo panning · `space~ [x y]` binaural placement around the listener |
 | [`@kairotic/controls`](controls/) | `knob [min max initial] [log] [name]` a rotary control with its own view in the patch · `keyboard [low keys] [hold]` a virtual MIDI keyboard with velocity and chords, for synth~ and faust~ |
 | [`@kairotic/analysis`](analysis/) | `features~ [ms] [descriptor …]` descriptors (rms, centroid, flatness, mfcc… with Meyda) · `pitch~ [lo hi]` the pitch, by YIN · `onset~ [threshold] [ms]` the beginnings of sounds · `chroma~` the 12 pitch classes · `spectrum~ [lo hi]` the spectrum, drawn · `transcribe [bpm] [notes|glide]` what pitch~ hears, into a freqt · `monitor [seconds] [name …]` any stream of messages, drawn over time |
+| [`@kairotic/data`](data/) | `fetch [json\|text\|edn] [live]` what is at a URL, brought in as a task and kept in the work · `edn [width height]` any value as a tree to open, read and pick from |
 | [`@kairotic/theory`](theory/) | `pcclock [notes]` a pitch-class set on the clock face, its prime form, interval vector and symmetries · `fourier [notes]` the six Fourier coefficients of a pitch-class distribution · `tonnetz [notes]` triads on the Tonnetz and the path of the harmony — all drawn in the patch, and clickable |
 
 Planned: `cac`, `notation`.

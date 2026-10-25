@@ -9,6 +9,7 @@
 
 (ns kairotic.api
   (:require [clojure.string :as str]
+            [clojure.edn :as edn]
             [kairotic.components :as comp]
             [kairotic.canvas :as cv]))
 
@@ -220,3 +221,64 @@ registerProcessor('kairotic-tap', KairoticTap);
                      (.appendChild (.-head js/document) s))))]
           (swap! scripts assoc u p)
           p))))
+
+;; ───────── the network (for :tasks) ─────────
+;; A component never fetches from its :receive: it asks for a task (:tasks), and these help the task.
+
+(defn url-of
+  "A URL from a message: a string, or a word as a msg box sends it (msg https://… arrives as a keyword).
+   github:owner/repo@ref/path is served by jsDelivr (@main without @ref), the one site a page inside
+   claude.ai can read. nil if it is not a URL."
+  [v]
+  (let [s (cond (string? v) v (keyword? v) (subs (str v) 1) :else nil)
+        s (some-> s str/trim (str/replace #"^\"|\"$" ""))
+        gh (when s (re-matches #"github:([^/\s]+)/([^/@\s]+)(@[^/\s]+)?/(\S+)" s))]
+    (cond (nil? s) nil
+          (re-matches #"https?://\S+" s) s
+          gh (let [[_ owner repo ref path] gh]
+               (str "https://cdn.jsdelivr.net/gh/" owner "/" repo (or ref "@main") "/" path))
+          :else nil)))
+
+(defn- readable-key
+  "A key of a JSON object as EDN: a keyword when it can be written and read back as one, else the string."
+  [k]
+  (if (and (string? k) (re-matches #"[A-Za-z*+!_?<>=][A-Za-z0-9*+!_?<>=.\-]*" k)) (keyword k) k))
+
+(defn json->edn
+  "Parsed JSON (js->clj) as EDN that can be written and read back: the keys of objects become keywords
+   where they can (\"name\" → :name; \"2024\" and \"a b\" stay strings)."
+  [x]
+  (cond (map? x) (into {} (map (fn [[k v]] [(readable-key k) (json->edn v)])) x)
+        (vector? x) (mapv json->edn x)
+        :else x))
+
+(defn http-get
+  "Promise of what is at `url` (https://…, or github:owner/repo@ref/path): with {:as :json} (the default)
+   parsed into EDN (json->edn), :text as a string, :edn read as EDN. It fails with a reason in words when
+   the site refuses this page (CORS) or cannot be reached, answers an error, takes longer than :timeout
+   seconds (20) or sends more than :max characters (1000000)."
+  ([url] (http-get url {}))
+  ([url {:keys [as timeout max] :or {as :json timeout 20 max 1000000}}]
+   (if-let [u (url-of url)]
+     (let [ctl (js/AbortController.)
+           timer (js/setTimeout (fn [] (.abort ctl)) (* 1000 timeout))]
+       (-> (js/fetch u #js {:signal (.-signal ctl)})
+           (.then (fn [r]
+                    (if (.-ok r)
+                      (.text r)
+                      (throw (js/Error. (str "the site answered " (.-status r) (when (= 404 (.-status r)) " (not found)")))))))
+           (.then (fn [text]
+                    (when (> (count text) max)
+                      (throw (js/Error. (str "too long: " (count text) " characters (" max " at most)"))))
+                    (case as
+                      :text text
+                      :edn (edn/read-string text)
+                      (json->edn (js->clj (js/JSON.parse text))))))
+           (.catch (fn [e]
+                     (throw (cond (= "AbortError" (.-name e)) (js/Error. (str "no answer in " timeout " s"))
+                                  ;; fetch itself fails (a TypeError) when the site refuses the page or cannot be reached
+                                  (instance? js/TypeError e) (js/Error. "the site does not let this page read it (CORS), or cannot be reached")
+                                  (instance? js/SyntaxError e) (js/Error. (str "not " (name as) ": " (.-message e)))
+                                  :else e))))
+           (.finally (fn [] (js/clearTimeout timer)))))
+     (js/Promise.reject (js/Error. (str (pr-str url) " is not a URL (https://… or github:owner/repo/path)"))))))

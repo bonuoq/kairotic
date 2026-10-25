@@ -48,7 +48,7 @@ called `twice`.
 | `:out [[outlet value] …]` | sends values out, in this order |
 | `:state x` | keeps `x` for the next message |
 | `:later [[at inlet value] …]` | schedules messages to itself in the future |
-| `:effects [[k x] …]` | effects on its audio node, or `[:print x]` |
+| `:effects [[k x] …]` | effects on its audio node, a task (`:tasks`), `[:keep d]`, or `[:print x]` |
 | `:show v` | what the box shows (a number box displays it; an own view draws it) |
 
 ## 3. Declared arguments
@@ -145,6 +145,19 @@ decibels. Read [`snapshot~` and `scope~`](../core/kairotic/input.cljs). A tap ma
 `:active false` hands nothing until `(api/retap w {:active true})`, and `{:flush true}` hands at once
 what was heard since its last block; `(api/effect! id [k x])` asks the page for an effect of the box
 even when the engine has just stopped — [`sample`](../core/kairotic/sounds.cljs) records that way.
+
+**From outside: tasks.** `:receive` never touches the network, a file or a timer of its own. What a box
+needs from outside is a **task**: the component declares `:tasks {:get (fn [x box] promise)}` (impure,
+like `:audio`), its `:receive` asks for one with the effect `[:get x]`, and the engine runs it — with or
+without ▶ — and gives the outcome back to the same box on inlet `:task`, as
+`{:task :get :arg x :value v}` or `{:task :get :arg x :error "…"}`. There, as with any message, the
+box decides what to send, show and keep. Compare `:arg` with the request `:state` is waiting for, so a
+late answer to an older request is dropped. What a task finds lives in this tab, like what is sounding;
+to make it part of the work, return the effect `[:keep d]`: `d` becomes the data of the box (its
+`:model` `:load` reads it) as a gesture of the history — the same for everyone in a room, and going
+back in the history does not ask again. `api/http-get` makes the request (JSON as EDN, text or EDN, with
+reasons in words when it fails) and `api/url-of` reads a URL from a message, `github:owner/repo/path`
+included. Read [`fetch`](../packages/data/src/fetch.cljs) (in `@kairotic/data`).
 
 ## 5½. The same value twice
 

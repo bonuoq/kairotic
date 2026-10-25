@@ -11,6 +11,15 @@
   box makes a definition there; `(new-component!)` from the REPL. It is still a box of the work: its
   history, its code (`(box :bN "component" 0 0)`, `(code :bN …)`), links and embeds are unchanged, so
   older works open as they were, without the column of definitions on their paper.
+- **Tasks**: a component can ask the world for something (a URL, an API) without leaving its pure logic.
+  It declares `:tasks {:get (fn [x box] promise)}`, asks with the effect `[:get x]`, and the engine gives
+  the outcome back on inlet `:task` (`{:task :get :arg x :value v}` or `:error`), with or without ▶. The
+  effect `[:keep d]` keeps it as the data of the box, as a gesture of the history (`(keep! :bN d)`): the
+  same for everyone in a room, and going back does not ask again; in a jam, only whoever played the
+  message keeps it. `api/http-get` and `api/url-of` help the tasks; the in-app Claude knows the pattern.
+- **`@kairotic/data` 0.1.0**: `fetch [json|text|edn] [live]` (what is at a URL, kept in the work) and
+  `edn [w h]` (any value as a tree to open and pick from, after Portal).
+- The whole data of a box written while its class is still loading (a package) is no longer lost.
 
 ## 0.2.0-alpha — 2026-10-23
 

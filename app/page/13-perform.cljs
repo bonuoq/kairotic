@@ -93,7 +93,8 @@
         (let [p (work-patch)]
           (doseq [[t f i v] ms :when (> t seen)]
             (when (get-in (eng/flat p) [:boxes f])
-              (try (eng/inject! (fn [] (work-patch)) f i v)
+              ;; played by someone else: what a task of theirs finds is theirs to keep (eng/*remote*)
+              (try (binding [eng/*remote* true] (eng/inject! (fn [] (work-patch)) f i v))
                    (catch :default e (js/console.error "jam message" e))))))
         (render-overlay!)))))
 

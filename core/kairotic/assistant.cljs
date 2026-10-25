@@ -275,7 +275,14 @@ component needs press and release), view (:derive, :view as data, :size), audio 
 :outlets […] :try \"something to do with it\"}, shown in the Help tab). Prefer :view (a data template with
 $holes) over :draw. A class name is one word; audio classes end in ~. Do not reuse a core class name.
 :receive is pure: it returns data ({:out … :state … :show … :effects … :later …}); side effects on
-sound happen only through :audio :effects. The same value arriving again must change nothing that is
+sound happen only through :audio :effects. Anything else a box needs from outside (a URL, an API, a file)
+is a task: declare :tasks {:get (fn [x box] promise)} (api/http-get makes the request), ask for it from
+:receive with :effects [[:get x]], and handle its outcome when it arrives on inlet :task as
+{:task :get :arg x :value v} or {:task :get :arg x :error \"…\"} (compare :arg with what :state waits for:
+a late answer to an older request is dropped). To keep the outcome in the work (the history, the same
+for everyone) return :effects [[:keep d]] with a :model {:empty {} :load (fn [d] d)} whose data is d; to
+use it only live, keep it in :state. Never call js/fetch, set timers or keep atoms in :receive or :state.
+See the example data/fetch. The same value arriving again must change nothing that is
 going on (data boxes send what they hold again after ■ or when the patch before them changes): a player
 does not start over, an accumulator does not count it twice — compare with what :state keeps. Messages are numbers, keywords (:bang), strings or vectors.
 Faust: `import(\"stdfaust.lib\");`, the standard libraries (os. fi. en. re. ef. si. ba. no. de.),
@@ -387,6 +394,10 @@ Rules:
   the clock, its prime form on the left, interval vector in the middle), `fourier` (six Fourier magnitudes
   on the left), `tonnetz` (triads and the path of the harmony; the triad as :C, :am… on the left); they take
   lists of pitches, notes one by one, or a chroma from `chroma~`; pressing a pitch class sends it (right).
+- Data (package @kairotic/data, it comes by itself): `fetch [json|text|edn] [live]` brings in what is at a
+  URL (a msg with the URL, or `github:owner/repo@ref/path`) and keeps it in the work (live: only here); on
+  the left what it found, [:get k …] a part of it; `edn [w h]` shows any value as a tree to open and pick
+  from (the part on the left, its path on the right). Most sites outside GitHub refuse a page (CORS).
 - `draw [w h]` draws the shapes that reach it (the shapes of a component's view, or as a msg writes them:
   `msg circle 40 40 10 accent hit sun`, `msg set cursor line 0 0 0 100`); a shape with :hit k sends k.
 - Annotations: `(mark :notes {:kind :text :at [:b3 0 -12] :txt \"…\"})`, `(mark :notes {:kind :arrow :pts

@@ -11,6 +11,7 @@ puede crecer sin que crezca el encargo.
 | Category | Examples |
 |---|---|
 | controls | knob |
+| data | fetch (a task, kept in the work), edn (a tree view to pick from) |
 | synth | adsr~, synth~ |
 | spatial | pan~, space~ |
 | faust | resonant-filter, fm-voice |
