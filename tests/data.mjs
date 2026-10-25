@@ -84,18 +84,15 @@ export async function data(page, check) {
   const root = await until(page, `(:piece (:root (get-in @eng/rt [:states ${e}])))`, (x) => x === '"Kairos"', 3000);
   check("edn receives the value", root === '"Kairos"', root);
   const shapes = (expr) => cljs(page, safe(`(let [b (get-in (current) [:boxes ${e}])] ${expr})`));
-  const diag = [];
-  for (const [label, src] of [
-    ["ctl-m", `(pr-str (dissoc (ctl-m ${e} b) :state))`],
-    ["draw nil", `(count ((:draw (comp/lookup "edn")) {:w 320 :h 240}))`],
-    ["draw state", `(count ((:draw (comp/lookup "edn")) {:w 320 :h 240 :state (get-in @eng/rt [:states (fid ${e})])}))`],
-    ["draw ctl-m", `(count ((:draw (comp/lookup "edn")) (ctl-m ${e} b)))`],
-    ["gesture nil", `(pr-str ((:gesture (comp/lookup "edn")) {:h 240 :up true :hit 0 :dy 0}))`],
-    ["gesture state", `(pr-str ((:gesture (comp/lookup "edn")) {:h 240 :up true :hit 0 :dy 0 :state (get-in @eng/rt [:states (fid ${e})])}))`],
-    ["state", `(pr-str (dissoc (get-in @eng/rt [:states (fid ${e})]) :root))`],
-    ["edn defs", `(count (filter (fn [[k d]] (= k "edn")) @comp/registry))`]])
-    diag.push(label + ": " + (await shapes(src)).slice(0, 300));
-  check("DIAGNOSTIC (temporary)", false, diag.join(" || "));
+  // temporary: the helpers of edn, one by one, in the page
+  const src = await page.evaluate(async () => (await import("/kairotic/packages/data.mjs")).default.components.find((c) => c.class === "edn").source);
+  const head = src.slice(0, src.indexOf("  {;; ── about ──"));
+  const tries = ['(name :map)', '(keyword (str "t" 1))', '(size-text {:a 1})', '(size-text [1 2])', '(plural 2 "a" "b")', '(ink-of 1)', '(opener :map)',
+                 '(pr-str (rows-of {:root {:a 1 :b [1 2]} :open #{}}))', '(visible 240)', '(pr-str (entries {:a 1}))', '(coll-kind {})',
+                 '(pr-str (part {:a [1 {:b 2}]} [:a 1 :b]))'];
+  const probeSrc = head + "  [" + tries.map((t) => `(try (pr-str ${t}) (catch :default e (str "ERR " (.-message e))))`).join(" ") + "])";
+  const probe = await page.evaluate((s) => { try { return String(scittle.core.eval_string(s)); } catch (e) { return "EVAL ERR " + e.message; } }, probeSrc);
+  check("DIAGNOSTIC (temporary)", false, tries.map((t, k) => t).join(" | ") + " => " + probe);
   const lines = await shapes(`(count (filter (fn [s] (and (= :rect (first s)) (number? (:hit (second s))))) (ctl-shapes* (ctl-m ${e} b) b)))`);
   check("... one line per key, closed", lines === "5", lines);
   const svg = await shapes(`(shp/svg (ctl-shapes* (ctl-m ${e} b) b))`);
