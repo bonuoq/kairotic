@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
+An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
 
 **Inlets** 
 
@@ -666,6 +666,74 @@ Gain: signal on the left, factor on the right — a number, or a signal (an enve
 0. the signal times the factor
 
 See also: `osc~`, `adsr~`, `dac~`
+
+### gendy~ · `@kairotic/synth`
+
+`gendy~ [freq x-step y-min y-max y-step breakpoints]`
+
+A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle — a pitch that drifts, a timbre that changes.
+
+**Inlets** 
+
+0. a number: the frequency in Hz · [:x-step 30], [:y-step 0.2]…: one parameter · a list of six: all of them · a signal: added to the frequency, in Hz (FM)
+
+**Outlets** 
+
+0. the sound (about ±0.15 by default: y-min and y-max are its barriers)
+
+**Messages and gestures**
+
+- `220`: the frequency
+- `[:x-step 40]`: how far the durations wander (0–100 %): the pitch drifts
+- `[:y-step 0.2]`: how far the amplitudes move each cycle: the timbre changes faster
+- `[:breakpoints 6]`: fewer breakpoints, a simpler wave (more of them, a richer one); changing it keeps the wave
+- `[220 10 -0.15 0.15 0.05 16]`: freq x-step y-min y-max y-step breakpoints
+
+**Try:** Press ▶: a buzz whose pitch and colour never settle. Write gendy~ 110 0 in the box: with no wander of the durations, the pitch holds and only the timbre moves.
+
+```clojure
+(box :b1 "gendy~ 110" 40 30)
+(box :b2 "dac~" 40 90)
+(box :b3 "scope~ 30" 160 90)
+(connect :b1 0 :b2 0)
+(connect :b1 0 :b2 1)
+(connect :b1 0 :b3 0)
+```
+
+**The two walks** — x-step lets the durations wander (the pitch), y-step the amplitudes (the timbre). Two knobs send them by name.
+
+*Try:* Press ▶ and turn x-step up: the pitch scatters into noise. Turn it down and y-step up: one pitch, a restless colour.
+
+```clojure
+(box :b4 "knob 0 100 10 x-step" 300 20)
+(box :b5 "knob 0 0.3 0.05 y-step" 390 20)
+(connect :b4 0 :b1 0)
+(connect :b5 0 :b1 0)
+```
+
+**Breakpoints** — Few breakpoints make a simple wave, close to a triangle or a square; many, a richer and noisier one. Changing their number keeps the wave, with no click.
+
+*Try:* Press ▶ and click both messages in turn, watching the scope.
+
+```clojure
+(box :b6 "msg breakpoints 4" 300 120)
+(box :b7 "msg breakpoints 48" 440 120)
+(connect :b6 0 :b1 0)
+(connect :b7 0 :b1 0)
+```
+
+**A signal on the inlet: FM** — A signal connected to the inlet is added to the frequency, in Hz: a slow one makes a vibrato, a fast one frequency modulation.
+
+*Try:* Press ▶: 5 Hz around 110 Hz. Change osc~ 5 to osc~ 80 for a rougher sound.
+
+```clojure
+(box :b8 "osc~ 5" 300 200)
+(box :b9 "gain~ 300" 300 250)
+(connect :b8 0 :b9 0)
+(connect :b9 0 :b1 0)
+```
+
+See also: `osc~`, `synth~`, `faust~`
 
 ### inlet
 
@@ -1483,7 +1551,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
+Polyphonic triangle-wave synthesizer, one voice per id.
 
 **Inlets** 
 
