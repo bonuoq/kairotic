@@ -23,6 +23,7 @@ import { embed } from "./embed.mjs";
 import { relays } from "./relays.mjs";
 import { layers } from "./layers.mjs";
 import { theory } from "./theory.mjs";
+import { data } from "./data.mjs";
 import { claude } from "./claude.mjs";
 import { help } from "./help.mjs";
 import { components } from "./components.mjs";
@@ -80,6 +81,7 @@ const appSuites = [
   ["layers", layers, "the layer tests ran"],
   ["theory", theory, "the theory tests ran"],
   ["components", components, "the component tab tests ran"],
+  ["data", data, "the data tests ran"],
   ["claude", claude, "the Claude tab tests ran"],
   // opens other works, then a local one again
   ["release", release, "the release tests ran"],

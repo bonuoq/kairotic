@@ -154,16 +154,58 @@
 
 (defn print! [at x] (swap! rt update :prints (fn [ps] (conj (vec (take-last 200 ps)) [at x]))))
 
+;; ───────── tasks: what a box asks of the world, outside its pure logic ─────────
+;; A component declares :tasks {k (fn [x box] promise)}, as an audio component declares :audio :effects.
+;; Its :receive asks for one with the effect [k x]; the engine runs it and the outcome comes back to the
+;; same box on inlet :task, as {:task k :arg x :value v} or {:task k :arg x :error "…"}, one more
+;; message: what the box does with it (:out, :show, :state, :effects [[:keep d]]) stays in its pure logic.
+;; It works with or without ▶, and what it finds lives in this tab, like what is sounding: only [:keep d]
+;; turns it into a gesture of the work (the data of the box, in the history, the same for everyone).
+
+(def ^:dynamic *remote*
+  "True while a message that another performer played (a jam) is delivered here: what it makes is
+   theirs to keep, so [:keep …] from it is not written again by this tab."
+  false)
+
+(declare inject!)
+
+(defn arrive!
+  "The outcome of a task reaches its box on inlet :task, now (it came from outside: there is no instant
+   of the score to wait for). A box that was deleted meanwhile gets nothing."
+  [id value remote?]
+  (when-let [f (:patch-fn @rt)]
+    (binding [*remote* remote?]
+      (try (inject! f id :task value) (catch :default e (js/console.error e))))))
+
+(defn task-of
+  "The task k of box id, or nil. Only a class that declares a task of that name sends the engine to the
+   patch to find out (an effect of an audio box while ■ falls here too, and often)."
+  [id k]
+  (when (some (fn [d] (contains? (:tasks d) k)) (vals @comp/registry))
+    (get-in (def-of (patch) id) [:tasks k])))
+
+(defn run-task! [id f k x]
+  (let [remote? *remote*
+        box (assoc (comp/box-info (get-in (patch) [:boxes id])) :id id :state (get-in @rt [:states id]))]
+    (-> (js/Promise.resolve nil)
+        (.then (fn [_] (f x box)))
+        (.then (fn [v] (arrive! id {:task k :arg x :value v} remote?))
+               (fn [e] (arrive! id {:task k :arg x :error (str (or (.-message e) e))} remote?))))))
+
 (defn effect! [id [k x] at]
   (cond
     (= k :print) (print! at x)
+    ;; a box keeps what it found (a task's outcome) as its data: a gesture of whoever made it happen
+    (= k :keep) (when-not *remote* (when-let [f (:effect-hook @rt)] (f id [k x] at)))
     ;; effects for the page (a tree box asked to change its data: that is a gesture of the work; a presets
     ;; box asked to recall, morph or generate: issue #35)
     (#{:tree-edit :tree-set :canvas-edit :presets :sample} k) (when-let [f (:effect-hook @rt)] (f id [k x] at))
+    ;; on its audio node (the common case, many per second: looked up first)
+    (get-in @rt [:nodes id :def :audio :effects k])
+    (let [node (get-in @rt [:nodes id])]
+      (try ((get-in node [:def :audio :effects k]) node x at) (catch :default e (js/console.error e))))
     :else
-    (when-let [node (get-in @rt [:nodes id])]
-      (when-let [f (get-in node [:def :audio :effects k])]
-        (try (f node x at) (catch :default e (js/console.error e)))))))
+    (when-let [f (task-of id k)] (run-task! id f k x))))
 
 ;; ───────── messages ─────────
 

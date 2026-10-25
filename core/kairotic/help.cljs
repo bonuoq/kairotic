@@ -464,6 +464,33 @@
     :try "Press ▶ and allow the microphone: speak, then sing a long note — the centroid falls, the chroma strip settles on one row, each syllable leaves a mark."
     :see ["features~" "chroma~" "onset~" "print"]}
 
+   "fetch"
+   {:package "@kairotic/data" :usage "fetch [json|text|edn] [live]"
+    :doc "Brings in what is at a URL (JSON read as EDN, text or EDN) as a task: it goes out on the left and is kept as the data of the box, in the history, the same for everyone; with live, only in this tab."
+    :inlets ["a URL (msg https://… · github:owner/repo@ref/path · [:fetch url]); refresh; bang; [:get key …]; clear"]
+    :outlets ["what it found (or the part a [:get …] asks for)" ":loading, :ready or [:error \"…\"]"]
+    :messages [["a URL" "brings it in; a URL it already keeps is sent again, not fetched"]
+               ["refresh" "fetches its URL again"] ["bang" "sends what it holds"]
+               ["get items 0 name · [:get [:items 0 :name]]" "sends one part of it"] ["clear" "forgets it"]
+               ["(keep! :bN {:url \"…\" :value …})" "what it keeps, as the code of the work writes it"]]
+    :example (lines "(box :b1 \"msg github:bonuoq/kairotic@main/packages/data/package.json\" 40 30)" "(box :b2 \"fetch\" 40 80)"
+                    "(box :b3 \"edn 340 260\" 40 150)" "(box :b4 \"print\" 400 150)"
+                    "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)")
+    :try "Click the message: the answer arrives in the edn box, and stays in the work (go back and forward in the history: it is not fetched again). Pick a line: its value goes to print."
+    :see ["edn" "sample" "print"]}
+
+   "edn"
+   {:package "@kairotic/data" :usage "edn [width height]"
+    :doc "Any value as a tree, like Portal: collections open and close, values coloured by kind; picking a line sends that part (left) and its path (right)."
+    :inlets ["any value; depth n opens it n levels down; bang sends the part picked again; clear"]
+    :outlets ["the part picked" "its path, for [:get …] of a fetch box"]
+    :messages [["depth 2" "opens it two levels down"] ["bang" "the part picked again (the whole value if none)"] ["clear" "empties it"]
+               ["▸ ▾ · a line · a drag" "opens or closes · picks it · scrolls (also the bar on the right)"]]
+    :example (lines "(box :b1 \"tree\" 40 30)" "(tree! :b1 [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4 c5\"]])"
+                    "(box :b2 \"edn 320 220\" 40 130)" "(box :b3 \"print\" 400 130)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b3 0)")
+    :try "The tree arrives: open the measure and pick a note: the note and its path go to print."
+    :see ["fetch" "print" "tree"]}
+
    "pcclock"
    {:package "@kairotic/theory" :usage "pcclock [notes]"
     :doc "A pitch-class set on the clock face: its polygon, the sets before it, its axes of symmetry; its prime form and interval vector go out."

@@ -424,6 +424,11 @@
             (str (count evs) (if (= 1 (count evs)) " edit" " edits")))
         :unchanged))))
 
+(def keep-limit
+  "How long the code of a kept value may be (characters): it travels in the history, in links and to
+   everyone in a room."
+  65536)
+
 (defn code
   "Writes the source of a code box: (code :b7 \"process = os.osc(440) * 0.1;\"). For a tree box the text
    is read as a tree, and what changed becomes edits of its nodes (tree!). For a canvas, freqt or score
@@ -548,14 +553,24 @@
       (some (fn [[a _ b _]] (when (= b id) a)) (:lines p)) (assoc :from (some (fn [[a _ b _]] (when (= b id) a)) (:lines p))))))
 
 (defn keep!
-  "Writes the tree a canvas, freqt or score is showing into its buffer, keeping beside it the recipe that
-   made it (the tree and the boxes upstream): one event in the history."
-  [id]
-  (let [b (need-canvas id) t (or (live-tree id) (fail (str id " is not showing a tree: send it one first")))]
-    (dispatch! [:kept id (tree->buffer (canvas-data b) t) (recipe-for id t)])
-    (swap! dismissed-trees assoc (fid id) t)
-    (swap! live-trees dissoc (fid id))
-    (mt/summary t)))
+  "Keeps what a box is showing, as its data, in one event of the history.
+   (keep! :b5): the tree a canvas, freqt or score is showing, written into its buffer with the recipe that
+   made it beside it (the tree and the boxes upstream).
+   (keep! :b5 d): the whole data of a box that keeps what it found (a box with :tasks and a :model, such as
+   fetch: (keep! :b5 {:url \"https://…\" :json {…}})); (keep! :b5 nil) empties it."
+  ([id]
+   (let [b (need-canvas id) t (or (live-tree id) (fail (str id " is not showing a tree: send it one first")))]
+     (dispatch! [:kept id (tree->buffer (canvas-data b) t) (recipe-for id t)])
+     (swap! dismissed-trees assoc (fid id) t)
+     (swap! live-trees dissoc (fid id))
+     (mt/summary t)))
+  ([id d]
+   (let [b (need-box id) m (comp/model-of b)]
+     (when-not m (fail (str id " keeps no data")))
+     (when-not (or (nil? d) (map? d)) (fail "The data of a box is a map, or nil to empty it"))
+     (if (= (when d ((:load m) d)) (:data b))
+       :unchanged
+       (do (dispatch! [:data id d]) :kept)))))
 
 (defn recipe
   "The recipe kept beside a buffer: (recipe :b5) → {:tree … :calls … :from … :stale true if the buffer

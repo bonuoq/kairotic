@@ -26,6 +26,10 @@ const refs = [
     about: "the simplest audio component: one Web Audio node, a parameter set by messages, :update" },
   { name: "space~", category: "spatial", file: "packages/spatial/src/space.cljs",
     about: "binaural placement with a 2D pad view, crossfading two HRTF panners" },
+  { name: "fetch", category: "data", file: "packages/data/src/fetch.cljs",
+    about: "a task (:tasks) that reads a URL outside the pure logic, its outcome on inlet :task, kept in the work with [:keep d] and a :model" },
+  { name: "edn", category: "data", file: "packages/data/src/edn.cljs",
+    about: "a drawn tree view with :hit parts, scrolling by dragging, and view gestures as idempotent messages to itself" },
 ];
 
 const kindOf = (file, source) =>

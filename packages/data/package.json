@@ -1,0 +1,39 @@
+{
+  "name": "@kairotic/data",
+  "version": "0.1.0",
+  "description": "Kairotic data components: fetch (what is at a URL, brought in as a task and kept in the work) and edn (any value as a tree to open, read and pick from, after Portal)",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/data"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages#readme",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs data",
+    "prepublishOnly": "node ../build.mjs data"
+  },
+  "keywords": [
+    "kairotic",
+    "data",
+    "fetch",
+    "json",
+    "edn",
+    "inspector",
+    "patcher"
+  ]
+}

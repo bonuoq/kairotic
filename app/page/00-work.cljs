@@ -233,6 +233,8 @@
     :data       (let [[id d] args b (get-in p [:boxes id]) dd (comp/model-of b)]
                   (cond (not b) p
                         (and dd (map? d)) (assoc-in p [:boxes id :data] ((:load dd) d))
+                        ;; a class not defined yet (a package still loading): its data as it was written
+                        (map? d) (assoc-in p [:boxes id :data] d)
                         (nil? d) (update-in p [:boxes id] dissoc :data)
                         :else p))
     ;; [:batch [ev …]]: several changes as one event of the history (a preset recalled: issue #35)

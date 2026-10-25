@@ -49,7 +49,7 @@ Aplícalo (Ctrl/⌘+Enter). La caja muestra `✓ defines «twice»` y ya puedes 
 | `:out [[salida valor] …]` | manda valores, en este orden |
 | `:state x` | guarda `x` para el siguiente mensaje |
 | `:later [[at entrada valor] …]` | programa mensajes a sí misma en el futuro |
-| `:effects [[k x] …]` | efectos en su nodo de audio, o `[:print x]` |
+| `:effects [[k x] …]` | efectos en su nodo de audio, una tarea (`:tasks`), `[:keep d]` o `[:print x]` |
 | `:show v` | lo que muestra la caja (una caja number lo enseña; una vista propia lo dibuja) |
 
 ## 3. Argumentos declarados
@@ -149,6 +149,19 @@ sobre un cruce por cero, para dibujarla); los bucles sobre las muestras se ejecu
 nada hasta `(api/retap w {:active true})`, y `{:flush true}` entrega en el acto lo oído desde su
 último bloque; `(api/effect! id [k x])` pide a la página un efecto de la caja incluso cuando el motor
 acaba de pararse — [`sample`](../core/kairotic/sounds.cljs) graba así.
+
+**Desde fuera: tareas.** `:receive` nunca toca la red, un archivo ni un temporizador propio. Lo que una
+caja necesita de fuera es una **tarea**: el componente declara `:tasks {:get (fn [x box] promise)}`
+(impura, como `:audio`), su `:receive` la pide con el efecto `[:get x]`, y el motor la ejecuta —con o
+sin ▶— y devuelve el resultado a la misma caja por la entrada `:task`, como
+`{:task :get :arg x :value v}` o `{:task :get :arg x :error "…"}`. Ahí, como con cualquier mensaje, la
+caja decide qué envía, muestra y guarda. Compara `:arg` con la petición que espera su `:state`, para
+descartar la respuesta tardía a una petición anterior. Lo que encuentra una tarea vive en esta pestaña,
+como lo que suena; para que forme parte de la obra, devuelve el efecto `[:keep d]`: `d` pasa a ser el
+dato de la caja (lo lee el `:load` de su `:model`) como un gesto de la historia —el mismo para todos en
+una sala, y volver atrás en la historia no lo pide de nuevo—. `api/http-get` hace la petición (JSON como
+EDN, texto o EDN, con los motivos en palabras si falla) y `api/url-of` lee una URL de un mensaje,
+`github:owner/repo/ruta` incluido. Lee [`fetch`](../packages/data/src/fetch.cljs) (en `@kairotic/data`).
 
 ## 5½. El mismo valor dos veces
 

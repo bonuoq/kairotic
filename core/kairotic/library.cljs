@@ -61,6 +61,11 @@
     (not (and (string? (:class m)) (re-matches #"[^\s()\[\]{}\"]+" (:class m)))) "missing :class (one word, e.g. \"fifth\")"
     (= :core (:origin (comp/lookup (:class m)))) (str "«" (:class m) "» is a core class; use another name")
     (not (or (fn? (:receive m)) (map? (:audio m)) (map? (:patch m)))) "missing :receive (fn [m] …), :audio or :patch"
+    (and (contains? m :tasks) (not (and (map? (:tasks m)) (every? keyword? (keys (:tasks m))) (every? fn? (vals (:tasks m))))))
+    ":tasks is a map {:name (fn [x box] promise)}"
+    (and (contains? m :tasks) (not (fn? (:receive m)))) "a component with :tasks needs a :receive to ask for them and get what they find"
+    (some #{:print :keep :tree-edit :tree-set :canvas-edit :presets :sample} (keys (:tasks m)))
+    "a task cannot be called :print, :keep or another effect of the page"
     (and (contains? m :patch) (not (and (map? (:patch m)) (map? (:boxes (:patch m))))))
     ":patch is a patch {:boxes {…} :lines […]}"
     (and (contains? m :io) (not (or (fn? (:io m)) (and (vector? (:io m)) (= 2 (count (:io m))) (every? number? (:io m))))))
@@ -170,7 +175,8 @@
    "@kairotic/controls" {:version "0.1.1" :classes #{"knob" "keyboard"} :local "kairotic/packages/controls.mjs"}
    "@kairotic/analysis" {:version "0.3.0" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "monitor"}
                          :local "kairotic/packages/analysis.mjs"}
-   "@kairotic/theory"   {:version "0.1.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}})
+   "@kairotic/theory"   {:version "0.1.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}
+   "@kairotic/data"     {:version "0.1.0" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}})
 
 (defn package-of
   "The official package that defines class k: [name info], or nil."
