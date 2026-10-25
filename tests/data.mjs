@@ -87,8 +87,13 @@ export async function data(page, check) {
   // temporary: the helpers of edn, one by one, in the page
   const src = await page.evaluate(async () => (await import("/kairotic/packages/data.mjs")).default.components.find((c) => c.class === "edn").source);
   const cases = ['{:root {"2 voices" true}}', '{:root {:a true}}', '{:root {"k" 1}}', '{:root {:a "Kairos"}}', '{:root {:t ["a" "b"]}}', '{:root {:a 1} :top 0 :open #{}}', `(get-in @eng/rt [:states (fid ${e})])`];
-  const probeSrc = "(let [d " + src + " m {:w 320 :h 240} root (:root (get-in @eng/rt [:states (fid " + e + ")]))] " +
-    "(pr-str (into [(pr-str root) (pr-str (map type (vals root)))] (for [[k v] root] [k (try (count ((:draw d) (assoc m :state {:root {k v}}))) (catch :default e (str \"ERR \" (.-message e))))]))))";
+  const cases2 = ['{:root {:a "' + "x".repeat(80) + '"}}', '{:root {:v [{:a 1}]}}', '{:root {:v [{:a 1 :b "' + "y".repeat(80) + '"}]}}'];
+  const probeSrc = "(let [d " + src + " m {:w 320 :h 240}] (pr-str [" +
+    cases2.map((c) => `(try (count ((:draw d) (assoc m :state ${c}))) (catch :default e (str "ERR " (.-message e))))`).join(" ") +
+    ' (try (subs "abcdef" 0 (max 0 (dec 3))) (catch :default e (str "ERR " (.-message e))))' +
+    ' (try (str "ab" "…") (catch :default e (str "ERR " (.-message e))))' +
+    ' (try (let [f (fn [s x] (let [m (js/Math.floor x)] (if (> (count s) m) (str (subs s 0 (max 0 (dec m))) "…") s)))] (f "abcdefgh" 3.5)) (catch :default e (str "ERR " (.-message e))))' +
+    "]))";
   const probe = await page.evaluate((s) => { try { return String(scittle.core.eval_string(s)); } catch (e) { return "EVAL ERR " + e.message; } }, probeSrc);
   const tries = cases;
   check("DIAGNOSTIC (temporary)", false, tries.map((t, k) => t).join(" | ") + " => " + probe);
