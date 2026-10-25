@@ -199,7 +199,9 @@
 
 (defn release-pop [] (floating "release-pop" "perform-pop"))
 
-(defn ask! [html]
+(defn release-ask!
+  "Shows the popup of Forget… or Release… with `html` (not ask!, which is the Claude tab's button, 07-claude.cljs)."
+  [html]
   (let [el (release-pop)]
     (set! (.-innerHTML el) html)
     (set! (.-hidden el) false)))
@@ -217,7 +219,7 @@
   (.addEventListener b "click"
     (fn [_]
       (let [n (count @picked)]
-        (ask! (str "<p><b>Forget " n (if (= 1 n) " point" " points") " of the history?</b> The work at "
+        (release-ask! (str "<p><b>Forget " n (if (= 1 n) " point" " points") " of the history?</b> The work at "
                    (if (= 1 n) "that moment" "those moments") " will be lost (and any snapshot there); the moments after "
                    (if (= 1 n) "it" "them") " stay exactly as they are. This cannot be undone.</p>"
                    "<div class=\"pp-actions\"><button class=\"act primary\" data-rel=\"forget\">Forget "
@@ -227,7 +229,7 @@
   (.addEventListener b "click"
     (fn [_]
       (let [k (count (keyframes))]
-        (ask! (str "<p><b>Release</b> · a new work with a compact history: " k (if (= 1 k) " keyframe" " keyframes")
+        (release-ask! (str "<p><b>Release</b> · a new work with a compact history: " k (if (= 1 k) " keyframe" " keyframes")
                    " (out of " (history-size) " events) and then the work as it is; presets boxes keep their presets, so "
                    "they travel with the patch. This work stays as it is.</p>"
                    "<div class=\"pp-actions\"><button class=\"act primary\" data-rel=\"release\">Make the release</button>"

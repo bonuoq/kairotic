@@ -34,6 +34,8 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.56.0-noble
     steps:
       - uses: actions/checkout@v4
+      # Every top-level name of the page's files defined only once (they share the namespace user)
+      - run: node tests/names.mjs
       - run: node site/build.mjs
       # Only the npm package (the browser is in the image).
       - run: npm install --no-save playwright@1.56.0
