@@ -27,6 +27,7 @@ import { data } from "./data.mjs";
 import { claude } from "./claude.mjs";
 import { help } from "./help.mjs";
 import { components } from "./components.mjs";
+import { gendy } from "./gendy.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const base = url.replace(/tests\.html.*$/, "");
@@ -97,6 +98,7 @@ const audioSuites = [
   ["audioin", audioin, "the audio input tests ran"],
   ["sounds", sounds, "the sound tests ran"],
   ["record", record, "the record tests ran"],
+  ["gendy", gendy, "the gendy~ tests ran"],
   // last: its transcriptions depend on timing, and by then the other blocks have (nearly) finished
   // (alongside them, a take could start late and an overwrite check fail)
   ["analysis", analysis, "the analysis tests ran"],

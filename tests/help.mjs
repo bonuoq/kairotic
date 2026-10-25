@@ -20,6 +20,9 @@ const cases = [
   ["mt", 3, [["(:text (get-in (current) [:boxes :b3]))", '"mt canon 2 7"'],
              ["(nil? (get-in (current) [:boxes :b4]))", "true"],
              ["(:text (get-in (current) [:boxes :b9]))", '"synth~"']]],
+  ["gendy~", 4, [["(:text (get-in (current) [:boxes :b9]))", '"gain~ 300"'],
+                 ["(:text (get-in (current) [:boxes :b4]))", '"knob 0 100 10 x-step"'],
+                 ["(count (filter (fn [[_ b]] (definition? b)) (:boxes (current))))", "2"]]],
 ];
 
 export async function help(page, check) {

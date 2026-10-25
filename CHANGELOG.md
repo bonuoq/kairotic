@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`@kairotic/synth` 0.2.0: `gendy~ [freq x-step y-min y-max y-step breakpoints]`**, a dynamic
+  stochastic oscillator after Xenakis's GENDY (and GendyJS by Andrew Bernstein, MIT): each breakpoint
+  keeps its own amplitude and duration, both walking between mirror barriers cycle after cycle. A
+  number sets freq, `[:x-step 40]` one parameter, a list of six all of them; a signal on its inlet adds
+  to the frequency (FM). Quiet by default (±0.15, 220 Hz), with a one-pole DC blocker; changing its
+  breakpoints keeps the wave (no click) and a new text updates it without rebuilding the node. Its help
+  patch has four steps (the two walks, breakpoints, FM). Tests: `tests/gendy.mjs`. The new version is
+  served by the page until the tag `synth-v0.2.0` publishes it on npm.
+
 - **Components off the patch** (issue #8): a `component` box defines a class and has no inlets nor
   outlets, so the patch no longer draws it (nor selects, frames or anchors marks to it). The
   **Components** tab keeps the work's definitions — the class each defines, whether it compiles (and
