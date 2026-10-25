@@ -48,7 +48,7 @@
                          id (do (gesture! (str "(text! " id " " (pr-str v) ")"))
                                 (when (= "component" (klass v))
                                   (select-tab! "comp")
-                                  (js/setTimeout (fn [] (open-code-editor! id)) 0)))
+                                  (js/setTimeout (fn [] (open-code-editor-at! (cmd-path) id)) 0)))
                          :else (gesture! (str "(box " (pr-str v) " " (js/Math.round x) " " (js/Math.round y) ")")))))))]
     (set! (.-id inp) "box-edit")
     (set! (.-className inp) "edit")
