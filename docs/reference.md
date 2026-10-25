@@ -430,7 +430,7 @@ See also: `fetch`, `print`, `tree`
 
 `faust~`
 
-Faust code box: compiled in the page and played as an AudioWorklet. Its audio ports are those of process; the left inlet also accepts parameters ([:freq 440], a list of Hz with gate).
+Faust code box: compiled in the page and played as an AudioWorklet. Its audio ports are those of process; the left inlet also accepts parameters ([:freq 440], a list of Hz with gate). With declare options "[nvoices:8]" it is polyphonic: Hz on the left and voice ids on the right, as synth~ (a keyboard, a reader, mt play), and an effect = …; for all of them.
 
 **Inlets** 
 
@@ -444,6 +444,9 @@ Faust code box: compiled in the page and played as an AudioWorklet. Its audio po
 
 - `(code :bN "process = …;")`: writes its source
 - `double-click`: edit the code; Ctrl+Enter applies
+- `declare options "[nvoices:8]"`: polyphonic: Hz on the left, voice ids on the right (a second inlet), as synth~; each id a voice
+- `[:gain 0.6] · :stop`: polyphonic: the velocity of the next notes · releases every voice
+- `effect = …;`: polyphonic: applied once to the sum of the voices
 
 **Try:** Press ▶. Then change 1200 in the code and apply with Ctrl+Enter: the filter opens.
 
@@ -453,6 +456,59 @@ Faust code box: compiled in the page and played as an AudioWorklet. Its audio po
 (connect :b1 0 :b2 0)
 (connect :b1 0 :b2 1)
 (code :b1 "import(\"stdfaust.lib\");\nf = hslider(\"freq\", 220, 50, 2000, 1);\nprocess = os.sawtooth(f) * 0.1 : fi.lowpass(2, 1200);")
+```
+
+**Polyphonic: a keyboard** — With declare options "[nvoices:8]" the source is a voice: its freq, gain and gate are set note by note by Faust's own allocator, for up to 8 notes at once (the oldest is taken when they run out). Hz on the left and voice ids on the right, as synth~; [:gain v] is the velocity of the next notes.
+
+*Try:* Press ▶ and play a chord (⇧-click several keys): every key a voice. Touch lower on the keys to play louder. Its other controls (cutoff) are for every voice.
+
+```clojure
+(box :b3 "faust~" 300 30)
+(code :b3 "import(\"stdfaust.lib\");\ndeclare options \"[nvoices:8]\";\nfreq = hslider(\"freq\", 440, 40, 4000, 0.01);\ngain = hslider(\"gain\", 0.8, 0, 1, 0.01);\ngate = button(\"gate\");\ncutoff = hslider(\"cutoff\", 2400, 200, 8000, 1);\nprocess = os.sawtooth(freq) * gain * en.adsr(0.01, 0.2, 0.6, 0.6, gate) * 0.12 : fi.lowpass(2, cutoff);")
+(box :b4 "keyboard" 300 210)
+(connect :b4 0 :b3 0)
+(connect :b4 1 :b3 1)
+(connect :b4 3 :b3 0)
+(connect :b3 0 :b2 0)
+(connect :b3 0 :b2 1)
+```
+
+**A score in several voices** — mt play sends the Hz of the notes sounding and their voice ids: each note of a chord, a voice of the faust~.
+
+*Try:* Press ▶ and click msg bang: the four chords in a loop; msg stop ends it.
+
+```clojure
+(box :b5 "tree" 560 30)
+(code :b5 "\"c4+e4+g4/2 d4+f4+a4/2 b3+d4+g4/2 c4+e4+g4+c5/2\"")
+(box :b6 "msg bang" 560 150)
+(box :b7 "msg stop" 640 150)
+(box :b8 "mt play loop" 560 190)
+(connect :b5 0 :b8 0)
+(connect :b6 0 :b8 0)
+(connect :b7 0 :b8 0)
+(connect :b8 0 :b3 0)
+(connect :b8 1 :b3 1)
+```
+
+**Any tuning** — The notes reach the voices as MIDI pitches with decimals, so any frequency sounds as written: here a just major triad (4:5:6), then the equal-tempered one.
+
+*Try:* Press ▶ and click the first two messages in turn: the just third is 14 cents lower, and it does not beat.
+
+```clojure
+(box :b9 "msg 220 275 330" 560 260)
+(box :b10 "msg 220 277.18 329.63" 700 260)
+(box :b11 "msg stop" 870 260)
+(connect :b9 0 :b3 0)
+(connect :b10 0 :b3 0)
+(connect :b11 0 :b3 0)
+```
+
+**An effect for all the voices** — effect = …; in the same source is applied once, to the sum of the voices (here an echo); its controls are parameters of the box too.
+
+*Try:* Press ▶ and play the keyboard again: every note echoes. Change ef.echo(1, 0.33, 0.45) and apply it (Ctrl+Enter).
+
+```clojure
+(code :b3 "import(\"stdfaust.lib\");\ndeclare options \"[nvoices:8]\";\nfreq = hslider(\"freq\", 440, 40, 4000, 0.01);\ngain = hslider(\"gain\", 0.8, 0, 1, 0.01);\ngate = button(\"gate\");\ncutoff = hslider(\"cutoff\", 2400, 200, 8000, 1);\nprocess = os.sawtooth(freq) * gain * en.adsr(0.01, 0.2, 0.6, 0.6, gate) * 0.12 : fi.lowpass(2, cutoff);\neffect = ef.echo(1, 0.33, 0.45);")
 ```
 
 See also: `knob`, `component`, `script`
