@@ -356,11 +356,12 @@
   (if (and @pres-mode (:present b)) (assoc b :x (first (:present b)) :y (second (:present b))) b))
 
 (defn scene-of
-  "The patch that is drawn: in presentation, only its presented boxes, without lines."
+  "The patch that is drawn: in presentation, only its presented boxes, without lines; never the boxes
+   that define components (they are in the Components tab, issue #8)."
   [p]
   (if @pres-mode
-    {:boxes (into (sorted-map) (for [[id b] (:boxes p) :when (:present b)] [id (view-box b)])) :lines []}
-    p))
+    {:boxes (into (sorted-map) (for [[id b] (:boxes p) :when (and (:present b) (not (definition? b)))] [id (view-box b)])) :lines []}
+    (update p :boxes without-definitions)))
 
 (defn presentation
   "Switches the patch between editing and presentation (only the presented boxes, where the performer sees them)."

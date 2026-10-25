@@ -359,6 +359,12 @@
 
 (defn embedded? [b] (and b (= "patch" (klass (:text b)))))
 
+;; a component box defines a class: it has no inlets nor outlets, so it is not drawn in the patch but kept
+;; in the Components tab (issue #8). It is still a box of the work: its history, its code and links.
+(defn definition? [b] (and b (= "component" (klass (:text b)))))
+
+(defn without-definitions [boxes] (into (or (empty boxes) (sorted-map)) (remove (fn [[_ b]] (definition? b)) boxes)))
+
 (defn valid-prefix
   "The longest part of `path` that still leads through embedded patches of p."
   [p path]

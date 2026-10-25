@@ -330,7 +330,9 @@
   (schedule-emit!)
   (let [p (current)
         changed (lib/sync! (eng/flat (root-patch)))]
-    (when changed (reset! eng/flat-cache [nil nil]) (render-comp!))
+    (when changed (reset! eng/flat-cache [nil nil]))
+    ;; the Components tab lists the definitions of the work: drawn again when they or their status change
+    (render-comp! true)
     (render-scene p)
     (render-code p)
     (render-tree!)

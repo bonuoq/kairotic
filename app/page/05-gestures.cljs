@@ -42,9 +42,14 @@
                    (let [v (str/trim (.-value inp))]
                      (.remove inp)
                      (when (and commit? (seq v) (not= v text))
-                       (if id
-                         (gesture! (str "(text! " id " " (pr-str v) ")"))
-                         (gesture! (str "(box " (pr-str v) " " (js/Math.round x) " " (js/Math.round y) ")")))))))]
+                       (cond
+                         ;; a component is defined in the Components tab, not drawn in the patch (issue #8)
+                         (and (= "component" (klass v)) (nil? id)) (gesture! "(new-component!)")
+                         id (do (gesture! (str "(text! " id " " (pr-str v) ")"))
+                                (when (= "component" (klass v))
+                                  (select-tab! "comp")
+                                  (js/setTimeout (fn [] (open-code-editor! id)) 0)))
+                         :else (gesture! (str "(box " (pr-str v) " " (js/Math.round x) " " (js/Math.round y) ")")))))))]
     (set! (.-id inp) "box-edit")
     (set! (.-className inp) "edit")
     (set! (.-value inp) (or text ""))

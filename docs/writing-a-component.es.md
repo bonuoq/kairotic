@@ -11,7 +11,10 @@ El código y los nombres están en inglés; el [glosario](glossary.md) da la equ
 
 ## 1. El componente más pequeño
 
-Crea una caja `component`, haz doble clic en su código y escribe:
+En la pestaña **Components**, pulsa **New component** (o escribe `component` en una caja nueva, o
+`(new-component!)` en la REPL): se abre la ventana de código con una plantilla. Una caja component define
+una clase y no tiene entradas ni salidas, así que no se dibuja en el patch: la pestaña Components lista
+las definiciones de la obra, si cada una compila, y las abre (**Edit**). Escribe:
 
 ```clojure
 {:class "twice"
@@ -209,8 +212,9 @@ La pestaña **Claude** (o `(ask-component "…")` en la REPL) escribe un compone
 partir de una descripción. Claude lee este mismo contrato, la API y componentes reales como ejemplos, y
 antes de responder prueba lo que ha escrito con las herramientas de la página: lo evalúa y valida, le
 envía mensajes y dibuja su vista. El resultado es una caja `component` normal, con una cabecera que dice
-que se escribió con Claude y qué se pidió; se edita como cualquier otra. Con una caja de componente
-seleccionada, "change the selected component" pide un cambio sobre ella. Usa la cuenta de Claude de
+que se escribió con Claude y qué se pidió; se edita como cualquier otra. Con un componente elegido en
+la pestaña Components (un clic en su fila), o abierto en la ventana de código, "change the selected
+component" pide un cambio sobre él. Usa la cuenta de Claude de
 quien usa la página, a quien se pide permiso la primera vez.
 
 También escribe Faust (lo compila para comprobarlo), abstracciones con cajas `faust~`
@@ -236,7 +240,8 @@ El ejemplo es código de patch, un gesto por línea: al abrir el patch de ayuda 
 
 ## 7. Compartirlo
 
-- **En la obra:** la caja `component` viaja con la obra y su historia.
+- **En la obra:** la caja `component` viaja con la obra y su historia (es parte del código de la obra,
+  `(box :bN "component" 0 0)` y `(code :bN …)`, aunque el patch no la dibuje).
 - **En la biblioteca del espacio:** `(publish :bN)` y, en otra obra, `(use! "clase")`.
 - **En npm:** publica un módulo que exporte el componente (`export default {class, version, author,
   license, doc, source}`, el formato que escribe [`packages/build.mjs`](../packages/build.mjs));

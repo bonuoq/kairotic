@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Components off the patch** (issue #8): a `component` box defines a class and has no inlets nor
+  outlets, so the patch no longer draws it (nor selects, frames or anchors marks to it). The
+  **Components** tab keeps the work's definitions — the class each defines, whether it compiles (and
+  why not), where it is (sub-patches too) — with **New component**, **Edit** (its code in the code
+  window), **Publish** and ×; a click on a row chooses it, and the Claude tab's "change the selected
+  component" changes the one chosen (or the one open in the code window). Writing `component` in a new
+  box makes a definition there; `(new-component!)` from the REPL. It is still a box of the work: its
+  history, its code (`(box :bN "component" 0 0)`, `(code :bN …)`), links and embeds are unchanged, so
+  older works open as they were, without the column of definitions on their paper.
+
 ## 0.2.0-alpha — 2026-10-23
 
 The second cycle: the app learns to draw and to write on itself. After four new studies (24–27:

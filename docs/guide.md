@@ -211,7 +211,10 @@ the bar hides or shows it. This browser remembers how you left it. From the REPL
   the patch. **Data** shows the same work as data (EDN): the state the history produces, every key of
   every box, read-only, to inspect it (folding and search with Ctrl/⌘+F). Edits not run yet stay in the
   calls while you look at the data.
-- **Components** — the classes this work knows; write your own, import published ones.
+- **Components** — the classes this work knows. The boxes that define them (`component`) are kept
+  here, not in the patch, since they have no inlets nor outlets: **New component**, **Edit** (its code
+  in the code window), **Publish**, ×; a click on a row chooses it for Claude to change. Import
+  published ones, or use those of the shared library.
 - **Claude** — Claude makes a patch (or changes the open one), or writes a component, from what you
   describe. See [Asking Claude](ask.md).
 - **Help** — this **documentation** (guide, concepts, topics, reference), a page for every class,

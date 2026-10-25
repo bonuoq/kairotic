@@ -18,6 +18,10 @@
 (defonce code-win (atom nil))   ; {:id :path :lang :data? :ed :original :dirty :confirm :error}
 (defonce cm-module (atom nil))  ; Promise of the bundle
 
+(defn open-definition
+  "[path id] of the component box open in the code window, or nil."
+  [] (when-let [w @code-win] (when (= "component" (:lang w)) [(:path w) (:id w)])))
+
 (defn code-win-box
   "The box whose code is open in the editor (in the patch on screen), or nil."
   [] (when-let [w @code-win] (when (= (:path w) (cmd-path)) (:id w))))
@@ -87,7 +91,9 @@
                       "")]
         (set! (.-className el) (str "cw-foot" (when (= :error (:status r)) " err")))
         (set! (.-textContent el)
-              (cond gone "This box is not in the patch any more: copy what you need, then close."
+              (cond gone (if (= "component" lang)
+                           "This component is not in the work any more: copy what you need, then close."
+                           "This box is not in the patch any more: copy what you need, then close.")
                     error (str "✗ " (first (str/split-lines (str error))))
                     dirty (str "edited · Ctrl/⌘+Enter applies" (when (seq comp-st) (str " · last applied: " comp-st)))
                     :else (str "applied" (when (seq comp-st) (str " · " comp-st)))))))))
@@ -166,7 +172,12 @@
     (.setAttribute el "role" "dialog")
     (.setAttribute el "aria-label" (str "Code of " (name id)))
     (set! (.-innerHTML el)
-          (str "<div class=\"cw-bar\"><span class=\"cw-title\"><b>" (esc (name id)) "</b> " (esc (:text b)) "</span>"
+          (str "<div class=\"cw-bar\"><span class=\"cw-title\"><b>" (esc (name id)) "</b> "
+               (esc (if (definition? b)
+                      (let [c (get-in (cbox/compiled "component" (str (get-in b [:data :source]))) [:info :class])]
+                        (str "component" (when c (str " · " c))))
+                      (:text b)))
+               "</span>"
                "<span class=\"cw-lang\">" (esc lang) "</span>"
                "<button class=\"act primary\" data-cw=\"apply\" title=\"Apply the code (Ctrl/⌘+Enter)\">Apply</button>"
                "<button class=\"act cw-x\" data-cw=\"close\" title=\"Close (Esc)\" aria-label=\"Close\">×</button></div>"
@@ -214,13 +225,20 @@
     (.focus ta)
     ta))
 
+(declare open-code-editor-at!)
+
 (defn open-code-editor!
   "Opens the code of a box in the editor window (or brings it back if it is the one open)."
-  [id]
-  (let [b (get-in (current) [:boxes id]) d (box-def b)]
+  [id] (open-code-editor-at! (cmd-path) id))
+
+(defn open-code-editor-at!
+  "Opens the code of box id of the sub-patch at path (from the patch the work starts at) in the editor
+   window: a component box is not in the patch, so the Components tab opens it this way."
+  [path id]
+  (let [path (vec path) b (get-in (patch-in (root-patch) path) [:boxes id]) d (box-def b)]
     (cond
       (nil? b) nil
-      (= id (code-win-box)) (some-> (:ed @code-win) .focus)
+      (and @code-win (= id (:id @code-win)) (= path (:path @code-win))) (some-> (:ed @code-win) .focus)
       (and @code-win (:dirty @code-win) (not (:gone @code-win)))
       (do (ask-close!) (repl-print! "out" "; first apply or discard the code that is open"))
       :else
@@ -234,7 +252,7 @@
               body (.querySelector el ".cw-body")]
           (.appendChild (.-body js/document) el)
           (place-window! el id b)
-          (reset! code-win {:id id :path (cmd-path) :lang lang :data? data? :original original :dirty (not= text original)})
+          (reset! code-win {:id id :path path :lang lang :data? data? :original original :dirty (not= text original)})
           (cw-status!)
           (render-scene (current))
           (.then (load-cm)
