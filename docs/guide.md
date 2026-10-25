@@ -95,6 +95,10 @@ comes first.
   a wave of breakpoints whose amplitudes and durations take random walks cycle after cycle — a pitch
   that drifts, a timbre that keeps changing. `[:x-step 40]` lets the pitch wander, `[:y-step 0.2]` the
   timbre; a signal on its inlet modulates its frequency. Its help patch has four steps.
+- **Faust in several voices**: a `faust~` whose source declares `declare options "[nvoices:8]";` is
+  polyphonic. Its voice uses `freq`, `gain` and `gate`, set note by note; Hz go to its left inlet and
+  voice ids to its right one, as with `synth~` (a `keyboard` 0→0, 1→1, 3→0; `mt play` 0→0, 1→1), in any
+  tuning; `effect = …;` in the same source is applied to the sum of the voices. Its help patch shows it.
 - **Sound from outside**: `adc~ 1` is the microphone (or an input of the sound card: `adc~ 1 2`). At ▶
   the browser asks for it once; its sound comes as it is, without the processing made for calls.
   `scope~` draws a signal and `snapshot~ 50 db` turns it into numbers (its level), so what is heard can

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Polyphonic `faust~`**: a source that declares `declare options "[nvoices:8]";` (the Faust
+  convention) is compiled as voices played by faustwasm's own allocator, in one AudioWorklet, with an
+  optional `effect = …;` from the same source applied to their sum. As `synth~`: Hz on the left and
+  voice ids on a second inlet (a `keyboard`, a `reader`, `mt play`), one note per id — a new id starts
+  it, one that is gone releases it, one whose pitch changes plays it again; a number plays one voice,
+  `[:gain v]` sets the velocity of the next notes, `:stop` releases them all, and any other `[:name v]`
+  goes to every voice (or to the effect). Notes are sent as MIDI pitches with decimals, which the
+  allocator turns into Hz without rounding: any tuning sounds as written. `freq`, `gain` and `gate`
+  leave the box's sliders (the voices set them). A source without `nvoices` is mono, as before. The
+  help of `faust~` has four more steps (a keyboard, a score in several voices, a just triad, an
+  effect), and Claude knows how to write one. Tests: `tests/faustpoly.mjs`.
+
 - **`@kairotic/synth` 0.2.0: `gendy~ [freq x-step y-min y-max y-step breakpoints]`**, a dynamic
   stochastic oscillator after Xenakis's GENDY (and GendyJS by Andrew Bernstein, MIT): each breakpoint
   keeps its own amplitude and duration, both walking between mirror barriers cycle after cycle. A

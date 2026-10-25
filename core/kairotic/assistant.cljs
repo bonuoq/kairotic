@@ -370,6 +370,12 @@ Rules:
   which is exactly what a named knob sends: `knob 50 2000 300 log carrier` sends [:carrier v] to an
   hslider(\"carrier\", …). Write every parameter as hslider with sensible ranges and a smoothing
   (si.smoo). Call `check_faust` on the Faust code before using it.
+  For a POLYPHONIC instrument (chords, a keyboard, a tree played in several voices) write one voice
+  with `declare options \"[nvoices:8]\";` and controls named exactly freq, gain and gate (Faust's own
+  allocator sets them note by note; gate drives an envelope such as en.adsr), and optionally
+  `effect = …;` for one effect on the sum of the voices. Such a faust~ gets Hz on its LEFT inlet and
+  voice ids on its RIGHT one (inlet 1), as synth~: keyboard 0→0, 1→1, 3→0 (velocity); mt play 0→0,
+  1→1; reader 0→0, 1→1. Its other parameters [:name v] apply to every voice.
 - Musical trees (tree boxes, notation): to PLAY one, prefer `tree` → `mt play` → `synth~` (mt play
   sends Hz and voice ids at the tree's tempo once ▶ is on; see class_help). To SHOW one as notation,
   `(view :bN :score)` on the tree box itself, or a `freqt` with `(view :bN :score)` after `mt` boxes

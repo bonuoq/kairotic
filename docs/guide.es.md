@@ -98,6 +98,11 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   ciclo — una altura que deriva, un timbre que no deja de cambiar. `[:x-step 40]` deja vagar la altura,
   `[:y-step 0.2]` el timbre; una señal en su entrada modula su frecuencia. Su patch de ayuda tiene cuatro
   pasos.
+- **Faust a varias voces**: un `faust~` cuyo código declara `declare options "[nvoices:8]";` es
+  polifónico. Su voz usa `freq`, `gain` y `gate`, que se fijan nota a nota; los Hz van a su entrada
+  izquierda y los ids de voz a la derecha, como con `synth~` (un `keyboard` 0→0, 1→1, 3→0; `mt play`
+  0→0, 1→1), en cualquier afinación; `effect = …;` en el mismo código se aplica a la suma de las voces.
+  Su patch de ayuda lo muestra.
 - **Sonido de fuera**: `adc~ 1` es el micrófono (o una entrada de la tarjeta de sonido: `adc~ 1 2`). Al
   pulsar ▶ el navegador lo pide una vez; su sonido llega tal cual, sin el procesado pensado para
   llamadas. `scope~` dibuja una señal y `snapshot~ 50 db` la convierte en números (su nivel), para que

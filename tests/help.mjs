@@ -23,6 +23,9 @@ const cases = [
   ["gendy~", 4, [["(:text (get-in (current) [:boxes :b9]))", '"gain~ 300"'],
                  ["(:text (get-in (current) [:boxes :b4]))", '"knob 0 100 10 x-step"'],
                  ["(count (filter (fn [[_ b]] (definition? b)) (:boxes (current))))", "2"]]],
+  ["faust~", 5, [["(str/includes? (source :b3) \"effect =\")", "true"],
+                 ["(:text (get-in (current) [:boxes :b8]))", '"mt play loop"'],
+                 ["(:poly (kairotic.faust/info (get-in (current) [:boxes :b3])))", "8"]]],
 ];
 
 export async function help(page, check) {
