@@ -390,6 +390,42 @@ A view drawn from the messages that arrive: each shape of kairotic.shapes ([:cir
 
 See also: `monitor`, `pcclock`, `msg`
 
+### edn · `@kairotic/data`
+
+`edn [width height]`
+
+Any value as a tree, like Portal: collections open and close, values coloured by kind; picking a line sends that part (left) and its path (right).
+
+**Inlets** 
+
+0. any value; depth n opens it n levels down; bang sends the part picked again; clear
+
+**Outlets** 
+
+0. the part picked
+1. its path, for [:get …] of a fetch box
+
+**Messages and gestures**
+
+- `depth 2`: opens it two levels down
+- `bang`: the part picked again (the whole value if none)
+- `clear`: empties it
+- `▸ ▾ · a line · a drag`: opens or closes · picks it · scrolls (also the bar on the right)
+
+**Try:** The tree arrives: open the measure and pick a note: the note and its path go to print.
+
+```clojure
+(box :b1 "tree" 40 30)
+(tree! :b1 [:voice [:measure {:meter [4 4]} "c4/1 e4 g4 c5"]])
+(box :b2 "edn 320 220" 40 130)
+(box :b3 "print" 400 130)
+(connect :b1 0 :b2 0)
+(connect :b2 0 :b3 0)
+(connect :b2 1 :b3 0)
+```
+
+See also: `fetch`, `print`, `tree`
+
 ### faust~
 
 `faust~`
@@ -448,6 +484,44 @@ Descriptors of a signal every ms, one outlet per word: rms, energy, zcr, loudnes
 ```
 
 See also: `pitch~`, `chroma~`, `snapshot~`
+
+### fetch · `@kairotic/data`
+
+`fetch [json|text|edn] [live]`
+
+Brings in what is at a URL (JSON read as EDN, text or EDN) as a task: it goes out on the left and is kept as the data of the box, in the history, the same for everyone; with live, only in this tab.
+
+**Inlets** 
+
+0. a URL (msg https://… · github:owner/repo@ref/path · [:fetch url]); refresh; bang; [:get key …]; clear
+
+**Outlets** 
+
+0. what it found (or the part a [:get …] asks for)
+1. :loading, :ready or [:error "…"]
+
+**Messages and gestures**
+
+- `a URL`: brings it in; a URL it already keeps is sent again, not fetched
+- `refresh`: fetches its URL again
+- `bang`: sends what it holds
+- `get items 0 name · [:get [:items 0 :name]]`: sends one part of it
+- `clear`: forgets it
+- `(keep! :bN {:url "…" :value …})`: what it keeps, as the code of the work writes it
+
+**Try:** Click the message: the answer arrives in the edn box, and stays in the work (go back and forward in the history: it is not fetched again). Pick a line: its value goes to print.
+
+```clojure
+(box :b1 "msg github:bonuoq/kairotic@main/packages/data/package.json" 40 30)
+(box :b2 "fetch" 40 80)
+(box :b3 "edn 340 260" 40 150)
+(box :b4 "print" 400 150)
+(connect :b1 0 :b2 0)
+(connect :b2 0 :b3 0)
+(connect :b3 0 :b4 0)
+```
+
+See also: `edn`, `sample`, `print`
 
 ### fourier · `@kairotic/theory`
 
