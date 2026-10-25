@@ -329,7 +329,11 @@
     :see ["component"]}
 
    "component"
-   {:messages [["source" "a map {:class \"x\" :doc … :io [1 1] :receive (fn [m] …)}: defines the class x in the work"]]
+   {:doc "Defines a box class inside the work. It has no inlets nor outlets, so it is not drawn in the patch: the Components tab lists the work's definitions and opens them."
+    :messages [["source" "a map {:class \"x\" :doc … :io [1 1] :receive (fn [m] …)}: defines the class x in the work"]
+               ["New component (Components tab) · (new-component!)" "a new definition, from a template, open in the code window"]
+               ["Edit · × (Components tab)" "its code in the code window · removes it (one event of the history)"]
+               ["a click on its row" "chooses it: the Claude tab can then change it"]]
     :see ["script" "faust~"]}
 
    "patch"

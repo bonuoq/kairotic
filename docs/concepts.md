@@ -40,7 +40,7 @@ scheduled in time), `:audio` (Web Audio nodes), a `:view` made of shapes, `:help
 Classes come from four places: the **core**; official **packages** (`@kairotic/synth` with `adsr~` and
 `synth~`, `@kairotic/spatial` with `pan~` and `space~`, `@kairotic/controls` with `knob`), which come
 into the work by themselves when a box uses them; **component boxes** that define a class inside the
-work; and components **imported** from npm. A `patch` box holds a sub-patch, and a class can be a
+work (they have no inlets nor outlets: the Components tab keeps them, not the patch); and components **imported** from npm. A `patch` box holds a sub-patch, and a class can be a
 patch (an **abstraction**, with `$1 $2` for its arguments and a panel of presented boxes). See
 [Writing a component](writing-a-component.md).
 

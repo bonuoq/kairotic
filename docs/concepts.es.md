@@ -40,7 +40,7 @@ Cada clase es un **componente**: un mapa de datos y funciones con un mismo contr
 Las clases vienen de cuatro sitios: el **núcleo**; los **paquetes** oficiales (`@kairotic/synth` con
 `adsr~` y `synth~`, `@kairotic/spatial` con `pan~` y `space~`, `@kairotic/controls` con `knob`), que
 entran solos en la obra cuando una caja los usa; las **cajas component** que definen una clase dentro de
-la obra; y los componentes **importados** de npm. Una caja `patch` guarda un sub-patch, y una clase puede
+la obra (no tienen entradas ni salidas: las guarda la pestaña Components, no el patch); y los componentes **importados** de npm. Una caja `patch` guarda un sub-patch, y una clase puede
 ser un patch (una **abstracción**, con `$1 $2` para sus argumentos y un panel de cajas presentadas). Ver
 [Escribir un componente](writing-a-component.es.md).
 

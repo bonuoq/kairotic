@@ -216,7 +216,10 @@ la barra lo oculta o lo muestra. Este navegador recuerda cómo lo dejaste. Desde
   reconstruye el patch. **Data** muestra la misma obra como datos (EDN): el estado que produce la
   historia, todas las claves de todas las cajas, en solo lectura, para inspeccionarlo (plegado y búsqueda
   con Ctrl/⌘+F). Lo que hayas editado sin ejecutar sigue en las llamadas mientras miras los datos.
-- **Components** — las clases que conoce esta obra; escribe las tuyas, importa las publicadas.
+- **Components** — las clases que conoce esta obra. Las cajas que las definen (`component`) se guardan
+  aquí, no en el patch, porque no tienen entradas ni salidas: **New component**, **Edit** (su código en
+  la ventana de código), **Publish**, ×; un clic en una fila la elige para que Claude la cambie. Importa
+  las publicadas, o usa las de la biblioteca compartida.
 - **Claude** — Claude hace un patch (o cambia el abierto), o escribe un componente, a partir de lo que
   describes. Ver [Pedírselo a Claude](ask.es.md).
 - **Help** — esta **documentación** (guía, conceptos, temas, referencia), una página para cada clase,

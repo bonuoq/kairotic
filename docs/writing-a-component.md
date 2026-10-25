@@ -9,7 +9,10 @@ reads the `knob`, the first component with its own view.
 
 ## 1. The smallest component
 
-Create a `component` box, double-click its code and write:
+In the **Components** tab, press **New component** (or write `component` in a new box, or
+`(new-component!)` in the REPL): the code window opens with a template. A component box defines a
+class and has no inlets nor outlets, so it is not drawn in the patch: the Components tab lists the
+work's definitions, whether each one compiles, and opens them (**Edit**). Write:
 
 ```clojure
 {:class "twice"
@@ -204,8 +207,8 @@ The **Claude** tab (or `(ask-component "…")` in the REPL) writes a component f
 description. Claude reads this same contract, the API and real components as examples, and before it
 answers it tries what it wrote with the page's tools: it evaluates and validates it, sends it
 messages and draws its view. The result is an ordinary `component` box, with a header saying it was
-written with Claude and what was asked; edit it like any other. With a component box selected,
-"change the selected component" asks for a change to it instead. It runs on the Claude account of
+written with Claude and what was asked; edit it like any other. With a component chosen in the Components tab (a click on its row), or
+open in the code window, "change the selected component" asks for a change to it instead. It runs on the Claude account of
 whoever uses the page, who is asked for permission the first time.
 
 It can also write Faust (it compiles it to check it), abstractions with `faust~` boxes
@@ -231,7 +234,8 @@ The example is patch code, one gesture per line: opening the help patch makes th
 
 ## 7. Sharing it
 
-- **In the work:** the `component` box travels with the work and its history.
+- **In the work:** the `component` box travels with the work and its history (it is part of the
+  work's code, `(box :bN "component" 0 0)` and `(code :bN …)`, though the patch does not draw it).
 - **In the library of the space:** `(publish :bN)` and, in another work, `(use! "class")`.
 - **On npm:** publish a module that exports the component (`export default {class, version, author,
   license, doc, source}`, the format [`packages/build.mjs`](../packages/build.mjs) writes); anyone can

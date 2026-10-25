@@ -134,9 +134,15 @@
               :description "The box classes the work knows now (core, packages, the work's own), one line each: name, [inlets outlets], first sentence of its doc."
               :execute (logged "list classes" (fn [_] {:ok true :classes (ai/classes)}))}]))
 
-(defn selected-component []
-  (let [[kind id] (:sel @ui) b (when (= kind :box) (get-in (current) [:boxes id]))]
-    (when (and b (= "component" (klass (:text b)))) [id (str (get-in b [:data :source]))])))
+(declare open-definition)
+
+(defn selected-component
+  "The component box chosen in the Components tab (or open in the code window), if it is in the patch on
+   screen: [id source]."
+  []
+  (let [[path id] (or @chosen-def (open-definition))
+        b (when (= (vec path) (cmd-path)) (get-in (current) [:boxes id]))]
+    (when (definition? b) [id (str (get-in b [:data :source]))])))
 
 (defn ask-busy! [busy?]
   (set! (.-disabled ($ "ask-go")) busy?)
@@ -218,7 +224,7 @@
 (defn render-ask-mode! []
   (let [patch? (= :patch (ask-what)) byok (some-> @sample-fn .-byok)]
     (set! (.-textContent ($ "ask-change-t")) (if patch? "change the open patch" "change the selected component"))
-    (set! (.-title ($ "ask-change-l")) (if patch? "Claude gets the open patch and changes it; unchecked, it makes a new one" "Select a component box in the patch first"))
+    (set! (.-title ($ "ask-change-l")) (if patch? "Claude gets the open patch and changes it; unchecked, it makes a new one" "Choose a component in the Components tab first (a click on its row)"))
     (set! (.-checked ($ "ask-change")) patch?)
     (set! (.-textContent ($ "ask-go")) (if patch? "Make it" "Write it"))
     (set! (.-placeholder ($ "ask-text"))

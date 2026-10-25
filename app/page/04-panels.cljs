@@ -12,15 +12,9 @@
 (defn doc-id [cls-name] (str/replace (str cls-name) #"[^A-Za-z0-9_\-]" "_"))
 
 (defn component-slot
-  "Where a new component box goes: in a column to the right of everything else in the patch."
-  []
-  (let [bs (:boxes (current))
-        defs (filter (fn [[_ b]] (= "component" (klass (:text b)))) bs)
-        others (remove (fn [[_ b]] (= "component" (klass (:text b)))) bs)
-        right (reduce max 300 (for [[id b] others] (+ (:x b) (first (box-dims id b)))))
-        x (if (seq defs) (apply min (map (comp :x second) defs)) (+ right 40))
-        bottom (reduce max 0 (for [[id b] defs] (+ (:y b) (second (box-dims id b)))))]
-    [x (if (seq defs) (+ bottom 16) 20)]))
+  "Where a new component box goes. A definition is not drawn in the patch (it is listed in the Components
+   tab, issue #8), so its place on the paper means nothing: the corner."
+  [] [0 0])
 
 (defn new-definition!
   "Creates, as gestures written in code, a component box with this source."
@@ -29,6 +23,35 @@
     (gesture! (str "(box " id " \"component\" " x " " y ")"))
     (gesture! (str "(code " id " " (pr-str source) ")"))
     id))
+
+(declare select-tab! open-code-editor-at! wrap-path render-comp!)
+
+(defn new-component!
+  "A new component of the work, from a template (or the source given), opened in the code window, with
+   the Components tab in sight."
+  ([] (new-component! lib/template))
+  ([source]
+   (let [id (new-definition! source)]
+     (select-tab! "comp")
+     (js/setTimeout (fn [] (open-code-editor-at! (cmd-path) id)) 0)
+     id)))
+
+(defn definitions-in
+  "The component boxes of patch p and of the patches embedded in it: [[path id box] …], path being the
+   way down from the patch the work starts at."
+  ([p] (definitions-in p []))
+  ([p path]
+   (let [bs (sort-by (fn [[k _]] (box-num k)) (:boxes p))]
+     (concat (for [[id b] bs :when (definition? b)] [path id b])
+             (mapcat (fn [[id b]] (when (embedded? b) (definitions-in (or (:data b) empty-patch) (conj path id))))
+                     bs)))))
+
+(defn definitions
+  "The components this work defines, as the Components tab lists them: [[path id class status] …]."
+  []
+  (vec (for [[path id b] (definitions-in (root-patch))
+             :let [r (cbox/compiled "component" (str (get-in b [:data :source])))]]
+         [path id (get-in r [:info :class]) (:status r)])))
 
 (defn import!
   "Copies a published component into the work: \"npm:package@version/path.mjs\" (jsDelivr) or a file
@@ -127,33 +150,84 @@
                                            [(:class m) m]))))
                (fn [_] nil)))
 
-(defn render-comp! []
-  (when-let [el ($ "comp-list")]
-    (let [work-defs @lib/work-classes
-          core-defs (filter (fn [[_ d]] (= :core (:origin d))) (sort-by key @comp/registry))
-          row (fn [label detail button]
+(defonce chosen-def (atom nil))   ; [path id]: the component chosen in the tab (for Claude's "change the selected component")
+
+(defn def-row
+  "A row of the Components tab for the component box id (in the sub-patch at path): what it defines,
+   whether it compiles, and what can be done with it."
+  [path id b]
+  (let [r (cbox/compiled "component" (str (get-in b [:data :source])))
+        cls (get-in r [:info :class])
+        f (eng/flat-id path id)
+        used (when cls (get @lib/work-classes cls))
+        where (str (when (seq path) (str "in " (str/join " › " (map name path)) " · ")) "box " (name id))
+        attr (str " data-path=\"" (esc (pr-str path)) "\" data-id=\"" (esc (name id)) "\"")]
+    (str "<li class=\"def" (when (= :error (:status r)) " err") (when (= @chosen-def [path id]) " chosen") "\"" attr
+         " title=\"Click to choose it (Claude can then change it); Edit opens its code\">"
+         "<code>" (esc (or cls "—")) "</code>"
+         "<span title=\"" (esc (str where (when (:error r) (str " · " (:error r))))) "\">"
+         (esc (case (:status r)
+                :ok (str (or (get-in r [:info :summary]) "ready")
+                         (when (and used (not= (first used) f)) (str " · not used: " (name (first used)) " defines it first"))
+                         (when-let [d (:doc (second used))] (when (= (first used) f) (str " · " d))))
+                :compiling "compiling…"
+                :empty "empty: write its definition"
+                (str "✗ " (first (str/split-lines (str (:error r)))))))
+         " <small>" (esc where) "</small></span>"
+         "<button class=\"act\" data-def=\"edit\" title=\"Its code, in the code window\">Edit</button>"
+         (when (and (= :ok (:status r)) (empty? path) (not (:package (:value r))))
+           "<button class=\"act\" data-def=\"publish\" title=\"To the shared library of this space\">Publish</button>")
+         "<button class=\"act\" data-def=\"delete\" title=\"Remove it from the work (one event of the history)\" aria-label=\"Delete\">×</button>"
+         "</li>")))
+
+(defonce comp-shown (atom nil))   ; what the tab last drew: it is drawn again only when that changes
+
+(defn render-comp!
+  ([] (render-comp! false))
+  ([only-if-changed?]
+   (when-let [el ($ "comp-list")]
+     (let [defs (definitions-in (root-patch))
+           core-defs (filter (fn [[_ d]] (= :core (:origin d))) (sort-by key @comp/registry))
+           sig [@chosen-def (vec (for [[path id b] defs] [path id (cbox/compiled "component" (str (get-in b [:data :source])))]))
+                @lib/work-classes @shared-lib]
+           row (fn [label detail button]
                  (str "<li><code>" (esc label) "</code><span>" (esc detail) "</span>" button "</li>"))]
-      (set! (.-innerHTML el)
-            (str "<h4>In this work</h4>"
-                 (if (seq work-defs)
-                   (str "<ul>" (apply str (for [[c [id m]] (sort-by key work-defs)]
-                                            (row c (str "box " (name id) (when (:doc m) (str " · " (:doc m))))
-                                                  (str "<button class=\"act\" data-publish=\"" (esc (name id)) "\">Publish</button>"))))
-                        "</ul>")
-                   "<p class=\"empty\">None yet: create a <code>component</code> box or import one.</p>")
-                 "<h4>Shared library</h4>"
-                 (if (seq @shared-lib)
-                   (str "<ul>" (apply str (for [[c m] (sort-by key @shared-lib)]
-                                            (row c (str "v" (:version m) (when (seq (:doc m)) (str " · " (:doc m))))
-                                                  (str "<button class=\"act\" data-use=\"" (esc c) "\">Use</button>"))))
-                        "</ul>")
-                   "<p class=\"empty\">Empty: publish a definition of the work here to use it in others.</p>")
-                 "<h4>Import</h4>"
-                 "<form id=\"comp-import\"><input id=\"comp-origin\" placeholder=\"npm:package@1.0.0/comp.mjs or kairotic/packages/controls.mjs\" value=\"kairotic/packages/controls.mjs\">"
-                 "<button class=\"act\">Import</button></form>"
-                 "<h4>Core</h4><p class=\"core-defs\">"
-                 (str/join " " (for [[c d] core-defs] (str "<code class=\"help-link\" data-help=\"" (esc c) "\" title=\"" (esc (:doc d)) "\">" (esc c) "</code>")))
-                 "</p>")))))
+       (when-not (and only-if-changed? (= sig @comp-shown))
+         (reset! comp-shown sig)
+         (set! (.-innerHTML el)
+               (str "<h4>In this work</h4>"
+                    (if (seq defs)
+                      (str "<ul>" (apply str (for [[path id b] defs] (def-row path id b))) "</ul>")
+                      "<p class=\"empty\">None yet. The boxes that define components are kept here, not in the patch: they have no inlets nor outlets.</p>")
+                    "<p class=\"comp-new\"><button class=\"act primary\" data-def=\"new\">New component</button> "
+                    "<small>or import one, or ask Claude for it</small></p>"
+                    "<h4>Shared library</h4>"
+                    (if (seq @shared-lib)
+                      (str "<ul>" (apply str (for [[c m] (sort-by key @shared-lib)]
+                                               (row c (str "v" (:version m) (when (seq (:doc m)) (str " · " (:doc m))))
+                                                    (str "<button class=\"act\" data-use=\"" (esc c) "\">Use</button>"))))
+                           "</ul>")
+                      "<p class=\"empty\">Empty: publish a definition of the work here to use it in others.</p>")
+                    "<h4>Import</h4>"
+                    "<form id=\"comp-import\"><input id=\"comp-origin\" placeholder=\"npm:package@1.0.0/comp.mjs or kairotic/packages/controls.mjs\" value=\"kairotic/packages/controls.mjs\">"
+                    "<button class=\"act\">Import</button></form>"
+                    "<h4>Core</h4><p class=\"core-defs\">"
+                    (str/join " " (for [[c d] core-defs] (str "<code class=\"help-link\" data-help=\"" (esc c) "\" title=\"" (esc (:doc d)) "\">" (esc c) "</code>")))
+                    "</p>")))))))
+
+(defn choose-definition!
+  "Chooses a component box of the work in the Components tab (nil: none)."
+  [path id]
+  (reset! chosen-def (when id [(vec path) id]))
+  (render-comp!))
+
+(defn edit-definition!
+  "Opens the code of a component box of the work (in the sub-patch at path) in the code window."
+  [path id]
+  (choose-definition! path id)
+  ;; from a sub-patch that does not hold it, the work is seen from its top first
+  (when-not (= (cmd-path) (vec (take (count (cmd-path)) path))) (gesture! "(top)"))
+  (open-code-editor-at! path id))
 
 (add-watch shared-lib ::comp (fn [_ _ _ _] (render-comp!)))
 
@@ -164,7 +238,23 @@
     (when-let [b (.closest (.-target e) "[data-use]")]
       (gesture! (str "(use! " (pr-str (.getAttribute b "data-use")) ")")))
     (when-let [b (.closest (.-target e) "[data-publish]")]
-      (gesture! (str "(publish :" (.getAttribute b "data-publish") ")")))))
+      (gesture! (str "(publish :" (.getAttribute b "data-publish") ")")))
+    (when-let [b (.closest (.-target e) "[data-def]")]
+      (let [li (.closest b "li[data-id]")
+            path (when li (clojure.edn/read-string (.getAttribute li "data-path")))
+            id (when li (keyword (.getAttribute li "data-id")))]
+        (case (.getAttribute b "data-def")
+          "new" (gesture! "(new-component!)")
+          "edit" (edit-definition! path id)
+          "publish" (gesture! (str "(publish " id ")"))
+          "delete" (do (when-not (= (cmd-path) (vec (take (count (cmd-path)) path))) (gesture! "(top)"))
+                       (when (= @chosen-def [path id]) (reset! chosen-def nil))
+                       (gesture! (wrap-path path (str "(delete " id ")"))))
+          nil)))
+    ;; a click on the row itself chooses it
+    (when-let [li (and (not (.closest (.-target e) "button")) (.closest (.-target e) "li.def[data-id]"))]
+      (let [path (clojure.edn/read-string (.getAttribute li "data-path")) id (keyword (.getAttribute li "data-id"))]
+        (choose-definition! (when-not (= @chosen-def [path id]) path) (when-not (= @chosen-def [path id]) id))))))
 
 (.addEventListener ($ "panel-comp") "submit"
   (fn [e]

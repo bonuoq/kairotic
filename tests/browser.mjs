@@ -25,6 +25,7 @@ import { layers } from "./layers.mjs";
 import { theory } from "./theory.mjs";
 import { claude } from "./claude.mjs";
 import { help } from "./help.mjs";
+import { components } from "./components.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const base = url.replace(/tests\.html.*$/, "");
@@ -78,6 +79,7 @@ const appSuites = [
   ["relays", relays, "the relay tests ran"],
   ["layers", layers, "the layer tests ran"],
   ["theory", theory, "the theory tests ran"],
+  ["components", components, "the component tab tests ran"],
   ["claude", claude, "the Claude tab tests ran"],
   // opens other works, then a local one again
   ["release", release, "the release tests ran"],
