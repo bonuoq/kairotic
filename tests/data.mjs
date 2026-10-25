@@ -86,12 +86,12 @@ export async function data(page, check) {
   const shapes = (expr) => cljs(page, safe(`(let [b (get-in (current) [:boxes ${e}])] ${expr})`));
   // temporary: the helpers of edn, one by one, in the page
   const src = await page.evaluate(async () => (await import("/kairotic/packages/data.mjs")).default.components.find((c) => c.class === "edn").source);
-  const head = src.slice(0, src.indexOf("  {;; ── about ──"));
-  const tries = ['(name :map)', '(keyword (str "t" 1))', '(size-text {:a 1})', '(size-text [1 2])', '(plural 2 "a" "b")', '(ink-of 1)', '(opener :map)',
-                 '(pr-str (rows-of {:root {:a 1 :b [1 2]} :open #{}}))', '(visible 240)', '(pr-str (entries {:a 1}))', '(coll-kind {})',
-                 '(pr-str (part {:a [1 {:b 2}]} [:a 1 :b]))'];
-  const probeSrc = head + "  [" + tries.map((t) => `(try (pr-str ${t}) (catch :default e (str "ERR " (.-message e))))`).join(" ") + "])";
+  const cases = ['{}', '{:root 3}', '{:root "s"}', '{:root {:a 1}}', '{:root [1 2]}', '{:root {:a [1]}}', '{:root {:a [1]} :open #{[:a]}}', '{:root {:a 1} :sel [:a]}'];
+  const probeSrc = "(let [d " + src + " m {:w 320 :h 240}] [" +
+    cases.map((c) => `(try (count ((:draw d) (assoc m :state ${c}))) (catch :default e (str "ERR " (.-message e))))`).join(" ") + " " +
+    cases.map((c) => `(try (pr-str ((:gesture d) (assoc m :state ${c} :up true :hit :t0 :dy 0))) (catch :default e (str "ERR " (.-message e))))`).join(" ") + "])";
   const probe = await page.evaluate((s) => { try { return String(scittle.core.eval_string(s)); } catch (e) { return "EVAL ERR " + e.message; } }, probeSrc);
+  const tries = cases;
   check("DIAGNOSTIC (temporary)", false, tries.map((t, k) => t).join(" | ") + " => " + probe);
   const lines = await shapes(`(count (filter (fn [s] (and (= :rect (first s)) (number? (:hit (second s))))) (ctl-shapes* (ctl-m ${e} b) b)))`);
   check("... one line per key, closed", lines === "5", lines);
