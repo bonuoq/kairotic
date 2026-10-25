@@ -88,12 +88,7 @@ export async function data(page, check) {
   const src = await page.evaluate(async () => (await import("/kairotic/packages/data.mjs")).default.components.find((c) => c.class === "edn").source);
   const cases = ['{:root {"2 voices" true}}', '{:root {:a true}}', '{:root {"k" 1}}', '{:root {:a "Kairos"}}', '{:root {:t ["a" "b"]}}', '{:root {:a 1} :top 0 :open #{}}', `(get-in @eng/rt [:states (fid ${e})])`];
   const cases2 = ['{:root {:a "' + "x".repeat(80) + '"}}', '{:root {:v [{:a 1}]}}', '{:root {:v [{:a 1 :b "' + "y".repeat(80) + '"}]}}'];
-  const probeSrc = "(let [d " + src + " m {:w 320 :h 240}] (pr-str [" +
-    cases2.map((c) => `(try (count ((:draw d) (assoc m :state ${c}))) (catch :default e (str "ERR " (.-message e))))`).join(" ") +
-    ' (try (subs "abcdef" 0 (max 0 (dec 3))) (catch :default e (str "ERR " (.-message e))))' +
-    ' (try (str "ab" "…") (catch :default e (str "ERR " (.-message e))))' +
-    ' (try (let [f (fn [s x] (let [m (js/Math.floor x)] (if (> (count s) m) (str (subs s 0 (max 0 (dec m))) "…") s)))] (f "abcdefgh" 3.5)) (catch :default e (str "ERR " (.-message e))))' +
-    "]))";
+  const probeSrc = "(pr-str [" + [`(let [f (fn [s x] (let [m (js/Math.floor x)] (str (subs s 0 m) "…")))] (f "abcdefgh" 3.5))`, `(let [f (fn [s x] (let [m (js/Math.floor x)] (subs s 0 (dec m))))] (f "abcdefgh" 3.5))`, `(let [f (fn [s x] (let [m (js/Math.floor x)] (max 0 (dec m))))] (f "abcdefgh" 3.5))`, `(let [f (fn [s x] (let [k (js/Math.floor x)] (subs s 0 (max 0 (dec k)))))] (f "abcdefgh" 3.5))`, `(let [f (fn [s x] (let [m (js/Math.floor x)] (if (> (count s) m) "long" s)))] (f "abcdefgh" 3.5))`, `(let [f (fn [s x] (let [m (int x)] (subs s 0 (max 0 (dec m)))))] (f "abcdefgh" 3.5))`, `(let [f (fn [t x] (let [m (js/Math.floor x)] (subs t 0 (max 0 (dec m)))))] (f "abcdefgh" 3.5))`].map((v) => `(try ${v} (catch :default e (str "ERR " (.-message e))))`).join(" ") + "])";
   const probe = await page.evaluate((s) => { try { return String(scittle.core.eval_string(s)); } catch (e) { return "EVAL ERR " + e.message; } }, probeSrc);
   const tries = cases;
   check("DIAGNOSTIC (temporary)", false, tries.map((t, k) => t).join(" | ") + " => " + probe);
