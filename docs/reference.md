@@ -309,6 +309,9 @@ Defines a box class inside the work: its source is a map {:class :doc :io :recei
 **Messages and gestures**
 
 - `source`: a map {:class "x" :doc … :io [1 1] :receive (fn [m] …)}: defines the class x in the work
+- `New component (Components tab) · (new-component!)`: a new definition, from a template, open in the code window
+- `Edit · × (Components tab)`: its code in the code window · removes it (one event of the history)
+- `a click on its row`: chooses it: the Claude tab can then change it
 
 See also: `script`, `faust~`
 
