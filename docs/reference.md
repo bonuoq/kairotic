@@ -634,7 +634,8 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 - `⇄ score in the header · (view :bN :score)`: the same buffer, quantized and drawn as a score: measures in the meter of its bar grid, tuplets, ties (⇄ canvas brings it back)
 - `(quantize :bN {:meter "6/8"})`: the tree that score shows, to keep or edit (options: :meter :divs :merge :nest :voices :grace :legato)
 - `shown as a score, alt-click a note · (division! :bN t)`: its beat divided the next way (another division, in halves, with the next beat), kept in the buffer
-- `(quant :bN {:meter "6/8"}) · [:quantize {…}]`: how its score is quantized, kept in its buffer (one event); (quant :bN nil): the defaults
+- `(quant :bN {:meter "6/8" :key "eb"}) · [:quantize {…}]`: how its score is quantized and in which key, kept in its buffer (one event); (quant :bN nil): the defaults
+- `shown as a score, shift-alt-click a note · (enharmonic! :bN t midi)`: another name for that note (c#4 → db4), kept in the buffer
 - `shown as a score, click a note of a tree`: ↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest
 - `click a rest`: Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note
 - `(keep! :bN)`: writes the tree it shows into its buffer, with its recipe beside it (the tree and the boxes that made it)
@@ -929,7 +930,7 @@ See also: `number`, `bang`
 
 `mt <operation> [arguments]`
 
-Operations on musical trees: a tree on the left comes out transformed. transpose n · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval] · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks).
+Operations on musical trees: a tree on the left comes out transformed. transpose n (semitones, or an interval: M3, -P5, A4) · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval] · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks).
 
 **Inlets** 1: a tree: it comes out transformed (for play: a tree to play, then bang, stop) · for transpose, invert, augment, rotate, canon, thin: the amount · for seq, par: the tree to join
 
@@ -1904,7 +1905,8 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `(tree-edit! :bN [:attrs [0 1 2] {…}])`: edits nodes by their path: [:set p x] [:attrs p {…}] [:insert p x] [:remove p]
 - `(node-at :bN [0 1])`: the node at a path
 - `⇄ score in the header · (view :bN :score)`: the same tree drawn as a score, in this box (⇄ code brings the code back; { } opens it)
-- `in a score: click a note`: ↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest
+- `in a score: click a note`: ↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · # another name (c#4 → db4) · + − duration · ← → next · Delete → rest
+- `{:key "eb"} on the tree, a voice or a measure`: the score's key: its signature, accidentals that last the bar; :none writes every accidental
 - `in a score: click a rest`: Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note
 - `(as-tree :bN)`: reads it back as data
 
