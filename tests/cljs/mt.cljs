@@ -1,7 +1,8 @@
 ;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · tests · musical trees (kairotic.mt)
 (ns kairotic.test.mt
-  (:require [kairotic.mt :as mt]
+  (:require [clojure.string :as str]
+            [kairotic.mt :as mt]
             [kairotic.test :as t]))
 
 (def motif [:voice {:name "m"} [:measure {:meter [4 4]} "c4/1 e4 g4/2"]])
@@ -97,4 +98,25 @@
       (let [six "c4/.5 d4 e4 f4 g4 a4"]
         (t/eq "thin in 3/4 and in 6/8 keeps different eighths"
               [(mt/pitches (mt/thin 2 [:measure {:meter [3 4]} six])) (mt/pitches (mt/thin 2 [:measure {:meter [6 8]} six]))]
-              [["c4" "g4"] ["c4" "f4"]])))))
+              [["c4" "g4"] ["c4" "f4"]])))
+    ;; ties, grace notes and metric spelling (#86)
+    (let [tied [:voice [:measure {:meter [4 4]} [:rest {:dur 3}] [:note {:pitch "c4" :dur 1 :tie true}]] [:measure [:note {:pitch "c4" :dur 1}] "d4/3"]]]
+      (t/eq "a tied note sounds once, as long as its pieces" (mapv (juxt :t :dur) (mt/notes tied)) [[3 2] [5 3]])
+      (t/is "... and is tied in the score across the barline" (str/includes? (:mei (mt/->mei tied "t-")) "<tie ")))
+    (let [g [:voice [:measure {:meter [4 4]} "c4/1" [:note {:pitch "d4" :grace true}] "e4/3"]]]
+      (t/eq "a grace note takes no time" (mt/duration g) 4)
+      (t/eq "... but sounds" (count (mt/notes g)) 3)
+      (t/is "... written as a grace note" (str/includes? (:mei (mt/->mei g "g-")) "grace=\"unacc\""))
+      (t/eq "... and leaves the next note's duration alone" (:dur (last (remove :grace (mt/notes g)))) 3))
+    (let [ms (fn [m bs p d & [r]] (mapv first (mt/metric-split m bs p d r)))]
+      (t/eq "a quarter off the beat over a beat: syncopation, one value" (ms [4 4] [1 2 3] 0.5 1) [1])
+      (t/eq "a quarter off the beat over the middle of 4/4: two tied eighths" (ms [4 4] [1 2 3] 1.5 1) [0.5 0.5])
+      (t/eq "a dotted quarter on beat 2 of 4/4 shows beat 3; on beat 2 of 3/4 it does not need to"
+            [(ms [4 4] [1 2 3] 1 1.5) (ms [3 4] [1 2] 1 1.5)] [[1 0.5] [1.5]])
+      (t/eq "a sixteenth over a beat: two tied sixteenths" (ms [4 4] [1 2 3] 0.75 0.5) [0.25 0.25])
+      (t/eq "inside a beat any written value goes (a dotted eighth after a sixteenth)" (ms [4 4] [1 2 3] 0.25 0.75) [0.75])
+      (t/eq "two and a half beats from the downbeat: a half and an eighth" (ms [4 4] [1 2 3] 0 2.5) [2 0.5])
+      (t/eq "a dotted half rest in 4/4 is a half and a quarter" (ms [4 4] [1 2 3] 0 3 true) [2 1])
+      (t/eq "a dotted half in 6/8" (ms [6 8] [1.5] 0 3) [3]))
+    (t/is "a rest that fills its bar is a bar rest"
+          (str/includes? (:mei (mt/->mei [:voice [:measure {:meter [3 4]} [:rest {:dur 3}]]] "r-")) "<mRest"))))

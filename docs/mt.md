@@ -177,7 +177,46 @@ write.
 | `freqt` · `canvas` | a tree on their inlet is **shown live** over their buffer; `(keep! :bN)` writes it into the buffer as one event of the history |
 
 A score shows a tree written in `:measure`s as measured notation (tuplets, chords, rests, dynamics,
-articulations, texts, changes of meter). Without measures it shows an approximation on a sixteenth grid.
+articulations, texts, changes of meter). Without measures, and for the strokes of a `freqt`, it shows them
+**quantized** into measures (below).
+
+Outside tuplets each value is written where the beats can be seen: a quarter off the beat over beat 2 of
+4/4 stays one syncopated quarter, but over the middle of the bar it becomes two tied eighths; a dotted
+quarter on beat 2 of 3/4 stays dotted, on beat 2 of 4/4 it shows beat 3. Two more keys of a note:
+`:tie true` goes on into the next note of the same pitch (one sound, tied across a barline or into a
+tuplet) and `:grace true` is a grace note before the next one (it takes no time).
+
+## Quantization: free time as measured notation
+
+A `freqt` shown as a score is quantized: its strokes become a tree of measures, tuplets, ties and grace
+notes (issue [#86](https://github.com/bonuoq/kairotic/issues/86); after bach.quantize, FOMUS and Nauert).
+
+- **The meter** comes from the buffer's bar grid: `(grid-x :bN 0.25 [4])` is 4/4, `[3]` 3/4,
+  `[1.5 1.5]` 6/8, `[1.5 1.5 1]` 8/8 in 3+3+2. Without a grid, 4/4.
+- **Each bar** is cut in spans (the beats of a simple meter, the dotted beats or groups of 6/8, 7/8 …),
+  and each span takes the division (1 to 8, and those of its own units) that costs least: how far the
+  notes are from its points, how deep the points it uses are (the beat, its half, its quarters; 32nds
+  cost much), being a tuplet (a triplet less than a quintuplet), and notes lost (two starts on one
+  point, a note shrunk to nothing). Two beats can go together (a half-note triplet).
+- **The notes** go on those points in one voice: chords where starts meet, rests in the gaps (a small gap
+  before the next note is legato, not a rest), a tie over a barline or out of a tuplet, a grace note
+  for a note too short for any point. Pitches between semitones keep their cents.
+
+At the REPL, `(quantize :bN)` gives that tree (it can be kept, edited, sent to a tree box), and options
+change how it is made:
+
+```clojure
+(quantize :b1)                                   ; what the score shows
+(quantize :b1 {:meter "6/8"})                    ; another meter than the grid's
+(quantize :b1 {:divs [1 2 4] :merge []})          ; no tuplets at all
+(quantize :b1 {:grace false :legato 0})          ; no grace notes; every gap a rest
+(qz/quantize-tree [:par [:note {:at 0 :pitch "c4" :dur 1.5}] …] {:meter [3 4]})   ; a tree without measures
+```
+
+The other options are `:chord` (how close two starts are to be one chord, 0.04 beats), and `:w`, the
+weights of the cost (`{:err 8 :off 0.35 :cpx 1 :lost 1.5}`). `(as-tree :bN)` still reads a freqt's strokes
+exactly, without quantizing them. Next (#86): several voices in one staff, choosing another division of
+a beat from the score, spelling by key (#88).
 
 ## REPL and components
 
@@ -189,6 +228,7 @@ The functions are in `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt/au
 
 - `(tree! :b2 [:voice …])` writes a tree into a tree box;
 - `(as-tree :bN)` reads a tree box, or the tree a score is showing, or a freqt's strokes, as a tree;
+- `(quantize :bN [opts])` gives a freqt's strokes (or a tree without measures) quantized into measures;
 - `(keep! :bN)` and `(unlive! :bN)`;
 - `(recipe :bN)` and `(remake! :bN)` (below).
 

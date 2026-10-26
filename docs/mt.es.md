@@ -180,8 +180,49 @@ Un compás que no cuadra es un aviso (⚠ en la REPL y en la caja), no un error,
 | `freqt` · `canvas` | un árbol en su entrada **se muestra en vivo** sobre su buffer; `(keep! :bN)` lo escribe en el buffer como un evento de la historia |
 
 Un freqt mostrado como partitura muestra un árbol escrito en `:measure` como notación medida (grupos irregulares, acordes,
-silencios, dinámicas, articulaciones, textos, cambios de compás). Sin compases muestra una aproximación
-sobre una rejilla de semicorcheas.
+silencios, dinámicas, articulaciones, textos, cambios de compás). Sin compases, y para los trazos de un `freqt`,
+los muestra **cuantizados** en compases (más abajo).
+
+Fuera de los grupos irregulares cada valor se escribe donde se puedan ver las partes del compás: una negra a
+contratiempo sobre la parte 2 de un 4/4 sigue siendo una negra sincopada, pero sobre la mitad del compás pasa a
+ser dos corcheas ligadas; una negra con puntillo en la parte 2 de un 3/4 se queda con su puntillo, en la parte 2
+de un 4/4 deja ver la parte 3. Dos claves más de una nota: `:tie true` sigue en la siguiente nota de la misma
+altura (un solo sonido, ligado sobre la barra o dentro de un grupo irregular) y `:grace true` es una nota de
+adorno antes de la siguiente (no ocupa tiempo).
+
+## Cuantización: el tiempo libre como notación medida
+
+Un `freqt` mostrado como partitura se cuantiza: sus trazos pasan a ser un árbol de compases, grupos
+irregulares, ligaduras y notas de adorno (issue [#86](https://github.com/bonuoq/kairotic/issues/86); a partir
+de bach.quantize, FOMUS y Nauert).
+
+- **El compás** sale de la rejilla de compás del buffer: `(grid-x :bN 0.25 [4])` es 4/4, `[3]` 3/4,
+  `[1.5 1.5]` 6/8, `[1.5 1.5 1]` 8/8 en 3+3+2. Sin rejilla, 4/4.
+- **Cada compás** se corta en tramos (las partes de un compás simple, las partes con puntillo o los grupos de
+  6/8, 7/8…), y cada tramo toma la división (de 1 a 8, y las de sus propias unidades) que menos cuesta: lo lejos
+  que quedan las notas de sus puntos, lo hondos que son los puntos que usa (la parte, su mitad, sus cuartos; las
+  fusas cuestan mucho), ser un grupo irregular (un tresillo menos que un quintillo) y las notas que se pierden
+  (dos ataques en un punto, una nota que se queda en nada). Dos partes pueden ir juntas (un tresillo de blancas).
+- **Las notas** se colocan en esos puntos en una voz: acordes donde coinciden ataques, silencios en los huecos
+  (un hueco pequeño antes de la nota siguiente es legato, no un silencio), una ligadura sobre la barra o al salir
+  de un grupo irregular, una nota de adorno para una nota demasiado corta para cualquier punto. Las alturas entre
+  semitonos conservan sus cents.
+
+En el REPL, `(quantize :bN)` da ese árbol (se puede guardar, editar, mandar a una caja tree), y unas opciones
+cambian cómo se hace:
+
+```clojure
+(quantize :b1)                                   ; lo que muestra la partitura
+(quantize :b1 {:meter "6/8"})                    ; otro compás que el de la rejilla
+(quantize :b1 {:divs [1 2 4] :merge []})          ; sin grupos irregulares
+(quantize :b1 {:grace false :legato 0})          ; sin notas de adorno; cada hueco un silencio
+(qz/quantize-tree [:par [:note {:at 0 :pitch "c4" :dur 1.5}] …] {:meter [3 4]})   ; un árbol sin compases
+```
+
+Las otras opciones son `:chord` (lo cerca que deben estar dos ataques para ser un acorde, 0.04 partes) y `:w`,
+los pesos del coste (`{:err 8 :off 0.35 :cpx 1 :lost 1.5}`). `(as-tree :bN)` sigue leyendo los trazos de un freqt
+tal cual, sin cuantizarlos. Lo siguiente (#86): varias voces en un pentagrama, elegir otra división de una parte
+desde la partitura, grafía según la tonalidad (#88).
 
 ## REPL y componentes
 
@@ -193,6 +234,7 @@ Las funciones están en `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt
 
 - `(tree! :b2 [:voice …])` escribe un árbol en una caja tree;
 - `(as-tree :bN)` lee como árbol una caja tree, el árbol que muestra un freqt, o los trazos de un freqt;
+- `(quantize :bN [opciones])` da los trazos de un freqt (o un árbol sin compases) cuantizados en compases;
 - `(keep! :bN)` y `(unlive! :bN)`;
 - `(recipe :bN)` y `(remake! :bN)` (abajo).
 

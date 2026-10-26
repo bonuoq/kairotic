@@ -516,6 +516,22 @@
       (music? b) (mt/<-strokes (canvas-data b))
       :else (fail (str id " is not a tree, a canvas, a freqt or a score")))))
 
+(defn quantize
+  "What a box's score shows, as a measured tree: a freqt's strokes quantized into measures (its meter
+   from its bar grid), a tree without measures quantized, a measured tree as it is. Options:
+   (quantize :b1 {:meter \"6/8\" :divs [1 2 3 4 6] :merge [] :grace false}); see kairotic.quantize."
+  ([id] (quantize id {}))
+  ([id opts]
+   (let [b (need-box id)
+         opts (if (map? opts) opts (fail "The options are a map: {:meter \"3/4\" :divs [1 2 3 4]}"))]
+     (try
+       (cond
+         (or (= "tree" (klass (:text b))) (live-tree id) (and (:recipe b) (not (:stale (:recipe b)))))
+         (let [t (as-tree id)] (if (mt/measured? t) t (qz/quantize-tree t opts)))
+         (and (music? b) (not (cv/generic? (canvas-data b)))) (qz/quantize (canvas-data b) opts)
+         :else (fail (str id " is not a tree or a freqt")))
+       (catch :default e (fail (.-message e)))))))
+
 (declare patch->code)
 
 (defn tree->buffer

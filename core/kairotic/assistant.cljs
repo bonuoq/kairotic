@@ -379,7 +379,9 @@ Rules:
 - Musical trees (tree boxes, notation): to PLAY one, prefer `tree` → `mt play` → `synth~` (mt play
   sends Hz and voice ids at the tree's tempo once ▶ is on; see class_help). To SHOW one as notation,
   `(view :bN :score)` on the tree box itself, or a `freqt` with `(view :bN :score)` after `mt` boxes
-  (there is no score class: a score is a view of a freqt). A freqt that shows a tree is also a
+  (there is no score class: a score is a view of a freqt). A freqt's own strokes shown as a score are
+  quantized into measures in the meter of its bar grid (`(grid-x :bN 0.5 [1.5 1.5])` → 6/8); `(quantize
+  :bN {:meter \"3/4\"})` gives that measured tree. A freqt that shows a tree is also a
   buffer: `phasor~` → `reader~` (left) with the freqt's outlet 1 on its right inlet gives the pitch as
   a signal (Hz), e.g. into a faust~ whose process takes a frequency input.
   A tree box sends its tree by itself: it needs no loadbang.
