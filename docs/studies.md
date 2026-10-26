@@ -8,6 +8,16 @@ written in Spanish; from Study 9 on, code and interface are in English (the [glo
 maps the old names to the new ones). From 0.1.0-alpha on, the app lives in [`app/`](../app) and grows
 as one.
 
+**Opening a study.** Kairotic Pages serves every study at its folder:
+`https://bonuoq.github.io/kairotic/studies/<folder>/`, for example
+[`studies/29-live/`](https://bonuoq.github.io/kairotic/studies/29-live/). There a study can use what a
+page published on claude.ai cannot, such as the microphone. On your own computer, serve the folder and
+open it on `localhost` (a page opened as a file cannot load its modules):
+
+```sh
+cd studies && python3 -m http.server 8000     # then http://localhost:8000/29-live/
+```
+
 | | Study | What it tests |
 |---|---|---|
 | 1 | Patcher | code ⇄ patch, EDN, REPL |

@@ -8,6 +8,16 @@ Los ensayos 1–8 se escribieron en castellano; desde el Ensayo 9 el código y l
 (el [glosario](glossary.md) relaciona los nombres antiguos con los nuevos). Desde la 0.1.0-alpha, la app
 vive en [`app/`](../app) y crece como una sola.
 
+**Abrir un ensayo.** Kairotic Pages sirve cada ensayo en su carpeta:
+`https://bonuoq.github.io/kairotic/studies/<carpeta>/`, por ejemplo
+[`studies/29-live/`](https://bonuoq.github.io/kairotic/studies/29-live/). Ahí un ensayo puede usar lo que
+una página publicada en claude.ai no puede, como el micrófono. En tu ordenador, sirve la carpeta y ábrela en
+`localhost` (una página abierta como fichero no puede cargar sus módulos):
+
+```sh
+cd studies && python3 -m http.server 8000     # luego http://localhost:8000/29-live/
+```
+
 | | Ensayo | Qué valida |
 |---|---|---|
 | 1 | Patcher | código ⇄ patch, EDN, REPL |
