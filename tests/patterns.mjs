@@ -48,20 +48,52 @@ export async function patterns(page, check) {
   check("... the next ones, and again from the beginning at the end",
     (await until(page, events, (x) => x.split("[").length > 5)) === "[[0 0] [2 0.5] [4 1] [0 0]]", await cljs(page, events));
 
-  // a position in beats
+  // a position in beats: every event is a span, [onset, onset + sustain): degree 0 [0, 0.4), 2 [0.5, 0.9), 4 [1, 1.8)
   await clear();
   await cljs(page, `(send! ${pl} 0)`);
   await cljs(page, `(send! ${pl} 1.2)`);
-  check("a position: what starts at it, then the events whose start it crosses",
+  check("a position: what contains it, then what it passes and enters",
     (await until(page, events, (x) => x.includes("[4 1]"))) === "[[0 0] [2 0.5] [4 1]]", await cljs(page, events));
   await clear();
   await cljs(page, `(send! ${pl} 0.2)`);
-  await page.waitForTimeout(200);
-  check("... going back moves there silently", (await cljs(page, events)) === "[]", await cljs(page, events));
-  check("... and lets go of what sounded", (await cljs(page, sink)).includes("[1 []]"), await cljs(page, sink));
+  check("... going back, the spans it passes are entered from their end",
+    (await until(page, events, (x) => x.includes("[0 0]"))) === "[[2 0.5] [0 0]]", await cljs(page, events));
+  check("... marked :dir :back", (await cljs(page, sink)).includes(":dir :back"), await cljs(page, sink));
+  await clear();
   await cljs(page, `(send! ${pl} 0.6)`);
-  check("... and goes on from there", (await until(page, events, (x) => x.includes("[2 0.5]"))) === "[[2 0.5]]", await cljs(page, events));
+  check("... and forwards again from there", (await until(page, events, (x) => x.includes("[2 0.5]"))) === "[[2 0.5]]", await cljs(page, events));
 
+  // the player's logic, step by step (pure: messages to its :receive, as the engine sends them)
+  const pure = `(let [d (comp/lookup "player")
+        mk (fn [src opts] (api/pbind-pattern (api/read-pbind src) opts))
+        go (fn [text st msgs] (reduce (fn [[st rs] [inl v at]]
+                                        (let [r ((:receive d) {:state st :args (comp/args-for d text) :inlet inl :value v :at at})]
+                                          [(:state r) (conj rs r)]))
+                                      [st []] msgs))
+        evs (fn [rs] (vec (for [r rs [o v] (:out r) :when (= o 2)] [(:degree v) (:dir v)])))
+        p1 (mk "{:degree [0 2 4] :dur [0.5 0.5 1]}" {:seed 1 :repeat 1})
+        [s0 _] (go "player" nil [[1 p1 0] [0 [:seek 2] 1]])
+        [s1 back] (go "player" s0 (vec (for [i (range 1 9)] [0 (- 2 (* i 0.25)) (+ 1 (* i 0.01))])))
+        [s2 fwd] (go "player" s1 (conj (vec (for [i (range 1 17)] [0 (* i 0.125) (+ 2 (* i 0.01))])) [0 0 2.2]))
+        [s3 sk] (go "player" s2 [[0 [:seek 1.5] 3]])
+        [s4 ed] (go "player 120 0 8 8 edges" s3 [[0 [:seek 1.6] 3.1] [0 [:seek 1] 3.2]])
+        [s5 sp] (go "player 120 0 8 8 spread" s4 [[0 [:seek 0] 4] [0 0.25 4.1] [0 1.5 4.2]])
+        [s6 same] (go "player" s5 [[0 1.5 4.3]])
+        far (mk "{:degree [0 1 2 3] :dur 0.25}" {:seed 1 :repeat :inf})
+        [s7 w] (go "player 120 0 8 100000" s6 [[1 far 5] [0 [:seek 0] 5] [0 [:seek 5000] 5.1] [0 [:seek 3] 5.2] [0 2.75 5.3]])]
+    [(evs back) (evs fwd) (evs sk) (evs ed)
+     (:out (last sp)) (count (:later (last sp))) (mapv (fn [[t]] (js/Math.round (* 1000 t))) (:later (last sp)))
+     (:out (first same)) (evs (take-last 2 w)) (< (count (pr-str s7)) 20000)])`;
+  const got = await cljs(page, pure);
+  check("pure: a ramp going back enters every span from its end, in reverse order",
+    got.startsWith("[[[4 :back] [2 :back] [0 :back]] "), got);
+  check("... a ramp going forwards enters them at their onsets, and its wrap back to 0 is a seek (what is at 0 sounds, nothing in between)",
+    got.includes(" [[2 nil] [4 nil] [0 nil]] "), got);
+  check("... seek 1.5: what contains it", got.includes(" [[4 nil]] "), got);
+  check("... with edges, a seek inside a span is silent and one at its onset sounds", got.includes(" [[4 nil]] [[3 1.5]] 4 "), got);
+  check("... with spread, what a step passes keeps its rhythm, later within one step", got.includes(" [4212 4220 4252 4260] "), got);
+  check("... the same position again changes nothing", got.includes(" nil "), got);
+  check("... an endless pattern: far ahead and back again, from the window", got.endsWith(" [[0 nil] [3 :back]] true]"), got);
   // the same pattern again changes nothing; a new one goes on from the same place
   const before = await cljs(page, `(:pos (get-in @eng/rt [:states ${pl}]))`);
   await cljs(page, "(refill-data!)");
