@@ -634,6 +634,7 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 - `⇄ score in the header · (view :bN :score)`: the same buffer, quantized and drawn as a score: measures in the meter of its bar grid, tuplets, ties (⇄ canvas brings it back)
 - `(quantize :bN {:meter "6/8"})`: the tree that score shows, to keep or edit (options: :meter :divs :merge :nest :voices :grace :legato)
 - `shown as a score, alt-click a note · (division! :bN t)`: its beat divided the next way (another division, in halves, with the next beat), kept in the buffer
+- `(to-tree! :bN)`: a tree box beside it, with its strokes as notes: the drawing, now a tree
 - `(quant :bN {:meter "6/8" :key "eb"}) · [:quantize {…}]`: how its score is quantized and in which key, kept in its buffer (one event); (quant :bN nil): the defaults
 - `shown as a score, shift-alt-click a note · (enharmonic! :bN t midi)`: another name for that note (c#4 → db4), kept in the buffer
 - `shown as a score, click a note of a tree`: ↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest
@@ -1888,7 +1889,7 @@ See also: `pitch~`, `onset~`, `freqt`
 
 `tree`
 
-A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it.
+A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]), seen as code, as a score or as a canvas of frequency over time (⇄ in its header) — one tree, three views (discussion #92): drawing on its canvas writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it.
 
 **Inlets** 
 
@@ -1897,6 +1898,7 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 **Outlets** 
 
 0. the tree, expanded (melody strings become notes, [:use …] the fragments it names), whenever it changes
+1. its notes as a buffer (strokes of frequency over time), for the right inlet of a reader~
 
 **Messages and gestures**
 
@@ -1909,6 +1911,8 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `{:key "eb"} on the tree, a voice or a measure`: the score's key: its signature, accidentals that last the bar; :none writes every accidental
 - `in a score: click a rest`: Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note
 - `(as-tree :bN)`: reads it back as data
+- `⇄ canvas · (view :bN :canvas)`: its notes as strokes of frequency over time: drawing, dragging, stretching or erasing there edits the tree (free time; with measures, the bars it touches are quantized again; ⌥ to a free voice)
+- `(quantize! :bN) · (unquantize! :bN)`: its free time written in measures, and back (one event each)
 
 **Try:** The score already shows the tree, measure by measure. Double-click the code, change a note and apply it (Ctrl+Enter): the score follows. Click a note of the score and press ↑: the change comes back to the tree by the dashed line. Or press ⇄ score in the header of the tree box: the same tree as a score, in one box.
 
