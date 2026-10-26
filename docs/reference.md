@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
+An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
 
 **Inlets** 
 
@@ -727,7 +727,7 @@ See also: `osc~`, `adsr~`, `dac~`
 
 `gendy~ [freq x-step y-min y-max y-step breakpoints]`
 
-A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle — a pitch that drifts, a timbre that changes.
+A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Bernstein, MIT): a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle, heard as a pitch that drifts and a timbre that changes. freq in Hz (a signal on the inlet adds to it: FM); x-step (0–100 %) how far each segment's duration may wander; y-min and y-max (−1…1) the barriers of the amplitudes, y-step how far they move each cycle; breakpoints (2–128) how many. A number sets freq; [:y-step 0.2] one of them; a list of six all of them.
 
 **Inlets** 
 
@@ -1163,6 +1163,108 @@ An embedded sub-patch: double-click to open it. Its inlet / outlet boxes (number
 
 See also: `inlet`, `outlet`
 
+### pattern · `@kairotic/patterns`
+
+`pattern [seed] [repeat] [loop]`
+
+A pattern as Clojure code: an expression that returns event maps (or one map, read as a pbind), with seeded randomness and pbind, pseq, pwhite, pchoose, pshuffle, pseries, pwalk at hand. In a shared room it runs only after (trust-scripts true).
+
+**Inlets** 
+
+0. bang: sends its pattern again
+
+**Outlets** 
+
+0. its pattern (a factory of streams), for a player
+
+**Messages and gestures**
+
+- `(pbind {:degree (pwhite 0 7) :dur 0.25} :inf)`: a pbind whose values are lazy sequences
+- `(concat (pbind m1) (pbind m2))`: phrases one after another
+- `(for [d (range 8)] {:degree d :dur (if (even? d) 0.5 0.25)})`: any Clojure that gives event maps
+- `rand · rand-int · rand-nth · shuffle`: seeded by the box: the same for everyone
+
+**Try:** Press ▶ and start. Edit the code (double-click the box) and apply: the player follows the new pattern from the beat it is on.
+
+```clojure
+(box :b1 "pattern 3" 40 30)
+(code :b1 "(pbind {:degree (pwhite 0 7)\n        :dur    (pchoose [0.25 0.25 0.5])\n        :octave [5 5 6]}\n       :inf)")
+(box :b2 "msg start" 40 130)
+(box :b3 "msg stop" 110 130)
+(box :b4 "player 120" 40 180)
+(box :b5 "synth~" 40 240)
+(box :b6 "dac~" 40 290)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b1 0 :b4 1)
+(connect :b4 0 :b5 0)
+(connect :b4 1 :b5 1)
+(connect :b5 0 :b6 0)
+(connect :b5 0 :b6 1)
+```
+
+See also: `pbind`, `player`, `script`
+
+### pbind · `@kairotic/patterns`
+
+`pbind [seed] [repeat] [loop]`
+
+A pattern as EDN data: a map of constants, sequences and #pat/… generators, with its randomness seeded. It sends its pattern whenever it changes, for a player.
+
+**Inlets** 
+
+0. bang: sends its pattern again · a map: replaces it (one event of the history) · [:set :dur [1 0.5]]: one key · [:unset :amp]
+
+**Outlets** 
+
+0. its pattern (a factory of streams), for a player
+
+**Messages and gestures**
+
+- `{:degree [0 2 4] :dur 0.5}`: a key with a vector is a sequence; the shorter ones start again until the longest ends
+- `#pat/choose [0.25 0.5] · #pat/white [0 7] · #pat/walk [0 2 -7 7]`: endless random values (the same for everyone: the seed)
+- `#pat/shuffle [0 2 4] · #pat/series [0 2 8]`: every pass in a new order · an arithmetic series
+- `#pat/hold [4 [:c :g :d]]`: one value every 4 beats (following time, not events)
+- `#pat/chord [0 4 7]`: a vector as one value: a chord
+- `pbind 7 · pbind 7 4 · pbind 7 loop`: the seed · four passes · for ever
+
+**Try:** Press ▶ and start: four notes in a new order every pass. Change :dur in the pbind (double-click it) and apply: the player goes on with it from the same beat. Change the seed (pbind 8 loop): other orders, but the same for everyone in a room.
+
+```clojure
+(box :b1 "pbind 7 loop" 40 30)
+(code :b1 "{:degree #pat/shuffle [0 2 4 7]\n :dur    [0.5 0.5 1]\n :amp    #pat/white [0.1 0.3]}")
+(box :b2 "msg start" 40 130)
+(box :b3 "msg stop" 110 130)
+(box :b4 "player 110" 40 180)
+(box :b5 "synth~" 40 240)
+(box :b6 "dac~" 40 290)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b1 0 :b4 1)
+(connect :b4 0 :b5 0)
+(connect :b4 1 :b5 1)
+(connect :b5 0 :b6 0)
+(connect :b5 0 :b6 1)
+```
+
+**One value per bar** — #pat/hold follows time: the root changes every 4 beats whatever the rhythm, as Overtone's ^{:dur 4} does.
+
+*Try:* Press start: the same figure, moving through four harmonies.
+
+```clojure
+(code :b1 "{:degree #pat/shuffle [0 2 4 7]\n :dur    [0.5 0.5 1]\n :root   #pat/hold [4 [:c :f :g :c]]}")
+```
+
+**Random, but the same** — Every key has a seed of its own (the box's seed and its name): changing one key leaves the randomness of the others as it was.
+
+*Try:* Start, stop and start again: the same walk. Change :scale to :lydian: the same rhythm and contour, other notes.
+
+```clojure
+(code :b1 "{:degree #pat/walk [0 1 -4 9]\n :dur    #pat/choose [0.25 0.25 0.5]\n :scale  :dorian}")
+```
+
+See also: `pattern`, `player`, `tree`
+
 ### pcclock · `@kairotic/theory`
 
 `pcclock [notes]`
@@ -1237,6 +1339,82 @@ The pitch of a signal by YIN: Hz on the left (0 once when it stops hearing one),
 ```
 
 See also: `onset~`, `ftom`, `freqt`
+
+### player · `@kairotic/patterns`
+
+`player [bpm] [quant]`
+
+Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a position in beats (a number): the Hz and voice ids of the notes sounding, the whole event and the beat.
+
+**Inlets** 
+
+0. start · stop: its own clock · bang: one step, now · a number: a position in beats · reset · [:bpm 90]
+1. a pattern (from a pbind or a pattern box): a new one goes on from the same beat
+
+**Outlets** 
+
+0. the Hz of the notes sounding (a list)
+1. their voice ids, sent first (for synth~ or a polyphonic faust~)
+2. the whole event, with :beat, :hz and :ids
+3. the beat
+
+**Messages and gestures**
+
+- `start · stop`: its own clock: every event lasts its :dur in beats at its bpm
+- `player 120 4`: start on a multiple of 4 beats: players with the same tempo meet
+- `[:bpm 90]`: another tempo, without a jump
+- `bang`: the next event now (and the ones of :dur 0 right after it)
+- `a number`: a position in beats: the events whose start it crosses sound; back or a jump moves there silently
+- `reset`: back to the beginning, silently
+
+**Try:** Press ▶ and start: the six notes, three durations cycling. The third outlet is the whole event: print writes the beat of each.
+
+```clojure
+(box :b1 "pbind 1 loop" 40 30)
+(code :b1 "{:note [:c4 :e4 :g4 :b4 :a4 :f4]\n :dur  [0.5 0.5 1]}")
+(box :b2 "msg start" 40 130)
+(box :b3 "msg stop" 110 130)
+(box :b4 "player 100" 40 180)
+(box :b5 "synth~" 40 240)
+(box :b6 "dac~" 40 290)
+(box :b7 "get % :beat" 260 240)
+(box :b8 "print" 260 290)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b1 0 :b4 1)
+(connect :b4 0 :b5 0)
+(connect :b4 1 :b5 1)
+(connect :b5 0 :b6 0)
+(connect :b5 0 :b6 1)
+(connect :b4 2 :b7 0)
+(connect :b7 0 :b8 0)
+```
+
+**Step by step** — A bang plays the next event now: the pattern follows whatever moves it — a metro, an onset~ of what someone plays, a key.
+
+*Try:* Stop the clock and click 1: one note every 300 ms, whatever its :dur. Connect an onset~ from an adc~ instead: one note each time you play.
+
+```clojure
+(box :b9 "metro 300" 180 130)
+(box :b10 "msg 1" 180 90)
+(box :b11 "msg 0" 230 90)
+(connect :b10 0 :b9 0)
+(connect :b11 0 :b9 0)
+(connect :b9 0 :b4 0)
+```
+
+**At a position** — A number is a position in beats, as a reader reads a buffer: what starts between the last position and this one sounds. A ramp moves through it; back or a jump moves silently.
+
+*Try:* Stop the clock and click bang: six beats in three seconds, again and again. Change the ramp to ramp 6 0 3: backwards it moves silently. Drag a number box into it instead: you are the clock.
+
+```clojure
+(box :b12 "ramp 0 6 3 loop" 330 130)
+(box :b13 "msg bang" 330 90)
+(connect :b13 0 :b12 0)
+(connect :b12 0 :b4 0)
+```
+
+See also: `pbind`, `pattern`, `metro`, `ramp`, `reader`, `synth~`
 
 ### presets
 
@@ -1607,7 +1785,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer, one voice per id.
+Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
 
 **Inlets** 
 
