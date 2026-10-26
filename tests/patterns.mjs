@@ -28,14 +28,14 @@ export async function patterns(page, check) {
   await cljs(page, `(connect ${pl} 0 ${sk} 0) (connect ${pl} 1 ${sk} 1) (connect ${pl} 2 ${sk} 2) (connect ${pl} 3 ${sk} 3)`);
   await cljs(page, `(code ${pb} "{:degree [0 2 4] :dur [0.5 0.5 1]}")`);
   await cljs(page, `(connect ${pb} 0 ${pl} 1)`);
-  const pkey = `(pr-str (:key (:pattern (get-in @eng/rt [:states ${pl}]))))`;
+  const pkey = `(:key (:pattern (get-in @eng/rt [:states ${pl}])))`;
   const k = await until(page, pkey, (x) => x.includes(":pbind"));
   check("a pbind sends its pattern by itself when it is written and connected", k.includes("{:degree [0 2 4], :dur [0.5 0.5 1]} 7 1"), k);
   check("... its summary is the status of the code box",
-    (await cljs(page, `(get-in (compilation ${pb}) [:info :summary])`)) === '"2 keys · 3 events a pass"', await cljs(page, `(pr-str (compilation ${pb}))`));
+    (await cljs(page, `(get-in (compilation ${pb}) [:info :summary])`)) === '"2 keys · 3 events a pass"', await cljs(page, `(compilation ${pb})`));
 
-  const sink = `(pr-str (get-in @eng/rt [:states ${sk}]))`;
-  const events = `(pr-str (mapv (fn [[_ e]] [(:degree e) (:beat e)]) (filter (fn [[o]] (= o 2)) (get-in @eng/rt [:states ${sk}]))))`;
+  const sink = `(get-in @eng/rt [:states ${sk}])`;
+  const events = `(mapv (fn [[_ e]] [(:degree e) (:beat e)]) (filter (fn [[o]] (= o 2)) (get-in @eng/rt [:states ${sk}])))`;
   const clear = () => cljs(page, `(swap! eng/rt assoc-in [:states ${sk}] [])`);
 
   // steps: a bang plays the next event now (messages travel without ▶)
@@ -63,10 +63,10 @@ export async function patterns(page, check) {
   check("... and goes on from there", (await until(page, events, (x) => x.includes("[2 0.5]"))) === "[[2 0.5]]", await cljs(page, events));
 
   // the same pattern again changes nothing; a new one goes on from the same place
-  const before = await cljs(page, `(pr-str (:pos (get-in @eng/rt [:states ${pl}])))`);
+  const before = await cljs(page, `(:pos (get-in @eng/rt [:states ${pl}]))`);
   await cljs(page, "(refill-data!)");
   await page.waitForTimeout(300);
-  check("the same pattern again changes nothing", (await cljs(page, `(pr-str (:pos (get-in @eng/rt [:states ${pl}])))`)) === before);
+  check("the same pattern again changes nothing", (await cljs(page, `(:pos (get-in @eng/rt [:states ${pl}]))`)) === before);
   await cljs(page, `(code ${pb} "{:degree [7 9 11] :dur [0.5 0.5 1]}")`);
   await until(page, pkey, (x) => x.includes("[7 9 11]"));
   await clear();
@@ -90,12 +90,12 @@ export async function patterns(page, check) {
   await cljs(page, `(send! ${pl} :reset) (send! ${pl} :bang) (send! ${pl} :bang)`);
   check("a pattern box: events from code", (await until(page, sink, (x) => x.includes(":note 61"))).includes("{:note 61, :dur 0.25, :beat 0.25"), await cljs(page, sink));
   await cljs(page, `(code ${pc} "(map (fn [_] {:note (+ 60 (rand-int 12))}) (range 6))")`);
-  const notes = `(pr-str (mapv :note (take 6 (api/pattern-events (:pattern (get-in @eng/rt [:states ${pl}]))))))`;
+  const notes = `(mapv :note (take 6 (api/pattern-events (:pattern (get-in @eng/rt [:states ${pl}])))))`;
   await until(page, pkey, (x) => x.includes("rand-int"));
   const n1 = await cljs(page, notes);
   check("... with its randomness seeded: every stream the same", n1 === (await cljs(page, notes)) && n1.startsWith("["), n1);
   check("... and a mistake is told in its status",
-    (await (async () => { await cljs(page, `(code ${pc} "(map inc")`); return until(page, `(pr-str (:status (compilation ${pc})))`, (x) => x === ":error"); })()) === ":error");
+    (await (async () => { await cljs(page, `(code ${pc} "(map inc")`); return until(page, `(:status (compilation ${pc}))`, (x) => x === ":error"); })()) === ":error");
 
   // its own clock, with ▶
   await cljs(page, `(delete ${pc})`);

@@ -2,7 +2,7 @@
 ;; Part of @kairotic/patterns. Written against the Kairotic API (api/…).
 ;; Its source is evaluated (like a script), so in a shared room it does not run until this tab allows it:
 ;; (trust-scripts true). Inside it, rand, rand-int, rand-nth and shuffle are seeded by the box (pattern 7),
-;; and pbind, pseq, pwhite, pchoose, pshuffle, pseries, pwalk and rest are at hand.
+;; and pbind, pseq, pwhite, pchoose, pshuffle, pseries and pwalk are at hand.
 (let [opts-of (fn [args source]
                 {:seed (or (:seed args) 0) :source source
                  :repeat (if (:loop args) :inf (max 1 (js/Math.round (or (:repeat args) 1))))})

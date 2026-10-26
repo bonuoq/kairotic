@@ -267,7 +267,8 @@
 ;; ───────── patterns as code ─────────
 ;; The source of a `pattern` box is a Clojure expression evaluated inside
 ;;   (fn [{:keys [rand rand-int rand-nth shuffle pbind pseq pwhite …]}] …)
-;; so its randomness is seeded, and the pattern functions are at hand. It returns a sequence of event
+;; so its randomness is seeded, and the pattern functions are at hand (no other name of clojure.core is
+;; replaced: macros such as `for` expand into them). It returns a sequence of event
 ;; maps (nested sequences are flattened, as phrases) or one map, which is read as a pbind.
 
 (defn code-env
@@ -284,8 +285,7 @@
      :pchoose (fn [xs] (let [v (vec xs)] (repeatedly (fn [] (pick r v)))))
      :pshuffle (fn [xs] (let [v (vec xs)] ((fn pass [] (lazy-seq (concat (shuffled r v) (pass)))))))
      :pseries (fn ([x step] (iterate (fn [x] (+ x step)) x)) ([x step n] (take n (iterate (fn [x] (+ x step)) x))))
-     :pwalk (fn [x0 step lo hi] (:stream (stream-of (gen :walk [x0 step lo hi]) {:seed [seed (r)]})))
-     :rest {:type :rest}}))
+     :pwalk (fn [x0 step lo hi] (:stream (stream-of (gen :walk [x0 step lo hi]) {:seed [seed (r)]})))}))
 
 (def code-names (sort (map name (keys (code-env (constantly 0) 0 1)))))
 
