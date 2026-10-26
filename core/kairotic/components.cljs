@@ -412,7 +412,8 @@
   "One message as an event of the buffer d (ids given to new strokes), or nil if it does not read."
   [d [op & args]]
   (case op
-    :stroke (let [[a b c] args] (if (keyword? a) [:stroke a b c] [:stroke (cv/next-id d) a b]))
+    :stroke (let [[a b c] args [id pts look] (if (keyword? a) [a b c] [(cv/next-id d) a b])]
+              (if (cv/sane-look look) [:stroke id pts look] [:stroke id pts]))
     :note (let [[t p dur] args
                 hz (cond (cv/num? p) (if (cv/generic? d) p (cv/midi->hz p))
                          (string? p) (some-> (sc/pitch p) cv/midi->hz))]

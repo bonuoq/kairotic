@@ -131,7 +131,7 @@
               (rnotes t) [[0 1 60 false] [1 1 64 false] [2 1 67 false] [2 2 60 false] [3 1 69 false] [4 2 64 false]])
         (t/eq "... each note says its layer" (mapv (comp :layer second) (rest (rest t))) [1 1 1 2 1 2]))
       (t/is "a render is a tree a freqt can show" (empty? (kairotic.mt/errors (pat/render-tree p {:from 0 :to 4})))))
-    (let [p (pat/pbind-pattern {:degree [0 [0 4] :rest 2] :dur 1 :amp [0.5 1 0 0] :pan [-1 0.5 0 0] :art [:leg :stac :leg :stac]} {:seed 0 :repeat 1})
+    (let [p (pat/pbind-pattern {:degree [0 (pat/gen :chord [0 4]) :rest 2] :dur 1 :amp [0.5 1 0 0] :pan [-1 0.5 0 0] :art [:leg :stac :leg :stac]} {:seed 0 :repeat 1})
           t (pat/render-tree p {:from 0 :to 4 :tex :art})
           looks (mapv (comp :look second) (rest (rest t)))]
       (t/eq "a chord: one note per pitch; a rest: nothing" (count looks) 4)
