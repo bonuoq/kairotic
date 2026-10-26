@@ -95,7 +95,7 @@
   [op args r t]
   (let [[a b] args]
     (case op
-      "transpose" (mt/transpose (num-arg (or r a) 0) t)
+      "transpose" (mt/transpose (let [x (or r a)] (cond (number? x) x (or (symbol? x) (keyword? x) (string? x)) (name x) :else 0)) t)
       "invert" (mt/invert (or r (when (some? a) (if (keyword? a) (name a) a))) t)
       "retrograde" (mt/retrograde t)
       "augment" (mt/augment (num-arg (or r a) 2) t)
@@ -153,7 +153,7 @@
       :else {:state st})))
 
 (comp/define! "mt"
-  {:doc "Operations on musical trees: a tree on the left comes out transformed. transpose n · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval] · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks)."
+  {:doc "Operations on musical trees: a tree on the left comes out transformed. transpose n (semitones, or an interval: M3, -P5, A4) · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval] · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks)."
    :usage "mt <operation> [arguments]"
    :io (fn [b] (let [op (op-of (:args b))]
                  (cond (= op "play") [1 4]

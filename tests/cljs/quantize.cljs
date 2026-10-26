@@ -70,7 +70,7 @@
     (let [q (qz/quantize (buffer nil [0 1 60] [0 1 64] [0 1 67]))]
       (t/eq "notes that start together are a chord" (count (nodes q :chord)) 1))
     (let [q (qz/quantize (buffer nil [0 0.5 60.4]))]
-      (t/eq "a pitch between semitones keeps its decimals" (:pitch (mt/attrs (first (nodes q :note)))) 60.4))
+      (t/eq "a pitch between semitones keeps its cents beside its name" (select-keys (mt/attrs (first (nodes q :note))) [:pitch :cents]) {:pitch "c4" :cents 40}))
     (t/eq "an empty buffer is one bar of rest" (count (nodes (qz/quantize cv/empty) :measure)) 1)
 
     ;; trees without measures

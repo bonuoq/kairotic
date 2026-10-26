@@ -25,12 +25,14 @@
 ;;   :chord 0.04 :legato 0.25 :tempo 72 :w {:err 8 :off 0.35 :cpx 1 :lost 1.5}}. :divs are the divisions a
 ;; span may take, :merge those of two beats together ([] for none), :chord how close two starts are to be
 ;; one chord (beats), :legato the largest gap before the next note that is not a rest (beats; 0: every gap
-;; is), :w the weights of the cost; :voices (2) how many voices overlapping notes may take, :overlap how
+;; is), :key the key the score is written in ("eb", "c#m", :none; without it no signature, and names
+;; from the key the notes suggest), :w the weights of the cost; :voices (2) how many voices overlapping notes may take, :overlap how
 ;; much a note may run into the next and stay in its voice, :nest false for no beats cut in parts, and
 ;; :fix {beat-start choice} the divisions chosen by hand (n, [n1 n2] or [:merge n]: see `choices`).
 
 (ns kairotic.quantize
   (:require [kairotic.canvas :as cv]
+            [kairotic.spell :as sp]
             [kairotic.mt :as mt]))
 
 (def eps 1e-6)
@@ -85,6 +87,29 @@
   (when (map? f)
     (not-empty (into {} (for [[k v] f :let [c (sane-choice v)] :when (and (number? k) (>= k 0) c)] [k c])))))
 
+(defn sane-spell
+  "Names chosen by hand for notes of a quantized score: {[beat midi] name} (the beat where the note starts
+   in the score, its MIDI pitch), keeping only names that sound that pitch."
+  [m]
+  (when (map? m)
+    (not-empty (into {} (for [[k v] m
+                              :let [[t p] (when (vector? k) k) w (sp/parse v)]
+                              :when (and (number? t) (number? p) w (= (sp/->midi w) (js/Math.round p)))]
+                          [[t (js/Math.round p)] (sp/->name w)])))))
+
+(defn respell-by-hand
+  "A tree with the names chosen by hand (:spell, see sane-spell) on the notes that start at that beat
+   with that pitch."
+  [t spell]
+  (if (empty? spell)
+    t
+    (let [evs (filter (fn [e] (= :note (:kind e))) (mt/events t))]
+      (reduce (fn [t e]
+                (if-let [nm (some (fn [[[bt p] v]] (when (and (< (js/Math.abs (- bt (:t e))) 1e-4) (= p (js/Math.round (:pitch e)))) v)) spell)]
+                  (mt/apply-op t [:attrs (:path e) (assoc (mt/attrs (mt/node-at t (:path e))) :pitch nm)])
+                  t))
+              t evs))))
+
 (defn options
   "The options of a quantization, with the defaults, and its meter ({:meter [p q] :groups …}): the one
    given, or that of the bar grid gx."
@@ -101,6 +126,8 @@
            :overlap (let [x (:overlap o)] (if (and (number? x) (>= x 0)) x (:overlap defaults)))
            :voices (let [x (:voices o)] (if (and (number? x) (whole? x) (<= 1 x 4)) (js/Math.round x) (:voices defaults)))
            :fix (sane-fix (:fix o))
+           :key (let [k (:key o)] (when (and (some? k) (sp/parse-key k)) k))
+           :spell (sane-spell (:spell o))
            :step (when (and (map? gx) (number? (:step gx)) (pos? (:step gx))) (:step gx))
            :w (merge (:w defaults) (when (map? (:w opts)) (:w opts))))))
 
@@ -391,7 +418,7 @@
                  (if (< t (- total eps)) (conj out {:s t :e total}) out)
                  (let [sg (first ss)]
                    (recur (rest ss) (:e sg) (cond-> out (> (:s sg) (+ t eps)) (conj {:s t :e (:s sg)}) true (conj sg))))))
-        bar-attrs (cond-> {:meter [p q]} (seq g) (assoc :groups (vec g)))]
+        bar-attrs (cond-> {:meter [p q]} (seq g) (assoc :groups (vec g)) (some? (:key o)) (assoc :key (:key o)))]
     (into [:voice {}]
           (for [b (range nbars)
                 :let [b0 (* b BL)
@@ -505,9 +532,10 @@
                    dur (max 0.01 (- t1 t0))
                    gl (mapv (fn [[t f]] [(cv/round-to (/ (- t t0) dur) 3) (+ 0 (cv/round-to (cv/hz->cents f (cv/midi->hz mr)) 1))]) pts)
                    flat? (every? (fn [[_ c]] (< (js/Math.abs (- c (second (first gl)))) 1)) gl)]]
+         ;; numbers: the names are chosen afterwards, all together (mt/spell, issue #88)
          {:on t0 :off (+ t0 dur)
-          :attrs (cond-> {:pitch (if (< (js/Math.abs (- m mr)) 0.02) (mt/pitch-name mr) (cv/round-to m 2))}
-                   (not flat?) (assoc :pitch (mt/pitch-name mr) :gliss gl))})))
+          :attrs (cond-> {:pitch (if (< (js/Math.abs (- m mr)) 0.02) mr (cv/round-to m 2))}
+                   (not flat?) (assoc :pitch mr :gliss gl))})))
 
 (defn quantize
   "A freqt's buffer as a measured tree (a :voice of :measure nodes), with options (see the top of this
@@ -517,7 +545,7 @@
    (let [o (options opts (:gx d))]
      (let [vs (notes->voices (strokes->notes d) o)
            t (if (= 1 (count vs)) (first vs) (into [:par {}] vs))]
-       (cond-> t (:tempo opts) (mt/update-attrs assoc :tempo (:tempo opts)))))))
+       (respell-by-hand (mt/spell (cond-> t (:tempo opts) (mt/update-attrs assoc :tempo (:tempo opts)))) (:spell o))))))
 
 (defn quantize-tree
   "A tree without measures (notes placed in free time, with :at or durations of any size) as a measured
@@ -525,17 +553,22 @@
   ([tree] (quantize-tree tree {}))
   ([tree opts]
    (let [o (options opts nil)
-         evs (filter (fn [e] (= :note (:kind e))) (mt/events tree))
+         xt (mt/expand tree)
+         evs (filter (fn [e] (= :note (:kind e))) (mt/events xt))
          by-voice (sort-by key (group-by (fn [e] (or (:voice e) "")) evs))
          voices (fn [[nm es]]
                   (notes->voices (for [e es :when (not (:grace e))]
                                    {:on (:t e) :off (+ (:t e) (:dur e))
                                     :attrs (merge (select-keys e [:art :dyn :text :vel :env :gliss])
-                                                  {:pitch (if (whole? (:pitch e)) (mt/pitch-name (js/Math.round (:pitch e))) (cv/round-to (:pitch e) 2))})})
+                                                  ;; a written name stays (with its :cents); numbers are spelled afterwards
+                                                  (let [a (mt/attrs (mt/node-at xt (:path e))) w (mt/spelling-of a)]
+                                                    (if w
+                                                      (cond-> {:pitch (sp/->name w)} (:cents a) (assoc :cents (:cents a)))
+                                                      {:pitch (if (whole? (:pitch e)) (js/Math.round (:pitch e)) (cv/round-to (:pitch e) 2))})))})
                                  o (when (seq nm) nm)))
          vs (vec (mapcat voices by-voice))
          t (if (> (count vs) 1) (into [:par {}] vs) (or (first vs) (notes->voice [] o)))]
-     (mt/update-attrs t assoc :tempo (or (:tempo opts) (mt/tempo-of tree))))))
+     (mt/spell (mt/update-attrs t assoc :tempo (or (:tempo opts) (mt/tempo-of tree)))))))
 
 (defn ->score
   "MEI for a score: a measured tree as it is, a tree without measures quantized, a freqt's buffer

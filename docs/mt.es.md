@@ -248,8 +248,38 @@ con las opciones, como un evento de la historia:
 ```
 
 El texto del buffer las muestra como `:quant {:meter "6/8" :fix {2 [:merge 3]}}`, y un mensaje `[:quantize {…}]`
-en la entrada del freqt también las cambia. Lo siguiente: grafía según la tonalidad (#88), y una sola caja para
-freqt, tree y partitura (discusión #92).
+en la entrada del freqt también las cambia. Lo siguiente: una sola caja para freqt, tree y partitura (discusión #92).
+
+## Cómo se escriben las alturas: nombres, tonalidades, alteraciones
+
+Una altura se escribe como **letra, alteración y octava** (issue [#88](https://github.com/bonuoq/kairotic/issues/88)):
+sol♯ y la♭ suenan igual y se escriben distinto, y un árbol conserva el nombre que se le dio. `kairotic.spell` coloca
+cada nombre en la **línea de quintas** (… si♭ fa do sol re la mi si fa♯ do♯ …), donde transportar, invertir y elegir
+un nombre son aritmética.
+
+- **Los nombres escritos se respetan**: `"bb4"`, `"f##3"` (o `"fx3"`), `"ebb2"` se escriben tal cual, y `mt/pitches`
+  los devuelve. Un nombre puede llevar `:cents` (`{:pitch "c4" :cents 50}` es un cuarto de tono sobre do).
+- **Transportar conserva la grafía**: `(mt/transpose "m3" "c4 e4 g4")` es eb4 g4 bb4; con un número de semitonos el
+  árbol se mueve por el intervalo con que suele escribirse (1 una segunda menor: c4 e4 g4 → db4 f4 ab4; 6 la cuarta
+  aumentada o la quinta disminuida, la que pida menos alteraciones). Los intervalos son `"M3"`, `"-P5"`, `"A4"`,
+  `"d5"`, `"m9"`… (`mt transpose M3` en una caja). `mt/invert` alrededor de un pivote escrito refleja también los
+  nombres en la línea de quintas (c4 alrededor de e4 es g#4).
+- **Tonalidades**: `{:key "eb"}` en el árbol, una sección, una voz o un compás (desde ahí): `"c#m"`, `"d dorian"`,
+  `"f lydian"`, un número de sostenidos (`3`) o bemoles (`-2`), o `:none`. La partitura escribe la armadura y sus
+  cambios; una alteración dura hasta el final del compás (y vuelve como alteración de precaución en el siguiente);
+  `:key :none`, o `:accidentals :every` en el árbol, escribe todas las alteraciones (música atonal).
+- **Las notas sin nombre** (números, Hz, los trazos de un freqt) las nombra `mt/spell`, que usan ->mei y el
+  cuantizador: cerca de la tonalidad (la escrita, o estimada compás a compás con los perfiles de Temperley; sin cuatro
+  clases de altura en que apoyarse, do), moviéndose bien en cada voz (una línea cromática sube con sostenidos y baja
+  con bemoles, sin segunda aumentada donde vale una tercera menor) y apiladas bien en cada acorde (la♭ do mi♭, no
+  sol♯ do re♯), sobre toda la línea a la vez (un Viterbi en la línea de quintas). `(mt/spell árbol)` escribe esos
+  nombres en el árbol. Sin `:key` la partitura no lleva armadura, solo esos nombres.
+- **Otro nombre a mano**: con una nota seleccionada en la partitura de un árbol, `#` recorre sus grafías (c#4 → db4 →
+  b##3); en la partitura de un freqt, **mayúsculas+alt+clic** en una nota (`(enharmonic! :bN parte midi [nombre])`),
+  guardado en su `:quant` como `:spell {[parte midi] nombre}`. `(quant :bN {:key "eb"})` da tonalidad a la partitura
+  de un freqt.
+- Los cuartos de tono llevan alteraciones de cuarto de tono; para afinaciones por razones, HEJI (más adelante) se
+  apoyará en estos mismos nombres.
 
 ## REPL y componentes
 
@@ -263,6 +293,7 @@ Las funciones están en `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt
 - `(as-tree :bN)` lee como árbol una caja tree, el árbol que muestra un freqt, o los trazos de un freqt;
 - `(quantize :bN [opciones])` da los trazos de un freqt (o un árbol sin compases) cuantizados en compases;
 - `(quant :bN opciones)`, `(divisions :bN t)`, `(division! :bN t [elección])`: cómo se cuantiza la partitura de un freqt, guardado en su buffer;
+- `(enharmonic! :bN parte midi [nombre])`: otro nombre para una nota de la partitura de un freqt; `mt/spell`, `mt/transpose "M3"`, y `kairotic.spell` (`sp/parse`, `sp/interval`, `sp/parse-key`, `sp/estimate-key`…);
 - `(keep! :bN)` y `(unlive! :bN)`;
 - `(recipe :bN)` y `(remake! :bN)` (abajo).
 

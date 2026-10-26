@@ -22,6 +22,7 @@
 ;; Any node may carry :at (an offset from the start of its parent; it does not move the parent's
 ;; cursor), :id, and any other key. Notes also take :art [:staccato :accent], :dyn "p", :text "…",
 ;; :gliss [[0 0] [1 -150]] (cents over the note's duration), :env [[0 0] [0.1 1] [1 0]], :vel 0.8.
+;; A written name may carry :cents (its deviation: {:pitch "c4" :cents 50} is a quarter tone above c4).
 ;; :tie true goes on into the next note of the same pitch (across a barline or into a tuplet: one sound,
 ;; tied in the score); :grace true is a grace note before the next one (it takes no time in its container).
 ;; A :voice with :staff "name" is written as a layer of that staff (voices that share it, layers 1, 2 …).
@@ -32,7 +33,8 @@
   (:require [clojure.string :as str]
             [clojure.edn :as edn]
             [kairotic.canvas :as cv]
-            [kairotic.score :as sc]))
+            [kairotic.score :as sc]
+            [kairotic.spell :as sp]))
 
 ;; ───────── nodes ─────────
 
@@ -65,7 +67,7 @@
   [a]
   (cond
     (number? (:hz a)) (when (pos? (:hz a)) (cv/hz->midi (:hz a)))
-    (some? (:pitch a)) (when-let [m (sc/pitch (:pitch a))] (+ m (or (:cents a) 0) 0))
+    (some? (:pitch a)) (when-let [m (sc/pitch (:pitch a))] (+ m (/ (or (:cents a) 0) 100)))
     :else nil))
 
 (defn pitch-name
@@ -75,11 +77,27 @@
     (str (nth pc-names (mod m 12)) (dec (js/Math.floor (/ m 12))))
     m))
 
+(defn spelling-of
+  "How a note's pitch is written ({:step :alter :oct}, kairotic.spell), when it is a name; nil for numbers and Hz."
+  [a]
+  (when-not (number? (:hz a)) (sp/parse (:pitch a))))
+
+(defn respell
+  "A name for MIDI pitch m (an integer) like the name it had: a natural when there is one, else a flat for
+   a flat and a sharp for a sharp (bb4 + 1 = b4, eb4 - 1 = d4, db4 + 3 = e4, eb4 + 3 = gb4)."
+  [m was]
+  (let [sign (if was (js/Math.sign (:alter was)) 1)]
+    (first (sort-by (fn [x] [(js/Math.abs (:alter x)) (if (= (js/Math.sign (:alter x)) sign) 0 1)])
+                    (filter (fn [x] (<= (js/Math.abs (:alter x)) 1)) (sp/spellings m))))))
+
 (defn set-midi
-  "Writes a new pitch in the attributes of a note, in the same kind of value it had (name, number or Hz)."
+  "Writes a new pitch in the attributes of a note, in the same kind of value it had (name, number or Hz);
+   a name keeps the way it was written as far as it can (see respell)."
   [a m]
   (cond
     (number? (:hz a)) (assoc a :hz (cv/round-to (cv/midi->hz m) 3))
+    (and (or (string? (:pitch a)) (keyword? (:pitch a))) (== m (js/Math.round m)))
+    (assoc (dissoc a :cents) :pitch (sp/->name (respell (js/Math.round m) (spelling-of a))))
     (string? (:pitch a)) (assoc (dissoc a :cents) :pitch (pitch-name (cv/round-to m 3)))
     (keyword? (:pitch a)) (assoc (dissoc a :cents) :pitch (pitch-name (cv/round-to m 3)))
     :else (assoc (dissoc a :cents) :pitch (cv/round-to m 3))))
@@ -277,19 +295,44 @@
 
 (declare expand)
 
+(defn- spelled-notes [t] (keep (fn [x] (when (and (node? x) (= :note (tag x))) (spelling-of (attrs x)))) (tree-seq node? kids t)))
+
 (defn transpose
-  "Moves every pitch by n semitones (decimals: microtones)."
+  "Moves every pitch by n semitones (decimals: microtones), or by an interval (\"M3\", \"-P5\", \"A4\",
+   [steps semitones]). Written names move by that interval and keep their spelling (c4 e4 g4 by \"m3\" is
+   eb4 g4 bb4); by a number of semitones they move by the interval it is usually written as (1 a minor
+   second, 6 the augmented fourth or the diminished fifth, whichever needs fewer alterations)."
   [n tree]
-  (walk-notes (fn [a] (if-let [m (midi-of a)] (set-midi a (+ m n)) a)) (expand tree)))
+  (let [t (expand tree)
+        iv (cond (and (number? n) (== n (js/Math.round n)))
+                 (if (= 6 (mod n 12))
+                   (let [alts (fn [iv] (reduce + (map (fn [s] (js/Math.abs (:alter (sp/transpose-spelling s iv)))) (spelled-notes t))))
+                         a (sp/interval-of-semitones n false) d (sp/interval-of-semitones n true)]
+                     (if (< (alts d) (alts a)) d a))
+                   (sp/interval-of-semitones n))
+                 (number? n) nil
+                 :else (or (sp/interval n) (throw (js/Error. (str "An interval is a number of semitones or a name like M3, -P5, A4: not " (pr-str n))))))
+        semis (if iv (second iv) n)]
+    (walk-notes (fn [a]
+                  (if-let [s (and iv (spelling-of a))]
+                    (assoc a :pitch (sp/->name (sp/transpose-spelling s iv)))
+                    (if-let [m (midi-of a)] (set-midi a (+ m semis)) a)))
+                t)))
 
 (defn invert
   "Mirrors every pitch around a pivot (by default, the first pitch)."
   ([tree] (invert nil tree))
   ([pivot tree]
    (let [t (expand tree)
-         p (or (if (or (string? pivot) (keyword? pivot)) (sc/pitch pivot) pivot) (first-pitch t) 60)]
-     (walk-notes (fn [a] (if-let [m (midi-of a)] (cond-> (set-midi a (- (* 2 p) m))
-                                                    (:gliss a) (assoc :gliss (mapv (fn [[x c]] [x (- c)]) (:gliss a))))
+         p (or (if (or (string? pivot) (keyword? pivot)) (sc/pitch pivot) pivot) (first-pitch t) 60)
+         ;; a written pivot (or the first written note) mirrors names on the line of fifths too
+         ps (or (when (or (string? pivot) (keyword? pivot)) (sp/parse pivot))
+                (when (nil? pivot) (first (spelled-notes t))))]
+     (walk-notes (fn [a] (if-let [m (midi-of a)]
+                           (cond-> (if-let [s (and ps (spelling-of a))]
+                                     (assoc a :pitch (sp/->name (sp/invert-spelling s ps)))
+                                     (set-midi a (- (* 2 p) m)))
+                             (:gliss a) (assoc :gliss (mapv (fn [[x c]] [x (- c)]) (:gliss a))))
                            a))
                  t))))
 
@@ -624,7 +667,8 @@
       (let [m (midi-of a)]
         (when m
           (add-ev acc (merge (dissoc a :pitch :hz :cents :dur :at :id)
-                             {:kind :note :t t :dur (* scale (or (:dur a) 0.125)) :pitch m :voice (:voice ctx) :path (:path ctx)})))
+                             {:kind :note :t t :dur (* scale (or (:dur a) 0.125)) :pitch m :voice (:voice ctx) :path (:path ctx)}
+                             (when-let [w (spelling-of a)] {:name (sp/->name w)}))))
         t)
 
       (= :note tg)
@@ -632,7 +676,8 @@
         (when m
           (add-ev acc (merge (dissoc a :pitch :hz :cents :dur :at :id)
                              {:kind :note :t t :dur d :pitch m :voice (:voice ctx) :path (:path ctx)}
-                             (when (:id a) {:id (:id a)}))))
+                             (when (:id a) {:id (:id a)})
+                             (when-let [w (spelling-of a)] {:name (sp/->name w)}))))
         (+ t d))
 
       (= :rest tg) (+ t (* scale (or (:dur a) (:dur ctx) 1)))
@@ -733,7 +778,8 @@
 
 (defn notes [tree] (filterv (fn [e] (= :note (:kind e))) (events tree)))
 
-(defn pitches "The pitches, in time order (names when they are whole)." [tree] (mapv (comp pitch-name :pitch) (notes tree)))
+(defn pitches "The pitches, in time order: as they are written (names), or names for whole numbers." [tree]
+  (mapv (fn [e] (if (and (:name e) (== (:pitch e) (js/Math.round (:pitch e)))) (:name e) (pitch-name (:pitch e)))) (notes tree)))
 
 (defn summary [tree]
   (try
@@ -954,10 +1000,90 @@
                         :else (mapcat go (kids n))))]
     (vec (go v))))
 
+;; ───────── spelling: names for notes written as numbers (issue #88) ─────────
+
+(declare update-at node-at)
+
+(defn key-times
+  "Where a tree says its key: [[beat key] …] — the :key of the tree (or of a section or voice) from 0,
+   and a measure's :key from where that measure starts (in the first voice)."
+  [t]
+  (let [t (with-meters t)
+        root (some (fn [x] (when (and (node? x) (not= :measure (tag x)) (some? (:key (attrs x)))) (:key (attrs x))))
+                   (tree-seq node? kids t))
+        ms (measures-of (first (voices-of t)))
+        starts (reductions + 0 (map (fn [m] (let [[p q] (or (:meter (attrs m)) [4 4])] (* p (/ 4 q)))) ms))]
+    (vec (concat (when (some? root) [[0 root]])
+                 (keep (fn [[m st]] (when (some? (:key (attrs m))) [st (:key (attrs m))])) (map vector ms starts))))))
+
+(defn- note-base
+  "The integer pitch a note is written from, and what is left in cents: 60.5 → [60 50] (a quarter tone
+   above), 60.3 → [60 30], 60.7 → [61 -30]."
+  [m]
+  (let [f (js/Math.floor m) frac (- m f)
+        b (if (< (js/Math.abs (- frac 0.5)) 0.08) f (js/Math.round m))]
+    [b (js/Math.round (* 100 (- m b)))]))
+
+(defn spellings-for
+  "Names for the notes of an expanded tree that have none (numbers, Hz), chosen by kairotic.spell:
+   {path spelling} (paths as mt/events gives them). The key is the tree's (key-times) where it says it;
+   where not, it is estimated bar by bar (or every 4 beats) from the notes around."
+  [t]
+  (let [evs (filterv (fn [e] (= :note (:kind e))) (events t))]
+    (if (empty? evs)
+      {}
+      (let [kt (key-times t)
+            bar-len (if-let [m (first (measures-of (first (voices-of (with-meters t)))))]
+                      (let [[p q] (or (:meter (attrs m)) [4 4])] (* p (/ 4 q)))
+                      4)
+            ;; a key is only estimated from four pitch classes or more: around the bar, else the whole tree,
+            ;; else none (C)
+;; each note counts once, however long (Temperley's flat input)
+            weights (fn [es] (reduce (fn [v e] (update v (mod (first (note-base (:pitch e))) 12) + 1))
+                                     (vec (repeat 12 0)) es))
+            enough? (fn [w] (>= (count (filter pos? w)) 4))
+            whole (let [w (weights evs)] (if (enough? w) (or (:sig (sp/estimate-key w)) 0) 0))
+            estimated (fn [t0]
+                        (let [w (weights (filter (fn [e] (and (< (:t e) (+ t0 (* 1.5 bar-len))) (> (+ (:t e) (:dur e)) (- t0 (* 0.5 bar-len))))) evs))]
+                          (if (enough? w) (or (:sig (sp/estimate-key w)) whole) whole)))
+            sig-at (memoize (fn [bar]
+                              (let [t0 (* bar bar-len)
+                                    k (last (filter (fn [[b _]] (<= b (+ t0 1e-6))) kt))]
+                                (if k (or (:sig (sp/parse-key (second k))) 0) (estimated t0)))))
+            steps (->> evs
+                       (group-by (fn [e] (cv/round-to (:t e) 4)))
+                       (sort-by key)
+                       (mapv (fn [[t0 es]]
+                               {:sig (sig-at (js/Math.floor (/ (+ t0 1e-6) bar-len)))
+                                :notes (mapv (fn [e] (let [a (attrs (node-at t (:path e)))]
+                                                       {:id (:path e) :voice (:voice e)
+                                                        :midi (first (note-base (:pitch e)))
+                                                        :fixed (spelling-of a)}))
+                                             es)})))]
+        (into {} (remove (fn [[p _]] (spelling-of (attrs (node-at t p)))) (sp/spell-steps steps)))))))
+
+(defn spell
+  "The tree with names for its notes written as numbers: 61 → \"c#4\" or \"db4\", by the key and the line
+   (kairotic.spell); a quarter tone keeps it as :cents (60.5 → \"c4\" :cents 50). Names already written,
+   and notes in Hz, stay as they are."
+  [tree]
+  (let [t (expand tree)
+        names (spellings-for t)]
+    (reduce (fn [t [path s]]
+              (update-at t path (fn [n] (let [a (attrs n)]
+                                          (if (number? (:pitch a))
+                                            (let [[_ c] (note-base (:pitch a))]
+                                              (with-attrs n (cond-> (assoc a :pitch (sp/->name s)) (not (zero? c)) (assoc :cents c))))
+                                            n)))))
+            t names)))
+
 (defn ->mei
   "Measured notation of a tree. Returns {:mei text :pieces [{:id :t :staff}]} (ids → beats, for cursors)."
   [tree pre]
   (let [t (with-meters (explicit (expand tree)))
+        ;; names for the notes written as numbers (kairotic.spell), beside their pitch: :spelled
+        t (reduce (fn [t [path s]] (update-at t path (fn [n] (update-attrs n assoc :spelled (sp/->name s)))))
+                  t (spellings-for t))
         ;; the work in sections (or one), each with its voices; a voice is a staff, by name, across sections
         sections (letfn [(go [n] (cond (not (node? n)) []
                                        (= :section (tag n)) [n]
@@ -988,6 +1114,16 @@
                                 (reverse (range (inc (max 0 (min i (dec nbars)))))))
                           [[4 4] nil]))
         meter-at (fn [i] (first (mg-at i)))
+        ;; the key of a bar: a measure's :key from there on, else the tree's (or a section's, a voice's);
+        ;; :none, or :accidentals :every anywhere above the measures, writes every accidental
+        root-key (some (fn [x] (when (and (node? x) (not= :measure (tag x)) (some? (:key (attrs x)))) (:key (attrs x))))
+                       (tree-seq node? kids t))
+        every-all (boolean (some (fn [x] (and (node? x) (#{:every "every"} (:accidentals (attrs x))))) (tree-seq node? kids t)))
+        key-at (memoize (fn [i] (let [raw (or (some (fn [j] (some (fn [m] (:key (attrs m))) (vals (:cells (nth bar-list j)))))
+                                                     (reverse (range (inc (max 0 (min i (dec nbars)))))))
+                                               root-key)
+                                      k (sp/parse-key raw)]
+                                  {:sig (or (:sig k) 0) :every (or every-all (boolean (:none k)))})))
         ;; a grouped meter is written as its groups: 2+3/8
         meter-count (fn [i] (let [[[p _] g] (mg-at i)] (if g (str/join "+" g) p)))
         counter (atom 0)
@@ -995,6 +1131,7 @@
         pieces (atom [])
         ctrl (atom {})                       ; bar → control events (dynam, dir, hairpin, tie)
         ctl! (fn [bar x] (swap! ctrl update bar (fnil conj []) x))
+        acc-mem (atom {})                    ; [staff bar] → {[step oct] alteration shown}
         open-gliss (atom {})                 ; [staff layer] → {:id :bar :end :c} of a note that bends into the next
         gliss-dir (fn [staff gl] (str "<dir staff=\"" staff "\" startid=\"#" (:id gl) "\" place=\"above\"><rend fontstyle=\"italic\">gliss. "
                                      (if (pos? (:c gl)) "↗ +" "↘ ") (js/Math.round (:c gl)) "¢</rend></dir>"))
@@ -1039,17 +1176,44 @@
                   [bar (- abs (get @bar-start bar))]))
         note-xml (fn [a staff abs id durattr art? src]
                    (let [m (midi-of a)
-                         ;; a pitch half-way between two semitones (± 8 cents) takes a quarter-tone accidental
-                         quarter? (< (js/Math.abs (- (- m (js/Math.floor m)) 0.5)) 0.08)
-                         mr (if quarter? (js/Math.floor m) (js/Math.round m)) pc (mod mr 12)
-                         dv (js/Math.round (* 100 (- m mr (if quarter? 0.5 0))))
-                         sharp? (contains? #{"c#" "d#" "f#" "g#" "a#"} (nth pc-names pc))
-                         acc (cond quarter? (if sharp? "3qs" "1qs") sharp? "s" :else nil)
+                         [b _] (where abs)
+                         {:keys [sig every]} (key-at b)
+                         ;; the written name (or the one spell chose), and what is left of the pitch in cents
+                         written (or (spelling-of a) (sp/parse (:spelled a)))
+                         [base dv] (if written
+                                     [written (js/Math.round (* 100 (- m (sp/->midi written))))]
+                                     (let [[bm c] (note-base m)]
+                                       [(first (sort-by (fn [x] (js/Math.abs (- (sp/fifths x) (sp/key-center sig)))) (sp/spellings bm))) c]))
+                         ;; half-way between two semitones (± 8 cents): a quarter-tone accidental
+                         qtr (cond (< (js/Math.abs (- dv 50)) 8) 1 (< (js/Math.abs (+ dv 50)) 8) -1)
+                         dv (- dv (* 50 (or qtr 0)))
+                         alter (:alter base)
+                         sym (if qtr
+                               (get {[0 1] "1qs" [1 1] "3qs" [-1 1] "1qf" [-2 1] "3qf" [0 -1] "1qf" [-1 -1] "3qf" [1 -1] "1qs" [2 -1] "3qs"} [alter qtr])
+                               (get {2 "x" 1 "s" 0 "n" -1 "f" -2 "ff"} alter))
+                         ;; an accidental lasts to the end of the bar, for its staff, step and octave: shown when
+                         ;; it changes what the key (or the bar so far) says, and as a courtesy after a bar that
+                         ;; changed it; not on a note a tie goes on into
+                         k [(:step base) (:oct base)]
+                         cont? (or (not art?) (contains? @open-ties [staff @cur-layer (cv/round-to m 3)]))
+                         here (get-in @acc-mem [[staff b] k])
+                         before (get-in @acc-mem [[staff (dec b)] k])
+                         state (if qtr [alter qtr] alter)
+                         expected (if (some? here) here (sp/key-alter sig (:step base)))
+                         show? (cond cont? false
+                                     qtr true
+                                     every (or (not (zero? alter)) (not= alter (sp/key-alter sig (:step base))))
+                                     (not= state expected) true
+                                     (and (nil? here) (some? before) (not= before state)) true
+                                     :else false)
+                         _ (swap! acc-mem assoc-in [[staff b] k] state)
                          arts (when art? (let [x (:art a) xs (if (sequential? x) x (when x [x]))]
                                            (seq (keep (fn [k] (get artic-names (keyword k))) xs))))]
-                     (swap! pieces conj {:id id :t abs :staff staff :src src})
-                     (str "<note xml:id=\"" id "\" pname=\"" (subs (nth pc-names pc) 0 1) "\" oct=\"" (dec (js/Math.floor (/ mr 12))) "\""
-                          (when acc (str " accid=\"" acc "\"")) durattr
+                     (swap! pieces conj {:id id :t abs :staff staff :src src :midi m :name (sp/->name base)})
+                     (str "<note xml:id=\"" id "\" pname=\"" (sp/letters (:step base)) "\" oct=\"" (:oct base) "\""
+                          (cond show? (str " accid=\"" sym "\"")
+                                (and sym (not= sym "n")) (str " accid.ges=\"" sym "\""))
+                          durattr
                           (when arts (str " artic=\"" (str/join " " arts) "\""))
                           (if (>= (js/Math.abs dv) 5)
                             (str "><verse n=\"1\"><syl>" (when (pos? dv) "+") dv "</syl></verse></note>")
@@ -1090,7 +1254,7 @@
                         ;; a grace note: small, before the next note, and it takes no time
                         (and (= :note tg) (:grace a) (midi-of a))
                         (let [id (nid)
-                              x (note-xml (dissoc a :art) staff abs id " dur=\"8\" grace=\"unacc\"" false (meta k))]
+                              x (note-xml (dissoc a :art) staff abs id " dur=\"8\" grace=\"unacc\"" true (meta k))]
                           (recur (rest ks) abs (conj items {:t0 abs :t1 abs :xml x})))
                         ;; a rest that fills its bar: a bar rest
                         (and (= :rest tg) (not= spans :all)
@@ -1210,7 +1374,7 @@
                "<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">"
                "<meiHead><fileDesc><titleStmt><title>Kairotic</title></titleStmt><pubStmt/></fileDesc></meiHead>"
                "<music><body><mdiv><score>"
-               "<scoreDef meter.count=\"" (meter-count 0) "\" meter.unit=\"" q0 "\" key.sig=\"0\">"
+               "<scoreDef meter.count=\"" (meter-count 0) "\" meter.unit=\"" q0 "\" key.sig=\"" (sp/mei-key-sig (:sig (key-at 0))) "\">"
                "<staffGrp" (when (> (count staves) 1) " bar.thru=\"false\"") ">"
                (apply str (for [[i [shape line]] (map-indexed vector clefs)
                                 :let [k (nth staves i)]]
@@ -1220,10 +1384,14 @@
                "</staffGrp></scoreDef><section>"
                (apply str
                       (map-indexed (fn [i x]
-                                     ;; a change of meter is written before its bar
-                                     (if (and (pos? i) (not= (mg-at i) (mg-at (dec i))))
-                                       (let [[_ q] (meter-at i)] (str "<scoreDef meter.count=\"" (meter-count i) "\" meter.unit=\"" q "\"/>" x))
-                                       x))
+                                     ;; a change of meter or key is written before its bar
+                                     (let [mc (and (pos? i) (not= (mg-at i) (mg-at (dec i))))
+                                           kc (and (pos? i) (not= (:sig (key-at i)) (:sig (key-at (dec i)))))]
+                                       (if (or mc kc)
+                                         (let [[_ q] (meter-at i)]
+                                           (str "<scoreDef" (when mc (str " meter.count=\"" (meter-count i) "\" meter.unit=\"" q "\""))
+                                                (when kc (str " key.sig=\"" (sp/mei-key-sig (:sig (key-at i))) "\"")) "/>" x))
+                                         x)))
                                    bars))
                "</section></score></mdiv></body></music></mei>")
      :pieces (vec (sort-by :t @pieces))}))

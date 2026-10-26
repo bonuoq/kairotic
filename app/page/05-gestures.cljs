@@ -244,6 +244,13 @@
                     (when (= :note (mt/tag n))
                       (let [m (mt/midi-of (mt/attrs n)) d (* (if shift? 12 1) (if (= k "ArrowUp") 1 -1))]
                         [[:attrs target (mt/set-midi (mt/attrs n) (+ m d))]]))
+                    ;; another name for the same sound: c#4 → db4 → b##3 …
+                    "#"
+                    (when (= :note (mt/tag n))
+                      (let [a (mt/attrs n) m (js/Math.round (mt/midi-of a))
+                            names (mapv sp/->name (sp/spellings m))
+                            cur (some-> (mt/spelling-of a) sp/->name)]
+                        [[:attrs target (assoc a :pitch (get names (mod (inc (max -1 (.indexOf names cur))) (count names))))]]))
                     ("+" "=" "-")
                     (into [[:attrs dur-path (assoc (mt/attrs dn) :dur (* eff (if (= k "-") 0.5 2)))]] keep-next)
                     ("Delete" "Backspace")
@@ -280,6 +287,9 @@
     (cond
       (and piece (:src piece))
       (select-tree-note! id piece (:from c))
+      (and qpiece (.-shiftKey e) (:midi qpiece))
+      (let [nm (enharmonic! id (:t qpiece) (:midi qpiece))]
+        (repl-print! "out" (esc (str "; " id " · the note at " (cv/fmt (:t qpiece)) " written " nm " (shift-alt-click again: another name)"))))
       qpiece
       (let [ch (division! id (:t qpiece))]
         (repl-print! "out" (esc (str "; " id " · the beat at " (cv/fmt (:t qpiece)) " divided " (pr-str ch) " (alt-click again: another way; (division! " id " " (cv/fmt (:t qpiece)) " nil): the quantizer's)"))))
@@ -1108,7 +1118,7 @@
             (.preventDefault e)
             (show-help! (when b (klass (:text b)))))
           (and (:tsel @ui) (not mod?)
-               (or (#{"ArrowUp" "ArrowDown" "ArrowLeft" "ArrowRight" "+" "=" "-" "Delete" "Backspace" "Escape" "Enter"} k)
+               (or (#{"ArrowUp" "ArrowDown" "ArrowLeft" "ArrowRight" "+" "=" "-" "#" "Delete" "Backspace" "Escape" "Enter"} k)
                    (letter-pcs (str/lower-case k))))
           (do (.preventDefault e)
               (try (tree-key! k (.-shiftKey e))

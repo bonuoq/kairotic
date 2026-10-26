@@ -46,7 +46,7 @@ Any node can carry `:at`: an offset from the start of its parent that does not m
 
 | tag | attributes |
 |---|---|
-| `:note` | `:pitch` (`"c4"`, `"f#3"`, `"bb2"`, or a MIDI number with decimals for microtones) or `:hz`; `:dur`; and optionally `:dyn "mf"`, `:art [:staccato :accent :tenuto :marcato]`, `:text`, `:gliss [[x cents] …]`, `:env [[x level] …]`, `:vel`, or any key of your own |
+| `:note` | `:pitch` (`"c4"`, `"f#3"`, `"bb2"`, `"f##3"`, `"ebb2"`, or a MIDI number with decimals for microtones; a name may carry `:cents`, its deviation) or `:hz`; `:dur`; and optionally `:dyn "mf"`, `:art [:staccato :accent :tenuto :marcato]`, `:text`, `:gliss [[x cents] …]`, `:env [[x level] …]`, `:vel`, or any key of your own |
 | `:rest` | `:dur` |
 | `:param` | `:name`, `:value`, and for a ramp `:to` and `:dur`: a parameter change coordinated with the score |
 | `:dyn` | `:mark "mf"`; `"<"` or `">"` with `:dur` is a hairpin |
@@ -243,8 +243,38 @@ buffer, with the options, as one event of the history:
 ```
 
 The buffer's text shows them as `:quant {:meter "6/8" :fix {2 [:merge 3]}}`, and a message
-`[:quantize {…}]` on the freqt's inlet sets them too. Next: spelling by key (#88), and one box for
-freqt, tree and score (discussion #92).
+`[:quantize {…}]` on the freqt's inlet sets them too. Next: one box for freqt, tree and score
+(discussion #92).
+
+## How pitches are written: names, keys, accidentals
+
+A pitch is written as a **letter, an alteration and an octave** (issue [#88](https://github.com/bonuoq/kairotic/issues/88)):
+G# and Ab sound alike and are written apart, and a tree keeps the name it was given. `kairotic.spell`
+places each name on the **line of fifths** (… Bb F C G D A E B F# C# …), where transposing, inverting and
+choosing a name are arithmetic.
+
+- **Written names stay**: `"bb4"`, `"f##3"` (or `"fx3"`), `"ebb2"` are written as they are, and `mt/pitches`
+  gives them back. A name may carry `:cents` (`{:pitch "c4" :cents 50}` is a quarter tone above C).
+- **Transposing keeps the spelling**: `(mt/transpose "m3" "c4 e4 g4")` is eb4 g4 bb4; by a number of
+  semitones a tree moves by the interval it is usually written as (1 a minor second: c4 e4 g4 → db4 f4
+  ab4; 6 the augmented fourth or the diminished fifth, whichever needs fewer alterations). Intervals are
+  `"M3"`, `"-P5"`, `"A4"`, `"d5"`, `"m9"`… (`mt transpose M3` in a box). `mt/invert` around a written pivot
+  mirrors names on the line of fifths too (c4 around e4 is g#4).
+- **Keys**: `{:key "eb"}` on the tree, a section, a voice or a measure (from there on): `"c#m"`,
+  `"d dorian"`, `"f lydian"`, a number of sharps (`3`) or flats (`-2`), or `:none`. The score writes its
+  signature and its changes; an accidental lasts to the end of its bar (and comes back as a courtesy in the
+  next one); `:key :none`, or `:accidentals :every` on the tree, writes every accidental (atonal music).
+- **Notes without a name** (numbers, Hz, a freqt's strokes) are named by `mt/spell`, which ->mei and the
+  quantizer use: near the key (the one written, or estimated bar by bar with Temperley's profiles; without
+  four pitch classes to go on, C), moving well in each voice (a chromatic line rises in sharps and falls in
+  flats, no augmented second where a minor third does) and stacked well in each chord (Ab C Eb, not
+  G# C D#), over the whole line at once (a Viterbi on the line of fifths). `(mt/spell tree)` writes those
+  names into the tree. Without `:key` the score has no signature, only those names.
+- **Another name by hand**: on a selected note of a tree's score, `#` cycles its spelling (c#4 → db4 →
+  b##3); on a freqt's score, **shift-alt-click** a note (`(enharmonic! :bN beat midi [name])`), kept in its
+  `:quant` as `:spell {[beat midi] name}`. `(quant :bN {:key "eb"})` gives a freqt's score a key.
+- Quarter tones take quarter-tone accidentals; for tunings by ratios, HEJI (later) builds on these same
+  names.
 
 ## REPL and components
 
@@ -258,6 +288,7 @@ The functions are in `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt/au
 - `(as-tree :bN)` reads a tree box, or the tree a score is showing, or a freqt's strokes, as a tree;
 - `(quantize :bN [opts])` gives a freqt's strokes (or a tree without measures) quantized into measures;
 - `(quant :bN opts)`, `(divisions :bN t)`, `(division! :bN t [choice])`: how a freqt's score is quantized, kept in its buffer;
+- `(enharmonic! :bN beat midi [name])`: another name for a note of a freqt's score; `mt/spell`, `mt/transpose "M3"`, and `kairotic.spell` (`sp/parse`, `sp/interval`, `sp/parse-key`, `sp/estimate-key`…);
 - `(keep! :bN)` and `(unlive! :bN)`;
 - `(recipe :bN)` and `(remake! :bN)` (below).
 

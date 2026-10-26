@@ -19,15 +19,15 @@
 (def sharp-acc [nil "s" nil "s" nil nil "s" nil "s" nil "s" nil])
 
 (defn pitch
-  "60, \"c4\", \"f#3\", \"bb2\" → MIDI number (c4 = 60)."
+  "60, \"c4\", \"f#3\", \"bb2\", \"f##3\", \"fx3\", \"ebb2\", \"cn4\" → MIDI number (c4 = 60)."
   [x]
   (cond (num? x) x
         (keyword? x) (pitch (name x))
-        (string? x) (let [m (re-matches #"(?i)([a-g])(#|s|b)?(-?\d)" (str/trim x))]
+        (string? x) (let [m (re-matches #"(?i)([a-g])(##|#|x|s|bb|b|n)?(-?\d)" (str/trim x))]
                       (when m
                         (+ (* 12 (inc (js/parseInt (nth m 3) 10)))
                            (get pcs (str/lower-case (nth m 1)))
-                           (case (nth m 2) "#" 1 "s" 1 "b" -1 0))))
+                           (case (some-> (nth m 2) str/lower-case) ("##" "x") 2 ("#" "s") 1 "bb" -2 "b" -1 0))))
         :else nil))
 
 (defn parse-melody
