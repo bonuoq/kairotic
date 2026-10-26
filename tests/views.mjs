@@ -113,6 +113,12 @@ export async function views(page, check) {
   check("... and keeps the choice in :fix", (await cljs(page, `(some? (get-in (box-data ${f}) [:quant :fix 0]))`)) === "true");
   await cljs(page, `(quant ${f} nil)`);
   check("(quant :bN nil) goes back to the defaults", (await cljs(page, `(:quant (box-data ${f}))`)) === "nil");
+  // ── another name for a note (issue #88) ──
+  await cljs(page, `(send! ${f} [:clear]) (send! ${f} [:batch [[:note 0 61 1] [:note 1 62 1]]])`);
+  const nm = await cljs(page, `(enharmonic! ${f} 0 61)`);
+  check("(enharmonic! :bN t midi) writes a note of the score another way", nm === '"db4"', nm);
+  check("... and the score's tree has that name", (await cljs(page, `(first (mt/pitches (quantize ${f})))`)) === '"db4"');
+  await cljs(page, `(quant ${f} nil)`);
   await cljs(page, `(view ${f} :next)`);
   check("(view :bN :next) goes to the next view", (await cljs(page, `(display-of (get-in (current) [:boxes ${f}]))`)) === ":canvas");
 

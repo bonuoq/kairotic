@@ -14,6 +14,20 @@
   page's copy); the package build checks that a source names its own version. Studies 28 (offline, a
   buffer with its recipe) and 29 (real time) tried it first; Pages now serves the studies at
   `studies/<folder>/`. Tests: `tests/spectral.mjs`.
+- **How pitches are written** (issue #88). A new core module, `kairotic.spell`: names with one or two
+  alterations (`"f##3"`, `"fx3"`, `"ebb2"`, also in `sc/pitch`), the line of fifths, intervals (`"M3"`,
+  `"-P5"`, `"A4"`), keys (`"eb"`, `"c#m"`, `"d dorian"`, a signature, `:none`) and key estimation (Temperley's
+  profiles). Written names are kept (`->mei` writes them; `mt/pitches` gives them back; `set-midi` keeps a
+  flat a flat); `mt/transpose` takes intervals and moves names by them (a number of semitones becomes the
+  interval it is usually written as) and `mt/invert` mirrors names on the line of fifths; `mt transpose M3`.
+  `:key` on the tree, a section, a voice or a measure: key signatures and their changes, accidentals that
+  last the bar, courtesy accidentals, `accid.ges` for the sounding ones; `:key :none` / `:accidentals
+  :every` write every accidental. Notes without a name (numbers, Hz, a freqt's strokes) are named by
+  `mt/spell` (a Viterbi on the line of fifths: near the key, chromatic lines rising in sharps and falling in
+  flats, chords in thirds), used by ->mei and the quantizer. By hand: `#` on a selected note of a tree's
+  score cycles its spelling; shift-alt-click a note of a freqt's score (`(enharmonic! :bN t midi [name])`,
+  kept in `:quant :spell`); `(quant :bN {:key "eb"})`. `:cents` on a named note is now a deviation in cents
+  (it was added as semitones). Tests: `tests/cljs/spell.cljs`.
 - **Quantization, stages 4–6** (issue #86). **Voices**: overlapping strokes (or notes of a tree without
   measures) are separated into voices by pitch proximity (`:voices`, 2 by default; chords stay together, two
   lines that meet go one to each), quantized on the same points and written as layers of one staff (`:staff`

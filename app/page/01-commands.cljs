@@ -550,6 +550,26 @@
    (dispatch! [:in id [:quantize opts]])
    (or opts :defaults)))
 
+(defn enharmonic!
+  "Writes the note of a freqt's score that starts at beat t with MIDI pitch m another way (c#4 → db4 →
+   b##3 → c#4 …), or with the name given; kept in its buffer (:quant :spell), one event of the history.
+   (enharmonic! :b1 2 61), (enharmonic! :b1 2 61 \"db4\"), (enharmonic! :b1 2 61 nil): chosen again by the key."
+  ([id t m] (enharmonic! id t m ::next))
+  ([id t m nm]
+   (let [d (freqt-data id) q (:quant d) m (js/Math.round m)
+         near? (fn [[[bt p] _]] (and (< (js/Math.abs (- bt t)) 1e-4) (= p m)))
+         cur (or (some (fn [kv] (when (near? kv) (second kv))) (:spell q))
+                 (some (fn [e] (when (and (< (js/Math.abs (- (:t e) t)) 1e-4) (= m (js/Math.round (:pitch e)))) (:name e)))
+                       (mt/notes (qz/quantize d q))))
+         names (mapv sp/->name (sp/spellings m))
+         nm (cond (= nm ::next) (get names (mod (inc (max -1 (.indexOf names cur))) (count names)))
+                  (nil? nm) nil
+                  :else (or (some-> (sp/parse nm) (as-> w (when (= m (sp/->midi w)) (sp/->name w))))
+                            (fail (str nm " does not sound " (mt/pitch-name m)))))
+         spell (cond-> (into {} (remove near? (:spell q))) nm (assoc [t m] nm))]
+     (dispatch! [:in id [:quantize (not-empty (cond-> (dissoc q :spell) (seq spell) (assoc :spell spell)))]])
+     nm)))
+
 (defn divisions
   "The ways the beat that holds beat t of a freqt's score can be divided, the current one first:
    n (n parts), [n1 n2] (in halves), [:merge n] (with the next beat). (divisions :b1 2.5)"
