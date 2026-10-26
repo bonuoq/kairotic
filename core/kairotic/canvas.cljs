@@ -187,6 +187,28 @@
 (defn sane-pts-for "The right points check for this canvas." [d pts]
   (if (generic? d) (sane-free-pts d pts) (sane-pts pts)))
 
+;; How a stroke looks, beyond its points (what a render of a pattern draws, discussion #93):
+;;   {:w 1.5}        its weight, times the usual (0.25…4): an event's :amp
+;;   {:pan -0.6}     a vertical gradient across it, from its colour to the paper (−1…1): an event's :pan
+;;   {:tex :dash}    :dash or :dot, a texture             {:tone :kairos}  :kairos, :ink or :soft, a colour
+;; Plain data, kept in the history and in links like the points; a stroke without it looks as always.
+(def look-texes #{:dash :dot})
+(def look-tones #{:kairos :ink :soft})
+
+(defn sane-look
+  "The look of a stroke, with only what can be drawn; nil when there is nothing to draw differently."
+  [l]
+  (when (map? l)
+    (let [w (:w l) pan (:pan l)
+          r (cond-> {}
+              (and (num? w) (not (== w 1))) (assoc :w (round-to (max 0.25 (min 4 w)) 3))
+              (and (num? pan) (not (zero? pan))) (assoc :pan (round-to (max -1 (min 1 pan)) 3))
+              (look-texes (:tex l)) (assoc :tex (:tex l))
+              (look-tones (:tone l)) (assoc :tone (:tone l)))]
+      (when (seq r) r))))
+
+(defn with-look "A stroke {:pts …} with look l, if it has one." [s l] (if-let [l (sane-look l)] (assoc s :look l) s))
+
 (defn shift-y
   "A value moved by dy: in cents on a log axis, added on a linear one."
   [d v dy] (if (y-log? d) (* v (js/Math.pow 2 (/ dy 1200))) (+ v dy)))
@@ -202,8 +224,8 @@
   [d [op & args]]
   (let [d (or d empty)]
     (case op
-      :stroke  (let [[id pts] args ps (sane-pts-for d pts)]
-                 (if (and (keyword? id) ps) (assoc-in d [:strokes id] {:pts ps}) d))
+      :stroke  (let [[id pts look] args ps (sane-pts-for d pts)]
+                 (if (and (keyword? id) ps) (assoc-in d [:strokes id] (with-look {:pts ps} look)) d))
       ;; [:move id dx dy]: dy in cents on a log axis (freqt), in units on a linear one
       :move    (let [[id dt dc] args pts (get-in d [:strokes id :pts])]
                  (if (and pts (num? dt) (num? dc))
@@ -231,7 +253,7 @@
                                 (sane-quant (:quant x)) (assoc :quant (sane-quant (:quant x))))]
                      (assoc base :strokes (into {} (for [[k s] (:strokes x)
                                                          :let [ps (and (keyword? k) (map? s) (sane-pts-for base (:pts s)))] :when ps]
-                                                     [k {:pts ps}]))))
+                                                     [k (with-look {:pts ps} (:look s))]))))
                    d))
       d)))
 
@@ -503,6 +525,28 @@
 (defn path-d [g pts]
   (str/join " " (map-indexed (fn [i [t f]] (str (if (zero? i) "M" "L") (round-to (t->x g t) 2) " " (round-to (f->y g f) 2))) pts)))
 
+(defn look-path
+  "The drawn path of a stroke, with its look (weight, gradient, texture, colour; discussion #93)."
+  [idn ids g pts dd look sel?]
+  (let [{:keys [w pan tex tone]} look
+        width (* 3 (or w 1))
+        colour (if sel? "var(--kairos)" (case tone :kairos "var(--kairos)" :ink "var(--ink)" :soft "var(--ink-soft)" "var(--accent)"))
+        gid (str "lk-" idn "-" ids)
+        grad (when (and pan (not sel?))
+               (let [ys (map (fn [[_ f]] (f->y g f)) pts)
+                     y0 (- (apply min ys) (/ width 2)) y1 (+ (apply max ys) (/ width 2))
+                     faded (str "color-mix(in srgb, " colour ", var(--paper) " (js/Math.round (* 75 (js/Math.abs pan))) "%)")
+                     [top bottom] (if (neg? pan) [colour faded] [faded colour])]
+                 (str "<defs><linearGradient id=\"" gid "\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" x2=\"0\" y1=\"" (round-to y0 2)
+                      "\" y2=\"" (round-to (+ y1 0.01) 2) "\"><stop offset=\"0\" style=\"stop-color:" top "\"></stop>"
+                      "<stop offset=\"1\" style=\"stop-color:" bottom "\"></stop></linearGradient></defs>")))
+        style (str (when (or w (:w look)) (str "stroke-width:" (round-to (if sel? (+ width 0.5) width) 2) ";"))
+                   (cond grad (str "stroke:url(#" gid ");")
+                         (and tone (not sel?)) (str "stroke:" colour ";"))
+                   (case tex :dash (str "stroke-dasharray:" (round-to (* 2 width) 1) " " (round-to (* 1.4 width) 1) ";")
+                             :dot (str "stroke-dasharray:0.1 " (round-to (* 2 width) 1) ";") nil))]
+    (str grad "<path class=\"stroke" (when sel? " sel") "\" d=\"" dd "\"" (when (seq style) (str " style=\"" style "\"")) "></path>")))
+
 (defn svg
   "SVG of the contents of a canvas box. `idn` is the box id (text), `sel` the selected stroke,
    `previews` {id pts} to draw a drag in progress and `new-pts` the points of a stroke being drawn."
@@ -520,7 +564,7 @@
          "</g></svg>"
          (apply str (for [[id s] (:strokes d)
                           :let [pts (or (get previews id) (:pts s)) dd (path-d g pts) ids (name id)]]
-                      (str "<path class=\"stroke" (when (= sel id) " sel") "\" d=\"" dd "\"></path>"
+                      (str (look-path idn ids g pts dd (:look s) (= sel id))
                            "<path class=\"stroke-hit\" data-box=\"" idn "\" data-stroke=\"" ids "\" d=\"" dd "\"><title>"
                            ids " · " (fmt (ffirst pts)) "→" (fmt (first (peek pts))) " · " (fmt (second (first pts)))
                            (when-not (generic? d) " Hz") "</title></path>")))
@@ -552,7 +596,8 @@
    (when-let [gx (:gx d)]
      [(str "(grid-x " id " " (fmt (:step gx)) " " (pr-str (mapv (fn [c] (js/parseFloat (fmt c))) (:cycles gx))) ")")])
    (for [[sid s] (sorted-strokes d)]
-     (str "(stroke " id " " sid " [" (str/join " " (map (fn [[t f]] (str "[" (fmt t) " " (fmt f) "]")) (:pts s))) "])"))))
+     (str "(stroke " id " " sid " [" (str/join " " (map (fn [[t f]] (str "[" (fmt t) " " (fmt f) "]")) (:pts s))) "]"
+          (when (:look s) (str " " (pr-str (:look s)))) ")"))))
 
 ;; ───────── the buffer as text (discussion #30) ─────────
 ;; Any buffer can be read and edited as EDN, in the same code window as a code box: ->source writes it,
@@ -593,7 +638,10 @@
          ":gx " (gx-src (:gx d)) "\n"
          " :gy " (gy-src (:gy d)) "\n"
          (when (:quant d) (str " :quant " (pr-str (:quant d)) "\n"))
-         " :strokes {" (str/join "\n           " (map (fn [[id s]] (str id " " (pts-src (:pts s)))) ss)) "}}")))
+         " :strokes {" (str/join "\n           " (map (fn [[id s]] (str id " " (if (:look s)
+                                                                               (str "{:pts " (pts-src (:pts s)) " :look " (pr-str (:look s)) "}")
+                                                                               (pts-src (:pts s)))))
+                                                       ss)) "}}")))
 
 (defn- bad [msg] (throw (js/Error. msg)))
 
@@ -636,12 +684,13 @@
              :strokes (into {} (for [[k s] ss]
                                  (let [pts (if (map? s) (:pts s) s)]
                                    (when-not (keyword? k) (bad (str "A stroke id is a keyword such as :t1, not " (pr-str k))))
-                                   [k {:pts (or (let [r (sane-pts-for base pts)]
+                                   [k (with-look {:pts (or (let [r (sane-pts-for base pts)]
                                                   ;; a freqt drops points it cannot hold: here that is an error
                                                   (when (and r (or gen (= (count r) (count pts)))) r))
                                                 (bad (str "Stroke " k ": "
                                                           (if gen "at least two different points [x y]"
-                                                              "at least two points [t hz], times from 0 and growing, hz between 1 and 30000"))))}])))))))
+                                                              "at least two points [t hz], times from 0 and growing, hz between 1 and 30000"))))}
+                                             (when (map? s) (:look s)))])))))))
 
 (defn diff
   "The events that turn buffer a into buffer b: (reduce step a (diff a b)) is b."
@@ -653,7 +702,8 @@
           (when (not= (:gy a) (:gy b)) [[:tuning (:gy b)]])
           (when (not= (:quant a) (:quant b)) [[:quantize (:quant b)]])
           (for [[id _] (sorted-strokes a) :when (not (contains? (:strokes b) id))] [:erase id])
-          (for [[id s] (sorted-strokes b) :when (not= (:pts s) (get-in a [:strokes id :pts]))] [:stroke id (:pts s)])))))
+          (for [[id s] (sorted-strokes b) :when (not= s (get-in a [:strokes id]))]
+            (if (:look s) [:stroke id (:pts s) (:look s)] [:stroke id (:pts s)]))))))
 
 (defn ->voice
   "Approximation of the canvas as a kairotic.score voice: each stroke is a note on the

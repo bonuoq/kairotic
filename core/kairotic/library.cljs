@@ -177,7 +177,7 @@
                          :local "kairotic/packages/analysis.mjs"}
    "@kairotic/theory"   {:version "0.1.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}
    "@kairotic/data"     {:version "0.1.1" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
-   "@kairotic/patterns" {:version "0.1.1" :classes #{"pbind" "pattern" "player"} :local "kairotic/packages/patterns.mjs"}
+   "@kairotic/patterns" {:version "0.2.0" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}
    "@kairotic/spectral" {:version "0.1.0" :classes #{"shift~"} :local "kairotic/packages/spectral.mjs"}})
 
 (defn package-of

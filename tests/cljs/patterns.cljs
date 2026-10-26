@@ -2,6 +2,8 @@
 ;; Kairotic · tests · patterns (kairotic.patterns): the #pat/… readers, seeded streams, pbind, pitches
 (ns kairotic.test.patterns
   (:require [kairotic.patterns :as pat]
+            [kairotic.canvas :as cv]
+            [kairotic.mt]
             [kairotic.test :as t]))
 
 (defn evs [m opts n] (vec (take n (pat/pbind-events m opts))))
@@ -102,3 +104,48 @@
     (t/eq "sustain: dur × legato (0.8)" (pat/sustain {:dur 2}) 1.6)
     (t/eq "... or :sustain" (pat/sustain {:dur 2 :sustain 0.5}) 0.5)
     (t/eq "dur defaults to 1" (pat/dur-of {}) 1)))
+
+(defn rnotes
+  "The notes of a render as [at dur midi back?] (rounded), in order."
+  [t] (vec (for [[_ a] (rest (rest t))] [(:at a) (:dur a) (js/Math.round (cv/hz->midi (:hz a))) (boolean (:back a))])))
+
+(t/run! "patterns: render (time maps, discussion #93)"
+  (fn []
+    (let [p (pat/pbind-pattern {:degree [0 2 4 5] :dur 1 :legato 1} {:seed 0 :repeat 1})]
+      (t/eq "the identity: each note where it is, as long as its span"
+            (rnotes (pat/render-tree p {:from 0 :to 4})) [[0 1 60 false] [1 1 64 false] [2 1 67 false] [3 1 69 false]])
+      (t/eq "a window cuts what lies outside it"
+            (rnotes (pat/render-tree p {:from 1 :to 2.5})) [[1 1 64 false] [2 0.5 67 false]])
+      (t/eq "twice as slow: every note twice as long"
+            (rnotes (pat/render-tree p {:maps [[[0 0] [8 4]]]})) [[0 2 60 false] [2 2 64 false] [4 2 67 false] [6 2 69 false]])
+      (t/eq "backwards: the phrase in reverse, each note entered from its end"
+            (rnotes (pat/render-tree p {:maps [[[0 4] [4 0]]]})) [[0 1 69 true] [1 1 67 true] [2 1 64 true] [3 1 60 true]])
+      (t/eq "flat: the note it is in is held"
+            (rnotes (pat/render-tree p {:maps [[[0 0.5] [3 0.5]]]})) [[0 3 60 false]])
+      (t/eq "a vertical step cuts: what no longer sounds ends, what is there starts"
+            (rnotes (pat/render-tree p {:maps [[[0 0] [1 1] [1 3] [2 4]]]})) [[0 1 60 false] [1 1 69 false]])
+      (t/eq "... and a note that still sounds across the cut goes on"
+            (rnotes (pat/render-tree p {:maps [[[0 0] [0.5 0.5] [0.5 0.7] [1 1]]]})) [[0 1 60 false]])
+      (let [t (pat/render-tree p {:maps [[[0 0] [4 4]] [[2 0] [6 2]]]})]
+        (t/eq "two strokes: two layers of the same pattern (a canon by augmentation)"
+              (rnotes t) [[0 1 60 false] [1 1 64 false] [2 1 67 false] [2 2 60 false] [3 1 69 false] [4 2 64 false]])
+        (t/eq "... each note says its layer" (mapv (comp :layer second) (rest (rest t))) [1 1 1 2 1 2]))
+      (t/is "a render is a tree a freqt can show" (empty? (kairotic.mt/errors (pat/render-tree p {:from 0 :to 4})))))
+    (let [p (pat/pbind-pattern {:degree [0 (pat/gen :chord [0 4]) :rest 2] :dur 1 :amp [0.5 1 0 0] :pan [-1 0.5 0 0] :art [:leg :stac :leg :stac]} {:seed 0 :repeat 1})
+          t (pat/render-tree p {:from 0 :to 4 :tex :art})
+          looks (mapv (comp :look second) (rest (rest t)))]
+      (t/eq "a chord: one note per pitch; a rest: nothing" (count looks) 4)
+      (t/eq ":amp is the weight, :pan the gradient, the values of :art textures"
+            looks [{:w 1.6 :pan -1} {:w 2.8 :pan 0.5 :tex :dash} {:w 2.8 :pan 0.5 :tex :dash} {:w 0.4 :tex :dash}])
+      (t/eq "the other keys travel with each note" (:ev (second (nth t 2))) {:art :leg}))))
+
+(t/run! "canvas: how a stroke looks"
+  (fn []
+    (t/eq "a look keeps only what can be drawn" (cv/sane-look {:w 9 :pan 0.25 :tex :wavy :tone :kairos :x 1}) {:w 4 :pan 0.25 :tone :kairos})
+    (t/eq "... and nothing when it changes nothing" (cv/sane-look {:w 1 :pan 0}) nil)
+    (let [d (cv/step cv/empty [:stroke :t1 [[0 440] [1 440]] {:w 2 :tex :dot}])]
+      (t/eq "a stroke keeps its look" (get-in d [:strokes :t1 :look]) {:w 2 :tex :dot})
+      (t/eq "... in its source, and reads it back" (:strokes (cv/read-source cv/empty (cv/->source d))) (:strokes d))
+      (t/eq "... a new look is a difference" (cv/diff d (assoc-in d [:strokes :t1 :look] {:w 3})) [[:stroke :t1 [[0 440] [1 440]] {:w 3}]])
+      (t/is "... and it is drawn: weight and texture" (re-find #"stroke-width:6;stroke-dasharray:0.1 12" (cv/look-path "b1" "t1" (cv/geom cv/empty 0) [[0 440] [1 440]] "M0 0" {:w 2 :tex :dot} false))))
+    (t/eq "a tree note's :look reaches its stroke" (get-in (kairotic.mt/->strokes [:par [:note {:at 0 :dur 1 :hz 440 :look {:w 2}}]]) [:strokes :t1 :look]) {:w 2})))

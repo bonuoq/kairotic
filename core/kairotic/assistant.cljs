@@ -417,7 +417,9 @@ Rules:
   [quant]`, which plays it on `start`/`stop`, one step per bang, or at a position in beats (a number, from a
   ramp, either way: going back, each note starts from its end; seek p jumps). Its outlets: Hz (left) and voice ids (second) for synth~ or a polyphonic faust~, the whole event,
   the beat. Event keys: :freq, :note (MIDI, \"c4\"), or :degree with :scale :root :octave; :dur in beats,
-  :legato; :rest (or nil) is a silence; :amp 0…1 is the loudness of its notes in synth~ and a polyphonic faust~. Write durations as decimals (0.25), not ratios.
+  :legato; :rest (or nil) is a silence; :amp 0…1 is the loudness of its notes in synth~ and a polyphonic faust~. `render [from] [to]` draws a stretch of a pattern into a freqt (pattern left, freqt after it); a canvas
+  on its right inlet is a time map (x: beats of the drawing, y: beats of the pattern; down = backwards, flat =
+  hold, several strokes = layers). Write durations as decimals (0.25), not ratios.
 - Pitch shifting (package @kairotic/spectral, it comes by itself): `shift~ [factor …]` transposes the signal
   on its inlet by every factor at once (one interval or a chord), one frame (~21 ms) late. A factor is a
   ratio (1.5, 3/2), semitones with a sign (+7, -12, +0) or cents (386c); a msg with a list of them changes

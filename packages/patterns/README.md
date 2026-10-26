@@ -12,6 +12,7 @@ Patterns after SuperCollider's (`Pbind`, `Pseq`, `Pwhite`…), on Clojure's lazy
 | `pbind [seed] [repeat] [loop]` | a pattern as **data**: an EDN map whose values are constants, sequences (vectors: the shorter ones start again until the longest ends) and `#pat/…` generators. Reading it evaluates nothing, so it is safe in a shared room. It sends its pattern whenever it changes. A map on its inlet replaces it, `[:set :dur [1 0.5]]` changes one key |
 | `pattern [seed] [repeat] [loop]` | a pattern as **code**: a Clojure expression that returns event maps (or one map, read as a pbind), with `rand`, `rand-int`, `rand-nth` and `shuffle` seeded, and `pbind`, `pseq`, `pwhite`, `pchoose`, `pshuffle`, `pseries`, `pwalk` at hand. Like a script, it runs in a shared room only after `(trust-scripts true)` |
 | `player [bpm] [quant] [jump] [limit] [edges] [spread]` | plays a pattern (on its right inlet) the way the left inlet says: `start`/`stop` by its own clock, `bang` one step, a number a position in beats (as a `reader` reads a buffer, in either direction), `seek p` a jump. Out: the Hz of the notes sounding, their voice ids (for `synth~` or a polyphonic `faust~`), the whole event, and the beat |
+| `render [from] [to] [tex key] [tone key]` | draws a stretch of a pattern into a `freqt`: it sends a musical tree, which the freqt shows live, `(keep! :bN)` writes with its recipe, and a score quantizes. A canvas on its right inlet is a **time map**: each stroke says which beat of the pattern (y) is at each beat of the drawing (x) |
 
 ```clojure
 (box :b1 "pbind 7 loop" 40 30)
@@ -79,3 +80,23 @@ A new pattern while it plays goes on from the beat it is on. The same pattern ag
 itself again) changes nothing. One pattern can feed several players moving in different ways.
 
 Writing one of its classes in a work brings the package into it. Licence: [MPL-2.0](../../LICENSE).
+
+## Drawing it: render and time maps
+
+`render 0 8` draws the beats 0 to 8 of a pattern into a `freqt` — what a `player` at a position would play,
+worked out at once. Every event is a span, from its onset to its end, and a note of the drawing lasts as
+long as the map stays inside it. Without a canvas the map is the diagonal from `from` to `to`; with a canvas
+on its right inlet, each stroke is a map, x the beats of the drawing and y those of the pattern:
+
+| A stroke that… | gives |
+|---|---|
+| is steeper · flatter | faster · slower (a curve: accelerando, ritardando) |
+| goes down | the phrase backwards, each note entered from its end (`:back true`) |
+| is flat | the note it is in, held |
+| steps vertically | a cut: what no longer sounds ends, what is there starts, what still sounds goes on |
+| is one of several | a layer of the same pattern (`:layer n`): a canon, a canon by augmentation |
+
+How each note is drawn: `:amp` is its weight, `:pan` a vertical gradient across it, from its colour to the
+paper (−1 one side, 1 the other), and `render 0 16 tex art tone inst` draws the values of `:art` as textures
+and those of `:inst` as colours, one for each value met. The other keys travel with each note under `:ev`.
+Silences are left to the quantizer of the score. After changing the canvas, a bang renders again.

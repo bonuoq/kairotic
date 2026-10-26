@@ -376,6 +376,123 @@
         (some? (:freq e)) (vec (filter number? (as-vec (:freq e))))
         :else (some->> (midis e) (mapv (fn [m] (cv/round-to (cv/midi->hz m) 3))))))
 
+;; ───────── render: a stretch of a pattern as a musical tree (discussion #93) ─────────
+;; What a player at a position would play, worked out at once. A time map says which moment of the pattern
+;; (y, its beats) is at each moment of the result (x, beats): the diagonal from `from` to `to` by default,
+;; or the strokes of a canvas — a steeper line is faster, a flatter one slower, a line going down plays
+;; backwards (each note from its end), a flat stretch holds the note it is in, a vertical step is a cut,
+;; and several strokes are several layers of the same pattern (a canon, a canon by augmentation).
+;; Every event is a span, [onset, onset + sustain): it sounds while the map's y is inside it, so a note of
+;; the result lasts from where the map enters its span to where it leaves it. The result is a tree, so a
+;; freqt shows it live, keep! writes it with its recipe, and a score quantizes it.
+
+(def render-max 4096)
+
+(defn- spans-of
+  "The events of pattern p whose spans may meet [lo, hi]: [{:on :end :e :hz [..]} …] (rests left out)."
+  [p lo hi]
+  (loop [s (events p) on 0 acc [] n 0]
+    (let [e (first s)]
+      (if (or (nil? e) (> on (+ hi 1e-9)) (>= n 100000) (>= (count acc) render-max))
+        acc
+        (let [d (dur-of e) hz (hz e)
+              acc (if (or (rest? e) (empty? hz) (< (+ on (max 0 (sustain e))) (- lo 1e-9)))
+                    acc
+                    (conj acc {:on on :end (+ on (max 0 (sustain e))) :e e :hz hz}))]
+          (recur (rest s) (+ on d) acc (inc n)))))))
+
+(defn- map-notes
+  "The notes one time map makes: [[x0 x1 span back?] …] for the polyline pts ([[x y] …], in drawn order)."
+  [pts spans]
+  (let [eps 1e-9
+        inside? (fn [sp y] (and (<= (:on sp) (+ y eps)) (< y (- (:end sp) eps))))
+        instant? (fn [sp] (<= (- (:end sp) (:on sp)) eps))
+        idx (vec spans)
+        close (fn [[active out] i x] (if-let [[x0 back] (get active i)] [(dissoc active i) (conj out [x0 x (idx i) back])] [active out]))
+        [x0 y0] (first pts)
+        start [(into {} (for [i (range (count idx)) :when (inside? (idx i) y0)] [i [x0 false]])) []]]
+    (loop [st start [[xa ya] & more :as ps] pts]
+      (if (empty? more)
+        ;; the end of the map: what still sounds ends there
+        (let [[active out] st] (into out (for [[i [x0 back]] active] [x0 xa (idx i) back])))
+        (let [[xb yb] (first more)
+              st (cond
+                   ;; a vertical step (or one back in x): a cut, as a seek — what still contains yb goes on
+                   (<= xb (+ xa eps))
+                   (let [[active out] (reduce (fn [st i] (if (inside? (idx i) yb) st (close st i xa))) st (keys (first st)))]
+                     [(into active (for [i (range (count idx)) :when (and (inside? (idx i) yb) (not (contains? active i)))] [i [xb false]])) out])
+                   ;; flat: what sounds is held
+                   (< (js/Math.abs (- yb ya)) eps) st
+                   :else
+                   (let [up? (> yb ya)
+                         x-at (fn [y] (+ xa (* (- xb xa) (/ (- y ya) (- yb ya)))))
+                         lo (min ya yb) hi (max ya yb)]
+                     (reduce
+                      (fn [[active out :as st] i]
+                        (let [sp (idx i) a (:on sp) b (:end sp)]
+                          (cond
+                            (or (> a (+ hi eps)) (< b (- lo eps))) st
+                            ;; no length: it sounds where it is crossed, either way
+                            (instant? sp)
+                            (if (if up? (and (> a (+ ya eps)) (<= a (+ yb eps))) (and (< a (- ya eps)) (>= a (- yb eps))))
+                              [active (conj out [(x-at a) (x-at a) sp (not up?)])]
+                              st)
+                            :else
+                            (let [in0 (contains? active i) in1 (inside? sp yb)
+                                  [enter leave] (if up? [a b] [b a])]
+                              (cond
+                                (and in0 in1) st
+                                in0 (close st i (x-at leave))
+                                in1 [(assoc active i [(x-at enter) (not up?)]) out]
+                                ;; passed over entirely within the step
+                                (if up? (and (< ya (- a eps)) (>= yb (- b eps))) (and (>= ya (- b eps)) (< yb (+ a eps))))
+                                [active (conj out [(x-at enter) (x-at leave) sp (not up?)])]
+                                :else st)))))
+                      st (range (count idx)))))]
+          (recur st more))))))
+
+(def render-skip #{:degree :note :midinote :freq :dur :legato :sustain :octave :root :scale :transpose :type :amp :gain :pan})
+
+(defn- look-of
+  "How a note of event e is drawn: :amp as weight, :pan as a gradient, and the keys named in opts
+   (:tex k, :tone k) as a texture and a colour, one for each value met (in order)."
+  [e {:keys [tex tone]} seen]
+  (let [a (or (:amp e) (:gain e))
+        pick (fn [k choices] (when-let [v (and k (contains? e k) (get e k))]
+                               (let [vs (get @seen k [])
+                                     vs (if (some #{v} vs) vs (conj vs v))]
+                                 (swap! seen assoc k vs)
+                                 (nth choices (mod (first (keep-indexed (fn [i x] (when (= x v) i)) vs)) (count choices))))))]
+    (cv/sane-look (cond-> {}
+                    (number? a) (assoc :w (+ 0.4 (* 2.4 (max 0 (min 1 a)))))
+                    (number? (:pan e)) (assoc :pan (:pan e))
+                    tex (assoc :tex (pick tex [nil :dash :dot]))
+                    tone (assoc :tone (pick tone [nil :kairos :ink :soft]))))))
+
+(defn render-tree
+  "A stretch of pattern p as a musical tree [:par [:note {:at x :dur d :hz h} …]]. opts: :from :to (beats,
+   the identity map when there are no :maps), :maps (time maps: [[[x y] …] …]), :tex and :tone (the keys
+   drawn as texture and colour). Each note keeps the event's other keys under :ev, :back true when it was
+   entered from its end, and a :look for the freqt."
+  [p {:keys [from to maps] :as opts}]
+  (let [maps (if (seq maps) maps [[[(or from 0) (or from 0)] [(or to 16) (or to 16)]]])
+        ys (map second (apply concat maps))
+        spans (spans-of p (apply min ys) (apply max ys))
+        seen (atom {})
+        notes (for [[mi pts] (map-indexed vector maps)
+                    :when (>= (count pts) 2)
+                    [x0 x1 sp back] (map-notes pts spans)
+                    ;; a span entered and left at the same x (a cut right at its edge) is not a note
+                    :when (or (> (- x1 x0) 1e-6) (<= (- (:end sp) (:on sp)) 1e-9))
+                    hz (:hz sp)
+                    :let [e (:e sp) ev (apply dissoc e render-skip) look (look-of e opts seen)]]
+                [x0 [:note (cond-> {:at (cv/round-to x0 4) :dur (cv/round-to (max 0.02 (- x1 x0)) 4) :hz hz}
+                             back (assoc :back true)
+                             (> (count maps) 1) (assoc :layer (inc mi))
+                             look (assoc :look look)
+                             (seq ev) (assoc :ev ev))]])]
+    (into [:par {:render true}] (map second (sort-by first notes)))))
+
 ;; ───────── writing a pbind back as text ─────────
 
 (defn write

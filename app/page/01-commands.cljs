@@ -269,12 +269,16 @@
   id)
 
 (defn stroke
-  "Draws (or rewrites) a stroke: (stroke :b1 [[0 440] [1 440]]) or (stroke :b1 :t4 [[0 440] [2 660]])."
+  "Draws (or rewrites) a stroke: (stroke :b1 [[0 440] [1 440]]) or (stroke :b1 :t4 [[0 440] [2 660]]), and
+   with how it looks: (stroke :b1 :t4 [[0 440] [2 660]] {:w 2 :pan -0.5 :tex :dash :tone :kairos})."
   ([id pts] (stroke id (cv/next-id (box-data id)) pts))
-  ([id tid pts]
+  ([id tid pts] (stroke id tid pts nil))
+  ([id tid pts look]
    (need-canvas id)
    (when-not (keyword? tid) (fail "A stroke id is a keyword, e.g. :t3"))
-   (dispatch! [:in id [:stroke tid (need-pts (box-data id) pts)]])
+   (dispatch! [:in id (if (cv/sane-look look)
+                         [:stroke tid (need-pts (box-data id) pts) look]
+                         [:stroke tid (need-pts (box-data id) pts)])])
    tid))
 
 (defn note

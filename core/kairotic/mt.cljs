@@ -866,7 +866,8 @@
 ;; ───────── conversions: canvas, freqt, score ─────────
 
 (defn ->strokes
-  "A tree as freqt data: one stroke per note (Hz over beats), with its glissando."
+  "A tree as freqt data: one stroke per note (Hz over beats), with its glissando and its :look (weight,
+   gradient, texture, colour), if the note has one."
   [tree]
   (let [ns (notes tree)]
     {:strokes (into {}
@@ -875,7 +876,8 @@
                                 g (or (:gliss e) [[0 0] [1 0]])
                                 g (if (< (count g) 2) [[0 0] [1 0]] g)]]
                       [(keyword (str "t" (inc i)))
-                       {:pts (mapv (fn [[x c]] [(cv/round-to (+ t0 (* d x)) 4) (cv/round-to (cv/cents->hz c hz) 3)]) g)}]))
+                       (cv/with-look {:pts (mapv (fn [[x c]] [(cv/round-to (+ t0 (* d x)) 4) (cv/round-to (cv/cents->hz c hz) 3)]) g)}
+                                     (:look e))]))
      :gx nil :gy nil}))
 
 (defn ->canvas

@@ -1,7 +1,7 @@
 {
   "name": "@kairotic/patterns",
-  "version": "0.1.1",
-  "description": "Kairotic patterns after SuperCollider's (and Overtone's): pbind (a pattern as EDN data with #pat/ generators), pattern (a pattern as Clojure code with seeded randomness) and player (by its own clock, step by step, or at a position in beats)",
+  "version": "0.2.0",
+  "description": "Kairotic patterns after SuperCollider's (and Overtone's): pbind (a pattern as EDN data with #pat/ generators), pattern (a pattern as Clojure code with seeded randomness), player (by its own clock, step by step, or at a position in beats) and render (a stretch of a pattern drawn into a freqt, through time maps)",
   "author": "bonuoq",
   "license": "MPL-2.0",
   "repository": {
