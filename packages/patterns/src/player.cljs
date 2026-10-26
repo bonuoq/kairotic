@@ -16,17 +16,21 @@
                          (string? v) (keyword v)
                          (and (vector? v) (keyword? (first v)) (= 1 (count v))) (first v)
                          :else nil))
+      ;; the stream it plays: kept behind a function, so that printing its state (or the engine's) never
+      ;; walks an endless sequence
+      evs (fn [st] (when-let [f (:evs st)] (f)))
+      with-evs (fn [st s] (assoc st :evs (constantly s)))
       ;; a new stream of its pattern, from the beginning
-      fresh (fn [st] (if-let [p (:pattern st)] (assoc st :evs (api/pattern-events p) :beat 0) (dissoc st :evs)))
+      fresh (fn [st] (if-let [p (:pattern st)] (-> st (with-evs (api/pattern-events p)) (assoc :beat 0)) (dissoc st :evs)))
       ;; [event onset st-after] for the next event, or nil
-      take-next (fn [st] (when-let [e (first (:evs st))]
-                           [e (:beat st) (-> st (update :evs rest) (update :beat + (api/event-dur e)))]))
+      take-next (fn [st] (when-let [e (first (evs st))]
+                           [e (:beat st) (-> st (with-evs (rest (evs st))) (update :beat + (api/event-dur e)))]))
       ;; leaves out the events that start before beat b (a new pattern, a jump)
       skip-to (fn [st b]
                 (loop [st st i 0]
-                  (let [e (first (:evs st))]
+                  (let [e (first (evs st))]
                     (if (and e (< (:beat st) (- b eps)) (< i 100000))
-                      (recur (-> st (update :evs rest) (update :beat + (api/event-dur e))) (inc i))
+                      (recur (-> st (with-evs (rest (evs st))) (update :beat + (api/event-dur e))) (inc i))
                       st))))
       ;; what sounds: [[id hz until-beat] …] → ids (sent first) and Hz
       sound-outs (fn [st] [[1 (mapv first (:sounding st))] [0 (mapv second (:sounding st))]])
@@ -62,7 +66,7 @@
       ;; its own clock: the tick of the events that start on beat (:tick st)
       tick (fn [st at]
              (let [[st2 outs later] (play-until st (:tick st) at)
-                   more? (some? (first (:evs st2)))
+                   more? (some? (first (evs st2)))
                    nb (:beat st2)]
                (result st (if more? (assoc st2 :tick nb) (assoc st2 :mode nil :tick nil)) outs
                        (if more? (conj later [(+ (:t0 st2) (* nb (spb st2))) 0 [:tick (:gen st2)]]) later)
@@ -79,7 +83,7 @@
       ;; the events still to come, each with the beat it starts on (to count them, without playing them)
       ahead (fn [st]
               (letfn [(ah [evs b] (lazy-seq (when-let [e (first evs)] (cons [e b] (ah (rest evs) (+ b (api/event-dur e)))))))]
-                (ah (:evs st) (:beat st))))
+                (ah (evs st) (:beat st))))
       ;; a position in beats
       position (fn [st p at]
                  (let [st (if (= :clock (:mode st)) (update st :gen inc) st)
@@ -103,7 +107,7 @@
       ;; its steps or its clock were; at the end, again from the beginning
       step (fn [st at]
              (let [st (cond-> st (= :clock (:mode st)) (update :gen inc))
-                   st (if (and (:evs st) (#{:step :clock} (:mode st)) (first (:evs st))) st (fresh st))
+                   st (if (and (:evs st) (#{:step :clock} (:mode st)) (first (evs st))) st (fresh st))
                    st (assoc st :mode :step)]
                (if-let [[_ onset _] (take-next st)]
                  (let [[st2 outs later] (play-until st onset at)] (result st st2 outs later onset))
@@ -138,7 +142,7 @@
                                    (let [now-beat (/ (- at (:t0 st)) (spb st))
                                          st (-> st fresh (skip-to now-beat) (update :gen inc))
                                          nb (:beat st)]
-                                     (if (first (:evs st))
+                                     (if (first (evs st))
                                        {:state (assoc st :tick nb) :later [[(+ (:t0 st) (* nb (spb st))) 0 [:tick (:gen st)]]]}
                                        {:state (assoc st :mode nil)})))
                           ;; a position: the new events after it

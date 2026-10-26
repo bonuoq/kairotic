@@ -36,7 +36,7 @@ export async function patterns(page, check) {
 
   const sink = `(get-in @eng/rt [:states ${sk}])`;
   const events = `(mapv (fn [[_ e]] [(:degree e) (:beat e)]) (filter (fn [[o]] (= o 2)) (get-in @eng/rt [:states ${sk}])))`;
-  const clear = () => cljs(page, `(swap! eng/rt assoc-in [:states ${sk}] [])`);
+  const clear = () => cljs(page, `(do (swap! eng/rt assoc-in [:states ${sk}] []) nil)`);
 
   // steps: a bang plays the next event now (messages travel without ▶)
   await clear();
@@ -84,7 +84,8 @@ export async function patterns(page, check) {
   // a pattern from code
   const pc = (await cljs(page, '(box "pattern 3" 5500 100)')).trim();
   await cljs(page, `(code ${pc} "(for [d (range 4)] {:note (+ 60 d) :dur 0.25})")`);
-  await cljs(page, `(connect ${pc} 0 ${pl} 1)`);
+  // one source per inlet: the pbind would be sent again toward a new line into the player
+  await cljs(page, `(disconnect ${pb} 0 ${pl} 1) (connect ${pc} 0 ${pl} 1)`);
   await until(page, pkey, (x) => x.includes(":code"));
   await clear();
   await cljs(page, `(send! ${pl} :reset) (send! ${pl} :bang) (send! ${pl} :bang)`);
@@ -98,7 +99,7 @@ export async function patterns(page, check) {
     (await (async () => { await cljs(page, `(code ${pc} "(map inc")`); return until(page, `(:status (compilation ${pc}))`, (x) => x === ":error"); })()) === ":error");
 
   // its own clock, with ▶
-  await cljs(page, `(delete ${pc})`);
+  await cljs(page, `(delete ${pc}) (connect ${pb} 0 ${pl} 1)`);
   await cljs(page, `(code ${pb} "{:degree [0 2 4 5] :dur 0.25}") (text! ${pb} "pbind 7 loop")`);
   await until(page, pkey, (x) => x.includes(":inf"));
   await cljs(page, "(play)");
@@ -110,6 +111,8 @@ export async function patterns(page, check) {
   check("start: its own clock, every event after its :dur (0.25 beats at 120 bpm: about 8 a second)",
     beats.length >= 6 && beats.length <= 14 && beats.every((b, i) => i === 0 || Math.abs(b - beats[i - 1] - 0.25) < 1e-6), clocked);
   check("... and the notes it plays end (sustain)", (await cljs(page, sink)).includes("[1 []]") || (await cljs(page, sink)).match(/\[1 \[:p\d+\]\]/) !== null);
+  check("the state of a player prints, even playing an endless pattern (its stream is behind a function)",
+    Number(await cljs(page, `(count (pr-str (get-in @eng/rt [:states ${pl}])))`)) < 20000);
   await cljs(page, `(send! ${pl} :stop)`);
   await page.waitForTimeout(300);
   const after = await cljs(page, events);
