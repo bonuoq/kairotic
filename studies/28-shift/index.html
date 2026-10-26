@@ -1,0 +1,943 @@
+<meta charset="utf-8">
+<title>Kairotic Study 28 · Shift</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; then the path of a sound, top to bottom: the source, the shift (its recipe), the
+   result, and what the history of a work keeps of both. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f;
+  /* the spectrogram ramp: background → low → mid → high energy (as in Study 24) */
+  --spec-bg: #f8f9fb; --spec-1: #c7d2f4; --spec-2: #2f55d4; --spec-3: #b4472e;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0;
+    --spec-bg: #10141a; --spec-1: #24408f; --spec-2: #7d9bff; --spec-3: #f3c2ae; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0;
+  --spec-bg: #10141a; --spec-1: #24408f; --spec-2: #7d9bff; --spec-3: #f3c2ae; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="text"], input[type="number"], textarea { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="text"], textarea { font-family: var(--f-code); min-width: 0; }
+input[type="number"] { width: 5.5em; font-family: var(--f-code); }
+input[type="range"] { accent-color: var(--accent); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+
+/* the three stages: source and result side by side, the shift between them */
+.stages { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 1040px) { .stages { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .stages .shift { grid-column: 1 / -1; order: 3; } }
+@media (max-width: 660px) { .stages { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.row > input[type="text"] { flex: 1 1 160px; }
+
+.spec { position: relative; width: 100%; aspect-ratio: 16 / 10; max-width: 100%; background: var(--spec-bg); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.spec canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.spec .empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; color: var(--ink-soft); font-size: 12px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.facts .ok { color: var(--ok); } .facts .bad { color: var(--error); } .facts .kairos { color: var(--kairos); }
+
+/* the shift: a segmented choice, the text of the steps, and what they mean as intervals */
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: var(--box); color: var(--ink-soft); font: 500 12px var(--f-ui); padding: 5px 10px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); }
+textarea { width: 100%; resize: vertical; min-height: 4.6em; line-height: 1.5; }
+.steps { display: grid; gap: 4px; }
+.step { display: grid; grid-template-columns: 4.2em minmax(0, 1fr); gap: 8px; align-items: baseline; font: 12px var(--f-code); font-variant-numeric: tabular-nums; }
+.step .t { color: var(--ink-soft); text-align: right; }
+.step .ivs { display: flex; flex-wrap: wrap; gap: 4px; }
+.iv { border: 1px solid var(--grid); border-radius: 3px; padding: 1px 5px; background: var(--sheet); }
+.iv i { font-style: normal; color: var(--ink-soft); }
+.iv .off { color: var(--kairos); }
+.err { color: var(--error); font-size: 12px; }
+fieldset { border: 1px solid var(--grid); border-radius: 6px; margin: 0; padding: 6px 10px 8px; display: grid; gap: 6px; min-width: 0; }
+legend { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); padding: 0 4px; }
+.range { display: grid; grid-template-columns: 6.5em minmax(0, 1fr) 4.2em; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+.range output { font: 12px var(--f-code); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* what the history keeps */
+.history { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.history h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; }
+.code { margin: 0; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; font: 12px/1.6 var(--f-code); color: var(--ink); overflow-x: auto; white-space: pre; }
+.code .c { color: var(--ink-soft); }
+.sizes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.size { border: 1px solid var(--grid); border-radius: 4px; padding: 6px 9px; display: grid; gap: 2px; }
+.size small { color: var(--ink-soft); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.size b { font: 500 15px var(--f-code); font-variant-numeric: tabular-nums; }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.note a { color: var(--accent); }
+</style>
+
+<main>
+<header>
+  <h1>Study 28 · shift</h1>
+  <span class="sub">A sound shifted offline into a new buffer, which keeps the recipe that made it (stftPitchShift in WebAssembly)</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="stages">
+  <section class="panel" aria-labelledby="h-source">
+    <h2 id="h-source">Source <span id="source-kind">synthetic voice</span></h2>
+    <div class="row">
+      <select id="source-pick" aria-label="Where the source comes from">
+        <option value="voice" selected>Synthetic voice (made here)</option>
+        <option value="file">A sound file…</option>
+        <option value="url">A URL (https:, github:)</option>
+      </select>
+      <input type="file" id="source-file" accept="audio/*" hidden>
+      <button class="act" id="source-play">Play</button>
+    </div>
+    <div class="row" id="url-row" hidden>
+      <input type="text" id="source-url" spellcheck="false" value="github:jurihock/stftPitchShiftDemo@db1afba/voice.wav" aria-label="URL of a sound">
+      <button class="act" id="source-load">Load</button>
+    </div>
+    <div class="spec"><canvas id="spec-source" aria-label="Spectrogram of the source"></canvas><div class="empty" id="empty-source">Making the voice…</div></div>
+    <div class="facts" id="facts-source"></div>
+  </section>
+
+  <section class="panel shift" aria-labelledby="h-shift">
+    <h2 id="h-shift">Shift <span>the recipe</span></h2>
+    <div class="row">
+      <div class="seg" role="group" aria-label="What the factors are">
+        <button id="mode-chord" aria-pressed="true">Interval or chord</button>
+        <button id="mode-prog" aria-pressed="false">Progression</button>
+      </div>
+      <select id="preset" aria-label="Examples"></select>
+    </div>
+    <textarea id="steps-text" spellcheck="false" rows="3" aria-label="Factors"></textarea>
+    <div class="steps" id="steps-view"></div>
+    <fieldset>
+      <legend>Formants</legend>
+      <div class="range"><label for="quef">Quefrency</label><input type="range" id="quef" min="0" max="4" step="0.25" value="1"><output id="quef-out">1 ms</output></div>
+      <div class="range"><label for="timbre">Timbre</label><input type="range" id="timbre" min="0.6" max="1.6" step="0.02" value="1"><output id="timbre-out">×1.00</output></div>
+      <label class="inline" for="rms"><input type="checkbox" id="rms"> Keep the loudness (RMS)</label>
+    </fieldset>
+    <fieldset>
+      <legend>Analysis</legend>
+      <div class="row">
+        <label class="inline" for="frame">Frame <select id="frame"><option>512</option><option selected>1024</option><option>2048</option><option>4096</option></select></label>
+        <label class="inline" for="overlap">Overlap <select id="overlap"><option value="8">8 · draft</option><option value="16" selected>16</option><option value="32">32 · fine</option></select></label>
+      </div>
+    </fieldset>
+    <div class="row"><button class="act primary" id="go">Shift into a new buffer</button></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-result">
+    <h2 id="h-result">Result <span id="result-kind">a buffer with a recipe</span></h2>
+    <div class="row">
+      <button class="act" id="result-play" disabled>Play</button>
+      <button class="act" id="ab" disabled>A/B</button>
+      <button class="act" id="forget" disabled>Forget its sound here</button>
+      <button class="act" id="remake" disabled>Remake from the recipe</button>
+    </div>
+    <div class="spec"><canvas id="spec-result" aria-label="Spectrogram of the result"></canvas><div class="empty" id="empty-result">The result appears here.</div></div>
+    <div class="facts" id="facts-result"></div>
+  </section>
+</div>
+
+<section class="history" aria-labelledby="h-history">
+  <h2 id="h-history">What the history of the work keeps</h2>
+  <pre class="code" id="history"></pre>
+  <div class="sizes">
+    <div class="size"><small>History (these lines)</small><b id="size-history">–</b></div>
+    <div class="size"><small>Sound kept in this browser</small><b id="size-sound">–</b></div>
+    <div class="size"><small>Remaking it</small><b id="size-remake">–</b></div>
+  </div>
+  <p class="note">The samples of a buffer are too big for the history: they stay in this browser (IndexedDB) under the hash of the samples, and the work keeps only their description. A buffer made by <code>shift</code> also keeps its <b>recipe</b>: the source it came from (by hash) and the factors, formants and analysis that made it. Forget its sound and remake it: the same recipe gives the same samples, so the hash comes back. Factors are written as ratios (<code>3/2</code>, <code>1.25</code>), as semitones with a sign (<code>+7</code>, <code>-12</code>, <code>+3.86</code>, and <code>0</code> for the unison) or in cents (<code>386c</code>). Several factors make a chord; a progression changes them over time, one line per step, <code>seconds: factors</code>. Pitch shifting by <a href="https://github.com/jurihock/stftPitchShift" target="_blank" rel="noopener">stftPitchShift</a> 2.0 by Jürgen Hock (MIT), built for the web with wasi-sdk. The library warns that formant preservation is weaker with several factors and small ones.</p>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// ───────── the plumbing: sounds, the shift (in a worker), spectrograms and playback, in plain JS ─────────
+window.KShift = (function () {
+  var ctx = null, L = null, S = null, worker = null, jobs = {}, nextJob = 1;
+  var mem = new Map();          // hash → {sr, chans}
+  var playing = null;           // {src, which, t0, dur}
+
+  function audio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) throw new Error("this browser has no Web Audio");
+    if (!ctx) ctx = new AC();
+    return ctx;
+  }
+
+  var libs = Promise.all([import("./kairotic/sounds.mjs"), import("./kairotic/shift.mjs")]).then(function (m) {
+    L = m[0].default; S = m[1].default;
+    return S.ready().then(function () { return S.version(); });
+  });
+
+  // ── a synthetic voice: additive, with vowel formants, legato, vibrato (made the same way every time) ──
+  var VOWELS = {
+    a: [[730, 90, 1], [1090, 110, 0.5], [2440, 170, 0.28]],
+    o: [[570, 80, 1], [840, 100, 0.45], [2410, 170, 0.18]],
+    e: [[530, 80, 1], [1840, 120, 0.42], [2480, 170, 0.3]],
+    i: [[300, 60, 1], [2250, 140, 0.32], [3010, 200, 0.3]]
+  };
+  // [midi, start (s), length (s), vowel]
+  var MELODY = [[57, 0, 0.9, "a"], [60, 0.9, 0.9, "o"], [64, 1.8, 1.2, "a"], [62, 3.0, 0.7, "e"],
+                [60, 3.7, 0.7, "o"], [59, 4.4, 0.6, "i"], [57, 5.0, 1.4, "a"]];
+  function voice(sr) {
+    var T = 6.6, n = Math.round(T * sr), y = new Float32Array(n), B = 64;
+    var H = 64, ph = new Float64Array(H + 1), amp = new Float64Array(H + 1);
+    var mtof = function (m) { return 440 * Math.pow(2, (m - 69) / 12); };
+    for (var s0 = 0; s0 < n; s0 += B) {
+      var t = s0 / sr, k = 0;
+      while (k + 1 < MELODY.length && MELODY[k + 1][1] <= t) k++;
+      var note = MELODY[k], prev = MELODY[Math.max(0, k - 1)], into = t - note[1];
+      // portamento from the note before, then vibrato that grows in
+      var m = into < 0.07 && k > 0 ? prev[0] + (note[0] - prev[0]) * (into / 0.07) : note[0];
+      var vib = Math.min(1, Math.max(0, (into - 0.2) / 0.3)) * 0.28 * Math.sin(2 * Math.PI * 5.4 * t);
+      var f0 = mtof(m + vib);
+      // the vowel turns into the next one at the end of the note
+      var next = MELODY[Math.min(MELODY.length - 1, k + 1)], mix = Math.min(1, Math.max(0, (into - note[2] * 0.7) / (note[2] * 0.3)));
+      var A = VOWELS[note[3]], Bv = VOWELS[next[3]];
+      // a small dip between notes, and the phrase faded in and out
+      var g = Math.min(1, t / 0.08) * Math.min(1, (T - t) / 0.35) * (1 - 0.35 * Math.exp(-Math.pow(into / 0.04, 2)) * (k > 0 ? 1 : 0));
+      for (var h = 1; h <= H; h++) {
+        var f = h * f0;
+        if (f > 5200) { amp[h] = 0; continue; }
+        var a = 0.015;
+        for (var j = 0; j < 3; j++) {
+          var F = A[j][0] + (Bv[j][0] - A[j][0]) * mix, W = A[j][1] + (Bv[j][1] - A[j][1]) * mix, G = A[j][2] + (Bv[j][2] - A[j][2]) * mix;
+          var d = (f - F) / W; a += G / (1 + d * d);
+        }
+        amp[h] = g * a / Math.pow(h, 0.7);
+      }
+      var end = Math.min(n, s0 + B);
+      for (var i = s0; i < end; i++) {
+        var v = 0;
+        for (var h2 = 1; h2 <= H; h2++) {
+          if (!amp[h2]) continue;
+          ph[h2] += 2 * Math.PI * h2 * f0 / sr;
+          if (ph[h2] > 2 * Math.PI) ph[h2] -= 2 * Math.PI;
+          v += amp[h2] * Math.sin(ph[h2]);
+        }
+        y[i] = v;
+      }
+    }
+    var p = 0;
+    for (var q = 0; q < n; q++) { var x = Math.abs(y[q]); if (x > p) p = x; }
+    for (var r = 0; r < n; r++) y[r] *= 0.7 / (p || 1);
+    return y;
+  }
+
+  // ── the store: the same IndexedDB and hashes as kairotic/sounds (a description is what the history keeps) ──
+  function keep(sr, chans) {
+    return L.hash(chans, sr).then(function (h) {
+      mem.set(h, { sr: sr, chans: chans });
+      return L.put(h, sr, chans).catch(function () { return false; }).then(function (stored) {
+        return { audio: h, sr: sr, frames: chans[0].length, channels: chans.length, peaks: L.peaks(chans, 120), stored: stored === true };
+      });
+    });
+  }
+  function get(h) {
+    if (mem.has(h)) return Promise.resolve(mem.get(h));
+    return L.get(h).catch(function () { return null; }).then(function (r) {
+      if (r) mem.set(h, { sr: r.sr, chans: r.chans });
+      return r ? { sr: r.sr, chans: r.chans } : null;
+    });
+  }
+  function forget(h) {
+    mem.delete(h);
+    return new Promise(function (res) {
+      try {
+        var r = indexedDB.open("kairotic-sounds", 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore("sounds"); };
+        r.onsuccess = function () {
+          var t = r.result.transaction("sounds", "readwrite");
+          t.objectStore("sounds").delete(h);
+          t.oncomplete = function () { res(true); }; t.onerror = function () { res(false); };
+        };
+        r.onerror = function () { res(false); };
+      } catch (e) { res(false); }
+    });
+  }
+  function have(h) { return get(h).then(function (s) { return !!s; }); }
+
+  // ── sources ──
+  function decode(buf) {
+    return audio().decodeAudioData(buf).then(function (ab) {
+      var chans = [];
+      for (var c = 0; c < Math.min(2, ab.numberOfChannels); c++) chans.push(new Float32Array(ab.getChannelData(c)));
+      return { sr: ab.sampleRate, chans: chans };
+    });
+  }
+  function hrefOf(u) {
+    var m = /^github:([\w.-]+)\/([\w.-]+)(?:@([\w.-]+))?\/(.+)$/.exec(u);
+    return m ? "https://cdn.jsdelivr.net/gh/" + m[1] + "/" + m[2] + (m[3] ? "@" + m[3] : "") + "/" + m[4] : u;
+  }
+  function fromURL(u) {
+    return fetch(hrefOf(u)).then(function (r) {
+      if (!r.ok) throw new Error("the site answered " + r.status);
+      return r.arrayBuffer();
+    }, function () { throw new Error("this page may not load it (the site refuses it, or a page published on claude.ai may only load its own files)"); })
+      .then(decode);
+  }
+
+  // ── the shift: in a worker when the page may start one, here otherwise ──
+  function startWorker() {
+    if (worker !== null) return worker;
+    try {
+      worker = new Worker("kairotic/shift-worker.mjs", { type: "module" });
+      worker.onmessage = function (e) { var j = jobs[e.data.id]; delete jobs[e.data.id]; if (j) (e.data.error ? j.no(new Error(e.data.error)) : j.yes(e.data)); };
+      worker.onerror = function (e) {
+        // a module worker that cannot start: every job goes back to the page
+        e.preventDefault(); worker.terminate(); worker = false;
+        Object.keys(jobs).forEach(function (id) { var j = jobs[id]; delete jobs[id]; j.retry(); });
+      };
+    } catch (e) { worker = false; }
+    return worker;
+  }
+  function here(sr, chans, opts) {
+    return new Promise(function (res, rej) {
+      // after a frame, so the page can say it is working first
+      setTimeout(function () { try { var r = S.shift(chans, sr, opts); r.where = "page"; res(r); } catch (e) { rej(e); } }, 30);
+    });
+  }
+  function shift(sr, chans, opts) {
+    var w = startWorker();
+    if (!w) return here(sr, chans, opts);
+    return new Promise(function (res, rej) {
+      var id = nextJob++;
+      jobs[id] = { yes: function (d) { res({ chans: d.chans, ms: d.ms, where: "worker" }); }, no: rej,
+                   retry: function () { here(sr, chans, opts).then(res, rej); } };
+      // copies, so the source stays whole on this side
+      w.postMessage({ id: id, sr: sr, chans: chans.map(function (c) { return c.slice(); }), opts: opts });
+    });
+  }
+
+  // ── spectrogram: log frequency, 55 Hz to 5 kHz, with the C of every octave; the waveform below ──
+  var FLO = 55, FHI = 5000;
+  function fft(re, im) {
+    var n = re.length;
+    for (var i = 1, j = 0; i < n; i++) {
+      var bit = n >> 1;
+      for (; j & bit; bit >>= 1) j ^= bit;
+      j ^= bit;
+      if (i < j) { var t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+    }
+    for (var len = 2; len <= n; len <<= 1) {
+      var a = -2 * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a);
+      for (var s = 0; s < n; s += len) {
+        var cr = 1, ci = 0;
+        for (var k = 0; k < len / 2; k++) {
+          var ur = re[s + k], ui = im[s + k], vr = re[s + k + len / 2] * cr - im[s + k + len / 2] * ci, vi = re[s + k + len / 2] * ci + im[s + k + len / 2] * cr;
+          re[s + k] = ur + vr; im[s + k] = ui + vi; re[s + k + len / 2] = ur - vr; im[s + k + len / 2] = ui - vi;
+          var nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr;
+        }
+      }
+    }
+  }
+  function hex(s) {
+    s = (s || "").trim().replace("#", "");
+    if (s.length === 3) s = s.split("").map(function (c) { return c + c; }).join("");
+    var n = parseInt(s || "000000", 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function tokens() {
+    var cs = getComputedStyle(document.documentElement), v = function (k) { return cs.getPropertyValue(k).trim(); };
+    return { bg: hex(v("--spec-bg")), c1: hex(v("--spec-1")), c2: hex(v("--spec-2")), c3: hex(v("--spec-3")),
+             ink: v("--ink-soft"), grid: v("--grid"), wave: v("--accent"), head: v("--kairos"), font: v("--f-code") };
+  }
+  function ramp(T, a) {
+    var lerp = function (p, q, x) { return [p[0] + (q[0] - p[0]) * x, p[1] + (q[1] - p[1]) * x, p[2] + (q[2] - p[2]) * x]; };
+    if (a < 0.33) return lerp(T.bg, T.c1, a / 0.33);
+    if (a < 0.7) return lerp(T.c1, T.c2, (a - 0.33) / 0.37);
+    return lerp(T.c2, T.c3, Math.min(1, (a - 0.7) / 0.3));
+  }
+  var drawn = {};   // canvas id → {key, image, sound}
+  function draw(id, s, key) {
+    var cv = document.getElementById(id);
+    if (!cv) return;
+    var r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    var W = Math.max(60, Math.round(r.width * dpr)), Hh = Math.max(40, Math.round(r.height * dpr));
+    cv.width = W; cv.height = Hh;
+    var g = cv.getContext("2d"), T = tokens();
+    if (!s) { g.clearRect(0, 0, W, Hh); drawn[id] = null; return; }
+    var waveH = Math.round(Hh * 0.16), specH = Hh - waveH;
+    var x = s.chans[0], n = x.length, N = 2048, cols = Math.min(W, 900);
+    var img = g.createImageData(cols, specH), re = new Float64Array(N), im = new Float64Array(N), win = new Float64Array(N);
+    for (var i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+    var mags = [], peak = 1e-9;
+    for (var c = 0; c < cols; c++) {
+      var start = Math.round((c / cols) * Math.max(0, n - N));
+      for (var k = 0; k < N; k++) { re[k] = (x[start + k] || 0) * win[k]; im[k] = 0; }
+      fft(re, im);
+      var col = new Float32Array(N / 2);
+      for (var b = 0; b < N / 2; b++) { var m = re[b] * re[b] + im[b] * im[b]; col[b] = m; if (m > peak) peak = m; }
+      mags.push(col);
+    }
+    var lo = Math.log(FLO), hi = Math.log(FHI);
+    for (var yy = 0; yy < specH; yy++) {
+      var f = Math.exp(hi - (yy / (specH - 1)) * (hi - lo)), bin = f * N / s.sr, b0 = Math.floor(bin), fr = bin - b0;
+      for (var cc = 0; cc < cols; cc++) {
+        var col2 = mags[cc], mm = (col2[b0] || 0) * (1 - fr) + (col2[b0 + 1] || 0) * fr;
+        var db = 10 * Math.log10(mm / peak + 1e-12), a = Math.max(0, Math.min(1, (db + 70) / 70));
+        var rgb = ramp(T, a), o = (yy * cols + cc) * 4;
+        img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 255;
+      }
+    }
+    var off = document.createElement("canvas"); off.width = cols; off.height = specH;
+    off.getContext("2d").putImageData(img, 0, 0);
+    drawn[id] = { key: key, off: off, sound: s, W: W, H: Hh, specH: specH, waveH: waveH, T: T, dpr: dpr };
+    paint(id, -1);
+  }
+  function paint(id, at) {
+    var d = drawn[id], cv = document.getElementById(id);
+    if (!d || !cv) return;
+    var g = cv.getContext("2d"), W = d.W, T = d.T, dpr = d.dpr;
+    g.imageSmoothingEnabled = true;
+    g.drawImage(d.off, 0, 0, W, d.specH);
+    // the C of every octave, as a staff would place them
+    g.font = Math.round(10 * dpr) + "px " + T.font; g.textBaseline = "middle";
+    var lo = Math.log(FLO), hi = Math.log(FHI);
+    for (var oct = 2; oct <= 8; oct++) {
+      var f = 16.3516 * Math.pow(2, oct);
+      if (f < FLO || f > FHI) continue;
+      var y = Math.round((hi - Math.log(f)) / (hi - lo) * (d.specH - 1)) + 0.5;
+      g.strokeStyle = T.grid; g.globalAlpha = 0.55; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(26 * dpr, y); g.lineTo(W, y); g.stroke(); g.globalAlpha = 1;
+      g.fillStyle = T.ink; g.fillText("C" + oct, 4 * dpr, y);
+    }
+    // the waveform, from its peaks
+    var x = d.sound.chans[0], n = x.length, top = d.specH, mid = top + d.waveH / 2;
+    g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--sheet");
+    g.fillRect(0, top, W, d.waveH);
+    g.strokeStyle = T.wave; g.lineWidth = 1; g.beginPath();
+    for (var px = 0; px < W; px++) {
+      var a = Math.floor(px * n / W), b = Math.max(a + 1, Math.floor((px + 1) * n / W)), mn = 0, mx = 0;
+      for (var i = a; i < b; i += 4) { var v = x[i]; if (v < mn) mn = v; if (v > mx) mx = v; }
+      g.moveTo(px + 0.5, mid - mx * d.waveH * 0.45); g.lineTo(px + 0.5, mid - mn * d.waveH * 0.45);
+    }
+    g.stroke();
+    if (at >= 0) { g.strokeStyle = T.head; g.lineWidth = 2 * dpr; g.beginPath(); g.moveTo(at * W, 0); g.lineTo(at * W, d.H); g.stroke(); }
+  }
+
+  // ── playback: one sound at a time, with its playhead ──
+  function stop() {
+    if (playing) { try { playing.src.stop(); } catch (e) {} paint(playing.id, -1); playing = null; }
+  }
+  function play(id, s, from, onEnd) {
+    var ac = audio(); ac.resume(); stop();
+    var ab = ac.createBuffer(s.chans.length, s.chans[0].length, s.sr);
+    s.chans.forEach(function (c, i) { ab.copyToChannel(c, i); });
+    var src = ac.createBufferSource(); src.buffer = ab; src.connect(ac.destination);
+    var dur = ab.duration, off = Math.max(0, Math.min(dur - 0.01, (from || 0) * dur));
+    src.start(ac.currentTime + 0.03, off);
+    var me = { src: src, id: id, t0: ac.currentTime + 0.03 - off, dur: dur };
+    playing = me;
+    src.onended = function () { if (playing === me) { paint(id, -1); playing = null; if (onEnd) onEnd(); } };
+    (function tick() {
+      if (playing !== me) return;
+      paint(id, Math.max(0, Math.min(1, (ac.currentTime - me.t0) / dur)));
+      requestAnimationFrame(tick);
+    })();
+  }
+  function position() { return playing ? Math.max(0, Math.min(1, (audio().currentTime - playing.t0) / playing.dur)) : 0; }
+  function isPlaying(id) { return !!(playing && (!id || playing.id === id)); }
+
+  window.addEventListener("resize", function () {
+    clearTimeout(window.__kshiftResize);
+    window.__kshiftResize = setTimeout(function () { Object.keys(drawn).forEach(function (id) { var d = drawn[id]; if (d) draw(id, d.sound, d.key); }); }, 150);
+  });
+
+  return { libs: libs, audio: audio, voice: voice, keep: keep, get: get, forget: forget, have: have, decode: decode,
+           fromURL: fromURL, shift: shift, draw: draw, play: play, stop: stop, position: position, isPlaying: isPlaying,
+           stepsOf: function (o) { return S ? S.stepsOf(o) : null; } };
+})();
+
+window.addEventListener("DOMContentLoaded", function () {
+  var st = document.getElementById("status");
+  function show(e) { st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  window.addEventListener("error", function (e) { if (/ResizeObserver loop/.test(String(e.message))) return; show(e.error || e.message); });
+  window.addEventListener("unhandledrejection", function (e) { show(e.reason); });
+  try { scittle.core.eval_string(document.getElementById("main-cljs").textContent); } catch (e) { show(e); }
+});
+</script>
+
+<script type="application/x-kairotic" id="main-cljs">
+;; SPDX-License-Identifier: MPL-2.0
+;; Kairotic · Study 28 · shift
+;; A sound shifted offline into a new buffer. The buffer is described as kairotic/sounds describes any
+;; (its hash, rate, length, peaks) and keeps beside it the recipe that made it, as a buffer kept from a tree
+;; does (discussion #17): the source, by hash, and the shift as data. The factors are read as music: ratios,
+;; semitones or cents; several make a chord; steps over time make a progression.
+
+(ns study.shift
+  (:require [clojure.string :as str]))
+
+(def K js/window.KShift)
+(defn $ [id] (js/document.getElementById id))
+(defn on [id ev f] (.addEventListener ($ id) ev f))
+(defn r4 [x] (/ (js/Math.round (* x 10000)) 10000))
+
+;; ───────── reading factors as music ─────────
+
+(defn token->factor
+  "A ratio (3/2, 1.25), semitones with a sign (+7, -12, +3.86; 0 is the unison) or cents (386c, -50c)
+   → {:f factor :src token}, or {:error …}."
+  [t]
+  (let [num (fn [s] (js/parseFloat s))]
+    (cond
+      (re-matches #"[+-]?\d+(\.\d+)?c" t) {:f (js/Math.pow 2 (/ (num t) 1200)) :src t}
+      (re-matches #"[+-]\d+(\.\d+)?|0" t) {:f (js/Math.pow 2 (/ (num t) 12)) :src t}
+      (re-matches #"\d+/\d+" t) (let [[a b] (map num (str/split t #"/"))]
+                                  (if (pos? b) {:f (/ a b) :src t} {:error (str t ": a ratio cannot divide by 0")}))
+      (re-matches #"\d*\.?\d+" t) {:f (num t) :src t}
+      :else {:error (str "“" t "” is not a ratio (3/2), semitones (+7) or cents (386c)")})))
+
+(defn chord-of [s]
+  (let [ts (remove str/blank? (str/split (str/trim s) #"[\s,]+"))
+        fs (map token->factor ts)]
+    (cond
+      (empty? ts) {:error "write at least one factor"}
+      (some :error fs) {:error (:error (first (filter :error fs)))}
+      (some #(not (pos? (:f %))) fs) {:error "a factor must be more than 0"}
+      (> (count fs) 16) {:error "at most 16 factors at once"}
+      (some #(> (:f %) 8) fs) {:error "factors above 8 (three octaves) leave almost nothing below the Nyquist frequency"}
+      :else {:chord (vec fs)})))
+
+(defn parse-steps
+  "The text of the steps → {:steps [[t [{:f :src} …]] …]} or {:error …}. In :chord mode the whole text is one
+   chord from 0; in :prog mode each line is `seconds: factors`."
+  [mode text]
+  (if (= mode :chord)
+    (let [{:keys [chord error]} (chord-of (str/replace text #"\n" " "))]
+      (if error {:error error} {:steps [[0 chord]]}))
+    (let [lines (remove str/blank? (str/split-lines text))
+          parsed (for [l lines]
+                   (if-let [[_ t rest] (re-matches #"\s*(\d+(?:\.\d+)?)\s*:\s*(.*)" l)]
+                     (let [{:keys [chord error]} (chord-of rest)]
+                       (if error {:error (str "at " t " s: " error)} [(js/parseFloat t) chord]))
+                     {:error (str "“" (str/trim l) "” should be seconds: factors, such as 1.5: 1 5/4 3/2")}))]
+      (cond
+        (empty? lines) {:error "write one step per line, seconds: factors"}
+        (some map? parsed) (first (filter map? parsed))
+        (not (apply <= (map first parsed))) {:error "the steps must go forward in time"}
+        :else {:steps (vec (if (pos? (ffirst parsed)) (cons [0 [{:f 1 :src "1"}]] parsed) parsed))}))))
+
+(def names ["P1" "m2" "M2" "m3" "M3" "P4" "TT" "P5" "m6" "M6" "m7" "M7"])
+
+(defn interval-name
+  "A factor as an interval: its cents, the nearest interval of 12-TET (with octaves) and how far from it."
+  [f]
+  (let [c (* 1200 (/ (js/Math.log f) (js/Math.log 2)))
+        semis (js/Math.round (/ c 100))
+        off (js/Math.round (- c (* 100 semis)))
+        oct (js/Math.floor (/ semis 12))
+        nm (nth names (mod semis 12))]
+    {:cents (js/Math.round c)
+     :name (str (when (neg? semis) "−") (if (neg? semis)
+                                         (let [s (- semis) o (js/Math.floor (/ s 12))]
+                                           (str (nth names (mod s 12)) (when (pos? o) (str "+" o "oct"))))
+                                         (str nm (when (pos? oct) (str "+" oct "oct")))))
+     :off off}))
+
+;; ───────── state ─────────
+
+(def presets
+  {:chord [["A fifth up" "+7"]
+           ["An octave down" "-12"]
+           ["Just major triad" "1 5/4 3/2"]
+           ["Septimal minor triad" "1 7/6 3/2"]
+           ["Harmonic series 4 : 5 : 6 : 7" "1 5/4 3/2 7/4"]
+           ["Equal-tempered major triad" "0 +4 +7"]
+           ["A quarter tone up" "50c"]
+           ["Octaves around" "0.5 1 2"]]
+   :prog [["Triads that change quality"
+           "0: 1 5/4 3/2\n1.8: 1 6/5 3/2\n3.0: 1 7/6 3/2\n4.4: 1 5/4 3/2 7/4"]
+          ["Canon a fifth and an octave below"
+           "0: 1\n0.9: 1 2/3\n1.8: 1 2/3 1/2"]
+          ["Rising in thirds of a tone"
+           "0: 1\n1: 67c\n2: 133c\n3: 200c\n4: 267c\n5: 333c"]
+          ["Clusters closing to the unison"
+           "0: 1 33/32 17/16 9/8\n2: 1 65/64 33/32\n4: 1 129/128\n5.2: 1"]]})
+
+(defonce state
+  (atom {:mode :chord
+         :text {:chord "1 5/4 3/2" :prog (second (first (:prog presets)))}
+         :source nil       ; the description of the source (with its own :recipe)
+         :result nil       ; the description of the result, with its :recipe
+         :here {}          ; hash → true / false: whether this browser has its sound
+         :busy nil
+         :check nil}))     ; what the last remake found
+
+(defn status! [s & [kind]]
+  (let [el ($ "status")]
+    (set! (.-textContent el) s)
+    (set! (.. el -style -color) (case kind :error "var(--error)" :ok "var(--ok)" ""))))
+
+(defn short-hash [h] (when h (str (subs h 0 8) "…")))
+(defn fmt-s [x] (str (.toFixed x 2) " s"))
+(defn kb [b] (if (> b 1048576) (str (.toFixed (/ b 1048576) 1) " MB") (str (js/Math.max 1 (js/Math.round (/ b 1024))) " kB")))
+
+;; ───────── the recipe ─────────
+
+(defn shift-opts
+  "The shift as data (what the recipe keeps): steps of plain factors, formants and analysis."
+  [steps]
+  {:steps (mapv (fn [[t ch]] [t (mapv :f ch)]) steps)
+   :written (mapv (fn [[t ch]] [t (str/join " " (map :src ch))]) steps)
+   :quefrency (js/parseFloat (.-value ($ "quef")))
+   :timbre (js/parseFloat (.-value ($ "timbre")))
+   :rms (.-checked ($ "rms"))
+   :frame (js/parseInt (.-value ($ "frame")) 10)
+   :overlap (js/parseInt (.-value ($ "overlap")) 10)})
+
+(defn js-opts [o]
+  (clj->js (-> (select-keys o [:steps :quefrency :timbre :rms :frame :overlap]))))
+
+(defn describe
+  "A JS description from the store → the map the history keeps (peaks left out of what is shown)."
+  [d extra]
+  (merge {:audio (.-audio d) :sr (.-sr d) :frames (.-frames d) :channels (.-channels d)
+          :peaks (js->clj (.-peaks d))}
+         extra))
+
+(defn for-history
+  "A description as a line of the history shows it: its 120 peaks shortened."
+  [d]
+  (cond-> (dissoc d :peaks)
+    (:peaks d) (assoc :peaks (symbol (str "[… " (count (:peaks d)) " peaks]")))))
+
+;; the result keeps :ms and :where for this page only: they are not part of the recipe
+(defn for-history* [d] (dissoc d :ms :where))
+
+(defn edn [x]
+  ;; one key per line for the big maps, as the Code tab writes them
+  (let [s (pr-str x)] (str/replace s #", :" "\n    :")))
+
+;; ───────── rendering ─────────
+
+(defn render-steps! []
+  (let [{:keys [mode text]} @state
+        p (parse-steps mode (get text mode))
+        el ($ "steps-view")]
+    (set! (.-innerHTML el) "")
+    (if-let [e (:error p)]
+      (let [d (js/document.createElement "div")] (set! (.-className d) "err") (set! (.-textContent d) e) (.appendChild el d))
+      (doseq [[t ch] (:steps p)]
+        (let [row (js/document.createElement "div")
+              tt (js/document.createElement "span")
+              ivs (js/document.createElement "span")]
+          (set! (.-className row) "step") (set! (.-className tt) "t") (set! (.-className ivs) "ivs")
+          (set! (.-textContent tt) (if (= mode :chord) "always" (str (.toFixed t 2) " s")))
+          (doseq [{:keys [f src]} ch]
+            (let [{:keys [cents name off]} (interval-name f)
+                  iv (js/document.createElement "span")]
+              (set! (.-className iv) "iv")
+              (set! (.-title iv) (str src " = ×" (r4 f)))
+              (set! (.-innerHTML iv) (str name " <i>" cents "¢</i>"
+                                          (when-not (zero? off)
+                                            (str " <span class=\"off\">" (if (pos? off) "+" "−") (js/Math.abs off) "</span>"))))
+              (.appendChild ivs iv)))
+          (.appendChild row tt) (.appendChild row ivs) (.appendChild el row))))
+    (set! (.-disabled ($ "go")) (boolean (or (:error p) (:busy @state) (nil? (:source @state)))))
+    p))
+
+(defn source-line [d]
+  (let [r (:recipe d)]
+    (cond
+      (:voice r) "synthetic voice: A3 C4 E4 D4 C4 B3 A3, vowels a o a e o i a"
+      (:file r) (str "file " (:file r))
+      (:url r) (str "URL " (:url r))
+      :else "")))
+
+(defn render-facts! []
+  (let [{:keys [source result here check busy]} @state]
+    (set! (.-innerHTML ($ "facts-source"))
+          (if source
+            (str "<b>" (fmt-s (/ (:frames source) (:sr source))) "</b> · " (/ (:sr source) 1000) " kHz · "
+                 (:channels source) " ch · hash <b>" (short-hash (:audio source)) "</b><br>" (source-line source))
+            ""))
+    (set! (.-innerHTML ($ "facts-result"))
+          (cond
+            busy (str "<span class=\"kairos\">" busy "</span>")
+            result (str "<b>" (fmt-s (/ (:frames result) (:sr result))) "</b> · hash <b>" (short-hash (:audio result)) "</b>"
+                        (when-let [ms (:ms result)] (str " · made in " ms " ms (" (name (:where result)) ")"))
+                        (if (get here (:audio result))
+                          " · <span class=\"ok\">in this browser</span>"
+                          " · <span class=\"bad\">not in this browser: remake it</span>")
+                        (when check
+                          (str "<br>" (if (:same check)
+                                        (str "<span class=\"ok\">✓ remade from the recipe: the same samples, hash " (short-hash (:audio result)) " again</span>")
+                                        (str "<span class=\"bad\">✗ remade, but the samples differ: " (short-hash (:got check)) "</span>")))))
+            :else ""))
+    (set! (.-textContent ($ "empty-result"))
+          (cond busy busy
+                (and result (not (get here (:audio result)))) "Its sound is not in this browser. The recipe can remake it."
+                :else "The result appears here."))
+    (set! (.-hidden ($ "empty-result")) (boolean (and result (get here (:audio result)) (not busy))))
+    (doseq [id ["result-play" "ab" "forget"]]
+      (set! (.-disabled ($ id)) (not (and result (get here (:audio result)) (not busy)))))
+    (set! (.-disabled ($ "remake")) (not (and result (not busy))))
+    (set! (.-textContent ($ "result-kind"))
+          (if result (str (count (get-in result [:recipe :shift :steps])) (if (= 1 (count (get-in result [:recipe :shift :steps]))) " step" " steps")) "a buffer with a recipe"))))
+
+(defn render-history! []
+  (let [{:keys [source result]} @state
+        lines (cond-> [";; b1: the source, b2: the buffer shift made from it"]
+                source (conj (str "(sample! :b1 " (edn (for-history source)) ")"))
+                result (conj (str "(sample! :b2 " (edn (for-history (for-history* result))) ")")))
+        text (str/join "\n" lines)
+        el ($ "history")]
+    (set! (.-innerHTML el) "")
+    (doseq [l (interpose "\n" lines)]
+      (let [s (js/document.createElement "span")]
+        (when (str/starts-with? l ";;") (set! (.-className s) "c"))
+        (set! (.-textContent s) l)
+        (.appendChild el s)))
+    ;; sizes: the lines as kept (with their peaks), the samples, and what remaking costs
+    (let [kept (count (pr-str (filterv some? [source (when result (for-history* result))])))
+          sound (reduce + (map (fn [d] (* 4 (:frames d) (:channels d))) (filter some? [source result])))]
+      (set! (.-textContent ($ "size-history")) (if source (kb kept) "–"))
+      (set! (.-textContent ($ "size-sound")) (if source (kb sound) "–"))
+      (set! (.-textContent ($ "size-remake")) (if-let [ms (:ms result)] (str ms " ms, from the recipe") "–")))))
+
+(defn render! [] (render-steps!) (render-facts!) (render-history!))
+
+;; ───────── sources ─────────
+
+(defn draw-source! []
+  (when-let [d (:source @state)]
+    (.then (.get K (:audio d)) (fn [s] (when s (.draw K "spec-source" s (:audio d)) (set! (.-hidden ($ "empty-source")) true))))))
+
+(defn draw-result! []
+  (if-let [d (:result @state)]
+    (.then (.get K (:audio d))
+           (fn [s] (if s (.draw K "spec-result" s (:audio d)) (.draw K "spec-result" nil nil))))
+    (.draw K "spec-result" nil nil)))
+
+(defn set-source! [sr chans recipe]
+  (.then (.keep K sr chans)
+         (fn [d]
+           (swap! state assoc :source (describe d {:recipe recipe}) :result nil :check nil
+                  :here {(.-audio d) true})
+           (set! (.-textContent ($ "source-kind"))
+                 (cond (:voice recipe) "synthetic voice" (:file recipe) "a file" (:url recipe) "from a URL" :else ""))
+           (draw-source!) (draw-result!) (render!)
+           (status! "Ready"))))
+
+(defn make-voice!
+  "The voice of the study, made at the rate of this browser's audio (its recipe can make it again)."
+  []
+  (let [sr (.-sampleRate (.audio K))]
+    (set-source! sr #js [(.voice K sr)] {:voice {:v 1}})))
+
+(defn source-chans
+  "Promise of the source's sound: from this browser, or made again from its recipe when that is possible."
+  [d]
+  (.then (.get K (:audio d))
+         (fn [s]
+           (cond
+             s s
+             (:voice (:recipe d)) (let [sr (:sr d)] #js {:sr sr :chans #js [(.voice K sr)]})
+             :else (throw (js/Error. "the source is not in this browser: load it again"))))))
+
+;; ───────── the shift ─────────
+
+(defn shift! []
+  (let [{:keys [mode text source]} @state
+        p (parse-steps mode (get text mode))]
+    (when (and source (not (:error p)))
+      (let [o (shift-opts (:steps p))]
+        (.stop K)
+        (swap! state assoc :busy "Shifting…" :check nil)
+        (render!)
+        (status! "Shifting…")
+        (-> (source-chans source)
+            (.then (fn [s] (.shift K (.-sr s) (.-chans s) (js-opts o))))
+            (.then (fn [r]
+                     (.then (.keep K (:sr source) (.-chans r))
+                            (fn [d]
+                              (swap! state (fn [st]
+                                             (-> st
+                                                 (assoc :busy nil
+                                                        :result (describe d {:recipe {:shift o :from :b1 :source (:audio source)
+                                                                                      :by "stftPitchShift 2.0"}})
+                                                        :check nil)
+                                                 (assoc-in [:result :ms] (.-ms r))
+                                                 (assoc-in [:result :where] (keyword (.-where r)))
+                                                 (assoc-in [:here (.-audio d)] true))))
+                              (draw-result!) (render!)
+                              (status! (str "Shifted in " (.-ms r) " ms") :ok)))))
+            (.catch (fn [e]
+                      (swap! state assoc :busy nil)
+                      (render!)
+                      (status! (str "Error: " (or (.-message e) e)) :error))))))))
+
+(defn forget! []
+  (when-let [d (:result @state)]
+    (.stop K)
+    (.then (.forget K (:audio d))
+           (fn [_]
+             (swap! state #(-> % (assoc-in [:here (:audio d)] false) (assoc :check nil)))
+             (draw-result!) (render!)
+             (status! "Forgot the result's sound; its description and recipe stay")))))
+
+(defn remake!
+  "The result made again from its recipe alone: the source by hash, the shift as data. Same hash = same samples."
+  []
+  (when-let [d (:result @state)]
+    (let [{:keys [shift source]} (:recipe d)
+          want (:audio d)]
+      (.stop K)
+      (swap! state assoc :busy "Remaking from the recipe…" :check nil)
+      (render!)
+      (-> (source-chans (assoc (:source @state) :audio source))
+          (.then (fn [s] (.shift K (.-sr s) (.-chans s) (js-opts shift))))
+          (.then (fn [r] (.then (.keep K (:sr d) (.-chans r)) (fn [nd] [nd r]))))
+          (.then (fn [[nd r]]
+                   (let [got (.-audio nd) same (= got want)]
+                     (swap! state (fn [st] (-> st (assoc :busy nil :check {:same same :got got})
+                                               (assoc-in [:here got] true)
+                                               (assoc-in [:result :ms] (.-ms r)))))
+                     (draw-result!) (render!)
+                     (status! (if same "Remade: the same samples" "Remade, with different samples") (if same :ok :error)))))
+          (.catch (fn [e] (swap! state assoc :busy nil) (render!) (status! (str "Error: " (or (.-message e) e)) :error)))))))
+
+;; ───────── the controls ─────────
+
+(defn fill-presets! []
+  (let [sel ($ "preset") mode (:mode @state)]
+    (set! (.-innerHTML sel) "")
+    (let [o (js/document.createElement "option")] (set! (.-value o) "") (set! (.-textContent o) "Examples…") (.appendChild sel o))
+    (doseq [[i [label _]] (map-indexed vector (get presets mode))]
+      (let [o (js/document.createElement "option")] (set! (.-value o) (str i)) (set! (.-textContent o) label) (.appendChild sel o)))))
+
+(defn set-mode! [m]
+  (swap! state assoc :mode m)
+  (.setAttribute ($ "mode-chord") "aria-pressed" (str (= m :chord)))
+  (.setAttribute ($ "mode-prog") "aria-pressed" (str (= m :prog)))
+  (set! (.-value ($ "steps-text")) (get-in @state [:text m]))
+  (set! (.-rows ($ "steps-text")) (if (= m :chord) 2 5))
+  (fill-presets!)
+  (render-steps!))
+
+(defn outputs! []
+  (let [q (js/parseFloat (.-value ($ "quef"))) t (js/parseFloat (.-value ($ "timbre")))]
+    (set! (.-textContent ($ "quef-out")) (if (zero? q) "off" (str q " ms")))
+    (set! (.-textContent ($ "timbre-out")) (str "×" (.toFixed t 2)))
+    (set! (.-disabled ($ "timbre")) (zero? q))))
+
+(defn play-toggle! [which]
+  (let [d (get @state which) id (if (= which :source) "spec-source" "spec-result") btn (if (= which :source) "source-play" "result-play")]
+    (if (.isPlaying K id)
+      (do (.stop K) (set! (.-textContent ($ btn)) "Play"))
+      (when d
+        (.then (.get K (:audio d))
+               (fn [s]
+                 (when s
+                   (doseq [b ["source-play" "result-play"]] (set! (.-textContent ($ b)) "Play"))
+                   (set! (.-textContent ($ btn)) "Stop")
+                   (.play K id s 0 (fn [] (set! (.-textContent ($ btn)) "Play"))))))))))
+
+(defn ab!
+  "Jumps between the source and the result at the same point of the phrase."
+  []
+  (let [{:keys [source result]} @state
+        at (.position K)
+        to-result (not (.isPlaying K "spec-result"))
+        d (if to-result result source) id (if to-result "spec-result" "spec-source")]
+    (.then (.get K (:audio d))
+           (fn [s]
+             (when s
+               (set! (.-textContent ($ "source-play")) (if to-result "Play" "Stop"))
+               (set! (.-textContent ($ "result-play")) (if to-result "Stop" "Play"))
+               (.play K id s at (fn [] (doseq [b ["source-play" "result-play"]] (set! (.-textContent ($ b)) "Play")))))))))
+
+(defn wire! []
+  (on "mode-chord" "click" (fn [_] (set-mode! :chord)))
+  (on "mode-prog" "click" (fn [_] (set-mode! :prog)))
+  (on "steps-text" "input" (fn [e] (swap! state assoc-in [:text (:mode @state)] (.. e -target -value)) (render-steps!)))
+  (on "preset" "change" (fn [e]
+                          (let [v (.. e -target -value)]
+                            (when (seq v)
+                              (let [[_ text] (nth (get presets (:mode @state)) (js/parseInt v 10))]
+                                (swap! state assoc-in [:text (:mode @state)] text)
+                                (set! (.-value ($ "steps-text")) text)
+                                (set! (.. e -target -value) "")
+                                (render-steps!))))))
+  (doseq [id ["quef" "timbre"]] (on id "input" (fn [_] (outputs!))))
+  (on "go" "click" (fn [_] (shift!)))
+  (on "source-play" "click" (fn [_] (play-toggle! :source)))
+  (on "result-play" "click" (fn [_] (play-toggle! :result)))
+  (on "ab" "click" (fn [_] (ab!)))
+  (on "forget" "click" (fn [_] (forget!)))
+  (on "remake" "click" (fn [_] (remake!)))
+  (on "source-pick" "change"
+      (fn [e]
+        (let [v (.. e -target -value)]
+          (set! (.-hidden ($ "url-row")) (not= v "url"))
+          (case v
+            "voice" (do (status! "Making the voice…") (make-voice!))
+            "file" (.click ($ "source-file"))
+            nil))))
+  (on "source-file" "change"
+      (fn [e]
+        (when-let [f (aget (.. e -target -files) 0)]
+          (status! (str "Reading " (.-name f) "…"))
+          (-> (.arrayBuffer f)
+              (.then (fn [b] (.decode K b)))
+              (.then (fn [s] (set-source! (.-sr s) (.-chans s) {:file (.-name f)})))
+              (.catch (fn [e] (status! (str "Error: " (.-name f) " is not a sound this browser can decode") :error)))))))
+  (on "source-load" "click"
+      (fn [_]
+        (let [u (str/trim (.-value ($ "source-url")))]
+          (status! "Loading…")
+          (-> (.fromURL K u)
+              (.then (fn [s] (set-source! (.-sr s) (.-chans s) {:url u})))
+              (.catch (fn [e] (status! (str "Error: could not load " u ": " (or (.-message e) e)) :error))))))))
+
+;; ───────── start ─────────
+
+(set! (.-value ($ "steps-text")) (get-in @state [:text :chord]))
+(fill-presets!)
+(outputs!)
+(wire!)
+(render!)
+(-> (.-libs K)
+    (.then (fn [v]
+             (status! (str "stftPitchShift " v " ready · making the voice…"))
+             (make-voice!)))
+    (.catch (fn [e] (status! (str "Error: " (or (.-message e) e)) :error))))
+</script>
