@@ -149,7 +149,7 @@ export async function patterns(page, check) {
         a (sr nil [:gain 0.8] 0) b (sr (:state a) [:p1] 1) c (sr (:state b) [261.6] 0)]
     [(subvec outs 1) (:effects c)])`);
   check("an event with :amp: [:gain amp] before its notes; nil is a silence",
-    synthed === "true" && loud.startsWith("[[[[:gain 0.8] [:p1] [261.626]] [] [[:gain 0.2] [:p2] [329.628]]] "), loud);
+    synthed === "true" && loud.startsWith("[[[[:gain 0.8] [:p1] [261.626]] [] [[:gain 0.2] [:p1 :p2] [261.626 391.995]]] "), loud);
   check("... and synth~ starts its next notes at that level", loud.endsWith("[[:voices [[[:p1 261.6]] 0.8]]]]"), loud);
   await cljs(page, `(delete ${sy})`);
 
