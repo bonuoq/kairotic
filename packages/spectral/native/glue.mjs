@@ -162,4 +162,7 @@ export function stream(sr, frame, hop) {
   };
 }
 
-export default { ready, shift, stream, stepsOf, version, wasmModule };
+/** The bytes of the WebAssembly (a copy), to compile where this module cannot be imported: an AudioWorklet made from a Blob. */
+export function wasmBytes() { return bytes(WASM_BASE64); }
+
+export default { ready, shift, stream, stepsOf, version, wasmModule, wasmBytes };
