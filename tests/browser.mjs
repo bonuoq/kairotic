@@ -28,6 +28,7 @@ import { claude } from "./claude.mjs";
 import { help } from "./help.mjs";
 import { components } from "./components.mjs";
 import { gendy } from "./gendy.mjs";
+import { spectral } from "./spectral.mjs";
 import { faustpoly } from "./faustpoly.mjs";
 import { patterns } from "./patterns.mjs";
 
@@ -103,6 +104,7 @@ const audioSuites = [
   ["sounds", sounds, "the sound tests ran"],
   ["record", record, "the record tests ran"],
   ["gendy", gendy, "the gendy~ tests ran"],
+  ["spectral", spectral, "the shift~ tests ran"],
   ["faustpoly", faustpoly, "the polyphonic faust~ tests ran"],
   ["patterns", patterns, "the patterns tests ran"],
   // last: its transcriptions depend on timing, and by then the other blocks have (nearly) finished
