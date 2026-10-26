@@ -547,28 +547,57 @@
            t (if (= 1 (count vs)) (first vs) (into [:par {}] vs))]
        (respell-by-hand (mt/spell (cond-> t (:tempo opts) (mt/update-attrs assoc :tempo (:tempo opts)))) (:spell o))))))
 
+(defn tree-notes
+  "The notes of a tree without measures as notes in free time ({:on :off :attrs :voice}): a written name
+   stays (with its :cents), numbers stay numbers (they are spelled afterwards)."
+  [tree]
+  (let [xt (mt/expand tree)]
+    (vec (for [e (mt/events xt) :when (and (= :note (:kind e)) (not (:grace e)))]
+           {:on (:t e) :off (+ (:t e) (:dur e)) :voice (:voice e)
+            :attrs (merge (select-keys e [:art :dyn :text :vel :env :gliss])
+                          (let [a (mt/attrs (mt/node-at xt (:path e))) w (mt/spelling-of a)]
+                            (if w
+                              (cond-> {:pitch (sp/->name w)} (:cents a) (assoc :cents (:cents a)))
+                              {:pitch (if (whole? (:pitch e)) (js/Math.round (:pitch e)) (cv/round-to (:pitch e) 2))})))}))))
+
+(defn tree-options
+  "The options a tree without measures is quantized with: its root's :quant (how its score is quantized,
+   as a freqt keeps them in its buffer) under the ones given, and its root's :grid for the meter."
+  [tree opts]
+  (let [a (mt/attrs (mt/expand tree))]
+    (options (merge (:quant a) opts) (:grid a))))
+
 (defn quantize-tree
   "A tree without measures (notes placed in free time, with :at or durations of any size) as a measured
-   tree: each of its voices quantized on its own, in the meter of the options (4/4 by default)."
+   tree: each of its voices quantized on its own, in the meter of the options (or of its root's :grid;
+   4/4 by default). Its root's :quant are options too."
   ([tree] (quantize-tree tree {}))
   ([tree opts]
-   (let [o (options opts nil)
-         xt (mt/expand tree)
-         evs (filter (fn [e] (= :note (:kind e))) (mt/events xt))
-         by-voice (sort-by key (group-by (fn [e] (or (:voice e) "")) evs))
-         voices (fn [[nm es]]
-                  (notes->voices (for [e es :when (not (:grace e))]
-                                   {:on (:t e) :off (+ (:t e) (:dur e))
-                                    :attrs (merge (select-keys e [:art :dyn :text :vel :env :gliss])
-                                                  ;; a written name stays (with its :cents); numbers are spelled afterwards
-                                                  (let [a (mt/attrs (mt/node-at xt (:path e))) w (mt/spelling-of a)]
-                                                    (if w
-                                                      (cond-> {:pitch (sp/->name w)} (:cents a) (assoc :cents (:cents a)))
-                                                      {:pitch (if (whole? (:pitch e)) (js/Math.round (:pitch e)) (cv/round-to (:pitch e) 2))})))})
-                                 o (when (seq nm) nm)))
+   (let [o (tree-options tree opts)
+         by-voice (sort-by key (group-by (fn [n] (or (:voice n) "")) (tree-notes tree)))
+         ;; a voice keeps its name; one without (named by mt/events v<depth>-<index>) stays without
+         voices (fn [[nm ns]] (notes->voices (mapv (fn [n] (dissoc n :voice)) ns) o
+                                             (when (and (seq nm) (not (re-matches #"v\d+-\d*" nm))) nm)))
          vs (vec (mapcat voices by-voice))
          t (if (> (count vs) 1) (into [:par {}] vs) (or (first vs) (notes->voice [] o)))]
-     (mt/spell (mt/update-attrs t assoc :tempo (or (:tempo opts) (mt/tempo-of tree)))))))
+     (respell-by-hand (mt/spell (mt/update-attrs t assoc :tempo (or (:tempo opts) (mt/tempo-of tree)))) (:spell o)))))
+
+(defn measure-free-voices
+  "A measured tree whose voices without measures (a free voice beside the measured ones) are quantized
+   in the meter of its first measure, so that the whole tree is written in measures."
+  [tree]
+  (let [x (mt/expand tree)
+        first-m (first (filter (fn [n] (and (mt/node? n) (= :measure (mt/tag n)))) (tree-seq mt/node? mt/kids (mt/with-meters x))))
+        meter (select-keys (mt/attrs first-m) [:meter :groups])
+        free? (fn [v] (and (mt/node? v) (= :voice (mt/tag v)) (not (mt/measured? v))))]
+    (if (and (= :par (mt/tag x)) (some free? (mt/kids x)) first-m)
+      (mt/with-kids x (vec (mapcat (fn [k]
+                                     (if (free? k)
+                                       (let [q (quantize-tree k {:meter meter})]
+                                         (if (= :par (mt/tag q)) (mt/kids q) [q]))
+                                       [k]))
+                                   (mt/kids x))))
+      x)))
 
 (defn ->score
   "MEI for a score: a measured tree as it is, a tree without measures quantized, a freqt's buffer
@@ -576,6 +605,6 @@
   ([x pre] (->score x pre {}))
   ([x pre opts]
    (cond
-     (and (mt/tree? x) (mt/measured? x)) (mt/->mei x pre)
+     (and (mt/tree? x) (mt/measured? x)) (mt/->mei (measure-free-voices x) pre)
      (mt/tree? x) (mt/->mei (quantize-tree x opts) pre)
      :else (mt/->mei (quantize x opts) pre))))

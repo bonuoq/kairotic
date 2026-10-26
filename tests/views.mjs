@@ -37,7 +37,7 @@ export async function views(page, check) {
   check("... as one event of the history", Number(await cljs(page, events)) === before + 1, await cljs(page, events));
   check("... and its tree is the same", (await cljs(page, `(count (mt/pitches (tree-data ${tb})))`)) === "4");
   check("the work's code keeps the view", (await cljs(page, `(str/includes? (patch->code (current)) "(view ${tb} :score)")`)) === "true");
-  check("an unknown view is refused", /ERR/.test(await cljs(page, `(view ${tb} :canvas)`)));
+  check("an unknown view is refused", /ERR/.test(await cljs(page, `(view ${tb} :piano-roll)`)));
 
   // its notes edit its own tree, without a wire back
   const pieces = await until(page, `(count (filter :src (get-in @score-cache [${tb} :pieces])))`, (g) => Number(g) > 0, 30000);
@@ -79,10 +79,42 @@ export async function views(page, check) {
   const swap = await chipCentre(page, tid, "view");
   check("a tree shown as a score has a ⇄ chip", !!swap);
   if (swap) {
+    // three views now (discussion #92): score → canvas → code
     await page.mouse.click(...swap);
+    const v1 = await until(page, `(display-of (get-in (current) [:boxes ${tb}]))`, (g) => g === ":canvas");
+    check("⇄ shows the tree as a canvas next", v1 === ":canvas", v1);
+    const swap2 = await chipCentre(page, tid, "view");
+    if (swap2) await page.mouse.click(...swap2);
     const v = await until(page, `(display-of (get-in (current) [:boxes ${tb}]))`, (g) => g === ":code");
-    check("⇄ code shows it as code again", v === ":code", v);
+    check("... and ⇄ again shows it as code", v === ":code", v);
   }
+
+  // ── one box for freqt, tree and score (discussion #92): a tree drawn as a canvas ──
+  const ct = (await cljs(page, '(box "tree" 1700 1500)')).trim();
+  await cljs(page, `(tree! ${ct} [:voice [:par]])`);
+  check("a tree box can be shown as a canvas", (await cljs(page, `(view ${ct} :canvas)`)) === ":canvas");
+  await cljs(page, `(stroke ${ct} [[0 261.63] [1 261.63]]) (stroke ${ct} [[1 329.63] [3 329.63]])`);
+  check("drawing on it writes notes into the tree", (await cljs(page, `(mt/pitches (tree-data ${ct}))`)) === '["c4" "e4"]');
+  check("... placed in free time", (await cljs(page, `(mapv (juxt :t :dur) (mt/notes (tree-data ${ct})))`)) === "[[0 1] [1 2]]");
+  await cljs(page, `(move-stroke ${ct} :n2 1 100)`);
+  check("dragging a note moves it in the tree", (await cljs(page, `(mapv (juxt :t :dur) (mt/notes (tree-data ${ct})))`)) === "[[0 1] [2 2]]");
+  await cljs(page, `(grid-x ${ct} 0.5 [4])`);
+  check("its grid is the tree's", (await cljs(page, `(:grid (mt/attrs (tree-data ${ct})))`)) === "{:step 0.5, :cycles [4]}");
+  const rdr = (await cljs(page, '(box "reader" 1900 1650)')).trim();
+  await cljs(page, `(connect ${ct} 1 ${rdr} 1)`);
+  check("its second outlet is its notes as a buffer, for a reader", (await cljs(page, `(count (:strokes (second (eng/buffer-of (current) ${rdr}))))`)) === "2");
+  await cljs(page, `(quantize! ${ct})`);
+  check("(quantize! :bN) writes its free time in measures", (await cljs(page, `(mt/measured? (tree-data ${ct}))`)) === "true");
+  check("... and keeps its grid", (await cljs(page, `(some? (:grid (mt/attrs (tree-data ${ct}))))`)) === "true");
+  await cljs(page, `(move-stroke ${ct} :n2 0 -100)`);
+  check("in measures, a change of pitch is written in the note", (await cljs(page, `(mt/pitches (tree-data ${ct}))`)) === '["c4" "e4"]');
+  await cljs(page, `(unquantize! ${ct})`);
+  check("(unquantize! :bN) writes it in free time again", (await cljs(page, `(mt/measured? (tree-data ${ct}))`)) === "false");
+  const fq = (await cljs(page, '(box "freqt" 1700 1800)')).trim();
+  await cljs(page, `(send! ${fq} [:batch [[:note 0 60 1] [:note 1 62 1]]])`);
+  const nt = (await cljs(page, `(to-tree! ${fq})`)).trim();
+  check("(to-tree! :bN) makes a tree box of a freqt's strokes", (await cljs(page, `(mt/pitches (tree-data ${nt}))`)) === '["c4" "d4"]');
+  check("... shown as a canvas", (await cljs(page, `(display-of (get-in (current) [:boxes ${nt}]))`)) === ":canvas");
 
   // ── a freqt: its buffer as text ──
   const f = (await cljs(page, '(box "freqt" 1700 1000)')).trim();

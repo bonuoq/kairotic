@@ -215,14 +215,43 @@
 
 (defn music? [b] (contains? music-classes (klass (:text b))))
 
+(defn tree-box? [b] (= "tree" (klass (:text b))))
+
 (defn need-canvas [id]
   (let [b (need-box id)]
-    (when-not (music? b) (fail (str id " is not a canvas (nor a freqt or a score)")))
+    (when-not (or (music? b) (tree-box? b)) (fail (str id " is not a canvas (nor a freqt, a score or a tree)")))
     b))
 
+;; a tree box seen as a canvas (discussion #92): its notes as strokes, computed once per tree
+(defonce tree-views (atom {}))   ; tree → view, for the last trees drawn
+
+(defn tree-view [t]
+  (or (get @tree-views t)
+      (let [v (tc/view-data t)]
+        (swap! tree-views (fn [m] (assoc (if (> (count m) 32) {} m) t v)))
+        v)))
+
 (defn canvas-data
-  "The buffer of a canvas box, or the empty one of its class (generic canvas or freqt)."
-  [b] (or (:data b) (:empty (comp/model-of b)) cv/empty))
+  "The buffer of a canvas box, or the empty one of its class (generic canvas or freqt); for a tree box,
+   its notes as the strokes of a freqt (kairotic.treecanvas)."
+  [b] (if (tree-box? b)
+        (tree-view (mtb/tree-of (:data b)))
+        (or (:data b) (:empty (comp/model-of b)) cv/empty)))
+
+(defn canvas-dispatch!
+  "A canvas event for a box: as it is for a canvas or freqt; for a tree box, as the edits of its tree that
+   make it (kairotic.treecanvas/edit-ops; opts {:free true}: ⌥, out of the measures)."
+  ([id ev] (canvas-dispatch! id ev {}))
+  ([id ev opts]
+   (let [b (need-box id)]
+     (if (tree-box? b)
+       (let [t (mtb/tree-of (:data b))
+             ops (try (tc/edit-ops t ev opts) (catch :default e (fail (.-message e))))]
+         (when (seq ops)
+           (let [t2 (try (reduce mt/apply-op t ops) (catch :default e (fail (.-message e))))]
+             (when-let [ps (seq (mt/errors t2))] (fail (first ps)))
+             (dispatch! [:in id [:edit (vec ops)]]))))
+       (dispatch! [:in id ev])))))
 
 ;; ───── musical trees shown live (Study 19) ─────
 ;; A canvas, freqt or score that receives a tree (kairotic.mt) shows it over its buffer, without
@@ -273,12 +302,16 @@
    with how it looks: (stroke :b1 :t4 [[0 440] [2 660]] {:w 2 :pan -0.5 :tex :dash :tone :kairos})."
   ([id pts] (stroke id (cv/next-id (box-data id)) pts))
   ([id tid pts] (stroke id tid pts nil))
-  ([id tid pts look]
+  ;; the fourth argument is how it looks (a map), or true / :free: drawn freehand (⌥), so that in a
+  ;; measured tree box the note goes to its free voice
+  ([id tid pts x]
    (need-canvas id)
    (when-not (keyword? tid) (fail "A stroke id is a keyword, e.g. :t3"))
-   (dispatch! [:in id (if (cv/sane-look look)
-                         [:stroke tid (need-pts (box-data id) pts) look]
-                         [:stroke tid (need-pts (box-data id) pts)])])
+   (let [look (when (map? x) x) free? (or (true? x) (= x :free))]
+     (canvas-dispatch! id (if (cv/sane-look look)
+                            [:stroke tid (need-pts (box-data id) pts) look]
+                            [:stroke tid (need-pts (box-data id) pts)])
+                       (if free? {:free true} {})))
    tid))
 
 (defn note
@@ -306,21 +339,23 @@
    (doall (for [[t a d] (sc/parse-melody txt t0)] (note id t a d)))))
 
 (defn move-stroke
-  "Shifts a stroke by dx along X and dy along Y (in cents on a freqt or a log axis)."
-  [id tid dt dc]
-  (need-stroke id tid)
-  (dispatch! [:in id [:move tid dt dc]])
-  tid)
+  "Shifts a stroke by dx along X and dy along Y (in cents on a freqt or a log axis). In a measured tree,
+   :free (⌥) takes the note out of the measures."
+  ([id tid dt dc] (move-stroke id tid dt dc nil))
+  ([id tid dt dc free]
+   (need-stroke id tid)
+   (canvas-dispatch! id [:move tid dt dc] (if free {:free true} {}))
+   tid))
 
 (defn stretch
   "Lengthens (k > 1) or shortens (k < 1) a stroke in time, from its start."
   [id tid k]
   (need-stroke id tid)
   (when-not (and (number? k) (pos? k)) (fail "The stretch factor is a positive number"))
-  (dispatch! [:in id [:stretch tid k]])
+  (canvas-dispatch! id [:stretch tid k])
   tid)
 
-(defn erase-stroke [id tid] (need-stroke id tid) (dispatch! [:in id [:erase tid]]) :ok)
+(defn erase-stroke [id tid] (need-stroke id tid) (canvas-dispatch! id [:erase tid]) :ok)
 
 (defn canvas-edit!
   "Several edits of a canvas as one event: (canvas-edit! :b1 [[:stroke :t5 [[0 1] [1 2]]] [:erase :t2]]).
@@ -328,20 +363,20 @@
   [id evs]
   (need-canvas id)
   (when-not (and (sequential? evs) (every? vector? evs)) (fail "The edits are a vector of events: [[:stroke :t1 pts] …]"))
-  (dispatch! [:in id [:batch (vec evs)]])
+  (canvas-dispatch! id [:batch (vec evs)])
   (count evs))
 
-(defn clear [id] (need-canvas id) (dispatch! [:in id [:clear]]) :ok)
+(defn clear [id] (need-canvas id) (canvas-dispatch! id [:clear]) :ok)
 
 (defn grid-x
   "Time grid: (grid-x :b1 0.25 [4]) · (grid-x :b1 0.5 \"3+3+2\") · (grid-x :b1 nil).
    The step quantizes while drawing; the cycles group (like bars, simple or additive)."
-  ([id gx] (if (nil? gx) (do (need-canvas id) (dispatch! [:in id [:grid-x nil]]) :no-grid) (fail "Use (grid-x box step cycles) or nil")))
+  ([id gx] (if (nil? gx) (do (need-canvas id) (canvas-dispatch! id [:grid-x nil]) :no-grid) (fail "Use (grid-x box step cycles) or nil")))
   ([id step-size cycles]
    (need-canvas id)
    (let [gx (cv/sane-gx {:step step-size :cycles cycles})]
      (when-not gx (fail "The step is a positive number"))
-     (dispatch! [:in id [:grid-x gx]])
+     (canvas-dispatch! id [:grid-x gx])
      gx)))
 
 (defn tunings
@@ -356,14 +391,14 @@
    (need-canvas id)
    (need-freqt id)
    (if (nil? tun)
-     (do (dispatch! [:in id [:tuning nil]]) :continuous)
+     (do (canvas-dispatch! id [:tuning nil]) :continuous)
      (let [base (cond (map? tun) tun
                       (and (string? tun) (get cv/tunings (str/lower-case tun))) (get cv/tunings (str/lower-case tun))
                       (string? tun) (cv/parse-scl tun)
                       :else (fail "Use a name from (tunings), the text of a .scl or a map {:name :cents}"))
            gy (cv/sane-gy (assoc base :ref ref))]
        (when-not gy (fail "That tuning is not valid"))
-       (dispatch! [:in id [:tuning gy]])
+       (canvas-dispatch! id [:tuning gy])
        (select-keys gy [:name :ref])))))
 
 (defn read-at
@@ -543,62 +578,122 @@
     (when-not (and (music? b) (not (cv/generic? d))) (fail (str id " is not a freqt")))
     d))
 
+(defn- quant-src
+  "What a box's score is quantized from, and where its options are kept: a freqt (its strokes, its
+   buffer's :quant) or a tree box without measures (its notes, its root's :quant). {:q :gx :notes
+   :quantize (fn [q] tree) :keep! (fn [q])}."
+  [id]
+  (let [b (need-box id)]
+    (if (tree-box? b)
+      (let [t (or (mtb/tree-of (:data b)) [:voice])
+            root (mt/attrs t)]
+        (when (mt/measured? t)
+          (fail (str id " is written in measures: its divisions are written. (unquantize! " id ") makes it free time again")))
+        {:q (:quant root) :gx (:grid root) :notes (qz/tree-notes t)
+         :quantize (fn [q] (qz/quantize-tree (mt/with-attrs t (dissoc root :quant)) (or q {})))
+         :keep! (fn [q] (dispatch! [:in id [:edit [[:attrs [] (if (seq q) (assoc root :quant q) (dissoc root :quant))]]]]))})
+      (let [d (freqt-data id)]
+        {:q (:quant d) :gx (:gx d) :notes (qz/strokes->notes d)
+         :quantize (fn [q] (qz/quantize d q))
+         :keep! (fn [q] (dispatch! [:in id [:quantize q]]))}))))
+
 (defn quant
-  "How a freqt's score is quantized, kept in its buffer (one event of the history): (quant :b1 {:meter
-   \"6/8\" :divs [1 2 3 4]}); (quant :b1) gives them; (quant :b1 nil) goes back to the defaults."
-  ([id] (:quant (freqt-data id)))
+  "How the score of a freqt (or of a tree box without measures) is quantized, kept in its data (one event
+   of the history): (quant :b1 {:meter \"6/8\" :divs [1 2 3 4]}); (quant :b1) gives them; (quant :b1 nil)
+   goes back to the defaults."
+  ([id] (:q (quant-src id)))
   ([id opts]
-   (freqt-data id)
-   (when-not (or (nil? opts) (map? opts)) (fail "The options are a map: {:meter \"6/8\" :divs [1 2 3 4]}, or nil"))
-   (try (qz/options opts nil) (catch :default e (fail (.-message e))))
-   (dispatch! [:in id [:quantize opts]])
-   (or opts :defaults)))
+   (let [src (quant-src id)]
+     (when-not (or (nil? opts) (map? opts)) (fail "The options are a map: {:meter \"6/8\" :divs [1 2 3 4]}, or nil"))
+     (try (qz/options opts nil) (catch :default e (fail (.-message e))))
+     ((:keep! src) opts)
+     (or opts :defaults))))
 
 (defn enharmonic!
-  "Writes the note of a freqt's score that starts at beat t with MIDI pitch m another way (c#4 → db4 →
-   b##3 → c#4 …), or with the name given; kept in its buffer (:quant :spell), one event of the history.
-   (enharmonic! :b1 2 61), (enharmonic! :b1 2 61 \"db4\"), (enharmonic! :b1 2 61 nil): chosen again by the key."
+  "Writes the note of a quantized score (a freqt's, or a free tree box's) that starts at beat t with MIDI
+   pitch m another way (c#4 → db4 → b##3 → c#4 …), or with the name given; kept with its options (:quant
+   :spell), one event of the history. (enharmonic! :b1 2 61), (enharmonic! :b1 2 61 \"db4\"),
+   (enharmonic! :b1 2 61 nil): chosen again by the key."
   ([id t m] (enharmonic! id t m ::next))
   ([id t m nm]
-   (let [d (freqt-data id) q (:quant d) m (js/Math.round m)
+   (let [{:keys [q quantize keep!]} (quant-src id) m (js/Math.round m)
          near? (fn [[[bt p] _]] (and (< (js/Math.abs (- bt t)) 1e-4) (= p m)))
          cur (or (some (fn [kv] (when (near? kv) (second kv))) (:spell q))
                  (some (fn [e] (when (and (< (js/Math.abs (- (:t e) t)) 1e-4) (= m (js/Math.round (:pitch e)))) (:name e)))
-                       (mt/notes (qz/quantize d q))))
+                       (mt/notes (quantize q))))
          names (mapv sp/->name (sp/spellings m))
          nm (cond (= nm ::next) (get names (mod (inc (max -1 (.indexOf names cur))) (count names)))
                   (nil? nm) nil
                   :else (or (some-> (sp/parse nm) (as-> w (when (= m (sp/->midi w)) (sp/->name w))))
                             (fail (str nm " does not sound " (mt/pitch-name m)))))
          spell (cond-> (into {} (remove near? (:spell q))) nm (assoc [t m] nm))]
-     (dispatch! [:in id [:quantize (not-empty (cond-> (dissoc q :spell) (seq spell) (assoc :spell spell)))]])
+     (keep! (not-empty (cond-> (dissoc q :spell) (seq spell) (assoc :spell spell))))
      nm)))
 
 (defn divisions
-  "The ways the beat that holds beat t of a freqt's score can be divided, the current one first:
-   n (n parts), [n1 n2] (in halves), [:merge n] (with the next beat). (divisions :b1 2.5)"
+  "The ways the beat that holds beat t of a quantized score (a freqt's, a free tree box's) can be
+   divided, the current one first: n (n parts), [n1 n2] (in halves), [:merge n] (with the next beat)."
   [id t]
-  (let [d (freqt-data id)]
-    (qz/choices (qz/strokes->notes d) (qz/options (:quant d) (:gx d)) t)))
+  (let [{:keys [q gx notes]} (quant-src id)]
+    (qz/choices notes (qz/options q gx) t)))
 
 (defn division!
-  "Divides the beat that holds beat t of a freqt's score the next way (see divisions), or the way given;
-   the choice is kept in its buffer (:quant :fix), one event of the history. (division! :b1 2.5),
+  "Divides the beat that holds beat t of a quantized score the next way (see divisions), or the way
+   given; the choice is kept with its options (:quant :fix), one event of the history. (division! :b1 2.5),
    (division! :b1 2.5 3), (division! :b1 2.5 nil) lets the quantizer choose again."
   ([id t]
-   (let [d (freqt-data id)
-         {:keys [choice opts]} (qz/next-choice (qz/strokes->notes d) (:quant d) (:gx d) t)]
-     (dispatch! [:in id [:quantize opts]])
+   (let [{:keys [q gx notes keep!]} (quant-src id)
+         {:keys [choice opts]} (qz/next-choice notes q gx t)]
+     (keep! opts)
      choice))
   ([id t c]
-   (let [d (freqt-data id)
-         {:keys [s pair]} (qz/choices (qz/strokes->notes d) (qz/options (:quant d) (:gx d)) t)
+   (let [{:keys [q gx notes keep!]} (quant-src id)
+         {:keys [s pair]} (qz/choices notes (qz/options q gx) t)
          c (when (some? c) (or (qz/sane-choice c) (fail "A division is n, [n1 n2] or [:merge n]")))
          near? (fn [a b] (and a b (< (js/Math.abs (- a b)) 1e-6)))
-         fix (into {} (remove (fn [[x _]] (or (near? x s) (near? x pair))) (:fix (:quant d))))
+         fix (into {} (remove (fn [[x _]] (or (near? x s) (near? x pair))) (:fix q)))
          fix (if c (assoc fix (if (and (vector? c) (= :merge (first c))) (or pair s) s) c) fix)]
-     (dispatch! [:in id [:quantize (not-empty (cond-> (dissoc (:quant d) :fix) (seq fix) (assoc :fix fix)))]])
+     (keep! (not-empty (cond-> (dissoc q :fix) (seq fix) (assoc :fix fix))))
      c)))
+
+(defn quantize!
+  "Writes a tree box's free time in measures, as its score shows them (with its :quant, and opts): one
+   event of the history (undo goes back). Its key, tuning, grid and name stay on the tree."
+  ([id] (quantize! id {}))
+  ([id opts]
+   (let [b (need-box id)]
+     (when-not (tree-box? b) (fail (str id " is not a tree box: (to-tree! " id ") makes one from a freqt")))
+     (let [t (mtb/tree-of (:data b)) root (mt/attrs t)]
+       (when (mt/measured? t) (fail (str id " is already written in measures")))
+       (let [q (try (qz/quantize-tree t opts) (catch :default e (fail (.-message e))))
+             q (mt/update-attrs q merge (select-keys root [:name :key :tuning :grid :tempo :accidentals]))]
+         (dispatch! [:in id [:edit [[:set [] q]]]])
+         (mt/summary q))))))
+
+(defn unquantize!
+  "Writes a tree box's notes in free time ([:voice [:par [:note {:at …}] …]]): one event of the history."
+  [id]
+  (let [b (need-box id)]
+    (when-not (tree-box? b) (fail (str id " is not a tree box")))
+    (let [f (tc/free-form (mtb/tree-of (:data b)))]
+      (dispatch! [:in id [:edit [[:set [] f]]]])
+      (mt/summary f))))
+
+
+
+(defn to-tree!
+  "A new tree box beside a freqt with its strokes as notes in free time (and its grid, tuning and
+   quantization as the tree's), shown as a canvas: the freqt's drawing, now as a tree."
+  [id]
+  (let [b (need-box id) d (freqt-data id)
+        ns (qz/strokes->notes d)
+        t [:voice (cond-> {} (:gx d) (assoc :grid (:gx d)) (:gy d) (assoc :tuning (:gy d)) (:quant d) (assoc :quant (:quant d)))
+           (into [:par] (for [n ns] [:note (assoc (:attrs n) :at (cv/round-to (:on n) 4) :dur (cv/round-to (- (:off n) (:on n)) 4))]))]
+        [x y] [(:x b) (:y b)]
+        nid (box "tree" (+ (or x 0) 40) (+ (or y 0) 40))]
+    (tree! nid t)
+    (view nid :canvas)
+    nid))
 
 (declare patch->code)
 

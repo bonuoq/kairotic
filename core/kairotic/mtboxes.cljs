@@ -63,10 +63,10 @@
                       (concat [(str "(tree! " id)] (map (fn [l] (str "  " l)) (str/split-lines (mt/pp t))) [")"])))})
 
 (comp/define! "tree"
-  {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it."
+  {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]), seen as code, as a score or as a canvas of frequency over time (⇄ in its header) — one tree, three views (discussion #92): drawing on its canvas writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it."
    :usage "tree"
-   :display :code :views [:code :score] :language "edn" :model model
-   :io [1 1]
+   :display :code :views [:code :score :canvas] :language "edn" :model model
+   :io [1 2]
    :template "[:voice {:name \"motif\"}\n [:measure {:meter [4 4]} \"c4/1 d4/.5 e4 g4/1 e4\"]\n [:measure \"f4/.5 e4 d4 c4 d4/2\"]]"
    :receive (fn [m]
               (let [t (tree-of (:data m)) v (:value m)]
