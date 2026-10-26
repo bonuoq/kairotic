@@ -411,7 +411,7 @@ Rules:
   4] :dur 0.5}\")`; `pattern [seed]` is the same as Clojure code (pbind, pwhite, pchoose… and seeded rand),
   which needs (trust-scripts true) in a room; both send a pattern to the right inlet of `player [bpm]
   [quant]`, which plays it on `start`/`stop`, one step per bang, or at a position in beats (a number, from a
-  ramp). Its outlets: Hz (left) and voice ids (second) for synth~ or a polyphonic faust~, the whole event,
+  ramp, either way: going back, each note starts from its end; seek p jumps). Its outlets: Hz (left) and voice ids (second) for synth~ or a polyphonic faust~, the whole event,
   the beat. Event keys: :freq, :note (MIDI, \"c4\"), or :degree with :scale :root :octave; :dur in beats,
   :legato; :rest is a silence. Write durations as decimals (0.25), not ratios.
 - `draw [w h]` draws the shapes that reach it (the shapes of a component's view, or as a msg writes them:

@@ -11,7 +11,9 @@
   `[:set k v]` one key. `pattern [seed]` is the same as Clojure code (pbind, pwhite, pchoose… and seeded
   `rand`), trusted like a script. `player [bpm] [quant]` plays one on `start`/`stop` (its own clock, quant to
   meet other players, `[:bpm x]` without a jump), one step per bang, or at a position in beats (a number,
-  from a ramp: the events whose start it crosses; back or a jump moves silently): Hz and voice ids for
+  from a ramp: every event a span that sounds while the position is inside it, entered at its onset going
+  forwards and at its end going backwards, `:dir :back`; `seek p`, or a step far larger than the ones before
+  it, jumps; `edges`, `spread`): Hz and voice ids for
   synth~ or a polyphonic faust~, the whole event, the beat. A new pattern while it plays goes on from the
   same beat. Pitch: `:freq`, `:note`, or `:degree` with `:scale` `:root` `:octave`. The machinery is in the
   core (`kairotic.patterns`, through `api/…`: `api/pattern-events`, `api/event-hz`, `api/compiled`,
