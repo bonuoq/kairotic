@@ -8,6 +8,16 @@ Los ensayos 1–8 se escribieron en castellano; desde el Ensayo 9 el código y l
 (el [glosario](glossary.md) relaciona los nombres antiguos con los nuevos). Desde la 0.1.0-alpha, la app
 vive en [`app/`](../app) y crece como una sola.
 
+**Abrir un ensayo.** Kairotic Pages sirve cada ensayo en su carpeta:
+`https://bonuoq.github.io/kairotic/studies/<carpeta>/`, por ejemplo
+[`studies/29-live/`](https://bonuoq.github.io/kairotic/studies/29-live/). Ahí un ensayo puede usar lo que
+una página publicada en claude.ai no puede, como el micrófono. En tu ordenador, sirve la carpeta y ábrela en
+`localhost` (una página abierta como fichero no puede cargar sus módulos):
+
+```sh
+cd studies && python3 -m http.server 8000     # luego http://localhost:8000/29-live/
+```
+
 | | Ensayo | Qué valida |
 |---|---|---|
 | 1 | Patcher | código ⇄ patch, EDN, REPL |
@@ -37,3 +47,5 @@ vive en [`app/`](../app) y crece como una sola.
 | 25 | Overlay | marcas gráficas sobre una partitura de Verovio, guardadas en pulsos y pasos de pentagrama para que sigan su recolocación; un `monitor` de mensajes que llegan (descriptores con Meyda) —ahora en `@kairotic/analysis` |
 | 26 | Layers | componentes dibujados solo en SVG; capas encima o debajo del patch con marcas ancladas a cajas y proyecciones de la vista de una caja; un único fondo WebGL para todo el patch (para más adelante) —las capas están en la app desde la 0.2.0-alpha |
 | 27 | Geometry | una partitura vista como teoría musical: reloj de clases de altura, coeficientes de Fourier y camino en el Tonnetz; figuras nuevas `:opacity`, `:curve`, `:group`, `:hit` —ahora `@kairotic/theory` y `kairotic.shapes` |
+| 28 | Shift | un sonido transportado offline a un buffer nuevo con [stftPitchShift](https://github.com/jurihock/stftPitchShift) (C++, MIT) compilado a WebAssembly con wasi-sdk, en un worker; factores leídos como música (razones, semitonos, cents), varios a la vez como acorde, cambiando en el tiempo como progresión; preservación de formantes; el buffer nuevo guarda su receta (la fuente por hash y el transporte como datos), y rehacerlo desde la receta da el mismo hash |
+| 29 | Live | `shift~` en tiempo real: el mismo WebAssembly del Estudio 28, trama a trama dentro de un AudioWorklet (una trama de latencia, cerca de un 5% de un núcleo con un acorde y formantes a solapamiento 8), con una salida igual a la del transporte offline; acordes, progresiones en bucle sobre el reloj de audio, transporte y formantes en vivo; lo que una obra guarda de una toma es el flujo de mensajes a `shift~`, anotado sobre el reloj de audio |

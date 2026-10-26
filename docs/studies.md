@@ -8,6 +8,16 @@ written in Spanish; from Study 9 on, code and interface are in English (the [glo
 maps the old names to the new ones). From 0.1.0-alpha on, the app lives in [`app/`](../app) and grows
 as one.
 
+**Opening a study.** Kairotic Pages serves every study at its folder:
+`https://bonuoq.github.io/kairotic/studies/<folder>/`, for example
+[`studies/29-live/`](https://bonuoq.github.io/kairotic/studies/29-live/). There a study can use what a
+page published on claude.ai cannot, such as the microphone. On your own computer, serve the folder and
+open it on `localhost` (a page opened as a file cannot load its modules):
+
+```sh
+cd studies && python3 -m http.server 8000     # then http://localhost:8000/29-live/
+```
+
 | | Study | What it tests |
 |---|---|---|
 | 1 | Patcher | code ⇄ patch, EDN, REPL |
@@ -37,3 +47,5 @@ as one.
 | 25 | Overlay | graphic marks on a Verovio score, stored in beats and staff steps so they follow its reflow; a `monitor` of incoming messages (descriptors with Meyda) — now in `@kairotic/analysis` |
 | 26 | Layers | components drawn in SVG only; layers over or under the patch with marks anchored to boxes and projections of a box's view; one WebGL background for the whole patch (left for later) — layers are in the app from 0.2.0-alpha |
 | 27 | Geometry | a score seen as music theory: pitch-class clock, Fourier coefficients and Tonnetz path; new shapes `:opacity`, `:curve`, `:group`, `:hit` — now `@kairotic/theory` and `kairotic.shapes` |
+| 28 | Shift | a sound pitch-shifted offline into a new buffer with [stftPitchShift](https://github.com/jurihock/stftPitchShift) (C++, MIT) built to WebAssembly with wasi-sdk, in a worker; factors read as music (ratios, semitones, cents), several at once as a chord, changing over time as a progression; formant preservation; the new buffer keeps its recipe (source by hash and the shift as data), and remaking it from the recipe gives the same hash |
+| 29 | Live | `shift~` in real time: the same WebAssembly as Study 28, frame by frame inside an AudioWorklet (one frame of latency, about 5% of a core with a chord and formants at overlap 8), its output equal to the offline shift; chords, looped progressions on the audio clock, live transposition and formants; what a work keeps of a take is the stream of messages to `shift~`, logged on the audio clock |

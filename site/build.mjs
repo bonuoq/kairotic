@@ -85,6 +85,12 @@ cpSync(join(root, "tests", "run.html"), join(pagesOut, "tests.html"));
 cpSync(join(root, "tests", "cljs"), join(pagesOut, "tests"), { recursive: true });
 // sounds the tests (and examples) load by URL: tests/assets/a440.wav
 cpSync(join(root, "tests", "assets"), join(pagesOut, "tests", "assets"), { recursive: true });
+// the studies, each a page of its own as it was published (studies/29-live/ → …/kairotic/studies/29-live/):
+// served from Pages they can use what a page on claude.ai cannot, such as the microphone
+cpSync(join(root, "studies"), join(pagesOut, "studies"), {
+  recursive: true,
+  filter: (src) => !/[\\/]native[\\/]\.cache([\\/]|$)/.test(src),
+});
 writeFileSync(join(pagesOut, ".nojekyll"), "");   // serve files as they are
 
 // 4. the claude.ai edition (published as an artifact: index.html plus every other file)
@@ -94,6 +100,7 @@ if (pagesOut === resolve(root, "_site")) {
 }
 
 for (const f of ["index.html", "page/00-work.cljs", "kairotic/core.cljs", "kairotic/links.cljs", "kairotic/packages/controls.mjs",
-                 "kairotic/packages/synth.mjs", "kairotic/tutorials.mjs", "vendor/gun/gun.js", "vendor/gun/lib/rindexed.js", "tests.html"])
+                 "kairotic/packages/synth.mjs", "kairotic/tutorials.mjs", "vendor/gun/gun.js", "vendor/gun/lib/rindexed.js", "tests.html",
+                 "studies/28-shift/index.html", "studies/29-live/kairotic/shift-worklet.mjs"])
   if (!existsSync(join(pagesOut, f))) throw new Error("missing " + f);
 console.log("Kairotic →", pagesOut, existsSync(artifactOut) ? "and " + artifactOut : "");

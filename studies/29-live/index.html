@@ -1,0 +1,713 @@
+<meta charset="utf-8">
+<title>Kairotic Study 29 · Live</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header and transport; the live spectrogram beside the controls of shift~; below, the
+   messages a shift~ box would receive, which is what the history of a work would keep of a live take. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f;
+  --spec-bg: #f8f9fb; --spec-1: #c7d2f4; --spec-2: #2f55d4; --spec-3: #b4472e;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0;
+    --spec-bg: #10141a; --spec-1: #24408f; --spec-2: #7d9bff; --spec-3: #f3c2ae; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0;
+  --spec-bg: #10141a; --spec-1: #24408f; --spec-2: #7d9bff; --spec-3: #f3c2ae; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"], textarea { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+textarea { font-family: var(--f-code); min-width: 0; width: 100%; resize: vertical; line-height: 1.5; }
+input[type="number"] { width: 5em; font-family: var(--f-code); }
+input[type="range"] { accent-color: var(--accent); width: 100%; }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.readouts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-left: auto; font: 12px var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.readouts b { color: var(--ink); font-weight: 500; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+
+.spec { position: relative; width: 100%; aspect-ratio: 4 / 3; max-width: 100%; background: var(--spec-bg); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.spec canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.spec .empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; color: var(--ink-soft); font-size: 12px; }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.note a { color: var(--accent); }
+.err { color: var(--error); font-size: 12px; }
+
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: var(--box); color: var(--ink-soft); font: 500 12px var(--f-ui); padding: 5px 10px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); }
+.steps { display: grid; gap: 4px; }
+.step { display: grid; grid-template-columns: 4.2em minmax(0, 1fr); gap: 8px; align-items: baseline; font: 12px var(--f-code); font-variant-numeric: tabular-nums; border-radius: 4px; padding: 1px 0; }
+.step.now { background: var(--accent-soft); }
+.step .t { color: var(--ink-soft); text-align: right; }
+.step .ivs { display: flex; flex-wrap: wrap; gap: 4px; }
+.iv { border: 1px solid var(--grid); border-radius: 3px; padding: 1px 5px; background: var(--sheet); }
+.iv i { font-style: normal; color: var(--ink-soft); }
+.iv .off { color: var(--kairos); }
+fieldset { border: 1px solid var(--grid); border-radius: 6px; margin: 0; padding: 6px 10px 8px; display: grid; gap: 6px; min-width: 0; }
+legend { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); padding: 0 4px; }
+.range { display: grid; grid-template-columns: 6.5em minmax(0, 1fr) 4.6em; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+.range output { font: 12px var(--f-code); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+
+.log { margin: 0; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; font: 12px/1.6 var(--f-code); color: var(--ink); overflow-x: auto; white-space: pre; min-height: 6.6em; max-height: 15em; overflow-y: auto; }
+.log .c { color: var(--ink-soft); }
+</style>
+
+<main>
+<header>
+  <h1>Study 29 · live</h1>
+  <span class="sub">shift~ in real time: stftPitchShift in WebAssembly inside an AudioWorklet</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="panel">
+  <div class="transport">
+    <button class="act primary" id="run">Start</button>
+    <select id="source" aria-label="What goes into shift~">
+      <option value="voice" selected>Synthetic voice, looped</option>
+      <option value="file">A sound file, looped…</option>
+      <option value="mic">Microphone</option>
+    </select>
+    <input type="file" id="file" accept="audio/*" hidden>
+    <button class="act" id="bypass" aria-pressed="false">Bypass</button>
+    <div class="readouts">
+      <span>latency <b id="r-latency">–</b></span>
+      <span>DSP load <b id="r-load">–</b></span>
+      <span>rate <b id="r-rate">–</b></span>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <section class="panel" aria-labelledby="h-spec">
+    <h2 id="h-spec">What comes out <span id="spec-what">spectrogram, the last 6 seconds</span></h2>
+    <div class="spec"><canvas id="spec" aria-label="Scrolling spectrogram of the output"></canvas><canvas id="spec-grid" aria-hidden="true"></canvas><div class="empty" id="spec-empty">Press Start: the voice loops through shift~ and the harmony can be changed while it sounds.</div></div>
+    <div class="row">
+      <div class="seg" role="group" aria-label="Which signal the spectrogram shows">
+        <button id="show-out" aria-pressed="true">Output</button>
+        <button id="show-in" aria-pressed="false">Input</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-shift">
+    <h2 id="h-shift">shift~ <span id="mode-what">a chord</span></h2>
+    <div class="row">
+      <div class="seg" role="group" aria-label="What the factors are">
+        <button id="mode-chord" aria-pressed="true">Interval or chord</button>
+        <button id="mode-prog" aria-pressed="false">Progression</button>
+      </div>
+      <select id="preset" aria-label="Examples"></select>
+    </div>
+    <textarea id="steps-text" spellcheck="false" rows="2" aria-label="Factors"></textarea>
+    <div class="steps" id="steps-view"></div>
+    <div class="row" id="loop-row" hidden>
+      <label class="inline" for="loop">Loop every <input type="number" id="loop" min="0.5" max="120" step="0.1" value="6.6"> s</label>
+      <span class="note" id="loop-note">follows the voice: the harmony starts with the phrase</span>
+    </div>
+    <fieldset>
+      <legend>Live</legend>
+      <div class="range"><label for="transpose">Transpose</label><input type="range" id="transpose" min="-12" max="12" step="0.01" value="0"><output id="transpose-out">0.00 st</output></div>
+      <div class="range"><label for="dry">Dry</label><input type="range" id="dry" min="0" max="1" step="0.01" value="0"><output id="dry-out">0%</output></div>
+    </fieldset>
+    <fieldset>
+      <legend>Formants</legend>
+      <div class="range"><label for="quef">Quefrency</label><input type="range" id="quef" min="0" max="4" step="0.25" value="1"><output id="quef-out">1 ms</output></div>
+      <div class="range"><label for="timbre">Timbre</label><input type="range" id="timbre" min="0.6" max="1.6" step="0.02" value="1"><output id="timbre-out">×1.00</output></div>
+      <label class="inline" for="rms"><input type="checkbox" id="rms"> Keep the loudness (RMS)</label>
+    </fieldset>
+    <fieldset>
+      <legend>Analysis <span class="note" style="display:inline">· changing it restarts the node</span></legend>
+      <div class="row">
+        <label class="inline" for="frame">Frame <select id="frame"><option>512</option><option selected>1024</option><option>2048</option></select></label>
+        <label class="inline" for="overlap">Overlap <select id="overlap"><option value="4">4</option><option value="8" selected>8</option><option value="16">16</option></select></label>
+      </div>
+    </fieldset>
+  </section>
+</div>
+
+<section class="panel" aria-labelledby="h-log">
+  <h2 id="h-log">What a shift~ box hears <span>newest first, on the audio clock</span></h2>
+  <pre class="log" id="log"></pre>
+  <p class="note">Live, the sound is not kept: what a work can keep of a take is the stream of messages to <code>shift~</code>, each at its time, the same messages a patch would send through its inlet (<code>factors</code>, <code>transpose</code>, <code>progression</code>, <code>formants</code>, <code>dry</code>). Factors are ratios (<code>3/2</code>), semitones with a sign (<code>+7</code>, <code>0</code> for the unison) or cents (<code>386c</code>); a progression is one line per step, <code>seconds: factors</code>, looped. The node works one frame late (the latency above); the analysis is the same as in Study 28 and gives the same samples as the offline shift. The microphone is refused inside a page published on claude.ai; it works when the study is opened from Kairotic Pages or from its own folder. Pitch shifting by <a href="https://github.com/jurihock/stftPitchShift" target="_blank" rel="noopener">stftPitchShift</a> 2.0 by Jürgen Hock (MIT).</p>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// ───────── the plumbing: the worklet, sources, bypass and the scrolling spectrogram, in plain JS ─────────
+window.KLive = (function () {
+  var ctx = null, node = null, src = null, srcKind = null, mic = null, fileBuf = null, voiceBuf = null;
+  var wet = null, dryBus = null, master = null, anOut = null, anIn = null, inBus = null;
+  var listeners = [], bypassed = false, started = 0, loopDur = 0, show = "out";
+
+  function emit(m) { listeners.forEach(function (f) { try { f(m); } catch (e) { console.error(e); } }); }
+  function audio() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) throw new Error("this browser has no Web Audio");
+    if (!ctx) {
+      ctx = new AC({ latencyHint: "interactive" });
+      master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination);
+      inBus = ctx.createGain(); wet = ctx.createGain(); dryBus = ctx.createGain(); dryBus.gain.value = 0;
+      anOut = ctx.createAnalyser(); anOut.fftSize = 4096; anOut.smoothingTimeConstant = 0;
+      anIn = ctx.createAnalyser(); anIn.fftSize = 4096; anIn.smoothingTimeConstant = 0;
+      inBus.connect(anIn); inBus.connect(dryBus); dryBus.connect(master);
+      wet.connect(master); master.connect(anOut);
+    }
+    return ctx;
+  }
+
+  // ── the synthetic voice of Study 28 (additive, vowel formants), made at the rate of the engine ──
+  var VOWELS = {
+    a: [[730, 90, 1], [1090, 110, 0.5], [2440, 170, 0.28]], o: [[570, 80, 1], [840, 100, 0.45], [2410, 170, 0.18]],
+    e: [[530, 80, 1], [1840, 120, 0.42], [2480, 170, 0.3]], i: [[300, 60, 1], [2250, 140, 0.32], [3010, 200, 0.3]]
+  };
+  var MELODY = [[57, 0, 0.9, "a"], [60, 0.9, 0.9, "o"], [64, 1.8, 1.2, "a"], [62, 3.0, 0.7, "e"],
+                [60, 3.7, 0.7, "o"], [59, 4.4, 0.6, "i"], [57, 5.0, 1.4, "a"]];
+  function voice(sr) {
+    var T = 6.6, n = Math.round(T * sr), y = new Float32Array(n), B = 64, H = 64;
+    var ph = new Float64Array(H + 1), amp = new Float64Array(H + 1);
+    var mtof = function (m) { return 440 * Math.pow(2, (m - 69) / 12); };
+    for (var s0 = 0; s0 < n; s0 += B) {
+      var t = s0 / sr, k = 0;
+      while (k + 1 < MELODY.length && MELODY[k + 1][1] <= t) k++;
+      var note = MELODY[k], prev = MELODY[Math.max(0, k - 1)], into = t - note[1];
+      var m = into < 0.07 && k > 0 ? prev[0] + (note[0] - prev[0]) * (into / 0.07) : note[0];
+      var vib = Math.min(1, Math.max(0, (into - 0.2) / 0.3)) * 0.28 * Math.sin(2 * Math.PI * 5.4 * t);
+      var f0 = mtof(m + vib);
+      var next = MELODY[Math.min(MELODY.length - 1, k + 1)], mix = Math.min(1, Math.max(0, (into - note[2] * 0.7) / (note[2] * 0.3)));
+      var A = VOWELS[note[3]], Bv = VOWELS[next[3]];
+      var g = Math.min(1, t / 0.08) * Math.min(1, (T - t) / 0.35) * (1 - 0.35 * Math.exp(-Math.pow(into / 0.04, 2)) * (k > 0 ? 1 : 0));
+      for (var h = 1; h <= H; h++) {
+        var f = h * f0;
+        if (f > 5200) { amp[h] = 0; continue; }
+        var a = 0.015;
+        for (var j = 0; j < 3; j++) {
+          var F = A[j][0] + (Bv[j][0] - A[j][0]) * mix, W = A[j][1] + (Bv[j][1] - A[j][1]) * mix, G = A[j][2] + (Bv[j][2] - A[j][2]) * mix;
+          var d = (f - F) / W; a += G / (1 + d * d);
+        }
+        amp[h] = g * a / Math.pow(h, 0.7);
+      }
+      var end = Math.min(n, s0 + B);
+      for (var i = s0; i < end; i++) {
+        var v = 0;
+        for (var h2 = 1; h2 <= H; h2++) {
+          if (!amp[h2]) continue;
+          ph[h2] += 2 * Math.PI * h2 * f0 / sr;
+          if (ph[h2] > 2 * Math.PI) ph[h2] -= 2 * Math.PI;
+          v += amp[h2] * Math.sin(ph[h2]);
+        }
+        y[i] = v;
+      }
+    }
+    var p = 0;
+    for (var q = 0; q < n; q++) { var x = Math.abs(y[q]); if (x > p) p = x; }
+    for (var r = 0; r < n; r++) y[r] *= 0.7 / (p || 1);
+    return y;
+  }
+
+  // ── the node: the worklet module imports kairotic/shift.mjs, with the WebAssembly inside ──
+  var moduleAdded = null;
+  function makeNode(frame, hop) {
+    var ac = audio();
+    if (!ac.audioWorklet) return Promise.reject(new Error("this browser has no AudioWorklet"));
+    moduleAdded = moduleAdded || ac.audioWorklet.addModule("kairotic/shift-worklet.mjs");
+    return moduleAdded.then(function () {
+      return new Promise(function (res, rej) {
+        var n = new AudioWorkletNode(ac, "kairotic-shift", { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
+                                                             processorOptions: { frame: frame, hop: hop } });
+        var done = false;
+        n.port.onmessage = function (e) {
+          var m = e.data;
+          if (m.ready && !done) { done = true; res(n); }
+          if (m.error && !done) { done = true; rej(new Error(m.error)); }
+          emit(m);
+        };
+        n.onprocessorerror = function () { emit({ error: "the shift~ node stopped with an error" }); };
+        setTimeout(function () { if (!done) { done = true; rej(new Error("the shift~ node did not start (no answer in 8 s)")); } }, 8000);
+      });
+    });
+  }
+
+  function connectSource(kind) {
+    var ac = audio();
+    if (src) { try { src.stop && src.stop(); } catch (e) {} try { src.disconnect(); } catch (e) {} src = null; }
+    srcKind = kind;
+    if (kind === "mic") {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+        return Promise.reject(new Error("this page cannot use a microphone here"));
+      return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+        .then(function (stream) {
+          mic = stream; src = ac.createMediaStreamSource(stream); src.connect(inBus); started = ac.currentTime; loopDur = 0;
+          return { loop: 0, t0: started };
+        }, function () { throw new Error("the microphone was refused (a page published on claude.ai cannot ask for it; open the study from Kairotic Pages or its folder)"); });
+    }
+    var buf = kind === "file" ? fileBuf : (voiceBuf = voiceBuf || (function () {
+      var y = voice(ac.sampleRate), b = ac.createBuffer(1, y.length, ac.sampleRate); b.copyToChannel(y, 0); return b;
+    })());
+    if (!buf) return Promise.reject(new Error("choose a sound file first"));
+    var s = ac.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(inBus);
+    started = ac.currentTime + 0.05; s.start(started); src = s; loopDur = buf.duration;
+    return Promise.resolve({ loop: buf.duration, t0: started });
+  }
+
+  function stopAll() {
+    if (src) { try { src.stop && src.stop(); } catch (e) {} try { src.disconnect(); } catch (e) {} src = null; }
+    if (mic) { mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; }
+    if (node) { try { node.disconnect(); } catch (e) {} try { inBus.disconnect(node); } catch (e) {} node = null; }
+  }
+
+  function start(kind, frame, hop) {
+    var ac = audio(); ac.resume();
+    stopAll();
+    return makeNode(frame, hop).then(function (n) {
+      node = n; inBus.connect(n); n.connect(wet);
+      setBypass(bypassed);
+      return connectSource(kind).then(function (info) {
+        info.latency = frame / ac.sampleRate; info.rate = ac.sampleRate; return info;
+      });
+    });
+  }
+  function send(m) { if (node) node.port.postMessage(m); }
+  function setBypass(b) {
+    bypassed = b;
+    if (!ctx) return;
+    var t = ctx.currentTime;
+    wet.gain.setTargetAtTime(b ? 0 : 1, t, 0.01); dryBus.gain.setTargetAtTime(b ? 1 : 0, t, 0.01);
+  }
+  function loadFile(f) {
+    return f.arrayBuffer().then(function (b) { return audio().decodeAudioData(b); }).then(function (ab) { fileBuf = ab; return ab.duration; });
+  }
+
+  // ── the scrolling spectrogram: one column per animation frame, log frequency 55 Hz to 5 kHz ──
+  var FLO = 55, FHI = 5000, buf = null, raf = 0, img = null, spec = null, g = null, cols = 0;
+  function hex(s) {
+    s = (s || "").trim().replace("#", "");
+    if (s.length === 3) s = s.split("").map(function (c) { return c + c; }).join("");
+    var n = parseInt(s || "000000", 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  var T = null;
+  function tokens() {
+    var cs = getComputedStyle(document.documentElement), v = function (k) { return cs.getPropertyValue(k).trim(); };
+    T = { bg: hex(v("--spec-bg")), c1: hex(v("--spec-1")), c2: hex(v("--spec-2")), c3: hex(v("--spec-3")), ink: v("--ink-soft"), grid: v("--grid"), font: v("--f-code") };
+  }
+  function ramp(a) {
+    var l = function (p, q, x) { return [p[0] + (q[0] - p[0]) * x, p[1] + (q[1] - p[1]) * x, p[2] + (q[2] - p[2]) * x]; };
+    if (a < 0.33) return l(T.bg, T.c1, a / 0.33);
+    if (a < 0.7) return l(T.c1, T.c2, (a - 0.33) / 0.37);
+    return l(T.c2, T.c3, Math.min(1, (a - 0.7) / 0.3));
+  }
+  function sizeCanvases() {
+    tokens();
+    spec = document.getElementById("spec"); var grid = document.getElementById("spec-grid");
+    var r = spec.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    var W = Math.max(60, Math.round(r.width * dpr)), H = Math.max(40, Math.round(r.height * dpr));
+    spec.width = W; spec.height = H; grid.width = W; grid.height = H;
+    g = spec.getContext("2d"); g.fillStyle = "rgb(" + T.bg.join(",") + ")"; g.fillRect(0, 0, W, H);
+    img = g.createImageData(1, H);
+    var gg = grid.getContext("2d"); gg.clearRect(0, 0, W, H);
+    gg.font = Math.round(10 * dpr) + "px " + T.font; gg.textBaseline = "middle";
+    var lo = Math.log(FLO), hi = Math.log(FHI);
+    for (var oct = 2; oct <= 8; oct++) {
+      var f = 16.3516 * Math.pow(2, oct);
+      if (f < FLO || f > FHI) continue;
+      var y = Math.round((hi - Math.log(f)) / (hi - lo) * (H - 1)) + 0.5;
+      gg.strokeStyle = T.grid; gg.globalAlpha = 0.5; gg.beginPath(); gg.moveTo(26 * dpr, y); gg.lineTo(W, y); gg.stroke();
+      gg.globalAlpha = 1; gg.fillStyle = T.ink; gg.fillText("C" + oct, 4 * dpr, y);
+    }
+    // 6 seconds across at 60 frames a second
+    cols = Math.max(1, Math.round(W / 360));
+  }
+  function column() {
+    var an = show === "in" ? anIn : anOut;
+    if (!an || !g) return;
+    if (!buf || buf.length !== an.frequencyBinCount) buf = new Float32Array(an.frequencyBinCount);
+    an.getFloatFrequencyData(buf);
+    var W = spec.width, H = spec.height, N = an.fftSize, sr = ctx.sampleRate, lo = Math.log(FLO), hi = Math.log(FHI);
+    g.drawImage(spec, -cols, 0);
+    for (var y = 0; y < H; y++) {
+      var f = Math.exp(hi - (y / (H - 1)) * (hi - lo)), bin = Math.min(buf.length - 2, f * N / sr), b0 = Math.floor(bin), fr = bin - b0;
+      var db = buf[b0] * (1 - fr) + buf[b0 + 1] * fr;
+      var a = Math.max(0, Math.min(1, (db + 100) / 75)), c = ramp(a), o = y * 4;
+      img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255;
+    }
+    for (var k = 0; k < cols; k++) g.putImageData(img, W - cols + k, 0);
+  }
+  function loop() { column(); raf = requestAnimationFrame(loop); }
+  function draw(on) { cancelAnimationFrame(raf); if (on) { if (!g) sizeCanvases(); loop(); } }
+  window.addEventListener("resize", function () { clearTimeout(window.__klr); window.__klr = setTimeout(sizeCanvases, 150); });
+  if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", sizeCanvases);
+
+  return {
+    start: start, stop: function () { stopAll(); draw(false); }, send: send, bypass: setBypass, loadFile: loadFile,
+    on: function (f) { listeners.push(f); }, draw: draw, size: sizeCanvases,
+    show: function (w) { show = w; }, now: function () { return ctx ? ctx.currentTime : 0; },
+    voiceSeconds: 6.6, loopDur: function () { return loopDur; }, started: function () { return started; }
+  };
+})();
+
+window.addEventListener("DOMContentLoaded", function () {
+  var st = document.getElementById("status");
+  function show(e) { st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  window.addEventListener("error", function (e) { if (/ResizeObserver loop/.test(String(e.message))) return; show(e.error || e.message); });
+  window.addEventListener("unhandledrejection", function (e) { show(e.reason); });
+  try { KLive.size(); scittle.core.eval_string(document.getElementById("main-cljs").textContent); } catch (e) { show(e); }
+});
+</script>
+
+<script type="application/x-kairotic" id="main-cljs">
+;; SPDX-License-Identifier: MPL-2.0
+;; Kairotic · Study 29 · live
+;; shift~ in real time. The page holds the state as data; every change becomes a message to the node, the
+;; message a shift~ box would get through its inlet, and is logged on the audio clock: that stream of
+;; messages is what a work could keep of a live take (the sound itself is not kept).
+
+(ns study.live
+  (:require [clojure.string :as str]))
+
+(def K js/window.KLive)
+(defn $ [id] (js/document.getElementById id))
+(defn on [id ev f] (.addEventListener ($ id) ev f))
+(defn r4 [x] (/ (js/Math.round (* x 10000)) 10000))
+
+;; ───────── reading factors as music (as in Study 28) ─────────
+
+(defn token->factor [t]
+  (let [num (fn [s] (js/parseFloat s))]
+    (cond
+      (re-matches #"[+-]?\d+(\.\d+)?c" t) {:f (js/Math.pow 2 (/ (num t) 1200)) :src t}
+      (re-matches #"[+-]\d+(\.\d+)?|0" t) {:f (js/Math.pow 2 (/ (num t) 12)) :src t}
+      (re-matches #"\d+/\d+" t) (let [[a b] (map num (str/split t #"/"))]
+                                  (if (pos? b) {:f (/ a b) :src t} {:error (str t ": a ratio cannot divide by 0")}))
+      (re-matches #"\d*\.?\d+" t) {:f (num t) :src t}
+      :else {:error (str "“" t "” is not a ratio (3/2), semitones (+7) or cents (386c)")})))
+
+(defn chord-of [s]
+  (let [ts (remove str/blank? (str/split (str/trim s) #"[\s,]+"))
+        fs (map token->factor ts)]
+    (cond
+      (empty? ts) {:error "write at least one factor"}
+      (some :error fs) {:error (:error (first (filter :error fs)))}
+      (some #(not (pos? (:f %))) fs) {:error "a factor must be more than 0"}
+      (> (count fs) 16) {:error "at most 16 factors at once"}
+      (some #(> (:f %) 8) fs) {:error "factors above 8 leave almost nothing below the Nyquist frequency"}
+      :else {:chord (vec fs)})))
+
+(defn parse-steps [mode text]
+  (if (= mode :chord)
+    (let [{:keys [chord error]} (chord-of (str/replace text #"\n" " "))]
+      (if error {:error error} {:steps [[0 chord]]}))
+    (let [lines (remove str/blank? (str/split-lines text))
+          parsed (for [l lines]
+                   (if-let [[_ t more] (re-matches #"\s*(\d+(?:\.\d+)?)\s*:\s*(.*)" l)]
+                     (let [{:keys [chord error]} (chord-of more)]
+                       (if error {:error (str "at " t " s: " error)} [(js/parseFloat t) chord]))
+                     {:error (str "“" (str/trim l) "” should be seconds: factors, such as 1.5: 1 5/4 3/2")}))]
+      (cond
+        (empty? lines) {:error "write one step per line, seconds: factors"}
+        (some map? parsed) (first (filter map? parsed))
+        (not (apply <= (map first parsed))) {:error "the steps must go forward in time"}
+        :else {:steps (vec (if (pos? (ffirst parsed)) (cons [0 [{:f 1 :src "1"}]] parsed) parsed))}))))
+
+(def names ["P1" "m2" "M2" "m3" "M3" "P4" "TT" "P5" "m6" "M6" "m7" "M7"])
+
+(defn interval-name [f]
+  (let [c (* 1200 (/ (js/Math.log f) (js/Math.log 2)))
+        semis (js/Math.round (/ c 100))
+        off (js/Math.round (- c (* 100 semis)))
+        s (js/Math.abs semis) o (js/Math.floor (/ s 12))]
+    {:cents (js/Math.round c)
+     :name (str (when (neg? semis) "−") (nth names (mod s 12)) (when (pos? o) (str "+" o "oct")))
+     :off off}))
+
+;; ───────── state ─────────
+
+(def presets
+  {:chord [["Just major triad" "1 5/4 3/2"]
+           ["Septimal minor triad" "1 7/6 3/2"]
+           ["Harmonic series 4 : 5 : 6 : 7" "1 5/4 3/2 7/4"]
+           ["Octaves around" "0.5 1 2"]
+           ["A fifth up" "+7"]
+           ["A quarter tone up" "50c"]
+           ["Equal-tempered major triad" "0 +4 +7"]
+           ["Unison (no shift)" "1"]]
+   :prog [["With the phrase: triads that change quality"
+           "0: 1 5/4 3/2\n1.8: 1 6/5 3/2\n3.0: 1 7/6 3/2\n4.4: 1 5/4 3/2 7/4"]
+          ["Canon a fifth and an octave below"
+           "0: 1\n0.9: 1 2/3\n1.8: 1 2/3 1/2"]
+          ["Clusters closing to the unison"
+           "0: 1 33/32 17/16 9/8\n2: 1 65/64 33/32\n4: 1 129/128\n5.2: 1"]]})
+
+(defonce state
+  (atom {:mode :chord
+         :text {:chord "1 5/4 3/2" :prog (second (first (:prog presets)))}
+         :running false :source "voice" :loop 6.6 :t0 0
+         :step -1
+         :log []}))
+
+(defn status! [s & [kind]]
+  (let [el ($ "status")]
+    (set! (.-textContent el) s)
+    (set! (.. el -style -color) (case kind :error "var(--error)" :ok "var(--ok)" ""))))
+
+(defn num-of [id] (js/parseFloat (.-value ($ id))))
+
+;; ───────── messages: to the node, and to the log as a shift~ box would hear them ─────────
+
+(defn log! [msg]
+  (let [t (.now K) k (first msg)]
+    (swap! state update :log
+           (fn [l]
+             ;; a slider sends many: within half a second the last one replaces the one before
+             (let [l (if (and (seq l) (= k (first (:msg (peek l)))) (< (- t (:t (peek l))) 0.5)) (pop l) l)]
+               (vec (take-last 40 (conj l {:t t :msg msg}))))))
+    (let [el ($ "log") lines (reverse (:log @state))]
+      (set! (.-innerHTML el) "")
+      (doseq [{:keys [t msg]} lines]
+        (let [s (js/document.createElement "span")
+              c (js/document.createElement "span")]
+          (set! (.-className c) "c")
+          (set! (.-textContent c) (str (.padStart (.toFixed t 2) 7) "  "))
+          (set! (.-textContent s) (str (pr-str msg) "\n"))
+          (.appendChild el c) (.appendChild el s))))))
+
+(defn send! [m msg]
+  (.send K (clj->js m))
+  (when msg (log! msg)))
+
+(defn steps-msg
+  "The harmony as it is now, to the node and as a message: a chord, or a progression with its loop."
+  []
+  (let [{:keys [mode text loop t0]} @state
+        p (parse-steps mode (get text mode))]
+    (when-not (:error p)
+      (let [plain (mapv (fn [[t ch]] [t (mapv :f ch)]) (:steps p))
+            written (mapv (fn [[t ch]] [t (symbol (str/join " " (map :src ch)))]) (:steps p))]
+        (if (= mode :chord)
+          (send! {:steps nil :factors (second (first plain))}
+                 (into [:factors] (map (comp symbol :src) (second (first (:steps p))))))
+          (send! {:steps plain :loop loop :t0 t0}
+                 [:progression written :loop loop]))))
+    p))
+
+(defn formants-msg []
+  (let [q (num-of "quef") t (num-of "timbre") rms (.-checked ($ "rms"))]
+    (send! {:formants [q t rms]} [:formants q (r4 t) rms])))
+
+(defn live-msgs []
+  (send! {:transpose (num-of "transpose")} nil)
+  (send! {:dry (num-of "dry")} nil))
+
+;; ───────── rendering ─────────
+
+(defn render-steps! []
+  (let [{:keys [mode text step running]} @state
+        p (parse-steps mode (get text mode))
+        el ($ "steps-view")]
+    (set! (.-innerHTML el) "")
+    (if-let [e (:error p)]
+      (let [d (js/document.createElement "div")] (set! (.-className d) "err") (set! (.-textContent d) e) (.appendChild el d))
+      (doseq [[i [t ch]] (map-indexed vector (:steps p))]
+        (let [row (js/document.createElement "div")
+              tt (js/document.createElement "span")
+              ivs (js/document.createElement "span")]
+          (set! (.-className row) (str "step" (when (and running (= mode :prog) (= i step)) " now")))
+          (set! (.-className tt) "t") (set! (.-className ivs) "ivs")
+          (set! (.-textContent tt) (if (= mode :chord) "always" (str (.toFixed t 2) " s")))
+          (doseq [{:keys [f src]} ch]
+            (let [{:keys [cents name off]} (interval-name f)
+                  iv (js/document.createElement "span")]
+              (set! (.-className iv) "iv")
+              (set! (.-title iv) (str src " = ×" (r4 f)))
+              (set! (.-innerHTML iv) (str name " <i>" cents "¢</i>"
+                                          (when-not (zero? off)
+                                            (str " <span class=\"off\">" (if (pos? off) "+" "−") (js/Math.abs off) "</span>"))))
+              (.appendChild ivs iv)))
+          (.appendChild row tt) (.appendChild row ivs) (.appendChild el row))))
+    (set! (.-textContent ($ "mode-what"))
+          (if (= mode :chord) "a chord" (str (count (:steps p)) " steps, looped")))
+    p))
+
+(defn outputs! []
+  (let [q (num-of "quef") t (num-of "timbre") tr (num-of "transpose") d (num-of "dry")]
+    (set! (.-textContent ($ "quef-out")) (if (zero? q) "off" (str q " ms")))
+    (set! (.-textContent ($ "timbre-out")) (str "×" (.toFixed t 2)))
+    (set! (.-disabled ($ "timbre")) (zero? q))
+    (set! (.-textContent ($ "transpose-out")) (str (when (pos? tr) "+") (.toFixed tr 2) " st"))
+    (set! (.-textContent ($ "dry-out")) (str (js/Math.round (* 100 d)) "%"))))
+
+(defn loop-note! []
+  (let [{:keys [source]} @state]
+    (set! (.-disabled ($ "loop")) (not= source "mic"))
+    (set! (.-textContent ($ "loop-note"))
+          (case source
+            "voice" "follows the voice: the harmony starts with the phrase"
+            "file" "follows the file: the harmony starts with it"
+            "on the audio clock, from Start"))))
+
+;; ───────── transport ─────────
+
+(defn frame-hop []
+  (let [f (js/parseInt (.-value ($ "frame")) 10) o (js/parseInt (.-value ($ "overlap")) 10)]
+    [f (/ f o)]))
+
+(defn start! []
+  (let [[f h] (frame-hop) src (:source @state)]
+    (status! "Starting shift~…")
+    (-> (.start K src f h)
+        (.then (fn [info]
+                 (let [lp (.-loop info)]
+                   (swap! state assoc :running true :t0 (.-t0 info)
+                          :loop (if (pos? lp) lp (or (num-of "loop") 8)))
+                   (when (pos? lp) (set! (.-value ($ "loop")) (.toFixed lp 2)))
+                   (set! (.-textContent ($ "r-latency")) (str (.toFixed (* 1000 (.-latency info)) 1) " ms"))
+                   (set! (.-textContent ($ "r-rate")) (str (/ (.-rate info) 1000) " kHz"))
+                   (set! (.-textContent ($ "run")) "Stop")
+                   (set! (.-hidden ($ "spec-empty")) true)
+                   (log! [:start src :frame f :hop h])
+                   (steps-msg) (formants-msg) (live-msgs)
+                   (.draw K true)
+                   (render-steps!)
+                   (status! "Sounding" :ok))))
+        (.catch (fn [e]
+                  (.stop K)
+                  (swap! state assoc :running false)
+                  (set! (.-textContent ($ "run")) "Start")
+                  (status! (str "Error: " (or (.-message e) e)) :error))))))
+
+(defn stop! []
+  (.stop K)
+  (swap! state assoc :running false :step -1)
+  (set! (.-textContent ($ "run")) "Start")
+  (set! (.-textContent ($ "r-load")) "–")
+  (log! [:stop])
+  (render-steps!)
+  (status! "Stopped"))
+
+(defn restart! [] (when (:running @state) (start!)))
+
+;; what the node tells: its load and the step of the progression
+(.on K (fn [m]
+         (when (some? (.-load m))
+           (set! (.-textContent ($ "r-load")) (str (.toFixed (* 100 (.-load m)) 1) "%")))
+         (when (and (some? (.-step m)) (not= (.-step m) (:step @state)))
+           (swap! state assoc :step (.-step m))
+           (render-steps!))
+         (when (.-error m) (status! (str "Error: " (.-error m)) :error))))
+
+;; ───────── the controls ─────────
+
+(defn fill-presets! []
+  (let [sel ($ "preset") mode (:mode @state)]
+    (set! (.-innerHTML sel) "")
+    (let [o (js/document.createElement "option")] (set! (.-value o) "") (set! (.-textContent o) "Examples…") (.appendChild sel o))
+    (doseq [[i [label _]] (map-indexed vector (get presets mode))]
+      (let [o (js/document.createElement "option")] (set! (.-value o) (str i)) (set! (.-textContent o) label) (.appendChild sel o)))))
+
+(defn set-mode! [m]
+  (swap! state assoc :mode m)
+  (.setAttribute ($ "mode-chord") "aria-pressed" (str (= m :chord)))
+  (.setAttribute ($ "mode-prog") "aria-pressed" (str (= m :prog)))
+  (set! (.-value ($ "steps-text")) (get-in @state [:text m]))
+  (set! (.-rows ($ "steps-text")) (if (= m :chord) 2 5))
+  (set! (.-hidden ($ "loop-row")) (= m :chord))
+  (fill-presets!)
+  (render-steps!)
+  (when (:running @state) (steps-msg)))
+
+(defn wire! []
+  (on "run" "click" (fn [_] (if (:running @state) (stop!) (start!))))
+  (on "mode-chord" "click" (fn [_] (set-mode! :chord)))
+  (on "mode-prog" "click" (fn [_] (set-mode! :prog)))
+  (on "steps-text" "input" (fn [e]
+                             (swap! state assoc-in [:text (:mode @state)] (.. e -target -value))
+                             (let [p (render-steps!)] (when (and (:running @state) (not (:error p))) (steps-msg)))))
+  (on "preset" "change" (fn [e]
+                          (let [v (.. e -target -value)]
+                            (when (seq v)
+                              (let [[_ text] (nth (get presets (:mode @state)) (js/parseInt v 10))]
+                                (swap! state assoc-in [:text (:mode @state)] text)
+                                (set! (.-value ($ "steps-text")) text)
+                                (set! (.. e -target -value) "")
+                                (render-steps!)
+                                (when (:running @state) (steps-msg)))))))
+  (on "loop" "change" (fn [_] (let [v (num-of "loop")] (when (pos? v) (swap! state assoc :loop v) (when (:running @state) (steps-msg))))))
+  (on "transpose" "input" (fn [_] (outputs!) (let [v (num-of "transpose")] (send! {:transpose v} [:transpose (r4 v)]))))
+  (on "transpose" "dblclick" (fn [_] (set! (.-value ($ "transpose")) "0") (outputs!) (send! {:transpose 0} [:transpose 0])))
+  (on "dry" "input" (fn [_] (outputs!) (let [v (num-of "dry")] (send! {:dry v} [:dry (r4 v)]))))
+  (doseq [id ["quef" "timbre"]] (on id "input" (fn [_] (outputs!) (formants-msg))))
+  (on "rms" "change" (fn [_] (formants-msg)))
+  (doseq [id ["frame" "overlap"]] (on id "change" (fn [_] (restart!))))
+  (on "bypass" "click" (fn [e]
+                         (let [b (not= "true" (.getAttribute ($ "bypass") "aria-pressed"))]
+                           (.setAttribute ($ "bypass") "aria-pressed" (str b))
+                           (.bypass K b)
+                           (log! [:bypass b]))))
+  (on "show-out" "click" (fn [_] (.show K "out") (.setAttribute ($ "show-out") "aria-pressed" "true") (.setAttribute ($ "show-in") "aria-pressed" "false")))
+  (on "show-in" "click" (fn [_] (.show K "in") (.setAttribute ($ "show-in") "aria-pressed" "true") (.setAttribute ($ "show-out") "aria-pressed" "false")))
+  (on "source" "change"
+      (fn [e]
+        (let [v (.. e -target -value)]
+          (if (= v "file")
+            (.click ($ "file"))
+            (do (swap! state assoc :source v) (loop-note!) (restart!))))))
+  (on "file" "change"
+      (fn [e]
+        (when-let [f (aget (.. e -target -files) 0)]
+          (-> (.loadFile K f)
+              (.then (fn [_] (swap! state assoc :source "file") (loop-note!) (status! (str (.-name f) " ready")) (restart!)))
+              (.catch (fn [_] (status! (str "Error: " (.-name f) " is not a sound this browser can decode") :error))))))))
+
+;; ───────── start ─────────
+
+(set! (.-value ($ "steps-text")) (get-in @state [:text :chord]))
+(fill-presets!)
+(outputs!)
+(loop-note!)
+(wire!)
+(render-steps!)
+(status! "Ready: press Start")
+</script>
