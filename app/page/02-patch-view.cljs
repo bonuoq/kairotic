@@ -151,7 +151,7 @@
   "The tree a buffer was kept from, while the buffer has not changed since (its recipe is not stale)."
   [b] (let [r (:recipe b)] (when (and r (not (:stale r))) (:tree r))))
 
-;; score: Verovio draws an approximation of the buffer; the SVG node is kept and put back on every repaint
+;; score: Verovio draws the buffer quantized into measures (kairotic.quantize); the SVG node is kept and put back on every repaint
 (defn score-entry! [id b]
   (let [tree-box? (= "tree" (klass (:text b)))
         d0 (if tree-box? cv/empty (canvas-data b))
@@ -165,9 +165,11 @@
       :else
       (try
         (let [tk @vrv scale 30
-              {:keys [mei pieces]} (if lt
-                                     (mt/->score lt (str (name id) "-"))
-                                     (sc/->mei-voice (cv/->voice d0) (str (name id) "-")))
+              ;; a measured tree as it is; a tree without measures, or the strokes of the buffer, quantized (#86)
+              {:keys [mei pieces]} (cond
+                                     lt (qz/->score lt (str (name id) "-"))
+                                     (cv/generic? d0) (sc/->mei-voice (cv/->voice d0) (str (name id) "-"))
+                                     :else (qz/->score d0 (str (name id) "-")))
               g (js/document.createElementNS "http://www.w3.org/2000/svg" "g")]
           (.setOptions tk (clj->js {:pageWidth (js/Math.round (/ (* (- sw 8) 100) scale)) :pageHeight 60000
                                     :adjustPageHeight true :breaks "auto" :scale scale
@@ -586,7 +588,7 @@
                         (live-tree id) (str "tree · " (mt/summary (live-tree id)) " · (keep! " id ")")
                         (kept-tree b) (str "kept · " (mt/summary (kept-tree b))
                                            (when-let [f (:from (:recipe b))] (str " · from " f)))
-                        :else (str (when (= :score (display-of b)) "approx. · ") (cv/summary (canvas-data b))
+                        :else (str (when (= :score (display-of b)) (if (cv/generic? (canvas-data b)) "approx. · " "quantized · ")) (cv/summary (canvas-data b))
                                    (when (:recipe b) (str " · changed since kept (remake! " id ")")))))) "</text>"
          chips)))
 

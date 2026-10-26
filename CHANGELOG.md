@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Quantization: a freqt's score in real measures** (issue #86, stages 1–3). A `freqt` shown as a score is
+  no longer rounded to a sixteenth grid: `kairotic.quantize` turns its strokes into a measured tree that
+  `mt/->mei` writes. The meter comes from the bar grid (`[1.5 1.5]` → 6/8, `[1.5 1.5 1]` → 8/8 [3+3+2]);
+  each beat (or group) takes the division that costs least — distance of the notes to its points, depth of
+  the points it uses, being a tuplet, notes lost — and two beats can make a half-note triplet; small gaps
+  before the next note are legato, a note too short for any point is a grace note, ties cross barlines and
+  leave tuplets. The same for trees without measures (each voice on its staff). `(quantize :bN [opts])`
+  gives the tree (`:meter :divs :merge :grace :legato :chord :w`); `(as-tree :bN)` still reads the strokes
+  exactly. The header says *quantized*.
+- **Metric spelling in `mt/->mei`** (`mt/metric-split`): outside tuplets a value is cut where the beats must
+  be seen (a quarter off the beat over the middle of 4/4 → two tied eighths; quarter–half–quarter and
+  eighth–quarter–eighth syncopations stay), a rest that fills its bar is a bar rest, and a dotted whole and a
+  breve are written as such. Notes take **`:tie true`** (one sound with the next note of the same pitch,
+  tied across a barline or into a tuplet; `mt/events` joins them) and **`:grace true`** (a grace note, no
+  time). Tests: `tests/cljs/quantize.cljs`, more in `tests/cljs/mt.cljs`.
 - **Loudness and silences in patterns**: an event with `:amp` (0…1) makes the player send `[:gain amp]` on
   its Hz outlet just before its notes; **`@kairotic/synth` 0.3.0**: `synth~` takes `[:gain v]` (also `:amp`,
   `:vel`) as the level of the notes that start after it, as a polyphonic `faust~` already did. `nil` is a

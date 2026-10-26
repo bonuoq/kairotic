@@ -22,6 +22,8 @@
 ;; Any node may carry :at (an offset from the start of its parent; it does not move the parent's
 ;; cursor), :id, and any other key. Notes also take :art [:staccato :accent], :dyn "p", :text "…",
 ;; :gliss [[0 0] [1 -150]] (cents over the note's duration), :env [[0 0] [0.1 1] [1 0]], :vel 0.8.
+;; :tie true goes on into the next note of the same pitch (across a barline or into a tuplet: one sound,
+;; tied in the score); :grace true is a grace note before the next one (it takes no time in its container).
 ;; A note without :dur lasts as long as the previous one of its container (1 at first). :defs (a map
 ;; of fragments) can sit in the attributes of any container; [:use {:ref k}] takes them from there.
 
@@ -301,7 +303,7 @@
           (if (empty? ks)
             out
             (let [k (first ks)
-                  durable (and (node? k) (#{:note :rest :chord} (tag k)) (not (:at (attrs k))))
+                  durable (and (node? k) (#{:note :rest :chord} (tag k)) (not (:at (attrs k))) (not (:grace (attrs k))))
                   d (when durable (or (:dur (attrs k)) prev))
                   k (explicit (if (and durable seqy) (update-attrs k assoc :dur d) k))]
               (recur (rest ks) (if (and durable seqy) d prev) (conj out k)))))))))
@@ -616,6 +618,14 @@
   [n t scale ctx acc]
   (let [tg (tag n) a (attrs n)]
     (cond
+      ;; a grace note sounds briefly where it is, and the time goes on as if it were not there
+      (and (= :note tg) (:grace a))
+      (let [m (midi-of a)]
+        (when m
+          (add-ev acc (merge (dissoc a :pitch :hz :cents :dur :at :id)
+                             {:kind :note :t t :dur (* scale (or (:dur a) 0.125)) :pitch m :voice (:voice ctx) :path (:path ctx)})))
+        t)
+
       (= :note tg)
       (let [d (* scale (or (:dur a) (:dur ctx) 1)) m (midi-of a)]
         (when m
@@ -673,7 +683,7 @@
               (if-not (node? k)
                 (recur (rest ks) cur prev)
                 (let [ka (attrs k)
-                      durable (#{:note :rest :chord} (tag k))
+                      durable (and (#{:note :rest :chord} (tag k)) (not (:grace ka)))
                       prev (if (and durable (:dur ka)) (:dur ka) prev)
                       c2 {:voice voice :dur (when durable prev) :path (conj (:path ctx) i) :tempo (:tempo ctx)}]
                   (if (some? (:at ka))
@@ -681,6 +691,28 @@
                     (recur (rest ks) (place k cur scale c2 acc) prev))))))))
 
       :else t)))
+
+(defn- join-ties
+  "Events in time order with every tied note (:tie) joined to the note it goes on in: the next note of
+   its voice with the same pitch that starts where it ends. One sound, one event (it keeps the first's keys)."
+  [evs]
+  (let [same? (fn [a b] (< (js/Math.abs (- a b)) 1e-6))]
+    (loop [es evs out (transient []) open {}]
+      (if (empty? es)
+        (mapv (fn [e] (if (= :note (:kind e)) (dissoc e :tie) e)) (persistent! out))
+        (let [e (first es)]
+          (if-not (and (= :note (:kind e)) (not (:grace e)))
+            (recur (rest es) (conj! out e) open)
+            (let [k [(:voice e) (cv/round-to (:pitch e) 4)]
+                  [i end] (get open k)]
+              (if (and i (same? end (:t e)))
+                (let [prev (nth out i)
+                      joined (assoc prev :dur (cv/round-to (+ (:dur prev) (:dur e)) 6))]
+                  (recur (rest es) (assoc! out i joined)
+                         (if (:tie e) (assoc open k [i (+ (:t e) (:dur e))]) (dissoc open k))))
+                (let [idx (count out)]
+                  (recur (rest es) (conj! out e)
+                         (if (:tie e) (assoc open k [idx (+ (:t e) (:dur e))]) (dissoc open k))))))))))))
 
 (defn events
   "The flat list of events of a tree, in time order: {:kind :note|:param|:dyn|:text, :t :dur (beats),
@@ -691,7 +723,7 @@
     (->> (persistent! acc)
          (map (fn [e] (-> e (update :t cv/round-to 6) (update :dur cv/round-to 6))))
          (sort-by (juxt :t (fn [e] (- (or (:pitch e) 0)))))
-         vec)))
+         join-ties)))
 
 (defn duration "How long a tree lasts, in beats." [tree]
   (let [t (expand tree) acc (transient [])] (cv/round-to (place t 0 1 {:path []} acc) 6)))
@@ -835,11 +867,63 @@
 
 ;; ───────── measured notation (MEI) ─────────
 ;; When a voice is written in :measure nodes, each one becomes a bar: notes, rests, chords and tuplets
-;; as written, with dynamics, articulations and texts. Without measures, the score is an approximation
-;; on a sixteenth grid (kairotic.score).
+;; as written, with dynamics, articulations and texts. Outside tuplets each value is written where the
+;; beats can be seen (metric-split); :tie and :grace notes are written as ties and grace notes. A tree
+;; without measures (or a freqt's strokes) is first quantized into measures by kairotic.quantize.
 
-(def mei-durs [[4 "1" 0] [3 "2" 1] [2 "2" 0] [1.5 "4" 1] [1 "4" 0] [0.75 "8" 1] [0.5 "8" 0]
+(def mei-durs [[8 "breve" 0] [6 "1" 1] [4 "1" 0] [3 "2" 1] [2 "2" 0] [1.5 "4" 1] [1 "4" 0] [0.75 "8" 1] [0.5 "8" 0]
                [0.375 "16" 1] [0.25 "16" 0] [0.1875 "32" 1] [0.125 "32" 0] [0.0625 "64" 0]])
+
+(declare split-dur)
+
+(defn written-value
+  "The single written value (plain or dotted) that lasts d beats, as [beats mei-dur dots], or nil."
+  [d]
+  (first (filter (fn [[b]] (< (js/Math.abs (- b d)) 1e-6)) mei-durs)))
+
+(defn metric-split
+  "How a note (or a rest) of d beats that starts at pos (beats from the start of its bar) is written:
+   written values [beats mei-dur dots] …, tied, cut where the meter has to be seen. bounds are where the
+   beats (or groups) of the bar start, from its start. A note may run over a beat when it starts at least
+   as strong as every beat it covers (a half note on the downbeat of 4/4, a dotted quarter on beat 2 of
+   3/4) or, not a rest, as a syncopation centred on one beat and as long as that beat's unit (eighth –
+   quarter – eighth; quarter – half – quarter). Inside a beat any written value goes (a sixteenth and a
+   dotted eighth). In a simple meter a rest over a beat is not dotted."
+  [meter bounds pos d rest?]
+  (let [{[p q] :meter g :groups :as m} (meter-of meter)
+        bar (* p (/ 4 q))
+        eps 1e-6
+        lv (fn [x] (meter-level m x))
+        bs (vec (sort (filter (fn [b] (< eps b (- bar eps))) bounds)))
+        ends (conj bs bar)
+        unit-at (fn [b] (- (or (first (filter (fn [x] (and (> x (+ b eps)) (<= (lv x) (lv b)))) ends)) bar) b))
+        simple? (and (<= q 4) (empty? g))
+        allowed? (fn [a e]
+                   (let [wv (written-value (- e a))
+                         crossed (filter (fn [b] (< (+ a eps) b (- e eps))) bs)]
+                     (and wv
+                          (or (empty? crossed)
+                              (and (every? (fn [b] (<= (lv a) (lv b))) crossed)
+                                   (not (and rest? simple? (pos? (nth wv 2)))))
+                              (and (not rest?) (= 1 (count crossed))
+                                   (let [b (first crossed)]
+                                     (and (< (js/Math.abs (- (- b a) (- e b))) eps)
+                                          (< (js/Math.abs (- (- e a) (unit-at b))) eps))))))))]
+    (if (or (> (+ pos d) (+ bar eps)) (neg? pos))
+      (split-dur d)
+      (loop [a pos out []]
+        (let [left (- (+ pos d) a)]
+          (if (or (< left 0.03) (> (count out) 16))
+            (if (empty? out) (split-dur d) out)
+            (let [e (+ a left)
+                  hit (first (filter (fn [x] (allowed? a x))
+                                     (cons e (reverse (filter (fn [b] (< (+ a eps) b (- e eps))) bs)))))]
+              (if hit
+                (recur hit (conj out (written-value (- hit a))))
+                ;; nothing written reaches a beat: the longest value that fits before the next one
+                (let [nb (min e (or (first (filter (fn [b] (> b (+ a eps))) bs)) e))
+                      [b du dots] (or (first (filter (fn [[b]] (<= b (+ (- nb a) eps))) mei-durs)) (peek mei-durs))]
+                  (recur (+ a b) (conj out [b du dots])))))))))))
 
 (defn split-dur
   "A duration in beats as written values ([beats mei-dur dots] …), tied when it needs more than one."
@@ -904,6 +988,7 @@
         pieces (atom [])
         ctrl (atom {})                       ; bar → control events (dynam, dir, hairpin, tie)
         ctl! (fn [bar x] (swap! ctrl update bar (fnil conj []) x))
+        open-ties (atom {})                  ; [staff pitch] → [id bar] of a note tied (:tie) to the next one
         bar-start (atom {})
         _ (reduce (fn [acc i] (swap! bar-start assoc i acc) (let [[p q] (meter-at i)] (+ acc (* p (/ 4 q))))) 0 (range (inc nbars)))
         tstamp (fn [bar beat] (let [[_ q] (meter-at bar)] (cv/round-to (inc (* beat (/ q 4))) 4)))
@@ -987,14 +1072,43 @@
                         (#{:seq :section :voice} tg)
                         (let [[inner end] (layer (kids k) staff bar abs scale spans)]
                           (recur (rest ks) end (conj items {:t0 abs :t1 end :xml inner})))
+                        ;; a grace note: small, before the next note, and it takes no time
+                        (and (= :note tg) (:grace a) (midi-of a))
+                        (let [id (nid)
+                              x (note-xml (dissoc a :art) staff abs id " dur=\"8\" grace=\"unacc\"" false (meta k))]
+                          (recur (rest ks) abs (conj items {:t0 abs :t1 abs :xml x})))
+                        ;; a rest that fills its bar: a bar rest
+                        (and (= :rest tg) (not= spans :all)
+                             (let [[b beat] (where abs) [[p q]] (mg-at b)]
+                               (and (< (js/Math.abs beat) 1e-6) (< (js/Math.abs (- (* scale (or (:dur a) 1)) (* p (/ 4 q)))) 1e-6))))
+                        (let [id (nid)]
+                          (swap! pieces conj {:id id :t abs :staff staff :src (meta k)})
+                          (recur (rest ks) (+ abs (* scale (or (:dur a) 1)))
+                                 (conj items {:t0 abs :t1 abs :xml (str "<mRest xml:id=\"" id "\"/>")})))
                         (#{:note :rest :chord} tg)
                         (let [d (or (:dur a) 1)
-                              parts (split-dur d)
-                              [b _] (where abs)
+                              [b beat] (where abs)
+                              ;; outside a tuplet a note is cut where the meter has to be seen
+                              parts (if (not= spans :all)
+                                      (let [[mtr g] (mg-at b)]
+                                        (metric-split (cond-> {:meter mtr} g (assoc :groups (vec g)))
+                                                      (map (fn [[s _]] (- s (get @bar-start b))) (beam-spans b))
+                                                      beat (* scale d) (= :rest tg)))
+                                      (split-dur d))
+                              chord-ns (when (= :chord tg)
+                                         (vec (filter (fn [n] (and (node? n) (= :note (tag n)) (midi-of (attrs n)))) (kids k))))
+                              ;; the notes of this one, with their pitches: a tie may come into them, or go on from them
+                              members (case tg :note [a] :chord (mapv attrs chord-ns) [])
+                              tie-key (fn [m] [staff (cv/round-to (midi-of m) 3)])
                               part-items
                               (loop [ps parts pabs abs prev-ids nil acc []]
                                 (if (empty? ps)
-                                  acc
+                                  (do (when prev-ids
+                                        (doseq [[m id] (map vector members prev-ids)]
+                                          (if (or (:tie a) (:tie m))
+                                            (swap! open-ties assoc (tie-key m) [id b])
+                                            (swap! open-ties dissoc (tie-key m)))))
+                                      acc)
                                   (let [[pb du dots] (first ps)
                                         durattr (str " dur=\"" du "\"" (when (pos? dots) " dots=\"1\""))
                                         first? (nil? prev-ids)
@@ -1003,7 +1117,7 @@
                                                           [(str "<rest xml:id=\"" id "\"" durattr "/>") nil])
                                                   :note (let [id (nid)] [(note-xml a staff pabs id durattr first? (meta k)) [id]])
                                                   :chord (let [cid (nid)
-                                                               ns (filter (fn [n] (and (node? n) (= :note (tag n)) (midi-of (attrs n)))) (kids k))
+                                                               ns chord-ns
                                                                ids (mapv (fn [_] (nid)) ns)]
                                                            [(str "<chord xml:id=\"" cid "\"" durattr
                                                                  (let [x (:art a) xs (if (sequential? x) x (when x [x]))
@@ -1014,6 +1128,13 @@
                                                                  "</chord>")
                                                             ids]))]
                                     (when (and first? (seq ids)) (marks! a staff b (first ids)))
+                                    ;; a tie from the note before (:tie), across a barline or into a tuplet
+                                    (when first?
+                                      (doseq [[m id] (map vector members (or ids []))]
+                                        (when-let [[s sb] (get @open-ties (tie-key m))]
+                                          (ctl! sb (str "<tie startid=\"#" s "\" endid=\"#" id "\"/>"))))
+                                      ;; a tie only goes into the very next note of its staff
+                                      (swap! open-ties (fn [o] (into {} (remove (fn [[[st _] _]] (= st staff)) o)))))
                                     (when (and prev-ids ids)
                                       (doseq [[s e] (map vector prev-ids ids)]
                                         (ctl! b (str "<tie startid=\"#" s "\" endid=\"#" e "\"/>"))))
@@ -1028,19 +1149,23 @@
                                   mean (if (seq ps) (/ (reduce + ps) (count ps)) 64)]
                               (if (< mean 57) ["F" 4] ["G" 2])))
                     staves)
-        bars (vec (for [i (range nbars)
-                        :let [{:keys [cells label end]} (nth bar-list i)
-                              staff-xml (apply str
+        ;; every bar's staves first, then the measures with their control events: a tie into the next
+        ;; bar is written in the bar where it starts, once that one is done
+        staff-xmls (vec (for [i (range nbars)
+                              :let [{:keys [cells]} (nth bar-list i)]]
+                          (apply str
                                                (for [k staves
                                                      :let [staff (staff-of k) m (get cells k)
                                                            [xml _] (if m (layer (kids m) staff i (get @bar-start i) 1 (beam-spans i)) ["" 0])]]
                                                  (str "<staff n=\"" staff "\"><layer n=\"1\">"
                                                       (if (seq xml) xml (str "<mRest xml:id=\"" (nid) "\"/>"))
-                                                      "</layer></staff>")))]]
+                                                      "</layer></staff>")))))
+        bars (vec (for [i (range nbars)
+                        :let [{:keys [label end]} (nth bar-list i)]]
                     (do (when (seq label)
                           (ctl! i (str "<dir staff=\"1\" tstamp=\"1\" place=\"above\"><rend fontweight=\"bold\">" (esc-xml label) "</rend></dir>")))
                         (str "<measure n=\"" (inc i) "\"" (when end " right=\"dbl\"") ">"
-                             staff-xml
+                             (nth staff-xmls i)
                              (apply str (get @ctrl i))
                              "</measure>"))))
         [_ q0] (meter-at 0)]
@@ -1067,7 +1192,8 @@
      :pieces (vec (sort-by :t @pieces))}))
 
 (defn ->score
-  "MEI for a score box: measured when the tree has measures, an approximation on a sixteenth grid if not."
+  "MEI for a tree: measured when it has measures, an approximation on a sixteenth grid if not (kept for
+   older code: kairotic.quantize/->score quantizes a tree without measures, and the page uses that one)."
   [tree pre]
   (if (measured? tree) (->mei tree pre) (sc/->mei-voice (->voice tree) pre)))
 
