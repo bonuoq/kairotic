@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Quantization, stages 4–6** (issue #86). **Voices**: overlapping strokes (or notes of a tree without
+  measures) are separated into voices by pitch proximity (`:voices`, 2 by default; chords stay together, two
+  lines that meet go one to each), quantized on the same points and written as layers of one staff (`:staff`
+  on a `:voice`: voices that share it are its layers; an empty second layer is not written); a note held
+  through another voice's triplet is not written in the triplet. **Nested divisions**: a beat in halves (a
+  dotted beat in its eighths) with a division each — an eighth and a triplet of sixteenths (`:nest`).
+  **Microtones and glissandi** in `mt/->mei`: quarter-tone accidentals (`1qs`, `3qs`) for pitches half-way
+  between semitones; a note that bends (`:gliss`) into the next one is a `<gliss>` line, else a text.
+  **Choosing another division**: alt-click a note of a freqt's score divides its beat the next way
+  (`qz/choices`, `qz/next-choice`; `:fix {beat choice}` with n, `[n1 n2]` or `[:merge n]`); the choices and
+  options are kept in the buffer as `:quant` (a `[:quantize {…}]` event, in its text, its diff and the
+  merge of branches). REPL: `(quant :bN [opts])`, `(divisions :bN t)`, `(division! :bN t [choice])`.
 - **Quantization: a freqt's score in real measures** (issue #86, stages 1–3). A `freqt` shown as a score is
   no longer rounded to a sixteenth grid: `kairotic.quantize` turns its strokes into a measured tree that
   `mt/->mei` writes. The meter comes from the bar grid (`[1.5 1.5]` → 6/8, `[1.5 1.5 1]` → 8/8 [3+3+2]);

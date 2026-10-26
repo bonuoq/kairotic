@@ -273,10 +273,16 @@
         m (when gn (re-matches #"n-([^-]+)-([^-]+)-(\d+)" (str (.-id gn))))
         tid (when m (keyword (nth m 2)))
         c (get @score-cache id)
-        piece (when (and gn (:from c)) (first (filter (fn [pc] (= (:id pc) (.-id gn))) (:pieces c))))]
+        piece (when (and gn (:from c)) (first (filter (fn [pc] (= (:id pc) (.-id gn))) (:pieces c))))
+        ;; a note or rest of a freqt's own strokes, quantized: alt-click divides its beat another way
+        qpiece (when (and gn (.-altKey e) (not (:from c)) (not (live-tree id)) (not (kept-tree b)))
+                 (first (filter (fn [pc] (= (:id pc) (.-id gn))) (:pieces c))))]
     (cond
       (and piece (:src piece))
       (select-tree-note! id piece (:from c))
+      qpiece
+      (let [ch (division! id (:t qpiece))]
+        (repl-print! "out" (esc (str "; " id " · the beat at " (cv/fmt (:t qpiece)) " divided " (pr-str ch) " (alt-click again: another way; (division! " id " " (cv/fmt (:t qpiece)) " nil): the quantizer's)"))))
       (and tid (get-in b [:data :strokes tid]))
       (swap! ui assoc :sel nil :nsel [id tid])
       :else

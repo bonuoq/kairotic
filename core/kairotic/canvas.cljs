@@ -11,6 +11,8 @@
 ;;       :gx {:step 0.5 :cycles [4]}  :gy {:step 0.1}}          ; grids (optional)
 ;;  · freqt — frequency over time: no :ax; time goes from 0, frequency is on a log scale, strokes go
 ;;    forward in time, and :gy can be a tuning {:name "12-tet" :cents [100 ... 1200] :ref 261.63}.
+;;    It may keep how its score is quantized: :quant {:meter "6/8" :divs [1 2 3 4] :fix {2 3} …}
+;;    (kairotic.quantize reads it; [:quantize opts] sets it, nil removes it).
 ;; Between two points the value is interpolated on the scale of its axis (log → geometric, as pitch).
 
 (ns kairotic.canvas
@@ -148,6 +150,14 @@
       (when (and (sequential? cs) (seq cs) (every? num? cs) (pos? (peek (vec cs))) (< (count cs) 400))
         {:name (str (or (:name gy) "scale")) :cents (vec cs) :ref (if (and (num? ref) (< 1 ref 20000)) ref default-ref)})))))
 
+(def quant-keys [:meter :groups :divs :merge :nest :grace :legato :chord :voices :overlap :tempo :w :fix])
+
+(defn sane-quant
+  "How a freqt's score is quantized, as kept in its buffer: only the keys kairotic.quantize reads (their
+   values are checked there), nil when there are none."
+  [q]
+  (when (map? q) (not-empty (into {} (filter (fn [[k v]] (some? v)) (select-keys q quant-keys))))))
+
 (defn sane-axis [a dflt]
   (let [a (if (map? a) a {}) lo (:lo a) hi (:hi a) log? (boolean (:log a))]
     (if (and (num? lo) (num? hi) (< lo hi) (or (not log?) (pos? lo)))
@@ -212,11 +222,13 @@
       :grid-x  (assoc d :gx (sane-gx (first args)))
       :tuning  (assoc d :gy (sane-gy (first args)))
       :grid-y  (assoc d :gy (sane-gy (first args)))
+      :quantize (if-let [q (sane-quant (first args))] (assoc d :quant q) (dissoc d :quant))
       :axis    (if (generic? d) (assoc d :ax (sane-ax (first args))) d)
       :load    (let [[x] args]
                  (if (map? x)
                    (let [base (cond-> {:gx (sane-gx (:gx x)) :gy (sane-gy (:gy x))}
-                                (or (generic? d) (map? (:ax x))) (assoc :ax (or (sane-ax (:ax x)) default-ax)))]
+                                (or (generic? d) (map? (:ax x))) (assoc :ax (or (sane-ax (:ax x)) default-ax))
+                                (sane-quant (:quant x)) (assoc :quant (sane-quant (:quant x))))]
                      (assoc base :strokes (into {} (for [[k s] (:strokes x)
                                                          :let [ps (and (keyword? k) (map? s) (sane-pts-for base (:pts s)))] :when ps]
                                                      [k {:pts ps}]))))
@@ -580,6 +592,7 @@
     (str "{" (when (generic? d) (str ":ax " (ax-src (:ax d)) "\n "))
          ":gx " (gx-src (:gx d)) "\n"
          " :gy " (gy-src (:gy d)) "\n"
+         (when (:quant d) (str " :quant " (pr-str (:quant d)) "\n"))
          " :strokes {" (str/join "\n           " (map (fn [[id s]] (str id " " (pts-src (:pts s)))) ss)) "}}")))
 
 (defn- bad [msg] (throw (js/Error. msg)))
@@ -595,8 +608,10 @@
         x (first forms)
         gen (generic? (or d empty))]
     (when-not (map? x) (bad "A buffer is a map: {:strokes {:t1 [[0 440] [1 440]]} :gx nil :gy nil}"))
-    (when-let [k (first (remove #{:strokes :gx :gy :ax} (keys x)))]
-      (bad (str "Unknown key " (pr-str k) ": a buffer has :strokes, :gx, :gy" (when gen " and :ax"))))
+    (when-let [k (first (remove #{:strokes :gx :gy :ax :quant} (keys x)))]
+      (bad (str "Unknown key " (pr-str k) ": a buffer has :strokes, :gx, :gy" (if gen " and :ax" " and :quant"))))
+    (when (and gen (some? (:quant x))) (bad "A canvas has no :quant: only a freqt is quantized into a score"))
+    (when (and (some? (:quant x)) (not (map? (:quant x)))) (bad ":quant is a map of options: {:meter \"6/8\" :divs [1 2 3 4]}"))
     (when (and (not gen) (some? (:ax x))) (bad "A freqt has no :ax: its axes are time and frequency"))
     (let [ax (when gen (if (some? (:ax x))
                          (let [a (sane-ax (:ax x))]
@@ -617,7 +632,7 @@
                                                          (str/join ", " (sort (keys tunings))) ", or with :cents), a grid {:step 0.1}, or nil"))))
           ss (:strokes x)]
       (when-not (or (nil? ss) (map? ss)) (bad ":strokes is a map: {:t1 [[0 440] [1 440]] :t2 …}"))
-      (assoc base :gx gx :gy gy
+      (assoc (cond-> base (sane-quant (:quant x)) (assoc :quant (sane-quant (:quant x)))) :gx gx :gy gy
              :strokes (into {} (for [[k s] ss]
                                  (let [pts (if (map? s) (:pts s) s)]
                                    (when-not (keyword? k) (bad (str "A stroke id is a keyword such as :t1, not " (pr-str k))))
@@ -636,6 +651,7 @@
           (when (and (generic? b) (not= (:ax a) (:ax b))) [[:axis (:ax b)]])
           (when (not= (:gx a) (:gx b)) [[:grid-x (:gx b)]])
           (when (not= (:gy a) (:gy b)) [[:tuning (:gy b)]])
+          (when (not= (:quant a) (:quant b)) [[:quantize (:quant b)]])
           (for [[id _] (sorted-strokes a) :when (not (contains? (:strokes b) id))] [:erase id])
           (for [[id s] (sorted-strokes b) :when (not= (:pts s) (get-in a [:strokes id :pts]))] [:stroke id (:pts s)])))))
 

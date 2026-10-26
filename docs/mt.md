@@ -197,10 +197,18 @@ notes (issue [#86](https://github.com/bonuoq/kairotic/issues/86); after bach.qua
   and each span takes the division (1 to 8, and those of its own units) that costs least: how far the
   notes are from its points, how deep the points it uses are (the beat, its half, its quarters; 32nds
   cost much), being a tuplet (a triplet less than a quintuplet), and notes lost (two starts on one
-  point, a note shrunk to nothing). Two beats can go together (a half-note triplet).
-- **The notes** go on those points in one voice: chords where starts meet, rests in the gaps (a small gap
-  before the next note is legato, not a rest), a tie over a barline or out of a tuplet, a grace note
-  for a note too short for any point. Pitches between semitones keep their cents.
+  point, a note shrunk to nothing). Two beats can go together (a half-note triplet), and a beat can be
+  cut in halves (or a dotted beat in its eighths) with a division each (an eighth and a triplet of
+  sixteenths).
+- **Voices**: notes that overlap go to different voices, each note to the free voice nearest in pitch
+  (at most `:voices`, 2 by default); notes that start and end together stay one chord. All the voices
+  are quantized on the same points and written as layers of one staff (the highest first, stems up). A
+  note held through another voice's triplet is not written in the triplet.
+- **The notes** go on those points: chords where starts meet, rests in the gaps (a small gap before the
+  next note is legato, not a rest), a tie over a barline or out of a tuplet, a grace note for a note too
+  short for any point. A pitch half-way between semitones takes a quarter-tone accidental, others keep
+  their cents as a text; a stroke that bends into the next note is a glissando line to it (a text,
+  *gliss. ↗ +120¢*, when it bends into nothing).
 
 At the REPL, `(quantize :bN)` gives that tree (it can be kept, edited, sent to a tree box), and options
 change how it is made:
@@ -208,15 +216,35 @@ change how it is made:
 ```clojure
 (quantize :b1)                                   ; what the score shows
 (quantize :b1 {:meter "6/8"})                    ; another meter than the grid's
-(quantize :b1 {:divs [1 2 4] :merge []})          ; no tuplets at all
+(quantize :b1 {:divs [1 2 4] :merge [] :nest false})   ; no tuplets at all
 (quantize :b1 {:grace false :legato 0})          ; no grace notes; every gap a rest
+(quantize :b1 {:voices 1})                       ; one voice: overlapping notes cut
 (qz/quantize-tree [:par [:note {:at 0 :pitch "c4" :dur 1.5}] …] {:meter [3 4]})   ; a tree without measures
 ```
 
-The other options are `:chord` (how close two starts are to be one chord, 0.04 beats), and `:w`, the
-weights of the cost (`{:err 8 :off 0.35 :cpx 1 :lost 1.5}`). `(as-tree :bN)` still reads a freqt's strokes
-exactly, without quantizing them. Next (#86): several voices in one staff, choosing another division of
-a beat from the score, spelling by key (#88).
+The other options are `:chord` (how close two starts are to be one chord, 0.04 beats), `:overlap` (how
+much a note may run into the next one and stay in its voice, 0.15 beats) and `:w`, the weights of the
+cost (`{:err 8 :off 0.35 :cpx 1 :lost 1.5}`). `(as-tree :bN)` still reads a freqt's strokes exactly,
+without quantizing them.
+
+**Choosing another division.** The quantizer guesses; when it guesses wrong, **alt-click a note** of the
+score: its beat takes the next way to divide it (the quantizer's own first, then the others, cheapest
+first: another division, the beat in halves, the beat with the next one). Each choice is kept in the
+buffer, with the options, as one event of the history:
+
+```clojure
+(quant :b1 {:meter "6/8" :divs [1 2 3 4 6]})     ; how this freqt's score is quantized (kept in its buffer)
+(quant :b1)                                      ; → {:meter "6/8" …}
+(divisions :b1 2.5)                              ; the ways the beat at 2.5 can be divided, the current first
+(division! :b1 2.5)                              ; the next one (what alt-click does) → kept in :fix
+(division! :b1 2.5 [:merge 3])                   ; this one: n, [n1 n2] (in halves) or [:merge n]
+(division! :b1 2.5 nil)                          ; the quantizer chooses again
+(quant :b1 nil)                                  ; the defaults
+```
+
+The buffer's text shows them as `:quant {:meter "6/8" :fix {2 [:merge 3]}}`, and a message
+`[:quantize {…}]` on the freqt's inlet sets them too. Next: spelling by key (#88), and one box for
+freqt, tree and score (discussion #92).
 
 ## REPL and components
 
@@ -229,6 +257,7 @@ The functions are in `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt/au
 - `(tree! :b2 [:voice …])` writes a tree into a tree box;
 - `(as-tree :bN)` reads a tree box, or the tree a score is showing, or a freqt's strokes, as a tree;
 - `(quantize :bN [opts])` gives a freqt's strokes (or a tree without measures) quantized into measures;
+- `(quant :bN opts)`, `(divisions :bN t)`, `(division! :bN t [choice])`: how a freqt's score is quantized, kept in its buffer;
 - `(keep! :bN)` and `(unlive! :bN)`;
 - `(recipe :bN)` and `(remake! :bN)` (below).
 
