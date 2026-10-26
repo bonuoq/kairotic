@@ -172,7 +172,7 @@ Un compás que no cuadra es un aviso (⚠ en la REPL y en la caja), no un error,
 
 | caja | |
 |---|---|
-| `tree` | contiene un árbol como texto EDN (doble clic para editarlo). Un bang lo envía. Leer EDN no evalúa nada, así que una caja tree es segura en una sala compartida |
+| `tree` | guarda un árbol, visto como **código**, como **partitura** o como **lienzo** (⇄ en su cabecera): un árbol, tres vistas (más abajo). Un bang lo envía; su segunda salida son sus notas como buffer, para un `reader~`. Leer EDN no evalúa nada, así que una caja tree es segura en una sala compartida |
 | `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` · `mt thin 0.5` | transformaciones (la entrada derecha cambia la cantidad) |
 | `mt seq` · `mt par` | une el árbol de la izquierda con el de la derecha, uno detrás de otro o a la vez |
 | `mt events` · `mt pitches` · `mt duration` | el árbol como datos planos |
@@ -189,6 +189,39 @@ ser dos corcheas ligadas; una negra con puntillo en la parte 2 de un 3/4 se qued
 de un 4/4 deja ver la parte 3. Dos claves más de una nota: `:tie true` sigue en la siguiente nota de la misma
 altura (un solo sonido, ligado sobre la barra o dentro de un grupo irregular) y `:grace true` es una nota de
 adorno antes de la siguiente (no ocupa tiempo).
+
+## Una caja: el árbol como código, partitura y lienzo
+
+Una caja `tree` es la caja única para la música en el tiempo (discusión [#92](https://github.com/bonuoq/kairotic/discussions/92)):
+su dato es el árbol, y **código**, **partitura** y **lienzo** son vistas de él (⇄ en su cabecera, o
+`(view :bN :canvas)`). El lienzo dibuja sus notas como trazos de frecuencia en el tiempo, como un freqt, y lo que
+se dibuja ahí se convierte en ediciones del árbol: un evento de la historia cada una, que se fusiona entre ramas
+como cualquier edición de un árbol.
+
+- **Tiempo libre** (un árbol sin compases): dibujar añade una nota colocada con `:at`, arrastrar la mueve, estirarla
+  (desde su final) la alarga, Supr la borra. Un árbol libre se guarda como
+  `[:voice {…} [:par [:note {:at 0 :dur 1 :pitch 60} …]]]`; uno escrito de otra manera (una cadena de melodía, una
+  secuencia) toma esa forma la primera vez que cambia el tiempo de una nota. Su partitura lo muestra cuantizado, con
+  sus divisiones elegidas con alt+clic y sus nombres con mayúsculas+alt+clic, guardados en el `:quant` del árbol.
+- **Compases**: un cambio solo de altura se escribe en la nota (en su cadena de melodía, si está en una); un cambio de
+  tiempo vuelve a cuantizar los compases que toca, en su compás; una nota borrada deja un silencio igual de largo.
+  Una nota dibujada en un árbol con compases entra en su compás (una voz: una nota dibujada sobre otra tenida se une
+  a ella en un acorde). Con **⌥** (arrastrando una nota, o dibujando a mano alzada) una nota sale de los compases a una
+  voz libre del árbol (`{:name "free"}`), que la partitura cuantiza en su propio pentagrama.
+- **Su rejilla y su afinación** son atributos de la raíz del árbol: `(grid-x :bN 0.25 [4])` escribe `:grid`,
+  `(tuning :bN "19-tet")` escribe `:tuning`. Un árbol se dibuja en semitonos (12-tet) salvo que diga otra cosa
+  (`:tuning false` es frecuencia continua); un árbol con compases sin `:grid` muestra sus compases.
+
+```clojure
+(view :b2 :canvas)                 ; dibujar en él
+(stroke :b2 [[0 261.63] [1 261.63]])   ; o con código: un c4 de 0 a 1
+(quantize! :b2)                    ; su tiempo libre escrito en compases (un evento; deshacer vuelve)
+(unquantize! :b2)                  ; sus notas en tiempo libre otra vez
+(to-tree! :b5)                     ; una caja tree nueva junto al freqt :b5, con sus trazos como notas
+```
+
+Un `freqt` sigue siendo el buffer de frecuencia en el tiempo en bruto (lo que `transcribe` escribe desde una voz, un
+dibujo en Hz continuos): `(to-tree! :bN)` convierte su dibujo en un árbol cuando va a ser una partitura.
 
 ## Cuantización: el tiempo libre como notación medida
 
@@ -293,6 +326,7 @@ Las funciones están en `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt
 - `(as-tree :bN)` lee como árbol una caja tree, el árbol que muestra un freqt, o los trazos de un freqt;
 - `(quantize :bN [opciones])` da los trazos de un freqt (o un árbol sin compases) cuantizados en compases;
 - `(quant :bN opciones)`, `(divisions :bN t)`, `(division! :bN t [elección])`: cómo se cuantiza la partitura de un freqt, guardado en su buffer;
+- `(quantize! :bN [opciones])`, `(unquantize! :bN)`, `(to-tree! :bN)`: el tiempo libre de una caja tree en compases y de vuelta, los trazos de un freqt como árbol;
 - `(enharmonic! :bN parte midi [nombre])`: otro nombre para una nota de la partitura de un freqt; `mt/spell`, `mt/transpose "M3"`, y `kairotic.spell` (`sp/parse`, `sp/interval`, `sp/parse-key`, `sp/estimate-key`…);
 - `(keep! :bN)` y `(unlive! :bN)`;
 - `(recipe :bN)` y `(remake! :bN)` (abajo).

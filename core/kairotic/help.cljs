@@ -190,6 +190,7 @@
                ["⇄ score in the header · (view :bN :score)" "the same buffer, quantized and drawn as a score: measures in the meter of its bar grid, tuplets, ties (⇄ canvas brings it back)"]
                ["(quantize :bN {:meter \"6/8\"})" "the tree that score shows, to keep or edit (options: :meter :divs :merge :nest :voices :grace :legato)"]
                ["shown as a score, alt-click a note · (division! :bN t)" "its beat divided the next way (another division, in halves, with the next beat), kept in the buffer"]
+               ["(to-tree! :bN)" "a tree box beside it, with its strokes as notes: the drawing, now a tree"]
                ["(quant :bN {:meter \"6/8\" :key \"eb\"}) · [:quantize {…}]" "how its score is quantized and in which key, kept in its buffer (one event); (quant :bN nil): the defaults"]
                ["shown as a score, shift-alt-click a note · (enharmonic! :bN t midi)" "another name for that note (c#4 → db4), kept in the buffer"]
                ["shown as a score, click a note of a tree" "↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest"]
@@ -371,7 +372,8 @@
 
    "tree"
    {:inlets ["a bang: sends the tree again · [:edit …] (from the edits outlet of a freqt shown as a score): changes it · a tree: replaces it"]
-    :outlets ["the tree, expanded (melody strings become notes, [:use …] the fragments it names), whenever it changes"]
+    :outlets ["the tree, expanded (melody strings become notes, [:use …] the fragments it names), whenever it changes"
+              "its notes as a buffer (strokes of frequency over time), for the right inlet of a reader~"]
     :messages [["double-click" "edit its text (Ctrl+Enter applies): only the nodes that changed go into the history"]
                ["(tree! :bN [:voice …])" "writes a tree into it, as edits of the nodes that change"]
                ["(tree-edit! :bN [:attrs [0 1 2] {…}])" "edits nodes by their path: [:set p x] [:attrs p {…}] [:insert p x] [:remove p]"]
@@ -380,7 +382,9 @@
                ["in a score: click a note" "↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · # another name (c#4 → db4) · + − duration · ← → next · Delete → rest"]
                ["{:key \"eb\"} on the tree, a voice or a measure" "the score's key: its signature, accidentals that last the bar; :none writes every accidental"]
                ["in a score: click a rest" "Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note"]
-               ["(as-tree :bN)" "reads it back as data"]]
+               ["(as-tree :bN)" "reads it back as data"]
+               ["⇄ canvas · (view :bN :canvas)" "its notes as strokes of frequency over time: drawing, dragging, stretching or erasing there edits the tree (free time; with measures, the bars it touches are quantized again; ⌥ to a free voice)"]
+               ["(quantize! :bN) · (unquantize! :bN)" "its free time written in measures, and back (one event each)"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)"
                     "(code :b2 \"[:voice\\n [:measure {:meter [3 4]} \\\"e5/1\\\" [:tuplet {:ratio [3 2]} \\\"d5/.5 c5 b4\\\"] [:note {:pitch \\\"a4\\\" :dur 1 :dyn \\\"p\\\"}]]\\n [:measure \\\"g4/3\\\"]]\")"
                     "(box :b3 \"freqt\" 40 190)" "(view :b3 :score)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 2 :b2 0)")

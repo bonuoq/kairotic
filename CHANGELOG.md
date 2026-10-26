@@ -11,6 +11,19 @@
 - **How a stroke looks**: a `canvas` or `freqt` stroke can carry `:look {:w :pan :tex :tone}` — weight,
   vertical gradient to the paper, `:dash`/`:dot`, `:kairos`/`:ink`/`:soft` — kept in the history, in its
   source and in links (`(stroke :b1 :t1 pts {:w 2 :tex :dash})`); a tree note's `:look` reaches its stroke.
+- **One box for freqt, tree and score** (discussion #92). A `tree` box is seen as code, as a score or as a
+  **canvas** (⇄ cycles code → score → canvas): `kairotic.treecanvas` draws its notes as strokes of frequency
+  over time and turns what is drawn into edits of the tree. Free time: drawing adds a note with `:at`,
+  dragging and stretching move and lengthen it, erasing removes it (a tree written otherwise takes the
+  free form `[:voice [:par notes]]` the first time a note's time changes). Measures: a change of pitch is
+  written in the note (even in a melody string); a change of time re-quantizes the bars it touches; an
+  erased note leaves a rest; ⌥ (a drag, or freehand drawing) takes a note to a free voice, which the score
+  quantizes on its own staff (`qz/measure-free-voices`). Grid and tuning are the root's `:grid` and
+  `:tuning` (12-tet by default, `false` continuous). Its second outlet is its notes as a buffer for a
+  `reader~`. A free tree's score keeps its divisions and names in the root's `:quant` (alt-click,
+  shift-alt-click, `quant`, `division!`, `enharmonic!` work on tree boxes too). REPL: `(quantize! :bN)`,
+  `(unquantize! :bN)`, `(to-tree! :bN)` (a freqt's strokes as a new tree box). The freqt stays the raw
+  buffer (recordings, `transcribe`). Tests: `tests/cljs/treecanvas.cljs`, checks in `tests/views.mjs`.
 - **`@kairotic/spectral` 0.1.0: `shift~`, pitch shifting in real time.** The signal transposed by every
   factor written after it at once (one interval or a whole chord), one frame (1024 samples) late: ratios
   (`1.5`, `3/2`), semitones with a sign (`+7`) or cents (`386c`); `[:semitones …]`, `[:cents …]`,

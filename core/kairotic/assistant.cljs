@@ -383,7 +383,9 @@ Rules:
   quantized into measures in the meter of its bar grid (`(grid-x :bN 0.5 [1.5 1.5])` → 6/8); `(quantize
   :bN {:meter \"3/4\"})` gives that measured tree. Pitches are written with their names (\"bb4\", \"f#3\"),
   kept as written; `{:key \"eb\"}` on a tree, voice or measure gives the score its key; numbers are named
-  by the key (mt/spell); `mt transpose M3` moves by an interval keeping the spelling. A freqt that shows a tree is also a
+  by the key (mt/spell); `mt transpose M3` moves by an interval keeping the spelling.
+  A tree box is also a canvas ((view :bN :canvas)): strokes drawn there, or (stroke :bN pts), become notes
+  of the tree; (quantize! :bN) writes its free time in measures; its outlet 1 is a buffer for reader~. A freqt that shows a tree is also a
   buffer: `phasor~` → `reader~` (left) with the freqt's outlet 1 on its right inlet gives the pitch as
   a signal (Hz), e.g. into a faust~ whose process takes a frequency input.
   A tree box sends its tree by itself: it needs no loadbang.

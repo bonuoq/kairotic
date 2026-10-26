@@ -859,7 +859,7 @@
           (when tr
             (.preventDefault e)
             (swap! ui assoc :sel nil :nsel [id tid]
-                   :ldrag {:kind :move :box id :tid tid :g (canvas-geom d id b) :d d :x0 x :y0 y
+                   :ldrag {:kind :move :box id :tid tid :g (canvas-geom d id b) :d d :x0 x :y0 y :alt (.-altKey e)
                            :pts0 (:pts tr) :pts (:pts tr) :dt 0 :dc 0 :moved false})))
 
         (closest e ".score-slot")
@@ -997,7 +997,10 @@
                 (if generic? pts (sort-by first pts)))
           ps (cv/sane-pts-for d pts)]
       (when (and ps (or generic? (>= (- (first (peek ps)) (ffirst ps)) (* 0.99 min-dur))))
-        (gesture! (str "(stroke " box " " (pts-code ps) ")"))))))
+        ;; drawn freehand (⌥): in a measured tree, the note goes to its free voice
+        (gesture! (if (= mode :free)
+                    (str "(stroke " box " " (cv/next-id d) " " (pts-code ps) " true)")
+                    (str "(stroke " box " " (pts-code ps) ")")))))))
 
 (defn end-gesture! [e]
   (let [{:keys [drag wire ldrag numdrag paramdrag ctldrag marquee resize adraw]} @ui]
@@ -1035,7 +1038,9 @@
       (do (swap! ui assoc :ldrag nil)
           (if (= :move (:kind ldrag))
             (when (and (:moved ldrag) (or (not (zero? (:dt ldrag))) (not (zero? (:dc ldrag)))))
-              (gesture! (str "(move-stroke " (:box ldrag) " " (:tid ldrag) " " (cv/fmt (:dt ldrag)) " " (cv/fmt (:dc ldrag)) ")")))
+              (gesture! (str "(move-stroke " (:box ldrag) " " (:tid ldrag) " " (cv/fmt (:dt ldrag)) " " (cv/fmt (:dc ldrag))
+                             ;; ⌥: a note of a measured tree leaves its measures
+                             (when (:alt ldrag) " :free") ")")))
             (finish-drawing! ldrag)))
       (and drag (:moved drag))
       (do (swap! ui assoc :drag nil)

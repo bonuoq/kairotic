@@ -226,9 +226,14 @@
    tree gives that tree as its buffer, so a reader~ plays what the score shows."
   [p id]
   (some (fn [[a _ b i]]
-          (when (and (= b id) (= i 1) (#{"canvas" "freqt" "sample"} (comp/klass (get-in p [:boxes a :text]))))
-            (let [tree (get-in @rt [:states a :tree])]
+          (when (and (= b id) (= i 1) (#{"canvas" "freqt" "sample" "tree"} (comp/klass (get-in p [:boxes a :text]))))
+            ;; a tree box is its tree (discussion #92); a canvas or freqt, the tree it shows, else its buffer
+            (let [k (comp/klass (get-in p [:boxes a :text]))
+                  tree (if (= "tree" k)
+                         (:tree (get-in p [:boxes a :data]))
+                         (get-in @rt [:states a :tree]))]
               [a (or (when tree (tree-buffer a tree))
+                     (when (= "tree" k) cv/empty)
                      (get-in p [:boxes a :data]) (:empty (comp/model-of (get-in p [:boxes a]))) cv/empty)])))
         (:lines p)))
 

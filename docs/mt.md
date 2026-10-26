@@ -169,7 +169,7 @@ write.
 
 | box | |
 |---|---|
-| `tree` | holds a tree as EDN text (double-click to edit). A bang sends it. Reading EDN evaluates nothing, so a tree box is safe in a shared room |
+| `tree` | holds a tree, seen as **code**, as a **score** or as a **canvas** (⇄ in its header): one tree, three views (below). A bang sends it; its second outlet is its notes as a buffer, for a `reader~`. Reading EDN evaluates nothing, so a tree box is safe in a shared room |
 | `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` · `mt thin 0.5` | transformations (the right inlet changes the amount) |
 | `mt seq` · `mt par` | joins the left tree with the right one, one after the other or at once |
 | `mt events` · `mt pitches` · `mt duration` | the tree as plain data |
@@ -185,6 +185,39 @@ Outside tuplets each value is written where the beats can be seen: a quarter off
 quarter on beat 2 of 3/4 stays dotted, on beat 2 of 4/4 it shows beat 3. Two more keys of a note:
 `:tie true` goes on into the next note of the same pitch (one sound, tied across a barline or into a
 tuplet) and `:grace true` is a grace note before the next one (it takes no time).
+
+## One box: the tree as code, score and canvas
+
+A `tree` box is the one box for music in time (discussion [#92](https://github.com/bonuoq/kairotic/discussions/92)):
+its data is the tree, and **code**, **score** and **canvas** are views of it (⇄ in its header, or
+`(view :bN :canvas)`). The canvas draws its notes as strokes of frequency over time, as a freqt does,
+and what is drawn there becomes edits of the tree — one event of the history each, merged between
+branches like any edit of a tree.
+
+- **Free time** (a tree without measures): drawing adds a note placed with `:at`, dragging moves it,
+  stretching (from its end) lengthens it, Delete erases it. A free tree is kept as
+  `[:voice {…} [:par [:note {:at 0 :dur 1 :pitch 60} …]]]`; one written otherwise (a melody string, a
+  sequence) takes that form the first time a note's time changes. Its score shows it quantized, with its
+  divisions chosen by alt-click and its names by shift-alt-click, kept in the tree's `:quant`.
+- **Measures**: a change of pitch alone is written in the note (in its melody string, if it is in one); a
+  change of time re-quantizes the bars it touches, in their meter; an erased note leaves a rest as long.
+  A note drawn in a measured tree goes into its bar (one voice: a note drawn on a held one joins it as a
+  chord). With **⌥** (dragging a note, or drawing freehand) a note leaves the measures for a free voice
+  of the tree (`{:name "free"}`), which the score quantizes on its own staff.
+- **Its grid and tuning** are attributes of the tree's root: `(grid-x :bN 0.25 [4])` writes `:grid`,
+  `(tuning :bN "19-tet")` writes `:tuning`. A tree is drawn in semitones (12-tet) unless it says otherwise
+  (`:tuning false` is continuous frequency); a measured tree without `:grid` shows its bars.
+
+```clojure
+(view :b2 :canvas)                 ; draw on it
+(stroke :b2 [[0 261.63] [1 261.63]])   ; or by code: a note c4 from 0 to 1
+(quantize! :b2)                    ; its free time written in measures (one event; undo goes back)
+(unquantize! :b2)                  ; its notes in free time again
+(to-tree! :b5)                     ; a new tree box beside the freqt :b5, with its strokes as notes
+```
+
+A `freqt` stays the buffer of raw frequency over time (what `transcribe` writes from a voice, a
+drawing in continuous Hz): `(to-tree! :bN)` turns its drawing into a tree when it is to become a score.
 
 ## Quantization: free time as measured notation
 
@@ -288,6 +321,7 @@ The functions are in `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt/au
 - `(as-tree :bN)` reads a tree box, or the tree a score is showing, or a freqt's strokes, as a tree;
 - `(quantize :bN [opts])` gives a freqt's strokes (or a tree without measures) quantized into measures;
 - `(quant :bN opts)`, `(divisions :bN t)`, `(division! :bN t [choice])`: how a freqt's score is quantized, kept in its buffer;
+- `(quantize! :bN [opts])`, `(unquantize! :bN)`, `(to-tree! :bN)`: a tree box's free time in measures and back, a freqt's strokes as a tree;
 - `(enharmonic! :bN beat midi [name])`: another name for a note of a freqt's score; `mt/spell`, `mt/transpose "M3"`, and `kairotic.spell` (`sp/parse`, `sp/interval`, `sp/parse-key`, `sp/estimate-key`…);
 - `(keep! :bN)` and `(unlive! :bN)`;
 - `(recipe :bN)` and `(remake! :bN)` (below).
