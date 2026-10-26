@@ -176,8 +176,8 @@
    "@kairotic/analysis" {:version "0.3.0" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "monitor"}
                          :local "kairotic/packages/analysis.mjs"}
    "@kairotic/theory"   {:version "0.1.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}
-   "@kairotic/data"     {:version "0.1.0" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
-   "@kairotic/patterns" {:version "0.1.0" :classes #{"pbind" "pattern" "player"} :local "kairotic/packages/patterns.mjs"}})
+   "@kairotic/data"     {:version "0.1.1" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
+   "@kairotic/patterns" {:version "0.1.1" :classes #{"pbind" "pattern" "player"} :local "kairotic/packages/patterns.mjs"}})
 
 (defn package-of
   "The official package that defines class k: [name info], or nil."

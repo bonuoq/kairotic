@@ -10,7 +10,7 @@ on:
     branches: [main]
     # The same paths for pushes and pull requests (a YAML anchor, &paths, reused below as *paths): a pull
     # request that only touches docs, examples or other workflows doesn't run the browser.
-    paths: &paths ["app/**", "core/**", "tests/**", "site/build.mjs", ".github/workflows/tests.yml"]
+    paths: &paths ["app/**", "core/**", "tests/**", "packages/*/package.json", "site/build.mjs", ".github/workflows/tests.yml"]
   pull_request:
     paths: *paths
   workflow_dispatch:
@@ -36,6 +36,8 @@ jobs:
       - uses: actions/checkout@v4
       # Every top-level name of the page's files defined only once (they share the namespace user)
       - run: node tests/names.mjs
+      # Every official package pinned by the page to the version in its package.json
+      - run: node tests/versions.mjs
       - run: node site/build.mjs
       # Only the npm package (the browser is in the image).
       - run: npm install --no-save playwright@1.56.0

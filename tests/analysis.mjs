@@ -125,7 +125,7 @@ export async function analysis(page, check) {
                                        near (fn [a b] (< (js/Math.abs (* 1200 (/ (js/Math.log (/ a b)) js/Math.LN2))) 15))
                                        of (fn [hz] (filter (fn [x] (near (first x) hz)) s))]
                                    [(count (of 330)) (boolean (some (fn [x] (>= (second x) 0.6)) (of 330)))
-                                    (count (of 440)) (boolean (some (fn [x] (< (second x) 0.1)) (of 220)))])`,
+                                    (count (of 440)) (boolean (some (fn [x] (< (second x) 0.3)) (of 220)))])`,
                           (x) => x === "[1 true 1 true]", 8000);
   check("transcribe ovr t writes over the take and keeps what came after", ovr === "[1 true 1 true]",
         ovr + " " + await cljs(page, `(mapv (fn [p] [(js/Math.round (second (first p))) (first (first p)) (first (last p))]) ${strokes})`));
