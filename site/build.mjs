@@ -40,6 +40,10 @@ function assemble(out) {
   for (const p of readdirSync(join(root, "packages"), { withFileTypes: true }))
     if (p.isDirectory() && existsSync(join(root, "packages", p.name, "dist", "index.mjs")))
       cpSync(join(root, "packages", p.name, "dist", "index.mjs"), join(out, "kairotic", "packages", p.name + ".mjs"));
+  // what a package carries beside its components (assets/ → dist/), for its own copy served by the page
+  for (const p of readdirSync(join(root, "packages"), { withFileTypes: true }))
+    if (p.isDirectory() && existsSync(join(root, "packages", p.name, "assets")))
+      cpSync(join(root, "packages", p.name, "assets"), join(out, "kairotic", "packages", p.name), { recursive: true });
   cpSync(join(root, "examples", "catalog.mjs"), join(out, "kairotic", "examples.mjs"));
   cpSync(join(root, "docs", "tutorials", "catalog.mjs"), join(out, "kairotic", "tutorials.mjs"));
   // the documentation, for the Help tab: { pages: { id: { en, es } } }

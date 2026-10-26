@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **`@kairotic/spectral` 0.1.0: `shift~`, pitch shifting in real time.** The signal transposed by every
+  factor written after it at once (one interval or a whole chord), one frame (1024 samples) late: ratios
+  (`1.5`, `3/2`), semitones with a sign (`+7`) or cents (`386c`); `[:semitones …]`, `[:cents …]`,
+  `[:transpose st]` (a glide without retyping the chord), `[:formants q t]`, `[:rms 1]`, `[:dry x]`. Made
+  with stftPitchShift 2.0 by Jürgen Hock (MIT), compiled to WebAssembly with wasi-sdk
+  (`packages/spectral/native`, moved from Study 28), about 5% of a core with a three-note chord. The
+  WebAssembly travels in `dist/shift.mjs`, not in the component's source, so it does not weigh on the
+  history of a work. Packages can now carry such files in `assets/` (copied into `dist/` and into the
+  page's own copy), loaded with the new **`api/import-module`** (npm at the package's version, then the
+  page's copy); the package build checks that a source names its own version. Studies 28 (offline, a
+  buffer with its recipe) and 29 (real time) tried it first; Pages now serves the studies at
+  `studies/<folder>/`. Tests: `tests/spectral.mjs`.
 - **Quantization: a freqt's score in real measures** (issue #86, stages 1–3). A `freqt` shown as a score is
   no longer rounded to a sixteenth grid: `kairotic.quantize` turns its strokes into a measured tree that
   `mt/->mei` writes. The meter comes from the bar grid (`[1.5 1.5]` → 6/8, `[1.5 1.5 1]` → 8/8 [3+3+2]);

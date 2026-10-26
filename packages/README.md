@@ -14,6 +14,7 @@ npm under the scope `@kairotic` and served inside claude.ai by jsDelivr.
 | [`@kairotic/data`](data/) | `fetch [json\|text\|edn] [live]` what is at a URL, brought in as a task and kept in the work · `edn [width height]` any value as a tree to open, read and pick from |
 | [`@kairotic/theory`](theory/) | `pcclock [notes]` a pitch-class set on the clock face, its prime form, interval vector and symmetries · `fourier [notes]` the six Fourier coefficients of a pitch-class distribution · `tonnetz [notes]` triads on the Tonnetz and the path of the harmony — all drawn in the patch, and clickable |
 | [`@kairotic/patterns`](patterns/) | `pbind [seed] [repeat] [loop]` a pattern as EDN data, with `#pat/…` generators and seeded randomness · `pattern [seed] [repeat] [loop]` a pattern as Clojure code (lazy sequences, as in Overtone) · `player [bpm] [quant]` plays one by its own clock, step by step, or at a position in beats |
+| [`@kairotic/spectral`](spectral/) | `shift~ [factor …]` pitch shifting in real time, one interval or a whole chord (ratios, semitones, cents), with the formants kept — stftPitchShift in WebAssembly |
 
 Planned: `cac`, `notation`.
 
@@ -33,7 +34,10 @@ complete and sounds the same even if the package changes later. You can also bri
 
 One file per component in `<package>/src/`, a ClojureScript expression that evaluates to a definition
 (often `(let [helpers …] {…})`). It uses the core only through the [Kairotic API](../core/kairotic/api.cljs),
-`api/…`, and carries its own AudioWorklet code if it needs one (`api/worklet-node`). Each package
+`api/…`, and carries its own AudioWorklet code if it needs one (`api/worklet-node`). What is too big to travel
+in a source, such as a WebAssembly, goes in `<package>/assets/`: the build copies it into `dist/`, and the
+component loads it with `api/import-module` from npm at the package's own version (the build checks that
+the version it names is the package's), falling back on the page's copy (`kairotic/packages/<package>/`). Each package
 declares the API version it was written for (`"kairotic": {"api": 1}` in its `package.json`).
 
 ```sh
