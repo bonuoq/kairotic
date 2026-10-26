@@ -135,6 +135,24 @@ export async function patterns(page, check) {
   check("... and a mistake is told in its status",
     (await (async () => { await cljs(page, `(code ${pc} "(map inc")`); return until(page, `(:status (compilation ${pc}))`, (x) => x === ":error"); })()) === ":error");
 
+  // loudness: :amp → [:gain amp] before the notes, and synth~ takes it; nil is a silence
+  const sy = (await cljs(page, '(box "synth~" 5700 100)')).trim();
+  const synthed = await until(page, '(boolean (comp/lookup "synth~"))', (x) => x === "true", 20000);
+  const loud = await cljs(page, `(let [d (comp/lookup "player") s (comp/lookup "synth~")
+        p (api/pbind-pattern (api/read-pbind "{:degree [0 nil 4] :amp [0.8 0.5 0.2]}") {:seed 0 :repeat 1})
+        go (fn [st msgs] (reduce (fn [[st rs] [inl v at]]
+                                   (let [r ((:receive d) {:state st :args (comp/args-for d "player") :inlet inl :value v :at at})]
+                                     [(:state r) (conj rs r)])) [st []] msgs))
+        [_ rs] (go nil [[1 p 0] [0 :bang 0] [0 :bang 0.1] [0 :bang 0.2]])
+        outs (mapv (fn [r] (vec (keep (fn [[o v]] (when (#{0 1} o) v)) (:out r)))) rs)
+        sr (fn [st v inl] ((:receive s) {:state st :inlet inl :value v :args []}))
+        a (sr nil [:gain 0.8] 0) b (sr (:state a) [:p1] 1) c (sr (:state b) [261.6] 0)]
+    [(subvec outs 1) (:effects c)])`);
+  check("an event with :amp: [:gain amp] before its notes; nil is a silence",
+    synthed === "true" && loud.startsWith("[[[[:gain 0.8] [:p1] [261.626]] [] [[:gain 0.2] [:p1 :p2] [261.626 391.995]]] "), loud);
+  check("... and synth~ starts its next notes at that level", loud.endsWith("[[:voices [[[:p1 261.6]] 0.8]]]]"), loud);
+  await cljs(page, `(delete ${sy})`);
+
   // its own clock, with ▶
   await cljs(page, `(delete ${pc}) (connect ${pb} 0 ${pl} 1)`);
   await cljs(page, `(code ${pb} "{:degree [0 2 4 5] :dur 0.25}") (text! ${pb} "pbind 7 loop")`);

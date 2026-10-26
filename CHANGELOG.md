@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Loudness and silences in patterns**: an event with `:amp` (0…1) makes the player send `[:gain amp]` on
+  its Hz outlet just before its notes; **`@kairotic/synth` 0.3.0**: `synth~` takes `[:gain v]` (also `:amp`,
+  `:vel`) as the level of the notes that start after it, as a polyphonic `faust~` already did. `nil` is a
+  silence too, as `:rest` is, in `:degree`, `:note` or `:freq` (`[0 nil 4]`).
 - **`@kairotic/patterns` 0.1.0: patterns after SuperCollider's and Overtone's** (discussion #84). A pattern is
   a lazy, perhaps endless, sequence of event maps; what travels (history, rooms, links) is its source and a
   seed, and each tab makes the events, so everyone hears the same. `pbind [seed] [repeat] [loop]` is a code

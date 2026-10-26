@@ -520,6 +520,8 @@
                ["#pat/shuffle [0 2 4] · #pat/series [0 2 8]" "every pass in a new order · an arithmetic series"]
                ["#pat/hold [4 [:c :g :d]]" "one value every 4 beats (following time, not events)"]
                ["#pat/chord [0 4 7]" "a vector as one value: a chord"]
+               ["{:degree [0 2 :rest 4]} · [0 nil 4]" "a silence: :rest (:_ :- :r) or nil as the degree, note or freq"]
+               [":amp #pat/white [0.2 0.6]" "the loudness of each note (0…1), for synth~ and a polyphonic faust~"]
                ["pbind 7 · pbind 7 4 · pbind 7 loop" "the seed · four passes · for ever"]]
     :example (lines "(box :b1 \"pbind 7 loop\" 40 30)"
                     "(code :b1 \"{:degree #pat/shuffle [0 2 4 7]\\n :dur    [0.5 0.5 1]\\n :amp    #pat/white [0.1 0.3]}\")"
@@ -561,7 +563,7 @@
     :doc "Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a position in beats (a number): the Hz and voice ids of the notes sounding, the whole event and the beat."
     :inlets ["start · stop: its own clock · bang: one step, now · a number: a position in beats · seek p · reset · [:bpm 90]"
              "a pattern (from a pbind or a pattern box): a new one goes on from the same beat"]
-    :outlets ["the Hz of the notes sounding (a list)" "their voice ids, sent first (for synth~ or a polyphonic faust~)"
+    :outlets ["the Hz of the notes sounding (a list), after [:gain amp] when the event has :amp" "their voice ids, sent first (for synth~ or a polyphonic faust~)"
               "the whole event, with :beat, :hz and :ids (and :dir :back when entered from its end)" "the beat"]
     :messages [["start · stop" "its own clock: every event lasts its :dur in beats at its bpm"]
                ["player 120 4" "start on a multiple of 4 beats: players with the same tempo meet"]
