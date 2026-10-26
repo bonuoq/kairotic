@@ -153,6 +153,24 @@ export async function patterns(page, check) {
   check("... and synth~ starts its next notes at that level", loud.endsWith("[[:voices [[[:p1 261.6]] 0.8]]]]"), loud);
   await cljs(page, `(delete ${sy})`);
 
+  // render: a stretch of the pattern into a freqt, shown live, kept with its recipe; a canvas as a time map
+  const rd = (await cljs(page, '(box "render 0 4" 5900 100)')).trim();
+  const fq = (await cljs(page, '(box "freqt" 5900 160)')).trim();
+  const known2 = await until(page, '(boolean (comp/lookup "render"))', (x) => x === "true", 20000);
+  check("render comes with @kairotic/patterns", known2 === "true", known2);
+  await cljs(page, `(code ${pb} "{:degree [0 2 4 5] :dur 1 :legato 1 :amp [0.5 1 0.5 1]}") (text! ${pb} "pbind 7")`);
+  await cljs(page, `(connect ${rd} 0 ${fq} 0) (connect ${pb} 0 ${rd} 0)`);
+  const live = await until(page, `(count (rest (rest (live-tree ${fq}))))`, (x) => x === "4", 6000);
+  check("a pbind into render: the freqt shows its notes live", live === "4", live + " " + await cljs(page, `(pr-str (live-tree ${fq}))`));
+  await cljs(page, `(keep! ${fq})`);
+  const kept = await cljs(page, `(let [d (get-in (current) [:boxes ${fq} :data])] [(count (:strokes d)) (get-in d [:strokes :t2 :look]) (boolean (:recipe (get-in (current) [:boxes ${fq}])))])`);
+  check("... keep! writes them, each with its look (:amp as weight), and the recipe beside them", kept === "[4 {:w 2.8} true]", kept);
+  const cm = (await cljs(page, '(box "canvas" 6200 100)')).trim();
+  await cljs(page, `(axis ${cm} :x 0 4) (axis ${cm} :y 0 4) (stroke ${cm} [[0 4] [4 0]]) (connect ${cm} 1 ${rd} 1) (send! ${rd} :bang)`);
+  const back = await until(page, `(mapv (fn [[_ a]] (:back a)) (rest (rest (live-tree ${fq}))))`, (x) => x.includes("true"), 6000);
+  check("a canvas on its right: a time map; going down, the phrase backwards, each note from its end", back === "[true true true true]", back);
+  await cljs(page, `(delete ${rd} ${fq} ${cm})`);
+
   // its own clock, with ▶
   await cljs(page, `(delete ${pc}) (connect ${pb} 0 ${pl} 1)`);
   await cljs(page, `(code ${pb} "{:degree [0 2 4 5] :dur 0.25}") (text! ${pb} "pbind 7 loop")`);

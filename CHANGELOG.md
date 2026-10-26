@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`@kairotic/patterns` 0.2.0: `render [from] [to] [tex key] [tone key]`** (discussion #93): a stretch of a
+  pattern drawn into a `freqt`, as a musical tree — shown live, kept with its recipe by `keep!`, quantized as
+  a score. A canvas on its right inlet is a **time map** (x the beats of the drawing, y those of the
+  pattern): steeper is faster, down plays backwards with each note entered from its end, flat holds, a
+  vertical step cuts, several strokes are layers. Each note's `:amp` is its weight, `:pan` a vertical
+  gradient, and the keys named after `tex` / `tone` textures and colours.
+- **How a stroke looks**: a `canvas` or `freqt` stroke can carry `:look {:w :pan :tex :tone}` — weight,
+  vertical gradient to the paper, `:dash`/`:dot`, `:kairos`/`:ink`/`:soft` — kept in the history, in its
+  source and in links (`(stroke :b1 :t1 pts {:w 2 :tex :dash})`); a tree note's `:look` reaches its stroke.
 - **`@kairotic/spectral` 0.1.0: `shift~`, pitch shifting in real time.** The signal transposed by every
   factor written after it at once (one interval or a whole chord), one frame (1024 samples) late: ratios
   (`1.5`, `3/2`), semitones with a sign (`+7`) or cents (`386c`); `[:semitones …]`, `[:cents …]`,

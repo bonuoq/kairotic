@@ -333,3 +333,10 @@ registerProcessor('kairotic-tap', KairoticTap);
 (defn event-sustain "How long the notes of an event sound, in beats (:sustain, or :dur × :legato 0.8)." [e] (pat/sustain e))
 (defn event-hz "The frequencies an event plays (a vector of Hz), [] for a rest, nil if it has no pitch." [e] (pat/hz e))
 (defn rest-event? "Is the event a silence?" [e] (pat/rest? e))
+(defn render-tree
+  "A stretch of a pattern as a musical tree, through time maps ({:from :to}, or {:maps [[[x y] …] …]}: x the
+   beats of the result, y those of the pattern), :tex / :tone the keys drawn as texture and colour."
+  [p opts] (pat/render-tree p opts))
+(defn canvas-maps
+  "The strokes of a canvas, in order, as time maps for render-tree: [[[x y] …] …]."
+  [d] (mapv (fn [[_ s]] (:pts s)) (cv/sorted-strokes d)))
