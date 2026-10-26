@@ -157,31 +157,42 @@
                        prev (when (= :pos (:mode st)) (:pos st))
                        step (when prev (- p prev))
                        last-step (:last-step st)
+                       ;; a jump: asked for, the first position, a step longer than limit, or a step more
+                       ;; than jump times the one before it (only from a sixteenth of a beat on: smaller
+                       ;; steps are motion whatever their ratio, so a curve leaving rest is not misread)
                        jump? (or seek? (nil? prev)
                                  (> (js/Math.abs step) (or (:limit args) 8))
-                                 (and last-step (> (js/Math.abs last-step) eps)
+                                 (and last-step (> (js/Math.abs last-step) eps) (>= (js/Math.abs step) 0.0625)
                                       (> (js/Math.abs step) (* (or (:jump args) 8) (js/Math.abs last-step)))))]
                    (cond
                      ;; the same place again: nothing changes
                      (and (not jump?) (< (js/Math.abs step) eps)) {:state st}
                      jump?
-                     (let [off (if (seq (:sounding st)) [[1 []] [0 []]] [])
-                           st (-> st (assoc :mode :pos :pos p :pos-at at :last-step nil :sounding [] :pgen (inc (or (:pgen st) 0)))
+                     ;; there at once, as a difference: what still contains p goes on sounding (it is not
+                     ;; cut nor started again), what no longer does ends, and what newly contains p starts
+                     ;; (with :edges, only what starts exactly at p); an event of no length at p sounds
+                     (let [st (-> st (assoc :mode :pos :pos p :pos-at at :last-step nil :pgen (inc (or (:pgen st) 0)))
                                   (cover p p))
-                           here (filter (fn [x] (if (:edges args)
-                                                  (< (js/Math.abs (- (:on x) p)) eps)
-                                                  (or (and (<= (:on x) (+ p eps)) (< p (- (:end x) eps)))
-                                                      (and (< (js/Math.abs (- (:on x) p)) eps) (<= (- (:end x) (:on x)) eps)))))
-                                        (:evs (win st)))
-                           ;; there at once: what contains p starts (with :edges, only what starts at p); an
-                           ;; event of no length at p sounds and ends
+                           xs (:evs (win st))
+                           inside? (fn [x] (and (<= (:on x) (+ p eps)) (< p (- (:end x) eps))))
+                           kept (set (keep (fn [[_ _ _ i]] (when (and (some? i) (some (fn [x] (and (= (:i x) i) (inside? x))) xs)) i))
+                                           (:sounding st)))
+                           st (update st :sounding (fn [s] (vec (filter (fn [[_ _ _ i]] (contains? kept i)) s))))
+                           here (filter (fn [x] (and (not (contains? kept (:i x)))
+                                                     (if (<= (- (:end x) (:on x)) eps)
+                                                       (< (js/Math.abs (- (:on x) p)) eps)
+                                                       (if (:edges args) (< (js/Math.abs (- (:on x) p)) eps) (inside? x)))))
+                                        xs)
                            moments (mapcat (fn [x] (if (<= (- (:end x) (:on x)) eps)
                                                      [[at :enter x :fwd] [at :leave x]]
                                                      [[at :enter x :fwd]]))
                                            (sort-by :on here))
                            [st2 acc] (frames st moments)
                            r (deliver st st2 acc at p)]
-                       (update r :out (fn [o] (vec (concat off o)))))
+                       ;; what sounds, always (it may differ from what was last sent, a spread step cut short)
+                       (update r :out (fn [o] (vec (concat (filter (fn [[k]] (= k 2)) o)
+                                                           [[1 (mapv first (:sounding st2))] [0 (mapv second (:sounding st2))]]
+                                                           (filter (fn [[k]] (= k 3)) o))))))
                      :else
                      (let [fwd? (pos? step)
                            lo (min prev p) hi (max prev p)

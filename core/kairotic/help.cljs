@@ -568,7 +568,7 @@
                ["[:bpm 90]" "another tempo, without a jump"]
                ["bang" "the next event now (and the ones of :dur 0 right after it)"]
                ["a number" "a position in beats: every event is a span, from its onset to its end, that sounds while the position is inside it — entered at its onset going forwards, at its end going backwards (:dir :back); what a step passes over sounds within it"]
-               ["seek 8 · [:seek 8]" "there at once: what contains that position sounds, nothing in between"]
+               ["seek 8 · [:seek 8]" "there at once, nothing in between: what still sounds there goes on, what starts to contain that position starts"]
                ["player 120 0 8 8" "a step more than 8 (jump) times the one before it, or longer than 8 (limit) beats, is a seek: the wrap of a ramp"]
                ["player 120 0 8 8 edges" "a seek sounds only what starts exactly there"]
                ["player 120 0 8 8 spread" "what a step passes keeps its rhythm, one step later (with ▶)"]

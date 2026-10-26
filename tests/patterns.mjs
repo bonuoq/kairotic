@@ -76,24 +76,29 @@ export async function patterns(page, check) {
         [s1 back] (go "player" s0 (vec (for [i (range 1 9)] [0 (- 2 (* i 0.25)) (+ 1 (* i 0.01))])))
         [s2 fwd] (go "player" s1 (conj (vec (for [i (range 1 17)] [0 (* i 0.125) (+ 2 (* i 0.01))])) [0 0 2.2]))
         [s3 sk] (go "player" s2 [[0 [:seek 1.5] 3]])
-        [s4 ed] (go "player 120 0 8 8 edges" s3 [[0 [:seek 1.6] 3.1] [0 [:seek 1] 3.2]])
+        [s4 ed] (go "player 120 0 8 8 edges" s3 [[0 [:seek 1.6] 3.1] [0 [:seek 0.2] 3.2] [0 [:seek 0.5] 3.3]])
         [s5 sp] (go "player 120 0 8 8 spread" s4 [[0 [:seek 0] 4] [0 0.25 4.1] [0 1.5 4.2]])
         [s6 same] (go "player" s5 [[0 1.5 4.3]])
         far (mk "{:degree [0 1 2 3] :dur 0.25}" {:seed 1 :repeat :inf})
+        [_ curve] (go "player" (first (go "player" nil [[1 p1 0] [0 [:seek 0] 1]]))
+                      [[0 0.001 1.01] [0 0.016 1.02] [0 0.1 1.03] [0 [:seek 0.2] 1.04]])
         [s7 w] (go "player 120 0 8 100000" s6 [[1 far 5] [0 [:seek 0] 5] [0 [:seek 5000] 5.1] [0 [:seek 3] 5.2] [0 2.75 5.3]])]
     [(evs back) (evs fwd) (evs sk) (evs ed)
      (:out (last sp)) (count (:later (last sp))) (mapv (fn [[t]] (js/Math.round (* 1000 t))) (:later (last sp)))
-     (:out (first same)) (evs (take-last 2 w)) (< (count (pr-str s7)) 20000)])`;
+     (:out (first same)) (evs (take-last 2 w)) (< (count (pr-str s7)) 20000)
+     (evs curve) (boolean (some (fn [r] (some (fn [o] (= o [1 []])) (:out r))) curve))])`;
   const got = await cljs(page, pure);
   check("pure: a ramp going back enters every span from its end, in reverse order",
     got.startsWith("[[[4 :back] [2 :back] [0 :back]] "), got);
   check("... a ramp going forwards enters them at their onsets, and its wrap back to 0 is a seek (what is at 0 sounds, nothing in between)",
     got.includes(" [[2 nil] [4 nil] [0 nil]] "), got);
   check("... seek 1.5: what contains it", got.includes(" [[4 nil]] "), got);
-  check("... with edges, a seek inside a span is silent and one at its onset sounds", got.includes(" [[4 nil]] [[3 1.5]] 4 "), got);
+  check("... with edges, a seek keeps what still sounds, is silent inside a span and sounds one at its onset", got.includes(" [[4 nil]] [[2 nil]] [[3 1.5]] 4 "), got);
   check("... with spread, what a step passes keeps its rhythm, later within one step", got.includes(" [4212 4220 4252 4260] "), got);
   check("... the same position again changes nothing", got.includes(" nil "), got);
-  check("... an endless pattern: far ahead and back again, from the window", got.endsWith(" [[0 nil] [3 :back]] true]"), got);
+  check("... an endless pattern: far ahead and back again, from the window", got.includes(" [[0 nil] [3 :back]] true "), got);
+  check("... a curve leaving rest (each step 15 times the one before) is motion, and a seek inside a sounding note neither cuts nor restarts it",
+    got.endsWith(" [] false]"), got);
   // the same pattern again changes nothing; a new one goes on from the same place
   const before = await cljs(page, `(:pos (get-in @eng/rt [:states ${pl}]))`);
   await cljs(page, "(refill-data!)");
