@@ -14,6 +14,7 @@ publicados en npm bajo el ámbito `@kairotic` y servidos dentro de claude.ai por
 | [`@kairotic/data`](data/) | `fetch [json\|text\|edn] [live]` lo que hay en una URL, traído como tarea y guardado en la obra · `edn [ancho alto]` cualquier valor como un árbol que se abre, se lee y del que se elige |
 | [`@kairotic/theory`](theory/) | `pcclock [notas]` un conjunto de clases de altura en la esfera del reloj, su forma prima, vector interválico y simetrías · `fourier [notas]` los seis coeficientes de Fourier de una distribución de clases de altura · `tonnetz [notas]` las tríadas en el Tonnetz y el camino de la armonía — dibujados en el patch, y se pueden pulsar |
 | [`@kairotic/patterns`](patterns/) | `pbind [semilla] [repeticiones] [loop]` un pattern como datos EDN, con generadores `#pat/…` y azar sembrado · `pattern [semilla] [repeticiones] [loop]` un pattern como código Clojure (secuencias perezosas, como en Overtone) · `player [bpm] [quant]` lo toca con su propio reloj, paso a paso o en una posición en beats |
+| [`@kairotic/spectral`](spectral/) | `shift~ [factor …]` transporte de altura en tiempo real, un intervalo o un acorde entero (razones, semitonos, cents), conservando los formantes — stftPitchShift en WebAssembly |
 
 Previstos: `cac`, `notation`.
 
@@ -34,7 +35,10 @@ igual aunque el paquete cambie después. También se puede traer a mano:
 Un archivo por componente en `<paquete>/src/`, una expresión ClojureScript que se evalúa a una
 definición (a menudo `(let [utilidades …] {…})`). Usa el núcleo solo a través de la
 [API de Kairotic](../core/kairotic/api.cljs), `api/…`, y lleva su propio código de AudioWorklet si lo
-necesita (`api/worklet-node`). Cada paquete declara para qué versión de la API se escribió
+necesita (`api/worklet-node`). Lo que es demasiado grande para viajar en un código fuente, como un
+WebAssembly, va en `<paquete>/assets/`: el build lo copia en `dist/`, y el componente lo carga con
+`api/import-module` desde npm en la versión del propio paquete (el build comprueba que la versión que
+nombra es la del paquete), o de la copia de la página (`kairotic/packages/<paquete>/`). Cada paquete declara para qué versión de la API se escribió
 (`"kairotic": {"api": 1}` en su `package.json`).
 
 ```sh

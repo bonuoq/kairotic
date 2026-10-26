@@ -224,6 +224,27 @@ registerProcessor('kairotic-tap', KairoticTap);
           (swap! scripts assoc u p)
           p))))
 
+(defonce modules (atom {}))   ; [origin …] → Promise
+
+(defn import-module
+  "Promise of the default export of an ES module, once per page whoever asks first. `origins` is one
+   place or a list of them, tried in order until one answers: npm:package@version/path (jsDelivr) or a
+   path of this page (kairotic/packages/…, the page's own copy of a package's files). For modules a
+   package carries beside its components, such as a WebAssembly wrapped in JavaScript."
+  [origins]
+  (let [os (if (string? origins) [origins] (vec origins))]
+    (or (get @modules os)
+        (let [imp (.-kairoticImport js/window)
+              go (fn go [[o & more] errors]
+                   (if-not o
+                     (js/Promise.reject (js/Error. (str "could not load " (str/join " nor " os) " (" (str/join "; " errors) ")")))
+                     (.catch (imp (if (str/starts-with? o "npm:") (str "https://cdn.jsdelivr.net/npm/" (subs o 4)) o))
+                             (fn [e] (go more (conj errors (str (or (.-message e) e))))))))
+              p (.catch (go os [])
+                        (fn [e] (swap! modules dissoc os) (throw e)))]
+          (swap! modules assoc os p)
+          p))))
+
 ;; ───────── the network (for :tasks) ─────────
 ;; A component never fetches from its :receive: it asks for a task (:tasks), and these help the task.
 

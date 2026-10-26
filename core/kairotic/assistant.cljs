@@ -416,6 +416,11 @@ Rules:
   ramp, either way: going back, each note starts from its end; seek p jumps). Its outlets: Hz (left) and voice ids (second) for synth~ or a polyphonic faust~, the whole event,
   the beat. Event keys: :freq, :note (MIDI, \"c4\"), or :degree with :scale :root :octave; :dur in beats,
   :legato; :rest (or nil) is a silence; :amp 0…1 is the loudness of its notes in synth~ and a polyphonic faust~. Write durations as decimals (0.25), not ratios.
+- Pitch shifting (package @kairotic/spectral, it comes by itself): `shift~ [factor …]` transposes the signal
+  on its inlet by every factor at once (one interval or a chord), one frame (~21 ms) late. A factor is a
+  ratio (1.5, 3/2), semitones with a sign (+7, -12, +0) or cents (386c); a msg with a list of them changes
+  the chord; [:semitones 0 4 7], [:cents …], [:transpose st] (all of them at once, for glides), [:formants q t]
+  (q ms keeps the formants, 1 for a voice; t shifts them), [:rms 1], [:dry x]. Typical: adc~ → shift~ 1 5/4 3/2 → dac~.
 - `draw [w h]` draws the shapes that reach it (the shapes of a component's view, or as a msg writes them:
   `msg circle 40 40 10 accent hit sun`, `msg set cursor line 0 0 0 100`); a shape with :hit k sends k.
 - Annotations: `(mark :notes {:kind :text :at [:b3 0 -12] :txt \"…\"})`, `(mark :notes {:kind :arrow :pts

@@ -1,15 +1,15 @@
-# Estudio 28 · el WebAssembly de stftPitchShift
+# @kairotic/spectral · el WebAssembly de stftPitchShift
 
 *[Read in English](README.md)*
 
 [stftPitchShift](https://github.com/jurihock/stftPitchShift) de Jürgen Hock (C++, licencia MIT) compilado
 para la web sin Emscripten: [wasi-sdk](https://github.com/WebAssembly/wasi-sdk) compila una entrada en C
 mínima (`shift.cpp`) a un WebAssembly de 80 KB, y `glue.mjs` lo envuelve en un único módulo ES con el
-WebAssembly dentro (`../kairotic/shift.mjs`). Sin fetch ni `atob`: el mismo fichero sirve en una página,
+WebAssembly dentro (`../assets/shift.mjs`, published as `dist/shift.mjs`; the studies 28 and 29 keep a copy). Sin fetch ni `atob`: el mismo fichero sirve en una página,
 en un worker y, más adelante, en un AudioWorklet.
 
 ```sh
-node studies/28-shift/native/build.mjs     # descarga una vez stftPitchShift v2.0 y wasi-sdk 25 en .cache/
+node packages/spectral/native/build.mjs     # descarga una vez stftPitchShift v2.0 y wasi-sdk 25 en .cache/
 ```
 
 `ks_shift` acepta un **calendario** de factores (pueden cambiar de una trama STFT a la siguiente, con
