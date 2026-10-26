@@ -631,7 +631,8 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 - `[:tuning "19-tet" 261.63] · [:grid-x 0.25 [4]]`: tuning and grid by message
 - `[:batch [[:clear] [:note 0 "c4" 1] …]]`: several edits, one event of the history
 - `[:read 2] · [:strokes] · [:get :t1] · [:count] · [:end] · [:data]`: questions: the answer comes out on the left
-- `⇄ score in the header · (view :bN :score)`: the same buffer, drawn as an approximate score (⇄ canvas brings it back)
+- `⇄ score in the header · (view :bN :score)`: the same buffer, quantized and drawn as a score: measures in the meter of its bar grid, tuplets, ties (⇄ canvas brings it back)
+- `(quantize :bN {:meter "6/8"})`: the tree that score shows, to keep or edit (options: :meter :divs :merge :grace :legato)
 - `shown as a score, click a note of a tree`: ↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest
 - `click a rest`: Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note
 - `(keep! :bN)`: writes the tree it shows into its buffer, with its recipe beside it (the tree and the boxes that made it)
@@ -666,7 +667,7 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 (grid-x :b1 0.5 [4])
 ```
 
-**As a score** — The same buffer can be shown as an approximate score: ⇄ score in its header, or (view :b1 :score). Nothing changes in the data; ⇄ canvas brings the drawing back.
+**As a score** — The same buffer can be shown as a score, quantized into measures (in the meter of its bar grid, with tuplets and ties): ⇄ score in its header, or (view :b1 :score). Nothing changes in the data; ⇄ canvas brings the drawing back, and (quantize :b1) gives the tree the score shows.
 
 *Try:* Press ▶: the score sounds the same as the drawing did. To edit notes one by one in a score, show a tree: see the help of tree.
 
