@@ -590,6 +590,7 @@
                       (:stroke :move :stretch :erase) (-> acc (update :mod conj [id eid]) (update :ref conj id))
                       :grid-x (-> acc (update :mod conj [id :grid-x]) (update :ref conj id))
                       :tuning (-> acc (update :mod conj [id :tuning]) (update :ref conj id))
+                      :quantize (-> acc (update :mod conj [id :quant]) (update :ref conj id))
                       ;; in a tree, each edited node is its own unit; inserting or removing changes its container
                       ;; units: [box path kind] — :node (replaced), :kids (children added or removed, so their
                       ;; indices move), :attrs (only its attributes)
@@ -657,7 +658,7 @@
       (let [base (patch-at (:base d))
             base-ids (set (keys (:boxes base)))
             in-base? (fn [x] (if (vector? x)
-                               (or (#{:grid-x :tuning} (second x)) (get-in base [:boxes (first x) :data :strokes (second x)]))
+                               (or (#{:grid-x :tuning :quant} (second x)) (get-in base [:boxes (first x) :data :strokes (second x)]))
                                (base-ids x)))
             S (summarize s-extra) T (summarize (:t-extra d))
             note-boxes (fn [X] (set (keep (fn [x] (when (vector? x) (first x))) (:mod X))))
@@ -667,7 +668,7 @@
                                            (clojure.set/intersection (:whole S) (note-boxes T))
                                            (clojure.set/intersection (:whole T) (note-boxes S))))
             clash-name (fn [x] (cond (not (vector? x)) (str x)
-                                     (#{:grid-x :tuning} (second x)) (str "the " (name (second x)) " of " (first x))
+                                     (#{:grid-x :tuning :quant} (second x)) (str "the " (name (second x)) " of " (first x))
                                      :else (str "stroke " (second x) " of " (first x))))]
         (cond
           (or (and (:load S) (seq (:t-extra d))) (and (:load T) (seq s-extra)))

@@ -102,6 +102,17 @@ export async function views(page, check) {
   // the freqt drawn as a score, and back
   await cljs(page, `(view ${f} :score)`);
   check("a freqt can be shown as a score", (await cljs(page, `(display-of (get-in (current) [:boxes ${f}]))`)) === ":score");
+  // ── its quantization (issue #86): options kept in the buffer, another division for a beat ──
+  check("(quantize :bN) gives the measured tree its score shows", (await cljs(page, `(mt/measured? (quantize ${f}))`)) === "true");
+  await cljs(page, `(quant ${f} {:meter "3/4"})`);
+  check("(quant :bN opts) keeps the options in the buffer", (await cljs(page, `(:quant (box-data ${f}))`)) === '{:meter "3/4"}');
+  check("... the score follows them", (await cljs(page, `(:meter (mt/attrs (first (filter (fn [x] (and (vector? x) (= :measure (first x)))) (tree-seq vector? seq (quantize ${f}))))))`)) === "[3 4]");
+  check("... and they are in the buffer's text", (await cljs(page, `(str/includes? (source ${f}) ":quant")`)) === "true");
+  const ch = await cljs(page, `(division! ${f} 0)`);
+  check("(division! :bN t) divides the beat at t another way", ch !== "nil" && !/^ERR/.test(ch), ch);
+  check("... and keeps the choice in :fix", (await cljs(page, `(some? (get-in (box-data ${f}) [:quant :fix 0]))`)) === "true");
+  await cljs(page, `(quant ${f} nil)`);
+  check("(quant :bN nil) goes back to the defaults", (await cljs(page, `(:quant (box-data ${f}))`)) === "nil");
   await cljs(page, `(view ${f} :next)`);
   check("(view :bN :next) goes to the next view", (await cljs(page, `(display-of (get-in (current) [:boxes ${f}]))`)) === ":canvas");
 

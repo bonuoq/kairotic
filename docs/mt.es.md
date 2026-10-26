@@ -202,11 +202,18 @@ de bach.quantize, FOMUS y Nauert).
   6/8, 7/8…), y cada tramo toma la división (de 1 a 8, y las de sus propias unidades) que menos cuesta: lo lejos
   que quedan las notas de sus puntos, lo hondos que son los puntos que usa (la parte, su mitad, sus cuartos; las
   fusas cuestan mucho), ser un grupo irregular (un tresillo menos que un quintillo) y las notas que se pierden
-  (dos ataques en un punto, una nota que se queda en nada). Dos partes pueden ir juntas (un tresillo de blancas).
-- **Las notas** se colocan en esos puntos en una voz: acordes donde coinciden ataques, silencios en los huecos
-  (un hueco pequeño antes de la nota siguiente es legato, no un silencio), una ligadura sobre la barra o al salir
-  de un grupo irregular, una nota de adorno para una nota demasiado corta para cualquier punto. Las alturas entre
-  semitonos conservan sus cents.
+  (dos ataques en un punto, una nota que se queda en nada). Dos partes pueden ir juntas (un tresillo de blancas),
+  y una parte se puede partir en mitades (o una parte con puntillo en sus corcheas) con una división cada una
+  (una corchea y un tresillo de semicorcheas).
+- **Voces**: las notas que se solapan van a voces distintas, cada nota a la voz libre más cercana en altura (como
+  mucho `:voices`, 2 por defecto); las notas que empiezan y acaban juntas siguen siendo un acorde. Todas las voces
+  se cuantizan sobre los mismos puntos y se escriben como capas de un pentagrama (la más aguda primero, plicas
+  arriba). Una nota tenida durante el tresillo de otra voz no se escribe dentro del tresillo.
+- **Las notas** se colocan en esos puntos: acordes donde coinciden ataques, silencios en los huecos (un hueco
+  pequeño antes de la nota siguiente es legato, no un silencio), una ligadura sobre la barra o al salir de un grupo
+  irregular, una nota de adorno para una nota demasiado corta para cualquier punto. Una altura a medio camino entre
+  semitonos lleva una alteración de cuarto de tono, las demás conservan sus cents como texto; un trazo que se curva
+  hacia la nota siguiente es una línea de glissando hasta ella (un texto, *gliss. ↗ +120¢*, si no llega a ninguna).
 
 En el REPL, `(quantize :bN)` da ese árbol (se puede guardar, editar, mandar a una caja tree), y unas opciones
 cambian cómo se hace:
@@ -214,15 +221,35 @@ cambian cómo se hace:
 ```clojure
 (quantize :b1)                                   ; lo que muestra la partitura
 (quantize :b1 {:meter "6/8"})                    ; otro compás que el de la rejilla
-(quantize :b1 {:divs [1 2 4] :merge []})          ; sin grupos irregulares
+(quantize :b1 {:divs [1 2 4] :merge [] :nest false})   ; sin grupos irregulares
 (quantize :b1 {:grace false :legato 0})          ; sin notas de adorno; cada hueco un silencio
+(quantize :b1 {:voices 1})                       ; una voz: las notas solapadas se cortan
 (qz/quantize-tree [:par [:note {:at 0 :pitch "c4" :dur 1.5}] …] {:meter [3 4]})   ; un árbol sin compases
 ```
 
-Las otras opciones son `:chord` (lo cerca que deben estar dos ataques para ser un acorde, 0.04 partes) y `:w`,
-los pesos del coste (`{:err 8 :off 0.35 :cpx 1 :lost 1.5}`). `(as-tree :bN)` sigue leyendo los trazos de un freqt
-tal cual, sin cuantizarlos. Lo siguiente (#86): varias voces en un pentagrama, elegir otra división de una parte
-desde la partitura, grafía según la tonalidad (#88).
+Las otras opciones son `:chord` (lo cerca que deben estar dos ataques para ser un acorde, 0.04 partes), `:overlap`
+(cuánto puede entrar una nota en la siguiente y seguir en su voz, 0.15 partes) y `:w`, los pesos del coste
+(`{:err 8 :off 0.35 :cpx 1 :lost 1.5}`). `(as-tree :bN)` sigue leyendo los trazos de un freqt tal cual, sin
+cuantizarlos.
+
+**Elegir otra división.** El cuantizador adivina; cuando se equivoca, **alt+clic en una nota** de la partitura:
+su parte toma la siguiente manera de dividirla (primero la del cuantizador, luego las demás, de más barata a más
+cara: otra división, la parte en mitades, la parte junto con la siguiente). Cada elección se guarda en el buffer,
+con las opciones, como un evento de la historia:
+
+```clojure
+(quant :b1 {:meter "6/8" :divs [1 2 3 4 6]})     ; cómo se cuantiza la partitura de este freqt (en su buffer)
+(quant :b1)                                      ; → {:meter "6/8" …}
+(divisions :b1 2.5)                              ; las maneras de dividir la parte en 2.5, la actual primero
+(division! :b1 2.5)                              ; la siguiente (lo que hace el alt+clic) → en :fix
+(division! :b1 2.5 [:merge 3])                   ; esta: n, [n1 n2] (en mitades) o [:merge n]
+(division! :b1 2.5 nil)                          ; que vuelva a elegir el cuantizador
+(quant :b1 nil)                                  ; las opciones por defecto
+```
+
+El texto del buffer las muestra como `:quant {:meter "6/8" :fix {2 [:merge 3]}}`, y un mensaje `[:quantize {…}]`
+en la entrada del freqt también las cambia. Lo siguiente: grafía según la tonalidad (#88), y una sola caja para
+freqt, tree y partitura (discusión #92).
 
 ## REPL y componentes
 
@@ -235,6 +262,7 @@ Las funciones están en `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt
 - `(tree! :b2 [:voice …])` escribe un árbol en una caja tree;
 - `(as-tree :bN)` lee como árbol una caja tree, el árbol que muestra un freqt, o los trazos de un freqt;
 - `(quantize :bN [opciones])` da los trazos de un freqt (o un árbol sin compases) cuantizados en compases;
+- `(quant :bN opciones)`, `(divisions :bN t)`, `(division! :bN t [elección])`: cómo se cuantiza la partitura de un freqt, guardado en su buffer;
 - `(keep! :bN)` y `(unlive! :bN)`;
 - `(recipe :bN)` y `(remake! :bN)` (abajo).
 

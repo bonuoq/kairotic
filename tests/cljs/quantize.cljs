@@ -86,4 +86,57 @@
       (t/is "->score writes MEI with the tuplet" (str/includes? mei "<tuplet num=\"3\" numbase=\"2\""))
       (t/is "... and pieces to place a cursor" (seq pieces)))
     (t/is "->score of a measured tree writes it as it is"
-          (str/includes? (:mei (qz/->score [:voice [:measure {:meter [3 4]} "c4/3"]] "q-")) "meter.count=\"3\""))))
+          (str/includes? (:mei (qz/->score [:voice [:measure {:meter [3 4]} "c4/3"]] "q-")) "meter.count=\"3\""))
+
+    ;; stage 4: voices
+    (let [d (buffer nil [0 2 60] [2 4 59] [0 0.5 72] [0.5 1 74] [1 2 76] [2 4 77])
+          q (qz/quantize d)]
+      (t/eq "notes that overlap go to two voices, the higher first" (map (comp first mt/pitches) (nodes q :voice)) ["c5" "c4"])
+      (t/eq "... sharing one staff" (distinct (map (comp :staff mt/attrs) (nodes q :voice))) ["voice 1"])
+      (t/is "... written as two layers" (str/includes? (:mei (qz/->score d "v-")) "<layer n=\"2\""))
+      (t/eq "... and :voices 1 keeps one voice (cutting)" (count (nodes (qz/quantize d {:voices 1}) :voice)) 1))
+    (t/eq "notes that start and end together are a chord in one voice"
+          (count (nodes (qz/quantize (buffer nil [0 4 64] [0 4 67] [0 1 60] [1 2 62])) :chord)) 1)
+    (t/eq "two simultaneous notes of two moving lines go one to each"
+          (count (nodes (qz/quantize (buffer nil [0 2 72] [0 1 60] [1 2 62] [2 4 74] [2 4 60])) :chord)) 0)
+    (let [q (qz/quantize (buffer nil [4 8 57] [4 5 72] [5 5.33 71] [5.33 5.67 72] [5.67 6 74] [6 8 72]))
+          low (last (nodes q :voice))]
+      (t/eq "a note held through the other voice's triplet is not written in a triplet" (count (nodes low :tuplet)) 0))
+
+    ;; nested divisions
+    (let [q (qz/quantize (buffer nil [0 0.5 72] [0.5 0.667 74] [0.667 0.833 76] [0.833 1 77] [1 2 79]))]
+      (t/eq "an eighth and a triplet of sixteenths" (map (comp :ratio mt/attrs) (nodes q :tuplet)) [[3 2]])
+      (t/eq "... of sixteenths" (map (comp :dur mt/attrs) (mt/kids (first (nodes q :tuplet)))) [0.25 0.25 0.25])
+      (t/eq "... and :nest false makes it one division of the beat"
+            (map (comp :ratio mt/attrs) (nodes (qz/quantize (buffer nil [0 0.5 72] [0.5 0.667 74] [0.667 0.833 76] [0.833 1 77] [1 2 79]) {:nest false}) :tuplet))
+            [[6 4]]))
+
+    ;; stage 5: microtones and glissandi
+    (let [mei (:mei (mt/->mei [:voice [:measure {:meter [2 4]} [:note {:pitch 60.5 :dur 1}] [:note {:pitch 61.5 :dur 1}]]] "m-"))]
+      (t/is "a quarter tone above c is c quarter-sharp" (str/includes? mei "accid=\"1qs\""))
+      (t/is "... and above c# three quarters sharp" (str/includes? mei "accid=\"3qs\"")))
+    (let [bend {:gx nil :gy nil :strokes {:t1 {:pts [[0 (cv/midi->hz 72)] [1 (cv/midi->hz 72)] [2 (cv/midi->hz 70.9)]]}
+                                         :t2 {:pts [[2 (cv/midi->hz 71)] [3 (cv/midi->hz 71)]]}
+                                         :t3 {:pts [[3 (cv/midi->hz 67)] [4 (cv/midi->hz 69.5)]]}}}
+          mei (:mei (qz/->score bend "g-"))]
+      (t/is "a stroke that bends into the next note: a glissando line" (str/includes? mei "<gliss "))
+      (t/is "... and one that bends into nothing: a text" (str/includes? mei "gliss. ")))
+
+    ;; stage 6: other divisions, chosen and kept
+    (let [d (buffer nil [0 0.36 60] [0.36 0.62 62] [0.62 1 64] [1 2 65] [2 4 67])
+          ns (qz/strokes->notes d)
+          ch (qz/choices ns (qz/options nil nil) 0.4)]
+      (t/eq "the beat's current division is the quantizer's, first" [(:current ch) (first (:all ch))] [3 3])
+      (t/is "... then others, and two beats together" (and (some #{4} (:all ch)) (some (fn [c] (and (vector? c) (= :merge (first c)))) (:all ch))))
+      (t/is "... none placing the notes where another does (6 is not there: it puts them where 3 does)" (not (some #{6} (:all ch))))
+      (t/eq ":fix chooses a division by hand" (map (comp :ratio mt/attrs) (nodes (qz/quantize d {:fix {0 4}}) :tuplet)) [])
+      (let [{:keys [choice opts]} (qz/next-choice ns nil nil 0.4)]
+        (t/eq "next-choice takes the next division and keeps it in :fix" [choice (:fix opts)] [(second (:all ch)) {0 (second (:all ch))}])
+        (t/eq "... and the next one after it" (:choice (qz/next-choice ns opts nil 0.4)) (nth (:all ch) 2)))
+      (t/eq "a choice that does not read is dropped" (qz/sane-fix {0 4 1 "x" -2 3 2 [:merge 3] 3 [2 3]}) {0 4 2 [:merge 3] 3 [2 3]}))
+    (let [d (cv/step (buffer nil [0 1 60]) [:quantize {:meter "3/4" :nonsense 1}])]
+      (t/eq "a freqt keeps its quantization options ([:quantize opts])" (:quant d) {:meter "3/4"})
+      (t/eq "... nil goes back to the defaults" (:quant (cv/step d [:quantize nil])) nil)
+      (t/eq "... they are part of its text" (:quant (cv/read-source cv/empty (cv/->source d))) {:meter "3/4"})
+      (t/eq "... and of the difference between two buffers" (cv/diff (buffer nil [0 1 60]) d) [[:quantize {:meter "3/4"}]])
+      (t/throws "a canvas has no :quant" (fn [] (cv/read-source cv/generic-empty "{:quant {:meter \"3/4\"} :strokes {}}"))))))

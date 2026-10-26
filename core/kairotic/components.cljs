@@ -391,12 +391,13 @@
 ;;     [:move :t1 dx dy] · [:stretch :t1 k] · [:erase :t1] · [:clear] · [:cut t] (everything from t on)
 ;;     · [:cut t1 t2] (what is between t1 and t2)
 ;;     [:axis :x lo hi] · [:axis :y lo hi :log] · [:grid-x step cycles] · [:grid-y step] · [:tuning "19-tet" ref]
+;;     [:quantize {:meter "6/8" …}] (a freqt: how its score is quantized; nil: the defaults)
 ;;     [:batch [edit …]]: several at once, one event
 ;; · a question: the answer comes out on the left, nothing changes
 ;;     [:read x] (or [:read :y v]) → [[stroke value] …] · [:strokes] → [:t1 …] · [:get :t1] → its points
 ;;     [:count] · [:end] (where the last stroke ends) · [:range] / [:range :y] → [lo hi] · [:data] → the buffer
 
-(def canvas-edits #{:stroke :note :move :stretch :erase :clear :cut :axis :grid-x :grid-y :tuning :batch})
+(def canvas-edits #{:stroke :note :move :stretch :erase :clear :cut :axis :grid-x :grid-y :tuning :quantize :batch})
 (def canvas-questions #{:read :strokes :get :count :end :range :data})
 
 (defn canvas-edit?
@@ -423,6 +424,7 @@
                   (#{:x :y} k) [:axis (assoc (or (:ax d) cv/default-ax) k {:lo lo :hi hi :log (= lg :log)})]))
     :grid-x (let [[s cs] args] [:grid-x (if (map? s) s (when (cv/num? s) {:step s :cycles (or cs [])}))])
     :grid-y (let [[s] args] [:grid-y (if (map? s) s (when (cv/num? s) {:step s}))])
+    :quantize (let [[q] args] (when (or (nil? q) (map? q)) [:quantize q]))
     :tuning (let [[x ref] args
                   base (cond (map? x) x
                              (string? x) (or (get cv/tunings (str/lower-case x)) (cv/parse-scl x)))]

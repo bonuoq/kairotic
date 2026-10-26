@@ -528,9 +528,53 @@
        (cond
          (or (= "tree" (klass (:text b))) (live-tree id) (and (:recipe b) (not (:stale (:recipe b)))))
          (let [t (as-tree id)] (if (mt/measured? t) t (qz/quantize-tree t opts)))
-         (and (music? b) (not (cv/generic? (canvas-data b)))) (qz/quantize (canvas-data b) opts)
+         (and (music? b) (not (cv/generic? (canvas-data b)))) (qz/quantize (canvas-data b) (merge (:quant (canvas-data b)) opts))
          :else (fail (str id " is not a tree or a freqt")))
        (catch :default e (fail (.-message e)))))))
+
+(defn- freqt-data
+  "The buffer of a freqt box (fails for anything else)."
+  [id]
+  (let [b (need-box id) d (canvas-data b)]
+    (when-not (and (music? b) (not (cv/generic? d))) (fail (str id " is not a freqt")))
+    d))
+
+(defn quant
+  "How a freqt's score is quantized, kept in its buffer (one event of the history): (quant :b1 {:meter
+   \"6/8\" :divs [1 2 3 4]}); (quant :b1) gives them; (quant :b1 nil) goes back to the defaults."
+  ([id] (:quant (freqt-data id)))
+  ([id opts]
+   (freqt-data id)
+   (when-not (or (nil? opts) (map? opts)) (fail "The options are a map: {:meter \"6/8\" :divs [1 2 3 4]}, or nil"))
+   (try (qz/options opts nil) (catch :default e (fail (.-message e))))
+   (dispatch! [:in id [:quantize opts]])
+   (or opts :defaults)))
+
+(defn divisions
+  "The ways the beat that holds beat t of a freqt's score can be divided, the current one first:
+   n (n parts), [n1 n2] (in halves), [:merge n] (with the next beat). (divisions :b1 2.5)"
+  [id t]
+  (let [d (freqt-data id)]
+    (qz/choices (qz/strokes->notes d) (qz/options (:quant d) (:gx d)) t)))
+
+(defn division!
+  "Divides the beat that holds beat t of a freqt's score the next way (see divisions), or the way given;
+   the choice is kept in its buffer (:quant :fix), one event of the history. (division! :b1 2.5),
+   (division! :b1 2.5 3), (division! :b1 2.5 nil) lets the quantizer choose again."
+  ([id t]
+   (let [d (freqt-data id)
+         {:keys [choice opts]} (qz/next-choice (qz/strokes->notes d) (:quant d) (:gx d) t)]
+     (dispatch! [:in id [:quantize opts]])
+     choice))
+  ([id t c]
+   (let [d (freqt-data id)
+         {:keys [s pair]} (qz/choices (qz/strokes->notes d) (qz/options (:quant d) (:gx d)) t)
+         c (when (some? c) (or (qz/sane-choice c) (fail "A division is n, [n1 n2] or [:merge n]")))
+         near? (fn [a b] (and a b (< (js/Math.abs (- a b)) 1e-6)))
+         fix (into {} (remove (fn [[x _]] (or (near? x s) (near? x pair))) (:fix (:quant d))))
+         fix (if c (assoc fix (if (and (vector? c) (= :merge (first c))) (or pair s) s) c) fix)]
+     (dispatch! [:in id [:quantize (not-empty (cond-> (dissoc (:quant d) :fix) (seq fix) (assoc :fix fix)))]])
+     c)))
 
 (declare patch->code)
 

@@ -169,7 +169,7 @@
               {:keys [mei pieces]} (cond
                                      lt (qz/->score lt (str (name id) "-"))
                                      (cv/generic? d0) (sc/->mei-voice (cv/->voice d0) (str (name id) "-"))
-                                     :else (qz/->score d0 (str (name id) "-")))
+                                     :else (qz/->score d0 (str (name id) "-") (:quant d0)))
               g (js/document.createElementNS "http://www.w3.org/2000/svg" "g")]
           (.setOptions tk (clj->js {:pageWidth (js/Math.round (/ (* (- sw 8) 100) scale)) :pageHeight 60000
                                     :adjustPageHeight true :breaks "auto" :scale scale
@@ -588,7 +588,7 @@
                         (live-tree id) (str "tree · " (mt/summary (live-tree id)) " · (keep! " id ")")
                         (kept-tree b) (str "kept · " (mt/summary (kept-tree b))
                                            (when-let [f (:from (:recipe b))] (str " · from " f)))
-                        :else (str (when (= :score (display-of b)) (if (cv/generic? (canvas-data b)) "approx. · " "quantized · ")) (cv/summary (canvas-data b))
+                        :else (str (when (= :score (display-of b)) (if (cv/generic? (canvas-data b)) "approx. · " (str "quantized" (when (:quant (canvas-data b)) " (quant)") " · alt-click: divisions · "))) (cv/summary (canvas-data b))
                                    (when (:recipe b) (str " · changed since kept (remake! " id ")")))))) "</text>"
          chips)))
 

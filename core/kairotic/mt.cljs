@@ -24,6 +24,7 @@
 ;; :gliss [[0 0] [1 -150]] (cents over the note's duration), :env [[0 0] [0.1 1] [1 0]], :vel 0.8.
 ;; :tie true goes on into the next note of the same pitch (across a barline or into a tuplet: one sound,
 ;; tied in the score); :grace true is a grace note before the next one (it takes no time in its container).
+;; A :voice with :staff "name" is written as a layer of that staff (voices that share it, layers 1, 2 …).
 ;; A note without :dur lasts as long as the previous one of its container (1 at first). :defs (a map
 ;; of fragments) can sit in the attributes of any container; [:use {:ref k}] takes them from there.
 
@@ -964,8 +965,14 @@
                    (let [ss (vec (go t))] (if (seq ss) ss [t])))
         sec-voices (mapv (fn [sc] (vec (map-indexed (fn [i v] [(or (:name (attrs v)) (str "voice " (inc i))) v]) (voices-of sc))))
                          sections)
-        staves (vec (distinct (mapcat (fn [vs] (map first vs)) sec-voices)))
+        ;; a voice is a staff, or a layer of one: voices with the same :staff share it (layer 1, 2 …)
+        voice-staff (reduce (fn [m [k v]] (if (contains? m k) m (assoc m k (str (or (:staff (attrs v)) k)))))
+                            {} (apply concat sec-voices))
+        voice-order (vec (distinct (mapcat (fn [vs] (map first vs)) sec-voices)))
+        staves (vec (distinct (map voice-staff voice-order)))
+        layers-of (into {} (for [sk staves] [sk (filterv (fn [k] (= sk (voice-staff k))) voice-order)]))
         staff-of (zipmap staves (map inc (range)))
+        cur-layer (atom 1)
         bar-list (vec (mapcat (fn [si vs]
                                 (let [mss (mapv (fn [[k v]] [k (measures-of v)]) vs)
                                       n (reduce max 1 (map (comp count second) mss))]
@@ -988,7 +995,10 @@
         pieces (atom [])
         ctrl (atom {})                       ; bar → control events (dynam, dir, hairpin, tie)
         ctl! (fn [bar x] (swap! ctrl update bar (fnil conj []) x))
-        open-ties (atom {})                  ; [staff pitch] → [id bar] of a note tied (:tie) to the next one
+        open-gliss (atom {})                 ; [staff layer] → {:id :bar :end :c} of a note that bends into the next
+        gliss-dir (fn [staff gl] (str "<dir staff=\"" staff "\" startid=\"#" (:id gl) "\" place=\"above\"><rend fontstyle=\"italic\">gliss. "
+                                     (if (pos? (:c gl)) "↗ +" "↘ ") (js/Math.round (:c gl)) "¢</rend></dir>"))
+        open-ties (atom {})                  ; [staff layer pitch] → [id bar] of a note tied (:tie) to the next one
         bar-start (atom {})
         _ (reduce (fn [acc i] (swap! bar-start assoc i acc) (let [[p q] (meter-at i)] (+ acc (* p (/ 4 q))))) 0 (range (inc nbars)))
         tstamp (fn [bar beat] (let [[_ q] (meter-at bar)] (cv/round-to (inc (* beat (/ q 4))) 4)))
@@ -1028,8 +1038,13 @@
                 (let [bar (or (last (filter (fn [i] (<= (get @bar-start i) (+ abs 1e-6))) (range nbars))) 0)]
                   [bar (- abs (get @bar-start bar))]))
         note-xml (fn [a staff abs id durattr art? src]
-                   (let [m (midi-of a) mr (js/Math.round m) pc (mod mr 12) dv (js/Math.round (* 100 (- m mr)))
-                         acc (case (nth pc-names pc) ("c#" "d#" "f#" "g#" "a#") "s" nil)
+                   (let [m (midi-of a)
+                         ;; a pitch half-way between two semitones (± 8 cents) takes a quarter-tone accidental
+                         quarter? (< (js/Math.abs (- (- m (js/Math.floor m)) 0.5)) 0.08)
+                         mr (if quarter? (js/Math.floor m) (js/Math.round m)) pc (mod mr 12)
+                         dv (js/Math.round (* 100 (- m mr (if quarter? 0.5 0))))
+                         sharp? (contains? #{"c#" "d#" "f#" "g#" "a#"} (nth pc-names pc))
+                         acc (cond quarter? (if sharp? "3qs" "1qs") sharp? "s" :else nil)
                          arts (when art? (let [x (:art a) xs (if (sequential? x) x (when x [x]))]
                                            (seq (keep (fn [k] (get artic-names (keyword k))) xs))))]
                      (swap! pieces conj {:id id :t abs :staff staff :src src})
@@ -1084,7 +1099,7 @@
                         (let [id (nid)]
                           (swap! pieces conj {:id id :t abs :staff staff :src (meta k)})
                           (recur (rest ks) (+ abs (* scale (or (:dur a) 1)))
-                                 (conj items {:t0 abs :t1 abs :xml (str "<mRest xml:id=\"" id "\"/>")})))
+                                 (conj items {:t0 abs :t1 abs :xml (str (if (> @cur-layer 1) "<mSpace xml:id=\"" "<mRest xml:id=\"") id "\"/>")})))
                         (#{:note :rest :chord} tg)
                         (let [d (or (:dur a) 1)
                               [b beat] (where abs)
@@ -1099,7 +1114,7 @@
                                          (vec (filter (fn [n] (and (node? n) (= :note (tag n)) (midi-of (attrs n)))) (kids k))))
                               ;; the notes of this one, with their pitches: a tie may come into them, or go on from them
                               members (case tg :note [a] :chord (mapv attrs chord-ns) [])
-                              tie-key (fn [m] [staff (cv/round-to (midi-of m) 3)])
+                              tie-key (fn [m] [staff @cur-layer (cv/round-to (midi-of m) 3)])
                               part-items
                               (loop [ps parts pabs abs prev-ids nil acc []]
                                 (if (empty? ps)
@@ -1107,7 +1122,13 @@
                                         (doseq [[m id] (map vector members prev-ids)]
                                           (if (or (:tie a) (:tie m))
                                             (swap! open-ties assoc (tie-key m) [id b])
-                                            (swap! open-ties dissoc (tie-key m)))))
+                                            (swap! open-ties dissoc (tie-key m))))
+                                        ;; a note that bends (:gliss, more than 30 cents) glides into the next one
+                                        (when-let [g (and (= :note tg) (not (:tie a)) (seq (:gliss a)))]
+                                          (let [c0 (second (first g)) c1 (second (last g))]
+                                            (when (>= (js/Math.abs (- c1 c0)) 30)
+                                              (swap! open-gliss assoc [staff @cur-layer]
+                                                     {:id (last prev-ids) :bar b :end (+ (midi-of a) (/ c1 100)) :c (- c1 c0)})))))
                                       acc)
                                   (let [[pb du dots] (first ps)
                                         durattr (str " dur=\"" du "\"" (when (pos? dots) " dots=\"1\""))
@@ -1130,11 +1151,17 @@
                                     (when (and first? (seq ids)) (marks! a staff b (first ids)))
                                     ;; a tie from the note before (:tie), across a barline or into a tuplet
                                     (when first?
+                                      (when-let [gl (get @open-gliss [staff @cur-layer])]
+                                        (let [hit (and (= :note tg) (seq ids) (< (js/Math.abs (- (midi-of a) (:end gl))) 0.5))]
+                                          (ctl! (:bar gl) (if hit
+                                                            (str "<gliss startid=\"#" (:id gl) "\" endid=\"#" (first ids) "\"/>")
+                                                            (gliss-dir staff gl)))
+                                          (swap! open-gliss dissoc [staff @cur-layer])))
                                       (doseq [[m id] (map vector members (or ids []))]
                                         (when-let [[s sb] (get @open-ties (tie-key m))]
                                           (ctl! sb (str "<tie startid=\"#" s "\" endid=\"#" id "\"/>"))))
                                       ;; a tie only goes into the very next note of its staff
-                                      (swap! open-ties (fn [o] (into {} (remove (fn [[[st _] _]] (= st staff)) o)))))
+                                      (swap! open-ties (fn [o] (into {} (remove (fn [[[st ly _] _]] (and (= st staff) (= ly @cur-layer))) o)))))
                                     (when (and prev-ids ids)
                                       (doseq [[s e] (map vector prev-ids ids)]
                                         (ctl! b (str "<tie startid=\"#" s "\" endid=\"#" e "\"/>"))))
@@ -1143,7 +1170,7 @@
                                                       :beam (and (not= :rest tg) (contains? #{"8" "16" "32" "64"} du))})))))]
                           (recur (rest ks) (+ abs (* scale d)) (into items part-items)))
                         :else (recur (rest ks) abs items))))))
-        clefs (mapv (fn [k] (let [ps (for [vs sec-voices [kk v] vs :when (= kk k)
+        clefs (mapv (fn [k] (let [ps (for [vs sec-voices [kk v] vs :when (= (voice-staff kk) k)
                                            n (tree-seq node? kids v) :when (= :note (tag n))
                                            :let [m (midi-of (attrs n))] :when m] m)
                                   mean (if (seq ps) (/ (reduce + ps) (count ps)) 64)]
@@ -1154,12 +1181,22 @@
         staff-xmls (vec (for [i (range nbars)
                               :let [{:keys [cells]} (nth bar-list i)]]
                           (apply str
-                                               (for [k staves
-                                                     :let [staff (staff-of k) m (get cells k)
-                                                           [xml _] (if m (layer (kids m) staff i (get @bar-start i) 1 (beam-spans i)) ["" 0])]]
-                                                 (str "<staff n=\"" staff "\"><layer n=\"1\">"
-                                                      (if (seq xml) xml (str "<mRest xml:id=\"" (nid) "\"/>"))
-                                                      "</layer></staff>")))))
+                                               (for [sk staves
+                                                     :let [staff (staff-of sk)]]
+                                                 (str "<staff n=\"" staff "\">"
+                                                      (apply str
+                                                             (for [[li k] (map-indexed vector (get layers-of sk))
+                                                                   :let [m (get cells k)
+                                                                         _ (reset! cur-layer (inc li))
+                                                                         [xml _] (if m (layer (kids m) staff i (get @bar-start i) 1 (beam-spans i)) ["" 0])]
+                                                                   ;; a second layer with nothing in this bar is not written
+                                                                   :when (or (zero? li) (seq xml))]
+                                                               (str "<layer n=\"" (inc li) "\">"
+                                                                    (if (seq xml) xml (str "<mRest xml:id=\"" (nid) "\"/>"))
+                                                                    "</layer>")))
+                                                      "</staff>")))))
+        ;; a bend at the very end goes nowhere: a text says it
+        _ (doseq [[[st _] gl] @open-gliss] (ctl! (:bar gl) (gliss-dir st gl)))
         bars (vec (for [i (range nbars)
                         :let [{:keys [label end]} (nth bar-list i)]]
                     (do (when (seq label)
