@@ -317,10 +317,11 @@
 (def rest-words #{:rest :_ :- :r "rest" "_" "-" "r"})
 
 (defn rest?
-  "Is the event a silence? {:type :rest}, :rest true, or :rest (:_ :-) as its note, degree or freq."
+  "Is the event a silence? {:type :rest}, :rest true, or :rest (:_ :- :r) or nil as its note, degree or freq."
   [e]
   (boolean (or (= :rest (:type e)) (true? (:rest e))
-               (some (fn [k] (contains? rest-words (get e k))) [:note :midinote :degree :freq]))))
+               (some (fn [k] (and (contains? e k) (let [v (get e k)] (or (nil? v) (contains? rest-words v)))))
+                     [:note :midinote :degree :freq]))))
 
 (defn pitch-class
   "A pitch class: a number, or a name (:c :eb :f# \"Bb\") → 0…11 (nil if it is not one)."

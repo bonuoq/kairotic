@@ -53,9 +53,12 @@ endless key is endless; otherwise a pass lasts as long as its longest sequence.
 Pitch: `:freq` in Hz, `:note` (MIDI, `"c4"` or `:c4`), or `:degree` with `:scale` (`:major`, `:dorian`,
 `:minor-pentatonic`… or a vector of semitones, fractional for microtones), `:root` (`:d`, `:eb`, 2) and
 `:octave` (5 → C4), as SuperCollider's default event; `:transpose` in semitones. A vector of pitches is
-a chord. Length: `:dur` in beats (1), and `:legato` (0.8) or `:sustain` (beats). Silence: `:rest` as the
-note or degree, or `{:type :rest}`. Any other key goes out with the event, for whatever reads it (`get %
-:amp`, a score, an instruction for a performer: events need not sound).
+a chord. Length: `:dur` in beats (1), and `:legato` (0.8) or `:sustain` (beats). Silence: `:rest` (or
+`:_`, `:-`, `:r`, or `nil`) as the note, degree or freq — `{:degree [0 2 :rest 4]}`, `[0 nil 4]` — or
+`{:type :rest}`. Loudness: `:amp` (0…1); the player sends `[:gain amp]` on its Hz outlet just before the
+notes of that event, which `synth~` and a polyphonic `faust~` take as the level of the notes that start
+(notes that start at the same instant share the last one). Any other key goes out with the event, for
+whatever reads it (`get % :pan`, a score, an instruction for a performer: events need not sound).
 
 ## Playing it
 

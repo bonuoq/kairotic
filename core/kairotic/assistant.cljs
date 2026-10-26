@@ -413,7 +413,7 @@ Rules:
   [quant]`, which plays it on `start`/`stop`, one step per bang, or at a position in beats (a number, from a
   ramp, either way: going back, each note starts from its end; seek p jumps). Its outlets: Hz (left) and voice ids (second) for synth~ or a polyphonic faust~, the whole event,
   the beat. Event keys: :freq, :note (MIDI, \"c4\"), or :degree with :scale :root :octave; :dur in beats,
-  :legato; :rest is a silence. Write durations as decimals (0.25), not ratios.
+  :legato; :rest (or nil) is a silence; :amp 0…1 is the loudness of its notes in synth~ and a polyphonic faust~. Write durations as decimals (0.25), not ratios.
 - `draw [w h]` draws the shapes that reach it (the shapes of a component's view, or as a msg writes them:
   `msg circle 40 40 10 accent hit sun`, `msg set cursor line 0 0 0 100`); a shape with :hit k sends k.
 - Annotations: `(mark :notes {:kind :text :at [:b3 0 -12] :txt \"…\"})`, `(mark :notes {:kind :arrow :pts

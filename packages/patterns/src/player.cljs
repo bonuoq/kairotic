@@ -18,6 +18,9 @@
                          (string? v) (keyword v)
                          (and (vector? v) (keyword? (first v)) (= 1 (count v))) (first v)
                          :else nil))
+      ;; the loudness of an event's notes, for synth~ and a polyphonic faust~: [:gain a] on the Hz outlet,
+      ;; just before the notes (only when the event has :amp or :gain)
+      gain-out (fn [e hz] (let [a (or (:amp e) (:gain e))] (if (and (number? a) (seq hz)) [[0 [:gain a]]] [])))
       ;; the stream it plays: kept behind a function, so that printing its state (or the engine's) never
       ;; walks an endless sequence
       evs (fn [st] (when-let [f (:evs st)] (f)))
@@ -49,7 +52,7 @@
                      st (-> st (assoc :n (+ n0 (count hz)))
                             (update :sounding into (map vector ids hz (repeat (+ onset sus)))))
                      ev (cond-> (assoc e :beat onset) (seq hz) (assoc :hz hz :ids ids))]
-                 [st [[2 ev]]
+                 [st (into [[2 ev]] (gain-out e hz))
                   (if (and (seq ids) (not= :pos (:mode st))) [[(+ at (* sus (spb st))) 0 [:off ids]]] [])])))
       ;; plays every event that starts on or before beat b (and after the last one played)
       play-until (fn [st b at]
@@ -124,14 +127,14 @@
                          (= dir :back) (assoc :dir :back))]
                 [(-> st (assoc :n (+ n0 (count hz)))
                      (update :sounding into (map (fn [id h] [id h (:end x) (:i x)]) ids hz)))
-                 ev]))
+                 ev (gain-out (:e x) hz)]))
       leave (fn [st idx] (update st :sounding (fn [s] (vec (remove (fn [[_ _ _ i]] (= i idx)) s)))))
       ;; what goes out at each moment of a step: [[t [[outlet value] …]] …], what sounds after each moment
       frames (fn [st0 moments]
                (loop [st st0 ms (sort-by first moments) acc []]
                  (if-let [[t kind x dir] (first ms)]
                    (let [[st2 o] (case kind
-                                   :enter (let [[s ev] (enter st x dir)] [s [[2 ev]]])
+                                   :enter (let [[s ev g] (enter st x dir)] [s (into [[2 ev]] g)])
                                    :leave [(leave st (:i x)) []])
                          acc (if (and (seq acc) (= t (first (peek acc))))
                                (update-in acc [(dec (count acc)) 1] into o)
@@ -248,7 +251,7 @@
   {;; ── about ──
    :class "player"
    :license "MPL-2.0"
-   :doc "Plays a pattern (from a pbind or a pattern box, on its right inlet) in one of three ways, chosen by what arrives on the left: start / stop — its own clock, every event lasting its :dur in beats at its bpm (quant: start on a multiple of that many beats); bang — one step, the next event now; a number — a position in beats (a ramp, a counter, a number you drag), where every event is a span from its onset to its end that sounds while the position is inside it: forwards it is entered at its onset, backwards at its end (:dir :back), and the spans passed over in one step sound within it; seek p, or a step more than jump (8) times the one before it or longer than limit (8) beats, goes there at once, sounding what contains p (with edges, only what starts at p); with spread, what a step passes keeps its rhythm, one step later. Out: the Hz of the notes sounding, their voice ids (for synth~ or a polyphonic faust~), the whole event (:beat :hz :ids added) and the beat. A new pattern while it plays goes on from the same beat; the same pattern again changes nothing. Pitch: :freq, :note (MIDI, \"c4\", :c4), or :degree with :scale :root :octave; :dur, :legato or :sustain; :rest is a silence."
+   :doc "Plays a pattern (from a pbind or a pattern box, on its right inlet) in one of three ways, chosen by what arrives on the left: start / stop — its own clock, every event lasting its :dur in beats at its bpm (quant: start on a multiple of that many beats); bang — one step, the next event now; a number — a position in beats (a ramp, a counter, a number you drag), where every event is a span from its onset to its end that sounds while the position is inside it: forwards it is entered at its onset, backwards at its end (:dir :back), and the spans passed over in one step sound within it; seek p, or a step more than jump (8) times the one before it or longer than limit (8) beats, goes there at once, sounding what contains p (with edges, only what starts at p); with spread, what a step passes keeps its rhythm, one step later. Out: the Hz of the notes sounding, their voice ids (for synth~ or a polyphonic faust~), the whole event (:beat :hz :ids added) and the beat; an event with :amp (0…1) sends [:gain amp] on the Hz outlet just before its notes, the loudness of the notes that start (synth~, a polyphonic faust~). A new pattern while it plays goes on from the same beat; the same pattern again changes nothing. Pitch: :freq, :note (MIDI, \"c4\", :c4), or :degree with :scale :root :octave; :dur, :legato or :sustain; :rest (or nil) is a silence."
    :usage "player [bpm] [quant] [jump] [limit] [edges] [spread]"
    :io [2 4]
 
