@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
+An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
 
 **Inlets** 
 
@@ -727,7 +727,7 @@ See also: `osc~`, `adsr~`, `dac~`
 
 `gendy~ [freq x-step y-min y-max y-step breakpoints]`
 
-A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Bernstein, MIT): a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle, heard as a pitch that drifts and a timbre that changes. freq in Hz (a signal on the inlet adds to it: FM); x-step (0–100 %) how far each segment's duration may wander; y-min and y-max (−1…1) the barriers of the amplitudes, y-step how far they move each cycle; breakpoints (2–128) how many. A number sets freq; [:y-step 0.2] one of them; a list of six all of them.
+A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle — a pitch that drifts, a timbre that changes.
 
 **Inlets** 
 
@@ -1342,20 +1342,20 @@ See also: `onset~`, `ftom`, `freqt`
 
 ### player · `@kairotic/patterns`
 
-`player [bpm] [quant]`
+`player [bpm] [quant] [jump] [limit] [edges] [spread]`
 
 Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a position in beats (a number): the Hz and voice ids of the notes sounding, the whole event and the beat.
 
 **Inlets** 
 
-0. start · stop: its own clock · bang: one step, now · a number: a position in beats · reset · [:bpm 90]
+0. start · stop: its own clock · bang: one step, now · a number: a position in beats · seek p · reset · [:bpm 90]
 1. a pattern (from a pbind or a pattern box): a new one goes on from the same beat
 
 **Outlets** 
 
 0. the Hz of the notes sounding (a list)
 1. their voice ids, sent first (for synth~ or a polyphonic faust~)
-2. the whole event, with :beat, :hz and :ids
+2. the whole event, with :beat, :hz and :ids (and :dir :back when entered from its end)
 3. the beat
 
 **Messages and gestures**
@@ -1364,7 +1364,11 @@ Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a
 - `player 120 4`: start on a multiple of 4 beats: players with the same tempo meet
 - `[:bpm 90]`: another tempo, without a jump
 - `bang`: the next event now (and the ones of :dur 0 right after it)
-- `a number`: a position in beats: the events whose start it crosses sound; back or a jump moves there silently
+- `a number`: a position in beats: every event is a span, from its onset to its end, that sounds while the position is inside it — entered at its onset going forwards, at its end going backwards (:dir :back); what a step passes over sounds within it
+- `seek 8 · [:seek 8]`: there at once, nothing in between: what still sounds there goes on, what starts to contain that position starts
+- `player 120 0 8 8`: a step more than 8 (jump) times the one before it, or longer than 8 (limit) beats, is a seek: the wrap of a ramp
+- `player 120 0 8 8 edges`: a seek sounds only what starts exactly there
+- `player 120 0 8 8 spread`: what a step passes keeps its rhythm, one step later (with ▶)
 - `reset`: back to the beginning, silently
 
 **Try:** Press ▶ and start: the six notes, three durations cycling. The third outlet is the whole event: print writes the beat of each.
@@ -1403,9 +1407,9 @@ Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a
 (connect :b9 0 :b4 0)
 ```
 
-**At a position** — A number is a position in beats, as a reader reads a buffer: what starts between the last position and this one sounds. A ramp moves through it; back or a jump moves silently.
+**At a position** — A number is a position in beats, as a reader reads a buffer: every event is a span that sounds while the position is inside it. Forwards it starts at its onset; backwards at its end. The wrap of a ramp (a step far larger than the ones before) is a seek: there at once.
 
-*Try:* Stop the clock and click bang: six beats in three seconds, again and again. Change the ramp to ramp 6 0 3: backwards it moves silently. Drag a number box into it instead: you are the clock.
+*Try:* Stop the clock and click bang: six beats in three seconds, again and again. Change the ramp to ramp 6 0 3 loop: the phrase backwards, each note from its end. Drag a number box into it instead: you are the clock, either way.
 
 ```clojure
 (box :b12 "ramp 0 6 3 loop" 330 130)
@@ -1785,7 +1789,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). :stop silences it.
+Polyphonic triangle-wave synthesizer, one voice per id.
 
 **Inlets** 
 
