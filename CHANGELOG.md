@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **`@kairotic/patterns` 0.1.0: patterns after SuperCollider's and Overtone's** (discussion #84). A pattern is
+  a lazy, perhaps endless, sequence of event maps; what travels (history, rooms, links) is its source and a
+  seed, and each tab makes the events, so everyone hears the same. `pbind [seed] [repeat] [loop]` is a code
+  box in EDN — constants, vectors (the shorter ones start again until the longest ends) and generators
+  `#pat/seq` `#pat/choose` `#pat/shuffle` `#pat/white` `#pat/walk` `#pat/series` `#pat/hold [beats […]]`
+  `#pat/chord`, each key with a seed of its own — safe in a room; a map on its inlet replaces it,
+  `[:set k v]` one key. `pattern [seed]` is the same as Clojure code (pbind, pwhite, pchoose… and seeded
+  `rand`), trusted like a script. `player [bpm] [quant]` plays one on `start`/`stop` (its own clock, quant to
+  meet other players, `[:bpm x]` without a jump), one step per bang, or at a position in beats (a number,
+  from a ramp: the events whose start it crosses; back or a jump moves silently): Hz and voice ids for
+  synth~ or a polyphonic faust~, the whole event, the beat. A new pattern while it plays goes on from the
+  same beat. Pitch: `:freq`, `:note`, or `:degree` with `:scale` `:root` `:octave`. The machinery is in the
+  core (`kairotic.patterns`, through `api/…`: `api/pattern-events`, `api/event-hz`, `api/compiled`,
+  `api/code-model`…). Tests: `tests/cljs/patterns.cljs`, `tests/patterns.mjs`.
+- **Data boxes of any class**: a component with `:sends (fn [box] value)` is sent by the page when its text or
+  data changes, as a tree box sends its tree (how pbind and pattern send their patterns).
 - **Polyphonic `faust~`**: a source that declares `declare options "[nvoices:8]";` (the Faust
   convention) is compiled as voices played by faustwasm's own allocator, in one AudioWorklet, with an
   optional `effect = …;` from the same source applied to their sum. As `synth~`: Hz on the left and

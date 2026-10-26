@@ -11,7 +11,9 @@
   (:require [clojure.string :as str]
             [clojure.edn :as edn]
             [kairotic.components :as comp]
-            [kairotic.canvas :as cv]))
+            [kairotic.canvas :as cv]
+            [kairotic.code :as code]
+            [kairotic.patterns :as pat]))
 
 (def version 1)
 
@@ -282,3 +284,31 @@ registerProcessor('kairotic-tap', KairoticTap);
                                   :else e))))
            (.finally (fn [] (js/clearTimeout timer)))))
      (js/Promise.reject (js/Error. (str (pr-str url) " is not a URL (https://… or github:owner/repo/path)"))))))
+
+;; ───────── code boxes ─────────
+;; A component whose data is a source text in some language (:display :code :language "…" :model
+;; api/code-model): each tab compiles the source with the compiler registered for that language.
+
+(def code-model "The model of a code box: its data is {:source \"…\"}, with its own history." code/model)
+
+(defn compiled
+  "The compilation of a source in a language: {:status :ok :value x :info {…}}, {:status :compiling},
+   {:status :error :error \"…\"} or {:status :empty}. Asked again when it is done (the page is told)."
+  [language source]
+  (code/compiled language source))
+
+;; ───────── patterns (kairotic.patterns, for @kairotic/patterns) ─────────
+;; A pattern value is a factory of streams: lazy seqs of event maps ({:degree 2 :dur 1/2}). It travels
+;; along lines; the sequences are made in each tab, from a source and a seed.
+
+(defn pattern? "Is x a pattern value?" [x] (pat/pattern? x))
+(defn pattern-events "A new stream of a pattern: a lazy, perhaps endless, seq of event maps." [p] (pat/events p))
+(defn pbind-pattern "The pattern of a pbind map, with {:seed n :repeat n|:inf}." [m opts] (pat/pbind-pattern m opts))
+(defn code-pattern "The pattern of a compiled \"pattern\" source, with {:seed :repeat :source}." [f opts] (pat/code-pattern f opts))
+(defn read-pbind "The text of a pbind as a map (#pat/… as generators); throws when it does not read." [source] (pat/read-spec source))
+(defn pbind-problems "What is wrong with a pbind map: a list of reasons, empty if nothing." [m] (pat/problems m))
+(defn pbind-source "A pbind map written back as the text of its box." [m] (pat/spec->source m))
+(defn event-dur "The length of an event in beats (:dur, 1 if none)." [e] (pat/dur-of e))
+(defn event-sustain "How long the notes of an event sound, in beats (:sustain, or :dur × :legato 0.8)." [e] (pat/sustain e))
+(defn event-hz "The frequencies an event plays (a vector of Hz), [] for a rest, nil if it has no pitch." [e] (pat/hz e))
+(defn rest-event? "Is the event a silence?" [e] (pat/rest? e))

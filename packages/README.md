@@ -13,6 +13,7 @@ npm under the scope `@kairotic` and served inside claude.ai by jsDelivr.
 | [`@kairotic/analysis`](analysis/) | `features~ [ms] [descriptor …]` descriptors (rms, centroid, flatness, mfcc… with Meyda) · `pitch~ [lo hi]` the pitch, by YIN · `onset~ [threshold] [ms]` the beginnings of sounds · `chroma~` the 12 pitch classes · `spectrum~ [lo hi]` the spectrum, drawn · `transcribe [bpm] [notes|glide]` what pitch~ hears, into a freqt · `monitor [seconds] [name …]` any stream of messages, drawn over time |
 | [`@kairotic/data`](data/) | `fetch [json\|text\|edn] [live]` what is at a URL, brought in as a task and kept in the work · `edn [width height]` any value as a tree to open, read and pick from |
 | [`@kairotic/theory`](theory/) | `pcclock [notes]` a pitch-class set on the clock face, its prime form, interval vector and symmetries · `fourier [notes]` the six Fourier coefficients of a pitch-class distribution · `tonnetz [notes]` triads on the Tonnetz and the path of the harmony — all drawn in the patch, and clickable |
+| [`@kairotic/patterns`](patterns/) | `pbind [seed] [repeat] [loop]` a pattern as EDN data, with `#pat/…` generators and seeded randomness · `pattern [seed] [repeat] [loop]` a pattern as Clojure code (lazy sequences, as in Overtone) · `player [bpm] [quant]` plays one by its own clock, step by step, or at a position in beats |
 
 Planned: `cac`, `notation`.
 

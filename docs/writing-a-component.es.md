@@ -177,6 +177,12 @@ tal cual:
       …)
 ```
 
+Una clase puede ser una caja de datos propia, como `tree`: con **`:sends (fn [box] valor)`** la página
+envía ese valor por el outlet 0 cada vez que cambian el texto o los datos de la caja, y otra vez hacia una
+línea nueva o una caja posterior que cambió (`box` es `{:id :text :args :data}`; devuelve nil mientras no
+esté listo, como una fuente que aún se compila). `pbind` y `pattern` (en
+[`@kairotic/patterns`](../packages/patterns/README.md)) envían así su pattern.
+
 ## 6. Un componente hecho de un patch
 
 No todas las clases necesitan código. Un **sub-patch** es una caja `patch`: doble clic para abrirla

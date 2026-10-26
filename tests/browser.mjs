@@ -29,6 +29,7 @@ import { help } from "./help.mjs";
 import { components } from "./components.mjs";
 import { gendy } from "./gendy.mjs";
 import { faustpoly } from "./faustpoly.mjs";
+import { patterns } from "./patterns.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const base = url.replace(/tests\.html.*$/, "");
@@ -36,7 +37,9 @@ const base = url.replace(/tests\.html.*$/, "");
 const browser = await chromium.launch({ args: ["--autoplay-policy=no-user-gesture-required",
                                                "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] });
 const r = { total: 0, failed: [] };
-const checker = (suite) => (label, ok, detail) => { r.total += 1; if (!ok) r.failed.push({ suite, label, detail: detail || "" }); };
+// the last check of each suite, so a suite that hangs says where (see inApp)
+const last = {};
+const checker = (suite) => (label, ok, detail) => { r.total += 1; last[suite] = label; if (!ok) r.failed.push({ suite, label, detail: detail || "" }); };
 const message = (e) => String(e && e.message || e);
 // how long each part takes, printed at the end (and in the run's summary on GitHub Actions)
 const timings = [];
@@ -101,6 +104,7 @@ const audioSuites = [
   ["record", record, "the record tests ran"],
   ["gendy", gendy, "the gendy~ tests ran"],
   ["faustpoly", faustpoly, "the polyphonic faust~ tests ran"],
+  ["patterns", patterns, "the patterns tests ran"],
   // last: its transcriptions depend on timing, and by then the other blocks have (nearly) finished
   // (alongside them, a take could start late and an overwrite check fail)
   ["analysis", analysis, "the analysis tests ran"],
@@ -131,7 +135,13 @@ async function inApp(name, suites, suite, { before, after } = {}) {
   if (before) await before(app, check);
   for (const [n, fn, ran] of suites)
     await timed(name + " · " + n, async () => {
-      try { await fn(app, check); } catch (e) { check(ran, false, message(e)); }
+      // a suite that hangs (a page that stops answering) fails after 4 minutes, saying its last check,
+      // instead of using up the job
+      let timer;
+      const limit = new Promise((_, fail) => {
+        timer = setTimeout(() => fail(new Error(n + ": still running after 4 minutes; its last check: " + (last[suite] || "none"))), 240000);
+      });
+      try { await Promise.race([fn(app, check), limit]); } catch (e) { check(ran, false, message(e)); } finally { clearTimeout(timer); }
     });
   if (after) await after(app, check);
   if (appErrors.length) check("no page errors during the " + suite, false, appErrors.join("; "));
@@ -223,6 +233,9 @@ if (process.env.GITHUB_STEP_SUMMARY) {
 }
 for (const f of r.failed) console.log("✗", f.suite ? f.suite + " · " : "", f.label, f.detail ? "— " + f.detail : "");
 // on GitHub Actions, each failure is also an annotation of the run (readable without the log)
+// (at most 10 errors are shown per step: first all of them in one, short)
+if (process.env.GITHUB_ACTIONS && r.failed.length)
+  console.log(`::error title=${r.failed.length} failed::` + r.failed.map((f) => (f.suite ? f.suite + " · " : "") + f.label + (f.detail ? " — " + f.detail.slice(0, 160) : "")).join(" ¦ ").replace(/\n/g, " ").slice(0, 6000));
 if (process.env.GITHUB_ACTIONS)
   for (const f of r.failed) console.log(`::error title=${(f.suite || "test").replace(/[:,\n]/g, " ")}::${(f.label + (f.detail ? " — " + f.detail : "")).replace(/\n/g, " ").slice(0, 900)}`);
 console.log(r.failed.length ? `${r.failed.length} of ${r.total} failed` : `all ${r.total} passed`);

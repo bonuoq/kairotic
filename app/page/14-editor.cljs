@@ -70,6 +70,9 @@
     "edn" tree-words
     "component" (vec (concat component-words (ns-names 'kairotic.api "api/") (ns-names 'clojure.core "")))
     "clojurescript" (vec (concat (ns-names 'clojure.core "") (ns-names 'clojure.string "str/")))
+    "pbind" ["#pat/seq" "#pat/choose" "#pat/shuffle" "#pat/white" "#pat/walk" "#pat/series" "#pat/hold" "#pat/chord"
+             ":degree" ":note" ":freq" ":dur" ":legato" ":sustain" ":amp" ":scale" ":root" ":octave" ":transpose" ":rest"]
+    "pattern" (vec (concat (map str kairotic.patterns/code-names) (ns-names 'clojure.core "")))
     []))
 
 ;; ───── the window ─────

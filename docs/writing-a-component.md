@@ -172,6 +172,12 @@ accumulator does not count it twice, a learner does not learn it twice. Compare 
       …)
 ```
 
+A class can be a data box of its own, as `tree` is: with **`:sends (fn [box] value)`** the page sends
+that value out of outlet 0 whenever the text or the data of the box changes, and again toward a new line
+or a box after it that changed (`box` is `{:id :text :args :data}`; return nil while it is not ready,
+such as a source still compiling). `pbind` and `pattern` (in
+[`@kairotic/patterns`](../packages/patterns/README.md)) send their pattern this way.
+
 ## 6. A component made of a patch
 
 Not every class needs code. A **sub-patch** is a `patch` box: double-click it to open it (or

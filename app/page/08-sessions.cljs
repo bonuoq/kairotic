@@ -65,6 +65,7 @@
   (reset! live-trees {})
   (reset! dismissed-trees {})
   (reset! sent-trees {})
+  (reset! sent-data {})
   (reset! sent-shape nil)
   (reset! msg-edits {})
   (unsub-all!)

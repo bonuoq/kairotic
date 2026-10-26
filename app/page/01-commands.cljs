@@ -608,6 +608,7 @@
   (reset! cbox/trust (boolean on?))
   (cbox/forget-language! "clojurescript")
   (cbox/forget-language! "component")
+  (cbox/forget-language! "pattern")
   (render-all!)
   (boolean on?))
 
