@@ -133,7 +133,12 @@ async function inApp(name, suites, suite, { before, after } = {}) {
   if (before) await before(app, check);
   for (const [n, fn, ran] of suites)
     await timed(name + " · " + n, async () => {
-      try { await fn(app, check); } catch (e) { check(ran, false, message(e)); }
+      // which suite is running, in the run's annotations (readable even when the job is cancelled), and a
+      // suite that hangs (a page that stops answering) fails after 4 minutes instead of using up the job
+      if (process.env.GITHUB_ACTIONS) console.log(`::notice title=suite::${name} · ${n} started`);
+      let timer;
+      const limit = new Promise((_, fail) => { timer = setTimeout(() => fail(new Error(n + ": still running after 4 minutes")), 240000); });
+      try { await Promise.race([fn(app, check), limit]); } catch (e) { check(ran, false, message(e)); } finally { clearTimeout(timer); }
     });
   if (after) await after(app, check);
   if (appErrors.length) check("no page errors during the " + suite, false, appErrors.join("; "));
