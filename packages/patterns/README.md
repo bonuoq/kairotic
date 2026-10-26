@@ -11,7 +11,7 @@ Patterns after SuperCollider's (`Pbind`, `Pseq`, `Pwhite`…), on Clojure's lazy
 |---|---|
 | `pbind [seed] [repeat] [loop]` | a pattern as **data**: an EDN map whose values are constants, sequences (vectors: the shorter ones start again until the longest ends) and `#pat/…` generators. Reading it evaluates nothing, so it is safe in a shared room. It sends its pattern whenever it changes. A map on its inlet replaces it, `[:set :dur [1 0.5]]` changes one key |
 | `pattern [seed] [repeat] [loop]` | a pattern as **code**: a Clojure expression that returns event maps (or one map, read as a pbind), with `rand`, `rand-int`, `rand-nth` and `shuffle` seeded, and `pbind`, `pseq`, `pwhite`, `pchoose`, `pshuffle`, `pseries`, `pwalk` at hand. Like a script, it runs in a shared room only after `(trust-scripts true)` |
-| `player [bpm] [quant]` | plays a pattern (on its right inlet) the way the left inlet says: `start`/`stop` by its own clock, `bang` one step, a number a position in beats (as a `reader` reads a buffer). Out: the Hz of the notes sounding, their voice ids (for `synth~` or a polyphonic `faust~`), the whole event, and the beat |
+| `player [bpm] [quant] [jump] [limit] [edges] [spread]` | plays a pattern (on its right inlet) the way the left inlet says: `start`/`stop` by its own clock, `bang` one step, a number a position in beats (as a `reader` reads a buffer, in either direction), `seek p` a jump. Out: the Hz of the notes sounding, their voice ids (for `synth~` or a polyphonic `faust~`), the whole event, and the beat |
 
 ```clojure
 (box :b1 "pbind 7 loop" 40 30)
@@ -63,8 +63,14 @@ note or degree, or `{:type :rest}`. Any other key goes out with the event, for w
 |---|---|
 | `start` · `stop` | its own clock: every event lasts its `:dur` in beats at its bpm; `player 120 4` starts on a multiple of 4 beats, so players with the same tempo meet; `[:bpm 90]` changes the tempo without a jump |
 | `bang` | one step: the next event now (from a `metro`, an `onset~`, a key, a performer), going on from where its steps or its clock were |
-| a number | a position in beats, as a `reader` reads a buffer: the events whose start it crosses sound (from `ramp 0 16 8 loop`, a `counter`, or `phasor~ → snapshot~`); going back, or a jump, moves there without sounding what is in between |
+| a number | a position in beats, as a `reader` reads a buffer (from `ramp 0 16 8 loop`, a `counter`, a number you drag, or `phasor~ → snapshot~`): every event is a **span**, from its onset to its end (`:sustain`, or `:dur` × `:legato`), that sounds while the position is inside it. Forwards a note starts at its onset; **backwards it starts at its end** and goes out with `:dir :back`, so a ramp going down plays the phrase in reverse, each note for its own length. What one step passes over sounds within it; an event of no length sounds when it is crossed, either way |
+| `seek p` | a jump: there at once, without sounding what is in between. It is a difference: what sounds and still contains `p` goes on (not cut, not started again), what no longer does ends, and what newly contains `p` starts (with `edges`, only what starts exactly at `p`). A step more than `jump` (8) times the one before it, or longer than `limit` (8) beats, is a seek too: the wrap of a looping ramp, a counter starting again, a click far away — so a ramp needs nothing special. Steps under a sixteenth of a beat are always motion, so a curve that leaves rest steeply (a power, an exponential) passes through every event |
 | `reset` | back to the beginning, silently |
+
+With `spread`, what one step passes over keeps its rhythm: each start and end is sent as far into the
+next step as it lies into this one, one step (about 10 ms with a `ramp`) late; it needs ▶. The events
+already made are kept in a window, the same ones every time thanks to the seed, so moving back does not
+make the stream again.
 
 A new pattern while it plays goes on from the beat it is on. The same pattern again (a data box sending
 itself again) changes nothing. One pattern can feed several players moving in different ways.

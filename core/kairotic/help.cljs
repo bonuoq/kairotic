@@ -557,17 +557,21 @@
     :see ["pbind" "player" "script"]}
 
    "player"
-   {:package "@kairotic/patterns" :usage "player [bpm] [quant]"
+   {:package "@kairotic/patterns" :usage "player [bpm] [quant] [jump] [limit] [edges] [spread]"
     :doc "Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a position in beats (a number): the Hz and voice ids of the notes sounding, the whole event and the beat."
-    :inlets ["start · stop: its own clock · bang: one step, now · a number: a position in beats · reset · [:bpm 90]"
+    :inlets ["start · stop: its own clock · bang: one step, now · a number: a position in beats · seek p · reset · [:bpm 90]"
              "a pattern (from a pbind or a pattern box): a new one goes on from the same beat"]
     :outlets ["the Hz of the notes sounding (a list)" "their voice ids, sent first (for synth~ or a polyphonic faust~)"
-              "the whole event, with :beat, :hz and :ids" "the beat"]
+              "the whole event, with :beat, :hz and :ids (and :dir :back when entered from its end)" "the beat"]
     :messages [["start · stop" "its own clock: every event lasts its :dur in beats at its bpm"]
                ["player 120 4" "start on a multiple of 4 beats: players with the same tempo meet"]
                ["[:bpm 90]" "another tempo, without a jump"]
                ["bang" "the next event now (and the ones of :dur 0 right after it)"]
-               ["a number" "a position in beats: the events whose start it crosses sound; back or a jump moves there silently"]
+               ["a number" "a position in beats: every event is a span, from its onset to its end, that sounds while the position is inside it — entered at its onset going forwards, at its end going backwards (:dir :back); what a step passes over sounds within it"]
+               ["seek 8 · [:seek 8]" "there at once, nothing in between: what still sounds there goes on, what starts to contain that position starts"]
+               ["player 120 0 8 8" "a step more than 8 (jump) times the one before it, or longer than 8 (limit) beats, is a seek: the wrap of a ramp"]
+               ["player 120 0 8 8 edges" "a seek sounds only what starts exactly there"]
+               ["player 120 0 8 8 spread" "what a step passes keeps its rhythm, one step later (with ▶)"]
                ["reset" "back to the beginning, silently"]]
     :example (lines "(box :b1 \"pbind 1 loop\" 40 30)"
                     "(code :b1 \"{:note [:c4 :e4 :g4 :b4 :a4 :f4]\\n :dur  [0.5 0.5 1]}\")"
@@ -583,10 +587,10 @@
                              "(connect :b10 0 :b9 0)" "(connect :b11 0 :b9 0)" "(connect :b9 0 :b4 0)")
              :try "Stop the clock and click 1: one note every 300 ms, whatever its :dur. Connect an onset~ from an adc~ instead: one note each time you play."}
             {:title "At a position"
-             :note "A number is a position in beats, as a reader reads a buffer: what starts between the last position and this one sounds. A ramp moves through it; back or a jump moves silently."
+             :note "A number is a position in beats, as a reader reads a buffer: every event is a span that sounds while the position is inside it. Forwards it starts at its onset; backwards at its end. The wrap of a ramp (a step far larger than the ones before) is a seek: there at once."
              :example (lines "(box :b12 \"ramp 0 6 3 loop\" 330 130)" "(box :b13 \"msg bang\" 330 90)"
                              "(connect :b13 0 :b12 0)" "(connect :b12 0 :b4 0)")
-             :try "Stop the clock and click bang: six beats in three seconds, again and again. Change the ramp to ramp 6 0 3: backwards it moves silently. Drag a number box into it instead: you are the clock."}]
+             :try "Stop the clock and click bang: six beats in three seconds, again and again. Change the ramp to ramp 6 0 3 loop: the phrase backwards, each note from its end. Drag a number box into it instead: you are the clock, either way."}]
     :see ["pbind" "pattern" "metro" "ramp" "reader" "synth~"]}
 
    "pcclock"
