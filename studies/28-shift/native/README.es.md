@@ -19,3 +19,10 @@ exactamente las mismas muestras que `StftPitchShift::shiftpitch` de la bibliotec
 
 Velocidad (un canal de un minuto a 48 kHz, trama 1024): solapamiento 8 unos 2 s, 16 unos 3,5 s, 32
 unos 7 s. Por eso el estudio lo ejecuta en un worker.
+
+## Tiempo real
+
+`stream(sr, frame, hop)` procesa bloques de cualquier longitud, una trama más tarde, con la STFT de la
+propia biblioteca trama a trama; su salida es la del `shift` offline retrasada una trama. Carga con un
+acorde de tres notas y formantes (trama 1024): solapamiento 8, cerca de un 4,5% de un núcleo. El Estudio
+29 lo ejecuta en un AudioWorklet; `build.mjs` escribe `shift.mjs` en los dos estudios.

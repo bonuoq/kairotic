@@ -27,3 +27,14 @@ wrong parameters; `shift.cpp` checks them first and returns a negative code, so 
 Speed (one channel of a minute at 48 kHz, frame 1024, Node 22): overlap 8 about 2 s, 16 about 3.5 s,
 32 (the library's default) about 7 s; with formants and three factors about 11 s at 32. SIMD and the
 library's fast arctangent gain less than 15%, so the build stays plain.
+
+## Real time
+
+`ks_stream_new(sr, frame, hop)` · `ks_stream_process(s, in, out, n)` · `ks_stream_factors` ·
+`ks_stream_formants` · `ks_stream_dry` · `ks_stream_latency` · `ks_stream_free`, and in JavaScript
+`stream(sr, frame, hop)`: blocks of any length in, as many out, one frame later, using the library's own
+STFT one frame at a time. Checked: blocks of 1, 37, 128, 500 or 3000 samples give the same output, and
+it equals the offline `shift` delayed by one frame (difference below 5·10⁻⁵, the order of the sums).
+Load with a three-note chord and formants, frame 1024: overlap 4 about 2.5%, 8 about 4.5%, 16 about 8.5%
+of one core. Study 29 runs it in an AudioWorklet (`studies/29-live/kairotic/shift-worklet.mjs`);
+`build.mjs` writes `shift.mjs` into both studies.

@@ -7,6 +7,7 @@
 //
 //   await ready()                                  compiles it (once)
 //   shift(chans, sr, opts) → {chans, ms}           every channel (Float32Array) shifted, as long as before
+//   stream(sr, frame, hop) → {process, factors…}   the same, block by block, for real time
 //
 //   opts.steps      [[seconds [factor …]] …]       factors that change over time (a progression); or
 //   opts.factors    [factor …]                     the same factors all the time (default [1])
@@ -113,4 +114,52 @@ export function shift(chans, sr, opts) {
   }
 }
 
-export default { ready, shift, stepsOf, version, wasmModule };
+/**
+ * A stream for real time (an AudioWorklet): blocks of any length in, as many out, one frame later.
+ *   const st = stream(sampleRate, 1024, 128)   frame and hop (frame / overlap)
+ *   st.process(input, output)                   two Float32Arrays of the same length
+ *   st.factors([1, 1.25, 1.5]) · st.formants(quefrencyMs, timbre, rms) · st.dry(0…1) · st.latency · st.free()
+ * Nothing here allocates on the JavaScript side while it runs: the two blocks live in the WebAssembly memory.
+ */
+export function stream(sr, frame, hop) {
+  if (!instance) throw new Error("shift: call ready() first");
+  const X = instance.exports;
+  const h = X.ks_stream_new(sr, frame, hop);
+  if (!h) throw new Error("shift: a stream needs a frame that is a power of 2 and a hop that divides it");
+  const BLOCK = 4096;
+  const pIn = X.ks_alloc(BLOCK * 4), pOut = X.ks_alloc(BLOCK * 4), pF = X.ks_alloc(16 * 8);
+  let vin = null, vout = null;
+  const views = () => {
+    if (!vin || vin.buffer !== X.memory.buffer) {
+      vin = new Float32Array(X.memory.buffer, pIn, BLOCK);
+      vout = new Float32Array(X.memory.buffer, pOut, BLOCK);
+    }
+  };
+  return {
+    latency: X.ks_stream_latency(h),
+    process(input, output) {
+      for (let o = 0; o < input.length; o += BLOCK) {
+        const n = Math.min(BLOCK, input.length - o);
+        views();
+        vin.set(n === input.length ? input : input.subarray(o, o + n));
+        X.ks_stream_process(h, pIn, pOut, n);
+        views();
+        output.set(vout.subarray(0, n), o);
+      }
+    },
+    factors(fs) {
+      const a = (Array.isArray(fs) ? fs : [fs]).slice(0, 16).map(Number);
+      new Float64Array(X.memory.buffer, pF, a.length).set(a);
+      const r = X.ks_stream_factors(h, a.length, pF);
+      if (r !== 0) throw new Error("shift: " + (ERRORS[r] || "error " + r));
+    },
+    formants(quefrencyMs, timbre, rms) {
+      const r = X.ks_stream_formants(h, (quefrencyMs || 0) / 1000, timbre || 1, rms ? 1 : 0);
+      if (r !== 0) throw new Error("shift: " + (ERRORS[r] || "error " + r));
+    },
+    dry(x) { X.ks_stream_dry(h, Math.max(0, Math.min(1, Number(x) || 0))); },
+    free() { X.ks_stream_free(h); for (const p of [pIn, pOut, pF]) X.ks_free(p); },
+  };
+}
+
+export default { ready, shift, stream, stepsOf, version, wasmModule };
