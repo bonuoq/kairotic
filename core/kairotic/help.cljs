@@ -510,6 +510,85 @@
     :try "The tree arrives: open the measure and pick a note: the note and its path go to print."
     :see ["fetch" "print" "tree"]}
 
+   "pbind"
+   {:package "@kairotic/patterns" :usage "pbind [seed] [repeat] [loop]"
+    :doc "A pattern as EDN data: a map of constants, sequences and #pat/… generators, with its randomness seeded. It sends its pattern whenever it changes, for a player."
+    :inlets ["bang: sends its pattern again · a map: replaces it (one event of the history) · [:set :dur [1 0.5]]: one key · [:unset :amp]"]
+    :outlets ["its pattern (a factory of streams), for a player"]
+    :messages [["{:degree [0 2 4] :dur 0.5}" "a key with a vector is a sequence; the shorter ones start again until the longest ends"]
+               ["#pat/choose [0.25 0.5] · #pat/white [0 7] · #pat/walk [0 2 -7 7]" "endless random values (the same for everyone: the seed)"]
+               ["#pat/shuffle [0 2 4] · #pat/series [0 2 8]" "every pass in a new order · an arithmetic series"]
+               ["#pat/hold [4 [:c :g :d]]" "one value every 4 beats (following time, not events)"]
+               ["#pat/chord [0 4 7]" "a vector as one value: a chord"]
+               ["pbind 7 · pbind 7 4 · pbind 7 loop" "the seed · four passes · for ever"]]
+    :example (lines "(box :b1 \"pbind 7 loop\" 40 30)"
+                    "(code :b1 \"{:degree #pat/shuffle [0 2 4 7]\\n :dur    [0.5 0.5 1]\\n :amp    #pat/white [0.1 0.3]}\")"
+                    "(box :b2 \"msg start\" 40 130)" "(box :b3 \"msg stop\" 110 130)" "(box :b4 \"player 110\" 40 180)"
+                    "(box :b5 \"synth~\" 40 240)" "(box :b6 \"dac~\" 40 290)"
+                    "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b1 0 :b4 1)"
+                    "(connect :b4 0 :b5 0)" "(connect :b4 1 :b5 1)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)")
+    :try "Press ▶ and start: four notes in a new order every pass. Change :dur in the pbind (double-click it) and apply: the player goes on with it from the same beat. Change the seed (pbind 8 loop): other orders, but the same for everyone in a room."
+    :steps [{:title "One value per bar"
+             :note "#pat/hold follows time: the root changes every 4 beats whatever the rhythm, as Overtone's ^{:dur 4} does."
+             :example (lines "(code :b1 \"{:degree #pat/shuffle [0 2 4 7]\\n :dur    [0.5 0.5 1]\\n :root   #pat/hold [4 [:c :f :g :c]]}\")")
+             :try "Press start: the same figure, moving through four harmonies."}
+            {:title "Random, but the same"
+             :note "Every key has a seed of its own (the box's seed and its name): changing one key leaves the randomness of the others as it was."
+             :example (lines "(code :b1 \"{:degree #pat/walk [0 1 -4 9]\\n :dur    #pat/choose [0.25 0.25 0.5]\\n :scale  :dorian}\")")
+             :try "Start, stop and start again: the same walk. Change :scale to :lydian: the same rhythm and contour, other notes."}]
+    :see ["pattern" "player" "tree"]}
+
+   "pattern"
+   {:package "@kairotic/patterns" :usage "pattern [seed] [repeat] [loop]"
+    :doc "A pattern as Clojure code: an expression that returns event maps (or one map, read as a pbind), with seeded randomness and pbind, pseq, pwhite, pchoose, pshuffle, pseries, pwalk at hand. In a shared room it runs only after (trust-scripts true)."
+    :inlets ["bang: sends its pattern again"]
+    :outlets ["its pattern (a factory of streams), for a player"]
+    :messages [["(pbind {:degree (pwhite 0 7) :dur 0.25} :inf)" "a pbind whose values are lazy sequences"]
+               ["(concat (pbind m1) (pbind m2))" "phrases one after another"]
+               ["(for [d (range 8)] {:degree d :dur (if (even? d) 0.5 0.25)})" "any Clojure that gives event maps"]
+               ["rand · rand-int · rand-nth · shuffle" "seeded by the box: the same for everyone"]]
+    :example (lines "(box :b1 \"pattern 3\" 40 30)"
+                    "(code :b1 \"(pbind {:degree (pwhite 0 7)\\n        :dur    (pchoose [0.25 0.25 0.5])\\n        :octave [5 5 6]}\\n       :inf)\")"
+                    "(box :b2 \"msg start\" 40 130)" "(box :b3 \"msg stop\" 110 130)" "(box :b4 \"player 120\" 40 180)"
+                    "(box :b5 \"synth~\" 40 240)" "(box :b6 \"dac~\" 40 290)"
+                    "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b1 0 :b4 1)"
+                    "(connect :b4 0 :b5 0)" "(connect :b4 1 :b5 1)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)")
+    :try "Press ▶ and start. Edit the code (double-click the box) and apply: the player follows the new pattern from the beat it is on."
+    :see ["pbind" "player" "script"]}
+
+   "player"
+   {:package "@kairotic/patterns" :usage "player [bpm] [quant]"
+    :doc "Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a position in beats (a number): the Hz and voice ids of the notes sounding, the whole event and the beat."
+    :inlets ["start · stop: its own clock · bang: one step, now · a number: a position in beats · reset · [:bpm 90]"
+             "a pattern (from a pbind or a pattern box): a new one goes on from the same beat"]
+    :outlets ["the Hz of the notes sounding (a list)" "their voice ids, sent first (for synth~ or a polyphonic faust~)"
+              "the whole event, with :beat, :hz and :ids" "the beat"]
+    :messages [["start · stop" "its own clock: every event lasts its :dur in beats at its bpm"]
+               ["player 120 4" "start on a multiple of 4 beats: players with the same tempo meet"]
+               ["[:bpm 90]" "another tempo, without a jump"]
+               ["bang" "the next event now (and the ones of :dur 0 right after it)"]
+               ["a number" "a position in beats: the events whose start it crosses sound; back or a jump moves there silently"]
+               ["reset" "back to the beginning, silently"]]
+    :example (lines "(box :b1 \"pbind 1 loop\" 40 30)"
+                    "(code :b1 \"{:note [:c4 :e4 :g4 :b4 :a4 :f4]\\n :dur  [0.5 0.5 1]}\")"
+                    "(box :b2 \"msg start\" 40 130)" "(box :b3 \"msg stop\" 110 130)" "(box :b4 \"player 100\" 40 180)"
+                    "(box :b5 \"synth~\" 40 240)" "(box :b6 \"dac~\" 40 290)" "(box :b7 \"get % :beat\" 260 240)" "(box :b8 \"print\" 260 290)"
+                    "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b1 0 :b4 1)"
+                    "(connect :b4 0 :b5 0)" "(connect :b4 1 :b5 1)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
+                    "(connect :b4 2 :b7 0)" "(connect :b7 0 :b8 0)")
+    :try "Press ▶ and start: the six notes, three durations cycling. The third outlet is the whole event: print writes the beat of each."
+    :steps [{:title "Step by step"
+             :note "A bang plays the next event now: the pattern follows whatever moves it — a metro, an onset~ of what someone plays, a key."
+             :example (lines "(box :b9 \"metro 300\" 180 130)" "(box :b10 \"msg 1\" 180 90)" "(box :b11 \"msg 0\" 230 90)"
+                             "(connect :b10 0 :b9 0)" "(connect :b11 0 :b9 0)" "(connect :b9 0 :b4 0)")
+             :try "Stop the clock and click 1: one note every 300 ms, whatever its :dur. Connect an onset~ from an adc~ instead: one note each time you play."}
+            {:title "At a position"
+             :note "A number is a position in beats, as a reader reads a buffer: what starts between the last position and this one sounds. A ramp moves through it; back or a jump moves silently."
+             :example (lines "(box :b12 \"ramp 0 6 3 loop\" 330 130)" "(box :b13 \"msg bang\" 330 90)"
+                             "(connect :b13 0 :b12 0)" "(connect :b12 0 :b4 0)")
+             :try "Stop the clock and click bang: six beats in three seconds, again and again. Change the ramp to ramp 6 0 3: backwards it moves silently. Drag a number box into it instead: you are the clock."}]
+    :see ["pbind" "pattern" "metro" "ramp" "reader" "synth~"]}
+
    "pcclock"
    {:package "@kairotic/theory" :usage "pcclock [notes]"
     :doc "A pitch-class set on the clock face: its polygon, the sets before it, its axes of symmetry; its prime form and interval vector go out."

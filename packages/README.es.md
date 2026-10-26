@@ -13,6 +13,7 @@ publicados en npm bajo el ámbito `@kairotic` y servidos dentro de claude.ai por
 | [`@kairotic/analysis`](analysis/) | `features~ [ms] [descriptor …]` descriptores (rms, centroid, flatness, mfcc… con Meyda) · `pitch~ [lo hi]` la altura, por YIN · `onset~ [umbral] [ms]` los comienzos de los sonidos · `chroma~` las 12 clases de altura · `spectrum~ [lo hi]` el espectro, dibujado · `transcribe [bpm] [notes|glide]` lo que oye pitch~, en un freqt · `monitor [segundos] [nombre …]` cualquier flujo de mensajes, dibujado en el tiempo |
 | [`@kairotic/data`](data/) | `fetch [json\|text\|edn] [live]` lo que hay en una URL, traído como tarea y guardado en la obra · `edn [ancho alto]` cualquier valor como un árbol que se abre, se lee y del que se elige |
 | [`@kairotic/theory`](theory/) | `pcclock [notas]` un conjunto de clases de altura en la esfera del reloj, su forma prima, vector interválico y simetrías · `fourier [notas]` los seis coeficientes de Fourier de una distribución de clases de altura · `tonnetz [notas]` las tríadas en el Tonnetz y el camino de la armonía — dibujados en el patch, y se pueden pulsar |
+| [`@kairotic/patterns`](patterns/) | `pbind [semilla] [repeticiones] [loop]` un pattern como datos EDN, con generadores `#pat/…` y azar sembrado · `pattern [semilla] [repeticiones] [loop]` un pattern como código Clojure (secuencias perezosas, como en Overtone) · `player [bpm] [quant]` lo toca con su propio reloj, paso a paso o en una posición en beats |
 
 Previstos: `cac`, `notation`.
 

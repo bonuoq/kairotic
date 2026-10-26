@@ -1,0 +1,40 @@
+{
+  "name": "@kairotic/patterns",
+  "version": "0.1.0",
+  "description": "Kairotic patterns after SuperCollider's (and Overtone's): pbind (a pattern as EDN data with #pat/ generators), pattern (a pattern as Clojure code with seeded randomness) and player (by its own clock, step by step, or at a position in beats)",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/patterns"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages#readme",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs patterns",
+    "prepublishOnly": "node ../build.mjs patterns"
+  },
+  "keywords": [
+    "kairotic",
+    "patterns",
+    "pbind",
+    "sequencer",
+    "supercollider",
+    "overtone",
+    "live-coding",
+    "patcher"
+  ]
+}

@@ -3,7 +3,7 @@
 // file into core/vendor/codemirror.mjs; the page imports it once, when an editor first opens (05-gestures.cljs).
 //
 //   createEditor({ parent, doc, language, words, onApply, onCancel, onChange, gutter, keys, placeholder, readOnly }) → editor
-//     language  "clojurescript" · "component" · "edn" (Clojure, with structural editing) · "faust" · other: plain
+//     language  "clojurescript" · "component" · "edn" · "pbind" · "pattern" (Clojure, with structural editing) · "faust" · other: plain
 //     words     names offered while typing, besides the words already in the text
 //     onApply   Ctrl/⌘+Enter          onCancel  Esc          onChange(text) after every edit by the person
 //     gutter    false: no line numbers nor folding (a REPL line)        placeholder  text shown while empty
@@ -129,7 +129,7 @@ function wordsSource(words) {
 
 // ───────── languages ─────────
 
-const clojureLike = new Set(["clojurescript", "clojure", "component", "edn", "cljs"]);
+const clojureLike = new Set(["clojurescript", "clojure", "component", "edn", "cljs", "pbind", "pattern"]);
 
 function languageExtensions(language) {
   if (clojureLike.has(language)) return [clojureExtensions, keymap.of(clojureKeymap)];

@@ -196,6 +196,7 @@
 ;; by messages (a loop without time) is stopped.
 
 (defonce sent-trees (atom {}))     ; engine id → the tree it last sent
+(defonce sent-data (atom {}))      ; engine id → [text data] a data box (a class with :sends) last sent
 (defonce emit-timer (atom nil))
 (defonce msg-edits (atom {}))      ; box → instants it was changed by messages; :stopped #{boxes}
 (defonce echoed (atom {}))         ; engine id → the text a gesture here wrote after sending its value
@@ -265,13 +266,33 @@
               (let [targets (set (for [[a o bb ii] (:lines p) :when (and (= a f) (= o 0) (upstream bb))] [bb ii]))]
                 (when (seq targets)
                   (eng/emit-to! (fn [] (work-patch)) f 0 (mt/expand-source t f) targets))))
+            (catch :default e (js/console.error e))))))
+    ;; the same for the data boxes of other classes: a class with :sends (fn [box] value) sends that
+    ;; value when the text or data of the box changed (a pbind sends its pattern), and again only toward
+    ;; what changed after it. A value that is not ready yet (a source still compiling) goes once it is.
+    (doseq [[f b] (:boxes p)
+            :let [d (comp/lookup (klass (:text b)))]
+            :when (fn? (:sends d))]
+      (let [k [(:text b) (:data b)]
+            v (try ((:sends d) {:id f :text (:text b) :args (comp/args-for d (:text b)) :data (:data b)})
+                   (catch :default e (js/console.error e) nil))]
+        (when (some? v)
+          (try
+            (cond
+              (or (not= k (get @sent-data f)) (contains? changed f))
+              (do (swap! sent-data assoc f k)
+                  (eng/emit! (fn [] (work-patch)) f 0 v))
+              upstream
+              (let [targets (set (for [[a o bb ii] (:lines p) :when (and (= a f) (= o 0) (upstream bb))] [bb ii]))]
+                (when (seq targets)
+                  (eng/emit-to! (fn [] (work-patch)) f 0 v targets))))
             (catch :default e (js/console.error e)))))))
   (when (sync-live-trees!) (render-scene (current)))
   (drain-prints!))
 
 (defn schedule-emit! [] (when-not @emit-timer (reset! emit-timer (js/setTimeout emit-trees! 30))))
 
-(defn refill-data! "Every tree box sends its tree again (after ■)." [] (reset! sent-trees {}) (schedule-emit!))
+(defn refill-data! "Every tree box (and data box) sends its value again (after ■)." [] (reset! sent-trees {}) (reset! sent-data {}) (schedule-emit!))
 
 (defn forget-box!
   "A box that is created or deleted starts from nothing: what a box with its id showed and held is forgotten."
@@ -281,6 +302,7 @@
     (swap! live-trees dissoc f)
     (swap! dismissed-trees dissoc f)
     (swap! sent-trees dissoc f)
+    (swap! sent-data dissoc f)
     (swap! score-cache dissoc id)))
 
 (defn resume!

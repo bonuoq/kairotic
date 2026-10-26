@@ -44,6 +44,10 @@
 ;;             :wired   (fn [node inlets])  after wiring: the set of inlets that receive a signal
 ;;             :feed    (fn [node data])    the buffer at its right inlet, whenever it changes (:reads-buffer)
 ;;             :dispose (fn [node])}
+;;  :sends    (fn [box] value)              a data box: the page sends this value out of its outlet 0 whenever
+;;                                           the text or data of the box changes (and again toward a new line or
+;;                                           a box after it that changed), as a tree box sends its tree. box =
+;;                                           {:id :text :args :data}; nil while the value is not ready yet
 ;;  :model    {:empty x :step (fn [d ev]) :load (fn [x]) :code (fn [id d] lines)}   box data with its own history
 ;;            With :source (fn [d] text), :read (fn [d text] d2) and :diff (fn [d d2] events) its data can
 ;;            also be read and edited as text, in the code window (discussion #30): read throws on bad

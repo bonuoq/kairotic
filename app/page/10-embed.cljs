@@ -23,9 +23,9 @@
   [src] (links/read-code src))
 
 (defn script-boxes
-  "The script and component boxes of the work that would run code nobody has allowed yet."
+  "The script, component and pattern boxes of the work that would run code nobody has allowed yet."
   []
-  (count (filter (fn [b] (and (#{"script" "component"} (klass (:text b)))
+  (count (filter (fn [b] (and (#{"script" "component" "pattern"} (klass (:text b)))
                               (not (cbox/allowed? (str (get-in b [:data :source]))))))
                  (vals (:boxes (eng/flat (root-patch)))))))
 

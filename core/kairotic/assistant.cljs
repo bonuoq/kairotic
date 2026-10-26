@@ -404,6 +404,16 @@ Rules:
   URL (a msg with the URL, or `github:owner/repo@ref/path`) and keeps it in the work (live: only here); on
   the left what it found, [:get k …] a part of it; `edn [w h]` shows any value as a tree to open and pick
   from (the part on the left, its path on the right). Most sites outside GitHub refuse a page (CORS).
+- Patterns (package @kairotic/patterns, it comes by itself), after SuperCollider's and Overtone's: `pbind
+  [seed] [repeat] [loop]` is a code box whose source is an EDN map of constants, vectors (sequences) and
+  generators — #pat/choose [..], #pat/shuffle [..], #pat/white [lo hi], #pat/walk [x step lo hi],
+  #pat/series [x step n], #pat/hold [beats [..]], #pat/chord [0 4 7] — set with `(code :bN \"{:degree [0 2
+  4] :dur 0.5}\")`; `pattern [seed]` is the same as Clojure code (pbind, pwhite, pchoose… and seeded rand),
+  which needs (trust-scripts true) in a room; both send a pattern to the right inlet of `player [bpm]
+  [quant]`, which plays it on `start`/`stop`, one step per bang, or at a position in beats (a number, from a
+  ramp). Its outlets: Hz (left) and voice ids (second) for synth~ or a polyphonic faust~, the whole event,
+  the beat. Event keys: :freq, :note (MIDI, \"c4\"), or :degree with :scale :root :octave; :dur in beats,
+  :legato; :rest is a silence. Write durations as decimals (0.25), not ratios.
 - `draw [w h]` draws the shapes that reach it (the shapes of a component's view, or as a msg writes them:
   `msg circle 40 40 10 accent hit sun`, `msg set cursor line 0 0 0 100`); a shape with :hit k sends k.
 - Annotations: `(mark :notes {:kind :text :at [:b3 0 -12] :txt \"…\"})`, `(mark :notes {:kind :arrow :pts
