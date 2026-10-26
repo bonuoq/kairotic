@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
+An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
 
 **Inlets** 
 
@@ -727,7 +727,7 @@ See also: `osc~`, `adsr~`, `dac~`
 
 `gendy~ [freq x-step y-min y-max y-step breakpoints]`
 
-A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle — a pitch that drifts, a timbre that changes.
+A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Bernstein, MIT): a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle, heard as a pitch that drifts and a timbre that changes. freq in Hz (a signal on the inlet adds to it: FM); x-step (0–100 %) how far each segment's duration may wander; y-min and y-max (−1…1) the barriers of the amplitudes, y-step how far they move each cycle; breakpoints (2–128) how many. A number sets freq; [:y-step 0.2] one of them; a list of six all of them.
 
 **Inlets** 
 
@@ -1226,6 +1226,8 @@ A pattern as EDN data: a map of constants, sequences and #pat/… generators, wi
 - `#pat/shuffle [0 2 4] · #pat/series [0 2 8]`: every pass in a new order · an arithmetic series
 - `#pat/hold [4 [:c :g :d]]`: one value every 4 beats (following time, not events)
 - `#pat/chord [0 4 7]`: a vector as one value: a chord
+- `{:degree [0 2 :rest 4]} · [0 nil 4]`: a silence: :rest (:_ :- :r) or nil as the degree, note or freq
+- `:amp #pat/white [0.2 0.6]`: the loudness of each note (0…1), for synth~ and a polyphonic faust~
 - `pbind 7 · pbind 7 4 · pbind 7 loop`: the seed · four passes · for ever
 
 **Try:** Press ▶ and start: four notes in a new order every pass. Change :dur in the pbind (double-click it) and apply: the player goes on with it from the same beat. Change the seed (pbind 8 loop): other orders, but the same for everyone in a room.
@@ -1353,7 +1355,7 @@ Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a
 
 **Outlets** 
 
-0. the Hz of the notes sounding (a list)
+0. the Hz of the notes sounding (a list), after [:gain amp] when the event has :amp
 1. their voice ids, sent first (for synth~ or a polyphonic faust~)
 2. the whole event, with :beat, :hz and :ids (and :dir :back when entered from its end)
 3. the beat
@@ -1789,7 +1791,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer, one voice per id.
+Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). [:gain v] (0…1, 0.5 by default) sets the level of the notes that start after it, as a player sends an event's :amp. :stop silences it.
 
 **Inlets** 
 
