@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 29: where the latency comes from.** Besides what `shift~` adds (one frame), the transport shows
+  what the browser reports for its input, engine and output (*system*), and **Measure latency** plays six
+  clicks through the speakers and hears them in the microphone: the real round trip of the computer, plus
+  `shift~`, is what is heard (*heard*). The microphone is asked for its lowest latency, at the engine's
+  rate, without echo cancellation. A Bluetooth headset adds 150–300 ms the browser often does not report.
 - **`@kairotic/spectral` 0.1.0: `shift~`, pitch shifting in real time.** The signal transposed by every
   factor written after it at once (one interval or a whole chord), one frame (1024 samples) late: ratios
   (`1.5`, `3/2`), semitones with a sign (`+7`) or cents (`386c`); `[:semitones …]`, `[:cents …]`,
