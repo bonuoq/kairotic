@@ -160,6 +160,8 @@ export async function patternsTutorial(page, check) {
   await cljs(page, "(send! :b13 :bang)");
   const layers = await until(page, "(let [ns (rest (rest (live-tree :b14)))] [(= #{1 2} (set (map (comp :layer second) ns))) (boolean (some (comp :back second) ns))])", "[true true]", 10000);
   check("... and its time map: two layers, one going backwards", layers === "[true true]", await cljs(page, "(live-tree :b14)"));
+}
+
 // the tutorial on notation and time: its thirteen steps run, the free tree is written in measures, the
 // chromatic freqt is spelled up in sharps and down in flats, and the transposed tree carries its key
 export async function oneTwoTreeTutorial(page, check) {
