@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Coherence across beats in the quantizer** (issue #108). Each span keeps its few cheapest divisions and the
+  plan of a bar chooses among them with its neighbours in view: changing kind of division (binary, triplet,
+  quintuplet…, by the points the notes use) between neighbouring regions costs `:coh` (0.5 by default; `0`
+  decides each beat on its own), and a bar starts from the kind the one before ended with. Notes played a little
+  early or late no longer become tuplets as often: on the benchmark (#105), invented tuplets fall by 80 % in
+  Essen played loosely, 75 % in SymbTr played exactly, with onsets and durations up at every level.
+  `qz/family`; tests in `tests/cljs/quantize.cljs`.
 - **A tree's roll follows its meter changes.** The roll of a tree whose measures change meter drew every bar in
   the meter of the first one, so its barlines drifted away from the score. Its grid now lists the bars one by one
   (`:bars [{:s :L :groups}]` in the canvas grid, drawn by `cv/bar-lines`, going on in the last meter past the

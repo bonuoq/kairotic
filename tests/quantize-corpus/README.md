@@ -75,6 +75,7 @@ Options:
 - `fetch.mjs --n 200 --seed 105 --bars 8`: how many pieces, which sample, how many bars.
 - `bench.mjs --seeds 3`: performances per piece and level.
 - `bench.mjs --key`: gives the quantizer each piece's written key, to tell spelling from key finding.
+- `bench.mjs --opts "{:w {:coh 1}}"`: options for the quantizer (EDN), for every piece, to compare weights.
 
 ## First results (2026-10-27, seed 1)
 
@@ -112,3 +113,27 @@ What it says so far:
   - its very short ornaments sit at the limit of the divisions searched.
 - **Spelling is right wherever the source names its notes** (Essen and our own: 100 %). SymbTr's names are
   microtonal and are not compared yet.
+
+## Coherence across beats (#108)
+
+Each beat keeps its few cheapest divisions, and the plan of a bar chooses among them with its neighbours in view.
+Changing the kind of division between neighbouring regions costs `:coh`: binary, triplet, quintuplet…, judged by
+the points the notes use, not the grid they are written on. A lone triplet among eighths pays it twice; a run of
+triplets, once.
+
+The same benchmark (2 seeds), before (`:coh 0`) and with the default (`:coh 0.5`):
+
+| source | level | onsets | durations | tuplets added | tuplets lost | perfect |
+|---|---|---|---|---|---|---|
+| essen | tight | 100.0% → 100.0% | 99.4% → 99.4% | 0 → 0 | 0 → 2 | 88.5% → 88.0% |
+| essen | loose | 91.5% → 94.2% | 82.5% → 85.2% | 432 → 87 | 9 → 9 | 0% → 0% |
+| essen | rough | 72.5% → 75.8% | 53.3% → 56.0% | 1280 → 622 | 13 → 13 | 0% → 0% |
+| own | loose | 85.7% → 86.4% | 66.3% → 67.7% | 25 → 13 | 16 → 17 | 10.0% → 12.5% |
+| symbtr | exact | 99.3% → 99.9% | 98.9% → 99.5% | 124 → 30 | 0 → 0 | 76.0% → 82.0% |
+| symbtr | tight | 98.9% → 99.2% | 97.8% → 98.2% | 250 → 98 | 7 → 32 | 45.5% → 47.0% |
+| symbtr | loose | 83.5% → 88.2% | 80.5% → 85.6% | 2324 → 1234 | 115 → 119 | 0% → 0% |
+| symbtr | rough | 59.8% → 62.3% | 54.1% → 57.2% | 4889 → 3971 | 163 → 167 | 0% → 0% |
+
+0.5 is where invented tuplets fall most without real ones being lost. With exact input SymbTr loses none. Higher
+values remove more invented tuplets but start losing real ones: with `:coh 0.75`, 20 lost in SymbTr even played
+exactly, and with 1, 61 lost played tightly.

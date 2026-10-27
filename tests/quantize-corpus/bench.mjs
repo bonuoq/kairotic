@@ -20,6 +20,8 @@ const site = join(root, "_site");
 const cache = join(here, ".cache");
 const arg = (k, d) => { const i = process.argv.indexOf("--" + k); return i > 0 ? Number(process.argv[i + 1]) : d; };
 const seeds = arg("seeds", 3), key = process.argv.includes("--key");
+// --opts "{:w {:coh 1}}": options for the quantizer (EDN), for every piece
+const qopts = (() => { const i = process.argv.indexOf("--opts"); return i > 0 ? process.argv[i + 1] : "nil"; })();
 if (!existsSync(join(site, "tests.html"))) { console.error("Build the site first: node site/build.mjs"); process.exit(1); }
 
 const types = { ".html": "text/html", ".js": "application/javascript", ".mjs": "application/javascript", ".css": "text/css",
@@ -43,16 +45,16 @@ await page.goto(url);
 await page.waitForFunction(() => { try { return scittle.core.eval_string("(boolean (find-ns 'kairotic.qbench))") === true; } catch (_) { return false; } },
                            null, { timeout: 180000 });
 const t0 = Date.now();
-const out = await page.evaluate(([edn, seeds, key]) => {
-  window.__corpus = edn;
+const out = await page.evaluate(([edn, seeds, key, qopts]) => {
+  window.__corpus = edn; window.__qopts = qopts;
   return scittle.core.eval_string(`
     (do (require '[kairotic.qbench :as qb] '[kairotic.mt :as mt])
         (let [outside (when js/window.__corpus (mt/read-tree js/window.__corpus))
-              rs (qb/run-corpus (into (qb/own-corpus) outside) {:seeds ${seeds} :key? ${key}})]
+              rs (qb/run-corpus (into (qb/own-corpus) outside) {:seeds ${seeds} :key? ${key} :qopts (mt/read-tree js/window.__qopts)})]
           (js/JSON.stringify (clj->js {:report (qb/report rs) :results rs}))))`);
-}, [outside, seeds, key]);
+}, [outside, seeds, key, qopts]);
 const { report, results } = JSON.parse(out);
-const head = `Quantization benchmark · ${new Date().toISOString().slice(0, 10)} · seeds ${seeds}${key ? " · with keys" : ""} · ${((Date.now() - t0) / 1000).toFixed(0)} s\n\n`;
+const head = `Quantization benchmark · ${new Date().toISOString().slice(0, 10)} · seeds ${seeds}${key ? " · with keys" : ""}${qopts !== "nil" ? " · " + qopts : ""} · ${((Date.now() - t0) / 1000).toFixed(0)} s\n\n`;
 console.log(head + report);
 mkdirSync(cache, { recursive: true });
 writeFileSync(join(cache, "report.md"), head + report + "\n");
