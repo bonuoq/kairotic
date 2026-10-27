@@ -155,7 +155,7 @@ export async function patternsTutorial(page, check) {
   await cljs(page, "(lesson-go! 6)");
   const drawn = await until(page, "(pos? (count (rest (rest (live-tree :b14)))))", "true", 10000);
   check("... the render draws the pbind into the freqt", drawn === "true",
-    await cljs(page, "(let [b (get-in (current) [:boxes :b1])] [(:text b) (:data b) (api/compiled \"pbind\" (:source (:data b))) (get-in (current) [:boxes :b13]) (get-in (current) [:boxes :b18 :text])])"));
+    await cljs(page, "[(get-in (current) [:boxes :b1]) (live-tree :b14)]"));
   await cljs(page, "(lesson-go! 7)");
   await cljs(page, "(send! :b13 :bang)");
   const layers = await until(page, "(let [ns (rest (rest (live-tree :b14)))] [(= #{1 2} (set (map (comp :layer second) ns))) (boolean (some (comp :back second) ns))])", "[true true]", 10000);
