@@ -12,7 +12,7 @@ import { views } from "./views.mjs";
 import { recipe } from "./recipe.mjs";
 import { numinput } from "./numinput.mjs";
 import { presets } from "./presets.mjs";
-import { present, presetsTutorial, patternsTutorial } from "./present.mjs";
+import { present, presetsTutorial, oneTwoTreeTutorial, patternsTutorial } from "./present.mjs";
 import { audioin } from "./audioin.mjs";
 import { sounds } from "./sounds.mjs";
 import { analysis } from "./analysis.mjs";
@@ -94,6 +94,7 @@ const appSuites = [
   // opens a lesson (another local work): last
   ["presetsTutorial", presetsTutorial, "the presets tutorial tests ran"],
   ["patternsTutorial", patternsTutorial, "the patterns tutorial tests ran"],
+  ["oneTwoTreeTutorial", oneTwoTreeTutorial, "the one-two-tree tutorial tests ran"],
   // help patches with several steps (lessons too)
   ["help", help, "the help patch tests ran"],
 ];

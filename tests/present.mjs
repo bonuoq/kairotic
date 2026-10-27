@@ -160,6 +160,26 @@ export async function patternsTutorial(page, check) {
   await cljs(page, "(send! :b13 :bang)");
   const layers = await until(page, "(let [ns (rest (rest (live-tree :b14)))] [(= #{1 2} (set (map (comp :layer second) ns))) (boolean (some (comp :back second) ns))])", "[true true]", 10000);
   check("... and its time map: two layers, one going backwards", layers === "[true true]", await cljs(page, "(live-tree :b14)"));
+// the tutorial on notation and time: its thirteen steps run, the free tree is written in measures, the
+// chromatic freqt is spelled up in sharps and down in flats, and the transposed tree carries its key
+export async function oneTwoTreeTutorial(page, check) {
+  const loaded = await until(page, '(do (when-not (sequential? @tutorials) (load-tutorials!)) (boolean (some #(= "one-two-tree" (:id %)) (when (sequential? @tutorials) @tutorials))))', "true", 20000);
+  check("the one-two-tree tutorial is in the catalog", loaded === "true", loaded);
+  if (loaded !== "true") return;
+  await cljs(page, '(tutorial "one-two-tree")');
+  const steps = await until(page, "(count (:steps @lesson))", "13", 30000);
+  check("it opens as a lesson of thirteen steps", steps === "13", steps);
+  if (steps !== "13") return;
+  await cljs(page, "(lesson-go! 12)");
+  const boxes = await until(page, "(count (filter #{:b1 :b2 :b3 :b4 :b5 :b6 :b7 :b8 :b9 :b10 :b11 :b12 :b13} (keys (:boxes (current)))))", "13", 15000);
+  check("... with its thirteen boxes at the last step", boxes === "13", boxes);
+  check("... the free tree written in measures, its quick notes a triplet",
+    (await cljs(page, "(let [t (as-tree :b4)] [(boolean (kairotic.mt/measured? t)) (count (re-seq #\":tuplet\" (pr-str t)))])")) === "[true 1]",
+    await cljs(page, "(as-tree :b4)"));
+  const names = await cljs(page, "(kairotic.mt/pitches (quantize :b5))");
+  check("... the chromatic freqt up in sharps and down in flats", names === '["c4" "c#4" "d4" "d#4" "e4" "f4" "e4" "eb4" "d4" "db4" "c4"]', names);
+  const key = await until(page, "(:key (kairotic.mt/attrs (as-tree :b8)))", '"g"', 10000);
+  check("... and the tree in Eb, transposed a major third, in G", key === '"g"', key);
   await cljs(page, "(close-lesson!)");
   check("the lesson closes", (await until(page, "(nil? @lesson)", "true")) === "true");
 }

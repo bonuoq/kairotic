@@ -57,6 +57,19 @@
           ["b4" "d4" "gb4" "d#4"])
     (t/eq "numbers spelled by the key they suggest (Eb)" (mt/pitches (mt/spell [:seq [:note {:pitch 63}] [:note {:pitch 65}] [:note {:pitch 67}] [:note {:pitch 68}] [:note {:pitch 70}] [:note {:pitch 63}]]))
           ["eb4" "f4" "g4" "ab4" "bb4" "eb4"])
+    (t/eq "... and a chromatic line, which suggests none, up in sharps and down in flats (not B# in C# minor)"
+          (mt/pitches (mt/spell (into [:seq] (map (fn [m] [:note {:pitch m :dur 0.5}]) [60 61 62 63 64 65 64 63 62 61 60]))))
+          ["c4" "c#4" "d4" "d#4" "e4" "f4" "e4" "eb4" "d4" "db4" "c4"])
+    (t/eq "keys as text" (mapv sp/key-name [{:tonic -3 :mode :major} {:tonic 7 :mode :minor} {:tonic 2 :mode :dorian} {:tonic 0}]) ["eb" "c#m" "d dorian" "c"])
+    (t/eq "keys transposed: Eb + M3, C#m - m2, D dorian + P5, 3 sharps + M2, E major + A1 (not E# but F), :none"
+          [(sp/transpose-key "eb" (sp/interval "M3")) (sp/transpose-key "c#m" (sp/interval "-m2")) (sp/transpose-key "d dorian" (sp/interval "P5"))
+           (sp/transpose-key 3 (sp/interval "M2")) (sp/transpose-key "c#" (sp/interval "M3")) (sp/transpose-key :none (sp/interval "M3"))]
+          ["g" "cm" "a dorian" "b" "f" :none])
+    (t/eq "transposing a tree moves its keys with its notes"
+          (let [t (mt/transpose "M3" [:voice {:key "eb"} [:measure {:meter [4 4] :key "cm"} "eb4/4"]])]
+            [(:key (mt/attrs t)) (:key (mt/attrs (nth t 2))) (mt/pitches t)])
+          ["g" "em" ["g4"]])
+    (t/eq "a key only when the notes fit one clearly" [(sp/estimate-sig [1 0 1 0 1 1 0 1 0 1 0 1]) (sp/estimate-sig [1 0 1 0 1 0 1 0 1 0 1 0])] [0 nil])
     (t/eq "... a quarter tone keeps its cents" (select-keys (mt/attrs (nth (mt/spell [:seq [:note {:pitch 60}] [:note {:pitch 60.5}]]) 2)) [:pitch :cents]) {:pitch "c4" :cents 50})
     (let [mei (:mei (mt/->mei [:voice {:key "eb"} [:measure {:meter [4 4]} "eb4/1 a4 a4 bb4"] [:measure "a4/1 ab4 g4/2"]] "k-"))
           accs (re-seq #"accid=\"(\w+)\"" mei)]

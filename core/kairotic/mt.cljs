@@ -301,7 +301,8 @@
   "Moves every pitch by n semitones (decimals: microtones), or by an interval (\"M3\", \"-P5\", \"A4\",
    [steps semitones]). Written names move by that interval and keep their spelling (c4 e4 g4 by \"m3\" is
    eb4 g4 bb4); by a number of semitones they move by the interval it is usually written as (1 a minor
-   second, 6 the augmented fourth or the diminished fifth, whichever needs fewer alterations)."
+   second, 6 the augmented fourth or the diminished fifth, whichever needs fewer alterations). Its keys
+   (:key) move by the same interval."
   [n tree]
   (let [t (expand tree)
         iv (cond (and (number? n) (== n (js/Math.round n)))
@@ -312,12 +313,19 @@
                    (sp/interval-of-semitones n))
                  (number? n) nil
                  :else (or (sp/interval n) (throw (js/Error. (str "An interval is a number of semitones or a name like M3, -P5, A4: not " (pr-str n))))))
-        semis (if iv (second iv) n)]
-    (walk-notes (fn [a]
-                  (if-let [s (and iv (spelling-of a))]
-                    (assoc a :pitch (sp/->name (sp/transpose-spelling s iv)))
-                    (if-let [m (midi-of a)] (set-midi a (+ m semis)) a)))
-                t)))
+        semis (if iv (second iv) n)
+        ;; keys move with the notes (by a number with decimals, a microtone, they stay)
+        keys-moved (fn keys-moved [x]
+                     (if-not (node? x)
+                       x
+                       (let [x (if (and iv (contains? (attrs x) :key)) (update-attrs x update :key sp/transpose-key iv) x)]
+                         (if (= :note (tag x)) x (with-kids x (mapv keys-moved (kids x)))))))]
+    (keys-moved
+     (walk-notes (fn [a]
+                   (if-let [s (and iv (spelling-of a))]
+                     (assoc a :pitch (sp/->name (sp/transpose-spelling s iv)))
+                     (if-let [m (midi-of a)] (set-midi a (+ m semis)) a)))
+                 t))))
 
 (defn invert
   "Mirrors every pitch around a pivot (by default, the first pitch)."
@@ -1038,16 +1046,16 @@
             bar-len (if-let [m (first (measures-of (first (voices-of (with-meters t)))))]
                       (let [[p q] (or (:meter (attrs m)) [4 4])] (* p (/ 4 q)))
                       4)
-            ;; a key is only estimated from four pitch classes or more: around the bar, else the whole tree,
-            ;; else none (C)
+            ;; a key is only estimated from four pitch classes or more that fit one clearly: around the bar,
+            ;; else the whole tree, else none (C)
 ;; each note counts once, however long (Temperley's flat input)
             weights (fn [es] (reduce (fn [v e] (update v (mod (first (note-base (:pitch e))) 12) + 1))
                                      (vec (repeat 12 0)) es))
             enough? (fn [w] (>= (count (filter pos? w)) 4))
-            whole (let [w (weights evs)] (if (enough? w) (or (:sig (sp/estimate-key w)) 0) 0))
+            whole (let [w (weights evs)] (if (enough? w) (or (sp/estimate-sig w) 0) 0))
             estimated (fn [t0]
                         (let [w (weights (filter (fn [e] (and (< (:t e) (+ t0 (* 1.5 bar-len))) (> (+ (:t e) (:dur e)) (- t0 (* 0.5 bar-len))))) evs))]
-                          (if (enough? w) (or (:sig (sp/estimate-key w)) whole) whole)))
+                          (if (enough? w) (or (sp/estimate-sig w) whole) whole)))
             sig-at (memoize (fn [bar]
                               (let [t0 (* bar bar-len)
                                     k (last (filter (fn [[b _]] (<= b (+ t0 1e-6))) kt))]
