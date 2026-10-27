@@ -487,13 +487,16 @@
   (or (comp/source-of (need-box id)) (fail (str id " has no code (faust~, script, tree…) nor a buffer (canvas, freqt, score)"))))
 
 (defn view
-  "How a box is shown, among the views of its class: (view :b2 :score) shows a tree as a score and
-   (view :b2 :code) as code again; a freqt can be a :canvas or a :score; :next is the next one. Its data
-   does not change: a tree shown as a score is edited from its notes, and its code opens from { }."
+  "How a box is shown, among the views of its class: (view :b2 :roll) shows a tree as a piano roll and
+   (view :b2 :score) as a score again; a freqt can be a :canvas or a :score; :next is the next one. Its
+   data does not change, and its text opens from { } in its header (or (source :b2))."
   [id k]
   (let [b (need-box id) vs (vec (comp/views-of b))]
     (when (< (count vs) 2) (fail (str id " has one view only")))
-    (let [cur (display-of b)
+    (when (and (= k :code) (tree-box? b))
+      (fail (str "A tree is seen as a score or a roll; its code opens from { } in its header, in the code window")))
+    (let [cur (view-of b)
+          k (comp/view-name b k)
           k (if (= k :next)
               (nth vs (mod (inc (or (first (keep-indexed (fn [i v] (when (= v cur) i)) vs)) 0)) (count vs)))
               k)]
@@ -683,7 +686,7 @@
 
 (defn to-tree!
   "A new tree box beside a freqt with its strokes as notes in free time (and its grid, tuning and
-   quantization as the tree's), shown as a canvas: the freqt's drawing, now as a tree."
+   quantization as the tree's), shown as a roll: the freqt's drawing, now as a tree."
   [id]
   (let [b (need-box id) d (freqt-data id)
         ns (qz/strokes->notes d)
@@ -692,7 +695,7 @@
         [x y] [(:x b) (:y b)]
         nid (box "tree" (+ (or x 0) 40) (+ (or y 0) 40))]
     (tree! nid t)
-    (view nid :canvas)
+    (view nid :roll)
     nid))
 
 (declare patch->code)

@@ -20,11 +20,15 @@
 (t/run! "views and sources"
   (fn []
     ;; the views of a class, and the one a box shows
-    (t/eq "a tree can be code, score or canvas (discussion #92)" (comp/views-of {:text "tree"}) [:code :score :canvas])
+    (t/eq "a tree can be a score or a roll (discussion #92)" (comp/views-of {:text "tree"}) [:score :roll])
     (t/eq "a freqt can be canvas or score" (comp/views-of {:text "freqt"}) [:canvas :score])
-    (t/eq "a tree is code by default" (comp/shown-as {:text "tree"}) :code)
-    (t/eq "a tree shown as a score" (comp/shown-as {:text "tree" :view :score}) :score)
-    (t/eq "a tree shown as a canvas" (comp/shown-as {:text "tree" :view :canvas}) :canvas)
+    (t/eq "a tree is a score by default" (comp/shown-as {:text "tree"}) :score)
+    (t/eq "a tree shown as a roll" (comp/shown-as {:text "tree" :view :roll}) :roll)
+    (t/eq "... drawn as a canvas" (comp/drawn-as {:text "tree" :view :roll}) :canvas)
+    (t/eq "older works: a tree shown as a canvas is a roll, one shown as code a score"
+          (mapv (fn [v] (comp/shown-as {:text "tree" :view v})) [:canvas :code]) [:roll :score])
+    (t/eq "a tree's text opens in the code window" (comp/source-of {:text "tree" :data {:source "[:voice]"}}) "[:voice]")
+    (t/eq "a freqt is drawn as it is shown" (comp/drawn-as {:text "freqt" :view :score}) :score)
     (t/eq "a view its class does not offer is ignored" (comp/shown-as {:text "freqt" :view :code}) :canvas)
     (t/is "there is no score class: a score is a view of a freqt" (nil? (comp/lookup "score")))
     (t/eq "a score box of an older work is a freqt shown as a score" (comp/upgrade-box {:text "score" :x 1 :y 2})
