@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Tutorial "One, two, tree | Uno, dos, tree"** (Notation and theory): every way Kairotic understands
+  notation and time, in thirteen steps — one `tree` box seen as code, score and canvas; measured time
+  (meters with groups, tuplets, ties, grace notes, chords, `:rtm`) and free time (`:at`, drawing, grid and
+  tuning); the score as a quantized reading (alt-click, `divisions`, `division!`, `quant`), written with
+  `quantize!`; the `freqt` as a raw buffer and `to-tree!`; names and keys (`#`, shift-alt-click,
+  `mt transpose M3`); `:cents`, quarter tones and `:gliss`; and listening with `mt play`. Test:
+  `oneTwoTreeTutorial` in `tests/present.mjs`.
+- **Spelling**: a key is estimated only when the notes fit one clearly (`sp/estimate-sig`, a correlation of
+  0.5 or more), so an unnamed chromatic line is spelled near C, up in sharps and down in flats (it was read
+  as C# minor, with B#). **Transposing moves keys**: `mt/transpose` by an interval moves every `:key` of
+  the tree with its notes (`sp/transpose-key`, `sp/key-name`), so `{:key "eb"}` up a major third is
+  `{:key "g"}`.
 - **`@kairotic/patterns` 0.2.0: `render [from] [to] [tex key] [tone key]`** (discussion #93): a stretch of a
   pattern drawn into a `freqt`, as a musical tree — shown live, kept with its recipe by `keep!`, quantized as
   a score. A canvas on its right inlet is a **time map** (x the beats of the drawing, y those of the
