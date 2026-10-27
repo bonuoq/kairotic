@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A benchmark for the quantizer** (issue #105). `kairotic.qbench` (`tests/cljs/qbench.cljs`) performs
+  measured trees (onsets moved, notes shortened, a drifting beat, seeded, at four levels: exact, tight, loose,
+  rough), quantizes them back and compares them with what was written: onsets, precision, durations, spelling,
+  tuplets added or lost, grace notes. Kairotic's own corpus (twenty small cases) runs with the unit tests, with
+  thresholds. `tests/quantize-corpus/fetch.mjs` samples 200 pieces from the Essen Folksong Collection and SymbTr
+  (Turkish makam, microtones and aksak meters) into a git-ignored cache (their licenses do not allow
+  redistribution), and `tests/quantize-corpus/bench.mjs` prints the table. First results and what they say in
+  `tests/quantize-corpus/README.md`.
 - **A tree box has two views, score and roll**: a new tree box is a score; ⇄ shows its **roll** (the piano
   roll of frequency over time that was its canvas view; `(view :bN :roll)`). Its text is no longer a view:
   **{ }** in its header (or a double-click on its right half, or `(source :bN)`) opens it in the code window,
