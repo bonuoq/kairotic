@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Tutorial «Patterns: play them, draw them»** (composition, 3): a `pbind` played by a `player` (by its clock, by steps, at a position going either way), its generators and seed, `:amp` and rests, `#pat/hold` harmony; `render` into a `freqt`, `keep!`, a canvas time map (backwards, held, a canon by augmentation), the score; and the `pattern` code box. Tested as a lesson in tests/present.mjs.
 - **`@kairotic/patterns` 0.2.0: `render [from] [to] [tex key] [tone key]`** (discussion #93): a stretch of a
   pattern drawn into a `freqt`, as a musical tree — shown live, kept with its recipe by `keep!`, quantized as
   a score. A canvas on its right inlet is a **time map** (x the beats of the drawing, y those of the
