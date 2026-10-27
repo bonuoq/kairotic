@@ -264,7 +264,10 @@ cambian cómo se hace:
 
 Las otras opciones son `:chord` (lo cerca que deben estar dos ataques para ser un acorde, 0.04 partes), `:overlap`
 (cuánto puede entrar una nota en la siguiente y seguir en su voz, 0.15 partes) y `:w`, los pesos del coste
-(`{:err 8 :off 0.35 :cpx 1 :lost 1.5}`). `(as-tree :bN)` sigue leyendo los trazos de un freqt tal cual, sin
+(`{:err 8 :off 0.35 :cpx 1 :lost 1.5 :coh 0.5}`). `:coh` es lo que cuesta cambiar de tipo de división (binaria,
+tresillo, quintillo…) entre pulsos vecinos: un tresillo suelto entre corcheas lo paga dos veces, una serie de
+tresillos una, así que las notas tocadas un poco antes o después no se vuelven grupos irregulares (issue #108;
+`0` decide cada pulso por su cuenta). `(as-tree :bN)` sigue leyendo los trazos de un freqt tal cual, sin
 cuantizarlos.
 
 **Elegir otra división.** El cuantizador adivina; cuando se equivoca, **alt+clic en una nota** de la partitura:

@@ -87,18 +87,21 @@
 ;; ───────── running ─────────
 
 (defn piece-opts
-  "The options of the quantizer for a piece: its meter (and groups), and its key if asked."
-  [{:keys [meter groups key]} key?]
-  (cond-> {:meter meter} groups (assoc :groups groups) (and key? key) (assoc :key key)))
+  "The options of the quantizer for a piece: its meter (and groups), its key if asked, and any options
+   given to the whole run (qopts: {:w {:coh 1}} …)."
+  [{:keys [meter groups key]} key? qopts]
+  (merge-with (fn [a b] (if (and (map? a) (map? b)) (merge a b) b))
+              (cond-> {:meter meter} groups (assoc :groups groups) (and key? key) (assoc :key key))
+              qopts))
 
 (defn run-piece
   "One piece at one level and seed: the comparison, :ms the time it took, :error if the quantizer failed."
-  [piece [lv cfg] seed {:keys [key?]}]
+  [piece [lv cfg] seed {:keys [key? qopts]}]
   (let [w (mt/expand (:tree piece))
         p (perform w cfg seed)
         t0 (js/Date.now)]
     (try
-      (let [q (qz/quantize-tree p (piece-opts piece key?))]
+      (let [q (qz/quantize-tree p (piece-opts piece key? qopts))]
         (assoc (compare-notes w q) :id (:id piece) :source (:source piece) :level lv :ms (- (js/Date.now) t0)))
       (catch :default e
         {:id (:id piece) :source (:source piece) :level lv :error (.-message e) :notes (count (remove :grace (mt/notes w)))}))))
