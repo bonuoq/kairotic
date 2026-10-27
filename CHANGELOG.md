@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A tree's roll follows its meter changes.** The roll of a tree whose measures change meter drew every bar in
+  the meter of the first one, so its barlines drifted away from the score. Its grid now lists the bars one by one
+  (`:bars [{:s :L :groups}]` in the canvas grid, drawn by `cv/bar-lines`, going on in the last meter past the
+  end), each with its groups; its step is the smallest unit of them. A tree with a `:grid` of its own keeps it.
 - **A benchmark for the quantizer** (issue #105). `kairotic.qbench` (`tests/cljs/qbench.cljs`) performs
   measured trees (onsets moved, notes shortened, a drifting beat, seeded, at four levels: exact, tight, loose,
   rough), quantizes them back and compares them with what was written: onsets, precision, durations, spelling,

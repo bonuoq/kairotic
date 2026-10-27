@@ -9,6 +9,7 @@
 ;;      {:strokes {:t1 {:pts [[x y] ...]}}
 ;;       :ax {:x {:lo 0 :hi 8 :log false} :y {:lo 0 :hi 1 :log false}}
 ;;       :gx {:step 0.5 :cycles [4]}  :gy {:step 0.1}}          ; grids (optional)
+;;       (a tree's roll may add :bars [{:s :L :groups}] to :gx: bars of different meters, one by one)
 ;;  · freqt — frequency over time: no :ax; time goes from 0, frequency is on a log scale, strokes go
 ;;    forward in time, and :gy can be a tuning {:name "12-tet" :cents [100 ... 1200] :ref 261.63}.
 ;;    It may keep how its score is quantized: :quant {:meter "6/8" :divs [1 2 3 4] :fix {2 3} …}
@@ -472,6 +473,20 @@
           :let [v (round-to (* k p) 6)]]
       [v (if (zero? v) 1 0) (fmt v)])))
 
+(defn bar-lines
+  "[[t level label]] of bars given one by one (a tree whose measures change meter): [{:s start :L length
+   :groups [lengths]}]. Past the last one, it goes on in its meter."
+  [bars a T]
+  (let [lst (last bars)
+        more (when (pos? (:L lst))
+               (map (fn [i] (assoc lst :s (+ (:s lst) (* (:L lst) i))))
+                    (range 1 (inc (max 0 (js/Math.ceil (/ (- T (:s lst)) (:L lst))))))))]
+    (for [[i {:keys [s L groups]}] (map-indexed vector (concat bars more))
+          :when (<= (- a L) s T)
+          [b level] (cons [0 2] (map (fn [b] [b 1]) (butlast (rest (reductions + 0 (or (seq groups) [L]))))))
+          :let [t (+ s b)] :when (<= a t T)]
+      [t level (when (= level 2) (inc i))])))
+
 (defn lines-x
   "[[t level label]]: level 0 = step, 1 = group, 2 = start of cycle."
   [gx g]
@@ -489,9 +504,11 @@
             steps (when (>= (* p px-per-unit) 5)
                     (for [k (range (js/Math.ceil (/ a p)) (inc (js/Math.floor (/ T p))))] [(* k p) 0 nil]))]
         (concat steps
-                (for [c (range (js/Math.floor (/ a L)) (inc (js/Math.floor (/ T L)))) b bounds
-                      :let [t (+ (* c L) b)] :when (<= a t T)]
-                  [t (if (zero? b) 2 1) (when (zero? b) (inc c))]))))))
+                (if-let [bars (seq (:bars gx))]
+                  (bar-lines bars a T)
+                  (for [c (range (js/Math.floor (/ a L)) (inc (js/Math.floor (/ T L)))) b bounds
+                        :let [t (+ (* c L) b)] :when (<= a t T)]
+                    [t (if (zero? b) 2 1) (when (zero? b) (inc c))])))))))
 
 (defn lines-y
   "[[hz level label]] within the visible range."
