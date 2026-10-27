@@ -292,14 +292,15 @@ choosing a name are arithmetic.
   semitones a tree moves by the interval it is usually written as (1 a minor second: c4 e4 g4 → db4 f4
   ab4; 6 the augmented fourth or the diminished fifth, whichever needs fewer alterations). Intervals are
   `"M3"`, `"-P5"`, `"A4"`, `"d5"`, `"m9"`… (`mt transpose M3` in a box). `mt/invert` around a written pivot
-  mirrors names on the line of fifths too (c4 around e4 is g#4).
+  mirrors names on the line of fifths too (c4 around e4 is g#4). A tree's keys move with it: `{:key "eb"}`
+  transposed by `"M3"` is `{:key "g"}`.
 - **Keys**: `{:key "eb"}` on the tree, a section, a voice or a measure (from there on): `"c#m"`,
   `"d dorian"`, `"f lydian"`, a number of sharps (`3`) or flats (`-2`), or `:none`. The score writes its
   signature and its changes; an accidental lasts to the end of its bar (and comes back as a courtesy in the
   next one); `:key :none`, or `:accidentals :every` on the tree, writes every accidental (atonal music).
 - **Notes without a name** (numbers, Hz, a freqt's strokes) are named by `mt/spell`, which ->mei and the
   quantizer use: near the key (the one written, or estimated bar by bar with Temperley's profiles; without
-  four pitch classes to go on, C), moving well in each voice (a chromatic line rises in sharps and falls in
+  four pitch classes to go on, or when they fit no key clearly, as a chromatic line does, C), moving well in each voice (a chromatic line rises in sharps and falls in
   flats, no augmented second where a minor third does) and stacked well in each chord (Ab C Eb, not
   G# C D#), over the whole line at once (a Viterbi on the line of fifths). `(mt/spell tree)` writes those
   names into the tree. Without `:key` the score has no signature, only those names.

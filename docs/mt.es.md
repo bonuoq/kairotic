@@ -296,14 +296,15 @@ un nombre son aritmética.
   árbol se mueve por el intervalo con que suele escribirse (1 una segunda menor: c4 e4 g4 → db4 f4 ab4; 6 la cuarta
   aumentada o la quinta disminuida, la que pida menos alteraciones). Los intervalos son `"M3"`, `"-P5"`, `"A4"`,
   `"d5"`, `"m9"`… (`mt transpose M3` en una caja). `mt/invert` alrededor de un pivote escrito refleja también los
-  nombres en la línea de quintas (c4 alrededor de e4 es g#4).
+  nombres en la línea de quintas (c4 alrededor de e4 es g#4). Las tonalidades de un árbol se mueven con él:
+  `{:key "eb"}` transportado `"M3"` es `{:key "g"}`.
 - **Tonalidades**: `{:key "eb"}` en el árbol, una sección, una voz o un compás (desde ahí): `"c#m"`, `"d dorian"`,
   `"f lydian"`, un número de sostenidos (`3`) o bemoles (`-2`), o `:none`. La partitura escribe la armadura y sus
   cambios; una alteración dura hasta el final del compás (y vuelve como alteración de precaución en el siguiente);
   `:key :none`, o `:accidentals :every` en el árbol, escribe todas las alteraciones (música atonal).
 - **Las notas sin nombre** (números, Hz, los trazos de un freqt) las nombra `mt/spell`, que usan ->mei y el
   cuantizador: cerca de la tonalidad (la escrita, o estimada compás a compás con los perfiles de Temperley; sin cuatro
-  clases de altura en que apoyarse, do), moviéndose bien en cada voz (una línea cromática sube con sostenidos y baja
+  clases de altura en que apoyarse, o cuando no encajan claramente en ninguna, como una línea cromática, do), moviéndose bien en cada voz (una línea cromática sube con sostenidos y baja
   con bemoles, sin segunda aumentada donde vale una tercera menor) y apiladas bien en cada acorde (la♭ do mi♭, no
   sol♯ do re♯), sobre toda la línea a la vez (un Viterbi en la línea de quintas). `(mt/spell árbol)` escribe esos
   nombres en el árbol. Sin `:key` la partitura no lleva armadura, solo esos nombres.

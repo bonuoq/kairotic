@@ -133,6 +133,28 @@
         (when (<= -7 sig 7) {:sig sig :tonic tonic :mode mode})))
     :else nil))
 
+(defn key-name
+  "A key as text, from where its tonic is on the line of fifths and its mode: {:tonic -3 :mode :major} →
+   \"eb\", {:tonic 7 :mode :minor} → \"c#m\", {:tonic 2 :mode :dorian} → \"d dorian\"."
+  [{:keys [tonic mode]}]
+  (let [alter (js/Math.floor (/ (inc tonic) 7))
+        step (.indexOf natural-fifths (- tonic (* 7 alter)))]
+    (str (letters step) (acc-str alter)
+         (case mode (nil :major :ionian) "" (:minor :aeolian) "m" (str " " (name mode))))))
+
+(defn transpose-key
+  "A key (as parse-key reads it) moved by an interval [steps semitones], as text: \"eb\" by a major third
+   is \"g\", \"c#m\" by a minor second down is \"cm\". :none, and what is not a key, stay as they are.
+   A key beyond seven sharps or flats takes the tonic that sounds the same (E# major → F major)."
+  [k iv]
+  (let [{:keys [tonic mode none] :as pk} (parse-key k)]
+    (if (or (nil? pk) none (nil? tonic))
+      k
+      (let [df (fifths (transpose-spelling {:step 0 :alter 0 :oct 4} iv))
+            t (+ tonic df) off (mode-offsets (or mode :major))
+            t (cond (> (+ t off) 7) (- t 12) (< (+ t off) -7) (+ t 12) :else t)]
+        (key-name {:tonic t :mode mode})))))
+
 (defn mei-key-sig "A signature as MEI writes it: 3 → \"3s\", -2 → \"2f\", 0 → \"0\"." [sig]
   (cond (pos? sig) (str sig "s") (neg? sig) (str (- sig) "f") :else "0"))
 
@@ -178,6 +200,14 @@
                             :let [tonic (tonic-fifths k mode)]]
                         {:pc k :mode mode :tonic tonic :sig (+ tonic (mode-offsets mode)) :score (correlation weights (rot p k))}))]
       (select-keys best [:sig :tonic :mode :score]))))
+
+(defn estimate-sig
+  "The signature of the key the weights suggest, when they suggest one clearly (a correlation of 0.5 or
+   more): nil for notes that fit no key (a chromatic line, a whole-tone scale), which are then named
+   without one, near C."
+  [weights]
+  (let [k (estimate-key weights)]
+    (when (and k (>= (:score k) 0.5)) (:sig k))))
 
 ;; ───────── spelling notes ─────────
 
