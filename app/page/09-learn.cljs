@@ -424,12 +424,29 @@
 
 (declare build-lesson!)
 
+(defn compiled-components
+  "Promise: the sources of these component boxes compiled (or failed), so that the classes they define
+   can be registered at once while a lesson is built, and its next gestures (the code of a pbind) find them."
+  [srcs]
+  (js/Promise.
+   (fn [res _]
+     (let [t0 (js/Date.now)]
+       (letfn [(check []
+                 (if (or (every? #(not= :compiling (:status (cbox/compiled "component" %))) srcs)
+                         (> (- (js/Date.now) t0) 15000))
+                   (res nil)
+                   (js/setTimeout check 30)))]
+         (check))))))
+
 (defn open-lesson!
   "Opens a lesson: first the packages its boxes need, then the lesson itself (build-lesson!)."
   [l]
   (repl-print! "out" (esc (str "; " (if (es?) "Preparando la lección" "Preparing the lesson") "…")))
   (-> (lesson-definitions l)
-      (.then (fn [defs] (build-lesson! (assoc l :defs defs))))
+      ;; a lesson is a local work, run as trusted (build-lesson!): its packages compile first
+      (.then (fn [defs]
+               (reset! cbox/trust true)
+               (.then (compiled-components (map #(nth % 2) defs)) (fn [_] (build-lesson! (assoc l :defs defs))))))
       (.catch (fn [e]
                 (repl-print! "err" (esc (str "; " (or (.-message e) e) " · " (if (es?) "la lección se abre sin ese paquete" "the lesson opens without that package"))))
                 (build-lesson! l)))))
@@ -461,7 +478,9 @@
                               (let [id (keyword (str "b" @free-id)) [x y] (component-slot)]
                                 (swap! free-id inc)
                                 (gesture! (str "(box " id " \"component\" " x " " y ")"))
-                                (gesture! (str "(code " id " " (pr-str src) ")")))
+                                (gesture! (str "(code " id " " (pr-str src) ")"))
+                                ;; its classes now, not at the next render: the gestures after it use them
+                                (lib/sync! (eng/flat (root-patch))))
                               (swap! defs (fn [ds] (vec (remove #{d} ds))))))
                           (gesture! c))
                         (conj acc (assoc st :pos (norm (:pos @world)))))

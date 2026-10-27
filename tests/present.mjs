@@ -140,6 +140,28 @@ export async function presetsTutorial(page, check) {
   check("the lesson closes", (await until(page, "(nil? @lesson)", "true")) === "true");
 }
 
+// the patterns tutorial: a pbind played, rendered into a freqt and through a canvas time map
+export async function patternsTutorial(page, check) {
+  const loaded = await until(page, '(do (when-not (sequential? @tutorials) (load-tutorials!)) (boolean (some #(= "patterns" (:id %)) (when (sequential? @tutorials) @tutorials))))', "true", 20000);
+  check("the patterns tutorial is in the catalog", loaded === "true", loaded);
+  if (loaded !== "true") return;
+  await cljs(page, '(tutorial "patterns")');
+  const steps = await until(page, "(count (:steps @lesson))", "10", 30000);
+  check("the patterns tutorial opens as a lesson of ten steps", steps === "10", steps);
+  if (steps !== "10") return;
+  await cljs(page, "(lesson-go! 9)");
+  const kinds = await until(page, '(boolean (some #{"pattern 3"} (map :text (vals (:boxes (current))))))', "true", 10000) && await cljs(page, '(set (map :text (vals (:boxes (current)))))');
+  check("... with every box of it built", ["pbind 1 loop", "player 110", "render 0 8", "freqt", "canvas", "pattern 3"].every((t) => kinds.includes(`"${t}"`)), kinds);
+  await cljs(page, "(lesson-go! 6)");
+  const drawn = await until(page, "(pos? (count (rest (rest (live-tree :b14)))))", "true", 10000);
+  check("... the render draws the pbind into the freqt", drawn === "true",
+    await cljs(page, "[(get-in (current) [:boxes :b1]) (live-tree :b14)]"));
+  await cljs(page, "(lesson-go! 7)");
+  await cljs(page, "(send! :b13 :bang)");
+  const layers = await until(page, "(let [ns (rest (rest (live-tree :b14)))] [(= #{1 2} (set (map (comp :layer second) ns))) (boolean (some (comp :back second) ns))])", "[true true]", 10000);
+  check("... and its time map: two layers, one going backwards", layers === "[true true]", await cljs(page, "(live-tree :b14)"));
+}
+
 // the tutorial on notation and time: its thirteen steps run, the free tree is written in measures, the
 // chromatic freqt is spelled up in sharps and down in flats, and the transposed tree carries its key
 export async function oneTwoTreeTutorial(page, check) {

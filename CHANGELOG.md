@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Tutorial «Patterns: play them, draw them»** (composition, 3): a `pbind` played by a `player` (by its 
+  clock, by steps, at a position going either way), its generators and seed, `:amp` and rests, `#pat/hold` 
+  harmony; `render` into a `freqt`, `keep!`, a canvas time map (backwards, held, a canon by augmentation), 
+  the score; and the `pattern` code box. Tested as a lesson in tests/present.mjs.
+- **Lessons with package classes**: the packages a lesson needs are compiled before it is built, and their 
+  classes registered as soon as their component box is written, so the gestures after it (the `code` of a 
+  `pbind`) find them. Before, the source of a box of a package class written in the same lesson was lost.
 - **Tutorial "One, two, tree | Uno, dos, tree"** (Notation and theory): every way Kairotic understands
   notation and time, in thirteen steps — one `tree` box seen as code, score and canvas; measured time
   (meters with groups, tuplets, ties, grace notes, chords, `:rtm`) and free time (`:at`, drawing, grid and
