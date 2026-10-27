@@ -13,7 +13,11 @@
 ;;     points it uses are (the beat, its half, its quarters, then much more for 32nds; a third, a fifth…),
 ;;     being a tuplet (3 less than 5, 5 less than 7) and the notes it loses (two starts that fall on one
 ;;     point, a note that shrinks to nothing). In a simple meter two beats may also go
-;;     together (a half-note triplet). The cheapest plan of each bar wins.
+;;     together (a half-note triplet). Each span keeps its few cheapest divisions, and the plan of a
+;;     bar chooses among them with its neighbours in view: changing kind of division (binary, triplet,
+;;     quintuplet…) from one region to the next costs :coh, so that a lone triplet among eighths pays
+;;     twice and a run of triplets once (issue #108; the bar starts from the kind the one before ended
+;;     with). The cheapest plan of each bar wins.
 ;;     A beat can also be cut in halves (a dotted beat in its eighths), each with its own division.
 ;;  3. notes that overlap go to different voices (layers of one staff), all on the same points;
 ;;     the notes are written on those points: chords where starts meet, rests in the gaps,
@@ -22,7 +26,7 @@
 ;;     work (mt/metric-split), so that hand-written trees get it too.
 ;;
 ;; Options (all optional): {:meter "5/8[2+3]" :divs [1 2 3 4 5 6 7 8] :merge [3 5 6] :grace true
-;;   :chord 0.04 :legato 0.25 :tempo 72 :w {:err 8 :off 0.35 :cpx 1 :lost 1.5}}. :divs are the divisions a
+;;   :chord 0.04 :legato 0.25 :tempo 72 :w {:err 8 :off 0.35 :cpx 1 :lost 1.5 :coh 0.5}}. :divs are the divisions a
 ;; span may take, :merge those of two beats together ([] for none), :chord how close two starts are to be
 ;; one chord (beats), :legato the largest gap before the next note that is not a rest (beats; 0: every gap
 ;; is), :key the key the score is written in ("eb", "c#m", :none; without it no signature, and names
@@ -49,7 +53,7 @@
    :voices 2
    :nest true
    :overlap 0.15
-   :w {:err 8 :off 0.35 :cpx 1 :lost 1.5}})
+   :w {:err 8 :off 0.35 :cpx 1 :lost 1.5 :coh 0.5}})
 
 ;; ───────── 1. the frame ─────────
 
@@ -226,10 +230,27 @@
                      deep (reduce + (map (fn [p k] (* (if (= :on (:kind p)) 1 (:off W)) (depth L n k))) pts ks))
                      cost (+ (* (:err W) err)
                              (* (:cpx W) (+ (complexity L n) deep (if merged? 0.1 0)))
-                             (* (:lost W) (+ clash gone)))]]
-           {:n n :tup tup :cost cost})
+                             (* (:lost W) (+ clash gone)))
+                     ;; the division its notes need: the fewest points that hold the same ones (two eighths on
+                     ;; a grid of six need two)
+                     need (/ n (reduce gcd n ks))]]
+           {:n n :tup tup :cost cost :need need})
          (sort-by :cost)
          vec)))
+
+(defn- nested-of
+  "The span cut in parts (halves of a beat, the three eighths of a dotted beat), each with its own
+   cheapest division, when one of them needs a tuplet the whole span cannot give; or nil."
+  [s L u pts o]
+  (let [k (cond (and (= u 3) (zero? (mod (* 64 L) 3))) 3 (or (= u 1) (= u 2)) 2 :else nil)]
+    (when (and k (:nest o))
+      (let [pl (/ L k)
+            parts (mapv (fn [i] (let [ps (+ s (* i pl))]
+                                  (assoc (first (span-options ps pl (/ u k) (points-in pts ps (+ ps pl)) o false)) :s ps :L pl)))
+                        (range k))]
+        (when (some :tup parts)
+          {:s s :L L :n k :tup nil :parts parts
+           :cost (+ (reduce + (map :cost parts)) (* (:cpx (:w o)) 0.15))})))))
 
 (defn best-of-span
   "The cheapest way to divide one span [s, s+L) of u units: a division of the whole span, or the span cut
@@ -238,16 +259,41 @@
    :cost}, with :parts [regions] when it is cut."
   [s L u pts o]
   (let [flat (assoc (first (span-options s L u (points-in pts s (+ s L)) o false)) :s s :L L)
-        k (cond (and (= u 3) (zero? (mod (* 64 L) 3))) 3 (or (= u 1) (= u 2)) 2 :else nil)
-        nested (when (and k (:nest o))
-                 (let [pl (/ L k)
-                       parts (mapv (fn [i] (let [ps (+ s (* i pl))]
-                                             (assoc (first (span-options ps pl (/ u k) (points-in pts ps (+ ps pl)) o false)) :s ps :L pl)))
-                                   (range k))]
-                   (when (some :tup parts)
-                     {:s s :L L :n k :tup nil :parts parts
-                      :cost (+ (reduce + (map :cost parts)) (* (:cpx (:w o)) 0.15))})))]
+        nested (nested-of s L u pts o)]
     (if (and nested (< (:cost nested) (:cost flat))) nested flat)))
+
+(defn- span-candidates
+  "The few cheapest ways to divide a span (issue #108: the plan of a bar chooses among them with its
+   neighbours in view): the best divisions of the whole span, and the span cut in parts."
+  [s L u pts o]
+  (let [in (points-in pts s (+ s L))]
+    (vec (concat (map (fn [x] (assoc x :s s :L L)) (take 4 (span-options s L u in o false)))
+                 (when-let [x (nested-of s L u pts o)] [x])))))
+
+(defn family
+  "The kind of division a region has, for coherence between neighbours (issue #108): :none when it puts
+   one point on the span (the beat alone: it says nothing), :bin for written values (halves, quarters, the
+   eighths of a dotted beat), and for a tuplet the largest prime of its count (3, 5, 7…), all by the
+   points its notes use (:need), not the grid it is written on: two eighths on a grid of six are binary.
+   A span cut in parts has the family of its tuplet part."
+  [r]
+  (let [m (or (:need r) (:n r))
+        tup (if (and (:need r) (:L r)) (tuplet-of (:L r) m) (:tup r))]
+    (cond (:parts r) (or (some (fn [p] (let [f (family p)] (when (number? f) f))) (:parts r)) :bin)
+          (= 1 m) :none
+          (vector? tup) (largest-prime (first tup))
+          :else :bin)))
+
+(defn- after
+  "The family in force after a region: its own, or the one before when it says nothing."
+  [fam r] (let [f (family r)] (if (= f :none) fam f)))
+
+(defn- switch-cost
+  "What it costs to go from one family to another between neighbouring regions (:coh of the weights): a
+   lone triplet among eighths pays twice, a run of triplets once."
+  [fam r o]
+  (let [f (family r)]
+    (if (or (= f :none) (= fam :none) (= f fam)) 0 (or (:coh (:w o)) 0))))
 
 (def ^:private forced -1e6)
 
@@ -270,30 +316,39 @@
 
 (defn bar-plan
   "The cheapest way to divide one bar (it starts at beat b0) for the points in it: its regions
-   [{:s :L :n :tup :cost}] in order, each a span (or two beats together) with its division."
-  [b0 meter pts o]
-  (let [{[_ q] :meter g :groups} (mt/meter-of meter)
-        sps (mapv (fn [[s L u]] [(+ b0 s) L u]) (spans meter))
-        n (count sps)
-        simple? (and (<= q 4) (empty? g))
-        ;; a division chosen by hand (:fix) wins; else the cheapest
-        single (mapv (fn [[s L u]] (or (let [c (fix-at o s)] (when (and c (not (merge-choice? c))) (choose-span s L u pts o c)))
-                                       (best-of-span s L u pts o)))
-                     sps)
-        merged (fn [i] (when (and simple? (even? i) (< (inc i) n) (near? (second (sps i)) (second (sps (inc i)))))
-                         (let [[s L u] (sps i) c (fix-at o s) mc (when (merge-choice? c) (second c))
-                               xs (span-options s (* 2 L) (* 2 u) (points-in pts s (+ s L L)) (cond-> o mc (update :merge conj mc)) true)
-                               x (if mc (some-> (first (filter (fn [x] (= mc (:n x))) xs)) (assoc :cost forced)) (when (seq (:merge o)) (first xs)))]
-                           (when x (assoc x :s s :L (* 2 L))))))
-        best (reduce (fn [best i]
-                       (let [[c1 p1] (best (dec i))
-                             a [(+ c1 (:cost (single (dec i)))) (conj p1 (single (dec i)))]
-                             m (when (>= i 2) (merged (- i 2)))
-                             b (when m (let [[c2 p2] (best (- i 2))] [(+ c2 (:cost m)) (conj p2 m)]))]
-                         (conj best (if (and b (< (first b) (first a))) b a))))
-                     [[0 []]] (range 1 (inc n)))]
-    ;; a span divided in parts is as many regions
-    (vec (mapcat (fn [r] (or (:parts r) [r])) (second (peek best))))))
+   [{:s :L :n :tup :cost}] in order, each a span (or two beats together) with its division. Each span
+   weighs its few cheapest divisions with its neighbours in view: changing kind of division (binary,
+   triplet, quintuplet…) from one region to the next costs (:coh, issue #108). fam is the kind in force
+   before the bar (the one the bar before ended with)."
+  ([b0 meter pts o] (bar-plan b0 meter pts o :none))
+  ([b0 meter pts o fam]
+   (let [{[_ q] :meter g :groups} (mt/meter-of meter)
+         sps (mapv (fn [[s L u]] [(+ b0 s) L u]) (spans meter))
+         n (count sps)
+         simple? (and (<= q 4) (empty? g))
+         ;; a division chosen by hand (:fix) is the only candidate there; else the few cheapest
+         single (mapv (fn [[s L u]] (or (let [c (fix-at o s)] (when (and c (not (merge-choice? c))) (some-> (choose-span s L u pts o c) vector)))
+                                        (span-candidates s L u pts o)))
+                      sps)
+         merged (fn [i] (when (and simple? (even? i) (< (inc i) n) (near? (second (sps i)) (second (sps (inc i)))))
+                          (let [[s L u] (sps i) c (fix-at o s) mc (when (merge-choice? c) (second c))
+                                xs (span-options s (* 2 L) (* 2 u) (points-in pts s (+ s L L)) (cond-> o mc (update :merge conj mc)) true)]
+                            (if mc
+                              (some-> (first (filter (fn [x] (= mc (:n x))) xs)) (assoc :cost forced :s s :L (* 2 L)) vector)
+                              (when (seq (:merge o)) (mapv (fn [x] (assoc x :s s :L (* 2 L))) (take 2 xs)))))))
+         ;; states: at each span boundary, for each family in force, the cheapest [cost path]
+         add (fn [m f c p] (if (or (nil? (m f)) (< c (first (m f)))) (assoc m f [c p]) m))
+         step (fn [st i j rs] (reduce (fn [st [f [c p]]]
+                                        (reduce (fn [st r] (update st j add (after f r) (+ c (:cost r) (switch-cost f r o)) (conj p r))) st rs))
+                                      st (st i)))
+         st (reduce (fn [st i]
+                      (cond-> (step st i (inc i) (single i))
+                        (merged i) (step i (+ i 2) (merged i))))
+                    (assoc (vec (repeat (inc n) {})) 0 {fam [0 []]})
+                    (range n))
+         [_ path] (apply min-key first (vals (st n)))]
+     ;; a span divided in parts is as many regions
+     (vec (mapcat (fn [r] (or (:parts r) [r])) path)))))
 
 ;; ───────── 3. the notes on the points ─────────
 
@@ -391,7 +446,11 @@
                 (if (and (> nbars 1) (< maxon (- b0 eps)) (< (- maxoff b0) (* 0.5 L1))) (dec nbars) nbars))
         pts (vec (sort-by :t (mapcat (fn [i n] [{:t (:on n) :kind :on :note i} {:t (:off n) :kind :off :note i}]) (range) notes)))]
     {:meter meter :BL BL :nbars nbars :total (* nbars BL)
-     :rs (vec (mapcat (fn [b] (let [b0 (* b BL)] (bar-plan b0 meter (points-in pts b0 (+ b0 BL)) o))) (range nbars)))}))
+     ;; bar by bar, each starting from the kind of division the one before ended with (issue #108)
+     :rs (first (reduce (fn [[rs fam] b]
+                          (let [b0 (* b BL) bar (bar-plan b0 meter (points-in pts b0 (+ b0 BL)) o fam)]
+                            [(into rs bar) (reduce after fam bar)]))
+                        [[] :none] (range nbars)))}))
 
 (defn write-voice
   "One voice's notes (already free of overlaps but for small ones, which are cut) written on a plan as a

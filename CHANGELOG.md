@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Coherence across beats in the quantizer** (issue #108). Each span keeps its few cheapest divisions and the
+  plan of a bar chooses among them with its neighbours in view: changing kind of division (binary, triplet,
+  quintuplet…, by the points the notes use) between neighbouring regions costs `:coh` (0.5 by default; `0`
+  decides each beat on its own), and a bar starts from the kind the one before ended with. Notes played a little
+  early or late no longer become tuplets as often: on the benchmark (#105), invented tuplets fall by 80 % in
+  Essen played loosely, 75 % in SymbTr played exactly, with onsets and durations up at every level.
+  `qz/family`; tests in `tests/cljs/quantize.cljs`.
 - **A benchmark for the quantizer** (issue #105). `kairotic.qbench` (`tests/cljs/qbench.cljs`) performs
   measured trees (onsets moved, notes shortened, a drifting beat, seeded, at four levels: exact, tight, loose,
   rough), quantizes them back and compares them with what was written: onsets, precision, durations, spelling,
