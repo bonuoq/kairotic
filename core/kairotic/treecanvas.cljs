@@ -13,7 +13,7 @@
 ;;    time re-quantizes the bars it touches (kairotic.quantize, in that bar's meter); with ⌥ a note leaves
 ;;    the measures for a free voice of the tree ({:name "free"}), as a stroke drawn freehand does.
 ;;  · Its grid and tuning are attributes of the tree's root: {:grid {:step 0.25 :cycles [4]} :tuning {…}};
-;;    a measured tree without :grid shows its bars, and a tree without :tuning is drawn in semitones
+;;    a measured tree without :grid shows its bars, each in its own meter, and a tree without :tuning is drawn in semitones
 ;;    (12-tet; :tuning false is continuous frequency).
 
 (ns kairotic.treecanvas
@@ -35,12 +35,18 @@
     (mapv (fn [[x c]] [(cv/round-to (+ t0 (* d x)) 4) (cv/round-to (cv/cents->hz c hz) 3)]) g)))
 
 (defn- grid-of
-  "The canvas grid of a tree: its root's :grid, else the bars of its first measure, else none."
+  "The canvas grid of a tree: its root's :grid, else the bars of its measures (of its first voice), each in
+   its own meter (:bars, when they change), else none."
   [x]
   (or (cv/sane-gx (:grid (mt/attrs x)))
-      (when-let [m (first (mt/measures-of (first (mt/voices-of (mt/with-meters x)))))]
-        (let [{[p q] :meter g :groups} (mt/meter-of m) u (/ 4 q)]
-          {:step (min 0.25 u) :cycles (if (seq g) (mapv (fn [k] (* k u)) g) [(* p u)])}))))
+      (let [ms (mt/measures-of (first (mt/voices-of (mt/with-meters x))))
+            bar (fn [m] (let [{[p q] :meter g :groups} (mt/meter-of m) u (/ 4 q)]
+                          {:L (* p u) :u u :groups (when (seq g) (mapv (fn [k] (* k u)) g))}))
+            bs (mapv bar ms)]
+        (when-let [b0 (first bs)]
+          (cond-> {:step (min 0.25 (reduce min (map :u bs))) :cycles (or (:groups b0) [(:L b0)])}
+            (some (fn [b] (not= (dissoc b :u) (dissoc b0 :u))) bs)
+            (assoc :bars (mapv (fn [s b] {:s s :L (:L b) :groups (:groups b)}) (reductions + 0 (map :L bs)) bs)))))))
 
 (defn view-data
   "A tree as the data of a freqt-like canvas: {:strokes {:n1 {:pts …}} :gx :gy :ids {:n1 {…}}}, where :ids

@@ -58,3 +58,17 @@
     (t/eq "... and so is the tuning" (:name (:tuning (mt/attrs (edit [:voice "c4/1"] [:tuning (get cv/tunings "19-tet")])))) "19-tet")
     (t/throws "a note of a proportional rhythm is edited in its :pitches, not here"
               (fn [] (tc/edit-ops [:voice [:measure {:meter [4 4]} [:rtm {:shares [1 1] :pitches "c4 d4"}]]] [:move :n1 0 100])))))
+
+(t/run! "a tree's roll in its bars"
+  (fn []
+    (let [mixed [:voice [:measure {:meter [3 4]} "c4/3"] [:measure {:meter "5/8[2+3]"} "d4/2.5"] [:measure {:meter [4 4]} "e4/4"]]
+          gx (:gx (tc/view-data mixed))
+          bars-at (fn [gx T] (mapv first (filter (fn [[_ level]] (= 2 level)) (cv/lines-x gx {:xa 0 :xb T :w 400}))))]
+      (t/eq "measures of one meter: one cycle, no list of bars" (:gx (tc/view-data [:voice [:measure {:meter [3 4]} "c4/3"] [:measure "d4/3"]]))
+            {:step 0.25 :cycles [3]})
+      (t/eq "measures that change meter: each bar with its length and groups" (:bars gx)
+            [{:s 0 :L 3 :groups nil} {:s 3 :L 2.5 :groups [1 1.5]} {:s 5.5 :L 4 :groups nil}])
+      (t/eq "... its unit the smallest of them" (:step gx) 0.25)
+      (t/eq "the roll draws its barlines there, and goes on in the last meter" (bars-at gx 14) [0 3 5.5 9.5 13.5])
+      (t/eq "... and the groups inside a bar" (mapv first (filter (fn [[t level]] (and (= 1 level) (< 3 t 5.5))) (cv/lines-x gx {:xa 0 :xb 14 :w 400}))) [4])
+      (t/eq "a grid set on the tree wins" (:gx (tc/view-data (into [:voice {:grid {:step 0.5 :cycles [4]}}] (rest mixed)))) {:step 0.5 :cycles [4]}))))
