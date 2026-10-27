@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// Discussion #30: a box can switch between the views of its data (a tree as code or as a score, a freqt
+// Discussion #30: a box can switch between the views of its data (a tree as a score or a roll, a freqt
 // as a canvas or a score), and the data of any buffer opens as text in the code window.
 // In the app already loaded by tests/browser.mjs with a local work open. check(label, ok, detail).
 import { cljs } from "./gestures.mjs";
@@ -30,14 +30,19 @@ export async function views(page, check) {
   const tb = (await cljs(page, '(box "tree" 1700 760)')).trim();
   const tid = tb.slice(1);
   await cljs(page, `(code ${tb} "[:voice [:measure {:meter [4 4]} \\"c4/1 d4 e4 f4\\"]]")`);
-  check("a tree box is code by default", (await cljs(page, `(display-of (get-in (current) [:boxes ${tb}]))`)) === ":code");
+  check("a tree box is a score by default", (await cljs(page, `(display-of (get-in (current) [:boxes ${tb}]))`)) === ":score");
   const before = Number(await cljs(page, events));
-  await cljs(page, `(view ${tb} :score)`);
-  check("(view :bN :score) shows the tree as a score", (await cljs(page, `(display-of (get-in (current) [:boxes ${tb}]))`)) === ":score");
+  check("(view :bN :roll) shows the tree as a roll", (await cljs(page, `(view ${tb} :roll)`)) === ":roll");
+  check("... drawn as a canvas", (await cljs(page, `(display-of (get-in (current) [:boxes ${tb}]))`)) === ":canvas");
   check("... as one event of the history", Number(await cljs(page, events)) === before + 1, await cljs(page, events));
   check("... and its tree is the same", (await cljs(page, `(count (mt/pitches (tree-data ${tb})))`)) === "4");
-  check("the work's code keeps the view", (await cljs(page, `(str/includes? (patch->code (current)) "(view ${tb} :score)")`)) === "true");
+  check("the work's code keeps the view", (await cljs(page, `(str/includes? (patch->code (current)) "(view ${tb} :roll)")`)) === "true");
   check("an unknown view is refused", /ERR/.test(await cljs(page, `(view ${tb} :piano-roll)`)));
+  check("a tree has no code view: its code opens from { }", /\{ \}/.test(await cljs(page, `(view ${tb} :code)`)));
+  check("... a box of an older work shown as code is shown as a score", (await cljs(page, `(view-of {:text "tree" :view :code})`)) === ":score");
+  check("... and one shown as a canvas, as a roll", (await cljs(page, `(view-of {:text "tree" :view :canvas})`)) === ":roll");
+  check("(view :bN :score) shows the score again", (await cljs(page, `(view ${tb} :score)`)) === ":score");
+  check("... which the work's code does not need to say", (await cljs(page, `(str/includes? (patch->code (current)) "(view ${tb}")`)) === "false");
 
   // its notes edit its own tree, without a wire back
   const pieces = await until(page, `(count (filter :src (get-in @score-cache [${tb} :pieces])))`, (g) => Number(g) > 0, 30000);
@@ -66,7 +71,7 @@ export async function views(page, check) {
     check("a letter gives the selected note the nearest pitch of that name", d === '"d4"', d);
   } else check("the score of the tree box is drawn (Verovio)", false, pieces);
 
-  // the header chips: ⇄ code brings the code back, { } opens it in the code window
+  // the header chips: ⇄ roll shows its roll, { } opens its code in the code window
   const brace = await chipCentre(page, tid, "code");
   check("a tree shown as a score has a { } chip", !!brace);
   if (brace) {
@@ -79,20 +84,22 @@ export async function views(page, check) {
   const swap = await chipCentre(page, tid, "view");
   check("a tree shown as a score has a ⇄ chip", !!swap);
   if (swap) {
-    // three views now (discussion #92): score → canvas → code
+    // two views: score ⇄ roll
     await page.mouse.click(...swap);
-    const v1 = await until(page, `(display-of (get-in (current) [:boxes ${tb}]))`, (g) => g === ":canvas");
-    check("⇄ shows the tree as a canvas next", v1 === ":canvas", v1);
+    const v1 = await until(page, `(view-of (get-in (current) [:boxes ${tb}]))`, (g) => g === ":roll");
+    check("⇄ shows the tree as a roll", v1 === ":roll", v1);
+    const roll = await chipCentre(page, tid, "code");
+    check("... which has a { } chip too", !!roll);
     const swap2 = await chipCentre(page, tid, "view");
     if (swap2) await page.mouse.click(...swap2);
-    const v = await until(page, `(display-of (get-in (current) [:boxes ${tb}]))`, (g) => g === ":code");
-    check("... and ⇄ again shows it as code", v === ":code", v);
+    const v = await until(page, `(view-of (get-in (current) [:boxes ${tb}]))`, (g) => g === ":score");
+    check("... and ⇄ again shows it as a score", v === ":score", v);
   }
 
-  // ── one box for freqt, tree and score (discussion #92): a tree drawn as a canvas ──
+  // ── one box for freqt, tree and score (discussion #92): a tree drawn as a roll ──
   const ct = (await cljs(page, '(box "tree" 1700 1500)')).trim();
   await cljs(page, `(tree! ${ct} [:voice [:par]])`);
-  check("a tree box can be shown as a canvas", (await cljs(page, `(view ${ct} :canvas)`)) === ":canvas");
+  check("a tree box can be shown as a roll (:canvas, its older name, still works)", (await cljs(page, `(view ${ct} :canvas)`)) === ":roll");
   await cljs(page, `(stroke ${ct} [[0 261.63] [1 261.63]]) (stroke ${ct} [[1 329.63] [3 329.63]])`);
   check("drawing on it writes notes into the tree", (await cljs(page, `(mt/pitches (tree-data ${ct}))`)) === '["c4" "e4"]');
   check("... placed in free time", (await cljs(page, `(mapv (juxt :t :dur) (mt/notes (tree-data ${ct})))`)) === "[[0 1] [1 2]]");
@@ -114,7 +121,7 @@ export async function views(page, check) {
   await cljs(page, `(send! ${fq} [:batch [[:note 0 60 1] [:note 1 62 1]]])`);
   const nt = (await cljs(page, `(to-tree! ${fq})`)).trim();
   check("(to-tree! :bN) makes a tree box of a freqt's strokes", (await cljs(page, `(mt/pitches (tree-data ${nt}))`)) === '["c4" "d4"]');
-  check("... shown as a canvas", (await cljs(page, `(display-of (get-in (current) [:boxes ${nt}]))`)) === ":canvas");
+  check("... shown as a roll", (await cljs(page, `(view-of (get-in (current) [:boxes ${nt}]))`)) === ":roll");
 
   // ── a freqt: its buffer as text ──
   const f = (await cljs(page, '(box "freqt" 1700 1000)')).trim();

@@ -548,7 +548,7 @@
 (defn next-view
   "The view after the one a box shows now, if its class has more than one."
   [b]
-  (let [vs (vec (comp/views-of b)) cur (display-of b)]
+  (let [vs (vec (comp/views-of b)) cur (view-of b)]
     (when (> (count vs) 1)
       (nth vs (mod (inc (or (first (keep-indexed (fn [i v] (when (= v cur) i)) vs)) 0)) (count vs))))))
 

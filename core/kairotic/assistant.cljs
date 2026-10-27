@@ -353,7 +353,7 @@ strings, keywords, vectors, maps) — no let, def, fn, str, arithmetic or any ot
   (connect :b1 0 :b2 0)              ; from :b1 outlet 0 to :b2 inlet 0 (numbered from 0, left to right)
   (code :b3 \"…source…\")             ; the source of a code box (faust~, script, component, tree)
   (present :b4 20 20)                ; puts a box on the presentation (the performer's panel), at x y
-  (view :b5 :score)                  ; shows a tree box as a score (or a freqt as :score), same data
+  (view :b5 :roll)                   ; shows a tree box as a roll (it is a :score at first; a freqt :canvas or :score), same data
   (tree! :b5 [:voice \"c4/1 e4 g4/2\"]) ; the musical tree of a tree box
   (stroke :b6 [[0 220] [1 440]]) (axis :b6 :x 0 4)  ; drawings of canvas/freqt boxes
 
@@ -378,13 +378,13 @@ Rules:
   1→1; reader 0→0, 1→1. Its other parameters [:name v] apply to every voice.
 - Musical trees (tree boxes, notation): to PLAY one, prefer `tree` → `mt play` → `synth~` (mt play
   sends Hz and voice ids at the tree's tempo once ▶ is on; see class_help). To SHOW one as notation,
-  `(view :bN :score)` on the tree box itself, or a `freqt` with `(view :bN :score)` after `mt` boxes
+  the tree box itself (it is shown as a score), or a `freqt` with `(view :bN :score)` after `mt` boxes
   (there is no score class: a score is a view of a freqt). A freqt's own strokes shown as a score are
   quantized into measures in the meter of its bar grid (`(grid-x :bN 0.5 [1.5 1.5])` → 6/8); `(quantize
   :bN {:meter \"3/4\"})` gives that measured tree. Pitches are written with their names (\"bb4\", \"f#3\"),
   kept as written; `{:key \"eb\"}` on a tree, voice or measure gives the score its key; numbers are named
   by the key (mt/spell); `mt transpose M3` moves by an interval keeping the spelling.
-  A tree box is also a canvas ((view :bN :canvas)): strokes drawn there, or (stroke :bN pts), become notes
+  A tree box is also a piano roll ((view :bN :roll)): strokes drawn there, or (stroke :bN pts), become notes
   of the tree; (quantize! :bN) writes its free time in measures; its outlet 1 is a buffer for reader~. A freqt that shows a tree is also a
   buffer: `phasor~` → `reader~` (left) with the freqt's outlet 1 on its right inlet gives the pitch as
   a signal (Hz), e.g. into a faust~ whose process takes a frequency input.

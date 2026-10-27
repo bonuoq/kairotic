@@ -1889,7 +1889,7 @@ See also: `pitch~`, `onset~`, `freqt`
 
 `tree`
 
-A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]), seen as code, as a score or as a canvas of frequency over time (⇄ in its header) — one tree, three views (discussion #92): drawing on its canvas writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it.
+A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]), seen as a score or as a roll of frequency over time (⇄ in its header), its text in the code window ({ } in its header) — one tree, two views (discussion #92): drawing on its roll writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it.
 
 **Inlets** 
 
@@ -1902,19 +1902,19 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 
 **Messages and gestures**
 
-- `double-click`: edit its text (Ctrl+Enter applies): only the nodes that changed go into the history
+- `{ } in the header (or a double-click on its right) · (source :bN)`: its text, in the code window (Ctrl+Enter applies): only the nodes that changed go into the history
 - `(tree! :bN [:voice …])`: writes a tree into it, as edits of the nodes that change
 - `(tree-edit! :bN [:attrs [0 1 2] {…}])`: edits nodes by their path: [:set p x] [:attrs p {…}] [:insert p x] [:remove p]
 - `(node-at :bN [0 1])`: the node at a path
-- `⇄ score in the header · (view :bN :score)`: the same tree drawn as a score, in this box (⇄ code brings the code back; { } opens it)
+- `score: how it is shown at first · (view :bN :score)`: the tree drawn as a score, in this box (⇄ roll shows its roll)
 - `in a score: click a note`: ↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · # another name (c#4 → db4) · + − duration · ← → next · Delete → rest
 - `{:key "eb"} on the tree, a voice or a measure`: the score's key: its signature, accidentals that last the bar; :none writes every accidental
 - `in a score: click a rest`: Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note
 - `(as-tree :bN)`: reads it back as data
-- `⇄ canvas · (view :bN :canvas)`: its notes as strokes of frequency over time: drawing, dragging, stretching or erasing there edits the tree (free time; with measures, the bars it touches are quantized again; ⌥ to a free voice)
+- `⇄ roll · (view :bN :roll)`: a piano roll: its notes as strokes of frequency over time: drawing, dragging, stretching or erasing there edits the tree (free time; with measures, the bars it touches are quantized again; ⌥ to a free voice)
 - `(quantize! :bN) · (unquantize! :bN)`: its free time written in measures, and back (one event each)
 
-**Try:** The score already shows the tree, measure by measure. Double-click the code, change a note and apply it (Ctrl+Enter): the score follows. Click a note of the score and press ↑: the change comes back to the tree by the dashed line. Or press ⇄ score in the header of the tree box: the same tree as a score, in one box.
+**Try:** The tree box is its own score, and the freqt shows the same tree. Press { } in the header of the tree box, change a note in its text and apply it (Ctrl+Enter): both scores follow. Click a note of the freqt's score and press ↑: the change comes back to the tree by the dashed line. Press ⇄ roll on the tree box to draw notes into it.
 
 ```clojure
 (box :b1 "bang" 40 20)

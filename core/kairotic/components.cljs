@@ -56,6 +56,10 @@
 ;;  :views    [:code :score]                 the displays a box of this class can switch between, the first
 ;;                                           one its default: each box keeps its choice, (view :bN :score),
 ;;                                           and its data stays the same (discussion #30)
+;;  :view-as  {:roll :canvas}               a view drawn as another display (a tree's roll is drawn as a canvas)
+;;  :view-aliases {:canvas :roll}           older names of its views, still read (in works and in (view …))
+;;  :language "edn"                          with a :display that is not :code: its [:data :source] is still
+;;                                           its text, opened in the code window from { } (a tree box)
 ;;  :size     [width height] | (fn [box] [w h])  a box with its own view (drawing and gestures), handle not counted
 ;;  :view     shapes                        a shapes template (kairotic.shapes) whose values can be holes,
 ;;                                           keywords starting with $ (:$angle). Plain data: preferred over :draw
@@ -166,18 +170,29 @@
 (defn views-of "The displays a box can switch between (none, or one, if its class has no :views)." [b]
   (:views (lookup (klass (:text b)))))
 
+(defn view-name
+  "A view as its class names it now: an older name ((:view-aliases of the class) becomes the current one."
+  [b v] (get (:view-aliases (lookup (klass (:text b)))) v v))
+
 (defn shown-as
-  "How a box is shown: the view it chose, if its class offers it, or the :display of its class."
+  "The view a box is shown in: the view it chose, if its class offers it (by its current name or an older
+   one), or the :display of its class."
   [b]
-  (let [d (lookup (klass (:text b))) v (:view b)]
+  (let [d (lookup (klass (:text b))) v (view-name b (:view b))]
     (if (and (keyword? v) (some #{v} (:views d))) v (or (:display d) :text))))
+
+(defn drawn-as
+  "How a box is drawn: the display of the view it is shown in (a tree's :roll is drawn as a :canvas)."
+  [b]
+  (let [v (shown-as b)] (get (:view-as (lookup (klass (:text b)))) v v)))
 
 (defn source-of
   "The data of a box as text, to edit (a code box's source, or what its model's :source writes), or nil."
   [b]
   (let [m (model-of b)]
     (cond (fn? (:source m)) ((:source m) (or (:data b) (:empty m)))
-          (= :code (:display (lookup (klass (:text b))))) (str (get-in b [:data :source]))
+          (let [d (lookup (klass (:text b)))] (or (= :code (:display d)) (string? (:language d))))
+          (str (get-in b [:data :source]))
           :else nil)))
 
 (defn own-view?

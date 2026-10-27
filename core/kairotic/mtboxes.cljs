@@ -1,6 +1,6 @@
 ;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · boxes for musical trees (Study 19)
-;;   tree   a code box whose source is a tree in EDN (kairotic.mt): a bang sends it
+;;   tree   a tree in EDN (kairotic.mt), seen as a score or a roll, its text in the code window: a bang sends it
 ;;   mt     operations on trees: mt transpose 7 · mt invert c4 · mt retrograde · mt augment 2 ·
 ;;          mt rotate 1 · mt canon 2 7 · mt thin 0.5 · mt seq · mt par · mt events · mt pitches · mt duration · mt play
 ;; A canvas, freqt or score that receives a tree shows it (kairotic.components/canvas-box).
@@ -63,9 +63,12 @@
                       (concat [(str "(tree! " id)] (map (fn [l] (str "  " l)) (str/split-lines (mt/pp t))) [")"])))})
 
 (comp/define! "tree"
-  {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]), seen as code, as a score or as a canvas of frequency over time (⇄ in its header) — one tree, three views (discussion #92): drawing on its canvas writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it."
+  {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]), seen as a score or as a roll of frequency over time (⇄ in its header), its text in the code window ({ } in its header) — one tree, two views (discussion #92): drawing on its roll writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it."
    :usage "tree"
-   :display :code :views [:code :score :canvas] :language "edn" :model model
+   ;; two views (score, roll); its text opens in the code window from { }. Works that showed it as code
+   ;; or as a canvas open it as a score or a roll
+   :display :score :views [:score :roll] :view-as {:roll :canvas} :view-aliases {:canvas :roll :code :score}
+   :language "edn" :model model
    :io [1 2]
    :template "[:voice {:name \"motif\"}\n [:measure {:meter [4 4]} \"c4/1 d4/.5 e4 g4/1 e4\"]\n [:measure \"f4/.5 e4 d4 c4 d4/2\"]]"
    :receive (fn [m]

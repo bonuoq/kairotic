@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A tree box has two views, score and roll**: a new tree box is a score; ⇄ shows its **roll** (the piano
+  roll of frequency over time that was its canvas view; `(view :bN :roll)`). Its text is no longer a view:
+  **{ }** in its header (or a double-click on its right half, or `(source :bN)`) opens it in the code window,
+  where Ctrl+Enter applies it as edits of the nodes that changed. Works that showed a tree as code open it
+  as a score, and as a canvas, as a roll; `(view :bN :canvas)` still works. Classes can name their views
+  apart from how they are drawn (`:view-as`, `:view-aliases`, `comp/drawn-as`; `view-of` in the REPL), and a
+  class with a `:language` keeps its text in the code window whatever its display. The tutorial
+  "One, two, tree" now reads: one box, two views, tree.
 - **Tutorial «Patterns: play them, draw them»** (composition, 3): a `pbind` played by a `player` (by its 
   clock, by steps, at a position going either way), its generators and seed, `:amp` and rests, `#pat/hold` 
   harmony; `render` into a `freqt`, `keep!`, a canvas time map (backwards, held, a canon by augmentation), 

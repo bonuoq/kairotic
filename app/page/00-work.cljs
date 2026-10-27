@@ -20,9 +20,10 @@
 (declare es? docs open-work! show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
 (def klass comp/klass)
 (defn box-def [b] (comp/lookup (klass (:text b))))
-;; how a box is shown: the view it chose among those of its class (a tree as code or as a score, a freqt
+;; how a box is shown: the view it chose among those of its class (a tree as a score or a roll, a freqt
 ;; as a canvas or a score: discussion #30), or the :display of its class
-(defn display-of [b] (comp/shown-as b))
+(defn display-of "How a box is drawn (a tree's roll is drawn as a canvas)." [b] (comp/drawn-as b))
+(defn view-of "The view a box is shown in, by its name (:score, :roll, :canvas…)." [b] (comp/shown-as b))
 (def own-view? comp/own-view?)
 
 (defn io

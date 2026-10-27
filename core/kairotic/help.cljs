@@ -374,21 +374,21 @@
    {:inlets ["a bang: sends the tree again · [:edit …] (from the edits outlet of a freqt shown as a score): changes it · a tree: replaces it"]
     :outlets ["the tree, expanded (melody strings become notes, [:use …] the fragments it names), whenever it changes"
               "its notes as a buffer (strokes of frequency over time), for the right inlet of a reader~"]
-    :messages [["double-click" "edit its text (Ctrl+Enter applies): only the nodes that changed go into the history"]
+    :messages [["{ } in the header (or a double-click on its right) · (source :bN)" "its text, in the code window (Ctrl+Enter applies): only the nodes that changed go into the history"]
                ["(tree! :bN [:voice …])" "writes a tree into it, as edits of the nodes that change"]
                ["(tree-edit! :bN [:attrs [0 1 2] {…}])" "edits nodes by their path: [:set p x] [:attrs p {…}] [:insert p x] [:remove p]"]
                ["(node-at :bN [0 1])" "the node at a path"]
-               ["⇄ score in the header · (view :bN :score)" "the same tree drawn as a score, in this box (⇄ code brings the code back; { } opens it)"]
+               ["score: how it is shown at first · (view :bN :score)" "the tree drawn as a score, in this box (⇄ roll shows its roll)"]
                ["in a score: click a note" "↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · # another name (c#4 → db4) · + − duration · ← → next · Delete → rest"]
                ["{:key \"eb\"} on the tree, a voice or a measure" "the score's key: its signature, accidentals that last the bar; :none writes every accidental"]
                ["in a score: click a rest" "Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note"]
                ["(as-tree :bN)" "reads it back as data"]
-               ["⇄ canvas · (view :bN :canvas)" "its notes as strokes of frequency over time: drawing, dragging, stretching or erasing there edits the tree (free time; with measures, the bars it touches are quantized again; ⌥ to a free voice)"]
+               ["⇄ roll · (view :bN :roll)" "a piano roll: its notes as strokes of frequency over time: drawing, dragging, stretching or erasing there edits the tree (free time; with measures, the bars it touches are quantized again; ⌥ to a free voice)"]
                ["(quantize! :bN) · (unquantize! :bN)" "its free time written in measures, and back (one event each)"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)"
                     "(code :b2 \"[:voice\\n [:measure {:meter [3 4]} \\\"e5/1\\\" [:tuplet {:ratio [3 2]} \\\"d5/.5 c5 b4\\\"] [:note {:pitch \\\"a4\\\" :dur 1 :dyn \\\"p\\\"}]]\\n [:measure \\\"g4/3\\\"]]\")"
                     "(box :b3 \"freqt\" 40 190)" "(view :b3 :score)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 2 :b2 0)")
-    :try "The score already shows the tree, measure by measure. Double-click the code, change a note and apply it (Ctrl+Enter): the score follows. Click a note of the score and press ↑: the change comes back to the tree by the dashed line. Or press ⇄ score in the header of the tree box: the same tree as a score, in one box."
+    :try "The tree box is its own score, and the freqt shows the same tree. Press { } in the header of the tree box, change a note in its text and apply it (Ctrl+Enter): both scores follow. Click a note of the freqt's score and press ↑: the change comes back to the tree by the dashed line. Press ⇄ roll on the tree box to draw notes into it."
     :see ["mt" "freqt"]}
 
    "mt"

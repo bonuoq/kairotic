@@ -172,7 +172,7 @@ Un compás que no cuadra es un aviso (⚠ en la REPL y en la caja), no un error,
 
 | caja | |
 |---|---|
-| `tree` | guarda un árbol, visto como **código**, como **partitura** o como **lienzo** (⇄ en su cabecera): un árbol, tres vistas (más abajo). Un bang lo envía; su segunda salida son sus notas como buffer, para un `reader~`. Leer EDN no evalúa nada, así que una caja tree es segura en una sala compartida |
+| `tree` | guarda un árbol, visto como **partitura** o como **roll** (⇄ en su cabecera), con su texto en la ventana de código ({ }): un árbol, dos vistas (más abajo). Un bang lo envía; su segunda salida son sus notas como buffer, para un `reader~`. Leer EDN no evalúa nada, así que una caja tree es segura en una sala compartida |
 | `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` · `mt thin 0.5` | transformaciones (la entrada derecha cambia la cantidad) |
 | `mt seq` · `mt par` | une el árbol de la izquierda con el de la derecha, uno detrás de otro o a la vez |
 | `mt events` · `mt pitches` · `mt duration` | el árbol como datos planos |
@@ -190,11 +190,13 @@ de un 4/4 deja ver la parte 3. Dos claves más de una nota: `:tie true` sigue en
 altura (un solo sonido, ligado sobre la barra o dentro de un grupo irregular) y `:grace true` es una nota de
 adorno antes de la siguiente (no ocupa tiempo).
 
-## Una caja: el árbol como código, partitura y lienzo
+## Una caja: el árbol como partitura y roll
 
 Una caja `tree` es la caja única para la música en el tiempo (discusión [#92](https://github.com/bonuoq/kairotic/discussions/92)):
-su dato es el árbol, y **código**, **partitura** y **lienzo** son vistas de él (⇄ en su cabecera, o
-`(view :bN :canvas)`). El lienzo dibuja sus notas como trazos de frecuencia en el tiempo, como un freqt, y lo que
+su dato es el árbol, y **partitura** y **roll** son sus dos vistas (⇄ en su cabecera, o `(view :bN :roll)`; una
+caja tree nueva es una partitura). Su texto no es una vista: **{ }** en su cabecera (o un doble clic en su mitad
+derecha) lo abre en la ventana de código, donde Ctrl+Intro lo aplica como ediciones de los nodos que cambiaron.
+El roll es un piano roll: sus notas como trazos de frecuencia en el tiempo, como los dibuja un freqt, y lo que
 se dibuja ahí se convierte en ediciones del árbol: un evento de la historia cada una, que se fusiona entre ramas
 como cualquier edición de un árbol.
 
@@ -213,7 +215,7 @@ como cualquier edición de un árbol.
   (`:tuning false` es frecuencia continua); un árbol con compases sin `:grid` muestra sus compases.
 
 ```clojure
-(view :b2 :canvas)                 ; dibujar en él
+(view :b2 :roll)                   ; dibujar en él
 (stroke :b2 [[0 261.63] [1 261.63]])   ; o con código: un c4 de 0 a 1
 (quantize! :b2)                    ; su tiempo libre escrito en compases (un evento; deshacer vuelve)
 (unquantize! :b2)                  ; sus notas en tiempo libre otra vez

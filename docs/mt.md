@@ -169,7 +169,7 @@ write.
 
 | box | |
 |---|---|
-| `tree` | holds a tree, seen as **code**, as a **score** or as a **canvas** (⇄ in its header): one tree, three views (below). A bang sends it; its second outlet is its notes as a buffer, for a `reader~`. Reading EDN evaluates nothing, so a tree box is safe in a shared room |
+| `tree` | holds a tree, seen as a **score** or as a **roll** (⇄ in its header), its text in the code window ({ }): one tree, two views (below). A bang sends it; its second outlet is its notes as a buffer, for a `reader~`. Reading EDN evaluates nothing, so a tree box is safe in a shared room |
 | `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` · `mt thin 0.5` | transformations (the right inlet changes the amount) |
 | `mt seq` · `mt par` | joins the left tree with the right one, one after the other or at once |
 | `mt events` · `mt pitches` · `mt duration` | the tree as plain data |
@@ -186,12 +186,14 @@ quarter on beat 2 of 3/4 stays dotted, on beat 2 of 4/4 it shows beat 3. Two mor
 `:tie true` goes on into the next note of the same pitch (one sound, tied across a barline or into a
 tuplet) and `:grace true` is a grace note before the next one (it takes no time).
 
-## One box: the tree as code, score and canvas
+## One box: the tree as score and roll
 
 A `tree` box is the one box for music in time (discussion [#92](https://github.com/bonuoq/kairotic/discussions/92)):
-its data is the tree, and **code**, **score** and **canvas** are views of it (⇄ in its header, or
-`(view :bN :canvas)`). The canvas draws its notes as strokes of frequency over time, as a freqt does,
-and what is drawn there becomes edits of the tree — one event of the history each, merged between
+its data is the tree, and **score** and **roll** are its two views (⇄ in its header, or
+`(view :bN :roll)`; a new tree box is a score). Its text is not a view: **{ }** in its header (or a
+double-click on its right half) opens it in the code window, where Ctrl+Enter applies it as edits of the
+nodes that changed. The roll is a piano roll: its notes as strokes of frequency over time, as a freqt
+draws them, and what is drawn there becomes edits of the tree — one event of the history each, merged between
 branches like any edit of a tree.
 
 - **Free time** (a tree without measures): drawing adds a note placed with `:at`, dragging moves it,
@@ -209,7 +211,7 @@ branches like any edit of a tree.
   (`:tuning false` is continuous frequency); a measured tree without `:grid` shows its bars.
 
 ```clojure
-(view :b2 :canvas)                 ; draw on it
+(view :b2 :roll)                   ; draw on it
 (stroke :b2 [[0 261.63] [1 261.63]])   ; or by code: a note c4 from 0 to 1
 (quantize! :b2)                    ; its free time written in measures (one event; undo goes back)
 (unquantize! :b2)                  ; its notes in free time again
