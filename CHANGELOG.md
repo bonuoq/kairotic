@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **The strength of each attack, from `onset~` to the quantizer** (issue #106, after the analysis of `onset~` in it).
+  `@kairotic/analysis` 0.4.0:
+  - `onset~` has a third outlet, the growth of the spectrum of every frame (the onset strength envelope).
+  - `onset~` no longer takes a sound cut at once for an onset: the energy must not fall.
+  - `transcribe` takes `onset~`'s strength on its right inlet, and writes each note with the weight of its attack:
+    the stroke's `:look {:w}`, as an event's `:amp` is.
+  - The quantizer reads that weight as the note's `:vel`, and `kairotic.tempo` weighs onsets by it (`:accent`, on by
+    default; `:bass` weighs low notes, off). Options of the tracker go in `:track`.
+  - The delay of `onset~` was measured: 6 ms median, one hop at most.
+- **Real performances in the benchmark**: `tests/quantize-corpus/fetch-asap.mjs` samples 40 piano performances of
+  ASAP (with annotated beats and downbeats) into the cache. `bench.mjs --asap` measures the beats found (F-measure
+  at 70 ms, also at any metric level), the downbeats and the tempo. With velocities: beats 57.5 % (71.8 % at any
+  level), downbeats 41 % (36 % without them).
 - **Played time** (issue #106). `kairotic.tempo` finds the beats of notes played freely (in seconds, or at a
   tempo nobody chose: `transcribe` writes at 60 bpm): the tempo from the intervals between onsets, the beats by a
   dynamic programme that follows rubato (after Ellis 2007), and, by analysis by synthesis, what each beat is

@@ -8,7 +8,7 @@ From any signal — an `adc~`, a `sample` played by a `reader~`, a `faust~` — 
 |---|---|
 | `features~ [ms] [descriptor …]` | one outlet per descriptor written after it, every ms (20): `rms`, `energy`, `zcr`, `loudness`, `centroid` and `spread` (Hz), `flatness`, `rolloff` (Hz), `kurtosis`, `skewness`, `slope`, `crest`, `sharpness`, `perceptualSpread`, `mfcc` (13), `chroma` (12). Without words: `rms centroid flatness` |
 | `pitch~ [lo hi] [threshold]` | the frequency in Hz (0 once when it stops hearing one) and how clearly periodic it is, by YIN, between lo and hi (60 – 1500 Hz) |
-| `onset~ [threshold] [ms]` | a bang at the beginning of each sound (a note, a stroke, a syllable) and its strength |
+| `onset~ [threshold] [ms]` | a bang at the beginning of each sound (a note, a stroke, a syllable), its strength, and the growth of the spectrum of every frame (the onset strength envelope). An onset is reported about 6 ms after it starts (one hop at most, measured); a sound cut at once is not one |
 | `chroma~ [ms]` | 12 values from C to B and the strongest pitch class as a word (`:a`, `:c#`…) |
 | `spectrum~ [lo hi]` | the spectrum drawn in the patch, on a log scale of frequency |
 | `transcribe [bpm] [notes\|glide] [ms]` | what `pitch~` hears (and `onset~` splits), written into a `freqt` as strokes: flat notes at the pitch they hold longest, or contours that follow the voice; times in beats at bpm. `rec` starts from 0, `rec t` from beat t, `ovr t` over only what the take covers, `stop` ends |
@@ -38,6 +38,8 @@ To watch what a sound does over time, several descriptors side by side:
 ```
 
 An improvisation into notation: `adc~` → `pitch~` → `transcribe` → `freqt`, with `onset~` on the right
-of `transcribe`; `rec`, play, `stop`; then `(view :bN :score)` on the freqt, or `(keep! …)` and `mt`.
+of `transcribe` (its second outlet, the strength: each note is then written with the weight of its attack); `rec`,
+play, `stop`; then `(track! :bN)` to find its beats and bars, `(view :bN :score)` on the freqt, or `(keep! …)` and
+`mt`.
 
 Writing one of its classes in a work brings the package into it. Licence: [MPL-2.0](../../LICENSE).

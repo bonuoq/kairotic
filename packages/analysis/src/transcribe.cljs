@@ -34,10 +34,18 @@
                    (let [t0 (ffirst (:pts cur))
                          long-enough (>= (/ (- t t0) (/ (:bpm state) 60)) (/ (:min-ms state) 1000))]
                      (cond-> (dissoc state :cur)
-                       long-enough (update :done conj (stroke-of cur t (:mode state)))
+                       long-enough (update :done conj {:pts (stroke-of cur t (:mode state)) :acc (:acc cur)})
                        long-enough (update :count inc)))
                    state))
-      start-note (fn [state t hz] (assoc state :cur {:pts [[t hz]] :midi (api/hz->midi hz)}))
+      ;; a note takes the strength of the onset that began it (a number on the right inlet, from onset~), if it
+      ;; came at most 0.15 s before: onset~ often hears the attack before pitch~ hears the pitch
+      start-note (fn [state t hz]
+                   (let [[at s] (:acc state) acc (when (and at (<= (- t at) (* 0.15 (/ (:bpm state) 60)))) s)]
+                     (cond-> (assoc state :cur (cond-> {:pts [[t hz]] :midi (api/hz->midi hz)} acc (assoc :acc acc)))
+                       acc (dissoc :acc))))
+      ;; how a note with the strength of its attack is written: the weight of its stroke, as an event's :amp is
+      ;; (0 … 1 → 0.4 … 2.8 times the usual); the quantizer reads it back as the note's :vel (issue #106)
+      edit-of (fn [{:keys [pts acc]}] (if (number? acc) [:stroke pts {:w (/ (js/Math.round (* 100 (+ 0.4 (* 2.4 acc)))) 100)}] [:stroke pts]))
       ;; ── writing: the strokes that ended, as one [:batch …], at most every flush-every seconds ──
       flush (fn [state at force]
               (let [now (r3 (beats state at))]
@@ -52,7 +60,7 @@
                    [:batch (into (cond (:ovr state) [[:cut (:cut-from state) now]]
                                        (:fresh state) [(if (:from state) [:cut (:from state)] [:clear])]
                                        :else [])
-                                 (mapv (fn [pts] [:stroke pts]) (:done state)))] nil]
+                                 (mapv edit-of (:done state)))] nil]
                   (:pending state) [state nil nil]
                   :else [(assoc state :pending true) nil [(+ (:sent state) flush-every) 0 [:flush]]])))
       result (fn [state [st edit later]]
@@ -74,7 +82,7 @@
   {;; ── about ──
    :class "transcribe"
    :license "MPL-2.0"
-   :doc "Writes what pitch~ hears into a freqt, as strokes. Hz on the left (from pitch~: 0 when it hears none), rec to start from 0 (its first write clears the freqt) or rec t (msg rec 8) to start from beat t, keeping what is before it, or ovr t (msg ovr 8) to write over only what the take covers, keeping what comes after and stop to end; a bang on the right (from onset~) begins a new note even on the same pitch. In notes mode each note is a flat stroke at the pitch it holds longest (the freqt's tuning, or its score view, rounds it); in glide mode a stroke follows the pitch as it moves. Times are beats at bpm (60: one beat a second). Notes shorter than ms (60) are left out. It writes into the freqt at most every 2 seconds, each time one event of the history. Connect its outlet to the freqt's inlet."
+   :doc "Writes what pitch~ hears into a freqt, as strokes. Hz on the left (from pitch~: 0 when it hears none), rec to start from 0 (its first write clears the freqt) or rec t (msg rec 8) to start from beat t, keeping what is before it, or ovr t (msg ovr 8) to write over only what the take covers, keeping what comes after and stop to end; a bang on the right (from onset~) begins a new note even on the same pitch, and a number there (onset~'s strength, 0…1) does too and gives the note that weight: its stroke is written heavier (as an event's :amp), and the quantizer reads it as the note's :vel, which helps find the beat and the bar (issue #106). In notes mode each note is a flat stroke at the pitch it holds longest (the freqt's tuning, or its score view, rounds it); in glide mode a stroke follows the pitch as it moves. Times are beats at bpm (60: one beat a second). Notes shorter than ms (60) are left out. It writes into the freqt at most every 2 seconds, each time one event of the history. Connect its outlet to the freqt's inlet."
    :usage "transcribe [bpm] [notes|glide] [ms]"
    :io [2 1]
    :size [124 30]
@@ -104,10 +112,16 @@
                     (cond-> {:state (assoc st :on false) :show {:on false :count (:count st)}}
                       edit (assoc :out [[0 edit]])))
                   (= value [:flush]) (result state (flush (assoc state :pending false) at false))
-                  ;; an onset: the note that sounds ends here and a new one begins at its pitch
-                  (and (= inlet 1) (:cur state))
-                  (let [t (beats state at) hz (second (peek (get-in state [:cur :pts])))]
-                    (result state (flush (-> state (end-note t) (start-note t hz)) at false)))
+                  ;; an onset (a bang, or its strength 0…1 from onset~'s second outlet): the note that sounds ends
+                  ;; here and a new one begins at its pitch, with that strength; in silence, the strength waits for
+                  ;; the next note to begin
+                  (= inlet 1)
+                  (let [t (beats state at)
+                        state (if (number? value) (assoc state :acc [t (api/clamp value 0 1)]) state)]
+                    (if (:cur state)
+                      (let [hz (second (peek (get-in state [:cur :pts])))]
+                        (result state (flush (-> state (end-note t) (start-note t hz)) at false)))
+                      {:state state}))
                   (and (= inlet 0) (number? value)) (result state (hear state value at))
                   :else {})))
 

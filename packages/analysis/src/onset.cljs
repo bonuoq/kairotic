@@ -17,20 +17,21 @@
       median (fn [xs] (if (empty? xs) 0 (nth (sort xs) (quot (count xs) 2))))
       gate 0.005                ; rms under it (about -46 dB) is silence
       ;; the decision, pure: an onset where the flux rises above threshold × the median of the last
-      ;; frames (and above 0.1), not sooner than ms after the last one
+      ;; frames (and above 0.1) while the energy does not fall (a sound cut at once spreads its spectrum like an
+      ;; attack, but its energy goes down: not an onset), not sooner than ms after the last one
       detect (fn [state {:keys [flux rms]} at threshold ms]
                (let [hist (vec (take-last 16 (:hist state)))
                      m (median hist)
-                     over (and (> rms gate) (> flux 0.1) (> flux (* threshold m)))
+                     over (and (> rms gate) (> flux 0.1) (> flux (* threshold m)) (>= rms (or (:rms state) 0)))
                      fire (and over (not (:over state)) (or (nil? (:last state)) (>= (- at (:last state)) (/ ms 1000))))]
-                 [(cond-> (assoc state :hist (conj hist flux) :over over) fire (assoc :last at))
+                 [(cond-> (assoc state :hist (conj hist flux) :over over :rms rms) fire (assoc :last at))
                   (when fire (/ (js/Math.round (* 100 flux)) 100))]))]
   {;; ── about ──
    :class "onset~"
    :license "MPL-2.0"
-   :doc "The beginnings of sounds in the signal on its left — a note, a stroke, a syllable —: a bang on the left for each, and how strong it was (the growth of its spectrum, 0…1) on the right. threshold (3) is how far above the usual change of the last frames an onset must rise; ms (80) the least time between two. Every 512 samples (about 11 ms), on frames of 2048. Into a counter, a metro that follows, a sample's rec."
+   :doc "The beginnings of sounds in the signal on its left — a note, a stroke, a syllable —: a bang on the left for each, and how strong it was (the growth of its spectrum, 0…1) on the second outlet; on the third, that growth for every frame (the onset strength envelope, for beat tracking: issue #106). threshold (3) is how far above the usual change of the last frames an onset must rise, while the energy does not fall (a sound cut at once is not an onset); ms (80) the least time between two. Every 512 samples (about 11 ms), on frames of 2048. An onset is reported with the frame it is first seen in: measured on sines, plucked tones and noise bursts that start at a known sample, 6 ms after it as a median (0.7 to 10.7 ms: one hop), and 11 ms for a new note over a held one. Into a counter, a metro that follows, a sample's rec, or the right inlet of transcribe (its strength, as the weight of the note)."
    :usage "onset~ [threshold] [ms]"
-   :io [1 2]
+   :io [1 3]
    :size [64 30]
    :args [[:threshold 3] [:ms 80]]
 
@@ -40,9 +41,11 @@
                 (and (= inlet :audio) (:error value)) {:effects [[:print (:error value)]]}
                 (and (= inlet :audio) (map? value))
                 (let [[st strength] (detect state value at (api/clamp (:threshold args) 1 50) (api/clamp (:ms args) 10 2000))]
-                  (if strength
-                    {:state st :out [[1 strength] [0 :bang]] :show {:at at :strength strength}}
-                    {:state st}))
+                  ;; the flux of every frame on the third outlet: the onset strength envelope (issue #106)
+                  (let [env [2 (/ (js/Math.round (* 1000 (:flux value))) 1000)]]
+                    (if strength
+                      {:state st :out [[1 strength] [0 :bang] env] :show {:at at :strength strength}}
+                      {:state st :out [env]})))
                 :else {}))
 
    ;; ── view: a dot that lights on each onset ──

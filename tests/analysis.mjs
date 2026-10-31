@@ -26,6 +26,9 @@ export async function analysis(page, check) {
   const g = (await cljs(page, '(box "gain~ 0" 4900 100)')).trim();
   const onset = (await cljs(page, '(box "onset~" 4900 160)')).trim();
   const count = (await cljs(page, '(box "counter 1 1000" 4900 220)')).trim();
+  // its third outlet: the flux of every frame (the onset strength envelope, issue #106)
+  const env = (await cljs(page, '(box "number" 5000 220)')).trim();
+  await cljs(page, `(connect ${onset} 2 ${env} 0)`);
   check("features~ has an outlet per descriptor", (await cljs(page, `(io (get-in (current) [:boxes ${feats}]))`)) === "[1 2]");
   await cljs(page, `(connect ${osc} 0 ${pitch} 0) (connect ${osc} 0 ${feats} 0) (connect ${osc} 0 ${chroma} 0)
                     (connect ${osc} 0 ${spec} 0) (connect ${osc} 0 ${g} 0) (connect ${g} 0 ${onset} 0) (connect ${onset} 0 ${count} 0)`);
@@ -72,13 +75,17 @@ export async function analysis(page, check) {
   check("onset~: a sound that starts three times makes onsets", Number(n) >= 2 && Number(n) <= 6, n);
   const marks = await cljs(page, `(count ${lane(2)})`);
   check("monitor marks the onsets in its third lane", Number(marks) >= 2, marks);
+  check("onset~ has a third outlet", (await cljs(page, `(io (get-in (current) [:boxes ${onset}]))`)) === "[1 3]");
+  const fl = await until(page, `(second (last-shown ${env}))`, (x) => x !== "nil" && !isNaN(Number(x)), 3000);
+  check("... the flux of every frame, a number from 0 to 1", Number(fl) >= 0 && Number(fl) <= 1, fl);
 
   // transcribe: a sound that starts three times, then moves to another pitch, written into a freqt
   // (the pitch~ above hears the osc~ itself: this one hears it through the gain~ that starts and stops it)
   const p2 = (await cljs(page, '(box "pitch~" 5200 100)')).trim();
   const tr = (await cljs(page, '(box "transcribe 60" 5200 160)')).trim();
   const fq = (await cljs(page, '(box "freqt" 5200 220)')).trim();
-  await cljs(page, `(connect ${g} 0 ${p2} 0) (connect ${p2} 0 ${tr} 0) (connect ${tr} 0 ${fq} 0)`);
+  // the strength of each onset (onset~'s second outlet) on transcribe's right inlet: the weight of its note
+  await cljs(page, `(connect ${g} 0 ${p2} 0) (connect ${p2} 0 ${tr} 0) (connect ${tr} 0 ${fq} 0) (connect ${onset} 1 ${tr} 1)`);
   await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(300);
   await cljs(page, `(send! ${tr} :rec)`);
   for (let i = 0; i < 3; i++) {
@@ -102,6 +109,10 @@ export async function analysis(page, check) {
   check("... with their length in beats (about 0.4, and 0.5)", /^\[0\.[345] 0\.[345] 0\.[345] 0\.[456]\]$/.test(durs), durs);
   const starts = await cljs(page, `(mapv (fn [p] (first (first p))) ${strokes})`);
   check("... from the beginning of the take", Number(JSON.parse(starts.replace(/ /g, ","))[0]) < 0.3, starts);
+  const ws = await cljs(page, `(count (filter (fn [[_ s]] (number? (get-in s [:look :w]))) (:strokes (box-data ${fq}))))`);
+  check("... and, with onset~'s strength on its right inlet, the weight of each note on its stroke", Number(ws) >= 3, ws);
+  const vels = await cljs(page, `(mapv (fn [n] (number? (:vel (:attrs n)))) (qz/strokes->notes (box-data ${fq})))`);
+  check("... which the quantizer reads as the note's :vel", /true/.test(vels), vels);
 
   // punch-in: rec 1 keeps what is before beat 1 (the second note cut there) and writes from it
   await cljs(page, `(send! ${osc} 440) (send! ${tr} [:rec 1])`);

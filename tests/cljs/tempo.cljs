@@ -61,3 +61,13 @@
             0)
       (t/eq "with :grace false it is a note" (count (filter :grace (mt/notes (qz/quantize-tree (free [[0 1 60] [0.94 0.05 64] [1 1 62] [2 2 60]]) {:meter [4 4] :grace false}))))
             0))))
+
+(t/run! "the strength of a note, from the weight of its stroke"
+  (fn []
+    (let [d {:strokes {:t1 {:pts [[0 220] [1 220]] :look {:w 2.8}} :t2 {:pts [[1 220] [2 220]]} :t3 {:pts [[2 220] [3 220]] :look {:w 1}}}}
+          ns (sort-by :on (qz/strokes->notes d))]
+      (t/eq "a stroke's weight is its note's :vel (as an event's :amp: 0.4 … 2.8 → 0 … 1); without one, none"
+            (mapv (comp :vel :attrs) ns) [1 nil 0.25]))
+    (t/is "an onset played louder weighs more"
+          (let [[a b] (tm/onsets [{:on 0 :off 1 :attrs {:vel 1}} {:on 1 :off 2 :attrs {:vel 0.1}}] tm/defaults)] (> (:w a) (:w b))))
+    (t/eq "... unless :accent is off" (let [[a b] (tm/onsets [{:on 0 :off 1 :attrs {:vel 127}} {:on 1 :off 2 :attrs {:vel 10}}] (assoc tm/defaults :accent false))] (= (:w a) (:w b))) true)))

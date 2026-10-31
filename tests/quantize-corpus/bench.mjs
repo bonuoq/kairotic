@@ -22,6 +22,8 @@ const arg = (k, d) => { const i = process.argv.indexOf("--" + k); return i > 0 ?
 const seeds = arg("seeds", 3), key = process.argv.includes("--key");
 // --timed: play the pieces in seconds, at a tempo that moves, and quantize them through the beats found (#106)
 const timed = process.argv.includes("--timed");
+// --asap: the beats found in real piano performances against the annotated ones (fetch-asap.mjs first)
+const asap = process.argv.includes("--asap");
 // --opts "{:w {:coh 1}}": options for the quantizer (EDN), for every piece
 const qopts = (() => { const i = process.argv.indexOf("--opts"); return i > 0 ? process.argv[i + 1] : "nil"; })();
 if (!existsSync(join(site, "tests.html"))) { console.error("Build the site first: node site/build.mjs"); process.exit(1); }
@@ -37,7 +39,8 @@ const server = createServer((req, res) => {
 }).listen(0);
 const url = `http://localhost:${server.address().port}/tests.html`;
 
-const outside = existsSync(join(cache, "corpus.edn")) ? readFileSync(join(cache, "corpus.edn"), "utf8") : null;
+if (asap && !existsSync(join(cache, "asap.edn"))) { console.error("Fetch ASAP first: node tests/quantize-corpus/fetch-asap.mjs"); process.exit(1); }
+const outside = asap ? readFileSync(join(cache, "asap.edn"), "utf8") : existsSync(join(cache, "corpus.edn")) ? readFileSync(join(cache, "corpus.edn"), "utf8") : null;
 if (!outside) console.log("(no outside corpus: node tests/quantize-corpus/fetch.mjs fetches it; running Kairotic's own)");
 
 const browser = await chromium.launch();
@@ -47,16 +50,19 @@ await page.goto(url);
 await page.waitForFunction(() => { try { return scittle.core.eval_string("(boolean (find-ns 'kairotic.qbench))") === true; } catch (_) { return false; } },
                            null, { timeout: 180000 });
 const t0 = Date.now();
-const out = await page.evaluate(([edn, seeds, key, qopts, timed]) => {
+const out = await page.evaluate(([edn, seeds, key, qopts, timed, asap]) => {
   window.__corpus = edn; window.__qopts = qopts;
   return scittle.core.eval_string(`
     (do (require '[kairotic.qbench :as qb] '[kairotic.mt :as mt])
         (let [outside (when js/window.__corpus (mt/read-tree js/window.__corpus))
-              rs (qb/run-corpus (into (qb/own-corpus) outside) {:seeds ${seeds} :key? ${key} :qopts (mt/read-tree js/window.__qopts) :timed? ${timed}})]
-          (js/JSON.stringify (clj->js {:report (qb/report rs) :results rs}))))`);
-}, [outside, seeds, key, qopts, timed]);
+              qopts (mt/read-tree js/window.__qopts)
+              rs (if ${asap}
+                   (mapv (fn [p] (qb/run-performed p qopts)) outside)
+                   (qb/run-corpus (into (qb/own-corpus) outside) {:seeds ${seeds} :key? ${key} :qopts qopts :timed? ${timed}}))]
+          (js/JSON.stringify (clj->js {:report (if ${asap} (qb/performed-report rs) (qb/report rs)) :results rs}))))`);
+}, [outside, seeds, key, qopts, timed, asap]);
 const { report, results } = JSON.parse(out);
-const head = `Quantization benchmark · ${new Date().toISOString().slice(0, 10)} · seeds ${seeds}${key ? " · with keys" : ""}${timed ? " · timed" : ""}${qopts !== "nil" ? " · " + qopts : ""} · ${((Date.now() - t0) / 1000).toFixed(0)} s\n\n`;
+const head = `Quantization benchmark · ${new Date().toISOString().slice(0, 10)} · seeds ${seeds}${key ? " · with keys" : ""}${timed ? " · timed" : ""}${asap ? " · ASAP performances" : ""}${qopts !== "nil" ? " · " + qopts : ""} · ${((Date.now() - t0) / 1000).toFixed(0)} s\n\n`;
 console.log(head + report);
 mkdirSync(cache, { recursive: true });
 writeFileSync(join(cache, "report.md"), head + report + "\n");

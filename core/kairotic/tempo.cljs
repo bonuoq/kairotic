@@ -24,14 +24,24 @@
   "The settings of the tracker: :prior the most likely beat period (units of the input: seconds at 60) and
    how wide its preference is (octaves); :tight how much the beat resists changing its period; :chord how
    close two onsets are to be one."
-  {:prior 0.6 :width 1.2 :tight 25 :chord 0.05 :weigh :note :last 0})
+  {:prior 0.6 :width 1.2 :tight 25 :chord 0.05 :weigh :note :last 0 :accent true :bass false})
+
+(defn- accent-of
+  "How strong a note's attack was, 0 … 1: its :vel (0 … 1, or a MIDI velocity), or nil when it does not say."
+  [n]
+  (when-let [v (or (:vel n) (get-in n [:attrs :vel]))]
+    (when (number? v) (max 0 (min 1 (if (> v 1) (/ v 127) v))))))
 
 (defn onsets
-  "Notes ({:on :off}) as weighted onsets [{:t :w}], in order: onsets closer than :chord are one; each weighs
-   the notes it starts, longer notes more (a note of 1 unit about 1, one of a tenth about 0.4)."
-  [notes {:keys [chord]}]
+  "Notes ({:on :off}, and their :attrs) as weighted onsets [{:t :w}], in order: onsets closer than :chord are
+   one; each weighs the notes it starts, longer notes more (a note of 1 unit about 1, one of a tenth about 0.4);
+   with :accent, a note played louder more (its :vel, issue #106: the strength of the attack is what places
+   the beat and the bar best); with :bass, a low note more."
+  [notes {:keys [chord accent bass]}]
   (let [ns (sort-by :on (filter (fn [n] (and (number? (:on n)) (number? (:off n)))) notes))
-        w (fn [n] (max 0.3 (min 2 (log2 (+ 1 (* 2 (max 0 (- (:off n) (:on n)))))))))]
+        w (fn [n] (* (max 0.3 (min 2 (log2 (+ 1 (* 2 (max 0 (- (:off n) (:on n))))))))
+                     (if-let [a (and accent (accent-of n))] (+ 0.25 (* 1.5 a)) 1)
+                     (if-let [p (and bass (mt/midi-of (:attrs n)))] (+ 1 (/ (max 0 (- 64 p)) 24)) 1)))]
     (reduce (fn [acc n]
               (let [lst (peek acc)]
                 (if (and lst (< (- (:on n) (:t lst)) chord))
@@ -197,6 +207,11 @@
         i (loop [i 0] (if (and (< i (- n 2)) (>= t (first (v (inc i))))) (recur (inc i)) i))
         [[a x] [b y]] [(v i) (v (inc i))]]
     (+ x (* (- t a) (/ (- y x) (- b a))))))
+
+(defn ->time
+  "A beat as a time, through a time map (the inverse of ->beat): linear between its points and beyond them."
+  [m b]
+  (->beat (mapv (fn [[t x]] [x t]) m) b))
 
 (defn tempo-of-map
   "The tempo a time map stands for, in beats per minute of its units (60 units a minute): the median of the
