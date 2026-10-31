@@ -234,6 +234,31 @@ On real piano the pulse is followed fairly well (72 % at any level), but its lev
 time. Choosing the metric level, and the downbeats, is where the tracker should improve next. The differences
 between preferred tempos are within the noise of 40 performances.
 
+## Sung notes: cante2midi (`--cante`)
+
+`fetch-cante2midi.mjs <zips>` reads the three parts of [cante2midi](https://zenodo.org/records/1322526) (Kroher &
+Gómez, IEEE/ACM TASLP 2016): 20 flamenco cantes with the predominant melody frame by frame (f0), a manual note
+transcription, and the authors' automatic one. Give it the zips (`cante2midi_f0`, `cante2midi_groundTruth`,
+`cante2midi_automaticTranscription`); they go into the cache (`.cache/cante2midi.edn`, every 4th frame of the f0:
+11.6 ms apart) and are not redistributed.
+
+`bench.mjs --cante` gives each f0 to `transcribe` (its own logic, as `pitch~` would send it: only what changes, 0
+where no voice is heard) and compares the notes it writes with the manual ones, as MIREX note tracking does: onsets
+within 50 ms, then also the pitch within 50 cents, then also the offset within 20 % of the note. `--opts` are then
+transcribe's arguments. The authors' automatic transcription is measured the same way, for reference.
+
+| transcribe | notes written (6025 by hand) | onset F | + pitch | + offset |
+|---|---|---|---|---|
+| **as it is (min 60 ms, a new note past 0.6 semitone)** | 11283 | 35.5% | 23.0% | 12.8% |
+| min 100 ms | 6162 | 28.8% | 20.9% | 13.5% |
+| min 150 ms | 3687 | 21.0% | 15.9% | 9.8% |
+| glide | 3306 | 29.3% | 10.2% | 2.8% |
+| *the automatic transcription of cante2midi* | – | *59.7%* | *40.6%* | *26.3%* |
+
+From the same f0, `transcribe` writes almost twice as many notes as there are: the ornaments, the vibrato and the
+slides of the cante cross 0.6 of a semitone and each starts a note; a longer shortest note loses real ones too. What
+is needed is a segmentation of the contour (stable stretches, with hysteresis), not a threshold on each frame.
+
 ### The delay of `onset~`
 
 Measured offline with `onset~`'s own detection (frames of 2048, hop 512, the flux of the first 256 bins) on sounds

@@ -248,6 +248,74 @@
     (str "| performances | beat F (70 ms) | beat F, any level | downbeat F | tempo | tempo at another level | ms |\n|---|---|---|---|---|---|---|\n"
          "| " n " | " (pct (mean :beat-f)) " | " (pct (mean (fn [r] (or (:beat-f-any r) 0)))) " | " (pct (mean :down-f)) " | " (pct (/ ok (max 1 n))) " | " (pct (/ oct (max 1 n))) " | " (.toFixed (mean (fn [r] (or (:ms r) 0))) 0) " |")))
 
+;; ───────── sung notes: what transcribe writes against a manual transcription (cante2midi, issue #106) ─────────
+
+(defn- cents [hz midi] (* 100 (- (+ 69 (* 12 (/ (js/Math.log (/ hz 440)) js/Math.LN2))) midi)))
+
+(defn note-f
+  "How well notes found ([on dur hz]) match notes transcribed by hand ([on dur midi]), as in MIREX note
+   tracking: each manual note matched by at most one found note, the nearest onset first. :on onsets within
+   tol (50 ms); :pitch also the pitch within 50 cents; :off also the offset within 20 % of the note (50 ms at
+   least). {:on {:f :p :r} :pitch … :off …}."
+  [found truth tol]
+  (let [score (fn [ok?]
+                (let [fs (vec (sort-by first found))
+                      used (atom #{})
+                      hits (count (filter (fn [[a :as ref]]
+                                            (when-let [i (->> (range (count fs))
+                                                              (filter (fn [i] (and (not (@used i)) (<= (js/Math.abs (- (first (fs i)) a)) tol) (ok? (fs i) ref))))
+                                                              (sort-by (fn [i] (js/Math.abs (- (first (fs i)) a))))
+                                                              first)]
+                                              (swap! used conj i) true))
+                                          truth))
+                      p (if (seq found) (/ hits (count found)) 0) r (if (seq truth) (/ hits (count truth)) 0)]
+                  {:f (if (pos? (+ p r)) (/ (* 2 p r) (+ p r)) 0) :p p :r r}))
+        pitch? (fn [[_ _ hz] [_ _ m]] (<= (js/Math.abs (cents hz m)) 50))
+        off? (fn [[a d] [b e]] (<= (js/Math.abs (- (+ a d) (+ b e))) (max 0.05 (* 0.2 e))))]
+    {:on (score (constantly true)) :pitch (score pitch?) :off (score (fn [x y] (and (pitch? x y) (off? x y))))}))
+
+(defn transcribed
+  "The notes transcribe (its component map, d) writes from an f0 ([t0 dt [hz …]], 0 where no voice), heard as
+   pitch~ would send it, at 60 bpm (beats are seconds): [[on dur hz] …]. args override its own."
+  [d [t0 dt hzs] args]
+  (let [rcv (:receive d)
+        args (merge {:bpm 60 :mode nil :min-ms 60} args)
+        step (fn [[st outs] m] (let [r (rcv (assoc m :state st :args args))]
+                                 [(if (contains? r :state) (:state r) st) (into outs (map second (:out r)))]))
+        ;; pitch~ sends only what changes
+        [st outs] (reduce (fn [acc [i hz]] (step acc {:inlet 0 :value hz :at (+ t0 (* i dt))}))
+                          (step [nil []] {:inlet 0 :value :rec :at 0})
+                          (keep-indexed (fn [i hz] (when (or (zero? i) (not= hz (nth hzs (dec i)))) [i hz])) hzs))
+        [_ outs] (step [st outs] {:inlet 0 :value :stop :at (+ t0 (* (count hzs) dt))})]
+    (->> outs
+         (mapcat (fn [[k edits]] (when (= k :batch) edits)))
+         (keep (fn [[k pts]] (when (= k :stroke) (let [[[a hz]] pts [b] (peek pts)] [a (- b a) hz]))))
+         (sort-by first) vec)))
+
+(defn run-transcribed
+  "One sung piece ({:truth :auto :f0}): what transcribe writes from its f0 against the manual transcription,
+   and the authors' automatic transcription against it too, for reference."
+  [{:keys [id truth auto f0]} d args]
+  (let [t0 (js/Date.now)
+        ns (transcribed d f0 args)
+        ms (- (js/Date.now) t0)
+        as-hz (fn [ns] (mapv (fn [[a b m]] [a b (* 440 (js/Math.pow 2 (/ (- m 69) 12)))]) ns))]
+    {:id id :source :cante2midi :ms ms :notes (count ns) :truth (count truth)
+     :ours (note-f ns truth 0.05)
+     :auto (when (seq auto) (note-f (as-hz auto) truth 0.05))}))
+
+(defn transcribed-report
+  "Note tracking of sung pieces, as a table (Markdown): mean F-measures of onsets, onsets and pitch, and with
+   offsets too, for transcribe and for the reference transcription."
+  [rs]
+  (let [n (count rs)
+        mean (fn [k path] (/ (reduce + (map (fn [r] (or (get-in r [k path :f]) 0)) rs)) (max 1 n)))
+        pct (fn [x] (str (.toFixed (* 100 x) 1) "%"))
+        row (fn [label k] (str "| " label " | " (pct (mean k :on)) " | " (pct (mean k :pitch)) " | " (pct (mean k :off)) " |"))]
+    (str "| " n " pieces · " (reduce + (map :truth rs)) " notes (" (reduce + (map :notes rs)) " written) | onset F (50 ms) | + pitch (50 ¢) | + offset |\n|---|---|---|---|\n"
+         (row "transcribe (from the f0)" :ours) "\n"
+         (row "automatic transcription of cante2midi" :auto))))
+
 ;; ───────── Kairotic's own corpus ─────────
 ;; Small cases, each about one thing the quantizer has to get right. MPL, like the rest of the repository.
 
@@ -292,3 +360,11 @@
       (t/is (str "played loosely: onsets " (:onsets loose)) (>= (:onsets loose) 0.85))
       (t/is (str "spelling of the written names, played exactly: " (:spelling exact)) (>= (:spelling exact) 0.95))
       (t/is "the report is a table" (str/starts-with? (report rs) "| source |")))))
+
+(t/run! "note tracking measure (cante2midi, issue #106)"
+  (fn []
+    (let [truth [[1 0.5 60] [2 0.5 62] [3 1 64]]
+          hz (fn [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
+          r (note-f [[1.03 0.5 (hz 60)] [2.01 0.5 (hz 63)] [3 0.4 (hz 64)] [4 1 (hz 65)]] truth 0.05)]
+      (t/eq "onsets within 50 ms; with pitch within 50 cents; with offsets within 20 %"
+            (mapv (fn [k] [(get-in r [k :p]) (get-in r [k :r])]) [:on :pitch :off]) [[0.75 1] [0.5 (/ 2 3)] [0.25 (/ 1 3)]]))))

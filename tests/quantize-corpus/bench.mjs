@@ -24,6 +24,9 @@ const seeds = arg("seeds", 3), key = process.argv.includes("--key");
 const timed = process.argv.includes("--timed");
 // --asap: the beats found in real piano performances against the annotated ones (fetch-asap.mjs first)
 const asap = process.argv.includes("--asap");
+// --cante: what transcribe writes from the f0 of flamenco singing against a manual transcription (fetch-cante2midi.mjs
+// first); --opts are then transcribe's arguments, e.g. "{:min-ms 100}"
+const cante = process.argv.includes("--cante");
 // --opts "{:w {:coh 1}}": options for the quantizer (EDN), for every piece
 const qopts = (() => { const i = process.argv.indexOf("--opts"); return i > 0 ? process.argv[i + 1] : "nil"; })();
 if (!existsSync(join(site, "tests.html"))) { console.error("Build the site first: node site/build.mjs"); process.exit(1); }
@@ -39,8 +42,9 @@ const server = createServer((req, res) => {
 }).listen(0);
 const url = `http://localhost:${server.address().port}/tests.html`;
 
+if (cante && !existsSync(join(cache, "cante2midi.edn"))) { console.error("Convert cante2midi first: node tests/quantize-corpus/fetch-cante2midi.mjs <zips>"); process.exit(1); }
 if (asap && !existsSync(join(cache, "asap.edn"))) { console.error("Fetch ASAP first: node tests/quantize-corpus/fetch-asap.mjs"); process.exit(1); }
-const outside = asap ? readFileSync(join(cache, "asap.edn"), "utf8") : existsSync(join(cache, "corpus.edn")) ? readFileSync(join(cache, "corpus.edn"), "utf8") : null;
+const outside = cante ? readFileSync(join(cache, "cante2midi.edn"), "utf8") : asap ? readFileSync(join(cache, "asap.edn"), "utf8") : existsSync(join(cache, "corpus.edn")) ? readFileSync(join(cache, "corpus.edn"), "utf8") : null;
 if (!outside) console.log("(no outside corpus: node tests/quantize-corpus/fetch.mjs fetches it; running Kairotic's own)");
 
 const browser = await chromium.launch();
@@ -50,8 +54,16 @@ await page.goto(url);
 await page.waitForFunction(() => { try { return scittle.core.eval_string("(boolean (find-ns 'kairotic.qbench))") === true; } catch (_) { return false; } },
                            null, { timeout: 180000 });
 const t0 = Date.now();
-const out = await page.evaluate(([edn, seeds, key, qopts, timed, asap]) => {
-  window.__corpus = edn; window.__qopts = qopts;
+const tsrc = cante ? readFileSync(join(root, "packages", "analysis", "src", "transcribe.cljs"), "utf8") : null;
+const out = await page.evaluate(([edn, seeds, key, qopts, timed, asap, tsrc]) => {
+  window.__corpus = edn; window.__qopts = qopts; window.__tsrc = tsrc;
+  if (tsrc) return scittle.core.eval_string(`
+    (do (require '[kairotic.qbench :as qb] '[kairotic.mt :as mt] '[kairotic.api :as api])
+        (let [d (load-string js/window.__tsrc)
+              pieces (mt/read-tree js/window.__corpus)
+              args (or (mt/read-tree js/window.__qopts) {})
+              rs (mapv (fn [p] (qb/run-transcribed p d args)) pieces)]
+          (js/JSON.stringify (clj->js {:report (qb/transcribed-report rs) :results rs}))))`);
   return scittle.core.eval_string(`
     (do (require '[kairotic.qbench :as qb] '[kairotic.mt :as mt])
         (let [outside (when js/window.__corpus (mt/read-tree js/window.__corpus))
@@ -60,9 +72,9 @@ const out = await page.evaluate(([edn, seeds, key, qopts, timed, asap]) => {
                    (mapv (fn [p] (qb/run-performed p qopts)) outside)
                    (qb/run-corpus (into (qb/own-corpus) outside) {:seeds ${seeds} :key? ${key} :qopts qopts :timed? ${timed}}))]
           (js/JSON.stringify (clj->js {:report (if ${asap} (qb/performed-report rs) (qb/report rs)) :results rs}))))`);
-}, [outside, seeds, key, qopts, timed, asap]);
+}, [outside, seeds, key, qopts, timed, asap, tsrc]);
 const { report, results } = JSON.parse(out);
-const head = `Quantization benchmark · ${new Date().toISOString().slice(0, 10)} · seeds ${seeds}${key ? " · with keys" : ""}${timed ? " · timed" : ""}${asap ? " · ASAP performances" : ""}${qopts !== "nil" ? " · " + qopts : ""} · ${((Date.now() - t0) / 1000).toFixed(0)} s\n\n`;
+const head = `Quantization benchmark · ${new Date().toISOString().slice(0, 10)} · seeds ${seeds}${key ? " · with keys" : ""}${timed ? " · timed" : ""}${asap ? " · ASAP performances" : ""}${cante ? " · cante2midi, transcribe" : ""}${qopts !== "nil" ? " · " + qopts : ""} · ${((Date.now() - t0) / 1000).toFixed(0)} s\n\n`;
 console.log(head + report);
 mkdirSync(cache, { recursive: true });
 writeFileSync(join(cache, "report.md"), head + report + "\n");
