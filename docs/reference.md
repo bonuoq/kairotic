@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
+An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
 
 **Inlets** 
 
@@ -443,7 +443,7 @@ Faust code box: compiled in the page and played as an AudioWorklet. Its audio po
 **Messages and gestures**
 
 - `(code :bN "process = …;")`: writes its source
-- `double-click`: edit the code; Ctrl+Enter applies
+- `double-click`: edit the code, beside its patch of Faust's own elements (Patch in the bar hides it); Ctrl+Enter applies
 - `declare options "[nvoices:8]"`: polyphonic: Hz on the left, voice ids on the right (a second inlet), as synth~; each id a voice
 - `[:gain 0.6] · :stop`: polyphonic: the velocity of the next notes · releases every voice
 - `effect = …;`: polyphonic: applied once to the sum of the voices
@@ -767,7 +767,7 @@ See also: `osc~`, `adsr~`, `dac~`
 
 `gendy~ [freq x-step y-min y-max y-step breakpoints]`
 
-A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle — a pitch that drifts, a timbre that changes.
+A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Bernstein, MIT): a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle, heard as a pitch that drifts and a timbre that changes. freq in Hz (a signal on the inlet adds to it: FM); x-step (0–100 %) how far each segment's duration may wander; y-min and y-max (−1…1) the barriers of the amplitudes, y-step how far they move each cycle; breakpoints (2–128) how many. A number sets freq; [:y-step 0.2] one of them; a list of six all of them.
 
 **Inlets** 
 
@@ -1177,7 +1177,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power.
+Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
 
 **Inlets** 
 
@@ -1795,7 +1795,7 @@ See also: `adc~`, `scope~`, `phasor~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
+A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
 
 **Inlets** 
 
@@ -1832,7 +1832,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer, one voice per id.
+Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). [:gain v] (0…1, 0.5 by default) sets the level of the notes that start after it, as a player sends an event's :amp. :stop silences it.
 
 **Inlets** 
 
