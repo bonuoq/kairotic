@@ -1,0 +1,307 @@
+<meta charset="utf-8">
+<title>Kairotic Study 30 · Inverse</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the bank (patches → descriptors); then the way back (descriptors → a patch):
+   the target and the patch found side by side, their descriptors over time, and the bank as a whole. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 6.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.facts .ok { color: var(--ok); } .facts .bad { color: var(--error); } .facts .kairos { color: var(--kairos); }
+.bar { height: 6px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 14px; align-items: start; }
+@media (max-width: 860px) { .two { grid-template-columns: minmax(0, 1fr); } }
+/* a patch: one line per parameter, the target as a filled bar, the patch found as a mark on it */
+.patch { display: grid; gap: 5px; }
+.prm { display: grid; grid-template-columns: 6.2em minmax(0, 1fr) 11em; gap: 8px; align-items: center; font-size: 12px; }
+.prm .k { color: var(--ink-soft); font-family: var(--f-code); }
+.prm .v { font: 11px var(--f-code); color: var(--ink-soft); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prm .v b { color: var(--ink); font-weight: 500; }
+.track { position: relative; height: 14px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 3px; }
+.track .t { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-soft); border-right: 2px solid var(--accent); }
+.track .m { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--kairos); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-soft); }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; }
+.legend .a i { background: var(--accent); } .legend .b i { background: var(--kairos); }
+/* descriptors over time: small multiples sharing the time axis */
+.plots { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.plot { border: 1px solid var(--grid); border-radius: 4px; background: var(--sheet); padding: 5px 7px 3px; min-width: 0; }
+.plot small { display: block; font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+.plot svg { display: block; width: 100%; height: 74px; overflow: visible; }
+.plot .ta { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.plot .tb { fill: none; stroke: var(--kairos); stroke-width: 1.6; stroke-dasharray: 4 3; }
+.plot .ax { stroke: var(--grid); stroke-width: 1; }
+.plot text { font: 10px var(--f-code); fill: var(--ink-soft); }
+.code { margin: 0; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; font: 12px/1.6 var(--f-code); color: var(--ink); overflow-x: auto; white-space: pre; }
+.sizes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.size { border: 1px solid var(--grid); border-radius: 4px; padding: 6px 9px; display: grid; gap: 2px; }
+.size small { color: var(--ink-soft); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.size b { font: 500 15px var(--f-code); font-variant-numeric: tabular-nums; }
+.size span { font-size: 11px; color: var(--ink-soft); }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.note a { color: var(--accent); }
+.err { color: var(--error); font-size: 12px; }
+</style>
+<main>
+<header>
+  <h1>Study 30 · inverse</h1>
+  <span class="sub">Patches → Meyda descriptors, a bank of them, and a first way back: from descriptors to a patch</span>
+  <span class="status" id="status">Ready</span>
+</header>
+
+<section class="panel" aria-labelledby="h-bank">
+  <h2 id="h-bank">The bank <span>random patches of one synth, rendered and analysed as features~ does</span></h2>
+  <div class="row">
+    <label class="inline" for="n">Patches <input type="number" id="n" min="50" max="20000" step="50" value="800"></label>
+    <label class="inline" for="mode">Drawn <select id="mode"><option value="plausible" selected>plausibly</option><option value="uniform">uniformly</option></select></label>
+    <label class="inline" for="seed">Seed <input type="number" id="seed" min="1" step="1" value="1"></label>
+    <button class="act primary" id="make">Make the bank</button>
+    <button class="act" id="stop" disabled>Stop</button>
+    <button class="act" id="load">Load a bank…</button>
+    <input type="file" id="file" accept=".ndjson,.json,.txt" hidden>
+    <button class="act" id="save" disabled>Download (.ndjson)</button>
+  </div>
+  <div class="bar" aria-hidden="true"><i id="progress"></i></div>
+  <div class="facts" id="facts-bank">Each patch: 10 parameters in [0, 1] → one second of sound → 42 frames × 18 descriptors (rms, centroid, flatness, rolloff, zcr, 13 MFCCs) with Meyda 5.6.3, frames of 2048.</div>
+  <div class="err" id="err" hidden></div>
+</section>
+
+<section class="panel" aria-labelledby="h-back">
+  <h2 id="h-back">The way back <span>nearest neighbour: the patch of the bank whose descriptors are closest</span></h2>
+  <div class="row">
+    <button class="act primary" id="next" disabled>Another target</button>
+    <button class="act" id="play-a" disabled>▶ Target</button>
+    <button class="act" id="play-b" disabled>▶ Patch found</button>
+    <button class="act" id="play-ab" disabled>▶ One then the other</button>
+  </div>
+  <div class="two">
+    <div class="patch" id="patch" aria-label="The target patch and the patch found, parameter by parameter">
+      <div class="facts">Make or load a bank: a tenth of it is kept aside as targets, never searched.</div>
+    </div>
+    <div style="display:grid; gap:8px; min-width:0">
+      <div class="legend"><span class="a"><i></i>target</span><span class="b"><i></i>patch found</span></div>
+      <div class="plots" id="plots"></div>
+      <div class="facts" id="facts-match"></div>
+    </div>
+  </div>
+  <pre class="code" id="edn" hidden></pre>
+</section>
+
+<section class="panel" aria-labelledby="h-all">
+  <h2 id="h-all">The bank as a whole <span>every target set aside, against the rest</span></h2>
+  <div class="row"><button class="act" id="eval" disabled>Measure</button></div>
+  <div class="sizes" id="sizes" hidden>
+    <div class="size"><small>Descriptor distance</small><b id="s-fd">–</b><span id="s-fd2"></span></div>
+    <div class="size"><small>Patch distance</small><b id="s-pd">–</b><span id="s-pd2"></span></div>
+  </div>
+  <div class="patch" id="per-param"></div>
+  <p class="note">The <b>descriptor distance</b> is measured on standardised descriptors (level and Hz on log scales), per number; the <b>patch distance</b> is the mean difference of the parameters in [0, 1]. Both are compared with a patch picked at random from the bank. Where descriptors come much closer than a random pick but the patch does not, the descriptors do not tell those parameters apart: that is the ill-posed part of the problem, and why a model should be judged by how it <i>sounds</i> (descriptor distance), not by whether it guesses the numbers.</p>
+</section>
+
+<section class="panel" aria-labelledby="h-next">
+  <h2 id="h-next">What comes next</h2>
+  <p class="note">This is the first step of the discussion on <b>inverse synthesis</b>: a reproducible bank (the synth is plain JavaScript, so the same seed gives the same samples in the page, a worker or Node: <code>kairotic/generate.mjs</code> makes large banks as NDJSON) and a baseline any model has to beat. Next: a small network trained on the bank (descriptor frames → parameters) whose guess is then refined by a search that listens (CMA-ES on the descriptor distance, rendering the real patch); the synth as a <code>faust~</code> box so that a patch found is a <b>recipe</b> a work can keep; and, further on, patches whose structure is also found, written in Faust. In a work, the target need not be a sound: a curve of brightness or noisiness drawn over time is already a list of descriptors.</p>
+</section>
+</main>
+
+<script type="module">
+import { PARAMS, SR, render, values, edn } from "./kairotic/synth.mjs";
+import { DIMS, matcher, paramError, evaluate } from "./kairotic/dataset.mjs";
+
+const $ = (id) => document.getElementById(id);
+const status = (s) => { $("status").textContent = s; };
+let header = null, bank = [], train = [], test = [], M = null, current = null, worker = null;
+
+// ── sound ──
+let ctx = null, playing = null;
+function audio() {
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === "suspended") ctx.resume();
+  return ctx;
+}
+function play(list) {
+  const ac = audio();
+  if (playing) playing.forEach((s) => { try { s.stop(); } catch (_) {} });
+  let t = ac.currentTime + 0.05;
+  playing = list.map((e) => {
+    const y = render(e.u, e.seed), b = ac.createBuffer(1, y.length, SR);
+    b.copyToChannel(y, 0);
+    const s = ac.createBufferSource();
+    s.buffer = b; s.connect(ac.destination); s.start(t);
+    t += y.length / SR + 0.25;
+    return s;
+  });
+}
+
+// ── the bank ──
+function reset() {
+  bank = []; train = []; test = []; M = null; current = null;
+  ["next", "play-a", "play-b", "play-ab", "eval", "save"].forEach((id) => { $(id).disabled = true; });
+  $("sizes").hidden = true; $("per-param").innerHTML = ""; $("edn").hidden = true;
+}
+function ready() {
+  // a tenth aside as targets (every tenth example, so a stopped bank is split the same way)
+  train = bank.filter((_, i) => i % 10 !== 9);
+  test = bank.filter((_, i) => i % 10 === 9);
+  if (!test.length || train.length < 2) { status(bank.length + " patches · too few"); return; }
+  M = matcher(train);
+  ["next", "play-a", "play-b", "play-ab", "eval", "save"].forEach((id) => { $(id).disabled = false; });
+  $("facts-bank").innerHTML = `<b>${bank.length}</b> patches (${header.sampling.mode}, seed ${header.sampling.seed}) · <b>${train.length}</b> to search · <b>${test.length}</b> targets aside · ${bank[0].f.length} frames × ${bank[0].f[0].length} descriptors each`;
+  status(bank.length + " patches");
+  next();
+}
+$("make").onclick = () => {
+  reset();
+  $("err").hidden = true;
+  const n = Math.max(50, Math.min(20000, +$("n").value || 800));
+  const mode = $("mode").value, seed = Math.max(1, Math.floor(+$("seed").value || 1));
+  if (worker) worker.terminate();
+  worker = new Worker(new URL("./kairotic/worker.mjs", import.meta.url));
+  $("make").disabled = true; $("stop").disabled = false;
+  const t0 = performance.now();
+  status("making…");
+  worker.onmessage = (msg) => {
+    const m = msg.data;
+    if (m.type === "header") header = m.header;
+    else if (m.type === "examples") {
+      bank.push(...m.examples);
+      $("progress").style.width = (100 * m.done / n) + "%";
+      const ms = (performance.now() - t0) / m.done;
+      status(`${m.done}/${n} · ${ms.toFixed(0)} ms each`);
+    } else if (m.type === "end" || m.type === "error") {
+      $("make").disabled = false; $("stop").disabled = true;
+      if (m.type === "error") { $("err").textContent = "The bank could not be made: " + m.message; $("err").hidden = false; status("error"); }
+      if (bank.length) { if (header) header.sampling.n = bank.length; ready(); }
+    }
+  };
+  worker.postMessage({ type: "make", n, mode, seed });
+};
+$("stop").onclick = () => { if (worker) worker.postMessage({ type: "stop" }); };
+$("save").onclick = () => {
+  const lines = [JSON.stringify(header)].concat(bank.map((e) => JSON.stringify(e)));
+  const url = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "application/x-ndjson" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = `inverse-${header.sampling.mode}-${bank.length}.ndjson`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+};
+$("load").onclick = () => $("file").click();
+$("file").onchange = async () => {
+  const f = $("file").files[0];
+  if (!f) return;
+  try {
+    const lines = (await f.text()).trim().split("\n").map((l) => JSON.parse(l));
+    if (!lines[0] || !lines[0].analysis || lines[0].analysis.dims.join() !== DIMS.join()) throw new Error("not a bank of this study (its descriptors differ)");
+    reset(); header = lines[0]; bank = lines.slice(1);
+    $("progress").style.width = "100%"; $("err").hidden = true;
+    ready();
+  } catch (e) { $("err").textContent = "Could not load it: " + e.message; $("err").hidden = false; }
+  $("file").value = "";
+};
+
+// ── the way back ──
+const fmt = (p, x) => p.unit === "Hz" ? Math.round(x) + " Hz" : p.unit === "s" ? (x < 0.1 ? (x * 1000).toFixed(0) + " ms" : x.toFixed(2) + " s")
+  : p.key === "pitch" ? x.toFixed(1) : x.toFixed(2) + (p.unit ? " " + p.unit : "");
+function patchView(el, a, b, label) {
+  const va = values(a), vb = b && values(b);
+  el.innerHTML = PARAMS.map((p, i) => `<div class="prm" title="${p.doc}">
+    <span class="k">${p.key}</span>
+    <div class="track"><div class="t" style="width:${(a[i] * 100).toFixed(1)}%"></div>${b ? `<div class="m" style="left:${(b[i] * 100).toFixed(1)}%"></div>` : ""}</div>
+    <span class="v">${label ? label(i) : `<b>${fmt(p, va[p.key])}</b> · ${fmt(p, vb[p.key])}`}</span></div>`).join("");
+}
+// descriptors to plot: name, column, how to show it
+const SHOW = [["rms", 0, (x) => x], ["centroid (Hz, log)", 1, (x) => Math.log2(1 + x)], ["flatness", 2, (x) => x], ["mfcc 1", 6, (x) => x]];
+function plots(fa, fb) {
+  $("plots").innerHTML = SHOW.map(([name, j, tf]) => {
+    const A = fa.map((r) => tf(r[j])), B = fb.map((r) => tf(r[j]));
+    let lo = Math.min(...A, ...B), hi = Math.max(...A, ...B);
+    if (hi - lo < 1e-9) { hi += 0.5; lo -= 0.5; }
+    const W = 200, H = 64, n = A.length - 1 || 1;
+    const path = (Y) => Y.map((y, t) => (t ? "L" : "M") + (t / n * W).toFixed(1) + "," + (H - (y - lo) / (hi - lo) * H).toFixed(1)).join("");
+    return `<div class="plot"><small>${name}</small><svg viewBox="0 0 ${W} ${H + 12}" preserveAspectRatio="none" role="img" aria-label="${name} over one second, target and patch found">
+      <line class="ax" x1="0" y1="${H}" x2="${W}" y2="${H}"/><path class="ta" d="${path(A)}"/><path class="tb" d="${path(B)}"/>
+      <text x="0" y="${H + 11}">0 s</text><text x="${W}" y="${H + 11}" text-anchor="end">1 s</text></svg></div>`;
+  }).join("");
+}
+function next() {
+  const target = test[Math.floor(Math.random() * test.length)];
+  const hit = M.nearest(target.f);
+  current = { target, found: hit.example };
+  patchView($("patch"), target.u, hit.example.u);
+  plots(target.f, hit.example.f);
+  const pe = paramError(target.u, hit.example.u);
+  $("facts-match").innerHTML = `descriptor distance <b>${hit.distance.toFixed(3)}</b> · patch distance <b>${pe.toFixed(3)}</b> · found among ${train.length}`;
+  $("edn").hidden = false;
+  $("edn").textContent = ";; target\n" + edn(target.u) + "\n;; patch found\n" + edn(hit.example.u);
+}
+$("next").onclick = next;
+$("play-a").onclick = () => current && play([current.target]);
+$("play-b").onclick = () => current && play([current.found]);
+$("play-ab").onclick = () => current && play([current.target, current.found]);
+
+$("eval").onclick = () => {
+  status("measuring…");
+  setTimeout(() => {
+    const r = evaluate(train, test);
+    $("sizes").hidden = false;
+    $("s-fd").textContent = r.nearest.features.toFixed(3);
+    $("s-fd2").textContent = `random pick ${r.random.features.toFixed(3)} · ${(100 * (1 - r.nearest.features / r.random.features)).toFixed(0)} % closer`;
+    $("s-pd").textContent = r.nearest.param.toFixed(3);
+    $("s-pd2").textContent = `random pick ${r.random.param.toFixed(3)} · ${(100 * (1 - r.nearest.param / r.random.param)).toFixed(0)} % closer`;
+    // per parameter: how far the patch found is, against a random pick (1/3 for a uniform parameter)
+    const worst = Math.max(...r.perParam.map((x) => x.error), 1 / 3);
+    patchView($("per-param"), r.perParam.map((x) => x.error / worst), null, (i) => `<b>${r.perParam[i].error.toFixed(3)}</b> mean error`);
+    status(bank.length + " patches");
+  }, 20);
+};
+</script>
