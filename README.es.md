@@ -1,4 +1,7 @@
-# Kairotic
+<h1><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="brand/kairotic-logo-dark.svg">
+  <img src="brand/kairotic-logo.svg" alt="Kairotic" height="72">
+</picture></h1>
 
 *[Read in English](README.md)* · **0.2.0-alpha** · [abrir la app](https://bonuoq.github.io/kairotic/) · [documentación](docs/README.es.md)
 
