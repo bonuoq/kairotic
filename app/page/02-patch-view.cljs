@@ -137,6 +137,41 @@
   (let [b (get-in p [:boxes id]) [x y] (box-pos id b) [w _] (box-dims id b) [n _] (io b)]
     [(+ x (port-x w n i) (/ pw 2)) y]))
 
+;; ───── patching: the same feel in every patcher of Kairotic (the patch, and the patch of a faust~) ─────
+;; Wires are curves that leave an outlet downwards and reach an inlet from above; one that goes back up
+;; loops out below and above the boxes. An outlet within `reach` of the pointer can be grabbed (it lights
+;; up, and the pointer is a cross), and a wire is dropped on the nearest inlet of the box under the
+;; pointer, or of an inlet within reach above it. packages/faust-units/assets/view.mjs does the same.
+
+(def reach 10)
+
+(defn wire-d
+  "The curve of a wire from an outlet at (x1 y1) to an inlet at (x2 y2), as an SVG path."
+  [x1 y1 x2 y2]
+  (let [dy (- y2 y1)
+        k (if (>= dy 24) (max 16 (* 0.45 dy)) (+ 36 (min 70 (* 0.25 (js/Math.abs (- x2 x1))))))
+        r (fn [v] (/ (js/Math.round (* 10 v)) 10))]
+    (str "M" (r x1) "," (r y1) " C" (r x1) "," (r (+ y1 k)) " " (r x2) "," (r (- y2 k)) " " (r x2) "," (r y2))))
+
+(defn port-near
+  "The outlet (:out) or inlet (:in) of a box in patch p nearest to (x y), within reach: [id k], or nil.
+   An outlet is reached from its edge of the box a little inside and a little more outside; an inlet
+   the same way from above."
+  [p kind x y]
+  (let [best (atom nil)]
+    (doseq [[id b] (:boxes p)]
+      (let [[bx by] (box-pos id b) [w h] (box-dims id b) [ins outs] (io b)
+            n (if (= kind :out) outs ins)
+            py (if (= kind :out) (+ by h) by)
+            dy (if (= kind :out) (- y py) (- py y))]   ; positive: outside the box
+        (when (and (pos? n) (<= -4 dy (+ reach 2)) (<= (- bx reach) x (+ bx w reach)))
+          (dotimes [k n]
+            (let [px (+ bx (port-x w n k) (/ pw 2)) dx (js/Math.abs (- x px))]
+              (when (<= dx (+ (/ pw 2) reach))
+                (let [d (+ (* dx dx) (* dy dy))]
+                  (when (or (nil? @best) (< d (first @best))) (reset! best [d [id k]])))))))))
+    (second @best)))
+
 (defn canvas-geom
   "Where a canvas draws its data (d), in the box b (its size: issue #40) or in one of the default size."
   ([d] (cv/geom (or d cv/empty) hdr))
@@ -665,7 +700,7 @@
 
 (defn render-scene [p]
   (let [p (scene-of p)
-        {:keys [sel wire hover-in nsel ldrag]} @ui
+        {:keys [sel wire hover-in hover-out nsel ldrag]} @ui
         chosen (sel-ids)
         _ (doseq [[id b] (:boxes p) :when (= :score (display-of b))] (score-entry! id b))
         lines (map-indexed
@@ -675,8 +710,9 @@
                          s (str (if (= sel [:line l]) " sel" "")
                                 (when (and (= o 2) (= "freqt" (klass (get-in p [:boxes a :text])))) " edits"))
                          buf (and (= i 1) (let [k (klass (get-in p [:boxes a :text]))] (or (music-classes k) (= "sample" k) (= "tree" k))))]
-                     (str "<line class=\"wire" s (when buf " buffer") "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"></line>"
-                          "<line class=\"wire-hit\" data-line=\"" idx "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"></line>"))
+                     (let [d (wire-d x1 y1 x2 y2)]
+                       (str "<path class=\"wire" s (when buf " buffer") "\" d=\"" d "\"></path>"
+                            "<path class=\"wire-hit\" data-line=\"" idx "\" d=\"" d "\"></path>")))
                    ""))
                (:lines p))
         bxs (for [[id b] (:boxes p)]
@@ -729,11 +765,11 @@
                      (apply str (for [i (range ins)]
                                   (str "<rect class=\"port in" (when (= hover-in [id i]) " target") "\" data-box=\"" idn "\" data-in=\"" i "\" x=\"" (port-x w ins i) "\" y=\"-1\" width=\"" pw "\" height=\"4\"></rect>")))
                      (apply str (for [o (range outs)]
-                                  (str "<rect class=\"port out\" data-box=\"" idn "\" data-out=\"" o "\" x=\"" (port-x w outs o) "\" y=\"" (- h 3) "\" width=\"" pw "\" height=\"4\"></rect>")))
+                                  (str "<rect class=\"port out" (when (= hover-out [id o]) " hot") "\" data-box=\"" idn "\" data-out=\"" o "\" x=\"" (port-x w outs o) "\" y=\"" (- h 3) "\" width=\"" pw "\" height=\"4\"></rect>")))
                      "</g>")))
         temp (when (and wire (get-in p [:boxes (:from wire)]))
                (let [[x1 y1] (out-xy p (:from wire) (:out wire))]
-                 (str "<line class=\"wire temp\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" (:x wire) "\" y2=\"" (:y wire) "\"></line>")))]
+                 (str "<path class=\"wire temp\" d=\"" (wire-d x1 y1 (:x wire) (:y wire)) "\"></path>")))]
     (set! (.-innerHTML ($ "scene")) (str (apply str lines) (apply str bxs) temp))
     ;; the paper grows with what is on it (with room to keep going), so nothing at the edge is cut off
     (let [[mx my] (reduce (fn [[mx my] [id b]]

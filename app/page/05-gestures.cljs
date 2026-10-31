@@ -24,14 +24,17 @@
   (when-let [el (.elementFromPoint js/document (.-clientX e) (.-clientY e))] (.closest el sel)))
 
 (defn drop-target
-  "Box under the pointer (other than the source one) and its inlet nearest to the cursor."
+  "Where a wire would land: the box under the pointer (other than the source one) and its inlet nearest
+   to the cursor, or else an inlet within reach above a box."
   [e wire]
-  (when-let [el (under e ".box")]
-    (let [id (keyword (.. el -dataset -box)) b (get-in (current) [:boxes id])]
-      (when (and b (not= id (:from wire)))
-        (let [[ins _] (io b) [w _] (box-dims id b) [x _] (pt e)]
-          (when (pos? ins)
-            [id (apply min-key (fn [i] (js/Math.abs (- x (+ (:x b) (port-x w ins i) (/ pw 2))))) (range ins))]))))))
+  (or (when-let [el (under e ".box")]
+        (let [id (keyword (.. el -dataset -box)) b (get-in (current) [:boxes id])]
+          (when (and b (not= id (:from wire)))
+            (let [[ins _] (io b) [w _] (box-dims id b) [x _] (pt e)]
+              (when (pos? ins)
+                [id (apply min-key (fn [i] (js/Math.abs (- x (+ (:x b) (port-x w ins i) (/ pw 2))))) (range ins))])))))
+      (let [[x y] (pt e) t (port-near (current) :in x y)]
+        (when (and t (not= (first t) (:from wire))) t))))
 
 (defn open-editor! [{:keys [id x y text]}]
   (when-let [old ($ "box-edit")] (.remove old))
@@ -732,16 +735,18 @@
 (.addEventListener svg "pointerdown"
   (fn [e]
     (reset! alt-press (boolean (.-altKey e)))
-    (let [[x y] (pt e) mod? (or (.-metaKey e) (.-ctrlKey e))]
+    (let [[x y] (pt e) mod? (or (.-metaKey e) (.-ctrlKey e))
+          ;; an outlet within reach of the pointer (not only right on it) starts a wire
+          out (when-not (or (locked?) (:annot @ui)) (port-near (current) :out x y))]
       (cond
         ;; annotating: the pointer draws marks (the Annotate bar is open)
         (and (:annot @ui) (:tool (:annot @ui)))
         (do (.preventDefault e) (annot-down! x y))
 
-        (and (closest e ".port.out") (not (locked?)))
-        (let [el (closest e ".port.out")]
-          (.preventDefault e)
-          (swap! ui assoc :wire {:from (keyword (.. el -dataset -box)) :out (js/parseInt (.. el -dataset -out) 10) :x x :y y}))
+        out
+        (do (.preventDefault e)
+            (.add (.-classList svg) "wiring")
+            (swap! ui assoc :wire {:from (first out) :out (second out) :x x :y y}))
 
         ;; the corner of a canvas, freqt or score: drag to resize it (issue #40)
         (closest e ".resize-corner")
@@ -941,6 +946,17 @@
       (swap! ui assoc :hover-hit h)
       (render-overlay!))))
 
+(defn hover-out!
+  "The outlet within reach of the pointer lights up, and the pointer becomes a cross: press there to wire."
+  [x y]
+  (let [h (when-not (or (locked?) (:annot @ui)) (port-near (current) :out x y))]
+    (when (not= h (:hover-out @ui))
+      (let [el-of (fn [[id o]] (.querySelector svg (str ".port.out[data-box=\"" (name id) "\"][data-out=\"" o "\"]")))]
+        (some-> (:hover-out @ui) el-of .-classList (.remove "hot"))
+        (some-> h el-of .-classList (.add "hot"))
+        (.toggle (.-classList svg) "near-out" (some? h))
+        (swap! ui assoc :hover-out h)))))
+
 (.addEventListener svg "pointermove"
   (fn [e]
     (let [[x y] (pt e) {:keys [drag wire ldrag numdrag paramdrag ctldrag marquee resize adraw]} @ui]
@@ -984,7 +1000,7 @@
                (when (or (:moved drag) (> (+ (js/Math.abs (- nx (:x drag))) (js/Math.abs (- ny (:y drag)))) 2))
                  (swap! ui assoc :drag (assoc drag :x nx :y ny :moved true))))
         wire (swap! ui assoc :wire (assoc wire :x x :y y) :hover-in (drop-target e wire))
-        :else (hover-hit! e x y)))))
+        :else (do (hover-out! x y) (hover-hit! e x y))))))
 
 (defn finish-drawing! [{:keys [box mode d g pts raw moved click-t]}]
   (if-not moved
@@ -1048,6 +1064,7 @@
       drag (swap! ui assoc :drag nil)
       wire
       (let [[to in] (when e (drop-target e wire))]
+        (.remove (.-classList svg) "wiring")
         (swap! ui assoc :wire nil :hover-in nil)
         (when to
           (gesture! (str "(connect " (:from wire) " " (:out wire) " " to " " in ")"))
@@ -1061,7 +1078,7 @@
               (repl-print! "out" (esc (str "; and back: the edits made on " to " go to " from " (the dashed line)"))))))))))
 
 (.addEventListener svg "pointerup" end-gesture!)
-(.addEventListener svg "pointerleave" (fn [_] (when (:hover-hit @ui) (swap! ui assoc :hover-hit nil) (render-overlay!)) (when (or (:adraw @ui) (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui) (:paramdrag @ui) (:ctldrag @ui) (:marquee @ui) (:resize @ui)) (end-gesture! nil))))
+(.addEventListener svg "pointerleave" (fn [_] (when (:hover-out @ui) (hover-out! -1e6 -1e6)) (when (:hover-hit @ui) (swap! ui assoc :hover-hit nil) (render-overlay!)) (when (or (:adraw @ui) (:drag @ui) (:wire @ui) (:ldrag @ui) (:numdrag @ui) (:paramdrag @ui) (:ctldrag @ui) (:marquee @ui) (:resize @ui)) (end-gesture! nil))))
 
 (.addEventListener svg "dblclick"
   (fn [e]

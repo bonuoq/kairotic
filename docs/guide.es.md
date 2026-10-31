@@ -27,7 +27,9 @@ los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
 - **Crear una caja**: doble clic en un sitio vacío, escribe su texto —la clase y sus argumentos, como
   `osc~ 440`— y pulsa Intro. Las clases que acaban en `~` son sonido.
 - **Conectar**: arrastra desde una salida (las marcas pequeñas bajo una caja) hasta una entrada (encima
-  de otra caja).
+  de otra caja). No hace falta acertar en la marca: cerca de una salida se ilumina y el puntero se vuelve
+  una cruz, y un cable que sueltas sobre una caja, o justo encima de una de sus entradas, llega a la
+  entrada más cercana. Los cables son curvos, aquí y en el patch de un `faust~`, que funciona igual.
 - **Seleccionar** una caja o una línea con un clic. **⌘/Ctrl+clic** en una caja la edita debajo (sus
   argumentos y su texto). **Supr** borra lo seleccionado.
 - **Seleccionar varias**: ⇧+clic añade una caja a la selección (o la quita); un marco dibujado desde un

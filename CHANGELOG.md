@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Patching, the same in every patcher**: wires are curves (in the patch and in the patch of a `faust~`); an outlet
+  within reach of the pointer lights up and the pointer becomes a cross, and pressing there starts a wire; the inlet a
+  wire would land on lights up, and a wire dropped just above an inlet lands on it. The patch of a `faust~` takes the
+  patch's measures and look (boxes, ports, wires). `@kairotic/faust-units` 0.1.1.
 - **A `faust~` as a patch** (discussion #115, Study 31): its code opens beside its box with a patch of Faust's own
   elements on the left, kept in sync with the code both ways; applying is still one event, and the parameters stay
   in the box in the patch, in sight (the window opens beside the box). The boxes and the reading of code are a new
