@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Kairotic"><title>Kairotic</title><style>g{fill:none;stroke:#e3e8ee;stroke-linecap:round}.f,.t{fill:#e3e8ee}.t{stroke:none}.d{fill:#e58a6f}</style><rect width="100" height="100" rx="23" fill="#1b2430"/><svg x="12" y="12" width="76" height="76" viewBox="0 0 100 100"><g><path d="M26 14 C10 32 10 68 26 86" stroke-width="8"/>
+<path d="M74 14 C90 32 90 68 74 86" stroke-width="8"/>
+<path d="M40 26 V74" stroke-width="7"/>
+<path d="M40 54 C50 54 53 37 56 33.7" stroke-width="6"/>
+<path d="M40 54 C50 54 54 66 60 70" stroke-width="6"/>
+<circle cx="61" cy="30" r="4.8" stroke-width="2.8"/>
+<circle cx="62" cy="71" r="4.8" class="f" stroke="none"/>
+<circle cx="40" cy="54" r="7" class="d" stroke="none"/></g></svg></svg>
