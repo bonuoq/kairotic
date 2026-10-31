@@ -1882,7 +1882,7 @@ See also: `pcclock`, `fourier`, `mt`
 
 `transcribe [bpm] [notes|glide] [ms]`
 
-Writes what pitch~ hears into a freqt, as strokes: notes at the pitch they hold longest, or contours (glide).
+Writes what pitch~ hears into a freqt, as strokes: notes where the contour settles on another pitch (slides, vibrato and ornaments do not start notes), or contours (glide).
 
 **Inlets** 
 
