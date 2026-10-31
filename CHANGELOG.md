@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Played time** (issue #106). `kairotic.tempo` finds the beats of notes played freely (in seconds, or at a
+  tempo nobody chose: `transcribe` writes at 60 bpm): the tempo from the intervals between onsets, the beats by a
+  dynamic programme that follows rubato (after Ellis 2007), and, by analysis by synthesis, what each beat is
+  worth and where the bar starts (each candidate quantized, the cheapest kept). The quantizer takes it as an
+  option: `:time :track` (found each time) or a time map `[[time beat] …]` (kept), and writes the tempo found into
+  the tree; `:downbeat t` fixes the bar by hand. REPL: `(track! :bN)` finds the map of a freqt or a free tree box
+  and keeps it in its `:quant` (`(track! :bN nil)` forgets it). The benchmark gains `--timed` (pieces played in
+  seconds, at 60–150 bpm, steady, with rubato or free) and two columns, tempo found and tempo at another level.
+- **Meters that change, given** (issue #107): `{:meters ["3/4" "3/4" "5/8[2+3]"]}` gives each bar its meter, the
+  last going on (`qz/bars`); the score says each meter where it changes, and alt-click works in any bar.
+- **Grace notes as they are played**: a very short note just before a longer one (`:grace-dur`, 0.1 beat) is
+  written as its grace note instead of asking for a fine division of the beat. On the benchmark, SymbTr played
+  exactly goes from 82 % to 97 % perfect, and its çarpmas are found 94 % of the time.
 - **Coherence across beats in the quantizer** (issue #108). Each span keeps its few cheapest divisions and the
   plan of a bar chooses among them with its neighbours in view: changing kind of division (binary, triplet,
   quintuplet…, by the points the notes use) between neighbouring regions costs `:coh` (0.5 by default; `0`

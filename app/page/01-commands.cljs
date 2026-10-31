@@ -612,6 +612,23 @@
      ((:keep! src) opts)
      (or opts :defaults))))
 
+(defn track!
+  "Finds the beats of a freqt (or a tree box without measures) played freely, in seconds or at any tempo
+   (kairotic.tempo, issue #106), and keeps the time map in its :quant (one event of the history), so that its
+   score is quantized through them and stays as it is while it is edited: (track! :b1), or with options
+   for the quantizer, (track! :b1 {:meter \"6/8\"}). (quant :b1 {:time :track}) finds them each time
+   instead; (track! :b1 nil) forgets them. → {:tempo bpm :beats n}."
+  ([id] (track! id {}))
+  ([id opts]
+   (let [{:keys [q gx notes keep!]} (quant-src id)]
+     (if (nil? opts)
+       (do (keep! (not-empty (dissoc q :time))) :forgotten)
+       (let [q2 (merge (dissoc q :time) opts)
+             m (qz/time-map-of notes (qz/options (assoc q2 :time :track) gx))]
+         (when-not m (fail (str id ": too few notes to find a beat in")))
+         (keep! (assoc q2 :time m))
+         {:tempo (js/Math.round (tm/tempo-of-map m)) :beats (count m)})))))
+
 (defn enharmonic!
   "Writes the note of a quantized score (a freqt's, or a free tree box's) that starts at beat t with MIDI
    pitch m another way (c#4 → db4 → b##3 → c#4 …), or with the name given; kept with its options (:quant

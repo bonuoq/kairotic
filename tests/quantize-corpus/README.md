@@ -137,3 +137,72 @@ The same benchmark (2 seeds), before (`:coh 0`) and with the default (`:coh 0.5`
 0.5 is where invented tuplets fall most without real ones being lost. With exact input SymbTr loses none. Higher
 values remove more invented tuplets but start losing real ones: with `:coh 0.75`, 20 lost in SymbTr even played
 exactly, and with 1, 61 lost played tightly.
+
+## Grace notes as they are played
+
+A very short note just before a longer one is now recognised before the plan and written as a grace note of that
+note, so it no longer asks for a fine division of the beat (after FOMUS). The rule: shorter than `:grace-dur`
+(0.1 beat), starting less than 0.15 beat before a note at least twice as long, and not part of a run of short
+notes. Same benchmark, 2 seeds, before → after:
+
+| source | level | perfect | grace notes found |
+|---|---|---|---|
+| symbtr | exact | 82.0% → 97.0% | about half → 136 / 144 |
+| symbtr | tight | 47.0% → 61.5% | → 135 / 144 |
+| symbtr | loose | 0% → 0% | → 76 / 144 |
+
+Essen and our own corpus are unchanged (our own grace note is found at every level but `rough`).
+
+## Played time (#106): `--timed`
+
+With `--timed`, each piece is played **in seconds**:
+- at a tempo of 60 to 150 bpm drawn by the seed;
+- its tempo bending (a slow wave of ±0 / 6 / 12 %) and held back at the end (0 / 15 / 25 % slower over the last
+  four beats), at the levels `steady`, `rubato` and `free`;
+- with onsets spread and notes shortened as before.
+
+It is then quantized through the beats found (`:time :track`, `kairotic.tempo`). Two columns are added: **tempo**
+(the tempo found within 6 % of the one played) and **tempo ×½ ×2 ×⅔…** (found at another metric level).
+
+How the beats are found:
+1. **The tempo:** the period that explains most intervals between onsets.
+2. **The beats:** a dynamic programme after Ellis 2007.
+3. **What each beat is worth (½, 1, 1½ or 2 quarters) and which beat is the first of the bar:** chosen *by
+   analysis by synthesis*. Each candidate is quantized, and the cheapest wins, with a mild preference for tempos
+   near 100 bpm. For each beat value, only the two phases where the notes weigh most are tried.
+
+Strategies compared before choosing (exact runs, out of 400 per corpus: Essen + own + SymbTr, steady and rubato):
+
+| strategy | exact |
+|---|---|
+| beat value from the meter, phase where the notes weigh most | 125 |
+| … phase by the cost of the quantization | 125 |
+| value and phase by cost + tempo preference | 140 |
+| value by cost, phase by weight | 134–138 |
+| **value by cost, phase by cost among the two heaviest (chosen)** | **148** |
+| cost + a bonus for the heaviest phase (0.5, 1, 2) | 134–138 |
+| including the last note as a downbeat cue | worse (the excerpts are cut, not ended) |
+
+Results (2 seeds):
+
+| source | level | perfect | onsets | durations | tempo | other level |
+|---|---|---|---|---|---|---|
+| essen | steady | 40.5% | 53.7% | 94.2% | 96.5% | 3.5% |
+| essen | rubato | 17.5% | 55.4% | 91.9% | 88.5% | 7.5% |
+| essen | free | 0% | 22.9% | 66.1% | 40.0% | 13.0% |
+| own | steady | 20.0% | 73.4% | 88.1% | 92.5% | 7.5% |
+| own | rubato | 27.5% | 64.0% | 87.3% | 52.5% | 10.0% |
+| symbtr | steady | 16.0% | 33.4% | 87.1% | 74.0% | 22.5% |
+| symbtr | rubato | 3.5% | 25.1% | 80.7% | 59.0% | 28.5% |
+| symbtr | free | 0% | 10.3% | 46.4% | 18.0% | 22.5% |
+
+Against the first version (beat value from the meter, phase by weight; 1 seed):
+- the tempo is found far more often: Essen steady 90 → 96.5 %, SymbTr steady 41 → 74 %;
+- onsets in place: SymbTr steady 18 → 33 %, own 44 → 73 %; Essen steady 58 → 54 %.
+
+What fails now:
+- **The bar.** In folk melodies most errors are the whole rhythm shifted by a beat or two: the pickup is
+  misread. `:downbeat` (the time of a note known to start a bar) fixes the phase by hand. `(track! :bN {:downbeat
+  t})`, or later a click on that note, is the practical answer.
+- **Aksak usuls.** Their beats are uneven (2+2+2+3), which a single period cannot follow; SymbTr is hardest.
+- **`free`** (±12 % and a strong ritardando) loses the tempo more often than not.

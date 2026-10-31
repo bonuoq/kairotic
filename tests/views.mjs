@@ -152,6 +152,17 @@ export async function views(page, check) {
   check("... and keeps the choice in :fix", (await cljs(page, `(some? (get-in (box-data ${f}) [:quant :fix 0]))`)) === "true");
   await cljs(page, `(quant ${f} nil)`);
   check("(quant :bN nil) goes back to the defaults", (await cljs(page, `(:quant (box-data ${f}))`)) === "nil");
+  // ── played time (issue #106): a melody played at 90 bpm, its beats found and kept ──
+  await cljs(page, `(send! ${f} [:clear])`);
+  await cljs(page, `(let [s (fn [b] (+ 0.3 (* b (/ 60 90))))] (send! ${f} [:batch (vec (for [[b d m] [[0 1 60] [1 1 62] [2 1 64] [3 1.5 65] [4.5 0.5 64] [5 1 62] [6 3 60]]] [:note (s b) m (* 0.9 (- (s (+ b d)) (s b)))]))]))`);
+  const tr = await cljs(page, `(track! ${f} {:meter "3/4"})`);
+  check("(track! :bN) finds the tempo of what was played", /:tempo (8[7-9]|9[0-3])/.test(tr), tr);
+  check("... and keeps the time map in its :quant", (await cljs(page, `(vector? (:time (:quant (box-data ${f}))))`)) === "true");
+  // (onsets, and durations but the last: played shorter with nothing after it, it comes back a little short)
+  const played = await cljs(page, `(let [ns (mt/notes (quantize ${f}))] [(mapv :t ns) (butlast (mapv :dur ns))])`);
+  check("... so its score is written on those beats", played === "[[0 1 2 3 4.5 5 6] (1 1 1 1.5 0.5 1)]", played);
+  check("(track! :bN nil) forgets them", (await cljs(page, `(do (track! ${f} nil) (:time (:quant (box-data ${f}))))`)) === "nil");
+  await cljs(page, `(quant ${f} nil)`);
   // ── another name for a note (issue #88) ──
   await cljs(page, `(send! ${f} [:clear]) (send! ${f} [:batch [[:note 0 61 1] [:note 1 62 1]]])`);
   const nm = await cljs(page, `(enharmonic! ${f} 0 61)`);
