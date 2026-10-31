@@ -32,6 +32,7 @@ import { spectral } from "./spectral.mjs";
 import { faustpoly } from "./faustpoly.mjs";
 import { patterns } from "./patterns.mjs";
 import { faustview } from "./faustview.mjs";
+import { patching } from "./patching.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const base = url.replace(/tests\.html.*$/, "");
@@ -72,6 +73,7 @@ async function unit() {
 // defined); then the gestures and the rest, one suite after another, in the app just loaded
 const appSuites = [
   ["gestures", gestures, "the gestures ran"],
+  ["patching", patching, "the patching tests ran"],
   ["perform", perform, "the Perform tests ran"],
   ["editor", editor, "the editor tests ran"],
   ["jam", jam, "the jam tests ran"],

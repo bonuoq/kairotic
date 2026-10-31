@@ -20,21 +20,25 @@ const CSS = `
 .fu-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 .fu-canvas.stale svg { opacity: 0.35; }
 .fu-canvas svg { display: block; }
-.fu .b rect { fill: var(--box); stroke: var(--rule); stroke-width: 1; }
-.fu .b.io rect { stroke: var(--accent); stroke-width: 1.5; }
-.fu .b.ui rect { fill: color-mix(in srgb, var(--kairos) 10%, var(--box)); stroke: var(--kairos); }
-.fu .b.mem rect { fill: var(--accent-soft); stroke: var(--accent); }
-.fu .b.code rect { stroke-dasharray: 4 3; stroke: var(--ink-soft); }
-.fu .b.sel rect { stroke: var(--accent); stroke-width: 2; }
-.fu .b text { font: 12px var(--f-code); fill: var(--ink); pointer-events: none; dominant-baseline: central; }
-.fu .b .port { fill: var(--ink-soft); stroke: none; }
-.fu .b .port.out { fill: var(--ink); }
+.fu .b rect.body { fill: var(--box); stroke: var(--ink); stroke-width: 1; }
+.fu .b.io rect.body { stroke: var(--accent); stroke-width: 1.5; }
+.fu .b.ui rect.body { fill: color-mix(in srgb, var(--kairos) 10%, var(--box)); stroke: var(--kairos); }
+.fu .b.mem rect.body { fill: var(--accent-soft); stroke: var(--accent); }
+.fu .b.code rect.body { stroke-dasharray: 4 3; }
+.fu .b.sel rect.body { stroke: var(--accent); stroke-width: 2; fill: color-mix(in srgb, var(--accent) 12%, var(--box)); }
+.fu .b text { font: 12.5px var(--f-code); fill: var(--ink); pointer-events: none; }
 .fu .b { cursor: grab; }
-.fu .wire { fill: none; stroke: var(--ink-soft); stroke-width: 1.4; }
-.fu .wire.loop { stroke: var(--accent); stroke-dasharray: 5 3; }
-.fu .wire.sel { stroke: var(--accent); stroke-width: 2.4; }
-.fu .wire-hit { fill: none; stroke: transparent; stroke-width: 10; cursor: pointer; }
-.fu .temp { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+/* patching, as in the patch (app/index.html): curved wires; an outlet within reach lights up and the pointer
+   is a cross; the inlet a wire would land on too */
+.fu .port { fill: var(--ink); stroke: none; transform-box: fill-box; transform-origin: center; transition: transform 0.08s ease-out, fill 0.08s; }
+.fu .b.ui .port { fill: var(--kairos); }
+.fu .port.out { cursor: crosshair; }
+.fu .port.out.hot, .fu .port.in.target { fill: var(--accent); transform: scale(1.4, 2); }
+.fu-canvas.near-out, .fu-canvas.near-out *, .fu-canvas.wiring, .fu-canvas.wiring * { cursor: crosshair !important; }
+.fu .wire { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.fu .wire.sel { stroke: var(--accent); stroke-width: 2.5; }
+.fu .wire-hit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; }
+.fu .wire.temp { stroke: var(--accent); stroke-dasharray: 4 4; pointer-events: none; }
 .fu-editor { position: absolute; font: 12px var(--f-code); padding: 3px 5px; border: 1.5px solid var(--accent); border-radius: 3px;
   background: var(--box); color: var(--ink); min-width: 160px; z-index: 2; }
 /* two lines that never wrap: the paper above keeps its size whatever they say (the whole text is their title) */
@@ -127,9 +131,35 @@ export function mount(host, { code = "", onCode = () => {}, loadFaust } = {}) {
   }
 
   // ── drawing ──
-  const H = 22, PORT = 8;
-  const width = (b) => Math.max(44, boxText(b).length * 7.3 + 16, Math.max(inlets(b), outlets(b)) * 16);
+  // the patch's measures (app/page/02-patch-view.cljs: box-h, box-w, pw, port-x)
+  const H = 24, PORT = 10, REACH = 10;
+  const width = (b) => Math.max(56, 20 + 7.6 * boxText(b).length, Math.max(inlets(b), outlets(b)) * 18);
   const portX = (b, i, n) => (n <= 1 ? b.x : b.x + (width(b) - PORT) * (i / (n - 1)));
+  // the patch's curve (wire-d): down from an outlet, into an inlet from above; back up, it loops out
+  const r1 = (v) => Math.round(v * 10) / 10;
+  function wireD(x1, y1, x2, y2) {
+    const dy = y2 - y1, k = dy >= 24 ? Math.max(16, 0.45 * dy) : 36 + Math.min(70, 0.25 * Math.abs(x2 - x1));
+    return `M${r1(x1)},${r1(y1)} C${r1(x1)},${r1(y1 + k)} ${r1(x2)},${r1(y2 - k)} ${r1(x2)},${r1(y2)}`;
+  }
+  // the outlet ("out") or inlet ("in") nearest to p within reach, as the patch's port-near: [id, k] or null
+  function portNear(kind, p, skip) {
+    let best = null;
+    for (const b of graph.boxes) {
+      if (b.id === skip) continue;
+      const n = kind === "out" ? outlets(b) : inlets(b), w = width(b);
+      const dy = kind === "out" ? p.y - (b.y + H) : b.y - p.y;
+      if (!n || dy < -4 || dy > REACH + 2 || p.x < b.x - REACH || p.x > b.x + w + REACH) continue;
+      for (let k = 0; k < n; k++) {
+        const dx = Math.abs(p.x - (portX(b, k, n) + PORT / 2));
+        if (dx > PORT / 2 + REACH) continue;
+        const d = dx * dx + dy * dy;
+        if (!best || d < best[0]) best = [d, [b.id, k]];
+      }
+    }
+    return best && best[1];
+  }
+  let hot = null, target = null;
+  const same = (a, b) => (a && b ? a[0] === b[0] && a[1] === b[1] : a === b);
   const kindOf = (b) => { const u = unitOf(b); return b.type === "'" ? "mem" : u.kind === "io" ? "io" : u.kind === "ui" ? "ui" : u.kind === "code" ? "code" : ""; };
   function render() {
     const W = Math.max(canvas.clientWidth - 2, ...graph.boxes.map((b) => b.x + width(b) + 40));
@@ -142,18 +172,17 @@ export function mount(host, { code = "", onCode = () => {}, loadFaust } = {}) {
       const a = byId.get(w.from[0]), b = byId.get(w.to[0]);
       if (!a || !b) return;
       const x1 = portX(a, w.from[1], outlets(a)) + PORT / 2, y1 = a.y + H, x2 = portX(b, w.to[1], inlets(b)) + PORT / 2, y2 = b.y;
-      const back = y2 < y1 + 10;
-      const d = back ? `M${x1},${y1} C${x1},${y1 + 50} ${x2},${y2 - 50} ${x2},${y2}` : `M${x1},${y1} C${x1},${(y1 + y2) / 2} ${x2},${(y1 + y2) / 2} ${x2},${y2}`;
-      el("path", { d, class: "wire" + (back ? " loop" : "") + (sel && sel.wire === wi ? " sel" : "") }, wiresG);
+      const d = wireD(x1, y1, x2, y2);
+      el("path", { d, class: "wire" + (sel && sel.wire === wi ? " sel" : "") }, wiresG);
       el("path", { d, class: "wire-hit", "data-wire": wi }, wiresG);
     });
     for (const b of graph.boxes) {
       const g = el("g", { class: "b " + kindOf(b) + (sel && sel.box === b.id ? " sel" : ""), "data-id": b.id }, svg);
-      el("rect", { x: b.x, y: b.y, width: width(b), height: H, rx: 3 }, g);
-      el("text", { x: b.x + 8, y: b.y + H / 2 + 1 }, g).textContent = boxText(b);
+      el("rect", { class: "body", x: b.x, y: b.y, width: width(b), height: H, rx: 3 }, g);
+      el("text", { x: b.x + 10, y: b.y + 16 }, g).textContent = boxText(b);
       const ni = inlets(b), no = outlets(b);
-      for (let i = 0; i < ni; i++) el("rect", { class: "port in", x: portX(b, i, ni), y: b.y, width: PORT, height: 3 }, g);
-      for (let i = 0; i < no; i++) el("rect", { class: "port out", x: portX(b, i, no), y: b.y + H - 3, width: PORT, height: 3 }, g);
+      for (let i = 0; i < ni; i++) el("rect", { class: "port in" + (same(target, [b.id, i]) ? " target" : ""), x: portX(b, i, ni), y: b.y - 1, width: PORT, height: 4 }, g);
+      for (let i = 0; i < no; i++) el("rect", { class: "port out" + (same(hot, [b.id, i]) ? " hot" : ""), "data-box": b.id, "data-out": i, x: portX(b, i, no), y: b.y + H - 3, width: PORT, height: 4 }, g);
     }
   }
   function info() {
@@ -195,34 +224,63 @@ export function mount(host, { code = "", onCode = () => {}, loadFaust } = {}) {
     lastDown = dbl ? { t: 0, x: 0, y: 0 } : { t: now, x: p.x, y: p.y };
     if (dbl) { e.preventDefault(); edit(b, b ? b.x : p.x, b ? b.y : p.y); return; }
     canvas.focus({ preventScroll: true });
+    // an outlet within reach of the pointer (not only right on it) starts a wire
+    const out = portNear("out", p);
+    if (out) {
+      const ob = graph.boxes.find((x) => x.id === out[0]), no = outlets(ob);
+      drag = { wire: out, x0: portX(ob, out[1], no) + PORT / 2, y0: ob.y + H };
+      canvas.classList.add("wiring");
+      svg.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      return;
+    }
     if (!b) { sel = null; render(); info(); return; }
-    const no = outlets(b);
-    if (no && p.y >= b.y + H - 7) { const k = nearest(b, no, p.x); drag = { wire: [b.id, k], x0: portX(b, k, no) + PORT / 2, y0: b.y + H }; }
-    else drag = { box: b, dx: p.x - b.x, dy: p.y - b.y, moved: false };
+    drag = { box: b, dx: p.x - b.x, dy: p.y - b.y, moved: false };
     sel = { box: b.id };
     svg.setPointerCapture(e.pointerId);
     render(); info();
   });
+  // where a wire would land: the box under the pointer and its nearest inlet, or an inlet within reach above a box
+  function dropAt(p, from) {
+    const b = boxAt(p);
+    if (b && b.id !== from && inlets(b)) return [b.id, nearest(b, inlets(b), p.x)];
+    return portNear("in", p, from);
+  }
+  // the outlet within reach lights up, and the pointer becomes a cross: press there to wire
+  function hover(p) {
+    const h = editing ? null : portNear("out", p);
+    if (same(h, hot)) return;
+    const elOf = (q) => q && svg.querySelector(`.port.out[data-box="${q[0]}"][data-out="${q[1]}"]`);
+    const o = elOf(hot), n = elOf(h);
+    if (o) o.classList.remove("hot");
+    if (n) n.classList.add("hot");
+    canvas.classList.toggle("near-out", !!h);
+    hot = h;
+  }
   svg.addEventListener("pointermove", (e) => {
-    if (!drag) return;
     const p = pt(e);
+    if (!drag) { hover(p); return; }
     if (drag.box) { drag.box.x = Math.max(0, Math.round(p.x - drag.dx)); drag.box.y = Math.max(0, Math.round(p.y - drag.dy)); drag.moved = true; render(); }
-    else { render(); el("path", { class: "temp", d: `M${drag.x0},${drag.y0} L${p.x},${p.y}` }, svg); }
+    else {
+      target = dropAt(p, drag.wire[0]);
+      render();
+      el("path", { class: "wire temp", d: wireD(drag.x0, drag.y0, p.x, p.y) }, svg);
+    }
   });
+  svg.addEventListener("pointerleave", () => { if (!drag) hover({ x: -1e6, y: -1e6 }); });
   svg.addEventListener("pointerup", (e) => {
     if (!drag) return;
     const p = pt(e), d = drag;
     drag = null;
     if (d.box) { if (d.moved) changed(); return; }
-    const b = boxAt(p);
-    if (b && b.id !== d.wire[0] && inlets(b)) {
-      const k = nearest(b, inlets(b), p.x);
-      if (!graph.wires.some((w) => w.from[0] === d.wire[0] && w.from[1] === d.wire[1] && w.to[0] === b.id && w.to[1] === k)) {
-        graph.wires.push({ from: d.wire, to: [b.id, k] });
-        sel = { box: b.id };
-        changed();
-        return;
-      }
+    canvas.classList.remove("wiring");
+    target = null;
+    const t = dropAt(p, d.wire[0]);
+    if (t && !graph.wires.some((w) => w.from[0] === d.wire[0] && w.from[1] === d.wire[1] && w.to[0] === t[0] && w.to[1] === t[1])) {
+      graph.wires.push({ from: d.wire, to: t });
+      sel = { box: t[0] };
+      changed();
+      return;
     }
     render();
   });
