@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`transcribe` segments the contour** (issue #106, measured on cante2midi). In notes mode it no longer starts a
+  note each time the pitch moves 0.6 of a semitone: each voiced stretch is read as a contour (every 10 ms, a median
+  of 100 ms), and a new note begins only where the contour, a semitone away from the note, has held still for 70 ms;
+  each note is written at its median pitch, when the voice stops. Slides, vibrato and ornaments that pass no longer
+  start notes; an onset on the right still does. The shortest note is now 80 ms. On the 20 cantes of cante2midi,
+  from the same f0: onsets 35.5 → 55.9 %, with pitch 23.0 → 36.6 %, with offsets 12.8 → 26.8 % (the authors'
+  automatic transcription: 59.7, 40.6, 26.3 %).
+- **The Weimar Jazz Database in the benchmark** (`bench.mjs --weimar`): the beats found in 40 jazz solos, and the
+  quantizer alone through their annotated beats against the written place of each note.
 - **A `faust~` as a patch** (discussion #115, Study 31): its code opens beside its box with a patch of Faust's own
   elements on the left, kept in sync with the code both ways; applying is still one event, and the parameters stay
   in the box in the patch, in sight (the window opens beside the box). The boxes and the reading of code are a new

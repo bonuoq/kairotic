@@ -286,15 +286,35 @@ transcribe's arguments. The authors' automatic transcription is measured the sam
 
 | transcribe | notes written (6025 by hand) | onset F | + pitch | + offset |
 |---|---|---|---|---|
-| **as it is (min 60 ms, a new note past 0.6 semitone)** | 11283 | 35.5% | 23.0% | 12.8% |
+| **the contour segmented (default)** | 8456 | 55.9% | 36.6% | 26.8% |
+| before: a new note past 0.6 semitone, min 60 ms | 11283 | 35.5% | 23.0% | 12.8% |
 | min 100 ms | 6162 | 28.8% | 20.9% | 13.5% |
 | min 150 ms | 3687 | 21.0% | 15.9% | 9.8% |
 | glide | 3306 | 29.3% | 10.2% | 2.8% |
 | *the automatic transcription of cante2midi* | – | *59.7%* | *40.6%* | *26.3%* |
 
-From the same f0, `transcribe` writes almost twice as many notes as there are: the ornaments, the vibrato and the
-slides of the cante cross 0.6 of a semitone and each starts a note; a longer shortest note loses real ones too. What
-is needed is a segmentation of the contour (stable stretches, with hysteresis), not a threshold on each frame.
+The rows below the first are the earlier `transcribe`, which started a note each time the pitch moved 0.6 of a
+semitone: from the same f0 it wrote almost twice as many notes as there are, since the ornaments, the vibrato and
+the slides of the cante cross that threshold all the time.
+
+Now each voiced stretch is read as a contour (every 10 ms, smoothed by a median of 100 ms) and cut with hysteresis:
+a note goes on while the contour stays within a semitone of its pitch, and a new one begins only where the contour,
+away from it, has held still (within 1.1 semitones) for 70 ms. The settings were chosen on these same 20 cantes, so
+the gain is somewhat optimistic:
+
+| smoothing | band | hold | onset F | + pitch | + offset | notes |
+|---|---|---|---|---|---|---|
+| none | 1 st | 45 ms | 54.3% | 34.5% | 25.3% | 9021 |
+| 60 ms | 1 st | 45 ms | 54.2% | 34.8% | 25.7% | 9168 |
+| **100 ms** | **1 st** | **70 ms** | **56.1%** | **36.6%** | **26.9%** | 8242 |
+| 150 ms | 0.8 st | 50 ms | 55.7% | 36.6% | 27.1% | 8255 |
+| 200 ms | 1 st | 50 ms | 50.3% | 31.4% | 20.1% | 6738 |
+
+It now matches the authors' automatic transcription on offsets and is 4 points below on onsets and pitch. Two
+ceilings remain:
+- **Repeated notes.** The manual transcription splits notes of the same pitch at each syllable, which the f0 cannot
+  show. An `onset~` on the right (from the audio) can.
+- **Intonation.** In a quarter of the manual notes the median f0 is more than 50 cents from the written pitch.
 
 ### The delay of `onset~`
 

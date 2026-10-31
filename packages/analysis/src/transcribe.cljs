@@ -67,26 +67,98 @@
                (cond-> {:state st :show (select-keys st [:on :count])}
                  edit (assoc :out [[0 edit]])
                  later (assoc :later [later])))
+      ;; ── notes mode: the contour of each voiced stretch, segmented (issue #106, measured on cante2midi) ──
+      ;; What pitch~ sends while a voice sounds is kept as a run of points; when the voice stops (or the run is long)
+      ;; the run is read as a contour every 10 ms, smoothed by a median of 100 ms (vibrato and jitter), and cut into
+      ;; notes with hysteresis: a note goes on while the contour stays within a semitone of its pitch; a new one
+      ;; begins only where the contour, away from it, has held still (within 1.1 semitones) for 70 ms, so a slide
+      ;; or an ornament that passes does not start notes. An onset (inlet 1) cuts there too. Each note is written
+      ;; at the median pitch of its frames. Silences of 30 ms at most are bridged.
+      median (fn [xs] (let [v (vec (sort xs))] (nth v (quot (count v) 2))))
+      segment (fn [run marks t-end k minlen]
+                (let [dt (* 0.01 k) w 5 band 1 stab 1.1 hold-n 7
+                      ts (vec (range (ffirst run) t-end dt))
+                      ;; the contour on the grid: each frame, the last point at or before it (as MIDI)
+                      raw (loop [i 0 [p & more :as ps] run cur nil out (transient [])]
+                            (if (>= i (count ts))
+                              (persistent! out)
+                              (let [t (ts i)]
+                                (if (and p (<= (first p) (+ t 1e-9)))
+                                  (recur i more (api/hz->midi (second p)) out)
+                                  (recur (inc i) ps cur (conj! out cur))))))
+                      n (count raw)
+                      sm (mapv (fn [i] (median (subvec raw (max 0 (- i w)) (min n (+ i w 1))))) (range n))
+                      cut? (fn [i] (let [a (if (pos? i) (ts (dec i)) (- (ts 0) dt)) b (ts i)] (some (fn [[mt]] (and (> mt a) (<= mt b))) marks)))
+                      note (fn [s e ms] {:s s :e e :ms ms})
+                      notes (loop [i 0 cur nil pend [] out []]
+                              (if (>= i n)
+                                (if cur (conj out (assoc cur :e t-end)) out)
+                                (let [t (ts i) m (sm i)]
+                                  (cond
+                                    (nil? cur) (recur (inc i) (note t (+ t dt) [m]) [] out)
+                                    (and (cut? i) (> t (:s cur))) (recur (inc i) (note t (+ t dt) [m]) [] (conj out (assoc cur :e t)))
+                                    (<= (js/Math.abs (- m (median (take-last 24 (:ms cur))))) band)
+                                    (recur (inc i) (assoc cur :e (+ t dt) :ms (into (conj (:ms cur) m) (map second pend))) [] out)
+                                    :else
+                                    (let [pend (conj pend [t m]) tail (take-last hold-n pend) tm (map second tail)]
+                                      (if (and (>= (count pend) hold-n) (< (- (apply max tm) (apply min tm)) stab))
+                                        ;; the new note begins where the contour left the old one; its pitch is that of where it settled
+                                        (recur (inc i) (note (ffirst pend) (+ t dt) (vec tm)) [] (conj out (assoc cur :e (ffirst pend))))
+                                        (recur (inc i) cur pend out)))))))]
+                  (->> notes
+                       (filter (fn [{:keys [s e]}] (>= (- e s) minlen)))
+                       (mapv (fn [{:keys [s e ms]}]
+                               (let [hz (api/midi->hz (median ms))
+                                     ;; the strength of an onset heard at most 0.15 s before the note (or just after its start)
+                                     acc (some (fn [[mt x]] (when (and (number? x) (<= (- s (* 0.15 k)) mt (+ s (* 0.05 k)))) x)) marks)]
+                                 (cond-> {:pts [[(r3 s) (r3 hz)] [(r3 e) (r3 hz)]]} acc (assoc :acc acc))))))))
+      ;; the run segmented into :done: all of it (the voice stopped at t-end), or all but its last note (a long run
+      ;; still sounding: that note goes on in the run)
+      settle (fn [state t-end all?]
+               (let [run (:run state) k (/ (:bpm state) 60) minlen (* k (/ (:min-ms state) 1000))]
+                 (if (or (empty? run) (<= t-end (ffirst run)))
+                   (dissoc state :run :silent)
+                   (let [ns (segment run (:marks state) t-end k minlen)
+                         [keep-ns rest-from] (if (or all? (< (count ns) 2)) [ns nil] [(pop ns) (ffirst (:pts (peek ns)))])
+                         state (-> state (update :done into keep-ns) (update :count + (count keep-ns)))]
+                     (if rest-from
+                       (let [before (last (filter (fn [[t]] (<= t rest-from)) run))]
+                         (assoc state :run (into [[rest-from (second before)]] (filter (fn [[t]] (> t rest-from)) run))
+                                      :marks (filterv (fn [[t]] (>= t (- rest-from (* 0.15 k)))) (:marks state))))
+                       (-> state (dissoc :run :silent) (assoc :marks (filterv (fn [[t]] (> t t-end)) (:marks state)))))))))
+      ;; a silence that lasted more than 30 ms: the run ends where it began
+      settled (fn [state t]
+                (if (and (:silent state) (> (- t (:silent state)) (* 0.03 (/ (:bpm state) 60))))
+                  (settle state (:silent state) true)
+                  state))
+      hear-notes (fn [state hz t]
+                   (let [k (/ (:bpm state) 60)
+                         state (settled state t)]
+                     (cond
+                       (not (pos? hz)) (if (and (seq (:run state)) (nil? (:silent state))) (assoc state :silent t) state)
+                       :else (let [state (-> state (dissoc :silent) (update :run (fnil conj []) [t hz]))]
+                               ;; a run of 8 s and more: what is settled is written, the last note goes on
+                               (if (> (- t (ffirst (:run state))) (* 8 k)) (settle state t false) state)))))
       ;; ── one value of pitch~ (Hz, 0 when it hears none) ──
       hear (fn [state hz at]
              (let [t (beats state at)
                    cur (:cur state)
                    state (cond
+                           (= :notes (:mode state)) (hear-notes state hz t)
                            (not (pos? hz)) (end-note state t)
                            (nil? cur) (start-note state t hz)
-                           ;; notes: another note when the pitch moves more than 0.6 of a semitone away
-                           (and (= :notes (:mode state)) (> (js/Math.abs (- (api/hz->midi hz) (:midi cur))) 0.6))
-                           (-> state (end-note t) (start-note t hz))
-                           :else (update-in state [:cur :pts] conj [t hz]))]
-               (flush state at false)))]
+                           :else (update-in state [:cur :pts] conj [t hz]))
+                   [st edit later] (flush state at false)]
+               ;; the voice stopped: a look again in a little while, to write its notes even if nothing else arrives
+               [st edit (or later (when (and (:silent st) (not (:pending st))) [(+ at 0.05) 0 [:flush]]))]))]
   {;; ── about ──
    :class "transcribe"
    :license "MPL-2.0"
-   :doc "Writes what pitch~ hears into a freqt, as strokes. Hz on the left (from pitch~: 0 when it hears none), rec to start from 0 (its first write clears the freqt) or rec t (msg rec 8) to start from beat t, keeping what is before it, or ovr t (msg ovr 8) to write over only what the take covers, keeping what comes after and stop to end; a bang on the right (from onset~) begins a new note even on the same pitch, and a number there (onset~'s strength, 0…1) does too and gives the note that weight: its stroke is written heavier (as an event's :amp), and the quantizer reads it as the note's :vel, which helps find the beat and the bar (issue #106). In notes mode each note is a flat stroke at the pitch it holds longest (the freqt's tuning, or its score view, rounds it); in glide mode a stroke follows the pitch as it moves. Times are beats at bpm (60: one beat a second). Notes shorter than ms (60) are left out. It writes into the freqt at most every 2 seconds, each time one event of the history. Connect its outlet to the freqt's inlet."
+   :doc "Writes what pitch~ hears into a freqt, as strokes. Hz on the left (from pitch~: 0 when it hears none), rec to start from 0 (its first write clears the freqt) or rec t (msg rec 8) to start from beat t, keeping what is before it, or ovr t (msg ovr 8) to write over only what the take covers, keeping what comes after and stop to end; a bang on the right (from onset~) begins a new note even on the same pitch, and a number there (onset~'s strength, 0…1) does too and gives the note that weight: its stroke is written heavier (as an event's :amp), and the quantizer reads it as the note's :vel, which helps find the beat and the bar (issue #106). In notes mode the contour of each voiced stretch is cut into notes where it settles on another pitch (a slide, a vibrato or an ornament that passes does not start notes; an onset on the right does), each a flat stroke at its median pitch (the freqt's tuning, or its score view, rounds it), written when the voice stops; in glide mode a stroke follows the pitch as it moves. Times are beats at bpm (60: one beat a second). Notes shorter than ms (80) are left out. It writes into the freqt at most every 2 seconds, each time one event of the history. Connect its outlet to the freqt's inlet."
    :usage "transcribe [bpm] [notes|glide] [ms]"
    :io [2 1]
    :size [124 30]
-   :args [[:bpm 60] [:mode nil] [:min-ms 60]]
+   :args [[:bpm 60] [:mode nil] [:min-ms 80]]
 
    ;; ── logic ──
    :receive (fn [{:keys [inlet value state args at]}]
@@ -107,14 +179,18 @@
                      :show {:on true :count 0}})
                   (not (:on state)) {}
                   (= value :stop)
-                  (let [st (end-note state (beats state at))
+                  (let [t (beats state at)
+                        st (if (seq (:run state)) (settle state (or (:silent state) t) true) state)
+                        st (end-note st t)
                         [st edit _] (flush st at true)]
                     (cond-> {:state (assoc st :on false) :show {:on false :count (:count st)}}
                       edit (assoc :out [[0 edit]])))
-                  (= value [:flush]) (result state (flush (assoc state :pending false) at false))
+                  (= value [:flush]) (result state (flush (settled (assoc state :pending false) (beats state at)) at false))
                   ;; an onset (a bang, or its strength 0…1 from onset~'s second outlet): the note that sounds ends
                   ;; here and a new one begins at its pitch, with that strength; in silence, the strength waits for
                   ;; the next note to begin
+                  (and (= inlet 1) (= :notes (:mode state)))
+                  {:state (update state :marks (fnil conj []) [(beats state at) (when (number? value) (api/clamp value 0 1))])}
                   (= inlet 1)
                   (let [t (beats state at)
                         state (if (number? value) (assoc state :acc [t (api/clamp value 0 1)]) state)]

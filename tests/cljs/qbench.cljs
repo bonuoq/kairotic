@@ -320,7 +320,7 @@
    pitch~ would send it, at 60 bpm (beats are seconds): [[on dur hz] …]. args override its own."
   [d [t0 dt hzs] args]
   (let [rcv (:receive d)
-        args (merge {:bpm 60 :mode nil :min-ms 60} args)
+        args (merge {:bpm 60 :mode nil :min-ms 80} args)
         step (fn [[st outs] m] (let [r (rcv (assoc m :state st :args args))]
                                  [(if (contains? r :state) (:state r) st) (into outs (map second (:out r)))]))
         ;; pitch~ sends only what changes

@@ -96,6 +96,22 @@ export async function analysis(page, check) {
   await cljs(page, `(send! ${onset} [:threshold 5])`);
   const thr = await until(page, `(get-in @eng/rt [:states ${onset} :set :threshold])`, (x) => x === "5", 3000);
   check("onset~ takes [:threshold x] while it listens", thr === "5", thr);
+
+  // transcribe's notes, fed by hand as pitch~ sends them (every 21 ms, only what changes): a note sung with a wide
+  // vibrato is one note; a slide from it to a fifth above is two, not a note for each step of the slide
+  const sing = (hzs) => `(let [rcv (:receive (comp/lookup "transcribe")) args {:bpm 60 :mode nil :min-ms 80}
+      step (fn [[st outs] m] (let [r (rcv (assoc m :state st :args args))] [(if (contains? r :state) (:state r) st) (into outs (map second (:out r)))]))
+      hz ${hzs}
+      [st outs] (reduce (fn [acc [i h]] (step acc {:inlet 0 :value h :at (* i 0.021)})) (step [nil []] {:inlet 0 :value :rec :at 0}) (map-indexed vector hz))
+      [_ outs] (step [st outs] {:inlet 0 :value :stop :at (* (count hz) 0.021)})]
+  (vec (keep (fn [[k pts]] (when (= k :stroke) (js/Math.round (+ 69 (* 12 (/ (js/Math.log (/ (second (first pts)) 440)) js/Math.LN2))))))
+             (mapcat (fn [[k es]] (when (= k :batch) es)) outs))))`;
+  const vib = "(mapv (fn [i] (* 220 (js/Math.pow 2 (/ (* 0.6 (js/Math.sin (* i 0.021 2 js/Math.PI 5.5))) 12)))) (range 48))";
+  const vibNotes = await cljs(page, sing(vib));
+  check("transcribe: a note with a wide vibrato (±60 cents) is one note (A3)", vibNotes === "[57]", vibNotes);
+  const slide = "(concat (repeat 20 220) (map (fn [i] (* 220 (js/Math.pow 2 (/ (* 7 (/ i 10)) 12)))) (range 1 11)) (repeat 20 329.63) [0])";
+  const slideNotes = await cljs(page, sing(slide));
+  check("... and a slide to a fifth above, two notes (A3 E4)", slideNotes === "[57 64]", slideNotes);
   await cljs(page, `(send! ${onset} [:threshold 3]) (delete ${form})`);
 
 
