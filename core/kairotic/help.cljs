@@ -444,12 +444,12 @@
    "onset~"
    {:package "@kairotic/analysis" :usage "onset~ [threshold] [ms]"
     :doc "A bang at the beginning of each sound (a note, a stroke, a syllable), and its strength."
-    :inlets ["the signal"]
-    :outlets ["a bang for each onset" "its strength (the growth of the spectrum, 0…1)"]
+    :inlets ["the signal; [:threshold x] and [:ms y] change them while it listens; a [:segment …] from form~ forgets the usual change of the section before"]
+    :outlets ["a bang for each onset" "its strength (the growth of the spectrum, 0…1)" "the growth of every frame (the onset strength envelope)"]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"onset~\" 40 90)" "(box :b3 \"counter 1\" 40 150)"
                     "(box :b4 \"number\" 40 200)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)")
     :try "Press ▶ and clap: the counter counts the claps. Raise the threshold if it counts too much."
-    :see ["pitch~" "sample" "counter"]}
+    :see ["pitch~" "sample" "counter" "form~"]}
 
    "chroma~"
    {:package "@kairotic/analysis" :usage "chroma~ [ms]"
@@ -493,6 +493,17 @@
                     "(connect :b2 0 :b5 0)" "(connect :b2 1 :b5 1)" "(connect :b3 0 :b5 2)" "(connect :b4 0 :b5 3)")
     :try "Press ▶ and allow the microphone: speak, then sing a long note — the centroid falls, the chroma strip settles on one row, each syllable leaves a mark."
     :see ["features~" "chroma~" "onset~" "print"]}
+
+   "form~"
+   {:package "@kairotic/analysis" :usage "form~ [seconds] [step] [kernel]"
+    :doc "How alike the moments of what arrives are over the last seconds (20): a self-similarity matrix of one frame every step seconds (0.25), drawn; where a segment begins, and the period that repeats."
+    :inlets ["lists of numbers (a chroma~, an mfcc), or numbers (onset~'s envelope, an rms); [:seconds x] [:step x] [:kernel x] change them; clear forgets"]
+    :outlets ["the novelty of each frame, 0…1 (how much the music changes there; kernel seconds (2) late)" "a bang where a segment begins" "the period that repeats most, in seconds, when it changes" "[:segment {:t :at :length :period}] for the segment that ends"]
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"chroma~\" 40 90)" "(box :b3 \"onset~\" 200 90)"
+                    "(box :b4 \"form~\" 40 150)" "(box :b5 \"print\" 280 300)"
+                    "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b2 0 :b4 0)" "(connect :b4 3 :b3 0)" "(connect :b4 3 :b5 0)")
+    :try "Press ▶ and play a section, then another (other chords, another register): the squares along the diagonal are the sections, a line marks where the second begins, print writes the segment, and onset~ starts the new section afresh."
+    :see ["chroma~" "onset~" "monitor"]}
 
    "fetch"
    {:package "@kairotic/data" :usage "fetch [json|text|edn] [live]"

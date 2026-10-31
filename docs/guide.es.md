@@ -130,6 +130,8 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   `monitor 6 rms centroid chroma` dibuja lo que llega a sus entradas en los últimos 6 segundos, un carril
   por entrada: los números como líneas, las listas (chroma, mfcc) como franjas, los bangs y las palabras
   como marcas.
+  `form~` compara cada momento con los demás (una matriz de autosimilitud de un chroma o un mfcc, dibujada):
+  un bang donde empieza una sección, el periodo que se repite y un `[:segment …]` que hace que `onset~` empiece de nuevo.
   `transcribe` escribe lo que oye `pitch~` en un `freqt` — `rec`, tocar, `stop` — como notas a su
   altura o, con `transcribe 60 glide`, como contornos que siguen la voz (un `onset~` a su derecha separa
   las notas repetidas); el freqt visto como partitura es entonces la improvisación en notación.

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **The form of what is heard or played** (issue #120). A new core module, `kairotic.structure`: the
+  self-similarity matrix of frames (Foote 1999), the novelty of each frame by a checkerboard kernel (Foote 2000),
+  the beat spectrum and its periods (Foote & Uchihashi 2001), segment boundaries, and notes as frames (pitch
+  classes, onset strength) for a take or a tree. In the API for any component (`api/ssm`, `api/novelty`,
+  `api/novelty-at`, `api/beat-spectrum`, `api/periods`, `api/boundaries`, `api/note-frames`).
+  `@kairotic/analysis` 0.5.0:
+  - **`form~ [seconds] [step] [kernel]`**: a self-similarity matrix over the last seconds of what arrives (a
+    chroma, an mfcc, onset~'s envelope), drawn; the novelty of each frame, a bang and a `[:segment …]` where a
+    segment begins, and the period that repeats.
+  - `onset~` is adaptive: `[:threshold x]` and `[:ms y]` change it while it listens, and a `[:segment …]` makes it
+    forget the usual change of the section before.
+  - Measured on the quantization benchmark (40 ASAP performances), the SSM gave the beat tracker nothing: as a
+    term of the analysis by synthesis (bar and phase) the scores stayed within noise or fell, and tracking each
+    segment apart fell (any-level F 0.684 against 0.714). The tracker is unchanged; the component is there for
+    its own uses.
 - **The logo** (`brand/`): the icon (k) — parentheses around a K whose stem is a timeline branching at the
   kairos point — and the logotype `(kairotic` + a branch + `)` in IBM Plex Mono, its first k drawn as that K.
   Outlined SVGs (logotype for light and dark, closed, wordmark, icon, small icon, app icon) and a guide
