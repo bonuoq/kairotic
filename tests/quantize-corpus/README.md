@@ -234,6 +234,43 @@ On real piano the pulse is followed fairly well (72 % at any level), but its lev
 time. Choosing the metric level, and the downbeats, is where the tracker should improve next. The differences
 between preferred tempos are within the noise of 40 performances.
 
+## Jazz solos: the Weimar Jazz Database (`--weimar`)
+
+`fetch-weimar.py` (Python, standard library) downloads the [Weimar Jazz Database](https://jazzomat.hfm-weimar.de/download/download.html)
+(Jazzomat Research Project, v2.1, 456 solos, ODbL 1.0) and exports `.cache/weimar.json.gz`: each solo transcribed
+by hand from the recording, every note with its onset and duration in seconds as played and its written place
+(bar, beat, tatum over the division of the beat), and the beats of the recording. Played and written time of the
+same notes.
+
+`bench.mjs --weimar` takes a seeded sample of 40 solos in 4/4 (`--n`, `--seed`), their first 30 seconds from the
+first downbeat (`--secs`; written to `.cache/weimar-sample.edn`), and measures two things:
+- **the beats found** from the notes alone (`:time :track`), against those of the recording, as for ASAP;
+- **the quantizer alone**: the notes quantized through the annotated beats (a time map), each in its written place
+  or not, by the division it is written in (binary, triplet, other). Swung eighths are written binary, as the
+  database does.
+
+| quantizer, through the annotated beats | in place | precision | binary (4012) | triplet (1123) | other (158) |
+|---|---|---|---|---|---|
+| defaults (`:cpx 1`) | 58.2% | 58.6% | 62.5% | 49.0% | 13.9% |
+| `:divs [1 2 3 4]` | 63.9% | 65.5% | 68.9% | 53.5% | 10.1% |
+| `:w {:cpx 2}` | 67.3% | 68.2% | 77.3% | 38.6% | 15.8% |
+| `:w {:cpx 3}` | 67.9% | 69.1% | 78.9% | 36.2% | 11.4% |
+| shifted by the soloist's lag, warped by the swing ratio | 57.6% | – | – | – | – |
+
+| beats found (40 solos) | beat F | any level | downbeat F | tempo | at another level |
+|---|---|---|---|---|---|
+| defaults | 32.4% | 55.2% | 8.1% | 2.5% | 50.0% |
+
+- At jazz tempos (often over 200 bpm) the tracker finds the beat at half the tempo half of the time: its prior,
+  around 100 bpm, pulls it there. The downbeats are almost never found.
+- Through the right beats, the quantizer writes fine divisions (sixths, twelfths) where a transcriber writes eighths
+  played late or swung: notes on the beat come back ⅙ or ¼ of a beat late, swung eighths as the third of a
+  triplet. Weighing complexity more (`:cpx 2`) puts 9 more notes in 100 in place; on the generated corpora it also
+  helps (Essen loose 93.8 → 97.8 %, rough 74.6 → 84.4 %; SymbTr loose 89.4 → 94.8 %), but SymbTr played exactly
+  loses perfect pieces (97 → 88 %): to look at before it becomes the default.
+- Moving the beat by the soloist's median lag and warping each beat by the swing ratio (both estimated per solo)
+  does not help.
+
 ## Sung notes: cante2midi (`--cante`)
 
 `fetch-cante2midi.mjs <zips>` reads the three parts of [cante2midi](https://zenodo.org/records/1322526) (Kroher &

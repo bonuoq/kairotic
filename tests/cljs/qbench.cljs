@@ -248,6 +248,47 @@
     (str "| performances | beat F (70 ms) | beat F, any level | downbeat F | tempo | tempo at another level | ms |\n|---|---|---|---|---|---|---|\n"
          "| " n " | " (pct (mean :beat-f)) " | " (pct (mean (fn [r] (or (:beat-f-any r) 0)))) " | " (pct (mean :down-f)) " | " (pct (/ ok (max 1 n))) " | " (pct (/ oct (max 1 n))) " | " (.toFixed (mean (fn [r] (or (:ms r) 0))) 0) " |")))
 
+;; ───────── jazz solos: played and written time of the same notes (Weimar Jazz Database, issue #106) ─────────
+
+(defn- family [div] (cond (#{1 2 4 8 16} div) :binary (#{3 6 12 24} div) :triplet :else :other))
+
+(defn run-weimar
+  "One solo ({:notes [[on off midi vel] …] seconds, :written [[beat division] …] for each note, beats from the first
+   downbeat, :beats :downbeats, :meter}): its beats found, as run-performed; and its notes quantized through the
+   annotated beats (a time map: the quantizer alone, not the tracker), each in place or not, by the division it is
+   written in (binary, triplet, other), and how many came back as grace notes."
+  [{:keys [id notes written beats meter] :as solo} qopts]
+  (let [beat-part (run-performed solo qopts)
+        perf (into [:par] (map (fn [[a b m v]] [:note (cond-> {:at a :dur (- b a) :pitch m} v (assoc :vel v))]) notes))
+        tmap (mapv vector beats (range))
+        t0 (js/Date.now)]
+    (try
+      (let [q (qz/quantize-tree perf (merge-with (fn [a b] (if (and (map? a) (map? b)) (merge a b) b)) {:meter meter :time tmap} qopts))
+            ms (- (js/Date.now) t0)
+            [qg qm] ((juxt filter remove) :grace (mt/notes q))
+            pool (atom (vec qm))
+            take! (fn [t p] (when-let [i (first (keep-indexed (fn [i x] (when (and (near? (:t x) t 1e-3) (near? (:pitch x) p 0.05)) i)) @pool))]
+                              (swap! pool (fn [xs] (into (subvec xs 0 i) (subvec xs (inc i))))) true))
+            hits (mapv (fn [[_ _ m] [b div]] [(family div) (boolean (take! b m))]) notes written)
+            by (fn [fam] (let [hs (filter (fn [[f]] (= f fam)) hits)] [(count (filter second hs)) (count hs)]))]
+        (assoc beat-part :source :weimar :qms ms
+               :notes (count notes) :found (count qm) :matched (count (filter second hits)) :graces (count qg)
+               :binary (by :binary) :triplet (by :triplet) :other (by :other)))
+      (catch :default e (assoc beat-part :source :weimar :qerror (.-message e) :notes (count notes) :found 0 :matched 0)))))
+
+(defn weimar-report
+  "Jazz solos as two tables (Markdown): the beats found, as for ASAP; and the notes quantized through the annotated
+   beats, in place, by the division they are written in."
+  [rs]
+  (let [sum (fn [k] (reduce + (map (fn [r] (or (k r) 0)) rs)))
+        pair (fn [k] (reduce (fn [[a b] [c d]] [(+ a c) (+ b d)]) [0 0] (keep k rs)))
+        pct (fn [[a b]] (if (pos? b) (str (.toFixed (* 100 (/ a b)) 1) "% of " b) "–"))
+        n (sum :notes) m (sum :matched) f (sum :found)]
+    (str (performed-report rs) "\n\n"
+         "| notes | in place (recall) | precision | binary | triplet | other | as grace notes |\n|---|---|---|---|---|---|---|\n"
+         "| " n " | " (pct [m n]) " | " (pct [m f]) " | " (pct (pair :binary)) " | " (pct (pair :triplet)) " | " (pct (pair :other))
+         " | " (sum :graces) " |")))
+
 ;; ───────── sung notes: what transcribe writes against a manual transcription (cante2midi, issue #106) ─────────
 
 (defn- cents [hz midi] (* 100 (- (+ 69 (* 12 (/ (js/Math.log (/ hz 440)) js/Math.LN2))) midi)))
