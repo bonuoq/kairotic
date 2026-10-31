@@ -14,8 +14,12 @@
 ;; If the editor cannot be loaded, a plain text area does the same.
 ;; The same window opens the data of a canvas, freqt or score as EDN (discussion #30: { } in its header,
 ;; or a double-click on the right of it): applying it writes what changed as one event of the history.
+;; The code of a faust~ also opens as a patch of Faust's own elements, beside it (discussion #115, Study
+;; 31, @kairotic/faust-units): editing the patch rewrites the code in the editor, editing the code redraws
+;; the patch, and applying is still one event. The window opens beside the box, so the parameters the box
+;; shows in the patch stay in sight while you play them.
 
-(defonce code-win (atom nil))   ; {:id :path :lang :data? :ed :original :dirty :confirm :error}
+(defonce code-win (atom nil))   ; {:id :path :lang :data? :ed :original :dirty :confirm :error :fv}
 (defonce cm-module (atom nil))  ; Promise of the bundle
 
 (defn open-definition
@@ -129,6 +133,7 @@
 
 (defn close-code-win! []
   (when-let [w @code-win]
+    (when-let [fv (:fv w)] (.destroy fv))
     (when-let [ed (:ed w)] (.destroy ed))
     (when-let [el (cw-el)] (.remove el))
     (reset! code-win nil)
@@ -141,16 +146,38 @@
     (close-code-win!)))
 
 (defn place-window!
-  "Over the box, inside the window of the browser."
-  [el id b]
-  (let [r (when-let [g (.querySelector js/document (str "#scene .box[data-box=\"" (name id) "\"]"))] (.getBoundingClientRect g))
-        vw (.-innerWidth js/window) vh (.-innerHeight js/window)
-        w (min 620 (- vw 32)) h (min 420 (- vh 32))
-        x (if r (.-left r) 40) y (if r (+ (.-top r) hdr) 80)]
-    (set! (.. el -style -width) (str w "px"))
-    (set! (.. el -style -height) (str h "px"))
-    (set! (.. el -style -left) (str (max 16 (min x (- vw w 16))) "px"))
-    (set! (.. el -style -top) (str (max 16 (min y (- vh h 16))) "px"))))
+  "Over the box, inside the window of the browser; a wide one (a faust~ with its patch) beside the box,
+   so that what the box shows in the patch (its parameters) stays in sight."
+  ([el id b] (place-window! el id b false))
+  ([el id b wide?]
+   (let [r (when-let [g (.querySelector js/document (str "#scene .box[data-box=\"" (name id) "\"]"))] (.getBoundingClientRect g))
+         vw (.-innerWidth js/window) vh (.-innerHeight js/window)
+         ;; a wide one goes where it covers nothing of the box: beside it (on the side with more room, as
+         ;; wide as that room) if a side has 560 px, else below or above it if there are 280, else beside
+         ;; it if a side has 400; and over it as the others only when nothing else fits
+         right-room (when r (- vw 16 (.-right r) 12)) left-room (when r (- (.-left r) 12 16))
+         below-room (when r (- vh 16 (.-bottom r) 12)) above-room (when r (- (.-top r) 12 16))
+         side-room (when r (max right-room left-room)) vert-room (when r (max below-room above-room))
+         place (when (and wide? r)
+                 (cond (>= side-room 560) (if (>= right-room left-room) :right :left)
+                       (>= vert-room 280) (if (>= below-room above-room) :below :above)
+                       (>= side-room 400) (if (>= right-room left-room) :right :left)))
+         w (case place
+             :right (min 1040 right-room) :left (min 1040 left-room)
+             (min (if wide? 1040 620) (- vw 32)))
+         h (case place
+             :below (min 520 below-room) :above (min 520 above-room)
+             (min (if wide? 520 420) (- vh 32)))
+         [x y] (case place
+                 :right [(+ (.-right r) 12) (.-top r)]
+                 :left [(- (.-left r) 12 w) (.-top r)]
+                 :below [(.-left r) (+ (.-bottom r) 12)]
+                 :above [(.-left r) (- (.-top r) 12 h)]
+                 [(if r (.-left r) 40) (if r (+ (.-top r) hdr) 80)])]
+     (set! (.. el -style -width) (str w "px"))
+     (set! (.. el -style -height) (str h "px"))
+     (set! (.. el -style -left) (str (max 16 (min x (- vw w 16))) "px"))
+     (set! (.. el -style -top) (str (max 16 (min y (- vh h 16))) "px")))))
 
 (defn drag-window!
   "The window moves with its bar."
@@ -168,6 +195,8 @@
       (.addEventListener js/window "pointermove" move)
       (.addEventListener js/window "pointerup" up))))
 
+(declare toggle-patch-view!)
+
 (defn window-shell [id b lang]
   (let [el (js/document.createElement "div")]
     (set! (.-id el) "code-win")
@@ -182,6 +211,9 @@
                       (:text b)))
                "</span>"
                "<span class=\"cw-lang\">" (esc lang) "</span>"
+               (when (= lang "faust")
+                 (str "<button class=\"act cw-pv\" data-cw=\"patch\" aria-pressed=\"" (not (false? (:faust-patch? @ui)))
+                      "\" title=\"Show or hide its patch: the code as Faust's own elements\">Patch</button>"))
                "<button class=\"act primary\" data-cw=\"apply\" title=\"Apply the code (Ctrl/⌘+Enter)\">Apply</button>"
                "<button class=\"act cw-x\" data-cw=\"close\" title=\"Close (Esc)\" aria-label=\"Close\">×</button></div>"
                "<div class=\"cw-confirm\" hidden>Something is not applied. "
@@ -194,6 +226,7 @@
       (fn [e]
         (case (some-> (.closest (.-target e) "[data-cw]") (.getAttribute "data-cw"))
           "apply" (apply-code!)
+          "patch" (toggle-patch-view!)
           "close" (ask-close!)
           "apply-close" (do (apply-code!) (when-not (:dirty @code-win) (close-code-win!)))
           "discard" (close-code-win!)
@@ -213,7 +246,8 @@
     (set! (.-spellcheck ta) false)
     (set! (.-value ta) text)
     (.appendChild body ta)
-    (.addEventListener ta "input" (fn [_] (swap! code-win assoc :dirty (not= (.-value ta) (:original @code-win)) :error nil) (cw-status!)))
+    (.addEventListener ta "input" (fn [_] (swap! code-win assoc :dirty (not= (.-value ta) (:original @code-win)) :error nil) (cw-status!)
+                                    (when-let [fv (:fv @code-win)] (.setCode fv (.-value ta)))))
     (.addEventListener ta "keydown"
       (fn [e]
         (let [k (.-key e)]
@@ -229,6 +263,39 @@
     ta))
 
 (declare open-code-editor-at!)
+
+;; ───── the patch of a faust~ (@kairotic/faust-units) ─────
+
+(defn set-editor-text!
+  "Code the patch view wrote, into the editor: edited, not applied yet."
+  [v]
+  (when-let [{:keys [ed ta]} @code-win]
+    (cond ed (.setValue ed v) ta (set! (.-value ta) v))
+    (swap! code-win assoc :dirty (not= v (:original @code-win)) :error nil)
+    (cw-status!)))
+
+(defn mount-faust-view!
+  "Draws the patch of the faust~ open in the window, in `pane`, once its module is loaded."
+  [id pane text]
+  (-> (api/import-module (lib/module-origins "@kairotic/faust-units" "view.mjs"))
+      (.then (fn [m]
+               (when (and @code-win (= id (:id @code-win)) (nil? (:fv @code-win)))
+                 (let [w @code-win
+                       fv ((.-mount m) pane #js {:code (if (or (:ed w) (:ta w)) (cw-text) text)
+                                                 :onCode (fn [c] (set-editor-text! c))
+                                                 :loadFaust (fn [] (kairotic.faust/load))})]
+                   (swap! code-win assoc :fv fv)))))
+      (.catch (fn [e]
+                (set! (.-innerHTML pane) (str "<p class=\"cw-pv-err\">The patch could not be loaded: " (esc (or (.-message e) e)) "</p>"))))))
+
+(defn toggle-patch-view!
+  "Shows or hides the patch beside the code of a faust~ (remembered for the next ones)."
+  []
+  (when-let [body (some-> (cw-el) (.querySelector ".cw-body.split"))]
+    (let [show? (.contains (.-classList body) "nopatch")]
+      (.toggle (.-classList body) "nopatch" (not show?))
+      (swap! ui assoc :faust-patch? show?)
+      (some-> (cw-el) (.querySelector "[data-cw=patch]") (.setAttribute "aria-pressed" (str show?))))))
 
 (defn open-code-editor!
   "Opens the code of a box in the editor window (or brings it back if it is the one open)."
@@ -252,12 +319,25 @@
               original (str (comp/source-of b))
               text (if (and (not data?) (str/blank? original)) (or (:template d) "") original)
               el (window-shell id b lang)
-              body (.querySelector el ".cw-body")]
+              body (.querySelector el ".cw-body")
+              ;; a faust~: its patch on the left, the code on the right
+              faust? (and (not data?) (= lang "faust"))
+              pane (when faust? (js/document.createElement "div"))
+              body (if faust?
+                     (let [t (js/document.createElement "div")]
+                       (set! (.-className body) (str "cw-body split" (when (false? (:faust-patch? @ui)) " nopatch")))
+                       (set! (.-className pane) "cw-patch")
+                       (set! (.-className t) "cw-text")
+                       (.appendChild body pane)
+                       (.appendChild body t)
+                       t)
+                     body)]
           (.appendChild (.-body js/document) el)
-          (place-window! el id b)
+          (place-window! el id b faust?)
           (reset! code-win {:id id :path path :lang lang :data? data? :original original :dirty (not= text original)})
           (cw-status!)
           (render-scene (current))
+          (when faust? (mount-faust-view! id pane text))
           (.then (load-cm)
                  (fn [cm]
                    (when (= (:id @code-win) id)
@@ -266,7 +346,8 @@
                                              :words (clj->js (if data? buffer-words (words-for lang)))
                                              :onApply (fn [_] (apply-code!))
                                              :onCancel (fn [] (ask-close!))
-                                             :onChange (fn [v] (swap! code-win assoc :dirty (not= v (:original @code-win)) :error nil) (cw-status!))})]
+                                             :onChange (fn [v] (swap! code-win assoc :dirty (not= v (:original @code-win)) :error nil) (cw-status!)
+                                                         (when-let [fv (:fv @code-win)] (.setCode fv v)))})]
                          (swap! code-win assoc :ed ed)
                          (.focus ed))
                        (swap! code-win assoc :ta (textarea-editor! body text)))))))))))
@@ -284,6 +365,7 @@
           (when (and (not dirty) (not= src original) (not (str/blank? src)))
             (swap! code-win assoc :original src)
             (cond ed (.setValue ed src) ta (set! (.-value ta) src))
+            (when-let [fv (:fv @code-win)] (.setCode fv src))
             (swap! code-win assoc :dirty false))))
       (cw-status!))))
 

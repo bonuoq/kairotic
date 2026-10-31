@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A `faust~` as a patch** (discussion #115, Study 31): its code opens beside its box with a patch of Faust's own
+  elements on the left, kept in sync with the code both ways; applying is still one event, and the parameters stay
+  in the box in the patch, in sight (the window opens beside the box). The boxes and the reading of code are a new
+  package, `@kairotic/faust-units` 0.1.0, which carries modules for the page (`assets/`) and no box classes:
+  `library/module-packages` pins it, and `packages/build.mjs` builds a package without `src/`.
 - **The form of what is heard or played** (issue #120). A new core module, `kairotic.structure`: the
   self-similarity matrix of frames (Foote 1999), the novelty of each frame by a checkerboard kernel (Foote 2000),
   the beat spectrum and its periods (Foote & Uchihashi 2001), segment boundaries, and notes as frames (pitch
