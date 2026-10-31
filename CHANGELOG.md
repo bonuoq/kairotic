@@ -17,6 +17,11 @@
     term of the analysis by synthesis (bar and phase) the scores stayed within noise or fell, and tracking each
     segment apart fell (any-level F 0.684 against 0.714). The tracker is unchanged; the component is there for
     its own uses.
+- **The logo** (`brand/`): the icon (k) — parentheses around a K whose stem is a timeline branching at the
+  kairos point — and the logotype `(kairotic` + a branch + `)` in IBM Plex Mono, its first k drawn as that K.
+  Outlined SVGs (logotype for light and dark, closed, wordmark, icon, small icon, app icon) and a guide
+  ([brand/README.md](brand/README.md)). The app shows the logotype in its header, in the theme's colours, and
+  the small icon as its favicon; the READMEs open with it.
 - **The strength of each attack, from `onset~` to the quantizer** (issue #106, after the analysis of `onset~` in it).
   `@kairotic/analysis` 0.4.0:
   - `onset~` has a third outlet, the growth of the spectrum of every frame (the onset strength envelope).
