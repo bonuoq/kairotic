@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
+An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
 
 **Inlets** 
 
@@ -579,6 +579,40 @@ Brings in what is at a URL (JSON read as EDN, text or EDN) as a task: it goes ou
 
 See also: `edn`, `sample`, `print`
 
+### form~ · `@kairotic/analysis`
+
+`form~ [seconds] [step] [kernel]`
+
+How alike the moments of what arrives are over the last seconds (20): a self-similarity matrix of one frame every step seconds (0.25), drawn; where a segment begins, and the period that repeats.
+
+**Inlets** 
+
+0. lists of numbers (a chroma~, an mfcc), or numbers (onset~'s envelope, an rms); [:seconds x] [:step x] [:kernel x] change them; clear forgets
+
+**Outlets** 
+
+0. the novelty of each frame, 0…1 (how much the music changes there; kernel seconds (2) late)
+1. a bang where a segment begins
+2. the period that repeats most, in seconds, when it changes
+3. [:segment {:t :at :length :period}] for the segment that ends
+
+**Try:** Press ▶ and play a section, then another (other chords, another register): the squares along the diagonal are the sections, a line marks where the second begins, print writes the segment, and onset~ starts the new section afresh.
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "chroma~" 40 90)
+(box :b3 "onset~" 200 90)
+(box :b4 "form~" 40 150)
+(box :b5 "print" 280 300)
+(connect :b1 0 :b2 0)
+(connect :b1 0 :b3 0)
+(connect :b2 0 :b4 0)
+(connect :b4 3 :b3 0)
+(connect :b4 3 :b5 0)
+```
+
+See also: `chroma~`, `onset~`, `monitor`
+
 ### fourier · `@kairotic/theory`
 
 `fourier [notes]`
@@ -733,7 +767,7 @@ See also: `osc~`, `adsr~`, `dac~`
 
 `gendy~ [freq x-step y-min y-max y-step breakpoints]`
 
-A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Bernstein, MIT): a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle, heard as a pitch that drifts and a timbre that changes. freq in Hz (a signal on the inlet adds to it: FM); x-step (0–100 %) how far each segment's duration may wander; y-min and y-max (−1…1) the barriers of the amplitudes, y-step how far they move each cycle; breakpoints (2–128) how many. A number sets freq; [:y-step 0.2] one of them; a list of six all of them.
+A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle — a pitch that drifts, a timbre that changes.
 
 **Inlets** 
 
@@ -1067,12 +1101,13 @@ A bang at the beginning of each sound (a note, a stroke, a syllable), and its st
 
 **Inlets** 
 
-0. the signal
+0. the signal; [:threshold x] and [:ms y] change them while it listens; a [:segment …] from form~ forgets the usual change of the section before
 
 **Outlets** 
 
 0. a bang for each onset
 1. its strength (the growth of the spectrum, 0…1)
+2. the growth of every frame (the onset strength envelope)
 
 **Try:** Press ▶ and clap: the counter counts the claps. Raise the threshold if it counts too much.
 
@@ -1086,7 +1121,7 @@ A bang at the beginning of each sound (a note, a stroke, a syllable), and its st
 (connect :b3 0 :b4 0)
 ```
 
-See also: `pitch~`, `sample`, `counter`
+See also: `pitch~`, `sample`, `counter`, `form~`
 
 ### osc~
 
@@ -1142,7 +1177,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
+Stereo panning with equal power.
 
 **Inlets** 
 
@@ -1760,7 +1795,7 @@ See also: `adc~`, `scope~`, `phasor~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
+A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
 
 **Inlets** 
 
@@ -1797,7 +1832,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). [:gain v] (0…1, 0.5 by default) sets the level of the notes that start after it, as a player sends an event's :amp. :stop silences it.
+Polyphonic triangle-wave synthesizer, one voice per id.
 
 **Inlets** 
 
