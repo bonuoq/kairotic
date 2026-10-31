@@ -206,3 +206,47 @@ What fails now:
   t})`, or later a click on that note, is the practical answer.
 - **Aksak usuls.** Their beats are uneven (2+2+2+3), which a single period cannot follow; SymbTr is hardest.
 - **`free`** (±12 % and a strong ritardando) loses the tempo more often than not.
+
+## Real performances: ASAP (`--asap`)
+
+`fetch-asap.mjs` clones [ASAP](https://github.com/fosfrancesco/asap-dataset) (Foscarin et al., ISMIR 2020). These
+are piano performances (MIDI in seconds, with velocities) aligned with their scores, with every beat and downbeat
+annotated. It is CC BY-NC-SA 4.0, so it goes into the cache and is not redistributed. The script writes a seeded
+sample of 40 performances, one per piece, with their first 30 seconds (`.cache/asap.edn`, `.cache/SOURCES-asap.md`).
+
+`bench.mjs --asap` finds the time map of each performance (`:time :track`) and compares its beats, taken at the
+level of the annotated ones, with them:
+- F-measure within ±70 ms, as MIREX does;
+- the same at **any metric level** (the beats found halved, doubled, in thirds, tripled, as MIREX's AMLt), to
+  tell following the pulse from choosing its level;
+- the downbeat F-measure;
+- how often the tempo is right, or found at another level.
+
+| version | beat F | beat F, any level | downbeat F | tempo | tempo at another level |
+|---|---|---|---|---|---|
+| onsets weighed by duration | 56.2% | – | 36.4% | 40.0% | 37.5% |
+| **and by velocity (`:accent`, default)** | **57.5%** | **71.8%** | **41.0%** | 40.0% | 32.5% |
+| and by register (`:bass`) | 57.6% | – | 38.8% | 40.0% | 35.0% |
+| velocity, prior 120 bpm | 58.7% | – | 39.7% | 42.5% | 30.0% |
+
+The strength of each attack helps place the bar (downbeats 36 → 41 %), as the analysis of `onset~` in #106 argued.
+On real piano the pulse is followed fairly well (72 % at any level), but its level is chosen right only 40 % of the
+time. Choosing the metric level, and the downbeats, is where the tracker should improve next. The differences
+between preferred tempos are within the noise of 40 performances.
+
+### The delay of `onset~`
+
+Measured offline with `onset~`'s own detection (frames of 2048, hop 512, the flux of the first 256 bins) on sounds
+that start at a known sample:
+
+| signal | median | range |
+|---|---|---|
+| sine, plucked tone, noise burst | 6 ms | 0.7–10.7 ms (one hop) |
+| a new note over a held one | 10.7 ms | 5.3–15.3 ms |
+
+This is the algorithmic delay; the browser's own latency is not included. It matters little for tempo, and is
+within ±6 ms for the phase.
+
+The same measurement showed that a sound cut at once (a gain dropping to 0) spreads its spectrum like an attack.
+`onset~` now asks that the energy not fall: the cut is no longer an onset, and real onsets are kept, with the same
+delays.

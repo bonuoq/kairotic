@@ -12,6 +12,7 @@
   (:require [clojure.string :as str]
             [kairotic.mt :as mt]
             [kairotic.quantize :as qz]
+            [kairotic.tempo :as tm]
             [kairotic.test :as t]))
 
 ;; ───────── performing a tree ─────────
@@ -188,6 +189,64 @@
     (str/join "\n" (concat ["| source | level | runs | perfect | onsets | precision | durations | spelling | tuplets +/− | graces | errors | tempo | tempo ×½ ×2 ×⅔… | ms |"
                             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
                            rows))))
+
+;; ───────── real performances: the beats found against the beats annotated (ASAP, issue #106) ─────────
+
+(defn f-measure
+  "How well times found match times annotated: each annotated time matched by at most one found time within
+   tol seconds (MIREX uses 70 ms). {:f :p :r}."
+  [found annotated tol]
+  (let [pool (atom (vec (sort found)))
+        hits (count (filter (fn [a] (when-let [i (first (keep-indexed (fn [i x] (when (<= (js/Math.abs (- x a)) tol) i)) @pool))]
+                                      (swap! pool (fn [p] (into (subvec p 0 i) (subvec p (inc i))))) true))
+                            annotated))
+        p (if (seq found) (/ hits (count found)) 0) r (if (seq annotated) (/ hits (count annotated)) 0)]
+    {:f (if (pos? (+ p r)) (/ (* 2 p r) (+ p r)) 0) :p p :r r}))
+
+(defn run-performed
+  "One real performance ({:notes [[on off midi] …] seconds, :beats, :downbeats annotated, :meter}): the time map
+   the quantizer finds (:time :track), its beats taken at the level of the annotated ones (as many to the bar),
+   and compared with them: beat and downbeat F-measures (70 ms), and the tempo found over the one annotated."
+  [{:keys [id notes beats downbeats meter]} qopts]
+  (let [ns (mapv (fn [[a b m v]] {:on a :off b :attrs (cond-> {:pitch m} v (assoc :vel v))}) notes)
+        t0 (js/Date.now)
+        o (qz/options (merge {:meter meter :time :track} qopts) nil)
+        m (qz/time-map-of ns o)
+        ms (- (js/Date.now) t0)
+        {[p q] :meter} (:meter o) BL (* p (/ 4 q))
+        per-bar (let [ds (vec downbeats)
+                      ks (for [[a b] (partition 2 1 ds)] (count (filter (fn [t] (and (>= t (- a 1e-3)) (< t (- b 1e-3)))) beats)))]
+                  (if (seq ks) (nth (vec (sort ks)) (quot (count ks) 2)) p))
+        ub (/ BL (max 1 per-bar))
+        lo (- (first beats) 0.5) hi (+ (peek (vec beats)) 0.5)]
+    (if-not m
+      {:id id :source :asap :error "no beats found" :beat-f 0 :down-f 0}
+      (let [b0 (tm/->beat m lo) b1 (tm/->beat m hi)
+            at (fn [unit] (filter (fn [t] (<= lo t hi)) (map (fn [k] (tm/->time m (* k unit))) (range (js/Math.ceil (/ b0 unit)) (inc (js/Math.floor (/ b1 unit)))))))
+            ann-tempo (let [ds (map (fn [[a b]] (- b a)) (partition 2 1 beats))] (* 60 (/ ub (nth (vec (sort ds)) (quot (count ds) 2)))))
+            found-tempo (tm/tempo-of-map m)]
+        {:id id :source :asap :ms ms :meter [p q]
+         :beat-f (:f (f-measure (at ub) beats 0.07))
+         ;; the same at any metric level (as MIREX's AMLt): the beats found halved, doubled, in thirds,
+         ;; tripled (with each phase), so that following the pulse can be told from choosing its level
+         :beat-f-any (reduce max (for [[k ph] [[1 0] [0.5 0] [2 0] [2 1] [(/ 1 3) 0] [3 0] [3 1] [3 2]]]
+                                   (:f (f-measure (map (fn [t] t) (filter (fn [t] (<= lo t hi))
+                                                                          (map (fn [i] (tm/->time m (* (+ (* i k) (* ph 1)) ub)))
+                                                                               (range (js/Math.ceil (/ (- (/ b0 ub) ph) k)) (inc (js/Math.floor (/ (- (/ b1 ub) ph) k)))))))
+                                                  beats 0.07))))
+         :down-f (:f (f-measure (at BL) downbeats 0.07))
+         :tempo-ratio (/ found-tempo ann-tempo)}))))
+
+(defn performed-report
+  "The beat tracking of real performances, as a table (Markdown): the mean beat and downbeat F-measures, how often
+   the tempo is found (within 6 %) or found at another level (½, 2, ⅔, 3/2…)."
+  [rs]
+  (let [n (count rs) mean (fn [k] (/ (reduce + (map k rs)) (max 1 n)))
+        pct (fn [x] (str (.toFixed (* 100 x) 1) "%"))
+        ok (count (filter (fn [r] (when-let [x (:tempo-ratio r)] (< (js/Math.abs (- x 1)) 0.06))) rs))
+        oct (count (filter (fn [r] (when-let [x (:tempo-ratio r)] (some (fn [k] (< (js/Math.abs (- x k)) (* 0.06 k))) [0.5 2 (/ 2 3) 1.5 (/ 1 3) 3 0.25 4]))) rs))]
+    (str "| performances | beat F (70 ms) | beat F, any level | downbeat F | tempo | tempo at another level | ms |\n|---|---|---|---|---|---|---|\n"
+         "| " n " | " (pct (mean :beat-f)) " | " (pct (mean (fn [r] (or (:beat-f-any r) 0)))) " | " (pct (mean :down-f)) " | " (pct (/ ok (max 1 n))) " | " (pct (/ oct (max 1 n))) " | " (.toFixed (mean (fn [r] (or (:ms r) 0))) 0) " |")))
 
 ;; ───────── Kairotic's own corpus ─────────
 ;; Small cases, each about one thing the quantizer has to get right. MPL, like the rest of the repository.

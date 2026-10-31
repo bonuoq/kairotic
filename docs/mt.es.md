@@ -296,8 +296,9 @@ métrica donde cambia.
 libremente —una toma de `transcribe`, notas dibujadas sin rejilla— está en segundos (o en partes a un tempo que nadie
 eligió), a un tempo que se mueve. `:time :track` encuentra sus partes antes de cuantizar:
 
-1. el tempo: el periodo de pulso que explica más intervalos entre ataques (cada ataque pesa lo que dura su nota),
-   con una preferencia suave por tempos moderados;
+1. el tempo: el periodo de pulso que explica más intervalos entre ataques (cada ataque pesa lo que dura su nota, y
+   lo fuerte que se tocó: su `:vel`, o el grosor de su trazo, que `transcribe` escribe a partir de `onset~`), con una
+   preferencia suave por tempos moderados;
 2. los pulsos: una programación dinámica (según Ellis 2007) que pone cada pulso donde están los ataques y mantiene
    la distancia al anterior cerca del periodo, así que sigue el rubato, el accelerando y el ritardando;
 3. el compás: qué pulsos son primeros de compás, y la anacrusa si la primera nota no cae en uno.

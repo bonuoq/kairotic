@@ -155,10 +155,10 @@
    ambiguous it can miss a pickup: :downbeat (the time of a note known to start a bar) fixes it. nil when no
    beat is found."
   [notes o]
-  (when-let [{:keys [os beats period]} (tm/beats-of notes {})]
+  (when-let [{:keys [os beats period]} (tm/beats-of notes (:track o))]
     (let [{[p q] :meter} (:meter o) BL (* p (/ 4 q))
           P (/ (- (peek beats) (first beats)) (max 1 (dec (count beats))))
-          lp (fn [bpm] (let [x (/ (js/Math.log (/ bpm 100)) js/Math.LN2)] (* x x)))
+          lp (fn [bpm] (let [x (/ (js/Math.log (/ bpm (or (:prior-bpm o) 100))) js/Math.LN2)] (* x x)))
           o1 (dissoc o :time :fix)
           ;; for each value of the beat, the two phases where the notes weigh most (tempo/phase-weights)
           ;; (with :downbeat, the time of a note known to be on a downbeat, the phase that puts one there)
@@ -181,7 +181,7 @@
   [notes o]
   (let [x (:time o)]
     (cond (vector? x) x
-          (= x :track) (tracked (mapv (fn [n] (select-keys n [:on :off :attrs])) notes) (select-keys o [:meter :meters :w :divs :merge :nest :chord :prior-w :downbeat]))
+          (= x :track) (tracked (mapv (fn [n] (select-keys n [:on :off :attrs])) notes) (select-keys o [:meter :meters :w :divs :merge :nest :chord :prior-w :prior-bpm :downbeat :track]))
           :else nil)))
 
 (defn timed
@@ -687,7 +687,10 @@
          ;; numbers: the names are chosen afterwards, all together (mt/spell, issue #88)
          {:on t0 :off (+ t0 dur)
           :attrs (cond-> {:pitch (if (< (js/Math.abs (- m mr)) 0.02) mr (cv/round-to m 2))}
-                   (not flat?) (assoc :pitch mr :gliss gl))})))
+                   (not flat?) (assoc :pitch mr :gliss gl)
+                   ;; the weight of a stroke is how strong its note was (as an event's :amp: 0.4 … 2.8 → 0 … 1):
+                   ;; transcribe writes the strength of each attack so (issue #106)
+                   (number? (get-in s [:look :w])) (assoc :vel (cv/round-to (max 0 (min 1 (/ (- (get-in s [:look :w]) 0.4) 2.4))) 3)))})))
 
 (defn quantize
   "A freqt's buffer as a measured tree (a :voice of :measure nodes), with options (see the top of this

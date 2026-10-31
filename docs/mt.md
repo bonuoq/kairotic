@@ -292,7 +292,8 @@ freely — a take of `transcribe`, notes drawn without a grid — is in seconds 
 at a tempo that moves. `:time :track` finds its beats before quantizing:
 
 1. the tempo: the beat period that explains most intervals between onsets (each onset weighs as long as its note
-   lasts), with a mild preference for moderate tempos;
+   lasts, and as strong as it was played: its `:vel`, or the weight of its stroke, which `transcribe` writes from
+   `onset~`), with a mild preference for moderate tempos;
 2. the beats: a dynamic programme (after Ellis 2007) that puts each beat where the onsets are and keeps the gap to
    the one before close to the period, so it follows rubato, accelerando and ritardando;
 3. the bar: which beats are downbeats, and the pickup if the first note is not on one.
