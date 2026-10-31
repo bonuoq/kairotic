@@ -463,7 +463,7 @@
 
    "transcribe"
    {:package "@kairotic/analysis" :usage "transcribe [bpm] [notes|glide] [ms]"
-    :doc "Writes what pitch~ hears into a freqt, as strokes: notes at the pitch they hold longest, or contours (glide)."
+    :doc "Writes what pitch~ hears into a freqt, as strokes: notes where the contour settles on another pitch (slides, vibrato and ornaments do not start notes), or contours (glide)."
     :inlets ["Hz from pitch~ (0: silence); rec starts from 0, stop ends" "a bang (from onset~): a new note, even on the same pitch"]
     :outlets ["edits for a freqt: [:batch [[:stroke …] …]], at most every 2 seconds (one event of the history each)"]
     :messages [["rec" "starts a take from 0 (its first write clears the freqt)"] ["rec t (msg rec 8)" "from beat t: what is before t stays, what is after is replaced"] ["ovr t (msg ovr 8)" "from beat t, over only what the take covers: what comes after it stays"] ["stop" "writes what is left and stops"]]

@@ -234,6 +234,43 @@ On real piano the pulse is followed fairly well (72 % at any level), but its lev
 time. Choosing the metric level, and the downbeats, is where the tracker should improve next. The differences
 between preferred tempos are within the noise of 40 performances.
 
+## Jazz solos: the Weimar Jazz Database (`--weimar`)
+
+`fetch-weimar.py` (Python, standard library) downloads the [Weimar Jazz Database](https://jazzomat.hfm-weimar.de/download/download.html)
+(Jazzomat Research Project, v2.1, 456 solos, ODbL 1.0) and exports `.cache/weimar.json.gz`: each solo transcribed
+by hand from the recording, every note with its onset and duration in seconds as played and its written place
+(bar, beat, tatum over the division of the beat), and the beats of the recording. Played and written time of the
+same notes.
+
+`bench.mjs --weimar` takes a seeded sample of 40 solos in 4/4 (`--n`, `--seed`), their first 30 seconds from the
+first downbeat (`--secs`; written to `.cache/weimar-sample.edn`), and measures two things:
+- **the beats found** from the notes alone (`:time :track`), against those of the recording, as for ASAP;
+- **the quantizer alone**: the notes quantized through the annotated beats (a time map), each in its written place
+  or not, by the division it is written in (binary, triplet, other). Swung eighths are written binary, as the
+  database does.
+
+| quantizer, through the annotated beats | in place | precision | binary (4012) | triplet (1123) | other (158) |
+|---|---|---|---|---|---|
+| defaults (`:cpx 1`) | 58.2% | 58.6% | 62.5% | 49.0% | 13.9% |
+| `:divs [1 2 3 4]` | 63.9% | 65.5% | 68.9% | 53.5% | 10.1% |
+| `:w {:cpx 2}` | 67.3% | 68.2% | 77.3% | 38.6% | 15.8% |
+| `:w {:cpx 3}` | 67.9% | 69.1% | 78.9% | 36.2% | 11.4% |
+| shifted by the soloist's lag, warped by the swing ratio | 57.6% | – | – | – | – |
+
+| beats found (40 solos) | beat F | any level | downbeat F | tempo | at another level |
+|---|---|---|---|---|---|
+| defaults | 32.4% | 55.2% | 8.1% | 2.5% | 50.0% |
+
+- At jazz tempos (often over 200 bpm) the tracker finds the beat at half the tempo half of the time: its prior,
+  around 100 bpm, pulls it there. The downbeats are almost never found.
+- Through the right beats, the quantizer writes fine divisions (sixths, twelfths) where a transcriber writes eighths
+  played late or swung: notes on the beat come back ⅙ or ¼ of a beat late, swung eighths as the third of a
+  triplet. Weighing complexity more (`:cpx 2`) puts 9 more notes in 100 in place; on the generated corpora it also
+  helps (Essen loose 93.8 → 97.8 %, rough 74.6 → 84.4 %; SymbTr loose 89.4 → 94.8 %), but SymbTr played exactly
+  loses perfect pieces (97 → 88 %): to look at before it becomes the default.
+- Moving the beat by the soloist's median lag and warping each beat by the swing ratio (both estimated per solo)
+  does not help.
+
 ## Sung notes: cante2midi (`--cante`)
 
 `fetch-cante2midi.mjs <zips>` reads the three parts of [cante2midi](https://zenodo.org/records/1322526) (Kroher &
@@ -249,15 +286,35 @@ transcribe's arguments. The authors' automatic transcription is measured the sam
 
 | transcribe | notes written (6025 by hand) | onset F | + pitch | + offset |
 |---|---|---|---|---|
-| **as it is (min 60 ms, a new note past 0.6 semitone)** | 11283 | 35.5% | 23.0% | 12.8% |
+| **the contour segmented (default)** | 8456 | 55.9% | 36.6% | 26.8% |
+| before: a new note past 0.6 semitone, min 60 ms | 11283 | 35.5% | 23.0% | 12.8% |
 | min 100 ms | 6162 | 28.8% | 20.9% | 13.5% |
 | min 150 ms | 3687 | 21.0% | 15.9% | 9.8% |
 | glide | 3306 | 29.3% | 10.2% | 2.8% |
 | *the automatic transcription of cante2midi* | – | *59.7%* | *40.6%* | *26.3%* |
 
-From the same f0, `transcribe` writes almost twice as many notes as there are: the ornaments, the vibrato and the
-slides of the cante cross 0.6 of a semitone and each starts a note; a longer shortest note loses real ones too. What
-is needed is a segmentation of the contour (stable stretches, with hysteresis), not a threshold on each frame.
+The rows below the first are the earlier `transcribe`, which started a note each time the pitch moved 0.6 of a
+semitone: from the same f0 it wrote almost twice as many notes as there are, since the ornaments, the vibrato and
+the slides of the cante cross that threshold all the time.
+
+Now each voiced stretch is read as a contour (every 10 ms, smoothed by a median of 100 ms) and cut with hysteresis:
+a note goes on while the contour stays within a semitone of its pitch, and a new one begins only where the contour,
+away from it, has held still (within 1.1 semitones) for 70 ms. The settings were chosen on these same 20 cantes, so
+the gain is somewhat optimistic:
+
+| smoothing | band | hold | onset F | + pitch | + offset | notes |
+|---|---|---|---|---|---|---|
+| none | 1 st | 45 ms | 54.3% | 34.5% | 25.3% | 9021 |
+| 60 ms | 1 st | 45 ms | 54.2% | 34.8% | 25.7% | 9168 |
+| **100 ms** | **1 st** | **70 ms** | **56.1%** | **36.6%** | **26.9%** | 8242 |
+| 150 ms | 0.8 st | 50 ms | 55.7% | 36.6% | 27.1% | 8255 |
+| 200 ms | 1 st | 50 ms | 50.3% | 31.4% | 20.1% | 6738 |
+
+It now matches the authors' automatic transcription on offsets and is 4 points below on onsets and pitch. Two
+ceilings remain:
+- **Repeated notes.** The manual transcription splits notes of the same pitch at each syllable, which the f0 cannot
+  show. An `onset~` on the right (from the audio) can.
+- **Intonation.** In a quarter of the manual notes the median f0 is more than 50 cents from the written pitch.
 
 ### The delay of `onset~`
 
