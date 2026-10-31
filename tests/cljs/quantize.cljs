@@ -140,3 +140,21 @@
       (t/eq "... they are part of its text" (:quant (cv/read-source cv/empty (cv/->source d))) {:meter "3/4"})
       (t/eq "... and of the difference between two buffers" (cv/diff (buffer nil [0 1 60]) d) [[:quantize {:meter "3/4"}]])
       (t/throws "a canvas has no :quant" (fn [] (cv/read-source cv/generic-empty "{:quant {:meter \"3/4\"} :strokes {}}"))))))
+
+(t/run! "quantization: coherence across beats (issue #108)"
+  (fn []
+    (let [free (fn [ons dur] (into [:par] (map (fn [o] [:note {:at o :dur dur :pitch 60}]) ons)))
+          tup? (fn [q] (boolean (re-find #":tuplet" (pr-str q))))
+          late (free [0 0.5 1 1.62 2 2.5 3 3.5] 0.45)]
+      (t/is "without coherence, one eighth played late makes its beat a triplet" (tup? (qz/quantize-tree late {:meter [4 4] :w {:coh 0}})))
+      (t/is "with it (the default), a lone triplet among eighths stays eighths" (not (tup? (qz/quantize-tree late {:meter [4 4]}))))
+      (t/eq "a run of triplets played loosely stays triplets"
+            (mapv :t (mt/notes (qz/quantize-tree (free [0 0.34 0.66 1 1.33 1.68 2 2.34 2.66 3] 0.3) {:meter [4 4]})))
+            [0 0.333333 0.666667 1 1.333333 1.666667 2 2.333333 2.666667 3])
+      (t/eq "the kinds of division" (mapv qz/family [{:n 1} {:n 4} {:n 3 :tup [3 2]} {:n 5 :tup [5 4]} {:n 2 :parts [{:n 2} {:n 3 :tup [3 2]}]}])
+            [:none :bin 3 5 3])
+      (t/eq "... by the points the notes use: two eighths on a grid of six in two beats are binary"
+            (qz/family {:n 6 :tup [6 4] :need 2 :L 2}) :bin)
+      (t/is "after a bar of triplets, two eighths are not written as a tuplet"
+            (let [q (qz/quantize-tree (into [:par] (map (fn [[o d]] [:note {:at o :dur d :pitch 60}]) [[0 0.95] [1.02 0.3] [1.36 0.3] [1.68 0.3] [2.03 0.95] [3 0.48] [3.52 0.45] [4 2]])) {:meter [3 4]})]
+              (= 1 (count (re-seq #":tuplet" (pr-str q)))))))))

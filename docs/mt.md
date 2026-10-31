@@ -259,7 +259,10 @@ change how it is made:
 
 The other options are `:chord` (how close two starts are to be one chord, 0.04 beats), `:overlap` (how
 much a note may run into the next one and stay in its voice, 0.15 beats) and `:w`, the weights of the
-cost (`{:err 8 :off 0.35 :cpx 1 :lost 1.5}`). `(as-tree :bN)` still reads a freqt's strokes exactly,
+cost (`{:err 8 :off 0.35 :cpx 1 :lost 1.5 :coh 0.5}`). `:coh` is what changing kind of division (binary,
+triplet, quintuplet…) between neighbouring beats costs: a lone triplet among eighths pays it twice, a run of
+triplets once, so notes played a little early or late do not become tuplets (issue #108; `0` decides each
+beat on its own). `(as-tree :bN)` still reads a freqt's strokes exactly,
 without quantizing them.
 
 **Choosing another division.** The quantizer guesses; when it guesses wrong, **alt-click a note** of the
