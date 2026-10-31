@@ -25,19 +25,22 @@
 ;;     short for any point. How each value is written (where the beats have to be seen) is kairotic.mt's
 ;;     work (mt/metric-split), so that hand-written trees get it too.
 ;;
-;; Options (all optional): {:meter "5/8[2+3]" :divs [1 2 3 4 5 6 7 8] :merge [3 5 6] :grace true
+;; Options (all optional): {:meter "5/8[2+3]" :meters ["3/4" "3/4" "5/8[2+3]"] :divs [1 2 3 4 5 6 7 8] :merge [3 5 6] :grace true
 ;;   :chord 0.04 :legato 0.25 :tempo 72 :w {:err 8 :off 0.35 :cpx 1 :lost 1.5 :coh 0.5}}. :divs are the divisions a
 ;; span may take, :merge those of two beats together ([] for none), :chord how close two starts are to be
 ;; one chord (beats), :legato the largest gap before the next note that is not a rest (beats; 0: every gap
 ;; is), :key the key the score is written in ("eb", "c#m", :none; without it no signature, and names
-;; from the key the notes suggest), :w the weights of the cost; :voices (2) how many voices overlapping notes may take, :overlap how
+;; from the key the notes suggest), :time how the notes' time becomes beats (:track finds the beats of notes
+;; played freely, in seconds or at any tempo: kairotic.tempo; a map [[time beat] …] is one found and kept;
+;; without it their time is already in beats), :w the weights of the cost; :voices (2) how many voices overlapping notes may take, :overlap how
 ;; much a note may run into the next and stay in its voice, :nest false for no beats cut in parts, and
-;; :fix {beat-start choice} the divisions chosen by hand (n, [n1 n2] or [:merge n]: see `choices`).
+;; :meters a meter for each bar (the last going on: meter changes, issue #107), :fix {beat-start choice} the divisions chosen by hand (n, [n1 n2] or [:merge n]: see `choices`).
 
 (ns kairotic.quantize
   (:require [kairotic.canvas :as cv]
             [kairotic.spell :as sp]
-            [kairotic.mt :as mt]))
+            [kairotic.mt :as mt]
+            [kairotic.tempo :as tm]))
 
 (def eps 1e-6)
 (defn- near? [a b] (< (js/Math.abs (- a b)) eps))
@@ -133,7 +136,58 @@
            :key (let [k (:key o)] (when (and (some? k) (sp/parse-key k)) k))
            :spell (sane-spell (:spell o))
            :step (when (and (map? gx) (number? (:step gx)) (pos? (:step gx))) (:step gx))
+           ;; a meter for each bar, the last one going on (issue #107): ["3/4" "3/4" "5/8[2+3]"]
+           :meters (let [ms (:meters o)]
+                     (when (and (sequential? ms) (seq ms))
+                       (not-empty (vec (keep (fn [m] (try (mt/meter-of (if (map? m) m {:meter m})) (catch :default _ nil))) ms)))))
+           ;; played time (issue #106): :track finds the beats, a map [[time beat] …] is one kept
+           :time (let [x (:time o)] (cond (= x :track) :track (some? x) (tm/sane-map x) :else nil))
            :w (merge (:w defaults) (when (map? (:w opts)) (:w opts))))))
+
+(declare plan)
+
+(defn track-map
+  "The time map of notes played freely (issue #106): the beats found by kairotic.tempo, and how many quarters
+   each is worth (½, 1, 1½ or 2, so that a bar holds a whole number of them) chosen by analysis by synthesis:
+   with the downbeat among the two beats where the notes weigh most (tempo/phase-weights), by analysis by
+   synthesis: the choice whose quantization costs least, with a preference for moderate tempos (around 100 bpm,
+   :prior-w). Measured on the benchmark (issue #105, --timed) against simpler rules. When the phase is
+   ambiguous it can miss a pickup: :downbeat (the time of a note known to start a bar) fixes it. nil when no
+   beat is found."
+  [notes o]
+  (when-let [{:keys [os beats period]} (tm/beats-of notes {})]
+    (let [{[p q] :meter} (:meter o) BL (* p (/ 4 q))
+          P (/ (- (peek beats) (first beats)) (max 1 (dec (count beats))))
+          lp (fn [bpm] (let [x (/ (js/Math.log (/ bpm 100)) js/Math.LN2)] (* x x)))
+          o1 (dissoc o :time :fix)
+          ;; for each value of the beat, the two phases where the notes weigh most (tempo/phase-weights)
+          ;; (with :downbeat, the time of a note known to be on a downbeat, the phase that puts one there)
+          db (:downbeat o)
+          bv (vec beats)
+          db-i (when (number? db) (apply min-key (fn [i] (js/Math.abs (- (bv i) db))) (range (count bv))))
+          cands (for [u [0.5 1 1.5 2] :when (whole? (/ BL u))
+                      :let [m (js/Math.round (/ BL u)) pw (tm/phase-weights os beats m)]
+                      k (if db-i [(mod db-i m)] (take 2 (sort-by (fn [k] (- (pw k))) (range m))))]
+                  (tm/map-of beats u m k))
+          cost (fn [mp] (+ (reduce + (map :cost (:rs (plan (tm/map-notes notes mp) o1))))
+                           (* (or (:prior-w o) 3) (lp (tm/tempo-of-map mp)))))]
+      (when (seq cands) (apply min-key cost cands)))))
+
+(def ^:private tracked (memoize (fn [notes o] (track-map notes o))))
+
+(defn time-map-of
+  "The time map notes in free time are quantized through (options :time): the one kept, the one found
+   (:track, from the onsets and the meter), or nil (their time is already in beats)."
+  [notes o]
+  (let [x (:time o)]
+    (cond (vector? x) x
+          (= x :track) (tracked (mapv (fn [n] (select-keys n [:on :off :attrs])) notes) (select-keys o [:meter :meters :w :divs :merge :nest :chord :prior-w :downbeat]))
+          :else nil)))
+
+(defn timed
+  "Notes in free time onto beats, through their time map (see time-map-of): [notes map]."
+  [notes o]
+  (if-let [m (time-map-of notes o)] [(tm/map-notes notes m) m] [notes nil]))
 
 (defn spans
   "The spans of a bar the quantizer divides, as [start length units] (beats from the bar's start, and
@@ -387,7 +441,7 @@
                segs)))
 
 (defn- clean [notes]
-  (vec (sort-by (juxt :on (fn [n] (- (or (mt/midi-of (:attrs n)) 0))))
+  (vec (sort-by (juxt :on (fn [n] (if (:grace? n) 0 1)) (fn [n] (- (or (mt/midi-of (:attrs n)) 0))))
                 (filter (fn [n] (and (number? (:on n)) (number? (:off n)) (>= (:on n) 0) (> (:off n) (:on n)))) notes))))
 
 (defn- legato
@@ -396,7 +450,7 @@
   [notes o]
   (let [ons (vec (distinct (map :on notes)))]
     (mapv (fn [n]
-            (if-let [nx (first (filter (fn [t] (> t (+ (:on n) (:chord o)))) ons))]
+            (if-let [nx (when-not (:grace? n) (first (filter (fn [t] (> t (+ (:on n) (:chord o)))) ons)))]
               (let [gap (- nx (:off n))]
                 (if (and (pos? gap) (< gap (:legato o)) (< gap (* 0.5 (- nx (:on n))))) (assoc n :off nx) n))
               n))
@@ -431,34 +485,47 @@
                    [] events)]
     (mapv :notes (sort-by (fn [v] (- (mean (:notes v)))) vs))))
 
+(defn- bar-len [meter] (let [{[p q] :meter} meter] (* p (/ 4 q))))
+
+(defn bars
+  "The bars notes ending at maxoff (starting last at maxon) are written in: [{:b0 :L :meter}], each in its
+   meter (:meters, the last going on; else :meter). A last bar where nothing starts and the ends would go back
+   to its start is not a bar."
+  [o maxoff maxon]
+  (let [ms (or (:meters o) [(:meter o)])
+        meter-at (fn [i] (get ms i (peek ms)))
+        bs (loop [i 0 b0 0 out []]
+             (let [m (meter-at i) L (bar-len m) out (conj out {:b0 b0 :L L :meter m})]
+               (if (< (+ b0 L) (- maxoff eps)) (recur (inc i) (+ b0 L) out) out)))
+        lst (peek bs)
+        [_ L1] (first (spans (:meter lst)))]
+    (if (and (> (count bs) 1) (< maxon (- (:b0 lst) eps)) (< (- maxoff (:b0 lst)) (* 0.5 L1))) (pop bs) bs)))
+
+(defn bar-at "The bar of a plan that holds beat t (the last one past the end)." [bs t]
+  (or (first (filter (fn [b] (< t (- (+ (:b0 b) (:L b)) eps))) bs)) (peek bs)))
+
 (defn plan
-  "How the bars are divided for all these notes together (every voice on the same points): the meter,
-   its bars, and the regions [{:s :L :n :tup}] of every bar."
+  "How the bars are divided for all these notes together (every voice on the same points): its bars
+   [{:b0 :L :meter}], and the regions [{:s :L :n :tup}] of every bar. (:meter and :BL are those of the first.)"
   [notes o]
-  (let [meter (:meter o)
-        {[p q] :meter} meter
-        BL (* p (/ 4 q))
-        maxoff (reduce max 0 (map :off notes))
+  (let [maxoff (reduce max 0 (map :off notes))
         maxon (reduce max 0 (map :on notes))
-        nbars (max 1 (js/Math.ceil (- (/ maxoff BL) eps)))
-        ;; a last bar where nothing starts and the ends would go back to its start is not a bar
-        nbars (let [b0 (* (dec nbars) BL) [_ L1] (first (spans meter))]
-                (if (and (> nbars 1) (< maxon (- b0 eps)) (< (- maxoff b0) (* 0.5 L1))) (dec nbars) nbars))
+        bs (bars o maxoff maxon)
         pts (vec (sort-by :t (mapcat (fn [i n] [{:t (:on n) :kind :on :note i} {:t (:off n) :kind :off :note i}]) (range) notes)))]
-    {:meter meter :BL BL :nbars nbars :total (* nbars BL)
+    {:meter (:meter (first bs)) :BL (:L (first bs)) :bars bs :nbars (count bs)
+     :total (let [b (peek bs)] (+ (:b0 b) (:L b)))
      ;; bar by bar, each starting from the kind of division the one before ended with (issue #108)
-     :rs (first (reduce (fn [[rs fam] b]
-                          (let [b0 (* b BL) bar (bar-plan b0 meter (points-in pts b0 (+ b0 BL)) o fam)]
+     :rs (first (reduce (fn [[rs fam] {:keys [b0 L meter]}]
+                          (let [bar (bar-plan b0 meter (points-in pts b0 (+ b0 L)) o fam)]
                             [(into rs bar) (reduce after fam bar)]))
-                        [[] :none] (range nbars)))}))
+                        [[] :none] bs))}))
 
 (defn write-voice
   "One voice's notes (already free of overlaps but for small ones, which are cut) written on a plan as a
    :voice of measures: chords where starts meet, rests in the gaps, ties over barlines and out of tuplets,
    grace notes for notes that shrink to nothing."
-  [notes {:keys [meter BL nbars total rs]} o]
-  (let [{[p q] :meter g :groups} meter
-        qs (mapv (fn [n] (assoc n :qon (snap rs (:on n)) :qoff (min total (snap rs (:off n))))) notes)
+  [notes {:keys [bars total rs]} o]
+  (let [qs (mapv (fn [n] (assoc n :qon (snap rs (:on n)) :qoff (min total (snap rs (:off n))))) notes)
         collapsed? (fn [n] (<= (:qoff n) (+ (:qon n) eps)))
         starts (set (map (fn [n] (cv/round-to (:qon n) 6)) (remove collapsed? qs)))
         grace? (fn [n] (and (:grace o) (collapsed? n) (contains? starts (cv/round-to (:qon n) 6))))
@@ -477,10 +544,16 @@
                  (if (< t (- total eps)) (conj out {:s t :e total}) out)
                  (let [sg (first ss)]
                    (recur (rest ss) (:e sg) (cond-> out (> (:s sg) (+ t eps)) (conj {:s t :e (:s sg)}) true (conj sg))))))
-        bar-attrs (cond-> {:meter [p q]} (seq g) (assoc :groups (vec g)) (some? (:key o)) (assoc :key (:key o)))]
+        ;; a bar says its meter when it is the first, or when the meter changes
+        bar-attrs (fn [i {{[p q] :meter g :groups} :meter}]
+                    (let [prev (when (pos? i) (:meter (bars (dec i))))]
+                      (cond-> {}
+                        (or (zero? i) (not= (select-keys prev [:meter :groups]) (select-keys (:meter (bars i)) [:meter :groups])))
+                        (merge (cond-> {:meter [p q]} (seq g) (assoc :groups (vec g))))
+                        (and (zero? i) (some? (:key o))) (assoc :key (:key o)))))]
     (into [:voice {}]
-          (for [b (range nbars)
-                :let [b0 (* b BL)
+          (for [[i {:keys [b0 L] :as bar}] (map-indexed vector bars)
+                :let [BL L
                       ;; a tuplet only for a voice that starts or ends something inside it (a note of
                       ;; this voice held through another voice's triplet is not written in a triplet)
                       inside? (fn [r] (some (fn [x] (< (+ (:s r) eps) x (- (+ (:s r) (:L r)) eps))) (mapcat (juxt :s :e) segs)))
@@ -493,13 +566,32 @@
                                          (conj (pop acc) (update lst :L + (:L r)))
                                          (conj acc (select-keys r [:s :L :tup])))))
                                    [] regs)]]
-            (into [:measure (if (zero? b) bar-attrs {})]
+            (into [:measure (bar-attrs i bar)]
                   (mapcat (fn [{:keys [s L tup]}]
                             (let [ns (region-nodes s (+ s L) tup segs graces)]
                               (if tup [(into [:tuplet {:ratio tup}] ns)] ns)))
                           runs))))))
 
-(defn- voices-of-notes [notes o] (mapv (fn [ns] (legato ns o)) (let [ss (separate notes o)] (if (seq ss) ss [[]]))))
+(defn graces-first
+  "Notes played as grace notes (shorter than :grace-dur beats, starting less than 0.15 beat before a note at
+   least twice as long, which is not part of a run of short notes) moved onto the note they lead into, with
+   almost no length: they are written as its grace notes and do not ask for a fine division of the beat."
+  [notes o]
+  (if-not (:grace o)
+    notes
+    (let [g (or (:grace-dur o) 0.1)
+          ns (vec (sort-by :on notes))
+          n (count ns)]
+      (vec (map-indexed
+            (fn [i x]
+              (let [d (- (:off x) (:on x))
+                    nxt (first (filter (fn [y] (> (:on y) (+ (:on x) 0.01))) (subvec ns (inc i))))]
+                (if (and nxt (< d g) (< (- (:on nxt) (:on x)) 0.15) (>= (- (:off nxt) (:on nxt)) (* 2 d)) (>= (- (:off nxt) (:on nxt)) 0.2))
+                  (assoc x :on (:on nxt) :off (+ (:on nxt) 1e-4) :grace? true)
+                  x)))
+            ns)))))
+
+(defn- voices-of-notes [notes o] (mapv (fn [ns] (legato ns o)) (let [ss (separate (graces-first notes o) o)] (if (seq ss) ss [[]]))))
 
 (defn notes->voices
   "Notes in free time ({:on :off :attrs}, beats; :attrs those of the :note each becomes) as voices of
@@ -508,7 +600,7 @@
   ([notes o] (notes->voices notes o nil))
   ([notes o nm]
    (let [vs (voices-of-notes notes o)
-         pl (plan (vec (apply concat vs)) o)
+         pl (plan (vec (remove :grace? (apply concat vs))) o)
          staff (or nm "voice 1")]
      (vec (map-indexed (fn [i ns]
                          (let [v (write-voice ns pl o)]
@@ -532,16 +624,17 @@
    :all [the current one, then the others, cheapest first]}. A division is n, [n1 n2] (in parts) or
    [:merge n] (with the next beat)."
   [notes o t]
-  (let [all-notes (vec (apply concat (voices-of-notes notes o)))
-        {:keys [rs BL meter]} (plan all-notes o)
+  (let [notes (first (timed notes o))
+        all-notes (vec (remove :grace? (apply concat (voices-of-notes notes o))))
+        {:keys [rs bars]} (plan all-notes o)
         current-in (fn [rs s L]
                      (let [here (filterv (fn [r] (and (> (+ (:s r) (:L r)) (+ s eps)) (< (:s r) (- (+ s L) eps)))) rs)]
                        (cond (and (= 1 (count here)) (near? (:L (first here)) L)) (:n (first here))
                              (and (= 1 (count here)) (> (:L (first here)) (+ L eps))) [:merge (:n (first here))]
                              :else (mapv :n here))))
         pts (vec (mapcat (fn [i n] [{:t (:on n) :kind :on :note i} {:t (:off n) :kind :off :note i}]) (range) all-notes))
+        {:keys [b0 meter]} (bar-at bars t)
         {[_ q] :meter g :groups} meter
-        b0 (* BL (js/Math.floor (/ (+ t eps) BL)))
         sps (mapv (fn [[s L u]] [(+ b0 s) L u]) (spans meter))
         i (or (first (keep-indexed (fn [i [s L]] (when (and (>= t (- s eps)) (< t (- (+ s L) eps))) i)) sps)) 0)
         [s L u] (sps i)
@@ -601,10 +694,12 @@
    file); its meter comes from the buffer's bar grid unless :meter is given."
   ([d] (quantize d {}))
   ([d opts]
-   (let [o (options opts (:gx d))]
-     (let [vs (notes->voices (strokes->notes d) o)
-           t (if (= 1 (count vs)) (first vs) (into [:par {}] vs))]
-       (respell-by-hand (mt/spell (cond-> t (:tempo opts) (mt/update-attrs assoc :tempo (:tempo opts)))) (:spell o))))))
+   (let [o (options opts (:gx d))
+         [ns m] (timed (strokes->notes d) o)
+         vs (notes->voices ns o)
+         t (if (= 1 (count vs)) (first vs) (into [:par {}] vs))
+         tempo (or (:tempo opts) (when m (js/Math.round (tm/tempo-of-map m))))]
+     (respell-by-hand (mt/spell (cond-> t tempo (mt/update-attrs assoc :tempo tempo))) (:spell o)))))
 
 (defn tree-notes
   "The notes of a tree without measures as notes in free time ({:on :off :attrs :voice}): a written name
@@ -633,13 +728,18 @@
   ([tree] (quantize-tree tree {}))
   ([tree opts]
    (let [o (tree-options tree opts)
-         by-voice (sort-by key (group-by (fn [n] (or (:voice n) "")) (tree-notes tree)))
+         ;; played time onto beats, all voices through one map (issue #106)
+         [ns m] (timed (tree-notes tree) o)
+         by-voice (sort-by key (group-by (fn [n] (or (:voice n) "")) ns))
          ;; a voice keeps its name; one without (named by mt/events v<depth>-<index>) stays without
          voices (fn [[nm ns]] (notes->voices (mapv (fn [n] (dissoc n :voice)) ns) o
                                              (when (and (seq nm) (not (re-matches #"v\d+-\d*" nm))) nm)))
          vs (vec (mapcat voices by-voice))
          t (if (> (count vs) 1) (into [:par {}] vs) (or (first vs) (notes->voice [] o)))]
-     (respell-by-hand (mt/spell (mt/update-attrs t assoc :tempo (or (:tempo opts) (mt/tempo-of tree)))) (:spell o)))))
+     (respell-by-hand (mt/spell (mt/update-attrs t assoc :tempo (or (:tempo opts)
+                                                                     (when m (js/Math.round (* (tm/tempo-of-map m) (/ (mt/tempo-of tree) 60))))
+                                                                     (mt/tempo-of tree))))
+                      (:spell o)))))
 
 (defn measure-free-voices
   "A measured tree whose voices without measures (a free voice beside the measured ones) are quantized

@@ -54,6 +54,39 @@
               [:note {:at (max 0 (/ (js/Math.round (* at 1e4)) 1e4)) :dur (max 0.03 (/ (js/Math.round (* dur 1e4)) 1e4)) :pitch (:pitch n)}])]
     (into [:par] out)))
 
+(def tempo-levels
+  "How a tree is performed in time (issue #106): at a tempo of 60 to 150 bpm drawn by the seed, in seconds, its
+   tempo bending (:bend, a slow wave, ± that share), held back at the end (:rit, that share slower over the last
+   four beats), with onsets spread by :onset beats and notes played :art to 1 × their length."
+  [[:steady {:onset 0.015 :art 0.9 :bend 0 :rit 0}]
+   [:rubato {:onset 0.03 :art 0.85 :bend 0.06 :rit 0.15}]
+   [:free {:onset 0.05 :art 0.75 :bend 0.12 :rit 0.25}]])
+
+(defn perform-timed
+  "The notes of a measured tree played in time (see tempo-levels), in seconds from the first note (which comes
+   0.3 s in): {:perf [:par [:note {:at :dur :pitch}] …] :bpm the mean tempo (quarters per minute)}."
+  [tree {:keys [onset art bend rit]} seed]
+  (let [r (rng (+ 1000 seed))
+        bpm (+ 60 (* 90 (r))) ph (* 2 js/Math.PI (r))
+        ns (mt/notes tree)
+        B (+ 4 (reduce max 0 (map (fn [n] (+ (:t n) (:dur n))) ns)))
+        f (fn [b] (* (+ 1 (* bend (js/Math.sin (+ ph (/ (* 2 js/Math.PI b) 12)))))
+                     (- 1 (* rit (max 0 (min 1 (/ (- b (- B 8)) 4)))))))
+        step 0.05
+        table (vec (reductions + 0 (map (fn [i] (* step (/ 60 (* bpm (f (* (+ i 0.5) step)))))) (range (js/Math.ceil (/ (+ B 4) step))))))
+        sec (fn [b] (let [x (/ (max 0 b) step) i (min (- (count table) 2) (js/Math.floor x))]
+                      (+ (table i) (* (- x i) (- (table (inc i)) (table i))))))
+        t0 (- (sec (or (some (fn [n] (when-not (:grace n) (:t n))) ns) 0)) 0.3)
+        out (for [n ns
+                  :let [g (:grace n)
+                        tb (+ (:t n) (* (or onset 0) (gauss r)))
+                        on (if g (- (sec (:t n)) 0.05) (sec tb))
+                        off (if g (+ on 0.04) (sec (+ tb (* (:dur n) (+ art (* (- 1 art) (r)))))))]]
+              [:note {:at (/ (js/Math.round (* (- on t0) 1e4)) 1e4) :dur (max 0.02 (/ (js/Math.round (* (- off on) 1e4)) 1e4)) :pitch (:pitch n)}])
+        last-b (reduce max 0 (map (fn [n] (+ (:t n) (:dur n))) ns))]
+    {:perf (into [:par] out)
+     :bpm (* 60 (/ last-b (max 1e-6 (- (sec last-b) (sec 0)))))}))
+
 ;; ───────── comparing ─────────
 
 (defn- near? [a b eps] (< (js/Math.abs (- a b)) eps))
@@ -94,23 +127,33 @@
               (cond-> {:meter meter} groups (assoc :groups groups) (and key? key) (assoc :key key))
               qopts))
 
+(defn- tempo-check
+  "How the tempo found compares with the one played: :tempo-ok within 6 %, :tempo-octave when it is half, double,
+   two thirds or three halves of it (the beat found at another level)."
+  [found played]
+  (let [x (/ found played) near (fn [k] (< (js/Math.abs (- x k)) (* 0.06 k)))]
+    {:tempo-ok (near 1) :tempo-octave (boolean (some near [0.5 2 (/ 2 3) 1.5 (/ 1 3) 3]))}))
+
 (defn run-piece
-  "One piece at one level and seed: the comparison, :ms the time it took, :error if the quantizer failed."
-  [piece [lv cfg] seed {:keys [key? qopts]}]
+  "One piece at one level and seed: the comparison, :ms the time it took, :error if the quantizer failed. With
+   :timed? (a level of tempo-levels), the piece is played in seconds and quantized through the beats found
+   (:time :track), and the tempo found is checked against the one played."
+  [piece [lv cfg] seed {:keys [key? qopts timed?]}]
   (let [w (mt/expand (:tree piece))
-        p (perform w cfg seed)
+        {:keys [perf bpm]} (if timed? (perform-timed w cfg seed) {:perf (perform w cfg seed)})
         t0 (js/Date.now)]
     (try
-      (let [q (qz/quantize-tree p (piece-opts piece key? qopts))]
-        (assoc (compare-notes w q) :id (:id piece) :source (:source piece) :level lv :ms (- (js/Date.now) t0)))
+      (let [q (qz/quantize-tree perf (cond-> (piece-opts piece key? qopts) timed? (assoc :time :track)))]
+        (cond-> (assoc (compare-notes w q) :id (:id piece) :source (:source piece) :level lv :ms (- (js/Date.now) t0))
+          timed? (merge {:tempo-played bpm :tempo-found (:tempo (mt/attrs q))} (tempo-check (:tempo (mt/attrs q)) bpm))))
       (catch :default e
         {:id (:id piece) :source (:source piece) :level lv :error (.-message e) :notes (count (remove :grace (mt/notes w)))}))))
 
 (defn run-corpus
   "Every piece at every level, with seeds 1…seeds: a vector of results."
   ([corpus] (run-corpus corpus {}))
-  ([corpus {:keys [seeds] :or {seeds 1} :as opts}]
-   (vec (for [piece corpus lv levels s (range 1 (inc seeds))] (run-piece piece lv s opts)))))
+  ([corpus {:keys [seeds timed?] :or {seeds 1} :as opts}]
+   (vec (for [piece corpus lv (if timed? tempo-levels levels) s (range 1 (inc seeds))] (run-piece piece lv s opts)))))
 
 (def ^:private sum-keys [:notes :found :matched :durs :named :names :tuplets :tuplets-added :tuplets-lost :graces :graces-found :ms])
 
@@ -126,22 +169,24 @@
              :onsets (rate (:matched s) (:notes s))
              :precision (rate (:matched s) (:found s))
              :durations (rate (:durs s) (:matched s))
-             :spelling (rate (:names s) (:named s)))))
+             :spelling (rate (:names s) (:named s))
+             :tempo (let [ts (filter :tempo-played rs)] (rate (count (filter :tempo-ok ts)) (count ts)))
+             :octave (let [ts (filter :tempo-played rs)] (rate (count (filter :tempo-octave ts)) (count ts))))))
 
 (defn report
   "A table of the totals by source and level, as text (Markdown)."
   [rs]
   (let [pct (fn [x] (if (nil? x) "–" (str (.toFixed (* 100 x) 1) "%")))
         rows (for [[src by-src] (sort-by (comp str key) (group-by :source rs))
-                   [lv _] levels
+                   [lv _] (concat levels tempo-levels)
                    :let [xs (filter (fn [r] (= lv (:level r))) by-src) s (totals xs)]
                    :when (seq xs)]
                (str "| " (name src) " | " (name lv) " | " (:pieces s) " | " (pct (:perfect s)) " | " (pct (:onsets s)) " | "
                     (pct (:precision s)) " | " (pct (:durations s)) " | " (pct (:spelling s)) " | "
                     (:tuplets-added s) " / " (:tuplets-lost s) " | " (:graces-found s) " / " (:graces s) " | " (:errors s) " | "
-                    (.toFixed (/ (:ms s) (max 1 (:pieces s))) 0) " |"))]
-    (str/join "\n" (concat ["| source | level | runs | perfect | onsets | precision | durations | spelling | tuplets +/− | graces | errors | ms |"
-                            "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+                    (pct (:tempo s)) " | " (pct (:octave s)) " | " (.toFixed (/ (:ms s) (max 1 (:pieces s))) 0) " |"))]
+    (str/join "\n" (concat ["| source | level | runs | perfect | onsets | precision | durations | spelling | tuplets +/− | graces | errors | tempo | tempo ×½ ×2 ×⅔… | ms |"
+                            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
                            rows))))
 
 ;; ───────── Kairotic's own corpus ─────────

@@ -286,7 +286,32 @@ con las opciones, como un evento de la historia:
 ```
 
 El texto del buffer las muestra como `:quant {:meter "6/8" :fix {2 [:merge 3]}}`, y un mensaje `[:quantize {…}]`
-en la entrada del freqt también las cambia. Lo siguiente: una sola caja para freqt, tree y partitura (discusión #92).
+en la entrada del freqt también las cambia (en una caja tree sin compases, el `:quant` de su raíz).
+
+**Compases que cambian** (issue [#107](https://github.com/bonuoq/kairotic/issues/107)). `:meters` da a cada compás su
+métrica, y la última continúa: `(quant :b1 {:meters ["3/4" "3/4" "5/8[2+3]" "4/4"]})`. La partitura indica cada
+métrica donde cambia.
+
+**Tiempo tocado** (issue [#106](https://github.com/bonuoq/kairotic/issues/106), `kairotic.tempo`). Lo que se toca
+libremente —una toma de `transcribe`, notas dibujadas sin rejilla— está en segundos (o en partes a un tempo que nadie
+eligió), a un tempo que se mueve. `:time :track` encuentra sus partes antes de cuantizar:
+
+1. el tempo: el periodo de pulso que explica más intervalos entre ataques (cada ataque pesa lo que dura su nota),
+   con una preferencia suave por tempos moderados;
+2. los pulsos: una programación dinámica (según Ellis 2007) que pone cada pulso donde están los ataques y mantiene
+   la distancia al anterior cerca del periodo, así que sigue el rubato, el accelerando y el ritardando;
+3. el compás: qué pulsos son primeros de compás, y la anacrusa si la primera nota no cae en uno.
+
+El resultado es un **mapa de tiempo** `[[tiempo parte] …]` (partes de negra = 1), lineal entre sus puntos. La
+partitura se escribe a través de él, con su tempo (`:tempo`) en el árbol. `(track! :bN)` lo encuentra una vez y lo
+guarda en `:quant :time`, así la partitura no cambia mientras editas (y el alt-clic divide los mismos pulsos);
+`(track! :bN nil)` lo olvida.
+
+```clojure
+(quant :b1 {:time :track :meter "3/4"})   ; se encuentra cada vez
+(track! :b1 {:meter "3/4"})               ; se encuentra una vez y se guarda → {:tempo 97 :beats 18}
+(quantize! :b2)                           ; una caja tree con un mapa guardado: sus compases escritos sobre esos pulsos
+```
 
 ## Cómo se escriben las alturas: nombres, tonalidades, alteraciones
 

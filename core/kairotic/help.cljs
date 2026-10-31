@@ -191,7 +191,8 @@
                ["(quantize :bN {:meter \"6/8\"})" "the tree that score shows, to keep or edit (options: :meter :divs :merge :nest :voices :grace :legato)"]
                ["shown as a score, alt-click a note · (division! :bN t)" "its beat divided the next way (another division, in halves, with the next beat), kept in the buffer"]
                ["(to-tree! :bN)" "a tree box beside it, with its strokes as notes: the drawing, now a tree"]
-               ["(quant :bN {:meter \"6/8\" :key \"eb\"}) · [:quantize {…}]" "how its score is quantized and in which key, kept in its buffer (one event); (quant :bN nil): the defaults"]
+               ["(quant :bN {:meter \"6/8\" :key \"eb\"}) · [:quantize {…}]" "how its score is quantized and in which key, kept in its buffer (one event); (quant :bN nil): the defaults. {:meters [\"3/4\" \"5/8[2+3]\"]}: a meter for each bar, the last going on"]
+               ["(track! :bN) · (quant :bN {:time :track})" "what was played freely (transcribe, at any tempo, with rubato) written on its beats: the tempo and the beats are found, and track! keeps them (the time map) so that the score stays as it is; if the bar starts in the wrong place, (track! :bN {:downbeat t}) with the time of a note that starts a bar; (track! :bN nil) forgets them"]
                ["shown as a score, shift-alt-click a note · (enharmonic! :bN t midi)" "another name for that note (c#4 → db4), kept in the buffer"]
                ["shown as a score, click a note of a tree" "↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest"]
                ["click a rest" "Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note"]
@@ -384,7 +385,8 @@
                ["in a score: click a rest" "Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note"]
                ["(as-tree :bN)" "reads it back as data"]
                ["⇄ roll · (view :bN :roll)" "a piano roll: its notes as strokes of frequency over time: drawing, dragging, stretching or erasing there edits the tree (free time; with measures, the bars it touches are quantized again; ⌥ to a free voice)"]
-               ["(quantize! :bN) · (unquantize! :bN)" "its free time written in measures, and back (one event each)"]]
+               ["(quantize! :bN) · (unquantize! :bN)" "its free time written in measures, and back (one event each)"]
+               ["(track! :bN)" "its free time played (in seconds, at any tempo): the beats are found and kept in its :quant, so that its score and quantize! write it on them"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)"
                     "(code :b2 \"[:voice\\n [:measure {:meter [3 4]} \\\"e5/1\\\" [:tuplet {:ratio [3 2]} \\\"d5/.5 c5 b4\\\"] [:note {:pitch \\\"a4\\\" :dur 1 :dyn \\\"p\\\"}]]\\n [:measure \\\"g4/3\\\"]]\")"
                     "(box :b3 \"freqt\" 40 190)" "(view :b3 :score)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 2 :b2 0)")

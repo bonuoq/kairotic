@@ -158,3 +158,15 @@
       (t/is "after a bar of triplets, two eighths are not written as a tuplet"
             (let [q (qz/quantize-tree (into [:par] (map (fn [[o d]] [:note {:at o :dur d :pitch 60}]) [[0 0.95] [1.02 0.3] [1.36 0.3] [1.68 0.3] [2.03 0.95] [3 0.48] [3.52 0.45] [4 2]])) {:meter [3 4]})]
               (= 1 (count (re-seq #":tuplet" (pr-str q)))))))))
+
+(t/run! "quantization: meters that change (issue #107)"
+  (fn []
+    (let [free (fn [ons] (into [:par] (map (fn [[o d]] [:note {:at o :dur d :pitch 60}]) ons)))
+          q (qz/quantize-tree (free [[0 1] [1 1] [2 1] [3 1.5] [4.5 1] [5.5 4]]) {:meters ["3/4" "5/8[3+2]" "4/4"]})
+          ms (filter (fn [x] (and (vector? x) (= :measure (first x)))) (tree-seq vector? seq q))]
+      (t/eq "each bar in its meter, the last going on" (mapv (fn [m] (:meter (mt/attrs m))) ms) [[3 4] [5 8] [4 4]])
+      (t/eq "... with its groups" (:groups (mt/attrs (second ms))) [3 2])
+      (t/eq "the notes where they were" (mapv (juxt :t :dur) (mt/notes q)) [[0 1] [1 1] [2 1] [3 1.5] [4.5 1] [5.5 4]])
+      (t/eq "the bars of a plan" (mapv (juxt :b0 :L) (qz/bars (qz/options {:meters ["3/4" "5/8"]} nil) 8 7)) [[0 3] [3 2.5] [5.5 2.5]])
+      (t/eq "without :meters, one meter as before" (mapv (juxt :b0 :L) (qz/bars (qz/options {:meter "3/4"} nil) 7 6)) [[0 3] [3 3] [6 3]])
+      (t/eq "a meter that does not read is left out" (count (:meters (qz/options {:meters ["3/4" "x" [5 8]]} nil))) 2))))

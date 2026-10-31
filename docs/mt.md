@@ -281,8 +281,32 @@ buffer, with the options, as one event of the history:
 ```
 
 The buffer's text shows them as `:quant {:meter "6/8" :fix {2 [:merge 3]}}`, and a message
-`[:quantize {…}]` on the freqt's inlet sets them too. Next: one box for freqt, tree and score
-(discussion #92).
+`[:quantize {…}]` on the freqt's inlet sets them too (in a tree box without measures, its root's `:quant`).
+
+**Meters that change** (issue [#107](https://github.com/bonuoq/kairotic/issues/107)). `:meters` gives each bar its
+meter, the last one going on: `(quant :b1 {:meters ["3/4" "3/4" "5/8[2+3]" "4/4"]})`. The score says each meter
+where it changes.
+
+**Played time** (issue [#106](https://github.com/bonuoq/kairotic/issues/106), `kairotic.tempo`). What is played
+freely — a take of `transcribe`, notes drawn without a grid — is in seconds (or in beats at a tempo nobody chose),
+at a tempo that moves. `:time :track` finds its beats before quantizing:
+
+1. the tempo: the beat period that explains most intervals between onsets (each onset weighs as long as its note
+   lasts), with a mild preference for moderate tempos;
+2. the beats: a dynamic programme (after Ellis 2007) that puts each beat where the onsets are and keeps the gap to
+   the one before close to the period, so it follows rubato, accelerando and ritardando;
+3. the bar: which beats are downbeats, and the pickup if the first note is not on one.
+
+The result is a **time map** `[[time beat] …]` (beats as a quarter = 1), linear between its points. The score is
+written through it, with its tempo (`:tempo`) in the tree. `(track! :bN)` finds it once and keeps it in `:quant
+:time`, so the score does not change while you edit (and alt-click divides the same beats); `(track! :bN nil)`
+forgets it.
+
+```clojure
+(quant :b1 {:time :track :meter "3/4"})   ; found each time
+(track! :b1 {:meter "3/4"})               ; found once, kept → {:tempo 97 :beats 18}
+(quantize! :b2)                           ; a tree box with a kept map: its measures written on those beats
+```
 
 ## How pitches are written: names, keys, accidentals
 
