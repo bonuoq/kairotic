@@ -119,14 +119,19 @@ export async function analysis(page, check) {
   // the strength of each onset (onset~'s second outlet) on transcribe's right inlet: the weight of its note
   await cljs(page, `(connect ${g} 0 ${p2} 0) (connect ${p2} 0 ${tr} 0) (connect ${tr} 0 ${fq} 0) (connect ${onset} 1 ${tr} 1)`);
   await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(300);
-  await cljs(page, `(send! ${tr} :rec)`);
-  for (let i = 0; i < 3; i++) {
-    await cljs(page, `(send! ${g} 1 1)`); await page.waitForTimeout(400);
-    await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(300);
-  }
-  await cljs(page, `(send! ${osc} 330) (send! ${g} 1 1)`); await page.waitForTimeout(500);
-  await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(300);
-  await cljs(page, `(send! ${tr} :stop)`);
+  // the take is played by the page on the audio clock, all of it scheduled at once (issue #125): its notes
+  // last what they say whatever the load of the machine running the tests, which used to stretch them when
+  // each gate was a round trip from here
+  await cljs(page, `(send! ${tr} :rec)
+    (let [t0 (+ (eng/now) 0.05)
+          at (fn [s id inlet v] (eng/enqueue! (+ t0 s) (fid id) inlet v))]
+      (doseq [i (range 3)]
+        (at (* i 0.7) ${g} 1 1)
+        (at (+ (* i 0.7) 0.4) ${g} 1 0))
+      (at 2.1 ${osc} 0 330) (at 2.1 ${g} 1 1)
+      (at 2.6 ${g} 1 0)
+      (at 2.9 ${tr} 0 :stop))`);
+  await page.waitForTimeout(3100);
   const strokes = `(mapv (fn [[_ s]] (:pts s)) (sort-by (fn [[_ s]] (ffirst (:pts s))) (:strokes (box-data ${fq}))))`;
   const n4 = await until(page, `(count ${strokes})`, (x) => x === "4", 8000);
   const pts = await cljs(page, strokes);
