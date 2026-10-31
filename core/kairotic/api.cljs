@@ -13,7 +13,8 @@
             [kairotic.components :as comp]
             [kairotic.canvas :as cv]
             [kairotic.code :as code]
-            [kairotic.patterns :as pat]))
+            [kairotic.patterns :as pat]
+            [kairotic.structure :as st]))
 
 (def version 1)
 
@@ -340,3 +341,14 @@ registerProcessor('kairotic-tap', KairoticTap);
 (defn canvas-maps
   "The strokes of a canvas, in order, as time maps for render-tree: [[[x y] …] …]."
   [d] (mapv (fn [[_ s]] (:pts s)) (cv/sorted-strokes d)))
+
+;; ───────── form: how alike the moments are (kairotic.structure, issue #120) ─────────
+
+(defn ssm "The self-similarity matrix of frames (vectors of one length): {:n :data}, the cosine of every two." [vs] (st/ssm vs))
+(defn ssm-at "The similarity of frames i and j in a matrix of ssm." [S i j] (st/at S i j))
+(defn novelty "How much the music changes at each frame (a checkerboard of half-width L frames), scaled to 0 … 1." [S L] (st/novelty S L))
+(defn novelty-at "The novelty of frame i alone, -1 … 1 (nil without L frames on either side): for a stream." [S L i] (st/novelty-at S L i))
+(defn beat-spectrum "How alike frames are at each lag 0 … max-lag: its peaks are the periods that repeat." [S max-lag] (st/beat-spectrum S max-lag))
+(defn periods "The peaks of a beat spectrum, strongest first: [[lag value] …]." [bs] (st/periods bs))
+(defn boundaries "Where segments begin, from a novelty curve: {:shortest 8 :longest 64 :k 0.5} (frames)." [nov opts] (st/boundaries nov opts))
+(defn note-frames "Notes ({:on :off :attrs {:pitch :vel}}) as one vector per frame between the times given." [notes times] (st/note-frames notes times))

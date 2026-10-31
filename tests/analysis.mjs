@@ -66,6 +66,38 @@ export async function analysis(page, check) {
                                                    (ctl-shapes* (ctl-m ${mon} b) b))))`);
   check("... drawn as cells with an opacity", Number(cells) > 0, cells);
 
+  // form~ (issue #120): its logic fed by hand, at times of its own — two sections of a chroma, then a pattern
+  // that repeats every 3 frames
+  const form = (await cljs(page, '(box "form~ 12 0.25 1" 4600 420)')).trim();
+  check("form~ has four outlets", (await cljs(page, `(io (get-in (current) [:boxes ${form}]))`)) === "[1 4]");
+  const feed = (vs) => `(let [rcv (:receive (comp/lookup "form~")) args {:seconds 12 :step 0.25 :kernel 1}]
+      (loop [i 0 vs (seq ${vs}) st nil outs []]
+        (if-let [v (first vs)]
+          (let [r (rcv {:inlet 0 :value v :state st :args args :at (* i 0.125)})]
+            (recur (inc i) (rest vs) (if (contains? r :state) (:state r) st) (into outs (map (fn [[o x]] [o x (* i 0.125)]) (:out r)))))
+          {:st st :outs outs})))`;
+  const sections = `(concat (repeat 48 [1 0.1 0 0.2]) (repeat 48 [0 0.1 1 0.2]))`;
+  const segs = await cljs(page, `(let [{:keys [outs]} ${feed(sections)}]
+      [(mapv (fn [[_ x]] (:at (second x))) (filter (fn [[o]] (= o 3)) outs))
+       (count (filter (fn [[o x]] (and (= o 1) (= x :bang))) outs))
+       (every? (fn [[_ x]] (<= 0 x 1)) (filter (fn [[o]] (= o 0)) outs))])`);
+  const [ats, bangs, inRange] = JSON.parse(segs.replace(/ /g, ",").replace(/\[,/g, "["));
+  check("form~: a segment begins where the chroma changes (6 s)", ats.length === 1 && Math.abs(ats[0] - 6) <= 0.5 && bangs === 1, segs);
+  check("... its novelty, 0 to 1", inRange === true, segs);
+  const per = await cljs(page, `(let [{:keys [outs]} ${feed("(mapcat (fn [v] [v v]) (take 60 (cycle [[1 0 0] [0 1 0] [0 0.3 1]])))")}]
+      (last (map second (filter (fn [[o]] (= o 2)) outs))))`);
+  check("... the period that repeats, in seconds (3 frames of 0.25)", Number(per) === 0.75, per);
+  const fshapes = await cljs(page, `(let [b (get-in (current) [:boxes ${form}]) st (:st ${feed(sections)})
+                                         sh (ctl-shapes* (assoc (ctl-m ${form} b) :shown (select-keys st [:cells :nov :marks :period :frames]) :state st) b)]
+                                     [(count (filter (fn [f] (and (= :rect (first f)) (number? (:opacity (second f))))) sh)) (count sh)])`);
+  const [fc, fall] = JSON.parse(fshapes.replace(/ /g, ","));
+  check("... the matrix drawn as cells, fewer than 600 shapes", fc > 50 && fall < 600, fshapes);
+  // onset~ adaptive: [:threshold x] changes it while it listens
+  await cljs(page, `(send! ${onset} [:threshold 5])`);
+  const thr = await until(page, `(get-in @eng/rt [:states ${onset} :set :threshold])`, (x) => x === "5", 3000);
+  check("onset~ takes [:threshold x] while it listens", thr === "5", thr);
+  await cljs(page, `(send! ${onset} [:threshold 3]) (delete ${form})`);
+
 
   for (let i = 0; i < 3; i++) {
     await cljs(page, `(send! ${g} 1 1)`); await page.waitForTimeout(350);

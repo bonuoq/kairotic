@@ -29,7 +29,7 @@
   {;; ── about ──
    :class "onset~"
    :license "MPL-2.0"
-   :doc "The beginnings of sounds in the signal on its left — a note, a stroke, a syllable —: a bang on the left for each, and how strong it was (the growth of its spectrum, 0…1) on the second outlet; on the third, that growth for every frame (the onset strength envelope, for beat tracking: issue #106). threshold (3) is how far above the usual change of the last frames an onset must rise, while the energy does not fall (a sound cut at once is not an onset); ms (80) the least time between two. Every 512 samples (about 11 ms), on frames of 2048. An onset is reported with the frame it is first seen in: measured on sines, plucked tones and noise bursts that start at a known sample, 6 ms after it as a median (0.7 to 10.7 ms: one hop), and 11 ms for a new note over a held one. Into a counter, a metro that follows, a sample's rec, or the right inlet of transcribe (its strength, as the weight of the note)."
+   :doc "The beginnings of sounds in the signal on its left — a note, a stroke, a syllable —: a bang on the left for each, and how strong it was (the growth of its spectrum, 0…1) on the second outlet; on the third, that growth for every frame (the onset strength envelope, for beat tracking: issue #106). threshold (3) is how far above the usual change of the last frames an onset must rise, while the energy does not fall (a sound cut at once is not an onset); ms (80) the least time between two. Every 512 samples (about 11 ms), on frames of 2048. An onset is reported with the frame it is first seen in: measured on sines, plucked tones and noise bursts that start at a known sample, 6 ms after it as a median (0.7 to 10.7 ms: one hop), and 11 ms for a new note over a held one. [:threshold x] and [:ms y] change them while it listens, and a [:segment …] from form~ makes it forget the usual change of the section before (so a quiet section after a loud one is not deaf). Into a counter, a metro that follows, a sample's rec, or the right inlet of transcribe (its strength, as the weight of the note)."
    :usage "onset~ [threshold] [ms]"
    :io [1 3]
    :size [64 30]
@@ -39,8 +39,15 @@
    :receive (fn [{:keys [inlet value state args at]}]
               (cond
                 (and (= inlet :audio) (:error value)) {:effects [[:print (:error value)]]}
+                ;; adaptive: [:threshold x] and [:ms y] change them while it listens (from form~, a message box…);
+                ;; a [:segment …] from form~ forgets the usual change of the section before
+                (and (vector? value) (= 2 (count value)) (#{:threshold :ms} (first value)) (number? (second value)))
+                {:state (assoc-in state [:set (first value)] (second value)) :show {:label (str (name (first value)) " " (api/nice (second value)))}}
+                (and (vector? value) (= :segment (first value)))
+                {:state (assoc state :hist [])}
                 (and (= inlet :audio) (map? value))
-                (let [[st strength] (detect state value at (api/clamp (:threshold args) 1 50) (api/clamp (:ms args) 10 2000))]
+                (let [[st strength] (detect state value at (api/clamp (or (get-in state [:set :threshold]) (:threshold args)) 1 50)
+                                            (api/clamp (or (get-in state [:set :ms]) (:ms args)) 10 2000))]
                   ;; the flux of every frame on the third outlet: the onset strength envelope (issue #106)
                   (let [env [2 (/ (js/Math.round (* 1000 (:flux value))) 1000)]]
                     (if strength
@@ -50,7 +57,7 @@
 
    ;; ── view: a dot that lights on each onset ──
    :derive (fn [{:keys [shown]}]
-             {:label (if (:strength shown) (str (:strength shown)) "onset")})
+             {:label (cond (:strength shown) (str (:strength shown)) (:label shown) (:label shown) :else "onset")})
    :view [[:rect {:x 2 :y 2 :w 60 :h 26 :r 3 :stroke :grid :fill :bg}]
           [:circle {:cx 15 :cy 15 :r 6 :stroke :accent :fill :accent}]
           [:text {:x 26 :y 19 :size 10 :fill :soft} :$label]]

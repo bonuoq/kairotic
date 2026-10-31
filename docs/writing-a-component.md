@@ -141,7 +141,9 @@ show and keep, as with any other message. To listen to a signal, `(api/tap ac op
 worklet that hands it over every `:hop` samples, as `:frames` (the samples), a `:summary` (last value,
 rms, peak) or a `:trace` (min and max per column, steady on a zero crossing, for a picture); the loops
 over samples run in the worklet. `api/retap` changes its sizes and `api/db` turns a level into
-decibels. Read [`snapshot~` and `scope~`](../core/kairotic/input.cljs). A tap made with
+decibels. Read [`snapshot~` and `scope~`](../core/kairotic/input.cljs). For the form of what arrives, `api/ssm`,
+`api/novelty`, `api/novelty-at` (one frame of a stream), `api/beat-spectrum`, `api/periods` and `api/boundaries`
+(read [`form~`](../packages/analysis/src/form.cljs)). A tap made with
 `:active false` hands nothing until `(api/retap w {:active true})`, and `{:flush true}` hands at once
 what was heard since its last block; `(api/effect! id [k x])` asks the page for an effect of the box
 even when the engine has just stopped — [`sample`](../core/kairotic/sounds.cljs) records that way.

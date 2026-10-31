@@ -124,6 +124,8 @@ comes first.
   `features~ rms centroid flatness …` descriptors (with Meyda), and `spectrum~` draws the spectrum.
   `monitor 6 rms centroid chroma` draws whatever arrives on its inlets over the last 6 seconds, one lane
   each: numbers as lines, lists (chroma, mfcc) as strips, bangs and words as marks.
+  `form~` compares every moment with the others (a self-similarity matrix of a chroma or an mfcc, drawn): a
+  bang where a section begins, the period that repeats, and a `[:segment …]` that makes `onset~` start afresh.
   `transcribe` writes what `pitch~` hears into a `freqt` — `rec`, play, `stop` — as notes at their pitch
   or, with `transcribe 60 glide`, as contours that follow the voice (an `onset~` on its right splits
   repeated notes); the freqt shown as a score is then the improvisation in notation.
