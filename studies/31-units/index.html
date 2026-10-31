@@ -1,0 +1,479 @@
+<meta charset="utf-8">
+<title>Kairotic Study 31 · Units</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; a toolbar (examples, play); what a faust~ box shows when opened: its patch of
+   unit boxes and its code, side by side and in sync; then its parameters, and the boxes there are. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+header .status.bad { color: var(--error); }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.toolbar .note { flex: 1 1 280px; color: var(--ink-soft); font-size: 13px; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+/* the two views of one faust~ box */
+.views { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.canvas { position: relative; height: 480px; overflow: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; touch-action: none; }
+.canvas.stale svg { opacity: 0.35; }
+.canvas svg { display: block; }
+.canvas .grid { fill: url(#dots); }
+.b rect { fill: var(--box); stroke: var(--rule); stroke-width: 1; }
+.b.io rect { stroke: var(--accent); stroke-width: 1.5; }
+.b.ui rect { fill: var(--kairos-soft); stroke: var(--kairos); }
+.b.mem rect { fill: var(--accent-soft); stroke: var(--accent); }
+.b.code rect { stroke-dasharray: 4 3; stroke: var(--ink-soft); }
+.b.sel rect { stroke: var(--accent); stroke-width: 2; }
+.b text { font: 12px var(--f-code); fill: var(--ink); pointer-events: none; dominant-baseline: central; }
+.b .port { fill: var(--ink-soft); stroke: none; }
+.b .port.out { fill: var(--ink); }
+.b { cursor: grab; }
+.wire { fill: none; stroke: var(--ink-soft); stroke-width: 1.4; }
+.wire.loop { stroke: var(--accent); stroke-dasharray: 5 3; }
+.wire.sel { stroke: var(--accent); stroke-width: 2.4; }
+.wire-hit { fill: none; stroke: transparent; stroke-width: 10; cursor: pointer; }
+.temp { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.editor { position: absolute; font: 12px var(--f-code); padding: 3px 5px; border: 1.5px solid var(--accent); border-radius: 3px; background: var(--box); color: var(--ink); min-width: 140px; z-index: 2; }
+.info { font: 12px/1.5 var(--f-code); color: var(--ink-soft); min-height: 3em; overflow-wrap: anywhere; }
+.info b { color: var(--ink); font-weight: 500; }
+.hint { font-size: 12px; color: var(--ink-soft); }
+.hint kbd { font: 11px var(--f-code); border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px; background: var(--sheet); }
+textarea.code { width: 100%; height: 480px; resize: vertical; font: 12.5px/1.55 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; tab-size: 2; white-space: pre; overflow: auto; }
+.sync { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.5em; overflow-wrap: anywhere; }
+.sync .ok { color: var(--ok); } .sync .bad { color: var(--error); } .sync .warn { color: var(--kairos); }
+/* parameters: what the compiled box exposes */
+.params { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 18px; }
+.param { display: grid; grid-template-columns: 6.5em minmax(0, 1fr) 5em; gap: 8px; align-items: center; font-size: 13px; color: var(--ink-soft); }
+.param output { font: 12px var(--f-code); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.param input[type="range"] { accent-color: var(--accent); width: 100%; }
+.param button.act { padding: 4px 10px; }
+.param button.act.down { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* the vocabulary of @kairotic/faust-units */
+.vocab { display: grid; gap: 6px; }
+.vocab .grp { display: flex; flex-wrap: wrap; gap: 5px; align-items: baseline; }
+.vocab .grp small { width: 7.5em; flex: none; font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+.chip { font: 12px var(--f-code); border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 3px; padding: 2px 7px; cursor: pointer; }
+.chip:hover { border-color: var(--accent); }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 100ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+</style>
+<main>
+<header>
+  <h1>Study 31 · units</h1>
+  <span class="sub">A <code>faust~</code> box opened: its patch of Faust's own elements and its code, one piece of data in two views</span>
+  <span class="status" id="status">Loading the Faust compiler…</span>
+</header>
+
+<div class="toolbar">
+  <select id="example" aria-label="Example"></select>
+  <button class="act primary" id="play">▶ Play</button>
+  <span class="note" id="ex-note"></span>
+</div>
+
+<div class="views">
+  <section class="panel" aria-labelledby="h-patch">
+    <h2 id="h-patch">Patch <span>@kairotic/faust-units</span></h2>
+    <div class="canvas" id="canvas" tabindex="0" aria-label="The patch: boxes and wires. Double-click to add a box."><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div class="info" id="info"></div>
+    <div class="hint"><kbd>double-click</kbd> on the paper: a new box (a name from below, a number, or any Faust expression) · on a box: change it · drag from an outlet (bottom) to an inlet (top) · <kbd>Delete</kbd> removes what is selected</div>
+  </section>
+  <section class="panel" aria-labelledby="h-code">
+    <h2 id="h-code">Code <span>what the faust~ box keeps</span></h2>
+    <textarea class="code" id="code" spellcheck="false" aria-label="Faust code"></textarea>
+    <div class="sync" id="sync"></div>
+  </section>
+</div>
+
+<section class="panel" aria-labelledby="h-params">
+  <h2 id="h-params">Parameters <span id="io">from the compiled code</span></h2>
+  <div class="params" id="params"></div>
+</section>
+
+<section class="panel" aria-labelledby="h-vocab">
+  <h2 id="h-vocab">The boxes <span>click one to add it</span></h2>
+  <div class="vocab" id="vocab"></div>
+  <p class="note">Each box is one element of Faust and one definition in the code. A <b>loop</b> must go through the one-sample delay <code>'</code> (as gen~'s history): in code the network becomes a function of the delays' outputs fed back with <code>~</code>. Several wires into one inlet are added. Numbers after a box's name fill its inlets the way Faust fills arguments: from the right for primitives (<code>+ 0.5</code> is <code>+(0.5)</code>), in order for library functions (<code>fi.lowpass 2 1000</code>); a wired inlet takes the signal. Anything else typed in a box is Faust code kept as it is, with the inputs and outputs the compiler finds. In the other direction, code is read with Faust's block-diagram algebra (<code>: , &lt;: :&gt; ~</code>, infix operators, partial application, <code>with</code>, <code>letrec</code>); what the boxes do not know becomes a box of code, and code that cannot be read as boxes still compiles and plays, with the patch marked as out of date. The layout travels in the last comment of the code, so the code alone rebuilds the patch.</p>
+</section>
+</main>
+
+<script type="module">
+import { UNITS, readBox, boxText, unitOf } from "./kairotic/units.mjs";
+import { toFaust, inlets, outlets, newBox, name } from "./kairotic/graph.mjs";
+import { toGraphAsync } from "./kairotic/parse.mjs";
+import { EXAMPLES } from "./kairotic/examples.mjs";
+
+const $ = (id) => document.getElementById(id);
+const FAUSTWASM = "https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js";
+const status = (s, bad) => { $("status").textContent = s; $("status").classList.toggle("bad", !!bad); };
+
+// ── the compiler (as the app loads it) ──
+let fxP = null;
+function faust() {
+  return fxP || (fxP = import(FAUSTWASM).then((F) => F.instantiateFaustModule().then((mod) => ({ F, compiler: new F.FaustCompiler(new F.LibFaust(mod)) }))));
+}
+const hash = (s) => { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h).toString(36); };
+async function compileDsp(code) {
+  const fx = await faust(), gen = new fx.F.FaustMonoDspGenerator(), nm = "u" + hash(code);
+  let g = null, msg = "";
+  try { g = await gen.compile(fx.compiler, nm, code, "-ftz 2"); } catch (e) { msg = e && e.message; }
+  if (!g) throw new Error((fx.compiler.getErrorMessage && fx.compiler.getErrorMessage()) || msg || "Faust could not compile this code");
+  return { gen, name: nm, json: JSON.parse(gen.factory.json) };
+}
+const arity = new Map();
+async function arityOf(text) {
+  if (arity.has(text)) return arity.get(text);
+  try { const r = await compileDsp('import("stdfaust.lib");\nprocess = ' + text + ";\n"); arity.set(text, { ins: r.json.inputs, outs: r.json.outputs }); }
+  catch (_) { arity.set(text, null); }
+  return arity.get(text);
+}
+
+// ── state: the code is the source of truth; the patch is a view of it ──
+let graph = { boxes: [], wires: [] }, sel = null, compiled = null;
+
+// ── patch → code ──
+function fromPatch() {
+  try {
+    const code = toFaust(graph);
+    $("code").value = code;
+    $("canvas").classList.remove("stale");
+    sync("ok", "patch → code");
+    recompile(code);
+  } catch (e) { sync("bad", e.message); }
+  render();
+}
+// ── code → patch ──
+let codeTimer = 0, codeSeq = 0;
+$("code").addEventListener("input", () => {
+  clearTimeout(codeTimer);
+  codeTimer = setTimeout(() => fromCode($("code").value), 450);
+});
+async function fromCode(code) {
+  const my = ++codeSeq;
+  recompile(code);
+  try {
+    const g = await toGraphAsync(code, arityOf, arity);
+    if (my !== codeSeq) return;
+    graph = g; sel = null;
+    $("canvas").classList.remove("stale");
+    sync("ok", "code → patch");
+  } catch (e) {
+    if (my !== codeSeq) return;
+    $("canvas").classList.add("stale");
+    sync("warn", "outside what the boxes can show: " + e.message + " — the code still compiles and plays");
+  }
+  render(); showInfo();
+}
+function sync(kind, text) { $("sync").innerHTML = `<span class="${kind}">${kind === "ok" ? "✓ in sync" : kind === "bad" ? "✗" : "⚠"}</span> ${esc(text)}`; }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ── compiling and playing ──
+let compTimer = 0, compSeq = 0, ac = null, node = null, values = new Map();
+function recompile(code) {
+  clearTimeout(compTimer);
+  compTimer = setTimeout(async () => {
+    const my = ++compSeq;
+    status("compiling…");
+    try {
+      const r = await compileDsp(code);
+      if (my !== compSeq) return;
+      compiled = r;
+      status(`${r.json.inputs} in · ${r.json.outputs} out · compiled`);
+      params();
+      if (node) start();
+    } catch (e) { if (my === compSeq) status(e.message.split("\n")[0], true); }
+  }, 250);
+}
+async function start() {
+  if (!compiled) return;
+  ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+  if (ac.state === "suspended") await ac.resume();
+  const old = node;
+  const n = await compiled.gen.createNode(ac, compiled.name);
+  if (!n) { status("could not start the sound", true); return; }
+  forEachParam((it) => { const k = key(it); if (values.has(k)) try { n.setParamValue(it.address, values.get(k)); } catch (_) {} });
+  if (compiled.json.inputs) feed(n);
+  n.connect(ac.destination);
+  node = n;
+  if (old) try { old.disconnect(); old.destroy && old.destroy(); } catch (_) {}
+  $("play").textContent = "■ Stop";
+}
+let feedSrc = null;
+function feed(n) {
+  // a process with inputs hears quiet noise
+  const b = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.2;
+  if (feedSrc) try { feedSrc.stop(); } catch (_) {}
+  feedSrc = ac.createBufferSource(); feedSrc.buffer = b; feedSrc.loop = true; feedSrc.connect(n); feedSrc.start();
+}
+function stop() {
+  if (node) try { node.disconnect(); node.destroy && node.destroy(); } catch (_) {}
+  if (feedSrc) try { feedSrc.stop(); } catch (_) {}
+  node = null; feedSrc = null;
+  $("play").textContent = "▶ Play";
+}
+$("play").onclick = () => (node ? stop() : start());
+
+// a parameter's value is kept by its path without the DSP's name, which changes with every compile
+const key = (it) => it.address.replace(/^\/[^/]+/, "");
+function forEachParam(f) { const walk = (xs) => xs.forEach((it) => (it.items ? walk(it.items) : f(it))); walk((compiled && compiled.json.ui) || []); }
+function params() {
+  const box = $("params");
+  const items = [];
+  forEachParam((it) => items.push(it));
+  $("io").textContent = `${compiled.json.inputs} in · ${compiled.json.outputs} out · ${items.length} parameters`;
+  box.innerHTML = "";
+  for (const it of items) {
+    const row = document.createElement("div");
+    row.className = "param";
+    const k = key(it);
+    const set = (v) => { values.set(k, v); if (node) node.setParamValue(it.address, v); };
+    if (it.type === "button" || it.type === "checkbox") {
+      row.innerHTML = `<span>${esc(it.label)}</span><span><button class="act" type="button">${esc(it.label)}</button></span><output></output>`;
+      const b = row.querySelector("button"), o = row.querySelector("output");
+      if (it.type === "button") {
+        b.onpointerdown = (e) => { b.setPointerCapture(e.pointerId); b.classList.add("down"); set(1); o.textContent = "1"; };
+        b.onpointerup = b.onpointercancel = () => { b.classList.remove("down"); set(0); o.textContent = "0"; };
+      } else b.onclick = () => { const v = values.get(k) ? 0 : 1; set(v); b.classList.toggle("down", !!v); o.textContent = v; };
+      o.textContent = values.get(k) || 0;
+    } else if (it.type === "hslider" || it.type === "vslider" || it.type === "nentry") {
+      const v = values.has(k) ? values.get(k) : it.init;
+      row.innerHTML = `<label>${esc(it.label)}</label><input type="range" min="${it.min}" max="${it.max}" step="${it.step || 0.001}" value="${v}" aria-label="${esc(it.label)}"><output>${+(+v).toPrecision(5)}</output>`;
+      const r = row.querySelector("input"), o = row.querySelector("output");
+      r.oninput = () => { set(+r.value); o.textContent = +(+r.value).toPrecision(5); };
+    } else continue;
+    box.appendChild(row);
+  }
+  if (!items.length) box.innerHTML = '<span class="hint">No parameters: add an hslider or a button box.</span>';
+}
+
+// ── the patch view ──
+const H = 22, PORT = 8;
+const width = (b) => Math.max(44, boxText(b).length * 7.3 + 16, Math.max(inlets(b), outlets(b)) * 16);
+const portX = (b, i, n) => (n <= 1 ? b.x : b.x + (width(b) - PORT) * (i / (n - 1)));
+const kindOf = (b) => { const u = unitOf(b); return b.type === "'" ? "mem" : u.kind === "io" ? "io" : u.kind === "ui" ? "ui" : u.kind === "code" ? "code" : ""; };
+const svg = $("svg"), NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+
+function render() {
+  const W = Math.max($("canvas").clientWidth - 2, ...graph.boxes.map((b) => b.x + width(b) + 40));
+  const Hh = Math.max(476, ...graph.boxes.map((b) => b.y + H + 60));
+  svg.setAttribute("width", W); svg.setAttribute("height", Hh);
+  svg.innerHTML = "";
+  const byId = new Map(graph.boxes.map((b) => [b.id, b]));
+  const wiresG = el("g", {}, svg);
+  graph.wires.forEach((w, wi) => {
+    const a = byId.get(w.from[0]), b = byId.get(w.to[0]);
+    if (!a || !b) return;
+    const x1 = portX(a, w.from[1], outlets(a)) + PORT / 2, y1 = a.y + H, x2 = portX(b, w.to[1], inlets(b)) + PORT / 2, y2 = b.y;
+    const back = y2 < y1 + 10;
+    const d = back ? `M${x1},${y1} C${x1},${y1 + 50} ${x2},${y2 - 50} ${x2},${y2}` : `M${x1},${y1} C${x1},${(y1 + y2) / 2} ${x2},${(y1 + y2) / 2} ${x2},${y2}`;
+    el("path", { d, class: "wire" + (back ? " loop" : "") + (sel && sel.wire === wi ? " sel" : "") }, wiresG);
+    const hit = el("path", { d, class: "wire-hit" }, wiresG);
+    hit.addEventListener("pointerdown", (e) => { e.stopPropagation(); sel = { wire: wi }; showInfo(); render(); });
+  });
+  for (const b of graph.boxes) {
+    const g = el("g", { class: "b " + kindOf(b) + (sel && sel.box === b.id ? " sel" : ""), "data-id": b.id }, svg);
+    el("rect", { x: b.x, y: b.y, width: width(b), height: H, rx: 3 }, g);
+    el("text", { x: b.x + 8, y: b.y + H / 2 + 1 }, g).textContent = boxText(b);
+    const ni = inlets(b), no = outlets(b);
+    for (let i = 0; i < ni; i++) el("rect", { class: "port in", x: portX(b, i, ni), y: b.y, width: PORT, height: 3, "data-in": i }, g);
+    for (let i = 0; i < no; i++) el("rect", { class: "port out", x: portX(b, i, no), y: b.y + H - 3, width: PORT, height: 3, "data-out": i }, g);
+  }
+}
+
+// gestures: move a box, draw a wire, select, edit
+let drag = null;
+const pt = (e) => { const r = svg.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+const boxAt = (p) => [...graph.boxes].reverse().find((b) => p.x >= b.x - 2 && p.x <= b.x + width(b) + 2 && p.y >= b.y - 4 && p.y <= b.y + H + 4);
+let lastDown = { t: 0, x: 0, y: 0 };
+svg.addEventListener("pointerdown", (e) => {
+  if (editing) return;
+  const p = pt(e), b = boxAt(p);
+  // a double-click, told by hand: the view is redrawn on every press, so the browser never sees two clicks on one element
+  const now = performance.now(), dbl = now - lastDown.t < 400 && Math.abs(p.x - lastDown.x) < 6 && Math.abs(p.y - lastDown.y) < 6;
+  lastDown = dbl ? { t: 0, x: 0, y: 0 } : { t: now, x: p.x, y: p.y };
+  if (dbl) { e.preventDefault(); edit(b, b ? b.x : p.x, b ? b.y : p.y); return; }
+  $("canvas").focus({ preventScroll: true });
+  if (!b) { sel = null; showInfo(); render(); return; }
+  const no = outlets(b);
+  if (no && p.y >= b.y + H - 7) {
+    // from the nearest outlet
+    let k = 0, best = 1e9;
+    for (let i = 0; i < no; i++) { const d = Math.abs(portX(b, i, no) + PORT / 2 - p.x); if (d < best) { best = d; k = i; } }
+    drag = { wire: [b.id, k], x0: portX(b, k, no) + PORT / 2, y0: b.y + H };
+  } else drag = { box: b, dx: p.x - b.x, dy: p.y - b.y, moved: false };
+  sel = { box: b.id };
+  svg.setPointerCapture(e.pointerId);
+  showInfo(); render();
+});
+svg.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const p = pt(e);
+  if (drag.box) {
+    drag.box.x = Math.max(0, Math.round(p.x - drag.dx)); drag.box.y = Math.max(0, Math.round(p.y - drag.dy)); drag.moved = true;
+    render();
+  } else {
+    render();
+    el("path", { class: "temp", d: `M${drag.x0},${drag.y0} L${p.x},${p.y}` }, svg);
+  }
+});
+svg.addEventListener("pointerup", (e) => {
+  if (!drag) return;
+  const p = pt(e), d = drag;
+  drag = null;
+  if (d.box) { if (d.moved) fromPatch(); return; }
+  const b = boxAt(p);
+  if (b && b.id !== d.wire[0]) {
+    const ni = inlets(b);
+    if (ni) {
+      let k = 0, best = 1e9;
+      for (let i = 0; i < ni; i++) { const dd = Math.abs(portX(b, i, ni) + PORT / 2 - p.x); if (dd < best) { best = dd; k = i; } }
+      if (!graph.wires.some((w) => w.from[0] === d.wire[0] && w.from[1] === d.wire[1] && w.to[0] === b.id && w.to[1] === k)) {
+        graph.wires.push({ from: d.wire, to: [b.id, k] });
+        sel = { box: b.id };
+        fromPatch();
+        return;
+      }
+    }
+  }
+  render();
+});
+$("canvas").addEventListener("keydown", (e) => {
+  if (editing || !sel || !(e.key === "Delete" || e.key === "Backspace")) return;
+  e.preventDefault();
+  if (sel.wire !== undefined) graph.wires.splice(sel.wire, 1);
+  else if (sel.box !== undefined) {
+    graph.boxes = graph.boxes.filter((b) => b.id !== sel.box);
+    graph.wires = graph.wires.filter((w) => w.from[0] !== sel.box && w.to[0] !== sel.box);
+  }
+  sel = null; showInfo(); fromPatch();
+});
+let editing = null;
+function edit(b, x, y) {
+  if (editing) editing.remove();
+  const inp = document.createElement("input");
+  inp.className = "editor";
+  inp.value = b ? boxText(b) : "";
+  inp.placeholder = "os.osc 440 · + 0.5 · hslider freq 440 20 2000 1 · '";
+  inp.style.left = x + "px"; inp.style.top = (y - 2) + "px";
+  $("canvas").appendChild(inp);
+  editing = inp;
+  inp.focus(); inp.select();
+  let done = false;
+  const finish = async (ok) => {
+    if (done) return; done = true;
+    const text = inp.value.trim();
+    inp.remove(); editing = null;
+    $("canvas").focus({ preventScroll: true });
+    if (!ok || !text) return;
+    const r = readBox(text);
+    let io;
+    if (r.type === "faust") {
+      io = await arityOf(r.args[0]);
+      if (!io) { sync("bad", "the compiler does not understand: " + r.args[0]); return; }
+    }
+    if (b) {
+      b.type = r.type; b.args = r.args;
+      if (io) b.io = io; else delete b.io;
+      delete b.name; name(graph, b);
+      graph.wires = graph.wires.filter((w) => !(w.to[0] === b.id && w.to[1] >= inlets(b)) && !(w.from[0] === b.id && w.from[1] >= outlets(b)));
+    } else {
+      const nb = newBox(graph, r.type, r.args, Math.round(x), Math.round(y), io ? { io } : {});
+      if (r.type === "in" || r.type === "out") {
+        // numbered after the ones already there
+        if (!r.args.length) nb.args = [graph.boxes.filter((q) => q.type === r.type).length];
+        delete nb.name; name(graph, nb);
+      }
+      sel = { box: nb.id };
+    }
+    fromPatch(); showInfo();
+  };
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") finish(true); if (e.key === "Escape") finish(false); e.stopPropagation(); });
+  inp.addEventListener("blur", () => finish(true));
+}
+
+// what the selected box is, and its line of code
+function showInfo() {
+  const b = sel && sel.box !== undefined && graph.boxes.find((x) => x.id === sel.box);
+  if (!b) { $("info").innerHTML = sel && sel.wire !== undefined ? "a wire · <b>Delete</b> removes it" : `${graph.boxes.length} boxes · ${graph.wires.length} wires`; return; }
+  const u = unitOf(b);
+  const line = $("code").value.split("\n").find((l) => new RegExp("^\\s*" + b.name + "(\\(|\\s*=)").test(l));
+  $("info").innerHTML = `<b>${esc(boxText(b))}</b> — ${esc(u.doc || "")}<br>${line ? esc(line.trim()) : b.type === "in" ? esc(b.name + " · an input of process") : b.type === "out" ? "an output of process" : ""}`;
+}
+
+// ── the vocabulary ──
+const GROUPS = [
+  ["primitives", ["+", "-", "*", "/", "%", "^", "<", ">", "min", "max", "sin", "cos", "tanh", "abs", "sqrt", "exp", "log", "floor", "select2", "'", "@"]],
+  ["controls", ["hslider", "nentry", "button", "checkbox"]],
+  ["library", ["os.osc", "os.sawtooth", "os.square", "os.triangle", "no.noise", "fi.lowpass", "fi.highpass", "fi.resonlp", "en.adsr", "en.ar", "ba.db2linear", "ba.midikey2hz", "si.smoo", "de.delay", "ma.SR", "ma.PI"]],
+  ["patch", ["in", "out", "num"]]
+];
+$("vocab").innerHTML = GROUPS.map(([g, ns]) => `<div class="grp"><small>${g}</small>${ns.map((n) => `<button class="chip" title="${esc(UNITS[n].doc)}" data-u="${esc(n)}">${esc(n)}</button>`).join("")}</div>`).join("");
+$("vocab").addEventListener("click", (e) => {
+  const n = e.target.dataset && e.target.dataset.u;
+  if (!n) return;
+  const c = $("canvas"), u = UNITS[n];
+  const args = n === "num" ? [0] : u.kind === "ui" ? u.defs.slice() : n === "in" || n === "out" ? [graph.boxes.filter((q) => q.type === n).length + 1] : [];
+  const type = n;
+  const b = newBox(graph, type, args, c.scrollLeft + 30 + Math.random() * 120, c.scrollTop + 30 + Math.random() * 60);
+  sel = { box: b.id };
+  fromPatch(); showInfo();
+});
+
+// ── examples ──
+$("example").innerHTML = EXAMPLES.map((e) => `<option value="${e.key}">${esc(e.title)}</option>`).join("");
+$("example").onchange = () => open($("example").value);
+function open(key) {
+  const ex = EXAMPLES.find((e) => e.key === key);
+  $("ex-note").textContent = ex.note;
+  values = new Map();
+  $("code").value = ex.code;
+  fromCode(ex.code);
+}
+faust().then(() => status("compiler ready"), (e) => status("the Faust compiler did not load: " + e.message, true));
+open(EXAMPLES[0].key);
+showInfo();
+window.addEventListener("resize", render);
+</script>
