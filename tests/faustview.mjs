@@ -5,6 +5,8 @@
 // open (the audio app: it compiles Faust). check(label, ok, detail) records one result.
 import { cljs } from "./gestures.mjs";
 
+// the text of a string the page returns (cljs gives it as pr-str: quoted, with escapes)
+const text = (s) => { try { return JSON.parse(s); } catch (_) { return String(s); } };
 const until = async (page, src, ok, ms = 8000) => {
   const t0 = Date.now(); let got;
   while (Date.now() - t0 < ms) { got = await cljs(page, src); if (ok(got)) return got; await page.waitForTimeout(100); }
@@ -66,8 +68,8 @@ export async function faustview(page, check) {
 
   // the patch writes the code in the editor: edited, not applied
   await writeBox(page, 200, 40, "hslider depth 0.5 0 1 0.01");
-  const edited = await until(page, "(cw-text)", (t) => t.includes('hslider("depth", 0.5, 0, 1, 0.01)'), 3000);
-  check("a box written in the patch is in the editor's code", edited.includes('hslider("depth"'), edited);
+  const edited = text(await until(page, "(cw-text)", (t) => text(t).includes('hslider("depth", 0.5, 0, 1, 0.01)'), 3000));
+  check("a box written in the patch is in the editor's code", edited.includes('hslider("depth", 0.5, 0, 1, 0.01)'), edited);
   check("... edited, not applied yet", (await cljs(page, "(:dirty @code-win)")) === "true");
   check("... the box keeps its code until then", (await cljs(page, `(str/includes? (source ${f}) "depth")`)) === "false");
 
@@ -83,7 +85,7 @@ export async function faustview(page, check) {
   await page.mouse.down();
   await page.mouse.move(ends[2], ends[3], { steps: 8 });
   await page.mouse.up();
-  const wired = await until(page, "(cw-text)", (t) => /\* depth\)/.test(t), 3000);
+  const wired = text(await until(page, "(cw-text)", (t) => /\* depth\)/.test(text(t)), 3000));
   check("a wire drawn in the patch is in the code", /\* depth\)/.test(wired), wired);
 
   // Apply: one event, and the box's parameters follow (cutoff and depth, in the patch)

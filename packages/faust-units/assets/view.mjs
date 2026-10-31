@@ -37,7 +37,9 @@ const CSS = `
 .fu .temp { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
 .fu-editor { position: absolute; font: 12px var(--f-code); padding: 3px 5px; border: 1.5px solid var(--accent); border-radius: 3px;
   background: var(--box); color: var(--ink); min-width: 160px; z-index: 2; }
-.fu-foot { padding: 4px 10px; border-top: 1px solid var(--rule); font: 11.5px/1.45 var(--f-code); color: var(--ink-soft); overflow-wrap: anywhere; }
+/* two lines that never wrap: the paper above keeps its size whatever they say (the whole text is their title) */
+.fu-foot { flex: none; padding: 4px 10px; border-top: 1px solid var(--rule); font: 11.5px/1.45 var(--f-code); color: var(--ink-soft); }
+.fu-foot > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fu-foot b { color: var(--ink); font-weight: 500; }
 .fu-foot .ok { color: var(--ok); } .fu-foot .bad { color: var(--error); } .fu-foot .warn { color: var(--kairos); }
 `;
@@ -83,7 +85,7 @@ export function mount(host, { code = "", onCode = () => {}, loadFaust } = {}) {
     return a;
   }
 
-  const sync = (kind, text) => { syncEl.innerHTML = `<span class="${kind}">${kind === "ok" ? "✓" : kind === "bad" ? "✗" : "⚠"}</span> ${esc(text)}`; };
+  const sync = (kind, text) => { syncEl.innerHTML = `<span class="${kind}">${kind === "ok" ? "✓" : kind === "bad" ? "✗" : "⚠"}</span> ${esc(text)}`; syncEl.title = text; };
 
   // ── patch → code ──
   function changed() {
@@ -94,7 +96,7 @@ export function mount(host, { code = "", onCode = () => {}, loadFaust } = {}) {
       sync("ok", "the patch wrote the code: apply it to hear it");
       onCode(c);
     } catch (e) { sync("bad", e.message); }
-    render(); info();
+    render(); info(); reveal();
   }
   // ── code → patch ──
   let timer = 0, seq = 0;
@@ -156,6 +158,7 @@ export function mount(host, { code = "", onCode = () => {}, loadFaust } = {}) {
   }
   function info() {
     const b = sel && sel.box !== undefined && graph.boxes.find((x) => x.id === sel.box);
+    infoEl.title = "";
     if (!b) {
       infoEl.innerHTML = sel && sel.wire !== undefined ? "a wire · <b>Delete</b> removes it"
         : `${graph.boxes.length} boxes · ${graph.wires.length} wires · <b>double-click</b>: a box · drag outlet → inlet · <b>Delete</b>`;
@@ -163,6 +166,17 @@ export function mount(host, { code = "", onCode = () => {}, loadFaust } = {}) {
     }
     const line = current.split("\n").find((l) => new RegExp("^\\s*" + b.name + "(\\(|\\s*=)").test(l));
     infoEl.innerHTML = `<b>${esc(boxText(b))}</b> — ${esc(unitOf(b).doc || "")}${line ? " · " + esc(line.trim()) : ""}`;
+    infoEl.title = boxText(b) + " — " + (unitOf(b).doc || "") + (line ? "\n" + line.trim() : "");
+  }
+  // the selected box in sight (a box written near the edge, or found by its code)
+  function reveal() {
+    const b = sel && sel.box !== undefined && graph.boxes.find((x) => x.id === sel.box);
+    if (!b) return;
+    const pad = 12, w = width(b);
+    if (b.x - pad < canvas.scrollLeft) canvas.scrollLeft = Math.max(0, b.x - pad);
+    else if (b.x + w + pad > canvas.scrollLeft + canvas.clientWidth) canvas.scrollLeft = b.x + w + pad - canvas.clientWidth;
+    if (b.y - pad < canvas.scrollTop) canvas.scrollTop = Math.max(0, b.y - pad);
+    else if (b.y + H + pad > canvas.scrollTop + canvas.clientHeight) canvas.scrollTop = b.y + H + pad - canvas.clientHeight;
   }
 
   // ── gestures ──
