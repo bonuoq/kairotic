@@ -27,7 +27,10 @@ links you share carry it. See [Kairotic Pages](pages.md).
 
 - **Create a box**: double-click an empty place, write its text — the class and its arguments, such as
   `osc~ 440` — and press Enter. Classes ending in `~` are sound.
-- **Connect**: drag from an outlet (the small marks under a box) to an inlet (above another box).
+- **Connect**: drag from an outlet (the small marks under a box) to an inlet (above another box). You need
+  not hit the mark: near an outlet it lights up and the pointer becomes a cross, and a wire dropped on a
+  box, or just above one of its inlets, lands on the nearest inlet. Wires are curves, here and in the
+  patch of a `faust~`, which works the same way.
 - **Select** a box or a line by clicking it. **⌘/Ctrl+click** a box to edit it below (its arguments,
   and its text). **Delete** removes what is selected.
 - **Select several**: ⇧+click adds a box to the selection (or takes it out); a frame drawn from an

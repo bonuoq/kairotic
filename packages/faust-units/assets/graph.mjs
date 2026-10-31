@@ -193,7 +193,7 @@ export function layout(graph, W = 640) {
     rows.get(r).push(b);
   }
   // side by side, each as wide as its text (as the patch view draws it)
-  const w = (b) => Math.max(44, boxText(b).length * 7.3 + 16);
+  const w = (b) => Math.max(56, 20 + 7.6 * boxText(b).length);
   for (const [r, bs] of rows) {
     let x = 20;
     for (const b of bs) { b.x = Math.round(x); b.y = 24 + r * 60; x += w(b) + 24; }

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Patching, the same in every patcher**: wires are curves (in the patch and in the patch of a `faust~`); an outlet
+  within reach of the pointer lights up and the pointer becomes a cross, and pressing there starts a wire; the inlet a
+  wire would land on lights up, and a wire dropped just above an inlet lands on it. The patch of a `faust~` takes the
+  patch's measures and look (boxes, ports, wires). `@kairotic/faust-units` 0.1.1.
 - **`transcribe` segments the contour** (issue #106, measured on cante2midi). In notes mode it no longer starts a
   note each time the pitch moves 0.6 of a semitone: each voiced stretch is read as a contour (every 10 ms, a median
   of 100 ms), and a new note begins only where the contour, a semitone away from the note, has held still for 70 ms;

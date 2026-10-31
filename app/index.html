@@ -277,7 +277,7 @@ body.annotating.annot-move #canvas { cursor: move; }
 .help-view .back { font-size: 12px; }
 .help-view input.help-find { width: 100%; box-sizing: border-box; font: 12px var(--f-code); padding: 4px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); }
 /* lesson bar (Study 18): the note of the step you are at */
-#canvas line.wire.edits { stroke-dasharray: 5 4; }
+#canvas .wire.edits { stroke-dasharray: 5 4; }
 #canvas .score-slot .tsel, #canvas .score-slot .tsel * { fill: var(--accent) !important; stroke: var(--accent); }
 .lesson { border-bottom: 1px solid var(--rule); background: var(--accent-soft); padding: 6px 12px 8px; font-size: 13px; line-height: 1.5; }
 .lesson-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
@@ -336,13 +336,16 @@ body.annotating.annot-move #canvas { cursor: move; }
 #canvas-wrap.pres .box { cursor: default; }
 #canvas-wrap.pres .box.act, #canvas-wrap.pres .box .grip { cursor: pointer; }
 #canvas-wrap.pres .mus-body { cursor: crosshair; }
-#canvas .port { fill: var(--ink); }
+/* patching, as in every patcher of Kairotic (the patch of a faust~ too: packages/faust-units/assets/view.mjs):
+   curved wires; an outlet within reach lights up and the pointer is a cross; the inlet a wire would land on too */
+#canvas .port { fill: var(--ink); transform-box: fill-box; transform-origin: center; transition: transform 0.08s ease-out, fill 0.08s; }
 #canvas .port.out { cursor: crosshair; }
 #canvas .box.kairos .port { fill: var(--kairos); }
-#canvas .port.in.target { fill: var(--accent); }
-#canvas .wire { stroke: var(--ink); stroke-width: 1.5; }
+#canvas .port.out.hot, #canvas .port.in.target { fill: var(--accent); transform: scale(1.4, 2); }
+#canvas.near-out, #canvas.near-out *, #canvas.wiring, #canvas.wiring * { cursor: crosshair !important; }
+#canvas .wire { fill: none; stroke: var(--ink); stroke-width: 1.5; }
 #canvas .wire.sel { stroke: var(--accent); stroke-width: 2.5; }
-#canvas .wire-hit { stroke: transparent; stroke-width: 12; cursor: pointer; }
+#canvas .wire-hit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; }
 #canvas .wire.temp { stroke: var(--accent); stroke-dasharray: 4 4; pointer-events: none; }
 #inspector { position: absolute; z-index: 6; width: max-content; max-width: 340px; padding: 6px 8px; background: var(--box); color: var(--ink); border: 1px solid var(--rule); border-left: 3px solid var(--accent); border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.14); font: 12px var(--f-ui); }
 #inspector .insp-head span { color: var(--ink-soft); font-family: var(--f-code); font-size: 11px; }

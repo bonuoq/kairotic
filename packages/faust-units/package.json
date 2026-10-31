@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/faust-units",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Faust's own elements as boxes: the patch view of a Kairotic faust~ box, kept in sync with its code both ways (patch → Faust code, Faust code → patch)",
   "author": "bonuoq",
   "license": "MPL-2.0",
