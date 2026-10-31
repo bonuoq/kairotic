@@ -180,6 +180,17 @@
    "@kairotic/patterns" {:version "0.2.0" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}
    "@kairotic/spectral" {:version "0.1.0" :classes #{"shift~"} :local "kairotic/packages/spectral.mjs"}})
 
+;; Official packages that carry modules for the page itself rather than box classes (nothing to bring into
+;; a work): where their files are, npm first at the pinned version, then the page's own copy.
+(def module-packages
+  {"@kairotic/faust-units" {:version "0.1.0" :local "kairotic/packages/faust-units/"}})
+
+(defn module-origins
+  "Where file `f` of a module package is, in order: npm (pinned version), then the page's own copy."
+  [pkg-name f]
+  (let [{:keys [version local]} (get module-packages pkg-name)]
+    [(str "npm:" pkg-name "@" version "/dist/" f) (str local f)]))
+
 (defn package-of
   "The official package that defines class k: [name info], or nil."
   [k]

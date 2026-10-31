@@ -1,0 +1,37 @@
+{
+  "name": "@kairotic/faust-units",
+  "version": "0.1.0",
+  "description": "Faust's own elements as boxes: the patch view of a Kairotic faust~ box, kept in sync with its code both ways (patch → Faust code, Faust code → patch)",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/faust-units"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages/faust-units#readme",
+  "type": "module",
+  "main": "dist/view.mjs",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs faust-units",
+    "prepublishOnly": "node ../build.mjs faust-units"
+  },
+  "keywords": [
+    "kairotic",
+    "faust",
+    "visual programming",
+    "patcher",
+    "dsp",
+    "web audio"
+  ]
+}

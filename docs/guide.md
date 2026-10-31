@@ -95,6 +95,15 @@ comes first.
   a wave of breakpoints whose amplitudes and durations take random walks cycle after cycle — a pitch
   that drifts, a timbre that keeps changing. `[:x-step 40]` lets the pitch wander, `[:y-step 0.2]` the
   timbre; a signal on its inlet modulates its frequency. Its help patch has four steps.
+- **Faust as a patch** (Study 31, `@kairotic/faust-units`): the code of a `faust~` opens beside its box
+  with its **patch** on the left, the same code as Faust's own elements — primitives (`+ * ' @ sin
+  select2`…), controls (`hslider button`…), library functions (`os.osc fi.lowpass en.adsr`…), `in` and
+  `out`. Double-click the paper for a new box (a name, a number, or any Faust expression, kept as a box of
+  code), drag from an outlet to an inlet, Delete removes. Editing the patch rewrites the code beside it,
+  editing the code redraws the patch; Ctrl/⌘+Enter or Apply applies, as always. A loop must go through the
+  one-sample delay `'` (in code, `~`). Code the boxes cannot read still plays, with the patch marked out of
+  date. **Patch** in the window's bar hides it. The window opens beside the box, so its parameters stay in
+  sight in the patch.
 - **Faust in several voices**: a `faust~` whose source declares `declare options "[nvoices:8]";` is
   polyphonic. Its voice uses `freq`, `gain` and `gate`, set note by note; Hz go to its left inlet and
   voice ids to its right one, as with `synth~` (a `keyboard` 0→0, 1→1, 3→0; `mt play` 0→0, 1→1), in any

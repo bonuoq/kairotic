@@ -311,6 +311,15 @@ body.annotating.annot-move #canvas { cursor: move; }
 .cw-confirm[hidden] { display: none; }
 .cw-body { flex: 1; min-height: 0; overflow: hidden; }
 .cw-body .cm-editor { height: 100%; }
+/* a faust~: its patch (@kairotic/faust-units) on the left, its code on the right; Patch in the bar hides it */
+.cw-body.split { display: flex; }
+.cw-body.split .cw-patch { flex: 1.15 1 0; min-width: 0; border-right: 1px solid var(--rule); }
+.cw-body.split .cw-text { flex: 1 1 0; min-width: 0; height: 100%; }
+.cw-body.split.nopatch .cw-patch { display: none; }
+.cw-bar .cw-pv { padding: 2px 9px; font-size: 12px; }
+.cw-bar .cw-pv[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.cw-pv-err { margin: 12px; font-size: 12px; color: var(--error); }
+@media (max-width: 700px) { .cw-body.split { flex-direction: column; } .cw-body.split .cw-patch { border-right: 0; border-bottom: 1px solid var(--rule); } }
 .cw-plain { box-sizing: border-box; width: 100%; height: 100%; border: 0; outline: none; resize: none; padding: 8px 10px;
             font-family: var(--f-code); font-size: 12.5px; line-height: 1.5; background: var(--box); color: var(--ink); white-space: pre; tab-size: 2; }
 .cw-foot { padding: 4px 12px; font-family: var(--f-code); font-size: 11.5px; color: var(--ink-soft); background: var(--sheet);

@@ -15,6 +15,7 @@ npm under the scope `@kairotic` and served inside claude.ai by jsDelivr.
 | [`@kairotic/theory`](theory/) | `pcclock [notes]` a pitch-class set on the clock face, its prime form, interval vector and symmetries · `fourier [notes]` the six Fourier coefficients of a pitch-class distribution · `tonnetz [notes]` triads on the Tonnetz and the path of the harmony — all drawn in the patch, and clickable |
 | [`@kairotic/patterns`](patterns/) | `pbind [seed] [repeat] [loop]` a pattern as EDN data, with `#pat/…` generators and seeded randomness · `pattern [seed] [repeat] [loop]` a pattern as Clojure code (lazy sequences, as in Overtone) · `player [bpm] [quant]` plays one by its own clock, step by step, or at a position in beats |
 | [`@kairotic/spectral`](spectral/) | `shift~ [factor …]` pitch shifting in real time, one interval or a whole chord (ratios, semitones, cents), with the formants kept — stftPitchShift in WebAssembly |
+| [`@kairotic/faust-units`](faust-units/) | no classes: modules for the page — the patch view of a `faust~`, Faust's own elements as boxes, kept in sync with its code |
 
 Planned: `cac`, `notation`.
 

@@ -31,6 +31,7 @@ import { gendy } from "./gendy.mjs";
 import { spectral } from "./spectral.mjs";
 import { faustpoly } from "./faustpoly.mjs";
 import { patterns } from "./patterns.mjs";
+import { faustview } from "./faustview.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const base = url.replace(/tests\.html.*$/, "");
@@ -108,6 +109,7 @@ const audioSuites = [
   ["gendy", gendy, "the gendy~ tests ran"],
   ["spectral", spectral, "the shift~ tests ran"],
   ["faustpoly", faustpoly, "the polyphonic faust~ tests ran"],
+  ["faustview", faustview, "the faust~ patch view tests ran"],
   ["patterns", patterns, "the patterns tests ran"],
   // last: its transcriptions depend on timing, and by then the other blocks have (nearly) finished
   // (alongside them, a take could start late and an overwrite check fail)

@@ -98,6 +98,15 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   ciclo — una altura que deriva, un timbre que no deja de cambiar. `[:x-step 40]` deja vagar la altura,
   `[:y-step 0.2]` el timbre; una señal en su entrada modula su frecuencia. Su patch de ayuda tiene cuatro
   pasos.
+- **Faust como patch** (Estudio 31, `@kairotic/faust-units`): el código de un `faust~` se abre junto a su
+  caja con su **patch** a la izquierda, el mismo código como elementos de Faust —primitivas (`+ * ' @ sin
+  select2`…), controles (`hslider button`…), funciones de librería (`os.osc fi.lowpass en.adsr`…), `in` y
+  `out`—. Doble clic en el papel para una caja nueva (un nombre, un número o cualquier expresión de Faust,
+  que se queda como caja de código), arrastra de una salida a una entrada, Supr borra. Editar el patch
+  reescribe el código de al lado y editar el código redibuja el patch; Ctrl/⌘+Enter o Aplicar lo aplica,
+  como siempre. Un bucle debe pasar por el retardo de una muestra `'` (en código, `~`). El código que las
+  cajas no pueden leer sigue sonando, con el patch marcado como desactualizado. **Patch** en la barra de la
+  ventana lo oculta. La ventana se abre junto a la caja, para que sus parámetros sigan a la vista en el patch.
 - **Faust a varias voces**: un `faust~` cuyo código declara `declare options "[nvoices:8]";` es
   polifónico. Su voz usa `freq`, `gain` y `gate`, que se fijan nota a nota; los Hz van a su entrada
   izquierda y los ids de voz a la derecha, como con `synth~` (un `keyboard` 0→0, 1→1, 3→0; `mt play`

@@ -4,7 +4,7 @@
 // in one module (dist/index.mjs: { package, version, api, license, components: [...] }), which is what
 // a work imports. Inside claude.ai a page can only load JS modules from npm (through jsDelivr).
 // What a package keeps in assets/ (a module with its WebAssembly inside, say) is copied into dist/ as it
-// is, and its components load it from npm at their own version: a source that names
+// is, and its components (or the page) load it from npm at their own version: a source that names
 // "npm:<package>@<version>/…" must name the version of package.json.
 //   node packages/build.mjs            every package
 //   node packages/build.mjs synth      one
@@ -28,7 +28,9 @@ for (const name of readdirSync(here, { withFileTypes: true }).filter((d) => d.is
   const api = (pkg.kairotic && pkg.kairotic.api) || 1;
   mkdirSync(join(root, "dist"), { recursive: true });
   const components = [];
-  for (const file of readdirSync(join(root, "src")).filter((f) => f.endsWith(".cljs")).sort()) {
+  // a package may carry only modules for the page (assets/) and no components (faust-units)
+  const srcs = existsSync(join(root, "src")) ? readdirSync(join(root, "src")).filter((f) => f.endsWith(".cljs")).sort() : [];
+  for (const file of srcs) {
     const source = readFileSync(join(root, "src", file), "utf8");
     const cls = field(source, "class");
     if (!cls) throw new Error(name + "/" + file + ": missing :class \"…\"");
