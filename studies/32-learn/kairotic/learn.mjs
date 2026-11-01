@@ -14,6 +14,8 @@ import { DIMS } from "../../30-inverse/kairotic/dataset.mjs";
 
 export const SEGS = 8;
 const D = DIMS.length;
+// the input: the pooled descriptors, then the pitch YIN heard (whether there is one, and where)
+export const INPUT = SEGS * D + 2;
 
 // as dataset.mjs's matcher: level and Hz on log scales
 const shape = (row) => row.map((x, j) => (j === 0 ? Math.log10(x + 1e-4) : j === 1 || j === 3 ? Math.log2(1 + x) : x));
@@ -29,9 +31,13 @@ export function stats(bank) {
   return { mu: Array.from(mu), sd: Array.from(sd) };
 }
 
-// frames → the network's input: standardised, pooled into SEGS segments
-export function input(f, st) {
-  const x = new Float32Array(SEGS * D), cnt = new Float32Array(SEGS), T = f.length;
+// frames (and the pitch heard, p = [0…1 or -1, sure]) → the network's input: standardised, pooled into
+// SEGS segments, then two numbers for the pitch (a pitch class or none: no pitch is 0 and the middle)
+export function input(f, st, p = null) {
+  const x = new Float32Array(INPUT), cnt = new Float32Array(SEGS), T = f.length;
+  const has = p && p[0] >= 0;
+  x[SEGS * D] = has ? 1 : 0;
+  x[SEGS * D + 1] = has ? 2 * p[0] - 1 : 0;
   for (let t = 0; t < T; t++) {
     const s = Math.min(SEGS - 1, Math.floor((t * SEGS) / T)), r = shape(f[t]);
     cnt[s]++;
@@ -144,11 +150,11 @@ export function train(net, X, Y, { epochs = 40, batch = 64, lr = 2e-3, seed = 1,
 
 // a trained model as JSON (with the statistics its input needs), and back
 export function save(net, st) {
-  return { kairotic: "study-32-learn", segs: SEGS, dims: DIMS, stats: st, sizes: net.sizes,
+  return { kairotic: "study-32-learn", segs: SEGS, dims: DIMS, input: INPUT, stats: st, sizes: net.sizes,
     layers: net.layers.map((l) => ({ W: Array.from(l.W, (v) => +v.toPrecision(5)), b: Array.from(l.b, (v) => +v.toPrecision(5)) })) };
 }
 export function load(json) {
-  if (!json || json.kairotic !== "study-32-learn" || json.dims.join() !== DIMS.join()) throw new Error("not a model of this study");
+  if (!json || json.kairotic !== "study-32-learn" || json.dims.join() !== DIMS.join() || json.sizes[0] !== INPUT) throw new Error("not a model of this study (or of an older version of it)");
   const net = { sizes: json.sizes, layers: json.layers.map((l, i) => ({ n: json.sizes[i], m: json.sizes[i + 1], W: Float32Array.from(l.W), b: Float32Array.from(l.b) })) };
   return { net, stats: json.stats };
 }
