@@ -368,7 +368,9 @@ window.addEventListener("DOMContentLoaded", function () {
   (let [el ($ "kbd")]
     (.addEventListener el "pointerdown"
       (fn [ev] (when-let [[n a] (key-at ev)]
-                 (.preventDefault ev) (.releasePointerCapture (.-target ev) (.-pointerId ev))
+                 (.preventDefault ev)
+                 ;; touch captures the pointer on the key it began on; let go, so dragging glides to the next key
+                 (when (.hasPointerCapture (.-target ev) (.-pointerId ev)) (.releasePointerCapture (.-target ev) (.-pointerId ev)))
                  (swap! pointer assoc (.-pointerId ev) n) (press! n a))))
     (.addEventListener el "pointerover"
       (fn [ev] (when-let [old (get @pointer (.-pointerId ev))]
