@@ -36,6 +36,12 @@ jobs:
           test "$NAME-v$V" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} does not match version $V"; exit 1; }
           echo "NAME=$NAME" >> "$GITHUB_ENV"
           echo "DIR=$DIR" >> "$GITHUB_ENV"
+      # The page brings each official package from npm at the version core/kairotic/library.cljs pins: a
+      # release whose pin was not moved with its package.json would publish a version the page never loads
+      # (tests/versions.mjs checks every package; this checks the one being published, before publishing).
+      - name: Does the page pin this version
+        if: env.NAME != 'relay'
+        run: node tests/versions.mjs "@kairotic/$NAME"
       - if: env.NAME != 'relay'
         run: node packages/build.mjs "$NAME"
       - run: npm publish --access public
