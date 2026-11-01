@@ -1,0 +1,28 @@
+# Tests the relay's OSC bridge (tests/oscbridge.mjs): the relay started with --osc, a UDP socket in the
+# place of SuperCollider, a WebSocket in the place of a page. On pull requests that touch the relay.
+name: relay
+
+on:
+  pull_request:
+    paths: ["relay/**", "tests/oscbridge.mjs", ".github/workflows/relay.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relay-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+        working-directory: relay
+      - run: node tests/oscbridge.mjs

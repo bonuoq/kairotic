@@ -387,11 +387,91 @@
                          [{} []] (sort-by key now))]
     [(assoc st :pads ps) (vec (concat gone evs))]))
 
+;; ───────── OSC ─────────
+;; Through the relay's bridge (relay/oscbridge.js) a message is JSON: {address, args, types?, from?}. An
+;; event goes out under /kairotic/<type>, with its values in a fixed order, so that a SynthDef or a Max
+;; patch can take it without parsing; the same addresses coming in are events again. Any other address
+;; arrives as it is: {:src :osc :type :osc :address "/x" :args [..] :from "127.0.0.1:57120"}.
+;;
+;;   /kairotic/note    id freq amp gate     (i f f i; gate 1 or 0)
+;;   /kairotic/glide   id freq              (i f)
+;;   /kairotic/cc      ch cc value          (i i f; value 0…1)
+;;   /kairotic/pressure id value            (i f)
+;;   /kairotic/tilt    x y                  (f f)
+;;   /kairotic/shake   value                (f)
+;;   /kairotic/pad/<name> value [gate]      (f [i]; a gamepad's button or axis, by name or b3, a1)
+;;   /kairotic/clock · /start · /stop · /continue
+
+(defn- num [x] (if (number? x) x 0))
+
+(defn event->osc
+  "An event as an OSC message for the bridge, or nil (an event from OSC is not sent back)."
+  [e]
+  (case (:type e)
+    :note {:address "/kairotic/note" :types "iffi"
+           :args [(num (:id e)) (num (:freq e)) (num (or (:amp e) (when (:gate e) 0.8))) (if (:gate e) 1 0)]}
+    :glide {:address "/kairotic/glide" :types "if" :args [(num (:id e)) (num (:freq e))]}
+    :cc {:address "/kairotic/cc" :types "iif" :args [(num (:ch e)) (num (:cc e)) (num (:value e))]}
+    :pressure {:address "/kairotic/pressure" :types "if" :args [(num (:id e)) (num (:value e))]}
+    :tilt {:address "/kairotic/tilt" :types "ff" :args [(:x e) (:y e)]}
+    :shake {:address "/kairotic/shake" :types "f" :args [(:value e)]}
+    (:button :axis) {:address (str "/kairotic/pad/" (if (:name e) (name (:name e)) (str (if (= :axis (:type e)) "a" "b") (or (:axis e) (:button e)))))
+                     :types (if (some? (:gate e)) "fi" "f")
+                     :args (if (some? (:gate e)) [(:value e) (if (:gate e) 1 0)] [(:value e)])}
+    (:clock :start :stop :continue) {:address (str "/kairotic/" (name (:type e))) :args []}
+    :osc (when-not (= :osc (:src e)) {:address (:address e) :args (vec (:args e))})
+    nil))
+
+(defn osc->event
+  "An OSC message from the bridge as an event."
+  [{:keys [address args from]}]
+  (let [a (vec args) r (fn [x] (if (number? x) (round-to x 4) x))
+        base (cond-> {:src :osc} from (assoc :from from))]
+    (merge base
+           (case address
+             "/kairotic/note" (cond-> {:type :note :id (nth a 0 0) :gate (not= 0 (nth a 3 1))}
+                                (number? (get a 1)) (assoc :freq (r (get a 1)))
+                                (and (number? (get a 2)) (not= 0 (nth a 3 1))) (assoc :amp (r (get a 2))))
+             "/kairotic/glide" {:type :glide :id (nth a 0 0) :freq (r (nth a 1 0))}
+             "/kairotic/cc" {:type :cc :ch (nth a 0 1) :cc (nth a 1 0) :value (r (nth a 2 0))}
+             "/kairotic/pressure" {:type :pressure :id (nth a 0 0) :value (r (nth a 1 0))}
+             "/kairotic/tilt" {:type :tilt :x (r (nth a 0 0.5)) :y (r (nth a 1 0.5))}
+             "/kairotic/shake" {:type :shake :value (r (nth a 0 0))}
+             ("/kairotic/clock" "/kairotic/start" "/kairotic/stop" "/kairotic/continue")
+             {:type (keyword (subs address 10))}
+             {:type :osc :address address :args (mapv r a)}))))
+
+(defn- pattern-re
+  "An OSC address pattern (OSC 1.0) as a regular expression: ? one character, * any run, [abc] [a-z]
+   [!a] one of (or none of) them, {foo,bar} one of the words; none of them crosses a /."
+  [p]
+  (loop [cs (seq p) out "^"]
+    (if-not cs
+      (js/RegExp. (str out "$"))
+      (let [c (first cs)]
+        (case c
+          "?" (recur (next cs) (str out "[^/]"))
+          "*" (recur (next cs) (str out "[^/]*"))
+          "[" (let [body (take-while #(not= "]" %) (next cs))
+                    neg (= "!" (first body))
+                    body (apply str (if neg (rest body) body))]
+                (recur (next (drop-while #(not= "]" %) (next cs)))
+                       (str out "[" (when neg "^") (.replace body (js/RegExp. "[\\\\^]" "g") "\\$&") "]")))
+          "{" (let [body (apply str (take-while #(not= "}" %) (next cs)))
+                    alts (map #(.replace % (js/RegExp. "[.*+?^${}()|[\\]\\\\]" "g") "\\$&") (.split body ","))]
+                (recur (next (drop-while #(not= "}" %) (next cs))) (str out "(?:" (apply str (interpose "|" alts)) ")")))
+          (recur (next cs) (str out (.replace c (js/RegExp. "[.*+?^${}()|[\\]\\\\]" "g") "\\$&"))))))))
+
+(defn osc-match?
+  "Whether an address matches an OSC address pattern (an empty pattern matches every address)."
+  [pattern address]
+  (or (empty? pattern) (boolean (.test (pattern-re pattern) address))))
+
 ;; ───────── printing ─────────
 
 (defn edn
   "An event as one line of EDN, its keys in a readable order."
   [e]
-  (let [order [:src :type :pad :id :ch :note :button :axis :name :cc :freq :amp :x :y :value :gate]
+  (let [order [:src :type :address :args :pad :id :ch :note :button :axis :name :cc :freq :amp :x :y :value :gate :from]
         ks (concat (filter #(contains? e %) order) (sort (remove (set order) (keys e))))]
     (str "{" (apply str (interpose " " (map (fn [k] (str k " " (pr-str (get e k)))) ks))) "}")))

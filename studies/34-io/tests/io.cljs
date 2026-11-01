@@ -154,6 +154,28 @@
           ax (filter #(= :axis (:type %)) es)]
       (and (= 1 (count ax)) (nil? (:name (first ax))))))
 
+;; OSC
+(is "osc: a note out" (= {:address "/kairotic/note" :types "iffi" :args [60 261.626 0.5 1]}
+                         (io/event->osc {:src :keyboard :type :note :id 60 :freq 261.626 :amp 0.5 :gate true})))
+(is "osc: a note-off out keeps four values" (= [60 0 0 0] (:args (io/event->osc {:type :note :id 60 :gate false}))))
+(is "osc: a pad button by name, with its gate" (= {:address "/kairotic/pad/rt" :types "fi" :args [0.9 1]}
+                                                   (io/event->osc {:src :gamepad :type :button :button 7 :name :rt :value 0.9 :gate true})))
+(is "osc: a pad axis without a name" (= "/kairotic/pad/a5" (:address (io/event->osc {:type :axis :axis 5 :value 0.2}))))
+(is "osc: what came from OSC is not sent back" (nil? (io/event->osc {:src :osc :type :osc :address "/x" :args []})))
+(doseq [e [{:type :note :id 60 :freq 261.626 :amp 0.5 :gate true} {:type :note :id 60 :gate false}
+           {:type :glide :id 3 :freq 300.5} {:type :cc :ch 2 :cc 74 :value 0.25}
+           {:type :tilt :x 0.25 :y 0.75} {:type :shake :value 21.5} {:type :start}]]
+  (is (str "osc: round trip " (pr-str e))
+      (let [back (dissoc (io/osc->event (io/event->osc e)) :src)]
+        (= (if (false? (:gate e)) (assoc e :freq 0) e) back))))
+(is "osc: any other address as it is" (= {:src :osc :type :osc :address "/synth/1/cut" :args [0.5 "lp"] :from "127.0.0.1:57120"}
+                                          (io/osc->event {:address "/synth/1/cut" :args [0.5 "lp"] :from "127.0.0.1:57120"})))
+(doseq [[p a ok] [["" "/any/thing" true] ["/kairotic/*" "/kairotic/note" true] ["/kairotic/*" "/kairotic/pad/a" false]
+                  ["/kairotic/*/*" "/kairotic/pad/a" true] ["/synth/?/cut" "/synth/3/cut" true] ["/synth/?/cut" "/synth/12/cut" false]
+                  ["/synth/[1-3]/cut" "/synth/2/cut" true] ["/synth/[!1-3]/cut" "/synth/2/cut" false]
+                  ["/{note,glide}" "/glide" true] ["/{note,glide}" "/cc" false] ["/a.b" "/axb" false] ["/a.b" "/a.b" true]]]
+  (is (str "osc pattern " p " ~ " a " = " ok) (= ok (io/osc-match? p a))))
+
 ;; report
 (let [rs @results failed (remove second rs)
       text (str (- (count rs) (count failed)) " / " (count rs) " pass"

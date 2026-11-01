@@ -31,6 +31,33 @@ syncing through it, and while it is not the site's relay the address and the roo
 | Railway | a new service from this repository with root directory `relay` (it finds the Dockerfile); add a volume at `/data` |
 | Your own computer | `npx @kairotic/relay` and a tunnel with TLS (cloudflared, ngrok) for others to reach it |
 
+## OSC bridge
+
+A page cannot send or receive UDP, so the relay can do it for it: with `--osc` it also answers on
+`ws://<host>/osc` and passes [OSC](https://opensoundcontrol.stanford.edu) between the pages and
+SuperCollider, Max, Pd, TouchOSC, Open Stage Control… (discussion
+[#135](https://github.com/bonuoq/kairotic/discussions/135)). It is meant for **your own machine**:
+
+```sh
+npx @kairotic/relay --osc                                  # pages → udp 127.0.0.1:57120 (sclang), udp 57121 → pages
+npx @kairotic/relay --osc --osc-out sc=57120 --osc-out max=127.0.0.1:7400 --osc-in 9000
+```
+
+| | |
+|---|---|
+| `--osc-out name=host:port` | where the pages' OSC goes (several allowed; a page picks one by name, the first by default). The relay never sends anywhere else |
+| `--osc-in 57121` | the UDP port where OSC arrives for the pages (`--osc-bind 0.0.0.0` to take it from other machines, such as a phone with TouchOSC) |
+| `--osc-origin url` | the sites allowed to use the bridge: `https://bonuoq.github.io`, `http://localhost` and `http://127.0.0.1` by default. With `*`, any site you visit could send OSC to your synths |
+
+A page sends JSON frames `{"address": "/x", "args": [1, 2.5, "a"], "types": "ifs", "to": "max"}`
+(`types` and `to` optional: an integer is `i`, any other number `f`, a string `s`, `true`/`false`
+`T`/`F`) and receives `{"address", "args", "types", "from", "timetag"?}`; a bundle arrives as its
+messages. Bytes are made with `osc.js` (OSC 1.0, no dependency).
+
+From `https://bonuoq.github.io` the page reaches `ws://localhost` because browsers treat localhost as
+secure; Chrome may first ask to let the site reach devices on your local network. Safari may refuse it:
+serve the page from your machine too, or use Chrome or Firefox.
+
 ## Notes
 
 - **ws 7.** GUN's server code expects text frames; `ws` 8 delivers Buffers that GUN ignores, so the

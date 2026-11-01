@@ -49,7 +49,8 @@ button.act.rec[aria-pressed="true"] { background: var(--kairos); border-color: v
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
 button.act:disabled { opacity: 0.45; cursor: default; }
 button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+select, input[type="number"], input[type="text"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="text"] { font-family: var(--f-code); font-size: 12.5px; width: 15em; }
 input[type="number"] { width: 4.5em; font-family: var(--f-code); font-size: 12.5px; }
 label { display: inline-flex; gap: 5px; align-items: center; font-size: 13px; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -176,6 +177,17 @@ pre.log .src { color: var(--accent); }
           <button class="act" id="alloff">All notes off</button>
           <label><input type="checkbox" id="monitor" checked> hear it here (Web Audio)</label>
         </div>
+        <div class="row">
+          <span class="sub2">OSC</span>
+          <input type="text" id="osc-url" value="ws://localhost:8765/osc" aria-label="Relay's OSC bridge">
+          <button class="act" id="osc-connect">Connect OSC</button>
+          <label>to <select id="osc-to"></select></label>
+          <span class="msg" id="osc-msg">needs <code>npx @kairotic/relay --osc</code> on this machine</span>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="osc-send"> send every event as OSC</label>
+          <label>take in <input type="text" id="osc-filter" placeholder="every address" aria-label="OSC address pattern to take in"></label>
+        </div>
       </section>
 
       <section class="panel" aria-labelledby="h-ev">
@@ -296,9 +308,11 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (defn continuous? [e] (or (= :tilt (:type e)) (= :axis (:type e)) (and (= :button (:type e)) (nil? (:gate e)))))
 
+(declare osc-out!)
+
 (defn take! [e]
   (when (or (not (continuous? e)) (.-checked ($ "log-cont"))) (log! :in (io/edn e)))
-  (hear! e) (record! e))
+  (hear! e) (record! e) (osc-out! e))
 
 (defn send-msgs! [ms]
   (let [port (when-let [id (not-empty (.-value ($ "output")))] (when @midi (.get (.-outputs @midi) id)))]
@@ -324,6 +338,49 @@ window.addEventListener("DOMContentLoaded", function () {
     (swap! st assoc :in s)
     (doseq [e es] (take! e))
     (when (and (seq es) (.-checked ($ "thru")) (not (.-checked ($ "loopback")))) (send! es))))
+
+;; ───────── OSC, through the relay ─────────
+;; The relay started with --osc answers on ws://…/osc and passes OSC to and from UDP (relay/oscbridge.js).
+;; Every event the page takes can go out as OSC (/kairotic/note …); what arrives is an event again, taken
+;; like any other (heard, recorded, and on to MIDI with thru) when its address matches the pattern.
+
+(defonce osc (atom {:ws nil :targets []}))
+
+(defn osc-msg! [text kind]
+  (set! (.-innerHTML ($ "osc-msg")) text) (set! (.-className ($ "osc-msg")) (str "msg " kind)))
+
+(defn osc-out! [e]
+  (let [ws (:ws @osc)]
+    (when (and ws (= 1 (.-readyState ws)) (.-checked ($ "osc-send")) (not= :osc (:src e)))
+      (when-let [m (io/event->osc e)]
+        (let [to (not-empty (.-value ($ "osc-to")))]
+          (.send ws (js/JSON.stringify (clj->js (cond-> m to (assoc :to to)))))
+          (when (or (not (continuous? e)) (.-checked ($ "log-cont")))
+            (log! :out (str "  ⇢ " (:address m) " " (pr-str (:args m)) (when to (str " → " to))))))))))
+
+(defn osc-in! [frame]
+  (let [f (js->clj frame :keywordize-keys true)]
+    (cond
+      (:hello f) (let [ts (get-in f [:hello :targets])]
+                   (swap! osc assoc :targets ts)
+                   (set! (.-innerHTML ($ "osc-to")) (apply str (for [t ts] (str "<option>" (esc t) "</option>"))))
+                   (osc-msg! (str "connected · OSC in on udp " (get-in f [:hello :listen])) "ok"))
+      (:error f) (log! :in (str "OSC error: " (:error f)))
+      (:address f) (when (io/osc-match? (.trim (.-value ($ "osc-filter"))) (:address f))
+                     (let [e (io/osc->event f)]
+                       (take! e)
+                       (when (and (#{:note :glide :cc :pressure} (:type e)) (.-checked ($ "thru"))) (send! [e])))))))
+
+(defn osc-connect! []
+  (when-let [old (:ws @osc)] (.close old))
+  (let [url (.trim (.-value ($ "osc-url")))
+        ws (try (js/WebSocket. url) (catch :default e (osc-msg! (esc (.-message e)) "bad") nil))]
+    (when ws
+      (swap! osc assoc :ws ws)
+      (osc-msg! "connecting…" "")
+      (set! (.-onmessage ws) (fn [ev] (try (osc-in! (js/JSON.parse (.-data ev))) (catch :default _ nil))))
+      (set! (.-onerror ws) (fn [_] (osc-msg! (str "no bridge at " (esc url) " — is <code>npx @kairotic/relay --osc</code> running?") "bad")))
+      (set! (.-onclose ws) (fn [_] (when (= ws (:ws @osc)) (swap! osc assoc :ws nil)))))))
 
 ;; ───────── Web MIDI ─────────
 
@@ -576,7 +633,8 @@ window.addEventListener("DOMContentLoaded", function () {
                   (.then #(set! (.-textContent ($ "take-msg")) "copied"))
                   (.catch #(set! (.-textContent ($ "take-msg")) "could not copy"))))))
   (.addEventListener ($ "demo") "click" (fn [_] (demo!)))
-  (.addEventListener ($ "motion-on") "click" (fn [_] (motion-on!))))
+  (.addEventListener ($ "motion-on") "click" (fn [_] (motion-on!)))
+  (.addEventListener ($ "osc-connect") "click" (fn [_] (osc-connect!))))
 
 (draw-kbd!) (wire-kbd!) (wire!) (draw-take!) (poll-pads!)
 (set! (.-textContent ($ "status")) (if (.-requestMIDIAccess js/navigator) "ready · Web MIDI available" "ready · no Web MIDI here"))

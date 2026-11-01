@@ -31,6 +31,33 @@ salas lo llevan (`?peer=…`), así que quien los recibe llega al mismo relay. P
 | Railway | un servicio nuevo desde este repositorio con directorio raíz `relay` (encuentra el Dockerfile); añade un volumen en `/data` |
 | Tu ordenador | `npx @kairotic/relay` y un túnel con TLS (cloudflared, ngrok) para que otros lleguen |
 
+## Puente OSC
+
+Una página no puede enviar ni recibir UDP, así que el relay puede hacerlo por ella: con `--osc` también
+responde en `ws://<host>/osc` y pasa [OSC](https://opensoundcontrol.stanford.edu) entre las páginas y
+SuperCollider, Max, Pd, TouchOSC, Open Stage Control… (discusión
+[#135](https://github.com/bonuoq/kairotic/discussions/135)). Está pensado para **tu propia máquina**:
+
+```sh
+npx @kairotic/relay --osc                                  # páginas → udp 127.0.0.1:57120 (sclang), udp 57121 → páginas
+npx @kairotic/relay --osc --osc-out sc=57120 --osc-out max=127.0.0.1:7400 --osc-in 9000
+```
+
+| | |
+|---|---|
+| `--osc-out nombre=host:puerto` | adónde va el OSC de las páginas (puede haber varios; una página elige uno por nombre, el primero por defecto). El relay nunca envía a ningún otro sitio |
+| `--osc-in 57121` | el puerto UDP donde llega OSC para las páginas (`--osc-bind 0.0.0.0` para recibirlo de otras máquinas, como un móvil con TouchOSC) |
+| `--osc-origin url` | los sitios que pueden usar el puente: `https://bonuoq.github.io`, `http://localhost` y `http://127.0.0.1` por defecto. Con `*`, cualquier web que visites podría enviar OSC a tus sintes |
+
+Una página envía tramas JSON `{"address": "/x", "args": [1, 2.5, "a"], "types": "ifs", "to": "max"}`
+(`types` y `to` opcionales: un entero es `i`, cualquier otro número `f`, una cadena `s`, `true`/`false`
+`T`/`F`) y recibe `{"address", "args", "types", "from", "timetag"?}`; un bundle llega como sus
+mensajes. Los bytes los hace `osc.js` (OSC 1.0, sin dependencias).
+
+Desde `https://bonuoq.github.io` la página llega a `ws://localhost` porque los navegadores tratan
+localhost como seguro; Chrome puede preguntar antes si el sitio puede acceder a dispositivos de tu red
+local. Safari puede negarse: sirve también la página desde tu máquina, o usa Chrome o Firefox.
+
 ## Notas
 
 - **ws 7.** El código de servidor de GUN espera tramas de texto; `ws` 8 entrega Buffers que GUN
