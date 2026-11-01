@@ -114,7 +114,7 @@ table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transf
 <main>
 <header>
   <h1>Study 32 · learn</h1>
-  <span class="sub">The way back, learnt: a small network guesses a patch from its descriptors, and a search that listens refines the guess</span>
+  <span class="sub">The way back, learnt: a small network guesses a patch from its descriptors and its pitch, and a search that listens refines the timbre</span>
   <span class="status" id="status">Ready</span>
 </header>
 
@@ -135,9 +135,10 @@ table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transf
 </section>
 
 <section class="panel" aria-labelledby="h-train">
-  <h2 id="h-train">Training <span>descriptors pooled over 8 moments of the note → the 10 parameters</span></h2>
+  <h2 id="h-train">Training <span>descriptors pooled over 8 moments of the note, and the pitch YIN hears → the 10 parameters</span></h2>
   <div class="row">
     <label class="inline" for="epochs">Epochs <input type="number" id="epochs" min="1" max="200" value="30"></label>
+    <label class="inline" for="listen"><input type="checkbox" id="listen" checked> then learn to listen (slower)</label>
     <button class="act primary" id="train" disabled>Train</button>
     <button class="act" id="tstop" disabled>Stop</button>
     <button class="act" id="mload">Load a model…</button>
@@ -145,21 +146,21 @@ table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transf
     <button class="act" id="msave" disabled>Download the model (.json)</button>
   </div>
   <div class="loss" id="loss"></div>
-  <div class="facts" id="facts-train">A network of 144 → 128 → 64 → 10 numbers, trained in this page (no library) on the squared error of the parameters, checked on a twentieth it does not learn from.</div>
+  <div class="facts" id="facts-train">A network of 146 → 128 → 64 → 10 numbers (144 descriptors and 2 for the pitch), trained in this page (no library), checked on a twentieth it does not learn from. First it learns to guess the numbers (the parameters); then, if asked, a second network learns to imitate the synth (parameters → descriptors), and the first one goes on learning through it, on how its patch would sound rather than on its numbers.</div>
 </section>
 
 <section class="panel" aria-labelledby="h-back">
   <h2 id="h-back">The way back <span>one target set aside, three ways to a patch</span></h2>
   <div class="row">
     <button class="act primary" id="next" disabled>Another target</button>
-    <label class="inline" for="budget">Search <select id="budget"><option value="60">60 renders</option><option value="100" selected>100 renders</option><option value="200">200 renders</option></select></label>
+    <label class="inline" for="budget">Search <select id="budget"><option value="60">60 renders</option><option value="100">100 renders</option><option value="200" selected>200 renders</option><option value="400">400 renders</option></select></label>
     <button class="act" id="play-t" disabled>▶ Target</button>
     <button class="act" id="play-nn" disabled>▶ Nearest</button>
     <button class="act" id="play-net" disabled>▶ Network</button>
     <button class="act" id="play-s" disabled>▶ Searched</button>
   </div>
   <div class="ways" id="ways"><div class="facts">Make or load a bank, and train (or load) a model.</div></div>
-  <div class="legend"><span class="a"><i></i>target</span><span class="b"><i></i>network</span><span class="c"><i></i>network + search</span></div>
+  <div class="legend"><span class="a"><i></i>target</span><span class="b"><i></i>network</span><span class="c"><i></i>network + YIN + search</span></div>
   <div class="plots" id="plots"></div>
   <pre class="code" id="edn" hidden></pre>
 </section>
@@ -171,7 +172,7 @@ table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transf
     <button class="act" id="measure" disabled>Measure</button>
   </div>
   <div class="scroll" id="results"></div>
-  <p class="note">The <b>descriptor distance</b> is how far a patch <i>sounds</i> from the target (standardised descriptors, per number, as in Study 30); the <b>patch distance</b> is the mean difference of its parameters in [0, 1]. The target itself, rendered with another noise, is the floor: no patch can sound closer than that. The network is trained to guess the numbers, so it can land between two patches that sound alike; the search then listens, rendering the real synth, and moves towards what sounds closer. Nothing in it is specific to this synth: the same search would refine a <code>faust~</code> patch (Study 31) found by any first guess.</p>
+  <p class="note">The <b>descriptor distance</b> is how far a patch <i>sounds</i> from the target (standardised descriptors, per number, as in Study 30); the <b>patch distance</b> is the mean difference of its parameters in [0, 1]; the <b>pitch error</b> is in semitones. The target itself, rendered with another noise, is the floor: no patch can sound closer than that. The network is trained to guess the numbers, so it can land between two patches that sound alike; the search then listens, rendering the real synth, and moves towards what sounds closer. A descriptor distance tells a search almost nothing about which way the pitch lies (an octave or a harmonic away can look close: Engel et al. 2020 found the same for spectral losses), so the pitch is heard apart, by YIN as <code>pitch~</code> hears it: the network takes it as an input, and the search holds it fixed (at the octave the network points to) while it looks for the other nine parameters. Without a pitch (noise), the search looks for all ten. Nothing in it is specific to this synth: the same search would refine a <code>faust~</code> patch (Study 31) found by any first guess.</p>
 </section>
 </main>
 
@@ -249,6 +250,7 @@ $("file").onchange = async () => {
   try {
     const lines = (await f.text()).trim().split("\n").map((l) => JSON.parse(l));
     if (!lines[0] || !lines[0].analysis || lines[0].analysis.dims.join() !== DIMS.join()) throw new Error("its descriptors are not this study's");
+    if (!lines[1] || !lines[1].p) throw new Error("it has no pitch for its patches (a bank of Study 30, or an older one of this study): make one here");
     header = lines[0]; bank = lines.slice(1);
     $("progress").style.width = "100%"; $("err").hidden = true;
     split();
@@ -268,22 +270,31 @@ function lossChart(rows, epochs) {
     <path class="tr" d="${path("train")}"/><path class="va" d="${path("valid")}"/></svg>
     <div class="legend"><span class="a"><i></i>training</span><span class="b"><i></i>validation (not learnt from)</span></div>`;
 }
+const PHASES = { numbers: "guessing the numbers", imitation: "imitating the synth", listening: "learning to listen" };
 $("train").onclick = () => {
-  const epochs = Math.max(1, Math.min(200, +$("epochs").value || 30)), rows = [];
+  const epochs = Math.max(1, Math.min(200, +$("epochs").value || 30)), listen = $("listen").checked;
+  let rows = [], phase = null;
   const valid = train.filter((_, i) => i % 20 === 0), fit = train.filter((_, i) => i % 20 !== 0);
   $("train").disabled = true; $("tstop").disabled = false;
   const t0 = performance.now();
   onWorker = (m) => {
     if (m.type === "epoch") {
-      rows.push(m); lossChart(rows, epochs);
-      status(`epoch ${m.epoch}/${epochs} · ${((performance.now() - t0) / 1000).toFixed(0)} s`);
-      $("facts-train").innerHTML = `epoch <b>${m.epoch}</b> · training error <b>${m.train.toFixed(4)}</b> · validation <b>${m.valid.toFixed(4)}</b> (squared, per parameter in [0, 1]; a random guess is about 0.17)`;
+      if (m.phase !== phase) { phase = m.phase; rows = []; }
+      rows.push(m); lossChart(rows, m.of);
+      status(`${PHASES[m.phase]} · epoch ${m.epoch}/${m.of} · ${((performance.now() - t0) / 1000).toFixed(0)} s`);
+      const unit = m.phase === "numbers" ? "squared, per parameter in [0, 1]; a random guess is about 0.17"
+        : m.phase === "imitation" ? "squared, per standardised descriptor" : "how the patch would sound, plus a share of its numbers";
+      $("facts-train").innerHTML = `<b>${PHASES[m.phase]}</b> · epoch <b>${m.epoch}</b>/${m.of} · training error <b>${m.train.toFixed(4)}</b> · validation <b>${m.valid.toFixed(4)}</b> (${unit})`;
     } else if (m.type === "trained" || m.type === "error") {
       $("train").disabled = false; $("tstop").disabled = true;
-      if (m.model) { model = m.model; $("msave").disabled = false; status("trained"); ready(); }
+      if (m.model) {
+        model = m.model; $("msave").disabled = false;
+        $("facts-train").innerHTML += m.model.listens ? " · <b>it listens</b>: its error was about how its patch would sound" : " · trained on its numbers";
+        status("trained"); ready();
+      }
     }
   };
-  worker.postMessage({ type: "train", train: fit, valid, epochs, hidden: [128, 64], lr: 2e-3, seed: 1 });
+  worker.postMessage({ type: "train", train: fit, valid, epochs, listen, hidden: [128, 64], lr: 2e-3, seed: 1 });
 };
 $("tstop").onclick = () => worker.postMessage({ type: "stop" });
 $("msave").onclick = () => download("learn-model.json", JSON.stringify(model), "application/json");
@@ -318,7 +329,7 @@ function wayView(cls, title, t, u, fd) {
 function showWays() {
   const c = current;
   $("ways").innerHTML = wayView("nn", "Nearest neighbour", c.target.u, c.nn, c.dnn) + wayView("net", "Network", c.target.u, c.net, c.dnet)
-    + wayView("search", "Network + search", c.target.u, c.search, c.dsearch);
+    + wayView("search", "Network + YIN + search", c.target.u, c.search, c.dsearch);
 }
 const SHOW = [["rms", 0, (x) => x], ["centroid (Hz, log)", 1, (x) => Math.log2(1 + x)], ["flatness", 2, (x) => x], ["mfcc 1", 6, (x) => x]];
 function plots(series) {
@@ -351,7 +362,7 @@ async function next() {
   $("next").disabled = true;
   showWays();
   status("guessing…");
-  const g = await ask({ type: "guess", targets: [target.f] });
+  const g = await ask({ type: "guess", targets: [{ f: target.f, p: target.p }] });
   if (current.target !== target) return;
   current.net = g.u[0];
   const tq = M.vec(target.f), dist = async (u) => M.dist(M.vec(await framesOf(u)), tq);
@@ -363,15 +374,15 @@ async function next() {
   status("searching…");
   const budget = +$("budget").value;
   onWorker = (m) => { if (m.type === "step" && current.target === target) status(`searching… ${m.evals}/${budget} renders · ${m.fx.toFixed(3)}`); };
-  const r = await ask({ type: "refine", target: target.f, from: current.net, budget, seed: 3 });
+  const r = await ask({ type: "refine", target: target.f, p: target.p, yin: true, from: current.net, budget, seed: 3 });
   if (current.target !== target) return;
   current.search = r.x; current.dsearch = r.fx;
   showWays();
   plots([["ta", target.f], ["tb", await framesOf(current.net)], ["tc", await framesOf(r.x)]]);
   $("play-s").disabled = false; $("next").disabled = false;
   $("edn").hidden = false;
-  $("edn").textContent = ";; target\n" + edn(target.u) + "\n;; network\n" + edn(current.net) + "\n;; network + search\n" + edn(r.x);
-  status(`searched: ${r.f0.toFixed(3)} → ${r.fx.toFixed(3)} in ${budget} renders`);
+  $("edn").textContent = ";; target\n" + edn(target.u) + "\n;; network\n" + edn(current.net) + "\n;; network + YIN + search\n" + edn(r.x);
+  status(`searched: ${r.f0.toFixed(3)} → ${r.fx.toFixed(3)} in ${budget} renders` + (r.pitch !== null ? ` · pitch held at ${r.pitch.toFixed(2)} (YIN)` : " · no pitch heard: all ten searched"));
 }
 $("next").onclick = () => next();
 $("play-t").onclick = () => play(current.target.u, current.target.seed);
@@ -388,11 +399,11 @@ $("measure").onclick = () => {
     else if (m.type === "measured" || m.type === "error") {
       $("measure").disabled = false;
       if (m.type !== "measured") return;
-      const row = (name, r) => `<tr><td>${name}</td><td>${r.features.toFixed(3)}</td><td>${r.param.toFixed(3)}</td></tr>`;
-      $("results").innerHTML = `<table class="res"><thead><tr><th>${m.n} targets</th><th>Descriptor distance</th><th>Patch distance</th></tr></thead><tbody>
-        ${row("Nearest neighbour", m.nn)}${row("Network", m.net)}${row("Network + search (" + budget + " renders)", m.search)}${row("The target itself (floor)", m.self)}</tbody></table>
-        <table class="res" style="margin-top:10px"><thead><tr><th>Parameter</th><th>Nearest</th><th>Network</th><th>+ search</th></tr></thead><tbody>
-        ${m.perParam.map((p) => `<tr><td>${p.key}</td><td>${p.nn.toFixed(3)}</td><td>${p.net.toFixed(3)}</td><td>${p.search.toFixed(3)}</td></tr>`).join("")}</tbody></table>`;
+      const row = (name, r) => `<tr><td>${name}</td><td>${r.features.toFixed(3)}</td><td>${r.param.toFixed(3)}</td><td>${r.pitch.toFixed(2)}</td></tr>`;
+      $("results").innerHTML = `<table class="res"><thead><tr><th>${m.n} targets</th><th>Descriptor distance</th><th>Patch distance</th><th>Pitch error (st)</th></tr></thead><tbody>
+        ${row("Nearest neighbour", m.nn)}${row("Network", m.net)}${row("Network + search, all ten (" + budget + " renders)", m.search)}${row("Network + YIN + search, nine (" + budget + " renders)", m.yin)}${row("The target itself (floor)", m.self)}</tbody></table>
+        <table class="res" style="margin-top:10px"><thead><tr><th>Parameter</th><th>Nearest</th><th>Network</th><th>+ search</th><th>+ YIN + search</th></tr></thead><tbody>
+        ${m.perParam.map((p) => `<tr><td>${p.key}</td><td>${p.nn.toFixed(3)}</td><td>${p.net.toFixed(3)}</td><td>${p.search.toFixed(3)}</td><td>${p.yin.toFixed(3)}</td></tr>`).join("")}</tbody></table>`;
       status("measured");
     }
   };
