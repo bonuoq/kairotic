@@ -63,15 +63,26 @@ self.onmessage = async (msg) => {
       const X = m.train.map((e) => M.learn.input(e.f, st, e.p)), Y = m.train.map((e) => e.u);
       const V = { X: m.valid.map((e) => M.learn.input(e.f, st, e.p)), Y: m.valid.map((e) => e.u) };
       const net = M.learn.create([M.learn.INPUT, m.hidden[0], m.hidden[1], 10], m.seed || 1);
-      let lastPost = 0;
-      M.learn.train(net, X, Y, { epochs: m.epochs, batch: 64, lr: m.lr, seed: m.seed || 1, valid: V,
-        onEpoch: (ep, tl, vl) => {
-          post({ type: "epoch", epoch: ep, train: tl, valid: vl });
-          lastPost = ep;
-          return !stop;
-        } });
+      const report = (phase, of) => (ep, tl, vl) => { post({ type: "epoch", phase, epoch: ep, of, train: tl, valid: vl }); return !stop; };
+      // 1. guessing the numbers (the parameters)
+      M.learn.train(net, X, Y, { epochs: m.epochs, batch: 64, lr: m.lr, seed: m.seed || 1, valid: V, onEpoch: report("numbers", m.epochs) });
+      let listens = false;
+      if (m.listen && !stop) {
+        // 2. imitating the synth: parameters → the pooled descriptors (an easy direction to learn)
+        const NP = M.learn.SEGS * 18, D = X.map((x) => x.slice(0, NP)), DV = V.X.map((x) => x.slice(0, NP));
+        const imitation = M.learn.create([10, 128, 128, NP], (m.seed || 1) + 1, "linear");
+        M.learn.train(imitation, Y, D, { epochs: 40, batch: 64, lr: 2e-3, seed: m.seed || 1, valid: { X: V.Y, Y: DV }, onEpoch: report("imitation", 40) });
+        // 3. learning to listen: on through the imitation, its error about how the patch would sound
+        if (!stop) {
+          M.learn.trainThrough(net, imitation, X, D, Y, { epochs: 15, batch: 64, lr: 1e-3, alpha: 0.3, seed: m.seed || 1,
+            valid: { X: V.X, D: DV, Y: V.Y }, onEpoch: report("listening", 15) });
+          listens = !stop;
+        }
+      }
       model = { net, stats: st };
-      post({ type: "trained", epochs: lastPost, model: M.learn.save(net, st) });
+      const saved = M.learn.save(net, st);
+      saved.listens = listens;
+      post({ type: "trained", model: saved });
     }
 
     else if (m.type === "bank") {
