@@ -175,15 +175,15 @@
    "@kairotic/controls" {:version "0.1.1" :classes #{"knob" "keyboard"} :local "kairotic/packages/controls.mjs"}
    "@kairotic/analysis" {:version "0.5.0" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "monitor" "form~"}
                          :local "kairotic/packages/analysis.mjs"}
-   "@kairotic/theory"   {:version "0.1.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}
+   "@kairotic/theory"   {:version "0.1.1" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}
    "@kairotic/data"     {:version "0.1.1" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
    "@kairotic/patterns" {:version "0.2.0" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}
-   "@kairotic/spectral" {:version "0.1.0" :classes #{"shift~"} :local "kairotic/packages/spectral.mjs"}})
+   "@kairotic/spectral" {:version "0.1.1" :classes #{"shift~"} :local "kairotic/packages/spectral.mjs"}})
 
 ;; Official packages that carry modules for the page itself rather than box classes (nothing to bring into
 ;; a work): where their files are, npm first at the pinned version, then the page's own copy.
 (def module-packages
-  {"@kairotic/faust-units" {:version "0.1.1" :local "kairotic/packages/faust-units/"}})
+  {"@kairotic/faust-units" {:version "0.1.2" :local "kairotic/packages/faust-units/"}})
 
 (defn module-origins
   "Where file `f` of a module package is, in order: npm (pinned version), then the page's own copy."
