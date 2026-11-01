@@ -1,0 +1,80 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 34 · io · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="study" src="../index.html" width="1200" height="900" style="border:0"></iframe>
+<script>
+// The study as someone uses it, without MIDI hardware: loopback on, record, play the page's keyboard and the
+// 7-limit phrase, and check what came back in through the bytes (src :midi) and what the take holds.
+var results = [];
+function is(what, ok) { results.push([what, !!ok]); }
+function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function until(f, ms) {
+  var t0 = Date.now();
+  return new Promise(function (ok, no) {
+    (function loop() { var v; try { v = f(); } catch (e) {} if (v) ok(v); else if (Date.now() - t0 > ms) no(new Error("timed out")); else setTimeout(loop, 50); })();
+  });
+}
+function done(err) {
+  if (err) results.push(["error: " + (err.message || err), false]);
+  var failed = results.filter(function (r) { return !r[1]; }).map(function (r) { return r[0]; });
+  document.getElementById("out").textContent = (results.length - failed.length) + " / " + results.length + " pass" +
+    failed.map(function (f) { return "\n✗ " + f; }).join("");
+  window.kairoticResults = { total: results.length, failed: failed };
+}
+
+document.getElementById("study").addEventListener("load", function () {
+  var w = document.getElementById("study").contentWindow, d = w.document;
+  var $ = function (id) { return d.getElementById(id); };
+  var log = function () { return $("log").textContent; };
+  var key = function (n, type) {
+    var el = d.querySelector("[data-n='" + n + "']"), r = el.getBoundingClientRect();
+    el.dispatchEvent(new w.PointerEvent(type, { bubbles: true, pointerId: 7, clientX: r.left + 5, clientY: r.bottom - 5 }));
+  };
+  until(function () { return $("status").dataset.ready; }, 30000).then(function () {
+    is("the page is ready", true);
+    $("monitor").checked = false;              // no sound in the test
+    $("loopback").checked = true; $("loopback").dispatchEvent(new w.Event("change"));
+    is("loopback sets the input's bend range to the output's (MPE 48)", $("in-range").value === "48");
+    $("rec").click();
+    key(60, "pointerdown");
+    return wait(150).then(function () {
+      w.dispatchEvent(new w.PointerEvent("pointerup", { pointerId: 7 }));
+      return wait(150);
+    });
+  }).then(function () {
+    var l = log();
+    is("the key went out as an MPE bend then note-on on channel 2", /→ e1 00 40 .*\n.*→ 91 3c/.test(l) || /→ 91 3c [0-9a-f]{2}/.test(l));
+    is("and came back in as a :midi note with its Hz", /\{:src :midi :type :note :id 188 :ch 2 :note 60 :freq 261\.626/.test(l));
+    is("its note-off came back too", /:id 188 .*:gate false/.test(l));
+    $("demo").click();
+    return wait(5800);
+  }).then(function () {
+    var l = log();
+    is("the 7/4 of the phrase came back within a cent (228.92 Hz)", /:freq 228\.9[0-9]/.test(l));
+    is("the glide of the 7th came back as glides", (l.match(/:type :glide/g) || []).length >= 8);
+    $("rec").click();
+    var take = $("take").querySelectorAll("polyline");
+    is("the take has the key and the phrase's 11 notes", take.length === 12);
+    is("the glided note is a staircase of many points", Array.prototype.some.call(take, function (p) { return p.getAttribute("points").split(" ").length > 10; }));
+    // plain mode: one channel, the 7/4 rounded to a key
+    $("mode").value = "plain"; $("mode").dispatchEvent(new w.Event("change"));
+    $("loopback").dispatchEvent(new w.Event("change"));
+    is("plain: the input range back to 2", $("in-range").value === "2");
+    key(67, "pointerdown");
+    return wait(100);
+  }).then(function () {
+    is("plain: a note-on on channel 1", /→ 90 43 [0-9a-f]{2}/.test(log()));
+    w.dispatchEvent(new w.PointerEvent("pointerup", { pointerId: 7 }));
+    is("MPE setup is 5 + 15 × 6 messages", (function () {
+      $("mode").value = "mpe"; $("mode").dispatchEvent(new w.Event("change"));
+      $("loopback").checked = false; $("setup").click();
+      // newest first: the 95 messages of the setup, then what came before them
+      var lines = log().split("\n"), n = 0;
+      while (n < lines.length && /^  →/.test(lines[n])) n++;
+      return n === 95;
+    })());
+    done();
+  }).catch(done);
+});
+</script>
