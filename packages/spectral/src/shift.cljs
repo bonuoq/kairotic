@@ -5,7 +5,7 @@
 ;; not weigh on the history of a work: it is the module dist/shift.mjs of this same version of the
 ;; package, loaded the first time a shift~ sounds, and handed to the worklet as bytes.
 (let [;; ── the WebAssembly: this version of the package on npm, or the page's own copy ──
-      origins ["npm:@kairotic/spectral@0.1.0/dist/shift.mjs" "kairotic/packages/spectral/shift.mjs"]
+      origins ["npm:@kairotic/spectral@0.1.1/dist/shift.mjs" "kairotic/packages/spectral/shift.mjs"]
       frame 1024
       hop 128
 

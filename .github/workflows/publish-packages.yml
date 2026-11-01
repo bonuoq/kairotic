@@ -11,7 +11,7 @@ name: publish-packages
 
 on:
   push:
-    tags: ["synth-v*", "data-v*", "spatial-v*", "cac-v*", "notation-v*", "controls-v*", "analysis-v*", "theory-v*", "patterns-v*", "relay-v*"]
+    tags: ["*-v[0-9]*"]  # <name>-vX.Y.Z for any packages/<name> (or relay); a tag without its package fails the check below
 
 jobs:
   publish:
