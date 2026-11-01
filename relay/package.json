@@ -1,7 +1,7 @@
 {
   "name": "@kairotic/relay",
-  "version": "0.1.1",
-  "description": "A GUN relay for Kairotic: passes works and rooms between browsers and keeps a copy, so a community can collaborate through its own server",
+  "version": "0.2.0",
+  "description": "A GUN relay for Kairotic: passes works and rooms between browsers and keeps a copy, so a community can collaborate through its own server; and an OSC bridge for the pages",
   "author": "bonuoq",
   "license": "MPL-2.0",
   "repository": {
@@ -16,6 +16,8 @@
   },
   "files": [
     "server.js",
+    "osc.js",
+    "oscbridge.js",
     "README.md",
     "README.es.md"
   ],
@@ -39,6 +41,7 @@
     "kairotic",
     "gun",
     "relay",
+    "osc",
     "collaboration",
     "music"
   ]
