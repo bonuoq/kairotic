@@ -74,6 +74,50 @@ document.getElementById("study").addEventListener("load", function () {
       while (n < lines.length && /^  →/.test(lines[n])) n++;
       return n === 95;
     })());
+    // motion: a phone without a phone — orientation and motion events made here, MPE out, loopback in
+    $("loopback").checked = true; $("loopback").dispatchEvent(new w.Event("change"));
+    $("motion-on").click(); $("motion-play").checked = true;
+    w.dispatchEvent(new w.DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: 0, gamma: 0 }));
+    is("motion: the tilt shows in the meters", /x<\/span>.*0\.50/.test($("motion-meters").innerHTML));
+    is("motion: the tilt is not logged by default", !/:type :tilt/.test(log()));
+    w.dispatchEvent(new w.DeviceMotionEvent("devicemotion", { acceleration: { x: 20, y: 0, z: 0 } }));
+    return wait(100);
+  }).then(function () {
+    var l = log();
+    is("motion: the shake is logged", /:src :motion :type :shake :value 20/.test(l));
+    is("motion: and starts a note at the tilt's pitch (311.13 Hz), back in through MPE", /:src :midi :type :note .*:freq 311\.1[0-9].*:gate true/.test(l));
+    $("log-cont").checked = true;
+    w.dispatchEvent(new w.DeviceOrientationEvent("deviceorientation", { alpha: 0, beta: 0, gamma: 30 }));
+    is("motion: logged when asked", /:src :motion :type :tilt :x 0\.617/.test(log()));
+    is("motion: the tilt glides the note (396.56 Hz)", /:src :midi :type :glide .*:freq 396\.[0-9]/.test(log()));
+    return wait(400);
+  }).then(function () {
+    w.dispatchEvent(new w.DeviceMotionEvent("devicemotion", { acceleration: { x: 0, y: 25, z: 0 } }));
+    is("motion: another shake ends it", /^\{:src :midi :type :note .*:gate false\}/m.test(log().split("\n").slice(0, 4).join("\n")));
+    // a gamepad that is not there: window.kairoticFakePads stands in for navigator.getGamepads()
+    var buttons = []; for (var i = 0; i < 17; i++) buttons.push({ pressed: false, value: 0 });
+    w.kairoticFakePads = [{ index: 0, id: "Fake pad", mapping: "standard", axes: [0, 0, 0, 0], buttons: buttons }];
+    $("pad-play").checked = true;
+    return wait(150);
+  }).then(function () {
+    is("pad: connected", /:src :gamepad :type :connect :pad 0 :name "Fake pad"/.test(log()) && /Fake pad/.test($("pad-msg").textContent));
+    w.kairoticFakePads[0].buttons[2] = { pressed: true, value: 1 };
+    return wait(150);
+  }).then(function () {
+    is("pad: X pressed is logged with its name", /:src :gamepad :type :button :pad 0 :button 2 :name :x :value 1 :gate true/.test(log()));
+    is("pad: and plays E4 (329.63 Hz), back in through MPE", /:src :midi :type :note .*:freq 329\.6[0-9].*:gate true/.test(log()));
+    w.kairoticFakePads[0].axes[0] = 1;
+    return wait(150);
+  }).then(function () {
+    is("pad: the left stick bends it up a tone (369.99 Hz)", /:src :midi :type :glide .*:freq 3(69\.9|70\.0)/.test(log()));
+    w.kairoticFakePads[0].buttons[2] = { pressed: false, value: 0 };
+    return wait(150);
+  }).then(function () {
+    is("pad: released", /:src :gamepad :type :button :pad 0 :button 2 :name :x :value 0 :gate false/.test(log()));
+    w.kairoticFakePads = [];
+    return wait(150);
+  }).then(function () {
+    is("pad: unplugged", /:src :gamepad :type :disconnect :pad 0/.test(log()));
     done();
   }).catch(done);
 });

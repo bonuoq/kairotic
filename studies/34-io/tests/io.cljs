@@ -108,6 +108,52 @@
 (is "edn: keys in a readable order" (= "{:src :midi :type :note :id 60 :freq 440 :gate true}"
                                         (io/edn {:gate true :freq 440 :id 60 :type :note :src :midi})))
 
+;; motion
+(is "tilt: flat is the middle" (= [0.5 0.5] (io/tilt-xy 0 0)))
+(is "tilt: right and away are 1" (= [1 1] (io/tilt-xy 120 90)))
+(let [m (io/new-motion {:smooth 0})
+      [m e1] (io/motion-step m 0 {:alpha 10 :beta 0 :gamma 45})
+      [m e2] (io/motion-step m 0.01 {:alpha 10 :beta 0 :gamma 45.1})
+      [m e3] (io/motion-step m 0.02 {:alpha 10 :beta 18 :gamma 45})]
+  (is "motion: the first reading is sent" (= {:src :motion :type :tilt :x 0.75 :y 0.5 :beta 0 :gamma 45 :alpha 10} (first e1)))
+  (is "motion: a change below eps is not" (empty? e2))
+  (is "motion: a real change is" (= 0.6 (:y (first e3)))))
+(let [[m _] (io/motion-step (io/new-motion {:smooth 0.5}) 0 {:beta 0 :gamma 0})
+      [_ e] (io/motion-step m 0.01 {:beta 0 :gamma 90})]
+  (is "motion: smoothing goes half way" (= 0.75 (:x (first e)))))
+(let [m (io/new-motion)
+      [m e1] (io/motion-step m 0 {:acc [3 2 1]})
+      [m e2] (io/motion-step m 0.1 {:acc [20 0 0]})
+      [m e3] (io/motion-step m 0.2 {:acc [25 0 0]})
+      [m e4] (io/motion-step m 0.5 {:acc [0 18 0]})
+      [_ e5] (io/motion-step (io/new-motion) 0 {:accg [0 0 30]})]
+  (is "shake: a small move is not a shake" (empty? e1))
+  (is "shake: a strong one is" (= [{:src :motion :type :shake :value 20}] e2))
+  (is "shake: one shake is one event (the pause after it)" (empty? e3))
+  (is "shake: after the pause, another" (= 18 (:value (first e4))))
+  (is "shake: with gravity, gravity is taken out" (near? (:value (first e5)) 20.2 0.1)))
+
+;; gamepads
+(defn pad [axes buttons] {:index 0 :id "Test pad" :mapping "standard" :axes axes :buttons buttons})
+(def rest-buttons (vec (repeat 17 [false 0])))
+(let [g (io/new-pads)
+      [g e1] (io/pads-step g [(pad [0.05 -0.03 0 0] rest-buttons)])
+      [g e2] (io/pads-step g [(pad [0.05 -0.03 0 0] (assoc rest-buttons 0 [true 1]))])
+      [g e3] (io/pads-step g [(pad [0.56 0 0 0] (assoc rest-buttons 0 [true 1] 7 [false 0.4]))])
+      [g e4] (io/pads-step g [(pad [0.08 0 0 0] (assoc rest-buttons 7 [true 0.9]))])
+      [g e5] (io/pads-step g [nil])]
+  (is "pad: connecting is an event, and a stick at rest says nothing" (= [{:src :gamepad :type :connect :pad 0 :name "Test pad"}] e1))
+  (is "pad: a press, with the standard name" (= [{:src :gamepad :pad 0 :type :button :button 0 :name :a :value 1 :gate true}] e2))
+  (is "pad: an analogue button moves, without a gate" (some #(= {:src :gamepad :pad 0 :type :button :button 7 :name :rt :value 0.4} %) e3))
+  (is "pad: the dead zone is taken out of a stick" (some #(and (= :lx (:name %)) (= 0.5 (:value %))) e3))
+  (is "pad: a release, a trigger pressed past its threshold, the stick back to 0"
+      (= #{[:a false] [:rt true] [:lx 0]} (set (map (fn [e] [(:name e) (if (= :axis (:type e)) (:value e) (:gate e))]) e4))))
+  (is "pad: unplugging is an event" (= [{:src :gamepad :type :disconnect :pad 0}] e5)))
+(is "pad: without the standard mapping, no names"
+    (let [es (second (io/pads-step (io/new-pads) [(assoc (pad [0.9] []) :mapping "")]))
+          ax (filter #(= :axis (:type %)) es)]
+      (and (= 1 (count ax)) (nil? (:name (first ax))))))
+
 ;; report
 (let [rs @results failed (remove second rs)
       text (str (- (count rs) (count failed)) " / " (count rs) " pass"

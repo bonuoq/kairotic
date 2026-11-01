@@ -288,11 +288,110 @@
                         (update-in ss [sid :pts] (fn [pts] (let [[px f] (peek pts)] (if (> x px) (conj pts [x f]) pts)))))
                       (:strokes rec) (:open rec))}))
 
+;; ───────── motion: a phone's sensors ─────────
+;; DeviceOrientation gives the tilt (beta front/back −180…180, gamma left/right −90…90, alpha the compass
+;; 0…360); DeviceMotion the acceleration. In:
+;;   {:src :motion :type :tilt :x 0.62 :y 0.48 :alpha 12.3 :beta -4.1 :gamma 21.6}   x, y in 0…1, flat = 0.5
+;;   {:src :motion :type :shake :value 23.4}                                           a shake, m/s²
+;; The tilt is smoothed and sent only when it moves (sensors send ~60 times a second, whether or not
+;; anything changes); a shake is a trigger, with a pause after it so that one shake is one event.
+
+(defn new-motion
+  "smooth: how much of the old value stays at each reading (0 none, 0.9 a lot); eps: the least change of x
+   or y that is sent; shake: m/s² of acceleration that make a shake; every: seconds between two shakes."
+  ([] (new-motion {}))
+  ([{:keys [smooth eps shake every] :or {smooth 0.3 eps 0.004 shake 14 every 0.3}}]
+   {:smooth smooth :eps eps :shake shake :every every :x nil :y nil :sent nil :last-shake nil}))
+
+(defn tilt-xy
+  "The tilt as x (left 0 … right 1) and y (towards you 0 … away 1), both 0.5 when the phone lies flat."
+  [beta gamma]
+  [(clamp (/ (+ gamma 90) 180) 0 1) (clamp (/ (+ (clamp beta -90 90) 90) 180) 0 1)])
+
+(defn- mag [[x y z]] (js/Math.sqrt (+ (* x x) (* y y) (* z z))))
+
+(defn motion-step
+  "A reading at time t (seconds): {:beta :gamma :alpha} (orientation), {:acc [x y z]} (acceleration
+   without gravity) or {:accg [x y z]} (with gravity, when the device gives no other). [state, events]."
+  [st t r]
+  (cond
+    (number? (:gamma r))
+    (let [[tx ty] (tilt-xy (or (:beta r) 0) (:gamma r))
+          k (:smooth st)
+          x (if (:x st) (+ (* k (:x st)) (* (- 1 k) tx)) tx)
+          y (if (:y st) (+ (* k (:y st)) (* (- 1 k) ty)) ty)
+          [sx sy] (:sent st)
+          st (assoc st :x x :y y)]
+      (if (and sx (< (js/Math.abs (- x sx)) (:eps st)) (< (js/Math.abs (- y sy)) (:eps st)))
+        [st []]
+        [(assoc st :sent [x y])
+         [(cond-> {:src :motion :type :tilt :x (round-to x 3) :y (round-to y 3)
+                   :beta (round-to (or (:beta r) 0) 1) :gamma (round-to (:gamma r) 1)}
+            (number? (:alpha r)) (assoc :alpha (round-to (:alpha r) 1)))]]))
+    (or (:acc r) (:accg r))
+    (let [m (if (:acc r) (mag (:acc r)) (js/Math.abs (- (mag (:accg r)) 9.81)))]
+      (if (and (> m (:shake st)) (or (nil? (:last-shake st)) (>= (- t (:last-shake st)) (:every st))))
+        [(assoc st :last-shake t) [{:src :motion :type :shake :value (round-to m 1)}]]
+        [st []]))
+    :else [st []]))
+
+;; ───────── gamepads ─────────
+;; The Gamepad API is read, not listened to: the page asks for every pad on each frame, and the differences
+;; are the events. With the standard mapping, buttons and sticks have names.
+;;   {:src :gamepad :type :button :pad 0 :button 0 :name :a :value 1 :gate true}    pressed (and released)
+;;   {:src :gamepad :type :button :pad 0 :button 7 :name :rt :value 0.42}           an analogue button moves
+;;   {:src :gamepad :type :axis :pad 0 :axis 0 :name :lx :value -0.37}              a stick, −1…1
+;;   {:src :gamepad :type :connect :pad 0 :name "Xbox Wireless Controller"} · :disconnect
+
+(def standard-buttons [:a :b :x :y :lb :rb :lt :rt :back :start :ls :rs :up :down :left :right :home])
+(def standard-axes [:lx :ly :rx :ry])
+
+(defn new-pads
+  "deadzone: how far a stick moves before it counts (its rest is never exactly 0); eps: the least change sent."
+  ([] (new-pads {}))
+  ([{:keys [deadzone eps] :or {deadzone 0.12 eps 0.01}}] {:deadzone deadzone :eps eps :pads {}}))
+
+(defn dead
+  "A stick's value with its dead zone taken out: 0 inside it, and still −1…1 outside."
+  [v dz]
+  (if (< (js/Math.abs v) dz) 0 (* (js/Math.sign v) (/ (- (js/Math.abs v) dz) (- 1 dz)))))
+
+(defn- pad-diff [st i before pad]
+  (let [std? (= "standard" (:mapping pad))
+        ev (fn [m] (assoc m :src :gamepad :pad i))
+        axes (map-indexed (fn [k v] (round-to (dead v (:deadzone st)) 3)) (:axes pad))
+        axis-evs (for [[k v] (map-indexed vector axes)
+                       :let [old (get-in before [:axes k] 0)]
+                       :when (or (>= (js/Math.abs (- v old)) (:eps st)) (and (zero? v) (not (zero? old))))]
+                   (ev (cond-> {:type :axis :axis k :value v} (and std? (< k 4)) (assoc :name (nth standard-axes k)))))
+        btn-evs (for [[k [p v]] (map-indexed vector (:buttons pad))
+                      :let [[op ov] (get-in before [:buttons k] [false 0]) v (round-to v 3)
+                            named (fn [m] (cond-> m (and std? (< k 17)) (assoc :name (nth standard-buttons k))))]
+                      :when (or (not= (boolean p) (boolean op)) (>= (js/Math.abs (- v ov)) (:eps st)))]
+                  (ev (named (cond-> {:type :button :button k :value v} (not= (boolean p) (boolean op)) (assoc :gate (boolean p))))))]
+    [{:axes (vec axes) :buttons (mapv (fn [[p v]] [(boolean p) (round-to v 3)]) (:buttons pad))}
+     (vec (concat btn-evs axis-evs))]))
+
+(defn pads-step
+  "The pads as they are now — a sequence of {:index :id :mapping :axes [..] :buttons [[pressed value] ..]}
+   (nil for an empty slot) — against the last ones: [state, events]."
+  [st pads]
+  (let [now (into {} (keep (fn [p] (when p [(:index p) p])) pads))
+        gone (for [i (keys (:pads st)) :when (not (contains? now i))] {:src :gamepad :type :disconnect :pad i})
+        [ps evs] (reduce (fn [[ps evs] [i pad]]
+                           (let [before (get-in st [:pads i])
+                                 [after es] (pad-diff st i (:last before) pad)]
+                             [(assoc ps i {:last after :name (:id pad)})
+                              (cond-> evs (nil? before) (conj {:src :gamepad :type :connect :pad i :name (:id pad)})
+                                      true (into es))]))
+                         [{} []] (sort-by key now))]
+    [(assoc st :pads ps) (vec (concat gone evs))]))
+
 ;; ───────── printing ─────────
 
 (defn edn
   "An event as one line of EDN, its keys in a readable order."
   [e]
-  (let [order [:src :type :id :ch :note :cc :freq :amp :value :gate]
+  (let [order [:src :type :pad :id :ch :note :button :axis :name :cc :freq :amp :x :y :value :gate]
         ks (concat (filter #(contains? e %) order) (sort (remove (set order) (keys e))))]
     (str "{" (apply str (interpose " " (map (fn [k] (str k " " (pr-str (get e k)))) ks))) "}")))

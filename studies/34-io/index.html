@@ -86,6 +86,16 @@ label { display: inline-flex; gap: 5px; align-items: center; font-size: 13px; }
 .take .st.open { stroke: var(--kairos); }
 .take .now { stroke: var(--kairos); stroke-width: 1; stroke-dasharray: 3 3; }
 
+/* sensors */
+.meters { display: grid; grid-template-columns: 4.5em minmax(0, 1fr) 4em; gap: 4px 8px; align-items: center; font: 12px var(--f-code); }
+.meters .bar { height: 8px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; position: relative; overflow: hidden; }
+.meters .bar i { position: absolute; top: 0; bottom: 0; left: 0; background: var(--accent); }
+.meters .bar.mid i { left: 50%; }
+.meters .bar.mid i.neg { left: auto; right: 50%; }
+.meters .v { color: var(--ink-soft); text-align: right; }
+.sub2 { font: 600 12px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
+.flash { color: var(--kairos); font: 12px var(--f-code); }
+
 /* the events */
 pre.log { margin: 0; font: 11.5px/1.55 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; height: 420px; overflow: auto; white-space: pre; }
 pre.log .in { color: var(--ink); } pre.log .out { color: var(--ink-soft); }
@@ -120,6 +130,23 @@ pre.log .src { color: var(--accent); }
         </div>
         <div class="kbd" id="kbd" aria-label="Virtual keyboard"></div>
         <div class="hint">Mouse or touch, or the computer keys <kbd>A</kbd> <kbd>W</kbd> <kbd>S</kbd> … <kbd>K</kbd>; <kbd>Z</kbd> / <kbd>X</kbd> an octave down / up. Higher on a key is softer.</div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-sens">
+        <h2 id="h-sens">Sensors <span>a phone's tilt and shake, gamepads</span></h2>
+        <div class="row">
+          <button class="act" id="motion-on">Use motion</button>
+          <label><input type="checkbox" id="motion-play"> play: tilt left–right = pitch, away = loudness, shake = start / stop</label>
+          <span class="msg" id="motion-msg"></span>
+        </div>
+        <div class="meters" id="motion-meters"></div>
+        <div class="row">
+          <span class="sub2">Gamepads</span>
+          <label><input type="checkbox" id="pad-play"> play: A B X Y LB RB = a pentatonic, left stick = bend ±2, RT = loudness</label>
+          <span class="msg" id="pad-msg">press a button on a pad to wake it</span>
+        </div>
+        <div class="meters" id="pad-meters"></div>
+        <label><input type="checkbox" id="log-cont"> log continuous values (tilt, sticks)</label>
       </section>
 
       <section class="panel" aria-labelledby="h-take">
@@ -267,8 +294,11 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (declare in-bytes!)
 
+(defn continuous? [e] (or (= :tilt (:type e)) (= :axis (:type e)) (and (= :button (:type e)) (nil? (:gate e)))))
+
 (defn take! [e]
-  (log! :in (io/edn e)) (hear! e) (record! e))
+  (when (or (not (continuous? e)) (.-checked ($ "log-cont"))) (log! :in (io/edn e)))
+  (hear! e) (record! e))
 
 (defn send-msgs! [ms]
   (let [port (when-let [id (not-empty (.-value ($ "output")))] (when @midi (.get (.-outputs @midi) id)))]
@@ -409,6 +439,108 @@ window.addEventListener("DOMContentLoaded", function () {
                (for [i [20 21 22 23]] [5.2 (off i)]))]
     (doseq [[t e] steps] (js/setTimeout #(local! e) (* 1000 t)))))
 
+;; ───────── sensors ─────────
+;; Their events go where every event goes (take!): logged, and recorded only if they are notes. With
+;; "play" they also make notes, through the same path as the keyboard (local!), so they reach the port,
+;; MPE and the loopback.
+
+(defonce sens (atom {:motion (io/new-motion) :pads (io/new-pads) :mvoice nil :mfreq 220 :mamp 0.6
+                     :pvoices {} :bend 0 :pamp 0.8}))
+
+(defn meter [label v lo hi]
+  (let [mid? (neg? lo) u (if mid? (/ (js/Math.abs v) (- hi lo) 0.5) (/ (- v lo) (- hi lo)))
+        w (str (io/round-to (* 100 (io/clamp (if mid? (/ u 2) u) 0 1)) 1) "%")]
+    (str "<span>" label "</span><span class='bar" (when mid? " mid") "'><i" (when (and mid? (neg? v)) " class='neg'")
+         " style='width:" w "'></i></span><span class='v'>" (.toFixed v 2) "</span>")))
+
+(defn hz-of-x "x 0…1 as Hz, two octaves and a half from 110 Hz on a log scale." [x] (io/round-to (* 110 (js/Math.pow 2 (* 3 x))) 3))
+
+(defn motion-play! [e]
+  (when (.-checked ($ "motion-play"))
+    (case (:type e)
+      :tilt (let [f (hz-of-x (:x e)) a (io/round-to (+ 0.2 (* 0.8 (:y e))) 3)]
+              (swap! sens assoc :mfreq f :mamp a)
+              (when-let [id (:mvoice @sens)] (local! {:src :motion :type :glide :id id :freq f})))
+      :shake (if-let [id (:mvoice @sens)]
+               (do (swap! sens assoc :mvoice nil) (local! {:src :motion :type :note :id id :gate false}))
+               (let [id 2000] (swap! sens assoc :mvoice id)
+                 (local! {:src :motion :type :note :id id :freq (:mfreq @sens) :amp (:mamp @sens) :gate true})))
+      nil)))
+
+(defn motion! [r]
+  (let [[m es] (io/motion-step (:motion @sens) (now) r)]
+    (swap! sens assoc :motion m)
+    (doseq [e es]
+      (take! e) (motion-play! e)
+      (if (= :shake (:type e))
+        (set! (.-innerHTML ($ "motion-msg")) (str "<span class='flash'>shake " (:value e) "</span>"))
+        (set! (.-innerHTML ($ "motion-meters"))
+              (str (meter "x" (:x e) 0 1) (meter "y" (:y e) 0 1) (meter "alpha" (or (:alpha e) 0) 0 360)))))))
+
+(defn listen-motion! []
+  (.addEventListener js/window "deviceorientation"
+    (fn [ev] (when (number? (.-gamma ev)) (motion! {:alpha (.-alpha ev) :beta (.-beta ev) :gamma (.-gamma ev)}))))
+  (.addEventListener js/window "devicemotion"
+    (fn [ev] (let [a (.-acceleration ev) g (.-accelerationIncludingGravity ev)]
+               (cond (and a (number? (.-x a))) (motion! {:acc [(.-x a) (.-y a) (.-z a)]})
+                     (and g (number? (.-x g))) (motion! {:accg [(.-x g) (.-y g) (.-z g)]})))))
+  (set! (.-textContent ($ "motion-msg")) "listening — tilt or shake the device")
+  (set! (.-className ($ "motion-msg")) "msg ok"))
+
+(defn motion-on! []
+  ;; iOS asks first, and only from a gesture (this click); elsewhere there is nothing to ask
+  (let [ask (some-> (.-DeviceOrientationEvent js/window) .-requestPermission)]
+    (if (fn? ask)
+      (-> (ask) (.then (fn [r] (if (= r "granted")
+                                 (do (when (fn? (some-> (.-DeviceMotionEvent js/window) .-requestPermission)) (.requestPermission js/DeviceMotionEvent))
+                                     (listen-motion!))
+                                 (do (set! (.-textContent ($ "motion-msg")) "motion refused")
+                                     (set! (.-className ($ "motion-msg")) "msg bad")))))
+          (.catch (fn [e] (set! (.-textContent ($ "motion-msg")) (str "motion: " (.-message e))))))
+      (listen-motion!))
+    (set! (.-disabled ($ "motion-on")) true)))
+
+(def pad-scale [0 2 4 7 9 12])          ;; A B X Y LB RB: C D E G A C
+(def pad-root 261.6256)
+
+(defn pad-play! [e]
+  (when (.-checked ($ "pad-play"))
+    (let [bend-hz (fn [f] (io/round-to (* f (js/Math.pow 2 (/ (* 2 (:bend @sens)) 12))) 3))]
+      (cond
+        (and (= :button (:type e)) (< (:button e) 6) (some? (:gate e)))
+        (let [id (+ 3000 (* 32 (:pad e)) (:button e))
+              f (* pad-root (js/Math.pow 2 (/ (nth pad-scale (:button e)) 12)))]
+          (if (:gate e)
+            (do (swap! sens assoc-in [:pvoices id] f)
+                (local! {:src :gamepad :type :note :id id :freq (bend-hz f) :amp (:pamp @sens) :gate true}))
+            (do (swap! sens update :pvoices dissoc id)
+                (local! {:src :gamepad :type :note :id id :gate false}))))
+        (and (= :button (:type e)) (= :rt (:name e)))
+        (swap! sens assoc :pamp (io/round-to (+ 0.3 (* 0.7 (:value e))) 3))
+        (and (= :axis (:type e)) (= :lx (:name e)))
+        (do (swap! sens assoc :bend (:value e))
+            (doseq [[id f] (:pvoices @sens)] (local! {:src :gamepad :type :glide :id id :freq (bend-hz f)})))
+        :else nil))))
+
+(defn pads-now []
+  ;; a test can stand in for the pads with window.kairoticFakePads (an array like getGamepads')
+  (let [raw (or (.-kairoticFakePads js/window) (when (.-getGamepads js/navigator) (.getGamepads js/navigator)) #js [])]
+    (vec (for [p (js/Array.from raw)]
+           (when p {:index (.-index p) :id (.-id p) :mapping (.-mapping p) :axes (vec (js/Array.from (.-axes p)))
+                    :buttons (mapv (fn [b] [(.-pressed b) (.-value b)]) (js/Array.from (.-buttons p)))})))))
+
+(defn poll-pads! []
+  (let [[g es] (io/pads-step (:pads @sens) (pads-now))]
+    (swap! sens assoc :pads g)
+    (doseq [e es] (take! e) (pad-play! e))
+    (when (seq es)
+      (let [ps (:pads g)]
+        (set! (.-textContent ($ "pad-msg")) (if (seq ps) (apply str (interpose " · " (map (fn [[i p]] (str i ": " (:name p))) ps))) "no pad"))
+        (set! (.-innerHTML ($ "pad-meters"))
+              (apply str (for [[i p] ps [k v] (map-indexed vector (take 4 (get-in p [:last :axes])))]
+                           (meter (str i " " (name (nth io/standard-axes k))) v -1 1)))))))
+  (js/requestAnimationFrame poll-pads!))
+
 ;; ───────── controls ─────────
 
 (defn out-config! []
@@ -443,9 +575,10 @@ window.addEventListener("DOMContentLoaded", function () {
               (-> (.writeText js/navigator.clipboard (pr-str d))
                   (.then #(set! (.-textContent ($ "take-msg")) "copied"))
                   (.catch #(set! (.-textContent ($ "take-msg")) "could not copy"))))))
-  (.addEventListener ($ "demo") "click" (fn [_] (demo!))))
+  (.addEventListener ($ "demo") "click" (fn [_] (demo!)))
+  (.addEventListener ($ "motion-on") "click" (fn [_] (motion-on!))))
 
-(draw-kbd!) (wire-kbd!) (wire!) (draw-take!)
+(draw-kbd!) (wire-kbd!) (wire!) (draw-take!) (poll-pads!)
 (set! (.-textContent ($ "status")) (if (.-requestMIDIAccess js/navigator) "ready · Web MIDI available" "ready · no Web MIDI here"))
 (set! (.. ($ "status") -dataset -ready) "1")
 </script>
