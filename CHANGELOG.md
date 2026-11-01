@@ -3,7 +3,7 @@
 ## Unreleased
 
 - **Study 33 · lines** (discussion #117): a work as a project of several independent history lines, each a tab
-  above the patcher, each usable from any other line as `patch name` — following the line (its newest point) or
+  above the patcher, each usable from any other line as `patch @name` — following the line (its newest point) or
   pinned to a point of its history. Nesting, cycles refused, extract an embedded `patch` to a line with its
   history, inline a reference back, rename (users rewritten, the old name kept as an alias), release (every line
   reached, each at the point it uses, all pinned), export and import a line. A pure model

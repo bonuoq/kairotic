@@ -44,15 +44,17 @@
   (let [h3 (-> h (ln/back :scale) (ln/append :scale [:text :b2 "* 3"]))]
     (is "follow follows the newest branch" (= 15 (out h3 :follow-pin [:b1] [:b4]))))
   ;; ports come from the inlet and outlet boxes, by x
-  (is "ports of patch double" (= [1 1] (:io (ln/io h {:text "patch double"}))))
+  (is "patch @name refers to a line" (= :double (ln/ref-name {:text "patch @double"})))
+  (is "a plain word after patch stays a label" (and (nil? (ln/ref-name {:text "patch double"})) (ln/embedded? {:text "patch double"})))
+  (is "ports of patch @double" (= [1 1] (:io (ln/io h {:text "patch @double"}))))
   (is "used by" (= #{:basic :add-double} (set (map :line (ln/used-by h :double))))))
 
 ;; cycles are refused
 (let [h (ex/help-patch)]
-  (is "a line cannot contain itself" (some? (ln/cycle-error h :double "patch double")))
-  (is "nor what uses it" (some? (ln/cycle-error h :double "patch add-double")))
-  (is "a missing line" (some? (ln/cycle-error h :basic "patch nowhere")))
-  (is "fine otherwise" (nil? (ln/cycle-error h :basic "patch add-double"))))
+  (is "a line cannot contain itself" (some? (ln/cycle-error h :double "patch @double")))
+  (is "nor what uses it" (some? (ln/cycle-error h :double "patch @add-double")))
+  (is "a missing line" (some? (ln/cycle-error h :basic "patch @nowhere")))
+  (is "fine otherwise" (nil? (ln/cycle-error h :basic "patch @add-double"))))
 
 ;; extract and inline
 (let [h (ex/help-patch)
@@ -61,7 +63,7 @@
   (is "extract makes a line" (some? m))
   (is "with the history it had inside (6 events)" (= 6 (ln/depth-of m (ln/front m))))
   (is "its first versions too" (= "- 1" (get-in (ln/patch-at m [(first (ln/front m)) 5]) [:boxes :b2 :text])))
-  (is "the box refers to it" (= "patch minus" (get-in (ln/line-patch (ln/line h2 :embedded)) [:boxes :b2 :text])))
+  (is "the box refers to it" (= "patch @minus" (get-in (ln/line-patch (ln/line h2 :embedded)) [:boxes :b2 :text])))
   (is "and keeps no data" (nil? (get-in (ln/line-patch (ln/line h2 :embedded)) [:boxes :b2 :data])))
   (is "same result" (= -3 (out h2 :embedded [:b1] [:b3])))
   (let [h3 (ln/inline h :follow-pin [] :b2)
@@ -78,8 +80,8 @@
       before (:pos (ln/line h :basic))
       h2 (ln/rename-line h :double "twice")]
   (is "renamed" (and (ln/line h2 :twice) (nil? (get-in h2 [:lines :double]))))
-  (is "users rewritten" (= "patch twice" (get-in (ln/line-patch (ln/line h2 :basic)) [:boxes :b2 :text])))
-  (is "nested users too" (= "patch twice" (get-in (ln/line-patch (ln/line h2 :add-double)) [:boxes :b3 :text])))
+  (is "users rewritten" (= "patch @twice" (get-in (ln/line-patch (ln/line h2 :basic)) [:boxes :b2 :text])))
+  (is "nested users too" (= "patch @twice" (get-in (ln/line-patch (ln/line h2 :add-double)) [:boxes :b3 :text])))
   (is "still works" (= 10 (out h2 :nesting [:b1] [:b3])))
   (is "an older point still finds it by its old name" (= 6 (out (ln/goto h2 :basic before) :basic [:b1] [:b3])))
   (is "a taken name is refused" (throws? (fn [] (ln/rename-line h :double "scale"))))
