@@ -138,6 +138,7 @@ table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transf
   <h2 id="h-train">Training <span>descriptors pooled over 8 moments of the note, and the pitch YIN hears → the 10 parameters</span></h2>
   <div class="row">
     <label class="inline" for="epochs">Epochs <input type="number" id="epochs" min="1" max="200" value="30"></label>
+    <label class="inline" for="listen"><input type="checkbox" id="listen" checked> then learn to listen (slower)</label>
     <button class="act primary" id="train" disabled>Train</button>
     <button class="act" id="tstop" disabled>Stop</button>
     <button class="act" id="mload">Load a model…</button>
@@ -145,14 +146,14 @@ table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transf
     <button class="act" id="msave" disabled>Download the model (.json)</button>
   </div>
   <div class="loss" id="loss"></div>
-  <div class="facts" id="facts-train">A network of 146 → 128 → 64 → 10 numbers (144 descriptors and 2 for the pitch), trained in this page (no library) on the squared error of the parameters, checked on a twentieth it does not learn from.</div>
+  <div class="facts" id="facts-train">A network of 146 → 128 → 64 → 10 numbers (144 descriptors and 2 for the pitch), trained in this page (no library), checked on a twentieth it does not learn from. First it learns to guess the numbers (the parameters); then, if asked, a second network learns to imitate the synth (parameters → descriptors), and the first one goes on learning through it, on how its patch would sound rather than on its numbers.</div>
 </section>
 
 <section class="panel" aria-labelledby="h-back">
   <h2 id="h-back">The way back <span>one target set aside, three ways to a patch</span></h2>
   <div class="row">
     <button class="act primary" id="next" disabled>Another target</button>
-    <label class="inline" for="budget">Search <select id="budget"><option value="60">60 renders</option><option value="100" selected>100 renders</option><option value="200">200 renders</option></select></label>
+    <label class="inline" for="budget">Search <select id="budget"><option value="60">60 renders</option><option value="100">100 renders</option><option value="200" selected>200 renders</option><option value="400">400 renders</option></select></label>
     <button class="act" id="play-t" disabled>▶ Target</button>
     <button class="act" id="play-nn" disabled>▶ Nearest</button>
     <button class="act" id="play-net" disabled>▶ Network</button>
@@ -269,22 +270,31 @@ function lossChart(rows, epochs) {
     <path class="tr" d="${path("train")}"/><path class="va" d="${path("valid")}"/></svg>
     <div class="legend"><span class="a"><i></i>training</span><span class="b"><i></i>validation (not learnt from)</span></div>`;
 }
+const PHASES = { numbers: "guessing the numbers", imitation: "imitating the synth", listening: "learning to listen" };
 $("train").onclick = () => {
-  const epochs = Math.max(1, Math.min(200, +$("epochs").value || 30)), rows = [];
+  const epochs = Math.max(1, Math.min(200, +$("epochs").value || 30)), listen = $("listen").checked;
+  let rows = [], phase = null;
   const valid = train.filter((_, i) => i % 20 === 0), fit = train.filter((_, i) => i % 20 !== 0);
   $("train").disabled = true; $("tstop").disabled = false;
   const t0 = performance.now();
   onWorker = (m) => {
     if (m.type === "epoch") {
-      rows.push(m); lossChart(rows, epochs);
-      status(`epoch ${m.epoch}/${epochs} · ${((performance.now() - t0) / 1000).toFixed(0)} s`);
-      $("facts-train").innerHTML = `epoch <b>${m.epoch}</b> · training error <b>${m.train.toFixed(4)}</b> · validation <b>${m.valid.toFixed(4)}</b> (squared, per parameter in [0, 1]; a random guess is about 0.17)`;
+      if (m.phase !== phase) { phase = m.phase; rows = []; }
+      rows.push(m); lossChart(rows, m.of);
+      status(`${PHASES[m.phase]} · epoch ${m.epoch}/${m.of} · ${((performance.now() - t0) / 1000).toFixed(0)} s`);
+      const unit = m.phase === "numbers" ? "squared, per parameter in [0, 1]; a random guess is about 0.17"
+        : m.phase === "imitation" ? "squared, per standardised descriptor" : "how the patch would sound, plus a share of its numbers";
+      $("facts-train").innerHTML = `<b>${PHASES[m.phase]}</b> · epoch <b>${m.epoch}</b>/${m.of} · training error <b>${m.train.toFixed(4)}</b> · validation <b>${m.valid.toFixed(4)}</b> (${unit})`;
     } else if (m.type === "trained" || m.type === "error") {
       $("train").disabled = false; $("tstop").disabled = true;
-      if (m.model) { model = m.model; $("msave").disabled = false; status("trained"); ready(); }
+      if (m.model) {
+        model = m.model; $("msave").disabled = false;
+        $("facts-train").innerHTML += m.model.listens ? " · <b>it listens</b>: its error was about how its patch would sound" : " · trained on its numbers";
+        status("trained"); ready();
+      }
     }
   };
-  worker.postMessage({ type: "train", train: fit, valid, epochs, hidden: [128, 64], lr: 2e-3, seed: 1 });
+  worker.postMessage({ type: "train", train: fit, valid, epochs, listen, hidden: [128, 64], lr: 2e-3, seed: 1 });
 };
 $("tstop").onclick = () => worker.postMessage({ type: "stop" });
 $("msave").onclick = () => download("learn-model.json", JSON.stringify(model), "application/json");
