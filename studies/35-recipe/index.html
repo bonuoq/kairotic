@@ -1,0 +1,304 @@
+<meta charset="utf-8">
+<title>Kairotic Study 35 · Recipe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; a faust~'s code (its sliders are the parameters); a target sound (a setting of
+   the code, a patch of Study 30's synth, or a file); the search; then what it found: the values, the two
+   sounds side by side, and the recipe, ready for a faust~ box. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 6.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.facts .ok { color: var(--ok); } .facts .bad { color: var(--error); } .facts .kairos { color: var(--kairos); }
+.bar { height: 6px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 14px; align-items: start; }
+@media (max-width: 860px) { .two { grid-template-columns: minmax(0, 1fr); } }
+/* a patch: one line per parameter, the target as a filled bar, the patch found as a mark on it */
+.patch { display: grid; gap: 5px; }
+.prm { display: grid; grid-template-columns: 6.2em minmax(0, 1fr) 11em; gap: 8px; align-items: center; font-size: 12px; }
+.prm .k { color: var(--ink-soft); font-family: var(--f-code); }
+.prm .v { font: 11px var(--f-code); color: var(--ink-soft); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prm .v b { color: var(--ink); font-weight: 500; }
+.track { position: relative; height: 14px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 3px; }
+.track .t { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-soft); border-right: 2px solid var(--accent); }
+.track .m { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--kairos); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-soft); }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; }
+.legend .a i { background: var(--accent); } .legend .b i { background: var(--kairos); }
+/* descriptors over time: small multiples sharing the time axis */
+.plots { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.plot { border: 1px solid var(--grid); border-radius: 4px; background: var(--sheet); padding: 5px 7px 3px; min-width: 0; }
+.plot small { display: block; font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+.plot svg { display: block; width: 100%; height: 74px; overflow: visible; }
+.plot .ta { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.plot .tb { fill: none; stroke: var(--kairos); stroke-width: 1.6; stroke-dasharray: 4 3; }
+.plot .ax { stroke: var(--grid); stroke-width: 1; }
+.plot text { font: 10px var(--f-code); fill: var(--ink-soft); }
+.code { margin: 0; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; font: 12px/1.6 var(--f-code); color: var(--ink); overflow-x: auto; white-space: pre; }
+.sizes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.size { border: 1px solid var(--grid); border-radius: 4px; padding: 6px 9px; display: grid; gap: 2px; }
+.size small { color: var(--ink-soft); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.size b { font: 500 15px var(--f-code); font-variant-numeric: tabular-nums; }
+.size span { font-size: 11px; color: var(--ink-soft); }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.note a { color: var(--accent); }
+.err { color: var(--error); font-size: 12px; }
+
+.legend .c i { background: var(--ok); }
+.plot .tc { fill: none; stroke: var(--ok); stroke-width: 1.6; stroke-dasharray: 1 3; stroke-linecap: round; }
+.ways { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 960px) { .ways { grid-template-columns: minmax(0, 1fr); } }
+.way { border: 1px solid var(--grid); border-radius: 5px; padding: 8px 10px; display: grid; gap: 6px; min-width: 0; align-content: start; }
+.way h3 { margin: 0; font: 600 12px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.way h3 span { font: 400 12px var(--f-code); color: var(--ink-soft); text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.way .prm { grid-template-columns: 5.6em minmax(0, 1fr) 3.2em; }
+.way.nn .track .m { background: var(--ink-soft); } .way.net .track .m { background: var(--kairos); } .way.search .track .m { background: var(--ok); }
+.loss svg { display: block; width: 100%; height: 120px; overflow: visible; }
+.loss .tr { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.loss .va { fill: none; stroke: var(--kairos); stroke-width: 1.6; stroke-dasharray: 4 3; }
+.loss .ax { stroke: var(--grid); } .loss text { font: 10px var(--f-code); fill: var(--ink-soft); }
+table.res { border-collapse: collapse; font: 12px var(--f-code); font-variant-numeric: tabular-nums; }
+table.res th, table.res td { padding: 4px 10px; border-bottom: 1px solid var(--grid); text-align: right; }
+table.res th:first-child, table.res td:first-child { text-align: left; font-family: var(--f-ui); }
+table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+.scroll { overflow-x: auto; }
+
+textarea.src { width: 100%; min-height: 15em; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; tab-size: 2; white-space: pre; }
+textarea.out { min-height: 9em; }
+table.res td.k { font-family: var(--f-code); }
+table.res td.v b { font-weight: 500; color: var(--ink); }
+.two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 860px) { .two-col { grid-template-columns: minmax(0, 1fr); } }
+</style>
+<main>
+<header>
+  <h1>Study 35 · recipe</h1>
+  <span class="sub">A sound → the values of a faust~'s sliders that sound closest to it → a recipe for a work</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<section class="panel" aria-labelledby="h-code">
+  <h2 id="h-code">The faust~ <span>its sliders are what the search looks for ([scale:log] where the code says so)</span></h2>
+  <textarea class="src" id="code" spellcheck="false" aria-label="Faust code"></textarea>
+  <div class="row"><button class="act primary" id="compile">Compile</button><span class="facts" id="facts-code"></span></div>
+  <div class="err" id="err" hidden></div>
+</section>
+
+<section class="panel" aria-labelledby="h-target">
+  <h2 id="h-target">The target <span>one second of sound</span></h2>
+  <div class="row">
+    <button class="act" id="t-random" disabled>A setting of this code</button>
+    <button class="act" id="t-synth" disabled>A patch of Study 30's synth</button>
+    <button class="act" id="t-file" disabled>A sound file…</button>
+    <input type="file" id="file" accept="audio/*" hidden>
+    <button class="act" id="play-t" disabled>▶ Target</button>
+  </div>
+  <div class="facts" id="facts-target">A setting of this code has a known answer, to check the search; a patch of Study 30's synth (written in JS) shows how near the Faust twin can come to another synth; a file is any sound of yours (its first second, in mono).</div>
+</section>
+
+<section class="panel" aria-labelledby="h-find">
+  <h2 id="h-find">The search <span>random settings first (the nearest is the first guess), the pitch by YIN, then CMA-ES listening</span></h2>
+  <div class="row">
+    <label class="inline" for="bank">Random settings <input type="number" id="bank" min="8" max="400" value="48"></label>
+    <label class="inline" for="budget">Search <select id="budget"><option value="100">100 renders</option><option value="300" selected>300 renders</option><option value="600">600 renders</option></select></label>
+    <button class="act primary" id="find" disabled>Find</button>
+  </div>
+  <div class="bar" aria-hidden="true"><i id="progress"></i></div>
+  <div class="facts" id="facts-find"></div>
+</section>
+
+<section class="panel" aria-labelledby="h-found">
+  <h2 id="h-found">What it found <span>the values, and how they sound</span></h2>
+  <div class="row"><button class="act" id="play-f" disabled>▶ Found</button><button class="act" id="play-ab" disabled>▶ Target, then found</button></div>
+  <div class="two-col">
+    <div class="scroll" id="values"><div class="facts">Compile the code, choose a target, and find.</div></div>
+    <div><div class="legend"><span class="a"><i></i>target</span><span class="b"><i></i>found</span></div><div class="plots" id="plots"></div></div>
+  </div>
+  <h2 style="margin-top:6px">The recipe <span>the same code, its sliders starting where the search found them</span></h2>
+  <textarea class="src out" id="recipe" spellcheck="false" readonly aria-label="The recipe: Faust code"></textarea>
+  <div class="row"><button class="act" id="copy-code" disabled>Copy the code</button><button class="act" id="copy-call" disabled>Copy as a Kairotic call</button><span class="facts" id="facts-copy"></span></div>
+  <p class="note">The recipe is code a <code>faust~</code> box keeps: paste it in a box's code window, or run the call in the REPL (<code>(code :b1 "…")</code> writes it into box <code>:b1</code>). Nothing in the search is about one synth: any code with sliders can be looked for, and a slider called <code>pitch</code> (MIDI) or <code>freq</code> (Hz) is held where YIN hears the target's pitch, at the octave that sounds closest. Levels are compared apart from loudness (every render is brought to the target's loudest moment), so a recording at any level can be matched. The distance is Meyda's descriptors as <code>features~</code> computes them (Studies 30–32).</p>
+</section>
+</main>
+
+<script type="module">
+const FAUSTWASM = "https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js";
+import { recipe } from "./kairotic/fit.mjs";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const status = (s, bad) => { $("status").textContent = s; $("status").style.color = bad ? "var(--error)" : ""; };
+const fail = (e) => { $("err").textContent = String((e && e.message) || e); $("err").hidden = false; status("error", true); };
+
+// ── the worker, asked and answered by id ──
+const worker = new Worker(new URL("./kairotic/worker.mjs", import.meta.url));
+const pending = new Map();
+let seq = 0, onProgress = () => {};
+const ask = (m, transfer) => new Promise((ok, no) => { const id = ++seq; pending.set(id, { ok, no }); worker.postMessage({ ...m, id }, transfer || []); });
+worker.onmessage = (e) => {
+  const m = e.data;
+  if (m.type === "progress") return onProgress(m);
+  const p = pending.get(m.id);
+  if (!p) return;
+  pending.delete(m.id);
+  if (m.type === "error") p.no(new Error(m.message)); else p.ok(m);
+};
+
+// ── the compiler (as the app loads it) ──
+let fxP = null;
+const faust = () => fxP || (fxP = import(FAUSTWASM).then((F) => F.instantiateFaustModule().then((mod) => ({ F, compiler: new F.FaustCompiler(new F.LibFaust(mod)) }))));
+let sliders = [], code = "", target = null, found = null;
+async function compile() {
+  $("err").hidden = true;
+  status("compiling…");
+  const fx = await faust(), gen = new fx.F.FaustMonoDspGenerator();
+  code = $("code").value;
+  const g = await gen.compile(fx.compiler, "recipe", code, "-ftz 2").catch(() => null);
+  if (!g) throw new Error((fx.compiler.getErrorMessage && fx.compiler.getErrorMessage()) || "Faust could not compile this code");
+  const fac = gen.factory, json = JSON.parse(fac.json);
+  const r = await ask({ type: "dsp", code: fac.module || fac.code, json });
+  sliders = r.sliders;
+  $("facts-code").innerHTML = `<b>${sliders.length}</b> sliders: ${sliders.map((c) => esc(c.label) + (c.scale === "log" ? " (log)" : "")).join(", ")}`;
+  ["t-random", "t-synth", "t-file"].forEach((id) => { $(id).disabled = false; });
+  status("compiled");
+}
+$("compile").onclick = () => compile().catch(fail);
+
+// ── sound ──
+let ac = null, src = null;
+function play(list) {
+  ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+  if (ac.state === "suspended") ac.resume();
+  if (src) src.forEach((s) => { try { s.stop(); } catch (_) {} });
+  let t = ac.currentTime + 0.05;
+  src = list.map((y) => { const b = ac.createBuffer(1, y.length, 44100); b.copyToChannel(y, 0); const s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(t); t += y.length / 44100 + 0.3; return s; });
+}
+
+// ── the target ──
+function setTarget(t, what) {
+  target = t;
+  $("play-t").disabled = false; $("find").disabled = false;
+  $("facts-target").innerHTML = what;
+  found = null; ["play-f", "play-ab", "copy-code", "copy-call"].forEach((id) => { $(id).disabled = true; });
+}
+let tseed = 1;
+$("t-random").onclick = async () => { try { const r = await ask({ type: "random", seed: tseed++ }); setTarget(r, "a random setting of this code (its values are known: they show beside what the search finds)"); } catch (e) { fail(e); } };
+$("t-synth").onclick = async () => { try { const r = await ask({ type: "synth", seed: 900000 + tseed++ }); r.values = Object.fromEntries(Object.entries(r.values).map(([k, v]) => [k, v])); setTarget(r, "a patch of Study 30's synth, written in JS: the Faust twin can only come near it (its values show beside what is found)"); } catch (e) { fail(e); } };
+$("t-file").onclick = () => $("file").click();
+$("file").onchange = async () => {
+  const f = $("file").files[0]; if (!f) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await ac.decodeAudioData(await f.arrayBuffer());
+    // its first second, mono, at 44.1 kHz
+    const off = new OfflineAudioContext(1, 44100, 44100), s = off.createBufferSource();
+    s.buffer = buf; s.connect(off.destination); s.start();
+    const y = (await off.startRendering()).getChannelData(0).slice();
+    setTarget({ y, values: null }, `<b>${esc(f.name)}</b>: its first second, in mono`);
+  } catch (e) { fail(new Error("could not read that sound: " + ((e && e.message) || e))); }
+  $("file").value = "";
+};
+$("play-t").onclick = () => target && play([target.y]);
+
+// ── the search ──
+$("find").onclick = async () => {
+  if (!target) return;
+  const bank = Math.max(8, Math.min(400, +$("bank").value || 48)), budget = +$("budget").value;
+  $("find").disabled = true;
+  const t0 = performance.now();
+  onProgress = (m) => {
+    const total = bank + budget, done = m.phase === "bank" ? m.done : bank + m.done;
+    $("progress").style.width = (100 * done / total) + "%";
+    status(m.phase === "bank" ? `random settings ${m.done}/${bank}` : `searching ${m.done}/${budget} renders · ${m.best.toFixed(3)}`);
+  };
+  try {
+    const y = target.y.slice();
+    const r = await ask({ type: "fit", y, bank, budget, seed: 1 });
+    found = r;
+    show(r);
+    status(`found in ${((performance.now() - t0) / 1000).toFixed(0)} s`);
+  } catch (e) { fail(e); }
+  $("find").disabled = false;
+};
+const fmt = (c, v) => (v === undefined || v === null ? "" : Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toFixed(4)) + (c && c.unit ? " " + c.unit : "");
+async function show(r) {
+  const truth = target.values;
+  $("values").innerHTML = `<table class="res"><thead><tr><th>Slider</th><th>Found</th>${truth ? "<th>Target</th>" : ""}</tr></thead><tbody>
+    ${sliders.map((c) => `<tr><td class="k">${esc(c.label)}</td><td class="v"><b>${fmt(c, r.values[c.label])}</b>${c.label === "pitch" && r.pitch !== null ? " ·YIN" : ""}</td>${truth ? `<td class="v">${fmt(c, truth[c.label])}</td>` : ""}</tr>`).join("")}</tbody></table>`;
+  $("facts-find").innerHTML = `descriptor distance <b>${r.fx.toFixed(3)}</b> (the nearest random setting: ${r.nearestFx.toFixed(3)})` + (r.pitch !== null ? ` · pitch held at <b>${r.pitch.toFixed(2)}</b> (YIN)` : " · no pitch held");
+  $("recipe").value = recipe(code, r.values, sliders);
+  ["play-f", "play-ab", "copy-code", "copy-call"].forEach((id) => { $(id).disabled = false; });
+  const [ft, ff] = await Promise.all([ask({ type: "frames", y: target.y.slice() }), ask({ type: "frames", y: r.y.slice() })]);
+  plots(ft.f, ff.f);
+}
+const SHOW = [["rms", 0, (x) => x], ["centroid (Hz, log)", 1, (x) => Math.log2(1 + x)], ["flatness", 2, (x) => x], ["mfcc 1", 6, (x) => x]];
+function plots(fa, fb) {
+  // each sound's rms on its own scale: the search compares them apart from loudness
+  $("plots").innerHTML = SHOW.map(([name, j, tf], q) => {
+    const A = fa.map((r) => tf(r[j])), B = fb.map((r) => tf(r[j]));
+    const scale = (V) => { let lo = Math.min(...V), hi = Math.max(...V); if (hi - lo < 1e-9) { hi += 0.5; lo -= 0.5; } return [lo, hi]; };
+    const [alo, ahi] = q === 0 ? scale(A) : scale(A.concat(B)), [blo, bhi] = q === 0 ? scale(B) : [alo, ahi];
+    const W = 200, H = 64;
+    const path = (V, lo, hi) => V.map((y, t) => (t ? "L" : "M") + (t / (V.length - 1 || 1) * W).toFixed(1) + "," + (H - (y - lo) / (hi - lo) * H).toFixed(1)).join("");
+    return `<div class="plot"><small>${name}${q === 0 ? " (each to its peak)" : ""}</small><svg viewBox="0 0 ${W} ${H + 12}" preserveAspectRatio="none" role="img" aria-label="${name}, target and found">
+      <line class="ax" x1="0" y1="${H}" x2="${W}" y2="${H}"/><path class="ta" d="${path(A, alo, ahi)}"/><path class="tb" d="${path(B, blo, bhi)}"/>
+      <text x="0" y="${H + 11}">0 s</text><text x="${W}" y="${H + 11}" text-anchor="end">1 s</text></svg></div>`;
+  }).join("");
+}
+$("play-f").onclick = () => found && play([found.y]);
+$("play-ab").onclick = () => found && play([target.y, found.y]);
+const copy = async (text, what) => { try { await navigator.clipboard.writeText(text); $("facts-copy").textContent = what + " copied"; } catch (_) { $("facts-copy").textContent = "select the text and copy it"; } };
+$("copy-code").onclick = () => copy($("recipe").value, "the code");
+$("copy-call").onclick = () => copy(`(code :b1 ${JSON.stringify($("recipe").value)})`, "the call (for box :b1)");
+
+// ── start: the Faust twin of Study 30's synth, compiled ──
+fetch(new URL("./kairotic/twin.dsp", import.meta.url)).then((r) => r.text()).then((t) => { $("code").value = t; return compile(); }).catch(fail);
+</script>

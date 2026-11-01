@@ -1,0 +1,18 @@
+import("stdfaust.lib");
+pitch = hslider("pitch", 60, 36, 84, 0.01);
+wave = hslider("wave", 0.5, 0, 1, 0.001);
+noise = hslider("noise", 0.1, 0, 1, 0.001);
+cutoff = hslider("cutoff [scale:log] [unit:Hz]", 1000, 60, 14000, 1);
+resonance = hslider("resonance [scale:log]", 1, 0.5, 14, 0.01);
+envamt = hslider("envamt [unit:oct]", 2, 0, 6, 0.01);
+attack = hslider("attack [scale:log] [unit:s]", 0.01, 0.002, 0.4, 0.0001);
+decay = hslider("decay [scale:log] [unit:s]", 0.1, 0.02, 0.6, 0.0001);
+sustain = hslider("sustain", 0.5, 0, 1, 0.001);
+release = hslider("release [scale:log] [unit:s]", 0.1, 0.02, 0.3, 0.0001);
+gate = button("gate");
+f0 = ba.midikey2hz(pitch);
+env = en.adsr(attack, decay, sustain, release, gate);
+osc = os.sawtooth(f0) * (1 - wave) + os.square(f0) * wave;
+src = osc * (1 - noise) + no.noise * noise;
+fc = min(cutoff * 2 ^ (envamt * env), 0.45 * ma.SR);
+process = src : fi.svf.lp(fc, resonance) * env * 0.3 : ma.tanh;
