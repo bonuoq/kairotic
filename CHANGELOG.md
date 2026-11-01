@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 33 · lines** (discussion #117): a work as a project of several independent history lines, each a tab
+  above the patcher, each usable from any other line as `patch name` — following the line (its newest point) or
+  pinned to a point of its history. Nesting, cycles refused, extract an embedded `patch` to a line with its
+  history, inline a reference back, rename (users rewritten, the old name kept as an alias), release (every line
+  reached, each at the point it uses, all pinned), export and import a line. A pure model
+  (`studies/33-lines/kairotic/lines.cljs`) with its tests (`tests/model.html`); not in the app yet.
 - **Onsets and the cante** (issue #106): `fetch-cante2midi.mjs` also reads cante2midi's Bark band energies, and
   `bench.mjs --cante --onsets` runs `onset~`'s logic on them into `transcribe`. On these recordings onsets do not
   help the contour (`onset~` fires on consonants and the guitar: 18 % precision); for voice, the contour alone is

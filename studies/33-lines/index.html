@@ -1,0 +1,735 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 33 · Lines</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; a toolbar (examples, project actions); the lines of the project as tabs above
+   the patcher; the patch of the line on screen; beside it the selected box (or the line), the line's
+   history, its code. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="text"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 7px; min-width: 0; }
+input.mono { font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.toolbar .sep { flex: 1 1 auto; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+
+/* the lines of the project, as tabs above the patcher */
+.tabs { display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid var(--rule); overflow-x: auto; scrollbar-width: thin; }
+.tab { flex: none; border: 1px solid transparent; border-bottom: none; background: transparent; color: var(--ink-soft); font: 500 13px var(--f-code); padding: 6px 12px 7px; border-radius: 6px 6px 0 0; cursor: pointer; display: flex; gap: 6px; align-items: baseline; margin-bottom: -1px; }
+.tab:hover { color: var(--ink); background: var(--sheet); }
+.tab[aria-selected="true"] { background: var(--box); color: var(--ink); border-color: var(--rule); border-bottom: 1px solid var(--box); }
+.tab .main { color: var(--kairos); font-size: 11px; }
+.tab .users { font: 11px var(--f-ui); color: var(--ink-soft); }
+.tabs .newline { display: flex; gap: 4px; align-items: center; padding: 0 0 4px 8px; flex: none; }
+.tabs .newline input { width: 9.5em; padding: 3px 6px; font: 12px var(--f-code); }
+.tabs .plus { flex: none; border: none; background: none; color: var(--accent); font: 600 16px var(--f-ui); padding: 4px 10px 6px; cursor: pointer; }
+.tabs select { margin: 0 0 4px 8px; font-size: 12px; padding: 3px 5px; }
+.under { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+.note { font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin: 0; max-width: 100ch; }
+.crumbs { font: 12px var(--f-code); color: var(--ink-soft); display: flex; gap: 6px; align-items: baseline; }
+.crumbs button { border: none; background: none; color: var(--accent); font: inherit; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.banner { font-size: 12.5px; border: 1px solid var(--kairos); background: var(--kairos-soft); color: var(--ink); border-radius: 6px; padding: 6px 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+.views { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+
+/* the patch */
+.canvas { position: relative; height: 470px; overflow: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; touch-action: none; }
+.canvas svg { display: block; }
+.canvas svg.wiring, .canvas svg.near { cursor: crosshair; }
+.b .frame { fill: var(--box); stroke: var(--rule); stroke-width: 1; }
+.b text { font: 12px var(--f-code); fill: var(--ink); pointer-events: none; dominant-baseline: central; }
+.b text.badge { font-size: 10.5px; fill: var(--accent); }
+.b.msg .frame { fill: var(--accent-soft); stroke: var(--accent); rx: 9; }
+.b.msg { cursor: pointer; }
+.b.num .frame { stroke: var(--ink-soft); }
+.b.num text { font-weight: 600; }
+.b.io .frame { stroke: var(--accent); stroke-width: 1.5; }
+.b.ref .frame { stroke: var(--accent); stroke-width: 1.5; fill: var(--box); }
+.b.ref.pinned .frame { stroke: var(--kairos); }
+.b.ref.pinned text.badge { fill: var(--kairos); }
+.b.sub .frame { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.b.err .frame { stroke: var(--error); stroke-dasharray: 3 3; }
+.b.err text.badge { fill: var(--error); }
+.b.sel .frame { stroke-width: 2.5; }
+.b.sel:not(.ref):not(.msg) .frame { stroke: var(--accent); }
+.b .port { fill: var(--ink-soft); }
+.b .port.out { fill: var(--ink); }
+.b .port.hot { fill: var(--accent); }
+.b { cursor: grab; }
+.wire { fill: none; stroke: var(--ink-soft); stroke-width: 1.4; }
+.wire.lit { stroke: var(--accent); stroke-width: 2; }
+.temp { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.hint { font-size: 12px; color: var(--ink-soft); line-height: 1.6; }
+.hint kbd { font: 11px var(--f-code); border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px; background: var(--sheet); }
+.addbox { display: flex; gap: 8px; align-items: center; }
+.addbox input { flex: 1 1 auto; }
+
+/* the selected box, or the line */
+.kv { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 6px 10px; align-items: center; font-size: 13px; }
+.kv > span:nth-child(odd) { color: var(--ink-soft); font-size: 12px; }
+.kv .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.state { font-size: 12.5px; line-height: 1.5; }
+.state b { font-weight: 500; font-family: var(--f-code); }
+.state .pin { color: var(--kairos); } .state .follow { color: var(--accent); } .state .bad { color: var(--error); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font: 12px var(--f-code); border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); border-radius: 3px; padding: 2px 7px; cursor: pointer; }
+.chip:hover { border-color: var(--accent); }
+.chip.pin { border-color: var(--kairos); }
+.empty { font-size: 12px; color: var(--ink-soft); }
+
+/* the history of the line */
+.hist { overflow-x: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; scrollbar-width: thin; }
+.hist svg { display: block; }
+.hist .seg { stroke: var(--rule); stroke-width: 2; fill: none; }
+.hist .ev { fill: var(--ink-soft); cursor: pointer; }
+.hist .ev:hover { fill: var(--accent); }
+.hist .root { fill: var(--sheet); stroke: var(--ink-soft); stroke-width: 1.2; cursor: pointer; }
+.hist .here { fill: none; stroke: var(--accent); stroke-width: 2; pointer-events: none; }
+.hist .front { fill: var(--kairos); pointer-events: none; }
+.hist .pinmark { fill: none; stroke: var(--kairos); stroke-width: 1.4; stroke-dasharray: 2 2; pointer-events: none; }
+.histbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); }
+.histbar .act { padding: 3px 9px; }
+pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; max-height: 260px; overflow: auto; white-space: pre; }
+textarea.edn { width: 100%; height: 180px; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; white-space: pre; overflow: auto; }
+.about { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin: 0; }
+.about code { color: var(--ink); }
+</style>
+<main>
+<header>
+  <h1>Study 33 · lines</h1>
+  <span class="sub">A project of several history lines, each a tab, each usable as a sub-patch (discussion #117)</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar">
+  <select id="example" aria-label="Example project"></select>
+  <button class="act" data-act="duplicate" title="A new line that starts as this one is where its tab stands">Duplicate line here</button>
+  <button class="act" data-act="export" title="This line and its whole history, as EDN, to take to another project">Export line</button>
+  <button class="act" data-act="import">Import line</button>
+  <span class="sep"></span>
+  <button class="act primary" data-act="release" title="The main line and every line it reaches, each at the point it uses, pinned, in a new project">Release</button>
+</div>
+
+<nav class="tabs" id="tabs" role="tablist" aria-label="The lines of the project"></nav>
+<div class="under"><p class="note" id="line-note"></p><div class="crumbs" id="crumbs"></div></div>
+<div class="banner" id="banner" hidden></div>
+
+<div class="views">
+  <section class="panel" aria-labelledby="h-patch">
+    <h2 id="h-patch">Patch <span id="patch-sub"></span></h2>
+    <div class="canvas" id="canvas" tabindex="0" aria-label="The patch of the line on screen"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div class="addbox">
+      <input type="text" class="mono" id="newbox" placeholder="a new box: msg 3 · + 1 · * 2 · number · inlet · outlet · patch · patch name" aria-label="Text of a new box" autocomplete="off" spellcheck="false">
+      <button class="act" data-act="addbox">Add</button>
+    </div>
+    <div class="msg" id="msg" role="status"></div>
+    <div class="hint">Click a <b>msg</b> box to send it · drag a box to move it · drag from an outlet (bottom) to an inlet (top) to wire · <kbd>Delete</kbd> removes the selected box · <kbd>double-click</kbd> a <code>patch name</code> box to open its line, an embedded <code>patch</code> to go in, the paper to place a new box there</div>
+  </section>
+
+  <div class="side">
+    <section class="panel" aria-labelledby="h-insp">
+      <h2 id="h-insp">Selected <span id="insp-sub"></span></h2>
+      <div id="insp"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-hist">
+      <h2 id="h-hist">History <span id="hist-sub"></span></h2>
+      <div class="histbar">
+        <button class="act" data-act="back" aria-label="One point back">◀</button>
+        <button class="act" data-act="forward" aria-label="One point forward">▶</button>
+        <button class="act" data-act="tofront" title="The newest point of this line">Front</button>
+        <span id="hist-info"></span>
+      </div>
+      <div class="hist" id="hist"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-code">
+      <h2 id="h-code">Code <span>of what is on screen</span></h2>
+      <pre class="code" id="code"></pre>
+    </section>
+  </div>
+</div>
+
+<section class="panel" id="exchange" hidden aria-labelledby="h-ex">
+  <h2 id="h-ex"><span id="ex-title" style="font:600 13px var(--f-head);letter-spacing:.04em;text-transform:uppercase;color:var(--ink)"></span><span id="ex-sub"></span></h2>
+  <textarea class="edn" id="ex-text" spellcheck="false" aria-label="EDN"></textarea>
+  <div class="toolbar">
+    <button class="act primary" data-act="ex-do" id="ex-do"></button>
+    <button class="act" data-act="ex-close">Close</button>
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-about">
+  <h2 id="h-about">What this study tries</h2>
+  <p class="about">A work becomes a <b>project</b>: several <b>lines</b>, each a whole history tree of its own (branches, front), shown as tabs. <code>patch name</code> in any line is the line <code>name</code> as a sub-patch, its <code>inlet</code> and <code>outlet</code> boxes as ports. By default it <b>follows</b> the line — it is the line at its front, its newest point, so it changes as that line advances, like an abstraction of Max or Pd; <b>pinned</b>, it stays at one point of the line's history. Lines nest, and a cycle is refused. An embedded <code>patch</code> can be <b>extracted</b> to a line of its own, with the history it had inside its box, and a reference <b>inlined</b> back into its box. Going back in a tab and editing makes a branch, and that branch is the line's newest point: the boxes that follow it follow it. Renaming a line rewrites its users, and older points still find it by its old name. A <b>release</b> takes the main line (★) and every line it reaches, each at the point it uses, into a new project where every reference is pinned; a line used at two points becomes two lines. A line can be exported with its history and imported in another project. Tutorials and help patches can be projects too: one tab per view of a topic, not a sequence of steps (see the example <i>Help · patch</i>). The project is kept in this browser.</p>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The ClojureScript is evaluated here (not with Scittle's automatic tags) so that an error arrives with its
+// message: first the model and its examples, then the page.
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) {
+    var st = document.getElementById("status");
+    st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e);
+  }
+  var mods = ["kairotic/lines.cljs", "kairotic/examples.cljs"];
+  Promise.all(mods.map(function (m) {
+    return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m); return r.text(); });
+  })).then(function (srcs) {
+    srcs.forEach(function (s, i) { try { scittle.core.eval_string(s); } catch (e) { throw new Error(mods[i] + ": " + (e.message || e)); } });
+    scittle.core.eval_string(document.getElementById("page-cljs").textContent);
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns user (:require [clojure.string :as str] [clojure.edn :as edn]
+                   [kairotic.lines :as ln] [kairotic.lines-examples :as ex]))
+
+;; ───────── state ─────────
+;; :proj the project · :tab the line on screen · :paths where each tab is inside embedded patches
+;; :sel the selected box · :st what the boxes show (values), per tab · :drag / :wire a gesture going on
+
+(defonce ui (atom {:proj nil :tab nil :paths {} :sel nil :st {} :msg nil :banner nil}))
+
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
+(defn $ [id] (js/document.getElementById id))
+(defn proj [] (:proj @ui))
+(defn tab [] (:tab @ui))
+(defn the-line [] (ln/line (proj) (tab)))
+(defn path [] (get (:paths @ui) (tab) []))
+(defn top-patch [] (ln/line-patch (the-line)))
+(defn view-patch [] (ln/patch-in (top-patch) (path)))
+
+(def store-key "kairotic-study-33")
+(defn save! []
+  (try (.setItem js/localStorage store-key (pr-str {:proj (proj) :tab (tab)})) (catch :default _ nil)))
+(defn restore []
+  (try (let [s (.getItem js/localStorage store-key) x (when s (edn/read-string s))]
+         (when (and (map? (:proj x)) (map? (:lines (:proj x)))) x))
+       (catch :default _ nil)))
+
+(defn say! [cls text] (swap! ui assoc :msg [cls text]))
+
+(declare render!)
+
+(defn set-proj! [p & {:keys [tab]}]
+  (let [t (or (when (and tab (ln/line p tab)) (ln/line-id p tab)) (:main p))]
+    (swap! ui assoc :proj p :tab t :sel nil :paths {} :st {} :banner nil)
+    (save!) (render!)))
+
+(defn change!
+  "The project changed by f (a function of the project). Errors of the model are shown, not thrown."
+  [f & [ok-msg]]
+  (try (let [before (count (:nodes (the-line)))
+             p (f (proj))]
+         (swap! ui assoc :proj p)
+         (let [after (count (:nodes (ln/line p (tab))))]
+           (cond ok-msg (say! "ok" ok-msg)
+                 (> after before) (say! "ok" "You went back and changed something: a new branch of this line, now its newest point.")
+                 :else (swap! ui assoc :msg nil)))
+         (save!))
+       (catch :default e (say! "bad" (ex-message e))))
+  (render!))
+
+(defn gesture!
+  "An event made on screen, for the patch on screen: wrapped for where it is, into the line on screen."
+  [ev]
+  (let [[op _ text] ev
+        err (when (#{:box :text} op) (ln/cycle-error (proj) (tab) (if (= op :box) text (nth ev 2))))]
+    (if err
+      (do (say! "bad" err) (render!))
+      (change! (fn [p] (ln/append p (tab) (ln/wrap-in (path) ev)))))))
+
+;; ───────── the patch: geometry ─────────
+
+(def box-h 26)
+
+(defn badge [b]
+  (when (ln/ref? b)
+    (let [r (ln/resolve-ref (proj) b)]
+      (cond (:error r) "?"
+            (:pinned r) (str "⌖ " (ln/depth-of (ln/line (proj) (:line r)) (:pos r)))
+            :else "↻"))))
+
+(defn label [b vals id]
+  (if (= "number" (ln/klass b))
+    (let [v (get vals (conj (path) id))] (if (nil? v) "number" (str "▸ " (if (number? v) (/ (js/Math.round (* v 1000)) 1000) v))))
+    (:text b)))
+
+(defn box-w [b vals id]
+  (+ (max 44 (+ 16 (* 7.3 (count (label b vals id))))) (if (badge b) (+ 10 (* 6.5 (count (badge b)))) 0)))
+
+(defn ports-x [x w n] (if (<= n 1) [x] (map (fn [i] (+ x (* i (/ (- w 9) (dec n))))) (range n))))
+
+(defn geometry
+  "Every box of the patch on screen with its rectangle and the x of its ports."
+  [p vals]
+  (into {} (for [[id b] (:boxes p)
+                 :let [b (if-let [[did x y] (:drag-pos @ui)] (if (= did id) (assoc b :x x :y y) b) b)
+                       w (box-w b vals id) {[ni no] :io} (ln/io (proj) b)]]
+             [id {:b b :x (:x b) :y (:y b) :w w :ins (vec (ports-x (:x b) w ni)) :outs (vec (ports-x (:x b) w no))}])))
+
+(defn wire-path [x1 y1 x2 y2]
+  (let [dy (max 24 (* 0.5 (js/Math.abs (- y2 y1))))]
+    (str "M" x1 " " y1 " C" x1 " " (+ y1 dy) " " x2 " " (- y2 dy) " " x2 " " y2)))
+
+(defn near-outlet [geo px py]
+  (first (for [[id g] geo [o x] (map-indexed vector (:outs g))
+               :when (and (<= (js/Math.abs (- px (+ x 4.5))) 9) (<= (js/Math.abs (- py (+ (:y g) box-h))) 7))]
+           [id o])))
+
+(defn near-inlet [geo px py from]
+  (first (for [[id g] geo :when (not= id from) [i x] (map-indexed vector (:ins g))
+               :when (and (<= (js/Math.abs (- px (+ x 4.5))) 12) (<= -14 (- py (:y g)) 10))]
+           [id i])))
+
+(defn hit-box [geo px py]
+  (first (for [[id g] (reverse (seq geo)) :when (and (<= (:x g) px (+ (:x g) (:w g))) (<= (:y g) py (+ (:y g) box-h)))] id)))
+
+;; ───────── rendering ─────────
+
+(defn render-tabs! []
+  (let [p (proj) shown (remove (fn [k] (:archived (ln/line p k))) (:order p))
+        archived (filter (fn [k] (:archived (ln/line p k))) (:order p))]
+    (set! (.-innerHTML ($ "tabs"))
+          (str (apply str (for [k shown :let [n (count (ln/used-by p k))]]
+                            (str "<button class=\"tab\" role=\"tab\" data-tab=\"" (name k) "\" aria-selected=\"" (= k (tab)) "\">"
+                                 (when (= k (:main p)) "<span class=\"main\" title=\"the main line\">★</span>")
+                                 (esc (name k))
+                                 (when (pos? n) (str "<span class=\"users\" title=\"used by " n " box" (when (> n 1) "es") "\">·" n "</span>"))
+                                 "</button>")))
+               (if (:adding @ui)
+                 "<span class=\"newline\"><input type=\"text\" id=\"newline\" placeholder=\"line name\" aria-label=\"Name of the new line\" autocomplete=\"off\" spellcheck=\"false\"><button class=\"act\" data-act=\"newline-ok\">Add</button></span>"
+                 "<button class=\"plus\" data-act=\"newline\" title=\"A new line\" aria-label=\"A new line\">+</button>")
+               (when (seq archived)
+                 (str "<select id=\"archived\" aria-label=\"Archived lines\"><option value=\"\">archived (" (count archived) ")</option>"
+                      (apply str (for [k archived] (str "<option value=\"" (name k) "\">restore " (esc (name k)) "</option>")))
+                      "</select>"))))
+    (when (:adding @ui) (some-> ($ "newline") (.focus)))))
+
+(defn render-under! []
+  (let [l (the-line) pth (path)]
+    (set! (.-textContent ($ "line-note")) (or (:note l) ""))
+    (set! (.-innerHTML ($ "crumbs"))
+          (if (seq pth)
+            (str "<button data-act=\"crumb\" data-depth=\"0\">" (esc (name (:id l))) "</button>"
+                 (apply str (map-indexed (fn [i id] (str " › " (if (< i (dec (count pth))) (str "<button data-act=\"crumb\" data-depth=\"" (inc i) "\">" (name id) "</button>") (str "<b>" (name id) "</b>")))) pth))
+                 " <span>(embedded)</span>")
+            ""))
+    (let [bn ($ "banner") b (:banner @ui)]
+      (set! (.-hidden bn) (nil? b))
+      (when b (set! (.-innerHTML bn) b)))))
+
+(defn render-patch! []
+  (let [p (view-patch)
+        vals (get-in @ui [:st (tab) :vals])
+        geo (geometry p vals)
+        {:keys [wire sel near]} @ui
+        errs (:errors (ln/graph (proj) (top-patch)))
+        W (max 900 (+ 200 (reduce max 0 (map (fn [[_ g]] (+ (:x g) (:w g))) geo))))
+        H (max 460 (+ 120 (reduce max 0 (map (fn [[_ g]] (:y g)) geo))))
+        svg ($ "svg")]
+    (.setAttribute svg "width" W) (.setAttribute svg "height" H)
+    (.setAttribute svg "class" (str (when wire "wiring") (when near " near")))
+    (set! (.-innerHTML svg)
+          (str
+           (apply str (for [[a o b i] (:lines p) :let [ga (get geo a) gb (get geo b)]
+                            :when (and ga gb (< o (count (:outs ga))) (< i (count (:ins gb))))]
+                        (str "<path class=\"wire" (when (#{a b} sel) " lit") "\" d=\""
+                             (wire-path (+ 4.5 (nth (:outs ga) o)) (+ (:y ga) box-h) (+ 4.5 (nth (:ins gb) i)) (:y gb)) "\"/>")))
+           (apply str (for [[id g] geo :let [b (:b g) k (ln/klass b) bd (badge b)
+                                             err (or (get errs (conj (path) id)) (when (= "?" bd) "?"))
+                                             cls (str "b"
+                                                      (case k "msg" " msg" "number" " num" ("inlet" "outlet") " io" "")
+                                                      (cond (ln/ref? b) (str " ref" (when (:pin b) " pinned")) (ln/embedded? b) " sub" :else "")
+                                                      (when err " err") (when (= id sel) " sel"))]]
+                        (str "<g class=\"" cls "\" data-box=\"" (name id) "\">"
+                             (when err (str "<title>" (esc err) "</title>"))
+                             "<rect class=\"frame\" x=\"" (:x g) "\" y=\"" (:y g) "\" width=\"" (:w g) "\" height=\"" box-h "\" rx=\"3\"/>"
+                             "<text x=\"" (+ (:x g) 8) "\" y=\"" (+ (:y g) 13.5) "\">" (esc (label b vals id)) "</text>"
+                             (when bd (str "<text class=\"badge\" x=\"" (- (+ (:x g) (:w g)) 8 (* 6.5 (count bd))) "\" y=\"" (+ (:y g) 13.5) "\">" (esc bd) "</text>"))
+                             (apply str (for [x (:ins g)] (str "<rect class=\"port\" x=\"" x "\" y=\"" (:y g) "\" width=\"9\" height=\"3\"/>")))
+                             (apply str (for [[o x] (map-indexed vector (:outs g))]
+                                          (str "<rect class=\"port out" (when (= near [id o]) " hot") "\" x=\"" x "\" y=\"" (+ (:y g) box-h -3) "\" width=\"9\" height=\"3\"/>")))
+                             "</g>")))
+           (when wire
+             (let [{:keys [from x y]} wire [a o] from ga (get geo a)]
+               (when ga (str "<path class=\"temp\" d=\"" (wire-path (+ 4.5 (nth (:outs ga) o)) (+ (:y ga) box-h) x y) "\"/>"))))))
+    (set! (.-textContent ($ "patch-sub"))
+          (let [n (count (:boxes p))] (str n " box" (when (not= 1 n) "es") (when (seq (path)) " · inside an embedded patch"))))))
+
+(defn chip [lid text cls] (str "<button class=\"chip " cls "\" data-act=\"open\" data-line=\"" (name lid) "\">" (esc text) "</button>"))
+
+(defn render-insp! []
+  (let [p (proj) l (the-line) sel (:sel @ui) b (when sel (get-in (view-patch) [:boxes sel]))]
+    (set! (.-textContent ($ "insp-sub")) (if b (str (name sel) " · " (ln/klass b)) (str "no box · the line " (name (:id l)))))
+    (set! (.-innerHTML ($ "insp"))
+          (if b
+            (str "<div class=\"kv\">"
+                 "<span>text</span><input type=\"text\" class=\"mono\" id=\"boxtext\" value=\"" (esc (:text b)) "\" aria-label=\"Text of the box\" spellcheck=\"false\">"
+                 (cond
+                   (ln/ref? b)
+                   (let [r (ln/resolve-ref p b)]
+                     (if (:error r)
+                       (str "<span>line</span><span class=\"state\"><span class=\"bad\">" (esc (:error r)) "</span></span>")
+                       (let [rl (ln/line p (:line r)) d (ln/depth-of rl (:pos r)) fd (ln/depth-of rl (ln/front rl))]
+                         (str "<span>line</span><span class=\"state\">"
+                              (if (:pinned r)
+                                (str "<span class=\"pin\">⌖ pinned</span> to <b>" (name (:line r)) "</b> at point " d
+                                     (when (not= (:pos r) (ln/front rl)) (str " (its front is at " fd ")")))
+                                (str "<span class=\"follow\">↻ follows</span> <b>" (name (:line r)) "</b>, at its front (point " d ")"))
+                              "</span>"
+                              "<span></span><div class=\"row\">"
+                              "<button class=\"act\" data-act=\"open-sel\">Open line</button>"
+                              (if (:pinned r)
+                                "<button class=\"act\" data-act=\"follow\">Follow</button>"
+                                "<button class=\"act\" data-act=\"pin\" title=\"Freeze it at the line's present front\">Pin here</button>")
+                              "<button class=\"act\" data-act=\"inline\" title=\"Copy the line into this box, detached from it\">Inline</button>"
+                              "</div>"))))
+                   (ln/embedded? b)
+                   (str "<span>inside</span><span class=\"state\">" (count (:boxes (:data b))) " boxes, kept in the box</span>"
+                        "<span></span><div class=\"row\"><button class=\"act\" data-act=\"enter\">Go in</button></div>"
+                        "<span>extract</span><div class=\"row\"><input type=\"text\" class=\"mono\" id=\"extract-name\" placeholder=\"line name\" aria-label=\"Name of the new line\" style=\"width:9em\" spellcheck=\"false\"><button class=\"act\" data-act=\"extract\">Extract to line</button></div>")
+                   :else "")
+                 "<span></span><div class=\"row\"><button class=\"act\" data-act=\"delete\">Delete box</button></div>"
+                 "</div>")
+            (let [uses (ln/uses p (top-patch)) users (ln/used-by p (:id l))]
+              (str "<div class=\"kv\">"
+                   "<span>name</span><div class=\"row\"><input type=\"text\" class=\"mono\" id=\"rename\" value=\"" (name (:id l)) "\" aria-label=\"Name of the line\" style=\"width:10em\" spellcheck=\"false\"><button class=\"act\" data-act=\"rename\">Rename</button></div>"
+                   (when (seq (:aliases l)) (str "<span>was</span><span class=\"state\">" (esc (str/join ", " (map name (:aliases l)))) "</span>"))
+                   (when-let [[fl fpos] (:from l)] (str "<span>from</span><span class=\"state\"><b>" (name fl) "</b> at point " (if-let [x (ln/line p fl)] (ln/depth-of x fpos) "?") "</span>"))
+                   "<span>uses</span><div class=\"chips\">"
+                   (if (seq uses)
+                     (apply str (for [[k poss] uses pos poss :let [x (ln/line p k) pinned? (not= pos (ln/front x))]]
+                                  (chip k (str (name k) (if pinned? (str " ⌖" (ln/depth-of x pos)) " ↻")) (when pinned? "pin"))))
+                     "<span class=\"empty\">no other line</span>")
+                   "</div>"
+                   "<span>used by</span><div class=\"chips\">"
+                   (if (seq users)
+                     (apply str (for [{:keys [line box pinned path]} users]
+                                  (chip line (str (name line) " " (str/join "." (map name (conj path box))) (if pinned " ⌖" " ↻")) (when pinned "pin"))))
+                     "<span class=\"empty\">no box uses it</span>")
+                   "</div>"
+                   "<span></span><div class=\"row\">"
+                   (if (= (:id l) (:main p))
+                     "<span class=\"empty\">★ the main line: the piece a release starts from</span>"
+                     (str "<button class=\"act\" data-act=\"make-main\">Make it the main line</button><button class=\"act\" data-act=\"archive\">Archive</button>"))
+                   "</div></div>"))))))
+
+(defn lanes
+  "Each node's lane: the first child that continues at its parent's tip shares its lane, the others open one."
+  [l]
+  (let [ns (sort-by (fn [n] [(or (:t n) 0) (:id n)]) (vals (:nodes l)))
+        start (fn [n] (ln/depth-of l [(:id n) 0]))]
+    (loop [todo ns lane {} taken {} next-lane 0]
+      (if-let [n (first todo)]
+        (let [par (when (:parent n) (ln/node l (:parent n)))
+              continues? (and par (= (:at n) (count (:events par))) (not (get taken (:parent n))))
+              k (if continues? (get lane (:parent n)) next-lane)]
+          (recur (rest todo) (assoc lane (:id n) k) (cond-> taken continues? (assoc (:parent n) true)) (if continues? next-lane (inc next-lane))))
+        {:lane lane :start (into {} (for [n ns] [(:id n) (start n)])) :count next-lane}))))
+
+(defn render-hist! []
+  (let [l (the-line) {:keys [lane start] :as lay} (lanes l)
+        dx 14 dy 18 x0 12 y0 12
+        X (fn [d] (+ x0 (* d dx))) Y (fn [k] (+ y0 (* k dy)))
+        here (ln/norm l (:pos l)) fr (ln/front l)
+        pins (set (for [{:keys [line path box]} (ln/used-by (proj) (:id l))
+                        :let [b (get-in (ln/patch-in (ln/line-patch (ln/line (proj) line)) path) [:boxes box])] :when (:pin b)]
+                    (ln/norm l (:pin b))))
+        maxd (reduce max 0 (for [n (vals (:nodes l))] (+ (get start (:id n)) (count (:events n)))))
+        W (+ (X maxd) 16) H (+ (Y (max 1 (:count lay))) 2)
+        pt (fn [nid i] (when nid [(X (+ (get start nid) i)) (Y (get lane nid))]))
+        pos-pt (fn [[nid i]] (pt nid i))]
+    (set! (.-innerHTML ($ "hist"))
+          (str "<svg width=\"" W "\" height=\"" H "\" xmlns=\"http://www.w3.org/2000/svg\">"
+               (apply str (for [n (vals (:nodes l)) :let [[x2 y2] (pt (:id n) (count (:events n)))
+                                                         [x1 y1] (if (:parent n) (pt (:parent n) (:at n)) [(X 0) (Y (get lane (:id n)))])]]
+                            (str "<path class=\"seg\" d=\"M" x1 " " y1 (when (not= y1 y2) (str " L" (+ x1 (/ dx 2)) " " y2)) " L" x2 " " y2 "\"/>")))
+               (apply str (for [n (vals (:nodes l)) :when (nil? (:parent n)) :let [[x y] (pt (:id n) 0)]]
+                            (str "<circle class=\"root\" cx=\"" x "\" cy=\"" y "\" r=\"4\" data-pos=\"" (:id n) " 0\"><title>the empty line</title></circle>")))
+               (apply str (for [n (vals (:nodes l)) [i e] (map-indexed vector (:events n)) :let [[x y] (pt (:id n) (inc i))]]
+                            (str "<circle class=\"ev\" cx=\"" x "\" cy=\"" y "\" r=\"3.6\" data-pos=\"" (:id n) " " (inc i) "\"><title>" (esc (pr-str e)) "</title></circle>")))
+               (apply str (for [pp pins :let [[x y] (pos-pt pp)] :when x] (str "<circle class=\"pinmark\" cx=\"" x "\" cy=\"" y "\" r=\"9\"/>")))
+               (when-let [[x y] (some-> fr pos-pt)] (str "<circle class=\"front\" cx=\"" x "\" cy=\"" (- y 8) "\" r=\"2.6\"/>"))
+               (when-let [[x y] (some-> here pos-pt)] (str "<circle class=\"here\" cx=\"" x "\" cy=\"" y "\" r=\"6.5\"/>"))
+               "</svg>"))
+    (set! (.-textContent ($ "hist-sub")) (str (name (:id l)) " · " (count (:nodes l)) " segment" (when (not= 1 (count (:nodes l))) "s") (when (> (:count lay) 1) (str " · " (:count lay) " lanes"))))
+    (set! (.-textContent ($ "hist-info"))
+          (cond (nil? fr) "an empty line"
+                (= here fr) (str "point " (ln/depth-of l here) ", the front")
+                :else (str "point " (ln/depth-of l here) " · the front is at " (ln/depth-of l fr))))
+    (let [h ($ "hist")] (set! (.-scrollLeft h) (.-scrollWidth h)))))
+
+(defn render-code! [] (set! (.-textContent ($ "code")) (let [c (ln/calls (view-patch))] (if (str/blank? c) ";; an empty patch" c))))
+
+(defn render-msg! []
+  (let [[cls text] (:msg @ui) m ($ "msg")]
+    (set! (.-className m) (str "msg " cls)) (set! (.-textContent m) (or text ""))))
+
+(defn render! []
+  (render-tabs!) (render-under!) (render-patch!) (render-insp!) (render-hist!) (render-code!) (render-msg!)
+  (set! (.-textContent ($ "status")) (str (:title (proj)) " · " (count (:lines (proj))) " lines")))
+
+;; ───────── gestures on the patch ─────────
+
+(defn svg-xy [e]
+  (let [r (.getBoundingClientRect ($ "svg"))] [(- (.-clientX e) (.-left r)) (- (.-clientY e) (.-top r))]))
+
+(defn geo-now [] (geometry (view-patch) (get-in @ui [:st (tab) :vals])))
+
+(defn click-msg! [id]
+  (let [g (ln/graph (proj) (top-patch))
+        st (ln/click g (get-in @ui [:st (tab)] {}) (conj (path) id))]
+    (swap! ui assoc-in [:st (tab)] st)
+    (when (:overflow st) (say! "bad" "Too many messages: a loop?"))
+    (render-patch!) (render-msg!)))
+
+(defn open-line!
+  "The tab of line lid; at pos if given (a pinned point), with a banner that says what editing there does."
+  [lid & [pos]]
+  (let [p (proj) k (ln/line-id p lid)]
+    (when k
+      (swap! ui assoc :tab k :sel nil :banner nil :msg nil)
+      (when pos
+        (swap! ui assoc :proj (ln/goto p k pos)
+               :banner (str "<span>This is <b>" (name k) "</b> at the point a box is pinned to (point " (ln/depth-of (ln/line p k) pos)
+                            "). Editing here starts a branch — the line's newest point, which the boxes that follow it will follow.</span>"
+                            "<button class=\"act\" data-act=\"tofront\">Go to its front</button>")))
+      (save!) (render!))))
+
+(declare on-dbl)
+
+(defn on-down [e]
+  (when (zero? (.-button e))
+    (let [[x y] (svg-xy e) geo (geo-now)
+          ;; a double-click is told here, not by the browser's dblclick: every press redraws the patch,
+          ;; and the browser gives no dblclick when the element under the pointer is a new one
+          now (js/Date.now) [t0 x0 y0 tab0 id0] (:last-down @ui)
+          id (hit-box geo x y)
+          dbl? (and t0 (< (- now t0) 400) (< (+ (js/Math.abs (- x x0)) (js/Math.abs (- y y0))) 6)
+                    (= tab0 [(tab) (path)]) (= id0 id)
+                    (not= "msg" (some-> (get-in (view-patch) [:boxes id]) ln/klass)))]
+      (swap! ui assoc :last-down (if dbl? nil [now x y [(tab) (path)] id]))
+      (if-let [from (near-outlet geo x y)]
+        (swap! ui assoc :wire {:from from :x x :y y})
+        (if-let [id (hit-box geo x y)]
+          (let [g (get geo id)] (swap! ui assoc :sel id :drag {:id id :dx (- x (:x g)) :dy (- y (:y g)) :x0 x :y0 y :moved false}))
+          (swap! ui assoc :sel nil)))
+      (.focus ($ "canvas"))
+      (render-patch!) (render-insp!)
+      (when dbl? (swap! ui dissoc :drag :wire) (on-dbl e)))))
+
+(defn on-move [e]
+  (let [{:keys [wire drag]} @ui [x y] (svg-xy e)]
+    (cond wire (do (swap! ui assoc-in [:wire :x] x) (swap! ui assoc-in [:wire :y] y) (render-patch!))
+          drag (when (or (:moved drag) (> (+ (js/Math.abs (- x (:x0 drag))) (js/Math.abs (- y (:y0 drag)))) 4))
+                 (swap! ui assoc :drag (assoc drag :moved true)
+                        :drag-pos [(:id drag) (js/Math.max 0 (js/Math.round (- x (:dx drag)))) (js/Math.max 0 (js/Math.round (- y (:dy drag))))])
+                 (render-patch!))
+          :else (let [n (near-outlet (geo-now) x y)]
+                  (when (not= n (:near @ui)) (swap! ui assoc :near n) (render-patch!))))))
+
+(defn on-up [e]
+  (let [{:keys [wire drag drag-pos]} @ui [x y] (svg-xy e)]
+    (swap! ui dissoc :wire :drag :drag-pos)
+    (cond wire (let [[a o] (:from wire) to (near-inlet (geo-now) x y a)]
+                 (if to (gesture! [:connect a o (first to) (second to)]) (render-patch!)))
+          (and drag (:moved drag)) (let [[id nx ny] drag-pos] (gesture! [:move id nx ny]))
+          drag (let [b (get-in (view-patch) [:boxes (:id drag)])]
+                 (when (= "msg" (ln/klass b)) (click-msg! (:id drag))))
+          :else nil)))
+
+(defn on-dbl [e]
+  (let [[x y] (svg-xy e) id (hit-box (geo-now) x y) b (when id (get-in (view-patch) [:boxes id]))]
+    (cond (and b (ln/ref? b)) (let [r (ln/resolve-ref (proj) b)] (when (:line r) (open-line! (:line r) (when (:pinned r) (:pos r)))))
+          (and b (ln/embedded? b)) (do (swap! ui assoc-in [:paths (tab)] (conj (path) id)) (swap! ui assoc :sel nil) (render!))
+          b (some-> ($ "boxtext") (.focus))
+          :else (do (swap! ui assoc :place [(js/Math.round x) (js/Math.round y)]) (.focus ($ "newbox"))))))
+
+(defn add-box! []
+  (let [t (str/trim (.-value ($ "newbox")))]
+    (when (seq t)
+      (let [p (view-patch) id (ln/next-id p)
+            [x y] (or (:place @ui)
+                      (let [ys (map (fn [[_ b]] (:y b)) (:boxes p))] [40 (if (seq ys) (+ 64 (reduce max ys)) 30)]))]
+        (swap! ui dissoc :place)
+        (set! (.-value ($ "newbox")) "")
+        (swap! ui assoc :sel id)
+        (gesture! [:box id t x y])
+        (when-not (get-in (view-patch) [:boxes id]) (swap! ui assoc :sel nil))))))
+
+;; ───────── buttons ─────────
+
+(defn show-exchange! [title sub text btn kind]
+  (swap! ui assoc :exchange kind)
+  (set! (.-hidden ($ "exchange")) false)
+  (set! (.-textContent ($ "ex-title")) title) (set! (.-textContent ($ "ex-sub")) sub)
+  (set! (.-value ($ "ex-text")) text) (set! (.-textContent ($ "ex-do")) btn)
+  (set! (.-hidden ($ "ex-do")) (nil? btn))
+  (.scrollIntoView ($ "exchange") #js {:behavior "smooth" :block "nearest"}))
+
+(defn pretty-release [r]
+  (str ";; " (:title r) " — " (count (:lines r)) " lines, every reference pinned\n"
+       (str/join "\n" (for [k (:order r) :let [l (get-in r [:lines k])]]
+                        (str ";;   " (name k) (when (= k (:main r)) "  ★") "  ← " (name (first (:from l))) " at point "
+                             (ln/depth-of (ln/line (proj) (first (:from l))) (second (:from l))))))
+       "\n\n" (pr-str r)))
+
+(defn act! [a el]
+  (let [p (proj) l (the-line) sel (:sel @ui)]
+    (case a
+      "newline" (do (swap! ui assoc :adding true) (render-tabs!))
+      "newline-ok" (let [nm (str/trim (.-value ($ "newline")))]
+                     (if (str/blank? nm)
+                       (do (swap! ui dissoc :adding) (render-tabs!))
+                       (try (let [p2 (ln/add-line p nm)]
+                              (swap! ui assoc :proj p2 :tab (keyword nm) :sel nil :adding false :msg ["ok" (str "A new line, " nm ": use it from any other line as patch " nm ".")])
+                              (save!) (render!))
+                            (catch :default e (say! "bad" (ex-message e)) (render-msg!)))))
+      "crumb" (do (swap! ui assoc-in [:paths (tab)] (vec (take (js/parseInt (.getAttribute el "data-depth")) (path)))) (swap! ui assoc :sel nil) (render!))
+      "back" (do (swap! ui assoc :banner nil) (change! (fn [p] (ln/back p (tab)))))
+      "forward" (do (swap! ui assoc :banner nil) (change! (fn [p] (ln/forward p (tab)))))
+      "tofront" (do (swap! ui assoc :banner nil) (change! (fn [p] (ln/to-front p (tab)))))
+      "open" (open-line! (keyword (.getAttribute el "data-line")))
+      "open-sel" (let [r (ln/resolve-ref p (get-in (view-patch) [:boxes sel]))] (open-line! (:line r) (when (:pinned r) (:pos r))))
+      "pin" (let [r (ln/resolve-ref p (get-in (view-patch) [:boxes sel]))]
+              (change! (fn [p] (ln/pin p (tab) (path) sel (:pos r))) (str (name sel) " is pinned to " (name (:line r)) " as it is now.")))
+      "follow" (change! (fn [p] (ln/pin p (tab) (path) sel nil)) (str (name sel) " follows its line again."))
+      "inline" (change! (fn [p] (ln/inline p (tab) (path) sel)) (str (name sel) " is an embedded patch now: a copy, detached from the line."))
+      "enter" (do (swap! ui assoc-in [:paths (tab)] (conj (path) sel)) (swap! ui assoc :sel nil) (render!))
+      "extract" (let [nm (str/trim (.-value ($ "extract-name")))]
+                  (change! (fn [p] (ln/extract p (tab) (path) sel nm))
+                           (str "Extracted: the line " nm ", with the history it had inside the box. " (name sel) " now follows it.")))
+      "delete" (do (swap! ui assoc :sel nil) (gesture! [:delete sel]))
+      "rename" (let [nm (str/trim (.-value ($ "rename")))]
+                 (try (let [p2 (ln/rename-line p (:id l) nm)]
+                        (swap! ui assoc :proj p2 :tab (keyword nm) :msg ["ok" (str "Renamed. The boxes that used " (name (:id l)) " say " nm " now; older points still find it by its old name.")])
+                        (save!) (render!))
+                      (catch :default e (say! "bad" (ex-message e)) (render-msg!))))
+      "make-main" (change! (fn [p] (assoc p :main (:id l))) (str (name (:id l)) " is the main line: a release starts from it."))
+      "archive" (do (change! (fn [p] (ln/archive-line p (:id l) true)))
+                    (swap! ui assoc :tab (:main (proj)) :sel nil) (save!) (render!))
+      "duplicate" (let [nm (first (remove (fn [s] (ln/taken? p (keyword s))) (map (fn [i] (str (name (:id l)) "-" i)) (iterate inc 2))))]
+                    (try (let [p2 (ln/duplicate-line p (:id l) (:pos l) nm)]
+                           (swap! ui assoc :proj p2 :tab (keyword nm) :sel nil :msg ["ok" (str nm ": a new line that starts as " (name (:id l)) " is at point " (ln/depth-of l (:pos l)) ". Rename it below.")])
+                           (save!) (render!))
+                         (catch :default e (say! "bad" (ex-message e)) (render-msg!))))
+      "export" (show-exchange! "Export" (str "the line " (name (:id l)) " with its whole history") (ln/export-line p (:id l)) nil :export)
+      "import" (show-exchange! "Import" "paste a line exported from a project" "" "Import this line" :import)
+      "release" (let [r (ln/release p)]
+                  (swap! ui assoc :released r)
+                  (show-exchange! "Release" (str "from " (name (:main p)) " where its tab stands") (pretty-release r) "Open the release" :release))
+      "ex-close" (set! (.-hidden ($ "exchange")) true)
+      "ex-do" (case (:exchange @ui)
+                :import (try (let [[p2 k] (ln/import-line p (.-value ($ "ex-text")))]
+                               (set! (.-hidden ($ "exchange")) true)
+                               (swap! ui assoc :proj p2 :tab k :sel nil :msg ["ok" (str "Imported as " (name k) ", with its history.")])
+                               (save!) (render!))
+                             (catch :default e (say! "bad" (ex-message e)) (render-msg!)))
+                :release (let [before p]
+                           (set! (.-hidden ($ "exchange")) true)
+                           (set! (.-value ($ "example")) "")
+                           (set-proj! (:released @ui))
+                           (swap! ui assoc :before before
+                                  :banner (str "<span>The release of <b>" (esc (:title before)) "</b>: a new project, every reference pinned. The project it came from is untouched.</span>"
+                                               "<button class=\"act\" data-act=\"unrelease\">Back to the project</button>"))
+                           (render!))
+                nil)
+      "unrelease" (when-let [b (:before @ui)] (swap! ui dissoc :before) (set-proj! b))
+      "addbox" (add-box!)
+      nil)))
+
+;; ───────── wiring the page ─────────
+
+(defn init! []
+  (let [sel ($ "example")]
+    (set! (.-innerHTML sel)
+          (str "<option value=\"\">— your project —</option>"
+               (apply str (map-indexed (fn [i [t _]] (str "<option value=\"" i "\">" (esc t) "</option>")) ex/all))))
+    (.addEventListener sel "change"
+                       (fn [_] (let [v (.-value sel)]
+                                 (when (seq v) (set-proj! ((second (nth ex/all (js/parseInt v)))))
+                                   (say! nil "") (render-msg!))))))
+  (.addEventListener js/document "click"
+                     (fn [e] (when-let [el (.. e -target (closest "[data-act]"))] (act! (.getAttribute el "data-act") el))
+                       (when-let [el (.. e -target (closest "[data-tab]"))]
+                         (swap! ui assoc :tab (keyword (.getAttribute el "data-tab")) :sel nil :banner nil :msg nil) (save!) (render!))
+                       (when-let [el (.. e -target (closest "[data-pos]"))]
+                         (let [[nid i] (str/split (.getAttribute el "data-pos") #" ")]
+                           (swap! ui assoc :banner nil) (change! (fn [p] (ln/goto p (tab) [nid (js/parseInt i)])))))))
+  (.addEventListener js/document "change"
+                     (fn [e] (when (= "archived" (.. e -target -id))
+                               (let [v (.. e -target -value)]
+                                 (when (seq v) (change! (fn [p] (ln/archive-line p (keyword v) false))) (swap! ui assoc :tab (keyword v)) (render!))))))
+  (.addEventListener js/document "keydown"
+                     (fn [e]
+                       (let [id (.. e -target -id) k (.-key e)]
+                         (cond (and (= k "Enter") (= id "newbox")) (add-box!)
+                               (and (= k "Enter") (= id "newline")) (act! "newline-ok" nil)
+                               (and (= k "Escape") (= id "newline")) (do (swap! ui dissoc :adding) (render-tabs!))
+                               (and (= k "Enter") (= id "boxtext")) (gesture! [:text (:sel @ui) (.. e -target -value)])
+                               (and (= k "Enter") (= id "rename")) (act! "rename" nil)
+                               (and (= k "Enter") (= id "extract-name")) (act! "extract" nil)
+                               (and (#{"Delete" "Backspace"} k) (= id "canvas") (:sel @ui)) (do (.preventDefault e) (act! "delete" nil))
+                               :else nil))))
+  (let [svg ($ "svg")]
+    (.addEventListener svg "pointerdown" on-down)
+    (.addEventListener js/window "pointermove" (fn [e] (when (or (:wire @ui) (:drag @ui) (= svg (.-target e)) (.contains svg (.-target e))) (on-move e))))
+    (.addEventListener js/window "pointerup" (fn [e] (when (or (:wire @ui) (:drag @ui)) (on-up e))))
+    )
+  (if-let [{p :proj t :tab} (restore)]
+    (set-proj! p :tab t)
+    (do (set! (.-value ($ "example")) "0") (set-proj! (ex/help-patch)))))
+
+(init!)
+</script>
