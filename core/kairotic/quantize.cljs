@@ -35,6 +35,9 @@
 ;; without it their time is already in beats), :w the weights of the cost; :voices (2) how many voices overlapping notes may take, :overlap how
 ;; much a note may run into the next and stay in its voice, :nest false for no beats cut in parts, and
 ;; :meters a meter for each bar (the last going on: meter changes, issue #107), :fix {beat-start choice} the divisions chosen by hand (n, [n1 n2] or [:merge n]: see `choices`).
+;; With :time (played time), :ref-bpm (100) weighs the error of a note in seconds rather than in beats: faster than
+;; ref-bpm, :err weighs less, in proportion (down to a third), so that what a player is off by in milliseconds does
+;; not turn into finer divisions at fast tempos (nil: in beats, as without :time).
 
 (ns kairotic.quantize
   (:require [kairotic.canvas :as cv]
@@ -49,6 +52,7 @@
 
 (def defaults
   {:divs [1 2 3 4 5 6 7 8]
+   :ref-bpm 100
    :merge [3 5 6]
    :grace true
    :chord 0.04
@@ -733,6 +737,12 @@
    (let [o (tree-options tree opts)
          ;; played time onto beats, all voices through one map (issue #106)
          [ns m] (timed (tree-notes tree) o)
+         ;; played time: the error of a note is weighed in seconds, not in beats — 30 ms off is as much at 220 bpm as
+         ;; at 80, though it is a larger part of a beat (the Weimar Jazz Database, issue #106). At ref-bpm the
+         ;; weight is the one given; faster, it is less (less chasing of fine divisions), down to a third.
+         o (if-let [r (and m (number? (:ref-bpm o)) (pos? (:ref-bpm o)) (:ref-bpm o))]
+             (let [f (js/Math.min 1 (js/Math.max 0.33 (/ r (tm/tempo-of-map m))))] (update-in o [:w :err] * f))
+             o)
          by-voice (sort-by key (group-by (fn [n] (or (:voice n) "")) ns))
          ;; a voice keeps its name; one without (named by mt/events v<depth>-<index>) stays without
          voices (fn [[nm ns]] (notes->voices (mapv (fn [n] (dissoc n :voice)) ns) o

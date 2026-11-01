@@ -251,7 +251,10 @@ first downbeat (`--secs`; written to `.cache/weimar-sample.edn`), and measures t
 
 | quantizer, through the annotated beats | in place | precision | binary (4012) | triplet (1123) | other (158) |
 |---|---|---|---|---|---|
-| defaults (`:cpx 1`) | 58.2% | 58.6% | 62.5% | 49.0% | 13.9% |
+| **defaults (the error in seconds, `:ref-bpm 100`)** | **66.6%** | **67.1%** | **75.6%** | **41.7%** | **13.9%** |
+| the error in beats (`:ref-bpm nil`, before) | 58.2% | 58.6% | 62.5% | 49.0% | 13.9% |
+| `:ref-bpm 140` | 65.2% | 65.6% | 72.7% | 45.5% | 13.9% |
+| `:ref-bpm 100 :w {:cpx 1.5}` | 68.6% | 69.6% | 79.1% | 38.9% | 13.3% |
 | `:divs [1 2 3 4]` | 63.9% | 65.5% | 68.9% | 53.5% | 10.1% |
 | `:w {:cpx 2}` | 67.3% | 68.2% | 77.3% | 38.6% | 15.8% |
 | `:w {:cpx 3}` | 67.9% | 69.1% | 78.9% | 36.2% | 11.4% |
@@ -268,6 +271,13 @@ first downbeat (`--secs`; written to `.cache/weimar-sample.edn`), and measures t
   triplet. Weighing complexity more (`:cpx 2`) puts 9 more notes in 100 in place; on the generated corpora it also
   helps (Essen loose 93.8 → 97.8 %, rough 74.6 → 84.4 %; SymbTr loose 89.4 → 94.8 %), but SymbTr played exactly
   loses perfect pieces (97 → 88 %): to look at before it becomes the default.
+- The cause is the tempo: a soloist is off the beat by about as many milliseconds at 220 bpm as at 100, but that
+  is twice as large a part of the beat, and the error was measured in beats. With played time the error is now
+  weighed in seconds (`:ref-bpm 100`: faster, `:err` weighs less, in proportion, down to a third). That gives
+  nearly the gain of `:cpx 2` without changing anything where there is no played time, so the generated corpora
+  and SymbTr played exactly stay as they were (`--timed` too: its tempos are near 100). On another sample (60
+  solos, `--seed 7`): 59.3 → 66.0 %. Triplets lose a little (49 → 42 %): what is written as a triplet in fast
+  passages is now sometimes heard as eighths.
 - Moving the beat by the soloist's median lag and warping each beat by the swing ratio (both estimated per solo)
   does not help.
 

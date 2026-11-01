@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The quantizer weighs the error of played notes in seconds** (`:ref-bpm`, 100 by default; issue #106). With
+  played time (`:time :track` or a time map), the error of a note was measured in beats, so at fast tempos what a
+  player is off by in milliseconds counted double and became finer divisions. Now, faster than ref-bpm, it weighs
+  less in proportion (down to a third). On 40 solos of the Weimar Jazz Database, through their annotated beats:
+  notes in their written place 58.2 → 66.6 % (another sample of 60: 59.3 → 66.0 %). Nothing changes without played
+  time. `:ref-bpm nil` measures in beats as before.
 - **Patching, the same in every patcher**: wires are curves (in the patch and in the patch of a `faust~`); an outlet
   within reach of the pointer lights up and the pointer becomes a cross, and pressing there starts a wire; the inlet a
   wire would land on lights up, and a wire dropped just above an inlet lands on it. The patch of a `faust~` takes the
