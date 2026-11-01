@@ -28,6 +28,9 @@ const asap = process.argv.includes("--asap");
 // --cante: what transcribe writes from the f0 of flamenco singing against a manual transcription (fetch-cante2midi.mjs
 // first); --opts are then transcribe's arguments, e.g. "{:min-ms 100}"
 const cante = process.argv.includes("--cante");
+// --onsets (with --cante): onset~ on the Bark bands of each recording, into transcribe's right inlet; {:onset {:threshold x}}
+// in --opts sets onset~
+const onsets = process.argv.includes("--onsets");
 // --weimar: jazz solos of the Weimar Jazz Database (fetch-weimar.py first): the beats found, and the notes quantized
 // through the annotated beats against their written place; --n solos (40), their first --secs seconds (30), --seed
 const weimar = process.argv.includes("--weimar");
@@ -87,14 +90,16 @@ await page.waitForFunction(() => { try { return scittle.core.eval_string("(boole
                            null, { timeout: 180000 });
 const t0 = Date.now();
 const tsrc = cante ? readFileSync(join(root, "packages", "analysis", "src", "transcribe.cljs"), "utf8") : null;
-const out = await page.evaluate(([edn, seeds, key, qopts, timed, asap, tsrc, weimar]) => {
-  window.__corpus = edn; window.__qopts = qopts; window.__tsrc = tsrc;
+const osrc = cante && onsets ? readFileSync(join(root, "packages", "analysis", "src", "onset.cljs"), "utf8") : null;
+const out = await page.evaluate(([edn, seeds, key, qopts, timed, asap, tsrc, weimar, osrc]) => {
+  window.__corpus = edn; window.__qopts = qopts; window.__tsrc = tsrc; window.__osrc = osrc;
   if (tsrc) return scittle.core.eval_string(`
     (do (require '[kairotic.qbench :as qb] '[kairotic.mt :as mt] '[kairotic.api :as api])
         (let [d (load-string js/window.__tsrc)
+              od (when js/window.__osrc (load-string js/window.__osrc))
               pieces (mt/read-tree js/window.__corpus)
               args (or (mt/read-tree js/window.__qopts) {})
-              rs (mapv (fn [p] (qb/run-transcribed p d args)) pieces)]
+              rs (mapv (fn [p] (qb/run-transcribed p d args od)) pieces)]
           (js/JSON.stringify (clj->js {:report (qb/transcribed-report rs) :results rs}))))`);
   return scittle.core.eval_string(`
     (do (require '[kairotic.qbench :as qb] '[kairotic.mt :as mt])
@@ -106,9 +111,9 @@ const out = await page.evaluate(([edn, seeds, key, qopts, timed, asap, tsrc, wei
                    (mapv (fn [p] (qb/run-performed p qopts)) outside)
                    (qb/run-corpus (into (qb/own-corpus) outside) {:seeds ${seeds} :key? ${key} :qopts qopts :timed? ${timed}})))]
           (js/JSON.stringify (clj->js {:report (if ${weimar} (qb/weimar-report rs) (if ${asap} (qb/performed-report rs) (qb/report rs))) :results rs}))))`);
-}, [outside, seeds, key, qopts, timed, asap, tsrc, weimar]);
+}, [outside, seeds, key, qopts, timed, asap, tsrc, weimar, osrc]);
 const { report, results } = JSON.parse(out);
-const head = `Quantization benchmark · ${new Date().toISOString().slice(0, 10)} · seeds ${seeds}${key ? " · with keys" : ""}${timed ? " · timed" : ""}${asap ? " · ASAP performances" : ""}${cante ? " · cante2midi, transcribe" : ""}${weimar ? " · Weimar Jazz Database" : ""}${qopts !== "nil" ? " · " + qopts : ""} · ${((Date.now() - t0) / 1000).toFixed(0)} s\n\n`;
+const head = `Quantization benchmark · ${new Date().toISOString().slice(0, 10)} · seeds ${seeds}${key ? " · with keys" : ""}${timed ? " · timed" : ""}${asap ? " · ASAP performances" : ""}${cante ? " · cante2midi, transcribe" + (onsets ? " with onset~" : "") : ""}${weimar ? " · Weimar Jazz Database" : ""}${qopts !== "nil" ? " · " + qopts : ""} · ${((Date.now() - t0) / 1000).toFixed(0)} s\n\n`;
 console.log(head + report);
 mkdirSync(cache, { recursive: true });
 writeFileSync(join(cache, "report.md"), head + report + "\n");

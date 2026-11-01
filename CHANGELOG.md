@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Onsets and the cante** (issue #106): `fetch-cante2midi.mjs` also reads cante2midi's Bark band energies, and
+  `bench.mjs --cante --onsets` runs `onset~`'s logic on them into `transcribe`. On these recordings onsets do not
+  help the contour (`onset~` fires on consonants and the guitar: 18 % precision); for voice, the contour alone is
+  best. `transcribe` no longer cuts at an onset while the contour is moving between two notes.
 - **The quantizer weighs the error of played notes in seconds** (`:ref-bpm`, 100 by default; issue #106). With
   played time (`:time :track` or a time map), the error of a note was measured in beats, so at fast tempos what a
   player is off by in milliseconds counted double and became finer divisions. Now, faster than ref-bpm, it weighs

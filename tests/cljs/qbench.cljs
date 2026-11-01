@@ -315,35 +315,68 @@
         off? (fn [[a d] [b e]] (<= (js/Math.abs (- (+ a d) (+ b e))) (max 0.05 (* 0.2 e))))]
     {:on (score (constantly true)) :pitch (score pitch?) :off (score (fn [x y] (and (pitch? x y) (off? x y))))}))
 
+(defn heard-onsets
+  "The onsets onset~ (its component map) finds in frames of a recording ([t0 dt [flux …] [level …]]): [[t strength] …]."
+  [od [t0 dt flux lvl] args]
+  (let [rcv (:receive od) args (merge {:threshold 3 :ms 80} args)]
+    (loop [i 0 st nil out (transient [])]
+      (if (>= i (count flux))
+        (persistent! out)
+        (let [at (+ t0 (* i dt))
+              r (rcv {:inlet :audio :value {:flux (nth flux i) :rms (nth lvl i)} :state st :args args :at at})
+              s (some (fn [[o x]] (when (= o 1) x)) (:out r))]
+          (recur (inc i) (if (contains? r :state) (:state r) st) (if s (conj! out [at s]) out)))))))
+
+(defn valley-onsets
+  "Onsets of a voice from the level of its frames ([t0 dt [flux …] [level …]]): where the level, smoothed over w
+   frames on each side, has a valley at least depth dB below the most it reaches in the 70 ms after it (and half
+   that before it): a new syllable, a new breath. Strength: the depth over 12 dB (at most 1). [[t strength] …]."
+  [[t0 dt _ lvl] {:keys [depth w] :or {depth 3 w 2}}]
+  (let [L (mapv (fn [x] (* 20 (/ (js/Math.log (max x 1e-5)) js/Math.LN10))) lvl)
+        n (count L)
+        sm (mapv (fn [i] (let [xs (subvec L (max 0 (- i w)) (min n (+ i w 1)))] (/ (reduce + xs) (count xs)))) (range n))]
+    (vec (for [i (range 3 (- n 6))
+               :let [v (sm i)]
+               :when (and (<= v (sm (dec i))) (< v (sm (inc i))))
+               :let [after (apply max (map sm (range (inc i) (+ i 7)))) before (apply max (map sm (range (max 0 (- i 6)) i)))]
+               :when (and (>= (- after v) depth) (>= (- before v) (* 0.5 depth)) (> after -30))]
+           [(+ t0 (* i dt)) (min 1 (/ (- after v) 12))]))))
+
 (defn transcribed
   "The notes transcribe (its component map, d) writes from an f0 ([t0 dt [hz …]], 0 where no voice), heard as
-   pitch~ would send it, at 60 bpm (beats are seconds): [[on dur hz] …]. args override its own."
-  [d [t0 dt hzs] args]
+   pitch~ would send it, at 60 bpm (beats are seconds): [[on dur hz] …]. args override its own. onsets ([[t
+   strength] …], from onset~) go to its right inlet."
+  ([d f0 args] (transcribed d f0 args nil))
+  ([d [t0 dt hzs] args onsets]
   (let [rcv (:receive d)
         args (merge {:bpm 60 :mode nil :min-ms 80} args)
         step (fn [[st outs] m] (let [r (rcv (assoc m :state st :args args))]
                                  [(if (contains? r :state) (:state r) st) (into outs (map second (:out r)))]))
-        ;; pitch~ sends only what changes
-        [st outs] (reduce (fn [acc [i hz]] (step acc {:inlet 0 :value hz :at (+ t0 (* i dt))}))
-                          (step [nil []] {:inlet 0 :value :rec :at 0})
-                          (keep-indexed (fn [i hz] (when (or (zero? i) (not= hz (nth hzs (dec i)))) [i hz])) hzs))
+        ;; pitch~ sends only what changes; the onsets in their place among its values
+        evs (sort-by :at (concat (keep-indexed (fn [i hz] (when (or (zero? i) (not= hz (nth hzs (dec i)))) {:inlet 0 :value hz :at (+ t0 (* i dt))})) hzs)
+                                 (map (fn [[t s]] {:inlet 1 :value s :at t}) onsets)))
+        [st outs] (reduce step (step [nil []] {:inlet 0 :value :rec :at 0}) evs)
         [_ outs] (step [st outs] {:inlet 0 :value :stop :at (+ t0 (* (count hzs) dt))})]
     (->> outs
          (mapcat (fn [[k edits]] (when (= k :batch) edits)))
          (keep (fn [[k pts]] (when (= k :stroke) (let [[[a hz]] pts [b] (peek pts)] [a (- b a) hz]))))
-         (sort-by first) vec)))
+         (sort-by first) vec))))
 
 (defn run-transcribed
   "One sung piece ({:truth :auto :f0}): what transcribe writes from its f0 against the manual transcription,
    and the authors' automatic transcription against it too, for reference."
-  [{:keys [id truth auto f0]} d args]
+  ([piece d args] (run-transcribed piece d args nil))
+  ([{:keys [id truth auto f0 bark]} d args od]
   (let [t0 (js/Date.now)
-        ns (transcribed d f0 args)
+        ons (when bark (cond (= :valley (get-in args [:onset :kind])) (valley-onsets bark (:onset args))
+                             od (heard-onsets od bark (:onset args))))
+        ns (transcribed d f0 (dissoc args :onset) ons)
         ms (- (js/Date.now) t0)
         as-hz (fn [ns] (mapv (fn [[a b m]] [a b (* 440 (js/Math.pow 2 (/ (- m 69) 12)))]) ns))]
     {:id id :source :cante2midi :ms ms :notes (count ns) :truth (count truth)
      :ours (note-f ns truth 0.05)
-     :auto (when (seq auto) (note-f (as-hz auto) truth 0.05))}))
+     :onsets (when ons (:on (note-f (mapv (fn [[t]] [t 0 1]) ons) truth 0.05)))
+     :auto (when (seq auto) (note-f (as-hz auto) truth 0.05))})))
 
 (defn transcribed-report
   "Note tracking of sung pieces, as a table (Markdown): mean F-measures of onsets, onsets and pitch, and with
@@ -355,7 +388,11 @@
         row (fn [label k] (str "| " label " | " (pct (mean k :on)) " | " (pct (mean k :pitch)) " | " (pct (mean k :off)) " |"))]
     (str "| " n " pieces · " (reduce + (map :truth rs)) " notes (" (reduce + (map :notes rs)) " written) | onset F (50 ms) | + pitch (50 ¢) | + offset |\n|---|---|---|---|\n"
          (row "transcribe (from the f0)" :ours) "\n"
-         (row "automatic transcription of cante2midi" :auto))))
+         (row "automatic transcription of cante2midi" :auto)
+         (when (some :onsets rs)
+           (str "\n\nonset~ alone, from the Bark bands: onset F " (pct (/ (reduce + (map (fn [r] (or (get-in r [:onsets :f]) 0)) rs)) (max 1 n)))
+                " (precision " (pct (/ (reduce + (map (fn [r] (or (get-in r [:onsets :p]) 0)) rs)) (max 1 n)))
+                ", recall " (pct (/ (reduce + (map (fn [r] (or (get-in r [:onsets :r]) 0)) rs)) (max 1 n))) ")")))))
 
 ;; ───────── Kairotic's own corpus ─────────
 ;; Small cases, each about one thing the quantizer has to get right. MPL, like the rest of the repository.
