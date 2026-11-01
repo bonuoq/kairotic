@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 33 · lines · tests</title>
+<pre id="out">Running…</pre>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script>
+// The model and its examples, then the tests (as the study loads them).
+Promise.all(["../kairotic/lines.cljs", "../kairotic/examples.cljs", "model.cljs"].map(function (m) {
+  return fetch(m, { cache: "no-cache" }).then(function (r) { return r.text(); });
+})).then(function (srcs) {
+  srcs.forEach(function (s) { scittle.core.eval_string(s); });
+}).catch(function (e) {
+  document.getElementById("out").textContent = "Error: " + (e.message || e);
+  window.kairoticResults = { total: 0, failed: ["error: " + (e.message || e)] };
+});
+</script>
