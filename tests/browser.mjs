@@ -33,6 +33,7 @@ import { faustpoly } from "./faustpoly.mjs";
 import { patterns } from "./patterns.mjs";
 import { faustview } from "./faustview.mjs";
 import { patching } from "./patching.mjs";
+import { lines } from "./lines.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const base = url.replace(/tests\.html.*$/, "");
@@ -92,6 +93,8 @@ const appSuites = [
   ["components", components, "the component tab tests ran"],
   ["data", data, "the data tests ran"],
   ["claude", claude, "the Claude tab tests ran"],
+  // opens a solo work and a room of its own, then a local one again
+  ["lines", lines, "the lines tests ran"],
   // opens other works, then a local one again
   ["release", release, "the release tests ran"],
   // opens a lesson (another local work): last

@@ -9,8 +9,9 @@
 (defn js->node [d]
   (let [m (js->clj (.data d))
         at (get m "at") parent (get m "parent") evs (get m "events") t (get m "t")
-        sess (get m "session") mg (get m "merge")]
+        sess (get m "session") mg (get m "merge") ln (get m "line")]
     {:id (.-id d)
+     :line (when (and (string? ln) (seq ln) (not= ln main-line)) ln)
      :parent (when (string? parent) parent)
      :at (if (number? at) at 0)
      :author (str (get m "author"))
@@ -21,18 +22,27 @@
                (vec (keep (fn [x] (let [v (dec* x)] (when (and (vector? v) (keyword? (first v))) v))) evs))
                [])}))
 
+(defn merge-incoming
+  "The segments of one line as they arrive, with yours not saved yet (or longer here than there) kept."
+  [local incoming]
+  (let [mine? (fn [n] (= (:author n) (my-author)))
+        pending (into {} (filter (fn [[k n]] (and (not (contains? incoming k)) (mine? n))) local))]
+    (into pending
+          (for [[k r] incoming :let [l (get local k)]]
+            [k (if (and l (mine? l) (> (count (:events l)) (count (:events r)))) l r)]))))
+
 (defn on-history [snap]
-  (let [incoming (into {} (for [d (array-seq (.-docs snap)) :when (.-exists d)]
-                            (let [n (js->node d)] [(:id n) n])))]
+  (let [incoming (group-by (fn [n] (or (:line n) main-line))
+                           (for [d (array-seq (.-docs snap)) :when (.-exists d)] (js->node d)))
+        by-id (fn [ns] (into {} (map (fn [n] [(:id n) n]) ns)))]
     (swap! hist
            (fn [h]
-             (let [local (:nodes h)
-                   mine? (fn [n] (= (:author n) (my-author)))
-                   pending (into {} (filter (fn [[k n]] (and (not (contains? incoming k)) (mine? n))) local))
-                   merged (into pending
-                                (for [[k r] incoming :let [l (get local k)]]
-                                  [k (if (and l (mine? l) (> (count (:events l)) (count (:events r)))) l r)]))]
-               (assoc h :nodes merged :loaded true))))
+             (let [active (active-line)
+                   lines (disj (into (set (keys incoming)) (keys (:other h))) active)]
+               (assoc h
+                      :nodes (merge-incoming (:nodes h) (by-id (get incoming active)))
+                      :other (into {} (for [l lines] [l (merge-incoming (get-in h [:other l]) (by-id (get incoming l)))]))
+                      :loaded true))))
     (when (nil? (:pos @world))
       (when-let [t (newest-tip)] (swap! world assoc :pos t)))))
 
@@ -52,6 +62,8 @@
                              {:peer (.-peer p) :by (.-by p) :me (.-isMe p) :same (.-sameTab p) :kind (.-kind p)
                               :session (let [s (.. p -presence -session)] (when (string? s) s))
                               :pos (let [pp (js->clj (.. p -presence -pos))] (when (valid-pos? pp) pp))
+                              ;; the line they are on (#117): their position is a point of that line
+                              :line (let [l (.. p -presence -line)] (if (and (string? l) (seq l)) l main-line))
                               ;; performing in a jam (issue #5): its id and the point of the history it starts from
                               :jam (let [j (.. p -presence -jam)] (when (string? j) j))
                               :jam-at (let [pp (js->clj (.. p -presence -jamAt))] (when (valid-pos? pp) pp))}))))

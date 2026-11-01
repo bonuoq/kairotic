@@ -17,7 +17,7 @@
 ;; Box classes are components registered in kairotic.components: their ports, their view,
 ;; their data with its own history, their behaviour with messages and their audio all come from there.
 
-(declare es? docs open-work! show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
+(declare on-lines render-lines! line-name switch-line! es? docs open-work! show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
 (def klass comp/klass)
 (defn box-def [b] (comp/lookup (klass (:text b))))
 ;; how a box is shown: the view it chose among those of its class (a tree as a score or a roll, a freqt
@@ -265,10 +265,25 @@
 ;; ───────────────────────── history: a tree of segments ─────────────────────────
 ;; node = segment of consecutive events by one person: {:id :parent :at :author :t :events}
 ;; position = [node-id n] = after the first n events of that node.
+;;
+;; A work is a project of lines (discussion #117, phase 1): independent histories, each a whole tree of its
+;; own, shown as tabs above the patch. Their segments live in the same collection as always, each with the
+;; line it belongs to (:line, nil for the main line), so a work without lines is what it always was. :nodes
+;; holds the segments of the line on screen, and everything that reads the history reads only that line;
+;; :other holds the segments of the other lines, by line id, until their tab is chosen.
 
 (def max-events 64)
 
-(defonce hist (atom {:nodes {} :loaded false :mode :connecting :writable false}))
+(defonce hist (atom {:nodes {} :other {} :loaded false :mode :connecting :writable false}))
+
+;; the lines of the open work: their names (in <work>/lines, one document per line), which one is on screen,
+;; and where each one was left (its tab remembers its point of the history)
+;;   {:active "main" :index {"main" {:name "main" :created 0} "Xk3…" {:name "sketch" :created … :archived false}}
+;;    :pos {"Xk3…" [node n]}}
+(def main-line "main")
+(defonce line-state (atom {:active main-line :index {} :pos {}}))
+(defn active-line [] (:active @line-state))
+(defn on-main-line? [] (= main-line (active-line)))
 (defonce world (atom {:pos nil :auto true :prev-pos nil :jumped-at 0}))
 (defonce me (atom {:id nil}))
 (defonce peers (atom []))
@@ -459,8 +474,9 @@
     (swap! queues assoc k p)))
 
 (defn node->js [n]
-  (clj->js {:parent (:parent n) :at (:at n) :author (:author n) :session (:session n) :t (:t n)
-            :merge (:merge n) :events (mapv enc (:events n))}))
+  (clj->js (cond-> {:parent (:parent n) :at (:at n) :author (:author n) :session (:session n) :t (:t n)
+                    :merge (:merge n) :events (mapv enc (:events n))}
+             (:line n) (assoc :line (:line n)))))
 
 ;; ───────────────────────── works: shared rooms and solo work ─────────────────────────
 ;; room:  rooms/<id>                      (metadata)  ·  rooms/<id>/history/<segment>
@@ -478,6 +494,8 @@
 
 (defn work-base [] (base-of (:kind @work) (:id @work)))
 (defn hist-path [] (when-let [b (work-base)] (str b "/history")))
+;; what belongs to one line besides its segments (its jams): the work's own place for the main line
+(defn line-base [] (when-let [b (work-base)] (if (on-main-line?) b (str b "/lines/" (active-line)))))
 
 (defn persist? []
   (and @dbref (:writable @hist) (#{:room :solo} (:kind @work)) (hist-path)))
@@ -489,8 +507,9 @@
 
 (defn new-node! [parent at evs merge]
   (let [id (new-id)
-        n {:id id :parent parent :at at :author (my-author) :session session-id :t (js/Date.now)
-           :merge merge :events (vec evs)}]
+        n (cond-> {:id id :parent parent :at at :author (my-author) :session session-id :t (js/Date.now)
+                   :merge merge :events (vec evs)}
+            (not (on-main-line?)) (assoc :line (active-line)))]
     (swap! hist assoc-in [:nodes id] n)
     (when (and (persist?) (not (str/starts-with? id "local-")))
       (let [path (str (hist-path) "/" id) body (node->js n)]

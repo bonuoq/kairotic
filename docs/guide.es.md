@@ -169,6 +169,22 @@ Cada gesto es un evento de la historia, abajo en la página.
 - **◆ Snapshot** —`(snapshot)`, o `(snapshot "intro")` con un nombre— escribe un fotograma clave: un
   punto de la historia con la obra tal como está ahora. Se dibuja como un cuadrado.
 
+### Líneas
+
+Una obra puede tener varias **líneas**: historias independientes, cada una en una pestaña sobre el patch.
+La línea principal (★) es la obra como siempre fue; las otras son estudios, bocetos, partes — cada una con
+su propio patch, sus propias ramas, fusiones y snapshots.
+
+- **+** crea una línea nueva, vacía — `(new-line "boceto")`. Un clic en una pestaña pone su línea en
+  pantalla — `(go-line "boceto")`; cada pestaña vuelve al punto donde la dejaste.
+- Doble clic en la pestaña en pantalla para renombrarla — `(rename-line "intro")`; **×** la archiva (se
+  guarda, con su historia, y vuelve desde *archived* — `(restore-line "boceto")`). `(work-lines)` las lista.
+- La línea en pantalla es aquella con la que trabajan el patch, el motor (se para al cambiar de línea),
+  Perform, Share/Export, Release y Claude. En una sala, las posiciones de los demás se dibujan solo en la
+  línea en la que están; seguir a alguien a otra línea abre su pestaña.
+- Las líneas no cambian mientras tocas en Perform, en una lección o en el patch de pruebas. Usar una línea
+  dentro de otra (`patch @nombre`, Study 33) es el paso siguiente.
+
 ### Componer y tocar (Compose y Perform)
 
 Componer es el modo habitual: cada cambio en la obra es un punto de la historia. **Perform** abre un

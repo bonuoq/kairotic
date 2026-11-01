@@ -30,6 +30,9 @@ ramas. Nada se sobrescribe.
 - **Fusionar** trae los eventos de otra rama a donde estás. Los eventos que tocan lo mismo de forma
   distinta chocan y se quedan fuera (en una caja tree, solo chocan las ediciones del mismo nodo).
 - La autoría es por **sesión** (una pestaña del navegador): dos pestañas de la misma persona se distinguen.
+- Una obra puede tener varias **líneas** (discusión #117): historias independientes, cada una un árbol
+  propio, mostradas como pestañas. La línea principal es la obra como siempre fue. Sus segmentos se guardan
+  con la historia de la obra, cada uno marcado con su línea, y sus nombres en `<work>/lines`.
 
 ## Las cajas son componentes
 

@@ -163,6 +163,22 @@ Every gesture is an event of the history, at the bottom of the page.
 - **◆ Snapshot** — `(snapshot)`, or `(snapshot "intro")` with a name — writes a keyframe: a point of
   the history with the work as it is now. It is drawn as a square.
 
+### Lines
+
+A work can have several **lines**: independent histories, each a tab above the patch. The main line
+(★) is the work as it always was; the others are studies, sketches, parts — each with its own patch,
+its own branches, merges and snapshots.
+
+- **+** makes a new, empty line — `(new-line "sketch")`. Click a tab to put its line on screen —
+  `(go-line "sketch")`; each tab comes back at the point where you left it.
+- Double-click the tab on screen to rename it — `(rename-line "intro")`; **×** archives it (it is kept,
+  with its history, and comes back from *archived* — `(restore-line "sketch")`). `(work-lines)` lists them.
+- The line on screen is what the patch, the engine (it stops when you change lines), Perform, Share/Export,
+  Release and Claude work on. In a room, the others' positions are drawn only on the line they are on;
+  following someone onto another line opens their tab.
+- Lines do not change while you perform, in a lesson or in the scratch patch. Using one line inside another
+  (`patch @name`, Study 33) is the next step.
+
 ### Compose and Perform
 
 Composing is the usual mode: every change to the work is a point of the history. **Perform** opens a

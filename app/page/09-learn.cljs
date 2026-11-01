@@ -455,7 +455,7 @@
   "Builds a lesson as a local work, step by step: the gestures of each step are made in order
    (they appear in the REPL) and each step remembers its point in the history."
   [l]
-  (when-not @lesson (reset! lesson-back {:work @work :hist @hist :world @world :settings @settings}))
+  (when-not @lesson (reset! lesson-back {:work @work :hist @hist :world @world :settings @settings :lines @line-state}))
   (reset! lesson nil)
   (eng/stop!)
   (reset! cbox/trust true)
@@ -504,6 +504,7 @@
                                (reset! hist (:hist b))
                                (reset! settings (:settings b))
                                (reset! world (:world b))
+                               (when (:lines b) (reset! line-state (:lines b)))
                                (render-all!))
       :else (close-work!))
     (render-lesson!)))

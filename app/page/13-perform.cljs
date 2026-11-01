@@ -39,7 +39,8 @@
 (defonce jam-unsub (atom nil))
 (defonce jam-seen (atom #{}))   ; jams already offered here (or your own)
 
-(defn jam-coll [] (when (and (= :room (:kind @work)) (persist?)) (str (work-base) "/jams")))
+;; the jams of the line on screen (the main line's are where they always were)
+(defn jam-coll [] (when (and (= :room (:kind @work)) (persist?)) (str (line-base) "/jams")))
 
 (defn new-jam-id []
   (str "j" (.toString (js/Date.now) 36) (.toString (js/Math.floor (* (js/Math.random) 1679616)) 36)))
@@ -124,7 +125,7 @@
 (defn jam-at
   "The jam someone is playing from this point of the history, if any."
   [pos]
-  (some (fn [p] (when (and (:jam p) (not (:same p)) (= (norm (:jam-at p)) pos)) (:jam p))) @peers))
+  (some (fn [p] (when (and (:jam p) (not (:same p)) (same-line? p) (= (norm (:jam-at p)) pos)) (:jam p))) @peers))
 
 (defn jam-mates
   "Who else is in your jam now."
@@ -280,7 +281,7 @@
 
 (defn render-jam-invite! []
   (let [offer (when-not @perf
-                (first (filter (fn [p] (and (:jam p) (not (:same p)) (not (contains? @jam-seen (:jam p))))) @peers)))
+                (first (filter (fn [p] (and (:jam p) (not (:same p)) (same-line? p) (not (contains? @jam-seen (:jam p))))) @peers)))
         el (floating "jam-invite" "jam-invite")]
     (if-not offer
       (set! (.-hidden el) true)
