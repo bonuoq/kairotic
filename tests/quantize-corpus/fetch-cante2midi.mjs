@@ -8,6 +8,8 @@
 //   · the predominant melody, frame by frame (.f0.csv: seconds, Hz; ≤ 0 where no voice is heard), from the
 //     cantes' recordings (2.9 ms apart);
 //   · a manual note transcription (groundTruth: .notes, "onset,duration,midi,0", seconds);
+//   · the Bark band energies of the recording, frame by frame (barkbands: .barkbands.csv, 27 bands, 11.6 ms), from
+//     which the benchmark finds onsets as onset~ would (--onsets);
 //   · the authors' automatic transcription (automaticTranscription: .notes.csv, "onset, duration, midi").
 // Give it the three zips of the record (or folders with their files): they are read, not redistributed.
 // Writes .cache/cante2midi.edn:
@@ -40,15 +42,28 @@ for (const p of inputs) {
 }
 const walk = (d) => readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? (f === "__MACOSX" ? [] : walk(p)) : [p]; });
 const files = walk(unpacked);
-const piece = (f) => basename(f).replace(/\.(f0\.csv|notes\.csv|notes)$/, "");
+const piece = (f) => basename(f).replace(/\.(f0\.csv|notes\.csv|notes|barkbands\.csv)$/, "");
 const byPiece = {};
 for (const f of files) {
-  const kind = f.endsWith(".f0.csv") ? "f0" : f.endsWith(".notes.csv") ? "auto" : f.endsWith(".notes") ? "truth" : null;
+  const kind = f.endsWith(".barkbands.csv") ? "bark" : f.endsWith(".f0.csv") ? "f0" : f.endsWith(".notes.csv") ? "auto" : f.endsWith(".notes") ? "truth" : null;
   if (kind) (byPiece[piece(f)] ||= {})[kind] = f;
 }
 const rows = (f) => readFileSync(f, "utf8").split(/\r?\n/).filter((l) => l.trim()).map((l) => l.split(",").map((x) => Number(x.trim())));
 const r3 = (x) => Math.round(x * 1000) / 1000;
 const notes = (f) => rows(f).filter((r) => r.length >= 3 && r.every((x) => !isNaN(x))).map(([on, dur, midi]) => [r3(on), r3(dur), midi]);
+
+// The Bark band energies (27 bands, 11.6 ms apart) as onset~ would see them: for each frame the growth of the
+// spectrum (the sum of what rose, in amplitude, over the sum of all) and a level (the root of the energy), scaled
+// so that the loud frames of the piece (its 95th percentile) are at 0.3: onset~'s gate and threshold then apply.
+function bark(f) {
+  const fr = readFileSync(f, "utf8").split(/\r?\n/).filter((l) => l.trim()).map((l) => l.trim().split(/[\s,]+/).map(Number));
+  const amps = fr.map((r) => r.slice(1).map((e) => Math.sqrt(Math.max(0, e))));
+  const flux = amps.map((a, i) => { if (!i) return 0; const b = amps[i - 1]; let up = 0, all = 0; for (let j = 0; j < a.length; j++) { const d = a[j] - b[j]; if (d > 0) up += d; all += a[j]; } return all > 1e-12 ? up / all : 0; });
+  const lvl = amps.map((a) => Math.sqrt(a.reduce((s, x) => s + x * x, 0)));
+  const p95 = [...lvl].sort((x, y) => x - y)[Math.floor(lvl.length * 0.95)] || 1;
+  const dt = (fr[fr.length - 1][0] - fr[0][0]) / (fr.length - 1);
+  return `[${fr[0][0].toFixed(6)} ${dt.toFixed(6)} [${flux.map((x) => Math.round(x * 1000) / 1000).join(" ")}] [${lvl.map((x) => Math.round((x / p95) * 0.3 * 1e4) / 1e4).join(" ")}]]`;
+}
 
 const out = [];
 for (const name of Object.keys(byPiece).sort()) {
@@ -57,7 +72,7 @@ for (const name of Object.keys(byPiece).sort()) {
   const fr = rows(p.f0).filter((r) => r.length >= 2 && !isNaN(r[0]) && !isNaN(r[1]));
   const kept = fr.filter((_, i) => i % EVERY === 0);
   const dt = kept.length > 1 ? (kept[kept.length - 1][0] - kept[0][0]) / (kept.length - 1) : 0;
-  out.push(`{:id "cante2midi/${name.replace(/"/g, "")}" :source :cante2midi\n :truth ${JSON.stringify(notes(p.truth)).replace(/,/g, " ")}\n :auto ${p.auto ? JSON.stringify(notes(p.auto)).replace(/,/g, " ") : "nil"}\n :f0 [${kept[0][0].toFixed(6)} ${dt.toFixed(6)} [${kept.map(([, hz]) => (hz > 0 ? Math.round(hz * 100) / 100 : 0)).join(" ")}]]}`);
+  out.push(`{:id "cante2midi/${name.replace(/"/g, "")}" :source :cante2midi\n :truth ${JSON.stringify(notes(p.truth)).replace(/,/g, " ")}\n :auto ${p.auto ? JSON.stringify(notes(p.auto)).replace(/,/g, " ") : "nil"}\n :f0 [${kept[0][0].toFixed(6)} ${dt.toFixed(6)} [${kept.map(([, hz]) => (hz > 0 ? Math.round(hz * 100) / 100 : 0)).join(" ")}]]\n :bark ${p.bark ? bark(p.bark) : "nil"}}`);
 }
 writeFileSync(join(cache, "cante2midi.edn"), "[" + out.join("\n") + "]\n");
 console.log(`${out.length} cantes → ${join(cache, "cante2midi.edn")} (${(statSync(join(cache, "cante2midi.edn")).size / 1e6).toFixed(1)} MB)`);

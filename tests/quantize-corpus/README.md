@@ -326,6 +326,31 @@ ceilings remain:
   show. An `onset~` on the right (from the audio) can.
 - **Intonation.** In a quarter of the manual notes the median f0 is more than 50 cents from the written pitch.
 
+### With onsets (`--cante --onsets`)
+
+The recordings of cante2midi are not distributed, but their Bark band energies are (27 bands, every 11.6 ms; the
+fourth zip of the record, `cante2midi_barkbands`). From them the benchmark computes what `onset~` looks at (the
+growth of the spectrum and the level of each frame), runs `onset~`'s own logic on it, and sends the onsets to
+`transcribe`'s right inlet, among the values of the f0. With `{:onset {:kind :valley :depth 3}}` in `--opts` the
+onsets come instead from valleys of the level (a dip of `depth` dB between syllables), a detector made for voice.
+
+| onsets into transcribe | onsets alone: F (precision, recall) | onset F | + pitch | + offset |
+|---|---|---|---|---|
+| **none (the contour alone)** | – | **55.9%** | **36.6%** | **26.8%** |
+| `onset~`, each cuts (before) | 22.5% (18.1, 31.3) | 49.5% | 32.6% | 22.4% |
+| `onset~`, each cuts, not while the contour moves (now) | 22.5% (18.1, 31.3) | 50.6% | 33.5% | 23.6% |
+| `onset~`, only the strong ones (≥ 0.5) cut | 22.5% | 53.9% | 35.4% | 25.8% |
+| `onset~`, none cuts; the contour's cuts moved to the nearest (40 ms) | 22.5% | 55.1% | 35.9% | 26.3% |
+| valleys of the level (5 dB), each cuts | 27.8% (37.9, 22.8) | 56.6% | 37.2% | 27.6% |
+
+On these recordings onsets do not help: `onset~` (a growth of the spectrum) fires on consonants and on the guitar
+far more often than on new notes (18 % of its onsets are one), and makes every one of the 20 cantes worse. The valleys
+of the level are better alone but add less than a point. 12.6 % of the manual notes are a repetition of the note
+before at the same pitch, joined to it: what onsets could add at most. Two caveats: Bark bands are a coarse spectrum
+(`onset~` sees 256 bins), and most of these cantes are accompanied. For voice, the advice is the contour alone; an
+`onset~` on the right is for instruments with attacks. `transcribe` now ignores an onset while the contour is away
+from the note and not settled yet (there the contour decides).
+
 ### The delay of `onset~`
 
 Measured offline with `onset~`'s own detection (frames of 2048, hop 512, the flux of the first 256 bins) on sounds

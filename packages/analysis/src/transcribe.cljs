@@ -96,7 +96,9 @@
                                 (let [t (ts i) m (sm i)]
                                   (cond
                                     (nil? cur) (recur (inc i) (note t (+ t dt) [m]) [] out)
-                                    (and (cut? i) (> t (:s cur))) (recur (inc i) (note t (+ t dt) [m]) [] (conj out (assoc cur :e t)))
+                                    ;; (not while the contour is away from the note and not settled yet: there the contour
+                                    ;; decides; measured on cante2midi with onsets from its Bark bands)
+                                    (and (empty? pend) (cut? i) (> t (:s cur))) (recur (inc i) (note t (+ t dt) [m]) [] (conj out (assoc cur :e t)))
                                     (<= (js/Math.abs (- m (median (take-last 24 (:ms cur))))) band)
                                     (recur (inc i) (assoc cur :e (+ t dt) :ms (into (conj (:ms cur) m) (map second pend))) [] out)
                                     :else
