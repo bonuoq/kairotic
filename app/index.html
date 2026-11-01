@@ -138,6 +138,19 @@ body.present .pane { position: relative; }
 body.present .lesson { display: none; }
 .trust-bar { margin: 6px 10px 0; padding: 6px 10px; border: 1px solid var(--kairos); border-radius: 6px; font-size: 12px; color: var(--ink); }
 body.present .trust-bar { position: absolute; z-index: 5; left: 6px; top: 6px; margin: 0; background: var(--sheet); max-width: 60%; }
+/* the lines of the work (#117): independent histories, a tab each, above the patch */
+.line-tabs { display: flex; align-items: flex-end; gap: 2px; padding: 4px 10px 0; border-bottom: 1px solid var(--rule); overflow-x: auto; scrollbar-width: thin; font-size: 12px; }
+.ltab { flex: none; display: inline-flex; align-items: baseline; gap: 5px; font: 500 12.5px var(--f-code); color: var(--ink-soft); background: none; border: 1px solid transparent; border-bottom: none; border-radius: 5px 5px 0 0; padding: 4px 10px 5px; margin-bottom: -1px; cursor: pointer; }
+.ltab:hover { color: var(--ink); background: var(--sheet); }
+.ltab[aria-selected="true"] { color: var(--ink); background: var(--box); border-color: var(--rule); border-bottom: 1px solid var(--box); }
+.ltab .star { color: var(--kairos); font-size: 10.5px; }
+.ltab .who { font: 11px var(--f-ui); color: var(--ink-soft); }
+.ltab .x { font: 13px var(--f-ui); color: var(--ink-soft); padding: 0 0 0 2px; border-radius: 3px; }
+.ltab .x:hover { color: var(--error); }
+.line-tabs .ladd { flex: none; border: 0; background: none; color: var(--accent); font: 600 15px var(--f-ui); padding: 2px 9px 5px; cursor: pointer; }
+.line-tabs input { flex: none; width: 10em; font: 12px var(--f-code); padding: 2px 6px; margin: 0 4px 4px; border: 1px solid var(--accent); border-radius: 4px; background: var(--box); color: var(--ink); }
+.line-tabs select { flex: none; margin: 0 0 4px 8px; font: 12px var(--f-ui); padding: 2px 4px; color: var(--ink-soft); background: var(--box); border: 1px solid var(--rule); border-radius: 4px; }
+body.embed .line-tabs, body.present .line-tabs { display: none !important; }
 .crumbs { font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
 .crumbs button { font: inherit; color: var(--accent); background: none; border: 0; padding: 0 2px; cursor: pointer; }
 .crumbs button:hover { text-decoration: underline; }
@@ -578,6 +591,7 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
         </span>
         <span class="hint">Messages travel without ▶ (▶: sound and time) · ⌘/Ctrl+click a box to edit it below: its arguments and its text (Enter applies) · ⇧+click or a frame drawn on the paper selects several: drag them together, Delete removes them, ⌘/Ctrl+A selects all · playable boxes (bang, msg, number, knobs…) are selected by their left grip; their body only plays · Code boxes: double-click their code row to open the editor (a window you can move; Ctrl/⌘+Enter applies) · their sliders can be dragged · Canvas: drag = stroke, ⇧ straight, ⌥ freehand, click = position</span>
       </div>
+      <div class="line-tabs" id="line-tabs" role="tablist" aria-label="The lines of this work" hidden></div>
       <div class="embed-pop" id="embed-pop" hidden>
         <div class="ep-head">
           <b>Share/Export</b>
@@ -910,7 +924,7 @@ window.addEventListener("DOMContentLoaded", function () {
   var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/spell.cljs", "kairotic/mt.cljs", "kairotic/tempo.cljs", "kairotic/structure.cljs", "kairotic/quantize.cljs", "kairotic/treecanvas.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
               "kairotic/code.cljs", "kairotic/patterns.cljs", "kairotic/api.cljs", "kairotic/corefns.cljs", "kairotic/mtboxes.cljs", "kairotic/faust.cljs", "kairotic/library.cljs", "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs",
               "kairotic/sounds.cljs", "kairotic/signal.cljs", "kairotic/input.cljs", "kairotic/record.cljs", "kairotic/links.cljs", "kairotic/release.cljs", "kairotic/presets.cljs"];
-  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs", "page/15-presets.cljs", "page/16-release.cljs", "page/17-sounds.cljs"];
+  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs", "page/15-presets.cljs", "page/16-release.cljs", "page/17-sounds.cljs", "page/18-lines.cljs"];
   Promise.all(mods.map(function (m) {
     return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
   }))

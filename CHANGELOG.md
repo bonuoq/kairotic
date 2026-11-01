@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **Lines** (discussion #117, phase 1): a work can have several independent histories, each a tab above the
+  patch — the main line (★) is the work as it always was, the others studies, sketches, parts, each with its own
+  patch, branches, merges and snapshots. **+** or `(new-line "sketch")` makes one; a click on a tab or
+  `(go-line "sketch")` puts it on screen, back at the point where it was left; double-click renames it
+  (`(rename-line …)`), **×** archives it (`(restore-line …)` brings it back); `(work-lines)` lists them.
+  - Kept with the work: each segment of the history carries its line (none for the main line, so works
+    without lines are as they were), and the names live in `<work>/lines`. Copying a work to a room or to solo
+    takes its lines; deleting it deletes them.
+  - The line on screen is what everything works on: the patch, the engine (it stops when the line changes),
+    Perform and its jams (a jam is offered only to whoever is on its line), Share/Export, Release, Claude.
+    Lines do not change in Perform, a lesson or the scratch patch.
+  - In a room, presence says which line each person is on: the others' positions are drawn on their line,
+    the people list says where the others are, and following someone onto another line opens its tab.
+  - An official package asked for by one line while another is on screen goes into its own line when that one
+    is back, not into the one on screen.
+  - The status bar counts the patch's connections as *wires* (a *line* is now a history).
+  - Tests: `tests/lines.mjs` (31 checks: names, switching, tabs, Perform, arriving segments, a solo work
+    opened again, a copy to a room).
 - **Study 33 · lines** (discussion #117): a work as a project of several independent history lines, each a tab
   above the patcher, each usable from any other line as `patch @name` — following the line (its newest point) or
   pinned to a point of its history. Nesting, cycles refused, extract an embedded `patch` to a line with its

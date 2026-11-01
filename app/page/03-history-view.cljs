@@ -18,6 +18,10 @@
 
 (defn valid-pos? [p] (and (vector? p) (= 2 (count p)) (string? (first p)) (number? (second p))))
 
+(defn same-line?
+  "Is peer p on the line on screen? (A position is a point of one line: the others' are not drawn here.)"
+  [p] (= (or (:line p) main-line) (active-line)))
+
 (defn lane-layout
   "One lane per line: the first segment that continues at the tip of another shares its lane;
    the other children (branches) open a new lane."
@@ -111,7 +115,7 @@
                      (when (and p (lane-of (first p)))
                        (str "<circle class=\"" cls "\" cx=\"" (X (+ (starts (first p)) (second p))) "\" cy=\"" (Y (lane-of (first p)))
                             "\" r=\"" r "\"" (when color (str " stroke=\"" color "\"")) "></circle>"))))
-            others (filter (fn [p] (and (not (:same p)) (:pos p))) @peers)
+            others (filter (fn [p] (and (not (:same p)) (:pos p) (same-line? p))) @peers)
             peer-marks (map-indexed (fn [k p] (mark (:pos p) (+ 11 (* 3 k)) "peer" (peer-color p))) others)]
         (.setAttribute svg "width" w)
         (.setAttribute svg "height" ht)
@@ -138,7 +142,8 @@
                       (for [p others]
                         (let [nm (if (:me p) "you, another tab" (or (not-empty (get-in @profiles [(:by p) :name])) "Someone"))
                               col (peer-color p)
-                              on (= f (:peer p))]
+                              on (= f (:peer p))
+                              nm (if (same-line? p) nm (str nm " · on " (line-name (:line p))))]
                           (str "<button class=\"chip" (when on " following") "\" data-peer=\"" (esc (:peer p))
                                "\" title=\"" (if on "Stop following" "Follow their position in the history") "\">"
                                "<span class=\"dot\" style=\"background:" (esc col) "\"></span>" (esc nm) (when on " · following") "</button>"))))))))
@@ -184,7 +189,7 @@
                  :local "<b class=\"off\">● local</b>"
                  :none "<b>○ no work open</b>"
                  "<b>○ connecting…</b>")
-               " · " (count (:boxes p)) " boxes · " (count (:lines p)) " lines"
+               " · " (count (:boxes p)) " boxes · " (count (:lines p)) " wires"
                (when (pos? n) (str " · " (inc n) " in the room"))))))
 
 (declare render-comp!)
@@ -379,10 +384,11 @@
 
 (defn publish-presence! []
   (when-let [room @named-room]
-    (when-let [p (:pos @world)]
+    ;; also with no position (an empty line): the others still learn which line you are on
+    (let [p (:pos @world)]
       ;; in a jam (Perform in a shared room): from which point, so others can be invited to it
       (let [{:keys [jam origin]} @perf]
-        (.catch (.presence room (clj->js (cond-> {:pos p :session session-id}
+        (.catch (.presence room (clj->js (cond-> {:pos p :session session-id :line (active-line)}
                                            jam (assoc :jam jam :jamAt (or (:at @perf) origin)))))
                 (fn [_] nil))))))
 
@@ -390,6 +396,8 @@
   (when-let [f (:follow @ui)]
     (if-let [p (first (filter (fn [p] (= (:peer p) f)) @peers))]
       (let [pos (:pos p)]
+        ;; following someone onto another line: their tab first (#117)
+        (when-not (same-line? p) (switch-line! (:line p)))
         (when (and (valid-pos? pos) (node (first pos)) (not= pos (:pos @world)))
           (swap! world assoc :pos pos)))
       (swap! ui assoc :follow nil))))

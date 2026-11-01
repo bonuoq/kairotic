@@ -30,6 +30,9 @@ branches. Nothing is overwritten.
 - **Merging** brings the events of another branch to where you are. Events that touch the same thing
   differently clash and are left out (for a tree box, only edits of the same node clash).
 - Authorship is per **session** (a browser tab), so two tabs of the same person are told apart.
+- A work can have several **lines** (discussion #117): independent histories, each a tree of its own,
+  shown as tabs. The main line is the work as it always was. Their segments are kept with the work's
+  history, each marked with its line, and their names in `<work>/lines`.
 
 ## Boxes are components
 

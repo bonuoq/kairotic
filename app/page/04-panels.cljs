@@ -88,17 +88,20 @@
   (when-not (get lib/packages pkg) (fail (str "Unknown package " pkg ": see (packages)")))
   (when-not (or (@fetching pkg) (work-package? pkg))
     (swap! fetching conj pkg)
-    (-> (lib/import-package pkg)
-        (.then (fn [[m origin]]
-                 (when-not (work-package? pkg)
-                   (let [src (lib/package-source m origin)
-                         _ (swap! cbox/trusted conj src)   ; official: it runs without asking
-                         id (new-definition! src)]
-                     (repl-print! "out" (esc (str "; " pkg " " (:version m) " ("
-                                                  (str/join ", " (map :class (:components m))) ") is now in the work: " id
-                                                  (when-not (str/starts-with? origin "npm:") " · from this page"))))))))
-        (.catch (fn [e] (repl-print! "err" (esc (str "Could not bring " pkg ": " (or (.-message e) e))))))
-        (.finally (fn [] (swap! fetching disj pkg)))))
+    (let [line (active-line)]
+      (-> (lib/import-package pkg)
+          (.then (fn [[m origin]]
+                   ;; into the line it was asked for: if another one is on screen by now, it comes when that
+                   ;; one is back (switch-line! brings what its boxes need)
+                   (when-not (or (work-package? pkg) (not= line (active-line)))
+                     (let [src (lib/package-source m origin)
+                           _ (swap! cbox/trusted conj src)   ; official: it runs without asking
+                           id (new-definition! src)]
+                       (repl-print! "out" (esc (str "; " pkg " " (:version m) " ("
+                                                    (str/join ", " (map :class (:components m))) ") is now in the work: " id
+                                                    (when-not (str/starts-with? origin "npm:") " · from this page"))))))))
+          (.catch (fn [e] (repl-print! "err" (esc (str "Could not bring " pkg ": " (or (.-message e) e))))))
+          (.finally (fn [] (swap! fetching disj pkg))))))
   pkg)
 
 (defn packages

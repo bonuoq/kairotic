@@ -58,8 +58,10 @@
       (when (and (number? v) (<= 0 v 10000) (not= v (:simul-ms @settings)))
         (swap! settings assoc :simul-ms v)))))
 
-(defn reset-work-state! [mode]
-  ;; what boxes of the previous work showed and held is forgotten (a new box with the same id starts empty)
+(defn reset-patch-state!
+  "What the boxes of the patch on screen showed and held is forgotten (a new box with the same id starts
+   empty): when another work opens, or another line of this one (#117)."
+  []
   (swap! eng/rt assoc :shows {} :states {} :loops #{})
   (reset! score-cache {})
   (reset! live-trees {})
@@ -67,7 +69,10 @@
   (reset! sent-trees {})
   (reset! sent-data {})
   (reset! sent-shape nil)
-  (reset! msg-edits {})
+  (reset! msg-edits {}))
+
+(defn reset-work-state! [mode]
+  (reset-patch-state!)
   (unsub-all!)
   (leave-room!)
   (reset! queues {})
@@ -76,7 +81,8 @@
   (swap! ui assoc :follow nil :merge-pick false :sel nil :drag nil :wire nil)
   (.remove (.-classList ($ "hist-wrap")) "picking")
   (reset! world {:pos nil :auto true :prev-pos nil :jumped-at 0})
-  (swap! hist assoc :nodes {} :loaded false :mode mode))
+  (reset! line-state {:active main-line :index {} :pos {}})
+  (swap! hist assoc :nodes {} :other {} :loaded false :mode mode))
 
 (defonce lesson (atom nil))   ; the open lesson (a tutorial or a help patch), Study 18
 
@@ -100,6 +106,8 @@
     (let [db @dbref]
       (swap! snapshot-subs conj (.onSnapshot (.collection db (hist-path)) on-history db-failed!))
       (swap! snapshot-subs conj (.onSnapshot (.doc db (work-base)) on-meta (fn [_] nil)))
+      ;; the names of its lines (#117)
+      (swap! snapshot-subs conj (.onSnapshot (.collection db (str (work-base) "/lines")) on-lines (fn [_] nil)))
       (when (and (= kind :room) @roomref)
         (-> (.join @roomref (room-name id))
             (.then (fn [r]
@@ -155,6 +163,12 @@
                  (reduce (fn [p d] (.then p (fn [_] (.set (.doc db (str dst "/" (.-id d))) (plain (.data d))))))
                          (js/Promise.resolve nil)
                          (array-seq (.-docs snap)))))
+        ;; and the names of its lines (their segments came with the history)
+        (.then (fn [_] (.get (.collection db (str (base-of from-kind from-id) "/lines")))))
+        (.then (fn [snap]
+                 (reduce (fn [p d] (.then p (fn [_] (.set (.doc db (str (coll-for to-kind) "/" id "/lines/" (.-id d))) (plain (.data d))))))
+                         (js/Promise.resolve nil)
+                         (filter (fn [d] (.-exists d)) (array-seq (.-docs snap))))))
         (.then (fn [_] (busy! nil) (open-work! to-kind id nm)))
         (.catch mgr-fail!))))
 
@@ -167,6 +181,12 @@
     (-> (.get (.collection db (str base "/history")))
         (.then (fn [snap]
                  (reduce (fn [p d] (.then p (fn [_] (.delete (.doc db (str base "/history/" (.-id d)))))))
+                         (js/Promise.resolve nil)
+                         (array-seq (.-docs snap)))))
+        ;; the names of its lines (their segments went with the history)
+        (.then (fn [_] (.get (.collection db (str base "/lines")))))
+        (.then (fn [snap]
+                 (reduce (fn [p d] (.then p (fn [_] (.delete (.doc db (str base "/lines/" (.-id d)))))))
                          (js/Promise.resolve nil)
                          (array-seq (.-docs snap)))))
         (.then (fn [_] (.delete (.doc db base))))
