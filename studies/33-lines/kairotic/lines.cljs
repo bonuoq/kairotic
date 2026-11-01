@@ -2,19 +2,24 @@
 ;; Kairotic · Study 33 · lines (discussion #117)
 ;;
 ;; A work becomes a project: several independent history lines, each with a name, each a whole history
-;; tree of its own (root, branches, front), shown as tabs above the patcher. A `patch name` box in any line
+;; tree of its own (root, branches, front), shown as tabs above the patcher. A `patch @name` box in any line
 ;; refers to another line and takes its inlet/outlet boxes as ports, like an embedded `patch` box today:
 ;;
 ;;   patch          an embedded patch: its inside lives in the box (:data), its edits in the history
-;;                  of the line it is in, wrapped as [:in :b3 event] (as in the app)
-;;   patch gain     the line `gain`, followed: it is the line at its front (its newest point), so it
+;;   patch filters  of the line it is in, wrapped as [:in :b3 event] (as in the app, where a word after
+;;                  `patch` is only a label: it stays so, so no work changes meaning)
+;;   patch @gain     the line `gain`, followed: it is the line at its front (its newest point), so it
 ;;                  changes as that line advances, like an abstraction of Max or Pd
-;;   patch gain     with :pin [node n], the line frozen at that point (a version)
+;;   patch @gain     with :pin [node n], the line frozen at that point (a version)
 ;;
 ;; Nesting is allowed and cycles are refused. An embedded patch can be extracted to a line of its own
 ;; (with the history it had inside its box), and a reference inlined back into the box. A release takes
 ;; the main line and every line it reaches, each at the point it uses, into a new project where every
 ;; reference is pinned.
+;;
+;; Decided in #117: references are written `patch @name` (a plain word stays a label), and a line is the
+;; working form of a reusable sub-patch while an abstraction or component is its published form, a line
+;; pinned at a point (extract to line takes the place of `abstract` as the gesture).
 ;;
 ;; Pure data and functions: no DOM, no atoms (the page keeps the project in one).
 ;;
@@ -37,8 +42,9 @@
 (defn words [text] (vec (remove str/blank? (str/split (str/trim (str text)) #"\s+"))))
 (defn klass [b] (first (words (:text b))))
 (defn ref-name
-  "The line a `patch name` box refers to (as a keyword), or nil."
-  [b] (let [w (words (:text b))] (when (and (= "patch" (first w)) (second w)) (keyword (second w)))))
+  "The line a `patch @name` box refers to (as a keyword), or nil."
+  [b] (let [w (words (:text b)) r (second w)]
+        (when (and (= "patch" (first w)) r (str/starts-with? r "@") (> (count r) 1)) (keyword (subs r 1)))))
 (defn sub? [b] (= "patch" (klass b)))
 (defn embedded? [b] (and (sub? b) (nil? (ref-name b))))
 (defn ref? [b] (some? (ref-name b)))
@@ -183,7 +189,7 @@
 ;; ───────────────────────── references ─────────────────────────
 
 (defn ref-pos
-  "Where box b (a `patch name`) reads its line: its pin, or the line's front."
+  "Where box b (a `patch @name`) reads its line: its pin, or the line's front."
   [proj b] (when-let [l (line proj (ref-name b))] (if (:pin b) (norm l (:pin b)) (front l))))
 
 (defn resolve-ref
@@ -203,7 +209,7 @@
         :else nil))
 
 (defn refs-in
-  "The `patch name` boxes of a patch, through its embedded patches: [[path id box] …]."
+  "The `patch @name` boxes of a patch, through its embedded patches: [[path id box] …]."
   ([p] (refs-in p []))
   ([p path]
    (mapcat (fn [[id b]]
@@ -281,7 +287,7 @@
   "Event that makes every reference to `old` in patch p (through embedded patches) say `new`."
   [p old new-name]
   (let [evs (for [[path id b] (refs-in p) :when (= old (ref-name b))]
-              (wrap-in path [:text id (str/join " " (into ["patch" new-name] (drop 2 (words (:text b)))))]))]
+              (wrap-in path [:text id (str/join " " (into ["patch" (str "@" new-name)] (drop 2 (words (:text b)))))]))]
     (when (seq evs) [:batch (vec evs)])))
 
 (defn rename-line
@@ -351,7 +357,7 @@
           evs (if (and (empty? evs) (:data b)) [[:load (:data b)]] evs)]
       (-> proj
           (add-line nm :from [(:id l) (:pos l)] :events evs)
-          (append (:id l) (wrap-in path [:batch [[:text id (str "patch " nm)] [:data id nil]]]))))))
+          (append (:id l) (wrap-in path [:batch [[:text id (str "patch @" nm)] [:data id nil]]]))))))
 
 (defn inline
   "The reference id (at path, in line lid) becomes an embedded patch again: the line's patch at the point
@@ -394,7 +400,7 @@
                             (into (sorted-map)
                                   (for [[id b] bx]
                                     [id (cond (ref? b) (let [r (resolve-ref proj b) k (get ids [(:line r) (:pos r)])]
-                                                         (if k (assoc b :text (str "patch " (name k)) :pin [(node-id k) 1]) b))
+                                                         (if k (assoc b :text (str "patch @" (name k)) :pin [(node-id k) 1]) b))
                                               (embedded? b) (update b :data (fn [d] (when d (rewrite d))))
                                               :else b)])))))
         lines (into {} (for [[lid pos :as v] versions :let [k (get ids v)]]

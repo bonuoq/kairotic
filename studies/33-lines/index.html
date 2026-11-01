@@ -167,11 +167,11 @@ textarea.edn { width: 100%; height: 180px; resize: vertical; font: 12px/1.5 var(
     <h2 id="h-patch">Patch <span id="patch-sub"></span></h2>
     <div class="canvas" id="canvas" tabindex="0" aria-label="The patch of the line on screen"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
     <div class="addbox">
-      <input type="text" class="mono" id="newbox" placeholder="a new box: msg 3 · + 1 · * 2 · number · inlet · outlet · patch · patch name" aria-label="Text of a new box" autocomplete="off" spellcheck="false">
+      <input type="text" class="mono" id="newbox" placeholder="a new box: msg 3 · + 1 · * 2 · number · inlet · outlet · patch · patch @name" aria-label="Text of a new box" autocomplete="off" spellcheck="false">
       <button class="act" data-act="addbox">Add</button>
     </div>
     <div class="msg" id="msg" role="status"></div>
-    <div class="hint">Click a <b>msg</b> box to send it · drag a box to move it · drag from an outlet (bottom) to an inlet (top) to wire · <kbd>Delete</kbd> removes the selected box · <kbd>double-click</kbd> a <code>patch name</code> box to open its line, an embedded <code>patch</code> to go in, the paper to place a new box there</div>
+    <div class="hint">Click a <b>msg</b> box to send it · drag a box to move it · drag from an outlet (bottom) to an inlet (top) to wire · <kbd>Delete</kbd> removes the selected box · <kbd>double-click</kbd> a <code>patch @name</code> box to open its line, an embedded <code>patch</code> to go in, the paper to place a new box there</div>
   </section>
 
   <div class="side">
@@ -207,7 +207,7 @@ textarea.edn { width: 100%; height: 180px; resize: vertical; font: 12px/1.5 var(
 
 <section class="panel" aria-labelledby="h-about">
   <h2 id="h-about">What this study tries</h2>
-  <p class="about">A work becomes a <b>project</b>: several <b>lines</b>, each a whole history tree of its own (branches, front), shown as tabs. <code>patch name</code> in any line is the line <code>name</code> as a sub-patch, its <code>inlet</code> and <code>outlet</code> boxes as ports. By default it <b>follows</b> the line — it is the line at its front, its newest point, so it changes as that line advances, like an abstraction of Max or Pd; <b>pinned</b>, it stays at one point of the line's history. Lines nest, and a cycle is refused. An embedded <code>patch</code> can be <b>extracted</b> to a line of its own, with the history it had inside its box, and a reference <b>inlined</b> back into its box. Going back in a tab and editing makes a branch, and that branch is the line's newest point: the boxes that follow it follow it. Renaming a line rewrites its users, and older points still find it by its old name. A <b>release</b> takes the main line (★) and every line it reaches, each at the point it uses, into a new project where every reference is pinned; a line used at two points becomes two lines. A line can be exported with its history and imported in another project. Tutorials and help patches can be projects too: one tab per view of a topic, not a sequence of steps (see the example <i>Help · patch</i>). The project is kept in this browser.</p>
+  <p class="about">A work becomes a <b>project</b>: several <b>lines</b>, each a whole history tree of its own (branches, front), shown as tabs. <code>patch @name</code> in any line is the line <code>name</code> as a sub-patch, its <code>inlet</code> and <code>outlet</code> boxes as ports. A word after <code>patch</code> without <code>@</code> stays a label of an embedded patch, as in the app. By default it <b>follows</b> the line — it is the line at its front, its newest point, so it changes as that line advances, like an abstraction of Max or Pd; <b>pinned</b>, it stays at one point of the line's history. Lines nest, and a cycle is refused. An embedded <code>patch</code> can be <b>extracted</b> to a line of its own, with the history it had inside its box, and a reference <b>inlined</b> back into its box. Going back in a tab and editing makes a branch, and that branch is the line's newest point: the boxes that follow it follow it. Renaming a line rewrites its users, and older points still find it by its old name. A <b>release</b> takes the main line (★) and every line it reaches, each at the point it uses, into a new project where every reference is pinned; a line used at two points becomes two lines. A line can be exported with its history and imported in another project. A line is the working form of a reusable sub-patch; an abstraction or a component would be its published form, a line pinned at a point. Tutorials and help patches can be projects too: one tab per view of a topic, not a sequence of steps (see the example <i>Help · patch</i>). The project is kept in this browser.</p>
 </section>
 </main>
 
@@ -633,7 +633,7 @@ window.addEventListener("DOMContentLoaded", function () {
                      (if (str/blank? nm)
                        (do (swap! ui dissoc :adding) (render-tabs!))
                        (try (let [p2 (ln/add-line p nm)]
-                              (swap! ui assoc :proj p2 :tab (keyword nm) :sel nil :adding false :msg ["ok" (str "A new line, " nm ": use it from any other line as patch " nm ".")])
+                              (swap! ui assoc :proj p2 :tab (keyword nm) :sel nil :adding false :msg ["ok" (str "A new line, " nm ": use it from any other line as patch @" nm ".")])
                               (save!) (render!))
                             (catch :default e (say! "bad" (ex-message e)) (render-msg!)))))
       "crumb" (do (swap! ui assoc-in [:paths (tab)] (vec (take (js/parseInt (.getAttribute el "data-depth")) (path)))) (swap! ui assoc :sel nil) (render!))
