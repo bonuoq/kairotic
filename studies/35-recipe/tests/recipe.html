@@ -1,0 +1,77 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 35 · recipe · tests</title>
+<pre id="out">Running…</pre>
+<iframe id="study" width="1200" height="1000" style="border:0"></iframe>
+<script src="https://cdn.jsdelivr.net/npm/meyda@5.6.3/dist/web/meyda.min.js"></script>
+<script type="module">
+// With the real faustwasm (as the app loads it) and Meyda: the offline renderer plays a compiled faust~,
+// the search finds settings of the Faust twin from their sound, the recipe compiles; then the study page,
+// used as someone uses it.
+import { renderer, controls } from "../kairotic/render.mjs";
+import { fit, sliders, valuesOf, recipe } from "../kairotic/fit.mjs";
+import { pitchOf } from "../../32-learn/kairotic/pitch.mjs";
+
+const results = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const until = (f, ms) => new Promise((ok, no) => { const t0 = Date.now(); (function loop() { let v; try { v = f(); } catch (_) {} if (v) ok(v); else if (Date.now() - t0 > ms) no(new Error("timed out")); else setTimeout(loop, 100); })(); });
+function done(err) {
+  if (err) results.push(["error: " + (err.message || err), false]);
+  const failed = results.filter((r) => !r[1]).map((r) => r[0]);
+  document.getElementById("out").textContent = (results.length - failed.length) + " / " + results.length + " pass" + failed.map((f) => "\n✗ " + f).join("");
+  window.kairoticResults = { total: results.length, failed };
+}
+
+(async () => {
+  const F = await import("https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js");
+  const compiler = new F.FaustCompiler(new F.LibFaust(await F.instantiateFaustModule()));
+  const compile = async (code) => {
+    const gen = new F.FaustMonoDspGenerator();
+    if (!(await gen.compile(compiler, "t" + Math.random().toString(36).slice(2, 7), code, "-ftz 2"))) throw new Error("could not compile");
+    return { code: gen.factory.module || gen.factory.code, json: JSON.parse(gen.factory.json) };
+  };
+  const M = window.Meyda;
+  is("Meyda loaded", !!M);
+
+  const sine = await compile('import("stdfaust.lib");\nprocess = os.osc(hslider("freq", 440, 50, 2000, 0.01)) * 0.3;');
+  const y = renderer(sine.code, sine.json)({ freq: 330 }, { dur: 0.5 });
+  const hz = 440 * Math.pow(2, (pitchOf(y).midi - 69) / 12);
+  is(`faustwasm's module renders offline at its slider's value (${hz.toFixed(2)} Hz)`, Math.abs(hz - 330) < 1);
+  is("... and its controls are read", controls(sine.json).map((c) => c.label).join() === "freq");
+
+  const code = await (await fetch("../kairotic/twin.dsp")).text();
+  const twin = await compile(code), render = renderer(twin.code, twin.json), cs = sliders(twin.json);
+  is("the twin has ten sliders, five on a log scale", cs.length === 10 && cs.filter((c) => c.scale === "log").length === 5);
+  let ok = 0, n = 0, pitchOk = 0, pitched = 0;
+  for (const truth of [[0.4, 0.2, 0.05, 0.6, 0.3, 0.4, 0.2, 0.5, 0.7, 0.4], [0.7, 0.8, 0.02, 0.45, 0.6, 0.2, 0.1, 0.3, 0.5, 0.6]]) {
+    // (the twin's sliders in alphabetical order: attack cutoff decay envamt noise pitch release resonance sustain wave)
+    const target = render(valuesOf(cs, truth));
+    const r = fit(M, render, twin.json, target, { bank: 16, budget: 80, seed: ++n });
+    if (r.fx < r.nearestFx) ok++;
+    if (r.pitch !== null) { pitched++; if (Math.abs(r.values.pitch - valuesOf(cs, truth).pitch) < 0.5) pitchOk++; }
+    if (n === 2) {
+      const rec = recipe(code, r.values, cs), again = await compile(rec), c = controls(again.json).find((x) => x.label === "cutoff");
+      is("the recipe compiles, its sliders starting at the values found", Math.abs(c.init - r.values.cutoff) <= 1);
+    }
+  }
+  is(`the search sounds closer than the nearest random setting (${ok}/2)`, ok === 2);
+  is(`... with the pitch where YIN heard it (${pitchOk}/${pitched})`, pitched > 0 && pitchOk === pitched);
+
+  // the page, as someone uses it
+  const fr = document.getElementById("study");
+  fr.src = "../index.html";
+  await new Promise((r) => fr.addEventListener("load", r, { once: true }));
+  const w = fr.contentWindow, $ = (id) => w.document.getElementById(id);
+  await until(() => /10<\/b> sliders/.test($("facts-code").innerHTML), 40000);
+  is("the page compiles the twin and lists its sliders", true);
+  $("t-random").click();
+  await until(() => !$("find").disabled, 20000);
+  $("bank").value = "8";
+  $("budget").value = "100";
+  $("find").click();
+  await until(() => /^found/.test($("status").textContent), 60000);
+  is("the page finds a setting: its values and its recipe", $("values").querySelectorAll("tr").length === 11 && /hslider\("cutoff/.test($("recipe").value));
+  await until(() => $("plots").querySelectorAll("path.tb").length === 4, 20000);
+  is("... and draws the two sounds' descriptors", true);
+})().then(() => done(), done);
+</script>
