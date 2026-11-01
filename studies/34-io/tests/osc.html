@@ -1,0 +1,68 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 34 · io · OSC tests</title>
+<pre id="out">Running…</pre>
+<iframe id="study" src="../index.html" width="1200" height="900" style="border:0"></iframe>
+<script>
+// OSC through a real relay: tests/osc.html?relay=ws://localhost:8765/osc, with the relay started as
+//   node relay/server.js --osc --osc-out loop=127.0.0.1:57121
+// so that what the page sends comes back on the relay's own UDP port. Without ?relay it is skipped
+// (tests/studies.mjs passes OSC_RELAY as ?relay).
+var relay = new URLSearchParams(location.search).get("relay");
+var results = [];
+function is(what, ok) { results.push([what, !!ok]); }
+function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function until(f, ms) {
+  var t0 = Date.now();
+  return new Promise(function (ok, no) {
+    (function loop() { var v; try { v = f(); } catch (e) {} if (v) ok(v); else if (Date.now() - t0 > ms) no(new Error("timed out")); else setTimeout(loop, 50); })();
+  });
+}
+function done(err) {
+  if (err) results.push(["error: " + (err.message || err), false]);
+  var failed = results.filter(function (r) { return !r[1]; }).map(function (r) { return r[0]; });
+  document.getElementById("out").textContent = (results.length - failed.length) + " / " + results.length + " pass" +
+    failed.map(function (f) { return "\n✗ " + f; }).join("");
+  window.kairoticResults = { total: results.length, failed: failed };
+}
+if (!relay) {
+  document.getElementById("study").remove();
+  document.getElementById("out").textContent = "skipped: no ?relay";
+  window.kairoticResults = { total: 0, failed: [], skipped: true };
+} else document.getElementById("study").addEventListener("load", function () {
+  var w = document.getElementById("study").contentWindow, d = w.document;
+  var $ = function (id) { return d.getElementById(id); };
+  var log = function () { return $("log").textContent; };
+  var key = function (n, type) {
+    var el = d.querySelector("[data-n='" + n + "']"), r = el.getBoundingClientRect();
+    el.dispatchEvent(new w.PointerEvent(type, { bubbles: true, pointerId: 7, clientX: r.left + 5, clientY: r.bottom - 5 }));
+  };
+  var tap = function (n) { key(n, "pointerdown"); return wait(80).then(function () { w.dispatchEvent(new w.PointerEvent("pointerup", { pointerId: 7 })); return wait(250); }); };
+  until(function () { return $("status").dataset.ready; }, 30000).then(function () {
+    $("monitor").checked = false;
+    $("osc-url").value = relay; $("osc-connect").click();
+    return until(function () { return /connected/.test($("osc-msg").textContent); }, 10000);
+  }).then(function () {
+    is("connected, greeted with the relay's targets", $("osc-to").textContent.indexOf("loop") >= 0);
+    $("osc-send").checked = true;
+    return tap(64);
+  }).then(function () {
+    var l = log();
+    is("the key went out as OSC", /⇢ \/kairotic\/note \[64 329\.628 [0-9.]+ 1\]/.test(l));
+    is("and came back through UDP as an event from OSC", /\{:src :osc :type :note :id 64 :freq 329\.628 :amp [0-9.]+ :gate true :from "127\.0\.0\.1:57121"\}/.test(l));
+    is("its note-off too", /\{:src :osc :type :note :id 64 :freq 0 :gate false/.test(l));
+    is("what came from OSC is not sent again", (l.match(/⇢ \/kairotic\/note \[64 /g) || []).length === 2);
+    $("osc-filter").value = "/kairotic/{glide,cc}";
+    return tap(65);
+  }).then(function () {
+    var l = log();
+    is("with a pattern, other addresses still go out", /⇢ \/kairotic\/note \[65 /.test(l));
+    is("but are not taken in", !/:src :osc :type :note :id 65 /.test(l));
+    $("osc-filter").value = "/kairotic/n?te";
+    return tap(67);
+  }).then(function () {
+    is("a pattern that matches lets them in", /:src :osc :type :note :id 67 /.test(log()));
+    done();
+  }).catch(done);
+});
+</script>

@@ -4,7 +4,7 @@ name: studies
 
 on:
   pull_request:
-    paths: ["studies/**", "tests/studies.mjs", ".github/workflows/studies.yml"]
+    paths: ["studies/**", "tests/studies.mjs", "relay/**", ".github/workflows/studies.yml"]
   workflow_dispatch:
 
 permissions:
@@ -29,3 +29,25 @@ jobs:
           npx --yes http-server@14 . -p 8000 -s &
           for i in $(seq 1 30); do curl -sf http://localhost:8000/README.md > /dev/null && break; sleep 1; done
           node tests/studies.mjs http://localhost:8000/
+
+  # The pages that need the relay's OSC bridge (studies/34-io/tests/osc.html): the relay started with
+  # --osc and a target back to its own UDP port, so what a page sends comes back to it.
+  osc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+        working-directory: relay
+      - run: npm install --no-save playwright@1.56.0 && npx playwright install --with-deps chromium
+      - name: Start the relay with the OSC bridge, serve the repository, run the studies' tests
+        env:
+          OSC_RELAY: ws://localhost:8765/osc
+        run: |
+          node relay/server.js --data "$RUNNER_TEMP/radata" --osc --osc-out loop=127.0.0.1:57121 &
+          npx --yes http-server@14 . -p 8000 -s &
+          for i in $(seq 1 30); do curl -sf http://localhost:8765/ > /dev/null && curl -sf http://localhost:8000/README.md > /dev/null && break; sleep 1; done
+          node tests/studies.mjs http://localhost:8000/ 34-io
