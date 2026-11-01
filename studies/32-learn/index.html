@@ -1,0 +1,401 @@
+<meta charset="utf-8">
+<title>Kairotic Study 32 · Learn</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the bank (patches that sound); training (its loss over the epochs); the way back
+   for one target, three ways side by side; then every target set aside, measured. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 6.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.facts .ok { color: var(--ok); } .facts .bad { color: var(--error); } .facts .kairos { color: var(--kairos); }
+.bar { height: 6px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 14px; align-items: start; }
+@media (max-width: 860px) { .two { grid-template-columns: minmax(0, 1fr); } }
+/* a patch: one line per parameter, the target as a filled bar, the patch found as a mark on it */
+.patch { display: grid; gap: 5px; }
+.prm { display: grid; grid-template-columns: 6.2em minmax(0, 1fr) 11em; gap: 8px; align-items: center; font-size: 12px; }
+.prm .k { color: var(--ink-soft); font-family: var(--f-code); }
+.prm .v { font: 11px var(--f-code); color: var(--ink-soft); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prm .v b { color: var(--ink); font-weight: 500; }
+.track { position: relative; height: 14px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 3px; }
+.track .t { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-soft); border-right: 2px solid var(--accent); }
+.track .m { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--kairos); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-soft); }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; }
+.legend .a i { background: var(--accent); } .legend .b i { background: var(--kairos); }
+/* descriptors over time: small multiples sharing the time axis */
+.plots { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.plot { border: 1px solid var(--grid); border-radius: 4px; background: var(--sheet); padding: 5px 7px 3px; min-width: 0; }
+.plot small { display: block; font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+.plot svg { display: block; width: 100%; height: 74px; overflow: visible; }
+.plot .ta { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.plot .tb { fill: none; stroke: var(--kairos); stroke-width: 1.6; stroke-dasharray: 4 3; }
+.plot .ax { stroke: var(--grid); stroke-width: 1; }
+.plot text { font: 10px var(--f-code); fill: var(--ink-soft); }
+.code { margin: 0; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; font: 12px/1.6 var(--f-code); color: var(--ink); overflow-x: auto; white-space: pre; }
+.sizes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.size { border: 1px solid var(--grid); border-radius: 4px; padding: 6px 9px; display: grid; gap: 2px; }
+.size small { color: var(--ink-soft); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.size b { font: 500 15px var(--f-code); font-variant-numeric: tabular-nums; }
+.size span { font-size: 11px; color: var(--ink-soft); }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.note a { color: var(--accent); }
+.err { color: var(--error); font-size: 12px; }
+
+.legend .c i { background: var(--ok); }
+.plot .tc { fill: none; stroke: var(--ok); stroke-width: 1.6; stroke-dasharray: 1 3; stroke-linecap: round; }
+.ways { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 960px) { .ways { grid-template-columns: minmax(0, 1fr); } }
+.way { border: 1px solid var(--grid); border-radius: 5px; padding: 8px 10px; display: grid; gap: 6px; min-width: 0; align-content: start; }
+.way h3 { margin: 0; font: 600 12px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.way h3 span { font: 400 12px var(--f-code); color: var(--ink-soft); text-transform: none; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.way .prm { grid-template-columns: 5.6em minmax(0, 1fr) 3.2em; }
+.way.nn .track .m { background: var(--ink-soft); } .way.net .track .m { background: var(--kairos); } .way.search .track .m { background: var(--ok); }
+.loss svg { display: block; width: 100%; height: 120px; overflow: visible; }
+.loss .tr { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.loss .va { fill: none; stroke: var(--kairos); stroke-width: 1.6; stroke-dasharray: 4 3; }
+.loss .ax { stroke: var(--grid); } .loss text { font: 10px var(--f-code); fill: var(--ink-soft); }
+table.res { border-collapse: collapse; font: 12px var(--f-code); font-variant-numeric: tabular-nums; }
+table.res th, table.res td { padding: 4px 10px; border-bottom: 1px solid var(--grid); text-align: right; }
+table.res th:first-child, table.res td:first-child { text-align: left; font-family: var(--f-ui); }
+table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+.scroll { overflow-x: auto; }
+</style>
+<main>
+<header>
+  <h1>Study 32 · learn</h1>
+  <span class="sub">The way back, learnt: a small network guesses a patch from its descriptors, and a search that listens refines the guess</span>
+  <span class="status" id="status">Ready</span>
+</header>
+
+<section class="panel" aria-labelledby="h-bank">
+  <h2 id="h-bank">The bank <span>random patches of Study 30's synth that sound: silences and clicks are drawn again</span></h2>
+  <div class="row">
+    <label class="inline" for="n">Patches <input type="number" id="n" min="200" max="20000" step="100" value="3000"></label>
+    <label class="inline" for="seed">Seed <input type="number" id="seed" min="1" step="1" value="1"></label>
+    <button class="act primary" id="make">Make the bank</button>
+    <button class="act" id="stop" disabled>Stop</button>
+    <button class="act" id="load">Load a bank…</button>
+    <input type="file" id="file" accept=".ndjson,.json,.txt" hidden>
+    <button class="act" id="save" disabled>Download (.ndjson)</button>
+  </div>
+  <div class="bar" aria-hidden="true"><i id="progress"></i></div>
+  <div class="facts" id="facts-bank">A tenth is set aside as targets; the network learns from the rest. About 3000 patches take a couple of minutes to make here; larger banks come from <code>kairotic/generate.mjs</code> in Node.</div>
+  <div class="err" id="err" hidden></div>
+</section>
+
+<section class="panel" aria-labelledby="h-train">
+  <h2 id="h-train">Training <span>descriptors pooled over 8 moments of the note → the 10 parameters</span></h2>
+  <div class="row">
+    <label class="inline" for="epochs">Epochs <input type="number" id="epochs" min="1" max="200" value="30"></label>
+    <button class="act primary" id="train" disabled>Train</button>
+    <button class="act" id="tstop" disabled>Stop</button>
+    <button class="act" id="mload">Load a model…</button>
+    <input type="file" id="mfile" accept=".json" hidden>
+    <button class="act" id="msave" disabled>Download the model (.json)</button>
+  </div>
+  <div class="loss" id="loss"></div>
+  <div class="facts" id="facts-train">A network of 144 → 128 → 64 → 10 numbers, trained in this page (no library) on the squared error of the parameters, checked on a twentieth it does not learn from.</div>
+</section>
+
+<section class="panel" aria-labelledby="h-back">
+  <h2 id="h-back">The way back <span>one target set aside, three ways to a patch</span></h2>
+  <div class="row">
+    <button class="act primary" id="next" disabled>Another target</button>
+    <label class="inline" for="budget">Search <select id="budget"><option value="60">60 renders</option><option value="100" selected>100 renders</option><option value="200">200 renders</option></select></label>
+    <button class="act" id="play-t" disabled>▶ Target</button>
+    <button class="act" id="play-nn" disabled>▶ Nearest</button>
+    <button class="act" id="play-net" disabled>▶ Network</button>
+    <button class="act" id="play-s" disabled>▶ Searched</button>
+  </div>
+  <div class="ways" id="ways"><div class="facts">Make or load a bank, and train (or load) a model.</div></div>
+  <div class="legend"><span class="a"><i></i>target</span><span class="b"><i></i>network</span><span class="c"><i></i>network + search</span></div>
+  <div class="plots" id="plots"></div>
+  <pre class="code" id="edn" hidden></pre>
+</section>
+
+<section class="panel" aria-labelledby="h-all">
+  <h2 id="h-all">Every target <span>the three ways, measured on targets set aside</span></h2>
+  <div class="row">
+    <label class="inline" for="mn">Targets <input type="number" id="mn" min="5" max="500" value="20"></label>
+    <button class="act" id="measure" disabled>Measure</button>
+  </div>
+  <div class="scroll" id="results"></div>
+  <p class="note">The <b>descriptor distance</b> is how far a patch <i>sounds</i> from the target (standardised descriptors, per number, as in Study 30); the <b>patch distance</b> is the mean difference of its parameters in [0, 1]. The target itself, rendered with another noise, is the floor: no patch can sound closer than that. The network is trained to guess the numbers, so it can land between two patches that sound alike; the search then listens, rendering the real synth, and moves towards what sounds closer. Nothing in it is specific to this synth: the same search would refine a <code>faust~</code> patch (Study 31) found by any first guess.</p>
+</section>
+</main>
+
+<script type="module">
+import { PARAMS, SR, render, values, edn } from "../30-inverse/kairotic/synth.mjs";
+import { DIMS, matcher, paramError } from "../30-inverse/kairotic/dataset.mjs";
+
+const $ = (id) => document.getElementById(id);
+const status = (s) => { $("status").textContent = s; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let header = null, bank = [], train = [], test = [], M = null, model = null, current = null;
+const worker = new Worker(new URL("./kairotic/worker.mjs", import.meta.url));
+const pending = new Map();
+let seq = 0;
+const ask = (m) => new Promise((ok, fail) => { const id = ++seq; pending.set(id, { ok, fail, m }); worker.postMessage({ ...m, id }); });
+let onWorker = () => {};
+worker.onmessage = (msg) => {
+  const m = msg.data;
+  if (m.type === "error") { $("err").textContent = "Something went wrong (" + m.during + "): " + m.message; $("err").hidden = false; status("error"); for (const [, p] of pending) p.fail(new Error(m.message)); pending.clear(); onWorker(m); return; }
+  if (m.id && pending.has(m.id) && (m.type === "refined" || m.type === "guesses")) { pending.get(m.id).ok(m); pending.delete(m.id); return; }
+  onWorker(m);
+};
+
+// ── sound ──
+let ctx = null, playing = null;
+function play(u, seed = 7) {
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === "suspended") ctx.resume();
+  if (playing) try { playing.stop(); } catch (_) {}
+  const y = render(u, seed), b = ctx.createBuffer(1, y.length, SR);
+  b.copyToChannel(y, 0);
+  const s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start();
+  playing = s;
+}
+
+// ── the bank ──
+function split() {
+  train = bank.filter((_, i) => i % 10 !== 9);
+  test = bank.filter((_, i) => i % 10 === 9);
+  M = matcher(train);
+  worker.postMessage({ type: "bank", bank: train });
+  $("train").disabled = train.length < 50;
+  $("save").disabled = false;
+  $("facts-bank").innerHTML = `<b>${bank.length}</b> patches that sound (seed ${header.sampling.seed}) · <b>${train.length}</b> to learn from · <b>${test.length}</b> targets aside` +
+    (header.left ? ` · left out ${header.left.silent} silences and ${header.left.click} clicks on the way` : "");
+  status(bank.length + " patches");
+  ready();
+}
+$("make").onclick = () => {
+  bank = []; header = null;
+  const n = Math.max(200, Math.min(20000, +$("n").value || 3000)), seed = Math.max(1, Math.floor(+$("seed").value || 1));
+  $("make").disabled = true; $("stop").disabled = false; $("err").hidden = true;
+  const t0 = performance.now();
+  onWorker = (m) => {
+    if (m.type === "header") header = m.header;
+    else if (m.type === "examples") { bank.push(...m.examples); $("progress").style.width = (100 * m.done / n) + "%"; status(`${m.done}/${n} · ${((performance.now() - t0) / m.done).toFixed(0)} ms each`); }
+    else if (m.type === "made" || m.type === "error") {
+      $("make").disabled = false; $("stop").disabled = true;
+      if (header) { header.sampling.n = bank.length; header.left = m.left; }
+      if (bank.length >= 20) split();
+    }
+  };
+  worker.postMessage({ type: "make", n, mode: "plausible", seed });
+};
+$("stop").onclick = () => worker.postMessage({ type: "stop" });
+const download = (name, text, type) => {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+};
+$("save").onclick = () => download(`learn-${bank.length}.ndjson`, [JSON.stringify(header)].concat(bank.map((e) => JSON.stringify(e))).join("\n") + "\n", "application/x-ndjson");
+$("load").onclick = () => $("file").click();
+$("file").onchange = async () => {
+  const f = $("file").files[0]; if (!f) return;
+  try {
+    const lines = (await f.text()).trim().split("\n").map((l) => JSON.parse(l));
+    if (!lines[0] || !lines[0].analysis || lines[0].analysis.dims.join() !== DIMS.join()) throw new Error("its descriptors are not this study's");
+    header = lines[0]; bank = lines.slice(1);
+    $("progress").style.width = "100%"; $("err").hidden = true;
+    split();
+  } catch (e) { $("err").textContent = "Could not load it: " + e.message; $("err").hidden = false; }
+  $("file").value = "";
+};
+
+// ── training ──
+function lossChart(rows, epochs) {
+  if (!rows.length) { $("loss").innerHTML = ""; return; }
+  const W = 600, H = 100, all = rows.flatMap((r) => [r.train, r.valid]), hi = Math.max(...all) * 1.05, lo = 0;
+  const X = (e) => 30 + (e - 1) / Math.max(1, epochs - 1) * (W - 40), Y = (v) => 6 + (1 - (v - lo) / (hi - lo)) * (H - 12);
+  const path = (k) => rows.map((r, i) => (i ? "L" : "M") + X(r.epoch).toFixed(1) + "," + Y(r[k]).toFixed(1)).join("");
+  $("loss").innerHTML = `<svg viewBox="0 0 ${W} ${H + 16}" preserveAspectRatio="none" role="img" aria-label="Loss over the epochs: training and validation">
+    <line class="ax" x1="30" y1="${H - 6}" x2="${W - 10}" y2="${H - 6}"/><text x="0" y="12">${hi.toFixed(3)}</text><text x="0" y="${H - 6}">0</text>
+    <text x="30" y="${H + 12}">1</text><text x="${W - 10}" y="${H + 12}" text-anchor="end">${epochs} epochs</text>
+    <path class="tr" d="${path("train")}"/><path class="va" d="${path("valid")}"/></svg>
+    <div class="legend"><span class="a"><i></i>training</span><span class="b"><i></i>validation (not learnt from)</span></div>`;
+}
+$("train").onclick = () => {
+  const epochs = Math.max(1, Math.min(200, +$("epochs").value || 30)), rows = [];
+  const valid = train.filter((_, i) => i % 20 === 0), fit = train.filter((_, i) => i % 20 !== 0);
+  $("train").disabled = true; $("tstop").disabled = false;
+  const t0 = performance.now();
+  onWorker = (m) => {
+    if (m.type === "epoch") {
+      rows.push(m); lossChart(rows, epochs);
+      status(`epoch ${m.epoch}/${epochs} · ${((performance.now() - t0) / 1000).toFixed(0)} s`);
+      $("facts-train").innerHTML = `epoch <b>${m.epoch}</b> · training error <b>${m.train.toFixed(4)}</b> · validation <b>${m.valid.toFixed(4)}</b> (squared, per parameter in [0, 1]; a random guess is about 0.17)`;
+    } else if (m.type === "trained" || m.type === "error") {
+      $("train").disabled = false; $("tstop").disabled = true;
+      if (m.model) { model = m.model; $("msave").disabled = false; status("trained"); ready(); }
+    }
+  };
+  worker.postMessage({ type: "train", train: fit, valid, epochs, hidden: [128, 64], lr: 2e-3, seed: 1 });
+};
+$("tstop").onclick = () => worker.postMessage({ type: "stop" });
+$("msave").onclick = () => download("learn-model.json", JSON.stringify(model), "application/json");
+$("mload").onclick = () => $("mfile").click();
+$("mfile").onchange = async () => {
+  const f = $("mfile").files[0]; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if (j.kairotic !== "study-32-learn") throw new Error("not a model of this study");
+    model = j;
+    onWorker = (m) => { if (m.type === "loaded") { $("msave").disabled = false; $("facts-train").textContent = "A model loaded from a file."; status("model loaded"); ready(); } };
+    worker.postMessage({ type: "model", model: j });
+  } catch (e) { $("err").textContent = "Could not load it: " + e.message; $("err").hidden = false; }
+  $("mfile").value = "";
+};
+
+function ready() {
+  const ok = !!(model && test.length);
+  ["next", "measure"].forEach((id) => { $(id).disabled = !ok; });
+  if (ok && !current) next();
+}
+
+// ── one target, three ways ──
+const fmt = (p, x) => p.unit === "Hz" ? Math.round(x) + "" : p.unit === "s" ? (x < 0.1 ? (x * 1000).toFixed(0) + "ms" : x.toFixed(2) + "s") : p.key === "pitch" ? x.toFixed(0) : x.toFixed(2);
+function wayView(cls, title, t, u, fd) {
+  const vu = u && values(u);
+  return `<div class="way ${cls}"><h3>${title}<span>${fd === undefined ? "…" : "dist " + fd.toFixed(3)}${u ? " · patch " + paramError(u, t).toFixed(3) : ""}</span></h3>
+    <div class="patch">${PARAMS.map((p, i) => `<div class="prm" title="${esc(p.doc)}"><span class="k">${p.key}</span>
+      <div class="track"><div class="t" style="width:${(t[i] * 100).toFixed(1)}%"></div>${u ? `<div class="m" style="left:${(u[i] * 100).toFixed(1)}%"></div>` : ""}</div>
+      <span class="v">${u ? fmt(p, vu[p.key]) : ""}</span></div>`).join("")}</div></div>`;
+}
+function showWays() {
+  const c = current;
+  $("ways").innerHTML = wayView("nn", "Nearest neighbour", c.target.u, c.nn, c.dnn) + wayView("net", "Network", c.target.u, c.net, c.dnet)
+    + wayView("search", "Network + search", c.target.u, c.search, c.dsearch);
+}
+const SHOW = [["rms", 0, (x) => x], ["centroid (Hz, log)", 1, (x) => Math.log2(1 + x)], ["flatness", 2, (x) => x], ["mfcc 1", 6, (x) => x]];
+function plots(series) {
+  $("plots").innerHTML = SHOW.map(([name, j, tf]) => {
+    const S = series.filter(Boolean).map(([cls, f]) => [cls, f.map((r) => tf(r[j]))]);
+    let lo = Math.min(...S.flatMap(([, v]) => v)), hi = Math.max(...S.flatMap(([, v]) => v));
+    if (hi - lo < 1e-9) { hi += 0.5; lo -= 0.5; }
+    const W = 200, H = 64;
+    const path = (v) => v.map((y, t) => (t ? "L" : "M") + (t / (v.length - 1 || 1) * W).toFixed(1) + "," + (H - (y - lo) / (hi - lo) * H).toFixed(1)).join("");
+    return `<div class="plot"><small>${name}</small><svg viewBox="0 0 ${W} ${H + 12}" preserveAspectRatio="none" role="img" aria-label="${name} over one second">
+      <line class="ax" x1="0" y1="${H}" x2="${W}" y2="${H}"/>${S.map(([cls, v]) => `<path class="${cls}" d="${path(v)}"/>`).join("")}
+      <text x="0" y="${H + 11}">0 s</text><text x="${W}" y="${H + 11}" text-anchor="end">1 s</text></svg></div>`;
+  }).join("");
+}
+let analyser = null;
+async function framesOf(u) {
+  // the descriptors of a patch, as the bank has them (Meyda in this page, loaded once)
+  if (!analyser) analyser = (async () => {
+    await new Promise((ok, fail) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/meyda@5.6.3/dist/web/meyda.min.js"; s.onload = ok; s.onerror = () => fail(new Error("Meyda did not load")); document.head.appendChild(s); });
+    const { analyse } = await import("../30-inverse/kairotic/dataset.mjs");
+    return (v) => analyse(window.Meyda, render(v, 424242));
+  })();
+  return (await analyser)(u);
+}
+async function next() {
+  const target = test[Math.floor(Math.random() * test.length)];
+  const nnHit = M.nearest(target.f);
+  current = { target, nn: nnHit.example.u };
+  ["play-t", "play-nn", "play-net", "play-s"].forEach((id) => { $(id).disabled = true; });
+  $("next").disabled = true;
+  showWays();
+  status("guessing…");
+  const g = await ask({ type: "guess", targets: [target.f] });
+  if (current.target !== target) return;
+  current.net = g.u[0];
+  const tq = M.vec(target.f), dist = async (u) => M.dist(M.vec(await framesOf(u)), tq);
+  current.dnn = await dist(current.nn);
+  current.dnet = await dist(current.net);
+  showWays();
+  $("play-t").disabled = $("play-nn").disabled = $("play-net").disabled = false;
+  plots([["ta", target.f], ["tb", await framesOf(current.net)]]);
+  status("searching…");
+  const budget = +$("budget").value;
+  onWorker = (m) => { if (m.type === "step" && current.target === target) status(`searching… ${m.evals}/${budget} renders · ${m.fx.toFixed(3)}`); };
+  const r = await ask({ type: "refine", target: target.f, from: current.net, budget, seed: 3 });
+  if (current.target !== target) return;
+  current.search = r.x; current.dsearch = r.fx;
+  showWays();
+  plots([["ta", target.f], ["tb", await framesOf(current.net)], ["tc", await framesOf(r.x)]]);
+  $("play-s").disabled = false; $("next").disabled = false;
+  $("edn").hidden = false;
+  $("edn").textContent = ";; target\n" + edn(target.u) + "\n;; network\n" + edn(current.net) + "\n;; network + search\n" + edn(r.x);
+  status(`searched: ${r.f0.toFixed(3)} → ${r.fx.toFixed(3)} in ${budget} renders`);
+}
+$("next").onclick = () => next();
+$("play-t").onclick = () => play(current.target.u, current.target.seed);
+$("play-nn").onclick = () => play(current.nn);
+$("play-net").onclick = () => play(current.net);
+$("play-s").onclick = () => play(current.search);
+
+// ── every target ──
+$("measure").onclick = () => {
+  const n = Math.max(5, Math.min(test.length, +$("mn").value || 20)), budget = +$("budget").value;
+  $("measure").disabled = true;
+  onWorker = (m) => {
+    if (m.type === "measuring") status(`measuring ${m.done}/${m.of} (${budget} renders each)`);
+    else if (m.type === "measured" || m.type === "error") {
+      $("measure").disabled = false;
+      if (m.type !== "measured") return;
+      const row = (name, r) => `<tr><td>${name}</td><td>${r.features.toFixed(3)}</td><td>${r.param.toFixed(3)}</td></tr>`;
+      $("results").innerHTML = `<table class="res"><thead><tr><th>${m.n} targets</th><th>Descriptor distance</th><th>Patch distance</th></tr></thead><tbody>
+        ${row("Nearest neighbour", m.nn)}${row("Network", m.net)}${row("Network + search (" + budget + " renders)", m.search)}${row("The target itself (floor)", m.self)}</tbody></table>
+        <table class="res" style="margin-top:10px"><thead><tr><th>Parameter</th><th>Nearest</th><th>Network</th><th>+ search</th></tr></thead><tbody>
+        ${m.perParam.map((p) => `<tr><td>${p.key}</td><td>${p.nn.toFixed(3)}</td><td>${p.net.toFixed(3)}</td><td>${p.search.toFixed(3)}</td></tr>`).join("")}</tbody></table>`;
+      status("measured");
+    }
+  };
+  worker.postMessage({ type: "measure", targets: test.slice(0, n), budget });
+};
+</script>
