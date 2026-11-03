@@ -5,7 +5,7 @@ RUN apk add --no-cache git
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
-COPY server.js osc.js oscbridge.js ./
+COPY server.js osc.js oscbridge.js signal.js ./
 ENV PORT=8765 RADATA=/data
 VOLUME /data
 EXPOSE 8765

@@ -97,6 +97,14 @@ label { display: inline-flex; gap: 5px; align-items: center; font-size: 13px; }
 .sub2 { font: 600 12px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
 .flash { color: var(--kairos); font: 12px var(--f-code); }
 
+/* the room */
+.peers { display: flex; flex-wrap: wrap; gap: 6px; font: 12px var(--f-code); }
+.peer { border: 1px solid var(--rule); background: var(--sheet); border-radius: 3px; padding: 2px 7px; }
+.peer.p2p { border-color: var(--ok); }
+.peer i { font-style: normal; color: var(--ink-soft); }
+.beat { font: 600 20px var(--f-code); min-width: 3.5em; text-align: center; color: var(--ink-soft); border-radius: 4px; }
+.beat.on { color: #fff; background: var(--kairos); }
+
 /* the events */
 pre.log { margin: 0; font: 11.5px/1.55 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; height: 420px; overflow: auto; white-space: pre; }
 pre.log .in { color: var(--ink); } pre.log .out { color: var(--ink-soft); }
@@ -187,6 +195,26 @@ pre.log .src { color: var(--accent); }
         <div class="row">
           <label><input type="checkbox" id="osc-send"> send every event as OSC</label>
           <label>take in <input type="text" id="osc-filter" placeholder="every address" aria-label="OSC address pattern to take in"></label>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-room">
+        <h2 id="h-room">Room <span>a stream between pages, and a clock they share</span></h2>
+        <div class="row">
+          <input type="text" id="sig-url" value="ws://localhost:8765/signal" aria-label="Relay's rooms">
+          <input type="text" id="room-name" value="study-34" aria-label="Room" style="width: 8em">
+          <button class="act" id="room-join">Join</button>
+          <span class="msg" id="room-msg">needs relay 0.3 (<code>npx @kairotic/relay</code>)</span>
+        </div>
+        <div class="peers" id="peers"></div>
+        <label><input type="checkbox" id="net-send" checked> send every event to the room</label>
+        <div class="row"><span class="sub2">Clock</span><span class="msg" id="clock-read">—</span></div>
+        <div class="row">
+          <label>bpm <input type="number" id="bpm" min="20" max="300" value="96"></label>
+          <button class="act" id="tempo-start">Start for everyone</button>
+          <button class="act" id="tempo-stop">Stop</button>
+          <label><input type="checkbox" id="metro" checked> metronome</label>
+          <span class="beat" id="beat" aria-live="off">·</span>
         </div>
       </section>
 
@@ -308,11 +336,11 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (defn continuous? [e] (or (= :tilt (:type e)) (= :axis (:type e)) (and (= :button (:type e)) (nil? (:gate e)))))
 
-(declare osc-out!)
+(declare osc-out! net-out!)
 
 (defn take! [e]
   (when (or (not (continuous? e)) (.-checked ($ "log-cont"))) (log! :in (io/edn e)))
-  (hear! e) (record! e) (osc-out! e))
+  (hear! e) (record! e) (osc-out! e) (net-out! e))
 
 (defn send-msgs! [ms]
   (let [port (when-let [id (not-empty (.-value ($ "output")))] (when @midi (.get (.-outputs @midi) id)))]
@@ -381,6 +409,184 @@ window.addEventListener("DOMContentLoaded", function () {
       (set! (.-onmessage ws) (fn [ev] (try (osc-in! (js/JSON.parse (.-data ev))) (catch :default _ nil))))
       (set! (.-onerror ws) (fn [_] (osc-msg! (str "no bridge at " (esc url) " — is <code>npx @kairotic/relay --osc</code> running?") "bad")))
       (set! (.-onclose ws) (fn [_] (when (= ws (:ws @osc)) (swap! osc assoc :ws nil)))))))
+
+;; ───────── a room: the stream between pages, and a shared clock ─────────
+;; The relay's /signal (relay/signal.js) is where the pages of a room find each other: through it they
+;; open a WebRTC data channel to each other (unordered, no retransmits: a gesture that arrives late is
+;; worth nothing), and while a channel is not open the relay passes the stream itself. Every event the
+;; page takes goes to the room (not those that came from it); what arrives is taken like any other, with
+;; {:src :net :via <its source> :peer id}. The same socket gives the relay's time (ping → pong): the
+;; clock. A tempo started on one page goes to all of them through the relay (reliably), and to whoever
+;; joins later.
+
+(defonce room (atom {:ws nil :id nil :peers {} :clock (io/new-clock) :tempo nil :n 0 :timer nil}))
+
+(defn local-ms
+  "This page's time in ms since 1970 (a test can pretend this machine's clock is off: kairoticClockSkew)."
+  [] (+ (.-timeOrigin js/performance) (js/performance.now) (or (.-kairoticClockSkew js/window) 0)))
+(defn shared-ms [] (io/shared-time (:clock @room) (local-ms)))
+
+(defn room-msg! [text kind] (set! (.-innerHTML ($ "room-msg")) text) (set! (.-className ($ "room-msg")) (str "msg " kind)))
+
+(defn signal! [m] (when-let [ws (:ws @room)] (when (= 1 (.-readyState ws)) (.send ws (js/JSON.stringify (clj->js m))))))
+
+(defn draw-peers! []
+  (let [ps (:peers @room)]
+    (set! (.-innerHTML ($ "peers"))
+          (if (seq ps)
+            (apply str (for [[id p] (sort-by (comp :n val) ps)]
+                         (str "<span class='peer" (when (= "p2p" (:state p)) " p2p") "' data-peer='" (esc id) "'>"
+                              (esc (or (not-empty (:name p)) id)) " <i>" (:state p) "</i></span>")))
+            (if (:id @room) "<span class='empty'>alone in the room</span>" "")))))
+
+(defn peer-send! [id obj]
+  (let [dc (get-in @room [:peers id :dc])]
+    (if (and dc (= "open" (.-readyState dc)))
+      (.send dc (js/JSON.stringify obj))
+      (signal! {:to id :data {:stream obj}}))))
+
+(defn net-out! [e]
+  (when (and (:id @room) (seq (:peers @room)) (.-checked ($ "net-send")) (not= :net (:src e)))
+    (let [obj (io/->wire e)]
+      (doseq [id (keys (:peers @room))] (peer-send! id obj))
+      (when-not (continuous? e)
+        (log! :out (str "  ⇉ room · " (count (:peers @room)) (if (= 1 (count (:peers @room))) " peer" " peers")))))))
+
+(defn net-in! [peer obj]
+  (let [e (io/<-wire obj peer)
+        n (get-in @room [:peers peer :n] 0)
+        ;; another page's voice 60 is not this page's voice 60
+        e (if (number? (:id e)) (update e :id + (* 100000 (inc n))) e)]
+    (take! e)
+    (when (and (#{:note :glide} (:type e)) (.-checked ($ "thru"))) (send! [e]))))
+
+(defn set-tempo! [t]
+  (swap! room assoc :tempo t :scheduled nil)
+  (set! (.-textContent ($ "beat")) "·")
+  (log! :in (if t (str "tempo " (:bpm t) " bpm from shared " (js/Math.round (:t0 t))) "tempo stopped")))
+
+(defn add-peer! [id name]
+  (swap! room (fn [r] (-> r (assoc-in [:peers id] {:name name :n (:n r) :state "relay" :pending []}) (update :n inc))))
+  (draw-peers!))
+
+(defn drop-peer! [id]
+  (when-let [pc (get-in @room [:peers id :pc])] (.close pc))
+  (swap! room update :peers dissoc id) (draw-peers!))
+
+(defn open-pc! [id initiator?]
+  (let [pc (js/RTCPeerConnection. #js {:iceServers #js [#js {:urls "stun:stun.l.google.com:19302"}]})
+        dc (.createDataChannel pc "kairotic" #js {:negotiated true :id 0 :ordered false :maxRetransmits 0})
+        state! (fn [s] (when (get-in @room [:peers id]) (swap! room assoc-in [:peers id :state] s) (draw-peers!)))]
+    (set! (.-onicecandidate pc) (fn [ev] (when-let [c (.-candidate ev)] (signal! {:to id :data {:candidate (.toJSON c)}}))))
+    (set! (.-onopen dc) (fn [_] (state! "p2p")))
+    (set! (.-onclose dc) (fn [_] (state! "relay")))
+    (set! (.-onmessage dc) (fn [ev] (net-in! id (js/JSON.parse (.-data ev)))))
+    (swap! room update-in [:peers id] merge {:pc pc :dc dc})
+    (when initiator?
+      (-> (.createOffer pc) (.then #(.setLocalDescription pc %))
+          (.then #(signal! {:to id :data {:sdp (.toJSON (.-localDescription pc))}}))))
+    pc))
+
+(defn flush-candidates! [id]
+  (let [pc (get-in @room [:peers id :pc])]
+    (doseq [c (get-in @room [:peers id :pending])] (.catch (.addIceCandidate pc c) (fn [_] nil)))
+    (swap! room assoc-in [:peers id :pending] [])))
+
+(defn from-peer! [id data]
+  (when (get-in @room [:peers id])
+    (cond
+      (.-sdp data)
+      (let [d (.-sdp data) pc (or (get-in @room [:peers id :pc]) (open-pc! id false))]
+        (-> (.setRemoteDescription pc d)
+            (.then (fn [_] (flush-candidates! id)
+                     (when (= "offer" (.-type d))
+                       (-> (.createAnswer pc) (.then #(.setLocalDescription pc %))
+                           (.then #(signal! {:to id :data {:sdp (.toJSON (.-localDescription pc))}}))))))
+            (.catch (fn [e] (log! :in (str "WebRTC: " (.-message e)))))))
+      (.-candidate data)
+      (let [pc (get-in @room [:peers id :pc])]
+        (if (and pc (.-remoteDescription pc))
+          (.catch (.addIceCandidate pc (.-candidate data)) (fn [_] nil))
+          (swap! room update-in [:peers id :pending] conj (.-candidate data))))
+      (.-stream data) (net-in! id (.-stream data))
+      (.hasOwnProperty data "tempo") (set-tempo! (when-let [t (.-tempo data)] {:t0 (.-t0 t) :bpm (.-bpm t)})))))
+
+(defn on-signal! [f]
+  (cond
+    (.-pong f) (let [t1 (local-ms)] (swap! room update :clock io/clock-sample (.-pong f) (.-t f) t1))
+    (.-welcome f) (let [w (.-welcome f)]
+                    (swap! room assoc :id (.-id w))
+                    (room-msg! (str "in " (esc (.-room w)) " as " (.-id w)) "ok")
+                    (doseq [p (.-peers w)] (add-peer! (.-id p) (.-name p)) (open-pc! (.-id p) true))
+                    (draw-peers!))
+    (.-joined f) (let [j (.-joined f)]
+                   (add-peer! (.-id j) (.-name j))
+                   (when-let [t (:tempo @room)] (signal! {:to (.-id j) :data {:tempo t}})))
+    (.-left f) (drop-peer! (.-left f))
+    (.-from f) (from-peer! (.-from f) (.-data f))
+    (.-error f) (log! :in (str "room: " (.-error f)))))
+
+(defn ping! [] (signal! {:ping (local-ms)}))
+
+(defn leave! []
+  (when-let [t (:timer @room)] (js/clearInterval t))
+  (doseq [id (keys (:peers @room))] (drop-peer! id))
+  (when-let [ws (:ws @room)] (set! (.-onclose ws) nil) (.close ws))
+  (swap! room assoc :ws nil :id nil :peers {} :clock (io/new-clock) :timer nil :tempo nil)
+  (draw-peers!))
+
+(defn join! []
+  (leave!)
+  ;; a click: the moment the browser lets the page's sound start (for the metronome and what peers play)
+  (.resume (ctx))
+  (let [url (.trim (.-value ($ "sig-url")))
+        ws (try (js/WebSocket. url) (catch :default e (room-msg! (esc (.-message e)) "bad") nil))]
+    (when ws
+      (swap! room assoc :ws ws)
+      (room-msg! "connecting…" "")
+      (set! (.-onopen ws)
+            (fn [_]
+              (signal! {:join (.trim (.-value ($ "room-name")))
+                        :name (str "page " (.toUpperCase (.slice (.toString (js/Math.random) 36) 2 5)))})
+              ;; a quick burst of samples for the clock, then one every two seconds
+              (doseq [i (range 8)] (js/setTimeout ping! (* 60 i)))
+              (swap! room assoc :timer (js/setInterval ping! 2000))))
+      (set! (.-onmessage ws) (fn [ev] (on-signal! (js/JSON.parse (.-data ev)))))
+      (set! (.-onerror ws) (fn [_] (room-msg! (str "no rooms at " (esc url) " — is a relay 0.3 running?") "bad")))
+      (set! (.-onclose ws) (fn [_] (when (= ws (:ws @room)) (room-msg! "left" "") (leave!)))))))
+
+;; the clock, the beat and the metronome, on every frame
+(def click-ahead 150) ;; ms of clicks scheduled ahead on the audio clock
+
+(defn click! [at-ms down?]
+  (let [c (ctx) dt (/ (- at-ms (shared-ms)) 1000) t (+ (.-currentTime c) (max 0 dt))
+        o (.createOscillator c) g (.createGain c)]
+    (set! (.. o -frequency -value) (if down? 1760 1320))
+    (.setValueAtTime (.-gain g) 0.5 t) (.exponentialRampToValueAtTime (.-gain g) 0.001 (+ t 0.05))
+    (.connect o g) (.connect g (:bus @audio)) (.start o t) (.stop o (+ t 0.06))))
+
+(defn clock-frame! []
+  (let [c (:clock @room) now-s (shared-ms) tempo (:tempo @room)]
+    (when (:id @room)
+      (set! (.-textContent ($ "clock-read"))
+            (if now-s
+              (str "offset " (if (neg? (io/clock-offset c)) "" "+") (.toFixed (io/clock-offset c) 1) " ms ± "
+                   (.toFixed (io/clock-error c) 1) " · shared " (.slice (.toISOString (js/Date. now-s)) 11 23))
+              "measuring…")))
+    (when (and tempo now-s)
+      (let [b (io/beat-at tempo now-s) el ($ "beat")]
+        (set! (.-textContent el) (if (neg? b) (str "in " (.toFixed (- (/ (- (:t0 tempo) now-s) 1000)) 1) " s") (str (inc (js/Math.floor b)))))
+        (if (and (>= b 0) (< (mod b 1) 0.15)) (.add (.-classList el) "on") (.remove (.-classList el) "on"))
+        (when (.-checked ($ "metro"))
+          (let [from (max now-s (or (:scheduled @room) now-s)) to (+ now-s click-ahead)]
+            (doseq [[k t] (io/beats-between tempo from to) :when (>= k 0)] (click! t (zero? (mod k 4))))
+            (swap! room assoc :scheduled to))))))
+  (js/requestAnimationFrame clock-frame!))
+
+;; what a test reads
+(set! (.-kairoticSharedNow js/window) (fn [] (shared-ms)))
+(set! (.-kairoticBeat js/window) (fn [] (when-let [t (:tempo @room)] (when-let [n (shared-ms)] (io/beat-at t n)))))
+(set! (.-kairoticClockOffset js/window) (fn [] (io/clock-offset (:clock @room))))
 
 ;; ───────── Web MIDI ─────────
 
@@ -634,9 +840,16 @@ window.addEventListener("DOMContentLoaded", function () {
                   (.catch #(set! (.-textContent ($ "take-msg")) "could not copy"))))))
   (.addEventListener ($ "demo") "click" (fn [_] (demo!)))
   (.addEventListener ($ "motion-on") "click" (fn [_] (motion-on!)))
-  (.addEventListener ($ "osc-connect") "click" (fn [_] (osc-connect!))))
+  (.addEventListener ($ "osc-connect") "click" (fn [_] (osc-connect!)))
+  (.addEventListener ($ "room-join") "click" (fn [_] (join!)))
+  (.addEventListener ($ "tempo-start") "click"
+    (fn [_] (when-let [n (shared-ms)]
+              ;; beat 0 a second from now, on every page of the room
+              (let [t {:t0 (+ n 1000) :bpm (io/clamp (js/parseFloat (.-value ($ "bpm"))) 20 300)}]
+                (signal! {:to "*" :data {:tempo t}}) (set-tempo! t)))))
+  (.addEventListener ($ "tempo-stop") "click" (fn [_] (signal! {:to "*" :data {:tempo nil}}) (set-tempo! nil))))
 
-(draw-kbd!) (wire-kbd!) (wire!) (draw-take!) (poll-pads!)
+(draw-kbd!) (wire-kbd!) (wire!) (draw-take!) (poll-pads!) (clock-frame!)
 (set! (.-textContent ($ "status")) (if (.-requestMIDIAccess js/navigator) "ready · Web MIDI available" "ready · no Web MIDI here"))
 (set! (.. ($ "status") -dataset -ready) "1")
 </script>

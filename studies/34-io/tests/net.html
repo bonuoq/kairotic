@@ -1,0 +1,101 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 34 · io · room tests</title>
+<pre id="out">Running…</pre>
+<iframe id="a" src="../index.html" width="1200" height="900" style="border:0"></iframe>
+<iframe id="b" src="../index.html" width="1200" height="900" style="border:0"></iframe>
+<script>
+// Two pages in one room through a real relay: tests/net.html?signal=ws://localhost:8765/signal.
+// Page B pretends its machine's clock is 700 ms behind (kairoticClockSkew), so the shared clock has
+// something to correct. Without ?signal it is skipped (tests/studies.mjs passes SIGNAL_RELAY).
+var signal = new URLSearchParams(location.search).get("signal");
+var results = [];
+function is(what, ok, detail) { results.push([what + (ok || detail === undefined ? "" : " — " + detail), !!ok]); }
+function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function until(f, ms) {
+  var t0 = Date.now();
+  return new Promise(function (ok) {
+    (function loop() { var v; try { v = f(); } catch (e) {} if (v || Date.now() - t0 > ms) ok(v); else setTimeout(loop, 50); })();
+  });
+}
+function done(err) {
+  if (err) results.push(["error: " + (err.message || err), false]);
+  var failed = results.filter(function (r) { return !r[1]; }).map(function (r) { return r[0]; });
+  document.getElementById("out").textContent = (results.length - failed.length) + " / " + results.length + " pass" +
+    failed.map(function (f) { return "\n✗ " + f; }).join("");
+  window.kairoticResults = { total: results.length, failed: failed };
+}
+if (!signal) {
+  document.getElementById("a").remove(); document.getElementById("b").remove();
+  document.getElementById("out").textContent = "skipped: no ?signal";
+  window.kairoticResults = { total: 0, failed: [], skipped: true };
+} else {
+  var loaded = 0;
+  var start = function () {
+    if (++loaded < 2) return;
+    var A = document.getElementById("a").contentWindow, B = document.getElementById("b").contentWindow;
+    var $ = function (w, id) { return w.document.getElementById(id); };
+    var log = function (w) { return $(w, "log").textContent; };
+    var key = function (w, n, type) {
+      var el = w.document.querySelector("[data-n='" + n + "']"), r = el.getBoundingClientRect();
+      el.dispatchEvent(new w.PointerEvent(type, { bubbles: true, pointerId: 9, clientX: r.left + 5, clientY: r.bottom - 5 }));
+    };
+    until(function () { return $(A, "status").dataset.ready && $(B, "status").dataset.ready; }, 30000).then(function () {
+      [A, B].forEach(function (w) { $(w, "monitor").checked = false; $(w, "metro").checked = false; $(w, "sig-url").value = signal; });
+      B.kairoticClockSkew = -700;
+      $(A, "room-join").click();
+      return until(function () { return /^in study-34/.test($(A, "room-msg").textContent); }, 10000);
+    }).then(function (ok) {
+      is("A joins the room", ok);
+      is("and is alone in it", /alone/.test($(A, "peers").textContent));
+      $(B, "room-join").click();
+      return until(function () { return $(A, "peers").querySelector(".peer") && $(B, "peers").querySelector(".peer"); }, 10000);
+    }).then(function (ok) {
+      is("each sees the other", ok);
+      return until(function () { return $(A, "peers").querySelector(".peer.p2p") && $(B, "peers").querySelector(".peer.p2p"); }, 15000);
+    }).then(function (ok) {
+      is("a direct WebRTC channel opens both ways", ok, $(A, "peers").textContent + " / " + $(B, "peers").textContent);
+      key(A, 62, "pointerdown");
+      return wait(300);
+    }).then(function () {
+      A.dispatchEvent(new A.PointerEvent("pointerup", { pointerId: 9 }));
+      return wait(300);
+    }).then(function () {
+      var l = log(B);
+      is("A's key reaches B as an event from the room", /\{:src :net :via :keyboard :peer "p[0-9a-z]+" :type :note :id 100062 :note 62 :freq 293\.665 :amp [0-9.]+ :gate true\}/.test(l), l.split("\n").slice(0, 4).join(" | "));
+      is("and its release", /:src :net :via :keyboard .*:id 100062 .*:gate false/.test(l));
+      is("A logs that it went to the room", /⇉ room · 1 peer/.test(log(A)));
+      is("B does not send it back", !/:src :net/.test(log(A)));
+      return until(function () { return A.kairoticClockOffset() != null && B.kairoticClockOffset() != null; }, 5000);
+    }).then(function () {
+      var oa = A.kairoticClockOffset(), ob = B.kairoticClockOffset();
+      is("A's clock: the relay's time on the same machine (offset ≈ 0)", Math.abs(oa) < 25, oa);
+      is("B's clock: its 700 ms behind corrected (offset ≈ +700)", Math.abs(ob - 700) < 25, ob);
+      var d = A.kairoticSharedNow() - B.kairoticSharedNow();
+      is("both read the same shared time", Math.abs(d) < 25, d);
+      $(A, "bpm").value = "120"; $(A, "tempo-start").click();
+      return until(function () { return B.kairoticBeat() != null; }, 3000);
+    }).then(function (ok) {
+      is("a tempo started on A reaches B", ok);
+      return wait(1500);
+    }).then(function () {
+      var ba = A.kairoticBeat(), bb = B.kairoticBeat();
+      is("and they are on the same beat (within 1/20)", Math.abs(ba - bb) < 0.05, ba + " / " + bb);
+      is("the beat has started (beat 0 was a second after the start)", ba > 0.5 && ba < 2, ba);
+      is("B shows the beat", /^[0-9]+$/.test($(B, "beat").textContent));
+      // whoever joins later gets the tempo: B leaves and joins again
+      $(B, "room-join").click();
+      return until(function () { return B.kairoticBeat() != null && $(B, "peers").querySelector(".peer"); }, 10000);
+    }).then(function () {
+      is("joining again: the tempo comes from the one who has it", Math.abs(A.kairoticBeat() - B.kairoticBeat()) < 0.05);
+      $(A, "tempo-stop").click();
+      return until(function () { return B.kairoticBeat() == null; }, 3000);
+    }).then(function (ok) {
+      is("stop reaches B", ok);
+      done();
+    }).catch(done);
+  };
+  document.getElementById("a").addEventListener("load", start);
+  document.getElementById("b").addEventListener("load", start);
+}
+</script>

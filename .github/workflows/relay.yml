@@ -4,7 +4,7 @@ name: relay
 
 on:
   pull_request:
-    paths: ["relay/**", "tests/oscbridge.mjs", ".github/workflows/relay.yml"]
+    paths: ["relay/**", "tests/oscbridge.mjs", "tests/signal.mjs", ".github/workflows/relay.yml"]
   workflow_dispatch:
 
 permissions:
@@ -26,3 +26,4 @@ jobs:
       - run: npm install --no-audit --no-fund
         working-directory: relay
       - run: node tests/oscbridge.mjs
+      - run: node tests/signal.mjs
