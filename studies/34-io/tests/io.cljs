@@ -199,6 +199,25 @@
   (is "tempo: the beats in a window" (= [[2 11000] [3 11500]] (io/beats-between tempo 10800 11600)))
   (is "tempo: before t0, negative beats" (= [[-1 9500]] (io/beats-between tempo 9400 9900))))
 
+;; serial
+(is "serial: numbers by spaces" (= [{:src :serial :type :serial :values [512 300 1]}] (io/serial-line "512 300 1")))
+(is "serial: by commas, negative and decimal" (= [-1.5 0 0.25] (:values (first (io/serial-line "-1.5,0,.25\r")))))
+(is "serial: key:value and key=value, one event each"
+    (= [{:src :serial :type :serial :key "pot" :value 512} {:src :serial :type :serial :key "light" :value 300}]
+       (io/serial-line "pot:512 light=300")))
+(is "serial: a key with a word" (= {:src :serial :type :serial :key "state" :text "on"} (first (io/serial-line "state:on"))))
+(is "serial: anything else as text" (= [{:src :serial :type :serial :text "hello from the board"}] (io/serial-line "hello from the board")))
+(is "serial: an empty line says nothing" (empty? (io/serial-line "  ")))
+(let [[s1 e1] (io/serial-chunk (io/new-serial) "pot:5")
+      [s2 e2] (io/serial-chunk s1 "12\r\n1 2")
+      [s3 e3] (io/serial-chunk s2 " 3\n\n")]
+  (is "serial: a line cut in two waits" (and (empty? e1) (= "pot:5" (:buf s1))))
+  (is "serial: and is read when it ends" (= [{:src :serial :type :serial :key "pot" :value 512}] e2))
+  (is "serial: the next one too" (and (= [1 2 3] (:values (first e3))) (= "" (:buf s3)))))
+(is "serial: a line that never ends is dropped" (= "" (:buf (first (io/serial-chunk (io/new-serial) (apply str (repeat 600 "x")))))))
+(is "serial → osc: values" (= {:address "/kairotic/serial" :args [1 2]} (io/event->osc {:src :serial :type :serial :values [1 2]})))
+(is "serial → osc: a key" (= {:address "/kairotic/serial/pot" :types "f" :args [512]} (io/event->osc {:src :serial :type :serial :key "pot" :value 512})))
+
 ;; report
 (let [rs @results failed (remove second rs)
       text (str (- (count rs) (count failed)) " / " (count rs) " pass"

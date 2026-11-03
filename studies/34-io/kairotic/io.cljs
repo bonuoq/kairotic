@@ -387,6 +387,40 @@
                          [{} []] (sort-by key now))]
     [(assoc st :pads ps) (vec (concat gone evs))]))
 
+;; ───────── serial ─────────
+;; A microcontroller (an Arduino's Serial.println, an ESP32…) sends lines of text; each line is read as:
+;;   "512 300 1" or "512,300,1"     → {:src :serial :type :serial :values [512 300 1]}
+;;   "pot:512 light=300"            → {:src :serial :type :serial :key "pot" :value 512} and one for light
+;;   anything else                  → {:src :serial :type :serial :text "…"}
+;; Text arrives in pieces that do not respect lines: what is left after the last newline waits for the next.
+
+(def max-line 512)
+
+(defn- number-of [s] (when (re-matches #"[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?" s) (js/parseFloat s)))
+
+(defn serial-line
+  "The events of one line."
+  [line]
+  (let [line (.trim line) ev (fn [m] (merge {:src :serial :type :serial} m))
+        words (remove empty? (.split line (js/RegExp. "[\\s,;]+")))]
+    (cond
+      (empty? line) []
+      (every? number-of words) [(ev {:values (mapv number-of words)})]
+      (every? #(re-matches #"[^:=]+[:=][^:=]+" %) words)
+      (vec (for [w words :let [[k v] (.split w (js/RegExp. "[:=]"))]]
+             (ev (if-let [n (number-of v)] {:key k :value n} {:key k :text v}))))
+      :else [(ev {:text line})])))
+
+(defn new-serial [] {:buf ""})
+
+(defn serial-chunk
+  "A piece of text from the port: [state, events of the lines it completes]."
+  [st text]
+  (let [lines (.split (str (:buf st) text) (js/RegExp. "\\r?\\n"))
+        rest-buf (last lines)]
+    [{:buf (if (> (count rest-buf) max-line) "" rest-buf)}
+     (vec (mapcat serial-line (butlast lines)))]))
+
 ;; ───────── OSC ─────────
 ;; Through the relay's bridge (relay/oscbridge.js) a message is JSON: {address, args, types?, from?}. An
 ;; event goes out under /kairotic/<type>, with its values in a fixed order, so that a SynthDef or a Max
@@ -419,6 +453,9 @@
                      :types (if (some? (:gate e)) "fi" "f")
                      :args (if (some? (:gate e)) [(:value e) (if (:gate e) 1 0)] [(:value e)])}
     (:clock :start :stop :continue) {:address (str "/kairotic/" (name (:type e))) :args []}
+    :serial (cond (:values e) {:address "/kairotic/serial" :args (vec (:values e))}
+                  (number? (:value e)) {:address (str "/kairotic/serial/" (:key e)) :types "f" :args [(:value e)]}
+                  :else {:address (str "/kairotic/serial" (when (:key e) (str "/" (:key e)))) :types "s" :args [(:text e)]})
     :osc (when-not (= :osc (:src e)) {:address (:address e) :args (vec (:args e))})
     nil))
 
@@ -537,6 +574,6 @@
 (defn edn
   "An event as one line of EDN, its keys in a readable order."
   [e]
-  (let [order [:src :via :peer :type :address :args :pad :id :ch :note :button :axis :name :cc :freq :amp :x :y :value :gate :from]
+  (let [order [:src :via :peer :type :key :values :text :address :args :pad :id :ch :note :button :axis :name :cc :freq :amp :x :y :value :gate :from]
         ks (concat (filter #(contains? e %) order) (sort (remove (set order) (keys e))))]
     (str "{" (apply str (interpose " " (map (fn [k] (str k " " (pr-str (get e k)))) ks))) "}")))

@@ -58,12 +58,27 @@ function attach(server, opts) {
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
   });
 
+  // the parameters each page declared, for OSCQuery: ws → Map(address → {type, value, range, description})
+  const declared = new Map();
+  const params = () => { const all = new Map(); for (const ps of declared.values()) for (const [a, p] of ps) all.set(a, p); return all; };
+
   wss.on("connection", (ws) => {
-    ws.send(JSON.stringify({ hello: { listen: opts.listen, targets: targets.map((t) => t.name) } }));
+    ws.send(JSON.stringify({ hello: { listen: opts.listen, targets: targets.map((t) => t.name), oscquery: opts.oscquery || null } }));
+    ws.on("close", () => declared.delete(ws));
     ws.on("message", (data) => {
       let m;
       try {
         m = JSON.parse(String(data));
+        if (Array.isArray(m.declare)) {
+          const ps = new Map();
+          for (const p of m.declare) if (p && typeof p.address === "string" && p.address[0] === "/") ps.set(p.address, p);
+          return declared.set(ws, ps);
+        }
+        if (m.value && typeof m.value.address === "string") {
+          const p = declared.has(ws) && declared.get(ws).get(m.value.address);
+          if (p) p.value = m.value.value;
+          return;
+        }
         const t = m.to ? targets.find((x) => x.name === m.to) : targets[0];
         if (!t) throw new Error(`no target called ${m.to}`);
         const bytes = osc.encode(m.elements ? m : { address: m.address, args: m.args || [], types: m.types });
@@ -79,6 +94,8 @@ function attach(server, opts) {
     try { ms = osc.messages(osc.decode(bytes)); } catch (e) { return log(`osc: unreadable packet from ${rinfo.address}:${rinfo.port}`); }
     const from = `${rinfo.address}:${rinfo.port}`;
     for (const m of ms) {
+      // a declared parameter set from outside keeps its new value (what OSCQuery shows)
+      for (const ps of declared.values()) if (ps.has(m.address) && m.args.length) ps.get(m.address).value = m.args[0];
       const frame = JSON.stringify({ ...m, from });
       for (const c of wss.clients) if (c.readyState === 1) c.send(frame);
     }
@@ -90,9 +107,76 @@ function attach(server, opts) {
   });
 
   return {
-    wss, udp, targets, ready,
+    wss, udp, targets, ready, params, oscPort: () => udp.address().port,
     close() { for (const c of wss.clients) c.terminate(); wss.close(); try { udp.close(); } catch (e) {} },
   };
 }
 
-module.exports = { attach, parseTarget, originAllowed };
+// ── OSCQuery ──
+// Pages say which of their parameters other tools may see and set: { declare: [{ address, type, value,
+// range: [min, max], description }] } (type an OSC type tag: f i s T…; T for a boolean), and later
+// { value: { address, value } } when one changes. The relay publishes them all as an OSCQuery tree over
+// HTTP (GET / for the tree, /?HOST_INFO for how to reach it, /a/b?VALUE for one value), so tools such as
+// ossia score, Chataigne or TouchDesigner find them; what those tools send to the relay's OSC port goes to
+// the pages, like any OSC, and is kept as the new value. Without mDNS (no dependency), add the relay by
+// hand in those tools: http://<host>:<oscquery port>.
+
+const http = require("http");
+
+function oscquery(params, { name, oscPort }) {
+  // params: Map(address → {type, value, range, description}) → the tree, with a node for each folder
+  const root = { FULL_PATH: "/", CONTENTS: {} };
+  for (const [address, p] of [...params].sort(([a], [b]) => a.localeCompare(b))) {
+    const parts = address.split("/").filter(Boolean);
+    let node = root;
+    parts.forEach((part, i) => {
+      node.CONTENTS = node.CONTENTS || {};
+      const full = "/" + parts.slice(0, i + 1).join("/");
+      node = node.CONTENTS[part] = node.CONTENTS[part] || { FULL_PATH: full };
+    });
+    const bool = p.type === "T" || p.type === "F";
+    Object.assign(node, {
+      TYPE: bool ? "T" : p.type || "f",
+      ACCESS: 3,
+      VALUE: [bool ? !!p.value : p.value],
+      ...(p.range ? { RANGE: [{ MIN: p.range[0], MAX: p.range[1] }] } : {}),
+      ...(p.description ? { DESCRIPTION: p.description } : {}),
+    });
+  }
+  return {
+    tree: root,
+    hostInfo: { NAME: name, OSC_PORT: oscPort, OSC_TRANSPORT: "UDP",
+                EXTENSIONS: { ACCESS: true, VALUE: true, RANGE: true, TYPE: true, DESCRIPTION: true } },
+  };
+}
+
+function find(tree, path) {
+  if (path === "/" || path === "") return tree;
+  let node = tree;
+  for (const part of path.split("/").filter(Boolean)) {
+    node = node.CONTENTS && node.CONTENTS[part];
+    if (!node) return null;
+  }
+  return node;
+}
+
+/** Serves the pages' parameters as OSCQuery on its own HTTP port. Returns { server, ready, close }. */
+function serveQuery(bridge, { port, bind, name }) {
+  const server = http.createServer((req, res) => {
+    const [path, query] = (req.url || "/").split("?");
+    const { tree, hostInfo } = oscquery(bridge.params(), { name, oscPort: bridge.oscPort() });
+    const reply = (code, body) => {
+      res.writeHead(code, { "content-type": "application/json", "access-control-allow-origin": "*" });
+      res.end(body === undefined ? "" : JSON.stringify(body));
+    };
+    if (query === "HOST_INFO") return reply(200, hostInfo);
+    const node = find(tree, decodeURIComponent(path));
+    if (!node) return reply(404);
+    if (query) return query in node ? reply(200, { [query]: node[query] }) : reply(204);
+    reply(200, node);
+  });
+  const ready = new Promise((ok, no) => { server.once("error", no); server.listen(port, bind, () => ok(server.address().port)); });
+  return { server, ready, close() { server.close(); } };
+}
+
+module.exports = { attach, parseTarget, originAllowed, oscquery, serveQuery };

@@ -62,7 +62,30 @@ if (!relay) {
     return tap(67);
   }).then(function () {
     is("a pattern that matches lets them in", /:src :osc :type :note :id 67 /.test(log()));
-    done();
+    // OSCQuery: the page's parameters, published by the relay, and set from outside
+    var q = ($("osc-msg").textContent.match(/OSCQuery on (http:\/\/127\.0\.0\.1:[0-9]+)/) || [])[1];
+    is("the relay says where OSCQuery is", !!q);
+    return fetch(q + "/kairotic/study").then(function (r) { return r.json(); }).then(function (node) {
+      var bpm = node.CONTENTS.bpm, metro = node.CONTENTS.metronome;
+      is("OSCQuery shows the page's parameters, typed, with their values", bpm.TYPE === "f" && bpm.VALUE[0] === 96 && bpm.RANGE[0].MIN === 20 && metro.TYPE === "T" && metro.VALUE[0] === true);
+      $("bpm").value = "104"; $("bpm").dispatchEvent(new w.Event("change"));
+      return wait(150).then(function () { return fetch(q + "/kairotic/study/bpm?VALUE"); }).then(function (r) { return r.json(); });
+    }).then(function (v) {
+      is("a change by hand reaches OSCQuery", v.VALUE[0] === 104);
+      // a tool sets it: OSC to the relay's port (here through the loop target, as UDP from outside)
+      return new Promise(function (ok) {
+        var ws = new WebSocket(relay);
+        ws.onopen = function () {
+          ws.send(JSON.stringify({ address: "/kairotic/study/bpm", args: [141.0], types: "f", to: "loop" }));
+          ws.send(JSON.stringify({ address: "/kairotic/study/metronome", args: [false], to: "loop" }));
+          setTimeout(function () { ws.close(); ok(); }, 300);
+        };
+      });
+    }).then(function () {
+      is("OSC sets the page's input", $("bpm").value === "141" && $("metro").checked === false);
+      is("and says so", /OSC sets \/kairotic\/study\/bpm 141/.test(log()));
+      done();
+    });
   }).catch(done);
 });
 </script>

@@ -54,6 +54,7 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
     "  --osc-bind 127.0.0.1  the address it listens on (0.0.0.0 to take OSC from other machines)",
     "  --osc-out name=host:port  where the pages' OSC goes; several allowed, the first by default",
     "                      (sc=127.0.0.1:57120: SuperCollider's sclang)",
+    "  --oscquery 5678     the HTTP port where the pages' parameters are published as OSCQuery (0: none)",
     "  --osc-origin url    the pages allowed to use it (https://bonuoq.github.io, http://localhost,",
     "                      http://127.0.0.1 by default; * for any — then any site you visit can send OSC)",
     "",
@@ -92,8 +93,16 @@ server.listen(port, () => {
       bind: option("osc-bind") || "127.0.0.1",
       targets: options("osc-out"),
       origins: options("osc-origin").length ? options("osc-origin") : undefined,
+      oscquery: option("oscquery") === "0" ? null : Number(option("oscquery")) || 5678,
       log: console.log,
     });
+    const qport = option("oscquery") === "0" ? 0 : Number(option("oscquery")) || 5678;
+    if (qport) {
+      const { serveQuery } = require("./oscbridge.js");
+      bridge.ready.then(() => serveQuery(bridge, { port: qport, bind: option("osc-bind") || "127.0.0.1", name: "Kairotic" }).ready)
+        .then((p) => console.log(`              OSCQuery: http://localhost:${p} (add it by hand in ossia score, Chataigne…)`),
+              (e) => console.error(`  OSCQuery: could not listen on ${qport}: ${e.message}`));
+    }
     bridge.ready.then((p) => {
       console.log(`  OSC bridge: pages on ws://localhost:${port}/osc · OSC in on udp ${option("osc-bind") || "127.0.0.1"}:${p}`);
       console.log(`              OSC out to ${bridge.targets.map((t) => `${t.name} (${t.host}:${t.port})`).join(", ")}`);

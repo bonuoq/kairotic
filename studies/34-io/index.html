@@ -142,7 +142,7 @@ pre.log .src { color: var(--accent); }
       </section>
 
       <section class="panel" aria-labelledby="h-sens">
-        <h2 id="h-sens">Sensors <span>a phone's tilt and shake, gamepads</span></h2>
+        <h2 id="h-sens">Sensors <span>a phone's tilt and shake, gamepads, a board on a serial port</span></h2>
         <div class="row">
           <button class="act" id="motion-on">Use motion</button>
           <label><input type="checkbox" id="motion-play"> play: tilt left–right = pitch, away = loudness, shake = start / stop</label>
@@ -155,6 +155,16 @@ pre.log .src { color: var(--accent); }
           <span class="msg" id="pad-msg">press a button on a pad to wake it</span>
         </div>
         <div class="meters" id="pad-meters"></div>
+        <div class="row">
+          <span class="sub2">Serial</span>
+          <label>baud <select id="baud"><option>9600</option><option>31250</option><option>57600</option><option selected>115200</option></select></label>
+          <button class="act" id="serial-on">Connect a board</button>
+          <span class="msg" id="serial-msg">lines such as <code>512 300</code> or <code>pot:512</code></span>
+        </div>
+        <div class="row">
+          <input type="text" id="serial-line" placeholder="a line to the board" aria-label="A line to send to the board">
+          <button class="act" id="serial-send" disabled>Send</button>
+        </div>
         <label><input type="checkbox" id="log-cont"> log continuous values (tilt, sticks)</label>
       </section>
 
@@ -367,12 +377,91 @@ window.addEventListener("DOMContentLoaded", function () {
     (doseq [e es] (take! e))
     (when (and (seq es) (.-checked ($ "thru")) (not (.-checked ($ "loopback")))) (send! es))))
 
+;; ───────── a board on a serial port ─────────
+;; Web Serial (Chrome, Edge, Firefox 151+; not Safari): the browser asks which port, then lines of text come
+;; in as events (io/serial-line). A test feeds text with kairoticSerialText.
+
+(defonce serial (atom {:st (io/new-serial) :port nil :writer nil}))
+
+(defn serial-msg! [text kind] (set! (.-innerHTML ($ "serial-msg")) text) (set! (.-className ($ "serial-msg")) (str "msg " kind)))
+
+(defn serial-text! [text]
+  (let [[s es] (io/serial-chunk (:st @serial) text)]
+    (swap! serial assoc :st s)
+    (doseq [e es] (take! e))))
+
+(set! (.-kairoticSerialText js/window) serial-text!)
+
+(defn serial-read! [port]
+  (let [dec (js/TextDecoderStream.)
+        _ (.catch (.pipeTo (.-readable port) (.-writable dec)) (fn [_] nil))
+        reader (.getReader (.-readable dec))]
+    (letfn [(step [] (-> (.read reader)
+                         (.then (fn [r] (if (.-done r)
+                                          (serial-msg! "the board went away" "bad")
+                                          (do (serial-text! (.-value r)) (step)))))
+                         (.catch (fn [e] (serial-msg! (str "serial: " (esc (.-message e))) "bad")))))]
+      (step))))
+
+(defn serial-on! []
+  (if-not (.-serial js/navigator)
+    (serial-msg! "no Web Serial in this browser (Chrome, Edge or Firefox 151+)" "bad")
+    (-> (.requestPort (.-serial js/navigator))
+        (.then (fn [port]
+                 (-> (.open port #js {:baudRate (js/parseInt (.-value ($ "baud")))})
+                     (.then (fn [_]
+                              (swap! serial assoc :port port :writer (.getWriter (.-writable port)))
+                              (set! (.-disabled ($ "serial-send")) false)
+                              (serial-msg! (str "connected at " (.-value ($ "baud")) " baud") "ok")
+                              (serial-read! port))))))
+        (.catch (fn [e] (serial-msg! (str "serial: " (esc (.-message e))) "bad"))))))
+
+(defn serial-send! []
+  (when-let [w (:writer @serial)]
+    (let [line (.-value ($ "serial-line"))]
+      (.write w (.encode (js/TextEncoder.) (str line "\n")))
+      (log! :out (str "  ⇥ serial " (pr-str line))))))
+
 ;; ───────── OSC, through the relay ─────────
 ;; The relay started with --osc answers on ws://…/osc and passes OSC to and from UDP (relay/oscbridge.js).
 ;; Every event the page takes can go out as OSC (/kairotic/note …); what arrives is an event again, taken
 ;; like any other (heard, recorded, and on to MIDI with thru) when its address matches the pattern.
 
 (defonce osc (atom {:ws nil :targets []}))
+
+;; The parameters this page lets other tools see and set, as OSCQuery through the relay: an address, the
+;; input it is, its OSC type and range.
+(def study-params
+  {"/kairotic/study/bpm" {:el "bpm" :type "f" :range [20 300] :description "tempo of the room, in beats per minute"}
+   "/kairotic/study/monitor" {:el "monitor" :type "T" :description "hear the events here"}
+   "/kairotic/study/metronome" {:el "metro" :type "T" :description "the room's metronome"}
+   "/kairotic/study/mode" {:el "mode" :type "s" :description "MIDI out: plain or mpe"}})
+
+(defn param-value [{:keys [el type]}]
+  (let [x ($ el)] (case type "T" (.-checked x) "f" (js/parseFloat (.-value x)) (.-value x))))
+
+(defn osc-ws [] (let [ws (:ws @osc)] (when (and ws (= 1 (.-readyState ws))) ws)))
+
+(defn osc-declare! []
+  (when-let [ws (osc-ws)]
+    (.send ws (js/JSON.stringify (clj->js {:declare (for [[a p] study-params]
+                                                       (cond-> {:address a :type (:type p) :value (param-value p) :description (:description p)}
+                                                         (:range p) (assoc :range (:range p))))})))))
+
+(defn osc-set!
+  "A parameter set from outside (OSCQuery tools, SuperCollider…): the input changes as if by hand."
+  [address v]
+  (let [{:keys [el type]} (get study-params address) x ($ el)]
+    (case type
+      "T" (set! (.-checked x) (boolean (if (number? v) (not (zero? v)) v)))
+      "f" (set! (.-value x) (str (js/Math.round v)))
+      (set! (.-value x) (str v)))
+    (.dispatchEvent x (js/Event. "change"))
+    (log! :in (str "OSC sets " address " " (pr-str v)))))
+
+(defn osc-value! [address]
+  (when-let [ws (osc-ws)]
+    (.send ws (js/JSON.stringify (clj->js {:value {:address address :value (param-value (get study-params address))}})))))
 
 (defn osc-msg! [text kind]
   (set! (.-innerHTML ($ "osc-msg")) text) (set! (.-className ($ "osc-msg")) (str "msg " kind)))
@@ -389,11 +478,14 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn osc-in! [frame]
   (let [f (js->clj frame :keywordize-keys true)]
     (cond
-      (:hello f) (let [ts (get-in f [:hello :targets])]
+      (:hello f) (let [ts (get-in f [:hello :targets]) q (get-in f [:hello :oscquery])]
                    (swap! osc assoc :targets ts)
                    (set! (.-innerHTML ($ "osc-to")) (apply str (for [t ts] (str "<option>" (esc t) "</option>"))))
-                   (osc-msg! (str "connected · OSC in on udp " (get-in f [:hello :listen])) "ok"))
+                   (osc-declare!)
+                   (osc-msg! (str "connected · OSC in on udp " (get-in f [:hello :listen])
+                                  (when q (str " · OSCQuery on http://127.0.0.1:" q))) "ok"))
       (:error f) (log! :in (str "OSC error: " (:error f)))
+      (contains? study-params (:address f)) (osc-set! (:address f) (first (:args f)))
       (:address f) (when (io/osc-match? (.trim (.-value ($ "osc-filter"))) (:address f))
                      (let [e (io/osc->event f)]
                        (take! e)
@@ -842,6 +934,9 @@ window.addEventListener("DOMContentLoaded", function () {
   (.addEventListener ($ "motion-on") "click" (fn [_] (motion-on!)))
   (.addEventListener ($ "osc-connect") "click" (fn [_] (osc-connect!)))
   (.addEventListener ($ "room-join") "click" (fn [_] (join!)))
+  (.addEventListener ($ "serial-on") "click" (fn [_] (serial-on!)))
+  (.addEventListener ($ "serial-send") "click" (fn [_] (serial-send!)))
+  (doseq [[a p] study-params] (.addEventListener ($ (:el p)) "change" (fn [_] (osc-value! a))))
   (.addEventListener ($ "tempo-start") "click"
     (fn [_] (when-let [n (shared-ms)]
               ;; beat 0 a second from now, on every page of the room
