@@ -363,7 +363,10 @@
 
    "patch"
    {:inlets ["one per inlet / inlet~ box inside, left to right"] :outlets ["one per outlet / outlet~ box inside"]
-    :messages [["double-click" "opens it"] ["(abstract :bN \"name\")" "turns it into a class (an abstraction)"]]
+    :messages [["double-click" "opens it (patch @name: opens its line, in its tab)"]
+               ["patch @name" "uses the line called name (spaces as -): its newest point, so it changes as the line advances; inside it, adc~ and dac~ are quiet (they play when the line plays alone): sound goes in and out through inlet~ / outlet~"]
+               ["(pin-ref :bN)" "pins a patch @name to the point of its line it reads now · (follow-ref :bN) follows the line again"]
+               ["(abstract :bN \"name\")" "turns it into a class (an abstraction)"]]
     :see ["inlet" "outlet"]}
 
    "inlet"  {:outlets ["what arrives at this inlet of the sub-patch"] :see ["patch" "outlet" "inlet~"]}

@@ -118,6 +118,7 @@
       "bang" [34 26]
       "number" [76 box-h]
       "msg" [(max 44 (+ grip 14 (* 7.6 (count (str/trim (subs (str/trim t) 3)))))) box-h]
+      "patch" (if (line-ref? b) [(+ (box-w t) 30) box-h] [(box-w t) box-h])
       [(box-w t) box-h]))))
 
 (defn box-pos [id b]
@@ -722,7 +723,7 @@
                     code-box? (= :code (display-of b))
                     ctl? (own-view? b)
                     action-box? (or ctl? (contains? action-classes kc))
-                    cls (str "box" (when (kairos-classes kc) " kairos") (when (comp/subpatch? b) " sub") (when (or music-box? code-box?) " mus") (when code-box? " code")
+                    cls (str "box" (when (kairos-classes kc) " kairos") (when (comp/subpatch? b) " sub") (when (line-ref? b) (str " ref" (when (:pin b) " pinned") (when (ref-warning b) " warn"))) (when (or music-box? code-box?) " mus") (when code-box? " code")
                              (when action-box? (str " act " (if ctl? "ctl" kc)))
                              (when (contains? chosen id) " sel") (when (= id (first hover-in)) " drop")
                              (when (and (:present b) (not @pres-mode)) " presented") (when (panel-layout b) " panel"))
@@ -761,6 +762,14 @@
                                                   " · double-click: default size</title></path>")))
                            (panel-layout b) (panel-svg id b w)
                            action-box? (str "<rect class=\"grip\" x=\"0\" y=\"0\" width=\"" grip "\" height=\"" h "\" rx=\"2\"></rect>" content)
+                           ;; a patch @name: its line, followed (↻) or pinned (⌖ moment), ⚠ when something is wrong (#117)
+                           (line-ref? b) (str "<text x=\"10\" y=\"16\">" (esc t) "</text>"
+                                              "<text class=\"ref-badge\" x=\"" (- w 8) "\" y=\"16\" text-anchor=\"end\">" (esc (ref-badge b)) "</text>"
+                                              "<title>" (esc (or (ref-warning b)
+                                                                 (let [r (resolve-ref b)]
+                                                                   (str "the line " (line-name (:line r)) (if (:pinned r) ", pinned to a point of its history" ", at its newest point")
+                                                                        " · double-click opens it"))))
+                                              "</title>")
                            :else (str "<text x=\"10\" y=\"16\">" (esc t) "</text>"))
                      (apply str (for [i (range ins)]
                                   (str "<rect class=\"port in" (when (= hover-in [id i]) " target") "\" data-box=\"" idn "\" data-in=\"" i "\" x=\"" (port-x w ins i) "\" y=\"-1\" width=\"" pw "\" height=\"4\"></rect>")))

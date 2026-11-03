@@ -115,6 +115,71 @@ export async function lines(page, check) {
   check("■ stops it", (await cljs(page, "[(eng/running?) (playing-line)]")) === "[false nil]");
   await cljs(page, `(delete ${osc})`);
 
+  // phase 2: a line used as a sub-patch, patch @name
+  const settle = () => page.waitForTimeout(120);
+  const send = async (id, out) => { await cljs(page, `(send! ${id} :bang)`); await page.waitForTimeout(250); return cljs(page, `(second (last-shown ${out}))`); };
+  await cljs(page, '(new-line "ref gain")');
+  for (const c of ['(box :b1 "inlet" 40 30)', '(box :b2 "* 2" 40 90)', '(box :b3 "outlet" 40 150)', "(connect :b1 0 :b2 0)", "(connect :b2 0 :b3 0)"]) await cljs(page, c);
+  const gid = await cljs(page, "(active-line)");
+  await cljs(page, '(new-line "ref piece")');
+  for (const c of ['(box :b1 "msg 5" 40 30)', '(box :b2 "patch @ref-gain" 40 90)', '(box :b3 "number" 40 150)', "(connect :b1 0 :b2 0)", "(connect :b2 0 :b3 0)"]) await cljs(page, c);
+  check("patch @name uses a line (spaces as -), its inlet and outlet boxes as ports", (await cljs(page, "(io (get-in (current) [:boxes :b2]))")) === "[1 1]");
+  check("... following it", (await cljs(page, "(ref-badge (get-in (current) [:boxes :b2]))")) === '"↻"');
+  await settle();
+  check("... and messages go through it", (await send(":b1", ":b3")) === "10");
+  check("a line cannot contain itself", await fails(page, '(do (go-line "ref gain") (box "patch @ref-gain" 200 30))'));
+  check("... nor a line that uses it (a cycle)", await fails(page, '(box "patch @ref-piece" 200 30)'));
+  check("... nor a line that does not exist", await fails(page, '(box "patch @nowhere" 200 30)'));
+  check("a plain word after patch is still an embedded patch", (await cljs(page, '(let [b {:text "patch label"}] [(line-ref? b) (embedded? b)])')) === "[false true]");
+  await cljs(page, '(text! :b2 "* 10")');
+  await cljs(page, '(go-line "ref piece")'); await settle();
+  check("a line that changes changes the boxes that follow it", (await send(":b1", ":b3")) === "50");
+  const pinned = await cljs(page, "(pin-ref :b2)");
+  await cljs(page, '(go-line "ref gain")'); await cljs(page, '(text! :b2 "* 100")'); await cljs(page, '(go-line "ref piece")'); await settle();
+  check("(pin-ref box) keeps it at the point it read", (await send(":b1", ":b3")) === "50");
+  check("... marked ⌖ and the moment", (await cljs(page, "(ref-badge (get-in (current) [:boxes :b2]))")) === '"⌖6"');
+  check("... and the code of the patch keeps the pin", (await cljs(page, "(str/includes? (patch->code (current)) (str \"(pin-ref :b2 \" (pr-str " + pinned + ")))")) === "true" &&
+    (await cljs(page, "(:pin (get-in (build (patch->code (current))) [:boxes :b2]))")) === pinned);
+  await cljs(page, "(follow-ref :b2)"); await settle();
+  check("(follow-ref box) follows the line again", (await send(":b1", ":b3")) === "500");
+
+  // decision 7: adc~ and dac~ of a line play only when it plays alone
+  await cljs(page, '(go-line "ref gain")'); await cljs(page, '(box :b9 "dac~" 200 150)'); await cljs(page, '(go-line "ref piece")');
+  check("a line's dac~ stays out when it is used as a sub-patch", (await cljs(page, '(some (fn [[_ b]] (= "dac~" (:text b))) (:boxes (eng/flat (engine-patch))))')) === "nil");
+  check("... and the box warns that nothing comes out", (await cljs(page, "(boolean (re-find #\"no outlet~\" (str (ref-warning (get-in (current) [:boxes :b2])))))")) === "true");
+  await cljs(page, '(go-line "ref gain")'); await cljs(page, "(delete :b9)"); await cljs(page, '(go-line "ref piece")');
+
+  // double-click opens the line in its tab
+  await cljs(page, "(swap! ui assoc :last-box-click nil)");
+  await page.dblclick('#scene .box[data-box="b2"]');
+  check("double-clicking a patch @name opens its line", (await until(page, "(go-line)", '"ref gain"')) === '"ref gain"');
+  await cljs(page, '(go-line "ref piece")');
+
+  // decision 4: in Perform, the lines followed stay where they were
+  await cljs(page, "(perform)");
+  const front = await cljs(page, `(nodes-front (line-nodes ${gid}))`);
+  check("Perform keeps where the lines followed are", (await cljs(page, `(get-in @perf [:pins ${gid}])`)) === front);
+  await cljs(page, `(let [[nid _] (nodes-front (line-nodes ${gid}))] (swap! hist update-in [:other ${gid} nid :events] conj [:text :b2 "* 3"]))`);
+  check("... so a change arriving to one of them meanwhile does not reach the take", (await cljs(page, "(:pos (resolve-ref (get-in (current) [:boxes :b2])))")) === front);
+  await cljs(page, "(compose :discard)");
+  check("... and back in Compose it follows again", (await cljs(page, "(:pos (resolve-ref (get-in (current) [:boxes :b2])))")) !== front);
+
+  // decision 5: a snapshot keeps where the lines followed are, and its point plays them so
+  await cljs(page, '(snapshot "with x3")');
+  const snap = await cljs(page, "(norm (:pos @world))");
+  check("a snapshot keeps the fronts of the lines followed", (await cljs(page, `(some? (get (:fronts (second (last (:events (node (first (norm (:pos @world)))))))) ${gid}))`)) === "true");
+  await cljs(page, '(go-line "ref gain")'); await cljs(page, '(text! :b2 "* 7")'); await cljs(page, '(go-line "ref piece")');
+  await cljs(page, "(move :b3 40 170)"); await settle();
+  check("at the newest point, it follows the line", (await send(":b1", ":b3")) === "35");
+  await cljs(page, `(swap! world assoc :pos ${snap} :auto false)`); await settle();
+  check("... at the snapshot's point, the line as it was then", (await send(":b1", ":b3")) === "15");
+  await cljs(page, "(swap! world assoc :pos (newest-tip) :auto true)");
+
+  // renaming: the boxes on screen say the new name, the old one still finds it
+  check("renaming a line rewrites the boxes on screen that use it", (await cljs(page, '(do (rename-line "ref gain" "ref level") (:text (get-in (current) [:boxes :b2])))')) === '"patch @ref-level"');
+  check("... and the old name still finds it", (await cljs(page, '(line-by-ref "ref-gain")')) === gid);
+  await cljs(page, '(archive-line "ref piece")'); await cljs(page, '(archive-line "ref level")');
+
   // segments that arrive: each one to its line
   check("segments that arrive go to their lines", (await cljs(page, `(do (go-line "main")
     (on-history #js {:docs #js [#js {:id "t-main" :exists true :data (fn [] #js {:parent nil :at 0 :author "x" :t 1 :events #js []})}

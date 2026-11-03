@@ -892,6 +892,11 @@
             ;; the first click redraws the box, so a double click on a patch box is detected here
             (let [now (js/Date.now) [lid lt] (:last-box-click @ui) again? (and (= lid id) (< (- now lt) 450))]
               (cond
+                ;; a patch @name: its line, in its tab (#117)
+                (and again? (line-ref? b) (not (.-altKey e)))
+                (do (.preventDefault e)
+                    (swap! ui assoc :last-box-click nil :drag nil)
+                    (js/setTimeout (fn [] (gesture! (str "(open-ref " id ")"))) 0))
                 (and again? (embedded? b) (not (.-altKey e)))
                 (do (.preventDefault e)
                     (swap! ui assoc :last-box-click nil :drag nil)
@@ -1095,7 +1100,7 @@
         (closest e ".box")
         (let [el (closest e ".box") id (keyword (.. el -dataset -box)) b (get-in (current) [:boxes id])]
           (when b
-            (if (or (and (embedded? b) (not (.-altKey e))) (data-header? id (view-box b) x y))
+            (if (or (and (or (embedded? b) (line-ref? b)) (not (.-altKey e))) (data-header? id (view-box b) x y))
               nil
               (open-editor! {:id id :x (:x b) :y (:y b) :text (:text b)}))))
         :else (open-editor! {:x x :y y})))))

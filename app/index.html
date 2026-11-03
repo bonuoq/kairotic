@@ -84,6 +84,13 @@ header .status b.off { color: var(--kairos); }
 #canvas .box rect.body { fill: var(--box); stroke: var(--ink); stroke-width: 1; }
 #canvas .box.kairos rect.body { stroke: var(--kairos); stroke-width: 1.25; }
 #canvas .box.sub rect.body { stroke: var(--accent); stroke-width: 2; }
+/* patch @name: a line used as a sub-patch (#117) — following it, pinned, or with something wrong */
+#canvas .box.ref rect.body { stroke-dasharray: 6 3; }
+#canvas .box.ref.pinned rect.body { stroke: var(--kairos); }
+#canvas .box.ref.warn rect.body { stroke: var(--error); }
+#canvas .box .ref-badge { fill: var(--accent); font-family: var(--f-code); font-size: 11px; }
+#canvas .box.ref.pinned .ref-badge { fill: var(--kairos); }
+#canvas .box.ref.warn .ref-badge { fill: var(--error); }
 #canvas .box.presented rect.body { stroke-dasharray: 5 3; }
 #canvas .box.panel rect.head { fill: var(--accent-soft); stroke: none; }
 #canvas .pres-area { fill: transparent; cursor: pointer; }

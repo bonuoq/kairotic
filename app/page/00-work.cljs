@@ -17,7 +17,7 @@
 ;; Box classes are components registered in kairotic.components: their ports, their view,
 ;; their data with its own history, their behaviour with messages and their audio all come from there.
 
-(declare on-lines render-lines! line-name switch-line! es? docs open-work! show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
+(declare on-lines render-lines! line-name switch-line! check-ref-text! ref-badge ref-warning resolve-ref refs-in followed-fronts open-ref es? docs open-work! show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
 (def klass comp/klass)
 (defn box-def [b] (comp/lookup (klass (:text b))))
 ;; how a box is shown: the view it chose among those of its class (a tree as a score or a roll, a freqt
@@ -146,6 +146,9 @@
                          (and (vector? (:present b)) (= 2 (count (:present b))) (every? number? (:present b)))
                          (assoc :present (:present b))
                          (keyword? (:view b)) (assoc :view (:view b))
+                         ;; a `patch @name` pinned to a point of its line (#117)
+                         (and (vector? (:pin b)) (= 2 (count (:pin b))) (string? (first (:pin b))) (number? (second (:pin b))))
+                         (assoc :pin (:pin b))
                          (and (vector? (:size b)) (= 2 (count (:size b))) (every? number? (:size b)))
                          (assoc :size (:size b))
                          (and (map? (:data b)) (comp/model-of b)) (assoc :data ((:load (comp/model-of b)) (:data b)))
@@ -174,6 +177,12 @@
                   (cond (not (get-in p [:boxes id])) p
                         (keyword? k) (assoc-in p [:boxes id :view] k)
                         :else (update-in p [:boxes id] dissoc :view)))
+    ;; [:pin :b3 [node n]]: a `patch @name` reads its line at that point (#117); nil follows its front again
+    :pin        (let [[id pos] args]
+                  (cond (not (get-in p [:boxes id])) p
+                        (and (vector? pos) (= 2 (count pos)) (string? (first pos)) (number? (second pos)))
+                        (assoc-in p [:boxes id :pin] (vec pos))
+                        :else (update-in p [:boxes id] dissoc :pin)))
     ;; the size of a box drawn with a size of its own (a canvas, a freqt, a score: issue #40), or nil for its default
     :size       (let [[id w h] args]
                   (cond (not (get-in p [:boxes id])) p
@@ -413,13 +422,21 @@
       (-> p (update :boxes (fn [bx] (into (sorted-map) (remove (fn [[id _]] (audio id)) bx))))
           (update :lines (fn [ls] (vec (remove (fn [[a _ b _]] (or (audio a) (audio b))) ls))))))))
 
+(defonce engine-patch-cache (atom [nil nil nil nil]))
+
 (defn engine-patch
   "The patch the engine runs: the work on screen, or, while another line plays, that line with the one on
-   screen beside it (silent, under its prefix)."
+   screen beside it (silent, under its prefix). The same object while neither changes (the engine flattens
+   it again only when it is another)."
   []
   (if (playing-elsewhere?)
-    (assoc-in (off-screen-patch (playing-line)) [:boxes (first (view-prefix))]
-              {:text "patch" :x 0 :y 0 :data (silent (work-patch))})
+    (let [off (off-screen-patch (playing-line)) here (work-patch) k (first (view-prefix))
+          [a b c v] @engine-patch-cache]
+      (if (and (identical? a off) (identical? b here) (= c k))
+        v
+        (let [v (assoc-in off [:boxes k] {:text "patch" :x 0 :y 0 :data (silent here)})]
+          (reset! engine-patch-cache [off here k v])
+          v)))
     (work-patch)))
 
 (declare played!)
@@ -437,7 +454,10 @@
 
 (defn cmd-path [] (if @scratch *inside* (into @view-path *inside*)))
 
-(defn embedded? [b] (and b (= "patch" (klass (:text b)))))
+(defn line-ref? "A `patch @name` box: a line used as a sub-patch (#117)." [b] (boolean (and b (eng/line-ref b))))
+
+;; an embedded patch keeps its inside in the box; a `patch @name` reads a line, and is not entered
+(defn embedded? [b] (and b (= "patch" (klass (:text b))) (not (line-ref? b))))
 
 ;; a component box defines a class: it has no inlets nor outlets, so it is not drawn in the patch but kept
 ;; in the Components tab (issue #8). It is still a box of the work: its history, its code and links.
@@ -669,6 +689,7 @@
               :data (-> acc (update :mod conj (first args)) (update :ref conj (first args)) (update :whole conj (first args)))
               :kept (-> acc (update :mod conj (first args)) (update :ref conj (first args)) (update :whole conj (first args)))
               :recipe (-> acc (update :mod conj [(first args) :recipe]) (update :ref conj (first args)))
+              :pin (-> acc (update :mod conj [(first args) :pin]) (update :ref conj (first args)))
               ;; in a canvas, each stroke is its own unit of change, and so is each grid;
               ;; clear or load affects the whole canvas
               :in (let [[id [iop eid]] args]
@@ -694,7 +715,7 @@
 (defn remap-ev [m [op & args :as e]]
   (let [f (fn [x] (get m x x))]
     (case op
-      (:box :text :move :size :delete :kept :recipe :data :project) (into [op (f (first args))] (rest args))
+      (:box :text :move :size :delete :kept :recipe :data :project :pin) (into [op (f (first args))] (rest args))
       :annot (let [[id m] args fa (fn [[a x y]] [(f a) x y])]
               [op id (cond-> m (:pts m) (update :pts (fn [ps] (mapv fa ps))) (:at m) (update :at fa))])
       :in (let [[id inner] args]
