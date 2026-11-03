@@ -31,6 +31,16 @@ salas lo llevan (`?peer=…`), así que quien los recibe llega al mismo relay. P
 | Railway | un servicio nuevo desde este repositorio con directorio raíz `relay` (encuentra el Dockerfile); añade un volumen en `/data` |
 | Tu ordenador | `npx @kairotic/relay` y un túnel con TLS (cloudflared, ngrok) para que otros lleguen |
 
+## Salas y un reloj compartido
+
+En `ws://<host>/signal` (activo salvo con `--no-signal`) las páginas de una sala se encuentran: a través de
+él abren canales de datos WebRTC entre ellas para el **flujo** de gestos (sin orden ni reenvíos: un gesto
+que llega tarde no vale nada), y mientras un canal no está abierto el relay pasa el flujo él mismo. El
+mismo socket responde a `{ping: t0}` con la hora del relay, así cada página estima su desfase y todas leen
+el mismo **reloj compartido**; un tempo arrancado en una página es el mismo pulso en todas. El relay no
+guarda nada: una sala existe mientras alguien está dentro. Discusión
+[#135](https://github.com/bonuoq/kairotic/discussions/135); ver el Ensayo 34 · io.
+
 ## Puente OSC
 
 Una página no puede enviar ni recibir UDP, así que el relay puede hacerlo por ella: con `--osc` también
@@ -47,6 +57,7 @@ npx @kairotic/relay --osc --osc-out sc=57120 --osc-out max=127.0.0.1:7400 --osc-
 |---|---|
 | `--osc-out nombre=host:puerto` | adónde va el OSC de las páginas (puede haber varios; una página elige uno por nombre, el primero por defecto). El relay nunca envía a ningún otro sitio |
 | `--osc-in 57121` | el puerto UDP donde llega OSC para las páginas (`--osc-bind 0.0.0.0` para recibirlo de otras máquinas, como un móvil con TouchOSC) |
+| `--oscquery 5678` | el puerto HTTP donde los parámetros que declaran las páginas se publican como [OSCQuery](https://github.com/Vidvox/OSCQueryProposal) (`0`: ninguno), para ossia score, Chataigne, TouchDesigner… — añade `http://<host>:5678` a mano en ellos (sin mDNS) |
 | `--osc-origin url` | los sitios que pueden usar el puente: `https://bonuoq.github.io`, `http://localhost` y `http://127.0.0.1` por defecto. Con `*`, cualquier web que visites podría enviar OSC a tus sintes |
 
 Una página envía tramas JSON `{"address": "/x", "args": [1, 2.5, "a"], "types": "ifs", "to": "max"}`
