@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **A line inside another: `patch @name`** (discussion #117, phase 2). A `patch` box whose word is `@name` uses the
+  line called *name* as a sub-patch (spaces written `-`), its `inlet` / `outlet` boxes as ports; a plain word stays
+  the label of an embedded patch, so no existing work changes meaning. Double-click (or `(open-ref :b3)`) opens the
+  line in its tab.
+  - It **follows** the line (↻, its newest point) or is **pinned** (`(pin-ref :b3)`, ⌖ and the moment; the pin is in
+    the patch's code; `(follow-ref :b3)` follows again). A line cannot contain itself nor a line that uses it.
+  - Decision 4: Perform keeps the lines followed where they were when it started. Decision 5: a snapshot keeps where
+    the lines followed are (`:fronts` in its mark), and a point after it, away from the newest one, plays them so.
+  - Decision 7: inside a line used so, `adc~` and `dac~` are left out (they play when the line plays alone); the box
+    warns (⚠) when its line has `dac~` without `outlet~`, or `adc~` without `inlet~`.
+  - Renaming a line rewrites the boxes on screen that use it, and keeps the old name as an alias for the others.
+  - The engine reads the lines through a hook (`eng/line-resolver`), and makes its flat patch again whenever a
+    line changes. `engine-patch` is the same object while nothing changes (the engine flattened it every tick while
+    another line played).
+  - Tests: 23 more checks in `tests/lines.mjs` (65).
 - **The engine plays the line where ▶ was pressed** (discussion #117, decision 6): changing tabs no longer stops
   it. Its tab shows ▶ and the transport says *playing* plus the line's name when another tab is on screen. The
   line on screen still runs its messages, beside the one that plays, its boxes known to the engine under the prefix

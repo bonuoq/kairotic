@@ -184,8 +184,23 @@ su propio patch, sus propias ramas, fusiones y snapshots.
   transporte dice qué línea suena. Los mensajes de la pestaña en pantalla siguen viajando; sus cajas de audio
   callan hasta que pulsas ▶ en ella, que la convierte en la línea que suena. En una sala, las posiciones de los demás se dibujan solo en la
   línea en la que están; seguir a alguien a otra línea abre su pestaña.
-- Las líneas no cambian mientras tocas en Perform, en una lección o en el patch de pruebas. Usar una línea
-  dentro de otra (`patch @nombre`, Study 33) es el paso siguiente.
+- Las líneas no cambian mientras tocas en Perform, en una lección o en el patch de pruebas.
+
+**Una línea dentro de otra.** `patch @nombre` usa la línea llamada *nombre* como subpatch (los espacios de su
+nombre se escriben `-`: `patch @linea-de-bajo`); sus cajas `inlet` / `outlet` son los puertos de la caja. Doble
+clic abre la línea en su pestaña.
+
+- **Sigue** la línea (↻): es la línea en su punto más nuevo, así que cambia cuando la línea avanza, para todas
+  las cajas que la usan. `(pin-ref :b3)` la **fija** en el punto que lee ahora (⌖ y ese momento);
+  `(follow-ref :b3)` vuelve a seguirla. Una línea no puede contenerse a sí misma, ni a una línea que la usa.
+- Mientras tocas en Perform, las líneas seguidas se quedan donde estaban al empezar. Un snapshot guarda dónde
+  están, y su punto las toca así: volviendo atrás en la historia, un punto posterior a un snapshot oye las líneas
+  como eran entonces (en el punto más nuevo, como son ahora).
+- Dentro de una línea usada así, `adc~` y `dac~` callan: suenan cuando la línea suena sola (su propio ▶), así
+  que una línea se puede probar con su propia entrada y salida. El sonido entra y sale por `inlet~` / `outlet~`;
+  la caja avisa (⚠) cuando su línea tiene `dac~` y ningún `outlet~`, o `adc~` y ningún `inlet~`.
+- Renombrar una línea reescribe las cajas en pantalla que la usan; las de otras partes la siguen encontrando por
+  su nombre anterior.
 
 ### Componer y tocar (Compose y Perform)
 

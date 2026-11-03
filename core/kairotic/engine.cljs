@@ -50,12 +50,23 @@
   (str/replace (str text) #"\$(\d)"
                (fn [[_ n]] (or (get words (dec (js/parseInt n 10))) "0"))))
 
+(defn line-ref
+  "The line a `patch @name` box uses (discussion #117): name, or nil for any other box."
+  [b]
+  (let [[k r] (str/split (str/trim (str (:text b))) #"\s+")]
+    (when (and (= k "patch") r (str/starts-with? r "@") (> (count r) 1)) (subs r 1))))
+
+;; how the page reads a line used as a sub-patch: (fn [box] patch) — the page knows the lines and their
+;; histories; the engine only asks
+(defonce line-resolver (atom nil))
+
 (defn inner-patch
-  "The patch inside a box: the data of an embedded `patch`, or the :patch of an abstraction with its
-   $-arguments filled in. nil for any other box."
+  "The patch inside a box: the data of an embedded `patch`, the line a `patch @name` uses, or the :patch
+   of an abstraction with its $-arguments filled in. nil for any other box."
   [b]
   (let [k (comp/klass (:text b)) d (comp/lookup k)]
     (cond
+      (and (= k "patch") (line-ref b)) (or (when-let [f @line-resolver] (f b)) {:boxes {} :lines []})
       (= k "patch") (or (:data b) {:boxes {} :lines []})
       (map? (:patch d)) (let [words (vec (rest (str/split (str/trim (str (:text b))) #"\s+")))]
                           (update (:patch d) :boxes

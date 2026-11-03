@@ -147,7 +147,9 @@
          coll (jam-coll)
          jam (when coll (or jam-id (jam-at pos) (new-jam-id)))]
      (reset! perf {:from pos :origin pos :at pos :base base :patch base :own [] :others {} :redo [] :cut 0
-                   :jam jam :jam-path (when jam (str coll "/" jam "-" session-id))})
+                   :jam jam :jam-path (when jam (str coll "/" jam "-" session-id))
+                   ;; the lines it follows stay where they are now while performing (#117, decision 4)
+                   :pins (followed-fronts)})
      (when jam
        (swap! jam-seen conj jam)
        (jam-listen!)
@@ -224,7 +226,9 @@
    so far is written, and goes on from there). (snapshot \"intro\") names it."
   ([] (snapshot nil))
   ([label]
-   (let [mark [:mark (cond-> {:kind :snapshot} (some? label) (assoc :label (str label)))]]
+   (let [fronts (followed-fronts)
+         ;; where the lines it follows are, so this point plays them as they are now (#117, decision 5)
+         mark [:mark (cond-> {:kind :snapshot} (some? label) (assoc :label (str label)) (seq fronts) (assoc :fronts fronts))]]
      (if-let [st @perf]
        (let [evs (perf-events st)
              tip (write-take! st mark)]

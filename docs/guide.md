@@ -178,8 +178,22 @@ its own branches, merges and snapshots.
   transport says which line plays. The messages of the tab on screen still travel; its audio boxes stay quiet
   until you press ▶ there, which makes it the line that plays. In a room, the others' positions are drawn only on the line they are on;
   following someone onto another line opens their tab.
-- Lines do not change while you perform, in a lesson or in the scratch patch. Using one line inside another
-  (`patch @name`, Study 33) is the next step.
+- Lines do not change while you perform, in a lesson or in the scratch patch.
+
+**A line inside another.** `patch @name` uses the line called *name* as a sub-patch (spaces in its name are
+written `-`: `patch @bass-line`); its `inlet` / `outlet` boxes are the box's ports. Double-click opens the line
+in its tab.
+
+- It **follows** the line (↻): it is the line at its newest point, so it changes as the line advances, for every
+  box that uses it. `(pin-ref :b3)` **pins** it to the point it reads now (⌖ and that moment);
+  `(follow-ref :b3)` follows again. A line cannot contain itself, nor a line that uses it.
+- While you perform, the lines followed stay where they were when Perform started. A snapshot keeps where they
+  are, and its point plays them so: going back in the history, a point after a snapshot hears the lines as they
+  were then (at the newest point, as they are now).
+- Inside a line used so, `adc~` and `dac~` are quiet: they play when the line plays alone (its own ▶), so a line
+  can be tried with its own input and output. Sound goes in and out through `inlet~` / `outlet~`; the box warns
+  (⚠) when its line has a `dac~` and no `outlet~`, or an `adc~` and no `inlet~`.
+- Renaming a line rewrites the boxes on screen that use it; boxes elsewhere still find it by its old name.
 
 ### Compose and Perform
 

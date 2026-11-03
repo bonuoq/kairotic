@@ -8,7 +8,7 @@
 ;; (00-work.cljs), and their names in <work>/lines, one document per line. The tab on screen is the line
 ;; everything else works on: the patch, the history view, Perform and its jams, Share/Export, Claude.
 ;; The engine plays the line where ▶ was pressed, whichever tab is on screen (decision 6, 00-work.cljs).
-;; Using one line inside another (`patch @name`, Study 33) comes later.
+;; One line is used inside another as `patch @name` (phase 2, below).
 
 (in-ns 'user)
 
@@ -42,6 +42,18 @@
     (or (first (filter (fn [l] (= nm (line-name l))) (sort-by line-order ls)))
         (when (contains? ls nm) nm))))
 
+(defn ref-slug
+  "How a box writes a line's name after @: its spaces as - (patch @bass-line uses the line \"bass line\")."
+  [nm] (str/replace (str/trim (str nm)) #"\s+" "-"))
+
+(defn line-by-ref
+  "The id of the line a `patch @r` box uses: by its name (spaces as -), or by a name it had before."
+  [r]
+  (let [ls (sort-by line-order (known-lines))]
+    (or (first (filter (fn [l] (= r (ref-slug (line-name l)))) ls))
+        (first (filter (fn [l] (some (fn [a] (= r (ref-slug a))) (:aliases (line-entry l)))) ls))
+        (when (contains? (set ls) r) r))))
+
 ;; ───────────────────────── storage: <work>/lines/<id> ─────────────────────────
 
 (defn lines-path [] (when-let [b (work-base)] (str b "/lines")))
@@ -53,7 +65,8 @@
                                 :let [m (js->clj (.data d))]]
                             [(.-id d) {:name (let [n (get m "name")] (when (string? n) n))
                                        :created (let [t (get m "created")] (if (number? t) t 0))
-                                       :archived (true? (get m "archived"))}]))]
+                                       :archived (true? (get m "archived"))
+                                       :aliases (let [a (get m "aliases")] (if (sequential? a) (vec (filter string? a)) []))}]))]
     (swap! line-state update :index merge incoming)))
 
 (defn save-line!
@@ -62,13 +75,186 @@
   (swap! line-state update-in [:index lid] merge changes)
   (when (persist?)
     (let [path (str (lines-path) "/" lid)
-          body (clj->js (merge (select-keys (line-entry lid) [:name :created :archived]) {:author (my-author)} changes))]
+          body (clj->js (merge (select-keys (line-entry lid) [:name :created :archived :aliases]) {:author (my-author)} changes))]
       (enqueue! path (fn [] (.set (.doc @dbref path) body))))))
 
 (defn new-line-id []
   (if (persist?)
     (.-id (.doc (.collection @dbref (lines-path))))
     (str "l" (.toString (js/Math.floor (* (js/Math.random) 2176782336)) 36) (.toString (js/Date.now) 36))))
+
+;; ───────────────────────── a line used as a sub-patch: patch @name (phase 2) ─────────────────────────
+;; A `patch @name` box reads the line called name: at its newest point (it follows the line, so it changes
+;; as the line advances, like an abstraction of Max or Pd), or at the point it is pinned to ([:pin id pos]).
+;; While performing, the lines followed stay where they were when Perform started (decision 4); away from
+;; the newest point of the line on screen, they read where they were at the last snapshot before it, if it
+;; kept them (decision 5). Inside a line used so, adc~ and dac~ are quiet: they play when the line plays
+;; alone, and sound goes in and out through inlet~ / outlet~ (decision 7).
+
+(defn line-nodes [lid] (if (= lid (active-line)) (:nodes @hist) (get-in @hist [:other lid] {})))
+
+(defn nodes-front [nodes]
+  (when (seq nodes) (let [n (apply max-key (fn [n] (or (:t n) 0)) (vals nodes))] [(:id n) (count (:events n))])))
+
+(defn nodes-depth
+  "How many events from the root of a line to pos (its moment)."
+  [nodes [nid idx]]
+  (loop [nid nid acc idx guard 0]
+    (let [n (get nodes nid)]
+      (if (and n (:parent n) (get nodes (:parent n)) (< guard 512))
+        (recur (:parent n) (+ acc (:at n)) (inc guard))
+        acc))))
+
+(defonce ref-cache (atom {}))   ; [line pos] → [its nodes, the patch]
+
+(defn line-patch-at [lid pos]
+  (let [nodes (line-nodes lid) [k p] (get @ref-cache [lid pos])]
+    (if (identical? k nodes)
+      p
+      (let [p (if pos (nodes-patch nodes pos) empty-patch)]
+        (swap! ref-cache (fn [c] (assoc (if (> (count c) 200) {} c) [lid pos] [nodes p])))
+        p))))
+
+(defonce fronts-cache (atom [nil nil nil]))
+
+(defn snapshot-fronts
+  "Where the lines followed were at the last snapshot before the point on screen, when it is not the newest
+   point of its line (decision 5): {line pos}, or nil."
+  []
+  (let [here (norm (:pos @world)) nodes (:nodes @hist) [k1 k2 v] @fronts-cache]
+    (if (and (identical? k1 nodes) (= k2 here))
+      v
+      (let [v (when (and here (not= here (newest-tip)))
+                (some (fn [e] (when (and (vector? e) (= :mark (first e))) (:fronts (second e))))
+                      (reverse (mapcat (fn [g] (seg-events g 0)) (segments here)))))]
+        (reset! fronts-cache [nodes here v])
+        v))))
+
+(defn ref-pos
+  "The point of its line that box b reads."
+  [b lid]
+  (or (:pin b)
+      (get-in @perf [:pins lid])
+      (get (snapshot-fronts) lid)
+      (nodes-front (line-nodes lid))))
+
+(defn resolve-ref
+  "{:line :pos :pinned :patch} for a `patch @name` box, or {:error}."
+  [b]
+  (let [r (eng/line-ref b) lid (when r (line-by-ref r))]
+    (cond (nil? r) {:error "not a patch @name box"}
+          (nil? lid) {:error (str "There is no line called " r " in this work.")}
+          :else (let [pos (ref-pos b lid)]
+                  {:line lid :pos pos :pinned (some? (:pin b)) :patch (if pos (line-patch-at lid pos) empty-patch)}))))
+
+(defn refs-in
+  "The `patch @name` boxes of a patch, through its embedded patches: [[path id box] …]."
+  ([p] (refs-in p []))
+  ([p path]
+   (mapcat (fn [[id b]]
+             (cond (line-ref? b) [[path id b]]
+                   (embedded? b) (refs-in (or (:data b) empty-patch) (conj path id))
+                   :else []))
+           (:boxes p))))
+
+(defn lines-reached
+  "Every line reached from patch p through references, at the point each one is read: {line pos}."
+  [p]
+  (loop [todo [p] seen {} guard 0]
+    (if (or (empty? todo) (> guard 64))
+      seen
+      (let [found (for [[_ _ b] (refs-in (peek todo)) :let [r (resolve-ref b)] :when (:line r)] r)
+            new (remove (fn [r] (contains? seen (:line r))) found)]
+        (recur (into (pop todo) (map :patch new))
+               (into seen (map (fn [r] [(:line r) (:pos r)]) found)) (inc guard))))))
+
+(defn check-ref-text!
+  "Fails when box text t is a `patch @name` that cannot be: no such line, or one that would contain itself."
+  [t]
+  (when-let [r (eng/line-ref {:text t})]
+    (let [lid (line-by-ref r) here (active-line)]
+      (cond (nil? lid) (fail (str "There is no line called " r " in this work (spaces in a name are written -)."))
+            (= lid here) (fail "A line cannot contain itself.")
+            (contains? (lines-reached (line-patch-at lid (nodes-front (line-nodes lid)))) here)
+            (fail (str (line-name lid) " already uses " (line-name here) ": that would be a cycle."))
+            :else nil))))
+
+(defn followed-fronts
+  "The lines the work on screen follows (not pinned), where each one is now: {line pos}."
+  []
+  (into {} (for [[lid pos] (lines-reached (work-patch))
+                 :when (not-any? (fn [[_ _ b]] (and (:pin b) (= lid (line-by-ref (eng/line-ref b))))) (refs-in (work-patch)))]
+             [lid pos])))
+
+(defn quiet
+  "A line as a sub-patch plays: without its adc~ and dac~ (decision 7)."
+  [p]
+  (let [io (set (keep (fn [[id b]] (when (#{"adc~" "dac~"} (klass (:text b))) id)) (:boxes p)))]
+    (if (empty? io)
+      p
+      (-> p (update :boxes (fn [bx] (into (sorted-map) (remove (fn [[id _]] (io id)) bx))))
+          (update :lines (fn [ls] (vec (remove (fn [[a _ b _]] (or (io a) (io b))) ls))))))))
+
+(reset! eng/line-resolver (fn [b] (let [r (resolve-ref b)] (when-let [p (:patch r)] (quiet p)))))
+
+(defn ref-badge
+  "What a `patch @name` box shows beside its name: ↻ following its line, ⌖ and the moment it is pinned to,
+   ⚠ when something is wrong."
+  [b]
+  (let [r (resolve-ref b)]
+    (cond (:error r) "⚠"
+          (or (ref-warning b)) "⚠"
+          (:pinned r) (str "⌖" (nodes-depth (line-nodes (:line r)) (:pos r)))
+          :else "↻")))
+
+(defn ref-warning
+  "Why a `patch @name` box may not do what it seems, or nil."
+  [b]
+  (let [r (resolve-ref b) cls (frequencies (map (comp klass :text) (vals (:boxes (:patch r)))))]
+    (cond (:error r) (:error r)
+          (and (cls "dac~") (not (cls "outlet~")))
+          (str (line-name (:line r)) " has dac~ but no outlet~: nothing comes out here (its dac~ plays only when the line plays alone)")
+          (and (cls "adc~") (not (cls "inlet~")))
+          (str (line-name (:line r)) " has adc~ but no inlet~: no sound goes in (its adc~ listens only when the line plays alone)")
+          :else nil)))
+
+(defn need-ref [id]
+  (let [b (or (get-in (current) [:boxes id]) (fail (str "There is no box " id)))]
+    (when-not (line-ref? b) (fail (str id " is not a patch @name box")))
+    b))
+
+(defn pin-ref
+  "(pin-ref :b3): the line box :b3 uses stays at the point it reads now. (pin-ref :b3 [node n]) at that one."
+  ([id] (pin-ref id nil))
+  ([id pos]
+   (let [b (need-ref id)
+         pos (or pos (:pos (resolve-ref b)) (fail (str (eng/line-ref b) " has no history yet: nothing to pin")))]
+     (dispatch! [:pin id (vec pos)])
+     pos)))
+
+(defn follow-ref
+  "(follow-ref :b3): the box follows its line again (its newest point)."
+  [id]
+  (need-ref id)
+  (dispatch! [:pin id nil])
+  :follows)
+
+(declare need-switch)
+
+(defn open-ref
+  "(open-ref :b3): the line box :b3 uses, in its tab (at the point it is pinned to, if it is)."
+  [id]
+  (let [b (need-ref id) r (resolve-ref b)]
+    (when (:error r) (fail (:error r)))
+    (need-switch (:line r))
+    (swap! ui assoc :follow nil)
+    (when (:pinned r)
+      (swap! world assoc :pos (:pos r) :auto false :prev-pos nil))
+    (line-name (:line r))))
+
+;; a line that changes changes what its users play: the engine's flat patch is made again
+(add-watch hist ::refs (fn [_ _ o n] (when-not (and (identical? (:nodes o) (:nodes n)) (identical? (:other o) (:other n)))
+                                      (reset! eng/flat-cache [nil nil]))))
 
 ;; ───────────────────────── the line on screen ─────────────────────────
 
@@ -147,8 +333,15 @@
   "(rename-line \"intro\"): another name for the line on screen. (rename-line \"old\" \"new\") for any line."
   ([nm] (rename-line (line-name (active-line)) nm))
   ([old nm]
-   (let [lid (need-line old) nm (check-line-name nm lid)]
-     (save-line! lid {:name nm :created (or (:created (line-entry lid)) (if (= lid main-line) 0 (js/Date.now)))})
+   (let [lid (need-line old) nm (check-line-name nm lid) was (line-name lid)]
+     ;; the old name stays as an alias: boxes of other lines (and older points) that say patch @old still find it
+     (save-line! lid {:name nm :created (or (:created (line-entry lid)) (if (= lid main-line) 0 (js/Date.now)))
+                      :aliases (vec (distinct (remove #{nm} (conj (vec (:aliases (line-entry lid))) was))))})
+     ;; the boxes of the line on screen that use it say the new name
+     (when-not (or @perf @scratch)
+       (let [evs (for [[path id b] (refs-in (work-patch)) :when (= lid (line-by-ref (eng/line-ref b)))]
+                   (wrap-in path [:text id (str/join " " (into ["patch" (str "@" (ref-slug nm))] (drop 2 (str/split (str/trim (:text b)) #"\s+"))))]))]
+         (when (seq evs) (dispatch-root! [:batch (vec evs)]))))
      (render-lines!)
      nm)))
 

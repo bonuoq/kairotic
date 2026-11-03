@@ -56,6 +56,7 @@
   ([text x y] (box (next-id) text x y))
   ([id text x y]
    (when-not (keyword? id) (fail "A box id is a keyword, e.g. :b3"))
+   (check-ref-text! text)
    (forget-box! id)
    (dispatch! [:box id (str text) (js/Math.round x) (js/Math.round y)])
    (ensure-class! text)
@@ -73,7 +74,7 @@
 
 (defn disconnect [a o b i] (dispatch! [:disconnect a o b i]) :ok)
 (defn move [id x y] (need-box id) (dispatch! [:move id (js/Math.round x) (js/Math.round y)]) [x y])
-(defn text! [id text] (need-box id) (dispatch! [:text id (str text)]) (eng/forget! (fid id)) (ensure-class! text) id)
+(defn text! [id text] (need-box id) (check-ref-text! text) (dispatch! [:text id (str text)]) (eng/forget! (fid id)) (ensure-class! text) id)
 
 (defn delete
   "Deletes boxes, with their lines: (delete :b3) · (delete :b3 :b4 :b7)."
@@ -993,6 +994,11 @@
                         (when (seq vw)
                           (concat ["" ";; views"]
                                   (for [id vw] (str "(view " id " " (pr-str (get-in p [:boxes id :view])) ")")))))
+                      ;; the `patch @name` boxes pinned to a point of their line (#117)
+                      (let [pn (filter (fn [id] (:pin (get-in p [:boxes id]))) ids)]
+                        (when (seq pn)
+                          (concat ["" ";; pinned lines"]
+                                  (for [id pn] (str "(pin-ref " id " " (pr-str (get-in p [:boxes id :pin])) ")")))))
                       (let [sz (filter (fn [id] (:size (get-in p [:boxes id]))) ids)]
                         (when (seq sz)
                           (concat ["" ";; sizes"]
@@ -1083,9 +1089,10 @@
 ;; events [:in :b5 [:box …]] in the history of the work, and its code is (inside :b5 …).
 
 (comp/define! "patch"
-  {:doc "An embedded sub-patch: double-click to open it. Its inlet / outlet boxes (numbered left to right) are its ports."
-   :usage "patch [name]"
-   :io (fn [b] (comp/patch-io (or (:data b) empty-patch)))
+  {:doc "An embedded sub-patch: double-click to open it. Its inlet / outlet boxes (numbered left to right) are its ports. patch @name uses the line called name instead (its newest point, or the point it is pinned to): double-click opens its tab."
+   :usage "patch [label] · patch @line"
+   ;; its ports: the inlet / outlet boxes of what it holds, or of the line it uses (patch @name, #117)
+   :io (fn [b] (comp/patch-io (or (eng/inner-patch b) empty-patch)))
    :dynamic-io true
    :model {:empty empty-patch :step step :load sane-patch
            :code (fn [id d] (concat [(str "(inside " id)]
@@ -1109,6 +1116,8 @@
 (defn enter
   "Opens the sub-patch :bN: the patch, the code and the commands now act inside it."
   [id]
+  ;; a `patch @name` opens its line, in its tab (#117)
+  (when (line-ref? (need-box id)) (fail (str id " uses a line: (open-ref " id ") opens it in its tab")))
   (need-patch-box id)
   (swap! view-path conj id)
   (swap! ui assoc :sel nil :nsel nil :dirty false)
