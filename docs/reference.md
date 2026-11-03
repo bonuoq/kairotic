@@ -1193,13 +1193,15 @@ See also: `space~`, `dac~`
 
 ### patch
 
-`patch [name]`
+`patch [label] · patch @line`
 
-An embedded sub-patch: double-click to open it. Its inlet / outlet boxes (numbered left to right) are its ports.
+An embedded sub-patch: double-click to open it. Its inlet / outlet boxes (numbered left to right) are its ports. patch @name uses the line called name instead (its newest point, or the point it is pinned to): double-click opens its tab.
 
 **Messages and gestures**
 
-- `double-click`: opens it
+- `double-click`: opens it (patch @name: opens its line, in its tab)
+- `patch @name`: uses the line called name (spaces as -): its newest point, so it changes as the line advances; inside it, adc~ and dac~ are quiet (they play when the line plays alone): sound goes in and out through inlet~ / outlet~
+- `(pin-ref :bN)`: pins a patch @name to the point of its line it reads now · (follow-ref :bN) follows the line again
 - `(abstract :bN "name")`: turns it into a class (an abstraction)
 
 See also: `inlet`, `outlet`
