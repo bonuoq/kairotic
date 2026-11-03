@@ -10,7 +10,7 @@ on:
     branches: [main]
     # The same paths for pushes and pull requests (a YAML anchor, &paths, reused below as *paths): a pull
     # request that only touches docs, examples or other workflows doesn't run the browser.
-    paths: &paths ["app/**", "core/**", "tests/**", "packages/*/package.json", "site/build.mjs", ".github/workflows/tests.yml"]
+    paths: &paths ["app/**", "core/**", "tests/**", "packages/*/package.json", "packages/*/assets/**", "site/build.mjs", ".github/workflows/tests.yml"]
   pull_request:
     paths: *paths
   workflow_dispatch:

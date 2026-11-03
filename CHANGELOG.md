@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A recipe from a sound, in the app** (discussion #114, Study 35): **Recipe** in the bar of a `faust~`'s
+  window finds the values of its sliders that sound closest to the sound of a sample box of the patch, or of a
+  sound file, and writes them in the code — edited, not applied, so Ctrl/⌘+Enter applies them as one event and
+  the box shows them among its parameters. It runs in the page a moment at a time (the patch keeps playing),
+  *quick* or *careful*, and **Stop** stops it; **▶ sound** and **▶ found** play the two. The search moves into
+  `@kairotic/faust-units` 0.1.3 (`recipe.mjs`, with `render.mjs`, `listen.mjs` and `cmaes.mjs`): a recording at
+  any sample rate, level and number of channels, with silence before it, is brought to what the search hears.
+  Tests: `tests/faustrecipe.mjs` (13 checks).
 - **A line inside another: `patch @name`** (discussion #117, phase 2). A `patch` box whose word is `@name` uses the
   line called *name* as a sub-patch (spaces written `-`), its `inlet` / `outlet` boxes as ports; a plain word stays
   the label of an embedded patch, so no existing work changes meaning. Double-click (or `(open-ref :b3)`) opens the

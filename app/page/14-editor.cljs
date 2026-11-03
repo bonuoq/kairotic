@@ -134,6 +134,7 @@
 (defn close-code-win! []
   (when-let [w @code-win]
     (when-let [fv (:fv w)] (.destroy fv))
+    (when-let [c (:rcp w)] (.abort c))
     (when-let [ed (:ed w)] (.destroy ed))
     (when-let [el (cw-el)] (.remove el))
     (reset! code-win nil)
@@ -195,7 +196,7 @@
       (.addEventListener js/window "pointermove" move)
       (.addEventListener js/window "pointerup" up))))
 
-(declare toggle-patch-view!)
+(declare toggle-patch-view! toggle-recipe! find-recipe-click! find-recipe! play-recipe!)
 
 (defn window-shell [id b lang]
   (let [el (js/document.createElement "div")]
@@ -213,13 +214,24 @@
                "<span class=\"cw-lang\">" (esc lang) "</span>"
                (when (= lang "faust")
                  (str "<button class=\"act cw-pv\" data-cw=\"patch\" aria-pressed=\"" (not (false? (:faust-patch? @ui)))
-                      "\" title=\"Show or hide its patch: the code as Faust's own elements\">Patch</button>"))
+                      "\" title=\"Show or hide its patch: the code as Faust's own elements\">Patch</button>"
+                      "<button class=\"act cw-pv\" data-cw=\"recipe\" aria-pressed=\"false\""
+                      " title=\"Find the values of its sliders that sound closest to a sound: a recipe\">Recipe</button>"))
                "<button class=\"act primary\" data-cw=\"apply\" title=\"Apply the code (Ctrl/⌘+Enter)\">Apply</button>"
                "<button class=\"act cw-x\" data-cw=\"close\" title=\"Close (Esc)\" aria-label=\"Close\">×</button></div>"
                "<div class=\"cw-confirm\" hidden>Something is not applied. "
                "<button class=\"act primary\" data-cw=\"apply-close\">Apply and close</button>"
                "<button class=\"act\" data-cw=\"discard\">Discard</button>"
                "<button class=\"act\" data-cw=\"stay\">Keep editing</button></div>"
+               (when (= lang "faust")
+                 (str "<div class=\"cw-rcp\" hidden><label>Sliders that sound like <select class=\"rcp-src\"></select></label>"
+                      "<select class=\"rcp-len\" title=\"How long it listens\"><option value=\"quick\">quick</option>"
+                      "<option value=\"careful\">careful</option></select>"
+                      "<button class=\"act primary\" data-cw=\"find\">Find</button>"
+                      "<span class=\"rcp-st\" aria-live=\"polite\"></span>"
+                      "<button class=\"act rcp-play\" data-cw=\"play-target\" hidden title=\"The sound it listened to (its first second)\">▶ sound</button>"
+                      "<button class=\"act rcp-play\" data-cw=\"play-found\" hidden title=\"The code at the values found\">▶ found</button>"
+                      "<input type=\"file\" accept=\"audio/*\" class=\"rcp-file\" hidden></div>"))
                "<div class=\"cw-body\"></div><div class=\"cw-foot\"></div>"))
     (.addEventListener (.querySelector el ".cw-bar") "pointerdown" (fn [e] (drag-window! el e)))
     (.addEventListener el "click"
@@ -227,6 +239,10 @@
         (case (some-> (.closest (.-target e) "[data-cw]") (.getAttribute "data-cw"))
           "apply" (apply-code!)
           "patch" (toggle-patch-view!)
+          "recipe" (toggle-recipe!)
+          "find" (find-recipe-click!)
+          "play-target" (play-recipe! :target)
+          "play-found" (play-recipe! :found)
           "close" (ask-close!)
           "apply-close" (do (apply-code!) (when-not (:dirty @code-win) (close-code-win!)))
           "discard" (close-code-win!)
@@ -234,6 +250,11 @@
                      (set! (.-hidden (.querySelector el ".cw-confirm")) true)
                      (some-> (:ed @code-win) .focus))
           nil)))
+    (when-let [f (.querySelector el ".rcp-file")]
+      (.addEventListener f "change"
+        (fn [_] (when-let [file (aget (.-files f) 0)]
+                  (set! (.-value f) "")
+                  (find-recipe! (.then (.arrayBuffer file) snd/decode) (.-name file))))))
     ;; keys typed in the editor are the editor's (space, Delete, ⌘A… do not reach the patch)
     (.addEventListener el "keydown" (fn [e] (.stopPropagation e)))
     el))
@@ -296,6 +317,126 @@
       (.toggle (.-classList body) "nopatch" (not show?))
       (swap! ui assoc :faust-patch? show?)
       (some-> (cw-el) (.querySelector "[data-cw=patch]") (.setAttribute "aria-pressed" (str show?))))))
+
+;; ───── the recipe of a faust~ (discussion #114, Study 35, @kairotic/faust-units) ─────
+;; The values of the sliders of the code in the editor that sound closest to a sound: the sound of a
+;; sample box of this patch, or a file. The code is compiled and played offline, a note of a second (a
+;; gate button, if it has one, held for 0.65 s), many times: a few random settings first, then a search
+;; that listens as features~ does (Meyda), the pitch heard apart (YIN, as pitch~) and held. What it finds
+;; is written in the editor, the sliders starting at those values: edited, not applied, so applying it is
+;; one event of the history and the box keeps its parameters in sight.
+
+(def recipe-meyda "npm:meyda@5.6.3/dist/web/meyda.min.js")
+(def recipe-lengths {"quick" {:bank 32 :budget 160} "careful" {:bank 64 :budget 400}})
+(defonce recipe-sounds (atom nil))   ; {:target Float32Array :found Float32Array} of the last search
+
+(defn rcp-el [sel] (some-> (cw-el) (.querySelector (str ".cw-rcp " sel))))
+
+(defn rcp-status! [text & [err?]]
+  (when-let [el (rcp-el ".rcp-st")]
+    (set! (.-textContent el) text)
+    (set! (.-className el) (str "rcp-st" (when err? " err")))))
+
+(defn recipe-sources
+  "The sample boxes with a sound in the patch of the code window: [[id seconds] …], in the order of their ids."
+  []
+  (when-let [{:keys [path]} @code-win]
+    (->> (:boxes (patch-in (root-patch) path))
+         (filter (fn [[_ b]] (and (= "sample" (klass (:text b))) (snd/sample? (:data b)))))
+         (map (fn [[id b]] [id (snd/seconds (:data b))]))
+         (sort-by (fn [[id _]] (js/parseInt (subs (name id) 1) 10))))))
+
+(defn fill-recipe-sources! []
+  (when-let [sel (rcp-el ".rcp-src")]
+    (let [was (.-value sel)]
+      (set! (.-innerHTML sel)
+            (str (str/join (for [[id secs] (recipe-sources)]
+                             (str "<option value=\"" (esc (name id)) "\">" (esc (name id)) " · "
+                                  (.toFixed secs 1) " s</option>")))
+                 "<option value=\"file\">a sound file…</option>"))
+      (when (some #(= was (.-value %)) (array-seq (.-options sel))) (set! (.-value sel) was)))))
+
+(defn toggle-recipe!
+  "Shows or hides the recipe's line under the bar of a faust~'s window."
+  []
+  (when-let [p (some-> (cw-el) (.querySelector ".cw-rcp"))]
+    (let [show? (.-hidden p)]
+      (set! (.-hidden p) (not show?))
+      (when show? (fill-recipe-sources!))
+      (some-> (cw-el) (.querySelector "[data-cw=recipe]") (.setAttribute "aria-pressed" (str show?))))))
+
+(defn find-recipe-click!
+  "Find: from the sound chosen (a file asks for it first); Stop while it listens."
+  []
+  (if-let [c (:rcp @code-win)]
+    (.abort c)
+    (let [v (some-> (rcp-el ".rcp-src") .-value)]
+      (cond
+        (or (nil? v) (= v "file")) (some-> (rcp-el ".rcp-file") .click)
+        :else (let [b (get-in (patch-in (root-patch) (:path @code-win)) [:boxes (keyword v)])]
+                (if (snd/sample? (:data b))
+                  (find-recipe! (snd/sound-for (:data b)) v)
+                  (rcp-status! (str v " has no sound any more") true)))))))
+
+(defn find-recipe!
+  "Listens for the recipe of the code in the editor, the target being the promise of a sound ({:sr :chans})."
+  [sound label]
+  (when-let [{:keys [id path]} @code-win]
+    (let [ctl (js/AbortController.)
+          code (cw-text)
+          {:keys [bank budget]} (get recipe-lengths (some-> (rcp-el ".rcp-len") .-value) (get recipe-lengths "quick"))
+          mine? (fn [] (and @code-win (= id (:id @code-win)) (= path (:path @code-win)) (identical? ctl (:rcp @code-win))))
+          btn (rcp-el "[data-cw=find]")]
+      (swap! code-win assoc :rcp ctl)
+      (when btn (set! (.-textContent btn) "Stop"))
+      (doseq [b (array-seq (.querySelectorAll (cw-el) ".rcp-play"))] (set! (.-hidden b) true))
+      (rcp-status! (str "loading what listens to " label "…"))
+      (-> (js/Promise.all #js [(api/import-module (lib/module-origins "@kairotic/faust-units" "recipe.mjs"))
+                               (kairotic.faust/load)
+                               (api/load-script recipe-meyda)
+                               sound])
+          (.then (fn [[m fx _ s]]
+                   (when-not (:chans s) (throw (js/Error. (str "the sound of " label " is not in this browser"))))
+                   (rcp-status! "compiling…")
+                   (.find m #js {:faust fx :code code :Meyda (.-Meyda js/window)
+                                 :sound #js {:sr (:sr s) :chans (:chans s)}
+                                 :bank bank :budget budget :signal (.-signal ctl)
+                                 :onProgress (fn [phase done total best]
+                                               (when (mine?)
+                                                 (rcp-status! (if (= phase "bank")
+                                                                (str "listening to random settings " done "/" total)
+                                                                (str "searching " done "/" total " · distance " (.toFixed best 2))))))})))
+          (.then (fn [r]
+                   (when (mine?)
+                     (reset! recipe-sounds {:target (.-target r) :found (.-y r)})
+                     (doseq [b (array-seq (.querySelectorAll (cw-el) ".rcp-play"))] (set! (.-hidden b) false))
+                     (let [p (.-pitch r)
+                           what (str "distance " (.toFixed (.-fx r) 2) " (the nearest random setting: " (.toFixed (.-nearestFx r) 2) ")"
+                                     (when (some? p) (str " · pitch " (api/midi-name (js/Math.round p)))))]
+                       (if (= (cw-text) code)
+                         (do (set-editor-text! (.-code r))
+                             (when-let [fv (:fv @code-win)] (.setCode fv (.-code r)))
+                             (rcp-status! (str "found: " what " · in the code, Ctrl/⌘+Enter applies it")))
+                         (rcp-status! (str "found: " what ", but the code changed meanwhile: not written") true))))))
+          (.catch (fn [e]
+                    (when (mine?)
+                      (if (= "AbortError" (.-name e))
+                        (rcp-status! "stopped")
+                        (rcp-status! (str "✗ " (or (.-message e) e)) true)))))
+          (.finally (fn []
+                      (when (mine?)
+                        (swap! code-win dissoc :rcp)
+                        (when btn (set! (.-textContent btn) "Find")))))))))
+
+(defn play-recipe!
+  "Plays the sound the last search listened to (:target) or what it found (:found), once."
+  [which]
+  (when-let [y (get @recipe-sounds which)]
+    (let [ac (eng/ctx) buf (.createBuffer ac 1 (.-length y) 44100) src (.createBufferSource ac)]
+      (.copyToChannel buf y 0)
+      (set! (.-buffer src) buf)
+      (.connect src (.-destination ac))
+      (.then (.resume ac) (fn [_] (.start src))))))
 
 (defn open-code-editor!
   "Opens the code of a box in the editor window (or brings it back if it is the one open)."
