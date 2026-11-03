@@ -340,6 +340,14 @@ body.annotating.annot-move #canvas { cursor: move; }
 .cw-bar .cw-pv { padding: 2px 9px; font-size: 12px; }
 .cw-bar .cw-pv[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
 .cw-pv-err { margin: 12px; font-size: 12px; color: var(--error); }
+/* a faust~'s recipe (discussion #114, Study 35): the settings of its sliders that sound like a sound */
+.cw-rcp { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px; font-size: 12.5px;
+          background: var(--sheet); border-bottom: 1px solid var(--rule); }
+.cw-rcp[hidden] { display: none; }
+.cw-rcp select { font: inherit; font-size: 12px; padding: 2px 4px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); max-width: 14em; }
+.cw-rcp .rcp-st { flex: 1 1 12em; min-width: 0; font-family: var(--f-code); font-size: 11.5px; color: var(--ink-soft); }
+.cw-rcp .rcp-st.err { color: var(--error); }
+.cw-rcp .rcp-play[hidden] { display: none; }
 @media (max-width: 700px) { .cw-body.split { flex-direction: column; } .cw-body.split .cw-patch { border-right: 0; border-bottom: 1px solid var(--rule); } }
 .cw-plain { box-sizing: border-box; width: 100%; height: 100%; border: 0; outline: none; resize: none; padding: 8px 10px;
             font-family: var(--f-code); font-size: 12.5px; line-height: 1.5; background: var(--box); color: var(--ink); white-space: pre; tab-size: 2; }

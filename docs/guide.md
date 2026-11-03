@@ -107,6 +107,15 @@ comes first.
   one-sample delay `'` (in code, `~`). Code the boxes cannot read still plays, with the patch marked out of
   date. **Patch** in the window's bar hides it. The window opens beside the box, so its parameters stay in
   sight in the patch.
+- **A recipe from a sound** (Study 35): **Recipe** in the bar of a `faust~`'s window finds the values of
+  its sliders that sound closest to a sound — a sample box of the patch, or a sound file. It plays the code
+  offline, a note of one second (a `gate` button, if there is one, held for 0.65 s), many times: random
+  settings first, then a search that listens as `features~` does, the pitch heard as `pitch~` hears it
+  and held, on a slider called `pitch`, `key`, `note` or `midi` (MIDI) or `freq` (Hz). *quick* plays it
+  about 200 times, *careful* about 450; **Stop** stops it. The values found are written in the code, each
+  slider starting there: edited, not applied, so Ctrl/⌘+Enter applies them as one event and the box shows
+  them in its parameters. **▶ sound** and **▶ found** play the second it listened to and what it found.
+  It compares timbres apart from loudness; a log scale where the code says `[scale:log]` helps it.
 - **Faust in several voices**: a `faust~` whose source declares `declare options "[nvoices:8]";` is
   polyphonic. Its voice uses `freq`, `gain` and `gate`, set note by note; Hz go to its left inlet and
   voice ids to its right one, as with `synth~` (a `keyboard` 0→0, 1→1, 3→0; `mt play` 0→0, 1→1), in any

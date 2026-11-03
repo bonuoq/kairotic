@@ -444,6 +444,7 @@ Faust code box: compiled in the page and played as an AudioWorklet. Its audio po
 
 - `(code :bN "process = …;")`: writes its source
 - `double-click`: edit the code, beside its patch of Faust's own elements (Patch in the bar hides it); Ctrl+Enter applies
+- `Recipe (in the window's bar)`: the values of its sliders that sound closest to a sample box or a sound file, written in the code; Ctrl+Enter applies them
 - `declare options "[nvoices:8]"`: polyphonic: Hz on the left, voice ids on the right (a second inlet), as synth~; each id a voice
 - `[:gain 0.6] · :stop`: polyphonic: the velocity of the next notes · releases every voice
 - `effect = …;`: polyphonic: applied once to the sum of the voices

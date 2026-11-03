@@ -32,6 +32,7 @@ import { spectral } from "./spectral.mjs";
 import { faustpoly } from "./faustpoly.mjs";
 import { patterns } from "./patterns.mjs";
 import { faustview } from "./faustview.mjs";
+import { faustrecipe } from "./faustrecipe.mjs";
 import { patching } from "./patching.mjs";
 import { lines } from "./lines.mjs";
 
@@ -115,6 +116,7 @@ const audioSuites = [
   ["spectral", spectral, "the shift~ tests ran"],
   ["faustpoly", faustpoly, "the polyphonic faust~ tests ran"],
   ["faustview", faustview, "the faust~ patch view tests ran"],
+  ["faustrecipe", faustrecipe, "the faust~ recipe tests ran"],
   ["patterns", patterns, "the patterns tests ran"],
   // last: its transcriptions depend on timing, and by then the other blocks have (nearly) finished
   // (alongside them, a take could start late and an overwrite check fail)

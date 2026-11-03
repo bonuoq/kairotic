@@ -109,6 +109,16 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   como siempre. Un bucle debe pasar por el retardo de una muestra `'` (en código, `~`). El código que las
   cajas no pueden leer sigue sonando, con el patch marcado como desactualizado. **Patch** en la barra de la
   ventana lo oculta. La ventana se abre junto a la caja, para que sus parámetros sigan a la vista en el patch.
+- **Una receta a partir de un sonido** (Estudio 35): **Recipe** en la barra de la ventana de un `faust~`
+  busca los valores de sus sliders que suenan más cerca de un sonido: una caja sample del patch o un
+  archivo de sonido. Toca el código sin conexión, una nota de un segundo (un botón `gate`, si lo hay,
+  pulsado 0,65 s), muchas veces: primero ajustes al azar, luego una búsqueda que escucha como `features~`,
+  con la altura oída como la oye `pitch~` y fijada, en un slider llamado `pitch`, `key`, `note` o `midi`
+  (MIDI) o `freq` (Hz). *quick* lo toca unas 200 veces, *careful* unas 450; **Stop** la detiene. Los
+  valores encontrados se escriben en el código, cada slider empezando ahí: editado, no aplicado, así que
+  Ctrl/⌘+Enter los aplica como un solo evento y la caja los muestra en sus parámetros. **▶ sound** y
+  **▶ found** tocan el segundo que escuchó y lo que encontró. Compara timbres con independencia del
+  volumen; una escala logarítmica donde el código dice `[scale:log]` le ayuda.
 - **Faust a varias voces**: un `faust~` cuyo código declara `declare options "[nvoices:8]";` es
   polifónico. Su voz usa `freq`, `gain` y `gate`, que se fijan nota a nota; los Hz van a su entrada
   izquierda y los ids de voz a la derecha, como con `synth~` (un `keyboard` 0→0, 1→1, 3→0; `mt play`
