@@ -73,7 +73,7 @@
 
 (defn presets-box
   "A presets box of the work by its engine id (:b18, or :b5.b2 inside a sub-patch)."
-  [f] (or (get-in (eng/flat (work-patch)) [:boxes f]) (fail (str "There is no presets box " f))))
+  [f] (or (get-in (eng/flat (engine-patch)) [:boxes f]) (fail (str "There is no presets box " f))))
 
 (defn recall
   "Recalls a keyframe as a preset: every box of the work that is also there takes the text it had there (its
@@ -184,7 +184,7 @@
 
 (defn- emit-values! [f vals]
   (when (seq vals)
-    (try (eng/emit! (fn [] (work-patch)) f 0 vals) (catch :default e (js/console.error "presets" e)))))
+    (try (eng/emit! engine-patch f 0 vals) (catch :default e (js/console.error "presets" e)))))
 
 (defn presets-effect!
   "What a presets box (engine id f) asked for: a recall and a generation are gestures of the work (written in
@@ -193,7 +193,7 @@
   (js/setTimeout
    (fn []
      (try
-       (let [b (or (get-in (eng/flat (work-patch)) [:boxes f]) (fail "the box is not in the work"))
+       (let [b (or (get-in (eng/flat (engine-patch)) [:boxes f]) (fail "the box is not in the work"))
              kfs (presets-list b)
              own? (seq (stored-keyframes b))]
          (case op
@@ -215,10 +215,10 @@
            ;; The controls upstream of the box (a knob that drives it) are left where they are.
            :morph-at (do (need-keyframes kfs 2)
                          (let [[a b t] (pst/between (first xs) (count kfs))
-                               exclude (reaching (:lines (eng/flat (work-patch))) #{f})]
+                               exclude (reaching (:lines (eng/flat (engine-patch))) #{f})]
                            (emit-values! f (morph-with! (nth kfs (dec a)) (nth kfs (dec b)) t exclude))))
            :morph (let [[a b t] xs
-                        exclude (reaching (:lines (eng/flat (work-patch))) #{f})]
+                        exclude (reaching (:lines (eng/flat (engine-patch))) #{f})]
                     (emit-values! f (morph-with! (find-keyframe kfs a) (find-keyframe kfs b) t exclude)))
            nil))
        (catch :default e

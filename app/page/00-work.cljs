@@ -360,13 +360,75 @@
 
 (defn work-patch [] (or (:patch @perf) (patch-at (:pos @world))))
 
+;; ───── the line that plays (discussion #117, decision 6) ─────
+;; The engine plays the line where ▶ was pressed; the tab on screen is only what you see and edit, so
+;; changing tabs does not stop it. While another line plays, the one on screen still runs its messages
+;; (they travel without ▶), as a part of the engine's patch apart from the line that plays: its boxes are
+;; known by the prefix @<its line> (:@l3x.b1), so ids of two lines never meet. Its audio boxes stay out:
+;; only the line that plays sounds.
+
+(defn playing-line [] (when (eng/running?) (:playing @line-state)))
+
+(defn playing-elsewhere?
+  "Is the engine playing a line other than the one on screen?"
+  [] (let [p (playing-line)] (and p (not= p (active-line)))))
+
+(defn view-prefix [] (if (playing-elsewhere?) [(keyword (str "@" (active-line)))] []))
+
+(defn nodes-patch
+  "The patch at pos of a line whose segments are nodes (a line not on screen)."
+  [nodes pos]
+  (let [evs (loop [[nid idx] pos acc () guard 0]
+              (let [n (get nodes nid)]
+                (if (or (nil? n) (> guard 512))
+                  acc
+                  (let [acc (cons (take idx (:events n)) acc)]
+                    (if (and (:parent n) (get nodes (:parent n)))
+                      (recur [(:parent n) (:at n)] acc (inc guard))
+                      acc)))))]
+    (reduce step empty-patch (apply concat evs))))
+
+(defonce off-screen-cache (atom [nil nil nil]))
+
+(defn off-screen-patch
+  "The patch of line lid, not on screen: where its tab was left (or its newest point)."
+  [lid]
+  (let [nodes (get-in @hist [:other lid] {})
+        saved (get-in @line-state [:pos lid])
+        pos (if (and saved (get nodes (first saved)))
+              saved
+              (when (seq nodes)
+                (let [n (apply max-key (fn [n] (or (:t n) 0)) (vals nodes))] [(:id n) (count (:events n))])))
+        [k1 k2 v] @off-screen-cache]
+    (if (and (identical? k1 nodes) (= k2 pos))
+      v
+      (let [p (if pos (nodes-patch nodes pos) empty-patch)] (reset! off-screen-cache [nodes pos p]) p))))
+
+(defn silent
+  "Patch p without its audio boxes (nor the lines to and from them)."
+  [p]
+  (let [audio (set (keep (fn [[id b]] (when (:audio (comp/lookup (klass (:text b)))) id)) (:boxes p)))]
+    (if (empty? audio)
+      p
+      (-> p (update :boxes (fn [bx] (into (sorted-map) (remove (fn [[id _]] (audio id)) bx))))
+          (update :lines (fn [ls] (vec (remove (fn [[a _ b _]] (or (audio a) (audio b))) ls))))))))
+
+(defn engine-patch
+  "The patch the engine runs: the work on screen, or, while another line plays, that line with the one on
+   screen beside it (silent, under its prefix)."
+  []
+  (if (playing-elsewhere?)
+    (assoc-in (off-screen-patch (playing-line)) [:boxes (first (view-prefix))]
+              {:text "patch" :x 0 :y 0 :data (silent (work-patch))})
+    (work-patch)))
+
 (declare played!)
 
 (defn inject-local!
   "A message played here (a gesture, the REPL) into box f of the engine. In a jam it is also played to the
    others (issue #11): messages are not events of the take, so they travel apart (13-perform.cljs)."
   [f inlet v]
-  (eng/inject! (fn [] (work-patch)) f inlet v)
+  (eng/inject! engine-patch f inlet v)
   (played! f inlet v))
 (defn root-patch [] (or @scratch (work-patch)))
 
@@ -404,9 +466,13 @@
 
 (defn wrap-in [path ev] (reduce (fn [e id] [:in id e]) ev (reverse path)))
 
+(defn engine-path
+  "Where the engine knows the sub-patch on screen: its path, after the prefix of its line while another plays."
+  [] (into (view-prefix) (cmd-path)))
+
 (defn fid
   "The id the engine knows a box of the current view by."
-  [id] (eng/flat-id (cmd-path) id))
+  [id] (eng/flat-id (engine-path) id))
 
 (defn target
   "Where a message to inlet i of box id goes in the engine: a sub-patch receives it in its i-th inlet box."
@@ -414,13 +480,13 @@
   (let [b (get-in (current) [:boxes id])]
     (if (and b (comp/subpatch? b))
       (let [inner (eng/inner-patch b) x (get (:inlets (comp/patch-ports inner)) inlet)]
-        (if x [(eng/flat-id (conj (cmd-path) id) x) 0] (throw (js/Error. (str id " has no inlet " inlet)))))
+        (if x [(eng/flat-id (conj (engine-path) id) x) 0] (throw (js/Error. (str id " has no inlet " inlet)))))
       [(fid id) inlet])))
 
 (defn local-id
   "From an engine id back to an id of the current view (nil if it lives elsewhere)."
   [fid*]
-  (let [path (cmd-path) n (name fid*)]
+  (let [path (engine-path) n (name fid*)]
     (if (empty? path)
       (when-not (str/includes? n ".") fid*)
       (let [pre (str (str/join "." (map name path)) ".") rest-n (subs n (min (count n) (count pre)))]

@@ -6,8 +6,9 @@
 ;; snapshots), shown as tabs above the patch. The main line is the work as it always was; the others are
 ;; studies, sketches, parts. Their segments are kept with the work's history, each one marked with its line
 ;; (00-work.cljs), and their names in <work>/lines, one document per line. The tab on screen is the line
-;; everything else works on: the patch, the engine, the history view, Perform and its jams, Share/Export,
-;; Claude. Using one line inside another (`patch @name`, Study 33) comes later.
+;; everything else works on: the patch, the history view, Perform and its jams, Share/Export, Claude.
+;; The engine plays the line where ▶ was pressed, whichever tab is on screen (decision 6, 00-work.cljs).
+;; Using one line inside another (`patch @name`, Study 33) comes later.
 
 (in-ns 'user)
 
@@ -73,15 +74,16 @@
 
 (defn switch-line!
   "Puts line lid on screen: its segments become the history, at the point its tab was left (or its newest).
-   The engine stops, as when another work opens: the patch is another one. False when it cannot be now
-   (in Perform, a lesson or the scratch patch)."
+   The engine goes on playing the line where ▶ was pressed (decision 6): the boxes of the one on screen are
+   known to it under the prefix of their line, so nothing of what they show or hold meets the other's. With
+   the engine stopped, what the boxes showed is forgotten, as when another work opens. False when it cannot
+   be now (in Perform, a lesson or the scratch patch)."
   [lid]
   (cond
     (= lid (active-line)) true
     (or @perf @lesson @scratch) false
     :else
-    (let [from (active-line)]
-      (eng/stop!)
+    (let [from (active-line) on? (eng/running?)]
       (swap! line-state (fn [st] (-> st (assoc-in [:pos from] (:pos @world)) (assoc :active lid))))
       (reset! world {:pos nil :auto true :prev-pos nil :jumped-at 0})
       (swap! hist (fn [h] (-> h
@@ -89,12 +91,13 @@
                               (assoc :nodes (get-in h [:other lid] {}))
                               (update :other dissoc lid))))
       (reset! cache {})
-      (reset-patch-state!)
+      (when-not on? (reset-patch-state!))
       (reset! view-path [])
       (swap! ui assoc :sel nil :drag nil :wire nil :merge-pick false)
       (let [saved (get-in @line-state [:pos lid])]
         (swap! world assoc :pos (if (and saved (node (first saved))) saved (newest-tip))))
       (publish-presence!)
+      (transport-info!)
       (render-all!)
       (render-lines!)
       ;; the official classes its boxes use and no definition of its own brings (one asked for while
@@ -196,6 +199,7 @@
                                    (when (and busy? (not sel?)) " disabled")
                                    " title=\"" (if sel? "The line on screen · double-click to rename it" (str "Put the line " (esc (line-name l)) " on screen")) "\">"
                                    (when (= l main-line) "<span class=\"star\" title=\"the main line\">★</span>")
+                                   (when (= l (playing-line)) "<span class=\"plays\" title=\"The engine plays this line (■ stops it, ▶ on another tab plays that one)\">▶</span>")
                                    (esc (line-name l))
                                    (when (pos? n) (str "<span class=\"who\" title=\"" n (if (= 1 n) " person" " people") " on this line\">●" (when (> n 1) n) "</span>"))
                                    (when (and sel? (not= l main-line) (not busy?)) "<span class=\"x\" data-line-archive=\"1\" title=\"Archive this line (it is kept, with its history)\">×</span>")
@@ -255,6 +259,7 @@
                                 (reset! line-edit nil) (render-lines!)))
                        150)))))
 
+(add-watch eng/rt ::lines (fn [_ _ o n] (when (not= (:on o) (:on n)) (render-lines!))))
 (add-watch line-state ::render (fn [_ _ o n] (when (not= o n) (render-lines!))))
 (add-watch work ::lines (fn [_ _ o n] (when (not= (select-keys o [:kind :id]) (select-keys n [:kind :id])) (render-lines!))))
 (add-watch peers ::lines (fn [_ _ _ _] (render-lines!)))

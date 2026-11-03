@@ -179,8 +179,10 @@ su propio patch, sus propias ramas, fusiones y snapshots.
   pantalla — `(go-line "boceto")`; cada pestaña vuelve al punto donde la dejaste.
 - Doble clic en la pestaña en pantalla para renombrarla — `(rename-line "intro")`; **×** la archiva (se
   guarda, con su historia, y vuelve desde *archived* — `(restore-line "boceto")`). `(work-lines)` las lista.
-- La línea en pantalla es aquella con la que trabajan el patch, el motor (se para al cambiar de línea),
-  Perform, Share/Export, Release y Claude. En una sala, las posiciones de los demás se dibujan solo en la
+- La línea en pantalla es aquella con la que trabajan el patch, Perform, Share/Export, Release y Claude.
+- El motor toca la línea donde pulsaste ▶ (su pestaña también muestra ▶): cambiar de pestaña no lo para, y el
+  transporte dice qué línea suena. Los mensajes de la pestaña en pantalla siguen viajando; sus cajas de audio
+  callan hasta que pulsas ▶ en ella, que la convierte en la línea que suena. En una sala, las posiciones de los demás se dibujan solo en la
   línea en la que están; seguir a alguien a otra línea abre su pestaña.
 - Las líneas no cambian mientras tocas en Perform, en una lección o en el patch de pruebas. Usar una línea
   dentro de otra (`patch @nombre`, Study 33) es el paso siguiente.

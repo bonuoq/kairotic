@@ -89,6 +89,32 @@ export async function lines(page, check) {
   check("... and the other tabs wait", await page.evaluate(() => [...document.querySelectorAll("#line-tabs .ltab:not([aria-selected=true])")].every((b) => b.disabled)));
   await cljs(page, "(compose :discard)");
 
+  // decision 6: the engine plays the line where ▶ was pressed, and changing tabs does not stop it
+  await cljs(page, '(go-line "étude")');
+  await cljs(page, '(box "osc~ 440" 200 40)');
+  const osc = await cljs(page, "(last (sort-by box-num (keys (:boxes (current)))))");
+  await cljs(page, '(go-line "main")');
+  await cljs(page, "(play)");
+  check("▶ makes the line on screen the one that plays", (await cljs(page, "(playing-line)")) === '"main"');
+  check("... marked ▶ on its tab", await page.evaluate(() => !!document.querySelector('#line-tabs .ltab[data-line="main"] .plays')));
+  await cljs(page, '(go-line "étude")');
+  check("changing tabs does not stop the engine", (await cljs(page, "[(eng/running?) (playing-line)]")) === '[true "main"]');
+  check("... the transport says which line plays", (await page.textContent("#transport-info")) === "playing main");
+  const pre = await cljs(page, "(name (first (view-prefix)))");
+  check("the boxes on screen are known to the engine under their line's prefix", (await cljs(page, "(fid :b2)")) === `:${pre.slice(1, -1)}.b2`);
+  check("... beside the line that plays, whose boxes keep their ids",
+    (await cljs(page, `(let [f (eng/flat (engine-patch))] [(contains? (:boxes f) (fid :b2)) (every? (fn [id] (contains? (:boxes f) id)) (keys (:boxes (off-screen-patch "main"))))])`)) === "[true true]");
+  check("... without its audio boxes: only the line that plays sounds", (await cljs(page, `(contains? (:boxes (eng/flat (engine-patch))) (fid ${osc}))`)) === "false");
+  await cljs(page, "(send! :b1 :bang)");
+  check("messages on the tab on screen still travel (without ▶ of their own)", (await until(page, "(second (last-shown :b2))", "3")) === "3", await cljs(page, "(last-shown :b2)"));
+  check("... and the engine still plays the other line", (await cljs(page, "(playing-line)")) === '"main"');
+  await cljs(page, "(play)");
+  const now = await cljs(page, "[(line-name (playing-line)) (playing-elsewhere?) (fid :b2)]");
+  check("▶ on another tab plays that line", now === '["étude" false :b2]', now);
+  await cljs(page, "(stop)");
+  check("■ stops it", (await cljs(page, "[(eng/running?) (playing-line)]")) === "[false nil]");
+  await cljs(page, `(delete ${osc})`);
+
   // segments that arrive: each one to its line
   check("segments that arrive go to their lines", (await cljs(page, `(do (go-line "main")
     (on-history #js {:docs #js [#js {:id "t-main" :exists true :data (fn [] #js {:parent nil :at 0 :author "x" :t 1 :events #js []})}

@@ -381,7 +381,7 @@
   "The live part of a panel: the own views of its presented boxes."
   [id b x y]
   (apply str (for [k (:kids (panel-layout b)) :when (own-view? (:b k)) :let [[kx ky] (kid-origin x y k)]]
-               (shapes-at (eng/flat-id (conj (cmd-path) id) (:id k)) (:b k) kx ky))))
+               (shapes-at (eng/flat-id (conj (engine-path) id) (:id k)) (:b k) kx ky))))
 
 ;; ───── presentation mode: only the presented boxes, at their presentation places ─────
 
@@ -894,7 +894,11 @@
 
 (defn transport-info! []
   (let [on (eng/running?)]
-    (set! (.-textContent ($ "transport-info")) (if on "engine running" "engine stopped"))
+    (set! (.-textContent ($ "transport-info"))
+          (cond (not on) "engine stopped"
+                ;; it plays another line than the one on screen (#117): which
+                (playing-elsewhere?) (str "playing " (line-name (playing-line)))
+                :else "engine running"))
     (.toggle (.-classList ($ "play")) "on" on)))
 
 (declare sync-live-trees!)
@@ -912,7 +916,9 @@
   "Starts the engine and fires the loadbang boxes. Everything else acts when messages reach it."
   []
   (let [was-on (eng/running?)]
-    (eng/start! (fn [] (work-patch)) true)
+    ;; the line on screen is the one that plays from now on (#117, decision 6)
+    (swap! line-state assoc :playing (active-line))
+    (eng/start! engine-patch true)
     (transport-info!)
     (when-not was-on (js/requestAnimationFrame (fn [_] (live!))))
     :running))
