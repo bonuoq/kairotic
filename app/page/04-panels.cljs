@@ -161,7 +161,7 @@
   [path id b]
   (let [r (cbox/compiled "component" (str (get-in b [:data :source])))
         cls (get-in r [:info :class])
-        f (eng/flat-id path id)
+        f (eng/flat-id (into (view-prefix) path) id)
         used (when cls (get @lib/work-classes cls))
         where (str (when (seq path) (str "in " (str/join " › " (map name path)) " · ")) "box " (name id))
         attr (str " data-path=\"" (esc (pr-str path)) "\" data-id=\"" (esc (name id)) "\"")]

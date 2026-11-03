@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The engine plays the line where ▶ was pressed** (discussion #117, decision 6): changing tabs no longer stops
+  it. Its tab shows ▶ and the transport says *playing* plus the line's name when another tab is on screen. The
+  line on screen still runs its messages, beside the one that plays, its boxes known to the engine under the prefix
+  of their line (`:@<line>.b1`), so the ids of two lines never meet, and without its audio boxes: only the line that
+  plays sounds. ▶ on that tab makes it the one that plays; ■ stops. With the engine stopped, changing lines is as
+  before. Tests: 11 more checks in `tests/lines.mjs`.
 - **Lines** (discussion #117, phase 1): a work can have several independent histories, each a tab above the
   patch — the main line (★) is the work as it always was, the others studies, sketches, parts, each with its own
   patch, branches, merges and snapshots. **+** or `(new-line "sketch")` makes one; a click on a tab or
@@ -10,9 +16,9 @@
   - Kept with the work: each segment of the history carries its line (none for the main line, so works
     without lines are as they were), and the names live in `<work>/lines`. Copying a work to a room or to solo
     takes its lines; deleting it deletes them.
-  - The line on screen is what everything works on: the patch, the engine (it stops when the line changes),
-    Perform and its jams (a jam is offered only to whoever is on its line), Share/Export, Release, Claude.
-    Lines do not change in Perform, a lesson or the scratch patch.
+  - The line on screen is what everything works on: the patch, the engine (it stopped when the line changed,
+    until the entry above), Perform and its jams (a jam is offered only to whoever is on its line),
+    Share/Export, Release, Claude. Lines do not change in Perform, a lesson or the scratch patch.
   - In a room, presence says which line each person is on: the others' positions are drawn on their line,
     the people list says where the others are, and following someone onto another line opens its tab.
   - An official package asked for by one line while another is on screen goes into its own line when that one

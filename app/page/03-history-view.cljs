@@ -234,7 +234,7 @@
    which already sent it."
   []
   (reset! emit-timer nil)
-  (let [p (eng/flat (work-patch))
+  (let [p (eng/flat (engine-patch))
         shape [(:lines p) (into {} (map (fn [[id b]] [id (:text b)])) (:boxes p))]
         [old-lines old-texts] @sent-shape
         changed (when (not= shape @sent-shape)
@@ -254,7 +254,7 @@
                          (:persist (comp/lookup (klass text))))]
         (if (= text (get @echoed f))
           (swap! echoed dissoc f)
-          (try (eng/inject! (fn [] (work-patch)) f 0 :bang)
+          (try (eng/inject! engine-patch f 0 :bang)
                (catch :default e (js/console.error e))))))
     (doseq [[f b] (:boxes p)
             :when (and (= "tree" (klass (:text b))) (not (some #{:manual} (eng/args-of (:text b)))))]
@@ -265,12 +265,12 @@
               ;; the tree changed: it goes everywhere
               (or (not= t (get @sent-trees f)) (contains? changed f))
               (do (swap! sent-trees assoc f t)
-                  (eng/emit! (fn [] (work-patch)) f 0 (mt/expand-source t f)))
+                  (eng/emit! engine-patch f 0 (mt/expand-source t f)))
               ;; the patch after it changed: only along the lines that lead there
               upstream
               (let [targets (set (for [[a o bb ii] (:lines p) :when (and (= a f) (= o 0) (upstream bb))] [bb ii]))]
                 (when (seq targets)
-                  (eng/emit-to! (fn [] (work-patch)) f 0 (mt/expand-source t f) targets))))
+                  (eng/emit-to! engine-patch f 0 (mt/expand-source t f) targets))))
             (catch :default e (js/console.error e))))))
     ;; the same for the data boxes of other classes: a class with :sends (fn [box] value) sends that
     ;; value when the text or data of the box changed (a pbind sends its pattern), and again only toward
@@ -286,11 +286,11 @@
             (cond
               (or (not= k (get @sent-data f)) (contains? changed f))
               (do (swap! sent-data assoc f k)
-                  (eng/emit! (fn [] (work-patch)) f 0 v))
+                  (eng/emit! engine-patch f 0 v))
               upstream
               (let [targets (set (for [[a o bb ii] (:lines p) :when (and (= a f) (= o 0) (upstream bb))] [bb ii]))]
                 (when (seq targets)
-                  (eng/emit-to! (fn [] (work-patch)) f 0 v targets))))
+                  (eng/emit-to! engine-patch f 0 v targets))))
             (catch :default e (js/console.error e)))))))
   (when (sync-live-trees!) (render-scene (current)))
   (drain-prints!))
@@ -366,7 +366,8 @@
   (sync-live-trees!)
   (schedule-emit!)
   (let [p (current)
-        changed (lib/sync! (eng/flat (root-patch)))]
+        ;; the classes of the line that plays too, while it plays from another tab (#117)
+        changed (lib/sync! (eng/flat (if @scratch (root-patch) (engine-patch))))]
     (when changed (reset! eng/flat-cache [nil nil]))
     ;; the Components tab lists the definitions of the work: drawn again when they or their status change
     (render-comp! true)

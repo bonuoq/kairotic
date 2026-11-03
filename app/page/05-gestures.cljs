@@ -273,7 +273,7 @@
                     (fail (str "To edit " from " from this score, connect the score's third outlet (edits) to " from
                                ", or show " from " itself as a score: (view " from " :score)")))
                   (swap! ui assoc :tsel (assoc ts :src {:src (if (#{"Delete" "Backspace"} k) dur-path target)} :id nil))
-                  (eng/emit! (fn [] (work-patch)) (fid score) 2 [:edit ops])))
+                  (eng/emit! engine-patch (fid score) 2 [:edit ops])))
             (render-scene (current))))))))
 
 (defn score-click!
@@ -390,7 +390,7 @@
   "Sends a message to inlet 0 of a box inside a sub-patch of this view: (send-to! :b7.b4 0.5)."
   [rel v]
   (let [was-on (eng/running?)]
-    (inject-local! (eng/flat-id (cmd-path) rel) 0 v)
+    (inject-local! (eng/flat-id (engine-path) rel) 0 v)
     (when-not was-on (transport-info!) (js/requestAnimationFrame (fn [_] (live!))))
     v))
 
@@ -792,7 +792,7 @@
           (when (and k (fn? (:gesture (box-def (:b k)))))
             (.preventDefault e)
             (let [[kx ky] (kid-origin (:x b) (:y b) k)
-                  f (eng/flat-id (conj (cmd-path) id) kid)
+                  f (eng/flat-id (conj (engine-path) id) kid)
                   echo (str "(send-to! " (eng/flat-id [id] kid) " ")
                   v (ctl-number f (:b k))]
               ;; a double-click on a numeric control: its value is typed (issue #32)
