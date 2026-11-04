@@ -17,7 +17,7 @@
     travels with the work and going back in the history brings back the value it had. A button (no name) only
     sends, `(send! :bN [:ui outlet value name])` in the REPL. Its element is kept between redraws, so what is typed
     keeps its focus; keys typed in it are its own (a space is not ▶). `(resize :bN w h)` gives it a size.
-  - In the core (`core/kairotic/hiccup.cljs`, page `app/page/19-html.cljs`). Tests: `tests/cljs/hiccup.cljs` (56
+  - In the core (`core/kairotic/hiccup.cljs`, page `app/page/19-html.cljs`). Tests: `tests/cljs/hiccup.cljs` (55
     checks) and `tests/html.mjs` (38).
 
 - **Lines, what was left** (discussion #117):
