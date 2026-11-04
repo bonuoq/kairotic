@@ -1,0 +1,180 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 36 · talk · room tests</title>
+<pre id="out">Running…</pre>
+<iframe id="a" src="../index.html?who=w-ana" width="1100" height="900" style="border:0" allow="microphone; camera; autoplay"></iframe>
+<iframe id="b" src="../index.html?who=w-bo" width="1100" height="900" style="border:0" allow="microphone; camera; autoplay"></iframe>
+<script>
+// Ana and Bo in one room through a real relay: tests/room.html?signal=ws://localhost:8765/signal, with
+// Chromium's fake microphone and camera (tests/studies.mjs). Without ?signal it is skipped.
+var signal = new URLSearchParams(location.search).get("signal");
+var results = [];
+function is(what, ok, detail) { results.push([what + (ok || detail === undefined ? "" : " — " + detail), !!ok]); }
+function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function until(f, ms) {
+  var t0 = Date.now();
+  return new Promise(function (ok) {
+    (function loop() { var v; try { v = f(); } catch (e) {} if (v || Date.now() - t0 > ms) ok(v); else setTimeout(loop, 60); })();
+  });
+}
+function done(err) {
+  if (err) results.push(["error: " + (err.stack || err.message || err), false]);
+  var failed = results.filter(function (r) { return !r[1]; }).map(function (r) { return r[0]; });
+  document.getElementById("out").textContent = (results.length - failed.length) + " / " + results.length + " pass" +
+    failed.map(function (f) { return "\n✗ " + f; }).join("");
+  window.kairoticResults = { total: results.length, failed: failed };
+}
+if (!signal) {
+  document.getElementById("a").remove(); document.getElementById("b").remove();
+  document.getElementById("out").textContent = "skipped: no ?signal";
+  window.kairoticResults = { total: 0, failed: [], skipped: true };
+} else {
+  var loaded = 0;
+  var start = function () {
+    if (++loaded < 2) return;
+    var A = document.getElementById("a").contentWindow, B = document.getElementById("b").contentWindow;
+    var $ = function (w, id) { return w.document.getElementById(id); };
+    var q = function (w, sel) { return w.document.querySelector(sel); };
+    var items = function (w) { return w.document.querySelectorAll("#chat .item"); };
+    var last = function (w) { var it = items(w); return it[it.length - 1]; };
+    var press = function (w, id, ms) {
+      var el = $(w, id);
+      el.dispatchEvent(new w.PointerEvent("pointerdown", { bubbles: true, pointerId: 3 }));
+      return wait(ms).then(function () { el.dispatchEvent(new w.PointerEvent("pointerup", { bubbles: true, pointerId: 3 })); });
+    };
+    var say = function (w, text) { $(w, "say").value = text; $(w, "send").click(); };
+    var keepLast = function (w) { last(w).querySelector("[data-keep]").click(); };
+    var allow = function (w, yes) { q(w, "#asks [data-answer='" + (yes ? "yes" : "no") + "']").click(); };
+
+    until(function () { return $(A, "status").dataset.ready && $(B, "status").dataset.ready; }, 30000).then(function () {
+      [[A, "Ana"], [B, "Bo"]].forEach(function (p) { $(p[0], "sig-url").value = signal; $(p[0], "my-name").value = p[1]; });
+      $(A, "join").click();
+      return until(function () { return /^in study-36/.test($(A, "room-msg").textContent); }, 10000);
+    }).then(function () {
+      $(B, "join").click();
+      return until(function () { return q(A, ".peer.p2p") && q(B, ".peer.p2p"); }, 15000);
+    }).then(function (ok) {
+      is("Ana and Bo meet, with a direct channel both ways", ok, $(A, "peers").textContent + " / " + $(B, "peers").textContent);
+
+      // text, with anchors
+      say(A, "from #12 @b3 enters, ^8");
+      return until(function () { return items(B).length === 1; }, 5000);
+    }).then(function () {
+      var it = last(B);
+      is("a message arrives, with who said it", it && /Ana/.test(it.querySelector(".who").textContent) && /from #12 @b3 enters/.test(it.textContent));
+      is("its anchors as chips", it && Array.prototype.map.call(it.querySelectorAll(".chip"), function (c) { return c.textContent; }).join(" ") === "#12 @b3 ^8");
+      is("nothing is kept yet", A.kairoticWork().length === 0 && B.kairoticWork().length === 0);
+
+      // Ana keeps her own: at once, and in both pages
+      keepLast(A);
+      return until(function () { return B.kairoticWork().length === 1; }, 5000);
+    }).then(function (ok) {
+      var k = ok && B.kairoticWork()[0];
+      is("keeping your own: no question, kept in every page", k && k.kind === "message" && k.name === "Ana" && k["kept-by"] === k.author && A.kairoticWork().length === 1);
+      is("as an annotation with its anchors", k && k.anchors.length === 3 && k.anchors[0].point === 12);
+      is("nobody was asked", $(A, "asks-panel").hidden && $(B, "asks-panel").hidden);
+
+      // Bo keeps Ana's: Ana is asked; she allows
+      say(A, "second idea");
+      return until(function () { return items(B).length === 2; }, 5000);
+    }).then(function () {
+      keepLast(B);
+      return until(function () { return !$(A, "asks-panel").hidden; }, 5000);
+    }).then(function (ok) {
+      is("keeping someone else's asks them", ok && /Bo wants to keep your message “second idea”/.test($(A, "asks").textContent));
+      is("and says so where it was asked", /asked Ana/.test(last(B).textContent));
+      allow(A, true);
+      return until(function () { return A.kairoticWork().length === 2; }, 5000);
+    }).then(function (ok) {
+      var k = A.kairoticWork()[1];
+      is("allowed: kept, saying who made it and who kept it", ok && k.name === "Ana" && k["kept-by-name"] === "Bo" && B.kairoticWork().length === 2);
+
+      // ... and declines the next
+      say(A, "not this one");
+      return until(function () { return items(B).length === 3; }, 5000);
+    }).then(function () {
+      keepLast(B);
+      return until(function () { return !$(A, "asks-panel").hidden; }, 5000);
+    }).then(function () {
+      allow(A, false);
+      return until(function () { return /Ana declined/.test(last(B).textContent); }, 5000);
+    }).then(function (ok) {
+      is("declined: not kept, and Bo sees why", ok && B.kairoticWork().length === 2);
+
+      // push to talk
+      $(A, "mic").click(); $(B, "mic").click();
+      return until(function () { return !$(A, "ptt").disabled && !$(B, "ptt").disabled; }, 5000);
+    }).then(function () {
+      $(A, "ptt").dispatchEvent(new A.PointerEvent("pointerdown", { bubbles: true, pointerId: 5 }));
+      return until(function () { return q(B, ".peer.talk[data-peer]"); }, 3000);
+    }).then(function (ok) {
+      is("holding to talk: Bo sees Ana talking", ok && /Ana.*talking/.test($(B, "peers").textContent));
+      return wait(1200).then(function () { return B.kairoticAudioIn(); });
+    }).then(function (bytes) {
+      is("and her voice reaches him (audio flows)", bytes.reduce(function (a, b) { return a + b; }, 0) > 1000, JSON.stringify(bytes));
+      $(A, "ptt").dispatchEvent(new A.PointerEvent("pointerup", { bubbles: true, pointerId: 5 }));
+      return until(function () { return !q(B, ".peer.talk[data-peer]"); }, 3000);
+    }).then(function (ok) {
+      is("letting go: no longer talking", ok);
+
+      // a voice note
+      return press(A, "note", 1300);
+    }).then(function () {
+      return until(function () { var it = last(B); return it && it.querySelector("audio"); }, 8000);
+    }).then(function (ok) {
+      var it = last(B);
+      is("a voice note arrives whole, playable", ok && /voice note · 1\.[0-9] s/.test(it.textContent), it && it.textContent);
+      keepLast(B);
+      return until(function () { return !$(A, "asks-panel").hidden; }, 5000);
+    }).then(function (ok) {
+      is("keeping Ana's note asks her", ok && /wants to keep your voice note/.test($(A, "asks").textContent));
+      allow(A, true);
+      return until(function () { return B.kairoticWork().some(function (k) { return k.kind === "note"; }); }, 8000);
+    }).then(function (ok) {
+      var k = ok && B.kairoticWork().filter(function (k) { return k.kind === "note"; })[0];
+      is("kept as a sound: its hash and length", k && /^[0-9a-f]{32}$/.test(k.sound) && k.dur > 1, JSON.stringify(k));
+      return k ? B.kairoticSoundKept(k.sound) : false;
+    }).then(function (there) {
+      is("and the sound is in IndexedDB (kairotic-sounds), where the app finds it", there);
+
+      // the camera
+      $(B, "cam").click();
+      return until(function () { var v = q(A, ".tile[data-peer]:not([hidden]) video"); return v && v.videoWidth > 0; }, 10000);
+    }).then(function (ok) {
+      is("Bo turns his camera on: Ana sees him", ok);
+      var t = q(A, ".tile[data-peer]:not([hidden])");
+      is("with his name on it", t && /Bo/.test(t.querySelector(".label").textContent));
+      t.querySelector("[data-frame]").click();
+      return until(function () { var it = last(A); return it && it.querySelector("img"); }, 3000);
+    }).then(function (ok) {
+      is("Ana takes a frame of Bo: an item of the chat", ok);
+      keepLast(A);
+      return until(function () { return !$(B, "asks-panel").hidden; }, 5000);
+    }).then(function (ok) {
+      is("keeping a frame of Bo asks Bo", ok && /wants to keep your video frame/.test($(B, "asks").textContent));
+      allow(B, true);
+      return until(function () { return A.kairoticWork().some(function (k) { return k.kind === "frame"; }); }, 5000);
+    }).then(function (ok) {
+      var k = ok && A.kairoticWork().filter(function (k) { return k.kind === "frame"; })[0];
+      is("kept as an image, Bo's, kept by Ana", k && /^data:image\/jpeg/.test(k.image) && k.name === "Bo" && k["kept-by-name"] === "Ana");
+
+      // Bo leaves: what he said and did not keep cannot be kept any more
+      say(B, "bye");
+      return until(function () { return items(A).length > 0 && /bye/.test(last(A).textContent); }, 5000);
+    }).then(function () {
+      $(B, "join").click(); // joining again is leaving first, with a new session
+      return wait(300);
+    }).then(function () {
+      return until(function () { return q(A, ".peer.p2p"); }, 10000).then(function () {
+        keepLast(A);
+        return wait(300);
+      });
+    }).then(function () {
+      is("someone's who has left (a past session): it can't be kept", /has left: it can't be kept/.test(last(A).textContent));
+      done();
+    }).catch(done);
+  };
+  document.getElementById("a").addEventListener("load", start);
+  document.getElementById("b").addEventListener("load", start);
+}
+</script>

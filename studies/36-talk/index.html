@@ -1,0 +1,714 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 36 · talk</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the room (relay, room, name, who is in it); the chat on the left (messages,
+   voice notes, frames, each with Keep); on the right voice and video, the asks waiting for an answer,
+   and what the work keeps. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.act.rec[aria-pressed="true"] { background: var(--kairos); border-color: var(--kairos); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"], input[type="text"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="text"] { font-family: var(--f-code); font-size: 12.5px; width: 15em; }
+input[type="number"] { width: 4.5em; font-family: var(--f-code); font-size: 12.5px; }
+label { display: inline-flex; gap: 5px; align-items: center; font-size: 13px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+.note { font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin: 0; max-width: 100ch; }
+
+.views { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.empty { font-size: 12px; color: var(--ink-soft); }
+
+/* who is in the room */
+.peers { display: flex; flex-wrap: wrap; gap: 6px; font: 12px var(--f-code); }
+.peer { border: 1px solid var(--rule); background: var(--sheet); border-radius: 3px; padding: 2px 7px; display: inline-flex; gap: 6px; align-items: baseline; }
+.peer.p2p { border-color: var(--ok); }
+.peer.talk { background: var(--kairos-soft); border-color: var(--kairos); }
+.peer i { font-style: normal; color: var(--ink-soft); }
+
+/* the chat */
+.chat { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; height: 380px; overflow-y: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 6px; }
+.item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: start; padding: 4px 6px; border-radius: 4px; }
+.item.mine { background: var(--accent-soft); }
+.item .who { font: 600 12px var(--f-ui); }
+.item .who time { font: 400 11px var(--f-code); color: var(--ink-soft); margin-left: 6px; }
+.item .what { grid-column: 1; font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.item .side { grid-row: 1 / span 2; grid-column: 2; display: flex; flex-direction: column; gap: 4px; align-items: end; }
+.item .state { font: 11px var(--f-code); color: var(--ink-soft); }
+.item .state.ok { color: var(--ok); } .item .state.bad { color: var(--error); }
+.item img { display: block; max-width: 200px; border-radius: 4px; }
+.chip { font: 11.5px var(--f-code); border: 1px solid var(--accent); color: var(--accent); background: var(--box); border-radius: 3px; padding: 0 5px; margin-right: 4px; cursor: pointer; }
+button.small { font: 500 12px var(--f-ui); padding: 2px 8px; border-radius: 5px; border: 1px solid var(--rule); background: var(--box); color: var(--ink); cursor: pointer; }
+button.small:hover { border-color: var(--accent); }
+.say { display: flex; gap: 8px; }
+.say input { flex: 1 1 auto; width: auto; font-family: var(--f-ui); font-size: 13.5px; padding: 6px 8px; }
+.hint { font-size: 12px; color: var(--ink-soft); line-height: 1.6; }
+.hint kbd { font: 11px var(--f-code); border: 1px solid var(--rule); border-radius: 3px; padding: 0 4px; background: var(--sheet); }
+
+/* voice and video */
+button.hold { border: 2px solid var(--kairos); background: var(--box); color: var(--kairos); font: 600 14px var(--f-ui); padding: 10px 16px; border-radius: 999px; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+button.hold[aria-pressed="true"] { background: var(--kairos); color: #fff; }
+button.hold:disabled { opacity: 0.4; cursor: default; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tile { position: relative; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; overflow: hidden; aspect-ratio: 4 / 3; }
+.tile video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+.tile .label { position: absolute; left: 6px; bottom: 5px; font: 11px var(--f-code); color: #fff; background: rgba(0,0,0,0.55); padding: 1px 5px; border-radius: 3px; }
+.tile button { position: absolute; right: 5px; bottom: 5px; }
+.tile.talk { outline: 2px solid var(--kairos); }
+
+/* asks and the work */
+.ask { border: 1px solid var(--kairos); background: var(--kairos-soft); border-radius: 6px; padding: 8px 10px; display: grid; gap: 6px; font-size: 13px; }
+.work { display: grid; gap: 6px; }
+.kept { border-left: 3px solid var(--accent); padding: 3px 8px; font-size: 13px; display: grid; gap: 3px; }
+.kept .by { font: 11px var(--f-code); color: var(--ink-soft); }
+.kept img { max-width: 160px; border-radius: 3px; }
+</style>
+
+<main>
+  <header>
+    <h1>Kairotic Study 36 · talk</h1>
+    <span class="sub">talking in a room: text, push-to-talk, voice notes, video — discussion <a href="https://github.com/bonuoq/kairotic/discussions/135">#135</a></span>
+    <span class="status" id="status">loading…</span>
+  </header>
+
+  <p class="note">What is said in a room is <b>ephemeral</b>: it lives in the pages that are there. Something stays only when
+    someone <b>keeps</b> it — a message as an annotation (anchored where it points: <code>@b3</code> a box, <code>#12</code> a point
+    of the history, <code>^33</code> a beat), a voice note as a sound usable as a sample, a video frame as an image. What is
+    yours is kept at once; keeping what is someone else's asks them first. The pages talk directly (WebRTC); the relay
+    only introduces them.</p>
+
+  <div class="toolbar">
+    <input type="text" id="sig-url" value="ws://localhost:8765/signal" aria-label="Relay's rooms">
+    <input type="text" id="room-name" value="study-36" aria-label="Room" style="width: 8em">
+    <input type="text" id="my-name" aria-label="Your name" style="width: 9em">
+    <button class="act primary" id="join">Join</button>
+    <span class="msg" id="room-msg">needs relay 0.3 (<code>npx @kairotic/relay</code>)</span>
+  </div>
+  <div class="peers" id="peers"></div>
+
+  <div class="views">
+    <div class="col">
+      <section class="panel" aria-labelledby="h-chat">
+        <h2 id="h-chat">Chat <span>ephemeral until kept</span></h2>
+        <div class="chat" id="chat" aria-live="polite"></div>
+        <div class="say">
+          <input type="text" id="say" placeholder="say something — @b3 #12 ^33 anchor it" aria-label="Message" maxlength="2000">
+          <button class="act" id="send">Send</button>
+        </div>
+        <div class="row">
+          <button class="hold" id="note" disabled aria-pressed="false">● Hold to record a note</button>
+          <span class="msg" id="note-msg">voice notes need the microphone</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel" aria-labelledby="h-voice">
+        <h2 id="h-voice">Voice and video <span>push to talk; the camera if you want</span></h2>
+        <div class="row">
+          <button class="act" id="mic">Use microphone</button>
+          <button class="hold" id="ptt" disabled aria-pressed="false">Hold to talk</button>
+          <button class="act" id="cam" aria-pressed="false">Camera on</button>
+        </div>
+        <div class="hint">Hold the button, or <kbd>Space</kbd> when not typing. The camera goes small (320×240, 15 fps) and silent: your voice goes only while you hold.</div>
+        <div class="tiles" id="tiles"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-asks" id="asks-panel" hidden>
+        <h2 id="h-asks">Asked of you</h2>
+        <div id="asks"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-work">
+        <h2 id="h-work">The work keeps <span>annotations, sounds, images</span></h2>
+        <div class="work" id="work"><span class="empty">Nothing kept yet.</span></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The ClojureScript is evaluated here (not with Scittle's automatic tags) so that an error arrives with its
+// message: first the model, then the page.
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) {
+    var st = document.getElementById("status");
+    st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e);
+  }
+  var mods = ["kairotic/talk.cljs"];
+  Promise.all(mods.map(function (m) {
+    return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m); return r.text(); });
+  })).then(function (srcs) {
+    srcs.forEach(function (s, i) { try { scittle.core.eval_string(s); } catch (e) { throw new Error(mods[i] + ": " + (e.message || e)); } });
+    scittle.core.eval_string(document.getElementById("page-cljs").textContent);
+  }).catch(show);
+});
+</script>
+<script type="application/x-kairotic" id="page-cljs">
+(ns talk-page
+  (:require [kairotic.talk :as tk]
+            [clojure.string :as str]))
+
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (.replaceAll "&" "&amp;") (.replaceAll "<" "&lt;") (.replaceAll "\"" "&quot;")))
+(defn now-ms [] (+ (.-timeOrigin js/performance) (js/performance.now)))
+(defn store-get [k] (try (.getItem js/localStorage k) (catch :default _ nil)))
+(defn store-set! [k v] (try (.setItem js/localStorage k v) (catch :default _ nil)))
+
+;; ───────── who I am ─────────
+;; who: this browser, kept (so what I made stays mine when I come back); id: this session in the room.
+
+(defonce who (or (.get (js/URLSearchParams. (.. js/window -location -search)) "who") ;; ?who=… two pages of one browser as two people
+                 (store-get "kairotic-who")
+                 (let [w (str "w" (.slice (.toString (js/Math.random) 36) 2 10))] (store-set! "kairotic-who" w) w)))
+
+(defn my-name [] (let [n (str/trim (.-value ($ "my-name")))] (if (seq n) n "someone")))
+
+;; ───────── state ─────────
+;; room: the socket, my id, the peers {id {:name :pc :dc :state :talk :camera :pending}};
+;; items: what was said here, by id (ephemeral); order: their order; asks: what I am asked;
+;; mine-asks: what I asked, by item id; work: what is kept; media: my microphone and camera.
+
+(defonce room (atom {:ws nil :id nil :peers {} :n 0}))
+(defonce talk (atom {:items {} :order [] :asks [] :mine-asks {} :work [] :pieces {} :talking false}))
+(defonce media (atom {:mic nil :cam nil :rec nil}))
+
+(defn me [] {:id (:id @room) :who who :name (my-name)})
+
+(defn msg! [id text kind] (set! (.-innerHTML ($ id)) text) (set! (.-className ($ id)) (str "msg " kind)))
+
+;; ───────── bytes ─────────
+
+(defn buf->b64 [buf]
+  (let [b (js/Uint8Array. buf) parts #js []]
+    (loop [i 0] (when (< i (.-length b))
+                  (.push parts (.apply (.-fromCharCode js/String) nil (.subarray b i (min (.-length b) (+ i 8192)))))
+                  (recur (+ i 8192))))
+    (js/btoa (.join parts ""))))
+
+(defn b64->bytes [s] (let [bin (js/atob s) out (js/Uint8Array. (.-length bin))]
+                       (dotimes [i (.-length bin)] (aset out i (.charCodeAt bin i))) out))
+
+(defn hex16 [buf] (apply str (map #(.padStart (.toString % 16) 2 "0") (js/Array.from (.subarray (js/Uint8Array. buf) 0 16)))))
+
+(defn sha [bytes] (.then (.digest js/crypto.subtle "SHA-256" bytes) hex16))
+
+;; ───────── sending ─────────
+;; To a peer: over its reliable data channel when open, else through the relay. clj → JSON with keywords
+;; as their names; :kind and :anchors come back as data on the other side (see ->item).
+
+(defn signal! [m] (when-let [ws (:ws @room)] (when (= 1 (.-readyState ws)) (.send ws (js/JSON.stringify (clj->js m))))))
+
+(defn to-peer! [id m]
+  (let [dc (get-in @room [:peers id :dc])]
+    (if (and dc (= "open" (.-readyState dc)))
+      (.send dc (js/JSON.stringify (clj->js m)))
+      (signal! {:to id :data {:talk m}}))))
+
+(defn to-all! [m] (doseq [id (keys (:peers @room))] (to-peer! id m)))
+
+(defn ->item [o] (let [m (js->clj o :keywordize-keys true)] (cond-> m (:kind m) (update :kind keyword))))
+
+;; ───────── drawing ─────────
+
+(defn draw-peers! []
+  (let [ps (:peers @room)]
+    (set! (.-innerHTML ($ "peers"))
+          (if (:id @room)
+            (str "<span class='peer" (when (:talking @talk) " talk") "'>" (esc (my-name)) " <i>you</i></span>"
+                 (apply str (for [[id p] (sort-by (comp :n val) ps)]
+                              (str "<span class='peer" (when (= "p2p" (:state p)) " p2p") (when (:talk p) " talk") "' data-peer='" (esc id) "'>"
+                                   (esc (or (not-empty (:name p)) id)) " <i>" (:state p) (when (:talk p) " · talking") (when (:camera p) " · camera") "</i></span>"))))
+            ""))
+    (doseq [[id p] ps] (when-let [t (.querySelector js/document (str ".tile[data-peer='" id "']"))]
+                         (if (:talk p) (.add (.-classList t) "talk") (.remove (.-classList t) "talk"))))))
+
+(defn anchor-chips [as] (apply str (for [a as] (str "<span class='chip' title='in the app: go there'>" (esc (tk/anchor-str a)) "</span>"))))
+
+(defn item-state [it]
+  (let [a (get-in @talk [:mine-asks (:id it)])]
+    (cond (:kept it) "<span class='state ok'>kept</span>"
+          (= a :asked) (str "<span class='state'>asked " (esc (:name it)) "…</span>")
+          (= a :declined) (str "<span class='state bad'>" (esc (:name it)) " declined</span>")
+          (= a :gone) (str "<span class='state bad'>" (esc (:name it)) " has left: it can't be kept</span>")
+          :else "")))
+
+(defn draw-chat! []
+  (let [{:keys [items order]} @talk el ($ "chat") at-end (< (- (.-scrollHeight el) (.-scrollTop el) (.-clientHeight el)) 30)]
+    (set! (.-innerHTML el)
+          (if (seq order)
+            (apply str
+                   (for [id order :let [it (get items id)] :when it]
+                     (str "<div class='item" (when (= who (:author it)) " mine") "' data-item='" (esc id) "'>"
+                          "<div class='who'>" (esc (:name it)) "<time>" (tk/when-str (:t it)) "</time></div>"
+                          "<div class='side'>"
+                          (when-not (:kept it) (str "<button class='small' data-keep='" (esc id) "'>Keep</button>"))
+                          (item-state it) "</div>"
+                          "<div class='what'>"
+                          (case (:kind it)
+                            :message (str (esc (:text it)) (when (seq (:anchors it)) (str "<div>" (anchor-chips (:anchors it)) "</div>")))
+                            :note (if (:url it)
+                                    (str "voice note · " (.toFixed (or (:dur it) 0) 1) " s <audio controls preload='none' src='" (:url it) "'></audio>")
+                                    "voice note · arriving…")
+                            :frame (str "<img alt='a frame of " (esc (:name it)) "' src='" (:image it) "'>")
+                            "")
+                          "</div></div>")))
+            "<span class='empty'>Nothing said yet.</span>"))
+    (when at-end (set! (.-scrollTop el) (.-scrollHeight el)))))
+
+(defn draw-asks! []
+  (let [as (:asks @talk)]
+    (set! (.-hidden ($ "asks-panel")) (empty? as))
+    (set! (.-innerHTML ($ "asks"))
+          (apply str (for [{:keys [item-id by-name kind]} as :let [it (get-in @talk [:items item-id])]]
+                       (str "<div class='ask' data-ask='" (esc item-id) "'><div><b>" (esc by-name) "</b> wants to keep your "
+                            (case kind "note" "voice note" "frame" "video frame" "message")
+                            (when (= :message (:kind it)) (str " “" (esc (subs (:text it) 0 (min 80 (count (:text it))))) "”"))
+                            " in the work.</div><div class='row'><button class='act primary' data-answer='yes' data-id='" (esc item-id) "'>Allow</button>"
+                            "<button class='act' data-answer='no' data-id='" (esc item-id) "'>Decline</button></div></div>"))))))
+
+(defn draw-work! []
+  (let [w (:work @talk)]
+    (set! (.-innerHTML ($ "work"))
+          (if (seq w)
+            (apply str (for [k (reverse w)]
+                         (str "<div class='kept'>"
+                              (case (:kind k)
+                                :message (str "<div>" (esc (:text k)) "</div>" (when (seq (:anchors k)) (str "<div>" (anchor-chips (:anchors k)) "</div>")))
+                                :note (str "<div>sound <code>" (esc (:sound k)) "</code> · " (.toFixed (or (:dur k) 0) 1) " s — a sample for the patch</div>")
+                                :frame (str "<img alt='kept frame' src='" (:image k) "'>")
+                                "")
+                              "<div class='by'>" (name (:kind k)) " by " (esc (:name k))
+                              (when (not= (:author k) (:kept-by k)) (str " · kept by " (esc (:kept-by-name k))))
+                              "</div></div>")))
+            "<span class='empty'>Nothing kept yet.</span>"))))
+
+;; ───────── items: said here, and arriving ─────────
+
+(defn add-item! [it]
+  (when-not (get-in @talk [:items (:id it)])
+    (swap! talk (fn [t] (-> t (assoc-in [:items (:id it)] it) (update :order conj (:id it))))))
+  (draw-chat!))
+
+(defn say! []
+  (when-let [m (tk/message (me) (.-value ($ "say")) (now-ms))]
+    (set! (.-value ($ "say")) "")
+    (add-item! m)
+    (to-all! {:item m})))
+
+;; ───────── keeping ─────────
+;; A sound is kept as recorded audio is kept in Kairotic: decoded, its samples hashed (SHA-256 of the
+;; sample rate, the number of channels and the samples, 32 hex) and stored in IndexedDB "kairotic-sounds"
+;; under that hash — on this origin the app finds it there, and the work keeps only the hash.
+
+(defn sound-hash [chans sr]
+  (let [head (js/Uint8Array. (.-buffer (js/Float64Array. #js [sr (count chans)])))
+        parts (into [head] (map #(js/Uint8Array. (.-buffer %) (.-byteOffset %) (.-byteLength %)) chans))
+        total (reduce + (map #(.-length %) parts)) all (js/Uint8Array. total)]
+    (reduce (fn [o p] (.set all p o) (+ o (.-length p))) 0 parts)
+    (sha all)))
+
+(defn sounds-db []
+  (js/Promise. (fn [ok no]
+                 (let [r (.open js/indexedDB "kairotic-sounds" 1)]
+                   (set! (.-onupgradeneeded r) (fn [_] (.createObjectStore (.-result r) "sounds")))
+                   (set! (.-onsuccess r) (fn [_] (ok (.-result r))))
+                   (set! (.-onerror r) (fn [_] (no (.-error r))))))))
+
+(defn put-sound! [h sr chans]
+  (.then (sounds-db) (fn [d] (js/Promise. (fn [ok no]
+                                            (let [t (.transaction d "sounds" "readwrite")]
+                                              (.put (.objectStore t "sounds") #js {:sr sr :chans (clj->js chans)} h)
+                                              (set! (.-oncomplete t) (fn [_] (ok h)))
+                                              (set! (.-onerror t) (fn [_] (no (.-error t))))))))))
+
+(defn sound-kept? [h]
+  (.then (sounds-db) (fn [d] (js/Promise. (fn [ok _]
+                                            (let [r (.get (.objectStore (.transaction d "sounds" "readonly") "sounds") h)]
+                                              (set! (.-onsuccess r) (fn [_] (ok (some? (.-result r)))))
+                                              (set! (.-onerror r) (fn [_] (ok false)))))))))
+
+(defonce decoder (atom nil))
+(defn actx [] (or @decoder (reset! decoder (js/AudioContext.))))
+
+(defn keep-note-sound!
+  "The note's audio decoded and kept: a promise of [hash dur]."
+  [it]
+  (-> (.decodeAudioData (actx) (.-buffer (.slice (b64->bytes (:b64 it)))))
+      (.then (fn [ab]
+               (let [sr (.-sampleRate ab) chans (mapv #(.getChannelData ab %) (range (.-numberOfChannels ab)))]
+                 (-> (sound-hash chans sr)
+                     (.then (fn [h] (.then (put-sound! h sr chans) (fn [_] [h (.-duration ab)]))))))))))
+
+(defn add-kept! [k]
+  (swap! talk update :work (fn [w] (if (some #(and (= (:item %) (:item k)) (= (:kept-by %) (:kept-by k))) w) w (conj w k))))
+  (when-let [it (get-in @talk [:items (:item k)])] (swap! talk assoc-in [:items (:item k) :kept] true))
+  (draw-work!) (draw-chat!))
+
+(defn keep-now!
+  "Keeps an item (mine, or allowed): into the work here and in every page of the room."
+  [it]
+  (let [base (assoc (tk/kept it (me) (now-ms)) :item (:id it) :kept-by-name (my-name))]
+    (-> (if (= :note (:kind it))
+          (.then (keep-note-sound! it) (fn [[h d]] (assoc base :sound h :dur d)))
+          (js/Promise.resolve base))
+        (.then (fn [k] (add-kept! k) (to-all! {:kept k})))
+        (.catch (fn [e] (js/console.error e))))))
+
+(defn keep! [id]
+  (when-let [it (get-in @talk [:items id])]
+    (let [[what peer] (tk/keep-step (me) it (keys (:peers @room)))]
+      (case what
+        :keep (keep-now! it)
+        :ask (do (swap! talk assoc-in [:mine-asks id] :asked)
+                 (to-peer! peer {:ask {:item-id id :by-name (my-name) :kind (name (:kind it))}}))
+        :gone (swap! talk assoc-in [:mine-asks id] :gone))
+      (draw-chat!))))
+
+(defn answer! [id yes?]
+  (let [ask (first (filter #(= id (:item-id %)) (:asks @talk)))]
+    (swap! talk update :asks (fn [as] (vec (remove #(= id (:item-id %)) as))))
+    (draw-asks!)
+    (when ask (to-peer! (:from ask) {:answer {:item-id id :ok yes?}}))))
+
+;; a note kept by someone else: this page keeps its copy of the sound too, so the work has it here
+(defn on-kept! [k]
+  (add-kept! k)
+  (when (= :note (:kind k))
+    (when-let [it (get-in @talk [:items (:item k)])] (when (:b64 it) (keep-note-sound! it)))))
+
+;; ───────── what arrives from a peer ─────────
+
+(defn on-talk! [peer o]
+  (cond
+    (.-item o) (add-item! (assoc (->item (.-item o)) :peer peer))
+    (.-piece o) (let [p (js->clj (.-piece o) :keywordize-keys true)
+                      [st whole] (tk/gather (:pieces @talk) p)]
+                  (swap! talk assoc :pieces st)
+                  (when whole
+                    (let [bytes (b64->bytes whole)]
+                      (.then (sha bytes)
+                             (fn [h] (when-let [[id it] (first (filter (fn [[_ it]] (= h (:hash it))) (:items @talk)))]
+                                       (let [url (js/URL.createObjectURL (js/Blob. #js [bytes] #js {:type (:mime it)}))]
+                                         (swap! talk update-in [:items id] assoc :b64 whole :url url)
+                                         (draw-chat!))))))))
+    (.-state o) (let [s (.-state o)]
+                  (swap! room update-in [:peers peer] merge {:talk (.-talk s) :camera (.-camera s) :name (.-name s) :who (.-who s)})
+                  (when-let [t (.querySelector js/document (str ".tile[data-peer='" peer "']"))]
+                    (set! (.-hidden t) (not (.-camera s)))
+                    (set! (.-textContent (.querySelector t ".label")) (.-name s)))
+                  (draw-peers!))
+    (.-ask o) (let [a (js->clj (.-ask o) :keywordize-keys true)]
+                (swap! talk update :asks conj (assoc a :from peer)) (draw-asks!))
+    (.-answer o) (let [{:keys [item-id ok]} (js->clj (.-answer o) :keywordize-keys true)]
+                   (swap! talk assoc-in [:mine-asks item-id] (if ok :allowed :declined))
+                   (if ok (keep-now! (get-in @talk [:items item-id])) (draw-chat!)))
+    (.-kept o) (on-kept! (->item (.-kept o)))))
+
+;; ───────── voice notes ─────────
+
+(defn note-mime []
+  (or (first (filter #(.isTypeSupported js/MediaRecorder %) ["audio/webm;codecs=opus" "audio/ogg;codecs=opus" "audio/mp4"])) ""))
+
+(defn note-start! []
+  (when-let [mic (:mic @media)]
+    (let [mime (note-mime)
+          stream (js/MediaStream. #js [(.clone (first (.getAudioTracks mic)))])
+          rec (js/MediaRecorder. stream (if (seq mime) #js {:mimeType mime} #js {}))
+          chunks #js []]
+      (set! (.-enabled (first (.getAudioTracks stream))) true)
+      (set! (.-ondataavailable rec) (fn [e] (.push chunks (.-data e))))
+      (set! (.-onstop rec)
+            (fn [_]
+              (doseq [t (.getTracks stream)] (.stop t))
+              (let [blob (js/Blob. chunks #js {:type (.-mimeType rec)})]
+                (-> (.arrayBuffer blob)
+                    (.then (fn [buf]
+                             (-> (.decodeAudioData (actx) (.slice buf 0))
+                                 (.then (fn [ab]
+                                          (.then (sha (js/Uint8Array. buf))
+                                                 (fn [h]
+                                                   (let [b64 (buf->b64 buf)
+                                                         it {:kind :note :id (str who "-" (js/Math.round (now-ms))) :author who :peer (:id @room)
+                                                             :name (my-name) :t (now-ms) :hash h :mime (.-mimeType rec) :dur (.-duration ab)}]
+                                                     (add-item! (assoc it :b64 b64 :url (js/URL.createObjectURL blob)))
+                                                     (to-all! {:item it})
+                                                     (doseq [p (tk/pieces h b64)] (to-all! {:piece p}))
+                                                     (msg! "note-msg" (str "sent · " (.toFixed (.-duration ab) 1) " s") "ok")))))))))
+                    (.catch (fn [e] (msg! "note-msg" (str "could not keep the note: " (esc (.-message e))) "bad")))))))
+      (.start rec)
+      (swap! media assoc :rec rec)
+      ;; a minute at most
+      (js/setTimeout (fn [] (when (= rec (:rec @media)) (.stop rec) (swap! media assoc :rec nil))) 60000))))
+
+(defn note-stop! [] (when-let [rec (:rec @media)] (swap! media assoc :rec nil) (when (= "recording" (.-state rec)) (.stop rec))))
+
+;; ───────── microphone, push to talk, camera ─────────
+;; Every connection carries one audio and one video track from the start (empty until there is one), so
+;; turning the microphone or the camera on never renegotiates: the track is put in place, and the
+;; microphone sounds only while held.
+
+(defn senders! []
+  (doseq [[_ p] (:peers @room) :let [pc (:pc p)] :when pc
+          tr (.getTransceivers pc) :let [kind (.. tr -receiver -track -kind)]]
+    (.catch (.replaceTrack (.-sender tr) (case kind
+                                           "audio" (some-> (:mic @media) .getAudioTracks first)
+                                           "video" (some-> (:cam @media) .getVideoTracks first)
+                                           nil))
+            (fn [_] nil))))
+
+(defn send-state! [] (to-all! {:state {:talk (:talking @talk) :camera (some? (:cam @media)) :name (my-name) :who who}}))
+
+(defn talk! [on?]
+  (when-let [mic (:mic @media)]
+    (when (not= on? (:talking @talk))
+      (doseq [t (.getAudioTracks mic)] (set! (.-enabled t) on?))
+      (swap! talk assoc :talking on?)
+      (.setAttribute ($ "ptt") "aria-pressed" (str on?))
+      (set! (.-textContent ($ "ptt")) (if on? "Talking…" "Hold to talk"))
+      (send-state!) (draw-peers!))))
+
+(defn mic-on! []
+  (-> (.getUserMedia js/navigator.mediaDevices #js {:audio #js {:echoCancellation true :noiseSuppression true :autoGainControl true}})
+      (.then (fn [s]
+               (doseq [t (.getAudioTracks s)] (set! (.-enabled t) false))
+               (swap! media assoc :mic s)
+               (set! (.-disabled ($ "ptt")) false) (set! (.-disabled ($ "note")) false)
+               (set! (.-disabled ($ "mic")) true) (set! (.-textContent ($ "mic")) "Microphone ready")
+               (msg! "note-msg" "hold to record, let go to send" "")
+               (senders!)))
+      (.catch (fn [e] (msg! "note-msg" (str "microphone: " (esc (.-message e))) "bad")))))
+
+(defn own-tile! []
+  (let [t (or (.querySelector js/document ".tile[data-peer='me']")
+              (let [d (js/document.createElement "div")]
+                (set! (.-className d) "tile") (.setAttribute d "data-peer" "me")
+                (set! (.-innerHTML d) "<video autoplay playsinline muted></video><span class='label'></span>")
+                (.prepend ($ "tiles") d) d))]
+    (set! (.-textContent (.querySelector t ".label")) (str (my-name) " (you)"))
+    (set! (.-srcObject (.querySelector t "video")) (:cam @media))
+    (set! (.-hidden t) (nil? (:cam @media)))))
+
+(defn cam! []
+  (if-let [c (:cam @media)]
+    (do (doseq [t (.getTracks c)] (.stop t))
+        (swap! media assoc :cam nil) (senders!) (own-tile!) (send-state!)
+        (set! (.-textContent ($ "cam")) "Camera on") (.setAttribute ($ "cam") "aria-pressed" "false"))
+    (-> (.getUserMedia js/navigator.mediaDevices #js {:video #js {:width 320 :height 240 :frameRate 15}})
+        (.then (fn [s] (swap! media assoc :cam s) (senders!) (own-tile!) (send-state!)
+                 (set! (.-textContent ($ "cam")) "Camera off") (.setAttribute ($ "cam") "aria-pressed" "true")))
+        (.catch (fn [e] (msg! "room-msg" (str "camera: " (esc (.-message e))) "bad"))))))
+
+(defn frame! [peer-id]
+  ;; a frame of a tile's video, as a small JPEG: an item of the chat (and so, kept like the others)
+  (when-let [v (some-> (.querySelector js/document (str ".tile[data-peer='" peer-id "'] video")))]
+    (when (pos? (.-videoWidth v))
+      (let [c (js/document.createElement "canvas")]
+        (set! (.-width c) 320) (set! (.-height c) 240)
+        (.drawImage (.getContext c "2d") v 0 0 320 240)
+        (let [img (.toDataURL c "image/jpeg" 0.7)
+              mine? (= peer-id "me")
+              p (get-in @room [:peers peer-id])
+              it {:kind :frame :id (str "f-" (js/Math.round (now-ms)) "-" (rand-int 1e6))
+                  :author (if mine? who (:who p)) :peer (if mine? (:id @room) peer-id)
+                  :name (if mine? (my-name) (:name p)) :t (now-ms) :image img}]
+          (add-item! it) (to-all! {:item it}))))))
+
+;; ───────── the room: peers and their connections ─────────
+
+(defn tile-for! [id]
+  (or (.querySelector js/document (str ".tile[data-peer='" id "']"))
+      (let [d (js/document.createElement "div")]
+        (set! (.-className d) "tile") (.setAttribute d "data-peer" id) (set! (.-hidden d) true)
+        (set! (.-innerHTML d) (str "<video autoplay playsinline muted></video><span class='label'></span>"
+                                   "<button class='small' data-frame='" (esc id) "'>Keep a frame</button>"))
+        (.append ($ "tiles") d) d)))
+
+(defn add-peer! [id name w]
+  (swap! room (fn [r] (-> r (assoc-in [:peers id] {:name name :who w :n (:n r) :state "relay" :pending []}) (update :n inc))))
+  (draw-peers!))
+
+(defn drop-peer! [id]
+  (when-let [pc (get-in @room [:peers id :pc])] (.close pc))
+  (some-> (.querySelector js/document (str ".tile[data-peer='" id "']")) .remove)
+  (some-> (.querySelector js/document (str "audio[data-peer='" id "']")) .remove)
+  (swap! room update :peers dissoc id)
+  (swap! talk update :asks (fn [as] (vec (remove #(= id (:from %)) as))))
+  (draw-asks!) (draw-peers!))
+
+(defn open-pc! [id initiator?]
+  (let [pc (js/RTCPeerConnection. #js {:iceServers #js [#js {:urls "stun:stun.l.google.com:19302"}]})
+        dc (.createDataChannel pc "talk" #js {:negotiated true :id 1 :ordered true})
+        state! (fn [s] (when (get-in @room [:peers id]) (swap! room assoc-in [:peers id :state] s) (draw-peers!)))]
+    (set! (.-onicecandidate pc) (fn [ev] (when-let [c (.-candidate ev)] (signal! {:to id :data {:candidate (.toJSON c)}}))))
+    (set! (.-onopen dc) (fn [_] (state! "p2p") (send-state!)))
+    (set! (.-onclose dc) (fn [_] (state! "relay")))
+    (set! (.-onmessage dc) (fn [ev] (on-talk! id (js/JSON.parse (.-data ev)))))
+    (set! (.-ontrack pc)
+          (fn [ev]
+            (let [tr (.-track ev) s (js/MediaStream. #js [tr])]
+              (if (= "audio" (.-kind tr))
+                (let [a (or (.querySelector js/document (str "audio[data-peer='" id "']"))
+                            (let [a (js/document.createElement "audio")] (.setAttribute a "data-peer" id) (set! (.-autoplay a) true)
+                              (.append js/document.body a) a))]
+                  (set! (.-srcObject a) s) (.catch (.play a) (fn [_] nil)))
+                (let [t (tile-for! id) v (.querySelector t "video")]
+                  (set! (.-srcObject v) s)
+                  (set! (.-textContent (.querySelector t ".label")) (or (get-in @room [:peers id :name]) id)))))))
+    (when initiator?
+      (.addTransceiver pc "audio" #js {:direction "sendrecv"})
+      (.addTransceiver pc "video" #js {:direction "sendrecv"}))
+    (swap! room update-in [:peers id] merge {:pc pc :dc dc})
+    (when initiator?
+      (senders!)
+      (-> (.createOffer pc) (.then #(.setLocalDescription pc %))
+          (.then #(signal! {:to id :data {:sdp (.toJSON (.-localDescription pc))}}))))
+    pc))
+
+(defn from-peer! [id data]
+  (when (get-in @room [:peers id])
+    (cond
+      (.-sdp data)
+      (let [d (.-sdp data) pc (or (get-in @room [:peers id :pc]) (open-pc! id false))]
+        (-> (.setRemoteDescription pc d)
+            (.then (fn [_]
+                     (doseq [c (get-in @room [:peers id :pending])] (.catch (.addIceCandidate pc c) (fn [_] nil)))
+                     (swap! room assoc-in [:peers id :pending] [])
+                     (when (= "offer" (.-type d))
+                       ;; send as well as receive on the tracks the offer brought
+                       (doseq [tr (.getTransceivers pc)] (set! (.-direction tr) "sendrecv"))
+                       (senders!)
+                       (-> (.createAnswer pc) (.then #(.setLocalDescription pc %))
+                           (.then #(signal! {:to id :data {:sdp (.toJSON (.-localDescription pc))}}))))))
+            (.catch (fn [e] (js/console.error "WebRTC" e)))))
+      (.-candidate data)
+      (let [pc (get-in @room [:peers id :pc])]
+        (if (and pc (.-remoteDescription pc))
+          (.catch (.addIceCandidate pc (.-candidate data)) (fn [_] nil))
+          (swap! room update-in [:peers id :pending] conj (.-candidate data))))
+      (.-talk data) (on-talk! id (.-talk data)))))
+
+(defn on-signal! [f]
+  (cond
+    (.-welcome f) (let [w (.-welcome f)]
+                    (swap! room assoc :id (.-id w))
+                    (msg! "room-msg" (str "in " (esc (.-room w)) " as " (esc (my-name))) "ok")
+                    (doseq [p (.-peers w)] (add-peer! (.-id p) (.-name p) nil) (open-pc! (.-id p) true))
+                    (draw-peers!))
+    (.-joined f) (let [j (.-joined f)] (add-peer! (.-id j) (.-name j) nil))
+    (.-left f) (drop-peer! (.-left f))
+    (.-from f) (from-peer! (.-from f) (.-data f))
+    (.-error f) (msg! "room-msg" (esc (.-error f)) "bad")))
+
+(defn leave! []
+  (doseq [id (keys (:peers @room))] (drop-peer! id))
+  (when-let [ws (:ws @room)] (set! (.-onclose ws) nil) (.close ws))
+  (swap! room assoc :ws nil :id nil :peers {})
+  (draw-peers!))
+
+(defn join! []
+  (leave!)
+  (store-set! "kairotic-name" (my-name))
+  (.resume (actx))
+  (let [url (str/trim (.-value ($ "sig-url")))
+        ws (try (js/WebSocket. url) (catch :default e (msg! "room-msg" (esc (.-message e)) "bad") nil))]
+    (when ws
+      (swap! room assoc :ws ws)
+      (msg! "room-msg" "connecting…" "")
+      (set! (.-onopen ws) (fn [_] (signal! {:join (str/trim (.-value ($ "room-name"))) :name (my-name)})))
+      (set! (.-onmessage ws) (fn [ev] (on-signal! (js/JSON.parse (.-data ev)))))
+      (set! (.-onerror ws) (fn [_] (msg! "room-msg" (str "no rooms at " (esc url) " — is a relay 0.3 running?") "bad")))
+      (set! (.-onclose ws) (fn [_] (when (= ws (:ws @room)) (msg! "room-msg" "left" "") (leave!)))))))
+
+;; ───────── wiring ─────────
+
+(defn hold! [el down up]
+  (.addEventListener el "pointerdown" (fn [e] (when-not (.-disabled el) (.preventDefault e) (down))))
+  (doseq [t ["pointerup" "pointercancel" "pointerleave"]] (.addEventListener el t (fn [_] (up)))))
+
+(defn wire! []
+  (set! (.-value ($ "my-name")) (or (store-get "kairotic-name") (str "page " (.toUpperCase (.slice (.toString (js/Math.random) 36) 2 5)))))
+  (.addEventListener ($ "join") "click" (fn [_] (join!)))
+  (.addEventListener ($ "send") "click" (fn [_] (say!)))
+  (.addEventListener ($ "say") "keydown" (fn [e] (when (= "Enter" (.-key e)) (say!))))
+  (.addEventListener ($ "mic") "click" (fn [_] (mic-on!)))
+  (.addEventListener ($ "cam") "click" (fn [_] (cam!)))
+  (hold! ($ "ptt") #(talk! true) #(talk! false))
+  (hold! ($ "note") (fn [] (.setAttribute ($ "note") "aria-pressed" "true") (msg! "note-msg" "recording…" "") (note-start!))
+         (fn [] (.setAttribute ($ "note") "aria-pressed" "false") (note-stop!)))
+  (.addEventListener js/window "keydown"
+    (fn [e] (when (and (= " " (.-key e)) (not (.-repeat e)) (not (#{"INPUT" "TEXTAREA" "SELECT" "BUTTON"} (.. e -target -tagName))))
+              (.preventDefault e) (talk! true))))
+  (.addEventListener js/window "keyup" (fn [e] (when (= " " (.-key e)) (talk! false))))
+  (.addEventListener js/document "click"
+    (fn [e] (let [t (.-target e)]
+              (when-let [id (.getAttribute t "data-keep")] (keep! id))
+              (when-let [a (.getAttribute t "data-answer")] (answer! (.getAttribute t "data-id") (= a "yes")))
+              (when-let [p (.getAttribute t "data-frame")] (frame! p))))))
+
+(wire!) (draw-chat!) (draw-work!)
+
+;; what a test reads
+(set! (.-kairoticAudioIn js/window)
+      (fn [] (js/Promise.all (clj->js (for [[_ p] (:peers @room) :when (:pc p)]
+                                         (.then (.getStats (:pc p))
+                                                (fn [r] (let [n (atom 0)]
+                                                          (.forEach r (fn [s & _] (when (and (= "inbound-rtp" (.-type s)) (= "audio" (.-kind s)))
+                                                                                (swap! n + (or (.-bytesReceived s) 0)))))
+                                                          @n))))))))
+(set! (.-kairoticSoundKept js/window) sound-kept?)
+(set! (.-kairoticWork js/window) (fn [] (clj->js (:work @talk))))
+
+(set! (.-textContent ($ "status")) (if (.-RTCPeerConnection js/window) "ready" "no WebRTC in this browser"))
+(set! (.. ($ "status") -dataset -ready) "1")
+</script>
