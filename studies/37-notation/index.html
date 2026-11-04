@@ -1,0 +1,400 @@
+<meta charset="utf-8">
+<title>Kairotic Study 37 · Notation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the score (four lanes sharing one time axis, drawn with the pointer: pitch,
+   loudness, brightness, noisiness); the voice that realises it (a faust~'s code); then what sounds: the
+   curves heard drawn over the written ones, and how far each is from what was written. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 6.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.facts .ok { color: var(--ok); } .facts .bad { color: var(--error); } .facts .kairos { color: var(--kairos); }
+.bar { height: 6px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 14px; align-items: start; }
+@media (max-width: 860px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.note a { color: var(--accent); }
+.err { color: var(--error); font-size: 12px; }
+textarea.src { width: 100%; min-height: 12em; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; tab-size: 2; white-space: pre; }
+/* the score: one lane per descriptor, its name and range on the left, the curve on the right */
+.lanes { display: grid; gap: 4px; }
+.lane { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 8px; align-items: stretch; }
+.lane .name { font-size: 12px; display: grid; align-content: center; gap: 1px; }
+.lane .name b { font: 600 12px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; }
+.lane .name span { color: var(--ink-soft); font: 11px var(--f-code); }
+.lane svg { display: block; width: 100%; height: 86px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; touch-action: none; cursor: crosshair; }
+.lane .grid { stroke: var(--grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.lane text { font: 10px var(--f-code); fill: var(--ink-soft); }
+.lane .w { fill: none; stroke: var(--accent); stroke-width: 2.2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.lane .g { fill: none; stroke: var(--kairos); stroke-width: 1.6; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.lane .pt { fill: var(--accent); }
+.lane .far { fill: var(--error); opacity: 0.12; }
+.lane .ink { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0.6; vector-effect: non-scaling-stroke; }
+.times { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 8px; }
+.times div { position: relative; height: 14px; font: 10px var(--f-code); color: var(--ink-soft); }
+.times span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+@media (max-width: 640px) { .lane, .times { grid-template-columns: minmax(0, 1fr); } .lane .name { grid-auto-flow: column; justify-content: start; gap: 8px; } .times > :first-child { display: none; } }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-soft); }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; }
+.legend .a i { background: var(--accent); } .legend .b i { background: var(--kairos); } .legend .c i { background: var(--error); opacity: 0.3; height: 9px; }
+table.res { border-collapse: collapse; font: 12px var(--f-code); font-variant-numeric: tabular-nums; }
+table.res th, table.res td { padding: 4px 12px; border-bottom: 1px solid var(--grid); text-align: right; }
+table.res th:first-child, table.res td:first-child { text-align: left; font-family: var(--f-ui); }
+table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+table.res td b { font-weight: 500; color: var(--ink); }
+.scroll { overflow-x: auto; }
+</style>
+<main>
+<header>
+  <h1>Study 37 · notation</h1>
+  <span class="sub">Descriptors as a score: pitch, loudness, brightness and noisiness over time, realised by a faust~</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<section class="panel" aria-labelledby="h-score">
+  <h2 id="h-score">The score <span>draw in a lane with the pointer; Shift+drag erases (a rest); a click adds a point</span></h2>
+  <div class="row">
+    <label class="inline" for="preset">Begin from <select id="preset">
+      <option value="swell">swell</option><option value="breath">breath</option><option value="glide">glide</option><option value="phrase" selected>phrase</option>
+    </select></label>
+    <label class="inline" for="seconds">Seconds <input type="number" id="seconds" min="1" max="12" step="0.5" value="5"></label>
+    <button class="act" id="from-file">A sound file → score…</button>
+    <input type="file" id="file" accept="audio/*" hidden>
+    <label class="inline" for="clear-lane">Clear <select id="clear-lane"><option value="">a lane…</option><option value="pitch">pitch</option><option value="loud">loudness</option><option value="bright">brightness</option><option value="noisy">noisiness</option></select></label>
+  </div>
+  <div class="lanes" id="lanes"></div>
+  <div class="times" aria-hidden="true"><div></div><div id="times"></div></div>
+  <div class="legend"><span class="a"><i></i>written</span><span class="b"><i></i>heard in what the voice played</span><span class="c"><i></i>beyond the voice: no setting of it sounds like that</span></div>
+</section>
+
+<section class="panel" aria-labelledby="h-voice">
+  <h2 id="h-voice">The voice <span>a faust~: <code>pitch</code> and <code>gain</code> follow their lanes, its other sliders are chosen for brightness and noisiness</span></h2>
+  <textarea class="src" id="code" spellcheck="false" aria-label="Faust code of the voice"></textarea>
+  <div class="row">
+    <button class="act" id="compile">Compile</button>
+    <label class="inline" for="banksize">Bank <select id="banksize"><option value="150">150 settings</option><option value="400" selected>400 settings</option><option value="800">800 settings</option></select></label>
+    <button class="act primary" id="realize" disabled>Realise</button>
+    <span class="facts" id="facts-voice"></span>
+  </div>
+  <div class="bar" aria-hidden="true"><i id="progress"></i></div>
+  <div class="err" id="err" hidden></div>
+</section>
+
+<section class="panel" aria-labelledby="h-sound">
+  <h2 id="h-sound">What sounds <span>how far what is heard is from what is written, over the frames written as sounding</span></h2>
+  <div class="row">
+    <button class="act" id="play-r" disabled>▶ Realised</button>
+    <button class="act" id="play-s" disabled>▶ Held still</button>
+    <button class="act" id="play-f" disabled>▶ The sound file</button>
+  </div>
+  <div class="scroll" id="result"><div class="facts">Compile the voice and realise the score.</div></div>
+  <div class="facts" id="facts-result"></div>
+  <p class="note">Each lane is what <code>features~</code> and <code>pitch~</code> hear, frame by frame (Meyda on 2048 samples every 1024; YIN): loudness is the level of a frame, brightness its spectral centroid, noisiness its spectral flatness (0 a tone, 1 white noise). So a recording can be read into the same lanes and written again by another voice. The realiser plays a bank of steady settings of the voice and listens to each; for every frame it blends the settings nearest to the pitch, brightness and noisiness written (where a pitch is written, the ones in which YIN would hear it), makes the level up with <code>gain</code>, and plays it; then it listens to what it played and asks, frame by frame, for more where it fell short (three passes, the best kept). <em>Held still</em> is the same voice at the mean of what is written: what following the curves is worth. Where a lane is shaded the voice has no setting that sounds like that — noise as dark as a tone, say: brightness and noisiness are not independent in it.</p>
+</section>
+</main>
+
+<script type="module">
+const FAUSTWASM = "https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js";
+import { LANES, PRESETS, score, SR, HOP, SIZE } from "./kairotic/notation.mjs";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const status = (s, bad) => { $("status").textContent = s; $("status").style.color = bad ? "var(--error)" : ""; };
+const fail = (e) => { $("err").textContent = String((e && e.message) || e); $("err").hidden = false; status("error", true); };
+
+// ── the worker, asked and answered by id ──
+const worker = new Worker(new URL("./kairotic/worker.mjs", import.meta.url));
+const pending = new Map();
+let seq = 0, onProgress = () => {};
+const ask = (m, transfer) => new Promise((ok, no) => { const id = ++seq; pending.set(id, { ok, no }); worker.postMessage({ ...m, id }, transfer || []); });
+worker.onmessage = (e) => {
+  const m = e.data;
+  if (m.type === "progress") return onProgress(m);
+  const p = pending.get(m.id);
+  if (!p) return;
+  pending.delete(m.id);
+  if (m.type === "error") p.no(new Error(m.message)); else p.ok(m);
+};
+
+// ── the score: for each lane, its points [[seconds, value] …] (a null value is a rest) ──
+const S = { lanes: {}, seconds: 5, result: null, file: null, banked: null, compiled: 0 };
+const copy = (x) => JSON.parse(JSON.stringify(x));
+function setPreset(name) {
+  const p = PRESETS[name];
+  S.lanes = copy(p.lanes); S.seconds = p.seconds; $("seconds").value = p.seconds;
+  forget(); drawAll();
+}
+const frameT = (i) => (i * HOP + SIZE / 2) / SR;
+const GRID = {
+  pitch: [[36, "C2"], [48, "C3"], [60, "C4"], [72, "C5"], [84, "C6"]],
+  loud: [[-60, "−60"], [-40, "−40"], [-20, "−20"], [0, "0 dB"]],
+  bright: [[100, "100"], [250, "250"], [500, "500"], [1000, "1k"], [2000, "2k"], [4000, "4k"], [8000, "8k Hz"]],
+  noisy: [[0, "0"], [0.25, ".25"], [0.5, ".5"], [0.75, ".75"], [1, "1"]]
+};
+const norm = (L, v) => (L.log ? Math.log(v / L.lo) / Math.log(L.hi / L.lo) : (v - L.lo) / (L.hi - L.lo));
+const unnorm = (L, u) => (L.log ? L.lo * Math.pow(L.hi / L.lo, u) : L.lo + u * (L.hi - L.lo));
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+
+$("lanes").innerHTML = LANES.map((L) => `<div class="lane"><div class="name"><b>${L.name}</b><span>${L.unit ? L.unit + " · " : ""}${esc(L.doc)}</span></div>
+  <svg id="lane-${L.key}" role="img" aria-label="${L.name} lane: draw to write it"></svg></div>`).join("");
+
+function geom(svg) { return { w: Math.max(50, svg.clientWidth || 600), h: Math.max(30, svg.clientHeight || 86) }; }
+function drawLane(L) {
+  const svg = $("lane-" + L.key), { w, h } = geom(svg), pad = 5;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  const X = (t) => (t / S.seconds) * w, Y = (v) => h - pad - clamp(norm(L, v), -0.02, 1.02) * (h - 2 * pad);
+  const parts = [];
+  for (let s = 1; s < S.seconds; s++) parts.push(`<line class="grid" x1="${X(s)}" y1="0" x2="${X(s)}" y2="${h}"/>`);
+  for (const [v, label] of GRID[L.key]) parts.push(`<line class="grid" x1="0" y1="${Y(v)}" x2="${w}" y2="${Y(v)}"/>${Y(v) < 12 ? `<text x="${w - 3}" y="${Y(v) + 10}" text-anchor="end">${label}</text>` : `<text x="3" y="${Y(v) - 2}">${label}</text>`}`);
+  // what the voice cannot do, where it was asked (brightness and noisiness: the lanes it chooses a timbre for)
+  const r = S.result;
+  if (r && r.reach && (L.key === "bright" || L.key === "noisy")) {
+    const fw = (HOP / SR / S.seconds) * w;
+    r.reach.forEach((d, i) => { if (d > 1 && r.target.loud[i] > -45) parts.push(`<rect class="far" x="${X(frameT(i)) - fw / 2}" y="0" width="${fw + 0.5}" height="${h}"/>`); });
+  }
+  // what is written
+  const pts = S.lanes[L.key] || [];
+  let d = "", pen = false;
+  for (const [t, v] of pts) { if (v === null) { pen = false; continue; } d += (pen ? "L" : "M") + X(t).toFixed(1) + "," + Y(v).toFixed(1); pen = true; }
+  parts.push(`<path class="w" d="${d}"/>`);
+  if (pts.length < 60) for (const [t, v] of pts) if (v !== null) parts.push(`<circle class="pt" cx="${X(t)}" cy="${Y(v)}" r="2.4"/>`);
+  // what was heard in what the voice played
+  if (r) {
+    const xs = r.got[L.key];
+    let g = "", on = false;
+    xs.forEach((v, i) => { if (v === null || (L.key === "loud" && v < -70)) { on = false; return; } g += (on ? "L" : "M") + X(frameT(i)).toFixed(1) + "," + Y(v).toFixed(1); on = true; });
+    parts.push(`<path class="g" d="${g}"/>`);
+  }
+  svg.innerHTML = parts.join("");
+}
+function drawAll() {
+  LANES.forEach(drawLane);
+  $("times").innerHTML = Array.from({ length: Math.floor(S.seconds) + 1 }, (_, s) => `<span style="left:${(100 * s / S.seconds).toFixed(2)}%${s === Math.floor(S.seconds) && s > S.seconds - 0.3 ? ";transform:translateX(-100%)" : s === 0 ? ";transform:none" : ""}">${s} s</span>`).join("");
+}
+new ResizeObserver(() => drawAll()).observe($("lanes"));
+
+// drawing: a stroke replaces what the lane had under it; Shift+drag leaves a rest; a click adds one point
+for (const L of LANES) {
+  const svg = $("lane-" + L.key);
+  let stroke = null, erase = false;
+  const at = (e) => {
+    const b = svg.getBoundingClientRect(), pad = 5;
+    const t = clamp((e.clientX - b.left) / b.width, 0, 1) * S.seconds;
+    const u = clamp((b.bottom - pad - e.clientY) / (b.height - 2 * pad), 0, 1);
+    return [t, +unnorm(L, u).toPrecision(4)];
+  };
+  svg.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    svg.setPointerCapture(e.pointerId);
+    erase = e.shiftKey;
+    stroke = [at(e)];
+    e.preventDefault();
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (!stroke) return;
+    stroke.push(at(e));
+    const b = svg.getBoundingClientRect(), { w, h } = geom(svg);
+    let ink = svg.querySelector(".ink");
+    if (!ink) { ink = document.createElementNS("http://www.w3.org/2000/svg", "polyline"); ink.setAttribute("class", "ink"); svg.appendChild(ink); }
+    const pad = 5, Y = (v) => h - pad - clamp(norm(L, v), 0, 1) * (h - 2 * pad);
+    ink.setAttribute("points", stroke.map(([t, v]) => `${(t / S.seconds) * w},${Y(v)}`).join(" "));
+    void b;
+  });
+  const end = () => {
+    if (!stroke) return;
+    const s = stroke; stroke = null;
+    write(L, s, erase);
+  };
+  svg.addEventListener("pointerup", end);
+  svg.addEventListener("pointercancel", () => { stroke = null; drawLane(L); });
+}
+function write(L, s, erase) {
+  const pts = S.lanes[L.key] || [];
+  let a = Math.min(...s.map((p) => p[0])), b = Math.max(...s.map((p) => p[0]));
+  let add;
+  if (erase) {
+    if (b - a < 0.02) { a -= 0.05; b += 0.05; }
+    add = [[a, null], [b, null]];
+  } else if (b - a < 0.02) {
+    add = [s[s.length - 1]];
+    a = b = add[0][0];
+  } else {
+    // in time order, a point every 40 ms at most (and the last)
+    const sorted = s.slice().sort((p, q) => p[0] - q[0]);
+    add = [];
+    for (const p of sorted) if (!add.length || p[0] - add[add.length - 1][0] >= 0.04) add.push(p);
+    if (add[add.length - 1] !== sorted[sorted.length - 1]) add.push(sorted[sorted.length - 1]);
+  }
+  const keep = pts.filter(([t]) => t < a - 1e-6 || t > b + 1e-6);
+  S.lanes[L.key] = keep.concat(add).sort((p, q) => p[0] - q[0]);
+  forget(); drawLane(L);
+}
+function forget() {
+  if (S.result) { S.result = null; $("result").innerHTML = `<div class="facts">The score changed: realise it again.</div>`; $("facts-result").textContent = ""; }
+  ["play-r", "play-s"].forEach((id) => { $(id).disabled = true; });
+}
+$("preset").onchange = () => setPreset($("preset").value);
+$("seconds").onchange = () => { S.seconds = clamp(+$("seconds").value || 5, 1, 12); forget(); drawAll(); };
+$("clear-lane").onchange = () => { const k = $("clear-lane").value; if (k) { S.lanes[k] = []; forget(); drawAll(); } $("clear-lane").value = ""; };
+
+// ── a sound file read into the lanes ──
+let ac = null;
+const ctx = () => (ac = ac || new (window.AudioContext || window.webkitAudioContext)());
+$("from-file").onclick = () => $("file").click();
+$("file").onchange = async () => {
+  const f = $("file").files[0]; if (!f) return;
+  $("file").value = "";
+  try {
+    const buf = await ctx().decodeAudioData(await f.arrayBuffer());
+    const secs = Math.min(12, buf.duration);
+    const off = new OfflineAudioContext(1, Math.ceil(secs * SR), SR), s = off.createBufferSource();
+    s.buffer = buf; s.connect(off.destination); s.start();
+    const y = (await off.startRendering()).getChannelData(0).slice();
+    await fromSound(y, f.name);
+  } catch (e) { fail(new Error("could not read that sound: " + ((e && e.message) || e))); }
+};
+async function fromSound(y, name) {
+  const c = (await ask({ type: "curves", y: y.slice() })).curves;
+  S.file = { y, name };
+  S.seconds = +(y.length / SR).toFixed(2); $("seconds").value = S.seconds;
+  // a point every other frame (≈ 46 ms); where a lane has nothing, a rest
+  for (const L of LANES) {
+    const pts = [];
+    for (let i = 0; i < c.n; i += 2) {
+      const v = c[L.key][i];
+      pts.push([+frameT(i).toFixed(3), v === null ? null : +(L.key === "loud" ? Math.max(-60, v) : v).toPrecision(4)]);
+    }
+    S.lanes[L.key] = pts;
+  }
+  $("play-f").disabled = false;
+  forget(); drawAll();
+  status(`${name}: read into the lanes`);
+}
+
+// ── the voice ──
+let fxP = null;
+const faust = () => fxP || (fxP = import(FAUSTWASM).then((F) => F.instantiateFaustModule().then((mod) => ({ F, compiler: new F.FaustCompiler(new F.LibFaust(mod)) }))));
+async function compile() {
+  $("err").hidden = true;
+  status("compiling…");
+  $("realize").disabled = true;
+  const fx = await faust(), gen = new fx.F.FaustMonoDspGenerator();
+  const g = await gen.compile(fx.compiler, "voice", $("code").value, "-ftz 2").catch(() => null);
+  if (!g) throw new Error((fx.compiler.getErrorMessage && fx.compiler.getErrorMessage()) || "Faust could not compile this code");
+  const fac = gen.factory;
+  const r = await ask({ type: "dsp", code: fac.module || fac.code, json: JSON.parse(fac.json) });
+  S.compiled++; S.banked = null;
+  $("facts-voice").innerHTML = `pitch: <b>${esc(r.pitch || "none")}</b> · gain: <b>${esc(r.gain || "none")}</b> · timbre: <b>${r.timbre.map(esc).join(", ")}</b>`;
+  if (!r.timbre.length) throw new Error("the voice has no slider for the timbre besides pitch and gain");
+  $("realize").disabled = false;
+  status("compiled");
+}
+$("compile").onclick = () => compile().catch(fail);
+
+// ── realising ──
+$("realize").onclick = async () => {
+  $("realize").disabled = true; $("err").hidden = true;
+  const t0 = performance.now(), n = +$("banksize").value;
+  try {
+    const key = S.compiled + ":" + n;
+    if (S.banked !== key) {
+      onProgress = (m) => { $("progress").style.width = (100 * m.done / m.total) + "%"; status(`listening to the voice: ${m.done}/${m.total} settings`); };
+      const b = await ask({ type: "bank", n, seed: 3 });
+      S.banked = key;
+      status(`${b.kept} settings heard`);
+    }
+    const target = score(S.lanes, S.seconds);
+    onProgress = (m) => { $("progress").style.width = (100 * m.done / m.total) + "%"; status(`playing and listening: pass ${m.done}/${m.total}`); };
+    const r = await ask({ type: "realize", target, passes: 3 });
+    S.result = { ...r, target };
+    show(S.result);
+    drawAll();
+    status(`realised in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+  } catch (e) { fail(e); }
+  $("realize").disabled = false;
+};
+function show(r) {
+  const e = r.err, c = r.still.err, row = (name, a, b, unit, dig) =>
+    `<tr><td>${name}</td><td><b>${a === null ? "—" : a.toFixed(dig)}</b> ${unit}</td><td>${b === null ? "—" : b.toFixed(dig)} ${unit}</td></tr>`;
+  $("result").innerHTML = `<table class="res"><thead><tr><th>Off by, on average</th><th>Realised</th><th>Held still</th></tr></thead><tbody>
+    ${row("loudness", e.loud, c.loud, "dB", 1)}${row("brightness", e.bright, c.bright, "semitones", 1)}${row("noisiness", e.noisy, c.noisy, "", 3)}${row("pitch", e.pitch, c.pitch, "cents", 0)}</tbody></table>`;
+  const sounding = r.target.loud.map((x, i) => (x > -45 ? i : -1)).filter((i) => i >= 0);
+  const far = sounding.filter((i) => r.reach[i] > 1).length;
+  $("facts-result").innerHTML = `${e.frames} frames written as sounding · passes ${r.passes.map((p) => p.score.toFixed(2)).join(" → ")} (lower is closer; the best is kept)` +
+    (far ? ` · <span class="bad">${far} frames (${Math.round(100 * far / sounding.length)} %) ask for what the voice cannot do</span>` : " · every frame within the voice's reach");
+  ["play-r", "play-s"].forEach((id) => { $(id).disabled = false; });
+}
+
+// ── sound ──
+let src = null;
+function play(y, others = []) {
+  const a = ctx();
+  if (a.state === "suspended") a.resume();
+  if (src) try { src.stop(); } catch (_) {}
+  // the realised and the held-still at the same gain, so their loudness compares; nothing louder than 0.8
+  let peak = 1e-3;
+  for (const z of [y, ...others]) for (let i = 0; i < z.length; i++) peak = Math.max(peak, Math.abs(z[i]));
+  const g = Math.min(1, 0.8 / peak), b = a.createBuffer(1, y.length, SR), d = b.getChannelData(0);
+  for (let i = 0; i < y.length; i++) d[i] = y[i] * g;
+  src = a.createBufferSource(); src.buffer = b; src.connect(a.destination); src.start();
+}
+$("play-r").onclick = () => S.result && play(S.result.y, [S.result.still.y]);
+$("play-s").onclick = () => S.result && play(S.result.still.y, [S.result.y]);
+$("play-f").onclick = () => S.file && play(S.file.y);
+
+// for the tests
+window.study = { S, setPreset, write: (key, stroke, erase) => write(LANES.find((L) => L.key === key), stroke, erase), fromSound };
+
+// ── start: the phrase, and the voice compiled ──
+setPreset("phrase");
+fetch(new URL("./kairotic/voice.dsp", import.meta.url)).then((r) => r.text()).then((t) => { $("code").value = t; return compile(); }).catch(fail);
+</script>

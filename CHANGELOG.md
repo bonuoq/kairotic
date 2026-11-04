@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Study 37 · notation** (discussion #114): descriptors as a score — pitch, loudness, brightness and noisiness
+  drawn as four lanes over time (or read from a sound file as `features~` and `pitch~` hear it) and realised by a
+  `faust~`: `pitch` and `gain` follow their lanes, the other sliders are chosen frame by frame from a bank of the
+  voice's own steady settings, and it listens to what it played and corrects itself (three passes). Off by 0.3 dB,
+  2.2 semitones of brightness and 0.014 of noisiness on average, against 5.0 dB, 7.3 semitones and 0.022 held
+  still; the frames that ask for what the voice cannot do are shaded. Tests: `tests/notation.html` (CI, real
+  faustwasm) and `tests/realize.mjs` (Node).
 - **A work as a file: `.kairotic`** (discussion #149). The first thing in Share/Export, and *Download this work* in
   the session manager: the whole work — every line, its whole history, the sounds recorded — or a release of it
   (one line, one point per keyframe), optionally **anonymous** (authors and sessions as p1, s1…, no names, no
