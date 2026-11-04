@@ -36,6 +36,7 @@ import { faustview } from "./faustview.mjs";
 import { faustrecipe } from "./faustrecipe.mjs";
 import { patching } from "./patching.mjs";
 import { lines } from "./lines.mjs";
+import { workfile } from "./workfile.mjs";
 
 const url = process.argv[2] || "http://localhost:8000/tests.html";
 const base = url.replace(/tests\.html.*$/, "");
@@ -98,6 +99,8 @@ const appSuites = [
   ["claude", claude, "the Claude tab tests ran"],
   // opens a solo work and a room of its own, then a local one again
   ["lines", lines, "the lines tests ran"],
+  // opens the solo work a file makes, deletes it, then a local one again
+  ["workfile", workfile, "the work file tests ran"],
   // opens other works, then a local one again
   ["release", release, "the release tests ran"],
   // opens a lesson (another local work): last

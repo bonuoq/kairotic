@@ -291,7 +291,8 @@
                connecting? "<p class=\"mgr-note\">Connecting…</p>"
                (not db?)
                (str "<p class=\"mgr-note\">This view has no database (outside claude.ai or not signed in): you can only work locally, without saving.</p>"
-                    "<button class=\"act primary\" data-act=\"local\">Start locally</button>")
+                    "<button class=\"act primary\" data-act=\"local\">Start locally</button> "
+                    "<button class=\"act\" data-act=\"open-file\" title=\"A work saved as a .kairotic file: it opens as a local work\">Open a file…</button>")
                :else
                (str
                 (when inv
@@ -319,7 +320,11 @@
                 (when can-write
                   "<form class=\"new\" data-kind=\"room\"><input id=\"new-room\" placeholder=\"Name of the room\" maxlength=\"60\" required><label class=\"opt\"><input type=\"checkbox\" id=\"new-room-ex\"> with the example work</label><button class=\"act primary\">Create</button></form>")
                 "</section></div>"
-                "<p class=\"mgr-foot\"><button class=\"act\" data-act=\"local\">Try locally, without saving</button> <button class=\"act\" data-act=\"learn\" title=\"Tutorials and the help of every component\">Learn: tutorials and help</button></p>")))))))
+                "<p class=\"mgr-foot\"><button class=\"act\" data-act=\"local\">Try locally, without saving</button> <button class=\"act\" data-act=\"learn\" title=\"Tutorials and the help of every component\">Learn: tutorials and help</button>"
+                ;; a work as a file (#149): open one as a new solo work, or keep the one open
+                " <button class=\"act\" data-act=\"open-file\" title=\"A work saved as a .kairotic file: it opens as a new solo work, with its whole history\">Open a file…</button>"
+                (when (:kind @work) " <button class=\"act\" data-act=\"export-file\" title=\"The open work as a .kairotic file: every line, its whole history and the sounds recorded\">Download this work</button>")
+                "</p>")))))))
 
 (add-watch mgr ::render (fn [_ _ _ _] (render-manager!)))
 (add-watch rooms ::render (fn [_ _ _ _] (render-manager!)))
@@ -363,6 +368,8 @@
           "learn" (do (open-work! :local "local" "Local") (show-help! nil))
           "guide" (do (open-work! :local "local" "Local") (docs "guide"))
           "feedback" (do (when-not (:kind @work) (open-work! :local "local" "Local")) (swap! mgr assoc :open false) (.click ($ "tab-feedback")))
+          "open-file" (open-work-file!)
+          "export-file" (gesture! "(export-work)")
           nil)))))
 
 (.addEventListener ($ "mgr-body") "submit"

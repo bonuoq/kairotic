@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **A work as a file: `.kairotic`** (discussion #149). The first thing in Share/Export, and *Download this work* in
+  the session manager: the whole work — every line, its whole history, the sounds recorded — or a release of it
+  (one line, one point per keyframe), optionally **anonymous** (authors and sessions as p1, s1…, no names, no
+  origin). **Open a file…** in the session manager makes a new work of one: solo, or local without a database;
+  segments made in a local work get ids of their own, so they are saved from then on. `(export-work)`,
+  `(export-work {:release true :anonymous true})`, `(open-work-file!)`.
+  - The file is a zip of EDN — `manifest.edn` (`:format 1`), `work.edn`, `lines.edn`, `history.edn`, `people.edn` —
+    and `sounds/<hash>.wav`, 32-bit float, so the samples come back exactly (their hash is their key). Samples
+    loaded from a URL stay references. A file of a newer format says so instead of opening half.
+  - `kairotic/kfile.mjs`: the zip (stored and deflated entries with the browser's `CompressionStream`, CRC
+    checked) and the WAV, plain JavaScript, no dependency.
+  - Tests: `tests/workfile.mjs` (22 checks).
 - **An html box: small interfaces written as hiccup** (issue #146). `html` draws a little HTML document in the
   patch — sliders, number and text fields, menus, checkboxes, buttons, text and tables, laid out with flex or grid —
   written as hiccup in EDN (`[:div.row [:input {:type "range" :name :freq :out 0}] [:output :$freq]]`). An element
