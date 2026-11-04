@@ -31,6 +31,16 @@ syncing through it, and while it is not the site's relay the address and the roo
 | Railway | a new service from this repository with root directory `relay` (it finds the Dockerfile); add a volume at `/data` |
 | Your own computer | `npx @kairotic/relay` and a tunnel with TLS (cloudflared, ngrok) for others to reach it |
 
+## Rooms and a shared clock
+
+On `ws://<host>/signal` (on unless `--no-signal`) the pages of a room find each other: through it they open
+WebRTC data channels to each other for the **stream** of gestures (unordered, without retransmits — a
+gesture that arrives late is worth nothing), and while a channel is not open the relay passes the stream
+itself. The same socket answers `{ping: t0}` with the relay's time, so every page estimates its offset to
+it and they all read the same **shared clock**; a tempo started on one page is the same beat on all of
+them. The relay keeps nothing: a room exists while someone is in it. Discussion
+[#135](https://github.com/bonuoq/kairotic/discussions/135); see Study 34 · io.
+
 ## OSC bridge
 
 A page cannot send or receive UDP, so the relay can do it for it: with `--osc` it also answers on
@@ -47,6 +57,7 @@ npx @kairotic/relay --osc --osc-out sc=57120 --osc-out max=127.0.0.1:7400 --osc-
 |---|---|
 | `--osc-out name=host:port` | where the pages' OSC goes (several allowed; a page picks one by name, the first by default). The relay never sends anywhere else |
 | `--osc-in 57121` | the UDP port where OSC arrives for the pages (`--osc-bind 0.0.0.0` to take it from other machines, such as a phone with TouchOSC) |
+| `--oscquery 5678` | the HTTP port where the pages' declared parameters are published as [OSCQuery](https://github.com/Vidvox/OSCQueryProposal) (`0`: none), for ossia score, Chataigne, TouchDesigner… — add `http://<host>:5678` by hand in them (no mDNS) |
 | `--osc-origin url` | the sites allowed to use the bridge: `https://bonuoq.github.io`, `http://localhost` and `http://127.0.0.1` by default. With `*`, any site you visit could send OSC to your synths |
 
 A page sends JSON frames `{"address": "/x", "args": [1, 2.5, "a"], "types": "ifs", "to": "max"}`

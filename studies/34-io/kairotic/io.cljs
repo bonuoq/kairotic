@@ -387,6 +387,40 @@
                          [{} []] (sort-by key now))]
     [(assoc st :pads ps) (vec (concat gone evs))]))
 
+;; ───────── serial ─────────
+;; A microcontroller (an Arduino's Serial.println, an ESP32…) sends lines of text; each line is read as:
+;;   "512 300 1" or "512,300,1"     → {:src :serial :type :serial :values [512 300 1]}
+;;   "pot:512 light=300"            → {:src :serial :type :serial :key "pot" :value 512} and one for light
+;;   anything else                  → {:src :serial :type :serial :text "…"}
+;; Text arrives in pieces that do not respect lines: what is left after the last newline waits for the next.
+
+(def max-line 512)
+
+(defn- number-of [s] (when (re-matches #"[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?" s) (js/parseFloat s)))
+
+(defn serial-line
+  "The events of one line."
+  [line]
+  (let [line (.trim line) ev (fn [m] (merge {:src :serial :type :serial} m))
+        words (remove empty? (.split line (js/RegExp. "[\\s,;]+")))]
+    (cond
+      (empty? line) []
+      (every? number-of words) [(ev {:values (mapv number-of words)})]
+      (every? #(re-matches #"[^:=]+[:=][^:=]+" %) words)
+      (vec (for [w words :let [[k v] (.split w (js/RegExp. "[:=]"))]]
+             (ev (if-let [n (number-of v)] {:key k :value n} {:key k :text v}))))
+      :else [(ev {:text line})])))
+
+(defn new-serial [] {:buf ""})
+
+(defn serial-chunk
+  "A piece of text from the port: [state, events of the lines it completes]."
+  [st text]
+  (let [lines (.split (str (:buf st) text) (js/RegExp. "\\r?\\n"))
+        rest-buf (last lines)]
+    [{:buf (if (> (count rest-buf) max-line) "" rest-buf)}
+     (vec (mapcat serial-line (butlast lines)))]))
+
 ;; ───────── OSC ─────────
 ;; Through the relay's bridge (relay/oscbridge.js) a message is JSON: {address, args, types?, from?}. An
 ;; event goes out under /kairotic/<type>, with its values in a fixed order, so that a SynthDef or a Max
@@ -419,6 +453,9 @@
                      :types (if (some? (:gate e)) "fi" "f")
                      :args (if (some? (:gate e)) [(:value e) (if (:gate e) 1 0)] [(:value e)])}
     (:clock :start :stop :continue) {:address (str "/kairotic/" (name (:type e))) :args []}
+    :serial (cond (:values e) {:address "/kairotic/serial" :args (vec (:values e))}
+                  (number? (:value e)) {:address (str "/kairotic/serial/" (:key e)) :types "f" :args [(:value e)]}
+                  :else {:address (str "/kairotic/serial" (when (:key e) (str "/" (:key e)))) :types "s" :args [(:text e)]})
     :osc (when-not (= :osc (:src e)) {:address (:address e) :args (vec (:args e))})
     nil))
 
@@ -467,11 +504,76 @@
   [pattern address]
   (or (empty? pattern) (boolean (.test (pattern-re pattern) address))))
 
+;; ───────── the stream between pages ─────────
+;; Events travel between the pages of a room as JSON (over a WebRTC data channel, or through the relay
+;; while there is none). A keyword value is written ":name" and read back as a keyword; keys are always
+;; keywords. What arrives is taken with {:src :net :peer id} and the source it had, as :via.
+
+(defn ->wire
+  "An event as a JS object to send."
+  [e]
+  (clj->js (into {} (map (fn [[k v]] [(name k) (cond (keyword? v) (str ":" (name v))
+                                                      (vector? v) (mapv #(if (keyword? %) (str ":" (name %)) %) v)
+                                                      :else v)]) e))))
+
+(defn <-wire
+  "An event from a peer: its fields back, its source kept as :via."
+  [obj peer]
+  (let [kw (fn [v] (if (and (string? v) (> (count v) 1) (= ":" (subs v 0 1))) (keyword (subs v 1)) v))
+        e (into {} (map (fn [[k v]] [(keyword k) (if (vector? v) (mapv kw v) (kw v))]) (js->clj obj)))]
+    (-> e (assoc :via (:src e) :src :net :peer peer))))
+
+;; ───────── a clock to agree on ─────────
+;; Every page asks the relay for its time (ping → pong): sent at t0, the relay's time ts, back at t1, all
+;; in ms. If the way there and the way back take as long, the relay's clock is ahead of the page's by
+;; ts − (t0 + t1)/2, give or take half the round trip. Of the last samples the third with the shortest
+;; trips is kept, and its median is the offset: a page that adds it to its own time reads the relay's
+;; time, and so do the others — that is the shared time, whatever each machine's clock says.
+;;
+;; A tempo is {:t0 shared-ms :bpm b}: beat 0 at t0. Every page computes beats from the shared time, so a
+;; tempo started on one page is the same beat on all of them.
+
+(def clock-keep 24)
+
+(defn new-clock [] {:samples []})
+
+(defn clock-sample
+  "The clock with one more sample (t0 sent, ts the relay's time, t1 back, ms)."
+  [c t0 ts t1]
+  (let [rtt (- t1 t0)]
+    (if (neg? rtt)
+      c
+      (update c :samples (fn [ss] (vec (take-last clock-keep (conj ss {:rtt rtt :offset (- ts (/ (+ t0 t1) 2))}))))))))
+
+(defn- median [xs] (let [v (vec (sort xs)) n (count v)]
+                     (when (pos? n) (if (odd? n) (v (quot n 2)) (/ (+ (v (dec (quot n 2))) (v (quot n 2))) 2)))))
+
+(defn clock-offset
+  "The relay's time minus this page's, in ms (nil before any sample)."
+  [c]
+  (let [ss (sort-by :rtt (:samples c))]
+    (median (map :offset (take (max 1 (js/Math.ceil (/ (count ss) 3))) ss)))))
+
+(defn clock-error "Half the shortest round trip: how far off the offset can be, in ms." [c]
+  (when (seq (:samples c)) (/ (apply min (map :rtt (:samples c))) 2)))
+
+(defn shared-time "This page's time (ms) as shared time." [c local] (when-let [o (clock-offset c)] (+ local o)))
+
+(defn beat-at "The beat at shared time t (ms)." [{:keys [t0 bpm]} t] (/ (* (- t t0) bpm) 60000))
+(defn time-of-beat "The shared time (ms) of beat b." [{:keys [t0 bpm]} b] (+ t0 (/ (* b 60000) bpm)))
+
+(defn beats-between
+  "The whole beats from shared time a (included) to b (excluded), as [beat time]."
+  [tempo a b]
+  (let [first-b (js/Math.ceil (beat-at tempo a))]
+    (vec (take-while (fn [[_ t]] (< t b))
+                     (map (fn [k] [k (time-of-beat tempo k)]) (iterate inc first-b))))))
+
 ;; ───────── printing ─────────
 
 (defn edn
   "An event as one line of EDN, its keys in a readable order."
   [e]
-  (let [order [:src :type :address :args :pad :id :ch :note :button :axis :name :cc :freq :amp :x :y :value :gate :from]
+  (let [order [:src :via :peer :type :key :values :text :address :args :pad :id :ch :note :button :axis :name :cc :freq :amp :x :y :value :gate :from]
         ks (concat (filter #(contains? e %) order) (sort (remove (set order) (keys e))))]
     (str "{" (apply str (interpose " " (map (fn [k] (str k " " (pr-str (get e k)))) ks))) "}")))

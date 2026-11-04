@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 // Runs the test pages of the studies (studies/*/tests/*.html: the ones that leave window.kairoticResults)
 // in a headless Chromium: node tests/studies.mjs [base-url] [study…]
-// With OSC_RELAY=ws://localhost:8765/osc the pages that need a relay's OSC bridge run too (see studies.yml).
+// With OSC_RELAY=ws://localhost:8765/osc and SIGNAL_RELAY=ws://localhost:8765/signal the pages that need a
+// relay run too (see studies.yml).
 // The repository must be served at base-url (http://localhost:8000/ by default).
 import { chromium } from "playwright";
 import { readdirSync, existsSync } from "node:fs";
@@ -13,14 +14,19 @@ const pages = readdirSync("studies").filter((s) => !only.length || only.some((o)
     ? readdirSync(`studies/${s}/tests`).filter((f) => f.endsWith(".html")).map((f) => `studies/${s}/tests/${f}`)
     : []);
 
-const browser = await chromium.launch();
+// WebRTC between two pages of one machine: their real local addresses, not mDNS names a container can't resolve
+const browser = await chromium.launch({ args: ["--disable-features=WebRtcHideLocalIpsWithMdns", "--autoplay-policy=no-user-gesture-required"] });
 let total = 0, failed = 0;
 for (const path of pages) {
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e.message || e)));
   // OSC_RELAY: a relay with the OSC bridge running, for the pages that need one (they skip without it)
-  await page.goto(base + path + (process.env.OSC_RELAY ? "?relay=" + encodeURIComponent(process.env.OSC_RELAY) : ""));
+  // SIGNAL_RELAY: a relay's rooms (/signal), for the pages that open WebRTC channels between them
+  const q = new URLSearchParams();
+  if (process.env.OSC_RELAY) q.set("relay", process.env.OSC_RELAY);
+  if (process.env.SIGNAL_RELAY) q.set("signal", process.env.SIGNAL_RELAY);
+  await page.goto(base + path + (q.size ? "?" + q : ""));
   const r = await page.waitForFunction(() => window.kairoticResults, null, { timeout: 60000 })
     .then((h) => h.jsonValue()).catch(() => ({ total: 0, failed: ["no results within 60 s"] }));
   total += r.total; failed += r.failed.length;

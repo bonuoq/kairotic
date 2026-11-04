@@ -39,7 +39,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // ── the bridge ──
 const port = 18765, udpIn = 18121, udpSc = 18120;
 const relay = spawn(process.execPath, ["relay/server.js", "--port", port, "--data", mkdtempSync(join(tmpdir(), "radata-")),
-  "--osc", "--osc-in", udpIn, "--osc-out", `sc=127.0.0.1:${udpSc}`, "--osc-out", `loop=127.0.0.1:${udpIn}`], { stdio: ["ignore", "pipe", "inherit"] });
+  "--osc", "--osc-in", udpIn, "--oscquery", 18678, "--osc-out", `sc=127.0.0.1:${udpSc}`, "--osc-out", `loop=127.0.0.1:${udpIn}`], { stdio: ["ignore", "pipe", "inherit"] });
 let out = "";
 relay.stdout.on("data", (d) => { out += d; });
 const finish = (code) => { relay.kill(); process.exit(code); };
@@ -63,7 +63,7 @@ try {
   const page = await open("/osc", "http://localhost:8000");
   is("a page from localhost connects", page.ok, page.error);
   await wait(100);
-  is("it is greeted with the targets", JSON.stringify(page.frames[0]) === JSON.stringify({ hello: { listen: udpIn, targets: ["sc", "loop"] } }));
+  is("it is greeted with the targets and the OSCQuery port", JSON.stringify(page.frames[0]) === JSON.stringify({ hello: { listen: udpIn, targets: ["sc", "loop"], oscquery: 18678 } }));
 
   page.ws.send(JSON.stringify({ address: "/kairotic/note", args: [60, 261.626, 0.5, 1] }));
   await wait(200);
@@ -87,6 +87,28 @@ try {
   is("a bad message is an error", page.frames.some((f) => f.error && /address/.test(f.error)));
   is("nothing else reached SuperCollider", scGot.length === 1);
 
+  // OSCQuery: the page declares two parameters, a tool reads the tree and sets one through UDP
+  for (let i = 0; i < 50 && !/OSCQuery: http/.test(out); i++) await wait(100);
+  page.ws.send(JSON.stringify({ declare: [
+    { address: "/kairotic/study/bpm", type: "f", value: 96, range: [20, 300], description: "tempo" },
+    { address: "/kairotic/study/metro", type: "T", value: true }] }));
+  await wait(150);
+  const q = (path) => fetch(`http://127.0.0.1:18678${path}`).then(async (r) => ({ status: r.status, body: r.status === 200 ? await r.json() : null }));
+  const tree = await q("/");
+  const bpm = tree.body && tree.body.CONTENTS.kairotic.CONTENTS.study.CONTENTS.bpm;
+  is("OSCQuery: the tree has the page's parameter, typed, with its range", bpm && bpm.TYPE === "f" && bpm.VALUE[0] === 96 && bpm.RANGE[0].MAX === 300 && bpm.ACCESS === 3, JSON.stringify(tree.body));
+  const info = await q("/?HOST_INFO");
+  is("OSCQuery: HOST_INFO says where to send OSC", info.body && info.body.OSC_PORT === udpIn && info.body.OSC_TRANSPORT === "UDP");
+  is("OSCQuery: a node by its path", (await q("/kairotic/study/metro")).body.TYPE === "T");
+  is("OSCQuery: a path that is not there is 404", (await q("/nope")).status === 404);
+  page.ws.send(JSON.stringify({ value: { address: "/kairotic/study/bpm", value: 100 } }));
+  await wait(100);
+  is("OSCQuery: the page's new value", (await q("/kairotic/study/bpm?VALUE")).body.VALUE[0] === 100);
+  sc.send(osc.encode({ address: "/kairotic/study/bpm", args: [132.5] }), udpIn, "127.0.0.1");
+  await wait(150);
+  is("OSCQuery: a tool sets it by OSC: the page hears it", page.frames.some((f) => f.address === "/kairotic/study/bpm" && f.args[0] === 132.5));
+  is("OSCQuery: and the tree keeps it", (await q("/kairotic/study/bpm?VALUE")).body.VALUE[0] === 132.5);
+
   const evil = await open("/osc", "https://evil.example");
   is("a page from another site is refused", !evil.ok);
   const pages = await open("/osc", "https://bonuoq.github.io");
@@ -94,7 +116,10 @@ try {
   const gun = await open("/gun");
   is("GUN's /gun still answers", gun.ok, gun.error);
 
-  for (const c of [page, pages, gun]) c.ws.close();
+  page.ws.close();
+  await wait(150);
+  is("OSCQuery: a page that leaves takes its parameters with it", (await q("/kairotic")).status === 404);
+  for (const c of [pages, gun]) c.ws.close();
   sc.close();
 } catch (e) {
   is("no error", false, String(e && e.stack || e));

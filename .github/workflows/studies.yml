@@ -30,8 +30,8 @@ jobs:
           for i in $(seq 1 30); do curl -sf http://localhost:8000/README.md > /dev/null && break; sleep 1; done
           node tests/studies.mjs http://localhost:8000/
 
-  # The pages that need the relay's OSC bridge (studies/34-io/tests/osc.html): the relay started with
-  # --osc and a target back to its own UDP port, so what a page sends comes back to it.
+  # The pages that need a relay: its OSC bridge (studies/34-io/tests/osc.html; --osc with a target back to
+  # its own UDP port, so what a page sends comes back to it) and its rooms (tests/net.html, two pages).
   osc:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -46,6 +46,7 @@ jobs:
       - name: Start the relay with the OSC bridge, serve the repository, run the studies' tests
         env:
           OSC_RELAY: ws://localhost:8765/osc
+          SIGNAL_RELAY: ws://localhost:8765/signal
         run: |
           node relay/server.js --data "$RUNNER_TEMP/radata" --osc --osc-out loop=127.0.0.1:57121 &
           npx --yes http-server@14 . -p 8000 -s &

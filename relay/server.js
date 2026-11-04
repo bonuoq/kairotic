@@ -9,6 +9,8 @@
 //   PORT=… RADATA=… npx @kairotic/relay                       (the same, from the environment)
 //   npx @kairotic/relay --osc [--osc-out sc=127.0.0.1:57120]   also ws://localhost:8765/osc, an OSC bridge
 //                                                              (see oscbridge.js)
+//   ws://localhost:8765/signal                                 rooms for WebRTC and a shared clock
+//                                                              (see signal.js; --no-signal turns it off)
 //
 // The page connects with wss://<host>/gun: in its session manager (Relay), with ?peer=… in the
 // address, or for a whole site in site/config.js.
@@ -44,12 +46,15 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
     "  --port, -p   where it listens (or PORT; 8765)",
     "  --data, -d   the folder where it keeps the graph (or RADATA; ./radata). Back it up.",
     "",
+    "  --no-signal  no rooms on /signal (where pages open direct channels to each other and agree on a clock)",
+    "",
     "  OSC bridge, for SuperCollider, Max, Pd, TouchOSC… on this machine (off unless --osc):",
     "  --osc               pages connect to ws://<this host>:<port>/osc",
     "  --osc-in 57121      the UDP port where OSC arrives, for the pages",
     "  --osc-bind 127.0.0.1  the address it listens on (0.0.0.0 to take OSC from other machines)",
     "  --osc-out name=host:port  where the pages' OSC goes; several allowed, the first by default",
     "                      (sc=127.0.0.1:57120: SuperCollider's sclang)",
+    "  --oscquery 5678     the HTTP port where the pages' parameters are published as OSCQuery (0: none)",
     "  --osc-origin url    the pages allowed to use it (https://bonuoq.github.io, http://localhost,",
     "                      http://127.0.0.1 by default; * for any — then any site you visit can send OSC)",
     "",
@@ -71,19 +76,33 @@ Gun({ web: server, file: data, axe: false, multicast: false });
 
 const osc = process.argv.includes("--osc") || options("osc-out").length > 0;
 
+const signal = !process.argv.includes("--no-signal");
+
 server.listen(port, () => {
   console.log(`Kairotic relay on :${port} · data in ${data}`);
+  const { WebSocketServer, Server } = require("ws");
+  if (signal) {
+    // after GUN has its WebSocket on the server: /signal comes here, the rest goes on to GUN
+    require("./signal.js").attach(server, { WebSocketServer: WebSocketServer || Server, log: console.log });
+  }
   if (osc) {
-    // after GUN has its WebSocket on the server: the bridge takes only /osc and passes the rest on
-    const { WebSocketServer, Server } = require("ws");
+    // the bridge takes only /osc and passes the rest on
     const bridge = require("./oscbridge.js").attach(server, {
       WebSocketServer: WebSocketServer || Server,
       listen: Number(option("osc-in")) || 57121,
       bind: option("osc-bind") || "127.0.0.1",
       targets: options("osc-out"),
       origins: options("osc-origin").length ? options("osc-origin") : undefined,
+      oscquery: option("oscquery") === "0" ? null : Number(option("oscquery")) || 5678,
       log: console.log,
     });
+    const qport = option("oscquery") === "0" ? 0 : Number(option("oscquery")) || 5678;
+    if (qport) {
+      const { serveQuery } = require("./oscbridge.js");
+      bridge.ready.then(() => serveQuery(bridge, { port: qport, bind: option("osc-bind") || "127.0.0.1", name: "Kairotic" }).ready)
+        .then((p) => console.log(`              OSCQuery: http://localhost:${p} (add it by hand in ossia score, Chataigne…)`),
+              (e) => console.error(`  OSCQuery: could not listen on ${qport}: ${e.message}`));
+    }
     bridge.ready.then((p) => {
       console.log(`  OSC bridge: pages on ws://localhost:${port}/osc · OSC in on udp ${option("osc-bind") || "127.0.0.1"}:${p}`);
       console.log(`              OSC out to ${bridge.targets.map((t) => `${t.name} (${t.host}:${t.port})`).join(", ")}`);

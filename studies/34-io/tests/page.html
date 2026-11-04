@@ -118,6 +118,14 @@ document.getElementById("study").addEventListener("load", function () {
     return wait(150);
   }).then(function () {
     is("pad: unplugged", /:src :gamepad :type :disconnect :pad 0/.test(log()));
+    // a board on a serial port, without a board: its text as it would arrive, cut anywhere
+    w.kairoticSerialText("pot:5"); w.kairoticSerialText("12 light=3\r\n100,2");
+    w.kairoticSerialText("00 7\nhello\n");
+    var l = log();
+    is("serial: a line cut in two is read when it ends", /\{:src :serial :type :serial :key "pot" :value 512\}/.test(l) && /:key "light" :value 3\}/.test(l));
+    is("serial: numbers as values", /\{:src :serial :type :serial :values \[100 200 7\]\}/.test(l));
+    is("serial: other text as text", /\{:src :serial :type :serial :text "hello"\}/.test(l));
+    is("serial: without a board, Send stays off", $("serial-send").disabled);
     done();
   }).catch(done);
 });
