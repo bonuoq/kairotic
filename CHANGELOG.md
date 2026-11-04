@@ -18,7 +18,9 @@
   patch — sliders, number and text fields, menus, checkboxes, buttons, text and tables, laid out with flex or grid —
   written as hiccup in EDN (`[:div.row [:input {:type "range" :name :freq :out 0}] [:output :$freq]]`). An element
   with `:out o` sends what it gives out of outlet o (the box has as many outlets as its view asks for); one with
-  `:name n` keeps it as a value, shown wherever the hole `:$n` is, and a map `{:freq 220}` on its inlet sets values.
+  `:name n` keeps it as a value, shown wherever the hole `:$n` is. A map `{:freq 220}` on its inlet sets values as a
+  number sets a knob: the elements named so show it (a slider within its range) and those with `:out` send it on; a
+  bang sends again what they hold.
   - **Safe in a shared room**, like a tree box: the view is data, kept and drawn only after an allowlist of tags,
     attributes and style properties (no scripts, links, images, positions or `on*` attributes; palette colours
     `:ink :accent …` follow the theme), and built with the DOM in a shadow root, never with `innerHTML`.
@@ -29,8 +31,8 @@
     travels with the work and going back in the history brings back the value it had. A button (no name) only
     sends, `(send! :bN [:ui outlet value name])` in the REPL. Its element is kept between redraws, so what is typed
     keeps its focus; keys typed in it are its own (a space is not ▶). `(resize :bN w h)` gives it a size.
-  - In the core (`core/kairotic/hiccup.cljs`, page `app/page/19-html.cljs`). Tests: `tests/cljs/hiccup.cljs` (55
-    checks) and `tests/html.mjs` (38).
+  - In the core (`core/kairotic/hiccup.cljs`, page `app/page/19-html.cljs`). Tests: `tests/cljs/hiccup.cljs` (62
+    checks) and `tests/html.mjs` (41).
 
 - **Lines, what was left** (discussion #117):
   - **One line when the work leaves** (decision 8): a link (Share/Export, Release/Perform) and a release carry one

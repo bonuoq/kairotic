@@ -82,6 +82,11 @@ export async function html(page, check) {
   check("a map on the inlet sets the hole", hole === "3", hole);
   const slid = await untilBox(page, id, "return root.querySelector('input[type=range]').value", "3");
   check("... and the slider named so", slid === "3", slid);
+  check("... which sends it on, as a knob does", (await until(page, `(get-in @eng/rt [:states ${num}])`, (g) => g === "3")) === "3");
+  await cljs(page, `(send! ${hb} [:v 99])`);
+  check("a value past the slider's range is kept within it", (await until(page, `(get-in @eng/rt [:states ${num}])`, (g) => g === "10")) === "10");
+  await cljs(page, `(send! ${num} 0) (send! ${hb} :bang)`);
+  check("a bang sends again what it holds", (await until(page, `(get-in @eng/rt [:states ${num}])`, (g) => g === "10")) === "10");
 
   // what is typed keeps the focus when the scene is written again
   await inBox(page, id, "const t = root.querySelector('input.t'); t.focus(); t.value = 'ab'; return true");
