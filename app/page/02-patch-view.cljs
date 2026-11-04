@@ -98,12 +98,14 @@
 
 (declare panel-layout)
 
+(def html-size "The size an html box is drawn at until it is given one (issue #146)." [260 150])
+
 (defn box-size
-  "The size a canvas, freqt or score box is drawn at: the one being dragged at its corner, its own (:size,
-   issue #40), or the default. For a score only the width counts: its height follows the notation."
+  "The size a canvas, freqt, score or html box is drawn at: the one being dragged at its corner, its own
+   (:size, issue #40), or the default. For a score only the width counts: its height follows the notation."
   [id b]
   (let [r (:resize @ui)]
-    (if (and r (= (:id r) id)) [(:w r) (:h r)] (or (:size b) [cv/W cv/H]))))
+    (if (and r (= (:id r) id)) [(:w r) (:h r)] (or (:size b) (if (= :html (display-of b)) html-size [cv/W cv/H])))))
 
 (defn box-dims [id b]
   (let [t (:text b)]
@@ -111,7 +113,7 @@
       (= :code (display-of b)) [code-w (:h (code-geom b))]
       (panel-layout b) (let [{:keys [w h]} (panel-layout b)] [w h])
       (own-view? b) (let [[w h] (comp/size-of b)] [(+ grip w) h])
-      (= :canvas (display-of b)) (box-size id b)
+      (#{:canvas :html} (display-of b)) (box-size id b)
       (= :score (display-of b)) [(first (box-size id b)) (max 90 (+ hdr 8 (or (get-in @score-cache [id :h]) 70)))]
       :else
     (case (klass t)
@@ -567,6 +569,7 @@
                                          (when (and (number? t) (< (- (eng/now) at) 2)) (cursor-at p id t "cur2" false))))
                   (when (own-view? b) (ctl-overlay id b x y))))]
     (render-layers!)
+    (refresh-html-boxes!)
     (set! (.-innerHTML ($ "cursors"))
           (str (apply str parts)
                ;; in presentation the readers are usually hidden, but their cursors still show on the canvases
@@ -620,6 +623,7 @@
          (esc (cond
                 (= :code (display-of b)) (str (:language (box-def b)) " · ✎")
                 tree-box? (if-let [t (mtb/tree-of (:data b))] (mt/summary t) "empty")
+                (= :html (display-of b)) (let [n (hic/outlets (hic/view-of (:data b)))] (str n (if (= 1 n) " outlet" " outlets")))
                 :else (cond
                         (live-tree id) (str "tree · " (mt/summary (live-tree id)) " · (keep! " id ")")
                         (kept-tree b) (str "kept · " (mt/summary (kept-tree b))
@@ -697,7 +701,7 @@
 (.addEventListener ($ "crumbs") "click"
   (fn [e] (when-let [n (.. e -target -dataset -up)] (gesture! (str "(up " n ")")))))
 
-(declare render-inspector!)
+(declare render-inspector! html-slot-svg html-save-focus! mount-html-slots! refresh-html-boxes!)
 
 (defn render-scene [p]
   (let [p (scene-of p)
@@ -719,7 +723,7 @@
         bxs (for [[id b] (:boxes p)]
               (let [[x y] (box-pos id b) t (:text b) [w h] (box-dims id b) [ins outs] (io b)
                     kc (klass t)
-                    music-box? (contains? #{:canvas :score} (display-of b))
+                    music-box? (contains? #{:canvas :score :html} (display-of b))
                     code-box? (= :code (display-of b))
                     ctl? (own-view? b)
                     action-box? (or ctl? (contains? action-classes kc))
@@ -746,6 +750,7 @@
                                                              "</text>")
                                                (:error c) (str "<text class=\"wait\" x=\"12\" y=\"" (+ hdr 26) "\">"
                                                                (esc (str "Could not draw: " (:error c))) "</text>"))))
+                              :html (html-slot-svg id b w h)
                               "bang" (str "<circle class=\"bangc\" cx=\"" (+ grip (/ (- w grip) 2)) "\" cy=\"" (/ h 2) "\" r=\"7\"></circle>")
                               "msg" (str "<text x=\"" (+ grip 6) "\" y=\"16\">" (esc (str/trim (subs (str/trim t) 3))) "</text>")
                               (when ctl?
@@ -779,7 +784,10 @@
         temp (when (and wire (get-in p [:boxes (:from wire)]))
                (let [[x1 y1] (out-xy p (:from wire) (:out wire))]
                  (str "<path class=\"wire temp\" d=\"" (wire-d x1 y1 (:x wire) (:y wire)) "\"></path>")))]
+    ;; html boxes keep their own elements (issue #146): taken out before the scene is written, put back after
+    (html-save-focus!)
     (set! (.-innerHTML ($ "scene")) (str (apply str lines) (apply str bxs) temp))
+    (mount-html-slots!)
     ;; the paper grows with what is on it (with room to keep going), so nothing at the edge is cut off
     (let [[mx my] (reduce (fn [[mx my] [id b]]
                             (let [[x y] (box-pos id b) [w h] (box-dims id b)]

@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **An html box: small interfaces written as hiccup** (issue #146). `html` draws a little HTML document in the
+  patch — sliders, number and text fields, menus, checkboxes, buttons, text and tables, laid out with flex or grid —
+  written as hiccup in EDN (`[:div.row [:input {:type "range" :name :freq :out 0}] [:output :$freq]]`). An element
+  with `:out o` sends what it gives out of outlet o (the box has as many outlets as its view asks for); one with
+  `:name n` keeps it as a value, shown wherever the hole `:$n` is, and a map `{:freq 220}` on its inlet sets values.
+  - **Safe in a shared room**, like a tree box: the view is data, kept and drawn only after an allowlist of tags,
+    attributes and style properties (no scripts, links, images, positions or `on*` attributes; palette colours
+    `:ink :accent …` follow the theme), and built with the DOM in a shadow root, never with `innerHTML`.
+  - HTML can be pasted as its view (`{ }` in its header, or `(code :bN "<div>…</div>")`): read by the browser,
+    `data-out` / `data-send` become `:out` / `:send`, `$freq` in a text becomes a hole, and only the hiccup is kept.
+  - A slider sends while it moves (to a jam too) and leaves one event when it is let go; a menu, a text entered or a
+    button click is one event, `(send! :bN [:ui outlet value name])`. Its element is kept between redraws, so what is
+    typed keeps its focus; keys typed in it are its own (a space is not ▶). `(resize :bN w h)` gives it a size.
+  - In the core (`core/kairotic/hiccup.cljs`, page `app/page/19-html.cljs`). Tests: `tests/cljs/hiccup.cljs` (45
+    checks) and `tests/html.mjs` (30).
+
 - **Lines, what was left** (discussion #117):
   - **One line when the work leaves** (decision 8): a link (Share/Export, Release/Perform) and a release carry one
     line. Every `patch @name` becomes an embedded patch holding its line as it plays there, quiet as it played
