@@ -252,6 +252,138 @@
       (swap! world assoc :pos (:pos r) :auto false :prev-pos nil))
     (line-name (:line r))))
 
+;; ───── a line's tab while the line that plays uses it (decision 6, what you play there) ─────
+;; When the line that plays uses the line on screen (following it, and the tab is at its newest point), the
+;; tab shows that line where it plays: its first instance. What you play there goes to every instance.
+
+(defn instances-in
+  "Where line lid plays inside patch p, through embedded patches and the lines p uses: [path …]."
+  [lid p path depth]
+  (if (> depth 12)
+    []
+    (vec (mapcat (fn [[id b]]
+                   (cond (line-ref? b)
+                         (let [r (resolve-ref b)]
+                           (cond (:error r) []
+                                 (= lid (:line r)) (if (:pinned r) [] [(conj path id)])
+                                 :else (instances-in lid (:patch r) (conj path id) (inc depth))))
+                         (embedded? b) (instances-in lid (or (:data b) empty-patch) (conj path id) (inc depth))
+                         :else []))
+                 (:boxes p)))))
+
+(defonce instances-cache (atom [nil nil nil nil]))
+
+(defn view-instances
+  "Where the line on screen plays inside the line that plays: [path …] (empty when it does not, or when its
+   tab is not at its newest point, or in Perform)."
+  []
+  (if-not (and (playing-elsewhere?) (not @perf) (= (norm (:pos @world)) (newest-tip)))
+    []
+    (let [off (off-screen-patch (playing-line)) nodes (:nodes @hist) a (active-line)
+          [k1 k2 k3 v] @instances-cache]
+      (if (and (identical? k1 off) (identical? k2 nodes) (= k3 a))
+        v
+        (let [v (instances-in a off [] 0)] (reset! instances-cache [off nodes a v]) v)))))
+
+;; ───── one line, when the work leaves: links and releases (decision 8) ─────
+;; A link or a release carries one patch, not the lines of a work: every `patch @name` in it becomes an
+;; embedded patch holding its line at the point it reads (its pin, the fronts given — those a snapshot kept —
+;; or its newest point), quiet as it played there (without its adc~ and dac~), and so on inside it.
+
+(defn inline-lines
+  "Patch p with every `patch @name` (through embedded patches, and inside the lines it uses) made an embedded
+   patch holding its line: at its pin, at (fronts line) when given, or as it reads now."
+  ([p] (inline-lines p nil 0))
+  ([p fronts] (inline-lines p fronts 0))
+  ([p fronts depth]
+   (if (> depth 16)
+     p
+     (update p :boxes
+             (fn [bx]
+               (into (empty bx)
+                     (for [[id b] bx]
+                       [id (cond
+                             (line-ref? b)
+                             (let [lid (line-by-ref (eng/line-ref b))
+                                   pos (when lid (or (:pin b) (get fronts lid) (ref-pos b lid)))
+                                   inner (if pos (line-patch-at lid pos) empty-patch)]
+                               (-> b (dissoc :pin)
+                                   (assoc :text (str "patch " (eng/line-ref b))
+                                          :data (quiet (inline-lines inner fronts (inc depth))))))
+                             (embedded? b) (update b :data (fn [d] (when d (inline-lines d fronts (inc depth)))))
+                             :else b)])))))))
+
+;; ───── from a box to a line and back (decision 2) ─────
+
+(declare check-line-name)
+
+(defn inline-ref
+  "(inline-ref :b3): the line box :b3 uses becomes a copy inside the box (an embedded patch), as it plays now:
+   detached from the line, which stays as it is."
+  [id]
+  (let [b (need-ref id) r (resolve-ref b)]
+    (when (:error r) (fail (:error r)))
+    (dispatch! [:batch [[:text id (str "patch " (eng/line-ref b))] [:pin id nil]
+                        [:data id (quiet (inline-lines (:patch r)))]]])
+    id))
+
+(defn events-inside
+  "The events that reached the inside of box id (in the patch at path) along ev: [:in :b2 [:in :b5 e]] for
+   path [:b2] and id :b5 gives e, through batches."
+  [path id ev]
+  (letfn [(walk [path ev]
+            (cond (not (vector? ev)) []
+                  (= :batch (first ev)) (mapcat (fn [e] (walk path e)) (second ev))
+                  (seq path) (if (and (= :in (first ev)) (= (first path) (second ev))) (walk (rest path) (nth ev 2 nil)) [])
+                  :else [ev]))]
+    (walk path ev)))
+
+(defn box-history
+  "The history box id had inside it (in the patch at path of the line on screen), from the root to here: the
+   events it received, from the last time it was made (or loaded)."
+  [path id]
+  (let [evs (mapcat (fn [g] (seg-events g 0)) (segments (norm (:pos @world))))]
+    (reduce (fn [acc ev]
+              (reduce (fn [acc e]
+                        (let [[op a x] e]
+                          (case op
+                            (:box :delete) (if (= a id) [] acc)
+                            :data (if (= a id) (if (map? x) [[:load x]] []) acc)
+                            :in (if (= a id) (conj acc x) acc)
+                            :load (if-let [d (get-in a [:boxes id :data])] [[:load d]] [])
+                            :clear []
+                            acc)))
+                      acc (events-inside path id ev)))
+            [] evs)))
+
+(defn write-line-node!
+  "A first segment for line lid (not on screen): events evs, saved as any other."
+  [lid evs]
+  (let [id (new-id)
+        n {:id id :parent nil :at 0 :author (my-author) :session session-id :t (js/Date.now) :merge nil
+           :events (vec evs) :line lid}]
+    (swap! hist assoc-in [:other lid id] n)
+    (when (and (persist?) (not (str/starts-with? id "local-")))
+      (let [path (str (hist-path) "/" id) body (node->js n)]
+        (enqueue! path (fn [] (.set (.doc @dbref path) body)))))
+    id))
+
+(defn extract-line
+  "(extract-line :b3 \"filters\"): the embedded patch :b3 becomes a new line, with the history it had inside the
+   box, and the box uses it (patch @filters, following it)."
+  [id nm]
+  (when (or @perf @lesson @scratch) (fail "Not now: lines change outside Perform, a lesson or the scratch patch."))
+  (let [b (or (get-in (current) [:boxes id]) (fail (str "There is no box " id)))]
+    (when-not (embedded? b) (fail (str id " is not an embedded patch")))
+    (let [nm (check-line-name nm nil)
+          evs (box-history (cmd-path) id)
+          evs (if (and (empty? evs) (seq (:boxes (:data b)))) [[:load (:data b)]] evs)
+          lid (new-line-id)]
+      (save-line! lid {:name nm :created (js/Date.now) :archived false})
+      (when (seq evs) (write-line-node! lid evs))
+      (dispatch! [:batch [[:text id (str "patch @" (ref-slug nm))] [:data id nil]]])
+      nm)))
+
 ;; a line that changes changes what its users play: the engine's flat patch is made again
 (add-watch hist ::refs (fn [_ _ o n] (when-not (and (identical? (:nodes o) (:nodes n)) (identical? (:other o) (:other n)))
                                       (reset! eng/flat-cache [nil nil]))))

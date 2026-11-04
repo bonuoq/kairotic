@@ -178,7 +178,50 @@ export async function lines(page, check) {
   // renaming: the boxes on screen say the new name, the old one still finds it
   check("renaming a line rewrites the boxes on screen that use it", (await cljs(page, '(do (rename-line "ref gain" "ref level") (:text (get-in (current) [:boxes :b2])))')) === '"patch @ref-level"');
   check("... and the old name still finds it", (await cljs(page, '(line-by-ref "ref-gain")')) === gid);
-  await cljs(page, '(archive-line "ref piece")'); await cljs(page, '(archive-line "ref level")');
+  // the tab of a line the line that plays uses twice: it shows the first instance, what you play goes to both
+  await cljs(page, '(box :b4 "msg 7" 200 30)');
+  await cljs(page, '(box :b5 "patch @ref-level" 200 90)');
+  await cljs(page, '(box :b6 "number" 200 150)');
+  await cljs(page, "(connect :b4 0 :b5 0)"); await cljs(page, "(connect :b5 0 :b6 0)");
+  await cljs(page, '(go-line "ref level")');
+  for (const c of ['(box :b4 "number" 200 30)', "(connect :b1 0 :b4 0)"]) await cljs(page, c);
+  await cljs(page, '(go-line "ref piece")'); await cljs(page, "(play)"); await cljs(page, '(go-line "ref level")'); await settle();
+  check("a line used twice by the line that plays: the tab knows both instances", (await cljs(page, "(view-instances)")) === "[[:b2] [:b5]]");
+  check("... shows the first", (await cljs(page, "(fid :b4)")) === ":b2.b4");
+  check("... and says so", /×2/.test(await page.textContent("#transport-info")));
+  await cljs(page, "(send! :b1 9)"); await settle();
+  check("what you play on its tab goes to every instance", (await cljs(page, "[(second (get-in @eng/rt [:shows :b2.b4 0])) (second (get-in @eng/rt [:shows :b5.b4 0]))]")) === "[9 9]",
+    await cljs(page, "[(get-in @eng/rt [:shows :b2.b4]) (get-in @eng/rt [:shows :b5.b4])]"));
+  await cljs(page, "(stop)");
+  await cljs(page, '(go-line "ref level")'); await cljs(page, "(delete :b4)"); await cljs(page, '(go-line "ref piece")');
+  await cljs(page, "(delete :b4 :b5 :b6)");
+
+  // links and releases carry one line: every patch @name inside, as it plays (decision 8)
+  check("a link carries the line inside the box, not a reference to it",
+    (await cljs(page, '(let [c (patch->code (inline-lines (work-patch)))] [(str/includes? c "@") (:text (get-in (build c) [:boxes :b2])) (count (:boxes (:data (get-in (build c) [:boxes :b2]))))])')) === '[false "patch ref-level" 3]');
+  check("... the code of a Release/Perform link too", (await cljs(page, '(str/includes? (release-code) "patch @")')) === "false");
+  await cljs(page, '(snapshot "for the release")');
+  check("a release has no references left, and its marks no fronts",
+    (await cljs(page, '(let [evs (release-events) code (pr-str evs)] [(str/includes? code "patch @") (str/includes? code ":fronts")])')) === "[false false]");
+
+  // from a box to a line and back
+  await cljs(page, "(inline-ref :b2)");
+  check("(inline-ref box) copies its line inside the box, detached", (await cljs(page, "(let [b (get-in (current) [:boxes :b2])] [(embedded? b) (count (:boxes (:data b)))])")) === "[true 3]");
+  await settle();
+  check("... and it plays the same", (await send(":b1", ":b3")) === (await cljs(page, '(do (go-line "ref level") (let [m (re-find #"\\d+" (:text (get-in (current) [:boxes :b2])))] (go-line "ref piece") (str (* 5 (js/parseInt m)))))')).replace(/"/g, ""));
+  await cljs(page, '(inside :b2 (text! :b2 "+ 1"))');
+  const extracted = await cljs(page, '(extract-line :b2 "ref extracted")');
+  check("(extract-line box name) makes a line of an embedded patch", extracted === '"ref extracted"' && (await cljs(page, "(:text (get-in (current) [:boxes :b2]))")) === '"patch @ref-extracted"');
+  check("... with the history it had inside the box", (await cljs(page, '(let [lid (line-by-ref "ref-extracted") ns (line-nodes lid)] [(count (mapcat :events (vals ns))) (map :text (vals (:boxes (line-patch-at lid (nodes-front ns)))))])')) === '[2 ("inlet" "+ 1" "outlet")]',
+    await cljs(page, '(let [lid (line-by-ref "ref-extracted")] (mapcat :events (vals (line-nodes lid))))'));
+  await settle();
+  check("... and the box uses it", (await send(":b1", ":b3")) === "6");
+  check("the inspector of a patch box offers what it can do with lines",
+    (await cljs(page, '(do (swap! ui assoc :sel [:box :b2] :insp :b2) (render-inspector!) true)')) === "true" &&
+    await page.evaluate(() => [...document.querySelectorAll("#inspector [data-insp-act]")].map((b) => b.dataset.inspAct).join(",") === "pin-ref,inline-ref,open-ref"));
+  await cljs(page, "(swap! ui assoc :sel nil :insp nil)");
+
+  await cljs(page, '(archive-line "ref piece")'); await cljs(page, '(archive-line "ref level")'); await cljs(page, '(archive-line "ref extracted")');
 
   // segments that arrive: each one to its line
   check("segments that arrive go to their lines", (await cljs(page, `(do (go-line "main")

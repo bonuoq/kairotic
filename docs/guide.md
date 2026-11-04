@@ -203,6 +203,15 @@ in its tab.
   can be tried with its own input and output. Sound goes in and out through `inlet~` / `outlet~`; the box warns
   (⚠) when its line has a `dac~` and no `outlet~`, or an `adc~` and no `inlet~`.
 - Renaming a line rewrites the boxes on screen that use it; boxes elsewhere still find it by its old name.
+- While the line that plays uses the line on screen (and its tab is at its newest point), the tab shows it
+  where it plays, and what you play there goes to every box that uses it (the transport says ×2, ×3…).
+  To play one of them alone, play the line that uses it.
+- The inspector of a patch box (⌘/Ctrl+click) has what it can do with lines: an embedded patch can be
+  **extracted** to a new line, with the history it had inside the box — `(extract-line :b3 "filters")`; a
+  `patch @name` can be pinned, followed, opened, or **inlined** — `(inline-ref :b3)`: a copy of its line
+  inside the box, detached from it.
+- A link (Share/Export) or a release carries **one line**: every `patch @name` in it becomes an embedded patch
+  holding its line as it plays there — at each keyframe of a release, as the snapshot kept it.
 
 ### Compose and Perform
 

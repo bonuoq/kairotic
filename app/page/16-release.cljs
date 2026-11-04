@@ -36,13 +36,16 @@
    its mark, then the changes to the work as it is now (with its presets boxes keeping their presets)."
   []
   (let [kfs (keyframes)
-        final (with-stored-presets (work-patch))]
+        ;; one line (#117): the lines its patch uses go inside it, each as it played at that point
+        final (with-stored-presets (inline-lines (work-patch)))]
     (loop [prev empty-patch [k & more] kfs out []]
       (if k
         (let [[nid i] (:pos k)
-              p (patch-at (:pos k))
+              [op m] (nth (:events (node nid)) (dec i))
+              p (inline-lines (patch-at (:pos k)) (:fronts m))
               e (rel/as-event (rel/patch-diff prev p))
-              mark (nth (:events (node nid)) (dec i))]
+              ;; its fronts were points of lines the release does not have
+              mark [op (if (map? m) (dissoc m :fronts) m)]]
           (recur p more (cond-> out e (conj e) true (conj mark))))
         (let [e (rel/as-event (rel/patch-diff prev final))]
           (cond-> out e (conj e)))))))

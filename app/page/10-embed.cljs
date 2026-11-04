@@ -89,7 +89,8 @@
 (defn release-code
   "The code of the patch as a release carries it: its presets boxes keeping their presets (issue #50)."
   []
-  (patch->code (try (with-stored-presets (work-patch)) (catch :default _ (work-patch)))))
+  (let [p (inline-lines (work-patch))]
+    (patch->code (try (with-stored-presets p) (catch :default _ p)))))
 
 (defn link-mode
   "The mode of a link: :present (Release/Perform; also asked as :release or :perform) or :embed."
@@ -100,7 +101,7 @@
   "Promise of the patch as a link carries it: in Release/Perform, its release."
   [mode]
   (-> (js/Promise.resolve nil)
-      (.then (fn [_] ((.-kairoticPack js/window) (if (= mode :present) (release-code) (patch->code (work-patch))))))))
+      (.then (fn [_] ((.-kairoticPack js/window) (if (= mode :present) (release-code) (patch->code (inline-lines (work-patch)))))))))
 
 (defn link-params
   "Promise of the parameters that bring back what is shown now: the tutorial step, the help patch, or
