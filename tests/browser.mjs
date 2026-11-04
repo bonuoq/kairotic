@@ -9,6 +9,7 @@ import { corefns } from "./corefns.mjs";
 import { feedback } from "./feedback.mjs";
 import { canvasmsg } from "./canvasmsg.mjs";
 import { views } from "./views.mjs";
+import { html } from "./html.mjs";
 import { recipe } from "./recipe.mjs";
 import { numinput } from "./numinput.mjs";
 import { presets } from "./presets.mjs";
@@ -83,6 +84,7 @@ const appSuites = [
   ["feedback", feedback, "the feedback tests ran"],
   ["canvasmsg", canvasmsg, "the canvas message tests ran"],
   ["views", views, "the view tests ran"],
+  ["html", html, "the html box tests ran"],
   ["recipe", recipe, "the recipe tests ran"],
   ["numinput", numinput, "the number input tests ran"],
   ["presets", presets, "the presets tests ran"],

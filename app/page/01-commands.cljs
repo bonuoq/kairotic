@@ -176,8 +176,9 @@
 (def size-max [2400 1600])
 
 (defn resizable?
-  "Boxes drawn with a size of their own: a canvas, a freqt, and a score (a freqt or a tree shown as a score)."
-  [b] (contains? #{:canvas :score} (display-of b)))
+  "Boxes drawn with a size of their own: a canvas, a freqt, a score (a freqt or a tree shown as a score)
+   and an html box."
+  [b] (contains? #{:canvas :score :html} (display-of b)))
 
 (defn resize
   "Gives a canvas, freqt or score box a size of its own, as one event: (resize :b3 640 300). A score keeps
@@ -188,7 +189,7 @@
    :default)
   ([id w h]
    (let [b (need-box id)]
-     (when-not (resizable? b) (fail (str id " is not drawn with a size of its own (a canvas, a freqt or a score is)")))
+     (when-not (resizable? b) (fail (str id " is not drawn with a size of its own (a canvas, a freqt, a score or an html box is)")))
      (when-not (and (number? w) (number? h)) (fail "A size is a width and a height: (resize :b3 640 300)"))
      (let [[w0 h0] size-min [w1 h1] size-max
            w (js/Math.round (max w0 (min w1 w))) h (js/Math.round (max h0 (min h1 h)))]
