@@ -359,6 +359,13 @@ history), *Present without them* leaves them out. From the REPL: `(present-in-pl
 ## 9. Share and embed
 
 - In a room, everyone is in the same work.
+- **The work as a file**: the first thing in **Share/Export** (and *Download this work* in **Sessions**) saves
+  the work as a `.kairotic` file — every line, its whole history and the sounds recorded — or a release of it;
+  *anonymous* leaves out who made it. **Sessions → Open a file…** opens one as a new work (solo, or local
+  without a database): a backup, or a way to take a work from Pages to claude.ai and back. Samples loaded from
+  a URL stay references. `(export-work)`, `(export-work {:release true :anonymous true})`.
+  A `.kairotic` is a zip of EDN (`manifest.edn`, `work.edn`, `lines.edn`, `history.edn`, `people.edn`) and
+  `sounds/<hash>.wav` (32-bit float).
 - **Share/Export** gives a link and an iframe with this patch (or this tutorial step) for Notion, a blog or a
   course; *Release/Perform* gives a release of it that opens in Perform, showing only the panel. See [Embedding](embed.md).
 - A request to Claude can be shared in the

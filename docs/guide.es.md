@@ -370,6 +370,13 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 ## 9. Compartir e insertar
 
 - En una sala, todos están en la misma obra.
+- **La obra como archivo**: lo primero de **Share/Export** (y *Download this work* en **Sessions**) guarda la obra
+  como un archivo `.kairotic` — cada línea, toda su historia y los sonidos grabados — o un release de ella;
+  *anonymous* deja fuera quién la hizo. **Sessions → Open a file…** abre uno como una obra nueva (solo, o local
+  sin base de datos): una copia de seguridad, o una manera de llevar una obra de Pages a claude.ai y al revés. Los
+  samples cargados desde una URL quedan como referencias. `(export-work)`, `(export-work {:release true :anonymous true})`.
+  Un `.kairotic` es un zip de EDN (`manifest.edn`, `work.edn`, `lines.edn`, `history.edn`, `people.edn`) y
+  `sounds/<hash>.wav` (float de 32 bits).
 - **Share/Export** da un enlace y un iframe con este patch (o este paso de tutorial) para Notion, un blog o un
   curso; *Release/Perform* da un release que se abre en Perform, mostrando solo el panel. Ver [Insertar](embed.es.md).
 - Una petición a Claude se puede compartir en la
