@@ -1,0 +1,65 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 37 · notation · tests</title>
+<pre id="out">Running…</pre>
+<iframe id="study" width="1200" height="1300" style="border:0"></iframe>
+<script src="https://cdn.jsdelivr.net/npm/meyda@5.6.3/dist/web/meyda.min.js"></script>
+<script type="module">
+// With the real faustwasm (as the app loads it) and Meyda: the curves hear a sine; the voice realises a score
+// closer than held still; then the study page, used as someone uses it (a preset, a stroke drawn, Realise).
+import { curves, player, bank, realize, constant, score, PRESETS, roles } from "../kairotic/notation.mjs";
+
+const results = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const until = (f, ms) => new Promise((ok, no) => { const t0 = Date.now(); (function loop() { let v; try { v = f(); } catch (_) {} if (v) ok(v); else if (Date.now() - t0 > ms) no(new Error("timed out")); else setTimeout(loop, 100); })(); });
+function done(err) {
+  if (err) results.push(["error: " + (err.message || err), false]);
+  const failed = results.filter((r) => !r[1]).map((r) => r[0]);
+  document.getElementById("out").textContent = (results.length - failed.length) + " / " + results.length + " pass" + failed.map((f) => "\n✗ " + f).join("");
+  window.kairoticResults = { total: results.length, failed };
+}
+
+(async () => {
+  const F = await import("https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js");
+  const compiler = new F.FaustCompiler(new F.LibFaust(await F.instantiateFaustModule()));
+  const compile = async (code) => {
+    const gen = new F.FaustMonoDspGenerator();
+    if (!(await gen.compile(compiler, "t" + Math.random().toString(36).slice(2, 7), code, "-ftz 2"))) throw new Error("could not compile");
+    return { code: gen.factory.module || gen.factory.code, json: JSON.parse(gen.factory.json) };
+  };
+  const M = window.Meyda;
+  const sine = await compile('import("stdfaust.lib");\nprocess = os.osc(hslider("freq", 220, 50, 2000, 0.01)) * 0.1;');
+  const c = curves(M, player(sine.code, sine.json)(Array.from({ length: 30 }, () => ({ freq: 220 }))));
+  is(`the curves hear a sine: pitch 57, −23 dB, no noise (${c.pitch[15]?.toFixed(2)}, ${c.loud[15].toFixed(1)} dB, ${c.noisy[15]?.toFixed(4)})`,
+    Math.abs(c.pitch[15] - 57) < 0.1 && Math.abs(c.loud[15] + 23) < 0.5 && c.noisy[15] < 0.01);
+
+  const voice = await compile(await (await fetch("../kairotic/voice.dsp")).text());
+  const R = roles(voice.json);
+  is("the voice: pitch and gain from their lanes, four sliders for the timbre", R.pitch && R.gain && R.timbre.length === 4);
+  const play = player(voice.code, voice.json), B = bank(M, play, voice.json, { n: 120, seed: 3 });
+  is(`a bank of its steady settings (${B.entries.length} of 120)`, B.entries.length > 100);
+  const t = score(PRESETS.phrase.lanes, PRESETS.phrase.seconds), r = realize(M, play, B, t), k = constant(M, play, B, t);
+  is(`the phrase realised closer than held still (${r.err.score.toFixed(2)} against ${k.err.score.toFixed(2)})`, r.err.score < k.err.score);
+  is(`... its loudness within 2 dB and its pitch within 30 cents (${r.err.loud.toFixed(1)} dB, ${r.err.pitch?.toFixed(0)} c)`, r.err.loud < 2 && r.err.pitch < 30);
+
+  // the page, as someone uses it
+  const fr = document.getElementById("study");
+  fr.src = "../index.html";
+  await new Promise((ok) => fr.addEventListener("load", ok, { once: true }));
+  const w = fr.contentWindow, $ = (id) => w.document.getElementById(id);
+  await until(() => !$("realize").disabled, 40000);
+  is("the page compiles the voice and names what its sliders do", /timbre: <b>cutoff, noise, resonance, wave/.test($("facts-voice").innerHTML));
+  $("preset").value = "swell"; $("preset").dispatchEvent(new w.Event("change"));
+  is("a preset writes the four lanes", w.study.S.seconds === 4 && w.document.querySelectorAll("#lanes path.w").length === 4);
+  // a stroke on the noisiness lane, from 1 s to 2 s: it replaces what was there
+  w.study.write("noisy", [[1, 0.1], [1.5, 0.2], [2, 0.1]], false);
+  const nz = w.study.S.lanes.noisy;
+  is("a stroke replaces what the lane had under it", nz.some(([tt, v]) => tt === 1.5 && v === 0.2) && nz.every(([tt]) => tt < 1 || tt > 2 || [1, 1.5, 2].includes(tt)));
+  $("banksize").value = "150";
+  $("realize").click();
+  await until(() => /realised/.test($("status").textContent) || /error/.test($("status").textContent), 50000);
+  is("Realise plays it: the errors, realised and held still", /Realised/.test($("result").innerHTML) && w.document.querySelectorAll("#result tbody tr").length === 4);
+  is("... and what was heard is drawn over what was written", w.document.querySelectorAll("#lanes path.g").length === 4);
+  is("... both can be heard", !$("play-r").disabled && !$("play-s").disabled);
+})().then(() => done(), done);
+</script>
