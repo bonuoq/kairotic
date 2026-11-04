@@ -374,7 +374,8 @@
       :else {:state v})))
 
 (defn number-box [{:keys [state args value]}]
-  (let [cur (if (some? state) state (or (num-of (first args)) 0))]
+  (let [init (if (map? args) (:initial args) (num-of (first args)))
+        cur (if (some? state) state (or (num-of init) 0))]
     (cond (= value :bang) {:state cur :out [[0 cur]] :show cur}
           (num-of value) (let [v (num-of value)] {:state v :out [[0 v]] :show v})
           :else {:state cur})))
@@ -534,8 +535,10 @@
                 :io [1 1] :display :msg
                 :parse msg-words
                 :receive (fn [{:keys [args]}] {:out [[0 (case (count args) 0 :bang 1 (first args) (vec args))]] :show :bang})})
-(define! "number" {:doc "A draggable number; sends it when it changes or on receiving a bang." :usage "number [initial]"
-                   :io [1 1] :display :number :receive number-box})
+(define! "number" {:doc "A draggable number; sends it when it changes or on receiving a bang. Let go (or typed), its value stays in its text, as a knob's does: it travels with the work, and going back in the history brings back the number it had." :usage "number [initial]"
+                   :io [1 1] :display :number :receive number-box
+                   ;; like a knob (issue #146): on release the value is written in the box text
+                   :args [[:initial 0]] :persist (fn [v] {:initial v})})
 (define! "print" {:doc "Writes to the REPL whatever it receives." :io [1 0] :receive (fn [{:keys [value]}] {:effects [[:print value]]})})
 
 ;; ───── draw: a view made of the messages that arrive (kairotic.shapes) ─────

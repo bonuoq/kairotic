@@ -436,7 +436,8 @@
   "Opens the field over the number box id."
   [id b]
   (open-number-input! {:x (+ (:x b) grip) :y (- (:y b) 2) :value (number-value id b)
-                       :commit! (fn [n] (gesture! (str "(send! " id " " (typed-str n) ")")))}))
+                       ;; like a knob's: sent, and kept in its text
+                       :commit! (fn [n] (ctl-typed! {:f (fid id) :b b :id id :echo (str "(send! " id " ")} n))}))
 
 (defn param-typed-value
   "A typed value for parameter p of a code box, kept between its min and max (Faust clamps it too: so
@@ -1054,7 +1055,10 @@
             (gesture! (str "(send! " (:id paramdrag) " [" (pr-str (param-k (:label paramdrag))) " " (cv/fmt (:v paramdrag)) "])"))))
       numdrag
       (do (swap! ui assoc :numdrag nil)
-          (gesture! (str "(send! " (:id numdrag) " " (if (:v numdrag) (cv/fmt (:v numdrag)) ":bang") ")")))
+          ;; let go after a drag: its value stays in its text, as a knob's (this tab already sent it); a click sends it again
+          (if (:v numdrag)
+            (ctl-commit! {:f (fid (:id numdrag)) :id (:id numdrag) :echo (str "(send! " (:id numdrag) " ")} (:v numdrag) cv/fmt)
+            (gesture! (str "(send! " (:id numdrag) " :bang)"))))
       ldrag
       (do (swap! ui assoc :ldrag nil)
           (if (= :move (:kind ldrag))

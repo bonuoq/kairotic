@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A number keeps its value in its text, like a knob** (issue #146). Let go after a drag, or typed (double-click), a
+  `number` box rewrites its text with its new value (`number 523.25`), one event of the history, as a knob does on
+  release: the value travels with the work and going back in the history brings back the number it had (and sends
+  it). A click without dragging still sends it again. It declares `:args [[:initial 0]]` and `:persist`, so presets
+  see it as a control too: a preset recalls its number and a morph moves it. Tests: `tests/cljs/number.cljs` (8
+  checks), 4 more in `tests/numinput.mjs`.
 - **Study 37 · notation** (discussion #114): descriptors as a score — pitch, loudness, brightness and noisiness
   drawn as four lanes over time (or read from a sound file as `features~` and `pitch~` hear it) and realised by a
   `faust~`: `pitch` and `gain` follow their lanes, the other sliders are chosen frame by frame from a bank of the
