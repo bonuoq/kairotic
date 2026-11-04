@@ -14,7 +14,9 @@
 ;; :out o   what the element gives goes out of outlet o (a slider or a number field a number, a checkbox
 ;;          1 or 0, a menu or a radio its value, a text field its text, a button its :send or a bang)
 ;; :name n  the element shows the value called n, and what it gives becomes that value: a hole :$n
-;;          anywhere in the view shows it too. A map {:freq 220} on the inlet sets values, [:freq 220] one.
+;;          anywhere in the view shows it too. A map {:freq 220} on the inlet sets values, [:freq 220] one,
+;;          as a number sets a knob: shown (a slider within its range) and sent on by the elements named so
+;;          that have :out; a bang sends again what they hold.
 ;;          Let go (a slider) or chosen (a menu, a text entered), the value is kept in the box's data,
 ;;          (values! :bN {:freq 440}), one event of the history, as a knob keeps its value in its text.
 ;; :style   a map of the allowed properties: {:gap 8 :color :accent} (numbers are pixels, a palette
@@ -335,6 +337,16 @@
   (let [kept (clean-values (:values data))]
     (if (map? (:values state)) (merge kept (:values state)) kept)))
 
+(defn defaults-of
+  "The value each named element of a view starts with (its own :value)."
+  [h]
+  (reduce (fn [acc x]
+            (let [a (when (element? x) (second x))]
+              (if (and (map? a) (:name a) (some? (:value a)) (not (hole? (:value a))) (not (contains? acc (:name a))))
+                (assoc acc (:name a) (:value a))
+                acc)))
+          {} (tree-seq sequential? seq h)))
+
 (defn- set-values [vals m]
   (reduce (fn [acc [k v]] (if-let [k (value-name k)] (if (value-ok? v) (assoc acc k v) acc) acc)) vals m))
 
@@ -343,22 +355,53 @@
   [v]
   (and (vector? v) (= 4 (count v)) (= :ui (first v))))
 
+(defn named-outlets
+  "The named elements of a view that send out of an outlet: name → [{:out o :min lo :max hi} …] (a slider's or a
+   number field's own range, to keep a value within it)."
+  [h]
+  (reduce (fn [acc x]
+            (if (and (element? x) (map? (second x)) (:name (second x)) (some? (:out (second x))))
+              (let [a (second x) num? (and (= :input (first x)) (#{"range" "number"} (:type a)))]
+                (update acc (:name a) (fnil conj [])
+                        {:out (:out a) :min (when (and num? (number? (:min a))) (:min a))
+                         :max (when (and num? (number? (:max a))) (:max a))}))
+              acc))
+          {} (tree-seq sequential? seq h)))
+
+(defn- within [v {:keys [min max]}]
+  (if (number? v) (cond-> v (number? min) (js/Math.max min) (number? max) (js/Math.min max)) v))
+
+(defn- sends-of
+  "What values that arrive on the inlet send on, as a knob does: each one out of the outlets of the elements
+   named so (within their range), outlets in order."
+  [view vals ks]
+  (let [no (named-outlets view)]
+    (vec (sort-by first (for [k ks :let [v (get vals k)] :when (some? v) t (get no k)] [(:out t) (within v t)])))))
+
 (defn receive [{:keys [value state data]}]
   (let [vals (current-values data state)
-        st (fn [vs] (assoc (or state {}) :values vs))]
+        view (view-of data)
+        st (fn [vs] (assoc (or state {}) :values vs))
+        ;; values from the inlet: set (a slider within its range), shown, and sent on (a knob does the same)
+        arrive (fn [m]
+                 (let [no (named-outlets view)
+                       m (into {} (for [[k v] (set-values {} m)] [k (if-let [t (first (get no k))] (within v t) v)]))
+                       vals (merge vals m)]
+                   {:state (st vals) :show vals :out (sends-of view vals (keys m))}))]
     (cond
       (ui-message? value)
       (let [[_ o v nm] value
             vals (if-let [k (value-name nm)] (if (value-ok? v) (assoc vals k v) vals) vals)]
         {:state (st vals) :show vals
          :out (if (and (integer? o) (<= 0 o) (< o max-outlets)) [[o v]] [])})
-      (map? value) (let [vals (set-values vals value)] {:state (st vals) :show vals})
-      (and (vector? value) (= 2 (count value)) (value-name (first value)))
-      (let [vals (set-values vals [value])] {:state (st vals) :show vals})
+      (map? value) (arrive value)
+      (and (vector? value) (= 2 (count value)) (value-name (first value))) (arrive [value])
+      ;; a bang sends again what every named element holds
+      (= value :bang) {:show vals :out (sends-of view (merge (defaults-of view) vals) (keys (named-outlets view)))}
       :else {:show vals})))
 
 (comp/define! "html"
-  {:doc "A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, buttons and text, laid out like a page. An element with :out sends what it gives out of that outlet; one with :name keeps it as a value, shown by every hole :$name in the view, and when it is let go (a slider) or chosen (a menu, a text entered) the box keeps it in the work, as a knob keeps its value: (values! :bN {:freq 440}). A map on the inlet ({:freq 220}) sets values while it plays. What is not allowed (scripts, links, images, positions, unknown tags or attributes) is dropped, so it is safe in a shared room. Its view opens as text from { } (HTML can be pasted there too)."
+  {:doc "A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, buttons and text, laid out like a page. An element with :out sends what it gives out of that outlet; one with :name keeps it as a value, shown by every hole :$name in the view, and when it is let go (a slider) or chosen (a menu, a text entered) the box keeps it in the work, as a knob keeps its value: (values! :bN {:freq 440}). A map on the inlet ({:freq 220}) sets values, as a number sets a knob: the elements named so show it (a slider within its range) and those with :out send it on; a bang sends again what they hold. What is not allowed (scripts, links, images, positions, unknown tags or attributes) is dropped, so it is safe in a shared room. Its view opens as text from { } (HTML can be pasted there too)."
    :usage "html"
    :license "MPL-2.0"
    :display :html
@@ -366,9 +409,9 @@
    :dynamic-io true
    :io (fn [box] [1 (outlets (view-of (:data box)))])
    :receive receive
-   :help {:inlets ["a map of values {:freq 220}, or one [:freq 220]: the elements named so and the holes :$freq show them"]
+   :help {:inlets ["a map of values {:freq 220}, or one [:freq 220]: the elements named so and the holes :$freq show them, and the named elements with :out send them on (a slider within its range); a bang sends again what they hold"]
           :outlets ["what each element with :out 0 gives" "… :out 1, and so on: as many outlets as the view asks for"]
-          :messages [["{:freq 220}" "sets values (and the elements named so)"] ["[:freq 220]" "sets one value"]]
+          :messages [["{:freq 220}" "sets values: the elements named so show them and send them on"] ["[:freq 220]" "sets one value"] ["bang" "sends again what every named element with :out holds"]]
           :example "(box :b1 \"html\" 40 30)\n(box :b2 \"print\" 40 230)\n(box :b3 \"print\" 200 230)\n(connect :b1 0 :b2 0)\n(connect :b1 1 :b3 0)"
           :try "Move the slider: its value goes out of the left outlet and shows beside it; let it go and the box keeps it, as a knob does (back in the history, it moves back). { } in the header opens the view as text: change it and apply."
           :see ["number" "knob" "msg"]}})

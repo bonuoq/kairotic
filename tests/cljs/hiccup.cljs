@@ -81,6 +81,15 @@
         (t/eq "... and none when it keeps none" ((:code m) :b3 {:view [:p]}) ["(code :b3 \"[:p]\")"]))
       (t/eq "it shows what its data keeps" (h/current-values {:values {:a 1}} nil) {:a 1})
       (t/eq "... with what its elements did since over it" (h/current-values {:values {:a 1 :b 2}} {:values {:a 5}}) {:a 5 :b 2})
+      ;; values from the inlet, as a number reaches a knob: set, and sent on
+      (let [data {:view [:div [:input {:type "range" :name :f :min 0 :max 10 :value 2 :out 1}] [:span {:name :t}] [:input {:type "text" :name :t :out 0}]]}]
+        (t/eq "a value on the inlet goes out of its element's outlet" (:out ((:receive d) {:value {:f 4} :data data})) [[1 4]])
+        (t/eq "... within the slider's range" (:out ((:receive d) {:value [:f 50] :data data})) [[1 10]])
+        (t/eq "... and kept so" (get-in ((:receive d) {:value [:f 50] :data data}) [:show :f]) 10)
+        (t/eq "several, outlets in order" (:out ((:receive d) {:value {:f 3 :t "x"} :data data})) [[0 "x"] [1 3]])
+        (t/eq "a name with no :out only shows it" (:out ((:receive d) {:value {:zz 1} :data data})) [])
+        (t/eq "a bang sends again what they hold (their own value at first)" (:out ((:receive d) {:value :bang :data data})) [[1 2]])
+        (t/eq "... or what they were given" (:out ((:receive d) {:value :bang :data data :state {:values {:f 7 :t "y"}}})) [[0 "y"] [1 7]]))
       (t/eq "a value from an element starts from what is kept"
             (:show ((:receive d) {:value [:ui 0 3 :b] :state nil :data {:values {:a 1}}})) {:a 1 :b 3})
       (t/eq "the model reads its text" ((:read (:model d)) nil "[:p \"x\"]") {:view [:p "x"]})
