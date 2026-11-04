@@ -62,7 +62,9 @@ export async function numinput(page, check) {
     const before = Number(await cljs(page, events));
     await page.fill("#num-edit", "3,25");
     await page.press("#num-edit", "Enter");
-    check("Enter sends the number typed", (await until(page, state(n), "3.25")) === "3.25", await cljs(page, state(n)));
+    // the number it holds (once its text is rewritten, the engine forgets its state and it reads its text, as a knob)
+    const held = `(number-value ${n} (get-in (current) [:boxes ${n}]))`;
+    check("Enter sends the number typed", (await until(page, held, "3.25")) === "3.25", await cljs(page, held));
     check("... and closes the field", (await field(page)) === null);
     // like a knob: the number stays in its text, one event of the history
     check("... and keeps it in its text, as a knob does", (await until(page, `(:text (get-in (current) [:boxes ${n}]))`, '"number 3.25"')) === '"number 3.25"');
