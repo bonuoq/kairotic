@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Lines, what was left** (discussion #117):
+  - **One line when the work leaves** (decision 8): a link (Share/Export, Release/Perform) and a release carry one
+    line. Every `patch @name` becomes an embedded patch holding its line as it plays there, quiet as it played
+    (without its `adc~`/`dac~`), and so on inside it. At each keyframe of a release, the lines are as that snapshot
+    kept them, and its marks lose their `:fronts`.
+  - **From a box to a line and back** (decision 2): `(extract-line :b3 "name")` makes a new line of an embedded patch,
+    with the history it had inside the box, and the box uses it. `(inline-ref :b3)` copies the line a
+    `patch @name` uses into the box, detached from it. The inspector of a patch box has buttons for these, and for
+    pin / follow / open.
+  - **A line's tab while the line that plays uses it**: the tab shows it where it plays (its first instance), and
+    what you play there goes to every instance that follows it; the transport says ×N.
+  - Tests: 13 more checks in `tests/lines.mjs` (78).
 - **A recipe from a sound, in the app** (discussion #114, Study 35): **Recipe** in the bar of a `faust~`'s
   window finds the values of its sliders that sound closest to the sound of a sample box of the patch, or of a
   sound file, and writes them in the code — edited, not applied, so Ctrl/⌘+Enter applies them as one event and

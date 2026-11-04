@@ -211,6 +211,15 @@ clic abre la línea en su pestaña.
   la caja avisa (⚠) cuando su línea tiene `dac~` y ningún `outlet~`, o `adc~` y ningún `inlet~`.
 - Renombrar una línea reescribe las cajas en pantalla que la usan; las de otras partes la siguen encontrando por
   su nombre anterior.
+- Mientras la línea que suena usa la línea en pantalla (y su pestaña está en su punto más nuevo), la pestaña la
+  muestra donde suena, y lo que tocas ahí va a todas las cajas que la usan (el transporte dice ×2, ×3…). Para
+  tocar una sola, toca la línea que la usa.
+- El inspector de una caja patch (⌘/Ctrl+clic) tiene lo que puede hacer con las líneas: un patch embebido se
+  puede **extraer** a una línea nueva, con la historia que tenía dentro de la caja — `(extract-line :b3
+  "filtros")`; un `patch @nombre` se puede fijar, seguir, abrir o **incrustar** — `(inline-ref :b3)`: una copia de
+  su línea dentro de la caja, separada de ella.
+- Un enlace (Share/Export) o un release lleva **una sola línea**: cada `patch @nombre` pasa a ser un patch
+  embebido con su línea tal como suena ahí — en cada fotograma clave de un release, como lo guardó el snapshot.
 
 ### Componer y tocar (Compose y Perform)
 

@@ -17,7 +17,7 @@
 ;; Box classes are components registered in kairotic.components: their ports, their view,
 ;; their data with its own history, their behaviour with messages and their audio all come from there.
 
-(declare on-lines render-lines! line-name switch-line! check-ref-text! ref-badge ref-warning resolve-ref refs-in followed-fronts open-ref es? docs open-work! show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
+(declare view-instances inline-lines on-lines render-lines! line-name switch-line! check-ref-text! ref-badge ref-warning resolve-ref refs-in followed-fronts open-ref es? docs open-work! show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
 (def klass comp/klass)
 (defn box-def [b] (comp/lookup (klass (:text b))))
 ;; how a box is shown: the view it chose among those of its class (a tree as a score or a roll, a freqt
@@ -382,7 +382,13 @@
   "Is the engine playing a line other than the one on screen?"
   [] (let [p (playing-line)] (and p (not= p (active-line)))))
 
-(defn view-prefix [] (if (playing-elsewhere?) [(keyword (str "@" (active-line)))] []))
+(defn view-prefix
+  "Where the engine knows the line on screen while another plays: inside the line that plays, where it uses
+   it (its first instance: what the tab shows), or, if it does not, under @<its line> (#117)."
+  []
+  (if (playing-elsewhere?)
+    (or (first (view-instances)) [(keyword (str "@" (active-line)))])
+    []))
 
 (defn nodes-patch
   "The patch at pos of a line whose segments are nodes (a line not on screen)."
@@ -425,11 +431,11 @@
 (defonce engine-patch-cache (atom [nil nil nil nil]))
 
 (defn engine-patch
-  "The patch the engine runs: the work on screen, or, while another line plays, that line with the one on
-   screen beside it (silent, under its prefix). The same object while neither changes (the engine flattens
-   it again only when it is another)."
+  "The patch the engine runs: the work on screen, or, while another line plays, that line — with the one on
+   screen beside it (silent, under its prefix) when it does not use it already. The same object while neither
+   changes (the engine flattens it again only when it is another)."
   []
-  (if (playing-elsewhere?)
+  (if (and (playing-elsewhere?) (empty? (view-instances)))
     (let [off (off-screen-patch (playing-line)) here (work-patch) k (first (view-prefix))
           [a b c v] @engine-patch-cache]
       (if (and (identical? a off) (identical? b here) (= c k))
@@ -437,7 +443,7 @@
         (let [v (assoc-in off [:boxes k] {:text "patch" :x 0 :y 0 :data (silent here)})]
           (reset! engine-patch-cache [off here k v])
           v)))
-    (work-patch)))
+    (if (playing-elsewhere?) (off-screen-patch (playing-line)) (work-patch))))
 
 (declare played!)
 
@@ -445,7 +451,14 @@
   "A message played here (a gesture, the REPL) into box f of the engine. In a jam it is also played to the
    others (issue #11): messages are not events of the take, so they travel apart (13-perform.cljs)."
   [f inlet v]
-  (eng/inject! engine-patch f inlet v)
+  ;; from the tab of a line used more than once by the line that plays: to every instance of it (#117)
+  (let [ins (view-instances)
+        pre (when (next ins) (str (str/join "." (map name (first ins))) "."))
+        n (name f)]
+    (if (and pre (str/starts-with? n pre))
+      (doseq [path ins]
+        (eng/inject! engine-patch (keyword (str (str/join "." (map name path)) "." (subs n (count pre)))) inlet v))
+      (eng/inject! engine-patch f inlet v)))
   (played! f inlet v))
 (defn root-patch [] (or @scratch (work-patch)))
 

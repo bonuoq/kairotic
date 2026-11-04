@@ -882,6 +882,15 @@
             el (or old (let [el (js/document.createElement "div")]
                          (set! (.-id el) "inspector")
                          (.addEventListener el "change" (fn [e] (insp-commit! (.-target e))))
+                         ;; what a patch box can do with lines (#117): extract it to one, or pin, follow, inline the one it uses
+                         (.addEventListener el "click"
+                           (fn [e]
+                             (when-let [a (some-> (.closest (.-target e) "[data-insp-act]") (.getAttribute "data-insp-act"))]
+                               (let [id (first @insp-key)]
+                                 (if (= a "extract-line")
+                                   (let [nm (str/trim (.-value (.querySelector el "[data-role=line-name]")))]
+                                     (when (seq nm) (gesture! (str "(extract-line " id " " (pr-str nm) ")"))))
+                                   (gesture! (str "(" a " " id ")")))))))
                          (.addEventListener el "keydown"
                            (fn [e] (case (.-key e)
                                      "Enter" (.blur (.-target e))
@@ -897,7 +906,19 @@
         (set! (.-innerHTML el)
               (str "<div class=\"insp-head\"><b>" (esc (klass (:text b))) "</b> <span>" (esc (or (:usage d) "")) "</span></div>"
                    (when spec (str "<div class=\"insp-args\">" (apply str (for [[a v] spec] (insp-field a v (get vals a)))) "</div>"))
-                   "<input class=\"insp-text\" data-role=\"text\" spellcheck=\"false\" value=\"" (esc (:text b)) "\">"))))))
+                   "<input class=\"insp-text\" data-role=\"text\" spellcheck=\"false\" value=\"" (esc (:text b)) "\">"
+                   (cond
+                     (line-ref? b)
+                     (str "<div class=\"insp-acts\">"
+                          (if (:pin b)
+                            "<button class=\"act\" data-insp-act=\"follow-ref\" title=\"Follow its line again (its newest point)\">Follow</button>"
+                            "<button class=\"act\" data-insp-act=\"pin-ref\" title=\"Keep it at the point of its line it reads now\">Pin</button>")
+                          "<button class=\"act\" data-insp-act=\"inline-ref\" title=\"A copy of the line inside this box, detached from it\">Inline</button>"
+                          "<button class=\"act\" data-insp-act=\"open-ref\" title=\"Open its line, in its tab\">Open line</button></div>")
+                     (and (embedded? b) (not @perf) (not @scratch))
+                     (str "<div class=\"insp-acts\"><input data-role=\"line-name\" placeholder=\"line name\" size=\"12\" spellcheck=\"false\" aria-label=\"Name of the new line\">"
+                          "<button class=\"act\" data-insp-act=\"extract-line\" title=\"A new line with what this patch has, and its history inside the box; the box uses it\">Extract to line</button></div>")
+                     :else "")))))))
 
 ;; ───── engine: start, stop and messages ─────
 
@@ -906,7 +927,10 @@
     (set! (.-textContent ($ "transport-info"))
           (cond (not on) "engine stopped"
                 ;; it plays another line than the one on screen (#117): which
-                (playing-elsewhere?) (str "playing " (line-name (playing-line)))
+                (playing-elsewhere?) (let [n (count (view-instances))]
+                                       (str "playing " (line-name (playing-line))
+                                            (case n 0 "" 1 (str " · " (line-name (active-line)) " inside it")
+                                              (str " · " (line-name (active-line)) " ×" n ": what you play goes to all"))))
                 :else "engine running"))
     (.toggle (.-classList ($ "play")) "on" on)))
 
