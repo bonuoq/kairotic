@@ -107,3 +107,14 @@
     (reset! html-focus nil)
     ;; the elements of boxes no longer drawn are forgotten (they are built again if they come back)
     (swap! html-nodes select-keys @seen)))
+
+;; A message can reach an html box while nothing draws the overlay (the engine stopped, a msg clicked
+;; elsewhere): when the state the engine keeps for one of them changes, they are refreshed, once a frame.
+(defonce html-frame (atom false))
+(defonce html-watch
+  (add-watch eng/rt ::html
+             (fn [_ _ old new]
+               (when (and (not @html-frame) (seq @html-nodes)
+                          (some (fn [f] (not (identical? (get-in old [:states f]) (get-in new [:states f])))) (keys @html-nodes)))
+                 (reset! html-frame true)
+                 (js/requestAnimationFrame (fn [_] (reset! html-frame false) (refresh-html-boxes!)))))))

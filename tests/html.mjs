@@ -64,7 +64,8 @@ export async function html(page, check) {
   await inBox(page, id, "root.querySelector('button').click(); return true");
   check("a button sends its :send out of its outlet", (await until(page, `(get-in @eng/rt [:states ${num2}])`, (g) => g === "5")) === "5");
 
-  // values from the inlet
+  // values from the inlet, with the engine stopped (nothing else draws the overlay then)
+  await cljs(page, "(when (eng/running?) (stop))");
   await cljs(page, `(send! ${hb} {:v 3})`);
   const hole = await untilBox(page, id, "return root.querySelector('.val').textContent", "3");
   check("a map on the inlet sets the hole", hole === "3", hole);
