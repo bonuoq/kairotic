@@ -1,0 +1,40 @@
+{
+  "name": "@kairotic/io",
+  "version": "0.1.0",
+  "description": "Kairotic talking to the outside: MIDI in and out (with MPE), OSC through a relay's bridge, a phone's motion, gamepads and boards on a serial port, as one kind of event",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/io"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages#readme",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs io",
+    "prepublishOnly": "node ../build.mjs io"
+  },
+  "keywords": [
+    "kairotic",
+    "music",
+    "midi",
+    "mpe",
+    "osc",
+    "gamepad",
+    "web-serial",
+    "patcher"
+  ]
+}
