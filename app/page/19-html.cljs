@@ -1,5 +1,7 @@
 ;; SPDX-License-Identifier: MPL-2.0
 ;; Kairotic · page · html boxes (issue #146)
+;; Loaded right after 05-gestures (app/index.html), not last: the startup (11) already draws the patch,
+;; and the scene calls these.
 ;; An html box draws a small HTML document (kairotic.hiccup) inside the patch: a foreignObject in the
 ;; box, holding an element of its own with a shadow root, so its styles stay inside and the page's stay
 ;; out. The scene is written again with innerHTML on every change, so each html box keeps its element
