@@ -70,6 +70,19 @@
             {:out [] :show {:a 1 :msg "hi"}})
       (t/eq "a map sets values" (:show ((:receive d) {:value {:freq 220 "x y" 1} :state {}})) {:freq 220})
       (t/eq "[:k v] sets one" (:show ((:receive d) {:value [:freq 330] :state {:values {:a 1}}})) {:a 1 :freq 330})
+      ;; values kept in the work, as a knob keeps its value
+      (let [m (:model d)]
+        (t/eq "values are kept in its data" ((:step m) {:view [:p]} [:values {:freq 440 :t "a"}]) {:view [:p] :values {:freq 440 :t "a"}})
+        (t/eq "... merged, nil forgets one" ((:step m) {:view [:p] :values {:freq 440 :t "a"}} [:values {:t nil :g 2}]) {:view [:p] :values {:freq 440 :g 2}})
+        (t/eq "... only words naming scalars" ((:step m) {:view [:p]} [:values {"a b" 1 :m {:x 1} :ok true}]) {:view [:p] :values {:ok true}})
+        (t/eq "a new view keeps the values" ((:step m) {:view [:p] :values {:a 1}} [:set [:b]]) {:view [:b] :values {:a 1}})
+        (t/eq "loading keeps safe values only" ((:load m) {:view [:p] :values {:a 1 :b [1 2] :c (apply str (repeat 3000 "x"))}}) {:view [:p] :values {:a 1}})
+        (t/eq "its code writes them" ((:code m) :b3 {:view [:p] :values {:a 1}}) ["(code :b3 \"[:p]\")" "(values! :b3 {:a 1})"])
+        (t/eq "... and none when it keeps none" ((:code m) :b3 {:view [:p]}) ["(code :b3 \"[:p]\")"]))
+      (t/eq "it shows what its data keeps" (h/current-values {:values {:a 1}} nil) {:a 1})
+      (t/eq "... with what its elements did since over it" (h/current-values {:values {:a 1 :b 2}} {:values {:a 5}}) {:a 5 :b 2})
+      (t/eq "a value from an element starts from what is kept"
+            (:show ((:receive d) {:value [:ui 0 3 :b] :state nil :data {:values {:a 1}}})) {:a 1 :b 3})
       (t/eq "the model reads its text" ((:read (:model d)) nil "[:p \"x\"]") {:view [:p "x"]})
       (t/eq "the model's step reads a batch, as (code …) writes it" ((:step (:model d)) {:view [:p]} [:batch [[:set [:b "z"]]]]) {:view [:b "z"]})
       (t/eq "the model's step makes a view safe" ((:step (:model d)) {:view [:p]} [:set [:p [:script] "y"]]) {:view [:p "y"]}))

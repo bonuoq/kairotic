@@ -773,6 +773,20 @@
        :unchanged
        (do (dispatch! [:data id d]) :kept)))))
 
+(defn values!
+  "Keeps values of an html box in its data, in one event of the history (issue #146), as a knob keeps its
+   value in its text: (values! :b5 {:freq 440 :name \"a\"}); nil forgets one. Its elements named so show
+   them, and the work keeps them."
+  [id m]
+  (let [b (need-box id)]
+    (when-not (= :html (display-of b)) (fail (str id " is not an html box")))
+    (when-not (map? m) (fail "The values are a map: (values! :b5 {:freq 440})"))
+    (let [vs (hic/clean-values m) old (hic/clean-values (get-in b [:data :values]))]
+      (when (empty? vs) (fail "No value that can be kept: names are words, values numbers, texts, keywords or true/false"))
+      (if (every? (fn [[k v]] (if (nil? v) (not (contains? old k)) (= v (get old k)))) vs)
+        :unchanged
+        (do (dispatch! [:in id [:values vs]]) :kept)))))
+
 (defn recipe
   "The recipe kept beside a buffer: (recipe :b5) → {:tree … :calls … :from … :stale true if the buffer
    changed since}. (recipe :b5 r) sets it (the code of a work does), (recipe :b5 nil) removes it."

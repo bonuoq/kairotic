@@ -12,12 +12,13 @@
     `:ink :accent …` follow the theme), and built with the DOM in a shadow root, never with `innerHTML`.
   - HTML can be pasted as its view (`{ }` in its header, or `(code :bN "<div>…</div>")`): read by the browser,
     `data-out` / `data-send` become `:out` / `:send`, `$freq` in a text becomes a hole, and only the hiccup is kept.
-  - What its elements give are messages, like a control's: a slider sends while it moves (to a jam too) and, when it
-    is let go, once more as `(send! :bN [:ui outlet value name])` in the REPL, as does a menu, a text entered or a
-    button click. Its element is kept between redraws, so what is typed keeps its focus; keys typed in it are its own
-    (a space is not ▶). `(resize :bN w h)` gives it a size.
-  - In the core (`core/kairotic/hiccup.cljs`, page `app/page/19-html.cljs`). Tests: `tests/cljs/hiccup.cljs` (45
-    checks) and `tests/html.mjs` (30).
+  - **Like a knob**: a slider sends while it moves (to a jam too); let go — or a menu chosen, a text entered — the
+    value of a named element is kept in the box's data, `(values! :bN {:freq 440})`, one event of the history, so it
+    travels with the work and going back in the history brings back the value it had. A button (no name) only
+    sends, `(send! :bN [:ui outlet value name])` in the REPL. Its element is kept between redraws, so what is typed
+    keeps its focus; keys typed in it are its own (a space is not ▶). `(resize :bN w h)` gives it a size.
+  - In the core (`core/kairotic/hiccup.cljs`, page `app/page/19-html.cljs`). Tests: `tests/cljs/hiccup.cljs` (56
+    checks) and `tests/html.mjs` (38).
 
 - **Lines, what was left** (discussion #117):
   - **One line when the work leaves** (decision 8): a link (Share/Export, Release/Perform) and a release carry one
