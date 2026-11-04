@@ -8,9 +8,10 @@
 ;; here (by engine id) and it is put back into its slot after the scene is written, like the notation of
 ;; a score: what is typed or dragged in it is not lost. It is only built again when its view changes.
 ;;
-;; Using an element sends the box [:ui outlet value name]: while a slider moves only here (and to a
-;; jam), as a control does while it is dragged; when it is let go, a menu is chosen, a text is entered or
-;; a button is clicked, as a gesture of the history, (send! :bN [:ui …]).
+;; Using an element sends the box [:ui outlet value name], a message (messages are not events of the
+;; history): while a slider moves quietly (here and to a jam), as a control does while it is dragged;
+;; when it is let go, a menu is chosen, a text is entered or a button is clicked, as a gesture written in
+;; the REPL, (send! :bN [:ui …]), as a control does when it is let go.
 
 (defonce html-nodes (atom {}))   ; engine id → {:id :view :host :root :built}
 (defonce html-focus (atom nil))  ; {:f :i :start :end}: the element that had the focus before the scene was written
