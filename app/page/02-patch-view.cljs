@@ -543,6 +543,8 @@
          (apply str (for [[id m] (:marks p) :when (on (:layer m))] (mark-svg p id (as-dragged id m)))))))
 
 (declare annot-preview render-annot-bar!)
+;; html boxes (issue #146), in 19-html.cljs
+(declare html-slot-svg html-save-focus! mount-html-slots! refresh-html-boxes!)
 
 (defn render-layers! []
   (let [p (current) under ($ "layers-under") over ($ "layers-over")]
@@ -701,7 +703,7 @@
 (.addEventListener ($ "crumbs") "click"
   (fn [e] (when-let [n (.. e -target -dataset -up)] (gesture! (str "(up " n ")")))))
 
-(declare render-inspector! html-slot-svg html-save-focus! mount-html-slots! refresh-html-boxes!)
+(declare render-inspector!)
 
 (defn render-scene [p]
   (let [p (scene-of p)
