@@ -13,9 +13,13 @@ const until = async (page, src, ok, ms = 8000) => {
   while (Date.now() - t0 < ms) { got = await cljs(page, src); if (ok(got)) return got; await page.waitForTimeout(100); }
   return got;
 };
-const printed = "(pr-str (map second (:prints @eng/rt)))";
-const printedHas = (page, ...xs) => until(page, printed, (p) => xs.every((x) => p.includes(x)), 4000);
-const js = (page, f) => page.evaluate(f);
+const js = (page, f, a) => page.evaluate(f, a);
+// the same, for what the page keeps in JavaScript (the stand-ins' records), as JSON
+const untilJs = async (page, f, ok, ms = 4000) => {
+  const t0 = Date.now(); let got;
+  while (Date.now() - t0 < ms) { got = await page.evaluate(f); if (ok(got)) return got; await page.waitForTimeout(100); }
+  return got;
+};
 
 export async function io(page, check) {
   if ((await cljs(page, "(:mode @hist)")) !== ":local") { check("a local work is open for the io tests", false); return; }
@@ -56,17 +60,21 @@ export async function io(page, check) {
   const gp = (await cljs(page, `(box "gamepad" ${X + 450} 100)`)).trim();
   const mt = (await cljs(page, `(box "motion 0" ${X + 600} 100)`)).trim();
   const se = (await cljs(page, `(box "serial 9600" ${X + 750} 100)`)).trim();
-  const pr = (await cljs(page, `(box "print" ${X} 320)`)).trim();
+  // what reaches the sink, in order (print gives its lines to the console while ▶ runs)
+  await cljs(page, `(comp/define! "iosink" {:io [1 0] :receive (fn [{:keys [value state]}] {:state (conj (or state []) value)})})`);
+  const pr = (await cljs(page, `(box "iosink" ${X} 320)`)).trim();
+  const printed = `(get-in @eng/rt [:states ${pr}])`;
+  const printedHas = (page, ...xs) => until(page, printed, (p) => xs.every((x) => p.includes(x)), 4000);
   await cljs(page, `(connect ${mi} 0 ${mo} 0) (connect ${mi} 1 ${mo} 1) (connect ${mi} 2 ${oo} 0) (connect ${mi} 2 ${pr} 0)
                     (connect ${oi} 0 ${pr} 0) (connect ${gp} 1 ${pr} 0) (connect ${mt} 0 ${pr} 0) (connect ${se} 0 ${pr} 0)`);
   check("their inlets and outlets", (await cljs(page, `[(io (get-in (current) [:boxes ${mi}])) (io (get-in (current) [:boxes ${mo}])) (io (get-in (current) [:boxes ${oi}]))]`)) === "[[1 3] [2 0] [1 2]]");
 
   // oscout works without ▶: a list that starts with an address goes as it is
   await cljs(page, `(send! ${oo} ["/synth/freq" 440 "saw"])`);
-  const pre = await until(page, "(js/JSON.stringify js/window.__oscSent)", (x) => x.includes("/synth/freq"), 4000);
+  const pre = await untilJs(page, () => JSON.stringify(window.__oscSent), (x) => x.includes("/synth/freq"));
   check("oscout sends a list with an address, with or without ▶", pre.includes('{"address":"/synth/freq","args":[440,"saw"]}'), pre);
 
-  await cljs(page, `(swap! eng/rt assoc :prints []) (play)`);
+  await cljs(page, "(play)");
   const ready = await until(page, `(:label (second (last-shown ${mi})))`, (x) => x.includes("1 in"), 8000);
   check("with ▶, midiin finds the input", ready.includes("1 in"), ready);
   const setup = await until(page, "(.-length js/window.__midiSent)", (x) => Number(x) >= 78, 4000);
@@ -76,16 +84,17 @@ export async function io(page, check) {
   await js(page, () => window.__midiIn([0x90, 60, 100]));
   const note = await printedHas(page, ":type :note, :id 60, :ch 1, :note 60, :freq 261.626, :amp 0.787, :gate true");
   check("a note in is an event with its Hz", note.includes(":freq 261.626"), note);
-  let s = await until(page, "(js/JSON.stringify (drop 78 (js->clj js/window.__midiSent)))", (x) => x.includes("[145,60,100]"), 4000);
+  const midiSent = () => JSON.stringify(window.__midiSent.slice(78));
+  let s = await untilJs(page, midiSent, (x) => x.includes("[145,60,100]"));
   check("midiout: its own channel (2), the bend before the note-on", s.startsWith("[[225,0,64],[145,60,100]"), s);
-  const osc = await until(page, "(js/JSON.stringify js/window.__oscSent)", (x) => x.includes("/kairotic/note"), 4000);
+  const osc = await untilJs(page, () => JSON.stringify(window.__oscSent), (x) => x.includes("/kairotic/note"));
   check("oscout writes it as /kairotic/note id freq amp gate", osc.includes('{"address":"/kairotic/note","types":"iffi","args":[60,261.626,0.787,1]}'), osc);
   await js(page, () => window.__midiIn([0xe0, 0x7f, 0x7f]));
-  s = await until(page, "(js/JSON.stringify (drop 78 (js->clj js/window.__midiSent)))", (x) => x.includes("[225,85,66]"), 4000);
+  s = await untilJs(page, midiSent, (x) => x.includes("[225,85,66]"));
   check("a bend in glides the note: out as a bend of its channel (+2 of 48 semitones)", s.includes("[225,85,66]"), s);
   check("... and the glide is an event", (await printedHas(page, ":type :glide, :id 60")).includes(":type :glide"));
   await js(page, () => window.__midiIn([0x80, 60, 0]));
-  s = await until(page, "(js/JSON.stringify (drop 78 (js->clj js/window.__midiSent)))", (x) => x.includes("[129,60,0]"), 4000);
+  s = await untilJs(page, midiSent, (x) => x.includes("[129,60,0]"));
   check("the note-off ends it on its channel", s.includes("[129,60,0]"), s);
   await js(page, () => window.__midiIn([0xb0, 74, 127]));
   check("a controller is {:type :cc … :value 0…1}", (await printedHas(page, ":type :cc, :ch 1, :cc 74, :value 1")).includes(":cc 74"));
@@ -118,7 +127,7 @@ export async function io(page, check) {
   const ser = await printedHas(page, '["pot" 512]', "[1 2 3]");
   check("serial: its lines as [key value] and as numbers, even cut in two", ser.includes('["pot" 512]') && ser.includes("[1 2 3]"), ser);
   await cljs(page, `(send! ${se} "hello board")`);
-  const wrote = await until(page, "(js/JSON.stringify js/window.__serialSent)", (x) => x.includes("hello board"), 4000);
+  const wrote = await untilJs(page, () => JSON.stringify(window.__serialSent), (x) => x.includes("hello board"));
   check("... and a text goes to the board as a line", wrote.includes("hello board\\n"), wrote);
 
   // ■: midiout leaves nothing sounding (all notes off on every channel)
