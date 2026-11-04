@@ -51,4 +51,4 @@ jobs:
           node relay/server.js --data "$RUNNER_TEMP/radata" --osc --osc-out loop=127.0.0.1:57121 &
           npx --yes http-server@14 . -p 8000 -s &
           for i in $(seq 1 30); do curl -sf http://localhost:8765/ > /dev/null && curl -sf http://localhost:8000/README.md > /dev/null && break; sleep 1; done
-          node tests/studies.mjs http://localhost:8000/ 34-io
+          node tests/studies.mjs http://localhost:8000/ 34-io 36-talk

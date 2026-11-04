@@ -15,7 +15,9 @@ const pages = readdirSync("studies").filter((s) => !only.length || only.some((o)
     : []);
 
 // WebRTC between two pages of one machine: their real local addresses, not mDNS names a container can't resolve
-const browser = await chromium.launch({ args: ["--disable-features=WebRtcHideLocalIpsWithMdns", "--autoplay-policy=no-user-gesture-required"] });
+// and a fake microphone and camera, allowed without asking (Study 36)
+const browser = await chromium.launch({ args: ["--disable-features=WebRtcHideLocalIpsWithMdns", "--autoplay-policy=no-user-gesture-required",
+                                               "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] });
 let total = 0, failed = 0;
 for (const path of pages) {
   const page = await browser.newPage();
