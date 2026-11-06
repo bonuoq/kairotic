@@ -13,35 +13,22 @@
 ;; little by little (a correction that grows while the difference lasts, within limits), as the study's
 ;; passes did offline.
 (let [meyda-url "npm:meyda@5.6.3/dist/web/meyda.min.js"
-      origins ["npm:@kairotic/faust-units@0.1.4/dist/notation.mjs" "kairotic/packages/faust-units/notation.mjs"]
-      silent -50
+      origins ["npm:@kairotic/faust-units@0.1.5/dist/notation.mjs" "kairotic/packages/faust-units/notation.mjs"]
+      silent -60                                   ; dB: below it nothing is written (a microphone in a room is often near -50)
       every 0.04                                   ; seconds: at most one new setting this often
       ;; listening: how much of each difference heard goes into the correction, and how far it may go
       rate 0.08
       limits {:loud 18 :lb 2 :nz 0.4}
       bank-size (fn [args] (js/Math.round (api/clamp (or (first (filter number? args)) 300) 40 2000)))
       midi-in? (fn [args] (some #{:midi} args))
-      sq (fn [x] (* x x))
       log2 (fn [x] (/ (js/Math.log x) js/Math.LN2))
       ;; a loudness as dB: a level (0 < v ≤ 1, as features~ rms) or dB already (≤ 0); 0 is silence
       db-of (fn [v] (cond (not (number? v)) nil (zero? v) -100 (and (pos? v) (<= v 1)) (api/db v) :else v))
-      ;; the nearest settings of the bank to what is written, blended: {:u [...] :loud0 dB :d distance}
+      ;; the nearest settings of the bank to what is asked, blended: {:u [...] :loud0 dB :d distance}. The search
+      ;; itself is the bank's query (notation.mjs: plain loops over typed arrays), asked for every frame it plays
       nearest (fn [bank {:keys [pitch lb nz voiced]}]
-                (let [[sl sn] (:sd bank)
-                      top (reduce (fn [top e]
-                                    (let [d (js/Math.sqrt (+ (if pitch (sq (/ (- pitch (nth e 0)) 6)) 0)
-                                                             (sq (/ (- lb (nth e 1)) sl))
-                                                             (sq (/ (- nz (nth e 2)) sn))
-                                                             (if voiced (sq (* 2 (- 1 (nth e 3)))) 0)))]
-                                      (if (or (< (count top) 6) (< d (first (peek top))))
-                                        (let [t (vec (sort-by first (conj top [d e])))] (if (> (count t) 6) (pop t) t))
-                                        top)))
-                                  [] (:entries bank))
-                      ws (mapv (fn [[d _]] (/ 1 (+ d 0.05))) top)
-                      W (reduce + ws)
-                      nu (count (:timbre bank))
-                      avg (fn [j] (/ (reduce + (map (fn [w [_ e]] (* w (nth e j))) ws top)) W))]
-                  {:u (mapv (fn [k] (avg (+ 5 k))) (range nu)) :loud0 (avg 4) :d (first (first top))}))
+                (let [r ((:query bank) pitch lb nz (boolean voiced))]
+                  {:loud0 (aget r 0) :d (aget r 1) :u (vec (.slice r 2))}))
       ;; the values for the faust~, and only those that changed: [[0 [:cutoff 1800]] …]
       settle (fn [st at]
                (let [{:keys [bank]} st
@@ -74,7 +61,7 @@
                                         (into {} (map (fn [s x] [(:label s) (api/from-unit x (:min s) (:max s) (:log s))]) (:timbre bank) u))
                                         {})
                                 gain-v (assoc (:label g) gain-v)
-                                (and pitch-v (not quiet?)) (assoc (:label p) pitch-v))
+                                pitch-v (assoc (:label p) pitch-v))
                          span (fn [label] (let [s (or (first (filter #(= label (:label %)) (:timbre bank))) (when (= label (:label g)) g) p)]
                                             (js/Math.abs (- (:max s) (:min s)))))
                          changed (filter (fn [[k v]] (let [old (get (:sent st) k)]
@@ -125,15 +112,19 @@
                                      (let [fac (.-factory (:value r))]
                                        (-> (js/Promise.all #js [(api/load-script meyda-url) (api/import-module origins)])
                                            (.then (fn [[_ m]]
-                                                    (.learn m #js {:module (or (.-module fac) (.-code fac))
-                                                                   :json (js/JSON.parse (.-json fac))
-                                                                   :Meyda (.-Meyda js/window) :n n})))))))
-                            (.then (fn [b]
-                                     (let [b (js->clj b :keywordize-keys true)
-                                           es (:entries b)
-                                           avg (fn [j] (/ (reduce + (map (fn [e] (nth e j)) es)) (count es)))]
-                                       (assoc b :faust (name (:id f)) :mid [(avg 1) (avg 2)]
-                                              :lbr [(reduce min (map (fn [e] (nth e 1)) es)) (reduce max (map (fn [e] (nth e 1)) es))]))))))))}
+                                                    (.then (.learn m #js {:module (or (.-module fac) (.-code fac))
+                                                                          :json (js/JSON.parse (.-json fac))
+                                                                          :Meyda (.-Meyda js/window) :n n})
+                                                           (fn [b] [b (.index m b)]))))))))
+                            (.then (fn [[bjs query]]
+                                     ;; the settings stay a JS array (the query reads them); the rest as data
+                                     (let [es (.-entries bjs)
+                                           col (fn [j] (map (fn [e] (aget e j)) (array-seq es)))
+                                           avg (fn [j] (/ (reduce + (col j)) (.-length es)))]
+                                       (-> (js->clj #js {:pitch (.-pitch bjs) :gain (.-gain bjs) :timbre (.-timbre bjs) :sd (.-sd bjs)}
+                                                    :keywordize-keys true)
+                                           (assoc :query query :entries es :faust (name (:id f)) :mid [(avg 1) (avg 2)]
+                                                  :lbr [(reduce min (col 1)) (reduce max (col 1))])))))))))}
 
    ;; ── logic ──
    :receive (fn [{:keys [inlet value state args at]}]
