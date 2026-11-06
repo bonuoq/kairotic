@@ -836,11 +836,11 @@ See also: `osc~`, `synth~`, `faust~`
 
 `html`
 
-A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, buttons and text, laid out like a page. An element with :out sends what it gives out of that outlet; one with :name keeps it as a value, shown by every hole :$name in the view. A map on the inlet ({:freq 220}) sets values. What is not allowed (scripts, links, images, positions, unknown tags or attributes) is dropped, so it is safe in a shared room. Its view opens as text from { } (HTML can be pasted there too).
+A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, buttons and text, laid out like a page. An element with :out sends what it gives out of that outlet; one with :name keeps it as a value, shown by every hole :$name in the view, and when it is let go (a slider) or chosen (a menu, a text entered) the box keeps it in the work, as a knob keeps its value: (values! :bN {:freq 440}). A map on the inlet ({:freq 220}) sets values, as a number sets a knob: the elements named so show it (a slider within its range) and those with :out send it on; a bang sends again what they hold. What is not allowed (scripts, links, images, positions, unknown tags or attributes) is dropped, so it is safe in a shared room. Its view opens as text from { } (HTML can be pasted there too).
 
 **Inlets** 
 
-0. a map of values {:freq 220}, or one [:freq 220]: the elements named so and the holes :$freq show them
+0. a map of values {:freq 220}, or one [:freq 220]: the elements named so and the holes :$freq show them, and the named elements with :out send them on (a slider within its range); a bang sends again what they hold
 
 **Outlets** 
 
@@ -849,10 +849,11 @@ A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, 
 
 **Messages and gestures**
 
-- `{:freq 220}`: sets values (and the elements named so)
+- `{:freq 220}`: sets values: the elements named so show them and send them on
 - `[:freq 220]`: sets one value
+- `bang`: sends again what every named element with :out holds
 
-**Try:** Move the slider: its value goes out of the left outlet and shows beside it. { } in the header opens the view as text: change it and apply.
+**Try:** Move the slider: its value goes out of the left outlet and shows beside it; let it go and the box keeps it, as a knob does (back in the history, it moves back). { } in the header opens the view as text: change it and apply.
 
 ```clojure
 (box :b1 "html" 40 30)
@@ -1096,7 +1097,7 @@ See also: `ftom`, `osc~`
 
 `number [initial]`
 
-A draggable number; sends it when it changes or on receiving a bang.
+A draggable number; sends it when it changes or on receiving a bang. Let go (or typed), its value stays in its text, as a knob's does: it travels with the work, and going back in the history brings back the number it had.
 
 **Inlets** 
 
@@ -1108,10 +1109,10 @@ A draggable number; sends it when it changes or on receiving a bang.
 
 **Messages and gestures**
 
-- `drag`: up and down changes it (and sends it)
+- `drag`: up and down changes it (and sends it); let go, the number stays in its text, as a knob's does
 - `double-click`: type a number (Enter sends it, Esc closes); so too knobs and the sliders of faust~
 
-**Try:** Start the engine and drag the number: the oscillator follows.
+**Try:** Start the engine and drag the number: the oscillator follows. Let it go: its text keeps the new number (back in the history, it goes back).
 
 ```clojure
 (box :b1 "number 440" 40 30)
