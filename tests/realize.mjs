@@ -78,9 +78,9 @@ export async function realize(page, check) {
   await frame(-14, 3000, 0.02, 220);
   await page.waitForTimeout(2500);
   const closer = await centroid();
-  const st = (x) => Math.abs(12 * Math.log2(x / 3000));
+  const semis = (x) => Math.abs(12 * Math.log2(x / 3000));
   check("listening to what it plays brings the brightness heard nearer to what is written",
-    st(closer) < st(bright) - 2 && st(closer) < 4, `${bright} Hz before, ${closer} Hz listening (3000 written)`);
+    semis(closer) < semis(bright) - 2 && semis(closer) < 4, `${bright} Hz before, ${closer} Hz listening (3000 written)`);
   check("... with a correction it keeps", Number(await cljs(page, `(get-in @eng/rt [:states ${r} :corr :lb])`)) > 0, await cljs(page, `(get-in @eng/rt [:states ${r} :corr])`));
 
   // silence: the gain goes down, the timbre stays
