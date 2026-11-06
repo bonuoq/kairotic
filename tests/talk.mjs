@@ -77,6 +77,10 @@ try {
   // Bo keeps Ana's: she is asked, and allows
   const second = (await cljs(A, '(talk-say! "second idea")')).replace(/"/g, "");
   await until(B, "(count (:order @talk-state))", (x) => x === "2");
+  // a gesture made less than the room's simultaneity interval (1.5 s) after moving over someone else's is
+  // parallel to it (a branch): people take longer than that; the test waits as long
+  const settle = (page) => page.waitForTimeout(1700);
+  await settle(B);
   await cljs(B, `(talk-keep! "${second}")`);
   const asked = await until(A, "(count (:asks @talk-state))", (x) => x === "1");
   check("keeping someone else's asks them", asked === "1");
@@ -87,6 +91,7 @@ try {
   // ... and declines another
   const third = (await cljs(A, '(talk-say! "not this one")')).replace(/"/g, "");
   await until(B, "(count (:order @talk-state))", (x) => x === "3");
+  await settle(B);
   await cljs(B, `(talk-keep! "${third}")`);
   await until(A, "(count (:asks @talk-state))", (x) => x === "1");
   await cljs(A, `(talk-answer! "${third}" false)`);
@@ -111,6 +116,7 @@ try {
   await cljs(A, "(talk-note-stop!)");
   const note = (await until(B, '(some (fn [[id it]] (when (and (= :note (:kind it)) (:b64 it)) id)) (:items @talk-state))', (x) => x !== "nil", 15000)).replace(/"/g, "");
   check("a voice note arrives whole", note !== "nil");
+  await settle(B);
   await cljs(B, `(talk-keep! "${note}")`);
   await until(A, "(count (:asks @talk-state))", (x) => x === "1");
   await cljs(A, `(talk-answer! "${note}" true)`);
@@ -128,6 +134,7 @@ try {
   const bo = (await cljs(A, '(some (fn [[id p]] (when (:camera p) id)) (:peers @talk-room))')).replace(/"/g, "");
   const frame = (await cljs(A, `(talk-frame! "${bo}")`)).replace(/"/g, "");
   await until(A, "(count (:order @talk-state))", (x) => Number(x) >= 5);
+  await settle(A);
   await cljs(A, `(talk-keep! "${frame}")`);
   await until(B, "(count (:asks @talk-state))", (x) => x === "1");
   await cljs(B, `(talk-answer! "${frame}" true)`);
