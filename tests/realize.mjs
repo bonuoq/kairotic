@@ -40,7 +40,7 @@ export async function realize(page, check) {
   check("the faust~ it plays compiles", st === ":ok", st);
   const loaded = await until(page, '(boolean (comp/lookup "realize~"))', (x) => x === "true", 20000);
   check("realize~ comes with @kairotic/analysis", loaded === "true");
-  check("... four inlets (loudness, brightness, noisiness, pitch) and two outlets", (await cljs(page, `(io (get-in (current) [:boxes ${r}]))`)) === "[4 2]");
+  check("... seven inlets (loudness, brightness, noisiness, pitch; and the three heard) and two outlets", (await cljs(page, `(io (get-in (current) [:boxes ${r}]))`)) === "[7 2]");
 
   await cljs(page, "(play)");
   await until(page, `(boolean @(:faust (get-in @eng/rt [:nodes ${f}])))`, (x) => x === "true", 20000);
@@ -72,6 +72,16 @@ export async function realize(page, check) {
   check("... its level follows the loudness written (−14 dB)", Math.abs(20 * Math.log10(Number(await cljs(page, `(get-in @eng/rt [:states ${lvl}])`))) + 14) < 6,
     await cljs(page, `(get-in @eng/rt [:states ${lvl}])`));
   check("... and on the right, how far the faust~ is from it", Number(await cljs(page, `(get-in @eng/rt [:states ${reach}])`)) >= 0);
+
+  // listening to what it plays (features~ of the faust~ on its last inlets): it closes the gap
+  await cljs(page, `(connect ${fe} 0 ${r} 4) (connect ${fe} 1 ${r} 5) (connect ${fe} 2 ${r} 6)`);
+  await frame(-14, 3000, 0.02, 220);
+  await page.waitForTimeout(2500);
+  const closer = await centroid();
+  const st = (x) => Math.abs(12 * Math.log2(x / 3000));
+  check("listening to what it plays brings the brightness heard nearer to what is written",
+    st(closer) < st(bright) - 2 && st(closer) < 4, `${bright} Hz before, ${closer} Hz listening (3000 written)`);
+  check("... with a correction it keeps", Number(await cljs(page, `(get-in @eng/rt [:states ${r} :corr :lb])`)) > 0, await cljs(page, `(get-in @eng/rt [:states ${r} :corr])`));
 
   // silence: the gain goes down, the timbre stays
   const cut = await cljs(page, `(get ${values} "cutoff")`);

@@ -131,7 +131,10 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   propio sonido— o curvas dibujadas en canvas leídos con `reader~` y `snapshot~`. Su salida derecha dice lo
   lejos que está el ajuste más cercano de lo escrito (por encima de 1, el `faust~` no puede sonar así: un
   ruido tan oscuro como un tono, por ejemplo); un `monitor` muestra lo escrito junto a lo que `features~`
-  oye en el resultado.
+  oye en el resultado. Puede **escuchar lo que toca**: un `features~ 20` sobre el `faust~`, con sus tres
+  salidas (rms, centroid, flatness) en las tres últimas entradas de `realize~`, y pide más donde lo que se oye
+  se queda corto de lo escrito, poco a poco y con límites; la sonoridad pasa a ser el nivel tal como lo oye
+  `features~`.
 - **Faust a varias voces**: un `faust~` cuyo código declara `declare options "[nvoices:8]";` es
   polifónico. Su voz usa `freq`, `gain` y `gate`, que se fijan nota a nota; los Hz van a su entrada
   izquierda y los ids de voz a la derecha, como con `synth~` (un `keyboard` 0→0, 1→1, 3→0; `mt play`
