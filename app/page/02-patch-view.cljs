@@ -498,7 +498,7 @@
 (defn mark-points
   "The points of a mark on screen, or nil if one of them is not (then the mark is not drawn)."
   [p m]
-  (let [ps (map (fn [a] (resolve-anchor p a)) (if (= :text (:kind m)) [(:at m)] (:pts m)))]
+  (let [ps (map (fn [a] (resolve-anchor p a)) (if (#{:text :image} (:kind m)) [(:at m)] (:pts m)))]
     (when (every? some? ps) (vec ps))))
 
 (defn mark-svg [p id m]
@@ -512,6 +512,7 @@
                  (str "<line class=\"amark\" data-mark=\"" idn "\" x1=\"" (r x1) "\" y1=\"" (r y1) "\" x2=\"" (r x2) "\" y2=\"" (r y2) "\"></line>"
                       "<polygon class=\"ahead\" points=\"" (str/join " " (map (fn [[x y]] (str (r x) "," (r y))) [[x2 y2] (h 0.4) (h -0.4)])) "\"></polygon>"))
         :text (let [[[x y]] ps] (str "<text class=\"atext\" data-mark=\"" idn "\" x=\"" (r x) "\" y=\"" (r y) "\">" (esc (:txt m)) "</text>"))
+        :image (let [[[x y]] ps] (str "<image class=\"aimage\" data-mark=\"" idn "\" x=\"" (r x) "\" y=\"" (r y) "\" width=\"" (:w m) "\" height=\"" (:h m) "\" href=\"" (esc (:src m)) "\"></image>"))
         ""))))
 
 (defn projection-svg

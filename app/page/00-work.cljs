@@ -3,7 +3,7 @@
 ;; The page's ClojureScript, in the order it is evaluated (app/index.html lists the files).
 
 (ns user (:require [clojure.string :as str] [clojure.set] [kairotic.score :as sc] [kairotic.canvas :as cv]
-                   [kairotic.components :as comp] [kairotic.api :as api] [kairotic.code :as cbox] [kairotic.faust] [kairotic.library :as lib] [kairotic.help :as hlp] [kairotic.mt :as mt] [kairotic.quantize :as qz] [kairotic.tempo :as tm] [kairotic.spell :as sp] [kairotic.treecanvas :as tc] [kairotic.mtboxes :as mtb] [kairotic.hiccup :as hic] [kairotic.assistant :as ai] [kairotic.engine :as eng] [kairotic.presets :as pst] [kairotic.release :as rel] [kairotic.sounds :as snd]
+                   [kairotic.components :as comp] [kairotic.api :as api] [kairotic.code :as cbox] [kairotic.faust] [kairotic.library :as lib] [kairotic.help :as hlp] [kairotic.mt :as mt] [kairotic.quantize :as qz] [kairotic.tempo :as tm] [kairotic.spell :as sp] [kairotic.treecanvas :as tc] [kairotic.mtboxes :as mtb] [kairotic.hiccup :as hic] [kairotic.assistant :as ai] [kairotic.engine :as eng] [kairotic.presets :as pst] [kairotic.release :as rel] [kairotic.sounds :as snd] [kairotic.talk :as tk]
                    [kairotic.shapes :as shp] [kairotic.signal] [kairotic.links :as links] [clojure.edn]))
 
 (def version "0.2.0-alpha")
@@ -93,6 +93,12 @@
                        (when (>= (count ps) 2) {:layer (:layer m) :kind (:kind m) :pts (if (= :arrow (:kind m)) [(first ps) (peek ps)] ps)}))
       :text (when-let [a (sane-anchor (:at m))]
               (let [t (str (:txt m))] (when (seq t) {:layer (:layer m) :kind :text :at a :txt (subs t 0 (min 200 (count t)))})))
+      ;; a small picture (a frame kept from a room's camera, #135): a data URL of an image, at most 48 KB
+      :image (when-let [a (sane-anchor (:at m))]
+               (let [src (str (:src m)) w (:w m) h (:h m)]
+                 (when (and (re-matches #"data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+" src) (<= (count src) 48000)
+                            (number? w) (number? h) (< 0 w 1000) (< 0 h 1000))
+                   {:layer (:layer m) :kind :image :at a :src src :w (js/Math.round w) :h (js/Math.round h)})))
       nil)))
 
 (defn sane-projection [pr]

@@ -1,0 +1,35 @@
+# Talking in a room, in the app (tests/talk.mjs): the built app served, a real relay (GUN for the room,
+# /signal for the pages to meet), and two people in two browser contexts with a fake microphone and camera.
+name: talk
+
+on:
+  pull_request:
+    paths: ["app/**", "core/**", "relay/**", "site/**", "tests/talk.mjs", ".github/workflows/talk.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: talk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  room:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+        working-directory: relay
+      - run: npm install --no-save playwright@1.56.0 && npx playwright install --with-deps chromium
+      - run: node site/build.mjs
+      - name: Start the relay, serve the app, two people in a room
+        run: |
+          node relay/server.js --data "$RUNNER_TEMP/radata" &
+          npx --yes http-server@14 _site -p 8000 -s &
+          for i in $(seq 1 30); do curl -sf http://localhost:8765/ > /dev/null && curl -sf http://localhost:8000/ > /dev/null && break; sleep 1; done
+          node tests/talk.mjs http://localhost:8000/ ws://localhost:8765/gun

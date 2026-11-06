@@ -565,6 +565,42 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
 .repl-host .cm-placeholder { color: var(--ink-soft); }
 .help { padding: 6px 12px 10px; font-size: 12px; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .help code { font-family: var(--f-code); color: var(--ink); }
+/* the Room tab: talking with the people in a shared room (#135) */
+.tab.attn::after { content: " •"; color: var(--kairos); }
+.talk { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; min-height: 0; flex: 1; overflow: auto; }
+.talk-on { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1; }
+.talk-on[hidden] { display: none; }
+.talk-head { display: flex; gap: 8px; align-items: center; }
+.talk-head input { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; width: 11em; }
+.talk-state { font: 11.5px var(--f-code); color: var(--ink-soft); }
+.talk-state.ok { color: var(--ok); } .talk-state.bad { color: var(--error); }
+.talk-peers { display: flex; flex-wrap: wrap; gap: 5px; font: 11.5px var(--f-code); }
+.tpeer { border: 1px solid var(--rule); background: var(--sheet); border-radius: 3px; padding: 1px 6px; }
+.tpeer.p2p { border-color: var(--ok); } .tpeer.talk { border-color: var(--kairos); background: var(--accent-soft); }
+.tpeer i { font-style: normal; color: var(--ink-soft); }
+.talk-chat { flex: 1; min-height: 160px; overflow-y: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.titem { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 8px; padding: 3px 5px; border-radius: 4px; }
+.titem.mine { background: var(--accent-soft); }
+.twho { font: 600 12px var(--f-ui); } .twho time { font: 400 10.5px var(--f-code); color: var(--ink-soft); margin-left: 6px; }
+.twhat { grid-column: 1; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.twhat audio { display: block; height: 28px; max-width: 100%; } .twhat img { display: block; max-width: 160px; border-radius: 3px; }
+.tside { grid-row: 1 / span 2; grid-column: 2; display: flex; flex-direction: column; gap: 3px; align-items: end; }
+.tst { font: 10.5px var(--f-code); color: var(--ink-soft); } .tst.ok { color: var(--ok); } .tst.bad { color: var(--error); }
+.tchip { font: 11px var(--f-code); border: 1px solid var(--accent); color: var(--accent); border-radius: 3px; padding: 0 4px; margin-right: 3px; }
+.talk-say { display: flex; gap: 6px; }
+.talk-say input { flex: 1; font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 7px; }
+.talk-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.talk-hold { border: 2px solid var(--kairos); background: var(--box); color: var(--kairos); font: 600 12.5px var(--f-ui); padding: 5px 12px; border-radius: 999px; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+.talk-hold[aria-pressed="true"] { background: var(--kairos); color: #fff; } .talk-hold:disabled { opacity: 0.4; cursor: default; }
+#talk-cam[aria-pressed="true"] { border-color: var(--kairos); }
+.talk-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+.ttile { position: relative; aspect-ratio: 4 / 3; background: #000; border-radius: 4px; overflow: hidden; }
+.ttile[hidden] { display: none; } .ttile.talk { outline: 2px solid var(--kairos); }
+.ttile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ttile .tlabel { position: absolute; left: 5px; bottom: 4px; font: 10.5px var(--f-code); color: #fff; background: rgba(0,0,0,.55); padding: 0 4px; border-radius: 3px; }
+.ttile button { position: absolute; right: 4px; top: 4px; }
+.talk-asks { display: grid; gap: 6px; } .talk-asks[hidden] { display: none; }
+.task { border: 1px solid var(--kairos); border-left-width: 3px; border-radius: 6px; padding: 6px 8px; font-size: 12.5px; display: grid; gap: 4px; }
 </style>
 
 <div class="app">
@@ -714,6 +750,7 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
           <button class="tab" role="tab" id="tab-comp" data-tab="comp" aria-selected="false">Components</button>
           <button class="tab" role="tab" id="tab-claude" data-tab="claude" aria-selected="false" hidden>Claude</button>
           <button class="tab" role="tab" id="tab-help" data-tab="help" aria-selected="false" title="How each component works, and tutorials (? on a selected box)">Help</button>
+          <button class="tab" role="tab" id="tab-talk" data-tab="talk" aria-selected="false" title="Talk with the people in this room: write, hold to talk, voice notes, camera">Room</button>
           <button class="tab" role="tab" id="tab-feedback" data-tab="feedback" aria-selected="false" title="Report a bug, propose an idea or ask a question (on GitHub)">Feedback</button>
         </div>
         <button class="side-hide" id="side-hide" type="button" title="Hide the panel (it comes back with ‹, with help, or with (side-panel true))">»</button>
@@ -758,6 +795,31 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
           <h4>Open issues</h4>
           <p class="ask-note">Before writing, see if it is already here: a 👍 or a comment there helps as much.</p>
           <ol class="fb-list" id="fb-list"><li class="soft">…</li></ol>
+        </div>
+      </div>
+      <div class="panel" id="panel-talk" hidden>
+        <div class="talk">
+          <p class="ask-note" id="talk-off"></p>
+          <div class="talk-on" id="talk-on" hidden>
+            <div class="talk-head">
+              <input id="talk-name" spellcheck="false" aria-label="Your name in the room" maxlength="60">
+              <span class="talk-state" id="talk-state"></span>
+            </div>
+            <div class="talk-peers" id="talk-peers"></div>
+            <div class="talk-asks" id="talk-asks" hidden></div>
+            <div class="talk-chat" id="talk-chat" aria-live="polite"></div>
+            <div class="talk-say">
+              <input id="talk-say" spellcheck="true" maxlength="2000" aria-label="Message" placeholder="say something — @b3 #12 ^33 anchor it">
+              <button class="act" id="talk-send">Send</button>
+            </div>
+            <div class="talk-bar">
+              <button class="act" id="talk-mic" title="Ask for the microphone: then hold to talk, or to record a voice note">Microphone</button>
+              <button class="talk-hold" id="talk-ptt" disabled aria-pressed="false" title="Your voice goes to the room only while you hold">Hold to talk</button>
+              <button class="talk-hold" id="talk-note" disabled aria-pressed="false" title="Hold to record, let go to send">● Note</button>
+              <button class="act" id="talk-cam" aria-pressed="false" title="Your camera, small and silent, to the room">Camera</button>
+            </div>
+            <div class="talk-tiles" id="talk-tiles"></div>
+          </div>
         </div>
       </div>
       <div class="panel" id="panel-help" hidden>
@@ -955,8 +1017,8 @@ window.addEventListener("DOMContentLoaded", function () {
   // dependency order: shapes has no dependencies; components needs canvas; code, faust and library need components
   var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/spell.cljs", "kairotic/mt.cljs", "kairotic/tempo.cljs", "kairotic/structure.cljs", "kairotic/quantize.cljs", "kairotic/treecanvas.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
               "kairotic/code.cljs", "kairotic/patterns.cljs", "kairotic/api.cljs", "kairotic/corefns.cljs", "kairotic/mtboxes.cljs", "kairotic/hiccup.cljs", "kairotic/faust.cljs", "kairotic/library.cljs", "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs",
-              "kairotic/sounds.cljs", "kairotic/signal.cljs", "kairotic/input.cljs", "kairotic/record.cljs", "kairotic/links.cljs", "kairotic/release.cljs", "kairotic/presets.cljs"];
-  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/19-html.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs", "page/15-presets.cljs", "page/16-release.cljs", "page/17-sounds.cljs", "page/18-lines.cljs", "page/19-files.cljs"];
+              "kairotic/sounds.cljs", "kairotic/talk.cljs", "kairotic/signal.cljs", "kairotic/input.cljs", "kairotic/record.cljs", "kairotic/links.cljs", "kairotic/release.cljs", "kairotic/presets.cljs"];
+  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/19-html.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs", "page/15-presets.cljs", "page/16-release.cljs", "page/17-sounds.cljs", "page/18-lines.cljs", "page/19-files.cljs", "page/20-talk.cljs"];
   Promise.all(mods.map(function (m) {
     return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
   }))
