@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
+An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
 
 **Inlets** 
 
@@ -768,7 +768,7 @@ See also: `osc~`, `adsr~`, `dac~`
 
 `gendy~ [freq x-step y-min y-max y-step breakpoints]`
 
-A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Bernstein, MIT): a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle, heard as a pitch that drifts and a timbre that changes. freq in Hz (a signal on the inlet adds to it: FM); x-step (0–100 %) how far each segment's duration may wander; y-min and y-max (−1…1) the barriers of the amplitudes, y-step how far they move each cycle; breakpoints (2–128) how many. A number sets freq; [:y-step 0.2] one of them; a list of six all of them.
+A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle — a pitch that drifts, a timbre that changes.
 
 **Inlets** 
 
@@ -1211,7 +1211,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
+Stereo panning with equal power.
 
 **Inlets** 
 
@@ -1654,6 +1654,9 @@ Plays a faust~ from descriptors written as a score — loudness, brightness, noi
 1. brightness: Hz (features~ centroid)
 2. noisiness: 0…1 (features~ flatness)
 3. pitch: Hz (pitch~; 0 for none), MIDI with realize~ midi
+4. loudness heard in what it plays (features~ of the faust~: rms)
+5. brightness heard (centroid)
+6. noisiness heard (flatness): with these three it corrects itself
 
 **Outlets** 
 
@@ -1664,7 +1667,7 @@ Plays a faust~ from descriptors written as a score — loudness, brightness, noi
 
 - `learn`: plays steady settings of the faust~ offline and listens to them (300, or the number written): after changing its code
 
-**Try:** Press ▶ and allow the microphone (headphones): sing, whisper, hum — the synth follows your loudness, brightness, noisiness and pitch with its own sound. Draw instead: four canvases read by reader~ and snapshot~ are a score for it.
+**Try:** Press ▶ and allow the microphone (headphones): sing, whisper, hum — the synth follows your loudness, brightness, noisiness and pitch with its own sound. Then let it listen: a features~ 20 on the faust~, its three outlets into the last three inlets of realize~ — it corrects what it asks where it falls short. Draw instead: four canvases read by reader~ and snapshot~ are a score for it.
 
 ```clojure
 (box :b1 "adc~ 1" 40 30)
@@ -1878,7 +1881,7 @@ See also: `adc~`, `scope~`, `phasor~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
+A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
 
 **Inlets** 
 
@@ -1915,7 +1918,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). [:gain v] (0…1, 0.5 by default) sets the level of the notes that start after it, as a player sends an event's :amp. :stop silences it.
+Polyphonic triangle-wave synthesizer, one voice per id.
 
 **Inlets** 
 
