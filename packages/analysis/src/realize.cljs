@@ -68,10 +68,12 @@
                       :out (cond-> (mapv (fn [[k v]] [0 [(keyword k) (api/nice v)]]) changed)
                              (and reach (not= reach (:reach st))) (conj [1 reach]))
                       :show {:status :ready :faust (:faust bank) :n (count (:entries bank)) :want want :reach reach}}))))
+      ;; each request is numbered, so the answer to an older one is dropped
       learn (fn [st args]
-              {:state (assoc st :learning true :error nil)
-               :show {:status :learning}
-               :effects [[:learn {:n (bank-size args) :k (inc (:k st 0))}]]})]
+              (let [k (inc (:k st 0))]
+                {:state (assoc st :learning true :error nil :k k)
+                 :show {:status :learning}
+                 :effects [[:learn {:n (bank-size args) :k k}]]}))]
   {;; ── about ──
    :class "realize~"
    :license "MPL-2.0"
