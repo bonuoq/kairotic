@@ -501,7 +501,7 @@
    "realize~"
    {:package "@kairotic/analysis" :usage "realize~ [settings] [midi]"
     :doc "Plays a faust~ from descriptors written as a score — loudness, brightness, noisiness, pitch — or from what features~ and pitch~ hear in another sound: its pitch (or freq) and gain sliders follow them, and its other sliders take the settings of that faust~ that sound nearest (Study 37)."
-    :inlets ["loudness: dB, or a level 0…1 (features~ rms)" "brightness: Hz (features~ centroid)" "noisiness: 0…1 (features~ flatness)" "pitch: Hz (pitch~; 0 for none), MIDI with realize~ midi"]
+    :inlets ["loudness: dB, or a level 0…1 (features~ rms)" "brightness: Hz (features~ centroid)" "noisiness: 0…1 (features~ flatness)" "pitch: Hz (pitch~; 0 for none), MIDI with realize~ midi" "loudness heard in what it plays (features~ of the faust~: rms)" "brightness heard (centroid)" "noisiness heard (flatness): with these three it corrects itself"]
     :outlets ["[:slider value] for the faust~ it plays: connect it to the faust~'s left inlet" "how far the nearest setting is from what is written (above 1: the faust~ cannot sound like that)"]
     :messages [["learn" "plays steady settings of the faust~ offline and listens to them (300, or the number written): after changing its code"]]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"features~ 20\" 40 90)" "(box :b3 \"pitch~\" 260 90)"
@@ -509,7 +509,7 @@
                     "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b2 0 :b4 0)" "(connect :b2 1 :b4 1)" "(connect :b2 2 :b4 2)"
                     "(connect :b3 0 :b4 3)" "(connect :b7 0 :b4 0)" "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
                     "(code :b5 \"import(\\\"stdfaust.lib\\\");\\npitch = hslider(\\\"pitch\\\", 60, 36, 84, 0.01) : si.smoo;\\ngain = hslider(\\\"gain [unit:dB]\\\", -12, -80, 6, 0.1) : ba.db2linear : si.smoo;\\nwave = hslider(\\\"wave\\\", 0.5, 0, 1, 0.001) : si.smoo;\\nnoise = hslider(\\\"noise\\\", 0.1, 0, 1, 0.001) : si.smoo;\\ncutoff = hslider(\\\"cutoff [scale:log]\\\", 1000, 60, 14000, 1) : si.smoo;\\nresonance = hslider(\\\"resonance [scale:log]\\\", 1, 0.5, 8, 0.01) : si.smoo;\\nf0 = ba.midikey2hz(pitch);\\nosc = os.sawtooth(f0) * (1 - wave) + os.square(f0) * wave;\\nprocess = osc * (1 - noise) + no.noise * noise : fi.svf.lp(min(cutoff, 0.45 * ma.SR), resonance) * gain;\")")
-    :try "Press ▶ and allow the microphone (headphones): sing, whisper, hum — the synth follows your loudness, brightness, noisiness and pitch with its own sound. Draw instead: four canvases read by reader~ and snapshot~ are a score for it."
+    :try "Press ▶ and allow the microphone (headphones): sing, whisper, hum — the synth follows your loudness, brightness, noisiness and pitch with its own sound. Then let it listen: a features~ 20 on the faust~, its three outlets into the last three inlets of realize~ — it corrects what it asks where it falls short. Draw instead: four canvases read by reader~ and snapshot~ are a score for it."
     :see ["features~" "pitch~" "faust~" "monitor"]}
 
    "form~"

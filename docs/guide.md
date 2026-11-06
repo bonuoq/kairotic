@@ -127,7 +127,10 @@ comes first.
   another sound — sing, and a synth follows your loudness, brightness, noisiness and pitch with its own
   sound — or curves drawn on canvases read by `reader~` and `snapshot~`. Its right outlet says how far the
   nearest setting is from what is written (above 1, the `faust~` cannot sound like that: noise as dark as a
-  tone, say); a `monitor` shows what is written beside what `features~` hears in the result.
+  tone, say); a `monitor` shows what is written beside what `features~` hears in the result. It can
+  **listen to what it plays**: a `features~ 20` on the `faust~`, its three outlets (rms, centroid, flatness)
+  into the last three inlets of `realize~`, and it asks for more where what is heard falls short of what is
+  written, little by little, within limits — the loudness then means the level as `features~` hears it.
 - **Faust in several voices**: a `faust~` whose source declares `declare options "[nvoices:8]";` is
   polyphonic. Its voice uses `freq`, `gain` and `gate`, set note by note; Hz go to its left inlet and
   voice ids to its right one, as with `synth~` (a `keyboard` 0→0, 1→1, 3→0; `mt play` 0→0, 1→1), in any

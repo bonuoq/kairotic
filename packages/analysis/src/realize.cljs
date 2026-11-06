@@ -8,10 +8,17 @@
 ;; nearest to the brightness and noisiness written (where a pitch is written, among the settings in which YIN
 ;; would hear it). To know them, it learns the faust~ first (the task :learn: steady settings played offline
 ;; and heard, @kairotic/faust-units' notation.mjs), when the first frame arrives or on `learn`.
+;; It can also listen to what it plays: features~ of the faust~'s sound on its last three inlets (loudness,
+;; brightness, noisiness heard). Then it asks for more where what is heard falls short of what is written,
+;; little by little (a correction that grows while the difference lasts, within limits), as the study's
+;; passes did offline.
 (let [meyda-url "npm:meyda@5.6.3/dist/web/meyda.min.js"
       origins ["npm:@kairotic/faust-units@0.1.4/dist/notation.mjs" "kairotic/packages/faust-units/notation.mjs"]
       silent -50
       every 0.04                                   ; seconds: at most one new setting this often
+      ;; listening: how much of each difference heard goes into the correction, and how far it may go
+      rate 0.08
+      limits {:loud 18 :lb 2 :nz 0.4}
       bank-size (fn [args] (js/Math.round (api/clamp (or (first (filter number? args)) 300) 40 2000)))
       midi-in? (fn [args] (some #{:midi} args))
       sq (fn [x] (* x x))
@@ -40,18 +47,25 @@
                (let [{:keys [bank]} st
                      ;; a lane that never arrived keeps the middle of what the faust~ can do
                      want (merge {:lb (first (:mid bank)) :nz (second (:mid bank))} (:want st))
+                     ;; what is asked of the bank: what is written, corrected by what was heard
+                     {cl :loud clb :lb cnz :nz} (:corr st)
+                     [lb-lo lb-hi] (or (:lbr bank) [0 20])
+                     ask (cond-> want
+                           (and cl (:loud want)) (update :loud + cl)
+                           clb (assoc :lb (api/clamp (+ (:lb want) clb) lb-lo lb-hi))
+                           cnz (assoc :nz (api/clamp (+ (:nz want) cnz) 0 1)))
                      loud (:loud want)]
                  (if (and (nil? loud) (nil? (:pitch want)) (nil? (get-in st [:want :lb])) (nil? (get-in st [:want :nz])))
                    {:state (assoc st :t at)}
                    (let [quiet? (and loud (< loud silent))
-                         {:keys [u loud0 d]} (if quiet? {:u (:u st) :loud0 0 :d (:reach st)} (nearest bank want))
+                         {:keys [u loud0 d]} (if quiet? {:u (:u st) :loud0 0 :d (:reach st)} (nearest bank ask))
                          ;; the timbre glides to where it goes (half the way every 40 ms), and keeps
                          ;; gliding when nothing more arrives (a value written once, a canvas held)
                          goal u
                          u (if (and (:u st) (not quiet?)) (mapv (fn [a b] (+ a (* 0.5 (- b a)))) (:u st) u) u)
                          moving? (and goal u (not quiet?) (some (fn [[a b]] (> (js/Math.abs (- a b)) 0.004)) (map vector u goal)))
                          g (:gain bank) p (:pitch bank)
-                         gain-v (when (and g loud) (let [dB (if quiet? -100 (- loud loud0))]
+                         gain-v (when (and g loud) (let [dB (if quiet? -100 (- (:loud ask) loud0))]
                                           (if (:db g) (api/clamp dB (:min g) (:max g))
                                               (api/clamp (js/Math.pow 10 (/ dB 20)) (:min g) (:max g)))))
                          pitch-v (when (and p (:pitch want))
@@ -73,19 +87,20 @@
                       :later (when (and moving? (not (:tick st))) [[(+ at every) 0 :realize-tick]])
                       :out (cond-> (mapv (fn [[k v]] [0 [(keyword k) (api/nice v)]]) changed)
                              (and reach (not= reach (:reach st))) (conj [1 reach]))
-                      :show {:status :ready :faust (:faust bank) :n (count (:entries bank)) :want want :reach reach}}))))
+                      :show {:status :ready :faust (:faust bank) :n (count (:entries bank)) :want want :reach reach
+                             :listening (some? (:corr st))}}))))
       ;; each request is numbered, so the answer to an older one is dropped
       learn (fn [st args]
               (let [k (inc (:k st 0))]
-                {:state (assoc st :learning true :error nil :k k)
+                {:state (assoc st :learning true :error nil :k k :corr nil)
                  :show {:status :learning}
                  :effects [[:learn {:n (bank-size args) :k k}]]}))]
   {;; ── about ──
    :class "realize~"
    :license "MPL-2.0"
-   :doc "Plays a faust~ from descriptors, as a score of them: loudness (dB, or a level 0…1 as features~ rms), brightness (Hz, the spectral centroid), noisiness (0…1, the spectral flatness) and pitch (Hz as pitch~ sends it, 0 for none; MIDI with `midi`). Its left outlet goes to the faust~: the faust~'s pitch or freq slider takes the pitch, its gain slider the loudness, and its other sliders are set to the settings of that faust~ that sound nearest to the brightness and noisiness written. It learns them first by playing steady settings of the faust~ offline and listening (300 by default), when the first values arrive or on learn; learn again after changing the faust~'s code. On the right, how far the nearest setting is from what is written (above 1: the faust~ cannot sound like that)."
+   :doc "Plays a faust~ from descriptors, as a score of them: loudness (dB, or a level 0…1 as features~ rms), brightness (Hz, the spectral centroid), noisiness (0…1, the spectral flatness) and pitch (Hz as pitch~ sends it, 0 for none; MIDI with `midi`). Its left outlet goes to the faust~: the faust~'s pitch or freq slider takes the pitch, its gain slider the loudness, and its other sliders are set to the settings of that faust~ that sound nearest to the brightness and noisiness written. It learns them first by playing steady settings of the faust~ offline and listening (300 by default), when the first values arrive or on learn; learn again after changing the faust~'s code. With features~ of the faust~'s sound on its last three inlets (rms, centroid, flatness) it listens to what it plays and asks for more where it falls short. On the right, how far the nearest setting is from what is written (above 1: the faust~ cannot sound like that)."
    :usage "realize~ [settings] [midi]"
-   :io [4 2]
+   :io [7 2]
    :size [236 46]
 
    ;; ── tasks: learning the faust~ it drives, outside its pure logic ──
@@ -117,7 +132,8 @@
                                      (let [b (js->clj b :keywordize-keys true)
                                            es (:entries b)
                                            avg (fn [j] (/ (reduce + (map (fn [e] (nth e j)) es)) (count es)))]
-                                       (assoc b :faust (name (:id f)) :mid [(avg 1) (avg 2)]))))))))}
+                                       (assoc b :faust (name (:id f)) :mid [(avg 1) (avg 2)]
+                                              :lbr [(reduce min (map (fn [e] (nth e 1)) es)) (reduce max (map (fn [e] (nth e 1)) es))]))))))))}
 
    ;; ── logic ──
    :receive (fn [{:keys [inlet value state args at]}]
@@ -136,6 +152,23 @@
 
                   ;; a moment later: the last frame that arrived while it waited
                   (= value :realize-tick) (if (and (:bank st) (:dirty st)) (settle (assoc st :tick false) at) {:state (assoc st :tick false)})
+
+                  ;; what is heard in what it plays (features~ of the faust~): the correction grows by a part of
+                  ;; the difference, while something is written and sounds
+                  (and (#{4 5 6} inlet) (number? value))
+                  (let [heard (case inlet 4 (db-of value) 5 (when (pos? value) (log2 value)) 6 value)
+                        k ({4 :loud 5 :lb 6 :nz} inlet)
+                        want (:want st)
+                        st (cond-> st (= k :loud) (assoc :heard-loud heard))
+                        sounding? (and (:bank st) (number? (:loud want)) (> (:loud want) silent)
+                                       (> (or (:heard-loud st) -100) silent))]
+                    (if (and sounding? (number? heard) (number? (get want k)))
+                      (let [c (api/clamp (+ (get-in st [:corr k] 0) (* rate (- (get want k) heard))) (- (limits k)) (limits k))
+                            st (-> st (assoc-in [:corr k] c) (assoc :dirty true))]
+                        (if (or (nil? (:t st)) (>= (- at (:t st)) every))
+                          (settle st at)
+                          (if (:tick st) {:state st} {:state (assoc st :tick true) :later [[(+ (:t st) every) 0 :realize-tick]]})))
+                      {:state st}))
 
                   (and (integer? inlet) (number? value))
                   (let [midi (when (and (= inlet 3) (pos? value)) (if (midi-in? args) value (api/hz->midi value)))
@@ -162,7 +195,7 @@
            (let [{:keys [status faust n want reach error]} shown
                  line1 (case status
                          :learning "learning the faust~ it plays…"
-                         :ready (str "plays " faust " · " n " settings heard")
+                         :ready (str "plays " faust " · " n " settings heard" (when (:listening shown) " · listening"))
                          :error (str "✗ " error)
                          "waits for a faust~ and a score")
                  fmt (fn [x d] (if (number? x) (.toFixed x d) "–"))

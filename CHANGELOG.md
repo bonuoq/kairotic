@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **`realize~` listens to what it plays** (discussion #114; `@kairotic/analysis` 0.7.0): three more inlets take
+  `features~` of the `faust~`'s sound (rms, centroid, flatness), and a correction grows where what is heard
+  falls short of what is written — the passes of Study 37, while it sounds. Tests: 2 more checks in
+  `tests/realize.mjs`.
 - **`realize~`: descriptors as a score, in the app** (discussion #114, Study 37; `@kairotic/analysis` 0.6.0,
   `@kairotic/faust-units` 0.1.4). A box before a `faust~` that plays it from loudness, brightness, noisiness and
   pitch — `features~` and `pitch~` of another sound, or curves drawn — setting its `pitch`/`freq` and `gain`
