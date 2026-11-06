@@ -119,6 +119,19 @@ vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter
   Ctrl/⌘+Enter los aplica como un solo evento y la caja los muestra en sus parámetros. **▶ sound** y
   **▶ found** tocan el segundo que escuchó y lo que encontró. Compara timbres con independencia del
   volumen; una escala logarítmica donde el código dice `[scale:log]` le ayuda.
+- **Los descriptores como partitura: `realize~`** (Estudio 37, `@kairotic/analysis`): una caja delante de
+  un `faust~` que lo toca a partir de cuatro descriptores: **sonoridad** (dB, o un nivel 0…1 como el `rms`
+  de `features~`), **brillo** (el centroide espectral, Hz), **ruido** (la planitud espectral, 0…1) y
+  **altura** (Hz como los envía `pitch~`, 0 si no hay; MIDI con `realize~ midi`). El slider `pitch` o `freq`
+  del `faust~` toma la altura, su slider `gain` la sonoridad, y los demás sliders toman los ajustes de ese
+  `faust~` que suenan más cerca del brillo y el ruido escritos. Para conocerlos **aprende** el `faust~` al
+  que llega su salida izquierda: cuando llegan los primeros valores (o con `learn`, tras cambiar su código)
+  toca unos cientos de ajustes estables sin conexión y los escucha. Lo que entra pueden ser `features~` y
+  `pitch~` de otro sonido —cantas, y un sintetizador sigue tu sonoridad, brillo, ruido y altura con su
+  propio sonido— o curvas dibujadas en canvas leídos con `reader~` y `snapshot~`. Su salida derecha dice lo
+  lejos que está el ajuste más cercano de lo escrito (por encima de 1, el `faust~` no puede sonar así: un
+  ruido tan oscuro como un tono, por ejemplo); un `monitor` muestra lo escrito junto a lo que `features~`
+  oye en el resultado.
 - **Faust a varias voces**: un `faust~` cuyo código declara `declare options "[nvoices:8]";` es
   polifónico. Su voz usa `freq`, `gain` y `gate`, que se fijan nota a nota; los Hz van a su entrada
   izquierda y los ids de voz a la derecha, como con `synth~` (un `keyboard` 0→0, 1→1, 3→0; `mt play`

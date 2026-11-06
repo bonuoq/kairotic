@@ -34,6 +34,7 @@ import { faustpoly } from "./faustpoly.mjs";
 import { patterns } from "./patterns.mjs";
 import { faustview } from "./faustview.mjs";
 import { faustrecipe } from "./faustrecipe.mjs";
+import { realize } from "./realize.mjs";
 import { patching } from "./patching.mjs";
 import { io } from "./io.mjs";
 import { lines } from "./lines.mjs";
@@ -123,6 +124,7 @@ const audioSuites = [
   ["faustpoly", faustpoly, "the polyphonic faust~ tests ran"],
   ["faustview", faustview, "the faust~ patch view tests ran"],
   ["faustrecipe", faustrecipe, "the faust~ recipe tests ran"],
+  ["realize", realize, "the realize~ tests ran"],
   ["patterns", patterns, "the patterns tests ran"],
   ["io", io, "the @kairotic/io tests ran"],
   // last: its transcriptions depend on timing, and by then the other blocks have (nearly) finished

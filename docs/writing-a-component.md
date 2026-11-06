@@ -153,7 +153,9 @@ needs from outside is a **task**: the component declares `:tasks {:get (fn [x bo
 like `:audio`), its `:receive` asks for one with the effect `[:get x]`, and the engine runs it — with or
 without ▶ — and gives the outcome back to the same box on inlet `:task`, as
 `{:task :get :arg x :value v}` or `{:task :get :arg x :error "…"}`. There, as with any message, the
-box decides what to send, show and keep. Compare `:arg` with the request `:state` is waiting for, so a
+box decides what to send, show and keep. The `box` a task gets carries `:wired`, what its outlets reach
+(`[{:outlet 0 :inlet 0 :id :b4 :class "faust~" :data {…}} …]`): [`realize~`](../packages/analysis/src/realize.cljs)
+learns the `faust~` it drives that way. Compare `:arg` with the request `:state` is waiting for, so a
 late answer to an older request is dropped. What a task finds lives in this tab, like what is sounding;
 to make it part of the work, return the effect `[:keep d]`: `d` becomes the data of the box (its
 `:model` `:load` reads it) as a gesture of the history — the same for everyone in a room, and going
