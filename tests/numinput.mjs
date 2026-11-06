@@ -59,10 +59,20 @@ export async function numinput(page, check) {
   let f = await openOn(page, nn);
   check("a double-click on a number box opens a field with its value", f && f.value === "2" && f.focused, JSON.stringify(f));
   if (f) {
+    const before = Number(await cljs(page, events));
     await page.fill("#num-edit", "3,25");
     await page.press("#num-edit", "Enter");
-    check("Enter sends the number typed", (await until(page, state(n), "3.25")) === "3.25", await cljs(page, state(n)));
+    // the number it holds (once its text is rewritten, the engine forgets its state and it reads its text, as a knob)
+    const held = `(number-value ${n} (get-in (current) [:boxes ${n}]))`;
+    check("Enter sends the number typed", (await until(page, held, "3.25")) === "3.25", await cljs(page, held));
     check("... and closes the field", (await field(page)) === null);
+    // like a knob: the number stays in its text, one event of the history
+    check("... and keeps it in its text, as a knob does", (await until(page, `(:text (get-in (current) [:boxes ${n}]))`, '"number 3.25"')) === '"number 3.25"');
+    check("... one event of the history", Number(await cljs(page, events)) === before + 1, await cljs(page, events));
+    await cljs(page, "(rewind)");
+    check("back in the history it holds the number it had", (await until(page, state(n), "2")) === "2", await cljs(page, state(n)));
+    await cljs(page, "(tip)");
+    check("... and at the newest point the one typed", (await until(page, state(n), "3.25")) === "3.25", await cljs(page, state(n)));
 
     // what is not a number: the field stays open and says so; Esc closes it, nothing changes
     f = await openOn(page, nn);
