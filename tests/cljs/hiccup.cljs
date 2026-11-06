@@ -70,6 +70,28 @@
             {:out [] :show {:a 1 :msg "hi"}})
       (t/eq "a map sets values" (:show ((:receive d) {:value {:freq 220 "x y" 1} :state {}})) {:freq 220})
       (t/eq "[:k v] sets one" (:show ((:receive d) {:value [:freq 330] :state {:values {:a 1}}})) {:a 1 :freq 330})
+      ;; values kept in the work, as a knob keeps its value
+      (let [m (:model d)]
+        (t/eq "values are kept in its data" ((:step m) {:view [:p]} [:values {:freq 440 :t "a"}]) {:view [:p] :values {:freq 440 :t "a"}})
+        (t/eq "... merged, nil forgets one" ((:step m) {:view [:p] :values {:freq 440 :t "a"}} [:values {:t nil :g 2}]) {:view [:p] :values {:freq 440 :g 2}})
+        (t/eq "... only words naming scalars" ((:step m) {:view [:p]} [:values {"a b" 1 :m {:x 1} :ok true}]) {:view [:p] :values {:ok true}})
+        (t/eq "a new view keeps the values" ((:step m) {:view [:p] :values {:a 1}} [:set [:b]]) {:view [:b] :values {:a 1}})
+        (t/eq "loading keeps safe values only" ((:load m) {:view [:p] :values {:a 1 :b [1 2] :c (apply str (repeat 3000 "x"))}}) {:view [:p] :values {:a 1}})
+        (t/eq "its code writes them" ((:code m) :b3 {:view [:p] :values {:a 1}}) ["(code :b3 \"[:p]\")" "(values! :b3 {:a 1})"])
+        (t/eq "... and none when it keeps none" ((:code m) :b3 {:view [:p]}) ["(code :b3 \"[:p]\")"]))
+      (t/eq "it shows what its data keeps" (h/current-values {:values {:a 1}} nil) {:a 1})
+      (t/eq "... with what its elements did since over it" (h/current-values {:values {:a 1 :b 2}} {:values {:a 5}}) {:a 5 :b 2})
+      ;; values from the inlet, as a number reaches a knob: set, and sent on
+      (let [data {:view [:div [:input {:type "range" :name :f :min 0 :max 10 :value 2 :out 1}] [:span {:name :t}] [:input {:type "text" :name :t :out 0}]]}]
+        (t/eq "a value on the inlet goes out of its element's outlet" (:out ((:receive d) {:value {:f 4} :data data})) [[1 4]])
+        (t/eq "... within the slider's range" (:out ((:receive d) {:value [:f 50] :data data})) [[1 10]])
+        (t/eq "... and kept so" (get-in ((:receive d) {:value [:f 50] :data data}) [:show :f]) 10)
+        (t/eq "several, outlets in order" (:out ((:receive d) {:value {:f 3 :t "x"} :data data})) [[0 "x"] [1 3]])
+        (t/eq "a name with no :out only shows it" (:out ((:receive d) {:value {:zz 1} :data data})) [])
+        (t/eq "a bang sends again what they hold (their own value at first)" (:out ((:receive d) {:value :bang :data data})) [[1 2]])
+        (t/eq "... or what they were given" (:out ((:receive d) {:value :bang :data data :state {:values {:f 7 :t "y"}}})) [[0 "y"] [1 7]]))
+      (t/eq "a value from an element starts from what is kept"
+            (:show ((:receive d) {:value [:ui 0 3 :b] :state nil :data {:values {:a 1}}})) {:a 1 :b 3})
       (t/eq "the model reads its text" ((:read (:model d)) nil "[:p \"x\"]") {:view [:p "x"]})
       (t/eq "the model's step reads a batch, as (code …) writes it" ((:step (:model d)) {:view [:p]} [:batch [[:set [:b "z"]]]]) {:view [:b "z"]})
       (t/eq "the model's step makes a view safe" ((:step (:model d)) {:view [:p]} [:set [:p [:script] "y"]]) {:view [:p "y"]}))

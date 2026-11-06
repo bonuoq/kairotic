@@ -58,11 +58,22 @@ export async function html(page, check) {
   await cljs(page, `(send! ${num} 0)`);
   await inBox(page, id, "const s = root.querySelector('input[type=range]'); s.dispatchEvent(new Event('change', { bubbles: true })); return true");
   check("letting it go sends it once more", (await until(page, `(get-in @eng/rt [:states ${num}])`, (g) => g === "7")) === "7");
-  check("... a message, not an event of the history", Number(await cljs(page, events)) === b2, await cljs(page, events));
+  check("... and the box keeps it, as a knob does: one event of the history", Number(await until(page, events, (g) => Number(g) === b2 + 1)) === b2 + 1, await cljs(page, events));
+  check("... in its data", (await cljs(page, `(get-in (current) [:boxes ${hb} :data :values])`)) === "{:v 7}");
+  check("... and in the work's code", (await cljs(page, `(str/includes? (patch->code (current)) "(values! ${hb} {:v 7})")`)) === "true");
+  check("(values! …) with the same value changes nothing", (await cljs(page, `(values! ${hb} {:v 7})`)) === ":unchanged");
+  check("... and on a box that is not html it fails", /ERR/.test(await cljs(page, `(values! ${num} {:v 1})`)));
+  await cljs(page, "(rewind)");
+  check("back in the history the slider shows what was kept before", (await untilBox(page, id, "return root.querySelector('input[type=range]').value", "2")) === "2");
+  check("... and so does its hole", (await untilBox(page, id, "return root.querySelector('.val').textContent", "2")) === "2");
+  await cljs(page, "(tip)");
+  check("at the newest point again it shows 7", (await untilBox(page, id, "return root.querySelector('input[type=range]').value", "7")) === "7");
 
   // a button
+  const b3 = Number(await cljs(page, events));
   await inBox(page, id, "root.querySelector('button').click(); return true");
   check("a button sends its :send out of its outlet", (await until(page, `(get-in @eng/rt [:states ${num2}])`, (g) => g === "5")) === "5");
+  check("... a message: it has nothing to keep", Number(await cljs(page, events)) === b3);
 
   // values from the inlet, with the engine stopped (nothing else draws the overlay then)
   await cljs(page, "(when (eng/running?) (stop))");
@@ -71,6 +82,11 @@ export async function html(page, check) {
   check("a map on the inlet sets the hole", hole === "3", hole);
   const slid = await untilBox(page, id, "return root.querySelector('input[type=range]').value", "3");
   check("... and the slider named so", slid === "3", slid);
+  check("... which sends it on, as a knob does", (await until(page, `(get-in @eng/rt [:states ${num}])`, (g) => g === "3")) === "3");
+  await cljs(page, `(send! ${hb} [:v 99])`);
+  check("a value past the slider's range is kept within it", (await until(page, `(get-in @eng/rt [:states ${num}])`, (g) => g === "10")) === "10");
+  await cljs(page, `(send! ${num} 0) (send! ${hb} :bang)`);
+  check("a bang sends again what it holds", (await until(page, `(get-in @eng/rt [:states ${num}])`, (g) => g === "10")) === "10");
 
   // what is typed keeps the focus when the scene is written again
   await inBox(page, id, "const t = root.querySelector('input.t'); t.focus(); t.value = 'ab'; return true");
@@ -81,7 +97,7 @@ export async function html(page, check) {
   await page.keyboard.type(" c");
   check("a space typed in it is text, not ▶ or ■", (await cljs(page, "(eng/running?)")) === wasOn);
   await page.keyboard.press("Enter");
-  check("Enter keeps the text as its value", (await until(page, `(get-in @eng/rt [:states (fid ${hb}) :values :t])`, (g) => g === '"ab c"')) === '"ab c"');
+  check("Enter keeps the text as its value", (await until(page, `(get-in (current) [:boxes ${hb} :data :values :t])`, (g) => g === '"ab c"')) === '"ab c"');
 
   // HTML pasted as its view is read as hiccup and made safe
   await cljs(page, `(code ${hb} "<div><img src=x onerror=alert(1)><b>hi $v</b><a href='javascript:x'>l</a><button data-out='2' data-send=':go'>go</button></div>")`);
