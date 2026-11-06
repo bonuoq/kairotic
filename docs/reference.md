@@ -1642,6 +1642,53 @@ Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phaso
 
 See also: `phasor~`, `adsr~`, `freqt`, `reader`, `sample`
 
+### realize~ · `@kairotic/analysis`
+
+`realize~ [settings] [midi]`
+
+Plays a faust~ from descriptors written as a score — loudness, brightness, noisiness, pitch — or from what features~ and pitch~ hear in another sound: its pitch (or freq) and gain sliders follow them, and its other sliders take the settings of that faust~ that sound nearest (Study 37).
+
+**Inlets** 
+
+0. loudness: dB, or a level 0…1 (features~ rms)
+1. brightness: Hz (features~ centroid)
+2. noisiness: 0…1 (features~ flatness)
+3. pitch: Hz (pitch~; 0 for none), MIDI with realize~ midi
+
+**Outlets** 
+
+0. [:slider value] for the faust~ it plays: connect it to the faust~'s left inlet
+1. how far the nearest setting is from what is written (above 1: the faust~ cannot sound like that)
+
+**Messages and gestures**
+
+- `learn`: plays steady settings of the faust~ offline and listens to them (300, or the number written): after changing its code
+
+**Try:** Press ▶ and allow the microphone (headphones): sing, whisper, hum — the synth follows your loudness, brightness, noisiness and pitch with its own sound. Draw instead: four canvases read by reader~ and snapshot~ are a score for it.
+
+```clojure
+(box :b1 "adc~ 1" 40 30)
+(box :b2 "features~ 20" 40 90)
+(box :b3 "pitch~" 260 90)
+(box :b4 "realize~" 40 160)
+(box :b5 "faust~" 40 240)
+(box :b6 "dac~" 40 330)
+(box :b7 "msg learn" 300 160)
+(connect :b1 0 :b2 0)
+(connect :b1 0 :b3 0)
+(connect :b2 0 :b4 0)
+(connect :b2 1 :b4 1)
+(connect :b2 2 :b4 2)
+(connect :b3 0 :b4 3)
+(connect :b7 0 :b4 0)
+(connect :b4 0 :b5 0)
+(connect :b5 0 :b6 0)
+(connect :b5 0 :b6 1)
+(code :b5 "import(\"stdfaust.lib\");\npitch = hslider(\"pitch\", 60, 36, 84, 0.01) : si.smoo;\ngain = hslider(\"gain [unit:dB]\", -12, -80, 6, 0.1) : ba.db2linear : si.smoo;\nwave = hslider(\"wave\", 0.5, 0, 1, 0.001) : si.smoo;\nnoise = hslider(\"noise\", 0.1, 0, 1, 0.001) : si.smoo;\ncutoff = hslider(\"cutoff [scale:log]\", 1000, 60, 14000, 1) : si.smoo;\nresonance = hslider(\"resonance [scale:log]\", 1, 0.5, 8, 0.01) : si.smoo;\nf0 = ba.midikey2hz(pitch);\nosc = os.sawtooth(f0) * (1 - wave) + os.square(f0) * wave;\nprocess = osc * (1 - noise) + no.noise * noise : fi.svf.lp(min(cutoff, 0.45 * ma.SR), resonance) * gain;")
+```
+
+See also: `features~`, `pitch~`, `faust~`, `monitor`
+
 ### record
 
 `record [lo hi] [log] [tolerance]`
