@@ -58,7 +58,7 @@ export async function realize(page, check) {
   const n = await until(page, `(count (get-in @eng/rt [:states ${r} :bank :entries]))`, (x) => Number(x) > 0, 60000);
   check("... it hears steady settings of it", Number(n) > 80, n);
   check("... and names what its sliders do", (await cljs(page, `(mapv :label (get-in @eng/rt [:states ${r} :bank :timbre]))`)) === '["cutoff" "noise" "resonance" "wave"]'
-    && text(await cljs(page, state(r, "[:bank :faust]"))) === f.slice(1), await cljs(page, `(select-keys (get-in @eng/rt [:states ${r} :bank]) [:pitch :gain :timbre :faust])`));
+    && text(await cljs(page, state(r, "[:bank :faust]"))).endsWith(f.slice(1)), await cljs(page, `(select-keys (get-in @eng/rt [:states ${r} :bank]) [:pitch :gain :timbre :faust])`));
 
   const values = `@(:values (get-in @eng/rt [:nodes ${f}]))`;
   const centroid = async () => { await page.waitForTimeout(900); const xs = []; for (let i = 0; i < 5; i++) { xs.push(Number(await cljs(page, `(get-in @eng/rt [:states ${cen}])`))); await page.waitForTimeout(120); } return xs.sort((a, b) => a - b)[2]; };

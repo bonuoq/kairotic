@@ -45,7 +45,11 @@
                    {:state (assoc st :t at)}
                    (let [quiet? (and loud (< loud silent))
                          {:keys [u loud0 d]} (if quiet? {:u (:u st) :loud0 0 :d (:reach st)} (nearest bank want))
+                         ;; the timbre glides to where it goes (half the way every 40 ms), and keeps
+                         ;; gliding when nothing more arrives (a value written once, a canvas held)
+                         goal u
                          u (if (and (:u st) (not quiet?)) (mapv (fn [a b] (+ a (* 0.5 (- b a)))) (:u st) u) u)
+                         moving? (and goal u (not quiet?) (some (fn [[a b]] (> (js/Math.abs (- a b)) 0.004)) (map vector u goal)))
                          g (:gain bank) p (:pitch bank)
                          gain-v (when (and g loud) (let [dB (if quiet? -100 (- loud loud0))]
                                           (if (:db g) (api/clamp dB (:min g) (:max g))
@@ -63,8 +67,10 @@
                                                        (or (nil? old) (> (js/Math.abs (- v old)) (* 0.002 (span k))))))
                                          vals)
                          reach (when d (/ (js/Math.round (* 100 d)) 100))]
-                     {:state (-> st (assoc :t at :u (or u (:u st)) :reach reach :dirty false)
+                     {:state (-> st (assoc :t at :u (or u (:u st)) :reach reach :dirty (boolean moving?)
+                                            :tick (or (:tick st) (boolean moving?)))
                                  (update :sent merge (into {} changed)))
+                      :later (when (and moving? (not (:tick st))) [[(+ at every) 0 :realize-tick]])
                       :out (cond-> (mapv (fn [[k v]] [0 [(keyword k) (api/nice v)]]) changed)
                              (and reach (not= reach (:reach st))) (conj [1 reach]))
                       :show {:status :ready :faust (:faust bank) :n (count (:entries bank)) :want want :reach reach}}))))
