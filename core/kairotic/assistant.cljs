@@ -406,6 +406,12 @@ Rules:
   the clock, its prime form on the left, interval vector in the middle), `fourier` (six Fourier magnitudes
   on the left), `tonnetz` (triads and the path of the harmony; the triad as :C, :am… on the left); they take
   lists of pitches, notes one by one, or a chroma from `chroma~`; pressing a pitch class sends it (right).
+- The outside (package @kairotic/io, it comes by itself; listening while ▶ runs): `midiin` (MIDI in: Hz and
+  voice ids for synth~ like a keyboard, and every event as a map {:type :note :freq :amp :gate …}),
+  `midiout [mpe]` (Hz after voice ids, or events, to a MIDI port; mpe for microtones), `oscout [target]` and
+  `oscin [pattern]` (OSC through `npx @kairotic/relay --osc`: events as /kairotic/note id freq amp gate…),
+  `motion` (a phone's tilt [x y] and shakes), `gamepad` ([name value] and events), `serial [baud]` (a board's
+  lines as numbers; msg open asks for the port).
 - Data (package @kairotic/data, it comes by itself): `fetch [json|text|edn] [live]` brings in what is at a
   URL (a msg with the URL, or `github:owner/repo@ref/path`) and keeps it in the work (live: only here); on
   the left what it found, [:get k …] a part of it; `edn [w h]` shows any value as a tree to open and pick

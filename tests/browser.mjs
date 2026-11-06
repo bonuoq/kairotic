@@ -35,6 +35,7 @@ import { patterns } from "./patterns.mjs";
 import { faustview } from "./faustview.mjs";
 import { faustrecipe } from "./faustrecipe.mjs";
 import { patching } from "./patching.mjs";
+import { io } from "./io.mjs";
 import { lines } from "./lines.mjs";
 import { workfile } from "./workfile.mjs";
 
@@ -123,6 +124,7 @@ const audioSuites = [
   ["faustview", faustview, "the faust~ patch view tests ran"],
   ["faustrecipe", faustrecipe, "the faust~ recipe tests ran"],
   ["patterns", patterns, "the patterns tests ran"],
+  ["io", io, "the @kairotic/io tests ran"],
   // last: its transcriptions depend on timing, and by then the other blocks have (nearly) finished
   // (alongside them, a take could start late and an overwrite check fail)
   ["analysis", analysis, "the analysis tests ran"],
