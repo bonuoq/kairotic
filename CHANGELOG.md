@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`realize~`: descriptors as a score, in the app** (discussion #114, Study 37; `@kairotic/analysis` 0.6.0,
+  `@kairotic/faust-units` 0.1.4). A box before a `faust~` that plays it from loudness, brightness, noisiness and
+  pitch — `features~` and `pitch~` of another sound, or curves drawn — setting its `pitch`/`freq` and `gain`
+  sliders directly and its other sliders to the settings of that `faust~` that sound nearest. It learns the
+  `faust~` its outlet reaches (a few hundred steady settings played offline and heard, in the page a moment at a
+  time) on the first values or `learn`; its right outlet says how far the `faust~` is from what is written. The
+  task a box asks for now knows what its outlets reach (`:wired`). Tests: `tests/realize.mjs` (15 checks).
 - **A number keeps its value in its text, like a knob** (issue #146). Let go after a drag, or typed (double-click), a
   `number` box rewrites its text with its new value (`number 523.25`), one event of the history, as a knob does on
   release: the value travels with the work and going back in the history brings back the number it had (and sends

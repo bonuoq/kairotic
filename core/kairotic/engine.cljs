@@ -195,9 +195,17 @@
   (when (some (fn [d] (contains? (:tasks d) k)) (vals @comp/registry))
     (get-in (def-of (patch) id) [:tasks k])))
 
+(defn wired
+  "What the outlets of box id reach in patch p: [{:outlet o :inlet i :id to :class \"faust~\" :text … :data …} …],
+   for a task that needs to know what it drives (realize~ learns the faust~ it plays)."
+  [p id]
+  (vec (for [[a o b i] (:lines p) :when (= a id) :let [t (get-in p [:boxes b])] :when t]
+         (assoc (comp/box-info t) :outlet o :inlet i :id b :class (comp/klass (:text t))))))
+
 (defn run-task! [id f k x]
   (let [remote? *remote*
-        box (assoc (comp/box-info (get-in (patch) [:boxes id])) :id id :state (get-in @rt [:states id]))]
+        p (patch)
+        box (assoc (comp/box-info (get-in p [:boxes id])) :id id :state (get-in @rt [:states id]) :wired (wired p id))]
     (-> (js/Promise.resolve nil)
         (.then (fn [_] (f x box)))
         (.then (fn [v] (arrive! id {:task k :arg x :value v} remote?))
