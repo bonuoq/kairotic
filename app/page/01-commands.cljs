@@ -119,7 +119,7 @@
 (defn mark
   "An annotation on a layer. Its points are anchored to a box ([:b4 dx dy] from its top-left corner) or to
    the paper ([:patch x y]): (mark :notes :a1 {:kind :arrow :pts [[:b1 120 10] [:b4 -6 10]]}) ·
-   (mark :notes {:kind :text :at [:patch 300 40] :txt \"breathe\"}) · kinds :line (a stroke), :arrow, :text."
+   (mark :notes {:kind :text :at [:patch 300 40] :txt \"breathe\"}) · kinds :line (a stroke), :arrow, :text, :image ({:at … :src \"data:image/jpeg;base64,…\" :w :h}, at most 48 KB: a frame kept from a room)."
   ([layer-id m] (mark layer-id (next-mark-id) m))
   ([layer-id id m]
    (when-not (keyword? layer-id) (fail "Which layer? (mark :notes …)"))
