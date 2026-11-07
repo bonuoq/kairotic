@@ -57,6 +57,14 @@ export function pitchSlider(cs) {
 
 const stopped = () => Object.assign(new Error("stopped"), { name: "AbortError" });
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+// a moment given back to the page: a message to itself (a timer in a page that is not in front waits a second
+// or more; a message does not)
+const breath = () => new Promise((ok) => {
+  if (typeof MessageChannel === "undefined") return setTimeout(ok, 0);
+  const c = new MessageChannel();
+  c.port1.onmessage = () => { c.port1.close(); ok(); };
+  c.port2.postMessage(0);
+});
 
 // fit(Meyda, render, json, target, opts) → Promise of { values, u, fx, f0, start, pitch, history, bank, sliders, nearestFx }
 //   render(values, {dur, gate}) → samples; target: samples (at 44.1 kHz, dur seconds)
@@ -73,7 +81,7 @@ export async function fit(Meyda, render, json, target, { bank = 64, budget = 300
   let t0 = now();
   const breathe = async () => {
     if (signal && signal.aborted) throw stopped();
-    if (now() - t0 > slice) { await new Promise((ok) => setTimeout(ok, 0)); t0 = now(); if (signal && signal.aborted) throw stopped(); }
+    if (now() - t0 > slice) { await breath(); t0 = now(); if (signal && signal.aborted) throw stopped(); }
   };
   const play = async (u) => { const f = heard(Meyda, render(valuesOf(cs, u), { dur, gate }), ref); await breathe(); return f; };
   // 1. a bank of random settings: the distance's statistics, and the nearest as a first guess

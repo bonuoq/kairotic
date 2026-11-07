@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`realize~` keeps up with a live sound** (`@kairotic/analysis` 0.7.1, `@kairotic/faust-units` 0.1.5): the
+  search for the nearest settings ran in the box's interpreted logic, about 300 settings for every frame, and with
+  a microphone (some 150 values a second) it could not keep up — the faust~ stayed where it was. It is now the
+  bank's own query (`index` in `notation.mjs`, plain loops over typed arrays, a few microseconds). Learning is
+  about three times quicker (only the descriptors it needs, YIN on four windows), and it gives the page a moment with a message to itself, not a timer, so it does not crawl in a tab that is not in front (the recipe of a `faust~` too). The pitch is sent even when the
+  level is low, and below −60 dB (not −50) counts as silence.
 - **`realize~` listens to what it plays** (discussion #114; `@kairotic/analysis` 0.7.0): three more inlets take
   `features~` of the `faust~`'s sound (rms, centroid, flatness), and a correction grows where what is heard
   falls short of what is written — the passes of Study 37, while it sounds. Tests: 2 more checks in

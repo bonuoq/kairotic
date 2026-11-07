@@ -14,7 +14,7 @@
 //            entries: [[pitch, lb, nz, voiced, loud0, u0, u1, …] …], sd: [lb, nz], n }
 
 import { renderer } from "./render.mjs";
-import { analyse, pitchOf, SIZE, HOP } from "./listen.mjs";
+import { pitchOf, SIZE, HOP } from "./listen.mjs";
 import { sliders, pitchSlider, toValue } from "./recipe.mjs";
 
 function rng(seed) {
@@ -24,6 +24,14 @@ function rng(seed) {
 const mean = (xs) => xs.reduce((s, x) => s + x, 0) / (xs.length || 1);
 const stopped = () => Object.assign(new Error("stopped"), { name: "AbortError" });
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+// a moment given back to the page: a message to itself (a timer in a page that is not in front waits a second
+// or more; a message does not)
+const breath = () => new Promise((ok) => {
+  if (typeof MessageChannel === "undefined") return setTimeout(ok, 0);
+  const c = new MessageChannel();
+  c.port1.onmessage = () => { c.port1.close(); ok(); };
+  c.port2.postMessage(0);
+});
 
 // which slider does what
 export function roles(json) {
@@ -33,18 +41,27 @@ export function roles(json) {
   return { cs, ps, gi, timbre };
 }
 
-// what one steady setting sounds like: [level dB, log2 brightness, noisiness, voiced] or null if silent
-function heard(Meyda, y, midi) {
-  const f = analyse(Meyda, y), from = Math.floor(f.length * 0.4), lb = [], nz = [];
+// what one steady setting sounds like: [level dB, log2 brightness, noisiness, voiced] or null if silent.
+// Only what is needed, as features~ computes it (Meyda: centroid in Hz, flatness), on the frames after the
+// first 40 % (the sliders settle), and YIN on four windows: a bank of 300 is heard in a few seconds.
+function heard(Meyda, y, midi, sr = 44100) {
+  Meyda.bufferSize = SIZE;
+  Meyda.sampleRate = sr;
+  const lb = [], nz = [];
   let e = 0, k = 0;
-  for (let i = from; i < f.length; i++) {
-    for (let j = i * HOP; j < i * HOP + SIZE; j++) e += y[j] * y[j];
-    k += SIZE;
-    if (f[i][1] > 0) { lb.push(Math.log2(f[i][1])); nz.push(f[i][2]); }
+  for (let at = Math.floor((y.length - SIZE) * 0.4 / HOP) * HOP; at + SIZE <= y.length; at += HOP) {
+    const fr = y.subarray(at, at + SIZE);
+    let fe = 0;
+    for (let j = 0; j < SIZE; j++) fe += fr[j] * fr[j];
+    e += fe; k += SIZE;
+    if (fe / SIZE < 1e-10) continue;
+    const r = Meyda.extract(["spectralCentroid", "spectralFlatness"], fr);
+    const c = r.spectralCentroid * sr / SIZE;
+    if (c > 0 && Number.isFinite(c)) { lb.push(Math.log2(c)); nz.push(Number.isFinite(r.spectralFlatness) ? r.spectralFlatness : 0); }
   }
   const loud = 10 * Math.log10(Math.max(e / (k || 1), 1e-10));
   if (!lb.length || loud < -70) return null;
-  const p = pitchOf(y.subarray(Math.floor(y.length * 0.4)));
+  const p = pitchOf(y.subarray(Math.floor(y.length * 0.4)), sr, { most: 4 });
   const voiced = p.midi !== null && (midi === null || Math.abs(p.midi - midi) < 0.5) ? p.sure : 0;
   return [loud, mean(lb), mean(nz), voiced];
 }
@@ -68,7 +85,7 @@ export async function learn({ module, json, Meyda, n = 300, seed = 3, dur = 0.4,
     const h = heard(Meyda, render(v, { dur, gate: dur + 1 }), midi);
     if (h) entries.push([pc ? midi : 60, h[1], h[2], h[3], h[0], ...u]);
     onProgress(k + 1, n);
-    if (now() - t0 > slice) { await new Promise((ok) => setTimeout(ok, 0)); t0 = now(); }
+    if (now() - t0 > slice) { await breath(); t0 = now(); }
   }
   if (entries.length < 8) throw new Error("the faust~ hardly sounds: " + entries.length + " of " + n + " settings were heard");
   const sd = (j) => { const xs = entries.map((e) => e[j]), m = mean(xs); return Math.sqrt(mean(xs.map((x) => (x - m) ** 2))) || 1; };
@@ -83,5 +100,40 @@ export async function learn({ module, json, Meyda, n = 300, seed = 3, dur = 0.4,
   };
 }
 
+// index(bank) → query(pitch, lb, nz, voiced) → [loud0, distance, u0, u1, …]: the six settings nearest to a
+// frame (in pitch, log2 brightness, noisiness and whether YIN would hear the pitch), blended by closeness.
+// Plain loops over typed arrays, so realize~ can ask it for every frame it plays.
+export function index(bank) {
+  const E = bank.entries, n = E.length, w = E[0].length, data = new Float64Array(n * w);
+  E.forEach((e, i) => data.set(e, i * w));
+  const [sl, sn] = bank.sd, nu = w - 5, K = Math.min(6, n);
+  const bd = new Float64Array(K), bi = new Int32Array(K);
+  return function query(pitch, lb, nz, voiced) {
+    let m = 0;
+    for (let i = 0; i < n; i++) {
+      const o = i * w;
+      let d = ((lb - data[o + 1]) / sl) ** 2 + ((nz - data[o + 2]) / sn) ** 2;
+      if (pitch !== null && pitch !== undefined) d += ((pitch - data[o]) / 6) ** 2;
+      if (voiced) d += (2 * (1 - data[o + 3])) ** 2;
+      d = Math.sqrt(d);
+      if (m < K || d < bd[m - 1]) {
+        let j = m < K ? m++ : K - 1;
+        while (j > 0 && bd[j - 1] > d) { bd[j] = bd[j - 1]; bi[j] = bi[j - 1]; j--; }
+        bd[j] = d; bi[j] = i;
+      }
+    }
+    const out = new Array(2 + nu).fill(0);
+    let W = 0;
+    for (let j = 0; j < m; j++) {
+      const wt = 1 / (bd[j] + 0.05), o = bi[j] * w;
+      W += wt; out[0] += wt * data[o + 4];
+      for (let q = 0; q < nu; q++) out[2 + q] += wt * data[o + 5 + q];
+    }
+    for (let q = 0; q < out.length; q++) out[q] /= W;
+    out[1] = bd[0];
+    return out;
+  };
+}
+
 // what api/import-module gives the page (it takes a module's default export)
-export default { learn, roles };
+export default { learn, roles, index };
