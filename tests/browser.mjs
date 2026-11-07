@@ -38,6 +38,7 @@ import { realize } from "./realize.mjs";
 import { patching } from "./patching.mjs";
 import { io } from "./io.mjs";
 import { net } from "./net.mjs";
+import { learn } from "./learn.mjs";
 import { lines } from "./lines.mjs";
 import { workfile } from "./workfile.mjs";
 
@@ -129,6 +130,7 @@ const audioSuites = [
   ["patterns", patterns, "the patterns tests ran"],
   ["io", io, "the @kairotic/io tests ran"],
   ["net", net, "the @kairotic/net tests ran"],
+  ["learn", learn, "the learn tests ran"],
   // last: its transcriptions depend on timing, and by then the other blocks have (nearly) finished
   // (alongside them, a take could start late and an overwrite check fail)
   ["analysis", analysis, "the analysis tests ran"],
