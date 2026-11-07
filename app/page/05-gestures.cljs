@@ -981,6 +981,8 @@
         (and drag (:ids drag))
         (let [[gx gy] (group-offset drag x y)]
           (when (or (:moved drag) (> (+ (js/Math.abs gx) (js/Math.abs gy)) 2))
+            ;; what is being moved comes to the front, here (issue #166)
+            (when-not (:moved drag) (to-front! (keys (:ids drag))))
             (swap! ui assoc :drag (assoc drag :gx gx :gy gy :moved true))))
         ctldrag (ctl-gesture! x y (.-shiftKey e))
         paramdrag (when-not (:button paramdrag)
@@ -1004,6 +1006,7 @@
                            (assoc (draw-ldrag ldrag x y) :moved true)))))
         drag (let [nx (max 0 (- x (:dx drag))) ny (max 0 (- y (:dy drag)))]
                (when (or (:moved drag) (> (+ (js/Math.abs (- nx (:x drag))) (js/Math.abs (- ny (:y drag)))) 2))
+                 (when-not (:moved drag) (to-front! [(:id drag)]))
                  (swap! ui assoc :drag (assoc drag :x nx :y ny :moved true))))
         wire (swap! ui assoc :wire (assoc wire :x x :y y) :hover-in (drop-target e wire))
         :else (do (hover-out! x y) (hover-hit! e x y))))))

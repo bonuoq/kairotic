@@ -15,15 +15,14 @@
 
 (def box-keys
   "What a box keeps besides its text and place, and the event that sets each (nil removes it)."
-  [:present :view :size :recipe :z])
+  [:present :view :size :recipe])
 
 (defn- set-ev [k id v]
   (case k
     :present (if v (into [:present id] v) [:present id nil])
     :view [:view id v]
     :size (if v (into [:size id] v) [:size id nil])
-    :recipe [:recipe id v]
-    :z [:z id v]))
+    :recipe [:recipe id v]))
 
 (defn patch-diff
   "The events that turn patch p into patch q (top level; a sub-patch that changed is written whole, as the

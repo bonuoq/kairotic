@@ -51,31 +51,6 @@
   (let [n (count (:boxes (current)))]
     [(+ 40 (* 24 (mod n 12))) (+ 40 (* 36 (mod n 12)))]))
 
-;; ───── the stack (issue #166): which box is drawn over which ─────
-
-(defn raise-evs
-  "The events that bring boxes `ids` of patch p to the front, keeping their order among themselves; none if
-   they already are the top of the stack, in that order."
-  [p ids]
-  (let [ids (set ids)
-        stack (map first (by-z (:boxes p)))
-        mine (filter ids stack)]
-    (if (= (vec mine) (vec (take-last (count mine) stack)))
-      []
-      (let [top (reduce max 0 (map (fn [[id b]] (z-of id b)) (:boxes p)))]
-        (vec (map-indexed (fn [i id] [:z id (+ top 1 i)]) mine))))))
-
-(defn lower-evs
-  "The events that send boxes `ids` of patch p to the back, keeping their order among themselves."
-  [p ids]
-  (let [ids (set ids)
-        stack (map first (by-z (:boxes p)))
-        mine (filter ids stack)]
-    (if (= (vec mine) (vec (take (count mine) stack)))
-      []
-      (let [bottom (reduce min 0 (map (fn [[id b]] (z-of id b)) (:boxes p)))]
-        (vec (map-indexed (fn [i id] [:z id (+ (- bottom (count mine)) i)]) mine))))))
-
 (defn dispatch-all!
   "Several events as one event of the history (nothing if there are none)."
   [evs] (when-let [e (rel/as-event evs)] (dispatch! e)))
@@ -87,11 +62,7 @@
    (when-not (keyword? id) (fail "A box id is a keyword, e.g. :b3"))
    (check-ref-text! text)
    (forget-box! id)
-   ;; a new box goes on top: its id's number already puts it there, unless boxes were brought to the front
-   (let [others (dissoc (:boxes (current)) id)
-         top (reduce max 0 (map (fn [[k b]] (z-of k b)) others))]
-     (dispatch-all! (cond-> [[:box id (str text) (js/Math.round x) (js/Math.round y)]]
-                      (<= (id-z id) top) (conj [:z id (inc top)]))))
+   (dispatch! [:box id (str text) (js/Math.round x) (js/Math.round y)])
    (ensure-class! text)
    id))
 
@@ -106,38 +77,7 @@
     [a o b i]))
 
 (defn disconnect [a o b i] (dispatch! [:disconnect a o b i]) :ok)
-(defn move
-  "Moves a box, and brings it to the front (issue #166): (move :b3 40 120)."
-  [id x y]
-  (need-box id)
-  (dispatch-all! (into [[:move id (js/Math.round x) (js/Math.round y)]] (raise-evs (current) [id])))
-  [x y])
-
-(defn to-front
-  "Brings boxes to the front, over the others, keeping their order among themselves: (to-front :b3 :b7)."
-  [& ids]
-  (when (empty? ids) (fail "Which box? (to-front :b3)"))
-  (doseq [id ids] (need-box id))
-  (dispatch-all! (raise-evs (current) ids))
-  (vec ids))
-
-(defn stack
-  "Sets the order in which boxes are drawn, from the bottom to the top: (stack :b2 :b5 :b1). The code of a
-   work writes it, with all its boxes, when they are not drawn in the order of their ids."
-  [& ids]
-  (when (empty? ids) (fail "Which boxes, from the bottom to the top? (stack :b2 :b5 :b1)"))
-  (doseq [id ids] (need-box id))
-  (let [ids (distinct ids) p (current)]
-    (dispatch-all! (keep-indexed (fn [i id] (when (not= (inc i) (get-in p [:boxes id :z])) [:z id (inc i)])) ids))
-    (vec ids)))
-
-(defn to-back
-  "Sends boxes to the back, under the others, keeping their order among themselves: (to-back :b3)."
-  [& ids]
-  (when (empty? ids) (fail "Which box? (to-back :b3)"))
-  (doseq [id ids] (need-box id))
-  (dispatch-all! (lower-evs (current) ids))
-  (vec ids))
+(defn move [id x y] (need-box id) (dispatch! [:move id (js/Math.round x) (js/Math.round y)]) [x y])
 (defn text! [id text] (need-box id) (check-ref-text! text) (dispatch! [:text id (str text)]) (eng/forget! (fid id)) (ensure-class! text) id)
 
 (defn delete
@@ -160,9 +100,8 @@
       ;; nobody goes past the top or the left edge: the group stops there together
       (let [dx (max dx (- (apply min (map (comp first second) pos))))
             dy (max dy (- (apply min (map (comp second second) pos))))]
-        ;; moved together, in one event; in the patch (not in presentation) they come to the front
-        (dispatch-all! (concat (for [[id [x y]] pos] [where id (js/Math.round (+ x dx)) (js/Math.round (+ y dy))])
-                               (when (= where :move) (raise-evs p ids))))
+        ;; moved together, in one event of the history
+        (dispatch-all! (for [[id [x y]] pos] [where id (js/Math.round (+ x dx)) (js/Math.round (+ y dy))]))
         [(js/Math.round dx) (js/Math.round dy)]))))
 
 (defn next-mark-id []
@@ -1070,10 +1009,6 @@
                           (concat ["" ";; presentation"]
                                   (for [id pr :let [[x y] (get-in p [:boxes id :present])]]
                                     (str "(present " id " " x " " y ")")))))
-                      ;; the order they are drawn in, when it is not the order of their ids (issue #166)
-                      (let [st (map first (by-z (:boxes p)))]
-                        (when (not= (vec st) (vec ids))
-                          ["" ";; drawn from the bottom to the top" (str "(stack " (str/join " " st) ")")]))
                       (let [vw (filter (fn [id] (:view (get-in p [:boxes id]))) ids)]
                         (when (seq vw)
                           (concat ["" ";; views"]

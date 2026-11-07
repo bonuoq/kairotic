@@ -38,11 +38,8 @@ los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
 - **Mover** una caja arrastrándola. Las cajas para tocar —`bang`, `msg`, `number`, knobs— se seleccionan
   por el asa de su izquierda; su cuerpo es para tocar.
 - **Qué caja queda encima**: las cajas se dibujan en el orden en que se crearon, la más nueva encima, y
-  la caja que mueves pasa al frente (varias movidas a la vez conservan su orden entre ellas). El orden es
-  parte de la obra, en el mismo evento que el movimiento: en una sala todos lo ven, y al volver atrás en
-  la historia vuelve el que tenía. Desde el código: `(to-front :b3)`, `(to-back :b3)` y
-  `(stack :b2 :b5 :b1)` para el orden completo, de abajo arriba (el código de la obra lo escribe cuando
-  no es el orden de los ids).
+  la caja que arrastras pasa al frente, para que lo que mueves no quede nunca tapado. Es solo cómo las
+  muestra tu pestaña, como la selección: no forma parte de la obra, de su historia ni de su código.
 - **Escribir un valor**: doble clic en un control numérico —un `number`, un knob (o cualquier componente
   que se arrastra para dar un número), un deslizador de una caja `faust~` o su valor— y escribe el
   número: `440`, `-3.5`, `0,5`, `3/2`. Intro lo aplica, como lo haría un arrastre (un knob lo guarda en su
