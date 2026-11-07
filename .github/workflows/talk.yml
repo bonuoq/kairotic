@@ -1,10 +1,30 @@
 # Talking in a room, in the app (tests/talk.mjs): the built app served, a real relay (GUN for the room,
 # /signal for the pages to meet), and two people in two browser contexts with a fake microphone and camera.
+# On pull requests that touch what a room uses (the Room tab and its boxes, the history and its marks,
+# sessions and relays, sounds, the relay itself), on every push to main (whatever else changed), and by hand.
 name: talk
 
 on:
   pull_request:
-    paths: ["app/**", "core/**", "relay/**", "site/**", "tests/talk.mjs", ".github/workflows/talk.yml"]
+    paths: &paths
+      - "app/page/00-work.cljs"
+      - "app/page/06-connection.cljs"
+      - "app/page/08-sessions.cljs"
+      - "app/page/20-talk.cljs"
+      - "app/page/21-net.cljs"
+      - "app/page/22-learn.cljs"
+      - "app/index.html"
+      - "core/kairotic/talk.cljs"
+      - "core/kairotic/sounds.cljs"
+      - "core/kairotic/sounds.mjs"
+      - "core/backends/**"
+      - "packages/net/**"
+      - "relay/**"
+      - "site/**"
+      - "tests/talk.mjs"
+      - ".github/workflows/talk.yml"
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -18,14 +38,17 @@ jobs:
   room:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Playwright's image already has Chromium, its libraries, Node 22 and curl (as tests.yml): no browser
+    # download on every run. Its tag must be the version of playwright installed below; change both together.
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.0-noble
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      # the relay's GUN comes from its git repository
+      - run: command -v git || (apt-get update -qq && apt-get install -y -qq git)
       - run: npm install --no-audit --no-fund
         working-directory: relay
-      - run: npm install --no-save playwright@1.56.0 && npx playwright install --with-deps chromium
+      - run: npm install --no-save playwright@1.56.0
       - run: node site/build.mjs
       - name: Start the relay, serve the app, two people in a room
         run: |
