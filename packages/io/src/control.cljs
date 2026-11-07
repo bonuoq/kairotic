@@ -5,7 +5,7 @@
       osc-re (fn [p] (js/RegExp. (str "^" (-> p (.replace (js/RegExp. "[.+^${}()|[\\]\\\\]" "g") "\\$&") (.replaceAll "*" "[^/]*") (.replaceAll "?" "[^/]")) "$")))
       ;; the spec, from the words after the class: [kind & words]
       ;; (a word such as /synth/cut is read as a keyword with an empty namespace: put its / back)
-      spec-of (fn [args] (mapv (fn [a] (cond (and (keyword? a) (some? (namespace a))) (str (namespace a) "/" (name a))
+      spec-of (fn [args] (mapv (fn [a] (cond (and (keyword? a) (re-find #"/" (str a))) (subs (str a) 1)
                                              (keyword? a) (name a)
                                              :else (str a)))
                                args))
