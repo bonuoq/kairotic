@@ -46,7 +46,8 @@
   (let [inp (js/document.createElement "input") done (atom false)
         out (js/document.createElement "div")
         repl? (atom false) hidx (atom nil)
-        close! (fn [] (reset! done true) (.remove inp) (.remove out))
+        ;; once: removing the field makes it lose the focus, and its blur closes it too
+        close! (fn [] (when-not @done (reset! done true) (.remove inp) (.remove out)))
         set-repl! (fn [on]
                     (reset! repl? on)
                     (.toggle (.-classList inp) "as-repl" on)

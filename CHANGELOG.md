@@ -12,7 +12,7 @@
     Room tab's message (`@b7`) — as a click on a cell does in a spreadsheet formula. It waits for one after a space,
     `(` `[` `{`, or the `:` / `@` already typed; the patch then shows a copy pointer and marks the box under it, the
     line keeps the focus, and the box is not selected nor moved. Otherwise a click on a box does what it always did.
-  - Tests: `tests/ids.mjs` (25 checks).
+  - Tests: `tests/ids.mjs` (26 checks).
 
 - **Which box is on top** (issue #166, 3). Boxes were drawn in the order of their ids as text, so `:b10`–`:b19`
   went under `:b2`; now they are stacked by the number of their id (the newest on top), and **a box dragged comes to

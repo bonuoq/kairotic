@@ -27,10 +27,12 @@ const tagShown = (page, id) => page.evaluate((id) => {
 export async function ids(page, check) {
   if ((await cljs(page, "(:mode @hist)")) !== ":local") { check("a local work is open for the id tests", false); return; }
 
-  const a = (await cljs(page, '(box "print a" 8000 600)')).trim();
-  const b = (await cljs(page, '(box "print b" 8200 600)')).trim();
+  // two boxes with an inlet and an outlet, to be connected by clicking them
+  const a = (await cljs(page, '(box "mtof" 8000 600)')).trim();
+  const b = (await cljs(page, '(box "mtof" 8200 600)')).trim();
   const [ia, ib] = [a.slice(1), b.slice(1)];
-  await cljs(page, "(swap! ui assoc :sel nil) (show-ids! false) (render-scene (current))");
+  // nothing selected, no note nor stroke of another suite (I is left to them then)
+  await cljs(page, "(swap! ui assoc :sel nil :tsel nil :nsel nil) (show-ids! false) (render-scene (current))");
 
   // ── the id of each box ──
   check("each box carries its id", (await page.evaluate((id) =>
@@ -109,13 +111,14 @@ export async function ids(page, check) {
   check("after a word, the line does not wait for a box", (await page.evaluate(() => document.getElementById("canvas").classList.contains("picking"))) === false);
   await page.keyboard.press("Escape");
 
-  // the REPL at the bottom too, and the mark already typed is not written twice
-  await cljs(page, '(focus-repl!) (set-repl-text! "(send! :")');
-  await page.evaluate(() => document.dispatchEvent(new Event("selectionchange")));
+  // the REPL at the bottom too (its editor closes the bracket typed), and a : already typed is not written twice
+  await cljs(page, '(set-repl-text! "") (focus-repl!)');
+  await page.keyboard.type("(send! :");
   p = await middle(page, ib);
   await page.mouse.click(p[0], p[1]);
-  const repl = await cljs(page, "(repl-text)");
+  const repl = await cljs(page, "(str/replace (repl-text) \")\" \"\")");
   check("in the REPL, after a :, a click writes the rest of the id", repl === `"(send! :${ib} "`, repl);
+  check("... and the REPL keeps the focus", (await cljs(page, "(some? (cm-of @repl-ed))")) === "true");
   await cljs(page, '(set-repl-text! "")');
 
   await cljs(page, `(delete ${a} ${b})`);

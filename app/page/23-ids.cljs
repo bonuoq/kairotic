@@ -10,8 +10,9 @@
 ;;     : or @ that begins an id; otherwise a click on a box does what it always does.
 
 (defn cm-of
-  "The CodeMirror view of a wrapper made by 14-editor.cljs, if it has the focus."
-  [ed] (when-let [v (some-> ed .-view)] (when (.-hasFocus v) v)))
+  "The CodeMirror view of a wrapper made by 14-editor.cljs, if its text is where the focus is (asked of the
+   document's active element: the view's own hasFocus is false while the window itself is not in front)."
+  [ed] (when-let [v (some-> ed .-view)] (when (identical? (.-activeElement js/document) (.-contentDOM v)) v)))
 
 (defn id-target
   "Where an id would be written now: {:cm view :mark \":\"}, {:el input :mark \":\" or \"@\"}, or nil."
