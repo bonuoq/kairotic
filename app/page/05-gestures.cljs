@@ -36,35 +36,86 @@
       (let [[x y] (pt e) t (port-near (current) :in x y)]
         (when (and t (not= (first t) (:from wire))) t))))
 
-(defn open-editor! [{:keys [id x y text]}]
+(defn open-editor!
+  "The field to write a box (a new one at x y, or the text of box id). What starts with ( is a line of the REPL
+   instead (issue #163): Enter evaluates it, shows what it gave under the field and leaves it open for the next
+   one (↑ ↓ go through the REPL's history); Esc, or Enter on an empty line, closes it."
+  [{:keys [id x y text]}]
   (when-let [old ($ "box-edit")] (.remove old))
+  (when-let [old ($ "box-edit-out")] (.remove old))
   (let [inp (js/document.createElement "input") done (atom false)
+        out (js/document.createElement "div")
+        repl? (atom false) hidx (atom nil)
+        close! (fn [] (reset! done true) (.remove inp) (.remove out))
+        set-repl! (fn [on]
+                    (reset! repl? on)
+                    (.toggle (.-classList inp) "as-repl" on)
+                    (set! (.-placeholder inp) (if on "(command) · Enter runs it · Esc closes" "canvas, reader, ramp 0 8 4, number, msg 1, synth~… · ( for a command")))
+        ;; a line of the REPL: run, print in the REPL as usual, and show what it gave here
+        run! (fn [code]
+               (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
+               (reset! hidx nil)
+               (let [n (.-childElementCount ($ "repl-out"))]
+                 (repl-eval! code :repl)
+                 (let [kids (array-seq (.-children ($ "repl-out")))
+                       new (drop n kids)
+                       last-el (last (filter (fn [k] (#{"out" "err"} (.-className k))) new))]
+                   (set! (.-className out) (str "edit-out" (when (and last-el (= "err" (.-className last-el))) " err")))
+                   (set! (.-textContent out) (if last-el (.-textContent last-el) "")))))
         finish (fn [commit?]
                  (when-not @done
-                   (reset! done true)
                    (let [v (str/trim (.-value inp))]
-                     (.remove inp)
-                     (when (and commit? (seq v) (not= v text))
-                       (cond
-                         ;; a component is defined in the Components tab, not drawn in the patch (issue #8)
-                         (and (= "component" (klass v)) (nil? id)) (gesture! "(new-component!)")
-                         id (do (gesture! (str "(text! " id " " (pr-str v) ")"))
-                                (when (= "component" (klass v))
-                                  (select-tab! "comp")
-                                  (js/setTimeout (fn [] (open-code-editor-at! (cmd-path) id)) 0)))
-                         :else (gesture! (str "(box " (pr-str v) " " (js/Math.round x) " " (js/Math.round y) ")")))))))]
+                     (cond
+                       (and @repl? commit? (seq v)) (do (run! v) (set! (.-value inp) "") (.focus inp))
+                       @repl? (close!)
+                       :else
+                       (do
+                         (close!)
+                         (when (and commit? (seq v) (not= v text))
+                           (cond
+                             ;; a component is defined in the Components tab, not drawn in the patch (issue #8)
+                             (and (= "component" (klass v)) (nil? id)) (gesture! "(new-component!)")
+                             id (do (gesture! (str "(text! " id " " (pr-str v) ")"))
+                                    (when (= "component" (klass v))
+                                      (select-tab! "comp")
+                                      (js/setTimeout (fn [] (open-code-editor-at! (cmd-path) id)) 0)))
+                             :else (gesture! (str "(box " (pr-str v) " " (js/Math.round x) " " (js/Math.round y) ")")))))))))
+        recall! (fn [dir]
+                  (let [h (:hist @ui) n (count h)]
+                    (when (pos? n)
+                      (let [i (case dir :up (max 0 (dec (or @hidx n))) :down (min n (inc (or @hidx n))))]
+                        (reset! hidx i)
+                        (set! (.-value inp) (if (< i n) (nth h i) ""))))))]
     (set! (.-id inp) "box-edit")
     (set! (.-className inp) "edit")
+    (.setAttribute inp "spellcheck" "false")
     (set! (.-value inp) (or text ""))
-    (set! (.-placeholder inp) "canvas, reader, ramp 0 8 4, number, msg 1, synth~…")
+    (set! (.-id out) "box-edit-out")
+    (set! (.-className out) "edit-out")
+    (set-repl! (and (nil? id) (str/starts-with? (str text) "(")))
     (let [[px py] (wrap-px x (- y 4))]
       (set! (.. inp -style -left) (str px "px"))
-      (set! (.. inp -style -top) (str py "px")))
+      (set! (.. inp -style -top) (str py "px"))
+      (set! (.. out -style -left) (str px "px"))
+      (set! (.. out -style -top) (str (+ py 32) "px")))
     (.appendChild ($ "canvas-wrap") inp)
+    (.appendChild ($ "canvas-wrap") out)
     (.focus inp)
-    (.select inp)
-    (.addEventListener inp "keydown" (fn [e] (case (.-key e) "Enter" (finish true) "Escape" (finish false) nil)))
-    (.addEventListener inp "blur" (fn [_] (finish true)))))
+    (if @repl?
+      (let [n (count (.-value inp))] (.setSelectionRange inp n n))
+      (.select inp))
+    ;; a new box whose text starts with ( is a line of the REPL; once it is one, it stays one
+    (.addEventListener inp "input"
+      (fn [_] (when (and (nil? id) (not @repl?) (str/starts-with? (str/triml (.-value inp)) "(")) (set-repl! true))))
+    (.addEventListener inp "keydown"
+      (fn [e] (case (.-key e)
+                "Enter" (do (.preventDefault e) (finish true))
+                "Escape" (do (.preventDefault e) (finish false))
+                "ArrowUp" (when @repl? (.preventDefault e) (recall! :up))
+                "ArrowDown" (when @repl? (.preventDefault e) (recall! :down))
+                nil)))
+    ;; leaving it writes the box; a line of the REPL is closed without running it
+    (.addEventListener inp "blur" (fn [_] (if @repl? (close!) (finish true))))))
 
 ;; ───── typing a number into a numeric control (issue #32) ─────
 ;; A double-click on a number box, on a component whose :gesture gives numbers (a knob), on a parameter

@@ -796,6 +796,10 @@
                                   (str "<rect class=\"port in" (when (= hover-in [id i]) " target") "\" data-box=\"" idn "\" data-in=\"" i "\" x=\"" (port-x w ins i) "\" y=\"-1\" width=\"" pw "\" height=\"4\"></rect>")))
                      (apply str (for [o (range outs)]
                                   (str "<rect class=\"port out" (when (= hover-out [id o]) " hot") "\" data-box=\"" idn "\" data-out=\"" o "\" x=\"" (port-x w outs o) "\" y=\"" (- h 3) "\" width=\"" pw "\" height=\"4\"></rect>")))
+                     ;; its id, over its top right corner: shown when it is hovered or selected, or for all with I
+                     ;; (issue #163)
+                     (when-not @pres-mode
+                       (str "<text class=\"idtag\" x=\"" w "\" y=\"-5\" text-anchor=\"end\">" idn "</text>"))
                      ;; what changes while it plays (a value, a flash, its own view) is drawn here, in the box,
                      ;; so that a box over it covers it too (issue #166); in patch coordinates
                      "<g class=\"live\" data-live=\"" idn "\" transform=\"translate(" (- x) "," (- y) ")\"></g>"

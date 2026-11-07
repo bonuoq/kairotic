@@ -30,6 +30,14 @@ los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
   de otra caja). No hace falta acertar en la marca: cerca de una salida se ilumina y el puntero se vuelve
   una cruz, y un cable que sueltas sobre una caja, o justo encima de una de sus entradas, llega a la
   entrada más cercana. Los cables son curvos, aquí y en el patch de un `faust~`, que funciona igual.
+- **Ids**: cada caja tiene un id (`:b7`), que es como la nombran el código, la REPL y los mensajes de Room.
+  Aparece sobre su esquina superior derecha cuando pasas por encima o la seleccionas; **I** los muestra
+  todos. **`(`** en el patch abre ahí una línea de la REPL (como el campo de una caja nueva cuando lo que
+  escribes empieza por `(`): Intro la ejecuta y muestra debajo lo que dio, ↑ ↓ recorren la historia de la
+  REPL, Esc la cierra. Mientras una línea de código espera una caja —la REPL, la pestaña Code, esa línea, un
+  mensaje de Room— tras un espacio, `(` `[` `{` o `:` (`@` en un mensaje), un clic en una caja escribe ahí su
+  id en vez de seleccionarla, como un clic en una celda dentro de una fórmula de hoja de cálculo:
+  `(connect ` clic, `0 ` clic, `0)`.
 - **Seleccionar** una caja o una línea con un clic. **⌘/Ctrl+clic** en una caja la edita debajo (sus
   argumentos y su texto). **Supr** borra lo seleccionado.
 - **Seleccionar varias**: ⇧+clic añade una caja a la selección (o la quita); un marco dibujado desde un
@@ -405,7 +413,10 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 
 | | |
 |---|---|
-| doble clic en un sitio vacío | una caja nueva |
+| doble clic en un sitio vacío | una caja nueva (lo que empieza por `(` es una línea de la REPL) |
+| `(` en el patch | una línea de la REPL, ahí (Intro la ejecuta, ↑ ↓ su historia, Esc la cierra) |
+| I | mostrar el id de todas las cajas (una caja lo muestra siempre al pasar por encima o seleccionada) |
+| clic en una caja mientras una línea de código espera una | escribir ahí su id (`:b7`, `@b7` en un mensaje de Room) |
 | doble clic en un number, knob o deslizador | escribe su valor (Intro lo aplica, Esc cierra) |
 | Supr / Retroceso | borra las cajas o la línea seleccionadas |
 | ⌘/Ctrl+clic | edita una caja debajo de ella (sus argumentos y su texto) |
