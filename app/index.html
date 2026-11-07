@@ -228,6 +228,9 @@ body.embed .line-tabs, body.present .line-tabs { display: none !important; }
 body.annotating #canvas { cursor: crosshair; }
 body.annotating.annot-move #canvas { cursor: move; }
 #annot-toggle.on, #learn-toggle.on { border-color: var(--kairos); color: var(--kairos); }
+.learn-scope { display: grid; gap: 4px; margin: 0 0 10px; font-size: 13px; }
+.learn-scope label { display: flex; gap: 6px; align-items: baseline; }
+.learn-mine { font: 12px var(--f-code); color: var(--ink-soft); }
 #canvas .shape { fill: none; stroke: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; font-family: var(--f-code); }
 #canvas .shape.s-ink { stroke: var(--ink); } #canvas .shape.f-ink { fill: var(--ink); }
 #canvas .shape.s-soft { stroke: var(--ink-soft); } #canvas .shape.f-soft { fill: var(--ink-soft); }

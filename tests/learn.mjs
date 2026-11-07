@@ -92,6 +92,25 @@ export async function learn(page, check) {
   const kv = await until(page, `(second (last-shown ${kn}))`, (x) => nums(x).some((v) => Math.abs(v - 20000) < 1), 4000);
   check("... and the controller moves the knob, across its whole range", nums(kv).some((v) => Math.abs(v - 20000) < 1), kv);
 
+  // learn, only for me: nothing in the work, kept in this browser, played as my gesture
+  await cljs(page, "(stop)");
+  const before = await cljs(page, "(count (:boxes (current)))");
+  await cljs(page, `(learn ${kn} :me)`);
+  check("the banner asks for whom, here only for me", (await cljs(page, '(boolean (.querySelector js/document "input[name=learn-scope][value=me]:checked"))')) === "true");
+  await page.waitForTimeout(200);
+  await page.evaluate(() => window.__cc(7, 64));
+  const mineNow = await until(page, "(my-controls)", (x) => x.includes("cc 7 1"), 4000);
+  check("only for me: the mapping is mine (my-controls)", mineNow.includes(`"cc 7 1" ${kn}`), mineNow);
+  check("... and nothing was added to the work", (await cljs(page, "(count (:boxes (current)))")) === before);
+  check("... kept in this browser for this work", (await cljs(page, '(boolean (re-find #"cc" (str (.getItem js/localStorage (mine-key)))))')) === "true");
+  await cljs(page, "(play)");
+  await page.waitForTimeout(300);
+  await page.evaluate(() => window.__cc(7, 64));
+  const kv2 = await until(page, `(second (last-shown ${kn}))`, (x) => nums(x).some((v) => Math.abs(v - 652) < 3), 4000);
+  check("... and moving CC 7 plays the knob (log: 64 of 127 is about 652 Hz between 20 and 20000)", nums(kv2).some((v) => Math.abs(v - 652) < 3), kv2);
+  check("forget-control :all forgets them", (await cljs(page, "(forget-control :all)")) === "[]");
+  await cljs(page, "(stop) (reset! learn-scope :work)");
+
   // learn: a gamepad's stick
   await cljs(page, "(stop)");
   const n2 = (await cljs(page, `(box "number" ${X + 800} 400)`)).trim();
