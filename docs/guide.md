@@ -38,6 +38,12 @@ links you share carry it. See [Kairotic Pages](pages.md).
   of them and they all move; Delete removes them all.
 - **Move** a box by dragging it. Playable boxes — `bang`, `msg`, `number`, knobs — are selected by the
   grip on their left; their body is for playing.
+- **Which box is on top**: boxes are drawn in the order they were made, the newest on top, and a box you
+  move comes to the front (several moved together keep their order among themselves). The order is part
+  of the work, in the same event as the move: everyone in a room sees it, and going back in the history
+  brings back the one it had. From code: `(to-front :b3)`, `(to-back :b3)`, and `(stack :b2 :b5 :b1)`
+  for the whole order, from the bottom to the top (the code of a work writes it when it is not the order
+  of the ids).
 - **Type a value**: double-click a numeric control — a `number`, a knob (or any component that is
   dragged for a number), a slider of a `faust~` box or its value — and write the number: `440`, `-3.5`,
   `0,5`, `3/2`. Enter applies it, as a drag would (a knob keeps it in its text, within its range; a

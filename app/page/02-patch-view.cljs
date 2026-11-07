@@ -556,7 +556,21 @@
 (defn render-overlay! []
   (let [p (scene-of (current))
         on (eng/running?)
-        parts (for [[id b] (:boxes p) :let [kc (klass (:text b)) [x y] (box-pos id b) [w h] (box-dims id b)]]
+        ;; what each box draws over itself, in its own slot (issue #166)
+        own (for [[id b] (:boxes p) :let [kc (klass (:text b)) [x y] (box-pos id b) [w h] (box-dims id b)]]
+              [id (str
+                (case kc
+                  "number" (let [v (or (second (last-shown id)) (get-in @eng/rt [:states (fid id)])
+                                       (eng/num-of (first (eng/args-of (:text b)))) 0)]
+                             (str "<text class=\"value\" x=\"" (+ x grip 8) "\" y=\"" (+ y 16) "\">▸ " (esc (if (number? v) (cv/fmt v) (pr-str v))) "</text>"))
+                  ("msg" "bang") (when (recent? (last-shown id))
+                                   (str "<rect class=\"flash\" x=\"" (+ x grip) "\" y=\"" y "\" width=\"" (- w grip) "\" height=\"" h "\" rx=\"3\"></rect>"))
+                  ("faust~") (params-overlay id b x y w)
+                  ("reader" "canvas" "freqt") nil
+                  (when (own-view? b) (ctl-overlay id b x y)))
+                (when (panel-layout b) (panel-overlay id b x y)))])
+        ;; reading cursors are drawn over everything: they belong to the canvas they read, not to the reader
+        parts (for [[id b] (:boxes p) :let [kc (klass (:text b))]]
                 (case kc
                   "number" (let [v (or (second (last-shown id)) (get-in @eng/rt [:states (fid id)])
                                        (eng/num-of (first (eng/args-of (:text b)))) 0)]
@@ -566,13 +580,16 @@
                   "reader" (when on
                              (when-let [[_ {:keys [t from axis pt]}] (last-shown id)]
                                (when-let [from (and from (number? t) (local-id from))] (cursor-at p from t "cur" true (or axis :x) pt))))
-                  ("faust~") (params-overlay id b x y w)
                   ("canvas" "freqt") (when on
                                        (when-let [[at {:keys [t]}] (last-shown id)]
                                          (when (and (number? t) (< (- (eng/now) at) 2)) (cursor-at p id t "cur2" false))))
-                  (when (own-view? b) (ctl-overlay id b x y))))]
+                  nil))]
     (render-layers!)
     (refresh-html-boxes!)
+    (let [scene ($ "scene")]
+      (doseq [[id html] own]
+        (when-let [slot (.querySelector scene (str "g.live[data-live=\"" (esc (name id)) "\"]"))]
+          (when (not= html (.-__live slot)) (set! (.-__live slot) html) (set! (.-innerHTML slot) html)))))
     (set! (.-innerHTML ($ "cursors"))
           (str (apply str parts)
                ;; in presentation the readers are usually hidden, but their cursors still show on the canvases
@@ -581,8 +598,7 @@
                                   :when (and (= "reader" (klass (:text b))) (not (get-in p [:boxes id])))]
                               (when-let [[_ {:keys [t from axis pt]}] (last-shown id)]
                                 (when-let [from (and from (number? t) (local-id from))]
-                                  (cursor-at p from t "cur" true (or axis :x) pt))))))
-               (apply str (for [[id b] (:boxes p) :when (panel-layout b) :let [[x y] (box-pos id b)]] (panel-overlay id b x y)))))))
+                                  (cursor-at p from t "cur" true (or axis :x) pt))))))))))
 
 ;; ───── the header of a box with data: ⇄ shows it in its next view, { } opens its data as text in the
 ;;       code window (discussion #30) ─────
@@ -723,7 +739,8 @@
                             "<path class=\"wire-hit\" data-line=\"" idx "\" d=\"" d "\"></path>")))
                    ""))
                (:lines p))
-        bxs (for [[id b] (:boxes p)]
+        ;; from the bottom of the stack to the top (issue #166): the last one drawn is the one on top
+        bxs (for [[id b] (by-z (:boxes p))]
               (let [[x y] (box-pos id b) t (:text b) [w h] (box-dims id b) [ins outs] (io b)
                     kc (klass t)
                     music-box? (contains? #{:canvas :score :html} (display-of b))
@@ -783,6 +800,9 @@
                                   (str "<rect class=\"port in" (when (= hover-in [id i]) " target") "\" data-box=\"" idn "\" data-in=\"" i "\" x=\"" (port-x w ins i) "\" y=\"-1\" width=\"" pw "\" height=\"4\"></rect>")))
                      (apply str (for [o (range outs)]
                                   (str "<rect class=\"port out" (when (= hover-out [id o]) " hot") "\" data-box=\"" idn "\" data-out=\"" o "\" x=\"" (port-x w outs o) "\" y=\"" (- h 3) "\" width=\"" pw "\" height=\"4\"></rect>")))
+                     ;; what changes while it plays (a value, a flash, its own view) is drawn here, in the box,
+                     ;; so that a box over it covers it too (issue #166); in patch coordinates
+                     "<g class=\"live\" data-live=\"" idn "\" transform=\"translate(" (- x) "," (- y) ")\"></g>"
                      "</g>")))
         temp (when (and wire (get-in p [:boxes (:from wire)]))
                (let [[x1 y1] (out-xy p (:from wire) (:out wire))]

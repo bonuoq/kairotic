@@ -157,11 +157,24 @@
                          (assoc :pin (:pin b))
                          (and (vector? (:size b)) (= 2 (count (:size b))) (every? number? (:size b)))
                          (assoc :size (:size b))
+                         (and (number? (:z b)) (js/isFinite (:z b))) (assoc :z (:z b))
                          (and (map? (:data b)) (comp/model-of b)) (assoc :data ((:load (comp/model-of b)) (:data b)))
                          (sane-recipe (:recipe b)) (assoc :recipe (sane-recipe (:recipe b))))]))
      :lines (vec (filter (fn [l] (and (vector? l) (= 4 (count l)))) (:lines x)))}
     x)
     empty-patch))
+
+;; ───── which box is drawn over which (issue #166) ─────
+;; Each box has a place in the stack: its :z if it has one, or else the number of its id, so that a patch
+;; nobody rearranged is drawn in the order its boxes were made (newer on top: :b10 over :b9, not under :b2).
+;; Moving a box brings it to the front, as one event with the move ([:z :b3 12]); the order is part of the
+;; work, the same for everyone in a room, and going back in the history brings back the one it had.
+
+(defn id-z [id] (let [m (re-matches #"b(\d+)" (name id))] (if m (js/parseInt (second m) 10) 0)))
+(defn z-of "Where box id is in the stack: its :z, or the number of its id." [id b]
+  (let [z (:z b)] (if (and (number? z) (js/isFinite z)) z (id-z id))))
+(defn by-z "The [id box] pairs of a map of boxes, from the bottom of the stack to the top." [boxes]
+  (sort-by (fn [[id b]] [(z-of id b) (id-z id) (name id)]) boxes))
 
 (defn step [p [op & args]]
   (case op
@@ -173,6 +186,11 @@
                     (prune-lines (update-in p [:boxes id] (fn [b] (comp/upgrade-box (assoc b :text (str text))))))
                     p))
     :move       (let [[id x y] args] (if (get-in p [:boxes id]) (update-in p [:boxes id] assoc :x x :y y) p))
+    ;; [:z :b3 12]: where a box is in the stack (issue #166); nil: back to the number of its id
+    :z          (let [[id z] args]
+                  (cond (not (get-in p [:boxes id])) p
+                        (and (number? z) (js/isFinite z)) (assoc-in p [:boxes id :z] z)
+                        :else (update-in p [:boxes id] dissoc :z)))
     ;; where a box appears in presentation (and in the panel of the sub-patch it is in), or nil
     :present    (let [[id x y] args]
                   (cond (not (get-in p [:boxes id])) p
@@ -694,7 +712,7 @@
 (defn summarize [evs]
   (reduce (fn [acc [op & args]]
             (case op
-              (:box :text :move :size) (update acc :mod conj (first args))
+              (:box :text :move :size :z) (update acc :mod conj (first args))
               ;; each mark, layer and projection is its own unit; a mark refers to the boxes it is anchored to
               :annot (-> acc (update :mod conj [:annot (first args)])
                         (update :ref into (let [m (second args)] (filter (fn [a] (and (keyword? a) (not= a :patch)))
@@ -734,7 +752,7 @@
 (defn remap-ev [m [op & args :as e]]
   (let [f (fn [x] (get m x x))]
     (case op
-      (:box :text :move :size :delete :kept :recipe :data :project :pin) (into [op (f (first args))] (rest args))
+      (:box :text :move :size :z :delete :kept :recipe :data :project :pin) (into [op (f (first args))] (rest args))
       :annot (let [[id m] args fa (fn [[a x y]] [(f a) x y])]
               [op id (cond-> m (:pts m) (update :pts (fn [ps] (mapv fa ps))) (:at m) (update :at fa))])
       :in (let [[id inner] args]
