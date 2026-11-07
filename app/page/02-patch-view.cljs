@@ -572,11 +572,6 @@
         ;; reading cursors are drawn over everything: they belong to the canvas they read, not to the reader
         parts (for [[id b] (:boxes p) :let [kc (klass (:text b))]]
                 (case kc
-                  "number" (let [v (or (second (last-shown id)) (get-in @eng/rt [:states (fid id)])
-                                       (eng/num-of (first (eng/args-of (:text b)))) 0)]
-                             (str "<text class=\"value\" x=\"" (+ x grip 8) "\" y=\"" (+ y 16) "\">▸ " (esc (if (number? v) (cv/fmt v) (pr-str v))) "</text>"))
-                  ("msg" "bang") (when (recent? (last-shown id))
-                                   (str "<rect class=\"flash\" x=\"" (+ x grip) "\" y=\"" y "\" width=\"" (- w grip) "\" height=\"" h "\" rx=\"3\"></rect>"))
                   "reader" (when on
                              (when-let [[_ {:keys [t from axis pt]}] (last-shown id)]
                                (when-let [from (and from (number? t) (local-id from))] (cursor-at p from t "cur" true (or axis :x) pt))))
@@ -589,7 +584,8 @@
     (let [scene ($ "scene")]
       (doseq [[id html] own]
         (when-let [slot (.querySelector scene (str "g.live[data-live=\"" (esc (name id)) "\"]"))]
-          (when (not= html (.-__live slot)) (set! (.-__live slot) html) (set! (.-innerHTML slot) html)))))
+          ;; only when it changed (a new scene makes new slots)
+          (when (not= html (aget slot "kairoticLive")) (aset slot "kairoticLive" html) (set! (.-innerHTML slot) html)))))
     (set! (.-innerHTML ($ "cursors"))
           (str (apply str parts)
                ;; in presentation the readers are usually hidden, but their cursors still show on the canvases
