@@ -79,18 +79,20 @@
     (.setValueAtTime (.-gain g) 0.3 t) (.exponentialRampToValueAtTime (.-gain g) 0.001 (+ t 0.05))
     (.connect o g) (.connect g (.-destination c)) (.start o t) (.stop o (+ t 0.06))))
 
+(defn net-text! [el v] (when (and el (not= v (.-textContent el))) (set! (.-textContent el) v)))
+
 (defn net-frame! [& _]
-  (let [t @net-tempo n (talk-now)]
-    (when-let [el ($ "net-beat")]
-      (if-let [b (net-beat)]
-        (do (set! (.-textContent el) (if (neg? b) (str "in " (.toFixed (/ (- (:t0 t) n) 1000) 1) " s") (str (inc (js/Math.floor b)))))
-            (if (and (>= b 0) (< (mod b 1) 0.15)) (.add (.-classList el) "on") (.remove (.-classList el) "on")))
-        (do (set! (.-textContent el) "·") (.remove (.-classList el) "on"))))
-    (when-let [el ($ "net-clock")]
-      (set! (.-textContent el) (if-let [o (tk/clock-offset (:clock @talk-room))] (str "clock ±" (.toFixed (tk/clock-error (:clock @talk-room)) 1) " ms") "")))
+  (let [t @net-tempo
+        shown (some-> ($ "panel-talk") .-hidden not)]
+    ;; nothing to draw unless the Room tab is open, and nothing to do without a tempo or a room
+    (when (and shown (or t (:id @talk-room)))
+      (let [n (talk-now) el ($ "net-beat") b (net-beat)]
+        (net-text! el (cond (nil? b) "·" (neg? b) (str "in " (.toFixed (/ (- (:t0 t) n) 1000) 1) " s") :else (str (inc (js/Math.floor b)))))
+        (when el (.toggle (.-classList el) "on" (boolean (and b (>= b 0) (< (mod b 1) 0.15)))))
+        (net-text! ($ "net-clock") (if (tk/clock-offset (:clock @talk-room)) (str "clock ±" (.toFixed (tk/clock-error (:clock @talk-room)) 1) " ms") ""))))
     ;; the metronome: clicks 150 ms ahead on the audio clock
     (when (and t (:on @net-metro))
-      (let [from (max n (or (:until @net-metro) n)) to (+ n 150)
+      (let [n (talk-now) from (max n (or (:until @net-metro) n)) to (+ n 150)
             per (/ 60000 (:bpm t))]
         (doseq [k (range (js/Math.ceil (/ (* (- from (:t0 t)) (:bpm t)) 60000)) (inc (js/Math.floor (/ (* (- to (:t0 t)) (:bpm t)) 60000))))
                 :let [at (+ (:t0 t) (* k per))] :when (and (>= k 0) (>= at from) (< at to))]
