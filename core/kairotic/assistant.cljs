@@ -411,7 +411,9 @@ Rules:
   `midiout [mpe]` (Hz after voice ids, or events, to a MIDI port; mpe for microtones), `oscout [target]` and
   `oscin [pattern]` (OSC through `npx @kairotic/relay --osc`: events as /kairotic/note id freq amp gate…),
   `motion` (a phone's tilt [x y] and shakes), `gamepad` ([name value] and events), `serial [baud]` (a board's
-  lines as numbers; msg open asks for the port).
+  lines as numbers; msg open asks for the port); `control cc 74` · `control pad lx` · `control tilt x` · `control osc
+  /addr` picks one controller out of their events (event outlet), into `scale in-lo in-hi out-lo out-hi [log] [ms]`
+  (@kairotic/controls) to bring it to a parameter's range — what (learn :bN) makes by itself.
 - The room (package @kairotic/net, it comes by itself): `share [channel]` sends any value to everyone in the
   shared room (and this page), `shared [channel]` gives what anyone shares (value left, who right, while ▶);
   `pulse [division]` counts the room's beat on the audio clock — one tempo for every page; `start [bpm]`,

@@ -227,7 +227,10 @@ body.embed .line-tabs, body.present .line-tabs { display: none !important; }
 .annot-l { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-soft); }
 body.annotating #canvas { cursor: crosshair; }
 body.annotating.annot-move #canvas { cursor: move; }
-#annot-toggle.on { border-color: var(--kairos); color: var(--kairos); }
+#annot-toggle.on, #learn-toggle.on { border-color: var(--kairos); color: var(--kairos); }
+.learn-scope { display: grid; gap: 4px; margin: 0 0 10px; font-size: 13px; }
+.learn-scope label { display: flex; gap: 6px; align-items: baseline; }
+.learn-mine { font: 12px var(--f-code); color: var(--ink-soft); }
 #canvas .shape { fill: none; stroke: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; font-family: var(--f-code); }
 #canvas .shape.s-ink { stroke: var(--ink); } #canvas .shape.f-ink { fill: var(--ink); }
 #canvas .shape.s-soft { stroke: var(--ink-soft); } #canvas .shape.f-soft { fill: var(--ink-soft); }
@@ -644,6 +647,7 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
           <span id="transport-info">engine stopped</span>
           <button class="act" id="pres-toggle" title="Presentation: only the presented boxes, where the performer sees them (with boxes selected, it offers to present them where they are)">Present</button>
           <button class="act" id="perform-toggle" title="Perform: rehearse, try and improvise outside the history">Perform</button>
+          <button class="act" id="learn-toggle" title="Learn: select a box, press Learn and move a controller (MIDI, a gamepad, the phone's tilt, OSC): it is wired to the box">Learn</button>
           <button class="act" id="annot-toggle" title="Annotate: draw lines, arrows and texts on a layer of the patch, anchored to the boxes nearest them">Annotate</button>
           <span id="perform-info" class="perform-info" hidden></span>
           <button class="act" id="embed-btn" title="Share or export this patch (or this tutorial step): a link, or an iframe to put it in another page">Share/Export</button>
@@ -1031,7 +1035,7 @@ window.addEventListener("DOMContentLoaded", function () {
   var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/spell.cljs", "kairotic/mt.cljs", "kairotic/tempo.cljs", "kairotic/structure.cljs", "kairotic/quantize.cljs", "kairotic/treecanvas.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
               "kairotic/code.cljs", "kairotic/patterns.cljs", "kairotic/api.cljs", "kairotic/corefns.cljs", "kairotic/mtboxes.cljs", "kairotic/hiccup.cljs", "kairotic/faust.cljs", "kairotic/library.cljs", "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs",
               "kairotic/sounds.cljs", "kairotic/talk.cljs", "kairotic/signal.cljs", "kairotic/input.cljs", "kairotic/record.cljs", "kairotic/links.cljs", "kairotic/release.cljs", "kairotic/presets.cljs"];
-  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/19-html.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs", "page/15-presets.cljs", "page/16-release.cljs", "page/17-sounds.cljs", "page/18-lines.cljs", "page/19-files.cljs", "page/20-talk.cljs", "page/21-net.cljs"];
+  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/19-html.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs", "page/15-presets.cljs", "page/16-release.cljs", "page/17-sounds.cljs", "page/18-lines.cljs", "page/19-files.cljs", "page/20-talk.cljs", "page/21-net.cljs", "page/22-learn.cljs"];
   Promise.all(mods.map(function (m) {
     return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
   }))
