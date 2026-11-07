@@ -12,7 +12,7 @@
   - What a box draws over itself while it plays — a number's value, a flash, a control's own view, a `faust~`'s
     sliders, a panel — is now drawn inside the box (`g.live`), so a box on top covers it too; reading cursors are
     still drawn over everything.
-  - Tests: `tests/zorder.mjs` (26 checks).
+  - Tests: `tests/zorder.mjs` (27 checks).
 
 - **Analysis boxes after ■ ▶** (`@kairotic/analysis` 0.7.2): `features~`, `chroma~`, `onset~` and `spectrum~`
   did not check that their box was still there, and their taps were never disconnected, so after ■ ▶ (or when

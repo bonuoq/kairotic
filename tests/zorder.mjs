@@ -30,7 +30,11 @@ export async function zorder(page, check) {
   const c = (await cljs(page, '(box "print c" 7020 310)')).trim();
   const ids = [a, b, c].map((x) => x.slice(1));
   check("new boxes are drawn in the order they were made", JSON.stringify(await drawn(page, ids)) === JSON.stringify(ids));
-  check("... and the work's code needs no (stack …) for that", (await cljs(page, '(str/includes? (patch->code (current)) "(stack ")')) === "false");
+  // (the work these tests share has boxes other suites moved: a patch of its own here)
+  check("... and the code of a patch in that order needs no (stack …)",
+    (await cljs(page, '(str/includes? (patch->code {:boxes (sorted-map :b2 {:text "x" :x 0 :y 0} :b10 {:text "y" :x 0 :y 0}) :lines []}) "(stack ")')) === "false");
+  check("... while one in another order does",
+    (await cljs(page, '(str/includes? (patch->code {:boxes (sorted-map :b2 {:text "x" :x 0 :y 0 :z 11} :b10 {:text "y" :x 0 :y 0}) :lines []}) "(stack :b10 :b2)")')) === "true");
 
   // ── moving a box brings it to the front, in the same event ──
   const e0 = Number(await cljs(page, events));
