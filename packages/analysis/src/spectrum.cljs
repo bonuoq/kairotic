@@ -63,9 +63,10 @@
                            sr (.-sampleRate ac)
                            [lo hi] (api/padded (:args b) [40 16000])
                            cmap (column-map sr (api/clamp (min lo hi) 10 20000) (api/clamp (max lo hi) 20 (/ sr 2)))
-                           node {:in in :M (atom nil) :alive (atom true) :inlets [[in 0]] :outlets []}
+                           node {:in in :M (atom nil) :tap (atom nil) :alive (atom true) :inlets [[in 0]] :outlets []}
                            on-block (fn [data at & _]
-                                      (when-let [M @(:M node)]
+                                      ;; only while the box is here: a tap left behind would hand it silence
+                                      (when-let [M (and @(:alive node) @(:M node))]
                                         (set! (.-bufferSize M) size)
                                         (set! (.-sampleRate M) sr)
                                         (let [spec (.extract M "amplitudeSpectrum" (first data))]
@@ -74,9 +75,10 @@
                            (.then (fn [_] (reset! (:M node) (.-Meyda js/window))))
                            (.catch (fn [e] (api/report! (:id b) {:error (str "spectrum~: " (.-message e))} nil))))
                        (-> (api/tap ac {:mode :frames :size size :hop (js/Math.round (/ sr 30))} on-block)
-                           (.then (fn [w] (if @(:alive node) (.connect in w) (try (.disconnect w) (catch :default _ nil)))))
+                           (.then (fn [w] (if @(:alive node) (do (.connect in w) (reset! (:tap node) w)) (api/untap w))))
                            (.catch (fn [e] (js/console.error "spectrum~" e))))
                        node))
            :dispose (fn [node]
                       (reset! (:alive node) false)
+                      (api/untap @(:tap node))
                       (try (.disconnect (:in node)) (catch :default _ nil)))}})

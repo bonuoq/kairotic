@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Analysis boxes after ■ ▶** (`@kairotic/analysis` 0.7.2): `features~`, `chroma~`, `onset~` and `spectrum~`
+  did not check that their box was still there, and their taps were never disconnected, so after ■ ▶ (or when
+  their node was rebuilt) the old tap went on handing the box silence, alternating with the new one. With
+  `realize~` this read as a silence half the time: its `gain` sat at −80 until `learn` happened to start it
+  afresh. They now check, and `api/untap` stops a tap and disconnects it (`pitch~`, `snapshot~`, `scope~` too).
+- **`realize~` listening, steadier**: a correction it cannot play (darker than the `faust~`'s darkest setting, a
+  gain beyond its slider) no longer grows; what it corrected fades unless it is still needed; and the attack of a
+  sound (its first quarter second) is not corrected.
 - **`realize~` keeps up with a live sound** (`@kairotic/analysis` 0.7.1, `@kairotic/faust-units` 0.1.5): the
   search for the nearest settings ran in the box's interpreted logic, about 300 settings for every frame, and with
   a microphone (some 150 values a second) it could not keep up — the faust~ stayed where it was. It is now the

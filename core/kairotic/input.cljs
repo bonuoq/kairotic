@@ -190,6 +190,7 @@
                            (when-let [w @(:tap node)] (let [h ((:hop node) ms)] (api/retap w {:size h :hop h}))))}
            :dispose (fn [node]
                       (reset! (:alive node) false)
+                      (api/untap @(:tap node))
                       (try (.disconnect (:in node)) (catch :default _ nil)))}})
 
 ;; ───────── scope~: an oscilloscope ─────────
@@ -266,4 +267,5 @@
            :effects {:ms (fn [node ms _] (when-let [w @(:tap node)] (api/retap w {:size ((:samples node) ms)})))}
            :dispose (fn [node]
                       (reset! (:alive node) false)
+                      (api/untap @(:tap node))
                       (try (.disconnect (:in node)) (catch :default _ nil)))}})

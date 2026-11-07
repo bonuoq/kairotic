@@ -94,6 +94,17 @@ export async function realize(page, check) {
   check("learn learns it again", (await until(page, state(r, ":learning"), (x) => x === "true", 3000)) === "true");
   await until(page, state(r, ":learning"), (x) => x === "false", 60000);
 
+  // ■ ▶: a features~ hears what it hears, not also silence from the tap it had before (the old tap kept
+  // handing its box zeros, so realize~ took the loudness for a silence half the time)
+  const o = (await cljs(page, '(box "osc~ 330" 9500 220)')).trim(), g2 = (await cljs(page, '(box "gain~ 0.2" 9500 260)')).trim();
+  const fe2 = (await cljs(page, '(box "features~ 20" 9500 300)')).trim();
+  all.push(o, g2, fe2);
+  await cljs(page, `(connect ${o} 0 ${g2} 0) (connect ${g2} 0 ${fe2} 0)`);
+  for (let k = 0; k < 2; k++) { await cljs(page, "(stop)"); await page.waitForTimeout(300); await cljs(page, "(play)"); await page.waitForTimeout(1200); }
+  const rms = [];
+  for (let k = 0; k < 15; k++) { rms.push(Number(await cljs(page, `(get-in @eng/rt [:states ${fe2} :rms])`))); await page.waitForTimeout(70); }
+  check("after ■ ▶ twice, features~ hears only what sounds now", rms.every((x) => x > 0.005), rms.join(" "));
+
   await cljs(page, "(stop)");
   await cljs(page, `(delete ${all.join(" ")})`);
 }

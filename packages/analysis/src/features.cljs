@@ -51,7 +51,8 @@
                            names (clj->js (mapv name fs))
                            node {:in in :M (atom nil) :tap (atom nil) :alive (atom true) :inlets [[in 0]] :outlets []}
                            on-block (fn [data at & _]
-                                      (when-let [M @(:M node)]
+                                      ;; only while the box is here: a tap left behind would hand it silence
+                                      (when-let [M (and @(:alive node) @(:M node))]
                                         (set! (.-bufferSize M) size)
                                         (set! (.-sampleRate M) sr)
                                         (let [r (.extract M names (first data))]
@@ -66,4 +67,5 @@
                        node))
            :dispose (fn [node]
                       (reset! (:alive node) false)
+                      (api/untap @(:tap node))
                       (try (.disconnect (:in node)) (catch :default _ nil)))}})

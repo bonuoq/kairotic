@@ -47,9 +47,10 @@
                      (let [in (.createGain ac)
                            sr (.-sampleRate ac)
                            ms (api/clamp (or (first (filter number? (:args b))) 40) 10 2000)
-                           node {:in in :M (atom nil) :alive (atom true) :inlets [[in 0]] :outlets []}
+                           node {:in in :M (atom nil) :tap (atom nil) :alive (atom true) :inlets [[in 0]] :outlets []}
                            on-block (fn [data at & _]
-                                      (when-let [M @(:M node)]
+                                      ;; only while the box is here: a tap left behind would hand it silence
+                                      (when-let [M (and @(:alive node) @(:M node))]
                                         (set! (.-bufferSize M) size)
                                         (set! (.-sampleRate M) sr)
                                         (let [r (.extract M #js ["chroma" "rms"] (first data))
@@ -60,9 +61,10 @@
                            (.then (fn [_] (reset! (:M node) (.-Meyda js/window))))
                            (.catch (fn [e] (api/report! (:id b) {:error (str "chroma~: " (.-message e))} nil))))
                        (-> (api/tap ac {:mode :frames :size size :hop (js/Math.round (* sr (/ ms 1000)))} on-block)
-                           (.then (fn [w] (if @(:alive node) (.connect in w) (try (.disconnect w) (catch :default _ nil)))))
+                           (.then (fn [w] (if @(:alive node) (do (.connect in w) (reset! (:tap node) w)) (api/untap w))))
                            (.catch (fn [e] (js/console.error "chroma~" e))))
                        node))
            :dispose (fn [node]
                       (reset! (:alive node) false)
+                      (api/untap @(:tap node))
                       (try (.disconnect (:in node)) (catch :default _ nil)))}})
