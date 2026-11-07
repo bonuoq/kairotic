@@ -513,6 +513,29 @@
   "The id the engine knows a box of the current view by."
   [id] (eng/flat-id (engine-path) id))
 
+;; ───── which box is drawn over which (issue #166) ─────
+;; Boxes are drawn in the order of the number of their ids (not as text, which put :b10–:b19 under :b2): a
+;; patch is drawn in the order its boxes were made, the newest on top. A box dragged here comes to the front,
+;; so that what is being moved is never hidden. That order is only for this tab, as the selection is: it is
+;; not part of the work, not in the history and not in its code.
+
+(defonce dragged-front (atom []))   ; engine ids of the boxes dragged here, the last one on top
+
+(defn id-z [id] (let [m (re-matches #"b(\d+)" (name id))] (if m (js/parseInt (second m) 10) 0)))
+
+(defn to-front!
+  "Brings boxes of the current view to the front, in this tab only, keeping their order among themselves."
+  [ids]
+  (let [fs (map fid (sort-by id-z ids)) fs (sort-by (fn [f] (.indexOf (to-array @dragged-front) f)) fs)]
+    (swap! dragged-front (fn [v] (vec (take-last 400 (concat (remove (set fs) v) fs)))))))
+
+(defn by-z
+  "The [id box] pairs of a map of boxes of the current view, from the bottom to the top: the ones dragged in
+   this tab on top, in the order they were dragged; the others in the order of the number of their ids."
+  [boxes]
+  (let [rank (into {} (map-indexed (fn [i f] [f i]) @dragged-front))]
+    (sort-by (fn [[id _]] [(get rank (fid id) -1) (id-z id) (name id)]) boxes)))
+
 (defn target
   "Where a message to inlet i of box id goes in the engine: a sub-patch receives it in its i-th inlet box."
   [id inlet]

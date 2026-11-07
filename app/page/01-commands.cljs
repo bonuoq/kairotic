@@ -51,6 +51,10 @@
   (let [n (count (:boxes (current)))]
     [(+ 40 (* 24 (mod n 12))) (+ 40 (* 36 (mod n 12)))]))
 
+(defn dispatch-all!
+  "Several events as one event of the history (nothing if there are none)."
+  [evs] (when-let [e (rel/as-event evs)] (dispatch! e)))
+
 (defn box
   ([text] (let [[x y] (auto-pos)] (box (next-id) text x y)))
   ([text x y] (box (next-id) text x y))
@@ -96,8 +100,8 @@
       ;; nobody goes past the top or the left edge: the group stops there together
       (let [dx (max dx (- (apply min (map (comp first second) pos))))
             dy (max dy (- (apply min (map (comp second second) pos))))]
-        (doseq [[id [x y]] pos]
-          (dispatch! [where id (js/Math.round (+ x dx)) (js/Math.round (+ y dy))]))
+        ;; moved together, in one event of the history
+        (dispatch-all! (for [[id [x y]] pos] [where id (js/Math.round (+ x dx)) (js/Math.round (+ y dy))]))
         [(js/Math.round dx) (js/Math.round dy)]))))
 
 (defn next-mark-id []

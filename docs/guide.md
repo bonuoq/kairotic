@@ -38,6 +38,9 @@ links you share carry it. See [Kairotic Pages](pages.md).
   of them and they all move; Delete removes them all.
 - **Move** a box by dragging it. Playable boxes — `bang`, `msg`, `number`, knobs — are selected by the
   grip on their left; their body is for playing.
+- **Which box is on top**: boxes are drawn in the order they were made, the newest on top, and the box
+  you drag comes to the front, so that what you move is never hidden. That is only how your tab shows them,
+  as the selection is: it is not part of the work, its history or its code.
 - **Type a value**: double-click a numeric control — a `number`, a knob (or any component that is
   dragged for a number), a slider of a `faust~` box or its value — and write the number: `440`, `-3.5`,
   `0,5`, `3/2`. Enter applies it, as a drag would (a knob keeps it in its text, within its range; a

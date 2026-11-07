@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Which box is on top** (issue #166, 3). Boxes were drawn in the order of their ids as text, so `:b10`–`:b19`
+  went under `:b2`; now they are stacked by the number of their id (the newest on top), and **a box dragged comes to
+  the front**, so that what is moved is never hidden. That order belongs to the tab, as the selection does: it is not
+  part of the work, its history or its code. `move-by` (and dragging several boxes) is now one event of the history.
+  - What a box draws over itself while it plays — a number's value, a flash, a control's own view, a `faust~`'s
+    sliders, a panel — is now drawn inside the box (`g.live`), so a box on top covers it too; reading cursors are
+    still drawn over everything.
+  - Tests: `tests/zorder.mjs` (14 checks).
+
 - **Analysis boxes after ■ ▶** (`@kairotic/analysis` 0.7.2): `features~`, `chroma~`, `onset~` and `spectrum~`
   did not check that their box was still there, and their taps were never disconnected, so after ■ ▶ (or when
   their node was rebuilt) the old tap went on handing the box silence, alternating with the new one. With

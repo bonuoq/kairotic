@@ -27,7 +27,7 @@ export async function audioin(page, check) {
   check("snapshot~ peak: the level of an osc~ comes back as a number", Math.abs(Number(peak) - 0.15) < 0.005, peak);
   const pts = await until(page, `(count (:pts (second (last-shown ${scope}))))`, (g) => g === "320");
   check("scope~ shows a picture: a min and a max for each of 160 columns", pts === "320", pts);
-  const svg = await cljs(page, `(boolean (re-find #"polyline" (str (.-innerHTML ($ "cursors")))))`);
+  const svg = await cljs(page, `(boolean (re-find #"polyline" (str (.-innerHTML ($ "scene")))))`);
   check("... drawn in the patch", svg === "true", svg);
 
   const mic = await until(page, `(get-in @eng/rt [:states ${level}])`, (g) => Number(g) > 0, 10000);
