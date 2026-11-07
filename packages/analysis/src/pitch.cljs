@@ -127,4 +127,5 @@ registerProcessor('kairotic-yin', KairoticYin);
                          (.postMessage (.-port w) #js {:lo lo :hi hi :threshold th}))))
            :dispose (fn [node]
                       (reset! (:alive node) false)
+                      (when-let [w @(:w node)] (try (set! (.. w -port -onmessage) nil) (.disconnect w) (catch :default _ nil)))
                       (try (.disconnect (:in node)) (catch :default _ nil)))}})

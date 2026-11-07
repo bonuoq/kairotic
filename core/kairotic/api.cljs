@@ -189,6 +189,14 @@ registerProcessor('kairotic-tap', KairoticTap);
                                 (catch :default ex (js/console.error ex))))))
            w)))
 
+(defn untap
+  "A tap is done with (the box is gone, or the engine stopped): it stops handing blocks and is disconnected.
+   Without it, a tap whose input was disconnected goes on handing silence to its box."
+  [w]
+  (when w
+    (try (set! (.. w -port -onmessage) nil) (.postMessage (.-port w) #js {:active false}) (.disconnect w)
+         (catch :default _ nil))))
+
 (defn retap "A tap while it runs: new sizes {:size n :hop n :columns n}, {:active bool}, {:flush true}." [w sizes]
   (.postMessage (.-port w) (clj->js sizes)))
 
