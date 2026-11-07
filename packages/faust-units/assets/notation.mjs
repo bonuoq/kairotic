@@ -24,6 +24,14 @@ function rng(seed) {
 const mean = (xs) => xs.reduce((s, x) => s + x, 0) / (xs.length || 1);
 const stopped = () => Object.assign(new Error("stopped"), { name: "AbortError" });
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+// a moment given back to the page: a message to itself (a timer in a page that is not in front waits a second
+// or more; a message does not)
+const breath = () => new Promise((ok) => {
+  if (typeof MessageChannel === "undefined") return setTimeout(ok, 0);
+  const c = new MessageChannel();
+  c.port1.onmessage = () => { c.port1.close(); ok(); };
+  c.port2.postMessage(0);
+});
 
 // which slider does what
 export function roles(json) {
@@ -77,7 +85,7 @@ export async function learn({ module, json, Meyda, n = 300, seed = 3, dur = 0.4,
     const h = heard(Meyda, render(v, { dur, gate: dur + 1 }), midi);
     if (h) entries.push([pc ? midi : 60, h[1], h[2], h[3], h[0], ...u]);
     onProgress(k + 1, n);
-    if (now() - t0 > slice) { await new Promise((ok) => setTimeout(ok, 0)); t0 = now(); }
+    if (now() - t0 > slice) { await breath(); t0 = now(); }
   }
   if (entries.length < 8) throw new Error("the faust~ hardly sounds: " + entries.length + " of " + n + " settings were heard");
   const sd = (j) => { const xs = entries.map((e) => e[j]), m = mean(xs); return Math.sqrt(mean(xs.map((x) => (x - m) ** 2))) || 1; };
