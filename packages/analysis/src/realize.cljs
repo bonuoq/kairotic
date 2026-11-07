@@ -18,6 +18,8 @@
       every 0.04                                   ; seconds: at most one new setting this often
       ;; listening: how much of each difference heard goes into the correction, and how far it may go
       rate 0.08
+      leak 0.995                                   ; what it corrected fades unless it is still needed
+      hold 0.25                                    ; seconds a sound has lasted before it is corrected (not its attack)
       limits {:loud 18 :lb 2 :nz 0.4}
       bank-size (fn [args] (js/Math.round (api/clamp (or (first (filter number? args)) 300) 40 2000)))
       midi-in? (fn [args] (some #{:midi} args))
@@ -69,6 +71,7 @@
                                          vals)
                          reach (when d (/ (js/Math.round (* 100 d)) 100))]
                      {:state (-> st (assoc :t at :u (or u (:u st)) :reach reach :dirty (boolean moving?)
+                                            :loud0 (if quiet? (:loud0 st) loud0)
                                             :tick (or (:tick st) (boolean moving?)))
                                  (update :sent merge (into {} changed)))
                       :later (when (and moving? (not (:tick st))) [[(+ at every) 0 :realize-tick]])
@@ -153,8 +156,18 @@
                         st (cond-> st (= k :loud) (assoc :heard-loud heard))
                         sounding? (and (:bank st) (number? (:loud want)) (> (:loud want) silent)
                                        (> (or (:heard-loud st) -100) silent))]
-                    (if (and sounding? (number? heard) (number? (get want k)))
-                      (let [c (api/clamp (+ (get-in st [:corr k] 0) (* rate (- (get want k) heard))) (- (limits k)) (limits k))
+                    (if (and sounding? (number? heard) (number? (get want k)) (:since st) (>= (- at (:since st)) hold))
+                      ;; within what the faust~ can give (the bank's brightness, noisiness 0…1, the gain slider's
+                      ;; range): a correction that cannot be played does not grow, so it does not wind up
+                      (let [bank (:bank st) w (get want k) g (:gain bank) [lb-lo lb-hi] (or (:lbr bank) [0 20])
+                            [lo hi] (case k
+                                      :lb [(- lb-lo w) (- lb-hi w)]
+                                      :nz [(- w) (- 1 w)]
+                                      :loud (if (and g (:db g) (:loud0 st))
+                                              [(+ (:min g) (:loud0 st) (- w)) (+ (:max g) (:loud0 st) (- w))]
+                                              [(- (limits k)) (limits k)]))
+                            c (-> (+ (* leak (get-in st [:corr k] 0)) (* rate (- w heard)))
+                                  (api/clamp (max lo (- (limits k))) (min hi (limits k))))
                             st (-> st (assoc-in [:corr k] c) (assoc :dirty true))]
                         (if (or (nil? (:t st)) (>= (- at (:t st)) every))
                           (settle st at)
@@ -169,7 +182,9 @@
                                2 (assoc (:want st) :nz (api/clamp value 0 1))
                                3 (if midi (assoc (:want st) :pitch midi :voiced true) (assoc (:want st) :voiced false))
                                (:want st))
-                        st (assoc st :want want :dirty true)]
+                        ;; since when what is written sounds (its attack is not corrected)
+                        st (cond-> (assoc st :want want :dirty true)
+                             (= inlet 0) (assoc :since (if (> (or (:loud want) -100) silent) (or (:since st) at) nil)))]
                     (cond
                       (:bank st) (if (or (nil? (:t st)) (>= (- at (:t st)) every))
                                    (settle st at)
