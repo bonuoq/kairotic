@@ -116,8 +116,9 @@ export async function ids(page, check) {
   await page.keyboard.type("(send! :");
   p = await middle(page, ib);
   await page.mouse.click(p[0], p[1]);
-  const repl = await cljs(page, "(str/replace (repl-text) \")\" \"\")");
-  check("in the REPL, after a :, a click writes the rest of the id", repl === `"(send! :${ib} "`, repl);
+  // (the REPL's Clojure editor lays out the spaces before the bracket as it likes)
+  const repl = await cljs(page, "(str/replace (repl-text) #\"[\\s)]+$\" \"\")");
+  check("in the REPL, after a :, a click writes the rest of the id", repl === `"(send! :${ib}"`, repl);
   check("... and the REPL keeps the focus", (await cljs(page, "(some? (cm-of @repl-ed))")) === "true");
   await cljs(page, '(set-repl-text! "")');
 
