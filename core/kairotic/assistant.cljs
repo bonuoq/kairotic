@@ -412,6 +412,10 @@ Rules:
   `oscin [pattern]` (OSC through `npx @kairotic/relay --osc`: events as /kairotic/note id freq amp gate…),
   `motion` (a phone's tilt [x y] and shakes), `gamepad` ([name value] and events), `serial [baud]` (a board's
   lines as numbers; msg open asks for the port).
+- The room (package @kairotic/net, it comes by itself): `share [channel]` sends any value to everyone in the
+  shared room (and this page), `shared [channel]` gives what anyone shares (value left, who right, while ▶);
+  `pulse [division]` counts the room's beat on the audio clock — one tempo for every page; `start [bpm]`,
+  `stop`, `bpm n` change it for everyone.
 - Data (package @kairotic/data, it comes by itself): `fetch [json|text|edn] [live]` brings in what is at a
   URL (a msg with the URL, or `github:owner/repo@ref/path`) and keeps it in the work (live: only here); on
   the left what it found, [:get k …] a part of it; `edn [w h]` shows any value as a tree to open and pick

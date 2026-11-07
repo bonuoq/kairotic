@@ -140,6 +140,25 @@ try {
   await cljs(B, `(talk-answer! "${frame}" true)`);
   const img = await until(B, '(some (fn [[_ m]] (when (= :image (:kind m)) (subs (:src m) 0 23))) (:marks (current)))', (x) => x !== "nil", 20000);
   check("a frame of Bo, kept by Ana with his consent: an image annotation in the work", img === '"data:image/jpeg;base64,"', img);
+
+  // @kairotic/net between the two: a value shared by Ana reaches Bo's shared box; one tempo for both
+  await cljs(B, `(comp/define! "netsink" {:io [2 0] :receive (fn [{:keys [inlet value state]}] {:state (conj (or state []) [inlet value])})})`);
+  const share = (await cljs(A, '(box "share notes" 400 300)')).trim();
+  const shared = (await cljs(B, '(box "shared notes" 400 360)')).trim();
+  const sink = (await cljs(B, '(box "netsink" 400 420)')).trim();
+  await until(B, '(boolean (comp/lookup "shared"))', (x) => x === "true", 20000);
+  await cljs(B, `(connect ${shared} 0 ${sink} 0) (connect ${shared} 1 ${sink} 1) (play)`);
+  await B.waitForTimeout(800);
+  await until(A, '(boolean (comp/lookup "share"))', (x) => x === "true", 20000);
+  await cljs(A, `(send! ${share} [60 64 67])`);
+  const arrived = await until(B, `(get-in @eng/rt [:states ${sink}])`, (x) => x.includes("[60 64 67]"), 10000);
+  check("@kairotic/net: what Ana shares reaches Bo's shared box, with her name", arrived.includes("[0 [60 64 67]]") && arrived.includes('[1 "Ana"]'), arrived);
+  await cljs(A, "(net-start! 120)");
+  const tempo = await until(B, "(:bpm @net-tempo)", (x) => x === "120", 10000);
+  await B.waitForTimeout(1500);
+  const [ba, bb] = [Number(await cljs(A, "(net-beat)")), Number(await cljs(B, "(net-beat)"))];
+  check("... one tempo for the room: started by Ana, the same beat for Bo", tempo === "120" && Math.abs(ba - bb) < 0.1, ba + " / " + bb);
+  await cljs(B, "(stop)");
 } catch (e) {
   check("no error", false, e && e.stack || e);
 }

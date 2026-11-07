@@ -12,6 +12,9 @@
 ;; What is yours is kept at once; what is someone else's asks them first, and cannot be kept once they
 ;; have left. The model is kairotic.talk (tk/…).
 
+;; the room's channels and tempo, in 21-net.cljs
+(declare net-on-share! net-on-tempo! net-joined!)
+
 (defonce talk-room (atom {:ws nil :key nil :id nil :peers {} :n 0 :clock (tk/new-clock) :timer nil}))
 (defonce talk-state (atom {:items {} :order [] :asks [] :mine-asks {} :pieces {} :talking false}))
 (defonce talk-media (atom {:mic nil :cam nil :rec nil}))
@@ -257,7 +260,10 @@
     (.-answer o) (let [{:keys [item-id ok]} (js->clj (.-answer o) :keywordize-keys true)]
                    (swap! talk-state assoc-in [:mine-asks item-id] (if ok :allowed :declined))
                    (if ok (talk-keep-now! (get-in @talk-state [:items item-id])) (render-talk-chat!)))
-    (.-kept o) (talk-on-kept! (.-kept o))))
+    (.-kept o) (talk-on-kept! (.-kept o))
+    ;; @kairotic/net (21-net.cljs): a value shared on a channel, the room's tempo
+    (.-share o) (net-on-share! (.-share o))
+    (.hasOwnProperty o "tempo") (net-on-tempo! (.-tempo o))))
 
 ;; ───────── voice notes ─────────
 
@@ -442,7 +448,7 @@
                     (talk-msg! "in the room" "ok")
                     (doseq [p (.-peers w)] (talk-add-peer! (.-id p) (.-name p)) (talk-pc! (.-id p) true))
                     (render-talk!))
-    (.-joined f) (let [j (.-joined f)] (talk-add-peer! (.-id j) (.-name j)))
+    (.-joined f) (let [j (.-joined f)] (talk-add-peer! (.-id j) (.-name j)) (net-joined! (.-id j)))
     (.-left f) (talk-drop-peer! (.-left f))
     (.-from f) (talk-from! (.-from f) (.-data f))
     (.-error f) (talk-msg! (esc (.-error f)) "bad")))

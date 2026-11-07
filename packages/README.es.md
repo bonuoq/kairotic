@@ -16,6 +16,7 @@ publicados en npm bajo el ámbito `@kairotic` y servidos dentro de claude.ai por
 | [`@kairotic/patterns`](patterns/) | `pbind [semilla] [repeticiones] [loop]` un pattern como datos EDN, con generadores `#pat/…` y azar sembrado · `pattern [semilla] [repeticiones] [loop]` un pattern como código Clojure (secuencias perezosas, como en Overtone) · `player [bpm] [quant]` lo toca con su propio reloj, paso a paso o en una posición en beats |
 | [`@kairotic/spectral`](spectral/) | `shift~ [factor …]` transporte de altura en tiempo real, un intervalo o un acorde entero (razones, semitonos, cents), conservando los formantes — stftPitchShift en WebAssembly |
 | [`@kairotic/io`](io/) | `midiin [canal] [rango]` MIDI de entrada como eventos, y Hz e ids de voz para synth~ · `midiout [mpe] [canal] [puerto] [rango]` notas a un puerto MIDI, MPE para microtonos · `oscin [patrón]` · `oscout [destino]` OSC a través del puente de un relay · `motion` la inclinación y sacudidas de un móvil · `gamepad` botones y sticks · `serial [baudios]` las líneas de una placa (Web Serial) |
+| [`@kairotic/net`](net/) | `share [canal]` un valor para todos en la sala · `shared [canal]` lo que cualquiera de la sala comparte · `pulse [división]` el pulso de la sala: un tempo para todas las páginas |
 | [`@kairotic/faust-units`](faust-units/) | sin clases: módulos para la página — la vista de patch de un `faust~`, los elementos de Faust como cajas, sincronizada con su código; la receta de un `faust~` a partir de un sonido |
 
 Previstos: `cac`, `notation`.
