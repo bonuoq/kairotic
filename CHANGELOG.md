@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Box ids, seen and written by clicking** (issue #163).
+  - Every box shows its id (`b7`) over its top right corner when it is hovered or selected; **I** shows them all
+    (`(show-ids! true)`, remembered in the tab).
+  - **`(`** on the patch opens a line of the REPL there, in the field of a new box, which also becomes one when
+    what is written in it starts with `(`. Enter runs it and shows what it gave under the field (the REPL prints
+    it as usual), and the line stays open for the next one; ↑ ↓ go through the REPL's history; Esc closes it.
+  - **A click on a box writes its id** where a line of code waits for one — the REPL, the Code tab, that line, the
+    Room tab's message (`@b7`) — as a click on a cell does in a spreadsheet formula. It waits for one after a space,
+    `(` `[` `{`, or the `:` / `@` already typed; the patch then shows a copy pointer and marks the box under it, the
+    line keeps the focus, and the box is not selected nor moved. Otherwise a click on a box does what it always did.
+  - Tests: `tests/ids.mjs` (26 checks).
+
 - **Which box is on top** (issue #166, 3). Boxes were drawn in the order of their ids as text, so `:b10`–`:b19`
   went under `:b2`; now they are stacked by the number of their id (the newest on top), and **a box dragged comes to
   the front**, so that what is moved is never hidden. That order belongs to the tab, as the selection does: it is not

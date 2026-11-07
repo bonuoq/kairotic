@@ -31,6 +31,13 @@ links you share carry it. See [Kairotic Pages](pages.md).
   not hit the mark: near an outlet it lights up and the pointer becomes a cross, and a wire dropped on a
   box, or just above one of its inlets, lands on the nearest inlet. Wires are curves, here and in the
   patch of a `faust~`, which works the same way.
+- **Ids**: every box has an id (`:b7`), which code, the REPL and Room messages name it by. It shows over the
+  box's top right corner when the box is hovered or selected; **I** shows them all. **`(`** on the patch opens
+  a line of the REPL there (as the field of a new box does when what you write starts with `(`): Enter runs
+  it and shows what it gave below, ↑ ↓ go through the REPL's history, Esc closes it. While a line of code
+  waits for a box — the REPL, the Code tab, that line, a Room message — after a space, `(` `[` `{` or `:`
+  (`@` in a message), a click on a box writes its id there instead of selecting it, as a click on a cell does
+  in a spreadsheet formula: `(connect ` click, `0 ` click, `0)`.
 - **Select** a box or a line by clicking it. **⌘/Ctrl+click** a box to edit it below (its arguments,
   and its text). **Delete** removes what is selected.
 - **Select several**: ⇧+click adds a box to the selection (or takes it out); a frame drawn from an
@@ -393,7 +400,10 @@ history), *Present without them* leaves them out. From the REPL: `(present-in-pl
 
 | | |
 |---|---|
-| double-click empty space | a new box |
+| double-click empty space | a new box (what starts with `(` is a line of the REPL) |
+| `(` on the patch | a line of the REPL, there (Enter runs it, ↑ ↓ its history, Esc closes) |
+| I | show the id of every box (hovered or selected, a box always shows it) |
+| click a box while a line of code waits for one | write its id there (`:b7`, `@b7` in a Room message) |
 | double-click a number, knob or slider | type its value (Enter applies, Esc closes) |
 | Delete / Backspace | delete the selected boxes or line |
 | ⌘/Ctrl+click | edit a box below it (its arguments and text) |
