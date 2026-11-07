@@ -10,6 +10,38 @@
     sliders, a panel — is now drawn inside the box (`g.live`), so a box on top covers it too; reading cursors are
     still drawn over everything.
   - Tests: `tests/zorder.mjs` (14 checks).
+
+- **Analysis boxes after ■ ▶** (`@kairotic/analysis` 0.7.2): `features~`, `chroma~`, `onset~` and `spectrum~`
+  did not check that their box was still there, and their taps were never disconnected, so after ■ ▶ (or when
+  their node was rebuilt) the old tap went on handing the box silence, alternating with the new one. With
+  `realize~` this read as a silence half the time: its `gain` sat at −80 until `learn` happened to start it
+  afresh. They now check, and `api/untap` stops a tap and disconnects it (`pitch~`, `snapshot~`, `scope~` too).
+- **`realize~` listening, steadier**: a correction it cannot play (darker than the `faust~`'s darkest setting, a
+  gain beyond its slider) no longer grows; what it corrected fades unless it is still needed; and the attack of a
+  sound (its first quarter second) is not corrected.
+- **`realize~` keeps up with a live sound** (`@kairotic/analysis` 0.7.1, `@kairotic/faust-units` 0.1.5): the
+  search for the nearest settings ran in the box's interpreted logic, about 300 settings for every frame, and with
+  a microphone (some 150 values a second) it could not keep up — the faust~ stayed where it was. It is now the
+  bank's own query (`index` in `notation.mjs`, plain loops over typed arrays, a few microseconds). Learning is
+  about three times quicker (only the descriptors it needs, YIN on four windows), and it gives the page a moment with a message to itself, not a timer, so it does not crawl in a tab that is not in front (the recipe of a `faust~` too). The pitch is sent even when the
+  level is low, and below −60 dB (not −50) counts as silence.
+- **`realize~` listens to what it plays** (discussion #114; `@kairotic/analysis` 0.7.0): three more inlets take
+  `features~` of the `faust~`'s sound (rms, centroid, flatness), and a correction grows where what is heard
+  falls short of what is written — the passes of Study 37, while it sounds. Tests: 2 more checks in
+  `tests/realize.mjs`.
+- **`realize~`: descriptors as a score, in the app** (discussion #114, Study 37; `@kairotic/analysis` 0.6.0,
+  `@kairotic/faust-units` 0.1.4). A box before a `faust~` that plays it from loudness, brightness, noisiness and
+  pitch — `features~` and `pitch~` of another sound, or curves drawn — setting its `pitch`/`freq` and `gain`
+  sliders directly and its other sliders to the settings of that `faust~` that sound nearest. It learns the
+  `faust~` its outlet reaches (a few hundred steady settings played offline and heard, in the page a moment at a
+  time) on the first values or `learn`; its right outlet says how far the `faust~` is from what is written. The
+  task a box asks for now knows what its outlets reach (`:wired`). Tests: `tests/realize.mjs` (15 checks).
+- **A number keeps its value in its text, like a knob** (issue #146). Let go after a drag, or typed (double-click), a
+  `number` box rewrites its text with its new value (`number 523.25`), one event of the history, as a knob does on
+  release: the value travels with the work and going back in the history brings back the number it had (and sends
+  it). A click without dragging still sends it again. It declares `:args [[:initial 0]]` and `:persist`, so presets
+  see it as a control too: a preset recalls its number and a morph moves it. Tests: `tests/cljs/number.cljs` (8
+  checks), 4 more in `tests/numinput.mjs`.
 - **Study 37 · notation** (discussion #114): descriptors as a score — pitch, loudness, brightness and noisiness
   drawn as four lanes over time (or read from a sound file as `features~` and `pitch~` hear it) and realised by a
   `faust~`: `pitch` and `gain` follow their lanes, the other sliders are chosen frame by frame from a bank of the
