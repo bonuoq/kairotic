@@ -599,6 +599,10 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
 .ttile video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ttile .tlabel { position: absolute; left: 5px; bottom: 4px; font: 10.5px var(--f-code); color: #fff; background: rgba(0,0,0,.55); padding: 0 4px; border-radius: 3px; }
 .ttile button { position: absolute; right: 4px; top: 4px; }
+#net-bpm { width: 4.5em; font: 12.5px var(--f-code); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 3px 5px; }
+.net-metro { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; }
+.net-beat { font: 600 15px var(--f-code); min-width: 2.6em; text-align: center; color: var(--ink-soft); border-radius: 4px; padding: 0 4px; }
+.net-beat.on { background: var(--kairos); color: #fff; }
 .talk-asks { display: grid; gap: 6px; } .talk-asks[hidden] { display: none; }
 .task { border: 1px solid var(--kairos); border-left-width: 3px; border-radius: 6px; padding: 6px 8px; font-size: 12.5px; display: grid; gap: 4px; }
 </style>
@@ -818,6 +822,15 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
               <button class="talk-hold" id="talk-note" disabled aria-pressed="false" title="Hold to record, let go to send">● Note</button>
               <button class="act" id="talk-cam" aria-pressed="false" title="Your camera, small and silent, to the room">Camera</button>
             </div>
+            <div class="talk-bar" title="One tempo for the whole room: the same beat on every page (pulse boxes follow it)">
+              <span class="label">Tempo</span>
+              <input id="net-bpm" type="number" min="20" max="400" value="96" aria-label="Beats per minute">
+              <button class="act small" id="net-start">Start for everyone</button>
+              <button class="act small" id="net-stop">Stop</button>
+              <label class="net-metro"><input type="checkbox" id="net-metro"> metronome</label>
+              <span class="net-beat" id="net-beat" aria-live="off">·</span>
+              <span class="talk-state" id="net-clock"></span>
+            </div>
             <div class="talk-tiles" id="talk-tiles"></div>
           </div>
         </div>
@@ -1018,7 +1031,7 @@ window.addEventListener("DOMContentLoaded", function () {
   var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/spell.cljs", "kairotic/mt.cljs", "kairotic/tempo.cljs", "kairotic/structure.cljs", "kairotic/quantize.cljs", "kairotic/treecanvas.cljs", "kairotic/shapes.cljs", "kairotic/components.cljs",
               "kairotic/code.cljs", "kairotic/patterns.cljs", "kairotic/api.cljs", "kairotic/corefns.cljs", "kairotic/mtboxes.cljs", "kairotic/hiccup.cljs", "kairotic/faust.cljs", "kairotic/library.cljs", "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs",
               "kairotic/sounds.cljs", "kairotic/talk.cljs", "kairotic/signal.cljs", "kairotic/input.cljs", "kairotic/record.cljs", "kairotic/links.cljs", "kairotic/release.cljs", "kairotic/presets.cljs"];
-  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/19-html.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs", "page/15-presets.cljs", "page/16-release.cljs", "page/17-sounds.cljs", "page/18-lines.cljs", "page/19-files.cljs", "page/20-talk.cljs"];
+  var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/19-html.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs", "page/15-presets.cljs", "page/16-release.cljs", "page/17-sounds.cljs", "page/18-lines.cljs", "page/19-files.cljs", "page/20-talk.cljs", "page/21-net.cljs"];
   Promise.all(mods.map(function (m) {
     return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m + " (" + r.status + ")"); return r.text(); });
   }))

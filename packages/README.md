@@ -16,6 +16,7 @@ npm under the scope `@kairotic` and served inside claude.ai by jsDelivr.
 | [`@kairotic/patterns`](patterns/) | `pbind [seed] [repeat] [loop]` a pattern as EDN data, with `#pat/…` generators and seeded randomness · `pattern [seed] [repeat] [loop]` a pattern as Clojure code (lazy sequences, as in Overtone) · `player [bpm] [quant]` plays one by its own clock, step by step, or at a position in beats |
 | [`@kairotic/spectral`](spectral/) | `shift~ [factor …]` pitch shifting in real time, one interval or a whole chord (ratios, semitones, cents), with the formants kept — stftPitchShift in WebAssembly |
 | [`@kairotic/io`](io/) | `midiin [channel] [range]` MIDI in as events, and Hz and voice ids for synth~ · `midiout [mpe] [channel] [port] [range]` notes to a MIDI port, MPE for microtones · `oscin [pattern]` · `oscout [target]` OSC through a relay's bridge · `motion` a phone's tilt and shakes · `gamepad` buttons and sticks · `serial [baud]` a board's lines (Web Serial) |
+| [`@kairotic/net`](net/) | `share [channel]` a value to everyone in the room · `shared [channel]` what anyone in the room shares · `pulse [division]` the room's beat: one tempo for every page |
 | [`@kairotic/faust-units`](faust-units/) | no classes: modules for the page — the patch view of a `faust~`, Faust's own elements as boxes, kept in sync with its code; the recipe of a `faust~` from a sound |
 
 Planned: `cac`, `notation`.
