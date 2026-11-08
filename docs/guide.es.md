@@ -33,8 +33,9 @@ los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
 - **Ids**: cada caja tiene un id (`:b7`), que es como la nombran el código, la REPL y los mensajes de Room.
   Aparece sobre su esquina superior derecha cuando pasas por encima o la seleccionas; **I** los muestra
   todos. **`(`** en el patch abre ahí una línea de la REPL (como el campo de una caja nueva cuando lo que
-  escribes empieza por `(`): Intro la ejecuta y muestra debajo lo que dio, ↑ ↓ recorren la historia de la
-  REPL, Esc la cierra. Mientras una línea de código espera una caja —la REPL, la pestaña Code, esa línea, un
+  escribes empieza por `(`), con el mismo editor que la REPL —sugerencias, paréntesis que se cierran—: Intro
+  la ejecuta cuando sus paréntesis están equilibrados y muestra debajo lo que dio, ↑ ↓ recorren la historia
+  de la REPL, Esc la cierra. Mientras una línea de código espera una caja —la REPL, la pestaña Code, esa línea, un
   mensaje de Room— tras un espacio, `(` `[` `{` o `:` (`@` en un mensaje), un clic en una caja escribe ahí su
   id en vez de seleccionarla, como un clic en una celda dentro de una fórmula de hoja de cálculo:
   `(connect ` clic, `0 ` clic, `0)`.

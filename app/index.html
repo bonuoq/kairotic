@@ -439,6 +439,14 @@ body.present .askbar { position: absolute; z-index: 6; left: 6px; top: 6px; marg
 .edit-out { position: absolute; z-index: 6; max-width: 520px; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft);
             background: var(--box); border: 1px solid var(--rule); border-radius: 3px; padding: 2px 8px; white-space: pre-wrap; word-break: break-word; }
 .edit-out:empty { display: none; }
+/* the line of the REPL on the patch as a code editor: what it gave goes right below, inside it */
+.edit.repl-line { padding: 0 6px; display: flex; flex-direction: column; max-width: 640px; }
+.repl-line-host { min-width: 0; max-height: 40vh; overflow: auto; }
+.repl-line-host .cm-editor { background: transparent !important; font-size: 12.5px; }
+.repl-line-host .cm-content { padding: 4px 0 !important; }
+.repl-line-host .cm-line { padding: 0; }
+.repl-line-host .cm-placeholder { color: var(--ink-soft); }
+.repl-line .edit-out { position: static; max-width: none; border: 0; border-top: 1px solid var(--rule); border-radius: 0; margin: 0 -6px; }
 .edit-out.err { color: var(--error); }
 /* box ids (issue #163): on a box hovered or selected, on all of them with I; a box under the pointer while a
    line of code waits for one is marked, and a click writes its id there */

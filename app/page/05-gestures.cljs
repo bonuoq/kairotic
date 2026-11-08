@@ -36,6 +36,20 @@
       (let [[x y] (pt e) t (port-near (current) :in x y)]
         (when (and t (not= (first t) (:from wire))) t))))
 
+(declare upgrade-repl-line! close-repl-line!)
+
+(defn repl-line-run!
+  "Runs a line of the REPL written on the patch: in the REPL's history, printed in the REPL as usual, and what it
+   gave shown in element out (in red if it is an error)."
+  [code out]
+  (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
+  (let [n (.-childElementCount ($ "repl-out"))]
+    (repl-eval! code :repl)
+    (let [new (drop n (array-seq (.-children ($ "repl-out"))))
+          last-el (last (filter (fn [k] (#{"out" "err"} (.-className k))) new))]
+      (set! (.-className out) (str "edit-out" (when (and last-el (= "err" (.-className last-el))) " err")))
+      (set! (.-textContent out) (if last-el (.-textContent last-el) "")))))
+
 (defn open-editor!
   "The field to write a box (a new one at x y, or the text of box id). What starts with ( is a line of the REPL
    instead (issue #163): Enter evaluates it, shows what it gave under the field and leaves it open for the next
@@ -43,6 +57,7 @@
   [{:keys [id x y text]}]
   (when-let [old ($ "box-edit")] (.remove old))
   (when-let [old ($ "box-edit-out")] (.remove old))
+  (close-repl-line!)
   (let [inp (js/document.createElement "input") done (atom false)
         out (js/document.createElement "div")
         repl? (atom false) hidx (atom nil)
@@ -53,16 +68,7 @@
                     (.toggle (.-classList inp) "as-repl" on)
                     (set! (.-placeholder inp) (if on "(command) · Enter runs it · Esc closes" "canvas, reader, ramp 0 8 4, number, msg 1, synth~… · ( for a command")))
         ;; a line of the REPL: run, print in the REPL as usual, and show what it gave here
-        run! (fn [code]
-               (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
-               (reset! hidx nil)
-               (let [n (.-childElementCount ($ "repl-out"))]
-                 (repl-eval! code :repl)
-                 (let [kids (array-seq (.-children ($ "repl-out")))
-                       new (drop n kids)
-                       last-el (last (filter (fn [k] (#{"out" "err"} (.-className k))) new))]
-                   (set! (.-className out) (str "edit-out" (when (and last-el (= "err" (.-className last-el))) " err")))
-                   (set! (.-textContent out) (if last-el (.-textContent last-el) "")))))
+        run! (fn [code] (reset! hidx nil) (repl-line-run! code out))
         finish (fn [commit?]
                  (when-not @done
                    (let [v (str/trim (.-value inp))]
@@ -105,9 +111,13 @@
     (if @repl?
       (let [n (count (.-value inp))] (.setSelectionRange inp n n))
       (.select inp))
-    ;; a new box whose text starts with ( is a line of the REPL; once it is one, it stays one
+    ;; a new box whose text starts with ( is a line of the REPL; once it is one, it stays one, and becomes the
+    ;; code editor of a line of the REPL (23-ids.cljs) as soon as that is loaded
+    (when @repl? (upgrade-repl-line! inp x y close!))
     (.addEventListener inp "input"
-      (fn [_] (when (and (nil? id) (not @repl?) (str/starts-with? (str/triml (.-value inp)) "(")) (set-repl! true))))
+      (fn [_] (when (and (nil? id) (not @repl?) (str/starts-with? (str/triml (.-value inp)) "("))
+                (set-repl! true)
+                (upgrade-repl-line! inp x y close!))))
     (.addEventListener inp "keydown"
       (fn [e] (case (.-key e)
                 "Enter" (do (.preventDefault e) (finish true))

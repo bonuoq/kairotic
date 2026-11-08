@@ -14,11 +14,106 @@
    document's active element: the view's own hasFocus is false while the window itself is not in front)."
   [ed] (when-let [v (some-> ed .-view)] (when (identical? (.-activeElement js/document) (.-contentDOM v)) v)))
 
+(declare mark-picking!)
+
+;; ───── the line of the REPL on the patch, as an editor (the same as the REPL's) ─────
+;; The field of a new box becomes a line of the REPL when what is written in it starts with ( (05-gestures.cljs);
+;; once the code editor is loaded, that line is one, as the REPL at the bottom is: completion of Kairotic's
+;; commands and clojure.core, brackets closed and matched, Enter runs it once its brackets are balanced
+;; (Shift+Enter: a new line), ↑ ↓ the REPL's history, Esc closes it. What it gave shows below it.
+
+(defonce line-ed (atom nil))   ; {:ed editor :el the line} while the line is open
+
+(defn close-repl-line!
+  "Closes the line of the REPL on the patch, without running anything."
+  []
+  (when-let [{:keys [ed el]} @line-ed]
+    (reset! line-ed nil)
+    (try (.destroy ed) (catch :default _ nil))
+    (.remove el)
+    (mark-picking!)))
+
+(defn repl-line-text "What is written in the line of the REPL on the patch (nil if it is not open)." []
+  (some-> @line-ed :ed .getValue))
+
+(defn open-repl-cm!
+  "Opens the line of the REPL on the patch as a code editor (cm, the editor's module), at x y, with text."
+  [cm x y text]
+  (close-repl-line!)
+  (let [el (js/document.createElement "div") host (js/document.createElement "div")
+        out (js/document.createElement "div")
+        ed (atom nil) hidx (atom nil)
+        free? (fn [] (not (.completing @ed)))
+        start (if (= "(" (str/trim (str text))) "()" (str text))
+        [px py] (wrap-px x (- y 4))
+        run (fn []
+              (let [code (str/trim (.getValue @ed))]
+                (if (str/blank? code)
+                  (close-repl-line!)
+                  (do (reset! hidx nil)
+                      (repl-line-run! code out)
+                      (.setValue @ed "")
+                      (.focus @ed)))
+                true))
+        recall (fn [up?]
+                 (let [h (:hist @ui) n (count h)]
+                   (when (pos? n)
+                     (let [i (if up? (max 0 (dec (or @hidx n))) (min n (inc (or @hidx n))))]
+                       (reset! hidx i)
+                       (.setValue @ed (if (< i n) (nth h i) ""))
+                       (.cursorToEnd @ed)
+                       true))))]
+    (set! (.-id el) "repl-line")
+    (set! (.-className el) "edit as-repl repl-line")
+    (set! (.-className host) "repl-line-host")
+    (set! (.-id out) "box-edit-out")
+    (set! (.-className out) "edit-out")
+    (set! (.. el -style -left) (str px "px"))
+    (set! (.. el -style -top) (str py "px"))
+    (.appendChild el host)
+    (.appendChild el out)
+    ;; keys typed in it are its own: a space is not ▶, Delete does not delete a box
+    (.addEventListener el "keydown" (fn [e] (.stopPropagation e)))
+    (.appendChild ($ "canvas-wrap") el)
+    (reset! ed ((.-createEditor cm)
+                #js {:parent host :doc start :language "clojurescript" :gutter false
+                     :placeholder "(command) · Enter runs it · Esc closes"
+                     :words (clj->js (concat (command-words) (ns-names 'clojure.core "")))
+                     :onCancel (fn [] (close-repl-line!))
+                     :keys #js [#js {:key "Enter" :run (fn [] (when (and (free?) (balanced? (.getValue @ed))) (run)))}
+                                #js {:key "Shift-Enter" :run (fn [] (.newline @ed) true)}
+                                #js {:key "ArrowUp" :run (fn [] (boolean (and (free?) (= 1 (.cursorLine @ed)) (recall true))))}
+                                #js {:key "ArrowDown" :run (fn [] (boolean (and (free?) (= (.cursorLine @ed) (.lineCount @ed)) (recall false))))}]}))
+    (.setAttribute (.-contentDOM (.-view @ed)) "aria-label" "A line of the REPL")
+    (reset! line-ed {:ed @ed :el el})
+    ;; the cursor inside the brackets of a new line, or at the end of what was written
+    (let [v (.-view @ed)]
+      (.dispatch v #js {:selection #js {:anchor (if (= start "()") 1 (count start))}}))
+    (.focus @ed)
+    ;; leaving it closes it (a click on a box that writes its id keeps the focus here)
+    (.addEventListener el "focusout"
+      (fn [_] (js/setTimeout (fn [] (when (and (= el (:el @line-ed)) (not (.contains el (.-activeElement js/document))))
+                                      (close-repl-line!)))
+                             0)))
+    @ed))
+
+(defn upgrade-repl-line!
+  "The field of a new box that became a line of the REPL (input inp, at x y), as a code editor once it is loaded;
+   until then, or without it, the field itself is the line. close-field! removes the field without running it."
+  [inp x y close-field!]
+  (.then (load-cm)
+         (fn [cm]
+           (when (and cm (.-createEditor cm) (.-isConnected inp))
+             (let [text (.-value inp)]
+               (close-field!)
+               (open-repl-cm! cm x y text))))))
+
 (defn id-target
   "Where an id would be written now: {:cm view :mark \":\"}, {:el input :mark \":\" or \"@\"}, or nil."
   []
   (let [a (.-activeElement js/document) id (some-> a .-id)]
     (cond
+      (cm-of (:ed @line-ed)) {:cm (cm-of (:ed @line-ed)) :mark ":"}
       (cm-of @repl-ed) {:cm (cm-of @repl-ed) :mark ":"}
       (cm-of @code-ed) {:cm (cm-of @code-ed) :mark ":"}
       (#{"repl-in" "code"} id) {:el a :mark ":"}
@@ -53,7 +148,11 @@
         mark (:mark t)
         text (str (if (str/ends-with? before mark) "" mark) (name id) " ")]
     (if-let [cm (:cm t)]
-      (.dispatch cm (.replaceSelection (.-state cm) text))
+      ;; as typed (input.type): the Clojure editor keeps the space after it, before a closing bracket too
+      (let [sel (.. cm -state -selection -main) from (.-from sel)]
+        (.dispatch cm #js {:changes #js {:from from :to (.-to sel) :insert text}
+                           :selection #js {:anchor (+ from (count text))}
+                           :userEvent "input.type"}))
       (let [el (:el t) s (.-selectionStart el) e (.-selectionEnd el)]
         (.setRangeText el text s e "end")
         (.dispatchEvent el (js/Event. "input" #js {:bubbles true}))))))
