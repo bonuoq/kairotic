@@ -133,8 +133,12 @@ export async function ids(page, check) {
 
   // the REPL at the bottom too (its editor closes the bracket typed), and a : already typed is not written twice
   await cljs(page, '(set-repl-text! "") (focus-repl!)');
+  // the REPL has the focus, then what is typed is in it, before the click (several pages run at once here)
+  await until(page, "(some? (cm-of @repl-ed))", (g) => g === "true");
   await page.keyboard.type("(send! :");
+  await until(page, "(str/starts-with? (repl-text) \"(send! :\")", (g) => g === "true");
   p = await middle(page, ib);
+  await until(page, "(some? (cm-of @repl-ed))", (g) => g === "true");
   await page.mouse.click(p[0], p[1]);
   // (the REPL's Clojure editor lays out the spaces before the bracket as it likes)
   const repl = await cljs(page, "(str/replace (repl-text) #\"[\\s)]+$\" \"\")");
