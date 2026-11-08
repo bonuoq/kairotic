@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The Code tab and the patch, seen together** (issue #165).
+  - **Long lines folded**: a line over 160 characters (the source of a code box, a package copied into a work, a
+    buffer kept as data) is folded after its first 48 characters with `⋯ 26 000 characters`. A click, or the fold
+    gutter, shows it, and a line unfolded stays so while the tab is open, also when the code is written again.
+  - **The selected boxes marked**: selecting boxes in the patch marks their lines in the Code tab (their `box`, their
+    lines, their data…) and scrolls to them.
+  - **The cursor selects a box**: the cursor on a line of a box (a click, the arrows) selects it in the patch, and
+    the two boxes of a `connect`.
+  - The editor bundle (`core/vendor/codemirror/entry.mjs`) gains `foldLong`, `highlight`, `showLine` and the
+    `onLine` / `onUnfold` callbacks. Tests: `tests/codetab.mjs` (12 checks).
 - **Copy, cut, paste and duplicate boxes** (issue #164). ⌘/Ctrl+C copies the selected boxes, ⌘/Ctrl+X cuts them,
   ⌘/Ctrl+V pastes them where the pointer is (keeping their layout), ⌘/Ctrl+D duplicates them a little below and to
   the right; `(duplicate :b3 :b4)` from code.

@@ -39,6 +39,10 @@ links you share carry it. See [Kairotic Pages](pages.md).
   waits for a box — the REPL, the Code tab, that line, a Room message — after a space, `(` `[` `{` or `:`
   (`@` in a message), a click on a box writes its id there instead of selecting it, as a click on a cell does
   in a spreadsheet formula: `(connect ` click, `0 ` click, `0)`.
+- **The Code tab and the patch**: selecting boxes marks their lines in the Code tab (their box, lines, data…)
+  and scrolls to them; putting the cursor on a line of a box selects that box (both boxes, on a `connect`).
+  Lines longer than 160 characters — the source of a code box, a buffer kept as data — are folded after
+  their beginning, saying how many characters they hide; a click shows them, and they stay shown.
 - **Select** a box or a line by clicking it. **⌘/Ctrl+click** a box to edit it below (its arguments,
   and its text). **Delete** removes what is selected.
 - **Select several**: ⇧+click adds a box to the selection (or takes it out); a frame drawn from an

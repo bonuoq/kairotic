@@ -39,6 +39,11 @@ los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
   mensaje de Room— tras un espacio, `(` `[` `{` o `:` (`@` en un mensaje), un clic en una caja escribe ahí su
   id en vez de seleccionarla, como un clic en una celda dentro de una fórmula de hoja de cálculo:
   `(connect ` clic, `0 ` clic, `0)`.
+- **La pestaña Code y el patch**: al seleccionar cajas, sus líneas se marcan en la pestaña Code (su caja, sus
+  líneas, sus datos…) y la pestaña se desplaza hasta ellas; poner el cursor en una línea de una caja la
+  selecciona (las dos cajas, en un `connect`). Las líneas de más de 160 caracteres —el código de una caja de
+  código, un buffer guardado como datos— se pliegan tras su principio, diciendo cuántos caracteres ocultan; un
+  clic las muestra, y se quedan así.
 - **Seleccionar** una caja o una línea con un clic. **⌘/Ctrl+clic** en una caja la edita debajo (sus
   argumentos y su texto). **Supr** borra lo seleccionado.
 - **Seleccionar varias**: ⇧+clic añade una caja a la selección (o la quita); un marco dibujado desde un
