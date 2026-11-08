@@ -139,10 +139,17 @@ export async function ids(page, check) {
   await until(page, "(str/starts-with? (repl-text) \"(send! :\")", (g) => g === "true");
   p = await middle(page, ib);
   await until(page, "(some? (cm-of @repl-ed))", (g) => g === "true");
+  // what is under the pointer and where the focus is, said if the check fails
+  const seen = await page.evaluate(([x, y]) => {
+    const el = document.elementFromPoint(x, y);
+    const d = (e) => e ? (e.tagName + (e.id ? "#" + e.id : "") + (e.className && e.className.baseVal !== undefined ? "." + e.className.baseVal : (e.className ? "." + e.className : ""))).slice(0, 80) : "none";
+    return { under: d(el), box: el && el.closest ? (el.closest("#scene g.box")?.dataset.box || "no box") : "?", focus: d(document.activeElement),
+             scrollY: Math.round(scrollY), y: Math.round(y), vh: innerHeight };
+  }, p);
   await page.mouse.click(p[0], p[1]);
   // (the REPL's Clojure editor lays out the spaces before the bracket as it likes)
   const repl = await cljs(page, "(str/replace (repl-text) #\"[\\s)]+$\" \"\")");
-  check("in the REPL, after a :, a click writes the rest of the id", repl === `"(send! :${ib}"`, repl);
+  check("in the REPL, after a :, a click writes the rest of the id", repl === `"(send! :${ib}"`, `${repl} · ${JSON.stringify(seen)}`);
   check("... and the REPL keeps the focus", (await cljs(page, "(some? (cm-of @repl-ed))")) === "true");
   await cljs(page, '(set-repl-text! "")');
 
