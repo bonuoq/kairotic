@@ -384,9 +384,11 @@ window.addEventListener("DOMContentLoaded", function () {
         (doseq [{:keys [note reason futures]} fan-data]
           (let [yy (y note)]
             (if reason
-              (add "<g><title>" (fu/pitch-name note) ": " (esc reason) "</title><rect class=\"nopehit\" x=\"" (- x1 6) "\" y=\"" (- yy 6) "\" width=\"12\" height=\"12\"/>"
-                   "<line class=\"nope\" x1=\"" (- x1 3) "\" y1=\"" (- yy 3) "\" x2=\"" (+ x1 3) "\" y2=\"" (+ yy 3) "\"/>"
-                   "<line class=\"nope\" x1=\"" (- x1 3) "\" y1=\"" (+ yy 3) "\" x2=\"" (+ x1 3) "\" y2=\"" (- yy 3) "\"/></g>")
+              ;; (in pieces: a call of more than 20 arguments is lost in Scittle)
+              (do (add "<g><title>" (fu/pitch-name note) ": " (esc reason) "</title>")
+                  (add "<rect class=\"nopehit\" x=\"" (- x1 6) "\" y=\"" (- yy 6) "\" width=\"12\" height=\"12\"/>")
+                  (add "<line class=\"nope\" x1=\"" (- x1 3) "\" y1=\"" (- yy 3) "\" x2=\"" (+ x1 3) "\" y2=\"" (+ yy 3) "\"/>")
+                  (add "<line class=\"nope\" x1=\"" (- x1 3) "\" y1=\"" (+ yy 3) "\" x2=\"" (+ x1 3) "\" y2=\"" (- yy 3) "\"/></g>"))
               (let [dead (zero? futures)
                     sw (if dead 1.2 (+ 1 (* 0.55 (fu/bits futures))))]
                 (add "<line class=\"fanline" (when dead " dead") "\" x1=\"" x0 "\" y1=\"" (or y0 yy) "\" x2=\"" (- x1 7) "\" y2=\"" yy "\" stroke-width=\"" (.toFixed sw 2) "\" stroke-opacity=\"" (if dead 0.9 0.55) "\"/>")
