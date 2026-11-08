@@ -33,8 +33,9 @@ links you share carry it. See [Kairotic Pages](pages.md).
   patch of a `faust~`, which works the same way.
 - **Ids**: every box has an id (`:b7`), which code, the REPL and Room messages name it by. It shows over the
   box's top right corner when the box is hovered or selected; **I** shows them all. **`(`** on the patch opens
-  a line of the REPL there (as the field of a new box does when what you write starts with `(`): Enter runs
-  it and shows what it gave below, ↑ ↓ go through the REPL's history, Esc closes it. While a line of code
+  a line of the REPL there (as the field of a new box does when what you write starts with `(`), with the same
+  editor as the REPL — completion, brackets closed: Enter runs it once its brackets are balanced and shows
+  what it gave below, ↑ ↓ go through the REPL's history, Esc closes it. While a line of code
   waits for a box — the REPL, the Code tab, that line, a Room message — after a space, `(` `[` `{` or `:`
   (`@` in a message), a click on a box writes its id there instead of selecting it, as a click on a cell does
   in a spreadsheet formula: `(connect ` click, `0 ` click, `0)`.

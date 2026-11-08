@@ -56,6 +56,7 @@
   [evs] (when-let [e (rel/as-event evs)] (dispatch! e)))
 
 (defn box
+  "Makes a box: (box \"osc~ 440\"), (box \"osc~ 440\" 40 120), or with its id, (box :b3 \"osc~ 440\" 40 120). Returns its id."
   ([text] (let [[x y] (auto-pos)] (box (next-id) text x y)))
   ([text x y] (box (next-id) text x y))
   ([id text x y]
@@ -66,7 +67,9 @@
    (ensure-class! text)
    id))
 
-(defn connect [a o b i]
+(defn connect
+  "Connects outlet o of box a to inlet i of box b: (connect :b1 0 :b2 0)."
+  [a o b i]
   (let [[_ outs] (io (need-box a))
         [ins _] (io (need-box b))]
     ;; boxes with computed ports (or of classes not defined yet) accept any port
@@ -76,9 +79,15 @@
     (dispatch! [:connect a o b i])
     [a o b i]))
 
-(defn disconnect [a o b i] (dispatch! [:disconnect a o b i]) :ok)
-(defn move [id x y] (need-box id) (dispatch! [:move id (js/Math.round x) (js/Math.round y)]) [x y])
-(defn text! [id text] (need-box id) (check-ref-text! text) (dispatch! [:text id (str text)]) (eng/forget! (fid id)) (ensure-class! text) id)
+(defn disconnect
+  "Takes away the line from outlet o of box a to inlet i of box b: (disconnect :b1 0 :b2 0)."
+  [a o b i] (dispatch! [:disconnect a o b i]) :ok)
+(defn move
+  "Moves a box to x y: (move :b3 40 120)."
+  [id x y] (need-box id) (dispatch! [:move id (js/Math.round x) (js/Math.round y)]) [x y])
+(defn text!
+  "Rewrites the text of a box (its class and arguments): (text! :b3 \"osc~ 220\")."
+  [id text] (need-box id) (check-ref-text! text) (dispatch! [:text id (str text)]) (eng/forget! (fid id)) (ensure-class! text) id)
 
 (defn delete
   "Deletes boxes, with their lines: (delete :b3) · (delete :b3 :b4 :b7)."
