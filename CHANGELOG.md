@@ -8,8 +8,9 @@
   matched (a new line starts as `()` with the cursor inside), Enter runs it once its brackets are balanced
   (Shift+Enter: a new line), ↑ ↓ the REPL's history, Esc closes it; what it gave shows below it. Until the editor is
   loaded, or without it, the plain field is the line, as before. A box's id written by clicking it is now inserted
-  as typed, so the Clojure editors keep the space after it (before a closing bracket too). Tests: `tests/ids.mjs`
-  (30 checks).
+  as typed, so the Clojure editors keep the space after it (before a closing bracket too). `box`, `connect`,
+  `disconnect`, `move` and `text!` now have a doc string, so the REPL, the Code tab and this line complete them
+  (only commands with one are offered). Tests: `tests/ids.mjs` (30 checks).
 
 - **Box ids, seen and written by clicking** (issue #163).
   - Every box shows its id (`b7`) over its top right corner when it is hovered or selected; **I** shows them all

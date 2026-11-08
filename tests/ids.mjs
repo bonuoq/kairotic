@@ -74,8 +74,8 @@ export async function ids(page, check) {
   await page.keyboard.press("ArrowUp");
   check("↑ brings it back", (await line()) === '"(+ 1 2)"');
   // completion: Kairotic's commands and clojure.core, as in the REPL
-  check("it completes Kairotic's commands and clojure.core, as the REPL does",
-    (await cljs(page, "(boolean (and (some #{\"connect\"} (:words @line-ed)) (some #{\"mapv\"} (:words @line-ed))))")) === "true");
+  const words = await cljs(page, "(mapv (fn [w] (boolean (some #{w} (:words @line-ed)))) [\"connect\" \"box\" \"move-by\"])");
+  check("it completes Kairotic's commands, as the REPL does (connect, box, move-by)", words === "[true true true]", words);
   // the list shows only in a window in front (the editor asks the document for the focus); several pages run at
   // once here, so it is looked at when this one has it
   await page.bringToFront();
