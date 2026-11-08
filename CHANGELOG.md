@@ -11,7 +11,7 @@
   - **The cursor selects a box**: the cursor on a line of a box (a click, the arrows) selects it in the patch, and
     the two boxes of a `connect`.
   - The editor bundle (`core/vendor/codemirror/entry.mjs`) gains `foldLong`, `highlight`, `showLine` and the
-    `onLine` / `onUnfold` callbacks. Tests: `tests/codetab.mjs` (12 checks).
+    `onLine` / `onUnfold` callbacks. Tests: `tests/codetab.mjs` (13 checks).
 - **Copy, cut, paste and duplicate boxes** (issue #164). ⌘/Ctrl+C copies the selected boxes, ⌘/Ctrl+X cuts them,
   ⌘/Ctrl+V pastes them where the pointer is (keeping their layout), ⌘/Ctrl+D duplicates them a little below and to
   the right; `(duplicate :b3 :b4)` from code.

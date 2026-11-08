@@ -52,7 +52,13 @@ export async function codetab(page, check) {
   check("... on a connect, the two boxes", (await until(page, "(sel-ids)", (g) => g === `#{${a} ${b}}` || g === `#{${b} ${a}}`)).replace(/[#{}]/g, "").split(" ").sort().join(" ") === [a, b].sort().join(" "));
 
   // ── a line unfolded stays so ──
-  await page.evaluate(() => { const f = [...document.querySelectorAll("#panel-code .cm-fold-long")].find((e) => /characters/.test(e.textContent)); f && f.click(); });
+  // (the work these tests share has long lines of other suites: the one of this box)
+  const clicked = await page.evaluate((id) => {
+    const f = [...document.querySelectorAll("#panel-code .cm-fold-long")].find((e) => (e.closest(".cm-line")?.textContent || "").startsWith(`(code ${id} `));
+    if (f) f.click();
+    return !!f;
+  }, s);
+  check("the folded part of this box's line is there to click", clicked);
   const shown = await until(page, `(str/includes? (.-textContent (.-contentDOM (.-view @code-ed))) "w299")`, (g) => g === "true");
   check("a click shows the folded part", shown === "true");
   await cljs(page, `(move ${a} 9800 420)`);
