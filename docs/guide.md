@@ -44,6 +44,12 @@ links you share carry it. See [Kairotic Pages](pages.md).
 - **Select several**: ⇧+click adds a box to the selection (or takes it out); a frame drawn from an
   empty place of the paper selects every box it touches (⇧ adds them); ⌘/Ctrl+A selects all. Drag one
   of them and they all move; Delete removes them all.
+- **Copy, cut, paste, duplicate**: ⌘/Ctrl+C copies the selected boxes, ⌘/Ctrl+X cuts them, ⌘/Ctrl+V pastes
+  them where the pointer is, keeping their layout, and ⌘/Ctrl+D duplicates them a little below and to the
+  right (`(duplicate :b3 :b4)` from code). Pasted boxes get new ids and keep their lines among themselves, and
+  their lines to boxes that were not copied when those are in the patch. A paste is one event of the
+  history. What is copied is the boxes' code, so it can also be pasted in a message or a document; pasting
+  reads its last line as data and never runs it.
 - **Move** a box by dragging it. Playable boxes — `bang`, `msg`, `number`, knobs — are selected by the
   grip on their left; their body is for playing.
 - **Which box is on top**: boxes are drawn in the order they were made, the newest on top, and the box
@@ -441,6 +447,7 @@ history), *Present without them* leaves them out. From the REPL: `(present-in-pl
 | click a box while a line of code waits for one | write its id there (`:b7`, `@b7` in a Room message) |
 | double-click a number, knob or slider | type its value (Enter applies, Esc closes) |
 | Delete / Backspace | delete the selected boxes or line |
+| ⌘/Ctrl+C · X · V · D | copy · cut · paste (where the pointer is) · duplicate the selected boxes |
 | ⌘/Ctrl+click | edit a box below it (its arguments and text) |
 | ⇧+click · a frame · ⌘/Ctrl+A | select several boxes · all |
 | Esc | deselect, or close the box editor |
