@@ -83,20 +83,53 @@ cerrados —si no, empieza una línea nueva, y ⇧+Intro siempre lo hace— y �
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
 `clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son
 sus argumentos, leídos como EDN, y el mensaje que llega va al final, como con `->>`. `%` lo pone en otro
-sitio.
+sitio. El texto se lee como Clojure y las entradas como Max: esté donde esté escrito `%`, el mensaje es
+siempre la **entrada izquierda, la única caliente**; los demás argumentos tienen cada uno una entrada a la
+derecha, en el orden en que están escritos, que los sustituye sin enviar nada. Un bang a la izquierda
+vuelve a enviar con el último mensaje; un resultado `nil` no envía nada.
+
+| caja | mensaje | envía | entradas |
+|---|---|---|---|
+| `into [440]` | `[1 2]` | `[440 1 2]` | el mensaje · `[440]` |
+| `conj % 440` | `[1 2]` | `[1 2 440]` | el mensaje · `440` |
+| `vector % 0 0` | `1` | `[1 0 0]` | el mensaje · `0` · `0` (un *pack*) |
+| `hash-map :freq % :amp 0.5` | `440` | `{:freq 440 :amp 0.5}` | el mensaje · `:freq` · `:amp` · `0.5` |
+| `map inc` | `[1 2]` | `[2 3]` | el mensaje · `inc` |
+| `str/upper-case` | `"do"` | `"DO"` | el mensaje |
+
+Solo hay funciones puras (`map`, `filter`, `take`, `assoc`, `sort`, `frequencies`…), así que estas cajas
+son seguras en una sala compartida; una clase con el mismo nombre (`+`, `print`) va primero.
+
+**Datos como funciones.** Como en Clojure, una keyword, un conjunto o un mapa escritos primero también
+son funciones, y el mensaje va primero, `(:freq msg)`:
 
 | caja | mensaje | envía |
 |---|---|---|
-| `into [440]` | `[1 2]` | `[440 1 2]` |
-| `conj % 440` | `[1 2]` | `[1 2 440]` |
-| `map inc` | `[1 2]` | `[2 3]` |
-| `get % :freq` | `{:freq 440}` | `440` |
-| `str/upper-case` | `"do"` | `"DO"` |
+| `:freq` | `{:freq 440 :amp 1}` | `440` — un campo de un evento |
+| `:freq 220` | `{:amp 1}` | `220` — el valor por defecto, que tiene entrada |
+| `#{60 64 67}` | `64` · `62` | `64` · nada — un filtro |
+| `{60 :c 64 :e}` | `64` | `:e` — una tabla |
 
-Cada argumento tiene una entrada a la derecha que lo sustituye sin enviar nada; un bang a la izquierda
-vuelve a enviar con el último mensaje. Solo hay funciones puras (`map`, `filter`, `take`, `assoc`, `sort`,
-`frequencies`…), así que estas cajas son seguras en una sala compartida; una clase con el mismo nombre
-(`+`, `print`) va primero.
+**Todas las entradas calientes: `^:hot`.** Escrito antes de la clase, como Clojure escribe los metadatos,
+`^:hot` hace que un argumento nuevo envíe enseguida con el último mensaje (`nil` antes del primero), como
+`pak` en Max: `^:hot vector % 0 0`.
+
+**Sobre un flujo: `xf/`.** `xf/` delante de una función convierte su *transductor* en una caja con
+memoria: recorre los mensajes que llegan uno a uno, no una colección, y lo que deja pasar sale mensaje a
+mensaje.
+
+| caja | hace |
+|---|---|
+| `xf/partition-all 4` | junta 4 mensajes y los envía como un vector |
+| `xf/partition 4 1` | los últimos 4 en cada mensaje (una ventana deslizante) |
+| `xf/dedupe` | deja pasar un mensaje solo cuando cambia |
+| `xf/take 1` | solo el primer mensaje (un bang también es un mensaje) |
+| `xf/filter odd?`, `xf/map inc`, `xf/mapcat reverse`… | como en Clojure, mensaje a mensaje |
+
+`flush` lo completa (`partition-all` envía lo que guarda) y vuelve a empezar, `clear` vuelve a empezar
+sin enviar, y un argumento nuevo a la derecha también vuelve a empezar. La ayuda de cada una de estas cajas
+(**?**) enlaza a su página de [clojuredocs.org](https://clojuredocs.org) y a la referencia de
+[clojure.org](https://clojure.org/reference/transducers).
 
 ## 3. Sonido y tiempo
 

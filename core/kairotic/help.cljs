@@ -13,6 +13,8 @@
 ;;            more uses, after the :example: the help patch opens as a lesson, one step each, every
 ;;            step adding its lines to the patch of the step before (◀ ▶ travel between them) (optional)
 ;;  :see      ["other" "classes"]                   (optional)
+;;  :ref      [["label" "https://…"] …]             outer documentation, opened in a new tab (optional;
+;;                                                  the boxes of clojure.core carry theirs: clojuredocs.org)
 ;;  :package  "@kairotic/synth"                     when the class comes from a package
 ;;  :doc :usage                                     only for classes the page may not have loaded yet}
 

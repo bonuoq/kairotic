@@ -125,12 +125,51 @@
 
 ;; ───────── text of a box ─────────
 
-(defn klass [text] (first (str/split (str/trim (str text)) #"\s+")))
+;; A box can start with flags written as Clojure metadata, before its class: ^:hot vector % 0 0
+;; (the hot mode of Clojure boxes). They are not part of the class nor of its arguments.
+(def ^:private meta-re #"^(?:\^:[^\s\^]+\s+)+")
+
+(defn meta-flags
+  "The flags written before the class (^:hot → #{:hot})."
+  [text]
+  (let [m (re-find meta-re (str/trim (str text)))]
+    (if m (set (map (fn [[_ k]] (keyword k)) (re-seq #"\^:([^\s\^]+)" m))) #{})))
+
+(defn strip-meta "The text without the flags written before the class." [text]
+  (str/replace (str/trim (str text)) meta-re ""))
+
+(defn- form-end
+  "Where the bracketed form at the start of s ends (its length), strings and escapes skipped; the
+   whole length when it never closes."
+  [s]
+  (loop [i 0 depth 0 in-str false]
+    (if (>= i (count s))
+      (count s)
+      (let [c (.charAt s i)]
+        (cond
+          in-str (cond (= c "\\") (recur (+ i 2) depth true)
+                       (= c "\"") (recur (inc i) depth false)
+                       :else (recur (inc i) depth true))
+          (= c "\"") (recur (inc i) depth true)
+          (#{"{" "[" "("} c) (recur (inc i) (inc depth) false)
+          (#{"}" "]" ")"} c) (if (= depth 1) (inc i) (recur (inc i) (dec depth) false))
+          :else (recur (inc i) depth false))))))
+
+(defn klass
+  "The class of a box: its first word, after any ^:flags. A map or a set written first ({60 :c 64 :e},
+   #{60 64 67}) is the class as a whole, as a function in Clojure."
+  [text]
+  (let [t (strip-meta text)]
+    (if (re-find #"^#?\{" t)
+      (subs t 0 (form-end t))
+      (first (str/split t #"\s+")))))
 
 (defn token [s]
   (if (re-matches #"-?(\d+\.?\d*|\.\d+)(e-?\d+)?" s) (js/parseFloat s) (keyword s)))
 
-(defn args-of [text] (mapv token (rest (remove str/blank? (str/split (str/trim (str text)) #"\s+")))))
+(defn args-of [text]
+  (let [t (strip-meta text)]
+    (mapv token (remove str/blank? (str/split (str/trim (subs t (count (klass t)))) #"\s+")))))
 
 (defn box-info [b] {:text (:text b) :args (args-of (:text b)) :data (:data b)})
 
