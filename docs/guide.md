@@ -82,20 +82,54 @@ starts a new line, and ⇧+Enter always does — and ↑ ↓ bring back what you
 
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as
 `str/…`) is that function, with no component to write: its other words are its arguments, read as EDN,
-and the message that arrives goes last, as with `->>`. `%` puts it elsewhere.
+and the message that arrives goes last, as with `->>`. `%` puts it elsewhere. The text reads as Clojure,
+the inlets as Max: wherever `%` is written, the message is always the **left inlet, the only hot one**;
+the other arguments have an inlet each on the right, in the order they are written, which replaces them
+without sending. A bang on the left sends again with the last message; a result that is `nil` sends
+nothing.
+
+| box | message | sends | inlets |
+|---|---|---|---|
+| `into [440]` | `[1 2]` | `[440 1 2]` | the message · `[440]` |
+| `conj % 440` | `[1 2]` | `[1 2 440]` | the message · `440` |
+| `vector % 0 0` | `1` | `[1 0 0]` | the message · `0` · `0` (a *pack*) |
+| `hash-map :freq % :amp 0.5` | `440` | `{:freq 440 :amp 0.5}` | the message · `:freq` · `:amp` · `0.5` |
+| `map inc` | `[1 2]` | `[2 3]` | the message · `inc` |
+| `str/upper-case` | `"do"` | `"DO"` | the message |
+
+Only pure functions are there (`map`, `filter`, `take`, `assoc`, `sort`, `frequencies`…), so these boxes
+are safe in a shared room; a class with the same name (`+`, `print`) comes first.
+
+**Data as functions.** As in Clojure, a keyword, a set or a map written first is a function too, and
+the message goes first, `(:freq msg)`:
 
 | box | message | sends |
 |---|---|---|
-| `into [440]` | `[1 2]` | `[440 1 2]` |
-| `conj % 440` | `[1 2]` | `[1 2 440]` |
-| `map inc` | `[1 2]` | `[2 3]` |
-| `get % :freq` | `{:freq 440}` | `440` |
-| `str/upper-case` | `"do"` | `"DO"` |
+| `:freq` | `{:freq 440 :amp 1}` | `440` — a field of an event |
+| `:freq 220` | `{:amp 1}` | `220` — the default, which has an inlet |
+| `#{60 64 67}` | `64` · `62` | `64` · nothing — a filter |
+| `{60 :c 64 :e}` | `64` | `:e` — a table |
 
-Each argument has an inlet on the right that replaces it without sending; a bang on the left sends again
-with the last message. Only pure functions are there (`map`, `filter`, `take`, `assoc`, `sort`,
-`frequencies`…), so these boxes are safe in a shared room; a class with the same name (`+`, `print`)
-comes first.
+**Every inlet hot: `^:hot`.** Written before the class, as Clojure writes metadata, `^:hot` makes a new
+argument send at once with the last message (`nil` before the first one), like `pak` in Max:
+`^:hot vector % 0 0`.
+
+**Over a stream: `xf/`.** `xf/` before a function makes its *transducer* a box with memory: it goes
+through the messages that arrive one by one, not through a collection, and what it lets through goes out
+one message at a time.
+
+| box | does |
+|---|---|
+| `xf/partition-all 4` | collects 4 messages and sends them as a vector |
+| `xf/partition 4 1` | the last 4 at every message (a sliding window) |
+| `xf/dedupe` | lets a message through only when it changes |
+| `xf/take 1` | the first message only (a bang is a message too) |
+| `xf/filter odd?`, `xf/map inc`, `xf/mapcat reverse`… | as in Clojure, message by message |
+
+`flush` completes it (`partition-all` sends what it holds) and starts again, `clear` starts again
+without sending, and a new argument on the right starts again too. The help of each of these boxes (**?**)
+links to its page at [clojuredocs.org](https://clojuredocs.org) and to the reference at
+[clojure.org](https://clojure.org/reference/transducers).
 
 ## 3. Sound and time
 

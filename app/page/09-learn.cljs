@@ -76,6 +76,16 @@
     (str "<code class=\"run\" data-code=\"" (esc w) "\">" (esc w) "</code>")
     (str "<code>" (esc w) "</code>")))
 
+(defn help-refs
+  "Links to the outer documentation of a class ([[label url] …]: clojuredocs.org and clojure.org for the
+   boxes of clojure.core), opened in a new tab; empty when it has none."
+  [refs]
+  (when (seq refs)
+    (str "<p class=\"refs\"><small>" (if (es?) "Referencia: " "Reference: ")
+         (str/join " · " (for [[label url] refs]
+                           (str "<a href=\"" (esc url) "\" target=\"_blank\" rel=\"noopener\">" (esc label) "</a>")))
+         "</small></p>")))
+
 (defn help-page [cls]
   (let [d (comp/lookup cls) h (hlp/of cls)
         doc (or (:doc d) (:doc h)) usage (or (:usage d) (:usage h))
@@ -88,6 +98,7 @@
          "</h3>"
          (when usage (str "<div class=\"usage\">" (esc usage) "</div>"))
          (when doc (str "<p>" (esc doc) "</p>"))
+         (help-refs (or (:ref d) (:ref h)))
          (when (and (nil? d) (empty? h)) "<p>There is no class with this name.</p>")
          (when spec
            (str "<h4>Arguments</h4><table>"
@@ -323,7 +334,9 @@
                                      (str "**" (tr (:title st)) "**" (when (seq (tr (:note st))) (str " — " (tr (:note st)))) "\n\n"
                                           (when (seq (tr (:try st))) (str "*Try:* " (tr (:try st)) "\n\n"))
                                           "```clojure\n" (str/trim (:example st)) "\n```\n\n")))
-                        (when (seq (:see h)) (str "See also: " (str/join ", " (map #(str "`" % "`") (:see h))) "\n\n"))))))]
+                        (when (seq (:see h)) (str "See also: " (str/join ", " (map #(str "`" % "`") (:see h))) "\n\n"))
+                        (when-let [refs (seq (or (:ref d) (:ref h)))]
+                          (str "Reference: " (str/join " · " (for [[label url] refs] (str "[" label "](" url ")"))) "\n\n"))))))]
     (str "# Class reference\n\n"
          "*Made from the help of Kairotic " version " (the Help tab shows the same, and the help of classes a work defines). "
          "Generated: do not edit by hand — `(reference-md)` in the REPL writes it.*\n\n"
