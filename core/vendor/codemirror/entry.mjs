@@ -2,15 +2,20 @@
 // Kairotic · the code editor: CodeMirror 6 set up for the languages of the code boxes. build.mjs bundles this
 // file into core/vendor/codemirror.mjs; the page imports it once, when an editor first opens (05-gestures.cljs).
 //
-//   createEditor({ parent, doc, language, words, onApply, onCancel, onChange, gutter, keys, placeholder, readOnly }) → editor
+//   createEditor({ parent, doc, language, words, onApply, onCancel, onChange, onLine, onUnfold, gutter, keys, placeholder, readOnly }) → editor
 //     language  "clojurescript" · "component" · "edn" · "pbind" · "pattern" (Clojure, with structural editing) · "faust" · other: plain
 //     words     names offered while typing, besides the words already in the text
 //     onApply   Ctrl/⌘+Enter          onCancel  Esc          onChange(text) after every edit by the person
 //     gutter    false: no line numbers nor folding (a REPL line)        placeholder  text shown while empty
 //     keys      [{key: "Enter", run: () => true|false}, …] before every other key (true: handled)
 //     readOnly  true: a view to read, select, fold and search, not to edit (setValue still replaces it)
+//     onLine(n, text)    the person moved the cursor to another line (a click, the arrows)
+//     onUnfold(text)     the person unfolded a line (the text of that line)
 //   editor: getValue() · setValue(text) (not an edit: no onChange, no undo step) · focus() · destroy()
 //           cursorLine() · lineCount() · completing() · newline() · cursorToEnd()
+//           foldLong(min, keep, skip) folds what is long in lines longer than min characters (keeping the first
+//                     `keep` characters of their first string, or of the line); skip(text) → true leaves a line be
+//           highlight([n …]) marks those lines (class cm-mark-line), none with [] · showLine(n) scrolls to it
 //           view (the CodeMirror EditorView, to grow on)
 //
 // Line numbers, automatic indentation, matching and closing brackets, undo history, search (Ctrl/⌘+F) and
@@ -19,10 +24,11 @@
 
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection,
          dropCursor, rectangularSelection, crosshairCursor, highlightSpecialChars, placeholder as placeholderText } from "@codemirror/view";
-import { EditorState, Prec, Compartment, Transaction } from "@codemirror/state";
+import { EditorState, Prec, Compartment, Transaction, StateField, StateEffect, RangeSetBuilder } from "@codemirror/state";
+import { Decoration } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab, insertNewlineAndIndent } from "@codemirror/commands";
 import { bracketMatching, indentOnInput, syntaxHighlighting, HighlightStyle, StreamLanguage, foldGutter,
-         foldKeymap, indentUnit } from "@codemirror/language";
+         foldKeymap, indentUnit, codeFolding, foldEffect, unfoldEffect, foldedRanges } from "@codemirror/language";
 import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap, completionStatus, currentCompletions } from "@codemirror/autocomplete";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { tags as t } from "@lezer/highlight";
@@ -92,6 +98,9 @@ const look = EditorView.theme({
   ".cm-panels": { backgroundColor: "var(--sheet)", color: "var(--ink)" },
   ".cm-searchMatch": { backgroundColor: "var(--accent-soft)" },
   ".cm-foldPlaceholder": { backgroundColor: "var(--accent-soft)", border: "none", color: "var(--ink)" },
+  ".cm-fold-long": { fontFamily: "var(--f-ui)", fontSize: "11px", color: "var(--accent)", padding: "0 6px", borderRadius: "3px", cursor: "pointer" },
+  // the lines of the boxes selected in the patch
+  ".cm-mark-line": { backgroundColor: "color-mix(in srgb, var(--kairos) 14%, transparent)", boxShadow: "inset 3px 0 0 var(--kairos)" },
 });
 
 const colours = HighlightStyle.define([
@@ -137,9 +146,51 @@ function languageExtensions(language) {
   return [];
 }
 
+// ───────── long lines folded, lines marked ─────────
+
+// a folded part of a long line says how much it hides
+const folding = codeFolding({
+  preparePlaceholder: (state, range) => range.to - range.from,
+  placeholderDOM: (view, onclick, n) => {
+    const s = document.createElement("span");
+    s.className = "cm-foldPlaceholder cm-fold-long";
+    s.textContent = `⋯ ${Number(n).toLocaleString("en").replace(/,/g, " ")} characters`;
+    s.title = "Click to show it all";
+    s.onclick = onclick;
+    return s;
+  },
+});
+
+const setMarks = StateEffect.define();
+const markLine = Decoration.line({ class: "cm-mark-line" });
+const marks = StateField.define({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    deco = deco.map(tr.changes);
+    for (const e of tr.effects) if (e.is(setMarks)) {
+      const b = new RangeSetBuilder();
+      for (const n of [...new Set(e.value)].sort((x, y) => x - y)) {
+        if (n >= 1 && n <= tr.state.doc.lines) { const l = tr.state.doc.line(n); b.add(l.from, l.from, markLine); }
+      }
+      deco = b.finish();
+    }
+    return deco;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+// what to fold in a long line: its first string from `keep` characters in to its closing quote, or else the
+// line from `keep` characters in to its end
+function longPart(line, keep) {
+  const t = line.text, q = t.indexOf('"'), last = t.lastIndexOf('"');
+  if (q >= 0 && last > q + keep + 20) return { from: line.from + q + 1 + keep, to: line.from + last };
+  if (t.length > keep + 20) return { from: line.from + keep, to: line.to };
+  return null;
+}
+
 // ───────── the editor ─────────
 
-export function createEditor({ parent, doc = "", language = "", words = [], onApply, onCancel, onChange,
+export function createEditor({ parent, doc = "", language = "", words = [], onApply, onCancel, onChange, onLine, onUnfold,
                                gutter = true, keys = [], placeholder = "", readOnly = false } = {}) {
   const lang = new Compartment(), completion = new Compartment();
   let quiet = false;
@@ -156,7 +207,8 @@ export function createEditor({ parent, doc = "", language = "", words = [], onAp
       extensions: [
         own,
         readOnly ? [EditorState.readOnly.of(true)] : [],
-        gutter ? [lineNumbers(), highlightActiveLineGutter(), foldGutter(), highlightActiveLine()] : [],
+        gutter ? [folding, lineNumbers(), highlightActiveLineGutter(), foldGutter(), highlightActiveLine()] : [],
+        marks,
         placeholder ? placeholderText(placeholder) : [],
         highlightSpecialChars(), history(),
         drawSelection(), dropCursor(), EditorState.allowMultipleSelections.of(true), indentOnInput(),
@@ -167,7 +219,19 @@ export function createEditor({ parent, doc = "", language = "", words = [], onAp
         keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap,
                    ...completionKeymap, indentWithTab]),
         escape,
-        EditorView.updateListener.of((u) => { if (u.docChanged && onChange && !quiet) onChange(u.state.doc.toString()); }),
+        EditorView.updateListener.of((u) => {
+          if (u.docChanged && onChange && !quiet) onChange(u.state.doc.toString());
+          // the person moved the cursor to another line
+          if (onLine && u.selectionSet && u.transactions.some((tr) => tr.isUserEvent("select"))) {
+            const a = u.startState.doc.lineAt(u.startState.selection.main.head).number;
+            const l = u.state.doc.lineAt(u.state.selection.main.head);
+            if (l.number !== a || u.transactions.some((tr) => tr.isUserEvent("select.pointer"))) onLine(l.number, l.text);
+          }
+          // the person unfolded a line
+          if (onUnfold && !quiet) for (const tr of u.transactions) for (const e of tr.effects) {
+            if (e.is(unfoldEffect)) onUnfold(u.state.doc.lineAt(e.value.from).text);
+          }
+        }),
       ],
     }),
   });
@@ -189,6 +253,23 @@ export function createEditor({ parent, doc = "", language = "", words = [], onAp
     cursorToEnd: () => view.dispatch({ selection: { anchor: view.state.doc.length }, scrollIntoView: true }),
     setWords: (ws) => view.dispatch({ effects: completion.reconfigure(autocompletion({ override: [wordsSource(ws)] })) }),
     setLanguage: (l) => view.dispatch({ effects: lang.reconfigure(languageExtensions(l)) }),
+    foldLong: (min = 160, keep = 48, skip = null) => {
+      const doc = view.state.doc, effects = [], folded = [];
+      foldedRanges(view.state).between(0, doc.length, (from, to) => { folded.push([from, to]); });
+      for (let n = 1; n <= doc.lines; n++) {
+        const line = doc.line(n);
+        if (line.length <= min || (skip && skip(line.text))) continue;
+        const r = longPart(line, keep);
+        if (r && !folded.some(([f, t]) => f === r.from && t === r.to)) effects.push(foldEffect.of(r));
+      }
+      if (effects.length) { quiet = true; try { view.dispatch({ effects }); } finally { quiet = false; } }
+      return effects.length;
+    },
+    highlight: (lines) => view.dispatch({ effects: setMarks.of(Array.from(lines || [])) }),
+    showLine: (n) => {
+      if (n >= 1 && n <= view.state.doc.lines)
+        view.dispatch({ effects: EditorView.scrollIntoView(view.state.doc.line(n).from, { y: "center" }) });
+    },
     focus: () => view.focus(),
     destroy: () => view.destroy(),
   };

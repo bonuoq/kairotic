@@ -1014,7 +1014,8 @@
 (defonce repl-ed (atom nil))   ; the editor of the REPL line
 
 (defn code-text [] (if-let [e @code-ed] (.getValue e) (.-value ($ "code"))))
-(defn set-code-text! [v] (if-let [e @code-ed] (when (not= v (.getValue e)) (.setValue e v)) (set! (.-value ($ "code")) v)))
+(declare code-tab-refresh!)
+(defn set-code-text! [v] (if-let [e @code-ed] (when (not= v (.getValue e)) (.setValue e v) (code-tab-refresh!)) (set! (.-value ($ "code")) v)))
 (defn repl-text [] (if-let [e @repl-ed] (.getValue e) (.-value ($ "repl-in"))))
 (defn set-repl-text! [v] (if-let [e @repl-ed] (do (.setValue e v) (.cursorToEnd e)) (set! (.-value ($ "repl-in")) v)))
 (defn focus-repl! [] (if-let [e @repl-ed] (.focus e) (.focus ($ "repl-in"))))

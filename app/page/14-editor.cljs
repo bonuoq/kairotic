@@ -551,15 +551,73 @@
     (.addEventListener h "keydown" (fn [e] (.stopPropagation e)))
     h))
 
+;; ───── the Code tab and the patch, seen together (issue #165) ─────
+;; Lines longer than 160 characters (the source of a code box, a buffer kept as data…) are folded after their
+;; first 48 characters, saying how many they hide; a click (or the fold gutter) shows them, and a line unfolded
+;; stays so while the tab is open. The lines of the boxes selected in the patch are marked, and the tab scrolls to
+;; them; the other way round, the cursor on a line of a box selects that box in the patch.
+
+(defonce code-unfolded (atom #{}))   ; the lines unfolded by the person, by their beginning: "(code :b7"
+(defonce code-line-pick (atom false)) ; the selection comes from the cursor in the code: the tab does not scroll
+
+(defn line-key "The beginning of a line of the code that names its box: \"(code :b7\", or nil." [text]
+  (re-find #"^\([^\s()]+ :b\d+" (str text)))
+
+(defn ids-in-line "The box ids a line of code names, in order." [text]
+  (map keyword (map (fn [m] (subs m 1)) (re-seq #"(?<![\w:-]):b\d+(?![\w-])" (str text)))))
+
+(defn code-mark-lines!
+  "Marks the lines of the Code tab that name a box selected in the patch; returns their numbers."
+  []
+  (when-let [e @code-ed]
+    (when (.-highlight e)
+      (let [chosen (set (sel-ids))
+            ls (if (empty? chosen) []
+                   (vec (keep-indexed (fn [i l] (when (some chosen (ids-in-line l)) (inc i)))
+                                      (str/split-lines (.getValue e)))))]
+        (.highlight e (clj->js ls))
+        ls))))
+
+(defn code-tab-refresh!
+  "After the code of the tab is written again: long lines folded (not the ones unfolded), boxes marked."
+  []
+  (when-let [e @code-ed]
+    (when (.-foldLong e) (.foldLong e 160 48 (fn [t] (contains? @code-unfolded (line-key t)))))
+    (code-mark-lines!)))
+
+(defn code-line-chosen!
+  "The cursor went to a line of the Code tab: the boxes it names (one, or the two of a connect) are selected."
+  [text]
+  (let [p (current) ids (vec (distinct (filter (fn [id] (get-in p [:boxes id])) (ids-in-line text))))]
+    (when (seq ids)
+      (reset! code-line-pick true)
+      (try (swap! ui assoc :sel (sel-of ids) :insp nil :nsel nil :tsel nil)
+           (render-scene (current))
+           (finally (reset! code-line-pick false)))
+      ;; the patch shows the first one
+      (some-> (.querySelector ($ "scene") (str "g.box[data-box=\"" (name (first ids)) "\"]"))
+              (.scrollIntoView #js {:block "nearest" :inline "nearest"})))))
+
+;; the selection changed: its lines are marked, and the tab goes to them (unless the cursor chose them)
+(add-watch ui ::code-marks
+  (fn [_ _ o n]
+    (when (not= (:sel o) (:sel n))
+      (let [ls (code-mark-lines!)]
+        (when (and (seq ls) (not @code-line-pick) @code-ed (.-showLine @code-ed))
+          (.showLine @code-ed (first ls)))))))
+
 (defn upgrade-code-tab! [cm]
   (when-not @code-ed
     (let [ta ($ "code") host (host-for! ta "code-host")
           ed ((.-createEditor cm)
               #js {:parent host :doc (.-value ta) :language "clojurescript" :words (clj->js (command-words))
                    :onApply (fn [_] (run-panel-code!))
-                   :onChange (fn [_] (when-not (:dirty @ui) (swap! ui assoc :dirty true) (render-code (current))))})]
+                   :onChange (fn [_] (when-not (:dirty @ui) (swap! ui assoc :dirty true) (render-code (current))))
+                   :onLine (fn [_ text] (code-line-chosen! text))
+                   :onUnfold (fn [text] (when-let [k (line-key text)] (swap! code-unfolded conj k)))})]
       (.setAttribute (.-contentDOM (.-view ed)) "aria-label" "Patch code")
-      (reset! code-ed ed))))
+      (reset! code-ed ed)
+      (code-tab-refresh!))))
 
 (defn upgrade-data-view!
   "The Data view of the Code tab: the same editor, read-only, with EDN colours, folding and search."
