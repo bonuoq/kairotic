@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The patch and the panel on the right have heights of their own** (issue #166, 1). They were two columns of
+  one grid row, so a long step of a lesson made the row taller and stretched the panel on the right with it, pushing
+  its lower controls (Run, the Room's microphone…) below the window until the page was scrolled. Now both take a
+  height from the window (`--work-h`: between 460 and 660 px, the window less 120); the lesson strip takes at most
+  45 % of the patch pane and its explanation scrolls inside it, the patch keeps the rest, and a long tab on the right
+  scrolls inside the panel. Embeds are unchanged. Tests: 5 more checks in `tests/layout.mjs`.
+
 - **The line of the REPL on the patch is a code editor** (issue #163). The line opened with `(` on the patch (or the
   field of a new box once what is written starts with `(`) becomes, as soon as the code editor is loaded, the same
   editor as the REPL at the bottom: completion of Kairotic's commands and of `clojure.core`, brackets closed and
