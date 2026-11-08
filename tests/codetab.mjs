@@ -29,10 +29,19 @@ export async function codetab(page, check) {
   await cljs(page, `(connect ${a} 0 ${b} 0) (swap! ui assoc :sel nil)`);
 
   // ── long lines folded ──
-  const folded = await until(page, `(boolean (some (fn [e] (re-find #"characters" (.-textContent e))) (array-seq (.querySelectorAll ($ "panel-code") ".cm-fold-long"))))`, (g) => g === "true");
-  check("a long source is folded in the Code tab", folded === "true", folded);
-  const label = await page.evaluate(() => [...document.querySelectorAll("#panel-code .cm-fold-long")].map((e) => e.textContent).join(" | "));
-  check("... saying how many characters it hides", /⋯ [\d ]+ characters/.test(label), label);
+  // the editor draws only the lines in view: the tab is scrolled to the line of this box first (the work these
+  // tests share has long lines of other suites too)
+  const ownFold = (id) => page.evaluate((id) => {
+    const f = [...document.querySelectorAll("#panel-code .cm-fold-long")].find((e) => (e.closest(".cm-line")?.textContent || "").startsWith(`(code ${id} `));
+    return f ? f.textContent : null;
+  }, id);
+  const showOwn = async () => cljs(page, `(.showLine @code-ed ${await lineOf(page, `(code ${s} `)})`);
+  await until(page, `(boolean (some (fn [l] (str/starts-with? l "(code ${s} ")) (str/split-lines (.getValue @code-ed))))`, (g) => g === "true");
+  await showOwn();
+  let label = null;
+  for (let i = 0; i < 40 && !label; i++) { label = await ownFold(s); if (!label) { await page.waitForTimeout(80); await showOwn(); } }
+  check("a long source is folded in the Code tab", !!label, String(label));
+  check("... saying how many characters it hides", /⋯ [\d ]+ characters/.test(label || ""), String(label));
   check("... and its beginning is still there", (await cljs(page, `(str/includes? (.-textContent (.-contentDOM (.-view @code-ed))) "(code ${s} \\"(fn [m]")`)) === "true");
 
   // ── the selected box, marked ──
@@ -53,6 +62,8 @@ export async function codetab(page, check) {
 
   // ── a line unfolded stays so ──
   // (the work these tests share has long lines of other suites: the one of this box)
+  await showOwn();
+  await page.waitForTimeout(80);
   const clicked = await page.evaluate((id) => {
     const f = [...document.querySelectorAll("#panel-code .cm-fold-long")].find((e) => (e.closest(".cm-line")?.textContent || "").startsWith(`(code ${id} `));
     if (f) f.click();
@@ -62,7 +73,10 @@ export async function codetab(page, check) {
   const shown = await until(page, `(str/includes? (.-textContent (.-contentDOM (.-view @code-ed))) "w299")`, (g) => g === "true");
   check("a click shows the folded part", shown === "true");
   await cljs(page, `(move ${a} 9800 420)`);
-  check("... and it stays shown when the code is written again", (await until(page, `(str/includes? (.getValue @code-ed) "9800 420")`, (g) => g === "true")) === "true"
+  await until(page, `(str/includes? (.getValue @code-ed) "9800 420")`, (g) => g === "true");
+  await showOwn();
+  await page.waitForTimeout(80);
+  check("... and it stays shown when the code is written again", (await ownFold(s)) === null
         && (await cljs(page, `(str/includes? (.-textContent (.-contentDOM (.-view @code-ed))) "w299")`)) === "true");
 
   await cljs(page, `(swap! ui assoc :sel nil) (reset! code-unfolded #{}) (delete ${s} ${a} ${b})`);
