@@ -28,7 +28,7 @@
     is("the status counts the canons (" + total + ")", total > 0);
     is("an empty dux at the start", $$("#svg .dux").length === 0);
     is("the fan shows futuribles", $$("#svg .cand").length > 0);
-    is("and the notes not allowed, with their reason", $$("#svg .nope").length > 0);
+    is("and the notes not allowed, with their reason (" + $$("#svg .nope").length + " · " + $$("#svg g").length + " · " + $$("#futs details li").length + " · " + (document.getElementById("svg").innerHTML.match(/<g>.{0,160}/) || ["-"])[0] + ")", $$("#svg .nope").length > 0);
     is("the engine's preview from here", $$("#svg .preview").length > 0);
     is("a table of futuribles", $$("#futs .pick").length === $$("#svg .cand").length);
     is("the rule set: hard rules as checkboxes", $$("[data-rule]").length === 10);
