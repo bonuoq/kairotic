@@ -22,7 +22,7 @@
 ;; commands and clojure.core, brackets closed and matched, Enter runs it once its brackets are balanced
 ;; (Shift+Enter: a new line), ↑ ↓ the REPL's history, Esc closes it. What it gave shows below it.
 
-(defonce line-ed (atom nil))   ; {:ed editor :el the line} while the line is open
+(defonce line-ed (atom nil))   ; {:ed editor :el the line :words what it completes} while the line is open
 
 (defn close-repl-line!
   "Closes the line of the REPL on the patch, without running anything."
@@ -45,6 +45,7 @@
         ed (atom nil) hidx (atom nil)
         free? (fn [] (not (.completing @ed)))
         start (if (= "(" (str/trim (str text))) "()" (str text))
+        words (vec (concat (command-words) (ns-names 'clojure.core "")))
         [px py] (wrap-px x (- y 4))
         run (fn []
               (let [code (str/trim (.getValue @ed))]
@@ -78,14 +79,14 @@
     (reset! ed ((.-createEditor cm)
                 #js {:parent host :doc start :language "clojurescript" :gutter false
                      :placeholder "(command) · Enter runs it · Esc closes"
-                     :words (clj->js (concat (command-words) (ns-names 'clojure.core "")))
+                     :words (clj->js words)
                      :onCancel (fn [] (close-repl-line!))
                      :keys #js [#js {:key "Enter" :run (fn [] (when (and (free?) (balanced? (.getValue @ed))) (run)))}
                                 #js {:key "Shift-Enter" :run (fn [] (.newline @ed) true)}
                                 #js {:key "ArrowUp" :run (fn [] (boolean (and (free?) (= 1 (.cursorLine @ed)) (recall true))))}
                                 #js {:key "ArrowDown" :run (fn [] (boolean (and (free?) (= (.cursorLine @ed) (.lineCount @ed)) (recall false))))}]}))
     (.setAttribute (.-contentDOM (.-view @ed)) "aria-label" "A line of the REPL")
-    (reset! line-ed {:ed @ed :el el})
+    (reset! line-ed {:ed @ed :el el :words words})
     ;; the cursor inside the brackets of a new line, or at the end of what was written
     (let [v (.-view @ed)]
       (.dispatch v #js {:selection #js {:anchor (if (= start "()") 1 (count start))}}))
