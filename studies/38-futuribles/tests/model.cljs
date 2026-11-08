@@ -62,7 +62,6 @@
   (note! (str "dorian canon at the octave below, d = 2, 12 notes: " total " canons (" (.toFixed (fu/bits total) 1) " bits), counted in " ms " ms"))
   (is "there are canons to write" (pos? total))
   (is (str "counted in less than 3 s (" ms " ms)") (< ms 3000))
-  (is (str "INFO (temporary): " total " canons, " ms " ms") false)
   (is "a futurible's futures add up to the point's" (= total (reduce + (keep :futures (fu/fan p [] cnt)))))
   (let [dux (fu/continue-dux p [] {:seed 7 :temp 1})]
     (is "the engine finishes the canon" (= (:n p) (count dux)))
