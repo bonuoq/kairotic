@@ -98,4 +98,32 @@ export async function layout(page, check) {
   check("a score takes the width it is given", (await cljs(page, `(first ${dims})`)) === "700");
   check("... and keeps the height of its notation", (await cljs(page, `(= (second ${dims}) (max 90 (+ hdr 8 (or (get-in @score-cache [${fq} :h]) 70))))`)) === "true");
   await cljs(page, `(delete ${fq} ${tb})`);
+
+  // ── the patch and the panel on the right do not grow with each other (issue #166) ──
+  // a step of a lesson with a long explanation: the strip scrolls, the panes keep their height
+  await cljs(page, "(side-panel true)");
+  await settled(page);
+  const box = (sel) => page.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)]; }, sel);
+  const patchSel = 'section.pane[aria-label="Patch"]';
+  const [, ph0] = await box(patchSel);
+  const [, sh0] = await box("#side-pane");
+  const was = await page.evaluate(() => { const l = document.getElementById("lesson"); const n = document.getElementById("lesson-note");
+    const w = { hidden: l.hidden, html: n.innerHTML }; l.hidden = false;
+    n.innerHTML = Array.from({ length: 16 }, (_, i) => `<p>Paragraph ${i}: a long explanation of the step, with enough words to wrap over several lines in the strip above the patch.</p>`).join("");
+    return w; });
+  await settled(page);
+  const [, ph1] = await box(patchSel);
+  const [, sh1] = await box("#side-pane");
+  check("a long step of a lesson does not make the patch taller", ph1 === ph0, `${ph0} → ${ph1}`);
+  check("... nor the panel on the right", sh1 === sh0, `${sh0} → ${sh1}`);
+  check("... its explanation scrolls inside the strip", await page.evaluate(() => {
+    const n = document.getElementById("lesson-note"); return n.scrollHeight > n.clientHeight + 10; }));
+  check("... and the patch keeps room to work in", (await box("#canvas-wrap"))[1] >= 150, String((await box("#canvas-wrap"))[1]));
+  await page.evaluate((w) => { document.getElementById("lesson").hidden = w.hidden; document.getElementById("lesson-note").innerHTML = w.html; }, was);
+  // a long tab on the right scrolls inside the panel
+  await cljs(page, '(docs "guide")');
+  await settled(page);
+  const [, sh2] = await box("#side-pane");
+  check("a long tab on the right scrolls inside it, the panel keeps its height", sh2 === sh0, `${sh0} → ${sh2}`);
+  await cljs(page, '(select-tab! "code")');
 }

@@ -55,6 +55,11 @@ header .status b { font-weight: 500; }
 header .status b.on { color: var(--ok); }
 header .status b.off { color: var(--kairos); }
 .work { display: grid; grid-template-columns: minmax(0, 1.55fr) 12px minmax(0, 1fr); gap: 0; min-height: 0; }
+/* the patch and the panel on the right have a height of their own, from the window (issue #166): what grows in
+   one (a long step of a lesson, a long list in a tab) scrolls inside it, and does not make the other taller */
+:root { --work-h: clamp(460px, calc(100vh - 120px), 660px); }
+.work > .pane { height: var(--work-h); }
+.side-pane > .panel { overflow: auto; }
 /* the panel on the right (issue #40): dragged to a width of its own, or hidden; the splitter between them */
 .work.sized { grid-template-columns: minmax(0, 1fr) 12px var(--side-w, 420px); }
 .work.side-off { grid-template-columns: minmax(0, 1fr) 12px; }
@@ -78,7 +83,7 @@ header .status b.off { color: var(--kairos); }
 .pane-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
 .pane-head .label { font-family: var(--f-head); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
 .pane-head .hint { margin-left: auto; text-align: right; }
-.canvas-wrap { position: relative; overflow: auto; flex: 1; min-height: 420px; max-height: 560px; }
+.canvas-wrap { position: relative; overflow: auto; flex: 1 1 0; min-height: 180px; }
 #canvas { display: block; width: 900px; height: 680px; max-width: none; touch-action: none; user-select: none; -webkit-user-select: none; }
 #canvas .bg { fill: url(#grid); }
 #canvas .box rect.body { fill: var(--box); stroke: var(--ink); stroke-width: 1; }
@@ -133,6 +138,7 @@ body.embed .app { height: 100vh; height: 100dvh; min-height: 0; padding: 0; gap:
 body.embed header, body.embed .manager, body.embed .pane[aria-label="Projections"], body.embed .pane[aria-label="History"],
 body.embed .pane.repl, body.embed #side-split, body.embed .pane-head .hint, body.embed #perform-toggle, body.embed #annot-toggle, body.embed #annot-bar, body.embed #perform-info, body.embed #snap-btn, body.embed #embed-btn, body.embed #embed-pop, body.embed #lesson-back { display: none !important; }
 body.embed .work { display: flex; min-height: 0; height: 100%; }
+body.embed .work > .pane { height: auto; }
 body.embed .pane { flex: 1; border: 0; border-radius: 0; }
 body.embed .pane-head { padding: 5px 8px; }
 body.embed .embed-only { display: inline-block; }
@@ -305,7 +311,10 @@ body.annotating.annot-move #canvas { cursor: move; }
 /* lesson bar (Study 18): the note of the step you are at */
 #canvas .wire.edits { stroke-dasharray: 5 4; }
 #canvas .score-slot .tsel, #canvas .score-slot .tsel * { fill: var(--accent) !important; stroke: var(--accent); }
-.lesson { border-bottom: 1px solid var(--rule); background: var(--accent-soft); padding: 6px 12px 8px; font-size: 13px; line-height: 1.5; }
+.lesson { border-bottom: 1px solid var(--rule); background: var(--accent-soft); padding: 6px 12px 8px; font-size: 13px; line-height: 1.5;
+          display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; max-height: 45%; }
+/* a long explanation scrolls inside the strip: the patch keeps the rest of the pane */
+.lesson-note { overflow: auto; min-height: 0; }
 .lesson-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .lesson-head .t { font-weight: 600; }
 .lesson-head .n { font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }

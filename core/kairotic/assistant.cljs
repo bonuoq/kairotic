@@ -240,7 +240,12 @@
                    :let [io (:io d) doc (first (str/split (str (:doc d)) #"(?<=\.)\s"))]]
                (str k " " (if (vector? io) (pr-str io) "") " — " (cut doc 110) " (" (name (or (:origin d) :core)) ")")))
         (str "Also, without defining anything, a box named after one of these pure functions is that function: its "
-             "other words are its EDN arguments, the message goes last (or where % is), one more inlet per argument: "
+             "other words are its EDN arguments, the message goes last (or where % is) and is always the left inlet, the only "
+             "hot one; one more inlet per other argument, in order (vector % 0 0 is a pack, hash-map :freq % :amp 0.5 makes an "
+             "event); ^:hot before the class makes every inlet hot; a keyword, set or map written first is a function too, "
+             "the message first (:freq · #{60 64} · {60 :c}); nil sends nothing; xf/ before a function is its transducer over "
+             "the stream of messages, with memory (xf/partition-all 4 collects, xf/partition 4 1 slides, xf/dedupe, xf/take 1; "
+             "flush and clear): "
              (str/join " " (cf/names)))))
 
 ;; ───────── the prompt ─────────

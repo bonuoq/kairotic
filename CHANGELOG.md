@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- **Clojure boxes: `%` is the left inlet, data as functions, `^:hot` and `xf/` transducers.** The text of a box of
+  `clojure.core` reads as Clojure, its inlets as Max:
+  - **`%` is always the left inlet**, the only hot one, wherever it is written; it no longer has an inlet of its own,
+    so the inlets on the right are the other arguments in the order they are written (`vector % 0 0` is a pack,
+    `hash-map :freq % :amp 0.5` makes an event, and its keys can be changed too). Boxes without `%` are unchanged.
+  - **Keywords, sets and maps written first are functions**, the message first, as in Clojure: `:freq` (a field of
+    an event, `:freq 220` with a default), `#{60 64 67}` (a filter), `{60 :c 64 :e}` (a table). `nil` sends nothing.
+  - **`^:hot`** before the class makes every inlet hot (`pak`): a new argument sends at once with the last message.
+  - **`xf/`** before a function makes its transducer a box with memory over the stream of messages:
+    `xf/partition-all 4` collects, `xf/partition 4 1` is a sliding window, `xf/dedupe` (change), `xf/take 1`
+    (onebang), `xf/filter`, `xf/map`, `xf/mapcat`…; `flush` completes it, `clear` starts again.
+  - **The help links to Clojure's documentation**: each of these boxes carries `:ref` links (clojuredocs.org, and
+    clojure.org for transducers, data structures and metadata), shown in the Help tab and the class reference; a
+    component can carry its own in `:help`.
+  - The class of a box may now start with `^:flags` and be a whole map or set (`kairotic.components/klass`).
+  Docs: `docs/guide.md` and `docs/guide.es.md`. Tests: `tests/cljs/corefns.cljs` (42 more checks).
+
+- **The patch and the panel on the right have heights of their own** (issue #166, 1). They were two columns of
+  one grid row, so a long step of a lesson made the row taller and stretched the panel on the right with it, pushing
+  its lower controls (Run, the Room's microphone…) below the window until the page was scrolled. Now both take a
+  height from the window (`--work-h`: between 460 and 660 px, the window less 120); the lesson strip takes at most
+  45 % of the patch pane and its explanation scrolls inside it, the patch keeps the rest, and a long tab on the right
+  scrolls inside the panel. Embeds are unchanged. Tests: 5 more checks in `tests/layout.mjs`.
+
 - **Study 38 · futuribles** (discussion #172): the possible futures of a work beside its history. The history keeps
   only choices; the futuribles are never stored, a pure function of a point of it and a rule set as data, and a
   choice is the only bridge between them. First domain: a canon at a diatonic interval and a delay, first species
