@@ -18,7 +18,7 @@
 ;; vertical kind is checked under every transform asked for: parallel 3rds are fine as such and parallel
 ;; 8ves at the 10th, a 6th is a 7th at the 12th.
 ;;
-;;   pitch    a diatonic step on the white keys, 0 = C4 (7 = C5, -3 = F3)
+;;   pitch    a diatonic step on the white keys, 0 = C4 (7 = C5, -4 = F3)
 ;;   params   {:mode :dorian :k -7 :d 2 :n 12 :range [-2 9] :invert #{} :rules {id {:on bool :weight w}}}
 ;;   dux      the notes chosen so far, a vector of pitches
 ;;
@@ -351,8 +351,8 @@
 (defn continue-dux
   "The dux continued by the engine up to its end, one choice per note. Never stuck while the count from the
   start is not 0, since it only takes candidates with a future."
-  [p dux {:keys [seed temp follow] :or {seed 1 temp 0 follow false}}]
-  (let [cnt (counter p)]
+  [p dux {:keys [seed temp follow cnt] :or {seed 1 temp 0 follow false}}]
+  (let [cnt (or cnt (counter p))]
     (loop [dux dux]
       (if (>= (count dux) (:n p))
         dux
@@ -392,4 +392,12 @@
 
 (defn goto [h id] (if (get-in h [:nodes id]) (assoc h :at id) h))
 
-(defn leaves [h] (let [parents (set (keep :parent (vals (:nodes h))))] (remove #(parents (:id %)) (vals (:nodes h)))))
+(defn engine-step
+  "One note chosen by the engine at the point where the history stands (nil when nothing has a future)."
+  [p h cnt {:keys [seed temp follow] :or {seed 1 temp 0 follow false}}]
+  (let [dux (current-dux h)]
+    (when (< (count dux) (:n p))
+      (when-let [x (choose (fan p dux cnt) seed (count dux) (temperature temp follow (cnt dux)))]
+        (choose-note h x :engine)))))
+
+(defn leaves [h](let [parents (set (keep :parent (vals (:nodes h))))] (remove #(parents (:id %)) (vals (:nodes h)))))

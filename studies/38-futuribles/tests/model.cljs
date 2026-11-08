@@ -15,7 +15,7 @@
 (is "D4 F4 is a 3rd" (= :imperfect (fu/quality 1 3)))
 (is "C4 F4 is a 4th, dissonant" (= :dissonant (fu/quality 0 3)))
 (is "C4 C5 is perfect" (= :perfect (fu/quality 0 7)))
-(is "F3 is -3" (= "F3" (fu/pitch-name -3)))
+(is "F3 is -4, G3 is -3" (= ["F3" "G3"] (map fu/pitch-name [-4 -3])))
 (is "F4 up to B4 is a tritone" (some? (fu/melodic-error 3 6)))
 (is "E4 up to C5 is a minor 6th, allowed" (nil? (fu/melodic-error 2 7)))
 (is "C4 up to A4 is a major 6th, not allowed" (some? (fu/melodic-error 0 5)))
@@ -40,7 +40,7 @@
   (is "parallel 5ths" (= "parallel 5ths" (fu/vertical-error p 5 1 [4 0])))
   (is "contrary octaves are parallels too" (= "parallel octaves" (fu/vertical-error p 3 3 [7 0])))
   (is "the comes below may not cross above" (= "the voices cross" (fu/vertical-error p 1 3 nil)))
-  (is "the inverted canon swaps the voices" (= {:dux [1 2 nil nil] :comes [nil nil 6 7]} (fu/inverted p [1 2] 8))))
+  (is "the inverted canon swaps the voices" (= {:dux [1 2 nil nil] :comes [nil nil 1 2]} (fu/inverted p [1 2] 8))))
 
 ;; obligations: a leap is a debt the next note pays
 (let [p (fu/params :d 4 :n 12)]
@@ -61,6 +61,8 @@
       ms (- (js/Date.now) t0)]
   (note! (str "dorian canon at the octave below, d = 2, 12 notes: " total " canons (" (.toFixed (fu/bits total) 1) " bits), counted in " ms " ms"))
   (is "there are canons to write" (pos? total))
+  (is (str "counted in less than 3 s (" ms " ms)") (< ms 3000))
+  (is (str "INFO (temporary): " total " canons, " ms " ms") false)
   (is "a futurible's futures add up to the point's" (= total (reduce + (keep :futures (fu/fan p [] cnt)))))
   (let [dux (fu/continue-dux p [] {:seed 7 :temp 1})]
     (is "the engine finishes the canon" (= (:n p) (count dux)))

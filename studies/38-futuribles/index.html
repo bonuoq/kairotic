@@ -1,0 +1,685 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 38 · Futuribles</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the canon (mode, interval, delay, length, inversions) and the engine (seed,
+   temperature) as two toolbars; the score of both voices with the fan of futuribles at the point where the
+   history stands, the divergence under it; beside it what is owed here and the futuribles one by one, the
+   history (only choices), the rule set, the work as EDN. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+
+.views { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+
+/* the score: diatonic rows, time in columns */
+.score { overflow-x: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; scrollbar-width: thin; }
+.score svg { display: block; }
+.row { fill: none; stroke: var(--grid); stroke-width: 1; }
+.row.final { stroke: var(--kairos); stroke-opacity: 0.35; stroke-width: 6; }
+.row.c { stroke: var(--rule); }
+.pname { font: 10.5px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; }
+.pname.final { fill: var(--kairos); font-weight: 600; }
+.col { stroke: var(--grid); stroke-width: 1; stroke-dasharray: 2 3; }
+.col.now { stroke: var(--accent); stroke-dasharray: none; stroke-opacity: 0.5; }
+.tnum { font: 10px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+.dux { fill: var(--accent); }
+.dux.bad { stroke: var(--error); stroke-width: 2.5; }
+.duxline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.comes { fill: var(--kairos); }
+.comes.ghost { fill: none; stroke: var(--kairos); stroke-width: 1.5; stroke-dasharray: 2 2; }
+.comesline { fill: none; stroke: var(--kairos); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.preview { fill: var(--ink-soft); fill-opacity: 0.35; }
+.previewline { fill: none; stroke: var(--ink-soft); stroke-opacity: 0.35; stroke-width: 1; stroke-dasharray: 3 3; }
+.iv { font: 600 10.5px var(--f-code); text-anchor: middle; }
+.iv.perfect { fill: var(--ink); } .iv.imperfect { fill: var(--ok); } .iv.dissonant { fill: var(--error); }
+.fanline { fill: none; stroke: var(--accent); stroke-linecap: round; }
+.fanline.dead { stroke: var(--error); stroke-dasharray: 3 3; stroke-width: 1.2; }
+.cand { fill: var(--box); stroke: var(--accent); stroke-width: 1.5; cursor: pointer; }
+.cand.dead { stroke: var(--error); }
+.cand:hover, .cand.hot { fill: var(--accent); }
+.cand.dead:hover, .cand.dead.hot { fill: var(--error); }
+.futn { font: 10.5px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; pointer-events: none; }
+.futn.dead { fill: var(--error); }
+.nope { stroke: var(--ink-soft); stroke-opacity: 0.45; stroke-width: 1.2; }
+.nopehit { fill: transparent; cursor: help; }
+.cursor { stroke: var(--kairos); stroke-width: 2; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-soft); align-items: center; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+.legend i.sq { border-radius: 2px; }
+
+/* the divergence: bits of freedom left at each point */
+.div { overflow-x: auto; scrollbar-width: thin; }
+.div svg { display: block; }
+.bar { fill: var(--accent); fill-opacity: 0.55; }
+.bar.now { fill: var(--kairos); fill-opacity: 0.9; }
+.bar.ahead { fill: var(--ink-soft); fill-opacity: 0.25; }
+.bar.zero { fill: var(--error); }
+.bitl { font: 10px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+
+/* here: what is owed, and the futuribles */
+.debts { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+.debts li::marker { color: var(--kairos); }
+.here-head { font-size: 13px; line-height: 1.5; }
+.here-head b { font-family: var(--f-code); font-weight: 500; }
+table.futs { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.futs th { text-align: left; font: 500 11px var(--f-ui); color: var(--ink-soft); padding: 3px 6px; border-bottom: 1px solid var(--rule); }
+table.futs td { padding: 3px 6px; border-bottom: 1px solid var(--grid); font-family: var(--f-code); vertical-align: middle; }
+table.futs td.num { text-align: right; }
+table.futs tr.dead td { color: var(--error); }
+table.futs tr:hover td { background: var(--accent-soft); }
+table.futs .pick { border: 1px solid var(--accent); background: var(--box); color: var(--accent); font: 500 12px var(--f-code); border-radius: 4px; padding: 1px 8px; cursor: pointer; }
+table.futs tr.dead .pick { border-color: var(--error); color: var(--error); }
+details.illegal summary { font-size: 12.5px; color: var(--ink-soft); cursor: pointer; }
+details.illegal ul { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.55; }
+details.illegal b { font-family: var(--f-code); font-weight: 500; }
+.empty { font-size: 12.5px; color: var(--ink-soft); }
+
+/* the history */
+.hist { overflow-x: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; scrollbar-width: thin; min-height: 44px; }
+.hist svg { display: block; }
+.hist .seg { stroke: var(--rule); stroke-width: 2; fill: none; }
+.hist .seg.on { stroke: var(--accent); }
+.hist .ev { fill: var(--ink-soft); cursor: pointer; }
+.hist .ev.engine { fill: var(--sheet); stroke: var(--ink-soft); stroke-width: 1.5; }
+.hist .ev.on { fill: var(--accent); stroke: var(--accent); }
+.hist .ev:hover { fill: var(--kairos); }
+.hist .root { fill: var(--sheet); stroke: var(--ink-soft); stroke-width: 1.2; cursor: pointer; }
+.hist .here { fill: none; stroke: var(--kairos); stroke-width: 2; pointer-events: none; }
+.hist text { font: 9.5px var(--f-code); fill: var(--ink-soft); text-anchor: middle; pointer-events: none; }
+.histbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); }
+.histbar .act { padding: 3px 9px; }
+
+/* the rule set */
+.rules { display: grid; gap: 4px; font-size: 12.5px; max-height: 300px; overflow: auto; }
+.rules .r { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: start; padding: 3px 0; border-bottom: 1px solid var(--grid); }
+.rules .r code { color: var(--ink); }
+.rules .r .d { grid-column: 2; color: var(--ink-soft); line-height: 1.4; }
+.rules .r input[type="number"] { width: 4em; padding: 2px 4px; }
+.rules .kind { font: 600 10.5px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-top: 6px; }
+pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; max-height: 240px; overflow: auto; white-space: pre; }
+.about { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin: 0; max-width: 110ch; }
+.about code { color: var(--ink); }
+</style>
+<main>
+<header>
+  <h1>Study 38 · futuribles</h1>
+  <span class="sub">A canon's possible futures, beside its history (discussion #172)</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The canon">
+  <span class="tag">Canon</span>
+  <label>Mode <select id="mode"><option value="dorian">dorian (D)</option><option value="ionian">ionian (C)</option><option value="mixolydian">mixolydian (G)</option><option value="aeolian">aeolian (A)</option></select></label>
+  <label>Comes <select id="k">
+    <option value="-7">an octave below</option><option value="7">an octave above</option><option value="0">at the unison</option>
+    <option value="-4">a 5th below</option><option value="4">a 5th above</option><option value="-3">a 4th below</option>
+  </select></label>
+  <label>after <input type="number" id="d" min="1" max="4" step="1"> notes</label>
+  <label>Length <input type="number" id="n" min="6" max="16" step="1"></label>
+  <span class="group" id="inv-group"><span style="font-size:13px;color:var(--ink-soft)">Invertible at</span>
+    <label><input type="checkbox" data-inv="8"> 8ve</label>
+    <label><input type="checkbox" data-inv="10"> 10th</label>
+    <label><input type="checkbox" data-inv="12"> 12th</label>
+  </span>
+</div>
+<div class="toolbar" aria-label="The engine">
+  <span class="tag">Engine</span>
+  <label>Seed <input type="number" id="seed" min="1" step="1"></label>
+  <label>Temperature <input type="range" id="temp" min="0" max="3" step="0.1"> <code id="temp-v"></code></label>
+  <label title="After Copycat: colder where few futures are left, as set where there are many"><input type="checkbox" id="follow"> follows the divergence</label>
+  <button class="act" data-act="step" title="The engine chooses the next note">Engine: one note</button>
+  <button class="act primary" data-act="finish" title="The engine chooses every note to the end">Engine: to the end</button>
+  <span class="sep"></span>
+  <button class="act" data-act="play">▶ Play</button>
+  <button class="act" data-act="play-inv" id="play-inv" title="The canon with its voices inverted">▶ Inverted</button>
+  <button class="act" data-act="stop" aria-label="Stop">■</button>
+</div>
+
+<div class="views">
+  <section class="panel" aria-labelledby="h-score">
+    <h2 id="h-score">Canon <span id="score-sub"></span></h2>
+    <div class="score" id="score"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>dux (the line written)</span>
+      <span><i class="sq" style="background:var(--kairos)"></i>comes (the dux, later and shifted)</span>
+      <span><i style="border:1.5px solid var(--accent)"></i>a futurible: the wider, the more futures</span>
+      <span><i style="border:1.5px dashed var(--error)"></i>legal, but no future</span>
+      <span>× not allowed (hover for why)</span>
+      <span><i style="background:var(--ink-soft);opacity:.4"></i>what the engine would write from here</span>
+    </div>
+    <h2 style="margin-top:4px">Divergence <span>bits of freedom left at each point: log₂ of the ways to finish</span></h2>
+    <div class="div" id="div"><svg id="divsvg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div class="msg" id="msg" role="status"></div>
+  </section>
+
+  <div class="side">
+    <section class="panel" aria-labelledby="h-here">
+      <h2 id="h-here">Here <span id="here-sub"></span></h2>
+      <div class="here-head" id="here-head"></div>
+      <ul class="debts" id="debts"></ul>
+      <div id="futs"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-hist">
+      <h2 id="h-hist">History <span>only choices are kept</span></h2>
+      <div class="histbar">
+        <button class="act" data-act="back" aria-label="One note back">◀</button>
+        <button class="act" data-act="forward" aria-label="One note forward">▶</button>
+        <button class="act" data-act="clear" title="A new history (the rule set stays)">New</button>
+        <span id="hist-info"></span>
+      </div>
+      <div class="hist" id="hist"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-rules">
+      <h2 id="h-rules">Rule set <span><button class="act" data-act="reset-rules" style="padding:2px 8px;font-size:12px">Default</button></span></h2>
+      <div class="rules" id="rules"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-code">
+      <h2 id="h-code">Work <span>what is kept, as EDN</span></h2>
+      <pre class="code" id="code"></pre>
+    </section>
+  </div>
+</div>
+
+<section class="panel">
+  <h2>About</h2>
+  <p class="about">The <b>history</b> is what happened: the notes chosen, by you or by the engine, with their branches. The <b>futuribles</b> are what could happen from each point of it: they are never stored, they are a pure function of a point of the history and a <b>rule set</b>, and the only bridge between the two is a choice, which becomes a point of the history. This page writes a <b>canon</b>: the dux is the line being written, the comes is the dux a few notes later, shifted by an interval, so every rule between the voices falls on the dux compared with itself. Rules are data (first species, after Fux): the hard ones make a note legal or not, with a reason; the soft ones give it a cost, among them the <b>memory of the work</b> (an interval already used costs less) and <b>novelty</b> (the same move again costs more). <b>Invertible counterpoint</b> is a transform of the voices checked by the same rules: at the 10th parallel 3rds become octaves, at the 12th a 6th becomes a 7th. The state owes things: a leap is recovered by step, the dux ends on the final. Hard rules look only at the last notes, so the ways to finish from any point are counted exactly; their log₂ is the <b>divergence</b>, the bits of freedom left, shown under the score. The engine chooses among the futuribles that still have a future, with a seed and a <b>temperature</b>, which can follow the divergence as in Copycat: colder where the work is tight. Modes on the white keys, without musica ficta. The work is kept in this browser.</p>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The ClojureScript is evaluated here (not with Scittle's automatic tags) so that an error arrives with its
+// message: first the model, then the page.
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) {
+    var st = document.getElementById("status");
+    st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e);
+  }
+  var mods = ["kairotic/futuribles.cljs"];
+  Promise.all(mods.map(function (m) {
+    return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m); return r.text(); });
+  })).then(function (srcs) {
+    srcs.forEach(function (s, i) { try { scittle.core.eval_string(s); } catch (e) { throw new Error(mods[i] + ": " + (e.message || e)); } });
+    scittle.core.eval_string(document.getElementById("page-cljs").textContent);
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns user (:require [clojure.string :as str] [clojure.edn :as edn] [kairotic.futuribles :as fu]))
+
+;; ───────── state ─────────
+;; :p the canon and its rule set · :h the history · :seed :temp :follow the engine
+;; :cnt the counter of the futures for :p (made again when :p changes) · :play the playback going on
+
+(defonce ui (atom {:p (fu/params) :h (fu/new-history) :seed 1 :temp 1 :follow true :cnt nil :cnt-for nil :msg nil}))
+
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
+(defn $ [id] (js/document.getElementById id))
+(defn p [] (:p @ui))
+(defn h [] (:h @ui))
+(defn dux [] (fu/current-dux (h)))
+
+(defn cnt
+  "The counter of futures for the canon as it is now (made once per rule set and canon)."
+  []
+  (let [pp (p)]
+    (if (= pp (:cnt-for @ui))
+      (:cnt @ui)
+      (let [c (fu/counter pp)] (swap! ui assoc :cnt c :cnt-for pp) c))))
+
+(def store-key "kairotic-study-38")
+(defn save! []
+  (try (.setItem js/localStorage store-key
+                 (pr-str (select-keys @ui [:p :h :seed :temp :follow])))
+       (catch :default _ nil)))
+(defn restore []
+  (try (let [s (.getItem js/localStorage store-key) x (when s (edn/read-string s))]
+         (when (and (map? (:p x)) (map? (:h x)) (get-in x [:h :nodes "root"]))
+           (update x :p #(merge (fu/params) % {:rules (merge (fu/default-rules) (:rules %))}))))
+       (catch :default _ nil)))
+
+(defn say! [cls text] (swap! ui assoc :msg [cls text]))
+
+(declare render!)
+
+(defn engine-opts [] {:seed (:seed @ui) :temp (:temp @ui) :follow (:follow @ui)})
+
+;; ───────── the score ─────────
+
+(def colw 40)
+(def rowh 13)
+(def left 46)
+(def top 14)
+
+(defn rows-span
+  "The pitches shown: the dux's range and the comes's, with one step around."
+  []
+  (let [[lo hi] (fu/lo-hi (p)) k (:k (p)) ds (dux)]
+    [(dec (apply min lo (+ lo k) (concat ds (map #(+ % k) ds))))
+     (inc (apply max hi (+ hi k) (concat ds (map #(+ % k) ds))))]))
+
+(defn y-of [hi s] (+ top (* rowh (- hi s))))
+(defn x-of [t] (+ left (* colw t) (/ colw 2)))
+
+(defn preview
+  "What the engine would write from here, with the engine as set."
+  []
+  (let [pp (p) d (dux)]
+    (when (< (count d) (:n pp))
+      (let [full (fu/continue-dux pp d (assoc (engine-opts) :cnt (cnt)))]
+        (when (= (:n pp) (count full)) full)))))
+
+(defn render-score! [fan-data prev-dux]
+  (let [pp (p) d (dux) t (count d) n (:n pp) dd (:d pp) k (:k pp)
+        [lo hi] (rows-span) cols (+ n dd)
+        w (+ left (* colw cols) 30) hgt (+ top (* rowh (- hi lo)) 34)
+        fin (set (map #(mod % 7) (fu/finals pp)))
+        y (partial y-of hi)
+        {du :dux co :comes} (fu/voices pp d)
+        pv (when prev-dux (fu/voices pp prev-dux))
+        sb #js []
+        add (fn [& xs] (doseq [x xs] (.push sb x)))]
+    ;; rows and names
+    (doseq [s (range lo (inc hi))]
+      (let [f (fin (mod s 7))]
+        (add "<line class=\"row" (cond f " final" (zero? (mod s 7)) " c" :else "") "\" x1=\"" left "\" x2=\"" (- w 12) "\" y1=\"" (y s) "\" y2=\"" (y s) "\"/>")
+        (when (or f (zero? (mod s 7)) (odd? (- s lo)))
+          (add "<text class=\"pname" (when f " final") "\" x=\"6\" y=\"" (y s) "\">" (fu/pitch-name s) "</text>"))))
+    ;; columns
+    (doseq [c (range cols)]
+      (add "<line class=\"col" (when (= c t) " now") "\" x1=\"" (x-of c) "\" x2=\"" (x-of c) "\" y1=\"" (- top 6) "\" y2=\"" (+ top (* rowh (- hi lo)) 4) "\"/>")
+      (add "<text class=\"tnum\" x=\"" (x-of c) "\" y=\"" (+ top (* rowh (- hi lo)) 28) "\">" (inc c) "</text>"))
+    ;; the engine's preview, from here on
+    (when pv
+      (let [pts (for [i (range (max 0 (dec t)) (count (:dux pv))) :let [s (get (:dux pv) i)] :when s] [i s])
+            cts (for [i (range (+ t dd) (count (:comes pv))) :let [s (get (:comes pv) i)] :when s] [i s])]
+        (add "<polyline class=\"previewline\" points=\"" (str/join " " (map (fn [[i s]] (str (x-of i) "," (y s))) pts)) "\"/>")
+        (doseq [[i s] pts :when (>= i t)] (add "<circle class=\"preview\" cx=\"" (x-of i) "\" cy=\"" (y s) "\" r=\"4.5\"/>"))
+        (doseq [[i s] cts] (add "<rect class=\"preview\" x=\"" (- (x-of i) 4) "\" y=\"" (- (y s) 4) "\" width=\"8\" height=\"8\" rx=\"1.5\"/>"))))
+    ;; the comes
+    (let [pts (for [i (range (count co)) :let [s (get co i)] :when s] [i s])]
+      (when (> (count pts) 1)
+        (add "<polyline class=\"comesline\" points=\"" (str/join " " (map (fn [[i s]] (str (x-of i) "," (y s))) pts)) "\"/>"))
+      (doseq [[i s] pts]
+        (add "<rect class=\"comes\" x=\"" (- (x-of i) 5) "\" y=\"" (- (y s) 5) "\" width=\"10\" height=\"10\" rx=\"2\"><title>comes " (fu/pitch-name s) "</title></rect>")))
+    ;; the comes at the next point is already fixed by the canon
+    (when (< t n)
+      (when-let [c (fu/comes-at pp (conj d 0) t)]
+        (add "<rect class=\"comes ghost\" x=\"" (- (x-of t) 5) "\" y=\"" (- (y c) 5) "\" width=\"10\" height=\"10\" rx=\"2\"><title>the comes here: " (fu/pitch-name c) " (fixed by the canon)</title></rect>")))
+    ;; the dux
+    (when (> (count d) 1)
+      (add "<polyline class=\"duxline\" points=\"" (str/join " " (map-indexed (fn [i s] (str (x-of i) "," (y s))) d)) "\"/>"))
+    (doseq [[i s] (map-indexed vector d)]
+      (let [bad (fu/check pp (subvec d 0 i) s)]
+        (add "<circle class=\"dux" (when bad " bad") "\" cx=\"" (x-of i) "\" cy=\"" (y s) "\" r=\"6\"><title>dux " (fu/pitch-name s)
+             (when bad (str " — not allowed by the rule set now: " (esc bad))) "</title></circle>")))
+    ;; the intervals between the voices
+    (doseq [i (range cols)]
+      (let [a (get du i) b (get co i)]
+        (when (and a b)
+          (let [q (fu/quality (min a b) (max a b))]
+            (add "<text class=\"iv " (name q) "\" x=\"" (x-of i) "\" y=\"" (+ top (* rowh (- hi lo)) 16) "\">" (inc (fu/absv (- a b))) "</text>")))))
+    ;; the fan of futuribles at t
+    (when (< t n)
+      (let [x0 (if (pos? t) (x-of (dec t)) (- (x-of 0) (* 0.7 colw)))
+            y0 (if (pos? t) (y (peek d)) nil)
+            x1 (x-of t)]
+        (doseq [{:keys [note reason futures]} fan-data]
+          (let [yy (y note)]
+            (if reason
+              (add "<g><title>" (fu/pitch-name note) ": " (esc reason) "</title><rect class=\"nopehit\" x=\"" (- x1 6) "\" y=\"" (- yy 6) "\" width=\"12\" height=\"12\"/>"
+                   "<line class=\"nope\" x1=\"" (- x1 3) "\" y1=\"" (- yy 3) "\" x2=\"" (+ x1 3) "\" y2=\"" (+ yy 3) "\"/>"
+                   "<line class=\"nope\" x1=\"" (- x1 3) "\" y1=\"" (+ yy 3) "\" x2=\"" (+ x1 3) "\" y2=\"" (- yy 3) "\"/></g>")
+              (let [dead (zero? futures)
+                    sw (if dead 1.2 (+ 1 (* 0.55 (fu/bits futures))))]
+                (add "<line class=\"fanline" (when dead " dead") "\" x1=\"" x0 "\" y1=\"" (or y0 yy) "\" x2=\"" (- x1 7) "\" y2=\"" yy "\" stroke-width=\"" (.toFixed sw 2) "\" stroke-opacity=\"" (if dead 0.9 0.55) "\"/>")
+                (add "<circle class=\"cand" (when dead " dead") "\" data-choose=\"" note "\" cx=\"" x1 "\" cy=\"" yy "\" r=\"6.5\"><title>" (fu/pitch-name note) ": "
+                     (if dead "legal, but no canon finishes from it" (str futures " way" (when (not= 1 futures) "s") " to finish")) "</title></circle>")
+                (add "<text class=\"futn" (when dead " dead") "\" x=\"" (+ x1 10) "\" y=\"" yy "\">" futures "</text>")))))))
+    (add "<line class=\"cursor\" id=\"cursor\" x1=\"-10\" x2=\"-10\" y1=\"" (- top 6) "\" y2=\"" (+ top (* rowh (- hi lo)) 4) "\"/>")
+    (let [svg ($ "svg")]
+      (.setAttribute svg "width" w) (.setAttribute svg "height" hgt) (.setAttribute svg "viewBox" (str "0 0 " w " " hgt))
+      (set! (.-innerHTML svg) (.join sb "")))))
+
+(defn render-div! [prev-dux]
+  (let [pp (p) d (dux) t (count d) n (:n pp) dd (:d pp) c (cnt)
+        dv (fu/divergence pp d c)
+        ahead (when prev-dux (mapv #(c (subvec prev-dux 0 %)) (range (inc t) (inc n))))
+        all (concat (map-indexed (fn [i v] [i v (if (= i t) :now :past)]) dv)
+                    (map-indexed (fn [j v] [(+ t 1 j) v :ahead]) ahead))
+        maxb (max 4 (apply max 0 (map (comp fu/bits second) all)))
+        bh 54 w (+ left (* colw (+ n dd)) 30)
+        sb #js [] add (fn [& xs] (doseq [x xs] (.push sb x)))]
+    (add "<text class=\"bitl\" x=\"20\" y=\"12\">bits</text><text class=\"bitl\" x=\"20\" y=\"" (+ bh 4) "\">0</text>"
+         "<text class=\"bitl\" x=\"20\" y=\"26\">" (.toFixed maxb 0) "</text>")
+    (doseq [[i v kind] all :when (<= i n)]
+      (let [b (fu/bits v) hh (if (neg? b) 3 (max 2 (* bh (/ b maxb))))
+            x (- (+ left (* colw i)) 2)]
+        (add "<rect class=\"bar " (cond (zero? v) "zero" (= kind :now) "now" (= kind :ahead) "ahead" :else "") "\" x=\"" (- x 7) "\" y=\"" (- (+ bh 6) hh) "\" width=\"14\" height=\"" hh "\"><title>"
+             (if (= i n) "finished" (str "before note " (inc i))) ": " v " way" (when (not= v 1) "s") " to finish (" (.toFixed (max 0 b) 1) " bits)</title></rect>")
+        (when (= kind :now) (add "<text class=\"bitl\" x=\"" x "\" y=\"" (+ bh 18) "\">" (.toFixed (max 0 b) 1) "</text>"))))
+    (let [svg ($ "divsvg")]
+      (.setAttribute svg "width" w) (.setAttribute svg "height" (+ bh 22)) (.setAttribute svg "viewBox" (str "0 0 " w " " (+ bh 22)))
+      (set! (.-innerHTML svg) (.join sb "")))))
+
+;; ───────── here: what is owed, the futuribles ─────────
+
+(defn render-here! [fan-data]
+  (let [pp (p) d (dux) t (count d) n (:n pp) c (cnt) total (c d)
+        comes (fu/comes-at pp (conj d 0) t)]
+    (set! (.-textContent ($ "here-sub")) (if (< t n) (str "note " (inc t) " of " n) "finished"))
+    (set! (.-innerHTML ($ "here-head"))
+          (cond (>= t n) (str "The dux is finished; the comes ends it " (:d pp) " notes later. <b>" (fu/pitch-name (peek d)) "</b> is the final.")
+                (zero? total) "<span style=\"color:var(--error)\">No canon finishes from here under this rule set. Go back (◀), or change the rules.</span>"
+                :else (str "<b>" total "</b> way" (when (not= 1 total) "s") " to finish from here (" (.toFixed (fu/bits total) 1) " bits)"
+                           (when comes (str " · the comes sounds <b>" (fu/pitch-name comes) "</b>")))))
+    (set! (.-innerHTML ($ "debts")) (apply str (map #(str "<li>" (esc %) "</li>") (fu/obligations pp d))))
+    (set! (.-innerHTML ($ "futs"))
+          (if (>= t n)
+            ""
+            (let [legal (sort-by (juxt #(if (zero? (:futures %)) 1 0) :cost :note) (remove :reason fan-data))
+                  illegal (filter :reason fan-data)]
+              (str (if (seq legal)
+                     (str "<table class=\"futs\"><thead><tr><th>note</th><th>vs comes</th><th class=\"num\">futures</th><th class=\"num\">cost</th><th></th></tr></thead><tbody>"
+                          (apply str
+                                 (for [{:keys [note futures cost parts]} legal]
+                                   (str "<tr class=\"" (when (zero? futures) "dead") "\" data-hot=\"" note "\">"
+                                        "<td>" (fu/pitch-name note) "</td>"
+                                        "<td>" (if comes (str (fu/interval-name (fu/absv (- note comes)))) "—") "</td>"
+                                        "<td class=\"num\">" futures "</td>"
+                                        "<td class=\"num\" title=\"" (esc (str/join ", " (map (fn [[k v]] (str (name k) " " (.toFixed v 2))) parts))) "\">" (.toFixed cost 1) "</td>"
+                                        "<td><button class=\"pick\" data-choose=\"" note "\">choose</button></td></tr>")))
+                          "</tbody></table>")
+                     "<p class=\"empty\">No note is allowed here.</p>")
+                   (when (seq illegal)
+                     (str "<details class=\"illegal\"><summary>" (count illegal) " not allowed, and why</summary><ul>"
+                          (apply str (for [{:keys [note reason]} illegal] (str "<li><b>" (fu/pitch-name note) "</b> " (esc reason) "</li>")))
+                          "</ul></details>"))))))))
+
+;; ───────── the history ─────────
+
+(defn lanes
+  "A lane per branch: depth-first from the root, the first child keeps its parent's lane (the newest
+  branch drawn first)."
+  [hh]
+  (let [out (volatile! {}) nxt (volatile! 0)]
+    (letfn [(walk [id lane depth]
+              (vswap! out assoc id [depth lane])
+              (doseq [[i k] (map-indexed vector (reverse (fu/kids hh id)))]
+                (walk (:id k) (if (zero? i) lane (vswap! nxt inc)) (inc depth))))]
+      (walk "root" 0 0))
+    @out))
+
+(defn render-hist! []
+  (let [hh (h) ls (lanes hh) on (set (fu/path-ids hh (:at hh)))
+        maxd (apply max 0 (map first (vals ls))) maxl (apply max 0 (map second (vals ls)))
+        X (fn [dep] (+ 14 (* 24 dep))) Y (fn [l] (+ 14 (* 22 l)))
+        w (+ (X maxd) 20) hgt (+ (Y maxl) 18)
+        sb #js [] add (fn [& xs] (doseq [x xs] (.push sb x)))]
+    (doseq [nd (vals (:nodes hh)) :when (:parent nd)]
+      (let [[d1 l1] (ls (:parent nd)) [d2 l2] (ls (:id nd))]
+        (add "<path class=\"seg" (when (on (:id nd)) " on") "\" d=\"M" (X d1) " " (Y l1) " L" (X d1) " " (Y l2) " L" (X d2) " " (Y l2) "\"/>")))
+    (add "<circle class=\"root\" data-goto=\"root\" cx=\"" (X 0) "\" cy=\"" (Y 0) "\" r=\"5\"><title>the start</title></circle>")
+    (doseq [nd (vals (:nodes hh)) :when (:parent nd)]
+      (let [[dd ll] (ls (:id nd))]
+        (add "<circle class=\"ev" (when (= :engine (:by nd)) " engine") (when (on (:id nd)) " on") "\" data-goto=\"" (:id nd) "\" cx=\"" (X dd) "\" cy=\"" (Y ll) "\" r=\"5\"><title>"
+             (fu/pitch-name (:note nd)) (if (= :engine (:by nd)) ", chosen by the engine" ", chosen by you") "</title></circle>")))
+    (let [[dd ll] (ls (:at hh))] (add "<circle class=\"here\" cx=\"" (X dd) "\" cy=\"" (Y ll) "\" r=\"8.5\"/>"))
+    (let [svg (str "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" w "\" height=\"" hgt "\" viewBox=\"0 0 " w " " hgt "\">" (.join sb "") "</svg>")]
+      (set! (.-innerHTML ($ "hist")) svg))
+    (set! (.-textContent ($ "hist-info"))
+          (let [nodes (dec (count (:nodes hh))) br (count (fu/leaves hh))]
+            (str nodes " choice" (when (not= 1 nodes) "s") " · " br " branch" (when (not= 1 br) "es") " · filled: yours, hollow: the engine's")))))
+
+;; ───────── the rule set ─────────
+
+(defn render-rules! []
+  (let [pp (p)]
+    (set! (.-innerHTML ($ "rules"))
+          (str "<div class=\"kind\">Hard: legal or not</div>"
+               (apply str (for [r fu/rules :when (= :hard (:kind r))]
+                            (str "<label class=\"r\"><input type=\"checkbox\" data-rule=\"" (name (:id r)) "\"" (when (fu/on? pp (:id r)) " checked") ">"
+                                 "<code>" (name (:id r)) (when (= :all (:under r)) " · also inverted") "</code><span class=\"d\">" (esc (:doc r)) "</span></label>")))
+               "<div class=\"kind\">Soft: a cost, weighted</div>"
+               (apply str (for [r fu/rules :when (= :soft (:kind r))]
+                            (str "<label class=\"r\"><input type=\"number\" step=\"0.5\" min=\"0\" max=\"9\" data-weight=\"" (name (:id r)) "\" value=\"" (fu/weight pp (:id r)) "\">"
+                                 "<code>" (name (:id r)) "</code><span class=\"d\">" (esc (:doc r)) "</span></label>")))))))
+
+;; ───────── the work as EDN ─────────
+
+(defn changed-rules [pp]
+  (into {} (remove (fn [[k v]] (= v (get (fu/default-rules) k)))) (:rules pp)))
+
+(defn render-code! []
+  (let [pp (p) hh (h)
+        choices (for [id (fu/path-ids hh (:at hh))] (let [nd (get-in hh [:nodes id])] [(fu/pitch-name (:note nd)) (:by nd)]))]
+    (set! (.-textContent ($ "code"))
+          (str ";; the canon and its rule set (only what differs from the default)\n"
+               (pr-str (cond-> (select-keys pp [:mode :k :d :n :range :invert]) (seq (changed-rules pp)) (assoc :rules (changed-rules pp)))) "\n\n"
+               ";; the choices on this branch (" (dec (count (:nodes hh))) " in the whole history)\n"
+               (str/join "\n" (map pr-str choices)) "\n\n"
+               ";; the futuribles are not here: they are (fu/fan canon dux)"))))
+
+;; ───────── rendering ─────────
+
+(defn render-controls! []
+  (let [pp (p) u @ui]
+    (set! (.-value ($ "mode")) (name (:mode pp)))
+    (set! (.-value ($ "k")) (str (:k pp)))
+    (set! (.-value ($ "d")) (:d pp))
+    (set! (.-value ($ "n")) (:n pp))
+    (doseq [el (seq (js/Array.from (.querySelectorAll js/document "[data-inv]")))]
+      (let [v (js/parseInt (.getAttribute el "data-inv"))]
+        (set! (.-checked el) (contains? (:invert pp) v))
+        (set! (.-disabled el) (zero? (:k pp)))))
+    (set! (.-disabled ($ "play-inv")) (or (zero? (:k pp)) (empty? (dux))))
+    (set! (.-title ($ "play-inv")) (str "The canon with its voices inverted at the " (fu/interval-name (dec (or (first (sort (:invert pp))) 8)))))
+    (set! (.-value ($ "seed")) (:seed u))
+    (set! (.-value ($ "temp")) (:temp u))
+    (set! (.-textContent ($ "temp-v")) (.toFixed (:temp u) 1))
+    (set! (.-checked ($ "follow")) (:follow u))))
+
+(defn render-msg! []
+  (let [[cls text] (:msg @ui) el ($ "msg")]
+    (set! (.-className el) (str "msg " (or cls ""))) (set! (.-textContent el) (or text ""))))
+
+(defn render! []
+  (let [t0 (js/Date.now)
+        pp (p) d (dux) c (cnt)
+        fan-data (when (< (count d) (:n pp)) (fu/fan pp d c))
+        pv (preview)]
+    (render-controls!)
+    (render-score! fan-data pv)
+    (render-div! pv)
+    (render-here! fan-data)
+    (render-hist!)
+    (render-rules!)
+    (render-code!)
+    (render-msg!)
+    (set! (.-textContent ($ "score-sub"))
+          (str (fu/pitch-name (fu/tonic pp)) " " (name (:mode pp)) " · comes " (.-text (aget (.-options ($ "k")) (.-selectedIndex ($ "k"))))
+               ", " (:d pp) " note" (when (not= 1 (:d pp)) "s") " later"
+               (when (seq (:invert pp)) (str " · invertible at the " (str/join ", " (map #(fu/interval-name (dec %)) (sort (:invert pp))))))))
+    (set! (.-textContent ($ "status")) (str (c []) " canons under this rule set · " (- (js/Date.now) t0) " ms"))))
+
+;; ───────── gestures ─────────
+
+(defn set-h! [hh & [msg]] (swap! ui assoc :h hh :msg msg) (save!) (render!))
+
+(defn set-p!
+  "The canon or its rule set changed: the futuribles follow at once; the history stays as it was (a note it
+  holds that the new rules forbid is ringed in red)."
+  [f]
+  (swap! ui update :p f) (swap! ui assoc :msg nil) (save!) (render!))
+
+(defn choose! [note]
+  (let [pp (p) d (dux)]
+    (if-let [r (fu/check pp d note)]
+      (do (say! "bad" (str (fu/pitch-name note) ": " r)) (render-msg!))
+      (let [hh (fu/choose-note (h) note :you) fut ((cnt) (fu/current-dux hh))]
+        (set-h! hh (when (zero? fut) ["bad" (str (fu/pitch-name note) " is legal, but no canon finishes from it: a dead end, kept in the history like any choice.")]))))))
+
+(defn engine! [to-end]
+  (let [pp (p) c (cnt) opts (engine-opts)]
+    (loop [hh (h) moved 0]
+      (let [hh2 (when (or to-end (zero? moved)) (fu/engine-step pp hh c opts))]
+        (if hh2
+          (recur hh2 (inc moved))
+          (set-h! hh (cond (pos? moved) nil
+                           (>= (count (fu/current-dux hh)) (:n pp)) ["ok" "The dux is finished."]
+                           :else ["bad" "Nothing here has a future: go back (◀), or change the rules."])))))))
+
+;; ───────── playback ─────────
+
+(defonce audio (atom nil))
+
+(defn stop! []
+  (when-let [{:keys [ctx raf]} @audio] (js/cancelAnimationFrame raf) (.close ctx))
+  (reset! audio nil)
+  (when-let [c ($ "cursor")] (.setAttribute c "x1" -10) (.setAttribute c "x2" -10)))
+
+(defn play! [inverted]
+  (stop!)
+  (let [pp (p) d (dux)
+        {du :dux co :comes} (if inverted (fu/inverted pp d (or (first (sort (:invert pp))) 8)) (fu/voices pp d))
+        ctx (js/AudioContext.) beat 0.45 t0 (+ (.-currentTime ctx) 0.08)
+        hz (fn [s] (* 440 (js/Math.pow 2 (/ (- (fu/midi s) 69) 12))))
+        note! (fn [s at kind]
+                (let [o (.createOscillator ctx) g (.createGain ctx)]
+                  (set! (.-type o) (if (= kind :dux) "triangle" "sine"))
+                  (.setValueAtTime (.-frequency o) (hz s) at)
+                  (.setValueAtTime (.-gain g) 0 at)
+                  (.linearRampToValueAtTime (.-gain g) (if (= kind :dux) 0.16 0.2) (+ at 0.02))
+                  (.exponentialRampToValueAtTime (.-gain g) 0.001 (+ at (* beat 0.98)))
+                  (.connect o g) (.connect g (.-destination ctx))
+                  (.start o at) (.stop o (+ at beat))))
+        len (max (count du) (count co))]
+    (doseq [i (range len)]
+      (when-let [s (get du i)] (note! s (+ t0 (* i beat)) :dux))
+      (when-let [s (get co i)] (note! s (+ t0 (* i beat)) :comes)))
+    (letfn [(tick []
+              (when-let [a @audio]
+                (let [i (/ (- (.-currentTime ctx) t0) beat)]
+                  (if (> i len)
+                    (stop!)
+                    (do (when-let [c ($ "cursor")]
+                          (let [x (+ left (* colw (max 0 i)))] (.setAttribute c "x1" x) (.setAttribute c "x2" x)))
+                        (swap! audio assoc :raf (js/requestAnimationFrame tick)))))))]
+      (reset! audio {:ctx ctx :raf (js/requestAnimationFrame tick)}))))
+
+;; ───────── wiring the page ─────────
+
+(defn act! [a]
+  (case a
+    "step" (engine! false)
+    "finish" (engine! true)
+    "play" (when (seq (dux)) (play! false))
+    "play-inv" (when (seq (dux)) (play! true))
+    "stop" (stop!)
+    "back" (set-h! (fu/back (h)))
+    "forward" (set-h! (fu/forward (h)))
+    "clear" (set-h! (fu/new-history) ["ok" "A new history; the rule set stays."])
+    "reset-rules" (set-p! #(assoc % :rules (fu/default-rules)))
+    nil))
+
+(defn num [id lo hi] (let [v (js/parseInt (.-value ($ id)))] (when-not (js/isNaN v) (max lo (min hi v)))))
+
+(defn init! []
+  (.addEventListener js/document "click"
+                     (fn [e]
+                       (when-let [el (.. e -target (closest "[data-act]"))] (act! (.getAttribute el "data-act")))
+                       (when-let [el (.. e -target (closest "[data-choose]"))] (choose! (js/parseInt (.getAttribute el "data-choose"))))
+                       (when-let [el (.. e -target (closest "[data-goto]"))] (set-h! (fu/goto (h) (.getAttribute el "data-goto"))))))
+  (.addEventListener js/document "change"
+                     (fn [e]
+                       (let [el (.-target e) id (.-id el)]
+                         (cond (= id "mode") (set-p! #(assoc % :mode (keyword (.-value el))))
+                               (= id "k") (set-p! #(cond-> (assoc % :k (js/parseInt (.-value el))) (= "0" (.-value el)) (assoc :invert #{})))
+                               (= id "d") (when-let [v (num "d" 1 4)] (set-p! #(assoc % :d v)))
+                               (= id "n") (when-let [v (num "n" 6 16)] (set-p! #(assoc % :n v)))
+                               (= id "seed") (when-let [v (num "seed" 1 999999)] (swap! ui assoc :seed v) (save!) (render!))
+                               (= id "follow") (do (swap! ui assoc :follow (.-checked el)) (save!) (render!))
+                               (.getAttribute el "data-inv")
+                               (let [v (js/parseInt (.getAttribute el "data-inv"))]
+                                 (set-p! #(update % :invert (fn [s] (if (.-checked el) (conj (set s) v) (disj (set s) v))))))
+                               (.getAttribute el "data-rule")
+                               (set-p! #(assoc-in % [:rules (keyword (.getAttribute el "data-rule")) :on] (.-checked el)))
+                               (.getAttribute el "data-weight")
+                               (let [v (js/parseFloat (.-value el))]
+                                 (when-not (js/isNaN v) (set-p! #(assoc-in % [:rules (keyword (.getAttribute el "data-weight")) :weight] v))))
+                               :else nil))))
+  (.addEventListener ($ "temp") "input"
+                     (fn [e] (swap! ui assoc :temp (js/parseFloat (.. e -target -value))) (save!) (render!)))
+  (.addEventListener js/document "mouseover"
+                     (fn [e] (when-let [tr (.. e -target (closest "[data-hot]"))]
+                               (let [v (.getAttribute tr "data-hot")]
+                                 (doseq [c (seq (js/Array.from (.querySelectorAll js/document ".cand")))]
+                                   (.toggle (.-classList c) "hot" (= v (.getAttribute c "data-choose"))))))))
+  (.addEventListener js/document "keydown"
+                     (fn [e] (when-not (#{"INPUT" "SELECT" "TEXTAREA"} (.. e -target -tagName))
+                               (case (.-key e)
+                                 "ArrowLeft" (act! "back")
+                                 "ArrowRight" (act! "forward")
+                                 nil))))
+  (when-let [x (restore)] (swap! ui merge x))
+  (render!))
+
+(init!)
+</script>
