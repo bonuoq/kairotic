@@ -44,6 +44,12 @@ los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
 - **Seleccionar varias**: ⇧+clic añade una caja a la selección (o la quita); un marco dibujado desde un
   sitio vacío del papel selecciona todas las cajas que toca (con ⇧ se añaden); ⌘/Ctrl+A las selecciona
   todas. Al arrastrar una se mueven todas; Supr las borra todas.
+- **Copiar, cortar, pegar, duplicar**: ⌘/Ctrl+C copia las cajas seleccionadas, ⌘/Ctrl+X las corta, ⌘/Ctrl+V
+  las pega donde está el puntero, conservando su disposición, y ⌘/Ctrl+D las duplica un poco más abajo y a la
+  derecha (`(duplicate :b3 :b4)` desde código). Las cajas pegadas reciben ids nuevos y conservan sus líneas
+  entre ellas, y sus líneas con cajas que no se copiaron si esas cajas están en el patch. Pegar es un solo
+  evento de la historia. Lo que se copia es el código de las cajas, así que también se puede pegar en un
+  mensaje o un documento; al pegar, su última línea se lee como datos y nunca se ejecuta.
 - **Mover** una caja arrastrándola. Las cajas para tocar —`bang`, `msg`, `number`, knobs— se seleccionan
   por el asa de su izquierda; su cuerpo es para tocar.
 - **Qué caja queda encima**: las cajas se dibujan en el orden en que se crearon, la más nueva encima, y
@@ -453,6 +459,7 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 | clic en una caja mientras una línea de código espera una | escribir ahí su id (`:b7`, `@b7` en un mensaje de Room) |
 | doble clic en un number, knob o deslizador | escribe su valor (Intro lo aplica, Esc cierra) |
 | Supr / Retroceso | borra las cajas o la línea seleccionadas |
+| ⌘/Ctrl+C · X · V · D | copiar · cortar · pegar (donde está el puntero) · duplicar las cajas seleccionadas |
 | ⌘/Ctrl+clic | edita una caja debajo de ella (sus argumentos y su texto) |
 | ⇧+clic · un marco · ⌘/Ctrl+A | selecciona varias cajas · todas |
 | Esc | deselecciona, o cierra el editor de la caja |

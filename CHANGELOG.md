@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Copy, cut, paste and duplicate boxes** (issue #164). ⌘/Ctrl+C copies the selected boxes, ⌘/Ctrl+X cuts them,
+  ⌘/Ctrl+V pastes them where the pointer is (keeping their layout), ⌘/Ctrl+D duplicates them a little below and to
+  the right; `(duplicate :b3 :b4)` from code.
+  - The clipboard holds their code, as the Code tab writes it (so it can go in a message, an issue or a document),
+    and on its last line the same boxes as data (`;; kairotic-paste {…}`). Pasting reads that line as EDN, which
+    runs nothing, and passes it through the same checks as what comes from a room; text without it is not pasted.
+  - Pasted boxes get the next free ids (`:bN` stay as they are: no long unique ids), with their data, views and
+    sizes; their lines among themselves follow the new ids, and a line to a box that was not copied is kept when
+    that box is in the patch. A paste, a cut or a duplicate is one event of the history.
+  - While something is being written or selected (a field, an editor, text on the page, a field of an `html` box),
+    the keys do what they always did.
+  - Tests: `tests/clipboard.mjs` (23 checks).
 - **Clojure boxes: `%` is the left inlet, data as functions, `^:hot` and `xf/` transducers.** The text of a box of
   `clojure.core` reads as Clojure, its inlets as Max:
   - **`%` is always the left inlet**, the only hot one, wherever it is written; it no longer has an inlet of its own,

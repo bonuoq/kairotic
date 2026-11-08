@@ -12,6 +12,7 @@ import { views } from "./views.mjs";
 import { html } from "./html.mjs";
 import { zorder } from "./zorder.mjs";
 import { ids } from "./ids.mjs";
+import { clipboard } from "./clipboard.mjs";
 import { recipe } from "./recipe.mjs";
 import { numinput } from "./numinput.mjs";
 import { presets } from "./presets.mjs";
@@ -94,6 +95,7 @@ const appSuites = [
   ["html", html, "the html box tests ran"],
   ["zorder", zorder, "the z-order tests ran"],
   ["ids", ids, "the box id tests ran"],
+  ["clipboard", clipboard, "the clipboard tests ran"],
   ["recipe", recipe, "the recipe tests ran"],
   ["numinput", numinput, "the number input tests ran"],
   ["presets", presets, "the presets tests ran"],
