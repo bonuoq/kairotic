@@ -26,6 +26,16 @@
   45 % of the patch pane and its explanation scrolls inside it, the patch keeps the rest, and a long tab on the right
   scrolls inside the panel. Embeds are unchanged. Tests: 5 more checks in `tests/layout.mjs`.
 
+- **Study 38 · futuribles** (discussion #172): the possible futures of a work beside its history. The history keeps
+  only choices; the futuribles are never stored, a pure function of a point of it and a rule set as data, and a
+  choice is the only bridge between them. First domain: a canon at a diatonic interval and a delay, first species
+  (hard rules with their reasons, soft costs with the memory of the work and novelty), invertible counterpoint at
+  the octave, 10th or 12th as a transform checked by the same rules, obligations (leap recovery, the final). The
+  ways to finish from any point are counted exactly, memoized on the window the hard rules look at; their log₂ is
+  the divergence, drawn under the score beside the fan of futuribles. The engine chooses only among notes with a
+  future, seeded, with a temperature that can follow the divergence (after Copycat). Tests: `tests/model.html`
+  (49 checks) and `tests/page.html` (25 checks, the page driven as a person would).
+
 - **The line of the REPL on the patch is a code editor** (issue #163). The line opened with `(` on the patch (or the
   field of a new box once what is written starts with `(`) becomes, as soon as the code editor is loaded, the same
   editor as the REPL at the bottom: completion of Kairotic's commands and of `clojure.core`, brackets closed and
