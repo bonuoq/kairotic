@@ -67,15 +67,6 @@ await (async function () {
       is("playing with " + timbre + ": the cursor moves", parseFloat(document.getElementById("cursor").getAttribute("x1")) > 0);
       document.querySelector("[data-act=stop]").click();
     }
-    var alt = document.querySelector("#svg .calt");
-    is("the last comes can be changed", !!alt);
-    if (alt) {
-      var before = $$("#hist .ev").length;
-      alt.click();
-      is("changing it is a branch", $$("#hist .ev").length === before + 1 && /branch beside/.test(document.getElementById("msg").textContent));
-      document.querySelector("[data-act=back]").click();
-      document.querySelector("[data-act=forward]").click();
-    }
     // the degree: a canon has fewer works than near notes
     var near = canons();
     set("imitation", "1");
@@ -112,6 +103,16 @@ await (async function () {
     await settle();
     is("the default rule set again", canons() === total);
 
+    // another comes: from the end, back to a point where the last comes has alternatives
+    for (var b2 = 0; b2 < 20 && !document.querySelector("#svg .calt"); b2++) document.querySelector("[data-act=back]").click();
+    var alt = document.querySelector("#svg .calt");
+    is("the last comes can be changed", !!alt);
+    if (alt) {
+      var before = $$("#hist .ev").length;
+      alt.click();
+      is("changing it is a branch", $$("#hist .ev").length === before + 1 && /branch beside/.test(document.getElementById("msg").textContent));
+      is("and the table under Here offers the others", $$("#comes-here [data-comes]").length > 0);
+    }
     document.querySelector("[data-act=clear]").click();
 
     function set(id, v) { var el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }
