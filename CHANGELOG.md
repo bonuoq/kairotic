@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Study 38 · futuribles: a contour after Bach** (discussion #172). The engine repeated notes and chained the same
+  figures. Leaps are no longer penalised for being leaps (a 3rd costs 0.2, an octave 0.8): they are compensated by
+  contrary motion — a hard rule now asks only that a 4th or a 5th turn back (a 6th or an octave by step), and soft
+  rules make going on the same way after a leap, or turning back by leap rather than by step, cost. What costs is a
+  line that stays still (a repeated note: 6), hovers over the same notes, goes straight back, runs one way, stays
+  inside a 5th, or repeats its last two or three moves mechanically; a two-move figure used earlier costs less (the
+  memory of the work), and the same vertical every other note (3 6 3 6) costs too. The engine now looks ahead: each
+  note is weighed with the cheapest way the line can go on for the next notes (0 to 3, 2 by default), so a cheap note
+  leading into a corridor of forced repetitions is avoided. Over 24 seeds of the default canon: 1% repeated notes
+  (4.4% before), 38% leaps, 22 different canons, about 30 ms each in Scittle. Tests: 61 checks in `tests/model.html`.
+
 - **The Code tab and the patch, seen together** (issue #165).
   - **Long lines folded**: a line over 160 characters (the source of a code box, a package copied into a work, a
     buffer kept as data) is folded after its first 48 characters with `⋯ 26 000 characters`. A click, or the fold
