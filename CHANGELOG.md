@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **`comes`, counterpoint live** (`@kairotic/theory` 0.2.0, discussion #172): Study 40 as a box. You play the dux,
+  one note a beat (Hz from a `keyboard` or `midiin`, `[:midi 62]`, or with `midi` MIDI numbers), and the comes
+  answers on the left, as a list of Hz for a `synth~` or a `midiout`. A note that breaks a rule of the style, or
+  from which the canon could not be finished, is corrected to the nearest one that can be played (a black key
+  too; one out of the range taken by octaves into it; between two as near, the more plausible by the soft rules),
+  and the box says why. Outlets: the comes, the dux as played or corrected, the **futuribles** (the next notes, the
+  most plausible first, with their futures counted exactly and the comes each would bring) and where the canon is
+  (bar, beat, the correction and its reason, the divergence, the obligations). Arguments: `comes [mode] [k -7]
+  [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [midi]`; `engine` (or bang) lets it choose the next pair, `back`
+  takes one back, `reset` starts again, and after the last bar a new canon begins. The counterpoint is in
+  `counterpoint.mjs` beside the component (Study 40's kernel as it is, its soft rules in JavaScript), loaded the
+  first time and counted in a task. Tests: `tests/counterpoint.mjs` (20, in Node, in the tests workflow) and the
+  box in `tests/theory.mjs`.
+
 - **Studies 39 and 40: no final cadence from a 7th to a 5th** (hard rule `:cadence`, in both kernels and rule sets,
   with why? and "try without it" like any other). Study 39's default canon goes from 445443 canons to 442780; Study
   38's kernel (a copy of Study 39's) has it too, without effect in first species.

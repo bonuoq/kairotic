@@ -1,7 +1,7 @@
 {
   "name": "@kairotic/theory",
-  "version": "0.1.1",
-  "description": "Kairotic music-theory views: pcclock (a pitch-class set on the clock, its prime form and symmetries), fourier (the six Fourier coefficients of a pitch-class distribution) and tonnetz (triads on the Tonnetz and the path of the harmony), drawn in the patch and clickable",
+  "version": "0.2.0",
+  "description": "Kairotic music-theory views: pcclock (a pitch-class set on the clock, its prime form and symmetries), fourier (the six Fourier coefficients of a pitch-class distribution) and tonnetz (triads on the Tonnetz and the path of the harmony), drawn in the patch and clickable; and comes, counterpoint live: you play the dux and it answers with the comes, as a canon in a mode",
   "author": "bonuoq",
   "license": "MPL-2.0",
   "repository": {
@@ -35,6 +35,9 @@
     "tonnetz",
     "fourier",
     "dft",
-    "neo-riemannian"
+    "neo-riemannian",
+    "counterpoint",
+    "canon",
+    "species counterpoint"
   ]
 }

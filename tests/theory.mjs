@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// Shapes (:curve, :group, :hit), the draw box, and @kairotic/theory (pcclock, fourier, tonnetz). In the app
+// Shapes (:curve, :group, :hit), the draw box, and @kairotic/theory (pcclock, fourier, tonnetz, comes). In the app
 // loaded by tests/browser.mjs with a local work open. check(label, ok, detail).
 import { cljs } from "./gestures.mjs";
 
@@ -74,4 +74,31 @@ export async function theory(page, check) {
   await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${tz} [:pressed 7])`);
   check("... pressing a node sends its pitch class", (await printedHas(page, "7")).includes("7"), await printed(page));
   await cljs(page, `(delete ${d} ${out} ${pc} ${fo} ${tz} ${p2})`);
+
+  // comes: counterpoint live (Study 40): a note a beat, corrected when it breaks a rule, and the comes answering
+  const cm = (await cljs(page, '(box "comes midi" 7600 400)')).trim();
+  const cp = (await cljs(page, '(box "print" 7600 480)')).trim();
+  const cq = (await cljs(page, '(box "print" 7800 480)')).trim();
+  await cljs(page, `(connect ${cm} 3 ${cp} 0) (connect ${cm} 0 ${cq} 0)`);
+  check("comes has one inlet and four outlets", (await cljs(page, `(io (get-in (current) [:boxes ${cm}]))`)) === "[1 4]");
+  const st = (k) => `(get-in @eng/rt [:states ${cm} ${k}])`;
+  await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${cm} 62)`);
+  check("comes: the first note waits for the futures to be counted, then is played",
+    (await until(page, st(":D"), (x) => x === "[1]", 30000)) === "[1]", await cljs(page, `[${st(":D")} ${st(":error")}]`));
+  await cljs(page, `(send! ${cm} 61)`);
+  const fixed = await printedHas(page, ":corrected true", "not a note of the mode");
+  check("... a black key is corrected to a note of the mode, and it says why", fixed.includes("not a note of the mode"), fixed);
+  await cljs(page, `(send! ${cm} 65) (send! ${cm} 67)`);
+  const C = await until(page, st(":C"), (x) => /\d+\]$/.test(x), 3000);
+  check("... from the fourth note on the comes answers (a canon: the first note, an octave below)", C.endsWith(" -6]"), C);
+  check("... and sounds, as a list of Hz", (await until(page, "(pr-str (map second (:prints @eng/rt)))", (x) => x.includes("[146.8"), 3000)).includes("[146.8"));
+  check("... the box shows the pair", (await cljs(page, `(:comes (second (last-shown ${cm})))`)) === '"D3"', await cljs(page, `(second (last-shown ${cm}))`));
+  for (let i = 0; i < 11; i++) await cljs(page, `(send! ${cm} :engine)`);
+  check("... engine plays on to the end of the canon", (await until(page, `(count ${st(":D")})`, (x) => x === "15", 5000)) === "15");
+  check("... and says it is finished", (await printedHas(page, ":finished true")).includes(":finished true"));
+  await cljs(page, `(send! ${cm} :back)`);
+  check("... back takes the last pair back", (await until(page, `(count ${st(":D")})`, (x) => x === "14", 3000)) === "14");
+  await cljs(page, `(send! ${cm} :reset)`);
+  check("... reset starts again", (await until(page, `(count ${st(":D")})`, (x) => x === "0", 3000)) === "0");
+  await cljs(page, `(delete ${cm} ${cp} ${cq})`);
 }
