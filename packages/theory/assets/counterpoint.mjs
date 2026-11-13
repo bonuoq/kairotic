@@ -502,3 +502,6 @@ export function live(o = {}) {
     warm: (opts) => K.countAsync([], [], opts || {}),
   };
 }
+
+// api/import-module hands a component the default export
+export default { live, canon, band, MODES, WEIGHTS, semis, pitchName, midiOf, midiName, semisOfHz, quality, intervalName };
