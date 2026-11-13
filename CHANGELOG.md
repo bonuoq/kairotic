@@ -8,7 +8,7 @@
   shows what each would open — "→ 15 canons" — the one that opens the most, or that no rule alone does (several
   close it together). **try without it** turns that rule off. `fu/why` and `fu/why-rule` in the model. Tests: 8 more
   checks in `tests/model.html`, 6 more in `tests/page.html` (a mixolydian canon at the octave below, invertible at
-  the 10th, where starting on the final has no future until `:direct-octaves` is off).
+  the 10th and strict about direct octaves, where starting on the final has no future until `:direct-octaves` is off).
 - **Study 38: an octave or a unison by direct motion is allowed when the upper voice moves by step** (as in Bach;
   `:strict-direct`, off by default, forbids it as Fux does), and **the voices may be further apart**: up to a 12th by
   default, set in the canon's toolbar (a 10th, a 12th, two octaves; `:spacing` in the canon's data).

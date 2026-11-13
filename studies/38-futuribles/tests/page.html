@@ -69,9 +69,9 @@
 
     document.querySelector("[data-act=clear]").click();
 
-    // why?: a canon where starting on the final is allowed but has no future
+    // why?: a canon where starting on the final is allowed but has no future (strict about direct octaves)
     function set(id, v) { var el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }
-    set("mode", "mixolydian"); set("n", "10"); change(document.querySelector("[data-inv='10']"), true);
+    set("mode", "mixolydian"); set("n", "10"); change(document.querySelector("[data-inv='10']"), true); change(document.querySelector("[data-rule='strict-direct']"), true);
     var deadG = document.querySelector("#futs tr.dead [data-why='4']");
     is("the final, with no future here, has a why? button", !!deadG);
     if (deadG) {

@@ -128,7 +128,8 @@
           (every? (fn [[a b]] (or (nil? a) (nil? b) (not= :dissonant (fu/quality (min a b) (max a b))))) (map vector du co))))))
 
 ;; why: which rule closes a future, counted again with each hard rule off
-(let [p (fu/params :mode :mixolydian :k -7 :d 2 :n 10 :invert #{10}) t (fu/tonic p)]
+(let [p (-> (fu/params :mode :mixolydian :k -7 :d 2 :n 10 :invert #{10}) (assoc-in [:rules :strict-direct :on] true))
+      t (fu/tonic p)]
   (is "starting on the final is allowed" (nil? (fu/check p [] t)))
   (is "but here it has no future" (zero? ((fu/counter p) [t])))
   (let [w (fu/why p [] t)]
