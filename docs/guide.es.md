@@ -44,6 +44,9 @@ los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
   selecciona (las dos cajas, en un `connect`). Las líneas de más de 160 caracteres —el código de una caja de
   código, un buffer guardado como datos— se pliegan tras su principio, diciendo cuántos caracteres ocultan; un
   clic las muestra, y se quedan así.
+- **Cajas unas encima de otras**: el tamaño real de una caja solo se sabe al dibujarla (un `faust~` crece con
+  sus deslizadores, una partitura con su notación). `(overlaps)` lista las cajas que se tapan, y `(tidy)` baja
+  cajas hasta que ninguna tape a otra, cada una en su columna, en un solo evento.
 - **Seleccionar** una caja o una línea con un clic. **⌘/Ctrl+clic** en una caja la edita debajo (sus
   argumentos y su texto). **Supr** borra lo seleccionado.
 - **Seleccionar varias**: ⇧+clic añade una caja a la selección (o la quita); un marco dibujado desde un

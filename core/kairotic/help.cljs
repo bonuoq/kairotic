@@ -73,7 +73,7 @@
                ["[:set :cursor [:line …]]" "the shape called :cursor, added or moved"]
                ["[:unset :cursor]" "removes it"] ["clear" "empties the view"]]
     :example (lines "(box :b1 \"msg circle 60 55 22 accent hit sun\" 40 30)"
-                    "(box :b2 \"msg circle 160 55 14 kairos hit moon\" 250 30)"
+                    "(box :b2 \"msg circle 160 55 14 kairos hit moon\" 300 30)"
                     "(box :b3 \"msg set label text 20 100 \\\"press one of them\\\"\" 40 70)"
                     "(box :b4 \"draw 240 120\" 40 120)" "(box :b5 \"print\" 40 270)"
                     "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)")
@@ -217,8 +217,8 @@
              :try "Press ▶: the score sounds the same as the drawing did. To edit notes one by one in a score, show a tree: see the help of tree."}
             {:title "The viewer of a tree"
              :note "A freqt shown as a score is the viewer of a tree that comes transformed (tree → mt transpose 7 → freqt). Its third outlet sends the edits made on the notes back to the tree box. (A box written \"score\", from older works, is a freqt shown as a score.)"
-             :example (lines "(box :b7 \"bang\" 300 15)" "(box :b8 \"tree\" 300 60)" "(code :b8 \"\\\"c5/1 b4/.5 a4 g4/2\\\"\")"
-                             "(box :b9 \"freqt\" 300 160)" "(view :b9 :score)"
+             :example (lines "(box :b7 \"bang\" 500 15)" "(box :b8 \"tree\" 500 60)" "(code :b8 \"\\\"c5/1 b4/.5 a4 g4/2\\\"\")"
+                             "(box :b9 \"freqt\" 500 160)" "(view :b9 :score)"
                              "(connect :b7 0 :b8 0)" "(connect :b8 0 :b9 0)" "(connect :b9 2 :b8 0)")
              :try "Click a note of the new score and press ↑ or ↓, + or −, Delete (a rest) and then Enter (a note again): the change goes back to the tree by the dashed line."}]
     :see ["canvas" "reader" "tree"]}
@@ -409,7 +409,7 @@
                ["mt seq · mt par" "the left tree followed by (or with) the right one"] ["mt events · mt pitches · mt duration" "the tree as data"]
                ["mt play [loop]" "plays it: Hz (0) and voice ids (1) for synth~, parameters (2), dynamics and texts (3)"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)" "(code :b2 \"\\\"c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2\\\"\")"
-                    "(box :b4 \"number 7\" 220 140)" "(box :b3 \"mt transpose 7\" 40 170)" "(box :b5 \"freqt\" 40 220)" "(view :b5 :score)"
+                    "(box :b4 \"number 7\" 220 170)" "(box :b3 \"mt transpose 7\" 40 170)" "(box :b5 \"freqt\" 40 220)" "(view :b5 :score)"
                     "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b4 0 :b3 1)" "(connect :b3 0 :b5 0)")
     :try "Change the box text to mt retrograde, mt invert c4 or mt augment 2: the score follows. (The number on the right inlet takes effect with the next tree: click the bang.)"
     :steps [{:title "Two voices: a canon"
@@ -418,8 +418,8 @@
              :try "Click the bang. Change it to mt canon 1 -12 (an octave below, one beat later) or mt canon 4 0."}
             {:title "Playing it"
              :note "mt play reads a tree in time: the Hz of the notes that sound (left) and their voice ids (second) go to a synth~, which gives each voice its own note."
-             :example (lines "(box :b6 \"msg bang\" 300 170)" "(box :b7 \"msg stop\" 370 170)" "(box :b8 \"mt play loop\" 300 220)"
-                             "(box :b9 \"synth~\" 300 270)" "(box :b10 \"gain~ 0.3\" 300 320)" "(box :b11 \"dac~\" 300 370)"
+             :example (lines "(box :b6 \"msg bang\" 500 170)" "(box :b7 \"msg stop\" 570 170)" "(box :b8 \"mt play loop\" 500 220)"
+                             "(box :b9 \"synth~\" 500 270)" "(box :b10 \"gain~ 0.3\" 500 320)" "(box :b11 \"dac~\" 500 370)"
                              "(connect :b3 0 :b8 0)" "(connect :b6 0 :b8 0)" "(connect :b7 0 :b8 0)" "(connect :b8 0 :b9 0)" "(connect :b8 1 :b9 1)"
                              "(connect :b9 0 :b10 0)" "(connect :b10 0 :b11 0)" "(connect :b10 0 :b11 1)")
              :try "Press ▶, click the first bang (the tree goes to mt play) and then msg bang: the canon sounds in a loop; stop ends it."}]
@@ -507,7 +507,7 @@
     :outlets ["[:slider value] for the faust~ it plays: connect it to the faust~'s left inlet" "how far the nearest setting is from what is written (above 1: the faust~ cannot sound like that)"]
     :messages [["learn" "plays steady settings of the faust~ offline and listens to them (300, or the number written): after changing its code"]]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"features~ 20\" 40 90)" "(box :b3 \"pitch~\" 260 90)"
-                    "(box :b4 \"realize~\" 40 160)" "(box :b5 \"faust~\" 40 240)" "(box :b6 \"dac~\" 40 330)" "(box :b7 \"msg learn\" 300 160)"
+                    "(box :b4 \"realize~\" 40 160)" "(box :b5 \"faust~\" 40 240)" "(box :b6 \"dac~\" 40 430)" "(box :b7 \"msg learn\" 300 160)"
                     "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b2 0 :b4 0)" "(connect :b2 1 :b4 1)" "(connect :b2 2 :b4 2)"
                     "(connect :b3 0 :b4 3)" "(connect :b7 0 :b4 0)" "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
                     "(code :b5 \"import(\\\"stdfaust.lib\\\");\\npitch = hslider(\\\"pitch\\\", 60, 36, 84, 0.01) : si.smoo;\\ngain = hslider(\\\"gain [unit:dB]\\\", -12, -80, 6, 0.1) : ba.db2linear : si.smoo;\\nwave = hslider(\\\"wave\\\", 0.5, 0, 1, 0.001) : si.smoo;\\nnoise = hslider(\\\"noise\\\", 0.1, 0, 1, 0.001) : si.smoo;\\ncutoff = hslider(\\\"cutoff [scale:log]\\\", 1000, 60, 14000, 1) : si.smoo;\\nresonance = hslider(\\\"resonance [scale:log]\\\", 1, 0.5, 8, 0.01) : si.smoo;\\nf0 = ba.midikey2hz(pitch);\\nosc = os.sawtooth(f0) * (1 - wave) + os.square(f0) * wave;\\nprocess = osc * (1 - noise) + no.noise * noise : fi.svf.lp(min(cutoff, 0.45 * ma.SR), resonance) * gain;\")")
@@ -519,8 +519,8 @@
     :doc "How alike the moments of what arrives are over the last seconds (20): a self-similarity matrix of one frame every step seconds (0.25), drawn; where a segment begins, and the period that repeats."
     :inlets ["lists of numbers (a chroma~, an mfcc), or numbers (onset~'s envelope, an rms); [:seconds x] [:step x] [:kernel x] change them; clear forgets"]
     :outlets ["the novelty of each frame, 0…1 (how much the music changes there; kernel seconds (2) late)" "a bang where a segment begins" "the period that repeats most, in seconds, when it changes" "[:segment {:t :at :length :period}] for the segment that ends"]
-    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"chroma~\" 40 90)" "(box :b3 \"onset~\" 200 90)"
-                    "(box :b4 \"form~\" 40 150)" "(box :b5 \"print\" 280 300)"
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"chroma~\" 40 90)" "(box :b3 \"onset~\" 240 90)"
+                    "(box :b4 \"form~\" 40 170)" "(box :b5 \"print\" 280 300)"
                     "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b2 0 :b4 0)" "(connect :b4 3 :b3 0)" "(connect :b4 3 :b5 0)")
     :try "Press ▶ and play a section, then another (other chords, another register): the squares along the diagonal are the sections, a line marks where the second begins, print writes the segment, and onset~ starts the new section afresh."
     :see ["chroma~" "onset~" "monitor"]}
@@ -627,12 +627,12 @@
     :try "Press ▶ and start: the six notes, three durations cycling. The third outlet is the whole event: print writes the beat of each."
     :steps [{:title "Step by step"
              :note "A bang plays the next event now: the pattern follows whatever moves it — a metro, an onset~ of what someone plays, a key."
-             :example (lines "(box :b9 \"metro 300\" 180 130)" "(box :b10 \"msg 1\" 180 90)" "(box :b11 \"msg 0\" 230 90)"
+             :example (lines "(box :b9 \"metro 300\" 180 130)" "(box :b10 \"msg 1\" 180 100)" "(box :b11 \"msg 0\" 230 100)"
                              "(connect :b10 0 :b9 0)" "(connect :b11 0 :b9 0)" "(connect :b9 0 :b4 0)")
              :try "Stop the clock and click 1: one note every 300 ms, whatever its :dur. Connect an onset~ from an adc~ instead: one note each time you play."}
             {:title "At a position"
              :note "A number is a position in beats, as a reader reads a buffer: every event is a span that sounds while the position is inside it. Forwards it starts at its onset; backwards at its end. The wrap of a ramp (a step far larger than the ones before) is a seek: there at once."
-             :example (lines "(box :b12 \"ramp 0 6 3 loop\" 330 130)" "(box :b13 \"msg bang\" 330 90)"
+             :example (lines "(box :b12 \"ramp 0 6 3 loop\" 330 130)" "(box :b13 \"msg bang\" 330 100)"
                              "(connect :b13 0 :b12 0)" "(connect :b12 0 :b4 0)")
              :try "Stop the clock and click bang: six beats in three seconds, again and again. Change the ramp to ramp 6 0 3 loop: the phrase backwards, each note from its end. Drag a number box into it instead: you are the clock, either way."}]
     :see ["pbind" "pattern" "metro" "ramp" "reader" "synth~"]}
@@ -693,15 +693,15 @@
     :try "Press ▶: a buzz whose pitch and colour never settle. Write gendy~ 110 0 in the box: with no wander of the durations, the pitch holds and only the timbre moves."
     :steps [{:title "The two walks"
              :note "x-step lets the durations wander (the pitch), y-step the amplitudes (the timbre). Two knobs send them by name."
-             :example "(box :b4 \"knob 0 100 10 x-step\" 300 20)\n(box :b5 \"knob 0 0.3 0.05 y-step\" 390 20)\n(connect :b4 0 :b1 0)\n(connect :b5 0 :b1 0)"
+             :example "(box :b4 \"knob 0 100 10 x-step\" 360 20)\n(box :b5 \"knob 0 0.3 0.05 y-step\" 450 20)\n(connect :b4 0 :b1 0)\n(connect :b5 0 :b1 0)"
              :try "Press ▶ and turn x-step up: the pitch scatters into noise. Turn it down and y-step up: one pitch, a restless colour."}
             {:title "Breakpoints"
              :note "Few breakpoints make a simple wave, close to a triangle or a square; many, a richer and noisier one. Changing their number keeps the wave, with no click."
-             :example "(box :b6 \"msg breakpoints 4\" 300 120)\n(box :b7 \"msg breakpoints 48\" 440 120)\n(connect :b6 0 :b1 0)\n(connect :b7 0 :b1 0)"
+             :example "(box :b6 \"msg breakpoints 4\" 360 120)\n(box :b7 \"msg breakpoints 48\" 500 120)\n(connect :b6 0 :b1 0)\n(connect :b7 0 :b1 0)"
              :try "Press ▶ and click both messages in turn, watching the scope."}
             {:title "A signal on the inlet: FM"
              :note "A signal connected to the inlet is added to the frequency, in Hz: a slow one makes a vibrato, a fast one frequency modulation."
-             :example "(box :b8 \"osc~ 5\" 300 200)\n(box :b9 \"gain~ 300\" 300 250)\n(connect :b8 0 :b9 0)\n(connect :b9 0 :b1 0)"
+             :example "(box :b8 \"osc~ 5\" 360 200)\n(box :b9 \"gain~ 300\" 360 250)\n(connect :b8 0 :b9 0)\n(connect :b9 0 :b1 0)"
              :try "Press ▶: 5 Hz around 110 Hz. Change osc~ 5 to osc~ 80 for a rougher sound."}]
     :see ["osc~" "synth~" "faust~"]}
 

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Help patches without boxes over one another** (issue #166, 2). A box's real size is only known once it is drawn
+  (a `faust~` with the sliders its code compiles to, a score with its notation), so boxes placed by hand in help
+  patches ended up under others.
+  - A new test block opens every help patch, step by step, waits until its code boxes are compiled and its scores
+    drawn, and fails when boxes cover one another (`tests/helplayout.mjs`, in an app of its own, beside the others).
+    It found seven: `draw`, `form~`, `freqt` (step 4), `gendy~` (steps 2–4), `mt` (steps 1 and 3), `player` (steps 2
+    and 3) and `realize~`, whose boxes are moved now.
+  - `(overlaps)` lists the boxes on screen that cover each other, at the size they are drawn, and `(tidy)` moves
+    boxes down until none does, in their own columns and order, as one event; `(layout-settled?)` says whether
+    every box has its size yet.
+  - A test block's suite can have a time limit of its own (`tests/browser.mjs`).
 - **Study 38 · futuribles: a contour after Bach** (discussion #172). The engine repeated notes and chained the same
   figures. Leaps are no longer penalised for being leaps (a 3rd costs 0.2, an octave 0.8): they are compensated by
   contrary motion — a hard rule now asks only that a 4th or a 5th turn back (a 6th or an octave by step), and soft
