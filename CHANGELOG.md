@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Study 40 · imitation** (discussion #172): from a canon to free counterpoint. The comes is chosen note by note,
+  and how much it imitates the dux is a degree: 1 a canon (hard); 0.9–0.5 near notes, within a 3rd of the dux's
+  (hard) and each step away costing more the nearer to 1 (soft `:imitation`); 0.4–0.2 only the motion (going the
+  other way costs); below 0.2 free. You choose the dux; the engine chooses the comes, the cheapest by its own line
+  (its costs as `comes/…`), the verticals and the imitation, and you can change it (dashed squares beside the last
+  comes, or the table under Here): a branch like any choice. A diamond marks where a canon would put the comes.
+  Both voices end together. A new kernel (`studies/40-imitation/kairotic/kernel.mjs`) checks pairs and counts the
+  futures exactly over pairs (at 1 the same as Study 39). Tests: kernel 17 (also in Node), model 19, page 39.
+
 - **Studies 38 and 39: the modes, and contrary motion weighing more.** Eight modes on the white keys, authentic
   and plagal (hypodorian, hypoionian, hypomixolydian, hypoaeolian): each has its final, its **tenor** (the
   reciting tone: A in dorian, F in hypodorian, D in mixolydian, C in hypomixolydian…) and its **ambitus** — the
