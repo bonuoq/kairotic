@@ -31,7 +31,7 @@
     is("and the notes not allowed, with their reason", $$("#svg .nope").length > 0);
     is("the engine's preview from here", $$("#svg .preview").length > 0);
     is("a table of futuribles", $$("#futs .pick").length === $$("#svg .cand").length);
-    is("the rule set: hard rules as checkboxes", $$("[data-rule]").length === 12);
+    is("the rule set: hard rules as checkboxes", $$("[data-rule]").length === 13);
     is("and soft ones as weights", $$("[data-weight]").length === 17);
 
     var first = $$("#futs .pick")[0], note = first.getAttribute("data-choose");
@@ -68,6 +68,31 @@
     is("the default rule set again", canons() === total);
 
     document.querySelector("[data-act=clear]").click();
+
+    // why?: a canon where starting on the final is allowed but has no future (strict about direct octaves)
+    function set(id, v) { var el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }
+    set("mode", "mixolydian"); set("n", "10"); change(document.querySelector("[data-inv='10']"), true); change(document.querySelector("[data-rule='strict-direct']"), true);
+    var deadG = document.querySelector("#futs tr.dead [data-why='4']");
+    is("the final, with no future here, has a why? button", !!deadG);
+    if (deadG) {
+      deadG.click();
+      for (var i = 0; i < 300 && !/would open it|close it together/.test(document.getElementById("why").textContent); i++)
+        await new Promise(function (r) { setTimeout(r, 50); });
+      var w = document.getElementById("why").textContent;
+      is("why? counts again without each hard rule", /direct-octaves/.test(w) && /→ \d+ canon/.test(w));
+      is("and names the one that opens the most", /the most: [a-z-]+/.test(w));
+      var tryit = document.querySelector("#why [data-without='direct-octaves']");
+      tryit.click();
+      is("try without it turns the rule off", !document.querySelector("[data-rule='direct-octaves']").checked);
+      is("and the final has futures again", !document.querySelector("#futs tr.dead [data-why='4']"));
+    }
+    var notAllowed = document.querySelector("#futs details [data-why]");
+    if (notAllowed) {
+      notAllowed.click();
+      for (var j = 0; j < 300 && !/would open it|close it together/.test(document.getElementById("why").textContent); j++)
+        await new Promise(function (r) { setTimeout(r, 50); });
+      is("why? for a note not allowed names what forbids it", /A hard rule forbids it/.test(document.getElementById("why").textContent));
+    }
     is("a new history", $$("#hist .ev").length === 0 && $$("#svg .dux").length === 0);
   } catch (e) {
     errors.push(String((e && e.message) || e));

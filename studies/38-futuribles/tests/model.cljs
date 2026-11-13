@@ -41,7 +41,13 @@
   (is "contrary octaves are parallels too" (= "parallel octaves" (fu/vertical-error p 3 3 [7 0])))
   (is "the comes below may not cross above" (= "the voices cross" (fu/vertical-error p 1 3 nil)))
   (is "an octave by direct motion" (= "octave by direct motion" (fu/vertical-error p 8 1 [6 0])))
-  (is "a unison by direct motion, as the octave" (= "a unison by direct motion" (fu/vertical-error p 3 3 [2 0])))
+  (is "a unison by direct motion, as the octave" (= "a unison by direct motion" (fu/vertical-error p 4 4 [2 0])))
+  (is "unless the upper voice moves by step" (nil? (fu/vertical-error p 3 3 [2 0])))
+  (is "an octave too, the upper voice by step" (nil? (fu/vertical-error p 8 1 [7 -1])))
+  (is "not even so when strict (Fux)" (some? (fu/vertical-error (assoc-in p [:rules :strict-direct :on] true) 3 3 [2 0])))
+  (is "strict is off by default" (not (fu/on? (fu/params) :strict-direct)))
+  (is "the voices up to a 12th by default" (and (nil? (fu/vertical-error p 11 0 nil)) (some? (fu/vertical-error p 12 0 nil))))
+  (is "or as set" (some? (fu/vertical-error (assoc p :spacing 9) 11 0 nil)))
   (is "a unison by oblique motion is fine" (nil? (fu/vertical-error p 2 2 [2 0])))
   (is "an octave by contrary motion is fine" (nil? (fu/vertical-error p 7 0 [5 2])))
   (is "the comes does not enter on the unison"
@@ -120,6 +126,20 @@
     (when (= (:n p) (count dux))
       (is "inverted at the 12th, every vertical is still consonant"
           (every? (fn [[a b]] (or (nil? a) (nil? b) (not= :dissonant (fu/quality (min a b) (max a b))))) (map vector du co))))))
+
+;; why: which rule closes a future, counted again with each hard rule off
+(let [p (-> (fu/params :mode :mixolydian :k -7 :d 2 :n 10 :invert #{10}) (assoc-in [:rules :strict-direct :on] true))
+      t (fu/tonic p)]
+  (is "starting on the final is allowed" (nil? (fu/check p [] t)))
+  (is "but here it has no future" (zero? ((fu/counter p) [t])))
+  (let [w (fu/why p [] t)]
+    (is "one entry per hard rule that is on" (= (count (fu/hard-rules-on p)) (count w)))
+    (is "without :direct-octaves it opens" (pos? (:futures (first (filter #(= :direct-octaves (:rule %)) w)))))
+    (is "the rules that open the most come first" (apply >= (map :futures w)))))
+(let [p (fu/params :d 4)]
+  (is "a note not allowed: without the rule that forbids it, it is" (nil? (:reason (fu/why-rule p [1 5] 6 :leap-recovery))))
+  (is "other rules do not open it" (some? (:reason (fu/why-rule p [1 5] 6 :parallels))))
+  (is "a point: the futures from it without a rule" (>= (:futures (fu/why-rule p [1] nil :approach)) ((fu/counter p) [1]))))
 
 ;; a temperature that follows the divergence
 (is "cold when only a few futures are left" (< (fu/temperature 2 true 4) (fu/temperature 2 true 4096)))
