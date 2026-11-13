@@ -88,22 +88,32 @@
   [{:id :range            :kind :hard :scope :melodic  :doc "The dux stays in its range."}
    {:id :start            :kind :hard :scope :melodic  :doc "The dux starts on the final, its 5th or its octave."}
    {:id :melodic          :kind :hard :scope :melodic  :doc "Melodic intervals of first species, in both voices (the comes transposed)."}
-   {:id :leap-recovery    :kind :hard :scope :melodic  :doc "A leap of a 4th or more is recovered by step in the other direction."}
+   {:id :leap-recovery    :kind :hard :scope :melodic  :doc "A leap turns back: after a 4th or a 5th the next move goes the other way; after a 6th or an octave, by step."}
    {:id :consonance       :kind :hard :scope :vertical :under :all :doc "Every vertical is a consonance: unison, 3rd, 5th, 6th, octave."}
    {:id :parallels        :kind :hard :scope :vertical :under :all :doc "No parallel 5ths or octaves (nor by contrary motion)."}
    {:id :no-crossing      :kind :hard :scope :vertical :doc "The voices do not cross (except in a canon at the unison)."}
    {:id :spacing          :kind :hard :scope :vertical :doc "The voices are never more than a 10th apart."}
    {:id :final            :kind :hard :scope :form     :doc "The dux ends on the final, on a perfect consonance."}
    {:id :approach         :kind :hard :scope :form     :doc "The final is approached by step."}
-   {:id :steps            :kind :soft :scope :melodic  :weight 1   :doc "Steps rather than leaps (cost grows with the leap)."}
-   {:id :repeat           :kind :soft :scope :melodic  :weight 3   :doc "A repeated note."}
-   {:id :same-dir-leaps   :kind :soft :scope :melodic  :weight 2   :doc "Two leaps in the same direction."}
+   ;; the contour: leaps are not penalised for being leaps, only compensated; what costs is a line that stays
+   ;; still, hovers, runs one way or repeats itself mechanically
+   {:id :leap-size        :kind :soft :scope :melodic  :weight 1   :doc "Leaps cost little, only by their size (a 3rd 0.2, a 4th 0.4, a 5th 0.5, a 6th or an octave 0.8)."}
+   {:id :repeat           :kind :soft :scope :melodic  :weight 6   :doc "A repeated note."}
+   {:id :contrary-after-leap :kind :soft :scope :melodic :weight 1.2 :doc "After a leap, going on the same way (twice as much leaping again): a leap is compensated by contrary motion."}
+   {:id :step-back        :kind :soft :scope :melodic  :weight 1.2 :doc "After a 4th or more, turning back by leap rather than by step (filling the gap)."}
+   {:id :leap-after-leap  :kind :soft :scope :melodic  :weight 0.6 :doc "Two leaps in a row."}
+   {:id :return           :kind :soft :scope :melodic  :weight 1   :doc "Going straight back to the note before (A B A)."}
+   {:id :hover            :kind :soft :scope :melodic  :weight 0.6 :doc "A note heard among the last ones, each time: the line moves on."}
+   {:id :run              :kind :soft :scope :melodic  :weight 1.5 :doc "More than four moves the same way."}
+   {:id :open             :kind :soft :scope :melodic  :weight 1   :doc "Still inside less than a 5th after six notes: the line opens up."}
    {:id :climax           :kind :soft :scope :melodic  :weight 1.5 :doc "Reaching the highest note again (one climax)."}
-   {:id :motion           :kind :soft :scope :vertical :weight 1   :doc "Contrary motion preferred (oblique 0.5, similar 1)."}
+   {:id :sequence         :kind :soft :scope :melodic  :weight 1.5 :doc "The last two moves again (two thirds of it for the last three): a mechanical sequence."}
+   {:id :motion           :kind :soft :scope :vertical :weight 1   :doc "Contrary motion preferred (oblique 0.5, similar 0.8)."}
    {:id :direct-perfect   :kind :soft :scope :vertical :weight 3   :doc "Similar motion into a 5th or an octave."}
    {:id :imperfect-run    :kind :soft :scope :vertical :weight 2   :doc "More than three parallel 3rds or 6ths in a row."}
-   {:id :memory           :kind :soft :scope :memory   :weight 1   :doc "Memory of the work: an interval it has already used costs less."}
-   {:id :novelty          :kind :soft :scope :memory   :weight 1   :doc "Novelty: the same move as the last one costs more."}])
+   {:id :alternation      :kind :soft :scope :vertical :weight 1.5 :doc "The same vertical as two notes before but not as the last (3 6 3 6 …)."}
+   {:id :memory           :kind :soft :scope :memory   :weight 1   :doc "Memory of the work: a figure of two moves it used earlier (not just before) costs less."}
+   {:id :novelty          :kind :soft :scope :memory   :weight 0.3 :doc "Novelty: the same move as the last one costs a little more."}])
 
 (def rule-by-id (into {} (map (juxt :id identity)) rules))
 
@@ -195,8 +205,13 @@
               (when-let [e (melodic-error (+ prev (:k p)) (+ x (:k p)))] (str "in the comes: " e))))
         (when (and (on? p :leap-recovery) prev)
           (when-let [m (last-move dux)]
-            (when (and (>= (absv m) 3) (not= (- x prev) (- (sign m))))
-              (str "the leap of a " (interval-name (absv m)) " must be recovered by step " (if (pos? m) "down" "up")))))
+            (when (>= (absv m) 3)
+              (let [s (- x prev)]
+                (if (>= (absv m) 5)
+                  (when (not= s (- (sign m)))
+                    (str "after a leap of a " (interval-name (absv m)) ", a step " (if (pos? m) "down" "up")))
+                  (when (not= (sign s) (- (sign m)))
+                    (str "after the leap of a " (interval-name (absv m)) " the line turns " (if (pos? m) "down" "up"))))))))
         (when (and (on? p :final) (= t (dec n)) (not (fin x))) "the dux ends on the final")
         (when (and (on? p :approach) (= t (- n 2)) (not (some #(= 1 (absv (- x %))) fin))) "the final is approached by step")
         (when c
@@ -208,34 +223,51 @@
 
 ;; ───────────────────────── soft rules: cost ─────────────────────────
 
-(def step-cost {0 0 1 0 2 1 3 2 4 2.5 5 3 7 3.5})
+(def leap-cost {0 0 1 0 2 0.2 3 0.4 4 0.5 5 0.8 7 0.8})
+
+(defn vertical-class "The vertical at time i, as an interval class (0-6), or nil." [p dux i]
+  (let [a (get dux i) c (comes-at p dux i)] (when (and a c) (mod (absv (- a c)) 7))))
 
 (defn cost-parts
   "The soft cost of x after the dux, by rule: {rule-id cost} (only the rules that apply)."
   [p dux x]
-  (let [t (count dux) prev (peek dux) m (last-move dux) s (when prev (- x prev))
+  (let [t (count dux) prev (peek dux) m (last-move dux)
         c (comes-at p (conj dux x) t) pc (comes-at p dux (dec t))
-        moves (map - (rest dux) dux)
         parts (transient {})]
     (when prev
-      (let [n (absv s)]
-        (when (pos? n) (assoc! parts :steps (* (weight p :steps) (get step-cost n 4))))
+      (let [s (- x prev) n (absv s) all (conj dux x)
+            mv (conj (vec (map - (rest dux) dux)) s) L (count mv)]
+        (when (pos? n) (assoc! parts :leap-size (* (weight p :leap-size) (get leap-cost n 1.5))))
         (when (zero? n) (assoc! parts :repeat (weight p :repeat)))
-        (when (and m (>= (absv m) 2) (>= n 2) (= (sign m) (sign s))) (assoc! parts :same-dir-leaps (weight p :same-dir-leaps)))
-        (when (and (> (count dux) 1) (pos? s) (= x (apply max dux))) (assoc! parts :climax (weight p :climax)))
-        (when (and (pos? n) (seq moves))
-          (let [used (count (filter #(= % s) moves))]
-            (when (pos? used) (assoc! parts :memory (- (* (weight p :memory) (/ used (count moves))))))))
+        (when (and (>= t 2) (pos? n) (= x (nth dux (- t 2)))) (assoc! parts :return (weight p :return)))
+        (let [k (count (filter #(= x %) (take-last 3 (pop dux))))]
+          (when (pos? k) (assoc! parts :hover (* k (weight p :hover)))))
+        (when (and m (>= (absv m) 2) (pos? n) (= (sign m) (sign s)))
+          (assoc! parts :contrary-after-leap (* (weight p :contrary-after-leap) (if (>= n 2) 2 1))))
+        (when (and m (>= (absv m) 3) (> n 1)) (assoc! parts :step-back (weight p :step-back)))
+        (when (and m (>= (absv m) 2) (>= n 2)) (assoc! parts :leap-after-leap (weight p :leap-after-leap)))
+        (when (pos? n)
+          (let [run (count (take-while #(and (not (zero? %)) (= (sign %) (sign s))) (rseq mv)))]
+            (when (> run 4) (assoc! parts :run (weight p :run)))))
+        (when (and (>= t 5) (< (- (apply max all) (apply min all)) 4)) (assoc! parts :open (weight p :open)))
+        (when (and (> t 1) (pos? s) (= x (apply max dux))) (assoc! parts :climax (weight p :climax)))
+        (cond (and (>= L 4) (= (mv (- L 1)) (mv (- L 3))) (= (mv (- L 2)) (mv (- L 4))) (not= (mv (- L 1)) (mv (- L 2))))
+              (assoc! parts :sequence (weight p :sequence))
+              (and (>= L 6) (= (subvec mv (- L 3)) (subvec mv (- L 6) (- L 3))))
+              (assoc! parts :sequence (* (/ 2 3) (weight p :sequence)))
+              (and m (pos? n) (some #(= [m s] [(mv %) (mv (inc %))]) (range 0 (- L 3))))
+              (assoc! parts :memory (- (weight p :memory)))
+              :else nil)
         (when (and m (= m s) (pos? n)) (assoc! parts :novelty (weight p :novelty)))))
     (when (and c pc prev)
-      (let [dx (- x prev) dc (- c pc) [lo hi] (lower-first p x c) [plo phi] (lower-first p prev pc)
+      (let [dx (- x prev) dc (- c pc) [lo hi] (lower-first p x c)
             motion (cond (and (zero? dx) (zero? dc)) :none
                          (or (zero? dx) (zero? dc)) :oblique
                          (= (sign dx) (sign dc)) :similar
                          :else :contrary)]
         (case motion
           :oblique (assoc! parts :motion (* 0.5 (weight p :motion)))
-          :similar (assoc! parts :motion (weight p :motion))
+          :similar (assoc! parts :motion (* 0.8 (weight p :motion)))
           nil)
         (when (and (= motion :similar) (= :perfect (quality lo hi)))
           (assoc! parts :direct-perfect (weight p :direct-perfect)))
@@ -249,7 +281,10 @@
                           (recur (dec i) (inc k))
                           k)))]
             (when (and (= :imperfect (quality lo hi)) (> run 3))
-              (assoc! parts :imperfect-run (weight p :imperfect-run)))))))
+              (assoc! parts :imperfect-run (weight p :imperfect-run)))))
+        (when (>= t (+ (:d p) 2))
+          (let [iv (mod (absv (- x c)) 7) i1 (vertical-class p dux (dec t)) i2 (vertical-class p dux (- t 2))]
+            (when (and (= iv i2) (not= iv i1)) (assoc! parts :alternation (weight p :alternation)))))))
     (into {} (remove (fn [[_ v]] (zero? v))) (persistent! parts))))
 
 (defn cost [p dux x] (reduce + 0 (vals (cost-parts p dux x))))
@@ -278,19 +313,42 @@
 (defn bits "The divergence: log2 of the ways to finish (0 when there is one, -1 when there is none)." [c]
   (if (pos? c) (/ (js/Math.log c) (js/Math.log 2)) -1))
 
+(defn outlook
+  "The cheapest cost of the next `depth` notes after the dux, among the notes that still have a future
+  (0 at the end): how the line can go on from here, beyond the note itself."
+  [p dux cnt depth]
+  (if (or (<= depth 0) (>= (count dux) (:n p)))
+    0
+    (let [[lo hi] (lo-hi p)
+          xs (filter #(and (nil? (check p dux %)) (pos? (cnt (conj dux %)))) (range lo (inc hi)))]
+      (if (empty? xs)
+        0
+        (apply min (map #(+ (cost p dux %) (outlook p (conj dux %) cnt (dec depth))) xs))))))
+
+(def look-weight
+  "How much what can follow counts against the note itself (per note looked ahead)."
+  0.5)
+
 (defn fan
   "Every candidate for the next note: {:note :reason (nil when legal) :futures (ways to finish after it)
-  :cost :parts}, from low to high. Illegal candidates come with their reason, legal ones that lead nowhere
-  with :futures 0."
-  ([p dux] (fan p dux (counter p)))
-  ([p dux cnt]
+  :cost :parts :ahead :score}, from low to high. Illegal candidates come with their reason, legal ones that
+  lead nowhere with :futures 0. With look > 0, :ahead is the cheapest cost of the next `look` notes after it
+  and :score its cost plus look-weight times the mean of that: a note that leads only into a corridor of
+  repeated notes scores badly even if it is cheap itself."
+  ([p dux] (fan p dux (counter p) 0))
+  ([p dux cnt] (fan p dux cnt 0))
+  ([p dux cnt look]
    (let [[lo hi] (lo-hi p)]
      (vec (for [x (range lo (inc hi))]
             (let [r (check p dux x)]
               (if r
                 {:note x :reason r}
-                (let [parts (cost-parts p dux x)]
-                  {:note x :futures (cnt (conj dux x)) :cost (reduce + 0 (vals parts)) :parts parts}))))))))
+                (let [parts (cost-parts p dux x)
+                      c (reduce + 0 (vals parts))
+                      fut (cnt (conj dux x))
+                      ahead (when (and (pos? look) (pos? fut)) (outlook p (conj dux x) cnt look))]
+                  {:note x :futures fut :cost c :parts parts :ahead ahead
+                   :score (if ahead (+ c (* look-weight (/ ahead look))) c)}))))))))
 
 (defn divergence
   "The ways to finish at every point of the dux: index i is the count after its first i notes."
@@ -305,7 +363,9 @@
   (let [t (count dux) n (:n p) m (last-move dux) c (comes-at p (conj dux 0) t) fin (finals p)]
     (cond-> []
       (and (on? p :leap-recovery) m (>= (absv m) 3))
-      (conj (str "recover the leap of a " (interval-name (absv m)) ": a step " (if (pos? m) "down" "up")))
+      (conj (if (>= (absv m) 5)
+              (str "after the leap of a " (interval-name (absv m)) ": a step " (if (pos? m) "down" "up"))
+              (str "after the leap of a " (interval-name (absv m)) ": turn " (if (pos? m) "down" "up") " (by step, better)")))
       (and c (< t n))
       (conj (str "a consonance against the comes on " (pitch-name c)
                  (when (seq (:invert p)) (str ", also inverted at the " (str/join ", " (map #(interval-name (dec %)) (sort (:invert p))))))))
@@ -334,15 +394,17 @@
   (if follow (* temp (min 1 (/ (max 0 (bits futures)) 8))) temp))
 
 (defn choose
-  "The engine's choice among the candidates that still have a future: a softmax of -cost / temperature,
-  drawn with (rnd seed t); at temperature 0 the cheapest (the lowest note on a tie). nil when none."
+  "The engine's choice among the candidates that still have a future: a softmax of -score / temperature
+  (the score: the cost and what can follow it), drawn with (rnd seed t); at temperature 0 the best (the
+  lowest note on a tie). nil when none."
   [cands seed t temp]
-  (let [ok (filterv #(pos? (or (:futures %) 0)) cands)]
+  (let [ok (filterv #(pos? (or (:futures %) 0)) cands)
+        sc #(or (:score %) (:cost %))]
     (when (seq ok)
       (if (<= temp 0.001)
-        (:note (first (sort-by (juxt :cost :note) ok)))
-        (let [m (apply min (map :cost ok))
-              ws (mapv #(js/Math.exp (/ (- m (:cost %)) temp)) ok)
+        (:note (first (sort-by (juxt sc :note) ok)))
+        (let [m (apply min (map sc ok))
+              ws (mapv #(js/Math.exp (/ (- m (sc %)) temp)) ok)
               r (* (rnd seed t) (reduce + ws))]
           (loop [i 0 acc 0]
             (let [acc (+ acc (nth ws i))]
@@ -351,12 +413,12 @@
 (defn continue-dux
   "The dux continued by the engine up to its end, one choice per note. Never stuck while the count from the
   start is not 0, since it only takes candidates with a future."
-  [p dux {:keys [seed temp follow cnt] :or {seed 1 temp 0 follow false}}]
+  [p dux {:keys [seed temp follow cnt look] :or {seed 1 temp 0 follow false look 2}}]
   (let [cnt (or cnt (counter p))]
     (loop [dux dux]
       (if (>= (count dux) (:n p))
         dux
-        (let [cs (fan p dux cnt)
+        (let [cs (fan p dux cnt look)
               futures (cnt dux)
               x (choose cs seed (count dux) (temperature temp follow futures))]
           (if x (recur (conj dux x)) dux))))))
@@ -394,10 +456,10 @@
 
 (defn engine-step
   "One note chosen by the engine at the point where the history stands (nil when nothing has a future)."
-  [p h cnt {:keys [seed temp follow] :or {seed 1 temp 0 follow false}}]
+  [p h cnt {:keys [seed temp follow look] :or {seed 1 temp 0 follow false look 2}}]
   (let [dux (current-dux h)]
     (when (< (count dux) (:n p))
-      (when-let [x (choose (fan p dux cnt) seed (count dux) (temperature temp follow (cnt dux)))]
+      (when-let [x (choose (fan p dux cnt look) seed (count dux) (temperature temp follow (cnt dux)))]
         (choose-note h x :engine)))))
 
 (defn leaves [h](let [parents (set (keep :parent (vals (:nodes h))))] (remove #(parents (:id %)) (vals (:nodes h)))))

@@ -32,7 +32,7 @@
     is("the engine's preview from here", $$("#svg .preview").length > 0);
     is("a table of futuribles", $$("#futs .pick").length === $$("#svg .cand").length);
     is("the rule set: hard rules as checkboxes", $$("[data-rule]").length === 10);
-    is("and soft ones as weights", $$("[data-weight]").length === 9);
+    is("and soft ones as weights", $$("[data-weight]").length === 17);
 
     var first = $$("#futs .pick")[0], note = first.getAttribute("data-choose");
     first.click();

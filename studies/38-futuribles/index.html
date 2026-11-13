@@ -183,6 +183,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
   <label>Seed <input type="number" id="seed" min="1" step="1"></label>
   <label>Temperature <input type="range" id="temp" min="0" max="3" step="0.1"> <code id="temp-v"></code></label>
   <label title="After Copycat: colder where few futures are left, as set where there are many"><input type="checkbox" id="follow"> follows the divergence</label>
+  <label title="Each note is weighed with the cheapest way the line can go on for this many notes: a note that leads into a corridor of repeated notes scores badly">Looks ahead <select id="look"><option value="0">0</option><option value="1">1 note</option><option value="2">2 notes</option><option value="3">3 notes</option></select></label>
   <button class="act" data-act="step" title="The engine chooses the next note">Engine: one note</button>
   <button class="act primary" data-act="finish" title="The engine chooses every note to the end">Engine: to the end</button>
   <span class="sep"></span>
@@ -238,7 +239,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
 
 <section class="panel">
   <h2>About</h2>
-  <p class="about">The <b>history</b> is what happened: the notes chosen, by you or by the engine, with their branches. The <b>futuribles</b> are what could happen from each point of it: they are never stored, they are a pure function of a point of the history and a <b>rule set</b>, and the only bridge between the two is a choice, which becomes a point of the history. This page writes a <b>canon</b>: the dux is the line being written, the comes is the dux a few notes later, shifted by an interval, so every rule between the voices falls on the dux compared with itself. Rules are data (first species, after Fux): the hard ones make a note legal or not, with a reason; the soft ones give it a cost, among them the <b>memory of the work</b> (an interval already used costs less) and <b>novelty</b> (the same move again costs more). <b>Invertible counterpoint</b> is a transform of the voices checked by the same rules: at the 10th parallel 3rds become octaves, at the 12th a 6th becomes a 7th. The state owes things: a leap is recovered by step, the dux ends on the final. Hard rules look only at the last notes, so the ways to finish from any point are counted exactly; their log₂ is the <b>divergence</b>, the bits of freedom left, shown under the score. The engine chooses among the futuribles that still have a future, with a seed and a <b>temperature</b>, which can follow the divergence as in Copycat: colder where the work is tight. Modes on the white keys, without musica ficta. The work is kept in this browser.</p>
+  <p class="about">The <b>history</b> is what happened: the notes chosen, by you or by the engine, with their branches. The <b>futuribles</b> are what could happen from each point of it: they are never stored, they are a pure function of a point of the history and a <b>rule set</b>, and the only bridge between the two is a choice, which becomes a point of the history. This page writes a <b>canon</b>: the dux is the line being written, the comes is the dux a few notes later, shifted by an interval, so every rule between the voices falls on the dux compared with itself. Rules are data (first species, after Fux): the hard ones make a note legal or not, with a reason; the soft ones give it a cost. Leaps are not penalised for being leaps, only compensated by contrary motion (a 4th or a 5th turns back, better by step); what costs is a line that stays still, hovers, runs one way or repeats itself mechanically, and the <b>memory of the work</b> makes a figure it used earlier cheaper. The engine weighs each note with the cheapest way the line can go on after it (<b>looks ahead</b>), so that a cheap note leading into a corridor of repeated notes is avoided. <b>Invertible counterpoint</b> is a transform of the voices checked by the same rules: at the 10th parallel 3rds become octaves, at the 12th a 6th becomes a 7th. The state owes things: a leap is recovered by step, the dux ends on the final. Hard rules look only at the last notes, so the ways to finish from any point are counted exactly; their log₂ is the <b>divergence</b>, the bits of freedom left, shown under the score. The engine chooses among the futuribles that still have a future, with a seed and a <b>temperature</b>, which can follow the divergence as in Copycat: colder where the work is tight. Modes on the white keys, without musica ficta. The work is kept in this browser.</p>
 </section>
 </main>
 
@@ -268,7 +269,7 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; :p the canon and its rule set · :h the history · :seed :temp :follow the engine
 ;; :cnt the counter of the futures for :p (made again when :p changes) · :play the playback going on
 
-(defonce ui (atom {:p (fu/params) :h (fu/new-history) :seed 1 :temp 1 :follow true :cnt nil :cnt-for nil :msg nil}))
+(defonce ui (atom {:p (fu/params) :h (fu/new-history) :seed 1 :temp 1 :follow true :look 2 :cnt nil :cnt-for nil :msg nil}))
 
 (defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
 (defn $ [id] (js/document.getElementById id))
@@ -287,7 +288,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (def store-key "kairotic-study-38")
 (defn save! []
   (try (.setItem js/localStorage store-key
-                 (pr-str (select-keys @ui [:p :h :seed :temp :follow])))
+                 (pr-str (select-keys @ui [:p :h :seed :temp :follow :look])))
        (catch :default _ nil)))
 (defn restore []
   (try (let [s (.getItem js/localStorage store-key) x (when s (edn/read-string s))]
@@ -299,7 +300,7 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (declare render!)
 
-(defn engine-opts [] {:seed (:seed @ui) :temp (:temp @ui) :follow (:follow @ui)})
+(defn engine-opts [] {:seed (:seed @ui) :temp (:temp @ui) :follow (:follow @ui) :look (:look @ui 2)})
 
 ;; ───────── the score ─────────
 
@@ -423,6 +424,11 @@ window.addEventListener("DOMContentLoaded", function () {
 
 ;; ───────── here: what is owed, the futuribles ─────────
 
+(defn score-title [cost parts ahead]
+  (str "its own cost " (.toFixed cost 2)
+       (when (seq parts) (str " (" (str/join ", " (map (fn [[k v]] (str (name k) " " (.toFixed v 2))) parts)) ")"))
+       (when ahead (str "; the cheapest way on after it: " (.toFixed ahead 2)))))
+
 (defn render-here! [fan-data]
   (let [pp (p) d (dux) t (count d) n (:n pp) c (cnt) total (c d)
         comes (fu/comes-at pp (conj d 0) t)]
@@ -436,17 +442,17 @@ window.addEventListener("DOMContentLoaded", function () {
     (set! (.-innerHTML ($ "futs"))
           (if (>= t n)
             ""
-            (let [legal (sort-by (juxt #(if (zero? (:futures %)) 1 0) :cost :note) (remove :reason fan-data))
+            (let [legal (sort-by (juxt #(if (zero? (:futures %)) 1 0) :score :note) (remove :reason fan-data))
                   illegal (filter :reason fan-data)]
               (str (if (seq legal)
-                     (str "<table class=\"futs\"><thead><tr><th>note</th><th>vs comes</th><th class=\"num\">futures</th><th class=\"num\">cost</th><th></th></tr></thead><tbody>"
+                     (str "<table class=\"futs\"><thead><tr><th>note</th><th>vs comes</th><th class=\"num\">futures</th><th class=\"num\" title=\"the note's own cost, and what can follow it (looked ahead)\">score</th><th></th></tr></thead><tbody>"
                           (apply str
-                                 (for [{:keys [note futures cost parts]} legal]
+                                 (for [{:keys [note futures cost parts ahead score]} legal]
                                    (str "<tr class=\"" (when (zero? futures) "dead") "\" data-hot=\"" note "\">"
                                         "<td>" (fu/pitch-name note) "</td>"
                                         "<td>" (if comes (str (fu/interval-name (fu/absv (- note comes)))) "—") "</td>"
                                         "<td class=\"num\">" futures "</td>"
-                                        "<td class=\"num\" title=\"" (esc (str/join ", " (map (fn [[k v]] (str (name k) " " (.toFixed v 2))) parts))) "\">" (.toFixed cost 1) "</td>"
+                                        "<td class=\"num\" title=\"" (esc (score-title cost parts ahead)) "\">" (.toFixed score 1) "</td>"
                                         "<td><button class=\"pick\" data-choose=\"" note "\">choose</button></td></tr>")))
                           "</tbody></table>")
                      "<p class=\"empty\">No note is allowed here.</p>")
@@ -536,7 +542,8 @@ window.addEventListener("DOMContentLoaded", function () {
     (set! (.-value ($ "seed")) (:seed u))
     (set! (.-value ($ "temp")) (:temp u))
     (set! (.-textContent ($ "temp-v")) (.toFixed (:temp u) 1))
-    (set! (.-checked ($ "follow")) (:follow u))))
+    (set! (.-checked ($ "follow")) (:follow u))
+    (set! (.-value ($ "look")) (str (:look u 2)))))
 
 (defn render-msg! []
   (let [[cls text] (:msg @ui) el ($ "msg")]
@@ -545,7 +552,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn render! []
   (let [t0 (js/Date.now)
         pp (p) d (dux) c (cnt)
-        fan-data (when (< (count d) (:n pp)) (fu/fan pp d c))
+        fan-data (when (< (count d) (:n pp)) (fu/fan pp d c (:look @ui 2)))
         pv (preview)]
     (render-controls!)
     (render-score! fan-data pv)
@@ -658,6 +665,7 @@ window.addEventListener("DOMContentLoaded", function () {
                                (= id "n") (when-let [v (num "n" 6 16)] (set-p! #(assoc % :n v)))
                                (= id "seed") (when-let [v (num "seed" 1 999999)] (swap! ui assoc :seed v) (save!) (render!))
                                (= id "follow") (do (swap! ui assoc :follow (.-checked el)) (save!) (render!))
+                               (= id "look") (do (swap! ui assoc :look (js/parseInt (.-value el))) (save!) (render!))
                                (.getAttribute el "data-inv")
                                (let [v (js/parseInt (.getAttribute el "data-inv"))]
                                  (set-p! #(update % :invert (fn [s] (if (.-checked el) (conj (set s) v) (disj (set s) v))))))
