@@ -10,6 +10,7 @@
   rule, `:modal`, makes the final and the tenor cost less (one and a half times on a strong beat in Study 39).
   Contrary motion weighs more by default (`:motion` 2.5, was 1). The kernel takes the start notes from the model
   (`starts`).
+  When more than one inversion is asked for, a selector beside **▶ Inverted** chooses which one is played.
 
 - **Studies 38 and 39: counting without blocking, and a sound to hear the counterpoint.** Study 38 now uses
   Study 39's kernel in plain JavaScript for its hard rules and its count (every beat strong), so changes no longer

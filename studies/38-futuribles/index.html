@@ -209,6 +209,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
   <label>Tempo <input type="number" id="tempo" min="30" max="200" step="5"> ♩/min</label>
   <button class="act" data-act="play">▶ Play</button>
   <button class="act" data-act="play-inv" id="play-inv" title="The canon with its voices inverted">▶ Inverted</button>
+  <select id="inv-play" aria-label="Which inversion to play" title="Which inversion to play"></select>
   <button class="act" data-act="stop" aria-label="Stop">■</button>
 </div>
 
@@ -312,7 +313,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (def store-key "kairotic-study-38")
 (defn save! []
   (try (.setItem js/localStorage store-key
-                 (pr-str (select-keys @ui [:p :h :seed :temp :follow :look :timbre :tempo])))
+                 (pr-str (select-keys @ui [:p :h :seed :temp :follow :look :timbre :tempo :inv-play])))
        (catch :default _ nil)))
 (defn restore []
   (try (let [s (.getItem js/localStorage store-key) x (when s (edn/read-string s))]
@@ -617,6 +618,12 @@ window.addEventListener("DOMContentLoaded", function () {
 
 ;; ───────── rendering ─────────
 
+(defn inv-options "The inversions that can be played: those asked for (the octave when none is)." []
+  (let [inv (sort (:invert (p)))] (if (seq inv) (vec inv) [8])))
+
+(defn inv-to-play "The inversion chosen to be played, if it is still asked for; else the first." []
+  (let [opts (inv-options) c (:inv-play @ui)] (if (some #{c} opts) c (first opts))))
+
 (defn render-controls! []
   (let [pp (p) u @ui]
     (set! (.-value ($ "mode")) (name (:mode pp)))
@@ -629,7 +636,11 @@ window.addEventListener("DOMContentLoaded", function () {
         (set! (.-checked el) (contains? (:invert pp) v))
         (set! (.-disabled el) (zero? (:k pp)))))
     (set! (.-disabled ($ "play-inv")) (or (zero? (:k pp)) (empty? (dux))))
-    (set! (.-title ($ "play-inv")) (str "The canon with its voices inverted at the " (fu/interval-name (dec (or (first (sort (:invert pp))) 8)))))
+    (set! (.-title ($ "play-inv")) (str "The canon with its voices inverted at the " (fu/interval-name (dec (inv-to-play)))))
+    (let [sel ($ "inv-play") opts (inv-options)]
+      (set! (.-innerHTML sel) (apply str (for [n opts] (str "<option value=\"" n "\">at the " (fu/interval-name (dec n)) "</option>"))))
+      (set! (.-value sel) (str (inv-to-play)))
+      (set! (.-disabled sel) (or (zero? (:k pp)) (< (count opts) 2))))
     (set! (.-value ($ "seed")) (:seed u))
     (set! (.-value ($ "temp")) (:temp u))
     (set! (.-textContent ($ "temp-v")) (.toFixed (:temp u) 1))
@@ -742,7 +753,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn play! [inverted]
   (stop!)
   (let [pp (p) d (dux)
-        {du :dux co :comes} (if inverted (fu/inverted pp d (or (first (sort (:invert pp))) 8)) (fu/voices pp d))
+        {du :dux co :comes} (if inverted (fu/inverted pp d (inv-to-play)) (fu/voices pp d))
         mid (fn [v] (clj->js (mapv #(when % (fu/midi %)) v)))
         h (.play Sound #js {:voices #js [(mid du) (mid co)] :beat (/ 60 (:tempo @ui 80)) :timbre (:timbre @ui "organ")})
         ctx (.-ctx h) t0 (.-t0 h) beat (.-beat h) len (.-length h)]
@@ -798,6 +809,7 @@ window.addEventListener("DOMContentLoaded", function () {
                                (= id "follow") (do (swap! ui assoc :follow (.-checked el)) (save!) (render!))
                                (= id "look") (do (swap! ui assoc :look (js/parseInt (.-value el))) (save!) (render!))
                                (= id "timbre") (do (swap! ui assoc :timbre (.-value el)) (save!))
+                               (= id "inv-play") (do (swap! ui assoc :inv-play (js/parseInt (.-value el))) (save!) (render-controls!))
                                (= id "tempo") (when-let [v (num "tempo" 30 200)] (swap! ui assoc :tempo v) (save!))
                                (.getAttribute el "data-inv")
                                (let [v (js/parseInt (.getAttribute el "data-inv"))]

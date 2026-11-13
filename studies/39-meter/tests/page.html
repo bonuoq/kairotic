@@ -74,7 +74,14 @@ await (async function () {
     is("forward: it is there again", $$("#svg .dux").length === n);
     document.querySelector("[data-act=back]").click();
 
+    change(document.querySelector("[data-inv='10']"), true);
     change(document.querySelector("[data-inv='12']"), true);
+    await settle();
+    var invSel = document.getElementById("inv-play");
+    is("two inversions asked for: both can be chosen to be played", invSel.options.length === 2 && !invSel.disabled);
+    invSel.value = "12"; invSel.dispatchEvent(new Event("change", { bubbles: true }));
+    is("the one chosen is the one the button plays", /12th/.test(document.getElementById("play-inv").title));
+    change(document.querySelector("[data-inv='10']"), false);
     await settle();
     var at12 = canons();
     is("invertible at the 12th: fewer canons (" + at12 + ")", at12 < total);
