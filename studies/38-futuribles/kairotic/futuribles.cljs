@@ -91,6 +91,8 @@
    {:id :leap-recovery    :kind :hard :scope :melodic  :doc "A leap turns back: after a 4th or a 5th the next move goes the other way; after a 6th or an octave, by step."}
    {:id :consonance       :kind :hard :scope :vertical :under :all :doc "Every vertical is a consonance: unison, 3rd, 5th, 6th, octave."}
    {:id :parallels        :kind :hard :scope :vertical :under :all :doc "No parallel 5ths or octaves (nor by contrary motion)."}
+   {:id :direct-octaves   :kind :hard :scope :vertical :under :all :doc "No octave nor unison reached by direct (similar) motion: the unison is treated as the octave."}
+   {:id :entry-unison     :kind :hard :scope :vertical :doc "The comes does not enter on the unison."}
    {:id :no-crossing      :kind :hard :scope :vertical :doc "The voices do not cross (except in a canon at the unison)."}
    {:id :spacing          :kind :hard :scope :vertical :doc "The voices are never more than a 10th apart."}
    {:id :final            :kind :hard :scope :form     :doc "The dux ends on the final, on a perfect consonance."}
@@ -109,7 +111,7 @@
    {:id :climax           :kind :soft :scope :melodic  :weight 1.5 :doc "Reaching the highest note again (one climax)."}
    {:id :sequence         :kind :soft :scope :melodic  :weight 1.5 :doc "The last two moves again (two thirds of it for the last three): a mechanical sequence."}
    {:id :motion           :kind :soft :scope :vertical :weight 1   :doc "Contrary motion preferred (oblique 0.5, similar 0.8)."}
-   {:id :direct-perfect   :kind :soft :scope :vertical :weight 3   :doc "Similar motion into a 5th or an octave."}
+   {:id :direct-perfect   :kind :soft :scope :vertical :weight 3   :doc "Similar motion into a 5th (into an octave or a unison it is not allowed)."}
    {:id :imperfect-run    :kind :soft :scope :vertical :weight 2   :doc "More than three parallel 3rds or 6ths in a row."}
    {:id :alternation      :kind :soft :scope :vertical :weight 1.5 :doc "The same vertical as two notes before but not as the last (3 6 3 6 …)."}
    {:id :memory           :kind :soft :scope :memory   :weight 1   :doc "Memory of the work: a figure of two moves it used earlier (not just before) costs less."}
@@ -186,7 +188,12 @@
                               q1 (quality plo phi) q2 (quality lo hi)
                               c1 (mod (- phi plo) 7) c2 (mod (- hi lo) 7)]
                           (when (and (= :perfect q1 q2) (= c1 c2) (not= [plo phi] [lo hi]))
-                            (str (transform-label tn) (if (zero? c2) "parallel octaves" "parallel 5ths"))))))))
+                            (str (transform-label tn) (if (zero? c2) "parallel octaves" "parallel 5ths")))))
+                      (when (and (on? p :direct-octaves) prev)
+                        (let [[plo phi] (f (apply lower-first p prev))
+                              dl (- lo plo) dh (- hi phi)]
+                          (when (and (zero? (mod (- hi lo) 7)) (not (zero? dl)) (= (sign dl) (sign dh)))
+                            (str (transform-label tn) (if (= lo hi) "a unison" (interval-name (- hi lo))) " by direct motion")))))))
               (transforms p)))))
 
 (defn last-move [dux] (let [n (count dux)] (when (>= n 2) (- (nth dux (dec n)) (nth dux (- n 2))))))
@@ -218,6 +225,7 @@
           (let [pc (comes-at p dux (dec t))
                 verr (vertical-error p x c (when pc [prev pc]))]
             (or verr
+                (when (and (on? p :entry-unison) (= t (:d p)) (= x c)) "the comes does not enter on the unison")
                 (when (and (on? p :final) (= t (dec n)) (not= :perfect (quality x c)))
                   "the last vertical is a perfect consonance")))))))
 
@@ -269,7 +277,7 @@
           :oblique (assoc! parts :motion (* 0.5 (weight p :motion)))
           :similar (assoc! parts :motion (* 0.8 (weight p :motion)))
           nil)
-        (when (and (= motion :similar) (= :perfect (quality lo hi)))
+        (when (and (= motion :similar) (= :perfect (quality lo hi)) (= 4 (mod (- hi lo) 7)))
           (assoc! parts :direct-perfect (weight p :direct-perfect)))
         (when (= motion :similar)
           (let [cls (mod (- hi lo) 7)

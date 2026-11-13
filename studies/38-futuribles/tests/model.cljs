@@ -40,6 +40,12 @@
   (is "parallel 5ths" (= "parallel 5ths" (fu/vertical-error p 5 1 [4 0])))
   (is "contrary octaves are parallels too" (= "parallel octaves" (fu/vertical-error p 3 3 [7 0])))
   (is "the comes below may not cross above" (= "the voices cross" (fu/vertical-error p 1 3 nil)))
+  (is "an octave by direct motion" (= "octave by direct motion" (fu/vertical-error p 8 1 [6 0])))
+  (is "a unison by direct motion, as the octave" (= "a unison by direct motion" (fu/vertical-error p 3 3 [2 0])))
+  (is "a unison by oblique motion is fine" (nil? (fu/vertical-error p 2 2 [2 0])))
+  (is "an octave by contrary motion is fine" (nil? (fu/vertical-error p 7 0 [5 2])))
+  (is "the comes does not enter on the unison"
+      (= "the comes does not enter on the unison" (fu/check (fu/params :k 0 :d 2) [1 2] 1)))
   (is "the inverted canon swaps the voices" (= {:dux [1 2 nil nil] :comes [nil nil 1 2]} (fu/inverted p [1 2] 8))))
 
 ;; obligations: a leap is a debt the next note pays (it turns back)

@@ -12,6 +12,8 @@
   note is weighed with the cheapest way the line can go on for the next notes (0 to 3, 2 by default), so a cheap note
   leading into a corridor of forced repetitions is avoided. Over 24 seeds of the default canon: 1% repeated notes
   (4.4% before), 38% leaps, 22 different canons, about 30 ms each in Scittle. Tests: 61 checks in `tests/model.html`.
+  The unison is treated as the octave: neither is reached by direct motion (a hard rule, also under inversion; a 5th
+  reached so still only costs), and the comes does not enter on the unison.
 - **Functions as values through the wires** (issue #177). A function travels as its form, EDN data:
   - `comp`, `partial`, `juxt`, `complement`, `fnil`, `constantly`, `every-pred` and `some-fn` are boxes that send one
     on a bang (`comp inc (partial * 2)` sends `(comp inc (partial * 2))`); their inlets replace the arguments, `^:hot`
