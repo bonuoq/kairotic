@@ -76,7 +76,7 @@
     is("the final, with no future here, has a why? button", !!deadG);
     if (deadG) {
       deadG.click();
-      for (var i = 0; i < 300 && !/opens it|close it together/.test(document.getElementById("why").textContent); i++)
+      for (var i = 0; i < 300 && !/would open it|close it together/.test(document.getElementById("why").textContent); i++)
         await new Promise(function (r) { setTimeout(r, 50); });
       var w = document.getElementById("why").textContent;
       is("why? counts again without each hard rule", /direct-octaves/.test(w) && /→ \d+ canon/.test(w));
@@ -89,7 +89,7 @@
     var notAllowed = document.querySelector("#futs details [data-why]");
     if (notAllowed) {
       notAllowed.click();
-      for (var j = 0; j < 300 && !/opens it|close it together/.test(document.getElementById("why").textContent); j++)
+      for (var j = 0; j < 300 && !/would open it|close it together/.test(document.getElementById("why").textContent); j++)
         await new Promise(function (r) { setTimeout(r, 50); });
       is("why? for a note not allowed names what forbids it", /A hard rule forbids it/.test(document.getElementById("why").textContent));
     }
