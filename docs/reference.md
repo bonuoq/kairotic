@@ -378,7 +378,7 @@ A view drawn from the messages that arrive: each shape of kairotic.shapes ([:cir
 
 ```clojure
 (box :b1 "msg circle 60 55 22 accent hit sun" 40 30)
-(box :b2 "msg circle 160 55 14 kairos hit moon" 250 30)
+(box :b2 "msg circle 160 55 14 kairos hit moon" 300 30)
 (box :b3 "msg set label text 20 100 \"press one of them\"" 40 70)
 (box :b4 "draw 240 120" 40 120)
 (box :b5 "print" 40 270)
@@ -602,8 +602,8 @@ How alike the moments of what arrives are over the last seconds (20): a self-sim
 ```clojure
 (box :b1 "adc~ 1" 40 30)
 (box :b2 "chroma~" 40 90)
-(box :b3 "onset~" 200 90)
-(box :b4 "form~" 40 150)
+(box :b3 "onset~" 240 90)
+(box :b4 "form~" 40 170)
 (box :b5 "print" 280 300)
 (connect :b1 0 :b2 0)
 (connect :b1 0 :b3 0)
@@ -721,10 +721,10 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 *Try:* Click a note of the new score and press ↑ or ↓, + or −, Delete (a rest) and then Enter (a note again): the change goes back to the tree by the dashed line.
 
 ```clojure
-(box :b7 "bang" 300 15)
-(box :b8 "tree" 300 60)
+(box :b7 "bang" 500 15)
+(box :b8 "tree" 500 60)
 (code :b8 "\"c5/1 b4/.5 a4 g4/2\"")
-(box :b9 "freqt" 300 160)
+(box :b9 "freqt" 500 160)
 (view :b9 :score)
 (connect :b7 0 :b8 0)
 (connect :b8 0 :b9 0)
@@ -802,8 +802,8 @@ A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Be
 *Try:* Press ▶ and turn x-step up: the pitch scatters into noise. Turn it down and y-step up: one pitch, a restless colour.
 
 ```clojure
-(box :b4 "knob 0 100 10 x-step" 300 20)
-(box :b5 "knob 0 0.3 0.05 y-step" 390 20)
+(box :b4 "knob 0 100 10 x-step" 360 20)
+(box :b5 "knob 0 0.3 0.05 y-step" 450 20)
 (connect :b4 0 :b1 0)
 (connect :b5 0 :b1 0)
 ```
@@ -813,8 +813,8 @@ A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Be
 *Try:* Press ▶ and click both messages in turn, watching the scope.
 
 ```clojure
-(box :b6 "msg breakpoints 4" 300 120)
-(box :b7 "msg breakpoints 48" 440 120)
+(box :b6 "msg breakpoints 4" 360 120)
+(box :b7 "msg breakpoints 48" 500 120)
 (connect :b6 0 :b1 0)
 (connect :b7 0 :b1 0)
 ```
@@ -824,8 +824,8 @@ A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Be
 *Try:* Press ▶: 5 Hz around 110 Hz. Change osc~ 5 to osc~ 80 for a rougher sound.
 
 ```clojure
-(box :b8 "osc~ 5" 300 200)
-(box :b9 "gain~ 300" 300 250)
+(box :b8 "osc~ 5" 360 200)
+(box :b9 "gain~ 300" 360 250)
 (connect :b8 0 :b9 0)
 (connect :b9 0 :b1 0)
 ```
@@ -1027,7 +1027,7 @@ Operations on musical trees: a tree on the left comes out transformed. transpose
 (box :b1 "bang" 40 20)
 (box :b2 "tree" 40 60)
 (code :b2 "\"c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2\"")
-(box :b4 "number 7" 220 140)
+(box :b4 "number 7" 220 170)
 (box :b3 "mt transpose 7" 40 170)
 (box :b5 "freqt" 40 220)
 (view :b5 :score)
@@ -1051,12 +1051,12 @@ Operations on musical trees: a tree on the left comes out transformed. transpose
 *Try:* Press ▶, click the first bang (the tree goes to mt play) and then msg bang: the canon sounds in a loop; stop ends it.
 
 ```clojure
-(box :b6 "msg bang" 300 170)
-(box :b7 "msg stop" 370 170)
-(box :b8 "mt play loop" 300 220)
-(box :b9 "synth~" 300 270)
-(box :b10 "gain~ 0.3" 300 320)
-(box :b11 "dac~" 300 370)
+(box :b6 "msg bang" 500 170)
+(box :b7 "msg stop" 570 170)
+(box :b8 "mt play loop" 500 220)
+(box :b9 "synth~" 500 270)
+(box :b10 "gain~ 0.3" 500 320)
+(box :b11 "dac~" 500 370)
 (connect :b3 0 :b8 0)
 (connect :b6 0 :b8 0)
 (connect :b7 0 :b8 0)
@@ -1479,8 +1479,8 @@ Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a
 
 ```clojure
 (box :b9 "metro 300" 180 130)
-(box :b10 "msg 1" 180 90)
-(box :b11 "msg 0" 230 90)
+(box :b10 "msg 1" 180 100)
+(box :b11 "msg 0" 230 100)
 (connect :b10 0 :b9 0)
 (connect :b11 0 :b9 0)
 (connect :b9 0 :b4 0)
@@ -1492,7 +1492,7 @@ Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a
 
 ```clojure
 (box :b12 "ramp 0 6 3 loop" 330 130)
-(box :b13 "msg bang" 330 90)
+(box :b13 "msg bang" 330 100)
 (connect :b13 0 :b12 0)
 (connect :b12 0 :b4 0)
 ```
@@ -1675,7 +1675,7 @@ Plays a faust~ from descriptors written as a score — loudness, brightness, noi
 (box :b3 "pitch~" 260 90)
 (box :b4 "realize~" 40 160)
 (box :b5 "faust~" 40 240)
-(box :b6 "dac~" 40 330)
+(box :b6 "dac~" 40 430)
 (box :b7 "msg learn" 300 160)
 (connect :b1 0 :b2 0)
 (connect :b1 0 :b3 0)
