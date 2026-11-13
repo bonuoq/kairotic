@@ -3,14 +3,14 @@
 <title>Study 38 · futuribles · tests</title>
 <pre id="out">Running…</pre>
 <script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
-<script>
-// The model, then the tests (as the study loads them).
-Promise.all(["../kairotic/futuribles.cljs", "model.cljs"].map(function (m) {
-  return fetch(m, { cache: "no-cache" }).then(function (r) { return r.text(); });
-})).then(function (srcs) {
-  srcs.forEach(function (s) { scittle.core.eval_string(s); });
-}).catch(function (e) {
+<script type="module">
+// The kernel, the model, then the tests (as the study loads them).
+try {
+  window.kairoticKernel = await import("../kairotic/kernel.mjs");
+  const srcs = await Promise.all(["../kairotic/futuribles.cljs", "model.cljs"].map((m) => fetch(m, { cache: "no-cache" }).then((r) => r.text())));
+  for (const s of srcs) scittle.core.eval_string(s);
+} catch (e) {
   document.getElementById("out").textContent = "Error: " + (e.message || e);
   window.kairoticResults = { total: 0, failed: ["error: " + (e.message || e)] };
-});
+}
 </script>

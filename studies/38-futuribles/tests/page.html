@@ -4,15 +4,19 @@
 <pre id="out">Running…</pre>
 <div id="host"></div>
 <script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
-<script>
+<script type="module">
 // The study's page itself (its styles, its markup, the model and the page's ClojureScript), driven as a person
 // would: choosing a futurible, letting the engine finish, going back, changing the rule set.
-(async function () {
+await (async function () {
   var results = [], errors = [];
   window.addEventListener("error", function (e) { errors.push(String(e.message || e)); });
   function is(what, ok) { results.push([what, !!ok]); }
   function $$(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
   function change(el, checked) { el.checked = checked; el.dispatchEvent(new Event("change", { bubbles: true })); }
+  async function settle() {
+    for (var i = 0; i < 400 && !/canons under this rule set/.test(document.getElementById("status").textContent); i++)
+      await new Promise(function (r) { setTimeout(r, 25); });
+  }
   function canons() { return parseInt((document.getElementById("status").textContent.match(/^(\d+) canons/) || [])[1], 10); }
   try {
     try { localStorage.removeItem("kairotic-study-38"); } catch (e) {}
@@ -20,9 +24,13 @@
     var doc = new DOMParser().parseFromString(html, "text/html");
     doc.querySelectorAll("style").forEach(function (s) { document.head.appendChild(s.cloneNode(true)); });
     document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticKernel = await import("../kairotic/kernel.mjs");
+    window.kairoticSound = await import("../kairotic/sound.mjs");
     var model = await fetch("../kairotic/futuribles.cljs", { cache: "no-cache" }).then(function (r) { return r.text(); });
     scittle.core.eval_string(model);
     scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+    await settle();
+    is("the futures are counted without blocking, then drawn", /canons under this rule set/.test(document.getElementById("status").textContent));
 
     var total = canons();
     is("the status counts the canons (" + total + ")", total > 0);
@@ -57,14 +65,18 @@
     document.querySelector("[data-act=back]").click();
 
     change(document.querySelector("[data-inv='12']"), true);
+    await settle();
     var at12 = canons();
     is("invertible at the 12th: fewer canons (" + at12 + ")", at12 < total);
     change(document.querySelector("[data-inv='12']"), false);
+    await settle();
     is("and back", canons() === total);
 
     change(document.querySelector("[data-rule='leap-recovery']"), false);
+    await settle();
     is("a hard rule off: more canons", canons() > total);
     document.querySelector("[data-act=reset-rules]").click();
+    await settle();
     is("the default rule set again", canons() === total);
 
     document.querySelector("[data-act=clear]").click();
@@ -72,6 +84,7 @@
     // why?: a canon where starting on the final is allowed but has no future (strict about direct octaves)
     function set(id, v) { var el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }
     set("mode", "mixolydian"); set("n", "10"); change(document.querySelector("[data-inv='10']"), true); change(document.querySelector("[data-rule='strict-direct']"), true);
+    await settle();
     var deadG = document.querySelector("#futs tr.dead [data-why='4']");
     is("the final, with no future here, has a why? button", !!deadG);
     if (deadG) {
@@ -83,6 +96,7 @@
       is("and names the one that opens the most", /the most: [a-z-]+/.test(w));
       var tryit = document.querySelector("#why [data-without='direct-octaves']");
       tryit.click();
+      await settle();
       is("try without it turns the rule off", !document.querySelector("[data-rule='direct-octaves']").checked);
       is("and the final has futures again", !document.querySelector("#futs tr.dead [data-why='4']"));
     }

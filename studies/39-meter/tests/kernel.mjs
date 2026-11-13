@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 // Study 39 · meter: the kernel's tests. They run in the browser (tests/kernel.html) and in Node:
-//   node -e 'import("./studies/39-meter/tests/kernel.mjs").then(m => m.report(m.run()))'
+//   node -e 'import("./studies/39-meter/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import { canon, quality, melodicError, semis, intervalName } from "../kairotic/kernel.mjs";
 
 const base = { tonic: 1, k: -7, lo: -1, hi: 9, spacing: 11 };          // dorian, D4, range B3–E5
@@ -18,7 +18,7 @@ function some(c, max) {
   return out;
 }
 
-export function run() {
+export async function run() {
   const results = [], notesOut = [];
   const is = (what, ok) => results.push([what, !!ok]);
 
@@ -96,6 +96,26 @@ export function run() {
   const loose = canon({ ...base, d: 3, b: 2, n: notes(2, 8), on: { "weak-dissonance": false } });
   is("without weak-dissonance, more canons", loose.count([]) > n2);
   is("strict-direct is off unless asked for", canon({ ...base, d: 3, b: 2, n: notes(2, 8), on: { "strict-direct": true } }).count([]) < n2);
+  // the count without blocking: the same number, with progress on the way
+  {
+    const fresh = canon({ ...base, d: 3, b: 2, n: notes(2, 8) });
+    const seen = [];
+    const v = await fresh.countAsync([], { budget: 2, onProgress: (f, st) => seen.push([f, st]) });
+    is("counted without blocking: the same number", v === n2);
+    is("with progress on the way, growing", seen.length > 0 && seen.every(([f], i) => f >= 0 && f <= 1 && (i === 0 || f >= seen[i - 1][0] - 1e-9)));
+    is("and the counts after it are in the memo", fresh.count([1]) === s2.count([1]));
+    const gone = await canon({ ...base, d: 3, b: 2, n: notes(2, 8) }).countAsync([], { budget: 1, cancelled: () => true });
+    is("a count can be cancelled", gone === null);
+  }
+  // the rules between the voices for one vertical (as in first species)
+  {
+    const v = canon({ ...base, d: 2, b: 1, n: 12 });
+    const v12 = canon({ ...base, d: 2, b: 1, n: 12, invert: [12] });
+    is("a vertical: parallel 5ths", v.verticalError(5, 1, [4, 0]) === "parallel 5ths");
+    is("a 6th becomes a 7th at the 12th", /12th.*7th/.test(v12.verticalError(5, 0, null)));
+    is("a unison by direct motion; by step in the upper voice it is fine",
+      v.verticalError(4, 4, [2, 0]) === "a unison by direct motion" && v.verticalError(3, 3, [2, 0]) === null);
+  }
   return { results, notes: notesOut };
 }
 

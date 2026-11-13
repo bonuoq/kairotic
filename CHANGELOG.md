@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Studies 38 and 39: counting without blocking, and a sound to hear the counterpoint.** Study 38 now uses
+  Study 39's kernel in plain JavaScript for its hard rules and its count (every beat strong), so changes no longer
+  block the page. In both, the futures are counted a few milliseconds at a time (`countAsync` in the kernel): the
+  page dims the score and says how far it is ("counting the futures… 37% · 12400 points") and draws when done;
+  **why?** counts each rule the same way. The sound is sustained and legato, an **organ** (a principal for the dux,
+  a flute for the comes) or two **voices** (a sawtooth through the formants of a vowel, with a slow vibrato), in a
+  small room, at a **tempo** set in the toolbar; a repeated note is struck again. Tests: the kernel's (29, also in
+  Node) include the count without blocking (the same number, progress growing, cancellable); the page tests wait
+  for the count.
+
 - **Study 39 · meter** (discussion #172): dissonance and meter in Study 38's canon. First species is a note per bar;
   second species two (2/2) or three (3/2), a note per beat. Strong beats are consonant; on a weak beat a dissonance
   passes if both voices come to it and leave it by step (passing or neighbour, P / N on the score), never two in a

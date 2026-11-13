@@ -82,6 +82,44 @@ export function canon(spec) {
     return false;
   }
 
+  /** The rules between the voices for one vertical [x c]: a reason (string), or whether it is dissonant.
+   *  prev: the vertical before as [dux, comes] (or null) · sb: the one on the strong beat before (or null) ·
+   *  strongNow: whether this beat is strong (always, in first species). */
+  function between(x, c, prev, sb, strongNow) {
+    if (on("no-crossing") && k !== 0) { const [l, h] = lowerFirst(x, c); if (l > h) return "the voices cross"; }
+    if (on("spacing") && Math.abs(x - c) > spacing) return `more than a ${intervalName(spacing)} apart`;
+    const [l0, h0] = lowerFirst(x, c);
+    const [pl0, ph0] = prev ? lowerFirst(prev[0], prev[1]) : [0, 0];
+    const [sl0, sh0] = sb && sb[1] !== null ? lowerFirst(sb[0], sb[1]) : [0, 0];
+    let diss = false;
+    for (const [N, f] of transforms) {
+      const [l, h] = f(l0, h0);
+      if (N && h < l) return `${label(N)}the voices would cross (wider than the ${intervalName(N - 1)})`;
+      const q = quality(l, h), cls = mod(h - l, 7);
+      if (q === "dissonant") {
+        diss = true;
+        if (on("consonance") && strongNow) return `${label(N)}a ${intervalName(cls)} (dissonant)${b > 1 ? " on a strong beat" : ""}`;
+      }
+      if (prev) {
+        const [pl, ph] = f(pl0, ph0);
+        if (on("parallels") && q === "perfect" && quality(pl, ph) === "perfect" && mod(ph - pl, 7) === cls && (pl !== l || ph !== h))
+          return label(N) + (cls === 0 ? "parallel octaves" : "parallel 5ths");
+        const dl = l - pl, dh = h - ph;
+        if (on("direct-octaves") && cls === 0 && dl !== 0 && sign(dl) === sign(dh) && (on("strict-direct") || Math.abs(dh) !== 1))
+          return `${label(N)}${l === h ? "a unison" : intervalName(h - l)} by direct motion`;
+      }
+      if (sb && sb[1] !== null && on("strong-parallels") && q === "perfect") {
+        const [sl, sh] = f(sl0, sh0);
+        if (quality(sl, sh) === "perfect" && mod(sh - sl, 7) === cls && (sl !== l || sh !== h))
+          return label(N) + (cls === 0 ? "octaves" : "5ths") + " on consecutive strong beats";
+      }
+    }
+    return diss;
+  }
+
+  /** Why the vertical [x c] breaks a rule between the voices, as on a strong beat (prev: [dux, comes] before). */
+  function verticalError(x, c, prev) { const v = between(x, c, prev || null, null, true); return typeof v === "string" ? v : null; }
+
   /** Why x cannot come next after the dux, or null. The dux array is not changed. */
   function check(dux, x) {
     const t = dux.length;
@@ -113,36 +151,10 @@ export function canon(spec) {
     }
     if (c === null) return null;
     const pc = t >= 1 ? comesAt(dux, t - 1) : null;
-    if (on("no-crossing") && k !== 0) { const [l, h] = lowerFirst(x, c); if (l > h) return "the voices cross"; }
-    if (on("spacing") && Math.abs(x - c) > spacing) return `more than a ${intervalName(spacing)} apart`;
-    const [l0, h0] = lowerFirst(x, c);
-    const [pl0, ph0] = pc !== null ? lowerFirst(prev, pc) : [0, 0];
-    const sb = b > 1 && strong(t) && t - b >= 0 ? comesAt(dux, t - b) : null;      // the strong beat before
-    const [sl0, sh0] = sb !== null ? lowerFirst(dux[t - b], sb) : [0, 0];
-    let diss = false;
-    for (const [N, f] of transforms) {
-      const [l, h] = f(l0, h0);
-      if (N && h < l) return `${label(N)}the voices would cross (wider than the ${intervalName(N - 1)})`;
-      const q = quality(l, h), cls = mod(h - l, 7);
-      if (q === "dissonant") {
-        diss = true;
-        if (on("consonance") && (b === 1 || strong(t)))
-          return `${label(N)}a ${intervalName(cls)} (dissonant)${b > 1 ? " on a strong beat" : ""}`;
-      }
-      if (pc !== null) {
-        const [pl, ph] = f(pl0, ph0);
-        if (on("parallels") && q === "perfect" && quality(pl, ph) === "perfect" && mod(ph - pl, 7) === cls && (pl !== l || ph !== h))
-          return label(N) + (cls === 0 ? "parallel octaves" : "parallel 5ths");
-        const dl = l - pl, dh = h - ph;
-        if (on("direct-octaves") && cls === 0 && dl !== 0 && sign(dl) === sign(dh) && (on("strict-direct") || Math.abs(dh) !== 1))
-          return `${label(N)}${l === h ? "a unison" : intervalName(h - l)} by direct motion`;
-      }
-      if (sb !== null && on("strong-parallels") && q === "perfect") {
-        const [sl, sh] = f(sl0, sh0);
-        if (quality(sl, sh) === "perfect" && mod(sh - sl, 7) === cls && (sl !== l || sh !== h))
-          return label(N) + (cls === 0 ? "octaves" : "5ths") + " on consecutive strong beats";
-      }
-    }
+    const sb = b > 1 && strong(t) && t - b >= 0 ? [dux[t - b], comesAt(dux, t - b)] : null;     // the strong beat before
+    const v = between(x, c, pc !== null ? [prev, pc] : null, sb, b === 1 || strong(t));
+    if (typeof v === "string") return v;
+    const diss = v;
     if (diss && b > 1 && on("weak-dissonance")) {
       if (Math.abs(x - prev) !== 1) return "a dissonance on a weak beat: the dux comes to it by step";
       if (pc === null) return "the comes cannot enter on a dissonance";
@@ -159,9 +171,9 @@ export function canon(spec) {
   const L = Math.max(2, d + 1, b + d);          // dux[t-1], dux[t-2], dux[t-d], dux[t-1-d], dux[t-b], dux[t-b-d]
   const memo = new Map();
   const work = [];
-  function key(t) {
+  function key(t, arr = work) {
     let code = 0;
-    for (let j = Math.max(0, t - L); j < t; j++) code = code * 32 + (work[j] - lo + 1);
+    for (let j = Math.max(0, t - L); j < t; j++) code = code * 32 + (arr[j] - lo + 1);
     return code * 64 + t;
   }
   function countWork() {
@@ -184,6 +196,49 @@ export function canon(spec) {
     if (dux.length > n) return 0;
     return countWork();
   }
+  /** The same count without blocking the page: it works for `budget` ms at a time, then lets the page breathe,
+   *  telling onProgress(fraction, states) how far it is. Resolves to the count, or to null if cancelled() says so.
+   *  It fills the same memo, so the counts that follow (the fan, the divergence) are immediate. */
+  function countAsync(dux, { budget = 12, onProgress, cancelled } = {}) {
+    return new Promise((resolve) => {
+      const aw = [...dux], R = hi - lo + 1;
+      if (aw.length >= n) return resolve(aw.length === n ? 1 : 0);
+      const root = key(aw.length, aw), got = memo.get(root);
+      if (got !== undefined) return resolve(got);
+      const stack = [{ x: lo, sum: 0, kk: root }];
+      const fraction = () => { let fr = 0, w = 1; for (const f of stack) { w /= R; fr += Math.max(0, f.x - lo - 1) * w; } return Math.min(1, fr * R / R); };
+      function step() {
+        if (cancelled && cancelled()) return resolve(null);
+        const end = performance.now() + budget;
+        let i = 0;
+        while (stack.length) {
+          if ((++i & 255) === 0 && performance.now() > end) {
+            if (onProgress) onProgress(fraction(), memo.size);
+            setTimeout(step, 0);
+            return;
+          }
+          const f = stack[stack.length - 1];
+          if (f.x > hi) {
+            memo.set(f.kk, f.sum);
+            stack.pop();
+            if (!stack.length) return resolve(f.sum);
+            aw.pop();
+            stack[stack.length - 1].sum += f.sum;
+            continue;
+          }
+          const x = f.x++;
+          if (check(aw, x) !== null) continue;
+          aw.push(x);
+          const t = aw.length;
+          if (t >= n) { f.sum += 1; aw.pop(); continue; }
+          const kk = key(t, aw), v = memo.get(kk);
+          if (v !== undefined) { f.sum += v; aw.pop(); continue; }
+          stack.push({ x: lo, sum: 0, kk });
+        }
+      }
+      step();
+    });
+  }
   /** Every candidate after the dux: [{note, reason}] (reason null when legal) with futures for the legal ones. */
   function fan(dux) {
     const out = [];
@@ -205,5 +260,5 @@ export function canon(spec) {
     }
     return out;
   }
-  return { spec, check, count, fan, roles, dissonant, strong, comesAt, finals, lowerFirst, window: L, memo };
+  return { spec, check, count, countAsync, verticalError, fan, roles, dissonant, strong, comesAt, finals, lowerFirst, window: L, memo };
 }

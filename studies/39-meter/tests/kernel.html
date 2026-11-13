@@ -6,7 +6,7 @@
 // The kernel's tests (also run in Node: see kernel.mjs).
 try {
   const { run } = await import("./kernel.mjs");
-  const { results, notes } = run();
+  const { results, notes } = await run();
   const bad = results.filter((r) => !r[1]);
   window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]) };
   document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` +

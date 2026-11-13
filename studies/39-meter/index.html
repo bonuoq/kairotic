@@ -57,6 +57,7 @@ input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5
 .toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .toolbar .sep { flex: 1 1 auto; }
 .toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
 .msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
 .msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
 
@@ -207,6 +208,8 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
   <button class="act" data-act="step" title="The engine chooses the next note">Engine: one note</button>
   <button class="act primary" data-act="finish" title="The engine chooses every note to the end">Engine: to the end</button>
   <span class="sep"></span>
+  <label>Sound <select id="timbre"><option value="organ">organ</option><option value="voices">voices</option></select></label>
+  <label>Tempo <input type="number" id="tempo" min="30" max="200" step="5"> ♩/min</label>
   <button class="act" data-act="play">▶ Play</button>
   <button class="act" data-act="play-inv" id="play-inv" title="The canon with its voices inverted">▶ Inverted</button>
   <button class="act" data-act="stop" aria-label="Stop">■</button>
@@ -276,7 +279,9 @@ window.addEventListener("DOMContentLoaded", function () {
   }
   var mods = ["kairotic/canon.cljs"];
   // the kernel (plain JS) first: the model reads it as window.kairoticKernel
-  import("./kairotic/kernel.mjs").then(function (k) { window.kairoticKernel = k; return Promise.all(mods.map(function (m) {
+  Promise.all([import("./kairotic/kernel.mjs"), import("./kairotic/sound.mjs")]).then(function (ks) {
+    window.kairoticKernel = ks[0]; window.kairoticSound = ks[1];
+    return Promise.all(mods.map(function (m) {
     return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m); return r.text(); });
   })); }).then(function (srcs) {
     srcs.forEach(function (s, i) { try { scittle.core.eval_string(s); } catch (e) { throw new Error(mods[i] + ": " + (e.message || e)); } });
@@ -292,7 +297,7 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; :p the canon and its rule set · :h the history · :seed :temp :follow the engine
 ;; :cnt the counter of the futures for :p (made again when :p changes) · :play the playback going on
 
-(defonce ui (atom {:p (fu/params) :h (fu/new-history) :seed 1 :temp 1 :follow true :look 2 :cnt nil :cnt-for nil :msg nil}))
+(defonce ui (atom {:p (fu/params) :h (fu/new-history) :seed 1 :temp 1 :follow true :look 2 :timbre "organ" :tempo 80 :cnt nil :cnt-for nil :msg nil}))
 
 (defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
 (defn $ [id] (js/document.getElementById id))
@@ -311,7 +316,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (def store-key "kairotic-study-39")
 (defn save! []
   (try (.setItem js/localStorage store-key
-                 (pr-str (select-keys @ui [:p :h :seed :temp :follow :look])))
+                 (pr-str (select-keys @ui [:p :h :seed :temp :follow :look :timbre :tempo])))
        (catch :default _ nil)))
 (defn restore []
   (try (let [s (.getItem js/localStorage store-key) x (when s (edn/read-string s))]
@@ -542,11 +547,18 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn why-tick! []
   (let [w (:why @ui)]
     (when (and (why-current? w) (seq (:todo w)))
-      (let [id (first (:todo w))
-            res (fu/why-rule (:p w) (:dux w) (:note w) id)]
-        (swap! ui update :why #(-> % (update :todo rest) (update :done conj res)))
-        (render-why!)
-        (js/setTimeout why-tick! 0)))))
+      (let [id (first (:todo w)) q (fu/without (:p w) id) note (:note w) d (:dux w)
+            r (when note (fu/check q d note))
+            done! (fn [fut]
+                    (when (why-current? (:why @ui))
+                      (swap! ui update :why #(-> % (update :todo rest) (update :done conj {:rule id :reason r :futures fut})))
+                      (render-why!)
+                      (js/setTimeout why-tick! 0)))]
+        (if r
+          (done! 0)
+          (-> (.countAsync (fu/kernel q) (clj->js (if note (conj d note) d))
+                           #js {:budget 14 :cancelled (fn [] (not (why-current? (:why @ui))))})
+              (.then (fn [v] (when (some? v) (done! v))))))))))
 
 (defn start-why! [target]
   (let [note (when (not= target "point") (js/parseInt target))]
@@ -638,13 +650,54 @@ window.addEventListener("DOMContentLoaded", function () {
     (set! (.-value ($ "temp")) (:temp u))
     (set! (.-textContent ($ "temp-v")) (.toFixed (:temp u) 1))
     (set! (.-checked ($ "follow")) (:follow u))
-    (set! (.-value ($ "look")) (str (:look u 2)))))
+    (set! (.-value ($ "look")) (str (:look u 2)))
+    (set! (.-value ($ "timbre")) (:timbre u "organ"))
+    (set! (.-value ($ "tempo")) (:tempo u 80))))
 
 (defn render-msg! []
   (let [[cls text] (:msg @ui) el ($ "msg")]
     (set! (.-className el) (str "msg " (or cls ""))) (set! (.-textContent el) (or text ""))))
 
+(defn warm?
+  "Whether the futures of the canon as it is now are counted (the counts after it are then immediate)."
+  [] (= (p) (:warm-for @ui)))
+
+(declare render-warm!)
+
+(defn busy! [on]
+  (doseq [id ["score" "div" "futs"]] (.toggle (.-classList ($ id)) "busy" on)))
+
+(defn warm!
+  "Count the futures of the canon as it is now without blocking the page, saying how far it is; then draw."
+  []
+  (let [pp (p)]
+    (when (not= pp (:warming @ui))
+      (swap! ui assoc :warming pp)
+      (-> (.countAsync (fu/kernel pp) #js []
+                       #js {:budget 14
+                            :onProgress (fn [f st] (when (= pp (:warming @ui))
+                                                     (set! (.-textContent ($ "status"))
+                                                           (str "counting the futures… " (js/Math.round (* 100 f)) "% · " st " points"))))
+                            :cancelled (fn [] (not= pp (:warming @ui)))})
+          (.then (fn [v] (when (and (some? v) (= pp (:warming @ui)))
+                           (swap! ui assoc :warm-for pp :warming nil)
+                           (render!))))))))
+
+(defn render-cold!
+  "What can be drawn while the futures are being counted: the controls, the rule set, the history."
+  []
+  (busy! true)
+  (render-controls!) (render-hist!) (render-rules!) (render-code!) (render-msg!)
+  (set! (.-textContent ($ "status")) "counting the futures…")
+  (warm!))
+
 (defn render! []
+  (if-not (warm?)
+    (render-cold!)
+    (render-warm!)))
+
+(defn render-warm! []
+  (busy! false)
   (let [t0 (js/Date.now)
         pp (p) d (dux) c (cnt)
         fan-data (when (< (count d) (:n pp)) (fu/fan pp d c (:look @ui 2)))
@@ -702,29 +755,19 @@ window.addEventListener("DOMContentLoaded", function () {
   (reset! audio nil)
   (when-let [c ($ "cursor")] (.setAttribute c "x1" -10) (.setAttribute c "x2" -10)))
 
+(def Sound "The sound (kairotic/sound.mjs)." (.-kairoticSound js/window))
+
 (defn play! [inverted]
   (stop!)
   (let [pp (p) d (dux)
         {du :dux co :comes} (if inverted (fu/inverted pp d (or (first (sort (:invert pp))) 8)) (fu/voices pp d))
-        ctx (js/AudioContext.) beat 0.45 t0 (+ (.-currentTime ctx) 0.08)
-        hz (fn [s] (* 440 (js/Math.pow 2 (/ (- (fu/midi s) 69) 12))))
-        note! (fn [s at kind]
-                (let [o (.createOscillator ctx) g (.createGain ctx)]
-                  (set! (.-type o) (if (= kind :dux) "triangle" "sine"))
-                  (.setValueAtTime (.-frequency o) (hz s) at)
-                  (.setValueAtTime (.-gain g) 0 at)
-                  (.linearRampToValueAtTime (.-gain g) (if (= kind :dux) 0.16 0.2) (+ at 0.02))
-                  (.exponentialRampToValueAtTime (.-gain g) 0.001 (+ at (* beat 0.98)))
-                  (.connect o g) (.connect g (.-destination ctx))
-                  (.start o at) (.stop o (+ at beat))))
-        len (max (count du) (count co))]
-    (doseq [i (range len)]
-      (when-let [s (get du i)] (note! s (+ t0 (* i beat)) :dux))
-      (when-let [s (get co i)] (note! s (+ t0 (* i beat)) :comes)))
+        mid (fn [v] (clj->js (mapv #(when % (fu/midi %)) v)))
+        h (.play Sound #js {:voices #js [(mid du) (mid co)] :beat (/ 60 (:tempo @ui 80)) :timbre (:timbre @ui "organ")})
+        ctx (.-ctx h) t0 (.-t0 h) beat (.-beat h) len (.-length h)]
     (letfn [(tick []
               (when-let [a @audio]
                 (let [i (/ (- (.-currentTime ctx) t0) beat)]
-                  (if (> i len)
+                  (if (> i (+ len 1))
                     (stop!)
                     (do (when-let [c ($ "cursor")]
                           (let [x (+ left (* colw (max 0 i)))] (.setAttribute c "x1" x) (.setAttribute c "x2" x)))
@@ -774,6 +817,8 @@ window.addEventListener("DOMContentLoaded", function () {
                                (= id "seed") (when-let [v (num "seed" 1 999999)] (swap! ui assoc :seed v) (save!) (render!))
                                (= id "follow") (do (swap! ui assoc :follow (.-checked el)) (save!) (render!))
                                (= id "look") (do (swap! ui assoc :look (js/parseInt (.-value el))) (save!) (render!))
+                               (= id "timbre") (do (swap! ui assoc :timbre (.-value el)) (save!))
+                               (= id "tempo") (when-let [v (num "tempo" 30 200)] (swap! ui assoc :tempo v) (save!))
                                (.getAttribute el "data-inv")
                                (let [v (js/parseInt (.getAttribute el "data-inv"))]
                                  (set-p! #(update % :invert (fn [s] (if (.-checked el) (conj (set s) v) (disj (set s) v))))))
