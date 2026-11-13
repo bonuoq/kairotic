@@ -7,8 +7,9 @@
 // preparation), while the other voice moves; on the next beat it goes down a step to a consonance (the
 // resolution). Of the dissonances, the upper voice may hold a 7th (7-6), a 4th (4-3) or a 9th (9-8), the lower one a
 // 2nd (2-3), as Fux allows. The melodic rules look at the notes struck (a leap is recovered by the next note
-// struck, not by the next beat). With species 4 (spec.species) the dux is syncopated, after Fux's fourth species:
-// it holds its note over every strong beat and strikes a new one on the weak beats.
+// struck, not by the next beat). With species 4 (spec.species, the rule syncopation), after Fux's fourth species, the
+// dux is the cantus firmus — a note a bar — and the comes is syncopated: it strikes its notes on the weak beats and
+// holds them over the strong ones, where the suspensions fall.
 //
 // Study 40's kernel, from here on:
 // In Studies 38 and 39 the comes is not chosen: it is the dux, d beats later, k steps away. Here it is a voice of
@@ -130,10 +131,10 @@ export function canon(spec) {
     const e = melodic(D, t, x, ""); if (e) return e;
     if (on("final") && t === n - 1 && !finals.includes(x)) return "the dux ends on the final";
     if (on("approach") && t === n - 2 && !finals.some((f) => Math.abs(x - f) === 1)) return "the final is approached by step";
-    // fourth species: the dux holds its note over the strong beats and strikes a new one on the others
+    // fourth species: the dux is the cantus firmus, a note a bar (struck on the strong beat, held on the weak one)
     if (on("syncopation") && b === 2 && t >= 1) {
-      if (strong(t) && t < n - 1 && x !== D[t - 1]) return "fourth species: the dux holds its note over the strong beat";
-      if ((!strong(t) || t === n - 1) && x === D[t - 1]) return "fourth species: a new note of the dux on the weak beat";
+      if (strong(t) && x === D[t - 1]) return "fourth species: the cantus firmus moves on every strong beat";
+      if (!strong(t) && x !== D[t - 1]) return "fourth species: the cantus firmus holds its note for the whole bar";
     }
     // a suspension just before resolves: the voice that held it goes down a step
     if (t >= 2 && suspensionAt(D, C, t - 1)) {
@@ -168,9 +169,16 @@ export function canon(spec) {
     if (c === null) return "the comes sounds from its entry on";
     if (on("range") && (c < clo || c > chi)) return "the comes: out of range";
     const m = model(D, t);
-    if (bnd === "canon" && c !== m) return "a canon: the comes is the dux's note";
+    // (in fourth species the comes strikes its last note, the final: there the canon breaks off into its cadence)
+    const cadence = on("syncopation") && b === 2 && t === n - 1;
+    if (bnd === "canon" && c !== m && !cadence) return "a canon: the comes is the dux's note";
     if (bnd === "near" && Math.abs(c - m) > 2) return "the comes keeps within a 3rd of the dux's note";
     if (on("start") && t === d && !cstarts.includes(c)) return "the comes enters on the final, its 5th, its octave or the 4th below (shifted)";
+    // fourth species: the comes is syncopated, holding its note over the strong beats (and striking the final)
+    if (on("syncopation") && b === 2 && t > d) {
+      if (strong(t) && t < n - 1 && c !== C[t - 1]) return "fourth species: the comes holds its note over the strong beat";
+      if ((!strong(t) || t === n - 1) && c === C[t - 1]) return "fourth species: the comes strikes a new note on the weak beat";
+    }
     const e = melodic(C, t, c, "the comes: "); if (e) return e;
     const prev = t >= 1 ? D[t - 1] : null, pc = t >= 1 ? C[t - 1] : null;
     const resolving = t >= 2 && suspensionAt(D, C, t - 1);
