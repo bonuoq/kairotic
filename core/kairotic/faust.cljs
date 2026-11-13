@@ -4,7 +4,7 @@
 ;; first time it is needed; each source is compiled in this tab and runs as an AudioWorklet.
 ;; The box's audio inlets and outlets are those of the compiled `process`; the left inlet
 ;; also receives messages for its parameters (hslider, nentry, button…):
-;;   [:freq 440]  → the freq parameter       (msg freq 440)
+;;   [:freq 440]  → the freq parameter       (msg :freq 440)
 ;;   440          → freq (or the first parameter if there is no freq)
 ;;   [440 660 …]  → freq = the first one, gate = 1 (empty list → gate = 0): this way a reader plays a faust~
 ;;

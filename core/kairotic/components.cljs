@@ -91,6 +91,7 @@
 
 (ns kairotic.components
   (:require [clojure.string :as str]
+            [clojure.edn :as edn]
             [kairotic.score :as sc]
             [kairotic.canvas :as cv]))
 
@@ -549,9 +550,23 @@
 (define! "loadbang" {:doc "Sends a bang when the engine starts (▶)." :io [0 1] :receive (fn [_] {:out [[0 :bang]]})})
 (define! "bang" {:doc "A button: when pressed (or on receiving anything) it sends a bang." :io [1 1] :display :bang
                  :receive (fn [_] {:out [[0 :bang]] :show :bang})})
+(defn msg-word
+  "A word of a msg box, read as Clojure reads it: a number, :x a keyword, true false nil, and any other
+   word a name (a symbol) — inc, but also free text such as e4, 6/5, +7, https://…, /osc/address, whose
+   whole text is (str x)."
+  [w]
+  (cond (re-matches #"-?(\d+\.?\d*|\.\d+)(e-?\d+)?" w) (js/parseFloat w)
+        (and (str/starts-with? w ":") (> (count w) 1)) (keyword (subs w 1))
+        (= w "true") true
+        (= w "false") false
+        (= w "nil") nil
+        :else (symbol w)))
+
 (defn msg-words
-  "The content of a msg box, after its class: numbers, words (keywords: stop, rec) and text between
-   quotes as strings — \"https://…\", \"two words\", with \\\" and \\\\ inside. An unclosed quote takes the rest."
+  "The content of a msg box, after its class, read as in Clojure: numbers, keywords with their colon
+   (:stop, :rec), names (inc, e4, https://…), true false nil, text between quotes as strings —
+   \"https://…\", \"two words\", with \\\" and \\\\ inside (an unclosed quote takes the rest) — and EDN forms
+   ([0 4 7], {:freq 440}, #{60 64})."
   [text]
   (let [t (str/trim (str text))
         t (subs t (count (klass t)))
@@ -559,18 +574,25 @@
     (loop [i 0 out [] word nil quoted nil]
       (if (>= i n)
         (cond quoted (conj out quoted)
-              word (conj out (token word))
+              word (conj out (msg-word word))
               :else out)
         (let [c (nth t i)]
           (cond
             (some? quoted) (cond (and (= c "\\") (< (inc i) n)) (recur (+ i 2) out word (str quoted (nth t (inc i))))
                                  (= c "\"") (recur (inc i) (conj out quoted) nil nil)
                                  :else (recur (inc i) out word (str quoted c)))
-            (re-matches #"\s" c) (recur (inc i) (if word (conj out (token word)) out) nil nil)
+            (re-matches #"\s" c) (recur (inc i) (if word (conj out (msg-word word)) out) nil nil)
             (and (= c "\"") (nil? word)) (recur (inc i) out nil "")
+            ;; a form: [..], {..}, #{..}, (..) as EDN, whole
+            (and (nil? word) (or (#{"[" "{" "("} c) (and (= c "#") (= "{" (get t (inc i))))))
+            (let [rest-t (subs t i)
+                  len (form-end (if (= c "#") (subs rest-t 1) rest-t))
+                  len (if (= c "#") (inc len) len)
+                  src (subs rest-t 0 len)]
+              (recur (+ i len) (conj out (try (edn/read-string src) (catch :default _ (symbol src)))) nil nil))
             :else (recur (inc i) out (str word c) nil)))))))
 
-(define! "msg" {:doc "Message: when pressed it sends its content: a number, a word such as stop, text between quotes (\"https://…\", \"two words\") as a string, or a list of them." :usage "msg 0 8 4"
+(define! "msg" {:doc "Message: when pressed it sends its content, read as in Clojure: numbers, keywords with their colon (:stop, :rec 4), names (any other word: inc, e4, 6/5, https://…), true false nil, text between quotes (\"two words\") as a string and EDN forms ([0 4 7], {:freq 440}); several make a list. A word without its colon is a name, not a keyword: msg stop does not stop a metro, msg :stop does." :usage "msg :stop · msg 0 8 4 · msg inc"
                 :io [1 1] :display :msg
                 :parse msg-words
                 :receive (fn [{:keys [args]}] {:out [[0 (case (count args) 0 :bang 1 (first args) (vec args))]] :show :bang})})

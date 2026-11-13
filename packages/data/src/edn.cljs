@@ -170,7 +170,7 @@
    ;; ── help ──
    :help {:inlets ["any value: a map, a vector, a set, a list, or a single value; depth n · bang · clear"]
           :outlets ["the part picked" "its path, for [:get …] of a fetch box"]
-          :messages [["depth 2" "opens it two levels down"]
+          :messages [[":depth 2" "opens it two levels down"]
                      ["bang" "sends the part picked again (the whole value if none)"]
-                     ["clear" "empties it"]]
+                     [":clear" "empties it"]]
           :try "Send it a fetch's answer and open the branches: pick a line and its path comes out on the right."}})

@@ -14,16 +14,19 @@
       (str/replace "\"" "&quot;")))
 
 ;; ───────── EDN ⇄ JSON (for saving in the db) ─────────
-;; Keywords and maps are tagged so they come back as EDN without evaluating foreign code.
+;; Keywords, names (symbols) and maps are tagged so they come back as EDN without evaluating foreign code.
 
 (defn enc [x]
-  (cond (keyword? x) {"k" (name x)}
+  (cond (keyword? x) {"k" (if (namespace x) (str (namespace x) "/" (name x)) (name x))}
+        ;; a name (a msg sends inc, e4, 6/5 as names): its whole text, tagged like a keyword
+        (symbol? x) {"y" (str x)}
         (map? x) {"m" (mapv (fn [[k v]] [(enc k) (enc v)]) x)}
         (sequential? x) (mapv enc x)
         :else x))
 
 (defn dec* [x]
   (cond (map? x) (cond (contains? x "k") (keyword (str (get x "k")))
+                       (contains? x "y") (symbol (str (get x "y")))
                        (contains? x "m") (into {} (for [kv (get x "m") :when (and (sequential? kv) (= 2 (count kv)))]
                                                     [(dec* (first kv)) (dec* (second kv))]))
                        :else nil)

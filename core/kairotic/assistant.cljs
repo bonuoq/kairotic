@@ -247,7 +247,10 @@
              "the stream of messages, with memory (xf/partition-all 4 collects, xf/partition 4 1 slides, xf/dedupe, xf/take 1; "
              "flush and clear); functions travel through wires as their EDN form: comp, partial, juxt, complement, fnil, "
              "constantly, every-pred and some-fn are boxes that send one on a bang (comp inc (partial * 2)), and a name or "
-             "such a form in any argument is the function, so sending one into the inlet of inc in map inc changes it live: "
+             "such a form in any argument is the function, so sending one into the inlet of inc in map inc changes it live "
+             "(msg dec does it too). A msg box is read as Clojure: keywords with their colon (msg :stop, msg :rec 4), any "
+             "other word a name (msg inc; free text such as e4, 6/5, a URL), \"strings\" and EDN forms ([0 4 7], {:freq 440}); "
+             "msg :stop :is :a :name :and :does :not :stop anything: "
              (str/join " " (cf/names)))))
 
 ;; ───────── the prompt ─────────
@@ -418,7 +421,7 @@ Rules:
   `midiout [mpe]` (Hz after voice ids, or events, to a MIDI port; mpe for microtones), `oscout [target]` and
   `oscin [pattern]` (OSC through `npx @kairotic/relay --osc`: events as /kairotic/note id freq amp gate…),
   `motion` (a phone's tilt [x y] and shakes), `gamepad` ([name value] and events), `serial [baud]` (a board's
-  lines as numbers; msg open asks for the port); `control cc 74` · `control pad lx` · `control tilt x` · `control osc
+  lines as numbers; msg :open asks for the port); `control cc 74` · `control pad lx` · `control tilt x` · `control osc
   /addr` picks one controller out of their events (event outlet), into `scale in-lo in-hi out-lo out-hi [log] [ms]`
   (@kairotic/controls) to bring it to a parameter's range — what (learn :bN) makes by itself.
 - The room (package @kairotic/net, it comes by itself): `share [channel]` sends any value to everyone in the
@@ -447,7 +450,7 @@ Rules:
   the chord; [:semitones 0 4 7], [:cents …], [:transpose st] (all of them at once, for glides), [:formants q t]
   (q ms keeps the formants, 1 for a voice; t shifts them), [:rms 1], [:dry x]. Typical: adc~ → shift~ 1 5/4 3/2 → dac~.
 - `draw [w h]` draws the shapes that reach it (the shapes of a component's view, or as a msg writes them:
-  `msg circle 40 40 10 accent hit sun`, `msg set cursor line 0 0 0 100`); a shape with :hit k sends k.
+  `msg :circle 40 40 10 :accent :hit :sun`, `msg :set :cursor :line 0 0 0 100`); a shape with :hit k sends k.
 - Annotations: `(mark :notes {:kind :text :at [:b3 0 -12] :txt \"…\"})`, `(mark :notes {:kind :arrow :pts
   [[:b1 120 10] [:b4 -6 10]]})` — points anchored to a box ([:bN dx dy] from its top-left corner) or to the
   paper ([:patch x y]); `(layer :notes {:z :over :show #{:patch :present}})`; `(project :bN :viz [x y w h])`

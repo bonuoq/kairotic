@@ -234,8 +234,8 @@ export default {
       "es": "Haz clic en los dos mensajes y pulsa los círculos: print escribe sun o moon. Conecta la salida de draw a un msg 330 y este al número: un círculo que cambia la altura."
      },
      "code": [
-      "(box :b5 \"msg circle 60 55 22 accent hit sun\" 300 150)",
-      "(box :b6 \"msg circle 160 55 14 kairos hit moon\" 300 190)",
+      "(box :b5 \"msg :circle 60 55 22 :accent :hit :sun\" 300 150)",
+      "(box :b6 \"msg :circle 160 55 14 :kairos :hit :moon\" 300 190)",
       "(box :b7 \"draw 240 120\" 300 240)",
       "(box :b8 \"print\" 300 390)",
       "(connect :b5 0 :b7 0)",
@@ -998,8 +998,8 @@ export default {
       "es": "Recuperar"
      },
      "note": {
-      "en": "A `presets` box plays the keyframes. A number on its left inlet **recalls** one: every box takes its text of then, and the knobs send their values to the synth. It is one event of the history, so one Ctrl+Z undoes it. A label works too: a `msg calm`.\n\nBoxes added since a keyframe (this presets box, these messages) stay as they are: a preset never rebuilds the patch.",
-      "es": "Una caja `presets` toca los fotogramas. Un número en su entrada izquierda **recupera** uno: cada caja toma su texto de entonces, y los knobs envían sus valores al sintetizador. Es un solo evento de la historia, así que un Ctrl+Z lo deshace. También sirve una etiqueta: un `msg calm`.\n\nLas cajas añadidas después de un fotograma (esta caja presets, estos mensajes) quedan como están: un preset nunca reconstruye el patch."
+      "en": "A `presets` box plays the keyframes. A number on its left inlet **recalls** one: every box takes its text of then, and the knobs send their values to the synth. It is one event of the history, so one Ctrl+Z undoes it. A label works too: a `msg :calm`.\n\nBoxes added since a keyframe (this presets box, these messages) stay as they are: a preset never rebuilds the patch.",
+      "es": "Una caja `presets` toca los fotogramas. Un número en su entrada izquierda **recupera** uno: cada caja toma su texto de entonces, y los knobs envían sus valores al sintetizador. Es un solo evento de la historia, así que un Ctrl+Z lo deshace. También sirve una etiqueta: un `msg :calm`.\n\nLas cajas añadidas después de un fotograma (esta caja presets, estos mensajes) quedan como están: un preset nunca reconstruye el patch."
      },
      "try": {
       "en": "With ▶ on and a key held (⇧-click keeps it), click 1, 2 and 3.",
@@ -1030,7 +1030,7 @@ export default {
      },
      "code": [
       "(box :b21 \"knob 1 3 1\" 705 308)",
-      "(box :b27 \"msg keep\" 640 250)",
+      "(box :b27 \"msg :keep\" 640 250)",
       "(connect :b21 0 :b18 1)",
       "(connect :b27 0 :b18 0)"
      ]
@@ -1097,8 +1097,8 @@ export default {
      "code": [
       "(box :b1 \"pbind 1 loop\" 40 40)",
       "(code :b1 \"{:degree [0 2 4 7]\\n :dur    0.5}\")",
-      "(box :b2 \"msg start\" 40 170)",
-      "(box :b3 \"msg stop\" 120 170)",
+      "(box :b2 \"msg :start\" 40 170)",
+      "(box :b3 \"msg :stop\" 120 170)",
       "(box :b4 \"player 110\" 40 220)",
       "(box :b5 \"synth~\" 40 290)",
       "(box :b6 \"dac~\" 40 350)",

@@ -42,12 +42,16 @@
 
    "msg"
    {:inlets ["anything (or a click): sends its content"]
-    :outlets ["its content: a number, a word such as stop, a string between quotes (\"https://…\"), or a list of them"]
+    :outlets ["its content, read as in Clojure: a number, a keyword with its colon (:stop), a name (inc, e4, https://…), true false nil, a string between quotes (\"two words\"), an EDN form ([0 4 7], {:freq 440}), or a list of them; empty, a bang"]
     :example (lines "(box :b1 \"msg 60\" 40 30)" "(box :b2 \"msg 67\" 110 30)" "(box :b3 \"mtof\" 40 90)"
                     "(box :b4 \"osc~ 261.63\" 40 140)" "(box :b5 \"gain~ 0.3\" 40 190)" "(box :b6 \"dac~\" 40 240)"
                     "(connect :b1 0 :b3 0)" "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)"
                     "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)")
     :try "Start the engine and click the two messages: two MIDI pitches become two frequencies."
+    :messages [["msg :stop" "a keyword: what boxes understand as an order (:stop, :rec 4, :clear)"]
+               ["msg inc" "a name: a function where a box takes one (map inc), or free text (e4, 6/5, a URL)"]
+               ["msg [0 4 7] {:freq 440}" "EDN forms, read whole"]]
+    :ref [["EDN" "https://github.com/edn-format/edn"] ["Keywords and symbols" "https://clojure.org/reference/data_structures#Keywords"]]
     :see ["number" "bang"]}
 
    "number"
@@ -71,10 +75,10 @@
     :messages [["[:circle {:cx :cy :r}]" "a circle (also :rect :line :arc :needle :path :curve :text and :group)"]
                ["[[:line …] [:text …]]" "a list: replaces everything"]
                ["[:set :cursor [:line …]]" "the shape called :cursor, added or moved"]
-               ["[:unset :cursor]" "removes it"] ["clear" "empties the view"]]
-    :example (lines "(box :b1 \"msg circle 60 55 22 accent hit sun\" 40 30)"
-                    "(box :b2 \"msg circle 160 55 14 kairos hit moon\" 300 30)"
-                    "(box :b3 \"msg set label text 20 100 \\\"press one of them\\\"\" 40 70)"
+               ["[:unset :cursor]" "removes it"] [":clear" "empties the view"]]
+    :example (lines "(box :b1 \"msg :circle 60 55 22 :accent :hit :sun\" 40 30)"
+                    "(box :b2 \"msg :circle 160 55 14 :kairos :hit :moon\" 300 30)"
+                    "(box :b3 \"msg :set :label :text 20 100 \\\"press one of them\\\"\" 40 70)"
                     "(box :b4 \"draw 240 120\" 40 120)" "(box :b5 \"print\" 40 270)"
                     "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)")
     :try "Click the three messages, then press the circles: print writes :sun or :moon. From code, any shape of kairotic.shapes: (send! :b4 [:curve {:points [[10 90] [80 20] [150 80] [230 30]] :stroke :accent}]). Shapes take the theme's colours (:ink :soft :accent :kairos :bg :grid) and :opacity."
@@ -134,7 +138,7 @@
     :outlets ["the values of the controls it set: {:b3 0.5 :b5 880}"]
     :messages [["2 · intro" "recalls that keyframe: every box takes its text of then, as one event of the history"]
                ["1.5 (right)" "moves the controls (knobs, envelopes…) between two keyframes, as messages, as a drag does"]
-               ["keep" "writes the last morph into the texts of the controls, as one event"]
+               [":keep" "writes the last morph into the texts of the controls, as one event"]
                ["bang · [:generate 42]" "a new preset: what is the same in every keyframe stays, what changes takes a value within its range"]
                ["(keyframes) · (recall 2) · (morph 1 2 0.5) · (morph :keep) · (generate 42)" "the same from the REPL, with every keyframe of the work"]
                ["(store-presets! :bN) · (presets! :bN […])" "keeps its keyframes in the box (only what changes): then it uses them, and they travel with the patch in its code, links and embeds"]]
@@ -276,8 +280,8 @@
    "record"
    {:inlets ["numbers (a knob, snapshot~, features~…); rec starts a take from 0, stop ends it" "a bang: the stroke being drawn ends, the next number begins another"]
     :outlets ["edits for a canvas or freqt (its inlet): [:batch …], at most every 2 seconds"]
-    :messages [["rec" "starts from 0; its first write clears the buffer"] ["rec t (msg rec 4)" "from t seconds: what is before t stays, what is after is replaced"] ["ovr t (msg ovr 4)" "from t seconds, over only what the take covers: what comes after it stays"] ["stop" "writes what is left and stops"]]
-    :example (lines "(box :b1 \"knob 0 1 0.5\" 40 30)" "(box :b2 \"msg rec\" 140 30)" "(box :b3 \"msg stop\" 200 30)"
+    :messages [[":rec" "starts from 0; its first write clears the buffer"] [":rec t (msg :rec 4)" "from t seconds: what is before t stays, what is after is replaced"] [":ovr t (msg :ovr 4)" "from t seconds, over only what the take covers: what comes after it stays"] [":stop" "writes what is left and stops"]]
+    :example (lines "(box :b1 \"knob 0 1 0.5\" 40 30)" "(box :b2 \"msg :rec\" 140 30)" "(box :b3 \"msg :stop\" 200 30)"
                     "(box :b4 \"record 0 1\" 40 120)" "(box :b5 \"canvas\" 40 170)"
                     "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)")
     :try "Press ▶, click rec, move the knob for a few seconds, click stop: the canvas holds the gesture. A phasor~ into a reader~ with the canvas on its right plays it back as an automation."
@@ -305,14 +309,14 @@
    "sample"
    {:inlets ["the signal to record; rec starts, stop ends (or its length in seconds), clear empties it, a bang asks its length"]
     :outlets ["its length in seconds (after each recording, and on a bang)" "the sound, for a reader~ (on its right inlet)"]
-    :messages [["rec" "records what reaches it, from the beginning"] ["rec t (msg rec 2.5)" "keeps its first t seconds and records from there"] ["ovr t (msg ovr 2.5)" "replaces only what the take covers, keeping what comes after (ovr: from 0)"] ["stop" "keeps what was heard"]
-               ["clear" "empties it"] ["a URL (msg https://… · msg url github:… · a string)" "loads the sound there; every browser that opens the work fetches it"]
+    :messages [[":rec" "records what reaches it, from the beginning"] [":rec t (msg :rec 2.5)" "keeps its first t seconds and records from there"] [":ovr t (msg :ovr 2.5)" "replaces only what the take covers, keeping what comes after (ovr: from 0)"] [":stop" "keeps what was heard"]
+               [":clear" "empties it"] ["a URL (msg https://… · msg :url github:… · a string)" "loads the sound there; every browser that opens the work fetches it"]
                ["(load-sound! :bN)" "brings in a sound file"] ["(load-sound! :bN \"https://…\")" "loads it from a URL"]
                ["(sample! :bN {:url \"…\"})" "a sample that is only a URL, as a link or a shared session writes it"]
                ["github:owner/repo@ref/path.wav" "a file of a public GitHub repository (through jsDelivr: no CORS problem)"]
                ["freesound:12345" "a sound of Freesound, with your API key: (freesound-key! \"…\"); (sounds \"kick\") searches; (credits) lists who made them"]
                ["(save-sound :bN)" "saves it as WAV"]]
-    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"msg rec\" 140 30)" "(box :b3 \"msg stop\" 200 30)"
+    :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"msg :rec\" 140 30)" "(box :b3 \"msg :stop\" 200 30)"
                     "(box :b4 \"sample 10\" 40 90)" "(box :b5 \"!/ 1\" 40 190)" "(box :b6 \"phasor~\" 40 240)"
                     "(box :b7 \"reader~\" 40 290)" "(box :b8 \"gain~ 0.5\" 40 340)" "(box :b9 \"dac~\" 40 390)"
                     "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)"
@@ -338,11 +342,11 @@
              :try "Press ▶ and play a chord (⇧-click several keys): every key a voice. Touch lower on the keys to play louder. Its other controls (cutoff) are for every voice."}
             {:title "A score in several voices"
              :note "mt play sends the Hz of the notes sounding and their voice ids: each note of a chord, a voice of the faust~."
-             :example (lines "(box :b5 \"tree\" 560 30)" "(code :b5 \"\\\"c4+e4+g4/2 d4+f4+a4/2 b3+d4+g4/2 c4+e4+g4+c5/2\\\"\")" "(box :b6 \"msg bang\" 560 150)" "(box :b7 \"msg stop\" 640 150)" "(box :b8 \"mt play loop\" 560 190)" "(connect :b5 0 :b8 0)" "(connect :b6 0 :b8 0)" "(connect :b7 0 :b8 0)" "(connect :b8 0 :b3 0)" "(connect :b8 1 :b3 1)")
-             :try "Press ▶ and click msg bang: the four chords in a loop; msg stop ends it."}
+             :example (lines "(box :b5 \"tree\" 560 30)" "(code :b5 \"\\\"c4+e4+g4/2 d4+f4+a4/2 b3+d4+g4/2 c4+e4+g4+c5/2\\\"\")" "(box :b6 \"msg :bang\" 560 150)" "(box :b7 \"msg :stop\" 640 150)" "(box :b8 \"mt play loop\" 560 190)" "(connect :b5 0 :b8 0)" "(connect :b6 0 :b8 0)" "(connect :b7 0 :b8 0)" "(connect :b8 0 :b3 0)" "(connect :b8 1 :b3 1)")
+             :try "Press ▶ and click msg :bang: the four chords in a loop; msg :stop ends it."}
             {:title "Any tuning"
              :note "The notes reach the voices as MIDI pitches with decimals, so any frequency sounds as written: here a just major triad (4:5:6), then the equal-tempered one."
-             :example (lines "(box :b9 \"msg 220 275 330\" 560 260)" "(box :b10 \"msg 220 277.18 329.63\" 700 260)" "(box :b11 \"msg stop\" 870 260)" "(connect :b9 0 :b3 0)" "(connect :b10 0 :b3 0)" "(connect :b11 0 :b3 0)")
+             :example (lines "(box :b9 \"msg 220 275 330\" 560 260)" "(box :b10 \"msg 220 277.18 329.63\" 700 260)" "(box :b11 \"msg :stop\" 870 260)" "(connect :b9 0 :b3 0)" "(connect :b10 0 :b3 0)" "(connect :b11 0 :b3 0)")
              :try "Press ▶ and click the first two messages in turn: the just third is 14 cents lower, and it does not beat."}
             {:title "An effect for all the voices"
              :note "effect = …; in the same source is applied once, to the sum of the voices (here an echo); its controls are parameters of the box too."
@@ -418,11 +422,11 @@
              :try "Click the bang. Change it to mt canon 1 -12 (an octave below, one beat later) or mt canon 4 0."}
             {:title "Playing it"
              :note "mt play reads a tree in time: the Hz of the notes that sound (left) and their voice ids (second) go to a synth~, which gives each voice its own note."
-             :example (lines "(box :b6 \"msg bang\" 500 170)" "(box :b7 \"msg stop\" 570 170)" "(box :b8 \"mt play loop\" 500 220)"
+             :example (lines "(box :b6 \"msg :bang\" 500 170)" "(box :b7 \"msg :stop\" 570 170)" "(box :b8 \"mt play loop\" 500 220)"
                              "(box :b9 \"synth~\" 500 270)" "(box :b10 \"gain~ 0.3\" 500 320)" "(box :b11 \"dac~\" 500 370)"
                              "(connect :b3 0 :b8 0)" "(connect :b6 0 :b8 0)" "(connect :b7 0 :b8 0)" "(connect :b8 0 :b9 0)" "(connect :b8 1 :b9 1)"
                              "(connect :b9 0 :b10 0)" "(connect :b10 0 :b11 0)" "(connect :b10 0 :b11 1)")
-             :try "Press ▶, click the first bang (the tree goes to mt play) and then msg bang: the canon sounds in a loop; stop ends it."}]
+             :try "Press ▶, click the first bang (the tree goes to mt play) and then msg :bang: the canon sounds in a loop; :stop ends it."}]
     :see ["tree" "freqt" "synth~"]}
 
    ;; ───── official packages (until they carry their own :help) ─────
@@ -472,9 +476,9 @@
     :doc "Writes what pitch~ hears into a freqt, as strokes: notes where the contour settles on another pitch (slides, vibrato and ornaments do not start notes), or contours (glide)."
     :inlets ["Hz from pitch~ (0: silence); rec starts from 0, stop ends" "a bang (from onset~): a new note, even on the same pitch"]
     :outlets ["edits for a freqt: [:batch [[:stroke …] …]], at most every 2 seconds (one event of the history each)"]
-    :messages [["rec" "starts a take from 0 (its first write clears the freqt)"] ["rec t (msg rec 8)" "from beat t: what is before t stays, what is after is replaced"] ["ovr t (msg ovr 8)" "from beat t, over only what the take covers: what comes after it stays"] ["stop" "writes what is left and stops"]]
+    :messages [[":rec" "starts a take from 0 (its first write clears the freqt)"] [":rec t (msg :rec 8)" "from beat t: what is before t stays, what is after is replaced"] [":ovr t (msg :ovr 8)" "from beat t, over only what the take covers: what comes after it stays"] [":stop" "writes what is left and stops"]]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"pitch~ 80 1000\" 40 90)" "(box :b3 \"onset~\" 200 90)"
-                    "(box :b4 \"msg rec\" 330 90)" "(box :b5 \"msg stop\" 400 90)" "(box :b6 \"transcribe 60\" 40 160)"
+                    "(box :b4 \"msg :rec\" 330 90)" "(box :b5 \"msg :stop\" 400 90)" "(box :b6 \"transcribe 60\" 40 160)"
                     "(box :b7 \"freqt\" 40 220)"
                     "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b2 0 :b6 0)" "(connect :b3 0 :b6 1)"
                     "(connect :b4 0 :b6 0)" "(connect :b5 0 :b6 0)" "(connect :b6 0 :b7 0)")
@@ -505,9 +509,9 @@
     :doc "Plays a faust~ from descriptors written as a score — loudness, brightness, noisiness, pitch — or from what features~ and pitch~ hear in another sound: its pitch (or freq) and gain sliders follow them, and its other sliders take the settings of that faust~ that sound nearest (Study 37)."
     :inlets ["loudness: dB, or a level 0…1 (features~ rms)" "brightness: Hz (features~ centroid)" "noisiness: 0…1 (features~ flatness)" "pitch: Hz (pitch~; 0 for none), MIDI with realize~ midi" "loudness heard in what it plays (features~ of the faust~: rms)" "brightness heard (centroid)" "noisiness heard (flatness): with these three it corrects itself"]
     :outlets ["[:slider value] for the faust~ it plays: connect it to the faust~'s left inlet" "how far the nearest setting is from what is written (above 1: the faust~ cannot sound like that)"]
-    :messages [["learn" "plays steady settings of the faust~ offline and listens to them (300, or the number written): after changing its code"]]
+    :messages [[":learn" "plays steady settings of the faust~ offline and listens to them (300, or the number written): after changing its code"]]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"features~ 20\" 40 90)" "(box :b3 \"pitch~\" 260 90)"
-                    "(box :b4 \"realize~\" 40 160)" "(box :b5 \"faust~\" 40 240)" "(box :b6 \"dac~\" 40 430)" "(box :b7 \"msg learn\" 300 160)"
+                    "(box :b4 \"realize~\" 40 160)" "(box :b5 \"faust~\" 40 240)" "(box :b6 \"dac~\" 40 430)" "(box :b7 \"msg :learn\" 300 160)"
                     "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b2 0 :b4 0)" "(connect :b2 1 :b4 1)" "(connect :b2 2 :b4 2)"
                     "(connect :b3 0 :b4 3)" "(connect :b7 0 :b4 0)" "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
                     "(code :b5 \"import(\\\"stdfaust.lib\\\");\\npitch = hslider(\\\"pitch\\\", 60, 36, 84, 0.01) : si.smoo;\\ngain = hslider(\\\"gain [unit:dB]\\\", -12, -80, 6, 0.1) : ba.db2linear : si.smoo;\\nwave = hslider(\\\"wave\\\", 0.5, 0, 1, 0.001) : si.smoo;\\nnoise = hslider(\\\"noise\\\", 0.1, 0, 1, 0.001) : si.smoo;\\ncutoff = hslider(\\\"cutoff [scale:log]\\\", 1000, 60, 14000, 1) : si.smoo;\\nresonance = hslider(\\\"resonance [scale:log]\\\", 1, 0.5, 8, 0.01) : si.smoo;\\nf0 = ba.midikey2hz(pitch);\\nosc = os.sawtooth(f0) * (1 - wave) + os.square(f0) * wave;\\nprocess = osc * (1 - noise) + no.noise * noise : fi.svf.lp(min(cutoff, 0.45 * ma.SR), resonance) * gain;\")")
@@ -531,8 +535,8 @@
     :inlets ["a URL (msg https://… · github:owner/repo@ref/path · [:fetch url]); refresh; bang; [:get key …]; clear"]
     :outlets ["what it found (or the part a [:get …] asks for)" ":loading, :ready or [:error \"…\"]"]
     :messages [["a URL" "brings it in; a URL it already keeps is sent again, not fetched"]
-               ["refresh" "fetches its URL again"] ["bang" "sends what it holds"]
-               ["get items 0 name · [:get [:items 0 :name]]" "sends one part of it"] ["clear" "forgets it"]
+               [":refresh" "fetches its URL again"] ["bang" "sends what it holds"]
+               [":get :items 0 :name · [:get [:items 0 :name]]" "sends one part of it"] [":clear" "forgets it"]
                ["(keep! :bN {:url \"…\" :value …})" "what it keeps, as the code of the work writes it"]]
     :example (lines "(box :b1 \"msg github:bonuoq/kairotic@main/packages/data/package.json\" 40 30)" "(box :b2 \"fetch\" 40 80)"
                     "(box :b3 \"edn 340 260\" 40 150)" "(box :b4 \"print\" 400 150)"
@@ -545,7 +549,7 @@
     :doc "Any value as a tree, like Portal: collections open and close, values coloured by kind; picking a line sends that part (left) and its path (right)."
     :inlets ["any value; depth n opens it n levels down; bang sends the part picked again; clear"]
     :outlets ["the part picked" "its path, for [:get …] of a fetch box"]
-    :messages [["depth 2" "opens it two levels down"] ["bang" "the part picked again (the whole value if none)"] ["clear" "empties it"]
+    :messages [[":depth 2" "opens it two levels down"] ["bang" "the part picked again (the whole value if none)"] [":clear" "empties it"]
                ["▸ ▾ · a line · a drag" "opens or closes · picks it · scrolls (also the bar on the right)"]]
     :example (lines "(box :b1 \"tree\" 40 30)" "(tree! :b1 [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4 c5\"]])"
                     "(box :b2 \"edn 320 220\" 40 130)" "(box :b3 \"print\" 400 130)" "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b3 0)")
@@ -567,7 +571,7 @@
                ["pbind 7 · pbind 7 4 · pbind 7 loop" "the seed · four passes · for ever"]]
     :example (lines "(box :b1 \"pbind 7 loop\" 40 30)"
                     "(code :b1 \"{:degree #pat/shuffle [0 2 4 7]\\n :dur    [0.5 0.5 1]\\n :amp    #pat/white [0.1 0.3]}\")"
-                    "(box :b2 \"msg start\" 40 130)" "(box :b3 \"msg stop\" 110 130)" "(box :b4 \"player 110\" 40 180)"
+                    "(box :b2 \"msg :start\" 40 130)" "(box :b3 \"msg :stop\" 110 130)" "(box :b4 \"player 110\" 40 180)"
                     "(box :b5 \"synth~\" 40 240)" "(box :b6 \"dac~\" 40 290)"
                     "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b1 0 :b4 1)"
                     "(connect :b4 0 :b5 0)" "(connect :b4 1 :b5 1)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)")
@@ -593,7 +597,7 @@
                ["rand · rand-int · rand-nth · shuffle" "seeded by the box: the same for everyone"]]
     :example (lines "(box :b1 \"pattern 3\" 40 30)"
                     "(code :b1 \"(pbind {:degree (pwhite 0 7)\\n        :dur    (pchoose [0.25 0.25 0.5])\\n        :octave [5 5 6]}\\n       :inf)\")"
-                    "(box :b2 \"msg start\" 40 130)" "(box :b3 \"msg stop\" 110 130)" "(box :b4 \"player 120\" 40 180)"
+                    "(box :b2 \"msg :start\" 40 130)" "(box :b3 \"msg :stop\" 110 130)" "(box :b4 \"player 120\" 40 180)"
                     "(box :b5 \"synth~\" 40 240)" "(box :b6 \"dac~\" 40 290)"
                     "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b1 0 :b4 1)"
                     "(connect :b4 0 :b5 0)" "(connect :b4 1 :b5 1)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)")
@@ -607,19 +611,19 @@
              "a pattern (from a pbind or a pattern box): a new one goes on from the same beat"]
     :outlets ["the Hz of the notes sounding (a list), after [:gain amp] when the event has :amp" "their voice ids, sent first (for synth~ or a polyphonic faust~)"
               "the whole event, with :beat, :hz and :ids (and :dir :back when entered from its end)" "the beat"]
-    :messages [["start · stop" "its own clock: every event lasts its :dur in beats at its bpm"]
+    :messages [[":start · :stop" "its own clock: every event lasts its :dur in beats at its bpm"]
                ["player 120 4" "start on a multiple of 4 beats: players with the same tempo meet"]
                ["[:bpm 90]" "another tempo, without a jump"]
                ["bang" "the next event now (and the ones of :dur 0 right after it)"]
                ["a number" "a position in beats: every event is a span, from its onset to its end, that sounds while the position is inside it — entered at its onset going forwards, at its end going backwards (:dir :back); what a step passes over sounds within it"]
-               ["seek 8 · [:seek 8]" "there at once, nothing in between: what still sounds there goes on, what starts to contain that position starts"]
+               [":seek 8 · [:seek 8]" "there at once, nothing in between: what still sounds there goes on, what starts to contain that position starts"]
                ["player 120 0 8 8" "a step more than 8 (jump) times the one before it, or longer than 8 (limit) beats, is a seek: the wrap of a ramp"]
                ["player 120 0 8 8 edges" "a seek sounds only what starts exactly there"]
                ["player 120 0 8 8 spread" "what a step passes keeps its rhythm, one step later (with ▶)"]
-               ["reset" "back to the beginning, silently"]]
+               [":reset" "back to the beginning, silently"]]
     :example (lines "(box :b1 \"pbind 1 loop\" 40 30)"
                     "(code :b1 \"{:note [:c4 :e4 :g4 :b4 :a4 :f4]\\n :dur  [0.5 0.5 1]}\")"
-                    "(box :b2 \"msg start\" 40 130)" "(box :b3 \"msg stop\" 110 130)" "(box :b4 \"player 100\" 40 180)"
+                    "(box :b2 \"msg :start\" 40 130)" "(box :b3 \"msg :stop\" 110 130)" "(box :b4 \"player 100\" 40 180)"
                     "(box :b5 \"synth~\" 40 240)" "(box :b6 \"dac~\" 40 290)" "(box :b7 \"get % :beat\" 260 240)" "(box :b8 \"print\" 260 290)"
                     "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b1 0 :b4 1)"
                     "(connect :b4 0 :b5 0)" "(connect :b4 1 :b5 1)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
@@ -632,7 +636,7 @@
              :try "Stop the clock and click 1: one note every 300 ms, whatever its :dur. Connect an onset~ from an adc~ instead: one note each time you play."}
             {:title "At a position"
              :note "A number is a position in beats, as a reader reads a buffer: every event is a span that sounds while the position is inside it. Forwards it starts at its onset; backwards at its end. The wrap of a ramp (a step far larger than the ones before) is a seek: there at once."
-             :example (lines "(box :b12 \"ramp 0 6 3 loop\" 330 130)" "(box :b13 \"msg bang\" 330 100)"
+             :example (lines "(box :b12 \"ramp 0 6 3 loop\" 330 130)" "(box :b13 \"msg :bang\" 330 100)"
                              "(connect :b13 0 :b12 0)" "(connect :b12 0 :b4 0)")
              :try "Stop the clock and click bang: six beats in three seconds, again and again. Change the ramp to ramp 6 0 3 loop: the phrase backwards, each note from its end. Drag a number box into it instead: you are the clock, either way."}]
     :see ["pbind" "pattern" "metro" "ramp" "reader" "synth~"]}
@@ -674,11 +678,11 @@
     :inlets ["the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · end (the section ends: the next note begins a new canon) · engine · back · reset"
              "live: the pulse (a bang from a metro or a pulse): a beat"]
     :outlets ["the comes, as a list of Hz (when it changes: a note held is not struck again)" "the dux as played, or corrected" "the futuribles: the notes that can come next, the most plausible first ({:midi :name :futures :bits :score :comes})" "where the canon is: {:t :n :bar :beat :held :asked :played :corrected :reason :comes :futures :bits :obligations :section :meter …}, or a cue {:cue :ternary|:end :section :meter}"]
-    :messages [["hold" "by turns: the note held over the next beat (a tie)"] ["engine" "the box plays the next pair itself, the most plausible"]
-               ["back" "the last pair taken back"] ["reset" "a new canon"] ["end" "the end of the section, from an analysis (live, and the cues off with nocues)"] ["[:midi 62]" "a MIDI note as the dux's next note"]
+    :messages [[":hold" "by turns: the note held over the next beat (a tie)"] [":engine" "the box plays the next pair itself, the most plausible"]
+               [":back" "the last pair taken back"] [":reset" "a new canon"] [":end" "the end of the section, from an analysis (live, and the cues off with nocues)"] ["[:midi 62]" "a MIDI note as the dux's next note"]
                ["[:imitation 0.5]" "how much the comes imitates the dux (1 a canon … 0 free)"] ["[:k -4]" "the comes a 5th below"]]
     :example (lines "(box :b1 \"keyboard 60 24\" 40 30)" "(box :b2 \"comes\" 40 130)" "(box :b3 \"synth~\" 40 200)" "(box :b4 \"synth~\" 160 200)"
-                    "(box :b5 \"dac~\" 40 260)" "(box :b6 \"print\" 280 200)" "(box :b7 \"msg engine\" 220 100)"
+                    "(box :b5 \"dac~\" 40 260)" "(box :b6 \"print\" 280 200)" "(box :b7 \"msg :engine\" 220 100)"
                     "(connect :b1 0 :b2 0)" "(connect :b7 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)"
                     "(connect :b3 0 :b5 0)" "(connect :b3 0 :b5 1)" "(connect :b4 0 :b5 0)" "(connect :b4 0 :b5 1)" "(connect :b2 3 :b6 0)")
     :try "Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone."
@@ -718,7 +722,7 @@
              :try "Press ▶ and turn x-step up: the pitch scatters into noise. Turn it down and y-step up: one pitch, a restless colour."}
             {:title "Breakpoints"
              :note "Few breakpoints make a simple wave, close to a triangle or a square; many, a richer and noisier one. Changing their number keeps the wave, with no click."
-             :example "(box :b6 \"msg breakpoints 4\" 360 120)\n(box :b7 \"msg breakpoints 48\" 500 120)\n(connect :b6 0 :b1 0)\n(connect :b7 0 :b1 0)"
+             :example "(box :b6 \"msg :breakpoints 4\" 360 120)\n(box :b7 \"msg :breakpoints 48\" 500 120)\n(connect :b6 0 :b1 0)\n(connect :b7 0 :b1 0)"
              :try "Press ▶ and click both messages in turn, watching the scope."}
             {:title "A signal on the inlet: FM"
              :note "A signal connected to the inlet is added to the frequency, in Hz: a slow one makes a vibrato, a fast one frequency modulation."
@@ -729,7 +733,7 @@
    "synth~"
    {:package "@kairotic/synth" :usage "synth~"
     :doc "Polyphonic triangle-wave synthesizer, one voice per id."
-    :inlets ["frequencies (a number or a list) · stop" "voice ids (from a reader)"]
+    :inlets ["frequencies (a number or a list) · :stop" "voice ids (from a reader)"]
     :outlets ["the sound"]
     :see ["reader" "adsr~"]}
 

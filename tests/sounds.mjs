@@ -128,7 +128,7 @@ export async function sounds(page, check) {
   check("a URL on the left of a sample loads it", bystr === url, bystr);
   // what a msg box sends: its words as keywords, with or without quotes, or after url
   const m1 = (await cljs(page, '(box "msg \\"tests/assets/a440.wav\\"" 3600 640)')).trim();
-  const m2 = (await cljs(page, '(box "msg url tests/assets/a440.wav" 3900 640)')).trim();
+  const m2 = (await cljs(page, '(box "msg :url tests/assets/a440.wav" 3900 640)')).trim();
   const s1 = (await cljs(page, '(box "sample" 3600 690)')).trim();
   const s2 = (await cljs(page, '(box "sample" 3900 690)')).trim();
   await cljs(page, `(connect ${m1} 0 ${s1} 0) (connect ${m2} 0 ${s2} 0)`);

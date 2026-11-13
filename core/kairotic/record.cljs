@@ -6,8 +6,8 @@
 ;;
 ;;   record [lo hi] [log] [tolerance]
 ;;     left: numbers; rec starts a take from 0 (its first write clears the buffer), stop ends it;
-;;           rec t (a msg rec 4, or [:rec 4]) records from t on: what was there before t stays, from t
-;;           on it is replaced (punch-in); ovr t (msg ovr 4) overwrites only what the take covers, from t
+;;           rec t (a msg :rec 4, or [:rec 4]) records from t on: what was there before t stays, from t
+;;           on it is replaced (punch-in); ovr t (msg :ovr 4) overwrites only what the take covers, from t
 ;;           to where it stops, and keeps what comes after (punch-in/out); ovr alone, from 0
 ;;     right: a bang ends the stroke that is being drawn; the next number begins another
 ;;     out: edits for the canvas (or freqt) on its inlet
@@ -135,7 +135,7 @@
     later (assoc :later [later])))
 
 (comp/define! "record"
-  {:doc "Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer); rec t (msg rec 4) records from t seconds on, keeping what is before t and replacing what is after (punch-in); ovr t (msg ovr 4) overwrites only what the take covers, from t to where it stops, keeping what comes after (punch-in/out); stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation."
+  {:doc "Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer); rec t (msg :rec 4) records from t seconds on, keeping what is before t and replacing what is after (punch-in); ovr t (msg :ovr 4) overwrites only what the take covers, from t to where it stops, keeping what comes after (punch-in/out); stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation."
    :usage "record [lo hi] [log] [tolerance]"
    :license "MPL-2.0"
    :io [2 1]

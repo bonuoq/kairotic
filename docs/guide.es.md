@@ -145,7 +145,7 @@ mensaje.
 | `xf/take 1` | solo el primer mensaje (un bang también es un mensaje) |
 | `xf/filter odd?`, `xf/map inc`, `xf/mapcat reverse`… | como en Clojure, mensaje a mensaje |
 
-`flush` lo completa (`partition-all` envía lo que guarda) y vuelve a empezar, `clear` vuelve a empezar
+`:flush` lo completa (`partition-all` envía lo que guarda) y vuelve a empezar, `:clear` vuelve a empezar
 sin enviar, y un argumento nuevo a la derecha también vuelve a empezar. La ayuda de cada una de estas cajas
 (**?**) enlaza a su página de [clojuredocs.org](https://clojuredocs.org) y a la referencia de
 [clojure.org](https://clojure.org/reference/transducers).
@@ -159,8 +159,8 @@ escribir en una caja y anidar: `map (partial * 2)`, `map (juxt inc dec)`. Con `%
 función que llega: `comp % inc`. De una forma solo se hacen estas funciones puras (y `+ - * /`), y cada
 navegador la reconstruye a partir de ellas, así que es tan segura en una sala compartida como cualquier
 argumento; un nombre que no conoce (o una llamada como `(inc 1)` en lugar de una función) no se envía y se
-escribe en el REPL. Para enviar una función por su nombre, `comp inc` (una palabra en un `msg` es una
-keyword, y sigue siéndolo: una clave, y una función por sí misma).
+escribe en el REPL. Para enviar una función por su nombre, un `msg` con el nombre: `msg :inc` (una
+keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
 
 ## 3. Sonido y tiempo
 
@@ -169,8 +169,12 @@ keyword, y sigue siéndolo: una clave, y una función por sí misma).
 - **■** silencia y devuelve cada caja a su estado inicial.
 - Los mensajes viajan sin ▶: un clic en un `bang` o un `msg`, un número arrastrado, una caja de datos
   que cambió.
-- Un `msg` envía números (`msg 0 8 4`), palabras (`msg stop`) y **texto entre comillas como cadena**
-  (`msg "https://…/voz.ogg"`, `msg "dos palabras"`), solos o en una lista (`msg url "github:…" 3`).
+- Un `msg` envía lo que lleva escrito, leído como en Clojure: números (`msg 0 8 4`), **keywords con sus
+  dos puntos** (`msg :stop`, `msg :rec 4`), **nombres** (`msg :inc`: una función allí donde una caja toma
+  una; también texto libre como una nota `e4`, un ratio `6/5`, una URL o una dirección OSC), `true`,
+  `false`, `nil`, **texto entre comillas como cadena** (`msg "https://…/voz.ogg"`, `msg "dos palabras"`) y
+  formas EDN (`msg [0 4 7]`, `msg {:freq 440}`), solos o en una lista (`msg :url "github:…" 3`). Una
+  palabra sin sus dos puntos es un nombre, no una keyword: `msg :stop` no para un `metro`, `msg :stop` sí.
 - **Síntesis estocástica**: `gendy~ 110` (en `@kairotic/synth`) es un oscilador a partir del GENDY de
   Xenakis: una onda de puntos de quiebre cuyas amplitudes y duraciones hacen paseos aleatorios ciclo a
   ciclo — una altura que deriva, un timbre que no deja de cambiar. `[:x-step 40]` deja vagar la altura,
@@ -252,9 +256,9 @@ keyword, y sigue siéndolo: una clave, y una función por sí misma).
   el tiempo — un knob, una envolvente (`snapshot~ 50 rms`), un descriptor (`features~ 20 centroid`) —:
   `rec`, tocar, `stop`. Un valor se mantiene hasta el siguiente; los ejes siguen a la toma. Se edita
   como cualquier dibujo y se vuelve a leer con `phasor~` → `reader~` como automatización.
-- **Grabar desde un punto**: `rec t` (`msg rec 4`) en un `sample`, `record` o `transcribe` conserva lo
+- **Grabar desde un punto**: `rec t` (`msg :rec 4`) en un `sample`, `record` o `transcribe` conserva lo
   que había antes de t (segundos; pulsos en transcribe) y graba desde t, sustituyendo lo que venía
-  después: un punch-in. `ovr t` (`msg ovr 4`; `ovr` solo, desde 0) sobrescribe solo lo que cubre la
+  después: un punch-in. `ovr t` (`msg :ovr 4`; `ovr` solo, desde 0) sobrescribe solo lo que cubre la
   toma, de t a donde se para, y conserva lo que venía después: un punch-in/out. Un canvas o freqt acepta
   `[:cut t]` para eso (todo desde t) y `[:cut t1 t2]` (lo que hay entre ambos; un trazo que lo cruza se
   parte en dos).
@@ -418,8 +422,8 @@ notas de una en una o un chroma de `chroma~`, y sus partes se pueden pulsar (sal
 
 **Dibujar a partir de mensajes.** Una caja `draw [w h]` dibuja las figuras que le llegan —las mismas que
 la vista de un componente: `[:circle {:cx 40 :cy 40 :r 10 :fill :accent}]`, `[:line …]`, `[:path …]`,
-`[:curve …]`, `[:text …]`, `[:group {:x :y :rotate} […]]`— o como las escribe un msg: `msg circle 40 40
-10 accent hit sun`. Una lista las sustituye todas, `[:set k figura]` mueve la llamada k, `clear` la
+`[:curve …]`, `[:text …]`, `[:group {:x :y :rotate} […]]`— o como las escribe un msg: `msg :circle 40 40
+10 :accent :hit :sun`. Una lista las sustituye todas, `[:set k figura]` mueve la llamada k, `:clear` la
 vacía, y una figura con `:hit k` envía k cuando se pulsa.
 
 ## 7. Anotaciones y capas

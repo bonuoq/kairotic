@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **A `msg` is read as Clojure** (breaking). What a `msg` box sends is what is written in it, as EDN:
+  - **keywords with their colon**: `msg :stop`, `msg :rec 4`, `msg :circle 40 40 10 :accent :hit :sun`;
+  - **any other word is a name** (a symbol): `msg inc` is the function `inc` where a box takes one (into the inlet of
+    `inc` in `map inc`, it changes the function); free text stays a name with its whole text — a note `e4`, a ratio
+    `6/5`, `+7`, a URL, `github:…`, an OSC address — and the boxes that read such text (`sample`, `fetch`, `shift~`,
+    `oscout`, `presets`, notes and intervals) take names too;
+  - `true`, `false`, `nil`, text between quotes as a string, and **EDN forms** read whole: `msg [0 4 7]`,
+    `msg {:freq 440} 3`, `msg #{60 64}`, `msg (comp inc (partial * 2))`.
+  A word without its colon is no longer a keyword: `msg stop` does not stop a `metro`, `msg :stop` does. There is no
+  conversion of older works: the help patches, tutorials, examples of the packages, the guide and the tests are
+  written anew with keywords (`msg :stop`, `msg :start`, `msg :rec 4`, `msg :open`…), and the help tables of the boxes
+  write the orders they understand as keywords (`:clear`, `:learn :off`, `:seek 8`, `comes`' `:engine` `:end`). Names travel through the db and
+  the room tagged, as keywords do (`enc`/`dec*`). Packages: `@kairotic/analysis` 0.7.3, `controls` 0.2.1, `data`
+  0.1.2, `io` 0.2.1, `net` 0.1.1, `patterns` 0.2.1, `spectral` 0.1.2. Tests: `tests/cljs/msg.cljs`, `tests/corefns.mjs`.
+
 - **`comes` live, with ties** (`@kairotic/theory` 0.3.0, #172, #192): the box plays on Study 41's kernel — notes
   held over the beat, suspensions, fourth species (`fourth`: the dux a cantus firmus, the comes syncopated). Two ways
   to play it:
@@ -142,7 +157,7 @@
     written in a box and nest: `map (partial * 2)`, `map (juxt inc dec)`.
   - Safe in a shared room: only the pure function boxes and `+ - * /` are ever made from a form, rebuilt in each
     browser; a name it does not know, or a call in place of a function (`(inc 1)`), is not sent and is said in the REPL.
-    Keywords stay keywords (a word in a `msg` is not taken as a function name).
+    Keywords stay keywords (`:inc` is a key); a name is a function (`msg inc`, above).
   - The arguments of these boxes are now kept as written and become functions when the box calls them
     (`kairotic.corefns/as-fn`); boxes written before work as they did.
   Docs: `docs/guide.md`, `docs/guide.es.md`. Tests: `tests/cljs/corefns.cljs` (20 more checks).

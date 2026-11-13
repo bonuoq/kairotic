@@ -57,11 +57,11 @@ Cada fotograma es también un **preset**: el texto de cada caja en ese momento. 
 
 ## Recall | Recuperar
 @en
-A `presets` box plays the keyframes. A number on its left inlet **recalls** one: every box takes its text of then, and the knobs send their values to the synth. It is one event of the history, so one Ctrl+Z undoes it. A label works too: a `msg calm`.
+A `presets` box plays the keyframes. A number on its left inlet **recalls** one: every box takes its text of then, and the knobs send their values to the synth. It is one event of the history, so one Ctrl+Z undoes it. A label works too: a `msg :calm`.
 
 Boxes added since a keyframe (this presets box, these messages) stay as they are: a preset never rebuilds the patch.
 @es
-Una caja `presets` toca los fotogramas. Un número en su entrada izquierda **recupera** uno: cada caja toma su texto de entonces, y los knobs envían sus valores al sintetizador. Es un solo evento de la historia, así que un Ctrl+Z lo deshace. También sirve una etiqueta: un `msg calm`.
+Una caja `presets` toca los fotogramas. Un número en su entrada izquierda **recupera** uno: cada caja toma su texto de entonces, y los knobs envían sus valores al sintetizador. Es un solo evento de la historia, así que un Ctrl+Z lo deshace. También sirve una etiqueta: un `msg :calm`.
 
 Las cajas añadidas después de un fotograma (esta caja presets, estos mensajes) quedan como están: un preset nunca reconstruye el patch.
 @try.en
@@ -93,7 +93,7 @@ Drag the knob on the right slowly from 1 to 3 while a note sounds. Stop somewher
 Arrastra despacio el knob de la derecha de 1 a 3 mientras suena una nota. Para donde te guste y haz clic en keep.
 ```kairotic
 (box :b21 "knob 1 3 1" 705 308)
-(box :b27 "msg keep" 640 250)
+(box :b27 "msg :keep" 640 250)
 (connect :b21 0 :b18 1)
 (connect :b27 0 :b18 0)
 ```

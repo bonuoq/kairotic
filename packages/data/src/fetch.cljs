@@ -116,8 +116,8 @@
    :help {:inlets ["a URL (msg https://… · a string · [:fetch url]); refresh; bang; [:get key …]; clear"]
           :outlets ["what it found (or the part a [:get …] asks for)" ":loading, :ready or [:error \"…\"]"]
           :messages [["a URL" "brings it in (if it already keeps that URL, sends it again)"]
-                     ["refresh" "fetches its URL again"]
+                     [":refresh" "fetches its URL again"]
                      ["bang" "sends what it holds"]
-                     ["get items 0 name · [:get [:items 0 :name]]" "sends one part of it"]
-                     ["clear" "forgets it"]]
+                     [":get :items 0 :name · [:get [:items 0 :name]]" "sends one part of it"]
+                     [":clear" "forgets it"]]
           :try "Click the message with the URL: the answer comes out on the left, into an edn box. Go back in the history: it is still there, without fetching."}})

@@ -22,8 +22,8 @@ Pulsa ▶ y luego haz clic en `start`. Haz doble clic en el pbind, cambia un gra
 ```kairotic
 (box :b1 "pbind 1 loop" 40 40)
 (code :b1 "{:degree [0 2 4 7]\n :dur    0.5}")
-(box :b2 "msg start" 40 170)
-(box :b3 "msg stop" 120 170)
+(box :b2 "msg :start" 40 170)
+(box :b3 "msg :stop" 120 170)
 (box :b4 "player 110" 40 220)
 (box :b5 "synth~" 40 290)
 (box :b6 "dac~" 40 350)
