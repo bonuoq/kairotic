@@ -19,7 +19,7 @@
 
 ;; the hard rules come from the kernel, the rule set from here
 (let [p (fu/params) cnt (fu/counter p)]
-  (is "the kernel counts the canons" (= 445443 (cnt [])))
+  (is "the kernel counts the canons" (= 442780 (cnt [])))
   (is "a futurible's futures add up to the point's" (= (cnt []) (reduce + (keep :futures (fu/fan p [] cnt)))))
   (is "the start rule, through the kernel" (re-find #"starts on the final" (str (fu/check p [] 2))))
   (is "a rule turned off here is off in the kernel" (nil? (fu/check (fu/without p :start) [] 2)))

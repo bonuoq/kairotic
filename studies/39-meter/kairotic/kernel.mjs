@@ -56,7 +56,7 @@ export function melodicError(a, b) {
 
 /** The hard rules, with their defaults (strict-direct is off unless asked for). */
 export const HARD = ["range", "start", "melodic", "leap-recovery", "consonance", "weak-dissonance", "parallels",
-  "strong-parallels", "direct-octaves", "strict-direct", "entry-unison", "no-crossing", "spacing", "final", "approach"];
+  "strong-parallels", "direct-octaves", "strict-direct", "entry-unison", "no-crossing", "spacing", "final", "approach", "cadence"];
 const OFF_BY_DEFAULT = new Set(["strict-direct"]);
 
 /** A canon: its hard rules and its counter, for one spec. */
@@ -166,6 +166,10 @@ export function canon(spec) {
     }
     if (on("entry-unison") && t === d && x === c) return "the comes does not enter on the unison";
     if (on("final") && t === n - 1 && quality(x, c) !== "perfect") return "the last vertical is a perfect consonance";
+    if (on("cadence") && t === n - 1 && pc !== null) {
+      const [l, h] = lowerFirst(x, c), [pl, ph] = lowerFirst(prev, pc);
+      if (mod(h - l, 7) === 4 && mod(ph - pl, 7) === 6) return "the cadence does not go from a 7th to a 5th";
+    }
     return null;
   }
 

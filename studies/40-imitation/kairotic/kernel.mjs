@@ -165,6 +165,8 @@ export function canon(spec) {
     }
     if (on("entry-unison") && t === d && x === c) return "the comes does not enter on the unison";
     if (on("final") && t === n - 1 && quality(x, c) !== "perfect") return "the last vertical is a perfect consonance";
+    if (on("cadence") && t === n - 1 && hasPrev && mod(h0 - l0, 7) === 4 && mod(ph0 - pl0, 7) === 6)
+      return "the cadence does not go from a 7th to a 5th";
     return null;
   }
 

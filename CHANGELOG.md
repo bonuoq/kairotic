@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Studies 39 and 40: no final cadence from a 7th to a 5th** (hard rule `:cadence`, in both kernels and rule sets,
+  with why? and "try without it" like any other). Study 39's default canon goes from 445443 canons to 442780; Study
+  38's kernel (a copy of Study 39's) has it too, without effect in first species.
+
 - **Study 40 · imitation** (discussion #172): from a canon to free counterpoint. The comes is chosen note by note,
   and how much it imitates the dux is a degree: 1 a canon (hard); 0.9–0.5 near notes, within a 3rd of the dux's
   (hard) and each step away costing more the nearer to 1 (soft `:imitation`); 0.4–0.2 only the motion (going the

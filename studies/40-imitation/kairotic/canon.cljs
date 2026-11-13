@@ -95,6 +95,7 @@
    {:id :spacing          :kind :hard :scope :vertical :doc "The voices are never further apart than the canon allows (a 12th by default)."}
    {:id :final            :kind :hard :scope :form     :doc "The dux ends on the final, on a perfect consonance."}
    {:id :approach         :kind :hard :scope :form     :doc "The final is approached by step."}
+   {:id :cadence          :kind :hard :scope :form     :doc "The final cadence does not go from a 7th to a 5th."}
    ;; the contour: leaps are not penalised for being leaps, only compensated; what costs is a line that stays
    ;; still, hovers, runs one way or repeats itself mechanically
    {:id :leap-size        :kind :soft :scope :melodic  :weight 1   :doc "Leaps cost little, only by their size (a 3rd 0.2, a 4th 0.4, a 5th 0.5, a 6th or an octave 0.8)."}
