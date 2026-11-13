@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Study 41 · suspensions** (discussions #172 and #192): ties and fourth species, on Study 40. In a voice the same
+  pitch on the next beat is the note held over the beat (two beats at most, drawn ‿ and heard held), and a dissonance
+  may fall on a strong beat as a suspension: prepared by a consonance, held by one voice while the other moves,
+  resolved a step down to a consonance (hard rules `:suspension`, `:suspension-kinds` — 7-6, 4-3, 9-8 above, 2-3
+  below —; soft `:tie` and `:suspension-life`). The melodic rules and costs look at the notes struck. Species **4th:
+  syncopation** (`:syncopation`) makes the dux hold its note over every strong beat. A strict canon in fourth species
+  is rare (3 at the octave below, 3 beats later, after a rest); 0.8 of imitation opens it to some 3.7 million works.
+  Tests: kernel 22 (also in Node), model 13, page 46.
+
 - **`comes`, counterpoint live** (`@kairotic/theory` 0.2.0, discussion #172): Study 40 as a box. You play the dux,
   one note a beat (Hz from a `keyboard` or `midiin`, `[:midi 62]`, or with `midi` MIDI numbers), and the comes
   answers on the left, as a list of Hz for a `synth~` or a `midiout`. A note that breaks a rule of the style, or
