@@ -142,6 +142,18 @@ sin enviar, y un argumento nuevo a la derecha también vuelve a empezar. La ayud
 (**?**) enlaza a su página de [clojuredocs.org](https://clojuredocs.org) y a la referencia de
 [clojure.org](https://clojure.org/reference/transducers).
 
+**Funciones por los cables.** Una función viaja como su forma, datos EDN. `comp`, `partial`, `juxt`,
+`complement`, `fnil`, `constantly`, `every-pred` y `some-fn` son cajas que envían una con un bang:
+`comp inc (partial * 2)` envía `(comp inc (partial * 2))`. Allí donde una caja toma un argumento, un
+nombre o una forma así *es* esa función, de modo que una forma enviada a la entrada de `inc` en `map inc`
+cambia la función en directo (igual con `xf/filter odd?` o `sort-by :freq`). Las formas también se pueden
+escribir en una caja y anidar: `map (partial * 2)`, `map (juxt inc dec)`. Con `%`, un constructor toma la
+función que llega: `comp % inc`. De una forma solo se hacen estas funciones puras (y `+ - * /`), y cada
+navegador la reconstruye a partir de ellas, así que es tan segura en una sala compartida como cualquier
+argumento; un nombre que no conoce (o una llamada como `(inc 1)` en lugar de una función) no se envía y se
+escribe en el REPL. Para enviar una función por su nombre, `comp inc` (una palabra en un `msg` es una
+keyword, y sigue siéndolo: una clave, y una función por sí misma).
+
 ## 3. Sonido y tiempo
 
 - **▶** (o la barra espaciadora) pone en marcha el sonido y el tiempo: audio, `metro`, `ramp`,
