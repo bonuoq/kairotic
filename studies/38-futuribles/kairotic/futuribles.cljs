@@ -30,7 +30,7 @@
 ;; Hard rules only look at a window of the last notes, so the number of ways to finish from a point can be
 ;; counted exactly (memoized on the window): its log2 is the divergence, the bits of freedom left.
 ;;
-;; Pure data and functions: no DOM, no atoms outside the memo of one count.
+;; Pure data and functions, apart from the kernel's memo of the counts.
 
 (ns kairotic.futuribles
   (:require [clojure.string :as str]))
@@ -168,68 +168,42 @@
         up (fn [x] (when x (+ x (dec n))))]
     (if (pos? (:k p)) {:dux (mapv up du) :comes co} {:dux du :comes (mapv up co)})))
 
-;; ───────────────────────── hard rules ─────────────────────────
+;; ───────────────────────── hard rules: the kernel ─────────────────────────
+;;
+;; The hard rules and the exact count are in plain JavaScript (kairotic/kernel.mjs, Study 39's kernel; here every
+;; beat is strong, a note per bar), loaded by the page as window.kairoticKernel: interpreted by Scittle the count
+;; blocked the page for half a second at every change, and longer for why?. The rule set stays data here.
+
+(def K "The kernel (kairotic/kernel.mjs)." (.-kairoticKernel js/window))
+
+(defn spec "The canon as the kernel reads it (first species: one beat per bar)." [p]
+  (let [[lo hi] (lo-hi p)]
+    #js {:tonic (tonic p) :k (:k p) :d (:d p) :b 1 :n (:n p) :lo lo :hi hi :spacing (:spacing p 11)
+         :invert (clj->js (vec (sort (:invert p))))
+         :on (clj->js (into {} (for [r rules :when (= :hard (:kind r))] [(name (:id r)) (on? p (:id r))])))}))
+
+(defonce kernels (atom {}))
+
+(defn kernel
+  "The kernel's canon for p, kept while p is in use (its count is memoized inside it)."
+  [p]
+  (or (get @kernels p)
+      (let [kc (.canon K (spec p))]
+        (swap! kernels (fn [m] (assoc (if (> (count m) 24) {} m) p kc)))
+        kc)))
 
 (defn vertical-error
   "Why the vertical at time t (dux note x against the comes) breaks a hard rule, or nil. prev is the
   vertical at t-1 as [dux comes], or nil."
   [p x c prev]
-  (let [v [x c]]
-    (or (when (and (on? p :no-crossing) (not (zero? (:k p))))
-          (let [[lo hi] (lower-first p x c)] (when (> lo hi) "the voices cross")))
-        (when (and (on? p :spacing) (> (absv (- x c)) (:spacing p 11))) (str "more than a " (interval-name (:spacing p 11)) " apart"))
-        (some (fn [[tn f]]
-                (let [[lo hi] (f (lower-first p x c))]
-                  (or (when (and (not= tn :orig) (< hi lo))
-                        (str (transform-label tn) "the voices would cross (wider than the " (interval-name (dec (second tn))) ")"))
-                      (when (and (on? p :consonance) (= :dissonant (quality lo hi)))
-                        (str (transform-label tn) "a " (interval-name (mod (- hi lo) 7)) " (dissonant)"))
-                      (when (and (on? p :parallels) prev)
-                        (let [[plo phi] (f (apply lower-first p prev))
-                              q1 (quality plo phi) q2 (quality lo hi)
-                              c1 (mod (- phi plo) 7) c2 (mod (- hi lo) 7)]
-                          (when (and (= :perfect q1 q2) (= c1 c2) (not= [plo phi] [lo hi]))
-                            (str (transform-label tn) (if (zero? c2) "parallel octaves" "parallel 5ths")))))
-                      (when (and (on? p :direct-octaves) prev)
-                        (let [[plo phi] (f (apply lower-first p prev))
-                              dl (- lo plo) dh (- hi phi)]
-                          (when (and (zero? (mod (- hi lo) 7)) (not (zero? dl)) (= (sign dl) (sign dh))
-                                     (or (on? p :strict-direct) (not= 1 (absv dh))))
-                            (str (transform-label tn) (if (= lo hi) "a unison" (interval-name (- hi lo))) " by direct motion")))))))
-              (transforms p)))))
+  (.verticalError (kernel p) x c (when prev (clj->js prev))))
 
 (defn last-move [dux] (let [n (count dux)] (when (>= n 2) (- (nth dux (dec n)) (nth dux (- n 2))))))
 
 (defn check
   "Why the note x cannot come next after the dux (nil when it can): every hard rule that is on."
   [p dux x]
-  (let [t (count dux) n (:n p) [lo hi] (lo-hi p) prev (peek dux) fin (set (finals p))
-        c (comes-at p (conj dux x) t)]
-    (or (when (>= t n) "the dux is finished")
-        (when (and (on? p :range) (not (<= lo x hi))) "out of range")
-        (when (and (on? p :start) (zero? t) (not (contains? (set (map #(+ (tonic p) %) [0 4 7])) x)))
-          "the dux starts on the final, its 5th or its octave")
-        (when (and (on? p :melodic) prev)
-          (or (when-let [e (melodic-error prev x)] e)
-              (when-let [e (melodic-error (+ prev (:k p)) (+ x (:k p)))] (str "in the comes: " e))))
-        (when (and (on? p :leap-recovery) prev)
-          (when-let [m (last-move dux)]
-            (when (>= (absv m) 3)
-              (let [s (- x prev)]
-                (if (>= (absv m) 5)
-                  (when (not= s (- (sign m)))
-                    (str "after a leap of a " (interval-name (absv m)) ", a step " (if (pos? m) "down" "up")))
-                  (when (not= (sign s) (- (sign m)))
-                    (str "after the leap of a " (interval-name (absv m)) " the line turns " (if (pos? m) "down" "up"))))))))
-        (when (and (on? p :final) (= t (dec n)) (not (fin x))) "the dux ends on the final")
-        (when (and (on? p :approach) (= t (- n 2)) (not (some #(= 1 (absv (- x %))) fin))) "the final is approached by step")
-        (when c
-          (let [pc (comes-at p dux (dec t))
-                verr (vertical-error p x c (when pc [prev pc]))]
-            (or verr
-                (when (and (on? p :entry-unison) (= t (:d p)) (= x c)) "the comes does not enter on the unison")
-                (when (and (on? p :final) (= t (dec n)) (not= :perfect (quality x c)))
-                  "the last vertical is a perfect consonance")))))))
+  (.check (kernel p) (clj->js dux) x))
 
 ;; ───────────────────────── soft rules: cost ─────────────────────────
 
@@ -301,24 +275,11 @@
 
 ;; ───────────────────────── futuribles ─────────────────────────
 
-(defn window-size [p] (max 2 (inc (:d p))))
-
 (defn counter
-  "A function dux → the number of ways to finish the canon from there, under the hard rules. Hard rules look
-  at the last max(2, d+1) notes only, so it is memoized on [t, that window]: the count is exact."
+  "A function dux → the number of ways to finish the canon from there, under the hard rules (exact: the
+  kernel memoizes it on the notes the rules look back at)."
   [p]
-  (let [memo (volatile! {}) w (window-size p) [lo hi] (lo-hi p) n (:n p)]
-    (letfn [(cnt [dux]
-              (let [t (count dux)]
-                (if (>= t n)
-                  1
-                  (let [key [t (subvec dux (max 0 (- t w)))]]
-                    (if-some [v (get @memo key)]
-                      v
-                      (let [v (reduce + 0 (for [x (range lo (inc hi)) :when (nil? (check p dux x))] (cnt (conj dux x))))]
-                        (vswap! memo assoc key v)
-                        v))))))]
-      cnt)))
+  (let [kc (kernel p)] (fn [dux] (.count kc (clj->js dux)))))
 
 (defn bits "The divergence: log2 of the ways to finish (0 when there is one, -1 when there is none)." [c]
   (if (pos? c) (/ (js/Math.log c) (js/Math.log 2)) -1))

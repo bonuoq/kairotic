@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- **Studies 38 and 39: counting without blocking, and a sound to hear the counterpoint.** Study 38 now uses
+  Study 39's kernel in plain JavaScript for its hard rules and its count (every beat strong), so changes no longer
+  block the page. In both, the futures are counted a few milliseconds at a time (`countAsync` in the kernel): the
+  page dims the score and says how far it is ("counting the futures… 37% · 12400 points") and draws when done;
+  **why?** counts each rule the same way. The sound is sustained and legato, an **organ** (a principal for the dux,
+  a flute for the comes) or two **voices** (a sawtooth through the formants of a vowel, with a slow vibrato), in a
+  small room, at a **tempo** set in the toolbar; a repeated note is struck again. Tests: the kernel's (29, also in
+  Node) include the count without blocking (the same number, progress growing, cancellable); the page tests wait
+  for the count.
+
+- **Study 39 · meter** (discussion #172): dissonance and meter in Study 38's canon. First species is a note per bar;
+  second species two (2/2) or three (3/2), a note per beat. Strong beats are consonant; on a weak beat a dissonance
+  passes if both voices come to it and leave it by step (passing or neighbour, P / N on the score), never two in a
+  row; no 5ths or octaves on consecutive strong beats. The comes's delay is in beats, so an odd delay puts it on the
+  other beats. A passing dissonance costs less. The hard rules and the exact count are a small kernel in plain
+  JavaScript (`studies/39-meter/kairotic/kernel.mjs`), the rest ClojureScript as in Study 38: 496320 canons of 8
+  bars of 2/2 counted in about 0.15 s. Found: in a canon both voices move on every beat, so dissonance is rare (4
+  of 30 canons by the engine) — a voice that holds while the other moves (fourth species) is the next step. Tests:
+  `tests/kernel.html` (22 checks, also in Node; its counts checked against a Python port), `tests/model.html` (20),
+  `tests/page.html` (30).
+
 - **Study 38 · futuribles: why?** A note can be closed in two ways: a hard rule forbids it, or it is allowed but no
   canon finishes after it. **why?** (beside a note not allowed, a note with no future, or a point with none) counts
   the futures again with each hard rule turned off, one at a time and one per tick so the page stays alive, and
