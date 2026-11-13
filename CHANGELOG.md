@@ -9,7 +9,7 @@
   below —; soft `:tie` and `:suspension-life`). The melodic rules and costs look at the notes struck. Species **4th:
   syncopation** (`:syncopation`) makes the dux hold its note over every strong beat. A strict canon in fourth species
   is rare (3 at the octave below, 3 beats later, after a rest); 0.8 of imitation opens it to some 3.7 million works.
-  Tests: kernel 22 (also in Node), model 13, page 46.
+  Tests: kernel 22 (also in Node), model 16, page 44.
 
 - **`comes`, counterpoint live** (`@kairotic/theory` 0.2.0, discussion #172): Study 40 as a box. You play the dux,
   one note a beat (Hz from a `keyboard` or `midiin`, `[:midi 62]`, or with `midi` MIDI numbers), and the comes
