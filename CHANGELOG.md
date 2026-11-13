@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Probes on wires** (discussion #183, first idea). To see what travels along a wire without wiring a `print` in:
+  ⌥/Alt+click a wire, or `(probe :b1 0 :b2 0)`. The wire is drawn dashed and a label at its middle shows the last
+  value that went along it (shortened), flashing when one passes, with the rate when they come often (`440 · 12/s`).
+  Again takes it away; `(unprobe-all!)` takes them all.
+  - Probes are this tab's, like the selection: no event of the history, nothing in the code of the work, and two
+    people in a room each watch their own. A wire that is deleted (or undone) loses its probe.
+  - The engine watches the outlet a wire leaves from (`kairotic.engine/probes`, `probe-seen`): `deliver!`, `emit!`
+    and `emit-to!` note what leaves a watched outlet, and do nothing more when there are no probes.
+  - Not yet: wires out of a sub-patch box (their messages leave from a box inside it) and signal wires.
+  - Tests: `tests/probes.mjs`.
 - **Help patches without boxes over one another** (issue #166, 2). A box's real size is only known once it is drawn
   (a `faust~` with the sliders its code compiles to, a score with its notation), so boxes placed by hand in help
   patches ended up under others.

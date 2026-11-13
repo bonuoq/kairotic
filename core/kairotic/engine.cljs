@@ -281,6 +281,23 @@
     (print! at (str "loop cut at " (name id) ": a message came back to it " loop-limit
                     " times in one instant. A loop needs time (metro, a delay) or a box that only sends what changed."))))
 
+;; ───── probes (discussion #183): what goes out of the outlets someone is watching ─────
+;; The page puts a probe on a wire; what is watched is the outlet it leaves from ([box outlet], flat ids), since
+;; every wire from one outlet carries the same messages. With no probe, nothing is kept.
+
+(defonce probes (atom #{}))      ; #{[flat-id outlet]}
+(defonce probe-seen (atom {}))   ; [flat-id outlet] → {:v last value :at its instant :n how many :times [ms …]}
+
+(defn probe!
+  "Something left outlet o of box id: kept if that outlet is watched."
+  [id o v at]
+  (when (and (seq @probes) (contains? @probes [id o]))
+    (let [t (.now js/performance)]
+      (swap! probe-seen update [id o]
+             (fn [s] {:v v :at at :n (inc (:n s 0))
+                      ;; the times of the last ones, for a rate over the last second
+                      :times (conj (vec (take-last 99 (:times s))) t)})))))
+
 (defn deliver! [p id inlet value at]
   (cond
     (>= (swap! counter inc) 20000)
@@ -301,10 +318,11 @@
               (when (contains? r :show) (show! id at (:show r)))
               (doseq [e (:effects r)] (effect! id e at))
               (doseq [[at2 inl v] (:later r)] (enqueue! at2 id inl v))
-              (doseq [[o v] (:out r)
-                      [a oo bb ii] (:lines p)
-                      :when (and (= a id) (= oo o))]
-                (deliver! p bb ii v at)))))))))
+              (doseq [[o v] (:out r)]
+                (probe! id o v at)
+                (doseq [[a oo bb ii] (:lines p)
+                        :when (and (= a id) (= oo o))]
+                  (deliver! p bb ii v at))))))))))
 
 (defn report!
   "From the sound back to the messages: an audio node gives its own box a value it found (a level, a
@@ -422,6 +440,7 @@
   (when (:on @rt) (sync!))
   (fresh-instant!)
   (let [p (patch) at (message-time)]
+    (probe! id o value at)
     (doseq [[a oo bb ii] (:lines p) :when (and (= a id) (= oo o))]
       (deliver! p bb ii value at))))
 
@@ -433,6 +452,7 @@
   (when (:on @rt) (sync!))
   (fresh-instant!)
   (let [p (patch) at (message-time)]
+    (probe! id o value at)
     (doseq [[a oo bb ii] (:lines p) :when (and (= a id) (= oo o) (contains? targets [bb ii]))]
       (deliver! p bb ii value at))))
 

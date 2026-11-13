@@ -46,6 +46,10 @@ links you share carry it. See [Kairotic Pages](pages.md).
 - **Boxes over one another**: a box's real size is only known once it is drawn (a `faust~` grows with its
   sliders, a score with its notation). `(overlaps)` lists the boxes that cover each other, and `(tidy)` moves
   boxes down until none does, in their columns, as one event.
+- **Probes on wires**: ⌥/Alt+click a wire (or `(probe :b1 0 :b2 0)`) and it shows, at its middle, the last
+  value that went along it, flashing when one passes, and how many a second when they come often. Again takes it
+  away; `(unprobe-all!)` takes them all. Probes are only for this tab: they are not part of the work, its history
+  or its code. Wires out of a sub-patch box, and signal wires, show nothing yet.
 - **Select** a box or a line by clicking it. **⌘/Ctrl+click** a box to edit it below (its arguments,
   and its text). **Delete** removes what is selected.
 - **Select several**: ⇧+click adds a box to the selection (or takes it out); a frame drawn from an

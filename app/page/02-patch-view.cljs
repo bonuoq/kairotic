@@ -553,6 +553,10 @@
     (when over (set! (.-innerHTML over) (str (layers-svg p :over) (annot-preview))))
     (render-annot-bar!)))
 
+(defonce probe-hooks
+  ;; probes on wires (page 26-probes): is a wire probed, and the labels of the probes of a patch
+  (atom {:probed? (constantly false) :labels (constantly "")}))
+
 (defn render-overlay! []
   (let [p (scene-of (current))
         on (eng/running?)
@@ -588,6 +592,7 @@
           (when (not= html (aget slot "kairoticLive")) (aset slot "kairoticLive" html) (set! (.-innerHTML slot) html)))))
     (set! (.-innerHTML ($ "cursors"))
           (str (apply str parts)
+               (when-not @pres-mode ((:labels @probe-hooks) p))
                ;; in presentation the readers are usually hidden, but their cursors still show on the canvases
                (when (and @pres-mode on)
                  (apply str (for [[id b] (:boxes (current))
@@ -728,7 +733,8 @@
                  (if (and (get-in p [:boxes a]) (get-in p [:boxes b]))
                    (let [[x1 y1] (out-xy p a o) [x2 y2] (in-xy p b i)
                          s (str (if (= sel [:line l]) " sel" "")
-                                (when (and (= o 2) (= "freqt" (klass (get-in p [:boxes a :text])))) " edits"))
+                                (when (and (= o 2) (= "freqt" (klass (get-in p [:boxes a :text])))) " edits")
+                                (when (and (not @pres-mode) ((:probed? @probe-hooks) l)) " probed"))
                          buf (and (= i 1) (let [k (klass (get-in p [:boxes a :text]))] (or (music-classes k) (= "sample" k) (= "tree" k))))]
                      (let [d (wire-d x1 y1 x2 y2)]
                        (str "<path class=\"wire" s (when buf " buffer") "\" d=\"" d "\"></path>"
