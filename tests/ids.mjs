@@ -19,6 +19,19 @@ const middle = (page, id) => page.evaluate((id) => {
   return [r.x + r.width / 2, r.y + r.height / 2];
 }, id);
 
+// the middle of a box, once nothing moves the page any more (an editor scrolls to its cursor a frame after a key):
+// scrolled into view again until the box itself is under that point
+async function aim(page, id) {
+  for (let i = 0; i < 12; i++) {
+    const p = await middle(page, id);
+    if (!p) return null;
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const ok = await page.evaluate(([x, y, id]) => document.elementFromPoint(x, y)?.closest?.("#scene g.box")?.dataset.box === id, [p[0], p[1], id]);
+    if (ok) return p;
+  }
+  return middle(page, id);
+}
+
 const tagShown = (page, id) => page.evaluate((id) => {
   const t = document.querySelector(`#scene > g.box[data-box="${id}"] .idtag`);
   return t ? getComputedStyle(t).display !== "none" : null;
@@ -137,8 +150,8 @@ export async function ids(page, check) {
   await until(page, "(some? (cm-of @repl-ed))", (g) => g === "true");
   await page.keyboard.type("(send! :");
   await until(page, "(str/starts-with? (repl-text) \"(send! :\")", (g) => g === "true");
-  p = await middle(page, ib);
   await until(page, "(some? (cm-of @repl-ed))", (g) => g === "true");
+  p = await aim(page, ib);
   // what is under the pointer and where the focus is, said if the check fails
   const seen = await page.evaluate(([x, y]) => {
     const el = document.elementFromPoint(x, y);
