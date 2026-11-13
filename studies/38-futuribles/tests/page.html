@@ -31,7 +31,7 @@
     is("and the notes not allowed, with their reason", $$("#svg .nope").length > 0);
     is("the engine's preview from here", $$("#svg .preview").length > 0);
     is("a table of futuribles", $$("#futs .pick").length === $$("#svg .cand").length);
-    is("the rule set: hard rules as checkboxes", $$("[data-rule]").length === 12);
+    is("the rule set: hard rules as checkboxes", $$("[data-rule]").length === 13);
     is("and soft ones as weights", $$("[data-weight]").length === 17);
 
     var first = $$("#futs .pick")[0], note = first.getAttribute("data-choose");

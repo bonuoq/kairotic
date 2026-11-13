@@ -91,10 +91,11 @@
    {:id :leap-recovery    :kind :hard :scope :melodic  :doc "A leap turns back: after a 4th or a 5th the next move goes the other way; after a 6th or an octave, by step."}
    {:id :consonance       :kind :hard :scope :vertical :under :all :doc "Every vertical is a consonance: unison, 3rd, 5th, 6th, octave."}
    {:id :parallels        :kind :hard :scope :vertical :under :all :doc "No parallel 5ths or octaves (nor by contrary motion)."}
-   {:id :direct-octaves   :kind :hard :scope :vertical :under :all :doc "No octave nor unison reached by direct (similar) motion: the unison is treated as the octave."}
+   {:id :direct-octaves   :kind :hard :scope :vertical :under :all :doc "No octave nor unison reached by direct (similar) motion, unless the upper voice moves by step: the unison is treated as the octave."}
+   {:id :strict-direct    :kind :hard :scope :vertical :default false :doc "Strict, after Fux: not even when the upper voice moves by step (off by default)."}
    {:id :entry-unison     :kind :hard :scope :vertical :doc "The comes does not enter on the unison."}
    {:id :no-crossing      :kind :hard :scope :vertical :doc "The voices do not cross (except in a canon at the unison)."}
-   {:id :spacing          :kind :hard :scope :vertical :doc "The voices are never more than a 10th apart."}
+   {:id :spacing          :kind :hard :scope :vertical :doc "The voices are never further apart than the canon allows (a 12th by default)."}
    {:id :final            :kind :hard :scope :form     :doc "The dux ends on the final, on a perfect consonance."}
    {:id :approach         :kind :hard :scope :form     :doc "The final is approached by step."}
    ;; the contour: leaps are not penalised for being leaps, only compensated; what costs is a line that stays
@@ -119,14 +120,14 @@
 
 (def rule-by-id (into {} (map (juxt :id identity)) rules))
 
-(defn default-rules [] (into {} (map (fn [r] [(:id r) (if (= :hard (:kind r)) {:on true} {:weight (:weight r)})])) rules))
+(defn default-rules [] (into {} (map (fn [r] [(:id r) (if (= :hard (:kind r)) {:on (:default r true)} {:weight (:weight r)})])) rules))
 
 (def default-params
-  {:mode :dorian :k -7 :d 2 :n 12 :range [-2 8] :invert #{} :rules (default-rules)})
+  {:mode :dorian :k -7 :d 2 :n 12 :range [-2 8] :spacing 11 :invert #{} :rules (default-rules)})
 
 (defn params [& {:as overrides}] (merge default-params {:rules (default-rules)} overrides))
 
-(defn on? [p id] (get-in p [:rules id :on] true))
+(defn on? [p id] (get-in p [:rules id :on] (:default (rule-by-id id) true)))
 (defn weight [p id] (get-in p [:rules id :weight] (:weight (rule-by-id id) 0)))
 
 (defn tonic [p] (get modes (:mode p) 0))
@@ -176,7 +177,7 @@
   (let [v [x c]]
     (or (when (and (on? p :no-crossing) (not (zero? (:k p))))
           (let [[lo hi] (lower-first p x c)] (when (> lo hi) "the voices cross")))
-        (when (and (on? p :spacing) (> (absv (- x c)) 9)) "more than a 10th apart")
+        (when (and (on? p :spacing) (> (absv (- x c)) (:spacing p 11))) (str "more than a " (interval-name (:spacing p 11)) " apart"))
         (some (fn [[tn f]]
                 (let [[lo hi] (f (lower-first p x c))]
                   (or (when (and (not= tn :orig) (< hi lo))
@@ -192,7 +193,8 @@
                       (when (and (on? p :direct-octaves) prev)
                         (let [[plo phi] (f (apply lower-first p prev))
                               dl (- lo plo) dh (- hi phi)]
-                          (when (and (zero? (mod (- hi lo) 7)) (not (zero? dl)) (= (sign dl) (sign dh)))
+                          (when (and (zero? (mod (- hi lo) 7)) (not (zero? dl)) (= (sign dl) (sign dh))
+                                     (or (on? p :strict-direct) (not= 1 (absv dh))))
                             (str (transform-label tn) (if (= lo hi) "a unison" (interval-name (- hi lo))) " by direct motion")))))))
               (transforms p)))))
 

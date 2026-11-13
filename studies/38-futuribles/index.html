@@ -187,6 +187,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
   </select></label>
   <label>after <input type="number" id="d" min="1" max="4" step="1"> notes</label>
   <label>Length <input type="number" id="n" min="6" max="16" step="1"></label>
+  <label>Voices up to <select id="spacing"><option value="9">a 10th</option><option value="11">a 12th</option><option value="14">two octaves</option></select></label>
   <span class="group" id="inv-group"><span style="font-size:13px;color:var(--ink-soft)">Invertible at</span>
     <label><input type="checkbox" data-inv="8"> 8ve</label>
     <label><input type="checkbox" data-inv="10"> 10th</label>
@@ -608,6 +609,7 @@ window.addEventListener("DOMContentLoaded", function () {
     (set! (.-value ($ "k")) (str (:k pp)))
     (set! (.-value ($ "d")) (:d pp))
     (set! (.-value ($ "n")) (:n pp))
+    (set! (.-value ($ "spacing")) (str (:spacing pp 11)))
     (doseq [el (seq (js/Array.from (.querySelectorAll js/document "[data-inv]")))]
       (let [v (js/parseInt (.getAttribute el "data-inv"))]
         (set! (.-checked el) (contains? (:invert pp) v))
@@ -746,6 +748,7 @@ window.addEventListener("DOMContentLoaded", function () {
                                (= id "k") (set-p! #(cond-> (assoc % :k (js/parseInt (.-value el))) (= "0" (.-value el)) (assoc :invert #{})))
                                (= id "d") (when-let [v (num "d" 1 4)] (set-p! #(assoc % :d v)))
                                (= id "n") (when-let [v (num "n" 6 16)] (set-p! #(assoc % :n v)))
+                               (= id "spacing") (set-p! #(assoc % :spacing (js/parseInt (.-value el))))
                                (= id "seed") (when-let [v (num "seed" 1 999999)] (swap! ui assoc :seed v) (save!) (render!))
                                (= id "follow") (do (swap! ui assoc :follow (.-checked el)) (save!) (render!))
                                (= id "look") (do (swap! ui assoc :look (js/parseInt (.-value el))) (save!) (render!))
