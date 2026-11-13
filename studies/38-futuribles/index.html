@@ -128,6 +128,21 @@ table.futs tr.dead .pick { border-color: var(--error); color: var(--error); }
 details.illegal summary { font-size: 12.5px; color: var(--ink-soft); cursor: pointer; }
 details.illegal ul { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.55; }
 details.illegal b { font-family: var(--f-code); font-weight: 500; }
+button.why { border: 1px solid var(--kairos); background: var(--box); color: var(--kairos); font: 500 11.5px var(--f-ui); border-radius: 4px; padding: 0 6px; cursor: pointer; margin-left: 4px; }
+button.why:hover, button.why[aria-pressed="true"] { background: var(--kairos-soft); }
+.whybox { border: 1px solid var(--kairos); background: var(--kairos-soft); border-radius: 6px; padding: 8px 10px; display: grid; gap: 6px; font-size: 12.5px; line-height: 1.5; }
+.whybox h3 { margin: 0; font: 600 12.5px var(--f-ui); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.whybox h3 button { border: none; background: none; color: var(--ink-soft); cursor: pointer; font-size: 14px; padding: 0 2px; }
+.whybox ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.whybox li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: baseline; }
+.whybox li code { color: var(--ink); }
+.whybox li .n { font-family: var(--f-code); white-space: nowrap; }
+.whybox li.opens .n { color: var(--ok); font-weight: 600; }
+.whybox li.none { color: var(--ink-soft); }
+.whybox li .d { grid-column: 1 / -1; color: var(--ink-soft); font-size: 11.5px; }
+.whybox li button { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 11.5px var(--f-ui); border-radius: 4px; padding: 0 6px; cursor: pointer; }
+.whybox .sum { color: var(--ink); }
+.whybox .wait { font: 11.5px var(--f-code); color: var(--ink-soft); }
 .empty { font-size: 12.5px; color: var(--ink-soft); }
 
 /* the history */
@@ -215,6 +230,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
       <div class="here-head" id="here-head"></div>
       <ul class="debts" id="debts"></ul>
       <div id="futs"></div>
+      <div id="why"></div>
     </section>
     <section class="panel" aria-labelledby="h-hist">
       <h2 id="h-hist">History <span>only choices are kept</span></h2>
@@ -435,7 +451,8 @@ window.addEventListener("DOMContentLoaded", function () {
     (set! (.-textContent ($ "here-sub")) (if (< t n) (str "note " (inc t) " of " n) "finished"))
     (set! (.-innerHTML ($ "here-head"))
           (cond (>= t n) (str "The dux is finished; the comes ends it " (:d pp) " notes later. <b>" (fu/pitch-name (peek d)) "</b> is the final.")
-                (zero? total) "<span style=\"color:var(--error)\">No canon finishes from here under this rule set. Go back (◀), or change the rules.</span>"
+                (zero? total) (str "<span style=\"color:var(--error)\">No canon finishes from here under this rule set. Go back (◀), or change the rules.</span>"
+                                   " <button class=\"why\" data-why=\"point\" title=\"Which hard rule closes it: the futures counted again without each one\">why?</button>")
                 :else (str "<b>" total "</b> way" (when (not= 1 total) "s") " to finish from here (" (.toFixed (fu/bits total) 1) " bits)"
                            (when comes (str " · the comes sounds <b>" (fu/pitch-name comes) "</b>")))))
     (set! (.-innerHTML ($ "debts")) (apply str (map #(str "<li>" (esc %) "</li>") (fu/obligations pp d))))
@@ -453,13 +470,71 @@ window.addEventListener("DOMContentLoaded", function () {
                                         "<td>" (if comes (str (fu/interval-name (fu/absv (- note comes)))) "—") "</td>"
                                         "<td class=\"num\">" futures "</td>"
                                         "<td class=\"num\" title=\"" (esc (score-title cost parts ahead)) "\">" (.toFixed score 1) "</td>"
-                                        "<td><button class=\"pick\" data-choose=\"" note "\">choose</button></td></tr>")))
+                                        "<td><button class=\"pick\" data-choose=\"" note "\">choose</button>"
+                                        (when (zero? futures) (str "<button class=\"why\" data-why=\"" note "\" title=\"Which hard rule leaves it without a future\">why?</button>"))
+                                        "</td></tr>")))
                           "</tbody></table>")
                      "<p class=\"empty\">No note is allowed here.</p>")
                    (when (seq illegal)
-                     (str "<details class=\"illegal\"><summary>" (count illegal) " not allowed, and why</summary><ul>"
-                          (apply str (for [{:keys [note reason]} illegal] (str "<li><b>" (fu/pitch-name note) "</b> " (esc reason) "</li>")))
+                     (str "<details class=\"illegal\"" (when (some #(= (:note %) (get-in @ui [:why :note])) illegal) " open") "><summary>" (count illegal) " not allowed, and why</summary><ul>"
+                          (apply str (for [{:keys [note reason]} illegal]
+                                       (str "<li><b>" (fu/pitch-name note) "</b> " (esc reason)
+                                            " <button class=\"why\" data-why=\"" note "\" title=\"What turning each hard rule off would open\">why?</button></li>")))
                           "</ul></details>"))))))))
+
+;; ───────── why: which rule closes a future ─────────
+;; :why {:note x (nil for the point) :p :dux (what it was asked for) :todo [rule ids] :done [results]}
+;; The futures are counted again without each hard rule, one per tick, so the page stays alive meanwhile.
+
+(defn why-current? [w] (and w (= (:p w) (p)) (= (:dux w) (dux))))
+
+(defn render-why! []
+  (let [w (:why @ui) el ($ "why")]
+    (if-not (why-current? w)
+      (set! (.-innerHTML el) "")
+      (let [{:keys [note done todo]} w pp (p) d (dux)
+            reason (when note (fu/check pp d note))
+            title (cond (nil? note) "Why no canon finishes from here"
+                        reason (str "Why " (fu/pitch-name note) " is not allowed here")
+                        :else (str "Why " (fu/pitch-name note) " has no future here"))
+            rows (sort-by (comp - :futures) done)
+            opens (filter #(pos? (:futures %)) rows)]
+        (set! (.-innerHTML el)
+              (str "<div class=\"whybox\" role=\"status\"><h3><span>" title "</span><button data-act=\"why-close\" aria-label=\"Close\">×</button></h3>"
+                   (when reason (str "<div>A hard rule forbids it: <b>" (esc reason) "</b>.</div>"))
+                   (when (and note (not reason)) "<div>It is allowed, but no canon finishes after it: what the rules ask further on closes every way.</div>")
+                   "<div>The futures, counted again without each hard rule:</div><ul>"
+                   (apply str
+                          (for [{:keys [rule futures] r :reason} rows]
+                            (str "<li class=\"" (if (pos? futures) "opens" "none") "\"><span><code>" (name rule) "</code></span>"
+                                 "<span class=\"n\">" (cond (pos? futures) (str "→ " futures " canon" (when (not= 1 futures) "s"))
+                                                             r "still not allowed"
+                                                             :else "nothing")
+                                 (when (pos? futures) (str " <button data-without=\"" (name rule) "\" title=\"Turn this rule off\">try without it</button>"))
+                                 "</span>"
+                                 (when (pos? futures) (str "<span class=\"d\">" (esc (:doc (fu/rule-by-id rule))) "</span>"))
+                                 "</li>")))
+                   "</ul>"
+                   (cond (seq todo) (str "<div class=\"wait\">counting… " (count done) " / " (+ (count done) (count todo)) "</div>")
+                         (empty? opens) "<div class=\"sum\">No rule alone opens it: several rules close it together.</div>"
+                         :else (str "<div class=\"sum\">" (if (= 1 (count opens)) "One rule" (str (count opens) " rules")) " alone would open it; the most: <code>"
+                                    (name (:rule (first opens))) "</code>.</div>"))
+                   "</div>"))))))
+
+(defn why-tick! []
+  (let [w (:why @ui)]
+    (when (and (why-current? w) (seq (:todo w)))
+      (let [id (first (:todo w))
+            res (fu/why-rule (:p w) (:dux w) (:note w) id)]
+        (swap! ui update :why #(-> % (update :todo rest) (update :done conj res)))
+        (render-why!)
+        (js/setTimeout why-tick! 0)))))
+
+(defn start-why! [target]
+  (let [note (when (not= target "point") (js/parseInt target))]
+    (swap! ui assoc :why {:note note :p (p) :dux (dux) :done [] :todo (mapv :id (fu/hard-rules-on (p)))})
+    (render!)
+    (js/setTimeout why-tick! 30)))
 
 ;; ───────── the history ─────────
 
@@ -561,6 +636,7 @@ window.addEventListener("DOMContentLoaded", function () {
     (render-hist!)
     (render-rules!)
     (render-code!)
+    (render-why!)
     (render-msg!)
     (set! (.-textContent ($ "score-sub"))
           (str (fu/pitch-name (fu/tonic pp)) " " (name (:mode pp)) " · comes " (.-text (aget (.-options ($ "k")) (.-selectedIndex ($ "k"))))
@@ -646,6 +722,7 @@ window.addEventListener("DOMContentLoaded", function () {
     "forward" (set-h! (fu/forward (h)))
     "clear" (set-h! (fu/new-history) ["ok" "A new history; the rule set stays."])
     "reset-rules" (set-p! #(assoc % :rules (fu/default-rules)))
+    "why-close" (do (swap! ui dissoc :why) (render-why!))
     nil))
 
 (defn num [id lo hi] (let [v (js/parseInt (.-value ($ id)))] (when-not (js/isNaN v) (max lo (min hi v)))))
@@ -655,7 +732,13 @@ window.addEventListener("DOMContentLoaded", function () {
                      (fn [e]
                        (when-let [el (.. e -target (closest "[data-act]"))] (act! (.getAttribute el "data-act")))
                        (when-let [el (.. e -target (closest "[data-choose]"))] (choose! (js/parseInt (.getAttribute el "data-choose"))))
-                       (when-let [el (.. e -target (closest "[data-goto]"))] (set-h! (fu/goto (h) (.getAttribute el "data-goto"))))))
+                       (when-let [el (.. e -target (closest "[data-goto]"))] (set-h! (fu/goto (h) (.getAttribute el "data-goto"))))
+                       (when-let [el (.. e -target (closest "[data-why]"))] (start-why! (.getAttribute el "data-why")))
+                       (when-let [el (.. e -target (closest "[data-without]"))]
+                         (let [id (keyword (.getAttribute el "data-without"))]
+                           (swap! ui dissoc :why)
+                           (set-p! #(assoc-in % [:rules id :on] false))
+                           (say! "ok" (str "Without " (name id) ": turn it on again in the rule set, or Default.")) (render-msg!)))))
   (.addEventListener js/document "change"
                      (fn [e]
                        (let [el (.-target e) id (.-id el)]

@@ -358,6 +358,34 @@
                   {:note x :futures fut :cost c :parts parts :ahead ahead
                    :score (if ahead (+ c (* look-weight (/ ahead look))) c)}))))))))
 
+;; ───────────────────────── why: which rule closes a future ─────────────────────────
+;;
+;; A note can be closed in two ways: a hard rule forbids it here (it has a reason), or it is allowed but no
+;; canon finishes after it (0 futures), because of what the rules ask further on. To see which rule does it,
+;; the futures are counted again with each hard rule turned off, one at a time.
+
+(defn hard-rules-on "The hard rules that are on, in the order of the rule set." [p]
+  (filterv #(and (= :hard (:kind %)) (on? p (:id %))) rules))
+
+(defn without "The canon with one rule turned off." [p id] (assoc-in p [:rules id :on] false))
+
+(defn why-rule
+  "What turning the hard rule `id` off would open, for the note x after the dux (or, with x nil, for the
+  point itself): {:rule id :reason why x is still not allowed without it (nil when it is) :futures n}."
+  [p dux x id]
+  (let [q (without p id)]
+    (if (nil? x)
+      {:rule id :futures ((counter q) dux)}
+      (let [r (check q dux x)]
+        {:rule id :reason r :futures (if r 0 ((counter q) (conj dux x)))}))))
+
+(defn why
+  "Every hard rule that is on, with what turning it off alone would open (see why-rule), the ones that open
+  the most first. When none opens anything, it takes more than one rule: the note or the point is closed by
+  rules together."
+  [p dux x]
+  (vec (sort-by (comp - :futures) (map #(why-rule p dux x (:id %)) (hard-rules-on p)))))
+
 (defn divergence
   "The ways to finish at every point of the dux: index i is the count after its first i notes."
   ([p dux] (divergence p dux (counter p)))

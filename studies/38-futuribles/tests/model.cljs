@@ -121,6 +121,19 @@
       (is "inverted at the 12th, every vertical is still consonant"
           (every? (fn [[a b]] (or (nil? a) (nil? b) (not= :dissonant (fu/quality (min a b) (max a b))))) (map vector du co))))))
 
+;; why: which rule closes a future, counted again with each hard rule off
+(let [p (fu/params :mode :mixolydian :k -7 :d 2 :n 10 :invert #{10}) t (fu/tonic p)]
+  (is "starting on the final is allowed" (nil? (fu/check p [] t)))
+  (is "but here it has no future" (zero? ((fu/counter p) [t])))
+  (let [w (fu/why p [] t)]
+    (is "one entry per hard rule that is on" (= (count (fu/hard-rules-on p)) (count w)))
+    (is "without :direct-octaves it opens" (pos? (:futures (first (filter #(= :direct-octaves (:rule %)) w)))))
+    (is "the rules that open the most come first" (apply >= (map :futures w)))))
+(let [p (fu/params :d 4)]
+  (is "a note not allowed: without the rule that forbids it, it is" (nil? (:reason (fu/why-rule p [1 5] 6 :leap-recovery))))
+  (is "other rules do not open it" (some? (:reason (fu/why-rule p [1 5] 6 :parallels))))
+  (is "a point: the futures from it without a rule" (>= (:futures (fu/why-rule p [1] nil :approach)) ((fu/counter p) [1]))))
+
 ;; a temperature that follows the divergence
 (is "cold when only a few futures are left" (< (fu/temperature 2 true 4) (fu/temperature 2 true 4096)))
 (is "as set when it does not follow" (= 2 (fu/temperature 2 false 4)))
