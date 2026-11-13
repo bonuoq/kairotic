@@ -43,6 +43,9 @@ links you share carry it. See [Kairotic Pages](pages.md).
   and scrolls to them; putting the cursor on a line of a box selects that box (both boxes, on a `connect`).
   Lines longer than 160 characters — the source of a code box, a buffer kept as data — are folded after
   their beginning, saying how many characters they hide; a click shows them, and they stay shown.
+- **Boxes over one another**: a box's real size is only known once it is drawn (a `faust~` grows with its
+  sliders, a score with its notation). `(overlaps)` lists the boxes that cover each other, and `(tidy)` moves
+  boxes down until none does, in their columns, as one event.
 - **Select** a box or a line by clicking it. **⌘/Ctrl+click** a box to edit it below (its arguments,
   and its text). **Delete** removes what is selected.
 - **Select several**: ⇧+click adds a box to the selection (or takes it out); a frame drawn from an
