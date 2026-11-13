@@ -20,4 +20,15 @@ export async function corefns(page, check) {
   const again = await cljs(page, `(get-in @eng/rt [:states ${n}])`);
   check("the right inlet replaces the argument, a bang sends again", again === "6", again);
   await cljs(page, `(delete ${a} ${b} ${n})`);
+  // a msg sends names (msg inc): they travel through the db (and to the room) and come back as names
+  check("names and keywords come back from the db as they were",
+        (await cljs(page, '(= (dec* (enc [(symbol "inc") (symbol "6/5") :a/b :stop])) [(symbol "inc") (symbol "6/5") :a/b :stop])')) === "true");
+  // msg inc into the inlet of a function changes it
+  const ids2 = await cljs(page, '[(box "msg dec" 1400 860) (box "map inc" 1400 900) (box "number" 1400 960)]');
+  const [m2, f2, n2] = ids2.match(/:b\d+/g) || [];
+  await cljs(page, `(connect ${m2} 0 ${f2} 1) (connect ${f2} 0 ${n2} 0)`);
+  await cljs(page, `(send! ${m2} :bang) (send! ${f2} [5])`);
+  const got2 = await cljs(page, `(get-in @eng/rt [:states ${n2}])`);
+  check("msg dec into the inlet of inc in map inc changes the function", got2 === "[4]" || got2 === "4", got2);
+  await cljs(page, `(delete ${m2} ${f2} ${n2})`);
 }

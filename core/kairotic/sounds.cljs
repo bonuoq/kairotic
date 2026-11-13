@@ -165,8 +165,8 @@
       (go hrefs))))
 
 (defn as-url
-  "A URL from what reaches a sample: a string, or a word as a msg box sends it (msg https://… or
-   msg \"https://…\": a keyword, maybe with its quotes). nil if it is not one."
+  "A URL from what reaches a sample: a string, or a word as a msg box sends it (msg https://…: a name,
+   or msg \"https://…\": a string; a keyword too). nil if it is not one."
   [v]
   (let [t (cond (string? v) v
                 ;; the whole text of the keyword: name and namespace split it at its first slash
@@ -465,7 +465,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
 (defn fmt-s [s] (str (comp/nice s) " s"))
 
 (comp/define! "sample"
-  {:doc "A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; rec t (msg rec 2.5) keeps its first t seconds and records from there (punch-in); ovr t (msg ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN \"https://…\")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV."
+  {:doc "A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; rec t (msg :rec 2.5) keeps its first t seconds and records from there (punch-in); ovr t (msg :ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN \"https://…\")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV."
    :usage "sample [seconds]"
    :license "MPL-2.0"
    :io [1 2]
@@ -487,24 +487,24 @@ registerProcessor('kairotic-player', KairoticPlayer);
                     :else {})
                   ;; the node says when it starts (only while ▶ is on: without it there is no sound to record)
                   (= value :rec) {:effects [[:rec true]]}
-                  ;; rec t (msg rec 2.5): the sound until t stays, the take replaces what comes after (punch-in)
+                  ;; rec t (msg :rec 2.5): the sound until t stays, the take replaces what comes after (punch-in)
                   (and (vector? value) (= :rec (first value)) (number? (second value)) (>= (second value) 0))
                   {:effects [[:rec {:from (second value) :base (when (sample? data) data)}]]}
-                  ;; ovr t (msg ovr 2.5): only what the take covers is replaced, what comes after it stays (punch-in/out)
+                  ;; ovr t (msg :ovr 2.5): only what the take covers is replaced, what comes after it stays (punch-in/out)
                   (or (= value :ovr) (and (vector? value) (= :ovr (first value)) (number? (second value)) (>= (second value) 0)))
                   {:effects [[:rec {:from (if (vector? value) (second value) 0) :base (when (sample? data) data) :ovr true}]]}
                   (= value :stop) {:effects [[:rec false]]}
                   (= value :bang) (if (sample? data) {:out [[0 (seconds data)]]} {})
                   (= value :clear) {:effects [[:sample [:clear]]]}
                   ;; a URL (a string, or [:url "…"]): the page loads it and writes it as the data of the box
-                  ;; msg https://… (or msg "https://…", or msg url "…") arrives as a word: as-url reads it
+                  ;; msg https://… (or msg "https://…", or msg :url "…") arrives as a name or a string: as-url reads it
                   (as-url value) {:effects [[:sample [:url (as-url value)]]]}
                   (and (sequential? value) (= :url (first value)) (as-url (second value)))
                   {:effects [[:sample [:url (as-url (second value))]]]}
                   (and (sequential? value) (= :url (first value)))
                   {:effects [[:print (str "sample: " (pr-str (second value)) " is not a URL a sound can be loaded from")]]}
-                  (or (string? value) (keyword? value))
-                  {:effects [[:print (str "sample: " (pr-str value) " is neither rec, stop, clear nor a URL (https://…, github:…, freesound:…)")]]}
+                  (or (string? value) (keyword? value) (symbol? value))
+                  {:effects [[:print (str "sample: " (pr-str value) " is neither :rec, :stop, :clear nor a URL (https://…, github:…, freesound:…)")]]}
                   :else {})))
    ;; drawing it is also when this browser looks for its sound (and fetches it, if it comes from a URL)
    :draw (fn [{:keys [data shown w h]}]

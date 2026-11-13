@@ -17,7 +17,7 @@ Patterns after SuperCollider's (`Pbind`, `Pseq`, `Pwhite`…), on Clojure's lazy
 ```clojure
 (box :b1 "pbind 7 loop" 40 30)
 (code :b1 "{:degree #pat/shuffle [0 2 4 7]\n :dur    [0.5 0.5 1]\n :octave #pat/hold [4 [5 6]]}")
-(box :b2 "msg start" 40 130) (box :b3 "msg stop" 110 130)
+(box :b2 "msg :start" 40 130) (box :b3 "msg :stop" 110 130)
 (box :b4 "player 110" 40 180)
 (box :b5 "synth~" 40 240) (box :b6 "dac~" 40 290)
 (connect :b2 0 :b4 0) (connect :b3 0 :b4 0) (connect :b1 0 :b4 1)

@@ -24,7 +24,8 @@
 ;; Functions travel through the wires as their form, EDN data (issue #177): comp, partial, juxt,
 ;; complement, fnil, constantly, every-pred and some-fn are boxes that send one, (comp inc (partial * 2)),
 ;; and wherever a box takes an argument a name or such a form is that function: into the inlet of inc in
-;; map inc it changes the function live. Nothing but these pure functions is ever made from a form.
+;; map inc it changes the function live — msg dec too, since a msg sends a word without colon as a name.
+;; Nothing but these pure functions is ever made from a form.
 ;;
 ;; xf/ makes the transducer of a function into a box with memory, which goes through a stream of
 ;; messages instead of a collection (clojure.org/reference/transducers):

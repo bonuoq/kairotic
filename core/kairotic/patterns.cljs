@@ -327,14 +327,14 @@
   "A pitch class: a number, or a name (:c :eb :f# \"Bb\") → 0…11 (nil if it is not one)."
   [x]
   (cond (number? x) x
-        (or (keyword? x) (string? x))
-        (let [m (re-matches #"(?i)([a-g])(#|s|b)?" (name x))]
+        (or (keyword? x) (string? x) (symbol? x))
+        (let [m (re-matches #"(?i)([a-g])(#|s|b)?" (if (symbol? x) (str x) (name x)))]
           (when m (+ (get sc/pcs (str/lower-case (nth m 1))) (case (nth m 2) "#" 1 "s" 1 "S" 1 "b" -1 "B" -1 0))))
         :else nil))
 
 (defn scale-of [x]
   (cond (and (sequential? x) (seq x) (every? number? x)) (vec x)
-        (or (keyword? x) (string? x)) (get scales (keyword x) (:major scales))
+        (or (keyword? x) (string? x) (symbol? x)) (get scales (keyword (if (keyword? x) (name x) (str x))) (:major scales))
         :else (:major scales)))
 
 (defn degree->midi

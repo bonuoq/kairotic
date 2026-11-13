@@ -23,6 +23,7 @@
   [x]
   (cond (num? x) x
         (keyword? x) (pitch (name x))
+        (symbol? x) (pitch (str x))
         (string? x) (let [m (re-matches #"(?i)([a-g])(##|#|x|s|bb|b|n)?(-?\d)" (str/trim x))]
                       (when m
                         (+ (* 12 (inc (js/parseInt (nth m 3) 10)))

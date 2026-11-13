@@ -258,11 +258,11 @@ registerProcessor('kairotic-tap', KairoticTap);
 ;; A component never fetches from its :receive: it asks for a task (:tasks), and these help the task.
 
 (defn url-of
-  "A URL from a message: a string, or a word as a msg box sends it (msg https://… arrives as a keyword).
+  "A URL from a message: a string, or a word as a msg box sends it (msg https://… arrives as a name).
    github:owner/repo@ref/path is served by jsDelivr (@main without @ref), the one site a page inside
    claude.ai can read. nil if it is not a URL."
   [v]
-  (let [s (cond (string? v) v (keyword? v) (subs (str v) 1) :else nil)
+  (let [s (cond (string? v) v (symbol? v) (str v) (keyword? v) (subs (str v) 1) :else nil)
         s (some-> s str/trim (str/replace #"^\"|\"$" ""))
         gh (when s (re-matches #"github:([^/\s]+)/([^/@\s]+)(@[^/\s]+)?/(\S+)" s))]
     (cond (nil? s) nil

@@ -27,7 +27,7 @@
    :args [[:baud 115200]]
    :help {:inlets ["open (asks for the port), close, or a line to send to the board"]
           :outlets ["the numbers of a line (a list), or [key value] for each key:value" "every line, as events"]
-          :example "(box :b1 \"msg open\" 40 30)\n(box :b2 \"serial 9600\" 40 70)\n(box :b3 \"print\" 40 120)\n(connect :b1 0 :b2 0)\n(connect :b2 0 :b3 0)"
+          :example "(box :b1 \"msg :open\" 40 30)\n(box :b2 \"serial 9600\" 40 70)\n(box :b3 \"print\" 40 120)\n(connect :b1 0 :b2 0)\n(connect :b2 0 :b3 0)"
           :try "Press ▶, click open and choose the board's port: what it prints arrives as numbers."
           :see ["motion" "gamepad" "oscout"]}
 
