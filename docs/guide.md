@@ -141,6 +141,18 @@ without sending, and a new argument on the right starts again too. The help of e
 links to its page at [clojuredocs.org](https://clojuredocs.org) and to the reference at
 [clojure.org](https://clojure.org/reference/transducers).
 
+**Functions through the wires.** A function travels as its form, EDN data. `comp`, `partial`, `juxt`,
+`complement`, `fnil`, `constantly`, `every-pred` and `some-fn` are boxes that send one on a bang:
+`comp inc (partial * 2)` sends `(comp inc (partial * 2))`. Wherever a box takes an argument, a name or such
+a form *is* that function, so a form sent into the inlet of `inc` in `map inc` changes the function live
+(`xf/filter odd?`, `sort-by :freq` likewise). Forms can also be written in a box and nest:
+`map (partial * 2)`, `map (juxt inc dec)`. With `%`, a builder takes the function that arrives:
+`comp % inc`. Only these pure functions (and `+ - * /`) are ever made from a form, and each browser
+rebuilds it from them, so it is as safe in a shared room as any argument; a name it does not know (or a
+call such as `(inc 1)` in place of a function) is not sent and is written in the REPL. To send a function
+by its name, `comp inc` (a word in a `msg` is a keyword, which stays a keyword: a key, and a function by
+itself).
+
 ## 3. Sound and time
 
 - **▶** (or the space bar) starts the sound and time: audio, `metro`, `ramp`, `loadbang`, `mt play`.

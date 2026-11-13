@@ -21,6 +21,11 @@
 ;; ^:hot before the class (^:hot vector % 0 0) makes every inlet hot, like pak in Max: a new argument
 ;; sends at once, with the last message (nil before the first one).
 ;;
+;; Functions travel through the wires as their form, EDN data (issue #177): comp, partial, juxt,
+;; complement, fnil, constantly, every-pred and some-fn are boxes that send one, (comp inc (partial * 2)),
+;; and wherever a box takes an argument a name or such a form is that function: into the inlet of inc in
+;; map inc it changes the function live. Nothing but these pure functions is ever made from a form.
+;;
 ;; xf/ makes the transducer of a function into a box with memory, which goes through a stream of
 ;; messages instead of a collection (clojure.org/reference/transducers):
 ;;
@@ -97,15 +102,58 @@
 
 (def max-items 4096)
 
-(defn- fn-of [x] (if (symbol? x) (get fns (str x) x) x))
+;; ───────── functions as values (issue #177) ─────────
+;; A function travels through the wires as its form, EDN data: (comp inc (partial * 2)). Where a box takes
+;; an argument, a name or such a form is the function, rebuilt in each browser from these same pure
+;; functions — nothing else is evaluated, so it is as safe in a shared room as any argument.
+
+(def builders
+  "The functions that make functions: as boxes they send a form; inside a form, they build it."
+  {"comp" comp "partial" partial "juxt" juxt "complement" complement "fnil" fnil "constantly" constantly
+   "every-pred" every-pred "some-fn" some-fn})
+
+;; names a form can use: the function boxes, the arithmetic that has boxes of its own, and the builders
+(def ^:private symbols
+  (merge fns builders {"+" + "-" - "*" * "/" / "identity" identity}))
+
+(defn fn-form?
+  "A form that makes a function: a list whose first element names one of the builders."
+  [x]
+  (and (seq? x) (symbol? (first x)) (contains? builders (str (first x)))))
+
+(declare as-fn)
+
+(def ^:private build
+  (memoize (fn [form] (apply (get builders (str (first form))) (map as-fn (rest form))))))
+
+(defn as-fn
+  "An argument as a box uses it: a name of one of these functions is that function, a form that makes one
+   (comp …, partial …) is the function it makes; anything else stays as it is (a keyword is a function by
+   itself, and a key)."
+  [x]
+  (cond (symbol? x) (get symbols (str x) x)
+        (fn-form? x) (build x)
+        :else x))
+
+(defn unknown-names
+  "What, inside a form (or a word), is not one of these functions — a name it does not know, or a list
+   that does not make a function ((inc 1) is a call, not a function): a form that has any cannot be made."
+  [x]
+  (cond (= x '%) []
+        (symbol? x) (if (contains? symbols (str x)) [] [x])
+        (fn-form? x) (vec (mapcat unknown-names (rest x)))
+        (seq? x) [x]
+        (coll? x) (vec (mapcat unknown-names x))
+        :else []))
 
 (defn parse
-  "The arguments written after the class, as EDN (symbols naming one of these functions become it), or
-   {:error message}. Its metadata says whether the box is ^:hot."
+  "The arguments written after the class, as EDN data (a name or a form that makes a function stays
+   as written, and becomes the function when it is called: as-fn), or {:error message}. Its metadata says
+   whether the box is ^:hot."
   [text]
   (let [t (comp/strip-meta text)
         rest-text (str/trim (subs t (count (comp/klass t))))]
-    (try (with-meta (mapv fn-of (edn/read-string (str "[" rest-text "]")))
+    (try (with-meta (vec (edn/read-string (str "[" rest-text "]")))
            {:hot (contains? (comp/meta-flags text) :hot)})
          (catch :default e {:error (str "cannot read its arguments: " (.-message e))}))))
 
@@ -128,9 +176,11 @@
    lead is true, as a keyword, a set or a map takes it)."
   ([f args v] (call f args v false))
   ([f args v lead]
-   (finite (cond (some #{'%} args) (apply f (map (fn [a] (if (= a '%) v a)) args))
-                 lead (apply f v args)
-                 :else (apply f (concat args [v]))))))
+   (let [has% (some #{'%} args)
+         args (map (fn [a] (if (= a '%) a (as-fn a))) args)]
+     (finite (cond has% (apply f (map (fn [a] (if (= a '%) v a)) args))
+                   lead (apply f v args)
+                   :else (apply f (concat args [v])))))))
 
 (defn- fresh
   "The state of a box for this text: the one it has if it was made for the same class and arguments, else
@@ -153,7 +203,7 @@
       (cond
         (pos? inlet)
         (if-let [i (get (slots args) (dec inlet))]
-          (let [st (assoc state :args (assoc as i (fn-of value)))]
+          (let [st (assoc state :args (assoc as i value))]
             (if (:hot (meta args))
               (send-result st (:last st) (call f (:args st) (:last st) lead))
               {:state st}))
@@ -166,7 +216,7 @@
   "A transducer of make with these arguments, ready to take messages: what it lets through gathers in :buf."
   [make args]
   (let [buf (volatile! [])
-        rf ((apply make args) (fn ([acc] acc) ([acc x] (vswap! buf conj x) acc)))]
+        rf ((apply make (map as-fn args)) (fn ([acc] acc) ([acc x] (vswap! buf conj x) acc)))]
     {:rf rf :buf buf :done false}))
 
 (defn- drain
@@ -189,7 +239,7 @@
       (cond
         (pos? inlet)
         (if-let [i (get (slots args) (dec inlet))]
-          (let [as (assoc as i (fn-of value))]
+          (let [as (assoc as i value)]
             {:state (merge (assoc st :args as) (xf-instance make as))})
           {:state st})
         (#{:clear "clear"} value) {:state (merge st (xf-instance make as))}
@@ -200,6 +250,37 @@
                 (if (reduced? r)
                   (do ((:rf st) nil) {:state (assoc st :done true) :out (drain st)})
                   {:state st :out (drain st)}))))))
+
+;; ───────── boxes that make functions ─────────
+
+(defn builder-receive
+  "A box that makes a function (comp inc (partial * 2)): it sends its form, which the boxes that take a
+   function as an argument use as that function. Without %, any message on the left (a bang) sends it; with %,
+   the message goes there (comp % inc composes the function that arrives) and a bang sends it again. The
+   inlets on the right replace the other arguments, sending nothing (^:hot: sending). A form with a name that
+   is not one of these functions is not sent: it is written in the REPL."
+  [{:keys [n]} {:keys [args state inlet value]}]
+  (if (map? args)
+    {:effects [[:print (:error args)]]}
+    (let [state (fresh state n args)
+          as (or (:args state) args)
+          has% (some #{'%} args)
+          form (fn [as v] (apply list (symbol n) (if has% (map (fn [a] (if (= a '%) v a)) as) as)))
+          send (fn [st v]
+                 (let [f (form (:args st as) v)
+                       bad (unknown-names f)]
+                   (if (seq bad)
+                     {:state st :effects [[:print (str n ": " (str/join ", " (distinct bad)) " is not a function it knows")]]}
+                     {:state (assoc st :last v) :out [[0 f]]})))]
+      (cond
+        (pos? inlet)
+        (if-let [i (get (slots args) (dec inlet))]
+          (let [st (assoc state :args (assoc as i value))]
+            (if (and (:hot (meta args)) (or (not has%) (contains? st :last))) (send st (:last st)) {:state st}))
+          {:state state})
+        (not has%) (send state nil)
+        (and (= value :bang) (not (contains? state :last))) {:state state}
+        :else (send state (if (= value :bang) (:last state) value))))))
 
 ;; ───────── what each kind of box is ─────────
 
@@ -229,13 +310,15 @@
 (def ^:private how-fn
   (str " as a box: the message at the left goes last among its arguments, or where % is, and is always the left"
        " inlet, the only hot one; the other inlets replace the other arguments, in the order they are written,"
-       " without sending (^:hot before the class: sending); a bang sends the last result again; nil sends nothing."))
+       " without sending (^:hot before the class: sending); a bang sends the last result again; nil sends nothing."
+       " An argument that is a function (map inc) takes in its inlet another one: a form sent by comp, partial…"))
 
 (defn- kind
-  "What a class name is: {:kind :fn|:data|:xf …}, or nil."
+  "What a class name is: {:kind :fn|:builder|:data|:xf …}, or nil."
   [n]
   (cond
     (contains? fns n) {:kind :fn :f (get fns n) :n n}
+    (contains? builders n) {:kind :builder :n n}
     (and (str/starts-with? n "xf/") (contains? xfs (subs n 3))) {:kind :xf :make (get xfs (subs n 3)) :n n}
     :else (when-let [f (data-fn n)] {:kind :data :f f :n n :lead true})))
 
@@ -243,6 +326,16 @@
   "The :doc, :usage and :ref of a kind of box."
   [{:keys [kind n f]}]
   (case kind
+    :builder {:doc (str "clojure.core/" n " as a box that makes a function: it sends its form — (" n " …) as written —"
+                        " and a box that takes a function as an argument (map inc, xf/filter odd?, sort-by :freq…)"
+                        " uses it in that argument's inlet, changing it live. A bang sends it; with %, the message"
+                        " goes there (comp % inc composes the function that arrives). Inside, any function box"
+                        " names a function, + - * / too, and the forms nest: comp inc (partial * 2). Only the form"
+                        " travels, rebuilt in each browser from the same pure functions."
+                        (when-let [clj (clj-doc n)] (when (seq clj) (str "\n\n" clj))))
+              :usage (str n " [functions and arguments…]  ·  bang sends it  ·  % takes the message")
+              :ref [[(str "clojure.core/" n) (docs-url n)]
+                    ["Higher-order functions" "https://clojure.org/guides/higher_order_functions"]]}
     :fn (let [qual (str (if (str/starts-with? n "str/") "clojure.string/" "clojure.core/") (str/replace n #"^str/" ""))
               clj (clj-doc n)]
           {:doc (str qual how-fn (when (seq clj) (str "\n\n" clj)))
@@ -278,14 +371,15 @@
                         :parse parse
                         :io (fn [{:keys [text]}] (let [a (parse text)] [(inc (if (map? a) 0 (count (slots a)))) 1]))
                         :dynamic-io true
-                        :receive (if (= :xf (:kind k))
-                                   (fn [m] (xf-receive k m))
+                        :receive (case (:kind k)
+                                   :xf (fn [m] (xf-receive k m))
+                                   :builder (fn [m] (builder-receive k m))
                                    (fn [m] (receive k m)))}
                        (describe k))]
           (swap! defs assoc n d)
           d))))
 
-(defn names "The functions that can be boxes, and their xf/ transducers." []
-  (vec (concat (sort (keys fns)) (sort (map #(str "xf/" %) (keys xfs))))))
+(defn names "The functions that can be boxes, the ones that make functions, and the xf/ transducers." []
+  (vec (concat (sort (keys fns)) (sort (keys builders)) (sort (map #(str "xf/" %) (keys xfs))))))
 
 (swap! comp/fallbacks (fn [fs] (if (some #{definition} fs) fs (conj fs definition))))
