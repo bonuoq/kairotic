@@ -12,6 +12,19 @@
   note is weighed with the cheapest way the line can go on for the next notes (0 to 3, 2 by default), so a cheap note
   leading into a corridor of forced repetitions is avoided. Over 24 seeds of the default canon: 1% repeated notes
   (4.4% before), 38% leaps, 22 different canons, about 30 ms each in Scittle. Tests: 61 checks in `tests/model.html`.
+- **Functions as values through the wires** (issue #177). A function travels as its form, EDN data:
+  - `comp`, `partial`, `juxt`, `complement`, `fnil`, `constantly`, `every-pred` and `some-fn` are boxes that send one
+    on a bang (`comp inc (partial * 2)` sends `(comp inc (partial * 2))`); their inlets replace the arguments, `^:hot`
+    sends at once, and with `%` they take the function that arrives (`comp % inc`).
+  - Wherever a function box takes an argument, a name or such a form is that function: sent into the inlet of `inc` in
+    `map inc` (or of `odd?` in `xf/filter odd?`, `:freq` in `sort-by :freq`) it changes the function live. Forms can be
+    written in a box and nest: `map (partial * 2)`, `map (juxt inc dec)`.
+  - Safe in a shared room: only the pure function boxes and `+ - * /` are ever made from a form, rebuilt in each
+    browser; a name it does not know, or a call in place of a function (`(inc 1)`), is not sent and is said in the REPL.
+    Keywords stay keywords (a word in a `msg` is not taken as a function name).
+  - The arguments of these boxes are now kept as written and become functions when the box calls them
+    (`kairotic.corefns/as-fn`); boxes written before work as they did.
+  Docs: `docs/guide.md`, `docs/guide.es.md`. Tests: `tests/cljs/corefns.cljs` (20 more checks).
 
 - **The Code tab and the patch, seen together** (issue #165).
   - **Long lines folded**: a line over 160 characters (the source of a code box, a package copied into a work, a

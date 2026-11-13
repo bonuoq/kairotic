@@ -245,7 +245,9 @@
              "event); ^:hot before the class makes every inlet hot; a keyword, set or map written first is a function too, "
              "the message first (:freq · #{60 64} · {60 :c}); nil sends nothing; xf/ before a function is its transducer over "
              "the stream of messages, with memory (xf/partition-all 4 collects, xf/partition 4 1 slides, xf/dedupe, xf/take 1; "
-             "flush and clear): "
+             "flush and clear); functions travel through wires as their EDN form: comp, partial, juxt, complement, fnil, "
+             "constantly, every-pred and some-fn are boxes that send one on a bang (comp inc (partial * 2)), and a name or "
+             "such a form in any argument is the function, so sending one into the inlet of inc in map inc changes it live: "
              (str/join " " (cf/names)))))
 
 ;; ───────── the prompt ─────────
