@@ -4,7 +4,7 @@
 ;; Study 40 with ties. In a voice the same pitch on the next beat is the note held over the beat (two beats at most),
 ;; and a dissonance may fall on a strong beat as a suspension: prepared by a consonance, held while the other voice
 ;; moves, resolved down a step to a consonance. The melodic rules and costs look at the notes struck. With
-;; :syncopation on (fourth species, 2/2), the dux holds its note over every strong beat. A held note is what a long
+;; :syncopation on (fourth species, 2/2), the dux is the cantus firmus (a note a bar) and the comes is syncopated. A held note is what a long
 ;; syllable will need (aoidos, #192).
 ;;
 ;; From Study 40:
@@ -103,7 +103,7 @@
    {:id :spacing          :kind :hard :scope :vertical :doc "The voices are never further apart than the canon allows (a 12th by default)."}
    {:id :suspension       :kind :hard :scope :vertical :under :all :doc "A dissonance on a strong beat may be a suspension: one voice holds its note from a consonance on the beat before (the preparation) while the other moves, and goes down a step to a consonance on the next beat (the resolution)."}
    {:id :suspension-kinds :kind :hard :scope :vertical :under :all :doc "The suspensions Fux allows: held in the upper voice a 7th (7-6), a 4th (4-3) or a 9th (9-8); in the lower voice a 2nd (2-3), not a 4th (4-5)."}
-   {:id :syncopation      :kind :hard :scope :melodic  :doc "Fourth species: the dux holds its note over every strong beat and strikes a new one on the weak beats (2/2)."}
+   {:id :syncopation      :kind :hard :scope :melodic  :doc "Fourth species (2/2): the dux is the cantus firmus, a note a bar; the comes is syncopated, striking its notes on the weak beats and holding them over the strong ones, where the suspensions fall. A canon breaks off into its cadence: the comes strikes the final."}
    {:id :final            :kind :hard :scope :form     :doc "The dux ends on the final, on a perfect consonance."}
    {:id :approach         :kind :hard :scope :form     :doc "The final is approached by step."}
    {:id :cadence          :kind :hard :scope :form     :doc "The final cadence does not go from a 7th to a 5th."}
@@ -136,7 +136,7 @@
 (defn default-rules [] (into {} (map (fn [r] [(:id r) (if (= :hard (:kind r)) {:on (:default r true)} {:weight (:weight r)})])) rules))
 
 (def default-params
-  {:mode :dorian :k -7 :d 3 :b 2 :phase 1 :n 14 :spacing 11 :invert #{} :imitation 0.8 :rules (default-rules)})
+  {:mode :dorian :k -7 :d 1 :b 2 :n 15 :spacing 11 :invert #{} :imitation 0.8 :rules (default-rules)})
 
 (defn notes-for
   "The notes of the dux for a number of bars: the last bar holds the final alone, the first may begin with rests

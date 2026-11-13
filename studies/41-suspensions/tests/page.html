@@ -44,22 +44,22 @@ await (async function () {
 
     var first = $$("#futs .pick")[0], note = first.getAttribute("data-choose");
     first.click();
-    is("choosing a futurible writes a note", $$("#svg .dux").length === 1);
-    is("one choice in the history", $$("#hist .ev").length === 1);
+    is("choosing a note of the cantus firmus writes the bar: the note held", $$("#svg .dux").length === 2);
+    is("two choices in the history", $$("#hist .ev").length === 2);
     is("the work's EDN holds the choice", document.getElementById("code").textContent.indexOf(":you") > 0);
 
     document.querySelector("[data-act=finish]").click();
     var sp = document.getElementById("species").value, b = sp === "4" ? 2 : parseInt(sp, 10), bars = parseInt(document.getElementById("bars").value, 10);
     var ph = parseInt(document.getElementById("phase").value, 10);
     var n = (bars - 1) * b + 1 - ph;
-    is("fourth species by default, after a rest", sp === "4" && ph === 1 && $$("#svg .rest").length === 1);
+    is("fourth species by default", sp === "4" && ph === 0);
     is("2/2: bar lines on the score", b === 2 && $$("#svg line.bar").length >= bars);
-    is("the dux's notes held over the bar: ties drawn", $$("#svg path.tie").length >= bars - 2);
+    is("the cantus firmus held for the bar and the comes over it: ties drawn", $$("#svg path.tie").length >= 2 * (bars - 2));
     is("the engine finishes the dux", $$("#svg .dux").length === n);
     is("the comes sounds from its entry to the end", $$("#svg .comes").length === n - parseInt(document.getElementById("d").value, 10));
     is("finished", /finished/.test(document.getElementById("here-sub").textContent));
     is("no note out of the rules", $$("#svg .dux.bad").length === 0);
-    is("the engine's choices are hollow in the history", $$("#hist .ev.engine").length === n - 1);
+    is("the engine's choices are hollow in the history", $$("#hist .ev.engine").length === n - 2);
     is("a bar of divergence per point", $$("#divsvg .bar").length === n + 1);
 
     // the sound: an organ, then voices; the cursor moves, nothing breaks
@@ -122,9 +122,11 @@ await (async function () {
     // an upbeat: a rest before the dux's first note; two only in 3/2
     is("two rests are only for 3/2", document.querySelector("#phase option[value='2']").disabled);
     var sync = canons();
+    set("phase", "1");
+    await settle();
+    is("an upbeat: a rest drawn", $$("#svg .rest").length === 1);
     set("phase", "0");
     await settle();
-    is("no upbeat: no rest drawn, works still", $$("#svg .rest").length === 0 && canons() > 0);
     // second species with ties: more works than fourth species
     set("species", "2");
     await settle();
