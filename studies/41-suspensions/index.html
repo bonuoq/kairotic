@@ -275,7 +275,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
 
 <section class="panel">
   <h2>About</h2>
-  <p class="about"><b>Study 41.</b> A note may now be <b>held</b> over the beat: in a voice, the same pitch on the next beat is the note held (a tie, drawn ‿), two beats at most — what a long syllable needs (aoidos, discussion #192). With ties comes the <b>suspension</b>: a dissonance on a strong beat, held by one voice from a consonance on the beat before (the preparation) while the other voice moves, and resolved a step down to a consonance on the next beat — the 7-6, 4-3 and 9-8 held in the upper voice, the 2-3 in the lower (S under the score). The melodic rules look at the notes struck: a leap is recovered by the next note struck, not by the next beat. <b>4th: syncopation</b> is Fux's fourth species: the dux holds its note over every strong beat (best after a rest: Upbeat). A strict canon so syncopated is rare — tens of them, where Study 40 counts hundreds of thousands — and a little less imitation opens it up. From Study 40: In Studies 38 and 39 the comes is not chosen: it is the dux a few beats later, shifted. Here it is a voice of its own, chosen note by note, and how much it imitates the dux is a <b>degree</b>: at <b>1</b> it is a canon (a hard rule); from <b>0.9 to 0.5</b> it may change notes for near ones — within a 3rd of the dux's note, each step away costing more the nearer the degree is to 1; from <b>0.4 to 0.2</b> only the motion is imitated — going the other way than the dux went costs; below <b>0.2</b> it is free counterpoint. You choose the dux; the engine chooses the comes, the cheapest by its own line, the verticals and the imitation, and you can change it (the dashed squares beside the last comes, or the table under Here): a change is a branch of the history like any choice. A diamond marks where a canon would have put the comes. Both voices end together, as a canon breaks off into its cadence. The futuribles are counted exactly over pairs of notes (in <code>kairotic/kernel.mjs</code>); at 1 the count is Study 39's. Meter, dissonance, modes, why?, the sound: as in Study 39. The work is kept in this browser.</p>
+  <p class="about"><b>Study 41.</b> A note may now be <b>held</b> over the beat: in a voice, the same pitch on the next beat is the note held (a tie, drawn ‿), two beats at most — what a long syllable needs (aoidos, discussion #192). With ties comes the <b>suspension</b>: a dissonance on a strong beat, held by one voice from a consonance on the beat before (the preparation) while the other voice moves, and resolved a step down to a consonance on the next beat — the 7-6, 4-3 and 9-8 held in the upper voice, the 2-3 in the lower (S under the score). The melodic rules look at the notes struck: a leap is recovered by the next note struck, not by the next beat. <b>4th: syncopation</b> is Fux's fourth species: the dux is the <b>cantus firmus</b>, a note a bar (choose it on the strong beat: it is held for the bar), and the comes is <b>syncopated</b>, striking its notes on the weak beats and holding them over the strong ones, where the suspensions fall. In a strict canon the comes is the cantus firmus half a bar later (the default: an octave below, a beat later), which breaks off into its cadence: the comes strikes the final. Such canons are few — 101 an octave below, 700 an octave above —, and a little less imitation opens them up. From Study 40: In Studies 38 and 39 the comes is not chosen: it is the dux a few beats later, shifted. Here it is a voice of its own, chosen note by note, and how much it imitates the dux is a <b>degree</b>: at <b>1</b> it is a canon (a hard rule); from <b>0.9 to 0.5</b> it may change notes for near ones — within a 3rd of the dux's note, each step away costing more the nearer the degree is to 1; from <b>0.4 to 0.2</b> only the motion is imitated — going the other way than the dux went costs; below <b>0.2</b> it is free counterpoint. You choose the dux; the engine chooses the comes, the cheapest by its own line, the verticals and the imitation, and you can change it (the dashed squares beside the last comes, or the table under Here): a change is a branch of the history like any choice. A diamond marks where a canon would have put the comes. Both voices end together, as a canon breaks off into its cadence. The futuribles are counted exactly over pairs of notes (in <code>kairotic/kernel.mjs</code>); at 1 the count is Study 39's. Meter, dissonance, modes, why?, the sound: as in Study 39. The work is kept in this browser.</p>
 </section>
 </main>
 
@@ -812,6 +812,18 @@ window.addEventListener("DOMContentLoaded", function () {
   [f]
   (swap! ui update :p f) (swap! ui assoc :msg nil) (save!) (render!))
 
+(defn hold-bar
+  "In fourth species the cantus firmus holds its note for the whole bar: after a note of it chosen on a strong
+  beat, the weak beat is written too, the note held and the comes's best note with it."
+  [pp hh]
+  (let [D (fu/current-dux hh) C (fu/current-comes hh) t (count D)]
+    (if (and (fu/on? pp :syncopation) (= 2 (:b pp 1)) (pos? t) (< t (:n pp)) (not (fu/strong? pp t))
+             (pos? ((cnt) D C)))
+      (if-let [pick (fu/best-comes (fu/fan-comes pp D C (peek D) (cnt)))]
+        (fu/choose-pair hh (peek D) (:note pick) :you :engine)
+        hh)
+      hh)))
+
 (defn choose! [note]
   (let [pp (p) D (dux) C (comes)]
     (if-let [r (fu/check-dux pp D C note)]
@@ -820,7 +832,7 @@ window.addEventListener("DOMContentLoaded", function () {
             pick (or (fu/best-comes cs) (first (sort-by :cost (remove :reason cs))))]
         (if-not pick
           (do (say! "bad" (str (fu/pitch-name note) ": no note of the comes fits it")) (render-msg!))
-          (let [hh (fu/choose-pair (h) note (:note pick) :you :engine)
+          (let [hh (hold-bar pp (fu/choose-pair (h) note (:note pick) :you :engine))
                 fut ((cnt) (fu/current-dux hh) (fu/current-comes hh))]
             (set-h! hh (when (zero? fut) ["bad" (str (fu/pitch-name note) " is legal, but no work finishes from it: a dead end, kept in the history like any choice.")]))))))))
 

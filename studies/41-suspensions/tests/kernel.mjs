@@ -47,7 +47,7 @@ export async function run() {
   const nf = free.count([], []);
   notes.push(`a canon in 2/2, 8 bars, the comes 3 beats later, with ties: ${nf} canons (${Math.round(performance.now() - t0)} ms; Study 40 counts 442780 without them)`);
   is("ties open more canons than Study 40's 442780", nf > 442780);
-  const nearSync = canon({ ...base, d: 3, b: 2, phase: 1, n: notesFor(2, 8, 1), imitation: 0.8, species: 4 });
+  const nearSync = canon({ ...base, d: 1, b: 2, n: notesFor(2, 8), imitation: 0.8, species: 4 });
   const works = [...some(free, 400), ...some(nearSync, 400)];
   const found = works.flatMap(([D, C]) => suspensions(free, D, C).map((s) => [D, C, ...s]));
   notes.push(`${found.length} suspensions in the first 800 works`);
@@ -73,20 +73,29 @@ export async function run() {
     is("and no dissonance on a strong beat", some(off, 300).every(([D, C]) => D.every((x, t) => C[t] === null || !off.strong(t) || !off.dissonant(x, C[t]))));
   }
 
-  // fourth species: the dux syncopated
+  // fourth species: the dux is the cantus firmus, a note a bar; the comes is syncopated
   {
-    const strict = canon({ ...base, d: 3, b: 2, phase: 1, n: notesFor(2, 8, 1), imitation: 1, species: 4 });
+    const strict = canon({ ...base, d: 1, b: 2, n: notesFor(2, 8), imitation: 1, species: 4 });
     const n4 = strict.count([], []), nn = nearSync.count([], []);
-    notes.push(`fourth species after a rest, the comes 3 beats later: ${n4} strict canons, ${nn} works at 0.8`);
-    is("a strict canon in fourth species is rare", n4 > 0 && n4 < 100);
-    is("a little less imitation opens it up", nn > 1000 * n4);
-    const ws = some(nearSync, 300), n = nearSync.spec.n;
-    is("the dux holds its note over every strong beat", ws.every(([D]) => D.every((x, t) => t === 0 || t === n - 1 || !nearSync.strong(t) || x === D[t - 1])));
-    is("and strikes a new one on the weak beats and at the end", ws.every(([D]) => D.every((x, t) => t === 0 || (nearSync.strong(t) && t < n - 1) || x !== D[t - 1])));
+    notes.push(`fourth species, the comes an octave below half a bar later: ${n4} strict canons, ${nn} works at 0.8`);
+    is("strict canons in fourth species: the comes is the cantus firmus half a bar later", n4 > 0 && n4 < 1000);
+    is("a little less imitation opens it up", nn > 10 * n4);
+    const n = nearSync.spec.n;
+    for (const [label, c] of [["at 0.8", nearSync], ["in a canon", strict]]) {
+      const ws = some(c, 300);
+      is(`${label}: the cantus firmus strikes on every strong beat and holds over the weak one`,
+        ws.length > 0 && ws.every(([D]) => D.every((x, t) => t === 0 || (c.strong(t) ? x !== D[t - 1] : x === D[t - 1]))));
+      is(`${label}: the comes holds over every strong beat and strikes on the weak ones, and the final`,
+        ws.every(([, C]) => C.every((y, t) => t <= c.spec.d || ((c.strong(t) && t < n - 1) ? y === C[t - 1] : y !== C[t - 1]))));
+      is(`${label}: the suspensions are the comes's`, ws.every(([D, C]) => suspensions(c, D, C).every(([, h]) => h === "comes")));
+    }
+    is("a canon until its cadence: the comes is the dux's note, but for the final", some(strict, 100).every(([D, C]) =>
+      C.every((y, t) => t < 1 || t === n - 1 || y === strict.model(D, t))));
+    notes.push("a strict canon: dux " + some(strict, 1)[0][0].join(" ") + " · comes " + some(strict, 1)[0][1].map((y) => (y === null ? "–" : y)).join(" "));
     is("the syncopation is only for 2/2", canon({ ...base, d: 2, b: 1, n: 10, imitation: 1, species: 4 }).count([], []) === canon({ ...base, d: 2, b: 1, n: 10, imitation: 1 }).count([], []));
     const grid = [];
-    for (const k of [-7, -4, -3, 3, 4, 7]) grid.push(`${k}: ` + [2, 3, 4].map((d) => canon({ ...base, k, d, b: 2, phase: 1, n: notesFor(2, 8, 1), imitation: 1, species: 4, cstarts: [1, 5, 8].map((x) => x + k) }).count([], [])).join("/"));
-    notes.push("strict canons in fourth species after a rest, by interval (k) and delay 2/3/4: " + grid.join(" · "));
+    for (const k of [-7, -4, -3, 3, 4, 7]) grid.push(`${k}: ` + [1, 3, 5].map((d) => canon({ ...base, k, d, b: 2, n: notesFor(2, 8), imitation: 1, species: 4, cstarts: [1, 5, 8].map((x) => x + k) }).count([], [])).join("/"));
+    notes.push("strict canons in fourth species, by interval (k) and delay 1/3/5 beats: " + grid.join(" · "));
   }
 
   // the count without blocking

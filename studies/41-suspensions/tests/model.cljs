@@ -9,9 +9,9 @@
 (defn is [what ok] (swap! results conj [what (boolean ok)]))
 (defn note! [s] (swap! notes conj s))
 
-;; the defaults: fourth species, after a rest, near the canon
+;; the defaults: fourth species, the comes half a bar later, near the canon
 (let [p (fu/params) cnt (fu/counter p)]
-  (is "fourth species by default: syncopation on, 2/2, after a rest" (and (fu/on? p :syncopation) (= 2 (:b p)) (= 1 (:phase p)) (= 14 (:n p))))
+  (is "fourth species by default: syncopation on, 2/2, the comes a beat later" (and (fu/on? p :syncopation) (= 2 (:b p)) (= 1 (:d p)) (= 15 (:n p))))
   (is "a degree of 0.8" (= 0.8 (:imitation p)))
   (is "the kernel counts the works over pairs" (= (cnt [] []) (reduce + (keep :futures (fu/fan p [] [] cnt)))))
   (is "fourth species off: second species with ties, more works"
@@ -26,13 +26,13 @@
 
 ;; a suspension costs less
 (let [p (fu/params :imitation 0)
-      ;; the dux holds A4 (5) over the strong beat (after the rest) while the comes moves from A3 to B3: a 7th held above
-      D [5] C [-2]
-      parts (fu/vertical-parts p D C 5 -1)]
+      ;; the comes, above, holds B4 (6) over the strong beat while the dux moves from G4 to C4: a 7th held above
+      D [4 4] C [nil 6]
+      parts (fu/vertical-parts (assoc p :k 7) D C 0 6)]
   (note! (str "a 7th held above: " (pr-str parts)))
   (is "a suspension costs less (:suspension-life)" (neg? (:suspension-life parts 0))))
 
-;; the engine writes both voices, the dux syncopated
+;; the engine writes both voices: the dux a cantus firmus, the comes syncopated
 (doseq [s [1 0.8 0.3]]
   (let [p (fu/params :imitation s) cnt (fu/counter p)
         works (mapv #(fu/continue-work p [] [] {:seed % :temp 1 :follow true :cnt cnt}) (range 1 7))
@@ -40,8 +40,10 @@
         sus (fn [[D C]] (count (filter some? (map #(when (and % (some #{"suspension"} [(:dux %) (:comes %)])) %) (fu/roles p D C)))))]
     (note! (str "imitation " s ": " (count done) " of 6 finished · suspensions " (apply str (interpose " " (map sus done)))))
     (is (str "imitation " s ": the engine finishes every work") (= (count works) (count done)))
-    (is (str "imitation " s ": the dux holds its note over every strong beat")
-        (every? (fn [[D]] (every? (fn [t] (or (zero? t) (= t (dec (:n p))) (not (fu/strong? p t)) (= (get D t) (get D (dec t))))) (range (count D)))) done))))
+    (is (str "imitation " s ": the dux a note a bar")
+        (every? (fn [[D]] (every? (fn [t] (or (zero? t) (= (fu/strong? p t) (not= (get D t) (get D (dec t)))))) (range (count D)))) done))
+    (is (str "imitation " s ": the comes holds its note over the strong beats")
+        (every? (fn [[_ C]] (every? (fn [t] (or (<= t (:d p)) (= t (dec (:n p))) (not (fu/strong? p t)) (= (get C t) (get C (dec t))))) (range (count C)))) done))))
 
 ;; the history keeps pairs; another comes is a branch (as in Study 40)
 (let [h (-> (fu/new-history) (fu/choose-pair 1 nil :you :engine) (fu/choose-pair 1 nil :you :engine))

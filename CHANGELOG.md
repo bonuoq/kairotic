@@ -7,8 +7,10 @@
   may fall on a strong beat as a suspension: prepared by a consonance, held by one voice while the other moves,
   resolved a step down to a consonance (hard rules `:suspension`, `:suspension-kinds` — 7-6, 4-3, 9-8 above, 2-3
   below —; soft `:tie` and `:suspension-life`). The melodic rules and costs look at the notes struck. Species **4th:
-  syncopation** (`:syncopation`) makes the dux hold its note over every strong beat. A strict canon in fourth species
-  is rare (3 at the octave below, 3 beats later, after a rest); 0.8 of imitation opens it to some 3.7 million works.
+  syncopation** (`:syncopation`) is Fux's fourth species: the dux is the cantus firmus, a note a bar (chosen on the
+  strong beat, held for the bar), and the comes is syncopated, holding its notes over the strong beats; in a strict
+  canon it is the cantus firmus half a bar later, breaking off into its cadence. Such canons are few (101 an octave
+  below a beat later, 700 an octave above); 0.8 of imitation opens them to 3611.
   Tests: kernel 22 (also in Node), model 16, page 44.
 
 - **`comes`, counterpoint live** (`@kairotic/theory` 0.2.0, discussion #172): Study 40 as a box. You play the dux,
