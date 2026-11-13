@@ -34,8 +34,9 @@
   (is "the tenor costs less, on a strong beat more" (< (:modal (fu/cost-parts hd [1 2] 3)) (:modal (fu/cost-parts hd [1] 3)) 0)))
 
 ;; dissonance: never on a strong beat; on a weak one it passes, and it costs less
-(let [p (fu/params) cnt (fu/counter p)
-      lines (mapv #(fu/continue-dux p [] {:seed % :temp 1 :follow true :cnt cnt}) (range 1 31))
+;; (it is rare in a canon, where both voices move on every beat: the engine is asked to like it more here)
+(let [p (assoc-in (fu/params) [:rules :passing :weight] 4) cnt (fu/counter p)
+      lines (mapv #(fu/continue-dux p [] {:seed % :temp 1 :follow true :cnt cnt}) (range 1 41))
       finished (filter #(= (:n p) (count %)) lines)
       with-diss (filter (fn [dux] (some some? (fu/roles p dux))) finished)
       moves (mapcat #(map - (rest %) %) finished)]
