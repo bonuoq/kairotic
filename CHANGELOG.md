@@ -11,7 +11,7 @@
   strong beat, held for the bar), and the comes is syncopated, holding its notes over the strong beats; in a strict
   canon it is the cantus firmus half a bar later, breaking off into its cadence. Such canons are few (101 an octave
   below a beat later, 700 an octave above); 0.8 of imitation opens them to 3611.
-  Tests: kernel 22 (also in Node), model 16, page 44.
+  Tests: kernel 27 (also in Node), model 19, page 44.
 
 - **`comes`, counterpoint live** (`@kairotic/theory` 0.2.0, discussion #172): Study 40 as a box. You play the dux,
   one note a beat (Hz from a `keyboard` or `midiin`, `[:midi 62]`, or with `midi` MIDI numbers), and the comes
