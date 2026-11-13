@@ -98,6 +98,16 @@ export async function run() {
   const loose = canon({ ...base, d: 3, b: 2, n: notes(2, 8), on: { "weak-dissonance": false } });
   is("without weak-dissonance, more canons", loose.count([]) > n2);
   is("strict-direct is off unless asked for", canon({ ...base, d: 3, b: 2, n: notes(2, 8), on: { "strict-direct": true } }).count([]) < n2);
+  // an upbeat: one rest (2/2 or 3/2) or two (3/2) before the dux's first note
+  for (const [b, phase, bars] of [[2, 1, 7], [3, 1, 5], [3, 2, 5]]) {
+    const nn = notes(b, bars) - phase, c = canon({ ...base, d: 3, b, n: nn, phase });
+    const works = some(c, 200);
+    is(`an upbeat of ${phase} in ${b}/2: canons (${c.count([])}), the dux beginning on a weak beat`, works.length > 0 && !c.strong(0));
+    is(`  and ending on a strong one`, c.strong(nn - 1));
+    is(`  every strong beat a consonance`, works.every((dux) => dux.every((x, t) => {
+      const cc = c.comesAt(dux, t); return cc === null || !c.strong(t) || !c.dissonant(x, cc);
+    })));
+  }
   // the cadence: not from a 7th to a 5th
   {
     const open = canon({ ...base, d: 3, b: 2, n: notes(2, 6), on: { cadence: false } });

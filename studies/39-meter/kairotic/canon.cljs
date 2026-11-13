@@ -128,9 +128,14 @@
 (def default-params
   {:mode :dorian :k -7 :d 3 :b 2 :n 15 :spacing 11 :invert #{} :rules (default-rules)})
 
-(defn notes-for "The notes of the dux for a number of bars: the last bar holds the final alone." [b bars] (inc (* b (dec bars))))
-(defn bars-of [p] (inc (quot (dec (:n p)) (:b p 1))))
-(defn strong? [p t] (zero? (mod t (:b p 1))))
+(defn notes-for
+  "The notes of the dux for a number of bars: the last bar holds the final alone, the first may begin with rests
+  (an upbeat)."
+  ([b bars] (notes-for b bars 0))
+  ([b bars phase] (- (inc (* b (dec bars))) phase)))
+(defn bars-of [p] (inc (quot (+ (dec (:n p)) (:phase p 0)) (:b p 1))))
+(defn strong? "Whether the beat t of the dux is strong: it starts a bar, counting the rests of an upbeat." [p t]
+  (zero? (mod (+ t (:phase p 0)) (:b p 1))))
 
 (defn params [& {:as overrides}] (merge default-params {:rules (default-rules)} overrides))
 
@@ -186,7 +191,7 @@
 
 (defn spec "The canon as the kernel reads it." [p]
   (let [[lo hi] (lo-hi p)]
-    #js {:tonic (tonic p) :k (:k p) :d (:d p) :b (:b p 1) :n (:n p) :lo lo :hi hi :spacing (:spacing p 11)
+    #js {:tonic (tonic p) :k (:k p) :d (:d p) :b (:b p 1) :phase (:phase p 0) :n (:n p) :lo lo :hi hi :spacing (:spacing p 11)
          :invert (clj->js (vec (sort (:invert p)))) :starts (clj->js (start-notes p))
          :on (clj->js (into {} (for [r rules :when (= :hard (:kind r))] [(name (:id r)) (on? p (:id r))])))}))
 
@@ -229,7 +234,7 @@
         c (comes-at p (conj dux x) t) pc (comes-at p dux (dec t))
         parts (transient {})]
     (when (contains? #{(mod (tonic p) 7) (mod (tenor p) 7)} (mod x 7))
-      (assoc! parts :modal (- (* (weight p :modal) (if (and (> (:b p 1) 1) (zero? (mod t (:b p 1)))) 1.5 1)))))
+      (assoc! parts :modal (- (* (weight p :modal) (if (and (> (:b p 1) 1) (strong? p t)) 1.5 1)))))
     (when prev
       (let [s (- x prev) n (absv s) all (conj dux x)
             mv (conj (vec (map - (rest dux) dux)) s) L (count mv)]

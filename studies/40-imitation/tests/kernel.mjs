@@ -79,6 +79,11 @@ export async function run() {
     if (hit) is("free voices: the cadence rule refuses a 7th to a 5th", /7th to a 5th/.test(shut.checkPair(hit[0], hit[1], hit[2], hit[3]) || ""));
     is("free voices: fewer works with the cadence rule, or as many", shut.count([], []) <= open.count([], []));
   }
+  // an upbeat
+  {
+    const up = canon({ ...base, b: 2, d: 3, n: n - 1, phase: 1, imitation: 0.7 });
+    is("an upbeat of a rest: works, beginning on a weak beat and ending on a strong one", up.count([], []) > 0 && !up.strong(0) && up.strong(n - 2));
+  }
   // the fans add up
   const f = near.fanDux([], []);
   is("the dux's futuribles add up to the point's", f.reduce((a, e) => a + (e.futures || 0), 0) === cn);

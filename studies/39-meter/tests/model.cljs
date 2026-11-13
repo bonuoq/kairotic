@@ -17,6 +17,15 @@
   (is "a strong beat starts a bar" (and (fu/strong? p 0) (not (fu/strong? p 1)) (fu/strong? p 2)))
   (is "the comes three beats later" (= (+ 1 (:k p)) (fu/comes-at p [1 2 3 4] 3))))
 
+;; an upbeat: rests before the dux's first note
+(let [p (fu/params :phase 1 :n (fu/notes-for 2 8 1))]
+  (is "8 bars of 2/2 after a rest: 14 notes" (= 14 (:n p)))
+  (is "still 8 bars" (= 8 (fu/bars-of p)))
+  (is "the first note on a weak beat, the second on a strong one" (and (not (fu/strong? p 0)) (fu/strong? p 1)))
+  (is "the final on a strong beat" (fu/strong? p (dec (:n p))))
+  (is "canons with an upbeat" (pos? ((fu/counter p) [])))
+  (is "3/2 after two rests: 6 bars, 14 notes" (= 14 (fu/notes-for 3 6 2))))
+
 ;; the hard rules come from the kernel, the rule set from here
 (let [p (fu/params) cnt (fu/counter p)]
   (is "the kernel counts the canons" (= 442780 (cnt [])))

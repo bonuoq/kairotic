@@ -99,6 +99,13 @@ await (async function () {
     document.querySelector("[data-act=clear]").click();
 
     function set(id, v) { var el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }
+    // an upbeat: a rest before the dux's first note; two only in 3/2
+    is("two rests are only for 3/2", document.querySelector("#phase option[value='2']").disabled);
+    set("phase", "1");
+    await settle();
+    is("an upbeat: a rest drawn, works still", $$("#svg .rest").length === 1 && canons() > 0);
+    set("phase", "0");
+    await settle();
     // first species: a note per bar, no bar lines
     set("species", "1");
     await settle();
