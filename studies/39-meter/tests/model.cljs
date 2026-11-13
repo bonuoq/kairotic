@@ -19,12 +19,19 @@
 
 ;; the hard rules come from the kernel, the rule set from here
 (let [p (fu/params) cnt (fu/counter p)]
-  (is "the kernel counts the canons" (= 496320 (cnt [])))
+  (is "the kernel counts the canons" (= 445443 (cnt [])))
   (is "a futurible's futures add up to the point's" (= (cnt []) (reduce + (keep :futures (fu/fan p [] cnt)))))
   (is "the start rule, through the kernel" (re-find #"starts on the final" (str (fu/check p [] 2))))
   (is "a rule turned off here is off in the kernel" (nil? (fu/check (fu/without p :start) [] 2)))
   (is "every hard rule on is asked about by why" (= (count (fu/hard-rules-on p)) (count (fu/why p [] 1))))
   (is "strict-direct is off by default" (not (fu/on? p :strict-direct))))
+
+;; the mode: final, tenor and ambitus
+(let [hd (fu/params :mode :hypodorian)]
+  (is "hypodorian: the final D, the tenor F" (= ["D4" "F4"] (map fu/pitch-name [(fu/tonic hd) (fu/tenor hd)])))
+  (is "a plagal ambitus: from the 4th below to the 5th above, a step of licence" (= [-3 6] (fu/lo-hi hd)))
+  (is "it may start on the 4th below" (some #{-2} (fu/start-notes hd)))
+  (is "the tenor costs less, on a strong beat more" (< (:modal (fu/cost-parts hd [1 2] 3)) (:modal (fu/cost-parts hd [1] 3)) 0)))
 
 ;; dissonance: never on a strong beat; on a weak one it passes, and it costs less
 (let [p (fu/params) cnt (fu/counter p)

@@ -22,6 +22,16 @@
 (is "C5 down to E4 is a 6th down, not allowed" (some? (fu/melodic-error 7 2)))
 (is "names of compound intervals" (= ["octave" "10th" "12th"] (map fu/interval-name [7 9 11])))
 
+;; the mode: final, tenor and ambitus, authentic or plagal
+(let [d (fu/params) hd (fu/params :mode :hypodorian) mx (fu/params :mode :mixolydian)]
+  (is "dorian: final D, tenor A, from the final to its octave (a step of licence)" (and (= 1 (fu/tonic d)) (= 5 (fu/tenor d)) (= [0 9] (fu/lo-hi d))))
+  (is "hypodorian: tenor F, from the 4th below to the 5th above" (and (= 3 (fu/tenor hd)) (= [-3 6] (fu/lo-hi hd))))
+  (is "mixolydian: tenor D" (= "D5" (fu/pitch-name (fu/tenor mx))))
+  (is "plagal: it may start on the 4th below; authentic: not" (and (some #{-2} (fu/start-notes hd)) (not (some #{-2} (fu/start-notes d)))))
+  (is "the start rule follows, through the kernel" (and (nil? (fu/check hd [] -2)) (some? (fu/check d [] -2))))
+  (is "the final and the tenor cost less" (and (neg? (:modal (fu/cost-parts d [1 2] 5) 0)) (nil? (:modal (fu/cost-parts d [1 2] 3)))))
+  (is "contrary motion weighs more by default" (= 2.5 (fu/weight d :motion))))
+
 ;; the canon: the comes is the dux d notes later, k steps away
 (let [p (fu/params :k -7 :d 2)]
   (is "no comes before d" (nil? (fu/comes-at p [1 2 3] 1)))

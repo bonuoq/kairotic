@@ -184,7 +184,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
 
 <div class="toolbar" aria-label="The canon">
   <span class="tag">Canon</span>
-  <label>Mode <select id="mode"><option value="dorian">dorian (D)</option><option value="ionian">ionian (C)</option><option value="mixolydian">mixolydian (G)</option><option value="aeolian">aeolian (A)</option></select></label>
+  <label>Mode <select id="mode"><option value="dorian">dorian (D)</option><option value="hypodorian">hypodorian (D, plagal)</option><option value="ionian">ionian (C)</option><option value="hypoionian">hypoionian (C, plagal)</option><option value="mixolydian">mixolydian (G)</option><option value="hypomixolydian">hypomixolydian (G, plagal)</option><option value="aeolian">aeolian (A)</option><option value="hypoaeolian">hypoaeolian (A, plagal)</option></select></label>
   <label>Comes <select id="k">
     <option value="-7">an octave below</option><option value="7">an octave above</option><option value="0">at the unison</option>
     <option value="-4">a 5th below</option><option value="4">a 5th above</option><option value="-3">a 4th below</option>
@@ -321,7 +321,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn restore []
   (try (let [s (.getItem js/localStorage store-key) x (when s (edn/read-string s))]
          (when (and (map? (:p x)) (map? (:h x)) (get-in x [:h :nodes "root"]))
-           (update x :p #(merge (fu/params) % {:rules (merge (fu/default-rules) (:rules %))}))))
+           (update x :p #(merge (fu/params) (dissoc % :range) {:rules (merge (fu/default-rules) (:rules %))}))))
        (catch :default _ nil)))
 
 (defn say! [cls text] (swap! ui assoc :msg [cls text]))
