@@ -74,6 +74,7 @@ input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5
 .row { fill: none; stroke: var(--grid); stroke-width: 1; }
 .row.final { stroke: var(--kairos); stroke-opacity: 0.35; stroke-width: 6; }
 .row.c { stroke: var(--rule); }
+.row.tenor { stroke: var(--kairos); stroke-opacity: 0.35; stroke-width: 1.5; stroke-dasharray: 6 4; }
 .pname { font: 10.5px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; }
 .pname.final { fill: var(--kairos); font-weight: 600; }
 .col { stroke: var(--grid); stroke-width: 1; stroke-dasharray: 2 3; }
@@ -363,8 +364,8 @@ window.addEventListener("DOMContentLoaded", function () {
     ;; rows and names
     (doseq [s (range lo (inc hi))]
       (let [f (fin (mod s 7))]
-        (add "<line class=\"row" (cond f " final" (zero? (mod s 7)) " c" :else "") "\" x1=\"" left "\" x2=\"" (- w 12) "\" y1=\"" (y s) "\" y2=\"" (y s) "\"/>")
-        (when (or f (zero? (mod s 7)) (odd? (- s lo)))
+        (add "<line class=\"row" (cond f " final" (= (mod s 7) (mod (fu/tenor pp) 7)) " tenor" (zero? (mod s 7)) " c" :else "") "\" x1=\"" left "\" x2=\"" (- w 12) "\" y1=\"" (y s) "\" y2=\"" (y s) "\"/>")
+        (when (or f (= (mod s 7) (mod (fu/tenor pp) 7)) (zero? (mod s 7)) (odd? (- s lo)))
           (add "<text class=\"pname" (when f " final") "\" x=\"6\" y=\"" (y s) "\">" (fu/pitch-name s) "</text>"))))
     ;; columns
     (doseq [c (range cols)]
