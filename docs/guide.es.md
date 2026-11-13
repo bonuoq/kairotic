@@ -47,6 +47,11 @@ los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
 - **Cajas unas encima de otras**: el tamaño real de una caja solo se sabe al dibujarla (un `faust~` crece con
   sus deslizadores, una partitura con su notación). `(overlaps)` lista las cajas que se tapan, y `(tidy)` baja
   cajas hasta que ninguna tape a otra, cada una en su columna, en un solo evento.
+- **Sondas en las conexiones**: ⌥/Alt+clic en una conexión (o `(probe :b1 0 :b2 0)`) y muestra, en su mitad, el
+  último valor que pasó por ella, con un destello cuando pasa uno, y cuántos por segundo cuando llegan seguidos.
+  Otra vez la quita; `(unprobe-all!)` las quita todas. Las sondas son solo de esta pestaña: no forman parte de la
+  obra, ni de su historia ni de su código. Las conexiones que salen de una caja de sub-patch, y las de señal, aún
+  no muestran nada.
 - **Seleccionar** una caja o una línea con un clic. **⌘/Ctrl+clic** en una caja la edita debajo (sus
   argumentos y su texto). **Supr** borra lo seleccionado.
 - **Seleccionar varias**: ⇧+clic añade una caja a la selección (o la quita); un marco dibujado desde un

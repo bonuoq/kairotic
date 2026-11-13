@@ -14,6 +14,7 @@ import { zorder } from "./zorder.mjs";
 import { ids } from "./ids.mjs";
 import { clipboard } from "./clipboard.mjs";
 import { codetab } from "./codetab.mjs";
+import { probes } from "./probes.mjs";
 import { helplayout } from "./helplayout.mjs";
 import { recipe } from "./recipe.mjs";
 import { numinput } from "./numinput.mjs";
@@ -99,6 +100,7 @@ const appSuites = [
   ["ids", ids, "the box id tests ran"],
   ["clipboard", clipboard, "the clipboard tests ran"],
   ["codetab", codetab, "the Code tab tests ran"],
+  ["probes", probes, "the probe tests ran"],
   ["recipe", recipe, "the recipe tests ran"],
   ["numinput", numinput, "the number input tests ran"],
   ["presets", presets, "the presets tests ran"],
