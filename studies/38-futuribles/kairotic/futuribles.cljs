@@ -19,7 +19,8 @@
 ;; 8ves at the 10th, a 6th is a 7th at the 12th.
 ;;
 ;;   pitch    a diatonic step on the white keys, 0 = C4 (7 = C5, -4 = F3)
-;;   params   {:mode :dorian :k -7 :d 2 :n 12 :range [-2 9] :invert #{} :rules {id {:on bool :weight w}}}
+;;   params   {:mode :dorian :k -7 :d 2 :n 12 :spacing 11 :invert #{} :rules {id {:on bool :weight w}}}
+;;            (:range [lo hi] in steps from the final, if set, replaces the mode's ambitus)
 ;;   dux      the notes chosen so far, a vector of pitches
 ;;
 ;; A rule set is data: every rule has an id, a kind (hard: a candidate is legal or not; soft: a cost) and a
@@ -39,7 +40,14 @@
 
 (def scale [0 2 4 5 7 9 11])
 (def letter ["C" "D" "E" "F" "G" "A" "B"])
-(def modes {:ionian 0 :dorian 1 :mixolydian 4 :aeolian 5})
+;; the modes on the white keys, authentic and plagal (hypo-): the final, the tenor (the reciting tone) in steps
+;; above the final, and the ambitus in steps from the final — authentic from the final to its octave, plagal from
+;; the 4th below to the 5th above — with a step of licence beyond each end
+(def modes
+  {:dorian         {:final 1 :tenor 4 :plagal false} :hypodorian     {:final 1 :tenor 2 :plagal true}
+   :ionian         {:final 0 :tenor 4 :plagal false} :hypoionian     {:final 0 :tenor 2 :plagal true}
+   :mixolydian     {:final 4 :tenor 4 :plagal false} :hypomixolydian {:final 4 :tenor 3 :plagal true}
+   :aeolian        {:final 5 :tenor 4 :plagal false} :hypoaeolian    {:final 5 :tenor 2 :plagal true}})
 
 (defn octave-of [s] (js/Math.floor (/ s 7)))
 (defn semis "Semitones above C4." [s] (+ (* 12 (octave-of s)) (nth scale (mod s 7))))
@@ -86,7 +94,7 @@
   "Every rule of the style. Hard rules make a candidate illegal (with a reason); soft rules add to its cost.
   :under :all means the rule is also checked under every inversion asked for."
   [{:id :range            :kind :hard :scope :melodic  :doc "The dux stays in its range."}
-   {:id :start            :kind :hard :scope :melodic  :doc "The dux starts on the final, its 5th or its octave."}
+   {:id :start            :kind :hard :scope :melodic  :doc "The dux starts on the final, its 5th, its octave or the 4th below, as the ambitus allows."}
    {:id :melodic          :kind :hard :scope :melodic  :doc "Melodic intervals of first species, in both voices (the comes transposed)."}
    {:id :leap-recovery    :kind :hard :scope :melodic  :doc "A leap turns back: after a 4th or a 5th the next move goes the other way; after a 6th or an octave, by step."}
    {:id :consonance       :kind :hard :scope :vertical :under :all :doc "Every vertical is a consonance: unison, 3rd, 5th, 6th, octave."}
@@ -111,7 +119,8 @@
    {:id :open             :kind :soft :scope :melodic  :weight 1   :doc "Still inside less than a 5th after six notes: the line opens up."}
    {:id :climax           :kind :soft :scope :melodic  :weight 1.5 :doc "Reaching the highest note again (one climax)."}
    {:id :sequence         :kind :soft :scope :melodic  :weight 1.5 :doc "The last two moves again (two thirds of it for the last three): a mechanical sequence."}
-   {:id :motion           :kind :soft :scope :vertical :weight 1   :doc "Contrary motion preferred (oblique 0.5, similar 0.8)."}
+   {:id :motion           :kind :soft :scope :vertical :weight 2.5 :doc "Contrary motion preferred: oblique costs half, similar 0.8 of the weight."}
+   {:id :modal            :kind :soft :scope :melodic  :weight 1   :doc "The mode's own notes: the final and the tenor cost less (more on a strong beat)."}
    {:id :direct-perfect   :kind :soft :scope :vertical :weight 3   :doc "Similar motion into a 5th (into an octave or a unison it is not allowed)."}
    {:id :imperfect-run    :kind :soft :scope :vertical :weight 2   :doc "More than three parallel 3rds or 6ths in a row."}
    {:id :alternation      :kind :soft :scope :vertical :weight 1.5 :doc "The same vertical as two notes before but not as the last (3 6 3 6 …)."}
@@ -123,15 +132,22 @@
 (defn default-rules [] (into {} (map (fn [r] [(:id r) (if (= :hard (:kind r)) {:on (:default r true)} {:weight (:weight r)})])) rules))
 
 (def default-params
-  {:mode :dorian :k -7 :d 2 :n 12 :range [-2 8] :spacing 11 :invert #{} :rules (default-rules)})
+  {:mode :dorian :k -7 :d 2 :n 12 :spacing 11 :invert #{} :rules (default-rules)})
 
 (defn params [& {:as overrides}] (merge default-params {:rules (default-rules)} overrides))
 
 (defn on? [p id] (get-in p [:rules id :on] (:default (rule-by-id id) true)))
 (defn weight [p id] (get-in p [:rules id :weight] (:weight (rule-by-id id) 0)))
 
-(defn tonic [p] (get modes (:mode p) 0))
-(defn lo-hi [p] (let [[a b] (:range p) t (tonic p)] [(+ t a) (+ t b)]))
+(defn mode-of [p] (get modes (:mode p) (:dorian modes)))
+(defn tonic "The final of the mode." [p] (:final (mode-of p)))
+(defn tenor "The tenor of the mode (its reciting tone), in the octave of the final." [p] (+ (tonic p) (:tenor (mode-of p))))
+(defn plagal? [p] (:plagal (mode-of p)))
+(defn ambitus "The range of the dux in steps from the final: the mode's, unless the canon sets its own :range." [p]
+  (or (:range p) (if (plagal? p) [-4 5] [-1 8])))
+(defn start-notes "Where the dux may start: the final, its 5th, its octave, the 4th below, inside the ambitus." [p]
+  (let [t (tonic p) [a b] (ambitus p)] (filterv #(<= (+ t a) % (+ t b)) [t (+ t 4) (+ t 7) (- t 3)])))
+(defn lo-hi [p] (let [[a b] (ambitus p) t (tonic p)] [(+ t a) (+ t b)]))
 (defn finals "The final in every octave of the range." [p]
   (let [[lo hi] (lo-hi p) t (tonic p)] (filter #(<= lo % hi) (map #(+ t (* 7 %)) (range -2 3)))))
 
@@ -179,7 +195,7 @@
 (defn spec "The canon as the kernel reads it (first species: one beat per bar)." [p]
   (let [[lo hi] (lo-hi p)]
     #js {:tonic (tonic p) :k (:k p) :d (:d p) :b 1 :n (:n p) :lo lo :hi hi :spacing (:spacing p 11)
-         :invert (clj->js (vec (sort (:invert p))))
+         :invert (clj->js (vec (sort (:invert p)))) :starts (clj->js (start-notes p))
          :on (clj->js (into {} (for [r rules :when (= :hard (:kind r))] [(name (:id r)) (on? p (:id r))])))}))
 
 (defonce kernels (atom {}))
@@ -218,6 +234,8 @@
   (let [t (count dux) prev (peek dux) m (last-move dux)
         c (comes-at p (conj dux x) t) pc (comes-at p dux (dec t))
         parts (transient {})]
+    (when (contains? #{(mod (tonic p) 7) (mod (tenor p) 7)} (mod x 7))
+      (assoc! parts :modal (- (* (weight p :modal) (if (and (> (:b p 1) 1) (zero? (mod t (:b p 1)))) 1.5 1)))))
     (when prev
       (let [s (- x prev) n (absv s) all (conj dux x)
             mv (conj (vec (map - (rest dux) dux)) s) L (count mv)]

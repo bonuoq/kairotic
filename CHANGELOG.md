@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Studies 38 and 39: the modes, and contrary motion weighing more.** Eight modes on the white keys, authentic
+  and plagal (hypodorian, hypoionian, hypomixolydian, hypoaeolian): each has its final, its **tenor** (the
+  reciting tone: A in dorian, F in hypodorian, D in mixolydian, C in hypomixolydian…) and its **ambitus** — the
+  authentic from the final to its octave, the plagal from the 4th below to the 5th above, with a step of licence
+  beyond each end — which is now the dux's range. A plagal dux may also start on the 4th below the final. A soft
+  rule, `:modal`, makes the final and the tenor cost less (one and a half times on a strong beat in Study 39).
+  Contrary motion weighs more by default (`:motion` 2.5, was 1). The kernel takes the start notes from the model
+  (`starts`).
+  When more than one inversion is asked for, a selector beside **▶ Inverted** chooses which one is played.
+
 - **Studies 38 and 39: counting without blocking, and a sound to hear the counterpoint.** Study 38 now uses
   Study 39's kernel in plain JavaScript for its hard rules and its count (every beat strong), so changes no longer
   block the page. In both, the futures are counted a few milliseconds at a time (`countAsync` in the kernel): the

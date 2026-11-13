@@ -8,7 +8,7 @@
 // page stay in ClojureScript (kairotic/canon.cljs).
 //
 //   pitch   a diatonic step on the white keys, 0 = C4
-//   spec    {tonic, k, d, b, n, lo, hi, spacing, invert: [8, 12], on: {"leap-recovery": false, …}}
+//   spec    {tonic, k, d, b, n, lo, hi, spacing, invert: [8, 12], starts: [1, 5, 8], on: {"leap-recovery": false, …}}
 //           k: the comes is k steps from the dux · d: it enters d beats later · b: beats in a bar (1 = first
 //           species, 2 = 2/2, 3 = 3/2) · n: notes of the dux (a note per beat; its last bar holds the final)
 //   dux     an array of pitches, the notes chosen so far
@@ -64,6 +64,8 @@ export function canon(spec) {
   const { tonic, k, d, b = 1, n, lo, hi, spacing = 11 } = spec;
   const invert = [...(spec.invert || [])].sort((x, y) => x - y);
   const on = (id) => (spec.on && id in spec.on ? !!spec.on[id] : !OFF_BY_DEFAULT.has(id));
+  // where the dux may start (by default the final, its 5th, its octave): a plagal mode adds the 4th below
+  const starts = spec.starts ? [...spec.starts] : [tonic, tonic + 4, tonic + 7];
   const finals = [];
   for (let i = -2; i <= 2; i++) { const f = tonic + 7 * i; if (f >= lo && f <= hi) finals.push(f); }
   const isFinal = (x) => finals.includes(x);
@@ -125,8 +127,8 @@ export function canon(spec) {
     const t = dux.length;
     if (t >= n) return "the dux is finished";
     if (on("range") && (x < lo || x > hi)) return "out of range";
-    if (on("start") && t === 0 && x !== tonic && x !== tonic + 4 && x !== tonic + 7)
-      return "the dux starts on the final, its 5th or its octave";
+    if (on("start") && t === 0 && !starts.includes(x))
+      return "the dux starts on the final, its 5th, its octave or the 4th below";
     const prev = t > 0 ? dux[t - 1] : null;
     if (on("melodic") && prev !== null) {
       const e = melodicError(prev, x); if (e) return e;

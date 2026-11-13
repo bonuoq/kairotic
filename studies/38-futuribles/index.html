@@ -74,6 +74,7 @@ input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5
 .row { fill: none; stroke: var(--grid); stroke-width: 1; }
 .row.final { stroke: var(--kairos); stroke-opacity: 0.35; stroke-width: 6; }
 .row.c { stroke: var(--rule); }
+.row.tenor { stroke: var(--kairos); stroke-opacity: 0.35; stroke-width: 1.5; stroke-dasharray: 6 4; }
 .pname { font: 10.5px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; }
 .pname.final { fill: var(--kairos); font-weight: 600; }
 .col { stroke: var(--grid); stroke-width: 1; stroke-dasharray: 2 3; }
@@ -181,7 +182,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
 
 <div class="toolbar" aria-label="The canon">
   <span class="tag">Canon</span>
-  <label>Mode <select id="mode"><option value="dorian">dorian (D)</option><option value="ionian">ionian (C)</option><option value="mixolydian">mixolydian (G)</option><option value="aeolian">aeolian (A)</option></select></label>
+  <label>Mode <select id="mode"><option value="dorian">dorian (D)</option><option value="hypodorian">hypodorian (D, plagal)</option><option value="ionian">ionian (C)</option><option value="hypoionian">hypoionian (C, plagal)</option><option value="mixolydian">mixolydian (G)</option><option value="hypomixolydian">hypomixolydian (G, plagal)</option><option value="aeolian">aeolian (A)</option><option value="hypoaeolian">hypoaeolian (A, plagal)</option></select></label>
   <label>Comes <select id="k">
     <option value="-7">an octave below</option><option value="7">an octave above</option><option value="0">at the unison</option>
     <option value="-4">a 5th below</option><option value="4">a 5th above</option><option value="-3">a 4th below</option>
@@ -208,6 +209,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
   <label>Tempo <input type="number" id="tempo" min="30" max="200" step="5"> ♩/min</label>
   <button class="act" data-act="play">▶ Play</button>
   <button class="act" data-act="play-inv" id="play-inv" title="The canon with its voices inverted">▶ Inverted</button>
+  <select id="inv-play" aria-label="Which inversion to play" title="Which inversion to play"></select>
   <button class="act" data-act="stop" aria-label="Stop">■</button>
 </div>
 
@@ -311,12 +313,12 @@ window.addEventListener("DOMContentLoaded", function () {
 (def store-key "kairotic-study-38")
 (defn save! []
   (try (.setItem js/localStorage store-key
-                 (pr-str (select-keys @ui [:p :h :seed :temp :follow :look :timbre :tempo])))
+                 (pr-str (select-keys @ui [:p :h :seed :temp :follow :look :timbre :tempo :inv-play])))
        (catch :default _ nil)))
 (defn restore []
   (try (let [s (.getItem js/localStorage store-key) x (when s (edn/read-string s))]
          (when (and (map? (:p x)) (map? (:h x)) (get-in x [:h :nodes "root"]))
-           (update x :p #(merge (fu/params) % {:rules (merge (fu/default-rules) (:rules %))}))))
+           (update x :p #(merge (fu/params) (dissoc % :range) {:rules (merge (fu/default-rules) (:rules %))}))))
        (catch :default _ nil)))
 
 (defn say! [cls text] (swap! ui assoc :msg [cls text]))
@@ -363,8 +365,8 @@ window.addEventListener("DOMContentLoaded", function () {
     ;; rows and names
     (doseq [s (range lo (inc hi))]
       (let [f (fin (mod s 7))]
-        (add "<line class=\"row" (cond f " final" (zero? (mod s 7)) " c" :else "") "\" x1=\"" left "\" x2=\"" (- w 12) "\" y1=\"" (y s) "\" y2=\"" (y s) "\"/>")
-        (when (or f (zero? (mod s 7)) (odd? (- s lo)))
+        (add "<line class=\"row" (cond f " final" (= (mod s 7) (mod (fu/tenor pp) 7)) " tenor" (zero? (mod s 7)) " c" :else "") "\" x1=\"" left "\" x2=\"" (- w 12) "\" y1=\"" (y s) "\" y2=\"" (y s) "\"/>")
+        (when (or f (= (mod s 7) (mod (fu/tenor pp) 7)) (zero? (mod s 7)) (odd? (- s lo)))
           (add "<text class=\"pname" (when f " final") "\" x=\"6\" y=\"" (y s) "\">" (fu/pitch-name s) "</text>"))))
     ;; columns
     (doseq [c (range cols)]
@@ -616,6 +618,12 @@ window.addEventListener("DOMContentLoaded", function () {
 
 ;; ───────── rendering ─────────
 
+(defn inv-options "The inversions that can be played: those asked for (the octave when none is)." []
+  (let [inv (sort (:invert (p)))] (if (seq inv) (vec inv) [8])))
+
+(defn inv-to-play "The inversion chosen to be played, if it is still asked for; else the first." []
+  (let [opts (inv-options) c (:inv-play @ui)] (if (some #{c} opts) c (first opts))))
+
 (defn render-controls! []
   (let [pp (p) u @ui]
     (set! (.-value ($ "mode")) (name (:mode pp)))
@@ -628,7 +636,11 @@ window.addEventListener("DOMContentLoaded", function () {
         (set! (.-checked el) (contains? (:invert pp) v))
         (set! (.-disabled el) (zero? (:k pp)))))
     (set! (.-disabled ($ "play-inv")) (or (zero? (:k pp)) (empty? (dux))))
-    (set! (.-title ($ "play-inv")) (str "The canon with its voices inverted at the " (fu/interval-name (dec (or (first (sort (:invert pp))) 8)))))
+    (set! (.-title ($ "play-inv")) (str "The canon with its voices inverted at the " (fu/interval-name (dec (inv-to-play)))))
+    (let [sel ($ "inv-play") opts (inv-options)]
+      (set! (.-innerHTML sel) (apply str (for [n opts] (str "<option value=\"" n "\">at the " (fu/interval-name (dec n)) "</option>"))))
+      (set! (.-value sel) (str (inv-to-play)))
+      (set! (.-disabled sel) (or (zero? (:k pp)) (< (count opts) 2))))
     (set! (.-value ($ "seed")) (:seed u))
     (set! (.-value ($ "temp")) (:temp u))
     (set! (.-textContent ($ "temp-v")) (.toFixed (:temp u) 1))
@@ -741,7 +753,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn play! [inverted]
   (stop!)
   (let [pp (p) d (dux)
-        {du :dux co :comes} (if inverted (fu/inverted pp d (or (first (sort (:invert pp))) 8)) (fu/voices pp d))
+        {du :dux co :comes} (if inverted (fu/inverted pp d (inv-to-play)) (fu/voices pp d))
         mid (fn [v] (clj->js (mapv #(when % (fu/midi %)) v)))
         h (.play Sound #js {:voices #js [(mid du) (mid co)] :beat (/ 60 (:tempo @ui 80)) :timbre (:timbre @ui "organ")})
         ctx (.-ctx h) t0 (.-t0 h) beat (.-beat h) len (.-length h)]
@@ -797,6 +809,7 @@ window.addEventListener("DOMContentLoaded", function () {
                                (= id "follow") (do (swap! ui assoc :follow (.-checked el)) (save!) (render!))
                                (= id "look") (do (swap! ui assoc :look (js/parseInt (.-value el))) (save!) (render!))
                                (= id "timbre") (do (swap! ui assoc :timbre (.-value el)) (save!))
+                               (= id "inv-play") (do (swap! ui assoc :inv-play (js/parseInt (.-value el))) (save!) (render-controls!))
                                (= id "tempo") (when-let [v (num "tempo" 30 200)] (swap! ui assoc :tempo v) (save!))
                                (.getAttribute el "data-inv")
                                (let [v (js/parseInt (.getAttribute el "data-inv"))]
