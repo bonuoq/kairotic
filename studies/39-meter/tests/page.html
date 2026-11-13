@@ -1,0 +1,104 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 39 · meter · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, the model and the page's ClojureScript), driven as a person
+// would: choosing a futurible, letting the engine finish, going back, changing the rule set.
+await (async function () {
+  var results = [], errors = [];
+  window.addEventListener("error", function (e) { errors.push(String(e.message || e)); });
+  function is(what, ok) { results.push([what, !!ok]); }
+  function $$(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function change(el, checked) { el.checked = checked; el.dispatchEvent(new Event("change", { bubbles: true })); }
+  function canons() { return parseInt((document.getElementById("status").textContent.match(/^(\d+) canons/) || [])[1], 10); }
+  try {
+    try { localStorage.removeItem("kairotic-study-39"); } catch (e) {}
+    var html = await fetch("../index.html", { cache: "no-cache" }).then(function (r) { return r.text(); });
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach(function (s) { document.head.appendChild(s.cloneNode(true)); });
+    document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticKernel = await import("../kairotic/kernel.mjs");
+    var model = await fetch("../kairotic/canon.cljs", { cache: "no-cache" }).then(function (r) { return r.text(); });
+    scittle.core.eval_string(model);
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    var total = canons();
+    is("the status counts the canons (" + total + ")", total > 0);
+    is("an empty dux at the start", $$("#svg .dux").length === 0);
+    is("the fan shows futuribles", $$("#svg .cand").length > 0);
+    is("and the notes not allowed, with their reason", $$("#svg .nope").length > 0);
+    is("the engine's preview from here", $$("#svg .preview").length > 0);
+    is("a table of futuribles", $$("#futs .pick").length === $$("#svg .cand").length);
+    is("the rule set: hard rules as checkboxes", $$("[data-rule]").length === 15);
+    is("and soft ones as weights", $$("[data-weight]").length === 18);
+
+    var first = $$("#futs .pick")[0], note = first.getAttribute("data-choose");
+    first.click();
+    is("choosing a futurible writes a note", $$("#svg .dux").length === 1);
+    is("one choice in the history", $$("#hist .ev").length === 1);
+    is("the work's EDN holds the choice", document.getElementById("code").textContent.indexOf(":you") > 0);
+
+    document.querySelector("[data-act=finish]").click();
+    var b = parseInt(document.getElementById("species").value, 10), bars = parseInt(document.getElementById("bars").value, 10);
+    var n = (bars - 1) * b + 1;
+    is("2/2: bar lines on the score", b === 2 && $$("#svg line.bar").length === Math.ceil((n + parseInt(document.getElementById("d").value, 10)) / 2));
+    is("the engine finishes the dux", $$("#svg .dux").length === n);
+    is("the comes follows", $$("#svg .comes:not(.ghost)").length === n);
+    is("finished", /finished/.test(document.getElementById("here-sub").textContent));
+    is("no note out of the rules", $$("#svg .dux.bad").length === 0);
+    is("the engine's choices are hollow in the history", $$("#hist .ev.engine").length === n - 1);
+    is("a bar of divergence per point", $$("#divsvg .bar").length === n + 1);
+
+    document.querySelector("[data-act=back]").click();
+    is("back: one note less", $$("#svg .dux").length === n - 1);
+    is("the history keeps the note gone back from", $$("#hist .ev").length === n);
+    document.querySelector("[data-act=forward]").click();
+    is("forward: it is there again", $$("#svg .dux").length === n);
+    document.querySelector("[data-act=back]").click();
+
+    change(document.querySelector("[data-inv='12']"), true);
+    var at12 = canons();
+    is("invertible at the 12th: fewer canons (" + at12 + ")", at12 < total);
+    change(document.querySelector("[data-inv='12']"), false);
+    is("and back", canons() === total);
+
+    change(document.querySelector("[data-rule='leap-recovery']"), false);
+    is("a hard rule off: more canons", canons() > total);
+    document.querySelector("[data-act=reset-rules]").click();
+    is("the default rule set again", canons() === total);
+
+    document.querySelector("[data-act=clear]").click();
+
+    function set(id, v) { var el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }
+    // first species: a note per bar, no bar lines
+    set("species", "1");
+    is("first species: no bar lines", $$("#svg line.bar").length === 0 && canons() > 0);
+    set("species", "2");
+
+    // why?: at the octave, one beat later, no canon at all
+    set("d", "1");
+    var point = document.querySelector("#here-head [data-why='point']");
+    is("no canon from here, and a why? for the point", canons() === 0 && !!point);
+    if (point) {
+      point.click();
+      for (var i = 0; i < 300 && !/would open it|close it together/.test(document.getElementById("why").textContent); i++)
+        await new Promise(function (r) { setTimeout(r, 50); });
+      var w = document.getElementById("why").textContent;
+      is("why? counts again without each hard rule", /weak-dissonance/.test(w) && /consonance/.test(w));
+      is("and sums it up", /would open it|close it together/.test(w));
+    }
+    set("d", "3");
+    is("a new history", $$("#hist .ev").length === 0 && $$("#svg .dux").length === 0);
+  } catch (e) {
+    errors.push(String((e && e.message) || e));
+  }
+  errors.forEach(function (e) { results.push(["error: " + e, false]); });
+  var bad = results.filter(function (r) { return !r[1]; });
+  window.kairoticResults = { total: results.length, failed: bad.map(function (r) { return r[0]; }) };
+  document.getElementById("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map(function (r) { return (r[1] ? "  ok   " : "  FAIL ") + r[0]; }).join("\n");
+})();
+</script>

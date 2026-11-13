@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 39 · meter · kernel tests</title>
+<pre id="out">Running…</pre>
+<script type="module">
+// The kernel's tests (also run in Node: see kernel.mjs).
+try {
+  const { run } = await import("./kernel.mjs");
+  const { results, notes } = run();
+  const bad = results.filter((r) => !r[1]);
+  window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]) };
+  document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` +
+    results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + "\n\n" + notes.map((s) => "  · " + s).join("\n");
+} catch (e) {
+  document.getElementById("out").textContent = "Error: " + (e.message || e);
+  window.kairoticResults = { total: 0, failed: ["error: " + (e.message || e)] };
+}
+</script>
