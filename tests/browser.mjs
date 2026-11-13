@@ -14,6 +14,7 @@ import { zorder } from "./zorder.mjs";
 import { ids } from "./ids.mjs";
 import { clipboard } from "./clipboard.mjs";
 import { codetab } from "./codetab.mjs";
+import { helplayout } from "./helplayout.mjs";
 import { recipe } from "./recipe.mjs";
 import { numinput } from "./numinput.mjs";
 import { presets } from "./presets.mjs";
@@ -167,13 +168,14 @@ async function inApp(name, suites, suite, { before, after } = {}) {
   if (!loaded) return;
   const check = checker(suite);
   if (before) await before(app, check);
-  for (const [n, fn, ran] of suites)
+  for (const [n, fn, ran, limitMs] of suites)
     await timed(name + " · " + n, async () => {
       // a suite that hangs (a page that stops answering) fails after 4 minutes, saying its last check,
       // instead of using up the job
       let timer;
       const limit = new Promise((_, fail) => {
-        timer = setTimeout(() => fail(new Error(n + ": still running after 4 minutes; its last check: " + (last[suite] || "none"))), 240000);
+        const ms = limitMs || 240000;
+        timer = setTimeout(() => fail(new Error(n + ": still running after " + Math.round(ms / 60000) + " minutes; its last check: " + (last[suite] || "none"))), ms);
       });
       try { await Promise.race([fn(app, check), limit]); } catch (e) { check(ran, false, message(e)); } finally { clearTimeout(timer); }
     });
@@ -195,6 +197,12 @@ const audio = () => inApp("audio", audioSuites, "audio", { before: async (app, c
   await app.waitForFunction(() => document.getElementById("manager").hidden, null, { timeout: 10000 }).catch(() => {});
   const mode = await cljs(app, "(:mode @hist)");
   check("a local work opens for the audio tests", mode === ":local", mode);
+} });
+
+// 3b. the help patches, all of them, step by step (issue #166): in an app of its own, beside the others
+const helpLayout = () => inApp("help layout", [["helplayout", helplayout, "the help layout tests ran", 600000]], "help layout", { before: async (app, check) => {
+  await cljs(app, "(open-work! :local \"local\" \"Local\")");
+  await app.waitForFunction(() => document.getElementById("manager").hidden, null, { timeout: 10000 }).catch(() => {});
 } });
 
 // 4. a Release/Perform embed (issue #50), in a page of its own
@@ -249,7 +257,7 @@ async function storage() {
 
 // KAIROTIC_TESTS_SERIAL=1 runs the blocks one after another, as before: to compare the times, or to
 // rule out that a failure comes from running them together
-const blocks = [["tests.html", unit], ["app", app], ["audio", audio], ["embed", embedded], ["storage", storage]];
+const blocks = [["tests.html", unit], ["app", app], ["audio", audio], ["help layout", helpLayout], ["embed", embedded], ["storage", storage]];
 const t0 = Date.now();
 if (process.env.KAIROTIC_TESTS_SERIAL) for (const [name, fn] of blocks) await timed(name, fn);
 else await Promise.all(blocks.map(([name, fn]) => timed(name, fn)));
