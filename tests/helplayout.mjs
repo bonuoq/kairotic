@@ -30,7 +30,11 @@ export async function helplayout(page, check) {
       const settled = await until(page, "(layout-settled?)", (g) => g === "true", 20000);
       await page.waitForTimeout(150);
       const ov = await cljs(page, "(overlaps)");
-      if (ov !== "[]") bad.push(`${cls} step ${i + 1}: ${ov}${settled === "true" ? "" : " (not settled)"}`);
+      if (ov !== "[]") {
+        bad.push(`${cls} step ${i + 1}: ${ov}${settled === "true" ? "" : " (not settled)"}`);
+        // each box as it is drawn, to move the ones that need it in the help
+        console.log(`  ${cls} step ${i + 1}: ` + await cljs(page, "(into (sorted-map-by (fn [a b] (compare (id-z a) (id-z b)))) (for [[id r] (box-rects)] [id [(:text (get-in (current) [:boxes id])) (mapv js/Math.round r)]]))"));
+      }
     }
     await cljs(page, "(close-lesson!)");
     await until(page, "(nil? @lesson)", (g) => g === "true", 8000);
