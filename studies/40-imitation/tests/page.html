@@ -109,7 +109,7 @@ await (async function () {
     is("the last comes can be changed", !!alt);
     if (alt) {
       var before = $$("#hist .ev").length;
-      alt.click();
+      alt.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       is("changing it is a branch", $$("#hist .ev").length === before + 1 && /branch beside/.test(document.getElementById("msg").textContent));
       is("and the table under Here offers the others", $$("#comes-here [data-comes]").length > 0);
     }
