@@ -62,6 +62,7 @@ const OFF_BY_DEFAULT = new Set(["strict-direct"]);
 
 export function canon(spec) {
   const { tonic, k, d, b = 1, n, lo, hi, spacing = 11 } = spec;
+  const phase = spec.phase || 0;      // rests before the dux's first note: an upbeat (anacrusis)
   const clo = spec.clo ?? lo + k, chi = spec.chi ?? hi + k;
   const imitation = spec.imitation ?? 1, bnd = band(imitation);
   const invert = [...(spec.invert || [])].sort((x, y) => x - y);
@@ -70,7 +71,7 @@ export function canon(spec) {
   const cstarts = spec.cstarts ? [...spec.cstarts] : starts.map((x) => x + k);
   const finals = [];
   for (let i = -2; i <= 2; i++) { const f = tonic + 7 * i; if (f >= lo && f <= hi) finals.push(f); }
-  const strong = (t) => t % b === 0;
+  const strong = (t) => (t + phase) % b === 0;
   const lowerFirst = (x, c) => (k > 0 ? [x, c] : [c, x]);
   const transforms = [[null, (a, z) => [a, z]], ...invert.map((N) => [N, (a, z) => [z, a + N - 1]])];
   const label = (N) => (N ? `under inversion at the ${intervalName(N - 1)}: ` : "");
@@ -165,6 +166,8 @@ export function canon(spec) {
     }
     if (on("entry-unison") && t === d && x === c) return "the comes does not enter on the unison";
     if (on("final") && t === n - 1 && quality(x, c) !== "perfect") return "the last vertical is a perfect consonance";
+    if (on("cadence") && t === n - 1 && hasPrev && mod(h0 - l0, 7) === 4 && mod(ph0 - pl0, 7) === 6)
+      return "the cadence does not go from a 7th to a 5th";
     return null;
   }
 

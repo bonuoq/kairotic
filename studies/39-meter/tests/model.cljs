@@ -17,9 +17,18 @@
   (is "a strong beat starts a bar" (and (fu/strong? p 0) (not (fu/strong? p 1)) (fu/strong? p 2)))
   (is "the comes three beats later" (= (+ 1 (:k p)) (fu/comes-at p [1 2 3 4] 3))))
 
+;; an upbeat: rests before the dux's first note
+(let [p (fu/params :phase 1 :n (fu/notes-for 2 8 1))]
+  (is "8 bars of 2/2 after a rest: 14 notes" (= 14 (:n p)))
+  (is "still 8 bars" (= 8 (fu/bars-of p)))
+  (is "the first note on a weak beat, the second on a strong one" (and (not (fu/strong? p 0)) (fu/strong? p 1)))
+  (is "the final on a strong beat" (fu/strong? p (dec (:n p))))
+  (is "canons with an upbeat" (pos? ((fu/counter p) [])))
+  (is "3/2 after two rests: 6 bars, 14 notes" (= 14 (fu/notes-for 3 6 2))))
+
 ;; the hard rules come from the kernel, the rule set from here
 (let [p (fu/params) cnt (fu/counter p)]
-  (is "the kernel counts the canons" (= 445443 (cnt [])))
+  (is "the kernel counts the canons" (= 442780 (cnt [])))
   (is "a futurible's futures add up to the point's" (= (cnt []) (reduce + (keep :futures (fu/fan p [] cnt)))))
   (is "the start rule, through the kernel" (re-find #"starts on the final" (str (fu/check p [] 2))))
   (is "a rule turned off here is off in the kernel" (nil? (fu/check (fu/without p :start) [] 2)))
@@ -34,8 +43,9 @@
   (is "the tenor costs less, on a strong beat more" (< (:modal (fu/cost-parts hd [1 2] 3)) (:modal (fu/cost-parts hd [1] 3)) 0)))
 
 ;; dissonance: never on a strong beat; on a weak one it passes, and it costs less
-(let [p (fu/params) cnt (fu/counter p)
-      lines (mapv #(fu/continue-dux p [] {:seed % :temp 1 :follow true :cnt cnt}) (range 1 31))
+;; (it is rare in a canon, where both voices move on every beat: the engine is asked to like it more here)
+(let [p (assoc-in (fu/params) [:rules :passing :weight] 4) cnt (fu/counter p)
+      lines (mapv #(fu/continue-dux p [] {:seed % :temp 1 :follow true :cnt cnt}) (range 1 41))
       finished (filter #(= (:n p) (count %)) lines)
       with-diss (filter (fn [dux] (some some? (fu/roles p dux))) finished)
       moves (mapcat #(map - (rest %) %) finished)]

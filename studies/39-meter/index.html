@@ -82,6 +82,7 @@ input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5
 .tnum { font: 10px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
 .col.strong { stroke-dasharray: none; stroke: var(--grid); stroke-width: 1.5; }
 .bar { stroke: var(--ink-soft); stroke-width: 1.2; }
+.rest { font: 20px serif; fill: var(--ink-soft); text-anchor: middle; dominant-baseline: central; }
 .role { font: 600 10px var(--f-code); fill: var(--error); text-anchor: middle; cursor: help; }
 .dux { fill: var(--accent); }
 .dux.bad { stroke: var(--error); stroke-width: 2.5; }
@@ -192,6 +193,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
   </select></label>
   <label>after <input type="number" id="d" min="1" max="4" step="1"> beats</label>
   <label>Species <select id="species"><option value="1">1st: a note per bar</option><option value="2">2nd: 2/2</option><option value="3">2nd: 3/2</option></select></label>
+  <label title="Rests before the dux's first note: it begins on a weak beat">Upbeat <select id="phase"><option value="0">none</option><option value="1">a rest</option><option value="2">two rests</option></select></label>
   <label>Bars <input type="number" id="bars" min="3" max="12" step="1"></label>
   <label>Voices up to <select id="spacing"><option value="9">a 10th</option><option value="11">a 12th</option><option value="14">two octaves</option></select></label>
   <span class="group" id="inv-group"><span style="font-size:13px;color:var(--ink-soft)">Invertible at</span>
@@ -350,7 +352,8 @@ window.addEventListener("DOMContentLoaded", function () {
      (inc (apply max hi (+ hi k) (concat ds (map #(+ % k) ds))))]))
 
 (defn y-of [hi s] (+ top (* rowh (- hi s))))
-(defn x-of [t] (+ left (* colw t) (/ colw 2)))
+(defn x-of "Where the dux's beat t is drawn, after the rests of an upbeat." [t]
+  (+ left (* colw (+ t (:phase (:p @ui) 0))) (/ colw 2)))
 
 (defn preview
   "What the engine would write from here, with the engine as set."
@@ -363,7 +366,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn render-score! [fan-data prev-dux]
   (let [pp (p) d (dux) t (count d) n (:n pp) dd (:d pp) k (:k pp)
         [lo hi] (rows-span) cols (+ n dd)
-        w (+ left (* colw cols) 30) hgt (+ top (* rowh (- hi lo)) 46)
+        w (+ left (* colw (+ cols (:phase pp 0))) 30) hgt (+ top (* rowh (- hi lo)) 46)
         fin (set (map #(mod % 7) (fu/finals pp)))
         y (partial y-of hi)
         {du :dux co :comes} (fu/voices pp d)
@@ -384,7 +387,13 @@ window.addEventListener("DOMContentLoaded", function () {
         (let [xb (- (x-of c) (/ colw 2))]
           (add "<line class=\"bar\" x1=\"" xb "\" x2=\"" xb "\" y1=\"" (- top 8) "\" y2=\"" (+ top (* rowh (- hi lo)) 6) "\"/>")))
       (when (fu/strong? pp c)
-        (add "<text class=\"tnum\" x=\"" (x-of c) "\" y=\"" (+ top (* rowh (- hi lo)) 40) "\">" (inc (quot c (:b pp 1))) "</text>")))
+        (add "<text class=\"tnum\" x=\"" (x-of c) "\" y=\"" (+ top (* rowh (- hi lo)) 40) "\">" (inc (quot (+ c (:phase pp 0)) (:b pp 1))) "</text>")))
+    ;; the upbeat's rests
+    (doseq [r (range (:phase pp 0))]
+      (let [xr (+ left (* colw r) (/ colw 2))]
+        (add "<text class=\"rest\" x=\"" xr "\" y=\"" (+ top (* rowh (/ (- hi lo) 2))) "\">𝄼<title>a rest: the upbeat</title></text>")))
+    (when (and (> (:b pp 1) 1) (pos? (:phase pp 0)))
+      (add "<line class=\"bar\" x1=\"" left "\" x2=\"" left "\" y1=\"" (- top 8) "\" y2=\"" (+ top (* rowh (- hi lo)) 6) "\"/>"))
     ;; the engine's preview, from here on
     (when pv
       (let [pts (for [i (range (max 0 (dec t)) (count (:dux pv))) :let [s (get (:dux pv) i)] :when s] [i s])
@@ -627,7 +636,7 @@ window.addEventListener("DOMContentLoaded", function () {
         choices (for [id (fu/path-ids hh (:at hh))] (let [nd (get-in hh [:nodes id])] [(fu/pitch-name (:note nd)) (:by nd)]))]
     (set! (.-textContent ($ "code"))
           (str ";; the canon and its rule set (only what differs from the default)\n"
-               (pr-str (cond-> (select-keys pp [:mode :k :d :b :n :range :spacing :invert]) (seq (changed-rules pp)) (assoc :rules (changed-rules pp)))) "\n\n"
+               (pr-str (cond-> (select-keys pp [:mode :k :d :b :phase :n :range :spacing :invert]) (seq (changed-rules pp)) (assoc :rules (changed-rules pp)))) "\n\n"
                ";; the choices on this branch (" (dec (count (:nodes hh))) " in the whole history)\n"
                (str/join "\n" (map pr-str choices)) "\n\n"
                ";; the futuribles are not here: they are (fu/fan canon dux)"))))
@@ -647,6 +656,9 @@ window.addEventListener("DOMContentLoaded", function () {
     (set! (.-value ($ "d")) (:d pp))
     (set! (.-value ($ "species")) (str (:b pp 1)))
     (set! (.-value ($ "bars")) (fu/bars-of pp))
+    (set! (.-value ($ "phase")) (str (:phase pp 0)))
+    (doseq [o (seq (js/Array.from (.-options ($ "phase"))))]
+      (set! (.-disabled o) (>= (js/parseInt (.-value o)) (:b pp 1))))
     (set! (.-value ($ "spacing")) (str (:spacing pp 11)))
     (doseq [el (seq (js/Array.from (.querySelectorAll js/document "[data-inv]")))]
       (let [v (js/parseInt (.getAttribute el "data-inv"))]
@@ -728,6 +740,7 @@ window.addEventListener("DOMContentLoaded", function () {
                " · comes " (.-text (aget (.-options ($ "k")) (.-selectedIndex ($ "k"))))
                ", " (:d pp) " beat" (when (not= 1 (:d pp)) "s") " later"
                (when (and (> (:b pp 1) 1) (pos? (mod (:d pp) (:b pp 1)))) " (on the other beats)")
+               (when (pos? (:phase pp 0)) (str " · upbeat of " (:phase pp 0) " rest" (when (> (:phase pp 0) 1) "s")))
                (when (seq (:invert pp)) (str " · invertible at the " (str/join ", " (map #(fu/interval-name (dec %)) (sort (:invert pp))))))))
     (set! (.-textContent ($ "status")) (str (c []) " canons under this rule set · " (- (js/Date.now) t0) " ms"))))
 
@@ -774,7 +787,7 @@ window.addEventListener("DOMContentLoaded", function () {
   (let [pp (p) d (dux)
         {du :dux co :comes} (if inverted (fu/inverted pp d (inv-to-play)) (fu/voices pp d))
         mid (fn [v] (clj->js (mapv #(when % (fu/midi %)) v)))
-        h (.play Sound #js {:voices #js [(mid du) (mid co)] :beat (/ 60 (:tempo @ui 80)) :timbre (:timbre @ui "organ")})
+        h (.play Sound #js {:voices #js [(mid (into (vec (repeat (:phase pp 0) nil)) du)) (mid (into (vec (repeat (:phase pp 0) nil)) co))] :beat (/ 60 (:tempo @ui 80)) :timbre (:timbre @ui "organ")})
         ctx (.-ctx h) t0 (.-t0 h) beat (.-beat h) len (.-length h)]
     (letfn [(tick []
               (when-let [a @audio]
@@ -822,9 +835,11 @@ window.addEventListener("DOMContentLoaded", function () {
                          (cond (= id "mode") (set-p! #(assoc % :mode (keyword (.-value el))))
                                (= id "k") (set-p! #(cond-> (assoc % :k (js/parseInt (.-value el))) (= "0" (.-value el)) (assoc :invert #{})))
                                (= id "d") (when-let [v (num "d" 1 4)] (set-p! #(assoc % :d v)))
-                               (= id "bars") (when-let [v (num "bars" 3 12)] (set-p! #(assoc % :n (fu/notes-for (:b % 1) v))))
+                               (= id "bars") (when-let [v (num "bars" 3 12)] (set-p! #(assoc % :n (fu/notes-for (:b % 1) v (:phase % 0)))))
+                               (= id "phase") (let [r (js/parseInt (.-value el))]
+                                                (set-p! #(let [r (min r (dec (:b % 1)))] (assoc % :phase r :n (fu/notes-for (:b % 1) (fu/bars-of %) r)))))
                                (= id "species") (let [b (js/parseInt (.-value el))]
-                                                  (set-p! #(assoc % :b b :n (fu/notes-for b (fu/bars-of %)))))
+                                                  (set-p! #(let [r (min (:phase % 0) (dec b))] (assoc % :b b :phase r :n (fu/notes-for b (fu/bars-of %) r)))))
                                (= id "spacing") (set-p! #(assoc % :spacing (js/parseInt (.-value el))))
                                (= id "seed") (when-let [v (num "seed" 1 999999)] (swap! ui assoc :seed v) (save!) (render!))
                                (= id "follow") (do (swap! ui assoc :follow (.-checked el)) (save!) (render!))

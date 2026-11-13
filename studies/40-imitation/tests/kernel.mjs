@@ -49,6 +49,41 @@ export async function run() {
   is("imitating the motion is a soft matter: the same works as free counterpoint", motion.count([], []) === free.count([], []));
   is("free counterpoint: more works still", free.count([], []) > cn);
 
+  // the cadence: not from a 7th to a 5th, in free voices too
+  {
+    const open = canon({ ...base, b: 2, d: 3, n, imitation: 0, on: { cadence: false } });
+    const shut = canon({ ...base, b: 2, d: 3, n, imitation: 0 });
+    const cls = (x, c) => (((x - c) % 7) + 7) % 7;
+    const D = [], C = [];
+    // a work that ends from a 7th to a 5th, if the rules without it allow one
+    let hit = null;
+    (function go() {
+      if (hit) return;
+      const t = D.length;
+      if (t === n - 1) {
+        for (let x = base.lo; x <= base.hi && !hit; x++) {
+          if (open.checkDux(D, C, x)) continue;
+          for (let c = base.lo - 7; c <= base.hi - 7 && !hit; c++)
+            if (!open.checkPair(D, C, x, c) && cls(x, c) === 4 && C[t - 1] !== null && cls(D[t - 1], C[t - 1]) === 6) hit = [[...D], [...C], x, c];
+        }
+        return;
+      }
+      for (let x = base.lo; x <= base.hi && !hit; x++) {
+        if (open.checkDux(D, C, x)) continue;
+        for (const e of open.fanComes(D, C, x)) {
+          if (hit || e.reason || !e.futures) continue;
+          D.push(x); C.push(e.note); go(); D.pop(); C.pop();
+        }
+      }
+    })();
+    if (hit) is("free voices: the cadence rule refuses a 7th to a 5th", /7th to a 5th/.test(shut.checkPair(hit[0], hit[1], hit[2], hit[3]) || ""));
+    is("free voices: fewer works with the cadence rule, or as many", shut.count([], []) <= open.count([], []));
+  }
+  // an upbeat
+  {
+    const up = canon({ ...base, b: 2, d: 3, n: n - 1, phase: 1, imitation: 0.7 });
+    is("an upbeat of a rest: works, beginning on a weak beat and ending on a strong one", up.count([], []) > 0 && !up.strong(0) && up.strong(n - 2));
+  }
   // the fans add up
   const f = near.fanDux([], []);
   is("the dux's futuribles add up to the point's", f.reduce((a, e) => a + (e.futures || 0), 0) === cn);

@@ -8,7 +8,8 @@
 // page stay in ClojureScript (kairotic/canon.cljs).
 //
 //   pitch   a diatonic step on the white keys, 0 = C4
-//   spec    {tonic, k, d, b, n, lo, hi, spacing, invert: [8, 12], starts: [1, 5, 8], on: {"leap-recovery": false, …}}
+//   spec    {tonic, k, d, b, n, lo, hi, spacing, invert: [8, 12], starts: [1, 5, 8], phase, on: {"leap-recovery": false, …}}
+//           phase: rests before the dux's first note (an upbeat), so a beat t is strong when (t + phase) % b === 0
 //           k: the comes is k steps from the dux · d: it enters d beats later · b: beats in a bar (1 = first
 //           species, 2 = 2/2, 3 = 3/2) · n: notes of the dux (a note per beat; its last bar holds the final)
 //   dux     an array of pitches, the notes chosen so far
@@ -56,12 +57,13 @@ export function melodicError(a, b) {
 
 /** The hard rules, with their defaults (strict-direct is off unless asked for). */
 export const HARD = ["range", "start", "melodic", "leap-recovery", "consonance", "weak-dissonance", "parallels",
-  "strong-parallels", "direct-octaves", "strict-direct", "entry-unison", "no-crossing", "spacing", "final", "approach"];
+  "strong-parallels", "direct-octaves", "strict-direct", "entry-unison", "no-crossing", "spacing", "final", "approach", "cadence"];
 const OFF_BY_DEFAULT = new Set(["strict-direct"]);
 
 /** A canon: its hard rules and its counter, for one spec. */
 export function canon(spec) {
   const { tonic, k, d, b = 1, n, lo, hi, spacing = 11 } = spec;
+  const phase = spec.phase || 0;      // rests before the dux's first note: an upbeat (anacrusis)
   const invert = [...(spec.invert || [])].sort((x, y) => x - y);
   const on = (id) => (spec.on && id in spec.on ? !!spec.on[id] : !OFF_BY_DEFAULT.has(id));
   // where the dux may start (by default the final, its 5th, its octave): a plagal mode adds the 4th below
@@ -69,7 +71,7 @@ export function canon(spec) {
   const finals = [];
   for (let i = -2; i <= 2; i++) { const f = tonic + 7 * i; if (f >= lo && f <= hi) finals.push(f); }
   const isFinal = (x) => finals.includes(x);
-  const strong = (t) => t % b === 0;
+  const strong = (t) => (t + phase) % b === 0;
   const comesAt = (dux, t) => { const i = t - d; return i >= 0 && i < dux.length ? dux[i] + k : null; };
   // a vertical as [lower, upper] by voice (the comes is the lower one unless shifted up)
   const lowerFirst = (x, c) => (k > 0 ? [x, c] : [c, x]);
@@ -166,6 +168,10 @@ export function canon(spec) {
     }
     if (on("entry-unison") && t === d && x === c) return "the comes does not enter on the unison";
     if (on("final") && t === n - 1 && quality(x, c) !== "perfect") return "the last vertical is a perfect consonance";
+    if (on("cadence") && t === n - 1 && pc !== null) {
+      const [l, h] = lowerFirst(x, c), [pl, ph] = lowerFirst(prev, pc);
+      if (mod(h - l, 7) === 4 && mod(ph - pl, 7) === 6) return "the cadence does not go from a 7th to a 5th";
+    }
     return null;
   }
 

@@ -43,7 +43,9 @@ export async function run() {
   const n2 = s2.count([]);
   const ms2 = performance.now() - t0;
   notesOut.push(`second species 2/2, 8 bars, the comes 3 beats later: ${n2} canons (${Math.round(ms2)} ms)`);
-  is("second species: 496320 canons, as the Python port counts", n2 === 496320);
+  is("second species: 496320 canons without the cadence rule, as the Python port counts",
+    canon({ ...base, d: 3, b: 2, n: notes(2, 8), on: { cadence: false } }).count([]) === 496320);
+  is("and 493630 with it: no cadence from a 7th to a 5th", n2 === 493630);
   is("counted in less than 2 s", ms2 < 2000);
   is("a futurible's futures add up to the point's", s2.fan([]).reduce((a, f) => a + (f.futures || 0), 0) === n2);
 
@@ -96,6 +98,34 @@ export async function run() {
   const loose = canon({ ...base, d: 3, b: 2, n: notes(2, 8), on: { "weak-dissonance": false } });
   is("without weak-dissonance, more canons", loose.count([]) > n2);
   is("strict-direct is off unless asked for", canon({ ...base, d: 3, b: 2, n: notes(2, 8), on: { "strict-direct": true } }).count([]) < n2);
+  // an upbeat: one rest (2/2 or 3/2) or two (3/2) before the dux's first note
+  for (const [b, phase, bars] of [[2, 1, 7], [3, 1, 5], [3, 2, 5]]) {
+    const nn = notes(b, bars) - phase, c = canon({ ...base, d: 3, b, n: nn, phase });
+    const works = some(c, 200);
+    is(`an upbeat of ${phase} in ${b}/2: canons (${c.count([])}), the dux beginning on a weak beat`, works.length > 0 && !c.strong(0));
+    is(`  and ending on a strong one`, c.strong(nn - 1));
+    is(`  every strong beat a consonance`, works.every((dux) => dux.every((x, t) => {
+      const cc = c.comesAt(dux, t); return cc === null || !c.strong(t) || !c.dissonant(x, cc);
+    })));
+  }
+  // the cadence: not from a 7th to a 5th
+  {
+    const open = canon({ ...base, d: 3, b: 2, n: notes(2, 6), on: { cadence: false } });
+    const shut = canon({ ...base, d: 3, b: 2, n: notes(2, 6) });
+    const cls = (x, c) => (((x - c) % 7) + 7) % 7;
+    let found = null;
+    for (const dux of some(open, 3000)) {
+      const t = dux.length - 1, c = open.comesAt(dux, t), pc = open.comesAt(dux, t - 1);
+      if (pc !== null && cls(dux[t], c) === 4 && cls(dux[t - 1], pc) === 6) { found = dux; break; }
+    }
+    notesOut.push(found ? "a cadence from a 7th to a 5th, without the rule: " + found.join(" ") : "no cadence from a 7th to a 5th found");
+    if (found) is("the cadence rule refuses it", /7th to a 5th/.test(shut.check(found.slice(0, -1), found[found.length - 1]) || ""));
+    is("with the rule, never from a 7th to a 5th", some(shut, 1000).every((dux) => {
+      const t = dux.length - 1, c = shut.comesAt(dux, t), pc = shut.comesAt(dux, t - 1);
+      return pc === null || !(cls(dux[t], c) === 4 && cls(dux[t - 1], pc) === 6);
+    }));
+    is("and fewer canons, or as many", shut.count([]) <= open.count([]));
+  }
   // the count without blocking: the same number, with progress on the way
   {
     const fresh = canon({ ...base, d: 3, b: 2, n: notes(2, 8) });
