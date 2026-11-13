@@ -42,11 +42,24 @@
   (is "the comes below may not cross above" (= "the voices cross" (fu/vertical-error p 1 3 nil)))
   (is "the inverted canon swaps the voices" (= {:dux [1 2 nil nil] :comes [nil nil 1 2]} (fu/inverted p [1 2] 8))))
 
-;; obligations: a leap is a debt the next note pays
+;; obligations: a leap is a debt the next note pays (it turns back)
 (let [p (fu/params :d 4 :n 12)]
-  (is "a 5th up must be recovered by step down" (some? (fu/check p [1 5] 6)))
+  (is "after a 5th up the line may not go on up" (some? (fu/check p [1 5] 6)))
   (is "a step down pays it" (nil? (fu/check p [1 5] 4)))
-  (is "and it is listed as a debt" (re-find #"recover the leap of a 5th" (first (fu/obligations p [1 5])))))
+  (is "so does a 3rd down: it only has to turn back" (nil? (fu/check p [1 5] 3)))
+  (is "after an octave, only a step back" (and (some? (fu/check p [1 8] 6)) (nil? (fu/check p [1 8] 7))))
+  (is "and it is listed as a debt" (re-find #"after the leap of a 5th: turn down" (first (fu/obligations p [1 5])))))
+
+;; the costs: leaps are compensated, not penalised; what costs is a line that stays still or repeats itself
+(let [p (fu/params :d 4 :n 12)
+      c (fn [dux x] (fu/cost-parts p dux x))]
+  (is "a 3rd costs little more than a step" (< (fu/cost p [1 2] 4) (+ 0.5 (fu/cost p [1 2] 3))))
+  (is "a repeated note costs much more than a leap" (> (fu/cost p [1 2] 2) (+ 2 (fu/cost p [1 2] 5))))
+  (is "after a leap, going on the same way costs" (contains? (c [1 3] 4) :contrary-after-leap))
+  (is "turning back does not" (not (contains? (c [1 3] 2) :contrary-after-leap)))
+  (is "after a 5th, turning back by leap costs more than by step" (> (fu/cost p [1 5] 2) (fu/cost p [1 5] 4)))
+  (is "a mechanical sequence (up 3rd, down step, up 3rd, down step)" (contains? (c [1 3 2 4] 3) :sequence))
+  (is "a figure used earlier is remembered" (contains? (c [1 3 2 1 2 4] 3) :memory)))
 
 ;; the rule set is data: a hard rule turned off lets through what it forbade
 (let [p (fu/params :d 4 :n 12)
@@ -73,6 +86,18 @@
       (is "and ends with one way: the canon itself" (= 1 (peek dv))))
     (note! (str "seed 7: " (apply str (interpose " " (map fu/pitch-name dux))))))
   (is "different seeds, different canons" (< 1 (count (set (map #(fu/continue-dux p [] {:seed % :temp 2}) (range 1 9))))))
+  ;; what the engine writes, over 24 seeds at its usual temperature: hardly a repeated note, many leaps,
+  ;; and many different canons
+  (let [t1 (js/Date.now)
+        lines (mapv #(fu/continue-dux p [] {:seed % :temp 1 :follow true :cnt cnt}) (range 1 25))
+        ms (- (js/Date.now) t1)
+        moves (mapcat #(map - (rest %) %) lines)
+        share (fn [f] (/ (count (filter f moves)) (count moves)))]
+    (note! (str "24 canons with a look of 2 notes: " ms " ms · repeated " (.toFixed (* 100 (share zero?)) 1) "% · leaps "
+                (.toFixed (* 100 (share #(>= (fu/absv %) 2))) 1) "% · " (count (set lines)) " different"))
+    (is "repeated notes: fewer than 1 move in 25" (< (share zero?) 0.04))
+    (is "leaps: at least 1 move in 4" (> (share #(>= (fu/absv %) 2)) 0.25))
+    (is "at least 12 different canons" (>= (count (set lines)) 12)))
   (is "at temperature 0, the cheapest" (= (fu/continue-dux p [] {:seed 1 :temp 0}) (fu/continue-dux p [] {:seed 99 :temp 0}))))
 
 ;; guaranteeing inversions narrows the futures
