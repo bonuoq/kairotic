@@ -87,6 +87,7 @@
     (t/eq "... with %, the function that arrives goes there" (run "comp % inc" [0 '(partial * 2)]) [[0 (list 'comp '(partial * 2) 'inc)]])
     (t/eq "... a bang before it sends nothing" (run "comp % inc" [0 :bang]) nil)
     (t/eq "a form into the inlet of a function changes it live" (run "map inc" [1 '(comp inc (partial * 2))] [0 [1 2]]) [[0 [3 5]]])
+    (t/eq "... a name, as msg dec sends it" (run "map inc" [1 (comp/msg-word "dec")] [0 [5]]) [[0 [4]]])
     (t/eq "... a function by its name, through comp" (run "map inc" [1 '(comp dec)] [0 [1 2]]) [[0 [0 1]]])
     (t/eq "... into a transducer too" (run "xf/map inc" [1 '(partial * 10)] [0 3]) [[0 30]])
     (t/eq "... and into a keyword's place" (run "sort-by :a" [1 '(comp - :a)] [0 [{:a 1} {:a 2}]]) [[0 [{:a 2} {:a 1}]]])
