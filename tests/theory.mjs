@@ -147,7 +147,7 @@ export async function theory(page, check) {
   await cljs(page, `(send! ${nc} 62)`);
   await until(page, `(count (:cps (get-in @eng/rt [:states ${nc}])))`, (x) => x === "2", 30000);
   for (let i = 0; i < 4; i++) await cljs(page, `(send! ${nc} 1 :bang)`);
-  check("nocues: held four pulses, no 3/2 and no end of section: the canon waits", (await until(page, `[${ns(":D")} ${ns(":idle")} ${ns(":meter")}]`, (x) => x === "[[1 1] false nil]", 3000)) === "[[1 1] false nil]",
+  check("nocues: held four pulses, no 3/2 and no end of section: the canon waits", (await until(page, `[${ns(":D")} (boolean ${ns(":idle")}) ${ns(":meter")}]`, (x) => x === "[[1 1] false nil]", 3000)) === "[[1 1] false nil]",
         await cljs(page, `[${ns(":D")} ${ns(":idle")} ${ns(":meter")}]`));
   await cljs(page, `(send! ${nc} [:beats 3])`);
   check("... and [:beats 3] from outside: 3/2 at the next section", (await cljs(page, ns(":meter"))) === "3");
