@@ -36,6 +36,8 @@ export async function run() {
     const c = canon({ ...base, d: 6, b: 2, n: notesFor(2, 8), imitation: 1 });
     is("a note held over the beat", c.checkDux([1], [null], 1) === null);
     is("held for two beats at most", /two beats at most/.test(c.checkDux([1, 1], [null, null], 1) || ""));
+    const c3 = canon({ ...base, d: 6, b: 3, n: 13, imitation: 1, maxHold: 3 });
+    is("with maxHold 3, three beats", c3.checkDux([1, 1], [null, null], 1) === null && /3 beats at most/.test(c3.checkDux([1, 1, 1], [null, null, null], 1) || ""));
     is("after a leap, the note may be held", c.checkDux([1, 5], [null, null], 5) === null);
     is("and the next note struck recovers the leap", /after the leap of a 5th the line turns down/.test(c.checkDux([1, 5, 5], [null, null, null], 6) || "") &&
       c.checkDux([1, 5, 5], [null, null, null], 4) === null);

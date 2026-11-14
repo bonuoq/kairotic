@@ -2,7 +2,7 @@
 // Kairotic · Study 41 · suspensions: Study 40's kernel with ties, suspensions and fourth species.
 //
 // A note may be held over the next beat (a tie): in a voice, the same pitch on the next beat is that note held, not
-// struck again, and a note is held for two beats at most. A dissonance may then fall on a strong beat as a
+// struck again, and a note is held for two beats at most (spec.maxHold). A dissonance may then fall on a strong beat as a
 // suspension: the voice that makes it holds its note from the beat before, where it was a consonance (the
 // preparation), while the other voice moves; on the next beat it goes down a step to a consonance (the
 // resolution). Of the dissonances, the upper voice may hold a 7th (7-6), a 4th (4-3) or a 9th (9-8), the lower one a
@@ -74,6 +74,7 @@ const OFF_BY_DEFAULT = new Set(["strict-direct", "syncopation"]);
 export function canon(spec) {
   const { tonic, k, d, b = 1, n, lo, hi, spacing = 11 } = spec;
   const phase = spec.phase || 0;      // rests before the dux's first note: an upbeat (anacrusis)
+  const maxHold = Math.max(1, spec.maxHold ?? 2);   // the beats a note may last, held
   const clo = spec.clo ?? lo + k, chi = spec.chi ?? hi + k;
   const imitation = spec.imitation ?? 1, bnd = band(imitation);
   const invert = [...(spec.invert || [])].sort((x, y) => x - y);
@@ -96,13 +97,14 @@ export function canon(spec) {
   }
 
   /** The melodic rules of one line: a reason, or null. who: "" for the dux, "the comes: " for the comes. The same
-   *  pitch again is the note held (a tie), two beats at most; the other rules look at the notes struck. */
+   *  pitch again is the note held (a tie), maxHold beats at most; the other rules look at the notes struck. */
   function melodic(line, t, x, who) {
     const prev = t >= 1 ? line[t - 1] : null;
     if (prev === null || prev === undefined) return null;
-    if (x === prev) return t >= 2 && line[t - 2] === prev ? `${who}a note is held for two beats at most` : null;
+    let j = t - 1;                                                    // where the note before began
+    while (j >= 1 && line[j - 1] === prev) j--;
+    if (x === prev) return t - j >= maxHold ? `${who}a note is held for ${maxHold === 2 ? "two" : maxHold} beats at most` : null;
     if (on("melodic")) { const e = melodicError(prev, x); if (e) return who + e; }
-    const j = t - 1 >= 1 && line[t - 2] === prev ? t - 2 : t - 1;     // where the note before began
     const a1 = j >= 1 ? line[j - 1] : null;                           // the note struck before it
     if (on("leap-recovery") && a1 !== null && a1 !== undefined) {
       const m = prev - a1, s = x - prev;
@@ -249,9 +251,9 @@ export function canon(spec) {
   };
 
   // ─── the count over pairs ───
-  // the notes the rules look back at: three beats for a note held (two at most) and the note struck before it
-  const LD = Math.max(3, b, bnd === "canon" || bnd === "near" ? d : 0);
-  const LC = Math.max(3, b);
+  // the notes the rules look back at: a note held (maxHold beats at most) and the note struck before it
+  const LD = Math.max(maxHold + 1, b, bnd === "canon" || bnd === "near" ? d : 0);
+  const LC = Math.max(maxHold + 1, b);
   const memo = new Map();
   const W = Math.max(hi, chi) - Math.min(lo, clo) + 2, base = Math.min(lo, clo) - 1;
   function key(D, C, t) {

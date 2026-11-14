@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **`comes` live, with ties** (`@kairotic/theory` 0.3.0, #172, #192): the box plays on Study 41's kernel — notes
+  held over the beat, suspensions, fourth species (`fourth`: the dux a cantus firmus, the comes syncopated). Two ways
+  to play it:
+  - **by turns** (as before): one note is one beat; the same note again, or `hold`, is a tie;
+  - **live** (`live`): a pulse on the new right inlet is a beat, and a note lasts until the next one is struck (a note
+    struck just after a pulse counts for it). A note of three pulses in 2/2 turns the canon to 3/2; one longer than a
+    bar ends the section, and the next note begins a new canon. Both kernels are counted beforehand.
+
+  `[:k -4]`, `[:d 2]`, `[:imitation 0.5]`, `[:mode :hypodorian]`, `[:beats 3]`, `[:species 4]` change the canon on
+  the way: by turns at once, live at the next section. The comes goes out only when it changes (a note held is not
+  struck again). The Study 41 kernel takes `maxHold` (the beats a note may be held; 2 by default, a bar in the box).
+
 - **Study 41 · suspensions** (discussions #172 and #192): ties and fourth species, on Study 40. In a voice the same
   pitch on the next beat is the note held over the beat (two beats at most, drawn ‿ and heard held), and a dissonance
   may fall on a strong beat as a suspension: prepared by a consonance, held by one voice while the other moves,

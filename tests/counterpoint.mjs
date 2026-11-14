@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// @kairotic/theory · counterpoint.mjs, what the comes box plays with (discussion #172): its kernel is Study 40's,
+// @kairotic/theory · counterpoint.mjs, what the comes box plays with (discussion #172): its kernel is Study 41's,
 // a note asked for is corrected to the nearest legal one with a future, and a canon played note by note always
 // finishes. In Node:  node tests/counterpoint.mjs
 import { readFileSync } from "node:fs";
@@ -14,15 +14,15 @@ const is = (what, ok, detail) => results.push([what, !!ok, detail]);
 // the kernel is Study 40's, as it is
 const body = (f, from) => { const s = readFileSync(join(root, f), "utf8"); const i = s.indexOf(from); return s.slice(i, s.indexOf("\n// ─────", i + 1) < 0 ? undefined : s.indexOf("\n// ─────", i + 1)); };
 const ours = body("packages/theory/assets/counterpoint.mjs", "const SCALE");
-const study = readFileSync(join(root, "studies/40-imitation/kairotic/kernel.mjs"), "utf8");
-is("the kernel is Study 40's, as it is", study.slice(study.indexOf("const SCALE")).trim() === ours.trim());
+const study = readFileSync(join(root, "studies/41-suspensions/kairotic/kernel.mjs"), "utf8");
+is("the kernel is Study 41's, as it is", study.slice(study.indexOf("const SCALE")).trim() === ours.trim());
 
 // a strict canon in D dorian, the comes an octave below three beats later, 8 bars of 2/2
 const L = live();
 let t0 = performance.now();
 const all = await L.warm();
 notes.push(`dorian, k -7, d 3, 2/2, 8 bars: ${all} canons (${Math.round(performance.now() - t0)} ms)`);
-is("the canons of Study 39's default, counted (442780)", all === 442780, all);
+is("the canons of Study 41's default, with ties, counted (707134)", all === 707134, all);
 is("15 notes", L.n === 15);
 is("the futuribles' futures add up to the point's", L.futuribles([], []).reduce((a, f) => a + f.futures, 0) === all);
 
@@ -99,6 +99,29 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
   is("an upbeat: one note fewer, the first on a weak beat", U.n === 14 && !U.strong(0) && U.strong(1));
   const H = live({ mode: "hypodorian", beats: 3, bars: 5 });
   is("3/2, hypodorian: canons", (await H.warm()) > 0 && H.lo === -3 && H.hi === 6);
+}
+
+// ties: hold keeps the note over the beat; in 3/2 a note may be held for the bar
+{
+  const T = live({ imitation: 1 });
+  await T.warm();
+  const D = [], C = [];
+  let p = T.play(D, C, semis(1)); D.push(p.note); C.push(p.comes);
+  p = T.hold(D, C);
+  is("hold: the note held over the beat (a tie)", p.note === 1 && !p.corrected);
+  D.push(p.note); C.push(p.comes);
+  p = T.hold(D, C);
+  is("not a third beat in 2/2: the nearest that can be played instead, and why", p.corrected && /cannot be held/.test(p.reason), p.reason);
+  const H = live({ beats: 3, bars: 5, maxHold: 3, imitation: 1 });
+  is("in 3/2, held for the whole bar", (await H.warm()) > 0 && H.hold([1, 1], [null, null]).note === 1 && !H.hold([1, 1], [null, null]).corrected);
+  // fourth species: the dux a cantus firmus, the comes syncopated
+  const F = live({ species: 4, d: 1, imitation: 0.8 });
+  is("fourth species: works", (await F.warm()) > 0 && F.species === 4);
+  const FD = [], FC = [];
+  for (const a of [2, 2, 5, 5, 4, 4, 2, 2]) { const q = F.play(FD, FC, a); FD.push(q.note); FC.push(q.comes); }
+  is("fourth species: the comes holds its note over the strong beats", FC.every((c, t) => t <= 1 || t % 2 === 1 || c === FC[t - 1]));
+  const sus = FD.map((_, t) => t).filter((t) => F.kernel.suspensionAt(FD, FC, t));
+  notes.push("fourth species, cantus firmus D F E D: comes " + FC.map((c) => (c === null ? "–" : pitchName(c))).join(" ") + " · suspensions at " + sus.join(","));
 }
 
 const bad = results.filter((x) => !x[1]);

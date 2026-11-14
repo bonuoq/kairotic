@@ -669,18 +669,25 @@
     :see ["pcclock" "fourier" "mt"]}
 
    "comes"
-   {:package "@kairotic/theory" :usage "comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [midi]"
-    :doc "Counterpoint live: you play the dux, one note a beat, and the comes answers, as a canon in a mode (Study 40). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. The futures of every point are counted exactly."
-    :inlets ["the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · engine (or bang): the box chooses the next pair · back · reset"]
-    :outlets ["the comes, as a list of Hz (empty when it rests or the key is let go)" "the dux as played, or corrected" "the futuribles: the notes that can come next, the most plausible first ({:midi :name :futures :bits :score :comes})" "where the canon is: {:t :n :bar :beat :asked :played :corrected :reason :comes :futures :bits :obligations :dux :comes-line :finished}"]
-    :messages [["engine" "the box plays the next pair itself, the most plausible"] ["back" "the last pair taken back"] ["reset" "a new canon"]
-               ["[:midi 62]" "a MIDI note as the dux's next note"]]
+   {:package "@kairotic/theory" :usage "comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [live] [midi]"
+    :doc "Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. Notes may be held over the beat (ties), and a dissonance may fall on a strong beat as a suspension. By turns (the default) one note in is one beat; live, a pulse on the right is a beat, and a note lasts until the next one is struck."
+    :inlets ["the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · engine · back · reset"
+             "live: the pulse (a bang from a metro or a pulse): a beat"]
+    :outlets ["the comes, as a list of Hz (when it changes: a note held is not struck again)" "the dux as played, or corrected" "the futuribles: the notes that can come next, the most plausible first ({:midi :name :futures :bits :score :comes})" "where the canon is: {:t :n :bar :beat :held :asked :played :corrected :reason :comes :futures :bits :obligations :section :meter …}, or a cue {:cue :ternary|:end :section :meter}"]
+    :messages [["hold" "by turns: the note held over the next beat (a tie)"] ["engine" "the box plays the next pair itself, the most plausible"]
+               ["back" "the last pair taken back"] ["reset" "a new canon"] ["[:midi 62]" "a MIDI note as the dux's next note"]
+               ["[:imitation 0.5]" "how much the comes imitates the dux (1 a canon … 0 free)"] ["[:k -4]" "the comes a 5th below"]]
     :example (lines "(box :b1 \"keyboard 60 24\" 40 30)" "(box :b2 \"comes\" 40 130)" "(box :b3 \"synth~\" 40 200)" "(box :b4 \"synth~\" 160 200)"
                     "(box :b5 \"dac~\" 40 260)" "(box :b6 \"print\" 280 200)" "(box :b7 \"msg engine\" 220 100)"
                     "(connect :b1 0 :b2 0)" "(connect :b7 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)"
                     "(connect :b3 0 :b5 0)" "(connect :b3 0 :b5 1)" "(connect :b4 0 :b5 0)" "(connect :b4 0 :b5 1)" "(connect :b2 3 :b6 0)")
-    :try "Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone; write comes hypodorian -7 3 2 0.8 for a comes that imitates more freely."
-    :see ["keyboard" "midiin" "tonnetz" "mt"]}
+    :try "Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone."
+    :steps [{:title "Live, on a pulse"
+             :note "With live, a metro gives the beats: hold a key and the note is held over them (a tie); hold it three beats in 2/2 and the canon turns to 3/2; longer than a bar, and the section ends: the next note begins a new canon."
+             :example (lines "(box :b8 \"metro 600\" 380 100)" "(box :b9 \"msg 1\" 380 70)" "(box :b10 \"comes live\" 380 160)"
+                             "(connect :b9 0 :b8 0)" "(connect :b8 0 :b10 1)" "(connect :b1 0 :b10 0)" "(connect :b10 0 :b3 0)" "(connect :b10 3 :b6 0)")
+             :try "Press ▶, click 1 to start the pulse and play slowly: the comes answers on the beats. Hold a note three beats: the cue :ternary is printed."}]
+    :see ["keyboard" "midiin" "metro" "pulse" "tonnetz"]}
 
    "adsr~"
    {:package "@kairotic/synth" :usage "adsr~ [a d s r]"
