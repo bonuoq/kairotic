@@ -60,7 +60,7 @@
                               (round2 (log2 (max 1 (.count cp (clj->js D) (clj->js C))))) " bits"
                               (when (:live st) (str " · " (.-beats cp) "/2")))
                  :dux (if x (.name cp x) "–") :comes (if (some? c) (.name cp c) "–")
-                 :corrected (boolean (and r (.-corrected r)))}))
+                 :corrected (boolean (and r (.-corrected r))) :reason (when r (.-reason r))}))
       ;; one pair placed: the dux as played (or corrected) and the comes with it. What sounds goes out only when
       ;; it changes: a note held is not struck again.
       placed (fn [cp st r]
