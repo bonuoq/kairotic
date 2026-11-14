@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`branch`: a message to one of several outlets.** `branch n` has n outlets, numbered from 0 as every port is;
+  the right inlet chooses the way: a number k (outlet k), `nil` or `false` (closed), `true` (outlet 0: `branch 1` is a
+  gate), or a function that chooses for each message — a map (`{60 0 64 1}`), a keyword (`:to`, the way written in
+  the event), a name or a form (`even?`, `(comp …)`) — where `nil` lets the message through nowhere; a set lets its
+  members through outlet 0. It covers Max's gate, spigot and route in one box. The selector can be written after n
+  (`branch 2 {60 0 64 1}`). Help patch, guide (EN/ES), tests in `tests/cljs/corefns.cljs`.
+
 - **A `msg` is read as Clojure** (breaking). What a `msg` box sends is what is written in it, as EDN:
   - **keywords with their colon**: `msg :stop`, `msg :rec 4`, `msg :circle 40 40 10 :accent :hit :sun`;
   - **any other word is a name** (a symbol): `msg inc` is the function `inc` where a box takes one (into the inlet of

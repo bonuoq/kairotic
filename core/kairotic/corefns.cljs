@@ -384,3 +384,51 @@
   (vec (concat (sort (keys fns)) (sort (keys builders)) (sort (map #(str "xf/" %) (keys xfs))))))
 
 (swap! comp/fallbacks (fn [fs] (if (some #{definition} fs) fs (conj fs definition))))
+
+;; ───────── branch: a message to one of several outlets ─────────
+;; branch n has n outlets, numbered from 0 as every port is. What comes in on the left goes out by the one the
+;; selector chooses; the selector comes in on the right (and may be written after n): a number k is outlet k,
+;; nil or false closes the way (nothing goes out), true is outlet 0 (branch 1 as an open/closed gate). A function
+;; — a name, a form (comp …), a keyword, a map — chooses for each message: what it gives for the message is the
+;; outlet (a number, true, or nil/false to let nothing through); a set lets its members through outlet 0.
+
+(defn- branch-of
+  "The outlet a selector sends message v to among n, or nil."
+  [sel v n]
+  (let [r (cond (or (nil? sel) (false? sel)) nil
+                (true? sel) 0
+                (number? sel) sel
+                (set? sel) (when (contains? sel v) 0)
+                :else ((as-fn sel) v))
+        r (if (true? r) 0 r)]
+    (when (and (number? r) (integer? r) (<= 0 r) (< r n)) r)))
+
+(defn- branch-n [args] (let [n (first args)] (if (and (number? n) (>= n 1)) (js/Math.floor n) 2)))
+
+(defn branch-receive [{:keys [args state inlet value]}]
+  (if (map? args)
+    {:effects [[:print (:error args)]]}
+    (let [n (branch-n args)
+          st (if (= (:sig state) args) state {:sig args :sel (second args)})]
+      (if (pos? inlet)
+        (let [bad (when (or (symbol? value) (seq? value)) (unknown-names value))]
+          (if (seq bad)
+            {:state st :effects [[:print (str "branch: " (str/join ", " (distinct bad)) " is not a function it knows")]]}
+            {:state (assoc st :sel value) :show (pr-str value)}))
+        (let [k (try (branch-of (:sel st) value n) (catch :default _ nil))]
+          {:state st :out (if k [[k value]] [])})))))
+
+(comp/define! "branch"
+  {:doc (str "A message to one of several outlets, numbered from 0: branch n has n of them. The right inlet chooses"
+             " the way: a number k is outlet k; nil or false closes it (nothing goes out); true is outlet 0, so branch 1"
+             " is a gate that opens and closes. A function chooses for each message — a name or a form"
+             " (comp …, partial …), a keyword, a map ({60 0 64 1}): what it gives for the message is the outlet, nil"
+             " lets nothing through — and a set lets its members through outlet 0. The selector can be written after n"
+             " (branch 3 0, branch 2 {60 0 64 1}); a msg sends it as written (msg 1, msg nil, msg :freq).")
+   :usage "branch n [selector]  ·  right: k · nil · true · a function, keyword, map or set"
+   :io (fn [{:keys [text]}] (let [a (parse text)] [2 (if (map? a) 1 (branch-n a))]))
+   :dynamic-io true
+   :parse parse
+   :receive branch-receive
+   :ref [["Truthiness: nil and false" "https://clojure.org/guides/learn/flow#_truth"]
+         ["Maps, sets and keywords as functions" "https://clojure.org/reference/data_structures"]]})

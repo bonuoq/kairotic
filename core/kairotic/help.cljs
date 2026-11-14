@@ -123,6 +123,22 @@
     :outlets ["the value"]
     :see ["metro"]}
 
+   "branch"
+   {:inlets ["a message: goes out by the outlet the selector chooses (or by none)"
+             "the selector: k (outlet k, from 0) · nil or false (closed) · true (outlet 0) · a function, keyword or map that chooses for each message · a set (its members by outlet 0)"]
+    :outlets ["outlet 0" "outlet 1 … (branch n has n)"]
+    :messages [["msg 1" "every message by outlet 1"] ["msg nil" "nothing goes out"]
+               ["msg {60 0 64 1}" "60 by outlet 0, 64 by outlet 1, anything else by none"]
+               ["msg :to" "each message by the outlet its :to says ({:freq 440 :to 1})"]]
+    :example (lines "(box :b1 \"msg 60\" 40 30)" "(box :b2 \"msg 64\" 100 30)" "(box :b3 \"msg 67\" 160 30)"
+                    "(box :b4 \"msg 0\" 260 30)" "(box :b5 \"msg 1\" 320 30)" "(box :b6 \"msg nil\" 380 30)" "(box :b7 \"msg {60 0 64 1}\" 470 30)"
+                    "(box :b8 \"branch 2\" 40 100)" "(box :b9 \"print\" 40 170)" "(box :b10 \"print\" 200 170)"
+                    "(connect :b1 0 :b8 0)" "(connect :b2 0 :b8 0)" "(connect :b3 0 :b8 0)"
+                    "(connect :b4 0 :b8 1)" "(connect :b5 0 :b8 1)" "(connect :b6 0 :b8 1)" "(connect :b7 0 :b8 1)"
+                    "(connect :b8 0 :b9 0)" "(connect :b8 1 :b10 0)")
+    :try "Click a selector on the right (0, 1, nil or the map) and then the notes on the left: each note goes out by the way chosen, or by none. With the map, 60 and 64 choose their own way and 67 is held back."
+    :see ["msg" "get"]}
+
    "ramp"
    {:inlets ["bang: goes from a to b in s seconds · [a b s]: that motion · a number: jumps there · stop" "1 / 0: loop on or off"]
     :outlets ["the moving value"]
