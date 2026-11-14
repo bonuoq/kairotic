@@ -150,6 +150,14 @@ sin enviar, y un argumento nuevo a la derecha también vuelve a empezar. La ayud
 (**?**) enlaza a su página de [clojuredocs.org](https://clojuredocs.org) y a la referencia de
 [clojure.org](https://clojure.org/reference/transducers).
 
+**Elegir un camino: `branch`.** `branch n` envía lo que llega por la izquierda por una de sus n salidas,
+numeradas desde 0 como todos los puertos. La entrada derecha elige: `msg 1` (salida 1), `msg nil` o
+`msg false` (cerrado: no sale nada), `msg true` (salida 0, así que `branch 1` es una puerta que se abre y se
+cierra). Una función elige para cada mensaje, y nil no lo deja pasar por ninguna: un mapa `{60 0 64 1}`, una
+keyword `:to` (el camino escrito en el evento), un nombre o una forma (`even?`, `(comp …)`); un conjunto
+deja pasar a sus miembros por la salida 0. El selector puede escribirse después de n:
+`branch 2 {60 0 64 1}`.
+
 **Funciones por los cables.** Una función viaja como su forma, datos EDN. `comp`, `partial`, `juxt`,
 `complement`, `fnil`, `constantly`, `every-pred` y `some-fn` son cajas que envían una con un bang:
 `comp inc (partial * 2)` envía `(comp inc (partial * 2))`. Allí donde una caja toma un argumento, un
