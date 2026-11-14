@@ -20,9 +20,9 @@
    :io [1 1]
    :size [130 24]
    :args [[:in-lo 0] [:in-hi 1] [:out-lo 0] [:out-hi 1] [:log false] [:ms 0]]
-   :help {:inlets ["a number (or [name value], or {:value v}); learn; learn off"]
+   :help {:inlets ["a number (or [name value], or {:value v}); :learn; :learn :off"]
           :outlets ["the number in the new range"]
-          :messages [["learn" "the next values make the input range"] ["learn off" "keeps the range learnt"]]
+          :messages [[":learn" "the next values make the input range"] [":learn :off" "keeps the range learnt"]]
           :example "(box :b1 \"knob\" 40 30)\n(box :b2 \"scale 0 1 220 880 log 200\" 40 120)\n(box :b3 \"number\" 40 160)\n(connect :b1 0 :b2 0)\n(connect :b2 0 :b3 0)"
           :try "Turn the knob: 220 to 880 Hz in equal steps of pitch, gliding 200 ms."
           :see ["control" "knob" "mtof"]}

@@ -156,7 +156,7 @@
   {;; ── about ──
    :class "transcribe"
    :license "MPL-2.0"
-   :doc "Writes what pitch~ hears into a freqt, as strokes. Hz on the left (from pitch~: 0 when it hears none), rec to start from 0 (its first write clears the freqt) or rec t (msg rec 8) to start from beat t, keeping what is before it, or ovr t (msg ovr 8) to write over only what the take covers, keeping what comes after and stop to end; a bang on the right (from onset~) begins a new note even on the same pitch, and a number there (onset~'s strength, 0…1) does too and gives the note that weight: its stroke is written heavier (as an event's :amp), and the quantizer reads it as the note's :vel, which helps find the beat and the bar (issue #106). In notes mode the contour of each voiced stretch is cut into notes where it settles on another pitch (a slide, a vibrato or an ornament that passes does not start notes; an onset on the right does), each a flat stroke at its median pitch (the freqt's tuning, or its score view, rounds it), written when the voice stops; in glide mode a stroke follows the pitch as it moves. Times are beats at bpm (60: one beat a second). Notes shorter than ms (80) are left out. It writes into the freqt at most every 2 seconds, each time one event of the history. Connect its outlet to the freqt's inlet."
+   :doc "Writes what pitch~ hears into a freqt, as strokes. Hz on the left (from pitch~: 0 when it hears none), rec to start from 0 (its first write clears the freqt) or rec t (msg :rec 8) to start from beat t, keeping what is before it, or ovr t (msg :ovr 8) to write over only what the take covers, keeping what comes after and stop to end; a bang on the right (from onset~) begins a new note even on the same pitch, and a number there (onset~'s strength, 0…1) does too and gives the note that weight: its stroke is written heavier (as an event's :amp), and the quantizer reads it as the note's :vel, which helps find the beat and the bar (issue #106). In notes mode the contour of each voiced stretch is cut into notes where it settles on another pitch (a slide, a vibrato or an ornament that passes does not start notes; an onset on the right does), each a flat stroke at its median pitch (the freqt's tuning, or its score view, rounds it), written when the voice stops; in glide mode a stroke follows the pitch as it moves. Times are beats at bpm (60: one beat a second). Notes shorter than ms (80) are left out. It writes into the freqt at most every 2 seconds, each time one event of the history. Connect its outlet to the freqt's inlet."
    :usage "transcribe [bpm] [notes|glide] [ms]"
    :io [2 1]
    :size [124 30]
@@ -166,9 +166,9 @@
    :receive (fn [{:keys [inlet value state args at]}]
               (let [state (or state {})]
                 (cond
-                  ;; rec: a take from 0 (its first write clears the freqt); [:rec t] (msg rec 8): from beat t on,
+                  ;; rec: a take from 0 (its first write clears the freqt); [:rec t] (msg :rec 8): from beat t on,
                   ;; keeping what is before t (punch-in)
-                  ;; ovr t (msg ovr 8): over what is there from beat t to where the take stops, keeping what comes after
+                  ;; ovr t (msg :ovr 8): over what is there from beat t to where the take stops, keeping what comes after
                   (or (#{:rec :ovr} value) (and (vector? value) (#{:rec :ovr} (first value))))
                   (let [bpm (api/clamp (:bpm args) 10 400)
                         ovr (or (= value :ovr) (and (vector? value) (= :ovr (first value))))

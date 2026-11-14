@@ -49,6 +49,6 @@
           :try "The pattern appears in the freqt, each note as thick as its :amp and shaded by its :pan. Change the pbind: the drawing follows. (keep! :b3) writes it into the freqt with its recipe."
           :steps [{:title "A time map"
                    :note "A canvas on the right inlet: each stroke says which beat of the pattern (y) is at each beat of the drawing (x). Down plays backwards, each note from its end; flat holds; two strokes make a canon."
-                   :example "(box :b4 \"canvas\" 300 130)\n(axis :b4 :x 0 16)\n(axis :b4 :y 0 8)\n(stroke :b4 [[0 0] [8 8] [12 4] [16 4]])\n(stroke :b4 [[2 0] [16 7]])\n(connect :b4 1 :b2 1)\n(box :b5 \"msg bang\" 120 90)\n(connect :b5 0 :b2 0)"
+                   :example "(box :b4 \"canvas\" 300 130)\n(axis :b4 :x 0 16)\n(axis :b4 :y 0 8)\n(stroke :b4 [[0 0] [8 8] [12 4] [16 4]])\n(stroke :b4 [[2 0] [16 7]])\n(connect :b4 1 :b2 1)\n(box :b5 \"msg :bang\" 120 90)\n(connect :b5 0 :b2 0)"
                    :try "Click bang: forwards, backwards, held, and a slower second layer under it. Redraw the canvas and click bang again."}]
           :see ["player" "pbind" "freqt" "canvas" "reader"]}})

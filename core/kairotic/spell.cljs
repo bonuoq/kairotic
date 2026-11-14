@@ -75,8 +75,8 @@
   [x]
   (cond
     (and (vector? x) (= 2 (count x)) (every? integer? x)) x
-    (or (string? x) (keyword? x))
-    (when-let [[_ sign q n] (re-matches #"\s*([+-]?)(P|M|m|A+|d+)(\d+)\s*" (name x))]
+    (or (string? x) (keyword? x) (symbol? x))
+    (when-let [[_ sign q n] (re-matches #"\s*([+-]?)(P|M|m|A+|d+)(\d+)\s*" (if (symbol? x) (str x) (name x)))]
       (let [n (js/parseInt n 10) s (mod (dec n) 7) octs (quot (dec n) 7)
             perfect? (#{0 3 4} s)
             adj (cond (= q "P") (when perfect? 0)

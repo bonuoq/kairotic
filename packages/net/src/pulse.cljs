@@ -11,7 +11,7 @@
    :args [[:division 1]]
    :help {:inlets ["start [bpm] · stop · bpm n: the tempo of the whole room"]
           :outlets ["the count of each pulse, on its beat" "the bpm (0 when it stops)"]
-          :example "(box :b1 \"msg start 100\" 40 30)\n(box :b2 \"msg stop\" 140 30)\n(box :b3 \"pulse\" 40 80)\n(box :b4 \"print\" 40 130)\n(connect :b1 0 :b3 0)\n(connect :b2 0 :b3 0)\n(connect :b3 0 :b4 0)"
+          :example "(box :b1 \"msg :start 100\" 40 30)\n(box :b2 \"msg :stop\" 140 30)\n(box :b3 \"pulse\" 40 80)\n(box :b4 \"print\" 40 130)\n(connect :b1 0 :b3 0)\n(connect :b2 0 :b3 0)\n(connect :b3 0 :b4 0)"
           :try "Press ▶ and click start 100: a count every beat, a second later. In a shared room, every page with a pulse box counts the same beat."
           :see ["share" "shared" "metro" "player"]}
 

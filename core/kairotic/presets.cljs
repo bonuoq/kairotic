@@ -219,7 +219,7 @@
                                     {:effects [[:print "presets: a position between keyframes goes to the right inlet (1.5: halfway from 1 to 2)"]]})
                   (= value :bang) (ask [:generate nil])
                   (= value :keep) (ask [:keep])
-                  (or (keyword? value) (string? value)) (ask [:recall (name value)])
+                  (or (keyword? value) (string? value) (symbol? value)) (ask [:recall (if (symbol? value) (str value) (name value))])
                   (and (vector? value) (= :recall (first value))) (ask [:recall (second value)])
                   (and (vector? value) (= :generate (first value))) (ask [:generate (second value)])
                   (and (vector? value) (= :morph (first value)) (= 4 (count value)) (number? (nth value 3)))

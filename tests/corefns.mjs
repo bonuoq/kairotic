@@ -20,4 +20,7 @@ export async function corefns(page, check) {
   const again = await cljs(page, `(get-in @eng/rt [:states ${n}])`);
   check("the right inlet replaces the argument, a bang sends again", again === "6", again);
   await cljs(page, `(delete ${a} ${b} ${n})`);
+  // a msg sends names (msg inc): they travel through the db (and to the room) and come back as names
+  check("names and keywords come back from the db as they were",
+        (await cljs(page, '(= (dec* (enc [(symbol "inc") (symbol "6/5") :a/b :stop])) [(symbol "inc") (symbol "6/5") :a/b :stop])')) === "true");
 }

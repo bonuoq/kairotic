@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/io",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Kairotic talking to the outside: MIDI in and out (with MPE), OSC through a relay's bridge, a phone's motion, gamepads and boards on a serial port, as one kind of event",
   "author": "bonuoq",
   "license": "MPL-2.0",

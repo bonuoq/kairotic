@@ -143,7 +143,7 @@ one message at a time.
 | `xf/take 1` | the first message only (a bang is a message too) |
 | `xf/filter odd?`, `xf/map inc`, `xf/mapcat reverse`… | as in Clojure, message by message |
 
-`flush` completes it (`partition-all` sends what it holds) and starts again, `clear` starts again
+`:flush` completes it (`partition-all` sends what it holds) and starts again, `:clear` starts again
 without sending, and a new argument on the right starts again too. The help of each of these boxes (**?**)
 links to its page at [clojuredocs.org](https://clojuredocs.org) and to the reference at
 [clojure.org](https://clojure.org/reference/transducers).
@@ -157,8 +157,8 @@ a form *is* that function, so a form sent into the inlet of `inc` in `map inc` c
 `comp % inc`. Only these pure functions (and `+ - * /`) are ever made from a form, and each browser
 rebuilds it from them, so it is as safe in a shared room as any argument; a name it does not know (or a
 call such as `(inc 1)` in place of a function) is not sent and is written in the REPL. To send a function
-by its name, `comp inc` (a word in a `msg` is a keyword, which stays a keyword: a key, and a function by
-itself).
+by its name, a `msg` with the name: `msg inc` (a keyword, `msg :inc`, stays a keyword: a key, and a
+function by itself).
 
 ## 3. Sound and time
 
@@ -166,8 +166,12 @@ itself).
   The first ▶ also asks the browser for permission to play sound.
 - **■** silences and brings every box back to its initial state.
 - Messages travel without ▶: a click on a `bang` or a `msg`, a number dragged, a data box that changed.
-- A `msg` sends numbers (`msg 0 8 4`), words (`msg stop`) and **text between quotes as a string**
-  (`msg "https://…/voice.ogg"`, `msg "two words"`), alone or in a list (`msg url "github:…" 3`).
+- A `msg` sends what is written in it, read as in Clojure: numbers (`msg 0 8 4`), **keywords with their
+  colon** (`msg :stop`, `msg :rec 4`), **names** (`msg inc`: a function where a box takes one; also free
+  text such as a note `e4`, a ratio `6/5`, a URL or an OSC address), `true`, `false`, `nil`, **text
+  between quotes as a string** (`msg "https://…/voice.ogg"`, `msg "two words"`) and EDN forms
+  (`msg [0 4 7]`, `msg {:freq 440}`), alone or in a list (`msg :url "github:…" 3`). A word without its
+  colon is a name, not a keyword: `msg stop` does not stop a `metro`, `msg :stop` does.
 - **Stochastic synthesis**: `gendy~ 110` (in `@kairotic/synth`) is an oscillator after Xenakis's GENDY:
   a wave of breakpoints whose amplitudes and durations take random walks cycle after cycle — a pitch
   that drifts, a timbre that keeps changing. `[:x-step 40]` lets the pitch wander, `[:y-step 0.2]` the
@@ -243,9 +247,9 @@ itself).
   time — a knob, an envelope (`snapshot~ 50 rms`), a descriptor (`features~ 20 centroid`) —: `rec`,
   play, `stop`. A value holds until the next one; the axes follow the take. Edit it like any drawing and
   read it back with `phasor~` → `reader~` as an automation.
-- **Recording from a point**: `rec t` (`msg rec 4`) on a `sample`, `record` or `transcribe` keeps what
+- **Recording from a point**: `rec t` (`msg :rec 4`) on a `sample`, `record` or `transcribe` keeps what
   was there before t (seconds; beats for transcribe) and records from t on, replacing what came after —
-  a punch-in. `ovr t` (`msg ovr 4`; `ovr` alone, from 0) overwrites only what the take covers, from t
+  a punch-in. `ovr t` (`msg :ovr 4`; `ovr` alone, from 0) overwrites only what the take covers, from t
   to where it stops, and keeps what came after it — a punch-in/out. A canvas or freqt takes `[:cut t]`
   for that (everything from t on) and `[:cut t1 t2]` (what is between them; a stroke across is split).
 
@@ -407,8 +411,8 @@ Tonnetz and the path of the harmony. They take lists of pitches, notes one by on
 
 **Drawing from messages.** A `draw [w h]` box draws the shapes that reach it — the same shapes as a
 component's view: `[:circle {:cx 40 :cy 40 :r 10 :fill :accent}]`, `[:line …]`, `[:path …]`,
-`[:curve …]`, `[:text …]`, `[:group {:x :y :rotate} […]]` — or as a msg writes them: `msg circle 40 40 10
-accent hit sun`. A list replaces them all, `[:set k shape]` moves the one called k, `clear` empties it,
+`[:curve …]`, `[:text …]`, `[:group {:x :y :rotate} […]]` — or as a msg writes them: `msg :circle 40 40 10
+:accent :hit :sun`. A list replaces them all, `[:set k shape]` moves the one called k, `:clear` empties it,
 and a shape with `:hit k` sends k when it is pressed.
 
 ## 7. Annotations and layers

@@ -73,8 +73,8 @@ Click the two messages, then press the circles: print writes sun or moon. Connec
 @try.es
 Haz clic en los dos mensajes y pulsa los círculos: print escribe sun o moon. Conecta la salida de draw a un msg 330 y este al número: un círculo que cambia la altura.
 ```kairotic
-(box :b5 "msg circle 60 55 22 accent hit sun" 300 150)
-(box :b6 "msg circle 160 55 14 kairos hit moon" 300 190)
+(box :b5 "msg :circle 60 55 22 :accent :hit :sun" 300 150)
+(box :b6 "msg :circle 160 55 14 :kairos :hit :moon" 300 190)
 (box :b7 "draw 240 120" 300 240)
 (box :b8 "print" 300 390)
 (connect :b5 0 :b7 0)

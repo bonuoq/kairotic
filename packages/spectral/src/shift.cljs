@@ -5,7 +5,7 @@
 ;; not weigh on the history of a work: it is the module dist/shift.mjs of this same version of the
 ;; package, loaded the first time a shift~ sounds, and handed to the worklet as bytes.
 (let [;; ── the WebAssembly: this version of the package on npm, or the page's own copy ──
-      origins ["npm:@kairotic/spectral@0.1.1/dist/shift.mjs" "kairotic/packages/spectral/shift.mjs"]
+      origins ["npm:@kairotic/spectral@0.1.2/dist/shift.mjs" "kairotic/packages/spectral/shift.mjs"]
       frame 1024
       hop 128
 
@@ -82,13 +82,13 @@ registerProcessor('kairotic-shift', KairoticShift);
 
       ;; ── factors, read as music ──
       ;; a number is a ratio (1.5); a word is a ratio (3/2), semitones with a sign (+7, -12, +3.86, +0) or
-      ;; cents (386c, -50c). Words arrive as keywords: their whole text, slash included, is (subs (str k) 1).
+      ;; cents (386c, -50c). Words arrive as names (msg 6/5): their whole text, slash included, is (str x).
       factor (fn [x]
                (let [ok (fn [f] (when (and (number? f) (js/isFinite f) (pos? f) (<= f 8)) f))]
                  (cond
                    (number? x) (ok x)
-                   (or (keyword? x) (string? x))
-                   (let [s (if (keyword? x) (subs (str x) 1) x)]
+                   (or (keyword? x) (string? x) (symbol? x))
+                   (let [s (cond (keyword? x) (subs (str x) 1) (symbol? x) (str x) :else x)]
                      (cond
                        (re-matches #"\d+(\.\d+)?/\d+(\.\d+)?" s)
                        (let [[a b] (map js/parseFloat (.split s "/"))] (when (pos? b) (ok (/ a b))))
@@ -174,5 +174,5 @@ registerProcessor('kairotic-shift', KairoticShift);
    ;; ── help ──
    :help {:inlets ["a signal to shift; a number or a list of factors (1.5 · 1 5/4 3/2 · +7 · 386c) is the chord; [:semitones …] [:cents …]; [:transpose st]; [:formants q t]; [:rms 1]; [:dry x]"]
           :outlets ["the shifted signal, every factor at once, one frame (1024 samples) late"]
-          :example "(box :b1 \"adc~ 1\" 40 30)\n(box :b2 \"shift~ 1 5/4 3/2\" 40 150)\n(box :b3 \"dac~ 1 2\" 40 210)\n(box :b4 \"msg 1 6/5 3/2\" 160 30)\n(box :b5 \"msg transpose -5\" 160 70)\n(box :b6 \"msg formants 1\" 300 30)\n(box :b7 \"msg 1/2 +7\" 300 70)\n(connect :b1 0 :b2 0)\n(connect :b4 0 :b2 0)\n(connect :b5 0 :b2 0)\n(connect :b6 0 :b2 0)\n(connect :b7 0 :b2 0)\n(connect :b2 0 :b3 0)\n(connect :b2 0 :b3 1)"
+          :example "(box :b1 \"adc~ 1\" 40 30)\n(box :b2 \"shift~ 1 5/4 3/2\" 40 150)\n(box :b3 \"dac~ 1 2\" 40 210)\n(box :b4 \"msg 1 6/5 3/2\" 160 30)\n(box :b5 \"msg :transpose -5\" 160 70)\n(box :b6 \"msg :formants 1\" 300 30)\n(box :b7 \"msg 1/2 +7\" 300 70)\n(connect :b1 0 :b2 0)\n(connect :b4 0 :b2 0)\n(connect :b5 0 :b2 0)\n(connect :b6 0 :b2 0)\n(connect :b7 0 :b2 0)\n(connect :b2 0 :b3 0)\n(connect :b2 0 :b3 1)"
           :try "Press ▶ and sing or play into the microphone: a major triad answers. Press the messages while it sounds: a minor triad, the whole chord a fourth down, the formants kept (a voice stops sounding small or big), an octave below and a fifth above. Use headphones."}})
