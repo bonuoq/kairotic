@@ -125,8 +125,9 @@ export async function theory(page, check) {
   await cljs(page, `(send! ${lv} 1 :bang)`);
   check("... held three pulses in 2/2: the canon turns to 3/2", (await until(page, ls(":meter"), (x) => x === "3", 3000)) === "3" &&
         (await printedHas(page, ":cue :ternary")).includes(":cue :ternary"));
-  await cljs(page, `(send! ${lv} 64) (send! ${lv} 1 :bang)`);
-  check("... the next note begins a new canon, in 3/2", /^\[\[2( 2)?\] 3\]$/.test(await until(page, `[${ls(":D")} (.-beats ${ls(":cp")})]`, (x) => /^\[\[2/.test(x), 5000)),
+  // (D4: the dux begins on the final, its 5th or its octave; a note struck just after a pulse counts for it)
+  await cljs(page, `(send! ${lv} 62) (send! ${lv} 1 :bang)`);
+  check("... the next note begins a new canon, in 3/2", /^\[\[1( 1)?\] 3\]$/.test(await until(page, `[${ls(":D")} (.-beats ${ls(":cp")})]`, (x) => /^\[\[1\]|^\[\[1 1\] 3/.test(x), 5000)),
         await cljs(page, `[${ls(":D")} ${ls(":section")} ${ls(":idle")}]`));
   for (let i = 0; i < 4 && (await cljs(page, ls(":idle"))) !== "true"; i++) await cljs(page, `(send! ${lv} 1 :bang)`);
   check("... held longer than a bar: the end of the section", (await until(page, ls(":idle"), (x) => x === "true", 3000)) === "true" &&
