@@ -63,7 +63,8 @@ const ordinal = (s) => {
   const n = s + 1, last = n % 10;
   return n + (n >= 11 && n <= 13 ? "th" : last === 1 ? "st" : last === 2 ? "nd" : last === 3 ? "rd" : "th");
 };
-const edo = (n, period = 1200) => Array.from({ length: n }, (_, i) => (period * (i + 1)) / n);
+// (to a thousandth of a cent, as the EDN shows them)
+const edo = (n, period = 1200) => Array.from({ length: n }, (_, i) => Math.round((1000 * period * (i + 1)) / n) / 1000);
 
 /** The diatonic system of Studies 38–41: the white keys of 12-TET, Fux's consonances and melodic intervals. */
 export const DIATONIC = {
