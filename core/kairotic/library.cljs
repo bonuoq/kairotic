@@ -175,7 +175,7 @@
    "@kairotic/controls" {:version "0.2.0" :classes #{"knob" "keyboard" "scale"} :local "kairotic/packages/controls.mjs"}
    "@kairotic/analysis" {:version "0.7.2" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "monitor" "form~" "realize~"}
                          :local "kairotic/packages/analysis.mjs"}
-   "@kairotic/theory"   {:version "0.2.0" :classes #{"pcclock" "fourier" "tonnetz" "comes"} :local "kairotic/packages/theory.mjs"}
+   "@kairotic/theory"   {:version "0.3.0" :classes #{"pcclock" "fourier" "tonnetz" "comes"} :local "kairotic/packages/theory.mjs"}
    "@kairotic/data"     {:version "0.1.1" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
    "@kairotic/patterns" {:version "0.2.0" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}
    "@kairotic/spectral" {:version "0.1.1" :classes #{"shift~"} :local "kairotic/packages/spectral.mjs"}
