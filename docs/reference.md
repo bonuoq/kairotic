@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
+An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
 
 **Inlets** 
 
@@ -320,11 +320,11 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 
 **Messages and gestures**
 
-- `hold`: by turns: the note held over the next beat (a tie)
-- `engine`: the box plays the next pair itself, the most plausible
-- `back`: the last pair taken back
-- `reset`: a new canon
-- `end`: the end of the section, from an analysis (live, and the cues off with nocues)
+- `:hold`: by turns: the note held over the next beat (a tie)
+- `:engine`: the box plays the next pair itself, the most plausible
+- `:back`: the last pair taken back
+- `:reset`: a new canon
+- `:end`: the end of the section, from an analysis (live, and the cues off with nocues)
 - `[:midi 62]`: a MIDI note as the dux's next note
 - `[:imitation 0.5]`: how much the comes imitates the dux (1 a canon … 0 free)
 - `[:k -4]`: the comes a 5th below
@@ -338,7 +338,7 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 (box :b4 "synth~" 160 200)
 (box :b5 "dac~" 40 260)
 (box :b6 "print" 280 200)
-(box :b7 "msg engine" 220 100)
+(box :b7 "msg :engine" 220 100)
 (connect :b1 0 :b2 0)
 (connect :b7 0 :b2 0)
 (connect :b2 0 :b3 0)
@@ -439,14 +439,14 @@ A view drawn from the messages that arrive: each shape of kairotic.shapes ([:cir
 - `[[:line …] [:text …]]`: a list: replaces everything
 - `[:set :cursor [:line …]]`: the shape called :cursor, added or moved
 - `[:unset :cursor]`: removes it
-- `clear`: empties the view
+- `:clear`: empties the view
 
 **Try:** Click the three messages, then press the circles: print writes :sun or :moon. From code, any shape of kairotic.shapes: (send! :b4 [:curve {:points [[10 90] [80 20] [150 80] [230 30]] :stroke :accent}]). Shapes take the theme's colours (:ink :soft :accent :kairos :bg :grid) and :opacity.
 
 ```clojure
-(box :b1 "msg circle 60 55 22 accent hit sun" 40 30)
-(box :b2 "msg circle 160 55 14 kairos hit moon" 300 30)
-(box :b3 "msg set label text 20 100 \"press one of them\"" 40 70)
+(box :b1 "msg :circle 60 55 22 :accent :hit :sun" 40 30)
+(box :b2 "msg :circle 160 55 14 :kairos :hit :moon" 360 30)
+(box :b3 "msg :set :label :text 20 100 \"press one of them\"" 40 70)
 (box :b4 "draw 240 120" 40 120)
 (box :b5 "print" 40 270)
 (connect :b1 0 :b4 0)
@@ -474,9 +474,9 @@ Any value as a tree, like Portal: collections open and close, values coloured by
 
 **Messages and gestures**
 
-- `depth 2`: opens it two levels down
+- `:depth 2`: opens it two levels down
 - `bang`: the part picked again (the whole value if none)
-- `clear`: empties it
+- `:clear`: empties it
 - `▸ ▾ · a line · a drag`: opens or closes · picks it · scrolls (also the bar on the right)
 
 **Try:** The tree arrives: open the measure and pick a note: the note and its path go to print.
@@ -543,13 +543,13 @@ Faust code box: compiled in the page and played as an AudioWorklet. Its audio po
 
 **A score in several voices** — mt play sends the Hz of the notes sounding and their voice ids: each note of a chord, a voice of the faust~.
 
-*Try:* Press ▶ and click msg bang: the four chords in a loop; msg stop ends it.
+*Try:* Press ▶ and click msg :bang: the four chords in a loop; msg :stop ends it.
 
 ```clojure
 (box :b5 "tree" 560 30)
 (code :b5 "\"c4+e4+g4/2 d4+f4+a4/2 b3+d4+g4/2 c4+e4+g4+c5/2\"")
-(box :b6 "msg bang" 560 150)
-(box :b7 "msg stop" 640 150)
+(box :b6 "msg :bang" 560 150)
+(box :b7 "msg :stop" 640 150)
 (box :b8 "mt play loop" 560 190)
 (connect :b5 0 :b8 0)
 (connect :b6 0 :b8 0)
@@ -565,7 +565,7 @@ Faust code box: compiled in the page and played as an AudioWorklet. Its audio po
 ```clojure
 (box :b9 "msg 220 275 330" 560 260)
 (box :b10 "msg 220 277.18 329.63" 700 260)
-(box :b11 "msg stop" 870 260)
+(box :b11 "msg :stop" 870 260)
 (connect :b9 0 :b3 0)
 (connect :b10 0 :b3 0)
 (connect :b11 0 :b3 0)
@@ -627,10 +627,10 @@ Brings in what is at a URL (JSON read as EDN, text or EDN) as a task: it goes ou
 **Messages and gestures**
 
 - `a URL`: brings it in; a URL it already keeps is sent again, not fetched
-- `refresh`: fetches its URL again
+- `:refresh`: fetches its URL again
 - `bang`: sends what it holds
-- `get items 0 name · [:get [:items 0 :name]]`: sends one part of it
-- `clear`: forgets it
+- `:get :items 0 :name · [:get [:items 0 :name]]`: sends one part of it
+- `:clear`: forgets it
 - `(keep! :bN {:url "…" :value …})`: what it keeps, as the code of the work writes it
 
 **Try:** Click the message: the answer arrives in the edn box, and stays in the work (go back and forward in the history: it is not fetched again). Pick a line: its value goes to print.
@@ -835,7 +835,7 @@ See also: `osc~`, `adsr~`, `dac~`
 
 `gendy~ [freq x-step y-min y-max y-step breakpoints]`
 
-A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle — a pitch that drifts, a timbre that changes.
+A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Bernstein, MIT): a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle, heard as a pitch that drifts and a timbre that changes. freq in Hz (a signal on the inlet adds to it: FM); x-step (0–100 %) how far each segment's duration may wander; y-min and y-max (−1…1) the barriers of the amplitudes, y-step how far they move each cycle; breakpoints (2–128) how many. A number sets freq; [:y-step 0.2] one of them; a list of six all of them.
 
 **Inlets** 
 
@@ -880,8 +880,8 @@ A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints wh
 *Try:* Press ▶ and click both messages in turn, watching the scope.
 
 ```clojure
-(box :b6 "msg breakpoints 4" 360 120)
-(box :b7 "msg breakpoints 48" 500 120)
+(box :b6 "msg :breakpoints 4" 360 120)
+(box :b7 "msg :breakpoints 48" 500 120)
 (connect :b6 0 :b1 0)
 (connect :b7 0 :b1 0)
 ```
@@ -1032,9 +1032,9 @@ See also: `features~`, `chroma~`, `onset~`, `print`
 
 ### msg
 
-`msg 0 8 4`
+`msg :stop · msg 0 8 4 · msg inc`
 
-Message: when pressed it sends its content: a number, a word such as stop, text between quotes ("https://…", "two words") as a string, or a list of them.
+Message: when pressed it sends its content, read as in Clojure: numbers, keywords with their colon (:stop, :rec 4), names (any other word: inc, e4, 6/5, https://…), true false nil, text between quotes ("two words") as a string and EDN forms ([0 4 7], {:freq 440}); several make a list. A word without its colon is a name, not a keyword: msg stop does not stop a metro, msg :stop does.
 
 **Inlets** 
 
@@ -1042,7 +1042,13 @@ Message: when pressed it sends its content: a number, a word such as stop, text 
 
 **Outlets** 
 
-0. its content: a number, a word such as stop, a string between quotes ("https://…"), or a list of them
+0. its content, read as in Clojure: a number, a keyword with its colon (:stop), a name (inc, e4, https://…), true false nil, a string between quotes ("two words"), an EDN form ([0 4 7], {:freq 440}), or a list of them; empty, a bang
+
+**Messages and gestures**
+
+- `msg :stop`: a keyword: what boxes understand as an order (:stop, :rec 4, :clear)
+- `msg inc`: a name: a function where a box takes one (map inc), or free text (e4, 6/5, a URL)
+- `msg [0 4 7] {:freq 440}`: EDN forms, read whole
 
 **Try:** Start the engine and click the two messages: two MIDI pitches become two frequencies.
 
@@ -1062,6 +1068,8 @@ Message: when pressed it sends its content: a number, a word such as stop, text 
 ```
 
 See also: `number`, `bang`
+
+Reference: [EDN](https://github.com/edn-format/edn) · [Keywords and symbols](https://clojure.org/reference/data_structures#Keywords)
 
 ### mt
 
@@ -1115,11 +1123,11 @@ Operations on musical trees: a tree on the left comes out transformed. transpose
 
 **Playing it** — mt play reads a tree in time: the Hz of the notes that sound (left) and their voice ids (second) go to a synth~, which gives each voice its own note.
 
-*Try:* Press ▶, click the first bang (the tree goes to mt play) and then msg bang: the canon sounds in a loop; stop ends it.
+*Try:* Press ▶, click the first bang (the tree goes to mt play) and then msg :bang: the canon sounds in a loop; :stop ends it.
 
 ```clojure
-(box :b6 "msg bang" 500 170)
-(box :b7 "msg stop" 570 170)
+(box :b6 "msg :bang" 500 170)
+(box :b7 "msg :stop" 570 170)
 (box :b8 "mt play loop" 500 220)
 (box :b9 "synth~" 500 270)
 (box :b10 "gain~ 0.3" 500 320)
@@ -1278,7 +1286,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power.
+Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
 
 **Inlets** 
 
@@ -1333,8 +1341,8 @@ A pattern as Clojure code: an expression that returns event maps (or one map, re
 ```clojure
 (box :b1 "pattern 3" 40 30)
 (code :b1 "(pbind {:degree (pwhite 0 7)\n        :dur    (pchoose [0.25 0.25 0.5])\n        :octave [5 5 6]}\n       :inf)")
-(box :b2 "msg start" 40 130)
-(box :b3 "msg stop" 110 130)
+(box :b2 "msg :start" 40 130)
+(box :b3 "msg :stop" 110 130)
 (box :b4 "player 120" 40 180)
 (box :b5 "synth~" 40 240)
 (box :b6 "dac~" 40 290)
@@ -1379,8 +1387,8 @@ A pattern as EDN data: a map of constants, sequences and #pat/… generators, wi
 ```clojure
 (box :b1 "pbind 7 loop" 40 30)
 (code :b1 "{:degree #pat/shuffle [0 2 4 7]\n :dur    [0.5 0.5 1]\n :amp    #pat/white [0.1 0.3]}")
-(box :b2 "msg start" 40 130)
-(box :b3 "msg stop" 110 130)
+(box :b2 "msg :start" 40 130)
+(box :b3 "msg :stop" 110 130)
 (box :b4 "player 110" 40 180)
 (box :b5 "synth~" 40 240)
 (box :b6 "dac~" 40 290)
@@ -1506,24 +1514,24 @@ Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a
 
 **Messages and gestures**
 
-- `start · stop`: its own clock: every event lasts its :dur in beats at its bpm
+- `:start · :stop`: its own clock: every event lasts its :dur in beats at its bpm
 - `player 120 4`: start on a multiple of 4 beats: players with the same tempo meet
 - `[:bpm 90]`: another tempo, without a jump
 - `bang`: the next event now (and the ones of :dur 0 right after it)
 - `a number`: a position in beats: every event is a span, from its onset to its end, that sounds while the position is inside it — entered at its onset going forwards, at its end going backwards (:dir :back); what a step passes over sounds within it
-- `seek 8 · [:seek 8]`: there at once, nothing in between: what still sounds there goes on, what starts to contain that position starts
+- `:seek 8 · [:seek 8]`: there at once, nothing in between: what still sounds there goes on, what starts to contain that position starts
 - `player 120 0 8 8`: a step more than 8 (jump) times the one before it, or longer than 8 (limit) beats, is a seek: the wrap of a ramp
 - `player 120 0 8 8 edges`: a seek sounds only what starts exactly there
 - `player 120 0 8 8 spread`: what a step passes keeps its rhythm, one step later (with ▶)
-- `reset`: back to the beginning, silently
+- `:reset`: back to the beginning, silently
 
 **Try:** Press ▶ and start: the six notes, three durations cycling. The third outlet is the whole event: print writes the beat of each.
 
 ```clojure
 (box :b1 "pbind 1 loop" 40 30)
 (code :b1 "{:note [:c4 :e4 :g4 :b4 :a4 :f4]\n :dur  [0.5 0.5 1]}")
-(box :b2 "msg start" 40 130)
-(box :b3 "msg stop" 110 130)
+(box :b2 "msg :start" 40 130)
+(box :b3 "msg :stop" 110 130)
 (box :b4 "player 100" 40 180)
 (box :b5 "synth~" 40 240)
 (box :b6 "dac~" 40 290)
@@ -1559,7 +1567,7 @@ Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a
 
 ```clojure
 (box :b12 "ramp 0 6 3 loop" 330 130)
-(box :b13 "msg bang" 330 100)
+(box :b13 "msg :bang" 330 100)
 (connect :b13 0 :b12 0)
 (connect :b12 0 :b4 0)
 ```
@@ -1585,7 +1593,7 @@ Presets from the keyframes of the history (◆ snapshots, takes kept): a number 
 
 - `2 · intro`: recalls that keyframe: every box takes its text of then, as one event of the history
 - `1.5 (right)`: moves the controls (knobs, envelopes…) between two keyframes, as messages, as a drag does
-- `keep`: writes the last morph into the texts of the controls, as one event
+- `:keep`: writes the last morph into the texts of the controls, as one event
 - `bang · [:generate 42]`: a new preset: what is the same in every keyframe stays, what changes takes a value within its range
 - `(keyframes) · (recall 2) · (morph 1 2 0.5) · (morph :keep) · (generate 42)`: the same from the REPL, with every keyframe of the work
 - `(store-presets! :bN) · (presets! :bN […])`: keeps its keyframes in the box (only what changes): then it uses them, and they travel with the patch in its code, links and embeds
@@ -1732,7 +1740,7 @@ Plays a faust~ from descriptors written as a score — loudness, brightness, noi
 
 **Messages and gestures**
 
-- `learn`: plays steady settings of the faust~ offline and listens to them (300, or the number written): after changing its code
+- `:learn`: plays steady settings of the faust~ offline and listens to them (300, or the number written): after changing its code
 
 **Try:** Press ▶ and allow the microphone (headphones): sing, whisper, hum — the synth follows your loudness, brightness, noisiness and pitch with its own sound. Then let it listen: a features~ 20 on the faust~, its three outlets into the last three inlets of realize~ — it corrects what it asks where it falls short. Draw instead: four canvases read by reader~ and snapshot~ are a score for it.
 
@@ -1743,7 +1751,7 @@ Plays a faust~ from descriptors written as a score — loudness, brightness, noi
 (box :b4 "realize~" 40 160)
 (box :b5 "faust~" 40 240)
 (box :b6 "dac~" 40 430)
-(box :b7 "msg learn" 300 160)
+(box :b7 "msg :learn" 300 160)
 (connect :b1 0 :b2 0)
 (connect :b1 0 :b3 0)
 (connect :b2 0 :b4 0)
@@ -1763,7 +1771,7 @@ See also: `features~`, `pitch~`, `faust~`, `monitor`
 
 `record [lo hi] [log] [tolerance]`
 
-Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer); rec t (msg rec 4) records from t seconds on, keeping what is before t and replacing what is after (punch-in); ovr t (msg ovr 4) overwrites only what the take covers, from t to where it stops, keeping what comes after (punch-in/out); stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation.
+Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer); rec t (msg :rec 4) records from t seconds on, keeping what is before t and replacing what is after (punch-in); ovr t (msg :ovr 4) overwrites only what the take covers, from t to where it stops, keeping what comes after (punch-in/out); stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation.
 
 **Inlets** 
 
@@ -1776,17 +1784,17 @@ Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an
 
 **Messages and gestures**
 
-- `rec`: starts from 0; its first write clears the buffer
-- `rec t (msg rec 4)`: from t seconds: what is before t stays, what is after is replaced
-- `ovr t (msg ovr 4)`: from t seconds, over only what the take covers: what comes after it stays
-- `stop`: writes what is left and stops
+- `:rec`: starts from 0; its first write clears the buffer
+- `:rec t (msg :rec 4)`: from t seconds: what is before t stays, what is after is replaced
+- `:ovr t (msg :ovr 4)`: from t seconds, over only what the take covers: what comes after it stays
+- `:stop`: writes what is left and stops
 
 **Try:** Press ▶, click rec, move the knob for a few seconds, click stop: the canvas holds the gesture. A phasor~ into a reader~ with the canvas on its right plays it back as an automation.
 
 ```clojure
 (box :b1 "knob 0 1 0.5" 40 30)
-(box :b2 "msg rec" 140 30)
-(box :b3 "msg stop" 200 30)
+(box :b2 "msg :rec" 140 30)
+(box :b3 "msg :stop" 200 30)
 (box :b4 "record 0 1" 40 120)
 (box :b5 "canvas" 40 170)
 (connect :b1 0 :b4 0)
@@ -1801,7 +1809,7 @@ See also: `canvas`, `snapshot~`, `reader~`, `transcribe`
 
 `sample [seconds]`
 
-A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; rec t (msg rec 2.5) keeps its first t seconds and records from there (punch-in); ovr t (msg ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN "https://…")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
+A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; rec t (msg :rec 2.5) keeps its first t seconds and records from there (punch-in); ovr t (msg :ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN "https://…")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
 
 **Inlets** 
 
@@ -1814,12 +1822,12 @@ A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop`
 
 **Messages and gestures**
 
-- `rec`: records what reaches it, from the beginning
-- `rec t (msg rec 2.5)`: keeps its first t seconds and records from there
-- `ovr t (msg ovr 2.5)`: replaces only what the take covers, keeping what comes after (ovr: from 0)
-- `stop`: keeps what was heard
-- `clear`: empties it
-- `a URL (msg https://… · msg url github:… · a string)`: loads the sound there; every browser that opens the work fetches it
+- `:rec`: records what reaches it, from the beginning
+- `:rec t (msg :rec 2.5)`: keeps its first t seconds and records from there
+- `:ovr t (msg :ovr 2.5)`: replaces only what the take covers, keeping what comes after (ovr: from 0)
+- `:stop`: keeps what was heard
+- `:clear`: empties it
+- `a URL (msg https://… · msg :url github:… · a string)`: loads the sound there; every browser that opens the work fetches it
 - `(load-sound! :bN)`: brings in a sound file
 - `(load-sound! :bN "https://…")`: loads it from a URL
 - `(sample! :bN {:url "…"})`: a sample that is only a URL, as a link or a shared session writes it
@@ -1831,8 +1839,8 @@ A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop`
 
 ```clojure
 (box :b1 "adc~ 1" 40 30)
-(box :b2 "msg rec" 140 30)
-(box :b3 "msg stop" 200 30)
+(box :b2 "msg :rec" 140 30)
+(box :b3 "msg :stop" 200 30)
 (box :b4 "sample 10" 40 90)
 (box :b5 "!/ 1" 40 190)
 (box :b6 "phasor~" 40 240)
@@ -1948,7 +1956,7 @@ See also: `adc~`, `scope~`, `phasor~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
+A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
 
 **Inlets** 
 
@@ -1985,11 +1993,11 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer, one voice per id.
+Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). [:gain v] (0…1, 0.5 by default) sets the level of the notes that start after it, as a player sends an event's :amp. :stop silences it.
 
 **Inlets** 
 
-0. frequencies (a number or a list) · stop
+0. frequencies (a number or a list) · :stop
 1. voice ids (from a reader)
 
 **Outlets** 
@@ -2048,10 +2056,10 @@ Writes what pitch~ hears into a freqt, as strokes: notes where the contour settl
 
 **Messages and gestures**
 
-- `rec`: starts a take from 0 (its first write clears the freqt)
-- `rec t (msg rec 8)`: from beat t: what is before t stays, what is after is replaced
-- `ovr t (msg ovr 8)`: from beat t, over only what the take covers: what comes after it stays
-- `stop`: writes what is left and stops
+- `:rec`: starts a take from 0 (its first write clears the freqt)
+- `:rec t (msg :rec 8)`: from beat t: what is before t stays, what is after is replaced
+- `:ovr t (msg :ovr 8)`: from beat t, over only what the take covers: what comes after it stays
+- `:stop`: writes what is left and stops
 
 **Try:** Press ▶, click rec, sing a phrase, click stop: the freqt holds it. ⇄ shows it as a score. Write transcribe 60 glide to keep the slides.
 
@@ -2059,8 +2067,8 @@ Writes what pitch~ hears into a freqt, as strokes: notes where the contour settl
 (box :b1 "adc~ 1" 40 30)
 (box :b2 "pitch~ 80 1000" 40 90)
 (box :b3 "onset~" 200 90)
-(box :b4 "msg rec" 330 90)
-(box :b5 "msg stop" 400 90)
+(box :b4 "msg :rec" 330 90)
+(box :b5 "msg :stop" 400 90)
 (box :b6 "transcribe 60" 40 160)
 (box :b7 "freqt" 40 220)
 (connect :b1 0 :b2 0)
