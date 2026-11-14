@@ -1,0 +1,190 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 42 · systems · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, the model and the page's ClojureScript), driven as a person
+// would: choosing a futurible, letting the engine finish, going back, changing the rule set.
+await (async function () {
+  var results = [], errors = [];
+  window.addEventListener("error", function (e) { errors.push(String(e.message || e)); });
+  function is(what, ok) { results.push([what, !!ok]); }
+  function $$(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function change(el, checked) { el.checked = checked; el.dispatchEvent(new Event("change", { bubbles: true })); }
+  async function settle() {
+    for (var i = 0; i < 400 && !/works under this rule set/.test(document.getElementById("status").textContent); i++)
+      await new Promise(function (r) { setTimeout(r, 25); });
+  }
+  function canons() { return parseInt((document.getElementById("status").textContent.match(/^(\d+) works/) || [])[1], 10); }
+  try {
+    try { localStorage.removeItem("kairotic-study-42"); } catch (e) {}
+    var html = await fetch("../index.html", { cache: "no-cache" }).then(function (r) { return r.text(); });
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach(function (s) { document.head.appendChild(s.cloneNode(true)); });
+    document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticKernel = await import("../kairotic/kernel.mjs");
+    window.kairoticSound = await import("../kairotic/sound.mjs");
+    var model = await fetch("../kairotic/canon.cljs", { cache: "no-cache" }).then(function (r) { return r.text(); });
+    scittle.core.eval_string(model);
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+    await settle();
+    is("the futures are counted without blocking, then drawn", /works under this rule set/.test(document.getElementById("status").textContent));
+
+    var total = canons();
+    is("the status counts the canons (" + total + ")", total > 0);
+    is("an empty dux at the start", $$("#svg .dux").length === 0);
+    is("the fan shows futuribles", $$("#svg .cand").length > 0);
+    is("and the notes not allowed, with their reason", $$("#svg .nope").length > 0);
+    is("the engine's preview from here", $$("#svg .preview").length > 0);
+    is("a table of futuribles", $$("#futs .pick").length === $$("#svg .cand").length);
+    is("the rule set: hard rules as checkboxes", $$("[data-rule]").length === 19);
+    is("and soft ones as weights", $$("[data-weight]").length === 21);
+
+    var first = $$("#futs .pick")[0], note = first.getAttribute("data-choose");
+    first.click();
+    is("choosing a note of the cantus firmus writes the bar: the note held", $$("#svg .dux").length === 2);
+    is("two choices in the history", $$("#hist .ev").length === 2);
+    is("the work's EDN holds the choice", document.getElementById("code").textContent.indexOf(":you") > 0);
+
+    document.querySelector("[data-act=finish]").click();
+    var sp = document.getElementById("species").value, b = sp === "4" ? 2 : parseInt(sp, 10), bars = parseInt(document.getElementById("bars").value, 10);
+    var ph = parseInt(document.getElementById("phase").value, 10);
+    var n = (bars - 1) * b + 1 - ph;
+    is("fourth species by default", sp === "4" && ph === 0);
+    is("2/2: bar lines on the score", b === 2 && $$("#svg line.bar").length >= bars);
+    is("the cantus firmus held for the bar and the comes over it: ties drawn", $$("#svg path.tie").length >= 2 * (bars - 2));
+    is("the engine finishes the dux", $$("#svg .dux").length === n);
+    is("the comes sounds from its entry to the end", $$("#svg .comes").length === n - parseInt(document.getElementById("d").value, 10));
+    is("finished", /finished/.test(document.getElementById("here-sub").textContent));
+    is("no note out of the rules", $$("#svg .dux.bad").length === 0);
+    is("the engine's choices are hollow in the history", $$("#hist .ev.engine").length === n - 2);
+    is("a bar of divergence per point", $$("#divsvg .bar").length === n + 1);
+
+    // the sound: an organ, then voices; the cursor moves, nothing breaks
+    for (const timbre of ["organ", "voices"]) {
+      const sel = document.getElementById("timbre"); sel.value = timbre; sel.dispatchEvent(new Event("change", { bubbles: true }));
+      document.querySelector("[data-act=play]").click();
+      await new Promise(function (r) { setTimeout(r, 700); });
+      is("playing with " + timbre + ": the cursor moves", parseFloat(document.getElementById("cursor").getAttribute("x1")) > 0);
+      document.querySelector("[data-act=stop]").click();
+    }
+    // the degree: a canon has fewer works than near notes
+    var near = canons();
+    set("imitation", "1");
+    await settle();
+    is("a canon (1) has fewer works than near notes (0.8)", canons() < near);
+    set("imitation", "0.8");
+    await settle();
+    document.querySelector("[data-act=back]").click();
+    is("back: one note less", $$("#svg .dux").length === n - 1);
+    is("the history keeps the note gone back from", $$("#hist .ev").length >= n);
+    document.querySelector("[data-act=forward]").click();
+    is("forward: it is there again", $$("#svg .dux").length === n);
+    document.querySelector("[data-act=back]").click();
+
+    change(document.querySelector("[data-inv='10']"), true);
+    change(document.querySelector("[data-inv='12']"), true);
+    await settle();
+    var invSel = document.getElementById("inv-play");
+    is("two inversions asked for: both can be chosen to be played", invSel.options.length === 2 && !invSel.disabled);
+    invSel.value = "12"; invSel.dispatchEvent(new Event("change", { bubbles: true }));
+    is("the one chosen is the one the button plays", /12th/.test(document.getElementById("play-inv").title));
+    change(document.querySelector("[data-inv='10']"), false);
+    await settle();
+    var at12 = canons();
+    is("invertible at the 12th: fewer canons (" + at12 + ")", at12 < total);
+    change(document.querySelector("[data-inv='12']"), false);
+    await settle();
+    is("and back", canons() === total);
+
+    change(document.querySelector("[data-rule='leap-recovery']"), false);
+    await settle();
+    is("a hard rule off: more canons", canons() > total);
+    document.querySelector("[data-act=reset-rules]").click();
+    await settle();
+    is("the default rule set again", canons() === total);
+
+    // another comes: from the end, back to a point where the last comes has alternatives
+    for (var b2 = 0; b2 < 20 && !document.querySelector("#svg .calt"); b2++) document.querySelector("[data-act=back]").click();
+    var alt = document.querySelector("#svg .calt");
+    is("the last comes can be changed", !!alt);
+    if (alt) {
+      var before = $$("#hist .ev").length;
+      alt.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      is("changing it is a branch", $$("#hist .ev").length === before + 1 && /branch beside/.test(document.getElementById("msg").textContent));
+      is("and the table under Here offers the others", $$("#comes-here [data-comes]").length > 0);
+    }
+    document.querySelector("[data-act=clear]").click();
+
+    function set(id, v) { var el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }
+    // an upbeat: a rest before the dux's first note; two only in 3/2
+    is("two rests are only for 3/2", document.querySelector("#phase option[value='2']").disabled);
+    var sync = canons();
+    set("phase", "1");
+    await settle();
+    is("an upbeat: a rest drawn", $$("#svg .rest").length === 1);
+    set("phase", "0");
+    await settle();
+    // second species with ties: more works than fourth species
+    set("species", "2");
+    await settle();
+    is("second species with ties: syncopation off, more works", !document.querySelector("[data-rule='syncopation']").checked && canons() > sync);
+    // first species: a note per bar, no bar lines
+    set("species", "1");
+    await settle();
+    is("first species: no bar lines", $$("#svg line.bar").length === 0 && canons() > 0);
+    set("species", "2");
+    await settle();
+
+    // why?: at the octave, one beat later, no canon at all
+    set("imitation", "1");
+    set("d", "1");
+    await settle();
+    var point = document.querySelector("#here-head [data-why='point']");
+    is("no canon from here, and a why? for the point", canons() === 0 && !!point);
+    if (point) {
+      point.click();
+      for (var i = 0; i < 300 && !/would open it|close it together/.test(document.getElementById("why").textContent); i++)
+        await new Promise(function (r) { setTimeout(r, 50); });
+      var w = document.getElementById("why").textContent;
+      is("why? counts again without each hard rule", /weak-dissonance/.test(w) && /consonance/.test(w));
+      is("and sums it up", /would open it|close it together/.test(w));
+    }
+    set("d", "3");
+    set("imitation", "0.8");
+    await settle();
+    is("a new history", $$("#hist .ev").length === 0 && $$("#svg .dux").length === 0);
+
+    // systems: the pentatonic, then an edited one
+    var tot = canons();
+    set("system", "pentatonic");
+    await settle();
+    is("the pentatonic: its three modes, works", $$("#mode option").length === 3 && canons() > 0);
+    is("... the comes a period (five steps) below", document.getElementById("k").value === "-5");
+    is("... its EDN under the canon", /:name "pentatonic/.test(document.getElementById("system-edn").value));
+    set("system", "septimal31");
+    await settle();
+    is("the septimal scale in 31-TET: works, named with its B♭⁷", canons() > 0 && /B♭⁷/.test(document.getElementById("svg").textContent));
+    set("system", "diatonic");
+    await settle();
+    is("the diatonic system again: the same works", canons() === tot);
+    var ta = document.getElementById("system-edn"), keep = ta.value;
+    ta.value = "{:name";
+    document.querySelector("[data-act=apply-system]").click();
+    is("an EDN that cannot be read says so", /could not be read/.test(document.getElementById("msg").textContent));
+    ta.value = keep.replace(':name "diatonic, 12-TET"', ':name "mine"').replace("5 :imperfect", "5 :dissonant");
+    document.querySelector("[data-act=apply-system]").click();
+    await settle();
+    is("an edited system (the 6ths dissonant): applied, fewer works", document.getElementById("system").value === "edited" && canons() < tot);
+  } catch (e) {
+    errors.push(String((e && e.message) || e));
+  }
+  errors.forEach(function (e) { results.push(["error: " + e, false]); });
+  var bad = results.filter(function (r) { return !r[1]; });
+  window.kairoticResults = { total: results.length, failed: bad.map(function (r) { return r[0]; }) };
+  document.getElementById("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map(function (r) { return (r[1] ? "  ok   " : "  FAIL ") + r[0]; }).join("\n");
+})();
+</script>
