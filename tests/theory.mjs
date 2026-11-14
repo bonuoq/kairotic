@@ -132,5 +132,24 @@ export async function theory(page, check) {
   for (let i = 0; i < 4 && (await cljs(page, ls(":idle"))) !== "true"; i++) await cljs(page, `(send! ${lv} 1 :bang)`);
   check("... held longer than a bar: the end of the section", (await until(page, ls(":idle"), (x) => x === "true", 3000)) === "true" &&
         (await cljs(page, ls(":section"))) === "3");
+  // end, from outside: the section ends
+  await cljs(page, `(send! ${lv} 62) (send! ${lv} 1 :bang)`);
+  await until(page, ls(":idle"), (x) => x === "false", 3000);
+  const sec = Number(await cljs(page, ls(":section")));
+  await cljs(page, `(send! ${lv} :end)`);
+  check("... end, from an analysis: the section ends", (await until(page, ls(":idle"), (x) => x === "true", 3000)) === "true" &&
+        Number(await cljs(page, ls(":section"))) === sec + 1);
   await cljs(page, `(delete ${lv} ${lp})`);
+
+  // nocues: the meter and the sections are for other boxes; a note held too long makes the canon wait
+  const nc = (await cljs(page, '(box "comes midi live nocues" 7600 760)')).trim();
+  const ns = (k) => `(get-in @eng/rt [:states ${nc} ${k}])`;
+  await cljs(page, `(send! ${nc} 62)`);
+  await until(page, `(count (:cps (get-in @eng/rt [:states ${nc}])))`, (x) => x === "2", 30000);
+  for (let i = 0; i < 4; i++) await cljs(page, `(send! ${nc} 1 :bang)`);
+  check("nocues: held four pulses, no 3/2 and no end of section: the canon waits", (await until(page, `[${ns(":D")} ${ns(":idle")} ${ns(":meter")}]`, (x) => x === "[[1 1] false nil]", 3000)) === "[[1 1] false nil]",
+        await cljs(page, `[${ns(":D")} ${ns(":idle")} ${ns(":meter")}]`));
+  await cljs(page, `(send! ${nc} [:beats 3])`);
+  check("... and [:beats 3] from outside: 3/2 at the next section", (await cljs(page, ns(":meter"))) === "3");
+  await cljs(page, `(delete ${nc})`);
 }

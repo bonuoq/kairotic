@@ -30,7 +30,9 @@ From a score, connect what a `reader` or a `mt` box plays (numbers, as notes) or
 `comes` takes notes as a `keyboard` or `midiin` sends them (Hz; the list of notes held, the first new one
 played), `[:midi 62]`, or MIDI numbers with the word `midi`; `engine` (or bang) lets it choose the next pair,
 `back`, `reset`, `hold`; `[:k -4]`, `[:imitation 0.5]`, `[:mode :hypodorian]`, `[:beats 3]`, `[:species 4]` change the
-canon (by turns at once, live at the next section); `fourth` makes the dux a cantus firmus and the comes syncopated.
+canon (by turns at once, live at the next section); `fourth` makes the dux a cantus firmus and the comes syncopated. `end` ends the section from outside. `comes` only reacts:
+what is more — the mode heard, a modulation, the meter, phrases — is for boxes of analysis, which tell it with these
+messages; with `nocues` it leaves them the meter and the sections too.
 Less imitation (`comes dorian -7 3 2 0.8`) lets the comes move near the dux's notes; 0.3, only
 follow its motion; below 0.2, free counterpoint. Its counterpoint is `counterpoint.mjs`, beside the components
 (Study 41's kernel, the futures of every point counted exactly).

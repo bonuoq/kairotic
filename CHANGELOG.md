@@ -12,7 +12,9 @@
 
   `[:k -4]`, `[:d 2]`, `[:imitation 0.5]`, `[:mode :hypodorian]`, `[:beats 3]`, `[:species 4]` change the canon on
   the way: by turns at once, live at the next section. The comes goes out only when it changes (a note held is not
-  struck again). The Study 41 kernel takes `maxHold` (the beats a note may be held; 2 by default, a bar in the box).
+  struck again). `end` ends the section from outside, and `nocues` turns the two cues off: `comes` only reacts, and
+  what is more — the mode heard, modulations, the meter, phrases — is for boxes of analysis, which tell it with
+  messages. The Study 41 kernel takes `maxHold` (the beats a note may be held; 2 by default, a bar in the box).
 
 - **Study 41 · suspensions** (discussions #172 and #192): ties and fourth species, on Study 40. In a voice the same
   pitch on the next beat is the note held over the beat (two beats at most, drawn ‿ and heard held), and a dissonance

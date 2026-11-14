@@ -9,6 +9,9 @@
 ;;   live (the word live)    a pulse on the right inlet is a beat; a note lasts until the next one is struck. A
 ;;                           note of three pulses in 2/2 turns the canon to 3/2; one longer than a bar ends the
 ;;                           section, and the next note begins a new canon with the parameters as they are then.
+;;                           That is all it reads of time: more (the mode heard, a modulation, the meter, phrases)
+;;                           is for boxes of analysis, which tell it with messages ([:mode …], [:beats 3], end);
+;;                           with nocues the two cues are theirs too.
 (let [origins ["npm:@kairotic/theory@0.3.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
       hz (fn [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
       semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
@@ -123,12 +126,15 @@
                   (or (:idle st) (nil? (:cur st)) (nil? cp))
                   {:state (assoc st :last :idle) :out (when (#{:hold :struck} (:last st)) [[1 []] [0 []]])}
                   ;; held three pulses in 2/2: the canon turns to 3/2
-                  (and (= 2 b) (>= (inc (:dur st)) 3))
+                  (and (= 2 b) (>= (inc (:dur st)) 3) (not (:nocues args)))
                   (let [res (cue st :ternary) [s2 fx] (ensure (:state res) (opts-of (:state res) args))]
                     (assoc res :state (assoc s2 :last :cue) :effects fx))
                   ;; held longer than a bar: the end of the section
-                  (> (inc (:dur st)) b)
+                  (and (> (inc (:dur st)) b) (not (:nocues args)))
                   (let [res (cue st :end)] (assoc-in res [:state :last] :cue))
+                  ;; without cues, a note held longer than the canon allows: the canon waits for the next one
+                  (> (inc (:dur st)) b)
+                  {:state (assoc st :dur (inc (:dur st)) :last :wait)}
                   ;; held over the beat (a tie)
                   :else
                   (if-let [r (.hold cp (clj->js (:D st)) (clj->js (:C st)))]
@@ -148,11 +154,11 @@
   {;; ── about ──
    :class "comes"
    :license "MPL-2.0"
-   :doc "Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). Each note is checked against the rules of the style — the mode's range, its melodic intervals, consonance on the strong beats, a dissonance only passing on a weak one or held as a suspension, no parallel 5ths or octaves… — and against the future: a note from which the canon could not be finished is not allowed either. A note that breaks a rule is corrected to the nearest one that can be played (a black key too; between two as near, the more plausible), and the box says why. The comes is the dux's note d beats before, k steps away, in a strict canon (imitation 1); with less imitation it is chosen by the soft rules, near the dux's note (0.5–0.9), only following its motion (0.2–0.4) or free. With fourth, the dux is a cantus firmus (a note a bar) and the comes is syncopated. By turns (the default), one note in is one beat, and the same note again is held over the beat (a tie), as is hold. With live, a pulse on the right inlet (a metro, a pulse) is a beat: a note lasts until the next one is struck; a note of three pulses in 2/2 turns the canon to 3/2, one longer than a bar ends the section, and the next note begins a new canon. [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 2], [:species 4] change the canon: at once by turns, at the next section live. On the right, the futuribles: the notes that can come next, the most plausible first, with their futures counted exactly; and where the canon is. Numbers are Hz, as a keyboard or midiin sends them (MIDI with midi); a list is the notes held (the first new one is played); an event from midiin's right outlet too. engine lets it choose the next pair; back takes the last one back; reset starts again."
-   :usage "comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [live] [midi]"
+   :doc "Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). Each note is checked against the rules of the style — the mode's range, its melodic intervals, consonance on the strong beats, a dissonance only passing on a weak one or held as a suspension, no parallel 5ths or octaves… — and against the future: a note from which the canon could not be finished is not allowed either. A note that breaks a rule is corrected to the nearest one that can be played (a black key too; between two as near, the more plausible), and the box says why. The comes is the dux's note d beats before, k steps away, in a strict canon (imitation 1); with less imitation it is chosen by the soft rules, near the dux's note (0.5–0.9), only following its motion (0.2–0.4) or free. With fourth, the dux is a cantus firmus (a note a bar) and the comes is syncopated. By turns (the default), one note in is one beat, and the same note again is held over the beat (a tie), as is hold. With live, a pulse on the right inlet (a metro, a pulse) is a beat: a note lasts until the next one is struck; a note of three pulses in 2/2 turns the canon to 3/2, one longer than a bar ends the section, and the next note begins a new canon (with nocues it does neither: a note held longer than the canon allows makes it wait; the meter and the sections are then for other boxes to decide, with [:beats 3] and end). end ends the section from outside. [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 2], [:species 4] change the canon: at once by turns, at the next section live. On the right, the futuribles: the notes that can come next, the most plausible first, with their futures counted exactly; and where the canon is. Numbers are Hz, as a keyboard or midiin sends them (MIDI with midi); a list is the notes held (the first new one is played); an event from midiin's right outlet too. engine lets it choose the next pair; back takes the last one back; reset starts again."
+   :usage "comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [live] [nocues] [midi]"
    :io [2 4]
    :size [150 46]
-   :args [[:mode nil] [:k -7] [:d 3] [:beats 2] [:imitation 1] [:bars 8] [:upbeat 0] [:fourth false] [:live false] [:midi false]]
+   :args [[:mode nil] [:k -7] [:d 3] [:beats 2] [:imitation 1] [:bars 8] [:upbeat 0] [:fourth false] [:live false] [:nocues false] [:midi false]]
 
    ;; ── tasks: a kernel and its count, outside the pure logic ──
    :tasks {:kernel (fn [{:keys [opts]} _box]
@@ -209,6 +215,10 @@
                              (and (sequential? value) (every? number? value)) (assoc :held (vec value)))
                         [st fx] (ensure st o)]
                     {:state st :effects fx :show {:status "counting the futures…"}})
+
+                  ;; the end of the section, from outside (an analysis that heard a cadence, a phrase…)
+                  (#{:end "end"} value)
+                  (if (:idle st) {:state st} (cue st :end))
 
                   (#{:reset "reset"} value)
                   (if cp (at-point cp (assoc st :D [] :C [] :held [] :idle false :cur nil :struck nil)) {:state st})
