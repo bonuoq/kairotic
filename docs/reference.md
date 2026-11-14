@@ -144,7 +144,7 @@ See also: `dac~`, `snapshot~`, `scope~`
 
 `adsr~ [a d s r]`
 
-An envelope that follows a gate, for the factor of a gain~. On the left a gate: a signal (reader~ … gate) or numbers (above 0 it attacks to that level, 0 releases); a bang plays attack and decay and then releases. A list [a d s r] changes its shape (a, d, r in ms; s, the sustain, from 0 to 1), and so does dragging over it: attack, decay and release sideways, sustain up and down (⇧ finer); on release the new shape is written in the box.
+An envelope that follows a gate, for the factor of a gain~. Drag over it to change its shape.
 
 **Inlets** 
 
@@ -302,29 +302,34 @@ See also: `pitch~`, `mt`, `features~`
 
 ### comes · `@kairotic/theory`
 
-`comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [midi]`
+`comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [live] [nocues] [midi]`
 
-Counterpoint live: you play the dux, one note a beat, and the comes answers, as a canon in a mode (Study 40). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. The futures of every point are counted exactly.
+Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. Notes may be held over the beat (ties), and a dissonance may fall on a strong beat as a suspension. By turns (the default) one note in is one beat; live, a pulse on the right is a beat, and a note lasts until the next one is struck.
 
 **Inlets** 
 
-0. the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · engine (or bang): the box chooses the next pair · back · reset
+0. the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · end (the section ends: the next note begins a new canon) · engine · back · reset
+1. live: the pulse (a bang from a metro or a pulse): a beat
 
 **Outlets** 
 
-0. the comes, as a list of Hz (empty when it rests or the key is let go)
+0. the comes, as a list of Hz (when it changes: a note held is not struck again)
 1. the dux as played, or corrected
 2. the futuribles: the notes that can come next, the most plausible first ({:midi :name :futures :bits :score :comes})
-3. where the canon is: {:t :n :bar :beat :asked :played :corrected :reason :comes :futures :bits :obligations :dux :comes-line :finished}
+3. where the canon is: {:t :n :bar :beat :held :asked :played :corrected :reason :comes :futures :bits :obligations :section :meter …}, or a cue {:cue :ternary|:end :section :meter}
 
 **Messages and gestures**
 
+- `hold`: by turns: the note held over the next beat (a tie)
 - `engine`: the box plays the next pair itself, the most plausible
 - `back`: the last pair taken back
 - `reset`: a new canon
+- `end`: the end of the section, from an analysis (live, and the cues off with nocues)
 - `[:midi 62]`: a MIDI note as the dux's next note
+- `[:imitation 0.5]`: how much the comes imitates the dux (1 a canon … 0 free)
+- `[:k -4]`: the comes a 5th below
 
-**Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone; write comes hypodorian -7 3 2 0.8 for a comes that imitates more freely.
+**Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone.
 
 ```clojure
 (box :b1 "keyboard 60 24" 40 30)
@@ -345,7 +350,22 @@ Counterpoint live: you play the dux, one note a beat, and the comes answers, as 
 (connect :b2 3 :b6 0)
 ```
 
-See also: `keyboard`, `midiin`, `tonnetz`, `mt`
+**Live, on a pulse** — With live, a metro gives the beats: hold a key and the note is held over them (a tie); hold it three beats in 2/2 and the canon turns to 3/2; longer than a bar, and the section ends: the next note begins a new canon. That is all comes reads of time: with nocues it leaves the meter and the sections to other boxes, which send [:beats 3] and end.
+
+*Try:* Press ▶, click 1 to start the pulse and play slowly: the comes answers on the beats. Hold a note three beats: the cue :ternary is printed.
+
+```clojure
+(box :b8 "metro 600" 380 100)
+(box :b9 "msg 1" 380 70)
+(box :b10 "comes live" 380 160)
+(connect :b9 0 :b8 0)
+(connect :b8 0 :b10 1)
+(connect :b1 0 :b10 0)
+(connect :b10 0 :b3 0)
+(connect :b10 3 :b6 0)
+```
+
+See also: `keyboard`, `midiin`, `metro`, `pulse`, `tonnetz`
 
 ### component
 
@@ -815,7 +835,7 @@ See also: `osc~`, `adsr~`, `dac~`
 
 `gendy~ [freq x-step y-min y-max y-step breakpoints]`
 
-A dynamic stochastic oscillator, after Xenakis's GENDY (and GendyJS by Andrew Bernstein, MIT): a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle, heard as a pitch that drifts and a timbre that changes. freq in Hz (a signal on the inlet adds to it: FM); x-step (0–100 %) how far each segment's duration may wander; y-min and y-max (−1…1) the barriers of the amplitudes, y-step how far they move each cycle; breakpoints (2–128) how many. A number sets freq; [:y-step 0.2] one of them; a list of six all of them.
+A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints whose amplitudes and durations each take a random walk between mirror barriers, cycle after cycle — a pitch that drifts, a timbre that changes.
 
 **Inlets** 
 
@@ -1258,7 +1278,7 @@ See also: `patch`, `inlet~`
 
 `pan~ [position]`
 
-Stereo panning with equal power: signal on the left inlet, position on the right (−1 left … 1 right). Two outlets: left and right.
+Stereo panning with equal power.
 
 **Inlets** 
 
@@ -1928,7 +1948,7 @@ See also: `adc~`, `scope~`, `phasor~`
 
 `space~ [x y]`
 
-A sound placed around the listener (binaural, HRTF): drag the dot, or send [x y] (−1…1; y = 1 is in front). Two outlets: left and right, for headphones. Dragging rewrites the box.
+A sound placed around the listener (binaural): drag the dot, or send [x y]. For headphones.
 
 **Inlets** 
 
@@ -1965,7 +1985,7 @@ See also: `scope~`, `features~`
 
 `synth~`
 
-Polyphonic triangle-wave synthesizer: frequencies on the left (a number or a list), voice ids on the right (from a reader). [:gain v] (0…1, 0.5 by default) sets the level of the notes that start after it, as a player sends an event's :amp. :stop silences it.
+Polyphonic triangle-wave synthesizer, one voice per id.
 
 **Inlets** 
 
