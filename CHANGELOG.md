@@ -17,6 +17,14 @@
   the room tagged, as keywords do (`enc`/`dec*`). Packages: `@kairotic/analysis` 0.7.3, `controls` 0.2.1, `data`
   0.1.2, `io` 0.2.1, `net` 0.1.1, `patterns` 0.2.1, `spectral` 0.1.2. Tests: `tests/cljs/msg.cljs`, `tests/corefns.mjs`.
 
+- **Study 42 · systems** (#172, #192): the system as data. Study 41's kernel takes `spec.system`: a tuning (degrees
+  in cents up to the period, as Scala lists them, and the reference in Hz), the steps of a scale in it, the quality
+  of each class of vertical (a list by real size in cents when that decides), the melodic moves, the leaps, the
+  suspensions, the cadences, and the modes. The diatonic system of Studies 38–41 is one of them (`DIATONIC`) and counts
+  the same canons; quarter-comma meantone, a septimal scale in 31-TET (the 7:4 a consonance) and the pentatonic are
+  the others. The page edits the system in EDN under the canon; the sound takes fractional MIDI.
+
+
 - **`comes` live, with ties** (`@kairotic/theory` 0.3.0, #172, #192): the box plays on Study 41's kernel — notes
   held over the beat, suspensions, fourth species (`fourth`: the dux a cantus firmus, the comes syncopated). Two ways
   to play it:
