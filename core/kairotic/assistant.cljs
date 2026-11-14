@@ -250,7 +250,7 @@
              "such a form in any argument is the function, so sending one into the inlet of inc in map inc changes it live "
              "(msg dec does it too). A msg box is read as Clojure: keywords with their colon (msg :stop, msg :rec 4), any "
              "other word a name (msg inc; free text such as e4, 6/5, a URL), \"strings\" and EDN forms ([0 4 7], {:freq 440}); "
-             "msg :stop :is :a :name :and :does :not :stop anything: "
+             "msg stop is a name and does not stop anything: "
              (str/join " " (cf/names)))))
 
 ;; ───────── the prompt ─────────

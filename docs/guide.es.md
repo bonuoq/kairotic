@@ -159,7 +159,7 @@ escribir en una caja y anidar: `map (partial * 2)`, `map (juxt inc dec)`. Con `%
 función que llega: `comp % inc`. De una forma solo se hacen estas funciones puras (y `+ - * /`), y cada
 navegador la reconstruye a partir de ellas, así que es tan segura en una sala compartida como cualquier
 argumento; un nombre que no conoce (o una llamada como `(inc 1)` en lugar de una función) no se envía y se
-escribe en el REPL. Para enviar una función por su nombre, un `msg` con el nombre: `msg :inc` (una
+escribe en el REPL. Para enviar una función por su nombre, un `msg` con el nombre: `msg inc` (una
 keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
 
 ## 3. Sonido y tiempo
@@ -170,11 +170,11 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
 - Los mensajes viajan sin ▶: un clic en un `bang` o un `msg`, un número arrastrado, una caja de datos
   que cambió.
 - Un `msg` envía lo que lleva escrito, leído como en Clojure: números (`msg 0 8 4`), **keywords con sus
-  dos puntos** (`msg :stop`, `msg :rec 4`), **nombres** (`msg :inc`: una función allí donde una caja toma
+  dos puntos** (`msg :stop`, `msg :rec 4`), **nombres** (`msg inc`: una función allí donde una caja toma
   una; también texto libre como una nota `e4`, un ratio `6/5`, una URL o una dirección OSC), `true`,
   `false`, `nil`, **texto entre comillas como cadena** (`msg "https://…/voz.ogg"`, `msg "dos palabras"`) y
   formas EDN (`msg [0 4 7]`, `msg {:freq 440}`), solos o en una lista (`msg :url "github:…" 3`). Una
-  palabra sin sus dos puntos es un nombre, no una keyword: `msg :stop` no para un `metro`, `msg :stop` sí.
+  palabra sin sus dos puntos es un nombre, no una keyword: `msg stop` no para un `metro`, `msg :stop` sí.
 - **Síntesis estocástica**: `gendy~ 110` (en `@kairotic/synth`) es un oscilador a partir del GENDY de
   Xenakis: una onda de puntos de quiebre cuyas amplitudes y duraciones hacen paseos aleatorios ciclo a
   ciclo — una altura que deriva, un timbre que no deja de cambiar. `[:x-step 40]` deja vagar la altura,

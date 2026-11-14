@@ -157,7 +157,7 @@ a form *is* that function, so a form sent into the inlet of `inc` in `map inc` c
 `comp % inc`. Only these pure functions (and `+ - * /`) are ever made from a form, and each browser
 rebuilds it from them, so it is as safe in a shared room as any argument; a name it does not know (or a
 call such as `(inc 1)` in place of a function) is not sent and is written in the REPL. To send a function
-by its name, a `msg` with the name: `msg :inc` (a keyword, `msg :inc`, stays a keyword: a key, and a
+by its name, a `msg` with the name: `msg inc` (a keyword, `msg :inc`, stays a keyword: a key, and a
 function by itself).
 
 ## 3. Sound and time
@@ -167,11 +167,11 @@ function by itself).
 - **■** silences and brings every box back to its initial state.
 - Messages travel without ▶: a click on a `bang` or a `msg`, a number dragged, a data box that changed.
 - A `msg` sends what is written in it, read as in Clojure: numbers (`msg 0 8 4`), **keywords with their
-  colon** (`msg :stop`, `msg :rec 4`), **names** (`msg :inc`: a function where a box takes one; also free
+  colon** (`msg :stop`, `msg :rec 4`), **names** (`msg inc`: a function where a box takes one; also free
   text such as a note `e4`, a ratio `6/5`, a URL or an OSC address), `true`, `false`, `nil`, **text
   between quotes as a string** (`msg "https://…/voice.ogg"`, `msg "two words"`) and EDN forms
   (`msg [0 4 7]`, `msg {:freq 440}`), alone or in a list (`msg :url "github:…" 3`). A word without its
-  colon is a name, not a keyword: `msg :stop` does not stop a `metro`, `msg :stop` does.
+  colon is a name, not a keyword: `msg stop` does not stop a `metro`, `msg :stop` does.
 - **Stochastic synthesis**: `gendy~ 110` (in `@kairotic/synth`) is an oscillator after Xenakis's GENDY:
   a wave of breakpoints whose amplitudes and durations take random walks cycle after cycle — a pitch
   that drifts, a timbre that keeps changing. `[:x-step 40]` lets the pitch wander, `[:y-step 0.2]` the

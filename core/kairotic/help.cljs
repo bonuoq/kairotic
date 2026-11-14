@@ -77,7 +77,7 @@
                ["[:set :cursor [:line …]]" "the shape called :cursor, added or moved"]
                ["[:unset :cursor]" "removes it"] [":clear" "empties the view"]]
     :example (lines "(box :b1 \"msg :circle 60 55 22 :accent :hit :sun\" 40 30)"
-                    "(box :b2 \"msg :circle 160 55 14 :kairos :hit :moon\" 300 30)"
+                    "(box :b2 \"msg :circle 160 55 14 :kairos :hit :moon\" 360 30)"
                     "(box :b3 \"msg :set :label :text 20 100 \\\"press one of them\\\"\" 40 70)"
                     "(box :b4 \"draw 240 120\" 40 120)" "(box :b5 \"print\" 40 270)"
                     "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)")
