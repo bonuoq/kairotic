@@ -402,6 +402,7 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (defn press! [m]
   (write! m)
+  (draw!)
   (when-let [b (.querySelector js/document (str "[data-key=\"" m "\"]"))]
     (.add (.-classList b) "down")
     (js/setTimeout (fn [] (.remove (.-classList b) "down")) 140)))
