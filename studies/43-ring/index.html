@@ -1,0 +1,451 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 43 · Ring</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the ring (how much it keeps, the delay, how it reads, the canon it sounds) as a
+   toolbar; the ring drawn as a circle of time with its two heads; beside it the keys and a value to write with,
+   the trace of what came in and went out, the log, the ring as EDN; what the study decides. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+
+.views { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+.sheet { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+.sheet svg { display: block; width: 100%; height: auto; }
+
+/* the ring: time around the circle (0 at the top, clockwise), pitch from the centre out */
+.track { fill: none; stroke: var(--grid); stroke-width: 1; }
+.track.mid { stroke-dasharray: 2 4; }
+.span { fill: none; stroke: var(--accent-soft); stroke-width: 26; }
+.ev { fill: var(--accent); }
+.whead { stroke: var(--accent); stroke-width: 2; }
+.rhead { stroke: var(--kairos); stroke-width: 2; }
+.rhead.pipe { stroke-dasharray: 3 3; }
+.hlab { font: 600 10.5px var(--f-code); dominant-baseline: central; text-anchor: middle; }
+.hlab.w { fill: var(--accent); } .hlab.r { fill: var(--kairos); }
+.out { fill: none; stroke: var(--kairos); stroke-width: 1.6; }
+.center { font: 11px var(--f-code); fill: var(--ink-soft); text-anchor: middle; dominant-baseline: central; }
+
+/* the trace: the last seconds, what came in and what went out */
+.grid { stroke: var(--grid); stroke-width: 1; }
+.tin { fill: var(--accent); }
+.tout { fill: none; stroke: var(--kairos); stroke-width: 1.6; }
+.tl { font: 10px var(--f-code); fill: var(--ink-soft); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-soft); align-items: center; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+
+/* the keyboard and the value */
+.keys { display: flex; gap: 3px; flex-wrap: wrap; }
+.keys button { width: 34px; height: 64px; border: 1px solid var(--rule); background: var(--box); color: var(--ink-soft); border-radius: 0 0 4px 4px; font: 10.5px var(--f-code); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 4px; cursor: pointer; }
+.keys button.black { background: var(--ink); color: var(--paper); height: 46px; }
+.keys button:active, .keys button.down { border-color: var(--accent); background: var(--accent); color: #fff; }
+.value { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+.value input { flex: 1; }
+pre.edn { margin: 0; font: 12px/1.45 var(--f-code); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px 8px; }
+ol.log { margin: 0; padding-left: 22px; font: 12px/1.5 var(--f-code); max-height: 160px; overflow: auto; }
+ol.log li::marker { color: var(--ink-soft); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+.about + .about { margin-top: 6px; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+.modes { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.modes label { padding: 4px 10px; cursor: pointer; color: var(--ink-soft); font-size: 13px; gap: 0 !important; }
+.modes input { position: absolute; opacity: 0; pointer-events: none; }
+.modes label:has(input:checked) { background: var(--accent); color: #fff; }
+.modes label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+</style>
+
+<main>
+<header>
+  <h1>Study 43 · ring</h1>
+  <span class="sub">A circular buffer of messages in time, for a delay that changes while it plays: three ways to read it, side by side</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The ring">
+  <span class="tag">Ring</span>
+  <label title="How many seconds it keeps: what is older is forgotten">Keeps <input type="number" id="dur" min="1" max="30" step="1"> s</label>
+  <label title="How far behind the write head it reads">Delay <input type="range" id="d" min="0" max="8" step="0.01"> <code id="d-v"></code></label>
+  <span class="modes" role="radiogroup" aria-label="How it reads">
+    <label title="Each message goes out d after it came in, with the d it had then"><input type="radio" name="mode" value="pipe">pipe</label>
+    <label title="A read head d behind goes through the buffer and sends what it crosses, either way"><input type="radio" name="mode" value="tape">tape</label>
+    <label title="On demand: what was there d ago"><input type="radio" name="mode" value="tap">tap</label>
+  </span>
+  <span class="group" id="tap-group">
+    <label><input type="checkbox" id="interp"> between numbers</label>
+    <label title="0: only with the button">every <input type="number" id="clock" min="0" max="2000" step="50"> ms</label>
+    <button class="act" data-act="tap">tap</button>
+  </span>
+  <span class="sep"></span>
+  <label title="What goes out sounds transposed: a canon">Out <select id="tr"><option value="0">unison</option><option value="7">+ a 5th</option><option value="12">+ an octave</option><option value="-12">− an octave</option></select></label>
+  <label><input type="checkbox" id="sound"> sound</label>
+  <button class="act" data-act="clear" title="Empties it: its time starts again at the next message">:clear</button>
+</div>
+
+<div class="views">
+  <section class="panel" aria-labelledby="h-ring">
+    <h2 id="h-ring">Ring <span id="ring-sub"></span></h2>
+    <div class="sheet"><svg id="ring" viewBox="0 0 420 420" role="img" aria-label="The ring: what it keeps, around a circle"></svg></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>written, by pitch from the centre</span><span><i style="background:var(--kairos)"></i>read, d behind</span></div>
+  </section>
+  <div class="side">
+    <section class="panel" aria-labelledby="h-in">
+      <h2 id="h-in">In <span>the keys (or a s d f g h j k), and a value that glides</span></h2>
+      <div class="keys" id="keys"></div>
+      <div class="value"><span>value</span><input type="range" id="value" min="48" max="84" step="0.1" aria-label="A value that glides, written while it moves"><code id="value-v"></code></div>
+    </section>
+    <section class="panel" aria-labelledby="h-trace">
+      <h2 id="h-trace">Trace <span>what came in and what went out, over what it keeps</span></h2>
+      <div class="sheet"><svg id="trace" viewBox="0 0 520 180" role="img" aria-label="Pitch over time: in and out"></svg></div>
+    </section>
+    <section class="panel" aria-labelledby="h-out">
+      <h2 id="h-out">Out <span id="out-sub">the last messages sent</span></h2>
+      <ol class="log" id="log" reversed></ol>
+    </section>
+    <section class="panel" aria-labelledby="h-edn">
+      <h2 id="h-edn">The ring <span>as EDN: what it keeps and where its heads are</span></h2>
+      <pre class="edn" id="edn"></pre>
+    </section>
+  </div>
+</div>
+
+<section class="panel">
+  <h2>About</h2>
+  <p class="about"><b>Study 43.</b> A <b>ring</b> keeps the messages that reach it with their time, from the first one (or the first after <code>:clear</code>), and forgets what is older than what it keeps: circular in <b>time</b>, not in a count of messages (the last n messages are <code>xf/partition n 1</code>). Write with the keys or the value, and read it three ways:</p>
+  <p class="about"><b>pipe</b> sends each message d after it came in, with the d it had then: a shorter d lets a later message overtake an earlier one. <b>tape</b> moves a read head d behind the write head and sends what it crosses, in the order it meets it: drag the delay slowly and the music is compressed or stretched; drag it back faster than time goes and the head goes backwards, the notes again, reversed; a jump of d (typed, or a click on the slider) is a <i>seek</i>, which sends nothing of what lies between, as the patterns player does. <b>tap</b> sends nothing by itself: a bang (the button, or a clock) asks what was there d ago — held, or, <i>between numbers</i>, the value between the two around it, which follows the glide of the value.</p>
+  <h2 style="margin-top:6px">What it decides</h2>
+  <ul class="q">
+    <li>Which reading the <code>ring</code> box has by default, and whether the others are arguments (<code>ring 8 tape</code>) or other boxes.</li>
+    <li>For <b>tape</b>: how large a move of the head is a seek (here 0.5 s), and whether a head going backwards should send at all.</li>
+    <li>For <b>tap</b>: held by default and <code>interp</code> as an argument, or the other way round.</li>
+    <li>Its buffer outlet: a <code>reader</code> reading the ring at an absolute position, as it reads a canvas; and keeping a snapshot as a <code>freqt</code> with its recipe (#17).</li>
+  </ul>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The ClojureScript is evaluated here (not with Scittle's automatic tags) so that an error arrives with its
+// message: first the model, then the page.
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) {
+    var st = document.getElementById("status");
+    st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e);
+  }
+  fetch("kairotic/ring.cljs", { cache: "no-cache" }).then(function (r) {
+    if (!r.ok) throw new Error("could not read kairotic/ring.cljs"); return r.text();
+  }).then(function (src) {
+    try { scittle.core.eval_string(src); } catch (e) { throw new Error("kairotic/ring.cljs: " + (e.message || e)); }
+    scittle.core.eval_string(document.getElementById("page-cljs").textContent);
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns user (:require [clojure.string :as str] [kairotic.ring :as ring]))
+
+;; ───────── state ─────────
+;; :r the ring · :d the delay · :mode :pipe :tape :tap · :interp · :clock ms of the tap clock (0: none)
+;; :queue the messages of pipe, [due value] · :head the last position of the tape head · :log what went out,
+;; [position value] · :last-tap when the clock last asked · :tr the transposition of what sounds out
+
+(defonce ui (atom {:r (ring/empty-ring 8) :d 2 :mode :tape :interp true :clock 250 :queue [] :head nil
+                   :log [] :last-tap nil :tr 0 :sound true}))
+
+(def jump 0.5)       ; tape: a move of the head larger than this (in seconds) is a seek
+(def max-log 40)
+
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;")))
+(defn r3 [x] (/ (js/Math.round (* 1000 x)) 1000))
+
+;; the clock: seconds; a test can lend its own (window.kairoticNow)
+(defn now [] (if-let [f (.-kairoticNow js/window)] (f) (/ (js/performance.now) 1000)))
+
+;; ───────── sound ─────────
+
+(defonce audio (atom nil))
+(defn ctx []
+  (or @audio
+      (when-let [C (or (.-AudioContext js/window) (.-webkitAudioContext js/window))]
+        (reset! audio (C.)))))
+
+(defn blip!
+  "A short note at MIDI m (fractional is fine): a triangle for what comes in, a sine for what goes out."
+  [m kind]
+  (when (and (:sound @ui) (number? m))
+    (when-let [ac (ctx)]
+      (when (= "suspended" (.-state ac)) (.resume ac))
+      (let [t (.-currentTime ac) o (.createOscillator ac) g (.createGain ac)
+            p (when (.-createStereoPanner ac) (.createStereoPanner ac))]
+        (set! (.-type o) (if (= kind :in) "triangle" "sine"))
+        (set! (.. o -frequency -value) (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
+        (.setValueAtTime (.-gain g) 0 t)
+        (.linearRampToValueAtTime (.-gain g) (if (= kind :in) 0.16 0.2) (+ t 0.01))
+        (.exponentialRampToValueAtTime (.-gain g) 0.0001 (+ t 0.45))
+        (.connect o g)
+        (if p
+          (do (set! (.. p -pan -value) (if (= kind :in) -0.4 0.4)) (.connect g p) (.connect p (.-destination ac)))
+          (.connect g (.-destination ac)))
+        (.start o t) (.stop o (+ t 0.5))))))
+
+;; ───────── writing and reading ─────────
+
+(defn out!
+  "A message goes out: the log, the sound (transposed)."
+  [v]
+  (let [p (ring/pos (:r @ui) (now))]
+    (swap! ui update :log (fn [l] (vec (take-last max-log (conj l [(or p 0) v])))))
+    ;; a note sounds; a value gliding (many a second) only when tap asks for it on its clock
+    (when (or (integer? v) (= :tap (:mode @ui)))
+      (blip! (when (number? v) (+ v (:tr @ui))) :out))))
+
+(defn write!
+  "A message comes in: into the ring; with pipe, also into the queue, due d later."
+  [v]
+  (let [t (now)]
+    (swap! ui (fn [s] (cond-> (update s :r ring/write t v)
+                        (= :pipe (:mode s)) (update :queue conj [(ring/pipe-due t (:d s)) v]))))
+    (blip! v :in)))
+
+(defn tap!
+  "tap: what was there d ago goes out (nothing if it held nothing then)."
+  []
+  (let [{:keys [r d interp]} @ui
+        v (ring/tap r (now) d interp)]
+    (when (some? v) (out! (if (number? v) (r3 v) v)))))
+
+(defn tick!
+  "What the clock brings: pipe sends what is due; tape sends what its head crossed since the last tick; tap
+   asks on its clock. Then draws."
+  []
+  (let [t (now) {:keys [mode r d]} @ui]
+    (case mode
+      :pipe (let [[due later] ((juxt filter remove) (fn [[at _]] (<= at t)) (:queue @ui))]
+              (swap! ui assoc :queue (vec later))
+              (doseq [[_ v] (sort-by first due)] (out! v)))
+      :tape (let [h (ring/head r t d) from (:head @ui)]
+              (swap! ui assoc :head h)
+              (doseq [e (ring/crossed r from h jump)] (out! (:v e))))
+      :tap (let [ms (:clock @ui) last (:last-tap @ui)]
+             (when (and (pos? ms) (ring/pos r t) (or (nil? last) (>= (- t last) (/ ms 1000))))
+               (swap! ui assoc :last-tap t)
+               (tap!)))
+      nil)))
+
+;; ───────── drawing ─────────
+
+(def cx 210) (def cy 210)
+(defn radius [m] (+ 70 (* 120 (/ (- (max 40 (min 92 m)) 40) 52))))
+
+(defn polar [frac rr]
+  (let [a (- (* 2 js/Math.PI frac) (/ js/Math.PI 2))]
+    [(+ cx (* rr (js/Math.cos a))) (+ cy (* rr (js/Math.sin a)))]))
+
+(defn frac [r t] (let [dur (:dur r) x (mod t dur)] (/ x dur)))
+
+(defn head-line [r p cls label]
+  (let [[x1 y1] (polar (frac r p) 54) [x2 y2] (polar (frac r p) 200) [lx ly] (polar (frac r p) 40)]
+    (str "<line class=\"" cls "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"/>"
+         "<text class=\"hlab " (if (str/starts-with? cls "whead") "w" "r") "\" x=\"" lx "\" y=\"" ly "\">" label "</text>")))
+
+(defn arc-path
+  "The arc of the circle (radius rr) from position a to position b (b - a less than dur)."
+  [r a b rr]
+  (let [[x1 y1] (polar (frac r a) rr) [x2 y2] (polar (frac r b) rr)
+        large (if (> (- b a) (/ (:dur r) 2)) 1 0)]
+    (str "M" x1 " " y1 " A" rr " " rr " 0 " large " 1 " x2 " " y2)))
+
+(defn draw-ring! []
+  (let [{:keys [r d mode log]} @ui t (now) p (ring/pos r t)]
+    (set! (.-innerHTML ($ "ring"))
+          (str
+            (apply str (for [m [48 60 72 84]] (str "<circle class=\"track" (when (= m 60) " mid") "\" cx=\"" cx "\" cy=\"" cy "\" r=\"" (radius m) "\"/>")))
+            (when p
+              (let [[lo hi] (ring/window r t)]
+                (when (> hi lo) (str "<path class=\"span\" d=\"" (arc-path r lo (min hi (+ lo (* 0.999 (:dur r))))  130) "\"/>"))))
+            (apply str (for [e (:events r) :when (number? (:v e))]
+                         (let [[x y] (polar (frac r (:t e)) (radius (:v e)))
+                               age (if p (- p (:t e)) 0)]
+                           (str "<circle class=\"ev\" cx=\"" x "\" cy=\"" y "\" r=\"3.2\" fill-opacity=\"" (max 0.15 (- 1 (/ age (:dur r)))) "\"/>"))))
+            (apply str (for [[q v] (take-last 12 log) :when (and p (number? v) (< (- p q) 1.5))]
+                         (let [[x y] (polar (frac r q) (radius v))]
+                           (str "<circle class=\"out\" cx=\"" x "\" cy=\"" y "\" r=\"6\" stroke-opacity=\"" (- 1 (/ (- p q) 1.5)) "\"/>"))))
+            (when p (str (head-line r p "whead" "w")
+                         (head-line r (- p d) (str "rhead" (when (= mode :pipe) " pipe")) (name mode))))
+            "<text class=\"center\" x=\"" cx "\" y=\"" (- cy 8) "\">" (if p (str (.toFixed p 2) " s") "waiting") "</text>"
+            "<text class=\"center\" x=\"" cx "\" y=\"" (+ cy 8) "\">" (count (:events r)) " kept</text>"))
+    (set! (.-textContent ($ "ring-sub")) (str "keeps " (:dur r) " s · d " (.toFixed d 2) " s · " (name mode)))))
+
+(defn draw-trace! []
+  (let [{:keys [r log]} @ui t (now) p (ring/pos r t) W 520 H 180 L 30
+        x-of (fn [q] (+ L (* (- W L 6) (/ (- q (- p (:dur r))) (:dur r)))))
+        y-of (fn [m] (- H 12 (* (- H 24) (/ (- (max 40 (min 92 m)) 40) 52))))]
+    (set! (.-innerHTML ($ "trace"))
+          (str
+            (apply str (for [m [48 60 72 84]] (str "<line class=\"grid\" x1=\"" L "\" x2=\"" (- W 6) "\" y1=\"" (y-of m) "\" y2=\"" (y-of m) "\"/>"
+                                                    "<text class=\"tl\" x=\"2\" y=\"" (+ 3 (y-of m)) "\">" m "</text>")))
+            (when p
+              (str (apply str (for [e (:events r) :when (number? (:v e))]
+                                (str "<circle class=\"tin\" cx=\"" (x-of (:t e)) "\" cy=\"" (y-of (:v e)) "\" r=\"2.6\"/>")))
+                   (apply str (for [[q v] log :when (and (number? v) (> q (- p (:dur r))))]
+                                (str "<circle class=\"tout\" cx=\"" (x-of q) "\" cy=\"" (y-of v) "\" r=\"4\"/>")))))))))
+
+(defn draw-log! []
+  (set! (.-innerHTML ($ "log"))
+        (apply str (for [[q v] (reverse (take-last 12 (:log @ui)))]
+                     (str "<li>" (esc (pr-str v)) " <span style=\"color:var(--ink-soft)\">at " (.toFixed q 2) " s</span></li>")))))
+
+(defn draw-edn! []
+  (let [{:keys [r d]} @ui]
+    (set! (.-textContent ($ "edn")) (pr-str (ring/as-edn r (now) d)))))
+
+(defn draw! []
+  (draw-ring!) (draw-trace!) (draw-log!) (draw-edn!)
+  (let [{:keys [mode]} @ui]
+    (set! (.-hidden ($ "tap-group")) (not= mode :tap))
+    (set! (.-textContent ($ "status"))
+          (case mode
+            :pipe (str (count (:queue @ui)) " waiting")
+            :tape "reading what the head crosses"
+            :tap (if (pos? (:clock @ui)) (str "asking every " (:clock @ui) " ms") "asking on the button")
+            ""))))
+
+;; the loop
+(defonce running (atom false))
+(defn frame! [] (tick!) (draw!) (js/requestAnimationFrame frame!))
+
+;; ───────── controls ─────────
+
+(def key-names ["a" "w" "s" "e" "d" "f" "t" "g" "y" "h" "u" "j" "k"])
+(def black #{1 3 6 8 10})
+
+(defn controls! []
+  (let [{:keys [r d mode interp clock tr sound]} @ui]
+    (set! (.-value ($ "dur")) (:dur r))
+    (set! (.-max ($ "d")) (:dur r))
+    (set! (.-value ($ "d")) d)
+    (set! (.-textContent ($ "d-v")) (str (.toFixed d 2) " s"))
+    (doseq [el (seq (js/Array.from (js/document.querySelectorAll "input[name=mode]")))]
+      (set! (.-checked el) (= (.-value el) (name mode))))
+    (set! (.-checked ($ "interp")) interp)
+    (set! (.-value ($ "clock")) clock)
+    (set! (.-value ($ "tr")) (str tr))
+    (set! (.-checked ($ "sound")) sound)))
+
+(defn set-mode! [m]
+  ;; the tape head starts where it is (no burst of what lies behind it); pipe forgets what it waited for
+  (swap! ui (fn [s] (assoc s :mode m :queue [] :head (ring/head (:r s) (now) (:d s)) :last-tap nil)))
+  (controls!) (draw!))
+
+(defn build-keys! []
+  (set! (.-innerHTML ($ "keys"))
+        (apply str (for [i (range 13)]
+                     (str "<button type=\"button\" class=\"" (when (black (mod i 12)) "black") "\" data-key=\"" (+ 60 i) "\""
+                          " aria-label=\"MIDI " (+ 60 i) "\">" (nth key-names i) "</button>")))))
+
+(defn press! [m]
+  (write! m)
+  (when-let [b (.querySelector js/document (str "[data-key=\"" m "\"]"))]
+    (.add (.-classList b) "down")
+    (js/setTimeout (fn [] (.remove (.-classList b) "down")) 140)))
+
+(defn wire! []
+  (.addEventListener ($ "keys") "pointerdown"
+                     (fn [e] (when-let [b (.closest (.-target e) "[data-key]")]
+                               (.preventDefault e) (press! (js/parseInt (.getAttribute b "data-key") 10)))))
+  (.addEventListener js/document "keydown"
+                     (fn [e] (let [tag (some-> (.-target e) .-tagName)]
+                               (when (and (not (.-repeat e)) (not (#{"INPUT" "SELECT" "TEXTAREA"} tag)) (not (.-metaKey e)) (not (.-ctrlKey e)))
+                                 (when-let [i (first (keep-indexed (fn [i k] (when (= k (.-key e)) i)) key-names))]
+                                   (.preventDefault e) (press! (+ 60 i)))))))
+  (.addEventListener ($ "value") "input"
+                     (fn [e] (let [v (js/parseFloat (.. e -target -value))]
+                               (set! (.-textContent ($ "value-v")) (.toFixed v 1))
+                               (swap! ui update :r ring/write (now) v))))
+  (.addEventListener ($ "dur") "change"
+                     (fn [e] (let [v (max 1 (min 30 (or (js/parseFloat (.. e -target -value)) 8)))]
+                               (swap! ui (fn [s] (-> s (update :r ring/set-dur (now) v) (update :d min v))))
+                               (controls!))))
+  (.addEventListener ($ "d") "input"
+                     (fn [e] (swap! ui assoc :d (js/parseFloat (.. e -target -value)))
+                       (set! (.-textContent ($ "d-v")) (str (.toFixed (:d @ui) 2) " s"))))
+  (doseq [el (seq (js/Array.from (js/document.querySelectorAll "input[name=mode]")))]
+    (.addEventListener el "change" (fn [e] (set-mode! (keyword (.. e -target -value))))))
+  (.addEventListener ($ "interp") "change" (fn [e] (swap! ui assoc :interp (.. e -target -checked))))
+  (.addEventListener ($ "clock") "change" (fn [e] (swap! ui assoc :clock (max 0 (or (js/parseInt (.. e -target -value) 10) 0)))))
+  (.addEventListener ($ "tr") "change" (fn [e] (swap! ui assoc :tr (js/parseInt (.. e -target -value) 10))))
+  (.addEventListener ($ "sound") "change" (fn [e] (swap! ui assoc :sound (.. e -target -checked))))
+  (.addEventListener js/document "click"
+                     (fn [e] (when-let [b (.closest (.-target e) "[data-act]")]
+                               (case (.getAttribute b "data-act")
+                                 "tap" (tap!)
+                                 "clear" (swap! ui assoc :r (ring/clear (:r @ui)) :queue [] :head nil :log [])
+                                 nil)
+                               (draw!)))))
+
+(build-keys!)
+(wire!)
+(controls!)
+(draw!)
+;; for the tests: the clock's steps by hand
+(set! (.-kairoticTick js/window) (fn [] (tick!) (draw!)))
+(set! (.-kairoticState js/window) (fn [] (clj->js (assoc (select-keys @ui [:d :mode :interp]) :ring (ring/as-edn (:r @ui) (now) (:d @ui)) :log (:log @ui) :queue (count (:queue @ui))))))
+(when-not @running (reset! running true) (js/requestAnimationFrame frame!))
+</script>
