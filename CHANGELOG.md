@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Study 43 · mirrors** (#172, #192): canons by transformation, the transformation as data — canon, inversion
+  about an axis, augmentation, crab (retrograde) and table canon (retrograde inversion, a musical ambigram). A crab or
+  a table canon is written from both ends to the middle, and its futuribles are the ways to close it there. A
+  generic kernel (`mirror.mjs`) asks Study 42's rules at every time whose window of notes is known, in any order of
+  writing, and counts exactly over the notes that still bear on a time not asked; forwards it counts what Study 42
+  counts. The page writes a crab's step in two clicks (the note at the start, then the one at the end) and turns the
+  page: mirrored for a crab, upside down for a table canon.
+
 - **Study 42: the canon in the system.** A system says at which distances the comes may imitate and to which
   inversions the counterpoint may be asked to stand (`:canon {:at [-7 7 0 -4 4 -3 3] :invertible [8 10 12]}`); the
   page offers those. The septimal system imitates at the harmonic seventh too; the pentatonic inverts at the period
