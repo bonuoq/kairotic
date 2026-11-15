@@ -205,7 +205,7 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
   **altura** (Hz como los envía `pitch~`, 0 si no hay; MIDI con `realize~ midi`). El slider `pitch` o `freq`
   del `faust~` toma la altura, su slider `gain` la sonoridad, y los demás sliders toman los ajustes de ese
   `faust~` que suenan más cerca del brillo y el ruido escritos. Para conocerlos **aprende** el `faust~` al
-  que llega su salida izquierda: cuando llegan los primeros valores (o con `learn`, tras cambiar su código)
+  que llega su salida izquierda: cuando llegan los primeros valores (o con `:learn`, tras cambiar su código)
   toca unos cientos de ajustes estables sin conexión y los escucha. Lo que entra pueden ser `features~` y
   `pitch~` de otro sonido —cantas, y un sintetizador sigue tu sonoridad, brillo, ruido y altura con su
   propio sonido— o curvas dibujadas en canvas leídos con `reader~` y `snapshot~`. Su salida derecha dice lo
@@ -224,7 +224,7 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
   pulsar ▶ el navegador lo pide una vez; su sonido llega tal cual, sin el procesado pensado para
   llamadas. `scope~` dibuja una señal y `snapshot~ 50 db` la convierte en números (su nivel), para que
   lo que se oye mueva el patch. Usa auriculares antes de enviar un `adc~` a `dac~`: se realimenta.
-- **Grabar**: una caja `sample` graba lo que le llega con `rec` hasta `stop` (o hasta su duración:
+- **Grabar**: una caja `sample` graba lo que le llega con `:rec` hasta `:stop` (o hasta su duración:
   `sample 10`), y un `reader~` con el sample a su derecha lo reproduce en la posición de un `phasor~`
   — `!/ 1` convierte su duración (su outlet izquierdo) en la velocidad del phasor~, y cualquier otra
   velocidad lo toca más rápido, más lento o al revés. El sonido se queda en este navegador; la obra
@@ -249,16 +249,16 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
   como marcas.
   `form~` compara cada momento con los demás (una matriz de autosimilitud de un chroma o un mfcc, dibujada):
   un bang donde empieza una sección, el periodo que se repite y un `[:segment …]` que hace que `onset~` empiece de nuevo.
-  `transcribe` escribe lo que oye `pitch~` en un `freqt` — `rec`, tocar, `stop` — como notas a su
+  `transcribe` escribe lo que oye `pitch~` en un `freqt` — `:rec`, tocar, `:stop` — como notas a su
   altura o, con `transcribe 60 glide`, como contornos que siguen la voz (un `onset~` a su derecha separa
   las notas repetidas); el freqt visto como partitura es entonces la improvisación en notación.
 - **Grabar un gesto**: `record [lo hi]` escribe cualquier flujo de números en un `canvas` como trazos en
   el tiempo — un knob, una envolvente (`snapshot~ 50 rms`), un descriptor (`features~ 20 centroid`) —:
-  `rec`, tocar, `stop`. Un valor se mantiene hasta el siguiente; los ejes siguen a la toma. Se edita
+  `:rec`, tocar, `:stop`. Un valor se mantiene hasta el siguiente; los ejes siguen a la toma. Se edita
   como cualquier dibujo y se vuelve a leer con `phasor~` → `reader~` como automatización.
-- **Grabar desde un punto**: `rec t` (`msg :rec 4`) en un `sample`, `record` o `transcribe` conserva lo
+- **Grabar desde un punto**: `:rec t` (`msg :rec 4`) en un `sample`, `record` o `transcribe` conserva lo
   que había antes de t (segundos; pulsos en transcribe) y graba desde t, sustituyendo lo que venía
-  después: un punch-in. `ovr t` (`msg :ovr 4`; `ovr` solo, desde 0) sobrescribe solo lo que cubre la
+  después: un punch-in. `:ovr t` (`msg :ovr 4`; `:ovr` solo, desde 0) sobrescribe solo lo que cubre la
   toma, de t a donde se para, y conserva lo que venía después: un punch-in/out. Un canvas o freqt acepta
   `[:cut t]` para eso (todo desde t) y `[:cut t1 t2]` (lo que hay entre ambos; un trazo que lo cruza se
   parte en dos).
@@ -343,7 +343,7 @@ obra: el texto de cada caja en ese momento (sus argumentos, y los valores que lo
   lo deshace). Las cajas añadidas o quitadas desde entonces, las líneas y los búferes quedan como están.
 - Una posición en su entrada derecha **transforma** (morph): `1.5` lleva los controles a medio camino
   entre el primer fotograma y el segundo. Se mueven como mensajes, igual que al arrastrarlos (en vivo, y
-  se tocan en una jam), y no se escribe nada hasta `keep`. Un knob que conduce el morph no se mueve con él.
+  se tocan en una jam), y no se escribe nada hasta `:keep`. Un knob que conduce el morph no se mueve con él.
 - Un **bang** genera un preset nuevo a partir de lo que cambia y lo que permanece: lo que es igual en
   todos los fotogramas se queda; un número que cambia toma un valor dentro de su rango (geométrico en un
   knob `log`, entero si siempre lo fue); una palabra que cambia es una de las suyas. `[:generate 42]` da

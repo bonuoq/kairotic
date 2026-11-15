@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Orders written with their colon everywhere.** After `msg` began to be read as Clojure (#197), the help tables
+  wrote the orders as keywords, but the descriptions of inlets, the `:doc` of boxes, the guide and the tutorials still
+  wrote some bare (`0 or stop`, `reset: back to the minimum`, `rec starts, stop ends`, click `start`), which `msg stop`
+  no longer does. Now `:stop`, `:start`, `:reset`, `:rec t`, `:ovr t`, `:clear`, `:learn :off`, `:depth n`,
+  `:seek p`, `:open`/`:close`, `:bpm n`, `comes`' `:hold` `:end` `:engine` `:back`, and `draw`'s
+  `:circle … :accent :hit …`. Text only; the packages whose help changed are bumped so the page shows it:
+  `@kairotic/analysis` 0.7.4, `controls` 0.2.2, `data` 0.1.3, `io` 0.2.2, `net` 0.1.2, `theory` 0.3.1.
+
 - **A `msg` is read as Clojure** (breaking). What a `msg` box sends is what is written in it, as EDN:
   - **keywords with their colon**: `msg :stop`, `msg :rec 4`, `msg :circle 40 40 10 :accent :hit :sun`;
   - **any other word is a name** (a symbol): `msg inc` is the function `inc` where a box takes one (into the inlet of

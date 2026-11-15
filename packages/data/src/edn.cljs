@@ -65,7 +65,7 @@
   {;; ── about ──
    :class "edn"
    :license "MPL-2.0"
-   :doc "Shows any value as a tree, like Portal: maps, vectors, sets and lists open and close (▸ ▾), each value coloured by its kind, a closed collection previewed on its line. Picking a line sends that part of the value (left) and its path (right): the path a fetch box takes as [:get …]. Dragging scrolls (or the bar on the right). depth n opens it n levels down; bang sends the picked part again (the whole value if none); clear empties it."
+   :doc "Shows any value as a tree, like Portal: maps, vectors, sets and lists open and close (▸ ▾), each value coloured by its kind, a closed collection previewed on its line. Picking a line sends that part of the value (left) and its path (right): the path a fetch box takes as [:get …]. Dragging scrolls (or the bar on the right). :depth n opens it n levels down; bang sends the picked part again (the whole value if none); :clear empties it."
    :usage "edn [width height]"
    :io [1 2]
    :size (fn [box] (size-of (:args box)))
@@ -168,7 +168,7 @@
                      8)]])))
 
    ;; ── help ──
-   :help {:inlets ["any value: a map, a vector, a set, a list, or a single value; depth n · bang · clear"]
+   :help {:inlets ["any value: a map, a vector, a set, a list, or a single value; :depth n · bang · :clear"]
           :outlets ["the part picked" "its path, for [:get …] of a fetch box"]
           :messages [[":depth 2" "opens it two levels down"]
                      ["bang" "sends the part picked again (the whole value if none)"]

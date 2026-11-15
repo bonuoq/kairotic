@@ -110,7 +110,7 @@
    "!-" {:inlets ["a number or a list: subtracted from the right one" "the minuend (stored)"] :outlets ["the difference"] :see ["-"]}
 
    "metro"
-   {:inlets ["bang, 1 or start: starts · 0 or stop: stops" "the interval in ms"]
+   {:inlets ["bang, 1 or :start: starts · 0 or :stop: stops" "the interval in ms"]
     :outlets ["a bang every interval"]
     :example (lines "(box :b1 \"msg 1\" 40 30)" "(box :b2 \"msg 0\" 100 30)" "(box :b3 \"metro 250\" 40 90)"
                     "(box :b4 \"counter 1 8\" 40 150)" "(box :b5 \"print\" 40 210)"
@@ -119,12 +119,12 @@
     :see ["counter" "ramp" "loadbang"]}
 
    "counter"
-   {:inlets ["bang (or a number): sends the value and advances one step · reset: back to the minimum" "a number sets the next value"]
+   {:inlets ["bang (or a number): sends the value and advances one step · :reset: back to the minimum" "a number sets the next value"]
     :outlets ["the value"]
     :see ["metro"]}
 
    "ramp"
-   {:inlets ["bang: goes from a to b in s seconds · [a b s]: that motion · a number: jumps there · stop" "1 / 0: loop on or off"]
+   {:inlets ["bang: goes from a to b in s seconds · [a b s]: that motion · a number: jumps there · :stop" "1 / 0: loop on or off"]
     :outlets ["the moving value"]
     :example (lines "(box :b1 \"loadbang\" 40 30)" "(box :b2 \"ramp 220 880 4 loop\" 40 90)" "(box :b3 \"osc~ 220\" 40 150)"
                     "(box :b4 \"gain~ 0.3\" 40 200)" "(box :b5 \"dac~\" 40 250)"
@@ -278,7 +278,7 @@
     :see ["adc~" "snapshot~"]}
 
    "record"
-   {:inlets ["numbers (a knob, snapshot~, features~…); rec starts a take from 0, stop ends it" "a bang: the stroke being drawn ends, the next number begins another"]
+   {:inlets ["numbers (a knob, snapshot~, features~…); :rec starts a take from 0, :stop ends it" "a bang: the stroke being drawn ends, the next number begins another"]
     :outlets ["edits for a canvas or freqt (its inlet): [:batch …], at most every 2 seconds"]
     :messages [[":rec" "starts from 0; its first write clears the buffer"] [":rec t (msg :rec 4)" "from t seconds: what is before t stays, what is after is replaced"] [":ovr t (msg :ovr 4)" "from t seconds, over only what the take covers: what comes after it stays"] [":stop" "writes what is left and stops"]]
     :example (lines "(box :b1 \"knob 0 1 0.5\" 40 30)" "(box :b2 \"msg :rec\" 140 30)" "(box :b3 \"msg :stop\" 200 30)"
@@ -307,9 +307,9 @@
     :see ["phasor~" "adsr~" "freqt" "reader" "sample"]}
 
    "sample"
-   {:inlets ["the signal to record; rec starts, stop ends (or its length in seconds), clear empties it, a bang asks its length"]
+   {:inlets ["the signal to record; :rec starts, :stop ends (or its length in seconds), :clear empties it, a bang asks its length"]
     :outlets ["its length in seconds (after each recording, and on a bang)" "the sound, for a reader~ (on its right inlet)"]
-    :messages [[":rec" "records what reaches it, from the beginning"] [":rec t (msg :rec 2.5)" "keeps its first t seconds and records from there"] [":ovr t (msg :ovr 2.5)" "replaces only what the take covers, keeping what comes after (ovr: from 0)"] [":stop" "keeps what was heard"]
+    :messages [[":rec" "records what reaches it, from the beginning"] [":rec t (msg :rec 2.5)" "keeps its first t seconds and records from there"] [":ovr t (msg :ovr 2.5)" "replaces only what the take covers, keeping what comes after (:ovr: from 0)"] [":stop" "keeps what was heard"]
                [":clear" "empties it"] ["a URL (msg https://… · msg :url github:… · a string)" "loads the sound there; every browser that opens the work fetches it"]
                ["(load-sound! :bN)" "brings in a sound file"] ["(load-sound! :bN \"https://…\")" "loads it from a URL"]
                ["(sample! :bN {:url \"…\"})" "a sample that is only a URL, as a link or a shared session writes it"]
@@ -404,7 +404,7 @@
     :see ["mt" "freqt"]}
 
    "mt"
-   {:inlets ["a tree: it comes out transformed (for play: a tree to play, then bang, stop)"
+   {:inlets ["a tree: it comes out transformed (for play: a tree to play, then bang, :stop)"
              "for transpose, invert, augment, rotate, canon, thin: the amount · for seq, par: the tree to join"]
     :outlets ["the result (for play: the Hz of the notes sounding, a list)"]
     :messages [["mt transpose 7" "seven semitones up"] ["mt invert c4" "mirrored around c4"] ["mt retrograde" "backwards"]
@@ -474,7 +474,7 @@
    "transcribe"
    {:package "@kairotic/analysis" :usage "transcribe [bpm] [notes|glide] [ms]"
     :doc "Writes what pitch~ hears into a freqt, as strokes: notes where the contour settles on another pitch (slides, vibrato and ornaments do not start notes), or contours (glide)."
-    :inlets ["Hz from pitch~ (0: silence); rec starts from 0, stop ends" "a bang (from onset~): a new note, even on the same pitch"]
+    :inlets ["Hz from pitch~ (0: silence); :rec starts from 0, :stop ends" "a bang (from onset~): a new note, even on the same pitch"]
     :outlets ["edits for a freqt: [:batch [[:stroke …] …]], at most every 2 seconds (one event of the history each)"]
     :messages [[":rec" "starts a take from 0 (its first write clears the freqt)"] [":rec t (msg :rec 8)" "from beat t: what is before t stays, what is after is replaced"] [":ovr t (msg :ovr 8)" "from beat t, over only what the take covers: what comes after it stays"] [":stop" "writes what is left and stops"]]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"pitch~ 80 1000\" 40 90)" "(box :b3 \"onset~\" 200 90)"
@@ -521,7 +521,7 @@
    "form~"
    {:package "@kairotic/analysis" :usage "form~ [seconds] [step] [kernel]"
     :doc "How alike the moments of what arrives are over the last seconds (20): a self-similarity matrix of one frame every step seconds (0.25), drawn; where a segment begins, and the period that repeats."
-    :inlets ["lists of numbers (a chroma~, an mfcc), or numbers (onset~'s envelope, an rms); [:seconds x] [:step x] [:kernel x] change them; clear forgets"]
+    :inlets ["lists of numbers (a chroma~, an mfcc), or numbers (onset~'s envelope, an rms); [:seconds x] [:step x] [:kernel x] change them; :clear forgets"]
     :outlets ["the novelty of each frame, 0…1 (how much the music changes there; kernel seconds (2) late)" "a bang where a segment begins" "the period that repeats most, in seconds, when it changes" "[:segment {:t :at :length :period}] for the segment that ends"]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"chroma~\" 40 90)" "(box :b3 \"onset~\" 240 90)"
                     "(box :b4 \"form~\" 40 170)" "(box :b5 \"print\" 280 300)"
@@ -547,7 +547,7 @@
    "edn"
    {:package "@kairotic/data" :usage "edn [width height]"
     :doc "Any value as a tree, like Portal: collections open and close, values coloured by kind; picking a line sends that part (left) and its path (right)."
-    :inlets ["any value; depth n opens it n levels down; bang sends the part picked again; clear"]
+    :inlets ["any value; :depth n opens it n levels down; bang sends the part picked again; :clear"]
     :outlets ["the part picked" "its path, for [:get …] of a fetch box"]
     :messages [[":depth 2" "opens it two levels down"] ["bang" "the part picked again (the whole value if none)"] [":clear" "empties it"]
                ["▸ ▾ · a line · a drag" "opens or closes · picks it · scrolls (also the bar on the right)"]]
@@ -607,7 +607,7 @@
    "player"
    {:package "@kairotic/patterns" :usage "player [bpm] [quant] [jump] [limit] [edges] [spread]"
     :doc "Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a position in beats (a number): the Hz and voice ids of the notes sounding, the whole event and the beat."
-    :inlets ["start · stop: its own clock · bang: one step, now · a number: a position in beats · seek p · reset · [:bpm 90]"
+    :inlets [":start · :stop: its own clock · bang: one step, now · a number: a position in beats · :seek p · :reset · [:bpm 90]"
              "a pattern (from a pbind or a pattern box): a new one goes on from the same beat"]
     :outlets ["the Hz of the notes sounding (a list), after [:gain amp] when the event has :amp" "their voice ids, sent first (for synth~ or a polyphonic faust~)"
               "the whole event, with :beat, :hz and :ids (and :dir :back when entered from its end)" "the beat"]
@@ -664,7 +664,7 @@
    "tonnetz"
    {:package "@kairotic/theory" :usage "tonnetz [notes]"
     :doc "Triads on the Tonnetz (fifths across, thirds up) and the path of the harmony: each triad found joined to the ones before."
-    :inlets ["a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, above 0.5), or a number: a note (the last n count: 3); clear forgets the path"]
+    :inlets ["a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, above 0.5), or a number: a note (the last n count: 3); :clear forgets the path"]
     :outlets ["the triad, when it changes (:C, :am, :Ebm…)" "the pitch class pressed"]
     :example (lines "(box :b1 \"msg 60 64 67\" 40 30)" "(box :b2 \"msg 60 63 67\" 130 30)" "(box :b3 \"msg 60 63 68\" 220 30)"
                     "(box :b4 \"msg 59 63 68\" 310 30)" "(box :b5 \"tonnetz\" 40 80)" "(box :b6 \"print\" 40 340)"
@@ -675,7 +675,7 @@
    "comes"
    {:package "@kairotic/theory" :usage "comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [live] [nocues] [midi]"
     :doc "Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. Notes may be held over the beat (ties), and a dissonance may fall on a strong beat as a suspension. By turns (the default) one note in is one beat; live, a pulse on the right is a beat, and a note lasts until the next one is struck."
-    :inlets ["the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · end (the section ends: the next note begins a new canon) · engine · back · reset"
+    :inlets ["the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · :hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · :end (the section ends: the next note begins a new canon) · :engine · :back · :reset"
              "live: the pulse (a bang from a metro or a pulse): a beat"]
     :outlets ["the comes, as a list of Hz (when it changes: a note held is not struck again)" "the dux as played, or corrected" "the futuribles: the notes that can come next, the most plausible first ({:midi :name :futures :bits :score :comes})" "where the canon is: {:t :n :bar :beat :held :asked :played :corrected :reason :comes :futures :bits :obligations :section :meter …}, or a cue {:cue :ternary|:end :section :meter}"]
     :messages [[":hold" "by turns: the note held over the next beat (a tie)"] [":engine" "the box plays the next pair itself, the most plausible"]

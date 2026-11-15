@@ -26,7 +26,7 @@
   {;; ── about ──
    :class "fourier"
    :license "MPL-2.0"
-   :doc "The six Fourier coefficients of what sounds, from its pitch classes: f1 chromatic, f2 dyadic, f3 triadic, f4 octatonic, f5 diatonic, f6 whole-tone — how close it is to dividing the octave evenly in 1…6 parts. A list of pitches (MIDI or 0…11) or of 12 weights (a chroma, from chroma~), or a number as a note (the last n notes count: 4); clear empties it. Each coefficient is drawn as a point in its circle with its trail; their magnitudes (0…1) go out on the left, their phases (degrees) on the right."
+   :doc "The six Fourier coefficients of what sounds, from its pitch classes: f1 chromatic, f2 dyadic, f3 triadic, f4 octatonic, f5 diatonic, f6 whole-tone — how close it is to dividing the octave evenly in 1…6 parts. A list of pitches (MIDI or 0…11) or of 12 weights (a chroma, from chroma~), or a number as a note (the last n notes count: 4); :clear empties it. Each coefficient is drawn as a point in its circle with its trail; their magnitudes (0…1) go out on the left, their phases (degrees) on the right."
    :usage "fourier [notes]"
    :io [1 2]
    :size [300 214]
