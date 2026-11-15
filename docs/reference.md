@@ -308,7 +308,7 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 
 **Inlets** 
 
-0. the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · end (the section ends: the next note begins a new canon) · engine · back · reset
+0. the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · :hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · :end (the section ends: the next note begins a new canon) · :engine · :back · :reset
 1. live: the pulse (a bang from a metro or a pulse): a beat
 
 **Outlets** 
@@ -390,7 +390,7 @@ Each bang sends the value and advances one step; goes back to the minimum on rea
 
 **Inlets** 
 
-0. bang (or a number): sends the value and advances one step · reset: back to the minimum
+0. bang (or a number): sends the value and advances one step · :reset: back to the minimum
 1. a number sets the next value
 
 **Outlets** 
@@ -419,11 +419,62 @@ Audio output: each inlet is an output channel, the ones written after it (dac~ 1
 
 See also: `gain~`, `pan~`, `space~`, `adc~`
 
+### dispatch
+
+`dispatch n [selector]  ·  right: k · nil · true · a function, keyword, map or set`
+
+A message to one of several outlets, numbered from 0: dispatch n has n of them. The right inlet chooses the way: a number k is outlet k; nil or false closes it (nothing goes out); true is outlet 0, so dispatch 1 is a gate that opens and closes. A function chooses for each message — a name or a form (comp …, partial …), a keyword, a map ({60 0 64 1}): what it gives for the message is the outlet, nil lets nothing through — and a set lets its members through outlet 0. The selector can be written after n (dispatch 3 0, dispatch 2 {60 0 64 1}); a msg sends it as written (msg 1, msg nil, msg :freq). Named after the dispatch function of Clojure's multimethods, which looks at a value and chooses where it goes.
+
+**Inlets** 
+
+0. a message: goes out by the outlet the selector chooses (or by none)
+1. the selector: k (outlet k, from 0) · nil or false (closed) · true (outlet 0) · a function, keyword or map that chooses for each message · a set (its members by outlet 0)
+
+**Outlets** 
+
+0. outlet 0
+1. outlet 1 … (dispatch n has n)
+
+**Messages and gestures**
+
+- `msg 1`: every message by outlet 1
+- `msg nil`: nothing goes out
+- `msg {60 0 64 1}`: 60 by outlet 0, 64 by outlet 1, anything else by none
+- `msg :to`: each message by the outlet its :to says ({:freq 440 :to 1})
+
+**Try:** Click a selector on the right (0, 1, nil or the map) and then the notes on the left: each note goes out by the way chosen, or by none. With the map, 60 and 64 choose their own way and 67 is held back.
+
+```clojure
+(box :b1 "msg 60" 40 30)
+(box :b2 "msg 64" 100 30)
+(box :b3 "msg 67" 160 30)
+(box :b4 "msg 0" 260 30)
+(box :b5 "msg 1" 320 30)
+(box :b6 "msg nil" 380 30)
+(box :b7 "msg {60 0 64 1}" 470 30)
+(box :b8 "dispatch 2" 40 100)
+(box :b9 "print" 40 170)
+(box :b10 "print" 200 170)
+(connect :b1 0 :b8 0)
+(connect :b2 0 :b8 0)
+(connect :b3 0 :b8 0)
+(connect :b4 0 :b8 1)
+(connect :b5 0 :b8 1)
+(connect :b6 0 :b8 1)
+(connect :b7 0 :b8 1)
+(connect :b8 0 :b9 0)
+(connect :b8 1 :b10 0)
+```
+
+See also: `msg`, `get`
+
+Reference: [Multimethods: a dispatch function chooses](https://clojure.org/reference/multimethods) · [Truthiness: nil and false](https://clojure.org/guides/learn/flow#_truth) · [Maps, sets and keywords as functions](https://clojure.org/reference/data_structures)
+
 ### draw
 
 `draw [width height]`
 
-A view drawn from the messages that arrive: each shape of kairotic.shapes ([:circle {:cx 40 :cy 40 :r 10 :fill :accent}], [:line …], [:path {:points [[x y] …]}], [:text {:x :y} "…"], [:curve …], [:group {:x :y :rotate} [shapes]]) is added — or as a msg writes it: circle 40 40 10 accent, rect x y w h, line x1 y1 x2 y2, arc cx cy r from to, text x y "words", with a colour and hit name; a list of shapes replaces them all; [:set k shape] (set k circle …) adds or replaces the shape called k (to move a cursor), [:unset k] removes it, clear empties it. A shape with :hit k, pressed, sends k out.
+A view drawn from the messages that arrive: each shape of kairotic.shapes ([:circle {:cx 40 :cy 40 :r 10 :fill :accent}], [:line …], [:path {:points [[x y] …]}], [:text {:x :y} "…"], [:curve …], [:group {:x :y :rotate} [shapes]]) is added — or as a msg writes it: :circle 40 40 10 :accent, :rect x y w h, :line x1 y1 x2 y2, :arc cx cy r from to, :text x y "words", with a colour and :hit name; a list of shapes replaces them all; [:set k shape] (:set k :circle …) adds or replaces the shape called k (to move a cursor), [:unset k] removes it, :clear empties it. A shape with :hit k, pressed, sends k out.
 
 **Inlets** 
 
@@ -465,7 +516,7 @@ Any value as a tree, like Portal: collections open and close, values coloured by
 
 **Inlets** 
 
-0. any value; depth n opens it n levels down; bang sends the part picked again; clear
+0. any value; :depth n opens it n levels down; bang sends the part picked again; :clear
 
 **Outlets** 
 
@@ -655,7 +706,7 @@ How alike the moments of what arrives are over the last seconds (20): a self-sim
 
 **Inlets** 
 
-0. lists of numbers (a chroma~, an mfcc), or numbers (onset~'s envelope, an rms); [:seconds x] [:step x] [:kernel x] change them; clear forgets
+0. lists of numbers (a chroma~, an mfcc), or numbers (onset~'s envelope, an rms); [:seconds x] [:step x] [:kernel x] change them; :clear forgets
 
 **Outlets** 
 
@@ -974,11 +1025,11 @@ See also: `bang`, `metro`
 
 `metro ms`
 
-Sends periodic bangs: 1 or bang starts it, 0 or stop stops it.
+Sends periodic bangs: 1 or bang starts it, 0 or :stop stops it.
 
 **Inlets** 
 
-0. bang, 1 or start: starts · 0 or stop: stops
+0. bang, 1 or :start: starts · 0 or :stop: stops
 1. the interval in ms
 
 **Outlets** 
@@ -1077,7 +1128,7 @@ Reference: [EDN](https://github.com/edn-format/edn) · [Keywords and symbols](ht
 
 Operations on musical trees: a tree on the left comes out transformed. transpose n (semitones, or an interval: M3, -P5, A4) · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval] · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks).
 
-**Inlets** 1: a tree: it comes out transformed (for play: a tree to play, then bang, stop) · for transpose, invert, augment, rotate, canon, thin: the amount · for seq, par: the tree to join
+**Inlets** 1: a tree: it comes out transformed (for play: a tree to play, then bang, :stop) · for transpose, invert, augment, rotate, canon, thin: the amount · for seq, par: the tree to join
 
 **Outlets** 
 
@@ -1502,7 +1553,7 @@ Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a
 
 **Inlets** 
 
-0. start · stop: its own clock · bang: one step, now · a number: a position in beats · seek p · reset · [:bpm 90]
+0. :start · :stop: its own clock · bang: one step, now · a number: a position in beats · :seek p · :reset · [:bpm 90]
 1. a pattern (from a pbind or a pattern box): a new one goes on from the same beat
 
 **Outlets** 
@@ -1640,7 +1691,7 @@ Linear motion: a bang (or [a b s]) goes from a to b in s seconds; a number jumps
 
 **Inlets** 
 
-0. bang: goes from a to b in s seconds · [a b s]: that motion · a number: jumps there · stop
+0. bang: goes from a to b in s seconds · [a b s]: that motion · a number: jumps there · :stop
 1. 1 / 0: loop on or off
 
 **Outlets** 
@@ -1771,11 +1822,11 @@ See also: `features~`, `pitch~`, `faust~`, `monitor`
 
 `record [lo hi] [log] [tolerance]`
 
-Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. rec starts a take from 0 (its first write clears the buffer); rec t (msg :rec 4) records from t seconds on, keeping what is before t and replacing what is after (punch-in); ovr t (msg :ovr 4) overwrites only what the take covers, from t to where it stops, keeping what comes after (punch-in/out); stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation.
+Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an envelope (snapshot~ 50 rms), a descriptor (features~), a knob, a position. :rec starts a take from 0 (its first write clears the buffer); :rec t (msg :rec 4) records from t seconds on, keeping what is before t and replacing what is after (punch-in); :ovr t (msg :ovr 4) overwrites only what the take covers, from t to where it stops, keeping what comes after (punch-in/out); :stop ends it; a bang on the right ends a stroke, and the next number begins another. A value holds until the next one (snapshot~ sends only what changed), simplified within tolerance (1% of the range without it). Time in seconds from rec. With lo hi the Y axis of a canvas is set to them (log with log); without them it follows the values. It writes at most every 2 seconds, each write one event of the history; then reader~ reads it back as an automation.
 
 **Inlets** 
 
-0. numbers (a knob, snapshot~, features~…); rec starts a take from 0, stop ends it
+0. numbers (a knob, snapshot~, features~…); :rec starts a take from 0, :stop ends it
 1. a bang: the stroke being drawn ends, the next number begins another
 
 **Outlets** 
@@ -1809,11 +1860,11 @@ See also: `canvas`, `snapshot~`, `reader~`, `transcribe`
 
 `sample [seconds]`
 
-A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop` (or until it has seconds, 60 by default), replacing what it had; rec t (msg :rec 2.5) keeps its first t seconds and records from there (punch-in); ovr t (msg :ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN "https://…")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
+A buffer of sound. What reaches its left inlet is recorded on `:rec` until `:stop` (or until it has seconds, 60 by default), replacing what it had; :rec t (msg :rec 2.5) keeps its first t seconds and records from there (punch-in); :ovr t (msg :ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `:clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN "https://…")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
 
 **Inlets** 
 
-0. the signal to record; rec starts, stop ends (or its length in seconds), clear empties it, a bang asks its length
+0. the signal to record; :rec starts, :stop ends (or its length in seconds), :clear empties it, a bang asks its length
 
 **Outlets** 
 
@@ -1824,7 +1875,7 @@ A buffer of sound. What reaches its left inlet is recorded on `rec` until `stop`
 
 - `:rec`: records what reaches it, from the beginning
 - `:rec t (msg :rec 2.5)`: keeps its first t seconds and records from there
-- `:ovr t (msg :ovr 2.5)`: replaces only what the take covers, keeping what comes after (ovr: from 0)
+- `:ovr t (msg :ovr 2.5)`: replaces only what the take covers, keeping what comes after (:ovr: from 0)
 - `:stop`: keeps what was heard
 - `:clear`: empties it
 - `a URL (msg https://… · msg :url github:… · a string)`: loads the sound there; every browser that opens the work fetches it
@@ -2014,7 +2065,7 @@ Triads on the Tonnetz (fifths across, thirds up) and the path of the harmony: ea
 
 **Inlets** 
 
-0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, above 0.5), or a number: a note (the last n count: 3); clear forgets the path
+0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, above 0.5), or a number: a note (the last n count: 3); :clear forgets the path
 
 **Outlets** 
 
@@ -2047,7 +2098,7 @@ Writes what pitch~ hears into a freqt, as strokes: notes where the contour settl
 
 **Inlets** 
 
-0. Hz from pitch~ (0: silence); rec starts from 0, stop ends
+0. Hz from pitch~ (0: silence); :rec starts from 0, :stop ends
 1. a bang (from onset~): a new note, even on the same pitch
 
 **Outlets** 
