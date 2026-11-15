@@ -1021,8 +1021,8 @@ export default {
       "es": "Transformar"
      },
      "note": {
-      "en": "A position on the **right** inlet morphs between keyframes: 1.5 is halfway from calm to pulse, 2.5 halfway from pulse to storm. The knobs move as messages, as when you drag them (strobe geometrically, since its knob is `log`); the knob that drives the morph is left alone.\n\nNothing is written while you morph: `keep` writes the knobs where they are, as one event.",
-      "es": "Una posición en la entrada **derecha** transforma entre fotogramas: 1.5 es la mitad entre calm y pulse, 2.5 la mitad entre pulse y storm. Los knobs se mueven como mensajes, igual que al arrastrarlos (strobe de forma geométrica, porque su knob es `log`); el knob que conduce la transformación no se mueve.\n\nMientras transformas no se escribe nada: `keep` escribe los knobs donde están, como un evento."
+      "en": "A position on the **right** inlet morphs between keyframes: 1.5 is halfway from calm to pulse, 2.5 halfway from pulse to storm. The knobs move as messages, as when you drag them (strobe geometrically, since its knob is `log`); the knob that drives the morph is left alone.\n\nNothing is written while you morph: `:keep` writes the knobs where they are, as one event.",
+      "es": "Una posición en la entrada **derecha** transforma entre fotogramas: 1.5 es la mitad entre calm y pulse, 2.5 la mitad entre pulse y storm. Los knobs se mueven como mensajes, igual que al arrastrarlos (strobe de forma geométrica, porque su knob es `log`); el knob que conduce la transformación no se mueve.\n\nMientras transformas no se escribe nada: `:keep` escribe los knobs donde están, como un evento."
      },
      "try": {
       "en": "Drag the knob on the right slowly from 1 to 3 while a note sounds. Stop somewhere you like and click keep.",
@@ -1087,12 +1087,12 @@ export default {
       "es": "Un pattern y un player"
      },
      "note": {
-      "en": "A **pattern** is a sequence of events, each a map of keys: `{:degree 2 :dur 0.5}`. A `pbind` writes one as data: every key holds a constant, a vector (a sequence) or a generator. Here `:degree` goes through four steps of the major scale, each lasting half a beat.\n\nThe `pbind` sends its pattern to the **right** inlet of a `player`. The **left** inlet says how time moves: `start` and `stop` use its own clock (`player 110`: 110 beats per minute). It sends the Hz of the notes and their voice ids to `synth~`, which plays them.\n\nWhat travels is the **source** and a **seed**, not the notes: every tab makes the same events from them.",
-      "es": "Un **pattern** es una secuencia de eventos, cada uno un mapa de claves: `{:degree 2 :dur 0.5}`. Un `pbind` lo escribe como datos: cada clave tiene una constante, un vector (una secuencia) o un generador. Aquí `:degree` recorre cuatro grados de la escala mayor, de medio beat cada uno.\n\nEl `pbind` envía su pattern a la entrada **derecha** de un `player`. La **izquierda** dice cómo se mueve el tiempo: `start` y `stop` usan su propio reloj (`player 110`: 110 pulsos por minuto). Envía los Hz de las notas y sus ids de voz a `synth~`, que las toca.\n\nLo que viaja es la **fuente** y una **semilla**, no las notas: cada pestaña hace los mismos eventos a partir de ellas."
+      "en": "A **pattern** is a sequence of events, each a map of keys: `{:degree 2 :dur 0.5}`. A `pbind` writes one as data: every key holds a constant, a vector (a sequence) or a generator. Here `:degree` goes through four steps of the major scale, each lasting half a beat.\n\nThe `pbind` sends its pattern to the **right** inlet of a `player`. The **left** inlet says how time moves: `:start` and `:stop` use its own clock (`player 110`: 110 beats per minute). It sends the Hz of the notes and their voice ids to `synth~`, which plays them.\n\nWhat travels is the **source** and a **seed**, not the notes: every tab makes the same events from them.",
+      "es": "Un **pattern** es una secuencia de eventos, cada uno un mapa de claves: `{:degree 2 :dur 0.5}`. Un `pbind` lo escribe como datos: cada clave tiene una constante, un vector (una secuencia) o un generador. Aquí `:degree` recorre cuatro grados de la escala mayor, de medio beat cada uno.\n\nEl `pbind` envía su pattern a la entrada **derecha** de un `player`. La **izquierda** dice cómo se mueve el tiempo: `:start` y `:stop` usan su propio reloj (`player 110`: 110 pulsos por minuto). Envía los Hz de las notas y sus ids de voz a `synth~`, que las toca.\n\nLo que viaja es la **fuente** y una **semilla**, no las notas: cada pestaña hace los mismos eventos a partir de ellas."
      },
      "try": {
-      "en": "Press ▶, then click `start`. Double-click the pbind, change a degree, and apply (Ctrl+Enter): the player goes on with it from the same beat.",
-      "es": "Pulsa ▶ y luego haz clic en `start`. Haz doble clic en el pbind, cambia un grado y aplica (Ctrl+Enter): el player sigue con él desde el mismo beat."
+      "en": "Press ▶, then click `:start`. Double-click the pbind, change a degree, and apply (Ctrl+Enter): the player goes on with it from the same beat.",
+      "es": "Pulsa ▶ y luego haz clic en `:start`. Haz doble clic en el pbind, cambia un grado y aplica (Ctrl+Enter): el player sigue con él desde el mismo beat."
      },
      "code": [
       "(box :b1 \"pbind 1 loop\" 40 40)",
@@ -1172,8 +1172,8 @@ export default {
       "es": "Un **bang** a la izquierda del player toca el siguiente evento **ahora**, sea cual sea su `:dur`. El pattern sigue a lo que lo mueva: un `metro`, un `onset~` de lo que alguien toca, una tecla. El ritmo ya no está en el pattern sino en la mano."
      },
      "try": {
-      "en": "Click `stop`, then `1` to start the metro: one note every 300 ms. Click `0`, then the bang yourself.",
-      "es": "Haz clic en `stop` y luego en `1` para arrancar el metro: una nota cada 300 ms. Haz clic en `0` y luego en el bang tú."
+      "en": "Click `:stop`, then `1` to start the metro: one note every 300 ms. Click `0`, then the bang yourself.",
+      "es": "Haz clic en `:stop` y luego en `1` para arrancar el metro: una nota cada 300 ms. Haz clic en `0` y luego en el bang tú."
      },
      "code": [
       "(box :b7 \"msg 1\" 220 120)",

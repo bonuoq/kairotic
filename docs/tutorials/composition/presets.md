@@ -82,11 +82,11 @@ Con ▶ y una nota sostenida (⇧-clic la mantiene), haz clic en 1, 2 y 3.
 @en
 A position on the **right** inlet morphs between keyframes: 1.5 is halfway from calm to pulse, 2.5 halfway from pulse to storm. The knobs move as messages, as when you drag them (strobe geometrically, since its knob is `log`); the knob that drives the morph is left alone.
 
-Nothing is written while you morph: `keep` writes the knobs where they are, as one event.
+Nothing is written while you morph: `:keep` writes the knobs where they are, as one event.
 @es
 Una posición en la entrada **derecha** transforma entre fotogramas: 1.5 es la mitad entre calm y pulse, 2.5 la mitad entre pulse y storm. Los knobs se mueven como mensajes, igual que al arrastrarlos (strobe de forma geométrica, porque su knob es `log`); el knob que conduce la transformación no se mueve.
 
-Mientras transformas no se escribe nada: `keep` escribe los knobs donde están, como un evento.
+Mientras transformas no se escribe nada: `:keep` escribe los knobs donde están, como un evento.
 @try.en
 Drag the knob on the right slowly from 1 to 3 while a note sounds. Stop somewhere you like and click keep.
 @try.es

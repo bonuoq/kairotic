@@ -208,7 +208,7 @@ function by itself).
   `pitch~` sends it, 0 for none; MIDI with `realize~ midi`). The `faust~`'s `pitch` or `freq` slider takes
   the pitch, its `gain` slider the loudness, and its other sliders are set to the settings of that `faust~`
   that sound nearest to the brightness and noisiness written. To know them it **learns** the `faust~` its
-  left outlet reaches: when the first values arrive (or on `learn`, after changing its code) it plays a few
+  left outlet reaches: when the first values arrive (or on `:learn`, after changing its code) it plays a few
   hundred steady settings offline and listens to them. What comes in can be `features~` and `pitch~` of
   another sound — sing, and a synth follows your loudness, brightness, noisiness and pitch with its own
   sound — or curves drawn on canvases read by `reader~` and `snapshot~`. Its right outlet says how far the
@@ -225,7 +225,7 @@ function by itself).
   the browser asks for it once; its sound comes as it is, without the processing made for calls.
   `scope~` draws a signal and `snapshot~ 50 db` turns it into numbers (its level), so what is heard can
   drive the patch. Use headphones before sending an `adc~` to `dac~`: it feeds back.
-- **Recording**: a `sample` box records what reaches it on `rec` until `stop` (or its length:
+- **Recording**: a `sample` box records what reaches it on `:rec` until `:stop` (or its length:
   `sample 10`), and a `reader~` with the sample on its right plays it at the position of a `phasor~`
   — `!/ 1` turns its length (its left outlet) into the speed of the phasor~, and any other speed plays
   it faster, slower or backwards. The sound stays in this browser; the work keeps its picture, so a work
@@ -248,16 +248,16 @@ function by itself).
   each: numbers as lines, lists (chroma, mfcc) as strips, bangs and words as marks.
   `form~` compares every moment with the others (a self-similarity matrix of a chroma or an mfcc, drawn): a
   bang where a section begins, the period that repeats, and a `[:segment …]` that makes `onset~` start afresh.
-  `transcribe` writes what `pitch~` hears into a `freqt` — `rec`, play, `stop` — as notes at their pitch
+  `transcribe` writes what `pitch~` hears into a `freqt` — `:rec`, play, `:stop` — as notes at their pitch
   or, with `transcribe 60 glide`, as contours that follow the voice (an `onset~` on its right splits
   repeated notes); the freqt shown as a score is then the improvisation in notation.
 - **Recording a gesture**: `record [lo hi]` writes any stream of numbers into a `canvas` as strokes over
-  time — a knob, an envelope (`snapshot~ 50 rms`), a descriptor (`features~ 20 centroid`) —: `rec`,
-  play, `stop`. A value holds until the next one; the axes follow the take. Edit it like any drawing and
+  time — a knob, an envelope (`snapshot~ 50 rms`), a descriptor (`features~ 20 centroid`) —: `:rec`,
+  play, `:stop`. A value holds until the next one; the axes follow the take. Edit it like any drawing and
   read it back with `phasor~` → `reader~` as an automation.
-- **Recording from a point**: `rec t` (`msg :rec 4`) on a `sample`, `record` or `transcribe` keeps what
+- **Recording from a point**: `:rec t` (`msg :rec 4`) on a `sample`, `record` or `transcribe` keeps what
   was there before t (seconds; beats for transcribe) and records from t on, replacing what came after —
-  a punch-in. `ovr t` (`msg :ovr 4`; `ovr` alone, from 0) overwrites only what the take covers, from t
+  a punch-in. `:ovr t` (`msg :ovr 4`; `:ovr` alone, from 0) overwrites only what the take covers, from t
   to where it stops, and keeps what came after it — a punch-in/out. A canvas or freqt takes `[:cut t]`
   for that (everything from t on) and `[:cut t1 t2]` (what is between them; a stroke across is split).
 
@@ -340,7 +340,7 @@ pad), sub-patches included. A `presets` box plays them:
   or removed since, lines and buffers stay as they are.
 - A position into its right inlet **morphs**: `1.5` puts the controls halfway between the first
   keyframe and the second. They move as messages, as a drag does (live, and played in a jam), and
-  nothing is written until `keep`. A knob that drives the morph is not moved by it.
+  nothing is written until `:keep`. A knob that drives the morph is not moved by it.
 - A **bang** makes a new preset from what changes and what remains: what is the same in every keyframe
   stays; a number that changes takes a value within its range (geometric for a `log` knob, whole if it
   always was); a word that changes is one of its words. `[:generate 42]` gives the same preset every

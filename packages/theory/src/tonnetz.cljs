@@ -31,7 +31,7 @@
   {;; ── about ──
    :class "tonnetz"
    :license "MPL-2.0"
-   :doc "Triads on the Tonnetz: pitch classes on a lattice of fifths (to the right) and major and minor thirds (up), where a major or minor triad is a triangle and the neo-Riemannian moves P, L and R cross an edge. A list of pitches (MIDI or 0…11) or of 12 weights (a chroma, above 0.5), or a number as a note (the last n notes count: 3); clear forgets the path. It lights what sounds, fills the triads it contains and joins the triad found to the ones before (the path of the harmony, up to 24 steps). The triad goes out on the left when it changes (:C, :am…); pressing a node sends its pitch class (right)."
+   :doc "Triads on the Tonnetz: pitch classes on a lattice of fifths (to the right) and major and minor thirds (up), where a major or minor triad is a triangle and the neo-Riemannian moves P, L and R cross an edge. A list of pitches (MIDI or 0…11) or of 12 weights (a chroma, above 0.5), or a number as a note (the last n notes count: 3); :clear forgets the path. It lights what sounds, fills the triads it contains and joins the triad found to the ones before (the path of the harmony, up to 24 steps). The triad goes out on the left when it changes (:C, :am…); pressing a node sends its pitch class (right)."
    :usage "tonnetz [notes]"
    :io [1 2]
    :size [380 230]

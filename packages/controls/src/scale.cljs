@@ -15,7 +15,7 @@
   {;; ── about ──
    :class "scale"
    :license "MPL-2.0"
-   :doc "A number from one range (in-lo…in-hi, 0…1 by default) to another (out-lo…out-hi): straight, or with log in equal ratios (for frequencies, a cutoff, a speed: equal moves are equal intervals); clipped to the range, and reversed when out-hi is under out-lo. With ms, it glides there in that time (a jumpy sensor made smooth). It takes a number, a list whose last element is the number ([:lx 0.3] from gamepad), or a map with :value. learn: the next values it gets make the input range (move the controller from end to end), learn off stops. Between a controller (control, knob, motion…) and whatever it moves."
+   :doc "A number from one range (in-lo…in-hi, 0…1 by default) to another (out-lo…out-hi): straight, or with log in equal ratios (for frequencies, a cutoff, a speed: equal moves are equal intervals); clipped to the range, and reversed when out-hi is under out-lo. With ms, it glides there in that time (a jumpy sensor made smooth). It takes a number, a list whose last element is the number ([:lx 0.3] from gamepad), or a map with :value. :learn: the next values it gets make the input range (move the controller from end to end), :learn :off stops. Between a controller (control, knob, motion…) and whatever it moves."
    :usage "scale [in-lo in-hi out-lo out-hi] [log] [ms]"
    :io [1 1]
    :size [130 24]
