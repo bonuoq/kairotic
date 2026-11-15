@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Kairotic Study 43 · Ring</title>
+<title>Kairotic Study 44 · Ring</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -113,7 +113,7 @@ ul.q li::marker { color: var(--kairos); }
 
 <main>
 <header>
-  <h1>Study 43 · ring</h1>
+  <h1>Study 44 · ring</h1>
   <span class="sub">A circular buffer of messages in time, for a delay that changes while it plays: three ways to read it, side by side</span>
   <span class="status" id="status">Loading…</span>
 </header>
@@ -167,7 +167,7 @@ ul.q li::marker { color: var(--kairos); }
 
 <section class="panel">
   <h2>About</h2>
-  <p class="about"><b>Study 43.</b> A <b>ring</b> keeps the messages that reach it with their time, from the first one (or the first after <code>:clear</code>), and forgets what is older than what it keeps: circular in <b>time</b>, not in a count of messages (the last n messages are <code>xf/partition n 1</code>). Write with the keys or the value, and read it three ways:</p>
+  <p class="about"><b>Study 44.</b> A <b>ring</b> keeps the messages that reach it with their time, from the first one (or the first after <code>:clear</code>), and forgets what is older than what it keeps: circular in <b>time</b>, not in a count of messages (the last n messages are <code>xf/partition n 1</code>). Write with the keys or the value, and read it three ways:</p>
   <p class="about"><b>pipe</b> sends each message d after it came in, with the d it had then: a shorter d lets a later message overtake an earlier one. <b>tape</b> moves a read head d behind the write head and sends what it crosses, in the order it meets it: drag the delay slowly and the music is compressed or stretched; drag it back faster than time goes and the head goes backwards, the notes again, reversed; a jump of d (typed, or a click on the slider) is a <i>seek</i>, which sends nothing of what lies between, as the patterns player does. <b>tap</b> sends nothing by itself: a bang (the button, or a clock) asks what was there d ago — held, or, <i>between numbers</i>, the value between the two around it, which follows the glide of the value.</p>
   <h2 style="margin-top:6px">What it decides</h2>
   <ul class="q">

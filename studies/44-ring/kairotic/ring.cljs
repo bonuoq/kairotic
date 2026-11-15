@@ -1,5 +1,5 @@
 ;; SPDX-License-Identifier: MPL-2.0
-;; Kairotic · Study 43 · ring: the model
+;; Kairotic · Study 44 · ring: the model
 ;; A circular buffer of messages indexed by time, for a delay that can change while it plays.
 ;;
 ;; Time starts at the first message (or the first one after a clear): every message is written with its

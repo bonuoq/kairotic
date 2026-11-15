@@ -1,5 +1,5 @@
 ;; SPDX-License-Identifier: MPL-2.0
-;; Study 43 · ring: the model's tests. Open tests/model.html.
+;; Study 44 · ring: the model's tests. Open tests/model.html.
 
 (ns ring-tests
   (:require [kairotic.ring :as ring]))

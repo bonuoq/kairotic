@@ -2,11 +2,11 @@
 
 ## Unreleased
 
-- **Study 43 · ring**: a circular buffer of messages in time, for a delay that changes while it plays. It keeps the
+- **Study 44 · ring**: a circular buffer of messages in time, for a delay that changes while it plays. It keeps the
   last seconds from its first message (or `:clear`) and forgets what is older. Three readings side by side, to choose
   the `ring` box's: **pipe** (each message d after it came in, with the d it had then), **tape** (a read head d behind
   sends what it crosses, either way; a jump of d is a seek) and **tap** (what was there d ago, held or interpolated).
-  Model `studies/43-ring/kairotic/ring.cljs` (pure), page with keys, a gliding value, the ring drawn with its two heads,
+  Model `studies/44-ring/kairotic/ring.cljs` (pure), page with keys, a gliding value, the ring drawn with its two heads,
   sound as a canon; tests `tests/model.html` and `tests/page.html`.
 
 - **Study 43 · mirrors** (#172, #192): canons by transformation, the transformation as data — canon, inversion
