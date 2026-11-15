@@ -1,0 +1,86 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 44 · ring · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, the model and the page's ClojureScript), driven as a person
+// would, on a clock the test holds: window.kairoticNow, stepped a tenth of a second at a time as frames would.
+await (async function () {
+  var results = [], errors = [];
+  window.addEventListener("error", function (e) { errors.push(String(e.message || e)); });
+  function is(what, ok) { results.push([what, !!ok]); }
+  var T = 100;
+  window.kairoticNow = function () { return T; };
+  function st() { return window.kairoticState(); }
+  function outs() { return st().log.map(function (e) { return e[1]; }); }
+  function step(to) { while (T < to - 1e-9) { T = Math.min(to, Math.round((T + 0.1) * 1000) / 1000); window.kairoticTick(); } }
+  function key(m) { document.querySelector('[data-key="' + m + '"]').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); }
+  function setD(d) { var el = document.getElementById("d"); el.value = d; el.dispatchEvent(new Event("input", { bubbles: true })); window.kairoticTick(); }
+  function mode(m) { var el = document.querySelector('input[name=mode][value="' + m + '"]'); el.checked = true; el.dispatchEvent(new Event("change", { bubbles: true })); }
+  function value(v) { var el = document.getElementById("value"); el.value = v; el.dispatchEvent(new Event("input", { bubbles: true })); }
+  function act(a) { document.querySelector('[data-act="' + a + '"]').click(); }
+  try {
+    var html = await fetch("../index.html", { cache: "no-cache" }).then(function (r) { return r.text(); });
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach(function (s) { document.head.appendChild(s.cloneNode(true)); });
+    document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    var model = await fetch("../kairotic/ring.cljs", { cache: "no-cache" }).then(function (r) { return r.text(); });
+    scittle.core.eval_string(model);
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+    var snd = document.getElementById("sound"); snd.checked = false; snd.dispatchEvent(new Event("change", { bubbles: true }));
+
+    is("thirteen keys", document.querySelectorAll("#keys [data-key]").length === 13);
+    is("the ring waits for its first message", /waiting/.test(document.getElementById("ring").textContent));
+    is("tape by default, d 2", st().mode === "tape" && st().d === 2);
+
+    // tape: what the head crosses, d behind
+    key(60); step(100.5); key(64);
+    is("the first message starts the ring at 0", JSON.stringify(st().ring.events) === "[[0,60],[0.5,64]]");
+    is("and the ring is drawn", document.querySelectorAll("#ring .ev").length === 2);
+    step(101.9);
+    is("tape: nothing before the head reaches it", outs().length === 0);
+    step(102.6);
+    is("tape: d later, in order", JSON.stringify(outs()) === "[60,64]");
+    // the head going back, slowly: the notes again, reversed
+    for (var d = 2.1; d <= 3.05; d += 0.1) setD(Math.round(d * 100) / 100);
+    is("tape: a head going back sends them again, the latest first", JSON.stringify(outs()) === "[60,64,64,60]");
+    // a jump of d is a seek
+    setD(0.2);
+    is("tape: a jump of d is a seek, which sends nothing", outs().length === 4);
+
+    // pipe: d when it came in, so a later message can overtake
+    act("clear");
+    is(":clear empties it and its time", st().ring.events.length === 0 && st().ring.write === undefined);
+    mode("pipe"); setD(2); key(60);
+    T += 0.2; setD(0.5); key(62);
+    is("pipe: two waiting", st().queue === 2);
+    step(T + 2);
+    is("pipe: each with the d it had: the later one first", JSON.stringify(outs()) === "[62,60]");
+    is("pipe: none left", st().queue === 0);
+
+    // tap: on demand, held or between numbers
+    act("clear"); mode("tap");
+    is("tap: its own controls shown", !document.getElementById("tap-group").hidden);
+    var clock = document.getElementById("clock"); clock.value = 0; clock.dispatchEvent(new Event("change", { bubbles: true }));
+    value(50); T += 1; value(60); T += 0.5; setD(1);
+    act("tap");
+    is("tap between numbers: the value between", outs()[outs().length - 1] === 55);
+    var interp = document.getElementById("interp"); interp.checked = false; interp.dispatchEvent(new Event("change", { bubbles: true }));
+    act("tap");
+    is("tap held: the last one written", outs()[outs().length - 1] === 50);
+    setD(5); var n = outs().length; act("tap");
+    is("tap beyond what was written: nothing", outs().length === n);
+
+    is("the ring as EDN on the page", /:events \[\[0 50\] \[1 60\]\]/.test(document.getElementById("edn").textContent));
+    is("no error on the page", errors.length === 0);
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  var bad = results.filter(function (r) { return !r[1]; }).map(function (r) { return r[0]; });
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map(function (e) { return "error: " + e; })) };
+  document.getElementById("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map(function (r) { return (r[1] ? "  ok   " : "  FAIL ") + r[0]; }).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>
