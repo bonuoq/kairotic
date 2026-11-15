@@ -74,7 +74,10 @@ await (async function () {
     is("an inversion: works", works() > 0);
     set("kind", "augmentation");
     await settle();
-    is("an augmentation: works", works() > 0);
+    is("an augmentation 3 beats later, an octave below: none (each note of the comes would hold over the bar)", works() === 0);
+    set("d", "2");
+    await settle();
+    is("... 2 beats later: works", works() > 0);
     document.querySelector("[data-act=finish]").click();
     is("... the engine finishes it", /finished/.test(document.getElementById("here").textContent));
     set("system", "pentatonic");
