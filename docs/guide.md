@@ -148,12 +148,13 @@ without sending, and a new argument on the right starts again too. The help of e
 links to its page at [clojuredocs.org](https://clojuredocs.org) and to the reference at
 [clojure.org](https://clojure.org/reference/transducers).
 
-**Choosing a way: `branch`.** `branch n` sends what arrives on the left by one of its n outlets, numbered
+**Choosing a way: `dispatch`.** `dispatch n` sends what arrives on the left by one of its n outlets, numbered
 from 0 as every port is. The right inlet chooses: `msg 1` (outlet 1), `msg nil` or `msg false` (closed:
-nothing goes out), `msg true` (outlet 0, so `branch 1` is a gate that opens and closes). A function chooses
+nothing goes out), `msg true` (outlet 0, so `dispatch 1` is a gate that opens and closes). A function chooses
 for each message, and nil lets it through nowhere: a map `{60 0 64 1}`, a keyword `:to` (the way written in
 the event), a name or a form (`even?`, `(comp …)`); a set lets its members through outlet 0. The selector
-can be written after n: `branch 2 {60 0 64 1}`.
+can be written after n: `dispatch 2 {60 0 64 1}`. It is named after the *dispatch function* of
+Clojure's multimethods, which looks at a value and chooses where it goes.
 
 **Functions through the wires.** A function travels as its form, EDN data. `comp`, `partial`, `juxt`,
 `complement`, `fnil`, `constantly`, `every-pred` and `some-fn` are boxes that send one on a bang:
