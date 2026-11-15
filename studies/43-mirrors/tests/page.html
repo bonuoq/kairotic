@@ -1,0 +1,92 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 43 · mirrors · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself, driven as a person would: a crab written from both ends, the engine to the end, the
+// page turned; a table canon; a canon counted as Study 42 counts it.
+await (async function () {
+  var results = [], errors = [];
+  window.addEventListener("error", function (e) { errors.push(String(e.message || e)); });
+  function is(what, ok) { results.push([what, !!ok]); }
+  function $$(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function set(id, v) { var el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); }
+  async function settle() {
+    for (var i = 0; i < 600 && !/works under this rule set/.test(document.getElementById("status").textContent); i++)
+      await new Promise(function (r) { setTimeout(r, 25); });
+  }
+  function works() { return parseInt((document.getElementById("status").textContent.match(/^(\d+) works/) || [])[1], 10); }
+  function here() { return parseInt((document.getElementById("status").textContent.match(/(\d+) from here/) || [])[1], 10); }
+  try {
+    try { localStorage.removeItem("kairotic-study-43"); } catch (e) {}
+    var html = await fetch("../index.html", { cache: "no-cache" }).then(function (r) { return r.text(); });
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach(function (s) { document.head.appendChild(s.cloneNode(true)); });
+    document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticKernel = await import("../kairotic/kernel.mjs");
+    var Mi = window.kairoticMirror = await import("../kairotic/mirror.mjs");
+    window.kairoticSound = await import("../kairotic/sound.mjs");
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+    await settle();
+
+    // the crab by default, 6 bars of 2/2 (11 beats), an octave below
+    var crab = Mi.mirror({ tonic: 1, lo: 0, hi: 9, spacing: 11, starts: [1, 5, 8], b: 2, n: 11, transform: { kind: "crab", k: -7 } }).count();
+    is("a crab by default, counted (" + works() + ")", document.getElementById("kind").value === "crab" && works() === crab);
+    is("written from both ends: the first step at the start", /the note at the start/.test(document.getElementById("here").textContent));
+    is("the middle drawn, where the work closes", $$("#svg .mirrorline").length === 1);
+    var first = $$("#svg .cand").filter(function (c) { return !c.classList.contains("dead"); })[0];
+    first.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    is("a note at the start chosen: now the note at the end", /the note at the end/.test(document.getElementById("here").textContent) && $$("#svg .pending").length === 1);
+    var second = $$("#svg .cand").filter(function (c) { return !c.classList.contains("dead"); })[0];
+    second.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    is("... and at the end: two notes of the dux, two of the comes", $$("#svg .dux").length === 2 && $$("#svg .comes").length === 2);
+    document.querySelector("[data-act=finish]").click();
+    is("the engine closes the work in the middle", /finished/.test(document.getElementById("here").textContent) && $$("#svg .dux").length === 11 && $$("#svg .comes").length === 11);
+    is("... no note left unwritten", $$("#svg .empty").length === 0 && here() === 1);
+    document.querySelector("[data-act=turn]").click();
+    is("turn the page: a crab mirrored left to right", document.getElementById("svg").classList.contains("turn-crab"));
+    document.querySelector("[data-act=play]").click();
+    await new Promise(function (r) { setTimeout(r, 300); });
+    document.querySelector("[data-act=stop]").click();
+    document.querySelector("[data-act=back]").click();
+    is("back: the last step undone", !/finished/.test(document.getElementById("here").textContent));
+
+    // the table canon: turned upside down
+    set("kind", "table");
+    await settle();
+    is("a table canon: the axis offered, works", !document.getElementById("axis-l").hidden && works() > 0);
+    document.querySelector("[data-act=finish]").click();
+    document.querySelector("[data-act=turn]").click();
+    is("... finished, and the page turned upside down: the other player's part", /finished/.test(document.getElementById("here").textContent) && document.getElementById("svg").classList.contains("turn-table"));
+
+    // a canon, forwards: as Study 42 counts it
+    set("kind", "canon");
+    set("d", "3");
+    await settle();
+    var K = window.kairoticKernel;
+    var c42 = K.canon({ tonic: 1, lo: 0, hi: 9, spacing: 11, starts: [1, 5, 8], b: 2, n: 11, k: -7, d: 3, imitation: 1 }).count([], []);
+    is("a canon forwards counts as Study 42's (" + works() + ")", works() === c42 && /beat 1 of 11/.test(document.getElementById("here").textContent));
+    is("... and the page is not turned", document.getElementById("turn").disabled);
+    set("kind", "inversion");
+    await settle();
+    is("an inversion: works", works() > 0);
+    set("kind", "augmentation");
+    await settle();
+    is("an augmentation: works", works() > 0);
+    document.querySelector("[data-act=finish]").click();
+    is("... the engine finishes it", /finished/.test(document.getElementById("here").textContent));
+    set("system", "pentatonic");
+    await settle();
+    is("another system: the pentatonic, its comes a period below", document.getElementById("k").value === "-5" && works() >= 0);
+  } catch (e) {
+    errors.push(String((e && e.message) || e));
+  }
+  errors.forEach(function (e) { results.push(["error: " + e, false]); });
+  var bad = results.filter(function (r) { return !r[1]; });
+  window.kairoticResults = { total: results.length, failed: bad.map(function (r) { return r[0]; }) };
+  document.getElementById("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map(function (r) { return (r[1] ? "  ok   " : "  FAIL ") + r[0]; }).join("\n");
+})();
+</script>

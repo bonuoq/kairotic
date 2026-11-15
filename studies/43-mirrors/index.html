@@ -1,0 +1,478 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 43 · Mirrors</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Study 43. Layout (from Study 42): Kairotic header; the canon (mode, interval, delay, length, inversions) and the engine (seed,
+   temperature) as two toolbars; the score of both voices with the fan of futuribles at the point where the
+   history stands, the divergence under it; beside it what is owed here and the futuribles one by one, the
+   history (only choices), the rule set, the work as EDN. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+
+.views { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+
+/* the score: diatonic rows, time in columns */
+.score { overflow-x: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; scrollbar-width: thin; }
+.score svg { display: block; }
+.row { fill: none; stroke: var(--grid); stroke-width: 1; }
+.row.final { stroke: var(--kairos); stroke-opacity: 0.35; stroke-width: 6; }
+.row.c { stroke: var(--rule); }
+.row.tenor { stroke: var(--kairos); stroke-opacity: 0.35; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.pname { font: 10.5px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; }
+.pname.final { fill: var(--kairos); font-weight: 600; }
+.col { stroke: var(--grid); stroke-width: 1; stroke-dasharray: 2 3; }
+.col.now { stroke: var(--accent); stroke-dasharray: none; stroke-opacity: 0.5; }
+.tnum { font: 10px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+.col.strong { stroke-dasharray: none; stroke: var(--grid); stroke-width: 1.5; }
+.bar { stroke: var(--ink-soft); stroke-width: 1.2; }
+.ghostcanon { fill: none; stroke: var(--kairos); stroke-width: 1.3; }
+.calt { fill: var(--box); stroke: var(--kairos); stroke-width: 1.3; stroke-dasharray: 2 2; cursor: pointer; }
+.calt:hover { fill: var(--kairos-soft); }
+.rest { font: 20px serif; fill: var(--ink-soft); text-anchor: middle; dominant-baseline: central; }
+.role { font: 600 10px var(--f-code); fill: var(--error); text-anchor: middle; cursor: help; }
+.dux { fill: var(--accent); }
+.dux.bad { stroke: var(--error); stroke-width: 2.5; }
+.duxline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.comes { fill: var(--kairos); }
+.comes.ghost { fill: none; stroke: var(--kairos); stroke-width: 1.5; stroke-dasharray: 2 2; }
+.tie { fill: none; stroke: var(--ink-soft); stroke-width: 1.3; }
+.comesline { fill: none; stroke: var(--kairos); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.preview { fill: var(--ink-soft); fill-opacity: 0.35; }
+.previewline { fill: none; stroke: var(--ink-soft); stroke-opacity: 0.35; stroke-width: 1; stroke-dasharray: 3 3; }
+.iv { font: 600 10.5px var(--f-code); text-anchor: middle; }
+.iv.perfect { fill: var(--ink); } .iv.imperfect { fill: var(--ok); } .iv.dissonant { fill: var(--error); }
+.fanline { fill: none; stroke: var(--accent); stroke-linecap: round; }
+.fanline.dead { stroke: var(--error); stroke-dasharray: 3 3; stroke-width: 1.2; }
+.cand { fill: var(--box); stroke: var(--accent); stroke-width: 1.5; cursor: pointer; }
+.cand.dead { stroke: var(--error); }
+.cand:hover, .cand.hot { fill: var(--accent); }
+.cand.dead:hover, .cand.dead.hot { fill: var(--error); }
+.futn { font: 10.5px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; pointer-events: none; }
+.futn.dead { fill: var(--error); }
+.nope { stroke: var(--ink-soft); stroke-opacity: 0.45; stroke-width: 1.2; }
+.nopehit { fill: transparent; cursor: help; }
+.cursor { stroke: var(--kairos); stroke-width: 2; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-soft); align-items: center; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+.legend i.sq { border-radius: 2px; }
+
+/* the divergence: bits of freedom left at each point */
+.div { overflow-x: auto; scrollbar-width: thin; }
+.div svg { display: block; }
+.bar { fill: var(--accent); fill-opacity: 0.55; }
+.bar.now { fill: var(--kairos); fill-opacity: 0.9; }
+.bar.ahead { fill: var(--ink-soft); fill-opacity: 0.25; }
+.bar.zero { fill: var(--error); }
+.bitl { font: 10px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+
+/* here: what is owed, and the futuribles */
+.debts { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+.debts li::marker { color: var(--kairos); }
+.here-head { font-size: 13px; line-height: 1.5; }
+.here-head b { font-family: var(--f-code); font-weight: 500; }
+table.futs { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.futs th { text-align: left; font: 500 11px var(--f-ui); color: var(--ink-soft); padding: 3px 6px; border-bottom: 1px solid var(--rule); }
+table.futs td { padding: 3px 6px; border-bottom: 1px solid var(--grid); font-family: var(--f-code); vertical-align: middle; }
+table.futs td.num { text-align: right; }
+table.futs tr.dead td { color: var(--error); }
+table.futs tr:hover td { background: var(--accent-soft); }
+table.futs .pick { border: 1px solid var(--accent); background: var(--box); color: var(--accent); font: 500 12px var(--f-code); border-radius: 4px; padding: 1px 8px; cursor: pointer; }
+table.futs tr.dead .pick { border-color: var(--error); color: var(--error); }
+details.illegal summary { font-size: 12.5px; color: var(--ink-soft); cursor: pointer; }
+details.illegal ul { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.55; }
+details.illegal b { font-family: var(--f-code); font-weight: 500; }
+button.why { border: 1px solid var(--kairos); background: var(--box); color: var(--kairos); font: 500 11.5px var(--f-ui); border-radius: 4px; padding: 0 6px; cursor: pointer; margin-left: 4px; }
+button.why:hover, button.why[aria-pressed="true"] { background: var(--kairos-soft); }
+.whybox { border: 1px solid var(--kairos); background: var(--kairos-soft); border-radius: 6px; padding: 8px 10px; display: grid; gap: 6px; font-size: 12.5px; line-height: 1.5; }
+.whybox h3 { margin: 0; font: 600 12.5px var(--f-ui); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.whybox h3 button { border: none; background: none; color: var(--ink-soft); cursor: pointer; font-size: 14px; padding: 0 2px; }
+.whybox ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.whybox li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: baseline; }
+.whybox li code { color: var(--ink); }
+.whybox li .n { font-family: var(--f-code); white-space: nowrap; }
+.whybox li.opens .n { color: var(--ok); font-weight: 600; }
+.whybox li.none { color: var(--ink-soft); }
+.whybox li .d { grid-column: 1 / -1; color: var(--ink-soft); font-size: 11.5px; }
+.whybox li button { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 11.5px var(--f-ui); border-radius: 4px; padding: 0 6px; cursor: pointer; }
+.whybox .sum { color: var(--ink); }
+.whybox .wait { font: 11.5px var(--f-code); color: var(--ink-soft); }
+.empty { font-size: 12.5px; color: var(--ink-soft); }
+
+/* the history */
+.hist { overflow-x: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; scrollbar-width: thin; min-height: 44px; }
+.hist svg { display: block; }
+.hist .seg { stroke: var(--rule); stroke-width: 2; fill: none; }
+.hist .seg.on { stroke: var(--accent); }
+.hist .ev { fill: var(--ink-soft); cursor: pointer; }
+.hist .ev.engine { fill: var(--sheet); stroke: var(--ink-soft); stroke-width: 1.5; }
+.hist .ev.on { fill: var(--accent); stroke: var(--accent); }
+.hist .ev:hover { fill: var(--kairos); }
+.hist .root { fill: var(--sheet); stroke: var(--ink-soft); stroke-width: 1.2; cursor: pointer; }
+.hist .here { fill: none; stroke: var(--kairos); stroke-width: 2; pointer-events: none; }
+.hist text { font: 9.5px var(--f-code); fill: var(--ink-soft); text-anchor: middle; pointer-events: none; }
+.histbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); }
+.histbar .act { padding: 3px 9px; }
+
+/* the rule set */
+.rules { display: grid; gap: 4px; font-size: 12.5px; max-height: 300px; overflow: auto; }
+.rules .r { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; align-items: start; padding: 3px 0; border-bottom: 1px solid var(--grid); }
+.rules .r code { color: var(--ink); }
+.rules .r .d { grid-column: 2; color: var(--ink-soft); line-height: 1.4; }
+.rules .r input[type="number"] { width: 4em; padding: 2px 4px; }
+.rules .kind { font: 600 10.5px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-top: 6px; }
+pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; max-height: 240px; overflow: auto; white-space: pre; }
+.about { font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin: 0; max-width: 110ch; }
+.about code { color: var(--ink); }
+
+.score svg.turned { transition: transform 0.6s ease; }
+.score svg.turn-table { transform: rotate(180deg); }
+.score svg.turn-crab { transform: scaleX(-1); }
+.pending { fill: var(--accent); fill-opacity: 0.35; stroke: var(--accent); stroke-dasharray: 3 2; }
+.writing { fill: var(--accent-soft); }
+.mirrorline { stroke: var(--kairos); stroke-dasharray: 2 4; stroke-width: 1; }
+.empty { fill: none; stroke: var(--rule); stroke-dasharray: 2 3; }
+</style>
+<main>
+<header>
+  <h1>Study 43 · mirrors</h1>
+  <span class="sub">Canons by transformation — inversion, augmentation, the crab and the table canon, a musical ambigram — written from both ends to the middle (discussions #172 and #192)</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The canon">
+  <span class="tag">Canon</span>
+  <label>System <select id="system"></select></label>
+  <label>Mode <select id="mode"></select></label>
+  <label title="How the comes is made from the dux">Transform <select id="kind">
+    <option value="canon">canon: the dux later</option><option value="inversion">inversion: upside down</option>
+    <option value="augmentation">augmentation: twice as slow</option><option value="crab">crab: backwards</option>
+    <option value="table">table: backwards and upside down</option></select></label>
+  <label>Comes <select id="k"></select></label>
+  <label id="d-l">after <input type="number" id="d" min="1" max="6" step="1"> beats</label>
+  <label id="axis-l" title="The pitch the inversion turns about">about <select id="axis"></select></label>
+  <label>Species <select id="b"><option value="1">1st: a note per bar</option><option value="2">2nd: 2/2</option></select></label>
+  <label>Bars <input type="number" id="bars" min="3" max="10" step="1"></label>
+</div>
+<div class="toolbar" aria-label="Playing">
+  <span class="tag">Play</span>
+  <button class="act primary" data-act="step">Engine: a step</button>
+  <button class="act" data-act="finish">to the end</button>
+  <button class="act" data-act="back">◀ back</button>
+  <button class="act" data-act="clear">clear</button>
+  <span class="sep"></span>
+  <button class="act" data-act="play">▶ play</button>
+  <button class="act" data-act="stop">■</button>
+  <label>Tempo <input type="number" id="tempo" min="30" max="200" step="5" value="72"></label>
+  <button class="act" data-act="turn" id="turn" title="The score as the other player reads it">⟲ turn the page</button>
+</div>
+
+<section class="panel" aria-labelledby="h-score">
+  <h2 id="h-score">The work <span id="here"></span></h2>
+  <div class="score"><svg id="svg" class="turned" xmlns="http://www.w3.org/2000/svg"></svg></div>
+  <div class="msg" id="msg"></div>
+</section>
+
+<section class="panel">
+  <h2>About</h2>
+  <p class="about">The comes is the dux <b>transformed</b>, and the transformation is data: a <b>canon</b> (the dux later, shifted), an <b>inversion</b> (the dux upside down about a pitch: contrary motion), an <b>augmentation</b> (the dux twice as slow), a <b>crab</b> (the dux backwards, both voices at once) and a <b>table canon</b> (backwards and upside down: the one score read by a second player from across the table, as in the duet for two violins attributed to Mozart). The first three are written from the beginning, a note a beat. A crab or a table canon cannot be: the comes at the start is the dux at the end. They are written <b>from both ends to the middle</b> — each step writes a note at the start and one at the end (choose the one at the start, then the one at the end) — and the futuribles are the ways to <b>close the work in the middle</b>. A crab must be invertible (each vertical comes back with its voices exchanged) and its line good both ways. <b>Turn the page</b>: in a crab the score mirrored left to right, in a table canon turned upside down, is what the other voice plays — a musical <b>ambigram</b>. On the white keys D is the axis that keeps every interval as it is: the dorian mode is its own mirror. The rules and the systems are Study 42's (the counts of a canon are the same); the futures are counted exactly. The work is kept in this browser.</p>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) {
+    var st = document.getElementById("status");
+    st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e);
+  }
+  Promise.all([import("./kairotic/kernel.mjs"), import("./kairotic/mirror.mjs"), import("./kairotic/sound.mjs")]).then(function (ks) {
+    window.kairoticKernel = ks[0]; window.kairoticMirror = ks[1]; window.kairoticSound = ks[2];
+    scittle.core.eval_string(document.getElementById("page-cljs").textContent);
+  }).catch(show);
+});
+</script>
+<script type="application/x-scittle-not" id="page-cljs">
+(ns mirrors (:require [clojure.string :as str] [clojure.edn :as edn]))
+
+(def K (.-kairoticKernel js/window))
+(def Mi (.-kairoticMirror js/window))
+(def Snd (.-kairoticSound js/window))
+(defn $ [id] (js/document.getElementById id))
+(def store-key "kairotic-study-43")
+
+;; ───────── the canon as set, and the work: the dux as written (an array, holes where not yet) ─────────
+
+(def systems (js->clj (.-SYSTEMS K)))
+(defonce ui (atom {:system "diatonic" :mode "dorian" :kind "crab" :k -7 :d 3 :axis nil :b 2 :bars 6 :tempo 72
+                   :M [] :s 0 :pending nil :turned false}))
+
+(defn sysdef [] (get (.-SYSTEMS K) (:system @ui)))
+(defn made [] (.makeSystem K (sysdef)))
+(defn mode [] (let [ms (js->clj (.-modes (sysdef)) :keywordize-keys false)] (or (get ms (:mode @ui)) (val (first ms)))))
+(defn n-of [] (- (inc (* (:b @ui) (dec (:bars @ui)))) 0))
+
+(defn spec []
+  (let [m (mode) tonic (get m "final") [a z] (get m "ambitus") sd (sysdef)]
+    {:tonic tonic :lo (+ tonic a) :hi (+ tonic z) :n (n-of) :b (:b @ui) :spacing (or (.-spacing sd) 11)
+     :starts (vec (filter #(<= (+ tonic a) % (+ tonic z)) (map #(+ tonic %) (get m "starts"))))
+     :transform {:kind (:kind @ui) :k (:k @ui) :d (:d @ui) :m 2 :axis (or (:axis @ui) tonic)}}))
+
+(defonce mirrors (atom {}))
+(defn mir "The mirror kernel for the canon as set (its count memoized inside it)." []
+  (let [sp (spec) key (pr-str [(:system @ui) sp])]
+    (or (get @mirrors key)
+        ;; (the system as the kernel keeps it, beside the rest of the spec)
+        (let [o (.mirror Mi (js/Object.assign (clj->js sp) #js {:system (sysdef)}))]
+          (swap! mirrors assoc key o) o))))
+
+(defn js-M "The dux as the kernel reads it: an array with holes where nothing is written." []
+  (let [n (n-of) a (js/Array. n)]
+    (doseq [[i v] (map-indexed vector (:M @ui))] (when (some? v) (aset a i v)))
+    a))
+
+(defonce counted (atom {}))   ; the canons as set whose count from the start is done: key → total
+
+;; ───────── the engine: the most plausible next note, a little at random ─────────
+
+(defn leap-cost [a b] (if (or (nil? a) (nil? b)) 0 (let [s (js/Math.abs (- b a))] (case s 0 1.5 1 0 2 0.3 3 0.6 4 0.7 5 1 7 1 2))))
+(defn pick [cands cost]
+  (let [ok (filter #(pos? (or (.-futures %) 0)) cands)]
+    (when (seq ok) (apply min-key (fn [c] (+ (cost (.-note c)) (* 0.9 (js/Math.random)))) ok))))
+
+;; ───────── writing ─────────
+
+(defn save! [] (try (.setItem js/localStorage store-key (pr-str (select-keys @ui [:system :mode :kind :k :d :axis :b :bars :tempo :M :s]))) (catch :default _ nil)))
+(defn restore [] (try (when-let [s (.getItem js/localStorage store-key)] (edn/read-string s)) (catch :default _ nil)))
+(defn say! [kind text] (let [el ($ "msg")] (set! (.-textContent el) (or text "")) (set! (.-className el) (str "msg " (name kind)))))
+
+(declare render!)
+
+(defn write! "Writes the values of the next step at its positions." [vals]
+  (let [o (mir) s (:s @ui) pos (vec (aget (.-order o) s))
+        M (reduce (fn [M [p v]] (assoc M p v)) (vec (concat (:M @ui) (repeat (max 0 (- (n-of) (count (:M @ui)))) nil))) (map vector pos vals))]
+    (swap! ui assoc :M M :s (inc s) :pending nil :hist (conj (vec (:hist @ui)) [(:M @ui) s]))
+    (save!) (render!)))
+
+(defn choose! "A note chosen at the next step: the one at the start, then (in a crab) the one at the end." [x]
+  (let [o (mir) s (:s @ui) pos (aget (.-order o) s)]
+    (cond
+      (nil? pos) nil
+      (= 1 (.-length pos)) (if-let [r (.check o (js-M) s #js [x])] (say! :bad r) (write! [x]))
+      (nil? (:pending @ui)) (do (swap! ui assoc :pending x) (render!))
+      :else (let [a (:pending @ui)] (if-let [r (.check o (js-M) s #js [a x])] (say! :bad r) (write! [a x]))))))
+
+(defn engine-step! []
+  (let [o (mir) s (:s @ui) pos (aget (.-order o) s) M (:M @ui)]
+    (when pos
+      (if (= 1 (.-length pos))
+        (let [p (aget pos 0) c (pick (.fan o (js-M) s) (fn [x] (leap-cost (get M (dec p)) x)))]
+          (if c (write! [(.-note c)]) (say! :bad "Nothing here has a future: go back.")))
+        (let [p (aget pos 0) q (aget pos 1)
+              a (or (:pending @ui) (some-> (pick (.fan o (js-M) s) (fn [x] (leap-cost (get M (dec p)) x))) .-note))
+              c (when a (pick (.fanSecond o (js-M) s a) (fn [z] (leap-cost z (get M (inc q))))))]
+          (if c (write! [a (.-note c)]) (say! :bad "Nothing here has a future: go back.")))))))
+
+(defn finish! [] (loop [i 0] (let [s (:s @ui)] (when (and (< i 40) (< s (.-steps (mir)))) (engine-step!) (when (> (:s @ui) s) (recur (inc i)))))))
+(defn back! [] (if (:pending @ui) (do (swap! ui assoc :pending nil) (render!))
+                 (when-let [[M s] (peek (vec (:hist @ui)))] (swap! ui assoc :M M :s s :hist (pop (vec (:hist @ui)))) (save!) (render!))))
+(defn clear! [] (swap! ui assoc :M [] :s 0 :pending nil :hist []) (save!) (render!))
+(defn set-canon! [f] (swap! ui f) (clear!))
+
+;; ───────── the score ─────────
+
+(def colw 38) (def rowh 12) (def left 46) (def top 14)
+
+(defn render-score! [o]
+  (let [S (made) n (n-of) lns (.lines o (js-M)) D (vec (.-D lns)) C (vec (.-C lns))
+        sp (spec) [clo chi] (sort [(.T o (:lo sp)) (.T o (:hi sp))])
+        lo (dec (min (:lo sp) clo)) hi (inc (max (:hi sp) chi))
+        y (fn [v] (+ top (* rowh (- hi v)))) x (fn [t] (+ left (* colw t) (/ colw 2)))
+        w (+ left (* colw n) 24) h (+ top (* rowh (- hi lo)) 34)
+        s (:s @ui) pos (when (< s (.-steps o)) (vec (aget (.-order o) s)))
+        sb #js [] add (fn [& xs] (doseq [v xs] (.push sb v)))
+        fin (mod (:tonic sp) (.-N S))]
+    (doseq [v (range lo (inc hi))]
+      (add "<line class=\"row" (when (= fin (mod v (.-N S))) " final") "\" x1=\"" left "\" x2=\"" (- w 10) "\" y1=\"" (y v) "\" y2=\"" (y v) "\"/>")
+      (when (or (= fin (mod v (.-N S))) (even? (- v lo))) (add "<text class=\"pname\" x=\"6\" y=\"" (y v) "\">" (.pitchName S v) "</text>")))
+    (doseq [t (range n)]
+      (add "<line class=\"col" (when (some #{t} pos) " now") "\" x1=\"" (x t) "\" x2=\"" (x t) "\" y1=\"" (- top 6) "\" y2=\"" (+ top (* rowh (- hi lo)) 4) "\"/>")
+      (when (and (> (:b sp) 1) (zero? (mod t (:b sp))))
+        (let [xb (- (x t) (/ colw 2))] (add "<line class=\"bar\" x1=\"" xb "\" x2=\"" xb "\" y1=\"" (- top 8) "\" y2=\"" (+ top (* rowh (- hi lo)) 6) "\"/>"))))
+    ;; the middle of a crab: where the work closes
+    (when (.-retro o)
+      (let [xm (+ left (* colw (/ n 2)))] (add "<line class=\"mirrorline\" x1=\"" xm "\" x2=\"" xm "\" y1=\"" (- top 8) "\" y2=\"" (+ top (* rowh (- hi lo)) 6) "\"><title>the middle: the work closes here</title></line>")))
+    ;; the voices
+    (doseq [t (range n)]
+      (let [c (get C t) dv (get D t)]
+        (when (some? c) (add "<rect class=\"comes\" x=\"" (- (x t) 5) "\" y=\"" (- (y c) 5) "\" width=\"10\" height=\"10\" rx=\"2\"><title>comes " (.pitchName S c) "</title></rect>"))
+        (if (some? dv)
+          (add "<circle class=\"dux\" cx=\"" (x t) "\" cy=\"" (y dv) "\" r=\"6\"><title>dux " (.pitchName S dv) "</title></circle>")
+          (add "<circle class=\"empty\" cx=\"" (x t) "\" cy=\"" (+ top (* rowh (/ (- hi lo) 2))) "\" r=\"4\"/>"))
+        (when (and (some? dv) (some? c))
+          (let [q (.quality S (min dv c) (max dv c))]
+            (add "<text class=\"iv " q "\" x=\"" (x t) "\" y=\"" (+ top (* rowh (- hi lo)) 16) "\">" (inc (js/Math.abs (- dv c))) "</text>")))))
+    ;; the pending note of a crab's step, and the fan at the next position
+    (when-let [a (:pending @ui)]
+      (add "<circle class=\"pending\" cx=\"" (x (first pos)) "\" cy=\"" (y a) "\" r=\"6\"/>"))
+    (when pos
+      (let [second? (and (= 2 (count pos)) (some? (:pending @ui)))
+            p (if second? (second pos) (first pos))
+            cands (if second? (.fanSecond o (js-M) s (:pending @ui)) (.fan o (js-M) s))]
+        (doseq [c cands]
+          (let [v (.-note c) yy (y v) xx (x p)]
+            (if (.-reason c)
+              ;; (in pieces: a call of more than 20 arguments is lost in Scittle)
+              (do (add "<g><title>" (.pitchName S v) ": " (str/replace (.-reason c) "<" "&lt;") "</title>")
+                  (add "<rect class=\"nopehit\" x=\"" (- xx 6) "\" y=\"" (- yy 6) "\" width=\"12\" height=\"12\"/>")
+                  (add "<line class=\"nope\" x1=\"" (- xx 3) "\" y1=\"" (- yy 3) "\" x2=\"" (+ xx 3) "\" y2=\"" (+ yy 3) "\"/>")
+                  (add "<line class=\"nope\" x1=\"" (- xx 3) "\" y1=\"" (+ yy 3) "\" x2=\"" (+ xx 3) "\" y2=\"" (- yy 3) "\"/></g>"))
+              (let [f (.-futures c) dead (zero? f)]
+                (add "<circle class=\"cand" (when dead " dead") "\" data-choose=\"" v "\" cx=\"" xx "\" cy=\"" yy "\" r=\"6.5\"><title>" (.pitchName S v) ": " f " way" (when (not= 1 f) "s") " to finish</title></circle>")
+                (add "<text class=\"futn" (when dead " dead") "\" x=\"" (+ xx 10) "\" y=\"" yy "\">" f "</text>")))))))
+    (let [svg ($ "svg")]
+      (.setAttribute svg "width" w) (.setAttribute svg "height" h) (.setAttribute svg "viewBox" (str "0 0 " w " " h))
+      (set! (.-innerHTML svg) (.join sb "")))))
+
+;; ───────── controls ─────────
+
+(defn opt [v label sel] (str "<option value=\"" v "\"" (when sel " selected") ">" label "</option>"))
+
+(defn render-controls! []
+  (let [u @ui S (made) sd (sysdef) N (.-N S) m (mode)]
+    (set! (.-innerHTML ($ "system")) (apply str (for [[k v] systems] (opt k (get v "name") (= k (:system u))))))
+    (set! (.-innerHTML ($ "mode")) (apply str (for [[k _] (js->clj (.-modes sd))] (opt k k (= k (:mode u))))))
+    (set! (.-innerHTML ($ "k")) (apply str (for [k (or (some-> sd .-canon .-at js->clj) [(- N) N 0])]
+                                             (opt k (cond (zero? k) "at the unison"
+                                                          (zero? (mod k N)) (str (if (= 7 N) "an octave" "a period") (if (neg? k) " below" " above"))
+                                                          :else (str "a " (.intervalName S (js/Math.abs k)) (if (neg? k) " below" " above")))
+                                                  (= k (:k u))))))
+    (let [t (get m "final") [a z] (get m "ambitus")]
+      (set! (.-innerHTML ($ "axis")) (apply str (for [v (range (+ t a) (inc (+ t z)))] (opt v (.pitchName S v) (= v (or (:axis u) t)))))))
+    (set! (.-value ($ "kind")) (:kind u))
+    (set! (.-value ($ "d")) (:d u))
+    (set! (.-value ($ "b")) (str (:b u)))
+    (set! (.-value ($ "bars")) (:bars u))
+    (set! (.-hidden ($ "d-l")) (contains? #{"crab" "table"} (:kind u)))
+    (set! (.-hidden ($ "axis-l")) (not (contains? #{"inversion" "table"} (:kind u))))
+    (set! (.-disabled ($ "turn")) (not (contains? #{"crab" "table"} (:kind u))))
+    (let [svg ($ "svg") turn (and (:turned u) (contains? #{"crab" "table"} (:kind u)))]
+      (.toggle (.-classList svg) "turn-table" (and turn (= "table" (:kind u))))
+      (.toggle (.-classList svg) "turn-crab" (and turn (= "crab" (:kind u)))))))
+
+(defn status! [text] (set! (.-textContent ($ "status")) text))
+
+(defn render! []
+  (render-controls!)
+  (let [o (mir) key (pr-str [(:system @ui) (spec)]) total (get @counted key)]
+    (if (nil? total)
+      (do (status! "counting the futures…")
+          (.add (.-classList ($ "svg")) "busy")
+          (.then (.countAsync o #js {:budget 14 :onProgress (fn [f] (status! (str "counting the futures… " (js/Math.round (* 100 f)) "%")))})
+                 (fn [v] (swap! counted assoc key v) (.remove (.-classList ($ "svg")) "busy") (render!))))
+      (let [s (:s @ui) here (.count o (js-M) s) steps (.-steps o)]
+        (status! (str total " works under this rule set · " here " from here"))
+        (set! (.-textContent ($ "here"))
+              (cond (>= s steps) "finished"
+                    (.-retro o) (str "step " (inc s) " of " steps ": " (if (:pending @ui) "now the note at the end" "the note at the start") " · " here " ways to close the work")
+                    :else (str "beat " (inc s) " of " steps " · " here " ways to finish")))
+        (render-score! o)))))
+
+;; ───────── the sound ─────────
+
+(defonce audio (atom nil))
+(defn stop! [] (when-let [h @audio] (try (.stop h) (catch :default _ nil))) (reset! audio nil))
+(defn play! []
+  (stop!)
+  (let [S (made) lns (.lines (mir) (js-M))
+        mid (fn [arr] (clj->js (mapv #(when (some? %) (.midi S %)) (vec arr))))]
+    (reset! audio (.play Snd #js {:voices #js [(mid (.-D lns)) (mid (.-C lns))] :beat (/ 60 (:tempo @ui 72)) :timbre "organ"}))))
+
+;; ───────── wiring ─────────
+
+(defn num [id lo hi] (let [v (js/parseInt (.-value ($ id)))] (when-not (js/isNaN v) (max lo (min hi v)))))
+
+(.addEventListener js/document "click"
+  (fn [e]
+    (when-let [el (.. e -target (closest "[data-choose]"))] (choose! (js/parseInt (.getAttribute el "data-choose"))))
+    (when-let [el (.. e -target (closest "[data-act]"))]
+      (case (.getAttribute el "data-act")
+        "step" (engine-step!) "finish" (finish!) "back" (back!) "clear" (clear!)
+        "play" (play!) "stop" (stop!)
+        "turn" (do (swap! ui update :turned not) (render-controls!))
+        nil))))
+(.addEventListener js/document "change"
+  (fn [e]
+    (let [el (.-target e) id (.-id el) v (.-value el)]
+      (case id
+        "system" (set-canon! #(let [sd (get (.-SYSTEMS K) v) N (.-N (.makeSystem K sd))]
+                                (assoc % :system v :mode (first (js-keys (.-modes sd))) :k (- N) :axis nil)))
+        "mode" (set-canon! #(assoc % :mode v :axis nil))
+        "kind" (set-canon! #(assoc % :kind v :turned false))
+        "k" (set-canon! #(assoc % :k (js/parseInt v)))
+        "d" (when-let [x (num "d" 1 6)] (set-canon! #(assoc % :d x)))
+        "axis" (set-canon! #(assoc % :axis (js/parseInt v)))
+        "b" (set-canon! #(assoc % :b (js/parseInt v)))
+        "bars" (when-let [x (num "bars" 3 10)] (set-canon! #(assoc % :bars x)))
+        "tempo" (when-let [x (num "tempo" 30 200)] (swap! ui assoc :tempo x) (save!))
+        nil))))
+
+(when-let [x (restore)] (swap! ui merge x))
+(render!)
+</script>
