@@ -163,10 +163,15 @@ await (async function () {
     await settle();
     is("the pentatonic: its three modes, works", $$("#mode option").length === 3 && canons() > 0);
     is("... the comes a period (five steps) below", document.getElementById("k").value === "-5");
+    is("... the distances of its canon and its inversions, from the system", $$("#k option").length === 7 && $$("[data-inv]").length === 2);
     is("... its EDN under the canon", /:name "pentatonic/.test(document.getElementById("system-edn").value));
     set("system", "septimal31");
     await settle();
     is("the septimal scale in 31-TET: works, named with its B♭⁷", canons() > 0 && /B♭⁷/.test(document.getElementById("svg").textContent));
+    is("... the comes may imitate at the harmonic seventh", !!document.querySelector("#k option[value='-6']"));
+    set("k", "-6");
+    await settle();
+    is("... and so it does: a canon at the 7th below", document.getElementById("k").value === "-6" && canons() >= 0);
     set("system", "diatonic");
     await settle();
     is("the diatonic system again: the same works", canons() === tot);

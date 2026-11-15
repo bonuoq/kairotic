@@ -56,6 +56,8 @@ const sign = (x) => (x > 0) - (x < 0);
 //   suspensions {upper: [classes], lower: [classes], compound: [classes held above only when compound]}
 //   cadence     {forbid: [[from-class, to-class]…]}
 //   names       a name for each step (for the pitches), intervals: a name for each span (default: ordinals)
+//   canon       {at: [the distances in steps at which the comes may imitate], invertible: [n…]: the inversions
+//               the counterpoint may be asked to stand (the lower voice taken up n-1 steps)}
 
 const NAMES = ["unison", "2nd", "3rd", "4th", "5th", "6th", "7th", "octave"];
 const ordinal = (s) => {
@@ -91,6 +93,9 @@ DIATONIC.modes = {
   aeolian: { final: 5, tenor: 4, ambitus: [-1, 8], starts: [0, 4, 7] }, hypoaeolian: { final: 5, tenor: 2, ambitus: [-4, 5], starts: [0, 4, 7, -3] },
 };
 DIATONIC.spacing = 11;
+// the canon: at which distances (steps) the comes may imitate, and at which intervals the counterpoint may be
+// asked to be invertible (n: the lower voice taken up n-1 steps, as at the octave 8, the 10th 10, the 12th 12)
+DIATONIC.canon = { at: [-7, 7, 0, -4, 4, -3, 3], invertible: [8, 10, 12] };
 
 /** Quarter-comma meantone (12 notes, E♭ to G♯): the same scale and rules, the thirds pure. */
 export const MEANTONE = {
@@ -110,6 +115,8 @@ export const SEPTIMAL31 = {
               4: [{ cents: [680, 720], quality: "perfect" }, { else: "dissonant" }],
               6: [{ cents: [950, 985], quality: "imperfect" }, { else: "dissonant" }] },
   melodic: DIATONIC.melodic.map((r) => (r.steps === 5 ? { ...r, cents: [790, 830] } : r)),
+  // (the comes may also imitate at the harmonic seventh, here a consonance)
+  canon: { at: [-7, 7, 0, -4, 4, -3, 3, -6, 6], invertible: [8, 10, 12] },
   modes: { septimal: { final: 0, tenor: 4, ambitus: [-1, 8], starts: [0, 4, 7] },
            "hypo-septimal": { final: 0, tenor: 2, ambitus: [-4, 5], starts: [0, 4, 7, -3] } },
 };
@@ -135,6 +142,7 @@ export const PENTATONIC = {
            "penta-A": { final: 4, tenor: 3, ambitus: [-1, 6], starts: [0, 3, 5] },
            "penta-D": { final: 1, tenor: 3, ambitus: [-1, 6], starts: [0, 3, 5] } },
   spacing: 8,
+  canon: { at: [-5, 5, 0, -3, 3, -2, 2], invertible: [6, 8] },
 };
 
 export const SYSTEMS = { diatonic: DIATONIC, meantone: MEANTONE, septimal31: SEPTIMAL31, pentatonic: PENTATONIC };

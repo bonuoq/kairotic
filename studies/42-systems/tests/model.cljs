@@ -47,6 +47,8 @@
 
 ;; systems, as EDN
 (is "four systems" (= #{:diatonic :meantone :septimal31 :pentatonic} (set (keys fu/systems))))
+(is "the canon's distances are the system's: the septimal one imitates at the 7th too" (some #{-6} (fu/canon-at (:septimal31 fu/systems))))
+(is "and its inversions: the pentatonic at the period and two steps more" (= [6 8] (fu/invertible (:pentatonic fu/systems))))
 (let [p (fu/params)]
   (is "the diatonic system by default" (= (:diatonic fu/systems) (fu/sysdef p)))
   (doseq [k [:diatonic :septimal31 :pentatonic]]

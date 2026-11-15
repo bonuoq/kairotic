@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Study 42: the canon in the system.** A system says at which distances the comes may imitate and to which
+  inversions the counterpoint may be asked to stand (`:canon {:at [-7 7 0 -4 4 -3 3] :invertible [8 10 12]}`); the
+  page offers those. The septimal system imitates at the harmonic seventh too; the pentatonic inverts at the period
+  and two steps more.
 - **Orders written with their colon everywhere.** After `msg` began to be read as Clojure (#197), the help tables
   wrote the orders as keywords, but the descriptions of inlets, the `:doc` of boxes, the guide and the tutorials still
   wrote some bare (`0 or stop`, `reset: back to the minimum`, `rec starts, stop ends`, click `start`), which `msg stop`
