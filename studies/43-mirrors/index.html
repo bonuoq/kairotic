@@ -263,7 +263,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (defonce ui (atom {:system "diatonic" :mode "dorian" :kind "crab" :k -7 :d 3 :axis nil :b 2 :bars 6 :tempo 72
                    :M [] :s 0 :pending nil :turned false}))
 
-(defn sysdef [] (get (.-SYSTEMS K) (:system @ui)))
+(defn sysdef [] (aget (.-SYSTEMS K) (:system @ui)))
 (defn made [] (.makeSystem K (sysdef)))
 (defn mode [] (let [ms (js->clj (.-modes (sysdef)) :keywordize-keys false)] (or (get ms (:mode @ui)) (val (first ms)))))
 (defn n-of [] (- (inc (* (:b @ui) (dec (:bars @ui)))) 0))
@@ -461,7 +461,7 @@ window.addEventListener("DOMContentLoaded", function () {
   (fn [e]
     (let [el (.-target e) id (.-id el) v (.-value el)]
       (case id
-        "system" (set-canon! #(let [sd (get (.-SYSTEMS K) v) N (.-N (.makeSystem K sd))]
+        "system" (set-canon! #(let [sd (aget (.-SYSTEMS K) v) N (.-N (.makeSystem K sd))]
                                 (assoc % :system v :mode (first (js-keys (.-modes sd))) :k (- N) :axis nil)))
         "mode" (set-canon! #(assoc % :mode v :axis nil))
         "kind" (set-canon! #(assoc % :kind v :turned false))
