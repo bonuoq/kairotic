@@ -200,9 +200,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
   <label title="1 a canon · 0.5–0.9 near notes (within a 3rd) · 0.2–0.4 only the motion · below 0.2 free">Imitation <input type="range" id="imitation" min="0" max="1" step="0.1"> <code id="imitation-v"></code></label>
   <label>Voices up to <select id="spacing"></select></label>
   <span class="group" id="inv-group"><span style="font-size:13px;color:var(--ink-soft)">Invertible at</span>
-    <label><input type="checkbox" data-inv="8"> 8ve</label>
-    <label><input type="checkbox" data-inv="10"> 10th</label>
-    <label><input type="checkbox" data-inv="12"> 12th</label>
+    <span id="inv-boxes"></span>
   </span>
 </div>
 <div class="toolbar" aria-label="The engine">
@@ -719,9 +717,15 @@ window.addEventListener("DOMContentLoaded", function () {
       (set! (.-innerHTML ($ "mode")) (apply str (for [[m {:keys [final ambitus]}] (fu/modes pp)]
                                                   (opt (name m) (str (name m) " (" (fu/pitch-name final) (when (< (first ambitus) -1) ", plagal") ")")))))
       (set! (.-value ($ "mode")) (name (fu/mode-name pp)))
-      (set! (.-innerHTML ($ "k")) (str (opt (- N) (str pn " below")) (opt N (str pn " above")) (opt 0 "at the unison")
-                                       (opt (- f) (str "a " (fu/interval-name f) " below")) (opt f (str "a " (fu/interval-name f) " above"))
-                                       (opt (- f N) (str "a " (fu/interval-name (- N f)) " below"))))
+      ;; the distances at which the comes may imitate, and the inversions: the system's (its :canon)
+      (set! (.-innerHTML ($ "k")) (apply str (for [k (fu/canon-at sd)]
+                                               (opt k (cond (zero? k) "at the unison"
+                                                            (zero? (mod k N)) (str (if (= 7 N) "an octave" "a period") (when (> (fu/absv k) N) (str " and more")) (if (neg? k) " below" " above"))
+                                                            :else (str "a " (fu/interval-name (fu/absv k)) (if (neg? k) " below" " above")))))))
+      (set! (.-innerHTML ($ "inv-boxes"))
+            (apply str (for [v (fu/invertible sd)]
+                         (str "<label><input type=\"checkbox\" data-inv=\"" v "\"" (when (contains? (:invert pp) v) " checked")
+                              (when (zero? (:k pp)) " disabled") "> " (fu/interval-name (dec v)) "</label>"))))
       (set! (.-value ($ "k")) (str (:k pp)))
       (set! (.-innerHTML ($ "spacing")) (apply str (for [v (distinct [(+ N 2) (fu/spacing pp) (* 2 N)])] (opt v (str "a " (fu/interval-name v))))))
       (when-not (= (.-activeElement js/document) ($ "system-edn"))

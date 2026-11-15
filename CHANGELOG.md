@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 42: the canon in the system.** A system says at which distances the comes may imitate and to which
+  inversions the counterpoint may be asked to stand (`:canon {:at [-7 7 0 -4 4 -3 3] :invertible [8 10 12]}`); the
+  page offers those. The septimal system imitates at the harmonic seventh too; the pentatonic inverts at the period
+  and two steps more.
+
 - **A `msg` is read as Clojure** (breaking). What a `msg` box sends is what is written in it, as EDN:
   - **keywords with their colon**: `msg :stop`, `msg :rec 4`, `msg :circle 40 40 10 :accent :hit :sun`;
   - **any other word is a name** (a symbol): `msg inc` is the function `inc` where a box takes one (into the inlet of

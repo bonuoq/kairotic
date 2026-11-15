@@ -164,11 +164,25 @@
   (let [[lo hi] (lo-hi p) t (tonic p) N (period-steps p)] (filter #(<= lo % hi) (map #(+ t (* N %)) (range -2 3)))))
 (defn spacing "How far apart the voices may be, in steps: the canon's, or the system's (a 12th)." [p]
   (:spacing p (:spacing (sysdef p) 11)))
+(defn canon-at
+  "The distances (steps) at which the comes may imitate in the system: its :canon :at, or the period, the unison,
+  the 5th and the 4th as Study 42 first offered them."
+  [sd]
+  (let [S (make sd) N (.-N S)]
+    (or (seq (get-in sd [:canon :at]))
+        (let [f (apply min-key (fn [c] (absv (- (.cents S c) 700))) (filter #(= "perfect" (.quality S 0 %)) (range 1 N)))]
+          [(- N) N 0 (- f) f (- f N)]))))
+
+(defn invertible "The inversions the system offers (n: the lower voice taken up n-1 steps)." [sd]
+  (vec (get-in sd [:canon :invertible] (let [N (.-N (make sd))] [(inc N) (+ N 3) (+ N 5)]))))
+
 (defn with-system
-  "p in another system: its first mode, the comes a period below, the system's spacing, no inversion."
+  "p in another system: its first mode, the comes a period below (or the first distance it offers), the system's
+  spacing, no inversion."
   [p sd]
-  (let [N (.-N (make sd))]
-    (-> p (assoc :system sd :mode (key (first (:modes sd))) :k (- N) :invert #{}) (dissoc :spacing :range))))
+  (let [N (.-N (make sd)) at (canon-at sd)]
+    (-> p (assoc :system sd :mode (key (first (:modes sd))) :k (if (some #{(- N)} at) (- N) (first at)) :invert #{})
+        (dissoc :spacing :range))))
 
 (defn pretty-system
   "A system as EDN to read and edit: a key a line, the lists of modes and melodic moves an item a line, the cents
@@ -176,7 +190,7 @@
   [sd]
   (let [r3 (fn [x] (if (number? x) (/ (js/Math.round (* 1000 x)) 1000) x))
         sd (update-in sd [:tuning :cents] #(mapv r3 %))
-        order [:name :tuning :steps :names :intervals :vertical :melodic :wider :leaps :suspensions :cadence :modes :spacing]
+        order [:name :tuning :steps :names :intervals :vertical :melodic :wider :leaps :suspensions :cadence :canon :modes :spacing]
         ks (concat (filter #(contains? sd %) order) (remove (set order) (keys sd)))
         item (fn [k v]
                (case k
