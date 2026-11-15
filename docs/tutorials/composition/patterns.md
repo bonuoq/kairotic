@@ -6,19 +6,19 @@ order: 3
 @en
 A **pattern** is a sequence of events, each a map of keys: `{:degree 2 :dur 0.5}`. A `pbind` writes one as data: every key holds a constant, a vector (a sequence) or a generator. Here `:degree` goes through four steps of the major scale, each lasting half a beat.
 
-The `pbind` sends its pattern to the **right** inlet of a `player`. The **left** inlet says how time moves: `start` and `stop` use its own clock (`player 110`: 110 beats per minute). It sends the Hz of the notes and their voice ids to `synth~`, which plays them.
+The `pbind` sends its pattern to the **right** inlet of a `player`. The **left** inlet says how time moves: `:start` and `:stop` use its own clock (`player 110`: 110 beats per minute). It sends the Hz of the notes and their voice ids to `synth~`, which plays them.
 
 What travels is the **source** and a **seed**, not the notes: every tab makes the same events from them.
 @es
 Un **pattern** es una secuencia de eventos, cada uno un mapa de claves: `{:degree 2 :dur 0.5}`. Un `pbind` lo escribe como datos: cada clave tiene una constante, un vector (una secuencia) o un generador. Aquí `:degree` recorre cuatro grados de la escala mayor, de medio beat cada uno.
 
-El `pbind` envía su pattern a la entrada **derecha** de un `player`. La **izquierda** dice cómo se mueve el tiempo: `start` y `stop` usan su propio reloj (`player 110`: 110 pulsos por minuto). Envía los Hz de las notas y sus ids de voz a `synth~`, que las toca.
+El `pbind` envía su pattern a la entrada **derecha** de un `player`. La **izquierda** dice cómo se mueve el tiempo: `:start` y `:stop` usan su propio reloj (`player 110`: 110 pulsos por minuto). Envía los Hz de las notas y sus ids de voz a `synth~`, que las toca.
 
 Lo que viaja es la **fuente** y una **semilla**, no las notas: cada pestaña hace los mismos eventos a partir de ellas.
 @try.en
-Press ▶, then click `start`. Double-click the pbind, change a degree, and apply (Ctrl+Enter): the player goes on with it from the same beat.
+Press ▶, then click `:start`. Double-click the pbind, change a degree, and apply (Ctrl+Enter): the player goes on with it from the same beat.
 @try.es
-Pulsa ▶ y luego haz clic en `start`. Haz doble clic en el pbind, cambia un grado y aplica (Ctrl+Enter): el player sigue con él desde el mismo beat.
+Pulsa ▶ y luego haz clic en `:start`. Haz doble clic en el pbind, cambia un grado y aplica (Ctrl+Enter): el player sigue con él desde el mismo beat.
 ```kairotic
 (box :b1 "pbind 1 loop" 40 40)
 (code :b1 "{:degree [0 2 4 7]\n :dur    0.5}")
@@ -89,9 +89,9 @@ A **bang** on the left of the player plays the next event **now**, whatever its 
 @es
 Un **bang** a la izquierda del player toca el siguiente evento **ahora**, sea cual sea su `:dur`. El pattern sigue a lo que lo mueva: un `metro`, un `onset~` de lo que alguien toca, una tecla. El ritmo ya no está en el pattern sino en la mano.
 @try.en
-Click `stop`, then `1` to start the metro: one note every 300 ms. Click `0`, then the bang yourself.
+Click `:stop`, then `1` to start the metro: one note every 300 ms. Click `0`, then the bang yourself.
 @try.es
-Haz clic en `stop` y luego en `1` para arrancar el metro: una nota cada 300 ms. Haz clic en `0` y luego en el bang tú.
+Haz clic en `:stop` y luego en `1` para arrancar el metro: una nota cada 300 ms. Haz clic en `0` y luego en el bang tú.
 ```kairotic
 (box :b7 "msg 1" 220 120)
 (box :b8 "msg 0" 270 120)

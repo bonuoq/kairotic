@@ -32,7 +32,7 @@
   {;; ── about ──
    :class "pcclock"
    :license "MPL-2.0"
-   :doc "A pitch-class set on the clock face: the twelve classes around a circle, C at the top. A list of pitches (MIDI, or 0…11) is the set; a list of 12 values between 0 and 1 is a chroma (from chroma~), and its classes above 0.5 are the set; a number is a note, and the last n notes (4) are the set; clear empties it. It draws the set as a polygon (the sets before it fading behind) and its axes of symmetry by inversion, and sends its prime form (left) and its interval vector (middle) when it changes. Pressing a pitch class sends it (right)."
+   :doc "A pitch-class set on the clock face: the twelve classes around a circle, C at the top. A list of pitches (MIDI, or 0…11) is the set; a list of 12 values between 0 and 1 is a chroma (from chroma~), and its classes above 0.5 are the set; a number is a note, and the last n notes (4) are the set; :clear empties it. It draws the set as a polygon (the sets before it fading behind) and its axes of symmetry by inversion, and sends its prime form (left) and its interval vector (middle) when it changes. Pressing a pitch class sends it (right)."
    :usage "pcclock [notes]"
    :io [1 3]
    :size [200 222]

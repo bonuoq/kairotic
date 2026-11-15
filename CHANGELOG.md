@@ -6,6 +6,19 @@
   inversions the counterpoint may be asked to stand (`:canon {:at [-7 7 0 -4 4 -3 3] :invertible [8 10 12]}`); the
   page offers those. The septimal system imitates at the harmonic seventh too; the pentatonic inverts at the period
   and two steps more.
+- **Orders written with their colon everywhere.** After `msg` began to be read as Clojure (#197), the help tables
+  wrote the orders as keywords, but the descriptions of inlets, the `:doc` of boxes, the guide and the tutorials still
+  wrote some bare (`0 or stop`, `reset: back to the minimum`, `rec starts, stop ends`, click `start`), which `msg stop`
+  no longer does. Now `:stop`, `:start`, `:reset`, `:rec t`, `:ovr t`, `:clear`, `:learn :off`, `:depth n`,
+  `:seek p`, `:open`/`:close`, `:bpm n`, `comes`' `:hold` `:end` `:engine` `:back`, and `draw`'s
+  `:circle … :accent :hit …`. Text only; the packages whose help changed are bumped so the page shows it:
+  `@kairotic/analysis` 0.7.4, `controls` 0.2.2, `data` 0.1.3, `io` 0.2.2, `net` 0.1.2, `theory` 0.3.1.
+- **`dispatch`: a message to one of several outlets.** `dispatch n` has n outlets, numbered from 0 as every port is;
+  the right inlet chooses the way: a number k (outlet k), `nil` or `false` (closed), `true` (outlet 0: `dispatch 1` is a
+  gate), or a function that chooses for each message — a map (`{60 0 64 1}`), a keyword (`:to`, the way written in
+  the event), a name or a form (`even?`, `(comp …)`) — where `nil` lets the message through nowhere; a set lets its
+  members through outlet 0. It covers Max's gate, spigot and route in one box. The selector can be written after n
+  (`dispatch 2 {60 0 64 1}`). Help patch, guide (EN/ES), tests in `tests/cljs/corefns.cljs`.
 
 - **A `msg` is read as Clojure** (breaking). What a `msg` box sends is what is written in it, as EDN:
   - **keywords with their colon**: `msg :stop`, `msg :rec 4`, `msg :circle 40 40 10 :accent :hit :sun`;

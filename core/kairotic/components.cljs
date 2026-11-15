@@ -663,7 +663,7 @@
       (#{:clear "clear"} value) (done {:named {} :order [] :n 0})
       :else {})))
 
-(define! "draw" {:doc "A view drawn from the messages that arrive: each shape of kairotic.shapes ([:circle {:cx 40 :cy 40 :r 10 :fill :accent}], [:line …], [:path {:points [[x y] …]}], [:text {:x :y} \"…\"], [:curve …], [:group {:x :y :rotate} [shapes]]) is added — or as a msg writes it: circle 40 40 10 accent, rect x y w h, line x1 y1 x2 y2, arc cx cy r from to, text x y \"words\", with a colour and hit name; a list of shapes replaces them all; [:set k shape] (set k circle …) adds or replaces the shape called k (to move a cursor), [:unset k] removes it, clear empties it. A shape with :hit k, pressed, sends k out."
+(define! "draw" {:doc "A view drawn from the messages that arrive: each shape of kairotic.shapes ([:circle {:cx 40 :cy 40 :r 10 :fill :accent}], [:line …], [:path {:points [[x y] …]}], [:text {:x :y} \"…\"], [:curve …], [:group {:x :y :rotate} [shapes]]) is added — or as a msg writes it: :circle 40 40 10 :accent, :rect x y w h, :line x1 y1 x2 y2, :arc cx cy r from to, :text x y \"words\", with a colour and :hit name; a list of shapes replaces them all; [:set k shape] (:set k :circle …) adds or replaces the shape called k (to move a cursor), [:unset k] removes it, :clear empties it. A shape with :hit k, pressed, sends k out."
                  :usage "draw [width height]"
                  :io [1 1]
                  :size (fn [b] (draw-size (:args b)))
@@ -682,7 +682,7 @@
 (doseq [[op-name op] [["!-" (fn [a b] (- b a))] ["!/" (fn [a b] (if (zero? a) 0 (/ b a)))]]]
   (define! op-name {:doc (str "Arithmetic the other way round: argument " (subs op-name 1) " left inlet (" op-name " 1 turns seconds into Hz); lists too.")
                     :usage (str op-name " n") :io [2 1] :receive (arit op)}))
-(define! "metro" {:doc "Sends periodic bangs: 1 or bang starts it, 0 or stop stops it." :usage "metro ms" :io [2 1] :receive metro})
+(define! "metro" {:doc "Sends periodic bangs: 1 or bang starts it, 0 or :stop stops it." :usage "metro ms" :io [2 1] :receive metro})
 (define! "counter" {:doc "Each bang sends the value and advances one step; goes back to the minimum on reaching the maximum." :usage "counter step [max] [min]" :io [2 1] :receive counter})
 (define! "ramp" {:doc "Linear motion: a bang (or [a b s]) goes from a to b in s seconds; a number jumps there." :usage "ramp a b s [loop]" :io [2 1] :receive ramp})
 (define! "canvas" {:doc "Graphic buffer for any numeric data: strokes in a plane with axes of any range, linear or log ((axis :b1 :y -1 1)). A number on the inlet (or a click) comes out on the left; edits on the inlet ([:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read x], [:strokes], [:get :t1], [:data]) are answered on the left. The right outlet is the buffer for a reader, which can read it along X or Y."

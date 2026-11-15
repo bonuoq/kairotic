@@ -76,7 +76,7 @@
    :io [1 3]
    :size [96 30]
    :args [[:channel 0] [:range 2]]
-   :help {:inlets ["clear (or :stop): every held note goes"]
+   :help {:inlets [":clear (or :stop): every held note goes"]
           :outlets ["the Hz of the notes sounding, most recent first ([:gain amp] before a note starts)" "their voice ids (note + 128 per channel above the first)" "every event, as a map"]
           :example "(box :b1 \"midiin\" 40 30)\n(box :b2 \"synth~\" 40 90)\n(box :b3 \"dac~\" 40 140)\n(box :b4 \"print\" 160 90)\n(connect :b1 0 :b2 0)\n(connect :b1 1 :b2 1)\n(connect :b2 0 :b3 0)\n(connect :b2 0 :b3 1)\n(connect :b1 2 :b4 0)"
           :try "Press ▶ and play a MIDI keyboard: synth~ plays it and print shows every event. Bend a note: it glides."
