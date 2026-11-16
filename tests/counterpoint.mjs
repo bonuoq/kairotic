@@ -138,6 +138,21 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
   is("... the comes holds each note of the dux for two beats", AC.every((c, t) => (t < 2 ? c === null : c === AD[Math.floor((t - 2) / 2)] - 7)));
 }
 
+// chance: at temperature 0 the comes the futuribles say; with a temperature, drawn — the same r, the same choice
+{
+  const N = live({ imitation: 0.5 });
+  await N.warm();
+  const D = [], C = [];
+  for (const a of [2, 4, 5, 7]) { const p = N.play(D, C, a); D.push(p.note); C.push(p.comes); }
+  const f = N.futuribles(D, C)[0];
+  is("temperature 0: the comes the futuribles say", N.play(D, C, semis(f.note)).comes === f.comes && N.play(D, C, semis(f.note), { temp: 0, r: 0.7 }).comes === f.comes);
+  const drawn = [0.05, 0.25, 0.45, 0.65, 0.85, 0.99].map((r) => N.play(D, C, semis(f.note), { temp: 3, r }).comes);
+  is("a temperature: the comes drawn among the candidates (the same r, the same comes)", new Set(drawn).size > 1 &&
+    N.play(D, C, semis(f.note), { temp: 3, r: 0.45 }).comes === drawn[2]);
+  const eng = [0.05, 0.5, 0.95].map((r) => N.engine(D, C, { temp: 5, r, r2: 0.5 }).note);
+  is("engine with a temperature: the dux drawn among the futuribles", new Set(eng).size > 1 && N.engine(D, C).note === f.note);
+}
+
 // the cancrizans box's kernel: Study 43's mirror, as it is, on this module
 {
   const ours = readFileSync(join(root, "packages/theory/assets/mirror.mjs"), "utf8");
@@ -148,6 +163,10 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
   const crab = mirror({ tonic: 1, lo: 0, hi: 9, spacing: 11, starts: [1, 5, 8], b: 2, n: 11, transform: { kind: "crab", k: -7 } });
   is("a crab an octave below, 11 beats: 6959, as in Study 43", crab.count() === 6959);
 }
+
+// Study 46 plays on Study 43's kernels, as they are
+for (const f of ["kernel.mjs", "mirror.mjs"])
+  is(`Study 46's ${f} is Study 43's`, readFileSync(join(root, "studies/46-crab-live/kairotic", f), "utf8") === readFileSync(join(root, "studies/43-mirrors/kairotic", f), "utf8"));
 
 const bad = results.filter((x) => !x[1]);
 console.log(`${results.length - bad.length} / ${results.length} passed`);
