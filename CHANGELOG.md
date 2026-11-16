@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Systems in `comes` and `cancrizans`** (`@kairotic/theory` 0.7.0, Study 42 in the app): the scale, its tuning
+  and its rules as data. `comes pentatonic`, `cancrizans septimal31`, `comes penta-A pentatonic`, or on the way
+  `[:system :meantone]` or an EDN map `[:system {…}]`: the modes, the distances at which the comes may imitate (an
+  octave below is the system's period) and the tuning come with the system. A key is taken as the nearest note of
+  the system (within a quarter of a tone or so), and the notes out are tuned (Hz, or MIDI with a fraction).
+
 - **Study 47 · heads**: canons and rings as one model — a span of time (a ring, or a fixed work) and heads that
   write and read it, each a head of its own. Writers write where they are (replacing, or mixing); readers send what
   they cross, either way, with a jump that is a seek; a head's position comes from a clock (start and speed), a hand,

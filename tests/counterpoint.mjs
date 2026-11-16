@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { live, semis, pitchName } from "../packages/theory/assets/counterpoint.mjs";
+import { live, semis, pitchName, PENTATONIC } from "../packages/theory/assets/counterpoint.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const results = [], notes = [];
@@ -151,6 +151,34 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
     N.play(D, C, semis(f.note), { temp: 3, r: 0.45 }).comes === drawn[2]);
   const eng = [0.05, 0.5, 0.95].map((r) => N.engine(D, C, { temp: 5, r, r2: 0.5 }).note);
   is("engine with a temperature: the dux drawn among the futuribles", new Set(eng).size > 1 && N.engine(D, C).note === f.note);
+}
+
+// systems (Study 42) in the box: a key of SYSTEMS or the data itself; their modes, distances and tuning
+{
+  const P = live({ system: "pentatonic", bars: 6 });
+  const c = await P.warm();
+  notes.push(`pentatonic, ${P.mode}, k ${P.k}: ${c} canons; modes ${P.modes.join(" ")}`);
+  is("pentatonic: its modes, an octave below is 5 steps", P.mode === "penta-C" && P.k === -5 && P.N === 5 && c > 0);
+  let r = P.play([], [], 5);   // F4: not a note of the pentatonic
+  is("pentatonic: F4 is not a note of it, corrected", r.corrected && /not a note of the mode/.test(r.reason) && [4, 7].includes(P.midi(r.note) - 60), r.reason);
+  r = P.play([], [], 0);
+  is("pentatonic: C4 as played", !r.corrected && P.name(r.note) === "C4");
+  const D = [], C = [];
+  for (;;) { const p = P.engine(D, C); if (!p) break; D.push(p.note); C.push(p.comes); }
+  is("pentatonic: the engine finishes a canon, every note a note of the scale",
+     D.length === P.n && D.every((x) => [0, 2, 4, 7, 9].includes(((Math.round(P.midi(x)) % 12) + 12) % 12)));
+  notes.push("pentatonic by the engine: " + D.map(P.name).join(" "));
+  const Q = live({ system: { ...PENTATONIC, modes: { "penta-A": PENTATONIC.modes["penta-A"] } }, bars: 5 });
+  is("a system as data (as EDN brings it): its only mode", Q.mode === "penta-A" && Q.name(Q.tonic) === "A4" && (await Q.warm()) > 0);
+  const S7 = live({ system: "septimal31", bars: 5 });
+  const s7 = await S7.warm();
+  notes.push(`septimal31, ${S7.mode}: ${s7} canons`);
+  const bflat = S7.midi(6);
+  is("septimal31: B♭⁷ a harmonic seventh above C (a fraction of MIDI)", Math.abs(bflat - (60 + 9.677)) < 0.01 && s7 > 0, bflat);
+  r = S7.play([], [], 0);
+  is("septimal31: a key of 12 is taken as the nearest note of 31", !r.corrected && r.note === 0);
+  const M = live({ system: "meantone", mode: "aeolian" });
+  is("meantone: the diatonic modes, tuned (E4 a pure third above C4)", M.mode === "aeolian" && Math.abs(M.midi(2) - 63.863) < 0.01);
 }
 
 // the cancrizans box's kernel: Study 43's mirror, as it is, on this module
