@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Study 46 · crab live**: a crab canon played live, on Study 43's kernel. In the first half you choose your note
+  among the ones that can still close the crab, and the engine answers at the same beat with the end of your own line
+  (written ahead on the score); at the middle the rest of your line comes out as a score to read, and in the second
+  half the engine plays your first half backwards. In 2/2 or 3/2 (the crabs counted without blocking the page). By turns or on a pulse (the engine plays your note if you don't);
+  crab or table canon; no score following yet. The game is pure (`studies/46-crab-live/kairotic/live.mjs`): 18 tests
+  (also in Node) and 25 on the page.
+
 - **`comes` inverted or augmented, and `cancrizans`** (`@kairotic/theory` 0.4.0, Study 43): `comes inversion` plays
   the comes upside down about an axis (`[:axis 62]`, the final by default) and `comes augmentation` twice as slow
   (a strict canon, six bars at most: its futures still counted); `[:transform …]` changes it on the way. The new

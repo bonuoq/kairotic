@@ -1,0 +1,189 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 46 · Crab live</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the crab (kind, the other voice, mode, bars) and the playing (by turns or on a
+   pulse) as toolbars; the score with the middle of the mirror, your notes, the engine's, the ones written ahead
+   and what you may play now; beside it the keys, the score that comes out at the middle, what was played. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+
+.views { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+.score { overflow-x: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; scrollbar-width: thin; }
+.score svg { display: block; }
+.row { fill: none; stroke: var(--grid); stroke-width: 1; }
+.row.final { stroke: var(--kairos); stroke-opacity: 0.35; stroke-width: 6; }
+.pname { font: 10.5px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; }
+.pname.final { fill: var(--kairos); font-weight: 600; }
+.col { stroke: var(--grid); stroke-width: 1; stroke-dasharray: 2 3; }
+.col.now { stroke: var(--accent); stroke-dasharray: none; stroke-opacity: 0.6; stroke-width: 2; }
+.tnum { font: 10px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+.barline { stroke: var(--ink-soft); stroke-width: 1.2; }
+.mirrorline { stroke: var(--kairos); stroke-dasharray: 2 4; stroke-width: 1.4; }
+.readzone { fill: var(--kairos-soft); }
+.dux { fill: var(--accent); }
+.dux.ahead { fill: var(--box); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 2 2; }
+.dux.toread { fill: var(--box); stroke: var(--accent); stroke-width: 2; }
+.readnow { fill: none; stroke: var(--kairos); stroke-width: 2.4; }
+.comes { fill: var(--kairos); }
+.cand { fill: var(--box); stroke: var(--accent); stroke-width: 1.5; cursor: pointer; }
+.cand:hover, .cand.hot { fill: var(--accent); }
+.futn { font: 10.5px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; pointer-events: none; }
+.nope { stroke: var(--ink-soft); stroke-opacity: 0.45; stroke-width: 1.2; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-soft); align-items: center; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+.legend i.sq { border-radius: 2px; }
+.legend i.ring { background: var(--box); border: 1.5px dashed var(--accent); }
+.keys { display: flex; flex-wrap: wrap; gap: 4px; }
+.key { min-width: 46px; border: 1px solid var(--rule); background: var(--box); color: var(--ink-soft); border-radius: 6px; padding: 5px 6px 4px; display: grid; justify-items: center; gap: 1px; cursor: pointer; font: 12px var(--f-code); }
+.key b { font-weight: 600; color: var(--ink-soft); }
+.key small { font-size: 10px; min-height: 12px; color: var(--ink-soft); }
+.key i { font-style: normal; font-size: 10px; color: var(--ink-soft); opacity: 0.7; }
+.key.ok { border-color: var(--accent); }
+.key.ok b { color: var(--accent); }
+.key.hot { background: var(--accent); } .key.hot b, .key.hot small, .key.hot i { color: #fff; }
+.key:disabled { opacity: 0.4; cursor: default; }
+pre.outlet { margin: 0; font: 12.5px/1.5 var(--f-code); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px 8px; }
+ol.log { margin: 0; padding-left: 22px; font: 12px/1.55 var(--f-code); max-height: 220px; overflow: auto; }
+ol.log .warn { color: var(--error); } ol.log .soft { color: var(--ink-soft); }
+.here { font-size: 13px; color: var(--ink-soft); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+.about + .about { margin-top: 6px; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+.modes { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.modes label { padding: 4px 10px; cursor: pointer; color: var(--ink-soft); font-size: 13px; gap: 0 !important; }
+.modes input { position: absolute; opacity: 0; pointer-events: none; }
+.modes label:has(input:checked) { background: var(--accent); color: #fff; }
+.modes label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+</style>
+
+<main>
+<header>
+  <h1>Study 46 · crab live</h1>
+  <span class="sub">A crab canon played live: you choose the first half, the engine answers with the end of your own line, and at the middle you read the rest</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The crab">
+  <span class="tag">Crab</span>
+  <label title="crab: the other voice is yours backwards · table: backwards and upside down">Kind <select id="kind"><option value="crab">crab</option><option value="table">table</option></select></label>
+  <label>The other voice <select id="k"><option value="-7">an octave below</option><option value="7">an octave above</option><option value="0">at the unison</option></select></label>
+  <label>Mode <select id="mode"></select></label>
+  <label title="2/2: second species · 3/2: three notes a bar; a crab ends on a strong beat, so strong beats mirror strong beats and the 2nd and 3rd change places">Meter <select id="meter"><option value="2">2/2</option><option value="3">3/2</option></select></label>
+  <label>Bars <input type="number" id="bars" min="3" max="7" step="1"></label>
+</div>
+<div class="toolbar" aria-label="Playing it">
+  <span class="tag">Playing</span>
+  <span class="modes" role="radiogroup" aria-label="How the beats go">
+    <label title="A note in is a beat"><input type="radio" name="timing" value="turns">by turns</label>
+    <label title="The beat goes on: the note you played since the last one, or the engine's for you"><input type="radio" name="timing" value="pulse">pulse</label>
+  </span>
+  <label>Tempo <input type="number" id="tempo" min="30" max="200" step="2"> ♩/min</label>
+  <label><input type="checkbox" id="sound"> sound</label>
+  <button class="act primary" id="go">New crab</button>
+</div>
+
+<div class="views">
+  <section class="panel" aria-labelledby="h-score">
+    <h2 id="h-score">Score <span class="here" id="here"></span></h2>
+    <div class="score"><svg id="score" role="img" aria-label="The crab: your notes, the engine's, the middle"></svg></div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>you</span>
+      <span><i class="sq" style="background:var(--kairos)"></i>the engine</span>
+      <span><i class="ring"></i>your notes written ahead by the engine</span>
+      <span><i style="background:var(--box);border:1.5px solid var(--accent)"></i>what you may play now (its ways to close the crab)</span>
+    </div>
+  </section>
+  <div class="side">
+    <section class="panel" aria-labelledby="h-keys">
+      <h2 id="h-keys">Your notes <span>click, or a s d f g h j k l ; '</span></h2>
+      <div class="keys" id="keys"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-outlet">
+      <h2 id="h-outlet">The score to read <span id="outlet-sub"></span></h2>
+      <pre class="outlet" id="outlet"></pre>
+    </section>
+    <section class="panel" aria-labelledby="h-log">
+      <h2 id="h-log">Played <span>the last beats</span></h2>
+      <ol class="log" id="log" reversed></ol>
+    </section>
+  </div>
+</div>
+
+<section class="panel">
+  <h2>About</h2>
+  <p class="about"><b>Study 46.</b> In a crab canon the other voice is your line backwards: at beat t it plays your note n−t. Study 43 could not write it from the beginning and wrote it from both ends to the middle; here that order is played, live. In the <b>first half</b> you choose your note among the ones that can still close the crab (a note that cannot is taken as the nearest that can), and the engine answers at the same beat — with <i>the end of your own line</i>, chosen among the notes with a future: you see it written ahead on the score. At the <b>middle</b> the whole crab is written, and the rest of your line comes out as a score: the engine's answers, backwards. In the <b>second half</b> you read it, and the engine plays your first half backwards — each voice plays the other's past. By turns a note in is a beat; on a pulse the beat goes on, and if you played nothing the engine plays your note for you. A table canon is the same, upside down too. In <b>3/2</b> the crab still ends on a strong beat, so its strong beats mirror strong beats and only the 2nd and 3rd of each bar change places; with an even number of beats its middle is a pair, not a note.</p>
+  <h2 style="margin-top:6px">What it decides</h2>
+  <ul class="q">
+    <li>As a mode of the <code>comes</code> box (<code>comes crab</code>, <code>comes table</code>): the score from the middle on an outlet, as a tree for a score view, and a cue a few beats before.</li>
+    <li>By turns and on a pulse, as <code>comes</code> plays now; for later, score following in the second half (marking what is not read as written).</li>
+    <li>The species: the rules must hold both ways (a suspension backwards is not one); first and second species do, the rest needs its retrograde.</li>
+  </ul>
+</section>
+</main>
+
+<script type="module">
+// The page (kairotic/page.mjs): the game (kairotic/live.mjs) on Study 43's kernel (kairotic/mirror.mjs).
+import { mount } from "./kairotic/page.mjs";
+try { mount(); } catch (e) {
+  const st = document.getElementById("status"); st.textContent = "Error: " + (e.message || e); st.style.color = "var(--error)"; console.error(e);
+}
+</script>
