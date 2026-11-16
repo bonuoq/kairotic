@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// @kairotic/theory · counterpoint.mjs, what the comes box plays with (discussion #172): its kernel is Study 41's,
+// @kairotic/theory · counterpoint.mjs, what the comes box plays with (discussion #172): its kernel is Study 43's,
 // a note asked for is corrected to the nearest legal one with a future, and a canon played note by note always
 // finishes. In Node:  node tests/counterpoint.mjs
 import { readFileSync } from "node:fs";
@@ -11,11 +11,11 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const results = [], notes = [];
 const is = (what, ok, detail) => results.push([what, !!ok, detail]);
 
-// the kernel is Study 40's, as it is
+// the kernel is Study 43's, as it is
 const body = (f, from) => { const s = readFileSync(join(root, f), "utf8"); const i = s.indexOf(from); return s.slice(i, s.indexOf("\n// ─────", i + 1) < 0 ? undefined : s.indexOf("\n// ─────", i + 1)); };
-const ours = body("packages/theory/assets/counterpoint.mjs", "const SCALE");
-const study = readFileSync(join(root, "studies/41-suspensions/kairotic/kernel.mjs"), "utf8");
-is("the kernel is Study 41's, as it is", study.slice(study.indexOf("const SCALE")).trim() === ours.trim());
+const ours = body("packages/theory/assets/counterpoint.mjs", "const mod = ");
+const study = readFileSync(join(root, "studies/43-mirrors/kairotic/kernel.mjs"), "utf8");
+is("the kernel is Study 43's, as it is", study.slice(study.indexOf("const mod = ")).trim() === ours.trim());
 
 // a strict canon in D dorian, the comes an octave below three beats later, 8 bars of 2/2
 const L = live();
@@ -122,6 +122,31 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
   is("fourth species: the comes holds its note over the strong beats", FC.every((c, t) => t <= 1 || t % 2 === 1 || c === FC[t - 1]));
   const sus = FD.map((_, t) => t).filter((t) => F.kernel.suspensionAt(FD, FC, t));
   notes.push("fourth species, cantus firmus D F E D: comes " + FC.map((c) => (c === null ? "–" : pitchName(c))).join(" ") + " · suspensions at " + sus.join(","));
+}
+
+// inversion and augmentation of the comes, live
+{
+  const I = live({ transform: "inversion", axis: 62, k: 0, d: 3, bars: 6 });
+  is("inversion about D4 (62): the axis is D4", (await I.warm()) > 0 && I.axis === 1);
+  const D = [], C = [];
+  for (const a of [2, 4, 5, 7, 5, 4]) { const p = I.play(D, C, a); D.push(p.note); C.push(p.comes); }
+  is("... the comes is the dux upside down about D, 3 beats later", C.every((c, t) => (t < 3 ? c === null : c === 2 - D[t - 3])));
+  const A = live({ transform: "augmentation", k: -7, d: 2, bars: 8, imitation: 0.5 });
+  is("augmentation: a strict canon, six bars at most", A.n === 11 && A.spec.imitation === 1 && (await A.warm()) > 0);
+  const AD = [], AC = [];
+  for (const a of [2, 4, 5, 7, 9, 7]) { const p = A.play(AD, AC, a); AD.push(p.note); AC.push(p.comes); }
+  is("... the comes holds each note of the dux for two beats", AC.every((c, t) => (t < 2 ? c === null : c === AD[Math.floor((t - 2) / 2)] - 7)));
+}
+
+// the cancrizans box's kernel: Study 43's mirror, as it is, on this module
+{
+  const ours = readFileSync(join(root, "packages/theory/assets/mirror.mjs"), "utf8");
+  const theirs = readFileSync(join(root, "studies/43-mirrors/kairotic/mirror.mjs"), "utf8");
+  const code = (s) => s.slice(s.indexOf("export const KINDS")).replace(/\n\/\/ api\/import-module[\s\S]*$/, "").trim();
+  is("mirror.mjs is Study 43's mirror, as it is", code(ours) === code(theirs));
+  const { mirror } = await import("../packages/theory/assets/mirror.mjs");
+  const crab = mirror({ tonic: 1, lo: 0, hi: 9, spacing: 11, starts: [1, 5, 8], b: 2, n: 11, transform: { kind: "crab", k: -7 } });
+  is("a crab an octave below, 11 beats: 6959, as in Study 43", crab.count() === 6959);
 }
 
 const bad = results.filter((x) => !x[1]);

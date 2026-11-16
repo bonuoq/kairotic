@@ -152,4 +152,33 @@ export async function theory(page, check) {
   await cljs(page, `(send! ${nc} [:beats 3])`);
   check("... and [:beats 3] from outside: 3/2 at the next section", (await cljs(page, ns(":meter"))) === "3");
   await cljs(page, `(delete ${nc})`);
+
+  // comes inverted: the comes upside down about D4
+  const iv = (await cljs(page, '(box "comes midi inversion 0" 7800 600)')).trim();
+  const is_ = (k) => `(get-in @eng/rt [:states ${iv} ${k}])`;
+  await cljs(page, `(send! ${iv} 62)`);
+  await until(page, `(count ${is_(":D")})`, (x) => x === "1", 30000);
+  for (const m of [64, 65, 67, 65]) await cljs(page, `(send! ${iv} ${m})`);
+  const ivDC = await until(page, `[${is_(":D")} ${is_(":C")}]`, (x) => /^\[\[\d+ \d+ \d+ \d+ \d+\]/.test(x), 5000);
+  const [ivD, ivC] = JSON.parse(ivDC.replace(/nil/g, "null").replace(/\] \[/, "],[").replace(/ /g, ","));
+  check("comes inversion: the comes is the dux upside down about D, three beats later", ivC.every((c, t) => (t < 3 ? c === null : c === 2 - ivD[t - 3])), ivDC);
+  await cljs(page, `(delete ${iv})`);
+
+  // cancrizans: a crab written from both ends to the middle, sent as patterns when it closes
+  const cz = (await cljs(page, '(box "cancrizans -7 2 4 midi" 8000 600)')).trim();
+  const zp = (await cljs(page, '(box "print" 8000 680)')).trim();
+  await cljs(page, `(connect ${cz} 0 ${zp} 0)`);
+  const zs = (k) => `(get-in @eng/rt [:states ${cz} ${k}])`;
+  await cljs(page, `(send! ${cz} 62)`);
+  check("cancrizans: the first note waits for the futures, then is the note at the start", (await until(page, `(some? ${zs(":pending")})`, (x) => x === "true", 30000)) === "true");
+  await cljs(page, `(send! ${cz} 62)`);
+  check("... then the note at the end: a step written at both ends", (await until(page, zs(":s"), (x) => x === "1", 3000)) === "1" &&
+        (await cljs(page, `[(first ${zs(":M")}) (last ${zs(":M")})]`)) === "[1 1]");
+  for (let i = 0; i < 12 && (await cljs(page, `(:main (second (last-shown ${cz})))`)) !== null && !/closed/.test(await cljs(page, `(:sub (second (last-shown ${cz})))`)); i++)
+    await cljs(page, `(send! ${cz} :engine)`);
+  check("... the engine closes the work in the middle", /closed/.test(await cljs(page, `(:sub (second (last-shown ${cz})))`)), await cljs(page, `(second (last-shown ${cz}))`));
+  check("... a crab: the comes is the dux backwards, an octave below", (await cljs(page, `(let [M ${zs(":M")}] (= (count M) 7))`)) === "true");
+  await cljs(page, `(send! ${cz} :back)`);
+  check("... back: not closed any more", !/closed/.test(await cljs(page, `(:sub (second (last-shown ${cz})))`)));
+  await cljs(page, `(delete ${cz} ${zp})`);
 }

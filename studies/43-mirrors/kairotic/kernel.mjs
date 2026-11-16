@@ -218,20 +218,28 @@ export function canon(spec) {
   // the system: its quality, melodic rules, names (the diatonic one unless the spec brings another)
   const S = makeSystem(spec.system || DIATONIC), N7 = S.N;
   const { quality, melodicError, intervalName } = S;
-  const clo = spec.clo ?? lo + k, chi = spec.chi ?? hi + k;
+  // the transformation of the canon (Study 43): the comes is the dux's note, upside down about an axis
+  // (inversion), or held twice as long (augmentation: each note of the dux m beats of the comes)
+  const tf = spec.transform || {};
+  const inv = tf.kind === "inversion", aug = tf.kind === "augmentation" ? Math.max(2, Math.round(tf.m || 2)) : 1;
+  const axisT = tf.axis ?? tonic;
+  const Tx = (x) => (inv ? 2 * axisT - x : x) + k;
+  const [tlo, thi] = [Tx(lo), Tx(hi)].sort((a, z) => a - z);
+  const clo = spec.clo ?? tlo, chi = spec.chi ?? thi;
   const imitation = spec.imitation ?? 1, bnd = band(imitation);
   const invert = [...(spec.invert || [])].sort((x, y) => x - y);
   const on = (id) => (spec.on && id in spec.on ? !!spec.on[id] : id === "syncopation" ? spec.species === 4 : !OFF_BY_DEFAULT.has(id));
   const starts = spec.starts ? [...spec.starts] : [tonic, tonic + 4, tonic + 7];
-  const cstarts = spec.cstarts ? [...spec.cstarts] : starts.map((x) => x + k);
+  const cstarts = spec.cstarts ? [...spec.cstarts] : starts.map(Tx);
   const finals = [];
   for (let i = -2; i <= 2; i++) { const f = tonic + N7 * i; if (f >= lo && f <= hi) finals.push(f); }
   const strong = (t) => (t + phase) % b === 0;
   const lowerFirst = (x, c) => (k > 0 ? [x, c] : [c, x]);
   const transforms = [[null, (a, z) => [a, z]], ...invert.map((N) => [N, (a, z) => [z, a + N - 1]])];
   const label = (N) => (N ? `under inversion at the ${intervalName(N - 1)}: ` : "");
-  /** The comes's note in a strict canon at time t (the dux's, d beats before, k steps away), or null. */
-  const model = (D, t) => (t - d >= 0 && t - d < D.length ? D[t - d] + k : null);
+  /** The comes's note in a strict canon at time t (the dux's, d beats before, k steps away, transformed), or null. */
+  const source = (t) => (t - d >= 0 ? Math.floor((t - d) / aug) : null);
+  const model = (D, t) => { const i = source(t); return i !== null && i < D.length ? Tx(D[i]) : null; };
 
   function dissonant(x, c) {
     const [l0, h0] = lowerFirst(x, c);
@@ -241,12 +249,12 @@ export function canon(spec) {
 
   /** The melodic rules of one line: a reason, or null. who: "" for the dux, "the comes: " for the comes. The same
    *  pitch again is the note held (a tie), maxHold beats at most; the other rules look at the notes struck. */
-  function melodic(line, t, x, who) {
+  function melodic(line, t, x, who, hold = maxHold) {
     const prev = t >= 1 ? line[t - 1] : null;
     if (prev === null || prev === undefined) return null;
     let j = t - 1;                                                    // where the note before began
     while (j >= 1 && line[j - 1] === prev) j--;
-    if (x === prev) return t - j >= maxHold ? `${who}a note is held for ${maxHold === 2 ? "two" : maxHold} beats at most` : null;
+    if (x === prev) return t - j >= hold ? `${who}a note is held for ${hold === 2 ? "two" : hold} beats at most` : null;
     if (on("melodic")) { const e = melodicError(prev, x); if (e) return who + e; }
     const a1 = j >= 1 ? line[j - 1] : null;                           // the note struck before it
     if (on("leap-recovery") && a1 !== null && a1 !== undefined) {
@@ -325,7 +333,7 @@ export function canon(spec) {
       if (strong(t) && t < n - 1 && c !== C[t - 1]) return "fourth species: the comes holds its note over the strong beat";
       if ((!strong(t) || t === n - 1) && c === C[t - 1]) return "fourth species: the comes strikes a new note on the weak beat";
     }
-    const e = melodic(C, t, c, "the comes: "); if (e) return e;
+    const e = melodic(C, t, c, "the comes: ", maxHold * aug); if (e) return e;
     const prev = t >= 1 ? D[t - 1] : null, pc = t >= 1 ? C[t - 1] : null;
     const resolving = t >= 2 && suspensionAt(D, C, t - 1);
     if (resolving) {
@@ -399,14 +407,21 @@ export function canon(spec) {
   // ─── the count over pairs ───
   // the notes the rules look back at: a note held (maxHold beats at most) and the note struck before it
   const LD = Math.max(maxHold + 1, b, bnd === "canon" || bnd === "near" ? d : 0);
-  const LC = Math.max(maxHold + 1, b);
+  const LC = Math.max(maxHold * aug + 1, b);
+  // (in an augmentation the comes reaches further back into the dux, the further the work goes)
+  const fromD = (t) => Math.max(0, aug > 1 && (bnd === "canon" || bnd === "near") ? Math.min(t - LD, Math.floor((t - d) / aug)) : t - LD);
   const memo = new Map();
   const W = Math.max(hi, chi) - Math.min(lo, clo) + 2, base = Math.min(lo, clo) - 1;
   function key(D, C, t) {
-    let code = t;
-    for (let j = Math.max(0, t - LD); j < t; j++) code = code * W + (D[j] - base);
-    for (let j = Math.max(0, t - LC); j < t; j++) code = code * W + (C[j] === null ? 0 : C[j] - base);
-    return code;
+    const f = fromD(t), g = Math.max(0, t - LC);
+    // a number while it fits in a double exactly; else a string (a long augmentation)
+    if ((t - f + t - g) * Math.log2(W) < 46) {
+      let code = t;
+      for (let j = f; j < t; j++) code = code * W + (D[j] - base);
+      for (let j = g; j < t; j++) code = code * W + (C[j] === null ? 0 : C[j] - base);
+      return code;
+    }
+    return t + ":" + D.slice(f, t).join(",") + ":" + C.slice(g, t).join(",");
   }
   function countFrom(D, C) {
     const t = D.length;
