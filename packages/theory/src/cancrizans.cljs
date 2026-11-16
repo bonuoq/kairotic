@@ -13,17 +13,23 @@
 ;; score to read, and in the second half the box plays your first half backwards while you read it (a note you play
 ;; that is not the one written is said, as a deviation). On a pulse (the right inlet) a beat goes on whether you
 ;; played or not (the box plays your note for you); without one, a note in is a beat.
-(let [origins-cp ["npm:@kairotic/theory@0.6.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
-      origins-mi ["npm:@kairotic/theory@0.6.0/dist/mirror.mjs" "kairotic/packages/theory/mirror.mjs"]
+(let [origins-cp ["npm:@kairotic/theory@0.7.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
+      origins-mi ["npm:@kairotic/theory@0.7.0/dist/mirror.mjs" "kairotic/packages/theory/mirror.mjs"]
       semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
       log2 (fn [x] (/ (js/Math.log x) (js/Math.log 2)))
-      params #{:mode :k :beats :bars :table :axis}
+      params #{:mode :system :k :beats :bars :table :axis}
+      ;; a key asked for is the note of the system it is nearest (within a quarter of a tone or so): not a correction
+      off? (fn [asked x] (> (js/Math.abs (- asked x)) 0.45))
       ;; (chance: the temperature and the seed change the game, not the canon)
       chance #{:temp :seed}
+      ;; (the box's words, then what was changed since: a mode or a system as a name, or a system as data)
       opts-of (fn [st args]
-                (merge {:mode (some-> (:mode args) name) :k (:k args) :beats (:beats args) :bars (:bars args)
-                        :table (boolean (:table args)) :axis nil}
-                       (update (:over st) :mode #(some-> % name))))
+                (-> (merge {:mode (:mode args) :system (:system args) :k (:k args) :beats (:beats args) :bars (:bars args)
+                            :table (boolean (:table args)) :axis nil}
+                           (:over st))
+                    (update :mode #(some-> % name))
+                    ;; a system: a name (:pentatonic) or the data itself (an EDN map, Study 42)
+                    (update :system #(if (keyword? %) (name %) %))))
       fresh (fn [args] {:sig args :M [] :s 0 :pending nil :hist [] :k 0 :temp (:temp args) :seed (:seed args) :seed0 (:seed args)})
       load (fn [st o]
              (let [k (inc (:k st 0))]
@@ -39,14 +45,14 @@
                 (if (some? (:pending st)) (.fanSecond mi M s (:pending st)) (.fan mi M s))))
       futs (fn [cp mi st]
              (vec (for [c (cands mi st) :when (pos? (or (.-futures c) 0))]
-                    {:midi (.midiOf cp (.-note c)) :name (.pitchName cp (.-note c)) :futures (.-futures c)})))
+                    {:midi (.midi cp (.-note c)) :name (.name cp (.-note c)) :futures (.-futures c)})))
       ;; a voice as a pattern: the notes held over the beat joined
       pattern (fn [cp xs]
                 (let [runs (partition-by identity xs)]
-                  {:note (mapv (fn [r] (.midiOf cp (first r))) runs) :dur (mapv count runs)}))
+                  {:note (mapv (fn [r] (.midi cp (first r))) runs) :dur (mapv count runs)}))
       report (fn [cp mi st extra]
                (let [n (.-n mi) lns (.lines mi (js-M st n)) s (:s st) steps (.-steps mi) pos (pos-of mi s)
-                     mid (fn [v] (when (and (some? v) (not (undefined? v))) (.midiOf cp v)))]
+                     mid (fn [v] (when (and (some? v) (not (undefined? v))) (.midi cp v)))]
                  (merge {:step s :steps steps :closed (>= s steps)
                          :writing (cond (>= s steps) :closed (some? (:pending st)) :end :else :start)
                          :beat (when pos (inc (if (some? (:pending st)) (peek pos) (first pos))))
@@ -81,7 +87,7 @@
                    {:state st}
                    (let [c (nearest cp (cands mi st) asked)
                          r (js/Math.round asked)
-                         extra (when c {:asked (+ 60 r) :played (.midiOf cp (.-note c)) :corrected (not= r (.semis cp (.-note c)))})]
+                         extra (when c {:asked (+ 60 r) :played (.midi cp (.-note c)) :corrected (off? asked (.semis cp (.-note c)))})]
                      (cond
                        (nil? c) {:state st}
                        (and (= 2 (count pos)) (nil? (:pending st))) (at-point cp mi (assoc st :pending (.-note c)) extra)
@@ -121,23 +127,23 @@
       pick-end (fn [mi st a] (let [[cs cost] (end-cands mi st a) [st c] (choose-by st cs cost (:temp st 0))] (when c [st (.-note c)])))
       live-phase (fn [mi st] (let [t (:t st 0)] (cond (< t (.-steps mi)) :choose (< t (.-n mi)) :read :else :done)))
       engine-note (fn [mi st t] (let [e (get (:M st) (.source mi t))] (when (some? e) (.T mi e))))
-      hz-of (fn [cp v] (* 440 (js/Math.pow 2 (/ (- (.midiOf cp v) 69) 12))))
+      hz-of (fn [cp v] (* 440 (js/Math.pow 2 (/ (- (.midi cp v) 69) 12))))
       live-out (fn [cp mi st b]
                  (let [ph (live-phase mi st) t (:t st 0) n (.-n mi) steps (.-steps mi)
-                       mid (fn [v] (when (some? v) (.midiOf cp v)))
+                       mid (fn [v] (when (some? v) (.midi cp v)))
                        score (when (and (= ph :read) (= t steps)) (vec (for [i (range steps n)] (get (:M st) i))))
                        next-opts (case ph
                                    :choose (let [two? (= 2 (count (pos-of mi t)))]
                                              (vec (for [c (.fan mi (js-M st n) t) :when (pos? (or (.-futures c) 0))]
-                                                    (cond-> {:midi (.midiOf cp (.-note c)) :name (.pitchName cp (.-note c)) :futures (.-futures c)}
+                                                    (cond-> {:midi (.midi cp (.-note c)) :name (.name cp (.-note c)) :futures (.-futures c)}
                                                       ;; what the box will answer at the end of your line if you play it
-                                                      two? (assoc :end (some->> (end-for mi st (.-note c)) (.midiOf cp)))))))
-                                   :read [{:midi (mid (get (:M st) t)) :name (.pitchName cp (get (:M st) t)) :futures 1}]
+                                                      two? (assoc :end (some->> (end-for mi st (.-note c)) (.midi cp)))))))
+                                   :read [{:midi (mid (get (:M st) t)) :name (.name cp (get (:M st) t)) :futures 1}]
                                    [])]
                    {:state st
                     :show {:main (str (if (.-inverted mi) "table" "crab") " live · beat " (min n t) "/" n)
                            :sub (case ph :choose (str "play: " (count next-opts) " notes can close it")
-                                         :read (str "read: " (.pitchName cp (get (:M st) t)))
+                                         :read (str "read: " (.name cp (get (:M st) t)))
                                          "done: the crab is played")}
                     :out (cond-> [[3 (merge {:t (:t b) :phase ph :you (mid (:you b)) :engine (mid (:engine b)) :n n :middle steps
                                              :ways (if (= ph :choose) (.count mi (js-M st n) t) 1)}
@@ -165,14 +171,14 @@
                                 st (assoc st :M M :t (inc t) :s (inc t))
                                 b {:t t :you a :engine (engine-note mi st t)
                                    :played (when (some? asked) (+ 60 (js/Math.round asked)))
-                                   :corrected (and (some? asked) (not= (js/Math.round asked) (.semis cp a))) :auto (nil? asked)}]
+                                   :corrected (and (some? asked) (off? asked (.semis cp a))) :auto (nil? asked)}]
                             (live-out cp mi st b))))
                       :read
                       (let [w (get (:M st) t)
-                            dev (and (some? asked) (not= (js/Math.round asked) (.semis cp w)))
+                            dev (and (some? asked) (off? asked (.semis cp w)))
                             st (cond-> (assoc st :t (inc t)) dev (update :devs (fnil inc 0)))]
                         (live-out cp mi st (cond-> {:t t :you w :engine (engine-note mi st t)}
-                                             dev (assoc :deviation true :played (+ 60 (js/Math.round asked)) :expected (.midiOf cp w)))))
+                                             dev (assoc :deviation true :played (+ 60 (js/Math.round asked)) :expected (.midi cp w)))))
                       ;; done: a note begins a new crab
                       (if (some? asked) (recur cp mi (assoc st :M [] :t 0 :s 0 :devs 0) asked) {:state st}))))
       asked-of (fn [value args]
@@ -186,22 +192,24 @@
   {;; ── about ──
    :class "cancrizans"
    :license "MPL-2.0"
-   :doc "A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards, both voices at once; with table, backwards and upside down about an axis ([:axis 62], a MIDI note; the final by default) — the one score read by a second player from across the table, a musical ambigram. It cannot be written from the beginning (the comes at the start is the dux at the end), so it is written by turns from both ends: each step a note at the start, then one at the end. A note that breaks a rule of the style (as comes's), or from which the work could not be closed, is corrected to the nearest one that can. On the right, the futuribles — the notes that can come next and the ways each leaves to close the work in the middle, counted exactly — and where the work is. When it closes, the dux and the comes go out (left) as patterns, {:note [...] :dur [...]} with the notes held joined, for a pbind and a player. Notes as comes takes them: Hz, a list of keys held, [:midi 62], or MIDI numbers with midi. engine writes the next note itself; back takes one back; reset starts again; [:k -4], [:mode :hypodorian], [:bars 5], [:table true], [:axis 62] change the canon (and start again). With live (Study 46) the crab is played beat by beat: in the first half you play your note (or the nearest that can close the crab) and the box answers at the same beat with the end of your own line, written ahead (the notes that leave more futures first) — its futuribles say beforehand, as :end, what it will answer to each note (at temp 0, the default, exactly that; above it, the most likely, the box drawing among the answers with its seed: the same seed, the same game); two beats before the middle a cue {:cue :middle :in 2}; at the middle the rest of your line goes out (outlet 1) as the score to read, and in the second half the box plays your first half backwards (outlet 0, Hz) while you read it — a note that is not the one written is said, as a deviation. On a pulse (the right inlet: a metro, a pulse) a beat goes on whether you played or not; without one, a note in is a beat. After the last beat, a note begins a new crab."
-   :usage "cancrizans [mode] [k -7] [beats 2] [bars 6] [temp 0] [seed 1] [table] [live] [midi]"
+   :doc "A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards, both voices at once; with table, backwards and upside down about an axis ([:axis 62], a MIDI note; the final by default) — the one score read by a second player from across the table, a musical ambigram. It cannot be written from the beginning (the comes at the start is the dux at the end), so it is written by turns from both ends: each step a note at the start, then one at the end. A note that breaks a rule of the style (as comes's), or from which the work could not be closed, is corrected to the nearest one that can. On the right, the futuribles — the notes that can come next and the ways each leaves to close the work in the middle, counted exactly — and where the work is. When it closes, the dux and the comes go out (left) as patterns, {:note [...] :dur [...]} with the notes held joined, for a pbind and a player. Notes as comes takes them: Hz, a list of keys held, [:midi 62], or MIDI numbers with midi. engine writes the next note itself; back takes one back; reset starts again; The system (Study 42) is comes's: diatonic by default, or meantone, septimal31 or pentatonic (cancrizans pentatonic, [:system :septimal31]), or an EDN map; its modes, distances and tuning come with it. [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62] change the canon (and start again). With live (Study 46) the crab is played beat by beat: in the first half you play your note (or the nearest that can close the crab) and the box answers at the same beat with the end of your own line, written ahead (the notes that leave more futures first) — its futuribles say beforehand, as :end, what it will answer to each note (at temp 0, the default, exactly that; above it, the most likely, the box drawing among the answers with its seed: the same seed, the same game); two beats before the middle a cue {:cue :middle :in 2}; at the middle the rest of your line goes out (outlet 1) as the score to read, and in the second half the box plays your first half backwards (outlet 0, Hz) while you read it — a note that is not the one written is said, as a deviation. On a pulse (the right inlet: a metro, a pulse) a beat goes on whether you played or not; without one, a note in is a beat. After the last beat, a note begins a new crab."
+   :usage "cancrizans [mode] [system] [k -7] [beats 2] [bars 6] [temp 0] [seed 1] [table] [live] [midi]"
    :io [2 4]
    :size [170 46]
-   :args [[:mode nil] [:k -7] [:beats 2] [:bars 6] [:temp 0] [:seed 1] [:table false] [:live false] [:midi false]]
+   :args [[:mode nil] [:system nil] [:k -7] [:beats 2] [:bars 6] [:temp 0] [:seed 1] [:table false] [:live false] [:midi false]]
 
    ;; ── tasks: the kernel and its count, outside the pure logic ──
    :tasks {:kernel (fn [{:keys [opts]} _box]
                      (-> (js/Promise.all #js [(api/import-module origins-cp) (api/import-module origins-mi)])
                          (.then (fn [[cp mm]]
-                                  (let [L (.live cp (clj->js {:mode (:mode opts) :beats (:beats opts) :bars (:bars opts) :axis (:axis opts)}))
+                                  ;; the canon's mode, range and system from live (the box's pitches too: L's midi, name, semis)
+                                  (let [L (.live cp (clj->js {:mode (:mode opts) :system (:system opts) :k (:k opts)
+                                                              :beats (:beats opts) :bars (:bars opts) :axis (:axis opts)}))
                                         sp (.-spec L)
                                         mi (.mirror mm #js {:tonic (.-tonic sp) :lo (.-lo sp) :hi (.-hi sp) :n (.-n sp) :b (.-b sp)
-                                                            :spacing (.-spacing sp) :starts (.-starts sp) :maxHold (.-b sp)
-                                                            :transform #js {:kind (if (:table opts) "table" "crab") :k (:k opts) :axis (.-axis L)}})]
-                                    (.then (.countAsync mi #js {}) (fn [_] {:cp cp :mi mi})))))))}
+                                                            :spacing (.-spacing sp) :starts (.-starts sp) :maxHold (.-b sp) :system (.-system sp)
+                                                            :transform #js {:kind (if (:table opts) "table" "crab") :k (.-k L) :axis (.-axis L)}})]
+                                    (.then (.countAsync mi #js {}) (fn [_] {:cp L :mi mi})))))))}
 
    ;; ── logic ──
    :receive (fn [{:keys [inlet value state args]}]
