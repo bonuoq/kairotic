@@ -378,7 +378,7 @@ See also: `pitch~`, `mt`, `features~`
 
 ### comes · `@kairotic/theory`
 
-`comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [inversion] [augmentation] [live] [nocues] [midi]`
+`comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [temp 0] [seed 1] [fourth] [inversion] [augmentation] [live] [nocues] [midi]`
 
 Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. Notes may be held over the beat (ties), and a dissonance may fall on a strong beat as a suspension. By turns (the default) one note in is one beat; live, a pulse on the right is a beat, and a note lasts until the next one is struck.
 
@@ -405,6 +405,8 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 - `[:imitation 0.5]`: how much the comes imitates the dux (1 a canon … 0 free)
 - `[:transform :inversion]`: the comes upside down about the axis ([:axis 62], a MIDI note; the final by default)
 - `[:transform :augmentation]`: the comes twice as slow (a strict canon, six bars at most)
+- `[:temp 1.5]`: the comes drawn among the candidates (imitation below 1), and the dux in engine (0: the one the futuribles say)
+- `[:seed 7]`: its chance: the same seed, the same game (reset: again)
 - `[:k -4]`: the comes a 5th below
 
 **Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone.
