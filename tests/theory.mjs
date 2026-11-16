@@ -209,6 +209,10 @@ export async function theory(page, check) {
   const dbg = await cljs(page, `(try (let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${pz}])]
                                     (pr-str (dissoc (:state ((:receive d) {:inlet 0 :value 62 :state (assoc st :pulsed false :t 0 :M []) :args (:sig st)})) :cp :mi :sig)))
                                   (catch :default e (str "ERR " (.-message e))))`);
-  check("DEBUG cancrizans live, a note as a beat", !/ERR/.test(dbg), dbg);
+  check("DEBUG cancrizans live, a note as a beat", false, dbg);
+  const dbg2 = await cljs(page, `(try (let [d (comp/lookup "cancrizans") sp (get-in @eng/rt [:states ${pz}]) st (dissoc (assoc sp :waiting 2 :loading true :M [] :t 0 :pulsed false) :cp :mi)]
+                                    (pr-str (dissoc (:state ((:receive d) {:inlet :task :value {:task :kernel :arg {:k (:k st)} :value {:cp (:cp sp) :mi (:mi sp)}} :state st :args (:sig st)})) :cp :mi :sig)))
+                                  (catch :default e (str "ERR " (.-message e) " " (.-stack e))))`);
+  check("DEBUG cancrizans live, the kernel arriving with a note waiting", false, dbg2);
   await cljs(page, `(delete ${pz})`);
 }
