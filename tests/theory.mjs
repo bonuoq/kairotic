@@ -215,7 +215,7 @@ export async function theory(page, check) {
                                          o62 (first (filter #(= 62 (:midi %)) opts))
                                          r1 ((:receive d) {:inlet 0 :value 62 :state (:state r0) :args (:sig st)})
                                          M (:M (:state r1))]
-                                     [(count opts) (every? :end opts) (:end o62) (.midiOf (:cp st) (last M))])`);
+                                     [(count opts) (every? :end opts) (:end o62) (.midi (:cp st) (last M))])`);
   check("... its futuribles for the first note, each with :end, what the box will answer — and it does", /^\[\d+ true (\d+) \1\]$/.test(endChk), endChk);
   // with a temperature the box draws among its answers, with its seed: the same seed, the same game
   const seeded = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}]) a (:sig st)
@@ -257,6 +257,7 @@ export async function theory(page, check) {
   await until(page, `(some? ${p5(":pending")})`, (x) => x === "true", 30000);
   for (let i = 0; i < 14 && !/closed/.test(await cljs(page, `(:sub (second (last-shown ${pc5})))`)); i++) await cljs(page, `(send! ${pc5} :engine)`);
   const pent = await cljs(page, `(let [st (get-in @eng/rt [:states ${pc5}]) cp (:cp st)] [(count (:M st)) (every? (fn [x] (#{0 2 4 7 9} (mod (js/Math.round (.midi cp x)) 12))) (:M st))])`);
-  check("cancrizans pentatonic: the crab closed, every note a note of the pentatonic", /closed/.test(await cljs(page, `(:sub (second (last-shown ${pc5})))`)) && pent === "[7 true]", pent);
+  const pentDetail = await cljs(page, `(let [st (get-in @eng/rt [:states ${pc5}]) cp (:cp st)] [(:M st) (mapv #(.midi cp %) (:M st)) (.-mode cp) (.-N cp) (.-k cp)])`);
+  check("cancrizans pentatonic: the crab closed, every note a note of the pentatonic", /closed/.test(await cljs(page, `(:sub (second (last-shown ${pc5})))`)) && pent === "[7 true]", pentDetail);
   await cljs(page, `(delete ${pc5})`);
 }
