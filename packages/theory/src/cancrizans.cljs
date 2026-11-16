@@ -101,7 +101,7 @@
       rnd (fn [st] (let [x (mod (* (max 1 (:seed st 1)) 16807) 2147483647)] [(assoc st :seed x) (/ (dec x) 2147483646)]))
       ;; the end of your line, chosen by the box: a step from the note after it, the more futures the better
       pick-end (fn [mi st a]
-                 (let [s (:t st) n (.-n mi) M (js-M st n) q (- n 1 s)
+                 (let [s (:t st 0) n (.-n mi) M (js-M st n) q (- n 1 s)
                        cs (filter #(pos? (or (.-futures %) 0)) (.fanSecond mi M s a))
                        [st r] (rnd st)]
                    (when (seq cs)
