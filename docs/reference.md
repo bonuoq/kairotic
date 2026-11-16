@@ -442,7 +442,7 @@ A message to one of several outlets, numbered from 0: dispatch n has n of them. 
 - `msg {60 0 64 1}`: 60 by outlet 0, 64 by outlet 1, anything else by none
 - `msg :to`: each message by the outlet its :to says ({:freq 440 :to 1})
 
-**Try:** Click a selector on the right (0, 1, nil or the map) and then the notes on the left: each note goes out by the way chosen, or by none. With the map, 60 and 64 choose their own way and 67 is held back.
+**Try:** Click a selector on the right (0, 1, nil or the map) and then the notes on the left: each note goes out by the way chosen — the REPL says which, out0 or out1 — or by none. With the map, 60 and 64 choose their own way and 67 is held back.
 
 ```clojure
 (box :b1 "msg 60" 40 30)
@@ -453,8 +453,8 @@ A message to one of several outlets, numbered from 0: dispatch n has n of them. 
 (box :b6 "msg nil" 380 30)
 (box :b7 "msg {60 0 64 1}" 470 30)
 (box :b8 "dispatch 2" 40 100)
-(box :b9 "print" 40 170)
-(box :b10 "print" 200 170)
+(box :b9 "print out0" 40 170)
+(box :b10 "print out1" 200 170)
 (connect :b1 0 :b8 0)
 (connect :b2 0 :b8 0)
 (connect :b3 0 :b8 0)
@@ -1675,13 +1675,27 @@ See also: `knob`, `patch`
 
 ### print
 
-Writes to the REPL whatever it receives.
+`print [label]`
+
+Writes to the REPL whatever it receives, after its label: print out0 writes out0: 60 (without one, print: 60). A string is written as it is, anything else as EDN; to shape what it writes, a format or str before it (format "%.1f Hz").
 
 **Inlets** 
 
-0. anything: it is written in the REPL
+0. anything: it is written in the REPL, after the label (print out0 → out0: 60)
 
-See also: `msg`
+**Try:** Click the msg: the REPL writes freq: 440.1234 and print: 440.1 Hz.
+
+```clojure
+(box :b1 "msg 440.1234" 40 30)
+(box :b2 "print freq" 40 90)
+(box :b3 "format \"%.1f Hz\"" 180 90)
+(box :b4 "print" 180 150)
+(connect :b1 0 :b2 0)
+(connect :b1 0 :b3 0)
+(connect :b3 0 :b4 0)
+```
+
+See also: `msg`, `format`, `str`
 
 ### ramp
 
