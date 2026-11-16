@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Study 48 · heads~**: Study 47's heads with sound. A span of samples (a ring~, or a fixed work) and heads, each a
+  head of its own: writers are tape heads — they write what they listen to (the input, or a reader times its feed)
+  on every sample they pass, silence too, replacing (`ovr`) or keeping what was there times `keep` (`mix`); readers
+  sound where they are, following a writer (d, then speed: pitch as well as time), on a clock, a signal or by hand,
+  a new d gliding or, beyond the jump, seeking with a crossfade. `:rec t` / `:ovr t`. Presets: canon, canon in
+  three, augmentation (an octave down), reverse delay, a palindrome in sound from both ends, scrubbing by hand, a
+  writer on a signal (wow), a round (feedback), an eraser. The core (`studies/48-heads-audio/kairotic/headscore.mjs`,
+  JS, in an AudioWorklet) has `tests/core.mjs` (23, also in Node); the page is ClojureScript, with `tests/page.html`.
 - **Systems in `comes` and `cancrizans`** (`@kairotic/theory` 0.7.0, Study 42 in the app): the scale, its tuning
   and its rules as data. `comes pentatonic`, `cancrizans septimal31`, `comes penta-A pentatonic`, or on the way
   `[:system :meantone]` or an EDN map `[:system {…}]`: the modes, the distances at which the comes may imitate (an
