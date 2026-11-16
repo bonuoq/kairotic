@@ -11,6 +11,7 @@ Music theory you can see and touch: what sounds, as geometry. Each class draws i
 | `fourier [notes]` | the six **Fourier coefficients** of the distribution of pitch classes — f1 chromatic, f2 dyadic, f3 triadic, f4 octatonic, f5 diatonic, f6 whole-tone — each a point in its circle with its trail; magnitudes (0…1) on the left, phases (degrees) on the right |
 | `tonnetz [notes]` | the **Tonnetz** (fifths across, major and minor thirds up): the nodes that sound, the triads they contain, and the **path of the harmony** — each triad found joined to the ones before, on the copy of the lattice nearest the last; the triad (`:C`, `:am`…) on the left, the pitch class pressed on the right |
 | `comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [live] [midi]` | **counterpoint live**: you play the dux and the **comes** answers, as a canon in a mode (Study 41: ties, suspensions, fourth species). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. **By turns** one note is one beat (the same note again, or `hold`, is a tie); **live** a pulse on the right is a beat, a note lasts until the next one, three pulses in 2/2 turn the canon to 3/2 and a note longer than a bar ends the section. The comes (Hz, left), the dux as played or corrected, the **futuribles** — the next notes, the most plausible first, with their futures counted exactly — and where the canon is (right) |
+| `cancrizans [mode] [k -7] [beats 2] [bars 6] [table] [midi]` | **a crab canon written from both ends to the middle** (Study 43): the comes is the dux backwards; with `table`, backwards and upside down — the score read from across the table, a musical ambigram. Each step a note at the start, then one at the end; the **futuribles** are the ways to close the work in the middle. When it closes, the dux and the comes go out as patterns for a `pbind` and a `player` |
 
 The three views take the same messages: a **list of pitches** (MIDI, or 0…11) is the set; a **list of 12
 values between 0 and 1** is a chroma (from `chroma~` of `@kairotic/analysis`); a **number** is one
@@ -30,7 +31,7 @@ From a score, connect what a `reader` or a `mt` box plays (numbers, as notes) or
 `comes` takes notes as a `keyboard` or `midiin` sends them (Hz; the list of notes held, the first new one
 played), `[:midi 62]`, or MIDI numbers with the word `midi`; `engine` (or bang) lets it choose the next pair,
 `back`, `reset`, `hold`; `[:k -4]`, `[:imitation 0.5]`, `[:mode :hypodorian]`, `[:beats 3]`, `[:species 4]` change the
-canon (by turns at once, live at the next section); `fourth` makes the dux a cantus firmus and the comes syncopated. `end` ends the section from outside. `comes` only reacts:
+canon (by turns at once, live at the next section); `fourth` makes the dux a cantus firmus and the comes syncopated; `inversion` turns the comes upside down about an axis (`[:axis 62]`), `augmentation` makes it twice as slow. `end` ends the section from outside. `comes` only reacts:
 what is more — the mode heard, a modulation, the meter, phrases — is for boxes of analysis, which tell it with these
 messages; with `nocues` it leaves them the meter and the sections too.
 Less imitation (`comes dorian -7 3 2 0.8`) lets the comes move near the dux's notes; 0.3, only

@@ -692,15 +692,31 @@
     :try "Click the four messages in order: C, c, A♭, g♯ — P, L, P: each step crosses one edge of the lattice. Press a node to hear which class it is (its number comes out on the right)."
     :see ["pcclock" "fourier" "mt"]}
 
+   "cancrizans"
+   {:package "@kairotic/theory" :usage "cancrizans [mode] [k -7] [beats 2] [bars 6] [table] [midi]"
+    :doc "A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards; with table, backwards and upside down — the score read by a second player from across the table, a musical ambigram. Each step writes a note at the start, then one at the end; the futuribles are the ways to close the work in the middle. When it closes, both voices go out as patterns."
+    :inlets ["the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · engine · back · reset · [:k -4], [:mode :hypodorian], [:bars 5], [:table true], [:axis 62]: a new work"]
+    :outlets ["the dux, when the work closes, as a pattern {:note [...] :dur [...]} (for a pbind)" "the comes, as a pattern" "the futuribles: the notes that can come next ({:midi :name :futures})" "where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}"]
+    :messages [["engine" "the next note, written by the box"] ["back" "the last note taken back"] ["reset" "a new work"] ["[:table true]" "a table canon: backwards and upside down"]]
+    :example (lines "(box :b1 \"msg engine\" 40 30)" "(box :b2 \"cancrizans\" 40 80)" "(box :b3 \"pbind\" 40 160)" "(box :b4 \"pbind\" 220 160)"
+                    "(box :b5 \"player 90\" 40 230)" "(box :b6 \"player 90\" 220 230)" "(box :b7 \"synth~\" 40 290)" "(box :b8 \"dac~\" 40 350)"
+                    "(box :b9 \"msg start\" 140 200)" "(box :b10 \"print\" 240 80)"
+                    "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)" "(connect :b3 0 :b5 1)" "(connect :b4 0 :b6 1)"
+                    "(connect :b9 0 :b5 0)" "(connect :b9 0 :b6 0)" "(connect :b5 0 :b7 0)" "(connect :b6 0 :b7 0)"
+                    "(connect :b7 0 :b8 0)" "(connect :b7 0 :b8 1)" "(connect :b2 3 :b10 0)")
+    :try "Click engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click start: the crab sounds. Play notes on a keyboard into it instead (the note at the start, then the one at the end)."
+    :see ["comes" "pbind" "player"]}
+
    "comes"
-   {:package "@kairotic/theory" :usage "comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [live] [nocues] [midi]"
+   {:package "@kairotic/theory" :usage "comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [inversion] [augmentation] [live] [nocues] [midi]"
     :doc "Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. Notes may be held over the beat (ties), and a dissonance may fall on a strong beat as a suspension. By turns (the default) one note in is one beat; live, a pulse on the right is a beat, and a note lasts until the next one is struck."
     :inlets ["the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · :hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · :end (the section ends: the next note begins a new canon) · :engine · :back · :reset"
              "live: the pulse (a bang from a metro or a pulse): a beat"]
     :outlets ["the comes, as a list of Hz (when it changes: a note held is not struck again)" "the dux as played, or corrected" "the futuribles: the notes that can come next, the most plausible first ({:midi :name :futures :bits :score :comes})" "where the canon is: {:t :n :bar :beat :held :asked :played :corrected :reason :comes :futures :bits :obligations :section :meter …}, or a cue {:cue :ternary|:end :section :meter}"]
     :messages [[":hold" "by turns: the note held over the next beat (a tie)"] [":engine" "the box plays the next pair itself, the most plausible"]
                [":back" "the last pair taken back"] [":reset" "a new canon"] [":end" "the end of the section, from an analysis (live, and the cues off with nocues)"] ["[:midi 62]" "a MIDI note as the dux's next note"]
-               ["[:imitation 0.5]" "how much the comes imitates the dux (1 a canon … 0 free)"] ["[:k -4]" "the comes a 5th below"]]
+               ["[:imitation 0.5]" "how much the comes imitates the dux (1 a canon … 0 free)"] ["[:transform :inversion]" "the comes upside down about the axis ([:axis 62], a MIDI note; the final by default)"]
+               ["[:transform :augmentation]" "the comes twice as slow (a strict canon, six bars at most)"] ["[:k -4]" "the comes a 5th below"]]
     :example (lines "(box :b1 \"keyboard 60 24\" 40 30)" "(box :b2 \"comes\" 40 130)" "(box :b3 \"synth~\" 40 200)" "(box :b4 \"synth~\" 160 200)"
                     "(box :b5 \"dac~\" 40 260)" "(box :b6 \"print\" 280 200)" "(box :b7 \"msg :engine\" 220 100)"
                     "(connect :b1 0 :b2 0)" "(connect :b7 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)"

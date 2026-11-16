@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`comes` inverted or augmented, and `cancrizans`** (`@kairotic/theory` 0.4.0, Study 43): `comes inversion` plays
+  the comes upside down about an axis (`[:axis 62]`, the final by default) and `comes augmentation` twice as slow
+  (a strict canon, six bars at most: its futures still counted); `[:transform …]` changes it on the way. The new
+  box **`cancrizans`** writes a crab canon (with `table`, a table canon: a musical ambigram) by turns from both ends
+  to the middle — the note at the start, then the one at the end —, its futuribles the ways to close the work, and
+  sends both voices as patterns when it closes. `counterpoint.mjs` carries Study 43's kernel (the systems, the comes
+  inverted or augmented); `mirror.mjs` is Study 43's mirror kernel. Study 43's kernel learns the comes's
+  transformation (`spec.transform`), checked against the mirror kernel.
+
 - **`print` with a label, and `format`.** `print out0` writes `out0: 60` in the REPL (everything after `print` is
   its label; without one, `print: 60`), so two prints say which is which — the help patch of `dispatch` now says by
   which outlet each note went. The REPL writes a string as it is and anything else as EDN, the same with the engine
