@@ -259,5 +259,10 @@ export async function theory(page, check) {
   const pent = await cljs(page, `(let [st (get-in @eng/rt [:states ${pc5}]) cp (:cp st)] [(count (:M st)) (every? (fn [x] (#{0 2 4 7 9} (mod (js/Math.round (.midi cp x)) 12))) (:M st))])`);
   const pentDetail = await cljs(page, `(let [st (get-in @eng/rt [:states ${pc5}]) cp (:cp st)] [(:M st) (mapv #(.midi cp %) (:M st)) (.-mode cp) (.-N cp) (.-k cp)])`);
   check("cancrizans pentatonic: the crab closed, every note a note of the pentatonic", /closed/.test(await cljs(page, `(:sub (second (last-shown ${pc5})))`)) && pent === "[7 true]", pentDetail);
+  const hypo = (await cljs(page, '(box "cancrizans hypodorian midi" 8800 760)')).trim();
+  await cljs(page, `(send! ${hypo} 62)`);
+  check("cancrizans hypodorian: the mode in the box's text is the mode (it was lost before a message)",
+    (await until(page, `(some-> (get-in @eng/rt [:states ${hypo} :cp]) .-mode)`, (x) => x === '"hypodorian"', 30000)) === '"hypodorian"');
+  await cljs(page, `(delete ${hypo})`);
   await cljs(page, `(delete ${pc5})`);
 }

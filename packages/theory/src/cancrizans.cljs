@@ -22,12 +22,14 @@
       off? (fn [asked x] (> (js/Math.abs (- asked x)) 0.45))
       ;; (chance: the temperature and the seed change the game, not the canon)
       chance #{:temp :seed}
+      ;; (the box's words, then what was changed since: a mode or a system as a name, or a system as data)
       opts-of (fn [st args]
-                (merge {:mode (some-> (:mode args) name) :system (some-> (:system args) name) :k (:k args) :beats (:beats args) :bars (:bars args)
-                        :table (boolean (:table args)) :axis nil}
-                       (-> (:over st) (update :mode #(some-> % name))
-                           ;; a system: a name (:pentatonic) or the data itself (an EDN map, Study 42)
-                           (update :system #(if (keyword? %) (name %) %)))))
+                (-> (merge {:mode (:mode args) :system (:system args) :k (:k args) :beats (:beats args) :bars (:bars args)
+                            :table (boolean (:table args)) :axis nil}
+                           (:over st))
+                    (update :mode #(some-> % name))
+                    ;; a system: a name (:pentatonic) or the data itself (an EDN map, Study 42)
+                    (update :system #(if (keyword? %) (name %) %))))
       fresh (fn [args] {:sig args :M [] :s 0 :pending nil :hist [] :k 0 :temp (:temp args) :seed (:seed args) :seed0 (:seed args)})
       load (fn [st o]
              (let [k (inc (:k st 0))]
