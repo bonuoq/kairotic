@@ -195,6 +195,15 @@ export async function theory(page, check) {
   await cljs(page, `(send! ${lz} 50)`);
   check("... a note that is not the one written is said: a deviation", (await until(page, `(or ${ls_(":devs")} 0)`, (x) => x === "1", 3000)) === "1");
   check("... the box shows what to read next", /read:/.test(await cljs(page, `(:sub (second (last-shown ${lz})))`)));
+  // the futuribles say beforehand what the box will answer at the end of your line (:end), and it does
+  const endChk = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}])
+                                         r0 ((:receive d) {:inlet 0 :value :reset :state st :args (:sig st)})
+                                         opts (some (fn [[o v]] (when (= o 2) v)) (:out r0))
+                                         o62 (first (filter #(= 62 (:midi %)) opts))
+                                         r1 ((:receive d) {:inlet 0 :value 62 :state (:state r0) :args (:sig st)})
+                                         M (:M (:state r1))]
+                                     [(count opts) (every? :end opts) (:end o62) (.midiOf (:cp st) (last M))])`);
+  check("... its futuribles for the first note, each with :end, what the box will answer — and it does", /^\[\d+ true (\d+) \1\]$/.test(endChk), endChk);
   await cljs(page, `(delete ${lz})`);
 
   // on a pulse: if you play nothing, the box plays your note for you

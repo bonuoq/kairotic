@@ -99,14 +99,16 @@
       leap-cost (fn [a b] (if (or (nil? a) (nil? b)) 0 (get {0 1.5 1 0 2 0.3 3 0.6 4 0.7 5 1 7 1} (js/Math.abs (- b a)) 2)))
       ;; a random number of the box's own (Park–Miller), kept in its state: a game can be played again
       rnd (fn [st] (let [x (mod (* (max 1 (:seed st 1)) 16807) 2147483647)] [(assoc st :seed x) (/ (dec x) 2147483646)]))
-      ;; the end of your line, chosen by the box: a step from the note after it, the more futures the better
-      pick-end (fn [mi st a]
-                 (let [s (:t st 0) n (.-n mi) M (js-M st n) q (- n 1 s)
-                       cs (filter #(pos? (or (.-futures %) 0)) (.fanSecond mi M s a))
-                       [st r] (rnd st)]
-                   (when (seq cs)
-                     [st (.-note (apply min-key (fn [c] (+ (leap-cost (.-note c) (get (:M st) (inc q)))
-                                                         (* -0.2 (log2 (.-futures c))) (* 0.9 r))) cs))])))
+      ;; the end of your line, chosen by the box for your note a: a step from the note after it, the more futures
+      ;; the better (no chance in it: the futuribles say beforehand what the box will answer, as :end)
+      end-for (fn [mi st a]
+                (let [s (:t st 0) n (.-n mi) M (js-M st n) q (- n 1 s)
+                      cs (filter #(pos? (or (.-futures %) 0)) (.fanSecond mi M s a))]
+                  (when (seq cs)
+                    (.-note (first (sort-by (juxt (fn [c] (- (leap-cost (.-note c) (get (:M st) (inc q))) (* 0.2 (log2 (.-futures c)))))
+                                                  #(.-note %))
+                                            cs))))))
+      pick-end (fn [mi st a] (when-let [z (end-for mi st a)] [st z]))
       live-phase (fn [mi st] (let [t (:t st 0)] (cond (< t (.-steps mi)) :choose (< t (.-n mi)) :read :else :done)))
       engine-note (fn [mi st t] (let [e (get (:M st) (.source mi t))] (when (some? e) (.T mi e))))
       hz-of (fn [cp v] (* 440 (js/Math.pow 2 (/ (- (.midiOf cp v) 69) 12))))
@@ -115,8 +117,11 @@
                        mid (fn [v] (when (some? v) (.midiOf cp v)))
                        score (when (and (= ph :read) (= t steps)) (vec (for [i (range steps n)] (get (:M st) i))))
                        next-opts (case ph
-                                   :choose (vec (for [c (.fan mi (js-M st n) t) :when (pos? (or (.-futures c) 0))]
-                                                  {:midi (.midiOf cp (.-note c)) :name (.pitchName cp (.-note c)) :futures (.-futures c)}))
+                                   :choose (let [two? (= 2 (count (pos-of mi t)))]
+                                             (vec (for [c (.fan mi (js-M st n) t) :when (pos? (or (.-futures c) 0))]
+                                                    (cond-> {:midi (.midiOf cp (.-note c)) :name (.pitchName cp (.-note c)) :futures (.-futures c)}
+                                                      ;; what the box will answer at the end of your line if you play it
+                                                      two? (assoc :end (some->> (end-for mi st (.-note c)) (.midiOf cp)))))))
                                    :read [{:midi (mid (get (:M st) t)) :name (.pitchName cp (get (:M st) t)) :futures 1}]
                                    [])]
                    {:state st
@@ -171,7 +176,7 @@
   {;; ── about ──
    :class "cancrizans"
    :license "MPL-2.0"
-   :doc "A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards, both voices at once; with table, backwards and upside down about an axis ([:axis 62], a MIDI note; the final by default) — the one score read by a second player from across the table, a musical ambigram. It cannot be written from the beginning (the comes at the start is the dux at the end), so it is written by turns from both ends: each step a note at the start, then one at the end. A note that breaks a rule of the style (as comes's), or from which the work could not be closed, is corrected to the nearest one that can. On the right, the futuribles — the notes that can come next and the ways each leaves to close the work in the middle, counted exactly — and where the work is. When it closes, the dux and the comes go out (left) as patterns, {:note [...] :dur [...]} with the notes held joined, for a pbind and a player. Notes as comes takes them: Hz, a list of keys held, [:midi 62], or MIDI numbers with midi. engine writes the next note itself; back takes one back; reset starts again; [:k -4], [:mode :hypodorian], [:bars 5], [:table true], [:axis 62] change the canon (and start again). With live (Study 46) the crab is played beat by beat: in the first half you play your note (or the nearest that can close the crab) and the box answers at the same beat with the end of your own line, written ahead (the notes that leave more futures first); two beats before the middle a cue {:cue :middle :in 2}; at the middle the rest of your line goes out (outlet 1) as the score to read, and in the second half the box plays your first half backwards (outlet 0, Hz) while you read it — a note that is not the one written is said, as a deviation. On a pulse (the right inlet: a metro, a pulse) a beat goes on whether you played or not; without one, a note in is a beat. After the last beat, a note begins a new crab."
+   :doc "A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards, both voices at once; with table, backwards and upside down about an axis ([:axis 62], a MIDI note; the final by default) — the one score read by a second player from across the table, a musical ambigram. It cannot be written from the beginning (the comes at the start is the dux at the end), so it is written by turns from both ends: each step a note at the start, then one at the end. A note that breaks a rule of the style (as comes's), or from which the work could not be closed, is corrected to the nearest one that can. On the right, the futuribles — the notes that can come next and the ways each leaves to close the work in the middle, counted exactly — and where the work is. When it closes, the dux and the comes go out (left) as patterns, {:note [...] :dur [...]} with the notes held joined, for a pbind and a player. Notes as comes takes them: Hz, a list of keys held, [:midi 62], or MIDI numbers with midi. engine writes the next note itself; back takes one back; reset starts again; [:k -4], [:mode :hypodorian], [:bars 5], [:table true], [:axis 62] change the canon (and start again). With live (Study 46) the crab is played beat by beat: in the first half you play your note (or the nearest that can close the crab) and the box answers at the same beat with the end of your own line, written ahead (the notes that leave more futures first) — its futuribles say beforehand, as :end, what it will answer to each note; two beats before the middle a cue {:cue :middle :in 2}; at the middle the rest of your line goes out (outlet 1) as the score to read, and in the second half the box plays your first half backwards (outlet 0, Hz) while you read it — a note that is not the one written is said, as a deviation. On a pulse (the right inlet: a metro, a pulse) a beat goes on whether you played or not; without one, a note in is a beat. After the last beat, a note begins a new crab."
    :usage "cancrizans [mode] [k -7] [beats 2] [bars 6] [table] [live] [midi]"
    :io [2 4]
    :size [170 46]

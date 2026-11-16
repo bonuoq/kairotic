@@ -697,7 +697,7 @@
     :doc "A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards; with table, backwards and upside down — the score read by a second player from across the table, a musical ambigram. Each step writes a note at the start, then one at the end; the futuribles are the ways to close the work in the middle. When it closes, both voices go out as patterns."
     :inlets ["the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · engine · back · reset · [:k -4], [:mode :hypodorian], [:bars 5], [:table true], [:axis 62]: a new work"
              "live: the pulse (a bang from a metro or a pulse): a beat, with your note or the box's for you"]
-    :outlets ["the dux, when the work closes, as a pattern {:note [...] :dur [...]} (for a pbind)" "the comes, as a pattern" "the futuribles: the notes that can come next ({:midi :name :futures})" "where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}"]
+    :outlets ["the dux, when the work closes, as a pattern {:note [...] :dur [...]} (for a pbind)" "the comes, as a pattern" "the futuribles: the notes that can come next ({:midi :name :futures}; live, with :end, what the box will answer at the end)" "where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}"]
     :messages [["engine" "the next note, written by the box"] ["back" "the last note taken back"] ["reset" "a new work"] ["[:table true]" "a table canon: backwards and upside down"]]
     :example (lines "(box :b1 \"msg engine\" 40 30)" "(box :b2 \"cancrizans\" 40 80)" "(box :b3 \"pbind\" 40 150)" "(box :b4 \"pbind\" 40 260)"
                     "(box :b9 \"msg :start\" 40 370)" "(box :b5 \"player 90\" 40 420)" "(box :b6 \"player 90\" 240 420)" "(box :b7 \"synth~\" 40 490)"
@@ -709,8 +709,9 @@
     :steps [{:title "Played live"
              :note "With live (Study 46) the crab is played beat by beat: your note, and at the same beat the box's answer — the end of your own line, written ahead. Two beats before the middle a cue; at the middle the rest of your line comes out as the score to read (outlet 1), and the box plays your first half backwards (outlet 0) while you read it."
              :example (lines "(box :b11 \"keyboard 60 24\" 520 30)" "(box :b12 \"cancrizans live\" 520 150)" "(box :b13 \"synth~\" 520 230)" "(box :b14 \"print\" 720 230)"
+                             "(box :b15 \"loadbang\" 720 110)" "(box :b16 \"print\" 720 290)" "(connect :b15 0 :b12 0)" "(connect :b12 2 :b16 0)"
                              "(connect :b11 0 :b12 0)" "(connect :b12 0 :b13 0)" "(connect :b13 0 :b8 0)" "(connect :b13 0 :b8 1)" "(connect :b12 1 :b14 0)")
-             :try "Press ▶ and play D on the keyboard: the box answers with D an octave below, the end of your line. Play on: at the middle the score to read is printed; read it, and the crab closes."}]
+             :try "Press ▶: the loadbang counts the futures, and the futuribles of the first note are printed — each with :end, what the box will answer at the end of your line. Play D on the keyboard: the box answers with D an octave below. Play on: at the middle the score to read is printed; read it, and the crab closes."}]
     :see ["comes" "pbind" "player"]}
 
    "comes"
