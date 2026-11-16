@@ -10,6 +10,12 @@
   three, augmentation (an octave down), reverse delay, a palindrome in sound from both ends, scrubbing by hand, a
   writer on a signal (wow), a round (feedback), an eraser. The core (`studies/48-heads-audio/kairotic/headscore.mjs`,
   JS, in an AudioWorklet) has `tests/core.mjs` (23, also in Node); the page is ClojureScript, with `tests/page.html`.
+- **Systems in `comes` and `cancrizans`** (`@kairotic/theory` 0.7.0, Study 42 in the app): the scale, its tuning
+  and its rules as data. `comes pentatonic`, `cancrizans septimal31`, `comes penta-A pentatonic`, or on the way
+  `[:system :meantone]` or an EDN map `[:system {…}]`: the modes, the distances at which the comes may imitate (an
+  octave below is the system's period) and the tuning come with the system. A key is taken as the nearest note of
+  the system (within a quarter of a tone or so), and the notes out are tuned (Hz, or MIDI with a fraction). Fixed:
+  `cancrizans` lost the mode written in its text (`cancrizans hypodorian` played dorian).
 
 - **Study 47 · heads**: canons and rings as one model — a span of time (a ring, or a fixed work) and heads that
   write and read it, each a head of its own. Writers write where they are (replacing, or mixing); readers send what

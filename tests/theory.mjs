@@ -215,7 +215,7 @@ export async function theory(page, check) {
                                          o62 (first (filter #(= 62 (:midi %)) opts))
                                          r1 ((:receive d) {:inlet 0 :value 62 :state (:state r0) :args (:sig st)})
                                          M (:M (:state r1))]
-                                     [(count opts) (every? :end opts) (:end o62) (.midiOf (:cp st) (last M))])`);
+                                     [(count opts) (every? :end opts) (:end o62) (.midi (:cp st) (last M))])`);
   check("... its futuribles for the first note, each with :end, what the box will answer — and it does", /^\[\d+ true (\d+) \1\]$/.test(endChk), endChk);
   // with a temperature the box draws among its answers, with its seed: the same seed, the same game
   const seeded = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}]) a (:sig st)
@@ -236,4 +236,33 @@ export async function theory(page, check) {
         /done/.test(await cljs(page, `(:sub (second (last-shown ${pz})))`)),
         await cljs(page, `[(dissoc (get-in @eng/rt [:states ${pz}]) :cp :mi :sig) (second (last-shown ${pz}))]`));
   await cljs(page, `(delete ${pz})`);
+
+  // systems (Study 42) in the boxes: the pentatonic, then septimal 31 on the way; a pentatonic crab
+  const sy = (await cljs(page, '(box "comes pentatonic midi" 8600 600)')).trim();
+  const ys = (k) => `(get-in @eng/rt [:states ${sy} ${k}])`;
+  await cljs(page, `(send! ${sy} 60)`);
+  check("comes pentatonic: C4 as played, the first note of penta-C", (await until(page, ys(":D"), (x) => x === "[0]", 30000)) === "[0]", await cljs(page, `[${ys(":D")} ${ys(":error")}]`));
+  await cljs(page, `(send! ${sy} 65)`);
+  const pf = await until(page, `(:reason (second (last-shown ${sy})))`, (x) => /not a note of the mode/.test(x), 3000);
+  check("... F4 is not a note of the pentatonic: corrected, and it says why", /not a note of the mode/.test(pf), pf);
+  await cljs(page, `(send! ${sy} [:system :septimal31])`);
+  await until(page, `(count ${ys(":D")})`, (x) => x === "0", 20000);
+  await cljs(page, `(send! ${sy} 60)`);
+  const b7 = await until(page, `(some-> ${ys(":cp")} (.midi 6) (* 100) js/Math.round)`, (x) => x === "6968", 30000);
+  check("... [:system :septimal31]: a new canon, its B♭ a harmonic seventh above C (MIDI 69.68)", b7 === "6968", b7);
+  await cljs(page, `(delete ${sy})`);
+  const pc5 = (await cljs(page, '(box "cancrizans pentatonic -7 2 4 midi" 8600 760)')).trim();
+  const p5 = (k) => `(get-in @eng/rt [:states ${pc5} ${k}])`;
+  await cljs(page, `(send! ${pc5} 60)`);
+  await until(page, `(some? ${p5(":pending")})`, (x) => x === "true", 30000);
+  for (let i = 0; i < 14 && !/closed/.test(await cljs(page, `(:sub (second (last-shown ${pc5})))`)); i++) await cljs(page, `(send! ${pc5} :engine)`);
+  const pent = await cljs(page, `(let [st (get-in @eng/rt [:states ${pc5}]) cp (:cp st)] [(count (:M st)) (every? (fn [x] (#{0 2 4 7 9} (mod (js/Math.round (.midi cp x)) 12))) (:M st))])`);
+  const pentDetail = await cljs(page, `(let [st (get-in @eng/rt [:states ${pc5}]) cp (:cp st)] [(:M st) (mapv #(.midi cp %) (:M st)) (.-mode cp) (.-N cp) (.-k cp)])`);
+  check("cancrizans pentatonic: the crab closed, every note a note of the pentatonic", /closed/.test(await cljs(page, `(:sub (second (last-shown ${pc5})))`)) && pent === "[7 true]", pentDetail);
+  const hypo = (await cljs(page, '(box "cancrizans hypodorian midi" 8800 760)')).trim();
+  await cljs(page, `(send! ${hypo} 62)`);
+  check("cancrizans hypodorian: the mode in the box's text is the mode (it was lost before a message)",
+    (await until(page, `(some-> (get-in @eng/rt [:states ${hypo} :cp]) .-mode)`, (x) => x === '"hypodorian"', 30000)) === '"hypodorian"');
+  await cljs(page, `(delete ${hypo})`);
+  await cljs(page, `(delete ${pc5})`);
 }

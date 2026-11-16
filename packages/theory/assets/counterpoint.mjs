@@ -544,17 +544,31 @@ const total = (parts) => Object.values(parts).reduce((a, v) => a + v, 0);
  * D, C as in the kernel: the dux and the comes so far.
  */
 export function live(o = {}) {
-  const mode = MODES[o.mode] ? o.mode : "dorian", M = MODES[mode];
+  // (a system named where the mode goes: "comes pentatonic")
+  if ((o.system === undefined || o.system === null) && typeof o.mode === "string" && SYSTEMS[o.mode]) o = { ...o, system: o.mode, mode: undefined };
+  // the system (Study 42): a key of SYSTEMS or one given as data (EDN in a box); the diatonic one by default
+  const sysdef = typeof o.system === "string" ? SYSTEMS[o.system] || DIATONIC : o.system && typeof o.system === "object" ? o.system : DIATONIC;
+  const S = makeSystem(sysdef), N = S.N;
+  const { quality, intervalName, pitchName } = S;
+  const semis = (s) => S.cents(s) / 100, P = S.period / 100;
+  const midiOf = (s) => 60 + semis(s) + 12 * Math.log2(S.ref / 261.6255653005986);
+  // its modes: the final, the tenor (steps above it), the ambitus and the starts (steps from the final)
+  const MS = sysdef.modes || { [sysdef.name || "system"]: { final: 0, tenor: Math.round((4 * N) / 7), ambitus: [-1, N + 1], starts: [0] } };
+  const mode = MS[o.mode] ? o.mode : Object.keys(MS)[0], M = MS[mode];
   const tonic = M.final, tenor = tonic + M.tenor;
-  const [a0, z0] = M.plagal ? [-4, 5] : [-1, 8];
+  const [a0, z0] = M.ambitus || [-1, N + 1];
   const lo = tonic + a0, hi = tonic + z0;
   const b = Math.max(1, Math.round(o.beats ?? 2));
   const phase = Math.max(0, Math.min(b - 1, Math.round(o.upbeat ?? 0)));
   const bars = Math.min(o.transform === "augmentation" ? 6 : 99, Math.max(2, Math.round(o.bars ?? 8)));
   const n = b * (bars - 1) + 1 - phase;
-  const k = Math.round(o.k ?? -7), d = Math.max(1, Math.round(o.d ?? 3));
+  // the distance of the imitation: one the system allows (an octave asked of a system of other than 7 steps is its period)
+  const at = (sysdef.canon && sysdef.canon.at) || [-N, N, 0];
+  let k = Math.round(o.k ?? -N);
+  if (!at.includes(k) && N !== 7 && k % 7 === 0) k = (k / 7) * N;
+  const d = Math.max(1, Math.round(o.d ?? 3));
   const imitation = o.transform === "augmentation" ? 1 : Math.max(0, Math.min(1, o.imitation ?? 1));
-  const starts = [tonic, tonic + 4, tonic + 7, tonic - 3].filter((x) => x >= lo && x <= hi);
+  const starts = (M.starts || [0]).map((x) => tonic + x).filter((x) => x >= lo && x <= hi);
   const species = o.species === 4 && b === 2 ? 4 : 2;
   const maxHold = Math.max(1, Math.round(o.maxHold ?? 2));
   // the transformation: inversion about an axis (a MIDI note, the final by default), or augmentation (twice as
@@ -563,11 +577,13 @@ export function live(o = {}) {
   const axisStep = (() => {
     if (o.axis === undefined || o.axis === null) return tonic;
     let best = tonic;
-    for (let s = lo - 7; s <= hi + 7; s++) if (Math.abs(midiOf(s) - o.axis) < Math.abs(midiOf(best) - o.axis)) best = s;
+    for (let s = lo - N; s <= hi + N; s++) if (Math.abs(midiOf(s) - o.axis) < Math.abs(midiOf(best) - o.axis)) best = s;
     return best;
   })();
-  const spec = { tonic, k, d, b, phase, n, lo, hi, spacing: o.spacing ?? 11, invert: o.invert || [], starts, imitation, species, maxHold, on: o.on || {},
-                 transform: { kind, axis: axisStep, m: 2 } };
+  // the fifth of the system (for direct fifths): the class nearest 702 cents
+  const fifth = S.degs.reduce((bi, c, i) => (Math.abs(c - 702) < Math.abs(S.degs[bi] - 702) ? i : bi), 0);
+  const spec = { tonic, k, d, b, phase, n, lo, hi, spacing: o.spacing ?? sysdef.spacing ?? 11, invert: o.invert || [], starts, imitation, species, maxHold,
+                 on: o.on || {}, system: sysdef, transform: { kind, axis: axisStep, m: 2 } };
   const K = canon(spec);
   const w = { ...WEIGHTS, ...(o.weights || {}) };
   const strong = (t) => (t + phase) % b === 0;
@@ -575,7 +591,7 @@ export function live(o = {}) {
   /** The soft cost of x after a line (its own shape), by rule; modal: whether the mode's notes count (the dux). */
   function melodicParts(line, x, t, modal) {
     const parts = {}, prev = line.length ? line[line.length - 1] : null;
-    if (modal && (mod(x, 7) === mod(tonic, 7) || mod(x, 7) === mod(tenor, 7))) parts.modal = -(w.modal * (b > 1 && strong(t) ? 1.5 : 1));
+    if (modal && (mod(x, N) === mod(tonic, N) || mod(x, N) === mod(tenor, N))) parts.modal = -(w.modal * (b > 1 && strong(t) ? 1.5 : 1));
     if (prev === null) return clean(parts);
     if (x === prev) { parts.tie = w.tie; return clean(parts); }
     // the rest on the notes struck: a note held is one note
@@ -615,22 +631,22 @@ export function live(o = {}) {
     if (motion === "oblique") parts.motion = 0.5 * w.motion;
     if (motion === "similar") {
       parts.motion = 0.8 * w.motion;
-      const cls = mod(h - l, 7);
-      if (quality(l, h) === "perfect" && cls === 4) parts["direct-perfect"] = w["direct-perfect"];
+      const cls = mod(h - l, N);
+      if (quality(l, h) === "perfect" && cls === fifth && cls !== 0) parts["direct-perfect"] = w["direct-perfect"];
       let run = 1;
       for (let i = t - 1; i >= 1; i--) {
         const p = D[i], q = C[i], p0 = D[i - 1], q0 = C[i - 1];
         if (q === null || q0 === null) break;
         const [ll, hh] = K.lowerFirst(p, q);
-        if (quality(ll, hh) === "imperfect" && mod(hh - ll, 7) === cls && sign(p - p0) === sign(q - q0) && p !== p0) run++; else break;
+        if (quality(ll, hh) === "imperfect" && mod(hh - ll, N) === cls && sign(p - p0) === sign(q - q0) && p !== p0) run++; else break;
       }
       if (quality(l, h) === "imperfect" && run > 3) parts["imperfect-run"] = w["imperfect-run"];
     }
     if (b > 1 && !strong(t) && K.dissonant(x, c)) parts.passing = -w.passing;
     if (K.suspensionAt([...D, x], [...C, c], t)) parts["suspension-life"] = -w["suspension-life"];
     if (t >= 2) {
-      const vc = (i) => (C[i] === null ? null : mod(Math.abs(D[i] - C[i]), 7));
-      const iv = mod(Math.abs(x - c), 7), i1 = vc(t - 1), i2 = vc(t - 2);
+      const vc = (i) => (C[i] === null ? null : mod(Math.abs(D[i] - C[i]), N));
+      const iv = mod(Math.abs(x - c), N), i1 = vc(t - 1), i2 = vc(t - 2);
       if (i1 !== null && i2 !== null && iv === i2 && iv !== i1) parts.alternation = w.alternation;
     }
     return clean(parts);
@@ -707,16 +723,18 @@ export function live(o = {}) {
     const F = fan(D, C), ok = F.filter((e) => e.futures > 0);
     if (!ok.length) return null;
     const r = Math.round(asked);
-    let a = r;
+    let a = asked;
     const sl = semis(lo), sh = semis(hi);
-    while (a < sl - 6) a += 12;
-    while (a > sh + 6) a -= 12;
+    while (a < sl - P / 2) a += P;
+    while (a > sh + P / 2) a -= P;
     const best = ok.slice().sort((p, q) => Math.abs(semis(p.note) - a) - Math.abs(semis(q.note) - a) || p.score - q.score || p.note - q.note)[0];
+    // the step the key asked for: a note of the system within a quarter of a tone or so (a key of 12 for a tuning of another)
+    const near = (x) => { let s0 = null; for (let s = lo - 2 * N; s <= hi + 2 * N; s++) if (Math.abs(semis(s) - x) < 0.45 && (s0 === null || Math.abs(semis(s) - x) < Math.abs(semis(s0) - x))) s0 = s; return s0; };
+    const step = near(asked);
     let reason = null;
-    if (semis(best.note) !== r) {
-      const step = [...Array(hi - lo + 15).keys()].map((i) => lo - 7 + i).find((s) => semis(s) === r);
-      const e = step === undefined ? null : F.find((f) => f.note === step);
-      reason = step === undefined ? `${midiName(60 + r)} is not a note of the mode`
+    if (best.note !== step) {
+      const e = step === null ? null : F.find((f) => f.note === step);
+      reason = step === null ? `${midiName(60 + r)} is not a note of the mode`
         : !e ? `${pitchName(step)} is out of the range (${pitchName(lo)}–${pitchName(hi)}): taken by octaves`
         : e.reason ? e.reason
         : "no way to finish the canon from it";
@@ -762,7 +780,7 @@ export function live(o = {}) {
 
   return {
     spec, mode, n, bars, beats: b, species, transform: kind, axis: axisStep, kernel: K, lo, hi, tonic, tenor, strong, fan, futuribles, play, hold, engine, obligations,
-    pairParts, melodicParts, midi: midiOf, name: pitchName,
+    pairParts, melodicParts, midi: midiOf, name: pitchName, semis, hz: S.hz, system: S, modes: Object.keys(MS), N, k,
     count: (D, C) => K.count(D, C),
     bits: (D, C) => bitsOf(K.count(D, C)),
     /** The count from the start, a few milliseconds at a time: after it every legal point is counted. */
