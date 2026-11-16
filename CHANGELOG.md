@@ -7,8 +7,9 @@
   of your own line, written ahead, the notes that leave more futures first; a cue two beats before the middle; at
   the middle the rest of your line goes out as the score to read (a pattern), and in the second half the box plays
   your first half backwards while you read it, a note not read as written said as a deviation. Its futuribles
-  (outlet 2) say for each note what the box will answer at the end of your line (`:end`): the answer has no chance
-  in it. A `loadbang` counts the futures before the first note (the help shows it). On a pulse (the new
+  (outlet 2) say for each note what the box will answer at the end of your line (`:end`): at temperature 0 (the
+  default) exactly that; with `temp` (or `[:temp 2]`) the box draws among its answers, and among your notes when it
+  plays for you, with its own seed (`seed`, `[:seed 7]`; reset starts the same game again). A `loadbang` counts the futures before the first note (the help shows it). On a pulse (the new
   right inlet) the beat goes on and the box plays for you when you do not; without one, a note is a beat. Study 46
   plays on Study 43's kernels as they are now (a test keeps them so).
 

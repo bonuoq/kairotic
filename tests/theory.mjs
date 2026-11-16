@@ -204,6 +204,13 @@ export async function theory(page, check) {
                                          M (:M (:state r1))]
                                      [(count opts) (every? :end opts) (:end o62) (.midiOf (:cp st) (last M))])`);
   check("... its futuribles for the first note, each with :end, what the box will answer — and it does", /^\[\d+ true (\d+) \1\]$/.test(endChk), endChk);
+  // with a temperature the box draws among its answers, with its seed: the same seed, the same game
+  const seeded = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}]) a (:sig st)
+                                         go (fn [s m] (:state ((:receive d) {:inlet 0 :value m :state s :args a})))
+                                         play (fn [seed] (let [s (-> st (go [:temp 3]) (go [:seed seed]) (go :reset))]
+                                                           (loop [s s i 0] (if (< i 4) (recur (go s :engine) (inc i)) (:M s)))))]
+                                     [(= (play 7) (play 7)) (> (count (distinct (map play [1 2 3 4 5 6 8 9]))) 1)])`);
+  check("... with [:temp 3] the box draws among its answers: the same seed plays the same game, others others", seeded === "[true true]", seeded);
   await cljs(page, `(delete ${lz})`);
 
   // on a pulse: if you play nothing, the box plays your note for you
