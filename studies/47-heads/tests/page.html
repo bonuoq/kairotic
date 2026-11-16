@@ -1,0 +1,72 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 47 · heads · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (styles, markup, kairotic/heads.cljs and the page's ClojureScript), on a clock the
+// test holds (window.kairoticNow), stepped a twentieth of a second at a time as frames would.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  let T = 100;
+  window.kairoticNow = () => T;
+  const H = () => window.kairoticHeads;
+  const step = (to) => { while (T < to - 1e-9) { T = Math.min(to, Math.round((T + 0.05) * 1000) / 1000); H().tick(); } };
+  const sent = () => H().log().map((e) => e[2]);
+  try {
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticSound = await import("../kairotic/sound.mjs");
+    scittle.core.eval_string(await fetch("../kairotic/heads.cljs", { cache: "no-cache" }).then((r) => r.text()));
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+    const snd = document.getElementById("sound"); snd.checked = false; snd.dispatchEvent(new Event("change", { bubbles: true }));
+
+    is("the canon preset: a writer and a reader", document.querySelectorAll("#heads .head").length === 2 && document.querySelectorAll("#heads .head.r").length === 1);
+    is("stopped until the first key", !H().running());
+    H().play(60);
+    is("the first key starts the clock and is written", H().running() && H().state().sp.events.length === 1);
+    step(T + 0.5); H().play(62);
+    step(T + 1.2);
+    is("canon: each note comes back 1 s later", JSON.stringify(sent()) === "[60,62]");
+    is("the span drawn: the notes and both heads", document.querySelectorAll("#span .ev").length === 2 && document.querySelectorAll("#span line.whead, #span line.rhead").length === 2);
+
+    document.querySelector('[data-preset="canon3"]').click();
+    is("canon in 3: two readers", document.querySelectorAll("#heads .head.r").length === 2);
+    H().play(60); step(T + 2.1);
+    is("... each sends it, 1 s and 2 s later", JSON.stringify(H().log().map((e) => e[1])) === '["r1","r2"]');
+
+    document.querySelector('[data-preset="ends"]').click();
+    is("from both ends: a fixed span, two writers", !H().state().sp.circular && document.querySelectorAll("#heads .head.w").length === 2);
+    H().play(60); step(T + 1); H().play(62); step(T + 1); H().play(64);
+    step(T + 14.2);
+    is("... what was played comes back as a palindrome", JSON.stringify(sent()) === "[60,62,64,64,62,60]");
+
+    document.querySelector('[data-preset="hand"]').click();
+    H().play(60); step(T + 1); H().play(62); step(T + 1); H().play(64); step(T + 0.5);
+    const hand = document.querySelector('#heads input[data-k="target"]');
+    const move = (v) => { hand.value = v; hand.dispatchEvent(new Event("input", { bubbles: true })); H().tick(); };
+    move(6);
+    is("by hand: a jump is a seek, nothing sent", sent().length === 0);
+    for (let p = 2.4; p >= 0.6; p = Math.round((p - 0.1) * 10) / 10) move(p);
+    is("... dragged back slowly from 2.4 to 0.6, what it crosses, in reverse", JSON.stringify(sent()) === "[64,62]");
+
+    document.querySelector('[data-add="reader"]').click();
+    is("+ reader: one more head", document.querySelectorAll("#heads .head.r").length === 2);
+    const sel = document.querySelector('#heads .head.r:last-child select[data-k="at"]');
+    sel.value = "clock"; sel.dispatchEvent(new Event("change", { bubbles: true }));
+    is("a head's source changed: its fields follow", document.querySelector('#heads .head.r:last-child input[data-k="p0"]') !== null);
+    is("no error on the page", errors.length === 0);
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  document.getElementById("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>

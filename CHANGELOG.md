@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Study 47 · heads**: canons and rings as one model — a span of time (a ring, or a fixed work) and heads that
+  write and read it, each a head of its own. Writers write where they are (replacing, or mixing); readers send what
+  they cross, either way, with a jump that is a seek; a head's position comes from a clock (start and speed), a hand,
+  or following a writer (first the distance, then the speed). Presets: canon, canon in three, augmentation, reverse
+  delay, a palindrome written from both ends, a reader by hand. The model is pure ClojureScript
+  (`studies/47-heads/kairotic/heads.cljs`), with `tests/heads.cljs` and `tests/page.html`.
+
 - **Study 46 in ClojureScript**, as the other studies: the game (`studies/46-crab-live/kairotic/live.cljs`, pure: a
   game is a map, each move returns the next) and the page (inline, as in Study 43) are ClojureScript; Study 43's
   kernel (`kernel.mjs`, `mirror.mjs`) and the sound stay JS, as in Studies 38–43. Tests: `tests/live.cljs` (18)

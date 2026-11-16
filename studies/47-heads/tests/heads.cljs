@@ -75,7 +75,7 @@
 (let [st (h/start (h/span 8 true) [(h/writer :w {}) (h/reader :r {:of :w :d 1 :speed 0.5})])
       [st _] (run st 2 {})
       st (h/set-head st :r #(assoc % :d 0.5))]
-  (is "a new d: the drift starts again" (and (= 0 (:drift (h/head st :r))) (near (- 2 0.5) (:p (h/advance st 2.0001) )))))
+  (is "a new d: the drift starts again" (and (= 0 (:drift (h/head st :r))) (near (- 2 0.5) (:p (h/head (h/advance st 2.0001) :r))))))
 ;; a ring: an event is met again at each turn
 (let [st (h/start (h/span 2 true) [(h/writer :w {:mode :mix :listen true}) (h/reader :r {:of :w :d 0.5})])
       [_ outs] (run st 3 {0.2 60})]
