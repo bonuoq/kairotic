@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Study 47 · heads**: canons and rings as one model — a span of time (a ring, or a fixed work) and heads that
+  write and read it, each a head of its own. Writers write where they are (replacing, or mixing); readers send what
+  they cross, either way, with a jump that is a seek; a head's position comes from a clock (start and speed), a hand,
+  a signal (a clock moved by a slow wave), or following a writer (first the distance, then the speed). A writer
+  writes what it listens to — the keys, or what a reader sends (feedback) —; still, it replaces what was written where
+  it is (a chord stays); a move larger than its jump is a seek; `:rec t` / `:ovr t` send it to t at speed 1. Presets:
+  canon, canon in three, augmentation, reverse delay, a palindrome written from both ends, a reader by hand, a writer
+  on a signal, a round. The model is pure ClojureScript
+  (`studies/47-heads/kairotic/heads.cljs`), with `tests/heads.cljs` and `tests/page.html`.
 - **`comes`: a temperature and a seed** (`@kairotic/theory` 0.6.0), as `cancrizans live` has: `temp` (`[:temp 1.5]`)
   draws the comes among its candidates when the imitation is below 1, and in `engine` the dux among the futuribles
   (by their score), with the box's own seed (`seed`, `[:seed 7]`; reset starts the same game again). At 0, the

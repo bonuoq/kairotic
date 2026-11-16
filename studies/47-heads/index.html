@@ -1,0 +1,435 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 47 · Heads</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the span (presets, start, clear) as a toolbar; the span drawn — a ring as a circle of
+   time, a fixed span as a line — with every head on it; beside it the heads, one a row, the keys, what the readers
+   sent, and what the study decides. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+
+.views { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 1.1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+.sheet { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+.sheet svg { display: block; width: 100%; height: auto; }
+.track { fill: none; stroke: var(--grid); stroke-width: 1; }
+.mid { stroke: var(--kairos); stroke-dasharray: 2 4; }
+.ev { fill: var(--accent); }
+.whead { stroke: var(--accent); stroke-width: 2; }
+.rhead { stroke: var(--kairos); stroke-width: 2; }
+.hlab { font: 600 11px var(--f-code); dominant-baseline: central; text-anchor: middle; stroke: none; }
+.hlab.whead { fill: var(--accent); } .hlab.rhead { fill: var(--kairos); }
+.center, .tl { font: 11px var(--f-code); fill: var(--ink-soft); text-anchor: middle; dominant-baseline: central; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.about-preset { font-size: 13px; color: var(--ink-soft); margin: 0; }
+.heads { display: grid; gap: 6px; }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 8px; border: 1px solid var(--grid); border-left: 3px solid var(--accent); border-radius: 4px; font-size: 12.5px; color: var(--ink-soft); }
+.head.r { border-left-color: var(--kairos); }
+.head b { font: 600 12px var(--f-code); color: var(--ink); min-width: 1.8em; }
+.head .role { font: 600 10.5px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; }
+.head label { display: flex; align-items: center; gap: 4px; }
+.head input[type=number] { width: 4.4em; font: 12px var(--f-code); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 4px; padding: 2px 4px; }
+.head select { font: 12px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 4px; padding: 2px 4px; }
+.head .hand input { width: 140px; accent-color: var(--kairos); }
+.head .pos { margin-left: auto; font: 11.5px var(--f-code); }
+.head .cue { display: flex; align-items: center; gap: 3px; }
+.head .cue button { font: 11.5px var(--f-code); padding: 1px 6px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); cursor: pointer; }
+.keys { display: flex; gap: 3px; flex-wrap: wrap; }
+.keys button { width: 32px; height: 60px; border: 1px solid var(--rule); background: var(--box); color: var(--ink-soft); border-radius: 0 0 4px 4px; font: 10.5px var(--f-code); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 4px; cursor: pointer; }
+.keys button.black { background: var(--ink); color: var(--paper); height: 42px; }
+.keys button:active { border-color: var(--accent); background: var(--accent); color: #fff; }
+ol.log { margin: 0; padding-left: 22px; font: 12px/1.5 var(--f-code); max-height: 180px; overflow: auto; }
+ol.log .soft { color: var(--ink-soft); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+table.cmp { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.cmp th, table.cmp td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+table.cmp th { font: 500 11px var(--f-ui); color: var(--ink-soft); }
+</style>
+
+<main>
+<header>
+  <h1>Study 47 · heads</h1>
+  <span class="sub">One span of time and the heads that write and read it: the canons and the rings as one model, each head a box of its own</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The span">
+  <span class="tag">Span</span>
+  <span class="presets">
+    <button class="act" data-preset="canon">canon</button>
+    <button class="act" data-preset="canon3">canon in 3</button>
+    <button class="act" data-preset="augmentation">augmentation</button>
+    <button class="act" data-preset="reverse">reverse delay</button>
+    <button class="act" data-preset="ends">from both ends</button>
+    <button class="act" data-preset="hand">by hand</button>
+    <button class="act" data-preset="signal">on a signal</button>
+    <button class="act" data-preset="round">round</button>
+  </span>
+  <span class="sep"></span>
+  <label><input type="checkbox" id="sound"> sound</label>
+  <button class="act primary" id="go">▶ Start</button>
+  <button class="act" data-act="clear" title="The preset again, empty">:clear</button>
+</div>
+<p class="about-preset" id="about-preset"></p>
+
+<div class="views">
+  <section class="panel" aria-labelledby="h-span">
+    <h2 id="h-span">Span <span id="span-sub"></span></h2>
+    <div class="sheet"><svg id="span" role="img" aria-label="The span and its heads"></svg></div>
+  </section>
+  <div class="side">
+    <section class="panel" aria-labelledby="h-heads">
+      <h2 id="h-heads">Heads <span><button class="act" data-add="writer" style="padding:2px 8px;font-size:12px">+ writer</button> <button class="act" data-add="reader" style="padding:2px 8px;font-size:12px">+ reader</button></span></h2>
+      <div class="heads" id="heads"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-keys">
+      <h2 id="h-keys">Keys <span>into every writer (or a w s e d f t g y h u j k); the first starts the clock</span></h2>
+      <div class="keys" id="keys"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-log">
+      <h2 id="h-log">Sent <span>what the readers crossed</span></h2>
+      <ol class="log" id="log" reversed></ol>
+    </section>
+  </div>
+</div>
+
+<section class="panel">
+  <h2>About</h2>
+  <p class="about"><b>Study 47.</b> Canons and rings are one thing seen from two sides: <b>a span of time with heads</b>. The span keeps what is written — circular (a ring: positions wrap) or fixed (a work). A <b>writer</b> writes what arrives where it is, and moving it replaces what it passes (or, with <i>mix</i>, leaves it). A <b>reader</b> sends what it crosses, in the order it meets it, either way; a move larger than its <i>jump</i> is a seek. Where a head is comes from a <i>clock</i> (a start and a speed), a <i>signal</i> (a clock moved by a slow wave), a <i>hand</i>, or, for a reader, from <i>following</i> a writer: first its distance d, then its speed. A writer writes what it <i>listens</i> to: the keys, or what a reader sends — then the reader's notes are written again and come back every d: a round. <code>:rec t</code> and <code>:ovr t</code> send a writer to t, moving on at speed 1; a writer's move larger than its jump is a seek, which replaces nothing. So a canon is a reader 1 s behind; two readers, a canon in three voices; speed 0.5, an augmentation; speed −1, a crab — in chunks on a ring, exact on a fixed span written from both ends, where what you play comes back as a palindrome. The values are not transformed here: that is other boxes' work in a patch.</p>
+  <h2 style="margin-top:6px">In the app</h2>
+  <table class="cmp">
+    <tr><th>here</th><th>in the app</th></tr>
+    <tr><td>a span (ring or fixed)</td><td><code>ring</code>, <code>ring~</code>, and the buffers that are spans already: <code>canvas</code>, <code>freqt</code>, <code>sample</code></td></tr>
+    <tr><td>a reader</td><td><code>reader</code> / <code>reader~</code> on its buffer: a position from a source; on a ring, <code>d</code> then <code>speed</code>; <code>jump</code> for every reader (as <code>player</code> has it)</td></tr>
+    <tr><td>a writer</td><td><code>writer</code> / <code>writer~</code> (new): what arrives, written where its position says — a source of any speed and direction, a signal too; <code>:rec t</code> / <code>:ovr t</code> are a writer at t, at speed 1</td></tr>
+    <tr><td>listens to a reader</td><td>a connection, <code>reader</code> → <code>writer</code>: feedback, as in a delay (here without a gain: values are other boxes' work)</td></tr>
+    <tr><td>replace / mix</td><td><code>ovr</code> by default, <code>mix</code> to overdub</td></tr>
+  </table>
+  <h2 style="margin-top:6px">What it decides</h2>
+  <ul class="q">
+    <li>Positions in the span's own units (seconds, beats, x) everywhere, with <code>norm</code> for 0…1 (as <code>reader~</code> reads a <code>sample</code> now).</li>
+    <li>Two writers over one place: replace (the default) or mix — and for sound, how much (<code>mix x</code>).</li>
+    <li>On a ring, time starting at the first message (here the first key starts the clock), as Study 44 decided.</li>
+  </ul>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The sound (kairotic/sound.mjs, JS), then the model (kairotic/heads.cljs) and the page (below), evaluated here
+// so that an error arrives with its message.
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) {
+    var st = document.getElementById("status");
+    st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e);
+  }
+  Promise.all([import("./kairotic/sound.mjs"),
+               fetch("kairotic/heads.cljs", { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read kairotic/heads.cljs"); return r.text(); })])
+    .then(function (ks) {
+      window.kairoticSound = ks[0];
+      try { scittle.core.eval_string(ks[1]); } catch (e) { throw new Error("kairotic/heads.cljs: " + (e.message || e)); }
+      scittle.core.eval_string(document.getElementById("page-cljs").textContent);
+    }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns heads-page (:require [clojure.string :as str] [kairotic.heads :as h]))
+
+;; Kairotic · Study 47 · heads: the page. One span of time — a ring, or a fixed work — and the heads that write
+;; and read it, each a head of its own (as a reader is a box of its own in the app). The keys play into every
+;; writer that listens; the readers send what they cross, and sound. Presets show the canons as heads: a canon,
+;; a canon in three voices, an augmentation, a reverse delay, a palindrome written from both ends, a head by hand,
+;; a writer on a signal, and a round (a writer listening to its reader).
+
+(def snd (.synth (.-kairoticSound js/window)))
+(def key-names ["a" "w" "s" "e" "d" "f" "t" "g" "y" "h" "u" "j" "k"])
+(def black #{1 3 6 8 10})
+
+(defn $ [id] (js/document.getElementById id))
+(defn now [] (if-let [f (.-kairoticNow js/window)] (f) (/ (js/performance.now) 1000)))
+(defn r2 [x] (/ (js/Math.round (* 100 x)) 100))
+
+;; ───────── presets: the canons as heads ─────────
+
+(def presets
+  {"canon" {:about "a reader 1 s behind the writer, at speed 1: a canon (the ring's delay)"
+            :span [8 true] :heads [(h/writer :w {}) (h/reader :r1 {:of :w :d 1})]}
+   "canon3" {:about "two readers, 1 s and 2 s behind: a canon in three voices"
+             :span [8 true] :heads [(h/writer :w {}) (h/reader :r1 {:of :w :d 1}) (h/reader :r2 {:of :w :d 2})]}
+   "augmentation" {:about "first the distance (1 s), then the speed (0.5): it falls behind, twice as slow"
+                   :span [8 true] :heads [(h/writer :w {}) (h/reader :r1 {:of :w :d 1 :speed 0.5})]}
+   "reverse" {:about "speed −1: it goes back over what was written — on a ring, a reverse delay in chunks"
+              :span [8 true] :heads [(h/writer :w {}) (h/reader :r1 {:of :w :d 0.25 :speed -1})]}
+   "ends" {:about "two writers, from the start forwards and from the end backwards (:mix), and a reader after them: what you play in the first 4 s comes back as a palindrome"
+           :span [8 false] :heads [(h/writer :a {:mode :mix}) (h/writer :b {:p0 8 :speed -1 :mode :mix})
+                                   (h/reader :r1 {:at :clock :p0 -8 :speed 1 :jump 1})]}
+   "hand" {:about "a reader by hand: drag its slider — slowly it reads, in either direction; a jump is a seek"
+           :span [8 true] :heads [(h/writer :w {}) (h/reader :r1 {:at :hand :p 0 :jump 0.5})]}
+   "signal" {:about "the writer's position is a signal: speed 1 moved by a slow wave (depth 0.5 s, a cycle every 4 s). Play evenly: it is written unevenly, and a reader at a steady speed, 1 s behind on its own clock, plays it back pushed and pulled"
+             :span [8 true] :heads [(h/writer :w {:at :signal :depth 0.5 :rate 0.25 :mode :mix}) (h/reader :r1 {:at :clock :p0 -1 :speed 1})]}
+   "round" {:about "the writer listens to the keys and to its reader, 2 s behind: what the reader sends is written again, so what you play comes back every 2 s, for ever — a round. :clear to start again"
+            :span [8 true] :heads [(h/writer :w {:listen #{:in :r1}}) (h/reader :r1 {:of :w :d 2})]}})
+
+;; ───────── state ─────────
+;; :preset · :st the model's state · :t0 the clock's start (nil: stopped) · :log what the readers sent
+
+(defonce ui (atom {:preset "canon" :st nil :t0 nil :log [] :sound true :frozen-t 0}))
+
+(defn running? [] (some? (:t0 @ui)))
+(defn t-now [] (if (running?) (- (now) (:t0 @ui)) (:frozen-t @ui)))
+
+(defn load-preset! [k]
+  (let [{:keys [span heads]} (get presets k) [len circ] span]
+    (swap! ui assoc :preset k :st (h/start (h/span len circ) heads) :t0 nil :frozen-t 0 :log [])))
+
+(defn start! [] (.resume snd) (swap! ui assoc :t0 (- (now) (:frozen-t @ui))))
+(defn stop! [] (swap! ui (fn [u] (assoc u :frozen-t (t-now) :t0 nil))))
+
+(defn reader-index [id] (count (take-while #(not= id %) (map :id (filter #(= :read (:role %)) (:heads (:st @ui)))))))
+
+(defn tick!
+  "The clock: the heads move to now, and what the readers cross sounds."
+  []
+  (when (running?)
+    (let [st (h/advance (:st @ui) (t-now))]
+      (swap! ui assoc :st st)
+      (doseq [[id v] (:out st)]
+        (swap! ui update :log (fn [l] (vec (take-last 40 (conj l [(r2 (:t st)) id v])))))
+        (when (and (:sound @ui) (number? v)) (.note snd v 0.5 (if (even? (reader-index id)) 1 0)))))))
+
+(declare draw-heads! draw-dynamic!)
+
+(defn cue!
+  "The shortcuts :rec t and :ovr t: the writer to t now, moving on at speed 1."
+  [id kind t]
+  (swap! ui update :st h/cue id kind t)
+  (draw-heads!) (draw-dynamic!))
+
+(defn play! [m]
+  (when-not (running?) (start!))
+  (swap! ui update :st h/play m)
+  (when (:sound @ui) (.note snd m 0.4 0)))
+
+;; ───────── drawing ─────────
+
+(def C 210) (def R0 70) (def R1 190)
+(defn radius [m] (+ R0 (* (- R1 R0) (/ (- (max 48 (min 84 m)) 48) 36))))
+(defn polar [f r] (let [a (- (* 2 js/Math.PI f) (/ js/Math.PI 2))] [(+ C (* r (js/Math.cos a))) (+ C (* r (js/Math.sin a)))]))
+
+(defn draw-span! []
+  (let [{:keys [st]} @ui sp (:sp st) len (:len sp) circ (:circular sp)
+        sb #js [] add (fn [& xs] (doseq [s xs] (.push sb s)))
+        head-ids (vec (map :id (:heads st)))]
+    (if circ
+      (do
+        (doseq [m [48 60 72 84]] (add "<circle class=\"track\" cx=\"" C "\" cy=\"" C "\" r=\"" (radius m) "\"/>"))
+        (doseq [e (:events sp)]
+          (let [[x y] (polar (/ (:p e) len) (radius (:v e)))] (add "<circle class=\"ev\" cx=\"" x "\" cy=\"" y "\" r=\"3.4\"/>")))
+        (doseq [hd (:heads st) :when (some? (:p hd))]
+          (let [f (/ (h/at-span st (:id hd)) len) [x1 y1] (polar f (- R0 12)) [x2 y2] (polar f (+ R1 10)) [lx ly] (polar f (- R0 26))
+                cls (if (= :write (:role hd)) "whead" "rhead")]
+            (add "<line class=\"" cls "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"/>")
+            (add "<text class=\"hlab " cls "\" x=\"" lx "\" y=\"" ly "\">" (name (:id hd)) "</text>")))
+        (add "<text class=\"center\" x=\"" C "\" y=\"" C "\">" (.toFixed (t-now) 2) " s</text>")
+        (.setAttribute ($ "span") "viewBox" "0 0 420 420"))
+      (let [W 420 L 20 Rt 400 x (fn [p] (+ L (* (- Rt L) (/ p len)))) y (fn [m] (- 200 (* 150 (/ (- (max 48 (min 84 m)) 48) 36))))]
+        (doseq [m [48 60 72 84]] (add "<line class=\"track\" x1=\"" L "\" x2=\"" Rt "\" y1=\"" (y m) "\" y2=\"" (y m) "\"/>"))
+        (doseq [s (range (inc len))] (add "<text class=\"tl\" x=\"" (x s) "\" y=\"222\">" s "</text>"))
+        (add "<line class=\"mid\" x1=\"" (x (/ len 2)) "\" x2=\"" (x (/ len 2)) "\" y1=\"40\" y2=\"208\"/>")
+        (doseq [e (:events sp)] (add "<circle class=\"ev\" cx=\"" (x (:p e)) "\" cy=\"" (y (:v e)) "\" r=\"3.4\"/>"))
+        (doseq [hd (:heads st) :when (some? (:p hd))]
+          (let [p (:p hd) cls (if (= :write (:role hd)) "whead" "rhead")]
+            (when (<= -0.01 p (+ len 0.01))
+              (add "<line class=\"" cls "\" x1=\"" (x p) "\" x2=\"" (x p) "\" y1=\"30\" y2=\"210\"/>")
+              (add "<text class=\"hlab " cls "\" x=\"" (x p) "\" y=\"20\">" (name (:id hd)) "</text>"))))
+        (add "<text class=\"center\" x=\"" (/ W 2) "\" y=\"250\">" (.toFixed (t-now) 2) " s</text>")
+        (.setAttribute ($ "span") "viewBox" "0 0 420 260")))
+    (set! (.-innerHTML ($ "span")) (.join sb ""))
+    (set! (.-textContent ($ "span-sub")) (str (if circ "a ring of " "a fixed span of ") len " s · " (count (:events sp)) " written"))))
+
+(defn field [id k v attrs] (str "<input type=\"number\" data-head=\"" (name id) "\" data-k=\"" (name k) "\" value=\"" v "\" " attrs ">"))
+
+(defn listen-value
+  "A writer's :listen as the select's value: keys, none, a reader's id, or keys+id."
+  [l]
+  (cond (true? l) "keys" (keyword? l) (name l)
+        (set? l) (str/join "+" (map (fn [x] (if (= :in x) "keys" (name x))) (sort-by #(if (= :in %) "" (name %)) l)))
+        :else "none"))
+
+(defn read-listen [v]
+  (case v "keys" true "none" false
+    (let [xs (map (fn [x] (if (= "keys" x) :in (keyword x))) (str/split v #"\+"))]
+      (if (= 1 (count xs)) (first xs) (set xs)))))
+
+(defn listen-options [st]
+  (let [rs (map (comp name :id) (filter #(= :read (:role %)) (:heads st)))]
+    (concat [["keys" "keys"] ["none" "nothing"]]
+            (mapcat (fn [r] [[r r] [(str "keys+" r) (str "keys + " r)]]) rs))))
+
+(defn draw-heads! []
+  (let [st (:st @ui) writers (filter #(= :write (:role %)) (:heads st))
+        sb #js [] add (fn [& xs] (doseq [s xs] (.push sb s)))]
+    (doseq [hd (:heads st)]
+      (let [id (:id hd) w? (= :write (:role hd))]
+        (add "<div class=\"head " (if w? "w" "r") "\"><b>" (name id) "</b><span class=\"role\">" (if w? "writer" "reader") "</span>")
+        (add "<label>at <select data-head=\"" (name id) "\" data-k=\"at\">")
+        (doseq [a (if w? [:clock :signal :hand] [:follow :clock :signal :hand])]
+          (add "<option value=\"" (name a) "\"" (when (= a (:at hd)) " selected") ">" (name a) "</option>"))
+        (add "</select></label>")
+        (case (:at hd)
+          :follow (do (add "<label>of <select data-head=\"" (name id) "\" data-k=\"of\">")
+                      (doseq [w writers] (add "<option value=\"" (name (:id w)) "\"" (when (= (:id w) (:of hd)) " selected") ">" (name (:id w)) "</option>"))
+                      (add "</select></label><label>d " (field id :d (:d hd) "step=\"0.05\" min=\"0\"") "</label>")
+                      (add "<label>speed " (field id :speed (:speed hd) "step=\"0.05\"") "</label>"))
+          :clock (add "<label>from " (field id :p0 (:p0 hd) "step=\"0.5\"") "</label><label>speed " (field id :speed (:speed hd) "step=\"0.05\"") "</label>")
+          :signal (add "<label>from " (field id :p0 (:p0 hd) "step=\"0.5\"") "</label><label>speed " (field id :speed (:speed hd) "step=\"0.05\"") "</label>"
+                       "<label>depth " (field id :depth (or (:depth hd) 0) "step=\"0.05\" min=\"0\"") "</label><label>rate " (field id :rate (or (:rate hd) 0.25) "step=\"0.05\" min=\"0\"") "</label>")
+          :hand (add "<label class=\"hand\">position <input type=\"range\" data-head=\"" (name id) "\" data-k=\"target\" min=\"0\" max=\"" (get-in st [:sp :len]) "\" step=\"0.01\" value=\"" (r2 (or (:target hd) (:p hd) 0)) "\"></label>")
+          nil)
+        (when w?
+          (add "<label>over <select data-head=\"" (name id) "\" data-k=\"mode\"><option value=\"ovr\"" (when (= :ovr (:mode hd)) " selected") ">replace</option><option value=\"mix\"" (when (= :mix (:mode hd)) " selected") ">mix</option></select></label>")
+          (add "<label>listens <select data-head=\"" (name id) "\" data-k=\"listen\">")
+          (doseq [[v label] (listen-options st)]
+            (add "<option value=\"" v "\"" (when (= v (listen-value (:listen hd))) " selected") ">" label "</option>"))
+          (add "</select></label>"))
+        (add "<label>jump " (field id :jump (or (:jump hd) 0.5) "step=\"0.1\" min=\"0\"") "</label>")
+        (when w?
+          (add "<span class=\"cue\"><button type=\"button\" data-cue=\"rec\" data-head=\"" (name id) "\" title=\"To t, at speed 1, cutting what is after t\">:rec</button>"
+               "<button type=\"button\" data-cue=\"ovr\" data-head=\"" (name id) "\" title=\"To t, at speed 1, replacing what it passes\">:ovr</button>"
+               "<input type=\"number\" class=\"cue-t\" value=\"0\" step=\"0.5\" aria-label=\"t\"></span>"))
+        (add "<code class=\"pos\">" (if (some? (:p hd)) (.toFixed (h/at-span st id) 2) "–") " s</code></div>")))
+    (set! (.-innerHTML ($ "heads")) (.join sb ""))))
+
+(defn draw-dynamic!
+  "What changes every frame (without rebuilding the heads' fields while they are edited)."
+  []
+  (draw-span!)
+  (doseq [el (array-seq (js/document.querySelectorAll "#heads .head"))]
+    (let [id (keyword (.-textContent (.querySelector el "b")))]
+      (when-let [p (h/at-span (:st @ui) id)] (set! (.-textContent (.querySelector el ".pos")) (str (.toFixed p 2) " s")))))
+  (set! (.-innerHTML ($ "log"))
+        (str/join "" (for [[t id v] (reverse (take-last 12 (:log @ui)))] (str "<li><b>" (name id) "</b> " v " <span class=\"soft\">at " t " s</span></li>"))))
+  (set! (.-textContent ($ "status")) (str (if (running?) "running · " "stopped · ") (.toFixed (t-now) 2) " s"))
+  (set! (.-textContent ($ "go")) (if (running?) "■ Stop" "▶ Start")))
+
+(defn draw-all! []
+  (doseq [b (array-seq (js/document.querySelectorAll "[data-preset]"))]
+    (.toggle (.-classList b) "on" (= (.getAttribute b "data-preset") (:preset @ui))))
+  (set! (.-textContent ($ "about-preset")) (:about (get presets (:preset @ui))))
+  (draw-heads!) (draw-dynamic!))
+
+(defn frame! [] (tick!) (draw-dynamic!) (js/requestAnimationFrame frame!))
+
+;; ───────── wiring ─────────
+
+(set! (.-innerHTML ($ "keys"))
+      (str/join "" (for [i (range 13)] (str "<button type=\"button\" class=\"" (when (black (mod i 12)) "black") "\" data-key=\"" (+ 60 i) "\">" (nth key-names i) "</button>"))))
+
+(.addEventListener ($ "keys") "pointerdown"
+  (fn [e] (when-let [b (.. e -target (closest "[data-key]"))] (.preventDefault e) (play! (js/parseInt (.getAttribute b "data-key") 10)))))
+(.addEventListener js/document "keydown"
+  (fn [e] (let [tag (some-> (.-target e) .-tagName)]
+            (when (and (not (.-repeat e)) (not (.-metaKey e)) (not (.-ctrlKey e)) (not (#{"INPUT" "SELECT" "TEXTAREA"} tag)))
+              (when-let [i (first (keep-indexed (fn [i k] (when (= k (.-key e)) i)) key-names))]
+                (.preventDefault e) (play! (+ 60 i)))))))
+(.addEventListener js/document "click"
+  (fn [e]
+    (when-let [b (.. e -target (closest "[data-preset]"))] (load-preset! (.getAttribute b "data-preset")) (draw-all!))
+    (when (.. e -target (closest "#go")) (if (running?) (stop!) (start!)) (draw-dynamic!))
+    (when (.. e -target (closest "[data-act=clear]")) (load-preset! (:preset @ui)) (draw-all!))
+    (when-let [b (.. e -target (closest "[data-cue]"))]
+      (let [t (js/parseFloat (.-value (.querySelector (.closest b ".cue") ".cue-t")))]
+        (when-not (js/isNaN t) (cue! (keyword (.getAttribute b "data-head")) (keyword (.getAttribute b "data-cue")) t))))
+    (when-let [b (.. e -target (closest "[data-add]"))]
+      (let [st (:st @ui) n (inc (count (:heads st))) w? (= "writer" (.getAttribute b "data-add"))
+            id (keyword (str (if w? "w" "r") n))
+            first-w (:id (first (filter #(= :write (:role %)) (:heads st))))
+            hd (if w? (h/writer id {:at :hand :p 0}) (h/reader id {:of first-w :d 0.5}))
+            st (h/start (:sp st) (conj (:heads st) hd))]
+        ;; (a new head: the span as it is, the clock again from 0)
+        (swap! ui assoc :st st :t0 nil :frozen-t 0) (draw-all!)))))
+(defn on-head-change [e]
+  (let [el (.-target e) id (some-> (.getAttribute el "data-head") keyword) k (some-> (.getAttribute el "data-k") keyword)]
+    (when (and id k)
+      (let [raw (.-value el)
+            v (case k (:at :of :mode) (keyword raw) :listen (read-listen raw) (js/parseFloat raw))]
+        (when (or (keyword? v) (boolean? v) (set? v) (not (js/isNaN v)))
+          (swap! ui update :st h/set-head id (fn [hd] (assoc hd k v)))
+          (when (#{:at} k) (draw-heads!))
+          (when-not (running?) (swap! ui update :st h/advance (+ (:t (:st @ui)) 0.0001)) (draw-dynamic!)))))))
+(.addEventListener ($ "heads") "change" on-head-change)
+(.addEventListener ($ "heads") "input" (fn [e] (when (= "target" (.getAttribute (.-target e) "data-k")) (on-head-change e))))
+(.addEventListener ($ "sound") "change" (fn [e] (swap! ui assoc :sound (.. e -target -checked))))
+
+;; for the tests: the clock by hand
+(set! (.-kairoticHeads js/window)
+      #js {:state (fn [] (clj->js (-> (:st @ui) (update :heads (fn [hs] (mapv #(dissoc % :listen) hs))))))
+           :log (fn [] (clj->js (:log @ui))) :running running? :tick (fn [] (tick!) (draw-dynamic!))
+           :preset (fn [k] (load-preset! k) (draw-all!)) :play play!
+           :cue (fn [id kind t] (cue! (keyword id) (keyword kind) t))})
+
+(load-preset! "canon")
+(set! (.-checked ($ "sound")) true)
+(draw-all!)
+(js/requestAnimationFrame frame!)
+</script>
