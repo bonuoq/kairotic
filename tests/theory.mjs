@@ -187,7 +187,8 @@ export async function theory(page, check) {
   const ls_ = (k) => `(get-in @eng/rt [:states ${lz} ${k}])`;
   await cljs(page, `(send! ${lz} 62)`);
   check("cancrizans live: a note is a beat (no pulse): yours at the start, the box's at the end", (await until(page, ls_(":t"), (x) => x === "1", 30000)) === "1" &&
-        (await cljs(page, `[(first ${ls_(":M")}) (last ${ls_(":M")})]`)) === "[1 1]");
+        (await cljs(page, `[(first ${ls_(":M")}) (last ${ls_(":M")})]`)) === "[1 1]",
+        await cljs(page, `[(dissoc (get-in @eng/rt [:states ${lz}]) :cp :mi :sig) (second (last-shown ${lz}))]`));
   for (const m of [64, 65, 64]) await cljs(page, `(send! ${lz} ${m})`);
   check("... at the middle the rest of the line is written: the score to read", (await until(page, ls_(":t"), (x) => x === "4", 3000)) === "4" &&
         (await cljs(page, `(every? some? ${ls_(":M")})`)) === "true");
@@ -203,6 +204,7 @@ export async function theory(page, check) {
   await until(page, `(some? ${ps_(":mi")})`, (x) => x === "true", 30000);
   for (let i = 0; i < 8 && (await cljs(page, `(or ${ps_(":t")} 0)`)) !== "7"; i++) await cljs(page, `(send! ${pz} 1 :bang)`);
   check("cancrizans live on a pulse: the crab played to the end without a note of yours", (await until(page, ps_(":t"), (x) => x === "7", 3000)) === "7" &&
-        /done/.test(await cljs(page, `(:sub (second (last-shown ${pz})))`)));
+        /done/.test(await cljs(page, `(:sub (second (last-shown ${pz})))`)),
+        await cljs(page, `[(dissoc (get-in @eng/rt [:states ${pz}]) :cp :mi :sig) (second (last-shown ${pz}))]`));
   await cljs(page, `(delete ${pz})`);
 }
