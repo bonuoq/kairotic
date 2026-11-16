@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`comes` inverted or augmented, and `cancrizans`** (`@kairotic/theory` 0.4.0, Study 43): `comes inversion` plays
+  the comes upside down about an axis (`[:axis 62]`, the final by default) and `comes augmentation` twice as slow
+  (a strict canon, six bars at most: its futures still counted); `[:transform …]` changes it on the way. The new
+  box **`cancrizans`** writes a crab canon (with `table`, a table canon: a musical ambigram) by turns from both ends
+  to the middle — the note at the start, then the one at the end —, its futuribles the ways to close the work, and
+  sends both voices as patterns when it closes. `counterpoint.mjs` carries Study 43's kernel (the systems, the comes
+  inverted or augmented); `mirror.mjs` is Study 43's mirror kernel. Study 43's kernel learns the comes's
+  transformation (`spec.transform`), checked against the mirror kernel.
 - **Study 45 · ring~**: Study 44's ring for sound. A circular buffer of audio in an AudioWorklet keeps the last
   seconds; the read head is d behind the write head, and the study compares how it moves when d changes: **tape**
   (glides at a rate: the pitch changes, and above 1 the head goes backwards), **seek** (jumps with a crossfade) and
