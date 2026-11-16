@@ -173,6 +173,10 @@ function by itself).
 - **▶** (or the space bar) starts the sound and time: audio, `metro`, `ramp`, `loadbang`, `mt play`.
   The first ▶ also asks the browser for permission to play sound.
 - **■** silences and brings every box back to its initial state.
+- **`print`** writes what reaches it in the REPL, after its label: `print out0` writes `out0: 60` (without
+  one, `print: 60`); a string as it is, anything else as EDN. To shape the text, **`format`** before it, as
+  Clojure's (Java's printf): `format "%.1f Hz"` sends `"440.1 Hz"`, `apply format "%s Hz · %.1f dB"` fills
+  several from a list — `%s`, `%d`, `%.2f`, `%e`, `%x`, widths (`%5.1f`, `%-8s`, `%03d`) and `%%`.
 - Messages travel without ▶: a click on a `bang` or a `msg`, a number dragged, a data box that changed.
 - A `msg` sends what is written in it, read as in Clojure: numbers (`msg 0 8 4`), **keywords with their
   colon** (`msg :stop`, `msg :rec 4`), **names** (`msg inc`: a function where a box takes one; also free

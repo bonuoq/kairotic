@@ -580,6 +580,12 @@
 
 (defonce recent-errors (atom []))   ; the last errors the REPL showed (for the Feedback tab)
 
+(defn print-line
+  "How the REPL writes what a print box received: its label (or print), then the value — a string as it is
+   (what format and str make), anything else as EDN."
+  [v label]
+  (str (if (seq label) label "print") ": " (if (string? v) v (pr-str v))))
+
 (defn repl-print! [cls html]
   (when (= cls "err")
     (let [d (js/document.createElement "div")]

@@ -47,6 +47,43 @@
             [clojure.edn :as edn]
             [kairotic.components :as comp]))
 
+(defn format*
+  "clojure.core/format, as Java's printf writes it, for what a patch needs: %s (str of the value), %d (an
+   integer, rounded), %f %.2f (a number with that many decimals, 6 by default), %e, %x, %%, with a width
+   (%5.1f, %-8s left-aligned, %05d with zeros) and %n for a new line. A directive with no value left, or a
+   %d or %f with something that is not a number, writes it as %s does."
+  [fmt & args]
+  (let [re #"%([-0]?)(\d+)?(?:\.(\d+))?([sdfexn%])"]
+    (loop [out "" i 0 xs args]
+      (if-let [m (.exec (js/RegExp. (.-source re) "g") (subs fmt i))]
+        (let [[whole flag width prec conv] (vec (array-seq m))
+              at (+ i (.-index m))
+              lit (subs fmt i at)
+              next-i (+ at (count whole))]
+          (case conv
+            "%" (recur (str out lit "%") next-i xs)
+            "n" (recur (str out lit "\n") next-i xs)
+            (let [x (first xs)
+                  num? (number? x)
+                  body (cond
+                         (and (= conv "d") num?) (str (js/Math.round x))
+                         (and (= conv "f") num?) (.toFixed x (if prec (js/parseInt prec 10) 6))
+                         (and (= conv "e") num?) (.toExponential x (if prec (js/parseInt prec 10) 6))
+                         (and (= conv "x") num?) (.toString (js/Math.round x) 16)
+                         (string? x) x
+                         (nil? x) "nil"
+                         :else (str x))
+                  w (if width (js/parseInt width 10) 0)
+                  pad (max 0 (- w (count body)))
+                  body (cond (zero? pad) body
+                             (= flag "-") (str body (apply str (repeat pad " ")))
+                             (and (= flag "0") num?) (if (str/starts-with? body "-")
+                                                       (str "-" (apply str (repeat pad "0")) (subs body 1))
+                                                       (str (apply str (repeat pad "0")) body))
+                             :else (str (apply str (repeat pad " ")) body))]
+              (recur (str out lit body) next-i (rest xs)))))
+        (str out (subs fmt i))))))
+
 (def fns
   {;; collections
    "into" into "conj" conj "cons" cons "concat" concat "vec" vec "set" set "seq" seq "list" list "vector" vector
@@ -68,7 +105,7 @@
    "min-key" min-key "=" = "not=" not= "<" < ">" > "<=" <= ">=" >= "zero?" zero? "pos?" pos? "neg?" neg?
    "even?" even? "odd?" odd? "number?" number? "not" not "nil?" nil? "some?" some?
    ;; text and names
-   "str" str "subs" subs "keyword" keyword "name" name
+   "str" str "format" format* "subs" subs "keyword" keyword "name" name
    "str/upper-case" str/upper-case "str/lower-case" str/lower-case "str/capitalize" str/capitalize
    "str/trim" str/trim "str/split" str/split "str/join" str/join "str/replace" str/replace
    "str/includes?" str/includes? "str/starts-with?" str/starts-with? "str/ends-with?" str/ends-with?
