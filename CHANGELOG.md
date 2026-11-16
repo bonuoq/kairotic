@@ -5,8 +5,11 @@
 - **Study 47 · heads**: canons and rings as one model — a span of time (a ring, or a fixed work) and heads that
   write and read it, each a head of its own. Writers write where they are (replacing, or mixing); readers send what
   they cross, either way, with a jump that is a seek; a head's position comes from a clock (start and speed), a hand,
-  or following a writer (first the distance, then the speed). Presets: canon, canon in three, augmentation, reverse
-  delay, a palindrome written from both ends, a reader by hand. The model is pure ClojureScript
+  a signal (a clock moved by a slow wave), or following a writer (first the distance, then the speed). A writer
+  writes what it listens to — the keys, or what a reader sends (feedback) —; still, it replaces what was written where
+  it is (a chord stays); a move larger than its jump is a seek; `:rec t` / `:ovr t` send it to t at speed 1. Presets:
+  canon, canon in three, augmentation, reverse delay, a palindrome written from both ends, a reader by hand, a writer
+  on a signal, a round. The model is pure ClojureScript
   (`studies/47-heads/kairotic/heads.cljs`), with `tests/heads.cljs` and `tests/page.html`.
 
 - **Study 46 in ClojureScript**, as the other studies: the game (`studies/46-crab-live/kairotic/live.cljs`, pure: a

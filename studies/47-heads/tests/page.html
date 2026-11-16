@@ -60,6 +60,30 @@ await (async function () {
     const sel = document.querySelector('#heads .head.r:last-child select[data-k="at"]');
     sel.value = "clock"; sel.dispatchEvent(new Event("change", { bubbles: true }));
     is("a head's source changed: its fields follow", document.querySelector('#heads .head.r:last-child input[data-k="p0"]') !== null);
+
+    document.querySelector('[data-preset="signal"]').click();
+    is("on a signal: the writer has a depth and a rate", document.querySelector('#heads .head.w input[data-k="depth"]') !== null);
+    H().play(60); step(T + 1); H().play(62);
+    is("... played 1 s apart, written 1.5 s apart", JSON.stringify(H().state().sp.events.map((e) => Math.round(e.p * 100) / 100)) === "[0,1.5]");
+
+    document.querySelector('[data-preset="round"]').click();
+    is("round: the writer listens to the keys and to its reader", document.querySelector('#heads .head.w select[data-k="listen"]').value === "keys+r1");
+    H().play(60); step(T + 6.2);
+    is("... what you play comes back every 2 s", JSON.stringify(sent()) === "[60,60,60]");
+    const listen = document.querySelector('#heads .head.w select[data-k="listen"]');
+    listen.value = "keys"; listen.dispatchEvent(new Event("change", { bubbles: true }));
+    step(T + 2);
+    is("... listening only to the keys again, the copies written still sound, none is added (and going round the writer replaces the first)", JSON.stringify(sent()) === "[60,60,60,60]" && H().state().sp.events.length === 3);
+
+    document.querySelector('[data-preset="canon"]').click();
+    H().play(60); step(T + 1); H().play(62); step(T + 1);
+    const cue = document.querySelector('#heads .head.w .cue');
+    cue.querySelector(".cue-t").value = "0.5";
+    cue.querySelector('[data-cue="ovr"]').click();
+    step(T + 1);
+    is(":ovr t: the writer from 0.5 at speed 1 replaces what it passes", JSON.stringify(H().state().sp.events.map((e) => e.v)) === "[60]");
+    document.querySelector('#heads .head.w [data-cue="rec"]').click();
+    is(":rec t on a ring: everything is cut", H().state().sp.events.length === 0);
     is("no error on the page", errors.length === 0);
   } catch (e) {
     is("the page ran: " + (e.message || e), false);

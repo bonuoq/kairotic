@@ -82,6 +82,53 @@
   (is "on a ring a reader meets what is kept at every turn" (= [60 60] (mapv #(nth % 2) outs))))
 (is "where a head is on the span, wrapped on a ring" (let [st (h/advance (h/start (h/span 2 true) [(h/writer :w {})]) 5.5)] (near (h/at-span st :w) 1.5)))
 
+;; a writer on a signal: a clock moved by a slow wave — what is played evenly is written unevenly
+(let [st (h/start (h/span 16 false) [(h/writer :w {:at :signal :depth 0.5 :rate 0.25 :mode :mix})])
+      [st _] (run st 3.5 {1 60 2 62 3 64})]
+  (is "a writer on a signal: played at 1, 2, 3 s, written at 1.5, 2, 2.5"
+      (= [1.5 2 2.5] (mapv #(/ (js/Math.round (* 100 (:p %))) 100) (get-in st [:sp :events])))))
+
+;; a writer's jump: a move larger than it is a seek, which replaces nothing between
+(let [sp (-> (h/span 8 false) (h/write-at 2 60) (h/write-at 4 62) (h/write-at 6 64))
+      st (h/start sp [(h/writer :w {:at :hand :target 1})])
+      st (h/advance (h/set-head st :w #(assoc % :target 1.8)) 0.05)
+      after-seek (mapv :v (get-in st [:sp :events]))
+      st (h/advance (h/set-head st :w #(assoc % :target 2.1)) 0.1)]
+  (is "a writer moved by more than its jump replaces nothing (a seek)" (= [60 62 64] after-seek))
+  (is "... moved by less, it replaces what it passes" (= [62 64] (mapv :v (get-in st [:sp :events])))))
+
+;; still: :ovr replaces what was written there before, not what arrives with it
+(let [st (h/start (h/span 8 false) [(h/writer :w {:p0 1 :speed 0})])
+      st (h/play (h/advance st 1) 60)
+      chord (mapv :v (get-in (h/play st 64) [:sp :events]))
+      st (h/play (h/advance st 2) 64)]
+  (is "a still writer (:ovr): a later note replaces the one where it is" (= [64] (mapv :v (get-in st [:sp :events]))))
+  (is "... notes that arrive together stay (a chord)" (= #{60 64} (set chord))))
+(let [st (h/start (h/span 8 false) [(h/writer :w {:p0 1 :speed 0 :mode :mix})])
+      st (-> st (h/advance 1) (h/play 60) (h/advance 2) (h/play 64))]
+  (is "... with :mix both stay (an overdub)" (= #{60 64} (set (map :v (get-in st [:sp :events]))))))
+
+;; feedback: a writer that listens to a reader writes again what it sends — a perpetual canon (a round)
+(let [st (h/start (h/span 8 true) [(h/writer :w {:listen #{:in :r}}) (h/reader :r {:of :w :d 2})])
+      [st outs] (run st 9 {0.5 60})]
+  (is "a writer listening to its reader: what you play comes back every 2 s"
+      (and (= [60 60 60 60] (mapv #(nth % 2) outs)) (every? true? (map (fn [[t] w] (near t w)) outs [2.5 4.5 6.5 8.5]))))
+  (is "... and the ring keeps one copy for each turn of d (going round, the writer replaces the old ones)"
+      (= 4 (count (get-in st [:sp :events])))))
+(let [st (h/start (h/span 8 true) [(h/writer :w {}) (h/reader :r {:of :w :d 2})])
+      [_ outs] (run st 9 {0.5 60})]
+  (is "a writer that listens only to the keys: the note comes back once a turn" (= [60] (mapv #(nth % 2) (filter #(< (first %) 8) outs)))))
+
+;; :rec t and :ovr t: a writer sent to t, at speed 1
+(let [st (h/start (h/span 8 false) [(h/writer :w {})])
+      [st _] (run st 3 {1 60 2 62})
+      rec (h/cue st :w :rec 1.5)
+      st (h/cue st :w :ovr 0.5)
+      [st _] (run st 4 {})]
+  (is ":rec t cuts what is after t" (= [60] (mapv :v (get-in rec [:sp :events]))))
+  (is ":ovr t: from t at speed 1 (a second later it is at t + 1)" (near 1.5 (h/at-span st :w)))
+  (is "... replacing what it passes, and nothing it jumped over" (= [62] (mapv :v (get-in st [:sp :events])))))
+
 (let [rs @results bad (remove second rs)]
   (set! (.-kairoticResults js/window) (clj->js {:total (count rs) :failed (mapv first bad)}))
   (set! (.-textContent (js/document.getElementById "out"))

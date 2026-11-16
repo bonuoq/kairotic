@@ -89,6 +89,8 @@ input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5
 .head select { font: 12px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 4px; padding: 2px 4px; }
 .head .hand input { width: 140px; accent-color: var(--kairos); }
 .head .pos { margin-left: auto; font: 11.5px var(--f-code); }
+.head .cue { display: flex; align-items: center; gap: 3px; }
+.head .cue button { font: 11.5px var(--f-code); padding: 1px 6px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); cursor: pointer; }
 .keys { display: flex; gap: 3px; flex-wrap: wrap; }
 .keys button { width: 32px; height: 60px; border: 1px solid var(--rule); background: var(--box); color: var(--ink-soft); border-radius: 0 0 4px 4px; font: 10.5px var(--f-code); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 4px; cursor: pointer; }
 .keys button.black { background: var(--ink); color: var(--paper); height: 42px; }
@@ -119,6 +121,8 @@ table.cmp th { font: 500 11px var(--f-ui); color: var(--ink-soft); }
     <button class="act" data-preset="reverse">reverse delay</button>
     <button class="act" data-preset="ends">from both ends</button>
     <button class="act" data-preset="hand">by hand</button>
+    <button class="act" data-preset="signal">on a signal</button>
+    <button class="act" data-preset="round">round</button>
   </span>
   <span class="sep"></span>
   <label><input type="checkbox" id="sound"> sound</label>
@@ -150,13 +154,14 @@ table.cmp th { font: 500 11px var(--f-ui); color: var(--ink-soft); }
 
 <section class="panel">
   <h2>About</h2>
-  <p class="about"><b>Study 47.</b> Canons and rings are one thing seen from two sides: <b>a span of time with heads</b>. The span keeps what is written — circular (a ring: positions wrap) or fixed (a work). A <b>writer</b> writes what arrives where it is, and moving it replaces what it passes (or, with <i>mix</i>, leaves it). A <b>reader</b> sends what it crosses, in the order it meets it, either way; a move larger than its <i>jump</i> is a seek. Where a head is comes from a <i>clock</i> (a start and a speed), from a <i>hand</i>, or, for a reader, from <i>following</i> a writer: first its distance d, then its speed. So a canon is a reader 1 s behind; two readers, a canon in three voices; speed 0.5, an augmentation; speed −1, a crab — in chunks on a ring, exact on a fixed span written from both ends, where what you play comes back as a palindrome. The values are not transformed here: that is other boxes' work in a patch.</p>
+  <p class="about"><b>Study 47.</b> Canons and rings are one thing seen from two sides: <b>a span of time with heads</b>. The span keeps what is written — circular (a ring: positions wrap) or fixed (a work). A <b>writer</b> writes what arrives where it is, and moving it replaces what it passes (or, with <i>mix</i>, leaves it). A <b>reader</b> sends what it crosses, in the order it meets it, either way; a move larger than its <i>jump</i> is a seek. Where a head is comes from a <i>clock</i> (a start and a speed), a <i>signal</i> (a clock moved by a slow wave), a <i>hand</i>, or, for a reader, from <i>following</i> a writer: first its distance d, then its speed. A writer writes what it <i>listens</i> to: the keys, or what a reader sends — then the reader's notes are written again and come back every d: a round. <code>:rec t</code> and <code>:ovr t</code> send a writer to t, moving on at speed 1; a writer's move larger than its jump is a seek, which replaces nothing. So a canon is a reader 1 s behind; two readers, a canon in three voices; speed 0.5, an augmentation; speed −1, a crab — in chunks on a ring, exact on a fixed span written from both ends, where what you play comes back as a palindrome. The values are not transformed here: that is other boxes' work in a patch.</p>
   <h2 style="margin-top:6px">In the app</h2>
   <table class="cmp">
     <tr><th>here</th><th>in the app</th></tr>
     <tr><td>a span (ring or fixed)</td><td><code>ring</code>, <code>ring~</code>, and the buffers that are spans already: <code>canvas</code>, <code>freqt</code>, <code>sample</code></td></tr>
     <tr><td>a reader</td><td><code>reader</code> / <code>reader~</code> on its buffer: a position from a source; on a ring, <code>d</code> then <code>speed</code>; <code>jump</code> for every reader (as <code>player</code> has it)</td></tr>
     <tr><td>a writer</td><td><code>writer</code> / <code>writer~</code> (new): what arrives, written where its position says — a source of any speed and direction, a signal too; <code>:rec t</code> / <code>:ovr t</code> are a writer at t, at speed 1</td></tr>
+    <tr><td>listens to a reader</td><td>a connection, <code>reader</code> → <code>writer</code>: feedback, as in a delay (here without a gain: values are other boxes' work)</td></tr>
     <tr><td>replace / mix</td><td><code>ovr</code> by default, <code>mix</code> to overdub</td></tr>
   </table>
   <h2 style="margin-top:6px">What it decides</h2>
@@ -193,7 +198,8 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; Kairotic · Study 47 · heads: the page. One span of time — a ring, or a fixed work — and the heads that write
 ;; and read it, each a head of its own (as a reader is a box of its own in the app). The keys play into every
 ;; writer that listens; the readers send what they cross, and sound. Presets show the canons as heads: a canon,
-;; a canon in three voices, an augmentation, a reverse delay, a palindrome written from both ends, a head by hand.
+;; a canon in three voices, an augmentation, a reverse delay, a palindrome written from both ends, a head by hand,
+;; a writer on a signal, and a round (a writer listening to its reader).
 
 (def snd (.synth (.-kairoticSound js/window)))
 (def key-names ["a" "w" "s" "e" "d" "f" "t" "g" "y" "h" "u" "j" "k"])
@@ -218,7 +224,11 @@ window.addEventListener("DOMContentLoaded", function () {
            :span [8 false] :heads [(h/writer :a {:mode :mix}) (h/writer :b {:p0 8 :speed -1 :mode :mix})
                                    (h/reader :r1 {:at :clock :p0 -8 :speed 1 :jump 1})]}
    "hand" {:about "a reader by hand: drag its slider — slowly it reads, in either direction; a jump is a seek"
-           :span [8 true] :heads [(h/writer :w {}) (h/reader :r1 {:at :hand :p 0 :jump 0.5})]}})
+           :span [8 true] :heads [(h/writer :w {}) (h/reader :r1 {:at :hand :p 0 :jump 0.5})]}
+   "signal" {:about "the writer's position is a signal: speed 1 moved by a slow wave (depth 0.5 s, a cycle every 4 s). Play evenly: it is written unevenly, and a reader at a steady speed, 1 s behind on its own clock, plays it back pushed and pulled"
+             :span [8 true] :heads [(h/writer :w {:at :signal :depth 0.5 :rate 0.25 :mode :mix}) (h/reader :r1 {:at :clock :p0 -1 :speed 1})]}
+   "round" {:about "the writer listens to the keys and to its reader, 2 s behind: what the reader sends is written again, so what you play comes back every 2 s, for ever — a round. :clear to start again"
+            :span [8 true] :heads [(h/writer :w {:listen #{:in :r1}}) (h/reader :r1 {:of :w :d 2})]}})
 
 ;; ───────── state ─────────
 ;; :preset · :st the model's state · :t0 the clock's start (nil: stopped) · :log what the readers sent
@@ -246,6 +256,14 @@ window.addEventListener("DOMContentLoaded", function () {
       (doseq [[id v] (:out st)]
         (swap! ui update :log (fn [l] (vec (take-last 40 (conj l [(r2 (:t st)) id v])))))
         (when (and (:sound @ui) (number? v)) (.note snd v 0.5 (if (even? (reader-index id)) 1 0)))))))
+
+(declare draw-heads! draw-dynamic!)
+
+(defn cue!
+  "The shortcuts :rec t and :ovr t: the writer to t now, moving on at speed 1."
+  [id kind t]
+  (swap! ui update :st h/cue id kind t)
+  (draw-heads!) (draw-dynamic!))
 
 (defn play! [m]
   (when-not (running?) (start!))
@@ -291,6 +309,23 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (defn field [id k v attrs] (str "<input type=\"number\" data-head=\"" (name id) "\" data-k=\"" (name k) "\" value=\"" v "\" " attrs ">"))
 
+(defn listen-value
+  "A writer's :listen as the select's value: keys, none, a reader's id, or keys+id."
+  [l]
+  (cond (true? l) "keys" (keyword? l) (name l)
+        (set? l) (str/join "+" (map (fn [x] (if (= :in x) "keys" (name x))) (sort-by #(if (= :in %) "" (name %)) l)))
+        :else "none"))
+
+(defn read-listen [v]
+  (case v "keys" true "none" false
+    (let [xs (map (fn [x] (if (= "keys" x) :in (keyword x))) (str/split v #"\+"))]
+      (if (= 1 (count xs)) (first xs) (set xs)))))
+
+(defn listen-options [st]
+  (let [rs (map (comp name :id) (filter #(= :read (:role %)) (:heads st)))]
+    (concat [["keys" "keys"] ["none" "nothing"]]
+            (mapcat (fn [r] [[r r] [(str "keys+" r) (str "keys + " r)]]) rs))))
+
 (defn draw-heads! []
   (let [st (:st @ui) writers (filter #(= :write (:role %)) (:heads st))
         sb #js [] add (fn [& xs] (doseq [s xs] (.push sb s)))]
@@ -298,7 +333,7 @@ window.addEventListener("DOMContentLoaded", function () {
       (let [id (:id hd) w? (= :write (:role hd))]
         (add "<div class=\"head " (if w? "w" "r") "\"><b>" (name id) "</b><span class=\"role\">" (if w? "writer" "reader") "</span>")
         (add "<label>at <select data-head=\"" (name id) "\" data-k=\"at\">")
-        (doseq [a (if w? [:clock :hand] [:follow :clock :hand])]
+        (doseq [a (if w? [:clock :signal :hand] [:follow :clock :signal :hand])]
           (add "<option value=\"" (name a) "\"" (when (= a (:at hd)) " selected") ">" (name a) "</option>"))
         (add "</select></label>")
         (case (:at hd)
@@ -307,11 +342,21 @@ window.addEventListener("DOMContentLoaded", function () {
                       (add "</select></label><label>d " (field id :d (:d hd) "step=\"0.05\" min=\"0\"") "</label>")
                       (add "<label>speed " (field id :speed (:speed hd) "step=\"0.05\"") "</label>"))
           :clock (add "<label>from " (field id :p0 (:p0 hd) "step=\"0.5\"") "</label><label>speed " (field id :speed (:speed hd) "step=\"0.05\"") "</label>")
+          :signal (add "<label>from " (field id :p0 (:p0 hd) "step=\"0.5\"") "</label><label>speed " (field id :speed (:speed hd) "step=\"0.05\"") "</label>"
+                       "<label>depth " (field id :depth (or (:depth hd) 0) "step=\"0.05\" min=\"0\"") "</label><label>rate " (field id :rate (or (:rate hd) 0.25) "step=\"0.05\" min=\"0\"") "</label>")
           :hand (add "<label class=\"hand\">position <input type=\"range\" data-head=\"" (name id) "\" data-k=\"target\" min=\"0\" max=\"" (get-in st [:sp :len]) "\" step=\"0.01\" value=\"" (r2 (or (:target hd) (:p hd) 0)) "\"></label>")
           nil)
-        (if w?
+        (when w?
           (add "<label>over <select data-head=\"" (name id) "\" data-k=\"mode\"><option value=\"ovr\"" (when (= :ovr (:mode hd)) " selected") ">replace</option><option value=\"mix\"" (when (= :mix (:mode hd)) " selected") ">mix</option></select></label>")
-          (add "<label>jump " (field id :jump (:jump hd) "step=\"0.1\" min=\"0\"") "</label>"))
+          (add "<label>listens <select data-head=\"" (name id) "\" data-k=\"listen\">")
+          (doseq [[v label] (listen-options st)]
+            (add "<option value=\"" v "\"" (when (= v (listen-value (:listen hd))) " selected") ">" label "</option>"))
+          (add "</select></label>"))
+        (add "<label>jump " (field id :jump (or (:jump hd) 0.5) "step=\"0.1\" min=\"0\"") "</label>")
+        (when w?
+          (add "<span class=\"cue\"><button type=\"button\" data-cue=\"rec\" data-head=\"" (name id) "\" title=\"To t, at speed 1, cutting what is after t\">:rec</button>"
+               "<button type=\"button\" data-cue=\"ovr\" data-head=\"" (name id) "\" title=\"To t, at speed 1, replacing what it passes\">:ovr</button>"
+               "<input type=\"number\" class=\"cue-t\" value=\"0\" step=\"0.5\" aria-label=\"t\"></span>"))
         (add "<code class=\"pos\">" (if (some? (:p hd)) (.toFixed (h/at-span st id) 2) "–") " s</code></div>")))
     (set! (.-innerHTML ($ "heads")) (.join sb ""))))
 
@@ -352,6 +397,9 @@ window.addEventListener("DOMContentLoaded", function () {
     (when-let [b (.. e -target (closest "[data-preset]"))] (load-preset! (.getAttribute b "data-preset")) (draw-all!))
     (when (.. e -target (closest "#go")) (if (running?) (stop!) (start!)) (draw-dynamic!))
     (when (.. e -target (closest "[data-act=clear]")) (load-preset! (:preset @ui)) (draw-all!))
+    (when-let [b (.. e -target (closest "[data-cue]"))]
+      (let [t (js/parseFloat (.-value (.querySelector (.closest b ".cue") ".cue-t")))]
+        (when-not (js/isNaN t) (cue! (keyword (.getAttribute b "data-head")) (keyword (.getAttribute b "data-cue")) t))))
     (when-let [b (.. e -target (closest "[data-add]"))]
       (let [st (:st @ui) n (inc (count (:heads st))) w? (= "writer" (.getAttribute b "data-add"))
             id (keyword (str (if w? "w" "r") n))
@@ -364,8 +412,8 @@ window.addEventListener("DOMContentLoaded", function () {
   (let [el (.-target e) id (some-> (.getAttribute el "data-head") keyword) k (some-> (.getAttribute el "data-k") keyword)]
     (when (and id k)
       (let [raw (.-value el)
-            v (case k (:at :of :mode) (keyword raw) (js/parseFloat raw))]
-        (when (or (keyword? v) (not (js/isNaN v)))
+            v (case k (:at :of :mode) (keyword raw) :listen (read-listen raw) (js/parseFloat raw))]
+        (when (or (keyword? v) (boolean? v) (set? v) (not (js/isNaN v)))
           (swap! ui update :st h/set-head id (fn [hd] (assoc hd k v)))
           (when (#{:at} k) (draw-heads!))
           (when-not (running?) (swap! ui update :st h/advance (+ (:t (:st @ui)) 0.0001)) (draw-dynamic!)))))))
@@ -377,7 +425,8 @@ window.addEventListener("DOMContentLoaded", function () {
 (set! (.-kairoticHeads js/window)
       #js {:state (fn [] (clj->js (-> (:st @ui) (update :heads (fn [hs] (mapv #(dissoc % :listen) hs))))))
            :log (fn [] (clj->js (:log @ui))) :running running? :tick (fn [] (tick!) (draw-dynamic!))
-           :preset (fn [k] (load-preset! k) (draw-all!)) :play play!})
+           :preset (fn [k] (load-preset! k) (draw-all!)) :play play!
+           :cue (fn [id kind t] (cue! (keyword id) (keyword kind) t))})
 
 (load-preset! "canon")
 (set! (.-checked ($ "sound")) true)
