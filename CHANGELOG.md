@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Study 45 · ring~**: Study 44's ring for sound. A circular buffer of audio in an AudioWorklet keeps the last
+  seconds; the read head is d behind the write head, and the study compares how it moves when d changes: **tape**
+  (glides at a rate: the pitch changes, and above 1 the head goes backwards), **seek** (jumps with a crossfade) and
+  **both** (glides small changes, jumps large ones). Also **freeze** (a looper), feedback, mix, cubic or linear
+  interpolation. Sources: a phrase that loops, the keys, the microphone. The DSP is a pure module
+  (`studies/45-ring-audio/kairotic/ringcore.mjs`) with 21 sample-by-sample tests (`tests/core.html`, and in Node);
+  `tests/page.html` runs the page with real sound.
+
 - **`print` with a label, and `format`.** `print out0` writes `out0: 60` in the REPL (everything after `print` is
   its label; without one, `print: 60`), so two prints say which is which — the help patch of `dispatch` now says by
   which outlet each note went. The REPL writes a string as it is and anything else as EDN, the same with the engine

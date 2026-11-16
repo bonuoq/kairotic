@@ -1,0 +1,66 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 45 · ring~ · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script type="module">
+// The study's page itself (its styles, its markup, kairotic/page.mjs), with real sound: Start makes the
+// AudioWorklet, the phrase loops into the ring, and what it reports comes back to the page.
+await (async function () {
+  var results = [], errors = [];
+  window.addEventListener("error", function (e) { errors.push(String(e.message || e)); });
+  function is(what, ok) { results.push([what, !!ok]); }
+  const R = () => window.kairoticRingAudio;
+  const wait = async (ok, ms = 8000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { if (ok()) return true; await new Promise((r) => setTimeout(r, 50)); } return false; };
+  const input = (id, v, type = "input") => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event(type, { bubbles: true })); };
+  try {
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    const { mount } = await import("../kairotic/page.mjs");
+    mount();
+    is("before Start: silent, the ring waiting", /press Start/.test(document.getElementById("ring").textContent) && !R().on());
+    is("thirteen keys", document.querySelectorAll("#keys [data-key]").length === 13);
+    is("both by default: its rate and its jump shown", !document.getElementById("rate-group").hidden && !document.getElementById("seek-group").hidden);
+
+    document.getElementById("start").click();
+    const started = await wait(() => R().state() && R().state().peaks.some((p) => p > 0.01));
+    is("Start: the worklet runs and the phrase is written into the ring" + (R().error() ? " (" + R().error() + ")" : ""), started);
+    const w0 = R().state() && R().state().w;
+    await new Promise((r) => setTimeout(r, 300));
+    is("the write head goes round", R().state() && R().state().w !== w0);
+    is("the ring drawn: the sound and both heads", document.querySelectorAll("#ring .wave").length === 1 && document.querySelectorAll("#ring line.whead, #ring line.rhead").length === 2);
+
+    input("d", 0.8);
+    is("a small change glides (both): the target moves at once", await wait(() => Math.abs(R().state().target - 0.8) < 0.002, 2000));
+    is("... and the head follows", await wait(() => Math.abs(R().state().d - 0.8) < 0.002, 3000));
+    input("d", 5);
+    is("a large one is a seek: the head is there", await wait(() => Math.abs(R().state().d - 5) < 0.002, 2000));
+
+    document.querySelector('input[name=head][value=seek]').click();
+    is("seek: the rate is hidden", document.getElementById("rate-group").hidden && R().params().mode === "seek");
+    document.querySelector('input[name=head][value=tape]').click();
+    is("tape: the jump is hidden", document.getElementById("seek-group").hidden && R().params().mode === "tape");
+
+    const fz = document.getElementById("freeze"); fz.checked = true; fz.dispatchEvent(new Event("change", { bubbles: true }));
+    is("freeze", await wait(() => R().state().freeze === true, 2000));
+    document.querySelector("[data-act=clear]").click();
+    is(":clear, frozen: the ring stays silent", await wait(() => R().state().peaks.every((p) => p === 0), 2000));
+
+    input("dur", 4, "change");
+    is("another length: it keeps 4 s", await wait(() => Math.abs(R().state().dur - 4) < 0.01, 2000));
+    is("and the delay fits in it", R().params().d <= 4);
+
+    document.getElementById("start").click();
+    is("Stop", !R().on() && await wait(() => /silent/.test(document.getElementById("status").textContent), 2000));
+    is("no error on the page", errors.length === 0 && !R().error());
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  var bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  document.getElementById("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>
