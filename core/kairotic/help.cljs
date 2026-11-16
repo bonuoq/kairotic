@@ -698,13 +698,13 @@
     :inlets ["the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · engine · back · reset · [:k -4], [:mode :hypodorian], [:bars 5], [:table true], [:axis 62]: a new work"]
     :outlets ["the dux, when the work closes, as a pattern {:note [...] :dur [...]} (for a pbind)" "the comes, as a pattern" "the futuribles: the notes that can come next ({:midi :name :futures})" "where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}"]
     :messages [["engine" "the next note, written by the box"] ["back" "the last note taken back"] ["reset" "a new work"] ["[:table true]" "a table canon: backwards and upside down"]]
-    :example (lines "(box :b1 \"msg engine\" 40 30)" "(box :b2 \"cancrizans\" 40 80)" "(box :b3 \"pbind\" 40 160)" "(box :b4 \"pbind\" 220 160)"
-                    "(box :b5 \"player 90\" 40 230)" "(box :b6 \"player 90\" 220 230)" "(box :b7 \"synth~\" 40 290)" "(box :b8 \"dac~\" 40 350)"
-                    "(box :b9 \"msg start\" 140 200)" "(box :b10 \"print\" 240 80)"
+    :example (lines "(box :b1 \"msg engine\" 40 30)" "(box :b2 \"cancrizans\" 40 80)" "(box :b3 \"pbind\" 40 150)" "(box :b4 \"pbind\" 40 260)"
+                    "(box :b9 \"msg :start\" 40 370)" "(box :b5 \"player 90\" 40 420)" "(box :b6 \"player 90\" 240 420)" "(box :b7 \"synth~\" 40 490)"
+                    "(box :b8 \"dac~\" 40 550)" "(box :b10 \"print\" 260 80)"
                     "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)" "(connect :b3 0 :b5 1)" "(connect :b4 0 :b6 1)"
                     "(connect :b9 0 :b5 0)" "(connect :b9 0 :b6 0)" "(connect :b5 0 :b7 0)" "(connect :b6 0 :b7 0)"
                     "(connect :b7 0 :b8 0)" "(connect :b7 0 :b8 1)" "(connect :b2 3 :b10 0)")
-    :try "Click engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click start: the crab sounds. Play notes on a keyboard into it instead (the note at the start, then the one at the end)."
+    :try "Click engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds. Play notes on a keyboard into it instead (the note at the start, then the one at the end)."
     :see ["comes" "pbind" "player"]}
 
    "comes"
