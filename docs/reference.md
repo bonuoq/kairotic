@@ -199,6 +199,59 @@ A button: when pressed (or on receiving anything) it sends a bang.
 
 See also: `msg`, `loadbang`, `metro`
 
+### cancrizans · `@kairotic/theory`
+
+`cancrizans [mode] [k -7] [beats 2] [bars 6] [table] [midi]`
+
+A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards; with table, backwards and upside down — the score read by a second player from across the table, a musical ambigram. Each step writes a note at the start, then one at the end; the futuribles are the ways to close the work in the middle. When it closes, both voices go out as patterns.
+
+**Inlets** 
+
+0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · engine · back · reset · [:k -4], [:mode :hypodorian], [:bars 5], [:table true], [:axis 62]: a new work
+
+**Outlets** 
+
+0. the dux, when the work closes, as a pattern {:note [...] :dur [...]} (for a pbind)
+1. the comes, as a pattern
+2. the futuribles: the notes that can come next ({:midi :name :futures})
+3. where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}
+
+**Messages and gestures**
+
+- `engine`: the next note, written by the box
+- `back`: the last note taken back
+- `reset`: a new work
+- `[:table true]`: a table canon: backwards and upside down
+
+**Try:** Click engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds. Play notes on a keyboard into it instead (the note at the start, then the one at the end).
+
+```clojure
+(box :b1 "msg engine" 40 30)
+(box :b2 "cancrizans" 40 80)
+(box :b3 "pbind" 40 150)
+(box :b4 "pbind" 40 260)
+(box :b9 "msg :start" 40 370)
+(box :b5 "player 90" 40 420)
+(box :b6 "player 90" 240 420)
+(box :b7 "synth~" 40 490)
+(box :b8 "dac~" 40 550)
+(box :b10 "print" 260 80)
+(connect :b1 0 :b2 0)
+(connect :b2 0 :b3 0)
+(connect :b2 1 :b4 0)
+(connect :b3 0 :b5 1)
+(connect :b4 0 :b6 1)
+(connect :b9 0 :b5 0)
+(connect :b9 0 :b6 0)
+(connect :b5 0 :b7 0)
+(connect :b6 0 :b7 0)
+(connect :b7 0 :b8 0)
+(connect :b7 0 :b8 1)
+(connect :b2 3 :b10 0)
+```
+
+See also: `comes`, `pbind`, `player`
+
 ### canvas
 
 Graphic buffer for any numeric data: strokes in a plane with axes of any range, linear or log ((axis :b1 :y -1 1)). A number on the inlet (or a click) comes out on the left; edits on the inlet ([:stroke pts], [:erase :t1], [:clear], [:batch [...]]) change it, and questions ([:read x], [:strokes], [:get :t1], [:data]) are answered on the left. The right outlet is the buffer for a reader, which can read it along X or Y.
@@ -302,7 +355,7 @@ See also: `pitch~`, `mt`, `features~`
 
 ### comes · `@kairotic/theory`
 
-`comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [live] [nocues] [midi]`
+`comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [inversion] [augmentation] [live] [nocues] [midi]`
 
 Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. Notes may be held over the beat (ties), and a dissonance may fall on a strong beat as a suspension. By turns (the default) one note in is one beat; live, a pulse on the right is a beat, and a note lasts until the next one is struck.
 
@@ -327,6 +380,8 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 - `:end`: the end of the section, from an analysis (live, and the cues off with nocues)
 - `[:midi 62]`: a MIDI note as the dux's next note
 - `[:imitation 0.5]`: how much the comes imitates the dux (1 a canon … 0 free)
+- `[:transform :inversion]`: the comes upside down about the axis ([:axis 62], a MIDI note; the final by default)
+- `[:transform :augmentation]`: the comes twice as slow (a strict canon, six bars at most)
 - `[:k -4]`: the comes a 5th below
 
 **Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone.
