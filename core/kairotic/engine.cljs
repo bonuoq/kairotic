@@ -163,7 +163,10 @@
              (catch :default e (js/console.error e)))))
     (swap! rt assoc :signature s)))
 
-(defn print! [at x] (swap! rt update :prints (fn [ps] (conj (vec (take-last 200 ps)) [at x]))))
+(defn print!
+  "Something to write in the REPL at instant at; label: the name of the print box that wrote it (print out0)."
+  ([at x] (print! at x nil))
+  ([at x label] (swap! rt update :prints (fn [ps] (conj (vec (take-last 200 ps)) (if label [at x label] [at x]))))))
 
 ;; ───────── tasks: what a box asks of the world, outside its pure logic ─────────
 ;; A component declares :tasks {k (fn [x box] promise)}, as an audio component declares :audio :effects.
@@ -211,9 +214,9 @@
         (.then (fn [v] (arrive! id {:task k :arg x :value v} remote?))
                (fn [e] (arrive! id {:task k :arg x :error (str (or (.-message e) e))} remote?))))))
 
-(defn effect! [id [k x] at]
+(defn effect! [id [k x label] at]
   (cond
-    (= k :print) (print! at x)
+    (= k :print) (print! at x label)
     ;; a box keeps what it found (a task's outcome) as its data: a gesture of whoever made it happen
     (= k :keep) (when-not *remote* (when-let [f (:effect-hook @rt)] (f id [k x] at)))
     ;; effects for the page (a tree box asked to change its data: that is a gesture of the work; a presets

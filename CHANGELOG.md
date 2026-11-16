@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`print` with a label, and `format`.** `print out0` writes `out0: 60` in the REPL (everything after `print` is
+  its label; without one, `print: 60`), so two prints say which is which — the help patch of `dispatch` now says by
+  which outlet each note went. The REPL writes a string as it is and anything else as EDN, the same with the engine
+  running or not (it used to quote strings only while it ran). **`format`** joins the Clojure boxes, as
+  `clojure.core/format` (Java's printf) for what a patch needs: `%s`, `%d`, `%.2f`/`%f`, `%e`, `%x`, `%%`, `%n`,
+  widths (`%5.1f`, `%-8s`, `%03d`); `format "%.1f Hz"` takes the message, `apply format "%s Hz · %.1f dB"` a list,
+  and `partial format "…"` travels as a function. Help patch of `print`, guide (EN/ES), tests.
+
 - **Study 44 · ring**: a circular buffer of messages in time, for a delay that changes while it plays. It keeps the
   last seconds from its first message (or `:clear`) and forgets what is older. Three readings side by side, to choose
   the `ring` box's: **pipe** (each message d after it came in, with the d it had then), **tape** (a read head d behind

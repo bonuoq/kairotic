@@ -66,8 +66,12 @@
     :see ["msg" "knob"]}
 
    "print"
-   {:inlets ["anything: it is written in the REPL"]
-    :see ["msg"]}
+   {:inlets ["anything: it is written in the REPL, after the label (print out0 → out0: 60)"]
+    :example (lines "(box :b1 \"msg 440.1234\" 40 30)" "(box :b2 \"print freq\" 40 90)"
+                    "(box :b3 \"format \\\"%.1f Hz\\\"\" 180 90)" "(box :b4 \"print\" 180 150)"
+                    "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b3 0 :b4 0)")
+    :try "Click the msg: the REPL writes freq: 440.1234 and print: 440.1 Hz."
+    :see ["msg" "format" "str"]}
 
    "draw"
    {:inlets ["a shape ([:circle {:cx 40 :cy 40 :r 10 :fill :accent}]) is added; a list of shapes replaces them all; [:set k shape] adds or replaces the one called k; [:unset k] removes it; clear"]
@@ -132,11 +136,11 @@
                ["msg :to" "each message by the outlet its :to says ({:freq 440 :to 1})"]]
     :example (lines "(box :b1 \"msg 60\" 40 30)" "(box :b2 \"msg 64\" 100 30)" "(box :b3 \"msg 67\" 160 30)"
                     "(box :b4 \"msg 0\" 260 30)" "(box :b5 \"msg 1\" 320 30)" "(box :b6 \"msg nil\" 380 30)" "(box :b7 \"msg {60 0 64 1}\" 470 30)"
-                    "(box :b8 \"dispatch 2\" 40 100)" "(box :b9 \"print\" 40 170)" "(box :b10 \"print\" 200 170)"
+                    "(box :b8 \"dispatch 2\" 40 100)" "(box :b9 \"print out0\" 40 170)" "(box :b10 \"print out1\" 200 170)"
                     "(connect :b1 0 :b8 0)" "(connect :b2 0 :b8 0)" "(connect :b3 0 :b8 0)"
                     "(connect :b4 0 :b8 1)" "(connect :b5 0 :b8 1)" "(connect :b6 0 :b8 1)" "(connect :b7 0 :b8 1)"
                     "(connect :b8 0 :b9 0)" "(connect :b8 1 :b10 0)")
-    :try "Click a selector on the right (0, 1, nil or the map) and then the notes on the left: each note goes out by the way chosen, or by none. With the map, 60 and 64 choose their own way and 67 is held back."
+    :try "Click a selector on the right (0, 1, nil or the map) and then the notes on the left: each note goes out by the way chosen — the REPL says which, out0 or out1 — or by none. With the map, 60 and 64 choose their own way and 67 is held back."
     :see ["msg" "get"]}
 
    "ramp"

@@ -176,6 +176,10 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
 - **▶** (o la barra espaciadora) pone en marcha el sonido y el tiempo: audio, `metro`, `ramp`,
   `loadbang`, `mt play`. El primer ▶ también pide permiso al navegador para sonar.
 - **■** silencia y devuelve cada caja a su estado inicial.
+- **`print`** escribe en el REPL lo que le llega, tras su etiqueta: `print out0` escribe `out0: 60` (sin
+  ella, `print: 60`); un string tal cual, lo demás como EDN. Para dar forma al texto, **`format`** delante,
+  como el de Clojure (el printf de Java): `format "%.1f Hz"` envía `"440.1 Hz"`, `apply format "%s Hz · %.1f dB"`
+  rellena varios desde una lista — `%s`, `%d`, `%.2f`, `%e`, `%x`, anchos (`%5.1f`, `%-8s`, `%03d`) y `%%`.
 - Los mensajes viajan sin ▶: un clic en un `bang` o un `msg`, un número arrastrado, una caja de datos
   que cambió.
 - Un `msg` envía lo que lleva escrito, leído como en Clojure: números (`msg 0 8 4`), **keywords con sus

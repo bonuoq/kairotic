@@ -978,7 +978,7 @@
     (when (sync-live-trees!) (render-scene (current)))
     (render-overlay!)
     (let [ps (eng/take-prints!)]
-      (doseq [[_ v] (take 12 ps)] (repl-print! "out" (esc (str "print: " (pr-str v)))))
+      (doseq [[_ v label] (take 12 ps)] (repl-print! "out" (esc (print-line v label))))
       (when (> (count ps) 12) (repl-print! "out" (esc (str "print: … and " (- (count ps) 12) " more")))))
     (js/requestAnimationFrame (fn [_] (live!)))))
 

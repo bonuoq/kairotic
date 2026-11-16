@@ -112,6 +112,20 @@
     (t/eq "a function by its name or its form" [(run "dispatch 2" [1 (comp/msg-word "even?")] [0 4]) (run "dispatch 2" [1 '(comp {0 1} (partial * 0))] [0 9])] [[[0 4]] [[1 9]]])
     (t/is "a name it does not know is said, and the selector stays" (seq (:effects ((:receive (comp/lookup "dispatch")) {:args (comp/args-for (comp/lookup "dispatch") "dispatch 2") :inlet 1 :value 'nope}))))
     (t/eq "a bang is a message like any other" (run "dispatch 2 0" [0 :bang]) [[0 :bang]])
+;; format, as Java's printf (clojure.core/format), and print with a label
+    (t/eq "format: the message into %s" (run "format \"out 0: %s\"" [0 60]) [[0 "out 0: 60"]])
+    (t/eq "... %.1f" (run "format \"%.1f Hz\"" [0 440.1234]) [[0 "440.1 Hz"]])
+    (t/eq "... several, with apply" (run "apply format \"%s Hz · %.1f dB\"" [0 [440 -12.34]]) [[0 "440 Hz · -12.3 dB"]])
+    (t/eq "... %d rounds, %x, %%" (cf/format* "%d %x 100%%" 2.6 255) "3 ff 100%")
+    (t/eq "... widths, left-aligned, zeros" (cf/format* "[%5.1f|%-4s|%03d]" 1.26 "ab" 7) "[  1.3|ab  |007]")
+    (t/eq "... %s of a keyword, a vector, nil" (cf/format* "%s %s %s" :a [1 2] nil) ":a [1 2] nil")
+    (t/eq "... a directive with nothing left" (cf/format* "%s and %s" 1) "1 and nil")
+    (t/eq "... %f of a word writes it as %s" (cf/format* "%.2f" :x) ":x")
+    (t/eq "... a function through the wires" (run "map (partial format \"#%s\")" [0 [1 2]]) [[0 ["#1" "#2"]]])
+    (let [pr (fn [text v] (:effects ((:receive (comp/lookup "print")) {:args (comp/args-for (comp/lookup "print") text) :value v})))]
+      (t/eq "print with a label" (pr "print out0" 60) [[:print 60 "out0"]])
+      (t/eq "... of several words" (pr "print the left hand" 60) [[:print 60 "the left hand"]])
+      (t/eq "... and without one" (pr "print" 60) [[:print 60]]))
     ;; links to the documentation of Clojure
     (t/is "a function box links to clojuredocs" (some #(re-find #"clojuredocs.org/clojure.core/empty_q$" (second %)) (:ref (comp/lookup "empty?"))))
     (t/is "... clojure.string too" (some #(re-find #"clojure.string/upper-case$" (second %)) (:ref (comp/lookup "str/upper-case"))))

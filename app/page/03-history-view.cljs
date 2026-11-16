@@ -209,11 +209,11 @@
 (defn drain-prints!
   "What boxes printed (and the loops the engine cut), written in the REPL when the engine is off too."
   []
-  (doseq [[_ v] (eng/take-prints!)]
+  (doseq [[_ v label] (eng/take-prints!)]
     (let [t (if (string? v) v (pr-str v))]
-      (if (re-find #"^(loop cut|too many messages)" t)
+      (if (and (nil? label) (re-find #"^(loop cut|too many messages)" t))
         (repl-print! "err" (esc (str "; " t)))
-        (repl-print! "out" (esc (str "print: " t)))))))
+        (repl-print! "out" (esc (print-line v label)))))))
 
 (declare sync-live-trees!)
 

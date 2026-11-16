@@ -600,7 +600,15 @@
                    :io [1 1] :display :number :receive number-box
                    ;; like a knob (issue #146): on release the value is written in the box text
                    :args [[:initial 0]] :persist (fn [v] {:initial v})})
-(define! "print" {:doc "Writes to the REPL whatever it receives." :io [1 0] :receive (fn [{:keys [value]}] {:effects [[:print value]]})})
+(defn print-label
+  "The label of a print box: everything written after print (print out0 · print the left hand), or nil."
+  [text]
+  (let [t (strip-meta text) l (str/trim (subs t (count (klass t))))] (when (seq l) l)))
+
+(define! "print" {:doc "Writes to the REPL whatever it receives, after its label: print out0 writes out0: 60 (without one, print: 60). A string is written as it is, anything else as EDN; to shape what it writes, a format or str before it (format \"%.1f Hz\")."
+                  :usage "print [label]"
+                  :io [1 0] :parse print-label
+                  :receive (fn [{:keys [value args]}] {:effects [(if (string? args) [:print value args] [:print value])]})})
 
 ;; ───── draw: a view made of the messages that arrive (kairotic.shapes) ─────
 ;; Shapes arrive as data and are drawn as the shapes of any component: SVG, in the theme's colours,
