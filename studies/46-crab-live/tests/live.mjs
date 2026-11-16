@@ -11,8 +11,8 @@ export function seeded(seed) {
   return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-export function crab(bars = 5, kind = "crab", k = -7) {
-  const m = DIATONIC.modes.dorian, tonic = m.final, [a, z] = m.ambitus, b = 2;
+export function crab(bars = 5, kind = "crab", k = -7, b = 2) {
+  const m = DIATONIC.modes.dorian, tonic = m.final, [a, z] = m.ambitus;
   return mirror({ tonic, lo: tonic + a, hi: tonic + z, n: b * (bars - 1) + 1, b, spacing: 11, system: DIATONIC,
                   starts: m.starts.map((x) => x + tonic), transform: { kind, k, axis: tonic } });
 }
@@ -91,6 +91,19 @@ export function run() {
     const v = voices(g);
     is("a table canon live: the other voice backwards and upside down", tb.count(g.M, tb.steps) === 1 &&
        v.engine.every((c, t) => c === 2 * tb.axis - v.you[tb.n - 1 - t] + tb.k));
+  }
+  {
+    // 3/2: the crab ends on a strong beat, so strong beats mirror strong beats; 4 bars are 10 beats, a middle of two
+    const t3 = crab(4, "crab", -7, 3);
+    is("3/2: 10 beats, the middle a pair", t3.n === 10 && t3.order[t3.steps - 1].length === 2);
+    let ok3 = 0;
+    for (let seed = 1; seed <= 10; seed++) {
+      const g = createLive(t3, { rng: seeded(seed) });
+      while (phase(g) !== "done") (phase(g) === "choose" ? auto(g) : read(g));
+      const v = voices(g);
+      if (t3.count(g.M, t3.steps) === 1 && v.engine.every((c, t) => c === t3.T(v.you[t3.n - 1 - t]))) ok3++;
+    }
+    is("3/2: 10 games, each a crab the kernel accepts", ok3 === 10);
   }
   return results;
 }

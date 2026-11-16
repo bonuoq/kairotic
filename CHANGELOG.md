@@ -5,9 +5,9 @@
 - **Study 46 · crab live**: a crab canon played live, on Study 43's kernel. In the first half you choose your note
   among the ones that can still close the crab, and the engine answers at the same beat with the end of your own line
   (written ahead on the score); at the middle the rest of your line comes out as a score to read, and in the second
-  half the engine plays your first half backwards. By turns or on a pulse (the engine plays your note if you don't);
-  crab or table canon; no score following yet. The game is pure (`studies/46-crab-live/kairotic/live.mjs`): 16 tests
-  (also in Node) and 19 on the page.
+  half the engine plays your first half backwards. In 2/2 or 3/2 (the crabs counted without blocking the page). By turns or on a pulse (the engine plays your note if you don't);
+  crab or table canon; no score following yet. The game is pure (`studies/46-crab-live/kairotic/live.mjs`): 18 tests
+  (also in Node) and 25 on the page.
 
 - **Study 45 · ring~**: Study 44's ring for sound. A circular buffer of audio in an AudioWorklet keeps the last
   seconds; the read head is d behind the write head, and the study compares how it moves when d changes: **tape**

@@ -14,23 +14,29 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
 const KEYS = ["a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'"];
 
 export function mount() {
-  const ui = { kind: "crab", k: -7, mode: "dorian", bars: 5, timing: "turns", tempo: 72, sound: true, seed: 1 };
+  const ui = { kind: "crab", k: -7, mode: "dorian", b: 2, bars: 5, timing: "turns", tempo: 72, sound: true, seed: 1 };
+  const maxBars = () => (ui.b === 3 ? 5 : 7);        // in 3/2 the crabs grow fast: 57418 in 5 bars
   const S = makeSystem(DIATONIC);
   const snd = synth();
   let o = null, g = null, pending = null, timer = null, nextAt = 0, total = null;
 
   function spec() {
-    const m = DIATONIC.modes[ui.mode], tonic = m.final, [a, z] = m.ambitus, b = 2;
+    const m = DIATONIC.modes[ui.mode], tonic = m.final, [a, z] = m.ambitus, b = ui.b;
     return { tonic, lo: tonic + a, hi: tonic + z, n: b * (ui.bars - 1) + 1, b, spacing: 11, system: DIATONIC,
              starts: m.starts.map((x) => x + tonic), transform: { kind: ui.kind, k: ui.k, axis: tonic } };
   }
   function rng() { let a = (ui.seed * 2654435761) >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  let progress = 0;
+  /** A new crab: its works are counted first, a few milliseconds at a time (in 3/2 it can take seconds); until
+   *  then nothing is played. Resolves when it can be. */
   function newGame() {
     stopPulse();
-    o = mirror(spec()); g = createLive(o, { rng: rng() }); pending = null;
-    total = o.count();
+    const mine = mirror(spec());
+    o = mine; g = createLive(o, { rng: rng() }); pending = null; total = null; progress = 0;
     ui.seed++;
     render();
+    return o.countAsync({ budget: 14, onProgress: (f) => { if (o === mine) { progress = f; render(); } } })
+      .then((v) => { if (o === mine) { total = v; render(); } });
   }
   const beatSec = () => 60 / ui.tempo;
 
@@ -41,7 +47,7 @@ export function mount() {
     if (b.engine != null) snd.note(S.midi(b.engine), beatSec() * 0.95, 1);
   }
   function play(x) {                                  // a note of yours (a step of the system)
-    if (!g) return;
+    if (!g || total == null) return;
     snd.resume();
     if (ui.timing === "pulse") { pending = x; render(); return; }
     if (phase(g) === "choose") { const b = choose(g, x); sound(b); }
@@ -49,7 +55,7 @@ export function mount() {
     render();
   }
   function tick() {                                   // a beat of the pulse
-    if (!g) return;
+    if (!g || total == null) return;
     let b = null;
     if (phase(g) === "choose") b = pending != null ? choose(g, pending) : auto(g);
     else if (phase(g) === "read") { b = read(g); sound(b, pending != null ? S.midi(pending) : undefined); pending = null; render(); if (phase(g) === "done") stopPulse(); return; }
@@ -70,7 +76,8 @@ export function mount() {
   const colw = 40, rowh = 12, left = 46, top = 16;
   function render() {
     if (!g) return;
-    const sp = o.spec, n = o.n, v = voices(g), ph = phase(g), t = g.t;
+    const sp = o.spec, n = o.n, v = voices(g), t = g.t, counting = total == null;
+    const ph = counting ? "counting" : phase(g);
     const [clo, chi] = [o.T(sp.lo), o.T(sp.hi)].sort((a, b) => a - b);
     const lo = Math.min(sp.lo, clo) - 1, hi = Math.max(sp.hi, chi) + 1;
     const y = (s) => top + rowh * (hi - s), x = (c) => left + colw * c + colw / 2;
@@ -90,7 +97,7 @@ export function mount() {
     const xm = left + colw * (n / 2);
     out += `<line class="mirrorline" x1="${xm}" x2="${xm}" y1="${top - 10}" y2="${top + rowh * (hi - lo) + 8}"><title>the middle: from here you read</title></line>`;
     // the score to read, from the middle, once it is written
-    if (ph !== "choose") out += `<rect class="readzone" x="${left + colw * o.steps}" y="${top - 8}" width="${colw * (n - o.steps)}" height="${rowh * (hi - lo) + 16}"/>`;
+    if (ph === "read" || ph === "done") out += `<rect class="readzone" x="${left + colw * o.steps}" y="${top - 8}" width="${colw * (n - o.steps)}" height="${rowh * (hi - lo) + 16}"/>`;
     for (let c = 0; c < n; c++) {
       const you = v.you[c], en = v.engine[c];
       const played = c < t;
@@ -107,7 +114,7 @@ export function mount() {
       for (const c of options(g)) {
         const yy = y(c.note), xx = x(t);
         if (c.reason) out += `<g><title>${S.pitchName(c.note)}: ${esc(c.reason)}</title><line class="nope" x1="${xx - 3}" y1="${yy - 3}" x2="${xx + 3}" y2="${yy + 3}"/><line class="nope" x1="${xx - 3}" y1="${yy + 3}" x2="${xx + 3}" y2="${yy - 3}"/></g>`;
-        else if (c.futures > 0) out += `<circle class="cand${pending === c.note ? " hot" : ""}" data-play="${c.note}" cx="${xx}" cy="${yy}" r="6.5"><title>${S.pitchName(c.note)}: ${c.futures} ways to close the crab</title></circle><text class="futn" x="${xx + 10}" y="${yy}">${c.futures}</text>`;
+        else if (c.futures > 0) out += `<circle class="cand${pending === c.note ? " hot" : ""}" data-play="${c.note}" cx="${xx}" cy="${yy}" r="6.5"><title>${S.pitchName(c.note)}: ${c.futures} way${c.futures === 1 ? "" : "s"} to close the crab</title></circle><text class="futn" x="${xx + 10}" y="${yy}">${c.futures}</text>`;
       }
     } else if (ph === "read") {
       out += `<circle class="readnow" cx="${x(t)}" cy="${y(g.M[t])}" r="9"/>`;
@@ -117,11 +124,11 @@ export function mount() {
     svg.innerHTML = out;
 
     // the keys: the notes of your range
-    const opts = options(g), byNote = new Map(opts.map((c) => [c.note, c]));
+    const opts = counting ? [] : options(g), byNote = new Map(opts.map((c) => [c.note, c]));
     let keys = "";
     for (let s = sp.lo, i = 0; s <= sp.hi; s++, i++) {
       const c = byNote.get(s), ok = ph === "choose" ? c && !c.reason && c.futures > 0 : ph === "read" ? s === g.M[t] : false;
-      keys += `<button type="button" class="key${ok ? " ok" : ""}${pending === s ? " hot" : ""}" data-play="${s}" ${ph === "done" ? "disabled" : ""}>`
+      keys += `<button type="button" class="key${ok ? " ok" : ""}${pending === s ? " hot" : ""}" data-play="${s}" ${ph === "done" || counting ? "disabled" : ""}>`
             + `<b>${S.pitchName(s)}</b><small>${ph === "choose" && c && !c.reason && c.futures > 0 ? c.futures : ""}</small><i>${KEYS[i] || ""}</i></button>`;
     }
     $("keys").innerHTML = keys;
@@ -137,15 +144,15 @@ export function mount() {
       + (b.corrected ? ` <span class="warn">(${S.pitchName(b.played)} cannot close the crab)</span>` : "")
       + (b.auto ? ` <span class="soft">(the engine played for you)</span>` : "") + (b.score ? ` <b>· the score</b>` : "") + `</li>`).join("");
     const here = ph === "choose" ? o.count(g.M.slice(), t) : 1;
-    $("status").textContent = ph === "done" ? `finished: ${n} beats · ${total} crabs under these rules`
-      : ph === "choose" ? `beat ${t + 1} of ${n}: choose · ${here} ways to close it · ${total} crabs`
+    $("status").textContent = counting ? `counting the crabs… ${Math.round(progress * 100)}%` : ph === "done" ? `finished: ${n} beats · ${total} crabs under these rules`
+      : ph === "choose" ? `beat ${t + 1} of ${n}: choose · ${here} way${here === 1 ? "" : "s"} to close it · ${total} crabs`
       : `beat ${t + 1} of ${n}: read`;
-    $("here").textContent = ph === "choose" ? "first half: you choose, the engine writes the end of your line"
+    $("here").textContent = counting ? "counting every crab first, so each note can say its future" : ph === "choose" ? "first half: you choose, the engine writes the end of your line"
       : ph === "read" ? "second half: you read, the engine plays your first half backwards" : "the crab is finished";
     controls();
   }
   function controls() {
-    $("kind").value = ui.kind; $("k").value = String(ui.k); $("mode").value = ui.mode; $("bars").value = ui.bars;
+    $("kind").value = ui.kind; $("k").value = String(ui.k); $("mode").value = ui.mode; $("meter").value = String(ui.b); $("bars").max = maxBars(); $("bars").value = ui.bars;
     $("tempo").value = ui.tempo; $("sound").checked = ui.sound;
     document.querySelectorAll("input[name=timing]").forEach((el) => { el.checked = el.value === ui.timing; });
     $("go").textContent = ui.timing === "pulse" ? (timer ? "■ Stop" : "▶ Start the pulse") : "New crab";
@@ -171,11 +178,13 @@ export function mount() {
   $("kind").addEventListener("change", set((el) => { ui.kind = el.value; }));
   $("k").addEventListener("change", set((el) => { ui.k = +el.value; }));
   $("mode").addEventListener("change", set((el) => { ui.mode = el.value; }));
-  $("bars").addEventListener("change", set((el) => { ui.bars = Math.max(3, Math.min(7, +el.value || 5)); }));
+  $("bars").addEventListener("change", set((el) => { ui.bars = Math.max(3, Math.min(maxBars(), +el.value || 5)); }));
+  $("meter").addEventListener("change", set((el) => { ui.b = +el.value; ui.bars = Math.min(ui.bars, maxBars()); }));
   $("tempo").addEventListener("change", (e) => { ui.tempo = Math.max(30, Math.min(200, +e.target.value || 72)); });
   $("sound").addEventListener("change", (e) => { ui.sound = e.target.checked; });
   document.querySelectorAll("input[name=timing]").forEach((el) => el.addEventListener("change", (e) => { ui.timing = e.target.value; newGame(); }));
 
   newGame();
-  window.kairoticCrab = { game: () => g, kernel: () => o, ui: () => ({ ...ui, pulsing: !!timer }), play, tick, newGame, system: S, nearest: (x) => nearest(g, x), rest: () => rest(g) };
+  window.kairoticCrab = { game: () => g, kernel: () => o, ui: () => ({ ...ui, pulsing: !!timer }), play, tick, newGame, system: S,
+                          ready: () => total != null, nearest: (x) => nearest(g, x), rest: () => rest(g) };
 }

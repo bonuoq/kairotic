@@ -12,6 +12,8 @@ await (async function () {
   const is = (what, ok) => results.push([what, !!ok]);
   const C = () => window.kairoticCrab;
   const okKeys = () => [...document.querySelectorAll("#keys .key.ok")];
+  const ready = async () => { for (let i = 0; i < 400 && !C().ready(); i++) await new Promise((r) => setTimeout(r, 25)); return C().ready(); };
+  const change = (id, v) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); };
   try {
     const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
     const doc = new DOMParser().parseFromString(html, "text/html");
@@ -20,6 +22,7 @@ await (async function () {
     const { mount } = await import("../kairotic/page.mjs");
     mount();
     const snd = document.getElementById("sound"); snd.checked = false; snd.dispatchEvent(new Event("change", { bubbles: true }));
+    is("the crabs are counted first, without blocking the page", /counting/.test(document.getElementById("status").textContent) && await ready());
     const o = C().kernel(), n = o.n, mid = o.steps;
 
     is("a crab of 5 bars: 9 beats, the middle after beat 5", n === 9 && mid === 5);
@@ -45,6 +48,7 @@ await (async function () {
 
     // on a pulse: the beats given by hand; nothing played → the engine plays for you
     document.querySelector('input[name=timing][value=pulse]').click();
+    await ready();
     is("pulse: a new crab, waiting for its start", C().ui().timing === "pulse" && C().game().t === 0 && /Start the pulse/.test(document.getElementById("go").textContent));
     C().tick();
     is("a beat with nothing played: the engine plays your note for you", C().game().t === 1 && C().game().log[0].auto === true);
@@ -56,8 +60,20 @@ await (async function () {
     for (let i = 0; i < n; i++) C().tick();
     is("on a pulse the second half goes on by itself, to the end", /finished/.test(document.getElementById("status").textContent));
 
-    document.getElementById("kind").value = "table"; document.getElementById("kind").dispatchEvent(new Event("change", { bubbles: true }));
+    change("kind", "table"); await ready();
     is("a table canon: a new one", C().kernel().kind === "table" && C().game().t === 0);
+
+    // 3/2, by turns: 4 bars, 10 beats, a middle of two
+    change("kind", "crab"); document.querySelector('input[name=timing][value=turns]').click(); change("meter", "3"); change("bars", 4);
+    is("3/2: counted", await ready());
+    const o3 = C().kernel();
+    is("3/2: 4 bars are 10 beats, its middle a pair (beats 5 and 6)", o3.n === 10 && o3.spec.b === 3 && o3.order[o3.steps - 1].length === 2);
+    is("3/2: a bar line every three beats", document.querySelectorAll("#score .barline").length === 4);
+    while (C().game().t < o3.n) okKeys()[0].click();
+    const g3 = C().game();
+    is("3/2: played to the end, a crab the kernel accepts", /finished/.test(document.getElementById("status").textContent) && o3.count(g3.M, o3.steps) === 1);
+    change("bars", 7);
+    is("3/2: at most 5 bars", C().kernel().spec.b === 3 && C().ui().bars === 5 && await ready());
     is("no error on the page", errors.length === 0);
   } catch (e) {
     is("the page ran: " + (e.message || e), false);
