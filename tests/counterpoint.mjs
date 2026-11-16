@@ -149,6 +149,10 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
   is("a crab an octave below, 11 beats: 6959, as in Study 43", crab.count() === 6959);
 }
 
+// Study 46 plays on Study 43's kernels, as they are
+for (const f of ["kernel.mjs", "mirror.mjs"])
+  is(`Study 46's ${f} is Study 43's`, readFileSync(join(root, "studies/46-crab-live/kairotic", f), "utf8") === readFileSync(join(root, "studies/43-mirrors/kairotic", f), "utf8"));
+
 const bad = results.filter((x) => !x[1]);
 console.log(`${results.length - bad.length} / ${results.length} passed`);
 for (const [w, ok, d] of results) if (!ok) console.log("  FAIL " + w + (d !== undefined ? " · " + d : ""));
