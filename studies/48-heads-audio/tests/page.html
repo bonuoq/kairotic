@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 48 · heads~ · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, its ClojureScript), with real sound: Start makes the
+// AudioWorklet, the phrase loops into the span, and what the worklet reports comes back to the page.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  const H = () => window.kairoticHeadsAudio;
+  const wait = async (ok, ms = 8000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const head = (id) => H().state() && Array.from(H().state().heads).find((h) => h.id === id);
+  const field = (id, k) => document.querySelector(`#heads [data-head="${id}"][data-k="${k}"]`);
+  const change = (el, v) => { el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); };
+  try {
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticBase = "../kairotic/";
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    is("before Start: silent, the span waiting", /press Start/.test(document.getElementById("span").textContent) && !H().on());
+    is("nine presets, thirteen keys", document.querySelectorAll("[data-preset]").length === 9 && document.querySelectorAll("#keys [data-key]").length === 13);
+    is("the canon: a writer and a reader, one a row", document.querySelectorAll("#heads .head.w").length === 1 && document.querySelectorAll("#heads .head.r").length === 1);
+
+    document.getElementById("go").click();
+    const started = await wait(() => H().state() && Array.from(H().state().peaks).some((p) => p > 0.01));
+    is("Start: the worklet runs and the phrase is written into the span" + (H().error() ? " (" + H().error() + ")" : ""), started);
+    const t0 = H().state() && H().state().t;
+    await sleep(300);
+    is("time goes on", H().state() && H().state().t > t0);
+    is("the span drawn: the sound and both heads", document.querySelectorAll("#span .wave").length === 1 && document.querySelectorAll("#span line.whead, #span line.rhead").length === 2);
+    is("each row shows where its head is", /\d\.\d\d s/.test(document.querySelector('#heads [data-row="r1"] .pos').textContent));
+
+    change(field("r1", "d"), 3);
+    is("a reader's new d: a seek, crossfaded", await wait(() => head("r1").d === 3, 2000));
+    is("... it is 3 s behind its writer", await wait(() => { const w = head("w").p, r = head("r1").p; return Math.abs(((w - r + 8) % 8) - 3) < 0.05; }, 2000));
+
+    document.querySelector('[data-preset="augmentation"]').click();
+    await sleep(1200);
+    is("augmentation: speed 0.5, it falls behind (more than its d)", (() => { const w = head("w").p, r = head("r1").p; return ((w - r + 8) % 8) > 0.9; })());
+
+    document.querySelector('[data-preset="ends"]').click();
+    is("from both ends: a fixed span, two writers", await wait(() => H().state().circular === false, 2000) && document.querySelectorAll("#heads .head.w").length === 2 && /fixed span/.test(document.getElementById("span-sub").textContent));
+
+    document.querySelector('[data-preset="round"]').click();
+    is("round: the writer listens to the input and to r1, with its feed", field("w", "listen").value === "in+r1" && field("w", "feed") !== null);
+    change(field("w", "listen"), "");
+    is("... listening to nothing (it erases): no feed", H().heads()[0].listen.length === 0 && field("w", "feed") === null);
+
+    document.querySelector('[data-preset="eraser"]').click();
+    is("eraser: two writers, two readers", document.querySelectorAll("#heads .head.w").length === 2 && document.querySelectorAll("#heads .head.r").length === 2);
+
+    document.querySelector('[data-preset="canon"]').click();
+    await sleep(600);
+    const cue = document.querySelector('#heads [data-row="w"] .cue');
+    cue.querySelector(".cue-t").value = "5";
+    cue.querySelector('[data-cue="ovr"]').click();
+    is(":ovr t: the writer goes to t and on at speed 1", await wait(() => { const p = head("w").p; return p > 5 && p < 5.5; }, 2000));
+
+    document.querySelector('[data-add="reader"]').click();
+    is("+ reader: one more head, in the worklet too", document.querySelectorAll("#heads .head.r").length === 2 && await wait(() => H().state().heads.length === 3, 2000));
+    change(field("r3", "at"), "hand");
+    is("a head's source changed: its fields follow", field("r3", "target") !== null);
+
+    document.getElementById("go").click();
+    is("Stop", await wait(() => !H().on() && /silent/.test(document.getElementById("status").textContent), 2000));
+    is("no error on the page", errors.length === 0 && !H().error());
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  document.getElementById("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Study 48 · heads~**: Study 47's heads with sound. A span of samples (a ring~, or a fixed work) and heads, each a
+  head of its own: writers are tape heads — they write what they listen to (the input, or a reader times its feed)
+  on every sample they pass, silence too, replacing (`ovr`) or keeping what was there times `keep` (`mix`); readers
+  sound where they are, following a writer (d, then speed: pitch as well as time), on a clock, a signal or by hand,
+  a new d gliding or, beyond the jump, seeking with a crossfade. `:rec t` / `:ovr t`. Presets: canon, canon in
+  three, augmentation (an octave down), reverse delay, a palindrome in sound from both ends, scrubbing by hand, a
+  writer on a signal (wow), a round (feedback), an eraser. The core (`studies/48-heads-audio/kairotic/headscore.mjs`,
+  JS, in an AudioWorklet) has `tests/core.mjs` (23, also in Node); the page is ClojureScript, with `tests/page.html`.
+
 - **Study 47 · heads**: canons and rings as one model — a span of time (a ring, or a fixed work) and heads that
   write and read it, each a head of its own. Writers write where they are (replacing, or mixing); readers send what
   they cross, either way, with a jump that is a seek; a head's position comes from a clock (start and speed), a hand,
