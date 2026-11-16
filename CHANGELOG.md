@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **`cancrizans live`** (`@kairotic/theory` 0.5.0, Study 46 in the app): the crab played beat by beat. In the
+  first half your note (or the nearest that can close the crab) and, at the same beat, the box's answer — the end
+  of your own line, written ahead, the notes that leave more futures first; a cue two beats before the middle; at
+  the middle the rest of your line goes out as the score to read (a pattern), and in the second half the box plays
+  your first half backwards while you read it, a note not read as written said as a deviation. Its futuribles
+  (outlet 2) say for each note what the box will answer at the end of your line (`:end`): at temperature 0 (the
+  default) exactly that; with `temp` (or `[:temp 2]`) the box draws among its answers, and among your notes when it
+  plays for you, with its own seed (`seed`, `[:seed 7]`; reset starts the same game again). A `loadbang` counts the futures before the first note (the help shows it). On a pulse (the new
+  right inlet) the beat goes on and the box plays for you when you do not; without one, a note is a beat. Study 46
+  plays on Study 43's kernels as they are now (a test keeps them so).
+
 - **Study 46 in ClojureScript**, as the other studies: the game (`studies/46-crab-live/kairotic/live.cljs`, pure: a
   game is a map, each move returns the next) and the page (inline, as in Study 43) are ClojureScript; Study 43's
   kernel (`kernel.mjs`, `mirror.mjs`) and the sound stay JS, as in Studies 38–43. Tests: `tests/live.cljs` (18)

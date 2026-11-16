@@ -181,4 +181,46 @@ export async function theory(page, check) {
   await cljs(page, `(send! ${cz} :back)`);
   check("... back: not closed any more", !/closed/.test(await cljs(page, `(:sub (second (last-shown ${cz})))`)));
   await cljs(page, `(delete ${cz} ${zp})`);
+
+  // cancrizans live (Study 46): the crab played beat by beat — your note, and the end of your line answered
+  const lz = (await cljs(page, '(box "cancrizans -7 2 4 live midi" 8200 600)')).trim();
+  const ls_ = (k) => `(get-in @eng/rt [:states ${lz} ${k}])`;
+  await cljs(page, `(send! ${lz} 62)`);
+  check("cancrizans live: a note is a beat (no pulse): yours at the start, the box's at the end", (await until(page, ls_(":t"), (x) => x === "1", 30000)) === "1" &&
+        (await cljs(page, `[(first ${ls_(":M")}) (last ${ls_(":M")})]`)) === "[1 1]",
+        await cljs(page, `[(dissoc (get-in @eng/rt [:states ${lz}]) :cp :mi :sig) (second (last-shown ${lz}))]`));
+  for (const m of [64, 65, 64]) await cljs(page, `(send! ${lz} ${m})`);
+  check("... at the middle the rest of the line is written: the score to read", (await until(page, ls_(":t"), (x) => x === "4", 3000)) === "4" &&
+        (await cljs(page, `(every? some? ${ls_(":M")})`)) === "true");
+  await cljs(page, `(send! ${lz} 50)`);
+  check("... a note that is not the one written is said: a deviation", (await until(page, `(or ${ls_(":devs")} 0)`, (x) => x === "1", 3000)) === "1");
+  check("... the box shows what to read next", /read:/.test(await cljs(page, `(:sub (second (last-shown ${lz})))`)));
+  // the futuribles say beforehand what the box will answer at the end of your line (:end), and it does
+  const endChk = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}])
+                                         r0 ((:receive d) {:inlet 0 :value :reset :state st :args (:sig st)})
+                                         opts (some (fn [[o v]] (when (= o 2) v)) (:out r0))
+                                         o62 (first (filter #(= 62 (:midi %)) opts))
+                                         r1 ((:receive d) {:inlet 0 :value 62 :state (:state r0) :args (:sig st)})
+                                         M (:M (:state r1))]
+                                     [(count opts) (every? :end opts) (:end o62) (.midiOf (:cp st) (last M))])`);
+  check("... its futuribles for the first note, each with :end, what the box will answer — and it does", /^\[\d+ true (\d+) \1\]$/.test(endChk), endChk);
+  // with a temperature the box draws among its answers, with its seed: the same seed, the same game
+  const seeded = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}]) a (:sig st)
+                                         go (fn [s m] (:state ((:receive d) {:inlet 0 :value m :state s :args a})))
+                                         play (fn [seed] (let [s (-> st (go [:temp 3]) (go [:seed seed]) (go :reset))]
+                                                           (loop [s s i 0] (if (< i 4) (recur (go s :engine) (inc i)) (:M s)))))]
+                                     [(= (play 7) (play 7)) (> (count (distinct (map play [1 2 3 4 5 6 8 9]))) 1)])`);
+  check("... with [:temp 3] the box draws among its answers: the same seed plays the same game, others others", seeded === "[true true]", seeded);
+  await cljs(page, `(delete ${lz})`);
+
+  // on a pulse: if you play nothing, the box plays your note for you
+  const pz = (await cljs(page, '(box "cancrizans -7 2 4 live midi" 8400 600)')).trim();
+  const ps_ = (k) => `(get-in @eng/rt [:states ${pz} ${k}])`;
+  await cljs(page, `(send! ${pz} 1 :bang)`);
+  await until(page, `(some? ${ps_(":mi")})`, (x) => x === "true", 30000);
+  for (let i = 0; i < 12 && (await cljs(page, `(or ${ps_(":t")} 0)`)) !== "7"; i++) await cljs(page, `(send! ${pz} 1 :bang)`);
+  check("cancrizans live on a pulse: the crab played to the end without a note of yours", (await until(page, ps_(":t"), (x) => x === "7", 3000)) === "7" &&
+        /done/.test(await cljs(page, `(:sub (second (last-shown ${pz})))`)),
+        await cljs(page, `[(dissoc (get-in @eng/rt [:states ${pz}]) :cp :mi :sig) (second (last-shown ${pz}))]`));
+  await cljs(page, `(delete ${pz})`);
 }
