@@ -164,6 +164,19 @@ export async function theory(page, check) {
   check("comes inversion: the comes is the dux upside down about D, three beats later", ivC.every((c, t) => (t < 3 ? c === null : c === 2 - ivD[t - 3])), ivDC);
   await cljs(page, `(delete ${iv})`);
 
+  // comes with a temperature and a seed: the same seed, the same game
+  const ct = (await cljs(page, '(box "comes midi -7 3 2 0.5" 7800 760)')).trim();
+  await cljs(page, `(send! ${ct} 62)`);
+  await until(page, `(some? (get-in @eng/rt [:states ${ct} :cp]))`, (x) => x === "true", 30000);
+  const ctChance = await cljs(page, `(let [d (comp/lookup "comes") st (get-in @eng/rt [:states ${ct}]) a (:sig st)
+                                          go (fn [s m] (:state ((:receive d) {:inlet 0 :value m :state s :args a})))
+                                          play (fn [temp seed] (let [s (-> st (go [:temp temp]) (go [:seed seed]) (go :reset))]
+                                                                 (loop [s s i 0] (if (< i 7) (recur (go s :engine) (inc i)) [(:D s) (:C s)]))))]
+                                      [(= (play 3 7) (play 3 7)) (> (count (distinct (map #(play 3 %) [1 2 3 4 5 6]))) 1)
+                                       (= 1 (count (distinct (map #(play 0 %) [1 2 3]))))])`);
+  check("comes [:temp 3]: the same seed plays the same game, others others; at 0 always the same", ctChance === "[true true true]", ctChance);
+  await cljs(page, `(delete ${ct})`);
+
   // cancrizans: a crab written from both ends to the middle, sent as patterns when it closes
   const cz = (await cljs(page, '(box "cancrizans -7 2 4 midi" 8000 600)')).trim();
   const zp = (await cljs(page, '(box "print" 8000 680)')).trim();

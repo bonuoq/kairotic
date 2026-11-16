@@ -13,8 +13,8 @@
 ;; score to read, and in the second half the box plays your first half backwards while you read it (a note you play
 ;; that is not the one written is said, as a deviation). On a pulse (the right inlet) a beat goes on whether you
 ;; played or not (the box plays your note for you); without one, a note in is a beat.
-(let [origins-cp ["npm:@kairotic/theory@0.5.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
-      origins-mi ["npm:@kairotic/theory@0.5.0/dist/mirror.mjs" "kairotic/packages/theory/mirror.mjs"]
+(let [origins-cp ["npm:@kairotic/theory@0.6.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
+      origins-mi ["npm:@kairotic/theory@0.6.0/dist/mirror.mjs" "kairotic/packages/theory/mirror.mjs"]
       semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
       log2 (fn [x] (/ (js/Math.log x) (js/Math.log 2)))
       params #{:mode :k :beats :bars :table :axis}

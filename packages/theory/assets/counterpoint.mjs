@@ -659,15 +659,26 @@ export function live(o = {}) {
   }
 
   /** The comes's best note with the dux's x next: {note, futures, cost, parts}, or null when none has a future. */
-  function bestComes(D, C, x) {
-    let best = null;
+  /** A choice among candidates by cost: at temperature 0 (or without a random number r in [0, 1)) the cheapest;
+   *  above it a softmax of -cost/temperature, drawn with r. */
+  function softPick(cands, cost, temp, r) {
+    const cs = cands.slice().sort((p, q) => cost(p) - cost(q) || (p.note ?? -100) - (q.note ?? -100));
+    if (!cs.length || !(temp > 0.001) || r === undefined || r === null) return cs[0] || null;
+    const m = cost(cs[0]), ws = cs.map((c) => Math.exp((m - cost(c)) / temp)), x = r * ws.reduce((a, v) => a + v, 0);
+    let acc = 0;
+    for (let j = 0; j < cs.length; j++) { acc += ws[j]; if (x < acc) return cs[j]; }
+    return cs[cs.length - 1];
+  }
+
+  /** The comes's note with the dux's x next: the cheapest (at temperature 0), or one drawn by temp with r. */
+  function bestComes(D, C, x, temp = 0, r = null) {
+    const cands = [];
     for (const e of K.fanComes(D, C, x)) {
       if (e.reason || !(e.futures > 0)) continue;
-      const parts = pairParts(D, C, x, e.note), cost = total(parts);
-      if (!best || cost < best.cost || (cost === best.cost && (e.note ?? -100) < (best.note ?? -100)))
-        best = { note: e.note, futures: e.futures, cost, parts };
+      const parts = pairParts(D, C, x, e.note);
+      cands.push({ note: e.note, futures: e.futures, cost: total(parts), parts });
     }
-    return best;
+    return softPick(cands, (c) => c.cost, temp, r);
   }
 
   /** The dux's candidates next: {note, reason} or {note, futures, cost, comes, score} (score: its cost and the
@@ -691,7 +702,7 @@ export function live(o = {}) {
    * taken by octaves into it; between two as near, the more plausible). With the comes's best note with it.
    * {note, comes, asked, corrected, reason, futures, fan} or null when nothing can follow (the work is finished).
    */
-  function play(D, C, asked) {
+  function play(D, C, asked, opt = {}) {
     if (D.length >= n) return null;
     const F = fan(D, C), ok = F.filter((e) => e.futures > 0);
     if (!ok.length) return null;
@@ -710,21 +721,24 @@ export function live(o = {}) {
         : e.reason ? e.reason
         : "no way to finish the canon from it";
     }
-    return { note: best.note, comes: best.comes, asked: r, corrected: reason !== null, reason, futures: best.futures, score: best.score, fan: F };
+    // the comes: the cheapest (as the futuribles say, :comes), or with a temperature one drawn among those with a future
+    const comes = opt.temp > 0.001 && opt.r !== undefined ? bestComes(D, C, best.note, opt.temp, opt.r).note : best.comes;
+    return { note: best.note, comes, asked: r, corrected: reason !== null, reason, futures: best.futures, score: best.score, fan: F };
   }
 
   /** The note before held over the beat (a tie), as play gives it: when it may not be held, the nearest that can. */
-  function hold(D, C) {
+  function hold(D, C, opt = {}) {
     if (!D.length) return null;
-    const r = play(D, C, semis(D[D.length - 1]));
+    const r = play(D, C, semis(D[D.length - 1]), opt);
     if (r && r.corrected) r.reason = `${pitchName(D[D.length - 1])} cannot be held: ${r.reason}`;
     return r;
   }
 
-  /** The engine's own next pair (the most plausible), as play gives it, or null. */
-  function engine(D, C) {
-    const f = futuribles(D, C)[0];
-    return f ? play(D, C, semis(f.note)) : null;
+  /** The engine's own next pair, as play gives it, or null: the most plausible, or with opt {temp, r, r2} the
+   *  dux's note drawn by temp with r among the futuribles (by their score), the comes's with r2. */
+  function engine(D, C, opt = {}) {
+    const f = softPick(futuribles(D, C), (c) => c.score, opt.temp, opt.r);
+    return f ? play(D, C, semis(f.note), { temp: opt.temp, r: opt.r2 }) : null;
   }
 
   /** The debts pending at this point, in words. */

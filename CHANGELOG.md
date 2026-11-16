@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`comes`: a temperature and a seed** (`@kairotic/theory` 0.6.0), as `cancrizans live` has: `temp` (`[:temp 1.5]`)
+  draws the comes among its candidates when the imitation is below 1, and in `engine` the dux among the futuribles
+  (by their score), with the box's own seed (`seed`, `[:seed 7]`; reset starts the same game again). At 0, the
+  default, nothing changes: the comes is the one the futuribles say (`:comes`).
+
 - **`cancrizans live`** (`@kairotic/theory` 0.5.0, Study 46 in the app): the crab played beat by beat. In the
   first half your note (or the nearest that can close the crab) and, at the same beat, the box's answer — the end
   of your own line, written ahead, the notes that leave more futures first; a cue two beats before the middle; at

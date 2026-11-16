@@ -715,7 +715,7 @@
     :see ["comes" "pbind" "player"]}
 
    "comes"
-   {:package "@kairotic/theory" :usage "comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [inversion] [augmentation] [live] [nocues] [midi]"
+   {:package "@kairotic/theory" :usage "comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [temp 0] [seed 1] [fourth] [inversion] [augmentation] [live] [nocues] [midi]"
     :doc "Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. Notes may be held over the beat (ties), and a dissonance may fall on a strong beat as a suspension. By turns (the default) one note in is one beat; live, a pulse on the right is a beat, and a note lasts until the next one is struck."
     :inlets ["the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · :hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · :end (the section ends: the next note begins a new canon) · :engine · :back · :reset"
              "live: the pulse (a bang from a metro or a pulse): a beat"]
@@ -723,7 +723,9 @@
     :messages [[":hold" "by turns: the note held over the next beat (a tie)"] [":engine" "the box plays the next pair itself, the most plausible"]
                [":back" "the last pair taken back"] [":reset" "a new canon"] [":end" "the end of the section, from an analysis (live, and the cues off with nocues)"] ["[:midi 62]" "a MIDI note as the dux's next note"]
                ["[:imitation 0.5]" "how much the comes imitates the dux (1 a canon … 0 free)"] ["[:transform :inversion]" "the comes upside down about the axis ([:axis 62], a MIDI note; the final by default)"]
-               ["[:transform :augmentation]" "the comes twice as slow (a strict canon, six bars at most)"] ["[:k -4]" "the comes a 5th below"]]
+               ["[:transform :augmentation]" "the comes twice as slow (a strict canon, six bars at most)"]
+               ["[:temp 1.5]" "the comes drawn among the candidates (imitation below 1), and the dux in engine (0: the one the futuribles say)"]
+               ["[:seed 7]" "its chance: the same seed, the same game (reset: again)"] ["[:k -4]" "the comes a 5th below"]]
     :example (lines "(box :b1 \"keyboard 60 24\" 40 30)" "(box :b2 \"comes\" 40 130)" "(box :b3 \"synth~\" 40 200)" "(box :b4 \"synth~\" 160 200)"
                     "(box :b5 \"dac~\" 40 260)" "(box :b6 \"print\" 280 200)" "(box :b7 \"msg :engine\" 220 100)"
                     "(connect :b1 0 :b2 0)" "(connect :b7 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)"
