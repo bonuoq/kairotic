@@ -201,13 +201,13 @@ See also: `msg`, `loadbang`, `metro`
 
 ### cancrizans · `@kairotic/theory`
 
-`cancrizans [mode] [k -7] [beats 2] [bars 6] [temp 0] [seed 1] [table] [live] [midi]`
+`cancrizans [mode] [system] [k -7] [beats 2] [bars 6] [temp 0] [seed 1] [table] [live] [midi]`
 
 A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards; with table, backwards and upside down — the score read by a second player from across the table, a musical ambigram. Each step writes a note at the start, then one at the end; the futuribles are the ways to close the work in the middle. When it closes, both voices go out as patterns.
 
 **Inlets** 
 
-0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · engine · back · reset · [:k -4], [:mode :hypodorian], [:bars 5], [:table true], [:axis 62]: a new work
+0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · engine · back · reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work
 1. live: the pulse (a bang from a metro or a pulse): a beat, with your note or the box's for you
 
 **Outlets** 
@@ -225,6 +225,7 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 - `[:table true]`: a table canon: backwards and upside down
 - `[:temp 2]`: live: the box draws among its answers (0: always the one :end says)
 - `[:seed 7]`: live: its chance (reset: the same game again)
+- `[:system :septimal31]`: another system (Study 42), or an EDN map: its modes and tuning
 
 **Try:** Click engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds. Play notes on a keyboard into it instead (the note at the start, then the one at the end).
 
@@ -378,13 +379,13 @@ See also: `pitch~`, `mt`, `features~`
 
 ### comes · `@kairotic/theory`
 
-`comes [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [temp 0] [seed 1] [fourth] [inversion] [augmentation] [live] [nocues] [midi]`
+`comes [mode] [system] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [temp 0] [seed 1] [fourth] [inversion] [augmentation] [live] [nocues] [midi]`
 
-Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. Notes may be held over the beat (ties), and a dissonance may fall on a strong beat as a suspension. By turns (the default) one note in is one beat; live, a pulse on the right is a beat, and a note lasts until the next one is struck.
+Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. Notes may be held over the beat (ties), and a dissonance may fall on a strong beat as a suspension. By turns (the default) one note in is one beat; live, a pulse on the right is a beat, and a note lasts until the next one is struck. The system (Study 42) — the scale, its tuning and its rules — is diatonic by default, or meantone, septimal31, pentatonic, or an EDN map: its modes come with it, and the notes out are tuned.
 
 **Inlets** 
 
-0. the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · :hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · :end (the section ends: the next note begins a new canon) · :engine · :back · :reset
+0. the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · :hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:system :pentatonic], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · :end (the section ends: the next note begins a new canon) · :engine · :back · :reset
 1. live: the pulse (a bang from a metro or a pulse): a beat
 
 **Outlets** 
@@ -408,6 +409,7 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 - `[:temp 1.5]`: the comes drawn among the candidates (imitation below 1), and the dux in engine (0: the one the futuribles say)
 - `[:seed 7]`: its chance: the same seed, the same game (reset: again)
 - `[:k -4]`: the comes a 5th below
+- `[:system :pentatonic]`: another system (Study 42): meantone, septimal31, pentatonic, diatonic, or an EDN map {:tuning … :modes …}
 
 **Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone.
 
