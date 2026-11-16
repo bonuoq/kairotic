@@ -206,5 +206,9 @@ export async function theory(page, check) {
   check("cancrizans live on a pulse: the crab played to the end without a note of yours", (await until(page, ps_(":t"), (x) => x === "7", 3000)) === "7" &&
         /done/.test(await cljs(page, `(:sub (second (last-shown ${pz})))`)),
         await cljs(page, `[(dissoc (get-in @eng/rt [:states ${pz}]) :cp :mi :sig) (second (last-shown ${pz}))]`));
+  const dbg = await cljs(page, `(try (let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${pz}])]
+                                    (pr-str (dissoc (:state ((:receive d) {:inlet 0 :value 62 :state (assoc st :pulsed false :t 0 :M []) :args (:sig st)})) :cp :mi :sig)))
+                                  (catch :default e (str "ERR " (.-message e))))`);
+  check("DEBUG cancrizans live, a note as a beat", !/ERR/.test(dbg), dbg);
   await cljs(page, `(delete ${pz})`);
 }
