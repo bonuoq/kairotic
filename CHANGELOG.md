@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 46 in ClojureScript**, as the other studies: the game (`studies/46-crab-live/kairotic/live.cljs`, pure: a
+  game is a map, each move returns the next) and the page (inline, as in Study 43) are ClojureScript; Study 43's
+  kernel (`kernel.mjs`, `mirror.mjs`) and the sound stay JS, as in Studies 38–43. Tests: `tests/live.cljs` (18)
+  and `tests/page.html`.
+
 - **Study 46 · crab live**: a crab canon played live, on Study 43's kernel. In the first half you choose your note
   among the ones that can still close the crab, and the engine answers at the same beat with the end of your own line
   (written ahead on the score); at the middle the rest of your line comes out as a score to read, and in the second

@@ -180,10 +180,277 @@ ul.q li::marker { color: var(--kairos); }
 </section>
 </main>
 
-<script type="module">
-// The page (kairotic/page.mjs): the game (kairotic/live.mjs) on Study 43's kernel (kairotic/mirror.mjs).
-import { mount } from "./kairotic/page.mjs";
-try { mount(); } catch (e) {
-  const st = document.getElementById("status"); st.textContent = "Error: " + (e.message || e); st.style.color = "var(--error)"; console.error(e);
-}
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// Study 43's kernel (kairotic/kernel.mjs, kairotic/mirror.mjs: JS, for counting the futures) and the sound
+// (kairotic/sound.mjs), then the game (kairotic/live.cljs) and the page (below), evaluated here so that an error
+// arrives with its message.
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) {
+    var st = document.getElementById("status");
+    st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e);
+  }
+  Promise.all([import("./kairotic/kernel.mjs"), import("./kairotic/mirror.mjs"), import("./kairotic/sound.mjs"),
+               fetch("kairotic/live.cljs", { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read kairotic/live.cljs"); return r.text(); })])
+    .then(function (ks) {
+      window.kairoticKernel = ks[0]; window.kairoticMirror = ks[1]; window.kairoticSound = ks[2];
+      try { scittle.core.eval_string(ks[3]); } catch (e) { throw new Error("kairotic/live.cljs: " + (e.message || e)); }
+      scittle.core.eval_string(document.getElementById("page-cljs").textContent);
+    }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns crab-live-page (:require [clojure.string :as str] [kairotic.crab-live :as cl]))
+
+;; Kairotic · Study 46 · crab live: the page. You play the first half choosing among the notes that can close the
+;; crab; the engine answers each beat with the end of your own line; at the middle the rest of your line comes out
+;; as a score to read, and the engine plays your first half backwards. By turns (a note in is a beat) or on a pulse
+;; (the beat goes on: the note you played since the last one, or the engine's for you). No score following: in the
+;; second half the engine only plays its part. The game is kairotic/live.cljs; the kernel Study 43's (JS).
+
+(def K (.-kairoticKernel js/window))
+(def Mi (.-kairoticMirror js/window))
+(def D (.-DIATONIC K))
+(def S (.makeSystem K D))
+(def snd (.synth (.-kairoticSound js/window)))
+(def key-names ["a" "s" "d" "f" "g" "h" "j" "k" "l" ";" "'"])
+
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;")))
+(defn pname [s] (.pitchName S s))
+
+;; ───────── state ─────────
+;; ui: the crab as set and how it is played · st: the kernel :o, the game :g, the count :total (nil while
+;; counting) and its :progress, the note :pending on a pulse, the pulse's :timer and :next-at
+
+(defonce ui (atom {:kind "crab" :k -7 :mode "dorian" :b 2 :bars 5 :timing "turns" :tempo 72 :sound true :seed 1}))
+(defonce st (atom {:o nil :g nil :total nil :progress 0 :pending nil :timer nil :next-at 0}))
+
+(defn max-bars [] (if (= 3 (:b @ui)) 5 7))          ; in 3/2 the crabs grow fast: 57418 in 5 bars
+(defn beat-sec [] (/ 60 (:tempo @ui)))
+
+(defn spec []
+  (let [{:keys [mode b bars kind k]} @ui
+        m (aget (.-modes D) mode) tonic (.-final m) amb (.-ambitus m)]
+    ;; the system goes in as the kernel keeps it (its object), beside the rest of the spec as data
+    (js/Object.assign (clj->js {:tonic tonic :lo (+ tonic (aget amb 0)) :hi (+ tonic (aget amb 1)) :n (inc (* b (dec bars))) :b b
+                                :spacing 11 :starts (mapv #(+ tonic %) (array-seq (.-starts m)))
+                                :transform {:kind kind :k k :axis tonic}})
+                      #js {:system D})))
+
+(declare render! stop-pulse!)
+
+(defn new-game!
+  "A new crab: its works are counted first, a few milliseconds at a time (in 3/2 it can take seconds); until then
+   nothing is played. Returns a promise, resolved when it can be."
+  []
+  (stop-pulse!)
+  (let [o (.mirror Mi (spec)) seed (:seed @ui)]
+    (swap! ui update :seed inc)
+    (swap! st assoc :o o :g (cl/create o (cl/seeded (* 7919 seed))) :total nil :progress 0 :pending nil)
+    (render!)
+    (.then (.countAsync o #js {:budget 14 :onProgress (fn [f] (when (identical? o (:o @st)) (swap! st assoc :progress f) (render!)))})
+           (fn [v] (when (identical? o (:o @st)) (swap! st assoc :total v) (render!))))))
+
+;; ───────── playing ─────────
+
+(defn sound! [b played-midi]
+  (when (and (:sound @ui) b)
+    (let [you (if (some? played-midi) played-midi (when (some? (:you b)) (.midi S (:you b))))]
+      (when (some? you) (.note snd you (* 0.95 (beat-sec)) 0))
+      (when (some? (:engine b)) (.note snd (.midi S (:engine b)) (* 0.95 (beat-sec)) 1)))))
+
+(defn ready? [] (and (:g @st) (some? (:total @st))))
+
+(defn play!
+  "A note of yours (a step of the system): by turns a beat; on a pulse it waits for the next one."
+  [x]
+  (when (ready?)
+    (.resume snd)
+    (if (= "pulse" (:timing @ui))
+      (swap! st assoc :pending x)
+      (let [g (:g @st)]
+        (case (cl/phase g)
+          :choose (let [g2 (cl/choose g x)] (swap! st assoc :g g2) (sound! (:last g2) nil))
+          :read (let [g2 (cl/read-beat g)] (swap! st assoc :g g2) (sound! (:last g2) (.midi S x)))
+          nil)))
+    (render!)))
+
+(defn tick!
+  "A beat of the pulse: the note played since the last one, or the engine's for you; after the middle, read."
+  []
+  (when (ready?)
+    (let [{:keys [g pending]} @st
+          g2 (case (cl/phase g)
+               :choose (if (some? pending) (cl/choose g pending) (cl/auto g))
+               :read (cl/read-beat g)
+               nil)]
+      (when g2
+        (swap! st assoc :g g2 :pending nil)
+        (sound! (:last g2) (when (and (some? pending) (= :read (cl/phase g))) (.midi S pending)))
+        (when (= :done (cl/phase g2)) (stop-pulse!)))
+      (render!))))
+
+(defn stop-pulse! [] (when-let [t (:timer @st)] (js/clearInterval t)) (swap! st assoc :timer nil))
+(defn start-pulse! []
+  (stop-pulse!) (.resume snd)
+  (swap! st assoc :next-at (+ (js/performance.now) (* 1000 (beat-sec)))
+         :timer (js/setInterval (fn [] (when (>= (js/performance.now) (:next-at @st))
+                                         (swap! st update :next-at + (* 1000 (beat-sec)))
+                                         (tick!)))
+                                15))
+  (render!))
+
+;; ───────── drawing ─────────
+
+(def colw 40) (def rowh 12) (def left 46) (def top 16)
+
+(defn render-score! [o g ph pending]
+  (let [sp (.-spec o) n (.-n o) v (cl/voices g) t (:t g) steps (.-steps o)
+        [clo chi] (sort [(.T o (.-lo sp)) (.T o (.-hi sp))])
+        lo (dec (min (.-lo sp) clo)) hi (inc (max (.-hi sp) chi))
+        y (fn [s] (+ top (* rowh (- hi s)))) x (fn [c] (+ left (* colw c) (/ colw 2)))
+        w (+ left (* colw n) 24) h (+ top (* rowh (- hi lo)) 36) bottom (+ top (* rowh (- hi lo)))
+        N (.-N S) fin (mod (.-tonic sp) N)
+        sb #js [] add (fn [& xs] (doseq [s xs] (.push sb s)))]
+    (doseq [s (range lo (inc hi))]
+      (let [f (= fin (mod s N))]
+        (add "<line class=\"row" (when f " final") "\" x1=\"" left "\" x2=\"" (- w 10) "\" y1=\"" (y s) "\" y2=\"" (y s) "\"/>")
+        (when (or f (even? (- s lo))) (add "<text class=\"pname" (when f " final") "\" x=\"6\" y=\"" (y s) "\">" (pname s) "</text>"))))
+    (doseq [c (range n)]
+      (add "<line class=\"col" (when (and (= c t) (not= ph :done)) " now") "\" x1=\"" (x c) "\" x2=\"" (x c) "\" y1=\"" (- top 6) "\" y2=\"" (+ bottom 4) "\"/>")
+      (when (zero? (mod c (.-b sp)))
+        (let [xb (- (x c) (/ colw 2))] (add "<line class=\"barline\" x1=\"" xb "\" x2=\"" xb "\" y1=\"" (- top 8) "\" y2=\"" (+ bottom 6) "\"/>")))
+      (add "<text class=\"tnum\" x=\"" (x c) "\" y=\"" (- h 6) "\">" (inc c) "</text>"))
+    (let [xm (+ left (* colw (/ n 2)))]
+      (add "<line class=\"mirrorline\" x1=\"" xm "\" x2=\"" xm "\" y1=\"" (- top 10) "\" y2=\"" (+ bottom 8) "\"><title>the middle: from here you read</title></line>"))
+    ;; the score to read, from the middle, once it is written
+    (when (#{:read :done} ph)
+      (add "<rect class=\"readzone\" x=\"" (+ left (* colw steps)) "\" y=\"" (- top 8) "\" width=\"" (* colw (- n steps)) "\" height=\"" (+ (* rowh (- hi lo)) 16) "\"/>"))
+    (doseq [c (range n)]
+      (let [you (get (:you v) c) en (get (:engine v) c) played (< c t)]
+        (when (and (some? en) played)
+          (add "<rect class=\"comes\" x=\"" (- (x c) 5) "\" y=\"" (- (y en) 5) "\" width=\"10\" height=\"10\" rx=\"2\"><title>engine " (pname en) "</title></rect>"))
+        (when (some? you)
+          ;; before the middle: your notes the engine has written ahead; after it, the score to read
+          (let [cls (cond played "dux" (= ph :choose) "dux ahead" :else "dux toread")
+                what (cond played "you" (= ph :choose) "your note, written ahead by the engine" :else "to read")]
+            (add "<circle class=\"" cls "\" cx=\"" (x c) "\" cy=\"" (y you) "\" r=\"6\"><title>" what " " (pname you) "</title></circle>")))))
+    ;; what you may play now
+    (case ph
+      :choose (doseq [c (cl/options g)]
+                (let [yy (y (:note c)) xx (x t) f (:futures c)]
+                  (cond
+                    (:reason c)
+                    (do (add "<g><title>" (pname (:note c)) ": " (esc (:reason c)) "</title>")
+                        (add "<line class=\"nope\" x1=\"" (- xx 3) "\" y1=\"" (- yy 3) "\" x2=\"" (+ xx 3) "\" y2=\"" (+ yy 3) "\"/>")
+                        (add "<line class=\"nope\" x1=\"" (- xx 3) "\" y1=\"" (+ yy 3) "\" x2=\"" (+ xx 3) "\" y2=\"" (- yy 3) "\"/></g>"))
+                    (pos? (or f 0))
+                    (do (add "<circle class=\"cand" (when (= pending (:note c)) " hot") "\" data-play=\"" (:note c) "\" cx=\"" xx "\" cy=\"" yy "\" r=\"6.5\">")
+                        (add "<title>" (pname (:note c)) ": " f " way" (when (not= 1 f) "s") " to close the crab</title></circle>")
+                        (add "<text class=\"futn\" x=\"" (+ xx 10) "\" y=\"" yy "\">" f "</text>")))))
+      :read (add "<circle class=\"readnow\" cx=\"" (x t) "\" cy=\"" (y (get (:M g) t)) "\" r=\"9\"/>")
+      nil)
+    (let [svg ($ "score")]
+      (.setAttribute svg "viewBox" (str "0 0 " w " " h)) (.setAttribute svg "width" w) (.setAttribute svg "height" h)
+      (set! (.-innerHTML svg) (.join sb "")))))
+
+(defn render-keys! [o g ph pending counting]
+  (let [sp (.-spec o) t (:t g)
+        by-note (into {} (map (fn [c] [(:note c) c]) (if counting [] (cl/options g))))
+        sb #js [] add (fn [& xs] (doseq [s xs] (.push sb s)))]
+    (doseq [[i s] (map-indexed vector (range (.-lo sp) (inc (.-hi sp))))]
+      (let [c (get by-note s)
+            ok (case ph :choose (and c (nil? (:reason c)) (pos? (or (:futures c) 0))) :read (= s (get (:M g) t)) false)]
+        (add "<button type=\"button\" class=\"key" (when ok " ok") (when (= pending s) " hot") "\" data-play=\"" s "\"" (when (or counting (= ph :done)) " disabled") ">")
+        (add "<b>" (pname s) "</b><small>" (when (and (= ph :choose) ok) (:futures c)) "</small><i>" (get key-names i "") "</i></button>")))
+    (set! (.-innerHTML ($ "keys")) (.join sb ""))))
+
+(defn controls! []
+  (let [u @ui]
+    (set! (.-value ($ "kind")) (:kind u)) (set! (.-value ($ "k")) (str (:k u))) (set! (.-value ($ "mode")) (:mode u))
+    (set! (.-value ($ "meter")) (str (:b u))) (set! (.-max ($ "bars")) (max-bars)) (set! (.-value ($ "bars")) (:bars u))
+    (set! (.-value ($ "tempo")) (:tempo u)) (set! (.-checked ($ "sound")) (:sound u))
+    (doseq [el (array-seq (js/document.querySelectorAll "input[name=timing]"))] (set! (.-checked el) (= (.-value el) (:timing u))))
+    (set! (.-textContent ($ "go")) (if (= "pulse" (:timing u)) (if (:timer @st) "■ Stop" "▶ Start the pulse") "New crab"))))
+
+(defn render! []
+  (let [{:keys [o g total progress pending]} @st]
+    (when g
+      (let [counting (nil? total) ph (if counting :counting (cl/phase g)) n (.-n o) steps (.-steps o) t (:t g)]
+        (render-score! o g ph pending)
+        (render-keys! o g ph pending counting)
+        ;; the outlet: the score from the middle
+        (set! (.-textContent ($ "outlet"))
+              (if (:score g)
+                (str "[" (str/join " " (map (fn [[b s]] (str "[" (inc b) " " (pname s) "]")) (:score g))) "]")
+                (str "comes out at the middle (beat " (inc steps) "), when the engine has written the end of your line")))
+        (set! (.-textContent ($ "outlet-sub")) (if (:score g) (str "read it: beats " (inc steps) "–" n) "not yet"))
+        ;; the log
+        (set! (.-innerHTML ($ "log"))
+              (str/join "" (for [b (reverse (take-last 10 (:log g)))]
+                             (str "<li>beat " (inc (:t b)) ": you " (if (some? (:you b)) (pname (:you b)) "–")
+                                  " · engine " (if (some? (:engine b)) (pname (:engine b)) "–")
+                                  (when (:corrected b) (str " <span class=\"warn\">(" (pname (:played b)) " cannot close the crab)</span>"))
+                                  (when (:auto b) " <span class=\"soft\">(the engine played for you)</span>")
+                                  (when (:score b) " <b>· the score</b>") "</li>"))))
+        (let [here (when (= ph :choose) (cl/ways g))]
+          (set! (.-textContent ($ "status"))
+                (case ph
+                  :counting (str "counting the crabs… " (js/Math.round (* 100 progress)) "%")
+                  :done (str "finished: " n " beats · " total " crabs under these rules")
+                  :choose (str "beat " (inc t) " of " n ": choose · " here " way" (when (not= 1 here) "s") " to close it · " total " crabs")
+                  (str "beat " (inc t) " of " n ": read"))))
+        (set! (.-textContent ($ "here"))
+              (case ph
+                :counting "counting every crab first, so each note can say its future"
+                :choose "first half: you choose, the engine writes the end of your line"
+                :read "second half: you read, the engine plays your first half backwards"
+                "the crab is finished"))
+        (controls!)))))
+
+;; ───────── wiring ─────────
+
+(set! (.-innerHTML ($ "mode")) (str/join "" (for [m (js-keys (.-modes D))] (str "<option value=\"" m "\">" m "</option>"))))
+
+(.addEventListener js/document "click"
+  (fn [e]
+    (if-let [p (.. e -target (closest "[data-play]"))]
+      (play! (js/parseInt (.getAttribute p "data-play") 10))
+      (when (.. e -target (closest "#go"))
+        (if (= "pulse" (:timing @ui))
+          (if (:timer @st)
+            (do (stop-pulse!) (controls!))
+            (if (or (nil? (:g @st)) (= :done (cl/phase (:g @st))))
+              (.then (new-game!) (fn [_] (start-pulse!)))
+              (start-pulse!)))
+          (do (.resume snd) (new-game!)))))))
+
+(.addEventListener js/document "keydown"
+  (fn [e]
+    (let [tag (some-> (.-target e) .-tagName) o (:o @st)]
+      (when (and o (not (.-repeat e)) (not (.-metaKey e)) (not (.-ctrlKey e)) (not (#{"INPUT" "SELECT" "TEXTAREA"} tag)))
+        (when-let [i (first (keep-indexed (fn [i k] (when (= k (.-key e)) i)) key-names))]
+          (let [s (+ (.. o -spec -lo) i)]
+            (when (<= s (.. o -spec -hi)) (.preventDefault e) (play! s))))))))
+
+(defn on-change [id f] (.addEventListener ($ id) "change" (fn [e] (f (.-target e)))))
+(on-change "kind" (fn [el] (swap! ui assoc :kind (.-value el)) (new-game!)))
+(on-change "k" (fn [el] (swap! ui assoc :k (js/parseInt (.-value el) 10)) (new-game!)))
+(on-change "mode" (fn [el] (swap! ui assoc :mode (.-value el)) (new-game!)))
+(on-change "bars" (fn [el] (swap! ui assoc :bars (max 3 (min (max-bars) (or (js/parseInt (.-value el) 10) 5)))) (new-game!)))
+(on-change "meter" (fn [el] (swap! ui (fn [u] (let [b (js/parseInt (.-value el) 10)] (assoc u :b b :bars (min (:bars u) (if (= 3 b) 5 7)))))) (new-game!)))
+(on-change "tempo" (fn [el] (swap! ui assoc :tempo (max 30 (min 200 (or (js/parseInt (.-value el) 10) 72))))))
+(on-change "sound" (fn [el] (swap! ui assoc :sound (.-checked el))))
+(doseq [el (array-seq (js/document.querySelectorAll "input[name=timing]"))]
+  (.addEventListener el "change" (fn [e] (swap! ui assoc :timing (.. e -target -value)) (new-game!))))
+
+;; for the tests: the game as data, and the pulse's beats by hand
+(defn game-js [] (let [g (:g @st)] (clj->js (dissoc g :o :rng))))
+(set! (.-kairoticCrab js/window)
+      #js {:game game-js :kernel (fn [] (:o @st)) :ready (fn [] (boolean (ready?))) :tick tick!
+           :ui (fn [] (clj->js (assoc @ui :pulsing (boolean (:timer @st))))) :newGame new-game!})
+
+(new-game!)
 </script>

@@ -3,8 +3,9 @@
 <title>Study 46 · crab live · page tests</title>
 <pre id="out">Running…</pre>
 <div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
 <script type="module">
-// The study's page itself (styles, markup, kairotic/page.mjs), played as a person would: by turns with the keys,
+// The study's page itself (styles, markup, the kernel, kairotic/live.cljs and the page's ClojureScript), played as a person would: by turns with the keys,
 // then on a pulse whose beats the test gives by hand.
 await (async function () {
   const results = [], errors = [];
@@ -19,8 +20,11 @@ await (async function () {
     const doc = new DOMParser().parseFromString(html, "text/html");
     doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
     document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
-    const { mount } = await import("../kairotic/page.mjs");
-    mount();
+    window.kairoticKernel = await import("../kairotic/kernel.mjs");
+    window.kairoticMirror = await import("../kairotic/mirror.mjs");
+    window.kairoticSound = await import("../kairotic/sound.mjs");
+    scittle.core.eval_string(await fetch("../kairotic/live.cljs", { cache: "no-cache" }).then((r) => r.text()));
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
     const snd = document.getElementById("sound"); snd.checked = false; snd.dispatchEvent(new Event("change", { bubbles: true }));
     is("the crabs are counted first, without blocking the page", /counting/.test(document.getElementById("status").textContent) && await ready());
     const o = C().kernel(), n = o.n, mid = o.steps;
