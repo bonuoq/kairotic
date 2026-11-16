@@ -2,14 +2,14 @@
 <meta charset="utf-8">
 <title>Study 46 · crab live · game tests</title>
 <pre id="out">Running…</pre>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
 <script type="module">
-// The game, on Study 43's kernel (the same tests run in Node: node studies/46-crab-live/tests/live.mjs).
+// The kernel (Study 43's, JS), then the game (kairotic/live.cljs) and its tests, as the study loads them.
 try {
-  const { run } = await import("./live.mjs");
-  const rs = run(), bad = rs.filter((r) => !r[1]);
-  window.kairoticResults = { total: rs.length, failed: bad.map((r) => r[0]) };
-  document.getElementById("out").textContent = (rs.length - bad.length) + " / " + rs.length + " passed\n\n" +
-    rs.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n");
+  window.kairoticKernel = await import("../kairotic/kernel.mjs");
+  window.kairoticMirror = await import("../kairotic/mirror.mjs");
+  const srcs = await Promise.all(["../kairotic/live.cljs", "live.cljs"].map((m) => fetch(m, { cache: "no-cache" }).then((r) => r.text())));
+  for (const s of srcs) scittle.core.eval_string(s);
 } catch (e) {
   document.getElementById("out").textContent = "Error: " + (e.message || e);
   window.kairoticResults = { total: 0, failed: ["error: " + (e.message || e)] };
