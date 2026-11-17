@@ -396,14 +396,15 @@ Rules:
   by the key (mt/spell); `mt transpose M3` moves by an interval keeping the spelling.
   A tree box is also a piano roll ((view :bN :roll)): strokes drawn there, or (stroke :bN pts), become notes
   of the tree; (quantize! :bN) writes its free time in measures; its outlet 1 is a buffer for reader~. A freqt that shows a tree is also a
-  buffer: `phasor~` → `reader~` (left) with the freqt's outlet 1 on its right inlet gives the pitch as
+  buffer: `phasor~` → `reader~ norm` (left) with the freqt's outlet 1 on its right inlet gives the pitch as
   a signal (Hz), e.g. into a faust~ whose process takes a frequency input.
   A tree box sends its tree by itself: it needs no loadbang.
 - Sound from outside: `adc~ 1` is the microphone (asked for at ▶). `snapshot~ 50` turns any signal into
   numbers (`snapshot~ 50 db` its level), `scope~` draws it. Never connect an adc~ to dac~ without a
   `gain~` and a warning about headphones: it feeds back. `sample [seconds]` records what reaches its
-  left inlet on `rec` until `stop`; its outlet 1 into the right inlet of `reader~`, with a `phasor~` at
-  1/length Hz on the left, plays it (its outlet 0 gives the length in seconds; `!/ 1` turns it into Hz).
+  left inlet on `rec` until `stop`; its outlet 1 into the right inlet of `reader~ norm`, with a `phasor~` at
+  1/length Hz on the left, plays it (every reader and reader~ reads positions in its buffer's units — X of a
+  canvas, time of a freqt, seconds — unless it says norm: 0…1) (its outlet 0 gives the length in seconds; `!/ 1` turns it into Hz).
   A sample can be a sound from a URL that every browser fetches: `(sample! :bN {:url \"https://…\"})`.
   Prefer `github:owner/repo@ref/path.wav` (e.g. `github:tidalcycles/Dirt-Samples@master/bd/BT0A0A7.wav`,
   served by jsDelivr) or `freesound:id`: most other sites refuse it (CORS).
@@ -456,10 +457,12 @@ Rules:
   paper ([:patch x y]); `(layer :notes {:z :over :show #{:patch :present}})`; `(project :bN :viz [x y w h])`
   draws a box's view large on a layer. Explain a patch with a few marks when it helps.
   To record any stream of numbers (a knob, `snapshot~ 50 rms`, a descriptor) as strokes: `record [lo hi]`
-  → a `canvas` inlet, with `rec`/`stop`; a `reader~` reads it back as an automation.
+  → a `canvas` inlet, with `rec`/`stop`; a `reader~ norm` reads it back as an automation.
   A canon or a delay of messages: `ring [seconds]` (values on its left) → its RIGHT outlet → the right inlet
   of `reader d 1` (1 s behind; `reader d 2 speed 0.5`: later and slower); a number on a reader's left moves it
   instead. `writer` (left: what to write; middle: the ring's right outlet; right: a position) → the ring's left.
+  With sound: `ring~ [seconds]` (sound on its left) → its RIGHT outlet → the right inlet of `reader~ d 1` (a
+  delay; `speed 0.5` an octave down) or the middle inlet of `writer~` (sound left, position signal right).
   To write what is played into notation: `pitch~` → `transcribe [bpm] [notes|glide]` (left; `onset~` on its
   right) → a `freqt`'s inlet; `rec`/`stop` messages on transcribe's left.
 - `gain~ 0.2` sets its factor as an argument; a message into its right inlet changes it, a signal

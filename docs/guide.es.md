@@ -238,9 +238,11 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
   llamadas. `scope~` dibuja una señal y `snapshot~ 50 db` la convierte en números (su nivel), para que
   lo que se oye mueva el patch. Usa auriculares antes de enviar un `adc~` a `dac~`: se realimenta.
 - **Grabar**: una caja `sample` graba lo que le llega con `:rec` hasta `:stop` (o hasta su duración:
-  `sample 10`), y un `reader~` con el sample a su derecha lo reproduce en la posición de un `phasor~`
-  — `!/ 1` convierte su duración (su outlet izquierdo) en la velocidad del phasor~, y cualquier otra
-  velocidad lo toca más rápido, más lento o al revés. El sonido se queda en este navegador; la obra
+  `sample 10`), y un `reader~` con el sample a su derecha lo reproduce en la posición de su izquierda, en
+  segundos —o, como `reader~ norm`, de 0 a 1: un `phasor~` directo, con `!/ 1` convirtiendo su duración (su
+  outlet izquierdo) en la velocidad del phasor~—; cualquier otra velocidad lo toca más rápido, más lento o
+  al revés. Todo reader y reader~ lee así: en las unidades de su buffer (el eje X de un canvas, el tiempo de
+  un freqt, segundos), o de 0 a 1 con `norm`. El sonido se queda en este navegador; la obra
   guarda su dibujo, así que una obra abierta en otro sitio lo muestra y dice que no está.
   `(load-sound! :bN)` trae un archivo, `(save-sound :bN)` lo guarda como WAV. Un sonido **desde una
   URL** — `(load-sound! :bN "https://…/voz.ogg")`, una cadena enviada al sample o
@@ -268,7 +270,7 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
 - **Grabar un gesto**: `record [lo hi]` escribe cualquier flujo de números en un `canvas` como trazos en
   el tiempo — un knob, una envolvente (`snapshot~ 50 rms`), un descriptor (`features~ 20 centroid`) —:
   `:rec`, tocar, `:stop`. Un valor se mantiene hasta el siguiente; los ejes siguen a la toma. Se edita
-  como cualquier dibujo y se vuelve a leer con `phasor~` → `reader~` como automatización.
+  como cualquier dibujo y se vuelve a leer con `phasor~` → `reader~ norm` como automatización.
 - **Grabar desde un punto**: `:rec t` (`msg :rec 4`) en un `sample`, `record` o `transcribe` conserva lo
   que había antes de t (segundos; pulsos en transcribe) y graba desde t, sustituyendo lo que venía
   después: un punch-in. `:ovr t` (`msg :ovr 4`; `:ovr` solo, desde 0) sobrescribe solo lo que cubre la
@@ -284,6 +286,15 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
   del ring · una posición) escribe donde está, desde cualquier fuente, borrando lo que pasa (o `writer
   mix`, dejándolo); `:rec t` / `:ovr t` lo llevan a t a velocidad 1. Un reader que entra en un writer del
   mismo ring es una realimentación: un canon perpetuo.
+- **Lo mismo con sonido**: `ring~ [segundos]` guarda los últimos segundos del sonido de su izquierda (sin
+  nada ahí, su cabezal no escribe: el ring es lo que escriben sus `writer~`). Un `reader~` en su salida
+  derecha sin señal de posición sigue a su cabezal: `reader~ d 1` un delay, `reader~ d 1 speed 0.5` una
+  octava abajo y quedándose atrás, `speed -1` al revés; una `d` nueva (`msg :d 0.25`) se desliza, doblando
+  la altura, o salta con un fundido. Con una señal de posición lee ahí (segundos; `norm`: 0…1, un
+  `phasor~`). Un `writer~` (sonido · el buffer del ring~ · una señal de posición) escribe como un cabezal de
+  cinta: `ovr` sustituye, también con silencio; `writer~ mix 0.8` suma, conservando lo que había por 0,8.
+  Hasta 8 cabezales comparten el único nodo del ring~, así que una realimentación dentro de él es exacta (a
+  través de otras cajas cuesta un bloque de 128 muestras).
 
 ## 4. La historia
 

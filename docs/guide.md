@@ -230,9 +230,11 @@ function by itself).
   `scope~` draws a signal and `snapshot~ 50 db` turns it into numbers (its level), so what is heard can
   drive the patch. Use headphones before sending an `adc~` to `dac~`: it feeds back.
 - **Recording**: a `sample` box records what reaches it on `:rec` until `:stop` (or its length:
-  `sample 10`), and a `reader~` with the sample on its right plays it at the position of a `phasor~`
-  — `!/ 1` turns its length (its left outlet) into the speed of the phasor~, and any other speed plays
-  it faster, slower or backwards. The sound stays in this browser; the work keeps its picture, so a work
+  `sample 10`), and a `reader~` with the sample on its right plays it at the position on its left, in
+  seconds — or, as `reader~ norm`, from 0 to 1: a `phasor~` straight in, with `!/ 1` turning its length (its
+  left outlet) into the speed of the phasor~; any other speed plays it faster, slower or backwards. Every
+  reader and reader~ reads this way: in the units of its buffer (the X axis of a canvas, the time of a
+  freqt, seconds), or 0…1 with `norm`. The sound stays in this browser; the work keeps its picture, so a work
   opened elsewhere shows it and says it is not there. `(load-sound! :bN)` brings in a file,
   `(save-sound :bN)` saves it as WAV. A sound **from a URL** — `(load-sound! :bN "https://…/voice.ogg")`,
   a string sent to the sample, or `(sample! :bN {:url "…"})` in the code — is fetched by every browser that
@@ -258,7 +260,7 @@ function by itself).
 - **Recording a gesture**: `record [lo hi]` writes any stream of numbers into a `canvas` as strokes over
   time — a knob, an envelope (`snapshot~ 50 rms`), a descriptor (`features~ 20 centroid`) —: `:rec`,
   play, `:stop`. A value holds until the next one; the axes follow the take. Edit it like any drawing and
-  read it back with `phasor~` → `reader~` as an automation.
+  read it back with `phasor~` → `reader~ norm` as an automation.
 - **Recording from a point**: `:rec t` (`msg :rec 4`) on a `sample`, `record` or `transcribe` keeps what
   was there before t (seconds; beats for transcribe) and records from t on, replacing what came after —
   a punch-in. `:ovr t` (`msg :ovr 4`; `:ovr` alone, from 0) overwrites only what the take covers, from t
@@ -272,6 +274,14 @@ function by itself).
   A `writer` (what to write · the ring's buffer · a position) writes where it is, from any source, erasing
   what it passes (or `writer mix`, leaving it); `:rec t` / `:ovr t` send it to t at speed 1. A reader into
   a writer on the same ring is feedback: a round.
+- **The same with sound**: `ring~ [seconds]` keeps the last seconds of the sound on its left (with nothing
+  there its own head does not write: the ring is what its `writer~`s write). A `reader~` on its right
+  outlet without a position signal follows its head: `reader~ d 1` a delay, `reader~ d 1 speed 0.5` an
+  octave down and falling behind, `speed -1` backwards; a new `d` (`msg :d 0.25`) glides, the pitch bending,
+  or seeks with a crossfade. With a position signal it reads there (seconds; `norm`: 0…1, a `phasor~`). A
+  `writer~` (sound · the ring~'s buffer · a position signal) writes as a tape head — `ovr` replaces, silence
+  too; `writer~ mix 0.8` adds, keeping what was there times 0.8. Up to 8 heads share the ring~'s one node, so
+  a feedback inside it is exact (through other boxes it costs a block of 128 samples).
 
 ## 4. The history
 

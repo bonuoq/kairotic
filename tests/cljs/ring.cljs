@@ -4,6 +4,7 @@
   (:require [kairotic.components :as comp]
             [kairotic.span :as span]
             [kairotic.ring]
+            [kairotic.signal :as sig]
             [kairotic.test :as t]))
 
 (defn near [a b] (and (number? a) (number? b) (< (js/Math.abs (- a b)) 1e-6)))
@@ -63,7 +64,21 @@
       (t/is "a following reader: first the distance, then the speed" (near (span/follow-at r st 12) (- 2 1 1)))
       (t/is "... the instant it meets a place" (near (span/when-met 0 12 0.5 0.25) 12.5)))
 
+    ;; ── reader~'s words: a head's on a ring~ are neither voices nor a stroke ──
+    (t/eq "reader~ d 2: one voice (2 is its d)" (sig/voices-of [:d 2]) 1)
+    (t/eq "reader~ 3 d 2: three voices" (sig/voices-of [3 :d 2]) 3)
+    (t/eq "reader~ path norm: norm is not the name of a stroke" (sig/stroke-of [:path :norm]) nil)
+    (t/eq "reader~ path t2: the stroke t2" (sig/stroke-of [:path :norm :t2]) :t2)
+    (let [cv (-> kairotic.canvas/generic-empty (assoc-in [:ax :x] {:lo 0 :hi 4 :log false})
+                 (assoc-in [:strokes :t1] {:pts [[1 0.5] [3 0.5]]}))
+          rd (fn [args v] (:out ((:receive (comp/lookup "reader")) {:inlet 0 :value v :args args :buffer cv})))]
+      (t/eq "reader on a canvas: a position along X, in its units" (second (second (rd [] 2))) [0.5])
+      (t/eq "reader norm: 0…1 covers the axis" (second (second (rd [:norm] 0.5))) [0.5])
+      (t/eq "... 0.1 is before the stroke" (second (second (rd [:norm] 0.1))) []))
     ;; ── the ring box ──
+    (let [label (fn [args shown] (:label ((:derive (comp/lookup "ring")) {:args args :shown shown})))]
+      (t/eq "its label says its length before its first message" (label [4] nil) "ring 4 s · 0 kept")
+      (t/eq "... and without one, 8" (label [] nil) "ring 8 s · 0 kept"))
     (let [recv (fn [st v at] ((:receive (comp/lookup "ring")) {:state st :args [4] :inlet 0 :value v :at at}))
           r1 (recv nil 60 10) r2 (recv (:state r1) 62 10.5)]
       (t/eq "ring: its first message starts its time and tells its readers" (:out r1) [[1 :start]])

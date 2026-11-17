@@ -189,7 +189,7 @@
     :try "Press ▶: the reader goes along X and prints the height of the stroke. Draw another stroke and listen to the list grow."
     :steps [{:title "An automation"
              :note "A reader~ goes along the canvas at audio rate: its value is a signal that can move a parameter, here the factor of a gain~ (a tremolo drawn by hand)."
-             :example (lines "(box :b6 \"phasor~ 0.5\" 300 15)" "(box :b7 \"reader~\" 300 290)" "(box :b8 \"osc~ 330\" 420 290)"
+             :example (lines "(box :b6 \"phasor~ 0.5\" 300 15)" "(box :b7 \"reader~ norm\" 300 290)" "(box :b8 \"osc~ 330\" 420 290)"
                              "(box :b9 \"gain~ 0\" 420 340)" "(box :b10 \"dac~\" 420 390)"
                              "(connect :b6 0 :b7 0)" "(connect :b1 1 :b7 1)" "(connect :b8 0 :b9 0)" "(connect :b7 0 :b9 1)"
                              "(connect :b9 0 :b10 0)" "(connect :b9 0 :b10 1)")
@@ -225,7 +225,7 @@
                ["(keep! :bN)" "writes the tree it shows into its buffer, with its recipe beside it (the tree and the boxes that made it)"]
                ["(recipe :bN) · (remake! :bN)" "the recipe of a kept buffer · the tree written back, without the changes made since"]
                ["{ } in the header (or a double-click on its right) · (source :bN)" "the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event"]]
-    :example (lines "(box :b1 \"freqt\" 40 60)" "(box :b2 \"phasor~ 0.25\" 40 15)" "(box :b3 \"reader~ 1 gate\" 40 290)"
+    :example (lines "(box :b1 \"freqt\" 40 60)" "(box :b2 \"phasor~ 0.25\" 40 15)" "(box :b3 \"reader~ norm 1 gate\" 40 290)"
                     "(box :b4 \"osc~\" 40 340)" "(box :b5 \"gain~\" 40 390)" "(box :b6 \"dac~\" 40 440)"
                     "(connect :b2 0 :b3 0)" "(connect :b1 1 :b3 1)" "(connect :b3 0 :b4 0)" "(connect :b3 1 :b5 1)"
                     "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
@@ -248,7 +248,7 @@
     :see ["canvas" "reader" "tree"]}
 
    "reader"
-   {:inlets ["a position (along X, or Y with reader y; 0…1 with reader path) · on a ring: a position in seconds (0…1 with norm), or :d, :speed, :stop"
+   {:inlets ["a position in the units of the buffer (along X, or Y with reader y; 0…1 with reader norm, or with reader path) · on a ring: in seconds (0…1 with norm), or :d, :speed, :stop"
              "the buffer of a canvas, freqt or ring (a ring's right outlet)"]
     :outlets ["the values where the position crosses something (a list) · from a ring, each value as it was written" "their ids (sent first), for voices"]
     :messages [["reader d 1 · msg :d 1" "on a ring: it follows the ring's head 1 s behind, on its own — a canon, a delay; it starts when the ring's time does"]
@@ -355,15 +355,43 @@
    {:inlets ["a number: the new constant value"] :outlets ["a constant signal"] :see ["phasor~" "osc~"]}
 
    "reader~"
-   {:inlets ["the position signal (0…1), usually a phasor~" "the buffer of a canvas or freqt, or the sound of a sample (then it plays it, 0 its start and 1 its end)"]
-    :outlets ["one signal per voice (the values it crosses)" "with gate: one more per voice, 1 where it sounds and 0 where not"]
-    :example (lines "(box :b1 \"freqt\" 40 60)" "(box :b2 \"phasor~ 0.25\" 40 15)" "(box :b3 \"reader~ 1 gate\" 40 290)"
+   {:inlets ["the position signal, in the buffer's units (the X axis of a canvas, the time of a freqt, the seconds of a sample) or 0…1 with reader~ norm (a phasor~ straight in); along a stroke (path) always 0…1 · on a ring~: a position in seconds (0…1 with norm), or nothing (then it follows the ring's head); :d, :speed, :jump, :gain"
+             "the buffer of a canvas or freqt, the sound of a sample (then it plays it, 0 its start and 1 its end), or a ring~ (its right outlet)"]
+    :outlets ["one signal per voice (the values it crosses) · from a ring~, the sound it reads" "with gate: one more per voice, 1 where it sounds and 0 where not"]
+    :messages [["reader~ d 1 · msg :d 1" "on a ring~, without a position: 1 s behind the ring's head — a canon, a delay; a new d glides (the pitch bends) or, larger than its jump (0.25 s), seeks with a crossfade"]
+               ["reader~ d 1 speed 0.5 · msg :speed -1" "first the distance, then the speed: at 0.5 an octave down and falling behind, at −1 backwards"]
+               ["a position signal on a ring~" "it reads there (seconds; norm: 0…1, a phasor~), at any speed, either way"]]
+    :example (lines "(box :b1 \"freqt\" 40 60)" "(box :b2 \"phasor~ 0.25\" 40 15)" "(box :b3 \"reader~ norm 1 gate\" 40 290)"
                     "(box :b4 \"osc~\" 40 340)" "(box :b5 \"gain~\" 40 390)" "(box :b6 \"dac~\" 40 440)"
                     "(connect :b2 0 :b3 0)" "(connect :b1 1 :b3 1)" "(connect :b3 0 :b4 0)" "(connect :b3 1 :b5 1)"
                     "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
                     "(stroke :b1 [[0 220] [1 330] [1.5 293.66]])" "(stroke :b1 [[2.5 440] [4 220]])")
     :try "Press ▶: the drawing plays every four seconds, and is silent where nothing is drawn (the gate)."
     :see ["phasor~" "adsr~" "freqt" "reader" "sample"]}
+
+   "ring~"
+   {:inlets ["the sound, written where the ring's time is (its write head goes round as a tape head) · :clear silences it"]
+    :outlets ["—" "the buffer, for reader~ and writer~ (on their right / middle inlet)"]
+    :messages [["ring~ 8" "keeps the last 8 seconds (up to 60)"] [":clear" "silence, the heads where they are"]
+               ["up to 8 heads" "the reader~ and writer~ on it share one node: a feedback inside the ring is exact, through other boxes it costs a block (128 samples)"]]
+    :example (lines "(box :b1 \"adc~\" 40 30)" "(box :b2 \"ring~ 8\" 40 90)" "(box :b3 \"reader~ d 1\" 40 150)"
+                    "(box :b4 \"reader~ d 1 speed 0.5\" 200 150)" "(box :b5 \"gain~ 0.4\" 40 210)" "(box :b6 \"dac~\" 40 270)"
+                    "(connect :b1 0 :b2 0)" "(connect :b2 1 :b3 1)" "(connect :b2 1 :b4 1)" "(connect :b3 0 :b5 0)" "(connect :b4 0 :b5 0)"
+                    "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)")
+    :try "With headphones, press ▶ and sing: you come back a second later, and from the second reader~ an octave down, ever later. msg :d 0.25 into a reader~ glides it nearer."
+    :see ["reader~" "writer~" "ring" "sample"]}
+
+   "writer~"
+   {:inlets ["the sound it writes · :rec t / :ovr t · :stop · :keep x" "the ring~'s buffer (its right outlet)" "a position signal (seconds, or 0…1 with norm: a phasor~); without one, where the ring's head is"]
+    :messages [["writer~ · writer~ mix · writer~ mix 0.8" "ovr (the default) replaces what is there, silence too, as a tape head; mix adds to it, keeping what was there times 0.8"]
+               ["a position signal" "it writes there as it goes, at any speed, either way; a jump larger than its jump (0.25 s) is a seek"]
+               [":ovr t (msg :ovr 2) · :rec t" "to t, then on at speed 1, replacing; rec erases the ring first"] [":stop" "it stays where it is"]]
+    :example (lines "(box :b1 \"adc~\" 40 30)" "(box :b2 \"phasor~ -0.25\" 200 30)" "(box :b3 \"writer~ norm\" 40 90)"
+                    "(box :b4 \"ring~ 4\" 200 90)" "(box :b5 \"reader~ d 0.5\" 200 150)" "(box :b6 \"gain~ 0.4\" 200 210)" "(box :b7 \"dac~\" 200 270)"
+                    "(connect :b1 0 :b3 0)" "(connect :b2 0 :b3 2)" "(connect :b4 1 :b3 1)" "(connect :b4 1 :b5 1)"
+                    "(connect :b5 0 :b6 0)" "(connect :b6 0 :b7 0)" "(connect :b6 0 :b7 1)")
+    :try "With headphones, press ▶ and sing: the writer~ goes round the ring backwards (a phasor~ at −0.25 Hz), so the reader~, which goes forwards, plays you reversed, in chunks."
+    :see ["ring~" "reader~" "phasor~"]}
 
    "sample"
    {:inlets ["the signal to record; :rec starts, :stop ends (or its length in seconds), :clear empties it, a bang asks its length"]
@@ -377,7 +405,7 @@
                ["(save-sound :bN)" "saves it as WAV"]]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"msg :rec\" 140 30)" "(box :b3 \"msg :stop\" 200 30)"
                     "(box :b4 \"sample 10\" 40 90)" "(box :b5 \"!/ 1\" 40 190)" "(box :b6 \"phasor~\" 40 240)"
-                    "(box :b7 \"reader~\" 40 290)" "(box :b8 \"gain~ 0.5\" 40 340)" "(box :b9 \"dac~\" 40 390)"
+                    "(box :b7 \"reader~ norm\" 40 290)" "(box :b8 \"gain~ 0.5\" 40 340)" "(box :b9 \"dac~\" 40 390)"
                     "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)"
                     "(connect :b5 0 :b6 0)" "(connect :b6 0 :b7 0)" "(connect :b4 1 :b7 1)" "(connect :b7 0 :b8 0)"
                     "(connect :b8 0 :b9 0)" "(connect :b8 0 :b9 1)")
