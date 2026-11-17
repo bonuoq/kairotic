@@ -320,9 +320,9 @@ export async function theory(page, check) {
   const eu = (await cljs(page, '(box "euclid 3 8" 9000 600)')).trim();
   const ep = (await cljs(page, '(box "print" 9000 660)')).trim();
   await cljs(page, `(connect ${eu} 0 ${ep} 0)`);
-  check("euclid brings @kairotic/rhythm: one inlet, one outlet (pulses), no view of its own",
-        (await until(page, `[(io (get-in (current) [:boxes ${eu}])) (comp/own-view? (get-in (current) [:boxes ${eu}]))]`, (x) => x.startsWith("[[1 1]"), 20000)).startsWith("[[1 1]"),
-        await cljs(page, `(io (get-in (current) [:boxes ${eu}]))`));
+  // (an unknown class is [1 1] too: wait for the class itself)
+  const euIo = await until(page, `(when (comp/lookup "euclid") [(io (get-in (current) [:boxes ${eu}])) (boolean (comp/own-view? (get-in (current) [:boxes ${eu}])))])`, (x) => x === "[[1 1] false]", 20000);
+  check("euclid brings @kairotic/rhythm: one inlet, one outlet (pulses), no view of its own", euIo === "[[1 1] false]", euIo);
   const eGo = `(fn [args msgs] (let [d (comp/lookup "euclid")]
                  (reduce (fn [[s _] [i m]] (let [r ((:receive d) {:inlet i :value m :state s :args args})] [(:state r) (:out r)])) [nil nil] msgs)))`;
   const eOut = `(fn [out o] (some (fn [[p v]] (when (= p o) v)) out))`;
