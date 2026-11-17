@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **One box, `comes`, for the canon and its mirrors** (`@kairotic/theory` 0.12.0; breaking, for 0.3.0). As Study 50
+  found, the comes is a reader of the dux at a **speed**: `comes` reads it at 1 (a canon), `comes 0.5` twice as
+  slow (an augmentation), `comes -1` backwards (a crab, written from both ends to the middle, or played live beat by
+  beat as Study 46 plays it); `inverted` turns it upside down (an inversion, or with −1 a table canon). The box
+  `cancrizans` is gone, with no alias: its engine is the backwards half of `comes`. The words `inversion`,
+  `augmentation` and `table` and the messages `[:transform …]` and `[:table …]` give way to `speed`, `inverted`,
+  `[:speed -1]` and `[:inverted true]`; the numbers in the box's text begin with the speed
+  (`comes [system] [mode] [speed 1] [k -7] [d 3] …`), and `bars 0` is the relation's own length (8 forwards, 6
+  backwards). Five outlets for every speed: the Hz of both voices, their voice ids, the futuribles, where the work
+  is, and the finished work as a musical tree for a `tree` box (forwards too, now) — backwards the patterns for
+  `pbind` are gone: the help plays the crab from its tree with `mt play`. Its help has the canon, live, the crab and
+  the crab live as four steps; the assistant knows it.
+
 - **`euclid`: rhythm as geometry begins** (discussion #252, `@kairotic/theory` 0.11.0). A Euclidean rhythm by
   Bjorklund's algorithm, after Toussaint: `euclid 3 8` the tresillo, `5 8` the cinquillo, `5 16` a rotation of the
   bossa nova, `7 12` the bembé. Drawn as a necklace (the pulses around a circle, the onsets a polygon); pressing a
