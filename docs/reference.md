@@ -207,13 +207,13 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 
 **Inlets** 
 
-0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · :engine · :back · :reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work
+0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], an event (:freq, or a player's :hz), or MIDI with midi · :engine · :back · :reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work
 1. live: the pulse (a bang from a metro or a pulse): a beat, with your note or the box's for you
 
 **Outlets** 
 
-0. the dux, when the work closes, as a pattern {:note [...] :dur [...]} (for a pbind)
-1. the comes, as a pattern
+0. the dux, when the work closes, as a pattern {:note [...] :dur [...]} (for a pbind) · live: the Hz of both voices, yours and the box's, as a player sends them (for a synth~)
+1. the comes, as a pattern · live: their voice ids, sent first (for a synth~'s right inlet)
 2. the futuribles: the notes that can come next ({:midi :name :futures}; live, with :end, what the box will answer at the end)
 3. where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}
 4. the score, as a musical tree (for a freqt shown as a score): when the work closes, both voices; live, from the middle what is left of your line to read (the beats played as rests), and at the end the whole crab
@@ -262,15 +262,14 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (connect :b2 3 :b10 0)
 ```
 
-**Played live** — With live (Study 46) the crab is played beat by beat: your note, and at the same beat the box's answer — the end of your own line, written ahead. Two beats before the middle a cue; at the middle the rest of your line comes out as the score to read (outlet 1 as a pattern, outlet 4 as a musical tree for a score), and the box plays your first half backwards (outlet 0) while you read it. The first note to read is the last end of your line the box wrote (with an odd number of beats the middle note is shared: the box plays it with you, an octave below); from there each voice plays what the other played, backwards.
+**Played live** — With live (Study 46) the crab is played beat by beat: your note, and at the same beat the box's answer — the end of your own line, written ahead. Two beats before the middle a cue; at the middle the rest of your line comes out as the score to read (outlet 4, a musical tree for a score), and the box plays your first half backwards while you read it. Both voices sound from its left outlet, after their voice ids (outlet 1): one synth~ plays both. The first note to read is the last end of your line the box wrote (with an odd number of beats the middle note is shared: the box plays it with you, an octave below); from there each voice plays what the other played, backwards.
 
-*Try:* Press ▶: the loadbang counts the futures. The html box shows where the crab is and its futuribles as a table — each note you can play, the ways it leaves to close the crab, and :end, what the box will answer at the end of your line. Play D on the keyboard (your line sounds on its own synth~): the box answers with D an octave below on the other. Play on: at the middle the freqt shows, as a score, what is left of your line to read — the box's answers so far, backwards — and the notes you read turn into rests; at the end it shows the whole crab.
+*Try:* Press ▶: the loadbang counts the futures. The html box shows where the crab is and its futuribles as a table — each note you can play, the ways it leaves to close the crab, and :end, what the box will answer at the end of your line. Play D on the keyboard: the box answers with D an octave below — both voices on one synth~, yours as the box takes it (corrected if it must be), with their voice ids (1→1). Play on: at the middle the freqt shows, as a score, what is left of your line to read — the box's answers so far, backwards — and the notes you read turn into rests; at the end it shows the whole crab.
 
 ```clojure
 (box :b11 "keyboard 60 24" 520 30)
 (box :b12 "cancrizans live" 520 150)
 (box :b13 "synth~" 520 230)
-(box :b18 "synth~" 520 290)
 (box :b15 "loadbang" 720 110)
 (box :b16 "html" 860 30)
 (resize :b16 300 230)
@@ -284,11 +283,9 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (connect :b12 4 :b14 0)
 (connect :b11 0 :b12 0)
 (connect :b12 0 :b13 0)
+(connect :b12 1 :b13 1)
 (connect :b13 0 :b8 0)
 (connect :b13 0 :b8 1)
-(connect :b11 0 :b18 0)
-(connect :b18 0 :b8 0)
-(connect :b18 0 :b8 1)
 ```
 
 See also: `comes`, `pbind`, `player`
@@ -402,13 +399,13 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 
 **Inlets** 
 
-0. the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event from midiin · :hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:system :pentatonic], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · :end (the section ends: the next note begins a new canon) · :engine · :back · :reset
+0. the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event (:freq from midiin, or a player's :hz) · :hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:system :pentatonic], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · :end (the section ends: the next note begins a new canon) · :engine · :back · :reset
 1. live: the pulse (a bang from a metro or a pulse): a beat
 
 **Outlets** 
 
-0. the comes, as a list of Hz (when it changes: a note held is not struck again)
-1. the dux as played, or corrected
+0. the Hz of both voices sounding, the dux (as played, or corrected) and the comes, as a keyboard or a player sends them
+1. their voice ids, sent first (for a synth~'s right inlet): a note held keeps its id and goes on sounding
 2. the futuribles: the notes that can come next, the most plausible first ({:midi :name :futures :bits :score :comes})
 3. where the canon is: {:t :n :bar :beat :held :asked :played :corrected :reason :comes :futures :bits :obligations :section :meter …}, or a cue {:cue :ternary|:end :section :meter}
 
@@ -434,18 +431,15 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 (box :b1 "keyboard 60 24" 40 30)
 (box :b2 "comes" 40 130)
 (box :b3 "synth~" 40 200)
-(box :b4 "synth~" 160 200)
 (box :b5 "dac~" 40 260)
 (box :b6 "print" 280 200)
 (box :b7 "msg :engine" 220 100)
 (connect :b1 0 :b2 0)
 (connect :b7 0 :b2 0)
 (connect :b2 0 :b3 0)
-(connect :b2 1 :b4 0)
+(connect :b2 1 :b3 1)
 (connect :b3 0 :b5 0)
 (connect :b3 0 :b5 1)
-(connect :b4 0 :b5 0)
-(connect :b4 0 :b5 1)
 (connect :b2 3 :b6 0)
 ```
 
@@ -461,6 +455,7 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 (connect :b8 0 :b10 1)
 (connect :b1 0 :b10 0)
 (connect :b10 0 :b3 0)
+(connect :b10 1 :b3 1)
 (connect :b10 3 :b6 0)
 ```
 
@@ -839,7 +834,7 @@ The six Fourier coefficients of a pitch-class distribution (chromatic, dyadic, t
 
 **Inlets** 
 
-0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, from chroma~), or a number: a note (the last n count: 4); clear
+0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, from chroma~), or a number: a note (the last n count: 4); :clear
 
 **Outlets** 
 
@@ -1578,7 +1573,7 @@ A pitch-class set on the clock face: its polygon, the sets before it, its axes o
 
 **Inlets** 
 
-0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma), or a number: a note, the last n notes (4) being the set; clear
+0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma), or a number: a note, the last n notes (4) being the set; :clear
 
 **Outlets** 
 
