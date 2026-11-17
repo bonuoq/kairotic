@@ -834,7 +834,7 @@
     :try "Click bang: the tresillo, 3-3-2, in the tree box as eighths in 4/4. Click [:k 5]: the cinquillo; then [:n 16]: five in sixteen, a rotation of the bossa nova; [:rotation 3] starts it on the fourth pulse — a silence first. Press a pulse on the necklace: the rhythm starts there."
     :steps [{:title "Pitches: talea and color"
              :note "The right inlet gives the notes their pitches, in turn, starting again when they run out: three pitches over five onsets take three bars to meet the rhythm again, as the color and the talea of an isorhythmic motet. It is cold: what arrives there sounds the next time the box sends. A keyboard sends the keys held, in Hz; a melody string or a map {:pitches …} is kept as it is."
-             :example (lines "(box :b8 \"keyboard 60 24\" 520 20)" "(box :b9 \"msg {:pitches \\\"c4 e4 g4\\\"}\" 520 150)" "(box :b10 \"msg [:bars 3]\" 400 20)"
+             :example (lines "(box :b8 \"keyboard 60 24\" 720 20)" "(box :b9 \"msg {:pitches \\\"c4 e4 g4\\\"}\" 720 110)" "(box :b10 \"msg [:bars 3]\" 450 20)"
                              "(box :b11 \"mt play loop\" 260 260)" "(box :b12 \"msg :bang\" 380 230)" "(box :b13 \"synth~\" 260 310)" "(box :b14 \"dac~\" 260 360)"
                              "(connect :b8 0 :b5 1)" "(connect :b9 0 :b5 1)" "(connect :b10 0 :b5 0)" "(connect :b6 0 :b11 0)" "(connect :b12 0 :b11 0)"
                              "(connect :b11 0 :b13 0)" "(connect :b11 1 :b13 1)" "(connect :b13 0 :b14 0)" "(connect :b13 0 :b14 1)")
