@@ -107,6 +107,8 @@
 
 (defn set-param! [node p v at]
   (swap! (:values node) assoc (:label p) v)
+  ;; its copies elsewhere (in a ring~'s node, when it is in a loop of the ring: kairotic.ringaudio) follow it
+  (doseq [f (vals @(:mirrors node))] (f (:address p) v))
   (if-let [n @(:faust node)]
     (.setParamValue n (:address p) v (max at (.-currentTime (.-context n))))
     (swap! (:pending node) assoc (:address p) v)))
@@ -156,7 +158,7 @@
         node {:inlets (if merger (vec (for [i (range ins)] [merger i])) [])
               :outlets (vec (for [o (range outs)] [splitter o]))
               :merger merger :splitter splitter :info inf
-              :faust (atom nil) :pending (atom {}) :alive (atom true) :voices (atom {}) :want (atom nil)
+              :faust (atom nil) :pending (atom {}) :alive (atom true) :voices (atom {}) :want (atom nil) :mirrors (atom {})
               :values (atom (into {} (for [p (:params inf)] [(:label p) (:init p)])))}]
     (when (= :ok (:status r))
       (-> (if (:poly inf) (.createNode (:value r) ac (:poly inf) (:name inf)) (.createNode (:value r) ac (:name inf)))

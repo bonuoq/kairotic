@@ -47,6 +47,25 @@ export async function ringaudio(page, check) {
   check("reader~ on a canvas: 3 is x = 3 (its units)", near(u1, 0.8), u1);
   check("reader~ norm: 0.75 is three quarters of the axis (x = 3)", near(u2, 0.8), u2);
   check("reader~ without norm: 0.75 is x = 0.75", near(u3, 0.2), u3);
+  // a faust~ in a loop of the ring (reader~ → faust~ → writer~) runs inside the ring's node: the ring writes 0.2,
+  // the writer~ (mix, at the head) adds g × what the reader~ read 0.1 s before: the level settles at 0.2 / (1 − g)
+  const s3 = await b("sig~ 0.2", 8600, 20), r3 = await b("ring~ 1", 8600, 80), d3 = await b("reader~ d 0.1", 8600, 140);
+  const f3 = await b("faust~", 8800, 140), w3 = await b("writer~ mix", 8600, 300), p3 = await b("snapshot~ 50", 8600, 360);
+  await cljs(page, `(code ${f3} ${JSON.stringify('g = hslider("g", 0.5, 0, 1, 0.01);\nprocess = *(g);')})`);
+  await until(page, `(:status (cbox/compiled "faust" (source ${f3})))`, (x) => x === ":ok" || x === ":error", 60000);
+  await cljs(page, `(connect ${s3} 0 ${r3} 0) (connect ${r3} 1 ${d3} 1) (connect ${r3} 1 ${w3} 1)
+                    (connect ${d3} 0 ${f3} 0) (connect ${f3} 0 ${w3} 0) (connect ${d3} 0 ${p3} 0)`);
+  const folded = await until(page, `(boolean @(:folded (get-in @eng/rt [:nodes ${w3}])))`, (g) => g === "true", 15000);
+  check("reader~ → faust~ → writer~ on one ring~: the faust~ runs inside the ring's node", folded === "true", folded);
+  const lv = await until(page, `(get-in @eng/rt [:states ${p3}])`, (g) => near(g, 0.4), 8000);
+  check("... once (its own node no longer feeds the writer~): the level settles at 0.2 / (1 − 0.5)", near(lv, 0.4), lv);
+  await cljs(page, `(send! ${f3} [:g 0.25])`);
+  const lv2 = await until(page, `(get-in @eng/rt [:states ${p3}])`, (g) => near(g, 0.2 / 0.75), 8000);
+  check("... and its parameters reach it there (g 0.25: 0.2 / 0.75)", near(lv2, 0.2 / 0.75), lv2);
+  await cljs(page, `(disconnect ${f3} 0 ${w3} 0)`);
+  const un = await until(page, `(boolean @(:folded (get-in @eng/rt [:nodes ${w3}])))`, (g) => g === "false", 8000);
+  check("the loop undone: unfolded", un === "false", un);
+  await cljs(page, `(delete ${s3} ${r3} ${d3} ${f3} ${w3} ${p3})`);
   await cljs(page, "(stop)");
   await cljs(page, `(delete ${s1} ${r1} ${d1} ${p1} ${s2} ${w2} ${r2} ${d2} ${p2} ${cv} ${q1} ${q2} ${e1} ${e2} ${e3} ${n1} ${n2} ${n3})`);
 }

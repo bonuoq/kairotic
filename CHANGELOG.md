@@ -14,6 +14,14 @@
   - `cancrizans live` sends its score twice a crab — at the middle what is left to read, and the whole crab at the
     end — instead of at every beat read, since a tree written into a tree box is an event of the work's history.
 
+- **A faust~ in a loop of a ring~ runs inside it** (Study 49 in the app). `reader~ → faust~ → writer~`, all on one
+  ring~: the engine sees the loop (every tick, after the nodes are fed) and sends the faust~'s compiled bytes to the
+  ring's node, where they run one sample at a time in the writer's slot, hearing those readers; the line from the
+  faust~ to the writer~ is taken away, so nothing arrives twice. The loop is exact at any d (a string, a comb). The
+  faust~ keeps its own node for whatever else it feeds, and its parameters (messages, sliders) reach its copy in
+  the ring. Not a polyphonic faust~. Tests: `tests/ringcore.mjs` (+3) and `tests/ringaudio.mjs` (folded, the level,
+  a parameter, unfolded).
+
 - **Help pages for boxes with many options.** A help entry can now carry `:about`, an introduction in short paragraphs
   (bold, `code`), shown first, with the box's whole description folded below it ("Everything it does"), and `:args`,
   what each argument does, as a third column of the Arguments table (and in the reference). `comes` and `cancrizans`

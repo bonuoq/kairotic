@@ -20,7 +20,8 @@
 ;; follows the ring's head d behind, then its speed (reader~ d 1 speed 0.5; msg :d 2, :speed −1).
 
 (ns kairotic.ringaudio
-  (:require [kairotic.components :as comp]))
+  (:require [kairotic.components :as comp]
+            [kairotic.code :as code]))
 
 (def slots 8)
 
@@ -163,7 +164,7 @@
                      (let [vin (.createGain ac) pin (.createGain ac) m (.createChannelMerger ac 2)]
                        (.connect vin m 0 0) (.connect pin m 0 1)
                        {:m m :inlets [[vin 0] nil [pin 0]] :outlets []
-                        :fed (atom ::none) :ring (atom nil) :slot (atom nil) :alive (atom true)
+                        :fed (atom ::none) :ring (atom nil) :slot (atom nil) :alive (atom true) :folded (atom nil)
                         :opts (atom (merge {:mode "head"} (head-args (:args b))))}))
            ;; a position signal on the right: it writes there; without one, where the ring's head is
            :wired (fn [node ins] (set-head! node {:mode (if (contains? ins 2) "pos" "head")}))
@@ -172,3 +173,60 @@
                             (when-let [[_ s] @(:slot node)] (post! @(:ring node) {:cue (assoc x :slot s)})))
                      :head (fn [node x _] (set-head! node x))}
            :dispose unhook!}})
+
+;; ───────── a faust~ in a loop of a ring~ runs inside it (Study 49) ─────────
+;; reader~ → faust~ → writer~, all on one ring~: the faust~'s compiled bytes go to the ring's node, where they run
+;; one sample at a time in the writer's slot, hearing those readers; the line from the faust~ to the writer~ is
+;; taken away (what it would bring, a block late, is already written). The faust~ keeps its own node for whatever
+;; else it is connected to (a dac~), and its parameters reach its copy in the ring as well. Every tick, after the
+;; nodes are fed: a loop that appears is folded, one that is gone unfolded.
+
+(defn loops
+  "The faust~ boxes in a loop of a ring~: [{:faust id :ring id :readers [id …] :writers [id …]}]. Every input of
+   the faust~ comes from a reader~ on the ring, and its output reaches the left inlet of a writer~ on the same ring."
+  [p]
+  (let [k (fn [id] (comp/klass (get-in p [:boxes id :text])))
+        ring-of (fn [id] (some (fn [[a _ b i]] (when (and (= b id) (= i 1) (= "ring~" (k a))) a)) (:lines p)))]
+    (vec (for [[f _] (:boxes p) :when (= "faust~" (k f))
+               :let [ins (filter (fn [[_ _ b _]] (= b f)) (:lines p))
+                     rs (vec (distinct (map first ins)))
+                     ring (when (seq rs) (ring-of (first rs)))
+                     ws (vec (distinct (keep (fn [[a _ b i]] (when (and (= a f) (= i 0) (= "writer~" (k b)) (= ring (ring-of b))) b)) (:lines p))))]
+               :when (and ring (seq ws) (every? (fn [r] (and (= "reader~" (k r)) (= ring (ring-of r)))) rs))]
+           {:faust f :ring ring :readers rs :writers ws}))))
+
+(defn- bytes-of [source]
+  (let [r (code/compiled "faust" source)]
+    (when (and (= :ok (:status r)) (not (:poly (:info r))) (:value r))
+      (let [f (.-factory (:value r))] (when (and f (.-code f)) [f (:info r)])))))
+
+(defn fold-pass!
+  "Folds the loops of p into their rings, and unfolds what no longer is one (called every tick by the engine)."
+  [p nodes sig]
+  (let [want (into {} (for [{:keys [faust ring readers writers]} (loops p) w writers] [w [faust ring readers]]))]
+    ;; unfolded: a writer~ that was folded and no longer is
+    (doseq [[id node] nodes :let [fa (:folded node)] :when (and fa @fa (not (contains? want id)))]
+      (when-let [[_ s] @(:slot node)] (post! @(:ring node) {:unfold s}))
+      (when-let [m (:mirrors (get nodes (:faust @fa)))] (swap! m dissoc id))
+      (reset! fa nil))
+    ;; folded: when every head has its slot and the faust~ is compiled
+    (doseq [[w [faust ring readers]] want
+            :let [wn (get nodes w) fnode (get nodes faust) rnode (get nodes ring)
+                  h (:ring rnode) ws @(:slot wn)
+                  rslots (mapv (fn [r] (second @(:slot (get nodes r)))) readers)
+                  src (get-in p [:boxes faust :data :source])
+                  [fac info] (bytes-of src)]
+            :when (and wn fnode h ws (= h @(:ring wn)) (every? some? rslots) fac)
+            :let [key [h (second ws) rslots src sig]]
+            :when (not= key (:key @(:folded wn)))]
+      (post! h {:fold {:slot (second ws) :readers rslots :code (.slice (.-code fac)) :json (.-json fac)}})
+      ;; its parameters as they are, and from now on as they change
+      (doseq [prm (:params info) :let [v (get @(:values fnode) (:label prm))] :when (number? v)]
+        (post! h {:param {:slot (second ws) :address (:address prm) :value v}}))
+      (swap! (:mirrors fnode) assoc w (fn [address v] (post! h {:param {:slot (second ws) :address address :value v}})))
+      ;; what the faust~'s own node would bring into the writer~, a block late, is taken away
+      (let [vin (ffirst (:inlets wn))]
+        (doseq [[n _] (:outlets fnode)] (try (.disconnect n vin) (catch :default _ nil))))
+      (reset! (:folded wn) {:key key :faust faust}))))
+
+(reset! comp/after-feed fold-pass!)
