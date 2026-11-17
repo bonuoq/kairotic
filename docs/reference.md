@@ -207,7 +207,7 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 
 **Inlets** 
 
-0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · engine · back · reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work
+0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · :engine · :back · :reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work
 1. live: the pulse (a bang from a metro or a pulse): a beat, with your note or the box's for you
 
 **Outlets** 
@@ -216,21 +216,22 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 1. the comes, as a pattern
 2. the futuribles: the notes that can come next ({:midi :name :futures}; live, with :end, what the box will answer at the end)
 3. where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}
+4. the score, as a musical tree (for a freqt shown as a score): when the work closes, both voices; live, from the middle what is left of your line to read (the beats played as rests), and at the end the whole crab
 
 **Messages and gestures**
 
-- `engine`: the next note, written by the box
-- `back`: the last note taken back
-- `reset`: a new work
+- `:engine`: the next note, written by the box
+- `:back`: the last note taken back
+- `:reset`: a new work
 - `[:table true]`: a table canon: backwards and upside down
 - `[:temp 2]`: live: the box draws among its answers (0: always the one :end says)
 - `[:seed 7]`: live: its chance (reset: the same game again)
 - `[:system :septimal31]`: another system (Study 42), or an EDN map: its modes and tuning
 
-**Try:** Click engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds. Play notes on a keyboard into it instead (the note at the start, then the one at the end).
+**Try:** Click :engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds, each voice on its own synth~ (one synth~ plays one line: a note from the other player would take the place of the last). The freqt below shows the crab as a score: read the comes from the end and it is the dux. Play notes on a keyboard into it instead (the note at the start, then the one at the end).
 
 ```clojure
-(box :b1 "msg engine" 40 30)
+(box :b1 "msg :engine" 40 30)
 (box :b2 "cancrizans" 40 80)
 (box :b3 "pbind" 40 150)
 (box :b4 "pbind" 40 260)
@@ -238,8 +239,13 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (box :b5 "player 90" 40 420)
 (box :b6 "player 90" 240 420)
 (box :b7 "synth~" 40 490)
+(box :b17 "synth~" 240 490)
 (box :b8 "dac~" 40 550)
 (box :b10 "print" 260 80)
+(box :b19 "freqt" 40 620)
+(view :b19 :score)
+(resize :b19 460 200)
+(connect :b2 4 :b19 0)
 (connect :b1 0 :b2 0)
 (connect :b2 0 :b3 0)
 (connect :b2 1 :b4 0)
@@ -248,30 +254,41 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (connect :b9 0 :b5 0)
 (connect :b9 0 :b6 0)
 (connect :b5 0 :b7 0)
-(connect :b6 0 :b7 0)
+(connect :b6 0 :b17 0)
 (connect :b7 0 :b8 0)
 (connect :b7 0 :b8 1)
+(connect :b17 0 :b8 0)
+(connect :b17 0 :b8 1)
 (connect :b2 3 :b10 0)
 ```
 
-**Played live** — With live (Study 46) the crab is played beat by beat: your note, and at the same beat the box's answer — the end of your own line, written ahead. Two beats before the middle a cue; at the middle the rest of your line comes out as the score to read (outlet 1), and the box plays your first half backwards (outlet 0) while you read it.
+**Played live** — With live (Study 46) the crab is played beat by beat: your note, and at the same beat the box's answer — the end of your own line, written ahead. Two beats before the middle a cue; at the middle the rest of your line comes out as the score to read (outlet 1 as a pattern, outlet 4 as a musical tree for a score), and the box plays your first half backwards (outlet 0) while you read it. The first note to read is the last end of your line the box wrote (with an odd number of beats the middle note is shared: the box plays it with you, an octave below); from there each voice plays what the other played, backwards.
 
-*Try:* Press ▶: the loadbang counts the futures, and the futuribles of the first note are printed — each with :end, what the box will answer at the end of your line. Play D on the keyboard: the box answers with D an octave below. Play on: at the middle the score to read is printed; read it, and the crab closes.
+*Try:* Press ▶: the loadbang counts the futures. The html box shows where the crab is and its futuribles as a table — each note you can play, the ways it leaves to close the crab, and :end, what the box will answer at the end of your line. Play D on the keyboard (your line sounds on its own synth~): the box answers with D an octave below on the other. Play on: at the middle the freqt shows, as a score, what is left of your line to read — the box's answers so far, backwards — and the notes you read turn into rests; at the end it shows the whole crab.
 
 ```clojure
 (box :b11 "keyboard 60 24" 520 30)
 (box :b12 "cancrizans live" 520 150)
 (box :b13 "synth~" 520 230)
-(box :b14 "print" 720 230)
+(box :b18 "synth~" 520 290)
 (box :b15 "loadbang" 720 110)
-(box :b16 "print" 720 290)
+(box :b16 "html" 860 30)
+(resize :b16 300 230)
+(code :b16 "[:div.col [:h4 \"beat \" :$t \" of \" :$n \" · \" :$phase] [:p.soft :$ways \" ways to close it\"] :$in]")
+(box :b14 "freqt" 860 290)
+(view :b14 :score)
+(resize :b14 460 180)
 (connect :b15 0 :b12 0)
 (connect :b12 2 :b16 0)
+(connect :b12 3 :b16 0)
+(connect :b12 4 :b14 0)
 (connect :b11 0 :b12 0)
 (connect :b12 0 :b13 0)
 (connect :b13 0 :b8 0)
 (connect :b13 0 :b8 1)
-(connect :b12 1 :b14 0)
+(connect :b11 0 :b18 0)
+(connect :b18 0 :b8 0)
+(connect :b18 0 :b8 1)
 ```
 
 See also: `comes`, `pbind`, `player`
@@ -411,7 +428,7 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 - `[:k -4]`: the comes a 5th below
 - `[:system :pentatonic]`: another system (Study 42): meantone, septimal31, pentatonic, diatonic, or an EDN map {:tuning … :modes …}
 
-**Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone.
+**Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click :engine to let it go on alone.
 
 ```clojure
 (box :b1 "keyboard 60 24" 40 30)
@@ -1036,7 +1053,7 @@ See also: `osc~`, `synth~`, `faust~`
 
 `html`
 
-A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, buttons and text, laid out like a page. An element with :out sends what it gives out of that outlet; one with :name keeps it as a value, shown by every hole :$name in the view, and when it is let go (a slider) or chosen (a menu, a text entered) the box keeps it in the work, as a knob keeps its value: (values! :bN {:freq 440}). A map on the inlet ({:freq 220}) sets values, as a number sets a knob: the elements named so show it (a slider within its range) and those with :out send it on; a bang sends again what they hold. What is not allowed (scripts, links, images, positions, unknown tags or attributes) is dropped, so it is safe in a shared room. Its view opens as text from { } (HTML can be pasted there too).
+A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, buttons and text, laid out like a page. An element with :out sends what it gives out of that outlet; one with :name keeps it as a value, shown by every hole :$name in the view, and when it is let go (a slider) or chosen (a menu, a text entered) the box keeps it in the work, as a knob keeps its value: (values! :bN {:freq 440}). A list of maps in a hole is shown as a table (a row each, a column for each key: the futuribles of comes or cancrizans), and anything else on the inlet that is not a map, a value or a bang (a number, a list) is the value :in, shown by :$in. A map on the inlet ({:freq 220}) sets values, as a number sets a knob: the elements named so show it (a slider within its range) and those with :out send it on; a bang sends again what they hold. What is not allowed (scripts, links, images, positions, unknown tags or attributes) is dropped, so it is safe in a shared room. Its view opens as text from { } (HTML can be pasted there too).
 
 **Inlets** 
 
@@ -1052,6 +1069,7 @@ A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, 
 - `{:freq 220}`: sets values: the elements named so show them and send them on
 - `[:freq 220]`: sets one value
 - `bang`: sends again what every named element with :out holds
+- `[{:name "D4" :futures 12} …]`: anything else is the value :in (:$in); a list of maps is shown as a table
 
 **Try:** Move the slider: its value goes out of the left outlet and shows beside it; let it go and the box keeps it, as a knob does (back in the history, it moves back). { } in the header opens the view as text: change it and apply.
 
@@ -1819,15 +1837,42 @@ Reads the buffer (canvas, freqt) connected to its right inlet at the position th
 
 **Inlets** 
 
-0. a position (along X, or Y with reader y; 0…1 with reader path)
-1. the buffer of a canvas or freqt
+0. a position (along X, or Y with reader y; 0…1 with reader path) · on a ring: a position in seconds (0…1 with norm), or :d, :speed, :stop
+1. the buffer of a canvas, freqt or ring (a ring's right outlet)
 
 **Outlets** 
 
-0. the values where the position crosses something (a list)
+0. the values where the position crosses something (a list) · from a ring, each value as it was written
 1. their ids (sent first), for voices
 
-See also: `canvas`, `reader~`
+**Messages and gestures**
+
+- `reader d 1 · msg :d 1`: on a ring: it follows the ring's head 1 s behind, on its own — a canon, a delay; it starts when the ring's time does
+- `reader d 1 speed 0.5 · msg :speed 0.5`: first the distance, then the speed: at 0.5 it falls behind (an augmentation), at −1 it goes back over what was written
+- `a number (a ramp, a counter)`: on a ring: moves it there; it sends what it crosses, either way, and a move larger than its jump (0.5 s; jump 1, msg :jump 1) is a seek
+- `:stop`: it stops following
+
+**Try:** Press ▶ and click the three messages: each comes back a second later, and from the second reader two seconds later, twice as slow. A ramp into a reader on the ring moves it by hand.
+
+```clojure
+(box :b1 "msg 60" 40 30)
+(box :b2 "msg 64" 100 30)
+(box :b3 "msg 67" 160 30)
+(box :b4 "ring 8" 40 90)
+(box :b5 "reader d 1" 40 150)
+(box :b6 "reader d 2 speed 0.5" 180 150)
+(box :b7 "print canon" 40 210)
+(box :b8 "print slower" 180 210)
+(connect :b1 0 :b4 0)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b4 1 :b5 1)
+(connect :b4 1 :b6 1)
+(connect :b5 0 :b7 0)
+(connect :b6 0 :b8 0)
+```
+
+See also: `ring`, `writer`, `canvas`, `reader~`
 
 ### reader~
 
@@ -1951,6 +1996,46 @@ Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an
 ```
 
 See also: `canvas`, `snapshot~`, `reader~`, `transcribe`
+
+### ring
+
+`ring [seconds]`
+
+A span of time for messages: it keeps what reached it in the last seconds (8 by default), each at its time. Its time starts at its first message; its write head goes round as a tape head, so what is older than one turn is gone. Its right outlet is the buffer for a reader (d behind, then a speed: a canon, a delay; or at a position from any source) and for a writer (several heads, anywhere, at any speed). :clear empties it, and its time starts again.
+
+**Inlets** 
+
+0. any value: written where the ring's time is (from its first message) · a writer's edits · :clear
+
+**Outlets** 
+
+0. what it is asked ([:data])
+1. the buffer, for a reader or a writer (on their right or middle inlet); :start when its time starts
+
+**Messages and gestures**
+
+- `ring 8`: keeps the last 8 seconds: its write head goes round as a tape head, so what is older than one turn is gone
+- `:clear`: empties it; its time starts again at the next message
+- `[:data]`: what it keeps, as {:dur :events [[position value] …]}
+
+**Try:** Press ▶ and click the messages: a canon in three voices, 0.5 s and 1.5 s behind. After 4 seconds what you played is gone.
+
+```clojure
+(box :b1 "msg 60" 40 30)
+(box :b2 "msg 67" 100 30)
+(box :b3 "ring 4" 40 90)
+(box :b4 "reader d 0.5" 40 150)
+(box :b5 "reader d 1.5" 160 150)
+(box :b6 "print" 40 210)
+(connect :b1 0 :b3 0)
+(connect :b2 0 :b3 0)
+(connect :b3 1 :b4 1)
+(connect :b3 1 :b5 1)
+(connect :b4 0 :b6 0)
+(connect :b5 0 :b6 0)
+```
+
+See also: `reader`, `writer`, `record`
 
 ### sample
 
@@ -2273,4 +2358,49 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 ```
 
 See also: `mt`, `freqt`
+
+### writer
+
+`writer [ovr|mix] [jump s] [norm]`
+
+A write head on a buffer (a ring): what reaches its left inlet is written where it is. Its position comes in on the right, from any source (a ramp, a counter, a phasor~ through snapshot~), in seconds of the span (0…1 with norm); without one it writes where the ring's head is. Moving, it replaces what it passes, as a tape head — silence too (ovr, the default) — or leaves it (mix); a move larger than its jump is a seek. :rec t / :ovr t send it to t, moving on at speed 1. Its outlet goes to the ring's left inlet; the ring's right outlet to its middle inlet.
+
+**Inlets** 
+
+0. what is written where the writer is · :rec t / :ovr t · :stop
+1. the buffer (a ring's right outlet)
+2. a position in seconds of the span (0…1 with norm), from any source
+
+**Outlets** 
+
+0. edits for the ring (its left inlet)
+
+**Messages and gestures**
+
+- `writer · writer mix`: ovr (the default) replaces what it passes, silence too, as a tape head; mix leaves it (an overdub)
+- `a position on the right`: it goes there: moving, with ovr it erases what it passes; a move larger than its jump (0.5 s; writer jump 1) is a seek
+- `:ovr t (msg :ovr 2)`: to t, then on at speed 1, replacing what it passes
+- `:rec t (msg :rec 2)`: the same, and on a ring everything else is erased first
+- `:stop`: it stays where it is
+
+**Try:** Press ▶ and click the notes: without a position the writer writes where the ring's head is, and the reader plays them a second later. Click :ovr 0: now the writer goes round from the ring's position 0 at speed 1, wherever the ring's head is, replacing what it passes, and the reader meets the notes when it gets there. A ramp on its right inlet moves it by hand.
+
+```clojure
+(box :b1 "msg 60" 40 30)
+(box :b2 "msg 67" 100 30)
+(box :b3 "msg :ovr 0" 160 30)
+(box :b4 "writer" 40 90)
+(box :b5 "ring 4" 40 150)
+(box :b6 "reader d 1" 40 210)
+(box :b7 "print" 40 270)
+(connect :b1 0 :b4 0)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b4 0 :b5 0)
+(connect :b5 1 :b4 1)
+(connect :b5 1 :b6 1)
+(connect :b6 0 :b7 0)
+```
+
+See also: `ring`, `reader`, `record`
 
