@@ -23,7 +23,8 @@
   (:require [kairotic.components :as comp]
             [kairotic.canvas :as cv]
             [kairotic.api :as api]
-            [kairotic.sounds :as snd]))
+            [kairotic.sounds :as snd]
+            [kairotic.ringaudio :as ringa]))
 
 (def table-size 1024)
 
@@ -97,14 +98,21 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
 
 (defn mode-of [args] (cond (some #{:path} args) :path (some #{:y} args) :y :else :x))
 
-(defn voices-of [args]
-  (if (= :path (mode-of args)) 2 (max 1 (min 16 (or (comp/num-of (first (filter number? args))) 1)))))
+(defn voices-of
+  "How many voices: the first number that is not the value of a word (d 1, speed 0.5, jump 1 are a head's on a
+   ring~)."
+  [args]
+  (let [free (keep-indexed (fn [i x] (when (and (number? x) (not (#{:d :speed :jump :mix} (get (vec args) (dec i))))) x)) args)]
+    (if (= :path (mode-of args)) 2 (max 1 (min 16 (or (comp/num-of (first free)) 1))))))
 
 (defn gate? [args] (boolean (some #{:gate} args)))
 
 (defn gates-of [args] (if (gate? args) (if (= :path (mode-of args)) 1 (voices-of args)) 0))
 
-(defn stroke-of [args] (first (remove #{:path :x :y :gate} (filter keyword? args))))
+(defn stroke-of
+  "The stroke a reader~ path follows: its word that is not one of reader~'s own (nor of a head's on a ring~)."
+  [args]
+  (first (remove #{:path :x :y :gate :norm :d :speed :jump :mix} (filter keyword? args))))
 
 (defn allocate
   "Voices for a run of readings [[[id v] …] …]: a reading keeps the voice its id had at the step
@@ -177,14 +185,19 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
 ;; its start to its end, through a player worklet that takes the place of the table reader.
 
 (defn route!
-  "Puts the table reader (:table) or the player (:sound) between the position and the outlets."
+  "Puts the table reader (:table), the player (:sound) or a ring~ (:ring: the position goes to the slot of the
+   ring this reader~ has, and what it reads comes back) between the position and the outlets."
   [node which]
   (let [w @(:worklet node) pl @(:player node) in (:in node)]
+    (doseq [x [w pl (:m node)] :when x]
+      (try (.disconnect in x) (catch :default _ nil)))
     (doseq [x [w pl] :when x]
-      (try (.disconnect in x) (catch :default _ nil))
       (try (.disconnect x) (catch :default _ nil)))
-    (when-let [x (if (= which :sound) pl w)]
-      (.connect in x) (.connect x (:split node)))
+    (when (and (= :ring @(:route node)) (not= which :ring)) (ringa/hook! node nil nil))
+    (if (= which :ring)
+      (.connect in (:m node) 0 1)
+      (when-let [x (if (= which :sound) pl w)]
+        (.connect in x) (.connect x (:split node))))
     (reset! (:route node) which)))
 
 (defn play-sound!
@@ -215,7 +228,11 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
    :io (fn [b] [2 (+ (voices-of (:args b)) (gates-of (:args b)))]) :dynamic-io true
    :reads-buffer true
    :receive (fn [{:keys [inlet value]}]
-              (if (and (= inlet :audio) (:error value)) {:effects [[:print (:error value)]]} {}))
+              (cond
+                (and (= inlet :audio) (:error value)) {:effects [[:print (:error value)]]}
+                ;; on a ring~: msg :d 2, :speed 0.5, :jump 1, :gain 0.5
+                (and (= inlet 0) (ringa/head-message value)) {:effects [[:head (ringa/head-message value)]]}
+                :else {}))
    :audio {:create (fn [ac b _]
                      (let [args (:args b) V (voices-of args) G (gates-of args) C (+ V G)
                            in (.createGain ac)
@@ -223,6 +240,9 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
                            node {:in in :split split :V V :G G :mode (mode-of args) :stroke (stroke-of args)
                                  :ac ac :id (:id b) :player (atom nil) :route (atom :table)
                                  :worklet (atom nil) :pending (atom nil) :fed (atom ::none) :alive (atom true)
+                                 ;; as a head of a ring~: the position into channel 1 of its slot, what it reads into the outlets
+                                 :m (.createChannelMerger ac 2) :out split :ring (atom nil) :slot (atom nil)
+                                 :opts (atom (merge {:mode "follow"} (ringa/head-args args)))
                                  :inlets [[in 0]]
                                  :outlets (vec (for [c (range C)] [split c]))}]
                        (-> (ready ac)
@@ -238,13 +258,19 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
                            (.catch (fn [e] (js/console.error "reader~" e))))
                        node))
            :feed (fn [node d]
-                   (if (snd/sample? d)
-                     (play-sound! node d)
-                     (do (when (= :sound @(:route node)) (route! node :table))
+                   (cond
+                     (ringa/handle? d) (do (route! node :ring) (ringa/hook! node d "read"))
+                     (snd/sample? d) (do (when (= :ring @(:route node)) (route! node :table)) (play-sound! node d))
+                     :else
+                     (do (when (#{:sound :ring} @(:route node)) (route! node :table))
                          (reset! (:pending node) (table (or d cv/empty) (:mode node) (:V node) (:stroke node)))
                          (send-table! node))))
+           ;; on a ring~: a position signal on the left, it reads there; without one, it follows the ring's head
+           :wired (fn [node ins] (ringa/set-head! node {:mode (if (contains? ins 0) "pos" "follow")}))
+           :effects {:head (fn [node x _] (ringa/set-head! node x))}
            :dispose (fn [node]
                       (reset! (:alive node) false)
+                      (ringa/hook! node nil nil)
                       (doseq [x [@(:worklet node) @(:player node)] :when x] (try (.disconnect x) (catch :default _ nil))))}})
 
 (comp/define! "phasor~"

@@ -486,7 +486,7 @@
     (span/ring? buffer) (reader-on-ring m)
     ;; reader path [stroke]: a position from 0 to 1 along a stroke, in the order it was drawn → [x y]
     (and (zero? inlet) (num-of value) (some #{:path} args))
-    (let [sid (first (remove #{:path} (filter keyword? args)))
+    (let [sid (first (remove #{:path :norm :d :speed :jump} (filter keyword? args)))
           u (clamp (num-of value) 0 1)
           pts (when buffer (cv/stroke-for buffer sid))
           pt (when pts (cv/point-along buffer pts u))]
@@ -495,7 +495,12 @@
         {}))
     (and (zero? inlet) (num-of value))
     (let [axis (if (some #{:y} args) :y :x)
-          t (num-of value) r (if buffer (cv/read-along buffer axis t) [])]
+          ;; with norm, 0…1 covers the axis (as a reader~ reads it): its range, along a log axis too
+          t (if (and buffer (some #{:norm} args))
+              (let [[lo hi log] (if (= axis :y) (cv/y-range buffer) (cv/x-range buffer)) u (num-of value)]
+                (if (and log (pos? lo) (pos? hi)) (* lo (js/Math.pow (/ hi lo) u)) (+ lo (* u (- hi lo)))))
+              (num-of value))
+          r (if buffer (cv/read-along buffer axis t) [])]
       ;; as in Max, first the right outlet (ids) and then the left one (values)
       {:out [[1 (mapv first r)] [0 (mapv second r)]] :show {:t t :from buffer-id :n (count r) :axis axis}})
     :else

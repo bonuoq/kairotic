@@ -256,6 +256,10 @@
             (when (#{"reader" "writer"} (comp/klass (get-in p [:boxes id :text])))
               [a (or (get-in @rt [:states a])
                      (span/ring (comp/num-of (first (comp/args-of (get-in p [:boxes a :text]))))))])
+            ;; a ring~ is its node (kairotic.ringaudio): the reader~ and writer~ on it take a slot there
+            (= "ring~" (comp/klass (get-in p [:boxes a :text])))
+            (when (#{"reader~" "writer~"} (comp/klass (get-in p [:boxes id :text])))
+              [a (get-in @rt [:nodes a :ring])])
             (#{"canvas" "freqt" "sample" "tree"} (comp/klass (get-in p [:boxes a :text])))
             ;; a tree box is its tree (discussion #92); a canvas or freqt, the tree it shows, else its buffer
             (let [k (comp/klass (get-in p [:boxes a :text]))
