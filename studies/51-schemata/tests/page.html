@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 51 · schemata · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:900px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the schemata, the count, the book's prototype, a voice written by hand.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+const total = () => d.getElementById("total").textContent;
+try {
+  await wait(() => w.kairoticSchemata && /^\d/.test(total()));
+  is("it opens on the 7–6 chain in C major: the figures allow one realization", total() === "1" && d.querySelector('[data-schema="7-6"]').classList.contains("on"));
+  is("... eight schemata to choose", d.querySelectorAll("[data-schema]").length === 8);
+  d.getElementById("proto").click();
+  await wait(() => /cadence/.test(d.getElementById("msg").textContent));
+  is("the book's prototype: a realization, closing with a compound cadence 7–6–8", /cadence: compound, 7–6–8/.test(d.getElementById("msg").textContent));
+  is("... drawn: the bass, the upper voice, the figures and the suspensions marked", d.querySelectorAll("#sheet rect.bass").length > 0 && d.querySelectorAll("#sheet rect.upper").length > 0 && d.querySelectorAll("#sheet rect.diss").length === 8 && [...d.querySelectorAll("#sheet text.role")].some((x) => x.textContent === "s"));
+  d.querySelector('[data-schema="2-3"]').click();
+  await wait(() => d.getElementById("mode").value === "minor" && /^\d/.test(total()));
+  is("2–3 opens in A minor, as the book writes it", d.getElementById("tonic").value === "A" && total() === "38");
+  d.getElementById("tonic").value = "G"; d.getElementById("tonic").dispatchEvent(new Event("change"));
+  await wait(() => /G minor/.test(d.getElementById("ref").textContent));
+  is("... in G minor it counts the same: 38", total() === "38");
+  d.getElementById("proto").click();
+  is("... and the book's prototype, transposed, is still a realization", /cadence: compound, 3–2–8|cadence: compound/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  d.querySelector('[data-schema="3-6"]').click();
+  await wait(() => d.getElementById("mode").value === "major" && total() === "1");
+  d.getElementById("clear").click();
+  // write it by hand: each time the one note with futures
+  for (let i = 0; i < w.kairoticSchemata.S.n; i++) {
+    const live = [...d.querySelectorAll("#fan button")].filter((b) => !b.disabled && !/^0$/.test(b.querySelector("small").textContent));
+    if (live.length !== 1) break;
+    live[0].click();
+  }
+  is("3–6 written by hand, the one live note each time: the book's realization, a perfect cadence 6–8", /cadence: perfect, 6–8/.test(d.getElementById("msg").textContent));
+  d.getElementById("figured").click();
+  await wait(() => total().length > 6);
+  is("... without the figures, millions over the same bass", Number(total().replace(/,/g, "")) > 1e6);
+  d.getElementById("draw").click();
+  is("... one drawn, a realization", /cadence/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  is("no errors on the page", errors.length === 0);
+} catch (e) { is("error: " + (e.message || e), false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(errors) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>

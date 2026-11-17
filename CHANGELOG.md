@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Study 51 · schemata**: a given bass realized in two parts, as a partimento is — the schemata of chapter 1 of
+  Job IJzerman's *Harmony, Counterpoint, Partimento* as data (parallel 3rds and 6ths, 3–6, Third Down Second Up,
+  7–6, 2–3, Fifth Down Fourth Up 7–3, Tied Bass 2–6), in any key. The upper voice is written unit by unit under the
+  rules of two-part realization (suspensions prepared and resolved, passing tones, melodic minor); the realizations
+  are counted exactly with the figures and without them, the book's prototypes are realizations of their schemata
+  and close as the book names it, and the page lets the voice be written by hand, each next note with its futures.
+  Kernel `studies/51-schemata/kairotic/schemata.mjs` with its tests (Node and browser) and a page.
+
 - **Study 50 · lines** (discussion #248): counterpoint between two timed lines, whatever their relation in time.
   The comes is a reader of the dux at a signed speed p/q; the lines are spelled on the finest lattice both fall on
   and Study 42's rules are asked unit by unit. A canon, an inversion, an augmentation, a crab and a table canon
