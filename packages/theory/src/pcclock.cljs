@@ -5,9 +5,18 @@
 ;; inversion. Its prime form and interval vector go out; pressing a pitch class sends it.
 (let [names ["C" "C♯" "D" "E♭" "E" "F" "F♯" "G" "A♭" "A" "B♭" "B"]
       TAU (* 2 js/Math.PI)
+      ;; what arrives as pitches: Hz (a keyboard, midiin, a player, pitch~), or MIDI (or 0…11) with the word midi;
+      ;; a chroma (12 values between 0 and 1) as it is. 0 Hz (a silence) is nothing
+      as-pitches (fn [args v]
+                   (let [hz->m (fn [x] (when (and (number? x) (pos? x)) (+ 69 (* 12 (/ (js/Math.log (/ x 440)) (js/Math.log 2))))))
+                         chroma? (fn [xs] (and (= 12 (count xs)) (every? (fn [x] (and (number? x) (<= 0 x 1))) xs)))]
+                     (cond (some #{:midi} args) v
+                           (number? v) (hz->m v)
+                           (and (sequential? v) (seq v) (every? number? v) (not (chroma? v))) (vec (keep hz->m v))
+                           :else v)))
       notes-of (fn [args] (api/clamp (or (first (filter number? args)) 4) 1 24))
       ;; what arrives, as a weight for each pitch class: a list of 12 values between 0 and 1 is a chroma
-      ;; (from chroma~), any other list are pitches (MIDI or 0…11)
+      ;; (from chroma~), any other list are pitches (Hz, as a keyboard or midiin sends them; MIDI or 0…11 with midi)
       weights (fn [xs]
                 (let [w (vec (repeat 12 0))]
                   (if (and (= 12 (count xs)) (every? (fn [x] (and (number? x) (<= 0 x 1))) xs))
@@ -32,14 +41,15 @@
   {;; ── about ──
    :class "pcclock"
    :license "MPL-2.0"
-   :doc "A pitch-class set on the clock face: the twelve classes around a circle, C at the top. A list of pitches (MIDI, or 0…11) is the set; a list of 12 values between 0 and 1 is a chroma (from chroma~), and its classes above 0.5 are the set; a number is a note, and the last n notes (4) are the set; :clear empties it. It draws the set as a polygon (the sets before it fading behind) and its axes of symmetry by inversion, and sends its prime form (left) and its interval vector (middle) when it changes. Pressing a pitch class sends it (right)."
-   :usage "pcclock [notes]"
+   :doc "A pitch-class set on the clock face: the twelve classes around a circle, C at the top. A list of pitches (Hz, as a keyboard or midiin sends them; MIDI or 0…11 with midi) is the set; a list of 12 values between 0 and 1 is a chroma (from chroma~), and its classes above 0.5 are the set; a number is a note, and the last n notes (4) are the set; :clear empties it. It draws the set as a polygon (the sets before it fading behind) and its axes of symmetry by inversion, and sends its prime form (left) and its interval vector (middle) when it changes. Pressing a pitch class sends it (right)."
+   :usage "pcclock [notes] [midi]"
    :io [1 3]
    :size [200 222]
 
    ;; ── logic ──
    :receive (fn [{:keys [value state args]}]
-              (let [st (or state {:notes [] :w (vec (repeat 12 0)) :set [] :trail []})
+              (let [value (as-pitches args value)
+                    st (or state {:notes [] :w (vec (repeat 12 0)) :set [] :trail []})
                     send (fn [st2] (let [s (:set st2)]
                                      {:state st2 :show st2
                                       :out (if (= s (:set st)) [] [[1 (ivec s)] [0 (or (prime s) [])]])}))]
