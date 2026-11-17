@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **`@kairotic/cac` 0.1.1 and `@kairotic/rhythm` 0.1.1**, the first versions published through their trusted
+  publisher (0.1.0 went to npm by hand). `publish-packages.yml` no longer fails on a tag whose version is already on
+  npm: it says so and ends green.
+
 - **`@kairotic/cac`: composition assisted by computer.** The engines that write music with you leave the views:
   `comes` moves from `@kairotic/theory` (0.14.0: `pcclock`, `fourier`, `tonnetz`) to the new `@kairotic/cac` 0.1.0,
   with the kernels every engine shares — `counterpoint.mjs`, `mirror.mjs`, `soft.mjs` (the page's copy now under

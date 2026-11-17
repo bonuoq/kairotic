@@ -49,7 +49,14 @@ jobs:
         run: node packages/build.mjs "$NAME"
       - if: env.NAME == 'app'
         run: node site/build.mjs
-      - run: npm publish --access public
+      # A version already on npm (a first version published by hand, before its trusted publisher could be set)
+      # is not published again — npm would refuse it —: the run ends green, with a notice.
+      - name: Is this version already on npm
+        run: |
+          PKG=$(node -p "require('./$DIR/package.json').name") V=$(node -p "require('./$DIR/package.json').version")
+          if npm view "$PKG@$V" version > /dev/null 2>&1; then echo "::notice::$PKG@$V is already on npm: not published again"; echo "SKIP=1" >> "$GITHUB_ENV"; fi
+      - if: env.SKIP != '1'
+        run: npm publish --access public
         working-directory: ${{ env.OUT }}
       # the claude.ai shell asks jsDelivr for @kairotic/app@latest: forget the old answer so the new version is seen at once
       - if: env.NAME == 'app'
