@@ -1837,15 +1837,42 @@ Reads the buffer (canvas, freqt) connected to its right inlet at the position th
 
 **Inlets** 
 
-0. a position (along X, or Y with reader y; 0…1 with reader path)
-1. the buffer of a canvas or freqt
+0. a position (along X, or Y with reader y; 0…1 with reader path) · on a ring: a position in seconds (0…1 with norm), or :d, :speed, :stop
+1. the buffer of a canvas, freqt or ring (a ring's right outlet)
 
 **Outlets** 
 
-0. the values where the position crosses something (a list)
+0. the values where the position crosses something (a list) · from a ring, each value as it was written
 1. their ids (sent first), for voices
 
-See also: `canvas`, `reader~`
+**Messages and gestures**
+
+- `reader d 1 · msg :d 1`: on a ring: it follows the ring's head 1 s behind, on its own — a canon, a delay; it starts when the ring's time does
+- `reader d 1 speed 0.5 · msg :speed 0.5`: first the distance, then the speed: at 0.5 it falls behind (an augmentation), at −1 it goes back over what was written
+- `a number (a ramp, a counter)`: on a ring: moves it there; it sends what it crosses, either way, and a move larger than its jump (0.5 s; jump 1, msg :jump 1) is a seek
+- `:stop`: it stops following
+
+**Try:** Press ▶ and click the three messages: each comes back a second later, and from the second reader two seconds later, twice as slow. A ramp into a reader on the ring moves it by hand.
+
+```clojure
+(box :b1 "msg 60" 40 30)
+(box :b2 "msg 64" 100 30)
+(box :b3 "msg 67" 160 30)
+(box :b4 "ring 8" 40 90)
+(box :b5 "reader d 1" 40 150)
+(box :b6 "reader d 2 speed 0.5" 180 150)
+(box :b7 "print canon" 40 210)
+(box :b8 "print slower" 180 210)
+(connect :b1 0 :b4 0)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b4 1 :b5 1)
+(connect :b4 1 :b6 1)
+(connect :b5 0 :b7 0)
+(connect :b6 0 :b8 0)
+```
+
+See also: `ring`, `writer`, `canvas`, `reader~`
 
 ### reader~
 
@@ -1969,6 +1996,46 @@ Writes any stream of numbers into a canvas (or a freqt) as strokes over time: an
 ```
 
 See also: `canvas`, `snapshot~`, `reader~`, `transcribe`
+
+### ring
+
+`ring [seconds]`
+
+A span of time for messages: it keeps what reached it in the last seconds (8 by default), each at its time. Its time starts at its first message; its write head goes round as a tape head, so what is older than one turn is gone. Its right outlet is the buffer for a reader (d behind, then a speed: a canon, a delay; or at a position from any source) and for a writer (several heads, anywhere, at any speed). :clear empties it, and its time starts again.
+
+**Inlets** 
+
+0. any value: written where the ring's time is (from its first message) · a writer's edits · :clear
+
+**Outlets** 
+
+0. what it is asked ([:data])
+1. the buffer, for a reader or a writer (on their right or middle inlet); :start when its time starts
+
+**Messages and gestures**
+
+- `ring 8`: keeps the last 8 seconds: its write head goes round as a tape head, so what is older than one turn is gone
+- `:clear`: empties it; its time starts again at the next message
+- `[:data]`: what it keeps, as {:dur :events [[position value] …]}
+
+**Try:** Press ▶ and click the messages: a canon in three voices, 0.5 s and 1.5 s behind. After 4 seconds what you played is gone.
+
+```clojure
+(box :b1 "msg 60" 40 30)
+(box :b2 "msg 67" 100 30)
+(box :b3 "ring 4" 40 90)
+(box :b4 "reader d 0.5" 40 150)
+(box :b5 "reader d 1.5" 160 150)
+(box :b6 "print" 40 210)
+(connect :b1 0 :b3 0)
+(connect :b2 0 :b3 0)
+(connect :b3 1 :b4 1)
+(connect :b3 1 :b5 1)
+(connect :b4 0 :b6 0)
+(connect :b5 0 :b6 0)
+```
+
+See also: `reader`, `writer`, `record`
 
 ### sample
 
@@ -2291,4 +2358,49 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 ```
 
 See also: `mt`, `freqt`
+
+### writer
+
+`writer [ovr|mix] [jump s] [norm]`
+
+A write head on a buffer (a ring): what reaches its left inlet is written where it is. Its position comes in on the right, from any source (a ramp, a counter, a phasor~ through snapshot~), in seconds of the span (0…1 with norm); without one it writes where the ring's head is. Moving, it replaces what it passes, as a tape head — silence too (ovr, the default) — or leaves it (mix); a move larger than its jump is a seek. :rec t / :ovr t send it to t, moving on at speed 1. Its outlet goes to the ring's left inlet; the ring's right outlet to its middle inlet.
+
+**Inlets** 
+
+0. what is written where the writer is · :rec t / :ovr t · :stop
+1. the buffer (a ring's right outlet)
+2. a position in seconds of the span (0…1 with norm), from any source
+
+**Outlets** 
+
+0. edits for the ring (its left inlet)
+
+**Messages and gestures**
+
+- `writer · writer mix`: ovr (the default) replaces what it passes, silence too, as a tape head; mix leaves it (an overdub)
+- `a position on the right`: it goes there: moving, with ovr it erases what it passes; a move larger than its jump (0.5 s; writer jump 1) is a seek
+- `:ovr t (msg :ovr 2)`: to t, then on at speed 1, replacing what it passes
+- `:rec t (msg :rec 2)`: the same, and on a ring everything else is erased first
+- `:stop`: it stays where it is
+
+**Try:** Press ▶ and click the notes: without a position the writer writes where the ring's head is, and the reader plays them a second later. Click :ovr 0: now the writer goes round from the ring's position 0 at speed 1, wherever the ring's head is, replacing what it passes, and the reader meets the notes when it gets there. A ramp on its right inlet moves it by hand.
+
+```clojure
+(box :b1 "msg 60" 40 30)
+(box :b2 "msg 67" 100 30)
+(box :b3 "msg :ovr 0" 160 30)
+(box :b4 "writer" 40 90)
+(box :b5 "ring 4" 40 150)
+(box :b6 "reader d 1" 40 210)
+(box :b7 "print" 40 270)
+(connect :b1 0 :b4 0)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b4 0 :b5 0)
+(connect :b5 1 :b4 1)
+(connect :b5 1 :b6 1)
+(connect :b6 0 :b7 0)
+```
+
+See also: `ring`, `reader`, `record`
 
