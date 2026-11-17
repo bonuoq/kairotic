@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/rhythm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Kairotic rhythm as geometry (after Toussaint): euclid (a Euclidean rhythm by Bjorklund's algorithm, drawn as a necklace) and necklace (a cyclic rhythm on the circle and its measures: interval vector, evenness, deep, flat, axes of symmetry, oddity; also an editor) — both sent as musical trees whose :rtm merges with any pitches",
   "author": "bonuoq",
   "license": "MPL-2.0",

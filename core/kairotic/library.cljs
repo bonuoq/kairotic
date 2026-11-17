@@ -176,8 +176,8 @@
    "@kairotic/analysis" {:version "0.7.5" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "monitor" "form~" "realize~"}
                          :local "kairotic/packages/analysis.mjs"}
    "@kairotic/theory"   {:version "0.14.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}
-   "@kairotic/cac"      {:version "0.1.0" :classes #{"comes"} :local "kairotic/packages/cac.mjs"}
-   "@kairotic/rhythm"   {:version "0.1.0" :classes #{"euclid" "necklace"} :local "kairotic/packages/rhythm.mjs"}
+   "@kairotic/cac"      {:version "0.1.1" :classes #{"comes"} :local "kairotic/packages/cac.mjs"}
+   "@kairotic/rhythm"   {:version "0.1.1" :classes #{"euclid" "necklace"} :local "kairotic/packages/rhythm.mjs"}
    "@kairotic/data"     {:version "0.1.4" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
    "@kairotic/patterns" {:version "0.2.1" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}
    "@kairotic/spectral" {:version "0.1.2" :classes #{"shift~"} :local "kairotic/packages/spectral.mjs"}
