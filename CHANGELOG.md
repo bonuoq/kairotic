@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Pitches in Hz, MIDI with `midi`; trees into `tree` boxes** (breaking; `@kairotic/theory` 0.10.0).
+  - `pcclock`, `fourier` and `tonnetz` take Hz by default, as `keyboard`, `midiin`, `player` and `pitch~` send them
+    (0 Hz, a silence, is nothing), and MIDI (or 0…11) with the word `midi` — as `comes`, `cancrizans` and `realize~`
+    already did. A chroma (12 values between 0 and 1) is taken as it is. Their help patches, which send MIDI
+    messages, now write `pcclock midi`, `fourier midi`, `tonnetz midi`; so does the tutorial on pitch-class sets.
+  - Boxes that give music as a tree send it to a `tree` box in their help patches, which shows it as a score: the
+    help of `tree` (through `mt transpose 7` into a second tree), of `mt`, and of `cancrizans` (its outlet 4).
+    `freqt` stays for what has no musical form yet — strokes of frequency over time (`transcribe`, `record`, drawing),
+    `render`'s time maps — and its own help still shows it as the viewer of a tree.
+  - `cancrizans live` sends its score twice a crab — at the middle what is left to read, and the whole crab at the
+    end — instead of at every beat read, since a tree written into a tree box is an event of the work's history.
+
 - **Help pages for boxes with many options.** A help entry can now carry `:about`, an introduction in short paragraphs
   (bold, `code`), shown first, with the box's whole description folded below it ("Everything it does"), and `:args`,
   what each argument does, as a third column of the Arguments table (and in the reference). `comes` and `cancrizans`
