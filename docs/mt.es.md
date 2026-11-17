@@ -4,8 +4,8 @@
 
 La música en Kairotic se puede escribir como **datos**: un árbol en EDN, al estilo
 *hiccup* `[:etiqueta {atributos} & hijos]`. Es el idioma común de la notación, la composición y la CAC:
-cajas y componentes reciben árboles y devuelven árboles, y un `freqt` (como lienzo o como partitura) o un `canvas` pueden
-mostrar uno. La idea viene del *llll* de [bach](https://www.bachproject.net) para Max: listas que se
+cajas y componentes reciben árboles y devuelven árboles, y una caja `tree` muestra uno como partitura (un `freqt` o un `canvas`
+pueden mostrarlo también, sobre sus trazos). La idea viene del *llll* de [bach](https://www.bachproject.net) para Max: listas que se
 anidan libremente. La diferencia es que aquí los atributos tienen nombre, así que cualquier dato extra
 (los *slots* de bach) es una clave más.
 
@@ -221,6 +221,12 @@ como cualquier edición de un árbol.
 (unquantize! :b2)                  ; sus notas en tiempo libre otra vez
 (to-tree! :b5)                     ; una caja tree nueva junto al freqt :b5, con sus trazos como notas
 ```
+
+La misma cuantización como caja del patch: **`quantize`** toma un freqt en su entrada derecha (su segunda salida), o un árbol
+en tiempo libre por la izquierda, guarda las opciones que llegan como mensajes (`[:meter "3/4"]`, `[:divs [1 2 3 4]]`,
+`[:legato 0.25]`, `[:time :track]`…) y, con un bang, envía el árbol medido — a una caja `tree`, a un `mt`. Solo envía con un
+bang: un árbol escrito en una caja tree es un evento de la historia, así que las opciones se pueden probar antes, y dos cajas
+`quantize` pueden escribir una toma de dos maneras.
 
 Un `freqt` sigue siendo el buffer de frecuencia en el tiempo en bruto (lo que `transcribe` escribe desde una voz, un
 dibujo en Hz continuos): `(to-tree! :bN)` convierte su dibujo en un árbol cuando va a ser una partitura.

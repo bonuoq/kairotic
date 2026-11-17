@@ -388,10 +388,13 @@ Rules:
   1→1; reader 0→0, 1→1. Its other parameters [:name v] apply to every voice.
 - Musical trees (tree boxes, notation): to PLAY one, prefer `tree` → `mt play` → `synth~` (mt play
   sends Hz and voice ids at the tree's tempo once ▶ is on; see class_help). To SHOW one as notation,
-  the tree box itself (it is shown as a score), or a `freqt` with `(view :bN :score)` after `mt` boxes
-  (there is no score class: a score is a view of a freqt). A freqt's own strokes shown as a score are
+  send it to a tree box (it is shown as a score): tree → mt → tree. (A `freqt` with `(view :bN :score)` can
+  preview one too, but trees go to tree boxes; a freqt is for strokes with no musical form yet.) A freqt's own strokes shown as a score are
   quantized into measures in the meter of its bar grid (`(grid-x :bN 0.5 [1.5 1.5])` → 6/8); `(quantize
-  :bN {:meter \"3/4\"})` gives that measured tree. Pitches are written with their names (\"bb4\", \"f#3\"),
+  :bN {:meter \"3/4\"})` gives that measured tree. As a box: `quantize` (the freqt's outlet 1 on its right
+  inlet, or a free tree on the left) keeps options sent as messages ([:meter \"3/4\"], [:divs [1 2 3 4]],
+  [:legato 0.25], [:time :track]…) and only on a bang sends the measured tree, for a tree box — e.g.
+  adc~ → pitch~ → transcribe → freqt → quantize → tree. Pitches are written with their names (\"bb4\", \"f#3\"),
   kept as written; `{:key \"eb\"}` on a tree, voice or measure gives the score its key; numbers are named
   by the key (mt/spell); `mt transpose M3` moves by an interval keeping the spelling.
   A tree box is also a piano roll ((view :bN :roll)): strokes drawn there, or (stroke :bN pts), become notes
@@ -416,7 +419,14 @@ Rules:
 - Music theory as geometry (package @kairotic/theory, it comes by itself): `pcclock` (a pitch-class set on
   the clock, its prime form on the left, interval vector in the middle), `fourier` (six Fourier magnitudes
   on the left), `tonnetz` (triads and the path of the harmony; the triad as :C, :am… on the left); they take
-  lists of pitches, notes one by one, or a chroma from `chroma~`; pressing a pitch class sends it (right).
+  lists of pitches in Hz (as a keyboard or midiin sends them; MIDI or 0…11 with the word midi: `pcclock midi`),
+  notes one by one, or a chroma from `chroma~`; pressing a pitch class sends it (right).
+  Counterpoint in the same package: `comes [system] [mode]` (you play the dux, in Hz or with midi; it answers
+  with the comes as a canon: the Hz of both voices on 0 after their voice ids on 1, for one synth~ 0→0 1→1; the
+  futuribles on 2, where the canon is on 3; :engine plays alone; `live` on a pulse) and `cancrizans` (a crab or
+  `table` canon written from both ends; when it closes, patterns on 0 and 1 and the score as a tree on 4, for a
+  tree box). The words name a system (diatonic, meantone, septimal31, pentatonic) and one of its modes (dorian…,
+  penta-A…), in any order. Orders are keywords: msg :engine, not msg engine.
 - The outside (package @kairotic/io, it comes by itself; listening while ▶ runs): `midiin` (MIDI in: Hz and
   voice ids for synth~ like a keyboard, and every event as a map {:type :note :freq :amp :gate …}),
   `midiout [mpe]` (Hz after voice ids, or events, to a MIDI port; mpe for microtones), `oscout [target]` and

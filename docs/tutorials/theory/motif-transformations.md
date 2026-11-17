@@ -6,23 +6,23 @@ order: 1
 @en
 In Kairotic a fragment of music can be written as a **tree** of data: `[:tag {attributes} children…]`. A `:voice` holds `:measure`s, a measure holds notes, rests, chords and tuplets, and any container can hold others. Strings like `"c4/1 e4/.5"` are a shorthand for notes: pitch / duration in beats (a quarter note = 1).
 
-The same tree can be shown as a score, drawn on a freqt, played, and transformed by the `mt` boxes. In this lesson we take a motif through the classical transformations of counterpoint: transposition, inversion, retrograde, augmentation and canon.
+The same tree can be shown as a score, played, and transformed by the `mt` boxes. In this lesson we take a motif through the classical transformations of counterpoint: transposition, inversion, retrograde, augmentation and canon.
 
 A tree sends itself whenever it changes, so every score below follows it at once. ▶ (or the space bar) is only needed to hear it, at the end.
 @es
 En Kairotic un fragmento de música se puede escribir como un **árbol** de datos: `[:etiqueta {atributos} hijos…]`. Una `:voice` contiene `:measure` (compases), un compás contiene notas, silencios, acordes y grupos irregulares, y cualquier contenedor puede contener otros. Los textos como `"c4/1 e4/.5"` son una abreviatura de notas: altura / duración en pulsos (la negra = 1).
 
-El mismo árbol se puede ver como partitura, dibujar en un freqt, tocar y transformar con las cajas `mt`. En esta lección llevamos un motivo por las transformaciones clásicas del contrapunto: transposición, inversión, retrogradación, aumentación y canon.
+El mismo árbol se puede ver como partitura, tocar y transformar con las cajas `mt`. En esta lección llevamos un motivo por las transformaciones clásicas del contrapunto: transposición, inversión, retrogradación, aumentación y canon.
 
 Un árbol se envía solo cada vez que cambia, así que cada partitura lo sigue al momento. ▶ (o la barra espaciadora) solo hace falta para escucharlo, al final.
 
 ## The motif | El motivo
 @en
-The `tree` box holds the motif as EDN text: two bars of 4/4. It is connected to a `freqt` shown as a score, which draws it bar by bar as soon as it arrives (the bang only sends it again). (The second bar has no `:meter`: it keeps the one before.)
+The `tree` box holds the motif as EDN text: two bars of 4/4. It is its own score, drawn bar by bar, and it sends its tree whenever it changes (the bang only sends it again) — to the `mt` boxes of the next steps, each into a tree box of its own. (The second bar has no `:meter`: it keeps the one before.)
 
 Double-click the code to edit it (Ctrl+Enter applies), or write a new one from the REPL with `(tree! :b2 [:voice [:measure {:meter [3 4]} "g4/1 a4 b4"]])`.
 @es
-La caja `tree` contiene el motivo como texto EDN: dos compases de 4/4. Está conectada a un `freqt` mostrado como partitura, que lo dibuja compás a compás en cuanto llega (el bang solo lo vuelve a enviar). (El segundo compás no lleva `:meter`: conserva el anterior.)
+La caja `tree` contiene el motivo como texto EDN: dos compases de 4/4. Es su propia partitura, dibujada compás a compás, y envía su árbol cada vez que cambia (el bang solo lo vuelve a enviar) — a las cajas `mt` de los pasos siguientes, cada una hacia una caja tree propia. (El segundo compás no lleva `:meter`: conserva el anterior.)
 
 Haz doble clic en el código para editarlo (Ctrl+Intro aplica), o escribe uno nuevo desde la REPL con `(tree! :b2 [:voice [:measure {:meter [3 4]} "g4/1 a4 b4"]])`.
 @try.en
@@ -33,10 +33,7 @@ Cambia una nota en el código y aplícalo: la partitura lo sigue.
 (box :b1 "bang" 40 20)
 (box :b2 "tree" 40 60)
 (tree! :b2 [:voice {:name "motif"} [:measure {:meter [4 4]} "c4/1 d4/.5 e4 g4/1 e4"] [:measure "f4/.5 e4 d4 c4 d4/2"]])
-(box :b3 "freqt" 40 190)
-(view :b3 :score)
 (connect :b1 0 :b2 0)
-(connect :b2 0 :b3 0)
 ```
 
 ## Transposition | Transposición
@@ -54,8 +51,7 @@ El número está en semitonos; negativo baja, y los decimales dan microtonos (`m
 Haz ⌘/Ctrl+clic en la caja `mt` y cambia 7 por -12 en el inspector: la segunda partitura lo sigue.
 ```kairotic
 (box :b4 "mt transpose 7" 480 150)
-(box :b5 "freqt" 480 190)
-(view :b5 :score)
+(box :b5 "tree" 480 190)
 (connect :b2 0 :b4 0)
 (connect :b4 0 :b5 0)
 ```

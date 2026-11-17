@@ -4,7 +4,7 @@
 
 Music in Kairotic can be written as **data**: a tree in EDN, in the *hiccup* style
 `[:tag {attributes} & children]`. It is the common language of notation, composition and CAC: boxes
-and components take trees and return trees, and a `freqt` (as a canvas or as a score) or a `canvas` can show one.
+and components take trees and return trees, and a `tree` box shows one as a score (a `freqt` or a `canvas` can show one too, over their strokes).
 The idea comes from the *llll* of [bach](https://www.bachproject.net) for Max: lists that nest freely.
 The difference is that here attributes have names, so any extra data (bach's *slots*) is one more key.
 
@@ -217,6 +217,11 @@ branches like any edit of a tree.
 (unquantize! :b2)                  ; its notes in free time again
 (to-tree! :b5)                     ; a new tree box beside the freqt :b5, with its strokes as notes
 ```
+
+The same quantization as a box of the patch: **`quantize`** takes a freqt on its right inlet (its second outlet), or a tree in
+free time on the left, keeps the options that come as messages (`[:meter "3/4"]`, `[:divs [1 2 3 4]]`, `[:legato 0.25]`,
+`[:time :track]`…) and, on a bang, sends the measured tree — into a `tree` box, an `mt`. Only a bang sends: a tree written
+into a tree box is an event of the history, so the options can be tried first, and two `quantize` boxes can write one take two ways.
 
 A `freqt` stays the buffer of raw frequency over time (what `transcribe` writes from a voice, a
 drawing in continuous Hz): `(to-tree! :bN)` turns its drawing into a tree when it is to become a score.

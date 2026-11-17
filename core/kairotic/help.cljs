@@ -245,7 +245,7 @@
                              "(box :b9 \"freqt\" 500 160)" "(view :b9 :score)"
                              "(connect :b7 0 :b8 0)" "(connect :b8 0 :b9 0)" "(connect :b9 2 :b8 0)")
              :try "Click a note of the new score and press ↑ or ↓, + or −, Delete (a rest) and then Enter (a note again): the change goes back to the tree by the dashed line."}]
-    :see ["canvas" "reader" "tree"]}
+    :see ["canvas" "reader" "tree" "quantize" "transcribe"]}
 
    "reader"
    {:inlets ["a position in the units of the buffer (along X, or Y with reader y; 0…1 with reader norm, or with reader path) · on a ring: in seconds (0…1 with norm), or :d, :speed, :stop"

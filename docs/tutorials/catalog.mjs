@@ -260,8 +260,8 @@ export default {
       "es": "La música como datos"
      },
      "note": {
-      "en": "In Kairotic a fragment of music can be written as a **tree** of data: `[:tag {attributes} children…]`. A `:voice` holds `:measure`s, a measure holds notes, rests, chords and tuplets, and any container can hold others. Strings like `\"c4/1 e4/.5\"` are a shorthand for notes: pitch / duration in beats (a quarter note = 1).\n\nThe same tree can be shown as a score, drawn on a freqt, played, and transformed by the `mt` boxes. In this lesson we take a motif through the classical transformations of counterpoint: transposition, inversion, retrograde, augmentation and canon.\n\nA tree sends itself whenever it changes, so every score below follows it at once. ▶ (or the space bar) is only needed to hear it, at the end.",
-      "es": "En Kairotic un fragmento de música se puede escribir como un **árbol** de datos: `[:etiqueta {atributos} hijos…]`. Una `:voice` contiene `:measure` (compases), un compás contiene notas, silencios, acordes y grupos irregulares, y cualquier contenedor puede contener otros. Los textos como `\"c4/1 e4/.5\"` son una abreviatura de notas: altura / duración en pulsos (la negra = 1).\n\nEl mismo árbol se puede ver como partitura, dibujar en un freqt, tocar y transformar con las cajas `mt`. En esta lección llevamos un motivo por las transformaciones clásicas del contrapunto: transposición, inversión, retrogradación, aumentación y canon.\n\nUn árbol se envía solo cada vez que cambia, así que cada partitura lo sigue al momento. ▶ (o la barra espaciadora) solo hace falta para escucharlo, al final."
+      "en": "In Kairotic a fragment of music can be written as a **tree** of data: `[:tag {attributes} children…]`. A `:voice` holds `:measure`s, a measure holds notes, rests, chords and tuplets, and any container can hold others. Strings like `\"c4/1 e4/.5\"` are a shorthand for notes: pitch / duration in beats (a quarter note = 1).\n\nThe same tree can be shown as a score, played, and transformed by the `mt` boxes. In this lesson we take a motif through the classical transformations of counterpoint: transposition, inversion, retrograde, augmentation and canon.\n\nA tree sends itself whenever it changes, so every score below follows it at once. ▶ (or the space bar) is only needed to hear it, at the end.",
+      "es": "En Kairotic un fragmento de música se puede escribir como un **árbol** de datos: `[:etiqueta {atributos} hijos…]`. Una `:voice` contiene `:measure` (compases), un compás contiene notas, silencios, acordes y grupos irregulares, y cualquier contenedor puede contener otros. Los textos como `\"c4/1 e4/.5\"` son una abreviatura de notas: altura / duración en pulsos (la negra = 1).\n\nEl mismo árbol se puede ver como partitura, tocar y transformar con las cajas `mt`. En esta lección llevamos un motivo por las transformaciones clásicas del contrapunto: transposición, inversión, retrogradación, aumentación y canon.\n\nUn árbol se envía solo cada vez que cambia, así que cada partitura lo sigue al momento. ▶ (o la barra espaciadora) solo hace falta para escucharlo, al final."
      },
      "try": {
       "en": "",
@@ -275,8 +275,8 @@ export default {
       "es": "El motivo"
      },
      "note": {
-      "en": "The `tree` box holds the motif as EDN text: two bars of 4/4. It is connected to a `freqt` shown as a score, which draws it bar by bar as soon as it arrives (the bang only sends it again). (The second bar has no `:meter`: it keeps the one before.)\n\nDouble-click the code to edit it (Ctrl+Enter applies), or write a new one from the REPL with `(tree! :b2 [:voice [:measure {:meter [3 4]} \"g4/1 a4 b4\"]])`.",
-      "es": "La caja `tree` contiene el motivo como texto EDN: dos compases de 4/4. Está conectada a un `freqt` mostrado como partitura, que lo dibuja compás a compás en cuanto llega (el bang solo lo vuelve a enviar). (El segundo compás no lleva `:meter`: conserva el anterior.)\n\nHaz doble clic en el código para editarlo (Ctrl+Intro aplica), o escribe uno nuevo desde la REPL con `(tree! :b2 [:voice [:measure {:meter [3 4]} \"g4/1 a4 b4\"]])`."
+      "en": "The `tree` box holds the motif as EDN text: two bars of 4/4. It is its own score, drawn bar by bar, and it sends its tree whenever it changes (the bang only sends it again) — to the `mt` boxes of the next steps, each into a tree box of its own. (The second bar has no `:meter`: it keeps the one before.)\n\nDouble-click the code to edit it (Ctrl+Enter applies), or write a new one from the REPL with `(tree! :b2 [:voice [:measure {:meter [3 4]} \"g4/1 a4 b4\"]])`.",
+      "es": "La caja `tree` contiene el motivo como texto EDN: dos compases de 4/4. Es su propia partitura, dibujada compás a compás, y envía su árbol cada vez que cambia (el bang solo lo vuelve a enviar) — a las cajas `mt` de los pasos siguientes, cada una hacia una caja tree propia. (El segundo compás no lleva `:meter`: conserva el anterior.)\n\nHaz doble clic en el código para editarlo (Ctrl+Intro aplica), o escribe uno nuevo desde la REPL con `(tree! :b2 [:voice [:measure {:meter [3 4]} \"g4/1 a4 b4\"]])`."
      },
      "try": {
       "en": "Change a note in the code and apply it: the score follows.",
@@ -286,10 +286,7 @@ export default {
       "(box :b1 \"bang\" 40 20)",
       "(box :b2 \"tree\" 40 60)",
       "(tree! :b2 [:voice {:name \"motif\"} [:measure {:meter [4 4]} \"c4/1 d4/.5 e4 g4/1 e4\"] [:measure \"f4/.5 e4 d4 c4 d4/2\"]])",
-      "(box :b3 \"freqt\" 40 190)",
-      "(view :b3 :score)",
-      "(connect :b1 0 :b2 0)",
-      "(connect :b2 0 :b3 0)"
+      "(connect :b1 0 :b2 0)"
      ]
     },
     {
@@ -307,8 +304,7 @@ export default {
      },
      "code": [
       "(box :b4 \"mt transpose 7\" 480 150)",
-      "(box :b5 \"freqt\" 480 190)",
-      "(view :b5 :score)",
+      "(box :b5 \"tree\" 480 190)",
       "(connect :b2 0 :b4 0)",
       "(connect :b4 0 :b5 0)"
      ]
@@ -699,8 +695,8 @@ export default {
       "es": "Un búfer crudo: freqt"
      },
      "note": {
-      "en": "A `freqt` is something else: a **raw buffer of frequency over time**, with no tree behind it. It is what `transcribe` writes from a voice, or a drawing in continuous Hz. Here it holds a chromatic line that goes up and comes back down, written in Hz, so the notes have no names.\n\nIts score is quantized in the same way, and **named** in the same way. Pitches without a name are spelled near the key and moving well in each voice. A chromatic line rises in sharps and falls in flats.\n\nWhen a drawing is to become a score of its own, `(to-tree! :b5)` makes a new tree box beside it with its strokes as free notes, and the tree, unlike the freqt, can then be edited note by note.",
-      "es": "Un `freqt` es otra cosa: un **búfer crudo de frecuencia en el tiempo**, sin un árbol detrás. Es lo que `transcribe` escribe a partir de una voz, o un dibujo en Hz continuos. Aquí contiene una línea cromática que sube y vuelve a bajar, escrita en Hz, así que las notas no tienen nombre.\n\nSu partitura se cuantiza de la misma manera, y se **nombra** de la misma manera. Las alturas sin nombre se escriben cerca de la tonalidad y moviéndose bien en cada voz. Una línea cromática sube con sostenidos y baja con bemoles.\n\nCuando un dibujo tiene que llegar a ser una partitura propia, `(to-tree! :b5)` crea una caja tree a su lado con sus trazos como notas libres; el árbol, a diferencia del freqt, se puede editar nota a nota."
+      "en": "A `freqt` is something else: a **raw buffer of frequency over time**, with no tree behind it. It is what `transcribe` writes from a voice, or a drawing in continuous Hz. Here it holds a chromatic line that goes up and comes back down, written in Hz, so the notes have no names.\n\nIts score is quantized in the same way, and **named** in the same way. Pitches without a name are spelled near the key and moving well in each voice. A chromatic line rises in sharps and falls in flats.\n\nIts score is a preview. When a drawing is to become a score of its own, a `quantize` box writes it in measures as a tree, with the options you give it (the freqt's second outlet on its right inlet, and a bang: see its help); or `(to-tree! :b5)` makes a new tree box beside it with its strokes as free notes. The tree, unlike the freqt, can then be edited note by note.",
+      "es": "Un `freqt` es otra cosa: un **búfer crudo de frecuencia en el tiempo**, sin un árbol detrás. Es lo que `transcribe` escribe a partir de una voz, o un dibujo en Hz continuos. Aquí contiene una línea cromática que sube y vuelve a bajar, escrita en Hz, así que las notas no tienen nombre.\n\nSu partitura se cuantiza de la misma manera, y se **nombra** de la misma manera. Las alturas sin nombre se escriben cerca de la tonalidad y moviéndose bien en cada voz. Una línea cromática sube con sostenidos y baja con bemoles.\n\nSu partitura es una vista previa. Cuando un dibujo tiene que llegar a ser una partitura propia, una caja `quantize` lo escribe en compases como árbol, con las opciones que le des (la segunda salida del freqt en su entrada derecha, y un bang: mira su ayuda); o `(to-tree! :b5)` crea una caja tree a su lado con sus trazos como notas libres. El árbol, a diferencia del freqt, se puede editar nota a nota."
      },
      "try": {
       "en": "Shift-alt-click a note to give it another name (c#4 → db4). `(quant :b5 {:key \"d\"})` puts the score in D major.",
@@ -730,8 +726,7 @@ export default {
       "(box :b6 \"tree\" 480 570)",
       "(tree! :b6 [:voice {:key \"eb\"} [:measure {:meter [4 4]} \"eb4/1 f4/.5 g4 ab4/1 a4/.5 bb4\"] [:measure \"c5/1 b4/.5 bb4 eb4/2\"]])",
       "(box :b7 \"mt transpose M3\" 480 720)",
-      "(box :b8 \"freqt\" 480 760)",
-      "(view :b8 :score)",
+      "(box :b8 \"tree\" 480 760)",
       "(connect :b6 0 :b7 0)",
       "(connect :b7 0 :b8 0)"
      ]
@@ -786,8 +781,8 @@ export default {
       "es": "Uno, dos, tree"
      },
      "note": {
-      "en": "**One box**: `tree`, whose text opens from { }.\n\n**Two views**: a score and a roll of one tree, and every edit, in either of them or in the text, is one event of the history.\n\n**Tree**: and in it, two times. Measured (`:measure`, `:meter`, `:tuplet`, `:rtm`) and free (`[:par [:note {:at …}]]`). The score of free time is a quantized reading of it (alt-click, `division!`, `quant`). `quantize!` writes that reading into the tree, and `unquantize!` takes it back.\n\nAround it: `freqt`, the raw buffer of frequency over time, which `to-tree!` turns into a tree. Names that stay as they were written, keys, `mt transpose M3`, `#` and shift-alt-click. And everything between the semitones: `:cents`, quarter tones, `:gliss`, tunings.\n\nThe full reference is in the Help tab, under **Musical trees**. The design behind it is discussed in issues #86 (quantization) and #88 (pitch spelling), and in discussion #92 (one box), on the GitHub of Kairotic.",
-      "es": "**Una caja**: `tree`, cuyo texto se abre desde { }.\n\n**Dos vistas**: una partitura y un roll de un mismo árbol, y cada edición, en cualquiera de ellas o en el texto, es un evento de la historia.\n\n**Tree**: y en él, dos tiempos. Medido (`:measure`, `:meter`, `:tuplet`, `:rtm`) y libre (`[:par [:note {:at …}]]`). La partitura del tiempo libre es una lectura cuantizada de él (alt-clic, `division!`, `quant`). `quantize!` escribe esa lectura en el árbol, y `unquantize!` la deshace.\n\nA su alrededor: `freqt`, el búfer crudo de frecuencia en el tiempo, que `to-tree!` vuelve árbol. Los nombres que se quedan como se escribieron, las tonalidades, `mt transpose M3`, `#` y shift-alt-clic. Y todo lo que hay entre los semitonos: `:cents`, cuartos de tono, `:gliss`, afinaciones.\n\nLa referencia completa está en la pestaña Ayuda, en **Árboles musicales**. El diseño que hay detrás se discute en los issues #86 (cuantización) y #88 (grafía de alturas), y en la discusión #92 (una caja), en el GitHub de Kairotic."
+      "en": "**One box**: `tree`, whose text opens from { }.\n\n**Two views**: a score and a roll of one tree, and every edit, in either of them or in the text, is one event of the history.\n\n**Tree**: and in it, two times. Measured (`:measure`, `:meter`, `:tuplet`, `:rtm`) and free (`[:par [:note {:at …}]]`). The score of free time is a quantized reading of it (alt-click, `division!`, `quant`). `quantize!` writes that reading into the tree, and `unquantize!` takes it back.\n\nAround it: `freqt`, the raw buffer of frequency over time, which `quantize` (a box, by a bang) or `to-tree!` turn into a tree. Names that stay as they were written, keys, `mt transpose M3`, `#` and shift-alt-click. And everything between the semitones: `:cents`, quarter tones, `:gliss`, tunings.\n\nThe full reference is in the Help tab, under **Musical trees**. The design behind it is discussed in issues #86 (quantization) and #88 (pitch spelling), and in discussion #92 (one box), on the GitHub of Kairotic.",
+      "es": "**Una caja**: `tree`, cuyo texto se abre desde { }.\n\n**Dos vistas**: una partitura y un roll de un mismo árbol, y cada edición, en cualquiera de ellas o en el texto, es un evento de la historia.\n\n**Tree**: y en él, dos tiempos. Medido (`:measure`, `:meter`, `:tuplet`, `:rtm`) y libre (`[:par [:note {:at …}]]`). La partitura del tiempo libre es una lectura cuantizada de él (alt-clic, `division!`, `quant`). `quantize!` escribe esa lectura en el árbol, y `unquantize!` la deshace.\n\nA su alrededor: `freqt`, el búfer crudo de frecuencia en el tiempo, que `quantize` (una caja, con un bang) o `to-tree!` vuelven árbol. Los nombres que se quedan como se escribieron, las tonalidades, `mt transpose M3`, `#` y shift-alt-clic. Y todo lo que hay entre los semitonos: `:cents`, cuartos de tono, `:gliss`, afinaciones.\n\nLa referencia completa está en la pestaña Ayuda, en **Árboles musicales**. El diseño que hay detrás se discute en los issues #86 (cuantización) y #88 (grafía de alturas), y en la discusión #92 (una caja), en el GitHub de Kairotic."
      },
      "try": {
       "en": "",
@@ -827,8 +822,8 @@ export default {
       "es": "Dos secciones, dos voces"
      },
      "note": {
-      "en": "Section A and section B, each with a flute and a cello. The score shows the whole work, with the name of each section over its first bar and a double bar between them.\n\nLook at the Code tab: the tree box is one call, `(tree! :b2 …)`, with the tree laid out one container per line.\n\nThe dashed line goes back from the score's third outlet to the tree: it carries the **edits** you make on the score. (When you connect a tree to a score with the mouse, it is drawn for you.)",
-      "es": "La sección A y la sección B, cada una con flauta y violonchelo. La partitura muestra toda la obra, con el nombre de cada sección sobre su primer compás y una doble barra entre ellas.\n\nMira la pestaña Code: la caja tree es una sola llamada, `(tree! :b2 …)`, con el árbol escrito un contenedor por línea.\n\nLa línea discontinua vuelve de la tercera salida de la partitura al tree: lleva las **ediciones** que hagas en la partitura. (Cuando conectas con el ratón un tree a una score, se dibuja sola.)"
+      "en": "Section A and section B, each with a flute and a cello. The score shows the whole work, with the name of each section over its first bar and a double bar between them.\n\nLook at the Code tab: the tree box is one call, `(tree! :b2 …)`, with the tree laid out one container per line.\n\nThe tree box is its own score: what you change on it are **edits** of the tree, one event of the history each.",
+      "es": "La sección A y la sección B, cada una con flauta y violonchelo. La partitura muestra toda la obra, con el nombre de cada sección sobre su primer compás y una doble barra entre ellas.\n\nMira la pestaña Code: la caja tree es una sola llamada, `(tree! :b2 …)`, con el árbol escrito un contenedor por línea.\n\nLa caja tree es su propia partitura: lo que cambias en ella son **ediciones** del árbol, un evento de la historia cada una."
      },
      "try": {
       "en": "",
@@ -838,11 +833,8 @@ export default {
       "(box :b1 \"bang\" 40 20)",
       "(box :b2 \"tree\" 40 60)",
       "(tree! :b2 [:piece {:tempo 80} [:section {:name \"A\"} [:voice {:name \"fl\"} [:measure {:meter [3 4]} \"e5/1 d5 c5\"] [:measure \"d5/2 g4/1\"]] [:voice {:name \"vc\"} [:measure \"c3/3\"] [:measure \"g2/3\"]]] [:section {:name \"B\"} [:voice {:name \"fl\"} [:measure \"e5/.5 f5 g5/2\"] [:measure \"c5/3\"]] [:voice {:name \"vc\"} [:measure \"a2/3\"] [:measure \"c3/3\"]]]])",
-      "(box :b3 \"freqt\" 420 60)",
-      "(view :b3 :score)",
-      "(connect :b1 0 :b2 0)",
-      "(connect :b2 0 :b3 0)",
-      "(connect :b3 2 :b2 0)"
+      "(resize :b2 560 260)",
+      "(connect :b1 0 :b2 0)"
      ]
     },
     {
@@ -868,8 +860,8 @@ export default {
       "es": "Editar desde la partitura"
      },
      "note": {
-      "en": "In a score that shows a tree, **click a note**: it is selected. Then:\n\n↑ ↓ change its pitch (⇧ an octave) · **+** **−** double or halve its duration · ← → select the previous or next note · a…g the nearest note of that name · **Delete** turns it into a rest · Esc deselects. A rest can be selected too: **Enter** makes it a note again (the pitch of the note before it), ↑ ↓ a step above or below.\n\nEach change leaves the score by its edits outlet as `[:edit …]`, reaches the tree by the dashed line, and becomes a `(tree-edit! …)`: you can see it in the REPL and in the history. The tree, changed, comes back to the score. A note written inside a melody string is first written out as notes, in the same event.",
-      "es": "En una partitura que muestra un árbol, **haz clic en una nota**: queda seleccionada. Después:\n\n↑ ↓ cambian su altura (⇧ una octava) · **+** **−** duplican o dividen su duración · ← → seleccionan la nota anterior o la siguiente · a…g la nota más cercana con ese nombre · **Supr** la convierte en silencio · Esc quita la selección. También se puede seleccionar un silencio: **Intro** lo vuelve nota (la altura de la nota anterior), ↑ ↓ un paso por encima o por debajo.\n\nCada cambio sale de la partitura por su salida de ediciones como `[:edit …]`, llega al tree por la línea discontinua y se convierte en un `(tree-edit! …)`: lo ves en la REPL y en la historia. El árbol, cambiado, vuelve a la partitura. Una nota escrita dentro de un texto de melodía se escribe primero como notas, en el mismo evento."
+      "en": "In a score that shows a tree, **click a note**: it is selected. Then:\n\n↑ ↓ change its pitch (⇧ an octave) · **+** **−** double or halve its duration · ← → select the previous or next note · a…g the nearest note of that name · **Delete** turns it into a rest · Esc deselects. A rest can be selected too: **Enter** makes it a note again (the pitch of the note before it), ↑ ↓ a step above or below.\n\nEach change is an edit of the tree's nodes, a `(tree-edit! …)`: you can see it in the REPL and in the history, and the score shows the tree changed. A note written inside a melody string is first written out as notes, in the same event.",
+      "es": "En una partitura que muestra un árbol, **haz clic en una nota**: queda seleccionada. Después:\n\n↑ ↓ cambian su altura (⇧ una octava) · **+** **−** duplican o dividen su duración · ← → seleccionan la nota anterior o la siguiente · a…g la nota más cercana con ese nombre · **Supr** la convierte en silencio · Esc quita la selección. También se puede seleccionar un silencio: **Intro** lo vuelve nota (la altura de la nota anterior), ↑ ↓ un paso por encima o por debajo.\n\nCada cambio es una edición de los nodos del árbol, un `(tree-edit! …)`: lo ves en la REPL y en la historia, y la partitura muestra el árbol cambiado. Una nota escrita dentro de un texto de melodía se escribe primero como notas, en el mismo evento."
      },
      "try": {
       "en": "Change the cello's last note of section A with ↑ ↓, and halve a flute note with −: the score warns (⚠ in the REPL) that its measure no longer adds up, until you fix it.",

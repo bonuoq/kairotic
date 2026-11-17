@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Docs, tutorials and the assistant follow the last changes.** The guide (EN/ES) and *Musical trees* (`docs/mt`)
+  present `quantize` beside `quantize!`; *Writing a component* documents `:about` and `:args` in `:help`; the READMEs
+  of `@kairotic/theory` (pitches in Hz, `midi`, `:clear`) and `@kairotic/analysis` (`transcribe` → `quantize`). The
+  tutorials send trees to tree boxes instead of a freqt shown as a score (*A motif and its transformations*, *Names
+  and keys* in *One, two, tree*, and *A work as a tree*, where the tree box is its own score and the dashed line of
+  edits is gone), mention `quantize` for a freqt's drawing, and write `pcclock midi`, `fourier midi`, `tonnetz midi`
+  in *Harmony as geometry* — in their Markdown sources this time (the catalog is built from them: the change of
+  #242 to the catalog alone would have been lost at the next build). The in-app assistant knows `quantize`, that
+  trees go to tree boxes, the Hz/`midi` convention, `comes` and `cancrizans`, and that orders are keywords.
 - **`quantize`: free time written in measures, as a box.** What `transcribe` or a drawing left in a `freqt` (its
   second outlet on the right inlet), or a tree in free time on the left (a measured one is made free first), becomes
   a measured tree — measures, tuplets, ties, grace notes, voices — for a `tree` box. It is manual: options come as
