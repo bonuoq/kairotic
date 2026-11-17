@@ -300,7 +300,7 @@ How much of each pitch class a signal has: 12 values from C to B, and the strong
 
 See also: `pitch~`, `mt`, `features~`
 
-### comes · `@kairotic/theory`
+### comes · `@kairotic/cac`
 
 `comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [temp 0] [seed 1] [inverted] [fourth] [live] [nocues] [midi]`
 
