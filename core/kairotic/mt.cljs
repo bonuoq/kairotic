@@ -437,21 +437,41 @@
 
 (defn as-voice [t nm] (if (= :voice (tag t)) (update-attrs t assoc :name nm) [:voice {:name nm} t]))
 
+(defn- canon*
+  "The tree (the dux) against the comes, entering `delay` beats later. When the dux is written in measures and
+   the delay is a whole number of them, the comes enters after rest bars."
+  [delay t comes]
+  (let [first-m (first (filter (fn [x] (and (node? x) (= :measure (tag x)))) (tree-seq node? kids t)))
+        [p q] (when first-m (:meter (attrs first-m)))
+        bar (when p (* p (/ 4 q)))
+        bars (when bar (/ delay bar))]
+    (if (and bars (pos? bars) (= bars (js/Math.round bars)))
+      (let [v2 (as-voice comes "comes")
+            rests (vec (repeat bars [:measure {:meter [p q]} [:rest {:dur bar}]]))]
+        [:par {:name "canon"} (as-voice t "dux") (with-kids v2 (into rests (kids v2)))])
+      [:par {:name "canon"} (as-voice t "dux") [:voice {:name "comes"} [:seq {:at delay} comes]]])))
+
 (defn canon
   "The tree against itself, entering `delay` beats later and transposed by `interval`. When it is
-   written in measures and the delay is a whole number of them, the second voice enters after rest bars."
-  ([delay tree] (canon delay 0 tree))
+   written in measures and the delay is a whole number of them, the second voice enters after rest bars.
+   With a map, the words of the heads (discussion \"Heads on a span of time\"): {:d beats later, :k an
+   interval (semitones or a name, M3, -P5), :speed of the comes (0.5 twice as slow, 2 twice as fast, −1
+   backwards: a crab), :inversion (upside down, around the dux's first pitch)}."
+  ([delay tree]
+   (if (map? delay)
+     (let [{:keys [d k speed inversion]} delay
+           t (with-meters (explicit (expand tree)))
+           s (if (and (number? speed) (not (zero? speed))) speed 1)
+           comes (cond->> t
+                   inversion (invert nil)
+                   (neg? s) retrograde
+                   (not= 1 (js/Math.abs s)) (augment (/ 1 (js/Math.abs s)))
+                   true (transpose (or k 0)))]
+       (canon* (or d 1) t comes))
+     (canon delay 0 tree)))
   ([delay interval tree]
-   (let [t (with-meters (explicit (expand tree)))
-         first-m (first (filter (fn [x] (and (node? x) (= :measure (tag x)))) (tree-seq node? kids t)))
-         [p q] (when first-m (:meter (attrs first-m)))
-         bar (when p (* p (/ 4 q)))
-         bars (when bar (/ delay bar))]
-     (if (and bars (pos? bars) (= bars (js/Math.round bars)))
-       (let [v2 (as-voice (transpose interval t) "comes")
-             rests (vec (repeat bars [:measure {:meter [p q]} [:rest {:dur bar}]]))]
-         [:par {:name "canon"} (as-voice t "dux") (with-kids v2 (into rests (kids v2)))])
-       [:par {:name "canon"} (as-voice t "dux") [:voice {:name "comes"} [:seq {:at delay} (transpose interval t)]]]))))
+   (let [t (with-meters (explicit (expand tree)))]
+     (canon* delay t (transpose interval t)))))
 
 (defn apply-ops
   "The variations a [:use …] or a box can ask for, in a fixed order."
