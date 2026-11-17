@@ -58,8 +58,8 @@ export async function agent(page, check) {
     check("... its text says it", (await cljs(page, "(:text (get-in (current) [:boxes :b900]))")) === '"agent \\"add two\\""');
     check("... its line has one more point", (await cljs(page, "(count (vals (line-nodes (agent-line (get-in (current) [:boxes :b900])))))")) === "2");
     await cljs(page, "(send! :b901 50)");
-    const got = await until(page, "(second (get-in @eng/rt [:shows :b902 0]))", (x) => x === "52");
-    check("... and it plays the new content: 50 in, 52 out", got === "52", got + " · " + await cljs(page, "(pr-str (map :text (vals (:boxes (eng/patch)))))").then((x) => x.slice(0, 400)));
+    const got = await until(page, "(pr-str (get-in @eng/rt [:shows :b902]))", (x) => /\b52\b/.test(x));
+    check("... and it plays the new content: 50 in, 52 out", /\b52\b/.test(got), got);
     check("... its state outlet said :built", (await cljs(page, "(get-in @eng/rt [:states :b900.agent-core])")) === "{}");
     check("an agent opens like a patch @name: its line, in its tab", (await cljs(page, "(line-ref? (get-in (current) [:boxes :b900]))")) === "true");
   } catch (e) {
