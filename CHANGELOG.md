@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The `agent` box** (issue #269, after Study 53 and discussion #256). Its request is its text,
+  `agent "harmonize this melody in four parts"`, and Claude builds its content with the classes the work knows,
+  checked as the Claude tab checks a patch, with up to three tries (a patch that fails goes back with its errors).
+  The content is a line of its own (`agent b3`): double-click opens it in its tab, each build is one more point
+  of it, and once built it plays with no call to Claude. Its ports are the content's and one more of each, last:
+  a message to the last inlet (a string or `[:ask "…"]`) is a new request, so a patch can ask it
+  asynchronously, and the last outlet says `:building`, `:built` or `[:error "…"]`. Whoever asks pays: who writes
+  the text, or whose patch sends the message (never a jam's). One build at a time per box, and a request equal to
+  the one that built it is not sent again. `(ask-agent :bN ["…"])`, `(agent-info :bN)`.
+
 - **`@kairotic/cac` 0.1.1 and `@kairotic/rhythm` 0.1.1**, the first versions published through their trusted
   publisher (0.1.0 went to npm by hand). `publish-packages.yml` no longer fails on a tag whose version is already on
   npm: it says so and ends green.
