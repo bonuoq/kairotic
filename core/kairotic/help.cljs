@@ -490,7 +490,7 @@
                     "(box :b3 \"mt transpose 7\" 40 190)" "(box :b4 \"tree\" 40 230)"
                     "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b3 0 :b4 0)")
     :try "The tree box is its own score: click a note and press ↑ (or a…g, + −, Delete), or press { } in its header, change a note in its text and apply it (Ctrl+Enter). It sends its tree whenever it changes: through mt transpose 7 it reaches the second tree box, a fifth higher, which follows. Press ⇄ roll on the tree box to draw notes into it. (A tree that comes into a tree box is written into it, as one event of the history.)"
-    :see ["mt" "freqt"]}
+    :see ["mt" "quantize" "freqt"]}
 
    "mt"
    {:inlets ["a tree: it comes out transformed (for play: a tree to play, then bang, :stop)"
@@ -560,6 +560,46 @@
     :try "Press ▶ and play a chord or a drone: the bars show its pitch classes; print writes the strongest."
     :see ["pitch~" "mt" "features~"]}
 
+   "quantize"
+   {:about "**Free time written in measures, when you ask.** What `transcribe` or a drawing left in a `freqt` — notes placed anywhere in time — becomes a measured tree: measures, tuplets, ties, grace notes, voices, ready for a `tree` box, `mt` and the rest.
+
+**Only a bang sends.** The options can be tried first, one message at a time, and nothing goes out until you bang it: a tree written into a tree box is an event of the work's history.
+
+**Two ways in.** A `freqt` on the right inlet (its second outlet: the buffer), or a tree on the left — in free time, or measured (it is made free first, to be written again another way). Two `quantize` boxes can write the same take two ways."
+    :inlets ["a bang: quantize and send · a tree (free or measured): the material, until the next one · [:meter \"6/8\"] and the other options, or a map of them · [:meter nil] forgets one · :reset forgets all · :clear forgets the tree"
+             "a freqt (from its second outlet): the material, read at the bang"]
+    :outlets ["the measured tree, for a tree box" "what it found: {:bars :meter :tempo :notes :voices}"]
+    :messages [[":bang" "quantize the material and send the tree"]
+               ["[:meter \"3/4\"]" "the meter (\"6/8\", \"7/8[2+2+3]\" for its groups); without one, the freqt's bar grid, or 4/4"]
+               ["[:meters [\"3/4\" \"5/8\"]]" "a meter for each bar, the last one going on"]
+               ["[:divs [1 2 3 4]]" "the divisions a beat may take (1 to 8 by default: 3, 5, 7 are tuplets)"]
+               ["[:merge []]" "no two beats joined into one tuplet ([3 5 6] by default)"]
+               ["[:legato 0.25]" "the largest gap before the next note that is not a rest, in beats (0: every gap is a rest)"]
+               ["[:chord 0.04]" "starts this close (beats) are one chord"]
+               ["[:voices 1]" "how many voices overlapping notes may take (2 by default)"]
+               ["[:grace false]" "no grace notes: a note too short for any point is dropped"]
+               ["[:key \"eb\"]" "the key it is written in: its signature and its spelling"]
+               ["[:tempo 72]" "the tempo written in the tree"]
+               ["[:time :track]" "what was played freely (with rubato, at any tempo): its beats are found first (also: quantize track)"]
+               ["{:meter \"6/8\" :divs [1 2 3]}" "several options at once"]
+               [":reset" "the options forgotten (the defaults again)"]]
+    :example (lines "(box :b1 \"freqt\" 40 60)" "(resize :b1 420 200)"
+                    "(melody :b1 \"c4/1.06 e4/.47 d4/.55 g4/.94 e4/1.03 f4/.32 e4/.36 d4/.3 c4/2.1\" 0)"
+                    "(box :b2 \"msg :bang\" 520 30)" "(box :b6 \"msg :meter \\\"3/4\\\"\" 600 30)" "(box :b7 \"msg :meter nil\" 740 30)"
+                    "(box :b3 \"quantize\" 520 90)" "(box :b4 \"tree\" 520 160)" "(resize :b4 460 160)" "(box :b5 \"print\" 760 90)"
+                    "(connect :b1 1 :b3 1)" "(connect :b2 0 :b3 0)" "(connect :b6 0 :b3 0)" "(connect :b7 0 :b3 0)"
+                    "(connect :b3 0 :b4 0)" "(connect :b3 1 :b5 0)")
+    :try "The freqt holds a phrase played freely — the durations are not quite 1, ½ or ⅓. Click :bang: quantize writes it in measures of 4/4 and the tree box shows the score. Click :meter \"3/4\" and :bang again: the same notes, in 3/4. Change a stroke in the freqt (drag it) and bang: the score follows only when you ask."
+    :steps [{:title "From your voice"
+             :note "transcribe writes what pitch~ hears into the freqt, as strokes in free time; quantize writes them in measures. With :time :track (or quantize track) it first finds the beats of what you sang freely."
+             :example (lines "(box :b8 \"adc~ 1\" 40 330)" "(box :b9 \"pitch~ 80 1000\" 40 390)" "(box :b10 \"onset~\" 200 390)"
+                             "(box :b11 \"msg :rec\" 300 330)" "(box :b12 \"msg :stop\" 380 330)" "(box :b13 \"transcribe 60\" 40 450)"
+                             "(box :b14 \"msg :time :track\" 880 30)"
+                             "(connect :b8 0 :b9 0)" "(connect :b8 0 :b10 0)" "(connect :b9 0 :b13 0)" "(connect :b10 0 :b13 1)"
+                             "(connect :b11 0 :b13 0)" "(connect :b12 0 :b13 0)" "(connect :b13 0 :b1 0)" "(connect :b14 0 :b3 0)")
+             :try "Press ▶, click :rec, sing a phrase, click :stop: the freqt holds it. Click :time :track, then :bang: your phrase, in measures."}]
+    :see ["transcribe" "freqt" "tree" "mt"]}
+
    "transcribe"
    {:package "@kairotic/analysis" :usage "transcribe [bpm] [notes|glide] [ms]"
     :doc "Writes what pitch~ hears into a freqt, as strokes: notes where the contour settles on another pitch (slides, vibrato and ornaments do not start notes), or contours (glide)."
@@ -571,8 +611,8 @@
                     "(box :b7 \"freqt\" 40 220)"
                     "(connect :b1 0 :b2 0)" "(connect :b1 0 :b3 0)" "(connect :b2 0 :b6 0)" "(connect :b3 0 :b6 1)"
                     "(connect :b4 0 :b6 0)" "(connect :b5 0 :b6 0)" "(connect :b6 0 :b7 0)")
-    :try "Press ▶, click rec, sing a phrase, click stop: the freqt holds it. ⇄ shows it as a score. Write transcribe 60 glide to keep the slides."
-    :see ["pitch~" "onset~" "freqt"]}
+    :try "Press ▶, click :rec, sing a phrase, click :stop: the freqt holds it (⇄ previews it as a score). To write it in measures, as a tree, connect the freqt's second outlet to a quantize box and bang it. Write transcribe 60 glide to keep the slides."
+    :see ["pitch~" "onset~" "freqt" "quantize"]}
 
    "spectrum~"
    {:package "@kairotic/analysis" :usage "spectrum~ [lo hi]"

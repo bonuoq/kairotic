@@ -9,7 +9,9 @@
   (:require [clojure.string :as str]
             [kairotic.components :as comp]
             [kairotic.code :as cbox]
-            [kairotic.mt :as mt]))
+            [kairotic.mt :as mt]
+            [kairotic.quantize :as qz]
+            [kairotic.treecanvas :as tc]))
 
 ;; ───────── tree: EDN data in the patch ─────────
 ;; Reading EDN evaluates nothing, so a tree box is safe in a shared room (no trust needed).
@@ -84,6 +86,72 @@
                   (try {:out [[0 (mt/expand-source t (:id m))]] :show :bang}
                        (catch :default e {:effects [[:print (str "tree: " (.-message e))]]}))
                   :else {:effects [[:print "tree: empty, or text that does not read as EDN"]]})))})
+
+;; ───────── quantize: free time written in measures, by hand ─────────
+;; The material is the freqt on its right inlet (what transcribe or a drawing wrote), or a tree that came on the
+;; left (free time, or measured: it is first made free again); the options are kept as they come; only a bang
+;; quantizes and sends — a tree into a tree box is an event of the work's history, so nothing goes out while the
+;; options are being tried.
+
+(def quantize-keys #{:meter :meters :divs :merge :grace :chord :legato :voices :overlap :nest :key :tempo :time :ref-bpm :w :spell})
+
+(defn quantize-report
+  "What a quantization found: its bars, its meter, its tempo, its notes and its voices."
+  [t]
+  (let [xt (mt/expand t)
+        ms (filter (fn [x] (and (mt/node? x) (= :measure (mt/tag x)))) (tree-seq mt/node? mt/kids xt))
+        vs (filter (fn [x] (and (mt/node? x) (= :voice (mt/tag x)))) (tree-seq mt/node? mt/kids xt))
+        m0 (some (fn [m] (:meter (mt/attrs m))) ms)]
+    {:bars (if (seq vs) (quot (count ms) (max 1 (count vs))) (count ms))
+     :meter (when m0 (str/join "/" m0))
+     :tempo (:tempo (mt/attrs xt))
+     :notes (count (filter (fn [e] (= :note (:kind e))) (mt/events xt)))
+     :voices (max 1 (count vs))}))
+
+(comp/define! "quantize"
+  {:doc "Free time written in measures, when you ask: what transcribe or a drawing left in a freqt (connect the freqt's second outlet to its right inlet), or a tree in free time that comes on the left (a measured one is made free first), becomes a measured tree — measures, tuplets, ties, grace notes, voices —, for a tree box. Only a bang quantizes and sends it, so its options can be tried first: [:meter \"6/8\"], [:meter \"7/8[2+2+3]\"], [:meters [\"3/4\" \"5/8\"]], [:divs [1 2 3 4]] (the divisions a beat may take), [:merge []] (no beats joined into a tuplet), [:legato 0.25] (the largest gap that is not a rest, in beats), [:chord 0.04] (starts that close are one chord), [:voices 1], [:grace false], [:key \"eb\"], [:tempo 72], [:time :track] (find the beats of what was played freely, as track), or a map of them; [:meter nil] forgets one, :reset all of them. With the word track it finds the beats from the start. It is the quantization a freqt shown as a score uses (that is a preview); here it is a step of the patch, with its options in view, and two quantize boxes can write the same take two ways."
+   :usage "quantize [track]"
+   :io [2 2]
+   :reads-buffer true
+   :receive (fn [{:keys [inlet value state args buffer buffer-id]}]
+              (let [st (or state {:opts (if (some #{:track} args) {:time :track} {})})
+                    show (fn [st extra] (merge {:opts (:opts st) :from (cond (:tree st) "a tree" buffer-id (name buffer-id) :else nil)} extra))]
+                (cond
+                  ;; the right inlet: the freqt is read when the bang comes (nothing to keep)
+                  (= inlet 1) {}
+                  ;; an option, or several; nil forgets it
+                  (and (vector? value) (= 2 (count value)) (quantize-keys (first value)))
+                  (let [[k v] value st (if (nil? v) (update st :opts dissoc k) (assoc-in st [:opts k] v))] {:state st :show (show st nil)})
+                  (and (map? value) (seq value) (every? quantize-keys (keys value)))
+                  (let [st (update st :opts merge value)] {:state st :show (show st nil)})
+                  (#{:reset} value) (let [st (assoc st :opts {})] {:state st :show (show st nil)})
+                  ;; a tree: the material, kept until the next bang
+                  (mt/node? value) (let [st (assoc st :tree value)] {:state st :show (show st {:waiting true})})
+                  (#{:clear} value) (let [st (dissoc st :tree)] {:state st :show (show st nil)})
+                  ;; a bang: quantized now, and sent
+                  (= value :bang)
+                  (let [t (:tree st)
+                        free (fn [t] (if (mt/measured? t) (tc/free-form t) t))]
+                    (try
+                      (let [q (cond t (qz/quantize-tree (free t) (:opts st))
+                                    (and (map? buffer) (seq (:strokes buffer))) (qz/quantize buffer (merge (:quant buffer) (:opts st)))
+                                    :else nil)]
+                        (if q
+                          (let [r (quantize-report q)] {:state st :show (show st r) :out [[1 r] [0 q]]})
+                          {:show (show st {:error "nothing to quantize: a freqt on the right, or a tree on the left"})}))
+                      (catch :default e {:show (show st {:error (.-message e)})
+                                         :effects [[:print (str "quantize: " (.-message e))]]})))
+                  :else {})))
+   :size [190 40]
+   :derive (fn [{:keys [shown]}]
+             {:main (str "quantize" (when-let [m (get-in shown [:opts :meter])] (str " · " m)) (when (= :track (get-in shown [:opts :time])) " · track"))
+              :sub (cond (:error shown) (str "✗ " (:error shown))
+                         (:notes shown) (str (:bars shown) " bars of " (:meter shown) " · " (:notes shown) " notes" (when (:tempo shown) (str " · ♩ " (:tempo shown))))
+                         (:waiting shown) "a tree is here: bang to quantize it"
+                         :else "bang: quantize and send")})
+   :view [[:rect {:x 2 :y 2 :w 186 :h 36 :r 3 :stroke :grid :fill :bg}]
+          [:text {:x 10 :y 18 :size 12} :$main]
+          [:text {:x 10 :y 32 :size 9 :fill :soft} :$sub]]})
 
 ;; ───────── mt: operations ─────────
 

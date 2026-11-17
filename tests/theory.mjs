@@ -75,8 +75,9 @@ export async function theory(page, check) {
   check("... pressing a node sends its pitch class", (await printedHas(page, "7")).includes("7"), await printed(page));
   // without midi, pitches are Hz, as a keyboard sends them
   const ph = (await cljs(page, '(box "pcclock" 7600 360)')).trim();
-  await cljs(page, `(send! ${ph} [261.63 329.63 392])`);
-  check("pcclock without midi: Hz (C4 E4 G4 from a keyboard) are the set (0 4 7)", (await until(page, `(:set (second (last-shown ${ph})))`, (x) => x === "[0 4 7]", 3000)) === "[0 4 7]");
+  // (sent again until the new box answers: a box just made may not be listening yet)
+  const phSet = await until(page, `(do (send! ${ph} [261.63 329.63 392]) (:set (second (last-shown ${ph}))))`, (x) => x === "[0 4 7]", 5000);
+  check("pcclock without midi: Hz (C4 E4 G4 from a keyboard) are the set (0 4 7)", phSet === "[0 4 7]", phSet);
   await cljs(page, `(send! ${ph} 0)`);
   check("... 0 Hz (a silence) is nothing", (await cljs(page, `(:set (second (last-shown ${ph})))`)) === "[0 4 7]");
   await cljs(page, `(delete ${d} ${out} ${pc} ${fo} ${tz} ${p2} ${ph})`);
