@@ -31,7 +31,7 @@ const D4 = semis(1);
 let r = L.play([], [], D4);
 is("D4 to begin: as played", r.note === 1 && !r.corrected && r.reason === null);
 r = L.play([], [], 1);   // C♯4
-is("C♯4: not a note of the mode, corrected to a white key a semitone away", r.corrected && /not a note of the mode/.test(r.reason) && Math.abs(semis(r.note) - 1) === 1, r.reason);
+is("C♯4: not a note of the mode, corrected to a white key a semitone away", r.corrected && /not a note of the system/.test(r.reason) && Math.abs(semis(r.note) - 1) === 1, r.reason);
 r = L.play([], [], 0);   // C4
 is("C4: the dux starts on the final, its 5th, its octave or the 4th below", r.corrected && /starts on the final/.test(r.reason) && r.note === 1, r.reason);
 r = L.play([], [], D4 - 24);   // D2: taken up by octaves
@@ -160,7 +160,7 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
   notes.push(`pentatonic, ${P.mode}, k ${P.k}: ${c} canons; modes ${P.modes.join(" ")}`);
   is("pentatonic: its modes, an octave below is 5 steps", P.mode === "penta-C" && P.k === -5 && P.N === 5 && c > 0);
   let r = P.play([], [], 5);   // F4: not a note of the pentatonic
-  is("pentatonic: F4 is not a note of it, corrected", r.corrected && /not a note of the mode/.test(r.reason) && [4, 7].includes(P.midi(r.note) - 60), r.reason);
+  is("pentatonic: F4 is not a note of it, corrected", r.corrected && /not a note of the system/.test(r.reason) && [4, 7].includes(P.midi(r.note) - 60), r.reason);
   r = P.play([], [], 0);
   is("pentatonic: C4 as played", !r.corrected && P.name(r.note) === "C4");
   const D = [], C = [];
@@ -179,6 +179,15 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
   is("septimal31: a key of 12 is taken as the nearest note of 31", !r.corrected && r.note === 0);
   const M = live({ system: "meantone", mode: "aeolian" });
   is("meantone: the diatonic modes, tuned (E4 a pure third above C4)", M.mode === "aeolian" && Math.abs(M.midi(2) - 63.863) < 0.01);
+}
+
+// a box's words name the system and a mode of it in any order; a mode the system does not have is said
+{
+  const A = live({ mode: "pentatonic", system: "penta-A" }), B = live({ mode: "penta-A", system: "pentatonic" });
+  is("the words in any order: a system (pentatonic) and its mode (penta-A)", A.mode === "penta-A" && B.mode === "penta-A" && A.systemName === "pentatonic" && A.N === 5 && !A.modeNote);
+  const C = live({ mode: "dorian", system: "pentatonic" });
+  is("dorian is not a mode of the pentatonic: its first mode, and why", C.mode === "penta-C" && /dorian is not a mode of pentatonic/.test(C.modeNote), C.modeNote);
+  is("a mode alone: of the diatonic system", live({ mode: "aeolian" }).systemName === "diatonic" && live({ mode: "aeolian" }).mode === "aeolian");
 }
 
 // the cancrizans box's kernel: Study 43's mirror, as it is, on this module

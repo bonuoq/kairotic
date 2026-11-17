@@ -13,8 +13,8 @@
 ;; score to read, and in the second half the box plays your first half backwards while you read it (a note you play
 ;; that is not the one written is said, as a deviation). On a pulse (the right inlet) a beat goes on whether you
 ;; played or not (the box plays your note for you); without one, a note in is a beat.
-(let [origins-cp ["npm:@kairotic/theory@0.9.1/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
-      origins-mi ["npm:@kairotic/theory@0.9.1/dist/mirror.mjs" "kairotic/packages/theory/mirror.mjs"]
+(let [origins-cp ["npm:@kairotic/theory@0.9.2/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
+      origins-mi ["npm:@kairotic/theory@0.9.2/dist/mirror.mjs" "kairotic/packages/theory/mirror.mjs"]
       semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
       ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
       log2 (fn [x] (/ (js/Math.log x) (js/Math.log 2)))
@@ -54,7 +54,7 @@
       report (fn [cp mi st extra]
                (let [n (.-n mi) lns (.lines mi (js-M st n)) s (:s st) steps (.-steps mi) pos (pos-of mi s)
                      mid (fn [v] (when (and (some? v) (not (undefined? v))) (.midi cp v)))]
-                 (merge {:step s :steps steps :closed (>= s steps)
+                 (merge {:step s :steps steps :closed (>= s steps) :system (.-systemName cp) :mode (.-mode cp)
                          :writing (cond (>= s steps) :closed (some? (:pending st)) :end :else :start)
                          :beat (when pos (inc (if (some? (:pending st)) (peek pos) (first pos))))
                          :futures (.count mi (js-M st n) s)
@@ -63,7 +63,8 @@
       shown (fn [cp mi st]
               (let [steps (.-steps mi) s (:s st)]
                 {:main (str (if (.-inverted mi) "table · " "crab · ") (count (remove nil? (:M st))) "/" (.-n mi) " notes")
-                 :sub (cond (>= s steps) "closed: the work is written"
+                 :sub (cond (and (zero? s) (nil? (:pending st)) (.-modeNote cp)) (.-modeNote cp)
+                            (>= s steps) "closed: the work is written"
                             (some? (:pending st)) (str "now the note at the end · " (.count mi (js-M st (.-n mi)) s) " ways")
                             :else (str "step " (inc s) "/" steps ": the note at the start"))}))
       ;; a line as a musical tree, for a score (a freqt shown as a score): a measure of b beats, a beat a half note
@@ -182,7 +183,7 @@
                                     :read [4 (voice-of cp (:M st) (.. mi -spec -b) t t)]
                                     :done [4 (piece-of cp mi (js-M st n))]
                                     nil)
-                                  [3 (merge {:t (:t b) :phase ph :you (mid (:you b)) :engine (mid (:engine b)) :n n :middle steps
+                                  [3 (merge {:t (:t b) :phase ph :you (mid (:you b)) :engine (mid (:engine b)) :n n :middle steps :system (.-systemName cp) :mode (.-mode cp)
                                              :ways (if (= ph :choose) (.count mi (js-M st n) t) 1)}
                                             (select-keys b [:played :corrected :auto :deviation :expected])
                                             (when (= t (- steps 2)) {:cue :middle :in 2}))]
@@ -230,11 +231,11 @@
   {;; ── about ──
    :class "cancrizans"
    :license "MPL-2.0"
-   :doc "A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards, both voices at once; with table, backwards and upside down about an axis ([:axis 62], a MIDI note; the final by default) — the one score read by a second player from across the table, a musical ambigram. It cannot be written from the beginning (the comes at the start is the dux at the end), so it is written by turns from both ends: each step a note at the start, then one at the end. A note that breaks a rule of the style (as comes's), or from which the work could not be closed, is corrected to the nearest one that can. On the right, the futuribles — the notes that can come next and the ways each leaves to close the work in the middle, counted exactly — and where the work is. When it closes, the dux and the comes go out (left) as patterns, {:note [...] :dur [...]} with the notes held joined, for a pbind and a player, and both as a musical tree (outlet 4), for a freqt shown as a score. Notes as comes takes them: Hz, a list of keys held, [:midi 62], an event (:freq, or a player's :hz), or MIDI numbers with midi. :engine writes the next note itself; :back takes one back; :reset starts again. The system (Study 42) is comes's: diatonic by default, or meantone, septimal31 or pentatonic (cancrizans pentatonic, [:system :septimal31]), or an EDN map; its modes, distances and tuning come with it. [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62] change the canon (and start again). With live (Study 46) the crab is played beat by beat: in the first half you play your note (or the nearest that can close the crab) and the box answers at the same beat with the end of your own line, written ahead (the notes that leave more futures first) — its futuribles say beforehand, as :end, what it will answer to each note (at temp 0, the default, exactly that; above it, the most likely, the box drawing among the answers with its seed: the same seed, the same game); two beats before the middle a cue {:cue :middle :in 2}; at the middle the rest of your line goes out (as a tree on outlet 4, each beat read turned into a rest; at the end the whole crab) as the score to read — the box's answers so far, backwards, the first the last end of your line it wrote (with an odd number of beats the middle note is shared) —, and in the second half the box plays your first half backwards while you read it. Live, it sounds as a keyboard or a player does: the Hz of both voices — yours as played, corrected or read, and the box's — on the left, after their voice ids on the second outlet, for one synth~ (0→0, 1→1); a note held keeps its id — a note that is not the one written is said, as a deviation. On a pulse (the right inlet: a metro, a pulse) a beat goes on whether you played or not; without one, a note in is a beat. After the last beat, a note begins a new crab."
-   :usage "cancrizans [mode] [system] [k -7] [beats 2] [bars 6] [temp 0] [seed 1] [table] [live] [midi]"
+   :doc "A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards, both voices at once; with table, backwards and upside down about an axis ([:axis 62], a MIDI note; the final by default) — the one score read by a second player from across the table, a musical ambigram. It cannot be written from the beginning (the comes at the start is the dux at the end), so it is written by turns from both ends: each step a note at the start, then one at the end. A note that breaks a rule of the style (as comes's), or from which the work could not be closed, is corrected to the nearest one that can. On the right, the futuribles — the notes that can come next and the ways each leaves to close the work in the middle, counted exactly — and where the work is. When it closes, the dux and the comes go out (left) as patterns, {:note [...] :dur [...]} with the notes held joined, for a pbind and a player, and both as a musical tree (outlet 4), for a freqt shown as a score. Notes as comes takes them: Hz, a list of keys held, [:midi 62], an event (:freq, or a player's :hz), or MIDI numbers with midi. :engine writes the next note itself; :back takes one back; :reset starts again. The system (Study 42) is comes's: diatonic by default, or meantone, septimal31 or pentatonic ([:system :septimal31]), and the mode one of its modes; the box's words name them in any order (cancrizans hypodorian, cancrizans pentatonic penta-A), or an EDN map; its modes, distances and tuning come with it. [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62] change the canon (and start again). With live (Study 46) the crab is played beat by beat: in the first half you play your note (or the nearest that can close the crab) and the box answers at the same beat with the end of your own line, written ahead (the notes that leave more futures first) — its futuribles say beforehand, as :end, what it will answer to each note (at temp 0, the default, exactly that; above it, the most likely, the box drawing among the answers with its seed: the same seed, the same game); two beats before the middle a cue {:cue :middle :in 2}; at the middle the rest of your line goes out (as a tree on outlet 4, each beat read turned into a rest; at the end the whole crab) as the score to read — the box's answers so far, backwards, the first the last end of your line it wrote (with an odd number of beats the middle note is shared) —, and in the second half the box plays your first half backwards while you read it. Live, it sounds as a keyboard or a player does: the Hz of both voices — yours as played, corrected or read, and the box's — on the left, after their voice ids on the second outlet, for one synth~ (0→0, 1→1); a note held keeps its id — a note that is not the one written is said, as a deviation. On a pulse (the right inlet: a metro, a pulse) a beat goes on whether you played or not; without one, a note in is a beat. After the last beat, a note begins a new crab."
+   :usage "cancrizans [system] [mode] [k -7] [beats 2] [bars 6] [temp 0] [seed 1] [table] [live] [midi]"
    :io [2 5]
    :size [170 46]
-   :args [[:mode nil] [:system nil] [:k -7] [:beats 2] [:bars 6] [:temp 0] [:seed 1] [:table false] [:live false] [:midi false]]
+   :args [[:system nil] [:mode nil] [:k -7] [:beats 2] [:bars 6] [:temp 0] [:seed 1] [:table false] [:live false] [:midi false]]
 
    ;; ── tasks: the kernel and its count, outside the pure logic ──
    :tasks {:kernel (fn [{:keys [opts]} _box]
