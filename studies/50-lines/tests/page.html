@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 50 · lines · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1200px;height:900px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: its presets, the count, a work drawn on the lattice.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+const total = () => d.getElementById("total").textContent;
+try {
+  await wait(() => w.kairoticLines && /^\d/.test(total()));
+  is("it opens on the hemiola, with a coda: 7,794 works", total() === "7,794");
+  is("... drawn: the dux and the comes on the lattice", d.querySelectorAll("#sheet rect.dux").length > 0 && d.querySelectorAll("#sheet rect.comes").length > 0);
+  is("... the strong units shaded, one a bar (4 units)", d.querySelectorAll("#sheet rect.strong").length === 5);
+  is("... its lattice said: two units a dux note, three a comes note", /a dux note 2 units, a comes note 3/.test(d.getElementById("lattice").textContent));
+  d.querySelector('[data-preset="crab"]').click();
+  await wait(() => total() === "6,959");
+  is("crab: 6,959 works, as Study 43 counts them", total() === "6,959");
+  is("... written from both ends", /1 · 11 · 2 · 10/.test(d.getElementById("order").textContent));
+  d.querySelector('[data-preset="canon"]').click();
+  await wait(() => d.getElementById("status").textContent === "ready" && d.querySelector('[data-preset="canon"]').classList.contains("on") && total() !== "…");
+  is("canon at speed 1, 11 beats: some works, and written forwards", Number(total().replace(/,/g, "")) > 0 && /^the dux written in the order 1 · 2 · 3/.test(d.getElementById("order").textContent));
+  d.getElementById("speed").value = "2"; d.getElementById("coda").checked = false; d.getElementById("delay").value = ""; d.getElementById("m").value = "9";
+  d.getElementById("count").click();
+  await wait(() => d.getElementById("status").textContent === "no work closes");
+  is("a diminution without a coda: no work closes", d.getElementById("status").textContent === "no work closes" && total() === "0");
+  d.getElementById("coda").checked = true; d.getElementById("count").click();
+  await wait(() => total() === "1,236");
+  is("... with one: 1,236", total() === "1,236");
+  d.getElementById("draw").click();
+  is("another work drawn", d.querySelectorAll("#sheet rect.coda").length === 1);
+  is("no errors on the page", errors.length === 0);
+} catch (e) { is("error: " + (e.message || e), false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(errors) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>
