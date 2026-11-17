@@ -207,7 +207,7 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 
 **Inlets** 
 
-0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · engine · back · reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work
+0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · :engine · :back · :reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work
 1. live: the pulse (a bang from a metro or a pulse): a beat, with your note or the box's for you
 
 **Outlets** 
@@ -219,18 +219,18 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 
 **Messages and gestures**
 
-- `engine`: the next note, written by the box
-- `back`: the last note taken back
-- `reset`: a new work
+- `:engine`: the next note, written by the box
+- `:back`: the last note taken back
+- `:reset`: a new work
 - `[:table true]`: a table canon: backwards and upside down
 - `[:temp 2]`: live: the box draws among its answers (0: always the one :end says)
 - `[:seed 7]`: live: its chance (reset: the same game again)
 - `[:system :septimal31]`: another system (Study 42), or an EDN map: its modes and tuning
 
-**Try:** Click engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds. Play notes on a keyboard into it instead (the note at the start, then the one at the end).
+**Try:** Click :engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds, each voice on its own synth~ (one synth~ plays one line: a note from the other player would take the place of the last). Play notes on a keyboard into it instead (the note at the start, then the one at the end).
 
 ```clojure
-(box :b1 "msg engine" 40 30)
+(box :b1 "msg :engine" 40 30)
 (box :b2 "cancrizans" 40 80)
 (box :b3 "pbind" 40 150)
 (box :b4 "pbind" 40 260)
@@ -238,6 +238,7 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (box :b5 "player 90" 40 420)
 (box :b6 "player 90" 240 420)
 (box :b7 "synth~" 40 490)
+(box :b17 "synth~" 240 490)
 (box :b8 "dac~" 40 550)
 (box :b10 "print" 260 80)
 (connect :b1 0 :b2 0)
@@ -248,20 +249,23 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (connect :b9 0 :b5 0)
 (connect :b9 0 :b6 0)
 (connect :b5 0 :b7 0)
-(connect :b6 0 :b7 0)
+(connect :b6 0 :b17 0)
 (connect :b7 0 :b8 0)
 (connect :b7 0 :b8 1)
+(connect :b17 0 :b8 0)
+(connect :b17 0 :b8 1)
 (connect :b2 3 :b10 0)
 ```
 
 **Played live** — With live (Study 46) the crab is played beat by beat: your note, and at the same beat the box's answer — the end of your own line, written ahead. Two beats before the middle a cue; at the middle the rest of your line comes out as the score to read (outlet 1), and the box plays your first half backwards (outlet 0) while you read it.
 
-*Try:* Press ▶: the loadbang counts the futures, and the futuribles of the first note are printed — each with :end, what the box will answer at the end of your line. Play D on the keyboard: the box answers with D an octave below. Play on: at the middle the score to read is printed; read it, and the crab closes.
+*Try:* Press ▶: the loadbang counts the futures, and the futuribles of the first note are printed — each with :end, what the box will answer at the end of your line. Play D on the keyboard (your line sounds on its own synth~): the box answers with D an octave below on the other. Play on: at the middle the score to read is printed; read it, and the crab closes.
 
 ```clojure
 (box :b11 "keyboard 60 24" 520 30)
 (box :b12 "cancrizans live" 520 150)
 (box :b13 "synth~" 520 230)
+(box :b18 "synth~" 520 290)
 (box :b14 "print" 720 230)
 (box :b15 "loadbang" 720 110)
 (box :b16 "print" 720 290)
@@ -272,6 +276,9 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (connect :b13 0 :b8 0)
 (connect :b13 0 :b8 1)
 (connect :b12 1 :b14 0)
+(connect :b11 0 :b18 0)
+(connect :b18 0 :b8 0)
+(connect :b18 0 :b8 1)
 ```
 
 See also: `comes`, `pbind`, `player`
@@ -411,7 +418,7 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 - `[:k -4]`: the comes a 5th below
 - `[:system :pentatonic]`: another system (Study 42): meantone, septimal31, pentatonic, diatonic, or an EDN map {:tuning … :modes …}
 
-**Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone.
+**Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click :engine to let it go on alone.
 
 ```clojure
 (box :b1 "keyboard 60 24" 40 30)
