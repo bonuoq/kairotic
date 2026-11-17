@@ -1,0 +1,43 @@
+{
+  "name": "@kairotic/cac",
+  "version": "0.1.0",
+  "description": "Kairotic composition assisted by computer: comes, counterpoint live — you play the dux and the comes answers, reading it at a speed (a canon, an augmentation, a crab or table canon written from both ends to the middle), with its futuribles; and the kernels every engine shares (counterpoint.mjs, mirror.mjs, soft.mjs)",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/cac"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages#readme",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs cac",
+    "prepublishOnly": "node ../build.mjs cac"
+  },
+  "keywords": [
+    "kairotic",
+    "music",
+    "computer-assisted composition",
+    "cac",
+    "counterpoint",
+    "canon",
+    "species counterpoint",
+    "crab canon",
+    "cancrizans",
+    "table canon",
+    "futuribles"
+  ]
+}

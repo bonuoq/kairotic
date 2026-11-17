@@ -1,5 +1,5 @@
 ;; comes · counterpoint live: you play the dux and the comes answers (discussions #172, #192 and #248)
-;; Part of @kairotic/theory. Written against the Kairotic API (api/…).
+;; Part of @kairotic/cac. Written against the Kairotic API (api/…).
 ;; One box for the canon and its mirrors, as Study 50 found them: the comes is a reader of the dux at a speed — 1 a
 ;; canon, 1/2 an augmentation (twice as slow), −1 a crab (the dux backwards) — k steps away, d beats late, upright or
 ;; inverted (an inversion; backwards and inverted, a table canon). The speed decides how the work is written, and so
@@ -26,7 +26,7 @@
                                                    (into [:measure {:meter [b 2]}] (map beat bar))))))]
                     (into [:piece] (map voice lines))))
       ;; ── forwards: a canon, an inversion, an augmentation ──
-      fwd (let [origins ["npm:@kairotic/theory@0.13.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
+      fwd (let [origins ["npm:@kairotic/cac@0.1.0/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
             hz (fn [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
             semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
             ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
@@ -281,8 +281,8 @@
                             :else {:state st})))))
       })
       ;; ── backwards: a crab or a table canon, from both ends to the middle ──
-      crab (let [origins-cp ["npm:@kairotic/theory@0.13.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
-            origins-mi ["npm:@kairotic/theory@0.13.0/dist/mirror.mjs" "kairotic/packages/theory/mirror.mjs"]
+      crab (let [origins-cp ["npm:@kairotic/cac@0.1.0/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
+            origins-mi ["npm:@kairotic/cac@0.1.0/dist/mirror.mjs" "kairotic/packages/cac/mirror.mjs"]
             semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
             ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
             log2 (fn [x] (/ (js/Math.log x) (js/Math.log 2)))

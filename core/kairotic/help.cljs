@@ -868,7 +868,7 @@
     :see ["euclid" "pcclock" "fourier" "tree"]}
 
    "comes"
-   {:package "@kairotic/theory" :usage "comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [temp 0] [seed 1] [inverted] [fourth] [live] [nocues] [midi]"
+   {:package "@kairotic/cac" :usage "comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [temp 0] [seed 1] [inverted] [fourth] [live] [nocues] [midi]"
     :about "**You play a line, the dux, and comes answers with a second voice, the comes, that reads it** — by the rules of 16th-century counterpoint. A note that breaks a rule, or from which the work could not be finished, is corrected to the nearest one that can be played, and the box says why.
 
 **The comes is a reader of the dux at a speed.** `1` (the default) is a canon: the dux again, `d` beats later. `0.5` reads it twice as slow, an augmentation. `-1` reads it backwards: a **crab**, the two voices sounding at once so that the work reads the same from either end. `inverted` turns the comes upside down: an inversion, or with `-1` a **table canon**, one score read by two players from opposite sides of a table. `k` is how far away it reads: −7 an octave below.

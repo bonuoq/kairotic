@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// @kairotic/theory · counterpoint.mjs: the canon box's counterpoint, two voices note by note (discussion #172).
+// @kairotic/cac · counterpoint.mjs: the canon box's counterpoint, two voices note by note (discussion #172).
 //
 // The kernel is Study 43's (studies/43-mirrors/kairotic/kernel.mjs, copied as it is: the hard rules of meter,
 // dissonance and the mode for each voice and between them, ties and suspensions, fourth species, the system as
