@@ -281,7 +281,10 @@ function by itself).
   or seeks with a crossfade. With a position signal it reads there (seconds; `norm`: 0…1, a `phasor~`). A
   `writer~` (sound · the ring~'s buffer · a position signal) writes as a tape head — `ovr` replaces, silence
   too; `writer~ mix 0.8` adds, keeping what was there times 0.8. Up to 8 heads share the ring~'s one node, so
-  a feedback inside it is exact (through other boxes it costs a block of 128 samples).
+  a feedback inside it is exact (through other boxes it costs a block of 128 samples). A `faust~` between a
+  `reader~` and a `writer~` of the same ring~ (`reader~ → faust~ → writer~`) runs inside the ring's node, one
+  sample at a time: the loop stays exact, so a short d with a lowpass in the loop is a plucked string
+  (Study 49).
 
 ## 4. The history
 

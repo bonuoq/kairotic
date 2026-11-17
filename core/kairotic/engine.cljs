@@ -370,6 +370,7 @@
     (try
       (sync!)
       (feed!)
+      (when-let [f @comp/after-feed] (try (f (patch) (:nodes @rt) (:signature @rt)) (catch :default e (js/console.error e))))
       (fresh-instant!)
       (let [limit (+ (now) lookahead) p (patch)]
         (loop []

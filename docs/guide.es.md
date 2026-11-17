@@ -294,7 +294,9 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
   `phasor~`). Un `writer~` (sonido · el buffer del ring~ · una señal de posición) escribe como un cabezal de
   cinta: `ovr` sustituye, también con silencio; `writer~ mix 0.8` suma, conservando lo que había por 0,8.
   Hasta 8 cabezales comparten el único nodo del ring~, así que una realimentación dentro de él es exacta (a
-  través de otras cajas cuesta un bloque de 128 muestras).
+  través de otras cajas cuesta un bloque de 128 muestras). Un `faust~` entre un `reader~` y un `writer~` del
+  mismo ring~ (`reader~ → faust~ → writer~`) corre dentro del nodo del ring, muestra a muestra: el bucle sigue
+  siendo exacto, así que una d corta con un paso bajo en el bucle es una cuerda pulsada (estudio 49).
 
 ## 4. La historia
 

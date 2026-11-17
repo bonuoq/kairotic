@@ -16,7 +16,13 @@
 // jump), or at a position signal (a jump is a seek, crossfaded). Readers read before writers write, so a reader
 // d behind meets the sound exactly d later.
 //
+// A faust~ in a loop of the ring (reader~ → faust~ → writer~, all on this ring~) runs here, in the writer's slot
+// (Study 49): what the readers it hears send goes through it one sample at a time and is written with what reaches
+// the writer~'s left. So the loop is exact at any d; through other boxes it would cost a block. The page sends
+// the faust~'s compiled bytes and JSON; they are instantiated here as faustwasm does (synchronously).
+//
 // Messages on the port: {attach: {slot, role, ...opts}} · {detach: slot} · {set: {slot, ...}} ·
+// {fold: {slot, readers: [slots], code, json}} · {unfold: slot} · {param: {slot, address, value}} ·
 // {cue: {slot, kind, t}} · {clear: true} · {own: false} (its own head stops writing: nothing on its left). In a worklet it registers "kairotic-ring"; in Node it is a module.
 
 const READER = { role: "read", mode: "follow", d: 1, speed: 1, jump: 0.25, xfade: 0.03, gain: 1, norm: false };
@@ -65,6 +71,14 @@ export class RingCore {
     if (m.cue) this.cue(m.cue.slot, m.cue.kind, m.cue.t);
     if (m.clear) this.clear();
     if (m.own != null) this.own = !!m.own;
+    if (m.fold) this.fold(m.fold.slot, m.fold.readers, makeInsert(m.fold.code, m.fold.json, this.sr));
+    if (m.unfold != null) { const h = this.slots[m.unfold]; if (h) h.fold = null; }
+    if (m.param) { const h = this.slots[m.param.slot]; if (h && h.fold && h.fold.insert) h.fold.insert.set(m.param.address, m.param.value); }
+  }
+  // a writer hears these readers through an insert ({step(x) → y, set(address, value)}; null: straight)
+  fold(slot, readers, insert) {
+    const h = this.slots[slot]; if (!h || h.role !== "write") return;
+    h.fold = { readers: readers || [], insert };
   }
 
   // ── the buffer ──
@@ -144,7 +158,14 @@ export class RingCore {
       // then the writers, in the order of their slots
       for (let s = 0; s < S.length; s++) {
         const h = S[s]; if (!h || h.role !== "write") continue;
-        const ch = inputs[s + 1], v = ch && ch[0] ? ch[0][k] : 0, p = h.np;
+        const ch = inputs[s + 1], p = h.np;
+        let v = ch && ch[0] ? ch[0][k] : 0;
+        // a loop folded here: what its readers read this sample, through the insert (which runs on every sample)
+        if (h.fold) {
+          let fb = 0;
+          for (const r of h.fold.readers) { const q = S[r]; if (q && q.role === "read") fb += q.y; }
+          v += h.fold.insert ? h.fold.insert.step(fb) : fb;
+        }
         if (h.p == null || Math.abs(p - h.p) > h.jump) { const c = this.cell(p); this.put(c, v, h); h.last = c; }   // a seek
         else this.write(h, h.p, p, v);
         h.p = p;
@@ -164,6 +185,74 @@ export class RingCore {
     return { len: l, t: this.n / this.sr, head: w(this.n / this.sr),
              slots: this.slots.map((h) => (h ? { role: h.role, mode: h.mode, p: w(h.p) } : null)) };
   }
+}
+
+// ── a Faust DSP as an insert (Study 49): compiled bytes and their JSON → {step(x) → y, set(address, value)} ──
+// Its math imports by the names the Faust backend gives them; its memory as faustwasm lays it out (the DSP at 0,
+// the pointers to its buffers after it, then the buffers); every input gets x, output 0 is the result.
+const SPECIAL = {
+  max_f: Math.max, max_i: Math.max, max: Math.max, min_f: Math.min, min_i: Math.min, min: Math.min,
+  abs: Math.abs, fabsf: Math.abs, fabs: Math.abs,
+  isnanf: (x) => +Number.isNaN(x), isnan: (x) => +Number.isNaN(x),
+  isinff: (x) => +(x === Infinity || x === -Infinity), isinf: (x) => +(x === Infinity || x === -Infinity),
+  copysignf: (x, y) => (y < 0 || Object.is(y, -0) ? -Math.abs(x) : Math.abs(x)),
+  copysign: (x, y) => (y < 0 || Object.is(y, -0) ? -Math.abs(x) : Math.abs(x)),
+  fmodf: (x, y) => x % y, fmod: (x, y) => x % y,
+  remainderf: (x, y) => x - y * Math.round(x / y), remainder: (x, y) => x - y * Math.round(x / y),
+  rintf: Math.round, rint: Math.round, nearbyintf: Math.round, nearbyint: Math.round, roundf: Math.round, round: Math.round,
+  exp10f: (x) => Math.pow(10, x), exp10: (x) => Math.pow(10, x)
+};
+function mathFn(name) {
+  const n = name.replace(/^_+/, "");
+  if (SPECIAL[n]) return SPECIAL[n];
+  if (typeof Math[n] === "function") return Math[n];
+  if (n.endsWith("f") && typeof Math[n.slice(0, -1)] === "function") return Math[n.slice(0, -1)];
+  return () => 0;
+}
+export function faustInsert(module, json, sr) {
+  const meta = typeof json === "string" ? JSON.parse(json) : json;
+  const imports = {};
+  let imported = null;
+  for (const imp of WebAssembly.Module.imports(module)) {
+    const m = (imports[imp.module] = imports[imp.module] || {});
+    if (imp.kind === "function") m[imp.name] = mathFn(imp.name);
+    else if (imp.kind === "memory") m[imp.name] = imported = new WebAssembly.Memory({ initial: 100 });
+    else if (imp.kind === "table") m[imp.name] = new WebAssembly.Table({ initial: 0, element: "anyfunc" });
+    else if (imp.kind === "global") m[imp.name] = 0;
+  }
+  const e = new WebAssembly.Instance(module, imports).exports;
+  const memory = e.memory || imported;
+  const nin = meta.inputs, nout = meta.outputs;
+  if (nout < 1) throw new Error("the faust~ in the loop has no output");
+  const inPtrs = meta.size, outPtrs = inPtrs + nin * 4, bufs = outPtrs + nout * 4;
+  const need = bufs + (nin + nout) * 4 + 64;
+  if (memory.buffer.byteLength < need) memory.grow(Math.ceil((need - memory.buffer.byteLength) / 65536));
+  const H32 = new Int32Array(memory.buffer), F32 = new Float32Array(memory.buffer);
+  const inBuf = [];
+  for (let i = 0; i < nin; i++) { const q = bufs + i * 4; H32[(inPtrs >> 2) + i] = q; inBuf.push(q >> 2); }
+  for (let o = 0; o < nout; o++) H32[(outPtrs >> 2) + o] = bufs + (nin + o) * 4;
+  const out0 = (bufs + nin * 4) >> 2;
+  e.init(0, sr);
+  const params = [];
+  const walk = (it) => { if (it.items) it.items.forEach(walk); else if (it.address != null && it.index != null) params.push(it); };
+  (meta.ui || []).forEach(walk);
+  return {
+    step(x) {
+      for (let i = 0; i < inBuf.length; i++) F32[inBuf[i]] = x;
+      e.compute(0, 1, inPtrs, outPtrs);
+      const y = F32[out0];
+      return Number.isFinite(y) ? y : 0;
+    },
+    set(address, value) {
+      const p = params.find((q) => q.address === address || q.label === address);
+      if (p) e.setParamValue(0, p.index, value);
+    }
+  };
+}
+function makeInsert(code, json, sr) {
+  if (!code) return null;
+  try { return faustInsert(code instanceof WebAssembly.Module ? code : new WebAssembly.Module(code), json, sr); }
+  catch (err) { if (typeof console !== "undefined") console.error("ring~: the faust~ in the loop", err); return null; }
 }
 
 // in an AudioWorklet: the processor

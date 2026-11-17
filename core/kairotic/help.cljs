@@ -373,7 +373,8 @@
    {:inlets ["the sound, written where the ring's time is (its write head goes round as a tape head) · :clear silences it"]
     :outlets ["—" "the buffer, for reader~ and writer~ (on their right / middle inlet)"]
     :messages [["ring~ 8" "keeps the last 8 seconds (up to 60)"] [":clear" "silence, the heads where they are"]
-               ["up to 8 heads" "the reader~ and writer~ on it share one node: a feedback inside the ring is exact, through other boxes it costs a block (128 samples)"]]
+               ["up to 8 heads" "the reader~ and writer~ on it share one node: a feedback inside the ring is exact, through other boxes it costs a block (128 samples)"]
+               ["reader~ → faust~ → writer~" "a faust~ in a loop of the ring runs inside the ring's node, one sample at a time: exact at any d (a string whose d is its period, a comb, a tape echo that darkens); its parameters follow it there (not a polyphonic one)"]]
     :example (lines "(box :b1 \"adc~\" 40 30)" "(box :b2 \"ring~ 8\" 40 90)" "(box :b3 \"reader~ d 1\" 40 150)"
                     "(box :b4 \"reader~ d 1 speed 0.5\" 200 150)" "(box :b5 \"gain~ 0.4\" 40 210)" "(box :b6 \"dac~\" 40 270)"
                     "(connect :b1 0 :b2 0)" "(connect :b2 1 :b3 1)" "(connect :b2 1 :b4 1)" "(connect :b3 0 :b5 0)" "(connect :b4 0 :b5 0)"

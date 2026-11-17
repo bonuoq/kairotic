@@ -104,6 +104,8 @@
 (defonce audio-report (atom nil))
 ;; how an audio node asks the page for an effect of its box ([:sample …]): (fn [id effect]) (kairotic.engine)
 (defonce audio-effect (atom nil))
+;; what runs after the audio nodes are fitted and fed, every tick (kairotic.ringaudio folds faust~ loops there)
+(defonce after-feed (atom nil))
 
 (declare patch-io)
 

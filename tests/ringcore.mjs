@@ -133,6 +133,27 @@ const sine = (hz) => (i) => Math.sin(2 * Math.PI * hz * i / SR);
   is("own: false (nothing on the ring's left): its head does not erase what a writer~ wrote", near(c.buf[550], 0.9));
 }
 
+// a loop folded in the node: reader → insert → writer, exact at any d (here 50 samples, shorter than a block)
+{
+  const c = new RingCore(SR, 2);
+  c.message({ own: false });
+  c.attach(0, { role: "read", d: 0.05 });
+  c.attach(1, { role: "write" });
+  c.fold(1, [0], { step: (x) => 0.5 * x, set() {} });
+  const o = run(c, 260, null, { 1: [(i) => (i === 0 ? 1 : 0), null] });
+  is("a faust~ in a loop of the ring (here ×0.5): reader → insert → writer, every 50 samples, to the sample",
+     near(o[0][50], 1) && near(o[0][100], 0.5) && near(o[0][150], 0.25) && near(o[0][200], 0.125) && near(o[0][99], 0));
+  c.message({ unfold: 1 });
+  is("unfolded: the writer writes only what reaches it", c.slots[1].fold === null);
+}
+{
+  const c = new RingCore(SR, 2);
+  c.attach(0, { role: "read", d: 0.05 });
+  c.attach(1, { role: "write", write: "mix" });
+  c.fold(1, [0], null);
+  const o = run(c, 400, () => 0.2);
+  is("folded straight (no insert), mix at the ring's head: what it reads is added to what it writes (0.2, 0.4, 0.6…)", near(o[0][60], 0.2) && near(o[0][110], 0.4) && near(o[0][160], 0.6));
+}
 return results;
 }
 
