@@ -77,7 +77,10 @@ svg.score .durline, svg.score .gliss { stroke: var(--ink); stroke-width: 1.6; fi
 svg.score .stem { stroke: var(--ink); stroke-width: 1.3; }
 svg.score .flag { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; }
 svg.score .acc { font: 16px serif; fill: var(--ink); }
-svg.score .clef { font: 54px serif; fill: var(--ink); }
+svg.score .sig { font: 17px serif; fill: var(--ink); }
+/* the start of the staff engraved by Verovio (clef, key signature, meter): its own staff lines and bar line are ours */
+svg.score .vrv { color: var(--ink); fill: var(--ink); }
+svg.score .vrv .staff > path, svg.score .vrv .barLine path { stroke: none !important; }
 svg.score .lbl { font: 10px var(--f-code); fill: var(--ink-soft); }
 svg.score .lane { fill: var(--paper); stroke: var(--grid); }
 svg.score .el { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
@@ -238,6 +241,20 @@ code { font-family: var(--f-code); font-size: 0.95em; }
 // The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
 // is read first, as window.kairoticKernel; Faust is compiled in the page by faustwasm, as the app does it.
 window.kairoticBase = window.kairoticBase || "kairotic/";
+// Verovio engraves the start of the staff (clef, key signature, meter), as the app loads it.
+window.kairoticVerovio = window.kairoticVerovio || new Promise(function (resolve, reject) {
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/verovio@5.7.0/dist/verovio-toolkit-wasm.js";
+  s.onload = function () {
+    try {
+      var m = verovio.module;
+      if (m.calledRun) { resolve(new verovio.toolkit()); }
+      else { m.onRuntimeInitialized = function () { resolve(new verovio.toolkit()); }; }
+    } catch (e) { reject(e); }
+  };
+  s.onerror = function () { reject(new Error("Could not download Verovio")); };
+  document.head.appendChild(s);
+});
 window.kairoticLoadFaust = window.kairoticLoadFaust || function () {
   return import("https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js")
     .then(function (F) {
@@ -349,7 +366,47 @@ window.addEventListener("DOMContentLoaded", function () {
 
 ;; ───────── drawing the line ─────────
 
-(def W 1000) (def X0 70) (def STEP 6) (def BASE 170)     ; x of time 0, px per diatonic step, y of E4
+(def W 1000) (def X0 125) (def STEP 6) (def BASE 170)    ; x of time 0, px per diatonic step, y of E4
+(def PRE 12)                                              ; x where the staff (and its clef) begins
+
+;; ───────── the start of the staff, engraved by Verovio ─────────
+;; A measure with nothing in it but a space, with the clef, the key signature and the meter: Verovio draws them, the
+;; page scales its staff to ours (measured: its five lines) and hides its lines; the meter shows as much as time is
+;; metric at the start, the whole as much as the staff is there. Without Verovio, the key signature is drawn here.
+
+(defonce vrv (atom nil))        ; the toolkit, or :error
+(defonce preludes (atom {}))    ; [key meter] → its SVG
+
+(def sig-steps {1 [8 5 9 6 3 7 4] -1 [4 7 3 6 1 5 0]})   ; steps above E4 of the sharps (F C G D A E B) and flats
+
+(defn prelude-mei [key meter]
+  (str "<mei xmlns='http://www.music-encoding.org/ns/mei' meiversion='5.0'><music><body><mdiv><score>"
+       "<scoreDef><staffGrp><staffDef n='1' lines='5' clef.shape='G' clef.line='2' keysig='"
+       (cond (pos? key) (str key "s") (neg? key) (str (- key) "f") :else "0")
+       "' meter.count='" meter "' meter.unit='4'/></staffGrp></scoreDef>"
+       "<section><measure n='1' right='invis'><staff n='1'><layer n='1'><space dur='1'/></layer></staff></measure></section>"
+       "</score></mdiv></body></music></mei>"))
+
+(defn prelude-svg [key meter]
+  (let [tk @vrv]
+    (when (and tk (not= tk :error))
+      (or (get @preludes [key meter])
+          (try
+            (.setOptions tk (clj->js {:scale 60 :pageWidth 3000 :adjustPageWidth true :adjustPageHeight true
+                                      :header "none" :footer "none" :pageMarginTop 0 :pageMarginBottom 0
+                                      :pageMarginLeft 0 :pageMarginRight 0}))
+            (.loadData tk (prelude-mei key meter))
+            (let [s (.renderToSVG tk 1)] (swap! preludes assoc [key meter] s) s)
+            (catch :default _ nil))))))
+
+(defn local-box
+  "The box of an SVG element in the coordinates of `ref` (through their transforms, not screen pixels)."
+  [el ref]
+  (let [b (.getBBox el)
+        m (.multiply (.inverse (.getScreenCTM ref)) (.getScreenCTM el))
+        tp (fn [x y] (let [q (.createSVGPoint ref)] (set! (.-x q) x) (set! (.-y q) y) (.matrixTransform q m)))
+        a (tp (.-x b) (.-y b))]
+    {:left (.-x a) :top (.-y a)}))
 (defn sx [t end] (+ X0 (* (- W X0 30) (/ t (max end 0.001)))))
 (defn sy [step] (- BASE (* STEP step)))
 (def LANE-Y 262) (def LANE-H 52)
@@ -370,12 +427,17 @@ window.addEventListener("DOMContentLoaded", function () {
                  (str/join (for [m (range -6 21)]
                              (let [y (sy (* m (/ 7 12)))]
                                (str "<line class='semi' x1='" x0 "' x2='" x1 "' y1='" y "' y2='" y "' opacity='" (op (* 0.55 g (if (zero? (mod m 12)) 1.6 1))) "'/>")))))))))
-     ;; a clef where the start is written
-     (let [a (.staffAlpha p 0)] (when (> a 0.01) (str "<text class='clef' x='" (- X0 58) "' y='" (+ (sy 0) 12) "' opacity='" (op a) "'>𝄞</text>")))
+     ;; the start of the staff, before time 0: its lines, and (without Verovio) the key signature
+     (let [a (.staffAlpha p 0) key (:key @ui)]
+       (when (> a 0.01)
+         (str (str/join (for [k [0 2 4 6 8]] (str "<line class='staff' x1='" PRE "' x2='" X0 "' y1='" (sy k) "' y2='" (sy k) "' opacity='" (op a) "'/>")))
+              (when (and (= :error @vrv) (not (zero? key)))
+                (str/join (map-indexed (fn [i st] (str "<text class='sig' x='" (+ 48 (* i 9)) "' y='" (+ (sy st) 5) "' opacity='" (op a) "'>" (if (pos? key) "♯" "♭") "</text>"))
+                                       (take (js/Math.abs key) (get sig-steps (if (pos? key) 1 -1)))))))))
      ;; bar lines where time is metric
      (str/join (for [b (array-seq (.-bars p))]
                  (let [a (* (.-alpha b) (max (.staffAlpha p (.-x b)) 0.35))]
-                   (when (> a 0.02) (str "<line class='bar' x1='" (sx (.-x b) end) "' x2='" (sx (.-x b) end) "' y1='" (sy 8) "' y2='" (sy 0) "' opacity='" (op a) "'/>"))))))))
+                   (when (and (> a 0.02) (pos? (.-x b))) (str "<line class='bar' x1='" (sx (.-x b) end) "' x2='" (sx (.-x b) end) "' y1='" (sy 8) "' y2='" (sy 0) "' opacity='" (op a) "'/>"))))))))
 
 (defn draw-note [n end p]
   (let [x (sx (.-x n) end) x1 (sx (.-x1 n) end) y (sy (.-y n)) y1 (sy (.-y1 n))
@@ -452,13 +514,36 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (defn projection [] (.project K (clj->js (:line @ui)) (clj->js (curves)) (opts)))
 
+(defn place-prelude!
+  "The start of the staff engraved by Verovio, scaled and moved onto ours."
+  [p]
+  (let [a (.staffAlpha p 0)]
+    (when-let [s (and (> a 0.01) (prelude-svg (:key @ui) (:meter @ui 4)))]
+      (let [svg ($ "score")
+            g (js/document.createElementNS "http://www.w3.org/2000/svg" "g")]
+        (.setAttribute g "class" "vrv")
+        (set! (.-innerHTML g) s)
+        (.appendChild svg g)
+        (let [lines (array-seq (.querySelectorAll g ".staff > path"))
+              clef (.querySelector g ".clef")]
+          (if (and (= 5 (count lines)) clef)
+            (let [ys (sort (map #(:top (local-box % svg)) lines))
+                  sp (/ (- (last ys) (first ys)) 4)
+                  k (/ (* 2 STEP) sp)
+                  cx (:left (local-box clef svg))]
+              (.setAttribute g "transform" (str "translate(" (- (+ PRE 4) (* k cx)) " " (- (sy 8) (* k (first ys))) ") scale(" k ")"))
+              (.setAttribute g "opacity" (op a))
+              (doseq [m (array-seq (.querySelectorAll g ".meterSig"))] (.setAttribute m "opacity" (op (.timeAlpha p 0)))))
+            (.remove g)))))))
+
 (defn draw-score! []
   (let [{:keys [line]} @ui end (line-end line) p (projection)]
     (set! (.-innerHTML ($ "score"))
           (str (draw-staff p end)
                (str/join (for [n (array-seq (.-notes p))] (draw-note n end p)))
                (str/join (map-indexed (fn [i n] (str "<text class='idx' x='" (sx (.-x n) end) "' y='" (- BASE 112) "' text-anchor='middle'>" i "</text>")) (array-seq (.-notes p))))
-               (draw-electronics p end)))))
+               (draw-electronics p end)))
+    (place-prelude! p)))
 
 ;; ───────── the resolution lanes ─────────
 
@@ -781,7 +866,11 @@ window.addEventListener("DOMContentLoaded", function () {
   (.addEventListener ($ "compile") "click" (fn [_] (ensure-ac!) (compile-faust!)))
   (.addEventListener ($ "apply") "click" (fn [_] (apply-edn!)))
   (preview!)
-  (redraw!))
+  (redraw!)
+  (when-let [v (.-kairoticVerovio js/window)]
+    (-> v
+        (.then (fn [tk] (reset! vrv tk) (draw-score!)))
+        (.catch (fn [_] (reset! vrv :error) (draw-score!))))))
 
 (init!)
 
@@ -793,5 +882,6 @@ window.addEventListener("DOMContentLoaded", function () {
            :started (fn [] (clj->js (:started @au)))
            :playing (fn [] (boolean (:playing @ui)))
            :faust (fn [] (get-in @ui [:faust :status]))
-           :tap tap!})
+           :tap tap!
+           :verovio (fn [] (cond (= :error @vrv) "error" @vrv "ready" :else "loading"))})
 </script>
