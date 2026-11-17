@@ -104,12 +104,14 @@
            (when doc (str "<p>" (esc doc) "</p>")))
          (help-refs (or (:ref d) (:ref h)))
          (when (and (nil? d) (empty? h)) "<p>There is no class with this name.</p>")
-         (when spec
-           ;; what each argument is, and (from the help's :args) what it does
+         (when (or spec (seq (:args h)))
+           ;; what each argument is, and (from the help's :args, [[:k "what it does"] …]) what it does; without the
+           ;; component loaded, its arguments as the help lists them
            (str "<h4>Arguments</h4><table>"
-                (apply str (for [[a v] spec :let [what (get (:args h) a)]]
+                (apply str (for [[a v] (or spec (map (fn [[a]] [a nil]) (:args h))) :let [what (get (into {} (:args h)) a)]]
                              (str "<tr><td>" (esc (name a)) "</td><td>"
-                                  (esc (cond (boolean? v) "a flag: on when its name is written"
+                                  (esc (cond (nil? v) ""
+                                             (boolean? v) "a flag: on when its name is written"
                                              (keyword? v) (str "a number (by default, the value of " (name v) ")")
                                              (number? v) (str "a number, " (cv/fmt v) " by default")
                                              :else "a word"))
@@ -330,9 +332,9 @@
                         (when usage (str "`" usage "`\n\n"))
                         (when-let [a (:about h)] (str a "\n\n"))
                         doc "\n\n"
-                        (when (and d (seq (:args h)))
+                        (when (seq (:args h))
                           (str "**Arguments**\n\n"
-                               (apply str (for [[a v] (spec-of d) :let [what (get (:args h) a)]]
+                               (apply str (for [[a v] (if d (spec-of d) (map (fn [[a]] [a nil]) (:args h))) :let [what (get (into {} (:args h)) a)]]
                                             (str "- `" (name a) "`"
                                                  (cond (boolean? v) " (a flag)" (number? v) (str " (" (cv/fmt v) ")") :else "")
                                                  (when what (str ": " what)) "\n")))
