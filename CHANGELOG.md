@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **`quantize`: free time written in measures, as a box.** What `transcribe` or a drawing left in a `freqt` (its
+  second outlet on the right inlet), or a tree in free time on the left (a measured one is made free first), becomes
+  a measured tree — measures, tuplets, ties, grace notes, voices — for a `tree` box. It is manual: options come as
+  messages and are kept (`[:meter "3/4"]`, `[:meters …]`, `[:divs [1 2 3 4]]`, `[:merge []]`, `[:legato 0.25]`,
+  `[:chord 0.04]`, `[:voices 1]`, `[:grace false]`, `[:key "eb"]`, `[:tempo 72]`, `[:time :track]`, a map of
+  them, `[:meter nil]`, `:reset`), and only a bang quantizes and sends — a tree into a tree box is an event of the
+  work's history. Its second outlet says what it found (`{:bars :meter :tempo :notes :voices}`). It is the same
+  quantization a `freqt` shown as a score uses, which stays as a preview. Help patch (a phrase played freely, in
+  4/4 and in 3/4; then from your voice through `transcribe`), and `transcribe`'s help points to it. Tests in
+  `tests/views.mjs`.
+
 - **Pitches in Hz, MIDI with `midi`; trees into `tree` boxes** (breaking; `@kairotic/theory` 0.10.0).
   - `pcclock`, `fourier` and `tonnetz` take Hz by default, as `keyboard`, `midiin`, `player` and `pitch~` send them
     (0 Hz, a silence, is nothing), and MIDI (or 0…11) with the word `midi` — as `comes`, `cancrizans` and `realize~`

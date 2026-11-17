@@ -123,6 +123,30 @@ export async function views(page, check) {
   check("(to-tree! :bN) makes a tree box of a freqt's strokes", (await cljs(page, `(mt/pitches (tree-data ${nt}))`)) === '["c4" "d4"]');
   check("... shown as a roll", (await cljs(page, `(view-of (get-in (current) [:boxes ${nt}]))`)) === ":roll");
 
+  // ── quantize: free time written in measures, when a bang comes ──
+  const qf = (await cljs(page, '(box "freqt" 1700 2100)')).trim();
+  await cljs(page, `(melody ${qf} "c4/1.06 e4/.47 d4/.55 g4/.94 e4/1.03 c4/1.95" 0)`);
+  const qz = (await cljs(page, '(box "quantize" 2300 2100)')).trim();
+  const qt = (await cljs(page, '(box "tree" 2300 2200)')).trim();
+  await cljs(page, `(connect ${qf} 1 ${qz} 1) (connect ${qz} 0 ${qt} 0)`);
+  const hist0 = Number(await cljs(page, events));
+  await cljs(page, `(send! ${qz} [:meter "3/4"])`);
+  await until(page, "true", () => true, 300);
+  check("quantize: an option sends nothing (manual): no event of the history", Number(await cljs(page, events)) === hist0, await cljs(page, events));
+  await cljs(page, `(send! ${qz} :bang)`);
+  const q1 = await until(page, `(let [t (tree-data ${qt})] [(mt/measured? t) (some (fn [m] (:meter (mt/attrs m))) (filter (fn [x] (and (mt/node? x) (= :measure (mt/tag x)))) (tree-seq mt/node? mt/kids (mt/expand t)))) (count (mt/notes t))])`,
+                         (x) => x === "[true [3 4] 6]");
+  check("... a bang writes the freqt's free time in measures of 3/4, into the tree box", q1 === "[true [3 4] 6]", q1);
+  const rep = await cljs(page, `(let [d (comp/lookup "quantize") st (get-in @eng/rt [:states ${qz}])
+                                      r ((:receive d) {:inlet 0 :value :bang :state st :args [] :buffer (box-data ${qf}) :buffer-id ${qf}})]
+                                  [(:meter (some (fn [[o v]] (when (= o 1) v)) (:out r))) (:notes (some (fn [[o v]] (when (= o 1) v)) (:out r)))])`);
+  check("... and says what it found (outlet 1)", rep === '["3/4" 6]', rep);
+  const fromTree = await cljs(page, `(let [d (comp/lookup "quantize")
+                                           s1 (:state ((:receive d) {:inlet 0 :value [:voice [:par [:note {:pitch 60 :at 0 :dur 0.98}] [:note {:pitch 64 :at 1.02 :dur 1.01}]]] :state nil :args []}))
+                                           r ((:receive d) {:inlet 0 :value :bang :state s1 :args []})]
+                                       [(mt/measured? (some (fn [[o v]] (when (= o 0) v)) (:out r))) (count (mt/notes (some (fn [[o v]] (when (= o 0) v)) (:out r))))])`);
+  check("... a tree in free time on the left is the material too", fromTree === "[true 2]", fromTree);
+
   // ── a freqt: its buffer as text ──
   const f = (await cljs(page, '(box "freqt" 1700 1000)')).trim();
   const fid = f.slice(1);
