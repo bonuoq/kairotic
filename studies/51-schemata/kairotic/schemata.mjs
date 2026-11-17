@@ -22,6 +22,13 @@
 // what is left to choose is little (the octave, a passing tone); without them the rules alone choose. The futures
 // are counted exactly (BigInt), a realization is drawn uniformly from them, and a voice written by hand is shown the
 // futures of each of its next notes — the partimento as improvisation.
+//
+// What the hard rules allow, the soft rules of Studies 38–42 weigh (soft.mjs: the melodic contour after Bach, the
+// motion between the voices): the engine chooses each note among those with a future by a softmax of −cost /
+// temperature, as Study 38's does. Drawn uniformly, a realization is one of the many — and most of them leap; the
+// engine draws the lines the style prefers.
+
+import { melodicParts, verticalParts, total, choose, temperature, defaultWeights } from "./soft.mjs";
 
 const mod = (a, m) => ((a % m) + m) % m;
 const sign = (x) => (x > 0) - (x < 0);
@@ -268,6 +275,114 @@ export function schemata(spec = {}) {
     }
     return U;
   }
+  // ─── the soft rules: what a candidate costs, and the engine ───
+  // (the 3–6 alternation is a schema here, not a habit to avoid: its weight is 0 unless asked)
+  const W = { ...defaultWeights(), alternation: 0, ...(spec.weights || {}) };
+  const bassLine = B.map((b) => b.d);
+  const softCtx = (t, c) => ({
+    N: 7, strong: (u) => strong(u),
+    lowerFirst: (x, y) => [x, y],                                // the bass is the lower voice
+    quality: (lo_, hi_) => { const st = hi_ - lo_, cl = mod(st, 7); return cl === 0 || cl === 4 ? "perfect" : cl === 2 || cl === 5 ? "imperfect" : "dissonant"; },
+    dissonant: () => vertical(t, c).q === "dissonant",
+    suspension: vertical(t, c).q === "dissonant" && strong(t),
+  });
+  /** The soft cost of the upper note c after U, by rule: {id: cost}. */
+  function costParts(U, c) {
+    const t = U.length, up = U.map(D);
+    return { ...melodicParts(up, D(c), W), ...verticalParts(bassLine.slice(0, t), up, bassLine[t], D(c), softCtx(t, c), W) };
+  }
+  /** The engine: the voice continued from U to the end, each note a softmax of −cost / temperature among those
+   *  with a future ({temp: 1, follow: true (colder where few futures are left), r}). */
+  function engine({ temp = 1, follow = true, r = Math.random } = {}, U0 = []) {
+    const U = [...U0];
+    while (U.length < n) {
+      const cs = fan(U).filter((x) => !x.reason && x.futures > 0n).map((x) => ({ ...x, parts: costParts(U, x.note) }));
+      cs.forEach((x) => { x.cost = total(x.parts); });
+      const pick = choose(cs, temperature(temp, follow, count(U)), r);
+      if (!pick) return null;
+      U.push(pick.note);
+    }
+    return U;
+  }
+  // ─── what is essentially new: the figures, not the octave nor how a bar is divided ───
+  // Two realizations are the same figuring when they make the same vertical (its figure and its size in semitones)
+  // on every unit: a note taken up an octave, or struck again an octave away on the weak unit, is the same music.
+  // The figurings are counted exactly by sets: from the set of the voices' last notes that a figuring leaves possible,
+  // each next figure leads to one set.
+  // (structural: only the strong units and the last are figured — what the weak ones do is how the bar is divided)
+  const structural = spec.structural ?? true;
+  const sigOf = (t, c) => { if (structural && !strong(t) && t < n - 1) return -1; const v = vertical(t, c); return v.cls * 12 + mod(semiU(c) - semiB(t), 12); };
+  const windowOf = (U, t) => U.slice(Math.max(0, t - 3), t);
+  const asU = (w, t) => { const U = new Array(t); w.forEach((c, i) => { U[t - w.length + i] = c; }); return U; };
+  const fmemo = new Map();
+  /** The next sets from a set of windows at unit t, by figure: Map(sig → windows). */
+  function nextSets(S, t) {
+    const by = new Map();
+    for (const w of S) {
+      const U = asU(w, t);
+      for (const c of codes) {
+        if (check(U, t, c) !== null) continue;
+        const U2 = [...U, c];
+        if (countFrom(U2) === 0n) continue;
+        const k = sigOf(t, c);
+        if (!by.has(k)) by.set(k, new Map());
+        const w2 = windowOf(U2, t + 1), wk = w2.join(",");
+        by.get(k).set(wk, w2);
+      }
+    }
+    return by;
+  }
+  function figuringsFrom(S, t) {
+    if (t >= n) return 1n;
+    const key = t + "|" + [...S.keys()].sort().join(";");
+    const got = fmemo.get(key);
+    if (got !== undefined) return got;
+    let v = 0n;
+    for (const S2 of nextSets([...S.values()], t).values()) v += figuringsFrom(S2, t + 1);
+    fmemo.set(key, v);
+    return v;
+  }
+  /** The essentially different realizations: how many figurings the rules allow over the bass. */
+  const figurings = () => figuringsFrom(new Map([["", []]]), 0);
+  /** The figuring of a voice: a figure a unit (with its accidental when it is not the key's). */
+  const figuringOf = (U) => U.map((c, t) => sigOf(t, c));
+  /** A figuring drawn uniformly among them (then realized by the engine): an array of signatures. */
+  function sampleFiguring(r = Math.random) {
+    let S = new Map([["", []]]); const out = [];
+    for (let t = 0; t < n; t++) {
+      const opts = [...nextSets([...S.values()], t).entries()].map(([k, S2]) => [k, S2, figuringsFrom(S2, t + 1)]);
+      const tot = opts.reduce((a, o) => a + o[2], 0n);
+      if (!tot) return null;
+      let x = (tot * BigInt(Math.floor(r() * 2 ** 52))) / 2n ** 52n;
+      const o = opts.find((o) => (x -= o[2]) < 0n) || opts[opts.length - 1];
+      out.push(o[0]); S = o[1];
+    }
+    return out;
+  }
+  /** The engine's voice for a given figuring: each note among those that make its figure. */
+  function realize(sig, opts = {}) {
+    const U = [];
+    while (U.length < n) {
+      const t = U.length;
+      const cs = fan(U).filter((x) => !x.reason && x.futures > 0n && sigOf(t, x.note) === sig[t]).map((x) => ({ ...x, parts: costParts(U, x.note) }));
+      // (a note must also leave the rest of the figuring possible)
+      const ok = cs.filter((x) => figuringPossible(sig, [...U, x.note]));
+      ok.forEach((x) => { x.cost = total(x.parts); });
+      const pick = choose(ok, opts.temp ?? 0.5, opts.r || Math.random);
+      if (!pick) return null;
+      U.push(pick.note);
+    }
+    return U;
+  }
+  function figuringPossible(sig, U) {
+    let S = [windowOf(U, U.length)];
+    for (let t = U.length; t < n; t++) { const by = nextSets(S, t), S2 = by.get(sig[t]); if (!S2) return false; S = [...S2.values()]; }
+    return true;
+  }
+
+  /** What a whole voice costs, note by note. */
+  const cost = (U) => U.reduce((a, c, t) => a + total(costParts(U.slice(0, t), c)), 0);
+
   /** Why a whole voice is refused (the first unit that refuses it), or null. */
   function judge(U) {
     if (U.length !== n) return `${U.length} units, the bass has ${n}`;
@@ -297,7 +412,7 @@ export function schemata(spec = {}) {
     return { kind: last === 8 || last === 1 ? "perfect" : "imperfect", figs: [a, last] };
   }
 
-  return { spec, schema, key: K, bass: B, n, phase, strong, lo, hi, figured, codes, vertical, check, count, fan, sample, judge, figures, cadence,
+  return { spec, schema, key: K, bass: B, n, phase, strong, lo, hi, figured, codes, vertical, check, count, fan, sample, engine, cost, costParts, weights: W, figurings, figuringOf, sampleFiguring, realize, judge, figures, cadence,
            code: (name) => codeOf(K, name), name: (c) => K.name(D(c), R(c)), degree: D, raised: R, hz: (c) => K.hz(D(c), R(c)), memo };
 }
 

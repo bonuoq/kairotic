@@ -3,6 +3,7 @@
 //   node -e 'import("./studies/50-lines/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import { lines, speedOf, latticeFor } from "../kairotic/lines.mjs";
 import { mirror } from "../kairotic/mirror.mjs";
+import { engineWork, allWorks, shape } from "../kairotic/engine.mjs";
 
 const base = { tonic: 1, lo: 0, hi: 9, spacing: 11, starts: [1, 5, 8] };   // D dorian, its range and its starts
 
@@ -80,6 +81,18 @@ export async function run() {
   is("a diminution that ends with the dux has no works: its last two notes are the dux's last two, a parallel perfect interval (hence the coda)", dim.count() === 0);
   const back = rel("-2/3", 10);
   is("a crab in hemiola an octave below has none either (at the unison it has)", back.count() === 0);
+
+  // the melodic weight: drawn uniformly a dux leaps, because most works do; the engine (the soft rules of Studies
+  // 38–42) weighs them; a hemiola leaps by its nature
+  const hem = rel("2/3", 10, { coda: true }), all = allWorks(hem);
+  const most = Math.max(...all.map((M) => { let k = 0; for (let i = 1; i < hem.m; i++) if (Math.abs(M[i] - M[i - 1]) === 1) k++; return k; }));
+  is(`a hemiola's dux has at most 4 steps in its 9 moves (of ${all.length} works): it must sound with itself a note and a half later`, all.length === 7794 && most === 4);
+  const cr = lines({ ...base, m: 11, a: 1, bar: 2, speed: -1, k: -7 }), r2 = rng(11);
+  const u = [], e = [];
+  for (let i = 0; i < 20; i++) { u.push(cr.sample(r2).slice(0, cr.m)); const E = engineWork(cr, { temp: 1, r: r2 }); e.push(E.M.slice(0, cr.m)); }
+  const su = shape(u), se = shape(e), best = engineWork(cr, { temp: 0 });
+  is(`a crab: drawn uniformly ${Math.round(100 * su.steps)}% steps, by the engine ${Math.round(100 * se.steps)}%; its cheapest work is one of the works`, se.steps > su.steps + 0.05 && best.all && cr.count(best.M, cr.steps) === 1);
+  notes.push(`crab (11): uniform steps ${Math.round(100 * su.steps)}% / 4th+ ${Math.round(100 * su.leaps)}%, engine ${Math.round(100 * se.steps)}% / ${Math.round(100 * se.leaps)}%; the cheapest: ${best.M.map(cr.system.pitchName).join(" ")}`);
   return { results, notes };
 }
 

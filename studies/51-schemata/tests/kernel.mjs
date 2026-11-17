@@ -2,6 +2,7 @@
 // Study 51 · schemata: the kernel's tests. In the browser (tests/kernel.html) and in Node:
 //   node -e 'import("./studies/51-schemata/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import { schemata, keyOf, bassOf, SCHEMATA, PROTOTYPES } from "../kairotic/schemata.mjs";
+import { melodicParts, verticalParts, shape, choose, temperature } from "../kairotic/soft.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 
@@ -57,6 +58,34 @@ export async function run() {
     const U = S.sample(draw);
     is(`${id}${figured ? "" : " without figures"}: a realization drawn uniformly is sound, and one of them`, U && !S.judge(U) && S.count(U) === 1n);
   }
+
+  // the soft rules, as Studies 38–42 weigh them (canon.cljs)
+  is("soft: a 5th up costs 0.5, a step nothing, the same note again a tie", melodicParts([0, 2], 6)["leap-size"] === 0.5 && !melodicParts([0, 2], 3)["leap-size"] && melodicParts([0, 2], 2).tie === 1.5);
+  is("soft: after a 4th up, going on up costs (contrary-after-leap), turning back by leap too (step-back)", melodicParts([0, 3], 4)["contrary-after-leap"] === 1.2 && melodicParts([0, 3], 1)["step-back"] === 1.2 && !melodicParts([0, 3], 2)["step-back"]);
+  is("soft: a mechanical sequence costs, a figure used before is remembered", melodicParts([0, 2, 1, 3], 2).sequence === 1.5 && melodicParts([0, 1, 3, 7, 6, 7], 9).memory === -1);
+  const vctx = { N: 7, strong: () => true, lowerFirst: (x, c) => [x, c], quality: (l, h) => [0, 4].includes((h - l) % 7) ? "perfect" : [2, 5].includes((h - l) % 7) ? "imperfect" : "dissonant", dissonant: () => false, suspension: false };
+  is("soft: similar motion into a 5th costs, contrary motion nothing", verticalParts([0], [2], 1, 5, vctx)["direct-perfect"] === 3 && !verticalParts([0], [9], 1, 8, vctx).motion);
+  is("the engine's choice: at temperature 0 the cheapest with a future; colder where few futures are left", choose([{ note: 1, cost: 0, futures: 0 }, { note: 2, cost: 3, futures: 5 }, { note: 3, cost: 1, futures: 1 }], 0).note === 3 && temperature(1, true, 16) === 0.5);
+
+  // the engine against the uniform draw: drawn uniformly a voice leaps (most realizations do); the engine steps
+  for (const id of ["thirds", "7-6", "tied-bass"]) {
+    const S = schemata({ schema: id, key: { tonic: "C" }, figured: false }), rr = rng(7);
+    const u = [], e = [];
+    for (let i = 0; i < 30; i++) { u.push(S.sample(rr).map(S.degree)); const E = S.engine({ temp: 0.5, r: rr }); e.push(E.map(S.degree)); if (S.judge(E)) e.bad = S.judge(E); }
+    const su = shape(u), se = shape(e);
+    is(`${id} without figures: uniformly ${Math.round(100 * su.steps)}% steps, the engine ${Math.round(100 * se.steps)}%, every one of its realizations sound`, !e.bad && se.steps > su.steps + 0.15 && se.leaps < su.leaps);
+    notes.push(`${id} without figures: uniform steps ${Math.round(100 * su.steps)}% / 3rds ${Math.round(100 * su.thirds)}% / 4th+ ${Math.round(100 * su.leaps)}%; engine (T 0.5) ${Math.round(100 * se.steps)}% / ${Math.round(100 * se.thirds)}% / ${Math.round(100 * se.leaps)}%`);
+  }
+
+  // what is essentially new: figurings, not octaves nor how a bar is divided
+  for (const [id, key, withFigs, free] of [["thirds", { tonic: "C" }, 1n, null], ["7-6", { tonic: "C" }, 1n, null], ["7-3", { tonic: "C" }, 1n, 1102n], ["third-down", { tonic: "A", mode: "minor" }, 2n, null]]) {
+    const A = schemata({ schema: id, key }), F = schemata({ schema: id, key, figured: false });
+    const a = A.figurings(), f = F.figurings();
+    is(`${id} in ${A.key.tonic} ${A.key.mode}: ${A.count()} realizations of the figures are ${a} figuring${a > 1n ? "s" : ""}; without them ${f} figurings of ${F.count()} realizations`, a === withFigs && (free === null || f === free) && f < F.count());
+  }
+  const F73 = schemata({ schema: "7-3", key: { tonic: "C" }, figured: false }), sig = F73.sampleFiguring(rng(3));
+  const V = F73.realize(sig, { r: rng(4) });
+  is("a figuring drawn among them, realized by the engine: sound, and of that figuring", V && !F73.judge(V) && JSON.stringify(F73.figuringOf(V)) === JSON.stringify(sig));
 
   // transposed: E♭ major and G minor count as C major and A minor do (the rules are tonal, not of a key)
   for (const id of Object.keys(SCHEMATA)) {

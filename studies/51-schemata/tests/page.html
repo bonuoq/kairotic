@@ -15,6 +15,7 @@ const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (pe
 const total = () => d.getElementById("total").textContent;
 try {
   await wait(() => w.kairoticSchemata && /^\d/.test(total()));
+  is("... one figuring (the essentially different ones)", d.getElementById("figs").textContent === "1" && d.getElementById("figuring").disabled);
   is("it opens on the 7–6 chain in C major: the figures allow one realization", total() === "1" && d.querySelector('[data-schema="7-6"]').classList.contains("on"));
   is("... eight schemata to choose", d.querySelectorAll("[data-schema]").length === 8);
   d.getElementById("proto").click();
@@ -43,7 +44,14 @@ try {
   await wait(() => total().length > 6);
   is("... without the figures, millions over the same bass", Number(total().replace(/,/g, "")) > 1e6);
   d.getElementById("draw").click();
-  is("... one drawn, a realization", /cadence/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  is("... the engine's: a realization, its shape and its cost said", /cadence.*steps \d+%.*cost/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  is("... without the figures, figurings by the million (fewer than the realizations)", Number(d.getElementById("figs").textContent.replace(/,/g, "")) > 1e4 && Number(d.getElementById("figs").textContent.replace(/,/g, "")) < Number(total().replace(/,/g, "")));
+  d.getElementById("figuring").click();
+  is("... another figuring, realized: not the book's", /a figuring of its own/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  d.getElementById("uniform").click();
+  is("... one drawn uniformly, a realization", /cadence/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  d.getElementById("clear").click();
+  is("... the next notes with their futures and their costs", d.querySelectorAll("#fan button small.cost").length > 3);
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);
