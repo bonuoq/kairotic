@@ -398,10 +398,12 @@
       (and (vector? value) (= 2 (count value)) (value-name (first value))) (arrive [value])
       ;; a bang sends again what every named element holds
       (= value :bang) {:show vals :out (sends-of view (merge (defaults-of view) vals) (keys (named-outlets view)))}
+      ;; anything else (a number, a word, a list: the futuribles of a box) is the value :in, shown by :$in
+      (some? value) (let [vals (assoc vals :in value)] {:state (st vals) :show vals})
       :else {:show vals})))
 
 (comp/define! "html"
-  {:doc "A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, buttons and text, laid out like a page. An element with :out sends what it gives out of that outlet; one with :name keeps it as a value, shown by every hole :$name in the view, and when it is let go (a slider) or chosen (a menu, a text entered) the box keeps it in the work, as a knob keeps its value: (values! :bN {:freq 440}). A map on the inlet ({:freq 220}) sets values, as a number sets a knob: the elements named so show it (a slider within its range) and those with :out send it on; a bang sends again what they hold. What is not allowed (scripts, links, images, positions, unknown tags or attributes) is dropped, so it is safe in a shared room. Its view opens as text from { } (HTML can be pasted there too)."
+  {:doc "A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, buttons and text, laid out like a page. An element with :out sends what it gives out of that outlet; one with :name keeps it as a value, shown by every hole :$name in the view, and when it is let go (a slider) or chosen (a menu, a text entered) the box keeps it in the work, as a knob keeps its value: (values! :bN {:freq 440}). A list of maps in a hole is shown as a table (a row each, a column for each key: the futuribles of comes or cancrizans), and anything else on the inlet that is not a map, a value or a bang (a number, a list) is the value :in, shown by :$in. A map on the inlet ({:freq 220}) sets values, as a number sets a knob: the elements named so show it (a slider within its range) and those with :out send it on; a bang sends again what they hold. What is not allowed (scripts, links, images, positions, unknown tags or attributes) is dropped, so it is safe in a shared room. Its view opens as text from { } (HTML can be pasted there too)."
    :usage "html"
    :license "MPL-2.0"
    :display :html
@@ -411,7 +413,7 @@
    :receive receive
    :help {:inlets ["a map of values {:freq 220}, or one [:freq 220]: the elements named so and the holes :$freq show them, and the named elements with :out send them on (a slider within its range); a bang sends again what they hold"]
           :outlets ["what each element with :out 0 gives" "… :out 1, and so on: as many outlets as the view asks for"]
-          :messages [["{:freq 220}" "sets values: the elements named so show them and send them on"] ["[:freq 220]" "sets one value"] ["bang" "sends again what every named element with :out holds"]]
+          :messages [["{:freq 220}" "sets values: the elements named so show them and send them on"] ["[:freq 220]" "sets one value"] ["bang" "sends again what every named element with :out holds"] ["[{:name \"D4\" :futures 12} …]" "anything else is the value :in (:$in); a list of maps is shown as a table"]]
           :example "(box :b1 \"html\" 40 30)\n(box :b2 \"print\" 40 230)\n(box :b3 \"print\" 200 230)\n(connect :b1 0 :b2 0)\n(connect :b1 1 :b3 0)"
           :try "Move the slider: its value goes out of the left outlet and shows beside it; let it go and the box keeps it, as a knob does (back in the history, it moves back). { } in the header opens the view as text: change it and apply."
           :see ["number" "knob" "msg"]}})
@@ -499,12 +501,42 @@
 (defn- number-or [s]
   (let [n (js/parseFloat s)] (if (and (js/isFinite n) (re-matches #"\s*-?\d*\.?\d+(e-?\d+)?\s*" (str s))) n s)))
 
+(defn rows?
+  "Is v a list of maps (shown as a table: a row each, a column for each key)?"
+  [v]
+  (and (sequential? v) (seq v) (every? map? v)))
+
+(defn- table-of
+  "A table for a list of maps: the keys of the first in order, then any others, as the head."
+  [v]
+  (let [ks (distinct (mapcat keys v))
+        tbl (js/document.createElement "table")
+        tr (fn [cells tag] (let [r (js/document.createElement "tr")]
+                             (doseq [c cells] (let [e (js/document.createElement tag)] (set! (.-textContent e) c) (.appendChild r e)))
+                             r))]
+    (.appendChild tbl (tr (map name ks) "th"))
+    (doseq [m v] (.appendChild tbl (tr (map #(shown-str (get m %)) ks) "td")))
+    tbl))
+
+(defn- show-hole!
+  "A hole (a text node) showing v: as text, or a list of maps as a table beside it."
+  [el v]
+  (let [old (aget el "kTable")]
+    (if (rows? v)
+      (let [t (table-of v)]
+        (when (not= "" (.-textContent el)) (set! (.-textContent el) ""))
+        (if (and old (.-parentNode old)) (.replaceWith old t) (when-let [p (.-parentNode el)] (.insertBefore p t (.-nextSibling el))))
+        (aset el "kTable" t))
+      (let [s (if (and (sequential? v) (empty? v)) "" (shown-str v))]
+        (when old (.remove old) (aset el "kTable" nil))
+        (when (not= s (.-textContent el)) (set! (.-textContent el) s))))))
+
 (defn refresh!
   "Shows the values `vals` in a built view; `skip` is an element being used (its value is not touched)."
   [{:keys [live]} vals skip]
   (doseq [[el kind k dflt] live :let [has? (contains? vals k) v (get vals k)]]
     (cond
-      (= kind :text) (let [s (shown-str v)] (when (not= s (.-textContent el)) (set! (.-textContent el) s)))
+      (= kind :text) (show-hole! el v)
       (= (first kind) :attr) (let [[_ tag a] kind] (set-prop! el tag a v))
       (= (first kind) :control)
       (when (and has? (not (identical? el skip)))

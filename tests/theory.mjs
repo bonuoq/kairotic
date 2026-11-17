@@ -191,6 +191,12 @@ export async function theory(page, check) {
     await cljs(page, `(send! ${cz} :engine)`);
   check("... the engine closes the work in the middle", /closed/.test(await cljs(page, `(:sub (second (last-shown ${cz})))`)), await cljs(page, `(second (last-shown ${cz}))`));
   check("... a crab: the comes is the dux backwards, an octave below", (await cljs(page, `(let [M ${zs(":M")}] (= (count M) 7))`)) === "true");
+  const czTree = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${cz}]) a (:sig st)
+                                        s1 (:state ((:receive d) {:inlet 0 :value :back :state st :args a}))
+                                        out (:out ((:receive d) {:inlet 0 :value :engine :state s1 :args a}))
+                                        t (some (fn [[o v]] (when (= o 4) v)) out)]
+                                    [(first t) (count (rest t)) (mapv first (rest t)) (get-in t [1 1 1])])`);
+  check("... and as a score: both voices as a musical tree (outlet 4)", czTree === "[:piece 2 [:voice :voice] {:meter [2 2]}]", czTree);
   await cljs(page, `(send! ${cz} :back)`);
   check("... back: not closed any more", !/closed/.test(await cljs(page, `(:sub (second (last-shown ${cz})))`)));
   await cljs(page, `(delete ${cz} ${zp})`);
@@ -217,6 +223,14 @@ export async function theory(page, check) {
                                          M (:M (:state r1))]
                                      [(count opts) (every? :end opts) (:end o62) (.midi (:cp st) (last M))])`);
   check("... its futuribles for the first note, each with :end, what the box will answer — and it does", /^\[\d+ true (\d+) \1\]$/.test(endChk), endChk);
+  // the score to read, as a tree: from the middle what is left of your line, each beat read a rest; at the end the crab
+  const lzTree = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}]) a (:sig st)
+                                         go (fn [[s _] m] (let [r ((:receive d) {:inlet 0 :value m :state s :args a})] [(:state r) (:out r)]))
+                                         steps (vec (reductions go [st nil] [:reset 62 64 65 64 64 64 64]))
+                                         tree (fn [i] (some (fn [[o v]] (when (= o 4) v)) (second (nth steps i))))]
+                                     [(tree 4) (first (tree 5)) (count (rest (tree 5))) (first (get-in (tree 6) [1 2])) (first (get-in (tree 5) [1 2])) (first (tree 8))])`);
+  check("... the score to read as a tree (outlet 4): at the middle, then the beats read as rests, then the whole crab",
+        /^\[nil :voice 2 :rest :note :piece\]$/.test(lzTree), lzTree);
   // with a temperature the box draws among its answers, with its seed: the same seed, the same game
   const seeded = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}]) a (:sig st)
                                          go (fn [s m] (:state ((:receive d) {:inlet 0 :value m :state s :args a})))

@@ -69,6 +69,15 @@ export async function html(page, check) {
   await cljs(page, "(tip)");
   check("at the newest point again it shows 7", (await untilBox(page, id, "return root.querySelector('input[type=range]').value", "7")) === "7");
 
+  // a list of maps in a hole is a table; anything else on the inlet is the value :in
+  await cljs(page, `(code ${hb} "[:div [:p.n :$in] [:div.rows :$in]]")`);
+  await cljs(page, `(send! ${hb} [{:name "D4" :futures 12} {:name "E4" :futures 3}])`);
+  check("a list of maps on the inlet is the value :in, shown as a table",
+        (await untilBox(page, id, "return [...root.querySelectorAll('.rows table tr')].map(r => r.textContent).join('|')", "namefutures|D412|E43")) === "namefutures|D412|E43");
+  await cljs(page, `(send! ${hb} 7)`);
+  check("... a number in its place: the table goes, the number shows",
+        (await untilBox(page, id, "return root.querySelectorAll('table').length + ':' + root.querySelector('.rows').textContent", "0:7")) === "0:7");
+  await cljs(page, `(code ${hb} "[:div.col [:script \\"alert(1)\\"] [:input {:type \\"range\\" :name :v :min 0 :max 10 :value 2 :out 0 :onchange \\"x\\"}] [:span.val :$v] [:input.t {:type \\"text\\" :name :t}] [:button {:out 1 :send 5 :onclick \\"x\\"} \\"go\\"]]")`);
   // a button
   const b3 = Number(await cljs(page, events));
   await inBox(page, id, "root.querySelector('button').click(); return true");
