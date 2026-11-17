@@ -179,9 +179,9 @@
    "@kairotic/data"     {:version "0.1.4" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
    "@kairotic/patterns" {:version "0.2.1" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}
    "@kairotic/spectral" {:version "0.1.2" :classes #{"shift~"} :local "kairotic/packages/spectral.mjs"}
-   "@kairotic/io"       {:version "0.2.4" :classes #{"midiin" "midiout" "oscin" "oscout" "motion" "gamepad" "serial" "control"}
+   "@kairotic/io"       {:version "0.2.5" :classes #{"midiin" "midiout" "oscin" "oscout" "motion" "gamepad" "serial" "control"}
                          :local "kairotic/packages/io.mjs"}
-   "@kairotic/net"      {:version "0.1.3" :classes #{"share" "shared" "pulse"} :local "kairotic/packages/net.mjs"}})
+   "@kairotic/net"      {:version "0.1.4" :classes #{"share" "shared" "pulse"} :local "kairotic/packages/net.mjs"}})
 
 ;; Official packages that carry modules for the page itself rather than box classes (nothing to bring into
 ;; a work): where their files are, npm first at the pinned version, then the page's own copy.
