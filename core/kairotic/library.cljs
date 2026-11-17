@@ -175,11 +175,11 @@
    "@kairotic/controls" {:version "0.2.2" :classes #{"knob" "keyboard" "scale"} :local "kairotic/packages/controls.mjs"}
    "@kairotic/analysis" {:version "0.7.4" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "monitor" "form~" "realize~"}
                          :local "kairotic/packages/analysis.mjs"}
-   "@kairotic/theory"   {:version "0.8.0" :classes #{"pcclock" "fourier" "tonnetz" "comes" "cancrizans"} :local "kairotic/packages/theory.mjs"}
+   "@kairotic/theory"   {:version "0.9.0" :classes #{"pcclock" "fourier" "tonnetz" "comes" "cancrizans"} :local "kairotic/packages/theory.mjs"}
    "@kairotic/data"     {:version "0.1.3" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
    "@kairotic/patterns" {:version "0.2.1" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}
    "@kairotic/spectral" {:version "0.1.2" :classes #{"shift~"} :local "kairotic/packages/spectral.mjs"}
-   "@kairotic/io"       {:version "0.2.2" :classes #{"midiin" "midiout" "oscin" "oscout" "motion" "gamepad" "serial" "control"}
+   "@kairotic/io"       {:version "0.2.3" :classes #{"midiin" "midiout" "oscin" "oscout" "motion" "gamepad" "serial" "control"}
                          :local "kairotic/packages/io.mjs"}
    "@kairotic/net"      {:version "0.1.2" :classes #{"share" "shared" "pulse"} :local "kairotic/packages/net.mjs"}})
 

@@ -78,12 +78,12 @@
   {;; ── about ──
    :class "midiout"
    :license "MPL-2.0"
-   :doc "Notes and events to a MIDI port, while ▶ runs. On the left, what sounds as a player, a keyboard or a reader send it — the Hz of the notes (after their voice ids on the right, and [:gain amp] for the next ones) —, or an event from midiin, oscin or a room ({:type :note :freq :amp :gate}, :glide, :cc…). With mpe, each note gets a channel of its own (2…16) and its exact frequency as a key plus a pitch bend of that channel (range 48 semitones): microtones, just intervals and glides reach the synthesizer without rounding; at ▶ it announces the zone and the range (the MPE configuration message). Without it, one channel (channel, 1) and the nearest key. port (1) is which output of the page. clear (or :stop) ends every note."
+   :doc "Notes and events to a MIDI port, while ▶ runs. On the left, what sounds as a player, a keyboard or a reader send it — the Hz of the notes (after their voice ids on the right, and [:gain amp] for the next ones) —, or an event from midiin, oscin or a room ({:type :note :freq :amp :gate}, :glide, :cc…). With mpe, each note gets a channel of its own (2…16) and its exact frequency as a key plus a pitch bend of that channel (range 48 semitones): microtones, just intervals and glides reach the synthesizer without rounding; at ▶ it announces the zone and the range (the MPE configuration message). Without it, one channel (channel, 1) and the nearest key. port (1) is which output of the page. :clear (or :stop) ends every note."
    :usage "midiout [mpe] [channel] [port] [range]"
    :io [2 0]
    :size [96 30]
    :args [[:mpe false] [:channel 1] [:port 1] [:range 48]]
-   :help {:inlets ["the Hz of the notes sounding (a list), [:gain amp], an event map, or clear" "the voice ids of the Hz that follow"]
+   :help {:inlets ["the Hz of the notes sounding (a list), [:gain amp], an event map, or :clear (or :stop)" "the voice ids of the Hz that follow"]
           :outlets []
           :example "(box :b1 \"keyboard\" 40 30)\n(box :b2 \"midiout mpe\" 40 120)\n(connect :b1 0 :b2 0)\n(connect :b1 1 :b2 1)"
           :try "Press ▶ and play the keyboard: the notes go to the first MIDI output of the page. With an MPE synthesizer, a freqt read by a reader~ glides there without steps."
