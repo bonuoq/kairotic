@@ -77,6 +77,16 @@ export async function run() {
     notes.push(`${id} without figures: uniform steps ${Math.round(100 * su.steps)}% / 3rds ${Math.round(100 * su.thirds)}% / 4th+ ${Math.round(100 * su.leaps)}%; engine (T 0.5) ${Math.round(100 * se.steps)}% / ${Math.round(100 * se.thirds)}% / ${Math.round(100 * se.leaps)}%`);
   }
 
+  // what is essentially new: figurings, not octaves nor how a bar is divided
+  for (const [id, key, withFigs, free] of [["thirds", { tonic: "C" }, 1n, null], ["7-6", { tonic: "C" }, 1n, null], ["7-3", { tonic: "C" }, 1n, 1102n], ["third-down", { tonic: "A", mode: "minor" }, 2n, null]]) {
+    const A = schemata({ schema: id, key }), F = schemata({ schema: id, key, figured: false });
+    const a = A.figurings(), f = F.figurings();
+    is(`${id} in ${A.key.tonic} ${A.key.mode}: ${A.count()} realizations of the figures are ${a} figuring${a > 1n ? "s" : ""}; without them ${f} figurings of ${F.count()} realizations`, a === withFigs && (free === null || f === free) && f < F.count());
+  }
+  const F73 = schemata({ schema: "7-3", key: { tonic: "C" }, figured: false }), sig = F73.sampleFiguring(rng(3));
+  const V = F73.realize(sig, { r: rng(4) });
+  is("a figuring drawn among them, realized by the engine: sound, and of that figuring", V && !F73.judge(V) && JSON.stringify(F73.figuringOf(V)) === JSON.stringify(sig));
+
   // transposed: E♭ major and G minor count as C major and A minor do (the rules are tonal, not of a key)
   for (const id of Object.keys(SCHEMATA)) {
     const c1 = schemata({ schema: id, key: { tonic: "C" }, figured: false }).count();

@@ -118,6 +118,7 @@ ul.q li::marker { color: var(--kairos); }
   <label title="the engine: a softmax of −cost / temperature among the notes with a future (0: the cheapest)">temperature <input type="number" id="temp" min="0" max="5" step="0.1" value="1"></label>
   <button class="act primary" id="draw" title="the engine chooses each note by the soft rules of Studies 38–42">Engine</button>
   <button class="act" id="uniform" title="one of the realizations, each as likely">Draw uniformly</button>
+  <button class="act" id="figuring" title="a figuring drawn among all the figurings the rules allow, realized by the engine">Another figuring</button>
   <button class="act" id="proto" title="the book's prototype, in this key">The book's</button>
   <button class="act" id="clear">Clear</button>
   <button class="act" id="play" disabled>▶ Play</button>
@@ -135,6 +136,7 @@ ul.q li::marker { color: var(--kairos); }
       <h2>Realizations <span>counted exactly</span></h2>
       <div><span class="big" id="total">–</span> <span class="msg" id="total-sub"></span></div>
       <div class="msg" id="other"></div>
+      <div><span class="big" id="figs">–</span> <span class="msg" id="figs-sub">essentially different: the figures on the strong units — not the octave, nor how the bar is divided</span></div>
     </section>
     <section class="panel">
       <h2>Write it yourself <span id="at"></span></h2>
@@ -145,7 +147,7 @@ ul.q li::marker { color: var(--kairos); }
       <h2>What it decides</h2>
       <p class="about">The bass is given — a schema of the book, in a key — and the upper voice is written over it unit by unit (half a bar each: the shaded one strong) under the rules of two-part realization: 3rds and 6ths, 5ths and 8ves on the strong units, or a <b>suspension</b> prepared, held and resolved down by step; passing tones over a held bass; no parallel perfect intervals; in minor ⑥ and ⑦ raised going up and natural going down.</p>
       <ul class="q">
-        <li><b>The figures nearly decide the voice.</b> With them the 3–6 progression, the 7–6 chain and the Fifth Down Fourth Up have one realization each — the book's; the parallel thirds a few hundred, only the octave changing. Without them, the same basses have millions.</li>
+        <li><b>The figures decide the voice.</b> With them every schema has one figuring — the book's (two to four in minor, where ⑥ and ⑦ may be raised or not); the other realizations the count finds are the same music an octave away, or the bar divided otherwise. So the count that matters is of <b>figurings</b>: without the figures the rules allow over a thousand for the Fifth Down Fourth Up, millions for the 7–6 bass — readings of the same bass the book does not write.</li>
         <li><b>The book's prototypes are realizations</b> of their schemata, and close as the book says: imperfect (3–3), perfect (6–8), compound (7–6–8, 2–3–1) and compound leaping (7–3–8 on ②–⑤–①).</li>
         <li><b>The rules are tonal, not of a key</b>: every schema counts the same in C major and E♭ major, in A minor and G minor.</li>
         <li><b>Drawn uniformly, a realization leaps</b>: most of the millions do (about a third of the moves are steps). The <b>engine</b> weighs them with the soft rules of Studies 38–42 — the contour after Bach, the motion between the voices — and chooses each note by a softmax of −cost / temperature: half the moves or more are steps.</li>
@@ -197,7 +199,10 @@ function rebuild() {
   $("schema-about").innerHTML = `<b>${S.schema.name[0].toUpperCase() + S.schema.name.slice(1)}:</b> ${S.schema.about}.`;
   $("proto").disabled = !prototype();
   $("status").textContent = c ? "ready" : "no realization";
-  $("draw").disabled = !c; $("uniform").disabled = !c;
+  const fc = S.figurings();
+  $("figs").textContent = fc.toLocaleString("en");
+  $("figs-sub").textContent = `figuring${fc === 1n ? "" : "s"}: essentially different realizations — the figures on the strong units, not the octave nor how the bar is divided`;
+  $("draw").disabled = !c; $("uniform").disabled = !c; $("figuring").disabled = fc < 2n;
   render();
 }
 function render() {
@@ -259,7 +264,13 @@ function render() {
 /** How the upper voice moves (steps, 3rds, leaps) and what it costs by the soft rules. */
 function describe(V) {
   const sh = shape([V.map(S.degree)]), pc = (x) => Math.round(100 * x) + "%";
-  return `steps ${pc(sh.steps)}, 3rds ${pc(sh.thirds)}, 4ths or more ${pc(sh.leaps)} · cost ${S.cost(V).toFixed(1)}`;
+  const p = prototype();
+  let fig = "";
+  if (p) {
+    const a = S.figuringOf(V), b = S.figuringOf(p), k = a.filter((x, i) => x !== b[i]).length;
+    fig = k ? ` · a figuring of its own (${k} unit${k > 1 ? "s" : ""} differ from the book's)` : " · the book's figuring";
+  }
+  return `steps ${pc(sh.steps)}, 3rds ${pc(sh.thirds)}, 4ths or more ${pc(sh.leaps)} · cost ${S.cost(V).toFixed(1)}${fig}`;
 }
 function play() {
   if (!U.length) return;
@@ -284,6 +295,7 @@ $("tonic").addEventListener("change", rebuild);
 $("mode").addEventListener("change", rebuild);
 $("figured").addEventListener("change", rebuild);
 $("draw").addEventListener("click", () => { U = S.engine({ temp: Math.max(0, Number($("temp").value) || 0) }) || []; $("why").textContent = ""; render(); });
+$("figuring").addEventListener("click", () => { const sig = S.sampleFiguring(); U = (sig && S.realize(sig, { temp: Math.max(0, Number($("temp").value) || 0) })) || []; $("why").textContent = ""; render(); });
 $("uniform").addEventListener("click", () => { U = S.sample() || []; $("why").textContent = ""; render(); });
 $("proto").addEventListener("click", () => { const p = prototype(); if (p) { U = p; $("why").textContent = ""; render(); } });
 $("clear").addEventListener("click", () => { U = []; $("why").textContent = ""; render(); });

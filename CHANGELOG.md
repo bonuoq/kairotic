@@ -43,6 +43,9 @@
   softmax of −cost / temperature). Drawn uniformly, a work leaps because most works do; the engine draws the
   stepwise ones. Study 51 chooses note by note and shows each next note's cost; Study 50 weighs whole works (a crab
   is not written forwards). A hemiola leaps by its nature: none of its 7,794 works has more than 4 steps in 9 moves.
+- **Study 51 counts figurings**: realizations with the same figures on the strong units are the same music (an
+  octave away, the bar divided otherwise). With the book's figures each schema has one figuring; without them, from
+  1,102 (Fifth Down Fourth Up) to millions. "Another figuring" draws one among them, realized by the engine.
 
 - **Study 50 · lines** (discussion #248): counterpoint between two timed lines, whatever their relation in time.
   The comes is a reader of the dux at a signed speed p/q; the lines are spelled on the finest lattice both fall on
