@@ -29,6 +29,20 @@ await (async function () {
     window.kairoticKernel = await import("../kairotic/continuum.mjs");
     scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
 
+    // the start of the staff engraved by Verovio: the treble clef on the staff and the key signature of D (two sharps)
+    const vok = await wait(() => C().verovio() !== "loading", 60000);
+    is("Verovio loaded" + (vok ? "" : " (" + C().verovio() + ")"), C().verovio() === "ready");
+    await wait(() => document.querySelector("#score .vrv .clef"), 3000);
+    const box = (el) => { const sv = document.getElementById("score"), b = el.getBBox(), m = sv.getScreenCTM().inverse().multiply(el.getScreenCTM());
+                          const a = new DOMPoint(b.x, b.y).matrixTransform(m), c = new DOMPoint(b.x + b.width, b.y + b.height).matrixTransform(m); return { l: a.x, t: a.y, r: c.x, b: c.y }; };
+    const sy = (st) => 170 - 6 * st;
+    const clef = document.querySelector("#score .vrv .clef");
+    const cb = clef && box(clef);
+    is("the clef is at the start of the staff and on it (it spans the five lines)", cb && cb.l >= 10 && cb.l < 30 && cb.t < sy(8) && cb.b > sy(0));
+    is("D major: two sharps in the key signature", $$("#score .vrv .keySig .keyAccid").length === 2);
+    const sharps = $$("#score .vrv .keySig .keyAccid").map(box);
+    is("… after the clef and before the first note", sharps.length === 2 && sharps.every((b) => b.l > cb.r - 2 && b.r < 125));
+    is("… F# on the top line, C# in the third space", sharps.length === 2 && Math.abs((sharps[0].t + sharps[0].b) / 2 - sy(8)) < 6 && Math.abs((sharps[1].t + sharps[1].b) / 2 - sy(5)) < 6);
     is("the phrase: 10 notes, 3 wires", /^10 notes · 3 wires/.test(document.getElementById("status").textContent));
     is("three resolution lanes", $$(".rlane svg").length === 3);
     is("dissolve: the start written (heads, stems, a staff), the end strokes", shown("#score .head") >= 5 && shown("#score .stem") >= 2 && shown("#score .staff") > 0 && shown("#score .stroke") >= 3);
@@ -36,7 +50,9 @@ await (async function () {
     pick("res-preset", "written");
     is("written: no strokes, a stem on every note but the whole ones, bar lines, the staff all along", shown("#score .stroke") === 0 && shown("#score .stem") >= 8 && shown("#score .bar") >= 2 && shown("#score .semi") === 0);
     is("… a note between keys gets its accidental (in D: G#, A#… written where the key does not say it)", shown("#score .acc") >= 1);
+    is("written: the meter (4/4) shows, as time is metric", $$("#score .vrv .meterSig").length === 1 && parseFloat(document.querySelector("#score .vrv .meterSig").getAttribute("opacity")) > 0.9);
     pick("res-preset", "graphic");
+    is("graphic: no staff, so no clef either", !document.querySelector("#score .vrv"));
     is("graphic: strokes only (no heads, no staff, no bars), cents where a pitch is between keys",
        shown("#score .head") === 0 && shown("#score .staff") === 0 && shown("#score .bar") === 0 && shown("#score .stroke") === 10 && $$("#score .lbl").some((t) => /¢/.test(t.textContent)));
     pick("res-preset", "tempered");
@@ -76,6 +92,7 @@ await (async function () {
 
     pick("line-preset", "gesture");
     is("the gesture: 8 notes, its own wires", /^8 notes · 3 wires/.test(document.getElementById("status").textContent));
+    is("… in C: no key signature", $$("#score .vrv .keyAccid").length === 0 && document.querySelector("#score .vrv .clef") !== null);
     pick("line-preset", "phrase");
 
     // played: a steady performer, the electronics compiled and started by the wires
