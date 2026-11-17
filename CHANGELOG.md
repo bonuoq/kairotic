@@ -29,6 +29,15 @@
   (in CI) checks that no component matches an order as a string again; data sets (a tree's `:every`, a pattern's
   rests, a page's mode in its URL) stay. Packages: `@kairotic/analysis` 0.7.5, `controls` 0.2.3, `data` 0.1.4, `io`
   0.2.4, `net` 0.1.3, `theory` 0.9.1.
+
+- **Study 49 · insert**: a Faust DSP in the feedback of a ring of sound, inside the same node. The page compiles the
+  code (faustwasm) and sends its WebAssembly module to the worklet that holds the span; there it is instantiated
+  (its math imports, its memory laid out as faustwasm lays it) and runs one sample at a time (`compute(1)`) between
+  what a reader sends, times feed, and what the writer writes — so the loop is exact at any d. A plucked string is a
+  ring whose d is its period; `outside` makes the feedback wait a block, as through other boxes. Presets: tape echo,
+  dub, spiral, string, comb. `studies/49-insert/` (core `insertcore.mjs` with `tests/core.mjs`, 6, also in Node;
+  `tests/page.html` with real Faust). The studies' runner waits up to 120 s for a page.
+
 - **Every reader reads alike** (breaking). `reader` and `reader~` take a position in the units of their buffer —
   the X axis of a canvas (Y with `y`), the time of a freqt, the seconds of a sample, a ring or a ring~ — or, with
   `norm`, from 0 to 1; along a stroke (`path`) it is always 0…1. Before, `reader~` read a canvas, freqt or sample

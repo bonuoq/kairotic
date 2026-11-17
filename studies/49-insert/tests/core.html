@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 49 · insert · core tests</title>
+<pre id="out">Running…</pre>
+<script type="module">
+// The core, sample by sample (the same tests run in Node: node studies/49-insert/tests/core.mjs).
+try {
+  const { run } = await import("./core.mjs");
+  const rs = run(), bad = rs.filter((r) => !r[1]);
+  window.kairoticResults = { total: rs.length, failed: bad.map((r) => r[0]) };
+  document.getElementById("out").textContent = (rs.length - bad.length) + " / " + rs.length + " passed\n\n" +
+    rs.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n");
+} catch (e) {
+  document.getElementById("out").textContent = "Error: " + (e.message || e);
+  window.kairoticResults = { total: 0, failed: ["error: " + (e.message || e)] };
+}
+</script>

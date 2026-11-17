@@ -1,0 +1,631 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 49 · Insert</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the presets and the sound as two toolbars; the span drawn (a ring as a circle of time with
+   the sound around it) with every head on it; beside it the insert (its Faust code, its controls, inside or outside),
+   the heads, one a row, and the keys; then what the study decides. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+
+.views { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 1.1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+.sheet { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+.sheet svg { display: block; width: 100%; height: auto; }
+.track { fill: none; stroke: var(--grid); stroke-width: 1; }
+.mid { stroke: var(--kairos); stroke-dasharray: 2 4; }
+.ev { fill: var(--accent); }
+.whead { stroke: var(--accent); stroke-width: 2; }
+.rhead { stroke: var(--kairos); stroke-width: 2; }
+.hlab { font: 600 11px var(--f-code); dominant-baseline: central; text-anchor: middle; stroke: none; }
+.hlab.whead { fill: var(--accent); } .hlab.rhead { fill: var(--kairos); }
+.center, .tl { font: 11px var(--f-code); fill: var(--ink-soft); text-anchor: middle; dominant-baseline: central; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.about-preset { font-size: 13px; color: var(--ink-soft); margin: 0; }
+.heads { display: grid; gap: 6px; }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 8px; border: 1px solid var(--grid); border-left: 3px solid var(--accent); border-radius: 4px; font-size: 12.5px; color: var(--ink-soft); }
+.head.r { border-left-color: var(--kairos); }
+.head b { font: 600 12px var(--f-code); color: var(--ink); min-width: 1.8em; }
+.head .role { font: 600 10.5px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; }
+.head label { display: flex; align-items: center; gap: 4px; }
+.head input[type=number] { width: 4.4em; font: 12px var(--f-code); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 4px; padding: 2px 4px; }
+.head select { font: 12px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 4px; padding: 2px 4px; }
+.head .hand input { width: 140px; accent-color: var(--kairos); }
+.head .pos { margin-left: auto; font: 11.5px var(--f-code); }
+.head .cue { display: flex; align-items: center; gap: 3px; }
+.head .cue button { font: 11.5px var(--f-code); padding: 1px 6px; border: 1px solid var(--rule); border-radius: 4px; background: var(--box); color: var(--ink); cursor: pointer; }
+.keys { display: flex; gap: 3px; flex-wrap: wrap; }
+.keys button { width: 32px; height: 60px; border: 1px solid var(--rule); background: var(--box); color: var(--ink-soft); border-radius: 0 0 4px 4px; font: 10.5px var(--f-code); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 4px; cursor: pointer; }
+.keys button.black { background: var(--ink); color: var(--paper); height: 42px; }
+.keys button:active { border-color: var(--accent); background: var(--accent); color: #fff; }
+ol.log { margin: 0; padding-left: 22px; font: 12px/1.5 var(--f-code); max-height: 180px; overflow: auto; }
+ol.log .soft { color: var(--ink-soft); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+table.cmp { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.cmp th, table.cmp td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+table.cmp th { font: 500 11px var(--f-ui); color: var(--ink-soft); }
+.wave { fill: none; stroke: var(--ink-soft); stroke-width: 1.6; stroke-linecap: round; opacity: 0.75; }
+.ohead { stroke: var(--kairos); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.7; }
+.toolbar input[type=range] { width: 110px; accent-color: var(--accent); }
+textarea.code { width: 100%; min-height: 96px; font: 12px/1.45 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 6px 8px; resize: vertical; }
+.insert-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12.5px; color: var(--ink-soft); }
+.insert-row label { display: flex; align-items: center; gap: 4px; }
+.params { display: grid; gap: 4px; }
+.params label { display: grid; grid-template-columns: 7em 1fr 4.5em; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-soft); }
+.params input { accent-color: var(--kairos); }
+.params code { font: 11.5px var(--f-code); color: var(--ink); text-align: right; }
+.istat.ok { color: var(--ok); } .istat.bad { color: var(--error); }
+</style>
+
+<main>
+<header>
+  <h1>Study 49 · insert</h1>
+  <span class="sub">A Faust DSP in the feedback of a ring of sound, inside the same node: the loop is exact, to the sample</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The span">
+  <span class="tag">Span</span>
+  <span class="presets">
+    <button class="act" data-preset="echo">tape echo</button>
+    <button class="act" data-preset="dub">dub</button>
+    <button class="act" data-preset="spiral">spiral</button>
+    <button class="act" data-preset="string">string</button>
+    <button class="act" data-preset="comb">comb</button>
+  </span>
+</div>
+<div class="toolbar" aria-label="The sound">
+  <span class="tag">Sound</span>
+  <label>source <select id="source"><option value="phrase">a phrase that loops</option><option value="keys">the keys</option><option value="mic">the microphone</option></select></label>
+  <label>dry <input type="range" id="dry" min="0" max="1" step="0.05"> <code id="dry-v"></code></label>
+  <span class="sep"></span>
+  <button class="act primary" id="go">▶ Start</button>
+  <button class="act" data-act="clear" title="Silence in the span; the heads where they are">:clear</button>
+  <button class="act" data-act="restart" title="The preset again: the span silent, the heads in their places, time from 0">restart</button>
+</div>
+<p class="about-preset" id="about-preset"></p>
+
+<div class="views">
+  <section class="panel" aria-labelledby="h-span">
+    <h2 id="h-span">Span <span id="span-sub"></span></h2>
+    <div class="sheet"><svg id="span" role="img" aria-label="The span, the sound written in it and its heads"></svg></div>
+  </section>
+  <div class="side">
+    <section class="panel" aria-labelledby="h-insert">
+      <h2 id="h-insert">Insert <span class="istat" id="insert-status">—</span></h2>
+      <textarea class="code" id="code" spellcheck="false" aria-label="The Faust code of the insert"></textarea>
+      <div class="insert-row">
+        <button class="act" id="compile">Compile ⌘↵</button>
+        <label title="The feedback a block (128 samples) later, as through other boxes of a patch"><input type="checkbox" id="outside"> outside (a block later)</label>
+        <label>feed <input type="range" id="feed" min="0" max="1.05" step="0.005"> <code id="feed-v"></code></label>
+      </div>
+      <div class="params" id="params"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-heads">
+      <h2 id="h-heads">Heads <span><button class="act" data-add="writer" style="padding:2px 8px;font-size:12px">+ writer</button> <button class="act" data-add="reader" style="padding:2px 8px;font-size:12px">+ reader</button></span></h2>
+      <div class="heads" id="heads"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-keys">
+      <h2 id="h-keys">Keys <span id="keys-sub">into the span (or a w s e d f t g y h u j k), with any source</span></h2>
+      <div class="keys" id="keys"></div>
+    </section>
+  </div>
+</div>
+
+<section class="panel">
+  <h2>About</h2>
+  <p class="about"><b>Study 49.</b> Point 2 of the plan after the discussion on Faust and rings: a <b>Faust DSP in the feedback</b> of a ring of sound, inside the same node. The page compiles the code (faustwasm) and sends the WebAssembly module to the worklet that holds the span; there it runs one sample at a time, between what a reader sends (times <i>feed</i>) and what the writer writes. So the loop is exact: what the reader meets comes back d later, to the sample, even when d is shorter than a block — a plucked <b>string</b> is a ring whose d is its period and whose insert is its damping. With <i>outside</i> the feedback waits one block (128 samples), as it does when the loop goes through other boxes of a patch (reader~ → faust~ → writer~): the string is out of tune, the comb rings at another pitch. Values are transformed in the loop, not by the heads (decision 4): the insert is that transformation.</p>
+  <h2 style="margin-top:6px">In the app</h2>
+  <table class="cmp">
+    <tr><th>here</th><th>in the app</th></tr>
+    <tr><td>a span of samples and its heads in one node</td><td><code>ring~</code>, with <code>writer~</code> and <code>reader~</code> in its slots (done)</td></tr>
+    <tr><td>a Faust insert in a writer's feedback</td><td>a <code>faust~</code> connected to a <code>writer~</code> as its insert: its module runs in the ring~'s node, not in a node of its own (to do)</td></tr>
+    <tr><td>outside</td><td>what a loop through other boxes costs today: one block</td></tr>
+  </table>
+  <h2 style="margin-top:6px">What it decides</h2>
+  <ul class="q">
+    <li>An insert runs one sample at a time (compute(1)): exact at any d, at the cost of a call per sample.</li>
+    <li>It runs on every sample, even in silence, so a filter's state goes on.</li>
+    <li>Every input of the DSP gets the feedback; its first output is written.</li>
+  </ul>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the sound runs in
+// an AudioWorklet (kairotic/insert-worklet.mjs on kairotic/insertcore.mjs, JS); Faust is compiled in the page by
+// faustwasm, as the app does it.
+window.kairoticBase = window.kairoticBase || "kairotic/";
+window.kairoticLoadFaust = window.kairoticLoadFaust || function () {
+  return import("https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js")
+    .then(function (F) {
+      return F.instantiateFaustModule().then(function (mod) { return { F: F, compiler: new F.FaustCompiler(new F.LibFaust(mod)) }; });
+    });
+};
+window.addEventListener("DOMContentLoaded", function () {
+  try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); }
+  catch (e) { var st = document.getElementById("status"); st.textContent = "Error: " + (e.message || e); st.style.color = "var(--error)"; console.error(e); }
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns insert-page (:require [clojure.string :as str]))
+
+;; Kairotic · Study 49 · insert: the page. Study 48's page (a span of samples, its heads, a phrase, the keys or the
+;; microphone), with a Faust insert in the writer's feedback: its code is compiled here (faustwasm) and its module
+;; sent to the worklet, where it runs one sample at a time. A string preset plucks: a key sets the reader's d to the
+;; period of its note and sends a burst of noise.
+
+(def key-names ["a" "w" "s" "e" "d" "f" "t" "g" "y" "h" "u" "j" "k"])
+(def black #{1 3 6 8 10})
+(def phrase [60 62 64 67 64 62 60 nil 67 65 64 62 64 nil 72 nil])   ; eighths at 120
+
+(defn $ [id] (js/document.getElementById id))
+(defn r2 [x] (/ (js/Math.round (* 100 x)) 100))
+
+;; ───────── presets: a ring, a reader that feeds the writer back, and an insert in that loop ─────────
+
+(defn w [id o] (merge {:id id :role "write" :at "clock" :p0 0 :speed 1 :depth 0 :rate 0.25 :mode "ovr" :keep 1 :jump 0.25 :listen ["in"] :feed 1 :outside false} o))
+(defn r [id o] (merge {:id id :role "read" :at "follow" :of "w" :d 1 :speed 1 :p0 0 :depth 0 :rate 0.25 :jump 0.25 :xfade 0.03 :gain 1} o))
+
+(def faust-lib "import(\"stdfaust.lib\");\n")
+
+(def presets
+  {"echo" {:about "a tape echo: the reader 0.4 s behind feeds the writer back (feed 0.7) through a lowpass, so each repeat is darker"
+           :len 8 :circular true :source "phrase" :heads [(w "w" {:listen ["in" "r1"] :feed 0.7}) (r "r1" {:d 0.4})]
+           :code (str faust-lib "cutoff = hslider(\"cutoff\", 1800, 200, 8000, 1);\nprocess = fi.lowpass(2, cutoff);")}
+   "dub" {:about "a dub delay: band-passed and driven into a soft clip in the loop; with feed near 1 it sustains and saturates instead of exploding"
+          :len 8 :circular true :source "phrase" :heads [(w "w" {:listen ["in" "r1"] :feed 0.95}) (r "r1" {:d 0.375})]
+          :code (str faust-lib "drive = hslider(\"drive\", 2, 1, 8, 0.01);\nprocess = fi.highpass(1, 300) : fi.lowpass(2, 2500) : *(drive) : atan : /(drive);")}
+   "spiral" {:about "a pitch shifter in the loop: each repeat a fifth higher (or lower), a spiral"
+             :len 8 :circular true :source "phrase" :heads [(w "w" {:listen ["in" "r1"] :feed 0.75}) (r "r1" {:d 0.5})]
+             :code (str faust-lib "shift = hslider(\"shift\", 7, -12, 12, 0.1);\nprocess = ef.transpose(2048, 512, shift);")}
+   "string" {:about "a string is a ring with an insert: d is its period (a key sets it, 1/f), the lowpass in the loop its damping; a key plucks it with a burst of noise. Inside, the period is exact; outside, a block later, the string is out of tune"
+             :len 0.5 :circular true :source "keys" :pluck true
+             :heads [(w "w" {:listen ["in" "r1"] :feed 0.996}) (r "r1" {:d (/ 1 220) :jump 1})]
+             :code (str faust-lib "cutoff = hslider(\"cutoff\", 5000, 500, 12000, 1);\nprocess = fi.lowpass(1, cutoff);")}
+   "comb" {:about "a comb: the reader 5 ms behind fed back at 0.9, nothing in the loop but the loop (process = _). Inside it rings at 200 Hz; outside, a block later, at another pitch"
+           :len 1 :circular true :source "phrase" :heads [(w "w" {:listen ["in" "r1"] :feed 0.9}) (r "r1" {:d 0.005})]
+           :code "process = _;"}})
+
+(declare update-head! draw-insert! draw-heads! set-source! report!)
+
+;; ───────── state ─────────
+;; :preset · :len :circular :heads the span as the page knows it · :last the worklet's state · :on · :error
+
+(defonce ui (atom {:preset "echo" :source "phrase" :dry 0.25 :on false :last nil :error nil
+                   :code "" :insert {:status "—"} :factory nil}))
+(defonce au (atom {}))   ; :ac :node :in :master :mic :timer :next :step
+
+(defn spec [] (select-keys @ui [:len :circular :heads]))
+
+(defn send! [m] (when-let [n (:node @au)] (.postMessage (.-port n) (clj->js m))))
+
+(defn post-raw! [m] (when-let [n (:node @au)] (.postMessage (.-port n) m)))
+
+(defn send-insert!
+  "The compiled insert to the worklet (once the node is there): the module itself, not a copy of it as EDN."
+  []
+  (when-let [f (:factory @ui)]
+    ;; its bytes (a typed array always crosses to a worklet; the worklet compiles them), else the module itself
+    (post-raw! (if (.-code f)
+                 #js {:insert #js {:id "w" :code (.slice (.-code f)) :json (.-json f)}}
+                 #js {:insert #js {:id "w" :module (.-module f) :json (.-json f)}}))))
+
+(defn compile-insert!
+  "Compiles the code of the insert (faustwasm, in the page) and sends its module to the worklet."
+  []
+  (let [code (:code @ui)]
+    (swap! ui assoc :insert {:status "compiling…"})
+    (draw-insert!)
+    (-> ((.-kairoticLoadFaust js/window))
+        (.then (fn [fx]
+                 (let [gen (js/Reflect.construct (.. fx -F -FaustMonoDspGenerator) #js [])]
+                   (.then (.compile gen (.-compiler fx) "insert" code "-ftz 2")
+                          (fn [g] (when (nil? g) (throw (js/Error. "Faust could not compile this code"))) (.-factory gen))))))
+        (.then (fn [f]
+                 (when (= code (:code @ui))
+                   (swap! ui assoc :factory f :insert {:status (if (:node @au) "loading…" "compiled")})
+                   (draw-insert!)
+                   (send-insert!))))
+        (.catch (fn [e] (swap! ui assoc :factory nil :insert {:status "error" :error (or (.-message e) (str e))}) (draw-insert!))))))
+
+(defn load-preset! [k]
+  (let [{:keys [len circular heads code source]} (get presets k)]
+    (swap! ui assoc :preset k :len len :circular circular :heads heads :last nil :code code)
+    (send! {:preset (spec)})
+    (when (and source (not= source (:source @ui))) (if (:on @ui) (report! (set-source! source)) (swap! ui assoc :source source)))
+    (compile-insert!)))
+
+;; ───────── sound ─────────
+
+(defn hz [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
+
+(defn note! [m at len]
+  (let [{:keys [ac in]} @au
+        o (.createOscillator ac) g (.createGain ac) f (.createBiquadFilter ac)]
+    (set! (.-type o) "sawtooth") (set! (.. o -frequency -value) (hz m))
+    (set! (.-type f) "lowpass") (set! (.. f -frequency -value) 1800)
+    (.setValueAtTime (.-gain g) 0 at)
+    (.linearRampToValueAtTime (.-gain g) 0.22 (+ at 0.01))
+    (.exponentialRampToValueAtTime (.-gain g) 0.0001 (+ at len))
+    (.connect o f) (.connect f g) (.connect g in)
+    (.start o at) (.stop o (+ at len 0.02))))
+
+(defn schedule! []
+  (let [{:keys [ac]} @au]
+    (when (and ac (= "phrase" (:source @ui)))
+      (loop []
+        (when (< (:next @au) (+ (.-currentTime ac) 0.15))
+          (let [m (nth phrase (mod (:step @au) (count phrase)))]
+            (when m (note! m (:next @au) 0.22))
+            (swap! au #(-> % (update :step inc) (update :next + 0.25)))
+            (recur)))))))
+
+(defn stop-mic! []
+  (when-let [{:keys [src stream]} (:mic @au)]
+    (.disconnect src) (doseq [t (.getTracks stream)] (.stop t))
+    (swap! au assoc :mic nil)))
+
+(defn set-source! [s]
+  (swap! ui assoc :source s)
+  (stop-mic!)
+  (js/clearInterval (:timer @au)) (swap! au assoc :timer nil)
+  (let [ac (:ac @au)]
+    (cond
+      (nil? ac) (js/Promise.resolve nil)
+      (= s "phrase") (do (swap! au assoc :next (+ (.-currentTime ac) 0.05) :step 0 :timer (js/setInterval schedule! 40))
+                         (schedule!) (js/Promise.resolve nil))
+      (= s "mic") (if-not (some-> js/navigator .-mediaDevices .-getUserMedia)
+                    (js/Promise.reject (js/Error. "this page cannot use a microphone here"))
+                    (-> (.getUserMedia (.-mediaDevices js/navigator) #js {:audio #js {:echoCancellation false :noiseSuppression false :autoGainControl false}})
+                        (.then (fn [stream] (let [src (.createMediaStreamSource ac stream)] (.connect src (:in @au)) (swap! au assoc :mic {:src src :stream stream})))
+                               (fn [_] (throw (js/Error. "the microphone was refused (a page published on claude.ai cannot ask for it; open the study from Kairotic Pages)"))))))
+      :else (js/Promise.resolve nil))))
+
+(defn make-node! []
+  (let [ac (:ac @au)]
+    (-> (.addModule (.-audioWorklet ac) (str (.-kairoticBase js/window) "insert-worklet.mjs"))
+        (.then (fn []
+                 (let [node (js/AudioWorkletNode. ac "kairotic-insert"
+                                                  (clj->js {:numberOfInputs 1 :numberOfOutputs 1 :outputChannelCount [2]
+                                                            :processorOptions {:maxSeconds 30 :opts (spec)}}))
+                       in (.createGain ac) master (.createGain ac)]
+                   (set! (.. master -gain -value) 0.8)
+                   (set! (.. node -port -onmessage)
+                         (fn [e]
+                           (let [d (.-data e)]
+                             (when-let [s (.-state d)] (swap! ui assoc :last s))
+                             (when-let [i (.-insert d)]
+                               (swap! ui assoc :insert (cond
+                                                         (.-got i) {:status "instantiating…"}
+                                                         (.-error i)
+                                                         {:status "error" :error (.-error i)}
+                                                         :else {:status "on" :params (js->clj (.-params i) :keywordize-keys true)}))
+                               (draw-insert!)))))
+                   ;; a message the worklet could not receive (what it carried did not cross)
+                   (set! (.. node -port -onmessageerror) (fn [_] (swap! ui assoc :insert {:status "error" :error "the worklet could not receive the insert"}) (draw-insert!)))
+                   (set! (.-onprocessorerror node) (fn [] (swap! ui assoc :error "the insert node stopped with an error")))
+                   (.connect in node) (.connect node master) (.connect master (.-destination ac))
+                   (swap! au assoc :node node :in in :master master)
+                   (send! {:dry (:dry @ui)})
+                   (send-insert!)))))))
+
+(defn start! []
+  (swap! ui assoc :error nil)
+  (let [ac (or (:ac @au) (js/AudioContext.))]
+    (swap! au assoc :ac ac)
+    (-> (if (= "suspended" (.-state ac)) (.resume ac) (js/Promise.resolve nil))
+        (.then (fn [] (cond (:node @au) nil
+                            (nil? (.-audioWorklet ac)) (throw (js/Error. "this browser has no AudioWorklet"))
+                            :else (make-node!))))
+        (.then (fn [] (swap! ui assoc :on true) (set-source! (:source @ui)))))))
+
+(defn stop! []
+  (swap! ui assoc :on false)
+  (js/clearInterval (:timer @au)) (swap! au assoc :timer nil)
+  (stop-mic!)
+  (when-let [ac (:ac @au)] (.suspend ac)))
+
+(defn report! [p] (.catch p (fn [e] (swap! ui assoc :error (or (.-message e) (str e))))))
+
+(defn pluck!
+  "A burst of noise into the span (20 ms, falling): what excites a string."
+  [at]
+  (let [{:keys [ac in]} @au
+        n (js/Math.round (* 0.02 (.-sampleRate ac)))
+        buf (.createBuffer ac 1 n (.-sampleRate ac))
+        ch (.getChannelData buf 0)
+        src (.createBufferSource ac)]
+    (dotimes [i n] (aset ch i (* 0.6 (- (* 2 (js/Math.random)) 1) (- 1 (/ i n)))))
+    (set! (.-buffer src) buf)
+    (.connect src in) (.start src at)))
+
+(defn sound! [m]
+  (let [at (+ (.-currentTime (:ac @au)) 0.005)]
+    (if (:pluck (get presets (:preset @ui)))
+      ;; the string: its period is the reader's d
+      (let [d (/ 1 (hz m))]
+        (update-head! "r1" #(assoc % :d d))
+        (send! {:set {:id "r1" :d d}})
+        (pluck! at))
+      (note! m at 0.4))))
+
+(defn press! [m]
+  (if (:on @ui)
+    (sound! m)
+    (report! (.then (start!) (fn [] (sound! m)))))
+  (when-let [b (.querySelector js/document (str "[data-key=\"" m "\"]"))]
+    (.add (.-classList b) "down") (js/setTimeout #(.remove (.-classList b) "down") 140)))
+
+;; ───────── drawing ─────────
+
+(def C 210) (def R0 92) (def AMP 96)
+(defn polar [f r] (let [a (- (* 2 js/Math.PI f) (/ js/Math.PI 2))] [(+ C (* r (js/Math.cos a))) (+ C (* r (js/Math.sin a)))]))
+(defn f1 [x] (.toFixed x 1))
+
+(defn draw-span! []
+  (let [{st :last :keys [len circular]} @ui
+        sb #js [] add (fn [& xs] (doseq [s xs] (.push sb s)))
+        cls (fn [h] (if (= "write" (.-role h)) "whead" "rhead"))]
+    (if circular
+      (do
+        (add "<circle class=\"track\" cx=\"" C "\" cy=\"" C "\" r=\"" R0 "\"/><circle class=\"track\" cx=\"" C "\" cy=\"" C "\" r=\"" (+ R0 AMP) "\"/>")
+        (if st
+          (let [pk (.-peaks st) n (.-length pk) L (.-len st)]
+            (add "<path class=\"wave\" d=\"")
+            (dotimes [i n]
+              (let [a (min 1 (aget pk i))]
+                (when (> a 0.002)
+                  (let [[x1 y1] (polar (/ (+ i 0.5) n) R0) [x2 y2] (polar (/ (+ i 0.5) n) (+ R0 (* a AMP)))]
+                    (add "M" (f1 x1) " " (f1 y1) "L" (f1 x2) " " (f1 y2))))))
+            (add "\"/>")
+            (doseq [h (array-seq (.-heads st)) :when (some? (.-p h))]
+              (when (some? (.-old h))
+                (let [[x1 y1] (polar (/ (.-old h) L) (- R0 10)) [x2 y2] (polar (/ (.-old h) L) (+ R0 AMP 4))]
+                  (add "<line class=\"ohead\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"/>")))
+              (let [f (/ (.-p h) L) [x1 y1] (polar f (- R0 16)) [x2 y2] (polar f (+ R0 AMP 8)) [lx ly] (polar f (- R0 28))]
+                (add "<line class=\"" (cls h) "\" x1=\"" x1 "\" y1=\"" y1 "\" x2=\"" x2 "\" y2=\"" y2 "\"/>")
+                (add "<text class=\"hlab " (cls h) "\" x=\"" lx "\" y=\"" ly "\">" (.-id h) "</text>")))
+            (add "<text class=\"center\" x=\"" C "\" y=\"" C "\">" (.toFixed (.-t st) 2) " s</text>"))
+          (add "<text class=\"center\" x=\"" C "\" y=\"" C "\">press Start</text>"))
+        (.setAttribute ($ "span") "viewBox" "0 0 420 420"))
+      (let [Lx 20 Rx 400 mid 120 x (fn [p] (+ Lx (* (- Rx Lx) (/ p len))))]
+        (add "<line class=\"track\" x1=\"" Lx "\" x2=\"" Rx "\" y1=\"" mid "\" y2=\"" mid "\"/>")
+        (doseq [s (range (inc len))] (add "<text class=\"tl\" x=\"" (x s) "\" y=\"222\">" s "</text>"))
+        (add "<line class=\"mid\" x1=\"" (x (/ len 2)) "\" x2=\"" (x (/ len 2)) "\" y1=\"30\" y2=\"208\"/>")
+        (if st
+          (let [pk (.-peaks st) n (.-length pk)]
+            (add "<path class=\"wave\" d=\"")
+            (dotimes [i n]
+              (let [a (min 1 (aget pk i)) xx (+ Lx (* (- Rx Lx) (/ (+ i 0.5) n)))]
+                (when (> a 0.002) (add "M" (f1 xx) " " (f1 (- mid (* 80 a))) "L" (f1 xx) " " (f1 (+ mid (* 80 a)))))))
+            (add "\"/>")
+            (doseq [h (array-seq (.-heads st)) :when (some? (.-p h))]
+              (let [p (.-p h)]
+                (when (<= -0.01 p (+ len 0.01))
+                  (add "<line class=\"" (cls h) "\" x1=\"" (x p) "\" x2=\"" (x p) "\" y1=\"26\" y2=\"210\"/>")
+                  (add "<text class=\"hlab " (cls h) "\" x=\"" (x p) "\" y=\"16\">" (.-id h) "</text>"))))
+            (add "<text class=\"center\" x=\"" (/ (+ Lx Rx) 2) "\" y=\"246\">" (.toFixed (.-t st) 2) " s</text>"))
+          (add "<text class=\"center\" x=\"" (/ (+ Lx Rx) 2) "\" y=\"246\">press Start</text>"))
+        (.setAttribute ($ "span") "viewBox" "0 0 420 260")))
+    (set! (.-innerHTML ($ "span")) (.join sb ""))
+    (set! (.-textContent ($ "span-sub")) (str (if circular "a ring~ of " "a fixed span of ") len " s"))))
+
+(defn field [id k v attrs] (str "<input type=\"number\" data-head=\"" id "\" data-k=\"" (name k) "\" value=\"" v "\" " attrs ">"))
+(defn opts [id k choices cur]
+  (str "<select data-head=\"" id "\" data-k=\"" (name k) "\">"
+       (str/join "" (for [[v label] choices] (str "<option value=\"" v "\"" (when (= v cur) " selected") ">" label "</option>")))
+       "</select>"))
+
+(defn listen-options [heads]
+  (let [rs (map :id (filter #(= "read" (:role %)) heads))]
+    (concat [["in" "the input"] ["" "nothing (it erases)"]]
+            (mapcat (fn [x] [[x x] [(str "in+" x) (str "the input + " x)]]) rs))))
+
+(defn draw-heads! []
+  (let [{:keys [heads len]} @ui
+        writers (filter #(= "write" (:role %)) heads)
+        sb #js [] add (fn [& xs] (doseq [s xs] (.push sb s)))]
+    (doseq [hd heads]
+      (let [id (:id hd) w? (= "write" (:role hd))]
+        (add "<div class=\"head " (if w? "w" "r") "\" data-row=\"" id "\"><b>" id "</b><span class=\"role\">" (if w? "writer" "reader") "</span>")
+        (add "<label>at " (opts id :at (for [a (if w? ["clock" "signal" "hand"] ["follow" "clock" "signal" "hand"])] [a a]) (:at hd)) "</label>")
+        (case (:at hd)
+          "follow" (add "<label>of " (opts id :of (for [x writers] [(:id x) (:id x)]) (:of hd)) "</label>"
+                        "<label>d " (field id :d (:d hd) "step=\"0.05\" min=\"0\"") "</label>"
+                        "<label>speed " (field id :speed (:speed hd) "step=\"0.05\"") "</label>")
+          "clock" (add "<label>from " (field id :p0 (:p0 hd) "step=\"0.5\"") "</label><label>speed " (field id :speed (:speed hd) "step=\"0.05\"") "</label>")
+          "signal" (add "<label>from " (field id :p0 (:p0 hd) "step=\"0.5\"") "</label><label>speed " (field id :speed (:speed hd) "step=\"0.05\"") "</label>"
+                        "<label>depth " (field id :depth (:depth hd) "step=\"0.005\" min=\"0\"") "</label><label>rate " (field id :rate (:rate hd) "step=\"0.05\" min=\"0\"") "</label>")
+          "hand" (add "<label class=\"hand\">position <input type=\"range\" data-head=\"" id "\" data-k=\"target\" min=\"0\" max=\"" len "\" step=\"0.005\" value=\"" (or (:target hd) 0) "\"></label>")
+          nil)
+        (if w?
+          (do (add "<label>over " (opts id :mode [["ovr" "replace"] ["mix" "mix"]] (:mode hd)) "</label>")
+              (when (= "mix" (:mode hd)) (add "<label>keep " (field id :keep (:keep hd) "step=\"0.05\" min=\"0\" max=\"1\"") "</label>"))
+              (add "<label>listens " (opts id :listen (listen-options heads) (str/join "+" (:listen hd))) "</label>")
+              (when (some #(not= "in" %) (:listen hd)) (add "<label>feed " (field id :feed (:feed hd) "step=\"0.05\" min=\"0\" max=\"1.2\"") "</label>")))
+          (add "<label>gain " (field id :gain (:gain hd) "step=\"0.1\" min=\"0\"") "</label>"))
+        (add "<label>jump " (field id :jump (:jump hd) "step=\"0.05\" min=\"0\"") "</label>")
+        (when w?
+          (add "<span class=\"cue\"><button type=\"button\" data-cue=\"rec\" data-head=\"" id "\" title=\"To t, at speed 1, cutting what is after t\">:rec</button>"
+               "<button type=\"button\" data-cue=\"ovr\" data-head=\"" id "\" title=\"To t, at speed 1, replacing what it passes\">:ovr</button>"
+               "<input type=\"number\" class=\"cue-t\" value=\"0\" step=\"0.5\" aria-label=\"t\"></span>"))
+        (add "<code class=\"pos\">–</code></div>")))
+    (set! (.-innerHTML ($ "heads")) (.join sb ""))))
+
+(defn draw-dynamic!
+  "What changes every frame (without rebuilding the heads' fields while they are edited)."
+  []
+  (draw-span!)
+  (when-let [st (:last @ui)]
+    (doseq [h (array-seq (.-heads st))]
+      (when-let [el (.querySelector ($ "heads") (str "[data-row=\"" (.-id h) "\"] .pos"))]
+        (set! (.-textContent el) (if (some? (.-p h)) (str (.toFixed (.-p h) 2) " s") "–")))))
+  (let [{:keys [error on preset]} @ui]
+    (set! (.-textContent ($ "status")) (if error (str "Error: " error) (str (if on "sounding · " "silent · ") preset)))
+    (set! (.. ($ "status") -style -color) (if error "var(--error)" ""))
+    (set! (.-textContent ($ "go")) (if on "■ Stop" "▶ Start"))))
+
+(defn draw-insert!
+  "The insert's status and a slider for each of its controls."
+  []
+  (let [{:keys [insert]} @ui
+        w (first (filter #(= "w" (:id %)) (:heads @ui)))]
+    (set! (.-textContent ($ "insert-status")) (if (= "error" (:status insert)) (str "error: " (:error insert)) (:status insert)))
+    (set! (.-className ($ "insert-status")) (str "istat " (case (:status insert) "on" "ok" "error" "bad" "")))
+    (set! (.-checked ($ "outside")) (boolean (:outside w)))
+    (set! (.-value ($ "feed")) (or (:feed w) 0)) (set! (.-textContent ($ "feed-v")) (.toFixed (or (:feed w) 0) 3))
+    (set! (.-innerHTML ($ "params"))
+          (str/join "" (for [p (:params insert)]
+                         (str "<label>" (:label p) " <input type=\"range\" data-param=\"" (:address p) "\" min=\"" (:min p) "\" max=\"" (:max p)
+                              "\" step=\"" (if (pos? (:step p)) (:step p) "any") "\" value=\"" (:init p) "\"><code>" (:init p) "</code></label>"))))))
+
+(defn draw-all! []
+  (doseq [b (array-seq (js/document.querySelectorAll "[data-preset]"))]
+    (.toggle (.-classList b) "on" (= (.getAttribute b "data-preset") (:preset @ui))))
+  (set! (.-textContent ($ "about-preset")) (:about (get presets (:preset @ui))))
+  (set! (.-value ($ "source")) (:source @ui))
+  (set! (.-value ($ "dry")) (:dry @ui)) (set! (.-textContent ($ "dry-v")) (.toFixed (:dry @ui) 2))
+  (set! (.-value ($ "code")) (:code @ui))
+  (set! (.-textContent ($ "keys-sub")) (if (:pluck (get presets (:preset @ui))) "a key plucks the string at its pitch (or a w s e d f t g y h u j k)" "into the span (or a w s e d f t g y h u j k), with any source"))
+  (draw-insert!) (draw-heads!) (draw-dynamic!))
+
+(defn frame! [] (draw-dynamic!) (js/requestAnimationFrame frame!))
+
+;; ───────── editing ─────────
+
+(defn update-head! [id f] (swap! ui update :heads (fn [hs] (mapv #(if (= id (:id %)) (f %) %) hs))))
+
+(defn on-head-change [e]
+  (let [el (.-target e) id (.getAttribute el "data-head") k (some-> (.getAttribute el "data-k") keyword)]
+    (when (and id k)
+      (let [raw (.-value el)
+            v (case k (:at :of :mode) raw :listen (vec (remove str/blank? (str/split raw #"\+"))) (js/parseFloat raw))]
+        (when (or (string? v) (vector? v) (not (js/isNaN v)))
+          (update-head! id #(assoc % k v))
+          (send! {:set (assoc {:id id} k v)})
+          (when (#{:at :mode :listen} k) (draw-heads!)))))))
+
+(defn cue! [id kind t] (send! {:cue {:id id :kind kind :t t}}))
+
+;; ───────── wiring ─────────
+
+(set! (.-innerHTML ($ "keys"))
+      (str/join "" (for [i (range 13)] (str "<button type=\"button\" class=\"" (when (black (mod i 12)) "black") "\" data-key=\"" (+ 60 i) "\">" (nth key-names i) "</button>"))))
+(.addEventListener ($ "keys") "pointerdown"
+  (fn [e] (when-let [b (.. e -target (closest "[data-key]"))] (.preventDefault e) (press! (js/parseInt (.getAttribute b "data-key") 10)))))
+(.addEventListener js/document "keydown"
+  (fn [e] (let [tag (some-> (.-target e) .-tagName)]
+            (when (and (not (.-repeat e)) (not (.-metaKey e)) (not (.-ctrlKey e)) (not (#{"INPUT" "SELECT" "TEXTAREA"} tag)))
+              (when-let [i (first (keep-indexed (fn [i k] (when (= k (.-key e)) i)) key-names))]
+                (.preventDefault e) (press! (+ 60 i)))))))
+(.addEventListener js/document "click"
+  (fn [e]
+    (let [t (.-target e)]
+      (when-let [b (.closest t "[data-preset]")] (load-preset! (.getAttribute b "data-preset")) (draw-all!))
+      (when (.closest t "#go") (report! (-> (if (:on @ui) (js/Promise.resolve (stop!)) (start!)) (.then draw-dynamic!))))
+      (when (.closest t "[data-act=clear]") (send! {:clear true}))
+      (when (.closest t "[data-act=restart]") (load-preset! (:preset @ui)) (draw-all!))
+      (when-let [b (.closest t "[data-cue]")]
+        (let [v (js/parseFloat (.-value (.querySelector (.closest b ".cue") ".cue-t")))]
+          (when-not (js/isNaN v) (cue! (.getAttribute b "data-head") (.getAttribute b "data-cue") v))))
+      (when-let [b (.closest t "[data-add]")]
+        (let [{:keys [heads]} @ui w? (= "writer" (.getAttribute b "data-add"))
+              id (str (if w? "w" "r") (inc (count heads)))
+              first-w (:id (first (filter #(= "write" (:role %)) heads)))
+              hd (if w? (w id {:at "hand" :target 0 :mode "mix"}) (r id {:of first-w :d 0.5}))]
+          ;; (a new head: the span silent, time from 0, as a new preset)
+          (swap! ui update :heads conj hd)
+          (send! {:preset (spec)})
+          (draw-all!))))))
+(.addEventListener ($ "heads") "change" on-head-change)
+(.addEventListener ($ "heads") "input" (fn [e] (when (= "target" (.getAttribute (.-target e) "data-k")) (on-head-change e))))
+(.addEventListener ($ "source") "change" (fn [e] (report! (set-source! (.. e -target -value)))))
+(.addEventListener ($ "compile") "click" (fn [_] (swap! ui assoc :code (.-value ($ "code"))) (compile-insert!) (draw-insert!)))
+(.addEventListener ($ "code") "keydown"
+  (fn [e] (when (and (= "Enter" (.-key e)) (or (.-metaKey e) (.-ctrlKey e)))
+            (.preventDefault e) (swap! ui assoc :code (.-value ($ "code"))) (compile-insert!) (draw-insert!))))
+(.addEventListener ($ "outside") "change"
+  (fn [e] (let [v (.. e -target -checked)] (update-head! "w" #(assoc % :outside v)) (send! {:set {:id "w" :outside v}}))))
+(.addEventListener ($ "feed") "input"
+  (fn [e] (let [v (js/parseFloat (.. e -target -value))]
+            (update-head! "w" #(assoc % :feed v)) (send! {:set {:id "w" :feed v}}) (set! (.-textContent ($ "feed-v")) (.toFixed v 3)))))
+(.addEventListener ($ "params") "input"
+  (fn [e] (when-let [a (.getAttribute (.-target e) "data-param")]
+            (let [v (js/parseFloat (.. e -target -value))]
+              (send! {:param {:id "w" :address a :value v}})
+              (set! (.-textContent (.-nextElementSibling (.-target e))) (r2 v))))))
+(.addEventListener ($ "dry") "input" (fn [e] (let [v (js/parseFloat (.. e -target -value))]
+                                              (swap! ui assoc :dry v) (send! {:dry v}) (set! (.-textContent ($ "dry-v")) (.toFixed v 2)))))
+
+;; for the tests
+(set! (.-kairoticInsert js/window)
+      #js {:state (fn [] (:last @ui)) :heads (fn [] (clj->js (:heads @ui))) :on (fn [] (:on @ui)) :error (fn [] (:error @ui))
+           :insert (fn [] (clj->js (:insert @ui))) :node (fn [] (:node @au))
+           :preset (fn [k] (load-preset! k) (draw-all!)) :press press! :context (fn [] (:ac @au))})
+
+(load-preset! "echo")
+(draw-all!)
+(js/requestAnimationFrame frame!)
+</script>
