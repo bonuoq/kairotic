@@ -97,18 +97,25 @@
          (when (= :work (:origin d)) "<span class=\"pkg\">defined in this work</span>")
          "</h3>"
          (when usage (str "<div class=\"usage\">" (esc usage) "</div>"))
-         (when doc (str "<p>" (esc doc) "</p>"))
+         ;; an introduction in short paragraphs (:about), with everything it does folded below it; or the doc
+         (if-let [about (:about h)]
+           (str "<div class=\"about\">" (rich about) "</div>"
+                (when doc (str "<details class=\"all-doc\"><summary>Everything it does</summary><p>" (esc doc) "</p></details>")))
+           (when doc (str "<p>" (esc doc) "</p>")))
          (help-refs (or (:ref d) (:ref h)))
          (when (and (nil? d) (empty? h)) "<p>There is no class with this name.</p>")
-         (when spec
+         (when (or spec (seq (:args h)))
+           ;; what each argument is, and (from the help's :args, [[:k "what it does"] …]) what it does; without the
+           ;; component loaded, its arguments as the help lists them
            (str "<h4>Arguments</h4><table>"
-                (apply str (for [[a v] spec]
+                (apply str (for [[a v] (or spec (map (fn [[a]] [a nil]) (:args h))) :let [what (get (into {} (:args h)) a)]]
                              (str "<tr><td>" (esc (name a)) "</td><td>"
-                                  (esc (cond (boolean? v) "a flag: on when its name is written"
+                                  (esc (cond (nil? v) ""
+                                             (boolean? v) "a flag: on when its name is written"
                                              (keyword? v) (str "a number (by default, the value of " (name v) ")")
                                              (number? v) (str "a number, " (cv/fmt v) " by default")
                                              :else "a word"))
-                                  "</td></tr>")))
+                                  "</td>" (when (seq (:args h)) (str "<td>" (when what (esc what)) "</td>")) "</tr>")))
                 "</table>"))
          (help-ports "Inlets" ins (:inlets h))
          (help-ports "Outlets" outs (:outlets h))
@@ -323,7 +330,15 @@
                  (when (and doc (not (str/starts-with? (str doc) "Kairotic class with no semantics")))
                    (str "### " cls (when-let [p (:package h)] (str " · `" p "`")) "\n\n"
                         (when usage (str "`" usage "`\n\n"))
+                        (when-let [a (:about h)] (str a "\n\n"))
                         doc "\n\n"
+                        (when (seq (:args h))
+                          (str "**Arguments**\n\n"
+                               (apply str (for [[a v] (if d (spec-of d) (map (fn [[a]] [a nil]) (:args h))) :let [what (get (into {} (:args h)) a)]]
+                                            (str "- `" (name a) "`"
+                                                 (cond (boolean? v) " (a flag)" (number? v) (str " (" (cv/fmt v) ")") :else "")
+                                                 (when what (str ": " what)) "\n")))
+                               "\n"))
                         (md-ports "Inlets" ins (:inlets h))
                         (md-ports "Outlets" outs (:outlets h))
                         (when (seq (:messages h))

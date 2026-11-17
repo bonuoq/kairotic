@@ -33,6 +33,11 @@ export async function help(page, check) {
     (await cljs(page, '(str/includes? (help-page "freqt") "help-steps")')) === "true");
   check("a class with one use has no list of steps",
     (await cljs(page, '[(count (hlp/patch-steps "metro")) (str/includes? (help-page "metro") "help-steps")]')) === "[1 false]");
+  // a box with many options: an introduction in paragraphs, everything it does folded below, and what each argument does
+  const cm = await cljs(page, `(let [h (help-page "comes")] [(str/includes? h "class=\\"about\\"") (str/includes? h "Everything it does")
+                                                           (str/includes? h "how far away the comes imitates") (str/includes? h "Two ways to play")])`);
+  check("comes' help: an introduction, everything it does folded, and what each argument does", cm === "[true true true true]", cm);
+  check("... and in the reference (Markdown)", (await cljs(page, '(str/includes? (reference-md) "how far away the comes imitates")')) === "true");
   for (const [cls, n, expect] of cases) {
     await cljs(page, `(open-help-patch! "${cls}")`);
     const steps = await until(page, "(count (:steps @lesson))", String(n), 30000);
