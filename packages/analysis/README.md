@@ -41,7 +41,8 @@ To watch what a sound does over time, several descriptors side by side:
 
 An improvisation into notation: `adc~` → `pitch~` → `transcribe` → `freqt`, with `onset~` on the right
 of `transcribe` (its second outlet, the strength: each note is then written with the weight of its attack); `rec`,
-play, `stop`; then `(track! :bN)` to find its beats and bars, `(view :bN :score)` on the freqt, or `(keep! …)` and
+play, `stop`; then a `quantize` box (the freqt's second outlet on its right inlet; `:time :track` to find its beats, a bang)
+writes it in measures as a tree for a `tree` box — or `(track! :bN)` and `(view :bN :score)` on the freqt to preview it, or `(keep! …)` and
 `mt`.
 
 The form of what is played, and onsets that adapt to it: `form~` on a `chroma~`, its fourth outlet into

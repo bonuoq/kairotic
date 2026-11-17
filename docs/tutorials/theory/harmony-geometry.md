@@ -21,10 +21,14 @@ Esta lección solo usa mensajes: haz clic en ellos, no hace falta ▶.
 `pcclock` places each pitch class on a clock face (C at the top, a semitone per hour) and joins the ones that sound into a polygon. Its outlets give the **prime form** of the set (its normal shape, transposed to 0) and its **interval vector** (how many of each interval it contains); the dashed lines are its axes of symmetry.
 
 The major triad has none: it is not the same read upwards and downwards. The diminished seventh has four, and the same polygon after any transposition by a minor third.
+
+The messages here are MIDI notes (60 is C4), so the box is written `pcclock midi`; without it, it takes Hz, as a keyboard or `midiin` sends them.
 @es
 `pcclock` coloca cada clase de altura en la esfera de un reloj (Do arriba, un semitono por hora) y une las que suenan en un polígono. Sus salidas dan la **forma prima** del conjunto (su forma normal, transportada a 0) y su **vector interválico** (cuántos intervalos de cada clase contiene); las líneas discontinuas son sus ejes de simetría.
 
 La tríada mayor no tiene ninguno: no es la misma leída hacia arriba y hacia abajo. La séptima disminuida tiene cuatro, y es el mismo polígono tras cualquier transposición de tercera menor.
+
+Aquí los mensajes son notas MIDI (60 es Do4), por eso la caja se escribe `pcclock midi`; sin esa palabra toma Hz, como los envía un `keyboard` o `midiin`.
 @try.en
 Click the two messages and read print in the REPL. Press a pitch class on the clock: its number comes out of the right outlet.
 @try.es
@@ -32,7 +36,7 @@ Haz clic en los dos mensajes y lee print en la REPL. Pulsa una clase de altura e
 ```kairotic
 (box :b1 "msg 60 64 67" 40 30)
 (box :b2 "msg 60 63 66 69" 150 30)
-(box :b3 "pcclock" 40 90)
+(box :b3 "pcclock midi" 40 90)
 (box :b4 "print" 40 360)
 (connect :b1 0 :b3 0)
 (connect :b2 0 :b3 0)
@@ -55,7 +59,7 @@ Haz clic en la escala, luego en la tríada aumentada, luego en los acordes de ar
 ```kairotic
 (box :b5 "msg 60 62 64 65 67 69 71" 330 30)
 (box :b6 "msg 60 64 68" 540 30)
-(box :b7 "fourier" 330 90)
+(box :b7 "fourier midi" 330 90)
 (connect :b5 0 :b7 0)
 (connect :b6 0 :b7 0)
 (connect :b1 0 :b7 0)
@@ -81,7 +85,7 @@ Haz clic en los cuatro mensajes de izquierda a derecha: print escribe el nombre 
 (box :b8 "msg 60 63 67" 120 430)
 (box :b9 "msg 60 63 68" 230 430)
 (box :b10 "msg 59 63 68" 340 430)
-(box :b11 "tonnetz" 40 480)
+(box :b11 "tonnetz midi" 40 480)
 (box :b12 "print" 40 760)
 (connect :b1 0 :b11 0)
 (connect :b8 0 :b11 0)

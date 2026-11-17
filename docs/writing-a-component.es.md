@@ -259,6 +259,11 @@ entrada por entrada, con un patch de ayuda que se abre como una lección. Un com
 
 El ejemplo es código de patch, un gesto por línea: al abrir el patch de ayuda se hacen uno a uno.
 
+Una caja con muchas opciones puede llevar también `:about` — una introducción en párrafos cortos (`**negrita**`,
+`` `código` ``), que se muestra primero, con todo su `:doc` plegado debajo — y `:args`, qué hace cada uno de sus
+argumentos declarados, en orden: `[[:rate "cuántas oscilaciones por segundo"] [:depth "0…1"]]`, la tercera columna de
+su tabla de argumentos.
+
 ## 7. Compartirlo
 
 - **En la obra:** la caja `component` viaja con la obra y su historia (es parte del código de la obra,

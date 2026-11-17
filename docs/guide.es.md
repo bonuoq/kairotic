@@ -266,7 +266,10 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
   un bang donde empieza una sección, el periodo que se repite y un `[:segment …]` que hace que `onset~` empiece de nuevo.
   `transcribe` escribe lo que oye `pitch~` en un `freqt` — `:rec`, tocar, `:stop` — como notas a su
   altura o, con `transcribe 60 glide`, como contornos que siguen la voz (un `onset~` a su derecha separa
-  las notas repetidas); el freqt visto como partitura es entonces la improvisación en notación.
+  las notas repetidas); el freqt visto como partitura la muestra en notación, y una caja `quantize` (la
+  segunda salida del freqt en su entrada derecha, un bang) la escribe en compases como árbol, para una caja
+  `tree` — con el compás, las divisiones y las demás opciones que le des, y `:time :track` para una frase
+  cantada libremente.
 - **Grabar un gesto**: `record [lo hi]` escribe cualquier flujo de números en un `canvas` como trazos en
   el tiempo — un knob, una envolvente (`snapshot~ 50 rms`), un descriptor (`features~ 20 centroid`) —:
   `:rec`, tocar, `:stop`. Un valor se mantiene hasta el siguiente; los ejes siguen a la toma. Se edita
