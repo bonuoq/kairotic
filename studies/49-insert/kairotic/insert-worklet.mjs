@@ -55,11 +55,12 @@ function paramsOf(ui) {
   return ps;
 }
 
-// a Faust DSP as an insert: step(x) puts x on every input, computes one sample, and gives output 0
-export async function faustInsert(module, json, sr) {
+// a Faust DSP as an insert: step(x) puts x on every input, computes one sample, and gives output 0. Synchronous,
+// as faustwasm does it in its own worklets: an AudioWorklet does not always settle WebAssembly's promises.
+export function faustInsert(module, json, sr) {
   const meta = typeof json === "string" ? JSON.parse(json) : json;
   const { imports, memory: imported } = importsFor(module);
-  const instance = await WebAssembly.instantiate(module, imports);
+  const instance = new WebAssembly.Instance(module, imports);
   const e = instance.exports;
   const memory = e.memory || imported;
   const nin = meta.inputs, nout = meta.outputs;
@@ -115,14 +116,15 @@ class KairoticInsert extends AudioWorkletProcessor {
     if (m.insert) {
       const { id } = m.insert;
       if (m.insert.off) { delete this.inserts[id]; this.reattach(); return; }
-      const mod = m.insert.module ? Promise.resolve(m.insert.module) : WebAssembly.compile(m.insert.code);
-      mod.then((module) => faustInsert(module, m.insert.json, sampleRate))
-        .then((ins) => {
-          this.inserts[id] = ins; this.reattach();
-          this.port.postMessage({ insert: { id, ok: true, inputs: ins.inputs, outputs: ins.outputs,
-                                            params: ins.params.map(({ index, ...q }) => q) } });
-        })
-        .catch((err) => this.port.postMessage({ insert: { id, error: String((err && err.message) || err) } }));
+      try {
+        const module = m.insert.module || new WebAssembly.Module(m.insert.code);
+        const ins = faustInsert(module, m.insert.json, sampleRate);
+        this.inserts[id] = ins; this.reattach();
+        this.port.postMessage({ insert: { id, ok: true, inputs: ins.inputs, outputs: ins.outputs,
+                                          params: ins.params.map(({ index, ...q }) => q) } });
+      } catch (err) {
+        this.port.postMessage({ insert: { id, error: String((err && err.message) || err) } });
+      }
     }
   }
   process(inputs, outputs) {
