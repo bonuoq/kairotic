@@ -89,7 +89,7 @@ export async function sounds(page, check) {
 
   // a reader~ plays it
   const ph = (await cljs(page, '(box "phasor~ 2" 3600 260)')).trim();
-  const rd = (await cljs(page, '(box "reader~" 3600 310)')).trim();
+  const rd = (await cljs(page, '(box "reader~ norm" 3600 310)')).trim();
   const lv = (await cljs(page, '(box "snapshot~ 100 peak" 3600 360)')).trim();
   await cljs(page, `(connect ${ph} 0 ${rd} 0) (connect ${s} 1 ${rd} 1) (connect ${rd} 0 ${lv} 0)`);
   const played = await until(page, `(get-in @eng/rt [:states ${lv}])`, (g) => Math.abs(Number(g) - 0.15) < 0.01);

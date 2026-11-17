@@ -189,7 +189,7 @@
     :try "Press ▶: the reader goes along X and prints the height of the stroke. Draw another stroke and listen to the list grow."
     :steps [{:title "An automation"
              :note "A reader~ goes along the canvas at audio rate: its value is a signal that can move a parameter, here the factor of a gain~ (a tremolo drawn by hand)."
-             :example (lines "(box :b6 \"phasor~ 0.5\" 300 15)" "(box :b7 \"reader~\" 300 290)" "(box :b8 \"osc~ 330\" 420 290)"
+             :example (lines "(box :b6 \"phasor~ 0.5\" 300 15)" "(box :b7 \"reader~ norm\" 300 290)" "(box :b8 \"osc~ 330\" 420 290)"
                              "(box :b9 \"gain~ 0\" 420 340)" "(box :b10 \"dac~\" 420 390)"
                              "(connect :b6 0 :b7 0)" "(connect :b1 1 :b7 1)" "(connect :b8 0 :b9 0)" "(connect :b7 0 :b9 1)"
                              "(connect :b9 0 :b10 0)" "(connect :b9 0 :b10 1)")
@@ -225,7 +225,7 @@
                ["(keep! :bN)" "writes the tree it shows into its buffer, with its recipe beside it (the tree and the boxes that made it)"]
                ["(recipe :bN) · (remake! :bN)" "the recipe of a kept buffer · the tree written back, without the changes made since"]
                ["{ } in the header (or a double-click on its right) · (source :bN)" "the buffer as EDN text, in the code window: edit it and apply (Ctrl+Enter); what changed is one event"]]
-    :example (lines "(box :b1 \"freqt\" 40 60)" "(box :b2 \"phasor~ 0.25\" 40 15)" "(box :b3 \"reader~ 1 gate\" 40 290)"
+    :example (lines "(box :b1 \"freqt\" 40 60)" "(box :b2 \"phasor~ 0.25\" 40 15)" "(box :b3 \"reader~ norm 1 gate\" 40 290)"
                     "(box :b4 \"osc~\" 40 340)" "(box :b5 \"gain~\" 40 390)" "(box :b6 \"dac~\" 40 440)"
                     "(connect :b2 0 :b3 0)" "(connect :b1 1 :b3 1)" "(connect :b3 0 :b4 0)" "(connect :b3 1 :b5 1)"
                     "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
@@ -355,13 +355,13 @@
    {:inlets ["a number: the new constant value"] :outlets ["a constant signal"] :see ["phasor~" "osc~"]}
 
    "reader~"
-   {:inlets ["the position signal (0…1 on a canvas, freqt or sample: norm is how it always reads them), usually a phasor~ · on a ring~: a position in seconds (0…1 with norm), or nothing (then it follows the ring's head); :d, :speed, :jump, :gain"
+   {:inlets ["the position signal, in the buffer's units (the X axis of a canvas, the time of a freqt, the seconds of a sample) or 0…1 with reader~ norm (a phasor~ straight in); along a stroke (path) always 0…1 · on a ring~: a position in seconds (0…1 with norm), or nothing (then it follows the ring's head); :d, :speed, :jump, :gain"
              "the buffer of a canvas or freqt, the sound of a sample (then it plays it, 0 its start and 1 its end), or a ring~ (its right outlet)"]
     :outlets ["one signal per voice (the values it crosses) · from a ring~, the sound it reads" "with gate: one more per voice, 1 where it sounds and 0 where not"]
     :messages [["reader~ d 1 · msg :d 1" "on a ring~, without a position: 1 s behind the ring's head — a canon, a delay; a new d glides (the pitch bends) or, larger than its jump (0.25 s), seeks with a crossfade"]
                ["reader~ d 1 speed 0.5 · msg :speed -1" "first the distance, then the speed: at 0.5 an octave down and falling behind, at −1 backwards"]
                ["a position signal on a ring~" "it reads there (seconds; norm: 0…1, a phasor~), at any speed, either way"]]
-    :example (lines "(box :b1 \"freqt\" 40 60)" "(box :b2 \"phasor~ 0.25\" 40 15)" "(box :b3 \"reader~ 1 gate\" 40 290)"
+    :example (lines "(box :b1 \"freqt\" 40 60)" "(box :b2 \"phasor~ 0.25\" 40 15)" "(box :b3 \"reader~ norm 1 gate\" 40 290)"
                     "(box :b4 \"osc~\" 40 340)" "(box :b5 \"gain~\" 40 390)" "(box :b6 \"dac~\" 40 440)"
                     "(connect :b2 0 :b3 0)" "(connect :b1 1 :b3 1)" "(connect :b3 0 :b4 0)" "(connect :b3 1 :b5 1)"
                     "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)" "(connect :b5 0 :b6 1)"
@@ -405,7 +405,7 @@
                ["(save-sound :bN)" "saves it as WAV"]]
     :example (lines "(box :b1 \"adc~ 1\" 40 30)" "(box :b2 \"msg :rec\" 140 30)" "(box :b3 \"msg :stop\" 200 30)"
                     "(box :b4 \"sample 10\" 40 90)" "(box :b5 \"!/ 1\" 40 190)" "(box :b6 \"phasor~\" 40 240)"
-                    "(box :b7 \"reader~\" 40 290)" "(box :b8 \"gain~ 0.5\" 40 340)" "(box :b9 \"dac~\" 40 390)"
+                    "(box :b7 \"reader~ norm\" 40 290)" "(box :b8 \"gain~ 0.5\" 40 340)" "(box :b9 \"dac~\" 40 390)"
                     "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b5 0)"
                     "(connect :b5 0 :b6 0)" "(connect :b6 0 :b7 0)" "(connect :b4 1 :b7 1)" "(connect :b7 0 :b8 0)"
                     "(connect :b8 0 :b9 0)" "(connect :b8 0 :b9 1)")

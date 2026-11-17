@@ -39,7 +39,7 @@ export async function record(page, check) {
   check("rec t keeps the take until t and records from there", /^\[2 1 1(\.\d+)?\]$/.test(kept), kept + " " + await cljs(page, `(pr-str (:strokes (box-data ${c})))`));
   // read back: a reader~ along the canvas gives the values again
   const ph = (await cljs(page, '(box "phasor~ 1" 5600 260)')).trim();
-  const rd = (await cljs(page, '(box "reader~" 5600 310)')).trim();
+  const rd = (await cljs(page, '(box "reader~ norm" 5600 310)')).trim();
   const sn = (await cljs(page, '(box "snapshot~ 50 peak" 5600 360)')).trim();
   await cljs(page, `(connect ${ph} 0 ${rd} 0) (connect ${c} 1 ${rd} 1) (connect ${rd} 0 ${sn} 0)`);
   const peak = await until(page, `(get-in @eng/rt [:states ${sn}])`, (g) => Math.abs(Number(g) - 0.8) < 0.01, 8000);

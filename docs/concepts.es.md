@@ -67,7 +67,7 @@ lo que está en marcha —un reproductor no vuelve a empezar. Ver [Datos que flu
 
 - Un **canvas** es un buffer de trazos en dos dimensiones; un **freqt** es frecuencia en el tiempo (Hz
   en escala logarítmica, afinaciones, rejillas de compás). Un **reader** (mensajes) o **reader~** (a ritmo
-  de audio, con un `phasor~`) los lee; cómo se mueve da el tiempo. La representación no decide la lectura.
+  de audio) los lee en una posición en sus unidades (o de 0 a 1 con `norm`: un `phasor~`); cómo se mueve da el tiempo. La representación no decide la lectura.
 - Una caja **tree** guarda un **árbol musical** y lo envía cada vez que cambia —o cuando cambia el patch
   que hay después, solo hacia lo que lo necesita. Una **score** lo dibuja como partitura y devuelve las
   ediciones hechas en ella; las cajas `mt` lo transforman; `mt play` lo toca. Ver

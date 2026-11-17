@@ -230,9 +230,11 @@ function by itself).
   `scope~` draws a signal and `snapshot~ 50 db` turns it into numbers (its level), so what is heard can
   drive the patch. Use headphones before sending an `adc~` to `dac~`: it feeds back.
 - **Recording**: a `sample` box records what reaches it on `:rec` until `:stop` (or its length:
-  `sample 10`), and a `reader~` with the sample on its right plays it at the position of a `phasor~`
-  — `!/ 1` turns its length (its left outlet) into the speed of the phasor~, and any other speed plays
-  it faster, slower or backwards. The sound stays in this browser; the work keeps its picture, so a work
+  `sample 10`), and a `reader~` with the sample on its right plays it at the position on its left, in
+  seconds — or, as `reader~ norm`, from 0 to 1: a `phasor~` straight in, with `!/ 1` turning its length (its
+  left outlet) into the speed of the phasor~; any other speed plays it faster, slower or backwards. Every
+  reader and reader~ reads this way: in the units of its buffer (the X axis of a canvas, the time of a
+  freqt, seconds), or 0…1 with `norm`. The sound stays in this browser; the work keeps its picture, so a work
   opened elsewhere shows it and says it is not there. `(load-sound! :bN)` brings in a file,
   `(save-sound :bN)` saves it as WAV. A sound **from a URL** — `(load-sound! :bN "https://…/voice.ogg")`,
   a string sent to the sample, or `(sample! :bN {:url "…"})` in the code — is fetched by every browser that
@@ -258,7 +260,7 @@ function by itself).
 - **Recording a gesture**: `record [lo hi]` writes any stream of numbers into a `canvas` as strokes over
   time — a knob, an envelope (`snapshot~ 50 rms`), a descriptor (`features~ 20 centroid`) —: `:rec`,
   play, `:stop`. A value holds until the next one; the axes follow the take. Edit it like any drawing and
-  read it back with `phasor~` → `reader~` as an automation.
+  read it back with `phasor~` → `reader~ norm` as an automation.
 - **Recording from a point**: `:rec t` (`msg :rec 4`) on a `sample`, `record` or `transcribe` keeps what
   was there before t (seconds; beats for transcribe) and records from t on, replacing what came after —
   a punch-in. `:ovr t` (`msg :ovr 4`; `:ovr` alone, from 0) overwrites only what the take covers, from t

@@ -17,7 +17,7 @@
 ;;
 ;;   sample [seconds]   a buffer of sound: what reaches its left inlet is recorded on `rec` until `stop`
 ;;                      (or until it has `seconds`, 60 by default). Its right outlet is the buffer for a
-;;                      reader~, which plays it at the position of a phasor~; a bang sends its length in
+;;                      reader~, which plays it at the position on its left (seconds; 0…1 with norm: a phasor~); a bang sends its length in
 ;;                      seconds on the left, and so does every new recording.
 
 (ns kairotic.sounds
@@ -318,20 +318,26 @@
 
 (def player-source
   "class KairoticPlayer extends AudioWorkletProcessor {
-  // Plays a sound at the position of its input (0…1 from the start to the end), interpolating between
-  // samples: output channel c plays channel c of the sound (or its last one); after V value channels come
-  // G gate channels, 1 while it has a sound. A message {chans} gives it the sound.
+  // Plays a sound at the position of its input — seconds, or 0…1 from the start to the end with norm —,
+  // interpolating between samples: output channel c plays channel c of the sound (or its last one); after V
+  // value channels come G gate channels, 1 while it has a sound. A message {chans, sr, norm} gives it the sound.
   constructor(o) {
     super();
     const p = (o && o.processorOptions) || {};
-    this.V = p.V || 1; this.G = p.G || 0; this.chans = null;
-    this.port.onmessage = (e) => { this.chans = e.data.chans && e.data.chans.length ? e.data.chans : null; };
+    this.V = p.V || 1; this.G = p.G || 0; this.chans = null; this.sr = sampleRate; this.norm = true;
+    this.port.onmessage = (e) => {
+      const d = e.data;
+      this.chans = d.chans && d.chans.length ? d.chans : null;
+      if (d.sr) this.sr = d.sr;
+      this.norm = d.norm !== false;
+    };
   }
   process(inputs, outputs) {
     const inp = inputs[0] && inputs[0][0], out = outputs[0], ch = this.chans;
     const L = out[0].length, n = ch ? ch[0].length : 0;
     for (let i = 0; i < L; i++) {
       let p = inp ? inp[i] : 0;
+      if (!this.norm && n > 1) p = p * this.sr / (n - 1);
       p = p < 0 ? 0 : (p > 1 ? 1 : p);
       const f = p * (n - 1), k = Math.floor(f), r = f - k;
       for (let c = 0; c < out.length; c++) {
@@ -357,8 +363,9 @@ registerProcessor('kairotic-player', KairoticPlayer);
 
 (defn give!
   "Gives a player the sound s ({:chans}), or none (nil)."
-  [pl s]
-  (.postMessage (.-port pl) #js {:chans (if s (:chans s) #js [])}))
+  ([pl s] (give! pl s true))
+  ([pl s norm]
+   (.postMessage (.-port pl) #js {:chans (if s (:chans s) #js []) :sr (when s (:sr s)) :norm (boolean norm)})))
 
 ;; ───────── the sample box ─────────
 
@@ -465,7 +472,7 @@ registerProcessor('kairotic-player', KairoticPlayer);
 (defn fmt-s [s] (str (comp/nice s) " s"))
 
 (comp/define! "sample"
-  {:doc "A buffer of sound. What reaches its left inlet is recorded on `:rec` until `:stop` (or until it has seconds, 60 by default), replacing what it had; :rec t (msg :rec 2.5) keeps its first t seconds and records from there (punch-in); :ovr t (msg :ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `:clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN \"https://…\")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV."
+  {:doc "A buffer of sound. What reaches its left inlet is recorded on `:rec` until `:stop` (or until it has seconds, 60 by default), replacing what it had; :rec t (msg :rec 2.5) keeps its first t seconds and records from there (punch-in); :ovr t (msg :ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `:clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position on its left, in seconds (or with reader~ norm from 0 to 1: a phasor~); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN \"https://…\")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV."
    :usage "sample [seconds]"
    :license "MPL-2.0"
    :io [1 2]
