@@ -64,6 +64,9 @@
       (t/is "... the instant it meets a place" (near (span/when-met 0 12 0.5 0.25) 12.5)))
 
     ;; ── the ring box ──
+    (let [label (fn [args shown] (:label ((:derive (comp/lookup "ring")) {:args args :shown shown})))]
+      (t/eq "its label says its length before its first message" (label [4] nil) "ring 4 s · 0 kept")
+      (t/eq "... and without one, 8" (label [] nil) "ring 8 s · 0 kept"))
     (let [recv (fn [st v at] ((:receive (comp/lookup "ring")) {:state st :args [4] :inlet 0 :value v :at at}))
           r1 (recv nil 60 10) r2 (recv (:state r1) 62 10.5)]
       (t/eq "ring: its first message starts its time and tells its readers" (:out r1) [[1 :start]])

@@ -62,8 +62,9 @@
    :io [1 2]
    :size [124 30]
    :receive ring-receive
-   :derive (fn [{:keys [shown]}]
-             {:label (str "ring " (comp/nice (or (:dur shown) 8)) " s · " (or (:n shown) 0) " kept")})
+   ;; its length from its text (what it shows comes only with its first message)
+   :derive (fn [{:keys [shown args]}]
+             {:label (str "ring " (comp/nice (or (comp/num-of (first args)) 8)) " s · " (or (:n shown) 0) " kept")})
    :view [[:rect {:x 2 :y 2 :w 120 :h 26 :r 13 :stroke :grid :fill :bg}]
           [:text {:x 10 :y 19 :size 10 :fill :soft} :$label]]})
 
