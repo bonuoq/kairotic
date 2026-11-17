@@ -761,11 +761,39 @@
 
    "cancrizans"
    {:package "@kairotic/theory" :usage "cancrizans [system] [mode] [k -7] [beats 2] [bars 6] [temp 0] [seed 1] [table] [live] [midi]"
+    :about "**A crab canon: the second voice is your line backwards**, both sounding at once, so the work reads the same from either end. With `table` it is also upside down: one score read by two players from opposite sides of a table — a musical ambigram.
+
+**It is written from both ends to the middle**, because the comes's first note is the dux's last: each step writes a note at the start and then one at the end. A note that breaks a rule, or from which the crab could not be closed, is corrected to the nearest one that can. On the right, the **futuribles**: the notes that can come next, each with the ways it leaves to close the work. When it closes, both voices go out as patterns (for `pbind` and `player`) and as a score (outlet 4, for a `freqt`).
+
+**live** (Study 46) plays it beat by beat. In the first half you play and the box answers each note, at the same beat, with the end of your own line; at the middle the rest of your line comes out as a score to read, and while you read it the box plays your first half backwards. Both voices sound from it, with their voice ids, on one `synth~`.
+
+**System and mode** as in `comes`, in any order, and with the flags: `cancrizans hypodorian`, `cancrizans pentatonic penta-A table live`. The mode sets the range, the notes to begin on, the final it ends on and the axis of a table canon; its tenor plays no part here."
+    :args [[:system "the scale, its tuning and its rules: diatonic (by default), meantone, septimal31 or pentatonic"]
+           [:mode "one of the system's modes (dorian by default): its range, the notes to begin on, the final, the axis of table"]
+           [:k "how far away the comes is, in steps of the scale: −7 an octave below"]
+           [:beats "beats in a bar: 2 or 3"]
+           [:bars "its length in bars: longer, more ways to write it (and longer to count)"]
+           [:temp "live: chance in the box's answers (0: always the one :end says)"]
+           [:seed "the seed of its chance: the same seed, the same game"]
+           [:table "a table canon: backwards and upside down"]
+           [:live "played beat by beat (Study 46) instead of written by turns from both ends"]
+           [:midi "numbers in are MIDI notes (62), not Hz"]]
     :doc "A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards; with table, backwards and upside down — the score read by a second player from across the table, a musical ambigram. Each step writes a note at the start, then one at the end; the futuribles are the ways to close the work in the middle. When it closes, both voices go out as patterns."
     :inlets ["the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], an event (:freq, or a player's :hz), or MIDI with midi · :engine · :back · :reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work"
              "live: the pulse (a bang from a metro or a pulse): a beat, with your note or the box's for you"]
     :outlets ["the dux, when the work closes, as a pattern {:note [...] :dur [...]} (for a pbind) · live: the Hz of both voices, yours and the box's, as a player sends them (for a synth~)" "the comes, as a pattern · live: their voice ids, sent first (for a synth~'s right inlet)" "the futuribles: the notes that can come next ({:midi :name :futures}; live, with :end, what the box will answer at the end)" "where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}" "the score, as a musical tree (for a freqt shown as a score): when the work closes, both voices; live, from the middle what is left of your line to read (the beats played as rests), and at the end the whole crab"]
-    :messages [[":engine" "the next note, written by the box"] [":back" "the last note taken back"] [":reset" "a new work"] ["[:table true]" "a table canon: backwards and upside down"] ["[:temp 2]" "live: the box draws among its answers (0: always the one :end says)"] ["[:seed 7]" "live: its chance (reset: the same game again)"] ["[:system :septimal31]" "another system (Study 42), or an EDN map: its modes and tuning"]]
+    :messages [["[:midi 62]" "a MIDI note as the next note (Hz, a keyboard's list or an event also)"]
+               [":engine" "the next note, written by the box (live: a beat, with the box playing your note)"]
+               [":back" "the last note taken back"]
+               [":reset" "a new work"]
+               ["[:system :septimal31]" "another system (or an EDN map) — these start a new work"]
+               ["[:mode :hypodorian]" "another mode of the system"]
+               ["[:k -4]" "the comes a 5th below"]
+               ["[:bars 5]" "another length"]
+               ["[:table true]" "a table canon: backwards and upside down"]
+               ["[:axis 62]" "the axis of a table canon, a MIDI note (the final by default)"]
+               ["[:temp 2]" "live: the box draws among its answers"]
+               ["[:seed 7]" "live: its chance (:reset plays the same game again)"]]
     :example (lines "(box :b1 \"msg :engine\" 40 30)" "(box :b2 \"cancrizans\" 40 80)" "(box :b3 \"pbind\" 40 150)" "(box :b4 \"pbind\" 40 260)"
                     "(box :b9 \"msg :start\" 40 370)" "(box :b5 \"player 90\" 40 420)" "(box :b6 \"player 90\" 240 420)" "(box :b7 \"synth~\" 40 490)"
                     "(box :b17 \"synth~\" 240 490)" "(box :b8 \"dac~\" 40 550)" "(box :b10 \"print\" 260 80)"
@@ -787,17 +815,52 @@
 
    "comes"
    {:package "@kairotic/theory" :usage "comes [system] [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [temp 0] [seed 1] [fourth] [inversion] [augmentation] [live] [nocues] [midi]"
+    :about "**You play a line, the dux, and comes answers with a second voice, the comes, that imitates it** — a canon, a few beats later, by the rules of 16th-century counterpoint. A note that breaks a rule, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why.
+
+**Two ways to play.** By turns (the default): each note you send is a beat; the same note again, or `:hold`, holds it over the beat. With **live**, a pulse on the right inlet (a `metro`) gives the beats and a note lasts until you play the next one; held three beats in 2/2 the canon turns to 3/2, longer than a bar the section ends and the next note begins a new canon.
+
+**Where it plays: a system and one of its modes.** The **system** is the scale, its tuning and its rules: `diatonic` (the default), `meantone`, `septimal31`, `pentatonic`, or your own as EDN. The **mode** is one of its modes — `dorian` (the default), `hypodorian`, `ionian`, `aeolian`…; in the pentatonic `penta-C`, `penta-A`, `penta-D` — and sets the final, the range and the notes to begin on. Write them in the box in any order: `comes hypodorian`, `comes pentatonic penta-A`.
+
+**How the comes imitates.** `k` steps away (−7: an octave below) and `d` beats later. `imitation` 1 is a strict canon; lower, the comes moves more freely. `inversion` turns it upside down, `augmentation` makes it twice as slow, and `fourth` makes your line a cantus firmus (a note a bar) with the comes syncopated against it.
+
+**What comes out.** Both voices as Hz with their voice ids — one `synth~`, connected 0→0 and 1→1, plays both —; on the right the **futuribles**, the notes you can play next, the most plausible first, each with the ways it leaves to finish the canon (counted exactly), and where the canon is."
+    :args [[:system "the scale, its tuning and its rules: diatonic (by default), meantone, septimal31 or pentatonic"]
+           [:mode "one of the system's modes: dorian (by default), hypodorian, ionian, mixolydian, aeolian and their plagals; penta-C, penta-A, penta-D in the pentatonic"]
+           [:k "how far away the comes imitates, in steps of the scale: −7 an octave below, −4 a 5th below, 0 at the unison"]
+           [:d "how many beats after the dux the comes comes in"]
+           [:beats "beats in a bar: 2 (2/2) or 3 (3/2)"]
+           [:imitation "1 a strict canon · 0.5–0.9 the comes near the dux's notes · 0.2–0.4 only following its motion · below, free"]
+           [:bars "how long the canon is, in bars"]
+           [:upbeat "beats of rest before the first note (an anacrusis)"]
+           [:temp "chance: at 0 always the most plausible; higher, the comes (and the dux with :engine) drawn among the candidates"]
+           [:seed "the seed of its chance: the same seed, the same game"]
+           [:fourth "fourth species: your line a cantus firmus, a note a bar, and the comes syncopated"]
+           [:inversion "the comes upside down, about the final (or [:axis 62])"]
+           [:augmentation "the comes twice as slow (a strict canon, six bars at most)"]
+           [:live "played on a pulse (the right inlet) instead of by turns"]
+           [:nocues "live: it does not turn to 3/2 or end the section by itself; other boxes decide, with [:beats 3] and :end"]
+           [:midi "numbers in are MIDI notes (62), not Hz"]]
     :doc "Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Study 41). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. Notes may be held over the beat (ties), and a dissonance may fall on a strong beat as a suspension. By turns (the default) one note in is one beat; live, a pulse on the right is a beat, and a note lasts until the next one is struck. The system (Study 42) — the scale, its tuning and its rules — is diatonic by default, or meantone, septimal31, pentatonic, or an EDN map: its modes come with it, and the notes out are tuned."
     :inlets ["the dux's next note: Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event (:freq from midiin, or a player's :hz) · :hold (by turns) · [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:system :pentatonic], [:beats 3], [:species 4]: the canon changed (by turns at once, live at the next section) · :end (the section ends: the next note begins a new canon) · :engine · :back · :reset"
              "live: the pulse (a bang from a metro or a pulse): a beat"]
     :outlets ["the Hz of both voices sounding, the dux (as played, or corrected) and the comes, as a keyboard or a player sends them" "their voice ids, sent first (for a synth~'s right inlet): a note held keeps its id and goes on sounding" "the futuribles: the notes that can come next, the most plausible first ({:midi :name :futures :bits :score :comes})" "where the canon is: {:t :n :bar :beat :held :asked :played :corrected :reason :comes :futures :bits :obligations :section :meter …}, or a cue {:cue :ternary|:end :section :meter}"]
-    :messages [[":hold" "by turns: the note held over the next beat (a tie)"] [":engine" "the box plays the next pair itself, the most plausible"]
-               [":back" "the last pair taken back"] [":reset" "a new canon"] [":end" "the end of the section, from an analysis (live, and the cues off with nocues)"] ["[:midi 62]" "a MIDI note as the dux's next note"]
-               ["[:imitation 0.5]" "how much the comes imitates the dux (1 a canon … 0 free)"] ["[:transform :inversion]" "the comes upside down about the axis ([:axis 62], a MIDI note; the final by default)"]
-               ["[:transform :augmentation]" "the comes twice as slow (a strict canon, six bars at most)"]
-               ["[:temp 1.5]" "the comes drawn among the candidates (imitation below 1), and the dux in engine (0: the one the futuribles say)"]
-               ["[:seed 7]" "its chance: the same seed, the same game (reset: again)"] ["[:k -4]" "the comes a 5th below"]
-               ["[:system :pentatonic]" "another system (Study 42): meantone, septimal31, pentatonic, diatonic, or an EDN map {:tuning … :modes …}"]]
+    :messages [["[:midi 62]" "a MIDI note as the dux's next note (Hz, a keyboard's list or an event also)"]
+               [":engine" "the box plays the next pair itself, the most plausible"]
+               [":hold" "by turns: the note held over the next beat (a tie)"]
+               [":back" "the last pair taken back"]
+               [":reset" "a new canon"]
+               [":end" "the section ends: the next note begins a new canon"]
+               ["[:system :pentatonic]" "another system (or an EDN map {:tuning … :modes …}) — these change the canon: by turns at once, live at the next section"]
+               ["[:mode :hypodorian]" "another mode of the system"]
+               ["[:k -4]" "the comes a 5th below"]
+               ["[:d 2]" "the comes two beats after the dux"]
+               ["[:imitation 0.5]" "less imitation: the comes near the dux's notes"]
+               ["[:beats 3]" "3/2"]
+               ["[:species 4]" "fourth species (with [:beats 2])"]
+               ["[:transform :inversion]" "the comes upside down; :augmentation twice as slow; :canon back to a canon"]
+               ["[:axis 62]" "the axis of the inversion, a MIDI note"]
+               ["[:temp 1.5]" "chance in the comes, and in the dux of :engine (0: the futuribles' choice)"]
+               ["[:seed 7]" "its chance: the same seed, the same game (:reset plays it again)"]]
     :example (lines "(box :b1 \"keyboard 60 24\" 40 30)" "(box :b2 \"comes\" 40 130)" "(box :b3 \"synth~\" 40 200)"
                     "(box :b5 \"dac~\" 40 260)" "(box :b6 \"print\" 280 200)" "(box :b7 \"msg :engine\" 220 100)"
                     "(connect :b1 0 :b2 0)" "(connect :b7 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b3 1)"

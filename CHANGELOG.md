@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Help pages for boxes with many options.** A help entry can now carry `:about`, an introduction in short paragraphs
+  (bold, `code`), shown first, with the box's whole description folded below it ("Everything it does"), and `:args`,
+  what each argument does, as a third column of the Arguments table (and in the reference). `comes` and `cancrizans`
+  use them: what the box is, the two ways to play, the system and its mode, how the comes imitates, what comes out;
+  each argument explained; their messages ordered (playing, then changing the canon, then chance) and complete.
+
 - **`comes` and `cancrizans`: the system and its mode, named as such** (`@kairotic/theory` 0.9.2). The box's words
   were `[mode] [system]`, and a system written in the place of the mode (`comes pentatonic`) was quietly taken as a
   system — so `mode` did not always name a mode, and a mode the system does not have (`comes pentatonic dorian`)
