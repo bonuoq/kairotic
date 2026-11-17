@@ -15,6 +15,12 @@
   feedback: a round. The model is `core/kairotic/span.cljs` (pure); the boxes are `core/kairotic/ring.cljs` and the
   reader in `components.cljs`. Tests: `tests/cljs/ring.cljs` (a small engine runs the heads in time) and
   `tests/ring.mjs` (in the app, with ▶).
+- **`comes` and `cancrizans`: the help with keywords, and two voices heard** (`@kairotic/theory` 0.7.1). The help
+  of `cancrizans` still sent `msg engine`, which since `msg` is read as Clojure is a name and does nothing: now
+  `msg :engine`, and the orders written with their colon in both boxes' help, `:doc` and README (`:engine`,
+  `:back`, `:reset`, `:hold`, `:end`). In the example the dux and the comes each have their own `synth~` (with one
+  the second player's note took the place of the first's, and only one voice was heard), and in the live step your
+  keyboard sounds on a `synth~` of its own beside the box's answers.
 
 - **Study 48 · heads~**: Study 47's heads with sound. A span of samples (a ring~, or a fixed work) and heads, each a
   head of its own: writers are tape heads — they write what they listen to (the input, or a reader times its feed)
