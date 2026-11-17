@@ -69,6 +69,11 @@ export async function gestures(page, check) {
   check("... empty: no boxes and no history", (await cljs(page, "[(count (:boxes (current))) (count (:nodes @hist))]")) === "[0 0]",
         await cljs(page, "[(count (:boxes (current))) (count (:nodes @hist))]"));
   check("... the history pane offers the example work", await page.evaluate(() => !document.getElementById("hist-empty").hidden));
+  // the tests were written beside the example work: it is loaded, as its button does
+  await page.click("#start-example");
+  let loaded = "false";
+  for (let i = 0; i < 40 && loaded !== "true"; i++) { loaded = await cljs(page, "(pos? (count (:boxes (current))))"); if (loaded !== "true") await page.waitForTimeout(100); }
+  check("... and its button loads it", loaded === "true");
 
   // two plain boxes side by side
   const ids = await cljs(page, "[(box \"mtof\" 1400 60) (box \"mtof\" 1500 60)]");
