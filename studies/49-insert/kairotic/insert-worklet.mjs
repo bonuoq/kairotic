@@ -100,6 +100,7 @@ class KairoticInsert extends AudioWorkletProcessor {
     this.inserts = {};     // writer id → insert (kept across presets, for a writer of the same id)
     this.since = 0;
     this.port.onmessage = (ev) => this.message(ev.data || {});
+    this.port.onmessageerror = () => this.port.postMessage({ insert: { id: "?", error: "a message could not be received here" } });
     this.port.postMessage({ ready: true, sr: sampleRate });
   }
   reattach() {
@@ -116,6 +117,7 @@ class KairoticInsert extends AudioWorkletProcessor {
     if (m.insert) {
       const { id } = m.insert;
       if (m.insert.off) { delete this.inserts[id]; this.reattach(); return; }
+      this.port.postMessage({ insert: { id, got: true } });
       try {
         const module = m.insert.module || new WebAssembly.Module(m.insert.code);
         const ins = faustInsert(module, m.insert.json, sampleRate);

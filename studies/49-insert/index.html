@@ -267,7 +267,10 @@ window.addEventListener("DOMContentLoaded", function () {
   "The compiled insert to the worklet (once the node is there): the module itself, not a copy of it as EDN."
   []
   (when-let [f (:factory @ui)]
-    (post-raw! #js {:insert #js {:id "w" :module (.-module f) :code (when-not (.-module f) (.-code f)) :json (.-json f)}})))
+    ;; its bytes (a typed array always crosses to a worklet; the worklet compiles them), else the module itself
+    (post-raw! (if (.-code f)
+                 #js {:insert #js {:id "w" :code (.slice (.-code f)) :json (.-json f)}}
+                 #js {:insert #js {:id "w" :module (.-module f) :json (.-json f)}}))))
 
 (defn compile-insert!
   "Compiles the code of the insert (faustwasm, in the page) and sends its module to the worklet."
@@ -354,10 +357,14 @@ window.addEventListener("DOMContentLoaded", function () {
                            (let [d (.-data e)]
                              (when-let [s (.-state d)] (swap! ui assoc :last s))
                              (when-let [i (.-insert d)]
-                               (swap! ui assoc :insert (if (.-error i)
+                               (swap! ui assoc :insert (cond
+                                                         (.-got i) {:status "instantiating…"}
+                                                         (.-error i)
                                                          {:status "error" :error (.-error i)}
-                                                         {:status "on" :params (js->clj (.-params i) :keywordize-keys true)}))
+                                                         :else {:status "on" :params (js->clj (.-params i) :keywordize-keys true)}))
                                (draw-insert!)))))
+                   ;; a message the worklet could not receive (what it carried did not cross)
+                   (set! (.. node -port -onmessageerror) (fn [_] (swap! ui assoc :insert {:status "error" :error "the worklet could not receive the insert"}) (draw-insert!)))
                    (set! (.-onprocessorerror node) (fn [] (swap! ui assoc :error "the insert node stopped with an error")))
                    (.connect in node) (.connect node master) (.connect master (.-destination ac))
                    (swap! au assoc :node node :in in :master master)
