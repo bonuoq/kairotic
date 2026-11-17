@@ -1,0 +1,82 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 53 · harmonize · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, its ClojureScript), driven as a person would, with a Claude that
+// answers from a script: a first patch that names a class that does not exist (the page sends the error back), then
+// one with a class of its own in :defs — an Alberti bass in JavaScript — that the page runs and draws.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  const S = () => window.kairoticStudy;
+  const wait = async (ok, ms = 8000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+  const $ = (id) => document.getElementById(id);
+  // Claude, scripted: what it is asked is kept
+  const asked = [];
+  const ALBERTI = "const {H, parts} = input, low = [], sop = []; for (let t = 0; t < H.n; t++) { low.push({code: parts.bass[t], dur: 0.5}, {code: parts.tenor[t], dur: 0.25}, {code: parts.alto[t], dur: 0.25}); } parts.soprano.forEach((c, t) => { if (t && c === parts.soprano[t - 1]) sop[sop.length - 1].dur++; else sop.push({code: c, dur: 1}); }); return {H, spec: input.spec, voices: [sop, low], staves: [[0], [1]]};";
+  const answers = [
+    "A first try.\n```edn\n{:boxes {:m {:box :melody} :b {:box :bas}} :wires [[:m :b]]}\n```",
+    "The bass by the rules, the chords by the rule of the octave, then an Alberti bass of my own.\n```edn\n{:about \"Alberti\" :boxes {:m {:box :melody} :b {:box :bass :args {:temp 0.3}} :i {:box :inner} :a {:box :alberti} :s {:box :score}} :wires [[:m :b] [:b :i] [:i :a] [:a :s]] :defs {:alberti {:doc \"an Alberti bass from the inner voices\" :inlets 1 :js \"" + ALBERTI + "\"}}}\n```",
+  ];
+  const sample = async (input, opts) => { asked.push(String(input)); const text = answers[Math.min(asked.length - 1, answers.length - 1)]; opts && opts.onText && opts.onText({ text, delta: text }); return { text, truncated: false }; };
+  window.claude = { use: async (name) => (name === "sample" ? sample : null) };
+  try {
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    $("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticBase = "../kairotic/";
+    const loader = Array.from(doc.querySelectorAll("script:not([src]):not([type])")).map((s) => s.textContent).join("\n");
+    (0, eval)(loader.replace(/window\.addEventListener\("DOMContentLoaded"[\s\S]*$/, ""));
+    window.kairoticKernel = await import("../kairotic/harmonize.mjs");
+    window.kairoticAgent = await import("../kairotic/agent.mjs");
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    is("ready, the first melody chosen", $("status").textContent === "Ready" && /^C5 C5 G5/.test($("mel-text").value));
+    is("the melody's facts: its units and the basses that fit it", /15 units · \d+ basses/.test($("mel-facts").textContent));
+    is("the agent box drawn between the melody and the score, empty", /empty/.test($("outer").textContent));
+
+    // without Claude: the example patch
+    $("example").click();
+    is("the example patch: five boxes inside, run without error", await wait(() => S().state().boxes === 5 && !S().state().error));
+    is("… the sub-patch drawn, one box per box and a wire per wire", document.querySelectorAll("#inner g.box").length === 5 && document.querySelectorAll("#inner path.wire").length === 4);
+    is("… the score drawn by Verovio", await wait(() => S().state().score, 30000));
+    document.querySelector('#inner g.box[data-id="i"]').dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    is("a box clicked: its class, its doc and what it made (the four parts)", /inner/.test($("box-title").textContent) && /soprano/.test($("box-val").textContent) && /rule of the octave/.test($("box-doc").textContent));
+
+    // with Claude (scripted): a first patch fails, the error goes back, the second is adopted
+    await wait(() => !$("build").disabled, 3000);
+    $("build").click();
+    is("Claude asked twice: the second time with the first patch's error", await wait(() => asked.length === 2 && /no class bas/.test(asked[1]), 5000));
+    is("… what Claude is told: the classes, the melody, the request", /:bass \(1 inlet\)/.test(asked[0]) && /C5 C5 G5 G5/.test(asked[0]) && /Mozart/.test(asked[0]));
+    is("… its patch adopted: five boxes, one of them a class of its own (dashed)", await wait(() => S().state().boxes === 5 && /Claude, try 2/.test(S().state().who || "")) && document.querySelectorAll("#inner g.box.code").length === 1);
+    is("… the Alberti bass drawn as a score", await wait(() => S().state().score && $("score").querySelectorAll("g.note").length > 40, 30000));
+    document.querySelector('#inner g.box[data-id="a"]').dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    is("… its box shows the JavaScript Claude wrote", /parts\.bass\[t\]/.test($("box-val").textContent));
+    is("the recipe kept: who built it and from what request", /Claude, try 2/.test($("recipe").textContent) && /Mozart/.test($("recipe").textContent));
+
+    // edited by hand: run again, the recipe marked stale
+    $("edn").value = $("edn").value.replace(":temp 0.3", ":temp 0");
+    $("run").click();
+    is("the patch edited by hand and run: the recipe stays, marked stale", await wait(() => /stale/.test($("recipe").textContent)));
+
+    // another melody, in minor
+    $("mel-ex").value = "minor-period"; $("mel-ex").dispatchEvent(new Event("change", { bubbles: true }));
+    is("a melody in A minor chosen", $("tonic").value === "A" && $("mode").value === "minor");
+    $("example").click();
+    is("… the example patch harmonizes it, drawn", await wait(() => S().state().boxes === 5 && !S().state().error && S().state().score && /A minor|a minor/.test($("recipe").textContent + $("mel-facts").textContent) || (S().state().score && !S().state().error), 30000));
+
+    is("no error on the page", errors.length === 0);
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  $("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>

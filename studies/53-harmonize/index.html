@@ -1,0 +1,517 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 53 · Harmonize</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the melody; the agent box (its request, Claude's answer); inside it, the sub-patch Claude
+   built (boxes and wires, a box's value and code, the patch's EDN); the result (the score, played); about. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f; --warn: #a86a00;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button.act.on { border-color: var(--accent); background: var(--accent-soft); }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 5.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.err { color: var(--error); font-size: 12px; }
+textarea.src { width: 100%; min-height: 11em; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; tab-size: 2; white-space: pre; }
+.scroll { overflow-x: auto; }
+
+
+/* the agent box, seen from outside, and the sub-patch inside it */
+svg.patch { display: block; width: 100%; height: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px;
+  background-image: radial-gradient(var(--grid) 1px, transparent 1px); background-size: 16px 16px; }
+svg.patch .box rect { fill: var(--box); stroke: var(--ink); stroke-width: 1.2; }
+svg.patch .box.agent rect { stroke: var(--kairos); stroke-width: 1.8; }
+svg.patch .box.code rect, svg.patch .box.own rect { stroke: var(--accent); stroke-dasharray: 4 3; }
+svg.patch .box.err rect { stroke: var(--error); stroke-width: 2; }
+svg.patch .box.sel rect { fill: var(--accent-soft); }
+svg.patch .box { cursor: pointer; }
+svg.patch .box text { font: 12px var(--f-code); fill: var(--ink); }
+svg.patch .box text.sub { font-size: 10px; fill: var(--ink-soft); }
+svg.patch .port { fill: var(--ink); }
+svg.patch .wire { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+svg.patch .frame { fill: none; stroke: var(--kairos); stroke-width: 1; stroke-dasharray: 2 4; }
+svg.patch .flabel { font: 600 10px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; fill: var(--kairos); }
+textarea.req { width: 100%; min-height: 3.2em; resize: vertical; font: 13px/1.5 var(--f-ui); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 7px 9px; }
+input.mel { width: 100%; font: 13px var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px 8px; }
+.answer { font-size: 13px; line-height: 1.55; white-space: pre-wrap; max-height: 16em; overflow: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; margin: 0; }
+.answer:empty { display: none; }
+pre.val { margin: 0; font: 12px/1.5 var(--f-code); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; max-height: 20em; overflow: auto; }
+.score { background: #fff; border: 1px solid var(--grid); border-radius: 4px; padding: 6px; overflow-x: auto; min-height: 60px; }
+.score svg { max-width: 100%; height: auto; }
+.stale { color: var(--warn, #b7791f); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+</style>
+<main>
+<header>
+  <h1>Study 53 · harmonize</h1>
+  <span class="sub">An <code>agent</code> box: given a melody and a request, Claude builds a harmonizer inside it, as a sub-patch</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<section class="panel" aria-labelledby="h-mel">
+  <h2 id="h-mel">The melody <span>a note a unit (a beat), <code>-</code> holding the one before; what the agent box receives</span></h2>
+  <div class="row">
+    <label class="inline" for="mel-ex">Melody <select id="mel-ex"></select></label>
+    <label class="inline" for="tonic">Key <select id="tonic">
+      <option>C</option><option>G</option><option>D</option><option>A</option><option>F</option><option>Bb</option><option>Eb</option><option>E</option>
+    </select></label>
+    <select id="mode" aria-label="Mode"><option value="major">major</option><option value="minor">minor</option></select>
+    <label class="inline" for="tempo">Tempo <input type="number" id="tempo" min="40" max="200" step="1" value="96"></label>
+  </div>
+  <input class="mel" id="mel-text" aria-label="The melody, a note a unit" spellcheck="false">
+  <p class="facts" id="mel-facts">—</p>
+</section>
+
+<section class="panel" aria-labelledby="h-agent">
+  <h2 id="h-agent">The agent box <span>what it is asked; Claude answers with the patch it builds inside (on your own Claude account)</span></h2>
+  <svg class="patch" id="outer" viewBox="0 0 720 96" role="img" aria-label="The agent box between the melody and the score"></svg>
+  <textarea class="req" id="request" aria-label="The request" spellcheck="false">Harmonize this melody in four parts in the style of Mozart, at a basic level: a clear bass with cadences, simple chords.</textarea>
+  <div class="row">
+    <button class="act primary" id="build">Build with Claude</button>
+    <button class="act" id="stop" disabled>Stop</button>
+    <button class="act" id="example">Build the example patch (without Claude)</button>
+    <span class="facts" id="agent-facts">—</span>
+  </div>
+  <p class="err" id="agent-err" hidden></p>
+  <pre class="answer" id="answer" aria-live="polite"></pre>
+</section>
+
+<section class="panel" aria-labelledby="h-in">
+  <h2 id="h-in">Inside the agent box <span>the sub-patch: click a box to see what it made and, for code, its JavaScript</span></h2>
+  <div style="overflow-x:auto"><svg class="patch" id="inner" viewBox="0 0 720 160" role="img" aria-label="The sub-patch"></svg></div>
+  <p class="facts" id="recipe">—</p>
+  <div class="two">
+    <div class="panel" style="padding:8px 10px">
+      <h2><b id="box-title" style="font-weight:600">A box</b> <span id="box-sub">—</span></h2>
+      <p class="note" id="box-doc"></p>
+      <pre class="val" id="box-val">Select a box.</pre>
+    </div>
+    <div class="panel" style="padding:8px 10px">
+      <h2>The patch <span>EDN; edit it and run it by hand (the recipe stays, marked stale)</span></h2>
+      <textarea class="src" id="edn" aria-label="The patch as EDN" spellcheck="false"></textarea>
+      <div class="row"><button class="act" id="run">Run the patch</button></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-out">
+  <h2 id="h-out">The result <span>the last score box of the sub-patch</span></h2>
+  <div class="row">
+    <button class="act" id="play">▶ Play</button>
+    <button class="act" id="halt">■ Stop</button>
+    <span class="facts" id="out-facts">—</span>
+  </div>
+  <div class="score" id="score"></div>
+</section>
+
+<section class="panel" aria-labelledby="h-about">
+  <h2 id="h-about">About <span>discussion <a href="https://github.com/bonuoq/kairotic/discussions/256">#256</a></span></h2>
+  <p class="about">An <code>agent</code> box receives a melody and a request, and Claude builds, inside it, the machine that answers: a sub-patch of boxes you can open, read and run without Claude. The boxes it builds with carry the rules of the earlier studies: <code>bass</code> is Study 51's two-part counterpoint turned upside down (the melody given, the bass written under it, its futures counted, the engine choosing by the soft rules of Studies 38–42 and three of style: the degrees ① ④ ⑤, the melody a chord tone, the harmonic rhythm); <code>inner</code> realizes the figures as chords in four parts by the rule of the octave, with the cadential 6/4, led by the shortest way without parallels. Where none of them does what is asked (a texture, an Alberti bass), Claude writes a <code>code</code> box or a class of its own in <code>:defs</code>.</p>
+  <ul class="q">
+    <li>Claude builds the machine, not the harmonization: once built, the patch runs again with no call, deterministically (a seed), and the recipe — the request, the melody — is kept beside it.</li>
+    <li>What comes next (#256): the box's own history with branches, a personal library of the classes Claude makes across works, and the box inside the app.</li>
+  </ul>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernels (plain JS)
+// are read first, as window.kairoticKernel (harmonize.mjs) and window.kairoticAgent (agent.mjs); Verovio draws the score.
+window.kairoticBase = window.kairoticBase || "kairotic/";
+window.kairoticVerovio = new Promise(function (resolve, reject) {
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/verovio@5.7.0/dist/verovio-toolkit-wasm.js";
+  s.onload = function () {
+    try { var m = verovio.module; if (m.calledRun) resolve(new verovio.toolkit()); else m.onRuntimeInitialized = function () { resolve(new verovio.toolkit()); }; }
+    catch (e) { reject(e); }
+  };
+  s.onerror = function () { reject(new Error("could not download Verovio")); };
+  document.head.appendChild(s);
+});
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  Promise.all([import("./" + window.kairoticBase + "harmonize.mjs"), import("./" + window.kairoticBase + "agent.mjs")]).then(function (ms) {
+    window.kairoticKernel = ms[0]; window.kairoticAgent = ms[1];
+    try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns harmonize-page (:require [clojure.string :as str]))
+
+;; Kairotic · Study 53 · harmonize: the page. The kernels (kairotic/harmonize.mjs, kairotic/agent.mjs) write the bass,
+;; realize the chords and run a sub-patch; this page keeps the state, asks Claude (the `sample` capability of
+;; claude.ai), draws the agent box and the sub-patch inside it, and shows and plays the result.
+
+(def K (.-kairoticKernel js/window))
+(def A (.-kairoticAgent js/window))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
+(defn status! [s] (set! (.-textContent ($ "status")) s))
+(defn msg [e] (or (.-message e) (str e)))
+
+;; ───────── state ─────────
+;; :patch the sub-patch (JS, from agent.mjs) and its :edn; :run what running it made; :recipe what built it (the
+;; request, the melody, who: Claude or the example) and whether the patch was edited since (:stale)
+(defonce st (atom {:patch nil :edn "" :run nil :recipe nil :sel nil :busy false}))
+(defonce sample-fn (atom nil))
+(defonce ctl (atom nil))
+
+;; ───────── the melody ─────────
+(defn melody-spec []
+  (let [ex (aget (.-MELODIES K) (.-value ($ "mel-ex")))]
+    (clj->js (cond-> {:name (if ex (.-name ex) "a melody")
+                      :melody (str/trim (.-value ($ "mel-text")))
+                      :key {:tonic (.-value ($ "tonic")) :mode (.-value ($ "mode"))}
+                      :meter (if ex (js->clj (.-meter ex)) [2 4])}
+               (and ex (.-cadences ex) (= (str/trim (.-value ($ "mel-text"))) (.-melody ex)))
+               (assoc :cadences (js->clj (.-cadences ex) :keywordize-keys true))))))
+
+(defn melody-facts! []
+  (set! (.-textContent ($ "mel-facts"))
+        (try (let [s (melody-spec) H (.harmonize K s)]
+               (str (.-n H) " units · " (str (.count H)) " basses fit it under the rules"
+                    (when-let [c (.-cadences s)] (str " · cadences " (.stringify js/JSON c)))))
+             (catch :default e (str "Error: " (msg e))))))
+
+(defn choose-melody! [id]
+  (when-let [ex (aget (.-MELODIES K) id)]
+    (set! (.-value ($ "mel-text")) (.-melody ex))
+    (set! (.-value ($ "tonic")) (.. ex -key -tonic))
+    (set! (.-value ($ "mode")) (or (.. ex -key -mode) "major")))
+  (melody-facts!))
+
+;; ───────── drawing a patch ─────────
+(def BW 150) (def BH 38)
+
+(defn wire-path [x1 y1 x2 y2]
+  (let [dy (max 30 (/ (js/Math.abs (- y2 y1)) 2)) dx (/ (- x2 x1) 2)]
+    (if (> (js/Math.abs (- x2 x1)) (js/Math.abs (- y2 y1)))
+      (str "M" x1 "," y1 " C" (+ x1 dx) "," y1 " " (- x2 dx) "," y2 " " x2 "," y2)
+      (str "M" x1 "," y1 " C" x1 "," (+ y1 dy) " " x2 "," (- y2 dy) " " x2 "," y2))))
+
+(defn box-svg [{:keys [x y id label sub cls]}]
+  (str "<g class='box " cls "' data-id='" (esc id) "' transform='translate(" x "," y ")'>"
+       "<rect width='" BW "' height='" BH "' rx='3'/>"
+       "<rect class='port' x='0' y='-2' width='10' height='3' rx='1'/>"
+       "<rect class='port' x='0' y='" (dec BH) "' width='10' height='3' rx='1'/>"
+       "<text x='8' y='16'>" (esc label) "</text>"
+       (when sub (str "<text class='sub' x='8' y='30'>" (esc sub) "</text>"))
+       "</g>"))
+
+(defn args-text [args]
+  (let [m (js->clj args)]
+    (str/join " " (for [[k v] m :when (not= k "js")] (str k " " (if (string? v) (pr-str v) (.stringify js/JSON (clj->js v))))))))
+
+(defn layout
+  "Columns by depth (the longest way from a box with nothing wired into it), rows in the order of the patch."
+  [P]
+  (let [ids (vec (js/Object.keys (.-boxes P)))
+        wires (js->clj (.-wires P) :keywordize-keys true)
+        depth (loop [d (zipmap ids (repeat 0)) k 0]
+                (let [d2 (reduce (fn [d {:keys [from to]}] (assoc d to (max (d to 0) (inc (d from 0))))) d wires)]
+                  (if (or (= d2 d) (> k (count ids))) d (recur d2 (inc k)))))
+        cols (group-by depth ids)]
+    {:pos (into {} (for [[c col] cols [i id] (map-indexed vector col)]
+                     [id [(+ 20 (* c (+ BW 46))) (+ 26 (* i (+ BH 26)))]]))
+     :w (+ 40 (* (inc (apply max 0 (keys cols))) (+ BW 46)))
+     :h (+ 50 (* (apply max 1 (map count (vals cols))) (+ BH 26)))
+     :wires wires}))
+
+(defn draw-inner! []
+  (let [{:keys [patch run sel]} @st svg ($ "inner")]
+    (if-not patch
+      (do (.setAttribute svg "viewBox" "0 0 720 70")
+          (set! (.-innerHTML svg) "<text x='20' y='40' style='font:13px var(--f-ui);fill:var(--ink-soft)'>Empty: ask Claude, or build the example patch.</text>"))
+      (let [{:keys [pos w h wires]} (layout patch)
+            errs (some-> run .-errors)
+            classes (.classesOf A patch)]
+        (.setAttribute svg "viewBox" (str "0 0 " (max 720 w) " " h))
+        (set! (.. svg -style -minWidth) (str (max 720 w) "px"))
+        (set! (.-innerHTML svg)
+              (str "<rect class='frame' x='4' y='4' width='" (- (max 720 w) 8) "' height='" (- h 8) "'/>"
+                   "<text class='flabel' x='12' y='17'>inside: agent</text>"
+                   (apply str (for [{:keys [from to inlet]} wires
+                                    :let [[x1 y1] (pos from) [x2 y2] (pos to)]]
+                                (str "<path class='wire' d='" (wire-path (+ x1 5) (+ y1 BH 1) (+ x2 5 (* 30 (or inlet 0))) y2) "'/>")))
+                   (apply str (for [[id [x y]] pos
+                                    :let [b (aget (.-boxes patch) id) c (.-box b) cl (aget classes c)]]
+                                (box-svg {:x x :y y :id id :label (str c (when (= c "code") "  { }"))
+                                          :sub (let [a (args-text (or (.-args b) #js {}))] (if (seq a) a (str ":" id)))
+                                          :cls (str (when (or (= c "code") (and cl (.-own cl))) " code")
+                                                    (when (and errs (aget errs id)) " err")
+                                                    (when (= sel id) " sel"))})))))))))
+
+(defn draw-outer! []
+  (let [{:keys [recipe patch run]} @st
+        req (or (:request recipe) (.-value ($ "request")))
+        ok (and run (not (.-error run)))]
+    (set! (.-innerHTML ($ "outer"))
+          (str (box-svg {:x 20 :y 28 :id "-" :label "melody" :sub (str (.-value ($ "tonic")) " " (.-value ($ "mode")))})
+               "<path class='wire' d='" (wire-path 170 47 230 47) "'/>"
+               "<g class='box agent' transform='translate(230,22)'><rect width='280' height='50' rx='3'/>"
+               "<text x='10' y='20'>agent" (if patch (str "  · " (count (js/Object.keys (.-boxes patch))) " boxes inside") "  · empty") "</text>"
+               "<text class='sub' x='10' y='38'>" (esc (let [s (str req)] (if (> (count s) 44) (str (subs s 0 44) "…") s))) "</text></g>"
+               "<path class='wire' d='" (wire-path 510 47 560 47) "'/>"
+               (box-svg {:x 560 :y 28 :id "-" :label "score" :sub (cond ok "four parts" (and run (.-error run)) "error" :else "—")})))))
+
+;; ───────── a box, its value ─────────
+(defn summarize [v]
+  (cond
+    (nil? v) "—"
+    (string? v) v
+    (.-parts v) (str "parts\n" (str/join "\n" (for [k ["soprano" "alto" "tenor" "bass"]] (str (.padEnd k 8) (str/join " " (aget (.-names v) k)))))
+                     "\nchords   " (str/join " " (.-chords v))
+                     (when (pos? (count (.-parallels v))) (str "\nparallels kept at units " (str/join ", " (map inc (.-parallels v))))))
+    (.-bass v) (str "bass     " (str/join " " (.-names v)) "\nfigures  " (str/join " " (.-figures v)) "\n" (.-futures v) " basses fit under the rules")
+    (.-voices v) (str (count (.-voices v)) " voices: " (str/join " | " (for [vc (.-voices v)] (str (count vc) " notes"))))
+    (.-melody v) (str (.-name v) "\n" (.-melody v))
+    :else (try (.stringify js/JSON v nil 1) (catch :default _ (str v)))))
+
+(defn show-box! [id]
+  (swap! st assoc :sel id)
+  (let [{:keys [patch run]} @st b (aget (.-boxes patch) id) c (.-box b) cl (aget (.classesOf A patch) c)]
+    (set! (.-textContent ($ "box-title")) (str c " "))
+    (set! (.-textContent ($ "box-sub")) (str ":" id))
+    (set! (.-textContent ($ "box-doc")) (if cl (.-doc cl) "no such class"))
+    (set! (.-textContent ($ "box-val"))
+          (str (when-let [e (some-> run .-errors (aget id))] (str "Error: " e "\n\n"))
+               (when-let [js (or (some-> b .-args .-js) (some-> (.-defs patch) (aget c) .-js))] (str "// :js\n" js "\n\n// what it made\n"))
+               (summarize (some-> run .-values (aget id))))))
+  (draw-inner!))
+
+;; ───────── the result: Verovio, and sound ─────────
+(defn render-score! []
+  (let [{:keys [patch run]} @st]
+    (if-not (and run (not (.-error run)))
+      (do (set! (.-innerHTML ($ "score")) "")
+          (set! (.-textContent ($ "out-facts")) (if run (str "Error: " (.-error run)) "—")))
+      (let [o (.outputOf A patch run) v (.-show o)]
+        (if-not v
+          (set! (.-textContent ($ "out-facts")) "No score box made four parts or voices.")
+          (-> (.-kairoticVerovio js/window)
+              (.then (fn [tk]
+                       (let [w (max 600 (- (.-clientWidth ($ "score")) 16)) scale 38]
+                         (.setOptions tk (clj->js {:pageWidth (js/Math.round (/ (* w 100) scale)) :pageHeight 60000 :adjustPageHeight true
+                                                   :breaks "auto" :scale scale :header "none" :footer "none"
+                                                   :pageMarginTop 20 :pageMarginBottom 10 :pageMarginLeft 16 :pageMarginRight 16}))
+                         (.loadData tk (.meiOf K v))
+                         (set! (.-innerHTML ($ "score")) (.renderToSVG tk 1))
+                         (set! (.-textContent ($ "out-facts"))
+                               (str (some-> v .-H .-n) " units"
+                                    (when (.-chords v) (str " · chords " (str/join " " (.-chords v))))
+                                    (when (and (.-parallels v) (pos? (count (.-parallels v)))) (str " · parallels kept: " (count (.-parallels v)))))))))
+              (.catch (fn [e] (set! (.-textContent ($ "out-facts")) (str "Verovio: " (msg e)))))))))))
+
+(defonce ac (atom nil))
+(defonce playing (atom []))
+(defn halt! [] (doseq [o @playing] (try (.stop o) (catch :default _ nil))) (reset! playing []))
+(defn play! []
+  (halt!)
+  (let [{:keys [patch run]} @st]
+    (when (and run (not (.-error run)))
+      (when-let [v (.-show (.outputOf A patch run))]
+        (let [c (or @ac (reset! ac (js/AudioContext.))) H (.-H v)
+              spu (/ 60 (max 40 (js/Number (.-value ($ "tempo")))))
+              voices (if (.-voices v) (.-voices v) (.-voices (.voicesOf K (.-parts v))))
+              t0 (+ (.-currentTime c) 0.1) master (.createGain c)]
+          (.resume c)
+          (set! (.. master -gain -value) 0.16)
+          (.connect master (.-destination c))
+          (doseq [[i vc] (map-indexed vector voices)]
+            (loop [notes (seq vc) t t0]
+              (when-let [nt (first notes)]
+                (let [d (* spu (.-dur nt)) o (.createOscillator c) g (.createGain c)]
+                  (set! (.-type o) (if (zero? i) "triangle" "sine"))
+                  (set! (.. o -frequency -value) (.hz H (.-code nt)))
+                  (.setValueAtTime (.-gain g) 0 t)
+                  (.linearRampToValueAtTime (.-gain g) (if (zero? i) 1 0.7) (+ t 0.02))
+                  (.exponentialRampToValueAtTime (.-gain g) 0.001 (+ t (max 0.08 (* 0.95 d))))
+                  (.connect o g) (.connect g master)
+                  (.start o t) (.stop o (+ t d))
+                  (swap! playing conj o)
+                  (recur (next notes) (+ t d)))))))))))
+
+;; ───────── running a patch ─────────
+(defn render-all! []
+  (let [{:keys [patch recipe edn sel]} @st]
+    (draw-outer!) (draw-inner!)
+    (set! (.-value ($ "edn")) (or edn ""))
+    (set! (.-innerHTML ($ "recipe"))
+          (if recipe
+            (str "recipe · " (esc (:who recipe)) " · request: “" (esc (:request recipe)) "” · melody: " (esc (:melody recipe))
+                 (when (:stale recipe) " · <span class='stale'>stale: the patch was edited by hand</span>"))
+            "—"))
+    (if (and patch sel (aget (.-boxes patch) sel)) (show-box! sel)
+        (do (set! (.-textContent ($ "box-title")) "A box ") (set! (.-textContent ($ "box-sub")) "—")
+            (set! (.-textContent ($ "box-doc")) "") (set! (.-textContent ($ "box-val")) "Select a box.")))
+    (render-score!)))
+
+(defn run-patch!
+  "Reads the EDN, runs it on the melody; → a promise of the run (or of an error's message)."
+  [edn]
+  (js/Promise.
+    (fn [ok _]
+      (let [P (try (.patchOf A edn) (catch :default e (ok {:error (str "the patch: " (msg e))})))]
+        (when (and P (not (map? P)))
+          (-> (.runPatch A P (melody-spec))
+              (.then (fn [R] (ok {:patch P :run R :error (.-error R)})))
+              (.catch (fn [e] (ok {:error (msg e)})))))))))
+
+(defn adopt! [edn {:keys [patch run]} recipe]
+  (swap! st assoc :patch patch :run run :edn edn :recipe recipe :sel nil)
+  (render-all!))
+
+(.addEventListener ($ "example") "click"
+  (fn [_]
+    (let [edn (.-EXAMPLE_PATCH A)]
+      (-> (run-patch! edn)
+          (.then (fn [r] (if (:patch r) (adopt! edn r {:who "the example patch" :request "(none)" :melody (.-value ($ "mel-text"))})
+                             (set! (.-textContent ($ "agent-facts")) (:error r)))))))))
+
+(.addEventListener ($ "run") "click"
+  (fn [_]
+    (let [edn (.-value ($ "edn"))]
+      (-> (run-patch! edn)
+          (.then (fn [r]
+                   (if (:patch r)
+                     (adopt! edn r (some-> (:recipe @st) (assoc :stale (not= edn (:edn @st)))))
+                     (do (set! (.-hidden ($ "agent-err")) false) (set! (.-textContent ($ "agent-err")) (:error r))))))))))
+
+;; ───────── asking Claude ─────────
+(def TRIES 3)
+
+(defn busy! [b]
+  (swap! st assoc :busy b)
+  (set! (.-disabled ($ "build")) (or b (nil? @sample-fn)))
+  (set! (.-disabled ($ "stop")) (not b)))
+
+(defn ask! []
+  (when-let [sample @sample-fn]
+    (let [request (str/trim (.-value ($ "request"))) mel (melody-spec) c (js/AbortController.)]
+      (reset! ctl c)
+      (busy! true)
+      (set! (.-hidden ($ "agent-err")) true)
+      (set! (.-textContent ($ "answer")) "")
+      (letfn [(attempt [k previous]
+                (set! (.-textContent ($ "agent-facts")) (str "Claude is building" (when (> k 1) (str " (try " k " of " TRIES ")")) "…"))
+                (-> (sample (.promptFor A request mel previous)
+                            #js {:modelTier "default" :signal (.-signal c) :cache false
+                                 :onText (fn [o] (set! (.-textContent ($ "answer")) (.-text o)))})
+                    (.then (fn [ans]
+                             (let [text (.-text ans) edn (.ednOf A text)]
+                               (set! (.-textContent ($ "answer")) text)
+                               (if-not edn
+                                 (if (< k TRIES) (attempt (inc k) #js {:edn "(none)" :error "the answer had no ```edn block"})
+                                     (throw (js/Error. "Claude's answer had no patch")))
+                                 (-> (run-patch! edn)
+                                     (.then (fn [r]
+                                              (cond
+                                                (and (:patch r) (not (:error r)))
+                                                (do (adopt! edn r {:who (str "Claude" (when (> k 1) (str ", try " k))) :request request :melody (.-melody mel)})
+                                                    (set! (.-textContent ($ "agent-facts")) (str "built and run" (when (> k 1) (str " on try " k)))))
+                                                (< k TRIES) (attempt (inc k) #js {:edn edn :error (:error r)})
+                                                :else (do (when (:patch r) (adopt! edn r {:who "Claude (it still fails)" :request request :melody (.-melody mel)}))
+                                                          (throw (js/Error. (str "after " TRIES " tries: " (:error r)))))))))))))))]
+        (-> (attempt 1 nil)
+            (.catch (fn [e]
+                      (let [code (.-code e)]
+                        (set! (.-hidden ($ "agent-err")) false)
+                        (set! (.-textContent ($ "agent-err"))
+                              (case code
+                                "not_granted" "Claude is not allowed for this page (it can be allowed the next time it asks)."
+                                "rate_limited" "Claude is busy for you right now: try again in a while."
+                                (if (= "AbortError" (.-name e)) "Stopped." (str "Error: " (msg e)))))
+                        (set! (.-textContent ($ "agent-facts")) "—"))))
+            (.finally (fn [] (busy! false) (reset! ctl nil))))))))
+
+(.addEventListener ($ "build") "click" (fn [_] (ask!)))
+(.addEventListener ($ "stop") "click" (fn [_] (when-let [c @ctl] (.abort c))))
+(.addEventListener ($ "inner") "click"
+  (fn [e] (when-let [g (.closest (.-target e) "g.box")] (show-box! (.getAttribute g "data-id")))))
+(.addEventListener ($ "play") "click" (fn [_] (play!)))
+(.addEventListener ($ "halt") "click" (fn [_] (halt!)))
+
+;; ───────── start ─────────
+(let [sel ($ "mel-ex")]
+  (set! (.-innerHTML sel)
+        (str (apply str (for [id (js/Object.keys (.-MELODIES K))] (str "<option value='" id "'>" (esc (.-name (aget (.-MELODIES K) id))) "</option>")))
+             "<option value=''>your own</option>"))
+  (.addEventListener sel "change" (fn [_] (choose-melody! (.-value sel)) (draw-outer!)))
+  (doseq [id ["mel-text" "tonic" "mode"]] (.addEventListener ($ id) "change" (fn [_] (melody-facts!) (draw-outer!)))))
+(choose-melody! "ah-vous-dirai-je")
+(busy! false)
+(render-all!)
+(status! "Ready")
+
+(let [cl (.-claude js/window)]
+  (if (and cl (.-use cl))
+    (-> (.use cl "sample")
+        (.then (fn [s]
+                 (reset! sample-fn s)
+                 (busy! false)
+                 (when-not s (set! (.-textContent ($ "agent-facts")) "Claude is not available in this view: build the example patch, or open the study on claude.ai.")))))
+    (set! (.-textContent ($ "agent-facts")) "Claude is not available here (it needs claude.ai): build the example patch.")))
+
+;; for the tests (tests/page.html)
+(set! (.-kairoticStudy js/window)
+      #js {:build-example (fn [] (.click ($ "example")))
+           :state (fn [] (let [{:keys [patch run recipe]} @st]
+                           #js {:boxes (when patch (count (js/Object.keys (.-boxes patch)))) :error (some-> run .-error)
+                                :who (:who recipe) :score (boolean (.querySelector ($ "score") "svg"))}))})
+</script>
