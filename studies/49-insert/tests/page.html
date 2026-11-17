@@ -1,0 +1,70 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 49 · insert · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, its ClojureScript), with real sound and real Faust: Start makes
+// the AudioWorklet, the page compiles the insert (faustwasm) and the worklet instantiates it in its node.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  const I = () => window.kairoticInsert;
+  const wait = async (ok, ms = 8000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+  const status = () => document.getElementById("insert-status").textContent;
+  try {
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticBase = "../kairotic/";
+    // the loader of the page (faustwasm), as its own script defines it
+    const loader = Array.from(doc.querySelectorAll("script:not([src]):not([type])")).map((s) => s.textContent).join("\n");
+    (0, eval)(loader.replace(/window\.addEventListener\("DOMContentLoaded"[\s\S]*$/, ""));
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    is("five presets, thirteen keys", document.querySelectorAll("[data-preset]").length === 5 && document.querySelectorAll("#keys [data-key]").length === 13);
+    is("the tape echo: its Faust code in the editor", /fi\.lowpass/.test(document.getElementById("code").value));
+
+    document.getElementById("go").click();
+    is("Start: the worklet runs and the phrase is written" + (I().error() ? " (" + I().error() + ")" : ""),
+       await wait(() => I().state() && Array.from(I().state().peaks).some((p) => p > 0.01), 10000));
+    const on = await wait(() => status() === "on", 50000);
+    is("the insert compiled in the page and instantiated in the node" + (on ? "" : " (" + status() + ")"), on);
+    is("... the worklet has it, for the writer", await wait(() => Array.from(I().state().inserts).includes("w"), 3000));
+    is("its controls: a cutoff slider", document.querySelector('#params input[data-param$="cutoff"]') !== null);
+    const sl = document.querySelector('#params input[data-param$="cutoff"]');
+    if (sl) { sl.value = 600; sl.dispatchEvent(new Event("input", { bubbles: true })); }
+    is("... moved, it says its value", sl && /600/.test(sl.nextElementSibling.textContent));
+
+    const out = document.getElementById("outside"); out.checked = true; out.dispatchEvent(new Event("change", { bubbles: true }));
+    is("outside: the writer's feedback a block later", I().heads()[0].outside === true);
+
+    document.getElementById("code").value = "process = *(;";
+    document.getElementById("compile").click();
+    is("code that does not compile says so", await wait(() => /^error/.test(status()), 15000));
+
+    document.querySelector('[data-preset="string"]').click();
+    is("the string: the keys pluck it", /pluck/.test(document.getElementById("keys-sub").textContent));
+    is("... and its insert compiles", await wait(() => status() === "on", 15000));
+    I().press(69);
+    is("a key sets the reader's d to its period (a4: 1/440 s)", Math.abs(I().heads()[1].d - 1 / 440) < 1e-9);
+    is("... and the string sounds", await wait(() => Array.from(I().state().peaks).some((p) => p > 0.05), 3000));
+
+    document.querySelector('[data-preset="spiral"]').click();
+    is("a pitch shifter in the loop (ef.transpose) compiles too", await wait(() => status() === "on", 15000));
+
+    document.getElementById("go").click();
+    is("Stop", await wait(() => !I().on(), 2000));
+    is("no error on the page", errors.length === 0 && !I().error());
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  document.getElementById("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>

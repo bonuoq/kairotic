@@ -29,8 +29,9 @@ for (const path of pages) {
   if (process.env.OSC_RELAY) q.set("relay", process.env.OSC_RELAY);
   if (process.env.SIGNAL_RELAY) q.set("signal", process.env.SIGNAL_RELAY);
   await page.goto(base + path + (q.size ? "?" + q : ""));
-  const r = await page.waitForFunction(() => window.kairoticResults, null, { timeout: 60000 })
-    .then((h) => h.jsonValue()).catch(() => ({ total: 0, failed: ["no results within 60 s"] }));
+  // (a page that compiles Faust from the CDN, as Study 49 does, may take longer)
+  const r = await page.waitForFunction(() => window.kairoticResults, null, { timeout: 120000 })
+    .then((h) => h.jsonValue()).catch(() => ({ total: 0, failed: ["no results within 120 s"] }));
   total += r.total; failed += r.failed.length;
   console.log(`${r.failed.length ? "✗" : "✓"} ${path}: ${r.skipped ? "skipped" : `${r.total - r.failed.length} / ${r.total}`}`);
   for (const f of r.failed) console.log(`    ✗ ${f}`);
