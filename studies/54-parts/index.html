@@ -1,0 +1,251 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 54 · Parts</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+/* Study 51: the schema and the key as a toolbar; the bass and the upper voice drawn unit by unit, the figures under
+   the bass and what each dissonance is above; beside them the count, the next note's futures to write by hand, and
+   what the study decides. */
+.views { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+.sheet { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; overflow-x: auto; }
+.sheet svg { display: block; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .presets button.on { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .presets button.on { color: #0e1420; } }
+.unit { fill: none; stroke: var(--grid); stroke-width: 1; }
+.strong { fill: var(--accent-soft); }
+.barline { stroke: var(--rule); stroke-width: 1.2; }
+.bass { fill: var(--accent); }
+.upper { fill: var(--kairos); }
+.middle { fill: var(--ok); }
+.diss { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 3 2; }
+.lab { font: 10.5px var(--f-code); fill: var(--ink-soft); }
+.fig { font: 600 12px var(--f-code); fill: var(--ink); text-anchor: middle; }
+.ask { font: 11px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+.deg { font: 13px var(--f-ui); fill: var(--accent); text-anchor: middle; }
+.role { font: 600 10.5px var(--f-code); fill: var(--kairos); text-anchor: middle; }
+.next { fill: var(--kairos-soft); }
+.nname { font: 600 10px var(--f-code); fill: #fff; dominant-baseline: central; }
+.big { font: 600 22px var(--f-code); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+.fan { display: flex; flex-wrap: wrap; gap: 5px; }
+.fan button { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 12px var(--f-code); padding: 3px 7px; border-radius: 5px; cursor: pointer; display: grid; justify-items: center; line-height: 1.25; }
+.fan button small { font-size: 10.5px; color: var(--ink-soft); }
+.fan button small.cost { color: var(--kairos); }
+.fan button:hover { border-color: var(--kairos); }
+.fan button:disabled { opacity: 0.35; cursor: default; }
+.fan button.dead { opacity: 0.55; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+</style>
+
+<main>
+<header>
+  <h1>Study 54 · parts</h1>
+  <span class="sub">A given bass realized in three parts: a schema of IJzerman's chapter 2, closed by a cadence of chapter 3</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The schema">
+  <span class="tag">Schema</span>
+  <span class="presets" id="schemata"></span>
+</div>
+<div class="toolbar" aria-label="The cadence">
+  <span class="tag">Cadence</span>
+  <span class="presets" id="cadences"></span>
+</div>
+<div class="toolbar" aria-label="The key and the realization">
+  <span class="tag">Key</span>
+  <label>tonic <select id="tonic"><option>C</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>G</option><option>A</option><option>Bb</option><option>B</option></select></label>
+  <label>mode <select id="mode"><option>major</option><option>minor</option></select></label>
+  <label><input type="checkbox" id="figured" checked> realize the chords</label>
+  <span class="sep"></span>
+  <label title="the engine: a softmax of −cost / temperature among the pairs with a future (0: the cheapest)">temperature <input type="number" id="temp" min="0" max="5" step="0.1" value="0.5"></label>
+  <button class="act primary" id="engine">Engine</button>
+  <button class="act" id="uniform">Draw uniformly</button>
+  <button class="act" id="play" disabled>▶ Play</button>
+</div>
+
+<div class="views">
+  <section class="panel">
+    <h2>Three parts <span id="ref"></span></h2>
+    <div class="sheet" id="sheet"></div>
+    <div class="msg" id="msg"></div>
+    <p class="about" id="about"></p>
+  </section>
+  <div class="side">
+    <section class="panel">
+      <h2>Realizations <span>counted exactly</span></h2>
+      <div><span class="big" id="total">–</span> <span class="msg" id="total-sub"></span></div>
+      <div class="msg" id="other"></div>
+    </section>
+    <section class="panel">
+      <h2>What it decides</h2>
+      <p class="about">The bass is a phrase as the book's exercises build it — a schema, then a cadence — and two upper voices are written over it. Each is held to Study 51's rules against the bass; between them the rules of upper voices: a <b>4th is a consonance there</b>, no parallel 5ths or octaves, no crossing, within an octave, a 2nd or a 7th only where one of them is the dissonance against the bass. The figures of a chord say which intervals sound above the bass, not in which voice; a 5/3 may leave out its 5th — the book's (5)/3 —, never its 3rd.</p>
+      <ul class="q">
+        <li><b>The chains of chapter 2 are the rules at work.</b> In the 7–6 Fauxbourdon the 7th is held from the 6th before it; in the Fifth Down Fourth Up the 7th passes from one upper voice to the other, the 3rd of each chord held into the 7th of the next; in the Tied Bass the bass holds its note under a 4/2 and resolves down to a 6/3.</li>
+        <li><b>The cadences of chapter 3 are schemata too</b>: simple, compound (a 6/4 or a 5/4 whose 4th is held over from the chord before), Galant (on ⑤ a 6/4 of accented passing tones, the only dissonance not prepared), deceptive, half.</li>
+        <li><b>Not every schema leads to every cadence.</b> The Fifth Down Fourth Up closes only with the simple one: the 7th of its ② must resolve, so it cannot prepare the 4th of a compound cadence, nor go to ④.</li>
+        <li><b>The 6/3 chords with the 4th inverted into a 5th</b> are parallel 5ths between the upper voices (ex. 2.6b), and refused.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+</main>
+
+<script type="module">
+import { parts, SCHEMATA, CADENCES } from "./kairotic/parts.mjs";
+import { shape } from "./kairotic/soft.mjs";
+
+const $ = (id) => document.getElementById(id);
+let P = null, W = null, sid = "fauxbourdon-76", cid = "compound-64", ctx = null;
+const buttons = (host, table, attr, onclick) => {
+  for (const [k, s] of Object.entries(table)) {
+    const b = document.createElement("button");
+    b.className = "act"; b.dataset[attr] = k; b.textContent = s.name;
+    b.addEventListener("click", () => onclick(k));
+    $(host).appendChild(b);
+  }
+};
+buttons("schemata", SCHEMATA, "schema", (k) => { sid = k; rebuild(); });
+buttons("cadences", CADENCES, "cadence", (k) => { cid = k; rebuild(); });
+
+function rebuild() {
+  document.querySelectorAll("[data-schema]").forEach((b) => b.classList.toggle("on", b.dataset.schema === sid));
+  document.querySelectorAll("[data-cadence]").forEach((b) => b.classList.toggle("on", b.dataset.cadence === cid));
+  $("status").textContent = "counting…";
+  const key = { tonic: $("tonic").value, mode: $("mode").value };
+  P = parts({ schema: sid, cadence: cid, key, figured: $("figured").checked });
+  const t0 = performance.now(), c = P.count(), ms = Math.round(performance.now() - t0);
+  const other = parts({ schema: sid, cadence: cid, key, figured: !$("figured").checked }).count();
+  $("total").textContent = c.toLocaleString("en");
+  $("total-sub").textContent = `realization${c === 1n ? "" : "s"} ${P.spec.figured ?? true ? "of the chords" : "over the bass, without the chords"} · ${ms} ms`;
+  $("other").textContent = `${other.toLocaleString("en")} ${$("figured").checked ? "without the chords asked" : "with them"}`;
+  $("ref").textContent = `${P.schema.ref} · ${P.cadence.ref} · ${P.key.tonic.replace("b", "♭")} ${P.key.mode}`;
+  $("about").innerHTML = `<b>${P.schema.name}:</b> ${P.schema.about}. <b>The ${P.cadence.name} cadence:</b> ${P.cadence.about}.`;
+  $("status").textContent = c ? "ready" : "no realization closes";
+  $("engine").disabled = !c; $("uniform").disabled = !c;
+  W = c ? P.engine({ temp: Number($("temp").value) || 0 }) : null;
+  render();
+}
+function render() {
+  const n = P.n, uw = Math.max(20, Math.min(40, 760 / n)), X = 54, H = 330;
+  const ds = [...P.bass.map((b) => b.d), ...(W ? [...W.top, ...W.middle].map(P.degree) : [])];
+  const lo = Math.min(...ds), hi = Math.max(...ds, P.bass[0].d + 14);
+  const top = 30, bot = H - 64, y = (d) => top + (hi - d) * ((bot - top) / Math.max(1, hi - lo));
+  const ch = W ? P.chords(W) : [];
+  let svg = `<svg width="${X + n * uw + 10}" height="${H}" viewBox="0 0 ${X + n * uw + 10} ${H}" role="img" aria-label="the bass and the two upper voices, with the chords">`;
+  for (let t = 0; t < n; t++) {
+    const x = X + t * uw, b = P.bass[t];
+    if (b.strong) svg += `<rect class="strong" x="${x}" y="18" width="${uw}" height="${bot - 6}"/><line class="barline" x1="${x}" x2="${x}" y1="18" y2="${bot + 12}"/>`;
+    svg += `<rect class="unit" x="${x}" y="18" width="${uw}" height="${bot - 6}"/>`;
+    svg += W ? `<text class="fig" x="${x + uw / 2}" y="${bot + 28}">${ch[t]}</text>` : `<text class="ask" x="${x + uw / 2}" y="${bot + 28}">${b.chord}</text>`;
+    if (b.struck) svg += `<text class="deg" x="${x + uw / 2}" y="${bot + 48}">${P.key.circled(b.d)}${b.r ? "♯" : ""}</text>`;
+    if (t > 0 && P.bass[t - 1].part !== b.part) svg += `<line class="barline" x1="${x}" x2="${x}" y1="10" y2="${bot + 52}" stroke-dasharray="4 3"/>`;
+  }
+  const bars = (vals, cls, nameOf, dOf, cut) => {
+    let t = 0;
+    while (t < vals.length) {
+      let e = t + 1; while (e < vals.length && (cut ? !cut(e) : vals[e] === vals[t])) e++;
+      const v = vals[t], yy = y(dOf(v));
+      svg += `<rect class="${cls}" x="${X + t * uw + 1}" y="${yy - 7}" width="${(e - t) * uw - 2}" height="14" rx="3"/>`;
+      if ((e - t) * uw > 26) svg += `<text class="nname" x="${X + t * uw + 4}" y="${yy}">${nameOf(v)}</text>`;
+      t = e;
+    }
+  };
+  bars(P.bass.map((b, t) => t), "bass", (t) => P.key.name(P.bass[t].d, P.bass[t].r), (t) => P.bass[t].d, (e) => P.bass[e].struck);
+  if (W) {
+    bars(W.middle, "middle", P.name, P.degree);
+    bars(W.top, "upper", P.name, P.degree);
+    // the dissonances against the bass
+    for (let t = 0; t < n; t++) for (const [v, V] of [[W.top[t], P.top], [W.middle[t], P.middle]])
+      if (V.vertical(t, v).q === "dissonant") svg += `<rect class="diss" x="${X + t * uw + 1}" y="${y(P.degree(v)) - 9}" width="${uw - 2}" height="18" rx="3"/>`;
+  }
+  svg += `<text class="lab" x="4" y="${bot + 28}">chords</text><text class="lab" x="4" y="${bot + 48}">bass</text>`;
+  $("sheet").innerHTML = svg + "</svg>";
+  $("play").disabled = !W;
+  if (W) {
+    const why = P.judge(W), st = shape([W.top.map(P.degree)]), sm = shape([W.middle.map(P.degree)]), pc = (x) => Math.round(100 * x) + "%";
+    $("msg").innerHTML = why ? "✗ " + why : `<span style="color:var(--kairos)">■ upper</span> ${W.top.filter((x, t) => t === 0 || x !== W.top[t - 1]).map(P.name).join(" ")} · <span style="color:var(--ok)">■ middle</span> ${W.middle.filter((x, t) => t === 0 || x !== W.middle[t - 1]).map(P.name).join(" ")}<br>steps: the upper voice ${pc(st.steps)}, the middle ${pc(sm.steps)}`;
+  } else $("msg").textContent = "";
+}
+function play() {
+  if (!W) return;
+  ctx = ctx || new AudioContext();
+  const unit = 0.45, t0 = ctx.currentTime + 0.1, n = P.n;
+  const tone = (hz, s, e, g0) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "triangle"; o.frequency.value = hz;
+    g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(g0, s + 0.02); g.gain.setTargetAtTime(0, e - 0.05, 0.03);
+    o.connect(g).connect(ctx.destination); o.start(s); o.stop(e + 0.3);
+  };
+  for (let t = 0; t < n; t++) if (P.bass[t].struck) { let e = t + 1; while (e < n && !P.bass[e].struck) e++; tone(P.key.hz(P.bass[t].d, P.bass[t].r), t0 + t * unit, t0 + (e === n ? e + 1 : e) * unit, 0.13); }
+  for (const V of [W.top, W.middle]) for (let t = 0; t < n; t++) if (t === 0 || V[t] !== V[t - 1]) { let e = t + 1; while (e < n && V[e] === V[t]) e++; tone(P.hz(V[t]), t0 + t * unit, t0 + (e === n ? e + 1 : e) * unit, 0.09); }
+}
+for (const id of ["tonic", "mode", "figured"]) $(id).addEventListener("change", rebuild);
+$("engine").addEventListener("click", () => { W = P.engine({ temp: Math.max(0, Number($("temp").value) || 0) }); render(); });
+$("uniform").addEventListener("click", () => { W = P.sample(); render(); });
+$("play").addEventListener("click", play);
+window.kairoticParts = { get P() { return P; }, get W() { return W; }, rebuild, render, set: (s, c) => { sid = s; cid = c; rebuild(); } };
+rebuild();
+</script>

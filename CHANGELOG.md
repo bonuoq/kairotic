@@ -16,6 +16,19 @@
   or takes away an onset, `:complement`, `[:rotate 1]`, `[:n 12]`. Its outlets 0–2 are `euclid`'s (tree, `:rtm`
   map, pulses) and its right inlet takes pitches the same way; the measures go out on outlet 3. Help, README,
   assistant, tests in `tests/theory.mjs`.
+- **One way to weigh decisions: `@kairotic/theory`'s `soft.mjs`** (0.13.0). The soft rules of Studies 38–42 —
+  what a candidate costs by the shape of its line and by the vertical it makes, each rule by its id and weight, and
+  the engine's softmax of −cost / temperature — are now one module, exported once for every engine: the comes box
+  weighs with it (adding its own two rules, the mode and the imitation; its fans and its canons are the same as
+  before, note for note and cost for cost), and the studies' engines and the agents Claude builds use it. The tests
+  check that the comes box's weights are the module's and that Studies 50 and 51 weigh as it does.
+- **Study 54 · parts**: a given bass realized in three parts — a schema of chapter 2 of IJzerman's book
+  (Fauxbourdon, Monte, 7–6 Fauxbourdon, stepwise Romanesca, Fifth Down Fourth Up, Tied Bass) closed by a cadence of
+  chapter 3 (simple, compound 6/4 or 5/4, Galant, deceptive, half). Each upper voice under Study 51's rules against
+  the bass, the upper voices under their own (the 4th a consonance there), the chords as which intervals sound;
+  counted exactly, drawn uniformly or by the engine. Kernel `studies/54-parts/kairotic/parts.mjs` with its tests
+  (Node and browser) and a page.
+
 - **Study 53 · harmonize** (discussion #256, its first study): an `agent` box — given a melody and a request, Claude
   builds a harmonizer inside it as a sub-patch that can be opened, edited and run again without Claude (the request
   and the melody kept as its recipe). It builds with the study's boxes and writes a `code` box or a class of its own in

@@ -5,10 +5,13 @@
 // dissonance and the mode for each voice and between them, ties and suspensions, fourth species, the system as
 // data, the degree of imitation, the comes inverted or augmented, the futures counted exactly over pairs). After it, what the box adds for playing (`live`): the soft
 // rules of Study 41 as costs, the mode as a spec, and a note asked for (a pitch, any key) corrected to the nearest
-// legal note with a future.
+// legal note with a future. The soft rules are soft.mjs's, the module every engine of Kairotic weighs with; the box
+// adds its own two (the mode, the imitation).
 //
 // A pitch is a diatonic step on the white keys, 0 = C4; the box speaks MIDI and Hz.
-//
+
+import * as soft from "./soft.mjs";
+
 // ─────────────────────────────── the kernel (Study 43) ───────────────────────────────
 
 const mod = (a, m) => ((a % m) + m) % m;
@@ -516,12 +519,8 @@ export const MODES = {
   aeolian: { final: 5, tenor: 4, plagal: false }, hypoaeolian: { final: 5, tenor: 2, plagal: true },
 };
 
-/** The soft rules of Study 41 and their weights (kairotic/canon.cljs there). */
-export const WEIGHTS = {
-  "leap-size": 1, tie: 1.5, "suspension-life": 1.5, "contrary-after-leap": 1.2, "step-back": 1.2, "leap-after-leap": 0.6, return: 1,
-  hover: 0.6, run: 1.5, open: 1, climax: 1.5, sequence: 1.5, motion: 2.5, modal: 1, "direct-perfect": 3,
-  "imperfect-run": 2, passing: 1, alternation: 1.5, imitation: 1, memory: 1, novelty: 0.3,
-};
+/** The soft rules of Study 41 and their weights (kairotic/canon.cljs there): soft.mjs's, shared by every engine. */
+export const WEIGHTS = soft.defaultWeights();
 
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
 const CHROMA = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "G♯", "A", "B♭", "B"];
@@ -531,10 +530,8 @@ export const midiOf = (s) => 60 + semis(s);
 export const midiName = (m) => CHROMA[mod(Math.round(m), 12)] + (Math.floor(Math.round(m) / 12) - 1);
 /** Semitones above C4 for a frequency. */
 export const semisOfHz = (hz) => 12 * Math.log2(hz / 261.6255653005986);
-const LEAP = { 0: 0, 1: 0, 2: 0.2, 3: 0.4, 4: 0.5, 5: 0.8, 7: 0.8 };
 const bitsOf = (c) => (c > 0 ? Math.log2(c) : -1);
-const clean = (parts) => { for (const key of Object.keys(parts)) if (!parts[key]) delete parts[key]; return parts; };
-const total = (parts) => Object.values(parts).reduce((a, v) => a + v, 0);
+const total = soft.total;
 
 /**
  * A canon to play live, note by note. o: {mode, k, d, beats, bars, upbeat, imitation, species, maxHold, spacing,
@@ -594,68 +591,22 @@ export function live(o = {}) {
   const w = { ...WEIGHTS, ...(o.weights || {}) };
   const strong = (t) => (t + phase) % b === 0;
 
+  // the soft rules: those every engine of Kairotic weighs with (soft.mjs), and the comes box's own (modal, imitation)
   /** The soft cost of x after a line (its own shape), by rule; modal: whether the mode's notes count (the dux). */
   function melodicParts(line, x, t, modal) {
-    const parts = {}, prev = line.length ? line[line.length - 1] : null;
+    const parts = {};
     if (modal && (mod(x, N) === mod(tonic, N) || mod(x, N) === mod(tenor, N))) parts.modal = -(w.modal * (b > 1 && strong(t) ? 1.5 : 1));
-    if (prev === null) return clean(parts);
-    if (x === prev) { parts.tie = w.tie; return clean(parts); }
-    // the rest on the notes struck: a note held is one note
-    line = line.filter((y, i) => i === 0 || y !== line[i - 1]);
-    const tl2 = line.length, m2 = tl2 >= 2 ? prev - line[tl2 - 2] : null;
-    return struck(line, x, m2, parts);
-  }
-  function struck(line, x, m, parts) {
-    const tl = line.length, prev = line[tl - 1];
-    const s = x - prev, nn = Math.abs(s), all = [...line, x];
-    const mv = []; for (let i = 1; i < tl; i++) mv.push(line[i] - line[i - 1]); mv.push(s);
-    const L = mv.length;
-    if (nn > 0) parts["leap-size"] = w["leap-size"] * (LEAP[nn] ?? 1.5);
-    if (tl >= 2 && nn > 0 && x === line[tl - 2]) parts.return = w.return;
-    const hov = line.slice(0, -1).slice(-3).filter((y) => y === x).length;
-    if (hov) parts.hover = hov * w.hover;
-    if (m !== null && Math.abs(m) >= 2 && nn > 0 && sign(m) === sign(s)) parts["contrary-after-leap"] = w["contrary-after-leap"] * (nn >= 2 ? 2 : 1);
-    if (m !== null && Math.abs(m) >= 3 && nn > 1) parts["step-back"] = w["step-back"];
-    if (m !== null && Math.abs(m) >= 2 && nn >= 2) parts["leap-after-leap"] = w["leap-after-leap"];
-    if (nn > 0) { let run = 0; for (let i = L - 1; i >= 0 && mv[i] !== 0 && sign(mv[i]) === sign(s); i--) run++; if (run > 4) parts.run = w.run; }
-    if (tl >= 5 && Math.max(...all) - Math.min(...all) < 4) parts.open = w.open;
-    if (tl > 1 && s > 0 && x === Math.max(...line)) parts.climax = w.climax;
-    const same = (i, j, len) => { for (let q = 0; q < len; q++) if (mv[i + q] !== mv[j + q]) return false; return true; };
-    if (L >= 4 && mv[L - 1] === mv[L - 3] && mv[L - 2] === mv[L - 4] && mv[L - 1] !== mv[L - 2]) parts.sequence = w.sequence;
-    else if (L >= 6 && same(L - 3, L - 6, 3)) parts.sequence = (2 / 3) * w.sequence;
-    else if (m !== null && nn > 0) { for (let i = 0; i < L - 3; i++) if (mv[i] === m && mv[i + 1] === s) { parts.memory = -w.memory; break; } }
-    if (m !== null && m === s && nn > 0) parts.novelty = w.novelty;
-    return clean(parts);
+    return Object.assign(parts, soft.melodicParts(line, x, w));
   }
 
   /** The soft cost of the vertical [x c] at the next time, by rule. */
   function verticalParts(D, C, x, c) {
-    const parts = {}, t = D.length, prev = t ? D[t - 1] : null, pc = t ? C[t - 1] : null;
-    if (c === null || pc === null || prev === null) return parts;
-    const dx = x - prev, dc = c - pc, [l, h] = K.lowerFirst(x, c);
-    const motion = dx === 0 && dc === 0 ? "none" : dx === 0 || dc === 0 ? "oblique" : sign(dx) === sign(dc) ? "similar" : "contrary";
-    if (motion === "oblique") parts.motion = 0.5 * w.motion;
-    if (motion === "similar") {
-      parts.motion = 0.8 * w.motion;
-      const cls = mod(h - l, N);
-      if (quality(l, h) === "perfect" && cls === fifth && cls !== 0) parts["direct-perfect"] = w["direct-perfect"];
-      let run = 1;
-      for (let i = t - 1; i >= 1; i--) {
-        const p = D[i], q = C[i], p0 = D[i - 1], q0 = C[i - 1];
-        if (q === null || q0 === null) break;
-        const [ll, hh] = K.lowerFirst(p, q);
-        if (quality(ll, hh) === "imperfect" && mod(hh - ll, N) === cls && sign(p - p0) === sign(q - q0) && p !== p0) run++; else break;
-      }
-      if (quality(l, h) === "imperfect" && run > 3) parts["imperfect-run"] = w["imperfect-run"];
-    }
-    if (b > 1 && !strong(t) && K.dissonant(x, c)) parts.passing = -w.passing;
-    if (K.suspensionAt([...D, x], [...C, c], t)) parts["suspension-life"] = -w["suspension-life"];
-    if (t >= 2) {
-      const vc = (i) => (C[i] === null ? null : mod(Math.abs(D[i] - C[i]), N));
-      const iv = mod(Math.abs(x - c), N), i1 = vc(t - 1), i2 = vc(t - 2);
-      if (i1 !== null && i2 !== null && iv === i2 && iv !== i1) parts.alternation = w.alternation;
-    }
-    return clean(parts);
+    const t = D.length;
+    if (c === null || !t || C[t - 1] === null) return {};
+    return soft.verticalParts(D, C, x, c, {
+      N, strong, quality, fifth, lowerFirst: K.lowerFirst, dissonant: K.dissonant,
+      suspension: K.suspensionAt([...D, x], [...C, c], t),
+    }, w);
   }
 
   /** What the comes's c costs for how it imitates the dux, by the degree. */
@@ -680,18 +631,6 @@ export function live(o = {}) {
     return parts;
   }
 
-  /** The comes's best note with the dux's x next: {note, futures, cost, parts}, or null when none has a future. */
-  /** A choice among candidates by cost: at temperature 0 (or without a random number r in [0, 1)) the cheapest;
-   *  above it a softmax of -cost/temperature, drawn with r. */
-  function softPick(cands, cost, temp, r) {
-    const cs = cands.slice().sort((p, q) => cost(p) - cost(q) || (p.note ?? -100) - (q.note ?? -100));
-    if (!cs.length || !(temp > 0.001) || r === undefined || r === null) return cs[0] || null;
-    const m = cost(cs[0]), ws = cs.map((c) => Math.exp((m - cost(c)) / temp)), x = r * ws.reduce((a, v) => a + v, 0);
-    let acc = 0;
-    for (let j = 0; j < cs.length; j++) { acc += ws[j]; if (x < acc) return cs[j]; }
-    return cs[cs.length - 1];
-  }
-
   /** The comes's note with the dux's x next: the cheapest (at temperature 0), or one drawn by temp with r. */
   function bestComes(D, C, x, temp = 0, r = null) {
     const cands = [];
@@ -700,7 +639,7 @@ export function live(o = {}) {
       const parts = pairParts(D, C, x, e.note);
       cands.push({ note: e.note, futures: e.futures, cost: total(parts), parts });
     }
-    return softPick(cands, (c) => c.cost, temp, r);
+    return soft.pick(cands, (c) => c.cost, temp, r);
   }
 
   /** The dux's candidates next: {note, reason} or {note, futures, cost, comes, score} (score: its cost and the
@@ -761,7 +700,7 @@ export function live(o = {}) {
   /** The engine's own next pair, as play gives it, or null: the most plausible, or with opt {temp, r, r2} the
    *  dux's note drawn by temp with r among the futuribles (by their score), the comes's with r2. */
   function engine(D, C, opt = {}) {
-    const f = softPick(futuribles(D, C), (c) => c.score, opt.temp, opt.r);
+    const f = soft.pick(futuribles(D, C), (c) => c.score, opt.temp, opt.r);
     return f ? play(D, C, semis(f.note), { temp: opt.temp, r: opt.r2 }) : null;
   }
 

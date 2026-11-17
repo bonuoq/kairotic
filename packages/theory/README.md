@@ -41,6 +41,15 @@ Less imitation (`comes dorian -7 3 2 0.8`) lets the comes move near the dux's no
 follow its motion; below 0.2, free counterpoint. Its counterpoint is `counterpoint.mjs`, beside the components
 (Study 41's kernel, the futures of every point counted exactly).
 
+**How every engine weighs its decisions: `soft.mjs`.** The hard rules of a kernel decide what may be; the soft rules
+decide what is likely: a candidate costs something by the shape of its own line (`melodicParts`) and by the vertical
+it makes with another voice (`verticalParts`), each rule by its id and weight (`SOFT`, `defaultWeights()`), and an
+engine chooses among the candidates with a future by a softmax of −cost / temperature (`choose`, `pick`), colder
+where few futures are left (`temperature`). The comes box weighs with it (adding its own two rules, the mode and the
+imitation), and so do the engines of the studies and the agents Claude builds: the same weights mean the same music
+everywhere. A component or an agent reaches it as the page's own copy, `kairotic/packages/theory/soft.mjs`, or from
+npm (`npm:@kairotic/theory@0.13.0/dist/soft.mjs`).
+
 ```clojure
 (box :b1 "keyboard 60 24" 40 30)
 (box :b2 "comes" 40 130)
