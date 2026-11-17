@@ -93,7 +93,8 @@
   (:require [clojure.string :as str]
             [clojure.edn :as edn]
             [kairotic.score :as sc]
-            [kairotic.canvas :as cv]))
+            [kairotic.canvas :as cv]
+            [kairotic.span :as span]))
 
 (defonce registry (atom {}))
 ;; how a musical tree becomes a buffer of strokes (set by kairotic.mtboxes; kairotic.mt is not required here)
@@ -420,8 +421,69 @@
           (num-of value) (let [v (num-of value)] {:state v :out [[0 v]] :show v})
           :else {:state cur})))
 
-(defn reader [{:keys [inlet value buffer buffer-id args]}]
+;; ───── a reader on a ring (kairotic.span): two ways, as a head of Study 47 ─────
+;; · it follows: d behind the ring's head, then its speed (msg :d 1, msg :speed 0.5, or reader d 1 [speed 0.5]),
+;;   moving on its own: every tick it looks a tick ahead and sends what it will cross, each at the instant it meets
+;;   it (so a d shorter than a tick may miss what is written meanwhile); it starts when the ring's time does
+;;   (:start on its buffer wire) or when it gets a d; :stop stops it
+;; · it is moved: a number on the left is a position of the ring (seconds, or 0…1 with norm), from any source; it
+;;   sends what it crosses since the last one, either way; a move larger than its jump is a seek
+;; What it sends: each value as it was written, on the left.
+
+(def ring-tick 0.05)
+
+(defn- word-num [args k] (let [x (second (drop-while #(not= k %) args))] (when (number? x) x)))
+
+(defn reader-on-ring [{:keys [inlet value buffer state args at]}]
+  (let [r buffer st (or state {})
+        speed0 (or (word-num args :speed) 1)
+        jump (or (:jump st) (word-num args :jump) 0.5)
+        drift (fn [st T] (+ (or (:drift0 st) 0) (* (- 1 (:speed st)) (- T (:since st)))))
+        follow (fn [st d]
+                 (let [g (inc (:gen st 0))]
+                   {:state (assoc st :mode :follow :d d :speed (or (:speed st) speed0) :drift0 0 :since at :gen g)
+                    :later [[at 0 [:tick g]]]}))
+        cmd (fn [k] (when (and (vector? value) (= k (first value)) (number? (second value))) (second value)))]
+    (cond
+      ;; the ring's time starts: a reader given a d begins to follow
+      (= inlet 1)
+      (let [d (or (:d st) (word-num args :d))]
+        (if (and (= value :start) d (not= :pos (:mode st))) (follow st d) {}))
+      (cmd :d) (follow st (cmd :d))
+      (cmd :speed)
+      (let [s (cmd :speed)]
+        {:state (if (= :follow (:mode st)) (assoc st :drift0 (drift st at) :since at :speed s) (assoc st :speed s))})
+      (cmd :jump) {:state (assoc st :jump (cmd :jump))}
+      (= value :stop) {:state (-> st (dissoc :mode) (update :gen (fnil inc 0)))}
+      ;; what it meets, at the instant it meets it
+      (and (vector? value) (= :reader/at (first value))) {:out [[0 (second value)]]}
+      (tick? value nil)
+      (if (and (= :follow (:mode st)) (= (second value) (:gen st)))
+        (let [now-p (span/follow-at r st at)
+              next-tick [(+ at ring-tick) 0 [:tick (:gen st)]]]
+          (if (nil? now-p)
+            {:state (dissoc st :p) :later [next-tick]}            ; the ring has not started (or was cleared)
+            (let [end-p (span/follow-at r st (+ at ring-tick))
+                  from (let [p (:p st)] (if (or (nil? p) (> (js/Math.abs (- now-p p)) jump)) now-p p))]
+              {:state (assoc st :p end-p) :show {:ring true :p (span/wrap r now-p)}
+               :later (conj (mapv (fn [[x e]] [(span/when-met now-p at (:speed st) x) 0 [:reader/at (:v e)]])
+                                  (span/crossings r at from end-p))
+                            next-tick)})))
+        {})
+      (num-of value)
+      (let [u (num-of value) l (:dur r)
+            q (if (some #{:norm} args) (* u l) u)
+            prev (when (= :pos (:mode st)) (:p st))
+            p (if prev (+ prev (span/shortest l (span/wrap r prev) q)) q)
+            seek (or (nil? prev) (> (js/Math.abs (- p prev)) jump))]
+        {:state (-> st (assoc :mode :pos :p p) (update :gen (fnil inc 0)))
+         :show {:ring true :p (span/wrap r p)}
+         :out (if seek [] (mapv (fn [[_ e]] [0 (:v e)]) (span/crossings r at prev p)))})
+      :else {})))
+
+(defn reader [{:keys [inlet value buffer buffer-id args] :as m}]
   (cond
+    (span/ring? buffer) (reader-on-ring m)
     ;; reader path [stroke]: a position from 0 to 1 along a stroke, in the order it was drawn → [x y]
     (and (zero? inlet) (num-of value) (some #{:path} args))
     (let [sid (first (remove #{:path} (filter keyword? args)))

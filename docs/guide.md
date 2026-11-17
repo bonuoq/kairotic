@@ -264,6 +264,14 @@ function by itself).
   a punch-in. `:ovr t` (`msg :ovr 4`; `:ovr` alone, from 0) overwrites only what the take covers, from t
   to where it stops, and keeps what came after it — a punch-in/out. A canvas or freqt takes `[:cut t]`
   for that (everything from t on) and `[:cut t1 t2]` (what is between them; a stroke across is split).
+- **A span of time with heads**: a `ring [seconds]` keeps the messages of the last seconds, each at its
+  time; its write head goes round as a tape head. A `reader` on its right outlet is a head of its own:
+  `reader d 1` follows the ring's head 1 s behind — a canon, a delay; two readers, a canon in three voices;
+  `reader d 1 speed 0.5`, an augmentation; at −1 it goes back over what was written. A number on a
+  reader's left moves it instead (a ramp, a counter), either way; a move larger than its `jump` is a seek.
+  A `writer` (what to write · the ring's buffer · a position) writes where it is, from any source, erasing
+  what it passes (or `writer mix`, leaving it); `:rec t` / `:ovr t` send it to t at speed 1. A reader into
+  a writer on the same ring is feedback: a round.
 
 ## 4. The history
 

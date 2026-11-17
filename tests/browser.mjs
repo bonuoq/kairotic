@@ -24,6 +24,7 @@ import { audioin } from "./audioin.mjs";
 import { sounds } from "./sounds.mjs";
 import { analysis } from "./analysis.mjs";
 import { record } from "./record.mjs";
+import { ring } from "./ring.mjs";
 import { layout } from "./layout.mjs";
 import { release } from "./release.mjs";
 import { embed } from "./embed.mjs";
@@ -132,6 +133,7 @@ const audioSuites = [
   ["audioin", audioin, "the audio input tests ran"],
   ["sounds", sounds, "the sound tests ran"],
   ["record", record, "the record tests ran"],
+  ["ring", ring, "the ring tests ran"],
   ["gendy", gendy, "the gendy~ tests ran"],
   ["spectral", spectral, "the shift~ tests ran"],
   ["faustpoly", faustpoly, "the polyphonic faust~ tests ran"],

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **ring, writer, and reader on a ring** (the heads of Study 47 in the app, messages first; discussion "Heads on a
+  span of time"). `ring [seconds]` keeps the messages of the last seconds, each at its time (from its first
+  message); its write head goes round as a tape head, so what is older than one turn is gone; `:clear`, `[:data]`.
+  Its right outlet is the buffer, and says `:start` when its time starts. A `reader` on it is a head of its own,
+  two ways: it **follows** (`reader d 1`, `msg :d 1`; then `speed`: first the distance, then the speed — a canon, a
+  delay, an augmentation, backwards), moving on the engine's clock and sending each value at the instant it meets
+  it; or it is **moved** by numbers on its left (a ramp, a counter; `norm` for 0…1), sending what it crosses either
+  way, a move larger than its `jump` a seek. A `writer` (what to write · the ring's buffer · a position) writes where
+  it is, from any source — without a position, where the ring's head is —, erasing what it passes (`ovr`, silence
+  too) or leaving it (`mix`); `:rec t` / `:ovr t` send it to t at speed 1. A reader into a writer on the same ring is
+  feedback: a round. The model is `core/kairotic/span.cljs` (pure); the boxes are `core/kairotic/ring.cljs` and the
+  reader in `components.cljs`. Tests: `tests/cljs/ring.cljs` (a small engine runs the heads in time) and
+  `tests/ring.mjs` (in the app, with ▶).
 - **`cancrizans` as a score, and the `html` box shows lists as tables** (`@kairotic/theory` 0.8.0). A fifth outlet
   sends the crab as a musical tree, for a `freqt` shown as a score: when the work closes, both voices; live, from the
   middle what is left of your line to read (the beats already read as rests, so the bar stays where it was), and at
