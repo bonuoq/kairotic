@@ -1,0 +1,111 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 52 · continuum · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, its ClojureScript), driven as a person would: presets of
+// resolution, performers, a wire changed, the EDN applied, a performance played with real sound and real Faust, and
+// one played by hand.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  const C = () => window.kairoticContinuum;
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const wait = async (ok, ms = 8000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+  const pick = (id, v) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); };
+  const shown = (sel) => $$(sel).filter((e) => parseFloat(e.getAttribute("opacity") || "1") > 0.05).length;
+  const res = () => Object.fromEntries((C().results() || []).map((r) => [r.id, r]));
+  try {
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticBase = "../kairotic/";
+    const loader = Array.from(doc.querySelectorAll("script:not([src]):not([type])")).map((s) => s.textContent).join("\n");
+    (0, eval)(loader.replace(/window\.addEventListener\("DOMContentLoaded"[\s\S]*$/, ""));
+    window.kairoticKernel = await import("../kairotic/continuum.mjs");
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    is("the phrase: 10 notes, 3 wires", /^10 notes · 3 wires/.test(document.getElementById("status").textContent));
+    is("three resolution lanes", $$(".rlane svg").length === 3);
+    is("dissolve: the start written (heads, stems, a staff), the end strokes", shown("#score .head") >= 5 && shown("#score .stem") >= 2 && shown("#score .staff") > 0 && shown("#score .stroke") >= 3);
+
+    pick("res-preset", "written");
+    is("written: no strokes, a stem on every note but the whole ones, bar lines, the staff all along", shown("#score .stroke") === 0 && shown("#score .stem") >= 8 && shown("#score .bar") >= 2 && shown("#score .semi") === 0);
+    is("… a note between keys gets its accidental (in D: G#, A#… written where the key does not say it)", shown("#score .acc") >= 1);
+    pick("res-preset", "graphic");
+    is("graphic: strokes only (no heads, no staff, no bars), cents where a pitch is between keys",
+       shown("#score .head") === 0 && shown("#score .staff") === 0 && shown("#score .bar") === 0 && shown("#score .stroke") === 10 && $$("#score .lbl").some((t) => /¢/.test(t.textContent)));
+    pick("res-preset", "tempered");
+    is("tempered: heads with lines as long as the notes, on the semitone grid", shown("#score .durline") + shown("#score .gliss") >= 8 && shown("#score .semi") > 0 && shown("#score .staff") === 0);
+    pick("res-preset", "dissolve");
+
+    is("the wires drawn to the electronics' lane (rigid solid, elastic dashed)", $$("#score .wire.rigid").length === 1 && $$("#score .wire.elastic").length === 2 && $$("#score .el").length === 3);
+
+    pick("performer", "steady");
+    let r = res();
+    is("a steady performer: every wire on its note (w3, led, with no gap)", r.w1.status === "on the note" && r.w2.status === "on the note" && r.w3.status === "led" && Math.abs(r.w3.gap) < 1e-9);
+    pick("performer", "breath");
+    r = res();
+    is("a breath longer than w2's tolerance: the electronics went on without the note", r.w2.status === "went on" && r.w2.late > 0);
+    pick("performer", "skip");
+    r = res();
+    is("the rigid note left out: caught up at the next note", r.w1.status === "caught up" && r.w1.at_note === 3);
+    is("what happened is drawn and tabled", $$("#perf .cue").length === 3 && $$("#results tr").length === 4);
+
+    // a wire changed: w1 elastic, led by the electronics
+    const kindSel = document.querySelector('#wires select[data-w="0"][data-f="kind"]');
+    kindSel.value = "elastic"; kindSel.dispatchEvent(new Event("change", { bubbles: true }));
+    const leadSel = document.querySelector('#wires select[data-w="0"][data-f="leader"]');
+    leadSel.value = "electronics"; leadSel.dispatchEvent(new Event("change", { bubbles: true }));
+    r = res();
+    is("w1 made elastic and led by the electronics: it no longer waits for the note left out", C().state().wires[0].kind === "elastic" && r.w1.status === "led");
+    is("… its wire is drawn dashed", $$("#score .wire.elastic").length === 3);
+
+    // the EDN: the tempo and one note changed and applied
+    const ed = document.getElementById("edn");
+    ed.value = ed.value.replace(":bpm 60", ":bpm 90");
+    document.getElementById("apply").click();
+    is("the EDN applied: the tempo is 90", C().state().bpm === 90 && document.getElementById("bpm").value === "90");
+    ed.value = "{:line []}";
+    document.getElementById("apply").click();
+    is("an EDN without notes says so", /^error/.test(document.getElementById("edn-status").textContent));
+
+    pick("line-preset", "gesture");
+    is("the gesture: 8 notes, its own wires", /^8 notes · 3 wires/.test(document.getElementById("status").textContent));
+    pick("line-preset", "phrase");
+
+    // played: a steady performer, the electronics compiled and started by the wires
+    pick("performer", "steady");
+    document.getElementById("play").click();
+    const on = await wait(() => C().faust() === "on", 60000);
+    is("the electronics compiled (faustwasm) and found their four sliders" + (on ? "" : " (" + C().faust() + ")"), on);
+    is("playing", await wait(() => C().playing(), 5000));
+    const done = await wait(() => !C().playing(), 30000);
+    is("the performance ends by itself", done);
+    is("… every wire started the electronics, live (w1, w2, w3)", JSON.stringify(C().started()) === JSON.stringify(["w1", "w2", "w3"]));
+    is("… and decided as offline: on its note, on its note, led", res().w1.status === "on the note" && res().w2.status === "on the note" && res().w3.status === "led");
+
+    // played by hand: a key per note
+    pick("performer", "you");
+    is("you: the button to play the next note waits for Play", document.getElementById("tap").disabled);
+    document.getElementById("play").click();
+    is("… Play opens it", await wait(() => C().playing() && !document.getElementById("tap").disabled, 3000));
+    for (let j = 0; j < 3; j++) { C().tap(); await new Promise((ok) => setTimeout(ok, 300)); }
+    is("three notes played by hand: the rigid wire of the third started on it", res().w1 && res().w1.status === "on the note");
+    document.getElementById("play").click();
+    is("Stop: what was pending is decided (w2 went on, w3 led) but not played", await wait(() => !C().playing(), 2000) && res().w2.status === "went on" && JSON.stringify(C().started()) === JSON.stringify(["w1"]));
+
+    is("no error on the page", errors.length === 0);
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  document.getElementById("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>
