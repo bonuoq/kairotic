@@ -635,7 +635,7 @@ Any value as a tree, like Portal: collections open and close, values coloured by
 
 See also: `fetch`, `print`, `tree`
 
-### euclid · `@kairotic/theory`
+### euclid · `@kairotic/rhythm`
 
 `euclid [k 3] [n 8] [rotation 0] [bars 1] [midi]`
 
@@ -718,7 +718,7 @@ A Euclidean rhythm (Bjorklund, after Toussaint): k onsets as evenly as they can 
 (connect :b13 0 :b14 1)
 ```
 
-See also: `tree`, `mt`, `pcclock`, `pbind`
+See also: `necklace`, `tree`, `mt`, `pcclock`
 
 ### faust~
 
@@ -1396,6 +1396,63 @@ MIDI pitch → Hz (lists too).
 ```
 
 See also: `ftom`, `osc~`
+
+### necklace · `@kairotic/rhythm`
+
+`necklace [n 16] [bars 1] [midi]`
+
+**A rhythm that repeats is a necklace**: k onsets among n pulses around a circle, time clockwise from the top. Seen so it is the same object as a pitch-class set on `pcclock`, and Toussaint measures it with the same geometry.
+
+**Its measures** go out on the right: the **interval vector** — how often each distance between onsets occurs (the son clave: `[0 1 2 2 0 3 2 0]`) —, its **evenness** — the sum of the chords between all pairs of onsets (Block and Douthett: arcs would score the six 4/4 claves the same) — and `:even`, that sum against the Euclidean rhythm's; **deep** when each distance occurs a different number of times (the bembé, as the diatonic scale), **flat** when each occurs once; its **axes** of mirror symmetry, drawn across the circle; its longest **gap**; rhythmic **oddity** (no two onsets halve the cycle); and `:euclid`, the rotation of E(k,n) it is.
+
+**It is an editor too**: pressing a pulse adds or takes away an onset. Its other outlets are `euclid`'s — a musical tree, its `:rtm` map, its pulses —, with the pitches on the right inlet the same way, so a rhythm drawn here goes into trees just as one made there.
+
+A cyclic rhythm on the circle and its geometry (Toussaint): drawn as a polygon with its axes of symmetry; pressing a pulse adds or takes away an onset. Out as euclid (a tree, the :rtm map, the pulses) and its measures: interval vector, evenness, deep, flat, axes, longest gap, oddity, the rotation of E(k,n) it is.
+
+**Arguments**
+
+- `n`: how many pulses before a rhythm arrives (a rhythm brings its own)
+- `bars`: how many bars the tree repeats it, the pitches going on
+- `midi`: numbers on the right inlet are MIDI notes (62), not Hz
+
+**Inlets** 
+
+0. a rhythm: pulses ([1 0 0 1 0 0 1 0], euclid's right outlet), intervals ([3 3 2]), box notation ("x..x..x."), an :rtm map ({:shares [3 3 2]}), a tree with an :rtm, or {:onsets [0 3 6] :n 8} · a number: that pulse added or taken away · :complement · [:rotate 1] · [:n 12] · [:bars 2] · [:meter "3/4"] · :clear · a bang sends it again
+1. the pitches (cold), as euclid's: a list of Hz (MIDI with midi), a melody string, a map with :pitches or :pitch, a pattern {:note [...]} · :clear
+
+**Outlets** 
+
+0. the rhythm as a musical tree, for a tree box (as euclid's)
+1. the :rtm map alone, to merge with pitches
+2. the pulses, ones and zeros
+3. its measures: {:n :k :onsets :intervals :ivec :evenness :even :deep :flat :axes :gap :oddity :euclid}
+
+**Messages and gestures**
+
+- `"x..x..x...x.x..."`: the son clave, in box notation
+- `[3 3 2]`: the tresillo, as intervals
+- `:complement`: onsets and silences swapped
+- `[:rotate 1]`: it starts a pulse later
+- `[:n 12]`: a circle of twelve pulses (onsets past it are lost)
+
+**Try:** Click the son, the rumba and the bossa nova (three of Toussaint's six 4/4 claves): each necklace, its axes, and its measures in the REPL — the son's interval vector [0 1 2 2 0 3 2 0], the rumba less even than the bossa nova, the bossa nova E(5,16) from pulse 6. Press pulses to make one of your own: the tree box follows.
+
+```clojure
+(box :b1 "msg \"x..x..x...x.x...\"" 40 20)
+(box :b2 "msg \"x..x...x..x.x...\"" 220 20)
+(box :b3 "msg \"x..x..x...x..x..\"" 400 20)
+(box :b4 "necklace" 40 70)
+(box :b5 "print" 40 340)
+(box :b6 "tree" 280 70)
+(resize :b6 420 160)
+(connect :b1 0 :b4 0)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b4 0)
+(connect :b4 3 :b5 0)
+(connect :b4 0 :b6 0)
+```
+
+See also: `euclid`, `pcclock`, `fourier`, `tree`
 
 ### number
 
