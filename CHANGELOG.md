@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Study 52 · continuum** (discussion #217, its first study): one line of events drawn at a resolution per axis —
+  time (proportional → metric), pitch (Hz → a semitone grid → the staff, spelled in the key), glyph (a stroke → a
+  head with a duration line → a note value) — each changing over time, so a phrase can begin written and dissolve
+  into proportional notation and strokes over the same data. Live electronics wired to its notes: rigid (on the
+  note; a note left out caught up at the next) or elastic (expected from the performer's last note; the performer
+  leads and the electronics wait up to a tolerance, or the electronics lead and the performer follows). One
+  follower decides offline (simulated performers) and live (a key per note); the electronics are a faust~. Kernel
+  `studies/52-continuum/kairotic/continuum.mjs` with its tests (Node and browser) and a page in ClojureScript.
+
 - **Study 51 · schemata**: a given bass realized in two parts, as a partimento is — the schemata of chapter 1 of
   Job IJzerman's *Harmony, Counterpoint, Partimento* as data (parallel 3rds and 6ths, 3–6, Third Down Second Up,
   7–6, 2–3, Fifth Down Fourth Up 7–3, Tied Bass 2–6), in any key. The upper voice is written unit by unit under the

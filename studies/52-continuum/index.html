@@ -1,0 +1,797 @@
+<meta charset="utf-8">
+<title>Kairotic Study 52 · Continuum</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the line (one SVG: the line drawn at its resolutions, the electronics' lane under it and
+   the wires between them), the three resolutions drawn over time; the wires and the performer; what happened
+   (the performance in real time and each wire's decision); the electronics (a faust~'s code); the EDN; about. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f; --warn: #a86a00;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button.act.on { border-color: var(--accent); background: var(--accent-soft); }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 5.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.err { color: var(--error); font-size: 12px; }
+textarea.src { width: 100%; min-height: 11em; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; tab-size: 2; white-space: pre; }
+.scroll { overflow-x: auto; }
+
+/* the line */
+svg.score { display: block; width: 100%; min-width: 640px; height: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+svg.score .staff { stroke: var(--ink); stroke-width: 1; }
+svg.score .semi { stroke: var(--accent); stroke-width: 0.6; }
+svg.score .bar { stroke: var(--ink); stroke-width: 1.2; }
+svg.score .ledger { stroke: var(--ink); stroke-width: 1.1; }
+svg.score .stroke { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; }
+svg.score .head { fill: var(--ink); stroke: var(--ink); stroke-width: 1.3; }
+svg.score .durline, svg.score .gliss { stroke: var(--ink); stroke-width: 1.6; fill: none; }
+svg.score .stem { stroke: var(--ink); stroke-width: 1.3; }
+svg.score .flag { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; }
+svg.score .acc { font: 16px serif; fill: var(--ink); }
+svg.score .clef { font: 54px serif; fill: var(--ink); }
+svg.score .lbl { font: 10px var(--f-code); fill: var(--ink-soft); }
+svg.score .lane { fill: var(--paper); stroke: var(--grid); }
+svg.score .el { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
+svg.score .el.bell { fill: rgba(180, 71, 46, 0.14); stroke: var(--kairos); }
+svg.score .wire { fill: none; stroke-width: 1.6; }
+svg.score .wire.rigid { stroke: var(--ink); }
+svg.score .wire.elastic { stroke: var(--kairos); stroke-dasharray: 5 4; }
+svg.score .tol { fill: rgba(180, 71, 46, 0.12); stroke: none; }
+svg.score .anchor { fill: none; stroke: var(--kairos); stroke-width: 1.6; }
+svg.score .arrow { fill: var(--kairos); }
+svg.score .arrow.rigid { fill: var(--ink); }
+svg.score .idx { font: 9px var(--f-code); fill: var(--ink-soft); }
+
+/* the three resolutions, drawn over the line's time */
+.lanes { display: grid; gap: 4px; }
+.rlane { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 8px; align-items: stretch; }
+.rlane .name { font-size: 12px; display: grid; align-content: center; gap: 1px; }
+.rlane .name b { font: 600 12px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; }
+.rlane .name span { color: var(--ink-soft); font: 10.5px var(--f-code); }
+.rlane svg { display: block; width: 100%; height: 46px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; touch-action: none; cursor: crosshair; }
+.rlane .c { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.rlane .mid { stroke: var(--grid); stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+@media (max-width: 640px) { .rlane { grid-template-columns: minmax(0, 1fr); } .rlane .name { grid-auto-flow: column; justify-content: start; gap: 8px; } }
+
+/* the wires */
+table.wires, table.res { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.wires th, table.wires td, table.res th, table.res td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+table.wires th, table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+table.wires select, table.wires input { font-size: 12px; padding: 3px 4px; }
+table.res td { font: 12px var(--f-code); font-variant-numeric: tabular-nums; }
+table.res td.st-on { color: var(--ok); } table.res td.st-led { color: var(--accent); }
+table.res td.st-went { color: var(--warn); } table.res td.st-caught { color: var(--kairos); } table.res td.st-never { color: var(--error); }
+
+/* the performance in real time */
+svg.perf { display: block; width: 100%; min-width: 560px; height: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+svg.perf .axis { stroke: var(--grid); }
+svg.perf .t { font: 10px var(--f-code); fill: var(--ink-soft); }
+svg.perf .written { stroke: var(--rule); stroke-width: 2; }
+svg.perf .played { stroke: var(--ink); stroke-width: 2.4; }
+svg.perf .shift { stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 2 2; }
+svg.perf .cue { stroke-width: 3; }
+svg.perf .cue.on { stroke: var(--ok); } svg.perf .cue.led { stroke: var(--accent); } svg.perf .cue.went { stroke: var(--warn); }
+svg.perf .cue.caught { stroke: var(--kairos); }
+svg.perf .exp { stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 3 2; }
+svg.perf .head { stroke: var(--accent); stroke-width: 1.5; }
+svg.perf .rowl { font: 600 10px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; fill: var(--ink-soft); }
+
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+table.cmp { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.cmp th, table.cmp td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+table.cmp th { font: 500 11px var(--f-ui); color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+</style>
+<main>
+<header>
+  <h1>Study 52 · continuum</h1>
+  <span class="sub">One line, from a note in a bar to a stroke in Hz and seconds, and the electronics wired to its notes</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<section class="panel" aria-labelledby="h-line">
+  <h2 id="h-line">The line <span>each axis has its own resolution, and it changes over time: draw it in the lanes below</span></h2>
+  <div class="row">
+    <label class="inline" for="res-preset">Resolution <select id="res-preset">
+      <option value="dissolve" selected>dissolve: written → stroke</option>
+      <option value="crystallize">crystallize: stroke → written</option>
+      <option value="written">written (a staff, bars, values)</option>
+      <option value="proportional">proportional (heads and lines on a staff)</option>
+      <option value="tempered">tempered (heads on the semitone grid)</option>
+      <option value="graphic">graphic (strokes in Hz and seconds)</option>
+      <option value="mixed">mixed: time free, pitch written, glyph in between</option>
+    </select></label>
+    <label class="inline" for="line-preset">Line <select id="line-preset">
+      <option value="phrase" selected>a phrase in D</option>
+      <option value="gesture">a gesture</option>
+    </select></label>
+    <label class="inline" for="key">Key <select id="key">
+      <option value="-3">E♭ (3♭)</option><option value="-2">B♭ (2♭)</option><option value="-1">F (1♭)</option>
+      <option value="0">C</option><option value="1">G (1♯)</option><option value="2">D (2♯)</option><option value="3">A (3♯)</option>
+    </select></label>
+    <label class="inline" for="bpm">Tempo <input type="number" id="bpm" min="30" max="200" step="1" value="60"></label>
+  </div>
+  <div class="scroll"><svg class="score" id="score" viewBox="0 0 1000 330" role="img" aria-label="The line and the electronics"></svg></div>
+  <div class="lanes" id="lanes"></div>
+  <p class="note">Each axis glides on its own. <b>Time</b>: 0 where a note sounds (proportional) → 1 where it is written in a bar (on a grid of sixteenths, bar lines drawn). <b>Pitch</b>: 0 its exact frequency → ½ the nearest key (a semitone grid) → 1 its step on the staff, spelled in the key (an accidental where the signature does not say it). <b>Glyph</b>: 0 a stroke as thick as the note is loud, following its glissando → a head with a line as long as the note (proportional notation) → a note value with stem and flags, which needs metric time too. The lanes are drawn with the pointer; a preset begins them.</p>
+</section>
+
+<div class="two">
+  <section class="panel" aria-labelledby="h-wires">
+    <h2 id="h-wires">Wires <span>a note of the line → an event of the electronics</span></h2>
+    <table class="wires" id="wires"></table>
+    <p class="note"><b>Rigid</b>: the electronics start on the note itself, however late; a note left out is caught up at the next one played. <b>Elastic</b>: they expect the note where the performer's tempo puts it (the last note played, shifted as it was); if the <b>performer</b> leads they wait for it up to the tolerance and then go on without it; if the <b>electronics</b> lead they start at that time and the performer follows.</p>
+  </section>
+  <section class="panel" aria-labelledby="h-perf">
+    <h2 id="h-perf">The performer <span>a simulated one, or you</span></h2>
+    <div class="row">
+      <label class="inline" for="performer">Plays <select id="performer">
+        <option value="steady">steady (as written)</option>
+        <option value="rubato" selected>with rubato</option>
+        <option value="breath">a long breath before the elastic note</option>
+        <option value="skip">leaving out the rigid note</option>
+        <option value="you">you: a key (or the button) for each note</option>
+      </select></label>
+      <label class="inline" for="seed">Seed <input type="number" id="seed" min="1" max="999" step="1" value="3"></label>
+    </div>
+    <div class="row">
+      <button class="act primary" id="play">▶ Play</button>
+      <button class="act" id="tap" disabled>● Next note</button>
+      <span class="facts" id="facts-play"></span>
+    </div>
+    <div class="err" id="err" hidden></div>
+  </section>
+</div>
+
+<section class="panel" aria-labelledby="h-what">
+  <h2 id="h-what">What happened <span>in real time: the notes as written (grey) and as played, and when each wire started the electronics</span></h2>
+  <div class="scroll"><svg class="perf" id="perf" viewBox="0 0 1000 120" role="img" aria-label="The performance in real time"></svg></div>
+  <table class="res" id="results"></table>
+</section>
+
+<div class="two">
+  <section class="panel" aria-labelledby="h-el">
+    <h2 id="h-el">The electronics <span>a faust~: its sliders <code>drone_freq</code>, <code>drone_gate</code>, <code>bell_freq</code>, <code>bell</code></span></h2>
+    <textarea class="src" id="code" spellcheck="false" aria-label="Faust code of the electronics"></textarea>
+    <div class="row"><button class="act" id="compile">Compile</button><span class="facts" id="faust-status">—</span></div>
+  </section>
+  <section class="panel" aria-labelledby="h-edn">
+    <h2 id="h-edn">As EDN <span>the line, its resolutions, the wires and the electronics: edit and apply</span></h2>
+    <textarea class="src" id="edn" spellcheck="false" aria-label="The study as EDN"></textarea>
+    <div class="row"><button class="act" id="apply">Apply</button><span class="facts" id="edn-status"></span></div>
+  </section>
+</div>
+
+<section class="panel">
+  <h2>About</h2>
+  <p class="about"><b>Study 52.</b> The first study of discussion #217. Notation as <b>projections of one line of events at a resolution per axis</b> — time, pitch, glyph — each free to change over time, so a phrase can begin on a staff, in bars, as note values, and dissolve into proportional notation and then into strokes in Hz and seconds, with the same data underneath: a continuous transition, not blocks side by side. And the <b>synchronisation of live electronics drawn as wires</b> from the notes to the events they start, rigid or elastic, with who leads. A follower that hears every note decides, wire by wire, when the electronics start; the kernel (<code>kairotic/continuum.mjs</code>, plain data in and out) is tested in Node and in the browser, and the same follower decides offline (what a simulated performer would get) and live (you, a key per note).</p>
+  <h2 style="margin-top:6px">In the app</h2>
+  <table class="cmp">
+    <tr><th>here</th><th>in the app</th></tr>
+    <tr><td>one line drawn at three resolutions</td><td>a view of a tree/freqt box with a resolution per axis (to do; Verovio stays the engraver of the written end)</td></tr>
+    <tr><td>the resolution lanes</td><td>curves kept with the work, editable as code (EDN) like any buffer</td></tr>
+    <tr><td>wires from notes to electronics</td><td>wires on the patch's score layer, anchored to a note's id, to any box (to do)</td></tr>
+    <tr><td>the follower</td><td>fed by a pedal, a key, or a score follower (#204)</td></tr>
+  </table>
+  <h2 style="margin-top:6px">What it leaves open</h2>
+  <ul class="q">
+    <li>A <b>conditional</b> wire: the electronics choose between branches and the performer's notation changes as they do.</li>
+    <li>Where a written note stops being exact: a value that is no value (1¼ beats) is drawn as the nearest one; ties are not written yet.</li>
+    <li>Verovio's engraving for the written end (its SVG keeps each note's id, which wires could anchor to).</li>
+  </ul>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
+// is read first, as window.kairoticKernel; Faust is compiled in the page by faustwasm, as the app does it.
+window.kairoticBase = window.kairoticBase || "kairotic/";
+window.kairoticLoadFaust = window.kairoticLoadFaust || function () {
+  return import("https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js")
+    .then(function (F) {
+      return F.instantiateFaustModule().then(function (mod) { return { F: F, compiler: new F.FaustCompiler(new F.LibFaust(mod)) }; });
+    });
+};
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  import("./" + window.kairoticBase + "continuum.mjs").then(function (k) {
+    window.kairoticKernel = k;
+    scittle.core.eval_string(document.getElementById("page-cljs").textContent);
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns continuum-page (:require [clojure.string :as str] [clojure.edn :as edn]))
+
+;; Kairotic · Study 52 · continuum: the page. The kernel (kairotic/continuum.mjs) projects the line and follows the
+;; performer; this page keeps the state, draws, and plays: the performer's notes with Web Audio, the electronics with
+;; a faust~ compiled here (faustwasm).
+
+(def K (.-kairoticKernel js/window))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
+(defn r2 [x] (/ (js/Math.round (* 100 x)) 100))
+(defn f2 [x] (if (nil? x) "—" (.toFixed x 2)))
+(defn hz [m] (r2 (* 440 (js/Math.pow 2 (/ (- m 69) 12)))))
+
+;; ───────── lines, resolutions, wires ─────────
+
+(defn ev
+  ([t dur m] (ev t dur m 0.6 nil))
+  ([t dur m amp] (ev t dur m amp nil))
+  ([t dur m amp m2] (cond-> {:t t :dur dur :hz (hz m) :amp amp} m2 (assoc :hz2 (hz m2)))))
+
+(def lines
+  {"phrase" {:bpm 60 :key 2 :meter 4
+             :line [(ev 0 0.5 62 0.5) (ev 0.5 0.5 64 0.55) (ev 1 1 66 0.7) (ev 2 0.5 69 0.6) (ev 2.55 0.45 67.8 0.4)
+                    (ev 3.05 1.4 71 0.75 74) (ev 4.55 0.4 73.3 0.5) (ev 5 1 74 0.9) (ev 6.1 0.35 76.4 0.3)
+                    (ev 6.5 1.6 69 0.55 61.5)]
+             :wires [{:id "w1" :note 2 :kind "rigid"}
+                     {:id "w2" :note 5 :kind "elastic" :leader "performer" :tol 0.4}
+                     {:id "w3" :note 9 :kind "elastic" :leader "electronics" :tol 0}]
+             :electronics [{:wire "w1" :kind "drone" :hz 73.42 :dur 3.2}
+                           {:wire "w2" :kind "bell" :hz 987.77 :dur 2.2}
+                           {:wire "w3" :kind "drone" :hz 55 :dur 2.6}]}
+   "gesture" {:bpm 72 :key 0 :meter 4
+              :line [(ev 0 1.2 55 0.3 67.4) (ev 1.3 0.2 70.6 0.8) (ev 1.55 0.2 69.1 0.7) (ev 1.8 0.9 66.5 0.4 72.2)
+                     (ev 2.9 0.15 80 0.9) (ev 3.2 2 60.3 0.25 58) (ev 5.4 0.3 75 0.6) (ev 5.8 1.4 77 0.8 64)]
+              :wires [{:id "w1" :note 1 :kind "elastic" :leader "performer" :tol 0.3}
+                      {:id "w2" :note 4 :kind "rigid"}
+                      {:id "w3" :note 6 :kind "elastic" :leader "electronics" :tol 0}]
+              :electronics [{:wire "w1" :kind "bell" :hz 1864.66 :dur 1.6}
+                            {:wire "w2" :kind "drone" :hz 82.41 :dur 2.6}
+                            {:wire "w3" :kind "bell" :hz 659.26 :dur 2}]}})
+
+(def N 41)   ; samples of a resolution lane over the line's time
+
+(def res-presets
+  {"written"      {:time (constantly 1) :pitch (constantly 1) :glyph (constantly 1)}
+   "proportional" {:time (constantly 0) :pitch (constantly 1) :glyph (constantly 0.5)}
+   "tempered"     {:time (constantly 0) :pitch (constantly 0.5) :glyph (constantly 0.5)}
+   "graphic"      {:time (constantly 0) :pitch (constantly 0) :glyph (constantly 0)}
+   "mixed"        {:time (constantly 0) :pitch (constantly 1) :glyph (constantly 0.6)}
+   "dissolve"     {:time  (fn [u] (min 1 (max 0 (- 1 (* 2.2 (- u 0.18))))))
+                   :pitch (fn [u] (min 1 (max 0 (- 1 (* 1.6 (- u 0.35))))))
+                   :glyph (fn [u] (min 1 (max 0 (- 1 (* 1.5 (- u 0.25))))))}
+   "crystallize"  {:time  (fn [u] (min 1 (max 0 (* 2.2 (- u 0.45)))))
+                   :pitch (fn [u] (min 1 (max 0 (* 1.6 (- u 0.2)))))
+                   :glyph (fn [u] (min 1 (max 0 (* 1.5 (- u 0.3)))))}})
+
+(def faust-code
+  (str "import(\"stdfaust.lib\");\n"
+       "// the electronics: a drone and a bell, started by the wires\n"
+       "dfreq = hslider(\"drone_freq\", 73.4, 30, 2000, 0.01) : si.smoo;\n"
+       "dgate = hslider(\"drone_gate\", 0, 0, 1, 1);\n"
+       "bfreq = hslider(\"bell_freq\", 880, 60, 5000, 0.01);\n"
+       "bell = hslider(\"bell\", 0, 0, 1, 1);\n"
+       "denv = en.asr(1.2, 1, 2.5, dgate);\n"
+       "drone = (os.sawtooth(dfreq) + os.sawtooth(dfreq * 1.004) + 0.6 * os.sawtooth(dfreq * 1.5)) * 0.07\n"
+       "      : fi.lowpass(2, 300 + 1200 * denv) * denv;\n"
+       "partial(r, a, d) = os.osc(bfreq * r) * a * en.ar(0.002, d, bell);\n"
+       "bellsig = partial(1, 0.22, 2.4) + partial(2.76, 0.12, 1.3) + partial(5.4, 0.07, 0.7) + partial(8.93, 0.04, 0.4);\n"
+       "process = (drone + bellsig) * 0.8 <: _, _;\n"))
+
+(defonce ui (atom {:line-preset "phrase" :res-preset "dissolve" :performer "rubato" :seed 3
+                   :code faust-code :faust {:status "—"} :run nil :error nil}))
+(defonce au (atom {}))   ; :ac :node :params :timer :follower :t0 :perf :fed :tapped
+
+(defn line-end [line] (reduce max 0 (map #(+ (:t %) (:dur %)) line)))
+
+(defn sample-res [preset]
+  (let [p (get res-presets preset)]
+    (into {} (for [ax [:time :pitch :glyph]]
+               [ax (mapv (fn [i] (r2 ((get p ax) (/ i (dec N))))) (range N))]))))
+
+(defn curves
+  "The lanes as the kernel's curves: [[t r] …] over the line's time."
+  []
+  (let [{:keys [res line]} @ui, end (line-end line)]
+    (into {} (for [[ax xs] res] [ax (vec (map-indexed (fn [i r] [(* end (/ i (dec N))) r]) xs))]))))
+
+(defn opts [] (clj->js (select-keys @ui [:bpm :key :meter])))
+
+(defn load-line! [k]
+  (let [l (get lines k)]
+    (swap! ui merge l {:line-preset k :run nil})))
+
+;; ───────── drawing the line ─────────
+
+(def W 1000) (def X0 70) (def STEP 6) (def BASE 170)     ; x of time 0, px per diatonic step, y of E4
+(defn sx [t end] (+ X0 (* (- W X0 30) (/ t (max end 0.001)))))
+(defn sy [step] (- BASE (* STEP step)))
+(def LANE-Y 262) (def LANE-H 52)
+
+(defn op [a] (r2 (max 0 (min 1 a))))
+
+(defn draw-staff [p end]
+  (let [slices 80 dt (/ end slices)]
+    (str
+     ;; staff lines and the semitone grid, slice by slice: each slice as present as its resolution says
+     (str/join
+      (for [s (range slices)]
+        (let [t (* s dt) a (.staffAlpha p (+ t (/ dt 2))) g (.gridAlpha p (+ t (/ dt 2)))
+              x0 (sx t end) x1 (sx (+ t dt) end)]
+          (str (when (> a 0.01)
+                 (str/join (for [k [0 2 4 6 8]] (str "<line class='staff' x1='" x0 "' x2='" x1 "' y1='" (sy k) "' y2='" (sy k) "' opacity='" (op a) "'/>"))))
+               (when (> g 0.01)
+                 (str/join (for [m (range -6 21)]
+                             (let [y (sy (* m (/ 7 12)))]
+                               (str "<line class='semi' x1='" x0 "' x2='" x1 "' y1='" y "' y2='" y "' opacity='" (op (* 0.55 g (if (zero? (mod m 12)) 1.6 1))) "'/>")))))))))
+     ;; a clef where the start is written
+     (let [a (.staffAlpha p 0)] (when (> a 0.01) (str "<text class='clef' x='" (- X0 58) "' y='" (+ (sy 0) 12) "' opacity='" (op a) "'>𝄞</text>")))
+     ;; bar lines where time is metric
+     (str/join (for [b (array-seq (.-bars p))]
+                 (let [a (* (.-alpha b) (max (.staffAlpha p (.-x b)) 0.35))]
+                   (when (> a 0.02) (str "<line class='bar' x1='" (sx (.-x b) end) "' x2='" (sx (.-x b) end) "' y1='" (sy 8) "' y2='" (sy 0) "' opacity='" (op a) "'/>"))))))))
+
+(defn draw-note [n end p]
+  (let [x (sx (.-x n) end) x1 (sx (.-x1 n) end) y (sy (.-y n)) y1 (sy (.-y1 n))
+        r (.-r n) head (.-head n) stroke (.-stroke n) staffa (.staffAlpha p (.-x n))
+        up (< (.-y n) 4) sdir (if up -1 1)]
+    (str
+     ;; the stroke: where it sounds, as thick as it is loud
+     (when (> stroke 0.01)
+       (str "<path class='stroke' d='M" x " " y " L" x1 " " y1 "' stroke-width='" (r2 (+ 2 (* 10 (.-thick n)))) "' opacity='" (op (* 0.85 stroke)) "'/>"))
+     (when (> head 0.01)
+       (str
+        ;; ledger lines for a written note off the staff
+        (when (> staffa 0.01)
+          (let [st (js/Math.round (.-y n))
+                ls (concat (when (< st 0) (range -2 (dec st) -2)) (when (> st 8) (range 10 (inc st) 2)))]
+            (str/join (for [l ls] (str "<line class='ledger' x1='" (- x 10) "' x2='" (+ x 10) "' y1='" (sy l) "' y2='" (sy l) "' opacity='" (op (* head staffa)) "'/>")))))
+        ;; a line as long as it lasts (proportional) or a glissando to its end
+        (when (> (.-durLine n) 0.01)
+          (if (.-gliss n)
+            (str "<path class='gliss' d='M" (+ x 7) " " y " L" x1 " " y1 "' opacity='" (op (.-durLine n)) "'/>")
+            (str "<line class='durline' x1='" (+ x 7) "' x2='" x1 "' y1='" y "' y2='" y "' opacity='" (op (.-durLine n)) "'/>")))
+        (when (and (.-gliss n) (> (.-stem n) 0.01))
+          (str "<path class='gliss' d='M" (+ x 8) " " y " L" (- x1 4) " " y1 "' opacity='" (op (.-stem n)) "'/>"))
+        ;; the head: filled, unless the value is a half or a whole and time is written
+        (let [fill (if (.-filled n) 1 (- 1 (.-time r)))]
+          (str "<ellipse class='head' cx='" x "' cy='" y "' rx='6.6' ry='4.6' transform='rotate(-20 " x " " y ")' fill-opacity='" (op fill) "' opacity='" (op head) "'/>"))
+        ;; stem and flags: a note value
+        (when (> (.-stem n) 0.01)
+          (let [sxp (if up (+ x 6) (- x 6)) y2 (+ y (* sdir 42))]
+            (str "<line class='stem' x1='" sxp "' x2='" sxp "' y1='" y "' y2='" y2 "' opacity='" (op (.-stem n)) "'/>"
+                 (str/join (for [k (range (.-flags n))]
+                             (let [fy (- y2 (* sdir k 8))]
+                               (str "<path class='flag' d='M" sxp " " fy " q 9 " (* -1 sdir 8) " 8 " (* -1 sdir 18) "' opacity='" (op (.-stem n)) "'/>")))))))
+        (when (and (pos? (.-dots n)) (> (.-stem n) 0.01))
+          (str "<circle cx='" (+ x 11) "' cy='" (- y 2) "' r='1.8' class='head' opacity='" (op (.-stem n)) "'/>"))
+        ;; the accidental, where the key does not say it
+        (when (> (.-accAlpha n) 0.01)
+          (str "<text class='acc' x='" (- x 19) "' y='" (+ y 5) "' opacity='" (op (.-accAlpha n)) "'>" (.-acc n) "</text>"))))
+     ;; its pitch in cents when it is free (the grid would round it)
+     (when (and (< (.. n -r -pitch) 0.25) (not= 0 (.-cents n)))
+       (str "<text class='lbl' x='" (+ x 4) "' y='" (- y 9) "' opacity='" (op (- 1 (* 4 (.. n -r -pitch)))) "'>" (if (pos? (.-cents n)) "+" "") (.-cents n) "¢</text>")))))
+
+(defn draw-electronics [p end]
+  (let [{:keys [wires electronics line]} @ui
+        notes (.-notes p)
+        by-wire (into {} (map (juxt :wire identity) electronics))]
+    (str
+     "<rect class='lane' x='" X0 "' y='" LANE-Y "' width='" (- W X0 30) "' height='" LANE-H "' rx='3'/>"
+     "<text class='lbl' x='8' y='" (+ LANE-Y 18) "'>electronics</text>"
+     "<text class='lbl' x='8' y='" (+ LANE-Y 32) "'>(a faust~)</text>"
+     (str/join
+      (for [w wires]
+        (let [n (aget notes (:note w)) e (get by-wire (:id w))
+              x (sx (.-x n) end) y (sy (.-y n))
+              ex x ew (* (- W X0 30) (/ (:dur e 1) end))
+              bell? (= "bell" (:kind e)) kind (:kind w) lead-e (= "electronics" (:leader w))
+              top (+ LANE-Y 6) h (- LANE-H 12)]
+          (str
+           ;; the event: a band for a drone, a decay for a bell
+           (if bell?
+             (str "<path class='el bell' d='M" ex " " (+ top h) " L" ex " " top " Q" (+ ex (* 0.25 ew)) " " (+ top (* 0.8 h)) " " (+ ex ew) " " (+ top h) " Z'/>")
+             (str "<rect class='el' x='" ex "' y='" (+ top 8) "' width='" ew "' height='" (- h 16) "' rx='3'/>"))
+           "<text class='lbl' x='" (+ ex 4) "' y='" (+ top h -4) "'>" (:id w) " · " (:kind e) " " (r2 (:hz e)) " Hz</text>"
+           ;; the tolerance around the expected time of an elastic wire
+           (when (and (= kind "elastic") (pos? (:tol w 0)))
+             (str "<rect class='tol' x='" ex "' y='" (- top 4) "' width='" (* (- W X0 30) (/ (:tol w) end)) "' height='" (+ h 8) "'/>"))
+           ;; the anchor around the note, and the wire down to the event
+           "<circle class='anchor' cx='" x "' cy='" y "' r='10'/>"
+           "<path class='wire " kind "' d='M" x " " (+ y 10) " C" x " " (- top 40) " " ex " " (- top 50) " " ex " " top "'/>"
+           ;; the arrow points at who follows: down if the performer leads, up if the electronics do
+           (if lead-e
+             (str "<path class='arrow " kind "' d='M" (- x 4) " " (+ y 19) " L" x " " (+ y 11) " L" (+ x 4) " " (+ y 19) " Z'/>")
+             (str "<path class='arrow " kind "' d='M" (- ex 4) " " (- top 8) " L" ex " " top " L" (+ ex 4) " " (- top 8) " Z'/>")))))))))
+
+(defn projection [] (.project K (clj->js (:line @ui)) (clj->js (curves)) (opts)))
+
+(defn draw-score! []
+  (let [{:keys [line]} @ui end (line-end line) p (projection)]
+    (set! (.-innerHTML ($ "score"))
+          (str (draw-staff p end)
+               (str/join (for [n (array-seq (.-notes p))] (draw-note n end p)))
+               (str/join (map-indexed (fn [i n] (str "<text class='idx' x='" (sx (.-x n) end) "' y='" (- BASE 112) "' text-anchor='middle'>" i "</text>")) (array-seq (.-notes p))))
+               (draw-electronics p end)))))
+
+;; ───────── the resolution lanes ─────────
+
+(def lane-info {:time ["time" "0 sounding → 1 bar"] :pitch ["pitch" "0 Hz · ½ keys · 1 staff"] :glyph ["glyph" "0 stroke → 1 value"]})
+
+(defn draw-lane! [ax]
+  (let [xs (get-in @ui [:res ax])
+        pts (map-indexed (fn [i r] (str (* 1000 (/ i (dec N))) "," (- 100 (* 100 r)))) xs)]
+    (set! (.-innerHTML ($ (str "lane-" (name ax))))
+          (str "<line class='mid' x1='0' x2='1000' y1='50' y2='50'/>"
+               "<polygon class='c' points='0,100 " (str/join " " pts) " 1000,100'/>"))))
+
+(declare redraw! preview!)
+
+(defn lane-set! [ax e]
+  (let [svg ($ (str "lane-" (name ax))) b (.getBoundingClientRect svg)
+        u (max 0 (min 1 (/ (- (.-clientX e) (.-left b)) (.-width b))))
+        r (r2 (max 0 (min 1 (- 1 (/ (- (.-clientY e) (.-top b)) (.-height b))))))
+        i (js/Math.round (* u (dec N)))]
+    (swap! ui (fn [s] (-> s (assoc-in [:res ax i] r) (assoc :res-preset "drawn"))))
+    (draw-lane! ax) (draw-score!)))
+
+(defn build-lanes! []
+  (set! (.-innerHTML ($ "lanes"))
+        (str/join (for [ax [:time :pitch :glyph]]
+                    (let [[nm sub] (get lane-info ax)]
+                      (str "<div class='rlane'><div class='name'><b>" nm "</b><span>" sub "</span></div>"
+                           "<svg id='lane-" (name ax) "' data-lane='" (name ax) "' viewBox='0 0 1000 100' preserveAspectRatio='none' aria-label='" nm " resolution over time'></svg></div>")))))
+  (doseq [ax [:time :pitch :glyph]]
+    (let [svg ($ (str "lane-" (name ax))) down (atom false)]
+      (.addEventListener svg "pointerdown" (fn [e] (reset! down true) (.setPointerCapture svg (.-pointerId e)) (lane-set! ax e)))
+      (.addEventListener svg "pointermove" (fn [e] (when @down (lane-set! ax e))))
+      (.addEventListener svg "pointerup" (fn [_] (reset! down false) (preview!) (redraw!))))))
+
+;; ───────── wires ─────────
+
+(defn draw-wires! []
+  (let [{:keys [wires electronics line]} @ui
+        by-wire (into {} (map (juxt :wire identity) electronics))
+        opts-of (fn [vs v] (str/join (for [[k t] vs] (str "<option value='" k "'" (when (= k v) " selected") ">" t "</option>"))))]
+    (set! (.-innerHTML ($ "wires"))
+          (str "<tr><th>wire</th><th>note</th><th>kind</th><th>who leads</th><th>tolerance</th><th>starts</th></tr>"
+               (str/join
+                (map-indexed
+                 (fn [i w]
+                   (let [e (get by-wire (:id w))]
+                     (str "<tr><td>" (:id w) "</td>"
+                          "<td><select data-w='" i "' data-f='note'>" (opts-of (map (fn [j] [(str j) (str j)]) (range (count line))) (str (:note w))) "</select></td>"
+                          "<td><select data-w='" i "' data-f='kind'>" (opts-of [["rigid" "rigid"] ["elastic" "elastic"]] (:kind w)) "</select></td>"
+                          "<td><select data-w='" i "' data-f='leader'" (when (= "rigid" (:kind w)) " disabled") ">" (opts-of [["performer" "the performer"] ["electronics" "the electronics"]] (:leader w "performer")) "</select></td>"
+                          "<td><input type='number' min='0' max='3' step='0.05' data-w='" i "' data-f='tol' value='" (:tol w 0) "'" (when (or (= "rigid" (:kind w)) (= "electronics" (:leader w))) " disabled") "></td>"
+                          "<td>" (:kind e) " " (r2 (:hz e)) " Hz, " (:dur e) " s</td></tr>")))
+                 wires))))))
+
+;; ───────── the performer and what happened ─────────
+
+(defn wire-of [kind & [leader]] (first (filter #(and (= kind (:kind %)) (or (nil? leader) (= leader (:leader % "performer")))) (:wires @ui))))
+
+(defn performance
+  "The times a simulated performer plays the notes (nil for you)."
+  []
+  (let [{:keys [line performer seed]} @ui
+        jsl (clj->js line)]
+    (case performer
+      "steady" (js->clj (.perform K jsl #js {:rubato 0}))
+      "rubato" (js->clj (.perform K jsl #js {:rubato 0.3 :seed seed}))
+      "breath" (let [w (wire-of "elastic" "performer")]
+                 (js->clj (.perform K jsl (clj->js {:rubato 0.1 :seed seed :hold (if w {(:note w) (+ (:tol w 0) 0.7)} {})}))))
+      "skip" (let [w (wire-of "rigid")]
+               (js->clj (.perform K jsl (clj->js {:rubato 0.1 :seed seed :skip (if w [(:note w)] [])}))))
+      nil)))
+
+(defn results-of [perf]
+  (js->clj (.sync K (clj->js (:line @ui)) (clj->js (:wires @ui)) (clj->js perf)) :keywordize-keys true))
+
+(defn preview!
+  "What the simulated performer would get, without playing: the same follower, offline."
+  []
+  (when-not (:playing @ui)
+    (if-let [perf (performance)]
+      (swap! ui assoc :run {:perf perf :results (results-of perf) :now nil})
+      (swap! ui update :run #(when (= "you" (:by %)) %)))))
+
+(def status-class {"on the note" "on" "led" "led" "went on" "went" "caught up" "caught" "never" "never"})
+
+(defn draw-run! []
+  (let [{:keys [line run]} @ui
+        {:keys [perf results now]} run
+        perf (or perf [])
+        tmax (+ 1 (reduce max (line-end line) (concat (keep identity perf) (keep :at results))))
+        px (fn [t] (+ 60 (* 920 (/ t tmax))))]
+    (set! (.-innerHTML ($ "perf"))
+          (str "<line class='axis' x1='60' x2='980' y1='104' y2='104'/>"
+               (str/join (for [s (range 0 (inc (js/Math.floor tmax)))] (str "<text class='t' x='" (px s) "' y='116' text-anchor='middle'>" s "</text>")))
+               "<text class='rowl' x='4' y='30'>performer</text><text class='rowl' x='4' y='80'>wires</text>"
+               (str/join (map-indexed (fn [i e]
+                                        (let [p (get perf i)]
+                                          (str "<line class='written' x1='" (px (:t e)) "' x2='" (px (:t e)) "' y1='12' y2='24'/>"
+                                               (when p (str "<line class='shift' x1='" (px (:t e)) "' x2='" (px p) "' y1='24' y2='30'/>"
+                                                            "<line class='played' x1='" (px p) "' x2='" (px p) "' y1='30' y2='46'/>")))))
+                                      line))
+               (str/join (for [r results :when (:at r)]
+                           (let [c (status-class (:status r))]
+                             (str "<line class='exp' x1='" (px (:expected r)) "' x2='" (px (:at r)) "' y1='70' y2='70'/>"
+                                  "<line class='cue " c "' x1='" (px (:at r)) "' x2='" (px (:at r)) "' y1='60' y2='92'/>"
+                                  "<text class='t' x='" (+ 4 (px (:at r))) "' y='66'>" (:id r) "</text>"))))
+               (when now (str "<line class='head' x1='" (px now) "' x2='" (px now) "' y1='6' y2='100'/>"))))
+    (set! (.-innerHTML ($ "results"))
+          (if (seq results)
+            (str "<tr><th>wire</th><th>note</th><th>kind</th><th>expected</th><th>started</th><th>what happened</th><th>performer</th></tr>"
+                 (str/join (for [r results]
+                             (str "<tr><td>" (:id r) "</td><td>" (:note r) "</td><td>" (:kind r) (when (= "elastic" (:kind r)) (str " · " (:leader r) " leads")) "</td>"
+                                  "<td>" (f2 (:expected r)) "</td><td>" (f2 (:at r)) "</td>"
+                                  "<td class='st-" (status-class (:status r)) "'>" (:status r) (when (:at_note r) (str " (at note " (:at_note r) ")")) "</td>"
+                                  "<td>" (cond (:gap r) (str (if (neg? (:gap r)) "" "+") (f2 (:gap r)) " s from the electronics")
+                                               (:late r) (str "came " (f2 (:late r)) " s after")
+                                               :else "") "</td></tr>"))))
+            "<tr><td class='facts'>Play, or choose a performer.</td></tr>"))))
+
+;; ───────── the EDN ─────────
+
+(defn edn-of []
+  (let [{:keys [line bpm key meter res wires electronics]} @ui]
+    (str "{:bpm " bpm " :key " key " :meter " meter "\n"
+         " :line [" (str/join "\n        " (map pr-str line)) "]\n"
+         " :res {:time " (pr-str (:time res)) "\n       :pitch " (pr-str (:pitch res)) "\n       :glyph " (pr-str (:glyph res)) "}\n"
+         " :wires [" (str/join "\n         " (map pr-str wires)) "]\n"
+         " :electronics [" (str/join "\n               " (map pr-str electronics)) "]}")))
+
+(defn apply-edn! []
+  (try
+    (let [m (edn/read-string (.-value ($ "edn")))
+          ok-ev (fn [e] (and (number? (:t e)) (number? (:dur e)) (number? (:hz e))))]
+      (when-not (and (map? m) (seq (:line m)) (every? ok-ev (:line m))) (throw (js/Error. ":line must be events {:t :dur :hz}")))
+      (doseq [ax [:time :pitch :glyph]] (when-not (= N (count (get-in m [:res ax]))) (throw (js/Error. (str ":res " ax " must have " N " values")))))
+      (doseq [w (:wires m)] (when-not (< -1 (:note w) (count (:line m))) (throw (js/Error. (str "wire " (:id w) ": no note " (:note w))))))
+      (swap! ui merge (select-keys m [:bpm :key :meter :line :res :wires :electronics]) {:res-preset "drawn" :line-preset "edn"})
+      (set! (.-textContent ($ "edn-status")) "applied")
+      (preview!) (redraw!))
+    (catch :default e (set! (.-textContent ($ "edn-status")) (str "error: " (.-message e))))))
+
+;; ───────── sound: the performer (Web Audio) and the electronics (a faust~) ─────────
+
+(defn faust-status! [s] (swap! ui assoc :faust {:status s}) (set! (.-textContent ($ "faust-status")) s))
+
+(defn ensure-ac! []
+  (or (:ac @au)
+      (let [ac (js/AudioContext.) master (.createGain ac)]
+        (set! (.. master -gain -value) 0.8) (.connect master (.-destination ac))
+        (swap! au assoc :ac ac :master master) ac)))
+
+(defn compile-faust!
+  "Compiles the electronics (faustwasm) into a node; its sliders are found by their names."
+  []
+  (let [code (:code @ui) ac (ensure-ac!)]
+    (faust-status! "compiling…")
+    (-> ((.-kairoticLoadFaust js/window))
+        (.then (fn [fx]
+                 (let [gen (js/Reflect.construct (.. fx -F -FaustMonoDspGenerator) #js [])]
+                   (-> (.compile gen (.-compiler fx) "electronics" code "-ftz 2")
+                       (.then (fn [g] (when (nil? g) (throw (js/Error. "Faust could not compile this code"))) (.createNode gen ac "electronics")))))))
+        (.then (fn [node]
+                 (when (= code (:code @ui))
+                   (when-let [old (:node @au)] (.disconnect old))
+                   (.connect node (:master @au))
+                   (let [ps (js->clj (.getParams node))
+                         find (fn [nm] (first (filter #(str/ends-with? % (str "/" nm)) ps)))
+                         params (into {} (for [nm ["drone_freq" "drone_gate" "bell_freq" "bell"]] [nm (find nm)]))]
+                     (swap! au assoc :node node :params params)
+                     (faust-status! (if (every? some? (vals params)) "on" (str "on, but missing " (str/join ", " (keep (fn [[k v]] (when-not v k)) params)))))))
+                 node))
+        (.catch (fn [e] (swap! au assoc :node nil) (faust-status! (str "error: " (or (.-message e) e))))))))
+
+(defn set-param! [nm v]
+  (let [{:keys [node params]} @au]
+    (when-let [a (and node (get params nm))] (.setParamValue node a v))))
+
+(defn electronics! [r]
+  (let [e (first (filter #(= (:wire %) (.-id r)) (:electronics @ui)))]
+    (swap! au update :started (fnil conj []) (.-id r))
+    (case (:kind e)
+      "drone" (do (set-param! "drone_freq" (:hz e)) (set-param! "drone_gate" 1)
+                  (js/setTimeout #(set-param! "drone_gate" 0) (* 1000 (:dur e))))
+      "bell" (do (set-param! "bell_freq" (:hz e)) (set-param! "bell" 1) (js/setTimeout #(set-param! "bell" 0) 60))
+      nil)))
+
+(defn voice!
+  "A note of the performer at the AudioContext's time `at` (its glissando too)."
+  [e at]
+  (let [{:keys [ac master]} @au
+        o (.createOscillator ac) g (.createGain ac) f (.createBiquadFilter ac)
+        d (:dur e) a (* 0.25 (+ 0.3 (:amp e 0.6)))]
+    (set! (.-type o) "triangle") (set! (.-type f) "lowpass") (set! (.. f -frequency -value) 2400)
+    (.setValueAtTime (.-frequency o) (:hz e) at)
+    (when (:hz2 e) (.exponentialRampToValueAtTime (.-frequency o) (:hz2 e) (+ at d)))
+    (.setValueAtTime (.-gain g) 0 at)
+    (.linearRampToValueAtTime (.-gain g) a (+ at 0.015))
+    (.setTargetAtTime (.-gain g) (* 0.6 a) (+ at 0.05) 0.2)
+    (.linearRampToValueAtTime (.-gain g) 0 (+ at d 0.08))
+    (.connect o f) (.connect f g) (.connect g master)
+    (.start o at) (.stop o (+ at d 0.12))))
+
+(defn now [] (let [{:keys [ac t0]} @au] (- (.-currentTime ac) t0)))
+
+(defn fired! [rs]
+  (doseq [r (array-seq rs)] (electronics! r))
+  (let [f (:follower @au)]
+    (swap! ui update :run assoc :results (js->clj (.results f) :keywordize-keys true))))
+
+(defn stop! []
+  (when-let [t (:timer @au)] (js/clearInterval t))
+  ;; what is still pending is decided (an elastic wire would have gone on, a rigid one never starts) but not played
+  (when-let [f (:follower @au)]
+    (.finish f)
+    (swap! ui update :run assoc :results (js->clj (.results f) :keywordize-keys true)))
+  (set-param! "drone_gate" 0)
+  (swap! au assoc :timer nil)
+  (swap! ui assoc :playing false)
+  (swap! ui update :run assoc :now nil)
+  (set! (.-textContent ($ "play")) "▶ Play")
+  (set! (.-disabled ($ "tap")) true)
+  (set! (.-textContent ($ "facts-play")) (str (count (filter :at (get-in @ui [:run :results]))) " of " (count (:wires @ui)) " wires started"))
+  (draw-run!))
+
+(defn tap!
+  "You play the next note now."
+  []
+  (when (and (:playing @ui) (= "you" (:performer @ui)))
+    (let [j (:next @au 0) line (:line @ui)]
+      (when (< j (count line))
+        (let [t (now) f (:follower @au)]
+          (voice! (nth line j) (.-currentTime (:ac @au)))
+          (swap! au assoc :next (inc j))
+          (swap! ui update-in [:run :perf] assoc j t)
+          (fired! (.note f j t))
+          (set! (.-textContent ($ "facts-play")) (str "note " j " at " (f2 t) " s"))
+          (draw-run!))))))
+
+(defn step!
+  "The clock: the simulated performer's notes as their time comes, and the elastic wires that are due."
+  []
+  (let [t (now) f (:follower @au) {:keys [perf]} (:run @ui) line (:line @ui)
+        sim (not= "you" (:performer @ui))]
+    (when sim
+      (doseq [[j p] (map-indexed vector perf)
+              :when (and p (<= p t) (not (contains? (:fed @au) j)))]
+        (swap! au update :fed conj j)
+        (fired! (.note f j p))))
+    (fired! (.tick f t))
+    (swap! ui update :run assoc :now t)
+    (draw-run!)
+    (let [last-t (if sim (reduce max 0 (keep identity perf)) (if (>= (:next @au 0) (count line)) (get perf (dec (count line))) js/Infinity))
+          tail (+ 2.5 (reduce max 0 (map :dur (:electronics @ui))))]
+      (when (and last-t (> t (+ last-t tail))) (stop!)))))
+
+(defn play! []
+  (if (:playing @ui)
+    (stop!)
+    (let [ac (ensure-ac!)
+          you (= "you" (:performer @ui))
+          perf (if you (vec (repeat (count (:line @ui)) nil)) (performance))
+          go (fn []
+               (let [t0 (+ (.-currentTime ac) 0.25)]
+                 (swap! au assoc :t0 t0 :fed #{} :next 0 :started []
+                        :follower (js/Reflect.construct (.-Follower K) #js [(clj->js (:line @ui)) (clj->js (:wires @ui))]))
+                 (swap! ui assoc :playing true :run {:perf perf :results [] :now 0 :by (if you "you" "sim")})
+                 (when-not you (doseq [[j p] (map-indexed vector perf) :when p] (voice! (nth (:line @ui) j) (+ t0 p))))
+                 (set! (.-textContent ($ "play")) "■ Stop")
+                 (set! (.-disabled ($ "tap")) (not you))
+                 (set! (.-textContent ($ "facts-play")) (if you "your turn: a key (or ● Next note) for each note" "playing…"))
+                 (swap! au assoc :timer (js/setInterval step! 15))))]
+      (.resume ac)
+      (if (:node @au)
+        (go)
+        (-> (compile-faust!) (.then (fn [_] (go))))))))
+
+;; ───────── the page ─────────
+
+(defn redraw! []
+  (draw-score!)
+  (doseq [ax [:time :pitch :glyph]] (draw-lane! ax))
+  (draw-wires!)
+  (draw-run!)
+  (when-not (identical? js/document.activeElement ($ "edn")) (set! (.-value ($ "edn")) (edn-of)))
+  (set! (.-value ($ "res-preset")) (if (contains? res-presets (:res-preset @ui)) (:res-preset @ui) ""))
+  (set! (.-value ($ "key")) (str (:key @ui)))
+  (set! (.-value ($ "bpm")) (str (:bpm @ui)))
+  (set! (.-textContent ($ "status"))
+        (str (count (:line @ui)) " notes · " (count (:wires @ui)) " wires · " (r2 (line-end (:line @ui))) " s")))
+
+(defn wire-change! [e]
+  (let [el (.-target e) i (.getAttribute el "data-w") f (.getAttribute el "data-f")]
+    (when i
+      (let [i (js/parseInt i) v (.-value el)
+            v (case f "note" (js/parseInt v) "tol" (js/parseFloat v) v)]
+        (swap! ui assoc-in [:wires i (keyword f)] v)
+        (when (and (= f "kind") (= v "elastic") (nil? (get-in @ui [:wires i :leader])))
+          (swap! ui update-in [:wires i] assoc :leader "performer" :tol 0.4))
+        (preview!) (redraw!)))))
+
+(defn init! []
+  (load-line! "phrase")
+  (swap! ui assoc :res (sample-res "dissolve"))
+  (build-lanes!)
+  (set! (.-value ($ "code")) (:code @ui))
+  (.addEventListener ($ "res-preset") "change" (fn [e] (let [v (.. e -target -value)] (when (contains? res-presets v) (swap! ui assoc :res-preset v :res (sample-res v)) (redraw!)))))
+  (.addEventListener ($ "line-preset") "change" (fn [e] (load-line! (.. e -target -value)) (preview!) (redraw!)))
+  (.addEventListener ($ "key") "change" (fn [e] (swap! ui assoc :key (js/parseInt (.. e -target -value))) (redraw!)))
+  (.addEventListener ($ "bpm") "change" (fn [e] (let [v (js/parseFloat (.. e -target -value))] (when (< 29 v 201) (swap! ui assoc :bpm v) (redraw!)))))
+  (.addEventListener ($ "performer") "change" (fn [e] (swap! ui assoc :performer (.. e -target -value)) (preview!) (draw-run!)))
+  (.addEventListener ($ "seed") "change" (fn [e] (swap! ui assoc :seed (js/parseInt (.. e -target -value))) (preview!) (draw-run!)))
+  (.addEventListener ($ "wires") "change" wire-change!)
+  (.addEventListener ($ "play") "click" (fn [_] (play!)))
+  (.addEventListener ($ "tap") "click" (fn [_] (tap!)))
+  (.addEventListener js/document "keydown"
+                     (fn [e] (when (and (:playing @ui) (= "you" (:performer @ui)) (not (.-repeat e))
+                                        (not (#{"INPUT" "TEXTAREA" "SELECT"} (.. e -target -tagName))))
+                               (.preventDefault e) (tap!))))
+  (.addEventListener ($ "code") "input" (fn [e] (swap! ui assoc :code (.. e -target -value))))
+  (.addEventListener ($ "compile") "click" (fn [_] (ensure-ac!) (compile-faust!)))
+  (.addEventListener ($ "apply") "click" (fn [_] (apply-edn!)))
+  (preview!)
+  (redraw!))
+
+(init!)
+
+;; for the tests
+(set! (.-kairoticContinuum js/window)
+      #js {:state (fn [] (clj->js @ui))
+           :projection projection
+           :results (fn [] (clj->js (get-in @ui [:run :results])))
+           :started (fn [] (clj->js (:started @au)))
+           :playing (fn [] (boolean (:playing @ui)))
+           :faust (fn [] (get-in @ui [:faust :status]))
+           :tap tap!})
+</script>
