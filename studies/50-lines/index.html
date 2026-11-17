@@ -1,0 +1,267 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 50 · Lines</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+/* Study 50: the relation as a toolbar; the two lines drawn on their lattice (units, bars, the strong ones shaded);
+   beside them the count, the order of writing and what the study decides. */
+.views { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+.sheet { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; overflow-x: auto; }
+.sheet svg { display: block; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.toolbar input[type=text] { width: 4.6em; font: 12.5px var(--f-code); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; }
+.unit { fill: none; stroke: var(--grid); stroke-width: 1; }
+.strong { fill: var(--accent-soft); }
+.barline { stroke: var(--rule); stroke-width: 1.2; }
+.dux { fill: var(--accent); }
+.comes { fill: var(--kairos); }
+.coda { fill: var(--kairos); opacity: 0.55; }
+.lab { font: 10.5px var(--f-code); fill: var(--ink-soft); }
+.nname { font: 600 10px var(--f-code); fill: #fff; dominant-baseline: central; }
+.big { font: 600 22px var(--f-code); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+table.cmp { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.cmp th, table.cmp td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+table.cmp th { font: 500 11px var(--f-ui); color: var(--ink-soft); }
+</style>
+
+<main>
+<header>
+  <h1>Study 50 · lines</h1>
+  <span class="sub">Counterpoint between two timed lines, whatever the relation in time between them (discussion #248)</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The relation">
+  <span class="tag">Relation</span>
+  <span class="presets" id="presets">
+    <button class="act" data-preset="canon">canon · 1</button>
+    <button class="act" data-preset="augmentation">augmentation · ½</button>
+    <button class="act" data-preset="hemiola">hemiola · ⅔</button>
+    <button class="act" data-preset="sesquialtera">sesquialtera · 3/2</button>
+    <button class="act" data-preset="diminution">diminution · 2</button>
+    <button class="act" data-preset="crab">crab · −1</button>
+    <button class="act" data-preset="table">table · −1 upside down</button>
+    <button class="act" data-preset="crab-aug">crab in augmentation · −½</button>
+    <button class="act" data-preset="crab-hemiola">crab in hemiola · −⅔</button>
+  </span>
+</div>
+<div class="toolbar" aria-label="Its parameters">
+  <span class="tag">Comes</span>
+  <label>speed <input type="text" id="speed" value="1" title="p/q, negative: backwards"></label>
+  <label>late (units) <input type="number" id="delay" min="0" max="40" title="empty: by the relation"></label>
+  <label>steps away <input type="number" id="k" min="-11" max="11" value="-7"></label>
+  <label><input type="checkbox" id="inverted"> upside down</label>
+  <label><input type="checkbox" id="coda"> a free last note (coda)</label>
+  <label>dux notes <input type="number" id="m" min="3" max="15" value="11"></label>
+  <span class="sep"></span>
+  <button class="act primary" id="count">Count</button>
+  <button class="act" id="draw" disabled>Draw a work</button>
+  <button class="act" id="play" disabled>▶ Play</button>
+</div>
+
+<div class="views">
+  <section class="panel">
+    <h2>The two lines <span id="lattice"></span></h2>
+    <div class="sheet" id="sheet"></div>
+    <div class="msg" id="msg"></div>
+  </section>
+  <div class="side">
+    <section class="panel">
+      <h2>Futures <span>counted exactly</span></h2>
+      <div><span class="big" id="total">–</span> <span class="msg" id="total-sub"></span></div>
+      <div class="msg" id="order"></div>
+    </section>
+    <section class="panel">
+      <h2>What it decides</h2>
+      <p class="about">The comes is a <b>reader of the dux</b> at a speed p/q — late, some steps away, upright or upside down. The lines are spelled on the finest lattice both fall on (a unit), and Study 42's rules are asked unit by unit: a note longer than a unit is a note held, the first unit of a bar is strong, a dissonance there must be prepared and resolve down by step, on a weak unit it passes by step.</p>
+      <ul class="q">
+        <li><b>The species are relations of time.</b> A canon, an augmentation, a crab and a table canon count exactly as Studies 41–43 counted them (707134 · 8119 · 6959 · 13212).</li>
+        <li><b>The order of writing follows from the relation.</b> Each step writes the note that leaves the fewest written notes still bearing on a time not judged: forwards for a canon, from both ends for a crab — and for a crab in augmentation from both ends, meeting off the middle.</li>
+        <li><b>A diminution needs a coda.</b> A comes faster than the dux that ends with it plays the dux's last two notes against them: a parallel perfect interval. Its last note is free.</li>
+        <li><b>A crab in hemiola closes only at the unison</b> in D dorian: an octave below, nothing.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+</main>
+
+<script type="module">
+import { lines, latticeFor, speedOf } from "./kairotic/lines.mjs";
+
+const $ = (id) => document.getElementById(id);
+const base = { tonic: 1, lo: 0, hi: 9, spacing: 11, starts: [1, 5, 8] };   // D dorian
+const PRESETS = {
+  canon: { speed: "1", d: 3, k: -7, m: 11 },
+  augmentation: { speed: "1/2", d: 2, k: -7, m: 11 },
+  hemiola: { speed: "2/3", k: -7, m: 10, coda: true },
+  sesquialtera: { speed: "3/2", k: -7, m: 9, coda: true },
+  diminution: { speed: "2", k: -7, m: 9, coda: true },
+  crab: { speed: "-1", k: -7, m: 11 },
+  table: { speed: "-1", k: 0, inverted: true, m: 11 },
+  "crab-aug": { speed: "-1/2", k: -7, m: 9 },
+  "crab-hemiola": { speed: "-2/3", k: 0, m: 10 },
+};
+let L = null, work = null, ctx = null;
+
+function read() {
+  const sp = $("speed").value.trim() || "1";
+  const a = latticeFor(sp);
+  const o = { ...base, speed: sp, a, bar: 2 * a, k: Number($("k").value), m: Number($("m").value), inverted: $("inverted").checked };
+  if ($("delay").value !== "") o.d = Number($("delay").value);
+  o.coda = $("coda").checked;
+  return o;
+}
+function setPreset(name) {
+  const p = PRESETS[name];
+  $("speed").value = p.speed; $("delay").value = p.d ?? ""; $("k").value = p.k; $("m").value = p.m;
+  $("inverted").checked = !!p.inverted; $("coda").checked = !!p.coda;
+  document.querySelectorAll("[data-preset]").forEach((b) => b.classList.toggle("on", b.dataset.preset === name));
+  count();
+}
+function count() {
+  work = null; $("draw").disabled = true; $("play").disabled = true;
+  $("status").textContent = "counting the futures…"; $("total").textContent = "…";
+  setTimeout(() => {
+    try {
+      L = lines(read());
+      const t0 = performance.now(), c = L.count(), ms = Math.round(performance.now() - t0);
+      const [p, q] = L.speed;
+      $("total").textContent = c.toLocaleString("en");
+      $("total-sub").textContent = `works · ${ms} ms`;
+      $("lattice").textContent = `speed ${p}/${q} · a dux note ${L.a} unit${L.a > 1 ? "s" : ""}, a comes note ${L.comesUnits} · late ${L.d}` + (L.coda ? " · coda" : "");
+      $("order").textContent = "the dux written in the order " + L.order.map((x) => (x === L.m ? "coda" : x + 1)).join(" · ");
+      $("status").textContent = c ? "ready" : "no work closes";
+      $("draw").disabled = !c;
+      draw(c ? L.sample() : null);
+    } catch (e) { $("status").textContent = "✗ " + e.message; $("total").textContent = "–"; L = null; draw(null); }
+  }, 20);
+}
+function draw(M) {
+  work = M; $("play").disabled = !M;
+  const sheet = $("sheet");
+  if (!L) { sheet.innerHTML = ""; return; }
+  const n = L.n, uw = Math.max(14, Math.min(34, 640 / n)), W = 46 + n * uw + 10, H = 230;
+  const { D, C } = M ? L.lines(M) : { D: [], C: [] };
+  const vals = [...D, ...C].filter((x) => x !== null && x !== undefined);
+  const lo = Math.min(L.spec.lo, ...(vals.length ? vals : [0])), hi = Math.max(L.spec.hi, ...(vals.length ? vals : [9]));
+  const y = (s) => 14 + (hi - s) * ((H - 40) / Math.max(1, hi - lo));
+  let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="the dux and the comes on their lattice">`;
+  for (let t = 0; t < n; t++) {
+    if (L.strong(t)) svg += `<rect class="strong" x="${46 + t * uw}" y="8" width="${uw}" height="${H - 30}"/>`;
+    svg += `<rect class="unit" x="${46 + t * uw}" y="8" width="${uw}" height="${H - 30}"/>`;
+    if (L.strong(t)) svg += `<line class="barline" x1="${46 + t * uw}" x2="${46 + t * uw}" y1="8" y2="${H - 22}"/>`;
+    if (t % L.a === 0) svg += `<text class="lab" x="${46 + t * uw + 2}" y="${H - 8}">${t}</text>`;
+  }
+  const bars = (line, cls, codaFrom) => {
+    let t = 0;
+    while (t < n) {
+      const v = line[t];
+      let e = t + 1; while (e < n && line[e] === v && !(cls === "comes" && L.source(e) !== L.source(t))) e++;
+      if (v !== null && v !== undefined) {
+        const c = codaFrom !== null && t >= codaFrom ? "coda" : cls;
+        svg += `<rect class="${c}" x="${46 + t * uw + 1}" y="${y(v) - 7}" width="${(e - t) * uw - 2}" height="14" rx="3"/>`;
+        if ((e - t) * uw > 22) svg += `<text class="nname" x="${46 + t * uw + 4}" y="${y(v)}">${L.system.pitchName(v)}</text>`;
+      }
+      t = e;
+    }
+  };
+  if (M) {
+    bars(D, "dux", null);
+    let co = null; if (L.coda) for (let t = 0; t < n; t++) if (L.source(t) === L.m) { co = t; break; }
+    bars(C, "comes", co);
+  }
+  svg += `<text class="lab" x="4" y="${y(L.spec.hi)}">${L.system.pitchName(hi)}</text><text class="lab" x="4" y="${y(lo)}">${L.system.pitchName(lo)}</text>`;
+  sheet.innerHTML = svg + "</svg>";
+  $("msg").innerHTML = M ? `<span style="color:var(--accent)">■ dux</span> ${M.slice(0, L.m).map(L.system.pitchName).join(" ")} · <span style="color:var(--kairos)">■ comes</span> ${C.filter((x, t) => x !== null && (t === 0 || L.source(t) !== L.source(t - 1))).map(L.system.pitchName).join(" ")}` : "";
+}
+function play() {
+  if (!work || !L) return;
+  ctx = ctx || new AudioContext();
+  const { D, C } = L.lines(work), unit = 0.5 / L.a, t0 = ctx.currentTime + 0.1;
+  const hz = (s) => L.system.hz(s);
+  const voice = (line, gainV, isComes) => {
+    let t = 0;
+    while (t < L.n) {
+      const v = line[t]; let e = t + 1;
+      while (e < L.n && line[e] === v && !(isComes && L.source(e) !== L.source(t))) e++;
+      if (v !== null && v !== undefined) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "triangle"; o.frequency.value = hz(v);
+        const s = t0 + t * unit, end = t0 + (e === L.n ? e + L.a : e) * unit;
+        g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(gainV, s + 0.02); g.gain.setTargetAtTime(0, end - 0.05, 0.03);
+        o.connect(g).connect(ctx.destination); o.start(s); o.stop(end + 0.3);
+      }
+      t = e;
+    }
+  };
+  voice(D, 0.14, false); voice(C, 0.12, true);
+}
+document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => setPreset(b.dataset.preset)));
+$("count").addEventListener("click", () => { document.querySelectorAll("[data-preset]").forEach((b) => b.classList.remove("on")); count(); });
+$("draw").addEventListener("click", () => draw(L.sample()));
+$("play").addEventListener("click", play);
+window.kairoticLines = { get L() { return L; }, get work() { return work; }, setPreset, count, draw, PRESETS, speedOf };
+setPreset("hemiola");
+</script>

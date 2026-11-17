@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Study 50 · lines** (discussion #248): counterpoint between two timed lines, whatever their relation in time.
+  The comes is a reader of the dux at a signed speed p/q; the lines are spelled on the finest lattice both fall on
+  and Study 42's rules are asked unit by unit. A canon, an inversion, an augmentation, a crab and a table canon
+  count exactly as Studies 41–43 counted them; the order of writing follows from the relation (forwards, from both
+  ends, or — for a crab in augmentation — from both ends meeting off the middle). New: hemiola (⅔), sesquialtera
+  (3/2), diminution (2, which needs a free last note of the comes), crab in augmentation (−½), crab in hemiola (−⅔,
+  only at the unison). Kernel `studies/50-lines/kairotic/lines.mjs` with its tests (Node and browser) and a page.
+
 - **A local work begins empty.** Starting locally no longer opens the example work: the patch and the history are
   empty, the first gesture is the root, and the history pane offers "Start with the example work" (as an empty solo
   work or room already did).
