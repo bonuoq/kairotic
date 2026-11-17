@@ -338,7 +338,7 @@ Graphic buffer for any numeric data: strokes in a plane with axes of any range, 
 
 ```clojure
 (box :b6 "phasor~ 0.5" 300 15)
-(box :b7 "reader~" 300 290)
+(box :b7 "reader~ norm" 300 290)
 (box :b8 "osc~ 330" 420 290)
 (box :b9 "gain~ 0" 420 340)
 (box :b10 "dac~" 420 390)
@@ -896,7 +896,7 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 ```clojure
 (box :b1 "freqt" 40 60)
 (box :b2 "phasor~ 0.25" 40 15)
-(box :b3 "reader~ 1 gate" 40 290)
+(box :b3 "reader~ norm 1 gate" 40 290)
 (box :b4 "osc~" 40 340)
 (box :b5 "gain~" 40 390)
 (box :b6 "dac~" 40 440)
@@ -1826,9 +1826,9 @@ See also: `metro`, `reader`, `phasor~`
 
 ### reader
 
-`reader [x|y|path [stroke]]`
+`reader [x|y|path [stroke]] [norm] [d s] [speed x] [jump s]`
 
-Reads the buffer (canvas, freqt) connected to its right inlet at the position that comes in on the left — along X, or along Y with `reader y`: ids on the right and the values on the left (every crossing). With `reader path [stroke]` a position from 0 to 1 travels along a stroke in the order it was drawn and gives [x y].
+Reads the buffer connected to its right inlet (canvas, freqt, ring) at the position that comes in on the left, in the buffer's own units — the X axis of a canvas (Y with `reader y`), the time of a freqt, the seconds of a ring — or, with `norm`, from 0 to 1, as reader~ does at audio rate. On a canvas or freqt: ids on the right and the values on the left (every crossing); with `reader path [stroke]` a position from 0 to 1 travels along a stroke in the order it was drawn and gives [x y]. On a ring: what it crosses, each value as it was written, either way (a move larger than its jump is a seek); or, without positions, it follows the ring's head d behind, then a speed (reader d 1 speed 0.5; msg :d, :speed, :jump, :stop).
 
 **Inlets** 
 
@@ -1871,13 +1871,13 @@ See also: `ring`, `writer`, `canvas`, `reader~`
 
 ### reader~
 
-`reader~ [x|y|path [stroke]] [voices] [gate]`
+`reader~ [x|y|path [stroke]] [voices] [gate] [norm] [d s] [speed x] [jump s]`
 
-Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phasor~), the buffer on the right. One signal outlet per voice (along X, or Y with `reader~ y`), or x and y with `reader~ path`; where nothing passes a voice keeps its last value. With `gate`, one more outlet per voice: 1 where it has something, 0 where not (into an adsr~, or a gain~).
+Reads a buffer at audio rate, as reader does once per message: a position signal on the left, the buffer on the right. The position is in the buffer's own units — the X axis of a canvas (Y with `reader~ y`), the time of a freqt, the seconds of a sample or a ring~ — or, with `norm`, from 0 to 1 (a phasor~ straight in); along a stroke (`reader~ path`) it is always 0…1. On a canvas or freqt: one signal outlet per voice, or x and y with path; where nothing passes a voice keeps its last value; with `gate`, one more outlet per voice, 1 where it has something. A sample: it plays it. A ring~: it reads there, or, with nothing on its left, follows the ring's head d behind, then a speed (reader~ d 1 speed 0.5; msg :d, :speed, :jump, :gain).
 
 **Inlets** 
 
-0. the position signal (0…1 on a canvas, freqt or sample: norm is how it always reads them), usually a phasor~ · on a ring~: a position in seconds (0…1 with norm), or nothing (then it follows the ring's head); :d, :speed, :jump, :gain
+0. the position signal, in the buffer's units (the X axis of a canvas, the time of a freqt, the seconds of a sample) or 0…1 with reader~ norm (a phasor~ straight in); along a stroke (path) always 0…1 · on a ring~: a position in seconds (0…1 with norm), or nothing (then it follows the ring's head); :d, :speed, :jump, :gain
 1. the buffer of a canvas or freqt, the sound of a sample (then it plays it, 0 its start and 1 its end), or a ring~ (its right outlet)
 
 **Outlets** 1: one signal per voice (the values it crosses) · from a ring~, the sound it reads · with gate: one more per voice, 1 where it sounds and 0 where not
@@ -1893,7 +1893,7 @@ Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phaso
 ```clojure
 (box :b1 "freqt" 40 60)
 (box :b2 "phasor~ 0.25" 40 15)
-(box :b3 "reader~ 1 gate" 40 290)
+(box :b3 "reader~ norm 1 gate" 40 290)
 (box :b4 "osc~" 40 340)
 (box :b5 "gain~" 40 390)
 (box :b6 "dac~" 40 440)
@@ -2083,7 +2083,7 @@ See also: `reader~`, `writer~`, `ring`, `sample`
 
 `sample [seconds]`
 
-A buffer of sound. What reaches its left inlet is recorded on `:rec` until `:stop` (or until it has seconds, 60 by default), replacing what it had; :rec t (msg :rec 2.5) keeps its first t seconds and records from there (punch-in); :ovr t (msg :ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `:clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position of a phasor~ (0 the start, 1 the end); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN "https://…")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
+A buffer of sound. What reaches its left inlet is recorded on `:rec` until `:stop` (or until it has seconds, 60 by default), replacing what it had; :rec t (msg :rec 2.5) keeps its first t seconds and records from there (punch-in); :ovr t (msg :ovr 2.5) replaces only what the take covers and keeps what comes after (punch-in/out); `:clear` empties it. Its right outlet is the buffer for a reader~, which plays it at the position on its left, in seconds (or with reader~ norm from 0 to 1: a phasor~); a bang sends its length in seconds on the left, and so does every new recording. The sound stays in this browser; the work keeps its picture. A URL (a string on the left, or (load-sound! :bN "https://…")) loads a sound that every browser opening the work fetches by itself. (load-sound! :bN) brings in a file, (save-sound :bN) saves it as WAV.
 
 **Inlets** 
 
@@ -2118,7 +2118,7 @@ A buffer of sound. What reaches its left inlet is recorded on `:rec` until `:sto
 (box :b4 "sample 10" 40 90)
 (box :b5 "!/ 1" 40 190)
 (box :b6 "phasor~" 40 240)
-(box :b7 "reader~" 40 290)
+(box :b7 "reader~ norm" 40 290)
 (box :b8 "gain~ 0.5" 40 340)
 (box :b9 "dac~" 40 390)
 (connect :b1 0 :b4 0)
