@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **`comes` and `cancrizans live` sound as a keyboard or a player does** (breaking; `@kairotic/theory` 0.9.0). Both
+  voices go out together on the left — the dux as played or corrected, and the comes (or your note and the box's
+  answer) — after their voice ids on the second outlet, so one `synth~` (0→0, 1→1) or a polyphonic `faust~` plays
+  them, as with `keyboard`, `midiin` and `player`. A voice's id is where its note was struck: a note held over the
+  beat keeps it and goes on sounding, a note struck again (even the same) is struck again. Before, `comes` sent the
+  comes on 0 and the dux on 1, each a list of Hz without ids (two `synth~` were needed, and one alone played only
+  the last line it got); `cancrizans live` sent only its own answer, and the score to read as a pattern on 1 (now the
+  tree on outlet 4 only). Both also take a player's event (`:hz`, a list) as a note, beside `:freq` (midiin, oscin).
+  The help patches play both voices on one `synth~`. Text: `:clear` with its colon in the help of `pcclock`,
+  `fourier`, `midiin` and `midiout` (`@kairotic/io` 0.2.3).
+
 - **ring, writer, and reader on a ring** (the heads of Study 47 in the app, messages first; discussion "Heads on a
   span of time"). `ring [seconds]` keeps the messages of the last seconds, each at its time (from its first
   message); its write head goes round as a tape head, so what is older than one turn is gone; `:clear`, `[:data]`.
