@@ -374,4 +374,49 @@ export async function theory(page, check) {
                                     (count (filter (fn [f] (= :path (first f))) sh))])`);
   check("... and drawn as a necklace: eight pulses to press, the onsets a polygon", neck === "[8 1]", neck);
   await cljs(page, `(delete ${eu} ${ep})`);
+
+  // necklace: a cyclic rhythm and its geometry (Toussaint); an editor whose outlets are euclid's, and its measures
+  const nk = (await cljs(page, '(box "necklace" 9300 600)')).trim();
+  const np = (await cljs(page, '(box "print" 9300 860)')).trim();
+  await cljs(page, `(connect ${nk} 2 ${np} 0)`);
+  check("necklace: two inlets (a rhythm, pitches) and four outlets",
+        (await until(page, `(io (get-in (current) [:boxes ${nk}]))`, (x) => x === "[2 4]", 20000)) === "[2 4]");
+  const nGo = `(fn [args msgs] (let [d (comp/lookup "necklace")]
+                 (reduce (fn [[s _] [i m]] (let [r ((:receive d) {:inlet i :value m :state s :args args})] [(:state r) (:out r)])) [nil nil] msgs)))`;
+  const ms = (src) => `(let [go ${nGo} at ${eOut}] (at (second (go {:n 16 :bars 1} [[0 ${src}]])) 3))`;
+  const son = await cljs(page, `(let [m ${ms('"x..x..x...x.x..."')}] [(:ivec m) (:axes m) (:oddity m) (:gap m) (:k m) (:intervals m)])`);
+  check("the son clave from box notation: interval vector [0 1 2 2 0 3 2 0] (Toussaint), one axis of symmetry, rhythmic oddity, longest gap 4",
+        son === "[[0 1 2 2 0 3 2 0] [3] true 4 5 [3 3 4 2 4]]", son);
+  const claves = await cljs(page, `(let [e (fn [s] (:evenness ${ms("s")}))] [(< (e "x..x...x..x.x...") (e "x..x..x...x..x..")) (:euclid ${ms('"x..x..x...x..x.."')})])`);
+  check("... the rumba is less even than the bossa nova (chords, not arcs); the bossa nova is E(5,16) from pulse 6", claves === "[true 6]", claves);
+  const kinds = await cljs(page, `(let [go ${nGo} at ${eOut} m (fn [args v] (at (second (go args [[0 v]])) 3))
+                                        bembe (m {:n 12} "x.x.xx.x.x.x") flat (m {:n 12} [1 1 0 0 1 0 1 0 0 0 0 0])]
+                                    [(:deep bembe) (:ivec bembe) (count (:axes bembe)) (:flat flat) (:deep flat) (:even (m {:n 8} [3 3 2])) (:even (m {:n 8} "xxx....."))])`);
+  check("... the bembé is deep (as the diatonic scale: <2 5 4 3 6 1>); x x . . x . x . . . . . is flat; the tresillo as even as E(3,8), three onsets together less",
+        /^\[true \[2 5 4 3 6 1\] 1 true false 1 0\.\d+\]$/.test(kinds), kinds);
+  const forms = await cljs(page, `(let [go ${nGo} at ${eOut} p (fn [v] (at (second (go {:n 16 :bars 1} [[0 v]])) 2))]
+                                    [(p [3 3 2]) (p {:shares [-1 3 3 1]}) (p {:onsets [0 3 6] :n 8})
+                                     (p [:voice [:measure {:meter [4 4]} [:rtm {:shares [3 3 2]}]]]) (p [261.63 329.63])])`);
+  check("... a rhythm arrives as intervals, an :rtm map (euclid's middle outlet), onsets with n, or a tree; a list of Hz is not one",
+        forms === "[[1 0 0 1 0 0 1 0] [0 1 0 0 1 0 0 1] [1 0 0 1 0 0 1 0] [1 0 0 1 0 0 1 0] nil]", forms);
+  const edits = await cljs(page, `(let [go ${nGo} at ${eOut} p (fn [msgs] (at (second (go {:n 16 :bars 1} msgs)) 2))]
+                                    [(p [[0 "x..x..x."] [0 [:pressed 1]]]) (p [[0 "x..x..x."] [0 :complement]]) (p [[0 "x..x..x."] [0 [:rotate 1]]])
+                                     (p [[0 "x..x..x."] [0 [:n 4]]]) (p [[0 "x..x..x."] [0 "x..x..x."]])])`);
+  check("... pressing a pulse adds an onset; :complement; [:rotate 1]; [:n 4] cuts the circle; the same again sends nothing",
+        edits === "[[1 1 0 1 0 0 1 0] [0 1 1 0 1 1 0 1] [0 0 1 0 0 1 0 1] [1 0 0 1] nil]", edits);
+  const nTree = await cljs(page, `(let [go ${nGo} at ${eOut} [_ out] (go {:n 16 :bars 2} [[1 "c4 e4 g4 b4"] [0 "x..x..x...x.x..."]]) t (at out 0)]
+                                    [(get-in t [1 1]) (at out 1) (mt/pitches t)])`);
+  check("... and sends as euclid does: the tree (two bars, the color going on) and the :rtm map with the pitches",
+        nTree === '[{:meter [4 4]} {:shares [3 3 4 2 4], :pitches "c4 e4 g4 b4"} ["c4" "e4" "g4" "b4" "c4" "e4" "g4" "b4" "c4" "e4"]]', nTree);
+  // in the patch: euclid's pulses into a necklace; pressing a pulse; the axes drawn
+  const ne = (await cljs(page, '(box "euclid 5 16" 9600 600)')).trim();
+  await cljs(page, `(connect ${ne} 2 ${nk} 0)`);
+  await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${ne} [:rotation 6])`);
+  check("... euclid 5 16 into a necklace: the bossa nova, recognised as E(5,16) ↻6",
+        (await until(page, `(:euclid (second (last-shown ${nk})))`, (x) => x === "6", 3000)) === "6", await cljs(page, `(second (last-shown ${nk}))`));
+  const nkDraw = await cljs(page, `(let [b (get-in (current) [:boxes ${nk}]) sh (ctl-shapes* (ctl-m ${nk} b) b)]
+                                     [(count (filter (fn [f] (and (= :group (first f)) (number? (:hit (second f))))) sh))
+                                      (count (filter (fn [f] (and (= :line (first f)) (= 0.5 (:opacity (second f))))) sh))])`);
+  check("... drawn: sixteen pulses to press and its one axis of symmetry", nkDraw === "[16 1]", nkDraw);
+  await cljs(page, `(delete ${nk} ${np} ${ne})`);
 }

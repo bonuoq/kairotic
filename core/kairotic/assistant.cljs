@@ -432,6 +432,9 @@ Rules:
   1; the pulses as 0/1 on 2). Its right inlet (cold) gives the pitches the notes take in turn (a keyboard's
   keys in Hz, a melody string, {:pitches …}, a pattern {:note […]}); [:k 5] [:n 16] [:rotation 2] [:bars 4]
   [:meter \"3/4\"] change it, a bang sends it.
+  `necklace [n]` takes a rhythm (euclid's pulses, intervals [3 3 2], box notation \"x..x..x.\", an :rtm map or
+  a tree), draws it with its axes of symmetry, is an editor (press a pulse, :complement, [:rotate 1], [:n 12]),
+  sends as euclid on 0–2 and its measures on 3 ({:ivec :evenness :even :deep :flat :axes :gap :oddity :euclid}).
 - The outside (package @kairotic/io, it comes by itself; listening while ▶ runs): `midiin` (MIDI in: Hz and
   voice ids for synth~ like a keyboard, and every event as a map {:type :note :freq :amp :gate …}),
   `midiout [mpe]` (Hz after voice ids, or events, to a MIDI port; mpe for microtones), `oscout [target]` and

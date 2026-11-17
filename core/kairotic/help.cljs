@@ -839,7 +839,33 @@
                              "(connect :b8 0 :b5 1)" "(connect :b9 0 :b5 1)" "(connect :b10 0 :b5 0)" "(connect :b6 0 :b11 0)" "(connect :b12 0 :b11 0)"
                              "(connect :b11 0 :b13 0)" "(connect :b11 1 :b13 1)" "(connect :b13 0 :b14 0)" "(connect :b13 0 :b14 1)")
              :try "With five onsets ([:k 5] above), click {:pitches \"c4 e4 g4\"}, then [:bars 3] (it sends): C E G over the onsets, the color going on from bar to bar. Press ▶ and click the bang of mt play to hear it. Hold a chord on the keyboard and click bang above: the chord's notes, one onset each."}]
-    :see ["tree" "mt" "pcclock" "pbind"]}
+    :see ["necklace" "tree" "mt" "pcclock"]}
+
+   "necklace"
+   {:package "@kairotic/theory" :usage "necklace [n 16] [bars 1] [midi]"
+    :about "**A rhythm that repeats is a necklace**: k onsets among n pulses around a circle, time clockwise from the top. Seen so it is the same object as a pitch-class set on `pcclock`, and Toussaint measures it with the same geometry.
+
+**Its measures** go out on the right: the **interval vector** — how often each distance between onsets occurs (the son clave: `[0 1 2 2 0 3 2 0]`) —, its **evenness** — the sum of the chords between all pairs of onsets (Block and Douthett: arcs would score the six 4/4 claves the same) — and `:even`, that sum against the Euclidean rhythm's; **deep** when each distance occurs a different number of times (the bembé, as the diatonic scale), **flat** when each occurs once; its **axes** of mirror symmetry, drawn across the circle; its longest **gap**; rhythmic **oddity** (no two onsets halve the cycle); and `:euclid`, the rotation of E(k,n) it is.
+
+**It is an editor too**: pressing a pulse adds or takes away an onset. Its other outlets are `euclid`'s — a musical tree, its `:rtm` map, its pulses —, with the pitches on the right inlet the same way, so a rhythm drawn here goes into trees just as one made there."
+    :args [[:n "how many pulses before a rhythm arrives (a rhythm brings its own)"]
+           [:bars "how many bars the tree repeats it, the pitches going on"]
+           [:midi "numbers on the right inlet are MIDI notes (62), not Hz"]]
+    :doc "A cyclic rhythm on the circle and its geometry (Toussaint): drawn as a polygon with its axes of symmetry; pressing a pulse adds or takes away an onset. Out as euclid (a tree, the :rtm map, the pulses) and its measures: interval vector, evenness, deep, flat, axes, longest gap, oddity, the rotation of E(k,n) it is."
+    :inlets ["a rhythm: pulses ([1 0 0 1 0 0 1 0], euclid's right outlet), intervals ([3 3 2]), box notation (\"x..x..x.\"), an :rtm map ({:shares [3 3 2]}), a tree with an :rtm, or {:onsets [0 3 6] :n 8} · a number: that pulse added or taken away · :complement · [:rotate 1] · [:n 12] · [:bars 2] · [:meter \"3/4\"] · :clear · a bang sends it again"
+             "the pitches (cold), as euclid's: a list of Hz (MIDI with midi), a melody string, a map with :pitches or :pitch, a pattern {:note [...]} · :clear"]
+    :outlets ["the rhythm as a musical tree, for a tree box (as euclid's)" "the :rtm map alone, to merge with pitches" "the pulses, ones and zeros"
+              "its measures: {:n :k :onsets :intervals :ivec :evenness :even :deep :flat :axes :gap :oddity :euclid}"]
+    :messages [["\"x..x..x...x.x...\"" "the son clave, in box notation"]
+               ["[3 3 2]" "the tresillo, as intervals"]
+               [":complement" "onsets and silences swapped"]
+               ["[:rotate 1]" "it starts a pulse later"]
+               ["[:n 12]" "a circle of twelve pulses (onsets past it are lost)"]]
+    :example (lines "(box :b1 \"msg \\\"x..x..x...x.x...\\\"\" 40 20)" "(box :b2 \"msg \\\"x..x...x..x.x...\\\"\" 220 20)" "(box :b3 \"msg \\\"x..x..x...x..x..\\\"\" 400 20)"
+                    "(box :b4 \"necklace\" 40 70)" "(box :b5 \"print\" 40 340)" "(box :b6 \"tree\" 280 70)" "(resize :b6 420 160)"
+                    "(connect :b1 0 :b4 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b4 0)" "(connect :b4 3 :b5 0)" "(connect :b4 0 :b6 0)")
+    :try "Click the son, the rumba and the bossa nova (three of Toussaint's six 4/4 claves): each necklace, its axes, and its measures in the REPL — the son's interval vector [0 1 2 2 0 3 2 0], the rumba less even than the bossa nova, the bossa nova E(5,16) from pulse 6. Press pulses to make one of your own: the tree box follows."
+    :see ["euclid" "pcclock" "fourier" "tree"]}
 
    "comes"
    {:package "@kairotic/theory" :usage "comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [temp 0] [seed 1] [inverted] [fourth] [live] [nocues] [midi]"

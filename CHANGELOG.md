@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **`necklace`: a cyclic rhythm and its geometry** (discussion #252, `@kairotic/theory` 0.13.0). k onsets among n
+  pulses around a circle — the object of `pcclock`, now for time —, measured as Toussaint does: the interval vector,
+  evenness as the sum of chords (Block and Douthett; the rumba less even than the bossa nova, where arcs see them
+  equal), `:even` against the Euclidean rhythm, deep (the bembé, as the diatonic scale), flat, axes of mirror
+  symmetry (drawn), the longest gap, rhythmic oddity and the rotation of E(k,n) it is. It takes pulses (`euclid`'s
+  right outlet), intervals (`[3 3 2]`), box notation (`"x..x..x."`), an `:rtm` map or a tree; pressing a pulse adds
+  or takes away an onset, `:complement`, `[:rotate 1]`, `[:n 12]`. Its outlets 0–2 are `euclid`'s (tree, `:rtm`
+  map, pulses) and its right inlet takes pitches the same way; the measures go out on outlet 3. Help, README,
+  assistant, tests in `tests/theory.mjs`.
+
 - **One box, `comes`, for the canon and its mirrors** (`@kairotic/theory` 0.12.0; breaking, for 0.3.0). As Study 50
   found, the comes is a reader of the dux at a **speed**: `comes` reads it at 1 (a canon), `comes 0.5` twice as
   slow (an augmentation), `comes -1` backwards (a crab, written from both ends to the middle, or played live beat by

@@ -1,7 +1,7 @@
 {
   "name": "@kairotic/theory",
-  "version": "0.12.0",
-  "description": "Kairotic music-theory views: pcclock (a pitch-class set on the clock, its prime form and symmetries), fourier (the six Fourier coefficients of a pitch-class distribution) and tonnetz (triads on the Tonnetz and the path of the harmony), drawn in the patch and clickable; and comes, counterpoint live: you play the dux and the comes answers, reading it at a speed — a canon, an augmentation, or a crab or table canon written from both ends to the middle; and euclid, a Euclidean rhythm drawn as a necklace, sent as a musical tree whose rhythm merges with any pitches",
+  "version": "0.13.0",
+  "description": "Kairotic music-theory views: pcclock (a pitch-class set on the clock, its prime form and symmetries), fourier (the six Fourier coefficients of a pitch-class distribution) and tonnetz (triads on the Tonnetz and the path of the harmony), drawn in the patch and clickable; and comes, counterpoint live: you play the dux and the comes answers, reading it at a speed — a canon, an augmentation, or a crab or table canon written from both ends to the middle; and euclid, a Euclidean rhythm drawn as a necklace, sent as a musical tree whose rhythm merges with any pitches; and necklace, a cyclic rhythm on the circle with its geometry (interval vector, evenness, deep, symmetry, oddity), also an editor",
   "author": "bonuoq",
   "license": "MPL-2.0",
   "repository": {
@@ -44,6 +44,8 @@
     "rhythm",
     "euclidean rhythm",
     "necklace",
-    "bjorklund"
+    "bjorklund",
+    "toussaint",
+    "interval vector"
   ]
 }
