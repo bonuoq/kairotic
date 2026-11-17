@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 54 · parts · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:900px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: a phrase chosen, counted, realized by the engine and drawn.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+const total = () => d.getElementById("total").textContent;
+try {
+  await wait(() => w.kairoticParts && /^\d/.test(total()));
+  is("it opens on the 7–6 Fauxbourdon closed by a compound cadence with 6/4: 18 realizations", total() === "18" && d.querySelector('[data-schema="fauxbourdon-76"]').classList.contains("on") && d.querySelector('[data-cadence="compound-64"]').classList.contains("on"));
+  is("... six schemata and six cadences to choose", d.querySelectorAll("[data-schema]").length === 6 && d.querySelectorAll("[data-cadence]").length === 6);
+  is("... the engine's realization drawn: three voices, the chords under the bass, the 7ths marked", d.querySelectorAll("#sheet rect.upper").length > 0 && d.querySelectorAll("#sheet rect.middle").length > 0 && [...d.querySelectorAll("#sheet text.fig")].filter((x) => x.textContent === "7/3").length === 5 && d.querySelectorAll("#sheet rect.diss").length >= 5);
+  is("... sound, and its steps said", /steps: the upper voice \d+%/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  d.querySelector('[data-schema="fifths-73"]').click();
+  await wait(() => d.getElementById("status").textContent === "no realization closes");
+  is("Fifth Down Fourth Up into a compound cadence: none closes", total() === "0");
+  d.querySelector('[data-cadence="simple"]').click();
+  await wait(() => total() === "95");
+  is("... into a simple cadence: 95, a 7/3 a beat", total() === "95" && [...d.querySelectorAll("#sheet text.fig")].filter((x) => x.textContent === "7/3").length === 5);
+  d.querySelector('[data-schema="romanesca"]').click(); d.querySelector('[data-cadence="galant"]').click();
+  d.getElementById("mode").value = "minor"; d.getElementById("tonic").value = "A"; d.getElementById("mode").dispatchEvent(new Event("change"));
+  await wait(() => /A minor/.test(d.getElementById("ref").textContent));
+  is("stepwise Romanesca and a Galant cadence in A minor: some, the engine's sound", Number(total().replace(/,/g, "")) > 0 && !/✗/.test(d.getElementById("msg").textContent));
+  d.getElementById("uniform").click();
+  is("... one drawn uniformly, sound", !/✗/.test(d.getElementById("msg").textContent) && /steps/.test(d.getElementById("msg").textContent));
+  is("no errors on the page", errors.length === 0);
+} catch (e) { is("error: " + (e.message || e), false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(errors) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>

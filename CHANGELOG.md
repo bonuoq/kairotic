@@ -8,6 +8,12 @@
   weighs with it (adding its own two rules, the mode and the imitation; its fans and its canons are the same as
   before, note for note and cost for cost), and the studies' engines and the agents Claude builds use it. The tests
   check that the comes box's weights are the module's and that Studies 50 and 51 weigh as it does.
+- **Study 54 · parts**: a given bass realized in three parts — a schema of chapter 2 of IJzerman's book
+  (Fauxbourdon, Monte, 7–6 Fauxbourdon, stepwise Romanesca, Fifth Down Fourth Up, Tied Bass) closed by a cadence of
+  chapter 3 (simple, compound 6/4 or 5/4, Galant, deceptive, half). Each upper voice under Study 51's rules against
+  the bass, the upper voices under their own (the 4th a consonance there), the chords as which intervals sound;
+  counted exactly, drawn uniformly or by the engine. Kernel `studies/54-parts/kairotic/parts.mjs` with its tests
+  (Node and browser) and a page.
 
 - **Study 53 · harmonize** (discussion #256, its first study): an `agent` box — given a melody and a request, Claude
   builds a harmonizer inside it as a sub-patch that can be opened, edited and run again without Claude (the request
