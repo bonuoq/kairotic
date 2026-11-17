@@ -40,7 +40,7 @@ jobs:
       - run: node tests/versions.mjs
       # Orders are keywords: no box takes a string as an order (#197)
       - run: node tests/keywords.mjs
-      # The counterpoint of the comes box (@kairotic/theory), in Node: Study 40's kernel, the corrections
+      # The counterpoint of the comes box (@kairotic/cac), in Node: Study 40's kernel, the corrections
       - run: node tests/counterpoint.mjs
       - run: node site/build.mjs
       # Only the npm package (the browser is in the image).

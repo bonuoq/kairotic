@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
-// @kairotic/theory · counterpoint.mjs, what the comes box plays with (discussion #172): its kernel is Study 43's,
+// @kairotic/cac · counterpoint.mjs, what the comes box plays with (discussion #172): its kernel is Study 43's,
 // a note asked for is corrected to the nearest legal one with a future, and a canon played note by note always
 // finishes. In Node:  node tests/counterpoint.mjs
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { live, semis, pitchName, PENTATONIC } from "../packages/theory/assets/counterpoint.mjs";
+import { live, semis, pitchName, PENTATONIC } from "../packages/cac/assets/counterpoint.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const results = [], notes = [];
@@ -13,7 +13,7 @@ const is = (what, ok, detail) => results.push([what, !!ok, detail]);
 
 // the kernel is Study 43's, as it is
 const body = (f, from) => { const s = readFileSync(join(root, f), "utf8"); const i = s.indexOf(from); return s.slice(i, s.indexOf("\n// ─────", i + 1) < 0 ? undefined : s.indexOf("\n// ─────", i + 1)); };
-const ours = body("packages/theory/assets/counterpoint.mjs", "const mod = ");
+const ours = body("packages/cac/assets/counterpoint.mjs", "const mod = ");
 const study = readFileSync(join(root, "studies/43-mirrors/kairotic/kernel.mjs"), "utf8");
 is("the kernel is Study 43's, as it is", study.slice(study.indexOf("const mod = ")).trim() === ours.trim());
 
@@ -192,11 +192,11 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
 
 // the comes box's kernel backwards (speed −1): Study 43's mirror, as it is, on this module
 {
-  const ours = readFileSync(join(root, "packages/theory/assets/mirror.mjs"), "utf8");
+  const ours = readFileSync(join(root, "packages/cac/assets/mirror.mjs"), "utf8");
   const theirs = readFileSync(join(root, "studies/43-mirrors/kairotic/mirror.mjs"), "utf8");
   const code = (s) => s.slice(s.indexOf("export const KINDS")).replace(/\n\/\/ api\/import-module[\s\S]*$/, "").trim();
   is("mirror.mjs is Study 43's mirror, as it is", code(ours) === code(theirs));
-  const { mirror } = await import("../packages/theory/assets/mirror.mjs");
+  const { mirror } = await import("../packages/cac/assets/mirror.mjs");
   const crab = mirror({ tonic: 1, lo: 0, hi: 9, spacing: 11, starts: [1, 5, 8], b: 2, n: 11, transform: { kind: "crab", k: -7 } });
   is("a crab an octave below, 11 beats: 6959, as in Study 43", crab.count() === 6959);
 }
@@ -207,8 +207,8 @@ for (const f of ["kernel.mjs", "mirror.mjs"])
 
 // soft.mjs: the one way every engine weighs (the comes box, the studies' engines, the agents)
 {
-  const soft = await import("../packages/theory/assets/soft.mjs");
-  const { WEIGHTS } = await import("../packages/theory/assets/counterpoint.mjs");
+  const soft = await import("../packages/cac/assets/soft.mjs");
+  const { WEIGHTS } = await import("../packages/cac/assets/counterpoint.mjs");
   is("the comes box's weights are soft.mjs's", JSON.stringify(WEIGHTS) === JSON.stringify(soft.defaultWeights()));
   is("every soft rule documented, with its scope and weight", soft.SOFT.every((r) => r.id && r.scope && typeof r.weight === "number" && r.doc));
   // the studies weigh alike: their copies (Studies 50, 51) give the same costs on the same lines

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// @kairotic/theory · soft.mjs: how every engine of Kairotic weighs its decisions.
+// @kairotic/cac · soft.mjs: how every engine of Kairotic weighs its decisions.
 //
 // The hard rules (a kernel's check) decide what may be; these soft rules decide what is likely. A candidate costs
 // something by the shape of its own line (melodicParts) and by the vertical it makes with another voice

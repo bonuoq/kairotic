@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`@kairotic/cac`: composition assisted by computer.** The engines that write music with you leave the views:
+  `comes` moves from `@kairotic/theory` (0.14.0: `pcclock`, `fourier`, `tonnetz`) to the new `@kairotic/cac` 0.1.0,
+  with the kernels every engine shares — `counterpoint.mjs`, `mirror.mjs`, `soft.mjs` (the page's copy now under
+  `kairotic/packages/cac/`). Writing `comes` brings the new package; works that already carry theory with `comes`
+  inside keep their copy. The place for the next engines of discussion #172 (the futuribles, partimento, the
+  realization of schemata). `tests/counterpoint.mjs` reads the kernels there.
+
 - **`@kairotic/rhythm`, a package for rhythm as geometry** (discussion #252): `euclid` moves there from
   `@kairotic/theory` (0.13.0 without it; writing `euclid` brings the new package), beside `necklace`. A package
   travels as one component box, and `@kairotic/theory` with both would have passed the 100 000 characters a code

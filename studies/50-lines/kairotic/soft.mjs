@@ -3,7 +3,7 @@
 // shape of its line and by the vertical it makes, and the engine that chooses among the candidates with a future —
 // a softmax of −cost / temperature, colder where few futures are left. The hard rules decide what may be; these
 // decide what is likely. The same ids, weights and costs as the ClojureScript, and as the closures of `live` in
-// @kairotic/theory's counterpoint.mjs (the `comes` box), so the studies and the boxes weigh alike — a module to be
+// @kairotic/cac's counterpoint.mjs (the `comes` box), so the studies and the boxes weigh alike — a module to be
 // exported from there, once, for all of them.
 //
 // A pitch here is a step of the scale (a degree), as the kernels count them; a line is one pitch a unit, a note held

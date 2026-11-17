@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// Shapes (:curve, :group, :hit), the draw box, and @kairotic/theory (pcclock, fourier, tonnetz, comes). In the app
+// Shapes (:curve, :group, :hit), the draw box, @kairotic/theory (pcclock, fourier, tonnetz), @kairotic/cac (comes) and @kairotic/rhythm. In the app
 // loaded by tests/browser.mjs with a local work open. check(label, ok, detail).
 import { cljs } from "./gestures.mjs";
 
@@ -87,7 +87,7 @@ export async function theory(page, check) {
   const cp = (await cljs(page, '(box "print" 7600 480)')).trim();
   const cq = (await cljs(page, '(box "print" 7800 480)')).trim();
   await cljs(page, `(connect ${cm} 3 ${cp} 0) (connect ${cm} 0 ${cq} 0)`);
-  check("comes has two inlets (notes, the pulse) and five outlets", (await cljs(page, `(io (get-in (current) [:boxes ${cm}]))`)) === "[2 5]");
+  check("comes brings @kairotic/cac: two inlets (notes, the pulse) and five outlets", (await until(page, `(io (get-in (current) [:boxes ${cm}]))`, (x) => x === "[2 5]", 20000)) === "[2 5]");
   const st = (k) => `(get-in @eng/rt [:states ${cm} :fwd ${k}])`;
   await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${cm} 62)`);
   check("comes: the first note waits for the futures to be counted, then is played",
