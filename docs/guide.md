@@ -272,6 +272,14 @@ function by itself).
   A `writer` (what to write · the ring's buffer · a position) writes where it is, from any source, erasing
   what it passes (or `writer mix`, leaving it); `:rec t` / `:ovr t` send it to t at speed 1. A reader into
   a writer on the same ring is feedback: a round.
+- **The same with sound**: `ring~ [seconds]` keeps the last seconds of the sound on its left (with nothing
+  there its own head does not write: the ring is what its `writer~`s write). A `reader~` on its right
+  outlet without a position signal follows its head: `reader~ d 1` a delay, `reader~ d 1 speed 0.5` an
+  octave down and falling behind, `speed -1` backwards; a new `d` (`msg :d 0.25`) glides, the pitch bending,
+  or seeks with a crossfade. With a position signal it reads there (seconds; `norm`: 0…1, a `phasor~`). A
+  `writer~` (sound · the ring~'s buffer · a position signal) writes as a tape head — `ovr` replaces, silence
+  too; `writer~ mix 0.8` adds, keeping what was there times 0.8. Up to 8 heads share the ring~'s one node, so
+  a feedback inside it is exact (through other boxes it costs a block of 128 samples).
 
 ## 4. The history
 

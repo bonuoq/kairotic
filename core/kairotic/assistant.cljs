@@ -460,6 +460,8 @@ Rules:
   A canon or a delay of messages: `ring [seconds]` (values on its left) → its RIGHT outlet → the right inlet
   of `reader d 1` (1 s behind; `reader d 2 speed 0.5`: later and slower); a number on a reader's left moves it
   instead. `writer` (left: what to write; middle: the ring's right outlet; right: a position) → the ring's left.
+  With sound: `ring~ [seconds]` (sound on its left) → its RIGHT outlet → the right inlet of `reader~ d 1` (a
+  delay; `speed 0.5` an octave down) or the middle inlet of `writer~` (sound left, position signal right).
   To write what is played into notation: `pitch~` → `transcribe [bpm] [notes|glide]` (left; `onset~` on its
   right) → a `freqt`'s inlet; `rec`/`stop` messages on transcribe's left.
 - `gain~ 0.2` sets its factor as an argument; a message into its right inlet changes it, a signal

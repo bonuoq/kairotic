@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **ring~, writer~, and reader~ on a ring~** (the heads with sound in the app; Study 48's core). `ring~ [seconds]`
+  keeps the last seconds of the sound on its left (with nothing there its own head does not write). One
+  AudioWorklet node per ring~ (`core/kairotic/ringcore.mjs`) holds the buffer and up to 8 heads: the `writer~` and
+  `reader~` boxes on its right outlet take a slot there, so they share the buffer and a feedback inside the ring is
+  exact. `reader~` on a ring~ follows its head without a position signal (`reader~ d 1 speed 0.5`; `msg :d`,
+  `:speed`, `:jump`, `:gain`; a new d glides or seeks with a crossfade) or reads at a position signal (seconds,
+  `norm` for 0…1). `writer~ [ovr|mix [keep]] [jump s] [norm]` (sound · buffer · position) writes as a tape head, at
+  a position signal or at the ring's head; `:rec t` / `:ovr t`, `:stop`. Tests: `tests/ringcore.mjs` (the core sample by
+  sample, in Node and from the app's tests) and `tests/ringaudio.mjs` (in the app, with sound).
+
 - **ring, writer, and reader on a ring** (the heads of Study 47 in the app, messages first; discussion "Heads on a
   span of time"). `ring [seconds]` keeps the messages of the last seconds, each at its time (from its first
   message); its write head goes round as a tape head, so what is older than one turn is gone; `:clear`, `[:data]`.
