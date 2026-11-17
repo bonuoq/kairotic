@@ -20,7 +20,7 @@
   {;; ── about ──
    :class "serial"
    :license "MPL-2.0"
-   :doc "A board on a serial port — an Arduino's Serial.println, an ESP32… — while ▶ runs. open (a click: the browser asks which port) at baud (115200); close lets it go. Each line it sends: numbers (\"512 300 1\", or with commas) go out as a list on the left; key:value pairs (\"pot:512 light=300\") as [key value] each; anything else as text; and every line as events on the right ({:type :serial :values […]}, {:type :serial :key \"pot\" :value 512}, {:type :serial :text …}). A text or a list on the left (other than open/close) goes to the board as a line. Web Serial: Chrome, Edge and Firefox 151+; not Safari."
+   :doc "A board on a serial port — an Arduino's Serial.println, an ESP32… — while ▶ runs. open (a click: the browser asks which port) at baud (115200); close lets it go. Each line it sends: numbers (\"512 300 1\", or with commas) go out as a list on the left; key:value pairs (\"pot:512 light=300\") as [key value] each; anything else as text; and every line as events on the right ({:type :serial :values […]}, {:type :serial :key \"pot\" :value 512}, {:type :serial :text …}). A text or a list on the left goes to the board as a line — a text is always a line, even \"open\"; the orders are :open and :close. Web Serial: Chrome, Edge and Firefox 151+; not Safari."
    :usage "serial [baud]"
    :io [1 2]
    :size [96 30]
@@ -47,8 +47,8 @@
                                        es))
                      }
                       (seq es) (assoc :show {:label (let [e (last es)] (cond (:values e) (str (:values e)) (:key e) (str (:key e) " " (or (:value e) (:text e))) :else (:text e)))})))
-                  (#{:open "open"} value) {:effects [[:open (api/clamp (:baud args) 300 4000000)]]}
-                  (#{:close "close"} value) {:effects [[:close true]]}
+                  (#{:open} value) {:effects [[:open (api/clamp (:baud args) 300 4000000)]]}
+                  (#{:close} value) {:effects [[:close true]]}
                   (string? value) {:effects [[:write value]]}
                   (sequential? value) {:effects [[:write (apply str (interpose " " (map #(if (keyword? %) (name %) (str %)) value)))]]}
                   :else {})))

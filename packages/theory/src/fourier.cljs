@@ -41,7 +41,7 @@
                               :out [[1 (mapv (fn [[a b]] (r3 (* (/ 180 js/Math.PI) (js/Math.atan2 (- b) a)))) f)]
                                     [0 (mapv (fn [p] (r3 (mag p))) f)]]}))]
                 (cond
-                  (#{:clear "clear"} value) {:state nil :show nil}
+                  (#{:clear} value) {:state nil :show nil}
                   (number? value) (let [ns (vec (take-last (notes-of args) (conj (:notes st) value)))]
                                     (send (assoc st :notes ns) (weights ns)))
                   (and (sequential? value) (seq value) (every? number? value)) (send (assoc st :notes []) (weights value))

@@ -33,8 +33,8 @@
                     lo (or (:lo st) (:in-lo args)) hi (or (:hi st) (:in-hi args))
                     ms (max 0 (:ms args))]
                 (cond
-                  (#{:learn "learn"} value) {:state (assoc st :learning true :lo nil :hi nil :seen nil) :show {:learn true}}
-                  (and (sequential? value) (#{:learn "learn"} (first value)) (#{:off "off" 0} (second value)))
+                  (#{:learn} value) {:state (assoc st :learning true :lo nil :hi nil :seen nil) :show {:learn true}}
+                  (and (sequential? value) (#{:learn} (first value)) (#{:off 0} (second value)))
                   {:state (dissoc st :learning) :show {:learn false}}
                   ;; a glide: one step of it, scheduled to itself
                   (and (= inlet 0) (vector? value) (= :scale-step (first value)))

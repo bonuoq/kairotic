@@ -12,7 +12,7 @@
 ;;                           That is all it reads of time: more (the mode heard, a modulation, the meter, phrases)
 ;;                           is for boxes of analysis, which tell it with messages ([:mode …], [:beats 3], end);
 ;;                           with nocues the two cues are theirs too.
-(let [origins ["npm:@kairotic/theory@0.9.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
+(let [origins ["npm:@kairotic/theory@0.9.1/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
       hz (fn [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
       semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
       ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
@@ -243,20 +243,20 @@
                     {:state st :effects fx :show {:status "counting the futures…"}})
 
                   ;; the end of the section, from outside (an analysis that heard a cadence, a phrase…)
-                  (#{:end "end"} value)
+                  (#{:end} value)
                   (if (:idle st) {:state st} (cue st :end))
 
-                  (#{:reset "reset"} value)
+                  (#{:reset} value)
                   (if cp (at-point cp (assoc st :D [] :C [] :held [] :idle false :cur nil :struck nil :seed (:seed0 st 1))) {:state st})
-                  (#{:back "back"} value)
+                  (#{:back} value)
                   (if cp (at-point cp (-> st (update :D (fn [v] (if (seq v) (pop v) v))) (update :C (fn [v] (if (seq v) (pop v) v))))) {:state st})
-                  (#{:engine "engine"} value)
+                  (#{:engine} value)
                   (if cp
                     (let [st (if (or (:idle st) (>= (count (:D st)) (.-n cp))) (assoc st :D [] :C [] :idle false) st)]
                       (let [[st o] (chance st)]
                         (if-let [r (.engine cp (clj->js (:D st)) (clj->js (:C st)) o)] (placed cp st r) {:state st})))
                     {:state st})
-                  (and (not (:live st)) (#{:hold "hold"} value))
+                  (and (not (:live st)) (#{:hold} value))
                   (if (and cp (seq (:D st)) (not (:idle st)))
                     (let [[st o] (chance st)]
                       (if-let [r (.hold cp (clj->js (:D st)) (clj->js (:C st)) o)] (placed cp st r) {:state st}))

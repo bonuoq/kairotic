@@ -280,8 +280,8 @@
           (let [as (assoc as i value)]
             {:state (merge (assoc st :args as) (xf-instance make as))})
           {:state st})
-        (#{:clear "clear"} value) {:state (merge st (xf-instance make as))}
-        (#{:flush "flush"} value) (do ((:rf st) nil)
+        (#{:clear} value) {:state (merge st (xf-instance make as))}
+        (#{:flush} value) (do ((:rf st) nil)
                                       {:state (merge st (xf-instance make as)) :out (drain st)})
         (:done st) {:state st :out []}
         :else (let [r ((:rf st) nil value)]

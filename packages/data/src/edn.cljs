@@ -91,11 +91,11 @@
                   ;; messages
                   (and (msg? :depth) (number? (second value)))
                   (view (with-top (assoc st :open (open-to (:root st) (max 0 (dec (second value))))) 0 h))
-                  (#{:bang "bang"} value)
+                  (#{:bang} value)
                   (if (contains? st :root)
                     (let [p (or (:sel st) [])] {:out [[1 p] [0 (part (:root st) p)]]})
                     {})
-                  (#{:clear "clear"} value) (view {:open #{} :top 0})
+                  (#{:clear} value) (view {:open #{} :top 0})
                   ;; a value: the same again changes nothing; another keeps what was open and picked
                   (and (contains? st :root) (= value (:root st))) {:state st}
                   :else

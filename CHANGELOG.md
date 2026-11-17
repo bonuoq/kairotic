@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Orders are keywords only.** Since `msg` is read as Clojure (#197) a word without its colon is a name, and an
+  order was still also matched as a string in 14 boxes (`#{:clear "clear"}`): a string that came as data was taken
+  for an order — `serial` could not send the line `"open"` or `"close"` to a board, `edn` could not hold `"clear"`,
+  `fetch` took `"get"` or `"refresh"`. Now only the keyword is the order, and a string is always data: `comes`
+  (`:end :reset :back :engine :hold`), `cancrizans` (`:reset :back :engine`), `pcclock`, `fourier`, `tonnetz`, `midiin`,
+  `midiout`, `edn`, `fetch` (`:clear`, `:bang`, `:refresh`, `[:get …]`, `[:fetch …]`), `serial` (`:open :close`),
+  `pulse` (`:start :stop`, `[:bpm n]`), `scale` and `realize~` (`:learn`, `[:learn :off]`), `faust~` (`[:gain v]`),
+  and the core's `:clear`/`:flush` of transducer boxes and the `:clear` of a sub-patch's state. `tests/keywords.mjs`
+  (in CI) checks that no component matches an order as a string again; data sets (a tree's `:every`, a pattern's
+  rests, a page's mode in its URL) stay. Packages: `@kairotic/analysis` 0.7.5, `controls` 0.2.3, `data` 0.1.4, `io`
+  0.2.4, `net` 0.1.3, `theory` 0.9.1.
 - **Every reader reads alike** (breaking). `reader` and `reader~` take a position in the units of their buffer —
   the X axis of a canvas (Y with `y`), the time of a freqt, the seconds of a sample, a ring or a ring~ — or, with
   `norm`, from 0 to 1; along a stroke (`path`) it is always 0…1. Before, `reader~` read a canvas, freqt or sample

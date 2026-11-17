@@ -142,7 +142,7 @@
                     :else (let [st (assoc st :learning false :bank (:value value) :sent {} :u nil)]
                             (settle st (or at (:t st) 0))))
 
-                  (#{:learn "learn" :bang} value) (learn st args)
+                  (#{:learn :bang} value) (learn st args)
 
                   ;; a moment later: the last frame that arrived while it waited
                   (= value :realize-tick) (if (and (:bank st) (:dirty st)) (settle (assoc st :tick false) at) {:state (assoc st :tick false)})
