@@ -43,7 +43,11 @@ try {
   await wait(() => total().length > 6);
   is("... without the figures, millions over the same bass", Number(total().replace(/,/g, "")) > 1e6);
   d.getElementById("draw").click();
-  is("... one drawn, a realization", /cadence/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  is("... the engine's: a realization, its shape and its cost said", /cadence.*steps \d+%.*cost/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  d.getElementById("uniform").click();
+  is("... one drawn uniformly, a realization", /cadence/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  d.getElementById("clear").click();
+  is("... the next notes with their futures and their costs", d.querySelectorAll("#fan button small.cost").length > 3);
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);

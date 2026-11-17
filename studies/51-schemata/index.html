@@ -91,6 +91,7 @@ ul.q li::marker { color: var(--kairos); }
 .fan { display: flex; flex-wrap: wrap; gap: 5px; }
 .fan button { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 12px var(--f-code); padding: 3px 7px; border-radius: 5px; cursor: pointer; display: grid; justify-items: center; line-height: 1.25; }
 .fan button small { font-size: 10.5px; color: var(--ink-soft); }
+.fan button small.cost { color: var(--kairos); }
 .fan button:hover { border-color: var(--kairos); }
 .fan button:disabled { opacity: 0.35; cursor: default; }
 .fan button.dead { opacity: 0.55; }
@@ -114,7 +115,9 @@ ul.q li::marker { color: var(--kairos); }
   <label>mode <select id="mode"><option>major</option><option>minor</option></select></label>
   <label><input type="checkbox" id="figured" checked> realize the figures</label>
   <span class="sep"></span>
-  <button class="act primary" id="draw">Draw a realization</button>
+  <label title="the engine: a softmax of −cost / temperature among the notes with a future (0: the cheapest)">temperature <input type="number" id="temp" min="0" max="5" step="0.1" value="1"></label>
+  <button class="act primary" id="draw" title="the engine chooses each note by the soft rules of Studies 38–42">Engine</button>
+  <button class="act" id="uniform" title="one of the realizations, each as likely">Draw uniformly</button>
   <button class="act" id="proto" title="the book's prototype, in this key">The book's</button>
   <button class="act" id="clear">Clear</button>
   <button class="act" id="play" disabled>▶ Play</button>
@@ -145,7 +148,8 @@ ul.q li::marker { color: var(--kairos); }
         <li><b>The figures nearly decide the voice.</b> With them the 3–6 progression, the 7–6 chain and the Fifth Down Fourth Up have one realization each — the book's; the parallel thirds a few hundred, only the octave changing. Without them, the same basses have millions.</li>
         <li><b>The book's prototypes are realizations</b> of their schemata, and close as the book says: imperfect (3–3), perfect (6–8), compound (7–6–8, 2–3–1) and compound leaping (7–3–8 on ②–⑤–①).</li>
         <li><b>The rules are tonal, not of a key</b>: every schema counts the same in C major and E♭ major, in A minor and G minor.</li>
-        <li><b>Written by hand</b>, each next note shows its futures: the partimento as improvisation, the schema as the plan.</li>
+        <li><b>Drawn uniformly, a realization leaps</b>: most of the millions do (about a third of the moves are steps). The <b>engine</b> weighs them with the soft rules of Studies 38–42 — the contour after Bach, the motion between the voices — and chooses each note by a softmax of −cost / temperature: half the moves or more are steps.</li>
+        <li><b>Written by hand</b>, each next note shows its futures (and, in red, its cost): the partimento as improvisation, the schema as the plan.</li>
       </ul>
     </section>
   </div>
@@ -154,6 +158,7 @@ ul.q li::marker { color: var(--kairos); }
 
 <script type="module">
 import { schemata, SCHEMATA, PROTOTYPES, keyOf, codeOf } from "./kairotic/schemata.mjs";
+import { shape } from "./kairotic/soft.mjs";
 
 const $ = (id) => document.getElementById(id);
 const BOOK_KEY = { thirds: "major", sixths: "major", "3-6": "major", "third-down": "major", "7-6": "major", "2-3": "minor", "7-3": "minor", "tied-bass": "major" };
@@ -192,7 +197,7 @@ function rebuild() {
   $("schema-about").innerHTML = `<b>${S.schema.name[0].toUpperCase() + S.schema.name.slice(1)}:</b> ${S.schema.about}.`;
   $("proto").disabled = !prototype();
   $("status").textContent = c ? "ready" : "no realization";
-  $("draw").disabled = !c;
+  $("draw").disabled = !c; $("uniform").disabled = !c;
   render();
 }
 function render() {
@@ -236,11 +241,12 @@ function render() {
   $("at").textContent = U.length < n ? `unit ${U.length + 1} of ${n}${S.bass[U.length].fig && S.figured ? " · figure " + S.bass[U.length].fig.join("/") : ""}` : "complete";
   if (U.length < n) {
     const cs = S.fan(U).filter((c) => !c.reason || c.reason !== "out of range");
+    for (const c of cs) if (!c.reason) { c.parts = S.costParts(U, c.note); c.cost = Object.values(c.parts).reduce((a, b) => a + b, 0); }
     for (const c of cs.slice().reverse()) {
       if (c.reason && /below the bass|too far|unison/.test(c.reason)) continue;
       const b = document.createElement("button");
-      b.innerHTML = `${c.name}<small>${c.reason ? "✗" : c.futures.toLocaleString("en")}</small>`;
-      b.title = c.reason || `${c.futures} realizations go on from here`;
+      b.innerHTML = `${c.name}<small>${c.reason ? "✗" : c.futures.toLocaleString("en")}</small>${c.reason ? "" : `<small class="cost">${c.cost.toFixed(1)}</small>`}`;
+      b.title = c.reason || `${c.futures} realizations go on from here · costs ${c.cost.toFixed(2)}: ` + (Object.entries(c.parts).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(", ") || "nothing");
       if (c.reason) b.disabled = true; else if (c.futures === 0n) b.classList.add("dead");
       b.addEventListener("click", () => { U.push(c.note); $("why").textContent = c.futures === 0n ? "a dead end: the rules allow it, but no realization goes on from it" : ""; render(); });
       fan.appendChild(b);
@@ -248,7 +254,12 @@ function render() {
   }
   $("undo").disabled = !U.length; $("play").disabled = !U.length;
   const cad = S.cadence(U);
-  $("msg").textContent = U.length === n ? (S.judge(U) ? "✗ " + S.judge(U) : `a realization · cadence: ${cad.kind}, ${cad.figs.join("–")}`) : U.length ? `${U.length} of ${n} units written · ${S.count(U).toLocaleString("en")} ways to go on` : "";
+  $("msg").textContent = U.length === n ? (S.judge(U) ? "✗ " + S.judge(U) : `a realization · cadence: ${cad.kind}, ${cad.figs.join("–")} · ${describe(U)}`) : U.length ? `${U.length} of ${n} units written · ${S.count(U).toLocaleString("en")} ways to go on` : "";
+}
+/** How the upper voice moves (steps, 3rds, leaps) and what it costs by the soft rules. */
+function describe(V) {
+  const sh = shape([V.map(S.degree)]), pc = (x) => Math.round(100 * x) + "%";
+  return `steps ${pc(sh.steps)}, 3rds ${pc(sh.thirds)}, 4ths or more ${pc(sh.leaps)} · cost ${S.cost(V).toFixed(1)}`;
 }
 function play() {
   if (!U.length) return;
@@ -272,7 +283,8 @@ function play() {
 $("tonic").addEventListener("change", rebuild);
 $("mode").addEventListener("change", rebuild);
 $("figured").addEventListener("change", rebuild);
-$("draw").addEventListener("click", () => { U = S.sample() || []; $("why").textContent = ""; render(); });
+$("draw").addEventListener("click", () => { U = S.engine({ temp: Math.max(0, Number($("temp").value) || 0) }) || []; $("why").textContent = ""; render(); });
+$("uniform").addEventListener("click", () => { U = S.sample() || []; $("why").textContent = ""; render(); });
 $("proto").addEventListener("click", () => { const p = prototype(); if (p) { U = p; $("why").textContent = ""; render(); } });
 $("clear").addEventListener("click", () => { U = []; $("why").textContent = ""; render(); });
 $("undo").addEventListener("click", () => { U.pop(); $("why").textContent = ""; render(); });

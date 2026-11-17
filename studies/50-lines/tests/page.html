@@ -35,6 +35,11 @@ try {
   is("... with one: 1,236", total() === "1,236");
   d.getElementById("draw").click();
   is("another work drawn", d.querySelectorAll("#sheet rect.coda").length === 1);
+  d.querySelector('[data-preset="crab"]').click();
+  await wait(() => total() === "6,959");
+  d.getElementById("engine").click();
+  await wait(() => /the engine, of 6,959 works/.test(d.getElementById("msg").textContent), 30000);
+  is("the engine: a crab weighed among all its 6,959 works, the dux's shape and cost said", /the engine, of 6,959 works \(all of them\)/.test(d.getElementById("msg").textContent) && /steps \d+%.*cost/.test(d.getElementById("msg").textContent));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);

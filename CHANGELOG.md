@@ -38,6 +38,11 @@
   are counted exactly with the figures and without them, the book's prototypes are realizations of their schemata
   and close as the book names it, and the page lets the voice be written by hand, each next note with its futures.
   Kernel `studies/51-schemata/kairotic/schemata.mjs` with its tests (Node and browser) and a page.
+- **The soft rules in JavaScript** (`kairotic/soft.mjs` in Studies 50 and 51): the melodic contour after Bach and
+  the motion between the voices of Studies 38–42, ported from canon.cljs with the same weights, and their engine (a
+  softmax of −cost / temperature). Drawn uniformly, a work leaps because most works do; the engine draws the
+  stepwise ones. Study 51 chooses note by note and shows each next note's cost; Study 50 weighs whole works (a crab
+  is not written forwards). A hemiola leaps by its nature: none of its 7,794 works has more than 4 steps in 9 moves.
 
 - **Study 50 · lines** (discussion #248): counterpoint between two timed lines, whatever their relation in time.
   The comes is a reader of the dux at a signed speed p/q; the lines are spelled on the finest lattice both fall on

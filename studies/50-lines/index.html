@@ -117,7 +117,9 @@ table.cmp th { font: 500 11px var(--f-ui); color: var(--ink-soft); }
   <label>dux notes <input type="number" id="m" min="3" max="15" value="11"></label>
   <span class="sep"></span>
   <button class="act primary" id="count">Count</button>
-  <button class="act" id="draw" disabled>Draw a work</button>
+  <button class="act" id="draw" disabled title="one of the works, each as likely">Draw a work</button>
+  <label title="the engine: a softmax of −cost / temperature over the works (0: the cheapest)">temperature <input type="number" id="temp" min="0" max="20" step="0.5" value="1"></label>
+  <button class="act" id="engine" disabled title="a work weighed by the soft rules of Studies 38–42">Engine</button>
   <button class="act" id="play" disabled>▶ Play</button>
 </div>
 
@@ -141,6 +143,7 @@ table.cmp th { font: 500 11px var(--f-ui); color: var(--ink-soft); }
         <li><b>The order of writing follows from the relation.</b> Each step writes the note that leaves the fewest written notes still bearing on a time not judged: forwards for a canon, from both ends for a crab — and for a crab in augmentation from both ends, meeting off the middle.</li>
         <li><b>A diminution needs a coda.</b> A comes faster than the dux that ends with it plays the dux's last two notes against them: a parallel perfect interval. Its last note is free.</li>
         <li><b>A crab in hemiola closes only at the unison</b> in D dorian: an octave below, nothing.</li>
+        <li><b>A hemiola leaps by its nature.</b> Its comes reads the dux against itself a note and a half apart, so the dux must sound with itself: of 7,794 works in 10 notes none has more than 4 steps in its 9 moves, and most have one. Drawn uniformly a canon leaps too, because most works do; the <b>engine</b> weighs the works with the soft rules of Studies 38–42 (the contour after Bach, the motion between the voices) and draws the stepwise ones — but in a hemiola the best it finds is still a line of thirds.</li>
       </ul>
     </section>
   </div>
@@ -149,6 +152,7 @@ table.cmp th { font: 500 11px var(--f-ui); color: var(--ink-soft); }
 
 <script type="module">
 import { lines, latticeFor, speedOf } from "./kairotic/lines.mjs";
+import { engineWork, workCost, shape } from "./kairotic/engine.mjs";
 
 const $ = (id) => document.getElementById(id);
 const base = { tonic: 1, lo: 0, hi: 9, spacing: 11, starts: [1, 5, 8] };   // D dorian
@@ -181,7 +185,7 @@ function setPreset(name) {
   count();
 }
 function count() {
-  work = null; $("draw").disabled = true; $("play").disabled = true;
+  work = null; $("draw").disabled = true; $("engine").disabled = true; $("play").disabled = true;
   $("status").textContent = "counting the futures…"; $("total").textContent = "…";
   setTimeout(() => {
     try {
@@ -193,12 +197,12 @@ function count() {
       $("lattice").textContent = `speed ${p}/${q} · a dux note ${L.a} unit${L.a > 1 ? "s" : ""}, a comes note ${L.comesUnits} · late ${L.d}` + (L.coda ? " · coda" : "");
       $("order").textContent = "the dux written in the order " + L.order.map((x) => (x === L.m ? "coda" : x + 1)).join(" · ");
       $("status").textContent = c ? "ready" : "no work closes";
-      $("draw").disabled = !c;
+      $("draw").disabled = !c; $("engine").disabled = !c;
       draw(c ? L.sample() : null);
     } catch (e) { $("status").textContent = "✗ " + e.message; $("total").textContent = "–"; L = null; draw(null); }
   }, 20);
 }
-function draw(M) {
+function draw(M, by = "drawn uniformly") {
   work = M; $("play").disabled = !M;
   const sheet = $("sheet");
   if (!L) { sheet.innerHTML = ""; return; }
@@ -234,7 +238,9 @@ function draw(M) {
   }
   svg += `<text class="lab" x="4" y="${y(L.spec.hi)}">${L.system.pitchName(hi)}</text><text class="lab" x="4" y="${y(lo)}">${L.system.pitchName(lo)}</text>`;
   sheet.innerHTML = svg + "</svg>";
-  $("msg").innerHTML = M ? `<span style="color:var(--accent)">■ dux</span> ${M.slice(0, L.m).map(L.system.pitchName).join(" ")} · <span style="color:var(--kairos)">■ comes</span> ${C.filter((x, t) => x !== null && (t === 0 || L.source(t) !== L.source(t - 1))).map(L.system.pitchName).join(" ")}` : "";
+  const sh = M ? shape([M.slice(0, L.m)]) : null, pc = (x) => Math.round(100 * x) + "%";
+  $("msg").innerHTML = M ? `<span style="color:var(--accent)">■ dux</span> ${M.slice(0, L.m).map(L.system.pitchName).join(" ")} · <span style="color:var(--kairos)">■ comes</span> ${C.filter((x, t) => x !== null && (t === 0 || L.source(t) !== L.source(t - 1))).map(L.system.pitchName).join(" ")}` +
+    `<br>the dux: steps ${pc(sh.steps)}, 3rds ${pc(sh.thirds)}, 4ths or more ${pc(sh.leaps)} · cost ${workCost(L, M).cost.toFixed(1)}${by ? " · " + by : ""}` : "";
 }
 function play() {
   if (!work || !L) return;
@@ -261,6 +267,14 @@ function play() {
 document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => setPreset(b.dataset.preset)));
 $("count").addEventListener("click", () => { document.querySelectorAll("[data-preset]").forEach((b) => b.classList.remove("on")); count(); });
 $("draw").addEventListener("click", () => draw(L.sample()));
+$("engine").addEventListener("click", () => {
+  $("status").textContent = "weighing the works…";
+  setTimeout(() => {
+    const E = engineWork(L, { temp: Math.max(0, Number($("temp").value) || 0) });
+    $("status").textContent = "ready";
+    if (E) draw(E.M, `the engine, of ${E.of.toLocaleString("en")} ${E.all ? "works (all of them)" : "drawn uniformly"}`);
+  }, 20);
+});
 $("play").addEventListener("click", play);
 window.kairoticLines = { get L() { return L; }, get work() { return work; }, setPreset, count, draw, PRESETS, speedOf };
 setPreset("hemiola");

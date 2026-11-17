@@ -22,6 +22,13 @@
 // what is left to choose is little (the octave, a passing tone); without them the rules alone choose. The futures
 // are counted exactly (BigInt), a realization is drawn uniformly from them, and a voice written by hand is shown the
 // futures of each of its next notes — the partimento as improvisation.
+//
+// What the hard rules allow, the soft rules of Studies 38–42 weigh (soft.mjs: the melodic contour after Bach, the
+// motion between the voices): the engine chooses each note among those with a future by a softmax of −cost /
+// temperature, as Study 38's does. Drawn uniformly, a realization is one of the many — and most of them leap; the
+// engine draws the lines the style prefers.
+
+import { melodicParts, verticalParts, total, choose, temperature, defaultWeights } from "./soft.mjs";
 
 const mod = (a, m) => ((a % m) + m) % m;
 const sign = (x) => (x > 0) - (x < 0);
@@ -268,6 +275,38 @@ export function schemata(spec = {}) {
     }
     return U;
   }
+  // ─── the soft rules: what a candidate costs, and the engine ───
+  // (the 3–6 alternation is a schema here, not a habit to avoid: its weight is 0 unless asked)
+  const W = { ...defaultWeights(), alternation: 0, ...(spec.weights || {}) };
+  const bassLine = B.map((b) => b.d);
+  const softCtx = (t, c) => ({
+    N: 7, strong: (u) => strong(u),
+    lowerFirst: (x, y) => [x, y],                                // the bass is the lower voice
+    quality: (lo_, hi_) => { const st = hi_ - lo_, cl = mod(st, 7); return cl === 0 || cl === 4 ? "perfect" : cl === 2 || cl === 5 ? "imperfect" : "dissonant"; },
+    dissonant: () => vertical(t, c).q === "dissonant",
+    suspension: vertical(t, c).q === "dissonant" && strong(t),
+  });
+  /** The soft cost of the upper note c after U, by rule: {id: cost}. */
+  function costParts(U, c) {
+    const t = U.length, up = U.map(D);
+    return { ...melodicParts(up, D(c), W), ...verticalParts(bassLine.slice(0, t), up, bassLine[t], D(c), softCtx(t, c), W) };
+  }
+  /** The engine: the voice continued from U to the end, each note a softmax of −cost / temperature among those
+   *  with a future ({temp: 1, follow: true (colder where few futures are left), r}). */
+  function engine({ temp = 1, follow = true, r = Math.random } = {}, U0 = []) {
+    const U = [...U0];
+    while (U.length < n) {
+      const cs = fan(U).filter((x) => !x.reason && x.futures > 0n).map((x) => ({ ...x, parts: costParts(U, x.note) }));
+      cs.forEach((x) => { x.cost = total(x.parts); });
+      const pick = choose(cs, temperature(temp, follow, count(U)), r);
+      if (!pick) return null;
+      U.push(pick.note);
+    }
+    return U;
+  }
+  /** What a whole voice costs, note by note. */
+  const cost = (U) => U.reduce((a, c, t) => a + total(costParts(U.slice(0, t), c)), 0);
+
   /** Why a whole voice is refused (the first unit that refuses it), or null. */
   function judge(U) {
     if (U.length !== n) return `${U.length} units, the bass has ${n}`;
@@ -297,7 +336,7 @@ export function schemata(spec = {}) {
     return { kind: last === 8 || last === 1 ? "perfect" : "imperfect", figs: [a, last] };
   }
 
-  return { spec, schema, key: K, bass: B, n, phase, strong, lo, hi, figured, codes, vertical, check, count, fan, sample, judge, figures, cadence,
+  return { spec, schema, key: K, bass: B, n, phase, strong, lo, hi, figured, codes, vertical, check, count, fan, sample, engine, cost, costParts, weights: W, judge, figures, cadence,
            code: (name) => codeOf(K, name), name: (c) => K.name(D(c), R(c)), degree: D, raised: R, hz: (c) => K.hz(D(c), R(c)), memo };
 }
 
