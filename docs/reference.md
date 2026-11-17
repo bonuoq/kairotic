@@ -1848,6 +1848,90 @@ Writes to the REPL whatever it receives, after its label: print out0 writes out0
 
 See also: `msg`, `format`, `str`
 
+### quantize
+
+`quantize [track]`
+
+**Free time written in measures, when you ask.** What `transcribe` or a drawing left in a `freqt` — notes placed anywhere in time — becomes a measured tree: measures, tuplets, ties, grace notes, voices, ready for a `tree` box, `mt` and the rest.
+
+**Only a bang sends.** The options can be tried first, one message at a time, and nothing goes out until you bang it: a tree written into a tree box is an event of the work's history.
+
+**Two ways in.** A `freqt` on the right inlet (its second outlet: the buffer), or a tree on the left — in free time, or measured (it is made free first, to be written again another way). Two `quantize` boxes can write the same take two ways.
+
+Free time written in measures, when you ask: what transcribe or a drawing left in a freqt (connect the freqt's second outlet to its right inlet), or a tree in free time that comes on the left (a measured one is made free first), becomes a measured tree — measures, tuplets, ties, grace notes, voices —, for a tree box. Only a bang quantizes and sends it, so its options can be tried first: [:meter "6/8"], [:meter "7/8[2+2+3]"], [:meters ["3/4" "5/8"]], [:divs [1 2 3 4]] (the divisions a beat may take), [:merge []] (no beats joined into a tuplet), [:legato 0.25] (the largest gap that is not a rest, in beats), [:chord 0.04] (starts that close are one chord), [:voices 1], [:grace false], [:key "eb"], [:tempo 72], [:time :track] (find the beats of what was played freely, as track), or a map of them; [:meter nil] forgets one, :reset all of them. With the word track it finds the beats from the start. It is the quantization a freqt shown as a score uses (that is a preview); here it is a step of the patch, with its options in view, and two quantize boxes can write the same take two ways.
+
+**Inlets** 
+
+0. a bang: quantize and send · a tree (free or measured): the material, until the next one · [:meter "6/8"] and the other options, or a map of them · [:meter nil] forgets one · :reset forgets all · :clear forgets the tree
+1. a freqt (from its second outlet): the material, read at the bang
+
+**Outlets** 
+
+0. the measured tree, for a tree box
+1. what it found: {:bars :meter :tempo :notes :voices}
+
+**Messages and gestures**
+
+- `:bang`: quantize the material and send the tree
+- `[:meter "3/4"]`: the meter ("6/8", "7/8[2+2+3]" for its groups); without one, the freqt's bar grid, or 4/4
+- `[:meters ["3/4" "5/8"]]`: a meter for each bar, the last one going on
+- `[:divs [1 2 3 4]]`: the divisions a beat may take (1 to 8 by default: 3, 5, 7 are tuplets)
+- `[:merge []]`: no two beats joined into one tuplet ([3 5 6] by default)
+- `[:legato 0.25]`: the largest gap before the next note that is not a rest, in beats (0: every gap is a rest)
+- `[:chord 0.04]`: starts this close (beats) are one chord
+- `[:voices 1]`: how many voices overlapping notes may take (2 by default)
+- `[:grace false]`: no grace notes: a note too short for any point is dropped
+- `[:key "eb"]`: the key it is written in: its signature and its spelling
+- `[:tempo 72]`: the tempo written in the tree
+- `[:time :track]`: what was played freely (with rubato, at any tempo): its beats are found first (also: quantize track)
+- `{:meter "6/8" :divs [1 2 3]}`: several options at once
+- `:reset`: the options forgotten (the defaults again)
+
+**Try:** The freqt holds a phrase played freely — the durations are not quite 1, ½ or ⅓. Click :bang: quantize writes it in measures of 4/4 and the tree box shows the score. Click :meter "3/4" and :bang again: the same notes, in 3/4. Change a stroke in the freqt (drag it) and bang: the score follows only when you ask.
+
+```clojure
+(box :b1 "freqt" 40 60)
+(resize :b1 420 200)
+(melody :b1 "c4/1.06 e4/.47 d4/.55 g4/.94 e4/1.03 f4/.32 e4/.36 d4/.3 c4/2.1" 0)
+(box :b2 "msg :bang" 520 30)
+(box :b6 "msg :meter \"3/4\"" 600 30)
+(box :b7 "msg :meter nil" 740 30)
+(box :b3 "quantize" 520 90)
+(box :b4 "tree" 520 160)
+(resize :b4 460 160)
+(box :b5 "print" 760 90)
+(connect :b1 1 :b3 1)
+(connect :b2 0 :b3 0)
+(connect :b6 0 :b3 0)
+(connect :b7 0 :b3 0)
+(connect :b3 0 :b4 0)
+(connect :b3 1 :b5 0)
+```
+
+**From your voice** — transcribe writes what pitch~ hears into the freqt, as strokes in free time; quantize writes them in measures. With :time :track (or quantize track) it first finds the beats of what you sang freely.
+
+*Try:* Press ▶, click :rec, sing a phrase, click :stop: the freqt holds it. Click :time :track, then :bang: your phrase, in measures.
+
+```clojure
+(box :b8 "adc~ 1" 40 330)
+(box :b9 "pitch~ 80 1000" 40 390)
+(box :b10 "onset~" 200 390)
+(box :b11 "msg :rec" 300 330)
+(box :b12 "msg :stop" 380 330)
+(box :b13 "transcribe 60" 40 450)
+(box :b14 "msg :time :track" 880 30)
+(connect :b8 0 :b9 0)
+(connect :b8 0 :b10 0)
+(connect :b9 0 :b13 0)
+(connect :b10 0 :b13 1)
+(connect :b11 0 :b13 0)
+(connect :b12 0 :b13 0)
+(connect :b13 0 :b1 0)
+(connect :b14 0 :b3 0)
+```
+
+See also: `transcribe`, `freqt`, `tree`, `mt`
+
 ### ramp
 
 `ramp a b s [loop]`
@@ -2114,6 +2198,7 @@ A span of sound: it keeps the last seconds (8 by default) of what reaches its le
 - `ring~ 8`: keeps the last 8 seconds (up to 60)
 - `:clear`: silence, the heads where they are
 - `up to 8 heads`: the reader~ and writer~ on it share one node: a feedback inside the ring is exact, through other boxes it costs a block (128 samples)
+- `reader~ → faust~ → writer~`: a faust~ in a loop of the ring runs inside the ring's node, one sample at a time: exact at any d (a string whose d is its period, a comb, a tape echo that darkens); its parameters follow it there (not a polyphonic one)
 
 **Try:** With headphones, press ▶ and sing: you come back a second later, and from the second reader~ an octave down, ever later. msg :d 0.25 into a reader~ glides it nearer.
 
@@ -2391,7 +2476,7 @@ Writes what pitch~ hears into a freqt, as strokes: notes where the contour settl
 - `:ovr t (msg :ovr 8)`: from beat t, over only what the take covers: what comes after it stays
 - `:stop`: writes what is left and stops
 
-**Try:** Press ▶, click rec, sing a phrase, click stop: the freqt holds it. ⇄ shows it as a score. Write transcribe 60 glide to keep the slides.
+**Try:** Press ▶, click :rec, sing a phrase, click :stop: the freqt holds it (⇄ previews it as a score). To write it in measures, as a tree, connect the freqt's second outlet to a quantize box and bang it. Write transcribe 60 glide to keep the slides.
 
 ```clojure
 (box :b1 "adc~ 1" 40 30)
@@ -2410,7 +2495,7 @@ Writes what pitch~ hears into a freqt, as strokes: notes where the contour settl
 (connect :b6 0 :b7 0)
 ```
 
-See also: `pitch~`, `onset~`, `freqt`
+See also: `pitch~`, `onset~`, `freqt`, `quantize`
 
 ### tree
 
@@ -2455,7 +2540,7 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 (connect :b3 0 :b4 0)
 ```
 
-See also: `mt`, `freqt`
+See also: `mt`, `quantize`, `freqt`
 
 ### writer
 
