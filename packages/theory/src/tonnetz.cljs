@@ -9,6 +9,15 @@
       kws [:C :C# :D :Eb :E :F :F# :G :Ab :A :Bb :B]
       I (range -4 5) J (range -2 3)
       path-max 24
+      ;; what arrives as pitches: Hz (a keyboard, midiin, a player, pitch~), or MIDI (or 0…11) with the word midi;
+      ;; a chroma (12 values between 0 and 1) as it is. 0 Hz (a silence) is nothing
+      as-pitches (fn [args v]
+                   (let [hz->m (fn [x] (when (and (number? x) (pos? x)) (+ 69 (* 12 (/ (js/Math.log (/ x 440)) (js/Math.log 2))))))
+                         chroma? (fn [xs] (and (= 12 (count xs)) (every? (fn [x] (and (number? x) (<= 0 x 1))) xs)))]
+                     (cond (some #{:midi} args) v
+                           (number? v) (hz->m v)
+                           (and (sequential? v) (seq v) (every? number? v) (not (chroma? v))) (vec (keep hz->m v))
+                           :else v)))
       notes-of (fn [args] (api/clamp (or (first (filter number? args)) 3) 1 24))
       pcs-of (fn [xs]
                (if (and (= 12 (count xs)) (every? (fn [x] (and (number? x) (<= 0 x 1))) xs))
@@ -31,14 +40,15 @@
   {;; ── about ──
    :class "tonnetz"
    :license "MPL-2.0"
-   :doc "Triads on the Tonnetz: pitch classes on a lattice of fifths (to the right) and major and minor thirds (up), where a major or minor triad is a triangle and the neo-Riemannian moves P, L and R cross an edge. A list of pitches (MIDI or 0…11) or of 12 weights (a chroma, above 0.5), or a number as a note (the last n notes count: 3); :clear forgets the path. It lights what sounds, fills the triads it contains and joins the triad found to the ones before (the path of the harmony, up to 24 steps). The triad goes out on the left when it changes (:C, :am…); pressing a node sends its pitch class (right)."
-   :usage "tonnetz [notes]"
+   :doc "Triads on the Tonnetz: pitch classes on a lattice of fifths (to the right) and major and minor thirds (up), where a major or minor triad is a triangle and the neo-Riemannian moves P, L and R cross an edge. A list of pitches (Hz, as a keyboard or midiin sends them; MIDI or 0…11 with midi) or of 12 weights (a chroma, above 0.5), or a number as a note (the last n notes count: 3); :clear forgets the path. It lights what sounds, fills the triads it contains and joins the triad found to the ones before (the path of the harmony, up to 24 steps). The triad goes out on the left when it changes (:C, :am…); pressing a node sends its pitch class (right)."
+   :usage "tonnetz [notes] [midi]"
    :io [1 2]
    :size [380 230]
 
    ;; ── logic ──
    :receive (fn [{:keys [value state args]}]
-              (let [st (or state {:notes [] :pcs #{} :path [] :triad nil})
+              (let [value (as-pitches args value)
+                    st (or state {:notes [] :pcs #{} :path [] :triad nil})
                     step (fn [st s]
                            (let [prev (when-let [t (peek (:path st))] (centre t))
                                  t (find-triad s prev)

@@ -52,11 +52,11 @@ export async function theory(page, check) {
   check("... clear empties it", (await until(page, `(count (second (last-shown ${d})))`, (x) => x === "0", 3000)) === "0");
 
   // @kairotic/theory
-  const pc = (await cljs(page, '(box "pcclock" 7300 100)')).trim();
+  const pc = (await cljs(page, '(box "pcclock midi" 7300 100)')).trim();
   const loaded = await until(page, '(boolean (comp/lookup "pcclock"))', (g) => g === "true");
   check("pcclock brings @kairotic/theory", loaded === "true", loaded);
-  const fo = (await cljs(page, '(box "fourier" 7600 100)')).trim();
-  const tz = (await cljs(page, '(box "tonnetz" 7300 360)')).trim();
+  const fo = (await cljs(page, '(box "fourier midi" 7600 100)')).trim();
+  const tz = (await cljs(page, '(box "tonnetz midi" 7300 360)')).trim();
   const p2 = (await cljs(page, '(box "print" 7300 640)')).trim();
   await cljs(page, `(connect ${pc} 0 ${p2} 0) (connect ${tz} 0 ${p2} 0) (connect ${tz} 1 ${p2} 0)`);
   await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${pc} [60 64 67])`);
@@ -73,7 +73,13 @@ export async function theory(page, check) {
   check("... and make a path of three triads", (await until(page, `(count (:path (second (last-shown ${tz}))))`, (x) => x === "3", 3000)) === "3");
   await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${tz} [:pressed 7])`);
   check("... pressing a node sends its pitch class", (await printedHas(page, "7")).includes("7"), await printed(page));
-  await cljs(page, `(delete ${d} ${out} ${pc} ${fo} ${tz} ${p2})`);
+  // without midi, pitches are Hz, as a keyboard sends them
+  const ph = (await cljs(page, '(box "pcclock" 7600 360)')).trim();
+  await cljs(page, `(send! ${ph} [261.63 329.63 392])`);
+  check("pcclock without midi: Hz (C4 E4 G4 from a keyboard) are the set (0 4 7)", (await until(page, `(:set (second (last-shown ${ph})))`, (x) => x === "[0 4 7]", 3000)) === "[0 4 7]");
+  await cljs(page, `(send! ${ph} 0)`);
+  check("... 0 Hz (a silence) is nothing", (await cljs(page, `(:set (second (last-shown ${ph})))`)) === "[0 4 7]");
+  await cljs(page, `(delete ${d} ${out} ${pc} ${fo} ${tz} ${p2} ${ph})`);
 
   // comes: counterpoint live (Study 40): a note a beat, corrected when it breaks a rule, and the comes answering
   const cm = (await cljs(page, '(box "comes midi" 7600 400)')).trim();
@@ -242,9 +248,9 @@ export async function theory(page, check) {
                                          go (fn [[s _] m] (let [r ((:receive d) {:inlet 0 :value m :state s :args a})] [(:state r) (:out r)]))
                                          steps (vec (reductions go [st nil] [:reset 62 64 65 64 64 64 64]))
                                          tree (fn [i] (some (fn [[o v]] (when (= o 4) v)) (second (nth steps i))))]
-                                     [(tree 4) (first (tree 5)) (count (rest (tree 5))) (first (get-in (tree 6) [1 2])) (first (get-in (tree 5) [1 2])) (first (tree 8))])`);
-  check("... the score to read as a tree (outlet 4): at the middle, then the beats read as rests, then the whole crab",
-        /^\[nil :voice 2 :rest :note :piece\]$/.test(lzTree), lzTree);
+                                     [(tree 4) (first (tree 5)) (count (rest (tree 5))) (tree 6) (first (get-in (tree 5) [1 2])) (first (tree 8))])`);
+  check("... the score to read as a tree (outlet 4, for a tree box): at the middle, then nothing more until the whole crab at the end",
+        /^\[nil :voice 2 nil :note :piece\]$/.test(lzTree), lzTree);
   const lzSound = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}]) a (:sig st)
                                           go (fn [[s _] m] (let [r ((:receive d) {:inlet 0 :value m :state s :args a})] [(:state r) (:out r)]))
                                           steps (vec (rest (reductions go [st nil] [:reset 62 {:beat 1 :hz [329.63] :ids [64]}])))

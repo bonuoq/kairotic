@@ -7,6 +7,15 @@
 (let [TAU (* 2 js/Math.PI)
       labels ["chromatic" "dyadic" "triadic" "octatonic" "diatonic" "whole-tone"]
       trail-max 48
+      ;; what arrives as pitches: Hz (a keyboard, midiin, a player, pitch~), or MIDI (or 0…11) with the word midi;
+      ;; a chroma (12 values between 0 and 1) as it is. 0 Hz (a silence) is nothing
+      as-pitches (fn [args v]
+                   (let [hz->m (fn [x] (when (and (number? x) (pos? x)) (+ 69 (* 12 (/ (js/Math.log (/ x 440)) (js/Math.log 2))))))
+                         chroma? (fn [xs] (and (= 12 (count xs)) (every? (fn [x] (and (number? x) (<= 0 x 1))) xs)))]
+                     (cond (some #{:midi} args) v
+                           (number? v) (hz->m v)
+                           (and (sequential? v) (seq v) (every? number? v) (not (chroma? v))) (vec (keep hz->m v))
+                           :else v)))
       notes-of (fn [args] (api/clamp (or (first (filter number? args)) 4) 1 24))
       weights (fn [xs]
                 (let [w (vec (repeat 12 0))]
@@ -26,14 +35,15 @@
   {;; ── about ──
    :class "fourier"
    :license "MPL-2.0"
-   :doc "The six Fourier coefficients of what sounds, from its pitch classes: f1 chromatic, f2 dyadic, f3 triadic, f4 octatonic, f5 diatonic, f6 whole-tone — how close it is to dividing the octave evenly in 1…6 parts. A list of pitches (MIDI or 0…11) or of 12 weights (a chroma, from chroma~), or a number as a note (the last n notes count: 4); :clear empties it. Each coefficient is drawn as a point in its circle with its trail; their magnitudes (0…1) go out on the left, their phases (degrees) on the right."
-   :usage "fourier [notes]"
+   :doc "The six Fourier coefficients of what sounds, from its pitch classes: f1 chromatic, f2 dyadic, f3 triadic, f4 octatonic, f5 diatonic, f6 whole-tone — how close it is to dividing the octave evenly in 1…6 parts. A list of pitches (Hz, as a keyboard or midiin sends them; MIDI or 0…11 with midi) or of 12 weights (a chroma, from chroma~), or a number as a note (the last n notes count: 4); :clear empties it. Each coefficient is drawn as a point in its circle with its trail; their magnitudes (0…1) go out on the left, their phases (degrees) on the right."
+   :usage "fourier [notes] [midi]"
    :io [1 2]
    :size [300 214]
 
    ;; ── logic ──
    :receive (fn [{:keys [value state args]}]
-              (let [st (or state {:notes [] :f (vec (repeat 6 [0 0])) :trail (vec (repeat 6 []))})
+              (let [value (as-pitches args value)
+                    st (or state {:notes [] :f (vec (repeat 6 [0 0])) :trail (vec (repeat 6 []))})
                     send (fn [st w]
                            (let [f (dft w)
                                  st (assoc st :f f :trail (mapv (fn [t p] (vec (take-last trail-max (conj t p)))) (:trail st) f))]
