@@ -33,6 +33,20 @@ export async function ringaudio(page, check) {
   await cljs(page, `(disconnect ${s1} 0 ${r1} 0)`); await page.waitForTimeout(300); await cljs(page, `(send! ${r1} :clear)`);
   const silent = await until(page, `(get-in @eng/rt [:states ${p1}])`, (g) => Number(g) < 0.01, 8000);
   check(":clear, and nothing more on its left: silence", Number(silent) < 0.01, silent);
+  // every reader~ reads positions in its buffer's units, or 0…1 with norm: a canvas whose X axis goes from 0 to 4
+  const cv = await b("canvas", 7800, 60), q1 = await b("sig~ 3", 7800, 20), q2 = await b("sig~ 0.75", 8000, 20);
+  const e1 = await b("reader~", 7800, 300), e2 = await b("reader~ norm", 8000, 300), e3 = await b("reader~", 8200, 300);
+  const n1 = await b("snapshot~ 50", 7800, 350), n2 = await b("snapshot~ 50", 8000, 350), n3 = await b("snapshot~ 50", 8200, 350);
+  await cljs(page, `(axis ${cv} :x 0 4) (axis ${cv} :y 0 1) (stroke ${cv} [[0 0.2] [1.9 0.2]]) (stroke ${cv} [[2.1 0.8] [4 0.8]])
+                    (connect ${q1} 0 ${e1} 0) (connect ${q2} 0 ${e2} 0) (connect ${q2} 0 ${e3} 0)
+                    (connect ${cv} 1 ${e1} 1) (connect ${cv} 1 ${e2} 1) (connect ${cv} 1 ${e3} 1)
+                    (connect ${e1} 0 ${n1} 0) (connect ${e2} 0 ${n2} 0) (connect ${e3} 0 ${n3} 0)`);
+  const u1 = await until(page, `(get-in @eng/rt [:states ${n1}])`, (g) => near(g, 0.8), 6000);
+  const u2 = await until(page, `(get-in @eng/rt [:states ${n2}])`, (g) => near(g, 0.8), 6000);
+  const u3 = await until(page, `(get-in @eng/rt [:states ${n3}])`, (g) => near(g, 0.2), 6000);
+  check("reader~ on a canvas: 3 is x = 3 (its units)", near(u1, 0.8), u1);
+  check("reader~ norm: 0.75 is three quarters of the axis (x = 3)", near(u2, 0.8), u2);
+  check("reader~ without norm: 0.75 is x = 0.75", near(u3, 0.2), u3);
   await cljs(page, "(stop)");
-  await cljs(page, `(delete ${s1} ${r1} ${d1} ${p1} ${s2} ${w2} ${r2} ${d2} ${p2})`);
+  await cljs(page, `(delete ${s1} ${r1} ${d1} ${p1} ${s2} ${w2} ${r2} ${d2} ${p2} ${cv} ${q1} ${q2} ${e1} ${e2} ${e3} ${n1} ${n2} ${n3})`);
 }

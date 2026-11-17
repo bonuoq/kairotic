@@ -65,8 +65,8 @@ nothing** that is going on — a player does not start over. See [Data that flow
 ## Data boxes and views
 
 - A **canvas** is a buffer of strokes in two dimensions; a **freqt** is frequency over time (Hz on a log
-  scale, tunings, bar grids). A **reader** (messages) or **reader~** (audio rate, with a `phasor~`)
-  reads them; how it moves gives the time. The representation does not decide the reading.
+  scale, tunings, bar grids). A **reader** (messages) or **reader~** (audio rate) reads
+  them at a position in their units (or 0…1 with `norm`: a `phasor~`); how it moves gives the time. The representation does not decide the reading.
 - A **tree** box holds a **musical tree** and sends it whenever it changes — or when the patch after
   it changes, only toward what needs it. A **score** draws it as notation and sends back the edits made
   on it; `mt` boxes transform it; `mt play` plays it. See [Musical trees](mt.md).

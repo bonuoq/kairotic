@@ -6,7 +6,8 @@
 ;;
 ;;   phasor~ [hz]                 a ramp signal from 0 to 1, hz times per second (a number changes hz)
 ;;   reader~ [x|y|path] [voices] [gate]
-;;                                position signal (0…1) on the left, buffer on the right:
+;;                                position signal on the left (the buffer's units; 0…1 with norm),
+;;                                buffer on the right:
 ;;                                · x (default): along X, one outlet per voice
 ;;                                · y: along Y, the same
 ;;                                · path [stroke]: along a stroke, two outlets x and y
@@ -14,7 +15,7 @@
 ;;                                  voice has something, 0 where not (into an adsr~ of @kairotic/synth)
 ;;   sig~ [value]                 a constant signal; a number changes it
 ;;
-;; The position 0…1 covers the X axis of a canvas, or a freqt from 0 to its last point (y: the Y axis,
+;; With norm, the position 0…1 covers the X axis of a canvas, or a freqt from 0 to its last point (y: the Y axis,
 ;; or the lowest … highest frequency). Where nothing passes a voice keeps its last value (so an
 ;; oscillator it drives does not fall to 0 Hz); the gate says whether it sounds. Voices are given like
 ;; a synth gives them: a stroke keeps its voice while it lasts, and a new one takes the first free voice.
@@ -30,15 +31,16 @@
 
 (def worklet-source
   "class KairoticReader extends AudioWorkletProcessor {
-  // tab: V value channels of n points (NaN where nothing passes). Outputs: the V values, held where
-  // nothing passes, then G gates (gate g follows value channel g): 1 where it has something, else 0.
+  // tab: V value channels of n points (NaN where nothing passes), sampled over span [lo, hi] (log: on a log
+  // scale). The position is in the span's units, or 0…1 with norm (and always along a path). Outputs: the V
+  // values, held where nothing passes, then G gates (gate g follows value channel g): 1 where it has something.
   constructor(o) {
     super();
-    this.tab = null; this.n = 0; this.V = 0; this.G = 0;
+    this.tab = null; this.n = 0; this.V = 0; this.G = 0; this.span = null; this.norm = true;
     this.last = [];
     this.port.onmessage = (e) => {
-      const { tab, n, V, G } = e.data;
-      this.tab = tab; this.n = n; this.V = V; this.G = G;
+      const { tab, n, V, G, span, norm } = e.data;
+      this.tab = tab; this.n = n; this.V = V; this.G = G; this.span = span || null; this.norm = norm !== false;
       for (let c = 0; c < V; c++) {
         if (this.last[c] === undefined || isNaN(this.last[c])) {
           let v = NaN; for (let i = 0; i < n; i++) { const x = tab[c * n + i]; if (!isNaN(x)) { v = x; break; } }
@@ -54,6 +56,11 @@
     for (let i = 0; i < L; i++) {
       if (!tab || n < 2) { for (let c = 0; c < C; c++) out[c][i] = 0; continue; }
       let p = inp ? inp[i] : 0;
+      const sp = this.span;
+      if (!this.norm && sp) {
+        p = sp[2] && sp[0] > 0 && sp[1] > 0 ? (p > 0 ? Math.log(p / sp[0]) / Math.log(sp[1] / sp[0]) : 0)
+                                             : (sp[1] !== sp[0] ? (p - sp[0]) / (sp[1] - sp[0]) : 0);
+      }
       p = p < 0 ? 0 : (p > 1 ? 1 : p);
       const f = p * (n - 1), k = Math.min(Math.floor(f), n - 2), r = f - k;
       for (let c = 0; c < V && c < C; c++) {
@@ -177,7 +184,8 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
 (defn send-table! [node]
   (when-let [w @(:worklet node)]
     (when-let [t @(:pending node)]
-      (.postMessage (.-port w) #js {:tab t :n table-size :V (:V node) :G (:G node)})
+      (.postMessage (.-port w) #js {:tab t :n table-size :V (:V node) :G (:G node)
+                                    :span (some-> @(:span node) clj->js) :norm (or (:norm node) (= :path (:mode node)))})
       (reset! (:pending node) nil))))
 
 ;; ───────── a reader~ that reads a sound ─────────
@@ -216,15 +224,15 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
                        (.then (fn [pl]
                                 (when @(:alive node)
                                   (reset! (:player node) pl)
-                                  (snd/give! pl s)
+                                  (snd/give! pl s (:norm node))
                                   (when (= :sound @(:route node)) (route! node :sound))))))))))
       (.catch (fn [e] (api/report! (:id node) {:error (str "reader~: " (or (.-message e) e))} nil)))))
 
 ;; ───────── classes ─────────
 
 (comp/define! "reader~"
-  {:doc "Reads a canvas at audio rate: a position signal from 0 to 1 on the left (a phasor~), the buffer on the right. One signal outlet per voice (along X, or Y with `reader~ y`), or x and y with `reader~ path`; where nothing passes a voice keeps its last value. With `gate`, one more outlet per voice: 1 where it has something, 0 where not (into an adsr~, or a gain~)."
-   :usage "reader~ [x|y|path [stroke]] [voices] [gate]"
+  {:doc "Reads a buffer at audio rate, as reader does once per message: a position signal on the left, the buffer on the right. The position is in the buffer's own units — the X axis of a canvas (Y with `reader~ y`), the time of a freqt, the seconds of a sample or a ring~ — or, with `norm`, from 0 to 1 (a phasor~ straight in); along a stroke (`reader~ path`) it is always 0…1. On a canvas or freqt: one signal outlet per voice, or x and y with path; where nothing passes a voice keeps its last value; with `gate`, one more outlet per voice, 1 where it has something. A sample: it plays it. A ring~: it reads there, or, with nothing on its left, follows the ring's head d behind, then a speed (reader~ d 1 speed 0.5; msg :d, :speed, :jump, :gain)."
+   :usage "reader~ [x|y|path [stroke]] [voices] [gate] [norm] [d s] [speed x] [jump s]"
    :io (fn [b] [2 (+ (voices-of (:args b)) (gates-of (:args b)))]) :dynamic-io true
    :reads-buffer true
    :receive (fn [{:keys [inlet value]}]
@@ -240,6 +248,8 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
                            node {:in in :split split :V V :G G :mode (mode-of args) :stroke (stroke-of args)
                                  :ac ac :id (:id b) :player (atom nil) :route (atom :table)
                                  :worklet (atom nil) :pending (atom nil) :fed (atom ::none) :alive (atom true)
+                                 ;; the position: in the buffer's units (the canvas's axis, seconds…) or, with norm, 0…1
+                                 :span (atom nil) :norm (boolean (some #{:norm} args))
                                  ;; as a head of a ring~: the position into channel 1 of its slot, what it reads into the outlets
                                  :m (.createChannelMerger ac 2) :out split :ring (atom nil) :slot (atom nil)
                                  :opts (atom (merge {:mode "follow"} (ringa/head-args args)))
@@ -263,6 +273,8 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
                      (snd/sample? d) (do (when (= :ring @(:route node)) (route! node :table)) (play-sound! node d))
                      :else
                      (do (when (#{:sound :ring} @(:route node)) (route! node :table))
+                         (reset! (:span node) (let [d (or d cv/empty)]
+                                                (case (:mode node) :path nil :y (cv/y-range d) (cv/x-range d))))
                          (reset! (:pending node) (table (or d cv/empty) (:mode node) (:V node) (:stroke node)))
                          (send-table! node))))
            ;; on a ring~: a position signal on the left, it reads there; without one, it follows the ring's head

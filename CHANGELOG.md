@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Every reader reads alike** (breaking). `reader` and `reader~` take a position in the units of their buffer —
+  the X axis of a canvas (Y with `y`), the time of a freqt, the seconds of a sample, a ring or a ring~ — or, with
+  `norm`, from 0 to 1; along a stroke (`path`) it is always 0…1. Before, `reader~` read a canvas, freqt or sample
+  only from 0 to 1: a `phasor~` straight into a `reader~` is now `reader~ norm`. The words of a head on a ring
+  (`d`, `speed`, `jump`) are the same for both; the help patches, the guides and the tests say `reader~ norm` where
+  a phasor~ drives it.
+
 - **`comes` and `cancrizans live` sound as a keyboard or a player does** (breaking; `@kairotic/theory` 0.9.0). Both
   voices go out together on the left — the dux as played or corrected, and the comes (or your note and the box's
   answer) — after their voice ids on the second outlet, so one `synth~` (0→0, 1→1) or a polyphonic `faust~` plays

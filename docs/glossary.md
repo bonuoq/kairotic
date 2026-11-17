@@ -70,7 +70,7 @@ Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `c
 | estado / transicion / consigna / region | state / transition / instruction / region |
 | perilla | knob |
 | — | patch (sub-patch), inlet, outlet, inlet~, outlet~ (Study 10) |
-| — | phasor~, reader~ (audio rate; `reader~ 2 gate` adds one gate outlet per voice, 0 or 1), sig~, adsr~ [a d s r]; `reader path [stroke]` (Study 13) |
+| — | phasor~, reader~ (audio rate; positions in the buffer's units, `reader~ norm` for 0…1 from a phasor~; `reader~ norm 2 gate` adds one gate outlet per voice, 0 or 1), sig~, adsr~ [a d s r]; `reader path [stroke]` (Study 13) |
 | — | from Study 14 in packages: adsr~, synth~ → `@kairotic/synth`; pan~, space~ → `@kairotic/spatial` |
 | quinta | fifth |
 | deriva | drift |
