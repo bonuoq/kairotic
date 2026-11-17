@@ -173,7 +173,8 @@ write.
 | `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` · `mt thin 0.5` | transformations (the right inlet changes the amount) |
 | `mt seq` · `mt par` | joins the left tree with the right one, one after the other or at once |
 | `mt events` · `mt pitches` · `mt duration` | the tree as plain data |
-| `mt play [loop]` | plays the last tree on a bang: Hz (0) and voice ids (1) for `synth~`, parameters `[name value]` (2), dynamics and texts (3) |
+| `mt canon d 2 k P5 speed 0.5 inversion` | the canon with the words of a reader on a ring: d beats later, k away (semitones or an interval), the comes at a speed (0.5 twice as slow, −1 backwards: a crab), upside down |
+| `mt play [loop] [speed s]` | plays the last tree on a bang: Hz (0) and voice ids (1) for `synth~`, parameters `[name value]` (2), dynamics and texts (3); at a speed (`msg :speed -1`: the tree backwards) |
 | `freqt` · `canvas` | a tree on their inlet is **shown live** over their buffer; `(keep! :bN)` writes it into the buffer as one event of the history |
 
 A score shows a tree written in `:measure`s as measured notation (tuplets, chords, rests, dynamics,

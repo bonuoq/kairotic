@@ -176,7 +176,8 @@ Un compás que no cuadra es un aviso (⚠ en la REPL y en la caja), no un error,
 | `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` · `mt thin 0.5` | transformaciones (la entrada derecha cambia la cantidad) |
 | `mt seq` · `mt par` | une el árbol de la izquierda con el de la derecha, uno detrás de otro o a la vez |
 | `mt events` · `mt pitches` · `mt duration` | el árbol como datos planos |
-| `mt play [loop]` | toca el último árbol al recibir un bang: Hz (0) e ids de voz (1) para `synth~`, parámetros `[nombre valor]` (2), dinámicas y textos (3) |
+| `mt canon d 2 k P5 speed 0.5 inversion` | el canon con las palabras de un reader sobre un ring: d pulsos después, a k (semitonos o un intervalo), el comes a una velocidad (0,5 el doble de lento, −1 al revés: un cangrejo), invertido |
+| `mt play [loop] [speed s]` | toca el último árbol al recibir un bang: Hz (0) e ids de voz (1) para `synth~`, parámetros `[nombre valor]` (2), dinámicas y textos (3); a una velocidad (`msg :speed -1`: el árbol al revés) |
 | `freqt` · `canvas` | un árbol en su entrada **se muestra en vivo** sobre su buffer; `(keep! :bN)` lo escribe en el buffer como un evento de la historia |
 
 Un freqt mostrado como partitura muestra un árbol escrito en `:measure` como notación medida (grupos irregulares, acordes,

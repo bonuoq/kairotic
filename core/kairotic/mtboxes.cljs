@@ -172,7 +172,15 @@
       "augment" (mt/augment (num-arg (or r a) 2) t)
       "rotate" (mt/rotate (num-arg (or r a) 1) t)
       "thin" (mt/thin (num-arg (or r a) 0.5) t)
-      "canon" (mt/canon (num-arg (or r a) 1) (num-arg b 0) t)
+      ;; mt canon 2 7 · or with the heads' words: mt canon d 2 k P5 speed 0.5 inversion
+      "canon" (if (some #{:d :k :speed :inversion} args)
+                (let [after (fn [w] (second (drop-while #(not= w %) args)))
+                      k (after :k)]
+                  (mt/canon {:d (num-arg (or r (after :d)) 1)
+                             :k (cond (number? k) k (or (keyword? k) (symbol? k) (string? k)) (name k) :else 0)
+                             :speed (num-arg (after :speed) 1) :inversion (boolean (some #{:inversion} args))}
+                            t))
+                (mt/canon (num-arg (or r a) 1) (num-arg b 0) t))
       "seq" [:seq (mt/expand t) (if (mt/tree? r) (mt/expand r) [:seq])]
       "par" [:par (mt/expand t) (if (mt/tree? r) (mt/expand r) [:seq])]
       "expand" (mt/expand t)
@@ -180,6 +188,18 @@
       "pitches" (mt/pitches t)
       "duration" (mt/duration t)
       (throw (js/Error. (str "mt: unknown operation " (pr-str op)))))))
+
+(defn play-speed
+  "The speed of mt play: its words (mt play speed 0.5), or what a [:speed s] message set."
+  [st args]
+  (or (:speed st) (let [x (second (drop-while #(not= :speed %) args))] (when (and (number? x) (not (zero? x))) x)) 1))
+
+(defn play-schedule
+  "What mt play plays at speed s: the times divided by |s|, and backwards (the tree's retrograde) when s < 0."
+  [tree s]
+  (let [t (if (neg? s) (mt/retrograde tree) tree) a (js/Math.abs s)]
+    {:sch (mapv (fn [[sec outs]] [(/ sec a) outs]) (mt/schedule t))
+     :len (/ (* (/ 60 (mt/tempo-of t)) (mt/duration t)) a)}))
 
 (defn play [{:keys [state args inlet value at]}]
   (let [st (or state {:gen 0})
@@ -199,9 +219,20 @@
               :else {:state (assoc st :playing false) :out outs}))
           {:state st}))
 
+      ;; another speed (msg :speed 0.5, −1 backwards): from the next start, or now for what is playing
+      (and (vector? value) (= :speed (first value)) (number? (second value)) (not (zero? (second value))))
+      (let [st (assoc st :speed (second value))]
+        (if-let [t (:tree st)]
+          (let [{:keys [sch len]} (play-schedule t (second value)) st (assoc st :sch sch :len len)]
+            ;; playing: it starts again, at the new speed
+            (if (and (:playing st) (seq sch))
+              (let [g (inc (:gen st))]
+                {:state (assoc st :gen g :t0 at) :later [[(+ at (first (first sch))) 0 [:tick g 0]]]})
+              {:state st}))
+          {:state st}))
+
       (mt/tree? value)
-      (let [sch (mt/schedule value)
-            len (* (/ 60 (mt/tempo-of value)) (mt/duration value))]
+      (let [{:keys [sch len]} (play-schedule value (play-speed st args))]
         (cond
           ;; the same music again (a tree box re-sends its tree when the patch around it changes, e.g. a
           ;; knob that keeps its value in its text): nothing changes, and what is playing goes on
@@ -209,8 +240,8 @@
           ;; other music while playing: it goes on with the new one, from its beginning
           (and (:playing st) (seq sch))
           (let [g (inc (:gen st))]
-            {:state (assoc st :sch sch :len len :gen g :t0 at) :later [[(+ at (first (first sch))) 0 [:tick g 0]]]})
-          :else {:state (assoc st :sch sch :len len :gen (inc (:gen st)))}))
+            {:state (assoc st :tree value :sch sch :len len :gen g :t0 at) :later [[(+ at (first (first sch))) 0 [:tick g 0]]]})
+          :else {:state (assoc st :tree value :sch sch :len len :gen (inc (:gen st)))}))
 
       (= value :stop)
       {:state (-> st (update :gen inc) (assoc :playing false)) :out [[1 []] [0 []]]}
@@ -224,7 +255,7 @@
       :else {:state st})))
 
 (comp/define! "mt"
-  {:doc "Operations on musical trees: a tree on the left comes out transformed. transpose n (semitones, or an interval: M3, -P5, A4) · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval] · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks)."
+  {:doc "Operations on musical trees: a tree on the left comes out transformed. transpose n (semitones, or an interval: M3, -P5, A4) · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval], or with the words of a reader on a ring: canon d 2 k P5 speed 0.5 inversion (the comes d beats later, k away, at a speed — 0.5 twice as slow, −1 backwards —, upside down) · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] [speed s] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks; at a speed, 0.5 twice as slow, −1 the tree backwards — msg :speed −1 —: the reader of a tree on its own clock, as a reader on a ring follows its head)."
    :usage "mt <operation> [arguments]"
    :io (fn [b] (let [op (op-of (:args b))]
                  (cond (= op "play") [1 4]

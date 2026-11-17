@@ -11,6 +11,15 @@
   in *Harmony as geometry* — in their Markdown sources this time (the catalog is built from them: the change of
   #242 to the catalog alone would have been lost at the next build). The in-app assistant knows `quantize`, that
   trees go to tree boxes, the Hz/`midi` convention, `comes` and `cancrizans`, and that orders are keywords.
+
+- **`mt` speaks as the heads do.** `mt canon d 2 k P5 speed 0.5 inversion`: the comes d beats later, k away
+  (semitones or an interval name, as `mt transpose`), at a speed — 0.5 twice as slow (an augmentation canon), 2
+  twice as fast, −1 backwards (a crab) — and upside down; `mt canon 2 7` stays. `mt play speed 0.5` (or `msg :speed
+  -1`, the tree backwards) plays at a speed: the reader of a tree on its own clock, as a reader on a ring follows
+  its head; a `reader` moved by positions reads the tree box instead (what sounds where it is, Hz and ids, an empty
+  list where nothing does). There is no writer of trees: writing in time into measures is quantizing, which
+  `record` / `transcribe` → `freqt` → `quantize!` do in view. Tests in `tests/cljs/mt.cljs`.
+
 - **`quantize`: free time written in measures, as a box.** What `transcribe` or a drawing left in a `freqt` (its
   second outlet on the right inlet), or a tree in free time on the left (a measured one is made free first), becomes
   a measured tree — measures, tuplets, ties, grace notes, voices — for a `tree` box. It is manual: options come as

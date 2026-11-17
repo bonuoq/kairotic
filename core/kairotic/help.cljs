@@ -498,9 +498,11 @@
     :outlets ["the result (for play: the Hz of the notes sounding, a list)"]
     :messages [["mt transpose 7" "seven semitones up"] ["mt invert c4" "mirrored around c4"] ["mt retrograde" "backwards"]
                ["mt augment 2" "twice as long"] ["mt rotate 1" "the first element goes to the end"] ["mt canon 2 7" "against itself, 2 beats later, a fifth up"]
+               ["mt canon d 2 k P5 speed 0.5" "the same with the words of a reader on a ring: d beats later, k away (semitones or an interval), the comes at a speed — 0.5 twice as slow (an augmentation canon), −1 backwards (a crab) —, and inversion upside down"]
                ["mt thin 0.5" "keeps half the notes of each measure, the ones on its strongest positions (metric weight)"]
                ["mt seq · mt par" "the left tree followed by (or with) the right one"] ["mt events · mt pitches · mt duration" "the tree as data"]
-               ["mt play [loop]" "plays it: Hz (0) and voice ids (1) for synth~, parameters (2), dynamics and texts (3)"]]
+               ["mt play [loop]" "plays it: Hz (0) and voice ids (1) for synth~, parameters (2), dynamics and texts (3)"]
+               ["mt play speed 0.5 · msg :speed -1" "at a speed: twice as slow, or the tree backwards — the reader of a tree on its own clock (a reader moved by positions reads the tree box instead: what sounds where it is)"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)" "(code :b2 \"\\\"c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2\\\"\")"
                     "(box :b4 \"number 7\" 220 170)" "(box :b3 \"mt transpose 7\" 40 170)" "(box :b5 \"tree\" 40 220)"
                     "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b4 0 :b3 1)" "(connect :b3 0 :b5 0)")

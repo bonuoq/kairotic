@@ -3,6 +3,7 @@
 (ns kairotic.test.mt
   (:require [clojure.string :as str]
             [kairotic.mt :as mt]
+            [kairotic.components :as comp]
             [kairotic.test :as t]))
 
 (def motif [:voice {:name "m"} [:measure {:meter [4 4]} "c4/1 e4 g4/2"]])
@@ -120,3 +121,26 @@
       (t/eq "a dotted half in 6/8" (ms [6 8] [1.5] 0 3) [3]))
     (t/is "a rest that fills its bar is a bar rest"
           (str/includes? (:mei (mt/->mei [:voice [:measure {:meter [3 4]} [:rest {:dur 3}]]] "r-")) "<mRest"))))
+
+(t/run! "mt and the heads' words"
+  (fn []
+    (let [motif [:seq "c4/1" "d4/1" "e4/2"]
+          voice (fn [t nm] (mapv (fn [e] [(:t e) (:pitch e) (:dur e)]) (filter (fn [e] (and (= :note (:kind e)) (= nm (:voice e)))) (mt/events t))))
+          voices (fn [t] [(voice t "dux") (voice t "comes")])
+          comes (fn [o] (voice (mt/canon o motif) "comes"))]
+      (t/eq "mt canon {:d 2 :k 7}: the same canon as mt canon 2 7"
+            (voices (mt/canon {:d 2 :k 7} motif)) (voices (mt/canon 2 7 motif)))
+      (t/eq "... :speed 0.5: the comes twice as slow (an augmentation canon)" (comes {:d 1 :speed 0.5}) [[1 60 2] [3 62 2] [5 64 4]])
+      (t/eq "... :speed -1: the comes backwards (a crab)" (mapv second (comes {:d 0 :speed -1})) [64 62 60])
+      (t/eq "... :inversion: upside down around the first pitch" (mapv second (comes {:d 0 :inversion true})) [60 58 56])
+      (t/eq "... :k as an interval name" (mapv second (comes {:d 0 :k "-P5"})) [53 55 57]))
+    (let [recv (fn [st args v at] ((:receive (comp/lookup "mt")) {:state st :args args :inlet 0 :value v :at at}))
+          tree [:seq {:tempo 60} "c4/1" "e4/1"]
+          r1 (recv nil [:play :speed 0.5] tree 0)
+          sch (:sch (:state r1))
+          r2 (recv (:state r1) [:play] [:speed -1] 0)]
+      (t/eq "mt play speed 0.5: twice as slow (notes at 0 and 2 s)" (mapv first (filter (fn [[_ outs]] (some (fn [[o v]] (and (= 0 o) (seq v))) outs)) sch)) [0 2])
+      (t/eq "... msg :speed -1: the tree backwards (e4, then c4)"
+            (mapv (fn [[_ outs]] (some (fn [[o v]] (when (and (= 0 o) (seq v)) (js/Math.round (first v)))) outs))
+                  (filter (fn [[_ outs]] (some (fn [[o v]] (and (= 0 o) (seq v))) outs)) (:sch (:state r2))))
+            [330 262]))))
