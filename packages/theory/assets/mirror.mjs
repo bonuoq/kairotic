@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// @kairotic/theory · mirror.mjs, what the cancrizans box writes with: Study 43's mirror kernel as it is (its kernel
+// @kairotic/theory · mirror.mjs, what the comes box writes a crab with (speed −1): Study 43's mirror kernel as it is (its kernel
 // is counterpoint.mjs). Kairotic · Study 43 · mirrors: canons by transformation, and the order in which a work is written.
 //
 // The comes is the dux transformed (a strict canon), and the transformation is data:

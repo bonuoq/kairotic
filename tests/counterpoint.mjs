@@ -190,7 +190,7 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
   is("a mode alone: of the diatonic system", live({ mode: "aeolian" }).systemName === "diatonic" && live({ mode: "aeolian" }).mode === "aeolian");
 }
 
-// the cancrizans box's kernel: Study 43's mirror, as it is, on this module
+// the comes box's kernel backwards (speed −1): Study 43's mirror, as it is, on this module
 {
   const ours = readFileSync(join(root, "packages/theory/assets/mirror.mjs"), "utf8");
   const theirs = readFileSync(join(root, "studies/43-mirrors/kairotic/mirror.mjs"), "utf8");

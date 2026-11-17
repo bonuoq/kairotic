@@ -421,11 +421,11 @@ Rules:
   on the left), `tonnetz` (triads and the path of the harmony; the triad as :C, :am… on the left); they take
   lists of pitches in Hz (as a keyboard or midiin sends them; MIDI or 0…11 with the word midi: `pcclock midi`),
   notes one by one, or a chroma from `chroma~`; pressing a pitch class sends it (right).
-  Counterpoint in the same package: `comes [system] [mode]` (you play the dux, in Hz or with midi; it answers
-  with the comes as a canon: the Hz of both voices on 0 after their voice ids on 1, for one synth~ 0→0 1→1; the
-  futuribles on 2, where the canon is on 3; :engine plays alone; `live` on a pulse) and `cancrizans` (a crab or
-  `table` canon written from both ends; when it closes, patterns on 0 and 1 and the score as a tree on 4, for a
-  tree box). The words name a system (diatonic, meantone, septimal31, pentatonic) and one of its modes (dorian…,
+  Counterpoint in the same package: `comes [system] [mode] [speed]` (the comes reads the dux at a speed: 1 a
+  canon, 0.5 an augmentation, −1 a crab written from both ends to the middle; `inverted` upside down, with −1 a
+  table canon. You play the dux, in Hz or with midi: the Hz of both voices on 0 after their voice ids on 1, for one
+  synth~ 0→0 1→1; the futuribles on 2, where the work is on 3, the finished work as a tree on 4, for a tree box;
+  :engine plays alone; `live` on a pulse). The words name a system (diatonic, meantone, septimal31, pentatonic) and one of its modes (dorian…,
   penta-A…), in any order. Orders are keywords: msg :engine, not msg engine.
   Rhythm in the same package: `euclid k n [rotation] [bars]` (a Euclidean rhythm drawn as a necklace: a musical
   tree on 0, for a tree box, with an :rtm whose shares are the intervals between onsets; the :rtm map alone on
