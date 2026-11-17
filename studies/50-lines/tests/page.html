@@ -40,6 +40,10 @@ try {
   d.getElementById("engine").click();
   await wait(() => /the engine, of 6,959 works/.test(d.getElementById("msg").textContent), 30000);
   is("the engine: a crab weighed among all its 6,959 works, the dux's shape and cost said", /the engine, of 6,959 works \(all of them\)/.test(d.getElementById("msg").textContent) && /steps \d+%.*cost/.test(d.getElementById("msg").textContent));
+  // a note repeated is a note held: drawn as one bar, in the dux and in the comes
+  const Lw = w.kairoticLines.L, Mw = w.kairoticLines.work, Lns = Lw.lines(Mw);
+  const runs = (line) => line.filter((x, t) => x !== null && x !== undefined && (t === 0 || x !== line[t - 1])).length;
+  is("a note repeated is drawn held, one bar a note struck (the dux and the comes)", d.querySelectorAll("#sheet rect.dux").length === runs(Lns.D) && d.querySelectorAll("#sheet rect.comes, #sheet rect.coda").length === runs(Lns.C));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);
