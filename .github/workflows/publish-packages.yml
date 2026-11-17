@@ -1,7 +1,8 @@
 # Publishes an official package (npm @kairotic/<name>) when a tag <name>-vX.Y.Z is pushed, for example by
 # creating a GitHub release with that tag: synth-v0.1.0 → @kairotic/synth. The packages live in
 # packages/<name> and are built with packages/build.mjs; the relay (relay-v0.1.1 → @kairotic/relay)
-# lives in relay/ and has nothing to build.
+# lives in relay/ and has nothing to build. The app itself (app-vX.Y.Z → @kairotic/app, version in app/package.json)
+# is published from _app/, made by site/build.mjs, for the claude.ai shell (site/shell.html).
 #
 # Authentication: trusted publishing (OIDC), no tokens. npm only lets a trusted publisher be set on a
 # package that already exists, so the first version of each package is published by hand; then, on
@@ -30,19 +31,26 @@ jobs:
       - name: Which package, and does the tag match its version
         run: |
           NAME="${GITHUB_REF_NAME%-v*}"
-          if [ "$NAME" = relay ]; then DIR=relay; else DIR="packages/$NAME"; fi
+          if [ "$NAME" = relay ]; then DIR=relay; elif [ "$NAME" = app ]; then DIR=app; else DIR="packages/$NAME"; fi
           test -f "$DIR/package.json" || { echo "No package $DIR"; exit 1; }
           V=$(node -p "require('./$DIR/package.json').version")
           test "$NAME-v$V" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} does not match version $V"; exit 1; }
           echo "NAME=$NAME" >> "$GITHUB_ENV"
           echo "DIR=$DIR" >> "$GITHUB_ENV"
+          # the app is published from what site/build.mjs makes of it (_app/), not from app/ itself
+          if [ "$NAME" = app ]; then echo "OUT=_app" >> "$GITHUB_ENV"; else echo "OUT=$DIR" >> "$GITHUB_ENV"; fi
       # The page brings each official package from npm at the version core/kairotic/library.cljs pins: a
       # release whose pin was not moved with its package.json would publish a version the page never loads
       # (tests/versions.mjs checks every package; this checks the one being published, before publishing).
       - name: Does the page pin this version
-        if: env.NAME != 'relay'
+        if: env.NAME != 'relay' && env.NAME != 'app'
         run: node tests/versions.mjs "@kairotic/$NAME"
-      - if: env.NAME != 'relay'
+      - if: env.NAME != 'relay' && env.NAME != 'app'
         run: node packages/build.mjs "$NAME"
+      - if: env.NAME == 'app'
+        run: node site/build.mjs
       - run: npm publish --access public
-        working-directory: ${{ env.DIR }}
+        working-directory: ${{ env.OUT }}
+      # the claude.ai shell asks jsDelivr for @kairotic/app@latest: forget the old answer so the new version is seen at once
+      - if: env.NAME == 'app'
+        run: curl -fsS "https://purge.jsdelivr.net/npm/@kairotic/app@latest/sources.mjs" || true

@@ -1,0 +1,25 @@
+{
+  "name": "@kairotic/app",
+  "version": "0.2.1",
+  "description": "The Kairotic app as files, for the claude.ai shell (site/shell.html) that loads it from jsDelivr",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "app"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic#readme",
+  "type": "module",
+  "main": "sources.mjs",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "kairotic",
+    "music",
+    "patcher",
+    "live coding",
+    "clojurescript"
+  ]
+}

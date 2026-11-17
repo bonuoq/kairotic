@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- Kairotic · the claude.ai shell
+     The Kairotic artifact on claude.ai is only this page: it loads the current app from npm (@kairotic/app, built by
+     site/build.mjs) through jsDelivr, so the artifact never has to be republished when the app changes.
+     A page on claude.ai may import() modules from cdn.jsdelivr.net/npm but may not fetch() files there, so:
+       - sources.mjs brings every file the app fetches (index.html, the .cljs) as strings, and fetch() is answered
+         from it for those URLs;
+       - a <base> pointing at the package makes every relative URL of the app (import() of its .mjs, the ring~
+         worklet) resolve to jsDelivr.
+     The page declares the claude.ai capabilities the app uses: sample (Claude), db, user, room. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kairotic</title>
+<style>#kairotic-shell{font:14px/1.5 ui-monospace,monospace;padding:24px;color:#555}</style>
+</head>
+<body>
+<div id="kairotic-shell">Loading Kairotic…</div>
+<script type="module">
+// Which app: a version, a dist-tag ("latest") or, for testing, a folder ("./" for this page's own files, or a URL).
+const WHICH = "latest";
+const NPM = "https://cdn.jsdelivr.net/npm/@kairotic/app@";
+const shell = document.getElementById("kairotic-shell");
+
+try {
+  const local = WHICH.startsWith(".") || WHICH.includes("://");
+  const first = local ? new URL(WHICH, location.href).href : NPM + WHICH + "/";
+  const { version, files } = (await import(first + "sources.mjs")).default;
+  // a dist-tag resolves anew on each request: pin the version sources.mjs says, so every file comes from one release
+  const BASE = local ? first : NPM + version + "/";
+
+  // 1. relative URLs resolve to the package
+  const base = document.createElement("base");
+  base.href = BASE;
+  document.head.prepend(base);
+
+  // 2. fetch() of a file of the app is answered from sources.mjs
+  const types = { cljs: "text/plain", html: "text/html", js: "text/javascript", json: "application/json", md: "text/markdown" };
+  const realFetch = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    const url = typeof input === "string" ? input : (input && input.url) || String(input);
+    const href = new URL(url, document.baseURI).href.split(/[?#]/)[0];
+    if (href.startsWith(BASE)) {
+      const path = decodeURIComponent(href.slice(BASE.length));
+      if (Object.prototype.hasOwnProperty.call(files, path))
+        return Promise.resolve(new Response(files[path], { status: 200, headers: { "content-type": types[path.split(".").pop()] || "text/plain" } }));
+    }
+    return realFetch(input, init);
+  };
+
+  // 3. the app's own scripts wait for DOMContentLoaded, which has already happened: run them at once
+  for (const target of [window, document]) {
+    const add = target.addEventListener.bind(target);
+    target.addEventListener = function (type, fn, opts) {
+      if ((type === "DOMContentLoaded" || type === "load") && document.readyState !== "loading") {
+        setTimeout(() => (typeof fn === "function" ? fn : fn.handleEvent.bind(fn)).call(target, new Event(type)));
+        return;
+      }
+      return add(type, fn, opts);
+    };
+  }
+
+  // 4. the app's page: its head, its body, then its scripts in order (a script added as text does not run)
+  const doc = new DOMParser().parseFromString(files["index.html"], "text/html");
+  document.documentElement.lang = doc.documentElement.lang || "en";
+  const scripts = [...doc.querySelectorAll("script")];
+  scripts.forEach((s) => s.remove());
+  for (const el of [...doc.head.children]) if (el.tagName !== "TITLE" && !(el.tagName === "META" && el.hasAttribute("charset"))) document.head.appendChild(document.importNode(el, true));
+  for (const a of doc.body.attributes) document.body.setAttribute(a.name, a.value);
+  document.body.innerHTML = doc.body.innerHTML;
+  for (const s of scripts) {
+    const n = document.createElement("script");
+    for (const a of s.attributes) n.setAttribute(a.name, a.value);
+    if (s.hasAttribute("src")) {
+      await new Promise((ok, ko) => { n.onload = ok; n.onerror = () => ko(new Error("could not load " + s.getAttribute("src"))); document.body.appendChild(n); });
+    } else {
+      n.textContent = s.textContent;
+      document.body.appendChild(n);
+    }
+  }
+  window.KAIROTIC_APP_VERSION = version;
+} catch (e) {
+  console.error(e);
+  shell.textContent = "Kairotic could not be loaded: " + ((e && e.message) || e);
+}
+</script>
+</body>
+</html>
