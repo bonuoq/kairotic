@@ -248,7 +248,7 @@
     :see ["canvas" "reader" "tree"]}
 
    "reader"
-   {:inlets ["a position (along X, or Y with reader y; 0…1 with reader path) · on a ring: a position in seconds (0…1 with norm), or :d, :speed, :stop"
+   {:inlets ["a position in the units of the buffer (along X, or Y with reader y; 0…1 with reader norm, or with reader path) · on a ring: in seconds (0…1 with norm), or :d, :speed, :stop"
              "the buffer of a canvas, freqt or ring (a ring's right outlet)"]
     :outlets ["the values where the position crosses something (a list) · from a ring, each value as it was written" "their ids (sent first), for voices"]
     :messages [["reader d 1 · msg :d 1" "on a ring: it follows the ring's head 1 s behind, on its own — a canon, a delay; it starts when the ring's time does"]
@@ -355,7 +355,7 @@
    {:inlets ["a number: the new constant value"] :outlets ["a constant signal"] :see ["phasor~" "osc~"]}
 
    "reader~"
-   {:inlets ["the position signal (0…1), usually a phasor~ · on a ring~: a position in seconds (0…1 with norm), or nothing (then it follows the ring's head); :d, :speed, :jump, :gain"
+   {:inlets ["the position signal (0…1 on a canvas, freqt or sample: norm is how it always reads them), usually a phasor~ · on a ring~: a position in seconds (0…1 with norm), or nothing (then it follows the ring's head); :d, :speed, :jump, :gain"
              "the buffer of a canvas or freqt, the sound of a sample (then it plays it, 0 its start and 1 its end), or a ring~ (its right outlet)"]
     :outlets ["one signal per voice (the values it crosses) · from a ring~, the sound it reads" "with gate: one more per voice, 1 where it sounds and 0 where not"]
     :messages [["reader~ d 1 · msg :d 1" "on a ring~, without a position: 1 s behind the ring's head — a canon, a delay; a new d glides (the pitch bends) or, larger than its jump (0.25 s), seeks with a crossfade"]

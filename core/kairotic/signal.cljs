@@ -109,7 +109,10 @@ registerProcessor('kairotic-phasor', KairoticPhasor);
 
 (defn gates-of [args] (if (gate? args) (if (= :path (mode-of args)) 1 (voices-of args)) 0))
 
-(defn stroke-of [args] (first (remove #{:path :x :y :gate} (filter keyword? args))))
+(defn stroke-of
+  "The stroke a reader~ path follows: its word that is not one of reader~'s own (nor of a head's on a ring~)."
+  [args]
+  (first (remove #{:path :x :y :gate :norm :d :speed :jump :mix} (filter keyword? args))))
 
 (defn allocate
   "Voices for a run of readings [[[id v] …] …]: a reading keeps the voice its id had at the step
