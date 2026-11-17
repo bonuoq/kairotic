@@ -1,5 +1,5 @@
 ;; necklace · a cyclic rhythm on the circle, and its geometry (Toussaint)
-;; Part of @kairotic/theory. Written against the Kairotic API (api/…).
+;; Part of @kairotic/rhythm. Written against the Kairotic API (api/…).
 ;; A rhythm that repeats is a necklace: k onsets among n pulses around a circle, time clockwise from the
 ;; top. Seen so, it is the same object as a pitch-class set on pcclock, and the same geometry measures it
 ;; (Toussaint, "The Geometry of Musical Rhythm"): its full-interval vector (how often each distance between

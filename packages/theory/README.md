@@ -11,8 +11,6 @@ Music theory you can see and touch: what sounds, as geometry. Each class draws i
 | `fourier [notes] [midi]` | the six **Fourier coefficients** of the distribution of pitch classes — f1 chromatic, f2 dyadic, f3 triadic, f4 octatonic, f5 diatonic, f6 whole-tone — each a point in its circle with its trail; magnitudes (0…1) on the left, phases (degrees) on the right |
 | `tonnetz [notes] [midi]` | the **Tonnetz** (fifths across, major and minor thirds up): the nodes that sound, the triads they contain, and the **path of the harmony** — each triad found joined to the ones before, on the copy of the lattice nearest the last; the triad (`:C`, `:am`…) on the left, the pitch class pressed on the right |
 | `comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [inverted] [fourth] [live] [midi]` | **counterpoint live**: the **comes** reads the dux at a **speed** — `1` a canon, `0.5` an augmentation, `-1` a **crab**, written from both ends to the middle — and with `inverted` upside down (an inversion; backwards, a **table canon**). Forwards you play the dux and the comes answers, by turns or `live` on a pulse (Study 41: ties, suspensions, fourth species, the degree of imitation); backwards, a note at the start and then one at the end, or `live` beat by beat, the box answering at the end of your own line (Study 46). Every note is checked against the rules and against the future (the **futuribles**, counted exactly), and corrected to the nearest one that can be played. Both voices sound as Hz after their voice ids, for one `synth~`; the finished work goes out as a musical tree for a `tree` box (Studies 41–46, 50) |
-| `euclid [k 3] [n 8] [rotation 0] [bars 1] [midi]` | **a Euclidean rhythm** (Bjorklund's algorithm, after Toussaint): k onsets as evenly as they can be over n pulses — `euclid 3 8` the tresillo, `5 8` the cinquillo, `5 16` a rotation of the bossa nova, `7 12` the bembé —, drawn as a **necklace** (the pulses around a circle, the onsets a polygon; pressing a pulse makes the rhythm start there). Out: a **musical tree** for a `tree` box (left), the **`:rtm` map** alone (middle) and the **pulses** as ones and zeros (right) |
-| `necklace [n 16] [bars 1] [midi]` | **a cyclic rhythm on the circle and its geometry** (Toussaint): the same object as a pitch-class set on `pcclock`, k onsets among n pulses. It takes pulses (`euclid`'s right outlet), intervals (`[3 3 2]`), box notation (`"x..x..x."`), an `:rtm` map or a tree; pressing a pulse adds or takes away an onset. Its **axes of mirror symmetry** are drawn. Out as `euclid` (tree, `:rtm` map, pulses), and its **measures** (right): interval vector, evenness, deep, flat, axes, longest gap, rhythmic oddity, the rotation of E(k,n) it is |
 
 The three views take the same messages: a **list of pitches** — Hz, as a `keyboard`, `midiin`, a `player` or `pitch~` send them, or MIDI (or 0…11) with the word `midi` — is the set; a **list of 12
 values between 0 and 1** is a chroma (from `chroma~` of `@kairotic/analysis`); a **number** is one
@@ -49,46 +47,6 @@ follow its motion; below 0.2, free counterpoint. Its counterpoint is `counterpoi
 (box :b3 "synth~" 40 200)
 (box :b4 "dac~" 40 260)
 (connect :b1 0 :b2 0) (connect :b2 0 :b3 0) (connect :b3 0 :b4 0) (connect :b3 0 :b4 1)
-```
-
-`euclid` keeps **rhythm apart from pitch**, as the `:rtm` of a musical tree does (see *Musical trees*,
-`docs/mt.md`): the rhythm goes out as `[:rtm {:shares [3 3 2]}]`, the intervals between onsets as shares (a
-negative share is a silence, as when a rotation leaves the first pulses empty), in a bar of n pulses (4/4 for
-8 or 16, 12/8 for 12, n/8 up to 12, else n/16; `[:meter "3/4"]` for another). Its **right inlet** (cold) takes the
-pitches its notes take in turn, starting again when they run out — *talea* and *color*: a map with `:pitches`
-or `:pitch` (kept as it is), a pattern (`{:note [...]}`), a melody string, a list of Hz
-(the keys held on a keyboard; MIDI with `midi`), notes or chords of a tree; `:clear` forgets them. With `bars`
-the color goes on from bar to bar. Its middle outlet is the `:rtm` map alone, so any map of pitches can be
-merged with it elsewhere (`merge`, then `vector :rtm %`). A bang sends it; `[:k 5]`, `[:n 16]`, `[:rotation 2]`,
-`[:bars 4]`, `[:meter "3/4"]` (or one map of them) change it and send it when it is new; a number is k.
-
-```clojure
-(box :b1 "msg :bang" 40 20)
-(box :b2 "keyboard 60 24" 160 20)
-(box :b3 "euclid 5 8" 40 120)
-(box :b4 "tree" 40 340)
-(connect :b2 0 :b3 1) (connect :b1 0 :b3 0) (connect :b3 0 :b4 0)
-```
-
-Hold a chord on the keyboard and click bang: the cinquillo, its notes taking the chord's pitches in turn.
-
-`necklace` measures what Toussaint measures. The **interval vector** (`:ivec`) counts how often each distance
-between onsets occurs (the son clave: `[0 1 2 2 0 3 2 0]`). **Evenness** (`:evenness`) is the sum of the chords
-between all pairs of onsets (Block and Douthett) — arcs would give the six 4/4 claves the same value; chords
-tell the rumba from the bossa nova —, and `:even` is that sum against the Euclidean rhythm's, 1 when it is as
-even. A rhythm is **deep** when each distance occurs a different number of times (the bembé, as the diatonic
-scale), **flat** when each occurs once. `:axes` are its axes of mirror symmetry (in pulses), `:gap` its longest
-interval, `:oddity` true when no two onsets halve the cycle, and `:euclid` the rotation of E(k,n) it is (or nil).
-It is an editor too: pressing a pulse (or a number, its index), `:complement`, `[:rotate 1]`, `[:n 12]`, `:clear`.
-Its outlets are `euclid`'s, so either can feed the same trees and pitches; a necklace after a `euclid` names what
-the euclid made:
-
-```clojure
-(box :b1 "msg [:rotation 6]" 40 20)
-(box :b2 "euclid 5 16" 40 60)
-(box :b3 "necklace" 260 60)
-(box :b4 "print" 260 320)
-(connect :b1 0 :b2 0) (connect :b2 2 :b3 0) (connect :b3 3 :b4 0)
 ```
 
 Writing one of its classes in a work brings the package into it. Licence: [MPL-2.0](../../LICENSE).

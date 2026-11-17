@@ -316,11 +316,11 @@ export async function theory(page, check) {
   await cljs(page, `(delete ${hypo})`);
   await cljs(page, `(delete ${pc5})`);
 
-  // euclid: a Euclidean rhythm (Bjorklund, after Toussaint), sent as a musical tree whose :rtm merges with pitches
+  // @kairotic/rhythm · euclid: a Euclidean rhythm (Bjorklund, after Toussaint), sent as a musical tree whose :rtm merges with pitches
   const eu = (await cljs(page, '(box "euclid 3 8" 9000 600)')).trim();
   const ep = (await cljs(page, '(box "print" 9000 820)')).trim();
   await cljs(page, `(connect ${eu} 2 ${ep} 0)`);
-  check("euclid brings @kairotic/theory: two inlets (orders, pitches) and three outlets",
+  check("euclid brings @kairotic/rhythm: two inlets (orders, pitches) and three outlets",
         (await until(page, `(io (get-in (current) [:boxes ${eu}]))`, (x) => x === "[2 3]", 20000)) === "[2 3]");
   // the box's logic, message by message: what each outlet sends
   const eGo = `(fn [args msgs] (let [d (comp/lookup "euclid")]

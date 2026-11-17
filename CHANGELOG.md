@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-- **`necklace`: a cyclic rhythm and its geometry** (discussion #252, `@kairotic/theory` 0.13.0). k onsets among n
+- **`@kairotic/rhythm`, a package for rhythm as geometry** (discussion #252): `euclid` moves there from
+  `@kairotic/theory` (0.13.0 without it; writing `euclid` brings the new package), beside `necklace`. A package
+  travels as one component box, and `@kairotic/theory` with both would have passed the 100 000 characters a code
+  box keeps (its source was cut and did not compile): that limit is now 250 000.
+
+- **`necklace`: a cyclic rhythm and its geometry** (discussion #252, `@kairotic/rhythm` 0.1.0). k onsets among n
   pulses around a circle — the object of `pcclock`, now for time —, measured as Toussaint does: the interval vector,
   evenness as the sum of chords (Block and Douthett; the rumba less even than the bossa nova, where arcs see them
   equal), `:even` against the Euclidean rhythm, deep (the bembé, as the diatonic scale), flat, axes of mirror

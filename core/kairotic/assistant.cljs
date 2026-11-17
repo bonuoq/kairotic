@@ -427,7 +427,7 @@ Rules:
   synth~ 0→0 1→1; the futuribles on 2, where the work is on 3, the finished work as a tree on 4, for a tree box;
   :engine plays alone; `live` on a pulse). The words name a system (diatonic, meantone, septimal31, pentatonic) and one of its modes (dorian…,
   penta-A…), in any order. Orders are keywords: msg :engine, not msg engine.
-  Rhythm in the same package: `euclid k n [rotation] [bars]` (a Euclidean rhythm drawn as a necklace: a musical
+  Rhythm as geometry (package @kairotic/rhythm, it comes by itself): `euclid k n [rotation] [bars]` (a Euclidean rhythm drawn as a necklace: a musical
   tree on 0, for a tree box, with an :rtm whose shares are the intervals between onsets; the :rtm map alone on
   1; the pulses as 0/1 on 2). Its right inlet (cold) gives the pitches the notes take in turn (a keyboard's
   keys in Hz, a melody string, {:pitches …}, a pattern {:note […]}); [:k 5] [:n 16] [:rotation 2] [:bars 4]

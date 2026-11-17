@@ -804,7 +804,7 @@
     :see ["pcclock" "fourier" "mt"]}
 
    "euclid"
-   {:package "@kairotic/theory" :usage "euclid [k 3] [n 8] [rotation 0] [bars 1] [midi]"
+   {:package "@kairotic/rhythm" :usage "euclid [k 3] [n 8] [rotation 0] [bars 1] [midi]"
     :about "**A Euclidean rhythm: k onsets spread as evenly as they can be over n pulses**, by Bjorklund's algorithm — Euclid's, for the greatest common divisor, on ones and zeros. Toussaint showed that it writes rhythms of the whole world: `euclid 3 8` is the tresillo (3-3-2), `euclid 5 8` the cinquillo, `euclid 5 16` a rotation of the bossa nova, `euclid 7 12` the bembé.
 
 **Drawn as a necklace**: the n pulses around a circle, time running clockwise from the top, the onsets joined into a polygon — the same geometry as a pitch-class set on `pcclock`. A necklace has no start; pressing a pulse makes the rhythm start there (a rotation), which may sound quite different.
@@ -842,7 +842,7 @@
     :see ["necklace" "tree" "mt" "pcclock"]}
 
    "necklace"
-   {:package "@kairotic/theory" :usage "necklace [n 16] [bars 1] [midi]"
+   {:package "@kairotic/rhythm" :usage "necklace [n 16] [bars 1] [midi]"
     :about "**A rhythm that repeats is a necklace**: k onsets among n pulses around a circle, time clockwise from the top. Seen so it is the same object as a pitch-class set on `pcclock`, and Toussaint measures it with the same geometry.
 
 **Its measures** go out on the right: the **interval vector** — how often each distance between onsets occurs (the son clave: `[0 1 2 2 0 3 2 0]`) —, its **evenness** — the sum of the chords between all pairs of onsets (Block and Douthett: arcs would score the six 4/4 claves the same) — and `:even`, that sum against the Euclidean rhythm's; **deep** when each distance occurs a different number of times (the bembé, as the diatonic scale), **flat** when each occurs once; its **axes** of mirror symmetry, drawn across the circle; its longest **gap**; rhythmic **oddity** (no two onsets halve the cycle); and `:euclid`, the rotation of E(k,n) it is.

@@ -1,0 +1,42 @@
+{
+  "name": "@kairotic/rhythm",
+  "version": "0.1.0",
+  "description": "Kairotic rhythm as geometry (after Toussaint): euclid (a Euclidean rhythm by Bjorklund's algorithm, drawn as a necklace) and necklace (a cyclic rhythm on the circle and its measures: interval vector, evenness, deep, flat, axes of symmetry, oddity; also an editor) — both sent as musical trees whose :rtm merges with any pitches",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/rhythm"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages#readme",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs rhythm",
+    "prepublishOnly": "node ../build.mjs rhythm"
+  },
+  "keywords": [
+    "kairotic",
+    "music",
+    "rhythm",
+    "euclidean rhythm",
+    "bjorklund",
+    "necklace",
+    "toussaint",
+    "interval vector",
+    "talea",
+    "isorhythm"
+  ]
+}

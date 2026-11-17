@@ -14,9 +14,9 @@
 ;; ───────── data (with history) ─────────
 
 (def empty {:source ""})
-;; a code box may hold a whole package (a component box with every component of @kairotic/analysis is
-;; about 26 000 characters): longer sources are cut, and cut code does not read
-(def max-source 100000)
+;; a code box may hold a whole package (a component box with every component of @kairotic/theory is
+;; about 85 000 characters, comes alone 52 000): longer sources are cut, and cut code does not read
+(def max-source 250000)
 
 (defn step [d [op & args]]
   (let [d (or d empty)]
