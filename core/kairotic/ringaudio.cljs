@@ -31,7 +31,7 @@
   "Promise that resolves when kairotic/ringcore.mjs is loaded as a worklet module in this AudioContext."
   [ac]
   (or (get @modules ac)
-      (let [p (.addModule (.-audioWorklet ac) (.-href (js/URL. "kairotic/ringcore.mjs" (.-baseURI js/document))))]
+      (let [p (.addModule (.-audioWorklet ac) (.-href (js/URL. "kairotic/ringcore.mjs" (or (.-KAIROTIC_BASE js/window) (.-baseURI js/document)))))]
         (swap! modules assoc ac p)
         p)))
 

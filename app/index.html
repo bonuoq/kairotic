@@ -1054,8 +1054,9 @@ window.kairoticVerovio = new Promise(function (resolve, reject) {
 // Faust (a WebAssembly compiler, about 8 MB) is only downloaded when a faust~ box asks for it.
 // A published component is a JavaScript module that exports {class, version, author, license, doc, source}:
 // inside claude.ai only npm modules via jsDelivr (or files of this page) can be loaded.
+// KAIROTIC_BASE: where the app's own files are, when a shell loads it from elsewhere (site/shell.html).
 window.kairoticImport = function (url) {
-  return import(new URL(url, document.baseURI).href).then(function (m) { return m.default; });
+  return import(new URL(url, window.KAIROTIC_BASE || document.baseURI).href).then(function (m) { return m.default; });
 };
 window.kairoticLoadFaust = function () {
   return import("https://cdn.jsdelivr.net/npm/@grame/faustwasm@0.18.5/dist/esm-bundle/index.js")
