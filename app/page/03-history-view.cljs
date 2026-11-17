@@ -58,7 +58,7 @@
         ls order
         svg ($ "tree")
         h @hist
-        show-empty (and (empty? ls) (:loaded h) (#{:shared :readonly :solo} (:mode h)))]
+        show-empty (and (empty? ls) (:loaded h) (#{:shared :readonly :solo :local} (:mode h)))]
     (set! (.-hidden ($ "hist-empty")) (not show-empty))
     (set! (.. svg -style -display) (if (empty? ls) "none" "block"))
     (when (seq ls)

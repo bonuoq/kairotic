@@ -203,6 +203,8 @@ const audio = () => inApp("audio", audioSuites, "audio", { before: async (app, c
   await app.waitForFunction(() => document.getElementById("manager").hidden, null, { timeout: 10000 }).catch(() => {});
   const mode = await cljs(app, "(:mode @hist)");
   check("a local work opens for the audio tests", mode === ":local", mode);
+  // (it begins empty; the tests were written beside the example work, so it is loaded, as its button does)
+  await cljs(app, '(gesture! "(load-example)")');
 } });
 
 // 3b. the help patches, all of them, step by step (issue #166): in an app of its own, beside the others

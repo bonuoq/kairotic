@@ -46,11 +46,10 @@
     (when (nil? (:pos @world))
       (when-let [t (newest-tip)] (swap! world assoc :pos t)))))
 
-(defn start-local! []
-  (swap! hist assoc :mode :local :loaded true)
-  (when (empty? (:nodes @hist))
-    (let [id (new-node! nil 0 [[:load (build example)]] nil)]
-      (swap! world assoc :pos [id 1]))))
+(defn start-local!
+  "A local work begins empty: the first gesture is its root (the example work is a button away, in the history pane)."
+  []
+  (swap! hist assoc :mode :local :loaded true))
 
 (defn setup-room!
   "Presence inside the open room (one named room per shared work)."

@@ -14,6 +14,8 @@ const fails = async (page, src) => (await cljs(page, src)).startsWith("ERR ");
 export async function lines(page, check) {
   await cljs(page, '(open-work! :local "local" "Local")');
   await until(page, "(:loaded @hist)", "true");
+  // a local work begins empty: the main line gets the example work, as its button does
+  await cljs(page, '(gesture! "(load-example)")');
   // the example's packages come into the work a moment later (a box each): until it is still
   for (let last = "", same = 0, t0 = Date.now(); same < 8 && Date.now() - t0 < 20000; ) {
     const now = await cljs(page, "(count (:boxes (current)))");
