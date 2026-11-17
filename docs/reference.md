@@ -207,7 +207,7 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 
 **Inlets** 
 
-0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · engine · back · reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work
+0. the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · :engine · :back · :reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work
 1. live: the pulse (a bang from a metro or a pulse): a beat, with your note or the box's for you
 
 **Outlets** 
@@ -216,21 +216,22 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 1. the comes, as a pattern
 2. the futuribles: the notes that can come next ({:midi :name :futures}; live, with :end, what the box will answer at the end)
 3. where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}
+4. the score, as a musical tree (for a freqt shown as a score): when the work closes, both voices; live, from the middle what is left of your line to read (the beats played as rests), and at the end the whole crab
 
 **Messages and gestures**
 
-- `engine`: the next note, written by the box
-- `back`: the last note taken back
-- `reset`: a new work
+- `:engine`: the next note, written by the box
+- `:back`: the last note taken back
+- `:reset`: a new work
 - `[:table true]`: a table canon: backwards and upside down
 - `[:temp 2]`: live: the box draws among its answers (0: always the one :end says)
 - `[:seed 7]`: live: its chance (reset: the same game again)
 - `[:system :septimal31]`: another system (Study 42), or an EDN map: its modes and tuning
 
-**Try:** Click engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds. Play notes on a keyboard into it instead (the note at the start, then the one at the end).
+**Try:** Click :engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds, each voice on its own synth~ (one synth~ plays one line: a note from the other player would take the place of the last). The freqt below shows the crab as a score: read the comes from the end and it is the dux. Play notes on a keyboard into it instead (the note at the start, then the one at the end).
 
 ```clojure
-(box :b1 "msg engine" 40 30)
+(box :b1 "msg :engine" 40 30)
 (box :b2 "cancrizans" 40 80)
 (box :b3 "pbind" 40 150)
 (box :b4 "pbind" 40 260)
@@ -238,8 +239,13 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (box :b5 "player 90" 40 420)
 (box :b6 "player 90" 240 420)
 (box :b7 "synth~" 40 490)
+(box :b17 "synth~" 240 490)
 (box :b8 "dac~" 40 550)
 (box :b10 "print" 260 80)
+(box :b19 "freqt" 40 620)
+(view :b19 :score)
+(resize :b19 460 200)
+(connect :b2 4 :b19 0)
 (connect :b1 0 :b2 0)
 (connect :b2 0 :b3 0)
 (connect :b2 1 :b4 0)
@@ -248,30 +254,41 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (connect :b9 0 :b5 0)
 (connect :b9 0 :b6 0)
 (connect :b5 0 :b7 0)
-(connect :b6 0 :b7 0)
+(connect :b6 0 :b17 0)
 (connect :b7 0 :b8 0)
 (connect :b7 0 :b8 1)
+(connect :b17 0 :b8 0)
+(connect :b17 0 :b8 1)
 (connect :b2 3 :b10 0)
 ```
 
-**Played live** — With live (Study 46) the crab is played beat by beat: your note, and at the same beat the box's answer — the end of your own line, written ahead. Two beats before the middle a cue; at the middle the rest of your line comes out as the score to read (outlet 1), and the box plays your first half backwards (outlet 0) while you read it.
+**Played live** — With live (Study 46) the crab is played beat by beat: your note, and at the same beat the box's answer — the end of your own line, written ahead. Two beats before the middle a cue; at the middle the rest of your line comes out as the score to read (outlet 1 as a pattern, outlet 4 as a musical tree for a score), and the box plays your first half backwards (outlet 0) while you read it. The first note to read is the last end of your line the box wrote (with an odd number of beats the middle note is shared: the box plays it with you, an octave below); from there each voice plays what the other played, backwards.
 
-*Try:* Press ▶: the loadbang counts the futures, and the futuribles of the first note are printed — each with :end, what the box will answer at the end of your line. Play D on the keyboard: the box answers with D an octave below. Play on: at the middle the score to read is printed; read it, and the crab closes.
+*Try:* Press ▶: the loadbang counts the futures. The html box shows where the crab is and its futuribles as a table — each note you can play, the ways it leaves to close the crab, and :end, what the box will answer at the end of your line. Play D on the keyboard (your line sounds on its own synth~): the box answers with D an octave below on the other. Play on: at the middle the freqt shows, as a score, what is left of your line to read — the box's answers so far, backwards — and the notes you read turn into rests; at the end it shows the whole crab.
 
 ```clojure
 (box :b11 "keyboard 60 24" 520 30)
 (box :b12 "cancrizans live" 520 150)
 (box :b13 "synth~" 520 230)
-(box :b14 "print" 720 230)
+(box :b18 "synth~" 520 290)
 (box :b15 "loadbang" 720 110)
-(box :b16 "print" 720 290)
+(box :b16 "html" 860 30)
+(resize :b16 300 230)
+(code :b16 "[:div.col [:h4 \"beat \" :$t \" of \" :$n \" · \" :$phase] [:p.soft :$ways \" ways to close it\"] :$in]")
+(box :b14 "freqt" 860 290)
+(view :b14 :score)
+(resize :b14 460 180)
 (connect :b15 0 :b12 0)
 (connect :b12 2 :b16 0)
+(connect :b12 3 :b16 0)
+(connect :b12 4 :b14 0)
 (connect :b11 0 :b12 0)
 (connect :b12 0 :b13 0)
 (connect :b13 0 :b8 0)
 (connect :b13 0 :b8 1)
-(connect :b12 1 :b14 0)
+(connect :b11 0 :b18 0)
+(connect :b18 0 :b8 0)
+(connect :b18 0 :b8 1)
 ```
 
 See also: `comes`, `pbind`, `player`
@@ -411,7 +428,7 @@ Counterpoint live: you play the dux and the comes answers, as a canon in a mode 
 - `[:k -4]`: the comes a 5th below
 - `[:system :pentatonic]`: another system (Study 42): meantone, septimal31, pentatonic, diatonic, or an EDN map {:tuning … :modes …}
 
-**Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone.
+**Try:** Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click :engine to let it go on alone.
 
 ```clojure
 (box :b1 "keyboard 60 24" 40 30)
@@ -1036,7 +1053,7 @@ See also: `osc~`, `synth~`, `faust~`
 
 `html`
 
-A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, buttons and text, laid out like a page. An element with :out sends what it gives out of that outlet; one with :name keeps it as a value, shown by every hole :$name in the view, and when it is let go (a slider) or chosen (a menu, a text entered) the box keeps it in the work, as a knob keeps its value: (values! :bN {:freq 440}). A map on the inlet ({:freq 220}) sets values, as a number sets a knob: the elements named so show it (a slider within its range) and those with :out send it on; a bang sends again what they hold. What is not allowed (scripts, links, images, positions, unknown tags or attributes) is dropped, so it is safe in a shared room. Its view opens as text from { } (HTML can be pasted there too).
+A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, buttons and text, laid out like a page. An element with :out sends what it gives out of that outlet; one with :name keeps it as a value, shown by every hole :$name in the view, and when it is let go (a slider) or chosen (a menu, a text entered) the box keeps it in the work, as a knob keeps its value: (values! :bN {:freq 440}). A list of maps in a hole is shown as a table (a row each, a column for each key: the futuribles of comes or cancrizans), and anything else on the inlet that is not a map, a value or a bang (a number, a list) is the value :in, shown by :$in. A map on the inlet ({:freq 220}) sets values, as a number sets a knob: the elements named so show it (a slider within its range) and those with :out send it on; a bang sends again what they hold. What is not allowed (scripts, links, images, positions, unknown tags or attributes) is dropped, so it is safe in a shared room. Its view opens as text from { } (HTML can be pasted there too).
 
 **Inlets** 
 
@@ -1052,6 +1069,7 @@ A small interface written as hiccup (HTML as EDN data): sliders, fields, menus, 
 - `{:freq 220}`: sets values: the elements named so show them and send them on
 - `[:freq 220]`: sets one value
 - `bang`: sends again what every named element with :out holds
+- `[{:name "D4" :futures 12} …]`: anything else is the value :in (:$in); a list of maps is shown as a table
 
 **Try:** Move the slider: its value goes out of the left outlet and shows beside it; let it go and the box keeps it, as a knob does (back in the history, it moves back). { } in the header opens the view as text: change it and apply.
 

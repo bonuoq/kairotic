@@ -15,6 +15,16 @@
   feedback: a round. The model is `core/kairotic/span.cljs` (pure); the boxes are `core/kairotic/ring.cljs` and the
   reader in `components.cljs`. Tests: `tests/cljs/ring.cljs` (a small engine runs the heads in time) and
   `tests/ring.mjs` (in the app, with ▶).
+- **`cancrizans` as a score, and the `html` box shows lists as tables** (`@kairotic/theory` 0.8.0). A fifth outlet
+  sends the crab as a musical tree, for a `freqt` shown as a score: when the work closes, both voices; live, from the
+  middle what is left of your line to read (the beats already read as rests, so the bar stays where it was), and at
+  the end the whole crab. The `html` box shows a list of maps in a hole as a table (a row each, a column per key), and
+  keeps anything else that reaches it — a number, a list — as the value `:in` (`:$in`): the futuribles of `comes` or
+  `cancrizans` straight into a table. The help of `cancrizans live` shows both: an `html` with the beat, the phase, the
+  ways left and the futuribles (with `:end`, what the box will answer), and the score to read. The score to read was
+  checked: it is the rest of your line, the first note the last end of your line the box wrote (with an odd number of
+  beats the middle note is shared, the box playing it with you an octave below); the help now says so.
+
 - **`comes` and `cancrizans`: the help with keywords, and two voices heard** (`@kairotic/theory` 0.7.1). The help
   of `cancrizans` still sent `msg engine`, which since `msg` is read as Clojure is a name and does nothing: now
   `msg :engine`, and the orders written with their colon in both boxes' help, `:doc` and README (`:engine`,
