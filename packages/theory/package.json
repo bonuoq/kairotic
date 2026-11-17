@@ -1,7 +1,7 @@
 {
   "name": "@kairotic/theory",
-  "version": "0.10.0",
-  "description": "Kairotic music-theory views: pcclock (a pitch-class set on the clock, its prime form and symmetries), fourier (the six Fourier coefficients of a pitch-class distribution) and tonnetz (triads on the Tonnetz and the path of the harmony), drawn in the patch and clickable; and comes, counterpoint live: you play the dux and it answers with the comes, as a canon in a mode; and cancrizans, a crab or table canon written from both ends to the middle",
+  "version": "0.11.0",
+  "description": "Kairotic music-theory views: pcclock (a pitch-class set on the clock, its prime form and symmetries), fourier (the six Fourier coefficients of a pitch-class distribution) and tonnetz (triads on the Tonnetz and the path of the harmony), drawn in the patch and clickable; and comes, counterpoint live: you play the dux and it answers with the comes, as a canon in a mode; and cancrizans, a crab or table canon written from both ends to the middle; and euclid, a Euclidean rhythm drawn as a necklace, sent as a musical tree whose rhythm merges with any pitches",
   "author": "bonuoq",
   "license": "MPL-2.0",
   "repository": {
@@ -41,6 +41,10 @@
     "species counterpoint",
     "crab canon",
     "cancrizans",
-    "table canon"
+    "table canon",
+    "rhythm",
+    "euclidean rhythm",
+    "necklace",
+    "bjorklund"
   ]
 }

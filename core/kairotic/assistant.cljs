@@ -427,6 +427,11 @@ Rules:
   `table` canon written from both ends; when it closes, patterns on 0 and 1 and the score as a tree on 4, for a
   tree box). The words name a system (diatonic, meantone, septimal31, pentatonic) and one of its modes (dorian…,
   penta-A…), in any order. Orders are keywords: msg :engine, not msg engine.
+  Rhythm in the same package: `euclid k n [rotation] [bars]` (a Euclidean rhythm drawn as a necklace: a musical
+  tree on 0, for a tree box, with an :rtm whose shares are the intervals between onsets; the :rtm map alone on
+  1; the pulses as 0/1 on 2). Its right inlet (cold) gives the pitches the notes take in turn (a keyboard's
+  keys in Hz, a melody string, {:pitches …}, a pattern {:note […]}); [:k 5] [:n 16] [:rotation 2] [:bars 4]
+  [:meter \"3/4\"] change it, a bang sends it.
 - The outside (package @kairotic/io, it comes by itself; listening while ▶ runs): `midiin` (MIDI in: Hz and
   voice ids for synth~ like a keyboard, and every event as a map {:type :note :freq :amp :gate …}),
   `midiout [mpe]` (Hz after voice ids, or events, to a MIDI port; mpe for microtones), `oscout [target]` and

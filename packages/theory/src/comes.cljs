@@ -12,7 +12,7 @@
 ;;                           That is all it reads of time: more (the mode heard, a modulation, the meter, phrases)
 ;;                           is for boxes of analysis, which tell it with messages ([:mode …], [:beats 3], end);
 ;;                           with nocues the two cues are theirs too.
-(let [origins ["npm:@kairotic/theory@0.10.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
+(let [origins ["npm:@kairotic/theory@0.11.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
       hz (fn [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
       semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
       ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))

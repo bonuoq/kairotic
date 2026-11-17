@@ -803,6 +803,44 @@
     :try "Click the four messages in order: C, c, A♭, g♯ — P, L, P: each step crosses one edge of the lattice. Press a node to hear which class it is (its number comes out on the right)."
     :see ["pcclock" "fourier" "mt"]}
 
+   "euclid"
+   {:package "@kairotic/theory" :usage "euclid [k 3] [n 8] [rotation 0] [bars 1] [midi]"
+    :about "**A Euclidean rhythm: k onsets spread as evenly as they can be over n pulses**, by Bjorklund's algorithm — Euclid's, for the greatest common divisor, on ones and zeros. Toussaint showed that it writes rhythms of the whole world: `euclid 3 8` is the tresillo (3-3-2), `euclid 5 8` the cinquillo, `euclid 5 16` a rotation of the bossa nova, `euclid 7 12` the bembé.
+
+**Drawn as a necklace**: the n pulses around a circle, time running clockwise from the top, the onsets joined into a polygon — the same geometry as a pitch-class set on `pcclock`. A necklace has no start; pressing a pulse makes the rhythm start there (a rotation), which may sound quite different.
+
+**Rhythm apart from pitch.** It goes out as a musical tree for a `tree` box: a bar of n pulses with an `:rtm` whose shares are the intervals between onsets (a negative share a silence). Its right inlet takes the pitches the notes take in turn, starting again when they run out — *talea* and *color*, as in an isorhythmic motet: a keyboard's chord, a melody string, a map `{:pitches …}`, the pattern of `comes`. Its middle outlet is the `:rtm` map alone, to merge with other pitches elsewhere."
+    :args [[:k "how many onsets"]
+           [:n "how many pulses in the bar"]
+           [:rotation "the pulse it starts on (a rotation of the necklace)"]
+           [:bars "how many bars: the rhythm again, the pitches going on"]
+           [:midi "numbers on the right inlet are MIDI notes (62), not Hz"]]
+    :doc "A Euclidean rhythm (Bjorklund, after Toussaint): k onsets as evenly as they can be over n pulses, drawn as a necklace; pressing a pulse makes it start there. Out: a musical tree with an :rtm (the intervals as shares), the :rtm map alone, and the pulses as ones and zeros. The right inlet gives the pitches its notes take in turn."
+    :inlets ["a bang: send it · a number: k · [:k 5], [:n 16], [:rotation 2], [:bars 4], [:meter \"3/4\"] (or a map of them): change it, and send it when it is new"
+             "the pitches (cold, for the next time it sends): a list of Hz (a keyboard's keys held; MIDI with midi), a melody string (\"c4 e4 g4\"), a map with :pitches or :pitch, a pattern {:note [...]} of comes or cancrizans, notes or chords of a tree · :clear forgets them (every note c4)"]
+    :outlets ["the rhythm as a musical tree, for a tree box: [:voice [:measure {:meter [4 4]} [:rtm {:shares [3 3 2] :pitches …}]] …]"
+              "the :rtm map alone ({:shares [3 3 2]}, with the pitches if it has them): merge it with other pitches, and write it as a node with vector :rtm %"
+              "the pulses, ones and zeros ([1 0 0 1 0 0 1 0])"]
+    :messages [[":bang" "sends it"]
+               ["[:k 5]" "five onsets (a number alone is k too)"]
+               ["[:n 16]" "sixteen pulses"]
+               ["[:rotation 2]" "starts on the third pulse"]
+               ["[:bars 4]" "four bars, the pitches going on from bar to bar"]
+               ["[:meter \"3/4\"]" "a bar of another meter (by default 4/4 for 8 or 16 pulses, 12/8 for 12, n/8 up to 12, else n/16; nil goes back to it)"]
+               [":clear" "on the right: forgets the pitches"]]
+    :example (lines "(box :b1 \"msg :bang\" 40 20)" "(box :b2 \"msg [:k 5]\" 120 20)" "(box :b3 \"msg [:n 16]\" 210 20)" "(box :b4 \"msg [:rotation 3]\" 310 20)"
+                    "(box :b5 \"euclid 3 8\" 40 70)" "(box :b6 \"tree\" 260 70)" "(resize :b6 420 160)" "(box :b7 \"print pulses\" 40 300)"
+                    "(connect :b1 0 :b5 0)" "(connect :b2 0 :b5 0)" "(connect :b3 0 :b5 0)" "(connect :b4 0 :b5 0)" "(connect :b5 0 :b6 0)" "(connect :b5 2 :b7 0)")
+    :try "Click bang: the tresillo, 3-3-2, in the tree box as eighths in 4/4. Click [:k 5]: the cinquillo; then [:n 16]: five in sixteen, a rotation of the bossa nova; [:rotation 3] starts it on the fourth pulse — a silence first. Press a pulse on the necklace: the rhythm starts there."
+    :steps [{:title "Pitches: talea and color"
+             :note "The right inlet gives the notes their pitches, in turn, starting again when they run out: three pitches over five onsets take three bars to meet the rhythm again, as the color and the talea of an isorhythmic motet. It is cold: what arrives there sounds the next time the box sends. A keyboard sends the keys held, in Hz; a melody string or a map {:pitches …} is kept as it is."
+             :example (lines "(box :b8 \"keyboard 60 24\" 520 20)" "(box :b9 \"msg {:pitches \\\"c4 e4 g4\\\"}\" 520 150)" "(box :b10 \"msg [:bars 3]\" 400 20)"
+                             "(box :b11 \"mt play loop\" 260 260)" "(box :b12 \"msg :bang\" 380 230)" "(box :b13 \"synth~\" 260 310)" "(box :b14 \"dac~\" 260 360)"
+                             "(connect :b8 0 :b5 1)" "(connect :b9 0 :b5 1)" "(connect :b10 0 :b5 0)" "(connect :b6 0 :b11 0)" "(connect :b12 0 :b11 0)"
+                             "(connect :b11 0 :b13 0)" "(connect :b11 1 :b13 1)" "(connect :b13 0 :b14 0)" "(connect :b13 0 :b14 1)")
+             :try "With five onsets ([:k 5] above), click {:pitches \"c4 e4 g4\"}, then [:bars 3] (it sends): C E G over the onsets, the color going on from bar to bar. Press ▶ and click the bang of mt play to hear it. Hold a chord on the keyboard and click bang above: the chord's notes, one onset each."}]
+    :see ["tree" "mt" "pcclock" "pbind"]}
+
    "cancrizans"
    {:package "@kairotic/theory" :usage "cancrizans [system] [mode] [k -7] [beats 2] [bars 6] [temp 0] [seed 1] [table] [live] [midi]"
     :about "**A crab canon: the second voice is your line backwards**, both sounding at once, so the work reads the same from either end. With `table` it is also upside down: one score read by two players from opposite sides of a table — a musical ambigram.

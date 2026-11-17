@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **`euclid`: rhythm as geometry begins** (discussion #252, `@kairotic/theory` 0.11.0). A Euclidean rhythm by
+  Bjorklund's algorithm, after Toussaint: `euclid 3 8` the tresillo, `5 8` the cinquillo, `5 16` a rotation of the
+  bossa nova, `7 12` the bembé. Drawn as a necklace (the pulses around a circle, the onsets a polygon); pressing a
+  pulse makes the rhythm start there. Rhythm apart from pitch: it sends a musical tree for a `tree` box — a bar of
+  n pulses (4/4 for 8 or 16, 12/8 for 12, n/8 up to 12, else n/16, or `[:meter …]`) with an `:rtm` whose shares are
+  the intervals between onsets —, the `:rtm` map alone (outlet 1), to merge with any map of pitches elsewhere, and
+  the pulses as ones and zeros (outlet 2). Its right inlet (cold) gives the pitches the notes take in turn, starting
+  again when they run out (talea and color; with `bars` the color goes on from bar to bar): a keyboard's keys in
+  Hz (MIDI with `midi`), a melody string, a map with `:pitches` or `:pitch`, a pattern of `comes` or `cancrizans`.
+  `[:k 5]`, `[:n 16]`, `[:rotation 2]`, `[:bars 4]`, `[:meter "3/4"]` (or a map) change it. Help with a lesson,
+  the assistant knows it, tests in `tests/theory.mjs`.
+
 - **Study 52 · continuum** (discussion #217, its first study): one line of events drawn at a resolution per axis —
   time (proportional → metric), pitch (Hz → a semitone grid → the staff, spelled in the key), glyph (a stroke → a
   head with a duration line → a note value) — each changing over time, so a phrase can begin written and dissolve
