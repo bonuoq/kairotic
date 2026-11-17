@@ -91,7 +91,21 @@ export async function theory(page, check) {
   await cljs(page, `(send! ${cm} 65) (send! ${cm} 67)`);
   const C = await until(page, st(":C"), (x) => /\d+\]$/.test(x), 3000);
   check("... from the fourth note on the comes answers (a canon: the first note, an octave below)", C.endsWith(" -6]"), C);
-  check("... and sounds, as a list of Hz", (await until(page, "(pr-str (map second (:prints @eng/rt)))", (x) => x.includes("[146.8"), 3000)).includes("[146.8"));
+  check("... and sounds, both voices as a list of Hz (the dux, then the comes D3)", (await until(page, "(pr-str (map second (:prints @eng/rt)))", (x) => /146\.8\d*\]/.test(x), 3000)).match(/146\.8\d*\]/) !== null);
+  // the voice ids: a note held keeps its id (it goes on sounding), a new note a new one; with the comes, two voices
+  const ids = await cljs(page, `(let [d (comp/lookup "comes") st (get-in @eng/rt [:states ${cm}]) a (:sig st)
+                                      go (fn [[s _] m] (let [r ((:receive d) {:inlet 0 :value m :state s :args a})] [(:state r) (:out r)]))
+                                      steps (vec (rest (reductions go [st nil] [:reset 62 :hold 64 65 67])))
+                                      ids (fn [i] (some (fn [[o v]] (when (= o 1) v)) (second (nth steps i))))
+                                      hz (fn [i] (some (fn [[o v]] (when (= o 0) v)) (second (nth steps i))))]
+                                  [(:D (first (nth steps 2))) (= (ids 1) (ids 2)) (not= (ids 2) (ids 3)) (count (ids 5)) (count (hz 5))])`);
+  check("... with their voice ids (outlet 1): held over the beat the dux keeps its id, a new note a new one, and two voices once the comes enters",
+        ids === "[[1 1] true true 2 2]", ids);
+  // an event from a player (:hz, a list) is a note too
+  const pev = await cljs(page, `(let [d (comp/lookup "comes") st (get-in @eng/rt [:states ${cm}]) a (:sig st)
+                                      r ((:receive d) {:inlet 0 :value {:beat 3 :hz [329.63] :ids [64]} :state st :args a})]
+                                  (count (:D (:state r))))`);
+  check("... a player's event (:hz) plays as a note", pev === String(Number(await cljs(page, `(count ${st(":D")})`)) + 1), pev);
   check("... the box shows the pair", (await cljs(page, `(:comes (second (last-shown ${cm})))`)) === '"D3"', await cljs(page, `(second (last-shown ${cm}))`));
   for (let i = 0; i < 11; i++) await cljs(page, `(send! ${cm} :engine)`);
   check("... engine plays on to the end of the canon", (await until(page, `(count ${st(":D")})`, (x) => x === "15", 5000)) === "15");
@@ -231,6 +245,13 @@ export async function theory(page, check) {
                                      [(tree 4) (first (tree 5)) (count (rest (tree 5))) (first (get-in (tree 6) [1 2])) (first (get-in (tree 5) [1 2])) (first (tree 8))])`);
   check("... the score to read as a tree (outlet 4): at the middle, then the beats read as rests, then the whole crab",
         /^\[nil :voice 2 :rest :note :piece\]$/.test(lzTree), lzTree);
+  const lzSound = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}]) a (:sig st)
+                                          go (fn [[s _] m] (let [r ((:receive d) {:inlet 0 :value m :state s :args a})] [(:state r) (:out r)]))
+                                          steps (vec (rest (reductions go [st nil] [:reset 62 {:beat 1 :hz [329.63] :ids [64]}])))
+                                          o (fn [i k] (some (fn [[p v]] (when (= p k) v)) (second (nth steps i))))]
+                                      [(o 0 1) (count (o 1 1)) (count (o 1 0)) (count (:M (first (nth steps 1)))) (:t (first (nth steps 2)))])`);
+  check("... live it sounds both voices with their voice ids (a reset lets them go); a player's event (:hz) is a note too",
+        /^\[\[\] 2 2 7 2\]$/.test(lzSound), lzSound);
   // with a temperature the box draws among its answers, with its seed: the same seed, the same game
   const seeded = await cljs(page, `(let [d (comp/lookup "cancrizans") st (get-in @eng/rt [:states ${lz}]) a (:sig st)
                                          go (fn [s m] (:state ((:receive d) {:inlet 0 :value m :state s :args a})))

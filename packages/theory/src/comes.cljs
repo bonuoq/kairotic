@@ -12,9 +12,10 @@
 ;;                           That is all it reads of time: more (the mode heard, a modulation, the meter, phrases)
 ;;                           is for boxes of analysis, which tell it with messages ([:mode …], [:beats 3], end);
 ;;                           with nocues the two cues are theirs too.
-(let [origins ["npm:@kairotic/theory@0.8.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
+(let [origins ["npm:@kairotic/theory@0.9.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
       hz (fn [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
       semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
+      ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
       log2 (fn [x] (/ (js/Math.log x) (js/Math.log 2)))
       round2 (fn [x] (/ (js/Math.round (* 100 x)) 100))
       ;; the parameters that can change on the way (a message [:k -4], [:imitation 0.5], [:mode :hypodorian]…)
@@ -74,8 +75,19 @@
                               (when (:live st) (str " · " (.-beats cp) "/2")))
                  :dux (if x (.name cp x) "–") :comes (if (some? c) (.name cp c) "–")
                  :corrected (boolean (and r (.-corrected r))) :reason (when r (.-reason r))}))
-      ;; one pair placed: the dux as played (or corrected) and the comes with it. What sounds goes out only when
-      ;; it changes: a note held is not struck again.
+      ;; what sounds: both voices, as a keyboard or a player sends them — their Hz (outlet 0) after their voice ids
+      ;; (outlet 1), for one synth~. A voice's id is where its note was struck (section and beat): a note held
+      ;; keeps its id and goes on sounding; a note struck again, even the same, is a new id and is struck again.
+      sounding (fn [cp st]
+                 (let [D (:D st) C (:C st)
+                       start (fn [xs] (loop [i (dec (count xs))] (if (and (pos? i) (= (nth xs i) (nth xs (dec i)))) (recur (dec i)) i)))
+                       sec (:section st 1)
+                       vs (cond-> []
+                            (seq D) (conj [(keyword (str "d" sec "-" (start D))) (hz (.midi cp (peek D)))])
+                            (some? (peek C)) (conj [(keyword (str "c" sec "-" (start C))) (hz (.midi cp (peek C)))]))]
+                   [[1 (mapv first vs)] [0 (mapv second vs)]]))
+      silence [[1 []] [0 []]]
+      ;; one pair placed: the dux as played (or corrected) and the comes with it, sounding together
       placed (fn [cp st r]
                (let [D0 (:D st) C0 (:C st)
                      st (-> st (update :D conj (.-note r)) (update :C conj (.-comes r)))
@@ -83,9 +95,7 @@
                      done (>= (count (:D st)) (.-n cp))]
                  {:state (cond-> st done (assoc :idle true :section (inc (:section st 1))))
                   :show (shown cp st r)
-                  :out (cond-> [[3 (report cp st r)] [2 (futs cp (:D st) (:C st))]]
-                         (not= x (peek D0)) (conj [1 [(hz (.midi cp x))]])
-                         (or (empty? C0) (not= c (peek C0))) (conj [0 (if (some? c) [(hz (.midi cp c))] [])]))}))
+                  :out (into [[3 (report cp st r)] [2 (futs cp (:D st) (:C st))]] (sounding cp st))}))
       ;; a pitch asked for: after the last canon, a new one
       play (fn [cp st asked]
              (let [st (if (or (:idle st) (>= (count (:D st)) (.-n cp))) (assoc st :D [] :C [] :idle false) st)]
@@ -98,15 +108,16 @@
       chain (fn [cp st askeds] (reduce (fn [acc a] (merge-res acc (play cp (:state acc) a))) {:state st :out []} askeds))
       at-point (fn [cp st]
                  {:state st :show (shown cp st nil)
-                  :out [[3 (report cp st nil)] [2 (futs cp (:D st) (:C st))] [1 []] [0 []]]})
+                  :out (into [[3 (report cp st nil)] [2 (futs cp (:D st) (:C st))]] silence)})
       ;; what a pitch asked for is (semitones above C4), from a number, a MIDI note, an event or the keys held
       asked-of (fn [value args st]
                  (let [num (fn [v] (if (:midi args) (- v 60) (when (pos? v) (semis-of-hz v))))]
                    (cond
                      (number? value) (if (or (:midi args) (pos? value)) [:note (num value)] [:release])
                      (and (vector? value) (= :midi (first value)) (number? (second value))) [:note (- (second value) 60)]
-                     (and (map? value) (number? (:freq value)))
-                     (if (pos? (or (:gate value) 1)) [:note (semis-of-hz (:freq value))] [:release])
+                     ;; an event: :freq (midiin, oscin) or :hz (a player's, a list: its first note)
+                     (and (map? value) (number? (ev-hz value)))
+                     (if (and (pos? (ev-hz value)) (pos? (or (:gate value) 1))) [:note (semis-of-hz (ev-hz value))] [:release])
                      (and (sequential? value) (every? number? value))
                      (cond (empty? value) [:release]
                            (some #{(first value)} (:held st)) [:same]
@@ -118,7 +129,7 @@
                        (= kind :ternary) (assoc :meter 3))]
               {:state st
                :show {:status (str "§" (:section st) " · " (if (= kind :ternary) "3/2 next" "a new canon next"))}
-               :out [[3 {:cue kind :section (:section st) :meter (or (:meter st) (:beats (:over st)))}] [1 []] [0 []]]}))
+               :out (into [[3 {:cue kind :section (:section st) :meter (or (:meter st) (:beats (:over st)))}]] silence)}))
       ;; a pulse: the note struck since the last one, or the one sounding held over the beat
       pulse (fn [st args at late]
               (let [period (when (and (:lastp st) (not late)) (- at (:lastp st)))
@@ -135,7 +146,7 @@
                     (let [[st fx] (ensure-live st args)] {:state st :effects fx}))
                   ;; nothing sounding: the comes rests (what still sounded is let go)
                   (or (:idle st) (nil? (:cur st)) (nil? cp))
-                  {:state (assoc st :last :idle) :out (when (#{:hold :struck} (:last st)) [[1 []] [0 []]])}
+                  {:state (assoc st :last :idle) :out (when (#{:hold :struck} (:last st)) silence)}
                   ;; held three pulses in 2/2: the canon turns to 3/2
                   (and (= 2 b) (>= (inc (:dur st)) 3) (not (:nocues args)))
                   (let [res (cue st :ternary) [s2 fx] (ensure (:state res) (opts-of (:state res) args))]
@@ -165,7 +176,7 @@
   {;; ── about ──
    :class "comes"
    :license "MPL-2.0"
-   :doc "Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Studies 41–43). Each note is checked against the rules of the style — the mode's range, its melodic intervals, consonance on the strong beats, a dissonance only passing on a weak one or held as a suspension, no parallel 5ths or octaves… — and against the future: a note from which the canon could not be finished is not allowed either. A note that breaks a rule is corrected to the nearest one that can be played (a black key too; between two as near, the more plausible), and the box says why. The comes is the dux's note d beats before, k steps away, in a strict canon (imitation 1); with less imitation it is chosen by the soft rules, near the dux's note (0.5–0.9), only following its motion (0.2–0.4) or free. With fourth, the dux is a cantus firmus (a note a bar) and the comes is syncopated. With inversion the comes is the dux upside down about an axis ([:axis 62], a MIDI note; the final by default); with augmentation it is the dux twice as slow (a strict canon, six bars at most). [:transform :inversion], [:transform :augmentation] or [:transform :canon] change it on the way. By turns (the default), one note in is one beat, and the same note again is held over the beat (a tie), as is :hold. With live, a pulse on the right inlet (a metro, a pulse) is a beat: a note lasts until the next one is struck; a note of three pulses in 2/2 turns the canon to 3/2, one longer than a bar ends the section, and the next note begins a new canon (with nocues it does neither: a note held longer than the canon allows makes it wait; the meter and the sections are then for other boxes to decide, with [:beats 3] and :end). :end ends the section from outside. The system (Study 42) is the scale, its tuning and its rules: diatonic by default, or meantone, septimal31 or pentatonic (comes pentatonic, comes penta-A pentatonic, [:system :septimal31]), or one given as data, an EDN map ([:system {…}]); its modes, the distances at which it imitates and its tuning come with it (the notes out are tuned: Hz, or MIDI with a fraction), and a key is taken as the nearest note of the system. [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:system :pentatonic], [:beats 2], [:species 4] change the canon: at once by turns, at the next section live. On the right, the futuribles: the notes that can come next, the most plausible first, with their futures counted exactly; and where the canon is. Numbers are Hz, as a keyboard or midiin sends them (MIDI with midi); a list is the notes held (the first new one is played); an event from midiin's right outlet too. :engine lets it choose the next pair; with temp (or [:temp 1.5]) it draws the comes among the candidates (when the imitation is below 1) and, with :engine, the dux among the futuribles, with its own seed (seed, [:seed 7]: the same seed, the same game; :reset starts it again) — at 0, the default, the comes is the one the futuribles say; :back takes the last one back; :reset starts again."
+   :doc "Counterpoint live: you play the dux and the comes answers, as a canon in a mode (Studies 41–43). Each note is checked against the rules of the style — the mode's range, its melodic intervals, consonance on the strong beats, a dissonance only passing on a weak one or held as a suspension, no parallel 5ths or octaves… — and against the future: a note from which the canon could not be finished is not allowed either. A note that breaks a rule is corrected to the nearest one that can be played (a black key too; between two as near, the more plausible), and the box says why. The comes is the dux's note d beats before, k steps away, in a strict canon (imitation 1); with less imitation it is chosen by the soft rules, near the dux's note (0.5–0.9), only following its motion (0.2–0.4) or free. With fourth, the dux is a cantus firmus (a note a bar) and the comes is syncopated. With inversion the comes is the dux upside down about an axis ([:axis 62], a MIDI note; the final by default); with augmentation it is the dux twice as slow (a strict canon, six bars at most). [:transform :inversion], [:transform :augmentation] or [:transform :canon] change it on the way. By turns (the default), one note in is one beat, and the same note again is held over the beat (a tie), as is :hold. With live, a pulse on the right inlet (a metro, a pulse) is a beat: a note lasts until the next one is struck; a note of three pulses in 2/2 turns the canon to 3/2, one longer than a bar ends the section, and the next note begins a new canon (with nocues it does neither: a note held longer than the canon allows makes it wait; the meter and the sections are then for other boxes to decide, with [:beats 3] and :end). :end ends the section from outside. The system (Study 42) is the scale, its tuning and its rules: diatonic by default, or meantone, septimal31 or pentatonic (comes pentatonic, comes penta-A pentatonic, [:system :septimal31]), or one given as data, an EDN map ([:system {…}]); its modes, the distances at which it imitates and its tuning come with it (the notes out are tuned: Hz, or MIDI with a fraction), and a key is taken as the nearest note of the system. [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:system :pentatonic], [:beats 2], [:species 4] change the canon: at once by turns, at the next section live. It sounds as a keyboard or a player does: the Hz of both voices on the left and their voice ids on the second outlet (sent first), for one synth~ (0→0, 1→1) or a polyphonic faust~; a note held keeps its id and goes on sounding. On the right, the futuribles: the notes that can come next, the most plausible first, with their futures counted exactly; and where the canon is. Numbers are Hz, as a keyboard or midiin sends them (MIDI with midi); a list is the notes held (the first new one is played); an event too (from midiin, oscin, or a player's event outlet: :freq, or :hz). :engine lets it choose the next pair; with temp (or [:temp 1.5]) it draws the comes among the candidates (when the imitation is below 1) and, with :engine, the dux among the futuribles, with its own seed (seed, [:seed 7]: the same seed, the same game; :reset starts it again) — at 0, the default, the comes is the one the futuribles say; :back takes the last one back; :reset starts again."
    :usage "comes [mode] [system] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [temp 0] [seed 1] [fourth] [inversion] [augmentation] [live] [nocues] [midi]"
    :io [2 4]
    :size [150 46]

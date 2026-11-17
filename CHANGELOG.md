@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **`comes` and `cancrizans live` sound as a keyboard or a player does** (breaking; `@kairotic/theory` 0.9.0). Both
+  voices go out together on the left — the dux as played or corrected, and the comes (or your note and the box's
+  answer) — after their voice ids on the second outlet, so one `synth~` (0→0, 1→1) or a polyphonic `faust~` plays
+  them, as with `keyboard`, `midiin` and `player`. A voice's id is where its note was struck: a note held over the
+  beat keeps it and goes on sounding, a note struck again (even the same) is struck again. Before, `comes` sent the
+  comes on 0 and the dux on 1, each a list of Hz without ids (two `synth~` were needed, and one alone played only
+  the last line it got); `cancrizans live` sent only its own answer, and the score to read as a pattern on 1 (now the
+  tree on outlet 4 only). Both also take a player's event (`:hz`, a list) as a note, beside `:freq` (midiin, oscin).
+  The help patches play both voices on one `synth~`. Text: `:clear` with its colon in the help of `pcclock`,
+  `fourier`, `midiin` and `midiout` (`@kairotic/io` 0.2.3).
+
 - **ring~, writer~, and reader~ on a ring~** (the heads with sound in the app; Study 48's core). `ring~ [seconds]`
   keeps the last seconds of the sound on its left (with nothing there its own head does not write). One
   AudioWorklet node per ring~ (`core/kairotic/ringcore.mjs`) holds the buffer and up to 8 heads: the `writer~` and
@@ -10,7 +21,9 @@
   `:speed`, `:jump`, `:gain`; a new d glides or seeks with a crossfade) or reads at a position signal (seconds,
   `norm` for 0…1). `writer~ [ovr|mix [keep]] [jump s] [norm]` (sound · buffer · position) writes as a tape head, at
   a position signal or at the ring's head; `:rec t` / `:ovr t`, `:stop`. Tests: `tests/ringcore.mjs` (the core sample by
-  sample, in Node and from the app's tests) and `tests/ringaudio.mjs` (in the app, with sound).
+  sample, in Node and from the app's tests) and `tests/ringaudio.mjs` (in the app, with sound). Readers and `norm`:
+  `reader norm` on a canvas or freqt reads 0…1 along its axis (reader~ always read them so); `norm`, `d`, `speed`,
+  `jump` are never taken for a stroke's name (`reader~ path norm`) nor, in reader~, for a count of voices.
 
 - **ring, writer, and reader on a ring** (the heads of Study 47 in the app, messages first; discussion "Heads on a
   span of time"). `ring [seconds]` keeps the messages of the last seconds, each at its time (from its first
