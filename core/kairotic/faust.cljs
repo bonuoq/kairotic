@@ -184,7 +184,7 @@
     (cond
       (= inlet 1) {:state (assoc st :ids (if (sequential? value) (vec value) [value]))}
       (not (zero? inlet)) {}
-      (and (vector? value) (#{:gain :vel :velocity "gain" "vel" "velocity"} (first value)) (number? (second value)))
+      (and (vector? value) (#{:gain :vel :velocity} (first value)) (number? (second value)))
       (let [v (second value)] {:state (assoc st :vel (if (> v 1) (/ (min v 127) 127) (max 0 v)))})
       (and (vector? value) (or (keyword? (first value)) (string? (first value)))) {:effects [[:param value]]}
       (number? value) (play (if (pos? value) [[:v0 value]] []))

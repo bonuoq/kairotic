@@ -45,7 +45,7 @@
                                       :out (if (= s (:set st)) [] [[1 (ivec s)] [0 (or (prime s) [])]])}))]
                 (cond
                   (and (vector? value) (= :pressed (first value)) (number? (second value))) {:out [[2 (second value)]]}
-                  (#{:clear "clear"} value) (send (show-of (assoc st :notes []) (vec (repeat 12 0))))
+                  (#{:clear} value) (send (show-of (assoc st :notes []) (vec (repeat 12 0))))
                   (number? value) (let [ns (vec (take-last (notes-of args) (conj (:notes st) value)))]
                                     (send (show-of (assoc st :notes ns) (weights ns))))
                   (and (sequential? value) (every? number? value)) (send (show-of (assoc st :notes []) (weights value)))

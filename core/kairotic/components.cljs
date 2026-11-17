@@ -735,7 +735,7 @@
       (done (trim (put st (second value) (or (as-shape (nth value 2 nil)) (as-shape (vec (drop 2 value)))))))
       (and (vector? value) (#{:unset :remove} (first value)))
       (done (-> st (update :named dissoc (second value)) (update :order (fn [o] (vec (remove #{(second value)} o))))))
-      (#{:clear "clear"} value) (done {:named {} :order [] :n 0})
+      (#{:clear} value) (done {:named {} :order [] :n 0})
       :else {})))
 
 (define! "draw" {:doc "A view drawn from the messages that arrive: each shape of kairotic.shapes ([:circle {:cx 40 :cy 40 :r 10 :fill :accent}], [:line …], [:path {:points [[x y] …]}], [:text {:x :y} \"…\"], [:curve …], [:group {:x :y :rotate} [shapes]]) is added — or as a msg writes it: :circle 40 40 10 :accent, :rect x y w h, :line x1 y1 x2 y2, :arc cx cy r from to, :text x y \"words\", with a colour and :hit name; a list of shapes replaces them all; [:set k shape] (:set k :circle …) adds or replaces the shape called k (to move a cursor), [:unset k] removes it, :clear empties it. A shape with :hit k, pressed, sends k out."

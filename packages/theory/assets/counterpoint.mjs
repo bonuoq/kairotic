@@ -544,17 +544,23 @@ const total = (parts) => Object.values(parts).reduce((a, v) => a + v, 0);
  * D, C as in the kernel: the dux and the comes so far.
  */
 export function live(o = {}) {
-  // (a system named where the mode goes: "comes pentatonic")
-  if ((o.system === undefined || o.system === null) && typeof o.mode === "string" && SYSTEMS[o.mode]) o = { ...o, system: o.mode, mode: undefined };
-  // the system (Study 42): a key of SYSTEMS or one given as data (EDN in a box); the diatonic one by default
-  const sysdef = typeof o.system === "string" ? SYSTEMS[o.system] || DIATONIC : o.system && typeof o.system === "object" ? o.system : DIATONIC;
+  // the system (Study 42) and a mode of it. A box's words name them in any order ("pentatonic penta-A", "dorian"):
+  // a word that is a key of SYSTEMS is the system, the other the mode; a system may also come as data (EDN)
+  const given = o.system && typeof o.system === "object" ? o.system : null;
+  const words = [o.mode, o.system].filter((w) => typeof w === "string" && w);
+  const sysWord = given ? null : words.find((w) => SYSTEMS[w]);
+  const modeWord = words.find((w) => !SYSTEMS[w]);
+  const sysdef = given || (sysWord ? SYSTEMS[sysWord] : DIATONIC);
+  const systemName = given ? given.name || "a system given as data" : sysWord || "diatonic";
   const S = makeSystem(sysdef), N = S.N;
   const { quality, intervalName, pitchName } = S;
   const semis = (s) => S.cents(s) / 100, P = S.period / 100;
   const midiOf = (s) => 60 + semis(s) + 12 * Math.log2(S.ref / 261.6255653005986);
   // its modes: the final, the tenor (steps above it), the ambitus and the starts (steps from the final)
   const MS = sysdef.modes || { [sysdef.name || "system"]: { final: 0, tenor: Math.round((4 * N) / 7), ambitus: [-1, N + 1], starts: [0] } };
-  const mode = MS[o.mode] ? o.mode : Object.keys(MS)[0], M = MS[mode];
+  const mode = MS[modeWord] ? modeWord : Object.keys(MS)[0], M = MS[mode];
+  // a mode asked for that the system does not have: its first mode, and why
+  const modeNote = modeWord && !MS[modeWord] ? `${modeWord} is not a mode of ${systemName} (${Object.keys(MS).join(", ")}): ${mode}` : null;
   const tonic = M.final, tenor = tonic + M.tenor;
   const [a0, z0] = M.ambitus || [-1, N + 1];
   const lo = tonic + a0, hi = tonic + z0;
@@ -734,7 +740,7 @@ export function live(o = {}) {
     let reason = null;
     if (best.note !== step) {
       const e = step === null ? null : F.find((f) => f.note === step);
-      reason = step === null ? `${midiName(60 + r)} is not a note of the mode`
+      reason = step === null ? `${midiName(60 + r)} is not a note of the system (${systemName})`
         : !e ? `${pitchName(step)} is out of the range (${pitchName(lo)}–${pitchName(hi)}): taken by octaves`
         : e.reason ? e.reason
         : "no way to finish the canon from it";
@@ -780,7 +786,7 @@ export function live(o = {}) {
 
   return {
     spec, mode, n, bars, beats: b, species, transform: kind, axis: axisStep, kernel: K, lo, hi, tonic, tenor, strong, fan, futuribles, play, hold, engine, obligations,
-    pairParts, melodicParts, midi: midiOf, name: pitchName, semis, hz: S.hz, system: S, modes: Object.keys(MS), N, k,
+    pairParts, melodicParts, midi: midiOf, name: pitchName, semis, hz: S.hz, system: S, systemName, modes: Object.keys(MS), modeNote, N, k,
     count: (D, C) => K.count(D, C),
     bits: (D, C) => bitsOf(K.count(D, C)),
     /** The count from the start, a few milliseconds at a time: after it every legal point is counted. */

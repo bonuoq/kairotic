@@ -86,8 +86,8 @@ export async function theory(page, check) {
   check("comes: the first note waits for the futures to be counted, then is played",
     (await until(page, st(":D"), (x) => x === "[1]", 30000)) === "[1]", await cljs(page, `[${st(":D")} ${st(":error")}]`));
   await cljs(page, `(send! ${cm} 61)`);
-  const fixed = await until(page, `(:reason (second (last-shown ${cm})))`, (x) => /not a note of the mode/.test(x), 3000);
-  check("... a black key is corrected to a note of the mode, and it says why", /not a note of the mode/.test(fixed), fixed);
+  const fixed = await until(page, `(:reason (second (last-shown ${cm})))`, (x) => /not a note of the system/.test(x), 3000);
+  check("... a black key is corrected to a note of the mode, and it says why", /not a note of the system/.test(fixed), fixed);
   await cljs(page, `(send! ${cm} 65) (send! ${cm} 67)`);
   const C = await until(page, st(":C"), (x) => /\d+\]$/.test(x), 3000);
   check("... from the fourth note on the comes answers (a canon: the first note, an octave below)", C.endsWith(" -6]"), C);
@@ -278,14 +278,21 @@ export async function theory(page, check) {
   await cljs(page, `(send! ${sy} 60)`);
   check("comes pentatonic: C4 as played, the first note of penta-C", (await until(page, ys(":D"), (x) => x === "[0]", 30000)) === "[0]", await cljs(page, `[${ys(":D")} ${ys(":error")}]`));
   await cljs(page, `(send! ${sy} 65)`);
-  const pf = await until(page, `(:reason (second (last-shown ${sy})))`, (x) => /not a note of the mode/.test(x), 3000);
-  check("... F4 is not a note of the pentatonic: corrected, and it says why", /not a note of the mode/.test(pf), pf);
+  const pf = await until(page, `(:reason (second (last-shown ${sy})))`, (x) => /not a note of the system/.test(x), 3000);
+  check("... F4 is not a note of the pentatonic: corrected, and it says why", /not a note of the system/.test(pf), pf);
   await cljs(page, `(send! ${sy} [:system :septimal31])`);
   await until(page, `(count ${ys(":D")})`, (x) => x === "0", 20000);
   await cljs(page, `(send! ${sy} 60)`);
   const b7 = await until(page, `(some-> ${ys(":cp")} (.midi 6) (* 100) js/Math.round)`, (x) => x === "6968", 30000);
   check("... [:system :septimal31]: a new canon, its B♭ a harmonic seventh above C (MIDI 69.68)", b7 === "6968", b7);
   await cljs(page, `(delete ${sy})`);
+  // the words name the system and a mode of it, in any order; a mode it does not have is said
+  const wm = (await cljs(page, '(box "comes dorian pentatonic midi" 8600 680)')).trim();
+  await cljs(page, `(send! ${wm} 60)`);
+  const wmr = await until(page, `(:reason (second (last-shown ${wm})))`, (x) => /not a mode of pentatonic/.test(x), 30000);
+  check("comes dorian pentatonic: dorian is not a mode of the pentatonic, it says so and takes penta-C",
+        /dorian is not a mode of pentatonic/.test(wmr) && (await cljs(page, `(.-mode (get-in @eng/rt [:states ${wm} :cp]))`)) === '"penta-C"', wmr);
+  await cljs(page, `(delete ${wm})`);
   const pc5 = (await cljs(page, '(box "cancrizans pentatonic -7 2 4 midi" 8600 760)')).trim();
   const p5 = (k) => `(get-in @eng/rt [:states ${pc5} ${k}])`;
   await cljs(page, `(send! ${pc5} 60)`);

@@ -99,7 +99,7 @@
                   (= inlet :audio) {:state st}
                   (= inlet 1) {:state (assoc st :ids (when (sequential? value) (vec value)))}
                   (and (vector? value) (= :gain (first value)) (number? (second value))) {:state (assoc st :amp (api/clamp (second value) 0 1))}
-                  (#{:clear :stop "clear"} value)
+                  (#{:clear :stop} value)
                   (let [[e2 ms] (events enc (map (fn [id] {:type :note :id id :gate false}) (keys (:voices enc))))]
                     (send (assoc st :enc e2 :snap {:hz [] :ids []}) ms))
                   (map? value) (let [[e2 ms] (out-step enc value)] (send (assoc st :enc e2) ms))

@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- **`comes` and `cancrizans`: the system and its mode, named as such** (`@kairotic/theory` 0.9.2). The box's words
+  were `[mode] [system]`, and a system written in the place of the mode (`comes pentatonic`) was quietly taken as a
+  system — so `mode` did not always name a mode, and a mode the system does not have (`comes pentatonic dorian`)
+  was quietly replaced by its first one. Now the words name the system and one of its modes in any order (`comes
+  dorian`, `comes pentatonic penta-A`, `comes penta-A pentatonic`), the usage reads `[system] [mode]`, a mode the
+  system does not have is said (`dorian is not a mode of pentatonic (penta-C, penta-A, penta-D): penta-C`, in the box
+  and as `:note` in its report), the reports carry `:system` and `:mode`, and a key outside the scale is "not a note
+  of the system (pentatonic)" rather than "of the mode" (a mode is a final, a tenor and a range over the system's
+  scale, not a scale of its own).
+
+- **Orders are keywords only.** Since `msg` is read as Clojure (#197) a word without its colon is a name, and an
+  order was still also matched as a string in 14 boxes (`#{:clear "clear"}`): a string that came as data was taken
+  for an order — `serial` could not send the line `"open"` or `"close"` to a board, `edn` could not hold `"clear"`,
+  `fetch` took `"get"` or `"refresh"`. Now only the keyword is the order, and a string is always data: `comes`
+  (`:end :reset :back :engine :hold`), `cancrizans` (`:reset :back :engine`), `pcclock`, `fourier`, `tonnetz`, `midiin`,
+  `midiout`, `edn`, `fetch` (`:clear`, `:bang`, `:refresh`, `[:get …]`, `[:fetch …]`), `serial` (`:open :close`),
+  `pulse` (`:start :stop`, `[:bpm n]`), `scale` and `realize~` (`:learn`, `[:learn :off]`), `faust~` (`[:gain v]`),
+  and the core's `:clear`/`:flush` of transducer boxes and the `:clear` of a sub-patch's state. `tests/keywords.mjs`
+  (in CI) checks that no component matches an order as a string again; data sets (a tree's `:every`, a pattern's
+  rests, a page's mode in its URL) stay. Packages: `@kairotic/analysis` 0.7.5, `controls` 0.2.3, `data` 0.1.4, `io`
+  0.2.4, `net` 0.1.3, `theory` 0.9.1.
+
 - **Study 49 · insert**: a Faust DSP in the feedback of a ring of sound, inside the same node. The page compiles the
   code (faustwasm) and sends its WebAssembly module to the worklet that holds the span; there it is instantiated
   (its math imports, its memory laid out as faustwasm lays it) and runs one sample at a time (`compute(1)`) between

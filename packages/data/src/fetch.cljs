@@ -19,7 +19,7 @@
                             :else (pr-str v)))
       url-in (fn [value]
                (cond (api/url-of value) (api/url-of value)
-                     (and (sequential? value) (#{:fetch :url "fetch" "url"} (first value))) (api/url-of (second value))
+                     (and (sequential? value) (#{:fetch :url} (first value))) (api/url-of (second value))
                      :else nil))
       path-in (fn [value] (let [p (rest value)] (if (and (= 1 (count p)) (sequential? (first p))) (vec (first p)) (vec p))))]
   {;; ── about ──
@@ -76,18 +76,18 @@
                     (cond (= u (:url (:waiting st))) {}
                           (and (kept? args data) (= u (:url held))) {:out [[1 :ready] [0 (:value held)]]}
                           :else (ask u)))
-                  (#{:refresh "refresh"} value)
+                  (#{:refresh} value)
                   (if-let [u (or (:url held) (:url (:waiting st)))] (ask u) {})
 
-                  (#{:bang "bang"} value) (if held {:out [[1 :ready] [0 (:value held)]]} {})
-                  (and (sequential? value) (#{:get "get"} (first value)))
+                  (#{:bang} value) (if held {:out [[1 :ready] [0 (:value held)]]} {})
+                  (and (sequential? value) (#{:get} (first value)))
                   (if held
                     (let [p (path-in value) x (get-in (:value held) p ::none)]
                       (if (= x ::none)
                         {:out [[1 [:error (str "nothing at " (pr-str p))]]]}
                         {:out [[0 x]]}))
                     {})
-                  (#{:clear "clear"} value)
+                  (#{:clear} value)
                   {:state {:n (:n st 0)} :show {:status :idle}
                    :effects (if (kept? args data) [[:keep nil]] [])}
                   :else {})))

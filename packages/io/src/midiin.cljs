@@ -105,7 +105,7 @@
                                                (when on [[0 [:gain (:amp on)]]])
                                                (when notes? [[0 hz]])
                                                (map (fn [e] [2 e]) es)))})))))
-                  (#{:clear :stop "clear"} value)
+                  (#{:clear :stop} value)
                   (let [offs (for [id (:order st) :let [h (get (:held st) id)]]
                                {:src :midi :type :note :id id :ch (:ch h) :note (:note h) :freq (:freq h) :gate false})]
                     {:state (fresh (:range0 st)) :out (vec (concat [[1 []] [0 []]] (map (fn [e] [2 e]) offs)))})
