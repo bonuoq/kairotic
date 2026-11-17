@@ -205,7 +205,7 @@ See also: `msg`, `loadbang`, `metro`
 
 **A crab canon: the second voice is your line backwards**, both sounding at once, so the work reads the same from either end. With `table` it is also upside down: one score read by two players from opposite sides of a table — a musical ambigram.
 
-**It is written from both ends to the middle**, because the comes's first note is the dux's last: each step writes a note at the start and then one at the end. A note that breaks a rule, or from which the crab could not be closed, is corrected to the nearest one that can. On the right, the **futuribles**: the notes that can come next, each with the ways it leaves to close the work. When it closes, both voices go out as patterns (for `pbind` and `player`) and as a score (outlet 4, for a `freqt`).
+**It is written from both ends to the middle**, because the comes's first note is the dux's last: each step writes a note at the start and then one at the end. A note that breaks a rule, or from which the crab could not be closed, is corrected to the nearest one that can. On the right, the **futuribles**: the notes that can come next, each with the ways it leaves to close the work. When it closes, both voices go out as patterns (for `pbind` and `player`) and as a score (outlet 4, for a `tree` box).
 
 **live** (Study 46) plays it beat by beat. In the first half you play and the box answers each note, at the same beat, with the end of your own line; at the middle the rest of your line comes out as a score to read, and while you read it the box plays your first half backwards. Both voices sound from it, with their voice ids, on one `synth~`.
 
@@ -237,7 +237,7 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 1. the comes, as a pattern · live: their voice ids, sent first (for a synth~'s right inlet)
 2. the futuribles: the notes that can come next ({:midi :name :futures}; live, with :end, what the box will answer at the end)
 3. where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}
-4. the score, as a musical tree (for a freqt shown as a score): when the work closes, both voices; live, from the middle what is left of your line to read (the beats played as rests), and at the end the whole crab
+4. the score, as a musical tree (for a tree box, its score): when the work closes, both voices; live, at the middle what is left of your line to read, and at the end the whole crab
 
 **Messages and gestures**
 
@@ -254,7 +254,7 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 - `[:temp 2]`: live: the box draws among its answers
 - `[:seed 7]`: live: its chance (:reset plays the same game again)
 
-**Try:** Click :engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds, each voice on its own synth~ (one synth~ plays one line: a note from the other player would take the place of the last). The freqt below shows the crab as a score: read the comes from the end and it is the dux. Play notes on a keyboard into it instead (the note at the start, then the one at the end).
+**Try:** Click :engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds, each voice on its own synth~ (one synth~ plays one line: a note from the other player would take the place of the last). The tree box below shows the crab as a score: read the comes from the end and it is the dux. Play notes on a keyboard into it instead (the note at the start, then the one at the end).
 
 ```clojure
 (box :b1 "msg :engine" 40 30)
@@ -268,8 +268,7 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (box :b17 "synth~" 240 490)
 (box :b8 "dac~" 40 550)
 (box :b10 "print" 260 80)
-(box :b19 "freqt" 40 620)
-(view :b19 :score)
+(box :b19 "tree" 40 620)
 (resize :b19 460 200)
 (connect :b2 4 :b19 0)
 (connect :b1 0 :b2 0)
@@ -290,7 +289,7 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 
 **Played live** — With live (Study 46) the crab is played beat by beat: your note, and at the same beat the box's answer — the end of your own line, written ahead. Two beats before the middle a cue; at the middle the rest of your line comes out as the score to read (outlet 4, a musical tree for a score), and the box plays your first half backwards while you read it. Both voices sound from its left outlet, after their voice ids (outlet 1): one synth~ plays both. The first note to read is the last end of your line the box wrote (with an odd number of beats the middle note is shared: the box plays it with you, an octave below); from there each voice plays what the other played, backwards.
 
-*Try:* Press ▶: the loadbang counts the futures. The html box shows where the crab is and its futuribles as a table — each note you can play, the ways it leaves to close the crab, and :end, what the box will answer at the end of your line. Play D on the keyboard: the box answers with D an octave below — both voices on one synth~, yours as the box takes it (corrected if it must be), with their voice ids (1→1). Play on: at the middle the freqt shows, as a score, what is left of your line to read — the box's answers so far, backwards — and the notes you read turn into rests; at the end it shows the whole crab.
+*Try:* Press ▶: the loadbang counts the futures. The html box shows where the crab is and its futuribles as a table — each note you can play, the ways it leaves to close the crab, and :end, what the box will answer at the end of your line. Play D on the keyboard: the box answers with D an octave below — both voices on one synth~, yours as the box takes it (corrected if it must be), with their voice ids (1→1). Play on: at the middle the tree box shows, as a score, what is left of your line to read — the box's answers so far, backwards —; at the end it shows the whole crab.
 
 ```clojure
 (box :b11 "keyboard 60 24" 520 30)
@@ -300,8 +299,7 @@ A crab canon written from both ends to the middle (Study 43): the comes is the d
 (box :b16 "html" 860 30)
 (resize :b16 300 230)
 (code :b16 "[:div.col [:h4 \"beat \" :$t \" of \" :$n \" · \" :$phase] [:p.soft :$ways \" ways to close it\"] :$in]")
-(box :b14 "freqt" 860 290)
-(view :b14 :score)
+(box :b14 "tree" 860 290)
 (resize :b14 460 180)
 (connect :b15 0 :b12 0)
 (connect :b12 2 :b16 0)
@@ -893,7 +891,7 @@ The six Fourier coefficients of a pitch-class distribution (chromatic, dyadic, t
 
 **Inlets** 
 
-0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, from chroma~), or a number: a note (the last n count: 4); :clear
+0. a list of pitches (Hz, as a keyboard or midiin sends them; MIDI or 0…11 with midi), a list of 12 weights (a chroma, from chroma~), or a number: a note (the last n count: 4); :clear
 
 **Outlets** 
 
@@ -905,7 +903,7 @@ The six Fourier coefficients of a pitch-class distribution (chromatic, dyadic, t
 ```clojure
 (box :b1 "msg 60 62 64 65 67 69 71" 40 30)
 (box :b2 "msg 60 64 68" 240 30)
-(box :b3 "fourier" 40 80)
+(box :b3 "fourier midi" 40 80)
 (connect :b1 0 :b3 0)
 (connect :b2 0 :b3 0)
 ```
@@ -1309,8 +1307,7 @@ Operations on musical trees: a tree on the left comes out transformed. transpose
 (code :b2 "\"c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2\"")
 (box :b4 "number 7" 220 170)
 (box :b3 "mt transpose 7" 40 170)
-(box :b5 "freqt" 40 220)
-(view :b5 :score)
+(box :b5 "tree" 40 220)
 (connect :b1 0 :b2 0)
 (connect :b2 0 :b3 0)
 (connect :b4 0 :b3 1)
@@ -1632,7 +1629,7 @@ A pitch-class set on the clock face: its polygon, the sets before it, its axes o
 
 **Inlets** 
 
-0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma), or a number: a note, the last n notes (4) being the set; :clear
+0. a list of pitches (Hz, as a keyboard or midiin sends them; MIDI or 0…11 with midi), a list of 12 weights (a chroma), or a number: a note, the last n notes (4) being the set; :clear
 
 **Outlets** 
 
@@ -1640,12 +1637,12 @@ A pitch-class set on the clock face: its polygon, the sets before it, its axes o
 1. the interval vector
 2. the pitch class pressed
 
-**Try:** Click the major triad, then the diminished seventh: (0 3 7) has no axis, (0 3 6 9) has four. Press a pitch class on the clock: it comes out on the right.
+**Try:** Click the major triad, then the diminished seventh: (0 3 7) has no axis, (0 3 6 9) has four. (The messages are MIDI notes, hence midi; a keyboard sends Hz, as pitches go between boxes, so a pcclock written without midi takes it directly.) Press a pitch class on the clock: it comes out on the right.
 
 ```clojure
 (box :b1 "msg 60 64 67" 40 30)
 (box :b2 "msg 60 63 66 69" 140 30)
-(box :b3 "pcclock" 40 80)
+(box :b3 "pcclock midi" 40 80)
 (box :b4 "print" 40 330)
 (connect :b1 0 :b3 0)
 (connect :b2 0 :b3 0)
@@ -2347,7 +2344,7 @@ Triads on the Tonnetz (fifths across, thirds up) and the path of the harmony: ea
 
 **Inlets** 
 
-0. a list of pitches (MIDI or 0…11), a list of 12 weights (a chroma, above 0.5), or a number: a note (the last n count: 3); :clear forgets the path
+0. a list of pitches (Hz, as a keyboard or midiin sends them; MIDI or 0…11 with midi), a list of 12 weights (a chroma, above 0.5), or a number: a note (the last n count: 3); :clear forgets the path
 
 **Outlets** 
 
@@ -2361,7 +2358,7 @@ Triads on the Tonnetz (fifths across, thirds up) and the path of the harmony: ea
 (box :b2 "msg 60 63 67" 130 30)
 (box :b3 "msg 60 63 68" 220 30)
 (box :b4 "msg 59 63 68" 310 30)
-(box :b5 "tonnetz" 40 80)
+(box :b5 "tonnetz midi" 40 80)
 (box :b6 "print" 40 340)
 (connect :b1 0 :b5 0)
 (connect :b2 0 :b5 0)
@@ -2445,17 +2442,17 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `(quantize! :bN) · (unquantize! :bN)`: its free time written in measures, and back (one event each)
 - `(track! :bN)`: its free time played (in seconds, at any tempo): the beats are found and kept in its :quant, so that its score and quantize! write it on them
 
-**Try:** The tree box is its own score, and the freqt shows the same tree. Press { } in the header of the tree box, change a note in its text and apply it (Ctrl+Enter): both scores follow. Click a note of the freqt's score and press ↑: the change comes back to the tree by the dashed line. Press ⇄ roll on the tree box to draw notes into it.
+**Try:** The tree box is its own score: click a note and press ↑ (or a…g, + −, Delete), or press { } in its header, change a note in its text and apply it (Ctrl+Enter). It sends its tree whenever it changes: through mt transpose 7 it reaches the second tree box, a fifth higher, which follows. Press ⇄ roll on the tree box to draw notes into it. (A tree that comes into a tree box is written into it, as one event of the history.)
 
 ```clojure
 (box :b1 "bang" 40 20)
 (box :b2 "tree" 40 60)
 (code :b2 "[:voice\n [:measure {:meter [3 4]} \"e5/1\" [:tuplet {:ratio [3 2]} \"d5/.5 c5 b4\"] [:note {:pitch \"a4\" :dur 1 :dyn \"p\"}]]\n [:measure \"g4/3\"]]")
-(box :b3 "freqt" 40 190)
-(view :b3 :score)
+(box :b3 "mt transpose 7" 40 190)
+(box :b4 "tree" 40 230)
 (connect :b1 0 :b2 0)
 (connect :b2 0 :b3 0)
-(connect :b3 2 :b2 0)
+(connect :b3 0 :b4 0)
 ```
 
 See also: `mt`, `freqt`
