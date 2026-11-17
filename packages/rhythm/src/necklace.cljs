@@ -7,9 +7,12 @@
 ;; arcs are too coarse: the six 4/4 claves would all score the same), whether it is deep (each distance a
 ;; different number of times, as the diatonic scale and the bembé), flat (each distance once), its axes of
 ;; mirror symmetry, its longest gap, rhythmic oddity (no two onsets halving the cycle), and whether it is a
-;; rotation of the Euclidean rhythm E(k,n). Pressing a pulse adds or takes away an onset: the necklace is
-;; also an editor. What it sends is as euclid's — a musical tree, its :rtm map, its pulses —, so it merges
-;; with pitches the same way (the right inlet, or merge with outlet 1), and its measures go out on the right.
+;; rotation of the Euclidean rhythm E(k,n) — and its Fourier coefficients (after Amiot and Milne): |f1| near 0
+;; is a balanced rhythm, a maximal |f_k| among the rhythms of k onsets a maximally even one, and the others its
+;; periodicities (in 16 pulses f4 the quarter notes, f3 a three against the four).
+;; It is the rhythm box: generators (euclid) make pulses, the necklace holds them, shows them, is their editor
+;; (pressing a pulse adds or takes away an onset), measures them and writes them as a musical tree, its :rtm
+;; map and its pulses, with the pitches of its right inlet (talea and color).
 (let [TAU (* 2 js/Math.PI)
       bjorklund (fn [k n]
                   (cond (<= n 0) []
@@ -64,6 +67,13 @@
       axes-of (fn [n os] (let [s (set os)]
                            (if (empty? s) []
                                (vec (for [a (range n) :when (= s (set (map (fn [x] (mod (- a x) n)) os)))] (/ a 2))))))
+      ;; the Fourier coefficients of the onsets, f1 … f⌊n/2⌋: magnitudes 0…1 (over k) and phases in degrees
+      fourier-of (fn [n os]
+                   (let [k (count os)]
+                     (vec (for [j (range 1 (inc (quot n 2)))]
+                            (if (zero? k) [0 0]
+                                [(/ (reduce + (map (fn [x] (js/Math.cos (/ (* TAU j x) n))) os)) k)
+                                 (- (/ (reduce + (map (fn [x] (js/Math.sin (/ (* TAU j x) n))) os)) k))])))))
       measures (fn [ps]
                  (let [n (count ps) os (onsets-of ps) k (count os) iv (ivec-of n os) ev (evenness-of n os)
                        e (bjorklund k n) eev (evenness-of n (onsets-of e))
@@ -75,7 +85,10 @@
                     :axes (axes-of n os)
                     :gap (if (seq os) (apply max (intervals-of ps)) n)
                     :oddity (or (odd? n) (not-any? (fn [[a b]] (= (* 2 (dist n a b)) n)) (pairs os)))
-                    :euclid er}))
+                    :euclid er
+                    :fourier (mapv (fn [[a b]] (r3 (js/Math.hypot a b))) (fourier-of n os))
+                    :phases (mapv (fn [[a b]] (if (< (js/Math.hypot a b) 1e-9) 0 (r3 (* (/ 180 js/Math.PI) (js/Math.atan2 b a))))) (fourier-of n os))}))
+      fourier? (fn [args] (some (fn [a] (= "fourier" (if (keyword? a) (name a) (str a)))) (if (map? args) (when (:fourier args) [:fourier]) args)))
       ;; ── as euclid sends a rhythm: the meter of a bar of n pulses, the pitches, the color over bars ──
       pow2? (fn [x] (and (pos? x) (== x (js/Math.pow 2 (js/Math.round (js/Math.log2 x))))))
       meter-of (fn [n] (cond (and (>= n 4) (pow2? n)) [4 4]
@@ -128,13 +141,13 @@
   {;; ── about ──
    :class "necklace"
    :license "MPL-2.0"
-   :doc "A cyclic rhythm on the circle and its geometry (Toussaint): k onsets among n pulses around a circle, time clockwise from the top — the same object as a pitch-class set on pcclock. A rhythm arrives as pulses (ones and zeros, as euclid's right outlet sends them), as intervals between onsets ([3 3 2]), as box notation (\"x..x..x.\"), as an :rtm map ({:shares [3 3 2]}, euclid's middle outlet), a tree with an :rtm, or {:onsets [0 3 6] :n 8}; it is drawn as a polygon, with its axes of mirror symmetry. Pressing a pulse (or a number, its index) adds or takes away an onset. :complement swaps onsets and silences, [:rotate 1] starts it a pulse later, [:n 12] makes the circle longer or shorter, :clear empties it, [:bars 4] and [:meter \"3/4\"] as euclid, a bang sends it again. Out, as euclid: a musical tree (left: a bar of n pulses with an :rtm whose shares are the intervals between onsets), the :rtm map alone (1), the pulses (2); and its measures (3): {:n :k :onsets :intervals :ivec — how often each distance occurs —, :evenness — the sum of the chords between all pairs (Block and Douthett) —, :even — that sum against the Euclidean rhythm's, 1 as even as it —, :deep — each distance a different number of times —, :flat — each once —, :axes — of mirror symmetry, in pulses —, :gap — the longest interval —, :oddity — no two onsets halving the cycle —, :euclid — the rotation of E(k,n) it is, or nil}. Its right inlet (cold) takes the pitches the notes take in turn, as euclid's."
-   :usage "necklace [n 16] [bars 1] [midi]"
+   :doc "A cyclic rhythm on the circle and its geometry (Toussaint): k onsets among n pulses around a circle, time clockwise from the top — the same object as a pitch-class set on pcclock. A rhythm arrives as pulses (ones and zeros, as euclid's right outlet sends them), as intervals between onsets ([3 3 2]), as box notation (\"x..x..x.\"), as an :rtm map ({:shares [3 3 2]}, euclid's middle outlet), a tree with an :rtm, or {:onsets [0 3 6] :n 8}; it is drawn as a polygon, with its axes of mirror symmetry. Pressing a pulse (or a number, its index) adds or takes away an onset. :complement swaps onsets and silences, [:rotate 1] starts it a pulse later, [:n 12] makes the circle longer or shorter, :clear empties it, [:bars 4] and [:meter \"3/4\"] as euclid, a bang sends it again. Out, as euclid: a musical tree (left: a bar of n pulses with an :rtm whose shares are the intervals between onsets), the :rtm map alone (1), the pulses (2); and its measures (3): {:n :k :onsets :intervals :ivec — how often each distance occurs —, :evenness — the sum of the chords between all pairs (Block and Douthett) —, :even — that sum against the Euclidean rhythm's, 1 as even as it —, :deep — each distance a different number of times —, :flat — each once —, :axes — of mirror symmetry, in pulses —, :gap — the longest interval —, :oddity — no two onsets halving the cycle —, :euclid — the rotation of E(k,n) it is, or nil —, :fourier and :phases — its Fourier coefficients f1 … f⌊n/2⌋, magnitudes 0…1 and phases in degrees: |f1| near 0 balanced, |f_k| largest when maximally even —}; with the word fourier the magnitudes are drawn too, a bar each. Its right inlet (cold) takes the pitches the notes take in turn, as euclid's."
+   :usage "necklace [n 16] [bars 1] [midi] [fourier]"
    :io [2 4]
-   :size [200 240]
+   :size (fn [box] (if (fourier? (:args box)) [200 296] [200 240]))
 
    ;; ── arguments ──
-   :args [[:n 16] [:bars 1] [:midi false]]
+   :args [[:n 16] [:bars 1] [:midi false] [:fourier false]]
 
    ;; ── logic ──
    :receive (fn [{:keys [inlet value state args]}]
@@ -168,7 +181,8 @@
    :draw (fn [{:keys [shown w h args]}]
            (let [p (or shown (let [ps (vec (repeat (max 1 (js/Math.round (or (:n args) 16))) 0))] (assoc (measures ps) :pulses ps)))
                  n (:n p) ps (:pulses p) os (:onsets p)
-                 cx (/ w 2) cy (/ (- h 44) 2) R (- (min cx cy) 16)
+                 fh (if (:fourier args) 60 0)
+                 cx (/ w 2) cy (/ (- h 44 fh) 2) R (- (min cx cy) 16)
                  r (cond (> n 32) 2.2 (> n 16) 3 :else 4.5)
                  flags (remove nil? [(str "even " (:even p))
                                      (let [a (count (:axes p))] (case a 0 "asymmetric" 1 "1 axis" (str a " axes")))
@@ -188,6 +202,17 @@
                 (let [[x y] (polar cx cy R i n) on (= 1 (nth ps i 0))]
                   [:group {:hit i}
                    [[:circle {:cx x :cy y :r (if on (+ r 1.5) r) :fill (if on :accent :bg) :stroke (if on :accent :soft)}]]]))
+              ;; the Fourier magnitudes, a bar each (f1 … f⌊n/2⌋), above the texts
+              (when (:fourier args)
+                (let [fs (or (:fourier p) []) m (count fs) bw (if (pos? m) (/ (- w 20) m) 0) base (- h 52)]
+                  (concat
+                   [[:line {:x1 10 :y1 base :x2 (- w 10) :y2 base :stroke :grid}]]
+                   (for [[j f] (map-indexed vector fs)]
+                     [:rect {:x (+ 10 (* j bw) 1) :y (- base (* 36 f)) :w (max 1 (- bw 2)) :h (* 36 f)
+                             :fill (if (= (inc j) (:k p)) :kairos :accent) :opacity 0.8}])
+                   (when (<= m 16)
+                     (for [j (range m)]
+                       [:text {:x (+ 10 (* j bw) (/ bw 2)) :y (+ base 9) :anchor :middle :size 7 :fill :soft} (str (inc j))])))))
               [[:text {:x cx :y (- h 29) :anchor :middle :size 10 :fill :ink}
                 (str (:k p) "/" n " · " (if (seq (:intervals p)) (apply str (interpose "-" (:intervals p))) "silence"))]
                [:text {:x cx :y (- h 16) :anchor :middle :size 9 :fill :soft} (str "<" (apply str (interpose " " (:ivec p))) ">")]
