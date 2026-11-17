@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **`@kairotic/rhythm`, a package for rhythm as geometry** (discussion #252): `euclid` moves there from
+  `@kairotic/theory` (0.13.0 without it; writing `euclid` brings the new package), beside `necklace`. A package
+  travels as one component box, and `@kairotic/theory` with both would have passed the 100 000 characters a code
+  box keeps (its source was cut and did not compile): that limit is now 250 000.
+
+- **`necklace`: a cyclic rhythm and its geometry** (discussion #252, `@kairotic/rhythm` 0.1.0). k onsets among n
+  pulses around a circle — the object of `pcclock`, now for time —, measured as Toussaint does: the interval vector,
+  evenness as the sum of chords (Block and Douthett; the rumba less even than the bossa nova, where arcs see them
+  equal), `:even` against the Euclidean rhythm, deep (the bembé, as the diatonic scale), flat, axes of mirror
+  symmetry (drawn), the longest gap, rhythmic oddity and the rotation of E(k,n) it is. It takes pulses (`euclid`'s
+  right outlet), intervals (`[3 3 2]`), box notation (`"x..x..x."`), an `:rtm` map or a tree; pressing a pulse adds
+  or takes away an onset, `:complement`, `[:rotate 1]`, `[:n 12]`. Its outlets 0–2 are `euclid`'s (tree, `:rtm`
+  map, pulses) and its right inlet takes pitches the same way; the measures go out on outlet 3. Help, README,
+  assistant, tests in `tests/theory.mjs`.
 - **One way to weigh decisions: `@kairotic/theory`'s `soft.mjs`** (0.13.0). The soft rules of Studies 38–42 —
   what a candidate costs by the shape of its line and by the vertical it makes, each rule by its id and weight, and
   the engine's softmax of −cost / temperature — are now one module, exported once for every engine: the comes box

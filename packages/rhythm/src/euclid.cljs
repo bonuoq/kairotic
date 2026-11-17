@@ -1,5 +1,5 @@
 ;; euclid · a Euclidean rhythm: k onsets spread as evenly as they can be over n pulses
-;; Part of @kairotic/theory. Written against the Kairotic API (api/…).
+;; Part of @kairotic/rhythm. Written against the Kairotic API (api/…).
 ;; Bjorklund's algorithm (Toussaint, "The Euclidean algorithm generates traditional musical rhythms", 2005):
 ;; E(3,8) is the tresillo, E(5,8) the cinquillo, E(5,16) a rotation of the bossa nova, E(7,12) the bembé.
 ;; The rhythm is drawn as a necklace — the n pulses around a circle, time running clockwise from the top,
