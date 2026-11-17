@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **`comes` and `cancrizans`: the system and its mode, named as such** (`@kairotic/theory` 0.9.2). The box's words
+  were `[mode] [system]`, and a system written in the place of the mode (`comes pentatonic`) was quietly taken as a
+  system — so `mode` did not always name a mode, and a mode the system does not have (`comes pentatonic dorian`)
+  was quietly replaced by its first one. Now the words name the system and one of its modes in any order (`comes
+  dorian`, `comes pentatonic penta-A`, `comes penta-A pentatonic`), the usage reads `[system] [mode]`, a mode the
+  system does not have is said (`dorian is not a mode of pentatonic (penta-C, penta-A, penta-D): penta-C`, in the box
+  and as `:note` in its report), the reports carry `:system` and `:mode`, and a key outside the scale is "not a note
+  of the system (pentatonic)" rather than "of the mode" (a mode is a final, a tenor and a range over the system's
+  scale, not a scale of its own).
+
 - **Orders are keywords only.** Since `msg` is read as Clojure (#197) a word without its colon is a name, and an
   order was still also matched as a string in 14 boxes (`#{:clear "clear"}`): a string that came as data was taken
   for an order — `serial` could not send the line `"open"` or `"close"` to a board, `edn` could not hold `"clear"`,
