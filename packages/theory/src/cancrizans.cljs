@@ -13,8 +13,8 @@
 ;; score to read, and in the second half the box plays your first half backwards while you read it (a note you play
 ;; that is not the one written is said, as a deviation). On a pulse (the right inlet) a beat goes on whether you
 ;; played or not (the box plays your note for you); without one, a note in is a beat.
-(let [origins-cp ["npm:@kairotic/theory@0.9.0/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
-      origins-mi ["npm:@kairotic/theory@0.9.0/dist/mirror.mjs" "kairotic/packages/theory/mirror.mjs"]
+(let [origins-cp ["npm:@kairotic/theory@0.9.1/dist/counterpoint.mjs" "kairotic/packages/theory/counterpoint.mjs"]
+      origins-mi ["npm:@kairotic/theory@0.9.1/dist/mirror.mjs" "kairotic/packages/theory/mirror.mjs"]
       semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
       ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
       log2 (fn [x] (/ (js/Math.log x) (js/Math.log 2)))
@@ -280,19 +280,19 @@
                   ;; live: a pulse is a beat (the note played since the last one, or the box's for you)
                   (and (:live args) (= inlet 1))
                   (let [a (:struck st)] (live-beat cp mi (assoc st :struck nil :pulsed true) a))
-                  (and (:live args) (#{:reset "reset"} value))
+                  (and (:live args) (#{:reset} value))
                   (update (live-out cp mi (assoc st :M [] :t 0 :s 0 :devs 0 :struck nil :seed (:seed0 st 1)) {:t 0}) :out into [[1 []] [0 []]])
-                  (and (:live args) (#{:engine "engine" :bang} value)) (live-beat cp mi st nil)
-                  (and (:live args) (#{:back "back"} value)) {:state st}
+                  (and (:live args) (#{:engine :bang} value)) (live-beat cp mi st nil)
+                  (and (:live args) (#{:back} value)) {:state st}
                   (and (:live args) (some? (asked-of value args)))
                   (let [a (asked-of value args)] (if (:pulsed st) {:state (assoc st :struck a)} (live-beat cp mi st a)))
 
-                  (#{:reset "reset"} value) (at-point cp mi (assoc st :M [] :s 0 :pending nil :hist []) nil)
-                  (#{:back "back"} value)
+                  (#{:reset} value) (at-point cp mi (assoc st :M [] :s 0 :pending nil :hist []) nil)
+                  (#{:back} value)
                   (cond (some? (:pending st)) (at-point cp mi (assoc st :pending nil) nil)
                         (seq (:hist st)) (at-point cp mi (merge st (peek (:hist st)) {:hist (pop (:hist st))}) nil)
                         :else {:state st})
-                  (#{:engine "engine" :bang} value)
+                  (#{:engine :bang} value)
                   (if-let [a (engine cp mi st)] (choose cp mi st a) {:state st})
 
                   :else

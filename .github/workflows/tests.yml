@@ -38,6 +38,8 @@ jobs:
       - run: node tests/names.mjs
       # Every official package pinned by the page to the version in its package.json
       - run: node tests/versions.mjs
+      # Orders are keywords: no box takes a string as an order (#197)
+      - run: node tests/keywords.mjs
       # The counterpoint of the comes box (@kairotic/theory), in Node: Study 40's kernel, the corrections
       - run: node tests/counterpoint.mjs
       - run: node site/build.mjs

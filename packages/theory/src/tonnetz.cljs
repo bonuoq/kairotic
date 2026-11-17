@@ -49,7 +49,7 @@
                     named (fn [r] (if-let [t (get-in r [:state :triad])] (assoc-in r [:state :triad-name] (triad-of t)) r))]
                 (cond
                   (and (vector? value) (= :pressed (first value)) (number? (second value))) {:out [[1 (second value)]]}
-                  (#{:clear "clear"} value) {:state nil :show nil}
+                  (#{:clear} value) {:state nil :show nil}
                   (number? value) (let [ns (vec (take-last (notes-of args) (conj (:notes st) value)))]
                                     (named (step (assoc st :notes ns) (pcs-of ns))))
                   (and (sequential? value) (every? number? value)) (named (step (assoc st :notes []) (pcs-of value)))

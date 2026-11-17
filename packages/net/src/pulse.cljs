@@ -21,10 +21,10 @@
                 (and (= inlet :audio) (number? (:count value))) {:out [[0 (:count value)]] :show {:count (:count value)}}
                 (and (= inlet :audio) (contains? value :bpm)) {:out [[1 (or (:bpm value) 0)]] :show {:bpm (:bpm value)}}
                 (= inlet :task) {}
-                (#{:stop "stop"} value) {:effects [[:tempo [:stop]]]}
-                (#{:start "start"} value) {:effects [[:tempo [:start 120]]]}
-                (and (sequential? value) (#{:start "start"} (first value))) {:effects [[:tempo [:start (or (api/num-of (rest value)) 120)]]]}
-                (and (sequential? value) (#{:bpm "bpm"} (first value)) (api/num-of (rest value))) {:effects [[:tempo [:bpm (api/num-of (rest value))]]]}
+                (#{:stop} value) {:effects [[:tempo [:stop]]]}
+                (#{:start} value) {:effects [[:tempo [:start 120]]]}
+                (and (sequential? value) (#{:start} (first value))) {:effects [[:tempo [:start (or (api/num-of (rest value)) 120)]]]}
+                (and (sequential? value) (#{:bpm} (first value)) (api/num-of (rest value))) {:effects [[:tempo [:bpm (api/num-of (rest value))]]]}
                 :else {}))
    :tasks {:tempo (fn [[op x] _]
                     (if-let [r (room)]
