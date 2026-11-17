@@ -695,23 +695,24 @@
    "cancrizans"
    {:package "@kairotic/theory" :usage "cancrizans [mode] [system] [k -7] [beats 2] [bars 6] [temp 0] [seed 1] [table] [live] [midi]"
     :doc "A crab canon written from both ends to the middle (Study 43): the comes is the dux backwards; with table, backwards and upside down — the score read by a second player from across the table, a musical ambigram. Each step writes a note at the start, then one at the end; the futuribles are the ways to close the work in the middle. When it closes, both voices go out as patterns."
-    :inlets ["the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · engine · back · reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work"
+    :inlets ["the next note (at the start, then at the end): Hz, a list of keys held, [:midi 62], or MIDI with midi · :engine · :back · :reset · [:k -4], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:table true], [:axis 62]: a new work"
              "live: the pulse (a bang from a metro or a pulse): a beat, with your note or the box's for you"]
     :outlets ["the dux, when the work closes, as a pattern {:note [...] :dur [...]} (for a pbind)" "the comes, as a pattern" "the futuribles: the notes that can come next ({:midi :name :futures}; live, with :end, what the box will answer at the end)" "where the work is: {:step :steps :writing :beat :futures :dux :comes :closed :asked :played :corrected}"]
-    :messages [["engine" "the next note, written by the box"] ["back" "the last note taken back"] ["reset" "a new work"] ["[:table true]" "a table canon: backwards and upside down"] ["[:temp 2]" "live: the box draws among its answers (0: always the one :end says)"] ["[:seed 7]" "live: its chance (reset: the same game again)"] ["[:system :septimal31]" "another system (Study 42), or an EDN map: its modes and tuning"]]
-    :example (lines "(box :b1 \"msg engine\" 40 30)" "(box :b2 \"cancrizans\" 40 80)" "(box :b3 \"pbind\" 40 150)" "(box :b4 \"pbind\" 40 260)"
+    :messages [[":engine" "the next note, written by the box"] [":back" "the last note taken back"] [":reset" "a new work"] ["[:table true]" "a table canon: backwards and upside down"] ["[:temp 2]" "live: the box draws among its answers (0: always the one :end says)"] ["[:seed 7]" "live: its chance (reset: the same game again)"] ["[:system :septimal31]" "another system (Study 42), or an EDN map: its modes and tuning"]]
+    :example (lines "(box :b1 \"msg :engine\" 40 30)" "(box :b2 \"cancrizans\" 40 80)" "(box :b3 \"pbind\" 40 150)" "(box :b4 \"pbind\" 40 260)"
                     "(box :b9 \"msg :start\" 40 370)" "(box :b5 \"player 90\" 40 420)" "(box :b6 \"player 90\" 240 420)" "(box :b7 \"synth~\" 40 490)"
-                    "(box :b8 \"dac~\" 40 550)" "(box :b10 \"print\" 260 80)"
+                    "(box :b17 \"synth~\" 240 490)" "(box :b8 \"dac~\" 40 550)" "(box :b10 \"print\" 260 80)"
                     "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)" "(connect :b3 0 :b5 1)" "(connect :b4 0 :b6 1)"
-                    "(connect :b9 0 :b5 0)" "(connect :b9 0 :b6 0)" "(connect :b5 0 :b7 0)" "(connect :b6 0 :b7 0)"
-                    "(connect :b7 0 :b8 0)" "(connect :b7 0 :b8 1)" "(connect :b2 3 :b10 0)")
-    :try "Click engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds. Play notes on a keyboard into it instead (the note at the start, then the one at the end)."
+                    "(connect :b9 0 :b5 0)" "(connect :b9 0 :b6 0)" "(connect :b5 0 :b7 0)" "(connect :b6 0 :b17 0)"
+                    "(connect :b7 0 :b8 0)" "(connect :b7 0 :b8 1)" "(connect :b17 0 :b8 0)" "(connect :b17 0 :b8 1)" "(connect :b2 3 :b10 0)")
+    :try "Click :engine until the work closes: the box writes it from both ends, and the dux and the comes reach the pbinds. Press ▶ and click :start: the crab sounds, each voice on its own synth~ (one synth~ plays one line: a note from the other player would take the place of the last). Play notes on a keyboard into it instead (the note at the start, then the one at the end)."
     :steps [{:title "Played live"
              :note "With live (Study 46) the crab is played beat by beat: your note, and at the same beat the box's answer — the end of your own line, written ahead. Two beats before the middle a cue; at the middle the rest of your line comes out as the score to read (outlet 1), and the box plays your first half backwards (outlet 0) while you read it."
-             :example (lines "(box :b11 \"keyboard 60 24\" 520 30)" "(box :b12 \"cancrizans live\" 520 150)" "(box :b13 \"synth~\" 520 230)" "(box :b14 \"print\" 720 230)"
+             :example (lines "(box :b11 \"keyboard 60 24\" 520 30)" "(box :b12 \"cancrizans live\" 520 150)" "(box :b13 \"synth~\" 520 230)" "(box :b18 \"synth~\" 520 290)" "(box :b14 \"print\" 720 230)"
                              "(box :b15 \"loadbang\" 720 110)" "(box :b16 \"print\" 720 290)" "(connect :b15 0 :b12 0)" "(connect :b12 2 :b16 0)"
-                             "(connect :b11 0 :b12 0)" "(connect :b12 0 :b13 0)" "(connect :b13 0 :b8 0)" "(connect :b13 0 :b8 1)" "(connect :b12 1 :b14 0)")
-             :try "Press ▶: the loadbang counts the futures, and the futuribles of the first note are printed — each with :end, what the box will answer at the end of your line. Play D on the keyboard: the box answers with D an octave below. Play on: at the middle the score to read is printed; read it, and the crab closes."}]
+                             "(connect :b11 0 :b12 0)" "(connect :b12 0 :b13 0)" "(connect :b13 0 :b8 0)" "(connect :b13 0 :b8 1)" "(connect :b12 1 :b14 0)"
+                             "(connect :b11 0 :b18 0)" "(connect :b18 0 :b8 0)" "(connect :b18 0 :b8 1)")
+             :try "Press ▶: the loadbang counts the futures, and the futuribles of the first note are printed — each with :end, what the box will answer at the end of your line. Play D on the keyboard (your line sounds on its own synth~): the box answers with D an octave below on the other. Play on: at the middle the score to read is printed; read it, and the crab closes."}]
     :see ["comes" "pbind" "player"]}
 
    "comes"
@@ -731,7 +732,7 @@
                     "(box :b5 \"dac~\" 40 260)" "(box :b6 \"print\" 280 200)" "(box :b7 \"msg :engine\" 220 100)"
                     "(connect :b1 0 :b2 0)" "(connect :b7 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)"
                     "(connect :b3 0 :b5 0)" "(connect :b3 0 :b5 1)" "(connect :b4 0 :b5 0)" "(connect :b4 0 :b5 1)" "(connect :b2 3 :b6 0)")
-    :try "Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click engine to let it go on alone."
+    :try "Press ▶ and play D, E, F on the keyboard: the dux. From the fourth note on the comes answers an octave below, three beats later. Play a black key, or a note against the rules: the box takes the nearest one that can be played and prints why. Click :engine to let it go on alone."
     :steps [{:title "Live, on a pulse"
              :note "With live, a metro gives the beats: hold a key and the note is held over them (a tie); hold it three beats in 2/2 and the canon turns to 3/2; longer than a bar, and the section ends: the next note begins a new canon. That is all comes reads of time: with nocues it leaves the meter and the sections to other boxes, which send [:beats 3] and end."
              :example (lines "(box :b8 \"metro 600\" 380 100)" "(box :b9 \"msg 1\" 380 70)" "(box :b10 \"comes live\" 380 160)"

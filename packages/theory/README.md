@@ -29,9 +29,9 @@ Sing or play: the Tonnetz follows the triads and draws their path, the coefficie
 From a score, connect what a `reader` or a `mt` box plays (numbers, as notes) or the chords of a tree.
 
 `comes` takes notes as a `keyboard` or `midiin` sends them (Hz; the list of notes held, the first new one
-played), `[:midi 62]`, or MIDI numbers with the word `midi`; `engine` (or bang) lets it choose the next pair,
-`back`, `reset`, `hold`; `[:k -4]`, `[:imitation 0.5]`, `[:mode :hypodorian]`, `[:beats 3]`, `[:species 4]` change the
-canon (by turns at once, live at the next section); `fourth` makes the dux a cantus firmus and the comes syncopated; `inversion` turns the comes upside down about an axis (`[:axis 62]`), `augmentation` makes it twice as slow. `end` ends the section from outside. `comes` only reacts:
+played), `[:midi 62]`, or MIDI numbers with the word `midi`; `:engine` lets it choose the next pair,
+`:back`, `:reset`, `:hold`; `[:k -4]`, `[:imitation 0.5]`, `[:mode :hypodorian]`, `[:beats 3]`, `[:species 4]` change the
+canon (by turns at once, live at the next section); `fourth` makes the dux a cantus firmus and the comes syncopated; `inversion` turns the comes upside down about an axis (`[:axis 62]`), `augmentation` makes it twice as slow. `:end` ends the section from outside. `comes` only reacts:
 what is more — the mode heard, a modulation, the meter, phrases — is for boxes of analysis, which tell it with these
 messages; with `nocues` it leaves them the meter and the sections too.
 Both take a **system** (Study 42): the scale, its tuning and its rules as data — `diatonic` (the default),
