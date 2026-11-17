@@ -16,6 +16,16 @@
   or takes away an onset, `:complement`, `[:rotate 1]`, `[:n 12]`. Its outlets 0–2 are `euclid`'s (tree, `:rtm`
   map, pulses) and its right inlet takes pitches the same way; the measures go out on outlet 3. Help, README,
   assistant, tests in `tests/theory.mjs`.
+- **Study 53 · harmonize** (discussion #256, its first study): an `agent` box — given a melody and a request, Claude
+  builds a harmonizer inside it as a sub-patch that can be opened, edited and run again without Claude (the request
+  and the melody kept as its recipe). It builds with the study's boxes and writes a `code` box or a class of its own in
+  `:defs` (an Alberti bass) for what none of them does; a failing patch goes back to Claude with its error. `bass` is
+  Study 51 turned upside down (the melody given, the bass written under it by the same rules, plus ① to begin, ⑤–① and
+  half cadences, its futures counted, the engine with three soft rules of style); `inner` realizes the figures in four
+  parts by the rule of the octave, with the cadential 6/4, without parallels. Kernels
+  `studies/53-harmonize/kairotic/harmonize.mjs` and `agent.mjs` with their tests (Node and browser), the page in
+  ClojureScript tested with a scripted Claude.
+
 - **Study 52 · continuum: the start of the staff by Verovio.** The treble clef, the key signature (two sharps in D)
   and the meter are engraved by Verovio and scaled onto the staff, where the clef used to float off it; the meter
   shows as much as time is metric at the start. Without Verovio the key signature is drawn by the page.
