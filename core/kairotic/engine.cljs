@@ -52,10 +52,31 @@
                (fn [[_ n]] (or (get words (dec (js/parseInt n 10))) "0"))))
 
 (defn line-ref
-  "The line a `patch @name` box uses (discussion #117): name, or nil for any other box."
+  "The line a `patch @name` box uses (discussion #117): name, or nil for any other box. An `agent` box
+   (issue #269) uses the line its content was built in, kept in its data once it has been built."
   [b]
   (let [[k r] (str/split (str/trim (str (:text b))) #"\s+")]
-    (when (and (= k "patch") r (str/starts-with? r "@") (> (count r) 1)) (subs r 1))))
+    (cond (and (= k "patch") r (str/starts-with? r "@") (> (count r) 1)) (subs r 1)
+          (= k "agent") (let [l (get-in b [:data :line])] (when (and (string? l) (seq l)) l))
+          :else nil)))
+
+;; ───────── the agent box (issue #269) ─────────
+;; Its content is a line Claude builds; around it the engine adds one more inlet and one more outlet, last
+;; (the content's own come first): what reaches the last inlet is a request, which the content's box
+;; agent-core passes to the page as the effect [:agent-ask request]; what the page says of the build
+;; (:building, :built, [:error "…"]) comes back to agent-core as a task's outcome and leaves by the last outlet.
+
+(def agent-far 1e9)   ; where the agent's own ports sit, so that they are numbered after the content's
+
+(defn agent-ports
+  "The content of an agent box with its own request inlet and state outlet, last."
+  [inner]
+  (-> (or inner {:boxes {} :lines []})
+      (update :boxes assoc
+              :agent-ask {:text "inlet" :x agent-far :y 0}
+              :agent-core {:text "agent-core" :x agent-far :y 40}
+              :agent-state {:text "outlet" :x agent-far :y 80})
+      (update :lines (fn [ls] (into (vec ls) [[:agent-ask 0 :agent-core 0] [:agent-core 0 :agent-state 0]])))))
 
 ;; how the page reads a line used as a sub-patch: (fn [box] patch) — the page knows the lines and their
 ;; histories; the engine only asks
@@ -67,6 +88,7 @@
   [b]
   (let [k (comp/klass (:text b)) d (comp/lookup k)]
     (cond
+      (= k "agent") (agent-ports (when (line-ref b) (when-let [f @line-resolver] (f b))))
       (and (= k "patch") (line-ref b)) (or (when-let [f @line-resolver] (f b)) {:boxes {} :lines []})
       (= k "patch") (or (:data b) {:boxes {} :lines []})
       (map? (:patch d)) (let [words (vec (rest (str/split (str/trim (str (:text b))) #"\s+")))]
@@ -223,6 +245,8 @@
     ;; effects for the page (a tree box asked to change its data: that is a gesture of the work; a presets
     ;; box asked to recall, morph or generate: issue #35)
     (#{:tree-edit :tree-set :canvas-edit :presets :sample} k) (when-let [f (:effect-hook @rt)] (f id [k x] at))
+    ;; an agent box asked to build (issue #269): whoever sent the request pays for it, so not from a jam
+    (= k :agent-ask) (when-not *remote* (when-let [f (:effect-hook @rt)] (f id [k x] at)))
     ;; on its audio node (the common case, many per second: looked up first)
     (get-in @rt [:nodes id :def :audio :effects k])
     (let [node (get-in @rt [:nodes id])]
