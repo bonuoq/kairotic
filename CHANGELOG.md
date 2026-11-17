@@ -16,6 +16,9 @@
   or takes away an onset, `:complement`, `[:rotate 1]`, `[:n 12]`. Its outlets 0–2 are `euclid`'s (tree, `:rtm`
   map, pulses) and its right inlet takes pitches the same way; the measures go out on outlet 3. Help, README,
   assistant, tests in `tests/theory.mjs`.
+- **Study 52 · continuum: the start of the staff by Verovio.** The treble clef, the key signature (two sharps in D)
+  and the meter are engraved by Verovio and scaled onto the staff, where the clef used to float off it; the meter
+  shows as much as time is metric at the start. Without Verovio the key signature is drawn by the page.
 
 - **One box, `comes`, for the canon and its mirrors** (`@kairotic/theory` 0.12.0; breaking, for 0.3.0). As Study 50
   found, the comes is a reader of the dux at a **speed**: `comes` reads it at 1 (a canon), `comes 0.5` twice as
