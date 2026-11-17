@@ -12,6 +12,7 @@ Music theory you can see and touch: what sounds, as geometry. Each class draws i
 | `tonnetz [notes] [midi]` | the **Tonnetz** (fifths across, major and minor thirds up): the nodes that sound, the triads they contain, and the **path of the harmony** — each triad found joined to the ones before, on the copy of the lattice nearest the last; the triad (`:C`, `:am`…) on the left, the pitch class pressed on the right |
 | `comes [system] [mode] [k -7] [d 3] [beats 2] [imitation 1] [bars 8] [upbeat 0] [fourth] [live] [midi]` | **counterpoint live**: you play the dux and the **comes** answers, as a canon in a mode (Study 41: ties, suspensions, fourth species). A note that breaks a rule of the style, or from which the canon could not be finished, is corrected to the nearest one that can be played, and the box says why. **By turns** one note is one beat (the same note again, or `hold`, is a tie); **live** a pulse on the right is a beat, a note lasts until the next one, three pulses in 2/2 turn the canon to 3/2 and a note longer than a bar ends the section. Both voices sound as a keyboard or a player sends them — their Hz (left) after their voice ids (second outlet), for one `synth~`; a note held keeps its id —, the **futuribles** — the next notes, the most plausible first, with their futures counted exactly — and where the canon is (right) |
 | `cancrizans [system] [mode] [k -7] [beats 2] [bars 6] [table] [midi]` | **a crab canon written from both ends to the middle** (Study 43): the comes is the dux backwards; with `table`, backwards and upside down — the score read from across the table, a musical ambigram. Each step a note at the start, then one at the end; the **futuribles** are the ways to close the work in the middle. When it closes, the dux and the comes go out as patterns for a `pbind` and a `player`, and as a musical tree for a `tree` box (its score). With `live` (Study 46) it is played beat by beat; from the middle the score shows what is left of your line to read |
+| `euclid [k 3] [n 8] [rotation 0] [bars 1] [midi]` | **a Euclidean rhythm** (Bjorklund's algorithm, after Toussaint): k onsets as evenly as they can be over n pulses — `euclid 3 8` the tresillo, `5 8` the cinquillo, `5 16` a rotation of the bossa nova, `7 12` the bembé —, drawn as a **necklace** (the pulses around a circle, the onsets a polygon; pressing a pulse makes the rhythm start there). Out: a **musical tree** for a `tree` box (left), the **`:rtm` map** alone (middle) and the **pulses** as ones and zeros (right) |
 
 The three views take the same messages: a **list of pitches** — Hz, as a `keyboard`, `midiin`, a `player` or `pitch~` send them, or MIDI (or 0…11) with the word `midi` — is the set; a **list of 12
 values between 0 and 1** is a chroma (from `chroma~` of `@kairotic/analysis`); a **number** is one
@@ -49,5 +50,26 @@ follow its motion; below 0.2, free counterpoint. Its counterpoint is `counterpoi
 (box :b4 "dac~" 40 260)
 (connect :b1 0 :b2 0) (connect :b2 0 :b3 0) (connect :b3 0 :b4 0) (connect :b3 0 :b4 1)
 ```
+
+`euclid` keeps **rhythm apart from pitch**, as the `:rtm` of a musical tree does (see *Musical trees*,
+`docs/mt.md`): the rhythm goes out as `[:rtm {:shares [3 3 2]}]`, the intervals between onsets as shares (a
+negative share is a silence, as when a rotation leaves the first pulses empty), in a bar of n pulses (4/4 for
+8 or 16, 12/8 for 12, n/8 up to 12, else n/16; `[:meter "3/4"]` for another). Its **right inlet** (cold) takes the
+pitches its notes take in turn, starting again when they run out — *talea* and *color*: a map with `:pitches`
+or `:pitch` (kept as it is), a pattern of `comes` or `cancrizans` (`{:note [...]}`), a melody string, a list of Hz
+(the keys held on a keyboard; MIDI with `midi`), notes or chords of a tree; `:clear` forgets them. With `bars`
+the color goes on from bar to bar. Its middle outlet is the `:rtm` map alone, so any map of pitches can be
+merged with it elsewhere (`merge`, then `vector :rtm %`). A bang sends it; `[:k 5]`, `[:n 16]`, `[:rotation 2]`,
+`[:bars 4]`, `[:meter "3/4"]` (or one map of them) change it and send it when it is new; a number is k.
+
+```clojure
+(box :b1 "msg :bang" 40 20)
+(box :b2 "keyboard 60 24" 160 20)
+(box :b3 "euclid 5 8" 40 120)
+(box :b4 "tree" 40 340)
+(connect :b2 0 :b3 1) (connect :b1 0 :b3 0) (connect :b3 0 :b4 0)
+```
+
+Hold a chord on the keyboard and click bang: the cinquillo, its notes taking the chord's pitches in turn.
 
 Writing one of its classes in a work brings the package into it. Licence: [MPL-2.0](../../LICENSE).

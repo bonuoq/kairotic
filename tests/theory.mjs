@@ -314,4 +314,63 @@ export async function theory(page, check) {
     (await until(page, `(some-> (get-in @eng/rt [:states ${hypo} :cp]) .-mode)`, (x) => x === '"hypodorian"', 30000)) === '"hypodorian"');
   await cljs(page, `(delete ${hypo})`);
   await cljs(page, `(delete ${pc5})`);
+
+  // euclid: a Euclidean rhythm (Bjorklund, after Toussaint), sent as a musical tree whose :rtm merges with pitches
+  const eu = (await cljs(page, '(box "euclid 3 8" 9000 600)')).trim();
+  const ep = (await cljs(page, '(box "print" 9000 820)')).trim();
+  await cljs(page, `(connect ${eu} 2 ${ep} 0)`);
+  check("euclid brings @kairotic/theory: two inlets (orders, pitches) and three outlets",
+        (await until(page, `(io (get-in (current) [:boxes ${eu}]))`, (x) => x === "[2 3]", 20000)) === "[2 3]");
+  // the box's logic, message by message: what each outlet sends
+  const eGo = `(fn [args msgs] (let [d (comp/lookup "euclid")]
+                 (reduce (fn [[s _] [i m]] (let [r ((:receive d) {:inlet i :value m :state s :args args})] [(:state r) (:out r)])) [nil nil] msgs)))`;
+  const eOut = `(fn [out o] (some (fn [[p v]] (when (= p o) v)) out))`;
+  const tres = await cljs(page, `(let [go ${eGo} at ${eOut} [_ out] (go {:k 3 :n 8} [[0 :bang]])]
+                                   [(at out 2) (get-in (at out 0) [1 1]) (at out 1) (mapv :t (mt/notes (at out 0)))])`);
+  check("euclid 3 8: the tresillo, x..x..x. — a bar of 4/4 whose :rtm shares are 3 3 2, notes at 0, 1.5 and 3 beats",
+        tres === "[[1 0 0 1 0 0 1 0] {:meter [4 4]} {:shares [3 3 2]} [0 1.5 3]]", tres);
+  const known = await cljs(page, `(let [go ${eGo} at ${eOut} sh (fn [args] (:shares (at (second (go args [[0 :bang]])) 1)))]
+                                    [(sh {:k 5 :n 8}) (sh {:k 5 :n 16}) (sh {:k 7 :n 12}) (sh {:k 9 :n 16}) (sh {:k 0 :n 8}) (sh {:k 4 :n 4})])`);
+  check("... Toussaint's table: cinquillo 2 1 2 1 2, E(5,16) 3 3 3 3 4, bembé 2 1 2 2 1 2 2, E(9,16), silence, every pulse",
+        known === "[[2 1 2 1 2] [3 3 3 3 4] [2 1 2 2 1 2 2] [2 1 2 2 2 1 2 2 2] [-8] [1 1 1 1]]", known);
+  const meters = await cljs(page, `(let [go ${eGo} at ${eOut} m (fn [n] (get-in (at (second (go {:k 3 :n n} [[0 :bang]])) 0) [1 1 :meter]))]
+                                     [(m 8) (m 16) (m 12) (m 5) (m 7) (m 24) (m 13)])`);
+  check("... the bar as the pulses say: 4/4 for 8 and 16, 12/8 for 12 and 24, n/8 up to 12, else n/16",
+        meters === "[[4 4] [4 4] [12 8] [5 8] [7 8] [12 8] [13 16]]", meters);
+  const rot = await cljs(page, `(let [go ${eGo} at ${eOut} [s out] (go {:k 3 :n 8} [[0 [:rotation 1]]])
+                                      [_ out2] (go {:k 3 :n 8} [[0 [:rotation 1]] [0 [:pressed 2]]])
+                                      [_ again] (go {:k 3 :n 8} [[0 [:rotation 1]] [0 [:rotation 1]]])]
+                                  [(at out 2) (:shares (at out 1)) (at out2 2) (count again)])`);
+  check("... a rotation starts it on another pulse (a silence first: a negative share); pressing a pulse rotates from there; the same again sends nothing",
+        rot === "[[0 0 1 0 0 1 0 1] [-2 3 2 1] [1 0 0 1 0 1 0 0] 0]", rot);
+  const ord = await cljs(page, `(let [go ${eGo} at ${eOut} [_ a] (go {:k 3 :n 8} [[0 5]]) [_ b] (go {:k 3 :n 8} [[0 {:k 5 :n 16 :rotation 6}]])
+                                      [_ c] (go {:k 3 :n 8} [[0 [:meter "3/4"]]]) [_ d] (go {:k 3 :n 8} [[0 [:n 12]]])]
+                                  [(:shares (at a 1)) (:shares (at b 1)) (get-in (at c 0) [1 1]) (at d 2)])`);
+  check("... a number is k; a map changes several at once (E(5,16) from pulse 6: the bossa nova 3 3 4 3 3); [:meter \"3/4\"]; [:n 12]",
+        ord === '[[2 1 2 1 2] [3 3 4 3 3] {:meter "3/4"} [1 0 0 0 1 0 0 0 1 0 0 0]]', ord);
+  // the pitches on the right (cold): Hz by default, a melody string, a map of pitches, a pattern of comes; :clear
+  const pit = await cljs(page, `(let [go ${eGo} at ${eOut}
+                                      rtm (fn [args msgs] (at (second (go args (conj msgs [0 :bang]))) 1))]
+                                  [(:pitches (rtm {:k 3 :n 8} [[1 [261.63 329.63 392]]]))
+                                   (:pitches (rtm {:k 3 :n 8 :midi true} [[1 [60 64 67]]]))
+                                   (rtm {:k 3 :n 8} [[1 "c4 e4 g4"]])
+                                   (rtm {:k 3 :n 8} [[1 {:pitches [62 65] :other 1}]])
+                                   (:pitches (rtm {:k 3 :n 8} [[1 {:note [62 nil 64] :dur [1 1 1]}]]))
+                                   (rtm {:k 3 :n 8} [[1 "c4 e4 g4"] [1 :clear]])
+                                   (second (go {:k 3 :n 8} [[1 "c4"]]))])`);
+  check("... the right inlet gives the pitches: Hz (a keyboard) as MIDI, MIDI with midi, a melody string, a map of pitches as it is, a pattern of comes (nil a rest); :clear; and it is cold",
+        pit === '[[60 64 67] [60 64 67] {:shares [3 3 2], :pitches "c4 e4 g4"} {:shares [3 3 2], :pitches [62 65]} [62 "r" 64] {:shares [3 3 2]} nil]', pit);
+  // talea and color: three pitches over five onsets, the color going on from bar to bar; the tree plays them
+  const color = await cljs(page, `(let [go ${eGo} at ${eOut} [_ out] (go {:k 5 :n 8 :bars 3} [[1 "c4 e4 g4"] [0 :bang]]) t (at out 0)]
+                                    [(count (rest t)) (mt/pitches t) (mt/duration t)])`);
+  check("... with bars the color goes on: C E G over the cinquillo meet it again after three bars (the tree, as mt reads it)",
+        color === '[3 ["c4" "e4" "g4" "c4" "e4" "g4" "c4" "e4" "g4" "c4" "e4" "g4" "c4" "e4" "g4"] 12]', color);
+  // in the patch: a bang sends the pulses; the necklace is drawn, a pulse each, the onsets filled
+  await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${eu} :bang)`);
+  check("... in the patch a bang sends it (the pulses on the right)", (await printedHas(page, "[1 0 0 1 0 0 1 0]")).includes("[1 0 0 1 0 0 1 0]"), await printed(page));
+  const neck = await cljs(page, `(let [b (get-in (current) [:boxes ${eu}]) sh (ctl-shapes* (ctl-m ${eu} b) b)]
+                                   [(count (filter (fn [f] (and (= :group (first f)) (number? (:hit (second f))))) sh))
+                                    (count (filter (fn [f] (= :path (first f))) sh))])`);
+  check("... and drawn as a necklace: eight pulses to press, the onsets a polygon", neck === "[8 1]", neck);
+  await cljs(page, `(delete ${eu} ${ep})`);
 }
