@@ -65,8 +65,12 @@ export async function gestures(page, check) {
   const mode = await cljs(page, "(:mode @hist)");
   check("a local work opens", mode === ":local", mode);
   if (mode !== ":local") return;
+  // a local work begins empty, with the example a button away in the history pane
+  check("... empty: no boxes and no history", (await cljs(page, "[(count (:boxes (current))) (count (:nodes @hist))]")) === "[0 0]",
+        await cljs(page, "[(count (:boxes (current))) (count (:nodes @hist))]"));
+  check("... the history pane offers the example work", await page.evaluate(() => !document.getElementById("hist-empty").hidden));
 
-  // two plain boxes far from the example, side by side
+  // two plain boxes side by side
   const ids = await cljs(page, "[(box \"mtof\" 1400 60) (box \"mtof\" 1500 60)]");
   const [a, b] = (ids.match(/:b\d+/g) || []);
   check("two boxes are created", Boolean(a && b), ids);

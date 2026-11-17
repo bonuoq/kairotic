@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A local work begins empty.** Starting locally no longer opens the example work: the patch and the history are
+  empty, the first gesture is the root, and the history pane offers "Start with the example work" (as an empty solo
+  work or room already did).
+
 - **Docs, tutorials and the assistant follow the last changes.** The guide (EN/ES) and *Musical trees* (`docs/mt`)
   present `quantize` beside `quantize!`; *Writing a component* documents `:about` and `:args` in `:help`; the READMEs
   of `@kairotic/theory` (pitches in Hz, `midi`, `:clear`) and `@kairotic/analysis` (`transcribe` → `quantize`). The
