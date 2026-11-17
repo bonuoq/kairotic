@@ -6,8 +6,9 @@
      A page on claude.ai may import() modules from cdn.jsdelivr.net/npm but may not fetch() files there, so:
        - sources.mjs brings every file the app fetches (index.html, the .cljs) as strings, and fetch() is answered
          from it for those URLs;
-       - a <base> pointing at the package makes every relative URL of the app (import() of its .mjs, the ring~
-         worklet) resolve to jsDelivr.
+       - window.KAIROTIC_BASE, the package's URL, is what every relative URL of the app (import() of its .mjs, the
+         ring~ worklet, its fetches) resolves against; a <base> would be simpler, but claude.ai's policy ignores one
+         that points to another site.
      The page declares the claude.ai capabilities the app uses: sample (Claude), db, user, room. -->
 <html lang="en">
 <head>
@@ -31,17 +32,21 @@ try {
   // a dist-tag resolves anew on each request: pin the version sources.mjs says, so every file comes from one release
   const BASE = local ? first : NPM + version + "/";
 
-  // 1. relative URLs resolve to the package
-  const base = document.createElement("base");
-  base.href = BASE;
-  document.head.prepend(base);
+  // 1. relative URLs of the app resolve to the package. claude.ai's content security policy ignores a <base>
+  // pointing elsewhere, so the app asks window.KAIROTIC_BASE (and the sources of older versions, which asked
+  // document.baseURI, are rewritten below to ask it too).
+  window.KAIROTIC_BASE = BASE;
+  for (const [path, text] of Object.entries(files))
+    files[path] = text
+      .split("new URL(url, document.baseURI)").join("new URL(url, window.KAIROTIC_BASE || document.baseURI)")
+      .split("(js/URL. \"kairotic/ringcore.mjs\" (.-baseURI js/document))").join("(js/URL. \"kairotic/ringcore.mjs\" (or (.-KAIROTIC_BASE js/window) (.-baseURI js/document)))");
 
   // 2. fetch() of a file of the app is answered from sources.mjs
   const types = { cljs: "text/plain", html: "text/html", js: "text/javascript", json: "application/json", md: "text/markdown" };
   const realFetch = window.fetch.bind(window);
   window.fetch = function (input, init) {
     const url = typeof input === "string" ? input : (input && input.url) || String(input);
-    const href = new URL(url, document.baseURI).href.split(/[?#]/)[0];
+    const href = new URL(url, BASE).href.split(/[?#]/)[0];
     if (href.startsWith(BASE)) {
       const path = decodeURIComponent(href.slice(BASE.length));
       if (Object.prototype.hasOwnProperty.call(files, path))
