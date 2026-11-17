@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`comes` and `cancrizans`: the help with keywords, and two voices heard** (`@kairotic/theory` 0.7.1). The help
+  of `cancrizans` still sent `msg engine`, which since `msg` is read as Clojure is a name and does nothing: now
+  `msg :engine`, and the orders written with their colon in both boxes' help, `:doc` and README (`:engine`,
+  `:back`, `:reset`, `:hold`, `:end`). In the example the dux and the comes each have their own `synth~` (with one
+  the second player's note took the place of the first's, and only one voice was heard), and in the live step your
+  keyboard sounds on a `synth~` of its own beside the box's answers.
+
 - **Study 48 · heads~**: Study 47's heads with sound. A span of samples (a ring~, or a fixed work) and heads, each a
   head of its own: writers are tape heads — they write what they listen to (the input, or a reader times its feed)
   on every sample they pass, silence too, replacing (`ovr`) or keeping what was there times `keep` (`mix`); readers
