@@ -1,7 +1,7 @@
 {
   "name": "@kairotic/rhythm",
-  "version": "0.1.1",
-  "description": "Kairotic rhythm as geometry (after Toussaint): euclid (a Euclidean rhythm by Bjorklund's algorithm, drawn as a necklace) and necklace (a cyclic rhythm on the circle and its measures: interval vector, evenness, deep, flat, axes of symmetry, oddity; also an editor) — both sent as musical trees whose :rtm merges with any pitches",
+  "version": "0.2.0",
+  "description": "Kairotic rhythm as geometry (after Toussaint): necklace, the rhythm box (a cyclic rhythm on the circle: drawn, edited, measured — interval vector, evenness, deep, flat, axes of symmetry, oddity, Fourier coefficients — and written as a musical tree whose :rtm merges with any pitches); and euclid, a generator of Euclidean rhythms as pulses",
   "author": "bonuoq",
   "license": "MPL-2.0",
   "repository": {
@@ -37,6 +37,7 @@
     "toussaint",
     "interval vector",
     "talea",
-    "isorhythm"
+    "isorhythm",
+    "fourier"
   ]
 }

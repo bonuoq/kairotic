@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`@kairotic/rhythm` 0.2.0: making a rhythm apart from being one** (discussion #252). Pulses — ones and zeros — are
+  the common tongue of the rhythm boxes, as Hz are of pitch. `euclid k n [rotation]` is now a generator with no view:
+  a bang sends the pulses of a Euclidean rhythm. `necklace` is the rhythm box: it holds them, draws them, is their
+  editor, measures them and writes them as a musical tree with pitches (the outlets, the right inlet, `bars` and
+  `[:meter …]` `euclid` had are its own now): `euclid → necklace → tree`. Its measures gain the **Fourier
+  coefficients** (`:fourier`, `:phases`, after Amiot and Milne: |f1| near 0 balanced, |f_k| largest when maximally
+  even, the others periodicities), drawn as bars with the word `fourier`. Breaking for patches that took a tree from
+  `euclid`: put a `necklace` between them.
+
 - **`@kairotic/cac` 0.1.1 and `@kairotic/rhythm` 0.1.1**, the first versions published through their trusted
   publisher (0.1.0 went to npm by hand). `publish-packages.yml` no longer fails on a tag whose version is already on
   npm: it says so and ends green.
