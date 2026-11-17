@@ -13,6 +13,14 @@
   Hz (MIDI with `midi`), a melody string, a map with `:pitches` or `:pitch`, a pattern of `comes` or `cancrizans`.
   `[:k 5]`, `[:n 16]`, `[:rotation 2]`, `[:bars 4]`, `[:meter "3/4"]` (or a map) change it. Help with a lesson,
   the assistant knows it, tests in `tests/theory.mjs`.
+- **The claude.ai artifact as a thin shell.** `site/build.mjs` makes a third edition, `_app/`, published to npm as
+  `@kairotic/app` (tag `app-vX.Y.Z`, version in `app/package.json`): the app as built for claude.ai plus
+  `sources.mjs`, every file the page fetches (index.html, the `.cljs`) as strings. The artifact becomes
+  `site/shell.html`, which imports `@kairotic/app@latest` from jsDelivr, pins the version it gets, sets a `<base>` at
+  the package (so the app's `.mjs`, CodeMirror, the packages and the ring~ worklet come from there) and answers the
+  app's `fetch` from `sources.mjs` — a page on claude.ai may import modules from jsDelivr but not fetch files there.
+  The app is unchanged, and the artifact no longer needs republishing when it changes. Tested on claude.ai with the
+  package simulated by the artifact's own files.
 
 - **Study 52 · continuum** (discussion #217, its first study): one line of events drawn at a resolution per axis —
   time (proportional → metric), pitch (Hz → a semitone grid → the staff, spelled in the key), glyph (a stroke → a

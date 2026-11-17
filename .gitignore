@@ -8,3 +8,4 @@ _artifact/
 .clj-kondo/
 .lsp/
 tests/quantize-corpus/.cache/
+_app/
