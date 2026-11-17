@@ -159,13 +159,13 @@ A `freqt` is something else: a **raw buffer of frequency over time**, with no tr
 
 Its score is quantized in the same way, and **named** in the same way. Pitches without a name are spelled near the key and moving well in each voice. A chromatic line rises in sharps and falls in flats.
 
-When a drawing is to become a score of its own, `(to-tree! :b5)` makes a new tree box beside it with its strokes as free notes, and the tree, unlike the freqt, can then be edited note by note.
+Its score is a preview. When a drawing is to become a score of its own, a `quantize` box writes it in measures as a tree, with the options you give it (the freqt's second outlet on its right inlet, and a bang: see its help); or `(to-tree! :b5)` makes a new tree box beside it with its strokes as free notes. The tree, unlike the freqt, can then be edited note by note.
 @es
 Un `freqt` es otra cosa: un **búfer crudo de frecuencia en el tiempo**, sin un árbol detrás. Es lo que `transcribe` escribe a partir de una voz, o un dibujo en Hz continuos. Aquí contiene una línea cromática que sube y vuelve a bajar, escrita en Hz, así que las notas no tienen nombre.
 
 Su partitura se cuantiza de la misma manera, y se **nombra** de la misma manera. Las alturas sin nombre se escriben cerca de la tonalidad y moviéndose bien en cada voz. Una línea cromática sube con sostenidos y baja con bemoles.
 
-Cuando un dibujo tiene que llegar a ser una partitura propia, `(to-tree! :b5)` crea una caja tree a su lado con sus trazos como notas libres; el árbol, a diferencia del freqt, se puede editar nota a nota.
+Su partitura es una vista previa. Cuando un dibujo tiene que llegar a ser una partitura propia, una caja `quantize` lo escribe en compases como árbol, con las opciones que le des (la segunda salida del freqt en su entrada derecha, y un bang: mira su ayuda); o `(to-tree! :b5)` crea una caja tree a su lado con sus trazos como notas libres. El árbol, a diferencia del freqt, se puede editar nota a nota.
 @try.en
 Shift-alt-click a note to give it another name (c#4 → db4). `(quant :b5 {:key "d"})` puts the score in D major.
 @try.es
@@ -194,8 +194,7 @@ Haz clic en una nota de la partitura de arriba y pulsa `#`: pasa por sus nombres
 (box :b6 "tree" 480 570)
 (tree! :b6 [:voice {:key "eb"} [:measure {:meter [4 4]} "eb4/1 f4/.5 g4 ab4/1 a4/.5 bb4"] [:measure "c5/1 b4/.5 bb4 eb4/2"]])
 (box :b7 "mt transpose M3" 480 720)
-(box :b8 "freqt" 480 760)
-(view :b8 :score)
+(box :b8 "tree" 480 760)
 (connect :b6 0 :b7 0)
 (connect :b7 0 :b8 0)
 ```
@@ -252,7 +251,7 @@ Pon en marcha el motor con ▶ y pulsa el bang. Después conecta `:b4` o `:b9` a
 
 **Tree**: and in it, two times. Measured (`:measure`, `:meter`, `:tuplet`, `:rtm`) and free (`[:par [:note {:at …}]]`). The score of free time is a quantized reading of it (alt-click, `division!`, `quant`). `quantize!` writes that reading into the tree, and `unquantize!` takes it back.
 
-Around it: `freqt`, the raw buffer of frequency over time, which `to-tree!` turns into a tree. Names that stay as they were written, keys, `mt transpose M3`, `#` and shift-alt-click. And everything between the semitones: `:cents`, quarter tones, `:gliss`, tunings.
+Around it: `freqt`, the raw buffer of frequency over time, which `quantize` (a box, by a bang) or `to-tree!` turn into a tree. Names that stay as they were written, keys, `mt transpose M3`, `#` and shift-alt-click. And everything between the semitones: `:cents`, quarter tones, `:gliss`, tunings.
 
 The full reference is in the Help tab, under **Musical trees**. The design behind it is discussed in issues #86 (quantization) and #88 (pitch spelling), and in discussion #92 (one box), on the GitHub of Kairotic.
 @es
@@ -262,6 +261,6 @@ The full reference is in the Help tab, under **Musical trees**. The design behin
 
 **Tree**: y en él, dos tiempos. Medido (`:measure`, `:meter`, `:tuplet`, `:rtm`) y libre (`[:par [:note {:at …}]]`). La partitura del tiempo libre es una lectura cuantizada de él (alt-clic, `division!`, `quant`). `quantize!` escribe esa lectura en el árbol, y `unquantize!` la deshace.
 
-A su alrededor: `freqt`, el búfer crudo de frecuencia en el tiempo, que `to-tree!` vuelve árbol. Los nombres que se quedan como se escribieron, las tonalidades, `mt transpose M3`, `#` y shift-alt-clic. Y todo lo que hay entre los semitonos: `:cents`, cuartos de tono, `:gliss`, afinaciones.
+A su alrededor: `freqt`, el búfer crudo de frecuencia en el tiempo, que `quantize` (una caja, con un bang) o `to-tree!` vuelven árbol. Los nombres que se quedan como se escribieron, las tonalidades, `mt transpose M3`, `#` y shift-alt-clic. Y todo lo que hay entre los semitonos: `:cents`, cuartos de tono, `:gliss`, afinaciones.
 
 La referencia completa está en la pestaña Ayuda, en **Árboles musicales**. El diseño que hay detrás se discute en los issues #86 (cuantización) y #88 (grafía de alturas), y en la discusión #92 (una caja), en el GitHub de Kairotic.

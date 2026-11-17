@@ -4,8 +4,8 @@
 
 La música en Kairotic se puede escribir como **datos**: un árbol en EDN, al estilo
 *hiccup* `[:etiqueta {atributos} & hijos]`. Es el idioma común de la notación, la composición y la CAC:
-cajas y componentes reciben árboles y devuelven árboles, y un `freqt` (como lienzo o como partitura) o un `canvas` pueden
-mostrar uno. La idea viene del *llll* de [bach](https://www.bachproject.net) para Max: listas que se
+cajas y componentes reciben árboles y devuelven árboles, y una caja `tree` muestra uno como partitura (un `freqt` o un `canvas`
+pueden mostrarlo también, sobre sus trazos). La idea viene del *llll* de [bach](https://www.bachproject.net) para Max: listas que se
 anidan libremente. La diferencia es que aquí los atributos tienen nombre, así que cualquier dato extra
 (los *slots* de bach) es una clave más.
 
@@ -176,7 +176,8 @@ Un compás que no cuadra es un aviso (⚠ en la REPL y en la caja), no un error,
 | `mt transpose 7` · `mt invert c4` · `mt retrograde` · `mt augment 2` · `mt rotate 1` · `mt canon 4 7` · `mt thin 0.5` | transformaciones (la entrada derecha cambia la cantidad) |
 | `mt seq` · `mt par` | une el árbol de la izquierda con el de la derecha, uno detrás de otro o a la vez |
 | `mt events` · `mt pitches` · `mt duration` | el árbol como datos planos |
-| `mt play [loop]` | toca el último árbol al recibir un bang: Hz (0) e ids de voz (1) para `synth~`, parámetros `[nombre valor]` (2), dinámicas y textos (3) |
+| `mt canon d 2 k P5 speed 0.5 inversion` | el canon con las palabras de un reader sobre un ring: d pulsos después, a k (semitonos o un intervalo), el comes a una velocidad (0,5 el doble de lento, −1 al revés: un cangrejo), invertido |
+| `mt play [loop] [speed s]` | toca el último árbol al recibir un bang: Hz (0) e ids de voz (1) para `synth~`, parámetros `[nombre valor]` (2), dinámicas y textos (3); a una velocidad (`msg :speed -1`: el árbol al revés) |
 | `freqt` · `canvas` | un árbol en su entrada **se muestra en vivo** sobre su buffer; `(keep! :bN)` lo escribe en el buffer como un evento de la historia |
 
 Un freqt mostrado como partitura muestra un árbol escrito en `:measure` como notación medida (grupos irregulares, acordes,
@@ -221,6 +222,12 @@ como cualquier edición de un árbol.
 (unquantize! :b2)                  ; sus notas en tiempo libre otra vez
 (to-tree! :b5)                     ; una caja tree nueva junto al freqt :b5, con sus trazos como notas
 ```
+
+La misma cuantización como caja del patch: **`quantize`** toma un freqt en su entrada derecha (su segunda salida), o un árbol
+en tiempo libre por la izquierda, guarda las opciones que llegan como mensajes (`[:meter "3/4"]`, `[:divs [1 2 3 4]]`,
+`[:legato 0.25]`, `[:time :track]`…) y, con un bang, envía el árbol medido — a una caja `tree`, a un `mt`. Solo envía con un
+bang: un árbol escrito en una caja tree es un evento de la historia, así que las opciones se pueden probar antes, y dos cajas
+`quantize` pueden escribir una toma de dos maneras.
 
 Un `freqt` sigue siendo el buffer de frecuencia en el tiempo en bruto (lo que `transcribe` escribe desde una voz, un
 dibujo en Hz continuos): `(to-tree! :bN)` convierte su dibujo en un árbol cuando va a ser una partitura.

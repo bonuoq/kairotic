@@ -1000,7 +1000,7 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 (connect :b9 2 :b8 0)
 ```
 
-See also: `canvas`, `reader`, `tree`
+See also: `canvas`, `reader`, `tree`, `quantize`, `transcribe`
 
 ### ftom
 

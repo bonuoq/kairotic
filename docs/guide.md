@@ -256,7 +256,9 @@ function by itself).
   bang where a section begins, the period that repeats, and a `[:segment …]` that makes `onset~` start afresh.
   `transcribe` writes what `pitch~` hears into a `freqt` — `:rec`, play, `:stop` — as notes at their pitch
   or, with `transcribe 60 glide`, as contours that follow the voice (an `onset~` on its right splits
-  repeated notes); the freqt shown as a score is then the improvisation in notation.
+  repeated notes); the freqt shown as a score previews it in notation, and a `quantize` box (the freqt's
+  second outlet on its right inlet, a bang) writes it in measures as a tree, for a `tree` box — with the
+  meter, the divisions and the other options you give it, and `:time :track` for a phrase sung freely.
 - **Recording a gesture**: `record [lo hi]` writes any stream of numbers into a `canvas` as strokes over
   time — a knob, an envelope (`snapshot~ 50 rms`), a descriptor (`features~ 20 centroid`) —: `:rec`,
   play, `:stop`. A value holds until the next one; the axes follow the take. Edit it like any drawing and

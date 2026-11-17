@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Docs, tutorials and the assistant follow the last changes.** The guide (EN/ES) and *Musical trees* (`docs/mt`)
+  present `quantize` beside `quantize!`; *Writing a component* documents `:about` and `:args` in `:help`; the READMEs
+  of `@kairotic/theory` (pitches in Hz, `midi`, `:clear`) and `@kairotic/analysis` (`transcribe` → `quantize`). The
+  tutorials send trees to tree boxes instead of a freqt shown as a score (*A motif and its transformations*, *Names
+  and keys* in *One, two, tree*, and *A work as a tree*, where the tree box is its own score and the dashed line of
+  edits is gone), mention `quantize` for a freqt's drawing, and write `pcclock midi`, `fourier midi`, `tonnetz midi`
+  in *Harmony as geometry* — in their Markdown sources this time (the catalog is built from them: the change of
+  #242 to the catalog alone would have been lost at the next build). The in-app assistant knows `quantize`, that
+  trees go to tree boxes, the Hz/`midi` convention, `comes` and `cancrizans`, and that orders are keywords.
+
 - **`mt` speaks as the heads do.** `mt canon d 2 k P5 speed 0.5 inversion`: the comes d beats later, k away
   (semitones or an interval name, as `mt transpose`), at a speed — 0.5 twice as slow (an augmentation canon), 2
   twice as fast, −1 backwards (a crab) — and upside down; `mt canon 2 7` stays. `mt play speed 0.5` (or `msg :speed

@@ -22,22 +22,19 @@ Section A and section B, each with a flute and a cello. The score shows the whol
 
 Look at the Code tab: the tree box is one call, `(tree! :b2 …)`, with the tree laid out one container per line.
 
-The dashed line goes back from the score's third outlet to the tree: it carries the **edits** you make on the score. (When you connect a tree to a score with the mouse, it is drawn for you.)
+The tree box is its own score: what you change on it are **edits** of the tree, one event of the history each.
 @es
 La sección A y la sección B, cada una con flauta y violonchelo. La partitura muestra toda la obra, con el nombre de cada sección sobre su primer compás y una doble barra entre ellas.
 
 Mira la pestaña Code: la caja tree es una sola llamada, `(tree! :b2 …)`, con el árbol escrito un contenedor por línea.
 
-La línea discontinua vuelve de la tercera salida de la partitura al tree: lleva las **ediciones** que hagas en la partitura. (Cuando conectas con el ratón un tree a una score, se dibuja sola.)
+La caja tree es su propia partitura: lo que cambias en ella son **ediciones** del árbol, un evento de la historia cada una.
 ```kairotic
 (box :b1 "bang" 40 20)
 (box :b2 "tree" 40 60)
 (tree! :b2 [:piece {:tempo 80} [:section {:name "A"} [:voice {:name "fl"} [:measure {:meter [3 4]} "e5/1 d5 c5"] [:measure "d5/2 g4/1"]] [:voice {:name "vc"} [:measure "c3/3"] [:measure "g2/3"]]] [:section {:name "B"} [:voice {:name "fl"} [:measure "e5/.5 f5 g5/2"] [:measure "c5/3"]] [:voice {:name "vc"} [:measure "a2/3"] [:measure "c3/3"]]]])
-(box :b3 "freqt" 420 60)
-(view :b3 :score)
+(resize :b2 560 260)
 (connect :b1 0 :b2 0)
-(connect :b2 0 :b3 0)
-(connect :b3 2 :b2 0)
 ```
 
 ## Editing one node | Editar un nodo
@@ -63,13 +60,13 @@ In a score that shows a tree, **click a note**: it is selected. Then:
 
 ↑ ↓ change its pitch (⇧ an octave) · **+** **−** double or halve its duration · ← → select the previous or next note · a…g the nearest note of that name · **Delete** turns it into a rest · Esc deselects. A rest can be selected too: **Enter** makes it a note again (the pitch of the note before it), ↑ ↓ a step above or below.
 
-Each change leaves the score by its edits outlet as `[:edit …]`, reaches the tree by the dashed line, and becomes a `(tree-edit! …)`: you can see it in the REPL and in the history. The tree, changed, comes back to the score. A note written inside a melody string is first written out as notes, in the same event.
+Each change is an edit of the tree's nodes, a `(tree-edit! …)`: you can see it in the REPL and in the history, and the score shows the tree changed. A note written inside a melody string is first written out as notes, in the same event.
 @es
 En una partitura que muestra un árbol, **haz clic en una nota**: queda seleccionada. Después:
 
 ↑ ↓ cambian su altura (⇧ una octava) · **+** **−** duplican o dividen su duración · ← → seleccionan la nota anterior o la siguiente · a…g la nota más cercana con ese nombre · **Supr** la convierte en silencio · Esc quita la selección. También se puede seleccionar un silencio: **Intro** lo vuelve nota (la altura de la nota anterior), ↑ ↓ un paso por encima o por debajo.
 
-Cada cambio sale de la partitura por su salida de ediciones como `[:edit …]`, llega al tree por la línea discontinua y se convierte en un `(tree-edit! …)`: lo ves en la REPL y en la historia. El árbol, cambiado, vuelve a la partitura. Una nota escrita dentro de un texto de melodía se escribe primero como notas, en el mismo evento.
+Cada cambio es una edición de los nodos del árbol, un `(tree-edit! …)`: lo ves en la REPL y en la historia, y la partitura muestra el árbol cambiado. Una nota escrita dentro de un texto de melodía se escribe primero como notas, en el mismo evento.
 @try.en
 Change the cello's last note of section A with ↑ ↓, and halve a flute note with −: the score warns (⚠ in the REPL) that its measure no longer adds up, until you fix it.
 @try.es

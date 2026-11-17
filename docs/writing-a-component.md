@@ -255,6 +255,10 @@ help patch that opens as a lesson. A component brings its own with `:help`:
 
 The example is patch code, one gesture per line: opening the help patch makes them one by one.
 
+A box with many options can also carry `:about` — an introduction in short paragraphs (`**bold**`, `` `code` ``),
+shown first, with its whole `:doc` folded below it — and `:args`, what each of its declared arguments does, in
+order: `[[:rate "how many wobbles a second"] [:depth "0…1"]]`, the third column of its Arguments table.
+
 ## 7. Sharing it
 
 - **In the work:** the `component` box travels with the work and its history (it is part of the
