@@ -275,6 +275,15 @@ keyword, `msg :inc`, sigue siéndolo: una clave, y una función por sí misma).
   toma, de t a donde se para, y conserva lo que venía después: un punch-in/out. Un canvas o freqt acepta
   `[:cut t]` para eso (todo desde t) y `[:cut t1 t2]` (lo que hay entre ambos; un trazo que lo cruza se
   parte en dos).
+- **Un tramo de tiempo con cabezales**: un `ring [segundos]` guarda los mensajes de los últimos segundos,
+  cada uno en su tiempo; su cabezal de escritura da la vuelta como uno de cinta. Un `reader` en su salida
+  derecha es un cabezal propio: `reader d 1` sigue al cabezal del ring 1 s por detrás —un canon, un
+  delay—; dos lectores, un canon a tres voces; `reader d 1 speed 0.5`, una aumentación; a −1 vuelve atrás
+  por lo escrito. Un número en la izquierda de un reader lo mueve en su lugar (una rampa, un counter), en
+  cualquier sentido; un movimiento mayor que su `jump` es un salto. Un `writer` (lo que escribe · el buffer
+  del ring · una posición) escribe donde está, desde cualquier fuente, borrando lo que pasa (o `writer
+  mix`, dejándolo); `:rec t` / `:ovr t` lo llevan a t a velocidad 1. Un reader que entra en un writer del
+  mismo ring es una realimentación: un canon perpetuo.
 
 ## 4. La historia
 

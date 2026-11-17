@@ -457,6 +457,9 @@ Rules:
   draws a box's view large on a layer. Explain a patch with a few marks when it helps.
   To record any stream of numbers (a knob, `snapshot~ 50 rms`, a descriptor) as strokes: `record [lo hi]`
   → a `canvas` inlet, with `rec`/`stop`; a `reader~` reads it back as an automation.
+  A canon or a delay of messages: `ring [seconds]` (values on its left) → its RIGHT outlet → the right inlet
+  of `reader d 1` (1 s behind; `reader d 2 speed 0.5`: later and slower); a number on a reader's left moves it
+  instead. `writer` (left: what to write; middle: the ring's right outlet; right: a position) → the ring's left.
   To write what is played into notation: `pitch~` → `transcribe [bpm] [notes|glide]` (left; `onset~` on its
   right) → a `freqt`'s inlet; `rec`/`stop` messages on transcribe's left.
 - `gain~ 0.2` sets its factor as an argument; a message into its right inlet changes it, a signal

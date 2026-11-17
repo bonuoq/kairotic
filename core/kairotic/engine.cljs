@@ -14,7 +14,8 @@
 (ns kairotic.engine
   (:require [clojure.string :as str]
             [kairotic.components :as comp]
-            [kairotic.canvas :as cv]))
+            [kairotic.canvas :as cv]
+            [kairotic.span :as span]))
 
 (defonce ctx* (atom nil))
 (defn ctx [] (or @ctx* (reset! ctx* (js/AudioContext.))))
@@ -248,7 +249,14 @@
    tree gives that tree as its buffer, so a reader~ plays what the score shows."
   [p id]
   (some (fn [[a _ b i]]
-          (when (and (= b id) (= i 1) (#{"canvas" "freqt" "sample" "tree"} (comp/klass (get-in p [:boxes a :text]))))
+          (cond
+            (not (and (= b id) (= i 1))) nil
+            ;; a ring is what it keeps now (the state of its box), for the boxes that read messages from it
+            (= "ring" (comp/klass (get-in p [:boxes a :text])))
+            (when (#{"reader" "writer"} (comp/klass (get-in p [:boxes id :text])))
+              [a (or (get-in @rt [:states a])
+                     (span/ring (comp/num-of (first (comp/args-of (get-in p [:boxes a :text]))))))])
+            (#{"canvas" "freqt" "sample" "tree"} (comp/klass (get-in p [:boxes a :text])))
             ;; a tree box is its tree (discussion #92); a canvas or freqt, the tree it shows, else its buffer
             (let [k (comp/klass (get-in p [:boxes a :text]))
                   tree (if (= "tree" k)
