@@ -205,6 +205,30 @@ is("random keys are often corrected (most are not legal)", corrected > played / 
 for (const f of ["kernel.mjs", "mirror.mjs"])
   is(`Study 46's ${f} is Study 43's`, readFileSync(join(root, "studies/46-crab-live/kairotic", f), "utf8") === readFileSync(join(root, "studies/43-mirrors/kairotic", f), "utf8"));
 
+// soft.mjs: the one way every engine weighs (the comes box, the studies' engines, the agents)
+{
+  const soft = await import("../packages/theory/assets/soft.mjs");
+  const { WEIGHTS } = await import("../packages/theory/assets/counterpoint.mjs");
+  is("the comes box's weights are soft.mjs's", JSON.stringify(WEIGHTS) === JSON.stringify(soft.defaultWeights()));
+  is("every soft rule documented, with its scope and weight", soft.SOFT.every((r) => r.id && r.scope && typeof r.weight === "number" && r.doc));
+  // the studies weigh alike: their copies (Studies 50, 51) give the same costs on the same lines
+  const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646, r = rng(7);
+  const ctx = { N: 7, strong: (t) => t % 2 === 0, lowerFirst: (x, c) => (x <= c ? [x, c] : [c, x]), dissonant: (x, c) => [1, 3, 6].includes(((Math.abs(x - c) % 7) + 7) % 7),
+                quality: (l, h) => { const k = (((h - l) % 7) + 7) % 7; return k === 0 || k === 4 ? "perfect" : k === 2 || k === 5 ? "imperfect" : "dissonant"; }, suspension: false };
+  for (const study of ["50-lines", "51-schemata"]) {
+    const theirs = await import(`../studies/${study}/kairotic/soft.mjs`);
+    let same = true;
+    for (let k = 0; k < 400 && same; k++) {
+      const len = 2 + Math.floor(r() * 10), D = [], C = [];
+      for (let i = 0; i < len; i++) { D.push(Math.floor(r() * 9) - 2); C.push(Math.floor(r() * 9) + 5); }
+      const x = Math.floor(r() * 9) - 2, c = Math.floor(r() * 9) + 5;
+      same = JSON.stringify(soft.melodicParts(D, x)) === JSON.stringify(theirs.melodicParts(D, x))
+          && JSON.stringify(soft.verticalParts(D, C, x, c, ctx)) === JSON.stringify(theirs.verticalParts(D, C, x, c, ctx));
+    }
+    is(`Study ${study.slice(0, 2)}'s soft rules weigh as soft.mjs (400 random lines)`, same);
+  }
+}
+
 const bad = results.filter((x) => !x[1]);
 console.log(`${results.length - bad.length} / ${results.length} passed`);
 for (const [w, ok, d] of results) if (!ok) console.log("  FAIL " + w + (d !== undefined ? " · " + d : ""));
