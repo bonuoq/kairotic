@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Study 54 · parts**: a given bass realized in three parts — a schema of chapter 2 of IJzerman's book
+  (Fauxbourdon, Monte, 7–6 Fauxbourdon, stepwise Romanesca, Fifth Down Fourth Up, Tied Bass) closed by a cadence of
+  chapter 3 (simple, compound 6/4 or 5/4, Galant, deceptive, half). Each upper voice under Study 51's rules against
+  the bass, the upper voices under their own (the 4th a consonance there), the chords as which intervals sound;
+  counted exactly, drawn uniformly or by the engine. Kernel `studies/54-parts/kairotic/parts.mjs` with its tests
+  (Node and browser) and a page.
+
 - **Study 53 · harmonize** (discussion #256, its first study): an `agent` box — given a melody and a request, Claude
   builds a harmonizer inside it as a sub-patch that can be opened, edited and run again without Claude (the request
   and the melody kept as its recipe). It builds with the study's boxes and writes a `code` box or a class of its own in
