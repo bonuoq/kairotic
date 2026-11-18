@@ -27,6 +27,19 @@
         (get (get-in b [:data (if (= dir :in) :inlets :outlets)]) i))
       (get general i))))
 
+(def agent-shown 34)   ; how much of a long agent request a box shows
+
+(defn shown-text
+  "The text a box shows: its own, but of an agent only the start of a long request (the whole of it on hover,
+   in its help and in the Agents section of the Claude panel), so the box does not grow as wide as the request."
+  [t]
+  (let [t (str t)]
+    (if (and (= "agent" (klass t)) (> (count t) (+ 8 agent-shown)))
+      (if (str/starts-with? (str/triml (subs t 5)) "\"")
+        (str (subs t 0 (+ 7 agent-shown)) "…\"")
+        (str (subs t 0 (+ 6 agent-shown)) "…"))
+      t)))
+
 (defn hash-part [] (subs (str (.-hash js/location)) 1))
 
 (def url-params
@@ -119,7 +132,7 @@
     (if (and r (= (:id r) id)) [(:w r) (:h r)] (or (:size b) (if (= :html (display-of b)) html-size [cv/W cv/H])))))
 
 (defn box-dims [id b]
-  (let [t (:text b)]
+  (let [t (shown-text (:text b))]
     (cond
       (= :code (display-of b)) [code-w (:h (code-geom b))]
       (panel-layout b) (let [{:keys [w h]} (panel-layout b)] [w h])
@@ -372,7 +385,7 @@
                       (let [[w h] (child-dims cb)] {:id cid :b cb :x px :y py :w w :h h})))]
       (when (seq kids)
         {:kids kids
-         :w (max (box-w (:text b)) (+ (* 2 panel-pad) (apply max (map (fn [k] (+ (:x k) (:w k))) kids))))
+         :w (max (box-w (shown-text (:text b))) (+ (* 2 panel-pad) (apply max (map (fn [k] (+ (:x k) (:w k))) kids))))
          :h (+ hdr (* 2 panel-pad) (apply max (map (fn [k] (+ (:y k) (:h k))) kids)))}))))
 
 (defn kid-origin [x y k] [(+ x panel-pad (:x k)) (+ y hdr panel-pad (:y k))])
@@ -382,7 +395,7 @@
   [id b w]
   (let [{:keys [kids]} (panel-layout b) idn (esc (name id))]
     (str "<rect class=\"head\" x=\"0.5\" y=\"0.5\" width=\"" (- w 1) "\" height=\"" (- hdr 1) "\"></rect>"
-         "<text class=\"lbl\" x=\"8\" y=\"14\">" (esc (:text b)) "</text>"
+         "<text class=\"lbl\" x=\"8\" y=\"14\">" (esc (shown-text (:text b))) (when (not= (shown-text (:text b)) (:text b)) (str "<title>" (esc (:text b)) "</title>")) "</text>"
          (apply str
                 (for [k kids :let [[kx ky] (kid-origin 0 0 k)]]
                   (if (own-view? (:b k))
@@ -801,14 +814,16 @@
                            (panel-layout b) (panel-svg id b w)
                            action-box? (str "<rect class=\"grip\" x=\"0\" y=\"0\" width=\"" grip "\" height=\"" h "\" rx=\"2\"></rect>" content)
                            ;; a patch @name: its line, followed (↻) or pinned (⌖ moment), ⚠ when something is wrong (#117)
-                           (line-ref? b) (str "<text x=\"10\" y=\"16\">" (esc t) "</text>"
+                           (line-ref? b) (str "<text x=\"10\" y=\"16\">" (esc (shown-text t)) "</text>"
                                               "<text class=\"ref-badge\" x=\"" (- w 8) "\" y=\"16\" text-anchor=\"end\">" (esc (ref-badge b)) "</text>"
                                               "<title>" (esc (or (ref-warning b)
                                                                  (let [r (resolve-ref b)]
-                                                                   (str "the line " (line-name (:line r)) (if (:pinned r) ", pinned to a point of its history" ", at its newest point")
+                                                                   (str (when (not= t (shown-text t)) (str t "\n"))
+                                                                        "the line " (line-name (:line r)) (if (:pinned r) ", pinned to a point of its history" ", at its newest point")
                                                                         " · double-click opens it"))))
                                               "</title>")
-                           :else (str "<text x=\"10\" y=\"16\">" (esc t) "</text>"))
+                           :else (str "<text x=\"10\" y=\"16\">" (esc (shown-text t))
+                                      (when (not= t (shown-text t)) (str "<title>" (esc t) "</title>")) "</text>"))
                      (apply str (for [i (range ins)]
                                   (str "<rect class=\"port in" (when (= hover-in [id i]) " target") "\" data-box=\"" idn "\" data-in=\"" i "\" x=\"" (port-x w ins i) "\" y=\"-1\" width=\"" pw "\" height=\"4\">"
                                        (when-let [d (port-doc b :in i ins)] (str "<title>" (esc (str "in " i ": " d)) "</title>")) "</rect>")))

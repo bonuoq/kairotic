@@ -84,10 +84,26 @@
                                                 (close! m))))
                                      2000)))))
 
-(defn report-error [e] {:error (str "adc~: " (or (.-message e) e))})
+(def pages-url "https://bonuoq.github.io/kairotic/")
+
+(defn on-claude-ai?
+  "Whether the app runs as a claude.ai artifact (its capabilities, and none of Kairotic Pages' backend)."
+  []
+  (boolean (and (.-claude js/window) (nil? (.-kairoticBackend js/window)))))
+
+(defn report-error
+  "What adc~ says when it cannot listen. A page on claude.ai may not use the microphone at all, whatever the
+   browser allows: then it says so, and where the same work can listen (Kairotic Pages)."
+  [e]
+  (let [nm (str (.-name e))]
+    {:error (if (and (on-claude-ai?) (#{"NotAllowedError" "SecurityError" "NotFoundError" "AbortError"} nm))
+              (str "adc~: claude.ai does not let a page use the microphone. To listen, open the work in Kairotic Pages, "
+                   pages-url " (Share/Export gives a link that carries it; Claude there uses your own API key), or "
+                   "play recorded sound here: a sample box with a file or a URL")
+              (str "adc~: " (or (.-message e) e)))}))
 
 (comp/define! "adc~"
-  {:doc "Audio input (the microphone or the sound card): one outlet per input channel, the ones written after it (adc~ 1 by default; adc~ 1 2 for stereo). At ▶ it asks for the microphone, and takes its sound as it is, without the echo cancellation, noise suppression and automatic gain made for speech. Every adc~ shares one stream."
+  {:doc "Audio input (the microphone or the sound card): one outlet per input channel, the ones written after it (adc~ 1 by default; adc~ 1 2 for stereo). At ▶ it asks for the microphone, and takes its sound as it is, without the echo cancellation, noise suppression and automatic gain made for speech. Every adc~ shares one stream. On claude.ai it cannot listen (the page may not use a microphone): Kairotic Pages can."
    :usage "adc~ [channel …]"
    :license "MPL-2.0"
    :io (fn [b] [0 (count (adc-channels b))]) :dynamic-io true

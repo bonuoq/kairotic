@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A long agent request no longer makes a wide box.** The box shows the start of its request (the whole of it on
+  hover, in its help and in the Agents section).
+- **adc~ on claude.ai says why it cannot listen.** A page on claude.ai may not use the microphone whatever the
+  browser allows; instead of the browser's error, adc~ now says so and points to Kairotic Pages (where the same work
+  listens: Share/Export carries it) or to recorded sound in a sample box.
 - **Study 56 · figuring: the partimento turned round.** A bass without figures, a melody improvised over it on the
   keyboard, and the figures found as it goes — the rule of the octave, the melody's own dissonances, the dominant —
   with the schemata the two lines make, the cadences the bass offers counted ahead, and a middle voice written from
