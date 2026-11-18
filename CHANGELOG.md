@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`@kairotic/cac` 0.2.0: `partimento.mjs`**, the hard rules of tonal counterpoint over a given bass, shared:
+  one voice (`schemata`, the two-part rules of Study 51) and two (`parts`, the three-part rules of Study 54), with
+  the book's schemata, cadences and prototypes as data, beside `soft.mjs`, which weighs what they allow. Studies 51
+  and 54 publish copies of it (their `schemata.mjs` and `parts.mjs` re-export it), and `tests/counterpoint.mjs`
+  checks that the copies are the package's. Two parts get the minor-mode rules of three: over a dominant ⑦ is
+  raised, a raised ⑥ goes on up to the raised ⑦, and a 7th may put off its resolution by one chord.
+
 - **Study 54 · parts, the rules of three voices**: the 3rd of a chord is not doubled, nor the leading tone, and no
   false relation sounds between the upper voices; in minor the chord on the dominant is major (⑦ raised over a ⑤
   going to ① or ⑥, while a ⑤ passed in a sequence keeps the natural minor), and a raised ⑥ goes on up to the raised

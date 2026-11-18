@@ -12,8 +12,9 @@ engines that write music with you — they propose, correct and write notes — 
 | `comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [inverted] [fourth] [live] [midi]` | **counterpoint live**: the **comes** reads the dux at a **speed** — `1` a canon, `0.5` an augmentation, `-1` a **crab**, written from both ends to the middle — and with `inverted` upside down (an inversion; backwards, a **table canon**). Forwards you play the dux and the comes answers, by turns or `live` on a pulse (Study 41: ties, suspensions, fourth species, the degree of imitation); backwards, a note at the start and then one at the end, or `live` beat by beat, the box answering at the end of your own line (Study 46). Every note is checked against the rules and against the future (the **futuribles**, counted exactly), and corrected to the nearest one that can be played. Both voices sound as Hz after their voice ids, for one `synth~`; the finished work goes out as a musical tree for a `tree` box (Studies 41–46, 50) |
 
 Its kernels travel with it as modules for the page (`dist/`, or the page's own copy under `kairotic/packages/cac/`):
-`counterpoint.mjs` (two voices note by note, Studies 40–42), `mirror.mjs` (canons by transformation, Study 43) and
-`soft.mjs` (how every engine weighs its decisions).
+`counterpoint.mjs` (two voices note by note, Studies 40–42), `mirror.mjs` (canons by transformation, Study 43),
+`soft.mjs` (how every engine weighs its decisions) and `partimento.mjs` (a given bass realized in two or three
+parts, Studies 51 and 54).
 
 `comes` takes notes as a `keyboard` or `midiin` sends them (Hz; the list of notes held, the first new one
 played), `[:midi 62]`, or MIDI numbers with the word `midi`; `:engine` lets it choose the next pair,
@@ -37,6 +38,14 @@ where few futures are left (`temperature`). The comes box weighs with it (adding
 imitation), and so do the engines of the studies and the agents Claude builds: the same weights mean the same music
 everywhere. A component or an agent reaches it as the page's own copy, `kairotic/packages/theory/soft.mjs`, or from
 npm (`npm:@kairotic/cac@0.1.0/dist/soft.mjs`).
+
+**A given bass in two or three parts: `partimento.mjs`.** The hard rules of tonal counterpoint over a bass, after Job
+IJzerman's *Harmony, Counterpoint, Partimento*: `schemata(spec)` writes one voice over a bass (chapter 1: suspensions
+prepared and resolved, passing tones, the melodic minor), `parts(spec)` two (chapters 2–3: the rules of upper voices,
+a 4th a consonance between them, three notes of a chord — its 3rd not doubled, nor the leading tone —, the chord on
+a dominant major in minor), each counting its realizations exactly, drawing one uniformly or by the engine (with
+`soft.mjs`). The schemata of the book and its cadences come with it as data (`SCHEMATA`, `SCHEMATA3`, `CADENCES`),
+and its prototypes (`PROTOTYPES`). Studies 51 and 54 publish copies of it; a change to a rule is made here.
 
 ```clojure
 (box :b1 "keyboard 60 24" 40 30)
