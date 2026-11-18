@@ -706,11 +706,12 @@
          (mt/summary q))))))
 
 (defn unquantize!
-  "Writes a tree box's notes in free time ([:voice [:par [:note {:at …}] …]]): one event of the history."
+  "Writes a tree box's notes in free time ([:voice [:par [:note {:at …}] …]]): one event of the history. A note
+   that keeps where it really sounded (:tstamp.real, :dur.real) goes back there."
   [id]
   (let [b (need-box id)]
     (when-not (tree-box? b) (fail (str id " is not a tree box")))
-    (let [f (tc/free-form (mtb/tree-of (:data b)))]
+    (let [f (tc/free-form (mtb/tree-of (:data b)) {:real true})]
       (dispatch! [:in id [:edit [[:set [] f]]]])
       (mt/summary f))))
 

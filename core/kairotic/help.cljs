@@ -494,7 +494,9 @@
                ["in a score: click a rest" "Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note"]
                ["(as-tree :bN)" "reads it back as data"]
                ["⇄ roll · (view :bN :roll)" "a piano roll: its notes as strokes of frequency over time: drawing, dragging, stretching or erasing there edits the tree (free time; with measures, the bars it touches are quantized again; ⌥ to a free voice)"]
-               ["(quantize! :bN) · (unquantize! :bN)" "its free time written in measures, and back (one event each)"]
+               ["(quantize! :bN) · (unquantize! :bN)" "its free time written in measures, and back (one event each); quantized, a note keeps where it really sounded (:tstamp.real, :dur.real, seconds), and made free again it goes back there"]
+               ["(export-mei! :bN) · (mei :bN)" "its MEI (downloaded, or as text): the notation, where its notes really sounded (@tstamp.real, @dur.real, @vel) and the rest in an <extMeta type=\"kairotic\">; read back it is the same tree"]
+               ["(import-mei!) · (import-mei! :bN) · drop a file on the patch" "a .mei or MusicXML file as a tree box (a new one, or into bN)"]
                ["(track! :bN)" "its free time played (in seconds, at any tempo): the beats are found and kept in its :quant, so that its score and quantize! write it on them"]]
     :example (lines "(box :b1 \"bang\" 40 20)" "(box :b2 \"tree\" 40 60)"
                     "(code :b2 \"[:voice\\n [:measure {:meter [3 4]} \\\"e5/1\\\" [:tuplet {:ratio [3 2]} \\\"d5/.5 c5 b4\\\"] [:note {:pitch \\\"a4\\\" :dur 1 :dyn \\\"p\\\"}]]\\n [:measure \\\"g4/3\\\"]]\")"

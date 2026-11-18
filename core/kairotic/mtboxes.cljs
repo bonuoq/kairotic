@@ -93,7 +93,7 @@
 ;; quantizes and sends — a tree into a tree box is an event of the work's history, so nothing goes out while the
 ;; options are being tried.
 
-(def quantize-keys #{:meter :meters :divs :merge :grace :chord :legato :voices :overlap :nest :key :tempo :time :ref-bpm :w :spell})
+(def quantize-keys #{:meter :meters :divs :merge :grace :chord :legato :voices :overlap :nest :key :tempo :time :ref-bpm :w :spell :real})
 
 (defn quantize-report
   "What a quantization found: its bars, its meter, its tempo, its notes and its voices."

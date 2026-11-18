@@ -359,6 +359,7 @@ The functions are in `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt/au
 - `(quantize :bN [opts])` gives a freqt's strokes (or a tree without measures) quantized into measures;
 - `(quant :bN opts)`, `(divisions :bN t)`, `(division! :bN t [choice])`: how a freqt's score is quantized, kept in its buffer;
 - `(quantize! :bN [opts])`, `(unquantize! :bN)`, `(to-tree! :bN)`: a tree box's free time in measures and back, a freqt's strokes as a tree;
+- `(mei :bN)`, `(export-mei! :bN)`, `(import-mei!)`, `(import-mei! :bN)`: a tree box as MEI (with where its notes really sounded, `@tstamp.real`/`@dur.real`, and what MEI has no place for in `<extMeta type="kairotic">`), and a .mei or MusicXML file as a tree box (a file dropped on the patch too); read back, a MEI written here is the same tree;
 - `(enharmonic! :bN beat midi [name])`: another name for a note of a freqt's score; `mt/spell`, `mt/transpose "M3"`, and `kairotic.spell` (`sp/parse`, `sp/interval`, `sp/parse-key`, `sp/estimate-key`…);
 - `(keep! :bN)` and `(unlive! :bN)`;
 - `(recipe :bN)` and `(remake! :bN)` (below).

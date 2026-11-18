@@ -113,6 +113,11 @@ export async function views(page, check) {
   await cljs(page, `(quantize! ${ct})`);
   check("(quantize! :bN) writes its free time in measures", (await cljs(page, `(mt/measured? (tree-data ${ct}))`)) === "true");
   check("... and keeps its grid", (await cljs(page, `(some? (:grid (mt/attrs (tree-data ${ct}))))`)) === "true");
+  check("(mei :bN) is its MEI, with where its notes really sounded", /tstamp\.real=/.test(await cljs(page, `(mei ${ct})`)));
+  check("... MEI → tree → MEI gives the MEI", (await cljs(page, `(let [m (mei ${ct})] (= m (mei/->mei (mei/<-mei m))))`)) === "true");
+  const mt2 = (await cljs(page, `(place-tree! (mei/<-mei (mei ${ct})) nil 2100 1500)`)).trim();
+  const p1 = await cljs(page, `(mt/pitches (tree-data ${ct}))`), p2 = await cljs(page, `(mt/pitches (tree-data ${mt2}))`);
+  check("a tree read from MEI goes into a new tree box (as a dropped .mei file does), with the same notes", p2 === p1, p1 + " / " + mt2 + " → " + p2);
   await cljs(page, `(move-stroke ${ct} :n2 0 -100)`);
   check("in measures, a change of pitch is written in the note", (await cljs(page, `(mt/pitches (tree-data ${ct}))`)) === '["c4" "e4"]');
   await cljs(page, `(unquantize! ${ct})`);
