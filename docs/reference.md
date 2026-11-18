@@ -185,6 +185,7 @@ A box Claude builds inside, from the request in its text: agent "…". Its conte
 
 **Messages and gestures**
 
+- `its panel`: the controls of its content that are presented ((present :bN x y), or in presentation mode) show on the agent box itself, as on a patch box, played from outside; Claude presents the controls it builds
 - `?`: on an agent box: what this one does and what each of its ports takes and sends, as Claude described it when it built it, before this page
 - `double-click`: opens its content, in its line's tab
 - `(ask-agent :bN) · (ask-agent :bN "…")`: builds it again from its text · with a new request
