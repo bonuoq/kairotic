@@ -158,6 +158,13 @@ export function figuring(spec = {}) {
     for (let t = 0; t < units.length; t++) figsAt[t] = all.some((fs) => !fs[t]) ? null : [...new Set(all.flatMap((fs) => fs[t]))];
   }
   const V = schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: figsAt[t] })), key: K, figured: !!fin, lo, hi, spacing });
+  // the chords of the cadence: the last a 5/3 (a root position: its 5th or its 3rd above the bass, never a 6), and
+  // before it, over the ⑤ of a ⑤–① cadence, a 5/3 or a 7/3 (the 6/4 or 5/4 of a compound cadence on the unit before)
+  const cadenceChords = (t) => {
+    if (t === n - 1) return ["5/3"];
+    if (fin && fin.kind === "⑤–①" && t === n - 2) return ["5/3", "7/3"];
+    return null;
+  };
   const D = V.degree, R = V.raised;
 
   // ─── the melody: a note played, taken as it is or corrected to the nearest with a future ───
@@ -203,8 +210,10 @@ export function figuring(spec = {}) {
       else return [{ chord: null, cost: 0, why: [`a ${t >= 1 && Math.abs(D(c) - D(U[t - 1])) === 1 ? "passing" : "neighbour"} note (a ${FIG[v.cls]}): the chord before it goes on`] }];
     }
     const out = [];
+    const only = cadenceChords(t);
     for (const [ch, def] of Object.entries(CHORDS)) {
       if (!def.ok.includes(v.cls)) continue;
+      if (only && !only.includes(ch)) continue;
       let cost = 0; const why = [];
       if (bassHeld) {
         // over a bass that holds its note the chord stays, or resolves: a 6th a 6/3 (the 7–6), a 5th or a 3rd a 5/3
@@ -319,9 +328,25 @@ export function figuring(spec = {}) {
    *  octave), or null; a dissonance on a weak unit passes, and needs none. */
   const noChord = (P, t, a, b) => {
     const vt = P.top.vertical(t, a), vm = P.middle.vertical(t, b);
-    if ((vt.q === "dissonant" || vm.q === "dissonant") && !units[t].strong) return null;
+    const only = cadenceChords(t);
+    if (!only && (vt.q === "dissonant" || vm.q === "dissonant") && !units[t].strong) return null;
     const have = new Set([vt.cls, vm.cls]);
-    return Object.values(CHORDS).some((ch) => ch.need.every((c) => have.has(c)) && [...have].every((c) => ch.ok.includes(c))) ? null : "no chord of the figures (its 3rd missing)";
+    const names = only || Object.keys(CHORDS);
+    if (names.some((ch) => CHORDS[ch].need.every((c) => have.has(c)) && [...have].every((c) => CHORDS[ch].ok.includes(c)))) return null;
+    return only ? `the cadence asks for ${only.join(" or ")} here` : "no chord of the figures (its 3rd missing)";
+  };
+  /** Why the upper voices, going from a dominant ⑤ to the ① (or the ⑥) after it, do not resolve its tendencies, or
+   *  null: the leading tone goes up to the tonic, the 7th (④) down to ③ — in either voice. */
+  const resolves = (TT, MM, t, a, b) => {
+    if (t < 1 || !units[t].struck || !units[t - 1].dominant || mod(units[t - 1].d, 7) !== 4) return null;
+    const to = mod(units[t].d, 7);
+    if (to !== 0 && to !== 5) return null;
+    for (const [px, x, who] of [[TT[t - 1], a, "the upper voice"], [MM[t - 1], b, "the middle voice"]]) {
+      const deg = mod(D(px), 7);
+      if (deg === 6 && (K.mode === "major" || R(px)) && D(x) !== D(px) + 1) return `the leading tone goes up to the tonic (${who})`;
+      if (deg === 3 && D(x) !== D(px) - 1) return `the 7th of the dominant goes down to ③ (${who})`;
+    }
+    return null;
   };
   /**
    * The middle voices under the melody U, asked at each unit a chord (a figure), one of several (an array: any of the
@@ -338,7 +363,7 @@ export function figuring(spec = {}) {
       const have = new Set([P.top.vertical(t, T[t]).cls, P.middle.vertical(t, b).cls]);
       return A.some((ch) => CHORDS[ch].need.every((c) => have.has(c)) && [...have].every((c) => CHORDS[ch].ok.includes(c)));
     };
-    const why = (MM, t, b) => P.check(T, MM, t, T[t], b) || (fits(t, b) ? null : `the chord asked is ${[].concat(allowed[t]).join(" or ")}`) || noChord(P, t, T[t], b);
+    const why = (MM, t, b) => P.check(T, MM, t, T[t], b) || (fits(t, b) ? null : `the chord asked is ${[].concat(allowed[t]).join(" or ")}`) || noChord(P, t, T[t], b) || resolves(T, MM, t, T[t], b);
     const memo = new Map();
     const countFrom = (MM) => {
       const t = MM.length;
@@ -403,7 +428,7 @@ export function figuring(spec = {}) {
     for (const a of V.codes) {
       if (topCheck(TT, t, a) !== null) continue;
       TT.push(a);
-      for (const b of P.middle.codes) if (P.check(TT, MM, t, a, b) === null && noChord(P, t, a, b) === null) { MM.push(b); v += jointFrom(TT, MM, topCheck); MM.pop(); }
+      for (const b of P.middle.codes) if (P.check(TT, MM, t, a, b) === null && noChord(P, t, a, b) === null && resolves(TT, MM, t, a, b) === null) { MM.push(b); v += jointFrom(TT, MM, topCheck); MM.pop(); }
       TT.pop();
     }
     memo.set(k, v);
@@ -426,7 +451,7 @@ export function figuring(spec = {}) {
     for (let t = 0; t < k; t++) {
       const next = new Map(), edges = [];
       for (const [key, st] of layer) for (const b of P.middle.codes) {
-        if (P.check(U, st.MM, t, U[t], b) !== null || noChord(P, t, U[t], b) !== null) continue;
+        if (P.check(U, st.MM, t, U[t], b) !== null || noChord(P, t, U[t], b) !== null || resolves(U, st.MM, t, U[t], b) !== null) continue;
         if (asked[t] && !makes(t, U[t], b, asked[t])) continue;
         const MM = [...st.MM, b], nk = MM.slice(Math.max(0, MM.length - 3)).join(",");
         const e = next.get(nk) || { MM, paths: 0n };
