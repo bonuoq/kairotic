@@ -1,0 +1,79 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 55 · MEI · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, the app's modules, the kernel and the page's ClojureScript), driven
+// as a person would: lines, keys, meters, a tree edited, a MEI from elsewhere, Verovio engraving what was written.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  const M = () => window.kairoticMei;
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const wait = async (ok, ms = 8000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+  const pick = (id, v) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("change", { bubbles: true })); };
+  const allHold = () => { const c = M().checks(); return c && c.length >= 4 && c.every((x) => x[1]); };
+  const failing = () => (M().error() ? [M().error()] : (M().checks() || []).filter((x) => !x[1]).map((x) => x[0])).join("; ");
+  try {
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
+    const loader = Array.from(doc.querySelectorAll("script:not([src]):not([type])")).map((s) => s.textContent).join("\n");
+    (0, eval)(loader.replace(/window\.addEventListener\("DOMContentLoaded"[\s\S]*$/, ""));
+    window.kairoticKernel = await import("../../52-continuum/kairotic/continuum.mjs");
+    await window.kairoticLoadCljs(["../../../core/kairotic/", "../../../kairotic/"], ["score.cljs", "canvas.cljs", "spell.cljs", "mt.cljs"]);
+    await window.kairoticLoadCljs(["../"], ["kairotic/meitree.cljs"]);
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    is("the phrase in D: every check of the round trip holds" + (allHold() ? "" : " (" + failing() + ")"), allHold() && M().checks().length === 6);
+    is("the line read back: ten events, with names from the MEI", M().line().length === 10 && M().line().every((e) => typeof e.name === "string"));
+    is("the line drawn: heads and strokes", $$("#score .head").length >= 5 && $$("#score .stroke").length >= 3);
+    is("… the staff labelled with the MEI's names (the first is d4)", $$("#score .idx")[0] && $$("#score .idx")[0].textContent === "d4");
+    is("the tree and the MEI shown", /^\[:voice/.test(document.getElementById("tree").value.trim()) && /<extMeta type="kairotic">/.test(document.getElementById("mei").value));
+
+    const vok = await wait(() => M().verovio() !== "loading", 60000);
+    is("Verovio engraves the MEI" + (vok ? "" : " (" + M().verovio() + ")"), M().verovio() === "ready" && await wait(() => $$("#engraved svg .note").length >= 10, 5000));
+    is("… with the key of D (two sharps)", $$("#engraved svg .keySig .keyAccid").length === 2);
+    is("… the clef at the start of the line drawn too (Study 52's)", await wait(() => document.querySelector("#score .vrv .clef"), 3000));
+
+    pick("meter", "3");
+    is("3/4: every check holds" + (allHold() ? "" : " (" + failing() + ")"), allHold() && /meter\.count="3"/.test(M().mei()));
+    pick("key", "-1");
+    is("in F: every check holds, one flat" + (allHold() ? "" : " (" + failing() + ")"), allHold() && /key\.sig="1f"/.test(M().mei()));
+    pick("line-preset", "gesture");
+    is("the gesture: every check holds" + (allHold() ? "" : " (" + failing() + ")"), allHold() && M().line().length === 8);
+    pick("res-preset", "graphic");
+    is("the resolution changes the drawing, not the data: strokes only, every check holds", $$("#score .stroke").length === 8 && allHold());
+    pick("res-preset", "written");
+
+    // the tree edited: its tempo
+    const tr = document.getElementById("tree");
+    tr.value = tr.value.replace(":tempo 72", ":tempo 96");
+    document.getElementById("apply-tree").click();
+    is("the tree edited and applied: tree → MEI → tree holds" + (allHold() ? "" : " (" + failing() + ")"), allHold() && /:tempo 96/.test(M().tree()));
+
+    // a MEI from elsewhere
+    document.getElementById("foreign").click();
+    is("a MEI written elsewhere: read as its notation, and MEI → tree → MEI holds" + (allHold() ? "" : " (" + failing() + ")"), allHold());
+    is("… its line: g4 f#4 e4 d4 f4 bb4, the tied D one event", JSON.stringify(M().line().map((e) => e.name)) === JSON.stringify(["g4", "f#4", "e4", "d4", "f4", "bb4"]) && M().line()[3].dur === 2);
+    is("… engraved", await wait(() => $$("#engraved svg .note").length === 7, 5000));
+
+    // a MEI that is not
+    document.getElementById("mei").value = "<mei";
+    document.getElementById("read-mei").click();
+    is("a MEI that is not one says so", /not well-formed/.test(M().error() || ""));
+
+    is("no error on the page", errors.length === 0);
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  document.getElementById("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>

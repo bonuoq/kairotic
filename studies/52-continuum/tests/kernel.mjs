@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Study 52 · continuum: the kernel's tests. In a browser: tests/kernel.html; in Node:
 //   node studies/52-continuum/tests/kernel.mjs
-import { spell, heights, heightAt, curveAt, noteValue, quantize, project, sync, perform, Follower, hzOf } from "../kairotic/continuum.mjs";
+import { spell, spellName, heights, heightAt, curveAt, noteValue, quantize, project, sync, perform, Follower, hzOf } from "../kairotic/continuum.mjs";
 
 export function run() {
   const results = [];
@@ -22,6 +22,15 @@ export function run() {
     is("the pitch axis glides: 0 free, ½ the grid, 1 the staff, and halfway between them in between",
        near(heightAt(h, 0), h.free) && near(heightAt(h, 0.5), h.grid) && near(heightAt(h, 1), h.staff) &&
        near(heightAt(h, 0.75), (h.grid + h.staff) / 2));
+  }
+
+  {
+    // a written name decides the staff (Study 55: the name the MEI has), the key only the accidental
+    is("a name read in a key: Gb4 in D is a flat on G (an accidental), F#4 is not", spellName("gb4", 2).step === 4 * 7 + 4 && spellName("gb4", 2).acc === "♭" && spellName("f#4", 2).acc === null);
+    is("… as Kairotic writes them: bb3, cn5, f##4", spellName("bb3").alter === -1 && spellName("cn5").alter === 0 && spellName("f##4").alter === 2 && spellName("h4") === null);
+    is("a free pitch with a written name sits on the name's step (66 Hz-wise is F#4, written Gb4 it is on G)",
+       heights(hzOf(66), 0, 440, "gb4").staff === 2 && heights(hzOf(66), 0).staff === 1);
+    is("the projection takes an event's name when it has one", project([{ t: 0, dur: 1, hz: hzOf(66), name: "gb4" }], { time: 1, pitch: 1, glyph: 1 }).notes[0].y === 2);
   }
 
   // ── curves, values, grid ──

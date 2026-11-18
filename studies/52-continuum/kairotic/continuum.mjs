@@ -48,12 +48,29 @@ export function spell(midi, key = 0) {
   return { letter: pick.letter, alter: pick.alter, octave, step: octave * 7 + pick.letter, acc, name: LETTERS[pick.letter] + (["b", "", "#"][pick.alter + 1]) + octave };
 }
 
+/**
+ * A written name ("f#4", "bb3", "cn5", as Kairotic's trees and MEI write them) read in a key, as spell returns it:
+ * the name decides the letter and the alteration, the key only whether an accidental is written. Null if it is not one.
+ * (Study 55: the staff takes the name the MEI has, so the continuum and the engraving agree.)
+ */
+export function spellName(name, key = 0) {
+  const m = /^\s*([a-g])(##|#|x|s|bb|b|n)?(-?\d+)\s*$/i.exec(String(name || ""));
+  if (!m) return null;
+  const letter = "cdefgab".indexOf(m[1].toLowerCase());
+  const alter = { "##": 2, x: 2, "#": 1, s: 1, bb: -2, b: -1, n: 0 }[(m[2] || "n").toLowerCase()];
+  const octave = parseInt(m[3], 10), sig = signature(key);
+  const acc = alter === sig[letter] ? null : (["𝄫", "♭", "♮", "♯", "𝄪"][alter + 2]);
+  return { letter, alter, octave, step: octave * 7 + letter, acc, name: LETTERS[letter] + (["bb", "b", "", "#", "##"][alter + 2]) + octave };
+}
+
 const E4_STEP = 4 * 7 + 2;
 
-/** Heights of one pitch at the three marks of the pitch axis: free (Hz), tempered (a semitone grid), written (staff). */
-export function heights(hz, key = 0, a4 = A4) {
+/** Heights of one pitch at the three marks of the pitch axis: free (Hz), tempered (a semitone grid), written (staff);
+ *  with a written name the staff is the name's (else the pitch is spelled in the key). */
+export function heights(hz, key = 0, a4 = A4, name = null) {
   const m = midiOf(hz, a4);
-  return { free: (m - E4) * 7 / 12, grid: (Math.round(m) - E4) * 7 / 12, staff: spell(m, key).step - E4_STEP, midi: m };
+  const w = (name && spellName(name, key)) || spell(m, key);
+  return { free: (m - E4) * 7 / 12, grid: (Math.round(m) - E4) * 7 / 12, staff: w.step - E4_STEP, midi: m };
 }
 
 /** The height of a pitch at a pitch resolution r: 0 free → ½ tempered → 1 written. */
@@ -101,7 +118,7 @@ export function quantize(ev, { bpm = 60, div = 4 } = {}) {
 
 /**
  * Projects a line of events at the resolutions `res` ({time, pitch, glyph}: numbers or curves over time).
- * events: [{t, dur, hz, hz2?, amp?}] (seconds, Hz; hz2 the end of a glissando).
+ * events: [{t, dur, hz, hz2?, amp?, name?}] (seconds, Hz; hz2 the end of a glissando; name the written one, if known).
  * Returns, for each event, where its parts are and how much of each is drawn (0…1), plus the bar lines and how much
  * of the staff and of the semitone grid shows at a time:
  *   notes: [{i, r, x, x1, y, y1, gliss, stroke, thick, head, filled, durLine, stem, flags, dots, acc, accAlpha, name}]
@@ -116,9 +133,9 @@ export function project(events, res, { bpm = 60, div = 4, meter = 4, key = 0, a4
   const notes = events.map((ev, i) => {
     const r = resAt(res, ev.t);
     const q = quantize(ev, { bpm, div });
-    const h0 = heights(ev.hz, key, a4), h1 = ev.hz2 ? heights(ev.hz2, key, a4) : h0;
+    const h0 = heights(ev.hz, key, a4, ev.name), h1 = ev.hz2 ? heights(ev.hz2, key, a4) : h0;
     const staffness = clamp((r.pitch - 0.5) * 2);
-    const v = noteValue(q.beats), sp = spell(h0.midi, key);
+    const v = noteValue(q.beats), sp = (ev.name && spellName(ev.name, key)) || spell(h0.midi, key);
     return {
       i, r,
       x: lerp(ev.t, q.t, r.time), x1: lerp(ev.t + ev.dur, q.t + q.dur, r.time),
