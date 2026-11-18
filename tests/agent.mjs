@@ -11,11 +11,11 @@ const until = async (page, src, ok, ms = 20000) => {
   return got;
 };
 const answer = (code, doc) => JSON.stringify({ content: [{ type: "text", text: "Here it is.\n" + (doc ? "```agent\n" + doc + "\n```\n" : "") + "```clojure\n" + code + "\n```" }], stop_reason: "end_turn" });
-const ADD_TWO_PANEL = ADD_TWO + '\n(box :b5 "number" 120 20)\n(present :b5 0 0)';
 const DOC = '{:about "Adds one to every number it gets." :inlets ["a number"] :outlets ["the number plus one"]}';
 const ADD_ONE = ['(box :b1 "inlet" 20 20)', '(box :b2 "inc" 20 80)', '(box :b3 "outlet" 20 140)', "(connect :b1 0 :b2 0)", "(connect :b2 0 :b3 0)"].join("\n");
 const ADD_TWO = ['(box :b1 "inlet" 20 20)', '(box :b2 "inc" 20 80)', '(box :b3 "inc" 20 140)', '(box :b4 "outlet" 20 200)',
                  "(connect :b1 0 :b2 0)", "(connect :b2 0 :b3 0)", "(connect :b3 0 :b4 0)"].join("\n");
+const ADD_TWO_PANEL = ADD_TWO + '\n(box :b5 "number" 120 20)\n(present :b5 0 0)';
 
 export async function agent(page, check) {
   if ((await cljs(page, "(boolean @sample-fn)")) !== "true") { check("Claude is offered in this view", false); return; }
