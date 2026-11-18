@@ -468,7 +468,8 @@
    {:about "Claude builds what you ask inside it (issue #269): write the request as its text, agent \"harmonize this melody in four parts\", and its content is made with the classes the work knows — the official packages carry the rules of counterpoint, rhythm and harmony — and checked before it arrives. The content is a patch you can open, read, edit and play without Claude: once built it makes no call, in releases, rooms and on phones. It lives in a line of its own (agent b3), so each build is one more point of that line and going back to ask for something else branches. Whoever asks pays, on their own Claude: who writes the text, or whose patch sends the message to its last inlet."
     :inlets ["one per inlet / inlet~ box of its content, left to right" "last: a request, a string or [:ask \"…\"] — the text changes to it and Claude builds again (one build at a time; a request equal to the one that built it is not sent again)"]
     :outlets ["one per outlet / outlet~ box of its content" "last: what it is doing — :building, :built, [:error \"…\"]"]
-    :messages [["?" "on an agent box: what this one does and what each of its ports takes and sends, as Claude described it when it built it, before this page"]
+    :messages [["its panel" "the controls of its content that are presented ((present :bN x y), or in presentation mode) show on the agent box itself, as on a patch box, played from outside; Claude presents the controls it builds"]
+               ["?" "on an agent box: what this one does and what each of its ports takes and sends, as Claude described it when it built it, before this page"]
                ["double-click" "opens its content, in its line's tab"]
                ["(ask-agent :bN) · (ask-agent :bN \"…\")" "builds it again from its text · with a new request"]
                ["(agent-info :bN)" "what it was built from, its line, who asked, and whether its content was changed after"]]

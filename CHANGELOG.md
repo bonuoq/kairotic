@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **An agent's panel.** The presented controls of an agent's content show on the agent box itself, as those of a
+  `patch` box do (Study 11): an instrument Claude built is played from outside without opening it. Claude is told
+  to present the controls it builds; presenting or hiding them by hand in its content changes the panel too.
+
 - **`state`, `transition`, `instruction` and `region` leave the core** (breaking). They came from Study 1 — the
   temporal, conditional, opportune changes of state a work would be made of — but never had a behaviour: boxes with
   ports that did nothing. A layer of form (states, transitions with time windows and conditions, instructions for

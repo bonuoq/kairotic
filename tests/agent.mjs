@@ -11,6 +11,7 @@ const until = async (page, src, ok, ms = 20000) => {
   return got;
 };
 const answer = (code, doc) => JSON.stringify({ content: [{ type: "text", text: "Here it is.\n" + (doc ? "```agent\n" + doc + "\n```\n" : "") + "```clojure\n" + code + "\n```" }], stop_reason: "end_turn" });
+const ADD_TWO_PANEL = ADD_TWO + '\n(box :b5 "number" 120 20)\n(present :b5 0 0)';
 const DOC = '{:about "Adds one to every number it gets." :inlets ["a number"] :outlets ["the number plus one"]}';
 const ADD_ONE = ['(box :b1 "inlet" 20 20)', '(box :b2 "inc" 20 80)', '(box :b3 "outlet" 20 140)', "(connect :b1 0 :b2 0)", "(connect :b2 0 :b3 0)"].join("\n");
 const ADD_TWO = ['(box :b1 "inlet" 20 20)', '(box :b2 "inc" 20 80)', '(box :b3 "inc" 20 140)', '(box :b4 "outlet" 20 200)',
@@ -18,7 +19,7 @@ const ADD_TWO = ['(box :b1 "inlet" 20 20)', '(box :b2 "inc" 20 80)', '(box :b3 "
 
 export async function agent(page, check) {
   if ((await cljs(page, "(boolean @sample-fn)")) !== "true") { check("Claude is offered in this view", false); return; }
-  const bodies = [], answers = [answer('(box :b1 "no-such-class" 20 20)'), answer(ADD_ONE, DOC), answer(ADD_TWO)];
+  const bodies = [], answers = [answer('(box :b1 "no-such-class" 20 20)'), answer(ADD_ONE, DOC), answer(ADD_TWO), answer(ADD_TWO_PANEL)];
   const api = "https://api.anthropic.com/**";
   await page.route(api, (route) => {
     bodies.push(route.request().postData() || "");
@@ -83,6 +84,8 @@ export async function agent(page, check) {
     await page.click('#agents-list li[data-agent*="b900"] [data-agent-act=send]');
     const third = await until(page, "(:built-from (agent-info :b900))", (x) => x === '"add three"', 30000);
     check("... and Build asks it: a new request, built (on your own Claude)", third === '"add three"' && bodies.length === 4, `${third} · ${bodies.length} calls`);
+    check("the controls it presents are its panel, on the box itself, as a patch's", (await cljs(page, "(mapv :id (:kids (panel-layout (get-in (current) [:boxes :b900]))))")) === "[:b5]");
+    check("... and Claude is told to present them", /present them with \(present :bN x y\)/.test(bodies[3]));
     await page.click('#agents-list li[data-agent*="b900"] [data-agent-act=rebuild]');
     const fourth = await until(page, "(count (vals (line-nodes (agent-line (get-in (current) [:boxes :b900])))))", (x) => x === "4", 30000);
     check("Build again: the same request, another answer, one more point of its line", fourth === "4" && bodies.length === 5, `${fourth} points · ${bodies.length} calls`);
