@@ -7,6 +7,14 @@
   by step; *strict*, leaps up to a 5th or the octave, turned back by step from a 4th, never two the same way. `parts`
   takes one for both upper voices or one each. Off by default (*free*: the counts of Studies 51 and 54 unchanged);
   Study 56's melody is moderate, its middle voice strict, and the number of melodies falls by one or two orders.
+- **Takes** (discussion #289): several performances of one tree, on its root as `:takes [{:id :name :made :audio
+  :when {note-id [onset dur]}}]` — note times only, with an optional reference to the audio; curves are derived.
+  `kairotic.mei` writes them to MEI's performance module (`<performance>`/`<recording>`/`<when absolute
+  data="#note">`, before `<body>`) and keeps them exactly in its EDN; a MEI from elsewhere with a performance is
+  read into takes (the notes they point at get their `xml:id` as `:id`). `tree->line` takes `{:take id}`;
+  `add-take`, `remove-take`, `take-of-line`, `promote-take` (a take as the line's own time) and `ensure-ids` (an
+  `:id` for every note that begins a sound). The app's takes, kept "only for me" by default as Learn does, come with
+  the continuum view.
 
 - **Study 56 · figuring: a voice that allows a third, and the phrase closed by a cadence** (after trying it). Written
   for three, the melody and its figures are chosen in three parts: a note only where a middle voice can still be

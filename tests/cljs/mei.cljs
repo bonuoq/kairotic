@@ -79,4 +79,37 @@
       (t/is "the roll's free form keeps the written times" (= [0 1 3] (take 3 (mapv (comp :at mt/attrs) (mt/kids (first (mt/kids (tc/free-form q))))))))
       (let [m (mei/->mei q)]
         (t/is "a quantized tree as MEI: its real times as @tstamp.real" (re-find #"tstamp\.real=\"00:00:00\.525\"" m))
-        (t/is "… MEI → tree → MEI holds" (= m (mei/->mei (mei/<-mei m))))))))
+        (t/is "… MEI → tree → MEI holds" (= m (mei/->mei (mei/<-mei m))))))
+
+    ;; takes (discussion #289): several performances of one tree, on its root
+    (let [tr (mei/line->tree (take 4 phrase) {:bpm 60 :key 2})
+          tk {:id "t1" :name "Tuesday" :audio "a1b2c3" :when {"e0" [0.02 0.48] "e2" [1.03 0.95] "e3" [2.1 0.4]}}
+          t2 (mei/add-take tr tk)
+          m (mei/->mei t2)]
+      (t/is "a take goes to MEI's performance module: a <when> per note played, pointing at it"
+            (and (re-find #"<performance[^>]*xml:id=\"perf-t1\"" m) (re-find #"<performance[^>]*label=\"Tuesday\"" m)
+                 (re-find #"<recording[^>]*betype=\"time\"" m) (re-find #"<avFile[^>]*target=\"a1b2c3\"" m)
+                 (= 3 (count (re-seq #"<when " m))) (re-find #"absolute=\"00:00:01\.030\" data=\"#m-k-\d+\"" m)))
+      (t/is "… before <body>" (< (.indexOf m "<performance") (.indexOf m "<body>")))
+      (t/is "… and comes back exactly: tree → MEI → tree, MEI → tree → MEI" (and (= t2 (mei/<-mei m)) (= m (mei/->mei (mei/<-mei m)))))
+      (t/eq "the line of a take: where it played each note it played" (mapv (juxt :id :t :dur) (mei/tree->line t2 {:take "t1"}))
+            [["e0" 0.02 0.48] ["e2" 1.03 0.95] ["e3" 2.1 0.4]])
+      (t/eq "… the line's own time is untouched" (mapv :t (mei/tree->line t2)) [0 0.5 1 2])
+      (t/eq "promoted, the take is the line's time" (mapv (juxt :t :dur) (take 3 (mei/tree->line (mei/promote-take t2 "t1"))))
+            [[0.02 0.48] [0.5 0.5] [1.03 0.95]])
+      (t/eq "a take from a line played" (mei/take-of-line [{:id "e0" :t 0.1 :dur 0.4} {:t 9 :dur 1}] {:id "t2" :audio "x"})
+            {:id "t2" :when {"e0" [0.1 0.4]} :audio "x"})
+      (t/is "takes added and removed" (and (= ["t1" "t2"] (mapv :id (mei/takes (mei/add-take t2 {:id "t2" :when {}}))))
+                                           (= [] (mei/takes (mei/remove-take t2 "t1"))))))
+    (let [fm (str/replace foreign "<music><body>"
+                          "<music><performance label=\"concert\"><recording betype=\"time\"><avFile target=\"take.wav\"/><when absolute=\"00:00:01.500\" data=\"#n2\"/><when absolute=\"00:00:02.250\" data=\"#n3\"/></recording></performance><body>")
+          tr (mei/<-mei fm)]
+      (t/eq "a MEI from elsewhere with a performance: its take, the notes it points at get their xml:id"
+            [(:takes (second tr)) (keep (comp :id second) (filter #(and (vector? %) (= :note (first %))) (tree-seq vector? seq tr)))]
+            [[{:id "take1" :when {"n2" [1.5 nil] "n3" [2.25 nil]} :name "concert" :audio "take.wav"}] ["n2" "n3"]])
+      (t/eq "… and its line: where the take played them, for as long as they are written" (mapv (juxt :id :t :dur) (mei/tree->line tr {:take "take1"}))
+            [["n2" 1.5 0.5] ["n3" 2.25 0.5]]))
+    (let [q [:voice [:measure {:meter [4 4]} [:note {:pitch "c4" :dur 2}] [:note {:pitch "d4" :dur 2 :tie true}]]
+             [:measure {:meter [4 4]} [:note {:pitch "d4" :dur 1}] [:rest {:dur 1}] [:note {:pitch "e4" :dur 2 :id "n1"}]]]]
+      (t/eq "ensure-ids: an :id for every note that begins a sound, none for a tied piece, the ones used skipped"
+            (keep (comp :id second) (filter #(and (vector? %) (= :note (first %))) (tree-seq vector? seq (mei/ensure-ids q)))) ["n0" "n2" "n1"]))))
