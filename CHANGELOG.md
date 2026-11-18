@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 56 · figuring: a voice that allows a third, and the phrase closed by a cadence** (after trying it). Written
+  for three, the melody and its figures are chosen in three parts: a note only where a middle voice can still be
+  written under it to the end, and at each unit the likeliest chord such a voice can make with the chords before it,
+  so a middle voice can always be written from the figures. The phrase ends with a perfect or imperfect cadence where
+  the bass closes on ①; a deceptive or a half one only when chosen, the end of the bass made to fit.
+
 - **Saving files on claude.ai.** A page there may not start a download; the app now offers its files through the
   artifact's `downloads` capability, and the viewer confirms each one. A work exported as a file is saved as
   `.kairotic.zip` there (claude.ai allows zip, not .kairotic; it is a zip, and Open a file takes it as it is), so a work

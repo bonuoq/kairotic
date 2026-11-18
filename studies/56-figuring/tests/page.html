@@ -56,9 +56,22 @@ try {
   d.getElementById("asked").value = "free"; d.getElementById("third").click();
   is("G4 B4 over C4 B3, finished by the engine: no middle voice, and why (the leading tone doubled)", /stops at unit 2.*leading tone doubled/.test(d.getElementById("third-msg").textContent));
   d.getElementById("clear").click();
-  d.getElementById("room").checked = true; d.getElementById("room").dispatchEvent(new Event("change"));
+  K.forThree(true);
   press(67); press(71);
-  is("... leaving room for a third voice, B4 is corrected, and said why", K.U.length === 2 && /no room left for a middle voice/.test(d.getElementById("said").textContent));
+  is("... writing a voice that allows a third, B4 is corrected, and said why", K.U.length === 2 && /no middle voice could be written under it/.test(d.getElementById("said").textContent));
+  d.getElementById("finish").click();
+  d.getElementById("asked").value = "asked"; d.getElementById("third").click();
+  is("... finished by the engine for three: a middle voice from the figures shown, every time", K.U.length === 8 && /middle voices?; one drawn/.test(d.getElementById("third-msg").textContent) && /in three parts/.test(d.getElementById("ref").textContent));
+  is("... the next note's ways on are counted in three parts (none left at the end)", /the melody is written/.test(d.getElementById("status").textContent));
+  K.forThree(false);
+  // the ending: a deceptive cadence over the leaping Romanesca
+  K.set("romanesca", 2);
+  K.ending("deceptive");
+  await wait(() => K.F.ending === "deceptive");
+  is("the Romanesca with a deceptive ending: the bass ends G3 A3, its cadence ⑤–⑥ the one counted", K.F.notes.slice(-2).map((x) => K.F.key.name(x.d)).join(" ") === "G3 A3" && /⑤–⑥/.test(d.getElementById("cadences").textContent) && /deceptive/.test(d.getElementById("cadences").textContent));
+  K.set("scale-down", 2);
+  K.ending("half");
+  is("a half ending asked of the scale down: refused, and why", d.getElementById("ending").value === "authentic" && /half cadence needs/.test(d.getElementById("said").textContent));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);
