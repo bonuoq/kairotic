@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 56 · figuring: the partimento turned round.** A bass without figures, a melody improvised over it on the
+  keyboard, and the figures found as it goes — the rule of the octave, the melody's own dissonances, the dominant —
+  with the schemata the two lines make, the cadences the bass offers counted ahead, and a middle voice written from
+  the figures under the three-part rules (or where and why none can be). The melody is held to `partimento.mjs`'s
+  two-part rules: a note played is taken, or corrected to the nearest that can be, and why.
+
 - **MEI in the app** (discussion #217, phase 1 after Study 55). The kernel of Study 55 is a module of the core,
   `kairotic.mei`: a tree as MEI (mt/->mei's notation, `@tstamp.real`, `@dur.real` and `@vel` where a note has them,
   and one `<extMeta type="kairotic">` with the rest as EDN) and MEI as a tree, now with several voices, keys and meters
