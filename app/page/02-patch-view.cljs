@@ -760,7 +760,7 @@
                     code-box? (= :code (display-of b))
                     ctl? (own-view? b)
                     action-box? (or ctl? (contains? action-classes kc))
-                    cls (str "box" (when (kairos-classes kc) " kairos") (when (comp/subpatch? b) " sub") (when (line-ref? b) (str " ref" (when (:pin b) " pinned") (when (ref-warning b) " warn"))) (when (or music-box? code-box?) " mus") (when code-box? " code")
+                    cls (str "box" (when (comp/subpatch? b) " sub") (when (line-ref? b) (str " ref" (when (:pin b) " pinned") (when (ref-warning b) " warn"))) (when (or music-box? code-box?) " mus") (when code-box? " code")
                              (when action-box? (str " act " (if ctl? "ctl" kc)))
                              (when (contains? chosen id) " sel") (when (= id (first hover-in)) " drop")
                              (when (and (:present b) (not @pres-mode)) " presented") (when (panel-layout b) " panel"))

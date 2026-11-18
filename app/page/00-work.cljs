@@ -34,7 +34,6 @@
 (def music-classes #{"canvas" "freqt"})
 ;; boxes that act when pressed (they are moved by their left grip)
 (def action-classes #{"number" "msg" "bang"})
-(def kairos-classes #{"state" "transition" "instruction" "region"})
 
 (defn prune-lines
   "Removes the lines that no longer fit the ports of their boxes. Boxes with computed ports
