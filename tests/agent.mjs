@@ -10,14 +10,15 @@ const until = async (page, src, ok, ms = 20000) => {
   while (Date.now() - t0 < ms) { got = await cljs(page, src); if (ok(got)) return got; await page.waitForTimeout(100); }
   return got;
 };
-const answer = (code) => JSON.stringify({ content: [{ type: "text", text: "Here it is.\n```clojure\n" + code + "\n```" }], stop_reason: "end_turn" });
+const answer = (code, doc) => JSON.stringify({ content: [{ type: "text", text: "Here it is.\n" + (doc ? "```agent\n" + doc + "\n```\n" : "") + "```clojure\n" + code + "\n```" }], stop_reason: "end_turn" });
+const DOC = '{:about "Adds one to every number it gets." :inlets ["a number"] :outlets ["the number plus one"]}';
 const ADD_ONE = ['(box :b1 "inlet" 20 20)', '(box :b2 "inc" 20 80)', '(box :b3 "outlet" 20 140)', "(connect :b1 0 :b2 0)", "(connect :b2 0 :b3 0)"].join("\n");
 const ADD_TWO = ['(box :b1 "inlet" 20 20)', '(box :b2 "inc" 20 80)', '(box :b3 "inc" 20 140)', '(box :b4 "outlet" 20 200)',
                  "(connect :b1 0 :b2 0)", "(connect :b2 0 :b3 0)", "(connect :b3 0 :b4 0)"].join("\n");
 
 export async function agent(page, check) {
   if ((await cljs(page, "(boolean @sample-fn)")) !== "true") { check("Claude is offered in this view", false); return; }
-  const bodies = [], answers = [answer('(box :b1 "no-such-class" 20 20)'), answer(ADD_ONE), answer(ADD_TWO)];
+  const bodies = [], answers = [answer('(box :b1 "no-such-class" 20 20)'), answer(ADD_ONE, DOC), answer(ADD_TWO)];
   const api = "https://api.anthropic.com/**";
   await page.route(api, (route) => {
     bodies.push(route.request().postData() || "");
@@ -43,6 +44,12 @@ export async function agent(page, check) {
     check("its ports: the content's, then its own", (await cljs(page, "(io (get-in (current) [:boxes :b900]))")) === "[2 2]");
     check("its content: the patch Claude made", (await cljs(page, "(count (:boxes (agent-content (get-in (current) [:boxes :b900]))))")) === "3");
     check("its recipe: the request, who asked, not changed since", (await cljs(page, "((juxt :built-from :stale :boxes) (agent-info :b900))")) === '["add one" false 3]');
+    // what it is, from outside (#275): Claude's description, its help, its ports on hover
+    check("Claude said what it built: what it does and what each port takes and sends", (await cljs(page, "((juxt :about :inlets :outlets) (agent-info :b900))")) === '["Adds one to every number it gets." ["a number"] ["the number plus one"]]');
+    check("... and ? on it shows that first, in the Help tab", (await cljs(page, '(do (swap! ui assoc :help-box :b900) (let [h (help-page "agent")] [(str/includes? h "Adds one to every number") (str/includes? h "the number plus one") (str/includes? h "the agent\'s own")]))')) === "[true true true]");
+    check("... its ports say it on hover", (await cljs(page, '[(port-doc (get-in (current) [:boxes :b900]) :in 0 2) (some? (port-doc (get-in (current) [:boxes :b900]) :out 1 2))]')) === '["a number" true]');
+    check("... the other classes' ports too, from their help", (await cljs(page, '(string? (port-doc {:text "metro 500"} :in 0 2))')) === "true");
+    check("agent-core is not a class to write: out of the lists and of Claude's catalog", (await cljs(page, '[(some #{"agent-core"} (map first (comp/listing))) (some (fn [l] (str/starts-with? l "agent-core")) (ai/classes))]')) === "[nil nil]");
     await cljs(page, "(connect :b901 0 :b900 0)");
     await cljs(page, "(connect :b900 0 :b902 0)");
     await cljs(page, "(send! :b901 41)");

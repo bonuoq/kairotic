@@ -261,7 +261,7 @@
                (let [p (build (link-code src))
                      bs (:boxes p)
                      k-of (fn [b] (klass (:text b)))
-                     known? (fn [k] (or (comp/lookup k) (lib/package-of k)))
+                     known? (fn [k] (and (not (:internal (comp/lookup k))) (or (comp/lookup k) (lib/package-of k))))
                      unknown (vec (for [[id b] bs :let [k (k-of b)] :when (not (known? k))] (str (name id) ": no class «" k "»")))
                      fausts (vec (for [[id b] bs :when (= "faust~" (k-of b))] [id (str (get-in b [:data :source]))]))
                      comps (vec (for [[id b] bs :when (#{"component"} (k-of b))] [id (str (get-in b [:data :source]))]))]

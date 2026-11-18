@@ -62,6 +62,8 @@
 ;; ───── the Help tab ─────
 
 (defonce help-cls (atom nil))   ; nil = the index
+;; what a class's page shows first for the box it was asked from ((:help-box @ui), set by ?): (fn [cls] html or nil)
+(defonce help-extra (atom nil))
 
 (defn help-ports [label n names]
   (when (pos? n)
@@ -92,6 +94,7 @@
         [ins outs] (if d (try (io cls) (catch :default _ [0 0])) [(count (:inlets h)) (count (:outlets h))])
         spec (when d (spec-of d))]
     (str "<p class=\"back\"><a href=\"#\" data-help-index=\"1\">◀ Help</a></p>"
+         (when-let [f @help-extra] (try (f cls) (catch :default _ nil)))
          "<h3>" (esc cls)
          (when-let [p (:package h)] (str "<span class=\"pkg\" title=\"Writing it in a box brings this package into the work\">" (esc p) "</span>"))
          (when (= :work (:origin d)) "<span class=\"pkg\">defined in this work</span>")

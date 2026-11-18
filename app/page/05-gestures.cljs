@@ -1216,6 +1216,7 @@
           (and (or (= k "?") (= k "F1")) (not mod?))
           (let [[kind v] (:sel @ui) b (when (= kind :box) (get-in (current) [:boxes v]))]
             (.preventDefault e)
+            (swap! ui assoc :help-box (when b v))
             (show-help! (when b (klass (:text b)))))
           (and (:tsel @ui) (not mod?)
                (or (#{"ArrowUp" "ArrowDown" "ArrowLeft" "ArrowRight" "+" "=" "-" "#" "Delete" "Backspace" "Escape" "Enter"} k)
