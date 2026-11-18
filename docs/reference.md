@@ -295,6 +295,50 @@ Graphic buffer for any numeric data: strokes in a plane with axes of any range, 
 
 See also: `reader`, `reader~`, `freqt`
 
+### chance · `@kairotic/rhythm`
+
+`chance [k 3] [n 8] [seed 1]`
+
+**A generator of pulses, as `euclid`, with chance instead of evenness**: each bang draws another rhythm of k onsets among n pulses. The draws are the seed's: the same seed gives the same rhythms in the same order — for everyone in a room, and again from the history —, and `:reset` starts them again. Into a `necklace`, its measures say how even or uneven chance came out.
+
+A generator of pulses with chance: each bang draws another rhythm of k onsets among n pulses, the seed's draws (the same seed, the same rhythms in the same order).
+
+**Arguments**
+
+- `k`: how many onsets
+- `n`: how many pulses
+- `seed`: the seed of its chance: the same seed, the same rhythms
+
+**Inlets** 
+
+0. a bang: the next draw · :reset: its draws again from the first · a number: k · [:k 5], [:n 16], [:seed 7] (or a map of them): change it and start again
+
+**Outlets** 
+
+0. the pulses, ones and zeros, for a necklace
+
+**Messages and gestures**
+
+- `:bang`: the next rhythm
+- `:reset`: the draws again from the first
+- `[:seed 7]`: another seed (and start again)
+
+**Try:** Click bang several times: five onsets in sixteen, a different rhythm each time — the necklace draws it and its measures say how even it is (:even, against E(5,16)). Click :reset and bang again: the same rhythms come back, in the same order.
+
+```clojure
+(box :b1 "msg :bang" 40 20)
+(box :b2 "msg :reset" 120 20)
+(box :b3 "chance 5 16 7" 40 70)
+(box :b4 "necklace" 40 120)
+(box :b5 "print" 40 390)
+(connect :b1 0 :b3 0)
+(connect :b2 0 :b3 0)
+(connect :b3 0 :b4 0)
+(connect :b4 3 :b5 0)
+```
+
+See also: `euclid`, `necklace`, `homometric`
+
 ### chroma~ · `@kairotic/analysis`
 
 `chroma~ [ms]`
@@ -1116,6 +1160,43 @@ A dynamic stochastic oscillator, after Xenakis's GENDY: a wave of breakpoints wh
 ```
 
 See also: `osc~`, `synth~`, `faust~`
+
+### homometric · `@kairotic/rhythm`
+
+`homometric`
+
+**Homometric rhythms hold the same distances between onsets, as many times each** — the same interval vector — without being the same necklace turned or seen in a mirror. Toussaint takes the word from crystallography, where two different crystals can give the same pattern of distances. The two flat rhythms of four onsets in twelve (each distance once) are homometric; so is any half of the pulses of an even cycle with its complement: two drums, high and low congas, with the same intervals.
+
+Given a rhythm as pulses, it searches every rhythm of as many onsets among as many pulses — any rhythm of 16 pulses, a moment for the largest — and sends the others it finds.
+
+The other rhythms with the same interval vector: given pulses, it sends the rhythms homometric with them (each from its first onset), and how many there are.
+
+**Inlets** 
+
+0. pulses: the rhythm whose homometric partners are searched · a bang: search again
+
+**Outlets** 
+
+0. the homometric rhythms, a list of pulses (empty when there are none): one by one with nth, to a necklace
+1. how many there are
+
+**Try:** Click the rhythm: x x . . x . x . . . . . has each distance once (a flat interval vector, <1 1 1 1 1 1>). homometric finds the only other necklace of four onsets in twelve that does too: x x . x . . . x . . . . — compare both necklaces' measures.
+
+```clojure
+(box :b1 "msg [1 1 0 0 1 0 1 0 0 0 0 0]" 40 20)
+(box :b2 "homometric" 40 70)
+(box :b3 "nth % 0" 40 120)
+(box :b4 "necklace" 40 170)
+(box :b5 "necklace" 280 170)
+(box :b6 "print how-many" 180 120)
+(connect :b1 0 :b2 0)
+(connect :b1 0 :b5 0)
+(connect :b2 0 :b3 0)
+(connect :b3 0 :b4 0)
+(connect :b2 1 :b6 0)
+```
+
+See also: `necklace`, `swap`, `chance`
 
 ### html
 
@@ -2500,6 +2581,43 @@ The spectrum of a signal drawn in the patch, on a log scale of frequency (dB fro
 ```
 
 See also: `scope~`, `features~`
+
+### swap · `@kairotic/rhythm`
+
+`swap`
+
+**How far apart two rhythms are**: Toussaint's swap distance. A swap exchanges an onset and the silence beside it, and the distance is how many turn one rhythm into the other — an onset moved far counts more than one moved near, which the Hamming distance (how many pulses differ) cannot tell. With different numbers of onsets it is the *directed* swap distance: each onset of the shorter rhythm goes to its own onset of the other (the tresillo is 0 from the cinquillo: it is inside it).
+
+**Three readings**: in the bar (`:swap`); around the circle, a swap crossing the end of the bar (`:circular`); and as necklaces, the reference turned to where it comes nearest (`:necklace`, and `:rotation`). For the futuribles and the agents: is a variation still the same timeline?
+
+How far apart two rhythms of n pulses are (Toussaint's swap distance): the left inlet compared with the right one (the reference, cold); a map {:swap :circular :necklace :rotation :hamming :necklace-hamming :n :k}.
+
+**Inlets** 
+
+0. pulses: the rhythm compared (a bang compares again)
+1. pulses: the reference (cold)
+
+**Outlets** 
+
+0. {:swap — in the bar —, :circular — around the circle —, :necklace — at the best rotation of the reference — and :rotation, :hamming, :necklace-hamming, :n, :k [onsets of each]}
+
+**Try:** Click the son clave on the right first (the reference), then the three on the left: the son itself (0), the rumba (1: one onset a pulse later) and the bossa nova (1). The Hamming distance says 2 for both: it cannot tell how far an onset moved.
+
+```clojure
+(box :b1 "msg [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]" 40 20)
+(box :b2 "msg [1 0 0 1 0 0 0 1 0 0 1 0 1 0 0 0]" 40 50)
+(box :b3 "msg [1 0 0 1 0 0 1 0 0 0 1 0 0 1 0 0]" 40 80)
+(box :b4 "msg [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]" 400 20)
+(box :b5 "swap" 40 130)
+(box :b6 "print" 40 180)
+(connect :b4 0 :b5 1)
+(connect :b1 0 :b5 0)
+(connect :b2 0 :b5 0)
+(connect :b3 0 :b5 0)
+(connect :b5 0 :b6 0)
+```
+
+See also: `necklace`, `homometric`, `euclid`
 
 ### synth~ · `@kairotic/synth`
 
