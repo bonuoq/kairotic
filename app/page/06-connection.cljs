@@ -217,3 +217,39 @@
     (.-claude js/window) (.catch (.use (.-claude js/window) nm) (fn [_] nil))
     (backend) (js/Promise.resolve (aget (backend) nm))
     :else (js/Promise.resolve nil)))
+
+;; ───── saving a file the page made ─────
+;; A page on claude.ai may not start a download itself: it offers the file through the `downloads` capability,
+;; the viewer confirms it, and only some extensions are allowed (zip, txt, json… not .kairotic nor .wav). So
+;; there a .kairotic is saved as .kairotic.zip (it is a zip, and opens as one) and a .jsonl as .jsonl.txt.
+;; Anywhere else, as always: a link clicked.
+
+(def download-names {".kairotic" ".kairotic.zip" ".jsonl" ".jsonl.txt"})
+
+(defn save-file!
+  "Offers blob as a file called nm. Promise of the name it was saved with, or nil (declined, or not possible
+   here: then a message says why)."
+  [blob nm]
+  (let [link! (fn [] (let [a (js/document.createElement "a") url (js/URL.createObjectURL blob)]
+                       (set! (.-href a) url) (set! (.-download a) nm)
+                       (.appendChild js/document.body a) (.click a) (.remove a)
+                       (js/setTimeout (fn [] (js/URL.revokeObjectURL url)) 4000)
+                       nm))]
+    (if-not (.-claude js/window)
+      (js/Promise.resolve (link!))
+      (-> (cuse "downloads")
+          (.then (fn [dl]
+                   (if-not dl
+                     (do (repl-print! "err" (esc (str "; " nm ": this view cannot save files (the artifact needs the downloads capability)"))) nil)
+                     (let [ext (some (fn [[e _]] (when (str/ends-with? nm e) e)) download-names)
+                           nm2 (if ext (str nm (subs (get download-names ext) (count ext))) nm)]
+                       (-> (.save dl #js {:filename nm2 :data blob})
+                           (.then (fn [_] nm2))
+                           (.catch (fn [e]
+                                     (let [c (.-code e)]
+                                       (when-not (= c "declined")
+                                         (repl-print! "err" (esc (str "; " nm2 ": " (case c
+                                                                                      "rejected_extension" "claude.ai does not save files of this kind"
+                                                                                      "rate_limited" "a save is already waiting for you: answer it first"
+                                                                                      (str "could not be saved (" (or c (.-message e)) ")"))))))
+                                       nil))))))))))))

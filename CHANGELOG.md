@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Saving files on claude.ai.** A page there may not start a download; the app now offers its files through the
+  artifact's `downloads` capability, and the viewer confirms each one. A work exported as a file is saved as
+  `.kairotic.zip` there (claude.ai allows zip, not .kairotic; it is a zip, and Open a file takes it as it is), so a work
+  goes from the artifact to Kairotic Pages with its whole history, lines and sounds. The log of your requests to
+  Claude is saved as `.jsonl.txt`; a recorded sound (.wav) cannot be saved on claude.ai, and it says so.
+
 - **A long agent request no longer makes a wide box.** The box shows the start of its request (the whole of it on
   hover, in its help and in the Agents section).
 - **adc~ on claude.ai says why it cannot listen.** A page on claude.ai may not use the microphone whatever the

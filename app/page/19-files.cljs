@@ -90,15 +90,11 @@
 (defn file-name [nm ext]
   (str (or (not-empty (-> (str nm) str/lower-case (str/replace #"[^a-z0-9\u00e0-\u024f]+" "-") (str/replace #"^-|-$" ""))) "work") ext))
 
-(defn download-bytes! [bytes nm]
-  (let [a (js/document.createElement "a")
-        url (js/URL.createObjectURL (js/Blob. #js [bytes] #js {:type "application/zip"}))]
-    (set! (.-href a) url)
-    (set! (.-download a) nm)
-    (.appendChild js/document.body a)
-    (.click a)
-    (.remove a)
-    (js/setTimeout (fn [] (js/URL.revokeObjectURL url)) 4000)))
+(defn download-bytes!
+  "Saves the bytes of a .kairotic (on claude.ai through its downloads capability, as .kairotic.zip). Promise
+   of the name it was saved with, or nil."
+  [bytes nm]
+  (save-file! (js/Blob. #js [bytes] #js {:type "application/zip"}) nm))
 
 (defn export-work
   "(export-work): downloads the work as a file (.kairotic), with its whole history, every line and the sounds
@@ -112,8 +108,8 @@
          nm (file-name (str (or (:name @work) "work") (when (:release opts) " release")) ".kairotic")]
      (-> (export-bytes opts)
          (.then (fn [b]
-                  (download-bytes! b nm)
-                  (repl-print! "out" (esc (str "; " nm " · " (js/Math.round (/ (.-length b) 1024)) " KB")))))
+                  (.then (download-bytes! b nm)
+                         (fn [saved] (when saved (repl-print! "out" (esc (str "; " saved " · " (js/Math.round (/ (.-length b) 1024)) " KB"))))))))
          (.catch (fn [e] (repl-print! "err" (esc (str "Could not export the work: " (or (.-message e) e)))))))
      nm)))
 
@@ -232,7 +228,7 @@
   (fn [e]
     (when-let [f (aget (.. e -target -files) 0)]
       (-> (.arrayBuffer f)
-          (.then (fn [ab] (open-work-bytes! (js/Uint8Array. ab) (str/replace (.-name f) #"\.kairotic$" ""))))
+          (.then (fn [ab] (open-work-bytes! (js/Uint8Array. ab) (str/replace (.-name f) #"\.kairotic(\.zip)?$|\.zip$" ""))))
           (.catch (fn [err]
                     (busy! nil)
                     (repl-print! "err" (esc (str "Could not open " (.-name f) ": " (or (.-message err) err))))))))))
