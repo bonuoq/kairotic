@@ -1,0 +1,357 @@
+;; SPDX-License-Identifier: MPL-2.0
+;; Kairotic · Study 55 · mei: the continuum of Study 52 kept in a tree and in MEI, both ways, deterministically.
+;;
+;;   line ──line->tree──▶ tree ──->mei──▶ MEI ──<-mei──▶ tree ──tree->line──▶ line
+;;
+;; The tree is kairotic.mt's (the app's musical tree); its MEI is the one the app already writes (mt/->mei:
+;; measures, spelling, ties, beams), with what the written domain cannot say added in MEI's own terms where MEI has
+;; them and in one <extMeta> otherwise. Reading goes the other way. What each side keeps:
+;;
+;;   written (MEI's notation)      measures and meter, key, written durations, ties, the spelled name of each note
+;;   gestural (MEI attributes)     @tstamp.real and @dur.real (where it sounds, in seconds), @vel — a mirror
+;;   the rest (<extMeta>, EDN)     the exact Hz of a free note, its glissando, the line's resolutions, wires and
+;;                                 electronics, keyed by the xml:id of the note in this MEI
+;;
+;; Canonical tree. A voice [:voice {:name :key :tempo :continuum} & measures]; every measure says its :meter (and
+;; :key where it changes); a note is one per measure it sounds in, :tie true when it goes on into the next; one rest
+;; per silence per measure. A note of a line has :hz (it is free: its written name is chosen when it is written, by
+;; kairotic.spell) and, on its first piece only, :id, :vel, :tstamp.real, :dur.real and :gliss. Then
+;;   (<-mei (->mei t)) = t      and      (->mei (<-mei m)) = m      for a canonical t and a MEI m written from one.
+;; A MEI written elsewhere (no <extMeta>) reads as its notation: names, durations, ties, meters, keys.
+
+(ns kairotic.meitree
+  (:require [clojure.string :as str]
+            [clojure.edn :as edn]
+            [kairotic.canvas :as cv]
+            [kairotic.spell :as sp]
+            [kairotic.mt :as mt]))
+
+(def mei-ns "http://www.music-encoding.org/ns/mei")
+
+;; ───────── line → tree ─────────
+
+(defn gliss-cents [hz hz2] (* 1200 (/ (js/Math.log (/ hz2 hz)) (js/Math.log 2))))
+
+(defn line->tree
+  "A line of events {:t :dur (s) :hz :hz2? :amp?} as a canonical voice: written on a grid of `div` parts of a beat at
+   `bpm`, in measures of `meter`, monophonic (a note is cut where the next begins), with what it really was kept on
+   each note. `continuum` (resolutions, wires, electronics) rides on the voice."
+  [line {:keys [bpm key meter div name continuum] :or {bpm 60 key 0 meter [4 4] div 4 name "line"}}]
+  (let [unit (/ 60 bpm div)                                   ; seconds per part of the grid
+        q (fn [s] (js/Math.round (/ s unit)))
+        [p qq] meter
+        bar (* p (/ 4 qq) div)                                    ; parts per measure
+        evs (vec (sort-by :t (map-indexed (fn [i e] (assoc e :i i)) line)))
+        spans (loop [i 0 prev 0 out []]
+                (if (< i (count evs))
+                  (let [e (nth evs i)
+                        s0 (max prev (q (:t e)))
+                        s1 (max (inc s0) (q (+ (:t e) (:dur e))))
+                        nxt (when (< (inc i) (count evs)) (max s0 (q (:t (nth evs (inc i))))))
+                        s1 (if (and nxt (> s1 nxt) (> nxt s0)) nxt s1)]
+                    (recur (inc i) s1 (conj out [s0 s1 e])))
+                  out))
+        end (if (seq spans) (second (peek spans)) 0)
+        nbars (max 1 (js/Math.ceil (/ end bar)))
+        ;; the line as items over the grid: notes, and rests where nothing sounds
+        items (loop [ss spans cur 0 out []]
+                (if-let [[s0 s1 e] (first ss)]
+                  (recur (rest ss) s1 (cond-> out (> s0 cur) (conj [:rest cur s0 nil]) true (conj [:note s0 s1 e])))
+                  (cond-> out (< cur (* nbars bar)) (conj [:rest cur (* nbars bar) nil]))))
+        head (fn [e d]
+               (cond-> {:id (str "e" (:i e)) :hz (:hz e) :dur d :vel (or (:amp e) 0.6)
+                        :tstamp.real (:t e) :dur.real (:dur e)}
+                 (:hz2 e) (assoc :gliss [[0 0] [1 (gliss-cents (:hz e) (:hz2 e))]])))
+        measure (fn [b]
+                  (let [b0 (* b bar) b1 (+ b0 bar)]
+                    (into [:measure {:meter [p qq]}]
+                          (keep (fn [[k s0 s1 e]]
+                                  (let [a (max s0 b0) z (min s1 b1)]
+                                    (when (< a z)
+                                      (let [d (/ (- z a) div)]
+                                        (if (= k :rest)
+                                          [:rest {:dur d}]
+                                          [:note (cond-> (if (= a s0) (head e d) {:hz (:hz e) :dur d})
+                                                   (< z s1) (assoc :tie true))])))))
+                                items))))]
+    (into [:voice (cond-> {:name name :key key :tempo bpm} continuum (assoc :continuum continuum))]
+          (map measure (range nbars)))))
+
+;; ───────── reading MEI ─────────
+
+(defn- el-kids [el] (filter (fn [x] (= 1 (.-nodeType x))) (array-seq (.-childNodes el))))
+(defn- lname [el] (.-localName el))
+(defn- at [el k] (let [v (.getAttribute el k)] (when (and v (not= v "")) v)))
+(defn- all [root nm] (array-seq (.getElementsByTagNameNS root "*" nm)))
+(defn- strip-hash [s] (when s (str/replace s #"^#" "")))
+
+(def accid-alter {"s" 1 "f" -1 "n" 0 "x" 2 "ss" 2 "ff" -2 "1qs" 0 "3qs" 1 "1qf" 0 "3qf" -1})
+(def accid-cents {"1qs" 50 "3qs" 50 "1qf" -50 "3qf" -50})
+(def letters ["c" "d" "e" "f" "g" "a" "b"])
+
+(defn- beats-of [el scale]
+  (let [d (at el "dur") dots (js/parseInt (or (at el "dots") "0") 10)
+        base (case d "breve" 8 "long" 16 (/ 4 (js/parseFloat (or d "4"))))]
+    (* scale base (- 2 (/ 1 (js/Math.pow 2 dots))))))
+
+(defn- parse-sig [s] (cond (nil? s) nil (= s "0") 0
+                           (str/ends-with? s "s") (js/parseInt s 10)
+                           (str/ends-with? s "f") (- (js/parseInt s 10))
+                           :else nil))
+
+(defn- parse-meter [cnt unit]
+  (when (and cnt unit)
+    (let [parts (map #(js/parseInt % 10) (str/split cnt #"\+"))
+          m [(reduce + parts) (js/parseInt unit 10)]]
+      (cond-> {:meter m} (> (count parts) 1) (assoc :groups (vec parts))))))
+
+(defn read-ext
+  "The Kairotic EDN of a MEI document (its <extMeta type=\"kairotic\">), or nil."
+  [doc]
+  (when-let [x (first (filter #(= "kairotic" (at % "type")) (all doc "extMeta")))]
+    (edn/read-string (.-textContent x))))
+
+(defn- ties-of
+  "{start-id end-id} of the ties of a document (<tie startid endid>, and @tie i/m/t in each layer)."
+  [doc]
+  (into {} (keep (fn [t] (when-let [s (strip-hash (at t "startid"))] [s (strip-hash (at t "endid"))])) (all doc "tie"))))
+
+(defn segments
+  "The written music of a MEI document as measures of voices: [{:attrs {:meter …} :voices {[staff layer] [seg …]}} …]
+   where a seg is {:kind :note|:rest|:chord|:tuplet, :ids [xml:id …], :dur beats, :name, :cents, :tie bool,
+   :grace bool, :kids (in a tuplet or a chord)} — tied notes inside a measure joined, rests in a row joined, a tie
+   into the next measure kept as :tie. Also :sig (the key at the start) and :labels {staff label}."
+  [doc]
+  (let [ties (ties-of doc)
+        tied-into (set (vals ties))
+        sd (first (all doc "scoreDef"))
+        state (atom {:meter (or (parse-meter (at sd "meter.count") (at sd "meter.unit")) {:meter [4 4]})
+                     :sig (or (parse-sig (at sd "key.sig")) 0)})
+        sig0 (:sig @state)
+        labels (into {} (for [d (all doc "staffDef")] [(at d "n") (at d "label")]))
+        pitch-of (atom {})                                   ; id → [name cents] (a tie end takes its start's)
+        out (atom [])
+        layer-segs
+        (fn layer-segs [el scale mem]
+          ;; mem: atom of {[step oct] alter} for the bar (accidentals last to its end)
+          (vec
+           (mapcat
+            (fn [x]
+              (case (lname x)
+                ("beam" "graceGrp") (layer-segs x scale mem)
+                "tuplet" (let [n (js/parseInt (or (at x "num") "3") 10) nb (js/parseInt (or (at x "numbase") "2") 10)]
+                           [{:kind :tuplet :ratio [n nb] :kids (layer-segs x 1 mem) :dur (* scale (/ nb n))}])
+                "note" (let [id (at x "xml:id")
+                             step (.indexOf letters (str/lower-case (or (at x "pname") "c")))
+                             oct (js/parseInt (or (at x "oct") "4") 10)
+                             acc (or (at x "accid") (at x "accid.ges")
+                                     (some (fn [c] (when (= "accid" (lname c)) (or (at c "accid") (at c "accid.ges")))) (el-kids x)))
+                             start (some (fn [[s e]] (when (= e id) s)) ties)
+                             alter (cond acc (get accid-alter acc 0)
+                                         (contains? @mem [step oct]) (get @mem [step oct])
+                                         :else (sp/key-alter (:sig @state) step))
+                             cents (get accid-cents acc 0)
+                             _ (when acc (swap! mem assoc [step oct] alter))
+                             [nm c] (or (and start (get @pitch-of start)) [(sp/->name {:step step :alter alter :oct oct}) cents])]
+                         (swap! pitch-of assoc id [nm c])
+                         [{:kind :note :ids [id] :dur (beats-of x scale) :name nm :cents c
+                           :grace (some? (at x "grace")) :tie-out (contains? ties id) :tie-in (contains? tied-into id)}])
+                "chord" (let [ns (filter #(= "note" (lname %)) (el-kids x))
+                              kids (vec (mapcat #(layer-segs (doto (.cloneNode %) (.setAttribute "dur" (or (at x "dur") "4"))) scale mem) ns))]
+                          [{:kind :chord :ids [(at x "xml:id")] :dur (beats-of x scale) :kids kids}])
+                "rest" [{:kind :rest :ids [(at x "xml:id")] :dur (beats-of x scale)}]
+                ("mRest" "mSpace") [{:kind :rest :ids [(at x "xml:id")] :dur :bar}]
+                "space" [{:kind :rest :ids [(at x "xml:id")] :dur (beats-of x scale)}]
+                []))
+            (el-kids el))))
+        join (fn [segs]
+               ;; a note tied into from the note just before it (in this measure) is the same note; rests in a row too
+               (reduce (fn [acc s]
+                         (let [p (peek acc)]
+                           (cond
+                             (and p (= :note (:kind s) (:kind p)) (:tie-in s) (:tie-out p) (not (:grace s)))
+                             (conj (pop acc) (assoc p :dur (+ (:dur p) (:dur s)) :ids (conj (:ids p) (first (:ids s))) :tie-out (:tie-out s)))
+                             (and p (= :rest (:kind s) (:kind p)))
+                             (conj (pop acc) (assoc p :dur (+ (:dur p) (:dur s)) :ids (into (:ids p) (:ids s))))
+                             :else (conj acc s))))
+                       [] segs))]
+    (letfn [(walk [el]
+              (doseq [x (el-kids el)]
+                (case (lname x)
+                  "scoreDef" (let [m (parse-meter (at x "meter.count") (at x "meter.unit")) s (parse-sig (at x "key.sig"))]
+                               (swap! state cond-> m (assoc :meter m) (some? s) (assoc :sig s)))
+                  ("section" "ending" "expansion") (walk x)
+                  "measure" (let [{:keys [meter sig]} @state
+                                  [p q] (:meter meter)
+                                  len (* p (/ 4 q))
+                                  prev-sig (:last-sig @state)
+                                  voices (into {}
+                                               (for [st (filter #(= "staff" (lname %)) (el-kids x))
+                                                     ly (filter #(= "layer" (lname %)) (el-kids st))]
+                                                 [[(at st "n") (at ly "n")]
+                                                  (mapv (fn [s] (if (= :bar (:dur s)) (assoc s :dur len) s))
+                                                        (join (layer-segs ly 1 (atom {}))))]))]
+                              (swap! state assoc :last-sig sig)
+                              (swap! out conj {:attrs (cond-> meter (and (some? prev-sig) (not= prev-sig sig)) (assoc :key sig))
+                                               :voices voices}))
+                  nil)))]
+      (walk (first (all doc "score"))))
+    {:measures @out :sig sig0 :labels labels}))
+
+(defn- seg->node [s]
+  (case (:kind s)
+    :rest [:rest {:dur (:dur s)}]
+    :note (with-meta [:note (cond-> {:pitch (:name s) :dur (:dur s)}
+                              (not (zero? (:cents s))) (assoc :cents (:cents s))
+                              (:grace s) (-> (assoc :grace true) (dissoc :dur))
+                              (:tie-out s) (assoc :tie true))]
+            {:written (:name s) :mei-id (first (:ids s))})
+    :chord (into [:chord {:dur (:dur s)}] (map (fn [k] (let [[t a] (seg->node k)] [t (dissoc a :dur)])) (:kids s)))
+    :tuplet (into [:tuplet {:ratio (:ratio s)}] (map seg->node (:kids s)))))
+
+(defn- with-ext
+  "A note read from MEI with what <extMeta> kept for it (by its xml:id): a free note loses its written name (it is
+   Hz again; the name stays in its metadata, :written)."
+  [n notes]
+  (if (and (vector? n) (= :note (first n)))
+    (if-let [x (get notes (:mei-id (meta n)))]
+      (with-meta [:note (merge (cond-> (second n) (:hz x) (dissoc :pitch :cents)) x)] (meta n))
+      n)
+    (if (and (vector? n) (map? (second n)))
+      (with-meta (into [(first n) (second n)] (map #(with-ext % notes) (subvec n 2))) (meta n))
+      n)))
+
+(defn <-mei
+  "A MEI text as a tree (canonical when the MEI was written by ->mei). Throws if it is not MEI."
+  [text]
+  (let [doc (.parseFromString (js/DOMParser.) text "application/xml")]
+    (when (seq (all doc "parsererror")) (throw (js/Error. "this is not well-formed XML")))
+    (when-not (first (all doc "score")) (throw (js/Error. "no <score> in this MEI")))
+    (let [{:keys [measures sig labels]} (segments doc)
+          ext (read-ext doc)
+          vkeys (vec (distinct (mapcat (comp keys :voices) measures)))
+          voice (fn [k]
+                  (let [[st ly] k
+                        label (get labels st)
+                        a (or (and (= 1 (count vkeys)) (:voice ext))
+                              (cond-> {:name (or label (str "voice " (inc (.indexOf vkeys k)))) :key sig}
+                                (> (count vkeys) 1) (assoc :staff (or label st))))]
+                    (into [:voice a]
+                          (map (fn [{:keys [attrs voices]}]
+                                 (with-ext (into [:measure attrs] (map seg->node (get voices k []))) (:notes ext)))
+                               measures))))]
+      (if (= 1 (count vkeys))
+        (voice (first vkeys))
+        (into [:piece {}] (map voice vkeys))))))
+
+;; ───────── writing MEI ─────────
+
+(defn- iso-time [s]
+  (let [h (js/Math.floor (/ s 3600)) m (js/Math.floor (/ (mod s 3600) 60)) x (- s (* 3600 h) (* 60 m))
+        pad (fn [n w] (let [t (str n)] (str (apply str (repeat (- w (count t)) "0")) t)))]
+    (str (pad h 2) ":" (pad m 2) ":" (if (< x 10) "0" "") (.toFixed x 3))))
+
+(defn- tree-notes
+  "The notes of a canonical voice, in order (one per measure each sounds in)."
+  [tree]
+  (filterv (fn [n] (and (vector? n) (= :note (first n))))
+           (tree-seq (fn [n] (and (vector? n) (keyword? (first n)))) (fn [n] (if (map? (second n)) (drop 2 n) (rest n))) tree)))
+
+(defn- seg-notes
+  "The notes of the segments of a document, in order (as tree-notes counts them)."
+  [segs]
+  (letfn [(go [s] (case (:kind s) :note [s] (:chord :tuplet) (mapcat go (:kids s)) []))]
+    (vec (for [m (:measures segs) [_ ss] (sort-by key (:voices m)) s ss n (go s)] n))))
+
+(defn ->mei
+  "The MEI of a tree: kairotic.mt's notation, with @tstamp.real, @dur.real and @vel on the notes that sound where they
+   were really played, and an <extMeta type=\"kairotic\"> holding, as EDN, the voice's attributes and what each note
+   has beyond its written name, duration and tie (by the xml:id of its first written note). Deterministic."
+  [tree]
+  (let [{:keys [mei]} (mt/->mei tree "k-")
+        doc (.parseFromString (js/DOMParser.) mei "application/xml")
+        segs (segments doc)
+        sn (seg-notes segs)
+        tn (tree-notes tree)
+        _ (when (not= (count sn) (count tn))
+            (throw (js/Error. (str "the tree has " (count tn) " notes and its MEI " (count sn) ": not a canonical tree"))))
+        notes (into (sorted-map)
+                    (keep (fn [[s n]]
+                            (let [a (second n) x (dissoc a :dur :tie :pitch :cents :grace)]
+                              (when (seq x) [(first (:ids s)) x])))
+                          (map vector sn tn)))
+        by-id (into {} (for [x (all doc "note")] [(at x "xml:id") x]))
+        root (if (and (vector? tree) (= :voice (first tree))) tree nil)
+        ext (cond-> {:kairotic 1 :notes notes} root (assoc :voice (second root)))]
+    ;; MEI's own gestural attributes, as a mirror of the EDN (what other software can read)
+    (doseq [[id x] notes :let [el (get by-id id)] :when el]
+      (when-let [t (:tstamp.real x)] (.setAttribute el "tstamp.real" (iso-time t)))
+      (when-let [d (:dur.real x)] (.setAttribute el "dur.real" (str (cv/round-to d 6))))
+      (when-let [v (:vel x)] (.setAttribute el "vel" (str (js/Math.round (* 127 (max 0 (min 1 v))))))))
+    (let [head (first (all doc "meiHead"))
+          em (.createElementNS doc mei-ns "extMeta")]
+      (.setAttribute em "type" "kairotic")
+      (.appendChild em (.createCDATASection doc (pr-str ext)))
+      (.appendChild head em))
+    (let [s (.serializeToString (js/XMLSerializer.) doc)]
+      (if (str/starts-with? s "<?xml") s (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" s)))))
+
+;; ───────── tree → line ─────────
+
+(defn tree->line
+  "The line of a voice: one event per note (a tied note is one event), where it really sounded when the tree knows it
+   (:tstamp.real, :dur.real), else where it is written at the voice's tempo; its exact Hz (or its written pitch); its
+   glissando's end; and the written name it has in the MEI it was read from (:name), when it has one."
+  [tree]
+  (let [tempo (or (:tempo (second tree)) 60) spb (/ 60 tempo)]
+    (loop [ms (filter #(and (vector? %) (= :measure (first %))) tree) beat 0 open nil out []]
+      (if-let [m (first ms)]
+        (let [[beat open out]
+              (reduce (fn [[b open out] n]
+                        (let [a (second n) d (or (:dur a) 0)]
+                          (case (first n)
+                            :rest [(+ b d) nil out]
+                            :note (if open
+                                    ;; a tied piece: the event goes on
+                                    [(+ b d) (when (:tie a) (update open :wdur + d)) (if (:tie a) out (conj out (update open :wdur + d)))]
+                                    (let [hz (or (:hz a) (cv/midi->hz (mt/midi-of a)))
+                                          g (:gliss a)
+                                          ev (cond-> {:t (or (:tstamp.real a) (* b spb)) :hz hz :amp (or (:vel a) 0.6)
+                                                      :real-dur (:dur.real a) :wdur d :beat b}
+                                               (seq g) (assoc :hz2 (* hz (js/Math.pow 2 (/ (second (last g)) 1200))))
+                                               (:id a) (assoc :id (:id a))
+                                               (or (:written (meta n)) (:pitch a)) (assoc :name (or (:written (meta n)) (:pitch a))))]
+                                      [(+ b d) (when (:tie a) ev) (if (:tie a) out (conj out ev))]))
+                            [(+ b d) open out])))
+                      [beat open out] (drop 2 m))]
+          (recur (rest ms) beat open out))
+        (mapv (fn [e] (-> e (assoc :dur (or (:real-dur e) (* (:wdur e) spb))) (dissoc :real-dur :wdur :beat))) (cond-> out open (conj open)))))))
+
+;; ───────── checks ─────────
+
+(defn same-line?
+  "Two lines are the same: times, durations, Hz and amplitudes exactly, glissandi within 1e-9 (they pass through
+   cents)."
+  [a b]
+  (and (= (count a) (count b))
+       (every? (fn [[x y]]
+                 (and (= (:t x) (:t y)) (= (:dur x) (:dur y)) (= (:hz x) (:hz y)) (= (or (:amp x) 0.6) (:amp y))
+                      (= (some? (:hz2 x)) (some? (:hz2 y)))
+                      (or (nil? (:hz2 x)) (< (js/Math.abs (- 1 (/ (:hz2 y) (:hz2 x)))) 1e-9))))
+               (map vector (sort-by :t a) b))))
+
+(defn round-trip
+  "Every check of the continuum's coherence for a line written with opts: {check ok?}, and the tree and MEI made."
+  [line opts]
+  (let [t (line->tree line opts)
+        m (->mei t)
+        t2 (<-mei m)
+        m2 (->mei t2)
+        l2 (tree->line t2)]
+    {:tree t :mei m :tree2 t2 :line2 l2
+     :checks [["the tree read from its MEI is the tree" (= t t2)]
+              ["the MEI written from that tree is the MEI (byte for byte)" (= m m2)]
+              ["writing is deterministic: the same tree, the same MEI" (= m (->mei t))]
+              ["the line read back is the line: times, durations, Hz, amplitudes, glissandi" (same-line? line l2)]
+              ["the written music agrees: mt reads the same notes from both trees" (= (map (juxt :t :dur :pitch) (mt/notes t)) (map (juxt :t :dur :pitch) (mt/notes t2)))]
+              ["the continuum (resolutions, wires, electronics) comes back" (= (:continuum (second t)) (:continuum (second t2)))]]}))

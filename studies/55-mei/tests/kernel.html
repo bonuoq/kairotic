@@ -1,0 +1,102 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 55 · MEI · kernel tests</title>
+<pre id="out">Running…</pre>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="application/x-kairotic" id="tests">
+(ns mei-tests (:require [kairotic.meitree :as mx] [kairotic.mt :as mt] [clojure.string :as str]))
+
+(def results (atom []))
+(defn is [what ok] (swap! results conj [what (boolean ok)]))
+(defn hz [m] (/ (js/Math.round (* 100 (* 440 (js/Math.pow 2 (/ (- m 69) 12))))) 100))
+(defn ev ([t dur m amp] {:t t :dur dur :hz (hz m) :amp amp}) ([t dur m amp m2] (assoc (ev t dur m amp) :hz2 (hz m2))))
+
+(def phrase [(ev 0 0.5 62 0.5) (ev 0.5 0.5 64 0.55) (ev 1 1 66 0.7) (ev 2 0.5 69 0.6) (ev 2.55 0.45 67.8 0.4)
+             (ev 3.05 1.4 71 0.75 74) (ev 4.55 0.4 73.3 0.5) (ev 5 1 74 0.9) (ev 6.1 0.35 76.4 0.3) (ev 6.5 1.6 69 0.55 61.5)])
+(def gesture [(ev 0 1.2 55 0.3 67.4) (ev 1.3 0.2 70.6 0.8) (ev 1.55 0.2 69.1 0.7) (ev 1.8 0.9 66.5 0.4 72.2)
+              (ev 2.9 0.15 80 0.9) (ev 3.2 2 60.3 0.25 58) (ev 5.4 0.3 75 0.6) (ev 5.8 1.4 77 0.8 64)])
+(def continuum {:res {:time [1 0.5 0] :pitch [1 1 0] :glyph [1 0.5 0]}
+                :wires [{:id "w1" :note 2 :kind "rigid"} {:id "w2" :note 5 :kind "elastic" :leader "performer" :tol 0.4}]
+                :electronics [{:wire "w1" :kind "drone" :hz 73.42 :dur 3.2}]})
+
+;; the round trip, for several lines, keys, meters and tempi
+(doseq [[nm line opts] [["the phrase in D, 4/4 at 60" phrase {:bpm 60 :key 2 :continuum continuum}]
+                        ["the gesture in C, 4/4 at 72" gesture {:bpm 72 :key 0}]
+                        ["the phrase in F, 3/4 at 90" phrase {:bpm 90 :key -1 :meter [3 4] :continuum continuum}]
+                        ["the gesture in A, 2/4 at 50, on eighths" gesture {:bpm 50 :key 3 :meter [2 4] :div 2}]
+                        ["the phrase in E♭, 4/4 at 132" phrase {:bpm 132 :key -3}]]]
+  (try
+    (doseq [[what ok] (:checks (mx/round-trip line opts))] (is (str nm ": " what) ok))
+    (catch :default e (is (str nm ": it ran (" (.-message e) ")") false))))
+
+;; what the tree and the MEI hold
+(let [t (mx/line->tree [{:t 0 :dur 3 :hz 440 :amp 0.5} {:t 3.1 :dur 0.9 :hz 220 :amp 0.25 :hz2 330}] {:bpm 60 :meter [2 4]})
+      ns (filterv #(= :note (first %)) (mapcat #(drop 2 %) (drop 2 t)))
+      m (mx/->mei t)]
+  (is "a note across a barline: one note per measure, the first tied into the next" (= (mapv (comp :tie second) ns) [true nil nil]))
+  (is "… only its first piece keeps where it really sounded" (and (= 3 (:dur.real (second (first ns)))) (nil? (:dur.real (second (second ns))))))
+  (is "… and the MEI ties them" (re-find #"<tie startid=" m))
+  (is "a free note keeps its Hz, not a name" (and (= 440 (:hz (second (first ns)))) (nil? (:pitch (second (first ns))))))
+  (is "MEI's gestural attributes mirror it: @tstamp.real, @dur.real, @vel"
+      (and (re-find #"tstamp\.real=\"00:00:03\.100\"" m) (re-find #"dur\.real=\"0\.9\"" m) (re-find #"vel=\"64\"" m)))
+  (is "… and <extMeta type=\"kairotic\"> keeps the rest as EDN" (re-find #"<extMeta type=\"kairotic\"><!\[CDATA\[\{:kairotic 1" m))
+  (is "a glissando goes into the MEI (a <gliss> or its text)" (or (re-find #"<gliss " m) (re-find #"gliss\." m)))
+  (let [l (mx/tree->line (mx/<-mei m))]
+    (is "the line read back: two events, the tied one whole (3 s)" (and (= 2 (count l)) (= 3 (:dur (first l))) (= 3.1 (:t (second l)))))
+    (is "… with the names the MEI gave them" (= ["a4" "a3"] (mapv :name l)))
+    (is "… and the glissando's end" (< (js/Math.abs (- 330 (:hz2 (second l)))) 1e-9))))
+
+;; a MEI written elsewhere
+(def foreign
+  (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?><mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\"><meiHead/>"
+       "<music><body><mdiv><score><scoreDef meter.count=\"3\" meter.unit=\"4\" key.sig=\"1s\"><staffGrp><staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\"/></staffGrp></scoreDef>"
+       "<section><measure n=\"1\"><staff n=\"1\"><layer n=\"1\"><note xml:id=\"n1\" pname=\"g\" oct=\"4\" dur=\"4\"/>"
+       "<beam><note xml:id=\"n2\" pname=\"f\" oct=\"4\" dur=\"8\"/><note xml:id=\"n3\" pname=\"e\" oct=\"4\" dur=\"8\"/></beam>"
+       "<note xml:id=\"n4\" pname=\"d\" oct=\"4\" dur=\"4\"/></layer></staff><tie startid=\"#n4\" endid=\"#n5\"/></measure>"
+       "<measure n=\"2\"><staff n=\"1\"><layer n=\"1\"><note xml:id=\"n5\" pname=\"d\" oct=\"4\" dur=\"4\"/><rest xml:id=\"r1\" dur=\"4\"/>"
+       "<note xml:id=\"n6\" pname=\"f\" oct=\"4\" dur=\"4\" accid=\"n\"/></layer></staff></measure>"
+       "<measure n=\"3\"><staff n=\"1\"><layer n=\"1\"><note xml:id=\"n7\" pname=\"b\" oct=\"4\" dur=\"4\" dots=\"1\" accid=\"f\"/>"
+       "<note xml:id=\"n8\" pname=\"f\" oct=\"4\" dur=\"8\"/><rest xml:id=\"r2\" dur=\"4\"/></layer></staff></measure></section></score></mdiv></body></music></mei>"))
+
+(try
+  (let [t (mx/<-mei foreign)
+        want [:voice {:name "voice 1" :key 1}
+              [:measure {:meter [3 4]} [:note {:pitch "g4" :dur 1}] [:note {:pitch "f#4" :dur 0.5}] [:note {:pitch "e4" :dur 0.5}] [:note {:pitch "d4" :dur 1 :tie true}]]
+              [:measure {:meter [3 4]} [:note {:pitch "d4" :dur 1}] [:rest {:dur 1}] [:note {:pitch "f4" :dur 1}]]
+              [:measure {:meter [3 4]} [:note {:pitch "bb4" :dur 1.5}] [:note {:pitch "f#4" :dur 0.5}] [:rest {:dur 1}]]]]
+    (is "a MEI from elsewhere reads as its notation: the key's F#, a natural (for its bar only), a flat, a dotted quarter, a tie across the bar" (= t want))
+    (when (not= t want) (js/console.log "foreign tree:" (pr-str t)))
+    (let [m (mx/->mei t)]
+      (is "… written again and read: the same tree" (= t (mx/<-mei m)))
+      (is "… and the same MEI" (= m (mx/->mei (mx/<-mei m)))))
+    (let [l (mx/tree->line t)]
+      (is "its line: at its tempo (60), the tied D one event of 2 s" (= [[0 1] [1 0.5] [1.5 0.5] [2 2] [5 1] [6 1.5] [7.5 0.5]] (mapv (juxt :t :dur) l)))
+      (is "… with its written names" (= ["g4" "f#4" "e4" "d4" "f4" "bb4" "f#4"] (mapv :name l)))))
+  (catch :default e (is (str "the MEI from elsewhere: it ran (" (.-message e) ")") false)))
+
+(is "not MEI says so" (try (mx/<-mei "<html>") false (catch :default _ true)))
+</script>
+<script type="module">
+// The study's kernel (kairotic/meitree.cljs) on the app's modules (kairotic.mt and what it needs), in Scittle.
+try {
+  const bases = ["../../../core/kairotic/", "../../../kairotic/"];
+  async function load(bs, files) {
+    for (const f of files) {
+      let text = null;
+      for (const b of bs) { const r = await fetch(b + f, { cache: "no-cache" }).catch(() => null); if (r && r.ok) { text = await r.text(); break; } }
+      if (text === null) throw new Error("could not read " + f);
+      scittle.core.eval_string(text);
+    }
+  }
+  await load(bases, ["score.cljs", "canvas.cljs", "spell.cljs", "mt.cljs"]);
+  await load(["../"], ["kairotic/meitree.cljs"]);
+  scittle.core.eval_string(document.getElementById("tests").textContent);
+  const rs = scittle.core.eval_string("(clj->js @mei-tests/results)"), bad = rs.filter((r) => !r[1]);
+  window.kairoticResults = { total: rs.length, failed: bad.map((r) => r[0]) };
+  document.getElementById("out").textContent = (rs.length - bad.length) + " / " + rs.length + " passed\n\n" +
+    rs.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n");
+} catch (e) {
+  document.getElementById("out").textContent = "Error: " + (e.message || e);
+  window.kairoticResults = { total: 0, failed: ["error: " + (e.message || e)] };
+}
+</script>
