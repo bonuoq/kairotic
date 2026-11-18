@@ -8,6 +8,17 @@
   so a middle voice can always be written from the figures. The phrase ends with a perfect or imperfect cadence where
   the bass closes on ①; a deceptive or a half one only when chosen, the end of the bass made to fit.
 
+- **Saving files on claude.ai.** A page there may not start a download; the app now offers its files through the
+  artifact's `downloads` capability, and the viewer confirms each one. A work exported as a file is saved as
+  `.kairotic.zip` there (claude.ai allows zip, not .kairotic; it is a zip, and Open a file takes it as it is), so a work
+  goes from the artifact to Kairotic Pages with its whole history, lines and sounds. The log of your requests to
+  Claude is saved as `.jsonl.txt`; a recorded sound (.wav) cannot be saved on claude.ai, and it says so.
+
+- **A long agent request no longer makes a wide box.** The box shows the start of its request (the whole of it on
+  hover, in its help and in the Agents section).
+- **adc~ on claude.ai says why it cannot listen.** A page on claude.ai may not use the microphone whatever the
+  browser allows; instead of the browser's error, adc~ now says so and points to Kairotic Pages (where the same work
+  listens: Share/Export carries it) or to recorded sound in a sample box.
 - **Study 56 · figuring: the partimento turned round.** A bass without figures, a melody improvised over it on the
   keyboard, and the figures found as it goes — the rule of the octave, the melody's own dissonances, the dominant —
   with the schemata the two lines make, the cadences the bass offers counted ahead, and a middle voice written from

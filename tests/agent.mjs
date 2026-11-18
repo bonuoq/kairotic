@@ -32,6 +32,11 @@ export async function agent(page, check) {
     check("the request is the box's text", (await cljs(page, '[(agent-request "agent \\"add one\\"") (agent-text "a \\"b\\"")]')) === '["add one" "agent \\"a \\\\\\"b\\\\\\"\\""]',
       await cljs(page, '[(agent-request "agent \\"add one\\"") (agent-text "a \\"b\\"")]'));
     await cljs(page, '(box :b900 "agent \\"add one\\"" 900 900)');
+    // a long request: the box shows its start, the whole of it on hover
+    const long = 'agent \\"harmonize this melody in four parts in the style of Mozart, at a basic level\\"';
+    check("a long request: the box shows only its start", (await cljs(page, `(let [t (shown-text "${long}")] [(< (count t) 50) (str/ends-with? t "…\\"")])`)) === "[true true]",
+      await cljs(page, `(shown-text "${long}")`));
+    check("... a short one as it is", (await cljs(page, '(shown-text "agent \\"add one\\"")')) === '"agent \\"add one\\""');
     check("an agent not built yet: only its request inlet and its state outlet", (await cljs(page, "(io (get-in (current) [:boxes :b900]))")) === "[1 1]");
     await cljs(page, '(box :b901 "number" 900 840)');
     await cljs(page, '(box :b902 "number" 900 980)');
