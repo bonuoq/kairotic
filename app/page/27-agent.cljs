@@ -106,13 +106,22 @@
 
 ;; ───────────────────────── what it says ─────────────────────────
 
+(defonce agent-state (atom {}))   ; [path id] → :building · :built · [:error "…"], what it said last (this tab)
+(defonce agent-logs (atom {}))    ; [path id] → [[class message time] …], its last builds (this tab)
+
 (defn agent-say!
-  "Tells the agent-core of box id (at path, in the patch that plays) what the agent is doing, if it plays."
+  "Tells the agent-core of box id (at path, in the patch that plays) what the agent is doing, if it plays; and
+   the Agents section of the Claude panel."
   [path id v]
+  (swap! agent-state assoc [(vec path) id] v)
   (let [f (keyword (str (str/join "." (map name (conj (vec path) id))) ".agent-core"))]
     (try (eng/arrive! f {:task :ask :value v} false) (catch :default e (js/console.error e)))))
 
-(defn agent-log! [cls msg] (repl-print! cls (esc (str "; " msg))))
+(defn agent-log!
+  "What happened to agent id (at path), in its log in the Claude panel (#275); without an agent, in the REPL."
+  ([cls msg] (repl-print! cls (esc (str "; " msg))))
+  ([path id cls msg]
+   (swap! agent-logs update [(vec path) id] (fn [l] (vec (take-last 12 (conj (or l []) [cls msg (js/Date.now)])))))))
 
 ;; ───────────────────────── building ─────────────────────────
 
@@ -158,8 +167,8 @@
   [host path id request]
   (let [s @sample-fn key [host path id]]
     (cond
-      (nil? s) (do (agent-log! "err" "agent: Claude is not available in this view.") (agent-say! path id [:error "Claude is not available here"]) (js/Promise.resolve nil))
-      (contains? @agent-busy key) (do (agent-log! "err" (str "agent " (name id) ": still building the last request.")) (js/Promise.resolve nil))
+      (nil? s) (do (agent-log! path id "err" "Claude is not available in this view.") (agent-say! path id [:error "Claude is not available here"]) (js/Promise.resolve nil))
+      (contains? @agent-busy key) (do (agent-log! path id "err" "still building the last request") (js/Promise.resolve nil))
       :else
       (let [b (get-in (agent-host-patch path) [:boxes id])
             current (let [p (agent-content b)] (when (seq (:boxes p)) (patch->code p)))
@@ -170,7 +179,7 @@
                               "\n\nIts errors: " (str/join "; " (take 6 (:errors previous))) "\nMend it, and check it again.\n"))))]
         (swap! agent-busy conj key)
         (agent-say! path id :building)
-        (agent-log! "" (str "agent " (name id) ": building · " (ai/cut request 120)))
+        (agent-log! path id "" (str "building · " (ai/cut request 120)))
         (letfn [(attempt [k previous]
                   (-> (js/Promise.all #js [(load-ask-refs) (-> (js/Promise.resolve (when (fn? (.-limits s)) (.limits s))) (.catch (fn [_] nil)))])
                       (.then (fn [a]
@@ -186,7 +195,8 @@
                                    (.then (check-patch-code src)
                                           (fn [chk]
                                             (cond (:ok chk) {:src src :doc doc}
-                                                  (< k agent-tries) (attempt (inc k) {:src src :errors (:errors chk)})
+                                                  (< k agent-tries) (do (agent-log! path id "err" (str "try " k ": " (ai/cut (first (:errors chk)) 160) " · sent back to Claude"))
+                                                                        (attempt (inc k) {:src src :errors (:errors chk)}))
                                                   :else (throw (js/Error. (str "after " agent-tries " tries: " (str/join "; " (take 3 (:errors chk)))))))))))))))]
           (-> (attempt 1 nil)
               (.then (fn [{:keys [src doc]}]
@@ -206,12 +216,12 @@
                            (doseq [bx (vals (:boxes (eng/flat p)))] (ensure-class! (str (:text bx))))
                            (render-all!)
                            (agent-say! path id :built)
-                           (agent-log! "ok" (str "agent " (name id) ": built (" (count (:boxes p)) " boxes) in its line «" (line-name lid) "»: double-click to open it"))
+                           (agent-log! path id "ok" (str "built: " (count (:boxes p)) " boxes, a new point of its line «" (line-name lid) "»"))
                            front))))
               (.catch (fn [e]
                         (let [msg (or (.-message e) (str e)) code (.-code e)]
                           (agent-say! path id [:error (if code (ask-error-copy code) msg)])
-                          (agent-log! "err" (str "agent " (name id) ": " (if code (ask-error-copy code) msg))))
+                          (agent-log! path id "err" (if code (ask-error-copy code) msg)))
                         nil))
               (.finally (fn [] (swap! agent-busy disj key)))))))))
 
@@ -222,7 +232,8 @@
    request in its text and builds from it. Uses your own Claude (or your own API key outside claude.ai). A
    request equal to the one it was built from is not sent again."
   ([id] (ask-agent id nil))
-  ([id request]
+  ([id request] (ask-agent id request false))
+  ([id request force?]
    (let [b (need-box id)]
      (when-not (agent? b) (fail (str id " is not an agent box")))
      (when (or @perf @lesson @scratch) (fail "Not now: an agent is asked outside Perform, a lesson or the scratch patch."))
@@ -231,9 +242,14 @@
        (when (and request (not= (agent-text r) (:text b)))
          (dispatch! [:text id (agent-text r)]))
        (cond
-         (and (= r (get-in b [:data :request])) (agent-line b) (not (agent-stale? b)))
+         (and (not force?) (= r (get-in b [:data :request])) (agent-line b) (not (agent-stale? b)))
          (do (agent-say! (cmd-path) id :built) :built)
          :else (do (agent-build! (active-line) (cmd-path) id r) :building))))))
+
+(defn rebuild-agent
+  "(rebuild-agent :b3): builds agent box :b3 again from the request in its text, even if it is the one it was
+   built from (another answer of Claude: a new point of its line)."
+  [id] (ask-agent id nil true))
 
 (defn agent-info
   "(agent-info :b3): what agent box :b3 was built from — its request, its line, who asked, and whether its
@@ -288,3 +304,95 @@
                         (when id (agent-say! [] id [:error "only an agent of the patch on screen is asked"]))))))
               0)
              (when before (before f e at))))))
+
+;; ───────────────────────── the Agents section of the Claude panel (#275) ─────────────────────────
+;; Every agent box of the work, through its embedded patches: its request, its line, what it is doing, who asked,
+;; whether its content was changed by hand, what Claude said it does, and the log of its builds; with buttons to
+;; open its line, build it again and ask it for something else. An agent inside an embedded patch is asked from
+;; that patch (enter it first).
+
+(defn agents-in
+  "The agent boxes of patch p, through its embedded patches: [[path id box] …]."
+  ([p] (agents-in p []))
+  ([p path]
+   (mapcat (fn [[id b]]
+             (cond (agent? b) [[path id b]]
+                   (embedded? b) (agents-in (or (:data b) empty-patch) (conj path id))
+                   :else []))
+           (sort-by (fn [[id _]] (box-num id)) (:boxes p)))))
+
+(defn who-name
+  "How a person who asked is shown: themselves as you, others by what the room knows of them."
+  [author] (if (= author (my-author)) "you" (str author)))
+
+(defonce agent-asking (atom nil))   ; [path id] of the agent whose "Ask…" field is open
+
+(defn agent-state-text [path id b]
+  (let [st (get @agent-state [(vec path) id])]
+    (cond (contains? @agent-busy [(active-line) (vec path) id]) ["busy" "building…"]
+          (and (vector? st) (= :error (first st))) ["err" (str "error: " (second st))]
+          (agent-line b) ["ok" "built"]
+          :else ["" "not built yet"])))
+
+(defn render-agents! []
+  (when-let [el ($ "agents-list")]
+    (let [as (if (:kind @work) (vec (agents-in (work-patch))) [])
+          here (vec (cmd-path))]
+      (set! (.-hidden ($ "agents-empty")) (boolean (seq as)))
+      (set! (.-textContent ($ "agents-n")) (if (seq as) (str (count as)) ""))
+      (set! (.-innerHTML el)
+            (apply str
+                   (for [[path id b] as
+                         :let [d (:data b) [cls st] (agent-state-text path id b)
+                               k (pr-str [path id]) on-screen? (= (vec path) here)
+                               off (when-not on-screen? " disabled title=\"Enter the patch it is in first\"")
+                               logs (get @agent-logs [(vec path) id])]]
+                     (str "<li data-agent=\"" (esc k) "\">"
+                          "<div class=\"ag-top\"><code>" (esc (str/join " › " (map name (conj path id)))) "</code> "
+                          "<span class=\"ag-st " cls "\">" (esc st) "</span>"
+                          (when (:by d) (str " <span class=\"ag-by\">· asked by " (esc (who-name (:by d))) "</span>"))
+                          (when (agent-stale? b) " <span class=\"ag-stale\" title=\"Its content was changed after Claude built it\">· changed by hand</span>")
+                          "</div>"
+                          "<div class=\"ag-q\">" (esc (agent-request (:text b))) "</div>"
+                          (when-let [a (:about d)] (str "<div class=\"ag-about\">" (esc (ai/cut a 240)) "</div>"))
+                          (when-let [lid (agent-line b)] (str "<div class=\"ag-line\">its line: «" (esc (line-name lid)) "»</div>"))
+                          "<div class=\"ag-acts\">"
+                          "<button class=\"act\" data-agent-act=\"open\"" (if (agent-line b) off " disabled title=\"Not built yet\"") ">Open</button>"
+                          "<button class=\"act\" data-agent-act=\"rebuild\"" off ">Build again</button>"
+                          "<button class=\"act\" data-agent-act=\"ask\"" off ">Ask…</button>"
+                          "</div>"
+                          (when (= @agent-asking [(vec path) id])
+                            (str "<div class=\"ag-ask\"><input class=\"ag-ask-in\" spellcheck=\"true\" value=\"" (esc (agent-request (:text b)))
+                                 "\" aria-label=\"A new request for " (esc (name id)) "\"><button class=\"act primary\" data-agent-act=\"send\">Build</button></div>"))
+                          (when (seq logs)
+                            (str "<ol class=\"ask-log ag-log\">"
+                                 (apply str (for [[c m _] logs] (str "<li class=\"" c "\">" (esc m) "</li>")))
+                                 "</ol>"))
+                          "</li>")))))))
+
+(defonce agents-frame (atom nil))
+(defn agents-soon! [] (when-not @agents-frame (reset! agents-frame (js/requestAnimationFrame (fn [_] (reset! agents-frame nil) (render-agents!))))))
+(doseq [a [hist agent-state agent-logs agent-busy agent-asking]] (add-watch a ::agents (fn [_ _ _ _] (agents-soon!))))
+
+(let [el ($ "agents-list")]
+  (when el
+    (.addEventListener el "click"
+      (fn [e]
+        (when-let [btn (.closest (.-target e) "[data-agent-act]")]
+          (let [li (.closest btn "li[data-agent]") [path id] (clojure.edn/read-string (.getAttribute li "data-agent"))]
+            (case (.getAttribute btn "data-agent-act")
+              "open" (gesture! (str "(open-ref " id ")"))
+              "rebuild" (gesture! (str "(rebuild-agent " id ")"))
+              "ask" (reset! agent-asking (if (= @agent-asking [path id]) nil [path id]))
+              "send" (let [v (str/trim (.-value (.querySelector li ".ag-ask-in")))]
+                       (when (seq v)
+                         (reset! agent-asking nil)
+                         (gesture! (str "(ask-agent " id " " (pr-str v) ")"))))
+              nil)))))
+    (.addEventListener el "keydown"
+      (fn [e]
+        (when (and (= "Enter" (.-key e)) (.closest (.-target e) ".ag-ask-in"))
+          (.preventDefault e)
+          (some-> (.closest (.-target e) "li[data-agent]") (.querySelector "[data-agent-act=send]") (.click)))))))
+
+(render-agents!)

@@ -452,6 +452,18 @@ body.present .askbar { position: absolute; z-index: 6; left: 6px; top: 6px; marg
 .ask-key-state { font-size: 11.5px; color: var(--ink-soft); }
 .ask-out { margin: 0; white-space: pre-wrap; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px; max-height: 360px; overflow: auto; }
 .ask-out:empty { display: none; }
+/* the Agents section of the Claude panel (#275) */
+.agents h4 { margin: 6px 0 4px; font: 600 12px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+.agents-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.agents-list > li { border: 1px solid var(--rule); border-radius: 5px; padding: 6px 8px; font-size: 12px; display: grid; gap: 3px; }
+.agents-list .ag-top { font: 11px var(--f-code); color: var(--ink-soft); }
+.agents-list .ag-top code { color: var(--ink); }
+.agents-list .ag-st.ok { color: var(--ok); } .agents-list .ag-st.err { color: var(--error); } .agents-list .ag-st.busy { color: var(--accent); }
+.agents-list .ag-stale { color: var(--kairos); }
+.agents-list .ag-q { color: var(--ink); }
+.agents-list .ag-about, .agents-list .ag-line { color: var(--ink-soft); }
+.agents-list .ag-acts, .agents-list .ag-ask { display: flex; flex-wrap: wrap; gap: 4px; }
+.agents-list .ag-ask-in { flex: 1; min-width: 160px; font: 12px var(--f-ui); background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 3px; padding: 4px 6px; }
 .edit { position: absolute; font-family: var(--f-code); font-size: 12.5px; padding: 4px 8px; border: 2px solid var(--accent); border-radius: 3px; background: var(--box); color: var(--ink); outline: none; min-width: 140px; }
 .edit.num { min-width: 0; width: 96px; z-index: 5; }   /* a number typed into a control (issue #32) */
 /* the field of a new box as a line of the REPL, and what it gave (issue #163) */
@@ -913,6 +925,11 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
             <ol class="ask-hist-list" id="ask-hist-list"></ol>
           </details>
           <pre class="ask-out" id="ask-out"></pre>
+          <section class="agents" id="agents" aria-labelledby="agents-h">
+            <h4 id="agents-h">Agents <span id="agents-n"></span></h4>
+            <p class="ask-note" id="agents-empty">No agent box in this work yet: write <code>agent "…"</code> in a box, and Claude builds what you ask inside it.</p>
+            <ol class="agents-list" id="agents-list"></ol>
+          </section>
         </div>
       </div>
     </section>
