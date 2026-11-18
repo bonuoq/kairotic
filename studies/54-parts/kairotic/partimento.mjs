@@ -483,6 +483,8 @@ export function codeOf(K, name) {
 export const CHORDS = {
   "5/3": { need: [2], ok: [2, 4, 0] },
   "6/3": { need: [5, 2], ok: [5, 2] },
+  // a sixth chord whose 3rd may be left out for the bass doubled — the book's 6/(3) on ④ in a Galant cadence
+  "6": { need: [5], ok: [5, 2, 0] },
   "7/3": { need: [6, 2], ok: [6, 2] },
   "4/2": { need: [1, 3], ok: [1, 3, 5] },
   "6/4": { need: [5, 3], ok: [5, 3, 0] },
@@ -490,7 +492,7 @@ export const CHORDS = {
 };
 const FIG = [8, 2, 3, 4, 5, 6, 7];
 // where the chord's 3rd is, by its figures (a class above the bass; 0: the bass itself, as in a 6/3)
-const THIRD = { "5/3": 2, "7/3": 2, "5/4": 2, "6/3": 0, "6/4": 5, "4/2": 3 };
+const THIRD = { "5/3": 2, "7/3": 2, "5/4": 2, "6/3": 0, "6": null, "6/4": 5, "4/2": 3 };
 
 // ─── the phrase: a schema (chapter 2), then a cadence (chapter 3) ───
 // An event: [degree of the bass, units, the chord over each unit]; a unit is half a bar. A schema may have its own
@@ -518,8 +520,8 @@ export const CADENCES = {
                    events: [[4, 2, ["6/4", "5/3"]], [0, 1, ["5/3"]]] },
   "compound-54": { name: "compound (5/4)", ref: "IJzerman 3.2, ex. 3.8–3.10", about: "⑤ parted into a 5/4 and a 5/3: a 4–3 suspension in one of the upper voices",
                    events: [[4, 2, ["5/4", "5/3"]], [0, 1, ["5/3"]]] },
-  galant: { name: "Galant", ref: "IJzerman 3.4, ex. 3.19–3.21", about: "④–⑤–①: a 6/3 on ④, then on ⑤ a 6/4–5/3 of accented passing tones (no preparation), the upper voices in parallel 6ths or 3rds",
-            events: [[3, 2, ["6/3", "6/3"]], [4, 2, ["6/4", "5/3"], { ap: [0] }], [0, 1, ["5/3"]]] },
+  galant: { name: "Galant", ref: "IJzerman 3.4, ex. 3.19–3.21", about: "④–⑤–①: a 6 on ④ (a 6/3, or the book's 6/(3), the bass doubled), then on ⑤ a 6/4–5/3 of accented passing tones (no preparation), each upper voice down a step to the 5/3, the upper voices in parallel 6ths or 3rds",
+            events: [[3, 2, ["6", "6"]], [4, 2, ["6/4", "5/3"], { ap: [0] }], [0, 1, ["5/3"]]] },
   deceptive: { name: "deceptive", ref: "IJzerman 3.2, ex. 3.11–3.12", about: "a compound cadence whose bass goes up to ⑥ instead of ①: the middle voice goes down by step, the phrase asks to go on",
                events: [[4, 2, ["5/4", "5/3"]], [5, 1, ["5/3"]]] },
   half: { name: "half", ref: "IJzerman 3.1, ex. 3.1–3.2", about: "a close on the penultimate ⑤, on a strong unit: open, waiting for the answer",
@@ -581,6 +583,15 @@ export function parts(spec = {}) {
     const vt = T.vertical(t, a), vm = M.vertical(t, b);
     if ((cls === 1 || cls === 6) && vt.q !== "dissonant" && vm.q !== "dissonant") return "a 2nd or a 7th between the upper voices, neither of them the dissonance";
     if (vt.q === "dissonant" && vm.q === "dissonant" && vt.cls === vm.cls) return "the dissonance doubled";
+    // a 6/4 over a bass that holds its note resolves to the 5/3 as a double appoggiatura: each voice down a step, the
+    // 6th to the 5th and the 4th to the 3rd, in the same voice (no exchange between the voices)
+    if (t >= 1 && !B[t].struck) {
+      const pa = TT[t - 1], pb = MM[t - 1], ca = T.vertical(t - 1, pa).cls, cb = M.vertical(t - 1, pb).cls;
+      if (new Set([ca, cb]).size === 2 && [ca, cb].every((c) => c === 5 || c === 3)) {
+        const down = (x, px, pc) => D(x) === D(px) - 1 && (pc === 5 ? 4 : 2) === (x === a ? vt : vm).cls;
+        if (!down(a, pa, ca) || !down(b, pb, cb)) return "the 6/4 resolves to the 5/3, each voice down a step (6 to 5, 4 to 3)";
+      }
+    }
     if (t >= 1) {
       const pa = TT[t - 1], pb = MM[t - 1];
       const pcls = mod(D(pa) - D(pb), 7), ps = mod(semi(pa) - semi(pb), 12);
@@ -596,8 +607,9 @@ export function parts(spec = {}) {
     }
     // three voices, three notes of a chord: its 3rd is not doubled, nor the leading tone
     const chord = figured && B[t].chord ? B[t].chord : have.has(5) && have.has(2) ? "6/3" : have.has(5) && have.has(3) ? "6/4" : have.has(1) && have.has(3) ? "4/2" : "5/3";
+    // (a 6/(3) may double its bass, as the book's Galant cadence does on ④)
     const third = THIRD[chord];
-    if ((third === 0 ? 1 : 0) + [vt.cls, vm.cls].filter((c) => c === third).length >= 2) return "the 3rd of the chord doubled";
+    if (third !== null && (third === 0 ? 1 : 0) + [vt.cls, vm.cls].filter((c) => c === third).length >= 2) return "the 3rd of the chord doubled";
     const lt = (d, r) => mod(d, 7) === 6 && (K.mode === "major" || r === 1);
     if ([lt(B[t].d, B[t].r), lt(D(a), R(a)), lt(D(b), R(b))].filter(Boolean).length >= 2) return "the leading tone doubled";
     // in minor the chord on the dominant is major: ⑦ over ⑤ raised, where ⑤ is a dominant (going to ① or ⑥, or

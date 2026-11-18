@@ -245,7 +245,7 @@ for (const f of ["kernel.mjs", "mirror.mjs"])
   // three parts: the doublings, and a 7th put off by one chord
   const T = P.parts({ schema: "fauxbourdon", cadence: "simple", key: { tonic: "C" } });
   is("partimento, three parts: the 3rd of a chord doubled is refused", /3rd of the chord doubled/.test(T.check([], [], 0, T.code("E5"), T.code("E4")) || ""));
-  is("... the Fifth Down Fourth Up closes with a compound cadence (the 7th of ② held into the 6/4)", P.parts({ schema: "fifths-73", cadence: "compound-64", key: { tonic: "C" } }).count() === 10n);
+  is("... the Fifth Down Fourth Up closes with a compound cadence (the 7th of ② held into the 6/4)", P.parts({ schema: "fifths-73", cadence: "compound-64", key: { tonic: "C" } }).count() === 8n);
 }
 
 const bad = results.filter((x) => !x[1]);
