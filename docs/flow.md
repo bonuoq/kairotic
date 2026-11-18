@@ -29,6 +29,12 @@ change the tree (as `tree-edit!`, one event of the history), and the tree, chang
 score. Nothing is coupled behind the patch: the loop is a line you see, in the patch and in the code.
 A tree box can also show itself as a score (⇄ in its header, `(view :bN :score)`): then its notes
 edit it directly, with no wire. The wired loop is for a score that shows the tree after `mt` boxes.
+Or as a **continuum** (`(view :bN :continuum)`, `(continuum! :bN :dissolve)`): between a piano roll and a score,
+each axis at its own resolution, changing over the piece — time from where each note sounded to where it is written,
+pitch from its exact frequency to the nearest key to its step on the staff, the glyph from a stroke as thick as it is
+loud to a head with a line to its written value. The resolutions are kept in the tree (one event of the history, part
+of its MEI). A take — where one performance played each note — can be shown in place of the notes' own time:
+`(keep-take! :bN take)` keeps it only for you (in this browser, as Learn keeps your mappings), `:work` in the tree.
 
 The edits name the node where each note is written, so they work through transformations: a score
 showing `mt transpose 7` of a tree can edit the tree itself. Edits are messages like any other: they

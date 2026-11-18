@@ -20,7 +20,7 @@
 (t/run! "views and sources"
   (fn []
     ;; the views of a class, and the one a box shows
-    (t/eq "a tree can be a score or a roll (discussion #92)" (comp/views-of {:text "tree"}) [:score :roll])
+    (t/eq "a tree can be a score, a roll (discussion #92) or a continuum (#217)" (comp/views-of {:text "tree"}) [:score :roll :continuum])
     (t/eq "a freqt can be canvas or score" (comp/views-of {:text "freqt"}) [:canvas :score])
     (t/eq "a tree is a score by default" (comp/shown-as {:text "tree"}) :score)
     (t/eq "a tree shown as a roll" (comp/shown-as {:text "tree" :view :roll}) :roll)

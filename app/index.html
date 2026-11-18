@@ -191,6 +191,17 @@ body.embed .line-tabs, body.present .line-tabs { display: none !important; }
 #canvas .rnota { fill: var(--accent); fill-opacity: 0.85; stroke: var(--accent); stroke-width: 1; cursor: grab; }
 #canvas .rnota.sel { fill: var(--kairos); stroke: var(--ink); stroke-width: 1.25; }
 #canvas .paper { fill: #fbfaf6; stroke: var(--rule); }
+/* a tree as a continuum (discussion #217): strokes, heads, staff and semitone grid, each as present as its resolution */
+#canvas .ct-staff, #canvas .ct-ledger, #canvas .ct-bar { stroke: #1b2430; stroke-width: 1; }
+#canvas .ct-semi { stroke: #2f55d4; stroke-width: 0.6; }
+#canvas .ct-stroke { fill: none; stroke: #2f55d4; stroke-linecap: round; }
+#canvas .ct-head { fill: #1b2430; stroke: #1b2430; stroke-width: 1.2; cursor: default; }
+#canvas .ct-line, #canvas .ct-stem { stroke: #1b2430; stroke-width: 1.3; fill: none; }
+#canvas .ct-flag { fill: none; stroke: #1b2430; stroke-width: 1.6; stroke-linecap: round; }
+#canvas .ct-acc { font: 14px serif; fill: #1b2430; }
+#canvas .ct-cents { font: 9px var(--f-code, monospace); fill: #5a6676; }
+#canvas .prelude-slot { color: #1b2430; fill: #1b2430; }
+#canvas .prelude-slot .staff > path, #canvas .prelude-slot .barLine path { stroke: none !important; }
 #canvas .score-slot { color: #1b2430; fill: #1b2430; }
 #canvas .score-slot g.note, #canvas .score-slot g.rest { cursor: pointer; }
 #canvas .score-slot g.note.sel, #canvas .score-slot g.note.sel * { fill: #c2410c; stroke: #c2410c; color: #c2410c; }
@@ -1091,7 +1102,7 @@ window.addEventListener("DOMContentLoaded", function () {
     console.error(e);
   }
   // dependency order: shapes has no dependencies; components needs canvas; code, faust and library need components
-  var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/spell.cljs", "kairotic/mt.cljs", "kairotic/tempo.cljs", "kairotic/structure.cljs", "kairotic/quantize.cljs", "kairotic/treecanvas.cljs", "kairotic/mei.cljs", "kairotic/shapes.cljs", "kairotic/span.cljs", "kairotic/components.cljs",
+  var mods = ["kairotic/score.cljs", "kairotic/canvas.cljs", "kairotic/spell.cljs", "kairotic/mt.cljs", "kairotic/tempo.cljs", "kairotic/structure.cljs", "kairotic/quantize.cljs", "kairotic/treecanvas.cljs", "kairotic/mei.cljs", "kairotic/continuum.cljs", "kairotic/shapes.cljs", "kairotic/span.cljs", "kairotic/components.cljs",
               "kairotic/code.cljs", "kairotic/patterns.cljs", "kairotic/api.cljs", "kairotic/corefns.cljs", "kairotic/mtboxes.cljs", "kairotic/hiccup.cljs", "kairotic/faust.cljs", "kairotic/library.cljs", "kairotic/help.cljs", "kairotic/assistant.cljs", "kairotic/engine.cljs",
               "kairotic/sounds.cljs", "kairotic/talk.cljs", "kairotic/ringaudio.cljs", "kairotic/signal.cljs", "kairotic/input.cljs", "kairotic/record.cljs", "kairotic/ring.cljs", "kairotic/links.cljs", "kairotic/release.cljs", "kairotic/presets.cljs"];
   var page = ["page/00-work.cljs", "page/01-commands.cljs", "page/02-patch-view.cljs", "page/03-history-view.cljs", "page/04-panels.cljs", "page/05-gestures.cljs", "page/19-html.cljs", "page/06-connection.cljs", "page/07-claude.cljs", "page/08-sessions.cljs", "page/09-learn.cljs", "page/10-embed.cljs", "page/11-startup.cljs", "page/12-feedback.cljs", "page/13-perform.cljs", "page/14-editor.cljs", "page/15-presets.cljs", "page/16-release.cljs", "page/17-sounds.cljs", "page/18-lines.cljs", "page/19-files.cljs", "page/20-talk.cljs", "page/21-net.cljs", "page/22-learn.cljs", "page/23-ids.cljs", "page/24-clipboard.cljs", "page/25-tidy.cljs", "page/26-probes.cljs", "page/27-agent.cljs"];

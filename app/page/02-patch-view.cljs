@@ -137,7 +137,7 @@
       (= :code (display-of b)) [code-w (:h (code-geom b))]
       (panel-layout b) (let [{:keys [w h]} (panel-layout b)] [w h])
       (own-view? b) (let [[w h] (comp/size-of b)] [(+ grip w) h])
-      (#{:canvas :html} (display-of b)) (box-size id b)
+      (#{:canvas :html :continuum} (display-of b)) (box-size id b)
       (= :score (display-of b)) [(first (box-size id b)) (max 90 (+ hdr 8 (or (get-in @score-cache [id :h]) 70)))]
       :else
     (case (klass t)
@@ -747,6 +747,73 @@
 
 (declare render-inspector!)
 
+(declare place-preludes!)
+
+;; ───── a tree as a continuum (discussion #217): kairotic.continuum draws it; its clef, key signature and meter are
+;; Verovio's, scaled onto its staff after the scene is drawn ─────
+
+(defonce my-takes (atom {}))   ; box → takes kept "only for me" (22-learn's way: in this browser), see 19-files
+
+(defn continuum-tree
+  "The tree a continuum box draws: its own, with the takes kept only for me beside the work's."
+  [id b]
+  (when-let [t (mtb/tree-of (:data b))]
+    (let [mine (get @my-takes id)]
+      (if (seq mine) (mt/update-attrs t update :takes (fn [ts] (into (vec ts) mine))) t))))
+
+(defn continuum-svg [id b w h]
+  (let [idn (esc (name id)) t (continuum-tree id b)
+        a (when t (mt/attrs (first (filter #(= :voice (mt/tag %)) (tree-seq mt/node? mt/kids t)))))
+        k (or (some-> (or (:key a) (when t (:key (mt/attrs t)))) sp/parse-key :sig) 0)
+        m (or (some (fn [x] (when (= :measure (mt/tag x)) (:meter (mt/attrs x)))) (when t (tree-seq mt/node? mt/kids t))) [4 4])
+        {:keys [step base]} (ct/layout w (- h hdr))]
+    (str "<rect class=\"paper mus-body\" data-box=\"" idn "\" x=\"2\" y=\"" hdr "\" width=\"" (- w 4) "\" height=\"" (- h hdr 2) "\"></rect>"
+         "<g transform=\"translate(0," hdr ")\">"
+         (if t
+           (try (ct/svg t w (- h hdr)) (catch :default e (str "<text class=\"wait\" x=\"12\" y=\"26\">" (esc (str "Could not draw: " (.-message e))) "</text>")))
+           "<text class=\"wait\" x=\"12\" y=\"26\">an empty tree</text>")
+         "<g class=\"prelude-slot\" data-box=\"" idn "\" data-key=\"" k "\" data-meter=\"" (str/join "/" m) "\" data-step=\"" step "\" data-base=\"" base "\"></g>"
+         "</g>")))
+
+(defonce preludes (atom {}))   ; "key|meter" → SVG text
+
+(defn prelude-svg [k meter]
+  (let [tk @vrv ck (str k "|" meter)]
+    (when tk
+      (or (get @preludes ck)
+          (try
+            (let [[p q] (str/split meter #"/")]
+              (.setOptions tk (clj->js {:scale 60 :pageWidth 3000 :adjustPageWidth true :adjustPageHeight true :header "none" :footer "none"
+                                        :pageMarginTop 0 :pageMarginBottom 0 :pageMarginLeft 0 :pageMarginRight 0 :breaks "none"}))
+              (.loadData tk (str "<mei xmlns='http://www.music-encoding.org/ns/mei' meiversion='5.0'><music><body><mdiv><score>"
+                                 "<scoreDef><staffGrp><staffDef n='1' lines='5' clef.shape='G' clef.line='2' keysig='" (sp/mei-key-sig k)
+                                 "' meter.count='" p "' meter.unit='" q "'/></staffGrp></scoreDef>"
+                                 "<section><measure n='1' right='invis'><staff n='1'><layer n='1'><space dur='1'/></layer></staff></measure></section>"
+                                 "</score></mdiv></body></music></mei>"))
+              ;; (a score drawn after this sets its own options again)
+              (let [s (.renderToSVG tk 1)] (swap! preludes assoc ck s) s))
+            (catch :default _ nil))))))
+
+(defn place-preludes!
+  "Each continuum's clef, key signature and meter (Verovio's), scaled so that its five lines fall on the drawing's."
+  []
+  (doseq [slot (array-seq (.querySelectorAll ($ "scene") ".prelude-slot"))]
+    (let [d (.-dataset slot) s (prelude-svg (js/parseInt (.-key d) 10) (.-meter d))
+          step (js/parseFloat (.-step d)) base (js/parseFloat (.-base d))]
+      (when s
+        (let [g (js/document.createElementNS "http://www.w3.org/2000/svg" "g")]
+          (set! (.-innerHTML g) s)
+          (.appendChild slot g)
+          (let [lines (array-seq (.querySelectorAll g ".staff > path")) clef (.querySelector g ".clef")]
+            (if (and (= 5 (count lines)) clef)
+              (let [ys (sort (map #(:top (local-box % slot)) lines))
+                    sp (/ (- (last ys) (first ys)) 4)
+                    k (/ (* 2 step) sp)
+                    cx (:left (local-box clef slot))
+                    top (- base (* step 8))]
+                (.setAttribute g "transform" (str "translate(" (- 10 (* k cx)) " " (- top (* k (first ys))) ") scale(" k ")")))
+              (.remove g))))))))
+
 (defn render-scene [p]
   (let [p (scene-of p)
         {:keys [sel wire hover-in hover-out nsel ldrag]} @ui
@@ -769,7 +836,7 @@
         bxs (for [[id b] (by-z (:boxes p))]
               (let [[x y] (box-pos id b) t (:text b) [w h] (box-dims id b) [ins outs] (io b)
                     kc (klass t)
-                    music-box? (contains? #{:canvas :score :html} (display-of b))
+                    music-box? (contains? #{:canvas :score :html :continuum} (display-of b))
                     code-box? (= :code (display-of b))
                     ctl? (own-view? b)
                     action-box? (or ctl? (contains? action-classes kc))
@@ -796,6 +863,7 @@
                                                              "</text>")
                                                (:error c) (str "<text class=\"wait\" x=\"12\" y=\"" (+ hdr 26) "\">"
                                                                (esc (str "Could not draw: " (:error c))) "</text>"))))
+                              :continuum (continuum-svg id b w h)
                               :html (html-slot-svg id b w h)
                               "bang" (str "<circle class=\"bangc\" cx=\"" (+ grip (/ (- w grip) 2)) "\" cy=\"" (/ h 2) "\" r=\"7\"></circle>")
                               "msg" (str "<text x=\"" (+ grip 6) "\" y=\"16\">" (esc (str/trim (subs (str/trim t) 3))) "</text>")
@@ -886,6 +954,7 @@
           (when (= (first nsel) id)
             (doseq [el (array-seq (.querySelectorAll node (str "[id^=\"n-" (name id) "-" (name (second nsel)) "-\"]")))]
               (.add (.-classList el) "sel"))))))
+    (place-preludes!)
     (render-overlay!)
     (render-inspector!)))
 
