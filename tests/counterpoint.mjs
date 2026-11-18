@@ -215,7 +215,7 @@ for (const f of ["kernel.mjs", "mirror.mjs"])
   const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646, r = rng(7);
   const ctx = { N: 7, strong: (t) => t % 2 === 0, lowerFirst: (x, c) => (x <= c ? [x, c] : [c, x]), dissonant: (x, c) => [1, 3, 6].includes(((Math.abs(x - c) % 7) + 7) % 7),
                 quality: (l, h) => { const k = (((h - l) % 7) + 7) % 7; return k === 0 || k === 4 ? "perfect" : k === 2 || k === 5 ? "imperfect" : "dissonant"; }, suspension: false };
-  for (const study of ["50-lines", "51-schemata"]) {
+  for (const study of ["50-lines", "51-schemata", "54-parts"]) {
     const theirs = await import(`../studies/${study}/kairotic/soft.mjs`);
     let same = true;
     for (let k = 0; k < 400 && same; k++) {
@@ -227,6 +227,25 @@ for (const f of ["kernel.mjs", "mirror.mjs"])
     }
     is(`Study ${study.slice(0, 2)}'s soft rules weigh as soft.mjs (400 random lines)`, same);
   }
+}
+
+// partimento.mjs: the hard rules over a bass (Studies 51 and 54), shared; the studies publish copies of it
+{
+  const P = await import("../packages/cac/assets/partimento.mjs");
+  for (const st of ["51-schemata", "54-parts"]) {
+    const same = readFileSync(join(root, `studies/${st}/kairotic/partimento.mjs`), "utf8") === readFileSync(join(root, "packages/cac/assets/partimento.mjs"), "utf8");
+    is(`Study ${st.slice(0, 2)}'s partimento.mjs is the package's, as it is`, same);
+  }
+  // two parts: the book's 7–6 prototype is its one realization; in minor the chord on a dominant is major
+  const S = P.schemata({ schema: "7-6", key: { tonic: "C" } });
+  const U = P.PROTOTYPES["7-6"].upper.map(S.code);
+  is("partimento, two parts: the book's 7–6 is the one realization of its figures", !S.judge(U) && S.count() === 1n);
+  const M = P.schemata({ schema: "7-3", key: { tonic: "A", mode: "minor" } }), um = P.PROTOTYPES["7-3"].upper.map(M.code);
+  is("... in minor, over a dominant ⑤ the natural ⑦ is refused (G♯, not G)", /dominant is major/.test(M.check(um.slice(0, 8), 8, M.code("G4")) || ""));
+  // three parts: the doublings, and a 7th put off by one chord
+  const T = P.parts({ schema: "fauxbourdon", cadence: "simple", key: { tonic: "C" } });
+  is("partimento, three parts: the 3rd of a chord doubled is refused", /3rd of the chord doubled/.test(T.check([], [], 0, T.code("E5"), T.code("E4")) || ""));
+  is("... the Fifth Down Fourth Up closes with a compound cadence (the 7th of ② held into the 6/4)", P.parts({ schema: "fifths-73", cadence: "compound-64", key: { tonic: "C" } }).count() === 10n);
 }
 
 const bad = results.filter((x) => !x[1]);

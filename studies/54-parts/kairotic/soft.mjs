@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MPL-2.0
-// Kairotic · the soft rules of Studies 38–42 (kairotic/canon.cljs), in JavaScript: what a candidate costs by the
-// shape of its line and by the vertical it makes, and the engine that chooses among the candidates with a future —
-// a softmax of −cost / temperature, colder where few futures are left. The hard rules decide what may be; these
-// decide what is likely. The same ids, weights and costs as the ClojureScript, and as the closures of `live` in
-// @kairotic/cac's counterpoint.mjs (the `comes` box), so the studies and the boxes weigh alike — a module to be
-// exported from there, once, for all of them.
+// @kairotic/cac · soft.mjs: how every engine of Kairotic weighs its decisions.
 //
-// A pitch here is a step of the scale (a degree), as the kernels count them; a line is one pitch a unit, a note held
-// being the same pitch again.
+// The hard rules (a kernel's check) decide what may be; these soft rules decide what is likely. A candidate costs
+// something by the shape of its own line (melodicParts) and by the vertical it makes with another voice
+// (verticalParts), each rule by its id and weight; an engine chooses among the candidates with a future by a softmax
+// of −cost / temperature (choose, pick), colder where few futures are left (temperature). The comes box
+// (counterpoint.mjs), the studies' engines (Studies 38–53) and the agents Claude builds weigh with this one module,
+// so the same weights mean the same music everywhere, and changing a weight changes it for all of them.
+//
+// A pitch is a step of a scale (a degree, or a step of a system of N steps), as the kernels count them; a line is one
+// pitch a unit, a note held being the same pitch again.
 
 /** The soft rules, as Study 42 lists them (the melodic contour after Bach, #181; the vertical ones). */
 export const SOFT = [
@@ -30,6 +32,8 @@ export const SOFT = [
   { id: "passing", scope: "vertical", weight: 1, doc: "A dissonance passing on a weak beat: the life of second species (it costs less)." },
   { id: "suspension-life", scope: "vertical", weight: 1.5, doc: "A suspension: the life of fourth species (it costs less)." },
   { id: "alternation", scope: "vertical", weight: 1.5, doc: "The same vertical as two notes before but not as the last (3 6 3 6 …)." },
+  { id: "modal", scope: "mode", weight: 1, doc: "The mode's final and tenor cost less (more on a strong beat): the dux of the comes box keeps to its mode." },
+  { id: "imitation", scope: "imitation", weight: 1, doc: "How far the comes strays from imitating the dux, by the degree of imitation asked (the comes box)." },
 ];
 export const defaultWeights = () => Object.fromEntries(SOFT.map((r) => [r.id, r.weight]));
 
@@ -37,6 +41,7 @@ const LEAP_COST = { 0: 0, 1: 0, 2: 0.2, 3: 0.4, 4: 0.5, 5: 0.8, 7: 0.8 };
 const sign = (x) => (x > 0) - (x < 0);
 const dedupe = (line) => line.filter((x, i) => i === 0 || x !== line[i - 1]);
 const lastMove = (l) => (l.length >= 2 ? l[l.length - 1] - l[l.length - 2] : null);
+/** A candidate's whole cost: the sum of its parts. */
 export const total = (parts) => Object.values(parts).reduce((a, b) => a + b, 0);
 
 /** The soft cost of x after a line, by rule (the line's own shape), as canon.cljs's melodic-parts. */
@@ -70,7 +75,8 @@ export function melodicParts(line, x, W = defaultWeights()) {
 /**
  * The soft cost of the vertical (x, c) at the next time, as canon.cljs's vertical-parts. D and C are the two lines
  * so far (pitches a unit, null before a voice enters). ctx: {quality(lo, hi), N (steps a period), lowerFirst(x, c),
- * strong(t), dissonant(x, c), suspension (whether the vertical at t is a suspension)}.
+ * strong(t), dissonant(x, c), suspension (whether the vertical at t is a suspension), fifth (optional: the class of the
+ * system's fifth, for a system whose perfect intervals are more than the octave and the fifth)}.
  */
 export function verticalParts(D, C, x, c, ctx, W = defaultWeights()) {
   const parts = {}, w = (id) => W[id] ?? 0, t = D.length, N = ctx.N;
@@ -81,7 +87,7 @@ export function verticalParts(D, C, x, c, ctx, W = defaultWeights()) {
   const motion = dx === 0 && dc === 0 ? "none" : dx === 0 || dc === 0 ? "oblique" : sign(dx) === sign(dc) ? "similar" : "contrary";
   if (motion === "oblique") parts.motion = 0.5 * w("motion");
   if (motion === "similar") parts.motion = 0.8 * w("motion");
-  if (motion === "similar" && ctx.quality(lo, hi) === "perfect" && mod(hi - lo) !== 0) parts["direct-perfect"] = w("direct-perfect");
+  if (motion === "similar" && ctx.quality(lo, hi) === "perfect" && mod(hi - lo) !== 0 && (ctx.fifth === undefined || mod(hi - lo) === ctx.fifth)) parts["direct-perfect"] = w("direct-perfect");
   if (motion === "similar" && ctx.quality(lo, hi) === "imperfect") {
     const cls = mod(hi - lo);
     let run = 1;
@@ -122,6 +128,18 @@ export function choose(cands, temp, r = Math.random) {
   let x = r() * ws.reduce((a, b) => a + b, 0);
   for (let j = 0; j < ok.length; j++) { x -= ws[j]; if (x < 0) return ok[j]; }
   return ok[ok.length - 1];
+}
+
+/** A choice among candidates by a cost function (the comes box's): at temperature 0, or without a random number r in
+ *  [0, 1), the cheapest; above it a softmax of −cost / temperature drawn with r. Unlike choose, it does not ask for
+ *  futures (the candidates are already those with one). */
+export function pick(cands, cost, temp, r) {
+  const cs = cands.slice().sort((p, q) => cost(p) - cost(q) || (p.note ?? -100) - (q.note ?? -100));
+  if (!cs.length || !(temp > 0.001) || r === undefined || r === null) return cs[0] || null;
+  const m = cost(cs[0]), ws = cs.map((c) => Math.exp((m - cost(c)) / temp)), x = r * ws.reduce((a, v) => a + v, 0);
+  let acc = 0;
+  for (let j = 0; j < cs.length; j++) { acc += ws[j]; if (x < acc) return cs[j]; }
+  return cs[cs.length - 1];
 }
 
 /** How a line moves, for the pages and the tests: the share of steps, 3rds and larger leaps among its moves. */
