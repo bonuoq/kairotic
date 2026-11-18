@@ -96,6 +96,23 @@ export async function run() {
     }
     is(`${bb.name} (${per === 1 ? "a beat a note, A minor" : "a bar a note, C major"}), written for three by the engine: sound, and a middle voice from its figures every time`, ok);
   }
+  is("the cadence in three parts: the last chord a 5/3 (never a 6), the leading tone up to the tonic and the 7th (④) down to ③ in either upper voice", (() => {
+    const rr = rng(21), mod = (a, m) => ((a % m) + m) % m;
+    for (const id of ["cadence", "romanesca", "monte", "fifths"]) for (const key of [{ tonic: "C" }, { tonic: "A", mode: "minor" }]) for (const ending of ["authentic", "deceptive"]) {
+      const F = figuring({ bass: BASSES[id].degrees, key, per: 2, ending });
+      for (let i = 0; i < 4; i++) {
+        const U = F.engineThree({ temp: 0.8, r: rr }), m = F.middle(U, F.figuresThree(U).map((f) => f.chord), { r: rr });
+        if (!m.count || m.judge) return false;
+        if (!/^(\(5\)\/3|5\/3)$/.test(m.chords[F.n - 1])) { notes.push(`${id} ${ending}: ends on ${m.chords[F.n - 1]}`); return false; }
+        const t = F.n - 1;
+        for (const V of [U, m.voice]) {
+          const p = F.degree(V[t - 1]), x = F.degree(V[t]);
+          if ((mod(p, 7) === 6 && x !== p + 1) || (mod(p, 7) === 3 && x !== p - 1)) { notes.push(`${id} ${ending}: ${F.name(V[t - 1])} → ${F.name(V[t])}`); return false; }
+        }
+      }
+    }
+    return true;
+  })());
   is("written for three, the figures the player asks are kept where a middle voice can make them, else the likeliest that can", (() => {
     const t = 3, alt = ft[t].chords.find((c) => c.three && c.chord !== ft[t].chord);
     if (!alt) return true;
