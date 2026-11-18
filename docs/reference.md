@@ -2716,7 +2716,7 @@ See also: `pitch~`, `onset~`, `freqt`, `quantize`
 
 `tree`
 
-A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]), seen as a score or as a roll of frequency over time (⇄ in its header), its text in the code window ({ } in its header) — one tree, two views (discussion #92): drawing on its roll writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it.
+A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]), seen as a score, as a roll of frequency over time, or as a continuum between them (⇄ in its header; (continuum! :bN :dissolve), discussion #217), its text in the code window ({ } in its header) — one tree, two views (discussion #92): drawing on its roll writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it.
 
 **Inlets** 
 
@@ -2742,6 +2742,8 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `(quantize! :bN) · (unquantize! :bN)`: its free time written in measures, and back (one event each); quantized, a note keeps where it really sounded (:tstamp.real, :dur.real, seconds), and made free again it goes back there
 - `(export-mei! :bN) · (mei :bN)`: its MEI (downloaded, or as text): the notation, where its notes really sounded (@tstamp.real, @dur.real, @vel) and the rest in an <extMeta type="kairotic">; read back it is the same tree
 - `(import-mei!) · (import-mei! :bN) · drop a file on the patch`: a .mei or MusicXML file as a tree box (a new one, or into bN)
+- `⇄ continuum · (continuum! :bN :dissolve)`: between a roll and a score: each axis — time (as it sounded → as written), pitch (Hz → keys → staff), glyph (stroke → head → value) — at its own resolution, changing over the piece (:written :proportional :tempered :graphic :mixed :dissolve :crystallize, or {:res …}); kept in the tree
+- `(keep-take! :bN take) · (continuum! :bN {:take "t1"})`: a performance of the tree (where each note was played), only for you by default (:work keeps it in the tree); the continuum can show it
 - `(track! :bN)`: its free time played (in seconds, at any tempo): the beats are found and kept in its :quant, so that its score and quantize! write it on them
 
 **Try:** The tree box is its own score: click a note and press ↑ (or a…g, + −, Delete), or press { } in its header, change a note in its text and apply it (Ctrl+Enter). It sends its tree whenever it changes: through mt transpose 7 it reaches the second tree box, a fifth higher, which follows. Press ⇄ roll on the tree box to draw notes into it. (A tree that comes into a tree box is written into it, as one event of the history.)
