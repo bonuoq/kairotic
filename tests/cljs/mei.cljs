@@ -89,7 +89,7 @@
       (t/is "a take goes to MEI's performance module: a <when> per note played, pointing at it"
             (and (re-find #"<performance[^>]*xml:id=\"perf-t1\"" m) (re-find #"<performance[^>]*label=\"Tuesday\"" m)
                  (re-find #"<recording[^>]*betype=\"time\"" m) (re-find #"<avFile[^>]*target=\"a1b2c3\"" m)
-                 (= 3 (count (re-seq #"<when " m))) (re-find #"absolute=\"00:00:01\.030\" data=\"#k-" m)))
+                 (= 3 (count (re-seq #"<when " m))) (re-find #"absolute=\"00:00:01\.030\" data=\"#m-k-\d+\"" m)))
       (t/is "… before <body>" (< (.indexOf m "<performance") (.indexOf m "<body>")))
       (t/is "… and comes back exactly: tree → MEI → tree, MEI → tree → MEI" (and (= t2 (mei/<-mei m)) (= m (mei/->mei (mei/<-mei m)))))
       (t/eq "the line of a take: where it played each note it played" (mapv (juxt :id :t :dur) (mei/tree->line t2 {:take "t1"}))

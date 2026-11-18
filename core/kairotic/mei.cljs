@@ -260,15 +260,20 @@
            (or (at p "label") (at r "label")) (assoc :name (or (at p "label") (at r "label")))
            (some (fn [f] (at f "target")) (all r "avFile")) (assoc :audio (some (fn [f] (at f "target")) (all r "avFile")))))))
 
+(defn- node-map
+  "A tree with f applied to every child of every node (with attributes or not), its structure and metadata kept."
+  [t f]
+  (if (and (vector? t) (keyword? (first t)))
+    (let [n (if (map? (second t)) 2 1)]
+      (with-meta (into (subvec t 0 n) (map f (subvec t n))) (meta t)))
+    t))
+
 (defn- with-ids
   "Notes read from a MEI from elsewhere that a take points at get their xml:id as :id."
   [n ids]
-  (cond
-    (and (vector? n) (= :note (first n)) (contains? ids (:mei-id (meta n))))
+  (if (and (vector? n) (= :note (first n)) (contains? ids (:mei-id (meta n))))
     (with-meta [:note (assoc (second n) :id (:mei-id (meta n)))] (meta n))
-    (and (vector? n) (map? (second n)))
-    (with-meta (into [(first n) (second n)] (map #(with-ids % ids) (subvec n 2))) (meta n))
-    :else n))
+    (node-map n #(with-ids % ids))))
 
 (defn <-mei
   "A MEI text as a tree (canonical when the MEI was written by ->mei). Throws if it is not MEI."
@@ -480,10 +485,9 @@
 (defn- walk-notes
   "f applied to the attributes of every note of a tree (its structure kept)."
   [t f]
-  (cond
-    (and (vector? t) (= :note (first t))) (with-meta (into [:note (f (second t))] (subvec t 2)) (meta t))
-    (and (vector? t) (map? (second t))) (with-meta (into [(first t) (second t)] (map #(walk-notes % f) (subvec t 2))) (meta t))
-    :else t))
+  (if (and (vector? t) (= :note (first t)))
+    (with-meta (into [:note (f (if (map? (second t)) (second t) {}))] (subvec t (if (map? (second t)) 2 1))) (meta t))
+    (node-map t #(walk-notes % f))))
 
 (defn ensure-ids
   "Every note that begins a sound (not the piece a tie goes on into) gets an :id if it has none: \"n0\", \"n1\" … in
@@ -496,14 +500,13 @@
         open (atom false)]
     (letfn [(go [t]
               (cond
-                (and (vector? t) (= :voice (first t))) (do (reset! open false) (with-meta (into [:voice (second t)] (map go (subvec t 2))) (meta t)))
+                (and (vector? t) (= :voice (first t))) (do (reset! open false) (node-map t go))
                 (and (vector? t) (= :note (first t)))
-                (let [a (second t) cont? @open]
+                (let [has (map? (second t)) a (if has (second t) {}) cont? @open]
                   (when-not (:grace a) (reset! open (boolean (:tie a))))
-                  (with-meta (into [:note (if (or cont? (:id a)) a (assoc a :id (fresh)))] (subvec t 2)) (meta t)))
+                  (with-meta (into [:note (if (or cont? (:id a)) a (assoc a :id (fresh)))] (subvec t (if has 2 1))) (meta t)))
                 (and (vector? t) (= :rest (first t))) (do (reset! open false) t)
-                (and (vector? t) (map? (second t))) (with-meta (into [(first t) (second t)] (map go (subvec t 2))) (meta t))
-                :else t))]
+                :else (node-map t go)))]
       (go tree))))
 
 (defn takes "The takes of a tree (on its root)." [tree] (vec (:takes (second tree))))
