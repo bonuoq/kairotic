@@ -77,6 +77,7 @@ export async function agent(page, check) {
     check("the Claude panel lists the agent: its request, built, its line, who asked", /add two/.test(r1) && /built/.test(r1) && /its line: «agent b900/.test(r1) && /asked by you/.test(r1), r1.slice(0, 300));
     check("... and the log of its builds: the try sent back, then built", /try 1: .*no-such-class.*sent back to Claude/.test(r1) && /built: 4 boxes/.test(r1), r1.slice(0, 600));
     await page.click('#agents-list li[data-agent*="b900"] [data-agent-act=ask]');
+    await page.waitForSelector('#agents-list li[data-agent*="b900"] .ag-ask-in', { timeout: 5000 }).catch(() => null);
     check("Ask… opens a field with its request", await page.evaluate(() => { const i = document.querySelector('#agents-list li[data-agent*="b900"] .ag-ask-in'); return !!i && i.value === "add two"; }));
     await page.fill('#agents-list li[data-agent*="b900"] .ag-ask-in', "add three");
     await page.click('#agents-list li[data-agent*="b900"] [data-agent-act=send]');
