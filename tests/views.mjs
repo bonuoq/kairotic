@@ -84,7 +84,7 @@ export async function views(page, check) {
   const swap = await chipCentre(page, tid, "view");
   check("a tree shown as a score has a ⇄ chip", !!swap);
   if (swap) {
-    // two views: score ⇄ roll
+    // three views: score ⇄ roll ⇄ continuum
     await page.mouse.click(...swap);
     const v1 = await until(page, `(view-of (get-in (current) [:boxes ${tb}]))`, (g) => g === ":roll");
     check("⇄ shows the tree as a roll", v1 === ":roll", v1);
@@ -92,6 +92,10 @@ export async function views(page, check) {
     check("... which has a { } chip too", !!roll);
     const swap2 = await chipCentre(page, tid, "view");
     if (swap2) await page.mouse.click(...swap2);
+    const v2 = await until(page, `(view-of (get-in (current) [:boxes ${tb}]))`, (g) => g === ":continuum");
+    check("... ⇄ again as a continuum (discussion #217)", v2 === ":continuum", v2);
+    const swap3 = await chipCentre(page, tid, "view");
+    if (swap3) await page.mouse.click(...swap3);
     const v = await until(page, `(view-of (get-in (current) [:boxes ${tb}]))`, (g) => g === ":score");
     check("... and ⇄ again shows it as a score", v === ":score", v);
   }
