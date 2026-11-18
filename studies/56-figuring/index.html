@@ -1,0 +1,421 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 56 · Figuring</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+/* Study 56: a bass given, a melody played over it on the keyboard, and what the two lines are found to be unit by unit
+   — the interval, the chord it can belong to (the likeliest first, the others a click away), the schemata they make —;
+   beside them the next note's futures, the cadences the bass offers, and a middle voice written from the figures. */
+.views { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+.sheet { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; overflow-x: auto; }
+.sheet svg { display: block; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .presets button.on { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .presets button.on { color: #0e1420; } }
+input[type="text"] { font: 12.5px var(--f-code); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; width: 22em; max-width: 100%; }
+.unit { fill: none; stroke: var(--grid); stroke-width: 1; }
+.strong { fill: var(--accent-soft); }
+.barline { stroke: var(--rule); stroke-width: 1.2; }
+.bass { fill: var(--accent); }
+.upper { fill: var(--kairos); }
+.middle { fill: var(--ok); }
+.cursor { fill: var(--kairos-soft); }
+.diss { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 3 2; }
+.lab { font: 10.5px var(--f-code); fill: var(--ink-soft); }
+.two { font: 12px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+.fig { font: 600 12px var(--f-code); fill: var(--ink); text-anchor: middle; cursor: pointer; }
+.fig.own { fill: var(--kairos); }
+.fig.none { fill: var(--ink-soft); font-weight: 400; }
+.figbox { fill: transparent; cursor: pointer; }
+.figbox:hover, .figbox.sel { fill: var(--accent-soft); }
+.deg { font: 13px var(--f-ui); fill: var(--accent); text-anchor: middle; }
+.span { stroke: var(--kairos); stroke-width: 1.5; fill: none; }
+.spanlab { font: 600 10.5px var(--f-code); fill: var(--kairos); }
+.nname { font: 600 10px var(--f-code); fill: #fff; dominant-baseline: central; }
+.big { font: 600 22px var(--f-code); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+.fan { display: flex; flex-wrap: wrap; gap: 5px; }
+.fan button { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 12px var(--f-code); padding: 3px 7px; border-radius: 5px; cursor: pointer; display: grid; justify-items: center; line-height: 1.25; }
+.fan button small { font-size: 10.5px; color: var(--ink-soft); }
+.fan button:hover { border-color: var(--kairos); }
+.fan button:disabled { opacity: 0.35; cursor: default; }
+.fan button.on { border-color: var(--kairos); background: var(--kairos-soft); }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.keys { position: relative; height: 92px; user-select: none; touch-action: manipulation; }
+.keys button { position: absolute; top: 0; border: 1px solid var(--rule); border-radius: 0 0 5px 5px; cursor: pointer; padding: 0 0 4px; font: 10px var(--f-code); display: flex; align-items: flex-end; justify-content: center; }
+.keys .w { height: 92px; background: var(--box); color: var(--ink-soft); z-index: 1; }
+.keys .b { height: 56px; background: var(--ink); color: var(--paper); z-index: 2; }
+.keys button.ok { box-shadow: inset 0 -5px 0 var(--kairos); }
+.keys button.room { box-shadow: inset 0 -5px 0 var(--ok); }
+.keys button:disabled { opacity: 0.5; cursor: default; }
+.keys button:active, .keys button.hit { background: var(--accent); color: #fff; }
+dl.alts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 12.5px; }
+dl.alts dt { font: 600 12px var(--f-code); }
+dl.alts dt button { font: inherit; border: 1px solid var(--rule); background: var(--box); color: var(--ink); border-radius: 4px; padding: 1px 6px; cursor: pointer; }
+dl.alts dt button.on { border-color: var(--kairos); color: var(--kairos); }
+dl.alts dd { margin: 0; color: var(--ink-soft); }
+table.cad { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.cad td { padding: 3px 4px; border-top: 1px solid var(--grid); vertical-align: top; }
+table.cad td.n { font-family: var(--f-code); text-align: right; white-space: nowrap; }
+table.cad button { font: 11.5px var(--f-ui); }
+</style>
+
+<main>
+<header>
+  <h1>Study 56 · figuring</h1>
+  <span class="sub">A bass without figures, a melody improvised over it, and the figures found as it goes</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The bass">
+  <span class="tag">Bass</span>
+  <span class="presets" id="basses"></span>
+  <label>or <input type="text" id="bass-text" spellcheck="false" aria-label="the bass as note names"></label>
+  <button class="act" id="bass-use">Use</button>
+</div>
+<div class="toolbar" aria-label="The key and the melody">
+  <span class="tag">Key</span>
+  <label>tonic <select id="tonic"><option>C</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>G</option><option>A</option><option>Bb</option><option>B</option></select></label>
+  <label>mode <select id="mode"><option>major</option><option>minor</option></select></label>
+  <label title="a bass note lasts one unit, or two (a bar: strong, weak)">a bass note <select id="per"><option value="2">a bar (2 units)</option><option value="1">a beat (1 unit)</option></select></label>
+  <label title="the melody's notes only where a middle voice can still be written under it"><input type="checkbox" id="room"> leave room for a third voice</label>
+  <span class="sep"></span>
+  <button class="act" id="undo" disabled>⌫ Undo</button>
+  <button class="act" id="clear" disabled>Clear</button>
+  <label title="the engine: a softmax of −cost / temperature among the notes with a future (0: the cheapest)">temperature <input type="number" id="temp" min="0" max="5" step="0.1" value="0.5"></label>
+  <button class="act" id="finish">Finish it</button>
+  <button class="act" id="play" disabled>▶ Play</button>
+</div>
+
+<div class="views">
+  <section class="panel">
+    <h2>The bass, the melody, the figures <span id="ref"></span></h2>
+    <div class="sheet" id="sheet"></div>
+    <div class="msg" id="msg"></div>
+    <div class="keys" id="keys" aria-label="a keyboard: play the melody (or the keys a w s e d f t g y h u j k of the computer; z and x an octave down and up; backspace undoes)"></div>
+    <div class="msg" id="said"></div>
+  </section>
+  <div class="side">
+    <section class="panel">
+      <h2>The next note <span id="fan-sub"></span></h2>
+      <div class="fan" id="fan"></div>
+    </section>
+    <section class="panel">
+      <h2>The figures <span id="fig-sub">click a chord under the bass</span></h2>
+      <dl class="alts" id="alts"></dl>
+      <div class="msg" id="schemata"></div>
+    </section>
+    <section class="panel">
+      <h2>Cadences <span>where the bass can close</span></h2>
+      <table class="cad" id="cadences"></table>
+    </section>
+    <section class="panel">
+      <h2>A third voice <span>under the melody</span></h2>
+      <div class="row">
+        <label class="msg" style="display:flex;gap:6px;align-items:center">the chords <select id="asked"><option value="asked">as figured</option><option value="found">any of those found</option><option value="free">none asked</option></select></label>
+        <button class="act" id="third" disabled>Write it</button>
+        <button class="act" id="no-third" disabled>Remove it</button>
+      </div>
+      <div class="msg" id="third-msg"></div>
+    </section>
+    <section class="panel">
+      <h2>What it decides</h2>
+      <p class="about">The partimento turned round: the bass comes without figures and the melody is improvised over it, under the two-part rules of Studies 51 and 54 (<code>@kairotic/cac</code>'s <code>partimento.mjs</code>) — a note played is taken as it is where the rules and the rest of the phrase allow it, else the nearest one that can be played, and why.</p>
+      <ul class="q">
+        <li><b>The figures are found, not given.</b> Each note of the melody is an interval over the bass; the chords it can belong to are those whose figures hold it, the likeliest first: the <b>rule of the octave</b> (the scale in the bass figured as the partimento schools taught it: ① 5/3, ② 6/3, ③ 6/3, ④ 6 going up and 4/2 going down, ⑤ 5/3, ⑥ 6/3, ⑦ 6/3), then what the melody's own dissonance names — a 7th held over the bass a 7/3, a 4th a 5/4, a 2nd over the bass gone down under it a 4/2 —, and a dominant ⑤ a 5/3 or a 7/3. A dissonance on a weak unit passes: it has no chord of its own.</li>
+        <li><b>The schemata are recognized</b> as the two lines make them: parallel 3rds or 6ths, the 3–6 progression, chains of 7–6 or 2–3, and the cadences of chapter 3 — imperfect 3–3, perfect 6–8, compound 7–6–8 on ②–①; on ⑤–① perfect, imperfect or with a 4–3.</li>
+        <li><b>The cadences are counted ahead</b>: where the bass goes ②–①, ⑤–①, ⑤–⑥ or ends on ⑤, the ways the melody so far leaves to make each kind of cadence there, and one of them written by the engine.</li>
+        <li><b>A middle voice is written from the figures</b> under the three-part rules of Study 54 — no 3rd doubled nor the leading tone, no parallel 5ths or octaves between the upper voices, the 6/4 a double appoggiatura. Where none can be written it says where, and why: a melody that doubles the leading tone of the bass, or leaps where the voice under it cannot follow. <i>Leave room for a third voice</i> takes only the notes that keep a middle voice possible.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+</main>
+
+<script type="module">
+import { figuring, BASSES } from "./kairotic/figuring.mjs";
+
+const $ = (id) => document.getElementById(id);
+let F = null, U = [], M = null, chosen = {}, sel = null, bid = "scale-down", ctx = null, octave = 0, lastSaid = "";
+
+for (const [k, b] of Object.entries(BASSES)) {
+  const el = document.createElement("button");
+  el.className = "act"; el.dataset.bass = k; el.textContent = b.name;
+  el.addEventListener("click", () => { bid = k; $("bass-text").value = ""; rebuild(); });
+  $("basses").appendChild(el);
+}
+const key = () => ({ tonic: $("tonic").value, mode: $("mode").value });
+function rebuild() {
+  document.querySelectorAll("[data-bass]").forEach((b) => b.classList.toggle("on", b.dataset.bass === bid));
+  const text = $("bass-text").value.trim();
+  try {
+    F = figuring({ bass: text || BASSES[bid].degrees, key: key(), per: Number($("per").value) });
+  } catch (e) { $("msg").className = "msg bad"; $("msg").textContent = "✗ " + (e.message || e); return; }
+  if (!text) $("bass-text").placeholder = F.notes.map((x) => F.key.name(x.d, x.r)).join(" ");
+  U = []; M = null; chosen = {}; sel = null; lastSaid = "";
+  $("ref").textContent = `${F.key.tonic.replace("b", "♭")} ${F.key.mode} · ${F.n} units · ${F.count().toLocaleString("en")} melodies`;
+  render();
+}
+const chordsOf = () => F.figuresOf(U);
+const chordAt = (figs, t) => (t in chosen ? chosen[t] : figs[t].chords[0].chord);
+
+function render() {
+  const n = F.n, uw = Math.max(26, Math.min(46, 780 / n)), X = 58, H = 340, figs = chordsOf();
+  const ds = [...F.units.map((b) => b.d), ...U.map(F.degree), ...(M && M.voice ? M.voice.map(F.degree) : []), F.units[0].d + 12];
+  const lo = Math.min(...ds) - 1, hi = Math.max(...ds) + 1;
+  const top = 34, bot = H - 82, y = (d) => top + (hi - d) * ((bot - top) / Math.max(1, hi - lo));
+  let svg = `<svg width="${X + n * uw + 10}" height="${H}" viewBox="0 0 ${X + n * uw + 10} ${H}" role="img" aria-label="the bass, the melody and the figures found">`;
+  for (let t = 0; t < n; t++) {
+    const x = X + t * uw, b = F.units[t];
+    if (b.strong) svg += `<rect class="strong" x="${x}" y="22" width="${uw}" height="${bot - 10}"/><line class="barline" x1="${x}" x2="${x}" y1="22" y2="${bot + 12}"/>`;
+    svg += `<rect class="unit" x="${x}" y="22" width="${uw}" height="${bot - 10}"/>`;
+    if (t === U.length) svg += `<rect class="cursor" x="${x}" y="22" width="${uw}" height="${bot - 10}"/>`;
+    if (t < U.length) {
+      const f = figs[t], c = chordAt(figs, t);
+      svg += `<text class="two" x="${x + uw / 2}" y="${bot + 24}">${f.two}</text>`;
+      svg += `<rect class="figbox${sel === t ? " sel" : ""}" data-t="${t}" x="${x + 1}" y="${bot + 30}" width="${uw - 2}" height="20" rx="3"/>`;
+      svg += `<text class="fig${t in chosen ? " own" : ""}${c ? "" : " none"}" data-t="${t}" x="${x + uw / 2}" y="${bot + 44}">${c || "·"}</text>`;
+    }
+    if (b.struck) svg += `<text class="deg" x="${x + uw / 2}" y="${bot + 68}">${F.key.circled(b.d)}${b.r ? "♯" : ""}</text>`;
+  }
+  const bars = (vals, cls, nameOf, dOf, cut) => {
+    let t = 0;
+    while (t < vals.length) {
+      let e = t + 1; while (e < vals.length && (cut ? !cut(e) : vals[e] === vals[t])) e++;
+      const v = vals[t], yy = y(dOf(v));
+      svg += `<rect class="${cls}" x="${X + t * uw + 1}" y="${yy - 7}" width="${(e - t) * uw - 2}" height="14" rx="3"/>`;
+      if ((e - t) * uw > 26) svg += `<text class="nname" x="${X + t * uw + 4}" y="${yy}">${nameOf(v)}</text>`;
+      t = e;
+    }
+  };
+  bars(F.units.map((b, t) => t), "bass", (t) => F.bassName(t), (t) => F.units[t].d, (e) => F.units[e].struck);
+  if (M && M.voice) bars(M.voice, "middle", F.name, F.degree);
+  bars(U, "upper", F.name, F.degree);
+  for (let t = 0; t < U.length; t++) if (F.voice.vertical(t, U[t]).q === "dissonant") svg += `<rect class="diss" x="${X + t * uw + 1}" y="${y(F.degree(U[t])) - 9}" width="${uw - 2}" height="18" rx="3"/>`;
+  // the schemata found, bracketed over the units they span
+  const found = F.schemataIn(U);
+  found.forEach((s, i) => {
+    const x1 = X + s.from * uw + 3, x2 = X + (s.to + 1) * uw - 3, yy = 8 + (i % 2) * 10;
+    svg += `<path class="span" d="M${x1} ${yy + 6} V${yy} H${x2} V${yy + 6}"/><text class="spanlab" x="${x1 + 3}" y="${yy - 1}">${s.name}</text>`;
+  });
+  svg += `<text class="lab" x="4" y="${bot + 24}">interval</text><text class="lab" x="4" y="${bot + 44}">chord</text><text class="lab" x="4" y="${bot + 68}">bass</text>`;
+  $("sheet").innerHTML = svg + "</svg>";
+  $("sheet").querySelectorAll("[data-t]").forEach((el) => el.addEventListener("click", () => { sel = Number(el.dataset.t); render(); }));
+  $("schemata").textContent = found.length ? "found: " + found.map((s) => `${s.name} (units ${s.from + 1}–${s.to + 1})`).join(" · ") : U.length ? "no schema yet" : "";
+  $("undo").disabled = !U.length; $("clear").disabled = !U.length; $("play").disabled = !U.length;
+  $("finish").disabled = U.length >= n; $("third").disabled = U.length < n; $("no-third").disabled = !(M && M.voice);
+  const left = F.count(U);
+  $("status").textContent = U.length >= n ? "the melody is written" : `${U.length} / ${n} · ${left.toLocaleString("en")} ways on`;
+  $("msg").className = "msg"; $("msg").innerHTML = U.length ? `<span style="color:var(--kairos)">■ melody</span> ${U.filter((x, t) => t === 0 || x !== U[t - 1]).map(F.name).join(" ")}` + (M && M.voice ? ` · <span style="color:var(--ok)">■ middle</span> ${M.voice.filter((x, t) => t === 0 || x !== M.voice[t - 1]).map(F.name).join(" ")}` : "") : "Play the melody: on the keyboard below, the computer's keys, or the next note's buttons.";
+  $("said").textContent = lastSaid;
+  renderFan(); renderAlts(figs); renderCadences(); renderKeys();
+}
+let fanCache = null;
+function fan() {
+  if (fanCache && fanCache.len === U.length && fanCache.F === F && fanCache.room === $("room").checked) return fanCache.cs;
+  const cs = U.length < F.n ? F.fan(U) : [];
+  if ($("room").checked) for (const c of cs) if (!c.reason && c.futures > 0n) c.room = F.roomFor([...U, c.note]);
+  fanCache = { len: U.length, F, room: $("room").checked, cs };
+  return cs;
+}
+function renderFan() {
+  const host = $("fan"); host.innerHTML = "";
+  const cs = fan(), ok = cs.filter((c) => !c.reason && c.futures > 0n);
+  $("fan-sub").textContent = U.length >= F.n ? "the phrase is closed" : `unit ${U.length + 1} · over ${F.bassName(U.length)}`;
+  for (const c of cs.filter((c) => !/too far|range|wider/.test(c.reason || ""))) {
+    const b = document.createElement("button");
+    const live = !c.reason && c.futures > 0n && (!$("room").checked || c.room !== false);
+    b.disabled = !live;
+    b.title = c.reason || (c.futures > 0n ? (c.room === false ? "no room for a middle voice under it" : "") : "no way on from it");
+    b.innerHTML = `${c.name}<small>${c.reason ? "·" : c.futures.toLocaleString("en")}</small>`;
+    b.addEventListener("click", () => write(c.note, ""));
+    host.appendChild(b);
+  }
+  if (U.length < F.n && !ok.length) host.textContent = "no note can follow";
+}
+function renderAlts(figs) {
+  const host = $("alts"); host.innerHTML = "";
+  if (sel === null || sel >= U.length) { $("fig-sub").textContent = U.length ? "click a chord under the bass" : ""; return; }
+  const f = figs[sel], cur = chordAt(figs, sel);
+  $("fig-sub").textContent = `unit ${sel + 1}: ${F.name(U[sel])} over ${F.bassName(sel)}, a ${f.two}`;
+  for (const a of f.chords) {
+    const dt = document.createElement("dt"), b = document.createElement("button"), dd = document.createElement("dd");
+    b.textContent = a.chord || "passing"; b.className = a.chord === cur ? "on" : "";
+    b.addEventListener("click", () => { if (a.chord === f.chords[0].chord) delete chosen[sel]; else chosen[sel] = a.chord; M = null; render(); });
+    dt.appendChild(b); dd.textContent = a.why.length ? a.why.join("; ") : "possible";
+    host.append(dt, dd);
+  }
+}
+function renderCadences() {
+  const host = $("cadences"); host.innerHTML = "";
+  const cls = F.closes();
+  if (!cls.length) { host.innerHTML = `<tr><td class="msg">the bass has no ②–①, ⑤–①, ⑤–⑥, nor ends on ⑤</td></tr>`; return; }
+  for (const cl of cls) {
+    const ways = F.cadenceWays(U, cl);
+    host.insertAdjacentHTML("beforeend", `<tr><td colspan="3"><b>${cl.kind}</b> <span class="msg">units ${cl.from + 1}–${cl.at + 1}</span></td></tr>`);
+    for (const w of ways) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${w.name}</td><td class="n">${w.count.toLocaleString("en")}${w.why ? ` <span class="msg">(${w.why})</span>` : ""}</td><td></td>`;
+      if (w.count > 0n && w.voice && U.length < F.n) {
+        const b = document.createElement("button"); b.className = "act"; b.textContent = "close so";
+        b.addEventListener("click", () => { const V = w.voice.engine({ temp: temp() }, U); if (V) { U = V; M = null; lastSaid = `closed with a ${w.name} cadence on ${cl.kind}`; render(); } });
+        tr.lastChild.appendChild(b);
+      }
+      host.appendChild(tr);
+    }
+  }
+}
+const KEYS = "awsedftgyhujkolp;";
+function renderKeys() {
+  const host = $("keys"); host.innerHTML = "";
+  const base = 60 + 12 * octave, cs = fan(), W = host.clientWidth || 600, nw = 15, ww = W / nw;
+  const okMidi = new Map(cs.filter((c) => !c.reason && c.futures > 0n).map((c) => [Math.round(F.midiOf(c.note)), c]));
+  let wi = 0;
+  for (let m = base; m < base + 25 && wi < nw; m++) {
+    const black = [1, 3, 6, 8, 10].includes(m % 12), b = document.createElement("button");
+    b.className = black ? "b" : "w";
+    const x = black ? wi * ww - ww * 0.3 : wi * ww;
+    b.style.left = x + "px"; b.style.width = (black ? ww * 0.6 : ww) + "px";
+    const c = okMidi.get(m);
+    if (c) b.classList.add($("room").checked && c.room ? "room" : "ok");
+    const k = m - base < KEYS.length ? KEYS[m - base] : "";
+    b.textContent = m % 12 === 0 ? "C" + (Math.floor(m / 12) - 1) : k;
+    b.title = c ? `${c.name}: ${c.futures.toLocaleString("en")} ways on` : "";
+    b.disabled = U.length >= F.n;
+    b.dataset.midi = m;
+    b.addEventListener("pointerdown", (e) => { e.preventDefault(); ask(m); });
+    host.appendChild(b);
+    if (!black) wi++;
+  }
+}
+const temp = () => Math.max(0, Number($("temp").value) || 0);
+function ask(midi) {
+  if (U.length >= F.n) return;
+  const x = F.play(U, midi, { room: $("room").checked });
+  if (!x) { lastSaid = "no note can follow"; render(); return; }
+  const asked = midiName(midi);
+  write(x.note, x.corrected ? `${asked} → ${F.name(x.note)}: ${x.reason}` : "");
+}
+const NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+const midiName = (m) => NAMES[m % 12] + (Math.floor(m / 12) - 1);
+function write(note, said) {
+  U = [...U, note]; M = null; lastSaid = said; sel = U.length - 1;
+  sound(U.length - 1);
+  render();
+}
+function audio() { ctx = ctx || new AudioContext(); return ctx; }
+function tone(hz, s, e, g0) {
+  const c = audio(), o = c.createOscillator(), g = c.createGain();
+  o.type = "triangle"; o.frequency.value = hz;
+  g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(g0, s + 0.02); g.gain.setTargetAtTime(0, e - 0.05, 0.03);
+  o.connect(g).connect(c.destination); o.start(s); o.stop(e + 0.3);
+}
+function sound(t) {
+  try {
+    const c = audio(), s = c.currentTime + 0.02;
+    tone(F.hz(U[t]), s, s + 0.5, 0.1);
+    if (F.units[t].struck) tone(F.key.hz(F.units[t].d, F.units[t].r), s, s + 0.6, 0.12);
+  } catch (e) { /* no audio */ }
+}
+function play() {
+  const c = audio(), unit = 0.45, t0 = c.currentTime + 0.1, n = U.length;
+  for (let t = 0; t < n; t++) if (F.units[t].struck) { let e = t + 1; while (e < n && !F.units[e].struck) e++; tone(F.key.hz(F.units[t].d, F.units[t].r), t0 + t * unit, t0 + (e === F.n ? e + 1 : e) * unit, 0.13); }
+  for (const V of [U, M && M.voice ? M.voice : []]) for (let t = 0; t < V.length; t++) if (t === 0 || V[t] !== V[t - 1]) { let e = t + 1; while (e < V.length && V[e] === V[t]) e++; tone(F.hz(V[t]), t0 + t * unit, t0 + (e === F.n ? e + 1 : e) * unit, 0.09); }
+}
+function third() {
+  const figs = chordsOf(), mode = $("asked").value;
+  const ask = mode === "free" ? U.map(() => null) : mode === "found" ? figs.map((f, t) => (t in chosen ? chosen[t] : f.chords.map((c) => c.chord))) : figs.map((f, t) => chordAt(figs, t));
+  M = F.middle(U, ask, { temp: temp() });
+  $("third-msg").className = "msg " + (M.count ? "ok" : "bad");
+  $("third-msg").textContent = M.count
+    ? `${M.count.toLocaleString("en")} middle voice${M.count === 1n ? "" : "s"}; one drawn: the chords ${M.chords.join(" ")}`
+    : `none: every middle voice stops at unit ${M.stops + 1}${M.why.length ? " — " + M.why.join("; ") : ""}${mode !== "free" ? ". Ask fewer chords, or change one." : ""}`;
+  render();
+}
+for (const id of ["tonic", "mode", "per"]) $(id).addEventListener("change", rebuild);
+$("room").addEventListener("change", () => { fanCache = null; render(); });
+$("bass-use").addEventListener("click", rebuild);
+$("bass-text").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") rebuild(); });
+$("undo").addEventListener("click", () => { U = U.slice(0, -1); M = null; lastSaid = ""; for (const k of Object.keys(chosen)) if (k >= U.length) delete chosen[k]; render(); });
+$("clear").addEventListener("click", () => { U = []; M = null; chosen = {}; sel = null; lastSaid = ""; render(); });
+$("finish").addEventListener("click", () => { const V = F.engine({ temp: temp() }, U); if (V) { U = V; M = null; lastSaid = "finished by the engine"; render(); } });
+$("play").addEventListener("click", play);
+$("third").addEventListener("click", third);
+$("no-third").addEventListener("click", () => { M = null; $("third-msg").textContent = ""; render(); });
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || /INPUT|SELECT|TEXTAREA/.test(document.activeElement && document.activeElement.tagName)) return;
+  if (e.key === "Backspace") { e.preventDefault(); $("undo").click(); return; }
+  if (e.key === "z") { octave = Math.max(-2, octave - 1); renderKeys(); return; }
+  if (e.key === "x") { octave = Math.min(2, octave + 1); renderKeys(); return; }
+  const i = KEYS.indexOf(e.key);
+  if (i >= 0 && !e.repeat) { e.preventDefault(); ask(60 + 12 * octave + i); }
+});
+window.addEventListener("resize", renderKeys);
+window.kairoticFiguring = {
+  get F() { return F; }, get U() { return U; }, get M() { return M; }, get chosen() { return chosen; },
+  ask, write, third, rebuild, render, select: (t) => { sel = t; render(); },
+  set: (b, per) => { bid = b; if (per) $("per").value = String(per); $("bass-text").value = ""; rebuild(); },
+};
+rebuild();
+</script>

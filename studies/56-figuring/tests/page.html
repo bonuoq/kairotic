@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 56 · figuring · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1000px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: a bass chosen, a melody played on its keyboard, figured as it goes, closed by a
+// cadence and given a middle voice.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+const figs = () => [...d.querySelectorAll("#sheet text.fig")].map((x) => x.textContent);
+const key = (k) => d.dispatchEvent(new w.KeyboardEvent("keydown", { key: k, bubbles: true }));
+try {
+  await wait(() => w.kairoticFiguring && w.kairoticFiguring.F);
+  const K = w.kairoticFiguring;
+  is("it opens on the scale down, a bar a note: 15 units, the bass drawn, nothing played", d.querySelector('[data-bass="scale-down"]').classList.contains("on") && K.F.n === 15 && d.querySelectorAll("#sheet rect.bass").length === 8 && !K.U.length);
+  is("... six basses to choose, a keyboard of two octaves", d.querySelectorAll("[data-bass]").length === 6 && d.querySelectorAll("#keys button.w").length === 15);
+  // E5 played with the computer's keys: x (an octave up), then d (E)
+  key("x"); key("d");
+  is("E5 played on the computer's keys: taken, a 3 over the bass, figured 5/3", K.U.length === 1 && K.F.name(K.U[0]) === "E5" && figs()[0] === "5/3");
+  // the rest of the 7–6 chain by the page's own keyboard (a pointer on its keys)
+  const press = (m) => d.querySelector(`#keys button[data-midi="${m}"]`).dispatchEvent(new w.PointerEvent("pointerdown", { bubbles: true }));
+  for (const m of [81, 81, 79, 79, 77, 77, 76, 76, 74, 74, 72]) press(m);
+  is("the chain played on the page's keyboard: 7/3 on the strong units, 6/3 on the weak ones", K.U.length === 12 && figs().slice(2, 12).join(" ") === "7/3 6/3 7/3 6/3 7/3 6/3 7/3 6/3 7/3 6/3");
+  is("... the 7–6 chain bracketed over it", [...d.querySelectorAll("#sheet .spanlab")].some((x) => /7–6 chain/.test(x.textContent)));
+  is("... the cadences ahead counted: imperfect, perfect and compound on ②–①", /②–①/.test(d.getElementById("cadences").textContent) && d.querySelectorAll("#cadences button").length >= 1);
+  // a chord clicked: its alternatives and why
+  K.select(3);
+  is("a chord clicked shows its alternatives and why (a 7–6 resolved)", d.querySelectorAll("#alts dt button").length >= 2 && /7 resolved/.test(d.getElementById("alts").textContent));
+  d.querySelectorAll("#alts dt button")[1].click();
+  is("... another chosen: it is drawn as the player's", d.querySelectorAll("#sheet text.fig.own").length === 1);
+  d.querySelectorAll("#alts dt button")[0].click();
+  // a note out of the key corrected, and said why
+  press(73);
+  is("C♯5 asked is corrected, and said why", K.U.length === 13 && /C♯5 → .*: /.test(d.getElementById("said").textContent));
+  d.getElementById("undo").click();
+  is("undone", K.U.length === 12);
+  // closed by the compound cadence
+  const close = [...d.querySelectorAll("#cadences tr")].find((tr) => /compound/.test(tr.textContent) && tr.querySelector("button"));
+  close.querySelector("button").click();
+  is("closed with the compound cadence: the melody written, the cadence bracketed", K.U.length === 15 && /closed with a compound/.test(d.getElementById("said").textContent) && [...d.querySelectorAll("#sheet .spanlab")].some((x) => /compound cadence/.test(x.textContent)));
+  d.getElementById("third").click();
+  const said = d.getElementById("third-msg").textContent;
+  is("a middle voice written from the figures: drawn, its chords said — " + said, d.querySelectorAll("#sheet rect.middle").length > 0 && /middle voices?; one drawn: the chords .*7\/3 6\/3/.test(d.getElementById("third-msg").textContent));
+  // a melody that leaves no room: G4 B4 over the scale down a beat a note
+  d.getElementById("per").value = "1"; d.getElementById("per").dispatchEvent(new Event("change"));
+  await wait(() => K.F.n === 8);
+  key("z");
+  press(67); press(71);
+  d.getElementById("finish").click();
+  d.getElementById("asked").value = "free"; d.getElementById("third").click();
+  is("G4 B4 over C4 B3, finished by the engine: no middle voice, and why (the leading tone doubled)", /stops at unit 2.*leading tone doubled/.test(d.getElementById("third-msg").textContent));
+  d.getElementById("clear").click();
+  d.getElementById("room").checked = true; d.getElementById("room").dispatchEvent(new Event("change"));
+  press(67); press(71);
+  is("... leaving room for a third voice, B4 is corrected, and said why", K.U.length === 2 && /no room left for a middle voice/.test(d.getElementById("said").textContent));
+  is("no errors on the page", errors.length === 0);
+} catch (e) { is("error: " + (e.message || e), false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(errors) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>
