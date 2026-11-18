@@ -245,3 +245,80 @@
       (let [anon (.-checked ($ "ep-anon"))
             release (= "release" (.getAttribute b "data-kfile"))]
         (gesture! (str "(export-work " (pr-str (cond-> {} release (assoc :release true) anon (assoc :anonymous true))) ")"))))))
+
+;; ───────────────────────── a tree box as MEI, and MEI or MusicXML as a tree box (discussion #217) ─────────────────────────
+;; kairotic.mei (Study 55): the written music in MEI's notation, where the notes really sounded in its gestural
+;; attributes (@tstamp.real, @dur.real, @vel), everything else MEI has no place for in one <extMeta type="kairotic">.
+;; A tree read from a MEI written here is the tree; one written elsewhere reads as its notation. MusicXML goes
+;; through Verovio (it reads MusicXML and writes MEI).
+
+(defn mei
+  "The MEI of a tree box, as text: (mei :b3). Its tree as it is when it is written in measures, quantized first when
+   it is in free time."
+  [id]
+  (let [t (tree-data id)]
+    (when (nil? t) (fail (str id " holds no tree")))
+    (mei/->mei (if (mt/measured? t) (qz/measure-free-voices t) (qz/quantize-tree t)))))
+
+(defn export-mei!
+  "Downloads the MEI of a tree box: (export-mei! :b3)."
+  [id]
+  (let [m (mei id)
+        nm (file-name (or (:name (mt/attrs (tree-data id))) (name id)) ".mei")]
+    (download-bytes! (.encode (js/TextEncoder.) m) nm)
+    nm))
+
+(defn music->tree
+  "Promise of the tree of a MEI or MusicXML text (MusicXML through Verovio)."
+  [text]
+  (js/Promise.
+   (fn [res rej]
+     (try
+       (if (mei/musicxml? text)
+         (-> (.-kairoticVerovio js/window)
+             (.then (fn [tk] (res (mei/<-mei (mei/musicxml->mei tk text)))))
+             (.catch rej))
+         (res (mei/<-mei text)))
+       (catch :default e (rej e))))))
+
+(defn place-tree!
+  "A tree into tree box id, or into a new tree box at x y: one gesture of the work (its tree written as data)."
+  [t id x y]
+  (let [id (or id (next-id))
+        new? (nil? (get-in (current) [:boxes id]))]
+    (gesture! (str "(do " (when new? (str "(box " id " \"tree\" " (js/Math.round x) " " (js/Math.round y) ") "))
+                   "(tree! " id " " (pr-str t) "))"))
+    id))
+
+(defn import-music-file!
+  "A .mei or MusicXML file into tree box id (or a new one at x y)."
+  [f id x y]
+  (-> (.text f)
+      (.then music->tree)
+      (.then (fn [t] (let [b (place-tree! t id x y)] (repl-print! "out" (esc (str "; " (.-name f) " → " b " · " (mt/summary t)))))))
+      (.catch (fn [e] (repl-print! "err" (esc (str "Could not read " (.-name f) ": " (or (.-message e) e))))))))
+
+(defn music-file? [f] (boolean (re-find #"(?i)\.(mei|musicxml|xml)$" (.-name f))))
+
+(defn import-mei!
+  "Opens a .mei or MusicXML file into a tree box: (import-mei!) makes a new one, (import-mei! :b3) writes into b3."
+  ([] (import-mei! nil))
+  ([id]
+   (when id (when-not (tree-box? (need-box id)) (fail (str id " is not a tree box"))))
+   (let [inp (js/document.createElement "input") [x y] (auto-pos)]
+     (set! (.-type inp) "file")
+     (set! (.-accept inp) ".mei,.musicxml,.xml,application/mei+xml,application/vnd.recordare.musicxml+xml")
+     (.addEventListener inp "change" (fn [_] (when-let [f (aget (.-files inp) 0)] (import-music-file! f id x y))))
+     (.click inp)
+     :choose-a-file)))
+
+;; a .mei or MusicXML file dropped on the patch becomes a tree box where it falls
+(.addEventListener ($ "canvas") "dragover"
+  (fn [e] (when (some #{"Files"} (array-seq (.. e -dataTransfer -types))) (.preventDefault e))))
+(.addEventListener ($ "canvas") "drop"
+  (fn [e]
+    (let [fs (filter music-file? (array-seq (.. e -dataTransfer -files)))]
+      (when (seq fs)
+        (.preventDefault e)
+        (let [[x y] (pt e)]
+          (doseq [[i f] (map-indexed vector fs)] (import-music-file! f nil (+ x (* 30 i)) (+ y (* 30 i)))))))))

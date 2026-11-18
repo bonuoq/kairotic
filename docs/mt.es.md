@@ -366,6 +366,7 @@ Las funciones están en `mt/`: `mt/transpose`, `mt/invert`, `mt/retrograde`, `mt
 - `(quantize :bN [opciones])` da los trazos de un freqt (o un árbol sin compases) cuantizados en compases;
 - `(quant :bN opciones)`, `(divisions :bN t)`, `(division! :bN t [elección])`: cómo se cuantiza la partitura de un freqt, guardado en su buffer;
 - `(quantize! :bN [opciones])`, `(unquantize! :bN)`, `(to-tree! :bN)`: el tiempo libre de una caja tree en compases y de vuelta, los trazos de un freqt como árbol;
+- `(mei :bN)`, `(export-mei! :bN)`, `(import-mei!)`, `(import-mei! :bN)`: una caja tree como MEI (con dónde sonaron de verdad sus notas, `@tstamp.real`/`@dur.real`, y lo que MEI no tiene dónde poner en `<extMeta type="kairotic">`), y un archivo .mei o MusicXML como caja tree (también soltándolo sobre el patch); leído de vuelta, un MEI escrito aquí es el mismo árbol;
 - `(enharmonic! :bN parte midi [nombre])`: otro nombre para una nota de la partitura de un freqt; `mt/spell`, `mt/transpose "M3"`, y `kairotic.spell` (`sp/parse`, `sp/interval`, `sp/parse-key`, `sp/estimate-key`…);
 - `(keep! :bN)` y `(unlive! :bN)`;
 - `(recipe :bN)` y `(remake! :bN)` (abajo).

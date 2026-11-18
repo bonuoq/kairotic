@@ -38,6 +38,9 @@
 ;; With :time (played time), :ref-bpm (100) weighs the error of a note in seconds rather than in beats: faster than
 ;; ref-bpm, :err weighs less, in proportion (down to a third), so that what a player is off by in milliseconds does
 ;; not turn into finer divisions at fast tempos (nil: in beats, as without :time).
+;; :real (true) keeps on each note where it really sounded, as :tstamp.real and :dur.real (seconds: the material's
+;; time at its tempo — a tree's :tempo, 60 for a freqt), on its first piece only: what kairotic.mei writes as MEI's
+;; gestural attributes, and what tc/free-form places a note by when it is made free again (discussion #217).
 
 (ns kairotic.quantize
   (:require [kairotic.canvas :as cv]
@@ -419,7 +422,7 @@
 
 (defn- unit-at [rs t] (if-let [r (region-at rs t)] (/ (:L r) (:n r)) 1))
 
-(defn- first-attrs [a first?] (if first? a (dissoc a :gliss :art :dyn :text)))
+(defn- first-attrs [a first?] (if first? a (dissoc a :gliss :art :dyn :text :tstamp.real :dur.real)))
 
 (defn- region-nodes
   "The nodes of the segments that fall in [a, b): notes, chords and rests, cut where the region cuts
@@ -680,8 +683,10 @@
 
 (defn strokes->notes
   "The strokes of a freqt as notes in free time: each one a note at the pitch of its first point (with
-   decimals when it is between semitones), its bends a :gliss, as mt/<-strokes reads them."
-  [d]
+   decimals when it is between semitones), its bends a :gliss, as mt/<-strokes reads them; with real? (the
+   default) where it really sounded, :tstamp.real and :dur.real (the freqt's time, at 60)."
+  ([d] (strokes->notes d true))
+  ([d real?]
   (vec (for [[_ s] (cv/sorted-strokes d)
              :let [pts (:pts s) [t0 f0] (first pts) [t1 _] (peek pts)
                    m (cv/hz->midi f0) mr (js/Math.round m)
@@ -694,7 +699,8 @@
                    (not flat?) (assoc :pitch mr :gliss gl)
                    ;; the weight of a stroke is how strong its note was (as an event's :amp: 0.4 … 2.8 → 0 … 1):
                    ;; transcribe writes the strength of each attack so (issue #106)
-                   (number? (get-in s [:look :w])) (assoc :vel (cv/round-to (max 0 (min 1 (/ (- (get-in s [:look :w]) 0.4) 2.4))) 3)))})))
+                   (number? (get-in s [:look :w])) (assoc :vel (cv/round-to (max 0 (min 1 (/ (- (get-in s [:look :w]) 0.4) 2.4))) 3))
+                   real? (assoc :tstamp.real (cv/round-to t0 6) :dur.real (cv/round-to dur 6)))}))))
 
 (defn quantize
   "A freqt's buffer as a measured tree (a :voice of :measure nodes), with options (see the top of this
@@ -702,7 +708,7 @@
   ([d] (quantize d {}))
   ([d opts]
    (let [o (options opts (:gx d))
-         [ns m] (timed (strokes->notes d) o)
+         [ns m] (timed (strokes->notes d (not (false? (:real opts)))) o)
          vs (notes->voices ns o)
          t (if (= 1 (count vs)) (first vs) (into [:par {}] vs))
          tempo (or (:tempo opts) (when m (js/Math.round (tm/tempo-of-map m))))]
@@ -710,16 +716,20 @@
 
 (defn tree-notes
   "The notes of a tree without measures as notes in free time ({:on :off :attrs :voice}): a written name
-   stays (with its :cents), numbers stay numbers (they are spelled afterwards)."
-  [tree]
-  (let [xt (mt/expand tree)]
-    (vec (for [e (mt/events xt) :when (and (= :note (:kind e)) (not (:grace e)))]
-           {:on (:t e) :off (+ (:t e) (:dur e)) :voice (:voice e)
-            :attrs (merge (select-keys e [:art :dyn :text :vel :env :gliss])
-                          (let [a (mt/attrs (mt/node-at xt (:path e))) w (mt/spelling-of a)]
-                            (if w
-                              (cond-> {:pitch (sp/->name w)} (:cents a) (assoc :cents (:cents a)))
-                              {:pitch (if (whole? (:pitch e)) (js/Math.round (:pitch e)) (cv/round-to (:pitch e) 2))})))}))))
+   stays (with its :cents), numbers stay numbers (they are spelled afterwards); with real? (the default) each
+   keeps where it really sounded — its own :tstamp.real and :dur.real, or its time at the tree's tempo."
+  ([tree] (tree-notes tree true))
+  ([tree real?]
+   (let [xt (mt/expand tree) spb (/ 60 (mt/tempo-of tree))]
+     (vec (for [e (mt/events xt) :when (and (= :note (:kind e)) (not (:grace e)))]
+            (let [a (mt/attrs (mt/node-at xt (:path e))) w (mt/spelling-of a)]
+              {:on (:t e) :off (+ (:t e) (:dur e)) :voice (:voice e)
+               :attrs (cond-> (merge (select-keys e [:art :dyn :text :vel :env :gliss])
+                                     (if w
+                                       (cond-> {:pitch (sp/->name w)} (:cents a) (assoc :cents (:cents a)))
+                                       {:pitch (if (whole? (:pitch e)) (js/Math.round (:pitch e)) (cv/round-to (:pitch e) 2))}))
+                        real? (assoc :tstamp.real (or (:tstamp.real a) (cv/round-to (* (:t e) spb) 6))
+                                     :dur.real (or (:dur.real a) (cv/round-to (* (:dur e) spb) 6))))}))))))
 
 (defn tree-options
   "The options a tree without measures is quantized with: its root's :quant (how its score is quantized,
@@ -736,7 +746,7 @@
   ([tree opts]
    (let [o (tree-options tree opts)
          ;; played time onto beats, all voices through one map (issue #106)
-         [ns m] (timed (tree-notes tree) o)
+         [ns m] (timed (tree-notes tree (not (false? (:real opts)))) o)
          ;; played time: the error of a note is weighed in seconds, not in beats — 30 ms off is as much at 220 bpm as
          ;; at 80, though it is a larger part of a beat (the Weimar Jazz Database, issue #106). At ref-bpm the
          ;; weight is the one given; faster, it is less (less chasing of fine divisions), down to a third.
