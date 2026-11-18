@@ -24,7 +24,7 @@ export async function run() {
   is("the 6/3 chords with the 5th between the upper voices: parallel 5ths (ex. 2.6b)", /parallel 5ths between the upper voices/.test(bad || ""));
 
   // every phrase: a schema and a cadence — its realizations counted, a drawn one sound
-  const known = { "fauxbourdon simple": 839310n, "fauxbourdon-76 compound-64": 10n, "fifths-73 simple": 44n, "fifths-73 compound-64": 10n, "romanesca galant": 147n, "tied-bass deceptive": 1320n, "monte compound-54": 428n };
+  const known = { "fauxbourdon simple": 839310n, "fauxbourdon-76 compound-64": 5n, "fifths-73 simple": 44n, "fifths-73 compound-64": 8n, "romanesca galant": 2246n, "tied-bass deceptive": 1320n, "monte compound-54": 428n };
   const draw = rng(53);
   for (const s of Object.keys(SCHEMATA)) for (const c of Object.keys(CADENCES)) {
     const P = parts({ schema: s, cadence: c, key: { tonic: "C" } }), n = P.count();
@@ -56,6 +56,15 @@ export async function run() {
     const W2 = SC.engine({ temp: 0, r: rng(2) }); const vt = SC.top.vertical(c5, a), vm = SC.middle.vertical(c5, b);
     return !(vt.cls === 3 && a !== W2.top[c5 - 1]) && !(vm.cls === 3 && b !== W2.middle[c5 - 1]);
   }));
+
+  // the book's Galant cadence (ex. 3.21a) after the Fauxbourdon: a 6/(3) on ④ (the bass doubled), then on ⑤ the 6/4 of
+  // accented passing tones resolving as a double appoggiatura, each voice down a step
+  const G = parts({ schema: "fauxbourdon", cadence: "galant", key: { tonic: "C" } });
+  const gw = { top: [...fw.top.slice(0, 16), "D5", "D5", "C5", "B4", "C5"].map(G.code), middle: [...fw.middle.slice(0, 16), "F4", "F4", "E4", "D4", "E4"].map(G.code) };
+  const gwhy = G.judge(gw);
+  is(`the book's Galant cadence (ex. 3.21a), after a Fauxbourdon, is a realization${gwhy ? " — " + gwhy : ""}`, !gwhy && G.chords(gw).slice(16).join(" ") === "6 6 6/4 5/3 (5)/3");
+  is("... its 6/4 resolves as a double appoggiatura: the 6th to the 5th, the 4th to the 3rd, in the same voices (the 6th going up to the octave refused)",
+     /6\/4 resolves to the 5\/3/.test(G.check(gw.top.slice(0, 19), gw.middle.slice(0, 19), 19, G.code("B4"), G.code("G4")) || ""));
 
   // three voices, three notes of a chord: the 3rd not doubled, nor the leading tone
   is("the 3rd of a chord doubled is refused (E over C in both upper voices)", /3rd of the chord doubled/.test(F.check([], [], 0, F.code("E5"), F.code("E4")) || ""));
@@ -93,7 +102,7 @@ export async function run() {
   for (let i = 0; i < 12; i++) { const a = U.sample(r2), b = U.engine({ temp: 0.5, r: r2 }); su.push(a.top.map(U.degree)); se.push(b.top.map(U.degree)); }
   const pu = shape(su), pe = shape(se);
   is(`the upper voice, drawn uniformly ${Math.round(100 * pu.steps)}% steps, by the engine ${Math.round(100 * pe.steps)}%`, pe.steps > pu.steps);
-  is("the chords known: 5/3, 6/3, 7/3, 4/2, 6/4, 5/4", Object.keys(CHORDS).join(" ") === "5/3 6/3 7/3 4/2 6/4 5/4");
+  is("the chords known: 5/3, 6/3, 6 (the 6/(3) of the Galant cadence), 7/3, 4/2, 6/4, 5/4", Object.keys(CHORDS).sort().join(" ") === "4/2 5/3 5/4 6 6/3 6/4 7/3");
   return { results, notes };
 }
 

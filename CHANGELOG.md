@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A 6/4 resolves as a double appoggiatura** (`@kairotic/cac` 0.2.1, `partimento.mjs`; Study 54): over a held
+  bass the 6/4 goes to the 5/3 with each voice down a step, the 6th to the 5th and the 4th to the 3rd, without the
+  voices exchanging them. The Galant cadence takes the book's 6/(3) on ④ (ex. 3.21: a sixth chord with its bass
+  doubled, chord `6`), which its prototype needs; its count rises again (the stepwise Romanesca: 2,246).
+
 - **`@kairotic/rhythm` 0.3.0: more generators, and how far apart two rhythms are** (discussion #252). `chance k n
   [seed]` draws k onsets among n pulses, each bang another rhythm, the same seed the same rhythms in the same order;
   `homometric` gives the other rhythms with the same interval vector (not the same necklace turned or mirrored: the

@@ -15,13 +15,13 @@ const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (pe
 const total = () => d.getElementById("total").textContent;
 try {
   await wait(() => w.kairoticParts && /^\d/.test(total()));
-  is("it opens on the 7–6 Fauxbourdon closed by a compound cadence with 6/4: 10 realizations", total() === "10" && d.querySelector('[data-schema="fauxbourdon-76"]').classList.contains("on") && d.querySelector('[data-cadence="compound-64"]').classList.contains("on"));
+  is("it opens on the 7–6 Fauxbourdon closed by a compound cadence with 6/4: 5 realizations", total() === "5" && d.querySelector('[data-schema="fauxbourdon-76"]').classList.contains("on") && d.querySelector('[data-cadence="compound-64"]').classList.contains("on"));
   is("... six schemata and six cadences to choose", d.querySelectorAll("[data-schema]").length === 6 && d.querySelectorAll("[data-cadence]").length === 6);
   is("... the engine's realization drawn: three voices, the chords under the bass, the 7ths marked", d.querySelectorAll("#sheet rect.upper").length > 0 && d.querySelectorAll("#sheet rect.middle").length > 0 && [...d.querySelectorAll("#sheet text.fig")].filter((x) => x.textContent === "7/3").length === 5 && d.querySelectorAll("#sheet rect.diss").length >= 5);
   is("... sound, and its steps said", /steps: the upper voice \d+%/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
   d.querySelector('[data-schema="fifths-73"]').click();
-  await wait(() => total() === "10" && d.querySelector('[data-schema="fifths-73"]').classList.contains("on"));
-  is("Fifth Down Fourth Up into a compound cadence: 10, the 7th of ② held into the 6/4", total() === "10");
+  await wait(() => total() === "8" && d.querySelector('[data-schema="fifths-73"]').classList.contains("on"));
+  is("Fifth Down Fourth Up into a compound cadence: 8, the 7th of ② held into the 6/4", total() === "8");
   d.querySelector('[data-cadence="galant"]').click();
   await wait(() => d.getElementById("status").textContent === "no realization closes");
   is("... into a Galant cadence: none closes (② to ④)", total() === "0");
