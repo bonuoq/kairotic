@@ -58,6 +58,18 @@ jobs:
       - if: env.SKIP != '1'
         run: npm publish --access public
         working-directory: ${{ env.OUT }}
-      # the claude.ai shell asks jsDelivr for @kairotic/app@latest: forget the old answer so the new version is seen at once
+      # the claude.ai shell asks jsDelivr for @kairotic/app@latest: forget the old answer so the new version is seen at
+      # once. A purge before npm serves the new version would only make jsDelivr resolve the old one again (and keep it
+      # for hours), so: wait for the registry, purge, and check what jsDelivr serves, purging again until it is the new one
       - if: env.NAME == 'app'
-        run: curl -fsS "https://purge.jsdelivr.net/npm/@kairotic/app@latest/sources.mjs" || true
+        run: |
+          V=$(node -p "require('./app/package.json').version")
+          for i in $(seq 1 30); do [ "$(npm view "@kairotic/app@$V" version 2>/dev/null)" = "$V" ] && break; sleep 10; done
+          for i in $(seq 1 12); do
+            curl -fsS "https://purge.jsdelivr.net/npm/@kairotic/app@latest/sources.mjs" > /dev/null || true
+            sleep 20
+            got=$(curl -fsS "https://cdn.jsdelivr.net/npm/@kairotic/app@latest/sources.mjs?check=$i" | grep -o '"version":"[^"]*"' | head -1 || true)
+            echo "jsDelivr serves $got"
+            [ "$got" = "\"version\":\"$V\"" ] && exit 0
+          done
+          echo "::warning::jsDelivr still serves an older @kairotic/app@latest: purge https://purge.jsdelivr.net/npm/@kairotic/app@latest/sources.mjs by hand later"
