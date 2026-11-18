@@ -371,7 +371,12 @@
                           "</li>")))))))
 
 (defonce agents-frame (atom nil))
-(defn agents-soon! [] (when-not @agents-frame (reset! agents-frame (js/requestAnimationFrame (fn [_] (reset! agents-frame nil) (render-agents!))))))
+(defn agents-soon!
+  "Draws the section on the next frame, only while the Claude panel is open (and when it opens)."
+  []
+  (when (and (not @agents-frame) (some-> ($ "panel-claude") .-hidden not))
+    (reset! agents-frame (js/requestAnimationFrame (fn [_] (reset! agents-frame nil) (render-agents!))))))
+(some-> ($ "tab-claude") (.addEventListener "click" (fn [_] (js/setTimeout render-agents! 0))))
 (doseq [a [hist agent-state agent-logs agent-busy agent-asking]] (add-watch a ::agents (fn [_ _ _ _] (agents-soon!))))
 
 (let [el ($ "agents-list")]
