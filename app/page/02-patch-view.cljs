@@ -16,6 +16,17 @@
 ;;   the same after # (issue #55): #code=…&present. What is after # never reaches the server, so a long patch
 ;;   is not refused there (a request line too long is answered 414); after #, a parameter wins over ?.
 
+(defn port-doc
+  "What port i (of n, :in or :out) of box b takes or sends, as the help of its class says (shown on hover). An
+   agent's own ports, as Claude described them when it built it (issue #275); its last one, the agent's own."
+  [b dir i n]
+  (let [k (klass (:text b)) h (hlp/of k) general (get h (if (= dir :in) :inlets :outlets))]
+    (if (= k "agent")
+      (if (= i (dec n))
+        (last general)
+        (get (get-in b [:data (if (= dir :in) :inlets :outlets)]) i))
+      (get general i))))
+
 (defn hash-part [] (subs (str (.-hash js/location)) 1))
 
 (def url-params
@@ -799,9 +810,11 @@
                                               "</title>")
                            :else (str "<text x=\"10\" y=\"16\">" (esc t) "</text>"))
                      (apply str (for [i (range ins)]
-                                  (str "<rect class=\"port in" (when (= hover-in [id i]) " target") "\" data-box=\"" idn "\" data-in=\"" i "\" x=\"" (port-x w ins i) "\" y=\"-1\" width=\"" pw "\" height=\"4\"></rect>")))
+                                  (str "<rect class=\"port in" (when (= hover-in [id i]) " target") "\" data-box=\"" idn "\" data-in=\"" i "\" x=\"" (port-x w ins i) "\" y=\"-1\" width=\"" pw "\" height=\"4\">"
+                                       (when-let [d (port-doc b :in i ins)] (str "<title>" (esc (str "in " i ": " d)) "</title>")) "</rect>")))
                      (apply str (for [o (range outs)]
-                                  (str "<rect class=\"port out" (when (= hover-out [id o]) " hot") "\" data-box=\"" idn "\" data-out=\"" o "\" x=\"" (port-x w outs o) "\" y=\"" (- h 3) "\" width=\"" pw "\" height=\"4\"></rect>")))
+                                  (str "<rect class=\"port out" (when (= hover-out [id o]) " hot") "\" data-box=\"" idn "\" data-out=\"" o "\" x=\"" (port-x w outs o) "\" y=\"" (- h 3) "\" width=\"" pw "\" height=\"4\">"
+                                       (when-let [d (port-doc b :out o outs)] (str "<title>" (esc (str "out " o ": " d)) "</title>")) "</rect>")))
                      ;; its id, over its top right corner: shown when it is hovered or selected, or for all with I
                      ;; (issue #163)
                      (when-not @pres-mode

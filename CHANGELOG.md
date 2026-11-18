@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Agents you can read from outside** (issue #275). Claude now says what it built: a paragraph and a line per inlet
+  and outlet (an ```agent block before the patch code), kept in the box's recipe. **?** on an agent box shows that
+  agent's own description and ports before the page of the class, `(agent-info :bN)` returns them, and its ports say
+  it on hover — and the ports of every class now say on hover what their help says of them. `agent-core`, put
+  inside every agent by the engine, is internal: out of the class lists, Claude's catalog, the Help tab and the
+  patch checks.
+
 - **`@kairotic/rhythm` 0.2.0: making a rhythm apart from being one** (discussion #252). Pulses — ones and zeros — are
   the common tongue of the rhythm boxes, as Hz are of pitch. `euclid k n [rotation]` is now a generator with no view:
   a bang sends the pulses of a Euclidean rhythm. `necklace` is the rhythm box: it holds them, draws them, is their

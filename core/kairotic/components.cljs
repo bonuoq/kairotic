@@ -835,4 +835,4 @@
 (defn listing
   "The registered components: [[class doc usage origin] …]."
   []
-  (vec (for [[k d] (sort-by key @registry)] [k (:doc d) (:usage d) (:origin d)])))
+  (vec (for [[k d] (sort-by key @registry) :when (not (:internal d))] [k (:doc d) (:usage d) (:origin d)])))

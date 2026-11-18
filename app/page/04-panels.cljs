@@ -190,7 +190,7 @@
   ([only-if-changed?]
    (when-let [el ($ "comp-list")]
      (let [defs (definitions-in (root-patch))
-           core-defs (filter (fn [[_ d]] (= :core (:origin d))) (sort-by key @comp/registry))
+           core-defs (filter (fn [[_ d]] (and (= :core (:origin d)) (not (:internal d)))) (sort-by key @comp/registry))
            sig [@chosen-def (vec (for [[path id b] defs] [path id (cbox/compiled "component" (str (get-in b [:data :source])))]))
                 @lib/work-classes @shared-lib]
            row (fn [label detail button]

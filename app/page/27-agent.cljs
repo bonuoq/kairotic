@@ -45,6 +45,8 @@
 
 (comp/define! "agent-core"
   {:doc "Inside an agent box, put there by the engine (not written by hand): it takes the requests of the agent's last inlet and says, by its last outlet, what the agent is doing."
+   ;; not a class to write: out of the lists, of Claude's catalog and of the Help tab (issue #275)
+   :internal true
    :io [1 1]
    :receive (fn [{:keys [inlet value state]}]
               (cond
@@ -127,7 +129,26 @@
        "outlets the request needs, and place them left to right in the order you mean. Inside it adc~ and dac~ are quiet: "
        "sound goes in and out by inlet~ / outlet~. Build with the classes that exist — the official packages carry the "
        "rules of counterpoint, rhythm and harmony of Kairotic (comes, euclid, patterns, mt…) and are to be preferred — and "
-       "write a component only for what none of them does, small. Keep the patch readable: it will be opened and read."))
+       "write a component only for what none of them does, small. Keep the patch readable: it will be opened and read.\n\n"
+       "Say what you built, for whoever sees the agent box from outside: BEFORE the patch code, write a block fenced as "
+       "```agent holding one EDN map — {:about \"what it does, in one short paragraph\" :inlets [\"what inlet 0 takes, and in what "
+       "form\" …] :outlets [\"what outlet 0 sends, and in what form\" …]} — one string per inlet (inlet, inlet~) and per outlet "
+       "(outlet, outlet~) box of your patch, in their order left to right; not the agent's own request inlet and state outlet, "
+       "which come after them."))
+
+(def agent-doc-re #"```agent\s*\n([\s\S]*?)```")
+
+(defn agent-doc-of
+  "What Claude said of what it built (its ```agent block): {:about :inlets :outlets}, or nil."
+  [text]
+  (when-let [[_ src] (re-find agent-doc-re (str text))]
+    (let [m (try (clojure.edn/read-string src) (catch :default _ nil))
+          strs (fn [v] (when (sequential? v) (vec (map str (take 32 v)))))]
+      (when (map? m)
+        (cond-> {}
+          (string? (:about m)) (assoc :about (ai/cut (:about m) 1200))
+          (strs (:inlets m)) (assoc :inlets (strs (:inlets m)))
+          (strs (:outlets m)) (assoc :outlets (strs (:outlets m))))))))
 
 (def agent-tries 3)
 
@@ -157,17 +178,18 @@
                                  (s (ask previous) (clj->js (cond-> {:modelTier "default"}
                                                               (and lim (.-tools lim)) (assoc :tools (patch-tools refs))))))))
                       (.then (fn [r]
-                               (let [src (ai/source-of (.-text r))]
+                               (let [text (str (.-text r)) doc (agent-doc-of text)
+                                     src (ai/source-of (str/replace text agent-doc-re ""))]
                                  (if (nil? src)
                                    (if (< k agent-tries) (attempt (inc k) {:src "(none)" :errors ["the answer had no patch code"]})
                                        (throw (js/Error. "Claude's answer had no patch code")))
                                    (.then (check-patch-code src)
                                           (fn [chk]
-                                            (cond (:ok chk) src
+                                            (cond (:ok chk) {:src src :doc doc}
                                                   (< k agent-tries) (attempt (inc k) {:src src :errors (:errors chk)})
                                                   :else (throw (js/Error. (str "after " agent-tries " tries: " (str/join "; " (take 3 (:errors chk)))))))))))))))]
           (-> (attempt 1 nil)
-              (.then (fn [src]
+              (.then (fn [{:keys [src doc]}]
                        (let [code (link-code src) p (build code)
                              srcs (for [bx (vals (:boxes p)) :when (#{"script" "component"} (klass (:text bx)))] (str (get-in bx [:data :source])))
                              b (get-in (agent-host-patch path) [:boxes id])]
@@ -179,7 +201,8 @@
                                          (save-line! lid {:name (agent-line-name id) :created (js/Date.now) :archived false})
                                          lid))
                                front (append-line-node! lid [[:load p]])]
-                           (dispatch-root! (wrap-in path [:data id {:line lid :request request :built front :by (my-author) :t (js/Date.now)}]))
+                           (dispatch-root! (wrap-in path [:data id (merge {:line lid :request request :built front :by (my-author) :t (js/Date.now)}
+                                                                          (select-keys doc [:about :inlets :outlets]))]))
                            (doseq [bx (vals (:boxes (eng/flat p)))] (ensure-class! (str (:text bx))))
                            (render-all!)
                            (agent-say! path id :built)
@@ -219,9 +242,35 @@
   (let [b (need-box id)]
     (when-not (agent? b) (fail (str id " is not an agent box")))
     (let [d (:data b)]
-      {:request (agent-request (:text b)) :built-from (:request d)
-       :line (some-> (agent-line b) line-name) :by (:by d)
-       :stale (agent-stale? b) :boxes (count (:boxes (agent-content b)))})))
+      (cond-> {:request (agent-request (:text b)) :built-from (:request d)
+               :line (some-> (agent-line b) line-name) :by (:by d)
+               :stale (agent-stale? b) :boxes (count (:boxes (agent-content b)))}
+        (:about d) (assoc :about (:about d))
+        (:inlets d) (assoc :inlets (:inlets d))
+        (:outlets d) (assoc :outlets (:outlets d))))))
+
+;; ? on an agent box: what this one does and what its ports take and send, before the page of the class
+(reset! help-extra
+        (fn [cls]
+          (when (= cls "agent")
+            (when-let [id (:help-box @ui)]
+              (let [b (get-in (current) [:boxes id]) d (:data b)]
+                (when (agent? b)
+                  (let [[ins outs] (io b)
+                        row (fn [label n names own]
+                              (str "<h4>" label "</h4><ol start=\"0\">"
+                                   (apply str (for [i (range n)]
+                                                (str "<li>" (esc (if (= i (dec n)) (str "(the agent's own) " (last own)) (or (get names i) "—"))) "</li>")))
+                                   "</ol>"))
+                        h (hlp/of "agent")]
+                    (str "<div class=\"agent-own\"><h3>" (esc (name id)) " · " (esc (ai/cut (agent-request (:text b)) 90)) "</h3>"
+                         (if (:about d)
+                           (str "<p>" (esc (:about d)) "</p>")
+                           (str "<p><small>" (if (agent-line b) "Claude did not describe what it built." "Not built yet.") "</small></p>"))
+                         (row "Its inlets" ins (:inlets d) (:inlets h))
+                         (row "Its outlets" outs (:outlets d) (:outlets h))
+                         (when (agent-stale? b) "<p><small>Its content was changed after Claude built it.</small></p>")
+                         "<hr></div>"))))))))
 
 ;; a message to an agent's last inlet (the effect [:agent-ask request]): as a gesture of whoever sent it
 (let [before (:effect-hook @eng/rt)]

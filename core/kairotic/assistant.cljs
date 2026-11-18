@@ -237,6 +237,7 @@
    clojure.core that are boxes by themselves."
   []
   (conj (vec (for [[k d] (sort-by key @comp/registry)
+                   :when (not (:internal d))      ; put by the engine, not written (agent-core)
                    :let [io (:io d) doc (first (str/split (str (:doc d)) #"(?<=\.)\s"))]]
                (str k " " (if (vector? io) (pr-str io) "") " — " (cut doc 110) " (" (name (or (:origin d) :core)) ")")))
         (str "Also, without defining anything, a box named after one of these pure functions is that function: its "

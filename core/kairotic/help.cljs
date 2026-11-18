@@ -468,12 +468,11 @@
    {:about "Claude builds what you ask inside it (issue #269): write the request as its text, agent \"harmonize this melody in four parts\", and its content is made with the classes the work knows — the official packages carry the rules of counterpoint, rhythm and harmony — and checked before it arrives. The content is a patch you can open, read, edit and play without Claude: once built it makes no call, in releases, rooms and on phones. It lives in a line of its own (agent b3), so each build is one more point of that line and going back to ask for something else branches. Whoever asks pays, on their own Claude: who writes the text, or whose patch sends the message to its last inlet."
     :inlets ["one per inlet / inlet~ box of its content, left to right" "last: a request, a string or [:ask \"…\"] — the text changes to it and Claude builds again (one build at a time; a request equal to the one that built it is not sent again)"]
     :outlets ["one per outlet / outlet~ box of its content" "last: what it is doing — :building, :built, [:error \"…\"]"]
-    :messages [["double-click" "opens its content, in its line's tab"]
+    :messages [["?" "on an agent box: what this one does and what each of its ports takes and sends, as Claude described it when it built it, before this page"]
+               ["double-click" "opens its content, in its line's tab"]
                ["(ask-agent :bN) · (ask-agent :bN \"…\")" "builds it again from its text · with a new request"]
                ["(agent-info :bN)" "what it was built from, its line, who asked, and whether its content was changed after"]]
     :see ["patch" "comes" "euclid"]}
-
-   "agent-core" {:about "Put inside every agent box by the engine, not written by hand: it takes the requests of the agent's last inlet and says, by its last outlet, what the agent is doing." :see ["agent"]}
 
    "inlet"  {:outlets ["what arrives at this inlet of the sub-patch"] :see ["patch" "outlet" "inlet~"]}
    "outlet" {:inlets ["what leaves the sub-patch by this outlet"] :see ["patch" "inlet" "outlet~"]}
