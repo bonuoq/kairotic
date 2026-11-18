@@ -39,10 +39,8 @@
         (.then (fn [[s L]]
                  (if-not s
                    (repl-print! "err" (esc (str "; " id ": its sound is not in this browser (it was recorded elsewhere)")))
-                   (let [a (.createElement js/document "a")]
-                     (set! (.-href a) (js/URL.createObjectURL (.wav L (:chans s) (:sr s))))
-                     (set! (.-download a) (sound-file-name d))
-                     (.click a))))))
+                   ;; (on claude.ai a .wav cannot be saved: it says so)
+                   (save-file! (.wav L (:chans s) (:sr s)) (sound-file-name d))))))
     (sound-file-name d)))
 
 (defn decode-sound!

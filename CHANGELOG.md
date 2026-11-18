@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Saving files on claude.ai.** A page there may not start a download; the app now offers its files through the
+  artifact's `downloads` capability, and the viewer confirms each one. A work exported as a file is saved as
+  `.kairotic.zip` there (claude.ai allows zip, not .kairotic; it is a zip, and Open a file takes it as it is), so a work
+  goes from the artifact to Kairotic Pages with its whole history, lines and sounds. The log of your requests to
+  Claude is saved as `.jsonl.txt`; a recorded sound (.wav) cannot be saved on claude.ai, and it says so.
+
 - **Study 56 · figuring: the partimento turned round.** A bass without figures, a melody improvised over it on the
   keyboard, and the figures found as it goes — the rule of the octave, the melody's own dissonances, the dominant —
   with the schemata the two lines make, the cadences the bass offers counted ahead, and a middle voice written from

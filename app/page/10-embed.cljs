@@ -418,11 +418,8 @@
 
 (.addEventListener ($ "ask-hist-export") "click"
   (fn [_]
-    (let [text (str/join "\n" (map #(js/JSON.stringify (clj->js %)) (ask-entries)))
-          a (js/document.createElement "a")]
-      (set! (.-href a) (js/URL.createObjectURL (js/Blob. #js [text] #js {:type "application/x-ndjson"})))
-      (set! (.-download a) "kairotic-claude-log.jsonl")
-      (.click a))))
+    (let [text (str/join "\n" (map #(js/JSON.stringify (clj->js %)) (ask-entries)))]
+      (save-file! (js/Blob. #js [text] #js {:type "application/x-ndjson"}) "kairotic-claude-log.jsonl"))))
 
 (.addEventListener ($ "ask-hist-clear") "click"
   (fn [_]
