@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`@kairotic/rhythm` 0.3.0: more generators, and how far apart two rhythms are** (discussion #252). `chance k n
+  [seed]` draws k onsets among n pulses, each bang another rhythm, the same seed the same rhythms in the same order;
+  `homometric` gives the other rhythms with the same interval vector (not the same necklace turned or mirrored: the
+  two flat rhythms of four in twelve), as a list of pulses; `swap` is Toussaint's swap distance between two rhythms —
+  in the bar, around the circle, as necklaces at the best rotation, directed when they hold different numbers of
+  onsets — with the Hamming distance beside it. All speak pulses, as `euclid` and `necklace` do.
+
 - **`@kairotic/cac` 0.2.0: `partimento.mjs`**, the hard rules of tonal counterpoint over a given bass, shared:
   one voice (`schemata`, the two-part rules of Study 51) and two (`parts`, the three-part rules of Study 54), with
   the book's schemata, cadences and prototypes as data, beside `soft.mjs`, which weighs what they allow. Studies 51

@@ -414,4 +414,30 @@ export async function theory(page, check) {
   const nfDraw = await until(page, `(let [b (get-in (current) [:boxes ${nf}])] [(comp/size-of b) (count (filter (fn [f] (= :rect (first f))) (ctl-shapes* (ctl-m ${nf} b) b)))])`, (x) => x === "[[200 296] 8]", 4000);
   check("... necklace fourier: a taller box, a bar for each of the eight magnitudes", nfDraw === "[[200 296] 8]", nfDraw);
   await cljs(page, `(delete ${nk} ${np} ${ne} ${nf})`);
+  // the other generators and a relation: chance (seeded draws), homometric (same interval vector), swap (Toussaint's distance)
+  const gen = `(fn [cls args msgs] (let [d (comp/lookup cls)]
+                 (second (reduce (fn [[s _] [i m]] (let [r ((:receive d) {:inlet i :value m :state s :args args})] [(:state r) (:out r)])) [nil nil] msgs))))`;
+  const ch = (await cljs(page, '(box "chance 5 16 7" 10200 600)')).trim();
+  const hm = (await cljs(page, '(box "homometric" 10200 660)')).trim();
+  const sw = (await cljs(page, '(box "swap" 10200 720)')).trim();
+  check("chance, homometric and swap bring @kairotic/rhythm",
+        (await until(page, `(every? some? (map comp/lookup ["chance" "homometric" "swap"]))`, (x) => x === "true", 20000)) === "true");
+  const chs = await cljs(page, `(let [g ${gen} p (fn [args msgs] (some (fn [[o v]] (when (= o 0) v)) (g "chance" args msgs))) a {:k 5 :n 16 :seed 7}]
+                                  [(count (p a [[0 :bang]])) (reduce + (p a [[0 :bang]])) (= (p a [[0 :bang]]) (p a [[0 :bang] [0 :bang] [0 :reset] [0 :bang]]))
+                                   (not= (p a [[0 :bang]]) (p a [[0 :bang] [0 :bang]])) (not= (p a [[0 :bang]]) (p (assoc a :seed 8) [[0 :bang]]))
+                                   (= (p a [[0 :bang]]) (p {:k 3 :n 8 :seed 1} [[0 {:k 5 :n 16 :seed 7}] [0 :bang]]))])`);
+  check("chance 5 16 7: five onsets in sixteen; the same seed the same draws (:reset starts them again), the next draw another, another seed another; a map sets it",
+        chs === "[16 5 true true true true]", chs);
+  const hms = await cljs(page, `(let [g ${gen}] [(g "homometric" {} [[0 [1 1 0 0 1 0 1 0 0 0 0 0]]]) (g "homometric" {} [[0 [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]]])])`);
+  check("homometric: the flat rhythm x x . . x . x . . . . . has one partner, x x . x . . . x . . . .; the son clave none",
+        hms === "[[[1 1] [0 [[1 1 0 1 0 0 0 1 0 0 0 0]]]] [[1 0] [0 []]]]", hms);
+  const sws = await cljs(page, `(let [g ${gen} m (fn [ref a] (some (fn [[o v]] (when (= o 0) v)) (g "swap" {} [[1 ref] [0 a]])))
+                                      son [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0] rumba [1 0 0 1 0 0 0 1 0 0 1 0 1 0 0 0] bossa [1 0 0 1 0 0 1 0 0 0 1 0 0 1 0 0]
+                                      t (m [1 0 0 1 0 0 1 0] [0 0 1 0 0 1 0 1])]
+                                  [((juxt :swap :hamming) (m son rumba)) ((juxt :swap :hamming) (m son bossa))
+                                   ((juxt :swap :circular :necklace :rotation :hamming :necklace-hamming) t)
+                                   (:swap (m [1 0 1 1 0 1 1 0] [1 0 0 1 0 0 1 0])) (g "swap" {} [[0 son]]) (g "swap" {} [[1 son] [0 [1 0 0 1 0 0 1 0]]])])`);
+  check("swap: the rumba and the bossa nova each 1 swap from the son (2 by Hamming); the tresillo a pulse later: 5 in the bar, 3 around the circle, 0 as a necklace (rotation 1); the tresillo 0 from the cinquillo (directed); nothing without a reference or of another length",
+        sws === "[[1 2] [1 2] [5 3 0 1 6 0] 0 nil nil]", sws);
+  await cljs(page, `(delete ${ch} ${hm} ${sw})`);
 }
