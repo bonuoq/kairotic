@@ -129,8 +129,9 @@ function optionFigs(o, cl) {
 }
 
 /**
- * spec: {bass: "C4 B3 …" | degrees, ending ("authentic", "perfect", "imperfect", "deceptive", "half"), key: {tonic, mode}, per (units a bass note: 1 or 2), lo, hi (the melody's range
- *        in degrees), middle: [lo, hi]}
+ * spec: {bass: "C4 B3 …" | degrees, key: {tonic, mode}, per (units a bass note: 1 or 2), ending ("authentic",
+ *        "perfect", "imperfect", "deceptive", "half"), line (how strictly the melody moves: "free", "moderate",
+ *        "strict"), middleLine (the middle voice's), lo, hi (the melody's range in degrees), middle: [lo, hi]}
  */
 export function figuring(spec = {}) {
   const K = keyOf(spec.key || { tonic: "C" });
@@ -150,6 +151,10 @@ export function figuring(spec = {}) {
   const lo = spec.lo ?? Math.max(7, top + 4), hi = spec.hi ?? lo + 12, spacing = spec.spacing ?? hi - bottom;
   // the final cadence: where the bass closes, the kinds of cadence the ending allows there, and the figures they ask
   // of the melody (on each unit, those of any of them: the melody ends with one of them)
+  // how strictly the lines move (partimento.mjs's spec.line): the melody "moderate" by default — a leap of a 5th or
+  // more turns back by step —, the middle voice, an inner voice, "strict" — leaps up to a 5th (or the octave), turned
+  // back by step from a 4th, never two the same way
+  const line = spec.line || "moderate", middleLine = spec.middleLine || (line === "free" ? "moderate" : "strict");
   const fin = finalClose(notes, units, ending);
   const figsAt = units.map(() => null);
   if (fin) {
@@ -157,7 +162,7 @@ export function figuring(spec = {}) {
     // (a unit one of them leaves free is free)
     for (let t = 0; t < units.length; t++) figsAt[t] = all.some((fs) => !fs[t]) ? null : [...new Set(all.flatMap((fs) => fs[t]))];
   }
-  const V = schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: figsAt[t] })), key: K, figured: !!fin, lo, hi, spacing });
+  const V = schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: figsAt[t] })), key: K, figured: !!fin, lo, hi, spacing, line });
   // the chords of the cadence: the last a 5/3 (a root position: its 5th or its 3rd above the bass, never a 6), and
   // before it, over the ⑤ of a ⑤–① cadence, a 5/3 or a 7/3 (the 6/4 or 5/4 of a compound cadence on the unit before)
   const cadenceChords = (t) => {
@@ -308,7 +313,7 @@ export function figuring(spec = {}) {
       const fs = optionFigs(o, cl);
       if (!fs) return { name: o.name, kind: o.kind, count: 0n, why: "needs a bass note of two units" };
       const wk = cl.at + ":" + o.name;
-      const W = cadW.get(wk) || schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: fs[t] })), key: K, figured: true, lo, hi, spacing });
+      const W = cadW.get(wk) || schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: fs[t] })), key: K, figured: true, lo, hi, spacing, line });
       cadW.set(wk, W);
       // the melody so far must already fit the cadence it asks for, where it covers it
       for (let t = 0; t < U.length; t++) if (W.check(U.slice(0, t), t, U[t])) return { name: o.name, kind: o.kind, count: 0n, why: t >= cl.from ? "the melody went another way" : null };
@@ -320,7 +325,7 @@ export function figuring(spec = {}) {
   /** The three-part kernel for the bass, the chords asked one a unit (null: none asked). */
   function three(chosen = units.map(() => null)) {
     const events = notes.map((nt, i) => [nt.d, units.filter((u) => u.note === i).length, chosen.filter((x, t) => units[t].note === i)]);
-    return parts({ schema: { events }, cadence: null, key: K, top: [lo, hi], middle: spec.middle || [bottom + 2, hi - 2], spacing });
+    return parts({ schema: { events }, cadence: null, key: K, top: [lo, hi], middle: spec.middle || [bottom + 2, hi - 2], spacing, line: { top: line, middle: middleLine } });
   }
   // (the noise of the search: notes out of the middle voice's place, not reasons a musician needs)
   const PLACE = /below the bass|too far|wider than|under the upper|within an octave|out of|unison with the bass/;
@@ -522,7 +527,7 @@ export function figuring(spec = {}) {
   /** The next note's candidates for three: V.fan's, each with its three-part ways on (futures3). */
   const fanThree = (U) => V.fan(U).map((c) => (c.reason || !(c.futures > 0n) ? c : { ...c, futures3: threeWays([...U, c.note]) }));
 
-  return { spec, key: K, notes, units, n, per, ending, voice: V, play, fan: V.fan, count: V.count, engine: V.engine, judge: V.judge,
+  return { spec, key: K, notes, units, n, per, ending, line, middleLine, voice: V, play, fan: V.fan, count: V.count, engine: V.engine, judge: V.judge,
            chordsAt, figuresOf, schemataIn, closes, cadenceWays, middle, three, roomFor, threeWays, figuresThree, engineThree, fanThree, name: V.name, degree: D, raised: R, hz: V.hz, midiOf,
            bassName: (t) => K.name(units[t].d, units[t].r) };
 }

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **How strictly a line moves** (`@kairotic/cac` 0.2.2, `partimento.mjs`'s `line`; Study 56): beyond the two-part
+  rules, a voice may be held to more of counterpoint's melodic ones — *moderate*, a leap of a 5th or more turns back
+  by step; *strict*, leaps up to a 5th or the octave, turned back by step from a 4th, never two the same way. `parts`
+  takes one for both upper voices or one each. Off by default (*free*: the counts of Studies 51 and 54 unchanged);
+  Study 56's melody is moderate, its middle voice strict, and the number of melodies falls by one or two orders.
+
 - **Study 56 · figuring: a voice that allows a third, and the phrase closed by a cadence** (after trying it). Written
   for three, the melody and its figures are chosen in three parts: a note only where a middle voice can still be
   written under it to the end, and at each unit the likeliest chord such a voice can make with the chords before it,

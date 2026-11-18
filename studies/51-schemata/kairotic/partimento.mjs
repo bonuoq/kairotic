@@ -161,7 +161,8 @@ const CLASS_FIG = [8, 2, 3, 4, 5, 6, 7];
 /**
  * spec: {schema (a name or {events, phase}), key: {tonic, mode}, figured (true: the upper voice realizes the
  *        figures), lo, hi (the upper voice's range, in degrees: 7 the tonic above the bass's, 21 two octaves
- *        higher), spacing (degrees between the voices at most), maxHold (units a note may last, held: 2)}
+ *        higher), spacing (degrees between the voices at most), maxHold (units a note may last, held: 2), line
+ *        (how strictly the line moves: "free", "moderate", "strict")}
  */
 export function schemata(spec = {}) {
   const schema = typeof spec.schema === "string" ? SCHEMATA[spec.schema] : spec.schema || SCHEMATA.thirds;
@@ -171,6 +172,19 @@ export function schemata(spec = {}) {
   const n = B.length, phase = schema.phase ?? spec.phase ?? 0;
   const lo = spec.lo ?? 7, hi = spec.hi ?? 21, spacing = spec.spacing ?? 16, maxHold = spec.maxHold ?? 2;
   const figured = spec.figured ?? true;
+  // how strictly the line moves, beyond the rules below (spec.line, as the counterpoint of Studies 38–42 asks of a
+  // melody): "free", those rules alone; "moderate", a leap of a 5th or more turns back by step; "strict", leaps up to
+  // a 5th (or the octave), a leap of a 4th or more turns back by step, and no two leaps in a row the same way. (It
+  // looks at the move before the note's only, as the rules do: the count's memo stays sound.)
+  const line = spec.line || "free";
+  const lineError = (before, step) => {
+    if (line === "free") return null;
+    const a = Math.abs(step), b = before === null ? 0 : Math.abs(before);
+    if (line === "strict" && a > 4 && a !== 7) return "a leap wider than a 5th (but the octave)";
+    if (b >= (line === "strict" ? 3 : 4) && !(a === 1 && sign(step) !== sign(before))) return `after a leap of a ${line === "strict" ? "4th" : "5th"} or more the line turns back by step`;
+    if (line === "strict" && b >= 2 && a >= 2 && sign(step) === sign(before)) return "two leaps in a row the same way";
+    return null;
+  };
   const strong = (t) => (B[t] && B[t].strong !== undefined ? B[t].strong : (t + phase) % 2 === 0);
   const middle = spec.voice === "middle";
 
@@ -237,6 +251,7 @@ export function schemata(spec = {}) {
       const on = onsetOf(U, t - 1), a1 = on >= 1 ? U[on - 1] : null;
       const step = D(c) - D(prev);
       if (a1 !== null && Math.abs(D(prev) - D(a1)) >= 3 && sign(step) === sign(D(prev) - D(a1))) return "after a leap of a 4th or more the line turns";
+      { const e = lineError(a1 === null ? null : D(prev) - D(a1), step); if (e) return e; }
       // in minor: ⑥ and ⑦ go up raised and down natural
       if (K.mutable(D(prev)) && Math.abs(step) === 1) {
         if (step > 0 && !R(prev)) return `${K.name(D(prev), 0)} goes up raised (melodic minor)`;
@@ -556,7 +571,8 @@ export function phraseBass(schema, cadence, K) {
 
 /**
  * spec: {schema, cadence (a name, or null), key: {tonic, mode}, figured (the chords asked: true), top: [lo, hi],
- *        middle: [lo, hi] (degrees, 7 the tonic above the bass's), apart (degrees between the upper voices at most)}
+ *        middle: [lo, hi] (degrees, 7 the tonic above the bass's), apart (degrees between the upper voices at most),
+ *        line (how strictly the upper voices move: one for both, or {top, middle})}
  */
 export function parts(spec = {}) {
   const schema = typeof spec.schema === "string" ? SCHEMATA3[spec.schema] : spec.schema || SCHEMATA3.fauxbourdon;
@@ -569,8 +585,10 @@ export function parts(spec = {}) {
   const apart = spec.apart ?? 7;
   const S = { schema: { events: [] }, key: K, bass: B, figured: false };
   // (the upper voice may be two octaves and a 4th above the bass: a bass that leaps down to ⑤ at a cadence)
-  const T = schemata({ ...S, lo: tlo, hi: thi, voice: "top", spacing: spec.spacing ?? 18, weights: spec.weights, delayed: spec.delayed });
-  const M = schemata({ ...S, lo: mlo, hi: mhi, voice: "middle", weights: spec.weights, delayed: spec.delayed });
+  // (spec.line: how strictly each upper voice moves, one for both or {top, middle})
+  const lineOf = (who) => (spec.line && typeof spec.line === "object" ? spec.line[who] : spec.line);
+  const T = schemata({ ...S, lo: tlo, hi: thi, voice: "top", spacing: spec.spacing ?? 18, weights: spec.weights, delayed: spec.delayed, line: lineOf("top") });
+  const M = schemata({ ...S, lo: mlo, hi: mhi, voice: "middle", weights: spec.weights, delayed: spec.delayed, line: lineOf("middle") });
   const D = T.degree, R = T.raised;
   const semi = (c) => K.semi(D(c), R(c));
 

@@ -72,6 +72,11 @@ try {
   K.set("scale-down", 2);
   K.ending("half");
   is("a half ending asked of the scale down: refused, and why", d.getElementById("ending").value === "authentic" && /half cadence needs/.test(d.getElementById("said").textContent));
+  K.set("romanesca", 2);
+  const moderate = K.F.count();
+  K.line("strict");
+  is("the line made strict: fewer melodies, said in the counts", K.F.line === "strict" && K.F.count() < moderate && /melodies/.test(d.getElementById("ref").textContent));
+  K.line("moderate");
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);
