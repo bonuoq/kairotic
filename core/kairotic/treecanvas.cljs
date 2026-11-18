@@ -89,17 +89,24 @@
 
 (defn free-form
   "A tree as free time: [:voice {its root's attributes} [:par [:note {:at …}] …]], every note placed where
-   it sounds (ties joined), with the name it was written with."
-  [tree]
+   it sounds (ties joined), with the name it was written with. With {:real true}, a note that keeps where it
+   really sounded (:tstamp.real, :dur.real: quantize, MEI) goes back there (unquantize!); the roll's edits keep
+   the written times."
+  ([tree] (free-form tree {}))
+  ([tree {:keys [real]}]
   (let [x (mt/expand tree)
         root (dissoc (mt/attrs x) :at :dur)
+        bps (/ (mt/tempo-of tree) 60)
         notes (for [e (note-events x)]
-                (let [a (mt/attrs (mt/node-at x (:path e)))]
-                  [:note (cond-> (merge (select-keys a [:art :dyn :text :vel :env :gliss :cents :id :grace])
-                                        {:at (cv/round-to (:t e) 4) :dur (cv/round-to (:dur e) 4)
+                (let [a (mt/attrs (mt/node-at x (:path e)))
+                      ;; a note that keeps where it really sounded (:tstamp.real, :dur.real: quantize, MEI) goes back there
+                      real? (and real (number? (:tstamp.real a)) (number? (:dur.real a)))]
+                  [:note (cond-> (merge (select-keys a [:art :dyn :text :vel :env :gliss :cents :id :grace :tstamp.real :dur.real])
+                                        {:at (cv/round-to (if real? (* (:tstamp.real a) bps) (:t e)) 4)
+                                         :dur (cv/round-to (if real? (* (:dur.real a) bps) (:dur e)) 4)
                                          :pitch (if (mt/spelling-of a) (:pitch a) (:pitch e))})
                            (number? (:hz a)) (-> (dissoc :pitch) (assoc :hz (:hz a))))]))]
-    [:voice (dissoc root :meter :groups) (into [:par] notes)]))
+    [:voice (dissoc root :meter :groups) (into [:par] notes)])))
 
 (defn- canonical-free?
   "Is a tree written as free-form writes it (so that a note's path is [0 i])?"

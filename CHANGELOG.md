@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **MEI in the app** (discussion #217, phase 1 after Study 55). The kernel of Study 55 is a module of the core,
+  `kairotic.mei`: a tree as MEI (mt/->mei's notation, `@tstamp.real`, `@dur.real` and `@vel` where a note has them,
+  and one `<extMeta type="kairotic">` with the rest as EDN) and MEI as a tree, now with several voices, keys and meters
+  written as `<keySig>`/`<meterSig>` elements, and MusicXML through Verovio. In the app: `(mei :bN)` and
+  `(export-mei! :bN)` (a tree in free time is quantized first), `(import-mei!)` / `(import-mei! :bN)`, and a .mei or
+  MusicXML file dropped on the patch becomes a tree box. **Quantize keeps where the notes really sounded**: each note's
+  first piece has `:tstamp.real` and `:dur.real` (seconds, at the material's tempo; `[:real false]` leaves them out),
+  and `(unquantize! :bN)` puts the notes back there (the roll's own edits keep the written times). Tests:
+  `tests/cljs/mei.cljs`, and the tree box's MEI in `tests/views.mjs`.
+
 - **A 6/4 resolves as a double appoggiatura** (`@kairotic/cac` 0.2.1, `partimento.mjs`; Study 54): over a held
   bass the 6/4 goes to the 5/3 with each voice down a step, the 6th to the 5th and the 4th to the 3rd, without the
   voices exchanging them. The Galant cadence takes the book's 6/(3) on ④ (ex. 3.21: a sixth chord with its bass
