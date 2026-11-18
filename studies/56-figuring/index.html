@@ -139,6 +139,7 @@ table.cad button { font: 11.5px var(--f-ui); }
   <label>mode <select id="mode"><option>major</option><option>minor</option></select></label>
   <label title="a bass note lasts one unit, or two (a bar: strong, weak)">a bass note <select id="per"><option value="2">a bar (2 units)</option><option value="1">a beat (1 unit)</option></select></label>
   <label title="how the phrase closes: a perfect or imperfect cadence; a deceptive or a half one changes the end of the bass">ending <select id="ending"><option value="authentic">perfect or imperfect</option><option value="perfect">perfect</option><option value="imperfect">imperfect</option><option value="deceptive">deceptive (⑤–⑥)</option><option value="half">half (on ⑤)</option></select></label>
+  <label title="how strictly the melody moves (the middle voice one step stricter): free, the rules of two parts alone; moderate, a leap of a 5th or more turns back by step; strict, leaps up to a 5th or the octave, from a 4th turned back by step, never two the same way">line <select id="line"><option value="free">free</option><option value="moderate" selected>moderate</option><option value="strict">strict</option></select></label>
   <label title="the melody's notes, and its figures, only where a middle voice can be written under them to the end"><input type="checkbox" id="three"> write a voice that allows a third voice</label>
   <span class="sep"></span>
   <button class="act" id="undo" disabled>⌫ Undo</button>
@@ -188,6 +189,7 @@ table.cad button { font: 11.5px var(--f-ui); }
         <li><b>The cadence is counted ahead</b>: the ways the melody so far leaves to make each kind of cadence the ending allows, and one of them written by the engine.</li>
         <li><b>A middle voice is written from the figures</b> under the three-part rules of Study 54 — no 3rd doubled nor the leading tone, no parallel 5ths or octaves between the upper voices, the 6/4 a double appoggiatura —, and the cadence a cadence: its last chord a 5/3 (never a 6), and from the dominant the leading tone up to the tonic, the 7th (④) down to ③, in either voice. Where none can be written it says where, and why: a melody that doubles the leading tone of the bass, or leaps where the voice under it cannot follow.</li>
         <li><b>Writing a voice that allows a third</b>, the melody and its figures are chosen in three parts: a note only where a middle voice can still be written under it and the melody finished over it, and at each unit the likeliest chord such a middle voice can make with the chords before it — so a middle voice can always be written from the figures. The ways on are then the three-part realizations: the melody and a middle voice.</li>
+        <li><b>The lines move as counterpoint asks</b>, in some measure (<i>line</i>): <i>moderate</i> by default, a leap of a 5th or more turning back by step; <i>strict</i>, leaps up to a 5th or the octave, turned back by step from a 4th, never two the same way; <i>free</i>, the two-part rules alone. The middle voice, an inner voice, is one step stricter. Among what is allowed the engine still prefers steps and a leap compensated (the soft rules of Studies 38–42).</li>
         <li><b>The phrase ends with a cadence</b>, perfect or imperfect where the bass closes on ① (②–① or ⑤–①); a deceptive one (the last ① becomes the ⑥ above ⑤) or a half one (the phrase ends on ⑤) only when chosen.</li>
       </ul>
     </section>
@@ -212,7 +214,7 @@ function rebuild() {
   document.querySelectorAll("[data-bass]").forEach((b) => b.classList.toggle("on", b.dataset.bass === bid));
   const text = $("bass-text").value.trim();
   try {
-    F = figuring({ bass: text || BASSES[bid].degrees, key: key(), per: Number($("per").value), ending: $("ending").value });
+    F = figuring({ bass: text || BASSES[bid].degrees, key: key(), per: Number($("per").value), ending: $("ending").value, line: $("line").value });
   } catch (e) {
     // an ending the bass cannot make: back to a perfect or imperfect cadence, and why
     if ($("ending").value !== "authentic") { $("ending").value = "authentic"; rebuild(); lastSaid = "✗ " + (e.message || e); $("said").textContent = lastSaid; return; }
@@ -408,6 +410,7 @@ for (const id of ["tonic", "mode", "per"]) $(id).addEventListener("change", rebu
 // (the first count in three parts can take a few seconds: said before it starts)
 $("three").addEventListener("change", () => { $("status").textContent = three() ? "counting in three parts…" : ""; fanCache = null; M = null; setTimeout(() => { rebuildRef(); render(); }, 30); });
 $("ending").addEventListener("change", rebuild);
+$("line").addEventListener("change", rebuild);
 $("bass-use").addEventListener("click", rebuild);
 $("bass-text").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") rebuild(); });
 $("undo").addEventListener("click", () => { U = U.slice(0, -1); M = null; lastSaid = ""; for (const k of Object.keys(chosen)) if (k >= U.length) delete chosen[k]; render(); });
@@ -429,6 +432,7 @@ window.kairoticFiguring = {
   get F() { return F; }, get U() { return U; }, get M() { return M; }, get chosen() { return chosen; },
   ask, write, third, rebuild, render, select: (t) => { sel = t; render(); },
   ending: (e) => { $("ending").value = e; rebuild(); },
+  line: (l) => { $("line").value = l; rebuild(); },
   forThree: (on) => { $("three").checked = on; fanCache = null; M = null; rebuildRef(); render(); },
   set: (b, per) => { bid = b; if (per) $("per").value = String(per); $("bass-text").value = ""; rebuild(); },
 };

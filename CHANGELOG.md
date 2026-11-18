@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **How strictly a line moves** (`@kairotic/cac` 0.2.2, `partimento.mjs`'s `line`; Study 56): beyond the two-part
+  rules, a voice may be held to more of counterpoint's melodic ones — *moderate*, a leap of a 5th or more turns back
+  by step; *strict*, leaps up to a 5th or the octave, turned back by step from a 4th, never two the same way. `parts`
+  takes one for both upper voices or one each. Off by default (*free*: the counts of Studies 51 and 54 unchanged);
+  Study 56's melody is moderate, its middle voice strict, and the number of melodies falls by one or two orders.
 - **Takes** (discussion #289): several performances of one tree, on its root as `:takes [{:id :name :made :audio
   :when {note-id [onset dur]}}]` — note times only, with an optional reference to the audio; curves are derived.
   `kairotic.mei` writes them to MEI's performance module (`<performance>`/`<recording>`/`<when absolute
