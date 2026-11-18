@@ -437,6 +437,10 @@ Rules:
   :deep :flat :axes :gap :oddity :euclid :fourier :phases}); its right inlet (cold) gives the notes their
   pitches in turn (a keyboard's keys in Hz, a melody string, {:pitches …}, a pattern {:note […]}); [:bars 4]
   [:meter \"3/4\"]. Typical: euclid 5 16 → necklace → tree → mt play → synth~.
+  More generators of pulses: `chance k n [seed]` (each bang another rhythm drawn with the seed; :reset),
+  `homometric` (pulses in → the list of rhythms with the same interval vector, and how many; nth to pick one).
+  `swap` compares the pulses on its left inlet with the reference on its right (cold): {:swap :circular
+  :necklace :rotation :hamming :necklace-hamming :n :k} — Toussaint's swap distance.
 - The outside (package @kairotic/io, it comes by itself; listening while ▶ runs): `midiin` (MIDI in: Hz and
   voice ids for synth~ like a keyboard, and every event as a map {:type :note :freq :amp :gate …}),
   `midiout [mpe]` (Hz after voice ids, or events, to a MIDI port; mpe for microtones), `oscout [target]` and

@@ -15,6 +15,9 @@ is their editor, measures them and writes them as music.
 |---|---|
 | `euclid [k 3] [n 8] [rotation 0]` | **a generator**: a Euclidean rhythm (Bjorklund's algorithm, after Toussaint) as pulses — k onsets as evenly as they can be over n pulses: `euclid 3 8` the tresillo, `5 8` the cinquillo, `5 16 6` the bossa nova, `7 12` the bembé. No view of its own: a bang sends the pulses; `[:k 5]`, `[:n 16]`, `[:rotation 6]` (or a map) change them, a number is k |
 | `necklace [n 16] [bars 1] [midi] [fourier]` | **the rhythm box**: takes a rhythm in any notation, draws it on the circle with its axes of symmetry, lets you edit it (pressing a pulse adds or takes away an onset), sends its **measures** (interval vector, evenness, deep, flat, axes, gap, oddity, the rotation of E(k,n) it is, Fourier coefficients) and writes it as a **musical tree** with the pitches of its right inlet |
+| `chance [k 3] [n 8] [seed 1]` | **a generator**: k onsets among n pulses drawn with a seed — each bang another rhythm, the same seed the same rhythms in the same order (in a room, from the history); `:reset` starts them again |
+| `homometric` | **a generator from a rhythm**: the other rhythms with the same interval vector, not the same necklace turned or in a mirror (the two flat rhythms of 4 in 12; a half of an even cycle and its complement) — a list of pulses, and how many |
+| `swap` | **how far apart two rhythms are** (Toussaint's swap distance): the left one against the right one (the reference, cold) — in the bar, around the circle, and as necklaces at the best rotation; with the Hamming distance beside it, and the directed swap distance when they hold different numbers of onsets |
 
 ```clojure
 (box :b1 "msg [:rotation 6]" 40 20)
@@ -58,5 +61,17 @@ Its **right inlet** (cold) takes the pitches the notes take in turn, starting ag
 *color*: a map with `:pitches` or `:pitch` (kept as it is), a pattern (`{:note [...]}`, as `comes` sends), a melody
 string, a list of Hz (the keys held on a keyboard; MIDI with `midi`), notes or chords of a tree; `:clear` forgets them.
 With `bars` the color goes on from bar to bar.
+
+## Generators and relations
+
+`euclid`, `chance` and `homometric` make pulses; `swap` compares two. They have no view: put a `necklace` after
+a generator to see, edit, measure and hear what it made.
+
+**swap** answers `{:swap :circular :necklace :rotation :hamming :necklace-hamming :n :k}`. A swap exchanges an onset
+and the silence beside it; the distance is how many turn one rhythm into the other, so an onset moved far counts
+more than one moved near — the Hamming distance (how many pulses differ) cannot tell: the son clave is 1 swap from
+the rumba and 1 from the bossa nova, and 2 by Hamming from both. With different numbers of onsets it is the directed
+swap distance (the tresillo is 0 from the cinquillo: it is inside it). `:circular` lets a swap cross the end of the
+bar; `:necklace` turns the reference to where it comes nearest, and `:rotation` says how far.
 
 Writing one of its classes in a work brings the package into it. Licence: [MPL-2.0](../../LICENSE).
