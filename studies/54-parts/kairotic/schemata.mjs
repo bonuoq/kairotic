@@ -184,10 +184,15 @@ export function schemata(spec = {}) {
     if (figured && B[t].fig && !B[t].fig.some((f) => FIG_CLASS(f) === v.cls)) return `the figures ask for ${B[t].fig.join(" or ")}`;
     const prev = t >= 1 ? U[t - 1] : null;
     const held = prev !== null && c === prev, struck = !held;
+    // a 7th held into the 4th over the next bass (the 7th of ② held into the 6/4 or 5/4 over ⑤, ii7 → V): its
+    // resolution put off by one chord, the 4th then resolving down by step; held a unit longer than a note may be
+    // (Study 54: spec.delayed, on by default)
+    const delayed = (spec.delayed ?? true) && held && t >= 1 && B[t].struck && strong(t) && strong(t - 1) &&
+                    vertical(t - 1, prev).q === "dissonant" && vertical(t - 1, prev).cls === 6 && v.q === "dissonant" && v.cls === 3;
     // the line: a note held two units at most; the moves struck
     if (held) {
       const on = onsetOf(U, t - 1);
-      if (t - on >= maxHold) return `a note is held ${maxHold} units at most`;
+      if (t - on >= maxHold + (delayed ? 1 : 0)) return `a note is held ${maxHold} units at most`;
     } else if (prev !== null) {
       const e = melodicError(prev, c); if (e) return e;
       const on = onsetOf(U, t - 1), a1 = on >= 1 ? U[on - 1] : null;
@@ -198,9 +203,12 @@ export function schemata(spec = {}) {
         if (step > 0 && !R(prev)) return `${K.name(D(prev), 0)} goes up raised (melodic minor)`;
         if (step < 0 && R(prev)) return `${K.name(D(prev), 1)} goes down natural (melodic minor)`;
       }
+      // (three parts: the raised ⑥ is only on the way up to the tonic: it goes on up to the raised ⑦)
+      if ((spec.voice === "top" || spec.voice === "middle") && K.mutable(D(prev)) && mod(D(prev), 7) === 5 && R(prev) && !(step === 1 && R(c)))
+        return `${K.name(D(prev), 1)} goes on up to ${K.name(D(prev) + 1, 1)} (melodic minor, toward the tonic)`;
     }
     // what the unit before asks
-    if (t >= 1) {
+    if (t >= 1 && !delayed) {
       const pv = vertical(t - 1, prev);
       if (!consonant(pv)) {
         if (strong(t - 1)) {
@@ -224,7 +232,7 @@ export function schemata(spec = {}) {
         // down by step on the next unit)
         const ap = B[t].ap && !held && !bassHeld && t >= 1 && Math.abs(D(c) - D(prev)) === 1 && consonant(vertical(t - 1, prev));
         if (!ap && held === bassHeld) return held ? "a dissonance with both voices held" : `a ${CLASS_FIG[v.cls]} (dissonant) on a strong unit must be prepared, one voice holding its note`;
-        if (!consonant(vertical(t - 1, prev))) return "a suspension is prepared by a consonance";
+        if (!delayed && !consonant(vertical(t - 1, prev))) return "a suspension is prepared by a consonance";
         if (held && !(v.cls === 6 || v.cls === 3 || (v.cls === 1 && v.steps >= 8))) return "held in the upper voice: a 7th, a 4th or a 9th";
         if (bassHeld && v.cls !== 1 && v.cls !== 3) return "held in the bass: a 2nd or a 4th (2–3, 4/2)";
       } else {

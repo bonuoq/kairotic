@@ -8,7 +8,9 @@
 // 4th or a 9th held in the voice, a 2nd or a 4th held in the bass, passing tones, no parallel perfect intervals…).
 // Between the upper voices the rules of upper voices: a 4th is a consonance there (the Fauxbourdon is parallel 4ths
 // above the parallel 6ths), no parallel 5ths or octaves, no crossing, within an octave; a 2nd or a 7th only where
-// one of the two is itself the dissonance against the bass (the 5/4 of a compound cadence). The figures of a chord
+// one of the two is itself the dissonance against the bass (the 5/4 of a compound cadence). Three voices sound
+// three notes of a chord: its 3rd is not doubled, nor the leading tone; in minor the chord on the dominant is
+// major, its ⑦ raised (melodically, ⑥ and ⑦ go up raised toward the tonic, down natural). The figures of a chord
 // (5/3, 6/3, 7/3, 4/2, 6/4, 5/4) say which intervals there are above the bass, not which voice has them: a 5/3 may
 // leave out its 5th and double the bass (the book's (5)/3), never its 3rd; a 6/3 and a 7/3 sound complete.
 //
@@ -32,6 +34,8 @@ export const CHORDS = {
   "5/4": { need: [3], ok: [3, 4, 0] },
 };
 const FIG = [8, 2, 3, 4, 5, 6, 7];
+// where the chord's 3rd is, by its figures (a class above the bass; 0: the bass itself, as in a 6/3)
+const THIRD = { "5/3": 2, "7/3": 2, "5/4": 2, "6/3": 0, "6/4": 5, "4/2": 3 };
 
 // ─── the phrase: a schema (chapter 2), then a cadence (chapter 3) ───
 // An event: [degree of the bass, units, the chord over each unit]; a unit is half a bar. A schema may have its own
@@ -78,6 +82,8 @@ export function phraseBass(schema, cadence, K) {
     const near = (deg) => { const base = deg % 7; let best = base; for (let o = -14; o <= 14; o += 7) if (Math.abs(base + o - last) < Math.abs(best - last)) best = base + o; return best; };
     for (const [deg, len, figs, extra] of cadence.events) { const d = near(deg); evs.push({ d, len, figs, meter: 2, part: "cadence", ap: extra && extra.ap }); last = d; }
   }
+  // a dominant: ⑤ going to ① (or to ⑥, deceptive), or closing the phrase (half) — not a ⑤ passed in a sequence
+  const dominantAt = (i) => evs[i].d % 7 === 4 || evs[i].d % 7 === -3 ? !evs[i + 1] || [0, 5, -2, -7].includes(evs[i + 1].d % 7) : false;
   const units = [];
   let partStart = 0, part = null;
   evs.forEach((e, i) => {
@@ -86,7 +92,7 @@ export function phraseBass(schema, cadence, K) {
     const r = K.mutable(e.d) && next && next.d === e.d + 1 ? 1 : 0;
     for (let j = 0; j < e.len; j++) {
       const k = units.length - partStart;
-      units.push({ d: e.d, r, struck: j === 0, strong: e.meter === 1 ? true : k % 2 === 0, chord: e.figs[Math.min(j, e.figs.length - 1)], ap: !!(e.ap && e.ap.includes(j)), part: e.part });
+      units.push({ d: e.d, r, struck: j === 0, strong: e.meter === 1 ? true : k % 2 === 0, chord: e.figs[Math.min(j, e.figs.length - 1)], ap: !!(e.ap && e.ap.includes(j)), part: e.part, dominant: dominantAt(i) });
     }
   });
   return units;
@@ -107,8 +113,8 @@ export function parts(spec = {}) {
   const apart = spec.apart ?? 7;
   const S = { schema: { events: [] }, key: K, bass: B, figured: false };
   // (the upper voice may be two octaves and a 4th above the bass: a bass that leaps down to ⑤ at a cadence)
-  const T = voiceOf({ ...S, lo: tlo, hi: thi, voice: "top", spacing: spec.spacing ?? 18, weights: spec.weights });
-  const M = voiceOf({ ...S, lo: mlo, hi: mhi, voice: "middle", weights: spec.weights });
+  const T = voiceOf({ ...S, lo: tlo, hi: thi, voice: "top", spacing: spec.spacing ?? 18, weights: spec.weights, delayed: spec.delayed });
+  const M = voiceOf({ ...S, lo: mlo, hi: mhi, voice: "middle", weights: spec.weights, delayed: spec.delayed });
   const D = T.degree, R = T.raised;
   const semi = (c) => K.semi(D(c), R(c));
 
@@ -127,10 +133,23 @@ export function parts(spec = {}) {
       const pperfect = (pcls === 0 && ps === 0) || (pcls === 4 && ps === 7);
       if (perfect && pperfect && pcls === cls && a !== pa && b !== pb) return `parallel ${cls === 0 ? "octaves" : "5ths"} between the upper voices`;
     }
+    // the same note a semitone apart in the upper voices (F and F♯): an augmented unison or octave
+    if (cls === 0 && s !== 0) return "a false relation between the upper voices (an augmented octave)";
+    const have = new Set([vt.cls, vm.cls]);
     if (figured && B[t].chord) {
-      const ch = CHORDS[B[t].chord], have = new Set([vt.cls, vm.cls]);
+      const ch = CHORDS[B[t].chord];
       if (!ch.need.every((c) => have.has(c)) || ![...have].every((c) => ch.ok.includes(c))) return `the chord asked is ${B[t].chord}`;
     }
+    // three voices, three notes of a chord: its 3rd is not doubled, nor the leading tone
+    const chord = figured && B[t].chord ? B[t].chord : have.has(5) && have.has(2) ? "6/3" : have.has(5) && have.has(3) ? "6/4" : have.has(1) && have.has(3) ? "4/2" : "5/3";
+    const third = THIRD[chord];
+    if ((third === 0 ? 1 : 0) + [vt.cls, vm.cls].filter((c) => c === third).length >= 2) return "the 3rd of the chord doubled";
+    const lt = (d, r) => mod(d, 7) === 6 && (K.mode === "major" || r === 1);
+    if ([lt(B[t].d, B[t].r), lt(D(a), R(a)), lt(D(b), R(b))].filter(Boolean).length >= 2) return "the leading tone doubled";
+    // in minor the chord on the dominant is major: ⑦ over ⑤ raised, where ⑤ is a dominant (going to ① or ⑥, or
+    // closing the phrase; not a ⑤ passed in a sequence, nor a 6/3 on ⑤, a chord on ③)
+    if (K.mode === "minor" && B[t].dominant && chord !== "6/3")
+      for (const x of [a, b]) if (mod(D(x), 7) === 6 && !R(x)) return `the chord on the dominant is major: ${K.name(D(x), 1)}, not ${K.name(D(x), 0)}`;
     return null;
   }
   /** Why the pair at unit t is refused, or null: each voice against the bass, then between them. */

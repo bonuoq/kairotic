@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 54 · parts, the rules of three voices**: the 3rd of a chord is not doubled, nor the leading tone, and no
+  false relation sounds between the upper voices; in minor the chord on the dominant is major (⑦ raised over a ⑤
+  going to ① or ⑥, while a ⑤ passed in a sequence keeps the natural minor), and a raised ⑥ goes on up to the raised
+  ⑦. A 7th may put off its resolution by one chord — the 7th of ② held into the 4th of the 6/4 or 5/4 over ⑤ —, so
+  the Fifth Down Fourth Up closes with a compound or deceptive cadence too.
+
 - **An agent's panel.** The presented controls of an agent's content show on the agent box itself, as those of a
   `patch` box do (Study 11): an instrument Claude built is played from outside without opening it. Claude is told
   to present the controls it builds; presenting or hiding them by hand in its content changes the panel too.

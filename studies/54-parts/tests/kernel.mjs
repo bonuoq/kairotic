@@ -24,13 +24,13 @@ export async function run() {
   is("the 6/3 chords with the 5th between the upper voices: parallel 5ths (ex. 2.6b)", /parallel 5ths between the upper voices/.test(bad || ""));
 
   // every phrase: a schema and a cadence — its realizations counted, a drawn one sound
-  const known = { "fauxbourdon simple": 4176698n, "fauxbourdon-76 compound-64": 18n, "fifths-73 simple": 95n, "romanesca galant": 299n, "tied-bass deceptive": 4523n, "monte compound-54": 946n };
+  const known = { "fauxbourdon simple": 839310n, "fauxbourdon-76 compound-64": 10n, "fifths-73 simple": 44n, "fifths-73 compound-64": 10n, "romanesca galant": 147n, "tied-bass deceptive": 1320n, "monte compound-54": 428n };
   const draw = rng(53);
   for (const s of Object.keys(SCHEMATA)) for (const c of Object.keys(CADENCES)) {
     const P = parts({ schema: s, cadence: c, key: { tonic: "C" } }), n = P.count();
     const k = `${s} ${c}`;
     if (k in known) is(`${P.schema.name} + ${P.cadence.name} cadence: ${known[k]} realizations`, n === known[k]);
-    if (s === "fifths-73") { if (c !== "simple") is(`${P.schema.name} + ${P.cadence.name}: none — the 7th of ② must resolve, it cannot prepare the cadence`, n === 0n); continue; }
+    if (s === "fifths-73" && (c === "galant" || c === "half")) { is(`${P.schema.name} + ${P.cadence.name}: none — the 7th of ② must resolve, and ④'s chord has no note for it`, n === 0n); continue; }
     is(`${P.schema.name} + ${P.cadence.name}: some (${n})`, n > 0n);
     const W = P.engine({ temp: 0.5, r: draw });
     is(`... the engine's realization is sound and one of them`, W && !P.judge(W) && P.count(W.top, W.middle) === 1n);
@@ -56,6 +56,31 @@ export async function run() {
     const W2 = SC.engine({ temp: 0, r: rng(2) }); const vt = SC.top.vertical(c5, a), vm = SC.middle.vertical(c5, b);
     return !(vt.cls === 3 && a !== W2.top[c5 - 1]) && !(vm.cls === 3 && b !== W2.middle[c5 - 1]);
   }));
+
+  // three voices, three notes of a chord: the 3rd not doubled, nor the leading tone
+  is("the 3rd of a chord doubled is refused (E over C in both upper voices)", /3rd of the chord doubled/.test(F.check([], [], 0, F.code("E5"), F.code("E4")) || ""));
+  const Ff = parts({ schema: "fauxbourdon", cadence: "simple", key: { tonic: "C" }, figured: false });
+  is("the leading tone doubled is refused (B in the bass and in the upper voice)", /leading tone doubled/.test(Ff.check(["E5", "E5"].map(Ff.code), ["G4", "G4"].map(Ff.code), 2, Ff.code("D5"), Ff.code("B4")) || ""));
+  is("a false relation between the upper voices is refused (F and F♯)", /false relation/.test(parts({ schema: "fauxbourdon", cadence: "simple", key: { tonic: "A", mode: "minor" }, figured: false }).top && (() => {
+    const Pm = parts({ schema: "fauxbourdon", cadence: "simple", key: { tonic: "A", mode: "minor" }, figured: false });
+    const T = ["C5", "C5", "B4", "B4", "A4", "A4", "G5", "G5"], M = ["E4", "E4", "D4", "D4", "C4", "C4", "G4", "G4"];
+    return Pm.check(T.map(Pm.code), M.map(Pm.code), 8, Pm.code("F#5"), Pm.code("F4")) || "";
+  })()));
+  // minor: the chord on the dominant is major (⑦ raised over a ⑤ that goes to ①); a ⑤ passed in a sequence is not one
+  const Pm = parts({ schema: "fauxbourdon-76", cadence: "simple", key: { tonic: "A", mode: "minor" } }), wm = Pm.engine({ temp: 0, r: rng(1) });
+  const dom = Pm.bass.findIndex((b) => b.dominant);
+  is("minor: over the dominant of the cadence, no natural ⑦ can come (G, not G♯, refused)", Pm.pairs(wm.top.slice(0, dom), wm.middle.slice(0, dom)).every(([a, b]) => ![a, b].some((x) => Pm.name(x)[0] === "G" && !Pm.name(x).includes("♯"))) && [wm.top[dom], wm.middle[dom]].some((x) => Pm.name(x).startsWith("G♯")));
+  is("... while the ⑤ passed in the 7–6 chain keeps the natural minor (a G over E, as the book's prototype)", Pm.bass.some((b, t) => Pm.key.name(b.d, b.r)[0] === "E" && !b.dominant && [wm.top[t], wm.middle[t]].some((x) => Pm.name(x)[0] === "G" && !Pm.name(x).includes("♯"))));
+  const Pg = parts({ schema: "romanesca", cadence: "galant", key: { tonic: "A", mode: "minor" } });
+  is("minor: a raised ⑥ goes on up to the raised ⑦ (F♯ then a leap refused)", /goes on up to G♯/.test(Pg.top.check(["E5", "F#5"].map(Pg.code), 2, Pg.code("B5")) || ""));
+  // the 7th of ② held into the 4th over ⑤ (ii7 → V6/4–5/3): its resolution put off by one chord
+  const P73 = parts({ schema: "fifths-73", cadence: "compound-64", key: { tonic: "C" } }), w73c = P73.engine({ temp: 0, r: rng(1) });
+  const d5 = P73.bass.findIndex((b) => b.part === "cadence");
+  const heldIn = ["top", "middle"].find((v) => w73c[v][d5] === w73c[v][d5 - 1] && w73c[v][d5] === w73c[v][d5 - 2]);
+  const V = heldIn && (heldIn === "top" ? P73.top : P73.middle);
+  is("Fifth Down Fourth Up into a compound cadence: the 7th of ② held into the 4th of the 6/4 over ⑤, then down a step to the 3rd",
+     heldIn && V.vertical(d5 - 1, w73c[heldIn][d5 - 1]).cls === 6 && V.vertical(d5, w73c[heldIn][d5]).cls === 3 && P73.degree(w73c[heldIn][d5 + 1]) === P73.degree(w73c[heldIn][d5]) - 1);
+  is("... and with that delay off, no compound cadence closes it", parts({ schema: "fifths-73", cadence: "compound-64", key: { tonic: "C" }, delayed: false }).count() === 0n);
 
   // minor: the same phrases, ⑥ and ⑦ raised going up
   for (const [s, c] of [["fauxbourdon", "compound-54"], ["romanesca", "galant"], ["tied-bass", "simple"]]) {
