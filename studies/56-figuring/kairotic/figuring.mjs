@@ -69,8 +69,67 @@ const RULE_UP = ["5/3", "6/3", "6/3", "6", "5/3", "6/3", "6/3"];
 const RULE_DOWN = ["5/3", "6/3", "6/3", "4/2", "5/3", "6/3", "6/3"];
 export const RULE_OF_THE_OCTAVE = { up: RULE_UP, down: RULE_DOWN };
 
+// ─── the endings, and the cadences each allows where the bass closes ───
+// A kind of cadence: the figures it asks of the melody over the bass note before the last (one a unit, or a list for
+// its units: two, for a compound one; else the unit before the last) and over the last; its kind, perfect (the octave on ①) or imperfect (the 3rd).
+export const ENDINGS = {
+  authentic: { name: "perfect or imperfect", kinds: ["perfect", "imperfect"] },
+  perfect: { name: "perfect", kinds: ["perfect"] },
+  imperfect: { name: "imperfect", kinds: ["imperfect"] },
+  deceptive: { name: "deceptive (⑤–⑥)", kinds: ["deceptive"] },
+  half: { name: "half (on ⑤)", kinds: ["half"] },
+};
+const CADENCE_KINDS = {
+  "②–①": [{ name: "imperfect (3–3)", kind: "imperfect", pen: [3], last: [3] }, { name: "perfect (6–8)", kind: "perfect", pen: [6], last: [8] },
+          { name: "compound (7–6–8)", kind: "perfect", two: [[7], [6]], last: [8] }],
+  "⑤–①": [{ name: "perfect (⑦ or ② to ①)", kind: "perfect", pen: [3, 5], last: [8] }, { name: "imperfect (to the 3rd)", kind: "imperfect", pen: [5, 8], last: [3] },
+          { name: "compound (4–3), perfect", kind: "perfect", two: [[4], [3]], last: [8] }, { name: "compound (4–3), imperfect", kind: "imperfect", two: [[4], [3]], last: [3] }],
+  "⑤–⑥": [{ name: "deceptive (⑦ to ①)", kind: "deceptive", pen: [3, 5], last: [3] }],
+  "⑤": [{ name: "half (on ⑤)", kind: "half", pen: null, last: [8, 3] }],
+};
+/** The bass made to end as the ending asks: a deceptive cadence turns its last ① after ⑤ into the ⑥ above that ⑤,
+ *  a half cadence leaves the last ① after ⑤ out; or why it cannot. */
+function endWith(notes, ending) {
+  const n = notes.length, last = notes[n - 1], pen = notes[n - 2];
+  const fiveOne = pen && mod(pen.d, 7) === 4 && mod(last.d, 7) === 0;
+  if (ending === "deceptive") {
+    if (pen && mod(pen.d, 7) === 4 && mod(last.d, 7) === 5 && last.d === pen.d + 1) return notes;
+    if (!fiveOne) throw new Error("a deceptive cadence needs a bass ending ⑤–①");
+    return [...notes.slice(0, -1), { d: pen.d + 1, r: 0 }];
+  }
+  if (ending === "half") {
+    if (mod(last.d, 7) === 4) return notes;
+    if (!fiveOne) throw new Error("a half cadence needs a bass ending on ⑤, or ⑤–①");
+    return notes.slice(0, -1);
+  }
+  return notes;
+}
+/** Where the bass closes at its end, with the kinds of cadence the ending allows there, or null. */
+function finalClose(notes, units, ending) {
+  const n = notes.length, last = notes[n - 1], pen = notes[n - 2], at = units.length - 1;
+  const from = units.findIndex((u) => u.note === n - 2);
+  let kind = null;
+  if (ending === "half") { if (mod(last.d, 7) === 4) kind = "⑤"; }
+  else if (pen && mod(pen.d, 7) === 1 && mod(last.d, 7) === 0 && Math.abs(pen.d - last.d) === 1) kind = "②–①";
+  else if (pen && mod(pen.d, 7) === 4 && mod(last.d, 7) === 0) kind = "⑤–①";
+  else if (pen && mod(pen.d, 7) === 4 && mod(last.d, 7) === 5 && last.d === pen.d + 1) kind = "⑤–⑥";
+  if (!kind) return null;
+  const options = CADENCE_KINDS[kind].filter((o) => ENDINGS[ending].kinds.includes(o.kind));
+  return options.length ? { from: kind === "⑤" ? at : from, at, kind, options } : null;
+}
+/** The figures a kind of cadence asks of the melody, unit by unit (null: none), or null where it cannot be made. */
+function optionFigs(o, cl) {
+  const fs = [];
+  for (let t = 0; t <= cl.at; t++) fs.push(null);
+  const span = cl.at - cl.from;
+  if (o.two) { if (span < 2) return null; fs[cl.from] = o.two[0]; for (let t = cl.from + 1; t < cl.at; t++) fs[t] = o.two[1]; }
+  else if (o.pen) fs[cl.at - 1] = o.pen;
+  fs[cl.at] = o.last;
+  return fs;
+}
+
 /**
- * spec: {bass: "C4 B3 …" | degrees, key: {tonic, mode}, per (units a bass note: 1 or 2), lo, hi (the melody's range
+ * spec: {bass: "C4 B3 …" | degrees, ending ("authentic", "perfect", "imperfect", "deceptive", "half"), key: {tonic, mode}, per (units a bass note: 1 or 2), lo, hi (the melody's range
  *        in degrees), middle: [lo, hi]}
  */
 export function figuring(spec = {}) {
@@ -79,31 +138,45 @@ export function figuring(spec = {}) {
   if (Array.isArray(spec.bass)) notes = spec.bass.map((d) => (typeof d === "number" ? { d, r: 0 } : d));
   else { const p = parseBass(spec.bass || "C4 B3 A3 G3 F3 E3 D3 C3", K); if (p.error) throw new Error(p.error); notes = p.notes; }
   const per = spec.per ?? 2;
+  // the ending: a cadence, perfect or imperfect (authentic: either) where the bass closes on ① (②–① or ⑤–①); or, the
+  // player's choice, a deceptive one (the last ① turned into the ⑥ above its ⑤) or a half one (the phrase ending on ⑤)
+  const ending = spec.ending || "authentic";
+  if (!ENDINGS[ending]) throw new Error(`no such ending: ${ending}`);
+  notes = endWith(notes, ending);
   const units = unitsOf(notes, K, per), n = units.length;
   // the melody's range over the bass: from C4, or a 5th above its highest note, an octave and a 6th up (room for a voice
   // between); the middle voice's under it
   const top = Math.max(...notes.map((x) => x.d)), bottom = Math.min(...notes.map((x) => x.d));
   const lo = spec.lo ?? Math.max(7, top + 4), hi = spec.hi ?? lo + 12, spacing = spec.spacing ?? hi - bottom;
-  const V = schemata({ schema: { events: [] }, bass: units, key: K, figured: false, lo, hi, spacing });
+  // the final cadence: where the bass closes, the kinds of cadence the ending allows there, and the figures they ask
+  // of the melody (on each unit, those of any of them: the melody ends with one of them)
+  const fin = finalClose(notes, units, ending);
+  const figsAt = units.map(() => null);
+  if (fin) {
+    const all = fin.options.map((o) => optionFigs(o, fin)).filter(Boolean);
+    // (a unit one of them leaves free is free)
+    for (let t = 0; t < units.length; t++) figsAt[t] = all.some((fs) => !fs[t]) ? null : [...new Set(all.flatMap((fs) => fs[t]))];
+  }
+  const V = schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: figsAt[t] })), key: K, figured: !!fin, lo, hi, spacing });
   const D = V.degree, R = V.raised;
 
   // ─── the melody: a note played, taken as it is or corrected to the nearest with a future ───
   const midiOf = (c) => K.midi(D(c), R(c));
-  /** The note to write next for a MIDI pitch asked: {note, corrected, reason, futures}; with room, one that leaves room
-   *  for a middle voice under the melody, where one does. */
-  function play(U, midi, { room = false } = {}) {
+  /** The note to write next for a MIDI pitch asked: {note, corrected, reason, futures}; written for three (three: true),
+   *  one under which a middle voice can still be written. */
+  function play(U, midi, { room = false, three: forThree = room } = {}) {
     const t = U.length;
     if (t >= n) return null;
     const cands = V.fan(U);
     const exact = cands.find((c) => Math.abs(midiOf(c.note) - midi) < 0.5);
     let ok = cands.filter((c) => !c.reason && c.futures > 0n);
-    // thinking in three parts: the notes that leave room for a middle voice, where there are any
-    if (room) { const roomy = ok.filter((c) => roomFor([...U, c.note])); if (roomy.length) ok = roomy; }
+    // written for three: only the notes that keep a middle voice possible under the melody
+    if (forThree) ok = ok.filter((c) => roomFor([...U, c.note]));
     if (!ok.length) return null;
     const best = ok.slice().sort((a, b) => Math.abs(midiOf(a.note) - midi) - Math.abs(midiOf(b.note) - midi) || (b.futures > a.futures ? 1 : -1))[0];
     const corrected = !(exact && ok.includes(exact));
     return { note: best.note, corrected, futures: best.futures,
-             reason: corrected ? (exact ? exact.reason || (exact.futures > 0n ? "no room left for a middle voice under it" : "no way on from it: the phrase could not be finished") : midi < midiOf(2 * lo) || midi > midiOf(2 * hi) ? "out of the melody's range" : "not a note of the key") : null };
+             reason: corrected ? (exact ? exact.reason || (exact.futures > 0n ? "no middle voice could be written under it" : "no way on from it: the phrase could not be finished") : midi < midiOf(2 * lo) || midi > midiOf(2 * hi) ? "out of the melody's range" : "not a note of the key") : null };
   }
 
   // ─── the figures found, unit by unit ───
@@ -215,41 +288,22 @@ export function figuring(spec = {}) {
   }
 
   // ─── the cadences: where the bass can close, and the ways the melody so far leaves to get there ───
-  const KINDS = {
-    "2-1": [{ name: "imperfect (3–3)", figs: (k) => [k.map(() => [3]), [3]] }, { name: "perfect (6–8)", figs: (k) => [k.map(() => [6]), [8]] },
-            { name: "compound (7–6–8)", two: true, figs: () => [[[7], [6]], [8]] }],
-    "5-1": [{ name: "perfect (⑦ or ② to ①)", figs: (k) => [k.map(() => [3, 5]), [8]] }, { name: "imperfect (to the 3rd)", figs: (k) => [k.map(() => [5, 8]), [3]] },
-            { name: "compound (4–3)", two: true, figs: () => [[[4], [3]], [8, 3]] }],
-    "5-6": [{ name: "deceptive", figs: (k) => [k.map(() => [3, 5]), [3, 6]] }],
-    "5-end": [{ name: "half (on ⑤)", figs: (k) => [null, null], half: true }],
-  };
-  /** Where the bass can close: [{at (the unit of the last chord), from (the unit the cadence starts), kind, options}] */
-  function closes() {
-    const out = [];
-    notes.forEach((nt, i) => {
-      if (i === 0) return;
-      const p = notes[i - 1], a = mod(p.d, 7), b = mod(nt.d, 7);
-      const from = units.findIndex((u) => u.note === i - 1), at = units.findIndex((u) => u.note === i);
-      if (a === 1 && b === 0 && Math.abs(p.d - nt.d) === 1) out.push({ from, at, kind: "②–①", options: KINDS["2-1"] });
-      if (a === 4 && b === 0) out.push({ from, at, kind: "⑤–①", options: KINDS["5-1"] });
-      if (a === 4 && b === 5 && nt.d === p.d + 1) out.push({ from, at, kind: "⑤–⑥", options: KINDS["5-6"] });
-    });
-    const last = notes.length - 1;
-    if (mod(notes[last].d, 7) === 4) { const at = units.findIndex((u) => u.note === last); out.push({ from: at, at, kind: "⑤ (the end)", options: KINDS["5-end"] }); }
-    return out;
-  }
+  /** Where the bass closes, the last cadence: [{at (the unit of the last chord), from (the unit the cadence starts),
+   *  kind, options (the kinds of cadence the ending allows there)}] (none, where the bass does not close). */
+  const closes = () => (fin ? [fin] : []);
   /** The ways the melody U (so far) leaves to close at a close, with each kind of cadence there: [{name, count}]. */
-  function cadenceWays(U, cl) {
+  const cadW = new Map();
+  /** With three: the ways counted in three parts (the melody to the cadence and a middle voice under it). */
+  function cadenceWays(U, cl, { three: forThree = false } = {}) {
     return cl.options.map((o) => {
-      const fromUnits = []; for (let t = cl.from; t < cl.at; t++) fromUnits.push(t);
-      if (o.two && fromUnits.length < 2) return { name: o.name, count: 0n, why: "needs a bass note of two units" };
-      if (o.half) return { name: o.name, count: V.count(U) };
-      const [pen, last] = o.figs(fromUnits);
-      const B2 = units.map((u, t) => ({ ...u, fig: t >= cl.from && t < cl.at ? pen[t - cl.from] : t === cl.at ? last : null }));
-      const W = schemata({ schema: { events: [] }, bass: B2, key: K, figured: true, lo, hi, spacing });
+      const fs = optionFigs(o, cl);
+      if (!fs) return { name: o.name, kind: o.kind, count: 0n, why: "needs a bass note of two units" };
+      const wk = cl.at + ":" + o.name;
+      const W = cadW.get(wk) || schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: fs[t] })), key: K, figured: true, lo, hi, spacing });
+      cadW.set(wk, W);
       // the melody so far must already fit the cadence it asks for, where it covers it
-      for (let t = 0; t < U.length; t++) if (W.check(U.slice(0, t), t, U[t])) return { name: o.name, count: 0n, why: t >= cl.from ? "the melody went another way" : null };
-      return { name: o.name, count: W.count(U), voice: W };
+      for (let t = 0; t < U.length; t++) if (W.check(U.slice(0, t), t, U[t])) return { name: o.name, kind: o.kind, count: 0n, why: t >= cl.from ? "the melody went another way" : null };
+      return { name: o.name, kind: o.kind, count: forThree ? threeWays(U, W.check) : W.count(U), voice: W };
     });
   }
 
@@ -257,10 +311,18 @@ export function figuring(spec = {}) {
   /** The three-part kernel for the bass, the chords asked one a unit (null: none asked). */
   function three(chosen = units.map(() => null)) {
     const events = notes.map((nt, i) => [nt.d, units.filter((u) => u.note === i).length, chosen.filter((x, t) => units[t].note === i)]);
-    return parts({ schema: { events }, cadence: null, key: K, top: [lo, hi], middle: spec.middle || [bottom + 2, hi - 2] });
+    return parts({ schema: { events }, cadence: null, key: K, top: [lo, hi], middle: spec.middle || [bottom + 2, hi - 2], spacing });
   }
   // (the noise of the search: notes out of the middle voice's place, not reasons a musician needs)
   const PLACE = /below the bass|too far|wider than|under the upper|within an octave|out of|unison with the bass/;
+  /** Why the melody's a and the middle voice's b at unit t make no chord of the figures (no 3rd: an open 5th, a bare
+   *  octave), or null; a dissonance on a weak unit passes, and needs none. */
+  const noChord = (P, t, a, b) => {
+    const vt = P.top.vertical(t, a), vm = P.middle.vertical(t, b);
+    if ((vt.q === "dissonant" || vm.q === "dissonant") && !units[t].strong) return null;
+    const have = new Set([vt.cls, vm.cls]);
+    return Object.values(CHORDS).some((ch) => ch.need.every((c) => have.has(c)) && [...have].every((c) => ch.ok.includes(c))) ? null : "no chord of the figures (its 3rd missing)";
+  };
   /**
    * The middle voices under the melody U, asked at each unit a chord (a figure), one of several (an array: any of the
    * figures found), or none (null): their count, one drawn by the engine, and the chords it makes; or, where none can
@@ -276,7 +338,7 @@ export function figuring(spec = {}) {
       const have = new Set([P.top.vertical(t, T[t]).cls, P.middle.vertical(t, b).cls]);
       return A.some((ch) => CHORDS[ch].need.every((c) => have.has(c)) && [...have].every((c) => CHORDS[ch].ok.includes(c)));
     };
-    const why = (MM, t, b) => P.check(T, MM, t, T[t], b) || (fits(t, b) ? null : `the chord asked is ${[].concat(allowed[t]).join(" or ")}`);
+    const why = (MM, t, b) => P.check(T, MM, t, T[t], b) || (fits(t, b) ? null : `the chord asked is ${[].concat(allowed[t]).join(" or ")}`) || noChord(P, t, T[t], b);
     const memo = new Map();
     const countFrom = (MM) => {
       const t = MM.length;
@@ -320,24 +382,122 @@ export function figuring(spec = {}) {
     return { count, voice: MM, top: T, parts: P, chords: P.chords({ top: T, middle: MM }), judge: P.judge({ top: T, middle: MM }) };
   }
 
-  /** Whether a middle voice can still be written under the melody so far (U, a prefix; no chord asked). */
+  // ─── writing for three: a melody, and its figures, only where a middle voice can be written under them ───
+  // The melody so far is fixed; the middle voice under it is not yet written, nor the rest of the melody. The ways on
+  // are the three-part realizations (melody and middle voice) that keep the melody so far: a middle voice under it,
+  // walked forward (its states the last three notes, as the kernel's memo), then the two voices on together to the
+  // end — the melody under its own rules (two parts, or a cadence's), both under the three-part ones.
   let P0 = null;
-  function roomFor(U) {
-    P0 = P0 || three();
-    const seen = new Set();
-    const go = (MM) => {
-      const t = MM.length;
-      if (t >= U.length) return true;
-      const k = t + ":" + MM.slice(Math.max(0, t - 3)).join(",");
-      if (seen.has(k)) return false;
-      seen.add(k);
-      for (const b of P0.middle.codes) if (P0.check(U, MM, t, U[t], b) === null) { MM.push(b); if (go(MM)) return true; MM.pop(); }
-      return false;
-    };
-    return go([]);
+  const P3 = () => (P0 = P0 || three());
+  const memos = new Map();
+  /** The three-part realizations from (TT, MM), both of length t, the melody's notes beyond them checked by topCheck. */
+  function jointFrom(TT, MM, topCheck) {
+    const P = P3(), t = TT.length;
+    if (t >= n) return 1n;
+    let memo = memos.get(topCheck);
+    if (!memo) memos.set(topCheck, (memo = new Map()));
+    const k = t + ":" + TT.slice(Math.max(0, t - 3)).join(",") + "|" + MM.slice(Math.max(0, t - 3)).join(",");
+    const got = memo.get(k);
+    if (got !== undefined) return got;
+    let v = 0n;
+    for (const a of V.codes) {
+      if (topCheck(TT, t, a) !== null) continue;
+      TT.push(a);
+      for (const b of P.middle.codes) if (P.check(TT, MM, t, a, b) === null && noChord(P, t, a, b) === null) { MM.push(b); v += jointFrom(TT, MM, topCheck); MM.pop(); }
+      TT.pop();
+    }
+    memo.set(k, v);
+    return v;
   }
+  /** The chord (a name of CHORDS) the melody's a and the middle voice's b make at unit t, by the figures asked. */
+  const makes = (t, a, b, ch) => {
+    const P = P3(), have = new Set([P.top.vertical(t, a).cls, P.middle.vertical(t, b).cls]);
+    return CHORDS[ch].need.every((c) => have.has(c)) && [...have].every((c) => CHORDS[ch].ok.includes(c));
+  };
+  /**
+   * The middle voices under the melody so far U (asked at each unit a chord, or none: asked[t] null), walked forward,
+   * and the ways on from each to the end: {ways (the three-part realizations keeping U and the chords asked), alive
+   * (at each unit, the middle notes on a way that reaches the end)}.
+   */
+  function walk(U, asked = [], topCheck = V.check) {
+    const P = P3(), k = U.length;
+    let layer = new Map([["", { MM: [], paths: 1n }]]);
+    const steps = [];
+    for (let t = 0; t < k; t++) {
+      const next = new Map(), edges = [];
+      for (const [key, st] of layer) for (const b of P.middle.codes) {
+        if (P.check(U, st.MM, t, U[t], b) !== null || noChord(P, t, U[t], b) !== null) continue;
+        if (asked[t] && !makes(t, U[t], b, asked[t])) continue;
+        const MM = [...st.MM, b], nk = MM.slice(Math.max(0, MM.length - 3)).join(",");
+        const e = next.get(nk) || { MM, paths: 0n };
+        e.paths += st.paths;
+        next.set(nk, e);
+        edges.push([key, b, nk]);
+      }
+      steps.push(edges);
+      layer = next;
+    }
+    // the ways on from each middle voice so far: the two voices on together
+    const T = [...U];
+    let ways = 0n;
+    let live = new Set();
+    for (const [key, st] of layer) {
+      const f = jointFrom(T, [...st.MM], topCheck);
+      if (f > 0n) { ways += st.paths * f; live.add(key); }
+    }
+    // back: the middle notes on a way that reaches the end
+    const alive = [];
+    for (let t = k - 1; t >= 0; t--) {
+      const prev = new Set(), bs = new Set();
+      for (const [from, b, to] of steps[t]) if (live.has(to)) { prev.add(from); bs.add(b); }
+      alive[t] = bs;
+      live = prev;
+    }
+    return { ways, alive };
+  }
+  /** The three-part realizations keeping the melody so far: 0 where no middle voice can be written under it. */
+  const threeWays = (U, topCheck = V.check) => walk(U, [], topCheck).ways;
+  /** Whether a middle voice can still be written under the melody so far (and the melody finished over it). */
+  const roomFor = (U) => threeWays(U) > 0n;
 
-  return { spec, key: K, notes, units, n, per, voice: V, play, fan: V.fan, count: V.count, engine: V.engine, judge: V.judge,
-           chordsAt, figuresOf, schemataIn, closes, cadenceWays, middle, three, roomFor, name: V.name, degree: D, raised: R, hz: V.hz, midiOf,
+  /**
+   * The figures of a melody written for three: at each unit, in order, the likeliest chord (or the player's, asked
+   * in mine) among those a middle voice can make there with the chords chosen before it, and the melody still be
+   * finished over it — so a middle voice can always be written from them. [{two, q, chords (each with three: whether
+   * it is among those), chord (the one chosen)}].
+   */
+  function figuresThree(U, mine = {}) {
+    const base = figuresOf(U), asked = [];
+    for (let t = 0; t < U.length; t++) {
+      const { alive } = walk(U, asked);
+      const can = (ch) => ch === null || [...(alive[t] || [])].some((b) => makes(t, U[t], b, ch));
+      for (const c of base[t].chords) c.three = can(c.chord);
+      const want = t in mine ? base[t].chords.find((c) => c.chord === mine[t] && c.three) : null;
+      const pick = want || base[t].chords.find((c) => c.three);
+      base[t].chord = pick ? pick.chord : null;
+      // (none of them: the middle voice passes there, a dissonance on a weak unit)
+      if (!pick) base[t].chords.unshift({ chord: null, cost: 0, three: true, why: ["the middle voice passes: the chord before it goes on"] });
+      asked[t] = base[t].chord;
+    }
+    return base;
+  }
+  /** The engine writing the melody on from U0 for three: each note among those that keep a middle voice possible
+   *  (and, with topCheck, a cadence's figures), a softmax of −cost / temperature. */
+  function engineThree({ temp = 0.5, r = Math.random } = {}, U0 = [], topCheck = V.check) {
+    const U = [...U0];
+    while (U.length < n) {
+      const t = U.length;
+      const cs = V.codes.filter((c) => topCheck(U, t, c) === null).map((c) => ({ note: c, futures: threeWays([...U, c], topCheck), cost: total(V.costParts(U, c)) }));
+      const pick = choose(cs.filter((c) => c.futures > 0n), temperature(temp, true, cs.reduce((a, c) => a + c.futures, 0n)), r);
+      if (!pick) return null;
+      U.push(pick.note);
+    }
+    return U;
+  }
+  /** The next note's candidates for three: V.fan's, each with its three-part ways on (futures3). */
+  const fanThree = (U) => V.fan(U).map((c) => (c.reason || !(c.futures > 0n) ? c : { ...c, futures3: threeWays([...U, c.note]) }));
+
+  return { spec, key: K, notes, units, n, per, ending, voice: V, play, fan: V.fan, count: V.count, engine: V.engine, judge: V.judge,
+           chordsAt, figuresOf, schemataIn, closes, cadenceWays, middle, three, roomFor, threeWays, figuresThree, engineThree, fanThree, name: V.name, degree: D, raised: R, hz: V.hz, midiOf,
            bassName: (t) => K.name(units[t].d, units[t].r) };
 }

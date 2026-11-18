@@ -107,7 +107,6 @@ ul.q li::marker { color: var(--kairos); }
 .keys .w { height: 92px; background: var(--box); color: var(--ink-soft); z-index: 1; }
 .keys .b { height: 56px; background: var(--ink); color: var(--paper); z-index: 2; }
 .keys button.ok { box-shadow: inset 0 -5px 0 var(--kairos); }
-.keys button.room { box-shadow: inset 0 -5px 0 var(--ok); }
 .keys button:disabled { opacity: 0.5; cursor: default; }
 .keys button:active, .keys button.hit { background: var(--accent); color: #fff; }
 dl.alts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 12.5px; }
@@ -139,7 +138,8 @@ table.cad button { font: 11.5px var(--f-ui); }
   <label>tonic <select id="tonic"><option>C</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>G</option><option>A</option><option>Bb</option><option>B</option></select></label>
   <label>mode <select id="mode"><option>major</option><option>minor</option></select></label>
   <label title="a bass note lasts one unit, or two (a bar: strong, weak)">a bass note <select id="per"><option value="2">a bar (2 units)</option><option value="1">a beat (1 unit)</option></select></label>
-  <label title="the melody's notes only where a middle voice can still be written under it"><input type="checkbox" id="room"> leave room for a third voice</label>
+  <label title="how the phrase closes: a perfect or imperfect cadence; a deceptive or a half one changes the end of the bass">ending <select id="ending"><option value="authentic">perfect or imperfect</option><option value="perfect">perfect</option><option value="imperfect">imperfect</option><option value="deceptive">deceptive (⑤–⑥)</option><option value="half">half (on ⑤)</option></select></label>
+  <label title="the melody's notes, and its figures, only where a middle voice can be written under them to the end"><input type="checkbox" id="three"> write a voice that allows a third voice</label>
   <span class="sep"></span>
   <button class="act" id="undo" disabled>⌫ Undo</button>
   <button class="act" id="clear" disabled>Clear</button>
@@ -167,7 +167,7 @@ table.cad button { font: 11.5px var(--f-ui); }
       <div class="msg" id="schemata"></div>
     </section>
     <section class="panel">
-      <h2>Cadences <span>where the bass can close</span></h2>
+      <h2>The cadence <span>at the end of the phrase</span></h2>
       <table class="cad" id="cadences"></table>
     </section>
     <section class="panel">
@@ -185,8 +185,10 @@ table.cad button { font: 11.5px var(--f-ui); }
       <ul class="q">
         <li><b>The figures are found, not given.</b> Each note of the melody is an interval over the bass; the chords it can belong to are those whose figures hold it, the likeliest first: the <b>rule of the octave</b> (the scale in the bass figured as the partimento schools taught it: ① 5/3, ② 6/3, ③ 6/3, ④ 6 going up and 4/2 going down, ⑤ 5/3, ⑥ 6/3, ⑦ 6/3), then what the melody's own dissonance names — a 7th held over the bass a 7/3, a 4th a 5/4, a 2nd over the bass gone down under it a 4/2 —, and a dominant ⑤ a 5/3 or a 7/3. A dissonance on a weak unit passes: it has no chord of its own.</li>
         <li><b>The schemata are recognized</b> as the two lines make them: parallel 3rds or 6ths, the 3–6 progression, chains of 7–6 or 2–3, and the cadences of chapter 3 — imperfect 3–3, perfect 6–8, compound 7–6–8 on ②–①; on ⑤–① perfect, imperfect or with a 4–3.</li>
-        <li><b>The cadences are counted ahead</b>: where the bass goes ②–①, ⑤–①, ⑤–⑥ or ends on ⑤, the ways the melody so far leaves to make each kind of cadence there, and one of them written by the engine.</li>
-        <li><b>A middle voice is written from the figures</b> under the three-part rules of Study 54 — no 3rd doubled nor the leading tone, no parallel 5ths or octaves between the upper voices, the 6/4 a double appoggiatura. Where none can be written it says where, and why: a melody that doubles the leading tone of the bass, or leaps where the voice under it cannot follow. <i>Leave room for a third voice</i> takes only the notes that keep a middle voice possible.</li>
+        <li><b>The cadence is counted ahead</b>: the ways the melody so far leaves to make each kind of cadence the ending allows, and one of them written by the engine.</li>
+        <li><b>A middle voice is written from the figures</b> under the three-part rules of Study 54 — no 3rd doubled nor the leading tone, no parallel 5ths or octaves between the upper voices, the 6/4 a double appoggiatura. Where none can be written it says where, and why: a melody that doubles the leading tone of the bass, or leaps where the voice under it cannot follow.</li>
+        <li><b>Writing a voice that allows a third</b>, the melody and its figures are chosen in three parts: a note only where a middle voice can still be written under it and the melody finished over it, and at each unit the likeliest chord such a middle voice can make with the chords before it — so a middle voice can always be written from the figures. The ways on are then the three-part realizations: the melody and a middle voice.</li>
+        <li><b>The phrase ends with a cadence</b>, perfect or imperfect where the bass closes on ① (②–① or ⑤–①); a deceptive one (the last ① becomes the ⑥ above ⑤) or a half one (the phrase ends on ⑤) only when chosen.</li>
       </ul>
     </section>
   </div>
@@ -210,15 +212,24 @@ function rebuild() {
   document.querySelectorAll("[data-bass]").forEach((b) => b.classList.toggle("on", b.dataset.bass === bid));
   const text = $("bass-text").value.trim();
   try {
-    F = figuring({ bass: text || BASSES[bid].degrees, key: key(), per: Number($("per").value) });
-  } catch (e) { $("msg").className = "msg bad"; $("msg").textContent = "✗ " + (e.message || e); return; }
+    F = figuring({ bass: text || BASSES[bid].degrees, key: key(), per: Number($("per").value), ending: $("ending").value });
+  } catch (e) {
+    // an ending the bass cannot make: back to a perfect or imperfect cadence, and why
+    if ($("ending").value !== "authentic") { $("ending").value = "authentic"; rebuild(); lastSaid = "✗ " + (e.message || e); $("said").textContent = lastSaid; return; }
+    $("msg").className = "msg bad"; $("msg").textContent = "✗ " + (e.message || e); return;
+  }
   if (!text) $("bass-text").placeholder = F.notes.map((x) => F.key.name(x.d, x.r)).join(" ");
   U = []; M = null; chosen = {}; sel = null; lastSaid = "";
-  $("ref").textContent = `${F.key.tonic.replace("b", "♭")} ${F.key.mode} · ${F.n} units · ${F.count().toLocaleString("en")} melodies`;
+  rebuildRef();
   render();
 }
-const chordsOf = () => F.figuresOf(U);
-const chordAt = (figs, t) => (t in chosen ? chosen[t] : figs[t].chords[0].chord);
+function rebuildRef() {
+  $("ref").textContent = `${F.key.tonic.replace("b", "♭")} ${F.key.mode} · ${F.n} units · ` + (three() ? `${F.threeWays([]).toLocaleString("en")} realizations in three parts` : `${F.count().toLocaleString("en")} melodies`);
+}
+const three = () => $("three").checked;
+// written for three, the figures are chosen in order among those a middle voice can make (the player's where it can)
+const chordsOf = () => (three() ? F.figuresThree(U, chosen) : F.figuresOf(U));
+const chordAt = (figs, t) => (three() ? figs[t].chord : t in chosen ? chosen[t] : figs[t].chords[0].chord);
 
 function render() {
   const n = F.n, uw = Math.max(26, Math.min(46, 780 / n)), X = 58, H = 340, figs = chordsOf();
@@ -265,30 +276,29 @@ function render() {
   $("schemata").textContent = found.length ? "found: " + found.map((s) => `${s.name} (units ${s.from + 1}–${s.to + 1})`).join(" · ") : U.length ? "no schema yet" : "";
   $("undo").disabled = !U.length; $("clear").disabled = !U.length; $("play").disabled = !U.length;
   $("finish").disabled = U.length >= n; $("third").disabled = U.length < n; $("no-third").disabled = !(M && M.voice);
-  const left = F.count(U);
-  $("status").textContent = U.length >= n ? "the melody is written" : `${U.length} / ${n} · ${left.toLocaleString("en")} ways on`;
+  const left = three() ? F.threeWays(U) : F.count(U);
+  $("status").textContent = U.length >= n ? "the melody is written" : `${U.length} / ${n} · ${left.toLocaleString("en")} ways on${three() ? " in three parts" : ""}`;
   $("msg").className = "msg"; $("msg").innerHTML = U.length ? `<span style="color:var(--kairos)">■ melody</span> ${U.filter((x, t) => t === 0 || x !== U[t - 1]).map(F.name).join(" ")}` + (M && M.voice ? ` · <span style="color:var(--ok)">■ middle</span> ${M.voice.filter((x, t) => t === 0 || x !== M.voice[t - 1]).map(F.name).join(" ")}` : "") : "Play the melody: on the keyboard below, the computer's keys, or the next note's buttons.";
   $("said").textContent = lastSaid;
   renderFan(); renderAlts(figs); renderCadences(); renderKeys();
 }
 let fanCache = null;
 function fan() {
-  if (fanCache && fanCache.len === U.length && fanCache.F === F && fanCache.room === $("room").checked) return fanCache.cs;
-  const cs = U.length < F.n ? F.fan(U) : [];
-  if ($("room").checked) for (const c of cs) if (!c.reason && c.futures > 0n) c.room = F.roomFor([...U, c.note]);
-  fanCache = { len: U.length, F, room: $("room").checked, cs };
+  if (fanCache && fanCache.len === U.length && fanCache.F === F && fanCache.three === three()) return fanCache.cs;
+  // written for three, a note's ways on are the three-part realizations keeping it
+  const cs = U.length >= F.n ? [] : three() ? F.fanThree(U).map((c) => ({ ...c, ways: c.reason ? 0n : c.futures3 || 0n })) : F.fan(U).map((c) => ({ ...c, ways: c.reason ? 0n : c.futures }));
+  fanCache = { len: U.length, F, three: three(), cs };
   return cs;
 }
 function renderFan() {
   const host = $("fan"); host.innerHTML = "";
-  const cs = fan(), ok = cs.filter((c) => !c.reason && c.futures > 0n);
+  const cs = fan(), ok = cs.filter((c) => c.ways > 0n);
   $("fan-sub").textContent = U.length >= F.n ? "the phrase is closed" : `unit ${U.length + 1} · over ${F.bassName(U.length)}`;
   for (const c of cs.filter((c) => !/too far|range|wider/.test(c.reason || ""))) {
     const b = document.createElement("button");
-    const live = !c.reason && c.futures > 0n && (!$("room").checked || c.room !== false);
-    b.disabled = !live;
-    b.title = c.reason || (c.futures > 0n ? (c.room === false ? "no room for a middle voice under it" : "") : "no way on from it");
-    b.innerHTML = `${c.name}<small>${c.reason ? "·" : c.futures.toLocaleString("en")}</small>`;
+    b.disabled = !(c.ways > 0n);
+    b.title = c.reason || (c.ways > 0n ? "" : c.futures > 0n ? "no middle voice could be written under it" : "no way on from it");
+    b.innerHTML = `${c.name}<small>${c.reason ? "·" : c.ways.toLocaleString("en")}</small>`;
     b.addEventListener("click", () => write(c.note, ""));
     host.appendChild(b);
   }
@@ -302,24 +312,25 @@ function renderAlts(figs) {
   for (const a of f.chords) {
     const dt = document.createElement("dt"), b = document.createElement("button"), dd = document.createElement("dd");
     b.textContent = a.chord || "passing"; b.className = a.chord === cur ? "on" : "";
-    b.addEventListener("click", () => { if (a.chord === f.chords[0].chord) delete chosen[sel]; else chosen[sel] = a.chord; M = null; render(); });
-    dt.appendChild(b); dd.textContent = a.why.length ? a.why.join("; ") : "possible";
+    b.disabled = three() && a.three === false;
+    b.addEventListener("click", () => { if (a.chord === f.chords[0].chord && !three()) delete chosen[sel]; else chosen[sel] = a.chord; M = null; render(); });
+    dt.appendChild(b); dd.textContent = (a.why.length ? a.why.join("; ") : "possible") + (three() && a.three === false ? " — no middle voice can make it here" : "");
     host.append(dt, dd);
   }
 }
 function renderCadences() {
   const host = $("cadences"); host.innerHTML = "";
   const cls = F.closes();
-  if (!cls.length) { host.innerHTML = `<tr><td class="msg">the bass has no ②–①, ⑤–①, ⑤–⑥, nor ends on ⑤</td></tr>`; return; }
+  if (!cls.length) { host.innerHTML = `<tr><td class="msg">the bass does not close: it ends neither ②–① nor ⑤–① (nor ⑤–⑥, nor on ⑤)</td></tr>`; return; }
   for (const cl of cls) {
-    const ways = F.cadenceWays(U, cl);
+    const ways = F.cadenceWays(U, cl, { three: three() });
     host.insertAdjacentHTML("beforeend", `<tr><td colspan="3"><b>${cl.kind}</b> <span class="msg">units ${cl.from + 1}–${cl.at + 1}</span></td></tr>`);
     for (const w of ways) {
       const tr = document.createElement("tr");
       tr.innerHTML = `<td>${w.name}</td><td class="n">${w.count.toLocaleString("en")}${w.why ? ` <span class="msg">(${w.why})</span>` : ""}</td><td></td>`;
       if (w.count > 0n && w.voice && U.length < F.n) {
         const b = document.createElement("button"); b.className = "act"; b.textContent = "close so";
-        b.addEventListener("click", () => { const V = w.voice.engine({ temp: temp() }, U); if (V) { U = V; M = null; lastSaid = `closed with a ${w.name} cadence on ${cl.kind}`; render(); } });
+        b.addEventListener("click", () => { const V = three() ? F.engineThree({ temp: temp() }, U, w.voice.check) : w.voice.engine({ temp: temp() }, U); if (V) { U = V; M = null; lastSaid = `closed with a ${w.name} cadence on ${cl.kind}`; render(); } });
         tr.lastChild.appendChild(b);
       }
       host.appendChild(tr);
@@ -330,7 +341,7 @@ const KEYS = "awsedftgyhujkolp;";
 function renderKeys() {
   const host = $("keys"); host.innerHTML = "";
   const base = 60 + 12 * octave, cs = fan(), W = host.clientWidth || 600, nw = 15, ww = W / nw;
-  const okMidi = new Map(cs.filter((c) => !c.reason && c.futures > 0n).map((c) => [Math.round(F.midiOf(c.note)), c]));
+  const okMidi = new Map(cs.filter((c) => c.ways > 0n).map((c) => [Math.round(F.midiOf(c.note)), c]));
   let wi = 0;
   for (let m = base; m < base + 25 && wi < nw; m++) {
     const black = [1, 3, 6, 8, 10].includes(m % 12), b = document.createElement("button");
@@ -338,10 +349,10 @@ function renderKeys() {
     const x = black ? wi * ww - ww * 0.3 : wi * ww;
     b.style.left = x + "px"; b.style.width = (black ? ww * 0.6 : ww) + "px";
     const c = okMidi.get(m);
-    if (c) b.classList.add($("room").checked && c.room ? "room" : "ok");
+    if (c) b.classList.add("ok");
     const k = m - base < KEYS.length ? KEYS[m - base] : "";
     b.textContent = m % 12 === 0 ? "C" + (Math.floor(m / 12) - 1) : k;
-    b.title = c ? `${c.name}: ${c.futures.toLocaleString("en")} ways on` : "";
+    b.title = c ? `${c.name}: ${c.ways.toLocaleString("en")} ways on` : "";
     b.disabled = U.length >= F.n;
     b.dataset.midi = m;
     b.addEventListener("pointerdown", (e) => { e.preventDefault(); ask(m); });
@@ -352,7 +363,7 @@ function renderKeys() {
 const temp = () => Math.max(0, Number($("temp").value) || 0);
 function ask(midi) {
   if (U.length >= F.n) return;
-  const x = F.play(U, midi, { room: $("room").checked });
+  const x = F.play(U, midi, { three: three() });
   if (!x) { lastSaid = "no note can follow"; render(); return; }
   const asked = midiName(midi);
   write(x.note, x.corrected ? `${asked} → ${F.name(x.note)}: ${x.reason}` : "");
@@ -394,12 +405,14 @@ function third() {
   render();
 }
 for (const id of ["tonic", "mode", "per"]) $(id).addEventListener("change", rebuild);
-$("room").addEventListener("change", () => { fanCache = null; render(); });
+// (the first count in three parts can take a few seconds: said before it starts)
+$("three").addEventListener("change", () => { $("status").textContent = three() ? "counting in three parts…" : ""; fanCache = null; M = null; setTimeout(() => { rebuildRef(); render(); }, 30); });
+$("ending").addEventListener("change", rebuild);
 $("bass-use").addEventListener("click", rebuild);
 $("bass-text").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") rebuild(); });
 $("undo").addEventListener("click", () => { U = U.slice(0, -1); M = null; lastSaid = ""; for (const k of Object.keys(chosen)) if (k >= U.length) delete chosen[k]; render(); });
 $("clear").addEventListener("click", () => { U = []; M = null; chosen = {}; sel = null; lastSaid = ""; render(); });
-$("finish").addEventListener("click", () => { const V = F.engine({ temp: temp() }, U); if (V) { U = V; M = null; lastSaid = "finished by the engine"; render(); } });
+$("finish").addEventListener("click", () => { const V = three() ? F.engineThree({ temp: temp() }, U) : F.engine({ temp: temp() }, U); if (V) { U = V; M = null; lastSaid = "finished by the engine"; render(); } });
 $("play").addEventListener("click", play);
 $("third").addEventListener("click", third);
 $("no-third").addEventListener("click", () => { M = null; $("third-msg").textContent = ""; render(); });
@@ -415,6 +428,8 @@ window.addEventListener("resize", renderKeys);
 window.kairoticFiguring = {
   get F() { return F; }, get U() { return U; }, get M() { return M; }, get chosen() { return chosen; },
   ask, write, third, rebuild, render, select: (t) => { sel = t; render(); },
+  ending: (e) => { $("ending").value = e; rebuild(); },
+  forThree: (on) => { $("three").checked = on; fanCache = null; M = null; rebuildRef(); render(); },
   set: (b, per) => { bid = b; if (per) $("per").value = String(per); $("bass-text").value = ""; rebuild(); },
 };
 rebuild();

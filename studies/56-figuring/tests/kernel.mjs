@@ -23,7 +23,7 @@ export async function run() {
   // a melody played: a 7–6 chain over the scale down, closing with a compound cadence
   const c = (n) => S.voice.codes.find((x) => S.name(x) === n);
   const chain = "E5 A5 A5 G5 G5 F5 F5 E5 E5 D5 D5 C5 C5 B4 C5".split(" ").map(c);
-  is("a melody over the scale down: a 7–6 chain, sound, one of the ways the bass allows", !S.judge(chain) && S.count(chain) === 1n && S.count() === 234212709n);
+  is("a melody over the scale down: a 7–6 chain, sound, one of the ways the bass allows", !S.judge(chain) && S.count(chain) === 1n && S.count() === 138459287n);
   const figs = S.figuresOf(chain);
   is("its figures found: a 7/3 on each strong unit (the 7th held), a 6/3 on the weak one (resolved), 5/3 at the ends", figs.map((f) => f.chords[0].chord).join(" ") === "5/3 6/3 7/3 6/3 7/3 6/3 7/3 6/3 7/3 6/3 7/3 6/3 7/3 6/3 5/3");
   is("... the two-part intervals: 3, 6, then 7 6 7 6…, the octave at the end", figs.map((f) => f.two).join(" ") === "3 6 7 6 7 6 7 6 7 6 7 6 7 6 8");
@@ -43,10 +43,29 @@ export async function run() {
   const cl = S.closes();
   is("the scale down closes on ②–① (units 13–15)", cl.length === 1 && cl[0].kind === "②–①" && cl[0].from === 12 && cl[0].at === 14);
   const ways = S.cadenceWays(chain.slice(0, 6), cl[0]).map((w) => w.count);
-  is(`after six units of the chain: ${ways.join(", ")} ways to an imperfect, a perfect and a compound cadence`, ways.join() === "3804,10919,1107");
-  is("... and the whole chain closes with the compound one only", S.cadenceWays(chain, cl[0]).map((w) => w.count).join() === "0,0,1");
+  is(`after six units of the chain: ${ways.join(", ")} ways to an imperfect, a perfect and a compound cadence`, ways.join() === "14153,21345,1107");
+  is("... and the whole chain closes with a perfect one, the compound 7–6–8", S.cadenceWays(chain, cl[0]).map((w) => w.count).join() === "0,1,1");
   const R = figuring({ bass: BASSES.romanesca.degrees, key: { tonic: "C" }, per: 1 });
-  is("the leaping Romanesca closes on ⑤–⑥ (deceptive) and ⑤–① at its end", R.closes().map((x) => x.kind).join() === "⑤–⑥,⑤–①");
+  is("the leaping Romanesca closes at its end, on ⑤–①: perfect, imperfect or compound (4–3), the deceptive ⑤–⑥ inside it not a close", R.closes().map((x) => x.kind).join() === "⑤–①" && R.closes()[0].options.map((o) => o.kind).join() === "perfect,imperfect,perfect,imperfect");
+
+  // the ending: perfect or imperfect; deceptive or half only when asked, the bass's end made to fit
+  const Rp = figuring({ bass: BASSES.romanesca.degrees, key: { tonic: "C" }, per: 2, ending: "perfect" }), Ri = figuring({ bass: BASSES.romanesca.degrees, key: { tonic: "C" }, per: 2, ending: "imperfect" });
+  const Ra = figuring({ bass: BASSES.romanesca.degrees, key: { tonic: "C" }, per: 2 });
+  is(`the Romanesca ends perfect (${Rp.count()}) or imperfect (${Ri.count()}): either of them by default (${Ra.count()})`, Rp.count() + Ri.count() === Ra.count());
+  is("... the melody ends on the octave for a perfect cadence, the 3rd for an imperfect one", Rp.voice.check(Rp.engine({ temp: 0.5, r: rng(1) }).slice(0, -1), Rp.n - 1, Rp.voice.codes.find((c) => Rp.name(c) === "E5")) !== null);
+  const Rd = figuring({ bass: BASSES.romanesca.degrees, key: { tonic: "C" }, per: 2, ending: "deceptive" }), Rh = figuring({ bass: BASSES.romanesca.degrees, key: { tonic: "C" }, per: 2, ending: "half" });
+  is("a deceptive ending: the last ① becomes the ⑥ above ⑤ (G3 A3), its cadence ⑤–⑥", Rd.notes.slice(-2).map((x) => Rd.key.name(x.d)).join(" ") === "G3 A3" && Rd.closes()[0].kind === "⑤–⑥" && Rd.count() > 0n);
+  is("a half ending: the phrase ends on ⑤ (G3)", Rh.notes.length === 8 && Rh.key.name(Rh.notes[7].d) === "G3" && Rh.closes()[0].kind === "⑤" && Rh.count() > 0n);
+  is("... a deceptive or half ending over a bass that does not end ⑤–① is refused, and why", (() => { try { figuring({ bass: BASSES["scale-down"].degrees, ending: "deceptive" }); return false; } catch (e) { return /needs a bass ending ⑤–①/.test(e.message); } })());
+  is("the engine's melodies end with a perfect or imperfect cadence, recognized", (() => {
+    const rr = rng(8);
+    for (const id of ["romanesca", "fifths", "monte", "cadence", "scale-down"]) for (let i = 0; i < 4; i++) {
+      const F = figuring({ bass: BASSES[id].degrees, key: { tonic: "C" }, per: 2 }), U = F.engine({ temp: 0.5, r: rr });
+      const last = F.schemataIn(U).filter((x) => x.to === F.n - 1);
+      if (!last.some((x) => /perfect|imperfect|compound/.test(x.name))) { notes.push(`${id}: ${U.map(F.name).join(" ")} ends with ${last.map((x) => x.name).join(", ") || "no cadence recognized"}`); return false; }
+    }
+    return true;
+  })());
   const closed = (() => { const k = S.cadenceWays(chain.slice(0, 6), cl[0])[0]; return k.voice.engine({ temp: 0.5, r: rng(5) }, chain.slice(0, 6)); })();
   is("... the engine closes it so: an imperfect cadence 3–3 found at the end, the melody sound", closed && !S.judge(closed) && S.schemataIn(closed).some((x) => /imperfect cadence 3–3/.test(x.name)));
 
@@ -60,7 +79,29 @@ export async function run() {
   const none = B.middle(lt2);
   is("a melody that doubles the bass's leading tone (B4 over B3) leaves no room for a middle voice: it stops there and says why", none.count === 0n && none.stops === 1 && none.why.includes("the leading tone doubled"));
   is("... room for a middle voice: after G4 yes, after B4 no", B.roomFor([b("G4")]) && !B.roomFor(lt));
-  is("... leaving room for a third voice, B4 asked is corrected, and said why", (() => { const x = B.play([b("G4")], 71, { room: true }), y = B.play([b("G4")], 71); return !y.corrected && x.corrected && /no room left for a middle voice/.test(x.reason); })());
+  is("... written for three, B4 asked is corrected, and said why", (() => { const x = B.play([b("G4")], 71, { three: true }), y = B.play([b("G4")], 71); return !y.corrected && x.corrected && /no middle voice could be written under it/.test(x.reason); })());
+  is("... its ways on in three parts: none after G4 B4, some after G4", B.threeWays(lt) === 0n && B.threeWays([b("G4")]) > 0n);
+
+  // written for three: the melody and its figures chosen so that a middle voice can always be written from them
+  const ft = S.figuresThree(chain);
+  is(`the 7–6 chain written for three: its figures ${ft.map((f) => f.chord).join(" ")}, a middle voice from them`, S.middle(chain, ft.map((f) => f.chord)).count > 0n && ft.slice(2, 14).map((f) => f.chord).join(" ") === "7/3 6/3 ".repeat(6).trim());
+  const draw3 = rng(33);
+  for (const [id, bb] of Object.entries(BASSES)) for (const per of [1, 2]) {
+    const F = figuring({ bass: bb.degrees, key: per === 1 ? { tonic: "A", mode: "minor" } : { tonic: "C" }, per });
+    let ok = true;
+    for (let i = 0; i < 3 && ok; i++) {
+      const U = F.engineThree({ temp: 0.5, r: draw3 }), fs = F.figuresThree(U);
+      const m = F.middle(U, fs.map((f) => f.chord), { r: draw3 });
+      ok = U && !F.judge(U) && m.count > 0n && !m.judge && fs.every((f) => f.chord || f.q === "dissonant" || f.chords[0].chord === null);
+    }
+    is(`${bb.name} (${per === 1 ? "a beat a note, A minor" : "a bar a note, C major"}), written for three by the engine: sound, and a middle voice from its figures every time`, ok);
+  }
+  is("written for three, the figures the player asks are kept where a middle voice can make them, else the likeliest that can", (() => {
+    const t = 3, alt = ft[t].chords.find((c) => c.three && c.chord !== ft[t].chord);
+    if (!alt) return true;
+    const f2 = S.figuresThree(chain, { [t]: alt.chord });
+    return f2[t].chord === alt.chord && S.middle(chain, f2.map((f) => f.chord)).count > 0n;
+  })());
   is("any of the figures found, or none asked: at least as many middle voices as the figures chosen", (() => {
     const fs = S.figuresOf(chain);
     const a = S.middle(chain, fs.map((f) => f.chords[0].chord)).count, f = S.middle(chain, fs.map((f) => f.chords.map((x) => x.chord))).count, n = S.middle(chain).count;

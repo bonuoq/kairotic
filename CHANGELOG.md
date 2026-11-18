@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 56 · figuring: a voice that allows a third, and the phrase closed by a cadence** (after trying it). Written
+  for three, the melody and its figures are chosen in three parts: a note only where a middle voice can still be
+  written under it to the end, and at each unit the likeliest chord such a voice can make with the chords before it,
+  so a middle voice can always be written from the figures. The phrase ends with a perfect or imperfect cadence where
+  the bass closes on ①; a deceptive or a half one only when chosen, the end of the bass made to fit.
+
 - **Study 56 · figuring: the partimento turned round.** A bass without figures, a melody improvised over it on the
   keyboard, and the figures found as it goes — the rule of the octave, the melody's own dissonances, the dominant —
   with the schemata the two lines make, the cadences the bass offers counted ahead, and a middle voice written from
