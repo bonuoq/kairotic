@@ -282,12 +282,10 @@
        (catch :default e (rej e))))))
 
 (defn place-tree!
-  "A tree into tree box id, or into a new tree box at x y: one gesture of the work (its tree written as data)."
+  "A tree into tree box id, or into a new tree box at x y (as (box \"tree\" x y) and (tree! id t) would)."
   [t id x y]
-  (let [id (or id (next-id))
-        new? (nil? (get-in (current) [:boxes id]))]
-    (gesture! (str "(do " (when new? (str "(box " id " \"tree\" " (js/Math.round x) " " (js/Math.round y) ") "))
-                   "(tree! " id " " (pr-str t) "))"))
+  (let [id (if (and id (get-in (current) [:boxes id])) id (box "tree" x y))]
+    (tree! id t)
     id))
 
 (defn import-music-file!

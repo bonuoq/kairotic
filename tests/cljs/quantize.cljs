@@ -41,7 +41,8 @@
           q (qz/quantize exact)]
       (t/is "a freqt quantized is a measured tree" (mt/measured? q))
       (t/eq "... that sounds as drawn" (rhythm q) [[0 1 "c4"] [1 0.5 "d4"] [1.5 0.5 "e4"] [2 2 "f4"]])
-      (t/eq "the same rhythm drawn loosely is the same tree" (qz/quantize sloppy) q)
+      (t/eq "the same rhythm drawn loosely is the same written tree (where it really sounded is kept apart: :real false)"
+            (qz/quantize sloppy {:real false}) (qz/quantize exact {:real false}))
       (t/is "... and has no errors" (empty? (mt/problems q))))
     (let [q (qz/quantize (buffer nil [0 0.33 60] [0.34 0.66 62] [0.67 1 64] [1 2 65]))]
       (t/eq "three notes in a beat are a triplet" (map (comp :ratio mt/attrs) (nodes q :tuplet)) [[3 2]])
