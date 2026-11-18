@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A long agent request no longer makes a wide box.** The box shows the start of its request (the whole of it on
+  hover, in its help and in the Agents section).
+- **adc~ on claude.ai says why it cannot listen.** A page on claude.ai may not use the microphone whatever the
+  browser allows; instead of the browser's error, adc~ now says so and points to Kairotic Pages (where the same work
+  listens: Share/Export carries it) or to recorded sound in a sample box.
+
 - **A 6/4 resolves as a double appoggiatura** (`@kairotic/cac` 0.2.1, `partimento.mjs`; Study 54): over a held
   bass the 6/4 goes to the 5/3 with each voice down a step, the 6th to the 5th and the 4th to the 3rd, without the
   voices exchanging them. The Galant cadence takes the book's 6/(3) on ④ (ex. 3.21: a sixth chord with its bass
