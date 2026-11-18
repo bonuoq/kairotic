@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Takes** (discussion #289): several performances of one tree, on its root as `:takes [{:id :name :made :audio
+  :when {note-id [onset dur]}}]` — note times only, with an optional reference to the audio; curves are derived.
+  `kairotic.mei` writes them to MEI's performance module (`<performance>`/`<recording>`/`<when absolute
+  data="#note">`, before `<body>`) and keeps them exactly in its EDN; a MEI from elsewhere with a performance is
+  read into takes (the notes they point at get their `xml:id` as `:id`). `tree->line` takes `{:take id}`;
+  `add-take`, `remove-take`, `take-of-line`, `promote-take` (a take as the line's own time) and `ensure-ids` (an
+  `:id` for every note that begins a sound). The app's takes, kept "only for me" by default as Learn does, come with
+  the continuum view.
+
 - **Study 56 · figuring: a voice that allows a third, and the phrase closed by a cadence** (after trying it). Written
   for three, the melody and its figures are chosen in three parts: a note only where a middle voice can still be
   written under it to the end, and at each unit the likeliest chord such a voice can make with the chords before it,
