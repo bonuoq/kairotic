@@ -17,6 +17,12 @@
 ;;   (<-mei (->mei t)) = t      and      (->mei (<-mei m)) = m      (byte for byte).
 ;; Any other tree is written all the same (its expansion is what the MEI says).
 ;;
+;; Takes (discussion #289): several performances of one tree, on its root as :takes [{:id :name :made :audio
+;; :when {note-id [onset dur]}} …] (seconds; a note not played is absent; :audio a recorded sound's hash or a URL).
+;; A note's own :tstamp.real/:dur.real stay the line's time; a take can be promoted to it. In MEI they are also
+;; written to its performance module (<performance>/<recording>/<when absolute data="#note">), which a MEI from
+;; elsewhere is read from; the EDN keeps them exactly.
+;;
 ;; line->tree and tree->line: a line of events in seconds and Hz ({:t :dur :hz :hz2 :amp}, as Study 52 draws it) as
 ;; a canonical voice on a grid, and back.
 
@@ -234,6 +240,36 @@
       (with-meta (into [(first n) (second n)] (map #(with-ext % notes) (subvec n 2))) (meta n))
       n)))
 
+(defn- parse-iso
+  "\"hh:mm:ss.sss\" (or seconds) → seconds."
+  [s]
+  (when s
+    (let [ps (map js/parseFloat (str/split (str s) #":"))]
+      (reduce (fn [acc x] (+ (* acc 60) x)) 0 ps))))
+
+(defn- read-takes
+  "The takes of a MEI's performance module: [{:id :name :audio :when {xml:id [onset nil]}}] (a <when> has no duration)."
+  [doc]
+  (vec (for [[k r] (map-indexed vector (all doc "recording"))
+             :let [p (.-parentNode r)
+                   ws (filter #(at % "data") (all r "when"))]
+             :when (seq ws)]
+         (cond-> {:id (or (at r "xml:id") (at p "xml:id") (str "take" (inc k)))
+                  :when (into {} (for [w ws :let [id (strip-hash (first (str/split (at w "data") #"\s+")))]]
+                                   [id [(parse-iso (at w "absolute")) nil]]))}
+           (or (at p "label") (at r "label")) (assoc :name (or (at p "label") (at r "label")))
+           (some (fn [f] (at f "target")) (all r "avFile")) (assoc :audio (some (fn [f] (at f "target")) (all r "avFile")))))))
+
+(defn- with-ids
+  "Notes read from a MEI from elsewhere that a take points at get their xml:id as :id."
+  [n ids]
+  (cond
+    (and (vector? n) (= :note (first n)) (contains? ids (:mei-id (meta n))))
+    (with-meta [:note (assoc (second n) :id (:mei-id (meta n)))] (meta n))
+    (and (vector? n) (map? (second n)))
+    (with-meta (into [(first n) (second n)] (map #(with-ids % ids) (subvec n 2))) (meta n))
+    :else n))
+
 (defn <-mei
   "A MEI text as a tree (canonical when the MEI was written by ->mei). Throws if it is not MEI."
   [text]
@@ -255,9 +291,14 @@
                           (map (fn [{:keys [attrs voices]}]
                                  (with-ext (into [:measure attrs] (map seg->node (get voices k []))) (:notes ext)))
                                measures))))]
-      (if (and (= 1 (count vkeys)) (not= :par (:root-tag ext)))
-        (voice (first vkeys))
-        (into [(or (:root-tag ext) :par) (or (:root ext) {})] (map voice vkeys))))))
+      (let [t (if (and (= 1 (count vkeys)) (not= :par (:root-tag ext)))
+                (voice (first vkeys))
+                (into [(or (:root-tag ext) :par) (or (:root ext) {})] (map voice vkeys)))
+            ;; a MEI from elsewhere: its takes from its performance module (with the EDN, they are in the root's attributes)
+            tks (when-not ext (read-takes doc))]
+        (if (seq tks)
+          (with-ids (update t 1 assoc :takes tks) (set (mapcat (comp keys :when) tks)))
+          t)))))
 
 ;; ───────── writing MEI ─────────
 
@@ -317,6 +358,33 @@
       (when-let [t (:tstamp.real x)] (.setAttribute el "tstamp.real" (iso-time t)))
       (when-let [d (:dur.real x)] (.setAttribute el "dur.real" (str (cv/round-to d 6))))
       (when-let [v (:vel x)] (.setAttribute el "vel" (str (js/Math.round (* 127 (max 0 (min 1 v))))))))
+    ;; the takes (on the root) in MEI's performance module, before <body>: a <when> per note played, pointing at it
+    (let [takes (:takes rattrs)
+          music (first (all doc "music")) body (first (all doc "body"))
+          ncname (fn [x] (str/replace (str x) #"[^A-Za-z0-9_.-]" "_"))
+          id->mei (into {} (when same? (keep (fn [[s n]] (when-let [i (:id (second n))] [i (first (:ids s))]))
+                                              (map vector (apply concat sn) (apply concat tn)))))
+          order (when same? (keep (fn [n] (:id (second n))) (apply concat tn)))]
+      (doseq [[k tk] (map-indexed vector takes) :when (map? tk)]
+        (let [tid (ncname (or (:id tk) (str "t" k)))
+              perf (.createElementNS doc mei-ns "performance")
+              rec (.createElementNS doc mei-ns "recording")]
+          (.setAttribute perf "xml:id" (str "perf-" tid))
+          (when (:name tk) (.setAttribute perf "label" (str (:name tk))))
+          (.setAttribute rec "xml:id" (str "rec-" tid))
+          (.setAttribute rec "betype" "time")
+          (when (string? (:audio tk))
+            (let [f (.createElementNS doc mei-ns "avFile")] (.setAttribute f "target" (:audio tk)) (.appendChild rec f)))
+          (doseq [[j nid] (map-indexed vector order)
+                  :let [[t0 _] (get (:when tk) nid) mid (get id->mei nid)]
+                  :when (and (number? t0) mid)]
+            (let [w (.createElementNS doc mei-ns "when")]
+              (.setAttribute w "xml:id" (str "when-" tid "-" j))
+              (.setAttribute w "absolute" (iso-time t0))
+              (.setAttribute w "data" (str "#" mid))
+              (.appendChild rec w)))
+          (.appendChild perf rec)
+          (.insertBefore music perf body))))
     (let [head (first (all doc "meiHead"))
           em (.createElementNS doc mei-ns "extMeta")]
       (.setAttribute em "type" "kairotic")
@@ -330,10 +398,13 @@
 (defn tree->line
   "The line of a voice: one event per note (a tied note is one event), where it really sounded when the tree knows it
    (:tstamp.real, :dur.real), else where it is written at the voice's tempo; its exact Hz (or its written pitch); its
-   glissando's end; and the written name it has in the MEI it was read from (:name), when it has one."
-  [tree]
+   glissando's end; and the written name it has in the MEI it was read from (:name), when it has one. With {:take id},
+   where that take played each note (a note it did not play is left out)."
+  ([tree] (tree->line tree {}))
+  ([tree {:keys [take]}]
   (let [v (if (= :voice (first tree)) tree (or (first (filter #(and (vector? %) (= :voice (first %))) tree)) tree))
-        tempo (or (:tempo (second v)) (:tempo (second tree)) 60) spb (/ 60 tempo)]
+        tempo (or (:tempo (second v)) (:tempo (second tree)) 60) spb (/ 60 tempo)
+        tw (when take (:when (first (filter #(= take (:id %)) (:takes (second tree))))))]
     (loop [ms (filter #(and (vector? %) (= :measure (first %))) v) beat 0 open nil out []]
       (if-let [m (first ms)]
         (let [[beat open out]
@@ -346,8 +417,10 @@
                                     [(+ b d) (when (:tie a) (update open :wdur + d)) (if (:tie a) out (conj out (update open :wdur + d)))]
                                     (let [hz (or (:hz a) (cv/midi->hz (mt/midi-of a)))
                                           g (:gliss a)
-                                          ev (cond-> {:t (or (:tstamp.real a) (* b spb)) :hz hz :amp (or (:vel a) 0.6)
-                                                      :real-dur (:dur.real a) :wdur d :beat b}
+                                          [pt pd] (when take (get tw (:id a)))
+                                          ev (cond-> {:t (if take pt (or (:tstamp.real a) (* b spb))) :hz hz :amp (or (:vel a) 0.6)
+                                                      :real-dur (if take pd (:dur.real a)) :wdur d :beat b}
+                                               (and take (nil? pt)) (assoc :skip true)
                                                (seq g) (assoc :hz2 (* hz (js/Math.pow 2 (/ (second (last g)) 1200))))
                                                (:id a) (assoc :id (:id a))
                                                (or (:written (meta n)) (:pitch a)) (assoc :name (or (:written (meta n)) (:pitch a))))]
@@ -355,7 +428,9 @@
                             [(+ b d) open out])))
                       [beat open out] (drop 2 m))]
           (recur (rest ms) beat open out))
-        (mapv (fn [e] (-> e (assoc :dur (or (:real-dur e) (* (:wdur e) spb))) (dissoc :real-dur :wdur :beat))) (cond-> out open (conj open)))))))
+        (->> (cond-> out open (conj open))
+             (remove :skip)
+             (mapv (fn [e] (-> e (assoc :dur (or (:real-dur e) (* (:wdur e) spb))) (dissoc :real-dur :wdur :beat))))))))))
 
 ;; ───────── checks ─────────
 
@@ -399,3 +474,61 @@
 
 (defn musicxml? "Does a text look like MusicXML (and not MEI)?" [text]
   (boolean (re-find #"<(score-partwise|score-timewise)[\s>]" (str text))))
+
+;; ───────── takes (discussion #289) ─────────
+
+(defn- walk-notes
+  "f applied to the attributes of every note of a tree (its structure kept)."
+  [t f]
+  (cond
+    (and (vector? t) (= :note (first t))) (with-meta (into [:note (f (second t))] (subvec t 2)) (meta t))
+    (and (vector? t) (map? (second t))) (with-meta (into [(first t) (second t)] (map #(walk-notes % f) (subvec t 2))) (meta t))
+    :else t))
+
+(defn ensure-ids
+  "Every note that begins a sound (not the piece a tie goes on into) gets an :id if it has none: \"n0\", \"n1\" … in
+   order, skipping those already used. Takes point at notes by them."
+  [tree]
+  (let [used (atom (set (keep (fn [x] (when (and (vector? x) (= :note (first x))) (:id (second x))))
+                              (tree-seq vector? seq tree))))
+        k (atom 0)
+        fresh (fn [] (loop [] (let [c (str "n" @k)] (swap! k inc) (if (contains? @used c) (recur) (do (swap! used conj c) c)))))
+        open (atom false)]
+    (letfn [(go [t]
+              (cond
+                (and (vector? t) (= :voice (first t))) (do (reset! open false) (with-meta (into [:voice (second t)] (map go (subvec t 2))) (meta t)))
+                (and (vector? t) (= :note (first t)))
+                (let [a (second t) cont? @open]
+                  (when-not (:grace a) (reset! open (boolean (:tie a))))
+                  (with-meta (into [:note (if (or cont? (:id a)) a (assoc a :id (fresh)))] (subvec t 2)) (meta t)))
+                (and (vector? t) (= :rest (first t))) (do (reset! open false) t)
+                (and (vector? t) (map? (second t))) (with-meta (into [(first t) (second t)] (map go (subvec t 2))) (meta t))
+                :else t))]
+      (go tree))))
+
+(defn takes "The takes of a tree (on its root)." [tree] (vec (:takes (second tree))))
+
+(defn add-take
+  "A tree with one more take ({:id :name :made :audio :when {note-id [onset dur]}}); a take with the same :id is
+   replaced."
+  [tree tk]
+  (update tree 1 (fn [a] (assoc a :takes (conj (vec (remove #(= (:id tk) (:id %)) (:takes a))) tk)))))
+
+(defn remove-take [tree id]
+  (update tree 1 (fn [a] (let [ts (vec (remove #(= id (:id %)) (:takes a)))] (if (seq ts) (assoc a :takes ts) (dissoc a :takes))))))
+
+(defn take-of-line
+  "A take from a line played (events with the :id of the note each one played, :t and :dur in seconds)."
+  [line {:keys [id name made audio]}]
+  (cond-> {:id id :when (into {} (for [e line :when (:id e)] [(:id e) [(:t e) (:dur e)]]))}
+    name (assoc :name name) made (assoc :made made) audio (assoc :audio audio)))
+
+(defn promote-take
+  "The tree with a take as its own time: each note that take played keeps its onset (and duration) as :tstamp.real
+   (and :dur.real)."
+  [tree id]
+  (if-let [tw (:when (first (filter #(= id (:id %)) (takes tree))))]
+    (walk-notes tree (fn [a] (if-let [[t d] (get tw (:id a))]
+                               (cond-> (assoc a :tstamp.real t) (number? d) (assoc :dur.real d))
+                               a)))
+    tree))
