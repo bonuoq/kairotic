@@ -120,7 +120,7 @@ See also: `*`, `!/`
 
 `adc~ [channel …]`
 
-Audio input (the microphone or the sound card): one outlet per input channel, the ones written after it (adc~ 1 by default; adc~ 1 2 for stereo). At ▶ it asks for the microphone, and takes its sound as it is, without the echo cancellation, noise suppression and automatic gain made for speech. Every adc~ shares one stream.
+Audio input (the microphone or the sound card): one outlet per input channel, the ones written after it (adc~ 1 by default; adc~ 1 2 for stereo). At ▶ it asks for the microphone, and takes its sound as it is, without the echo cancellation, noise suppression and automatic gain made for speech. Every adc~ shares one stream. On claude.ai it cannot listen (the page may not use a microphone): Kairotic Pages can.
 
 **Outlets** 
 
@@ -2739,7 +2739,9 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `in a score: click a rest`: Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note
 - `(as-tree :bN)`: reads it back as data
 - `⇄ roll · (view :bN :roll)`: a piano roll: its notes as strokes of frequency over time: drawing, dragging, stretching or erasing there edits the tree (free time; with measures, the bars it touches are quantized again; ⌥ to a free voice)
-- `(quantize! :bN) · (unquantize! :bN)`: its free time written in measures, and back (one event each)
+- `(quantize! :bN) · (unquantize! :bN)`: its free time written in measures, and back (one event each); quantized, a note keeps where it really sounded (:tstamp.real, :dur.real, seconds), and made free again it goes back there
+- `(export-mei! :bN) · (mei :bN)`: its MEI (downloaded, or as text): the notation, where its notes really sounded (@tstamp.real, @dur.real, @vel) and the rest in an <extMeta type="kairotic">; read back it is the same tree
+- `(import-mei!) · (import-mei! :bN) · drop a file on the patch`: a .mei or MusicXML file as a tree box (a new one, or into bN)
 - `(track! :bN)`: its free time played (in seconds, at any tempo): the beats are found and kept in its :quant, so that its score and quantize! write it on them
 
 **Try:** The tree box is its own score: click a note and press ↑ (or a…g, + −, Delete), or press { } in its header, change a note in its text and apply it (Ctrl+Enter). It sends its tree whenever it changes: through mt transpose 7 it reaches the second tree box, a fifth higher, which follows. Press ⇄ roll on the tree box to draw notes into it. (A tree that comes into a tree box is written into it, as one event of the history.)
