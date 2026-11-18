@@ -1,0 +1,603 @@
+<meta charset="utf-8">
+<title>Kairotic Study 55 · MEI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the line (one SVG: the line drawn at its resolutions, the electronics' lane under it and
+   the wires between them), the three resolutions drawn over time; the wires and the performer; what happened
+   (the performance in real time and each wire's decision); the electronics (a faust~'s code); the EDN; about. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f; --warn: #a86a00;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button.act.on { border-color: var(--accent); background: var(--accent-soft); }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 5.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.err { color: var(--error); font-size: 12px; }
+textarea.src { width: 100%; min-height: 11em; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; tab-size: 2; white-space: pre; }
+.scroll { overflow-x: auto; }
+
+/* the line */
+svg.score { display: block; width: 100%; min-width: 640px; height: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+svg.score .staff { stroke: var(--ink); stroke-width: 1; }
+svg.score .semi { stroke: var(--accent); stroke-width: 0.6; }
+svg.score .bar { stroke: var(--ink); stroke-width: 1.2; }
+svg.score .ledger { stroke: var(--ink); stroke-width: 1.1; }
+svg.score .stroke { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; }
+svg.score .head { fill: var(--ink); stroke: var(--ink); stroke-width: 1.3; }
+svg.score .durline, svg.score .gliss { stroke: var(--ink); stroke-width: 1.6; fill: none; }
+svg.score .stem { stroke: var(--ink); stroke-width: 1.3; }
+svg.score .flag { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; }
+svg.score .acc { font: 16px serif; fill: var(--ink); }
+svg.score .sig { font: 17px serif; fill: var(--ink); }
+/* the start of the staff engraved by Verovio (clef, key signature, meter): its own staff lines and bar line are ours */
+svg.score .vrv { color: var(--ink); fill: var(--ink); }
+svg.score .vrv .staff > path, svg.score .vrv .barLine path { stroke: none !important; }
+svg.score .lbl { font: 10px var(--f-code); fill: var(--ink-soft); }
+svg.score .lane { fill: var(--paper); stroke: var(--grid); }
+svg.score .el { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
+svg.score .el.bell { fill: rgba(180, 71, 46, 0.14); stroke: var(--kairos); }
+svg.score .wire { fill: none; stroke-width: 1.6; }
+svg.score .wire.rigid { stroke: var(--ink); }
+svg.score .wire.elastic { stroke: var(--kairos); stroke-dasharray: 5 4; }
+svg.score .tol { fill: rgba(180, 71, 46, 0.12); stroke: none; }
+svg.score .anchor { fill: none; stroke: var(--kairos); stroke-width: 1.6; }
+svg.score .arrow { fill: var(--kairos); }
+svg.score .arrow.rigid { fill: var(--ink); }
+svg.score .idx { font: 9px var(--f-code); fill: var(--ink-soft); }
+
+/* the three resolutions, drawn over the line's time */
+.lanes { display: grid; gap: 4px; }
+.rlane { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 8px; align-items: stretch; }
+.rlane .name { font-size: 12px; display: grid; align-content: center; gap: 1px; }
+.rlane .name b { font: 600 12px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; }
+.rlane .name span { color: var(--ink-soft); font: 10.5px var(--f-code); }
+.rlane svg { display: block; width: 100%; height: 46px; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; touch-action: none; cursor: crosshair; }
+.rlane .c { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.rlane .mid { stroke: var(--grid); stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+@media (max-width: 640px) { .rlane { grid-template-columns: minmax(0, 1fr); } .rlane .name { grid-auto-flow: column; justify-content: start; gap: 8px; } }
+
+/* the wires */
+table.wires, table.res { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.wires th, table.wires td, table.res th, table.res td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+table.wires th, table.res th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+table.wires select, table.wires input { font-size: 12px; padding: 3px 4px; }
+table.res td { font: 12px var(--f-code); font-variant-numeric: tabular-nums; }
+table.res td.st-on { color: var(--ok); } table.res td.st-led { color: var(--accent); }
+table.res td.st-went { color: var(--warn); } table.res td.st-caught { color: var(--kairos); } table.res td.st-never { color: var(--error); }
+
+/* the performance in real time */
+svg.perf { display: block; width: 100%; min-width: 560px; height: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+svg.perf .axis { stroke: var(--grid); }
+svg.perf .t { font: 10px var(--f-code); fill: var(--ink-soft); }
+svg.perf .written { stroke: var(--rule); stroke-width: 2; }
+svg.perf .played { stroke: var(--ink); stroke-width: 2.4; }
+svg.perf .shift { stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 2 2; }
+svg.perf .cue { stroke-width: 3; }
+svg.perf .cue.on { stroke: var(--ok); } svg.perf .cue.led { stroke: var(--accent); } svg.perf .cue.went { stroke: var(--warn); }
+svg.perf .cue.caught { stroke: var(--kairos); }
+svg.perf .exp { stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 3 2; }
+svg.perf .head { stroke: var(--accent); stroke-width: 1.5; }
+svg.perf .rowl { font: 600 10px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; fill: var(--ink-soft); }
+
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+table.cmp { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+table.cmp th, table.cmp td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+table.cmp th { font: 500 11px var(--f-ui); color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+
+/* Study 55 */
+ul.checks { margin: 0; padding-left: 0; list-style: none; font-size: 13px; line-height: 1.7; }
+ul.checks li.ok { color: var(--ok); } ul.checks li.bad { color: var(--error); }
+.engraved { background: #fff; border: 1px solid var(--grid); border-radius: 4px; padding: 6px; overflow-x: auto; min-height: 60px; }
+.engraved svg { max-width: 100%; height: auto; }
+textarea.src.tall { min-height: 18em; }
+svg.score .idx { font: 9px var(--f-code); fill: var(--ink-soft); }
+</style>
+<main>
+<header>
+  <h1>Study 55 · MEI</h1>
+  <span class="sub">The continuum kept in a tree and in MEI, both ways: line → tree → MEI → tree → line, deterministically</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<section class="panel" aria-labelledby="h-line">
+  <h2 id="h-line">The line, read back <span>Study 52's drawing of the line that came back through the tree and the MEI, with the names the MEI gives its notes</span></h2>
+  <div class="row">
+    <label class="inline" for="line-preset">Line <select id="line-preset"><option value="phrase" selected>a phrase in D</option><option value="gesture">a gesture</option></select></label>
+    <label class="inline" for="key">Key <select id="key">
+      <option value="-3">E♭ (3♭)</option><option value="-2">B♭ (2♭)</option><option value="-1">F (1♭)</option>
+      <option value="0">C</option><option value="1">G (1♯)</option><option value="2" selected>D (2♯)</option><option value="3">A (3♯)</option>
+    </select></label>
+    <label class="inline" for="bpm">Tempo <input type="number" id="bpm" min="30" max="200" step="1" value="60"></label>
+    <label class="inline" for="meter">Meter <select id="meter"><option value="4" selected>4/4</option><option value="3">3/4</option><option value="2">2/4</option></select></label>
+    <label class="inline" for="res-preset">Resolution <select id="res-preset">
+      <option value="dissolve" selected>dissolve</option><option value="crystallize">crystallize</option><option value="written">written</option>
+      <option value="proportional">proportional</option><option value="tempered">tempered</option><option value="graphic">graphic</option><option value="mixed">mixed</option>
+    </select></label>
+  </div>
+  <div class="scroll"><svg class="score" id="score" viewBox="0 0 1000 250" role="img" aria-label="The line read back"></svg></div>
+</section>
+
+<div class="two">
+  <section class="panel" aria-labelledby="h-checks">
+    <h2 id="h-checks">The round trip <span>each check made on what came back</span></h2>
+    <ul class="checks" id="checks"></ul>
+  </section>
+  <section class="panel" aria-labelledby="h-eng">
+    <h2 id="h-eng">The MEI, engraved <span>by Verovio: the written domain</span></h2>
+    <div class="engraved" id="engraved"></div>
+  </section>
+</div>
+
+<div class="two">
+  <section class="panel" aria-labelledby="h-tree">
+    <h2 id="h-tree">The tree <span>kairotic.mt, EDN: edit and apply (tree → MEI → tree)</span></h2>
+    <textarea class="src tall" id="tree" spellcheck="false" aria-label="The tree as EDN"></textarea>
+    <div class="row"><button class="act" id="apply-tree">Apply the tree</button></div>
+  </section>
+  <section class="panel" aria-labelledby="h-mei">
+    <h2 id="h-mei">The MEI <span>edit, paste one, or read one written elsewhere (MEI → tree → MEI)</span></h2>
+    <textarea class="src tall" id="mei" spellcheck="false" aria-label="The MEI"></textarea>
+    <div class="row"><button class="act" id="read-mei">Read the MEI</button><button class="act" id="foreign">A MEI written elsewhere</button><button class="act" id="download">Download .mei</button></div>
+  </section>
+</div>
+
+<section class="panel">
+  <h2>About</h2>
+  <p class="about"><b>Study 55.</b> The second study of discussion #217: the continuum of Study 52 made <b>deterministic and coherent between the tree and MEI</b>. A line becomes a tree of <code>kairotic.mt</code> (the app's), written on a grid in measures: a note is one per measure it sounds in, tied into the next, a free note keeps its exact <b>Hz</b> (its name is chosen when it is written, by <code>kairotic.spell</code>), and its first piece keeps where it really sounded (<code>:tstamp.real</code>, <code>:dur.real</code>, named after MEI's attributes), its loudness (<code>:vel</code>) and its glissando. The voice carries the line's resolutions, wires and electronics. Its MEI is the one the app writes (<code>mt/-&gt;mei</code>: measures, spelling, ties, beams) with <b>MEI's own gestural attributes</b> where MEI has them (<code>@tstamp.real</code>, <code>@dur.real</code>, <code>@vel</code>, a mirror other software can read) and one <b><code>&lt;extMeta type="kairotic"&gt;</code></b> holding, as EDN, what MEI has no place for, keyed by the <code>xml:id</code> of each note. Reading takes the written music from the notation and the rest from <code>extMeta</code>; a MEI written elsewhere reads as its notation. So <code>tree → MEI → tree</code> gives the tree back and <code>MEI → tree → MEI</code> the MEI, byte for byte, and the line comes back exactly. The staff of the drawing takes the names the MEI gives, so drawing and engraving agree.</p>
+  <h2 style="margin-top:6px">In the app</h2>
+  <table class="cmp">
+    <tr><th>here</th><th>in the app</th></tr>
+    <tr><td><code>meitree/-&gt;mei</code>, <code>&lt;-mei</code></td><td>export and import of a tree box as MEI (to do), on <code>mt/-&gt;mei</code> as it is</td></tr>
+    <tr><td><code>line-&gt;tree</code></td><td>a freqt's strokes (or a recording) kept as a tree with their real times and Hz</td></tr>
+    <tr><td>the names from the MEI on the staff</td><td>the continuum view of a tree box (#217)</td></tr>
+  </table>
+  <h2 style="margin-top:6px">What it leaves open</h2>
+  <ul class="q">
+    <li>Reading a MEI from elsewhere covers notes, rests, chords, tuplets, beams, ties, meters and keys; dynamics, directions, slurs and lyrics are not read yet.</li>
+    <li>Several staves and layers read as voices; the continuum is still one line.</li>
+    <li>Where <code>&lt;extMeta&gt;</code> sits is a choice to check against the MEI schema; <code>&lt;extData&gt;</code> beside each note is the other one.</li>
+  </ul>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The modules of the app the study stands on (kairotic.mt and what it needs), then the study's own (meitree.cljs), then
+// the page. The app's modules are at ../../core/kairotic/ in the repository and at ../../kairotic/ on Pages.
+window.kairoticVerovio = window.kairoticVerovio || new Promise(function (resolve, reject) {
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/verovio@5.7.0/dist/verovio-toolkit-wasm.js";
+  s.onload = function () {
+    try {
+      var m = verovio.module;
+      if (m.calledRun) { resolve(new verovio.toolkit()); }
+      else { m.onRuntimeInitialized = function () { resolve(new verovio.toolkit()); }; }
+    } catch (e) { reject(e); }
+  };
+  s.onerror = function () { reject(new Error("Could not download Verovio")); };
+  document.head.appendChild(s);
+});
+window.kairoticLoadCljs = window.kairoticLoadCljs || async function (bases, files) {
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i], text = null;
+    for (var j = 0; j < bases.length && text === null; j++) {
+      var r = await fetch(bases[j] + f, { cache: "no-cache" }).catch(function () { return null; });
+      if (r && r.ok) text = await r.text();
+    }
+    if (text === null) throw new Error("could not read " + f);
+    try { scittle.core.eval_string(text); } catch (e) { throw new Error(f + ": " + (e.message || e)); }
+  }
+};
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  import("../52-continuum/kairotic/continuum.mjs").then(function (k) {
+    window.kairoticKernel = k;
+    return window.kairoticLoadCljs(["../../core/kairotic/", "../../kairotic/"], ["score.cljs", "canvas.cljs", "spell.cljs", "mt.cljs"]);
+  }).then(function () {
+    return window.kairoticLoadCljs([""], ["kairotic/meitree.cljs"]);
+  }).then(function () {
+    scittle.core.eval_string(document.getElementById("page-cljs").textContent);
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns mei-page (:require [clojure.string :as str] [clojure.edn :as edn] [kairotic.meitree :as mx] [kairotic.mt :as mt]))
+
+;; Kairotic · Study 55 · mei: the page. A line of Study 52 → a tree (kairotic.mt) → MEI → a tree → a line, checked
+;; at every step; the line read back is drawn as Study 52 draws it (its kernel), with the names the MEI gives its
+;; notes, and the MEI is engraved by Verovio beside it. A tree or a MEI can be edited, or a MEI from elsewhere read.
+
+(def K (.-kairoticKernel js/window))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
+(defn r2 [x] (/ (js/Math.round (* 100 x)) 100))
+(defn hz [m] (r2 (* 440 (js/Math.pow 2 (/ (- m 69) 12)))))
+
+;; ───────── Study 52's lines and resolutions ─────────
+
+(defn ev
+  ([t dur m] (ev t dur m 0.6 nil))
+  ([t dur m amp] (ev t dur m amp nil))
+  ([t dur m amp m2] (cond-> {:t t :dur dur :hz (hz m) :amp amp} m2 (assoc :hz2 (hz m2)))))
+
+(def lines
+  {"phrase" {:bpm 60 :key 2 :meter 4
+             :line [(ev 0 0.5 62 0.5) (ev 0.5 0.5 64 0.55) (ev 1 1 66 0.7) (ev 2 0.5 69 0.6) (ev 2.55 0.45 67.8 0.4)
+                    (ev 3.05 1.4 71 0.75 74) (ev 4.55 0.4 73.3 0.5) (ev 5 1 74 0.9) (ev 6.1 0.35 76.4 0.3)
+                    (ev 6.5 1.6 69 0.55 61.5)]
+             :wires [{:id "w1" :note 2 :kind "rigid"}
+                     {:id "w2" :note 5 :kind "elastic" :leader "performer" :tol 0.4}
+                     {:id "w3" :note 9 :kind "elastic" :leader "electronics" :tol 0}]
+             :electronics [{:wire "w1" :kind "drone" :hz 73.42 :dur 3.2}
+                           {:wire "w2" :kind "bell" :hz 987.77 :dur 2.2}
+                           {:wire "w3" :kind "drone" :hz 55 :dur 2.6}]}
+   "gesture" {:bpm 72 :key 0 :meter 4
+              :line [(ev 0 1.2 55 0.3 67.4) (ev 1.3 0.2 70.6 0.8) (ev 1.55 0.2 69.1 0.7) (ev 1.8 0.9 66.5 0.4 72.2)
+                     (ev 2.9 0.15 80 0.9) (ev 3.2 2 60.3 0.25 58) (ev 5.4 0.3 75 0.6) (ev 5.8 1.4 77 0.8 64)]
+              :wires [{:id "w1" :note 1 :kind "elastic" :leader "performer" :tol 0.3}
+                      {:id "w2" :note 4 :kind "rigid"}
+                      {:id "w3" :note 6 :kind "elastic" :leader "electronics" :tol 0}]
+              :electronics [{:wire "w1" :kind "bell" :hz 1864.66 :dur 1.6}
+                            {:wire "w2" :kind "drone" :hz 82.41 :dur 2.6}
+                            {:wire "w3" :kind "bell" :hz 659.26 :dur 2}]}})
+
+(def N 41)   ; samples of a resolution lane over the line's time
+
+(def res-presets
+  {"written"      {:time (constantly 1) :pitch (constantly 1) :glyph (constantly 1)}
+   "proportional" {:time (constantly 0) :pitch (constantly 1) :glyph (constantly 0.5)}
+   "tempered"     {:time (constantly 0) :pitch (constantly 0.5) :glyph (constantly 0.5)}
+   "graphic"      {:time (constantly 0) :pitch (constantly 0) :glyph (constantly 0)}
+   "mixed"        {:time (constantly 0) :pitch (constantly 1) :glyph (constantly 0.6)}
+   "dissolve"     {:time  (fn [u] (min 1 (max 0 (- 1 (* 2.2 (- u 0.18))))))
+                   :pitch (fn [u] (min 1 (max 0 (- 1 (* 1.6 (- u 0.35))))))
+                   :glyph (fn [u] (min 1 (max 0 (- 1 (* 1.5 (- u 0.25))))))}
+   "crystallize"  {:time  (fn [u] (min 1 (max 0 (* 2.2 (- u 0.45)))))
+                   :pitch (fn [u] (min 1 (max 0 (* 1.6 (- u 0.2)))))
+                   :glyph (fn [u] (min 1 (max 0 (* 1.5 (- u 0.3)))))}})
+
+
+(defn sample-res [preset]
+  (let [p (get res-presets preset)]
+    (into {} (for [ax [:time :pitch :glyph]] [ax (mapv (fn [i] (r2 ((get p ax) (/ i (dec N))))) (range N))]))))
+
+(def foreign-mei
+  (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+       "<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n"
+       "  <meiHead><fileDesc><titleStmt><title>A MEI written elsewhere</title></titleStmt><pubStmt/></fileDesc></meiHead>\n"
+       "  <music><body><mdiv><score>\n"
+       "    <scoreDef meter.count=\"3\" meter.unit=\"4\" key.sig=\"1s\">\n"
+       "      <staffGrp><staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\"/></staffGrp>\n"
+       "    </scoreDef>\n"
+       "    <section>\n"
+       "      <measure n=\"1\"><staff n=\"1\"><layer n=\"1\">\n"
+       "        <note xml:id=\"n1\" pname=\"g\" oct=\"4\" dur=\"4\"/>\n"
+       "        <beam><note xml:id=\"n2\" pname=\"f\" oct=\"4\" dur=\"8\"/><note xml:id=\"n3\" pname=\"e\" oct=\"4\" dur=\"8\"/></beam>\n"
+       "        <note xml:id=\"n4\" pname=\"d\" oct=\"4\" dur=\"4\"/>\n"
+       "      </layer></staff><tie startid=\"#n4\" endid=\"#n5\"/></measure>\n"
+       "      <measure n=\"2\"><staff n=\"1\"><layer n=\"1\">\n"
+       "        <note xml:id=\"n5\" pname=\"d\" oct=\"4\" dur=\"4\"/>\n"
+       "        <rest xml:id=\"r1\" dur=\"4\"/>\n"
+       "        <note xml:id=\"n6\" pname=\"f\" oct=\"4\" dur=\"4\" accid=\"n\"/>\n"
+       "      </layer></staff></measure>\n"
+       "      <measure n=\"3\"><staff n=\"1\"><layer n=\"1\">\n"
+       "        <note xml:id=\"n7\" pname=\"b\" oct=\"4\" dur=\"2\" dots=\"1\" accid=\"f\"/>\n"
+       "      </layer></staff></measure>\n"
+       "    </section>\n"
+       "  </score></mdiv></body></music>\n"
+       "</mei>\n"))
+
+;; ───────── state ─────────
+;; :source :line | :tree | :mei · :line-preset :key :bpm :meter (beats per bar) :res-preset
+;; :run {:tree :mei :tree2 :mei2 :line2 :checks :error}
+
+(defonce ui (atom {:source :line :line-preset "phrase" :res-preset "dissolve" :key 2 :bpm 60 :meter 4 :run nil}))
+(defonce vrv (atom nil))
+
+(defn continuum-of [preset]
+  (let [l (get lines preset)]
+    {:res (sample-res (:res-preset @ui)) :wires (:wires l) :electronics (:electronics l)}))
+
+(defn checks-of [t m t2 m2 l2 line]
+  (cond-> [["the tree read from its MEI is the tree" (= t t2)]
+           ["the MEI written from that tree is the MEI (byte for byte)" (= m m2)]
+           ["writing is deterministic: the same tree, the same MEI" (= m (mx/->mei t))]
+           ["the written music agrees: mt reads the same notes from both trees"
+            (= (map (juxt :t :dur :pitch) (mt/notes t)) (map (juxt :t :dur :pitch) (mt/notes t2)))]]
+    line (conj ["the line read back is the line: times, durations, Hz, amplitudes, glissandi" (mx/same-line? line l2)])
+    (:continuum (second t)) (conj ["the continuum (resolutions, wires, electronics) comes back" (= (:continuum (second t)) (:continuum (second t2)))])))
+
+(defn compute! []
+  (try
+    (let [{:keys [source line-preset key bpm meter]} @ui
+          [t line] (case source
+                     :line (let [l (:line (get lines line-preset))]
+                             [(mx/line->tree l {:bpm bpm :key key :meter [meter 4] :continuum (continuum-of line-preset)}) l])
+                     :tree [(edn/read-string (.-value ($ "tree"))) nil]
+                     :mei [(mx/<-mei (.-value ($ "mei"))) nil])
+          m (mx/->mei t)
+          t2 (mx/<-mei m)
+          m2 (mx/->mei t2)
+          l2 (mx/tree->line t2)]
+      (swap! ui assoc :run {:tree t :mei m :tree2 t2 :mei2 m2 :line2 l2 :checks (checks-of t m t2 m2 l2 line)}))
+    (catch :default e (swap! ui assoc :run {:error (or (.-message e) (str e))}))))
+
+;; ───────── drawing the line read back (Study 52's drawing, the names from the MEI) ─────────
+
+(def W 1000) (def X0 125) (def STEP 6) (def BASE 170)    ; x of time 0, px per diatonic step, y of E4
+(def PRE 12)                                              ; x where the staff (and its clef) begins
+
+;; ───────── the start of the staff, engraved by Verovio ─────────
+;; A measure with nothing in it but a space, with the clef, the key signature and the meter: Verovio draws them, the
+;; page scales its staff to ours (measured: its five lines) and hides its lines; the meter shows as much as time is
+;; metric at the start, the whole as much as the staff is there. Without Verovio, the key signature is drawn here.
+
+(defonce preludes (atom {}))    ; [key meter] → its SVG
+
+(def sig-steps {1 [8 5 9 6 3 7 4] -1 [4 7 3 6 1 5 0]})   ; steps above E4 of the sharps (F C G D A E B) and flats
+
+(defn prelude-mei [key meter]
+  (str "<mei xmlns='http://www.music-encoding.org/ns/mei' meiversion='5.0'><music><body><mdiv><score>"
+       "<scoreDef><staffGrp><staffDef n='1' lines='5' clef.shape='G' clef.line='2' keysig='"
+       (cond (pos? key) (str key "s") (neg? key) (str (- key) "f") :else "0")
+       "' meter.count='" meter "' meter.unit='4'/></staffGrp></scoreDef>"
+       "<section><measure n='1' right='invis'><staff n='1'><layer n='1'><space dur='1'/></layer></staff></measure></section>"
+       "</score></mdiv></body></music></mei>"))
+
+(defn prelude-svg [key meter]
+  (let [tk @vrv]
+    (when (and tk (not= tk :error))
+      (or (get @preludes [key meter])
+          (try
+            (.setOptions tk (clj->js {:scale 60 :pageWidth 3000 :adjustPageWidth true :adjustPageHeight true
+                                      :header "none" :footer "none" :pageMarginTop 0 :pageMarginBottom 0
+                                      :pageMarginLeft 0 :pageMarginRight 0}))
+            (.loadData tk (prelude-mei key meter))
+            (let [s (.renderToSVG tk 1)] (swap! preludes assoc [key meter] s) s)
+            (catch :default _ nil))))))
+
+(defn local-box
+  "The box of an SVG element in the coordinates of `ref` (through their transforms, not screen pixels)."
+  [el ref]
+  (let [b (.getBBox el)
+        m (.multiply (.inverse (.getScreenCTM ref)) (.getScreenCTM el))
+        tp (fn [x y] (let [q (.createSVGPoint ref)] (set! (.-x q) x) (set! (.-y q) y) (.matrixTransform q m)))
+        a (tp (.-x b) (.-y b))]
+    {:left (.-x a) :top (.-y a)}))
+(defn sx [t end] (+ X0 (* (- W X0 30) (/ t (max end 0.001)))))
+(defn sy [step] (- BASE (* STEP step)))
+(def LANE-Y 262) (def LANE-H 52)
+
+(defn op [a] (r2 (max 0 (min 1 a))))
+
+(defn draw-staff [p end]
+  (let [slices 80 dt (/ end slices)]
+    (str
+     ;; staff lines and the semitone grid, slice by slice: each slice as present as its resolution says
+     (str/join
+      (for [s (range slices)]
+        (let [t (* s dt) a (.staffAlpha p (+ t (/ dt 2))) g (.gridAlpha p (+ t (/ dt 2)))
+              x0 (sx t end) x1 (sx (+ t dt) end)]
+          (str (when (> a 0.01)
+                 (str/join (for [k [0 2 4 6 8]] (str "<line class='staff' x1='" x0 "' x2='" x1 "' y1='" (sy k) "' y2='" (sy k) "' opacity='" (op a) "'/>"))))
+               (when (> g 0.01)
+                 (str/join (for [m (range -6 21)]
+                             (let [y (sy (* m (/ 7 12)))]
+                               (str "<line class='semi' x1='" x0 "' x2='" x1 "' y1='" y "' y2='" y "' opacity='" (op (* 0.55 g (if (zero? (mod m 12)) 1.6 1))) "'/>")))))))))
+     ;; the start of the staff, before time 0: its lines, and (without Verovio) the key signature
+     (let [a (.staffAlpha p 0) key (:key @ui)]
+       (when (> a 0.01)
+         (str (str/join (for [k [0 2 4 6 8]] (str "<line class='staff' x1='" PRE "' x2='" X0 "' y1='" (sy k) "' y2='" (sy k) "' opacity='" (op a) "'/>")))
+              (when (and (= :error @vrv) (not (zero? key)))
+                (str/join (map-indexed (fn [i st] (str "<text class='sig' x='" (+ 48 (* i 9)) "' y='" (+ (sy st) 5) "' opacity='" (op a) "'>" (if (pos? key) "♯" "♭") "</text>"))
+                                       (take (js/Math.abs key) (get sig-steps (if (pos? key) 1 -1)))))))))
+     ;; bar lines where time is metric
+     (str/join (for [b (array-seq (.-bars p))]
+                 (let [a (* (.-alpha b) (max (.staffAlpha p (.-x b)) 0.35))]
+                   (when (and (> a 0.02) (pos? (.-x b))) (str "<line class='bar' x1='" (sx (.-x b) end) "' x2='" (sx (.-x b) end) "' y1='" (sy 8) "' y2='" (sy 0) "' opacity='" (op a) "'/>"))))))))
+
+(defn draw-note [n end p]
+  (let [x (sx (.-x n) end) x1 (sx (.-x1 n) end) y (sy (.-y n)) y1 (sy (.-y1 n))
+        r (.-r n) head (.-head n) stroke (.-stroke n) staffa (.staffAlpha p (.-x n))
+        up (< (.-y n) 4) sdir (if up -1 1)]
+    (str
+     ;; the stroke: where it sounds, as thick as it is loud
+     (when (> stroke 0.01)
+       (str "<path class='stroke' d='M" x " " y " L" x1 " " y1 "' stroke-width='" (r2 (+ 2 (* 10 (.-thick n)))) "' opacity='" (op (* 0.85 stroke)) "'/>"))
+     (when (> head 0.01)
+       (str
+        ;; ledger lines for a written note off the staff
+        (when (> staffa 0.01)
+          (let [st (js/Math.round (.-y n))
+                ls (concat (when (< st 0) (range -2 (dec st) -2)) (when (> st 8) (range 10 (inc st) 2)))]
+            (str/join (for [l ls] (str "<line class='ledger' x1='" (- x 10) "' x2='" (+ x 10) "' y1='" (sy l) "' y2='" (sy l) "' opacity='" (op (* head staffa)) "'/>")))))
+        ;; a line as long as it lasts (proportional) or a glissando to its end
+        (when (> (.-durLine n) 0.01)
+          (if (.-gliss n)
+            (str "<path class='gliss' d='M" (+ x 7) " " y " L" x1 " " y1 "' opacity='" (op (.-durLine n)) "'/>")
+            (str "<line class='durline' x1='" (+ x 7) "' x2='" x1 "' y1='" y "' y2='" y "' opacity='" (op (.-durLine n)) "'/>")))
+        (when (and (.-gliss n) (> (.-stem n) 0.01))
+          (str "<path class='gliss' d='M" (+ x 8) " " y " L" (- x1 4) " " y1 "' opacity='" (op (.-stem n)) "'/>"))
+        ;; the head: filled, unless the value is a half or a whole and time is written
+        (let [fill (if (.-filled n) 1 (- 1 (.-time r)))]
+          (str "<ellipse class='head' cx='" x "' cy='" y "' rx='6.6' ry='4.6' transform='rotate(-20 " x " " y ")' fill-opacity='" (op fill) "' opacity='" (op head) "'/>"))
+        ;; stem and flags: a note value
+        (when (> (.-stem n) 0.01)
+          (let [sxp (if up (+ x 6) (- x 6)) y2 (+ y (* sdir 42))]
+            (str "<line class='stem' x1='" sxp "' x2='" sxp "' y1='" y "' y2='" y2 "' opacity='" (op (.-stem n)) "'/>"
+                 (str/join (for [k (range (.-flags n))]
+                             (let [fy (- y2 (* sdir k 8))]
+                               (str "<path class='flag' d='M" sxp " " fy " q 9 " (* -1 sdir 8) " 8 " (* -1 sdir 18) "' opacity='" (op (.-stem n)) "'/>")))))))
+        (when (and (pos? (.-dots n)) (> (.-stem n) 0.01))
+          (str "<circle cx='" (+ x 11) "' cy='" (- y 2) "' r='1.8' class='head' opacity='" (op (.-stem n)) "'/>"))
+        ;; the accidental, where the key does not say it
+        (when (> (.-accAlpha n) 0.01)
+          (str "<text class='acc' x='" (- x 19) "' y='" (+ y 5) "' opacity='" (op (.-accAlpha n)) "'>" (.-acc n) "</text>"))))
+     ;; its pitch in cents when it is free (the grid would round it)
+     (when (and (< (.. n -r -pitch) 0.25) (not= 0 (.-cents n)))
+       (str "<text class='lbl' x='" (+ x 4) "' y='" (- y 9) "' opacity='" (op (- 1 (* 4 (.. n -r -pitch)))) "'>" (if (pos? (.-cents n)) "+" "") (.-cents n) "¢</text>")))))
+
+(defn place-prelude!
+  "The start of the staff engraved by Verovio, scaled and moved onto ours."
+  [p]
+  (let [a (.staffAlpha p 0)]
+    (when-let [s (and (> a 0.01) (prelude-svg (:key @ui) (:meter @ui 4)))]
+      (let [svg ($ "score")
+            g (js/document.createElementNS "http://www.w3.org/2000/svg" "g")]
+        (.setAttribute g "class" "vrv")
+        (set! (.-innerHTML g) s)
+        (.appendChild svg g)
+        (let [lines (array-seq (.querySelectorAll g ".staff > path"))
+              clef (.querySelector g ".clef")]
+          (if (and (= 5 (count lines)) clef)
+            (let [ys (sort (map #(:top (local-box % svg)) lines))
+                  sp (/ (- (last ys) (first ys)) 4)
+                  k (/ (* 2 STEP) sp)
+                  cx (:left (local-box clef svg))]
+              (.setAttribute g "transform" (str "translate(" (- (+ PRE 4) (* k cx)) " " (- (sy 8) (* k (first ys))) ") scale(" k ")"))
+              (.setAttribute g "opacity" (op a))
+              (doseq [m (array-seq (.querySelectorAll g ".meterSig"))] (.setAttribute m "opacity" (op (.timeAlpha p 0)))))
+            (.remove g)))))))
+
+
+(defn line-end [line] (reduce max 0.001 (map #(+ (:t %) (:dur %)) line)))
+
+(defn res-of [t]
+  (let [xs (or (get-in (second t) [:continuum :res]) (sample-res (:res-preset @ui)))
+        end (line-end (mx/tree->line t))]
+    (into {} (for [[ax v] xs] [ax (vec (map-indexed (fn [i r] [(* end (/ i (dec (count v)))) r]) v))]))))
+
+(defn draw-line! []
+  (let [{:keys [tree2 line2]} (:run @ui)]
+    (if-not tree2
+      (set! (.-innerHTML ($ "score")) "")
+      (let [a (second tree2)
+            p (.project K (clj->js (map #(select-keys % [:t :dur :hz :hz2 :amp :name]) line2)) (clj->js (res-of tree2))
+                        (clj->js {:bpm (or (:tempo a) 60) :key (or (:key a) 0) :meter (:meter @ui)}))
+            end (line-end line2)]
+        (swap! ui assoc :key (or (:key a) 0))
+        (set! (.-innerHTML ($ "score"))
+              (str (draw-staff p end)
+                   (str/join (for [n (array-seq (.-notes p))] (draw-note n end p)))
+                   (str/join (map-indexed (fn [i e] (str "<text class='idx' x='" (sx (:t e) end) "' y='" (- BASE 112) "'>" (esc (or (:name e) "")) "</text>")) line2))))
+        (place-prelude! p)))))
+
+(defn engrave! []
+  (let [m (get-in @ui [:run :mei]) tk @vrv]
+    (cond
+      (nil? m) (set! (.-innerHTML ($ "engraved")) "")
+      (= tk :error) (set! (.-innerHTML ($ "engraved")) "<p class='err'>Verovio could not be loaded.</p>")
+      (nil? tk) (set! (.-innerHTML ($ "engraved")) "<p class='facts'>Loading Verovio…</p>")
+      :else (try
+              (.setOptions tk (clj->js {:scale 40 :pageWidth 2400 :adjustPageHeight true :breaks "auto" :header "none" :footer "none"
+                                        :pageMarginTop 20 :pageMarginBottom 10 :pageMarginLeft 20 :pageMarginRight 20}))
+              (.loadData tk m)
+              (set! (.-innerHTML ($ "engraved")) (.renderToSVG tk 1))
+              (catch :default e (set! (.-innerHTML ($ "engraved")) (str "<p class='err'>" (esc (.-message e)) "</p>")))))))
+
+(defn draw! []
+  (let [{:keys [run source]} @ui {:keys [tree mei checks error]} run]
+    (set! (.-innerHTML ($ "checks"))
+          (if error
+            (str "<li class='bad'>" (esc error) "</li>")
+            (str/join (for [[what ok] checks] (str "<li class='" (if ok "ok" "bad") "'>" (if ok "✓ " "✗ ") (esc what) "</li>")))))
+    (when (and tree (not= source :tree)) (set! (.-value ($ "tree")) (mt/pp tree)))
+    (when (and mei (not= source :mei)) (set! (.-value ($ "mei")) mei))
+    (set! (.-textContent ($ "status"))
+          (if error "error" (str (count (filter second checks)) " of " (count checks) " checks hold · "
+                                 (count (get-in run [:line2])) " events · " (count (re-seq #"<note " (or mei ""))) " written notes")))
+    (draw-line!)
+    (engrave!)))
+
+(defn go! [] (compute!) (draw!))
+
+(defn download! []
+  (when-let [m (get-in @ui [:run :mei])]
+    (let [a (js/document.createElement "a")]
+      (set! (.-href a) (js/URL.createObjectURL (js/Blob. #js [m] #js {:type "application/mei+xml"})))
+      (set! (.-download a) "kairotic-line.mei")
+      (.click a))))
+
+(defn init! []
+  (doseq [[id k f] [["line-preset" :line-preset identity] ["key" :key js/parseInt] ["bpm" :bpm js/parseFloat]
+                    ["meter" :meter js/parseInt] ["res-preset" :res-preset identity]]]
+    (.addEventListener ($ id) "change"
+                       (fn [e] (swap! ui assoc k (f (.. e -target -value)) :source :line)
+                         (when (= id "line-preset")
+                           (let [l (get lines (.. e -target -value))]
+                             (swap! ui assoc :key (:key l) :bpm (:bpm l))
+                             (set! (.-value ($ "key")) (str (:key l))) (set! (.-value ($ "bpm")) (str (:bpm l)))))
+                         (go!))))
+  (.addEventListener ($ "apply-tree") "click" (fn [_] (swap! ui assoc :source :tree) (go!)))
+  (.addEventListener ($ "read-mei") "click" (fn [_] (swap! ui assoc :source :mei) (go!)))
+  (.addEventListener ($ "foreign") "click" (fn [_] (set! (.-value ($ "mei")) foreign-mei) (swap! ui assoc :source :mei) (go!)))
+  (.addEventListener ($ "download") "click" (fn [_] (download!)))
+  (go!)
+  (when-let [v (.-kairoticVerovio js/window)]
+    (-> v (.then (fn [tk] (reset! vrv tk) (draw!))) (.catch (fn [_] (reset! vrv :error) (draw!))))))
+
+(init!)
+
+;; for the tests
+(set! (.-kairoticMei js/window)
+      #js {:state (fn [] (clj->js (dissoc @ui :run)))
+           :checks (fn [] (clj->js (get-in @ui [:run :checks])))
+           :error (fn [] (get-in @ui [:run :error]))
+           :tree (fn [] (pr-str (get-in @ui [:run :tree2])))
+           :line (fn [] (clj->js (get-in @ui [:run :line2])))
+           :mei (fn [] (get-in @ui [:run :mei]))
+           :verovio (fn [] (cond (= :error @vrv) "error" @vrv "ready" :else "loading"))})
+</script>

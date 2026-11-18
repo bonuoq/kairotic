@@ -5,6 +5,14 @@
 - **An agent's panel.** The presented controls of an agent's content show on the agent box itself, as those of a
   `patch` box do (Study 11): an instrument Claude built is played from outside without opening it. Claude is told
   to present the controls it builds; presenting or hiding them by hand in its content changes the panel too.
+- **Study 55 · MEI** (discussion #217, its second study): the continuum of Study 52 deterministic and coherent
+  between the tree and MEI. A line becomes a canonical tree of `kairotic.mt` (a note per measure it sounds in, tied
+  on; free notes in Hz; the real times, loudness and glissando on its first piece; the resolutions, wires and
+  electronics on the voice); its MEI is the app's `mt/->mei` with `@tstamp.real`, `@dur.real` and `@vel`, and one
+  `<extMeta type="kairotic">` with the rest as EDN by `xml:id`. Tree → MEI → tree and MEI → tree → MEI are
+  fixpoints (byte for byte) and the line comes back exactly; a MEI written elsewhere reads as its notation. Kernel
+  `studies/55-mei/kairotic/meitree.cljs` (tested in the browser on the app's modules) and a page; Study 52's kernel
+  takes a written name for a note's staff step (`spellName`).
 
 - **`state`, `transition`, `instruction` and `region` leave the core** (breaking). They came from Study 1 — the
   temporal, conditional, opportune changes of state a work would be made of — but never had a behaviour: boxes with
