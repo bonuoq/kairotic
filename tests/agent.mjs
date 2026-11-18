@@ -69,6 +69,23 @@ export async function agent(page, check) {
     check("... and it plays the new content: 50 in, 52 out", /\b52\b/.test(got), got);
     check("... its state outlet said :built", (await cljs(page, "(get-in @eng/rt [:states :b900.agent-core])")) === "{}");
     check("an agent opens like a patch @name: its line, in its tab", (await cljs(page, "(line-ref? (get-in (current) [:boxes :b900]))")) === "true");
+
+    // the Agents section of the Claude panel (#275): the work's agents, what they do, their builds, and buttons
+    await page.evaluate(() => document.getElementById("tab-claude").click());
+    const row = async () => page.evaluate(() => { const li = [...document.querySelectorAll("#agents-list > li")].find((l) => /b900/.test(l.querySelector(".ag-top").textContent)); return li ? li.textContent : ""; });
+    const r1 = await (async () => { for (let i = 0; i < 50; i++) { const t = await row(); if (/add two/.test(t) && /built/.test(t)) return t; await page.waitForTimeout(100); } return row(); })();
+    check("the Claude panel lists the agent: its request, built, its line, who asked", /add two/.test(r1) && /built/.test(r1) && /its line: «agent b900/.test(r1) && /asked by you/.test(r1), r1.slice(0, 300));
+    check("... and the log of its builds: the try sent back, then built", /try 1: .*no-such-class.*sent back to Claude/.test(r1) && /built: 4 boxes/.test(r1), r1.slice(0, 600));
+    await page.click('#agents-list li[data-agent*="b900"] [data-agent-act=ask]');
+    await page.waitForSelector('#agents-list li[data-agent*="b900"] .ag-ask-in', { timeout: 5000 }).catch(() => null);
+    check("Ask… opens a field with its request", await page.evaluate(() => { const i = document.querySelector('#agents-list li[data-agent*="b900"] .ag-ask-in'); return !!i && i.value === "add two"; }));
+    await page.fill('#agents-list li[data-agent*="b900"] .ag-ask-in', "add three");
+    await page.click('#agents-list li[data-agent*="b900"] [data-agent-act=send]');
+    const third = await until(page, "(:built-from (agent-info :b900))", (x) => x === '"add three"', 30000);
+    check("... and Build asks it: a new request, built (on your own Claude)", third === '"add three"' && bodies.length === 4, `${third} · ${bodies.length} calls`);
+    await page.click('#agents-list li[data-agent*="b900"] [data-agent-act=rebuild]');
+    const fourth = await until(page, "(count (vals (line-nodes (agent-line (get-in (current) [:boxes :b900])))))", (x) => x === "4", 30000);
+    check("Build again: the same request, another answer, one more point of its line", fourth === "4" && bodies.length === 5, `${fourth} points · ${bodies.length} calls`);
   } catch (e) {
     check("the agent tests ran: " + (e.message || e), false);
   } finally {

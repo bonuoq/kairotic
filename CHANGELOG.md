@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The Agents section of the Claude panel** (issue #275). Every agent box of the work, through its embedded
+  patches: its request, whether it is building, built or failed, who asked, whether its content was changed by hand,
+  what Claude said it does, its line, and the log of its builds (each try sent back to Claude, the build, the error),
+  which no longer goes to the REPL. Buttons open its line, build it again (`(rebuild-agent :bN)`: the same request,
+  another answer, a new point of its line) and ask it for something else.
+
 - **Agents you can read from outside** (issue #275). Claude now says what it built: a paragraph and a line per inlet
   and outlet (an ```agent block before the patch code), kept in the box's recipe. **?** on an agent box shows that
   agent's own description and ports before the page of the class, `(agent-info :bN)` returns them, and its ports say
