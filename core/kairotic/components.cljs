@@ -769,8 +769,6 @@
 (define! "reader" {:doc "Reads the buffer connected to its right inlet (canvas, freqt, ring) at the position that comes in on the left, in the buffer's own units — the X axis of a canvas (Y with `reader y`), the time of a freqt, the seconds of a ring — or, with `norm`, from 0 to 1, as reader~ does at audio rate. On a canvas or freqt: ids on the right and the values on the left (every crossing); with `reader path [stroke]` a position from 0 to 1 travels along a stroke in the order it was drawn and gives [x y]. On a ring: what it crosses, each value as it was written, either way (a move larger than its jump is a seek); or, without positions, it follows the ring's head d behind, then a speed (reader d 1 speed 0.5; msg :d, :speed, :jump, :stop)."
                    :usage "reader [x|y|path [stroke]] [norm] [d s] [speed x] [jump s]"
                    :io [2 2] :receive reader :reads-buffer true})
-(doseq [[n io] [["state" [1 1]] ["transition" [2 1]] ["instruction" [1 0]] ["region" [1 1]]]]
-  (define! n {:doc "Kairotic class with no semantics yet." :io io}))
 
 ;; ───────── core: audio ─────────
 

@@ -67,7 +67,7 @@ Folders: `nucleo/` → `core/`, `ensayos/` → `studies/`, `componentes/` → `c
 | msg, bang, loadbang, print, mtof, ftom, + - * / | (same) |
 | synth~, osc~, gain~, dac~, faust~, script | (same) |
 | componente | component |
-| estado / transicion / consigna / region | state / transition / instruction / region |
+| estado / transicion / consigna / region | state / transition / instruction / region (placeholders without behaviour, removed from the core in 0.3; a layer of form is discussed apart) |
 | perilla | knob |
 | — | patch (sub-patch), inlet, outlet, inlet~, outlet~ (Study 10) |
 | — | phasor~, reader~ (audio rate; positions in the buffer's units, `reader~ norm` for 0…1 from a phasor~; `reader~ norm 2 gate` adds one gate outlet per voice, 0 or 1), sig~, adsr~ [a d s r]; `reader path [stroke]` (Study 13) |

@@ -87,7 +87,6 @@ header .status b.off { color: var(--kairos); }
 #canvas { display: block; width: 900px; height: 680px; max-width: none; touch-action: none; user-select: none; -webkit-user-select: none; }
 #canvas .bg { fill: url(#grid); }
 #canvas .box rect.body { fill: var(--box); stroke: var(--ink); stroke-width: 1; }
-#canvas .box.kairos rect.body { stroke: var(--kairos); stroke-width: 1.25; }
 #canvas .box.sub rect.body { stroke: var(--accent); stroke-width: 2; }
 /* patch @name: a line used as a sub-patch (#117) — following it, pinned, or with something wrong */
 #canvas .box.ref rect.body { stroke-dasharray: 6 3; }
@@ -388,7 +387,6 @@ body.annotating.annot-move #canvas { cursor: move; }
    curved wires; an outlet within reach lights up and the pointer is a cross; the inlet a wire would land on too */
 #canvas .port { fill: var(--ink); transform-box: fill-box; transform-origin: center; transition: transform 0.08s ease-out, fill 0.08s; }
 #canvas .port.out { cursor: crosshair; }
-#canvas .box.kairos .port { fill: var(--kairos); }
 #canvas .port.out.hot, #canvas .port.in.target { fill: var(--accent); transform: scale(1.4, 2); }
 #canvas.near-out, #canvas.near-out *, #canvas.wiring, #canvas.wiring * { cursor: crosshair !important; }
 #canvas .wire { fill: none; stroke: var(--ink); stroke-width: 1.5; }

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`state`, `transition`, `instruction` and `region` leave the core** (breaking). They came from Study 1 — the
+  temporal, conditional, opportune changes of state a work would be made of — but never had a behaviour: boxes with
+  ports that did nothing. A layer of form (states, transitions with time windows and conditions, instructions for
+  the performers, regions) is a discussion of its own, and will come back as a package once a study shows it.
+
 - **The Agents section of the Claude panel** (issue #275). Every agent box of the work, through its embedded
   patches: its request, whether it is building, built or failed, who asked, whether its content was changed by hand,
   what Claude said it does, its line, and the log of its builds (each try sent back to Claude, the build, the error),
