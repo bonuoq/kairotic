@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A tree box as a continuum** (discussion #217, Study 52 in the app): `(view :bN :continuum)` or ⇄ — between a
+  roll and a score, time (as it sounded → as written), pitch (Hz → keys → staff) and glyph (stroke → head → value)
+  each at a resolution that changes over the piece; `(continuum! :bN :dissolve)` and the other presets
+  (`:written :proportional :tempered :graphic :mixed :crystallize`) or `{:res …}`, kept on the tree's root (history,
+  MEI). Clef and key signature by Verovio, placed on the drawn staff. `kairotic.continuum` (events, project, svg).
+- **Takes in the app** (discussion #289): `(keep-take! :bN take)` keeps a performance only for you by default, in
+  this browser beside the work (as Learn's mappings), or `:work` in the tree; `(takes :bN)`, `(forget-take! :bN id)`,
+  `(continuum! :bN {:take id})` shows one.
 - **How strictly a line moves** (`@kairotic/cac` 0.2.2, `partimento.mjs`'s `line`; Study 56): beyond the two-part
   rules, a voice may be held to more of counterpoint's melodic ones — *moderate*, a leap of a 5th or more turns back
   by step; *strict*, leaps up to a 5th or the octave, turned back by step from a 4th, never two the same way. `parts`

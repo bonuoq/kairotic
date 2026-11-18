@@ -118,6 +118,15 @@ export async function views(page, check) {
   const mt2 = (await cljs(page, `(place-tree! (mei/<-mei (mei ${ct})) nil 2100 1500)`)).trim();
   const p1 = await cljs(page, `(mt/pitches (tree-data ${ct}))`), p2 = await cljs(page, `(mt/pitches (tree-data ${mt2}))`);
   check("a tree read from MEI goes into a new tree box (as a dropped .mei file does), with the same notes", p2 === p1, p1 + " / " + mt2 + " → " + p2);
+  await cljs(page, `(continuum! ${ct} :dissolve)`);
+  check("(continuum! :bN :dissolve) shows the tree box as a continuum, kept in the tree",
+    (await cljs(page, `[(view-of (need-box ${ct})) (some? (:res (:continuum (mt/attrs (tree-data ${ct})))))]`)) === "[:continuum true]");
+  const heads = await page.evaluate(() => document.querySelectorAll(".ct-head").length);
+  check("... drawn: its heads", heads > 0, String(heads));
+  await cljs(page, `(keep-take! ${ct} {:id "mine" :when {}})`);
+  check("(keep-take! :bN take) keeps it only for me: not in the tree", (await cljs(page, `[(mapv :scope (takes ${ct})) (mei/takes (tree-data ${ct}))]`)) === "[[:me] []]");
+  await cljs(page, `(forget-take! ${ct} "mine")`);
+  await cljs(page, `(view ${ct} :score)`);
   await cljs(page, `(move-stroke ${ct} :n2 0 -100)`);
   check("in measures, a change of pitch is written in the note", (await cljs(page, `(mt/pitches (tree-data ${ct}))`)) === '["c4" "e4"]');
   await cljs(page, `(unquantize! ${ct})`);

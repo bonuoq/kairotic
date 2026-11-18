@@ -65,11 +65,11 @@
                       (concat [(str "(tree! " id)] (map (fn [l] (str "  " l)) (str/split-lines (mt/pp t))) [")"])))})
 
 (comp/define! "tree"
-  {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]), seen as a score or as a roll of frequency over time (⇄ in its header), its text in the code window ({ } in its header) — one tree, two views (discussion #92): drawing on its roll writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it."
+  {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]), seen as a score, as a roll of frequency over time, or as a continuum between them (⇄ in its header; (continuum! :bN :dissolve), discussion #217), its text in the code window ({ } in its header) — one tree, two views (discussion #92): drawing on its roll writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it."
    :usage "tree"
    ;; two views (score, roll); its text opens in the code window from { }. Works that showed it as code
    ;; or as a canvas open it as a score or a roll
-   :display :score :views [:score :roll] :view-as {:roll :canvas} :view-aliases {:canvas :roll :code :score}
+   :display :score :views [:score :roll :continuum] :view-as {:roll :canvas} :view-aliases {:canvas :roll :code :score}
    :language "edn" :model model
    :io [1 2]
    :template "[:voice {:name \"motif\"}\n [:measure {:meter [4 4]} \"c4/1 d4/.5 e4 g4/1 e4\"]\n [:measure \"f4/.5 e4 d4 c4 d4/2\"]]"

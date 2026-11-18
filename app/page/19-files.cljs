@@ -316,3 +316,63 @@
         (.preventDefault e)
         (let [[x y] (pt e)]
           (doseq [[i f] (map-indexed vector fs)] (import-music-file! f nil (+ x (* 30 i)) (+ y (* 30 i)))))))))
+
+;; ───────────────────────── a tree box as a continuum, and its takes (discussions #217, #289) ─────────────────────────
+
+(defn continuum!
+  "A tree box seen as a continuum, at a resolution: (continuum! :b3 :dissolve) — a preset: :written :proportional
+   :tempered :graphic :mixed :dissolve :crystallize —, (continuum! :b3 {:res {:time [r …] :pitch [r …] :glyph [r …]}})
+   (samples evenly over the piece, 0…1), or the take shown: (continuum! :b3 {:take \"t1\"}), {:take nil} for the
+   notes' own time. Kept in the tree (:continuum on its root): one event of the history, part of its MEI."
+  [id x]
+  (need-tree-box id)
+  (let [t (or (tree-data id) (fail (str id " holds no tree")))
+        c (or (:continuum (mt/attrs t)) {})
+        c2 (cond
+             (keyword? x) (assoc c :res (or (ct/preset-res x) (fail (str "No such resolution: " x " (" (str/join " " (map str (keys ct/presets))) ")"))))
+             (map? x) (cond-> c
+                        (contains? x :res) (assoc :res (:res x))
+                        (and (contains? x :take) (:take x)) (assoc :take (:take x))
+                        (and (contains? x :take) (nil? (:take x))) (dissoc :take))
+             :else (fail "(continuum! :bN :dissolve), {:res …} or {:take \"t1\"}"))]
+    (tree! id (mt/update-attrs t assoc :continuum c2))
+    (when-not (= :continuum (view-of (need-box id))) (view id :continuum))
+    (str id " · continuum" (when (keyword? x) (str " " (name x))) (when (:take c2) (str " · take " (:take c2))))))
+
+(defn takes-key [] (str "kairotic-takes:" (name (or (:kind @work) :local)) ":" (or (:id @work) "local")))
+
+(defn my-takes-load! []
+  (reset! my-takes (or (try (some-> (.getItem js/localStorage (takes-key)) clojure.edn/read-string) (catch :default _ nil)) {})))
+
+(add-watch work :my-takes (fn [_ _ o n] (when (not= [(:kind o) (:id o)] [(:kind n) (:id n)]) (my-takes-load!))))
+(my-takes-load!)
+
+(defn keep-take!
+  "Keeps a take of a tree box ({:id \"t1\" :name … :audio … :when {note-id [onset dur]}}, seconds): only for you by
+   default — in this browser, beside the work, as Learn keeps a mapping only for you —, or with :work in the tree (an
+   event of its history, shared in a room): (keep-take! :b3 take), (keep-take! :b3 take :work)."
+  ([id tk] (keep-take! id tk :me))
+  ([id tk scope]
+   (need-tree-box id)
+   (when-not (and (map? tk) (some? (:id tk)) (map? (:when tk))) (fail "A take is {:id \"t1\" :when {note-id [onset dur]} …}"))
+   (case scope
+     :work (do (tree! id (mei/add-take (tree-data id) tk)) :work)
+     :me (do (swap! my-takes update id (fn [ts] (conj (vec (remove #(= (:id tk) (:id %)) ts)) tk)))
+             (try (.setItem js/localStorage (takes-key) (pr-str @my-takes)) (catch :default _ nil))
+             (render-all!)
+             :me)
+     (fail "A take is kept :me (only for you) or :work"))))
+
+(defn forget-take!
+  "Forgets a take kept only for you (a take in the work is an edit of the tree: (tree! …) without it)."
+  [id take-id]
+  (swap! my-takes update id (fn [ts] (vec (remove #(= take-id (:id %)) ts))))
+  (try (.setItem js/localStorage (takes-key) (pr-str @my-takes)) (catch :default _ nil))
+  (render-all!)
+  :forgotten)
+
+(defn takes
+  "The takes of a tree box: those of the work and those kept only for you ([{:id :name :scope} …])."
+  [id]
+  (vec (concat (map (fn [t] (assoc (select-keys t [:id :name]) :scope :work)) (mei/takes (or (tree-data id) [:voice])))
+               (map (fn [t] (assoc (select-keys t [:id :name]) :scope :me)) (get @my-takes id)))))

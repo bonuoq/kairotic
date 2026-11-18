@@ -32,6 +32,13 @@ partitura. Nada se acopla por detrás del patch: el bucle es una línea que se v
 código. Una caja tree también puede mostrarse como partitura (⇄ en su cabecera, `(view :bN :score)`): entonces
 sus notas la editan directamente, sin cable. El bucle con cable es para una partitura que muestra el árbol
 después de cajas `mt`.
+O como un **continuo** (`(view :bN :continuum)`, `(continuum! :bN :dissolve)`): entre un piano roll y una
+partitura, cada eje con su propia resolución, cambiando a lo largo de la pieza — el tiempo, de donde sonó cada nota a
+donde está escrita; la altura, de su frecuencia exacta a la tecla más cercana y a su línea o espacio del pentagrama; el
+signo, de un trazo tan grueso como fuerte suena a una cabeza con una línea y a su figura escrita. Las resoluciones se
+guardan en el árbol (un evento de la historia, parte de su MEI). Una toma — dónde tocó cada nota una interpretación —
+puede mostrarse en lugar del tiempo propio de las notas: `(keep-take! :bN toma)` la guarda solo para ti (en este
+navegador, como Learn guarda tus asignaciones), `:work` en el árbol.
 
 Las ediciones nombran el nodo donde está escrita cada nota, así que funcionan a través de
 transformaciones: una partitura que muestra `mt transpose 7` de un árbol puede editar el propio árbol.
