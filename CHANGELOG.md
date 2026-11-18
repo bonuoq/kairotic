@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **An agent's panel.** The presented controls of an agent's content show on the agent box itself, as those of a
+  `patch` box do (Study 11): an instrument Claude built is played from outside without opening it. Claude is told
+  to present the controls it builds; presenting or hiding them by hand in its content changes the panel too.
 - **Study 55 · MEI** (discussion #217, its second study): the continuum of Study 52 deterministic and coherent
   between the tree and MEI. A line becomes a canonical tree of `kairotic.mt` (a note per measure it sounds in, tied
   on; free notes in Hz; the real times, loudness and glissando on its first piece; the resolutions, wires and

@@ -274,10 +274,10 @@
 (defn patch-io [p] (let [{:keys [inlets outlets]} (patch-ports p)] [(count inlets) (count outlets)]))
 
 (defn subpatch?
-  "Is the box a sub-patch (embedded or an abstraction)?"
+  "Is the box a sub-patch (embedded, an abstraction, or an agent: its content, issue #269)?"
   [b]
   (let [k (klass (:text b))]
-    (or (= k "patch") (map? (:patch (lookup k))))))
+    (or (= k "patch") (= k "agent") (map? (:patch (lookup k))))))
 
 ;; ───────── utilities for writing components ─────────
 
