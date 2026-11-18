@@ -185,23 +185,12 @@ A box Claude builds inside, from the request in its text: agent "…". Its conte
 
 **Messages and gestures**
 
+- `?`: on an agent box: what this one does and what each of its ports takes and sends, as Claude described it when it built it, before this page
 - `double-click`: opens its content, in its line's tab
 - `(ask-agent :bN) · (ask-agent :bN "…")`: builds it again from its text · with a new request
 - `(agent-info :bN)`: what it was built from, its line, who asked, and whether its content was changed after
 
 See also: `patch`, `comes`, `euclid`
-
-### agent-core
-
-Put inside every agent box by the engine, not written by hand: it takes the requests of the agent's last inlet and says, by its last outlet, what the agent is doing.
-
-Inside an agent box, put there by the engine (not written by hand): it takes the requests of the agent's last inlet and says, by its last outlet, what the agent is doing.
-
-**Inlets** 1
-
-**Outlets** 1
-
-See also: `agent`
 
 ### bang
 
