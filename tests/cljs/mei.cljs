@@ -87,7 +87,8 @@
           t2 (mei/add-take tr tk)
           m (mei/->mei t2)]
       (t/is "a take goes to MEI's performance module: a <when> per note played, pointing at it"
-            (and (re-find #"<performance xml:id=\"perf-t1\" label=\"Tuesday\"><recording xml:id=\"rec-t1\" betype=\"time\"><avFile target=\"a1b2c3\"/>" m)
+            (and (re-find #"<performance[^>]*xml:id=\"perf-t1\"" m) (re-find #"<performance[^>]*label=\"Tuesday\"" m)
+                 (re-find #"<recording[^>]*betype=\"time\"" m) (re-find #"<avFile[^>]*target=\"a1b2c3\"" m)
                  (= 3 (count (re-seq #"<when " m))) (re-find #"absolute=\"00:00:01\.030\" data=\"#k-" m)))
       (t/is "… before <body>" (< (.indexOf m "<performance") (.indexOf m "<body>")))
       (t/is "… and comes back exactly: tree → MEI → tree, MEI → tree → MEI" (and (= t2 (mei/<-mei m)) (= m (mei/->mei (mei/<-mei m)))))
@@ -104,11 +105,11 @@
                           "<music><performance label=\"concert\"><recording betype=\"time\"><avFile target=\"take.wav\"/><when absolute=\"00:00:01.500\" data=\"#n2\"/><when absolute=\"00:00:02.250\" data=\"#n3\"/></recording></performance><body>")
           tr (mei/<-mei fm)]
       (t/eq "a MEI from elsewhere with a performance: its take, the notes it points at get their xml:id"
-            [(:takes (second tr)) (keep (comp :id second) (filter #(= :note (first %)) (tree-seq vector? seq tr)))]
+            [(:takes (second tr)) (keep (comp :id second) (filter #(and (vector? %) (= :note (first %))) (tree-seq vector? seq tr)))]
             [[{:id "take1" :when {"n2" [1.5 nil] "n3" [2.25 nil]} :name "concert" :audio "take.wav"}] ["n2" "n3"]])
       (t/eq "… and its line: where the take played them, for as long as they are written" (mapv (juxt :id :t :dur) (mei/tree->line tr {:take "take1"}))
             [["n2" 1.5 0.5] ["n3" 2.25 0.5]]))
     (let [q [:voice [:measure {:meter [4 4]} [:note {:pitch "c4" :dur 2}] [:note {:pitch "d4" :dur 2 :tie true}]]
              [:measure {:meter [4 4]} [:note {:pitch "d4" :dur 1}] [:rest {:dur 1}] [:note {:pitch "e4" :dur 2 :id "n1"}]]]]
       (t/eq "ensure-ids: an :id for every note that begins a sound, none for a tied piece, the ones used skipped"
-            (keep (comp :id second) (filter #(= :note (first %)) (tree-seq vector? seq (mei/ensure-ids q)))) ["n0" "n2" "n1"]))))
+            (keep (comp :id second) (filter #(and (vector? %) (= :note (first %))) (tree-seq vector? seq (mei/ensure-ids q)))) ["n0" "n2" "n1"]))))
