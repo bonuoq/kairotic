@@ -178,8 +178,8 @@
     (letfn [(walk [el]
               (doseq [x (el-kids el)]
                 (case (lname x)
-                  "scoreDef" (let [m (parse-meter (at x "meter.count") (at x "meter.unit")) s (parse-sig (at x "key.sig"))]
-                               (swap! state cond-> m (assoc :meter m) (some? s) (assoc :sig s)))
+                  "scoreDef" (let [m (parse-meter (at x "meter.count") (at x "meter.unit")) sg (parse-sig (at x "key.sig"))]
+                               (swap! state (fn [st] (cond-> st m (assoc :meter m) (some? sg) (assoc :sig sg)))))
                   ("section" "ending" "expansion") (walk x)
                   "measure" (let [{:keys [meter sig]} @state
                                   [p q] (:meter meter)
