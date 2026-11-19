@@ -39,6 +39,11 @@ signo, de un trazo tan grueso como fuerte suena a una cabeza con una línea y a 
 guardan en el árbol (un evento de la historia, parte de su MEI). Una toma — dónde tocó cada nota una interpretación —
 puede mostrarse en lugar del tiempo propio de las notas: `(keep-take! :bN toma)` la guarda solo para ti (en este
 navegador, como Learn guarda tus asignaciones), `:work` en el árbol.
+Los cables unen una nota con la electrónica, dibujados sobre el continuo desde la nota hasta una franja encima:
+`(wire! :bN 2 :swell)` es **rígido** — una caja `follow` que escucha al intérprete envía `:swell` en esa nota, o en la
+siguiente que encuentre si se la saltó, nunca antes y nunca dos veces; `{:kind :elastic :tol 0.5}` es **elástico** —
+en la nota si el intérprete llega a tiempo, y si no por su cuenta medio segundo después de cuando se la esperaba al
+tempo del intérprete; `{:leader :electronics}` — en el momento esperado, haga lo que haga el intérprete.
 
 Las ediciones nombran el nodo donde está escrita cada nota, así que funcionan a través de
 transformaciones: una partitura que muestra `mt transpose 7` de un árbol puede editar el propio árbol.

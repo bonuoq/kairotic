@@ -39,6 +39,29 @@
         (t/eq "a note heard an octave off (a tracker's usual error) is still that note" (mapv :id (keep (fn [[k x]] (when (= k :at) x)) found)) ["n0" "n1" "n2" "n3"]))
       (let [{:keys [found state]} (fl/follow sc (played 1 0 [[0 60] [1 72]]))]
         (t/eq "a note too far ahead is not where the performer is" [(mapv :id (keep (fn [[k x]] (when (= k :at) x)) found)) (:extra state)] [["n0"] 1])))
+    ;; wires (discussion #217): rigid on n3, elastic on n5 (half a second of tolerance), led by the electronics on n6
+    (let [wt (assoc-in tree [1 :continuum] {:wires [{:id "w1" :note "n3" :send :a :kind :rigid}
+                                                     {:id "w2" :note "n5" :send :b :kind :elastic :tol 0.5}
+                                                     {:id "w3" :note "n6" :send :c :kind :elastic :leader :electronics}]})
+          sc (fl/score wt)
+          ws (fl/wires wt sc)
+          run (fn [perf] (let [{:keys [found]} (fl/follow sc perf {:wires ws})]
+                           (vec (keep (fn [[k x]] (when (and (= k :cue) (not= :swell (:cue x))) [(:cue x) (:status x) (:t x)])) found))))]
+      (t/eq "the wires a tree is followed with: its notes' :cue and its continuum's, on their notes"
+            (mapv (juxt :id :note :kind :leader) ws)
+            [["cue:n1" 1 :rigid :performer] ["w1" 3 :rigid :performer] ["w2" 5 :elastic :performer] ["w3" 6 :elastic :electronics]])
+      (t/eq "played in time: rigid and elastic on their notes; led by the electronics, at its own time"
+            (run (played 1 0 (map-indexed vector midis))) [[:a "on the note" 3] [:b "on the note" 5] [:c "led" 6]])
+      (t/eq "the performer stops after the fifth note: the elastic wire goes on at its time plus its tolerance, the led one at its time, the rigid ones never"
+            (run (played 1 0 (take 5 (map-indexed vector midis)))) [[:a "on the note" 3] [:b "went on" 5.5] [:c "led" 6]])
+      (t/eq "a note left out: its rigid wire caught up at the next"
+            (run (played 1 0 [[0 60] [1 62] [2 64] [4 67] [5 69] [6 71] [7 72]])) [[:a "caught up" 4] [:b "on the note" 5] [:c "led" 6]])
+      (t/eq "late at the elastic wire's note: it went on without it"
+            (first (filter #(= :b (first %)) (run (played 1 0 [[0 60] [1 62] [2 64] [3 65] [4 67] [6.2 69]]))))
+            [:b "went on" 5.5])
+      (t/is "when the next elastic wire would go on by itself"
+            (= 5.5 (fl/next-due (reduce (fn [st [t m]] (first (fl/hear st t m))) (fl/start sc {:wires ws}) (played 1 0 (take 5 (map-indexed vector midis)))))))
+      (t/is "the continuum draws them" (let [s (ct/svg wt 600 200)] (and (re-find #"ct-wire ct-rigid\" data-wire=\"w1\"" s) (re-find #"ct-wire ct-elastic ct-led" s)))))
     (let [rep [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 c4 c4 d4"]]
           {:keys [found]} (fl/follow (fl/score rep) [[0 60 0.5] [1.1 60 0.5] [2.3 60 0.5] [3.2 62 0.5]])]
       (t/eq "repeated notes, one after the other" (mapv :id (keep (fn [[k x]] (when (= k :at) x)) found)) ["n0" "n1" "n2" "n3"]))

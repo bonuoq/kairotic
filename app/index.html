@@ -201,6 +201,12 @@ body.embed .line-tabs, body.present .line-tabs { display: none !important; }
 #canvas .ct-acc { font: 14px serif; fill: #1b2430; }
 #canvas .ct-cents { font: 9px var(--f-code, monospace); fill: #5a6676; }
 #canvas .prelude-slot { color: #1b2430; fill: #1b2430; }
+/* wires between a note and the electronics: rigid solid, elastic dashed (its tolerance along the lane), led by the electronics a diamond */
+#canvas .ct-wire line { stroke: #b4462e; stroke-width: 1.2; }
+#canvas .ct-wire.ct-elastic line { stroke-dasharray: 4 3; }
+#canvas .ct-wire line.ct-tol { stroke-width: 3; stroke-opacity: 0.35; stroke-dasharray: none; }
+#canvas .ct-wire circle, #canvas .ct-wire path { fill: #b4462e; }
+#canvas .ct-wire text { font: 9px var(--f-code, monospace); fill: #b4462e; }
 #canvas .prelude-slot .staff > path, #canvas .prelude-slot .barLine path { stroke: none !important; }
 #canvas .score-slot { color: #1b2430; fill: #1b2430; }
 #canvas .score-slot g.note, #canvas .score-slot g.rest { cursor: pointer; }
