@@ -2824,6 +2824,7 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `(export-mei! :bN) · (mei :bN)`: its MEI (downloaded, or as text): the notation, where its notes really sounded (@tstamp.real, @dur.real, @vel) and the rest in an <extMeta type="kairotic">; read back it is the same tree
 - `(import-mei!) · (import-mei! :bN) · drop a file on the patch`: a .mei or MusicXML file as a tree box (a new one, or into bN)
 - `⇄ continuum · (continuum! :bN :dissolve)`: between a roll and a score: each axis — time (as it sounded → as written), pitch (Hz → keys → staff), glyph (stroke → head → value) — at its own resolution, changing over the piece (:written :proportional :tempered :graphic :mixed :dissolve :crystallize, or {:res …}); kept in the tree
+- `(wire! :bN 2 :swell) · (wire! :bN 2 :swell {:kind :elastic :tol 0.5}) · (unwire! :bN "w1") · (wires :bN)`: a wire from a note to the electronics, drawn on the continuum: what a follow box sends when the performer gets there — rigid (on the note, or caught up once at the next), elastic (on its own at the expected time plus a tolerance if the note does not come), or led by the electronics ({:leader :electronics})
 - `(keep-take! :bN take) · (continuum! :bN {:take "t1"})`: a performance of the tree (where each note was played), only for you by default (:work keeps it in the tree); the continuum can show it
 - `(track! :bN)`: its free time played (in seconds, at any tempo): the beats are found and kept in its :quant, so that its score and quantize! write it on them
 
