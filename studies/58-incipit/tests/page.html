@@ -1,0 +1,93 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 58 · incipit · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, its ClojureScript), driven as a person would, with a Claude that
+// answers from a script: three continuations of which one breaks the join (the page sends it back with its error and
+// it comes back repaired), then one more, different; a branch chosen, a phrase added by hand with the engine's melody.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  const S = () => window.kairoticStudy;
+  const wait = async (ok, ms = 8000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+  const $ = (id) => document.getElementById(id);
+  const click = (el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  const nodeOf = (pred) => Object.values(S().state().tree.nodes).find(pred);
+  try {
+    const K = await import("./kernel.mjs");
+    // Claude, scripted: what it is asked is kept
+    const asked = [];
+    const answers = [K.answer("Three ways on.", [K.GOOD[0], K.BAD, K.GOOD[1]]), K.answer("Repaired.", [K.REPAIRED]), K.answer("Something else.", [K.OTHER])];
+    const sample = async (input, opts) => { asked.push(String(input)); const text = answers[Math.min(asked.length - 1, answers.length - 1)]; opts && opts.onText && opts.onText({ text, delta: text }); return { text, truncated: false }; };
+    window.claude = { use: async (name) => (name === "sample" ? sample : null) };
+    window.kairoticFresh = true;
+
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    $("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticBase = "../kairotic/";
+    const loader = Array.from(doc.querySelectorAll("script:not([src]):not([type])")).map((s) => s.textContent).join("\n");
+    (0, eval)(loader.replace(/window\.addEventListener\("DOMContentLoaded"[\s\S]*$/, ""));
+    window.kairoticIncipit = await import("../kairotic/incipit.mjs");
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    is("ready, the first incipit chosen and checked", $("status").textContent === "Ready" && /^G4 C5 C5/.test($("inc-mel").value) && /9 units · it passes/.test($("inc-facts").textContent));
+    is("started from it: the tree is its root, selected", S().state().nodes === 1 && document.querySelectorAll("#tree g.node.root.sel").length === 1);
+    is("… the point: the incipit, with its figures", /the incipit/.test($("point-sub").textContent) && /figures/.test($("point").textContent) && $("pick").disabled);
+    is("… its score drawn by Verovio", await wait(() => S().state().score, 30000));
+
+    // a melody that breaks the rules cannot start
+    $("inc-mel").value = "G4 C5 C5 B4 A4 A4 B4 D5 D5"; $("inc-mel").dispatchEvent(new Event("change"));
+    is("an incipit that breaks a rule: said where and why", /does not pass/.test($("inc-facts").textContent) && /unit/.test($("inc-facts").textContent));
+    click($("start"));
+    is("… it cannot start", /cannot start/.test($("inc-facts").textContent) && S().state().nodes === 1);
+    $("inc-ex").value = "short-c"; $("inc-ex").dispatchEvent(new Event("change"));
+
+    // Claude, scripted: three continuations, one fails the join and is repaired
+    await wait(() => !$("ask").disabled, 3000);
+    $("request").value = "a sequence, then a cadence";
+    click($("ask"));
+    is("Claude asked twice: the second time to repair the one that failed, with its error", await wait(() => asked.length === 2 && /held 2 units at most/.test(asked[1]), 5000));
+    is("… what Claude is told: the rules, the schemata, the piece, the request", /parallel or direct 5ths/.test(asked[0]) && /Monte/.test(asked[0]) && /G4 C5 C5 B4/.test(asked[0]) && /a sequence, then a cadence/.test(asked[0]));
+    is("… three continuations offered under the incipit (dashed)", await wait(() => S().state().nodes === 4 && !S().state().busy) && document.querySelectorAll("#tree g.node.offered").length === 3);
+    is("… said: 3 offered in 2 tries", /3 offered · 2 tries/.test($("ask-facts").textContent));
+
+    // another from the same point: Claude is told what was offered
+    click($("ask"));
+    is("asked again from the same point: told what was already offered, a fourth one offered", await wait(() => S().state().nodes === 5 && !S().state().busy) && /Already offered/.test(asked[2]) && asked[2].includes(K.GOOD[1].melody));
+
+    // a branch chosen
+    const a = nodeOf((x) => x.phrase.melody === K.GOOD[0].melody);
+    click(document.querySelector(`#tree g.node[data-id="${a.id}"]`));
+    is("an offered phrase selected: its plan, its cost; it cannot be taken on before it is chosen", S().state().sel === a.id && /parallel 3rds up the scale/.test($("point").textContent) && /soft cost/.test($("point").textContent) && $("ask").disabled && $("add").disabled);
+    click($("pick"));
+    is("… chosen: solid, and Claude or a hand can go on from it", S().state().tree.nodes[a.id].state === "chosen" && document.querySelector(`#tree g.node.chosen[data-id="${a.id}"]`) && !$("ask").disabled && !$("add").disabled);
+    is("… the score up to it: two phrases, 11 measures", await wait(() => $("score").querySelectorAll("g.measure").length === 11, 30000));
+    click($("play")); click($("play-last")); click($("halt"));
+
+    // by hand: a bass, the engine's melody, added
+    $("hand-bass").value = "E3 F3 D3 G3 C3";
+    click($("engine"));
+    is("by hand: the engine writes a melody for the bass given", /engine/.test($("hand-facts").textContent) && $("hand-mel").value.split(" ").length === 9);
+    click($("add"));
+    is("… added under the point, chosen, by you, and selected", S().state().nodes === 6 && S().state().tree.nodes[S().state().sel].by === "you" && S().state().tree.nodes[S().state().sel].parent === a.id);
+    is("… the path to it marked in the tree", document.querySelectorAll("#tree path.edge.on").length === 2);
+    $("hand-mel").value = "C5 C5 C5 C5 C5 C5 C5 C5 C5";
+    click($("add"));
+    is("a phrase by hand that breaks the rules: not added, said why", S().state().nodes === 6 && /does not pass/.test($("hand-facts").textContent));
+
+    is("no error on the page", errors.length === 0);
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  $("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>

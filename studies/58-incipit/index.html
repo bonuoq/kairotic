@@ -1,0 +1,497 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 58 · Incipit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the incipit (a phrase: a bass and a melody); the history of continuations (a tree, the
+   point chosen in it); the point (its phrase, why it passes, the score up to it, played); asking Claude; by hand; about. */
+/* Layout: Kairotic header; the melody; the agent box (its request, Claude's answer); inside it, the sub-patch Claude
+   built (boxes and wires, a box's value and code, the patch's EDN); the result (the score, played); about. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f; --warn: #a86a00;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button.act.on { border-color: var(--accent); background: var(--accent-soft); }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 5.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.err { color: var(--error); font-size: 12px; }
+textarea.src { width: 100%; min-height: 11em; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; tab-size: 2; white-space: pre; }
+.scroll { overflow-x: auto; }
+
+input.line { width: 100%; font: 13px var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px 8px; }
+textarea.req { width: 100%; min-height: 2.6em; resize: vertical; font: 13px/1.5 var(--f-ui); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 7px 9px; }
+label.stack { display: grid; gap: 3px; font-size: 12px; color: var(--ink-soft); }
+.answer { font-size: 13px; line-height: 1.55; white-space: pre-wrap; max-height: 14em; overflow: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; margin: 0; }
+.answer:empty { display: none; }
+ul.fails { margin: 0; padding-left: 18px; font: 12px/1.5 var(--f-code); color: var(--ink-soft); }
+ul.fails:empty { display: none; }
+ul.fails b { color: var(--error); font-weight: 500; }
+svg.tree { display: block; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+svg.tree .node rect { fill: var(--box); stroke: var(--ink-soft); stroke-width: 1.2; stroke-dasharray: 4 3; }
+svg.tree .node.chosen rect { stroke: var(--ink); stroke-dasharray: none; }
+svg.tree .node.root rect { stroke: var(--kairos); stroke-width: 1.8; }
+svg.tree .node.on rect { stroke-width: 2; }
+svg.tree .node.sel rect { fill: var(--accent-soft); stroke: var(--accent); }
+svg.tree .node { cursor: pointer; }
+svg.tree .node text { font: 12px var(--f-code); fill: var(--ink); }
+svg.tree .node text.sub { font-size: 10px; fill: var(--ink-soft); }
+svg.tree .edge { fill: none; stroke: var(--rule); stroke-width: 1.4; }
+svg.tree .edge.chosen { stroke: var(--ink-soft); }
+svg.tree .edge.on { stroke: var(--accent); stroke-width: 2; }
+.score { background: #fff; border: 1px solid var(--grid); border-radius: 4px; padding: 6px; overflow-x: auto; min-height: 60px; }
+.score svg { max-width: 100%; height: auto; }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+dl.point { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; font-size: 13px; }
+dl.point dt { color: var(--ink-soft); font-size: 12px; }
+dl.point dd { margin: 0; font-family: var(--f-code); font-size: 12px; overflow-wrap: anywhere; }
+</style>
+<main>
+<header>
+  <h1>Study 58 · incipit</h1>
+  <span class="sub">A phrase given, taken on by Claude phrase by phrase, checked by the rules; you choose which branches go on</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<section class="panel" aria-labelledby="h-inc">
+  <h2 id="h-inc">The incipit <span>a bass, a note a bar; a melody over it, a note a half bar</span></h2>
+  <div class="row">
+    <label class="inline" for="inc-ex">Incipit <select id="inc-ex"></select></label>
+    <label class="inline" for="tonic">Key <select id="tonic">
+      <option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>A</option><option>B</option><option>Bb</option><option>Eb</option>
+    </select></label>
+    <select id="mode" aria-label="Mode"><option value="major">major</option><option value="minor">minor</option></select>
+    <label class="inline" for="inc-cad">Cadence <select id="inc-cad"><option value="perfect">perfect</option><option value="imperfect">imperfect</option><option value="authentic">perfect or imperfect</option><option value="deceptive">deceptive</option><option value="half">half</option></select></label>
+  </div>
+  <label class="stack" for="inc-bass">Bass<input class="line" id="inc-bass" spellcheck="false"></label>
+  <label class="stack" for="inc-mel">Melody<input class="line" id="inc-mel" spellcheck="false"></label>
+  <div class="row">
+    <button class="act primary" id="start">Start from it</button>
+    <span class="facts" id="inc-facts">—</span>
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-tree">
+  <h2 id="h-tree">The history <span>solid: chosen to go on · dashed: offered · click a phrase to see it</span></h2>
+  <div class="scroll"><svg class="tree" id="tree" viewBox="0 0 720 80" width="720" height="80" role="img" aria-label="The tree of continuations"></svg></div>
+</section>
+
+<section class="panel" aria-labelledby="h-point">
+  <h2 id="h-point">The point <span id="point-sub">—</span></h2>
+  <dl class="point" id="point"></dl>
+  <div class="row">
+    <button class="act" id="pick">Go on with this one</button>
+    <button class="act" id="play">▶ From the start</button>
+    <button class="act" id="play-last">▶ This phrase</button>
+    <button class="act" id="halt">■ Stop</button>
+  </div>
+  <div class="score" id="score"></div>
+</section>
+
+<section class="panel" aria-labelledby="h-claude">
+  <h2 id="h-claude">Go on with Claude <span>from the point, if it was chosen</span></h2>
+  <textarea class="req" id="request" spellcheck="false" placeholder="What the next phrase should do (or leave it empty): an answer in the dominant, a sequence, a contrast…"></textarea>
+  <div class="row">
+    <label class="inline" for="k">Offer <select id="k"><option>1</option><option>2</option><option selected>3</option><option>4</option></select> continuations</label>
+    <button class="act primary" id="ask">Ask Claude</button>
+    <button class="act" id="stop" disabled>Stop</button>
+    <span class="facts" id="ask-facts">—</span>
+  </div>
+  <p class="err" id="ask-err" hidden></p>
+  <ul class="fails" id="fails"></ul>
+  <pre class="answer" id="answer" aria-live="polite"></pre>
+</section>
+
+<section class="panel" aria-labelledby="h-hand">
+  <h2 id="h-hand">By hand <span>a phrase under the point, checked by the same rules</span></h2>
+  <div class="row">
+    <label class="inline" for="hand-cad">Cadence <select id="hand-cad"><option value="authentic">perfect or imperfect</option><option value="perfect">perfect</option><option value="imperfect">imperfect</option><option value="deceptive">deceptive</option><option value="half">half</option></select></label>
+  </div>
+  <label class="stack" for="hand-bass">Bass<input class="line" id="hand-bass" spellcheck="false" placeholder="C3 D3 E3 F3 G3 C3"></label>
+  <label class="stack" for="hand-mel">Melody<input class="line" id="hand-mel" spellcheck="false"></label>
+  <div class="row">
+    <button class="act" id="engine">Melody by the engine</button>
+    <button class="act" id="add">Add under the point</button>
+    <span class="facts" id="hand-facts">—</span>
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-about">
+  <h2 id="h-about">About <span>discussion <a href="https://github.com/bonuoq/kairotic/discussions/296">#296</a></span></h2>
+  <p class="about">An <em>incipit</em> is a phrase given — a bass and a melody over it, as a partimento's exercise begins — and taken on phrase by phrase. At a point of the piece Claude offers a few continuations, each a whole phrase with its plan named by IJzerman's schemata and cadences. Each is checked by the rules of two-part writing of Studies 51, 54 and 56 (<code>@kairotic/cac</code>'s <code>partimento.mjs</code>), joined to the phrase before it so the join is judged too; a phrase that fails goes back to Claude with its errors (three tries in all), and the soft rules of Studies 38–42 rank the ones that pass. You choose which go on — one, several, none — and only those are taken further. Claude brings the idea; the rules bring the craft.</p>
+  <ul class="q">
+    <li>A step is large: a phrase at least (four bass notes or more), not a note.</li>
+    <li>The phrases make a history with branches, kept in this browser. Any chosen point can be taken on again, by Claude or by hand (the engine writes a melody for a bass you give).</li>
+    <li>What comes next (#296): a third voice from the figures (Study 56), the incipit in the app as a line of its own, and patches as material.</li>
+  </ul>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
+// is read first, as window.kairoticIncipit (incipit.mjs); Verovio draws the score.
+window.kairoticBase = window.kairoticBase || "kairotic/";
+window.kairoticVerovio = new Promise(function (resolve, reject) {
+  var s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/verovio@5.7.0/dist/verovio-toolkit-wasm.js";
+  s.onload = function () {
+    try { var m = verovio.module; if (m.calledRun) resolve(new verovio.toolkit()); else m.onRuntimeInitialized = function () { resolve(new verovio.toolkit()); }; }
+    catch (e) { reject(e); }
+  };
+  s.onerror = function () { reject(new Error("could not download Verovio")); };
+  document.head.appendChild(s);
+});
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  import("./" + window.kairoticBase + "incipit.mjs").then(function (m) {
+    window.kairoticIncipit = m;
+    try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns incipit-page (:require [clojure.string :as str]))
+
+;; Kairotic · Study 58 · incipit: the page. The kernel (kairotic/incipit.mjs) checks phrases, keeps the tree, asks
+;; Claude and writes the MEI; this page keeps the state, draws the tree, the point and its score, and plays it.
+
+(def I (.-kairoticIncipit js/window))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
+(defn status! [s] (set! (.-textContent ($ "status")) s))
+(defn msg [e] (or (.-message e) (str e)))
+(defn val! [id] (str/trim (.-value ($ id))))
+
+;; ───────── state ─────────
+;; :tree the tree of phrases (JS, from incipit.mjs), :sel the point shown, :busy while Claude writes
+(defonce st (atom {:tree nil :sel nil :busy false}))
+(defonce sample-fn (atom nil))
+(defonce ctl (atom nil))
+(def STORE "kairotic-study-58")
+
+(defn save! []
+  (try (.setItem js/localStorage STORE (.stringify js/JSON #js {:tree (:tree @st) :sel (:sel @st)})) (catch :default _ nil)))
+(defn stored []
+  (try (some-> (.getItem js/localStorage STORE) (js/JSON.parse)) (catch :default _ nil)))
+
+(defn node [id] (when-let [t (:tree @st)] (aget (.-nodes t) id)))
+(defn errors-text [chk]
+  (str/join "; " (for [e (.-errors chk)]
+                   (str (when (.-at e) (str (.-at e) (when (.-note e) (str " (" (.-note e) " over " (.-bass e) ")")) ": ")) (.-reason e)))))
+
+;; ───────── the incipit ─────────
+(defn incipit-key [] #js {:tonic (.-value ($ "tonic")) :mode (.-value ($ "mode"))})
+(defn incipit-phrase []
+  #js {:bass (val! "inc-bass") :melody (val! "inc-mel") :cadence (.-value ($ "inc-cad"))
+       :plan (let [ex (aget (.-INCIPITS I) (.-value ($ "inc-ex")))] (if ex (.. ex -phrase -plan) "the incipit"))
+       :about (let [ex (aget (.-INCIPITS I) (.-value ($ "inc-ex")))] (if ex (.. ex -phrase -about) ""))})
+
+(defn incipit-check []
+  (try (let [k (incipit-key) p (incipit-phrase)]
+         (.check I nil p #js {:key k :range (.rangeOf I p k)}))
+       (catch :default e #js {:ok false :errors #js [#js {:reason (msg e)}]})))
+
+(defn incipit-facts! []
+  (let [c (incipit-check)]
+    (set! (.-textContent ($ "inc-facts"))
+          (if (.-ok c)
+            (str (.-units c) " units · it passes the rules"
+                 (when (seq (.-schemata c)) (str " · " (str/join ", " (map #(.-name %) (.-schemata c))))))
+            (str "It does not pass: " (errors-text c))))))
+
+(defn choose-incipit! [id]
+  (when-let [ex (aget (.-INCIPITS I) id)]
+    (set! (.-value ($ "tonic")) (.. ex -key -tonic))
+    (set! (.-value ($ "mode")) (or (.. ex -key -mode) "major"))
+    (set! (.-value ($ "inc-bass")) (.. ex -phrase -bass))
+    (set! (.-value ($ "inc-mel")) (.. ex -phrase -melody))
+    (set! (.-value ($ "inc-cad")) (.. ex -phrase -cadence)))
+  (incipit-facts!))
+
+;; ───────── the tree ─────────
+(def NW 176) (def NH 40) (def GX 34) (def GY 12)
+
+(defn kids [tree id]
+  (sort-by (fn [x] (let [c (.. x -check -cost)] (if (number? c) c 1e9))) (.childrenOf I tree id)))
+
+(defn layout
+  "Columns by depth, rows by the leaves in order (the cheapest child first); a node centred on its children."
+  [tree]
+  (let [pos (atom {}) row (atom 0)]
+    (letfn [(walk [id depth]
+              (let [ks (kids tree id)]
+                (if (empty? ks)
+                  (let [y @row] (swap! row inc) (swap! pos assoc id [depth y]) y)
+                  (let [ys (mapv #(walk (.-id %) (inc depth)) ks) y (/ (+ (first ys) (peek ys)) 2)]
+                    (swap! pos assoc id [depth y]) y))))]
+      (walk (.-root tree) 0)
+      {:pos @pos :rows (max 1 @row) :cols (inc (apply max 0 (map first (vals @pos))))})))
+
+(defn short [s n] (let [s (str s)] (if (> (count s) n) (str (subs s 0 (dec n)) "…") s)))
+
+(defn render-tree! []
+  (let [{:keys [tree sel]} @st svg ($ "tree")]
+    (if-not tree
+      (do (.setAttribute svg "viewBox" "0 0 720 60") (.setAttribute svg "width" "720") (.setAttribute svg "height" "60")
+          (set! (.-innerHTML svg) "<text x='16' y='34' style='font:13px var(--f-ui);fill:var(--ink-soft)'>Start from an incipit.</text>"))
+      (let [{:keys [pos rows cols]} (layout tree)
+            on (set (map #(.-id %) (.pathTo I tree sel)))
+            xy (fn [id] (let [[c r] (pos id)] [(+ 14 (* c (+ NW GX))) (+ 12 (* r (+ NH GY)))]))
+            w (+ 28 (* cols (+ NW GX))) h (+ 24 (* rows (+ NH GY)))]
+        (.setAttribute svg "viewBox" (str "0 0 " w " " h))
+        (.setAttribute svg "width" (str w)) (.setAttribute svg "height" (str h))
+        (set! (.-innerHTML svg)
+              (str (apply str (for [[id _] pos :let [n (node id)] :when (.-parent n)
+                                    :let [[x1 y1] (xy (.-parent n)) [x2 y2] (xy id) mx (/ (+ x1 NW x2) 2)]]
+                                (str "<path class='edge" (when (= "chosen" (.-state n)) " chosen") (when (on id) " on") "' d='M" (+ x1 NW) "," (+ y1 (/ NH 2))
+                                     " C" mx "," (+ y1 (/ NH 2)) " " mx "," (+ y2 (/ NH 2)) " " x2 "," (+ y2 (/ NH 2)) "'/>")))
+                   (apply str (for [[id _] pos :let [n (node id) [x y] (xy id) c (.-check n) p (.-phrase n)]]
+                                (str "<g class='node " (.-state n) (when-not (.-parent n) " root") (when (on id) " on") (when (= id sel) " sel")
+                                     "' data-id='" (esc id) "' transform='translate(" x "," y ")'>"
+                                     "<title>" (esc (str (.-plan p) (when (seq (.-about p)) (str " — " (.-about p))))) "</title>"
+                                     "<rect width='" NW "' height='" NH "' rx='3'/>"
+                                     "<text x='8' y='16'>" (esc (short (or (not-empty (.-plan p)) "a phrase") 22)) "</text>"
+                                     "<text class='sub' x='8' y='31'>" (esc (str (short (.-by n) 16) " · " (.-cadence p)
+                                                                                 (when (and (.-ok c) (.-parent n)) (str " · " (.-cost c)))))
+                                     "</text></g>")))))))))
+
+;; ───────── the point ─────────
+(defn render-score! []
+  (let [{:keys [tree sel]} @st]
+    (if-not (and tree sel)
+      (set! (.-innerHTML ($ "score")) "")
+      (let [piece (.pieceAt I tree sel)]
+        (-> (.-kairoticVerovio js/window)
+            (.then (fn [tk]
+                     (let [w (max 600 (- (.-clientWidth ($ "score")) 16)) scale 38]
+                       (.setOptions tk (clj->js {:pageWidth (js/Math.round (/ (* w 100) scale)) :pageHeight 60000 :adjustPageHeight true
+                                                 :breaks "auto" :scale scale :header "none" :footer "none"
+                                                 :pageMarginTop 20 :pageMarginBottom 10 :pageMarginLeft 16 :pageMarginRight 16}))
+                       (.loadData tk (.meiOf I piece (.-key tree)))
+                       (set! (.-innerHTML ($ "score")) (.renderToSVG tk 1)))))
+            (.catch (fn [e] (set! (.-textContent ($ "score")) (str "Verovio: " (msg e))))))))))
+
+(defn row [k v] (str "<dt>" (esc k) "</dt><dd>" v "</dd>"))
+
+(defn render-point! []
+  (let [{:keys [tree sel busy]} @st n (and sel (node sel))]
+    (if-not n
+      (do (set! (.-textContent ($ "point-sub")) "—") (set! (.-innerHTML ($ "point")) "")
+          (doseq [b ["pick" "play" "play-last"]] (set! (.-disabled ($ b)) true)))
+      (let [path (.pathTo I tree sel) c (.-check n) p (.-phrase n)]
+        (set! (.-textContent ($ "point-sub"))
+              (str "phrase " (count path) (when-not (.-parent n) " · the incipit") " · " (if (= "chosen" (.-state n)) "chosen" "offered")))
+        (set! (.-innerHTML ($ "point"))
+              (str (row "plan" (esc (or (not-empty (.-plan p)) "—")))
+                   (when (seq (.-about p)) (row "about" (esc (.-about p))))
+                   (row "by" (esc (.-by n)))
+                   (row "cadence" (esc (.-cadence p)))
+                   (row "bass" (esc (.-bass p)))
+                   (row "melody" (esc (.-melody p)))
+                   (if (.-ok c)
+                     (str (row "figures" (esc (str/join " " (map #(or % "·") (.-figures c)))))
+                          (row "schemata" (esc (let [s (.-schemata c)] (if (seq s) (str/join ", " (map #(str (.-name %) " (" (.-from %) "–" (.-to %) ")") s)) "—"))))
+                          (when (.-parent n) (row "soft cost" (str (.-cost c) " a unit"))))
+                     (row "check" (str "<span class='err'>" (esc (errors-text c)) "</span>")))))
+        (set! (.-disabled ($ "pick")) (or busy (not (.-parent n))))
+        (set! (.-textContent ($ "pick")) (if (= "chosen" (.-state n)) "Leave it (not to go on)" "Go on with this one"))
+        (doseq [b ["play" "play-last"]] (set! (.-disabled ($ b)) false))))
+    (set! (.-disabled ($ "ask")) (or busy (nil? @sample-fn) (not n) (not= "chosen" (some-> n .-state))))
+    (set! (.-disabled ($ "add")) (or busy (not n) (not= "chosen" (some-> n .-state))))
+    (set! (.-disabled ($ "engine")) (or busy (not n)))
+    (set! (.-disabled ($ "stop")) (not busy))))
+
+(defn render-all! [] (render-tree!) (render-point!) (render-score!))
+
+(defn select! [id] (swap! st assoc :sel id) (save!) (render-all!))
+
+;; ───────── sound ─────────
+(defonce ac (atom nil))
+(defonce playing (atom []))
+(defn halt! [] (doseq [o @playing] (try (.stop o) (catch :default _ nil))) (reset! playing []))
+(defn tone! [c hz s e g0]
+  (let [o (.createOscillator c) g (.createGain c)]
+    (set! (.-type o) "triangle") (set! (.. o -frequency -value) hz)
+    (.setValueAtTime (.-gain g) 0 s) (.linearRampToValueAtTime (.-gain g) g0 (+ s 0.02)) (.setTargetAtTime (.-gain g) 0 (- e 0.05) 0.03)
+    (.connect (.connect o g) (.-destination c)) (.start o s) (.stop o (+ e 0.3))
+    (swap! playing conj o)))
+(defn play! [from-last?]
+  (halt!)
+  (when-let [{:keys [tree sel]} (and (:sel @st) @st)]
+    (try
+      (let [c (or @ac (reset! ac (js/AudioContext.))) piece (.pieceAt I tree sel) unit 0.42
+            from (if from-last? (last (.-starts piece)) 0) t0 (+ (.-currentTime c) 0.1) k (.-key tree)]
+        (doseq [[names g] [[(.-melody piece) 0.09] [(.-bass piece) 0.12]]]
+          (let [v (vec (drop from names)) n (count v)]
+            (loop [t 0]
+              (when (< t n)
+                (let [e (loop [e (inc t)] (if (and (< e n) (= (v e) (v t))) (recur (inc e)) e))]
+                  (tone! c (.hzOf I k (v t)) (+ t0 (* t unit)) (+ t0 (* (if (= e n) (inc e) e) unit)) g)
+                  (recur e)))))))
+      (catch :default e (status! (str "No sound: " (msg e)))))))
+
+;; ───────── starting, choosing ─────────
+(defn start! []
+  (let [c (incipit-check)]
+    (if-not (.-ok c)
+      (set! (.-textContent ($ "inc-facts")) (str "It does not pass, so it cannot start: " (errors-text c)))
+      (let [tree (.treeOf I (incipit-phrase) #js {:key (incipit-key)})]
+        (reset! st {:tree tree :sel (.-root tree) :busy false})
+        (set! (.-innerHTML ($ "fails")) "") (set! (.-textContent ($ "answer")) "") (set! (.-textContent ($ "ask-facts")) "—")
+        (save!) (render-all!)))))
+
+(defn pick! []
+  (when-let [n (node (:sel @st))]
+    (swap! st update :tree #(.choose I % (.-id n) (not= "chosen" (.-state n))))
+    (save!) (render-all!)))
+
+;; ───────── asking Claude ─────────
+(defn busy! [b] (swap! st assoc :busy b) (render-point!))
+
+(defn ask! []
+  (when-let [sample @sample-fn]
+    (let [{:keys [tree sel]} @st c (js/AbortController.)]
+      (reset! ctl c)
+      (busy! true)
+      (set! (.-hidden ($ "ask-err")) true)
+      (set! (.-textContent ($ "answer")) "")
+      (set! (.-innerHTML ($ "fails")) "")
+      (-> (.continueWith I sample tree sel
+                         #js {:k (js/parseInt (.-value ($ "k"))) :request (val! "request") :signal (.-signal c)
+                              :onTry (fn [i] (set! (.-textContent ($ "ask-facts")) (str "Claude is writing" (when (> i 1) (str " (repairing, try " i " of 3)")) "…")))
+                              :onText (fn [o] (set! (.-textContent ($ "answer")) (.-text o)))})
+          (.then (fn [r]
+                   (swap! st assoc :tree (.-tree r))
+                   (let [a (count (.-added r)) f (count (.-failed r))]
+                     (set! (.-textContent ($ "ask-facts"))
+                           (str a " offered" (when (pos? f) (str ", " f " still failing")) " · " (.-tries r) " " (if (= 1 (.-tries r)) "try" "tries")
+                                (when (pos? a) " · choose which go on"))))
+                   (set! (.-innerHTML ($ "fails"))
+                         (apply str (for [x (.-failed r)]
+                                      (str "<li><b>left out</b> " (esc (.. x -phrase -bass)) " · " (esc (.. x -phrase -melody)) " — "
+                                           (esc (errors-text #js {:errors (.-errors x)})) "</li>"))))
+                   (save!) (render-tree!)))
+          (.catch (fn [e]
+                    (set! (.-hidden ($ "ask-err")) false)
+                    (set! (.-textContent ($ "ask-err"))
+                          (case (.-code e)
+                            "not_granted" "Claude is not allowed for this page (it can be allowed the next time it asks)."
+                            "rate_limited" "Claude is busy for you right now: try again in a while."
+                            (if (= "AbortError" (.-name e)) "Stopped." (str "Error: " (msg e)))))
+                    (set! (.-textContent ($ "ask-facts")) "—")))
+          (.finally (fn [] (reset! ctl nil) (busy! false)))))))
+
+;; ───────── by hand ─────────
+(defn hand-phrase [] #js {:bass (val! "hand-bass") :melody (val! "hand-mel") :cadence (.-value ($ "hand-cad")) :plan "by hand" :about ""})
+
+(defn engine! []
+  (let [{:keys [tree sel]} @st]
+    (try (if-let [m (.engineMelody I tree sel (val! "hand-bass") #js {:cadence (.-value ($ "hand-cad"))})]
+           (do (set! (.-value ($ "hand-mel")) m) (set! (.-textContent ($ "hand-facts")) "written by the engine (the soft rules)"))
+           (set! (.-textContent ($ "hand-facts")) "the engine found no melody over this bass from here"))
+         (catch :default e (set! (.-textContent ($ "hand-facts")) (str "Error: " (msg e)))))))
+
+(defn add! []
+  (let [{:keys [tree sel]} @st
+        [t2 n] (.addPhrase I tree sel (hand-phrase) #js {:by "you" :state "chosen"})]
+    (if (.. n -check -ok)
+      (do (swap! st assoc :tree t2 :sel (.-id n))
+          (set! (.-textContent ($ "hand-facts")) "added")
+          (save!) (render-all!))
+      (set! (.-textContent ($ "hand-facts")) (str "It does not pass: " (errors-text (.-check n)))))))
+
+;; ───────── events ─────────
+(.addEventListener ($ "start") "click" (fn [_] (start!)))
+(.addEventListener ($ "pick") "click" (fn [_] (pick!)))
+(.addEventListener ($ "play") "click" (fn [_] (play! false)))
+(.addEventListener ($ "play-last") "click" (fn [_] (play! true)))
+(.addEventListener ($ "halt") "click" (fn [_] (halt!)))
+(.addEventListener ($ "ask") "click" (fn [_] (ask!)))
+(.addEventListener ($ "stop") "click" (fn [_] (when-let [c @ctl] (.abort c))))
+(.addEventListener ($ "engine") "click" (fn [_] (engine!)))
+(.addEventListener ($ "add") "click" (fn [_] (add!)))
+(.addEventListener ($ "tree") "click"
+  (fn [e] (when-let [g (.closest (.-target e) "g.node")] (select! (.getAttribute g "data-id")))))
+(let [sel ($ "inc-ex")]
+  (set! (.-innerHTML sel)
+        (str (apply str (for [id (js/Object.keys (.-INCIPITS I))] (str "<option value='" id "'>" (esc (.-name (aget (.-INCIPITS I) id))) "</option>")))
+             "<option value=''>your own</option>"))
+  (.addEventListener sel "change" (fn [_] (choose-incipit! (.-value sel))))
+  (doseq [id ["inc-bass" "inc-mel" "tonic" "mode" "inc-cad"]] (.addEventListener ($ id) "change" (fn [_] (incipit-facts!)))))
+
+;; ───────── start ─────────
+(choose-incipit! "short-c")
+(if-let [s (and (not (.-kairoticFresh js/window)) (stored))]
+  (do (reset! st {:tree (.-tree s) :sel (.-sel s) :busy false}) (render-all!))
+  (start!))
+(status! "Ready")
+
+(let [cl (.-claude js/window)]
+  (if (and cl (.-use cl))
+    (-> (.use cl "sample")
+        (.then (fn [s]
+                 (reset! sample-fn s)
+                 (render-point!)
+                 (when-not s (set! (.-textContent ($ "ask-facts")) "Claude is not available in this view: go on by hand, or open the study on claude.ai.")))))
+    (set! (.-textContent ($ "ask-facts")) "Claude is not available here (it needs claude.ai): go on by hand.")))
+
+;; for the tests (tests/page.html)
+(set! (.-kairoticStudy js/window)
+      #js {:state (fn [] (let [{:keys [tree sel busy]} @st]
+                           #js {:nodes (when tree (count (js/Object.keys (.-nodes tree)))) :sel sel :busy busy :tree tree
+                                :score (boolean (.querySelector ($ "score") "svg"))}))
+           :select select!})
+</script>
