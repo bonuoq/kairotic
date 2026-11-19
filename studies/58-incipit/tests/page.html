@@ -21,7 +21,7 @@ await (async function () {
     const K = await import("./kernel.mjs");
     // Claude, scripted: what it is asked is kept
     const asked = [];
-    const answers = [K.answer("Three ways on.", [K.GOOD[0], K.BAD, K.GOOD[1]]), K.answer("Repaired.", [K.REPAIRED]), K.answer("Something else.", [K.OTHER])];
+    const answers = [K.answer("Three ways on.", [K.GOOD[0], K.BAD, K.GOOD[1]]), K.answer("Repaired.", [K.REPAIRED]), K.answer("To the dominant.", [K.MODULATING])];
     const sample = async (input, opts) => { asked.push(String(input)); const text = answers[Math.min(asked.length - 1, answers.length - 1)]; opts && opts.onText && opts.onText({ text, delta: text }); return { text, truncated: false }; };
     window.claude = { use: async (name) => (name === "sample" ? sample : null) };
     window.kairoticFresh = true;
@@ -60,6 +60,10 @@ await (async function () {
     // another from the same point: Claude is told what was offered
     click($("ask"));
     is("asked again from the same point: told what was already offered, a fourth one offered", await wait(() => S().state().nodes === 5 && !S().state().busy) && /Already offered/.test(asked[2]) && asked[2].includes(K.GOOD[1].melody));
+    const g = nodeOf((x) => x.phrase.keys === K.MODULATING.keys);
+    is("… it modulates: its node marked →G", g && /→G/.test(document.querySelector(`#tree g.node[data-id="${g.id}"]`).textContent));
+    click(document.querySelector(`#tree g.node[data-id="${g.id}"]`));
+    is("… selected: its keys, C major → G major, and G major named over the score", /C major → G major/.test($("point").textContent) && await wait(() => /G major/.test($("score").textContent), 30000));
 
     // a branch chosen
     const a = nodeOf((x) => x.phrase.melody === K.GOOD[0].melody);
@@ -70,6 +74,11 @@ await (async function () {
     is("… the score up to it: two phrases, 11 measures", await wait(() => $("score").querySelectorAll("g.measure").length === 11, 30000));
     click($("play")); click($("play-last")); click($("halt"));
 
+    // by hand: a modulating bass, the engine's melody
+    $("hand-bass").value = "A2 B2 C3 D3 G2"; $("hand-keys").value = "C C G G G"; $("hand-cad").value = "perfect";
+    click($("engine"));
+    is("by hand, modulating: the engine writes a melody for a bass with its keys", /engine/.test($("hand-facts").textContent) && $("hand-mel").value.split(" ").length === 9);
+    $("hand-keys").value = ""; $("hand-cad").value = "authentic";
     // by hand: a bass, the engine's melody, added
     $("hand-bass").value = "E3 F3 D3 G3 C3";
     click($("engine"));

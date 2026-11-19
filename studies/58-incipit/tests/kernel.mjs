@@ -13,6 +13,7 @@ export const GOOD = [
 export const BAD = { plan: "a half cadence", cadence: "half", bass: "C3 B2 A2 G2", melody: "C5 F4 G4 B4 B4 A4 B4", about: "open, on ⑤" };
 export const REPAIRED = { ...BAD, melody: "E4 F4 G4 B4 B4 A4 B4" };
 export const OTHER = { plan: "a 6th chord on ④, a perfect cadence", cadence: "perfect", bass: "A2 F2 G2 C3", melody: "F4 G4 A4 C5 B4 B4 C5", about: "⑥ ④ ⑤ ①" };
+export const MODULATING = { plan: "an ascending pentachord into G, a perfect cadence there", cadence: "perfect", bass: "C3 D3 E3 F#3 G3 C3 D3 G2", keys: "C C C G G G G G", melody: "E4 E4 F4 A4 G4 G4 D4 D4 E4 F#4 G4 A4 F#4 F#4 G4", about: "C major to G major by the RO's pentachord" };
 export const answer = (text, list) => `${text}\n\`\`\`json\n${JSON.stringify(list)}\n\`\`\``;
 
 export async function run() {
@@ -42,6 +43,16 @@ export async function run() {
   is("a note out of the key refused, with its place", (() => { const r = I.check(C.phrase, { ...GOOD[0], melody: GOOD[0].melody.replace("F4", "F#4") }, opts); return !r.ok && r.errors[0].unit === 3; })());
   is("a rule broken inside the phrase: where, which notes, why", (() => { const r = I.check(C.phrase, { ...GOOD[0], melody: "E4 E4 F4 A4 G4 C5 A4 A4 G4 G4 C5" }, opts); return !r.ok && r.errors.some((e) => e.unit >= 9 && e.bass && e.reason); })());
 
+  // modulation (Study 57, IJzerman ch. 4): a key for each bass note
+  is("keys named: G, Em, e minor, F#m, Bb major", JSON.stringify(["G", "Em", "e minor", "F#m", "Bb major"].map(I.keyNamed)) === JSON.stringify([{ tonic: "G", mode: "major" }, { tonic: "E", mode: "minor" }, { tonic: "E", mode: "minor" }, { tonic: "F#", mode: "minor" }, { tonic: "Bb", mode: "major" }]) && I.keyNamed("H") === null);
+  const mod = I.check(C.phrase, MODULATING, opts);
+  is("a phrase that modulates, C major → G major: it passes, its keys and its cadence read in G", mod.ok && mod.keys.join(" → ") === "C major → G major" && mod.schemata.some((x) => /perfect cadence on ⑤–①/.test(x.name)));
+  is("… without its keys, F♯ is not a note of C major", /F#3 is not a note of C major/.test(I.check(C.phrase, { ...MODULATING, keys: undefined }, opts).errors[0].reason));
+  is("… its cadence in G is not one in C: a half cadence in C (on D) refused as perfect in C", /perfect cadence in C major/.test(I.check(C.phrase, { ...MODULATING, keys: "C C C C C C C C", bass: "C3 D3 E3 F3 G3 C3 D3 G2", melody: MODULATING.melody.replace(/F#4/g, "F4") }, opts).errors[0].reason));
+  is("… a whole phrase in a key (key: \"Am\"): E3 going to A2 is its dominant, so G♯ over it, not G; with C until A minor is reached, it passes", /dominant is major: G♯4/.test(I.check(C.phrase, { bass: "C3 E3 A2 B2 E3 A2", key: "Am", melody: "E4 F4 G4 B4 B4 A4 G4 F4 E4 B4 A4", cadence: "perfect" }, opts).errors[0].reason) && I.check(C.phrase, { bass: "C3 E3 A2 B2 E3 A2", keys: "C C Am Am Am Am", melody: "E4 F4 G4 B4 B4 A4 G4 F4 E4 B4 A4", cadence: "perfect" }, opts).ok);
+  const mm = I.engineMelody(T0, "p0", "A2 B2 C3 D3 G2", { keys: "C C G G G", cadence: "perfect", r: rng(5) });
+  is("the engine writes a modulating phrase too (its keys given)", mm && I.check(C.phrase, { bass: "A2 B2 C3 D3 G2", keys: "C C G G G", melody: mm, cadence: "perfect" }, opts).ok);
+
   // the tree
   let [T1, a] = I.addPhrase(T0, "p0", GOOD[0]);
   let [T2, b] = I.addPhrase(T1, "p0", GOOD[1]);
@@ -54,6 +65,7 @@ export async function run() {
   is("its score: 11 measures, a double bar where the phrase starts, a rest to fill the last", (mei.match(/<measure /g) || []).length === 11 && /right="dbl"/.test(mei) && /<rest dur="2"\/>/.test(mei) && /meter.sym="cut"/.test(mei));
   is("a note held over the bar line tied", /tie="i"/.test(I.meiOf(I.pieceAt(I.treeOf(I.INCIPITS["scale-76"].phrase, { key: { tonic: "C" } }), "p0"), { tonic: "C" })));
   is("the score of a minor key: its signature, its raised ⑦ written", (() => { const x = I.INCIPITS["short-am"], T = I.treeOf(x.phrase, { key: x.key }), m = I.meiOf(I.pieceAt(T, "p0"), x.key); return /keysig="0"/.test(m) && /pname="g" oct="4" dur="2" accid="s"/.test(m); })());
+  is("the score names the key reached, over the staff", (() => { const [Tm, x] = I.addPhrase(T0, "p0", MODULATING); const pc = I.pieceAt(Tm, x.id); return /<dir place="above" staff="1" tstamp="\d"><rend fontstyle="italic">G major<\/rend><\/dir>/.test(I.meiOf(pc, Tm.key)) && pc.keys[pc.keys.length - 1] === "G major"; })());
   is("a frequency from a name: A4 is 440 Hz", Math.abs(I.hzOf({ tonic: "C" }, "A4") - 440) < 1e-6);
 
   // the engine writes a melody for a bass given, from the point
@@ -63,12 +75,15 @@ export async function run() {
 
   // Claude's answer read
   is("the continuations read from a ```json block", I.proposalsOf(answer("Three.", GOOD)).proposals.length === 2);
+  is("… with its keys kept", I.proposalsOf(answer("One.", [MODULATING])).proposals[0].keys === MODULATING.keys && I.proposalsOf(answer("One.", [{ ...GOOD[0], keys: ["C", "C", "C", "G", "G", "G"] }])).proposals[0].keys === "C C C G G G");
   is("… or from {continuations: […]}, or a bare array", I.proposalsOf("```json\n{\"continuations\": " + JSON.stringify(GOOD) + "}\n```").proposals.length === 2 && I.proposalsOf("here: " + JSON.stringify([OTHER])).proposals.length === 1);
   is("… none: why", /no JSON block/.test(I.proposalsOf("I would rather not.").error));
 
   // the prompt
   const p = I.promptFor({ tree: T2, at: a.id, k: 3, request: "an answer in the dominant", offered: [GOOD[1]] });
   is("the prompt: the rules, the vocabulary, the piece so far, the request, what was already offered", /parallel or direct 5ths/.test(p) && /Monte/.test(p) && /Galant/.test(p) && /phrase 2/.test(p) && p.includes(GOOD[0].melody) && /answer in the dominant/.test(p) && /Already offered/.test(p) && /D4 to B5/.test(p));
+  is("… and the Rule of the Octave, its pentachords and tetrachords, how to give keys", /Rule of the Octave/.test(p) && /pentachord/.test(p) && /\"keys\": \"C C G G G G\"/.test(p) && /semi-consonances/.test(p));
+  is("… after a modulation: the key the last phrase closed in", (() => { const [Tm, x] = I.addPhrase(T0, "p0", MODULATING); return /the last phrase closed in G major/.test(I.promptFor({ tree: I.choose(Tm, x.id), at: x.id })) && /keys:   C C C G G G G G/.test(I.promptFor({ tree: Tm, at: x.id })); })());
 
   // asking a scripted Claude: one fails and is repaired
   const asked = [];

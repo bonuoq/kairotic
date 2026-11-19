@@ -22,10 +22,12 @@
 //                   partimento.mjs: no 3rd doubled, nor the leading tone, the 6/4 a double appoggiatura…): counted
 //                   exactly, drawn by the engine
 
-import { schemata, parts, keyOf, codeOf, codeDegree, codeAlter, isDominant, CHORDS } from "./partimento.mjs";
+import { schemata, parts, keyOf, codeOf, codeDegree, codeAlter, localOf, CHORDS } from "./partimento.mjs";
 import { total, choose, temperature } from "./soft.mjs";
 
 const mod = (a, m) => ((a % m) + m) % m;
+/** The degree (0 … 6) of a bass note in its own key (nt.key: {tonic, mode}, as Study 57 boxes the keys), else in K. */
+const degOf = (K, nt) => (nt.key ? mod(nt.d - localOf(K, nt.key).o, 7) : mod(nt.d, 7));
 const FIG = [8, 2, 3, 4, 5, 6, 7];
 
 // ─── basses ───
@@ -57,9 +59,12 @@ export function unitsOf(notes, K, per = 2) {
   const units = [];
   notes.forEach((nt, i) => {
     const next = notes[i + 1];
-    const r = nt.r || (K.mutable(nt.d) && next && next.d === nt.d + 1 ? 1 : 0);
+    // (a note in a key of its own is written as it sounds: no ⑥ or ⑦ raised for it)
+    const r = nt.key ? nt.r || 0 : nt.r || (K.mutable(nt.d) && next && next.d === nt.d + 1 ? 1 : 0);
+    // a dominant: ⑤ going to ① or ⑥, or closing — read in the note's key
+    const deg = degOf(K, nt), dominant = deg === 4 && (!next || [0, 5].includes(degOf(K, { ...next, key: nt.key })));
     // (the last note one unit: the final is struck, and the phrase ends on it)
-    for (let j = 0; j < (next ? per : 1); j++) units.push({ d: nt.d, r, struck: j === 0, strong: units.length % 2 === 0, note: i, dominant: isDominant(nt.d, next && next.d) });
+    for (let j = 0; j < (next ? per : 1); j++) units.push({ d: nt.d, r, struck: j === 0, strong: units.length % 2 === 0, note: i, dominant, deg, key: nt.key || null });
   });
   return units;
 }
@@ -91,30 +96,33 @@ const CADENCE_KINDS = {
 };
 /** The bass made to end as the ending asks: a deceptive cadence turns its last ① after ⑤ into the ⑥ above that ⑤,
  *  a half cadence leaves the last ① after ⑤ out; or why it cannot. */
-function endWith(notes, ending) {
+function endWith(notes, ending, K) {
   const n = notes.length, last = notes[n - 1], pen = notes[n - 2];
-  const fiveOne = pen && mod(pen.d, 7) === 4 && mod(last.d, 7) === 0;
+  const dl = degOf(K, last), dp = pen && degOf(K, { ...pen, key: last.key });
+  const fiveOne = pen && dp === 4 && dl === 0;
   if (ending === "deceptive") {
-    if (pen && mod(pen.d, 7) === 4 && mod(last.d, 7) === 5 && last.d === pen.d + 1) return notes;
+    if (pen && dp === 4 && dl === 5 && last.d === pen.d + 1) return notes;
     if (!fiveOne) throw new Error("a deceptive cadence needs a bass ending ⑤–①");
-    return [...notes.slice(0, -1), { d: pen.d + 1, r: 0 }];
+    return [...notes.slice(0, -1), { d: pen.d + 1, r: 0, key: last.key }];
   }
   if (ending === "half") {
-    if (mod(last.d, 7) === 4) return notes;
+    if (dl === 4) return notes;
     if (!fiveOne) throw new Error("a half cadence needs a bass ending on ⑤, or ⑤–①");
     return notes.slice(0, -1);
   }
   return notes;
 }
 /** Where the bass closes at its end, with the kinds of cadence the ending allows there, or null. */
-function finalClose(notes, units, ending) {
+function finalClose(notes, units, ending, K) {
   const n = notes.length, last = notes[n - 1], pen = notes[n - 2], at = units.length - 1;
   const from = units.findIndex((u) => u.note === n - 2);
+  // (the cadence read in the key of its last note)
+  const dl = degOf(K, last), dp = pen && degOf(K, { ...pen, key: last.key });
   let kind = null;
-  if (ending === "half") { if (mod(last.d, 7) === 4) kind = "⑤"; }
-  else if (pen && mod(pen.d, 7) === 1 && mod(last.d, 7) === 0 && Math.abs(pen.d - last.d) === 1) kind = "②–①";
-  else if (pen && mod(pen.d, 7) === 4 && mod(last.d, 7) === 0) kind = "⑤–①";
-  else if (pen && mod(pen.d, 7) === 4 && mod(last.d, 7) === 5 && last.d === pen.d + 1) kind = "⑤–⑥";
+  if (ending === "half") { if (dl === 4) kind = "⑤"; }
+  else if (pen && dp === 1 && dl === 0 && Math.abs(pen.d - last.d) === 1) kind = "②–①";
+  else if (pen && dp === 4 && dl === 0) kind = "⑤–①";
+  else if (pen && dp === 4 && dl === 5 && last.d === pen.d + 1) kind = "⑤–⑥";
   if (!kind) return null;
   const options = CADENCE_KINDS[kind].filter((o) => ENDINGS[ending].kinds.includes(o.kind));
   return options.length ? { from: kind === "⑤" ? at : from, at, kind, options } : null;
@@ -133,7 +141,11 @@ function optionFigs(o, cl) {
 /**
  * spec: {bass: "C4 B3 …" | degrees, key: {tonic, mode}, per (units a bass note: 1 or 2), ending ("authentic",
  *        "perfect", "imperfect", "deceptive", "half"), line (how strictly the melody moves: "free", "moderate",
- *        "strict"), middleLine (the middle voice's), lo, hi (the melody's range in degrees), middle: [lo, hi]}
+ *        "strict"), middleLine (the middle voice's), lo, hi (the melody's range in degrees), middle: [lo, hi],
+ *        ro (chapter 4's rules, partimento.mjs's spec.ro)}
+ * A bass given as notes ({d, r}) may give a note a key of its own ({d, r, key: {tonic, mode}}, Study 57's boxed keys):
+ * it is read there — its degree, whether it is a dominant, the cadence it closes — and written as it sounds (r its
+ * alteration in K's letters, none added).
  */
 export function figuring(spec = {}) {
   const K = keyOf(spec.key || { tonic: "C" });
@@ -145,7 +157,7 @@ export function figuring(spec = {}) {
   // player's choice, a deceptive one (the last ① turned into the ⑥ above its ⑤) or a half one (the phrase ending on ⑤)
   const ending = spec.ending || "authentic";
   if (!ENDINGS[ending]) throw new Error(`no such ending: ${ending}`);
-  notes = endWith(notes, ending);
+  notes = endWith(notes, ending, K);
   const units = unitsOf(notes, K, per), n = units.length;
   // the melody's range over the bass: from C4, or a 5th above its highest note, an octave and a 6th up (room for a voice
   // between); the middle voice's under it
@@ -157,14 +169,14 @@ export function figuring(spec = {}) {
   // more turns back by step —, the middle voice, an inner voice, "strict" — leaps up to a 5th (or the octave), turned
   // back by step from a 4th, never two the same way
   const line = spec.line || "moderate", middleLine = spec.middleLine || (line === "free" ? "moderate" : "strict");
-  const fin = finalClose(notes, units, ending);
+  const fin = finalClose(notes, units, ending, K);
   const figsAt = units.map(() => null);
   if (fin) {
     const all = fin.options.map((o) => optionFigs(o, fin)).filter(Boolean);
     // (a unit one of them leaves free is free)
     for (let t = 0; t < units.length; t++) figsAt[t] = all.some((fs) => !fs[t]) ? null : [...new Set(all.flatMap((fs) => fs[t]))];
   }
-  const V = schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: figsAt[t] })), key: K, figured: !!fin, lo, hi, spacing, line });
+  const V = schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: figsAt[t] })), key: K, figured: !!fin, lo, hi, spacing, line, ro: spec.ro });
   // the chords of the cadence: the last a 5/3 (a root position: its 5th or its 3rd above the bass, never a 6), and
   // before it, over the ⑤ of a ⑤–① cadence, a 5/3 or a 7/3 (the 6/4 or 5/4 of a compound cadence on the unit before)
   const cadenceChords = (t) => {
@@ -202,7 +214,7 @@ export function figuring(spec = {}) {
   };
   /** The chords the melody's note c can belong to at unit t, likeliest first: {chord, cost, why}. */
   function chordsAt(U, t, c = U[t]) {
-    const v = V.vertical(t, c), deg = mod(units[t].d, 7), dir = direction(t);
+    const v = V.vertical(t, c), deg = units[t].deg, dir = direction(t);
     const rule = (dir === "down" ? RULE_DOWN : RULE_UP)[deg];
     const held = t >= 1 && U[t - 1] === c, bassHeld = !units[t].struck, strong = units[t].strong;
     // a dissonance names its chord, or none: held over a bass struck (a suspension) a 7th is a 7/3, a 4th a 5/4, a 2nd
@@ -287,8 +299,8 @@ export function figuring(spec = {}) {
     run((t) => { const k = F[t].strong ? t : t - 1; return k >= 0 && k + 1 < F.length && F[k].f === 3 && F[k + 1].f === 6 && !F[k + 1].struck; }, 4, "the 3–6 progression");
     // cadences at the end of the melody (or anywhere ①, ⑥ follows ② or ⑤)
     for (let t = 1; t < F.length; t++) {
-      if (!F[t].struck || mod(F[t].d, 7) !== 0) continue;
-      const p = t - 1, deg = mod(F[p].d, 7), k = units[p].note, kStart = units.findIndex((u) => u.note === k);
+      if (!F[t].struck || units[t].deg !== 0) continue;
+      const p = t - 1, deg = units[p].deg, k = units[p].note, kStart = units.findIndex((u) => u.note === k);
       const two = [F[kStart].f, F[p].f, F[t].f];
       if (deg === 1) {
         if (two[0] === 7 && two[1] === 6 && (two[2] === 8 || two[2] === 1)) found.push({ from: kStart, to: t, name: "a compound cadence 7–6–8" });
@@ -315,7 +327,7 @@ export function figuring(spec = {}) {
       const fs = optionFigs(o, cl);
       if (!fs) return { name: o.name, kind: o.kind, count: 0n, why: "needs a bass note of two units" };
       const wk = cl.at + ":" + o.name;
-      const W = cadW.get(wk) || schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: fs[t] })), key: K, figured: true, lo, hi, spacing, line });
+      const W = cadW.get(wk) || schemata({ schema: { events: [] }, bass: units.map((u, t) => ({ ...u, fig: fs[t] })), key: K, figured: true, lo, hi, spacing, line, ro: spec.ro });
       cadW.set(wk, W);
       // the melody so far must already fit the cadence it asks for, where it covers it
       for (let t = 0; t < U.length; t++) if (W.check(U.slice(0, t), t, U[t])) return { name: o.name, kind: o.kind, count: 0n, why: t >= cl.from ? "the melody went another way" : null };
@@ -345,8 +357,8 @@ export function figuring(spec = {}) {
   /** Why the upper voices, going from a dominant ⑤ to the ① (or the ⑥) after it, do not resolve its tendencies, or
    *  null: the leading tone goes up to the tonic, the 7th (④) down to ③ — in either voice. */
   const resolves = (TT, MM, t, a, b) => {
-    if (t < 1 || !units[t].struck || !units[t - 1].dominant || mod(units[t - 1].d, 7) !== 4) return null;
-    const to = mod(units[t].d, 7);
+    if (t < 1 || !units[t].struck || !units[t - 1].dominant || units[t - 1].deg !== 4) return null;
+    const to = units[t].deg;
     if (to !== 0 && to !== 5) return null;
     for (const [px, x, who] of [[TT[t - 1], a, "the upper voice"], [MM[t - 1], b, "the middle voice"]]) {
       const deg = mod(D(px), 7);

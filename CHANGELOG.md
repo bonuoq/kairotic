@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 58 · incipit: phrases that modulate** (after trying it), as Study 57 does (IJzerman, chapter 4). A bass note
+  may carry a key of its own (`keys: "C C G G G"`, or `key` for a whole phrase), read there — its degree, a dominant,
+  the cadence it closes —, with chapter 4's semi-consonances; Claude is taught the Rule of the Octave, its
+  pentachords and tetrachords as the ways between keys, and modulates when asked; the score names the key reached.
+  `figuring.mjs` (Study 56) learns a key for each note, unchanged without one.
 - **Rhythm and patterns meet** (discussion #252; `@kairotic/patterns` 0.3.0, `@kairotic/rhythm` 0.4.0). A `pbind` takes
   rhythms as generators — `#pat/euclid [k n rotation pulse]`, `#pat/pulses [1 0 0 1 …]`, `#pat/necklace "x..x..x."`,
   `#pat/chance [k n]` (drawn again each pass, with the key's seed). In `:dur` a rhythm gives the lengths between its
