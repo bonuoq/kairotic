@@ -216,6 +216,19 @@ export async function analysis(page, check) {
    (let [[_ [_ tk]] (first (filter (fn [[o]] (= o 3)) outs))] (into (sorted-map) (map (fn [[k v]] [k (first v)])) (:when tk)))])`);
   check("follow: the beats where the performer is, the cue reached, and the take (onsets from the start)",
         followed === '[[0 1 2 3] [:swell] {"n0" 0, "n1" 1, "n2" 2, "n3" 3}]', followed);
+  // an elastic wire (discussion #217) whose note does not come: the box asks to look again when it is due, and then
+  // sends it; one led by the electronics, at its own time even if the performer is early
+  const elastic = await cljs(page, `(let [rcv (:receive (comp/lookup "follow")) args {:ahead 4 :band 0.6}
+      step (fn [[st outs lat] m] (let [r (rcv (assoc m :state st :args args))]
+                                   [(if (contains? r :state) (:state r) st) (into outs (:out r)) (into lat (:later r))]))
+      tr [:voice {:tempo 60 :continuum {:wires [{:id "w1" :note "n2" :send :x :kind :elastic :tol 0.5}]}} [:measure {:meter [4 4]} "c4/1 e4 g4 c5"]]
+      msgs [[2 tr 0] [0 :start 0] [0 261.63 0.1] [0 0 0.9] [0 329.63 1.1] [0 0 1.9]]
+      [st outs lat] (reduce (fn [acc [i v at]] (step acc {:inlet i :value v :at at})) [nil [] []] msgs)
+      wake (last (filter (fn [[_ _ v]] (= v [:tick])) lat))
+      [_ outs2 _] (step [st [] []] {:inlet 0 :value [:tick] :at (first wake)})]
+  [(js/Math.round (* 1000 (first wake))) (mapv second (filter (fn [[o]] (= o 2)) outs2))])`);
+  check("follow: an elastic wire goes on by itself when its note does not come (its time plus its tolerance)",
+        elastic === "[2601 [:x]]", elastic);
   const ftb = (await cljs(page, '(box "tree" 5600 100)')).trim();
   await cljs(page, `(tree! ${ftb} [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 e4 g4 c5"]])`);
   const fol = (await cljs(page, '(box "follow" 5600 220)')).trim();

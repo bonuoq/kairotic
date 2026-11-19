@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Wires** (discussions #217, #204; `@kairotic/analysis` 0.8.1): `(wire! :bN note send {:kind :rigid|:elastic :tol s
+  :leader :performer|:electronics})`, `(unwire! :bN id)`, `(wires :bN)` — a note joined to the electronics, kept on
+  the tree's continuum (history, MEI) and drawn on it (rigid solid, elastic dashed with its tolerance, led by the
+  electronics a diamond). The `follow` box sends what each wire sends: rigid on its note or caught up once at the
+  next, elastic on its note in time or on its own at the expected time plus its tolerance (the box wakes itself up
+  for it), led at the expected time. A note's own `:cue` is a rigid wire. `kairotic.follow`: `wires`, `tick`,
+  `next-due` (Study 52's Follower, now on the performer's tempo).
 - **Study 58 · incipit: phrases that modulate** (after trying it), as Study 57 does (IJzerman, chapter 4). A bass note
   may carry a key of its own (`keys: "C C G G G"`, or `key` for a whole phrase), read there — its degree, a dominant,
   the cadence it closes —, with chapter 4's semi-consonances; Claude is taught the Rule of the Octave, its

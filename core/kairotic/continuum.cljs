@@ -167,7 +167,7 @@
                           w (sp/parse (:name e))
                           staffness (clamp (* 2 (- rp 0.5)))
                           acc (when w (when (not= (:alter w) (sp/key-alter sig (:step w))) ({-2 "𝄫" -1 "♭" 0 "♮" 1 "♯" 2 "𝄪"} (:alter w))))]
-                      {:id (:id e) :name (:name e) :r {:time rt :pitch rp :glyph rg}
+                      {:id (:id e) :name (:name e) :cue (:cue e) :r {:time rt :pitch rp :glyph rg}
                        :x (lerp (:t e) (:ws e) rt) :x1 (lerp (+ (:t e) (:dur e)) (+ (:ws e) (:wd e)) rt)
                        :y (height-at h0 rp) :y1 (height-at h1 rp) :gliss (some? (:midi2 e))
                        :stroke (- 1 rg) :thick (clamp (:amp e)) :head rg
@@ -204,8 +204,29 @@
         sx (fn [t] (+ x0 (* (- x1 x0) (/ t t1))))
         sy (fn [s] (- base (* step s)))
         slices 60 dt (/ t1 slices)
-        staff (fn [t] ((:staff-alpha p) t)) grid (fn [t] ((:grid-alpha p) t))]
+        staff (fn [t] ((:staff-alpha p) t)) grid (fn [t] ((:grid-alpha p) t))
+        by-id (into {} (map (fn [n] [(:id n) n]) (:notes p)))
+        lane 12]
     (str
+     ;; the wires (discussion #217): from a note up to the electronics' lane — rigid solid, elastic dashed with its
+     ;; tolerance along the lane, led by the electronics with a diamond; a note's own :cue is a rigid wire too
+     (apply str
+            (for [w (concat (map (fn [n] {:note (:id n) :send (:cue n) :kind :rigid :id (str "cue:" (:id n))})
+                                 (filter #(some? (:cue %)) (:notes p)))
+                            (:wires c))
+                  :let [n (get by-id (:note w))]
+                  :when n
+                  :let [kind (keyword (name (or (:kind w) :rigid))) lead (keyword (name (or (:leader w) :performer)))
+                        x (sx (:x n)) y (- (sy (:y n)) (* 1.4 step))
+                        label (str (if (contains? w :send) (pr-str (:send w)) (:id w)))]]
+              (str "<g class=\"ct-wire ct-" (name kind) (when (= lead :electronics) " ct-led") "\" data-wire=\"" (esc (:id w)) "\">"
+                   "<line x1=\"" (f1 x) "\" x2=\"" (f1 x) "\" y1=\"" (f1 y) "\" y2=\"" (f1 lane) "\"/>"
+                   (when (and (= kind :elastic) (pos? (or (:tol w) 0)))
+                     (str "<line class=\"ct-tol\" x1=\"" (f1 x) "\" x2=\"" (f1 (sx (+ (:x n) (:tol w)))) "\" y1=\"" (f1 lane) "\" y2=\"" (f1 lane) "\"/>"))
+                   (if (= lead :electronics)
+                     (str "<path d=\"M" (f1 x) " " (f1 (- lane 4)) " l4 4 l-4 4 l-4 -4 z\"/>")
+                     (str "<circle cx=\"" (f1 x) "\" cy=\"" (f1 lane) "\" r=\"2.5\"/>"))
+                   "<text x=\"" (f1 (+ x 5)) "\" y=\"" (f1 (- lane 3)) "\">" (esc label) "</text></g>")))
      ;; the staff before time 0 (the clef and key signature sit there) and slice by slice after it
      (let [a (staff 0)]
        (when (> a 0.01)
@@ -239,7 +260,7 @@
                       (str "<path class=\"ct-line\" d=\"M" (f1 (+ x 6)) " " (f1 y) " L" (f1 (- xe 3)) " " (f1 y1) "\" opacity=\"" (op (:stem n)) "\"/>"))
                     (str "<ellipse class=\"ct-head\" data-id=\"" (esc (or (:id n) "")) "\" cx=\"" (f1 x) "\" cy=\"" (f1 y) "\" rx=\"" (f1 (* 1.1 step)) "\" ry=\"" (f1 (* 0.78 step))
                          "\" transform=\"rotate(-20 " (f1 x) " " (f1 y) ")\" fill-opacity=\"" (op (if (:filled n) 1 (- 1 (get-in n [:r :time])))) "\" opacity=\"" (op head) "\"><title>"
-                         (esc (str (:name n) (when-not (zero? (:cents n)) (str " " (when (pos? (:cents n)) "+") (:cents n) "¢")))) "</title></ellipse>")
+                         (esc (str (:name n) (when-not (zero? (:cents n)) (str " " (when (pos? (:cents n)) "+") (:cents n) "¢")) (when (:id n) (str " · " (:id n))))) "</title></ellipse>")
                     (when (> (:stem n) 0.01)
                       (let [sxp (if up (+ x (* 1.0 step)) (- x (* 1.0 step))) y2 (+ y (* sd 7 step))]
                         (str "<line class=\"ct-stem\" x1=\"" (f1 sxp) "\" x2=\"" (f1 sxp) "\" y1=\"" (f1 y) "\" y2=\"" (f1 y2) "\" opacity=\"" (op (:stem n)) "\"/>"

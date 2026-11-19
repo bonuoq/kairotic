@@ -43,7 +43,7 @@
         (let [s (ct/svg (mt/update-attrs t2 assoc :continuum {:res (ct/preset-res :graphic) :take "t1"}) 600 200)]
           (t/is "the drawing shows the take the tree asks for" (= 2 (count (re-seq #"class=\"ct-stroke\"" s)))))))
     (let [s (ct/svg tree 600 200)]
-      (t/is "drawn written: heads with their names, stems, the staff" (and (re-find #"class=\"ct-head\" data-id=\"n1\"" s) (re-find #"<title>f#4</title>" s)
+      (t/is "drawn written: heads with their names, stems, the staff" (and (re-find #"class=\"ct-head\" data-id=\"n1\"" s) (re-find #"<title>f#4 · n1</title>" s)
                                                                        (re-find #"ct-stem" s) (re-find #"ct-staff" s)))
       (t/is "… no strokes" (not (re-find #"ct-stroke" s))))
     (let [s (ct/svg tree 600 200 {:res (ct/preset-res :dissolve)})]
