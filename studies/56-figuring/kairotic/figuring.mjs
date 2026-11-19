@@ -22,7 +22,7 @@
 //                   partimento.mjs: no 3rd doubled, nor the leading tone, the 6/4 a double appoggiatura…): counted
 //                   exactly, drawn by the engine
 
-import { schemata, parts, keyOf, codeOf, isDominant, CHORDS } from "./partimento.mjs";
+import { schemata, parts, keyOf, codeOf, codeDegree, codeAlter, isDominant, CHORDS } from "./partimento.mjs";
 import { total, choose, temperature } from "./soft.mjs";
 
 const mod = (a, m) => ((a % m) + m) % m;
@@ -44,7 +44,9 @@ export function parseBass(text, K) {
   for (const tok of text.trim().split(/[\s,]+/).filter(Boolean)) {
     let code;
     try { code = codeOf(K, tok); } catch (e) { return { error: `${tok} is not a note of ${K.tonic} ${K.mode}` }; }
-    out.push({ d: code >> 1, r: code & 1 });
+    const d = codeDegree(code), r = codeAlter(code);
+    if (!(r === 0 || (r === 1 && K.mutable(d)))) return { error: `${tok} is not a note of ${K.tonic} ${K.mode}` };
+    out.push({ d, r });
   }
   return out.length ? { notes: out } : { error: "no notes" };
 }
@@ -188,7 +190,7 @@ export function figuring(spec = {}) {
     const best = ok.slice().sort((a, b) => Math.abs(midiOf(a.note) - midi) - Math.abs(midiOf(b.note) - midi) || (b.futures > a.futures ? 1 : -1))[0];
     const corrected = !(exact && ok.includes(exact));
     return { note: best.note, corrected, futures: best.futures,
-             reason: corrected ? (exact ? exact.reason || (exact.futures > 0n ? "no middle voice could be written under it" : "no way on from it: the phrase could not be finished") : midi < midiOf(2 * lo) || midi > midiOf(2 * hi) ? "out of the melody's range" : "not a note of the key") : null };
+             reason: corrected ? (exact ? exact.reason || (exact.futures > 0n ? "no middle voice could be written under it" : "no way on from it: the phrase could not be finished") : midi < K.midi(lo) || midi > K.midi(hi) ? "out of the melody's range" : "not a note of the key") : null };
   }
 
   // ─── the figures found, unit by unit ───

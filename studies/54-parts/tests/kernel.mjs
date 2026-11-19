@@ -102,7 +102,7 @@ export async function run() {
   for (let i = 0; i < 12; i++) { const a = U.sample(r2), b = U.engine({ temp: 0.5, r: r2 }); su.push(a.top.map(U.degree)); se.push(b.top.map(U.degree)); }
   const pu = shape(su), pe = shape(se);
   is(`the upper voice, drawn uniformly ${Math.round(100 * pu.steps)}% steps, by the engine ${Math.round(100 * pe.steps)}%`, pe.steps > pu.steps);
-  is("the chords known: 5/3, 6/3, 6 (the 6/(3) of the Galant cadence), 7/3, 4/2, 6/4, 5/4", Object.keys(CHORDS).sort().join(" ") === "4/2 5/3 5/4 6 6/3 6/4 7/3");
+  is("the chords known: 5/3, 6/3, 6 (the 6/(3) of the Galant cadence), 7/3, 4/2, 6/4, 5/4, and chapter 4's 6/5", Object.keys(CHORDS).sort().join(" ") === "4/2 5/3 5/4 6 6/3 6/4 6/5 7/3");
   return { results, notes };
 }
 

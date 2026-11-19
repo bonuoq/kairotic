@@ -215,7 +215,7 @@ for (const f of ["kernel.mjs", "mirror.mjs"])
   const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646, r = rng(7);
   const ctx = { N: 7, strong: (t) => t % 2 === 0, lowerFirst: (x, c) => (x <= c ? [x, c] : [c, x]), dissonant: (x, c) => [1, 3, 6].includes(((Math.abs(x - c) % 7) + 7) % 7),
                 quality: (l, h) => { const k = (((h - l) % 7) + 7) % 7; return k === 0 || k === 4 ? "perfect" : k === 2 || k === 5 ? "imperfect" : "dissonant"; }, suspension: false };
-  for (const study of ["50-lines", "51-schemata", "54-parts", "56-figuring"]) {
+  for (const study of ["50-lines", "51-schemata", "54-parts", "56-figuring", "57-octave"]) {
     const theirs = await import(`../studies/${study}/kairotic/soft.mjs`);
     let same = true;
     for (let k = 0; k < 400 && same; k++) {
@@ -232,7 +232,7 @@ for (const f of ["kernel.mjs", "mirror.mjs"])
 // partimento.mjs: the hard rules over a bass (Studies 51 and 54), shared; the studies publish copies of it
 {
   const P = await import("../packages/cac/assets/partimento.mjs");
-  for (const st of ["51-schemata", "54-parts", "56-figuring"]) {
+  for (const st of ["51-schemata", "54-parts", "56-figuring", "57-octave"]) {
     const same = readFileSync(join(root, `studies/${st}/kairotic/partimento.mjs`), "utf8") === readFileSync(join(root, "packages/cac/assets/partimento.mjs"), "utf8");
     is(`Study ${st.slice(0, 2)}'s partimento.mjs is the package's, as it is`, same);
   }

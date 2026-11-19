@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // @kairotic/cac · partimento.mjs: a given bass realized in two or three parts, as a partimento is — the hard rules of
 // tonal counterpoint over a bass, shared by every engine that realizes one (Studies 51 and 54, after Job IJzerman,
-// Harmony, Counterpoint, Partimento, OUP 2018, chapters 1–3). Beside soft.mjs, which weighs what these allow.
+// Harmony, Counterpoint, Partimento, OUP 2018, chapters 1–4). Beside soft.mjs, which weighs what these allow.
 //
 //   keyOf, codeOf          a key (a tonic, major or minor): a pitch is a degree, 0 the tonic of the bass's octave,
 //                          and in minor ⑥ and ⑦ raised or not
@@ -15,6 +15,12 @@
 //   SCHEMATA3, CADENCES    the three-part schemata of chapter 2 and the cadences of chapter 3, a phrase being a
 //                          schema then a cadence (phraseBass)
 //   CHORDS                 the figures of a chord as the intervals that must sound and may sound above the bass
+//   RULE_OF_THE_OCTAVE     chapter 4: the chord for each degree of a scale in the bass, going up and going down
+//
+// Keys (chapter 4): a bass note may carry a key of its own, as the book boxes the keys of a modulating sequence. A
+// note is then a degree in the letters of the key of the whole and an alteration (−1, 0, +1) from its scale; whether
+// it belongs, and what it is (the leading tone, a raised ⑥ in minor, the chord on a dominant), is read in the key of
+// its unit. One key for the whole is the case of chapters 1–3, unchanged.
 //
 // The rules of one voice over the bass:
 //   a unit is half a bar: the first strong, the second weak (an upbeat, phase 1, begins on a weak one)
@@ -32,6 +38,9 @@
 //   minor       ⑥ and ⑦ go up raised, down natural, and a raised ⑥ goes on up to the raised ⑦; over a dominant
 //               (⑤ going to ① or ⑥, or closing a half cadence; not a ⑤ passed in a sequence) ⑦ is raised: the
 //               chord on the dominant is major
+//   chapter 4   (spec.ro) the augmented 4th and the diminished 5th over the bass are semi-consonances: unprepared,
+//               resolved (the 4th up to a 6th, the 5th down to a 3rd); over a passing bass (the descending ④'s 4/2)
+//               an upper voice may sound a note of the chord before, consonant again when the bass moves on
 //   more        a unit may say whether it is strong (a schema in a meter of its own) and allow an accented
 //               passing tone (the 6/4 of a Galant cadence); the bass may hold a 2nd or a 4th (2–3, 4/2); a 7th may
 //               put off its resolution by one chord, held into the 4th over the next bass (ii7 → V6/4: delayed)
@@ -90,7 +99,7 @@ export function keyOf(k = {}) {
   };
   /** Whether a degree has two forms in this key (⑥ and ⑦ in minor). */
   const mutable = (d) => mode === "minor" && mod(d, 7) >= 5;
-  return { tonic: name, mode, tonicMidi, semi, midi, name: name_, mutable,
+  return { tonic: name, mode, tonicMidi, letter: L, pc, oct, semi, midi, name: name_, mutable, pattern: pat,
            hz: (d, r = 0) => 440 * Math.pow(2, (midi(d, r) - 69) / 12),
            circled: (d) => "①②③④⑤⑥⑦"[mod(d, 7)] };
 }
@@ -169,7 +178,7 @@ export function schemata(spec = {}) {
   if (!schema) throw new Error(`no such schema: ${spec.schema}`);
   const K = keyOf(spec.key || { tonic: schema.tonic || "C", mode: schema.mode || "major" });
   const B = spec.bass || bassOf(schema, K);
-  const n = B.length, phase = schema.phase ?? spec.phase ?? 0;
+  const n = B.length, n_ = n, phase = schema.phase ?? spec.phase ?? 0;
   const lo = spec.lo ?? 7, hi = spec.hi ?? 21, spacing = spec.spacing ?? 16, maxHold = spec.maxHold ?? 2;
   const figured = spec.figured ?? true;
   // how strictly the line moves, beyond the rules below (spec.line, as the counterpoint of Studies 38–42 asks of a
@@ -185,27 +194,54 @@ export function schemata(spec = {}) {
     if (line === "strict" && b >= 2 && a >= 2 && sign(step) === sign(before)) return "two leaps in a row the same way";
     return null;
   };
+  // the rules of the Rule of the Octave (chapter 4, spec.ro): the augmented 4th and the diminished 5th over the bass
+  // are semi-consonances — they need no preparation, but resolve, the 4th up to a 6th and the 5th down to a 3rd —;
+  // and over a passing bass (struck a step from the note before, going on a step the same way: the descending ④'s
+  // 4/2) an upper voice may sound a note of the chord before (held, or taken from the other upper voice), a
+  // dissonance now, consonant again when the bass moves on — the note held, or moving by step
+  const ro = !!spec.ro;
   const strong = (t) => (B[t] && B[t].strong !== undefined ? B[t].strong : (t + phase) % 2 === 0);
   const middle = spec.voice === "middle";
 
-  // a note of the upper voice is a code: 2·degree + raised
-  const D = (c) => c >> 1, R = (c) => c & 1;
-  const semiU = (c) => K.semi(D(c), R(c));
-  const semiB = (t) => K.semi(B[t].d, B[t].r);
+  // a note of the upper voice is a code: 3·degree + its alteration + 1, the degree in the key's letters (0 its tonic
+  // in the bass's octave) and the alteration in semitones from the key's own scale (−1, 0, +1: in minor ⑥ and ⑦
+  // raised are +1)
+  const D = codeDegree, A = codeAlter;
+  const semiU = (c) => K.semi(D(c), A(c));
+  const semiB = (t) => K.semi(B[t].d, B[t].r || 0);
+  // the key of each unit (chapter 4: a bass note may carry its own, as the book boxes the keys of a modulating
+  // sequence; else the key of the whole): a note's degree and alteration read in it
+  const LOC = B.map((b) => localOf(K, b.key));
+  /** The degree (0 its tonic … 6) and the alteration of the note c in the key of unit t. */
+  const loc = (t, c) => localNote(K, LOC[t], D(c), A(c));
+  /** The degree of the bass at unit t in its key. */
+  const locB = (t) => localNote(K, LOC[t], B[t].d, B[t].r || 0).deg;
+  /** Whether c is a note of the key of unit t: its scale, and in minor ⑥ and ⑦ raised too. */
+  const inKey = (t, c) => { const l = loc(t, c); return l.alt === 0 || (l.alt === 1 && LOC[t].key.mode === "minor" && l.deg >= 5); };
   const codes = [];
-  for (let d = lo; d <= hi; d++) { codes.push(2 * d); if (K.mutable(d)) codes.push(2 * d + 1); }
+  for (let d = lo; d <= hi; d++) for (const a of [-1, 0, 1]) { const c = codeOf3(d, a); if (B.some((b, t) => inKey(t, c))) codes.push(c); }
 
   /** The vertical at unit t with the upper note c: {steps, cls, q: "perfect" | "imperfect" | "dissonant"}. */
   function vertical(t, c) {
     const steps = D(c) - B[t].d, cls = mod(steps, 7), s = mod(semiU(c) - semiB(t), 12);
     const q = cls === 0 ? (s === 0 ? "perfect" : "dissonant") : cls === 4 ? (s === 7 ? "perfect" : "dissonant")
             : cls === 2 ? (s === 3 || s === 4 ? "imperfect" : "dissonant") : cls === 5 ? (s === 8 || s === 9 ? "imperfect" : "dissonant") : "dissonant";
-    return { steps, cls, q };
+    // the augmented 4th and the diminished 5th over the bass: chapter 4's semi-consonances
+    const tri = s === 6 ? (cls === 3 ? "A4" : cls === 4 ? "d5" : null) : null;
+    return { steps, cls, q, tri };
   }
   const consonant = (v) => v.q !== "dissonant";
+  /** Whether the bass at unit t passes: struck a step from the note before, the next note a step on the same way. */
+  function bassPassing(t) {
+    if (t < 1 || !B[t].struck) return false;
+    let j = t + 1; while (j < n && !B[j].struck) j++;
+    if (j >= n) return false;
+    const a = B[t].d - B[t - 1].d, b = B[j].d - B[t].d;
+    return Math.abs(a) === 1 && a === b;
+  }
 
   /** Why a move of the upper voice from a to b (struck) is not melodic, or null. */
-  function melodicError(a, b) {
+  function melodicError(a, b, t = 0) {
     const n = Math.abs(D(b) - D(a)), s = Math.abs(semiU(b) - semiU(a));
     if (n === 0) return "a chromatic step";
     if (n === 1) return s <= 2 ? null : "an augmented 2nd";
@@ -213,7 +249,7 @@ export function schemata(spec = {}) {
     if (n === 3) return s === 5 ? null : "an augmented 4th";
     if (n === 4) return s === 6 || s === 7 ? null : "an augmented 5th";
     if (n === 5) return s === 8 || s === 9 ? null : "this 6th";
-    if (n === 6) return K.mode === "minor" && s === 9 ? null : "a 7th (only the diminished one, in minor)";
+    if (n === 6) return LOC[Math.min(t, n_ - 1)].key.mode === "minor" && s === 9 ? null : "a 7th (only the diminished one, in minor)";
     if (n === 7) return s === 12 ? null : "this octave";
     return "a leap wider than the octave";
   }
@@ -221,10 +257,31 @@ export function schemata(spec = {}) {
   /** The note struck before the one sounding at unit j in U (its index), or −1. */
   const onsetOf = (U, j) => { let i = j; while (i > 0 && U[i - 1] === U[j]) i--; return i; };
 
+  /** Why the dissonance c at unit t, after prev, is refused by the rules of chapters 1–3 (a suspension prepared, a
+   *  passing tone by step), or null. (It looks at prev only: the count's memo stays sound.) */
+  function dissonance(t, c, prev, delayed) {
+    const v = vertical(t, c), held = prev !== null && c === prev, struck = !held;
+    if (strong(t)) {
+      const bassHeld = !B[t].struck;
+      // an accented passing tone, where the schema asks for one: struck by step from a consonance (it resolves
+      // down by step on the next unit)
+      const ap = B[t].ap && !held && !bassHeld && t >= 1 && Math.abs(D(c) - D(prev)) === 1 && consonant(vertical(t - 1, prev));
+      if (!ap && held === bassHeld) return held ? "a dissonance with both voices held" : `a ${CLASS_FIG[v.cls]} (dissonant) on a strong unit must be prepared, one voice holding its note`;
+      if (!delayed && !consonant(vertical(t - 1, prev))) return "a suspension is prepared by a consonance";
+      if (held && !(v.cls === 6 || v.cls === 3 || (v.cls === 1 && v.steps >= 8))) return "held in the upper voice: a 7th, a 4th or a 9th";
+      if (bassHeld && v.cls !== 1 && v.cls !== 3) return "held in the bass: a 2nd or a 4th (2–3, 4/2)";
+    } else {
+      if (B[t].struck) return "a dissonance on a weak unit: over a held bass";
+      if (!struck || t === 0 || Math.abs(D(c) - D(prev)) !== 1) return "a dissonance on a weak unit passes by step";
+      if (!consonant(vertical(t - 1, prev))) return "two dissonances in a row";
+    }
+    return null;
+  }
   /** Why the upper note c at unit t (after U[0..t-1]) is refused, or null. */
   function check(U, t, c) {
     if (t >= n) return "the work is finished";
     if (D(c) < lo || D(c) > hi) return "out of range";
+    if (!inKey(t, c)) return `not a note of ${LOC[t].key.tonic} ${LOC[t].key.mode}`;
     const v = vertical(t, c);
     // the voices
     if (v.steps < 0) return "below the bass";
@@ -233,8 +290,14 @@ export function schemata(spec = {}) {
     if (figured && B[t].fig && !B[t].fig.some((f) => FIG_CLASS(f) === v.cls)) return `the figures ask for ${B[t].fig.join(" or ")}`;
     // in minor the chord on a dominant ⑤ is major: its ⑦ raised (not over a ⑤ passed in a sequence, nor in a 6/3
     // on ⑤, a chord on ③)
-    if (K.mode === "minor" && B[t].dominant && B[t].chord !== "6/3" && mod(D(c), 7) === 6 && !R(c))
-      return `the chord on the dominant is major: ${K.name(D(c), 1)}, not ${K.name(D(c), 0)}`;
+    { const l = loc(t, c);
+      if (LOC[t].key.mode === "minor" && B[t].dominant && B[t].chord !== "6/3" && l.deg === 6 && l.alt !== 1)
+        return `the chord on the dominant is major: ${K.name(D(c), A(c) + 1)}, not ${K.name(D(c), A(c))}`;
+      // chapter 4: in minor the 6/3 on ② going to ① takes the leading tone (the RO's 6♯ on ②)
+      if (ro && LOC[t].key.mode === "minor" && l.deg === 6 && l.alt !== 1 && locB(t) === 1 && t + 1 < n) {
+        let j = t + 1; while (j < n && !B[j].struck) j++;
+        if (j < n && locB(j) === 0 && Math.abs(B[j].d - B[t].d) === 1) return `over ② going to ① the leading tone: ${K.name(D(c), A(c) + 1)}, not ${K.name(D(c), A(c))}`;
+      } }
     const prev = t >= 1 ? U[t - 1] : null;
     const held = prev !== null && c === prev, struck = !held;
     // a 7th held into the 4th over the next bass (the 7th of ② held into the 6/4 or 5/4 over ⑤, ii7 → V): its
@@ -247,30 +310,49 @@ export function schemata(spec = {}) {
       const on = onsetOf(U, t - 1);
       if (t - on >= maxHold + (delayed ? 1 : 0)) return `a note is held ${maxHold} units at most`;
     } else if (prev !== null) {
-      const e = melodicError(prev, c); if (e) return e;
+      const e = melodicError(prev, c, t); if (e) return e;
       const on = onsetOf(U, t - 1), a1 = on >= 1 ? U[on - 1] : null;
       const step = D(c) - D(prev);
       if (a1 !== null && Math.abs(D(prev) - D(a1)) >= 3 && sign(step) === sign(D(prev) - D(a1))) return "after a leap of a 4th or more the line turns";
       { const e = lineError(a1 === null ? null : D(prev) - D(a1), step); if (e) return e; }
-      // in minor: ⑥ and ⑦ go up raised and down natural
-      if (K.mutable(D(prev)) && Math.abs(step) === 1) {
-        if (step > 0 && !R(prev)) return `${K.name(D(prev), 0)} goes up raised (melodic minor)`;
-        if (step < 0 && R(prev)) return `${K.name(D(prev), 1)} goes down natural (melodic minor)`;
+      // in minor: ⑥ and ⑦ go up raised and down natural (read in the key of the unit before, where the note was)
+      const lp = loc(t - 1, prev), lc = loc(t, c), minorP = LOC[t - 1].key.mode === "minor" && lp.deg >= 5;
+      if (minorP && Math.abs(step) === 1) {
+        if (step > 0 && lp.alt !== 1) return `${K.name(D(prev), A(prev))} goes up raised (melodic minor)`;
+        if (step < 0 && lp.alt === 1) return `${K.name(D(prev), A(prev))} goes down natural (melodic minor)`;
       }
       // the raised ⑥ is only on the way up to the tonic: it goes on up to the raised ⑦
-      if (K.mutable(D(prev)) && mod(D(prev), 7) === 5 && R(prev) && !(step === 1 && R(c)))
-        return `${K.name(D(prev), 1)} goes on up to ${K.name(D(prev) + 1, 1)} (melodic minor, toward the tonic)`;
+      if (minorP && lp.deg === 5 && lp.alt === 1 && !(step === 1 && lc.alt === 1))
+        { const up = [-1, 0, 1].map((x) => codeOf3(D(prev) + 1, x)).find((x) => { const l = loc(t - 1, x); return l.deg === 6 && l.alt === 1; });
+          return `${K.name(D(prev), A(prev))} goes on up to ${up === undefined ? "the raised ⑦" : K.name(D(up), A(up))} (melodic minor, toward the tonic)`; }
     }
     // what the unit before asks
     if (t >= 1 && !delayed) {
       const pv = vertical(t - 1, prev);
-      if (!consonant(pv)) {
+      // chapter 4: a semi-consonance resolves, the augmented 4th up to a 6th, the diminished 5th down to a 3rd; a note
+      // held over a passing bass is held on, or moves by step, into a consonance — and where only these rules let the
+      // dissonance in, only they let it out
+      let special = false, ok4 = false;
+      if (ro && !consonant(pv)) {
+        const pp = t >= 2 ? U[t - 2] : null;
+        const pdel = (spec.delayed ?? true) && pp !== null && prev === pp && B[t - 1].struck && strong(t - 1) && t >= 2 && strong(t - 2) &&
+                     vertical(t - 2, pp).q === "dissonant" && vertical(t - 2, pp).cls === 6 && pv.cls === 3;
+        special = dissonance(t - 1, prev, pp, pdel) !== null;
+        const semiOk = pv.tri && struck && ((pv.tri === "A4" && D(c) === D(prev) + 1 && v.cls === 5) || (pv.tri === "d5" && D(c) === D(prev) - 1 && v.cls === 2));
+        // (a semi-consonance resolves as one, wherever it came from)
+        const passOk = !pv.tri && bassPassing(t - 1) && consonant(vertical(t - 2 >= 0 ? t - 2 : 0, prev)) && consonant(v) && (held || Math.abs(D(c) - D(prev)) === 1);
+        ok4 = semiOk || passOk;
+        if (special && !ok4) return pv.tri ? (pv.tri === "A4" ? "the augmented 4th resolves up to a 6th" : "the diminished 5th resolves down to a 3rd") : "over the passing bass the held note goes on into a consonance";
+      }
+      if (!consonant(pv) && !special && !ok4) {
         if (strong(t - 1)) {
           // the suspension before resolves: the voice that held it goes down a step, to a consonance
           const upperHeld = t >= 2 && U[t - 2] === prev, bassHeldBefore = !B[t - 1].struck;
           if (upperHeld || !bassHeldBefore) { if (!(struck && D(c) === D(prev) - 1)) return upperHeld ? "the suspension resolves down by step (the upper voice)" : "the accented passing tone resolves down by step"; }
           else if (!(B[t].struck && B[t].d === B[t - 1].d - 1)) return "the suspension resolves down by step (the bass)";
-          if (!consonant(v)) return "the suspension resolves to a consonance";
+          // (chapter 4: or to a semi-consonance — the 7th over ⑥ resolving to the diminished 5th over ⑦, Bach's
+          // ascending tetrachords — which resolves in its turn)
+          if (!consonant(v) && !(ro && v.tri)) return "the suspension resolves to a consonance";
         } else {
           // a passing tone goes on by step, the same way
           const a = U[onsetOf(U, t - 1) - 1];
@@ -280,20 +362,10 @@ export function schemata(spec = {}) {
     }
     if (!consonant(v)) {
       if (t === n - 1) return "the work does not end on a dissonance";
-      if (strong(t)) {
-        const bassHeld = !B[t].struck;
-        // an accented passing tone, where the schema asks for one: struck by step from a consonance (it resolves
-        // down by step on the next unit)
-        const ap = B[t].ap && !held && !bassHeld && t >= 1 && Math.abs(D(c) - D(prev)) === 1 && consonant(vertical(t - 1, prev));
-        if (!ap && held === bassHeld) return held ? "a dissonance with both voices held" : `a ${CLASS_FIG[v.cls]} (dissonant) on a strong unit must be prepared, one voice holding its note`;
-        if (!delayed && !consonant(vertical(t - 1, prev))) return "a suspension is prepared by a consonance";
-        if (held && !(v.cls === 6 || v.cls === 3 || (v.cls === 1 && v.steps >= 8))) return "held in the upper voice: a 7th, a 4th or a 9th";
-        if (bassHeld && v.cls !== 1 && v.cls !== 3) return "held in the bass: a 2nd or a 4th (2–3, 4/2)";
-      } else {
-        if (B[t].struck) return "a dissonance on a weak unit: over a held bass";
-        if (!struck || t === 0 || Math.abs(D(c) - D(prev)) !== 1) return "a dissonance on a weak unit passes by step";
-        if (!consonant(vertical(t - 1, prev))) return "two dissonances in a row";
-      }
+      const e = dissonance(t, c, prev, delayed);
+      // chapter 4: a semi-consonance enters freely; over a passing bass a note of the chord before may sound (one
+      // consonant over the bass before: held, or the upper voices exchanging their notes)
+      if (e && !(ro && (v.tri || (bassPassing(t) && consonant(vertical(t - 1, c)) && (held || spec.exchange))))) return e;
     }
     // parallels and direct motion into a perfect consonance
     if (t >= 1 && v.q === "perfect" && struck && B[t].struck) {
@@ -303,7 +375,7 @@ export function schemata(spec = {}) {
       if (sign(bm) === sign(um) && bm !== 0 && Math.abs(um) > 1) return `${v.cls === 0 ? "an octave" : "a 5th"} by direct motion, the upper voice leaping`;
     }
     // the start and the end
-    if (t === 0 && !middle && !(figured && B[0].fig) && B[0].d % 7 === 0 && ![0, 2, 4].includes(v.cls)) return "over ① the upper voice starts on an octave, a 5th or a 3rd";
+    if (t === 0 && !middle && !(figured && B[0].fig) && locB(0) === 0 && ![0, 2, 4].includes(v.cls)) return "over ① the upper voice starts on an octave, a 5th or a 3rd";
     if (t === n - 1 && !middle) {
       if (![0, 2].includes(v.cls)) return "it ends on an octave or a 3rd";
       if (prev !== null && Math.abs(D(c) - D(prev)) !== 1) return "the last note is reached by step";
@@ -328,7 +400,7 @@ export function schemata(spec = {}) {
   /** The candidates for the next unit: {note, name, reason} or {note, name, futures}. */
   const fan = (U = []) => codes.map((c) => {
     const r = check(U, U.length, c);
-    return r ? { note: c, name: K.name(D(c), R(c)), reason: r } : { note: c, name: K.name(D(c), R(c)), reason: null, futures: count([...U, c]) };
+    return r ? { note: c, name: K.name(D(c), A(c)), reason: r } : { note: c, name: K.name(D(c), A(c)), reason: null, futures: count([...U, c]) };
   });
   /** A whole realization, drawn uniformly from the futures (r in [0, 1)). */
   function sample(r = Math.random, U0 = []) {
@@ -482,15 +554,33 @@ export function schemata(spec = {}) {
   }
 
   return { spec, schema, key: K, bass: B, n, phase, strong, lo, hi, figured, codes, vertical, check, count, fan, sample, engine, cost, costParts, weights: W, figurings, figuringOf, sampleFiguring, realize, judge, figures, cadence,
-           code: (name) => codeOf(K, name), name: (c) => K.name(D(c), R(c)), degree: D, raised: R, hz: (c) => K.hz(D(c), R(c)), memo };
+           code: (name) => codeOf(K, name), name: (c) => K.name(D(c), A(c)), degree: D, raised: A, alter: A, hz: (c) => K.hz(D(c), A(c)), loc, locB, inKey, keys: LOC, bassPassing, memo };
 }
 
-/** The code of a note name in a key ("E5", "G#4"): 2·degree + raised. */
+/** The code of a note name in a key ("E5", "G#4", "Bb3"): 3·degree + alteration + 1, the degree in the key's letters
+ *  (0 its tonic in the bass's octave) and the alteration in semitones from the key's scale (−1, 0, +1). */
 export function codeOf(K, name) {
   const m = /^([A-Ga-g])([#♯b♭]*)(-?\d+)$/.exec(name.trim());
   if (!m) throw new Error(`not a note: ${name}`);
-  for (let d = -14; d <= 35; d++) for (const r of K.mutable(d) ? [0, 1] : [0]) if (K.name(d, r).replace("♯", "#").replace("♭", "b") === name.replace("♯", "#").replace("♭", "b")) return 2 * d + r;
-  throw new Error(`${name} is not a note of ${K.tonic} ${K.mode}`);
+  const L = LETTERS.indexOf(m[1].toUpperCase()), acc = [...m[2]].reduce((a, ch) => a + (ch === "#" || ch === "♯" ? 1 : -1), 0), o = Number(m[3]);
+  const d = 7 * o + L - (7 * K.oct + K.letter), midi = 12 * (o + 1) + WHITE[L] + acc, a = midi - K.midi(d, 0);
+  if (Math.abs(a) > 1) throw new Error(`${name}: too far from ${K.tonic} ${K.mode}`);
+  return codeOf3(d, a);
+}
+/** A code from a degree and an alteration; and back. */
+export const codeOf3 = (d, a = 0) => 3 * d + a + 1;
+export const codeDegree = (c) => Math.floor(c / 3);
+export const codeAlter = (c) => c - 3 * Math.floor(c / 3) - 1;
+/** The key k (or the home key K) as seen from K: its tonic's letters and semitones above K's, and k itself. */
+export function localOf(K, k) {
+  const L = k ? (k.semi ? k : keyOf(k)) : K;
+  return { key: L, o: mod(L.letter - K.letter, 7), s: mod(L.pc - K.pc, 12) };
+}
+/** A note of K (its degree d and alteration a) read in a local key: its degree there (0 … 6) and its alteration from
+ *  that key's scale. */
+export function localNote(K, lo, d, a) {
+  const deg = mod(d - lo.o, 7), sem = mod(K.semi(d, a) - lo.s, 12);
+  return { deg, alt: mod(sem - lo.key.pattern[deg] + 6, 12) - 6 };
 }
 
 // ─── chords: the classes of interval above the bass (0 the octave, 2 the 3rd, 4 the 5th, 5 the 6th…) ───
@@ -505,9 +595,30 @@ export const CHORDS = {
   "6/4": { need: [5, 3], ok: [5, 3, 0] },
   "5/4": { need: [3], ok: [3, 4, 0] },
 };
+// (chapter 4: the 6/5 that may stand on the ascending ④, a sixth chord with its 5th, the 3rd left out in three parts)
+CHORDS["6/5"] = { need: [5, 4], ok: [5, 4, 2] };
+
+// ─── the Rule of the Octave (chapter 4): a chord for each degree of a scale in the bass, going up and going down ───
+// ① and ⑤ stable (5/3), the degrees between them mobile (6/3); going down ④ passes under the chord of ⑤ (4/2), and
+// in major ⑥ takes a raised 6th, a leading tone to ⑤ (read here as the key of ⑤: tonicize). The variants the book
+// names: on the ascending ④ a 5/3 or a 6/5; a 7–6 on ⑥ (7/3); on the ascending ⑦ a diminished 5/3; on the
+// descending ④ a 6/4 (after a complete 5/3 on ⑤).
+export const RULE_OF_THE_OCTAVE = {
+  up: ["5/3", "6/3", "6/3", "6/3", "5/3", "6/3", "6/3"],
+  down: ["5/3", "6/3", "6/3", "4/2", "5/3", "6/3", "6/3"],
+  variants: { up: { 3: ["5/3", "6/5"], 5: ["7/3"], 6: ["5/3"] }, down: { 3: ["6/4"], 5: ["7/3"] } },
+  tonicize: { down: { 5: "the key of ⑤ (major): its raised 6th a leading tone to ⑤" } },
+};
+/** The Rule of the Octave's chord for a bass on degree deg (0 … 6) of a key in mode, going up or down (to the next
+ *  bass note): {chord, key (a key to read it in, where it tonicizes: the descending ⑥ in major)}. */
+export function octaveChord(deg, dir, mode = "major") {
+  const chord = RULE_OF_THE_OCTAVE[dir === "down" ? "down" : "up"][mod(deg, 7)];
+  return { chord, tonicize: dir === "down" && mod(deg, 7) === 5 && mode === "major" ? 4 : null };
+}
+
 const FIG = [8, 2, 3, 4, 5, 6, 7];
 // where the chord's 3rd is, by its figures (a class above the bass; 0: the bass itself, as in a 6/3)
-const THIRD = { "5/3": 2, "7/3": 2, "5/4": 2, "6/3": 0, "6": null, "6/4": 5, "4/2": 3 };
+const THIRD = { "5/3": 2, "7/3": 2, "5/4": 2, "6/3": 0, "6": null, "6/4": 5, "4/2": 3, "6/5": 0 };
 
 // ─── the phrase: a schema (chapter 2), then a cadence (chapter 3) ───
 // An event: [degree of the bass, units, the chord over each unit]; a unit is half a bar. A schema may have its own
@@ -579,22 +690,27 @@ export function parts(spec = {}) {
   const cadence = spec.cadence === null ? null : typeof spec.cadence === "string" ? CADENCES[spec.cadence] : spec.cadence || CADENCES.simple;
   if (!schema) throw new Error(`no such schema: ${spec.schema}`);
   const K = keyOf(spec.key || { tonic: "C" });
-  const B = phraseBass(schema, cadence, K), n = B.length;
+  // (spec.bass: the bass's units as they are, each with its chord and, chapter 4, its key — else the phrase's)
+  const B = spec.bass || phraseBass(schema, cadence, K), n = B.length;
   const figured = spec.figured ?? true;
   const [tlo, thi] = spec.top || [9, 22], [mlo, mhi] = spec.middle || [4, 17];
   const apart = spec.apart ?? 7;
-  const S = { schema: { events: [] }, key: K, bass: B, figured: false };
+  const S = { schema: { events: [] }, key: K, bass: B, figured: false, ro: spec.ro, exchange: true };
   // (the upper voice may be two octaves and a 4th above the bass: a bass that leaps down to ⑤ at a cadence)
   // (spec.line: how strictly each upper voice moves, one for both or {top, middle})
   const lineOf = (who) => (spec.line && typeof spec.line === "object" ? spec.line[who] : spec.line);
   const T = schemata({ ...S, lo: tlo, hi: thi, voice: "top", spacing: spec.spacing ?? 18, weights: spec.weights, delayed: spec.delayed, line: lineOf("top") });
   const M = schemata({ ...S, lo: mlo, hi: mhi, voice: "middle", weights: spec.weights, delayed: spec.delayed, line: lineOf("middle") });
-  const D = T.degree, R = T.raised;
-  const semi = (c) => K.semi(D(c), R(c));
+  const D = T.degree, A = T.alter;
+  const semi = (c) => K.semi(D(c), A(c));
 
   /** Why the pair (a over b) at unit t is refused by the voices between them and the chord, or null. */
   function between(TT, MM, t, a, b) {
     if (D(b) >= D(a)) return "the middle voice under the upper";
+    // chapter 4: over a passing bass a note of the chord before, not held, is the other voice's (the voices exchange)
+    if (spec.ro && t >= 1 && T.bassPassing(t))
+      for (const [x, own, other, V] of [[a, TT[t - 1], MM[t - 1], T], [b, MM[t - 1], TT[t - 1], M]])
+        if (x !== own && V.vertical(t, x).q === "dissonant" && !V.vertical(t, x).tri && mod(semi(x) - semi(other), 12) !== 0) return "over the passing bass a dissonance is a note held, or taken from the other voice";
     if (D(a) - D(b) > apart) return "the upper voices within an octave";
     const cls = mod(D(a) - D(b), 7), s = mod(semi(a) - semi(b), 12);
     const perfect = (cls === 0 && s === 0) || (cls === 4 && s === 7);
@@ -628,12 +744,13 @@ export function parts(spec = {}) {
     // (a 6/(3) may double its bass, as the book's Galant cadence does on ④)
     const third = THIRD[chord];
     if (third !== null && (third === 0 ? 1 : 0) + [vt.cls, vm.cls].filter((c) => c === third).length >= 2) return "the 3rd of the chord doubled";
-    const lt = (d, r) => mod(d, 7) === 6 && (K.mode === "major" || r === 1);
-    if ([lt(B[t].d, B[t].r), lt(D(a), R(a)), lt(D(b), R(b))].filter(Boolean).length >= 2) return "the leading tone doubled";
+    // (the leading tone of the key of the unit: ⑦, raised in minor)
+    const kt = T.keys[t].key, lt = (l) => l.deg === 6 && (kt.mode === "major" ? l.alt === 0 : l.alt === 1);
+    if ([lt(T.loc(t, codeOf3(B[t].d, B[t].r || 0))), lt(T.loc(t, a)), lt(T.loc(t, b))].filter(Boolean).length >= 2) return "the leading tone doubled";
     // in minor the chord on the dominant is major: ⑦ over ⑤ raised, where ⑤ is a dominant (going to ① or ⑥, or
     // closing the phrase; not a ⑤ passed in a sequence, nor a 6/3 on ⑤, a chord on ③)
-    if (K.mode === "minor" && B[t].dominant && chord !== "6/3")
-      for (const x of [a, b]) if (mod(D(x), 7) === 6 && !R(x)) return `the chord on the dominant is major: ${K.name(D(x), 1)}, not ${K.name(D(x), 0)}`;
+    if (kt.mode === "minor" && B[t].dominant && chord !== "6/3")
+      for (const x of [a, b]) { const l = T.loc(t, x); if (l.deg === 6 && l.alt !== 1) return `the chord on the dominant is major: ${K.name(D(x), A(x) + 1)}, not ${K.name(D(x), A(x))}`; }
     return null;
   }
   /** Why the pair at unit t is refused, or null: each voice against the bass, then between them. */
@@ -707,5 +824,5 @@ export function parts(spec = {}) {
     });
   }
   return { spec, schema, cadence, key: K, bass: B, n, strong: (t) => B[t].strong, top: T, middle: M, check, pairs, count, fan, sample, engine, judge, chords,
-           code: (name) => codeOf(K, name), name: (c) => K.name(D(c), R(c)), degree: D, hz: (c) => K.hz(D(c), R(c)), memo };
+           code: (name) => codeOf(K, name), name: (c) => K.name(D(c), A(c)), degree: D, alter: A, hz: (c) => K.hz(D(c), A(c)), memo };
 }
