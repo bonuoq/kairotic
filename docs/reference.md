@@ -1541,6 +1541,7 @@ A cyclic rhythm on the circle and its geometry (Toussaint): drawn as a polygon w
 
 0. a rhythm: pulses ([1 0 0 1 0 0 1 0], euclid's right outlet), intervals ([3 3 2]), box notation ("x..x..x."), an :rtm map ({:shares [3 3 2]}), a tree with an :rtm, or {:onsets [0 3 6] :n 8} · a number: that pulse added or taken away · :complement · [:rotate 1] · [:n 12] · [:bars 2] · [:meter "3/4"] · :clear · a bang sends it again
 1. the pitches (cold), as euclid's: a list of Hz (MIDI with midi), a melody string, a map with :pitches or :pitch, a pattern {:note [...]} · :clear
+2. the clock (as a step sequencer): a bang moves the hand to the next pulse and plays it — a bang out of outlet 4 on an onset · a number: the hand to that pulse · :reset: the next bang plays the first pulse
 
 **Outlets** 
 
@@ -1548,6 +1549,7 @@ A cyclic rhythm on the circle and its geometry (Toussaint): drawn as a polygon w
 1. the :rtm map alone, to merge with pitches
 2. the pulses, ones and zeros
 3. its measures: {:n :k :onsets :intervals :ivec :evenness :even :deep :flat :axes :gap :oddity :euclid :fourier :phases}
+4. played step by step: a bang on each onset the hand reaches (for a player's left inlet: one event a step; a sample…)
 
 **Messages and gestures**
 
@@ -1572,6 +1574,26 @@ A cyclic rhythm on the circle and its geometry (Toussaint): drawn as a polygon w
 (connect :b3 0 :b4 0)
 (connect :b4 3 :b5 0)
 (connect :b4 0 :b6 0)
+```
+
+**Played step by step** — A necklace is also a step sequencer, the clock of Toussaint's article: each bang on its right inlet moves the hand to the next pulse, and on an onset a bang goes out of outlet 4. Into a player's left inlet, it plays one event of its pattern a step — the rhythm the necklace's, the pitches the pattern's. Press pulses while it plays: the hand finds what you changed at once.
+
+*Try:* Click the son clave above, press ▶: the hand turns, and every onset it reaches plays the next note of the pbind. Press pulses on the necklace while it plays.
+
+```clojure
+(box :b15 "metro 150" 520 290)
+(box :b16 "player 120" 520 340)
+(box :b17 "pbind 7 loop" 640 290)
+(code :b17 "{:degree #pat/shuffle [0 2 4 7 9]}")
+(box :b18 "synth~" 520 390)
+(box :b19 "dac~" 520 440)
+(connect :b15 0 :b4 2)
+(connect :b4 4 :b16 0)
+(connect :b17 0 :b16 1)
+(connect :b16 0 :b18 0)
+(connect :b16 1 :b18 1)
+(connect :b18 0 :b19 0)
+(connect :b18 0 :b19 1)
 ```
 
 **Pitches: talea and color** — The right inlet gives the notes their pitches, in turn, starting again when they run out: four pitches over the five onsets of the son take four bars to meet the rhythm again, as the color and the talea of an isorhythmic motet. It is cold: what arrives there sounds the next time the box sends. A keyboard sends the keys held, in Hz; a melody string or a map {:pitches …} is kept as it is.
@@ -1807,6 +1829,8 @@ A pattern as EDN data: a map of constants, sequences and #pat/… generators, wi
 - `#pat/shuffle [0 2 4] · #pat/series [0 2 8]`: every pass in a new order · an arithmetic series
 - `#pat/hold [4 [:c :g :d]]`: one value every 4 beats (following time, not events)
 - `#pat/chord [0 4 7]`: a vector as one value: a chord
+- `{:dur #pat/euclid [5 8] :degree [0 2 4]}`: a rhythm in :dur: the lengths between its onsets (an eighth a pulse for 8), the other keys note by note — talea and color (also #pat/pulses [1 0 0 1 …], #pat/necklace "x..x..x.", #pat/chance [5 16])
+- `{:pulse #pat/euclid [3 8] :dur 0.5}`: a rhythm in another key: one event a pulse, :pulse 0 a silence (a step sequencer)
 - `{:degree [0 2 :rest 4]} · [0 nil 4]`: a silence: :rest (:_ :- :r) or nil as the degree, note or freq
 - `:amp #pat/white [0.2 0.6]`: the loudness of each note (0…1), for synth~ and a polyphonic faust~
 - `pbind 7 · pbind 7 4 · pbind 7 loop`: the seed · four passes · for ever
@@ -1836,6 +1860,14 @@ A pattern as EDN data: a map of constants, sequences and #pat/… generators, wi
 
 ```clojure
 (code :b1 "{:degree #pat/shuffle [0 2 4 7]\n :dur    [0.5 0.5 1]\n :root   #pat/hold [4 [:c :f :g :c]]}")
+```
+
+**Rhythms: talea and color** — A rhythm of @kairotic/rhythm in :dur gives the lengths between its onsets: every event is an onset, and the other keys go on note by note. Three degrees over the five onsets of the cinquillo (#pat/euclid [5 8]) meet it again after three bars — talea and color, as a necklace writes them. In another key, :pulse by custom, a rhythm gives one event a pulse, and :pulse 0 is a silence.
+
+*Try:* Press start: the cinquillo, its pitches turning against it. Try #pat/necklace "x..x..x...x.x..." (the son clave) or #pat/chance [5 16] (another rhythm each pass).
+
+```clojure
+(code :b1 "{:dur    #pat/euclid [5 8]\n :degree [0 2 4]\n :octave #pat/hold [4 [5 4]]}")
 ```
 
 **Random, but the same** — Every key has a seed of its own (the box's seed and its name): changing one key leaves the randomness of the others as it was.
