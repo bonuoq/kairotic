@@ -19,6 +19,7 @@
   (:require [clojure.string :as str]
             [kairotic.canvas :as cv]
             [kairotic.spell :as sp]
+            [kairotic.mei :as mei]
             [kairotic.mt :as mt]))
 
 (def N 41)
@@ -80,7 +81,8 @@
    left out)."
   ([tree] (events tree nil))
   ([tree take]
-   (let [v (first-voice tree)
+   (let [tree (mei/with-note-ids tree)
+         v (first-voice tree)
          a0 (mt/attrs v)
          tempo (or (:tempo a0) (:tempo (mt/attrs tree)) 60) spb (/ 60 tempo)
          sig (or (:sig (sp/parse-key (or (:key a0) (:key (mt/attrs tree))))) 0)
@@ -106,6 +108,7 @@
                            (when m
                              (reset! open (cond-> {:id (:id a) :beat @beat :wbeats d :midi m :name (name-of a m)
                                                    :amp (or (:vel a) 0.6) :t (:tstamp.real a) :dur (:dur.real a)}
+                                            (some? (:cue a)) (assoc :cue (:cue a))
                                             (seq (:gliss a)) (assoc :midi2 (+ m (/ (second (last (:gliss a))) 100))))))))
                        (when-not (:tie a) (close!))
                        (swap! beat + d))))

@@ -242,6 +242,8 @@
     (= k :print) (print! at x label)
     ;; a box keeps what it found (a task's outcome) as its data: a gesture of whoever made it happen
     (= k :keep) (when-not *remote* (when-let [f (:effect-hook @rt)] (f id [k x] at)))
+    ;; a take kept for whoever played it (discussion #289): only where it was played, not in a jam's other pages
+    (= k :take) (when-not *remote* (when-let [f (:effect-hook @rt)] (f id [k x] at)))
     ;; effects for the page (a tree box asked to change its data: that is a gesture of the work; a presets
     ;; box asked to recall, morph or generate: issue #35)
     (#{:tree-edit :tree-set :canvas-edit :presets :sample} k) (when-let [f (:effect-hook @rt)] (f id [k x] at))

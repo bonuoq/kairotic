@@ -333,6 +333,7 @@
              (case k
                :tree-edit (gesture! (str "(tree-edit! " id " " (str/join " " (map pr-str x)) ")"))
                :tree-set (gesture! (str "(tree! " id " " (pr-str x) ")"))
+               :take (let [[tk scope] x] (gesture! (str "(keep-take! " id " " (pr-str tk) " " scope ")")))
                :canvas-edit (gesture! (str "(canvas-edit! " id " " (pr-str x) ")"))
                ;; what a box found (a task's outcome), kept as its data: only if it can be written back as
                ;; it is (the history is code) and is not too long for the history and the room

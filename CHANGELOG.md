@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **follow** (`@kairotic/analysis` 0.8.0, discussion #204): a performer followed through a tree — Hz from `pitch~`,
+  onsets from `onset~`, the tree from a tree box; out the written beat where they are, `[:note id]`, the `:cue` of the
+  notes that have one (on the note, or caught up once if passed over), and at `stop` the take, which the tree box keeps
+  only for you by default (`[:take … :work]` in the tree). Matching by pitch (an octave off still counts) and by
+  expected time at the performer's tempo; wrong notes pass, skipped notes are skipped. `kairotic.follow` (pure, in the
+  API as `api/follow-…`); `mei/with-note-ids`: a tree written without ids names its notes as takes point at them.
 - **A tree box as a continuum** (discussion #217, Study 52 in the app): `(view :bN :continuum)` or ⇄ — between a
   roll and a score, time (as it sounded → as written), pitch (Hz → keys → staff) and glyph (stroke → head → value)
   each at a resolution that changes over the piece; `(continuum! :bN :dissolve)` and the other presets

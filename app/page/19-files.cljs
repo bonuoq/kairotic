@@ -356,7 +356,12 @@
    (need-tree-box id)
    (when-not (and (map? tk) (some? (:id tk)) (map? (:when tk))) (fail "A take is {:id \"t1\" :when {note-id [onset dur]} …}"))
    (case scope
-     :work (do (tree! id (mei/add-take (tree-data id) tk)) :work)
+     ;; a take points at notes by :id: a tree whose notes have none is written out with them first (the names a
+     ;; follow box gave them, mei/with-note-ids)
+     :work (let [t (tree-data id)
+                 ids (set (keep (fn [x] (when (and (vector? x) (= :note (first x)) (map? (second x))) (:id (second x)))) (tree-seq vector? seq t)))
+                 t (if (every? ids (keys (:when tk))) t (mei/with-note-ids t))]
+             (tree! id (mei/add-take t tk)) :work)
      :me (do (swap! my-takes update id (fn [ts] (conj (vec (remove #(= (:id tk) (:id %)) ts)) tk)))
              (try (.setItem js/localStorage (takes-key) (pr-str @my-takes)) (catch :default _ nil))
              (render-all!)

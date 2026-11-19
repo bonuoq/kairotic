@@ -509,6 +509,13 @@
                 :else (node-map t go)))]
       (go tree))))
 
+(defn with-note-ids
+  "A tree as its notes are named for takes: written out (melody strings as notes) and every note that begins a sound
+   with an :id (ensure-ids). The same tree, however it is written, names its notes the same way: a take made while
+   following it (kairotic.follow) points at them even if they were never written with an :id."
+  [tree]
+  (ensure-ids (mt/explicit (mt/expand tree))))
+
 (defn takes "The takes of a tree (on its root)." [tree] (vec (:takes (second tree))))
 
 (defn add-take
