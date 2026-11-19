@@ -342,8 +342,8 @@ export async function theory(page, check) {
   const nk = (await cljs(page, '(box "necklace" 9300 600)')).trim();
   const np = (await cljs(page, '(box "print" 9300 860)')).trim();
   await cljs(page, `(connect ${nk} 2 ${np} 0)`);
-  check("necklace: two inlets (a rhythm, pitches) and four outlets",
-        (await until(page, `(io (get-in (current) [:boxes ${nk}]))`, (x) => x === "[2 4]", 20000)) === "[2 4]");
+  check("necklace: three inlets (a rhythm, pitches, the clock) and five outlets",
+        (await until(page, `(when (comp/lookup "necklace") (io (get-in (current) [:boxes ${nk}])))`, (x) => x === "[3 5]", 20000)) === "[3 5]");
   const nGo = `(fn [args msgs] (let [d (comp/lookup "necklace")]
                  (reduce (fn [[s _] [i m]] (let [r ((:receive d) {:inlet i :value m :state s :args args})] [(:state r) (:out r)])) [nil nil] msgs)))`;
   const ms = (src) => `(let [go ${nGo} at ${eOut}] (at (second (go {:n 16 :bars 1} [[0 ${src}]])) 3))`;
@@ -399,6 +399,13 @@ export async function theory(page, check) {
                                     [(get-in t [1 1]) (at out 1) (mt/pitches t) (mt/duration t)])`);
   check("... talea and color: with bars the pitches go on from bar to bar (the tree, as mt reads it)",
         nTree === '[{:meter [4 4]} {:shares [3 3 4 2 4], :pitches "c4 e4 g4 b4"} ["c4" "e4" "g4" "b4" "c4" "e4" "g4" "b4" "c4" "e4"] 8]', nTree);
+  // step by step: a bang on the right inlet moves the hand and plays the onsets (outlet 4); a number moves it there
+  const steps = await cljs(page, `(let [go ${nGo} d (comp/lookup "necklace")
+                                        run (fn [msgs] (reduce (fn [[s outs sh] [i m]] (let [x ((:receive d) {:inlet i :value m :state s :args {:n 16 :bars 1}})] [(or (:state x) s) (conj outs (some (fn [[p v]] (when (= p 4) v)) (:out x))) (or (:show x) sh)])) [nil [] nil] msgs))
+                                        [_ outs sh] (run [[0 "x..x..x."] [2 :bang] [2 :bang] [2 :bang] [2 :bang] [2 6] [2 :reset] [2 :bang] [0 [:pressed 1]] [2 :bang]])]
+                                    [(vec (rest outs)) (:hand sh)])`);
+  check("... step by step: the hand plays x..x..x. (bang, -, -, bang), jumps to 6 (bang), :reset begins again, and finds an onset just pressed",
+        steps === "[[:bang nil nil :bang :bang nil :bang nil :bang] 1]", steps);
   // in the patch: euclid's pulses into a necklace; drawn with its axes, and with fourier its bars
   const ne = (await cljs(page, '(box "euclid 5 16" 9600 600)')).trim();
   await cljs(page, `(connect ${ne} 0 ${nk} 0)`);

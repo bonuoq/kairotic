@@ -17,6 +17,14 @@
 ;;   #pat/shuffle [a b c]    every pass in a new order  #pat/white [lo hi]    random between lo and hi
 ;;   #pat/walk [x step lo hi]  a random walk            #pat/series [x step] or [x step n]
 ;;   #pat/hold [beats [a b]]   one value per `beats`    #pat/chord [0 4 7]    a vector as one value
+;; and rhythms, as @kairotic/rhythm makes them (pulses: ones and zeros):
+;;   #pat/euclid [k n]  [k n rotation]  [k n rotation pulse]   a Euclidean rhythm
+;;   #pat/pulses [1 0 0 1 0 0 1 0]  or [[1 0 0 1 …] pulse]      #pat/necklace "x..x..x."  or ["x..x..x." pulse]
+;;   #pat/chance [k n]  [k n pulse]   k onsets among n pulses, drawn again each pass (with the key's seed)
+;; In :dur a rhythm gives the lengths between its onsets (from its first onset; a pulse is a written value:
+;; the bar of n pulses lasts as necklace's does — 8 or 16 pulses a 4/4 bar, 12 a 12/8 one…), so every event
+;; is an onset and the other keys go on note by note (talea and color). In any other key (:pulse by custom) it
+;; gives the pulses one by one, 1 or 0, and an event whose :pulse is 0 is a silence (with :dur the pulse).
 ;; A generator can be an element of a vector: [1 #pat/choose [2 3]]. Each key has its own seed, made of
 ;; the box's seed and its name, so changing :dur does not change the randomness of :amp.
 
@@ -64,7 +72,8 @@
 
 ;; ───────── generators: #pat/… in EDN ─────────
 
-(def gen-names #{:seq :choose :shuffle :white :walk :series :hold :chord})
+(def gen-names #{:seq :choose :shuffle :white :walk :series :hold :chord :euclid :pulses :necklace :chance})
+(def rhythm-gens #{:euclid :pulses :necklace :chance})
 
 (defn gen "A generator as data." [g args] {:pat/gen g :pat/args args})
 (defn gen? [x] (and (map? x) (contains? x :pat/gen)))
@@ -82,6 +91,78 @@
 
 (defn- nums? [xs n] (and (sequential? xs) (= n (count xs)) (every? number? xs)))
 
+;; ───────── rhythm: pulses (as @kairotic/rhythm makes them) ─────────
+
+(defn bjorklund
+  "k ones spread as evenly as they can be among n (Bjorklund's algorithm, after Toussaint)."
+  [k n]
+  (cond (<= n 0) []
+        (<= k 0) (vec (repeat n 0))
+        (>= k n) (vec (repeat n 1))
+        :else (loop [a (vec (repeat k [1])) b (vec (repeat (- n k) [0]))]
+                (if (<= (count b) 1)
+                  (vec (apply concat (concat a b)))
+                  (let [m (min (count a) (count b))]
+                    (recur (mapv into (subvec a 0 m) (subvec b 0 m))
+                           (if (> (count a) m) (subvec a m) (subvec b m))))))))
+
+(defn- rotate-pulses [xs r] (let [n (count xs)] (if (zero? n) xs (let [r (mod r n)] (vec (concat (subvec xs r) (subvec xs 0 r)))))))
+
+(defn- box-notation "x..x..x. as pulses (x, X or 1 an onset; . - _ or 0 none), or nil." [s]
+  (let [cs (remove #{" "} (map str (seq (str s))))]
+    (when (and (seq cs) (every? #{"x" "X" "1" "." "-" "_" "0"} cs)) (mapv (fn [c] (if (#{"x" "X" "1"} c) 1 0)) cs))))
+
+(defn- pulse-list? [x] (and (sequential? x) (seq x) (every? #{0 1} x)))
+
+(defn pulse-beats
+  "How long one of n pulses lasts, in beats, when none is asked: the bar of n pulses lasts as necklace's
+   (4/4 for 8 or 16 pulses, 12/8 for 12 or 24, n/8 up to 12, else n/16)."
+  [n]
+  (let [pow2? (fn [x] (and (pos? x) (== x (js/Math.pow 2 (js/Math.round (js/Math.log2 x))))))
+        [p q] (cond (and (>= n 4) (pow2? n)) [4 4]
+                    (and (>= n 12) (zero? (mod n 3)) (pow2? (/ n 3))) [12 8]
+                    (< n 4) [n 4]
+                    (<= n 12) [n 8]
+                    :else [n 16])]
+    (/ (* p (/ 4 q)) n)))
+
+(defn rhythm-args
+  "A rhythm generator's arguments as {:pulses (or :k :n for chance) :unit}, or nil when they are not right."
+  [g a]
+  (let [unit-of (fn [n u] (if (and (number? u) (pos? u)) u (pulse-beats n)))
+        whole (fn [x] (and (number? x) (== x (js/Math.round x))))]
+    (case g
+      :euclid (when (and (sequential? a) (<= 2 (count a) 4) (every? number? a) (whole (first a)) (whole (second a)) (pos? (second a)))
+                (let [[k n r u] a n (min 128 (js/Math.round n))]
+                  {:pulses (rotate-pulses (bjorklund (max 0 (min n (js/Math.round k))) n) (js/Math.round (or r 0))) :unit (unit-of n u)}))
+      :pulses (cond (pulse-list? a) {:pulses (vec a) :unit (unit-of (count a) nil)}
+                    (and (sequential? a) (= 2 (count a)) (pulse-list? (first a))) {:pulses (vec (first a)) :unit (unit-of (count (first a)) (second a))}
+                    :else nil)
+      :necklace (cond (string? a) (when-let [ps (box-notation a)] {:pulses ps :unit (unit-of (count ps) nil)})
+                      (and (sequential? a) (= 2 (count a)) (string? (first a)))
+                      (when-let [ps (box-notation (first a))] {:pulses ps :unit (unit-of (count ps) (second a))})
+                      :else nil)
+      :chance (when (and (sequential? a) (<= 2 (count a) 3) (every? number? a) (whole (first a)) (whole (second a)) (pos? (second a)))
+                (let [[k n u] a n (min 128 (js/Math.round n))]
+                  {:k (max 0 (min n (js/Math.round k))) :n n :unit (unit-of n u)}))
+      nil)))
+
+(defn chance-pulses "k onsets among n pulses, drawn with r (a shuffle stopped after k)." [r k n]
+  (let [on (set (take k (loop [v (vec (range n)) i 0]
+                          (if (< i k)
+                            (let [j (+ i (js/Math.floor (* (r) (- n i))))] (recur (assoc v i (nth v j) j (nth v i)) (inc i)))
+                            v))))]
+    (mapv (fn [i] (if (on i) 1 0)) (range n))))
+
+(defn rhythm-values
+  "The values a rhythm gives to a key, one pass: in :dur the lengths between its onsets in beats (from
+   its first onset), in any other key its pulses."
+  [ps unit dur?]
+  (if dur?
+    (let [n (count ps) os (vec (keep-indexed (fn [i x] (when (= 1 x) i)) ps))]
+      (if (empty? os) [(* n unit)] (mapv (fn [a b] (* unit (- b a))) os (conj (subvec os 1) (+ n (first os))))))
+    ps))
+
 (defn gen-problem
   "What is wrong with a generator's arguments, or nil."
   [{g :pat/gen a :pat/args}]
@@ -94,6 +175,10 @@
       :hold (when-not (and (sequential? a) (= 2 (count a)) (number? (first a)) (pos? (first a))
                            (sequential? (second a)) (seq (second a)))
               (str tag " takes [beats [values]]: " tag " [4 [:c :g :d]]"))
+      :euclid (when-not (rhythm-args g a) (str tag " takes [k n], [k n rotation] or [k n rotation pulse]: " tag " [3 8]"))
+      :pulses (when-not (rhythm-args g a) (str tag " takes ones and zeros, or [[ones and zeros] pulse]: " tag " [1 0 0 1 0 0 1 0]"))
+      :necklace (when-not (rhythm-args g a) (str tag " takes box notation, or [\"x..x..x.\" pulse]: " tag " \"x..x..x.\""))
+      :chance (when-not (rhythm-args g a) (str tag " takes [k n] or [k n pulse]: " tag " [5 16]"))
       (str "unknown generator " tag))))
 
 (defn problems
@@ -167,6 +252,13 @@
                       {:stream (cycle (take (js/Math.round n) s)) :period (js/Math.round n)}
                       {:stream s}))
           :hold (let [[beats xs] a] {:held {:beats beats :values (vec (elements xs))}})
+          (:euclid :pulses :necklace) (let [{:keys [pulses unit]} (rhythm-args (:pat/gen x) a)
+                                            vs (rhythm-values pulses unit (= :dur (:key ctx)))]
+                                        {:stream (cycle vs) :period (count vs)})
+          ;; a new draw each time round, from the key's seed
+          :chance (let [{:keys [k n unit]} (rhythm-args :chance a) r (rng-for ctx) dur? (= :dur (:key ctx))
+                        pass (fn pass [] (lazy-seq (concat (rhythm-values (chance-pulses r k n) unit dur?) (pass))))]
+                    {:stream (pass) :period (if dur? (max 1 k) n)})
           (throw (js/Error. (str "unknown generator #pat/" (name (:pat/gen x)))))))
       (vector? x) (let [xs (vec (elements x))] (if (seq xs) (cycling xs ctx) {:stream (repeat nil) :const true}))
       ;; a lazy seq (from code): finite ones cycle like a vector, endless ones are a stream as they are
@@ -176,10 +268,16 @@
       :else {:stream (repeat x) :const true})))
 
 (defn static-period
-  "How many events one key gives in a pass, without making it: a number, nil (endless), :const or :held."
-  [x]
+  "How many events one key gives in a pass, without making it: a number, nil (endless), :const or :held.
+   (A rhythm gives its onsets in :dur and its pulses in any other key.)"
+  ([x] (static-period x nil))
+  ([x k]
   (cond
     (gen? x) (case (:pat/gen x)
+               (:euclid :pulses :necklace :chance)
+               (let [{:keys [pulses] n :n kk :k} (rhythm-args (:pat/gen x) (:pat/args x))
+                     n (or n (count pulses)) kk (or kk (count (filter #{1} pulses)))]
+                 (if (= k :dur) (max 1 kk) n))
                (:seq) (static-period (vec (:pat/args x)))
                (:shuffle) (count (elements (:pat/args x)))
                (:series) (let [n (nth (:pat/args x) 2 nil)] (if (and (number? n) (pos? n)) (js/Math.round n) nil))
@@ -188,7 +286,7 @@
                nil)
     (vector? x) (if (seq x) (count (elements x)) :const)
     (seq? x) (let [n (bounded-count (inc max-period) x)] (if (<= n max-period) (if (pos? n) n :const) nil))
-    :else :const))
+    :else :const)))
 
 ;; ───────── events ─────────
 
@@ -223,7 +321,7 @@
   (let [ks (sort-by str (keys m))
         holds (keep (fn [k] (let [v (get m k)] (when (and (gen? v) (= :hold (:pat/gen v))) [k (:held (stream-of v {:key k}))]))) ks)
         streamed (remove (set (map first holds)) ks)
-        periods (map (fn [k] (static-period (get m k))) streamed)
+        periods (map (fn [k] (static-period (get m k) k)) streamed)
         seqs (remove #{:const} periods)
         endless? (some nil? seqs)
         n (if (seq seqs) (apply max seqs) 1)
@@ -240,7 +338,7 @@
 (defn summary
   "A few words about a pbind map: its keys and how many events a pass has."
   [m]
-  (let [periods (keep (fn [[_ v]] (let [p (static-period v)] (when-not (#{:const :held} p) p))) m)
+  (let [periods (keep (fn [[k v]] (let [p (static-period v k)] (when-not (#{:const :held} p) p))) m)
         pass (cond (some nil? periods) "endless"
                    (seq periods) (str (apply max periods) " events a pass")
                    :else "1 event")]
@@ -317,9 +415,10 @@
 (def rest-words #{:rest :_ :- :r "rest" "_" "-" "r"})
 
 (defn rest?
-  "Is the event a silence? {:type :rest}, :rest true, or :rest (:_ :- :r) or nil as its note, degree or freq."
+  "Is the event a silence? {:type :rest}, :rest true, :pulse 0 (a rhythm's pulse without an onset), or :rest
+   (:_ :- :r) or nil as its note, degree or freq."
   [e]
-  (boolean (or (= :rest (:type e)) (true? (:rest e))
+  (boolean (or (= :rest (:type e)) (true? (:rest e)) (= 0 (:pulse e))
                (some (fn [k] (and (contains? e k) (let [v (get e k)] (or (nil? v) (contains? rest-words v)))))
                      [:note :midinote :degree :freq]))))
 

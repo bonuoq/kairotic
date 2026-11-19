@@ -18,7 +18,7 @@ export async function patterns(page, check) {
   check("writing pbind brings @kairotic/patterns (pbind, pattern, player)", known === "true", known);
   if (known !== "true") { await cljs(page, `(delete ${pb})`); return; }
   check("their help patches have steps",
-    (await cljs(page, '[(count (hlp/patch-steps "pbind")) (count (hlp/patch-steps "player"))]')) === "[3 3]",
+    (await cljs(page, '[(count (hlp/patch-steps "pbind")) (count (hlp/patch-steps "player"))]')) === "[4 3]",
     await cljs(page, '[(count (hlp/patch-steps "pbind")) (count (hlp/patch-steps "player"))]'));
 
   // what reaches the four outlets of the player: [outlet value] in order

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Rhythm and patterns meet** (discussion #252; `@kairotic/patterns` 0.3.0, `@kairotic/rhythm` 0.4.0). A `pbind` takes
+  rhythms as generators — `#pat/euclid [k n rotation pulse]`, `#pat/pulses [1 0 0 1 …]`, `#pat/necklace "x..x..x."`,
+  `#pat/chance [k n]` (drawn again each pass, with the key's seed). In `:dur` a rhythm gives the lengths between its
+  onsets (a pulse as in a necklace's bar, or the one given), so the other keys go on note by note — talea and color,
+  as a necklace writes them; in another key (`:pulse`) the pulses one by one, and `:pulse 0` is a silence (a step
+  sequencer). `necklace` plays step by step: a bang on its new right inlet moves a hand (drawn) to the next pulse
+  and, on an onset, sends a bang out of its new outlet 4 — into a `player`'s left inlet, one event of a pattern a
+  step; a number moves the hand there, `:reset` begins again. Help (a step for each), READMEs, assistant, tests
+  (`tests/cljs/patterns.cljs`, `tests/theory.mjs`).
+
 - **Study 58 · incipit: a phrase taken on by Claude, phrase by phrase** (discussion #296). A bass and a melody given;
   at a point of the piece Claude offers a few continuations, each a whole phrase with its plan (IJzerman's schemata
   and cadences), checked by `partimento.mjs`'s two-part rules joined to the phrase before it; a failing one goes back
