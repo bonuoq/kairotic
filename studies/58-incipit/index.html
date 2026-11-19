@@ -140,8 +140,8 @@ dl.point dd { margin: 0; font-family: var(--f-code); font-size: 12px; overflow-w
 </section>
 
 <section class="panel" aria-labelledby="h-claude">
-  <h2 id="h-claude">Go on with Claude <span>from the point, if it was chosen</span></h2>
-  <textarea class="req" id="request" spellcheck="false" placeholder="What the next phrase should do (or leave it empty): an answer in the dominant, a sequence, a contrast…"></textarea>
+  <h2 id="h-claude">Go on with Claude <span>from the point, if it was chosen; it may modulate if asked</span></h2>
+  <textarea class="req" id="request" spellcheck="false" placeholder="What the next phrase should do (or leave it empty): modulate to the dominant by an ascending tetrachord, a sequence of pentachords, back home, a contrast…"></textarea>
   <div class="row">
     <label class="inline" for="k">Offer <select id="k"><option>1</option><option>2</option><option selected>3</option><option>4</option></select> continuations</label>
     <button class="act primary" id="ask">Ask Claude</button>
@@ -159,6 +159,7 @@ dl.point dd { margin: 0; font-family: var(--f-code); font-size: 12px; overflow-w
     <label class="inline" for="hand-cad">Cadence <select id="hand-cad"><option value="authentic">perfect or imperfect</option><option value="perfect">perfect</option><option value="imperfect">imperfect</option><option value="deceptive">deceptive</option><option value="half">half</option></select></label>
   </div>
   <label class="stack" for="hand-bass">Bass<input class="line" id="hand-bass" spellcheck="false" placeholder="C3 D3 E3 F3 G3 C3"></label>
+  <label class="stack" for="hand-keys">Keys <span>(one a bass note, to modulate: C C G G G; empty: the home key)</span><input class="line" id="hand-keys" spellcheck="false" placeholder="C C G G G G"></label>
   <label class="stack" for="hand-mel">Melody<input class="line" id="hand-mel" spellcheck="false"></label>
   <div class="row">
     <button class="act" id="engine">Melody by the engine</button>
@@ -172,6 +173,7 @@ dl.point dd { margin: 0; font-family: var(--f-code); font-size: 12px; overflow-w
   <p class="about">An <em>incipit</em> is a phrase given — a bass and a melody over it, as a partimento's exercise begins — and taken on phrase by phrase. At a point of the piece Claude offers a few continuations, each a whole phrase with its plan named by IJzerman's schemata and cadences. Each is checked by the rules of two-part writing of Studies 51, 54 and 56 (<code>@kairotic/cac</code>'s <code>partimento.mjs</code>), joined to the phrase before it so the join is judged too; a phrase that fails goes back to Claude with its errors (three tries in all), and the soft rules of Studies 38–42 rank the ones that pass. You choose which go on — one, several, none — and only those are taken further. Claude brings the idea; the rules bring the craft.</p>
   <ul class="q">
     <li>A step is large: a phrase at least (four bass notes or more), not a note.</li>
+    <li>Phrases may modulate, as Study 57 does (IJzerman, chapter 4): each bass note in a key of its own, read there — its leading tone, its dominant, the cadence it closes —, the augmented 4th and the diminished 5th as semi-consonances, and the Rule of the Octave's pentachords and tetrachords as the ways from one key to another. Ask for it (“to the dominant by an ascending tetrachord”), and the key reached is named over the score.</li>
     <li>The phrases make a history with branches, kept in this browser. Any chosen point can be taken on again, by Claude or by hand (the engine writes a melody for a bass you give).</li>
     <li>What comes next (#296): a third voice from the figures (Study 56), the incipit in the app as a line of its own, and patches as material.</li>
   </ul>
@@ -304,8 +306,10 @@ window.addEventListener("DOMContentLoaded", function () {
                                      "<title>" (esc (str (.-plan p) (when (seq (.-about p)) (str " — " (.-about p))))) "</title>"
                                      "<rect width='" NW "' height='" NH "' rx='3'/>"
                                      "<text x='8' y='16'>" (esc (short (or (not-empty (.-plan p)) "a phrase") 22)) "</text>"
-                                     "<text class='sub' x='8' y='31'>" (esc (str (short (.-by n) 16) " · " (.-cadence p)
-                                                                                 (when (and (.-ok c) (.-parent n)) (str " · " (.-cost c)))))
+                                     "<text class='sub' x='8' y='31'>" (esc (str (short (.-by n) 14) " · " (.-cadence p)
+                                                                                 (when (and (.-ok c) (.-parent n)) (str " · " (.-cost c)))
+                                                                                 (when-let [k (and (.-ok c) (last (.-keys c)))]
+                                                                                   (when (not= k (.keyLabel I (.-key tree))) (str " · →" (first (str/split k #" ")) (when (str/ends-with? k "minor") "m"))))))
                                      "</text></g>")))))))))
 
 ;; ───────── the point ─────────
@@ -340,6 +344,8 @@ window.addEventListener("DOMContentLoaded", function () {
                    (row "by" (esc (.-by n)))
                    (row "cadence" (esc (.-cadence p)))
                    (row "bass" (esc (.-bass p)))
+                   (when (and (.-ok c) (> (count (.-keys c)) 1)) (row "keys" (esc (str/join " → " (.-keys c)))))
+                   (when (and (.-ok c) (= 1 (count (.-keys c))) (not= (first (.-keys c)) (.keyLabel I (.-key tree)))) (row "key" (esc (first (.-keys c)))))
                    (row "melody" (esc (.-melody p)))
                    (if (.-ok c)
                      (str (row "figures" (esc (str/join " " (map #(or % "·") (.-figures c)))))
@@ -435,11 +441,11 @@ window.addEventListener("DOMContentLoaded", function () {
           (.finally (fn [] (reset! ctl nil) (busy! false)))))))
 
 ;; ───────── by hand ─────────
-(defn hand-phrase [] #js {:bass (val! "hand-bass") :melody (val! "hand-mel") :cadence (.-value ($ "hand-cad")) :plan "by hand" :about ""})
+(defn hand-phrase [] #js {:bass (val! "hand-bass") :keys (val! "hand-keys") :melody (val! "hand-mel") :cadence (.-value ($ "hand-cad")) :plan "by hand" :about ""})
 
 (defn engine! []
   (let [{:keys [tree sel]} @st]
-    (try (if-let [m (.engineMelody I tree sel (val! "hand-bass") #js {:cadence (.-value ($ "hand-cad"))})]
+    (try (if-let [m (.engineMelody I tree sel (val! "hand-bass") #js {:cadence (.-value ($ "hand-cad")) :keys (val! "hand-keys")})]
            (do (set! (.-value ($ "hand-mel")) m) (set! (.-textContent ($ "hand-facts")) "written by the engine (the soft rules)"))
            (set! (.-textContent ($ "hand-facts")) "the engine found no melody over this bass from here"))
          (catch :default e (set! (.-textContent ($ "hand-facts")) (str "Error: " (msg e)))))))
