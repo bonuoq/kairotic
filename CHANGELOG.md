@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 58 · incipit: a phrase taken on by Claude, phrase by phrase** (discussion #296). A bass and a melody given;
+  at a point of the piece Claude offers a few continuations, each a whole phrase with its plan (IJzerman's schemata
+  and cadences), checked by `partimento.mjs`'s two-part rules joined to the phrase before it; a failing one goes back
+  to Claude with its errors, the soft rules rank the ones that pass, and the person chooses which go on. The phrases
+  make a tree of branches; any chosen point can be taken on again, by Claude or by hand (the engine writes a melody
+  for a bass given). Kernel `kairotic/incipit.mjs`, the page in ClojureScript, tested with a scripted Claude.
 - **Study 57 · octave: the Rule of the Octave, and modulation** (IJzerman, chapter 4; `@kairotic/cac` 0.3.0).
   `partimento.mjs` takes **a key for each bass note**: a note is now a degree in the letters of the key of the whole
   and an alteration (−1, 0, +1) — its code `3·degree + alteration + 1` (`codeOf3`, `codeDegree`, `codeAlter`;
