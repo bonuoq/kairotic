@@ -133,17 +133,25 @@
       ;; a new state: sent when the rhythm, its bars or its meter are new (the same again changes nothing); a bang anyway
       settle (fn [st st2 always?]
                (let [ps (:pulses st2) key [ps (:bars st2) (:meter st2)]
-                     show (assoc (measures ps) :pulses ps)]
+                     hand (when (:hand st2) (mod (:hand st2) (count ps)))
+                     show (assoc (measures ps) :pulses ps :hand hand)
+                     st2 (assoc st2 :hand hand :shown show)]
                  (cond (empty? ps) {:state st2}
                        (and (not always?) (= key (:sent st))) {:state st2 :show show}
                        :else {:state (assoc st2 :sent key) :show show :out (outs ps st2)})))
+      ;; a step of the hand (the third inlet): to pulse h, and a bang out of outlet 4 when there is an onset there
+      step (fn [st h]
+             (let [ps (:pulses st) h (mod h (count ps))
+                   show (assoc (or (:shown st) (assoc (measures ps) :pulses ps)) :hand h)]
+               (cond-> {:state (assoc st :hand h :shown show) :show show}
+                 (= 1 (nth ps h)) (assoc :out [[4 :bang]]))))
       polar (fn [cx cy R i n] (let [a (* TAU (/ i n))] [(+ cx (* R (js/Math.sin a))) (- cy (* R (js/Math.cos a)))]))]
   {;; ── about ──
    :class "necklace"
    :license "MPL-2.0"
-   :doc "A cyclic rhythm on the circle and its geometry (Toussaint): k onsets among n pulses around a circle, time clockwise from the top — the same object as a pitch-class set on pcclock. A rhythm arrives as pulses (ones and zeros, as euclid's right outlet sends them), as intervals between onsets ([3 3 2]), as box notation (\"x..x..x.\"), as an :rtm map ({:shares [3 3 2]}, euclid's middle outlet), a tree with an :rtm, or {:onsets [0 3 6] :n 8}; it is drawn as a polygon, with its axes of mirror symmetry. Pressing a pulse (or a number, its index) adds or takes away an onset. :complement swaps onsets and silences, [:rotate 1] starts it a pulse later, [:n 12] makes the circle longer or shorter, :clear empties it, [:bars 4] and [:meter \"3/4\"] as euclid, a bang sends it again. Out, as euclid: a musical tree (left: a bar of n pulses with an :rtm whose shares are the intervals between onsets), the :rtm map alone (1), the pulses (2); and its measures (3): {:n :k :onsets :intervals :ivec — how often each distance occurs —, :evenness — the sum of the chords between all pairs (Block and Douthett) —, :even — that sum against the Euclidean rhythm's, 1 as even as it —, :deep — each distance a different number of times —, :flat — each once —, :axes — of mirror symmetry, in pulses —, :gap — the longest interval —, :oddity — no two onsets halving the cycle —, :euclid — the rotation of E(k,n) it is, or nil —, :fourier and :phases — its Fourier coefficients f1 … f⌊n/2⌋, magnitudes 0…1 and phases in degrees: |f1| near 0 balanced, |f_k| largest when maximally even —}; with the word fourier the magnitudes are drawn too, a bar each. Its right inlet (cold) takes the pitches the notes take in turn, as euclid's."
+   :doc "A cyclic rhythm on the circle and its geometry (Toussaint): k onsets among n pulses around a circle, time clockwise from the top — the same object as a pitch-class set on pcclock. A rhythm arrives as pulses (ones and zeros, as euclid's right outlet sends them), as intervals between onsets ([3 3 2]), as box notation (\"x..x..x.\"), as an :rtm map ({:shares [3 3 2]}, euclid's middle outlet), a tree with an :rtm, or {:onsets [0 3 6] :n 8}; it is drawn as a polygon, with its axes of mirror symmetry. Pressing a pulse (or a number, its index) adds or takes away an onset. :complement swaps onsets and silences, [:rotate 1] starts it a pulse later, [:n 12] makes the circle longer or shorter, :clear empties it, [:bars 4] and [:meter \"3/4\"] as euclid, a bang sends it again. Out, as euclid: a musical tree (left: a bar of n pulses with an :rtm whose shares are the intervals between onsets), the :rtm map alone (1), the pulses (2); and its measures (3): {:n :k :onsets :intervals :ivec — how often each distance occurs —, :evenness — the sum of the chords between all pairs (Block and Douthett) —, :even — that sum against the Euclidean rhythm's, 1 as even as it —, :deep — each distance a different number of times —, :flat — each once —, :axes — of mirror symmetry, in pulses —, :gap — the longest interval —, :oddity — no two onsets halving the cycle —, :euclid — the rotation of E(k,n) it is, or nil —, :fourier and :phases — its Fourier coefficients f1 … f⌊n/2⌋, magnitudes 0…1 and phases in degrees: |f1| near 0 balanced, |f_k| largest when maximally even —}; with the word fourier the magnitudes are drawn too, a bar each. Its middle inlet (cold) takes the pitches the notes take in turn, as euclid's. It also plays it, step by step, as a step sequencer: each bang on the right inlet (a metro, the room's pulse, an onset~…) moves the hand to the next pulse and, on an onset, sends a bang out of outlet 4 (for a player's step, a sample…); a number moves the hand to that pulse (and plays it); :reset makes the next bang play the first pulse. Editing the rhythm while it plays changes what the hand finds."
    :usage "necklace [n 16] [bars 1] [midi] [fourier]"
-   :io [2 4]
+   :io [3 5]
    :size (fn [box] (if (fourier? (:args box)) [200 296] [200 240]))
 
    ;; ── arguments ──
@@ -156,9 +164,17 @@
                     ps (:pulses st) n (count ps)
                     to (fn [m] (settle st (merge st m) false))
                     toggle (fn [i] (let [i (mod (js/Math.round i) n)] (to {:pulses (update ps i (fn [x] (- 1 x)))})))]
-                (if (= inlet 1)
+                (cond
+                  (= inlet 1)
                   (let [pm (pitches-of (:midi args) value)]
                     (if (= pm :ignore) {} {:state (assoc st :pm pm)}))
+                  ;; the clock: a step of the hand
+                  (= inlet 2)
+                  (cond (#{:bang} value) (step st (if (:hand st) (inc (:hand st)) 0))
+                        (number? value) (step st (js/Math.round value))
+                        (#{:reset} value) (let [s2 (assoc st :hand nil)] {:state (assoc s2 :shown (assoc (or (:shown st) {}) :hand nil)) :show (assoc (or (:shown st) (assoc (measures ps) :pulses ps)) :hand nil)})
+                        :else {})
+                  :else
                   (cond
                     (#{:bang} value) (settle st st true)
                     (#{:clear} value) (to {:pulses (vec (repeat n 0))})
@@ -198,6 +214,11 @@
                 (let [[x1 y1] (polar cx cy (+ R 7) a n) [x2 y2] (polar cx cy (+ R 7) (+ a (/ n 2)) n)]
                   [:line {:x1 x1 :y1 y1 :x2 x2 :y2 y2 :stroke :kairos :weight 1 :opacity 0.5}]))
               (when (> (count os) 1) [[:path {:points (mapv (fn [i] (polar cx cy R i n)) os) :closed true :stroke :accent :weight 2}]])
+              ;; the hand, when it plays: from the centre to the pulse it is on
+              (when-let [hd (:hand p)]
+                (let [[x y] (polar cx cy (- R 6) hd n)]
+                  [[:line {:x1 cx :y1 cy :x2 x :y2 y :stroke :kairos :weight 2}]
+                   [:circle {:cx cx :cy cy :r 2.5 :fill :kairos}]]))
               (for [i (range n)]
                 (let [[x y] (polar cx cy R i n) on (= 1 (nth ps i 0))]
                   [:group {:hit i}

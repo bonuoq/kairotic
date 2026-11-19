@@ -45,6 +45,18 @@ of `:amp`.
 | `#pat/series [start step]` · `[start step n]` | an arithmetic series (endless, or n long) |
 | `#pat/hold [beats [a b]]` | one value every `beats`, following time rather than events |
 | `#pat/chord [0 4 7]` | a vector as one value (a chord), not as a sequence |
+| `#pat/euclid [k n]` · `[k n rotation]` · `[k n rotation pulse]` | a Euclidean rhythm, as [`@kairotic/rhythm`](../rhythm/) makes it |
+| `#pat/pulses [1 0 0 1 0 0 1 0]` · `[[1 0 0 1 …] pulse]` | a rhythm as pulses (ones and zeros) |
+| `#pat/necklace "x..x..x."` · `["x..x..x." pulse]` | a rhythm in box notation |
+| `#pat/chance [k n]` · `[k n pulse]` | k onsets among n pulses, drawn again each pass (with the key's seed) |
+
+**Rhythms** depend on their key. In **`:dur`** a rhythm gives the lengths between its onsets, from its first one, so
+every event is an onset and the other keys go on note by note — *talea* and *color*, as a `necklace` writes them:
+`{:dur #pat/euclid [5 8] :degree [0 2 4]}`, three pitches over the cinquillo's five onsets. A pulse lasts as in a
+necklace's bar (8 or 16 pulses a 4/4 bar, 12 a 12/8 one: an eighth, a sixteenth…), or the `pulse` given, in beats.
+In **any other key** — `:pulse` by custom — it gives the pulses one by one, 1 or 0, and an event whose `:pulse` is 0 is
+a silence: `{:pulse #pat/euclid [3 8] :dur 0.5 :degree [0 1 2]}`, one event a pulse, as a step sequencer, the other
+keys going on through the silences too.
 
 A generator can be an element of a vector: `[0 #pat/choose [2 4] 7]`. As in Overtone, a pattern with an
 endless key is endless; otherwise a pass lasts as long as its longest sequence.
@@ -55,8 +67,8 @@ Pitch: `:freq` in Hz, `:note` (MIDI, `"c4"` or `:c4`), or `:degree` with `:scale
 `:minor-pentatonic`… or a vector of semitones, fractional for microtones), `:root` (`:d`, `:eb`, 2) and
 `:octave` (5 → C4), as SuperCollider's default event; `:transpose` in semitones. A vector of pitches is
 a chord. Length: `:dur` in beats (1), and `:legato` (0.8) or `:sustain` (beats). Silence: `:rest` (or
-`:_`, `:-`, `:r`, or `nil`) as the note, degree or freq — `{:degree [0 2 :rest 4]}`, `[0 nil 4]` — or
-`{:type :rest}`. Loudness: `:amp` (0…1); the player sends `[:gain amp]` on its Hz outlet just before the
+`:_`, `:-`, `:r`, or `nil`) as the note, degree or freq — `{:degree [0 2 :rest 4]}`, `[0 nil 4]` —,
+`{:type :rest}`, or `:pulse 0` (a rhythm's pulse without an onset). Loudness: `:amp` (0…1); the player sends `[:gain amp]` on its Hz outlet just before the
 notes of that event, which `synth~` and a polyphonic `faust~` take as the level of the notes that start
 (notes that start at the same instant share the last one). Any other key goes out with the event, for
 whatever reads it (`get % :pan`, a score, an instruction for a performer: events need not sound).

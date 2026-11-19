@@ -14,7 +14,7 @@ is their editor, measures them and writes them as music.
 | Class | What it does |
 |---|---|
 | `euclid [k 3] [n 8] [rotation 0]` | **a generator**: a Euclidean rhythm (Bjorklund's algorithm, after Toussaint) as pulses — k onsets as evenly as they can be over n pulses: `euclid 3 8` the tresillo, `5 8` the cinquillo, `5 16 6` the bossa nova, `7 12` the bembé. No view of its own: a bang sends the pulses; `[:k 5]`, `[:n 16]`, `[:rotation 6]` (or a map) change them, a number is k |
-| `necklace [n 16] [bars 1] [midi] [fourier]` | **the rhythm box**: takes a rhythm in any notation, draws it on the circle with its axes of symmetry, lets you edit it (pressing a pulse adds or takes away an onset), sends its **measures** (interval vector, evenness, deep, flat, axes, gap, oddity, the rotation of E(k,n) it is, Fourier coefficients) and writes it as a **musical tree** with the pitches of its right inlet |
+| `necklace [n 16] [bars 1] [midi] [fourier]` | **the rhythm box**: takes a rhythm in any notation, draws it on the circle with its axes of symmetry, lets you edit it (pressing a pulse adds or takes away an onset), sends its **measures** (interval vector, evenness, deep, flat, axes, gap, oddity, the rotation of E(k,n) it is, Fourier coefficients), writes it as a **musical tree** with the pitches of its middle inlet, and **plays it step by step** on a clock (its right inlet) |
 | `chance [k 3] [n 8] [seed 1]` | **a generator**: k onsets among n pulses drawn with a seed — each bang another rhythm, the same seed the same rhythms in the same order (in a room, from the history); `:reset` starts them again |
 | `homometric` | **a generator from a rhythm**: the other rhythms with the same interval vector, not the same necklace turned or in a mirror (the two flat rhythms of 4 in 12; a half of an even cycle and its complement) — a list of pulses, and how many |
 | `swap` | **how far apart two rhythms are** (Toussaint's swap distance): the left one against the right one (the reference, cold) — in the bar, around the circle, and as necklaces at the best rotation; with the Hamming distance beside it, and the directed swap distance when they hold different numbers of onsets |
@@ -61,6 +61,31 @@ Its **right inlet** (cold) takes the pitches the notes take in turn, starting ag
 *color*: a map with `:pitches` or `:pitch` (kept as it is), a pattern (`{:note [...]}`, as `comes` sends), a melody
 string, a list of Hz (the keys held on a keyboard; MIDI with `midi`), notes or chords of a tree; `:clear` forgets them.
 With `bars` the color goes on from bar to bar.
+
+## Step by step, and with patterns
+
+A `necklace` is also a **step sequencer** — the clock of Toussaint's article: each bang on its right inlet (a `metro`,
+the room's `pulse`, an `onset~`) moves its hand to the next pulse, drawn from the centre, and on an onset a bang goes
+out of outlet 4. Into a `player`'s left inlet it plays one event of the player's pattern a step: the rhythm the
+necklace's, the pitches the pattern's. A number moves the hand to that pulse; `:reset` makes the next bang play the
+first; pressing pulses while it plays changes what the hand finds.
+
+```clojure
+(box :b1 "metro 150" 40 20)
+(box :b2 "necklace" 40 60)
+(box :b3 "pbind 7 loop" 280 20)
+(code :b3 "{:degree #pat/shuffle [0 2 4 7 9]}")
+(box :b4 "player 120" 40 320)
+(box :b5 "synth~" 40 370)
+(box :b6 "dac~" 40 420)
+(connect :b1 0 :b2 2) (connect :b2 4 :b4 0) (connect :b3 0 :b4 1)
+(connect :b4 0 :b5 0) (connect :b4 1 :b5 1) (connect :b5 0 :b6 0) (connect :b5 0 :b6 1)
+```
+
+The same rhythms live **inside a `pbind`** ([`@kairotic/patterns`](../patterns/)): `#pat/euclid [k n rotation]`,
+`#pat/pulses [1 0 0 1 …]`, `#pat/necklace "x..x..x."` and `#pat/chance [k n]`. In `:dur` a rhythm gives the lengths
+between its onsets, so the other keys go on note by note (talea and color, as a necklace's tree); in another key
+(`:pulse`) it gives the pulses one by one, `:pulse 0` a silence.
 
 ## Generators and relations
 

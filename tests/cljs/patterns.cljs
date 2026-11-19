@@ -149,3 +149,25 @@
       (t/eq "... a new look is a difference" (cv/diff d (assoc-in d [:strokes :t1 :look] {:w 3})) [[:stroke :t1 [[0 440] [1 440]] {:w 3}]])
       (t/is "... and it is drawn: weight and texture" (re-find #"stroke-width:6;stroke-dasharray:0.1 12" (cv/look-path "b1" "t1" (cv/geom cv/empty 0) [[0 440] [1 440]] "M0 0" {:w 2 :tex :dot} false))))
     (t/eq "a tree note's :look reaches its stroke" (get-in (kairotic.mt/->strokes [:par [:note {:at 0 :dur 1 :hz 440 :look {:w 2}}]]) [:strokes :t1 :look]) {:w 2})))
+
+(t/run! "patterns: rhythms (as @kairotic/rhythm makes them)"
+  (fn []
+    (t/eq "Bjorklund: the cinquillo" (pat/bjorklund 5 8) [1 0 1 1 0 1 1 0])
+    (t/eq "a pulse lasts as in a necklace's bar: an eighth for 8, a sixteenth for 16, an eighth of 12/8 for 12"
+          (mapv pat/pulse-beats [8 16 12 5]) [0.5 0.25 0.5 0.5])
+    (let [e (evs (pat/read-spec "{:dur #pat/euclid [3 8] :degree [0 2 4 5]}") {:seed 0 :repeat 1} 8)]
+      (t/eq "in :dur, the lengths between onsets (3 3 2 eighths), round again" (mapv :dur e) [1.5 1.5 1 1.5])
+      (t/eq "... the other keys go on note by note: talea and color" (mapv :degree e) [0 2 4 5]))
+    (t/eq "a rotation: from its first onset" (mapv :dur (evs (pat/read-spec "{:dur #pat/euclid [3 8 1]}") {:seed 0 :repeat 1} 3)) [1.5 1 1.5])
+    (t/eq "box notation, and a pulse given" (mapv :dur (evs (pat/read-spec "{:dur #pat/necklace [\"x..x..x...x.x...\" 1]}") {:seed 0 :repeat 1} 5)) [3 3 4 2 4])
+    (t/eq "pulses (four pulses: a quarter each)" (mapv :dur (evs (pat/read-spec "{:dur #pat/pulses [1 0 1 1]}") {:seed 0 :repeat 1} 3)) [2 1 1])
+    (let [e (evs (pat/read-spec "{:pulse #pat/euclid [3 8] :dur 0.5 :degree [0 1 2]}") {:seed 0 :repeat 1} 8)]
+      (t/eq "in another key, the pulses one by one" (mapv :pulse e) [1 0 0 1 0 0 1 0])
+      (t/eq "... and :pulse 0 is a silence" (mapv pat/rest? e) [false true true false true true false true]))
+    (let [ds (fn [seed] (mapv :dur (evs (pat/read-spec "{:dur #pat/chance [3 8]}") {:seed seed :repeat 2} 6)))]
+      (t/eq "chance: k onsets a pass, the pass a bar (4 beats)" (reduce + (take 3 (ds 1))) 4)
+      (t/eq "... the same seed, the same draws" (ds 1) (ds 1)))
+    (t/is "bad arguments are a problem" (seq (pat/problems (pat/read-spec "{:dur #pat/euclid [3]}"))))
+    (t/is "... and box notation must be one" (seq (pat/problems (pat/read-spec "{:dur #pat/necklace \"x.y\"}"))))
+    (t/eq "a pass of a rhythm in :dur is its onsets; in another key its pulses"
+          [(pat/static-period (pat/gen :euclid [3 8]) :dur) (pat/static-period (pat/gen :euclid [3 8]) :pulse)] [3 8])))

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Rhythm and patterns meet** (discussion #252; `@kairotic/patterns` 0.3.0, `@kairotic/rhythm` 0.4.0). A `pbind` takes
+  rhythms as generators — `#pat/euclid [k n rotation pulse]`, `#pat/pulses [1 0 0 1 …]`, `#pat/necklace "x..x..x."`,
+  `#pat/chance [k n]` (drawn again each pass, with the key's seed). In `:dur` a rhythm gives the lengths between its
+  onsets (a pulse as in a necklace's bar, or the one given), so the other keys go on note by note — talea and color,
+  as a necklace writes them; in another key (`:pulse`) the pulses one by one, and `:pulse 0` is a silence (a step
+  sequencer). `necklace` plays step by step: a bang on its new right inlet moves a hand (drawn) to the next pulse
+  and, on an onset, sends a bang out of its new outlet 4 — into a `player`'s left inlet, one event of a pattern a
+  step; a number moves the hand there, `:reset` begins again. Help (a step for each), READMEs, assistant, tests
+  (`tests/cljs/patterns.cljs`, `tests/theory.mjs`).
+
 - **Study 57 · octave: the Rule of the Octave, and modulation** (IJzerman, chapter 4; `@kairotic/cac` 0.3.0).
   `partimento.mjs` takes **a key for each bass note**: a note is now a degree in the letters of the key of the whole
   and an alteration (−1, 0, +1) — its code `3·degree + alteration + 1` (`codeOf3`, `codeDegree`, `codeAlter`;

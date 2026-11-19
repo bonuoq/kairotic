@@ -436,7 +436,9 @@ Rules:
   shares are the intervals), the :rtm map on 1, the pulses on 2, its measures on 3 ({:ivec :evenness :even
   :deep :flat :axes :gap :oddity :euclid :fourier :phases}); its right inlet (cold) gives the notes their
   pitches in turn (a keyboard's keys in Hz, a melody string, {:pitches …}, a pattern {:note […]}); [:bars 4]
-  [:meter \"3/4\"]. Typical: euclid 5 16 → necklace → tree → mt play → synth~.
+  [:meter \"3/4\"]. Typical: euclid 5 16 → necklace → tree → mt play → synth~. necklace also plays step by
+  step: a bang on its right inlet (inlet 2: a metro, pulse, onset~) moves its hand a pulse and sends a bang
+  out of outlet 4 on an onset (to a player's left inlet: one event a step); a number moves the hand there.
   More generators of pulses: `chance k n [seed]` (each bang another rhythm drawn with the seed; :reset),
   `homometric` (pulses in → the list of rhythms with the same interval vector, and how many; nth to pick one).
   `swap` compares the pulses on its left inlet with the reference on its right (cold): {:swap :circular
@@ -460,7 +462,10 @@ Rules:
 - Patterns (package @kairotic/patterns, it comes by itself), after SuperCollider's and Overtone's: `pbind
   [seed] [repeat] [loop]` is a code box whose source is an EDN map of constants, vectors (sequences) and
   generators — #pat/choose [..], #pat/shuffle [..], #pat/white [lo hi], #pat/walk [x step lo hi],
-  #pat/series [x step n], #pat/hold [beats [..]], #pat/chord [0 4 7] — set with `(code :bN \"{:degree [0 2
+  #pat/series [x step n], #pat/hold [beats [..]], #pat/chord [0 4 7], and rhythms — #pat/euclid [k n rot],
+  #pat/pulses [1 0 0 1 …], #pat/necklace \"x..x..x.\", #pat/chance [k n]: in :dur the lengths between
+  onsets (the other keys note by note: talea and color), in another key (:pulse) one event a pulse, :pulse 0 a
+  silence — set with `(code :bN \"{:degree [0 2
   4] :dur 0.5}\")`; `pattern [seed]` is the same as Clojure code (pbind, pwhite, pchoose… and seeded rand),
   which needs (trust-scripts true) in a room; both send a pattern to the right inlet of `player [bpm]
   [quant]`, which plays it on `start`/`stop`, one step per bang, or at a position in beats (a number, from a

@@ -16,7 +16,7 @@
   {;; ── about ──
    :class "pbind"
    :license "MPL-2.0"
-   :doc "A pattern as data: an EDN map whose values are sequences (vectors, the shorter ones starting again until the longest ends), constants and generators (#pat/choose [0.25 0.5], #pat/white [0 7], #pat/shuffle, #pat/walk, #pat/series, #pat/hold [4 [:c :g]] one value per 4 beats, #pat/chord [0 4 7]). It sends its pattern whenever it changes, for a player: the seed (pbind 7) makes its randomness the same for everyone, each key with its own. pbind 7 4 repeats it four times, pbind 7 loop for ever. A map on its inlet replaces it, [:set :dur [1 0.5]] one key, [:unset :amp] removes one."
+   :doc "A pattern as data: an EDN map whose values are sequences (vectors, the shorter ones starting again until the longest ends), constants and generators (#pat/choose [0.25 0.5], #pat/white [0 7], #pat/shuffle, #pat/walk, #pat/series, #pat/hold [4 [:c :g]] one value per 4 beats, #pat/chord [0 4 7]) and rhythms (#pat/euclid [3 8], #pat/pulses [1 0 0 1 0 0 1 0], #pat/necklace \"x..x..x.\", #pat/chance [5 16]: in :dur the lengths between onsets, the other keys going on note by note; in another key, :pulse by custom, the pulses one by one, :pulse 0 a silence). It sends its pattern whenever it changes, for a player: the seed (pbind 7) makes its randomness the same for everyone, each key with its own. pbind 7 4 repeats it four times, pbind 7 loop for ever. A map on its inlet replaces it, [:set :dur [1 0.5]] one key, [:unset :amp] removes one."
    :usage "pbind [seed] [repeat] [loop]"
    :io [1 1]
 
