@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Study 57 · octave: the Rule of the Octave, and modulation** (IJzerman, chapter 4; `@kairotic/cac` 0.3.0).
+  `partimento.mjs` takes **a key for each bass note**: a note is now a degree in the letters of the key of the whole
+  and an alteration (−1, 0, +1) — its code `3·degree + alteration + 1` (`codeOf3`, `codeDegree`, `codeAlter`;
+  `codeOf` reads any note within a semitone of the key) —, and what it is is read in the key of its unit
+  (`localOf`, `localNote`). One key for the whole counts exactly as before (Studies 51, 54, 56 unchanged). **Chapter
+  4's rules** (`ro`): the augmented 4th and the diminished 5th over the bass as semi-consonances (unprepared,
+  resolved), a note of the chord before over a passing bass (the descending ④'s 4/2), in minor the leading tone in
+  the 6/3 on ② going to ①. `RULE_OF_THE_OCTAVE` and `octaveChord` as data, the 6/5 among the `CHORDS`; `parts` takes a
+  bass as it is (`spec.bass`). Study 57 realizes the complete RO (the book's prototypes among the realizations), its
+  pentachords and tetrachords, and Bach's and Beethoven's modulating sequences, with the keys boxed.
+
 - **follow** (`@kairotic/analysis` 0.8.0, discussion #204): a performer followed through a tree — Hz from `pitch~`,
   onsets from `onset~`, the tree from a tree box; out the written beat where they are, `[:note id]`, the `:cue` of the
   notes that have one (on the note, or caught up once if passed over), and at `stop` the take, which the tree box keeps

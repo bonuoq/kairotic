@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 57 · octave · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:900px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the RO counted and realized, the book's prototype, chapter 4's rules off and
+// on, the modulating sequences with their keys boxed, a transposition.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+const total = () => d.getElementById("total").textContent;
+const keys = () => [...d.querySelectorAll("#sheet .keylab")].map((x) => x.textContent);
+try {
+  await wait(() => w.kairoticOctave && /^\d/.test(total()));
+  const K = w.kairoticOctave;
+  is("it opens on the complete RO in C major: 14,342 realizations of its chords, eight phrases to choose", total() === "14,342" && d.querySelector('[data-phrase="ro-major"]').classList.contains("on") && d.querySelectorAll("[data-phrase]").length === 8);
+  is("... the engine's realization drawn: three voices, the 4/2 on the descending ④, the keys boxed (C, then G for the raised 6th on ⑥)", d.querySelectorAll("#sheet rect.upper").length > 0 && [...d.querySelectorAll("#sheet text.fig")].some((x) => x.textContent === "4/2") && keys().join(",").includes("G major"));
+  d.getElementById("book").click();
+  is("the book's realization (ex. 4.22a): sound, outlined", /the book's realization/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent) && d.querySelector("#sheet rect.book"));
+  d.getElementById("ro").checked = false; d.getElementById("ro").dispatchEvent(new Event("change"));
+  await wait(() => total() === "0");
+  is("without chapter 4's rules: none, and why (the 4/2, the semi-consonances)", total() === "0" && /chapter 4/.test(d.getElementById("msg").textContent) && /14,342 with/.test(d.getElementById("other").textContent));
+  d.getElementById("ro").checked = true; d.getElementById("ro").dispatchEvent(new Event("change"));
+  K.set("bach-541");
+  await wait(() => total() === "12");
+  is("Bach's tetrachords: 12 realizations, the keys D, G, C boxed", total() === "12" && keys().join(",") === "D major,G major,C major");
+  is("... the 7/3 on each ⑥", [...d.querySelectorAll("#sheet text.fig")].filter((x) => x.textContent === "7/3").length === 3);
+  K.set("beethoven-10-1");
+  await wait(() => total() === "16");
+  is("Beethoven's pentachords: 16, A♭ major → F minor → D♭ major", total() === "16" && keys().join(",") === "A♭ major,F minor,D♭ major");
+  K.set("bach-541", "C");
+  await wait(() => keys().join(",") === "C major,F major,B♭ major");
+  is("... Bach's moved to C: C → F → B♭, the same 12", total() === "12");
+  d.getElementById("uniform").click();
+  is("one drawn uniformly, sound", !/✗/.test(d.getElementById("msg").textContent) && /steps/.test(d.getElementById("msg").textContent));
+  is("no errors on the page", errors.length === 0);
+} catch (e) { is("error: " + (e.message || e), false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(errors) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>
