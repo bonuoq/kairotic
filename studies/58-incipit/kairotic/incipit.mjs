@@ -14,7 +14,7 @@
 //   the tree      {nodes: {id: {id, parent, phrase, by, state: "chosen" | "offered", check}}, root}
 
 import { figuring, parseBass } from "./figuring.mjs";
-import { keyOf, codeOf, SCHEMATA, SCHEMATA3, CADENCES } from "./partimento.mjs";
+import { keyOf, codeOf, codeDegree, codeAlter, SCHEMATA, SCHEMATA3, CADENCES } from "./partimento.mjs";
 import { total } from "./soft.mjs";
 
 const mod = (a, m) => ((a % m) + m) % m;
@@ -264,7 +264,7 @@ export async function continueWith(sample, tree, at, { k = 3, request = "", trie
 }
 
 /** The frequency of a note's name in a key. */
-export function hzOf(key, name) { const K = keyOf(key), c = codeOf(K, split([name])[0]); return K.hz(c >> 1, c & 1); }
+export function hzOf(key, name) { const K = keyOf(key), c = codeOf(K, split([name])[0]); return K.hz(codeDegree(c), codeAlter(c)); }
 
 /** The engine's melody for a bass under a point (no Claude): the phrase written by the soft rules, or null. */
 export function engineMelody(tree, at, bass, { cadence = "authentic", temp = 0.5, r = Math.random } = {}) {
