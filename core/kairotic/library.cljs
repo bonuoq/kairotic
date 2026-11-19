@@ -64,7 +64,7 @@
     (and (contains? m :tasks) (not (and (map? (:tasks m)) (every? keyword? (keys (:tasks m))) (every? fn? (vals (:tasks m))))))
     ":tasks is a map {:name (fn [x box] promise)}"
     (and (contains? m :tasks) (not (fn? (:receive m)))) "a component with :tasks needs a :receive to ask for them and get what they find"
-    (some #{:print :keep :tree-edit :tree-set :canvas-edit :presets :sample} (keys (:tasks m)))
+    (some #{:print :keep :take :tree-edit :tree-set :canvas-edit :presets :sample} (keys (:tasks m)))
     "a task cannot be called :print, :keep or another effect of the page"
     (and (contains? m :patch) (not (and (map? (:patch m)) (map? (:boxes (:patch m))))))
     ":patch is a patch {:boxes {…} :lines […]}"
@@ -173,7 +173,7 @@
   {"@kairotic/synth"    {:version "0.3.0" :classes #{"adsr~" "synth~" "gendy~"} :local "kairotic/packages/synth.mjs"}
    "@kairotic/spatial"  {:version "0.1.1" :classes #{"pan~" "space~"}   :local "kairotic/packages/spatial.mjs"}
    "@kairotic/controls" {:version "0.2.3" :classes #{"knob" "keyboard" "scale"} :local "kairotic/packages/controls.mjs"}
-   "@kairotic/analysis" {:version "0.7.5" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "monitor" "form~" "realize~"}
+   "@kairotic/analysis" {:version "0.8.0" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "follow" "monitor" "form~" "realize~"}
                          :local "kairotic/packages/analysis.mjs"}
    "@kairotic/theory"   {:version "0.14.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}
    "@kairotic/cac"      {:version "0.2.2" :classes #{"comes"} :local "kairotic/packages/cac.mjs"}

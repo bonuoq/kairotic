@@ -204,8 +204,34 @@ export async function analysis(page, check) {
   check("transcribe ovr t writes over the take and keeps what came after", ovr === "[1 true 1 true]",
         ovr + " " + await cljs(page, `(mapv (fn [p] [(js/Math.round (second (first p))) (first (first p)) (first (last p))]) ${strokes})`));
 
+  // follow (discussion #204), fed by hand as pitch~ sends: C4 (silence) E4, then G4 legato (held 60 ms: a new note)
+  // with a passing F#4 that does not hold, then (after a breath) C5 heard an octave low; the cue on G4, the take at stop
+  const followed = await cljs(page, `(let [rcv (:receive (comp/lookup "follow")) args {:ahead 4 :band 0.6}
+      step (fn [[st outs] m] (let [r (rcv (assoc m :state st :args args))] [(if (contains? r :state) (:state r) st) (into outs (:out r))]))
+      tr [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 e4" [:note {:pitch "g4" :dur 1 :cue :swell}] "c5/1"]]
+      msgs [[2 tr 0] [0 :start 0] [0 261.63 0.1] [0 0 0.9] [0 329.63 1.1] [0 369.99 1.95] [0 329.63 1.97] [0 392 2.1] [0 [:settle] 2.17] [0 0 2.9]
+            [0 261.63 3.1] [0 0 3.8] [0 :stop 4]]
+      [_ outs] (reduce (fn [acc [i v at]] (step acc {:inlet i :value v :at at})) [nil []] msgs)]
+  [(mapv second (filter (fn [[o]] (= o 0)) outs)) (mapv second (filter (fn [[o]] (= o 2)) outs))
+   (let [[_ [_ tk]] (first (filter (fn [[o]] (= o 3)) outs))] (into (sorted-map) (map (fn [[k v]] [k (first v)])) (:when tk)))])`);
+  check("follow: the beats where the performer is, the cue reached, and the take (onsets from the start)",
+        followed === '[[0 1 2 3] [:swell] {"n0" 0, "n1" 1, "n2" 2, "n3" 3}]', followed);
+  const ftb = (await cljs(page, '(box "tree" 5600 100)')).trim();
+  await cljs(page, `(tree! ${ftb} [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 e4 g4 c5"]])`);
+  const fol = (await cljs(page, '(box "follow" 5600 220)')).trim();
+  await cljs(page, `(connect ${ftb} 0 ${fol} 2) (connect ${fol} 3 ${ftb} 0) (send! ${ftb} :bang)`);
+  await until(page, `(:notes (second (last-shown ${fol})))`, (x) => x === "4", 3000);
+  await cljs(page, `(send! ${fol} :start)
+    (let [t0 (+ (eng/now) 0.05) at (fn [s v] (eng/enqueue! (+ t0 s) (fid ${fol}) 0 v))]
+      (doseq [[s hz] [[0 261.63] [0.4 0] [0.5 329.63] [0.9 0] [1 392] [1.4 0] [1.5 523.25] [1.9 0]]] (at s hz))
+      (at 2 :stop))`);
+  const kept = await until(page, `(mapv :scope (takes ${ftb}))`, (x) => x === "[:me]", 6000);
+  check("... its take into the tree box: kept only for me, the tree unchanged", kept === "[:me]" &&
+        (await cljs(page, `(empty? (mei/takes (tree-data ${ftb})))`)) === "true", kept);
+  await cljs(page, `(doseq [t (takes ${ftb})] (forget-take! ${ftb} (:id t)))`);
+
   await cljs(page, "(stop)");
-  await cljs(page, `(delete ${osc} ${pitch} ${feats} ${chroma} ${spec} ${g} ${onset} ${count} ${p2} ${tr} ${fq})`);
+  await cljs(page, `(delete ${osc} ${pitch} ${feats} ${chroma} ${spec} ${g} ${onset} ${count} ${p2} ${tr} ${fq} ${ftb} ${fol})`);
   page.off("console", onLog);
   check("no errors in the console during the analysis tests", logs.length === 0, logs.join(" | ").slice(0, 800));
 }

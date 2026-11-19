@@ -65,7 +65,7 @@
                       (concat [(str "(tree! " id)] (map (fn [l] (str "  " l)) (str/split-lines (mt/pp t))) [")"])))})
 
 (comp/define! "tree"
-  {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]), seen as a score, as a roll of frequency over time, or as a continuum between them (⇄ in its header; (continuum! :bN :dissolve), discussion #217), its text in the code window ({ } in its header) — one tree, two views (discussion #92): drawing on its roll writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it."
+  {:doc "A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} \"c4/1 e4 g4/2\"]]), seen as a score, as a roll of frequency over time, or as a continuum between them (⇄ in its header; (continuum! :bN :dissolve), discussion #217), its text in the code window ({ } in its header) — one tree, two views (discussion #92): drawing on its roll writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it, and takes [:take {…}] (from a follow box: where a performance played each note), kept only for you, or [:take {…} :work] in the tree."
    :usage "tree"
    ;; two views (score, roll); its text opens in the code window from { }. Works that showed it as code
    ;; or as a canvas open it as a score or a roll
@@ -78,6 +78,10 @@
                 (cond
                   ;; edits and trees change the box: that is a gesture of the work, done by the page
                   (and (vector? v) (= :edit (first v))) {:effects [[:tree-edit (second v)]]}
+                  ;; a take (from a follow box, discussion #289): kept only for whoever played it, or with :work in
+                  ;; the tree; the page does it
+                  (and (vector? v) (= :take (first v)) (map? (second v)))
+                  {:effects [[:take [(second v) (if (= :work (get v 2)) :work :me)]]]}
                   ;; its own tree come back (through mt boxes): a loop that would rewrite it for ever
                   (and (mt/node? v) (= (:from (meta v)) (:id m)))
                   {:effects [[:print (str "loop: " (name (:id m)) " received its own tree back; it does not change")]]}

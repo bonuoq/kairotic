@@ -14,7 +14,8 @@
             [kairotic.canvas :as cv]
             [kairotic.code :as code]
             [kairotic.patterns :as pat]
-            [kairotic.structure :as st]))
+            [kairotic.structure :as st]
+            [kairotic.follow :as fl]))
 
 (def version 1)
 
@@ -360,3 +361,11 @@ registerProcessor('kairotic-tap', KairoticTap);
 (defn periods "The peaks of a beat spectrum, strongest first: [[lag value] …]." [bs] (st/periods bs))
 (defn boundaries "Where segments begin, from a novelty curve: {:shortest 8 :longest 64 :k 0.5} (frames)." [nov opts] (st/boundaries nov opts))
 (defn note-frames "Notes ({:on :off :attrs {:pitch :vel}}) as one vector per frame between the times given." [notes times] (st/note-frames notes times))
+
+;; ───────── following a performer through a tree (discussion #204) ─────────
+
+(defn follow-score "The notes a tree is followed by ({:id :midi :ws :wd :beat :cue}), its first voice." [tree] (fl/score tree))
+(defn follow-start "A follower at the beginning of a score; opts :ahead (4) :band (0.6 semitones) :octave (true)." [evs opts] (fl/start evs opts))
+(defn follow-hear "A note heard at t (seconds) at midi → [state found]: [:at {:id :i :beat :t :skipped}] and [:cue {:cue :id :status}]." [state t midi] (fl/hear state t midi))
+(defn follow-release "The note found last stopped sounding at t." [state t] (fl/release state t))
+(defn follow-take "What was followed, as a take {:id :when {note-id [onset dur]} …}, or nil." [state m] (fl/take-of state m))
