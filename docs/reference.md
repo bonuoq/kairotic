@@ -909,6 +909,55 @@ Brings in what is at a URL (JSON read as EDN, text or EDN) as a task: it goes ou
 
 See also: `edn`, `sample`, `print`
 
+### follow · `@kairotic/analysis`
+
+`follow [ahead] [band]`
+
+Follows a performer through a tree (discussion #204): each note heard is matched with a note a little ahead of where the performer was, by pitch and by when it was expected at the performer's tempo; wrong notes pass, skipped notes are skipped. Notes with a :cue send it when reached (or caught up once, if passed over). At :stop, the take — where each note was played — for the tree box.
+
+**Inlets** 
+
+0. Hz from pitch~ (0: silence); :start, :stop
+1. onsets (from onset~): a new note even on the same pitch
+2. the tree to follow (from a tree box)
+
+**Outlets** 
+
+0. the written beat where the performer is
+1. [:note id]: the note found
+2. the :cue of a note reached
+3. at :stop, [:take {…}]: into the tree box, kept only for you
+
+**Messages and gestures**
+
+- `:start`: from the top of the tree
+- `:stop`: ends, and sends the take
+
+**Try:** Press ▶, click :start and play or sing the tree: its label shows the beat you are at, the print the cue when you reach the G. Click :stop: the take goes into the tree box, only for you; (continuum! :b1 {:take …}) — (takes :b1) gives its id — shows where you played each note.
+
+```clojure
+(box :b1 "tree" 420 30)
+(tree! :b1 [:voice {:tempo 72} [:measure {:meter [4 4]} "c4/1 e4 g4 c5"] [:measure [:note {:pitch "g4" :dur 2 :cue :swell}] "e4/1 c4"]])
+(box :b2 "adc~ 1" 40 30)
+(box :b3 "pitch~ 80 1000" 40 90)
+(box :b4 "onset~" 240 90)
+(box :b5 "msg :start" 40 150)
+(box :b6 "msg :stop" 140 150)
+(box :b7 "follow" 40 210)
+(box :b8 "print" 200 270)
+(connect :b2 0 :b3 0)
+(connect :b2 0 :b4 0)
+(connect :b3 0 :b7 0)
+(connect :b4 0 :b7 1)
+(connect :b1 0 :b7 2)
+(connect :b5 0 :b7 0)
+(connect :b6 0 :b7 0)
+(connect :b7 2 :b8 0)
+(connect :b7 3 :b1 0)
+```
+
+See also: `pitch~`, `onset~`, `tree`, `transcribe`
+
 ### form~ · `@kairotic/analysis`
 
 `form~ [seconds] [step] [kernel]`
@@ -2716,7 +2765,7 @@ See also: `pitch~`, `onset~`, `freqt`, `quantize`
 
 `tree`
 
-A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]), seen as a score, as a roll of frequency over time, or as a continuum between them (⇄ in its header; (continuum! :bN :dissolve), discussion #217), its text in the code window ({ } in its header) — one tree, two views (discussion #92): drawing on its roll writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it.
+A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c4/1 e4 g4/2"]]), seen as a score, as a roll of frequency over time, or as a continuum between them (⇄ in its header; (continuum! :bN :dissolve), discussion #217), its text in the code window ({ } in its header) — one tree, two views (discussion #92): drawing on its roll writes notes into the tree (free time without measures, quantized bars with them). It sends its tree, expanded, whenever it changes (and again on a bang); `tree manual` only on a bang. Its second outlet is its notes as a buffer, for a reader~. On its inlet it takes edits [:edit [[:attrs path {…}] …]] (from a score's edits outlet) and whole trees, which change it, and takes [:take {…}] (from a follow box: where a performance played each note), kept only for you, or [:take {…} :work] in the tree.
 
 **Inlets** 
 
