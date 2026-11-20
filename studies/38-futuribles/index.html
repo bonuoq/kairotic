@@ -774,8 +774,8 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; interval and delay of the comes, the rules on: in the extMeta, for the app. Only names on the white keys and
 ;; their accidentals can be written (a system of other steps is said so).
 (defn export-mei! []
-  (let [X (.-kairoticExport js/window) pp (p) n (:n pp) b (:b pp 1) ph (:phase pp 0) D (dux) C (comes)
-        names (fn [v] (vec (concat (repeat ph nil) (map (fn [i] (when-let [s (get v i)] (fu/pitch-name s))) (range n)))))
+  (let [X (.-kairoticExport js/window) pp (p) n (:n pp) b (:b pp 1) ph (:phase pp 0) D (dux) C (:comes (fu/voices pp D))
+        names (fn [v] (vec (concat (repeat ph nil) (map (fn [i] (when-let [s (get v i)] (fu/pitch-name s))) (range (max n (count C)))))))
         dn (names D) cn (names C)
         ok? (every? (fn [x] (or (nil? x) (re-matches #"[A-G](#|b|♯|♭)?-?\d+" x))) (concat dn cn))
         mean (fn [v] (let [xs (remove nil? v)] (if (seq xs) (/ (reduce + xs) (count xs)) 0)))

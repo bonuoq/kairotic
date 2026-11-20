@@ -264,7 +264,7 @@ rebuild();
 function exportIt() {
   if (!W) return;
   const n = P.n, ch = P.chords(W), { pickup, unitsPerBar } = barsOf(P.units.map((b) => b.strong));
-  const ph = PHRASES[pid], key = { tonic: $("tonic").value, mode: ph.key.mode || "major" };
+  const ph = PHRASES[pid], key = { tonic: $("tonic").value, mode: P.K.mode || "major" };
   const keys = P.units.map((u, t) => P.keyName(t));
   const x = exportMei({
     title: $("exp-title").value.trim() || `${ph.name} (${[...new Set(keys)].join(" → ")})`, source: "Kairotic Study 59 · galant", key, pickup, unitsPerBar,
