@@ -366,6 +366,39 @@ How much of each pitch class a signal has: 12 values from C to B, and the strong
 
 See also: `pitch~`, `mt`, `features~`
 
+### click~ · `@kairotic/synth`
+
+`click~ [freq 1200] [accent 0] [decay 0.03]`
+
+A metronome's click: each bang a short tick; every accent bangs one accented (a fifth higher, louder). A number is a tick, accented when it is 0 (a counter's cycle).
+
+**Arguments**
+
+- `freq`: the tick's pitch, in Hz
+- `accent`: every how many bangs one is accented (0: none)
+- `decay`: how long a tick lasts, in seconds
+
+**Inlets** 
+
+0. a bang: a tick · a number: a tick, accented when 0 · [:gain v]: its level (0…1) · :reset: count the accents from the next bang
+
+**Outlets** 
+
+0. the sound
+
+**Try:** Press ▶: sixteenths at 120, the beats accented. Put it beside any clock you play along with — a metro, the room's pulse, a necklace's onsets.
+
+```clojure
+(box :b1 "metro 125" 40 30)
+(box :b2 "click~ 1200 4" 40 80)
+(box :b3 "dac~" 40 130)
+(connect :b1 0 :b2 0)
+(connect :b2 0 :b3 0)
+(connect :b2 0 :b3 1)
+```
+
+See also: `metro`, `pulse`, `phase`, `necklace`
+
 ### comes · `@kairotic/cac`
 
 `comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [temp 0] [seed 1] [inverted] [fourth] [live] [nocues] [midi]`
@@ -1631,6 +1664,7 @@ A cyclic rhythm on the circle and its geometry (Toussaint): drawn as a polygon w
 (code :b17 "{:degree #pat/shuffle [0 2 4 7 9]}")
 (box :b18 "synth~" 520 390)
 (box :b19 "dac~" 520 440)
+(box :b20 "click~ 1200 4" 400 390)
 (connect :b15 0 :b4 2)
 (connect :b4 4 :b16 0)
 (connect :b17 0 :b16 1)
@@ -1638,6 +1672,9 @@ A cyclic rhythm on the circle and its geometry (Toussaint): drawn as a polygon w
 (connect :b16 1 :b18 1)
 (connect :b18 0 :b19 0)
 (connect :b18 0 :b19 1)
+(connect :b15 0 :b20 0)
+(connect :b20 0 :b19 0)
+(connect :b20 0 :b19 1)
 ```
 
 **Pitches: talea and color** — The right inlet gives the notes their pitches, in turn, starting again when they run out: four pitches over the five onsets of the son take four bars to meet the rhythm again, as the color and the talea of an isorhythmic motet. It is cold: what arrives there sounds the next time the box sends. A keyboard sends the keys held, in Hz; a melody string or a map {:pitches …} is kept as it is.
@@ -1981,7 +2018,7 @@ Where a performer is in a cycle (a timeline follower, onsets only): onsets on th
 0. the phase: the pulse of the reference this one is (for a necklace's clock inlet)
 1. {:phase :distance — 0: exactly the reference — :margin — how much nearer than the next guess; 0 ambiguous — :heard :window :n}
 
-**Try:** Click the son clave (the reference), press ▶ — the metro is the pulse, a sixteenth at 120 —, and clap the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects. Stop for a moment and go on: it keeps walking.
+**Try:** Click the son clave (the reference), press ▶ — the metro is the pulse, a sixteenth at 120, and click~ lets you hear it, the beats accented —, and clap (with headphones, so the microphone hears you and not the click) the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects. Stop for a moment and go on: it keeps walking.
 
 ```clojure
 (box :b1 "msg [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]" 40 20)
@@ -1992,6 +2029,8 @@ Where a performer is in a cycle (a timeline follower, onsets only): onsets on th
 (box :b6 "phase" 360 130)
 (box :b7 "necklace" 40 180)
 (box :b8 "print phase" 360 180)
+(box :b9 "click~ 1200 4" 240 70)
+(box :b10 "dac~" 240 110)
 (connect :b1 0 :b6 1)
 (connect :b1 0 :b7 0)
 (connect :b2 0 :b6 2)
@@ -2000,6 +2039,9 @@ Where a performer is in a cycle (a timeline follower, onsets only): onsets on th
 (connect :b5 0 :b6 0)
 (connect :b6 0 :b7 2)
 (connect :b6 1 :b8 0)
+(connect :b2 0 :b9 0)
+(connect :b9 0 :b10 0)
+(connect :b9 0 :b10 1)
 ```
 
 See also: `necklace`, `swap`, `onset~`, `follow`
