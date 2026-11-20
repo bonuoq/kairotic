@@ -33,7 +33,7 @@ try {
   await wait(() => /A minor/.test(d.getElementById("ref").textContent));
   is("stepwise Romanesca and a Galant cadence in A minor: some, the engine's sound", Number(total().replace(/,/g, "")) > 0 && !/✗/.test(d.getElementById("msg").textContent));
   d.getElementById("uniform").click();
-  is("... one drawn uniformly, sound", !/✗/.test(d.getElementById("msg").textContent) && /steps/.test(d.getElementById("msg").textContent));
+  is("... any valid one, sound", !/✗/.test(d.getElementById("msg").textContent) && /steps/.test(d.getElementById("msg").textContent));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);

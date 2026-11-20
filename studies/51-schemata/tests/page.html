@@ -49,7 +49,7 @@ try {
   d.getElementById("figuring").click();
   is("... another figuring, realized: not the book's", /a figuring of its own/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
   d.getElementById("uniform").click();
-  is("... one drawn uniformly, a realization", /cadence/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
+  is("... any valid one, a realization", /cadence/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
   d.getElementById("clear").click();
   is("... the next notes with their futures and their costs", d.querySelectorAll("#fan button small.cost").length > 3);
   is("no errors on the page", errors.length === 0);
