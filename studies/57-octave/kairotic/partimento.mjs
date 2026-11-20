@@ -1155,3 +1155,84 @@ export function four(spec = {}) {
   return { spec, key: K, bass: B, n, voices: V, soprano: Sv, alto: Av, tenor: Tv, check, triples, count, fan, sample, engine, judge, chords,
            code: (name) => codeOf(K, name), name: (c) => K.name(D(c), A(c)), degree: D, alter: A, hz: (c) => K.hz(D(c), A(c)), memo };
 }
+
+// ─── from a tree: a bass given as notes, realized or judged (the cac box, discussion #323) ───
+/** The degree and alteration of a MIDI note in the key K (its scale first, then raised, then lowered), or null. */
+export function degreeOf(K, midi) {
+  const m = Math.round(midi);
+  for (const r of [0, 1, -1]) for (let d = -28; d <= 35; d++) if (K.midi(d, r) === m) return { d, r };
+  return null;
+}
+const parseKey = (k) => {
+  if (!k) return null;
+  if (typeof k === "object") return k;
+  const s = String(k).trim(), m = s.match(/^([A-Ga-g])([#♯b♭]?)\s*(major|minor|maj|min|m)?$/);
+  if (!m) return null;
+  const minor = m[3] ? /^m(in(or)?)?$/.test(m[3]) && m[3] !== "maj" : m[1] === m[1].toLowerCase();
+  return { tonic: m[1].toUpperCase() + m[2].replace("♯", "#").replace("♭", "b"), mode: minor ? "minor" : "major" };
+};
+export { parseKey };
+/** A key for a bass that has none: its last note's the tonic, minor where its minor 3rd sounds more than its major. */
+export function guessKey(midis) {
+  const last = midis[midis.length - 1], pc = (m) => ((Math.round(m) % 12) + 12) % 12, t = pc(last);
+  const n = (i) => midis.filter((m) => pc(m) === (t + i) % 12).length;
+  const names = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+  return { tonic: names[t], mode: n(3) > n(4) ? "minor" : "major" };
+}
+/** The bass's units from notes [{midi, units, fig (a figuring: "6/5"), key, strong: [one a unit]}] in K. */
+export function bassFromNotes(notes, K, voices = 4) {
+  const table = voices >= 4 ? CHORDS4 : CHORDS, units = [], unknown = [];
+  notes.forEach((nt, i) => {
+    const dr = degreeOf(K, nt.midi);
+    if (!dr) throw new Error(`note ${i + 1}: not a pitch of ${K.tonic} ${K.mode}`);
+    const next = notes[i + 1] && degreeOf(K, notes[i + 1].midi);
+    // (fewer than four parts: a chord of four tones as three can sound it — the RO's 6/3 for its 6/5 and 6/4/3, 7/3 for 7)
+    const fig0 = nt.fig ? String(nt.fig).replace(/\s+/g, "") : null;
+    const fig = fig0 && voices < 4 ? ({ "6/5": "6/3", "6/5/3": "6/3", "6/4/3": "6/3", "7": "7/3", "7/5/3": "7/3", "6/4/2": "4/2" }[fig0] || fig0) : fig0;
+    const chord = fig && table[fig] ? fig : fig && table[fig + "/3"] ? fig + "/3" : null;
+    if (fig && !chord) unknown.push(`note ${i + 1}: ${fig}`);
+    const key = parseKey(nt.key);
+    for (let j = 0; j < Math.max(1, nt.units || 1); j++)
+      units.push({ d: dr.d, r: dr.r, struck: j === 0, strong: nt.strong ? !!nt.strong[j] : units.length % 2 === 0, chord, key,
+                   fig: voices === 2 && chord ? CHORDS[chord] && chord.split("/").map(Number) : undefined, note: i,
+                   dominant: mod(dr.d, 7) === 4 && (!next || isDominant(dr.d, next.d)) });
+  });
+  return { units, unknown };
+}
+/**
+ * The engine over a given bass: spec {notes (bassFromNotes's), key (a name, "a minor", or {tonic, mode}; else guessed),
+ * voices (2, 3 or 4: the bass and the upper voices), ro (chapter 4's rules: true)}. Its count, sample, engine, judge,
+ * and midi (a code's MIDI note).
+ */
+export function overBass(spec = {}) {
+  const key = parseKey(spec.key) || guessKey(spec.notes.map((n) => n.midi));
+  const K = keyOf(key), voices = spec.voices || 4;
+  const { units, unknown } = bassFromNotes(spec.notes, K, voices);
+  const figured = units.some((u) => u.chord);
+  const ro = spec.ro ?? true;
+  const P = voices >= 4 ? four({ key, bass: units, figured, ro })
+          : voices === 3 ? parts({ key, bass: units, figured, ro, cadence: null, schema: { events: [] } })
+          : schemata({ schema: { events: [] }, key, bass: units, figured, ro, voice: "top", lo: 7, hi: 21 });
+  const names = voices >= 4 ? ["soprano", "alto", "tenor"] : voices === 3 ? ["top", "middle"] : ["top"];
+  const asVoices = (R) => (R === null || R === undefined ? null : voices === 2 ? { top: R } : R);
+  const midi = (c) => K.midi(codeDegree(c), codeAlter(c));
+  const code = (m) => { const dr = degreeOf(K, m); return dr ? codeOf3(dr.d, dr.r) : null; };
+  const V0 = voices >= 4 ? P.soprano : voices === 3 ? P.top : P;
+  // (a code's name as a tree writes it: "bb4", "f#3")
+  const spell = (c) => K.name(codeDegree(c), codeAlter(c)).replace("𝄫", "bb").replace("𝄪", "##").replace("♭", "b").replace("♯", "#").replace(/^[A-G]/, (x) => x.toLowerCase());
+  return { key, K, units, unknown, figured, voices, names, P, midi, code, spell, degAt: (t) => V0.locB(t),
+           count: () => P.count(), engine: (o) => asVoices(P.engine(o)), sample: (r) => asVoices(P.sample(r)),
+           judge: (R) => judgeOf(R), chords: (R) => (P.chords ? P.chords(voices === 2 ? R.top : R) : null) };
+  // judged without figures, voices are read with the chords they make: those of four tones (the dominant's family,
+  // the 6/5) asked of them — so their dissonances are the semi-consonances they are
+  function judgeOf(R) {
+    if (figured || voices < 4) return P.judge(voices === 2 ? R.top : R);
+    const NAME = { "6/5/3": "6/5", "6/4/3": "6/4/3", "6/4/2": "4/2", "7": "7" };
+    const made = P.chords(R);
+    const B2 = units.map((u, t) => ({ ...u, chord: NAME[made[t]] || null }));
+    return four({ key, bass: B2, figured: true, ro }).judge(R);
+  }
+}
+
+// (a box loads the module's default export: api/import-module)
+export default { keyOf, schemata, parts, four, overBass, degreeOf, parseKey, guessKey, bassFromNotes, CHORDS, CHORDS4, RULE_OF_THE_OCTAVE, RULE_OF_THE_OCTAVE4, octaveChord, octaveChord4 };

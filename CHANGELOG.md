@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`cac`: operations on a tree that follow rules** (`@kairotic/cac` 0.6.0; discussion #323). Beside `mt`'s mechanical
+  operations, `cac partimento` takes a tree whose lowest voice is a bass (its notes' `:fig` figures and `:local` keys, if
+  it has them) and writes the voices above it, 2–4 parts, by the engine of Studies 51–62, counting the realizations
+  (a bang another, `:any` any valid one); `cac judge` says whether voices keep the rules, where and why not.
+  `partimento.mjs` reads a bass of MIDI notes (`overBass`, `degreeOf`, `guessKey`). **Layers of a tree**: over the
+  written tree, `:performance` (#308) and now `:analysis` (`:fig :deg :local :why :harmony`), each shown or hidden in a
+  tree box's code window — **Performed** and **Analysis** in its bar, instead of All — and kept when the written tree
+  is edited (`mt/without-layers`, `mt/with-layers`). `api/tree-events`, `api/tree-attrs`, `api/tree?`.
 - **Study 61: a suspension reduced as one** (discussion #321). The dissonance on the strong unit is the moment that
   matters; what it delays is the consonance. A new operation, `unsuspend`: a note held over the beat, dissonant, going
   down a step while the rest is held — reduced, its resolution sounds on the beat with the bass it was delayed from

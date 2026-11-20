@@ -33,6 +33,7 @@ import { embed } from "./embed.mjs";
 import { relays } from "./relays.mjs";
 import { layers } from "./layers.mjs";
 import { theory } from "./theory.mjs";
+import { cac } from "./cac.mjs";
 import { data } from "./data.mjs";
 import { claude } from "./claude.mjs";
 import { agent } from "./agent.mjs";
@@ -114,6 +115,7 @@ const appSuites = [
   ["relays", relays, "the relay tests ran"],
   ["layers", layers, "the layer tests ran"],
   ["theory", theory, "the theory tests ran"],
+  ["cac", cac, "the cac tests ran"],
   ["components", components, "the component tab tests ran"],
   ["data", data, "the data tests ran"],
   ["claude", claude, "the Claude tab tests ran"],

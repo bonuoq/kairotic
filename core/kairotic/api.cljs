@@ -15,7 +15,8 @@
             [kairotic.code :as code]
             [kairotic.patterns :as pat]
             [kairotic.structure :as st]
-            [kairotic.follow :as fl]))
+            [kairotic.follow :as fl]
+            [kairotic.mt :as mt]))
 
 (def version 1)
 
@@ -363,6 +364,16 @@ registerProcessor('kairotic-tap', KairoticTap);
 (defn note-frames "Notes ({:on :off :attrs {:pitch :vel}}) as one vector per frame between the times given." [notes times] (st/note-frames notes times))
 
 ;; ───────── following a performer through a tree (discussion #204) ─────────
+
+(defn tree-events
+  "The events of a musical tree, in time order: {:kind :note|… :t :dur (beats) :pitch (MIDI) :voice :path}, with every other
+   key of its node (a bass note's :fig, :key…)."
+  [tree] (mt/events tree))
+(defn tree? "Is x a musical tree (a node, or a string of melody)?" [x] (mt/tree? x))
+(defn tree-attrs "The attributes of a tree's root node ({:key \"G major\"}…), {} for a string of melody." [tree] (mt/attrs (mt/expand tree)))
+(defn tree-layer
+  "The tree without the keys of a layer (:analysis, :performance) — the written tree under what lies over it."
+  [tree layer] (mt/without-layers tree #{layer}))
 
 (defn follow-score "The notes a tree is followed by ({:id :midi :ws :wd :beat :wire}), its first voice." [tree] (fl/score tree))
 (defn follow-start "A follower at the beginning of a score; opts :ahead (4) :band (0.6 semitones) :octave (true) :wires." [evs opts] (fl/start evs opts))
