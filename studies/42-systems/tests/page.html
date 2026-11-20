@@ -176,6 +176,14 @@ await (async function () {
     set("system", "septimal31");
     await settle();
     is("the septimal scale in 31-TET: works, named with its B♭⁷", canons() > 0 && /B♭⁷/.test(document.getElementById("svg").textContent));
+    // exported in 31-TET: the steps written as the app writes them, their exact Hz in the extMeta
+    var saved31 = [];
+    window.claude = { use: async function (nm) { return nm === "downloads" ? { save: async function (o) { saved31.push(await o.data.text()); return { status: "saved" }; } } : null; } };
+    document.querySelector("[data-act=finish]").click();
+    document.querySelector("[data-act=export]").click();
+    for (var k31 = 0; k31 < 100 && !saved31.length; k31++) await new Promise(function (r) { setTimeout(r, 25); });
+    is("... exported for the app in 31-TET: written, each step off 12-TET with its exact Hz", saved31.length === 1 && /:system "septimal31"/.test(saved31[0]) && /:notes \{"v\dn\d+" \{:hz \d+\.\d+\}/.test(saved31[0]));
+    delete window.claude;
     is("... the comes may imitate at the harmonic seventh", !!document.querySelector("#k option[value='-6']"));
     set("k", "-6");
     await settle();
