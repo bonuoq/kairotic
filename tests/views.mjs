@@ -138,6 +138,15 @@ export async function views(page, check) {
     check("... its phrases kept on the root, from the extMeta", (await cljs(page, `(mapv (juxt :unit :plan :keys) (:phrases (mt/attrs (tree-data ${sb}))))`)) === '[[1 "a cadential phrase" ["C major"]] [11 "to G" ["C major" "G major"]]]',
       await cljs(page, `(pr-str (dissoc (mt/attrs (tree-data ${sb})) :phrases))`));
     check("... a .mei.txt (saved on claude.ai) is a music file", (await cljs(page, `(music-file? #js {:name "from-a-study.mei.txt"})`)) === "true");
+    // the studies' export with tuplets (a sesquialtera's comes) and a microtone (31-TET), read by the app
+    const X = await import("../studies/_shared/export.mjs");
+    const tu = X.exportMei({ title: "tuplets", voices: [
+      { label: "dux", notes: [{ name: "D4", units: 3 }, { name: "E4", units: 3 }] },
+      { label: "comes", notes: [{ name: "A3", units: 2 }, { midi: 58.42, units: 2 }, { name: "C4", units: 2 }] }], unitDen: 6, unitsPerBar: 6, meter: [2, 2] });
+    await page.evaluate((t) => { window.kairoticStudyMei = t; }, tu.mei);
+    const tb2 = (await cljs(page, `(place-tree! (mei/<-mei (.-kairoticStudyMei js/window)) nil 2500 1500)`)).trim();
+    const cv = await cljs(page, `(let [ns (mt/notes (second (mt/voices-of (tree-data ${tb2}))))] [(mapv (fn [e] (/ (js/Math.round (* 100 (:pitch e))) 100)) ns) (apply = (map :dur ns)) (count (mt/notes (first (mt/voices-of (tree-data ${tb2})))))])`);
+    check("... a study's tuplets (3 in the time of 2, equal) and a 31-TET step (at its exact pitch) read into the tree", cv.trim() === "[[57 58.42 60] true 2]", cv);
   }
   await cljs(page, `(continuum! ${ct} :dissolve)`);
   check("(continuum! :bN :dissolve) shows the tree box as a continuum, kept in the tree",
