@@ -447,6 +447,8 @@ Rules:
   swaps from A to B (a knob or ramp on the ratio morphs in time), and the way {:steps [[:swap from to] …]}.
   `vary [d] [seed] [depth] [downbeat]`: pulses → a variation exactly d swaps away (each bang the next, seeded),
   or with depth the onsets down to metrical level d kept and the rest redrawn; and how it was made.
+  To hear a clock while playing along (a metro, pulse, a necklace stepping), add `click~ [freq] [accent]`
+  (@kairotic/synth) → dac~: a tick each bang, every accent bangs one accented (click~ 1200 4 on sixteenths).
   `phase`: a timeline follower, onsets only — onsets (onset~ bangs, taps) left, the reference pulses middle
   (cold), a pulse clock right (metro at the pulse, or pulse): at each pulse it sends the phase (which pulse of
   the reference this is); into a necklace's clock inlet (inlet 2) the hand follows the performer.

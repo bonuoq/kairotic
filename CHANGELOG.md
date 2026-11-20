@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`click~`: hear the clock you play along with** (`@kairotic/synth` 0.4.0). A metronome's click: each bang a short
+  tick, every `accent` bangs one accented (a fifth higher, louder); a number is a tick, accented when it is 0 (a
+  counter's cycle). The help of `phase` and of `necklace` step by step now let you hear their metro, the beats
+  accented — following or playing along with a clock you cannot hear was all but impossible.
+
 - **`phase`: where a performer is in a cycle** (`@kairotic/rhythm` 0.6.0; discussion #204). A timeline follower, onsets
   only: a pulse clock (a metro, the room's `pulse`) gives the grid, onsets (`onset~`, taps) fall on its nearest pulse,
   and at each pulse the last pulses heard are compared with every rotation of the reference (Toussaint's swap distance,

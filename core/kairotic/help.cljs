@@ -893,9 +893,9 @@
     :steps [{:title "Played step by step"
              :note "A necklace is also a step sequencer, the clock of Toussaint's article: each bang on its right inlet moves the hand to the next pulse, and on an onset a bang goes out of outlet 4. Into a player's left inlet, it plays one event of its pattern a step — the rhythm the necklace's, the pitches the pattern's. Press pulses while it plays: the hand finds what you changed at once."
              :example (lines "(box :b15 \"metro 150\" 520 290)" "(box :b16 \"player 120\" 520 340)" "(box :b17 \"pbind 7 loop\" 640 290)"
-                             "(code :b17 \"{:degree #pat/shuffle [0 2 4 7 9]}\")" "(box :b18 \"synth~\" 520 390)" "(box :b19 \"dac~\" 520 440)"
+                             "(code :b17 \"{:degree #pat/shuffle [0 2 4 7 9]}\")" "(box :b18 \"synth~\" 520 390)" "(box :b19 \"dac~\" 520 440)" "(box :b20 \"click~ 1200 4\" 400 390)"
                              "(connect :b15 0 :b4 2)" "(connect :b4 4 :b16 0)" "(connect :b17 0 :b16 1)" "(connect :b16 0 :b18 0)" "(connect :b16 1 :b18 1)"
-                             "(connect :b18 0 :b19 0)" "(connect :b18 0 :b19 1)")
+                             "(connect :b18 0 :b19 0)" "(connect :b18 0 :b19 1)" "(connect :b15 0 :b20 0)" "(connect :b20 0 :b19 0)" "(connect :b20 0 :b19 1)")
              :try "Click the son clave above, press ▶: the hand turns, and every onset it reaches plays the next note of the pbind. Press pulses on the necklace while it plays."}
             {:title "Pitches: talea and color"
              :note "The right inlet gives the notes their pitches, in turn, starting again when they run out: four pitches over the five onsets of the son take four bars to meet the rhythm again, as the color and the talea of an isorhythmic motet. It is cold: what arrives there sounds the next time the box sends. A keyboard sends the keys held, in Hz; a melody string or a map {:pitches …} is kept as it is."
@@ -997,9 +997,11 @@ Into a `necklace`'s clock inlet the phase moves its hand there and plays it: the
     :example (lines "(box :b1 \"msg [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]\" 40 20)" "(box :b2 \"metro 125\" 360 20)" "(box :b3 \"adc~ 1\" 480 20)"
                     "(box :b4 \"onset~\" 480 70)" "(box :b5 \"bang\" 600 70)" "(box :b6 \"phase\" 360 130)"
                     "(box :b7 \"necklace\" 40 180)" "(box :b8 \"print phase\" 360 180)"
+                    "(box :b9 \"click~ 1200 4\" 240 70)" "(box :b10 \"dac~\" 240 110)"
                     "(connect :b1 0 :b6 1)" "(connect :b1 0 :b7 0)" "(connect :b2 0 :b6 2)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b6 0)" "(connect :b5 0 :b6 0)"
-                    "(connect :b6 0 :b7 2)" "(connect :b6 1 :b8 0)")
-    :try "Click the son clave (the reference), press ▶ — the metro is the pulse, a sixteenth at 120 —, and clap the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects. Stop for a moment and go on: it keeps walking."
+                    "(connect :b6 0 :b7 2)" "(connect :b6 1 :b8 0)"
+                    "(connect :b2 0 :b9 0)" "(connect :b9 0 :b10 0)" "(connect :b9 0 :b10 1)")
+    :try "Click the son clave (the reference), press ▶ — the metro is the pulse, a sixteenth at 120, and click~ lets you hear it, the beats accented —, and clap (with headphones, so the microphone hears you and not the click) the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects. Stop for a moment and go on: it keeps walking."
     :see ["necklace" "swap" "onset~" "follow"]}
 
    "comes"
@@ -1080,6 +1082,17 @@ Into a `necklace`'s clock inlet the phase moves its hand there and plays it: the
                              "(connect :b11 0 :b12 0)" "(connect :b12 0 :b13 0)" "(connect :b12 1 :b13 1)" "(connect :b13 0 :b5 0)" "(connect :b13 0 :b5 1)")
              :try "Press ▶: the loadbang counts the futures. The html box shows where the crab is and its futuribles as a table — each note you can play, the ways it leaves to close the crab, and :end, what the box will answer at the end of your line. Play D on the keyboard: the box answers with D an octave below. Play on: at the middle the tree box shows what is left of your line to read; at the end, the whole crab."}]
     :see ["keyboard" "midiin" "metro" "tree" "mt" "tonnetz"]}
+
+   "click~"
+   {:package "@kairotic/synth" :usage "click~ [freq 1200] [accent 0] [decay 0.03]"
+    :doc "A metronome's click: each bang a short tick; every accent bangs one accented (a fifth higher, louder). A number is a tick, accented when it is 0 (a counter's cycle)."
+    :args [[:freq "the tick's pitch, in Hz"] [:accent "every how many bangs one is accented (0: none)"] [:decay "how long a tick lasts, in seconds"]]
+    :inlets ["a bang: a tick · a number: a tick, accented when 0 · [:gain v]: its level (0…1) · :reset: count the accents from the next bang"]
+    :outlets ["the sound"]
+    :example (lines "(box :b1 \"metro 125\" 40 30)" "(box :b2 \"click~ 1200 4\" 40 80)" "(box :b3 \"dac~\" 40 130)"
+                    "(connect :b1 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 0 :b3 1)")
+    :try "Press ▶: sixteenths at 120, the beats accented. Put it beside any clock you play along with — a metro, the room's pulse, a necklace's onsets."
+    :see ["metro" "pulse" "phase" "necklace"]}
 
    "adsr~"
    {:package "@kairotic/synth" :usage "adsr~ [a d s r]"
