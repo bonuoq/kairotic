@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Voice leading at the level of the structure** (`@kairotic/cac` 0.6.0; Study 61, #321, step 1 of the road
+  there). `partimento.mjs` refuses **parallel 5ths and octaves hidden by the diminution**: the same perfect interval
+  on two strong units in a row, both voices moved the same way, with only ornaments between them (steps or
+  dissonances). A consonant leap between them breaks them, in the upper voice or in the bass, as the treatises allow
+  and IJzerman's prototypes show (the 5–8 of the Monte Romanesca, the leaping Romanesca's octaves); `structural: false`
+  turns the rule into a soft cost (`structural-parallels`). And **compound melody**: a skip inside the chord (the
+  bass held, both notes consonant with it) is one voice unfolding two, its leap costing `chord-skip` (half) less and
+  asking no compensation. Every book prototype and pinned count of Studies 51–62 holds; Study 61's levels, checked
+  by the same voice, now have the rule too.
 - **`cac`: operations on a tree that follow rules** (`@kairotic/cac` 0.6.0; discussion #323). Beside `mt`'s mechanical
   operations, `cac partimento` takes a tree whose lowest voice is a bass (its notes' `:fig` figures and `:local` keys, if
   it has them) and writes the voices above it, 2–4 parts, by the engine of Studies 51–62, counting the realizations

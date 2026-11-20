@@ -239,6 +239,18 @@ for (const f of ["kernel.mjs", "mirror.mjs"])
   is("Study 58's figuring.mjs is Study 56's, as it is", readFileSync(join(root, "studies/58-incipit/kairotic/figuring.mjs"), "utf8") === readFileSync(join(root, "studies/56-figuring/kairotic/figuring.mjs"), "utf8"));
   is("Study 60's figuring.mjs and incipit.mjs are Studies 56's and 58's, as they are", ["56-figuring/kairotic/figuring.mjs", "58-incipit/kairotic/incipit.mjs"].every((f) => readFileSync(join(root, "studies/60-development/kairotic/" + f.split("/").pop()), "utf8") === readFileSync(join(root, "studies/" + f), "utf8")));
   is("Study 61's figuring.mjs and incipit.mjs are Studies 56's and 58's, as they are", ["56-figuring/kairotic/figuring.mjs", "58-incipit/kairotic/incipit.mjs"].every((f) => readFileSync(join(root, "studies/61-reduction/kairotic/" + f.split("/").pop()), "utf8") === readFileSync(join(root, "studies/" + f), "utf8")));
+  // structural voice leading (Study 61, #321): parallels hidden by the diminution are refused; a consonant leap between
+  // the strong units breaks them (as the treatises allow); a skip inside the chord is compound melody, its leap cheaper
+  {
+    const B0 = [[0, true], [0, false], [2, true], [2, false], [3, true]].map(([d, struck]) => ({ d, r: 0, struck, fig: null }));
+    const mk = (extra = {}) => P.schemata({ schema: { events: [] }, bass: B0, key: P.keyOf({ tonic: "C" }), figured: false, lo: 7, hi: 21, end: false, ...extra });
+    const S = mk(), c = (nm) => S.code(nm);
+    is("structural parallels: C5 D5 | E5 over C3 – E3, octaves under a passing tone, refused", /parallel octaves from the strong unit before, under the diminution/.test(S.check([c("C5"), c("D5")], 2, c("E5")) || ""));
+    is("… a consonant leap between them breaks them (not refused for that)", !/under the diminution/.test(S.check([c("C5"), c("A4")], 2, c("E5")) || ""));
+    is("… with structural: false allowed, and then only a soft cost", mk({ structural: false }).check([c("C5"), c("D5")], 2, c("E5")) === null && mk({ structural: false }).costParts([c("C5"), c("D5")], c("E5"))["structural-parallels"] > 0);
+    is("compound melody: C5 to G4 over a held C3 is a skip inside the chord, its leap cheaper", S.costParts([c("C5")], c("G4"))["chord-skip"] < 0);
+  }
+
   // two parts: the book's 7–6 prototype is its one realization; in minor the chord on a dominant is major
   const S = P.schemata({ schema: "7-6", key: { tonic: "C" } });
   const U = P.PROTOTYPES["7-6"].upper.map(S.code);
