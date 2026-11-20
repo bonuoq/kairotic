@@ -111,8 +111,9 @@ dl.point dd { margin: 0; font-family: var(--f-code); font-size: 12px; overflow-w
 .grid-units { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 6px; font: 11px var(--f-code); color: var(--ink-soft); }
 .grid-units .cells { display: grid; gap: 2px; text-align: center; }
 ol.steps { margin: 0; padding-left: 22px; font: 12px/1.55 var(--f-code); color: var(--ink-soft); }
-ol.steps li { cursor: pointer; }
-ol.steps li.sel { color: var(--ink); }
+ol.steps li.pass { cursor: pointer; }
+ol.steps li.pass.sel { color: var(--ink); }
+ol.steps ul { margin: 0; padding-left: 18px; }
 ol.steps li b { color: var(--ink); font-weight: 500; }
 .mel { font: 13px/1.8 var(--f-code); display: flex; flex-wrap: wrap; gap: 4px; }
 .mel span { padding: 1px 5px; border-radius: 3px; border: 1px solid var(--grid); background: var(--sheet); }
@@ -147,7 +148,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
 </section>
 
 <section class="panel" aria-labelledby="h-levels">
-  <h2 id="h-levels">The levels <span>the surface below, the frame above · a slice a cell, dashed: a sonority spread · click a level</span></h2>
+  <h2 id="h-levels">The levels <span>the surface below, the frame above · a slice a cell, dashed: a sonority spread, red: taken by the next pass · click a level</span></h2>
   <div class="scroll"><div class="levels" id="levels"></div></div>
   <div class="row">
     <button class="act" id="play-level">▶ This level</button>
@@ -157,7 +158,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
 </section>
 
 <section class="panel" aria-labelledby="h-steps">
-  <h2 id="h-steps">The steps <span>each level from the one below it: what was taken away, and why (its cost by part; how many steps were possible)</span></h2>
+  <h2 id="h-steps">The passes <span>each level a pass over the whole phrase: what was taken away in it, and why (each step's cost by part; how many were possible)</span></h2>
   <ol class="steps" id="steps"></ol>
   <p class="facts" id="deriv">—</p>
 </section>
@@ -178,7 +179,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
 
 <section class="panel" aria-labelledby="h-about">
   <h2 id="h-about">About <span>discussion <a href="https://github.com/bonuoq/kairotic/discussions/321">#321</a></span></h2>
-  <p class="about">An analysis is the <em>perpendicular</em> of the history: the history runs along the time of composing; an analysis goes down, at one point of it, through the levels of what a phrase prolongs. Here a phrase is reduced a step at a time, each step one of the proto-voice model's operations read backwards (Finkensiep &amp; Rohrmeier, ISMIR 2021; <a href="https://github.com/DCMLab/protovoices-haskell">DCMLab/protovoices-haskell</a>): an <em>unsplit</em> takes away a slice whose notes are all ornaments of the notes around them (a note held, struck again, a neighbour, a passing tone, an incomplete neighbour), an <em>unspread</em> hears two slices as one sonority. Read forwards, the steps are the derivation that composes the phrase from its frame.</p>
+  <p class="about">An analysis is the <em>perpendicular</em> of the history: the history runs along the time of composing; an analysis goes down, at one point of it, through the levels of what a phrase prolongs. Here a phrase is reduced pass by pass, each level a pass over the whole phrase (as GTTM's time-span reduction goes down the metrical grid: the weak units first, then the bars by their weight, a dissonance wherever it stands), each step in it one of the proto-voice model's operations read backwards (Finkensiep &amp; Rohrmeier, ISMIR 2021; <a href="https://github.com/DCMLab/protovoices-haskell">DCMLab/protovoices-haskell</a>): an <em>unsplit</em> takes away a slice whose notes are all ornaments of the notes around them (a note held, struck again, a neighbour, a passing tone, an incomplete neighbour), an <em>unspread</em> hears two slices as one sonority. Read forwards, the steps are the derivation that composes the phrase from its frame.</p>
   <p class="about">Which step is taken is one policy: the ornaments' own cost, GTTM's metrical weight (a slice on a strong unit is dearer to take away) and its cadential retention (the frame keeps the first slice and the cadence), dissonance (a dissonant slice goes first), the soft rules of every engine (<code>soft.mjs</code>: how the melody left moves), and the hard rules of every phrase (<code>partimento.mjs</code>, through Study 58's check): a step that makes the level refuse itself around it is taken only when no other is left. A level below the surface is checked note against note, a slice a unit.</p>
   <ul class="q">
     <li>Varying from a level keeps the melody's notes that survive there (on their units, held as long) and writes the others again with the engine of Studies 56–60; the deeper the level, the less is kept. From the surface nothing changes; from the frame almost everything does.</li>
@@ -267,12 +268,12 @@ window.addEventListener("DOMContentLoaded", function () {
            (str (str/join ""
                           (for [j (reverse (range (count levels)))]
                             (let [L (aget levels j)
-                                  ;; the slice the next step up takes away or spreads, marked
-                                  nx (when (< j (count steps)) (.-on (aget steps j)))]
+                                  ;; the slices the next pass takes away or spreads, marked
+                                  nx (set (map #(.-on %) (array-seq (.stepsInto R an (inc j)))))]
                               (str "<div class=\"lv" (when (= j k) " sel") "\" data-k=\"" j "\">"
                                    "<div class=\"lab\">L" j " " (check-mark an j) "</div>"
                                    "<div class=\"cells\" style=\"grid-template-columns:" cols "\">"
-                                   (str/join "" (map (fn [s] (cell-html s n (= (.-on s) nx))) (array-seq L)))
+                                   (str/join "" (map (fn [s] (cell-html s n (contains? nx (.-on s)))) (array-seq L)))
                                    "</div></div>"))))
                 "<div class=\"grid-units\"><div></div><div class=\"cells\" style=\"grid-template-columns:" cols "\">"
                 (str/join "" (for [u (range n)] (str "<span>" (inc u) (if (even? u) "" "·") "</span>")))
@@ -281,16 +282,19 @@ window.addEventListener("DOMContentLoaded", function () {
       (.addEventListener el "click" (fn [_] (swap! st assoc :k (js/parseInt (.. el -dataset -k))) (render!))))))
 
 (defn draw-steps! []
-  (let [{:keys [an k]} @st steps (.-steps an)]
+  (let [{:keys [an k]} @st n (count (.-levels an))]
     (html! "steps"
-           (str/join "" (for [j (range (count steps))]
-                          (let [s (aget steps j) parts (js->clj (.-parts s))]
-                            (str "<li data-k=\"" (inc j) "\"" (when (= (inc j) k) " class=\"sel\"") ">"
-                                 "<b>L" j " → L" (inc j) "</b> " (esc (.describe R s))
-                                 " · cost " (.toFixed (.-cost s) 2)
-                                 " (" (str/join ", " (for [[p v] parts] (str p " " (.toFixed v 2)))) ")"
-                                 " · " (.-among s) " possible</li>")))))
-    (doseq [el (array-seq (.querySelectorAll ($ "steps") "li"))]
+           (str/join "" (for [lv (range 1 n)]
+                          (let [ss (array-seq (.stepsInto R an lv))]
+                            (str "<li class=\"pass" (when (= lv k) " sel") "\" data-k=\"" lv "\"><b>L" (dec lv) " → L" lv "</b> · "
+                                 (count ss) (if (= 1 (count ss)) " step" " steps in one pass") "<ul>"
+                                 (str/join "" (for [s ss]
+                                                (let [parts (js->clj (.-parts s))]
+                                                  (str "<li>" (esc (.describe R s)) " · cost " (.toFixed (.-cost s) 2)
+                                                       " (" (str/join ", " (for [[p v] parts] (str p " " (.toFixed v 2)))) ")"
+                                                       " · " (.-among s) " possible</li>"))))
+                                 "</ul></li>")))))
+    (doseq [el (array-seq (.querySelectorAll ($ "steps") "li.pass"))]
       (.addEventListener el "click" (fn [_] (swap! st assoc :k (js/parseInt (.. el -dataset -k))) (render!))))
     (let [d (.derivation R an)]
       (text! "deriv" (str "The derivation, from the frame to the surface: "
@@ -392,7 +396,7 @@ window.addEventListener("DOMContentLoaded", function () {
       #js {:state (fn [] (let [{:keys [an k var]} @st]
                            #js {:levels (when an (count (.-levels an))) :k k :variation (when var (.-melody var))
                                 :rows (count (array-seq (.querySelectorAll ($ "levels") ".lv")))
-                                :steps (count (array-seq (.querySelectorAll ($ "steps") "li")))}))
+                                :steps (count (array-seq (.querySelectorAll ($ "steps") "li.pass li")))}))
            :analyse analyse! :vary vary!
            :select (fn [k] (swap! st assoc :k k) (render!))})
 </script>

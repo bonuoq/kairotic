@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 61: a level is a pass over the whole phrase** (discussion #321). The reduction took one step a level, the
+  cheapest anywhere, so it went bar by bar; now each level is a pass, as GTTM's time-span reduction goes down the
+  metrical grid: every step that can be taken is, cheapest first, judged against the level below (a parent kept is
+  not taken in the same pass, a sonority spread waits for the next), on the metrical stratum reached (the weak units,
+  then the bars by their weight; a dissonance wherever it stands). The 7–6 chain loses five suspensions in its first
+  pass; the page groups the steps by pass and marks on each level the slices the next pass takes.
 - **Study 62 · four: harmony in four parts** (IJzerman, chapter 6; `@kairotic/cac` 0.5.0). `partimento.mjs` has
   `four()`: soprano, alto and tenor over a given bass, counted exactly and written by the engine. The inner voices fill
   the chords (a common tone held long, no turning after a leap); no crossing, an octave at most between neighbours, no
