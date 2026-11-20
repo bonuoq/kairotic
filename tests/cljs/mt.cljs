@@ -22,6 +22,27 @@
     (t/is "a measure that does not add up is a warning, not an error"
           (let [t [:voice [:measure {:meter [4 4]} "c4/1 e4"]]] (and (empty? (mt/errors t)) (seq (mt/warnings t)))))
     (t/eq "a schedule plays every note" (count (filter (fn [[_ outs]] (some (fn [[o _]] (= o 0)) outs)) (mt/schedule motif))) 4)
+    ;; the written tree and the performed one (discussion #308)
+    (let [full [:voice {:name "m" :takes [{:id "t1" :when {"n0" [0.1 0.9]}}] :continuum {:res {:time [1]}}}
+                [:measure {:meter [4 4]}
+                 [:note {:pitch "c4" :dur 1 :id "n0" :tstamp.real 0.1 :vel 0.7}]
+                 [:note {:pitch "d4" :dur 1 :wire {:send :swell}}]
+                 [:rest {:dur 1 :wire {:send :drone}}]
+                 [:note {:pitch "e4" :dur 1}]]]
+          w (mt/descriptive full)]
+      (t/eq "the tree as written: no real times, velocities, wires, takes, continuum, nor the ids takes point at"
+            w [:voice {:name "m"} [:measure {:meter [4 4]} [:note {:pitch "c4" :dur 1}] [:note {:pitch "d4" :dur 1}] [:rest {:dur 1}] [:note {:pitch "e4" :dur 1}]]])
+      (t/is "… which holds nothing of performing it" (and (mt/performative? full) (not (mt/performative? w))))
+      (t/eq "written back unchanged, the whole tree" (mt/with-performative full w) full)
+      (let [w2 (-> w (assoc-in [2 3 1 :pitch] "f4") (assoc-in [2 4 1 :dur] 2))
+            t2 (mt/with-performative full w2)]
+        (t/eq "a pitch changed in the written tree: the note keeps its wire" (get-in t2 [2 3 1]) {:pitch "f4" :dur 1 :wire {:send :swell}})
+        (t/eq "… a rest made longer keeps its wire" (get-in t2 [2 4 1]) {:dur 2 :wire {:send :drone}})
+        (t/eq "… the rest of the tree keeps what it had" [(get-in t2 [2 2]) (dissoc (get-in t2 [1]) :name)]
+              [[:note {:pitch "c4" :dur 1 :id "n0" :tstamp.real 0.1 :vel 0.7}] (dissoc (get full 1) :name)]))
+      (t/eq "a note added has nothing of performing it, the others keep theirs"
+            (mapv #(dissoc % :pitch :dur) (map second (filter #(and (vector? %) (= :note (first %))) (get (mt/with-performative full (update w 2 conj [:note {:pitch "g4" :dur 1}])) 2))))
+            [{:id "n0" :tstamp.real 0.1 :vel 0.7} {:wire {:send :swell}} {} {}]))
     (let [m [:voice {:name "m"} [:measure {:meter [4 4]} "c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2"]]]
       (t/eq "a canon lasts until its comes ends (a sequence lasts until a child placed :at ends)" (mt/duration (mt/canon 2 7 m)) 9)
       (t/eq "… and mt play loops it there, after its last silence" (:len (mtb/play-schedule (mt/canon 2 7 m) 1)) 9))

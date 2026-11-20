@@ -453,7 +453,7 @@
     (when-not (= :code (:display d)) (fail (str id " is not a code box (faust~, script…)")))
     d))
 
-(declare tree!)
+(declare tree! tree-data)
 
 (defn code-source!
   "Writes the source of a code box (as one event)."
@@ -485,14 +485,19 @@
 
 (defn code
   "Writes the source of a code box: (code :b7 \"process = os.osc(440) * 0.1;\"). For a tree box the text
-   is read as a tree, and what changed becomes edits of its nodes (tree!). For a canvas, freqt or score
+   is read as a tree, and what changed becomes edits of its nodes (tree!); a text with nothing of performing it
+   (real times, wires, takes, the continuum: what the code window leaves out) keeps what the tree had of it. For a canvas, freqt or score
    it is the EDN of its buffer ((source :bN) gives it), and what changed becomes edits of its strokes."
   [id source]
   (let [b (need-box id)]
     (cond
       (= "tree" (klass (:text b)))
       (do (when-not (string? source) (fail "The source is a string"))
-          (tree! id (try (mt/read-tree source) (catch :default e (fail (str "That is not EDN: " (.-message e)))))))
+          ;; the text as written (without what belongs to performing it, as the code window shows it) is put back
+          ;; into the whole tree; a text that holds some of it is the whole tree
+          (let [t (try (mt/read-tree source) (catch :default e (fail (str "That is not EDN: " (.-message e)))))
+                old (tree-data id)]
+            (tree! id (if (or (nil? old) (mt/performative? t)) t (mt/with-performative old t)))))
       (fn? (:read (comp/model-of b))) (data-source! id source)
       :else (code-source! id source))))
 

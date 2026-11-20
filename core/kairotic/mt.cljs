@@ -1616,3 +1616,42 @@
       (if measured
         (go t)
         (first (kids (thin-measure amount [:measure {:meter [(max 1 (js/Math.ceil (duration t))) 4]} t])))))))
+
+;; ───────── the written tree and the performed one (discussion #308) ─────────
+;; A tree holds what is written (notes, rests, measures, keys, tempo…) and what belongs to performing it: where its
+;; notes really sounded (:tstamp.real :dur.real :vel), its wires to the electronics (:wire), its takes (:takes), its
+;; continuum (:continuum), and the ids notes have only so that takes point at them. The code window shows the
+;; written tree; what is written there is put back into the whole tree, each node keeping what it had of the rest.
+
+(def performative-keys #{:tstamp.real :dur.real :vel :wire :takes :continuum})
+
+(defn- performative-key? [tg k] (or (contains? performative-keys k) (and (= :note tg) (= :id k))))
+
+(defn performative-attrs "What a node has of performing it." [n]
+  (let [tg (tag n)] (into {} (filter (fn [[k _]] (performative-key? tg k))) (attrs n))))
+
+(defn descriptive
+  "The tree as it is written, without what belongs to performing it (see performative-keys)."
+  [t]
+  (if (node? t)
+    (let [tg (tag t)]
+      (make tg (into {} (remove (fn [[k _]] (performative-key? tg k))) (attrs t)) (map descriptive (kids t))))
+    t))
+
+(defn performative? "Does the tree hold anything of performing it?" [t]
+  (boolean (some (fn [n] (and (node? n) (seq (performative-attrs n)))) (tree-seq node? kids t))))
+
+(defn with-performative
+  "The written tree w, edited from old's written form (descriptive), with what old's nodes had of performing them
+   put back where those nodes are: an edit of a node's attributes keeps its performative ones, a node replaced by
+   one of the same kind keeps them, a new node has none."
+  [old w]
+  (reduce (fn [t [op path x :as o]]
+            (case op
+              :attrs (apply-op t [:attrs path (merge (performative-attrs (node-at t path)) x)])
+              :set (let [n (node-at t path)]
+                     (apply-op t (if (and (node? x) (node? n) (= (tag x) (tag n)))
+                                   [:set path (with-attrs x (merge (performative-attrs n) (attrs x)))]
+                                   o)))
+              (apply-op t o)))
+          old (diff (descriptive old) w)))

@@ -198,6 +198,30 @@
 
 (declare toggle-patch-view! toggle-recipe! find-recipe-click! find-recipe! play-recipe!)
 
+(declare set-editor-text!)
+
+(defn editor-source
+  "The text of a box in the code window: a tree box's tree as written (without real times, wires, takes, its
+   continuum: discussion #308), or all of it with All pressed; any other box's source."
+  [b]
+  (if (= "tree" (klass (:text b)))
+    (let [t (mtb/tree-of (:data b))]
+      (if (or (:code-all @ui) (nil? t) (not (mt/performative? t))) (str (comp/source-of b)) (mt/pp (mt/descriptive t))))
+    (str (comp/source-of b))))
+
+(defn toggle-code-all!
+  "All in a tree box's code window: the whole tree, or only what is written."
+  []
+  (swap! ui update :code-all not)
+  (when-let [btn (some-> (cw-el) (.querySelector "[data-cw=all]"))] (.setAttribute btn "aria-pressed" (str (boolean (:code-all @ui)))))
+  (when-let [{:keys [id path dirty]} @code-win]
+    (if dirty
+      (repl-print! "out" "; apply or discard what is edited first: All shows the tree again")
+      (when-let [b (get-in (patch-in (root-patch) path) [:boxes id])]
+        (let [v (editor-source b)]
+          (swap! code-win assoc :original v)
+          (set-editor-text! v))))))
+
 (defn window-shell [id b lang]
   (let [el (js/document.createElement "div")]
     (set! (.-id el) "code-win")
@@ -212,6 +236,9 @@
                       (:text b)))
                "</span>"
                "<span class=\"cw-lang\">" (esc lang) "</span>"
+               (when (= "tree" (klass (:text b)))
+                 (str "<button class=\"act cw-pv\" data-cw=\"all\" aria-pressed=\"" (boolean (:code-all @ui))
+                      "\" title=\"Show also what belongs to performing it: real times, wires, takes, the continuum\">All</button>"))
                (when (= lang "faust")
                  (str "<button class=\"act cw-pv\" data-cw=\"patch\" aria-pressed=\"" (not (false? (:faust-patch? @ui)))
                       "\" title=\"Show or hide its patch: the code as Faust's own elements\">Patch</button>"
@@ -240,6 +267,7 @@
           "apply" (apply-code!)
           "patch" (toggle-patch-view!)
           "recipe" (toggle-recipe!)
+          "all" (toggle-code-all!)
           "find" (find-recipe-click!)
           "play-target" (play-recipe! :target)
           "play-found" (play-recipe! :found)
@@ -457,7 +485,7 @@
         (close-code-win!)
         (let [data? (fn? (:source (comp/model-of b)))
               lang (if data? "edn" (str (:language d)))
-              original (str (comp/source-of b))
+              original (editor-source b)
               text (if (and (not data?) (str/blank? original)) (or (:template d) "") original)
               el (window-shell id b lang)
               body (.querySelector el ".cw-body")
@@ -501,7 +529,7 @@
     (let [b (get-in (patch-in (root-patch) path) [:boxes id])]
       (if (nil? b)
         (swap! code-win assoc :gone true)
-        (let [src (str (comp/source-of b))]
+        (let [src (editor-source b)]
           (swap! code-win assoc :gone false)
           (when (and (not dirty) (not= src original) (not (str/blank? src)))
             (swap! code-win assoc :original src)
