@@ -27,7 +27,7 @@
 (defn score
   "The notes a tree is followed by: its first voice's sounds, in order ({:id :midi :ws :wd :beat :wire})."
   [tree]
-  (mapv (fn [e] (select-keys e [:id :midi :ws :wd :beat :wire :name])) (ct/events tree)))
+  (mapv (fn [e] (select-keys e [:id :midi :ws :wd :beat :wire :name :rest])) (ct/events tree)))
 
 (defn wires
   "The wires of a score, from its notes' :wire ({:send x :kind :rigid|:elastic :tol s :leader :performer|:electronics},
@@ -36,8 +36,10 @@
   [evs]
   (vec (mapcat (fn [i e]
                  (let [ws (ct/note-wires (:wire e)) kw (fn [x d] (if (some? x) (keyword (name x)) d))]
+                   ;; a rest's wires (an event of the electronics) have no note to wait for: led, at their time
                    (map-indexed (fn [k w] {:id (str (:id e) (when (> (count ws) 1) (str "/" k))) :note i
-                                           :kind (kw (:kind w) :rigid) :leader (kw (:leader w) :performer)
+                                           :kind (if (:rest e) :elastic (kw (:kind w) :rigid))
+                                           :leader (if (:rest e) :electronics (kw (:leader w) :performer))
                                            :tol (or (:tol w) 0) :send (:send w)})
                                 ws)))
                (range) evs)))
@@ -99,13 +101,14 @@
 
 (defn- candidates [st t midi]
   (let [{:keys [evs next ahead band octave]} st
-        hi (min (count evs) (+ next ahead))]
-    (for [j (range next hi)
+        ;; the next `ahead` notes (a rest with a wire is no note: it is not heard)
+        js (take ahead (filter #(not (:rest (get evs %))) (range next (count evs))))]
+    (for [[n j] (map-indexed vector js)
           :let [e (get evs j) [d oct] (dist midi (:midi e) band octave)]
           :when d]
       ;; the cost: the notes it would skip, how far it is in pitch (an octave off costs more), how far from when it
       ;; was expected (in its own written length, so that a short note expected late weighs as much as a long one)
-      [(+ (- j next) (* 0.5 d) (if oct 0.75 0)
+      [(+ n (* 0.5 d) (if oct 0.75 0)
           (if (:last st) (/ (js/Math.abs (- t (expected st j))) (max 0.25 (* 2 (:wd e)))) 0))
        j])))
 
@@ -140,9 +143,9 @@
                                     (and (= (:note w) j) (= :elastic (:kind w)) (= :electronics (:leader w))) [st found]
                                     (= (:note w) j) (let [[st f] (fire st w t "on the note")] [st (conj found f)])
                                     (= :rigid (:kind w)) (let [[st f] (fire st w t "caught up")] [st (conj found f)])
-                                    :else (let [[st f] (fire st w (min t (or (due st w) t)) "went on")] [st (conj found f)])))
+                                    :else (let [[st f] (fire st w (min t (or (due st w) t)) (if (= :electronics (:leader w)) "led" "went on"))] [st (conj found f)])))
                                 [st2 []] (:wires st2))]
-        [st3 (vec (concat early [[:at {:id (:id e) :i j :beat (:beat e) :t t :skipped (- j (:next st))}]] found))]))))
+        [st3 (vec (concat early [[:at {:id (:id e) :i j :beat (:beat e) :t t :skipped (count (remove #(:rest (get-in st [:evs %])) (range (:next st) j)))}]] found))]))))
 
 (defn release
   "The note found last stopped sounding at t: its length is kept in the take."

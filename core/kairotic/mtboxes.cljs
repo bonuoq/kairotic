@@ -259,10 +259,10 @@
       :else {:state st})))
 
 (comp/define! "mt"
-  {:doc "Operations on musical trees: a tree on the left comes out transformed. transpose n (semitones, or an interval: M3, -P5, A4) · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval], or with the words of a reader on a ring: canon d 2 k P5 speed 0.5 inversion (the comes d beats later, k away, at a speed — 0.5 twice as slow, −1 backwards —, upside down) · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] [speed s] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks; at a speed, 0.5 twice as slow, −1 the tree backwards — msg :speed −1 —: the reader of a tree on its own clock, as a reader on a ring follows its head)."
+  {:doc "Operations on musical trees: a tree on the left comes out transformed. transpose n (semitones, or an interval: M3, -P5, A4) · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval], or with the words of a reader on a ring: canon d 2 k P5 speed 0.5 inversion (the comes d beats later, k away, at a speed — 0.5 twice as slow, −1 backwards —, upside down) · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] [speed s] (a bang plays the last tree: Hz and voice ids for synth~, parameters, marks, and on a fifth outlet what the wires of its notes and rests send, at their written time; at a speed, 0.5 twice as slow, −1 the tree backwards — msg :speed −1 —: the reader of a tree on its own clock, as a reader on a ring follows its head)."
    :usage "mt <operation> [arguments]"
    :io (fn [b] (let [op (op-of (:args b))]
-                 (cond (= op "play") [1 4]
+                 (cond (= op "play") [1 5]
                        (two-inlets op) [2 1]
                        :else [1 1])))
    :dynamic-io true

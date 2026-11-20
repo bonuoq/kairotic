@@ -45,6 +45,11 @@ varios en un vector), así que se mueven con ella al editar el árbol, y se dibu
 siguiente que encuentre si se la saltó, nunca antes y nunca dos veces; `{:kind :elastic :tol 0.5}` es **elástico** —
 en la nota si el intérprete llega a tiempo, y si no por su cuenta medio segundo después de cuando se la esperaba al
 tempo del intérprete; `{:leader :electronics}` — en el momento esperado, haga lo que haga el intérprete.
+También un silencio puede llevar cables — `[:rest {:dur 4 :wire {:send :drone}}]`: un evento solo de la electrónica,
+que no suena, que una caja follow envía a su tiempo (desde donde está el intérprete) y que el continuo dibuja en su
+franja; un árbol de estos silencios, fragmentos y rampas `[:param …]` es una partitura de electrónica. `mt play` envía
+lo que envían los cables (su quinta salida) en su tiempo escrito: el mismo patch de electrónica, movido en directo por
+`follow` o en tiempo fijo por `mt play`.
 
 Las ediciones nombran el nodo donde está escrita cada nota, así que funcionan a través de
 transformaciones: una partitura que muestra `mt transpose 7` de un árbol puede editar el propio árbol.

@@ -708,7 +708,12 @@
                              (when-let [w (spelling-of a)] {:name (sp/->name w)}))))
         (+ t d))
 
-      (= :rest tg) (+ t (* scale (or (:dur a) (:dur ctx) 1)))
+      ;; a rest is silence; one with a :wire (discussion #217) is an event for the electronics: it sounds nothing,
+      ;; and what its wire sends goes at its time (mt play, follow)
+      (= :rest tg) (let [d (* scale (or (:dur a) (:dur ctx) 1))]
+                     (when (some? (:wire a))
+                       (add-ev acc (merge (dissoc a :dur :at) {:kind :event :t t :dur d :voice (:voice ctx) :path (:path ctx)})))
+                     (+ t d))
 
       (mark-tags tg)
       (do (add-ev acc (merge (dissoc a :at) {:kind tg :t t :dur (* scale (or (:dur a) 0)) :voice (:voice ctx) :path (:path ctx)}))
@@ -789,7 +794,7 @@
                          (if (:tie e) (assoc open k [idx (+ (:t e) (:dur e))]) (dissoc open k))))))))))))
 
 (defn events
-  "The flat list of events of a tree, in time order: {:kind :note|:param|:dyn|:text, :t :dur (beats),
+  "The flat list of events of a tree, in time order: {:kind :note|:param|:dyn|:text|:event (a rest with a :wire), :t :dur (beats),
    :pitch (MIDI) for notes, :voice, :path (where it is in the tree), and every other key of the node}."
   [tree]
   (let [t (expand tree) acc (transient [])]
@@ -1437,7 +1442,8 @@
 (defn schedule
   "What a player sends, in seconds: [[sec [[outlet value] …]] …]. Outlet 0: the Hz of the notes sounding
    (a list), sent after outlet 1: their ids (one voice per note, for synth~); outlet 2: parameters
-   [name value] (ramps in small steps); outlet 3: marks [:dyn \"mf\"] [:text \"…\"]."
+   [name value] (ramps in small steps); outlet 3: marks [:dyn \"mf\"] [:text \"…\"]; outlet 4: what the wires of
+   notes and rests send ([:note {… :wire {:send x}}], [:rest {:dur 4 :wire {:send x}}]), at their time."
   [tree]
   (let [k (/ 60 (tempo-of tree))
         es (events tree)
@@ -1465,8 +1471,14 @@
                              [[(* k (:t e)) [[2 [nm v0]]]]])))
                        (filter (fn [e] (= :param (:kind e))) es))
         marks (for [e es :when (#{:dyn :text} (:kind e))]
-                [(* k (:t e)) [[3 [(:kind e) (or (:mark e) (:text e))]]]])]
-    (->> (concat sound params marks)
+                [(* k (:t e)) [[3 [(:kind e) (or (:mark e) (:text e))]]]])
+        ;; what the wires of notes and rests send (discussion #217), at their written time: in fixed time there is no
+        ;; performer to wait for, so rigid, elastic and led wires all go at the time written
+        wires (for [e es :when (some? (:wire e))
+                    :let [ws (let [w (:wire e)] (cond (map? w) [w] (sequential? w) (filter map? w) :else []))]
+                    :when (seq ws)]
+                [(* k (:t e)) (mapv (fn [w] [4 (:send w)]) ws)])]
+    (->> (concat sound params marks wires)
          (group-by first)
          (sort-by key)
          (mapv (fn [[t xs]] [t (vec (mapcat second xs))])))))

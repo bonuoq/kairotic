@@ -20,7 +20,13 @@
       (t/eq "diff then apply gives the other tree" (reduce mt/apply-op motif (mt/diff motif b)) b))
     (t/is "a measure that does not add up is a warning, not an error"
           (let [t [:voice [:measure {:meter [4 4]} "c4/1 e4"]]] (and (empty? (mt/errors t)) (seq (mt/warnings t)))))
-    (t/eq "a schedule plays every note" (count (filter (fn [[_ outs]] (some (fn [[o _]] (= o 0)) outs)) (mt/schedule motif))) 4)))
+    (t/eq "a schedule plays every note" (count (filter (fn [[_ outs]] (some (fn [[o _]] (= o 0)) outs)) (mt/schedule motif))) 4)
+    ;; wires (discussion #217): on notes and on rests (an event of the electronics, silent), at their written time
+    (let [e [:voice {:tempo 120} [:measure {:meter [4 4]} [:rest {:dur 2 :wire {:send :drone}}] [:note {:pitch "c4" :dur 1 :wire [{:send :a} {:send :b :kind :elastic}]}] [:rest {:dur 1}]]]]
+      (t/eq "a rest with a wire is an event, silent" (mapv (juxt :kind :t) (mt/events e)) [[:event 0] [:note 2]])
+      (t/eq "mt play sends what wires send on its fifth outlet, at their time"
+            (vec (for [[sec outs] (mt/schedule e) [o v] outs :when (= o 4)] [sec v])) [[0 :drone] [1 :a] [1 :b]])
+      (t/eq "… and plays only the note" (count (filter (fn [[_ outs]] (some (fn [[o v]] (and (= o 0) (seq v))) outs)) (mt/schedule e))) 1))))
 
 (t/run! "proportional rhythm (:rtm)"
   (fn []

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Wires in fixed time, and rests that carry them** (discussion #217; `@kairotic/analysis` 0.8.3): `mt play` sends
+  what the wires of notes and rests send on a fifth outlet, at their written time — the same patch of electronics,
+  driven live by `follow` or in fixed time by `mt play` (rehearsing without the performer, a virtual performer, fixed
+  electronics). A rest can carry wires, `[:rest {:dur 4 :wire {:send :drone}}]`: an event of the electronics alone,
+  silent (`mt/events` gives it as `:kind :event`), which `follow` sends led at its time and the continuum draws on its
+  lane; with fragments and `[:param …]` ramps, a score of electronics. MEI keeps them (extMeta: it writes rests in a
+  row as one).
 - **The leading tone goes up to the tonic, over the whole phrase** (IJzerman 2–3; `@kairotic/cac` 0.4.1). A soft rule in
   `partimento.mjs` (`leading-tone`, weight 1.5): not only at the cadence — where it is a hard rule — but wherever the
   leading tone sounds, it costs to leave it otherwise than up to ①; full where it functions (its bass a dominant, or
