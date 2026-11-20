@@ -443,6 +443,10 @@ Rules:
   `homometric` (pulses in → the list of rhythms with the same interval vector, and how many; nth to pick one).
   `swap` compares the pulses on its left inlet with the reference on its right (cold): {:swap :circular
   :necklace :rotation :hamming :necklace-hamming :n :k} — Toussaint's swap distance.
+  `morph [ratio]`: pulses A (left), target B (middle, cold), a ratio 0…1 (right) → the rhythm that share of the
+  swaps from A to B (a knob or ramp on the ratio morphs in time), and the way {:steps [[:swap from to] …]}.
+  `vary [d] [seed] [depth] [downbeat]`: pulses → a variation exactly d swaps away (each bang the next, seeded),
+  or with depth the onsets down to metrical level d kept and the rest redrawn; and how it was made.
 - The outside (package @kairotic/io, it comes by itself; listening while ▶ runs): `midiin` (MIDI in: Hz and
   voice ids for synth~ like a keyboard, and every event as a map {:type :note :freq :amp :gate …}),
   `midiout [mpe]` (Hz after voice ids, or events, to a MIDI port; mpe for microtones), `oscout [target]` and
