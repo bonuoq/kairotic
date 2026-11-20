@@ -26,7 +26,10 @@ links you share carry it. See [Kairotic Pages](pages.md).
 ## 2. Make a patch
 
 - **Create a box**: double-click an empty place, write its text — the class and its arguments, such as
-  `osc~ 440` — and press Enter. Classes ending in `~` are sound.
+  `osc~ 440` — and press Enter. Classes ending in `~` are sound. While you write the class, a menu offers
+  the ones that match, each with where it comes from (the core, a package, clojure.core) and what it does: ↑ ↓
+  choose, Tab or Enter take one (or a click), and then it shows the arguments it expects. Writing a class of an
+  official package brings the package into the work.
 - **Connect**: drag from an outlet (the small marks under a box) to an inlet (above another box). You need
   not hit the mark: near an outlet it lights up and the pointer becomes a cross, and a wire dropped on a
   box, or just above one of its inlets, lands on the nearest inlet. Wires are curves, here and in the

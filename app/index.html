@@ -486,6 +486,17 @@ body.present .askbar { position: absolute; z-index: 6; left: 6px; top: 6px; marg
 .edit-out { position: absolute; z-index: 6; max-width: 520px; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft);
             background: var(--box); border: 1px solid var(--rule); border-radius: 3px; padding: 2px 8px; white-space: pre-wrap; word-break: break-word; }
 .edit-out:empty { display: none; }
+/* the classes that match what is typed in a new box: name, where it comes from, the first sentence of its doc */
+.suggest { position: absolute; z-index: 7; width: min(440px, calc(100vw - 32px)); max-height: 300px; overflow-y: auto;
+           background: var(--box); border: 1px solid var(--rule); border-radius: 3px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14); }
+.suggest:empty { display: none; }
+.suggest .sg { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 4px 8px; cursor: pointer; border-bottom: 1px solid var(--rule); }
+.suggest .sg:last-child { border-bottom: 0; }
+.suggest .sg:hover, .suggest .sg.on { background: var(--accent-soft); }
+.suggest .sg.hint { cursor: default; background: none; }
+.suggest .sg-name { font-family: var(--f-code); font-size: 12.5px; color: var(--ink); overflow-wrap: anywhere; }
+.suggest .sg-from { font: 11px var(--f-ui); color: var(--accent); white-space: nowrap; align-self: center; }
+.suggest .sg-doc { grid-column: 1 / -1; font: 11.5px var(--f-ui); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* the line of the REPL on the patch as a code editor: what it gave goes right below, inside it */
 .edit.repl-line { padding: 0 6px; display: flex; flex-direction: column; max-width: 640px; }
 .repl-line-host { min-width: 0; max-height: 40vh; overflow: auto; }
