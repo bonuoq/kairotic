@@ -170,6 +170,20 @@ export async function run() {
     const k = [{ tonic: "C" }, { tonic: "Eb" }, { tonic: "A", mode: "minor" }, { tonic: "G", mode: "minor" }].map((key) => figuring({ bass: bb.degrees, key, per: 2 }).count());
     is(`${id}: the same count in C and E♭ major (${k[0]}), in A and G minor (${k[2]})`, k[0] === k[1] && k[2] === k[3] && k[0] > 0n && k[2] > 0n);
   }
+  // chapter 5: the Galant schemata found again by their basses
+  is("a Prinner found: ④ ③ ② ① with the melody in 10ths (A4 G4 F4 E4 over F3 E3 D3 C3)", (() => {
+    const F = figuring({ bass: BASSES.prinner.degrees, key: { tonic: "C" }, per: 2, ro: true }), c = (n) => F.voice.codes.find((x) => F.name(x) === n);
+    const U = "A4 A4 G4 G4 F4 F4 E4".split(" ").map(c);
+    return !F.judge(U) && F.schemataIn(U).some((x) => /a Prinner/.test(x.name));
+  })());
+  is("the Monte Romanesca, the Fenaroli and the Folia (in minor) found by their basses in the engine's melodies", (() => {
+    const r = rng(59);
+    return [["monte-romanesca", /Monte Romanesca/, { tonic: "C" }], ["fenaroli", /Fenaroli/, { tonic: "C" }], ["folia", /Folia/, { tonic: "D", mode: "minor" }], ["romanesca", /leaping Romanesca/, { tonic: "C" }]].every(([id, re, key]) => {
+      const F = figuring({ bass: BASSES[id].degrees, key, per: 2, ro: true }), U = F.engine({ temp: 0.5, r });
+      return U && F.schemataIn(U).some((x) => re.test(x.name));
+    });
+  })());
+  is("the 7/4 (a pedal's chord) not offered over a bass that moves", (() => { const F = figuring({ bass: BASSES["scale-down"].degrees, key: { tonic: "C" }, per: 2 }); return F.figuresOf(chain).every((f) => f.chords.every((x) => x.chord !== "7/4")); })());
   is("unitsOf: a note a beat, all struck", unitsOf([{ d: 0, r: 0 }, { d: 4, r: 0 }, { d: 0, r: 0 }], C, 1).every((u) => u.struck));
   return { results, notes };
 }

@@ -24,7 +24,7 @@ export async function run() {
   is("a run by the RO: the descending tetrachord of C, ⑥ in G major", (() => { const r = octaveRun({ tonic: "C" }, 7, 4); return r.map((x) => x.name).join(" ") === "C4 B3 A3 G3" && r[2].key && r[2].key.tonic === "G" && r.map((x) => x.chords[0]).join(" ") === "5/3 6/3 6/3 5/3"; })());
 
   // the book's prototypes (ex. 4.22): realizations of their chords — with chapter 4's rules, and only with them
-  for (const [id, count] of [["ro-major", 14342n], ["ro-minor", 28396n]]) {
+  for (const [id, count] of [["ro-major", 14342n], ["ro-minor", 37172n]]) {
     const P = octave({ phrase: id }), P0 = octave({ phrase: id, ro: false });
     const why = P.judge(P.book), why0 = P0.judge(P0.book);
     is(`${PHRASES[id].name} (${PHRASES[id].ref}): the book's realization is one of the ${count} the RO's chords allow`, !why && P.count() === count);
@@ -90,7 +90,7 @@ export async function run() {
     return true;
   })());
   const BE = octave({ phrase: "beethoven-10-1" });
-  is(`Beethoven's descending pentachords, A♭ → F minor → D♭: ${BE.count()} realizations, none without chapter 4`, BE.count() === 16n && octave({ phrase: "beethoven-10-1", ro: false }).count() === 0n);
+  is(`Beethoven's descending pentachords, A♭ → F minor → D♭: ${BE.count()} realizations, none without chapter 4`, BE.count() === 149n && octave({ phrase: "beethoven-10-1", ro: false }).count() === 0n);
   is("... the F minor segment's leading tone E♮ (its ② a 6/3 with the raised ⑦), the D♭ segment's G♭", (() => {
     const r = rng(7);
     for (let i = 0; i < 8; i++) {

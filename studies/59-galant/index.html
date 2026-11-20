@@ -1,0 +1,259 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 59 · Galant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+/* Study 59 (after 51, 54 and 57): the phrase and the key as a toolbar; the bass and the upper voice drawn unit by unit, the figures under
+   the bass and what each dissonance is above; beside them the count, the next note's futures to write by hand, and
+   what the study decides. */
+.views { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+.sheet { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; overflow-x: auto; }
+.sheet svg { display: block; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .presets button.on { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .presets button.on { color: #0e1420; } }
+.unit { fill: none; stroke: var(--grid); stroke-width: 1; }
+.strong { fill: var(--accent-soft); }
+.barline { stroke: var(--rule); stroke-width: 1.2; }
+.bass { fill: var(--accent); }
+.upper { fill: var(--kairos); }
+.middle { fill: var(--ok); }
+.diss { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 3 2; }
+.lab { font: 10.5px var(--f-code); fill: var(--ink-soft); }
+.fig { font: 600 12px var(--f-code); fill: var(--ink); text-anchor: middle; }
+.ask { font: 11px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+.deg { font: 13px var(--f-ui); fill: var(--accent); text-anchor: middle; }
+.role { font: 600 10.5px var(--f-code); fill: var(--kairos); text-anchor: middle; }
+.next { fill: var(--kairos-soft); }
+.nname { font: 600 10px var(--f-code); fill: #fff; dominant-baseline: central; }
+.big { font: 600 22px var(--f-code); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+.fan { display: flex; flex-wrap: wrap; gap: 5px; }
+.fan button { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 12px var(--f-code); padding: 3px 7px; border-radius: 5px; cursor: pointer; display: grid; justify-items: center; line-height: 1.25; }
+.fan button small { font-size: 10.5px; color: var(--ink-soft); }
+.fan button small.cost { color: var(--kairos); }
+.fan button:hover { border-color: var(--kairos); }
+.fan button:disabled { opacity: 0.35; cursor: default; }
+.fan button.dead { opacity: 0.55; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.keybox { fill: var(--box); stroke: var(--ink-soft); stroke-width: 1; }
+.keylab { font: 600 10.5px var(--f-code); fill: var(--ink); }
+.ro { font: 10px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+.book { fill: none; stroke: var(--kairos); stroke-width: 1.2; stroke-dasharray: 2 2; }
+</style>
+
+<main>
+<header>
+  <h1>Study 59 · galant</h1>
+  <span class="sub">The Galant schemata in three parts: IJzerman's chapter 5</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The phrase">
+  <span class="tag">Schema</span>
+  <span class="presets" id="phrases"></span>
+</div>
+<div class="toolbar" aria-label="The key and the realization">
+  <span class="tag">Key</span>
+  <label>tonic <select id="tonic"><option>C</option><option>Db</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select></label>
+  <label><input type="checkbox" id="figured" checked> realize the schema's chords</label>
+  <label title="the augmented 4th and the diminished 5th as semi-consonances (unprepared, resolved); the upper voices over a passing bass (the 4/2)"><input type="checkbox" id="ro" checked> chapter 4's rules</label>
+  <span class="sep"></span>
+  <label title="the engine: a softmax of −cost / temperature among the pairs with a future (0: the cheapest)">temperature <input type="number" id="temp" min="0" max="5" step="0.1" value="0.5"></label>
+  <button class="act primary" id="engine">Engine</button>
+  <button class="act" id="uniform">Draw uniformly</button>
+  <button class="act" id="book">The book's</button>
+  <button class="act" id="play" disabled>▶ Play</button>
+</div>
+
+<div class="views">
+  <section class="panel">
+    <h2>Three parts <span id="ref"></span></h2>
+    <div class="sheet" id="sheet"></div>
+    <div class="msg" id="msg"></div>
+    <p class="about" id="about"></p>
+  </section>
+  <div class="side">
+    <section class="panel">
+      <h2>Realizations <span>counted exactly</span></h2>
+      <div><span class="big" id="total">–</span> <span class="msg" id="total-sub"></span></div>
+      <div class="msg" id="other"></div>
+    </section>
+    <section class="panel">
+      <h2>What it decides</h2>
+      <p class="about">The schemata of the Galant style (about 1720–1770, and long after), each a bass, its chords and the motion of the upper voices, realized in three parts under the rules of Studies 51, 54 and 57 (<code>@kairotic/cac</code>'s <code>partimento.mjs</code>); the book's prototypes are among the realizations, outlined.</p>
+      <ul class="q">
+        <li><b>The leaping Romanesca</b> (Pachelbel): a 4th down and a 2nd up, falling thirds, complete and incomplete 5/3 chords by turns; in minor on the natural scale, its ⑤ passed in the sequence. <b>The Monte Romanesca</b>: a 5th up and a 4th down, rising by step, ③–⑦ (in minor ②–⑥) left out for its diminished 5/3.</li>
+        <li><b>The Quiescenza</b>: a <b>pedal</b> on ①, the bass held under chords of its own — (5)/3, ♭7/3, 6/4, 7/4, (5)/3 —, dissonances that come and go by step; its chromatic tone (♭⑦ in major, ♯③ in minor) read as a key of its own, toward ④, and back.</li>
+        <li><b>The Prinner</b>: ④ ③ ② ① under 6̂ 5̂ 4̂ 3̂ in 10ths, a 5/3 on ④ (not the RO's 4/2), a 7–6 on ②; the <b>modulating Prinner</b> ① ⑦ ⑥ ⑤ is the ④ ③ ② ① of the dominant.</li>
+        <li><b>The Fenaroli</b>: the bass circling the tonic, ① ② ③ ⑦; a <b>canon</b>: one upper voice sings the bass again two units later, the other holds 5̂ (a pedal above). <b>The Folia</b>: minor only, its natural ⑦ leaping to ③, the upper voices in parallel 6ths.</li>
+        <li><b>Phrases</b> join them as the book's exercises do: Handel's Chaconne (a Monte Romanesca, then a Galant cadence), a leaping Romanesca answered by a Prinner.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+</main>
+
+<script type="module">
+import { galant, SCHEMATA as PHRASES } from "./kairotic/galant.mjs";
+import { shape } from "./kairotic/soft.mjs";
+
+const $ = (id) => document.getElementById(id);
+let P = null, W = null, pid = "leaping-romanesca", ctx = null, isBook = false;
+for (const [k, s] of Object.entries(PHRASES)) {
+  const b = document.createElement("button");
+  b.className = "act"; b.dataset.phrase = k; b.textContent = s.name;
+  b.addEventListener("click", () => { pid = k; $("tonic").value = (PHRASES[k].book ? PHRASES[k].book.key : PHRASES[k].key).tonic; rebuild(); });
+  $("phrases").appendChild(b);
+}
+function rebuild() {
+  document.querySelectorAll("[data-phrase]").forEach((b) => b.classList.toggle("on", b.dataset.phrase === pid));
+  $("status").textContent = "counting…";
+  const ph = PHRASES[pid], key = { tonic: $("tonic").value };
+  P = galant({ schema: pid, key, figured: $("figured").checked, ro: $("ro").checked });
+  const t0 = performance.now(), c = P.count(), ms = Math.round(performance.now() - t0);
+  const other = galant({ schema: pid, key, figured: $("figured").checked, ro: !$("ro").checked }).count();
+  $("total").textContent = c.toLocaleString("en");
+  $("total-sub").textContent = `realization${c === 1n ? "" : "s"} ${$("figured").checked ? "of the schema's chords" : "over the bass, the chords free"} · ${ms} ms`;
+  $("other").textContent = `${other.toLocaleString("en")} ${$("ro").checked ? "without" : "with"} chapter 4's rules`;
+  const keys = [...new Set(P.units.map((u, t) => P.keyName(t)))];
+  $("ref").textContent = `${ph.ref} · ${keys.join(" → ")}`;
+  $("about").innerHTML = `<b>${ph.name}:</b> ${ph.about}.`;
+  $("status").textContent = c ? "ready" : "no realization";
+  $("engine").disabled = !c; $("uniform").disabled = !c; $("book").disabled = !P.book;
+  W = c ? P.engine({ temp: Number($("temp").value) || 0 }) : null; isBook = false;
+  render();
+}
+function render() {
+  const n = P.n, uw = Math.max(26, Math.min(48, 780 / n)), X = 54, H = 360;
+  const ds = [...P.units.map((b) => b.d), ...(W ? [...W.top, ...W.middle].map(P.degree) : []), P.units[0].d + 14];
+  const lo = Math.min(...ds), hi = Math.max(...ds);
+  const top = 50, bot = H - 70, y = (d) => top + (hi - d) * ((bot - top) / Math.max(1, hi - lo));
+  const ch = W ? P.chords(W) : [];
+  let svg = `<svg width="${X + n * uw + 10}" height="${H}" viewBox="0 0 ${X + n * uw + 10} ${H}" role="img" aria-label="the bass and the two upper voices, with the chords and the keys">`;
+  // the keys, boxed over their segments (as the book does)
+  let s0 = 0;
+  for (let t = 1; t <= n; t++) if (t === n || P.keyName(t) !== P.keyName(s0)) {
+    const x1 = X + s0 * uw + 2, x2 = X + t * uw - 2, nm = P.keyName(s0);
+    svg += `<rect class="keybox" x="${x1}" y="6" width="${Math.max(10, x2 - x1)}" height="16" rx="2"/><text class="keylab" x="${x1 + 4}" y="18">${nm}</text>`;
+    s0 = t;
+  }
+  for (let t = 0; t < n; t++) {
+    const x = X + t * uw, b = P.units[t];
+    if (b.strong) svg += `<rect class="strong" x="${x}" y="28" width="${uw}" height="${bot - 16}"/><line class="barline" x1="${x}" x2="${x}" y1="28" y2="${bot + 12}"/>`;
+    svg += `<rect class="unit" x="${x}" y="28" width="${uw}" height="${bot - 16}"/>`;
+    svg += W ? `<text class="fig" x="${x + uw / 2}" y="${bot + 26}">${ch[t]}</text>` : `<text class="ask" x="${x + uw / 2}" y="${bot + 26}">${b.chord}</text>`;
+    if (W) svg += `<text class="ro" x="${x + uw / 2}" y="${bot + 40}">${b.chord}</text>`;
+    // the canon: the voice that sings the bass again, marked where it does
+    if (W && P.schema.imitate && t >= P.schema.imitate.delay) svg += `<text class="ro" x="${x + uw / 2}" y="${top - 6}">canon</text>`;
+    // (a pivot: the note held, read again in the next key)
+    if (b.struck || (t > 0 && P.keyName(t) !== P.keyName(t - 1))) svg += `<text class="deg" x="${x + uw / 2}" y="${bot + 60}">${"①②③④⑤⑥⑦"[b.deg]}</text>`;
+  }
+  const bars = (vals, cls, nameOf, dOf, cut) => {
+    let t = 0;
+    while (t < vals.length) {
+      let e = t + 1; while (e < vals.length && (cut ? !cut(e) : vals[e] === vals[t])) e++;
+      const v = vals[t], yy = y(dOf(v));
+      svg += `<rect class="${cls}" x="${X + t * uw + 1}" y="${yy - 7}" width="${(e - t) * uw - 2}" height="14" rx="3"/>`;
+      if ((e - t) * uw > 26) svg += `<text class="nname" x="${X + t * uw + 4}" y="${yy}">${nameOf(v)}</text>`;
+      t = e;
+    }
+  };
+  bars(P.units.map((b, t) => t), "bass", (t) => P.K.name(P.units[t].d, P.units[t].r), (t) => P.units[t].d, (e) => P.units[e].struck);
+  if (W) {
+    bars(W.middle, "middle", P.name, P.degree);
+    bars(W.top, "upper", P.name, P.degree);
+    for (let t = 0; t < n; t++) for (const [v, V] of [[W.top[t], P.top], [W.middle[t], P.middle]])
+      if (V.vertical(t, v).q === "dissonant") svg += `<rect class="diss" x="${X + t * uw + 1}" y="${y(P.degree(v)) - 9}" width="${uw - 2}" height="18" rx="3"/>`;
+    if (isBook) svg += `<rect class="book" x="${X - 2}" y="26" width="${n * uw + 4}" height="${bot - 12}" rx="4"/>`;
+  }
+  svg += `<text class="lab" x="4" y="${bot + 26}">chords</text><text class="lab" x="4" y="${bot + 40}">asked</text><text class="lab" x="4" y="${bot + 60}">bass</text>`;
+  $("sheet").innerHTML = svg + "</svg>";
+  $("play").disabled = !W;
+  if (W) {
+    const why = P.judge(W), st = shape([W.top.map(P.degree)]), sm = shape([W.middle.map(P.degree)]), pc = (x) => Math.round(100 * x) + "%";
+    $("msg").innerHTML = (isBook ? "the book's realization · " : "") + (why ? "✗ " + why : `<span style="color:var(--kairos)">■ upper</span> ${W.top.filter((x, t) => t === 0 || x !== W.top[t - 1]).map(P.name).join(" ")} · <span style="color:var(--ok)">■ middle</span> ${W.middle.filter((x, t) => t === 0 || x !== W.middle[t - 1]).map(P.name).join(" ")}<br>steps: the upper voice ${pc(st.steps)}, the middle ${pc(sm.steps)}`);
+  } else $("msg").textContent = $("ro").checked ? "" : "no realization: the Fenaroli's 6/4 over its passing bass, the Folia's diminished 5th, need chapter 4's rules";
+}
+function play() {
+  if (!W) return;
+  ctx = ctx || new AudioContext();
+  const unit = 0.45, t0 = ctx.currentTime + 0.1, n = P.n;
+  const tone = (hz, s, e, g0) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "triangle"; o.frequency.value = hz;
+    g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(g0, s + 0.02); g.gain.setTargetAtTime(0, e - 0.05, 0.03);
+    o.connect(g).connect(ctx.destination); o.start(s); o.stop(e + 0.3);
+  };
+  for (let t = 0; t < n; t++) if (P.units[t].struck) { let e = t + 1; while (e < n && !P.units[e].struck) e++; tone(P.K.hz(P.units[t].d, P.units[t].r), t0 + t * unit, t0 + (e === n ? e + 1 : e) * unit, 0.13); }
+  for (const V of [W.top, W.middle]) for (let t = 0; t < n; t++) if (t === 0 || V[t] !== V[t - 1]) { let e = t + 1; while (e < n && V[e] === V[t]) e++; tone(P.hz(V[t]), t0 + t * unit, t0 + (e === n ? e + 1 : e) * unit, 0.09); }
+}
+for (const id of ["tonic", "figured", "ro"]) $(id).addEventListener("change", rebuild);
+$("engine").addEventListener("click", () => { W = P.engine({ temp: Math.max(0, Number($("temp").value) || 0) }); isBook = false; render(); });
+$("uniform").addEventListener("click", () => { W = P.sample(); isBook = false; render(); });
+$("book").addEventListener("click", () => { if (P.book) { W = P.book; isBook = true; render(); } });
+$("play").addEventListener("click", play);
+window.kairoticGalant = { get P() { return P; }, get W() { return W; }, rebuild, render, set: (p, tonic) => { pid = p; $("tonic").value = tonic || (PHRASES[p].book ? PHRASES[p].book.key : PHRASES[p].key).tonic; rebuild(); } };
+rebuild();
+</script>

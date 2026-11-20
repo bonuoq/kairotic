@@ -19,7 +19,7 @@ try {
   await wait(() => w.kairoticFiguring && w.kairoticFiguring.F);
   const K = w.kairoticFiguring;
   is("it opens on the scale down, a bar a note: 15 units, the bass drawn, nothing played", d.querySelector('[data-bass="scale-down"]').classList.contains("on") && K.F.n === 15 && d.querySelectorAll("#sheet rect.bass").length === 8 && !K.U.length);
-  is("... six basses to choose, a keyboard of two octaves", d.querySelectorAll("[data-bass]").length === 6 && d.querySelectorAll("#keys button.w").length === 15);
+  is("... ten basses to choose (chapter 5's Galant ones among them), a keyboard of two octaves", d.querySelectorAll("[data-bass]").length === 10 && d.querySelectorAll("#keys button.w").length === 15);
   // E5 played with the computer's keys: x (an octave up), then d (E)
   key("x"); key("d");
   is("E5 played on the computer's keys: taken, a 3 over the bass, figured 5/3", K.U.length === 1 && K.F.name(K.U[0]) === "E5" && figs()[0] === "5/3");
@@ -77,6 +77,9 @@ try {
   K.line("strict");
   is("the line made strict: fewer melodies, said in the counts", K.F.line === "strict" && K.F.count() < moderate && /melodies/.test(d.getElementById("ref").textContent));
   K.line("moderate");
+  d.querySelector('[data-bass="folia"]').click();
+  await wait(() => K.F.notes.length === 9);
+  is("the Folia's bass sets the mode to minor; chapter 4's rules on by default", d.getElementById("mode").value === "minor" && d.getElementById("ro").checked && K.F.key.mode === "minor");
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);
