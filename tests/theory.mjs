@@ -505,5 +505,9 @@ export async function theory(page, check) {
                                                  [nil []] [:bang :bang :bang :bang :bang 0 2])]
                                   (second fx))`);
   check("... accents the first of every four bangs; a number is a tick, accented when 0", cks === "[true false false false true true false]", cks);
+  const ckd = await cljs(page, `(let [d (comp/lookup "click~")]
+                                  (mapv (fn [m] (mapv (fn [[k [acc _]]] [k acc]) (:effects ((:receive d) {:inlet 0 :value m :state nil :args {:freq 500 :accent 0 :decay 0.06 :downbeat true}}))))
+                                        [0 3 15 :bang]))`);
+  check("... click~ downbeat: a number ticks only when it is 0 (where a cycle begins); a bang still ticks", ckd === "[[[:tick true]] [] [] [[:tick false]]]", ckd);
   await cljs(page, `(delete ${ck})`);
 }

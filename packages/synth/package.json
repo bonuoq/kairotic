@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/synth",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Kairotic synthesis components: adsr~ (an envelope that follows a gate), synth~ (a polyphonic synthesizer), gendy~ (a dynamic stochastic oscillator, after Xenakis); and click~, a metronome's click (accents every n)",
   "author": "bonuoq",
   "license": "MPL-2.0",
