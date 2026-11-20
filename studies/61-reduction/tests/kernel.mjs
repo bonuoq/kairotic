@@ -44,11 +44,12 @@ export async function run() {
   is("the derivation: the steps read forwards, in the proto-voice names", D.length === A.steps.length && D[0].op === "split" && D[0].notes.some((n) => n.pv === "PassingMid") && D.some((d) => d.op === "spread"));
   is("level k drawn on the grid: its notes held over what they prolong", R.phraseAt(A, 3).melody === "C5 C5 C5 C5 C5 C5 B4 D5 C5" && R.phraseAt(A, 3).bass === "C3 C3 C3 G3 C3");
   const s76 = INCIPITS["scale-76"], B = R.reduce(s76.phrase, { key: s76.key });
-  is("the 7–6 chain: its suspensions taken away first, parallel 6ths under it (B G, A F, G E)", B.levels.some((L) => / B3G5 A3F5 G3E5 /.test(show(L))) && B.steps.slice(0, 3).every((s) => s.op === "unsplit"));
+  is("the 7–6 chain: its suspensions undone first, each resolution brought onto the beat it was delayed from (parallel 6ths on the strong units: B G, A F, G E)", B.steps.slice(0, 5).every((s) => s.op === "unsuspend") && ["B3G5", "A3F5", "G3E5"].every((v, j) => B.levels[1].some((sl) => sl.on === 2 + 2 * j && sl.notes.map((n) => n.pitch).join("") === v)));
+  is("a suspension, read forwards: suspend (the resolution delayed by the note held, RightRepeatOfLeft)", R.derivation(B).some((d) => d.op === "suspend" && d.notes.every((n) => n.ornament === "suspension" && n.pv === "RightRepeatOfLeft" && n.resolution)));
   is("… in one pass, across the whole chain: the first level takes five suspensions at once, bars 2 to 6", R.stepsInto(B, 1).length === 5 && new Set(R.stepsInto(B, 1).map((s) => Math.floor(s.on / 2))).size === 5 && show(B.levels[1]).includes("B3G5 A3F5 G3E5 F3D5"));
   notes.push(`7–6 chain, level 1: ${show(B.levels[1])}`);
   const ev = (es) => es.map((e) => `${e.pitch}@${e.on}+${e.dur}`).join(" ");
-  is("what a level sounds is its slices: in the 7–6 chain's level 1 B3 enters where its slice begins (unit 3), held two units", ev(R.soundAt(B, 1)).includes("B3@3+2") && ev(R.soundAt(B, 1)).includes("A3@5+2"));
+  is("what a level sounds is its slices: in the 7–6 chain's level 1 the resolution G5 sounds with B3 on its beat (unit 2), both held two units", ev(R.soundAt(B, 1)).includes("B3@2+2") && ev(R.soundAt(B, 1)).includes("A3@4+2") && R.soundAt(B, 1).some((e) => e.pitch === "G5" && e.on === 2));
   is("… the surface sounds as written: the level 0 events are the phrase's own", ev(R.soundAt(B, 0)) === ev(R.soundOf(s76.phrase).sort((a, b) => a.on - b.on || a.voice.localeCompare(b.voice))));
   const shape = (an) => an.levels.map((L) => L.map((s) => s.on).join(".")).join("|");
   is("an analysis is an interpretation: warmer, other levels for some draws (the 7–6 chain)", [1, 2, 3, 4, 5, 6, 7].some((s) => shape(R.reduce(s76.phrase, { key: s76.key, temp: 1, r: rng(s) })) !== shape(B)));
@@ -59,7 +60,7 @@ export async function run() {
   // ─── as MEI ───
   const M0 = R.meiOf(B, 0).mei, ties = (m) => (m.match(/tie="i"/g) || []).length;
   is("as MEI: the 7–6 chain's suspensions written as one note each, tied over the bar line (not struck again)", ties(M0) === 6 && (M0.match(/<note /g) || []).length === 15 + 8);
-  is("… a level held as drawn: level 1's C4 held over the bar line into B3's slice", /pname="c" oct="4" dur="1" tie="i"/.test(R.meiOf(B, 1).mei));
+  is("… a level drawn on the grid: level 1 has G5 over B3 on the strong unit of bar 2, every level of the chain on its own beats", R.phraseAt(B, 1).melody.split(" ")[2] === "G5" && R.phraseAt(B, 1).bass.split(" ")[1] === "B3" && R.checkLevel(B, 1).ok);
   is("… a variation: the phrase's bass, its melody, flagged as such", (() => { const v = R.vary(A, 2, { r: rng(3) }), m = R.meiOf(A, 2, { melody: v.melody }); return /:variation true/.test(m.mei) && /label="bass"/.test(m.mei) && /\.mei$/.test(m.name); })());
 
   // ─── vary from depth k ───
