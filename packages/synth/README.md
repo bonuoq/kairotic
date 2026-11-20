@@ -7,7 +7,7 @@ npm under the scope `@kairotic` and served inside claude.ai by jsDelivr.
 
 | Package | Classes |
 |---|---|
-| [`@kairotic/synth`](../synth/) | `adsr~ [a d s r]` an envelope that follows a gate · `synth~` a polyphonic synthesizer · `gendy~ [freq x-step y-min y-max y-step breakpoints]` a dynamic stochastic oscillator, after Xenakis |
+| [`@kairotic/synth`](../synth/) | `adsr~ [a d s r]` an envelope that follows a gate · `synth~` a polyphonic synthesizer · `gendy~ [freq x-step y-min y-max y-step breakpoints]` a dynamic stochastic oscillator, after Xenakis · `click~ [freq accent decay]` a metronome's click, the beats accented |
 | [`@kairotic/spatial`](../spatial/) | `pan~ [position]` stereo panning · `space~ [x y]` binaural placement around the listener |
 | [`@kairotic/controls`](../controls/) | `knob [min max initial] [log] [name]` a rotary control with its own view in the patch · `keyboard [low keys] [hold]` a virtual MIDI keyboard with velocity and chords, for synth~ and faust~ |
 

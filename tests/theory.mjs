@@ -496,4 +496,14 @@ export async function theory(page, check) {
   check("phase: the son clave clapped from its sixth pulse, early or late, is found after half a cycle and followed; nine pulses missing or two extra onsets do not throw it",
         phs === "[[16 true] [16 true] [32 true] [32 true]]", phs);
   await cljs(page, `(delete ${phb})`);
+  // click~ (@kairotic/synth): a tick each bang, every accent bangs one accented; a number 0 accented
+  const ck = (await cljs(page, '(box "click~ 1200 4" 11100 600)')).trim();
+  check("click~ brings @kairotic/synth", (await until(page, `(boolean (comp/lookup "click~"))`, (x) => x === "true", 20000)) === "true");
+  const cks = await cljs(page, `(let [d (comp/lookup "click~")
+                                      fx (reduce (fn [[s acc] m] (let [r ((:receive d) {:inlet 0 :value m :state s :args {:freq 1200 :accent 4 :decay 0.03}})]
+                                                                   [(or (:state r) s) (conj acc (first (second (first (:effects r)))))]))
+                                                 [nil []] [:bang :bang :bang :bang :bang 0 2])]
+                                  (second fx))`);
+  check("... accents the first of every four bangs; a number is a tick, accented when 0", cks === "[true false false false true true false]", cks);
+  await cljs(page, `(delete ${ck})`);
 }
