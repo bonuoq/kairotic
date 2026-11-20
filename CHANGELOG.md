@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A note held is written as long as it lasts** (`@kairotic/cac` 0.5.1). Every engine reads the same note again
+  as the note held; what the studies and the `comes` box write for a score now says so too: one note with its whole
+  duration, tied only over the bar line, so a score draws the tie. The `comes` box's tree (outlet 4) merges the
+  beats of a held note in each measure (it wrote tied half notes); Studies 38, 39 and 40 export a repeated note as
+  held (they struck it again, unlike 41–43, 50–60). **Study 61** exports a level, or a variation, as MEI for the
+  app: the outer lines of each level's slices, a note held across slices one note (the 7–6 chain's suspensions as
+  half notes tied over the bar lines).
 - **What each note sounded like, in the take** (discussion #308, step 1; `@kairotic/analysis` 0.8.5): `follow rms
   centroid chroma` has an inlet for each descriptor written after its numbers (from `features~`, `chroma~`); while a
   note of the tree sounds, their values are averaged, and at `stop` the take keeps them per note as its `:profile`

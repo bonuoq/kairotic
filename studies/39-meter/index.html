@@ -802,7 +802,7 @@ window.addEventListener("DOMContentLoaded", function () {
 
 ;; ───────── the canon as MEI, for the app (discussion #319) ─────────
 ;; The dux and the comes as two voices (the higher above), a beat a unit: a whole note when a bar has one beat, a
-;; half note when it has two, else a quarter; an upbeat's rests first. A note repeated is struck again. The mode, the
+;; half note when it has two, else a quarter; an upbeat's rests first. A note repeated is held (one note, written as long as it lasts, tied over the bar line), as the engine reads it. The mode, the
 ;; interval and delay of the comes, the rules on: in the extMeta, for the app. Only names on the white keys and
 ;; their accidentals can be written (a system of other steps is said so).
 (defn export-mei! []
@@ -813,7 +813,7 @@ window.addEventListener("DOMContentLoaded", function () {
         mean (fn [v] (let [xs (remove nil? v)] (if (seq xs) (/ (reduce + xs) (count xs)) 0)))
         [ud mt] (case b 1 [1 [4 4]] 2 [2 [2 2]] 3 [4 [3 4]] [4 [b 4]])
         voice (fn [lab nm held?] {:label lab :notes (.fromUnits X (clj->js nm) (when-not held? (clj->js (map some? nm))))})
-        vs [(voice "dux" dn false) (voice "comes" cn false)]
+        vs [(voice "dux" dn true) (voice "comes" cn true)]
         vs (if (>= (mean (remove nil? D)) (mean (remove nil? C))) vs (vec (reverse vs)))]
     (if-not ok?
       (do (say! "warn" "This system's steps have no names on the staff: it cannot be written as MEI yet.") (render-msg!))

@@ -27,6 +27,7 @@ import { melodicParts, total, pick, choose, temperature } from "./soft.mjs";
 import { check, rangeOf, endingOf, PER, LINE, MIN_NOTES } from "./incipit.mjs";
 import { figuring } from "./figuring.mjs";
 import { keyOf, codeOf, codeDegree, codeAlter } from "./partimento.mjs";
+import { exportMei, fromUnits, fileName } from "./export.mjs";
 
 /** The policy's weights. */
 export const WEIGHTS = { meter: 1, dissonance: 1, line: 0.3, voice: 0.5, spread: 0.8, crowd: 0.3, illegal: 6 };
@@ -244,4 +245,41 @@ export function vary(an, k, { temp = 0.6, r = Math.random, novelty = 1.5, budget
   if (!go(0)) return null;
   const names = U.map((c) => F.name(c).replace("♯", "#").replace("♭", "b"));
   return { melody: names.join(" "), kept: [...pins.keys()].sort((a, b) => a - b), changed: names.map((x, t) => (x !== mel[t] ? t : -1)).filter((t) => t >= 0) };
+}
+
+// ─── as MEI, for the app (discussion #319) ───
+/** A level's two outer lines on the units' grid: at each unit the lowest and the highest note of the slice sounding,
+ *  and whether it is struck there (a note held across slices — the same note — is not: one note, as long as it lasts). */
+export function linesAt(an, k) {
+  const path = an.levels[k], top = [], bass = [], topStruck = [], bassStruck = [];
+  let pt = null, pb = null;
+  for (let u = 0; u < an.units; u++) {
+    const s = path.filter((x) => x.on <= u).pop(), lo = s.notes[0], hi = s.notes[s.notes.length - 1];
+    bass.push(lo.pitch); bassStruck.push(!pb || pb.id !== lo.id);
+    top.push(hi.pitch); topStruck.push(!pt || pt.id !== hi.id);
+    pb = lo; pt = hi;
+  }
+  return { top, bass, topStruck, bassStruck };
+}
+
+/**
+ * Level k (or, with melody, a variation over the phrase's bass) as MEI for the app: two voices, each note written as
+ * long as it lasts — a note held is one note, tied only over the bar line — and in the extMeta what the study knows
+ * (the level, its steps, the derivation). → {mei, name}.
+ */
+export function meiOf(an, k, { melody = null, title = null } = {}) {
+  let top, bass, topStruck, bassStruck;
+  if (melody) {
+    // a variation: the surface's bass, the melody given (a name repeated is the note held, as every engine reads it)
+    ({ bass, bassStruck } = linesAt(an, 0));
+    top = split(melody); topStruck = null;
+  } else ({ top, bass, topStruck, bassStruck } = linesAt(an, k));
+  const name = title || (melody ? `A variation from level ${k}` : k === 0 ? "The phrase, its surface" : `The phrase at level ${k}`);
+  const x = exportMei({
+    title: name, source: "Kairotic Study 61 · reduction", key: an.key,
+    voices: [{ label: "melody", clef: "G", notes: fromUnits(top, topStruck) }, { label: "bass", clef: "F", notes: fromUnits(bass, bassStruck) }],
+    root: { study: "61 · reduction", level: k, levels: an.levels.length, variation: !!melody,
+            steps: stepsInto(an, k).map((st) => describe(st)), phrase: { bass: an.phrase.bass, melody: an.phrase.melody, cadence: an.phrase.cadence } },
+  });
+  return { mei: x.mei, name: fileName(name) };
 }
