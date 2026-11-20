@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`click~ downbeat`, and help patches that start by themselves** (`@kairotic/synth` 0.4.1). With the word
+  `downbeat`, a number ticks only when it is 0: a lower `click~ 500 0 0.06 downbeat` after a `counter 0 15`, a
+  `phase` or any cycle's position marks where the cycle begins, to hear whether two clocks agree. The help patches of
+  `click~`, `phase` and `necklace` step by step start their metro with a `loadbang` (▶ is enough) and sound that
+  lower click where the cycle begins — in `phase`'s, where the follower believes the clave begins.
+
 - **Study 61: a level plays as it is drawn** (fix): the player put a level's bass on the bars' starts only, but a
   slice of a reduced level may begin on a weak unit (in the 7–6 chain's first level B3 enters on unit 3), so the bass
   sounded a unit late. Each level now plays its slices' own notes (`eventsOf`), and the phrase and the variation
