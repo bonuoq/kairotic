@@ -41,6 +41,10 @@ several in a vector), so they move with it when the tree is edited, and drawn on
 the next note it finds if that one was passed over, never before and never twice; `{:kind :elastic :tol 0.5}` is
 **elastic** — on the note if the performer gets there in time, else on its own half a second after the note was
 expected at the performer's tempo; `{:leader :electronics}` — at the expected time, whatever the performer does.
+A rest can carry wires too — `[:rest {:dur 4 :wire {:send :drone}}]`: an event of the electronics alone, silent, which a
+follow box sends at its time (from where the performer is) and the continuum draws on its lane; a tree of such rests,
+fragments and `[:param …]` ramps is a score of electronics. `mt play` sends what the wires send (its fifth outlet) at
+their written time: the same patch of electronics, driven live by `follow` or in fixed time by `mt play`.
 
 The edits name the node where each note is written, so they work through transformations: a score
 showing `mt transpose 7` of a tree can edit the tree itself. Edits are messages like any other: they

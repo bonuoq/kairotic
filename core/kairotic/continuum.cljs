@@ -102,7 +102,13 @@
      (letfn [(walk [n]
                (cond
                  (not (mt/node? n)) nil
-                 (= :rest (mt/tag n)) (do (close!) (swap! beat + (or (:dur (mt/attrs n)) 0)))
+                 ;; a rest with a :wire: an event for the electronics, silent (no pitch), at its written time
+                 (= :rest (mt/tag n)) (let [a (mt/attrs n)]
+                                        (close!)
+                                        (when (some? (:wire a))
+                                          (swap! out conj {:id (str "r" (r3 @beat)) :rest true :beat @beat :wbeats (or (:dur a) 0)
+                                                           :wire (:wire a) :amp 0}))
+                                        (swap! beat + (or (:dur a) 0)))
                  (= :note (mt/tag n))
                  (let [a (mt/attrs n) d (or (:dur a) 0)]
                    (if (:grace a)
@@ -127,9 +133,9 @@
                  (let [ws (* (:beat e) spb) wd (* (:wbeats e) spb)
                        [pt pd] (when take (get tw (:id e)))]
                    (cond-> (assoc e :ws ws :wd wd
-                                  :t (if take pt (or (:t e) ws))
+                                  :t (if take (or pt ws) (or (:t e) ws))
                                   :dur (if take (or pd wd) (or (:dur e) wd)))
-                     (and take (nil? pt)) (assoc :skip true)))))
+                     (and take (nil? pt) (not (:rest e))) (assoc :skip true)))))
           (remove :skip)
           vec))))
 
@@ -166,6 +172,11 @@
      :grid-alpha (fn [t] (- 1 (* 2 (js/Math.abs (- (r :pitch t) 0.5)))))
      :bars (mapv (fn [x] {:x x :alpha (r :time x)}) (rest bars))
      :notes (mapv (fn [e]
+                    (if (:rest e)
+                      ;; an event for the electronics: nothing drawn but its wires, from the top of the staff
+                      (let [rt (r :time (:t e))]
+                        {:id (:id e) :rest true :wires (note-wires (:wire e)) :r {:time rt :pitch 1 :glyph 1}
+                         :x (lerp (:t e) (:ws e) rt) :x1 (lerp (+ (:t e) (:dur e)) (+ (:ws e) (:wd e)) rt) :y 9 :y1 9})
                     (let [rt (r :time (:t e)) rp (r :pitch (:t e)) rg (r :glyph (:t e))
                           h0 (heights (:midi e) (:name e))
                           h1 (if (:midi2 e) (heights (:midi2 e) nil) h0)
@@ -180,7 +191,7 @@
                        :dur-line (* rg (- 1 rt))
                        :stem (if (:stem v) (* rg rt) 0) :filled (:filled v) :flags (:flags v) :dots (:dots v)
                        :acc acc :acc-alpha (if acc (* rg staffness) 0)
-                       :cents (js/Math.round (* 100 (- (:midi e) (js/Math.round (:midi e)))))}))
+                       :cents (js/Math.round (* 100 (- (:midi e) (js/Math.round (:midi e)))))})))
                   evs)}))
 
 ;; ───────── the drawing ─────────
@@ -217,7 +228,9 @@
      ;; rigid solid, elastic dashed with its tolerance along the lane, led by the electronics with a diamond
      (apply str
             (for [n (:notes p) [i w] (map-indexed vector (:wires n))
-                  :let [kind (keyword (name (or (:kind w) :rigid))) lead (keyword (name (or (:leader w) :performer)))
+                  ;; a rest's wires (the electronics' own events) are led, at their time
+                  :let [kind (if (:rest n) :elastic (keyword (name (or (:kind w) :rigid))))
+                        lead (if (:rest n) :electronics (keyword (name (or (:leader w) :performer))))
                         x (sx (:x n)) y (- (sy (:y n)) (* 1.4 step))
                         wid (str (:id n) (when (> (count (:wires n)) 1) (str "/" i)))
                         label (pr-str (:send w))]]
@@ -244,7 +257,7 @@
      (apply str (for [{:keys [x alpha]} (:bars p) :let [al (* alpha (max (staff x) 0.35))] :when (> al 0.02)]
                   (str "<line class=\"ct-bar\" x1=\"" (f1 (sx x)) "\" x2=\"" (f1 (sx x)) "\" y1=\"" (f1 (sy 8)) "\" y2=\"" (f1 (sy 0)) "\" opacity=\"" (op al) "\"/>")))
      (apply str
-            (for [n (:notes p)]
+            (for [n (remove :rest (:notes p))]
               (let [x (sx (:x n)) xe (sx (:x1 n)) y (sy (:y n)) y1 (sy (:y1 n))
                     head (:head n) st (staff (:x n)) up (< (:y n) 4) sd (if up -1 1)]
                 (str

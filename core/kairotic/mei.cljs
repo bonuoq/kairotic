@@ -228,6 +228,45 @@
     :chord (into [:chord {:dur (:dur s)}] (map (fn [k] (let [[t a] (seg->node k)] [t (dissoc a :dur)])) (:kids s)))
     :tuplet (into [:tuplet {:ratio (:ratio s)}] (map seg->node (:kids s)))))
 
+(def ^:private eps 1e-6)
+
+(defn- rest-extras
+  "The rests of a written voice that carry more than their duration (a :wire, discussion #217), where they are:
+   [[measure-index beat attrs] …] (beat from the start of the measure, top-level rests only). MEI writes rests in a
+   row as one, and keeps nothing else of them; the extMeta does."
+  [v]
+  (vec (mapcat (fn [mi m]
+                 (loop [[k & more] (mt/kids m) b 0 out []]
+                   (if (nil? k)
+                     out
+                     (let [d (if (mt/node? k) (mt/duration k) 0)
+                           a (when (mt/node? k) (mt/attrs k))
+                           out (if (and (= :rest (mt/tag k)) (seq (dissoc a :dur))) (conj out [mi (cv/round-to b 6) a]) out)]
+                       (recur more (+ b d) out)))))
+               (range) (filter #(= :measure (mt/tag %)) (mt/kids v)))))
+
+(defn- with-rests
+  "A measure read from MEI with the rests extMeta kept ([[beat attrs] …]): the rest that covers each is cut there."
+  [m entries]
+  (if (empty? entries)
+    m
+    (let [cut (fn cut [s d es]
+                ;; a rest from s lasting d, with the kept rests es that fall in it (sorted)
+                (if-let [[b a] (first es)]
+                  (let [db (:dur a)]
+                    (concat (when (> (- b s) eps) [[:rest {:dur (cv/round-to (- b s) 6)}]])
+                            [[:rest a]]
+                            (let [s2 (+ b db) d2 (- (+ s d) s2)]
+                              (when (> d2 eps) (cut s2 d2 (rest es))))))
+                  [[:rest {:dur (cv/round-to d 6)}]]))
+          kids (loop [[k & more] (mt/kids m) b 0 out []]
+                 (if (nil? k)
+                   out
+                   (let [d (if (mt/node? k) (mt/duration k) 0)
+                         es (when (= :rest (mt/tag k)) (seq (filter (fn [[x]] (and (>= x (- b eps)) (< x (- (+ b d) eps)))) entries)))]
+                     (recur more (+ b d) (if es (into out (cut b d (sort-by first es))) (conj out k))))))]
+      (with-meta (into [:measure (mt/attrs m)] kids) (meta m)))))
+
 (defn- with-ext
   "A note read from MEI with what <extMeta> kept for it (by its xml:id): a free note loses its written name (it is
    Hz again; the name stays in its metadata, :written)."
@@ -293,9 +332,10 @@
                               (cond-> {:name (or label (str "voice " (inc i))) :key sig}
                                 (> (count vkeys) 1) (assoc :staff (or label st))))]
                     (into [:voice a]
-                          (map (fn [{:keys [attrs voices]}]
-                                 (with-ext (into [:measure attrs] (map seg->node (get voices k []))) (:notes ext)))
-                               measures))))]
+                          (map (fn [mi {:keys [attrs voices]}]
+                                 (with-rests (with-ext (into [:measure attrs] (map seg->node (get voices k []))) (:notes ext))
+                                   (keep (fn [[v m b x]] (when (and (= v i) (= m mi)) [b x])) (:rests ext))))
+                               (range) measures))))]
       (let [t (if (and (= 1 (count vkeys)) (not= :par (:root-tag ext)))
                 (voice (first vkeys))
                 (into [(or (:root-tag ext) :par) (or (:root ext) {})] (map voice vkeys)))
@@ -356,7 +396,9 @@
                                 (when (seq x) [(first (:ids s)) x])))
                             (map vector (apply concat sn) (apply concat tn)))))
         by-id (into {} (for [x (all doc "note")] [(at x "xml:id") x]))
+        rests (vec (mapcat (fn [vi v] (map (fn [[mi b a]] [vi mi b a]) (rest-extras v))) (range) voices))
         ext (cond-> {:kairotic 1 :voices (mapv mt/attrs voices) :notes notes}
+              (seq rests) (assoc :rests rests)
               (not= rtag :voice) (assoc :root-tag rtag :root rattrs))]
     ;; MEI's own gestural attributes, as a mirror of the EDN (what other software can read)
     (doseq [[id x] notes :let [el (get by-id id)] :when el]

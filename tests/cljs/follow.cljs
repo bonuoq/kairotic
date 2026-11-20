@@ -67,6 +67,21 @@
       (t/eq "… kept in the MEI, on their notes" (mapv (juxt :note :kind :leader :send) (fl/wires (fl/score (mei/<-mei (mei/->mei wt)))))
             (mapv (juxt :note :kind :leader :send) ws))
       (t/is "the continuum draws them" (let [s (ct/svg wt 600 200)] (and (re-find #"ct-wire ct-rigid\" data-wire=\"n3\"" s) (re-find #"ct-wire ct-elastic ct-led\" data-wire=\"n6/0\"" s)))))
+    ;; a rest with a wire: the electronics' own event, led at its time (from where the performer is)
+    (let [et [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 d4" [:rest {:dur 1 :wire {:send :hit}}] "e4/1"]]
+          sc (fl/score et)
+          go (fn [perf] (vec (keep (fn [[k x]] (when (= k :wire) [(:send x) (:status x) (:t x)])) (:found (fl/follow sc perf)))))]
+      (t/eq "its wire, led at its time at the performer's tempo, though nothing is heard there" (go [[0 60 0.8] [1.2 62 0.8] [3.6 64 0.8]]) [[:hit "led" 2.4]])
+      (t/eq "the notes around it are found, and the rest is not a note skipped"
+            (mapv (juxt :id :skipped) (keep (fn [[k x]] (when (= k :at) x)) (:found (fl/follow sc [[0 60 0.8] [1 62 0.8] [3 64 0.8]]))))
+            [["n0" 0] ["n1" 0] ["n2" 0]])
+      (t/is "the continuum draws it" (re-find #"ct-wire ct-elastic ct-led\" data-wire=\"r2\"" (ct/svg et 600 200))))
+    (let [mt-tree [:voice {:tempo 60} [:measure {:meter [4 4]} [:rest {:dur 1 :wire {:send :a}}] [:rest {:dur 1}] [:note {:pitch "c4" :dur 2}]]
+                   [:measure {:meter [4 4]} [:note {:pitch "d4" :dur 1}] [:rest {:dur 2 :wire {:send :b :kind :elastic}}] [:note {:pitch "e4" :dur 1}]]]
+          m (mei/->mei mt-tree) back (mei/<-mei m)
+          wired (fn [t] (vec (keep (fn [x] (when (and (vector? x) (= :rest (first x)) (:wire (second x))) (second x))) (tree-seq vector? seq t))))]
+      (t/eq "rests with wires come back from the MEI (it writes rests in a row as one), where they were" (wired back) (wired mt-tree))
+      (t/is "… and the MEI is a fixpoint" (= m (mei/->mei back))))
     (let [rep [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 c4 c4 d4"]]
           {:keys [found]} (fl/follow (fl/score rep) [[0 60 0.5] [1.1 60 0.5] [2.3 60 0.5] [3.2 62 0.5]])]
       (t/eq "repeated notes, one after the other" (mapv :id (keep (fn [[k x]] (when (= k :at) x)) found)) ["n0" "n1" "n2" "n3"]))
