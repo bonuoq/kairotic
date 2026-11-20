@@ -80,7 +80,7 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null 
         };
         const lg = legal(u.path, i - 1);
         if (lg.illegal) parts.illegal = lg.illegal;
-        out.push({ op: "unsplit", at: i, on: path[i].on, parts, cost: total(parts), path: u.path, explained: u.explained });
+        out.push({ op: "unsplit", at: i, on: path[i].on, touches: [i - 1, i, i + 1], parts, cost: total(parts), path: u.path, explained: u.explained });
       }
     }
     if (!keep(i)) {
@@ -92,7 +92,7 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null 
         };
         const lg = legal(s.path, i - 1);
         if (lg.illegal) parts.illegal = lg.illegal;
-        out.push({ op: "unspread", at: i - 1, on: path[i].on, parts, cost: total(parts), path: s.path, notes: s.notes.map((n) => n.id) });
+        out.push({ op: "unspread", at: i - 1, on: path[i].on, touches: [i - 1, i], parts, cost: total(parts), path: s.path, notes: s.notes.map((n) => n.id) });
       }
     }
   }
@@ -100,25 +100,59 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null 
 }
 
 /**
- * A phrase analysed: {notes, units, levels: [path L0 … Ln], steps: [{op, at, on, cost, parts, explained | notes,
- * among (how many steps were possible)}]}. temp (0: always the cheapest) and r (a random number in [0, 1), drawn anew
- * at each step) give other readings: an analysis is an interpretation.
+ * A phrase analysed: {notes, units, levels: [path L0 … Ln], steps: [{op, at, on, level, cost, parts, explained | notes,
+ * among (how many steps were possible)}]}.
+ *
+ * A level is a pass over the whole phrase, as GTTM's time-span reduction goes down the metrical grid: in one pass
+ * every step that can be taken is, cheapest first, judged against the level below: a slice kept as a parent of an
+ * ornament is not taken away in the same pass, a sonority a spread has made waits for the next, and no step may make a
+ * level the hard rules refuse around it. A pass takes what stands on the
+ * metrical stratum reached (stratum 0: the weak units; 1, 2, 3: the bars by their weight) or below it, and a dissonant
+ * slice wherever it stands (an appoggiatura on a strong unit is an ornament too); when a pass finds nothing the
+ * stratum goes up. Only where nothing legal is left does a pass take one step the rules refuse, the cheapest.
+ * temp (0: always the cheapest) and r (a random number in [0, 1), drawn anew at each step) give other readings: an
+ * analysis is an interpretation.
  */
 export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, temp = 0, r = Math.random } = {}) {
   const notes = notesOfPhrase(phrase, per), units = split(phrase.melody).length;
   const judge = (p) => checkPath(p, phrase, key);
   let path = slicesOf(notes);
-  const levels = [path], steps = [];
+  const levels = [path], steps = [], top = 3;
+  const choose1 = (cs) => pick(cs, (x) => x.cost, temp, temp > 0 ? r() : undefined);
+  let stratum = 0;
   for (;;) {
-    const cs = candidates(path, notes, { per, weights, judge });
-    if (!cs.length) break;
-    const c = pick(cs, (x) => x.cost, temp, temp > 0 ? r() : undefined);
-    const { path: next, ...step } = c;
-    steps.push({ ...step, among: cs.length });
+    // (slices by their onset: a slice a step has kept as a parent stays this pass's, not to be taken away now; a slice
+    // a spread has made is new, neither taken away nor a parent until the next pass)
+    const kept = new Set(), fresh = new Set();
+    let taken = 0;
+    for (;;) {
+      const all = candidates(path, notes, { per, weights, judge });
+      const free = (c) => (c.op === "unsplit"
+        ? !kept.has(path[c.at].on) && !fresh.has(path[c.at].on) && !fresh.has(path[c.at - 1].on) && !fresh.has(path[c.at + 1].on)
+        : c.touches.every((j) => !kept.has(path[j].on) && !fresh.has(path[j].on)));
+      const cs = all.filter((c) => !c.parts.illegal && free(c) && (meter(c.on, per) <= stratum || c.parts.dissonance < 0));
+      if (!cs.length) break;
+      const { path: next, touches, ...step } = choose1(cs);
+      steps.push({ ...step, level: levels.length, among: cs.length });
+      if (step.op === "unsplit") { kept.add(path[step.at - 1].on); kept.add(path[step.at + 1].on); }
+      else fresh.add(path[step.at].on);
+      path = next;
+      taken++;
+    }
+    if (taken) { levels.push(path); continue; }
+    if (stratum < top) { stratum++; continue; }
+    // nothing legal left: the cheapest step the rules refuse, alone, if any
+    const all = candidates(path, notes, { per, weights, judge });
+    if (!all.length) break;
+    const { path: next, touches, ...step } = choose1(all);
+    steps.push({ ...step, level: levels.length, among: all.length });
     levels.push((path = next));
   }
   return { phrase, key, per, notes, units, levels, steps };
 }
+
+/** The steps that lead from level k − 1 to level k. */
+export const stepsInto = (an, k) => an.steps.filter((s) => s.level === k);
 
 /** A level below the surface as note against note: a slice a unit, its lowest note the bass, its highest the melody. */
 export const unitPhrase = (path, cadence) => ({ bass: path.map((s) => s.notes[0].pitch).join(" "), melody: path.map(top).join(" "), cadence });

@@ -35,19 +35,22 @@ export async function run() {
   // ─── reduction.mjs ───
   is("GTTM's metrical weight: a weak unit 0, bars 1, 2, 3 by their place", R.meter(1) === 0 && R.meter(2) === 1 && R.meter(4) === 2 && R.meter(8) === 3 && R.meter(0) === 3);
   const A = R.reduce(sc.phrase, { key: sc.key });
-  is("the C major incipit reduced: 4 steps to its frame, C (G C) – G – G – C", A.levels.length === 5 && show(A.levels[4]) === "C3G4C5 G3B4 G3D5 C3C5");
+  is("the C major incipit reduced: 4 steps in 3 passes to its frame, C (G C) – G – G – C", A.levels.length === 4 && A.steps.length === 4 && show(A.levels[3]) === "C3G4C5 G3B4 G3D5 C3C5");
+  is("… a level is a pass over the whole phrase: the first takes the passing B4 (bar 2) and the spread of bar 1 together", R.stepsInto(A, 1).length === 2 && R.stepsInto(A, 1).every((s) => s.level === 1));
   is("… the first step the passing B4, the cheapest", A.steps[0].op === "unsplit" && A.steps[0].explained.some((e) => e.pitch === "B4" && e.orn === "passing-mid"));
   is("… every level passes the hard rules (below the surface note against note)", A.levels.every((_, k) => R.checkLevel(A, k).ok));
   is("… the cadence kept (GTTM's cadential retention): its last two bass notes in every level", A.levels.every((L) => L.slice(-3).map((s) => s.notes[0].pitch).join(" ") === "G3 G3 C3"));
   const D = R.derivation(A);
   is("the derivation: the steps read forwards, in the proto-voice names", D.length === A.steps.length && D[0].op === "split" && D[0].notes.some((n) => n.pv === "PassingMid") && D.some((d) => d.op === "spread"));
-  is("level k drawn on the grid: its notes held over what they prolong", R.phraseAt(A, 4).melody === "C5 C5 C5 C5 C5 C5 B4 D5 C5" && R.phraseAt(A, 4).bass === "C3 C3 C3 G3 C3");
+  is("level k drawn on the grid: its notes held over what they prolong", R.phraseAt(A, 3).melody === "C5 C5 C5 C5 C5 C5 B4 D5 C5" && R.phraseAt(A, 3).bass === "C3 C3 C3 G3 C3");
   const s76 = INCIPITS["scale-76"], B = R.reduce(s76.phrase, { key: s76.key });
   is("the 7–6 chain: its suspensions taken away first, parallel 6ths under it (B G, A F, G E)", B.levels.some((L) => / B3G5 A3F5 G3E5 /.test(show(L))) && B.steps.slice(0, 3).every((s) => s.op === "unsplit"));
-  notes.push(`7–6 chain, level 4: ${show(B.levels[4])}`);
+  is("… in one pass, across the whole chain: the first level takes five suspensions at once, bars 2 to 6", R.stepsInto(B, 1).length === 5 && new Set(R.stepsInto(B, 1).map((s) => Math.floor(s.on / 2))).size === 5 && show(B.levels[1]).includes("B3G5 A3F5 G3E5 F3D5"));
+  notes.push(`7–6 chain, level 1: ${show(B.levels[1])}`);
+  const shape = (an) => an.levels.map((L) => L.map((s) => s.on).join(".")).join("|");
+  is("an analysis is an interpretation: warmer, other levels for some draws (the 7–6 chain)", [1, 2, 3, 4, 5, 6, 7].some((s) => shape(R.reduce(s76.phrase, { key: s76.key, temp: 1, r: rng(s) })) !== shape(B)));
   const am = INCIPITS["short-am"], C = R.reduce(am.phrase, { key: am.key });
   is("A minor: its frame keeps the leading tone to the tonic (E G♯ – E B – A)", show(C.levels[C.levels.length - 1]).endsWith("E3G#4 E3B4 A2A4"));
-  is("an analysis is an interpretation: warmer, another reading for some draws", [1, 2, 3, 4, 5, 6, 7].some((s) => R.reduce(sc.phrase, { key: sc.key, temp: 1, r: rng(s) }).steps.map((x) => x.on).join() !== A.steps.map((x) => x.on).join()));
   is("… every step says how many were possible, and its cost by part", A.steps.every((s) => s.among >= 1 && typeof s.parts.meter === "number"));
 
   // ─── vary from depth k ───

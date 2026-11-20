@@ -24,8 +24,8 @@ await (async function () {
     window.kairoticReduction = { R, PV, I };
     scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
 
-    is("ready, the first phrase analysed: five levels, a row each and the steps between them", $("status").textContent === "Ready" && S().state().levels === 5 && S().state().rows === 5 && S().state().steps === 4);
-    is("… the frame on top, chosen; the surface at the bottom", document.querySelector("#levels .lv").dataset.k === "4" && document.querySelector("#levels .lv.sel").dataset.k === "4" && document.querySelectorAll("#levels .lv")[4].dataset.k === "0");
+    is("ready, the first phrase analysed: four levels, a row each, three passes of four steps", $("status").textContent === "Ready" && S().state().levels === 4 && S().state().rows === 4 && S().state().steps === 4 && $("steps").querySelectorAll("li.pass").length === 3);
+    is("… the frame on top, chosen; the surface at the bottom; the slices the first pass takes marked on the surface", document.querySelector("#levels .lv").dataset.k === "3" && document.querySelector("#levels .lv.sel").dataset.k === "3" && document.querySelectorAll("#levels .lv")[3].dataset.k === "0" && document.querySelectorAll('#levels .lv[data-k="0"] .cell.next').length === 2);
     is("… every level passing the rules (✓ or the frame)", [...document.querySelectorAll("#levels .lab")].every((l) => /✓|·/.test(l.textContent)));
     is("… the first step: the passing B4", /B4 a step between two notes a 3rd apart/.test($("steps").children[0].textContent));
     is("… the derivation, in the proto-voice names", /PassingMid/.test($("deriv").textContent) && /spread/.test($("deriv").textContent));
@@ -39,7 +39,7 @@ await (async function () {
     is("… taken as the phrase: analysed again", $("mel").value === v && S().state().levels >= 2 && !S().state().variation);
 
     $("ex").value = "scale-76"; $("ex").dispatchEvent(new Event("change"));
-    is("the 7–6 chain: analysed, eleven levels", S().state().levels === 11 && /7–6|B3G5/.test($("levels").textContent));
+    is("the 7–6 chain: analysed in six levels, five suspensions taken in the first pass", S().state().levels === 6 && document.querySelectorAll('#levels .lv[data-k="0"] .cell.next').length === 5);
     $("temp").value = "1";
     click($("again"));
     is("another reading at temperature 1: still analysed", S().state().levels >= 2);
