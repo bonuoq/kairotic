@@ -5,6 +5,10 @@
 //
 //   voices      each a list of notes {name ("F#4", "Bb3", or null: a rest), units} — or made from a list of names a
 //               unit each (fromUnits: a name repeated is a note held, unless the unit is struck again)
+//   microtones  a note may say its exact pitch, midi (a fraction: 60.5 a quarter tone above C4): it is written as
+//               the app writes one (kairotic.mt) — its name (or the nearest, spelled for the key), a quarter-tone
+//               accidental where it is half-way (± 8 cents) — and its exact Hz kept for it in the extMeta, by the
+//               xml:id of its first written note, as kairotic.mei reads it: the app plays it at that pitch
 //   time        a unit is 1/unitDen of a whole note (2: a half note, 4: a quarter); unitsPerBar a bar; pickup
 //               units before the first bar line (an upbeat); notes are cut at the bar lines and tied
 //   spelling    the key's signature; an accidental written where the bar has not already said it, a natural where
@@ -18,7 +22,32 @@ const LETTERS = "CDEFGAB", WHITE = [0, 2, 4, 5, 7, 9, 11];
 const SIG = { C: 0, G: 1, D: 2, A: 3, E: 4, B: 5, "F#": 6, "C#": 7, F: -1, Bb: -2, Eb: -3, Ab: -4, Db: -5, Gb: -6, Cb: -7 };
 const RELATIVE = { A: "C", E: "G", B: "D", "F#": "A", "C#": "E", "G#": "B", "D#": "F#", D: "F", G: "Bb", C: "Eb", F: "Ab", Bb: "Db", Eb: "Gb" };
 const SHARPS = "FCGDAEB", FLATS = "BEADGCF";
-const ACC = { "-2": "ff", "-1": "f", 0: "n", 1: "s", 2: "x" };
+const ACC = { "-2": "ff", "-1.5": "3qf", "-1": "f", "-0.5": "1qf", 0: "n", 0.5: "1qs", 1: "s", 1.5: "3qs", 2: "x" };
+const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"], FLAT_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+const NAME = /^([A-G])(#{1,2}|b{1,2})?(-?\d+)$/;
+/** The 12-TET MIDI number of a written name. */
+const midiOfName = (nm) => { const m = NAME.exec(plain(nm)); if (!m) return null; const alt = !m[2] ? 0 : m[2][0] === "#" ? m[2].length : -m[2].length; return 12 * (Number(m[3]) + 1) + WHITE[LETTERS.indexOf(m[1])] + alt; };
+/**
+ * How a note is written: {L (letter), oct, alt (−2 … 2 by halves: ±0.5 a quarter tone), hz (its exact pitch, when it
+ * is not the written one)}, from its name, its midi (a fraction), or both (the name as written, the midi as it sounds).
+ */
+export function writtenOf(n, fifths = 0) {
+  let L, oct, alt, base;
+  const m = n.name && NAME.exec(plain(n.name));
+  if (m) { L = m[1]; oct = Number(m[3]); alt = !m[2] ? 0 : m[2][0] === "#" ? m[2].length : -m[2].length; base = midiOfName(n.name); }
+  else if (typeof n.midi === "number") {
+    const r = Math.round(n.midi), nm = (fifths < 0 ? FLAT_NAMES : SHARP_NAMES)[((r % 12) + 12) % 12];
+    L = nm[0]; alt = nm.length > 1 ? (nm[1] === "#" ? 1 : -1) : 0; base = r;
+    oct = Math.floor((r - WHITE[LETTERS.indexOf(L)] - alt) / 12) - 1;
+  } else return null;
+  if (typeof n.midi !== "number") return { L, oct, alt, hz: null };
+  let dev = (n.midi - base) * 100;
+  // half-way between two semitones (± 8 cents): a quarter-tone accidental
+  if (Math.abs(dev - 50) < 8 && alt <= 1.5) { alt += 0.5; dev -= 50; }
+  else if (Math.abs(dev + 50) < 8 && alt >= -1.5) { alt -= 0.5; dev += 50; }
+  const hz = Math.abs(dev) < 0.5 && Number.isInteger(alt) ? null : Math.round(440 * Math.pow(2, (n.midi - 69) / 12) * 1000) / 1000;
+  return { L, oct, alt, hz };
+}
 
 /** A name normalized: "F♯4" → "F#4", "B♭3" → "Bb3". */
 export const plain = (s) => String(s).replace(/♯/g, "#").replace(/♭/g, "b").replace(/𝄪/g, "##").replace(/𝄫/g, "bb");
@@ -42,24 +71,28 @@ export function barsOf(strong) {
   return { pickup: s.length ? s[0] : 0, unitsPerBar: s.length > 1 ? s[1] - s[0] : 2 };
 }
 
-/** Notes from names a unit each: a name repeated is held (struck[t], where given, says whether unit t is struck
- *  again); null a rest. */
+/** Notes from names a unit each — or {name, midi} (a pitch off 12-TET), or {midi} — : a pitch repeated is held
+ *  (struck[t], where given, says whether unit t is struck again); null a rest. */
 export function fromUnits(names, struck = null) {
   const out = [];
+  const keyOf = (x) => (x ? `${x.name ?? ""}|${x.midi ?? ""}` : "rest");
   names.forEach((nm, t) => {
-    const n = nm === null || nm === undefined ? null : plain(nm), last = out[out.length - 1];
-    const again = struck ? !!struck[t] : !(last && last.name === n);
-    if (last && !again && last.name === n) last.units++;
-    else out.push({ name: n, units: 1 });
+    const x = nm === null || nm === undefined ? null : typeof nm === "string" ? { name: plain(nm) } : { ...(nm.name ? { name: plain(nm.name) } : {}), ...(typeof nm.midi === "number" ? { midi: nm.midi } : {}) };
+    const last = out[out.length - 1];
+    const same = last && keyOf(last.x) === keyOf(x);
+    const again = struck ? !!struck[t] : !same;
+    if (last && !again && same) last.units++;
+    else out.push({ name: x ? x.name ?? null : null, ...(x && "midi" in x ? { midi: x.midi } : {}), units: 1, x });
   });
-  return out;
+  return out.map(({ x, ...n }) => (x === null ? { ...n, name: null } : n));
 }
 
 // written durations, in whole notes, longest first: [value, @dur, @dots]
 const DURS = [[1, "1", 0], [3 / 4, "2", 1], [1 / 2, "2", 0], [3 / 8, "4", 1], [1 / 4, "4", 0], [3 / 16, "8", 1], [1 / 8, "8", 0], [1 / 16, "16", 0], [1 / 32, "32", 0]];
 const pieces = (w) => { const out = []; let x = w; while (x > 1e-9) { const d = DURS.find(([v]) => v <= x + 1e-9); if (!d) break; out.push(d); x -= d[0]; } return out; };
 
-/** EDN of a JS value: objects as maps with keyword keys, arrays as vectors, {kw: "par"} a keyword. */
+/** EDN of a JS value: objects as maps with keyword keys, arrays as vectors, {kw: "par"} a keyword, {strkeys: {…}} a
+ *  map with string keys. */
 export function edn(v) {
   if (v === null || v === undefined) return "nil";
   if (typeof v === "string") return JSON.stringify(v);
@@ -68,6 +101,8 @@ export function edn(v) {
   if (typeof v === "boolean") return String(v);
   if (Array.isArray(v)) return "[" + v.map(edn).join(" ") + "]";
   if (typeof v === "object" && Object.keys(v).length === 1 && typeof v.kw === "string") return ":" + v.kw;
+  // ({strkeys: {…}}: a map whose keys stay strings, as xml:ids do)
+  if (typeof v === "object" && Object.keys(v).length === 1 && v.strkeys && typeof v.strkeys === "object") return "{" + Object.entries(v.strkeys).map(([k, x]) => JSON.stringify(k) + " " + edn(x)).join(", ") + "}";
   return "{" + Object.entries(v).filter(([, x]) => x !== undefined).map(([k, x]) => ":" + k.replace(/[^A-Za-z0-9*+!_?<>=.-]/g, "-") + " " + edn(x)).join(", ") + "}";
 }
 const xml = (x) => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -93,21 +128,24 @@ export function exportMei(spec) {
   const bars = [];
   for (let s = 0, first = true; s < total; first = false) { const len = first && pickup ? pickup : unitsPerBar; bars.push([s, Math.min(total, s + len), first && pickup > 0]); s += len; }
   const barOf = (u) => bars.findIndex(([a, b]) => u >= a && u < b);
+  const noteExt = {};
   const staffXml = voices.map((v, vi) => {
     const layer = bars.map(() => []);
     const carried = bars.map(() => ({})); // what the bar has said for each letter and octave
     let nid = 0, at = 0;
     for (const n of v.notes) {
       let left = n.units, s = at, first = true;
-      const m = n.name && /^([A-G])(#{1,2}|b{1,2})?(-?\d+)$/.exec(plain(n.name));
+      const w = n.name || typeof n.midi === "number" ? writtenOf(n, fifths) : null;
       while (left > 0) {
         const bi = barOf(s), end = Math.min(s + left, bars[bi][1]), len = end - s, last = end === at + n.units;
         const ps = pieces(len / unitDen);
         ps.forEach(([, dur, dots], k) => {
-          const tie = !n.name ? "" : first && last && ps.length === 1 ? "" : first && k === 0 ? "i" : last && k === ps.length - 1 ? "t" : "m";
-          const id = `v${vi + 1}${n.name ? "n" : "r"}${++nid}`;
-          if (!m) { layer[bi].push(`<rest xml:id="${id}" dur="${dur}"${dots ? ` dots="${dots}"` : ""}/>`); return; }
-          const L = m[1], oct = m[3], alt = !m[2] ? 0 : m[2][0] === "#" ? m[2].length : -m[2].length;
+          const tie = !w ? "" : first && last && ps.length === 1 ? "" : first && k === 0 ? "i" : last && k === ps.length - 1 ? "t" : "m";
+          const id = `v${vi + 1}${w ? "n" : "r"}${++nid}`;
+          if (!w) { layer[bi].push(`<rest xml:id="${id}" dur="${dur}"${dots ? ` dots="${dots}"` : ""}/>`); return; }
+          const { L, oct, alt } = w;
+          // (a pitch off the written one: its Hz for the app, by the id of its first written note)
+          if (w.hz && first && k === 0) noteExt[id] = { hz: w.hz };
           const said = carried[bi][L + oct] ?? (sig[L] || 0);
           // an accidental where the bar or the signature says another; else only as sounding (accid.ges)
           const acc = alt === said ? (alt ? ` accid.ges="${ACC[alt]}"` : "") : ` accid="${ACC[alt]}"`;
@@ -133,11 +171,12 @@ export function exportMei(spec) {
   }).join("");
   const clefOf = (v) => {
     if (v.clef) return v.clef;
-    const ms = v.notes.filter((n) => n.name).map((n) => { const m = /^([A-G])(#{1,2}|b{1,2})?(-?\d+)$/.exec(plain(n.name)); return 12 * (Number(m[3]) + 1) + WHITE[LETTERS.indexOf(m[1])]; });
+    const ms = v.notes.map((n) => (typeof n.midi === "number" ? n.midi : n.name ? midiOfName(n.name) : null)).filter((x) => x !== null);
     return ms.length && ms.reduce((a, b) => a + b, 0) / ms.length < 57 ? "F" : "G";
   };
   const staffDefs = voices.map((v, vi) => { const c = clefOf(v); return `<staffDef n="${vi + 1}"${v.label ? ` label="${xml(v.label)}"` : ""} lines="5" clef.shape="${c}" clef.line="${c === "F" ? 4 : 2}"/>`; }).join("");
-  const ext = edn({ kairotic: 1, "root-tag": { kw: "par" }, root: { name: title, source, key: `${key.tonic} ${key.mode || "major"}`, made: new Date().toISOString().slice(0, 10), ...root } });
+  const ext = edn({ kairotic: 1, "root-tag": { kw: "par" }, root: { name: title, source, key: `${key.tonic} ${key.mode || "major"}`, made: new Date().toISOString().slice(0, 10), ...root },
+                    ...(Object.keys(noteExt).length ? { notes: { strkeys: noteExt } } : {}) });
   const mei = `<?xml version="1.0" encoding="UTF-8"?><mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.0">` +
     `<meiHead><fileDesc><titleStmt><title>${xml(title)}</title></titleStmt><pubStmt/></fileDesc>` +
     `<extMeta type="kairotic"><![CDATA[${ext.replace(/]]>/g, "]]]]><![CDATA[>")}]]></extMeta></meiHead><music><body><mdiv><score>` +

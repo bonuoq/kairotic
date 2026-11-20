@@ -902,26 +902,24 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; ───────── the canon as MEI, for the app (discussion #319) ─────────
 ;; The dux and the comes as two voices (the higher above), a beat a unit: a whole note when a bar has one beat, a
 ;; half note when it has two, else a quarter; an upbeat's rests first. A note repeated in either voice is held (a tie, as drawn). The mode, the
-;; interval and delay of the comes, the rules on: in the extMeta, for the app. Only names on the white keys and
-;; their accidentals can be written (a system of other steps is said so).
+;; interval and delay of the comes, the system: in the extMeta, for the app. A step off 12-TET (meantone, 31-EDO) is
+;; written as the app writes one — its name or the nearest, a quarter-tone accidental half-way — with its exact Hz.
 (defn export-mei! []
   (let [X (.-kairoticExport js/window) pp (p) n (:n pp) b (:b pp 1) ph (:phase pp 0) D (dux) C (comes)
-        names (fn [v] (vec (concat (repeat ph nil) (map (fn [i] (when-let [s (get v i)] (fu/pitch-name s))) (range n)))))
+        names (fn [v] (vec (concat (repeat ph nil) (map (fn [i] (when-let [s (get v i)] #js {:name (fu/pitch-name s) :midi (fu/midi s)})) (range n)))))
         dn (names D) cn (names C)
-        ok? (every? (fn [x] (or (nil? x) (re-matches #"[A-G](#|b|♯|♭)?-?\d+" x))) (concat dn cn))
         mean (fn [v] (let [xs (remove nil? v)] (if (seq xs) (/ (reduce + xs) (count xs)) 0)))
         [ud mt] (case b 1 [1 [4 4]] 2 [2 [2 2]] 3 [4 [3 4]] [4 [b 4]])
         voice (fn [lab nm held?] {:label lab :notes (.fromUnits X (clj->js nm) (when-not held? (clj->js (map some? nm))))})
         vs [(voice "dux" dn true) (voice "comes" cn true)]
         vs (if (>= (mean (remove nil? D)) (mean (remove nil? C))) vs (vec (reverse vs)))]
-    (if-not ok?
-      (do (say! "warn" "This system's steps have no names on the staff: it cannot be written as MEI yet.") (render-msg!))
-      (let [x (.exportMei X (clj->js {:title (str "A canon in " (name (:mode pp)) ", the comes " (if (neg? (:k pp)) "below" "above") " at " (js/Math.abs (:k pp)) " steps, " (:d pp) " beats later")
+    (let [x (.exportMei X (clj->js {:title (str "A canon in " (name (:mode pp)) ", the comes " (if (neg? (:k pp)) "below" "above") " at " (js/Math.abs (:k pp)) " steps, " (:d pp) " beats later")
                                      :source "Kairotic Study 42 · systems" :key {:tonic "C" :mode "major"}
                                      :unitDen ud :unitsPerBar b :meter mt :voices vs
                                      :root {:study "42 · systems" :mode (name (:mode pp)) :k (:k pp) :d (:d pp) :beats-per-bar b :upbeat ph :notes n
+                                            :system (or (some (fn [[k v]] (when (= v (fu/sysdef pp)) (name k))) fu/systems) "a system of its own")
                                             :complete (= n (count D)) :dux (mapv fu/pitch-name D) :comes (mapv (fn [s] (when s (fu/pitch-name s))) C)}}))]
-        (-> (.offer X x) (.then (fn [s] (say! "ok" s) (render-msg!))))))))
+        (-> (.offer X x) (.then (fn [s] (say! "ok" s) (render-msg!)))))))
 
 ;; ───────── wiring the page ─────────
 
