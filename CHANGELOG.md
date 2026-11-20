@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A canon loops from its end** (fix): a sequence lasted only until its last child placed in turn, not until a child
+  placed `:at` a time ended — a canon's comes (`[:voice [:seq {:at 2} …]]`) — so `mt/duration` of a canon was the
+  dux's, and `mt play loop` started again while the comes still sounded. A sequence now lasts until its last child
+  ends; and a loop never starts again before the last thing mt play sends (its final silence).
 - **«Any valid one»** in Studies 51, 54, 57 and 59: the button that was «Draw uniformly» — any realization that
   keeps the hard rules, each as likely, without the engine's soft rules.
 - **Wires in fixed time, and rests that carry them** (discussion #217; `@kairotic/analysis` 0.8.3): `mt play` sends
