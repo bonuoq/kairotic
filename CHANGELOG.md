@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`click~`: hear the clock you play along with** (`@kairotic/synth` 0.4.0). A metronome's click: each bang a short
+  tick, every `accent` bangs one accented (a fifth higher, louder); a number is a tick, accented when it is 0 (a
+  counter's cycle). The help of `phase` and of `necklace` step by step now let you hear their metro, the beats
+  accented — following or playing along with a clock you cannot hear was all but impossible.
+
 - **Following, seen on the continuum** (discussions #204, #308; `@kairotic/analysis` 0.8.4): while a `follow` box
   follows a tree, that tree's continuum shows the notes found, the ones skipped, where the performer is (its note and
   a line through it) and the wires that went on. **"I am here"**: a click on a note of the continuum (or `(here! :bN

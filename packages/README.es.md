@@ -7,7 +7,7 @@ publicados en npm bajo el ámbito `@kairotic` y servidos dentro de claude.ai por
 
 | Paquete | Clases |
 |---|---|
-| [`@kairotic/synth`](synth/) | `adsr~ [a d s r]` una envolvente que sigue una puerta · `synth~` un sintetizador polifónico · `gendy~ [freq x-step y-min y-max y-step breakpoints]` un oscilador estocástico dinámico, a partir de Xenakis |
+| [`@kairotic/synth`](synth/) | `adsr~ [a d s r]` una envolvente que sigue una puerta · `synth~` un sintetizador polifónico · `gendy~ [freq x-step y-min y-max y-step breakpoints]` un oscilador estocástico dinámico, a partir de Xenakis · `click~ [frec acento caída]` el clic de un metrónomo, con los tiempos acentuados |
 | [`@kairotic/spatial`](spatial/) | `pan~ [posición]` panorama estéreo · `space~ [x y]` colocación binaural alrededor de quien escucha |
 | [`@kairotic/controls`](controls/) | `knob [mín máx inicial] [log] [nombre]` un control giratorio con su propia vista en el patch · `keyboard [grave teclas] [hold]` un teclado MIDI virtual con velocidad y acordes, para synth~ y faust~ · `scale [ent-mín ent-máx sal-mín sal-máx] [log] [ms]` un número de un rango a otro, en proporciones iguales con log, deslizando con ms, aprendiendo su rango de entrada |
 | [`@kairotic/analysis`](analysis/) | `features~ [ms] [descriptor …]` descriptores (rms, centroid, flatness, mfcc… con Meyda) · `pitch~ [lo hi]` la altura, por YIN · `onset~ [umbral] [ms]` los comienzos de los sonidos · `chroma~` las 12 clases de altura · `spectrum~ [lo hi]` el espectro, dibujado · `transcribe [bpm] [notes|glide]` lo que oye pitch~, en un freqt · `form~ [segundos] [paso] [núcleo]` autosimilitud: dónde empiezan los segmentos, el periodo que se repite · `monitor [segundos] [nombre …]` cualquier flujo de mensajes, dibujado en el tiempo |
