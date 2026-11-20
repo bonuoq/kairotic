@@ -285,14 +285,15 @@
     id))
 
 (defn import-music-file!
-  "A .mei or MusicXML file into tree box id (or a new one at x y)."
+  "A .mei or MusicXML file (or a .mei.txt, as claude.ai saves one) into tree box id (or a new one at x y)."
   [f id x y]
   (-> (.text f)
       (.then music->tree)
       (.then (fn [t] (let [b (place-tree! t id x y)] (repl-print! "out" (esc (str "; " (.-name f) " → " b " · " (mt/summary t)))))))
       (.catch (fn [e] (repl-print! "err" (esc (str "Could not read " (.-name f) ": " (or (.-message e) e))))))))
 
-(defn music-file? [f] (boolean (re-find #"(?i)\.(mei|musicxml|xml)$" (.-name f))))
+;; (a .mei.txt is a MEI saved on claude.ai, which offers .txt but not .mei — as the studies' exports are)
+(defn music-file? [f] (boolean (re-find #"(?i)\.(mei|musicxml|xml)(\.txt)?$" (.-name f))))
 
 (defn import-mei!
   "Opens a .mei or MusicXML file into a tree box: (import-mei!) makes a new one, (import-mei! :b3) writes into b3."
@@ -301,7 +302,7 @@
    (when id (when-not (tree-box? (need-box id)) (fail (str id " is not a tree box"))))
    (let [inp (js/document.createElement "input") [x y] (auto-pos)]
      (set! (.-type inp) "file")
-     (set! (.-accept inp) ".mei,.musicxml,.xml,application/mei+xml,application/vnd.recordare.musicxml+xml")
+     (set! (.-accept inp) ".mei,.musicxml,.xml,.txt,application/mei+xml,application/vnd.recordare.musicxml+xml")
      (.addEventListener inp "change" (fn [_] (when-let [f (aget (.-files inp) 0)] (import-music-file! f id x y))))
      (.click inp)
      :choose-a-file)))

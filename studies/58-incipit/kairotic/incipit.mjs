@@ -195,12 +195,15 @@ export function pieceAt(tree, id, per = PER) {
 const SIG = { C: 0, G: 1, D: 2, A: 3, E: 4, B: 5, "F#": 6, "C#": 7, F: -1, Bb: -2, Eb: -3, Ab: -4, Db: -5, Gb: -6, Cb: -7 };
 const RELATIVE = { A: "C", E: "G", B: "D", "F#": "A", "C#": "E", "G#": "B", "D#": "F#", D: "F", G: "Bb", C: "Eb", F: "Ab", Bb: "Db", Eb: "Gb" };
 const SHARPS = "FCGDAEB", FLATS = "BEADGCF";
-export function meiOf(piece, key) {
+/** The piece as MEI: opts {title, ext (EDN, written into <extMeta type="kairotic"> as the app's kairotic.mei reads
+ *  it)}. Every note and rest has an xml:id, the staves are labelled (melody, bass). */
+export function meiOf(piece, key, { title = "Kairotic", ext = null } = {}) {
   const tonic = key.tonic.replace("♯", "#").replace("♭", "b");
   const fifths = SIG[key.mode === "minor" ? RELATIVE[tonic] ?? "C" : tonic] ?? 0;
   const sig = fifths >= 0 ? SHARPS.slice(0, fifths) : FLATS.slice(0, -fifths), sAcc = fifths >= 0 ? "s" : "f";
   const nBars = Math.ceil(piece.units / 2);
-  const voice = (names, phraseMarks) => {
+  let nid = 0;
+  const voice = (names, phraseMarks, st) => {
     const bars = Array.from({ length: nBars }, () => []);
     for (let t = 0; t < names.length;) {
       let e = t + 1;
@@ -213,26 +216,60 @@ export function meiOf(piece, key) {
         const inSig = sig.includes(m[1]) ? sAcc : "n";
         const accA = acc === inSig ? (acc === "n" ? "" : ` accid.ges="${acc}"`) : ` accid="${acc}"`;
         const tie = e - t === len ? "" : s === t ? ' tie="i"' : end === e ? ' tie="t"' : ' tie="m"';
-        bars[bar].push(`<note pname="${m[1].toLowerCase()}" oct="${m[3]}" dur="${len === 2 ? "1" : "2"}"${accA}${tie}/>`);
+        bars[bar].push(`<note xml:id="${st}n${++nid}" pname="${m[1].toLowerCase()}" oct="${m[3]}" dur="${len === 2 ? "1" : "2"}"${accA}${tie}/>`);
         s = end;
       }
       t = e;
     }
     return bars;
   };
-  const top = voice(piece.melody.map((x) => x.replace("♯", "#").replace("♭", "b")), true);
-  const low = voice(piece.bass.map((x) => x.replace("♯", "#").replace("♭", "b")), true);
-  const fill = (xs, b) => (xs[b].length ? xs[b].join("") + (b === nBars - 1 && piece.units % 2 ? "<rest dur=\"2\"/>" : "") : "<mRest/>");
+  const top = voice(piece.melody.map((x) => x.replace("♯", "#").replace("♭", "b")), true, "m");
+  const low = voice(piece.bass.map((x) => x.replace("♯", "#").replace("♭", "b")), true, "b");
+  const fill = (xs, b, st) => (xs[b].length ? xs[b].join("") + (b === nBars - 1 && piece.units % 2 ? `<rest xml:id="${st}r${b + 1}" dur="2"/>` : "") : `<mRest xml:id="${st}r${b + 1}"/>`);
   const measures = Array.from({ length: nBars }, (_, b) => `<measure n="${b + 1}"${b === nBars - 1 ? ' right="end"' : piece.starts.includes(2 * b + 2) || piece.starts.includes(2 * b + 1) ? ' right="dbl"' : ""}>` +
-    `<staff n="1"><layer n="1">${fill(top, b)}</layer></staff><staff n="2"><layer n="1">${fill(low, b)}</layer></staff>` +
+    `<staff n="1"><layer n="1">${fill(top, b, "m")}</layer></staff><staff n="2"><layer n="1">${fill(low, b, "b")}</layer></staff>` +
     // (a key reached: named over the staff, where its first unit falls)
     [2 * b, 2 * b + 1].filter((t) => t < piece.units && piece.keys && (t === 0 ? false : piece.keys[t] !== piece.keys[t - 1]))
       .map((t) => `<dir place="above" staff="1" tstamp="${t - 2 * b + 1}"><rend fontstyle="italic">${piece.keys[t].replace("♯", "#").replace("♭", "b")}</rend></dir>`).join("") +
     `</measure>`).join("");
-  return `<?xml version="1.0" encoding="UTF-8"?><mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.0"><music><body><mdiv><score>` +
-    `<scoreDef keysig="${fifths === 0 ? "0" : Math.abs(fifths) + sAcc}" meter.count="2" meter.unit="2" meter.sym="cut"><staffGrp symbol="brace" bar.thru="true">` +
-    `<staffDef n="1" lines="5" clef.shape="G" clef.line="2"/><staffDef n="2" lines="5" clef.shape="F" clef.line="4"/></staffGrp></scoreDef>` +
+  const xml = (x) => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<?xml version="1.0" encoding="UTF-8"?><mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.0">` +
+    `<meiHead><fileDesc><titleStmt><title>${xml(title)}</title></titleStmt><pubStmt/></fileDesc>` +
+    (ext ? `<extMeta type="kairotic"><![CDATA[${ext.replace(/]]>/g, "]]]]><![CDATA[>")}]]></extMeta>` : "") + `</meiHead><music><body><mdiv><score>` +
+    `<scoreDef key.sig="${fifths === 0 ? "0" : Math.abs(fifths) + sAcc}" meter.count="2" meter.unit="2" meter.sym="cut"><staffGrp symbol="brace" bar.thru="true">` +
+    `<staffDef n="1" label="melody" lines="5" clef.shape="G" clef.line="2"/><staffDef n="2" label="bass" lines="5" clef.shape="F" clef.line="4"/></staffGrp></scoreDef>` +
     `<section>${measures}</section></score></mdiv></body></music></mei>`;
+}
+
+// ─── exporting, for the app ───
+/** EDN of a JS value: objects as maps with keyword keys, arrays as vectors; {kw: "par"} a keyword. */
+export function edn(v) {
+  if (v === null || v === undefined) return "nil";
+  if (typeof v === "string") return JSON.stringify(v);
+  if (typeof v === "number") return Number.isFinite(v) ? String(v) : "nil";
+  if (typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return "[" + v.map(edn).join(" ") + "]";
+  if (typeof v === "object" && Object.keys(v).length === 1 && typeof v.kw === "string") return ":" + v.kw;
+  return "{" + Object.entries(v).filter(([, x]) => x !== undefined).map(([k, x]) => ":" + k.replace(/[^A-Za-z0-9*+!_?<>=.-]/g, "-") + " " + edn(x)).join(", ") + "}";
+}
+/**
+ * The piece up to a point as a MEI file for the app (a tree box, through kairotic.mei): the melody and the bass as
+ * two voices, and on the root what MEI has no place for — where each phrase begins, its plan, cadence, keys and
+ * derivation, who wrote it — in the <extMeta> the app reads. opts {title, source, more(node) → extra fields of a
+ * phrase, extra (more fields of the root)}. → {mei, name (a file name, .mei)}.
+ */
+export function exportOf(tree, id, { title = "An incipit taken on", source = "Kairotic Study 58 · incipit", more = () => ({}), extra = {} } = {}) {
+  const piece = pieceAt(tree, id);
+  const phrases = piece.path.map((n, i) => {
+    const ks = keysOf(n.phrase, split(n.phrase.bass).length, tree.key).map(keyLabel);
+    return { unit: piece.starts[i] + 1, bar: Math.floor(piece.starts[i] / 2) + 1, plan: n.phrase.plan || null, cadence: n.phrase.cadence || null,
+             keys: ks.filter((k, j) => !j || k !== ks[j - 1]), by: n.by, about: n.phrase.about || null, derivation: n.phrase.derivation || null,
+             bass: split(n.phrase.bass).join(" "), melody: split(n.phrase.melody).join(" "), ...more(n) };
+  });
+  const root = { name: title, source, "home-key": keyLabel(tree.key), made: new Date().toISOString().slice(0, 10), phrases, ...extra };
+  const ext = edn({ kairotic: 1, "root-tag": { kw: "par" }, root });
+  const name = title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").toLowerCase() + ".mei";
+  return { mei: meiOf(piece, tree.key, { title, ext }), name };
 }
 
 // ─── asking Claude ───

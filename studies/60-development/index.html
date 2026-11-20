@@ -142,6 +142,8 @@ dl.point dd { margin: 0; font-family: var(--f-code); font-size: 12px; overflow-w
     <button class="act" id="play">▶ From the start</button>
     <button class="act" id="play-last">▶ This phrase</button>
     <button class="act" id="halt">■ Stop</button>
+    <input class="line" id="exp-title" style="width:14em" value="A piece developed" aria-label="The title of the piece, for the file" spellcheck="false">
+    <button class="act" id="export">Export MEI, for the app</button>
     <label class="inline" for="mark-from">Mark a motive here: units <input type="number" id="mark-from" min="1"> to <input type="number" id="mark-to" min="1"></label>
     <button class="act" id="mark">Mark</button>
   </div>
@@ -519,12 +521,36 @@ window.addEventListener("DOMContentLoaded", function () {
           (save!) (render-all!))
       (set! (.-textContent ($ "hand-facts")) (str "It does not pass: " (errors-text (.-check n)))))))
 
+;; ───────── exporting: the piece up to the point as MEI, for the app (a tree box; its phrases in the extMeta) ─────────
+;; On claude.ai a file is offered through the downloads capability, which allows .txt but not .mei: it is saved as
+;; .mei.txt, which the app opens as MEI (dropped on the patch, or with (import-mei!)). Elsewhere, a link: .mei.
+(defn export! []
+  (let [{:keys [tree sel]} @st
+        e (.exportOf I tree sel #js {:title (let [t (val! "exp-title")] (if (seq t) t "Kairotic"))})
+        blob (js/Blob. #js [(.-mei e)] #js {:type "application/mei+xml"})
+        said (fn [s] (status! s))]
+    (if-let [cl (.-claude js/window)]
+      (-> (.use cl "downloads")
+          (.then (fn [dl]
+                   (if-not dl
+                     (said "This view cannot save files.")
+                     (-> (.save dl #js {:filename (str (.-name e) ".txt") :data blob})
+                         (.then (fn [_] (said (str "Saved " (.-name e) ".txt: open it in the app (drop it on the patch)"))))
+                         (.catch (fn [x] (said (if (= "declined" (.-code x)) "Not saved." (str "Not saved: " (or (.-message x) (.-code x)))))))))))
+          (.catch (fn [_] (said "This view cannot save files."))))
+      (let [a (js/document.createElement "a") url (js/URL.createObjectURL blob)]
+        (set! (.-href a) url) (set! (.-download a) (.-name e))
+        (.appendChild js/document.body a) (.click a) (.remove a)
+        (js/setTimeout (fn [] (js/URL.revokeObjectURL url)) 4000)
+        (said (str "Saved " (.-name e)))))))
+
 ;; ───────── events ─────────
 (.addEventListener ($ "start") "click" (fn [_] (start!)))
 (.addEventListener ($ "pick") "click" (fn [_] (pick!)))
 (.addEventListener ($ "play") "click" (fn [_] (play! false)))
 (.addEventListener ($ "play-last") "click" (fn [_] (play! true)))
 (.addEventListener ($ "halt") "click" (fn [_] (halt!)))
+(.addEventListener ($ "export") "click" (fn [_] (export!)))
 (.addEventListener ($ "ask") "click" (fn [_] (ask!)))
 (.addEventListener ($ "stop") "click" (fn [_] (when-let [c @ctl] (.abort c))))
 (.addEventListener ($ "engine") "click" (fn [_] (engine!)))

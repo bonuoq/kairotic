@@ -203,4 +203,15 @@ export function engineDevelop(tree, at, bass, { keys = "", cadence = "authentic"
   return best;
 }
 
+/** The piece up to a point as a MEI file for the app (incipit.mjs's exportOf), with the material and, for each
+ *  phrase, its role in the form and what was measured of its derivation. */
+export function exportOf(tree, id, { title = "A piece developed" } = {}) {
+  return I.exportOf(tree, id, {
+    title, source: "Kairotic Study 60 · development",
+    extra: { form: tree.plan, motives: tree.motives.map((m) => ({ id: m.id, notes: m.notes.join(" "), phrase: I.pathTo(tree, m.node).length, units: [m.from + 1, m.to + 1], why: m.why })) },
+    more: (n) => (n.dev ? { role: n.dev.role ? n.dev.role.role : null, measured: n.dev.matches[0] ? `motive ${n.dev.matches[0].motive}, ${n.dev.matches[0].name}` : null,
+                            kinship: n.dev.kinship, confirmed: n.dev.confirmed, score: n.dev.score } : {}),
+  });
+}
+
 export const { pathTo, childrenOf, pieceAt, meiOf, hzOf, keyLabel, INCIPITS, check, endingOf, rangeOf, engineMelody } = I;

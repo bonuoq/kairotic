@@ -122,6 +122,23 @@ export async function views(page, check) {
   const mt2 = (await cljs(page, `(place-tree! (mei/<-mei (mei ${ct})) nil 2100 1500)`)).trim();
   const p1 = await cljs(page, `(mt/pitches (tree-data ${ct}))`), p2 = await cljs(page, `(mt/pitches (tree-data ${mt2}))`);
   check("a tree read from MEI goes into a new tree box (as a dropped .mei file does), with the same notes", p2 === p1, p1 + " / " + mt2 + " → " + p2);
+  // a study's export (Studies 58 and 60: the piece up to a point, its phrases in the extMeta) opens as a tree box
+  {
+    const I = await import("../studies/58-incipit/kairotic/incipit.mjs");
+    const x = I.INCIPITS["short-c"];
+    let T = I.treeOf(x.phrase, { key: x.key }), n;
+    [T, n] = I.addPhrase(T, "p0", { bass: "C3 D3 E3 F#3 G3 C3 D3 G2", keys: "C C C G G G G G", melody: "E4 E4 F4 A4 G4 G4 D4 D4 E4 F#4 G4 A4 F#4 F#4 G4", cadence: "perfect", plan: "to G" });
+    const e = I.exportOf(T, n.id, { title: "From a study" });
+    await page.evaluate((t) => { window.kairoticStudyMei = t; }, e.mei);
+    const sb = (await cljs(page, `(place-tree! (mei/<-mei (.-kairoticStudyMei js/window)) nil 2300 1500)`)).trim();
+    check("a study's MEI (Study 58's export) opens as a tree box: two voices, the melody and the bass",
+      (await cljs(page, `(mapv (comp :name mt/attrs) (mt/voices-of (tree-data ${sb})))`)) === '["melody" "bass"]');
+    { const mp = await cljs(page, `(mt/pitches (first (mt/voices-of (tree-data ${sb}))))`);
+      check("... its notes as written: the melody from G4, with F♯ in G", /^\["g4"/i.test(mp) && /"f(s|#|♯)4"/i.test(mp), mp); }
+    check("... its phrases kept on the root, from the extMeta", (await cljs(page, `(mapv (juxt :unit :plan :keys) (:phrases (mt/attrs (tree-data ${sb}))))`)) === '[[1 "a cadential phrase" ["C major"]] [11 "to G" ["C major" "G major"]]]',
+      await cljs(page, `(pr-str (dissoc (mt/attrs (tree-data ${sb})) :phrases))`));
+    check("... a .mei.txt (saved on claude.ai) is a music file", (await cljs(page, `(music-file? #js {:name "from-a-study.mei.txt"})`)) === "true");
+  }
   await cljs(page, `(continuum! ${ct} :dissolve)`);
   check("(continuum! :bN :dissolve) shows the tree box as a continuum, kept in the tree",
     (await cljs(page, `[(view-of (need-box ${ct})) (some? (:res (:continuum (mt/attrs (tree-data ${ct})))))]`)) === "[:continuum true]");
