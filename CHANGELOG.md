@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The leading tone goes up to the tonic, over the whole phrase** (IJzerman 2–3; `@kairotic/cac` 0.4.1). A soft rule in
+  `partimento.mjs` (`leading-tone`, weight 1.5): not only at the cadence — where it is a hard rule — but wherever the
+  leading tone sounds, it costs to leave it otherwise than up to ①; full where it functions (its bass a dominant, or
+  going to ①), half in a sequence. Its exceptions cost nothing: a middle voice down to ⑤ over ① (the tonic chord
+  completed, as Bach's inner voices do), down a scale by step, a suspension resolving down, the dominant going on
+  (the bass on ⑤ still), a change of key, held. **Study 56**'s cadence lets the middle voice go down to ⑤, the leading
+  tone read in each unit's key. Measured: where it functions the engine now resolves it (or has a reason not to)
+  about 70% of the time, 60% without the rule; the rest refused by hard rules (octaves, a leap that must turn).
 - **Study 59 · galant: the Galant schemata** (IJzerman, chapter 5; `@kairotic/cac` 0.4.0). `partimento.mjs` has the
   leaping Romanesca, the Quiescenza, the Prinner (and the modulating Prinner), the Monte Romanesca, the Fenaroli and
   the Folia as data (`GALANT`, `galantBass`), the book's prototypes among their realizations, and what they need: a

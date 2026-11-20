@@ -427,7 +427,7 @@ export function schemata(spec = {}) {
   }
   // ─── the soft rules: what a candidate costs, and the engine ───
   // (the 3–6 alternation is a schema here, not a habit to avoid: its weight is 0 unless asked)
-  const W = { ...defaultWeights(), alternation: 0, ...(spec.weights || {}) };
+  const W = { ...defaultWeights(), alternation: 0, "leading-tone": 1.5, ...(spec.weights || {}) };
   const bassLine = B.map((b) => b.d);
   const softCtx = (t, c) => ({
     N: 7, strong: (u) => strong(u),
@@ -439,7 +439,33 @@ export function schemata(spec = {}) {
   /** The soft cost of the upper note c after U, by rule: {id: cost}. */
   function costParts(U, c) {
     const t = U.length, up = U.map(D);
-    return { ...melodicParts(up, D(c), W), ...verticalParts(bassLine.slice(0, t), up, bassLine[t], D(c), softCtx(t, c), W) };
+    const lt = leadingTone(U, t, c);
+    return { ...melodicParts(up, D(c), W), ...verticalParts(bassLine.slice(0, t), up, bassLine[t], D(c), softCtx(t, c), W), ...(lt ? { "leading-tone": lt } : {}) };
+  }
+  // the leading tone goes up to the tonic (a soft rule, everywhere: what the cadence asks of it as a hard one). Not
+  // where it has a reason not to: in a middle voice down to ⑤ over ① (the chord of the tonic completed, as Bach's
+  // inner voices do), on its way down a scale by step (⑧ ⑦ ⑥), while the dominant goes on (the bass on ⑤ still: it
+  // may leap within its chord), where the key changes (it is no longer the leading tone), held (its resolution put
+  // off), a dissonance itself (a suspension resolves down), or at the end (a half cadence); in a sequence — its bass
+  // not a dominant, nor going to ① — it weighs half.
+  const bassDeg = (t) => locB(t);
+  function leadingTone(U, t, c) {
+    const w = W["leading-tone"] ?? 0;
+    if (!w || t < 1) return 0;
+    const prev = U[t - 1];
+    if (prev === undefined || c === prev) return 0;
+    const lp = loc(t - 1, prev), kp = LOC[t - 1].key;
+    if (!(lp.deg === 6 && (kp.mode === "major" ? lp.alt === 0 : lp.alt === 1))) return 0;
+    if (LOC[t].key.tonic !== kp.tonic || LOC[t].key.mode !== kp.mode) return 0;
+    const step = D(c) - D(prev), lc = loc(t, c);
+    if (step === 1 && lc.deg === 0) return 0;
+    if (middle && lc.deg === 4 && step === -2 && bassDeg(t) === 0) return 0;
+    const a1 = t >= 2 ? U[t - 2] : null;
+    if (step === -1 && a1 !== null && D(prev) - D(a1) === -1) return 0;
+    if (step === -1 && vertical(t - 1, prev).q === "dissonant") return 0;
+    if (bassDeg(t) === 4 && bassDeg(t - 1) === 4) return 0;
+    const functional = B[t - 1].dominant || bassDeg(t) === 0;
+    return functional ? w : w / 2;
   }
   /** The engine: the voice continued from U to the end, each note a softmax of −cost / temperature among those
    *  with a future ({temp: 1, follow: true (colder where few futures are left), r}). */
@@ -563,7 +589,7 @@ export function schemata(spec = {}) {
   }
 
   return { spec, schema, key: K, bass: B, n, phase, strong, lo, hi, figured, codes, vertical, check, count, fan, sample, engine, cost, costParts, weights: W, figurings, figuringOf, sampleFiguring, realize, judge, figures, cadence,
-           code: (name) => codeOf(K, name), name: (c) => K.name(D(c), A(c)), degree: D, raised: A, alter: A, hz: (c) => K.hz(D(c), A(c)), loc, locB, inKey, keys: LOC, bassPassing, memo };
+           code: (name) => codeOf(K, name), name: (c) => K.name(D(c), A(c)), degree: D, raised: A, alter: A, hz: (c) => K.hz(D(c), A(c)), loc, locB, inKey, keys: LOC, bassPassing, leadingTone, memo };
 }
 
 /** The code of a note name in a key ("E5", "G#4", "Bb3"): 3·degree + alteration + 1, the degree in the key's letters
