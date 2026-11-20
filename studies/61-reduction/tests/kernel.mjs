@@ -47,6 +47,9 @@ export async function run() {
   is("the 7–6 chain: its suspensions taken away first, parallel 6ths under it (B G, A F, G E)", B.levels.some((L) => / B3G5 A3F5 G3E5 /.test(show(L))) && B.steps.slice(0, 3).every((s) => s.op === "unsplit"));
   is("… in one pass, across the whole chain: the first level takes five suspensions at once, bars 2 to 6", R.stepsInto(B, 1).length === 5 && new Set(R.stepsInto(B, 1).map((s) => Math.floor(s.on / 2))).size === 5 && show(B.levels[1]).includes("B3G5 A3F5 G3E5 F3D5"));
   notes.push(`7–6 chain, level 1: ${show(B.levels[1])}`);
+  const ev = (es) => es.map((e) => `${e.pitch}@${e.on}+${e.dur}`).join(" ");
+  is("what a level sounds is its slices: in the 7–6 chain's level 1 B3 enters where its slice begins (unit 3), held two units", ev(R.soundAt(B, 1)).includes("B3@3+2") && ev(R.soundAt(B, 1)).includes("A3@5+2"));
+  is("… the surface sounds as written: the level 0 events are the phrase's own", ev(R.soundAt(B, 0)) === ev(R.soundOf(s76.phrase).sort((a, b) => a.on - b.on || a.voice.localeCompare(b.voice))));
   const shape = (an) => an.levels.map((L) => L.map((s) => s.on).join(".")).join("|");
   is("an analysis is an interpretation: warmer, other levels for some draws (the 7–6 chain)", [1, 2, 3, 4, 5, 6, 7].some((s) => shape(R.reduce(s76.phrase, { key: s76.key, temp: 1, r: rng(s) })) !== shape(B)));
   const am = INCIPITS["short-am"], C = R.reduce(am.phrase, { key: am.key });

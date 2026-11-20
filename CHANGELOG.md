@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Study 61: a level plays as it is drawn** (fix): the player put a level's bass on the bars' starts only, but a
+  slice of a reduced level may begin on a weak unit (in the 7–6 chain's first level B3 enters on unit 3), so the bass
+  sounded a unit late. Each level now plays its slices' own notes (`eventsOf`), and the phrase and the variation
+  their notes as written.
 - **Study 61: a level is a pass over the whole phrase** (discussion #321). The reduction took one step a level, the
   cheapest anywhere, so it went bar by bar; now each level is a pass, as GTTM's time-span reduction goes down the
   metrical grid: every step that can be taken is, cheapest first, judged against the level below (a parent kept is
