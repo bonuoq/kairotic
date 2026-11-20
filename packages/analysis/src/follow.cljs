@@ -9,10 +9,10 @@
       ;; what the follower found: where the performer is (outlets 0 and 1), the wires that went on (what they send, 2)
       found-out (fn [st found]
                   (let [at (last (keep (fn [[k x]] (when (= k :at) x)) found))
-                        cues (keep (fn [[k x]] (when (= k :cue) x)) found)]
-                    [(cond-> st at (assoc :at (:beat at)) (seq cues) (assoc :cue (:cue (last cues))))
+                        cues (keep (fn [[k x]] (when (= k :wire) x)) found)]
+                    [(cond-> st at (assoc :at (:beat at)) (seq cues) (assoc :cue (:send (last cues))))
                      (vec (concat (when at [[0 (:beat at)] [1 [:note (:id at)]]])
-                                  (map (fn [c] [2 (:cue c)]) cues)))]))
+                                  (map (fn [c] [2 (:send c)]) cues)))]))
       ;; a note begins at t (seconds from start) at midi: the follower hears it
       note-on (fn [st t midi]
                 (let [fl (if (:cur st) (api/follow-release (:fl st) t) (:fl st))
@@ -48,7 +48,7 @@
   {;; ── about ──
    :class "follow"
    :license "MPL-2.0"
-   :doc "Follows a performer through a tree (discussion #204): a tree on the right (from a tree box), Hz on the left (from pitch~: 0 when it hears none) and onsets in the middle (from onset~: a note begins there even on the same pitch). start begins at the top of the tree, stop ends. Each note heard is matched with a note of the tree a little ahead of where the performer was, by its pitch (an octave off still counts) and by when it was expected at the tempo the performer goes; wrong notes and ornaments are let pass, skipped notes are skipped. Out: the written beat where the performer is, [:note id], what each wire sends when it goes on — a note's own :cue, or a wire drawn on the tree's continuum ((wire! :bN note :send {:kind :elastic …})): a rigid one on its note (or caught up once at the next note found if it was passed over), an elastic one on its note if the performer gets there in time and else on its own, at the time the note was expected plus its tolerance (or at that time whatever the performer does, if the electronics lead) —, and at stop the take — where each note was played, in seconds — as [:take {…}]: into the tree box's inlet it is kept only for you (a message [:take … :work] keeps it in the tree), and its continuum can show it."
+   :doc "Follows a performer through a tree (discussion #204): a tree on the right (from a tree box), Hz on the left (from pitch~: 0 when it hears none) and onsets in the middle (from onset~: a note begins there even on the same pitch). start begins at the top of the tree, stop ends. Each note heard is matched with a note of the tree a little ahead of where the performer was, by its pitch (an octave off still counts) and by when it was expected at the tempo the performer goes; wrong notes and ornaments are let pass, skipped notes are skipped. Out: the written beat where the performer is, [:note id], what each wire sends when it goes on — wires are written on their notes ([:note {… :wire {:send :swell :kind :elastic :tol 0.5}}], or (wire! :bN note :swell {…})): a rigid one on its note (or caught up once at the next note found if it was passed over), an elastic one on its note if the performer gets there in time and else on its own, at the time the note was expected plus its tolerance (or at that time whatever the performer does, if the electronics lead) —, and at stop the take — where each note was played, in seconds — as [:take {…}]: into the tree box's inlet it is kept only for you (a message [:take … :work] keeps it in the tree), and its continuum can show it."
    :usage "follow [ahead] [band]"
    :io [3 4]
    :size [124 30]
@@ -61,7 +61,7 @@
                   ;; the tree to follow
                   (= inlet 2)
                   (if (and (vector? value) (keyword? (first value)))
-                    (let [sc (api/follow-score value) st (assoc st :score sc :wires (api/follow-wires value sc))]
+                    (let [sc (api/follow-score value) st (assoc st :score sc :wires (api/follow-wires sc))]
                       {:state st :show (shown st)})
                     {})
                   (= value :start)

@@ -364,10 +364,10 @@ registerProcessor('kairotic-tap', KairoticTap);
 
 ;; ───────── following a performer through a tree (discussion #204) ─────────
 
-(defn follow-score "The notes a tree is followed by ({:id :midi :ws :wd :beat :cue}), its first voice." [tree] (fl/score tree))
+(defn follow-score "The notes a tree is followed by ({:id :midi :ws :wd :beat :wire}), its first voice." [tree] (fl/score tree))
 (defn follow-start "A follower at the beginning of a score; opts :ahead (4) :band (0.6 semitones) :octave (true) :wires." [evs opts] (fl/start evs opts))
-(defn follow-hear "A note heard at t (seconds) at midi → [state found]: [:at {:id :i :beat :t :skipped}] and [:cue {:cue :id :status}]." [state t midi] (fl/hear state t midi))
-(defn follow-wires "The wires a tree is followed with (its notes' :cue, its continuum's :wires), for follow-start's :wires." [tree evs] (fl/wires tree evs))
+(defn follow-hear "A note heard at t (seconds) at midi → [state found]: [:at {:id :i :beat :t :skipped}] and [:wire {:send :id :status}]." [state t midi] (fl/hear state t midi))
+(defn follow-wires "The wires of a score (its notes' :wire), for follow-start's :wires." [evs] (fl/wires evs))
 (defn follow-tick "Time passes until t: the elastic wires due go on → [state found]." [state t] (fl/tick state t))
 (defn follow-due "When the next elastic wire would go on by itself, or nil." [state] (fl/next-due state))
 (defn follow-release "The note found last stopped sounding at t." [state t] (fl/release state t))
