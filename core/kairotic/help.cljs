@@ -638,13 +638,14 @@
     :doc "Follows a performer through a tree (discussion #204): each note heard is matched with a note a little ahead of where the performer was, by pitch and by when it was expected at the performer's tempo; wrong notes pass, skipped notes are skipped. Wires written on the notes ([:note {… :wire {:send :swell}}], or (wire! :bN note :swell)) send what they send: rigid when the note is reached (or caught up once, if it was passed over), elastic on their own at the expected time plus a tolerance if the note does not come, or led by the electronics at that time. At :stop, the take — where each note was played — for the tree box."
     :inlets ["Hz from pitch~ (0: silence); :start, :stop" "onsets (from onset~): a new note even on the same pitch" "the tree to follow (from a tree box)"]
     :outlets ["the written beat where the performer is" "[:note id]: the note found" "what a wire sends when it goes on" "at :stop, [:take {…}]: into the tree box, kept only for you"]
-    :messages [[":start" "from the top of the tree"] [":stop" "ends, and sends the take"]]
+    :messages [[":start" "from the top of the tree"] [":stop" "ends, and sends the take"]
+               ["[:here \"n3\"] · (here! :bN 3) · a click on a note of the continuum" "the performer is there: ahead, as if heard; back, from there again (its wires go on again)"]]
     :example (lines "(box :b1 \"tree\" 420 30)" "(tree! :b1 [:voice {:tempo 72} [:measure {:meter [4 4]} \"c4/1 e4 g4 c5\"] [:measure [:note {:pitch \"g4\" :dur 2 :wire {:send :swell}}] [:note {:pitch \"e4\" :dur 1 :wire {:send :fade :kind :elastic :tol 0.5}}] \"c4/1\"]])"
                     "(box :b2 \"adc~ 1\" 40 30)" "(box :b3 \"pitch~ 80 1000\" 40 90)" "(box :b4 \"onset~\" 240 90)"
                     "(box :b5 \"msg :start\" 40 150)" "(box :b6 \"msg :stop\" 140 150)" "(box :b7 \"follow\" 40 210)" "(box :b8 \"print\" 200 270)"
                     "(connect :b2 0 :b3 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b7 0)" "(connect :b4 0 :b7 1)" "(connect :b1 0 :b7 2)"
                     "(connect :b5 0 :b7 0)" "(connect :b6 0 :b7 0)" "(connect :b7 2 :b8 0)" "(connect :b7 3 :b1 0)")
-    :try "Press ▶, click :start and play or sing the tree: its label shows the beat you are at, the print :swell when you reach the long G — even if you skip it, at the next note — and :fade at the E, or half a second after it was due if you stop before it. (view :b1 :continuum) draws the wires, rigid solid and elastic dashed. Click :stop: the take goes into the tree box, only for you; (continuum! :b1 {:take …}) — (takes :b1) gives its id — shows where you played each note."
+    :try "Press ▶, (view :b1 :continuum), click :start and play or sing the tree: the continuum shows the notes found, the ones skipped and where you are, the wires that went on — click a note to tell it where you are —; its label shows the beat you are at, the print :swell when you reach the long G — even if you skip it, at the next note — and :fade at the E, or half a second after it was due if you stop before it. The wires are drawn rigid solid and elastic dashed. Click :stop: the take goes into the tree box, only for you; (continuum! :b1 {:take …}) — (takes :b1) gives its id — shows where you played each note."
     :see ["pitch~" "onset~" "tree" "transcribe"]}
 
    "spectrum~"

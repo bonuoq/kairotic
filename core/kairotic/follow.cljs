@@ -112,6 +112,34 @@
           (if (:last st) (/ (js/Math.abs (- t (expected st j))) (max 0.25 (* 2 (:wd e)))) 0))
        j])))
 
+(defn- arrive
+  "The performer is at note j at t (heard there, or told): the state and what that sets off ([:at …] and wires)."
+  [st t j]
+  (let [e (get-in st [:evs j])
+        t0 (or (:t0 st) (- t (:ws e)))
+        ;; the rate: written seconds into played ones, held between ½ and 2 (over the last four notes found: the
+        ;; performer's tempo changes)
+        rate (if-let [[i0 tf] (when-let [i (first (take-last 4 (:order st)))] [i (first (get-in st [:played (get-in st [:evs i :id])]))])]
+               (let [dw (- (:ws e) (get-in st [:evs i0 :ws])) dp (- t tf)]
+                 (if (> dw 0.2) (max 0.5 (min 2 (/ dp dw))) (:rate st)))
+               1)
+        st2 (-> st
+                (assoc :t0 t0 :next (inc j) :last [j t] :rate rate)
+                (update :played assoc (:id e) [t nil])
+                (update :order conj j))
+        ;; the wires up to this note: its own on the note (but one the electronics lead: that keeps its time), the
+        ;; rigid ones passed over caught up here, the elastic ones passed over gone on
+        [st3 found] (reduce (fn [[st found] w]
+                              (cond
+                                (not (contains? (:pending st) (:id w))) [st found]
+                                (> (:note w) j) [st found]
+                                (and (= (:note w) j) (= :elastic (:kind w)) (= :electronics (:leader w))) [st found]
+                                (= (:note w) j) (let [[st f] (fire st w t "on the note")] [st (conj found f)])
+                                (= :rigid (:kind w)) (let [[st f] (fire st w t "caught up")] [st (conj found f)])
+                                :else (let [[st f] (fire st w (min t (or (due st w) t)) (if (= :electronics (:leader w)) "led" "went on"))] [st (conj found f)])))
+                            [st2 []] (:wires st2))]
+    [st3 (into [[:at {:id (:id e) :i j :beat (:beat e) :t t :skipped (count (remove #(:rest (get-in st [:evs %])) (range (:next st) j)))}]] found)]))
+
 (defn hear
   "A note heard at t (seconds) at midi (with decimals). → [state found], found a vector of [:at {…}] and
    [:wire {…}] (the wires that went on): nothing if it is not a note of the score near where the performer is (a
@@ -121,31 +149,35 @@
         cs (candidates st t midi)]
     (if (empty? cs)
       [(update st :extra inc) early]
-      (let [j (second (first (sort-by first cs)))
-            e (get-in st [:evs j])
-            t0 (or (:t0 st) (- t (:ws e)))
-            ;; the rate: written seconds into played ones, held between ½ and 2 (over the last four notes found: the
-            ;; performer's tempo changes)
-            rate (if-let [[i0 tf] (when-let [i (first (take-last 4 (:order st)))] [i (first (get-in st [:played (get-in st [:evs i :id])]))])]
-                   (let [dw (- (:ws e) (get-in st [:evs i0 :ws])) dp (- t tf)]
-                     (if (> dw 0.2) (max 0.5 (min 2 (/ dp dw))) (:rate st)))
-                   1)
-            st2 (-> st
-                    (assoc :t0 t0 :next (inc j) :last [j t] :rate rate)
-                    (update :played assoc (:id e) [t nil])
-                    (update :order conj j))
-            ;; the wires up to this note: its own on the note (but one the electronics lead: that keeps its time), the
-            ;; rigid ones passed over caught up here, the elastic ones passed over gone on
-            [st3 found] (reduce (fn [[st found] w]
-                                  (cond
-                                    (not (contains? (:pending st) (:id w))) [st found]
-                                    (> (:note w) j) [st found]
-                                    (and (= (:note w) j) (= :elastic (:kind w)) (= :electronics (:leader w))) [st found]
-                                    (= (:note w) j) (let [[st f] (fire st w t "on the note")] [st (conj found f)])
-                                    (= :rigid (:kind w)) (let [[st f] (fire st w t "caught up")] [st (conj found f)])
-                                    :else (let [[st f] (fire st w (min t (or (due st w) t)) (if (= :electronics (:leader w)) "led" "went on"))] [st (conj found f)])))
-                                [st2 []] (:wires st2))]
-        [st3 (vec (concat early [[:at {:id (:id e) :i j :beat (:beat e) :t t :skipped (count (remove #(:rest (get-in st [:evs %])) (range (:next st) j)))}]] found))]))))
+      (let [[st found] (arrive st t (second (first (sort-by first cs))))]
+        [st (into early found)]))))
+
+(defn here
+  "The performer is told to be at note j at t (a correction in a rehearsal, discussion #308: \"I am here\"). Ahead, as
+   if heard there; back (they start again), the notes from j on are to be played again (the take keeps this
+   attempt) and their wires to go on again."
+  [st t j]
+  (let [st (if (< j (:next st))
+             (let [again (set (keep (fn [w] (when (>= (:note w) j) (:id w))) (:wires st)))]
+               (-> st
+                   (update :order (fn [o] (vec (filter #(< % j) o))))
+                   (update :played (fn [p] (apply dissoc p (map :id (subvec (:evs st) j)))))
+                   (update :pending into again)
+                   (assoc :next j :last nil :rate (:rate st))))
+             st)
+        [st early] (tick st t)
+        [st found] (arrive st t j)]
+    [(update st :corrected (fnil inc 0)) (into early found)]))
+
+(defn view
+  "What a follower shows (for a view of it on the tree it follows): the ids played, skipped, the one where the
+   performer is, the wires that went on."
+  [st]
+  (let [evs (:evs st) nx (:next st 0)]
+    {:played (set (keys (:played st)))
+     :now (when-let [[j] (:last st)] (get-in evs [j :id]))
+     :skipped (set (for [i (range nx) :let [e (get evs i)] :when (and (not (:rest e)) (not (contains? (:played st) (:id e))))] (:id e)))
+     :fired (set (remove (:pending st) (map :id (:wires st))))}))
 
 (defn release
   "The note found last stopped sounding at t: its length is kept in the take."

@@ -82,6 +82,16 @@
           wired (fn [t] (vec (keep (fn [x] (when (and (vector? x) (= :rest (first x)) (:wire (second x))) (second x))) (tree-seq vector? seq t))))]
       (t/eq "rests with wires come back from the MEI (it writes rests in a row as one), where they were" (wired back) (wired mt-tree))
       (t/is "… and the MEI is a fixpoint" (= m (mei/->mei back))))
+    ;; "I am here" (discussion #308): a correction while rehearsing
+    (let [sc (fl/score tree)
+          heard (reduce (fn [st [t m]] (first (fl/hear st t m))) (fl/start sc) [[0 60] [1 62]])
+          [ahead found] (fl/here heard 2.5 4)
+          [back _] (fl/here ahead 3 1)]
+      (t/eq "told it is ahead: there, as if heard, the notes between skipped" [(:now (fl/view ahead)) (:skipped (fl/view ahead))] ["n4" #{"n2" "n3"}])
+      (t/is "… what it sets off is said" (= "n4" (:id (second (first found)))))
+      (t/eq "told it is back: from there again, the later notes to be played again"
+            [(:now (fl/view back)) (:played (fl/view back)) (:next back)] ["n1" #{"n0" "n1"} 2])
+      (t/is "… and the wire on that note goes on again" (some #(= "n1" (:id (second %))) (filter #(= :wire (first %)) (second (fl/here ahead 3 1))))))
     (let [rep [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 c4 c4 d4"]]
           {:keys [found]} (fl/follow (fl/score rep) [[0 60 0.5] [1.1 60 0.5] [2.3 60 0.5] [3.2 62 0.5]])]
       (t/eq "repeated notes, one after the other" (mapv :id (keep (fn [[k x]] (when (= k :at) x)) found)) ["n0" "n1" "n2" "n3"]))
