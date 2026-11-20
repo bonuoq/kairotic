@@ -80,6 +80,13 @@ try {
   d.querySelector('[data-bass="folia"]').click();
   await wait(() => K.F.notes.length === 9);
   is("the Folia's bass sets the mode to minor; chapter 4's rules on by default", d.getElementById("mode").value === "minor" && d.getElementById("ro").checked && K.F.key.mode === "minor");
+  // exported for the app (discussion #319): MEI through a scripted downloads capability, as claude.ai offers it
+  const saved = [];
+  w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
+  d.getElementById("finish").click();
+  await wait(() => !d.getElementById("export").disabled);
+  d.getElementById("export").click();
+  is("exported for the app: the melody and the bass, the chords found under it, the intervals in its extMeta", await wait(() => saved.length === 1) && /\.mei\.txt$/.test(saved[0].filename) && /label="melody"/.test(saved[0].text) && /<harm place="below"/.test(saved[0].text) && /:intervals \[/.test(saved[0].text) && /:source "Kairotic Study 56 · figuring"/.test(saved[0].text));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);

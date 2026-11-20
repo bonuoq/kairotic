@@ -148,6 +148,8 @@ table.cad button { font: 11.5px var(--f-ui); }
   <label title="the engine: a softmax of −cost / temperature among the notes with a future (0: the cheapest)">temperature <input type="number" id="temp" min="0" max="5" step="0.1" value="0.5"></label>
   <button class="act" id="finish">Finish it</button>
   <button class="act" id="play" disabled>▶ Play</button>
+  <input id="exp-title" aria-label="The title of the piece, for the file" spellcheck="false" style="width:13em;font:13px var(--f-ui, sans-serif);padding:5px 7px;border:1px solid var(--rule, #ccc);border-radius:6px;background:var(--box, #fff);color:var(--ink, #000)" placeholder="title">
+  <button class="act" id="export" disabled title="the realization as MEI, which the app opens as a tree box (on claude.ai saved as .mei.txt)">Export MEI, for the app</button>
 </div>
 
 <div class="views">
@@ -201,6 +203,7 @@ table.cad button { font: 11.5px var(--f-ui); }
 
 <script type="module">
 import { figuring, BASSES } from "./kairotic/figuring.mjs";
+import { exportMei, fromUnits, barsOf, offer } from "./kairotic/export.mjs";
 
 const $ = (id) => document.getElementById(id);
 let F = null, U = [], M = null, chosen = {}, sel = null, bid = "scale-down", ctx = null, octave = 0, lastSaid = "";
@@ -278,7 +281,7 @@ function render() {
   $("sheet").innerHTML = svg + "</svg>";
   $("sheet").querySelectorAll("[data-t]").forEach((el) => el.addEventListener("click", () => { sel = Number(el.dataset.t); render(); }));
   $("schemata").textContent = found.length ? "found: " + found.map((s) => `${s.name} (units ${s.from + 1}–${s.to + 1})`).join(" · ") : U.length ? "no schema yet" : "";
-  $("undo").disabled = !U.length; $("clear").disabled = !U.length; $("play").disabled = !U.length;
+  $("undo").disabled = !U.length; $("clear").disabled = !U.length; $("play").disabled = !U.length; $("export").disabled = !U.length;
   $("finish").disabled = U.length >= n; $("third").disabled = U.length < n; $("no-third").disabled = !(M && M.voice);
   const left = three() ? F.threeWays(U) : F.count(U);
   $("status").textContent = U.length >= n ? "the melody is written" : `${U.length} / ${n} · ${left.toLocaleString("en")} ways on${three() ? " in three parts" : ""}`;
@@ -440,4 +443,24 @@ window.kairoticFiguring = {
   set: (b, per) => { bid = b; if (per) $("per").value = String(per); $("bass-text").value = ""; rebuild(); },
 };
 rebuild();
+
+// ─── the melody as MEI, for the app (discussion #319): with its middle voice if written, the chords found under the bass ───
+function exportIt() {
+  if (!U.length) return;
+  const n = F.n, figs = chordsOf(), mel = U.map(F.name), mid = M && M.voice ? M.voice.map(F.name) : null;
+  while (mel.length < n) mel.push(null);
+  const { pickup, unitsPerBar } = barsOf(F.units.map((b) => b.strong));
+  const key = { tonic: $("tonic").value, mode: $("mode").value };
+  const chords = U.map((c, t) => chordAt(figs, t) || null);
+  const x = exportMei({
+    title: $("exp-title").value.trim() || `A melody over ${BASSES[bid] ? BASSES[bid].name : "a bass"}, in ${key.tonic} ${key.mode}`, source: "Kairotic Study 56 · figuring", key, pickup, unitsPerBar,
+    voices: [{ label: "melody", notes: fromUnits(mel) }, ...(mid ? [{ label: "middle", notes: fromUnits(mid) }] : []),
+             { label: "bass", notes: fromUnits(F.units.map((b, t) => F.bassName(t)), F.units.map((b) => b.struck)) }],
+    figures: chords.map((c, t) => (c ? { unit: t, figs: String(c).split("/") } : null)).filter(Boolean),
+    root: { study: "56 · figuring", bass: BASSES[bid] ? BASSES[bid].name : "a bass of its own", ending: $("ending").value, line: $("line").value, complete: U.length >= n,
+            intervals: figs.map((f) => f.two), chords, schemata: F.schemataIn(U).map((s) => ({ name: s.name, units: [s.from + 1, s.to + 1] })) },
+  });
+  offer(x).then((s) => { $("said").textContent = s; });
+}
+$("export").addEventListener("click", exportIt);
 </script>

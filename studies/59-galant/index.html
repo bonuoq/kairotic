@@ -125,6 +125,8 @@ ul.q li::marker { color: var(--kairos); }
   <button class="act" id="uniform" title="any one of the realizations, each as likely, without the soft rules">Any valid one</button>
   <button class="act" id="book">The book's</button>
   <button class="act" id="play" disabled>▶ Play</button>
+  <input id="exp-title" aria-label="The title of the piece, for the file" spellcheck="false" style="width:13em;font:13px var(--f-ui, sans-serif);padding:5px 7px;border:1px solid var(--rule, #ccc);border-radius:6px;background:var(--box, #fff);color:var(--ink, #000)" placeholder="title">
+  <button class="act" id="export" disabled title="the realization as MEI, which the app opens as a tree box (on claude.ai saved as .mei.txt)">Export MEI, for the app</button>
 </div>
 
 <div class="views">
@@ -158,6 +160,7 @@ ul.q li::marker { color: var(--kairos); }
 <script type="module">
 import { galant, SCHEMATA as PHRASES } from "./kairotic/galant.mjs";
 import { shape } from "./kairotic/soft.mjs";
+import { exportMei, fromUnits, barsOf, offer } from "./kairotic/export.mjs";
 
 const $ = (id) => document.getElementById(id);
 let P = null, W = null, pid = "leaping-romanesca", ctx = null, isBook = false;
@@ -230,7 +233,7 @@ function render() {
   }
   svg += `<text class="lab" x="4" y="${bot + 26}">chords</text><text class="lab" x="4" y="${bot + 40}">asked</text><text class="lab" x="4" y="${bot + 60}">bass</text>`;
   $("sheet").innerHTML = svg + "</svg>";
-  $("play").disabled = !W;
+  $("play").disabled = !W; $("export").disabled = !W;
   if (W) {
     const why = P.judge(W), st = shape([W.top.map(P.degree)]), sm = shape([W.middle.map(P.degree)]), pc = (x) => Math.round(100 * x) + "%";
     $("msg").innerHTML = (isBook ? "the book's realization · " : "") + (why ? "✗ " + why : `<span style="color:var(--kairos)">■ upper</span> ${W.top.filter((x, t) => t === 0 || x !== W.top[t - 1]).map(P.name).join(" ")} · <span style="color:var(--ok)">■ middle</span> ${W.middle.filter((x, t) => t === 0 || x !== W.middle[t - 1]).map(P.name).join(" ")}<br>steps: the upper voice ${pc(st.steps)}, the middle ${pc(sm.steps)}`);
@@ -256,4 +259,23 @@ $("book").addEventListener("click", () => { if (P.book) { W = P.book; isBook = t
 $("play").addEventListener("click", play);
 window.kairoticGalant = { get P() { return P; }, get W() { return W; }, rebuild, render, set: (p, tonic) => { pid = p; $("tonic").value = tonic || (PHRASES[p].book ? PHRASES[p].book.key : PHRASES[p].key).tonic; rebuild(); } };
 rebuild();
+
+// ─── the realization as MEI, for the app (discussion #319): three voices, the chords under the bass, the keys over it ───
+function exportIt() {
+  if (!W) return;
+  const n = P.n, ch = P.chords(W), { pickup, unitsPerBar } = barsOf(P.units.map((b) => b.strong));
+  const ph = PHRASES[pid], key = { tonic: $("tonic").value, mode: ph.key.mode || "major" };
+  const keys = P.units.map((u, t) => P.keyName(t));
+  const x = exportMei({
+    title: $("exp-title").value.trim() || `${ph.name} (${[...new Set(keys)].join(" → ")})`, source: "Kairotic Study 59 · galant", key, pickup, unitsPerBar,
+    voices: [{ label: "upper", notes: fromUnits(W.top.map(P.name)) }, { label: "middle", notes: fromUnits(W.middle.map(P.name)) },
+             { label: "bass", notes: fromUnits(P.units.map((b) => P.K.name(b.d, b.r)), P.units.map((b) => b.struck)) }],
+    figures: ch.map((c, t) => (c ? { unit: t, figs: String(c).split("/") } : null)).filter(Boolean),
+    marks: keys.map((k, t) => (t === 0 || k !== keys[t - 1] ? { unit: t, text: k } : null)).filter(Boolean),
+    root: { study: "59 · galant", phrase: ph.name, ref: ph.ref, keys: keys.filter((k, t) => t === 0 || k !== keys[t - 1]), chords: ch,
+            asked: P.units.map((b) => b.chord), figured: $("figured").checked, "chapter-4": $("ro").checked, book: isBook, realizations: P.count() },
+  });
+  offer(x).then((s) => { $("status").textContent = s; });
+}
+$("export").addEventListener("click", exportIt);
 </script>

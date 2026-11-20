@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The studies export what they make, for the app** (discussion #319, step 2). One module, `studies/_shared/export.mjs`
+  (each study keeps a copy, checked equal by `tests/export.mjs`), writes MEI that the app opens as a tree box: voices
+  labelled, notes cut at the bar lines and tied, accidentals for their bar, an upbeat, figures under the bass
+  (`<harm><fb>`), keys reached over the staff, double bars between sections, and in `<extMeta type="kairotic">` what
+  each study knows that MEI has no place for. An **Export MEI** button in Studies 51 (the schema, its figures), 54, 57
+  and 59 (three voices, the chords, the keys), 56 (the melody, its middle voice, the chords and intervals found), the
+  canons 38–43 (the dux and the comes, mode, interval, delay; a system without staff names said so) and 50 (a canon
+  at any speed whose lattice is binary; thirds need tuplets, not yet). On claude.ai it is saved as `.mei.txt`.
+  Studies 58 and 60 now write through it too.
 - **`morph` and `vary`: rhythms that move by a measured amount** (`@kairotic/rhythm` 0.5.0; discussions #206, #207,
   #321). `morph` turns one rhythm into another swap by swap: a ratio 0…1 is a point on the fewest swaps from the left
   rhythm to the target — always a real rhythm —, and the way goes out as data (`[:swap from to]`, `[:remove i]`,

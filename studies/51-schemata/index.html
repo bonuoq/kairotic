@@ -122,6 +122,8 @@ ul.q li::marker { color: var(--kairos); }
   <button class="act" id="proto" title="the book's prototype, in this key">The book's</button>
   <button class="act" id="clear">Clear</button>
   <button class="act" id="play" disabled>▶ Play</button>
+  <input id="exp-title" aria-label="The title of the piece, for the file" spellcheck="false" style="width:13em;font:13px var(--f-ui, sans-serif);padding:5px 7px;border:1px solid var(--rule, #ccc);border-radius:6px;background:var(--box, #fff);color:var(--ink, #000)" placeholder="title">
+  <button class="act" id="export" disabled title="the realization as MEI, which the app opens as a tree box (on claude.ai saved as .mei.txt)">Export MEI, for the app</button>
 </div>
 
 <div class="views">
@@ -162,6 +164,7 @@ ul.q li::marker { color: var(--kairos); }
 <script type="module">
 import { schemata, SCHEMATA, PROTOTYPES, keyOf, codeOf } from "./kairotic/schemata.mjs";
 import { shape } from "./kairotic/soft.mjs";
+import { exportMei, fromUnits, barsOf, offer } from "./kairotic/export.mjs";
 
 const $ = (id) => document.getElementById(id);
 const BOOK_KEY = { thirds: "major", sixths: "major", "3-6": "major", "third-down": "major", "7-6": "major", "2-3": "minor", "7-3": "minor", "tied-bass": "major" };
@@ -258,7 +261,7 @@ function render() {
       fan.appendChild(b);
     }
   }
-  $("undo").disabled = !U.length; $("play").disabled = !U.length;
+  $("undo").disabled = !U.length; $("play").disabled = !U.length; $("export").disabled = !U.length;
   const cad = S.cadence(U);
   $("msg").textContent = U.length === n ? (S.judge(U) ? "✗ " + S.judge(U) : `a realization · cadence: ${cad.kind}, ${cad.figs.join("–")} · ${describe(U)}`) : U.length ? `${U.length} of ${n} units written · ${S.count(U).toLocaleString("en")} ways to go on` : "";
 }
@@ -304,4 +307,21 @@ $("undo").addEventListener("click", () => { U.pop(); $("why").textContent = ""; 
 $("play").addEventListener("click", play);
 window.kairoticSchemata = { get S() { return S; }, get U() { return U; }, set U(v) { U = v; render(); }, choose, rebuild, render };
 choose("7-6", "major");
+
+// ─── the realization as MEI, for the app (discussion #319): the upper voice and the bass, the figures under it ───
+function exportIt() {
+  const n = S.n, F = S.figures(U), up = U.map((c) => S.name(c));
+  while (up.length < n) up.push(null);
+  const { pickup, unitsPerBar } = barsOf(Array.from({ length: n }, (_, t) => S.strong(t)));
+  const key = { tonic: $("tonic").value, mode: $("mode").value };
+  const x = exportMei({
+    title: $("exp-title").value.trim() || `${S.schema.name} in ${key.tonic} ${key.mode}`, source: "Kairotic Study 51 · schemata", key, pickup, unitsPerBar,
+    voices: [{ label: "upper", notes: fromUnits(up) }, { label: "bass", notes: fromUnits(S.bass.map((b) => S.key.name(b.d, b.r)), S.bass.map((b) => b.struck)) }],
+    figures: F.map((f, t) => (f && f.fig ? { unit: t, figs: String(f.fig).split("/") } : null)).filter(Boolean),
+    root: { study: "51 · schemata", schema: S.schema.name, ref: S.schema.ref, figured: S.figured, realizations: S.count(), complete: U.length === n,
+            cadence: U.length === n ? S.cadence(U).kind : null, figures: F.map((f) => (f && f.fig ? String(f.fig) : null)), roles: F.map((f) => (f && f.role) || null) },
+  });
+  offer(x).then((s) => { $("status").textContent = s; });
+}
+$("export").addEventListener("click", exportIt);
 </script>
