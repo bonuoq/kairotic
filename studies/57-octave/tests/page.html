@@ -37,7 +37,7 @@ try {
   await wait(() => keys().join(",") === "C major,F major,B♭ major");
   is("... Bach's moved to C: C → F → B♭, the same 12", total() === "12");
   d.getElementById("uniform").click();
-  is("one drawn uniformly, sound", !/✗/.test(d.getElementById("msg").textContent) && /steps/.test(d.getElementById("msg").textContent));
+  is("any valid one, sound", !/✗/.test(d.getElementById("msg").textContent) && /steps/.test(d.getElementById("msg").textContent));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);

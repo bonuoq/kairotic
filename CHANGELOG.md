@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **«Any valid one»** in Studies 51, 54, 57 and 59: the button that was «Draw uniformly» — any realization that
+  keeps the hard rules, each as likely, without the engine's soft rules.
 - **Wires in fixed time, and rests that carry them** (discussion #217; `@kairotic/analysis` 0.8.3): `mt play` sends
   what the wires of notes and rests send on a fifth outlet, at their written time — the same patch of electronics,
   driven live by `follow` or in fixed time by `mt play` (rehearsing without the performer, a virtual performer, fixed
