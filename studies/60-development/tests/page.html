@@ -72,6 +72,10 @@ await (async function () {
     click($("add"));
     is("… added under the point, measured with the derivation it said", await wait(() => S().state().nodes === 5) && S().state().tree.nodes[S().state().sel].dev.declared === $("hand-der").value && /derivation/.test($("point").textContent));
 
+    // the example made with Claude
+    click($("example"));
+    is("the example opened: 10 phrases, the way chosen to its last, measured", await wait(() => S().state().nodes === 10, 8000) && /Opened: A period in C/.test($("inc-facts").textContent) && /its tail/.test($("point").textContent) && document.querySelectorAll("#tree g.node.chosen").length === 4);
+
     is("no error on the page", errors.length === 0);
   } catch (e) {
     is("the page ran: " + (e.message || e), false);

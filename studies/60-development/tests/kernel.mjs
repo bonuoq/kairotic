@@ -69,6 +69,13 @@ export async function run() {
   is("asked with the material and the form; the continuations measured, the motives kept", asked.length === 1 && /The material of the piece/.test(asked[0]) && r.added.length === 2 && r.added.every((n) => n.dev && n.dev.matches.length) && r.tree.motives.length === 1 && r.tree.plan === "period");
   is("… the derivation kept from Claude's answer", r.added.some((n) => n.phrase.derivation === HEAD.derivation));
   is("… choosing keeps the material", D.choose(r.tree, r.added[0].id).motives.length === 1);
+
+  // a piece made with Claude in the artifact (20 Nov 2026), kept as the study's example
+  const ex = JSON.parse(await (typeof window === "undefined" ? (await import("node:fs")).promises.readFile(new URL("../kairotic/example-period-c.json", import.meta.url), "utf8") : fetch(new URL("../kairotic/example-period-c.json", import.meta.url)).then((r) => r.text())));
+  const E = D.rebuild(ex.tree), en = Object.values(E.nodes);
+  is("the example rebuilt: 10 phrases, every one passing the rules, 4 chosen on its way", en.length === 10 && en.every((n) => n.check.ok) && D.pathTo(E, ex.sel).length === 4 && D.pathTo(E, ex.sel).every((n) => n.state === "chosen"));
+  is("… Claude's derivations measured: 8 confirmed, and the one beginning with the tail found as such", en.filter((n) => /^confirmed/.test(n.dev.confirmed || "")).length === 8 && /its tail/.test(E.nodes[ex.sel].dev.confirmed));
+  is("… its keys: C → G → F → C on the way chosen", D.pathTo(E, ex.sel).map((n) => n.check.keys.slice(-1)[0]).join(" → ") === "C major → G major → F major → C major");
   return { results, notes };
 }
 
