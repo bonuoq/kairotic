@@ -21,6 +21,7 @@
 import { figuring } from "./figuring.mjs";
 import { keyOf, codeOf, codeDegree, codeAlter, localOf, localNote, SCHEMATA, SCHEMATA3, CADENCES, RULE_OF_THE_OCTAVE } from "./partimento.mjs";
 import { total } from "./soft.mjs";
+import { exportMei, fromUnits, fileName } from "./export.mjs";
 
 const mod = (a, m) => ((a % m) + m) % m;
 export const MIN_NOTES = 4;
@@ -180,15 +181,16 @@ export function pathTo(tree, id) {
 export const childrenOf = (tree, id) => Object.values(tree.nodes).filter((x) => x.parent === id);
 /** The piece up to a point: its bass and melody unit by unit (names), where each phrase starts, and its MEI. */
 export function pieceAt(tree, id, per = PER) {
-  const path = pathTo(tree, id), bass = [], melody = [], starts = [], keys = [];
+  const path = pathTo(tree, id), bass = [], melody = [], starts = [], keys = [], struck = [];
   path.forEach((x, i) => {
     const b = split(x.phrase.bass), m = split(x.phrase.melody), ks = keysOf(x.phrase, b.length, tree.key).map(keyLabel);
-    if (i) { const held = melody[melody.length - 1]; for (let k = 1; k < per; k++) { melody.push(held); bass.push(bass[bass.length - 1]); keys.push(keys[keys.length - 1]); } }
+    if (i) { const held = melody[melody.length - 1]; for (let k = 1; k < per; k++) { melody.push(held); bass.push(bass[bass.length - 1]); keys.push(keys[keys.length - 1]); struck.push(false); } }
     starts.push(melody.length);
-    b.forEach((nm, j) => { for (let k = 0; k < (j === b.length - 1 ? 1 : per); k++) { bass.push(nm); keys.push(ks[j]); } });
+    b.forEach((nm, j) => { for (let k = 0; k < (j === b.length - 1 ? 1 : per); k++) { bass.push(nm); keys.push(ks[j]); struck.push(k === 0); } });
     m.forEach((nm) => melody.push(nm));
   });
-  return { path, bass, melody, starts, keys, units: melody.length };
+  // (struck: where a bass note is struck — two notes of the same name in a row are two notes)
+  return { path, bass, melody, starts, keys, struck, units: melody.length };
 }
 
 // ─── the score (MEI for Verovio): the melody and the bass, a unit a half note, 2/2 ───
@@ -266,10 +268,12 @@ export function exportOf(tree, id, { title = "An incipit taken on", source = "Ka
              keys: ks.filter((k, j) => !j || k !== ks[j - 1]), by: n.by, about: n.phrase.about || null, derivation: n.phrase.derivation || null,
              bass: split(n.phrase.bass).join(" "), melody: split(n.phrase.melody).join(" "), ...more(n) };
   });
-  const root = { name: title, source, "home-key": keyLabel(tree.key), made: new Date().toISOString().slice(0, 10), phrases, ...extra };
-  const ext = edn({ kairotic: 1, "root-tag": { kw: "par" }, root });
-  const name = title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").toLowerCase() + ".mei";
-  return { mei: meiOf(piece, tree.key, { title, ext }), name };
+  // written by the studies' common export (export.mjs): accidentals for their bar, a phrase's first note struck
+  const mel = piece.melody.map((nm, t) => t === 0 || nm !== piece.melody[t - 1] || piece.starts.includes(t));
+  const x = exportMei({ title, source, key: tree.key, voices: [{ label: "melody", clef: "G", notes: fromUnits(piece.melody, mel) }, { label: "bass", clef: "F", notes: fromUnits(piece.bass, piece.struck) }],
+                        marks: piece.keys.map((k, t) => (t > 0 && k !== piece.keys[t - 1] ? { unit: t, text: k } : null)).filter(Boolean),
+                        doubleBars: piece.starts.slice(1), root: { "home-key": keyLabel(tree.key), phrases, ...extra } });
+  return { mei: x.mei, name: fileName(title) };
 }
 
 // ─── asking Claude ───
