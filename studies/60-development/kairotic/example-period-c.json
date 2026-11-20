@@ -1,0 +1,182 @@
+{
+ "title": "A period in C, taken on with Claude (20 Nov 2026)",
+ "made": "2026-11-20",
+ "sel": "pmworckws5",
+ "tree": {
+  "key": {
+   "tonic": "C",
+   "mode": "major"
+  },
+  "range": {
+   "lo": 8,
+   "hi": 20
+  },
+  "root": "p0",
+  "plan": "period",
+  "motives": [
+   {
+    "id": "a",
+    "node": "p0",
+    "from": 0,
+    "to": 5,
+    "notes": [
+     "G4",
+     "C5",
+     "B4",
+     "A4"
+    ],
+    "why": "nothing recurs exactly: the head of the phrase"
+   }
+  ],
+  "nodes": {
+   "p0": {
+    "id": "p0",
+    "parent": null,
+    "phrase": {
+     "bass": "C3 E3 F3 G3 C3",
+     "melody": "G4 C5 C5 B4 A4 A4 B4 D5 C5",
+     "cadence": "perfect",
+     "plan": "a cadential phrase",
+     "about": "the scale's first step up, then ④ ⑤ ①"
+    },
+    "by": "the incipit",
+    "state": "chosen"
+   },
+   "pmwoqtrzl0": {
+    "id": "pmwoqtrzl0",
+    "parent": "p0",
+    "phrase": {
+     "plan": "a rising bass C E F, then a ⑤–① cadence in G (D to G)",
+     "cadence": "perfect",
+     "bass": "C3 E3 F3 D3 G3",
+     "melody": "G4 C5 C5 B4 A4 A4 B4 A4 G4",
+     "about": "Answers phrase 1 note for note, then turns its ④–⑤ into a cadence on G, closing with ②–① in the melody.",
+     "derivation": "motive a at the same pitch (G4 C5 B4 A4, durations 1 2 1 2), then liquidated: its tail steps B4 A4 down into the close on G4",
+     "keys": "C C C G G"
+    },
+    "by": "Claude",
+    "state": "offered"
+   },
+   "pmwoqtrzm1": {
+    "id": "pmwoqtrzm1",
+    "parent": "p0",
+    "phrase": {
+     "plan": "a bass falling by thirds D B G, then a cadence in G",
+     "cadence": "perfect",
+     "bass": "D3 B2 G2 D3 G3",
+     "melody": "A4 D5 D5 C5 B4 B4 A4 A4 G4",
+     "about": "The motive starts a step higher over D, and the bass falls by thirds into G, so the modulation sounds before the cadence.",
+     "derivation": "motive a in sequence a step higher (A4 D5 C5 B4, +3 -1 -1, durations 1 2 1 2), then liquidated: its tail B4 A4 held, resolving to G4",
+     "keys": "C G G G G"
+    },
+    "by": "Claude",
+    "state": "chosen"
+   },
+   "pmwoqucet3": {
+    "id": "pmwoqucet3",
+    "parent": "p0",
+    "phrase": {
+     "plan": "the antecedent's opening C E F, then ① of G, and a simple perfect cadence ⑤–① in G (D to G)",
+     "cadence": "perfect",
+     "bass": "C3 E3 F3 G3 D3 G3",
+     "melody": "G4 C5 C5 B4 A4 A4 B4 D5 B4 A4 G4",
+     "about": "Same opening as the antecedent, then F steps up to G, which is taken as ① of the new key. The melody rises to D5 and falls by step B4 A4 G4 over ⑤–①, closing perfectly on G.",
+     "derivation": "motive a at its own pitch (G4 C5 B4 A4, durations 1 2 1 2, as in phrase 1 units 1–6); then its tail (the stepwise descent B4 A4) is worn away into the cadence, B4 A4 G4, a liquidation",
+     "keys": "C C C G G G"
+    },
+    "by": "Claude (try 2)",
+    "state": "offered"
+   },
+   "pmwor34fs1": {
+    "id": "pmwor34fs1",
+    "parent": "pmwoqtrzm1",
+    "phrase": {
+     "plan": "a Third Down Second Up (C A B), then a cadence in A minor (⑤–① with the leading tone raised)",
+     "cadence": "perfect",
+     "bass": "C3 A2 B2 E3 A2",
+     "melody": "A4 E4 E4 F4 G4 G4 E4 G#4 A4",
+     "about": "The motive turns upside down: its rising fourth becomes a falling fourth and its fall becomes a rise. The bass falls a third and rises a step, and the phrase closes in the relative minor on a raised ⑦ (G#4) resolving to A.",
+     "derivation": "motive a inverted (A4 E4 F4 G4: steps -3 +1 +1, durations 1 2 1 2), then a cadential close in A minor",
+     "keys": "C C C Am Am"
+    },
+    "by": "Claude",
+    "state": "offered"
+   },
+   "pmwor34fu2": {
+    "id": "pmwor34fu2",
+    "parent": "pmwoqtrzm1",
+    "phrase": {
+     "plan": "① ④ ② of D minor in the bass, then a half cadence on ⑤ in D minor",
+     "cadence": "half",
+     "bass": "D3 G3 E3 A2",
+     "melody": "F4 Bb4 Bb4 A4 G4 G4 A4",
+     "about": "The motive starts a step below the last phrase's start and leans on D minor, the supertonic. It stops open on the dominant A with the melody on its octave, waiting for the answer.",
+     "derivation": "motive a in sequence a step lower, in D minor (F4 Bb4 A4 G4: steps +3 -1 -1, durations 1 2 1 2), then its last note answered by a step up to the octave of ⑤",
+     "keys": "Dm Dm Dm Dm"
+    },
+    "by": "Claude",
+    "state": "offered"
+   },
+   "pmwor3vxs3": {
+    "id": "pmwor3vxs3",
+    "parent": "pmwoqtrzm1",
+    "phrase": {
+     "plan": "①–⑥–②–⑤–① of F major in the bass, a perfect cadence in F (⑦ to ①, the subdominant key)",
+     "cadence": "perfect",
+     "bass": "F3 D3 G3 C3 F3",
+     "melody": "A4 D5 D5 C5 Bb4 A4 G4 E4 F4",
+     "about": "The opening motive is heard again on the subdominant side, and a stepwise descent over a rising 4th and a falling 5th in the bass leads to a perfect cadence in F.",
+     "derivation": "motive a transposed up a step (A4 D5 D5 C5 Bb4: intervals +3 -1 -1, durations 1 2 1 2, with the Bb coming from F major), then its tail's stepwise descent continued (Bb A G) and worn away into the cadence E4 F4",
+     "keys": "F F F F F"
+    },
+    "by": "Claude (try 2)",
+    "state": "chosen"
+   },
+   "pmworckwp4": {
+    "id": "pmworckwp4",
+    "parent": "pmwor3vxs3",
+    "phrase": {
+     "plan": "a bass ④–⑤–③–⑤–① back in C (F G E G C), one note a bar, then a perfect cadence ⑦–① on the dominant",
+     "cadence": "perfect",
+     "bass": "F3 G3 E3 G3 C3",
+     "melody": "A4 A4 B4 B4 C5 C5 G4 B4 C5",
+     "about": "The motive is heard backwards (the 'reverse' side) over F ④ as the pivot back into C, then closes with a ⑦–① perfect cadence.",
+     "derivation": "motive a in retrograde (A B C G, steps +1 +1 -3), its notes spread one to a bar and kept on the strong units; the last three notes G4 B4 C5 are the head of motive a, filled in, as the cadence",
+     "keys": "C C C C C"
+    },
+    "by": "Claude",
+    "state": "offered"
+   },
+   "pmworckws5": {
+    "id": "pmworckws5",
+    "parent": "pmwor3vxs3",
+    "phrase": {
+     "plan": "a descending bass ⑥–④–③–②–① (A F E D C) with a 7–6 suspension, closing in a compound cadence 7–6–8 on ②–①",
+     "cadence": "perfect",
+     "bass": "A3 F3 E3 D3 C3",
+     "melody": "C5 B4 A4 A4 G4 C5 C5 B4 C5",
+     "about": "The tail comes before the head, and the head's C5 becomes the prepared 7th that resolves 7–6–8 over D–C.",
+     "derivation": "motive a's tail (C5 B4 A4, steps -1 -1) first, then its head G4 C5 C5 B4 (leap +3 then down a step), which is worn down in the cadence into B4 C5 (liquidation)",
+     "keys": "C C C C C"
+    },
+    "by": "Claude",
+    "state": "chosen"
+   },
+   "pmworckwt6": {
+    "id": "pmworckwt6",
+    "parent": "pmwor3vxs3",
+    "phrase": {
+     "plan": "parallel tenths on a rising bass C G E F G, then a galant cadence ④–⑤–① with ⑦ to ① perfect",
+     "cadence": "perfect",
+     "bass": "C3 G3 E3 F3 G3 C3",
+     "melody": "A4 E4 E4 F4 G4 G4 A4 A4 B4 B4 C5",
+     "about": "The inverted motive is the minor-side mirror of the opening. It then climbs in 10ths over the bass up to the tonic.",
+     "derivation": "motive a inverted (A4 E4 F4 G4: steps -3 +1 +1, rhythm 1 2 1 2), then its tail (+1 +1) continued in augmentation as a rising scale G A B C, one note a bar",
+     "keys": "C C C C C C"
+    },
+    "by": "Claude",
+    "state": "offered"
+   }
+  }
+ }
+}

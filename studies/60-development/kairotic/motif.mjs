@@ -106,11 +106,12 @@ export function relate(M, S) {
 
 /** The span of a melody most related to a motive — the whole motive, or its head or its tail (all but its last or
  *  its first note: a fragment) —: {from, to (units), notes, kinship, exact, name, kept, part}, or null. A fragment's
- *  kinship counts a little less (×0.9), a window one note longer or shorter than the motive less still (−0.05). */
-export function findIn(M, ns) {
+ *  kinship counts a little less (×0.9), a window one note longer or shorter than the motive less still (−0.05).
+ *  only: "head" or "tail", to look for that fragment alone. */
+export function findIn(M, ns, { only = null } = {}) {
   let best = null;
-  const parts = [["", M]];
-  if (M.length >= 4) parts.push(["head", M.slice(0, -1)], ["tail", M.slice(1)]);
+  const parts = only ? [] : [["", M]];
+  if (M.length >= 4) for (const [k, P] of [["head", M.slice(0, -1)], ["tail", M.slice(1)]]) if (!only || only === k) parts.push([k, P]);
   for (const [part, P] of parts) {
     for (const len of [P.length, P.length - 1, P.length + 1]) {
       if (len < 2 || len > ns.length || (part && len !== P.length)) continue;

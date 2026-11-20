@@ -57,7 +57,7 @@ export function addMotive(tree, node, from, to) {
 /** The role of the phrase at a depth (0: the incipit) in the tree's plan, or null. */
 export const roleAt = (tree, depth) => (PLANS[tree.plan].steps[depth] || null);
 
-const HINTS = [[/invert|inversion|upside/i, "inversion"], [/retrograd|backward|crab/i, "retrograde"], [/sequence|sequential/i, "sequence"], [/transpos/i, "transposition"], [/repeat|repetition|literal|again|same pitch|as at the start/i, "repetition"]];
+const HINTS = [[/invert|inversion|upside/i, "inversion"], [/retrograd|backward|crab/i, "retrograde"], [/sequence|sequential/i, "sequence"], [/transpos/i, "transposition"], [/repeat|repetition|literal|again|same pitch|own pitch|as at the start|as in phrase/i, "repetition"]];
 const PART_HINTS = [[/\bhead\b|opening|first (two|three) notes/i, "head"], [/\btail\b|last (two|three) notes|ending/i, "tail"]];
 const RHYTHM_HINTS = [[/augment/i, "augmented"], [/diminu/i, "diminished"]];
 
@@ -87,12 +87,24 @@ export function measure(tree, id) {
   // the derivation declared, against what was measured
   let confirmed = null;
   const declared = ph.derivation || "";
+  // (what is checked is the first clause: the material the phrase begins from — "motive a in sequence a step
+  // higher, then its tail worn away into the cadence" — not what it then does with it)
+  const first = declared.split(/[;:(]|,?\s+then\b|,\s+(?:its|the)\s+(?:tail|head|last|ending)\b/i)[0];
   if (declared && best) {
-    const says = HINTS.filter(([re]) => re.test(declared)).map(([, k]) => k), saysR = RHYTHM_HINTS.filter(([re]) => re.test(declared)).map(([, k]) => k);
-    const found = best.exact ? [best.kind, ...(best.kind === "transposition" ? ["sequence"] : best.kind === "sequence" ? ["transposition"] : [])] : [];
-    const saysP = PART_HINTS.filter(([re]) => re.test(declared)).map(([, k]) => k);
-    const partOk = !saysP.length || saysP.includes(best.part) || (saysP.includes("head") && !best.part);
-    confirmed = !says.length ? (best.kinship >= 0.65 && partOk ? "related, as it says" : "little related") : says.some((k) => found.includes(k)) && (!saysR.length || saysR.includes(best.rhythm)) && partOk ? "confirmed" : best.exact ? `measured otherwise: ${best.name}` : `not exactly: the nearest is ${best.name} (${best.kinship})`;
+    const says = HINTS.filter(([re]) => re.test(first)).map(([, k]) => k), saysR = RHYTHM_HINTS.filter(([re]) => re.test(first)).map(([, k]) => k);
+    const found0 = (r) => (r.exact ? [r.kind, ...(r.kind === "transposition" ? ["sequence"] : r.kind === "sequence" ? ["transposition"] : [])] : []);
+    const saysP = PART_HINTS.filter(([re]) => re.test(first)).map(([, k]) => k);
+    // (a fragment said: looked for as such, its best place may not be the phrase's best match)
+    let rel = best;
+    if (saysP.length && !saysP.includes(best.part)) {
+      const m = tree.motives.find((x) => new RegExp(`motive ${x.id}\\b`).test(first)) || tree.motives[0];
+      const alt = findIn(motiveNotes(tree.nodes[m.node].phrase.melody, m.from, m.to), ns, { only: saysP[0] });
+      if (alt && alt.kinship >= 0.65) rel = alt;
+    }
+    const partOk = !saysP.length || saysP.includes(rel.part) || (saysP.includes("head") && !rel.part);
+    const ok = (r) => says.some((k) => found0(r).includes(k)) && (!saysR.length || saysR.includes(r.rhythm));
+    confirmed = !says.length ? (rel.kinship >= 0.65 && partOk ? (rel === best ? "related, as it says" : `related, as it says: ${rel.name}`) : "little related")
+      : partOk && ok(rel) ? (rel === best ? "confirmed" : `confirmed: ${rel.name}`) : best.exact ? `measured otherwise: ${best.name}` : `not exactly: the nearest is ${best.name} (${best.kinship})`;
   }
   const cost = node.check && node.check.ok && Number.isFinite(node.check.cost) ? node.check.cost : 0;
   const misses = fits.filter((f) => !f.ok).length;
@@ -107,6 +119,23 @@ export function addPhrase(tree, parent, phrase, opts) {
   const t2 = withDev(t, node.id);
   return [t2, t2.nodes[node.id]];
 }
+/** A tree saved with its phrases only ({key, plan, motives, root, nodes: {id: {id, parent, phrase, by, state}}}),
+ *  rebuilt: each phrase checked by the rules and measured again, parents first. */
+export function rebuild(saved) {
+  const nodes = Object.values(saved.nodes), root = saved.nodes[saved.root];
+  let t = treeOf(root.phrase, { key: saved.key, plan: saved.plan });
+  t = { ...t, motives: saved.motives || t.motives };
+  const done = new Set([saved.root]);
+  while (done.size < nodes.length) {
+    const next = nodes.filter((n) => !done.has(n.id) && done.has(n.parent));
+    if (!next.length) break;
+    for (const n of next) { [t] = I.addPhrase(t, n.parent, n.phrase, { by: n.by, state: n.state, id: n.id }); done.add(n.id); }
+  }
+  return remeasure({ ...t, motives: saved.motives || t.motives });
+}
+
+/** Every phrase measured again (a tree saved by an earlier page, or read from elsewhere). */
+export const remeasure = (tree) => Object.keys(tree.nodes).reduce((t, k) => withDev(t, k), tree);
 export const choose = (tree, id, on = true) => ({ ...I.choose(tree, id, on), motives: tree.motives, plan: tree.plan });
 
 /** What Claude is asked: the incipit's prompt, with the material, its development and the form. */

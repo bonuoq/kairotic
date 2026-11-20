@@ -122,12 +122,14 @@ dl.point dd { margin: 0; font-family: var(--f-code); font-size: 12px; overflow-w
   </div>
   <div class="row">
     <button class="act primary" id="start">Start from it</button>
+    <button class="act" id="example">Open the example: a period in C, made with Claude</button>
     <span class="facts" id="inc-facts">—</span>
   </div>
 </section>
 
 <section class="panel" aria-labelledby="h-tree">
   <h2 id="h-tree">The history <span>solid: chosen to go on · dashed: offered · click a phrase to see it</span></h2>
+  <div class="row"><button class="act" id="keep">Keep a copy in the artifact</button><span class="facts" id="db-facts">—</span></div>
   <div class="scroll"><svg class="tree" id="tree" viewBox="0 0 720 80" width="720" height="80" role="img" aria-label="The tree of continuations"></svg></div>
 </section>
 
@@ -233,8 +235,29 @@ window.addEventListener("DOMContentLoaded", function () {
 (defonce ctl (atom nil))
 (def STORE "kairotic-study-60")
 
+;; the history is kept in this browser and, where the page has its database (claude.ai: the artifact's db), there
+;; too — histories/latest, and a copy kept by hand — so it can be read elsewhere (by Claude, on another device)
+(defonce db-ref (atom nil))
+(defonce db-busy (atom false))
+(defonce db-dirty (atom false))
+(defn db-text! [s] (set! (.-textContent ($ "db-facts")) s))
+(defn db-write! [path]
+  (when-let [db @db-ref]
+    (when-let [t (:tree @st)]
+      (.set (.doc db path) #js {:tree (.stringify js/JSON t) :sel (:sel @st) :at (.toISOString (js/Date.))
+                                :phrases (count (js/Object.keys (.-nodes t)))}))))
+(defn db-save! []
+  (when @db-ref
+    (if @db-busy
+      (reset! db-dirty true)
+      (do (reset! db-busy true) (reset! db-dirty false)
+          (-> (db-write! "histories/latest")
+              (.then (fn [_] (db-text! (str "saved in the artifact · " (.toLocaleTimeString (js/Date.))))))
+              (.catch (fn [e] (db-text! (str "not saved in the artifact: " (msg e)))))
+              (.finally (fn [] (reset! db-busy false) (when @db-dirty (db-save!)))))))))
 (defn save! []
-  (try (.setItem js/localStorage STORE (.stringify js/JSON #js {:tree (:tree @st) :sel (:sel @st)})) (catch :default _ nil)))
+  (try (.setItem js/localStorage STORE (.stringify js/JSON #js {:tree (:tree @st) :sel (:sel @st)})) (catch :default _ nil))
+  (db-save!))
 (defn stored []
   (try (some-> (.getItem js/localStorage STORE) (js/JSON.parse)) (catch :default _ nil)))
 
@@ -519,8 +542,21 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; ───────── start ─────────
 (choose-incipit! "short-c")
 (if-let [s (and (not (.-kairoticFresh js/window)) (stored))]
-  (do (reset! st {:tree (.-tree s) :sel (.-sel s) :busy false}) (render-all!))
+  (do (reset! st {:tree (try (.remeasure I (.-tree s)) (catch :default _ (.-tree s))) :sel (.-sel s) :busy false}) (render-all!))
   (start!))
+
+;; the example: a piece taken on with Claude in this study (kairotic/example-period-c.json), rebuilt and measured again
+(defn open-example! []
+  (-> (js/fetch (str (.-kairoticBase js/window) "example-period-c.json"))
+      (.then (fn [r] (.json r)))
+      (.then (fn [ex]
+               (let [t (.rebuild I (.-tree ex))]
+                 (set! (.-value ($ "plan")) (.-plan t))
+                 (reset! st {:tree t :sel (.-sel ex) :busy false})
+                 (save!) (render-all!)
+                 (set! (.-textContent ($ "inc-facts")) (str "Opened: " (.-title ex))))))
+      (.catch (fn [e] (set! (.-textContent ($ "inc-facts")) (str "The example: " (msg e)))))))
+(.addEventListener ($ "example") "click" (fn [_] (open-example!)))
 (status! "Ready")
 
 (let [cl (.-claude js/window)]
@@ -531,6 +567,32 @@ window.addEventListener("DOMContentLoaded", function () {
                  (render-point!)
                  (when-not s (set! (.-textContent ($ "ask-facts")) "Claude is not available in this view: go on by hand, or open the study on claude.ai.")))))
     (set! (.-textContent ($ "ask-facts")) "Claude is not available here (it needs claude.ai): go on by hand.")))
+
+;; the artifact's database, where there is one: what is here is saved there; with nothing here, the last saved is read
+(when-let [cl (.-claude js/window)]
+  (when (.-use cl)
+    (-> (.use cl "db")
+        (.then (fn [db]
+                 (if-not db
+                   (db-text! "kept in this browser")
+                   (do (reset! db-ref db)
+                       (if (and (:tree @st) (or (stored) (> (count (js/Object.keys (.-nodes (:tree @st)))) 1)))
+                         (db-save!)
+                         (-> (.get (.doc db "histories/latest"))
+                             (.then (fn [d]
+                                      (let [v (when d (if (fn? (.-data d)) (.data d) d))]
+                                        (if (and v (.-tree v))
+                                          (do (reset! st {:tree (.remeasure I (js/JSON.parse (.-tree v))) :sel (.-sel v) :busy false})
+                                              (save!) (render-all!) (db-text! (str "read from the artifact (saved " (.-at v) ")")))
+                                          (db-save!)))))
+                             (.catch (fn [_] (db-save!)))))))))
+        (.catch (fn [_] (db-text! "kept in this browser"))))))
+(.addEventListener ($ "keep") "click"
+  (fn [_] (if-not @db-ref
+            (db-text! "no database here (it needs claude.ai): kept in this browser")
+            (-> (db-write! (str "histories/copy-" (str/replace (.toISOString (js/Date.)) #"[:.]" "-")))
+                (.then (fn [_] (db-text! "a copy kept in the artifact")))
+                (.catch (fn [e] (db-text! (str "not kept: " (msg e)))))))))
 
 ;; for the tests (tests/page.html)
 (set! (.-kairoticStudy js/window)
