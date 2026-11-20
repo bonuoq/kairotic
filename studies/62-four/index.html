@@ -1,0 +1,263 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 62 · Four</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.bad { color: var(--error); } .msg.ok { color: var(--ok); }
+/* Study 62 (after 54, 57 and 59): the phrase and the key as a toolbar; the bass and the three upper voices drawn unit by unit, the
+   chords asked and made under the bass, the keys boxed; beside them the count and what the study decides. */
+.views { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 12px; min-width: 0; }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; text-align: right; }
+.sheet { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; overflow-x: auto; }
+.sheet svg { display: block; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .presets button.on { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .presets button.on { color: #0e1420; } }
+.unit { fill: none; stroke: var(--grid); stroke-width: 1; }
+.strong { fill: var(--accent-soft); }
+.barline { stroke: var(--rule); stroke-width: 1.2; }
+.bass { fill: var(--accent); }
+.upper { fill: var(--kairos); }
+.middle { fill: var(--ok); }
+.tenor { fill: #8a5cc2; }
+:root[data-theme="dark"] .tenor { fill: #b99be6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tenor { fill: #b99be6; } }
+.diss { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 3 2; }
+.lab { font: 10.5px var(--f-code); fill: var(--ink-soft); }
+.fig { font: 600 12px var(--f-code); fill: var(--ink); text-anchor: middle; }
+.ask { font: 11px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+.deg { font: 13px var(--f-ui); fill: var(--accent); text-anchor: middle; }
+.role { font: 600 10.5px var(--f-code); fill: var(--kairos); text-anchor: middle; }
+.next { fill: var(--kairos-soft); }
+.nname { font: 600 10px var(--f-code); fill: #fff; dominant-baseline: central; }
+.big { font: 600 22px var(--f-code); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+.fan { display: flex; flex-wrap: wrap; gap: 5px; }
+.fan button { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 12px var(--f-code); padding: 3px 7px; border-radius: 5px; cursor: pointer; display: grid; justify-items: center; line-height: 1.25; }
+.fan button small { font-size: 10.5px; color: var(--ink-soft); }
+.fan button small.cost { color: var(--kairos); }
+.fan button:hover { border-color: var(--kairos); }
+.fan button:disabled { opacity: 0.35; cursor: default; }
+.fan button.dead { opacity: 0.55; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.keybox { fill: var(--box); stroke: var(--ink-soft); stroke-width: 1; }
+.keylab { font: 600 10.5px var(--f-code); fill: var(--ink); }
+.ro { font: 10px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+.book { fill: none; stroke: var(--kairos); stroke-width: 1.2; stroke-dasharray: 2 2; }
+</style>
+
+<main>
+<header>
+  <h1>Study 62 · four</h1>
+  <span class="sub">Harmony in four parts: IJzerman's chapter 6</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<div class="toolbar" aria-label="The phrase">
+  <span class="tag">Phrase</span>
+  <span class="presets" id="phrases"></span>
+</div>
+<div class="toolbar" aria-label="The key and the realization">
+  <span class="tag">Key</span>
+  <label>tonic <select id="tonic"><option>C</option><option>Db</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select></label>
+  <label><input type="checkbox" id="figured" checked> realize the phrase's chords</label>
+  <label title="the augmented 4th and the diminished 5th as semi-consonances (unprepared, resolved); the upper voices over a passing bass"><input type="checkbox" id="ro" checked> chapter 4's rules</label>
+  <span class="sep"></span>
+  <label title="the engine: a softmax of −cost / temperature among the chords with a future (0: the cheapest)">temperature <input type="number" id="temp" min="0" max="5" step="0.1" value="0.5"></label>
+  <button class="act primary" id="engine">Engine</button>
+  <button class="act" id="uniform" title="any one of the realizations, each as likely, without the soft rules">Any valid one</button>
+  <button class="act" id="book">The book's</button>
+  <button class="act" id="wrong" title="the book's own counter-example, and why it is refused">The wrong one</button>
+  <button class="act" id="play" disabled>▶ Play</button>
+</div>
+
+<div class="views">
+  <section class="panel">
+    <h2>Four parts <span id="ref"></span></h2>
+    <div class="sheet" id="sheet"></div>
+    <div class="msg" id="msg"></div>
+    <p class="about" id="about"></p>
+  </section>
+  <div class="side">
+    <section class="panel">
+      <h2>Realizations <span>counted exactly</span></h2>
+      <div><span class="big" id="total">–</span> <span class="msg" id="total-sub"></span></div>
+      <div class="msg" id="other"></div>
+    </section>
+    <section class="panel">
+      <h2>What it decides</h2>
+      <p class="about">Four parts over a given bass — soprano, alto, tenor — under the rules of Studies 51–59 and chapter 6's (<code>@kairotic/cac</code>'s <code>partimento.mjs</code>, <code>four()</code>); the book's realizations are among the ones counted, outlined.</p>
+      <ul class="q">
+        <li><b>The outer voices</b> are counterpoint; <b>the inner voices</b> fill the chords: they may hold a common tone as long as the chords keep it, and need not turn after a leap. No voice crosses another; soprano and alto, alto and tenor, within an octave; no parallel 5ths or octaves between any two voices.</li>
+        <li><b>Doublings</b>: the bass as a rule (in a 5/3, a 6/4); in a 6/3 the bass, the 3rd or the 6th; never the leading tone, a dissonance or the 7th of a chord. The deceptive ⑥ doubles its 3rd.</li>
+        <li><b>The dominant's 7th chord</b> and its family — 7 on ⑤, 6/5 on ⑦, 6/4/3 on ②, 4/2 on ④ — are <b>semi-consonances</b>: they enter freely, but their 7th goes down by step (or is held into the 4th of a 6/4), the leading tone up to the tonic (an inner voice may fall to ⑤).</li>
+        <li><b>The Rule of the Octave in four parts</b>, up and down, major and minor: its chords self-contained, the ♯6/4/3 on the descending ⑥ the dominant's 4/3 of ⑤ — in minor the <b>French augmented 6th</b>, its 6th going up to the octave.</li>
+        <li><b>The cadences</b>: the perfect one and the tenor, alto and discant cadences (the bass singing another voice's clausula), the four-part Galant cadence, the dominant 7th resolved and deceived.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+</main>
+
+<script type="module">
+import { fourParts, PHRASES } from "./kairotic/four.mjs";
+import { shape } from "./kairotic/soft.mjs";
+
+const $ = (id) => document.getElementById(id);
+const VOICES = [["soprano", "upper"], ["alto", "middle"], ["tenor", "tenor"]];
+let P = null, W = null, pid = "ro-up", ctx = null, shown = null;
+for (const [k, s] of Object.entries(PHRASES)) {
+  const b = document.createElement("button");
+  b.className = "act"; b.dataset.phrase = k; b.textContent = s.name;
+  b.addEventListener("click", () => { pid = k; $("tonic").value = PHRASES[k].key.tonic; rebuild(); });
+  $("phrases").appendChild(b);
+}
+function rebuild() {
+  document.querySelectorAll("[data-phrase]").forEach((b) => b.classList.toggle("on", b.dataset.phrase === pid));
+  $("status").textContent = "counting…";
+  const ph = PHRASES[pid], key = { tonic: $("tonic").value };
+  P = fourParts({ phrase: pid, key, figured: $("figured").checked, ro: $("ro").checked });
+  const t0 = performance.now(), c = P.count(), ms = Math.round(performance.now() - t0);
+  const other = fourParts({ phrase: pid, key, figured: $("figured").checked, ro: !$("ro").checked }).count();
+  $("total").textContent = c.toLocaleString("en");
+  $("total-sub").textContent = `realization${c === 1n ? "" : "s"} ${$("figured").checked ? "of the phrase's chords" : "over the bass, the chords free"} · ${ms} ms`;
+  $("other").textContent = `${other.toLocaleString("en")} ${$("ro").checked ? "without" : "with"} chapter 4's rules`;
+  const keys = [...new Set(P.units.map((u, t) => P.keyName(t)))];
+  $("ref").textContent = `${ph.ref} · ${keys.join(" → ")}`;
+  $("about").innerHTML = `<b>${ph.name}:</b> ${ph.about}.`;
+  $("status").textContent = c ? "ready" : "no realization";
+  $("engine").disabled = !c; $("uniform").disabled = !c; $("book").disabled = !P.book; $("wrong").disabled = !P.wrong;
+  W = c ? P.engine({ temp: Number($("temp").value) || 0 }) : null; shown = null;
+  render();
+}
+function render() {
+  const n = P.n, uw = Math.max(34, Math.min(64, 780 / n)), X = 54, H = 420;
+  const ds = [...P.units.map((b) => b.d), ...(W ? VOICES.flatMap(([v]) => W[v]).map(P.degree) : []), P.units[0].d + 14];
+  const lo = Math.min(...ds), hi = Math.max(...ds);
+  const top = 50, bot = H - 70, y = (d) => top + (hi - d) * ((bot - top) / Math.max(1, hi - lo));
+  const ch = W ? P.chords(W) : [];
+  let svg = `<svg width="${X + n * uw + 10}" height="${H}" viewBox="0 0 ${X + n * uw + 10} ${H}" role="img" aria-label="the bass and the three upper voices, with the chords and the keys">`;
+  let s0 = 0;
+  for (let t = 1; t <= n; t++) if (t === n || P.keyName(t) !== P.keyName(s0)) {
+    const x1 = X + s0 * uw + 2, x2 = X + t * uw - 2, nm = P.keyName(s0);
+    svg += `<rect class="keybox" x="${x1}" y="6" width="${Math.max(10, x2 - x1)}" height="16" rx="2"/><text class="keylab" x="${x1 + 4}" y="18">${nm}</text>`;
+    s0 = t;
+  }
+  for (let t = 0; t < n; t++) {
+    const x = X + t * uw, b = P.units[t];
+    if (b.strong) svg += `<rect class="strong" x="${x}" y="28" width="${uw}" height="${bot - 16}"/><line class="barline" x1="${x}" x2="${x}" y1="28" y2="${bot + 12}"/>`;
+    svg += `<rect class="unit" x="${x}" y="28" width="${uw}" height="${bot - 16}"/>`;
+    svg += W ? `<text class="fig" x="${x + uw / 2}" y="${bot + 26}">${ch[t]}</text>` : `<text class="ask" x="${x + uw / 2}" y="${bot + 26}">${b.chord}</text>`;
+    if (W) svg += `<text class="ro" x="${x + uw / 2}" y="${bot + 40}">${b.chord}</text>`;
+    if (b.struck) svg += `<text class="deg" x="${x + uw / 2}" y="${bot + 60}">${"①②③④⑤⑥⑦"[b.deg]}</text>`;
+  }
+  const bars = (vals, cls, nameOf, dOf, cut) => {
+    let t = 0;
+    while (t < vals.length) {
+      let e = t + 1; while (e < vals.length && (cut ? !cut(e) : vals[e] === vals[t])) e++;
+      const v = vals[t], yy = y(dOf(v));
+      svg += `<rect class="${cls}" x="${X + t * uw + 1}" y="${yy - 7}" width="${(e - t) * uw - 2}" height="14" rx="3"/>`;
+      if ((e - t) * uw > 26) svg += `<text class="nname" x="${X + t * uw + 4}" y="${yy}">${nameOf(v)}</text>`;
+      t = e;
+    }
+  };
+  bars(P.units.map((b, t) => t), "bass", (t) => P.K.name(P.units[t].d, P.units[t].r), (t) => P.units[t].d, (e) => P.units[e].struck);
+  if (W) {
+    for (const [v, cls] of [...VOICES].reverse()) bars(W[v], cls, P.name, P.degree);
+    for (let t = 0; t < n; t++) VOICES.forEach(([v], i) => {
+      if (P.voices[i].vertical(t, W[v][t]).q === "dissonant") svg += `<rect class="diss" x="${X + t * uw + 1}" y="${y(P.degree(W[v][t])) - 9}" width="${uw - 2}" height="18" rx="3"/>`;
+    });
+    if (shown) svg += `<rect class="book" x="${X - 2}" y="26" width="${n * uw + 4}" height="${bot - 12}" rx="4"/>`;
+  }
+  svg += `<text class="lab" x="4" y="${bot + 26}">chords</text><text class="lab" x="4" y="${bot + 40}">asked</text><text class="lab" x="4" y="${bot + 60}">bass</text>`;
+  $("sheet").innerHTML = svg + "</svg>";
+  $("play").disabled = !W;
+  if (W) {
+    const why = P.judge(W), pc = (x) => Math.round(100 * x) + "%";
+    const line = (v, cls, lab) => `<span style="color:var(--${cls})">■ ${lab}</span> ${W[v].filter((x, t) => t === 0 || x !== W[v][t - 1]).map(P.name).join(" ")}`;
+    const st = shape([W.soprano.map(P.degree)]);
+    $("msg").innerHTML = (shown === "book" ? "the book's realization · " : shown === "wrong" ? "the book's wrong one · " : "") + (why ? "✗ " + why
+      : `${line("soprano", "kairos", "soprano")} · ${line("alto", "ok", "alto")} · <span style="color:#8a5cc2">■ tenor</span> ${W.tenor.filter((x, t) => t === 0 || x !== W.tenor[t - 1]).map(P.name).join(" ")}<br>steps: the soprano ${pc(st.steps)}`);
+  } else $("msg").textContent = "";
+}
+function play() {
+  if (!W) return;
+  ctx = ctx || new AudioContext();
+  const unit = 0.6, t0 = ctx.currentTime + 0.1, n = P.n;
+  const tone = (hz, s, e, g0) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "triangle"; o.frequency.value = hz;
+    g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(g0, s + 0.02); g.gain.setTargetAtTime(0, e - 0.05, 0.03);
+    o.connect(g).connect(ctx.destination); o.start(s); o.stop(e + 0.3);
+  };
+  for (let t = 0; t < n; t++) if (P.units[t].struck) { let e = t + 1; while (e < n && !P.units[e].struck) e++; tone(P.K.hz(P.units[t].d, P.units[t].r), t0 + t * unit, t0 + (e === n ? e + 1 : e) * unit, 0.12); }
+  for (const [v] of VOICES) { const V = W[v]; for (let t = 0; t < n; t++) if (t === 0 || V[t] !== V[t - 1]) { let e = t + 1; while (e < n && V[e] === V[t]) e++; tone(P.hz(V[t]), t0 + t * unit, t0 + (e === n ? e + 1 : e) * unit, 0.07); } }
+}
+for (const id of ["tonic", "figured", "ro"]) $(id).addEventListener("change", rebuild);
+$("engine").addEventListener("click", () => { W = P.engine({ temp: Math.max(0, Number($("temp").value) || 0) }); shown = null; render(); });
+$("uniform").addEventListener("click", () => { W = P.sample(); shown = null; render(); });
+$("book").addEventListener("click", () => { if (P.book) { W = P.book; shown = "book"; render(); } });
+$("wrong").addEventListener("click", () => { if (P.wrong) { W = P.wrong; shown = "wrong"; render(); } });
+$("play").addEventListener("click", play);
+window.kairoticFour = { get P() { return P; }, get W() { return W; }, rebuild, render, set: (p, tonic) => { pid = p; $("tonic").value = tonic || PHRASES[p].key.tonic; rebuild(); } };
+rebuild();
+</script>

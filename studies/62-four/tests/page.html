@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 62 · four · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1000px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the RO in four parts counted and realized, the book's, the wrong Galant
+// cadence refused, the minor's French 6th, a transposition.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+const total = () => d.getElementById("total").textContent;
+const msg = () => d.getElementById("msg").textContent;
+const figs = () => [...d.querySelectorAll("#sheet text.fig")].map((x) => x.textContent);
+try {
+  await wait(() => w.kairoticFour && /^\d/.test(total()));
+  const K = w.kairoticFour;
+  is("it opens on the RO up in C major: 13,925 realizations, thirteen phrases to choose", total() === "13,925" && d.querySelector('[data-phrase="ro-up"]').classList.contains("on") && d.querySelectorAll("[data-phrase]").length === 13);
+  is("... the engine's realization drawn: three upper voices over the bass", d.querySelectorAll("#sheet rect.upper").length > 0 && d.querySelectorAll("#sheet rect.middle").length > 0 && d.querySelectorAll("#sheet rect.tenor").length > 0);
+  d.getElementById("book").click();
+  is("the book's (ex. 6.37a): sound, outlined, its chords 6/4/3 on ② and 6/5/3 on ④ and ⑦", /the book's realization/.test(msg()) && !/✗/.test(msg()) && d.querySelector("#sheet rect.book") && figs().join(" ") === "5/3 6/4/3 6/3 6/5/3 5/3 6/3 6/5/3 5/3");
+  is("... no wrong one for it", d.getElementById("wrong").disabled);
+  K.set("galant");
+  await wait(() => total() === "356");
+  d.getElementById("wrong").click();
+  is("the Galant cadence: the wrong one (ex. 6.13c) refused, its parallel 5ths named", /✗ unit 2: parallel 5ths between the alto and the tenor/.test(msg()));
+  K.set("ro-down-minor");
+  await wait(() => total() === "269,851");
+  d.getElementById("book").click();
+  is("the RO down in minor: the book's, sound, the French 6th on ⑥ (6/4/3)", !/✗/.test(msg()) && figs()[2] === "6/4/3" && /D♯4/.test(msg()));
+  K.set("ro-down", "G");
+  await wait(() => total() === "25,312" && [...d.querySelectorAll("#sheet .keylab")].some((x) => x.textContent === "D major"));
+  is("the RO down moved to G: the same 25,312, its ⑥ in D major", total() === "25,312");
+  d.getElementById("uniform").click();
+  is("any valid one, sound", !/✗/.test(msg()) && /steps/.test(msg()));
+  is("no errors on the page", errors.length === 0);
+} catch (e) { is("error: " + (e.message || e), false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(errors) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>

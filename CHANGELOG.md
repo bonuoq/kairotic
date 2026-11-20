@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Study 62 · four: harmony in four parts** (IJzerman, chapter 6; `@kairotic/cac` 0.5.0). `partimento.mjs` has
+  `four()`: soprano, alto and tenor over a given bass, counted exactly and written by the engine. The inner voices fill
+  the chords (a common tone held long, no turning after a leap); no crossing, an octave at most between neighbours, no
+  parallels between any two voices; the bass doubled as a rule, never the leading tone, a dissonance or a chord's 7th;
+  the dominant's 7th chord and its family (7, 6/5, 6/4/3, 4/2) as semi-consonances, their 7th going down, the leading
+  tone up (an inner voice may fall to ⑤), the deceptive ⑥ doubling its 3rd; the augmented 6th chords, a unit's
+  chromatic tones (`chroma`). As data: `CHORDS4`, `RULE_OF_THE_OCTAVE4` (`octaveChord4`). The book's realizations of
+  the four-part RO (ex. 6.37, 6.39, 6.42) and of the cadences (perfect, tenor, alto, discant, Galant: ex. 6.13, 6.16)
+  are among the ones counted; its «wrong!» Galant cadence is refused for its parallel 5ths.
 - **The studies export what they make, for the app** (discussion #319, step 2). One module, `studies/_shared/export.mjs`
   (each study keeps a copy, checked equal by `tests/export.mjs`), writes MEI that the app opens as a tree box: voices
   labelled, notes cut at the bar lines and tied, accidentals for their bar, an upbeat, figures under the bass
