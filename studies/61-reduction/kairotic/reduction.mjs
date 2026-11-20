@@ -173,6 +173,22 @@ export function checkLevel(an, k) {
   return checkPath(an.levels[k], an.phrase, an.key);
 }
 
+/** What a level sounds: each note from the first slice it is in to the end of the last (a note held across slices one
+ *  note; the notes of a sonority spread sounding together from its onset), as [{id, pitch, voice, on, dur}] in time. */
+export function eventsOf(path) {
+  const at = new Map();
+  for (const s of path) for (const n of s.notes) {
+    const e = at.get(n.id);
+    if (e && e.end === s.on) e.end = s.end;
+    else if (!e) at.set(n.id, { id: n.id, pitch: n.pitch, voice: n.voice, on: s.on, end: s.end });
+  }
+  return [...at.values()].map(({ end, ...e }) => ({ ...e, dur: end - e.on })).sort((a, b) => a.on - b.on || a.voice.localeCompare(b.voice));
+}
+/** What level k sounds (eventsOf). */
+export const soundAt = (an, k) => eventsOf(an.levels[k]);
+/** What a phrase of the incipit's sounds: its notes, the bass a bar each, the melody a unit each (held as written). */
+export const soundOf = (phrase, per = PER) => notesOfPhrase(phrase, per).map(({ id, pitch, voice, on, dur }) => ({ id, pitch, voice, on, dur }));
+
 /** The notes left at level k (their ids). */
 export const survivors = (an, k) => new Set(an.levels[k].flatMap((s) => s.notes.map((n) => n.id)));
 

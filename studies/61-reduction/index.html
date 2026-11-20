@@ -359,22 +359,16 @@ window.addEventListener("DOMContentLoaded", function () {
     (.setValueAtTime (.-gain g) 0 s) (.linearRampToValueAtTime (.-gain g) g0 (+ s 0.02)) (.setTargetAtTime (.-gain g) 0 (- e 0.05) 0.03)
     (.connect (.connect o g) (.-destination c)) (.start o s) (.stop o (+ e 0.3))
     (swap! playing conj o)))
-(defn play-lines! [bass melody per]
+(defn play-events! [evs]
   (halt!)
   (try
-    (let [c (or @ac (reset! ac (js/AudioContext.))) unit 0.42 t0 (+ (.-currentTime c) 0.1)
-          mel (vec (str/split melody #" ")) bas (vec (mapcat (fn [b] (repeat per b)) (str/split bass #" ")))]
-      (doseq [[v g] [[mel 0.09] [(subvec bas 0 (min (count bas) (count mel))) 0.12]]]
-        (let [n (count v)]
-          (loop [t 0]
-            (when (< t n)
-              (let [e (loop [e (inc t)] (if (and (< e n) (= (v e) (v t))) (recur (inc e)) e))]
-                (tone! c (hz (v t)) (+ t0 (* t unit)) (+ t0 (* (if (= e n) (inc e) e) unit)) g)
-                (recur e)))))))
+    (let [c (or @ac (reset! ac (js/AudioContext.))) unit 0.42 t0 (+ (.-currentTime c) 0.1)]
+      (doseq [e (array-seq evs)]
+        (tone! c (hz (.-pitch e)) (+ t0 (* (.-on e) unit)) (+ t0 (* (+ (.-on e) (.-dur e)) unit)) (if (= "b" (.-voice e)) 0.12 0.09))))
     (catch :default e (status! (str "No sound: " (msg e))))))
 (defn play-level! []
   (when-let [{:keys [an k]} (and (:an @st) @st)]
-    (let [p (.phraseAt R an k)] (play-lines! (.-bass p) (.-melody p) (.-per an)))))
+    (play-events! (.soundAt R an k))))
 
 ;; ───────── wiring ─────────
 (.addEventListener ($ "ex") "change" (fn [_] (load-preset!) (analyse! nil)))
@@ -383,8 +377,8 @@ window.addEventListener("DOMContentLoaded", function () {
 (.addEventListener ($ "play-level") "click" (fn [_] (play-level!)))
 (.addEventListener ($ "halt") "click" (fn [_] (halt!)))
 (.addEventListener ($ "vary") "click" (fn [_] (vary! nil)))
-(.addEventListener ($ "play-orig") "click" (fn [_] (when-let [an (:an @st)] (play-lines! (.. an -phrase -bass) (.. an -phrase -melody) (.-per an)))))
-(.addEventListener ($ "play-var") "click" (fn [_] (when-let [v (:var @st)] (let [an (:an @st)] (play-lines! (.. an -phrase -bass) (.-melody v) (.-per an))))))
+(.addEventListener ($ "play-orig") "click" (fn [_] (when-let [an (:an @st)] (play-events! (.soundOf R (.-phrase an) (.-per an))))))
+(.addEventListener ($ "play-var") "click" (fn [_] (when-let [v (:var @st)] (let [an (:an @st)] (play-events! (.soundOf R (js/Object.assign #js {} (.-phrase an) #js {:melody (.-melody v)}) (.-per an)))))))
 (.addEventListener ($ "take") "click" (fn [_] (when-let [v (:var @st)] (set! (.-value ($ "mel")) (.-melody v)) (analyse! nil))))
 
 (load-preset!)
