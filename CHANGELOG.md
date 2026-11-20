@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A menu of classes while a box is written**: the field of a box offers the classes that match the first word
+  typed — the core's, the work's own components, the classes of the official packages (in the work or not yet:
+  writing one brings its package) and the functions of clojure.core —, each with where it comes from and the first
+  sentence of its doc. ↑ ↓ choose, Tab or Enter take one, a click too; once the class is written it shows what it
+  takes (its usage). `hlp/suggest` and `hlp/about` give the same from code.
 - **`morph` and `vary`: rhythms that move by a measured amount** (`@kairotic/rhythm` 0.5.0; discussions #206, #207,
   #321). `morph` turns one rhythm into another swap by swap: a ratio 0…1 is a point on the fewest swaps from the left
   rhythm to the target — always a real rhythm —, and the way goes out as data (`[:swap from to]`, `[:remove i]`,

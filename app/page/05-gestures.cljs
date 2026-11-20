@@ -53,16 +53,19 @@
 (defn open-editor!
   "The field to write a box (a new one at x y, or the text of box id). What starts with ( is a line of the REPL
    instead (issue #163): Enter evaluates it, shows what it gave under the field and leaves it open for the next
-   one (↑ ↓ go through the REPL's history); Esc, or Enter on an empty line, closes it."
+   one (↑ ↓ go through the REPL's history); Esc, or Enter on an empty line, closes it. While the class is being
+   written, a menu (#box-suggest) offers the classes that match: ↑ ↓ choose, Tab or Enter take one, a click too."
   [{:keys [id x y text]}]
   (when-let [old ($ "box-edit")] (.remove old))
   (when-let [old ($ "box-edit-out")] (.remove old))
+  (when-let [old ($ "box-suggest")] (.remove old))
   (close-repl-line!)
   (let [inp (js/document.createElement "input") done (atom false)
         out (js/document.createElement "div")
+        menu (js/document.createElement "div")
         repl? (atom false) hidx (atom nil)
         ;; once: removing the field makes it lose the focus, and its blur closes it too
-        close! (fn [] (when-not @done (reset! done true) (.remove inp) (.remove out)))
+        close! (fn [] (when-not @done (reset! done true) (.remove inp) (.remove out) (.remove menu)))
         set-repl! (fn [on]
                     (reset! repl? on)
                     (.toggle (.-classList inp) "as-repl" on)
@@ -96,7 +99,52 @@
                     (when (pos? n)
                       (let [i (case dir :up (max 0 (dec (or @hidx n))) :down (min n (inc (or @hidx n))))]
                         (reset! hidx i)
-                        (set! (.-value inp) (if (< i n) (nth h i) ""))))))]
+                        (set! (.-value inp) (if (< i n) (nth h i) ""))))))
+        ;; the menu of classes: what matches the first word while it is written, then what the class takes
+        sugg (atom {:items [] :sel nil})
+        draw-menu! (fn []
+                     (let [{:keys [items sel hint]} @sugg]
+                       (set! (.-innerHTML menu)
+                             (cond
+                               (seq items)
+                               (apply str (map-indexed
+                                           (fn [i {:keys [cls from doc]}]
+                                             (str "<div class=\"sg" (when (= i sel) " on") "\" data-i=\"" i "\" role=\"option\""
+                                                  (when (= i sel) " aria-selected=\"true\"") ">"
+                                                  "<span class=\"sg-name\">" (esc cls) "</span>"
+                                                  "<span class=\"sg-from\">" (esc from) "</span>"
+                                                  (when (seq doc) (str "<span class=\"sg-doc\">" (esc doc) "</span>")) "</div>"))
+                                           items))
+                               hint (str "<div class=\"sg hint\"><span class=\"sg-name\">" (esc (or (:usage hint) (:cls hint))) "</span>"
+                                         "<span class=\"sg-from\">" (esc (:from hint)) "</span>"
+                                         (when (seq (:doc hint)) (str "<span class=\"sg-doc\">" (esc (:doc hint)) "</span>")) "</div>")
+                               :else ""))))
+        suggest! (fn []
+                   (let [v (str/triml (.-value inp))]
+                     (reset! sugg (cond
+                                    (or @repl? (str/blank? v)) {:items []}
+                                    (re-find #"\s" v) {:items [] :hint (hlp/about (klass v))}
+                                    :else {:items (hlp/suggest v) :sel nil}))
+                     (draw-menu!)))
+        take! (fn [i commit?]
+                (when-let [{:keys [cls usage]} (get (:items @sugg) i)]
+                  (let [args? (and (seq usage) (not= (str/trim usage) cls))]
+                    (set! (.-value inp) (str cls (when args? " ")))
+                    (if (and commit? (not args?))
+                      (finish true)
+                      (do (.focus inp) (suggest!))))))
+        move! (fn [d] (let [{:keys [items sel]} @sugg n (count items)]
+                        (when (pos? n)
+                          (swap! sugg assoc :sel (mod (if sel (+ sel d) (if (pos? d) 0 (dec n))) n))
+                          (draw-menu!)
+                          true)))]
+    (set! (.-id menu) "box-suggest")
+    (set! (.-className menu) "suggest")
+    (.setAttribute menu "role" "listbox")
+    ;; a click on a class takes it; pressing on the menu does not take the focus away from the field
+    (.addEventListener menu "pointerdown" (fn [e] (.preventDefault e)))
+    (.addEventListener menu "click" (fn [e] (when-let [el (.closest (.-target e) "[data-i]")]
+                                              (take! (js/parseInt (.. el -dataset -i) 10) false))))
     (set! (.-id inp) "box-edit")
     (set! (.-className inp) "edit")
     (.setAttribute inp "spellcheck" "false")
@@ -108,9 +156,12 @@
       (set! (.. inp -style -left) (str px "px"))
       (set! (.. inp -style -top) (str py "px"))
       (set! (.. out -style -left) (str px "px"))
-      (set! (.. out -style -top) (str (+ py 32) "px")))
+      (set! (.. out -style -top) (str (+ py 32) "px"))
+      (set! (.. menu -style -left) (str px "px"))
+      (set! (.. menu -style -top) (str (+ py 30) "px")))
     (.appendChild ($ "canvas-wrap") inp)
     (.appendChild ($ "canvas-wrap") out)
+    (.appendChild ($ "canvas-wrap") menu)
     (.focus inp)
     (if @repl?
       (let [n (count (.-value inp))] (.setSelectionRange inp n n))
@@ -119,16 +170,22 @@
     ;; code editor of a line of the REPL (23-ids.cljs) as soon as that is loaded
     (when @repl? (upgrade-repl-line! inp x y close!))
     (.addEventListener inp "input"
-      (fn [_] (when (and (nil? id) (not @repl?) (str/starts-with? (str/triml (.-value inp)) "("))
-                (set-repl! true)
-                (upgrade-repl-line! inp x y close!))))
+      (fn [_] (if (and (nil? id) (not @repl?) (str/starts-with? (str/triml (.-value inp)) "("))
+                (do (set-repl! true)
+                    (suggest!)
+                    (upgrade-repl-line! inp x y close!))
+                (suggest!))))
     (.addEventListener inp "keydown"
-      (fn [e] (case (.-key e)
-                "Enter" (do (.preventDefault e) (finish true))
-                "Escape" (do (.preventDefault e) (finish false))
-                "ArrowUp" (when @repl? (.preventDefault e) (recall! :up))
-                "ArrowDown" (when @repl? (.preventDefault e) (recall! :down))
-                nil)))
+      (fn [e] (let [{:keys [items sel]} @sugg]
+                (case (.-key e)
+                  "Enter" (do (.preventDefault e) (if sel (take! sel true) (finish true)))
+                  "Tab" (when (seq items) (.preventDefault e) (take! (or sel 0) false))
+                  "Escape" (do (.preventDefault e) (if sel (do (swap! sugg assoc :sel nil) (draw-menu!)) (finish false)))
+                  "ArrowUp" (cond @repl? (do (.preventDefault e) (recall! :up))
+                                  (move! -1) (.preventDefault e))
+                  "ArrowDown" (cond @repl? (do (.preventDefault e) (recall! :down))
+                                    (move! 1) (.preventDefault e))
+                  nil))))
     ;; leaving it writes the box; a line of the REPL is closed without running it
     (.addEventListener inp "blur" (fn [_] (if @repl? (close!) (finish true))))))
 

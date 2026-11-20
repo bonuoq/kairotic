@@ -20,7 +20,9 @@
 
 (ns kairotic.help
   (:require [clojure.string :as str]
-            [kairotic.components :as comp]))
+            [kairotic.components :as comp]
+            [kairotic.library :as lib]
+            [kairotic.corefns :as cf]))
 
 (def lines (fn [& ls] (str/join "\n" ls)))
 
@@ -1139,3 +1141,64 @@ Given a rhythm as pulses, it searches every rhythm of as many onsets among as ma
   "Every class with a help page (registered or listed here)."
   []
   (sort (distinct (concat (keys core) (map first (comp/listing))))))
+
+;; ───────── suggestions while a box is written ─────────
+;; The field where a box is written offers the classes that match what is typed: the registered ones (the core,
+;; the work's own components, the packages already in it), the classes of the official packages not brought in
+;; yet (writing one brings its package), and the functions of clojure.core. Each with where it comes from and the
+;; first sentence of its doc.
+
+(defn- first-sentence [s]
+  (let [s (str/trim (str (first (str/split-lines (str s)))))
+        i (str/index-of s ". ")]
+    (if i (subs s 0 (inc i)) s)))
+
+(defn- candidates
+  "Every class that can be written in a box: {name {:source :registered | :package | :fn}}."
+  []
+  (merge (into {} (for [f (cf/names)] [f {:source :fn}]))
+         (into {} (for [[_ p] lib/packages c (:classes p)] [c {:source :package}]))
+         (into {} (for [[c h] core :when (:package h)] [c {:source :package}]))
+         (into {} (for [[c] (comp/listing)] [c {:source :registered}]))))
+
+(defn- rank
+  "How well name n matches what is typed, t (lower is better), or nil if it does not."
+  [n t]
+  (let [n' (str/lower-case n) t' (str/lower-case t) i (str/index-of n' t')]
+    (cond (= n' t') 0
+          (= i 0) 1
+          (nil? i) nil
+          (< (count t) 2) nil
+          (re-find #"[-/~.]" (subs n' (dec i) i)) 2
+          :else 3)))
+
+(defn about
+  "What the field shows of class n: {:cls :usage :doc :from}, :from being where it comes from (\"core\", a
+   package's name, \"this work\" or \"clojure.core\"), or nil if n is not a class."
+  [n]
+  (let [d (comp/lookup n) h (get core n) pkg (lib/package-of n)]
+    (when (or d h pkg)
+      {:cls n
+       :usage (or (:usage d) (:usage h))
+       :doc (first-sentence (or (:doc d) (:doc h) ""))
+       :from (cond pkg (first pkg)
+                   (:package h) (:package h)
+                   (:corefn d) (if (str/starts-with? (str (:doc d)) "clojure.string") "clojure.string" "clojure.core")
+                   (= :work (:origin d)) "this work"
+                   :else "core")})))
+
+(defn suggest
+  "The classes that match what is typed (its first word), best first, at most n: [{:cls :usage :doc :from} …].
+   An exact match first, then those that begin with it, those where a word inside begins with it (after - / ~ .),
+   the rest that contain it; Kairotic's classes before the functions of clojure.core, the shorter first."
+  ([typed] (suggest typed 8))
+  ([typed n]
+   (let [t (first (str/split (str/triml (str typed)) #"\s+"))]
+     (when (seq t)
+       (->> (candidates)
+            (keep (fn [[c {:keys [source]}]]
+                    (when-let [r (rank c t)] [[r (if (= source :fn) 1 0) (count c) c] c])))
+            (sort-by first)
+            (take n)
+            (keep (fn [[_ c]] (about c)))
+            vec)))))

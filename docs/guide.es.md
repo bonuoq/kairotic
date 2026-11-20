@@ -25,7 +25,10 @@ los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
 ## 2. Hacer un patch
 
 - **Crear una caja**: doble clic en un sitio vacío, escribe su texto —la clase y sus argumentos, como
-  `osc~ 440`— y pulsa Intro. Las clases que acaban en `~` son sonido.
+  `osc~ 440`— y pulsa Intro. Las clases que acaban en `~` son sonido. Mientras escribes la clase, un menú
+  ofrece las que coinciden, cada una con su origen (el núcleo, un paquete, clojure.core) y qué hace: ↑ ↓
+  eligen, Tab o Intro toman una (o un clic), y luego muestra qué argumentos espera. Escribir una clase de un
+  paquete oficial trae el paquete a la obra.
 - **Conectar**: arrastra desde una salida (las marcas pequeñas bajo una caja) hasta una entrada (encima
   de otra caja). No hace falta acertar en la marca: cerca de una salida se ilumina y el puntero se vuelve
   una cruz, y un cable que sueltas sobre una caja, o justo encima de una de sus entradas, llega a la
