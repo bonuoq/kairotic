@@ -28,6 +28,7 @@ await (async function () {
     window.kairoticKernel = await import("../kairotic/kernel.mjs");
     var Mi = window.kairoticMirror = await import("../kairotic/mirror.mjs");
     window.kairoticSound = await import("../kairotic/sound.mjs");
+    window.kairoticExport = await import("../kairotic/export.mjs");
     scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
     await settle();
 
@@ -45,6 +46,13 @@ await (async function () {
     document.querySelector("[data-act=finish]").click();
     is("the engine closes the work in the middle", /finished/.test(document.getElementById("here").textContent) && $$("#svg .dux").length === 11 && $$("#svg .comes").length === 11);
     is("... no note left unwritten", $$("#svg .empty").length === 0 && here() === 1);
+    // exported for the app (discussion #319): MEI through a scripted downloads capability, as claude.ai offers it
+    var saved = [];
+    window.claude = { use: async function (nm) { return nm === "downloads" ? { save: async function (o) { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null; } };
+    document.querySelector("[data-act=export]").click();
+    for (var k = 0; k < 100 && !saved.length; k++) await new Promise(function (r) { setTimeout(r, 25); });
+    is("exported for the app: the crab's dux and comes as MEI, the transformation in its extMeta", saved.length === 1 && /\.mei\.txt$/.test(saved[0].filename) && /label="dux"/.test(saved[0].text) && /label="comes"/.test(saved[0].text) && /:kind "crab"/.test(saved[0].text) && /:complete true/.test(saved[0].text));
+    delete window.claude;
     document.querySelector("[data-act=turn]").click();
     is("turn the page: a crab mirrored left to right", document.getElementById("svg").classList.contains("turn-crab"));
     document.querySelector("[data-act=play]").click();

@@ -52,6 +52,13 @@ try {
   is("... any valid one, a realization", /cadence/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent));
   d.getElementById("clear").click();
   is("... the next notes with their futures and their costs", d.querySelectorAll("#fan button small.cost").length > 3);
+  // exported for the app (discussion #319): MEI through a scripted downloads capability, as claude.ai offers it
+  const saved = [];
+  w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
+  d.getElementById("draw").click();
+  d.getElementById("exp-title").value = "My realization";
+  d.getElementById("export").click();
+  is("exported for the app: my-realization.mei.txt, the upper voice and the bass, the figures under it, the schema in its extMeta", await wait(() => saved.length === 1) && saved[0].filename === "my-realization.mei.txt" && /label="upper"/.test(saved[0].text) && /label="bass"/.test(saved[0].text) && /<harm place="below" staff="2"/.test(saved[0].text) && /:schema "/.test(saved[0].text) && /:source "Kairotic Study 51 · schemata"/.test(saved[0].text));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);
