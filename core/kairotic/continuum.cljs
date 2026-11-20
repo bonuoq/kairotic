@@ -56,6 +56,12 @@
 
 ;; ───────── the sounds of a tree ─────────
 
+(defn note-wires
+  "A note's :wire as a vector of wires ({:send … :kind :rigid|:elastic :tol s :leader :performer|:electronics}): one
+   map, or several in a vector."
+  [w]
+  (cond (map? w) [w] (sequential? w) (vec (filter map? w)) :else []))
+
 (def ^:private bases [4 2 1 0.5 0.25 0.125])
 
 (defn note-value
@@ -75,7 +81,7 @@
     (if (= :voice (mt/tag x)) x (or (first (filter #(= :voice (mt/tag %)) (tree-seq mt/node? mt/kids x))) x))))
 
 (defn events
-  "The sounds of a tree's first voice, in order: {:id :beat :wbeats (written, a tied note's whole length) :ws :wd
+  "The sounds of a tree's first voice, in order: {:id :beat :wbeats (written, a tied note's whole length) :wire :ws :wd
    (written, in seconds at its tempo) :t :dur (where it really sounded, or as written) :midi (exact) :midi2 (the end
    of its glissando) :name (written) :amp}. With a take, where that take played each note (notes it did not play are
    left out)."
@@ -108,7 +114,7 @@
                            (when m
                              (reset! open (cond-> {:id (:id a) :beat @beat :wbeats d :midi m :name (name-of a m)
                                                    :amp (or (:vel a) 0.6) :t (:tstamp.real a) :dur (:dur.real a)}
-                                            (some? (:cue a)) (assoc :cue (:cue a))
+                                            (some? (:wire a)) (assoc :wire (:wire a))
                                             (seq (:gliss a)) (assoc :midi2 (+ m (/ (second (last (:gliss a))) 100))))))))
                        (when-not (:tie a) (close!))
                        (swap! beat + d))))
@@ -167,7 +173,7 @@
                           w (sp/parse (:name e))
                           staffness (clamp (* 2 (- rp 0.5)))
                           acc (when w (when (not= (:alter w) (sp/key-alter sig (:step w))) ({-2 "𝄫" -1 "♭" 0 "♮" 1 "♯" 2 "𝄪"} (:alter w))))]
-                      {:id (:id e) :name (:name e) :cue (:cue e) :r {:time rt :pitch rp :glyph rg}
+                      {:id (:id e) :name (:name e) :wires (note-wires (:wire e)) :r {:time rt :pitch rp :glyph rg}
                        :x (lerp (:t e) (:ws e) rt) :x1 (lerp (+ (:t e) (:dur e)) (+ (:ws e) (:wd e)) rt)
                        :y (height-at h0 rp) :y1 (height-at h1 rp) :gliss (some? (:midi2 e))
                        :stroke (- 1 rg) :thick (clamp (:amp e)) :head rg
@@ -205,21 +211,17 @@
         sy (fn [s] (- base (* step s)))
         slices 60 dt (/ t1 slices)
         staff (fn [t] ((:staff-alpha p) t)) grid (fn [t] ((:grid-alpha p) t))
-        by-id (into {} (map (fn [n] [(:id n) n]) (:notes p)))
         lane 12]
     (str
-     ;; the wires (discussion #217): from a note up to the electronics' lane — rigid solid, elastic dashed with its
-     ;; tolerance along the lane, led by the electronics with a diamond; a note's own :cue is a rigid wire too
+     ;; the wires (discussion #217), written on their notes (:wire): from the note up to the electronics' lane —
+     ;; rigid solid, elastic dashed with its tolerance along the lane, led by the electronics with a diamond
      (apply str
-            (for [w (concat (map (fn [n] {:note (:id n) :send (:cue n) :kind :rigid :id (str "cue:" (:id n))})
-                                 (filter #(some? (:cue %)) (:notes p)))
-                            (:wires c))
-                  :let [n (get by-id (:note w))]
-                  :when n
+            (for [n (:notes p) [i w] (map-indexed vector (:wires n))
                   :let [kind (keyword (name (or (:kind w) :rigid))) lead (keyword (name (or (:leader w) :performer)))
                         x (sx (:x n)) y (- (sy (:y n)) (* 1.4 step))
-                        label (str (if (contains? w :send) (pr-str (:send w)) (:id w)))]]
-              (str "<g class=\"ct-wire ct-" (name kind) (when (= lead :electronics) " ct-led") "\" data-wire=\"" (esc (:id w)) "\">"
+                        wid (str (:id n) (when (> (count (:wires n)) 1) (str "/" i)))
+                        label (pr-str (:send w))]]
+              (str "<g class=\"ct-wire ct-" (name kind) (when (= lead :electronics) " ct-led") "\" data-wire=\"" (esc wid) "\">"
                    "<line x1=\"" (f1 x) "\" x2=\"" (f1 x) "\" y1=\"" (f1 y) "\" y2=\"" (f1 lane) "\"/>"
                    (when (and (= kind :elastic) (pos? (or (:tol w) 0)))
                      (str "<line class=\"ct-tol\" x1=\"" (f1 x) "\" x2=\"" (f1 (sx (+ (:x n) (:tol w)))) "\" y1=\"" (f1 lane) "\" y2=\"" (f1 lane) "\"/>"))

@@ -4,7 +4,7 @@
 ;; Time advances by occasion, not by the clock: each note heard is matched with a note of the tree a little ahead of
 ;; where the performer was, by its pitch and by when it was expected. What it finds:
 ;;   :at    where the performer is: the note (its :id, its index) and its written beat
-;;   :cue   a wire reached (a note's own :cue, or a wire of the tree's continuum, discussion #217), what it sends:
+;;   :wire  a wire reached (written on its note, [:note {… :wire {:send x …}}], discussion #217), what it sends:
 ;;          rigid  on its note ("on the note"), or, if the note was passed over, at the next note found ("caught up");
 ;;                 never before its note, never twice
 ;;          elastic at its note if the performer gets there in time; else on its own at the time the note was expected
@@ -17,8 +17,7 @@
 ;; (@kairotic/analysis) cuts what pitch~ and onset~ hear into notes and calls these through the API.
 
 (ns kairotic.follow
-  (:require [kairotic.continuum :as ct]
-            [kairotic.mt :as mt]))
+  (:require [kairotic.continuum :as ct]))
 
 (def defaults
   {:ahead 4        ; how many notes ahead of the next expected a note heard may be (the rest are skipped)
@@ -26,33 +25,28 @@
    :octave true})  ; an octave off (a pitch tracker's usual error) still counts, at a cost
 
 (defn score
-  "The notes a tree is followed by: its first voice's sounds, in order ({:id :midi :ws :wd :beat :cue})."
+  "The notes a tree is followed by: its first voice's sounds, in order ({:id :midi :ws :wd :beat :wire})."
   [tree]
-  (mapv (fn [e] (select-keys e [:id :midi :ws :wd :beat :cue :name])) (ct/events tree)))
-
-(defn- cue-wires
-  "A note's own :cue as a rigid wire."
-  [evs]
-  (vec (keep-indexed (fn [i e] (when (some? (:cue e)) {:id (str "cue:" (:id e)) :note i :kind :rigid :leader :performer :send (:cue e)})) evs)))
+  (mapv (fn [e] (select-keys e [:id :midi :ws :wd :beat :wire :name])) (ct/events tree)))
 
 (defn wires
-  "The wires a tree is followed with: its notes' :cue (rigid), and the wires of its continuum ({:id :note note-id
-   :kind :rigid|:elastic :leader :performer|:electronics :tol seconds :send value}), each on the index of its note in
-   evs (a wire whose note is not there is left out)."
-  [tree evs]
-  (let [idx (into {} (map-indexed (fn [i e] [(:id e) i]) evs))
-        kw (fn [x d] (if (some? x) (keyword (name x)) d))
-        cw (keep (fn [w] (when-let [i (get idx (:note w))]
-                           {:id (:id w) :note i :kind (kw (:kind w) :rigid) :leader (kw (:leader w) :performer)
-                            :tol (or (:tol w) 0) :send (if (contains? w :send) (:send w) (keyword (str (:id w))))}))
-                 (:wires (:continuum (mt/attrs tree))))]
-    (vec (sort-by :note (concat (cue-wires evs) cw)))))
+  "The wires of a score, from its notes' :wire ({:send x :kind :rigid|:elastic :tol s :leader :performer|:electronics},
+   or a vector of them), each on the index of its note: {:id (the note's, /k for its k-th) :note i :kind :leader :tol
+   :send}."
+  [evs]
+  (vec (mapcat (fn [i e]
+                 (let [ws (ct/note-wires (:wire e)) kw (fn [x d] (if (some? x) (keyword (name x)) d))]
+                   (map-indexed (fn [k w] {:id (str (:id e) (when (> (count ws) 1) (str "/" k))) :note i
+                                           :kind (kw (:kind w) :rigid) :leader (kw (:leader w) :performer)
+                                           :tol (or (:tol w) 0) :send (:send w)})
+                                ws)))
+               (range) evs)))
 
 (defn start
-  "A follower at the beginning of a score. opts: :ahead :band :octave, :wires (by default the notes' :cue)."
+  "A follower at the beginning of a score. opts: :ahead :band :octave, :wires (by default its notes')."
   ([evs] (start evs {}))
   ([evs opts]
-   (let [ws (vec (or (:wires opts) (cue-wires evs)))]
+   (let [ws (vec (or (:wires opts) (wires evs)))]
      (merge defaults (dissoc opts :wires)
             {:evs (vec evs) :next 0 :played {} :order [] :rate 1 :t0 nil :last nil :extra 0
              :wires ws :pending (set (map :id ws))}))))
@@ -84,7 +78,7 @@
 
 (defn- fire [st w at status]
   [(update st :pending disj (:id w))
-   [:cue {:cue (:send w) :wire (:id w) :id (get-in st [:evs (:note w) :id]) :i (:note w) :t at :status status
+   [:wire {:send (:send w) :wire (:id w) :id (get-in st [:evs (:note w) :id]) :i (:note w) :t at :status status
           :kind (:kind w) :leader (:leader w)}]])
 
 (defn tick
@@ -117,7 +111,7 @@
 
 (defn hear
   "A note heard at t (seconds) at midi (with decimals). → [state found], found a vector of [:at {…}] and
-   [:cue {…}] (the wires that went on): nothing if it is not a note of the score near where the performer is (a
+   [:wire {…}] (the wires that went on): nothing if it is not a note of the score near where the performer is (a
    wrong note, an ornament) — but the elastic wires due by then."
   [st t midi]
   (let [[st early] (tick st t)

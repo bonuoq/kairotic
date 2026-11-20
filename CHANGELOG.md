@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Wires on their notes** (`@kairotic/analysis` 0.8.2): a wire is written on its note, `[:note {… :wire {:send :swell
+  :kind :elastic :tol 0.5 :leader :electronics}}]` (several in a vector), instead of a list on the continuum that
+  pointed at note ids: it moves with its note when the tree is edited, and needs no ids. `:cue` is gone (a rigid
+  wire, `{:send x}`, says it). `(wire! :bN note send {…})` writes it there (a melody string that holds the note is
+  written out), `(unwire! :bN note [send])`, `(wires :bN)`. The follow help patch shows a rigid and an elastic wire.
 - **Wires** (discussions #217, #204; `@kairotic/analysis` 0.8.1): `(wire! :bN note send {:kind :rigid|:elastic :tol s
   :leader :performer|:electronics})`, `(unwire! :bN id)`, `(wires :bN)` — a note joined to the electronics, kept on
   the tree's continuum (history, MEI) and drawn on it (rigid solid, elastic dashed with its tolerance, led by the

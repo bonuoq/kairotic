@@ -35,7 +35,8 @@ pitch from its exact frequency to the nearest key to its step on the staff, the 
 loud to a head with a line to its written value. The resolutions are kept in the tree (one event of the history, part
 of its MEI). A take — where one performance played each note — can be shown in place of the notes' own time:
 `(keep-take! :bN take)` keeps it only for you (in this browser, as Learn keeps your mappings), `:work` in the tree.
-Wires join a note to the electronics, drawn on the continuum from the note up to a lane above it:
+Wires join a note to the electronics. They are written on the note (`[:note {:pitch "g4" :dur 1 :wire {:send :swell}}]`,
+several in a vector), so they move with it when the tree is edited, and drawn on the continuum from the note up to a lane:
 `(wire! :bN 2 :swell)` is **rigid** — a `follow` box listening to the performer sends `:swell` on that note, or at
 the next note it finds if that one was passed over, never before and never twice; `{:kind :elastic :tol 0.5}` is
 **elastic** — on the note if the performer gets there in time, else on its own half a second after the note was

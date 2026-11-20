@@ -382,56 +382,79 @@
   (vec (concat (map (fn [t] (assoc (select-keys t [:id :name]) :scope :work)) (mei/takes (or (tree-data id) [:voice])))
                (map (fn [t] (assoc (select-keys t [:id :name]) :scope :me)) (get @my-takes id)))))
 
-;; ───────── wires: a note and the electronics, drawn on the continuum (discussions #217, #204) ─────────
+;; ───────── wires: a note and the electronics, written on the note (discussions #217, #204) ─────────
 
-(defn- with-ids-for
-  "The tree, written out with its notes' ids (mei/with-note-ids) if one of ids is not written in it yet: what a
-   take or a wire points at must stay where it is when the tree is edited."
-  [t ids]
-  (let [have (set (keep (fn [x] (when (and (vector? x) (= :note (first x)) (map? (second x))) (:id (second x)))) (tree-seq vector? seq t)))]
-    (if (every? have ids) t (mei/with-note-ids t))))
+(defn- sounds-at
+  "Where the notes that begin a sound in the first voice of a tree are written, in order (as the continuum and a
+   follow box count them): the metadata of each (where it is written, kairotic.mt/expand-source)."
+  [t]
+  (let [x (mt/expand-source t :w)
+        v (if (= :voice (mt/tag x)) x (or (first (filter #(= :voice (mt/tag %)) (tree-seq mt/node? mt/kids x))) x))
+        out (atom []) open (atom false)]
+    (letfn [(walk [n]
+              (cond (not (mt/node? n)) nil
+                    (= :chord (mt/tag n)) (reset! open false)
+                    (= :rest (mt/tag n)) (reset! open false)
+                    (= :note (mt/tag n)) (let [a (mt/attrs n)]
+                                           (when-not (:grace a)
+                                             (when-not @open (swap! out conj (meta n)))
+                                             (reset! open (boolean (:tie a)))))
+                    :else (doseq [k (mt/kids n)] (walk k))))]
+      (walk v))
+    @out))
+
+(defn- note-index [id t note]
+  (let [evs (ct/events t)]
+    (cond (number? note) (if (< -1 note (count evs)) note (fail (str "The tree has " (count evs) " notes (0 … " (dec (count evs)) ")")))
+          :else (or (first (keep-indexed (fn [i e] (when (= (str note) (:id e)) i)) evs))
+                    (fail (str "No note " note " in " id " (its notes: " (str/join " " (map :id evs)) ")"))))))
+
+(defn- update-wire!
+  "The tree box with f applied to the :wire of its i-th note (a melody string that holds it written out as notes)."
+  [id i f]
+  (let [t (tree-data id)
+        m (get (sounds-at t) i)
+        [ops path] (or (tc/writable t m) (fail "That note comes from a fragment (:defs) or a proportional rhythm (:rtm): write it out to wire it"))
+        t2 (reduce mt/apply-op t ops)
+        a (mt/attrs (mt/node-at t2 path))
+        w (f (ct/note-wires (:wire a)))
+        a2 (cond (empty? w) (dissoc a :wire) (= 1 (count w)) (assoc a :wire (first w)) :else (assoc a :wire w))]
+    (tree! id (mt/apply-op t2 [:attrs path a2]))))
 
 (defn wires
-  "The wires of a tree box: [{:id :note :send :kind :leader :tol} …] (a note's own :cue is a rigid wire too)."
+  "The wires of a tree box, each on its note: [{:note id :send … :kind … :leader … :tol …} …]."
   [id]
   (let [t (or (tree-data id) (fail (str id " holds no tree")))]
-    (vec (concat (keep (fn [e] (when (some? (:cue e)) {:id (str "cue:" (:id e)) :note (:id e) :send (:cue e) :kind :rigid})) (ct/events t))
-                 (:wires (:continuum (mt/attrs t)))))))
+    (vec (mapcat (fn [e] (map #(assoc % :note (:id e)) (ct/note-wires (:wire e)))) (ct/events t)))))
 
 (defn wire!
-  "A wire from a note of a tree box to the electronics: what a follow box sends when the performer gets there.
-   (wire! :b3 2 :swell) — the third note (or its id, \"n2\") —, rigid: on its note, or caught up at the next one found
-   if it was passed over; (wire! :b3 2 :swell {:kind :elastic :tol 0.5}): on its note if the performer gets there in
-   time, else on its own half a second after the note was expected; {:leader :electronics}: at the time the note was
-   expected, whatever the performer does. Drawn on the continuum, kept in the tree (history, MEI). → its id."
+  "A wire from a note of a tree box to the electronics, written on the note ([:note {… :wire {:send :swell}}]): what a
+   follow box sends when the performer gets there. (wire! :b3 2 :swell) — the third note, or its id \"n2\" —, rigid:
+   on its note, or caught up at the next one found if it was passed over; (wire! :b3 2 :swell {:kind :elastic :tol
+   0.5}): on its note if the performer gets there in time, else on its own half a second after the note was
+   expected; {:leader :electronics}: at the time the note was expected, whatever the performer does. A wire that
+   sends the same replaces it. Drawn on the continuum."
   ([id note send] (wire! id note send {}))
   ([id note send opts]
    (need-tree-box id)
    (let [t (or (tree-data id) (fail (str id " holds no tree")))
-         evs (ct/events t)
-         nid (cond (number? note) (or (:id (get evs note)) (fail (str "The tree has " (count evs) " notes (0 … " (dec (count evs)) ")")))
-                   (some #(= (str note) (:id %)) evs) (str note)
-                   :else (fail (str "No note " note " in " id " (its notes: " (str/join " " (map :id evs)) ")")))
+         i (note-index id t note)
          kind (keyword (name (or (:kind opts) :rigid)))
          leader (keyword (name (or (:leader opts) :performer)))
          _ (when-not (#{:rigid :elastic} kind) (fail ":kind is :rigid or :elastic"))
          _ (when-not (#{:performer :electronics} leader) (fail ":leader is :performer or :electronics"))
-         c (or (:continuum (mt/attrs t)) {})
-         ws (:wires c)
-         wid (or (:id opts) (first (remove (set (map :id ws)) (map #(str "w" %) (iterate inc 1)))))
-         w (cond-> {:id wid :note nid :send send :kind kind}
+         w (cond-> {:send send}
+             (= kind :elastic) (assoc :kind kind)
              (= leader :electronics) (assoc :leader leader)
-             (and (= kind :elastic) (number? (:tol opts))) (assoc :tol (:tol opts)))
-         t2 (with-ids-for t [nid])
-         c2 (assoc c :wires (conj (vec (remove #(= wid (:id %)) ws)) w))]
-     (tree! id (mt/update-attrs t2 assoc :continuum c2))
-     wid)))
+             (and (= kind :elastic) (number? (:tol opts))) (assoc :tol (:tol opts)))]
+     (update-wire! id i (fn [ws] (conj (vec (remove #(= send (:send %)) ws)) w)))
+     (str id " · note " i " → " (pr-str send)))))
 
 (defn unwire!
-  "Takes a wire away from a tree box: (unwire! :b3 \"w1\")."
-  [id wid]
-  (need-tree-box id)
-  (let [t (tree-data id) c (:continuum (mt/attrs t))]
-    (when-not (some #(= wid (:id %)) (:wires c)) (fail (str "No wire " wid " in " id)))
-    (tree! id (mt/update-attrs t assoc :continuum (update c :wires (fn [ws] (vec (remove #(= wid (:id %)) ws))))))
-    :unwired))
+  "Takes the wires away from a note: (unwire! :b3 2), or only the one that sends x: (unwire! :b3 2 :swell)."
+  ([id note] (unwire! id note ::all))
+  ([id note send]
+   (need-tree-box id)
+   (let [t (tree-data id) i (note-index id t note)]
+     (update-wire! id i (fn [ws] (if (= send ::all) [] (vec (remove #(= send (:send %)) ws)))))
+     :unwired)))

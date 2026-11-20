@@ -130,13 +130,14 @@ export async function views(page, check) {
   await cljs(page, `(keep-take! ${ct} {:id "mine" :when {}})`);
   check("(keep-take! :bN take) keeps it only for me: not in the tree", (await cljs(page, `[(mapv :scope (takes ${ct})) (mei/takes (tree-data ${ct}))]`)) === "[[:me] []]");
   await cljs(page, `(forget-take! ${ct} "mine")`);
-  const wid = (await cljs(page, `(wire! ${ct} 1 :swell {:kind :elastic :tol 0.5})`)).trim();
-  check("(wire! :bN 1 :swell {…}) adds a wire on the second note, kept in the tree", wid === '"w1"' &&
-    (await cljs(page, `(mapv (juxt :id :kind :tol) (:wires (:continuum (mt/attrs (tree-data ${ct})))))`)) === '[["w1" :elastic 0.5]]', wid);
+  await cljs(page, `(wire! ${ct} 1 :swell {:kind :elastic :tol 0.5})`);
+  check("(wire! :bN 1 :swell {…}) writes a wire on the second note",
+    (await cljs(page, `(mapv (juxt :note :send :kind :tol) (wires ${ct}))`)) === '[["n1" :swell :elastic 0.5]]',
+    await cljs(page, `(pr-str (tree-data ${ct}))`));
   const wn = await page.evaluate(() => document.querySelectorAll(".ct-wire.ct-elastic").length);
   check("... drawn on the continuum", wn === 1, String(wn));
-  await cljs(page, `(unwire! ${ct} "w1")`);
-  check("(unwire! :bN id) takes it away", (await cljs(page, `(:wires (:continuum (mt/attrs (tree-data ${ct}))))`)) === "[]");
+  await cljs(page, `(unwire! ${ct} 1)`);
+  check("(unwire! :bN note) takes it away", (await cljs(page, `(wires ${ct})`)) === "[]");
   await cljs(page, `(view ${ct} :score)`);
   await cljs(page, `(move-stroke ${ct} :n2 0 -100)`);
   check("in measures, a change of pitch is written in the note", (await cljs(page, `(mt/pitches (tree-data ${ct}))`)) === '["c4" "e4"]');
