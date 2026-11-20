@@ -1655,3 +1655,52 @@
                                    o)))
               (apply-op t o)))
           old (diff (descriptive old) w)))
+
+
+;; ───────── layers: what is written, and what lies over it (discussions #308, #323) ─────────
+;; Over the written tree lie layers a code window may show or hide: :performance (performative-keys above: how it was
+;; played, its wires, its takes) and :analysis (what an analysis wrote on its notes: the figures over a bass, :fig; the
+;; degree of a bass note, :deg; the key it is read in, :local; why a rule was broken there, :why; a chord's name,
+;; :harmony). Hidden, a layer is kept: what is written is put back into the whole tree, each node keeping its hidden
+;; keys (as with-performative does for one layer).
+
+(def analysis-keys #{:fig :deg :local :why :harmony})
+(def layer-names [:performance :analysis])
+
+(defn- layer-key? [layer tg k]
+  (case layer
+    :performance (performative-key? tg k)
+    :analysis (contains? analysis-keys k)
+    false))
+
+(defn- in-layers? [ls tg k] (some (fn [l] (layer-key? l tg k)) ls))
+
+(defn layer-attrs "What a node has of the layers ls." [n ls]
+  (let [tg (tag n)] (into {} (filter (fn [[k _]] (in-layers? ls tg k))) (attrs n))))
+
+(defn without-layers
+  "The tree without the keys of the layers ls (a set of :performance, :analysis)."
+  [t ls]
+  (if (and (node? t) (seq ls))
+    (let [tg (tag t)]
+      (make tg (into {} (remove (fn [[k _]] (in-layers? ls tg k))) (attrs t)) (map #(without-layers % ls) (kids t))))
+    t))
+
+(defn has-layer? "Does the tree hold anything of the layer l?" [t l]
+  (boolean (some (fn [n] (and (node? n) (seq (layer-attrs n #{l})))) (tree-seq node? kids t))))
+
+(defn with-layers
+  "The written tree w, edited from old without the layers ls, with what old's nodes had of those layers put back where
+   those nodes are (see with-performative)."
+  [old w ls]
+  (if (empty? ls)
+    w
+    (reduce (fn [t [op path x :as o]]
+              (case op
+                :attrs (apply-op t [:attrs path (merge (layer-attrs (node-at t path) ls) x)])
+                :set (let [n (node-at t path)]
+                       (apply-op t (if (and (node? x) (node? n) (= (tag x) (tag n)))
+                                     [:set path (with-attrs x (merge (layer-attrs n ls) (attrs x)))]
+                                     o)))
+                (apply-op t o)))
+            old (diff (without-layers old ls) w))))

@@ -1005,6 +1005,35 @@ Into a `necklace`'s clock inlet the phase moves its hand there and plays it: the
     :try "Click the son clave (the reference), press ▶ — the loadbang starts the metro, the pulse, a sixteenth at 120, and click~ lets you hear it, the beats accented —, and clap (with headphones, so the microphone hears you and not the click) the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects; a lower click sounds where the follower believes the clave begins (its phase 0, through click~ downbeat): if it falls on your first clap of the clave, you and it agree. Stop for a moment and go on: it keeps walking."
     :see ["necklace" "swap" "onset~" "follow"]}
 
+   "cac"
+   {:package "@kairotic/cac" :usage "cac partimento|judge [voices 4] [key] [temp 0.5] [seed 1] [unit 0]"
+    :about "**mt changes a tree and does not question it; cac adds to it, or questions it, by the rules of a style.** Its operations take a tree as what is given and look ahead — the kernel of Studies 51–62 (IJzerman's *Harmony, Counterpoint, Partimento*).
+
+**cac partimento** — a bass in, the voices above it out. Send it a tree: its lowest voice is the bass (its notes may carry figures, `:fig \"6/5\"`, and a key of their own, `:local \"G major\"`). Out comes a tree for a `tree` box: soprano, alto and tenor over the bass (`[:voices 3]` or `2` for fewer), written by the engine — its soft rules prefer steps, the leading tone up, the bass doubled — among the realizations it counts exactly. A bang writes another one, `:any` any valid one, each as likely.
+
+**cac judge** — a tree of voices in, the lowest the bass: whether they keep the rules, and where and why they do not (parallel 5ths between the alto and the tenor, the 7th not going down…), and the chords they make.
+
+**The analysis layer.** The bass comes back with what the analysis found on its notes: the chord made over each (`:fig`), its degree (`:deg`), its key where it is read in another (`:local`). A tree box's code window hides it, as it hides the performance; **Analysis** in its bar shows it, and an edit of the written notes keeps it."
+    :args [[:op "partimento (a bass in, the upper voices out) or judge (voices in, the rules kept or not)"]
+           [:voices "how many parts: 4 (soprano, alto, tenor, bass), 3 or 2"]
+           [:key "the key: C, G, Eb… major, a lower-case letter minor (e, f#); else the tree's :key, else guessed from the bass"]
+           [:temp "the engine's chance: 0 always its cheapest, higher more free"]
+           [:seed "the seed of its chance"]
+           [:unit "the beats a chord lasts: 0, the shortest note of the bass"]]
+    :doc "Composition assisted by computer on a tree, beside mt (discussion #323): cac partimento writes the voices above a bass (2–4 parts, by the rules of Studies 51–62, its figures if it has them), counting the realizations; cac judge says whether voices keep the rules, where and why not. What it finds is written as the tree's analysis layer (:fig, :deg, :local), shown in the code window with Analysis."
+    :inlets ["a tree (the given: a bass, or voices to judge) · a bang: another realization · :any: any valid one · [:voices 3], [:key \"a minor\"], [:temp 1], [:seed 7], [:unit 2]: done again"]
+    :outlets ["the tree: the upper voices, then the bass with its analysis (:fig :deg :local)" "what it counted, or why not: {:count :key …}; judging, {:ok :why :chords}"]
+    :messages [["bang" "another realization by the engine"] [":any" "any valid one, each as likely"]
+               ["[:voices 3]" "three parts (or 2, 4)"] ["[:key \"e\"]" "another key (lower case: minor)"]
+               ["[:temp 1]" "more chance in the engine"] ["[:seed 7]" "its chance: the same seed, the same realization"]]
+    :example (lines "(box :b1 \"tree\" 40 30)" "(resize :b1 420 120)"
+                    "(code :b1 \"[:voice {:key \\\"C major\\\"} [:note {:pitch \\\"c3\\\" :dur 2}] [:note {:pitch \\\"d3\\\" :dur 2 :fig \\\"6/4/3\\\"}] [:note {:pitch \\\"e3\\\" :dur 2 :fig \\\"6/3\\\"}] [:note {:pitch \\\"f3\\\" :dur 2 :fig \\\"6/5\\\"}] [:note {:pitch \\\"g3\\\" :dur 2}] [:note {:pitch \\\"a3\\\" :dur 2 :fig \\\"6/3\\\"}] [:note {:pitch \\\"b3\\\" :dur 2 :fig \\\"6/5\\\"}] [:note {:pitch \\\"c4\\\" :dur 2}]]\")"
+                    "(box :b2 \"cac partimento\" 40 170)" "(box :b3 \"tree\" 40 230)" "(resize :b3 420 200)" "(box :b4 \"print\" 260 170)"
+                    "(box :b5 \"bang\" 480 30)" "(box :b6 \"bang\" 260 120)"
+                    "(connect :b5 0 :b1 0)" "(connect :b1 0 :b2 0)" "(connect :b6 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)")
+    :try "Click the bang beside the tree: its bass — the Rule of the Octave going up, its figures 6/4/3 on ②, 6/5 on ④ and ⑦ — goes into cac partimento, and the four parts come out as a score; print says how many there are. Click the bang over cac for another; open its code (double-click) and press Analysis to see the chords it made over the bass."
+    :see ["tree" "mt" "comes"]}
+
    "comes"
    {:package "@kairotic/cac" :usage "comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [temp 0] [seed 1] [inverted] [fourth] [live] [nocues] [midi]"
     :about "**You play a line, the dux, and comes answers with a second voice, the comes, that reads it** — by the rules of 16th-century counterpoint. A note that breaks a rule, or from which the work could not be finished, is corrected to the nearest one that can be played, and the box says why.

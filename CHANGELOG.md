@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`cac`: operations on a tree that follow rules** (`@kairotic/cac` 0.6.0; discussion #323). Beside `mt`'s mechanical
+  operations, `cac partimento` takes a tree whose lowest voice is a bass (its notes' `:fig` figures and `:local` keys, if
+  it has them) and writes the voices above it, 2–4 parts, by the engine of Studies 51–62, counting the realizations
+  (a bang another, `:any` any valid one); `cac judge` says whether voices keep the rules, where and why not.
+  `partimento.mjs` reads a bass of MIDI notes (`overBass`, `degreeOf`, `guessKey`). **Layers of a tree**: over the
+  written tree, `:performance` (#308) and now `:analysis` (`:fig :deg :local :why :harmony`), each shown or hidden in a
+  tree box's code window — **Performed** and **Analysis** in its bar, instead of All — and kept when the written tree
+  is edited (`mt/without-layers`, `mt/with-layers`). `api/tree-events`, `api/tree-attrs`, `api/tree?`.
 - **A note held is written as long as it lasts** (`@kairotic/cac` 0.5.1). Every engine reads the same note again
   as the note held; what the studies and the `comes` box write for a score now says so too: one note with its whole
   duration, tied only over the bar line, so a score draws the tie. The `comes` box's tree (outlet 4) merges the

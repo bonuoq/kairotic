@@ -43,6 +43,15 @@
       (t/eq "a note added has nothing of performing it, the others keep theirs"
             (mapv #(dissoc % :pitch :dur) (map second (filter #(and (vector? %) (= :note (first %))) (get (mt/with-performative full (update w 2 conj [:note {:pitch "g4" :dur 1}])) 2))))
             [{:id "n0" :tstamp.real 0.1 :vel 0.7} {:wire {:send :swell}} {} {}]))
+    ;; layers (discussion #323): the analysis over the written tree, hidden and kept like the performance
+    (let [full [:voice {:name "b"} [:note {:pitch "c3" :dur 2 :fig "5/3" :deg 1}] [:note {:pitch "f3" :dur 2 :fig "6/5" :tstamp.real 2.1}]]
+          w (mt/without-layers full #{:analysis :performance})]
+      (t/eq "the analysis layer hidden: no figures, no degrees (and the performance too)" w [:voice {:name "b"} [:note {:pitch "c3" :dur 2}] [:note {:pitch "f3" :dur 2}]])
+      (t/is "… which held both layers" (and (mt/has-layer? full :analysis) (mt/has-layer? full :performance) (not (mt/has-layer? w :analysis))))
+      (t/eq "only the analysis hidden: the real times stay" (mt/without-layers full #{:analysis}) [:voice {:name "b"} [:note {:pitch "c3" :dur 2}] [:note {:pitch "f3" :dur 2 :tstamp.real 2.1}]])
+      (t/eq "a pitch edited in the written tree: the note keeps its figures and its real time"
+            (get-in (mt/with-layers full (assoc-in w [3 1 :pitch] "g3") #{:analysis :performance}) [3 1]) {:pitch "g3" :dur 2 :fig "6/5" :tstamp.real 2.1})
+      (t/eq "… written back unchanged, the whole tree" (mt/with-layers full w #{:analysis :performance}) full))
     (let [m [:voice {:name "m"} [:measure {:meter [4 4]} "c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2"]]]
       (t/eq "a canon lasts until its comes ends (a sequence lasts until a child placed :at ends)" (mt/duration (mt/canon 2 7 m)) 9)
       (t/eq "… and mt play loops it there, after its last silence" (:len (mtb/play-schedule (mt/canon 2 7 m) 1)) 9))

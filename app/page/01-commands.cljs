@@ -493,11 +493,12 @@
     (cond
       (= "tree" (klass (:text b)))
       (do (when-not (string? source) (fail "The source is a string"))
-          ;; the text as written (without what belongs to performing it, as the code window shows it) is put back
-          ;; into the whole tree; a text that holds some of it is the whole tree
+          ;; the text as written (without the layers the code window hides: what belongs to performing it, what an
+          ;; analysis wrote) is put back into the whole tree; a layer the text holds some of is the text's
           (let [t (try (mt/read-tree source) (catch :default e (fail (str "That is not EDN: " (.-message e)))))
-                old (tree-data id)]
-            (tree! id (if (or (nil? old) (mt/performative? t)) t (mt/with-performative old t)))))
+                old (tree-data id)
+                hide (when old (set (filter #(and (mt/has-layer? old %) (not (mt/has-layer? t %))) mt/layer-names)))]
+            (tree! id (if (or (nil? old) (empty? hide)) t (mt/with-layers old t hide)))))
       (fn? (:read (comp/model-of b))) (data-source! id source)
       :else (code-source! id source))))
 

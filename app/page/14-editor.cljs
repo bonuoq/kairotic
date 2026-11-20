@@ -200,27 +200,36 @@
 
 (declare set-editor-text!)
 
+(defn hidden-layers
+  "The layers of a tree the code window hides: :performance (real times, wires, takes, the continuum: discussion #308)
+   and :analysis (figures, degrees, keys, why: #323), each but the ones its buttons show."
+  []
+  (cond-> #{} (not (:code-perf @ui)) (conj :performance) (not (:code-analysis @ui)) (conj :analysis)))
+
 (defn editor-source
-  "The text of a box in the code window: a tree box's tree as written (without real times, wires, takes, its
-   continuum: discussion #308), or all of it with All pressed; any other box's source."
+  "The text of a box in the code window: a tree box's tree as written, with the layers its buttons show (Performed,
+   Analysis); any other box's source."
   [b]
   (if (= "tree" (klass (:text b)))
-    (let [t (mtb/tree-of (:data b))]
-      (if (or (:code-all @ui) (nil? t) (not (mt/performative? t))) (str (comp/source-of b)) (mt/pp (mt/descriptive t))))
+    (let [t (mtb/tree-of (:data b)) hide (when t (set (filter #(mt/has-layer? t %) (hidden-layers))))]
+      (if (or (nil? t) (empty? hide)) (str (comp/source-of b)) (mt/pp (mt/without-layers t hide))))
     (str (comp/source-of b))))
 
-(defn toggle-code-all!
-  "All in a tree box's code window: the whole tree, or only what is written."
-  []
-  (swap! ui update :code-all not)
-  (when-let [btn (some-> (cw-el) (.querySelector "[data-cw=all]"))] (.setAttribute btn "aria-pressed" (str (boolean (:code-all @ui)))))
-  (when-let [{:keys [id path dirty]} @code-win]
-    (if dirty
-      (repl-print! "out" "; apply or discard what is edited first: All shows the tree again")
-      (when-let [b (get-in (patch-in (root-patch) path) [:boxes id])]
-        (let [v (editor-source b)]
-          (swap! code-win assoc :original v)
-          (set-editor-text! v))))))
+(defn toggle-code-layer!
+  "A layer of a tree box shown or hidden in its code window: :performance (Performed) or :analysis (Analysis)."
+  [layer]
+  (let [k (if (= layer :analysis) :code-analysis :code-perf)]
+    (swap! ui update k not)
+    (when-let [btn (some-> (cw-el) (.querySelector (str "[data-cw=" (name layer) "]")))] (.setAttribute btn "aria-pressed" (str (boolean (get @ui k)))))
+    (when-let [{:keys [id path dirty]} @code-win]
+      (if dirty
+        (repl-print! "out" "; apply or discard what is edited first: the layers show the tree again")
+        (when-let [b (get-in (patch-in (root-patch) path) [:boxes id])]
+          (let [v (editor-source b)]
+            (swap! code-win assoc :original v)
+            (set-editor-text! v)))))))
+
+(defn toggle-code-all! "Older name: the performance layer." [] (toggle-code-layer! :performance))
 
 (defn window-shell [id b lang]
   (let [el (js/document.createElement "div")]
@@ -237,8 +246,10 @@
                "</span>"
                "<span class=\"cw-lang\">" (esc lang) "</span>"
                (when (= "tree" (klass (:text b)))
-                 (str "<button class=\"act cw-pv\" data-cw=\"all\" aria-pressed=\"" (boolean (:code-all @ui))
-                      "\" title=\"Show also what belongs to performing it: real times, wires, takes, the continuum\">All</button>"))
+                 (str "<button class=\"act cw-pv\" data-cw=\"performance\" aria-pressed=\"" (boolean (:code-perf @ui))
+                      "\" title=\"Show also what belongs to performing it: real times, wires, takes, the continuum\">Performed</button>"
+                      "<button class=\"act cw-pv\" data-cw=\"analysis\" aria-pressed=\"" (boolean (:code-analysis @ui))
+                      "\" title=\"Show also what an analysis wrote on it: figures, degrees, keys, why a rule is broken\">Analysis</button>"))
                (when (= lang "faust")
                  (str "<button class=\"act cw-pv\" data-cw=\"patch\" aria-pressed=\"" (not (false? (:faust-patch? @ui)))
                       "\" title=\"Show or hide its patch: the code as Faust's own elements\">Patch</button>"
@@ -267,7 +278,8 @@
           "apply" (apply-code!)
           "patch" (toggle-patch-view!)
           "recipe" (toggle-recipe!)
-          "all" (toggle-code-all!)
+          "performance" (toggle-code-layer! :performance)
+          "analysis" (toggle-code-layer! :analysis)
           "find" (find-recipe-click!)
           "play-target" (play-recipe! :target)
           "play-found" (play-recipe! :found)
