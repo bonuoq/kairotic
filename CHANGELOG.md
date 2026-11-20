@@ -7,6 +7,11 @@
   counter's cycle). The help of `phase` and of `necklace` step by step now let you hear their metro, the beats
   accented — following or playing along with a clock you cannot hear was all but impossible.
 
+- **Following, seen on the continuum** (discussions #204, #308; `@kairotic/analysis` 0.8.4): while a `follow` box
+  follows a tree, that tree's continuum shows the notes found, the ones skipped, where the performer is (its note and
+  a line through it) and the wires that went on. **"I am here"**: a click on a note of the continuum (or `(here! :bN
+  note)`, `[:here id]` to the box) tells the follower where the performer is — ahead, as if heard there; back, from
+  there again, its wires going on again: the correction a rehearsal needs. `kairotic.follow`: `here`, `view`.
 - **`phase`: where a performer is in a cycle** (`@kairotic/rhythm` 0.6.0; discussion #204). A timeline follower, onsets
   only: a pulse clock (a metro, the room's `pulse`) gives the grid, onsets (`onset~`, taps) fall on its nearest pulse,
   and at each pulse the last pulses heard are compared with every rotation of the reference (Toussaint's swap distance,

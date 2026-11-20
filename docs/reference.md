@@ -932,8 +932,9 @@ Follows a performer through a tree (discussion #204): each note heard is matched
 
 - `:start`: from the top of the tree
 - `:stop`: ends, and sends the take
+- `[:here "n3"] · (here! :bN 3) · a click on a note of the continuum`: the performer is there: ahead, as if heard; back, from there again (its wires go on again)
 
-**Try:** Press ▶, click :start and play or sing the tree: its label shows the beat you are at, the print :swell when you reach the long G — even if you skip it, at the next note — and :fade at the E, or half a second after it was due if you stop before it. (view :b1 :continuum) draws the wires, rigid solid and elastic dashed. Click :stop: the take goes into the tree box, only for you; (continuum! :b1 {:take …}) — (takes :b1) gives its id — shows where you played each note.
+**Try:** Press ▶, (view :b1 :continuum), click :start and play or sing the tree: the continuum shows the notes found, the ones skipped and where you are, the wires that went on — click a note to tell it where you are —; its label shows the beat you are at, the print :swell when you reach the long G — even if you skip it, at the next note — and :fade at the E, or half a second after it was due if you stop before it. The wires are drawn rigid solid and elastic dashed. Click :stop: the take goes into the tree box, only for you; (continuum! :b1 {:take …}) — (takes :b1) gives its id — shows where you played each note.
 
 ```clojure
 (box :b1 "tree" 420 30)

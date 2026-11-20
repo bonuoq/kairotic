@@ -581,6 +581,36 @@
   ;; probes on wires (page 26-probes): is a wire probed, and the labels of the probes of a patch
   (atom {:probed? (constantly false) :labels (constantly "")}))
 
+;; ───── a follow box on the continuum of the tree it follows (discussions #204, #308): the notes it found, the ones
+;;       skipped, where the performer is (a line through it), the wires that went on ─────
+
+(defn follow-overlay!
+  "Marks, on the continuum of each tree box a follow box follows, what that follow box shows. Only classes and one
+   line change: the drawing itself stays."
+  []
+  (let [scene ($ "scene")]
+    (doseq [[id b] (:boxes (current)) :when (= "follow" (klass (:text b)))]
+      (when-let [[_ sh] (last-shown id)]
+        (when-let [from (some-> (:from sh) local-id)]
+          (when-let [root (.querySelector scene (str "g.ct-root[data-box=\"" (esc (name from)) "\"]"))]
+            (let [key (pr-str (select-keys sh [:on :played :skipped :now :fired]))]
+              (when (not= key (aget root "kairoticFollow"))
+                (aset root "kairoticFollow" key)
+                (let [on (:on sh)]
+                  (doseq [el (array-seq (.querySelectorAll root ".ct-head[data-id]"))]
+                    (let [nid (.getAttribute el "data-id") cl (.-classList el)]
+                      (.toggle cl "ct-found" (boolean (and on (contains? (:played sh) nid))))
+                      (.toggle cl "ct-skipped" (boolean (and on (contains? (:skipped sh) nid))))
+                      (.toggle cl "ct-now" (boolean (and on (= nid (:now sh)))))))
+                  (doseq [el (array-seq (.querySelectorAll root ".ct-wire[data-wire]"))]
+                    (.toggle (.-classList el) "ct-fired" (boolean (and on (contains? (:fired sh) (.getAttribute el "data-wire"))))))
+                  (some-> (.querySelector root ".ct-cursor") .remove)
+                  (when-let [h (and on (:now sh) (.querySelector root (str ".ct-head[data-id=\"" (esc (:now sh)) "\"]")))]
+                    (let [ln (js/document.createElementNS "http://www.w3.org/2000/svg" "line") x (.getAttribute h "cx")]
+                      (doseq [[k v] [["class" "ct-cursor"] ["x1" x] ["x2" x] ["y1" "6"] ["y2" (str (- (second (box-dims from (get-in (current) [:boxes from]))) hdr 6))]]]
+                        (.setAttribute ln k v))
+                      (.insertBefore root ln (.-firstChild root)))))))))))))
+
 (defn render-overlay! []
   (let [p (scene-of (current))
         on (eng/running?)
@@ -609,6 +639,7 @@
                   nil))]
     (render-layers!)
     (refresh-html-boxes!)
+    (follow-overlay!)
     (let [scene ($ "scene")]
       (doseq [[id html] own]
         (when-let [slot (.querySelector scene (str "g.live[data-live=\"" (esc (name id)) "\"]"))]
@@ -768,7 +799,7 @@
         m (or (some (fn [x] (when (= :measure (mt/tag x)) (:meter (mt/attrs x)))) (when t (tree-seq mt/node? mt/kids t))) [4 4])
         {:keys [step base]} (ct/layout w (- h hdr))]
     (str "<rect class=\"paper mus-body\" data-box=\"" idn "\" x=\"2\" y=\"" hdr "\" width=\"" (- w 4) "\" height=\"" (- h hdr 2) "\"></rect>"
-         "<g transform=\"translate(0," hdr ")\">"
+         "<g class=\"ct-root\" data-box=\"" idn "\" transform=\"translate(0," hdr ")\">"
          (if t
            (try (ct/svg t w (- h hdr)) (catch :default e (str "<text class=\"wait\" x=\"12\" y=\"26\">" (esc (str "Could not draw: " (.-message e))) "</text>")))
            "<text class=\"wait\" x=\"12\" y=\"26\">an empty tree</text>")
