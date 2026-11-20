@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Study 61 · four: harmony in four parts** (IJzerman, chapter 6; `@kairotic/cac` 0.5.0). `partimento.mjs` has
+  `four()`: soprano, alto and tenor over a given bass, counted exactly and written by the engine. The inner voices fill
+  the chords (a common tone held long, no turning after a leap); no crossing, an octave at most between neighbours, no
+  parallels between any two voices; the bass doubled as a rule, never the leading tone, a dissonance or a chord's 7th;
+  the dominant's 7th chord and its family (7, 6/5, 6/4/3, 4/2) as semi-consonances, their 7th going down, the leading
+  tone up (an inner voice may fall to ⑤), the deceptive ⑥ doubling its 3rd; the augmented 6th chords, a unit's
+  chromatic tones (`chroma`). As data: `CHORDS4`, `RULE_OF_THE_OCTAVE4` (`octaveChord4`). The book's realizations of
+  the four-part RO (ex. 6.37, 6.39, 6.42) and of the cadences (perfect, tenor, alto, discant, Galant: ex. 6.13, 6.16)
+  are among the ones counted; its «wrong!» Galant cadence is refused for its parallel 5ths.
 - **`click~`: hear the clock you play along with** (`@kairotic/synth` 0.4.0). A metronome's click: each bang a short
   tick, every `accent` bangs one accented (a fifth higher, louder); a number is a tick, accented when it is 0 (a
   counter's cycle). The help of `phase` and of `necklace` step by step now let you hear their metro, the beats

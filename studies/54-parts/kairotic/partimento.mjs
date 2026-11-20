@@ -202,6 +202,10 @@ export function schemata(spec = {}) {
   // 4/2) an upper voice may sound a note of the chord before (held, or taken from the other upper voice), a
   // dissonance now, consonant again when the bass moves on — the note held, or moving by step
   const ro = !!spec.ro;
+  // chapter 6 (spec.free, four parts): over a chord of the dominant's family asked at unit t (7, 6/5, 6/4/3, 4/2) its
+  // dissonant tones are semi-consonances — they enter freely —, and the chord's 7th (a class above the bass) goes
+  // down by step: free(t) is {cls: the classes that enter freely, seventh: the 7th's class} or null
+  const free = typeof spec.free === "function" ? spec.free : () => null;
   const strong = (t) => (B[t] && B[t].strong !== undefined ? B[t].strong : (t + phase) % 2 === 0);
   const middle = spec.voice === "middle";
 
@@ -219,7 +223,9 @@ export function schemata(spec = {}) {
   /** The degree of the bass at unit t in its key. */
   const locB = (t) => localNote(K, LOC[t], B[t].d, B[t].r || 0).deg;
   /** Whether c is a note of the key of unit t: its scale, and in minor ⑥ and ⑦ raised too. */
-  const inKey = (t, c) => { const l = loc(t, c); return l.alt === 0 || (l.alt === 1 && LOC[t].key.mode === "minor" && l.deg >= 5); };
+  // (chapter 6: a unit may allow a chromatic tone of its chord, B[t].chroma [[degree, alteration]…] in its key — the
+  // augmented 6th's raised ④)
+  const inKey = (t, c) => { const l = loc(t, c); return l.alt === 0 || (l.alt === 1 && LOC[t].key.mode === "minor" && l.deg >= 5) || !!(B[t].chroma && B[t].chroma.some(([d, a]) => l.deg === d && l.alt === a)); };
   const codes = [];
   for (let d = lo; d <= hi; d++) for (const a of [-1, 0, 1]) { const c = codeOf3(d, a); if (B.some((b, t) => inKey(t, c))) codes.push(c); }
 
@@ -319,21 +325,31 @@ export function schemata(spec = {}) {
       const e = melodicError(prev, c, t); if (e) return e;
       const on = onsetOf(U, t - 1), a1 = on >= 1 ? U[on - 1] : null;
       const step = D(c) - D(prev);
-      if (a1 !== null && Math.abs(D(prev) - D(a1)) >= 3 && sign(step) === sign(D(prev) - D(a1))) return "after a leap of a 4th or more the line turns";
+      // (spec.turn false: an inner voice of four parts, which fills the chords — chapter 6's Aussenstimmensatz)
+      if ((spec.turn ?? true) && a1 !== null && Math.abs(D(prev) - D(a1)) >= 3 && sign(step) === sign(D(prev) - D(a1))) return "after a leap of a 4th or more the line turns";
       { const e = lineError(a1 === null ? null : D(prev) - D(a1), step); if (e) return e; }
       // in minor: ⑥ and ⑦ go up raised and down natural (read in the key of the unit before, where the note was)
       const lp = loc(t - 1, prev), lc = loc(t, c), minorP = LOC[t - 1].key.mode === "minor" && lp.deg >= 5;
       if (minorP && Math.abs(step) === 1) {
         if (step > 0 && lp.alt !== 1) return `${K.name(D(prev), A(prev))} goes up raised (melodic minor)`;
-        if (step < 0 && lp.alt === 1) return `${K.name(D(prev), A(prev))} goes down natural (melodic minor)`;
+        // (but to a raised ⑥ itself, or over a bass rising through the raised ⑥ and ⑦: the chords of the RO in four parts)
+        if (step < 0 && lp.alt === 1 && lc.alt !== 1 && !(B[t].r === 1 || B[t - 1].r === 1)) return `${K.name(D(prev), A(prev))} goes down natural (melodic minor)`;
       }
       // the raised ⑥ is only on the way up to the tonic: it goes on up to the raised ⑦
-      if (minorP && lp.deg === 5 && lp.alt === 1 && !(step === 1 && lc.alt === 1))
+      if (minorP && lp.deg === 5 && lp.alt === 1 && !(step === 1 && lc.alt === 1) && !(B[t].r === 1 || B[t - 1].r === 1))
         { const up = [-1, 0, 1].map((x) => codeOf3(D(prev) + 1, x)).find((x) => { const l = loc(t - 1, x); return l.deg === 6 && l.alt === 1; });
           return `${K.name(D(prev), A(prev))} goes on up to ${up === undefined ? "the raised ⑦" : K.name(D(up), A(up))} (melodic minor, toward the tonic)`; }
     }
     // what the unit before asks
-    if (t >= 1 && !delayed) {
+    const fp = t >= 1 ? free(t - 1) : null, pv0 = t >= 1 ? vertical(t - 1, prev) : null;
+    // (or is held into the 4th over the next bass, its resolution put off: ii6/5 → the cadential 6/4)
+    if (fp && fp.seventh === pv0.cls && !(held && !B[t].struck) && !(struck && D(c) === D(prev) - 1) && !(held && v.cls === 3 && v.q === "dissonant"))
+      return "the 7th of the chord goes down by step";
+    // (an augmented 6th goes up by step, to the octave)
+    if (fp && fp.up === pv0.cls && pv0.q === "dissonant" && !(held && !B[t].struck) && !(struck && D(c) === D(prev) + 1))
+      return "the augmented 6th goes up by step";
+    const freeBefore = !!(fp && !consonant(pv0) && fp.cls.includes(pv0.cls) && (!pv0.tri || fp.tri));
+    if (t >= 1 && !delayed && !freeBefore) {
       const pv = vertical(t - 1, prev);
       // chapter 4: a semi-consonance resolves, the augmented 4th up to a 6th, the diminished 5th down to a 3rd; a note
       // held over a passing bass is held on, or moves by step, into a consonance — and where only these rules let the
@@ -370,7 +386,8 @@ export function schemata(spec = {}) {
     }
     if (!consonant(v)) {
       if (t === n - 1) return "the work does not end on a dissonance";
-      const e = dissonance(t, c, prev, delayed);
+      const ft = free(t);
+      const e = ft && ft.cls.includes(v.cls) ? null : dissonance(t, c, prev, delayed);
       // chapter 4: a semi-consonance enters freely; over a passing bass a note of the chord before may sound (one
       // consonant over the bass before: held, or the upper voices exchanging their notes)
       if (e && !(ro && (v.tri || (bassPassing(t) && consonant(vertical(t - 1, c)) && (held || spec.exchange))))) return e;
@@ -386,7 +403,8 @@ export function schemata(spec = {}) {
     if (t === 0 && !middle && !(figured && B[0].fig) && locB(0) === 0 && ![0, 2, 4].includes(v.cls)) return "over ① the upper voice starts on an octave, a 5th or a 3rd";
     // (spec.end false: the phrase goes on after it — a schema, not a close)
     if (t === n - 1 && !middle && spec.end !== false) {
-      if (![0, 2].includes(v.cls)) return "it ends on an octave or a 3rd";
+      // (or on the 6th over ③: chapter 6's alto cadence, a weak close)
+      if (![0, 2].includes(v.cls) && !(v.cls === 5 && locB(t) === 2)) return "it ends on an octave or a 3rd";
       if (prev !== null && Math.abs(D(c) - D(prev)) !== 1) return "the last note is reached by step";
     }
     return null;
@@ -932,5 +950,208 @@ export function parts(spec = {}) {
     });
   }
   return { spec, schema, cadence, key: K, bass: B, n, strong: (t) => B[t].strong, top: T, middle: M, check, pairs, count, fan, sample, engine, judge, chords,
+           code: (name) => codeOf(K, name), name: (c) => K.name(D(c), A(c)), degree: D, alter: A, hz: (c) => K.hz(D(c), A(c)), memo };
+}
+
+// ─── four parts (chapter 6): soprano, alto and tenor over the bass ───
+// The chords in four parts: the classes above the bass every one of them sounds (need) and nothing else does (ok) —
+// a 5/3 complete or with its 5th left out (the bass tripled), the dominant's 7th chord and its inversions complete
+// (7 may leave out its 5th). Over the dominant's family (free) the dissonant tones are semi-consonances, entering
+// freely; the chord's 7th (seventh: its class above the bass) goes down by step.
+export const CHORDS4 = {
+  "5/3": { need: [2], ok: [2, 4, 0] },
+  "6/3": { need: [5, 2], ok: [5, 2, 0] },
+  "6": { need: [5], ok: [5, 2, 0] },
+  "6/4": { need: [5, 3], ok: [5, 3, 0] },
+  "5/4": { need: [3], ok: [3, 4, 0] },
+  "7/3": { need: [6, 2], ok: [6, 2, 4, 0] },
+  "7/4": { need: [6, 3], ok: [6, 3, 4, 0] },
+  // (the discant cadence's tied ①: a 5/2 — the 2nd may be doubled, the bass the dissonance — or its 4/2)
+  "5/2": { need: [1, 4], ok: [1, 4, 0] },
+  "7": { need: [6, 2], ok: [6, 2, 4, 0], free: [6], seventh: 6 },
+  "6/5": { need: [5, 4, 2], ok: [5, 4, 2], free: [4], seventh: 4 },
+  "6/4/3": { need: [5, 3, 2], ok: [5, 3, 2], free: [3], seventh: 2 },
+  "4/2": { need: [5, 3, 1], ok: [5, 3, 1], free: [1, 3], seventh: 0 },
+  // the augmented 6th chords on ♭⑥ toward ⑤ (6.6): the Italian, the French (the minor RO's, going down), the German —
+  // the augmented 6th a semi-consonance going up to the octave; the French's augmented 4th held into the 5th over ⑤
+  "+6": { need: [5, 2], ok: [5, 2, 0], free: [5], up: 5 },
+  "+6/4/3": { need: [5, 3, 2], ok: [5, 3, 2], free: [5, 3], up: 5, tri: true },
+  "+6/5/3": { need: [5, 4, 2], ok: [5, 4, 2], free: [5], up: 5 },
+};
+// the Rule of the Octave in four parts (ex. 6.37, 6.39, 6.42): ② ④ ⑦ going up carry the dominant's family and the
+// 6/5 on ④; going down ⑥ a ♯6/4/3 (the dominant's 4/3 in the key of ⑤), ④ a 6/4/2, ② a 6/4/3
+export const RULE_OF_THE_OCTAVE4 = {
+  up: ["5/3", "6/4/3", "6/3", "6/5", "5/3", "6/3", "6/5"],
+  down: ["5/3", "6/4/3", "6/3", "4/2", "5/3", "6/4/3", "6/3"],
+};
+/** The four-part RO's chord on degree deg going up or down: {chord, tonicize (the key of ⑤ for the descending ⑥ in
+ *  major), chroma (the minor's descending ⑥: the French 6th, its raised ④)}. */
+export function octaveChord4(deg, dir, mode = "major") {
+  const down = dir === "down", d = mod(deg, 7);
+  if (down && d === 5 && mode === "minor") return { chord: "+6/4/3", tonicize: null, chroma: [[3, 1]] };
+  return { chord: RULE_OF_THE_OCTAVE4[down ? "down" : "up"][d], tonicize: down && d === 5 && mode === "major" ? 4 : null, chroma: null };
+}
+
+/**
+ * Four parts over a given bass: spec {bass (its units, each with its chord and key), key, figured (the chords asked:
+ * true), ro (chapter 4's rules: true), soprano / alto / tenor ([lo, hi] in degrees), line, weights, end}.
+ */
+export function four(spec = {}) {
+  const K = keyOf(spec.key || { tonic: "C" });
+  const B = spec.bass, n = B.length;
+  const figured = spec.figured ?? true;
+  const asked = (t) => (figured && B[t].chord ? CHORDS4[B[t].chord] : null);
+  const free = (t) => { const ch = asked(t); return ch && (ch.free || ch.seventh !== undefined) ? { cls: ch.free || [], seventh: ch.seventh, up: ch.up, tri: !!ch.tri } : null; };
+  // (a common tone may be held in four parts: the soprano three units, an inner voice as long as the chords keep it —
+  // the count's memo looks three units back, so the soprano's hold stays within them)
+  const S0 = { schema: { events: [] }, key: K, bass: B, figured: false, ro: spec.ro ?? true, exchange: true, end: spec.end, free, weights: spec.weights, delayed: spec.delayed };
+  const lineOf = (who) => (spec.line && typeof spec.line === "object" ? spec.line[who] : spec.line);
+  const [slo, shi] = spec.soprano || [9, 20], [alo, ahi] = spec.alto || [6, 17], [tlo, thi] = spec.tenor || [3, 14];
+  const Sv = schemata({ ...S0, lo: slo, hi: shi, voice: "top", spacing: 22, line: lineOf("soprano"), maxHold: 3 });
+  const Av = schemata({ ...S0, lo: alo, hi: ahi, voice: "middle", spacing: 22, line: lineOf("alto"), turn: false, maxHold: n });
+  const Tv = schemata({ ...S0, lo: tlo, hi: thi, voice: "middle", spacing: 22, line: lineOf("tenor"), turn: false, maxHold: n });
+  const V = [Sv, Av, Tv], NAMES = ["soprano", "alto", "tenor"];
+  const D = Sv.degree, A = Sv.alter;
+  const semi = (c) => K.semi(D(c), A(c));
+  const perfectOf = (x, y) => { const cls = mod(D(x) - D(y), 7), s = mod(semi(x) - semi(y), 12); return (cls === 0 && s === 0) || (cls === 4 && s === 7) ? cls : null; };
+  const ltOf = (t, c) => { const kt = Sv.keys[t].key, l = Sv.loc(t, c); return l.deg === 6 && (kt.mode === "major" ? l.alt === 0 : l.alt === 1); };
+
+  /** Why the three notes x (soprano, alto, tenor) at unit t are refused together, or null. */
+  function between(W, t, x) {
+    for (let i = 0; i < 2; i++) {
+      if (D(x[i + 1]) >= D(x[i])) return `the ${NAMES[i + 1]} under the ${NAMES[i]}`;
+      if (D(x[i]) - D(x[i + 1]) > 7) return `the ${NAMES[i]} and the ${NAMES[i + 1]} within an octave`;
+    }
+    const v = x.map((c, i) => V[i].vertical(t, c));
+    const ch = asked(t), seventh = ch && ch.seventh !== undefined ? ch.seventh : null;
+    // the chord: what it asks, what it allows
+    const have = new Set(v.map((u) => u.cls));
+    if (ch) {
+      const all = new Set([0, ...have]);
+      if (!ch.need.every((c) => all.has(c)) || ![...have].every((c) => ch.ok.includes(c))) return `the chord asked is ${B[t].chord}`;
+    }
+    // doublings: never a dissonance, nor the 7th of the chord, nor the leading tone
+    for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) {
+      // (over a bass held into a dissonance — a suspension in the bass — its 2nd is not the dissonance: the bass is)
+      if (v[i].cls === v[j].cls && ((v[i].q === "dissonant" && !(v[i].cls === 1 && !B[t].struck)) || v[i].cls === seventh)) return `the ${v[i].cls === seventh ? "7th of the chord" : "dissonance"} doubled`;
+      if (v[i].cls === v[j].cls && mod(semi(x[i]) - semi(x[j]), 12) !== 0) return `a false relation between the ${NAMES[i]} and the ${NAMES[j]}`;
+    }
+    if (seventh === 0 && have.has(0)) return "the 7th of the chord doubled (in the bass)";
+    if ([codeOf3(B[t].d, B[t].r || 0), ...x].filter((c) => ltOf(t, c)).length >= 2) return "the leading tone doubled";
+    // a 2nd or a 7th between two upper voices: one of them the dissonance, or a chord of four tones
+    const four_ = ch && ch.need.length === 3;
+    for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) {
+      const cls = mod(D(x[i]) - D(x[j]), 7);
+      if ((cls === 1 || cls === 6) && v[i].q !== "dissonant" && v[j].q !== "dissonant" && !four_ && seventh === null) return `a 2nd or a 7th between the ${NAMES[i]} and the ${NAMES[j]}`;
+    }
+    if (t >= 1) {
+      const p = W.map((U) => U[t - 1]);
+      // parallels between the upper voices
+      for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) {
+        const a = perfectOf(x[i], x[j]), b = perfectOf(p[i], p[j]);
+        if (a !== null && a === b && (x[i] !== p[i] || x[j] !== p[j]) && D(x[i]) - D(p[i]) !== 0) return `parallel ${a === 0 ? "octaves" : "5ths"} between the ${NAMES[i]} and the ${NAMES[j]}`;
+      }
+      // the dominant resolved (⑤ to ① or ⑥, its key the same): its leading tone goes up to the tonic — an inner voice
+      // may fall to ⑤ over ① (ex. 6.23: Bach's chorales) —, so the deceptive ⑥ doubles its 3rd (ex. 6.24c)
+      // (⑤–⑥ the deceptive resolution of a 7 only: a 5/3 on ⑤ going up the scale passes, as the RO's does)
+      if (B[t - 1].dominant && B[t].struck && Sv.locB(t - 1) === 4 && (Sv.locB(t) === 0 || (Sv.locB(t) === 5 && B[t - 1].chord === "7")) && Sv.keys[t].key.tonic === Sv.keys[t - 1].key.tonic)
+        for (let i = 0; i < 3; i++) if (ltOf(t - 1, p[i]) && D(x[i]) !== D(p[i]) + 1 && !(i > 0 && Sv.locB(t) === 0 && D(x[i]) === D(p[i]) - 2))
+          return `the leading tone goes up to the tonic (the ${NAMES[i]}${i > 0 ? "; an inner voice may fall to ⑤ over ①" : ""})`;
+      // (and the deceptive 5/3 on ⑥ doubles its 3rd, the tonic: «necessary», ex. 6.24c)
+      if (B[t - 1].dominant && B[t].struck && Sv.locB(t - 1) === 4 && Sv.locB(t) === 5 && (!figured || ["5/3", undefined].includes(B[t].chord)) && v.filter((u) => u.cls === 2).length < 2)
+        return "the deceptive ⑥ doubles its 3rd";
+      // a 6/4 over a held bass resolves to the 5/3: the 6th down to the 5th, the 4th down to the 3rd
+      if (!B[t].struck && !B[t].pedal) {
+        const pv = p.map((c, i) => V[i].vertical(t - 1, c).cls), pc = new Set(pv);
+        if (pc.has(5) && pc.has(3) && !pc.has(2) && !pc.has(1))
+          for (let i = 0; i < 3; i++) if ((pv[i] === 5 || pv[i] === 3) && !(D(x[i]) === D(p[i]) - 1 && v[i].cls === pv[i] - 1)) return "the 6/4 resolves to the 5/3 (6 to 5, 4 to 3)";
+      }
+    }
+    // in minor the chord on the dominant is major
+    const kt = Sv.keys[t].key;
+    // (and in the dominant's family — its 7, 6/5, 6/4/3, 4/2 — the leading tone is raised: the RO's 6♯ on ②, 4♯ on ④)
+    if (kt.mode === "minor" && ((B[t].dominant && B[t].chord !== "6/3") || (ch && ch.seventh !== undefined)))
+      for (const c of x) { const l = Sv.loc(t, c); if (l.deg === 6 && l.alt !== 1) return `the chord on the dominant is major: ${K.name(D(c), A(c) + 1)}, not ${K.name(D(c), A(c))}`; }
+    return null;
+  }
+  const check = (W, t, x) => V.reduce((r, Vi, i) => r || Vi.check(W[i].slice(0, t), t, x[i]), null) || between(W, t, x);
+  /** The triples that may come at unit t. */
+  function triples(W) {
+    const t = W[0].length, ok = V.map((Vi, i) => Vi.codes.filter((c) => Vi.check(W[i], t, c) === null)), out = [];
+    for (const a of ok[0]) for (const b of ok[1]) { if (D(b) >= D(a) || D(a) - D(b) > 7) continue;
+      for (const c of ok[2]) { if (D(c) >= D(b) || D(b) - D(c) > 7) continue; if (between(W, t, [a, b, c]) === null) out.push([a, b, c]); } }
+    return out;
+  }
+  const memo = new Map();
+  function countFrom(W) {
+    const t = W[0].length;
+    if (t >= n) return 1n;
+    const k = t + ":" + W.map((U) => U.slice(Math.max(0, t - 3)).join(",")).join("|");
+    const got = memo.get(k);
+    if (got !== undefined) return got;
+    let v = 0n;
+    for (const x of triples(W)) { W.forEach((U, i) => U.push(x[i])); v += countFrom(W); W.forEach((U) => U.pop()); }
+    memo.set(k, v);
+    return v;
+  }
+  const count = (W = [[], [], []]) => countFrom(W.map((U) => [...U]));
+  // the soft rules: each voice's own, the doublings (the bass doubled in a 5/3, a 6/4, a 5/4), the outer voices
+  const Wd = { doubling: 0.6, ...(spec.weights || {}) };
+  function doubling(t, x) {
+    const ch = B[t].chord;
+    if (!["5/3", "6/4", "5/4", "7/3"].includes(ch) && figured) return 0;
+    const v = x.map((c, i) => V[i].vertical(t, c).cls), cnt = {};
+    for (const c of [0, ...v]) cnt[c] = (cnt[c] || 0) + 1;
+    return Object.entries(cnt).some(([c, k]) => +c !== 0 && k >= 2) ? Wd.doubling : 0;
+  }
+  function fan(W = [[], [], []]) {
+    return triples(W).map((x) => {
+      const t = W[0].length, parts_ = {};
+      V.forEach((Vi, i) => { for (const [k, c] of Object.entries(Vi.costParts(W[i], x[i]))) parts_[(i ? NAMES[i] + "/" : "") + k] = c * (i ? 0.6 : 1); });
+      const d = doubling(t, x); if (d) parts_.doubling = d;
+      return { x, futures: count(W.map((U, i) => [...U, x[i]])), parts: parts_, cost: total(parts_) };
+    });
+  }
+  function sample(r = Math.random) {
+    const W = [[], [], []];
+    while (W[0].length < n) {
+      const cs = fan(W).filter((c) => c.futures > 0n);
+      if (!cs.length) return null;
+      const tot = cs.reduce((s, c) => s + c.futures, 0n);
+      let y = (tot * BigInt(Math.floor(r() * 2 ** 52))) / 2n ** 52n;
+      const c = cs.find((c) => (y -= c.futures) < 0n) || cs[cs.length - 1];
+      W.forEach((U, i) => U.push(c.x[i]));
+    }
+    return { soprano: W[0], alto: W[1], tenor: W[2] };
+  }
+  function engine({ temp = 1, follow = true, r = Math.random } = {}) {
+    const W = [[], [], []];
+    while (W[0].length < n) {
+      const cs = fan(W).filter((c) => c.futures > 0n).map((c, i) => ({ ...c, note: i }));
+      const pick = choose(cs, temperature(temp, follow, count(W)), r);
+      if (!pick) return null;
+      W.forEach((U, i) => U.push(pick.x[i]));
+    }
+    return { soprano: W[0], alto: W[1], tenor: W[2] };
+  }
+  const voicesOf = (R) => [R.soprano, R.alto, R.tenor];
+  function judge(R) {
+    const W = voicesOf(R);
+    if (W.some((U) => U.length !== n)) return `the voices are not ${n} units long`;
+    for (let t = 0; t < n; t++) { const r = check(W, t, W.map((U) => U[t])); if (r) return `unit ${t + 1}: ${r}`; }
+    return null;
+  }
+  /** The chords a realization makes, unit by unit, as figures ("6/4/3", "(5)/3"…). */
+  function chords(R) {
+    const W = voicesOf(R);
+    return W[0].map((_, t) => {
+      const fs = [...new Set(W.map((U, i) => V[i].vertical(t, U[t]).cls))].map((c) => FIG[c]).filter((f) => f !== 8).sort((a, b) => b - a);
+      if (!fs.length) return "8";
+      if (fs.length === 1 && fs[0] === 3) return "(5)/3";
+      if (fs[0] === 7 && fs.includes(3) && fs.every((f) => [7, 5, 3].includes(f))) return "7";
+      return fs.join("/");
+    });
+  }
+  return { spec, key: K, bass: B, n, voices: V, soprano: Sv, alto: Av, tenor: Tv, check, triples, count, fan, sample, engine, judge, chords,
            code: (name) => codeOf(K, name), name: (c) => K.name(D(c), A(c)), degree: D, alter: A, hz: (c) => K.hz(D(c), A(c)), memo };
 }
