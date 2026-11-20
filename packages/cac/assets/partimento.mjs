@@ -1222,3 +1222,6 @@ export function overBass(spec = {}) {
            count: () => P.count(), engine: (o) => asVoices(P.engine(o)), sample: (r) => asVoices(P.sample(r)),
            judge: (R) => P.judge(voices === 2 ? R.top : R), chords: (R) => (P.chords ? P.chords(voices === 2 ? R.top : R) : null) };
 }
+
+// (a box loads the module's default export: api/import-module)
+export default { keyOf, schemata, parts, four, overBass, degreeOf, parseKey, guessKey, bassFromNotes, CHORDS, CHORDS4, RULE_OF_THE_OCTAVE, RULE_OF_THE_OCTAVE4, octaveChord, octaveChord4 };
