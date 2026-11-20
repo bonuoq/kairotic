@@ -447,6 +447,9 @@ Rules:
   swaps from A to B (a knob or ramp on the ratio morphs in time), and the way {:steps [[:swap from to] …]}.
   `vary [d] [seed] [depth] [downbeat]`: pulses → a variation exactly d swaps away (each bang the next, seeded),
   or with depth the onsets down to metrical level d kept and the rest redrawn; and how it was made.
+  `phase`: a timeline follower, onsets only — onsets (onset~ bangs, taps) left, the reference pulses middle
+  (cold), a pulse clock right (metro at the pulse, or pulse): at each pulse it sends the phase (which pulse of
+  the reference this is); into a necklace's clock inlet (inlet 2) the hand follows the performer.
 - The outside (package @kairotic/io, it comes by itself; listening while ▶ runs): `midiin` (MIDI in: Hz and
   voice ids for synth~ like a keyboard, and every event as a map {:type :note :freq :amp :gate …}),
   `midiout [mpe]` (Hz after voice ids, or events, to a MIDI port; mpe for microtones), `oscout [target]` and

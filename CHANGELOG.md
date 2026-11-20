@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`phase`: where a performer is in a cycle** (`@kairotic/rhythm` 0.6.0; discussion #204). A timeline follower, onsets
+  only: a pulse clock (a metro, the room's `pulse`) gives the grid, onsets (`onset~`, taps) fall on its nearest pulse,
+  and at each pulse the last pulses heard are compared with every rotation of the reference (Toussaint's swap distance,
+  plus two for each onset one has and the other has not): the nearest is the phase. The pulse just begun is not judged
+  (its onset may come late, as onset~ hears it); ties and near ties go to the phase the walk expects, so missing or
+  extra onsets do not throw it. Into a necklace's clock inlet, its hand follows the performer.
+
 - **`morph` and `vary`: rhythms that move by a measured amount** (`@kairotic/rhythm` 0.5.0; discussions #206, #207,
   #321). `morph` turns one rhythm into another swap by swap: a ratio 0…1 is a point on the fewest swaps from the left
   rhythm to the target — always a real rhythm —, and the way goes out as data (`[:swap from to]`, `[:remove i]`,
