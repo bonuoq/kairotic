@@ -447,4 +447,31 @@ export async function theory(page, check) {
   check("swap: the rumba and the bossa nova each 1 swap from the son (2 by Hamming); the tresillo a pulse later: 5 in the bar, 3 around the circle, 0 as a necklace (rotation 1); the tresillo 0 from the cinquillo (directed); nothing without a reference or of another length",
         sws === "[[1 2] [1 2] [5 3 0 1 6 0] 0 nil nil]", sws);
   await cljs(page, `(delete ${ch} ${hm} ${sw})`);
+  // morph and vary: the way between two rhythms, and a variation by a measured amount (#206, #207, #321)
+  const mo = (await cljs(page, '(box "morph" 10500 600)')).trim();
+  const va = (await cljs(page, '(box "vary" 10500 660)')).trim();
+  check("morph and vary bring @kairotic/rhythm",
+        (await until(page, `(every? some? (map comp/lookup ["morph" "vary"]))`, (x) => x === "true", 20000)) === "true");
+  const G = `(fn [cls args msgs] (let [d (comp/lookup cls)]
+                (reduce (fn [[s _] [i m]] (let [x ((:receive d) {:inlet i :value m :state s :args args})] [(or (:state x) s) (:out x)])) [nil nil] msgs)))`;
+  const O = `(fn [r k] (some (fn [[p v]] (when (= p k) v)) (second r)))`;
+  const mor = await cljs(page, `(let [G ${G} O ${O} r (fn [a b t] (G "morph" {} [[1 b] [2 t] [0 a]]))
+                                      son [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0] bossa [1 0 0 1 0 0 1 0 0 0 1 0 0 1 0 0]
+                                      tres [1 0 0 1 0 0 1 0] cinq [1 0 1 1 0 1 1 0]]
+                                  [(= bossa (O (r son bossa 1) 0)) (= son (O (r son bossa 0) 0)) (O (r tres [0 1 0 0 1 0 0 1] 0.5) 1)
+                                   (O (r tres [0 1 0 0 1 0 0 1] 0.5) 0) (:steps (O (r tres cinq 1) 1)) (O (r cinq tres 1) 0) (:steps (O (r cinq tres 0) 1))
+                                   (second (G "morph" {} [[1 [1 0 1]] [0 tres]]))])`);
+  check("morph: the son becomes the bossa nova in one swap; the tresillo a pulse later in three, taking turns (two at 0.5); the tresillo grows into the cinquillo (two onsets appear) and back (they go first); nothing for another length",
+        mor === "[true true {:steps [[:swap 0 1] [:swap 3 4] [:swap 6 7]], :swaps 3, :at 2, :of 3} [0 1 0 0 1 0 1 0] [[:add 2] [:add 5]] [1 0 0 1 0 0 1 0] [[:remove 2] [:remove 5]] nil]", mor);
+  const var_ = await cljs(page, `(let [G ${G} O ${O} son [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0] p (fn [args msgs] (G "vary" args msgs))
+                                       sw (fn [a b] (:swap (O (G "swap" {} [[1 b] [0 a]]) 0)))
+                                       v2 (O (p {:d 2 :seed 1} [[0 son]]) 0)
+                                       dep (p {:d 1 :seed 1 :depth true} [[0 son]])]
+                                   [(sw v2 son) (reduce + v2) (= v2 (O (p {:d 2 :seed 1} [[0 son] [0 :bang] [0 :reset] [0 :bang]]) 0))
+                                    (not= v2 (O (p {:d 2 :seed 1} [[0 son] [0 :bang]]) 0)) (not= v2 (O (p {:d 2 :seed 2} [[0 son]]) 0))
+                                    (:kept (O dep 1)) (nth (O dep 0) 0) (reduce + (O dep 0)) (nth (O dep 0) 8)
+                                    (every? (fn [s] (and (pos? (nth (O (p {:d 3 :seed s :downbeat true} [[0 son]]) 0) 0)))) (range 1 9))])`);
+  check("vary: exactly 2 swaps from the son, as many onsets; the same seed the same draws (:reset), the next draw or another seed another; with depth 1 the downbeat kept and the four others drawn again off the strong pulses; downbeat keeps the first pulse",
+        var_ === "[2 5 true true true [0] 1 5 0 true]", var_);
+  await cljs(page, `(delete ${mo} ${va})`);
 }

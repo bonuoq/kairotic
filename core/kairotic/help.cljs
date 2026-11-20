@@ -946,6 +946,41 @@ Given a rhythm as pulses, it searches every rhythm of as many onsets among as ma
     :try "Click the son clave on the right first (the reference), then the three on the left: the son itself (0), the rumba (1: one onset a pulse later) and the bossa nova (1). The Hamming distance says 2 for both: it cannot tell how far an onset moved."
     :see ["necklace" "homometric" "euclid"]}
 
+   "morph"
+   {:package "@kairotic/rhythm" :usage "morph [ratio 0]"
+    :about "**From one rhythm to another, swap by swap.** Toussaint's swap distance does not only say how far two rhythms are: it gives the way — the swaps, an onset exchanged with the silence beside it, that turn one into the other with the fewest moves. A ratio between 0 and 1 is a point on that way: the rhythm after that share of its swaps, always a real rhythm, never a blurred average. Move the ratio with a knob, a ramp or a line, and one rhythm becomes the other (discussion #206: merging two branches as a musical operation).
+
+**The way is data too**: a list of steps, `[:swap from to]`, `[:remove i]`, `[:add j]` — the same operations a distance counts are the ones a morph makes (discussion #321: one grammar read both ways). The onsets are paired in order; with different numbers of onsets, as the directed swap distance pairs them: the ones of the first rhythm left over go first, those of the target appear last. The swaps take turns, one pulse each, so the rhythm changes evenly along the way."
+    :args [[:ratio "where on the way it starts (0 the first rhythm, 1 the target)"]]
+    :doc "From one rhythm to another, swap by swap: the rhythm after a share 0…1 of the swaps that turn the left one into the target, and the way as data."
+    :inlets ["pulses: the rhythm the way starts from · a number: the ratio · a bang: send it again" "pulses: the target (cold)" "the ratio, 0…1"]
+    :outlets ["the pulses at the ratio" "the way: {:steps [[:swap from to] [:remove i] [:add j] …] :swaps :at :of}"]
+    :example (lines "(box :b1 \"msg [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]\" 40 20)" "(box :b2 \"msg [1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0]\" 360 20)"
+                    "(box :b3 \"knob 0 1\" 640 20)" "(box :b4 \"morph\" 40 110)" "(box :b5 \"necklace\" 40 160)" "(box :b6 \"print way\" 280 160)"
+                    "(connect :b2 0 :b4 1)" "(connect :b1 0 :b4 0)" "(connect :b3 0 :b4 2)" "(connect :b4 0 :b5 0)" "(connect :b4 1 :b6 0)")
+    :try "Click the four quarter notes (the target, on the right), then the son clave: the knob turns the son into the quarter notes, swap by swap — the necklace shows every rhythm on the way, and its measures say how the evenness grows."
+    :see ["vary" "swap" "necklace"]}
+
+   "vary"
+   {:package "@kairotic/rhythm" :usage "vary [d 1] [seed 1] [depth] [downbeat]"
+    :about "**Again, but different** (discussion #207), with a measured likeness, drawn with a seed — the same seed, the same variations in the same order; each bang the next one.
+
+**By swaps** (the default): exactly d swaps away, Toussaint's distance. Each swap takes an onset one pulse further from where it was, never past a neighbour: `vary 1` is the same timeline with one onset displaced, larger d drifts further.
+
+**From a depth** (`depth`): the onsets on the strong pulses are kept, down to metrical level d — 0 the downbeat, 1 the half bar, 2 the quarters of 16… (the bar's levels are its factors, twos first: 16 is 2·2·2·2, 12 is 2·2·3) —, and the others are drawn again among the weaker pulses: the same skeleton, a new surface. It is discussion #321's *vary from depth k*, with metre as its grammar. With `downbeat`, the first pulse always keeps what it has."
+    :args [[:d "how far: swaps, or with depth the deepest level kept"] [:seed "the seed: the same seed, the same variations"]
+           [:depth "keep the strong pulses down to level d, draw the rest again"] [:downbeat "the first pulse keeps what it has"]]
+    :doc "Again, but different: a variation of a rhythm, d swaps away or redrawn below metrical depth d, drawn with a seed; out the pulses and how they were made."
+    :inlets ["pulses: the rhythm to vary (a new one: its first variation) · a bang: the next variation · :reset · [:d 2], [:seed 7] (or a map)"]
+    :outlets ["the variation, pulses" "how it was made: {:steps [[:swap from to] or [:remove i] [:add j] …] :mode :d :seed :draw, and :swaps, or :changed and :kept}"]
+    :example (lines "(box :b1 \"msg [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]\" 40 20)" "(box :b2 \"msg :bang\" 360 20)"
+                    "(box :b3 \"vary 2 7\" 40 70)" "(box :b4 \"necklace\" 40 120)" "(box :b5 \"vary 1 7 depth\" 280 70)" "(box :b6 \"necklace\" 280 120)"
+                    "(box :b7 \"swap\" 520 120)" "(box :b8 \"print\" 520 170)"
+                    "(connect :b1 0 :b3 0)" "(connect :b1 0 :b5 0)" "(connect :b2 0 :b3 0)" "(connect :b2 0 :b5 0)"
+                    "(connect :b3 0 :b4 0)" "(connect :b5 0 :b6 0)" "(connect :b1 0 :b7 1)" "(connect :b3 0 :b7 0)" "(connect :b7 0 :b8 0)")
+    :try "Click the son clave, then bang several times: on the left, variations two swaps away (swap prints 2 each time); on the right, the downbeat kept (level 0 and 1), the other onsets drawn again — the same skeleton, a new surface."
+    :see ["morph" "swap" "chance" "necklace"]}
+
    "comes"
    {:package "@kairotic/cac" :usage "comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [temp 0] [seed 1] [inverted] [fourth] [live] [nocues] [midi]"
     :about "**You play a line, the dux, and comes answers with a second voice, the comes, that reads it** — by the rules of 16th-century counterpoint. A note that breaks a rule, or from which the work could not be finished, is corrected to the nearest one that can be played, and the box says why.

@@ -18,6 +18,8 @@ is their editor, measures them and writes them as music.
 | `chance [k 3] [n 8] [seed 1]` | **a generator**: k onsets among n pulses drawn with a seed — each bang another rhythm, the same seed the same rhythms in the same order (in a room, from the history); `:reset` starts them again |
 | `homometric` | **a generator from a rhythm**: the other rhythms with the same interval vector, not the same necklace turned or in a mirror (the two flat rhythms of 4 in 12; a half of an even cycle and its complement) — a list of pulses, and how many |
 | `swap` | **how far apart two rhythms are** (Toussaint's swap distance): the left one against the right one (the reference, cold) — in the bar, around the circle, and as necklaces at the best rotation; with the Hamming distance beside it, and the directed swap distance when they hold different numbers of onsets |
+| `morph [ratio 0]` | **from one rhythm to another, swap by swap**: a ratio 0…1 is a point on the swaps that turn the left rhythm into the target (middle, cold) — always a real rhythm; the way also as data (`[:swap from to]`, `[:remove i]`, `[:add j]`) |
+| `vary [d 1] [seed 1] [depth] [downbeat]` | **again, but different**, drawn with a seed: exactly d swaps away, or (`depth`) the onsets on the strong pulses kept down to metrical level d and the rest drawn again — the same skeleton, a new surface |
 
 ```clojure
 (box :b1 "msg [:rotation 6]" 40 20)
@@ -98,5 +100,11 @@ more than one moved near — the Hamming distance (how many pulses differ) canno
 the rumba and 1 from the bossa nova, and 2 by Hamming from both. With different numbers of onsets it is the directed
 swap distance (the tresillo is 0 from the cinquillo: it is inside it). `:circular` lets a swap cross the end of the
 bar; `:necklace` turns the reference to where it comes nearest, and `:rotation` says how far.
+
+**morph** and **vary** make what `swap` measures: their steps (`[:swap from to]`, `[:remove i]`, `[:add j]`) are the
+operations a swap distance counts, so the way between two rhythms or a variation of one is data the history can
+keep and cite — one grammar read both ways (discussions #206, #207 and #321). A ratio moved by a knob, a `ramp` or a
+line is a morph in time; a `vary` after a `necklace` playing step by step, banged once a bar, is a timeline that
+keeps changing by a measured amount.
 
 Writing one of its classes in a work brings the package into it. Licence: [MPL-2.0](../../LICENSE).

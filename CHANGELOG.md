@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **`morph` and `vary`: rhythms that move by a measured amount** (`@kairotic/rhythm` 0.5.0; discussions #206, #207,
+  #321). `morph` turns one rhythm into another swap by swap: a ratio 0…1 is a point on the fewest swaps from the left
+  rhythm to the target — always a real rhythm —, and the way goes out as data (`[:swap from to]`, `[:remove i]`,
+  `[:add j]`; onsets paired in order, as the directed swap distance pairs them, taking turns). `vary` is "again, but
+  different", seeded: exactly d swaps away (each swap an onset one pulse further from home), or with `depth` the onsets
+  on the strong pulses kept down to metrical level d and the rest drawn again (the same skeleton, a new surface:
+  #321's "vary from depth k", metre as the grammar); `downbeat` keeps the first pulse. The steps they make are the
+  operations `swap` counts: one grammar read both ways.
+
+
 - **The written tree and the performed one** (discussion #308): `mt/descriptive` leaves out what belongs to performing a
   tree — real times and velocities (`:tstamp.real :dur.real :vel`), wires, takes, the continuum, the ids notes have
   only for takes — and `mt/with-performative` puts back into the whole tree a written tree edited from it, each node
