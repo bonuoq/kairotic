@@ -10,6 +10,12 @@
   app: the outer lines of each level's slices, a note held across slices one note (the 7–6 chain's suspensions as
   half notes tied over the bar lines). **Study 62** exports its four parts as MEI too (soprano, alto, tenor, bass, the chords under the bass, the keys
   over it), under the same rule.
+- **`click~ downbeat`, and help patches that start by themselves** (`@kairotic/synth` 0.4.1). With the word
+  `downbeat`, a number ticks only when it is 0: a lower `click~ 500 0 0.06 downbeat` after a `counter 0 15`, a
+  `phase` or any cycle's position marks where the cycle begins, to hear whether two clocks agree. The help patches of
+  `click~`, `phase` and `necklace` step by step start their metro with a `loadbang` (▶ is enough) and sound that
+  lower click where the cycle begins — in `phase`'s, where the follower believes the clave begins.
+
 - **What each note sounded like, in the take** (discussion #308, step 1; `@kairotic/analysis` 0.8.5): `follow rms
   centroid chroma` has an inlet for each descriptor written after its numbers (from `features~`, `chroma~`); while a
   note of the tree sounds, their values are averaged, and at `stop` the take keeps them per note as its `:profile`

@@ -368,15 +368,16 @@ See also: `pitch~`, `mt`, `features~`
 
 ### click~ · `@kairotic/synth`
 
-`click~ [freq 1200] [accent 0] [decay 0.03]`
+`click~ [freq 1200] [accent 0] [decay 0.03] [downbeat]`
 
-A metronome's click: each bang a short tick; every accent bangs one accented (a fifth higher, louder). A number is a tick, accented when it is 0 (a counter's cycle).
+A metronome's click: each bang a short tick; every accent bangs one accented (a fifth higher, louder). A number is a tick, accented when it is 0 (a counter's cycle); with downbeat only the 0 ticks, to mark where a cycle begins.
 
 **Arguments**
 
 - `freq`: the tick's pitch, in Hz
 - `accent`: every how many bangs one is accented (0: none)
 - `decay`: how long a tick lasts, in seconds
+- `downbeat`: a number ticks only when it is 0: where a cycle begins
 
 **Inlets** 
 
@@ -386,15 +387,23 @@ A metronome's click: each bang a short tick; every accent bangs one accented (a 
 
 0. the sound
 
-**Try:** Press ▶: sixteenths at 120, the beats accented. Put it beside any clock you play along with — a metro, the room's pulse, a necklace's onsets.
+**Try:** Press ▶ (the loadbang starts the metro): sixteenths at 120, the beats accented, and a lower click where each bar of sixteen begins (the counter's 0, through click~ downbeat). Put it beside any clock you play along with — a metro, the room's pulse, a necklace's onsets.
 
 ```clojure
-(box :b1 "metro 125" 40 30)
-(box :b2 "click~ 1200 4" 40 80)
-(box :b3 "dac~" 40 130)
+(box :b4 "loadbang" 40 0)
+(box :b1 "metro 125" 40 40)
+(box :b2 "click~ 1200 4" 40 90)
+(box :b3 "dac~" 40 190)
+(box :b5 "counter 0 15" 180 90)
+(box :b6 "click~ 500 0 0.06 downbeat" 180 140)
+(connect :b4 0 :b1 0)
 (connect :b1 0 :b2 0)
 (connect :b2 0 :b3 0)
 (connect :b2 0 :b3 1)
+(connect :b1 0 :b5 0)
+(connect :b5 0 :b6 0)
+(connect :b6 0 :b3 0)
+(connect :b6 0 :b3 1)
 ```
 
 See also: `metro`, `pulse`, `phase`, `necklace`
@@ -944,7 +953,7 @@ See also: `edn`, `sample`, `print`
 
 ### follow · `@kairotic/analysis`
 
-`follow [ahead] [band]`
+`follow [ahead] [band] [descriptor …]`
 
 Follows a performer through a tree (discussion #204): each note heard is matched with a note a little ahead of where the performer was, by pitch and by when it was expected at the performer's tempo; wrong notes pass, skipped notes are skipped. Wires written on the notes ([:note {… :wire {:send :swell}}], or (wire! :bN note :swell)) send what they send: rigid when the note is reached (or caught up once, if it was passed over), elastic on their own at the expected time plus a tolerance if the note does not come, or led by the electronics at that time. At :stop, the take — where each note was played — for the tree box.
 
@@ -953,6 +962,7 @@ Follows a performer through a tree (discussion #204): each note heard is matched
 0. Hz from pitch~ (0: silence); :start, :stop
 1. onsets (from onset~): a new note even on the same pitch
 2. the tree to follow (from a tree box)
+3. with words after its numbers (follow rms centroid chroma), one inlet each: a descriptor (features~, chroma~), whose mean while each note sounds goes into the take as what it sounded like (:profile)
 
 **Outlets** 
 
@@ -1655,10 +1665,13 @@ A cyclic rhythm on the circle and its geometry (Toussaint): drawn as a polygon w
 
 **Played step by step** — A necklace is also a step sequencer, the clock of Toussaint's article: each bang on its right inlet moves the hand to the next pulse, and on an onset a bang goes out of outlet 4. Into a player's left inlet, it plays one event of its pattern a step — the rhythm the necklace's, the pitches the pattern's. Press pulses while it plays: the hand finds what you changed at once.
 
-*Try:* Click the son clave above, press ▶: the hand turns, and every onset it reaches plays the next note of the pbind. Press pulses on the necklace while it plays.
+*Try:* Click the son clave above, press ▶ (the loadbang starts the metro): the hand turns, and every onset it reaches plays the next note of the pbind. Press pulses on the necklace while it plays. The lower click is the counter's 0, where each turn of the hand begins.
 
 ```clojure
+(box :b21 "loadbang" 400 290)
 (box :b15 "metro 150" 520 290)
+(box :b22 "counter 0 15" 400 440)
+(box :b23 "click~ 500 0 0.06 downbeat" 400 490)
 (box :b16 "player 120" 520 340)
 (box :b17 "pbind 7 loop" 640 290)
 (code :b17 "{:degree #pat/shuffle [0 2 4 7 9]}")
@@ -1672,6 +1685,11 @@ A cyclic rhythm on the circle and its geometry (Toussaint): drawn as a polygon w
 (connect :b16 1 :b18 1)
 (connect :b18 0 :b19 0)
 (connect :b18 0 :b19 1)
+(connect :b21 0 :b15 0)
+(connect :b15 0 :b22 0)
+(connect :b22 0 :b23 0)
+(connect :b23 0 :b19 0)
+(connect :b23 0 :b19 1)
 (connect :b15 0 :b20 0)
 (connect :b20 0 :b19 0)
 (connect :b20 0 :b19 1)
@@ -2018,30 +2036,36 @@ Where a performer is in a cycle (a timeline follower, onsets only): onsets on th
 0. the phase: the pulse of the reference this one is (for a necklace's clock inlet)
 1. {:phase :distance — 0: exactly the reference — :margin — how much nearer than the next guess; 0 ambiguous — :heard :window :n}
 
-**Try:** Click the son clave (the reference), press ▶ — the metro is the pulse, a sixteenth at 120, and click~ lets you hear it, the beats accented —, and clap (with headphones, so the microphone hears you and not the click) the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects. Stop for a moment and go on: it keeps walking.
+**Try:** Click the son clave (the reference), press ▶ — the loadbang starts the metro, the pulse, a sixteenth at 120, and click~ lets you hear it, the beats accented —, and clap (with headphones, so the microphone hears you and not the click) the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects; a lower click sounds where the follower believes the clave begins (its phase 0, through click~ downbeat): if it falls on your first clap of the clave, you and it agree. Stop for a moment and go on: it keeps walking.
 
 ```clojure
 (box :b1 "msg [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]" 40 20)
-(box :b2 "metro 125" 360 20)
-(box :b3 "adc~ 1" 480 20)
-(box :b4 "onset~" 480 70)
-(box :b5 "bang" 600 70)
+(box :b11 "loadbang" 360 0)
+(box :b2 "metro 125" 360 40)
+(box :b3 "adc~ 1" 520 20)
+(box :b4 "onset~" 520 70)
+(box :b5 "bang" 640 70)
 (box :b6 "phase" 360 130)
 (box :b7 "necklace" 40 180)
 (box :b8 "print phase" 360 180)
 (box :b9 "click~ 1200 4" 240 70)
-(box :b10 "dac~" 240 110)
+(box :b12 "click~ 500 0 0.06 downbeat" 500 230)
+(box :b10 "dac~" 360 280)
 (connect :b1 0 :b6 1)
 (connect :b1 0 :b7 0)
+(connect :b11 0 :b2 0)
 (connect :b2 0 :b6 2)
 (connect :b3 0 :b4 0)
 (connect :b4 0 :b6 0)
 (connect :b5 0 :b6 0)
 (connect :b6 0 :b7 2)
 (connect :b6 1 :b8 0)
+(connect :b6 0 :b12 0)
 (connect :b2 0 :b9 0)
 (connect :b9 0 :b10 0)
 (connect :b9 0 :b10 1)
+(connect :b12 0 :b10 0)
+(connect :b12 0 :b10 1)
 ```
 
 See also: `necklace`, `swap`, `onset~`, `follow`
