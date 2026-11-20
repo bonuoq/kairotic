@@ -755,19 +755,21 @@
                     (and (= :tuplet tg) (vector? (:ratio a))) (let [[p q] (:ratio a)] (* scale (/ q p)))
                     :else scale)
             voice (if (= :voice tg) (or (:name a) (:id a) (str "v" (count (:path ctx)) "-" (last (:path ctx)))) (:voice ctx))]
-        (loop [ks (map-indexed vector (kids n)) cur t prev nil]
+        ;; a child placed :at a time does not move the sequence on, but the sequence lasts until it ends (a canon's
+        ;; comes, [:voice [:seq {:at 2} …]], ends 2 beats after the dux)
+        (loop [ks (map-indexed vector (kids n)) cur t prev nil end t]
           (if (empty? ks)
-            cur
+            (max cur end)
             (let [[i k] (first ks)]
               (if-not (node? k)
-                (recur (rest ks) cur prev)
+                (recur (rest ks) cur prev end)
                 (let [ka (attrs k)
                       durable (and (#{:note :rest :chord} (tag k)) (not (:grace ka)))
                       prev (if (and durable (:dur ka)) (:dur ka) prev)
                       c2 {:voice voice :dur (when durable prev) :path (conj (:path ctx) i) :tempo (:tempo ctx)}]
                   (if (some? (:at ka))
-                    (do (place k (+ t (* scale (:at ka))) scale c2 acc) (recur (rest ks) cur prev))
-                    (recur (rest ks) (place k cur scale c2 acc) prev))))))))
+                    (let [e (place k (+ t (* scale (:at ka))) scale c2 acc)] (recur (rest ks) cur prev (max end e)))
+                    (recur (rest ks) (place k cur scale c2 acc) prev end))))))))
 
       :else t)))
 

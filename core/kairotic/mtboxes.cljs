@@ -201,9 +201,11 @@
 (defn play-schedule
   "What mt play plays at speed s: the times divided by |s|, and backwards (the tree's retrograde) when s < 0."
   [tree s]
-  (let [t (if (neg? s) (mt/retrograde tree) tree) a (js/Math.abs s)]
-    {:sch (mapv (fn [[sec outs]] [(/ sec a) outs]) (mt/schedule t))
-     :len (/ (* (/ 60 (mt/tempo-of t)) (mt/duration t)) a)}))
+  (let [t (if (neg? s) (mt/retrograde tree) tree) a (js/Math.abs s)
+        sch (mapv (fn [[sec outs]] [(/ sec a) outs]) (mt/schedule t))]
+    ;; a loop starts again when the tree ends, and never before the last thing it plays (its final silence)
+    {:sch sch
+     :len (max (/ (* (/ 60 (mt/tempo-of t)) (mt/duration t)) a) (or (first (peek sch)) 0))}))
 
 (defn play [{:keys [state args inlet value at]}]
   (let [st (or state {:gen 0})

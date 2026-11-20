@@ -4,6 +4,7 @@
   (:require [clojure.string :as str]
             [kairotic.mt :as mt]
             [kairotic.components :as comp]
+            [kairotic.mtboxes :as mtb]
             [kairotic.test :as t]))
 
 (def motif [:voice {:name "m"} [:measure {:meter [4 4]} "c4/1 e4 g4/2"]])
@@ -21,6 +22,9 @@
     (t/is "a measure that does not add up is a warning, not an error"
           (let [t [:voice [:measure {:meter [4 4]} "c4/1 e4"]]] (and (empty? (mt/errors t)) (seq (mt/warnings t)))))
     (t/eq "a schedule plays every note" (count (filter (fn [[_ outs]] (some (fn [[o _]] (= o 0)) outs)) (mt/schedule motif))) 4)
+    (let [m [:voice {:name "m"} [:measure {:meter [4 4]} "c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2"]]]
+      (t/eq "a canon lasts until its comes ends (a sequence lasts until a child placed :at ends)" (mt/duration (mt/canon 2 7 m)) 9)
+      (t/eq "… and mt play loops it there, after its last silence" (:len (mtb/play-schedule (mt/canon 2 7 m) 1)) 9))
     ;; wires (discussion #217): on notes and on rests (an event of the electronics, silent), at their written time
     (let [e [:voice {:tempo 120} [:measure {:meter [4 4]} [:rest {:dur 2 :wire {:send :drone}}] [:note {:pitch "c4" :dur 1 :wire [{:send :a} {:send :b :kind :elastic}]}] [:rest {:dur 1}]]]]
       (t/eq "a rest with a wire is an event, silent" (mapv (juxt :kind :t) (mt/events e)) [[:event 0] [:note 2]])
