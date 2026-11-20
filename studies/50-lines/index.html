@@ -285,15 +285,15 @@ window.kairoticLines = { get L() { return L; }, get work() { return work; }, set
 setPreset("hemiola");
 
 // ─── the work as MEI, for the app (discussion #319): the dux and the comes, a dux note a half note ───
-// The lattice's unit is then a 2a-th of a whole note: written as such when a is a power of two; a lattice of thirds
-// (a hemiola, a sesquialtera) needs tuplets, not written yet.
+// The lattice's unit is then a 2a-th of a whole note: binary when a is a power of two; a lattice of thirds (a
+// sesquialtera, 3/2: a dux note 3 units, a comes note 2) is written in tuplets, 3 in the time of 2, where a bar needs them.
 function exportIt() {
   if (!work || !L) return;
   const a = L.a, n = L.n;
-  if ((a & (a - 1)) !== 0) { $("status").textContent = `a dux note of ${a} units needs tuplets: not written as MEI yet`; return; }
   const { D, C } = L.lines(work);
   let co = null; if (L.coda) for (let t = 0; t < n; t++) if (L.source(t) === L.m) { co = t; break; }
-  const names = (line) => line.map((v) => (v === null || v === undefined ? null : L.system.pitchName(v)));
+  // (each step with its exact pitch: a system off 12-TET is written as the app writes it, its Hz kept)
+  const names = (line) => line.map((v) => (v === null || v === undefined ? null : { name: L.system.pitchName(v), midi: L.system.midi(v) }));
   const struck = (line, from) => line.map((v, t) => t === 0 || v !== line[t - 1] || t === from);
   const mean = (line) => { const xs = line.filter((v) => v !== null && v !== undefined); return xs.reduce((x, y) => x + y, 0) / Math.max(1, xs.length); };
   let voices = [{ label: "dux", notes: fromUnits(names(D), struck(D, null)) }, { label: "comes", notes: fromUnits(names(C), struck(C, co)) }];

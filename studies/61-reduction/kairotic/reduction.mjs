@@ -2,7 +2,8 @@
 // Kairotic · Study 61 · reduction: a phrase analysed into levels, and varied from any of them (discussion #321).
 //
 //   the analysis   the phrase's surface (salami slices, protovoices.mjs) reduced a step at a time, each step an
-//                  unsplit (a slice of ornaments taken away) or an unspread (two slices heard as one sonority), the
+//                  unsplit (a slice of ornaments taken away), an unsuspend (a suspension's resolution brought onto
+//                  the beat it was delayed from) or an unspread (two slices heard as one sonority), the
 //                  cheapest by the policy, until none is left: the levels L0 (the surface) … Ln (the frame); read
 //                  backwards, the steps are the derivation (split, spread) that composes the phrase from its frame
 //   the policy     one cost for every step, so the same weights mean the same reading everywhere:
@@ -22,7 +23,7 @@
 //
 // Pure data and functions.
 
-import { notesOfPhrase, slicesOf, unsplit, unspread, sonorous, phraseOfPath, pitchOf, ORNAMENTS } from "./protovoices.mjs";
+import { notesOfPhrase, slicesOf, unsplit, unspread, unsuspend, sonorous, phraseOfPath, pitchOf, ORNAMENTS } from "./protovoices.mjs";
 import { melodicParts, total, pick, choose, temperature } from "./soft.mjs";
 import { check, rangeOf, endingOf, PER, LINE, MIN_NOTES } from "./incipit.mjs";
 import { figuring } from "./figuring.mjs";
@@ -66,7 +67,9 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null 
     if (!judge) return {};
     const c = judge(p);
     if (c.ok || c.short) return {};
-    const near = c.errors.filter((e) => e.unit === null || Math.abs(e.unit - 1 - i) <= 1);
+    // (around the step: from the slice before it to the end of the one after, on the units' grid)
+    const lo = path[Math.max(0, i - 1)].on, hi = path[Math.min(path.length - 1, i + 1)].end;
+    const near = c.errors.filter((e) => e.unit === null || (e.unit - 1 >= lo - 1 && e.unit - 1 <= hi));
     return near.length ? { illegal: W.illegal, why: near.map((e) => e.reason) } : {};
   };
   for (let i = 1; i < path.length; i++) {
@@ -79,9 +82,24 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null 
           dissonance: sonorous(path[i].notes.map((n) => n.pitch)) ? 0 : -W.dissonance,
           line: W.line * (lineCost(u.path) - base),
         };
-        const lg = legal(u.path, i - 1);
+        const lg = legal(u.path, i);
         if (lg.illegal) parts.illegal = lg.illegal;
         out.push({ op: "unsplit", at: i, on: path[i].on, touches: [i - 1, i, i + 1], parts, cost: total(parts), path: u.path, explained: u.explained });
+      }
+    }
+    if (!keep(i) && i < path.length - 1 && !keep(i + 1)) {
+      // a suspension: its resolution brought onto the beat (the onset taken away is the resolution's)
+      const u = unsuspend(path, i);
+      if (u.ok) {
+        const parts = {
+          ornaments: u.explained.reduce((a, e) => a + e.cost, 0),
+          meter: W.meter * meter(path[i + 1].on, per),
+          dissonance: -W.dissonance,
+          line: W.line * (lineCost(u.path) - base),
+        };
+        const lg = legal(u.path, i);
+        if (lg.illegal) parts.illegal = lg.illegal;
+        out.push({ op: "unsuspend", at: i, on: path[i].on, touches: [i - 1, i, i + 1], parts, cost: total(parts), path: u.path, explained: u.explained });
       }
     }
     if (!keep(i)) {
@@ -91,7 +109,7 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null 
           spread: W.spread, meter: W.meter * meter(path[i].on, per), crowd: W.crowd * Math.max(0, s.notes.length - 2),
           line: W.line * (lineCost(s.path) - base),
         };
-        const lg = legal(s.path, i - 1);
+        const lg = legal(s.path, i);
         if (lg.illegal) parts.illegal = lg.illegal;
         out.push({ op: "unspread", at: i - 1, on: path[i].on, touches: [i - 1, i], parts, cost: total(parts), path: s.path, notes: s.notes.map((n) => n.id) });
       }
@@ -116,7 +134,7 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null 
  */
 export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, temp = 0, r = Math.random } = {}) {
   const notes = notesOfPhrase(phrase, per), units = split(phrase.melody).length;
-  const judge = (p) => checkPath(p, phrase, key);
+  const judge = (p) => checkPath(p, phrase, key, per);
   let path = slicesOf(notes);
   const levels = [path], steps = [], top = 3;
   const choose1 = (cs) => pick(cs, (x) => x.cost, temp, temp > 0 ? r() : undefined);
@@ -128,14 +146,19 @@ export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, 
     let taken = 0;
     for (;;) {
       const all = candidates(path, notes, { per, weights, judge });
-      const free = (c) => (c.op === "unsplit"
-        ? !kept.has(path[c.at].on) && !fresh.has(path[c.at].on) && !fresh.has(path[c.at - 1].on) && !fresh.has(path[c.at + 1].on)
-        : c.touches.every((j) => !kept.has(path[j].on) && !fresh.has(path[j].on)));
+      const no = (j) => !kept.has(path[j].on) && !fresh.has(path[j].on);
+      const free = (c) => (c.op === "unsplit" ? no(c.at) && !fresh.has(path[c.at - 1].on) && !fresh.has(path[c.at + 1].on)
+        : c.op === "unsuspend" ? no(c.at) && !fresh.has(path[c.at + 1].on) && !fresh.has(path[c.at - 1].on)
+        : c.touches.every(no));
       const cs = all.filter((c) => !c.parts.illegal && free(c) && (meter(c.on, per) <= stratum || c.parts.dissonance < 0));
       if (!cs.length) break;
       const { path: next, touches, ...step } = choose1(cs);
       steps.push({ ...step, level: levels.length, among: cs.length });
       if (step.op === "unsplit") { kept.add(path[step.at - 1].on); kept.add(path[step.at + 1].on); }
+      // (a suspension undone: its preparation and the resolution on the beat may be parents in this pass — in a
+      // chain the resolution is the next one's preparation, so the one before may still bring it onto its own beat,
+      // the note kept — but not taken away)
+      else if (step.op === "unsuspend") { kept.add(path[step.at - 1].on); kept.add(path[step.at].on); }
       else fresh.add(path[step.at].on);
       path = next;
       taken++;
@@ -155,23 +178,39 @@ export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, 
 /** The steps that lead from level k − 1 to level k. */
 export const stepsInto = (an, k) => an.steps.filter((s) => s.level === k);
 
-/** A level below the surface as note against note: a slice a unit, its lowest note the bass, its highest the melody. */
+/** A level as note against note (a slice a unit, its lowest note the bass, its highest the melody): for a reading at the level's own pace. */
 export const unitPhrase = (path, cadence) => ({ bass: path.map((s) => s.notes[0].pitch).join(" "), melody: path.map(top).join(" "), cadence });
 
-/** A level below the surface checked by the hard rules of every phrase (incipit.mjs's check, a slice a unit: first
- *  species at the level's own pace); a level of fewer slices than a phrase asks is the frame ({ok, short: true}). */
-export function checkPath(path, phrase, key) {
-  if (path.length < MIN_NOTES) return { ok: true, short: true, errors: [] };
-  return check(null, unitPhrase(path, phrase.cadence), { key, range: rangeOf(phrase, key), per: 1 });
+/** The rules about how long a note may be held are the surface's: a level prolongs its notes by definition. */
+const HOLD = /held \d+ units? at most/;
+
+/**
+ * A level checked by the hard rules of every phrase on the phrase's own metrical grid (figuring.mjs's voice, as
+ * incipit.mjs's check asks it): its notes held over the time of what they prolong, so a strong unit stays strong —
+ * every rule but how long a note may be held. {ok, errors: [{unit (1-based), at, note, reason}]}, every error found.
+ */
+export function checkPath(path, phrase, key, per = PER) {
+  const K = keyOf(key), units = split(phrase.melody).length, range = rangeOf(phrase, key);
+  const g = phraseOfPath(path, units, per), U = split(g.melody).map((nm) => codeOf(K, nm));
+  const bass = split(g.bass).map((nm) => { const c = codeOf(K, nm); return { d: codeDegree(c), r: codeAlter(c) }; });
+  let F;
+  try { F = figuring({ bass, key: K, per, ending: endingOf(phrase.cadence), line: LINE, lo: range.lo, hi: range.hi, ro: true }); }
+  catch (e) { return { ok: false, errors: [{ unit: null, at: "the bass", reason: e.message }] }; }
+  const errors = [];
+  for (let t = 0; t < Math.min(F.n, U.length); t++) {
+    const r = F.voice.check(U.slice(0, t), t, U[t]);
+    if (r && !HOLD.test(r)) errors.push({ unit: t + 1, at: `unit ${t + 1}`, note: F.name(U[t]), reason: r });
+  }
+  return { ok: !errors.length, errors };
 }
 
 /** Level k drawn on the units' grid, as a phrase (its cadence the phrase's): its notes held over what they prolong. */
 export const phraseAt = (an, k) => ({ ...phraseOfPath(an.levels[k], an.units, an.per), cadence: an.phrase.cadence });
 
-/** Level k checked by the hard rules: the surface on its own grid, a level below it note against note (checkPath). */
+/** Level k checked by the hard rules: the surface as every phrase is, a level below it on the same grid (checkPath). */
 export function checkLevel(an, k) {
   if (k === 0) return check(null, an.phrase, { key: an.key, range: rangeOf(an.phrase, an.key), per: an.per });
-  return checkPath(an.levels[k], an.phrase, an.key);
+  return checkPath(an.levels[k], an.phrase, an.key, an.per);
 }
 
 /** What a level sounds: each note from the first slice it is in to the end of the last (a note held across slices one
@@ -195,14 +234,15 @@ export const survivors = (an, k) => new Set(an.levels[k].flatMap((s) => s.notes.
 
 /** The derivation: the steps read forwards, from the frame to the surface — what composes the phrase. */
 export function derivation(an) {
-  return an.steps.slice().reverse().map((s) => (s.op === "unsplit"
-    ? { op: "split", on: s.on, notes: s.explained.map((e) => ({ id: e.id, pitch: e.pitch, ornament: e.orn, pv: ORNAMENTS[e.orn].pv, parents: e.parents })) }
+  return an.steps.slice().reverse().map((s) => (s.op === "unsplit" || s.op === "unsuspend"
+    ? { op: s.op === "unsplit" ? "split" : "suspend", on: s.on, notes: s.explained.map((e) => ({ id: e.id, pitch: e.pitch, ornament: e.orn, pv: ORNAMENTS[e.orn].pv, parents: e.parents, ...(e.resolution ? { resolution: e.resolution } : {}) })) }
     : { op: "spread", on: s.on, notes: s.notes }));
 }
 
 /** How a step reads, in words. */
 export function describe(step) {
   if (step.op === "unspread") return `bar ${Math.floor(step.on / 2) + 1}: two slices heard as one sonority (a spread)`;
+  if (step.op === "unsuspend") return `bar ${Math.floor(step.on / 2) + 1}${step.on % 2 ? ", weak" : ""}: ${step.explained.map((e) => `${e.pitch} held over the beat, a suspension: its resolution brought onto the beat`).join("; ")}`;
   const ex = step.explained.filter((e) => e.orn !== "tie").map((e) => `${e.pitch} ${ORNAMENTS[e.orn].doc}`);
   return `bar ${Math.floor(step.on / 2) + 1}${step.on % 2 ? ", weak" : ""}: ${ex.length ? ex.join("; ") : "only notes held"}`;
 }

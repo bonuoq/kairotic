@@ -28,6 +28,23 @@ const q = X.exportMei({ title: "q", voices: [{ notes: [{ name: "D4", units: 1 },
 is("quarter-note units, 3/4, an upbeat: the pickup measure, a dotted half", /meter.count="3" meter.unit="4"/.test(q.mei) && /<measure n="0" metcon="false">/.test(q.mei) && /pname="e" oct="4" dur="2" dots="1"/.test(q.mei));
 is("EDN: keywords, strings, vectors, nil, bigints", X.edn({ a: 1, b: "x\"y", c: [1, null, true], d: { kw: "par" }, e: 3n }) === '{:a 1, :b "x\\"y", :c [1 nil true], :d :par, :e 3}');
 
+// microtones, as the app writes them: a name (or the nearest), a quarter tone, the exact Hz in the extMeta
+const mt = X.exportMei({ title: "micro", voices: [{ notes: [{ name: "E4", midi: 63.86, units: 1 }, { midi: 60.5, units: 1 }, { midi: 70.42, units: 2 }, { name: "D4", units: 1 }] }] });
+is("a note off 12-TET (meantone E, −14 cents) written E4, its Hz kept for it", /xml:id="v1n1" pname="e" oct="4"/.test(mt.mei) && /"v1n1" \{:hz 326\.97\d\}/.test(mt.mei), mt.mei);
+is("… a quarter tone above C4: C with a quarter-tone sharp (1qs), its Hz kept", /xml:id="v1n2" pname="c" oct="4" dur="2" accid="1qs"/.test(mt.mei) && /"v1n2" \{:hz 269\.\d+\}/.test(mt.mei));
+is("… a pitch with no name (31-EDO's B♭⁷, 70.42: A♯ and 42 cents): A three-quarter-tone sharp (3qs), its Hz kept; a 12-TET note keeps no Hz", /xml:id="v1n3" pname="a" oct="4" dur="1" accid="3qs"/.test(mt.mei) && /"v1n3" \{:hz 4\d\d\.\d+\}/.test(mt.mei) && !/"v1n4" \{/.test(mt.mei));
+is("… the notes map, keyed by xml:id, beside the root, as kairotic.mei reads it", /, :notes \{"v1n1" \{:hz /.test(mt.mei));
+is("held pitches with their midi: one note", X.fromUnits([{ name: "E4", midi: 63.86 }, { name: "E4", midi: 63.86 }, { midi: 60.5 }]).map((n) => n.units).join() === "2,1");
+
+// tuplets: a unit a third of a half note (unitDen 6), as a hemiola needs it
+const tu = X.exportMei({ title: "hemiola", voices: [
+  { label: "dux", notes: [{ name: "D4", units: 3 }, { name: "E4", units: 3 }, { name: "F4", units: 6 }] },
+  { label: "comes", notes: [{ name: "A3", units: 2 }, { name: "B3", units: 2 }, { name: "C4", units: 2 }, { name: "D4", units: 3 }, { name: "C4", units: 3 }] }], unitDen: 6, unitsPerBar: 6, meter: [2, 2] });
+const bar1 = tu.mei.slice(tu.mei.indexOf('<measure n="1"'), tu.mei.indexOf('<measure n="2"'));
+is("tuplets: a bar of thirds of a half note in one tuplet 3:2, its notes as half notes (the comes in a hemiola)", /<staff n="2"><layer n="1"><tuplet xml:id="v2t0" num="3" numbase="2"[^>]*><note[^>]*pname="a" oct="3" dur="2"\/><note[^>]*pname="b" oct="3" dur="2"\/><note[^>]*pname="c" oct="4" dur="2"\/><\/tuplet>/.test(bar1), bar1);
+is("… a bar whose notes fall on whole halves written plainly (the dux)", /<staff n="1"><layer n="1"><note[^>]*pname="d" oct="4" dur="2"\/><note[^>]*pname="e" oct="4" dur="2"\/><\/layer>/.test(bar1));
+is("… a bar of halves in a voice that needs no tuplet there: plain (the comes, bar 2)", /<staff n="2"><layer n="1"><note[^>]*pname="d" oct="4" dur="2"\/><note[^>]*pname="c" oct="4" dur="2"\/><\/layer>/.test(tu.mei));
+
 // the copies, beside each study's kernel
 const original = readFileSync(join(root, "studies/_shared/export.mjs"), "utf8");
 const copies = readdirSync(join(root, "studies")).filter((s) => existsSync(join(root, "studies", s, "kairotic/export.mjs")));

@@ -100,6 +100,7 @@ export const ORNAMENTS = {
   "passing-mid":          { pv: "PassingMid",        parents: "both",  cost: 0.2, doc: "a step between two notes a 3rd apart" },
   "right-neighbor":       { pv: "RightNeighbor",     parents: "left",  cost: 0.9, doc: "a step away from the note before, not coming back (an incomplete neighbour)" },
   "left-neighbor":        { pv: "LeftNeighbor",      parents: "right", cost: 0.9, doc: "a step into the note after (an appoggiatura, an incomplete neighbour)" },
+  "suspension":           { pv: "RightRepeatOfLeft", parents: "left",  cost: 0.1, doc: "held over the beat from the note before, delaying the step down to its resolution (a suspension): the resolution heard on the beat" },
 };
 
 /** The ways a note x of a slice is explained by the slices left (L) and right (R) of it: [{orn, parents: [ids], same
@@ -152,6 +153,35 @@ export function unsplit(path, i, w = {}) {
   const R2 = { ...R, notes: R.notes.map((r) => (gone.has(r.id) ? { ...r, start: true } : r)) };
   // L's notes held through S into R stay held; L is prolonged over S's time
   return { ok: true, explained, path: [...path.slice(0, i - 1), L2, R2, ...path.slice(i + 2)] };
+}
+
+/**
+ * Unsuspend slice i: a suspension's displacement undone. In slice i a note held from the slice before (its
+ * preparation) is dissonant, and in slice i + 1 it goes down a step in its voice (its resolution) while every other
+ * note of slice i is held on. What the dissonance delayed is the consonance: reduced, the resolution sounds on the
+ * beat, with the notes it was delayed against — slices i and i + 1 become one, at slice i's onset, with the
+ * resolution in place of the held note (which stays where it was prepared). {ok, why, explained, path}.
+ */
+export function unsuspend(path, i) {
+  if (i <= 0 || i >= path.length - 1) return { ok: false, why: "no slice before or after it" };
+  const L = path[i - 1], S = path[i], R = path[i + 1];
+  if (sonorous(S.notes.map((n) => n.pitch))) return { ok: false, why: "a consonance: nothing is suspended" };
+  const held = S.notes.filter((x) => !x.start && L.notes.some((l) => l.id === x.id) && !R.notes.some((r) => r.id === x.id));
+  if (!held.length) return { ok: false, why: "no note held into it and left after it" };
+  const pairs = [];
+  for (const x of held) {
+    const r = R.notes.find((y) => y.start && y.voice === x.voice && steps(x.pitch, y.pitch) === -1);
+    if (!r) return { ok: false, why: `${x.pitch} does not resolve down a step` };
+    pairs.push({ x, r });
+  }
+  const others = S.notes.filter((n) => !held.includes(n));
+  if (!others.every((n) => R.notes.some((r) => r.id === n.id))) return { ok: false, why: "the other notes move with the resolution" };
+  if (!R.notes.every((r) => pairs.some((p) => p.r.id === r.id) || others.some((n) => n.id === r.id))) return { ok: false, why: "another note is struck with the resolution" };
+  const M = { on: S.on, end: R.end, suspended: true,
+              notes: R.notes.map((r) => (pairs.some((p) => p.r.id === r.id) ? { ...r, start: true } : { ...r, start: others.find((n) => n.id === r.id).start })) };
+  if (!sonorous(M.notes.map((n) => n.pitch))) return { ok: false, why: "the resolution is no consonance" };
+  const explained = pairs.map(({ x, r }) => ({ id: x.id, pitch: x.pitch, voice: x.voice, orn: "suspension", parents: [x.id], resolution: r.id, cost: ORNAMENTS.suspension.cost, same: true }));
+  return { ok: true, explained, path: [...path.slice(0, i), M, ...path.slice(i + 2)] };
 }
 
 /** Unspread slices i and i+1 into one: {ok, why, notes, path}. Their notes, a note held across them or struck again on

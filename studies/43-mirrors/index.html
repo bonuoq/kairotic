@@ -451,20 +451,18 @@ window.addEventListener("DOMContentLoaded", function () {
 
 ;; ───────── the work as MEI, for the app (discussion #319) ─────────
 ;; The dux and the comes as two voices (the higher above), a beat a unit (a half note in 2/2 when a bar has two, else
-;; a quarter), a note repeated held; the transformation, the system and mode in the extMeta. Only a system whose
-;; steps are named on the staff (letters and accidentals) can be written.
+;; a quarter), a note repeated held; the transformation, the system and mode in the extMeta. A step off 12-TET is
+;; written as the app writes one — its name or the nearest, a quarter-tone accidental half-way — with its exact Hz.
 (defn export-mei! []
   (let [X (.-kairoticExport js/window) S (made) o (mir) n (n-of) lns (.lines o (js-M)) D (vec (.-D lns)) C (vec (.-C lns))
-        nm (fn [v] (mapv (fn [t] (when-let [x (get v t)] (.pitchName S x))) (range n)))
+        nm (fn [v] (mapv (fn [t] (when-let [x (get v t)] #js {:name (.pitchName S x) :midi (.midi S x)})) (range n)))
         dn (nm D) cn (nm C) b (:b @ui)
-        ok? (every? (fn [x] (or (nil? x) (re-matches #"[A-G](#|b|♯|♭)?-?\d+" x))) (concat dn cn))
         mean (fn [v] (let [xs (remove nil? v)] (if (seq xs) (/ (reduce + xs) (count xs)) 0)))
         [ud mt] (case b 1 [1 [4 4]] 2 [2 [2 2]] 3 [4 [3 4]] [4 [b 4]])
         vs [{:label "dux" :notes (.fromUnits X (clj->js dn))} {:label "comes" :notes (.fromUnits X (clj->js cn))}]
         vs (if (>= (mean D) (mean C)) vs (vec (reverse vs)))]
     (cond
       (not (some some? D)) (say! :warn "Nothing written yet.")
-      (not ok?) (say! :warn "This system's steps have no names on the staff: it cannot be written as MEI yet.")
       :else
       (let [x (.exportMei X (clj->js {:title (str "A " (:kind @ui) " in " (:mode @ui) ", " (:system @ui))
                                      :source "Kairotic Study 43 · mirrors" :key {:tonic "C" :mode "major"}
