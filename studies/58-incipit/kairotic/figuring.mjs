@@ -387,9 +387,13 @@ export function figuring(spec = {}) {
     if (t < 1 || !units[t].struck || !units[t - 1].dominant || units[t - 1].deg !== 4) return null;
     const to = units[t].deg;
     if (to !== 0 && to !== 5) return null;
+    // (read in the key of the unit; the middle voice may leave the leading tone down to ⑤ over ①, completing the
+    // chord of the tonic, as Bach's inner voices do)
+    const kp = V.keys[t - 1].key;
     for (const [px, x, who] of [[TT[t - 1], a, "the upper voice"], [MM[t - 1], b, "the middle voice"]]) {
-      const deg = mod(D(px), 7);
-      if (deg === 6 && (K.mode === "major" || R(px)) && D(x) !== D(px) + 1) return `the leading tone goes up to the tonic (${who})`;
+      const l = V.loc(t - 1, px), deg = l.deg;
+      if (deg === 6 && (kp.mode === "major" ? l.alt === 0 : l.alt === 1) && D(x) !== D(px) + 1 && !(who === "the middle voice" && to === 0 && D(x) === D(px) - 2))
+        return `the leading tone goes up to the tonic (${who}; a middle voice may go down to ⑤)`;
       if (deg === 3 && D(x) !== D(px) - 1) return `the 7th of the dominant goes down to ③ (${who})`;
     }
     return null;

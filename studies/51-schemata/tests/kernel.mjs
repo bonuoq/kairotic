@@ -87,6 +87,35 @@ export async function run() {
   const V = F73.realize(sig, { r: rng(4) });
   is("a figuring drawn among them, realized by the engine: sound, and of that figuring", V && !F73.judge(V) && JSON.stringify(F73.figuringOf(V)) === JSON.stringify(sig));
 
+  // the leading tone: a soft rule over the whole phrase — up to the tonic, unless it has a reason not to
+  {
+    const S = schemata({ schema: "thirds", key: { tonic: "C" }, figured: false });
+    const lt = (S.codes.find((c) => S.name(c) === "B4"));
+    const at = (t, n) => S.codes.find((c) => S.name(c) === n);
+    let tf = -1;
+    for (let t = 1; t < S.n && tf < 0; t++) if (S.leadingTone([...Array(t - 1).fill(at(0, "G4")), lt], t, at(t, "A4")) === 1.5) tf = t;
+    is("the leading tone: B4 → A4 costs where its bass is a dominant or goes to ①, B4 → C5 nothing", tf > 0 && S.leadingTone([...Array(tf - 1).fill(at(0, "G4")), lt], tf, at(tf, "C5")) === 0);
+    const MS = schemata({ schema: "thirds", key: { tonic: "C" }, figured: false, weights: { "leading-tone": 0 } });
+    is("... weighed 0 it costs nothing anywhere", MS.leadingTone([at(0, "C5"), lt], 2, at(2, "G4")) === 0);
+    const rate = (w) => {
+      let f = 0, res = 0;
+      for (const [id, key] of [["thirds", { tonic: "C" }], ["7-6", { tonic: "C" }], ["thirds", { tonic: "A", mode: "minor" }], ["3-6", { tonic: "C" }], ["thirds", { tonic: "G" }]]) {
+        const X = schemata({ schema: id, key, figured: false, weights: { "leading-tone": w } }), P = schemata({ schema: id, key, figured: false }), rr = rng(11);
+        for (let i = 0; i < 30; i++) {
+          const U = X.engine({ temp: 0.5, r: rr });
+          for (let t = 1; t < U.length; t++) {
+            if (U[t] === U[t - 1] || P.leadingTone(U.slice(0, t), t, U[t - 1] - 3) !== 1.5) continue;
+            f++; if (P.leadingTone(U.slice(0, t), t, U[t]) === 0) res++;
+          }
+        }
+      }
+      return res / f;
+    };
+    const r0 = rate(0), r1 = rate(1.5);
+    notes.push(`the leading tone where it functions (a dominant, or the bass to ①), resolved or excused: ${Math.round(100 * r0)}% without the rule, ${Math.round(100 * r1)}% with it (the rest refused by hard rules)`);
+    is("... the engine resolves it more often where it functions (the whole phrase, not only the cadence)", r1 > r0 + 0.1);
+  }
+
   // transposed: E♭ major and G minor count as C major and A minor do (the rules are tonal, not of a key)
   for (const id of Object.keys(SCHEMATA)) {
     const c1 = schemata({ schema: id, key: { tonic: "C" }, figured: false }).count();

@@ -120,7 +120,7 @@ export async function run() {
     }
     is(`${bb.name} (${per === 1 ? "a beat a note, A minor" : "a bar a note, C major"}), written for three by the engine: sound, and a middle voice from its figures every time`, ok);
   }
-  is("the cadence in three parts: the last chord a 5/3 (never a 6), the leading tone up to the tonic and the 7th (④) down to ③ in either upper voice", (() => {
+  is("the cadence in three parts: the last chord a 5/3 (never a 6), the leading tone up to the tonic (or, in the middle voice, down to ⑤) and the 7th (④) down to ③ in either upper voice", (() => {
     const rr = rng(21), mod = (a, m) => ((a % m) + m) % m;
     for (const id of ["cadence", "romanesca", "monte", "fifths"]) for (const key of [{ tonic: "C" }, { tonic: "A", mode: "minor" }]) for (const ending of ["authentic", "deceptive"]) {
       const F = figuring({ bass: BASSES[id].degrees, key, per: 2, ending });
@@ -131,7 +131,9 @@ export async function run() {
         const t = F.n - 1;
         for (const V of [U, m.voice]) {
           const p = F.degree(V[t - 1]), x = F.degree(V[t]);
-          if ((mod(p, 7) === 6 && x !== p + 1) || (mod(p, 7) === 3 && x !== p - 1)) { notes.push(`${id} ${ending}: ${F.name(V[t - 1])} → ${F.name(V[t])}`); return false; }
+          // (the middle voice may leave the leading tone down to ⑤ over ①, as Bach's inner voices do)
+          const inner = V === m.voice && ending === "authentic" && x === p - 2;
+          if ((mod(p, 7) === 6 && x !== p + 1 && !inner) || (mod(p, 7) === 3 && x !== p - 1)) { notes.push(`${id} ${ending}: ${F.name(V[t - 1])} → ${F.name(V[t])}`); return false; }
         }
       }
     }
