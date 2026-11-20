@@ -46,9 +46,9 @@ export async function cac(page, check) {
   await cljs(page, `(code ${out} (editor-source (get-in (current) [:boxes ${out}])))`);
   check("the written tree applied again: the analysis kept on its notes", (await cljs(page, `(vec (keep #(when (vector? %) (:fig (second %))) (last (tree-data ${out}))))`)) === figs);
   // another realization, any valid one, three voices
-  const first = await cljs(page, `(pr-str (rest (second (tree-data ${out}))))`);
+  const first = await cljs(page, `(pr-str (nth (tree-data ${out}) 2))`);
   await cljs(page, `(send! ${cb} :any)`);
-  const second = await until(page, `(pr-str (rest (second (tree-data ${out}))))`, (x) => x !== first, 10000);
+  const second = await until(page, `(pr-str (nth (tree-data ${out}) 2))`, (x) => x !== first, 10000);
   check(":any: another realization, any valid one", second !== first);
   await cljs(page, `(send! ${cb} [:voices 3])`);
   const n3 = await until(page, `(count (filter #(= :voice (first %)) (rest (tree-data ${out}))))`, (x) => x === "3");

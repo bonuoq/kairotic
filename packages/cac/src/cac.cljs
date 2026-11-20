@@ -130,9 +130,10 @@
                   (if (:error value)
                     {:state st :show {:main (str "cac " (name op)) :sub (str "✗ " (:error value))}}
                     (emit (assoc st :ob (:ob (:value value)) :count (:count (:value value))) :engine))
+                  ;; (a change first: [:voices 3] is a vector with a keyword first, as a tree's node is)
+                  over? (if (:tree st) (build (dissoc st :ob) (:tree st)) {:state st})
                   ;; a tree: the given
                   (api/tree? value) (build (dissoc st :ob) value)
-                  over? (if (:tree st) (build (dissoc st :ob) (:tree st)) {:state st})
                   (nil? (:ob st)) {:state st}
                   (= value :any) (emit st :any)
                   (#{:bang :engine} value) (emit st :engine)
