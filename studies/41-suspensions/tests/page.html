@@ -26,6 +26,7 @@ await (async function () {
     document.getElementById("host").appendChild(doc.querySelector("main").cloneNode(true));
     window.kairoticKernel = await import("../kairotic/kernel.mjs");
     window.kairoticSound = await import("../kairotic/sound.mjs");
+    window.kairoticExport = await import("../kairotic/export.mjs");
     var model = await fetch("../kairotic/canon.cljs", { cache: "no-cache" }).then(function (r) { return r.text(); });
     scittle.core.eval_string(model);
     scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
@@ -56,6 +57,13 @@ await (async function () {
     is("2/2: bar lines on the score", b === 2 && $$("#svg line.bar").length >= bars);
     is("the cantus firmus held for the bar and the comes over it: ties drawn", $$("#svg path.tie").length >= 2 * (bars - 2));
     is("the engine finishes the dux", $$("#svg .dux").length === n);
+    // exported for the app (discussion #319): MEI through a scripted downloads capability, as claude.ai offers it
+    var saved = [];
+    window.claude = { use: async function (nm) { return nm === "downloads" ? { save: async function (o) { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null; } };
+    document.querySelector("[data-act=export]").click();
+    for (var k = 0; k < 100 && !saved.length; k++) await new Promise(function (r) { setTimeout(r, 25); });
+    is("exported for the app: the dux and the comes as MEI, the mode and the canon in its extMeta", saved.length === 1 && /\.mei\.txt$/.test(saved[0].filename) && /label="dux"/.test(saved[0].text) && /label="comes"/.test(saved[0].text) && /:study "41 · suspensions"/.test(saved[0].text) && /:complete true/.test(saved[0].text));
+    delete window.claude;
     is("the comes sounds from its entry to the end", $$("#svg .comes").length === n - parseInt(document.getElementById("d").value, 10));
     is("finished", /finished/.test(document.getElementById("here-sub").textContent));
     is("no note out of the rules", $$("#svg .dux.bad").length === 0);

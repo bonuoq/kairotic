@@ -124,6 +124,8 @@ ul.q li::marker { color: var(--kairos); }
   <button class="act primary" id="engine">Engine</button>
   <button class="act" id="uniform" title="any one of the realizations, each as likely, without the soft rules">Any valid one</button>
   <button class="act" id="play" disabled>▶ Play</button>
+  <input id="exp-title" aria-label="The title of the piece, for the file" spellcheck="false" style="width:13em;font:13px var(--f-ui, sans-serif);padding:5px 7px;border:1px solid var(--rule, #ccc);border-radius:6px;background:var(--box, #fff);color:var(--ink, #000)" placeholder="title">
+  <button class="act" id="export" disabled title="the realization as MEI, which the app opens as a tree box (on claude.ai saved as .mei.txt)">Export MEI, for the app</button>
 </div>
 
 <div class="views">
@@ -158,6 +160,7 @@ ul.q li::marker { color: var(--kairos); }
 <script type="module">
 import { parts, SCHEMATA, CADENCES } from "./kairotic/parts.mjs";
 import { shape } from "./kairotic/soft.mjs";
+import { exportMei, fromUnits, barsOf, offer } from "./kairotic/export.mjs";
 
 const $ = (id) => document.getElementById(id);
 let P = null, W = null, sid = "fauxbourdon-76", cid = "compound-64", ctx = null;
@@ -225,7 +228,7 @@ function render() {
   }
   svg += `<text class="lab" x="4" y="${bot + 28}">chords</text><text class="lab" x="4" y="${bot + 48}">bass</text>`;
   $("sheet").innerHTML = svg + "</svg>";
-  $("play").disabled = !W;
+  $("play").disabled = !W; $("export").disabled = !W;
   if (W) {
     const why = P.judge(W), st = shape([W.top.map(P.degree)]), sm = shape([W.middle.map(P.degree)]), pc = (x) => Math.round(100 * x) + "%";
     $("msg").innerHTML = why ? "✗ " + why : `<span style="color:var(--kairos)">■ upper</span> ${W.top.filter((x, t) => t === 0 || x !== W.top[t - 1]).map(P.name).join(" ")} · <span style="color:var(--ok)">■ middle</span> ${W.middle.filter((x, t) => t === 0 || x !== W.middle[t - 1]).map(P.name).join(" ")}<br>steps: the upper voice ${pc(st.steps)}, the middle ${pc(sm.steps)}`;
@@ -250,4 +253,22 @@ $("uniform").addEventListener("click", () => { W = P.sample(); render(); });
 $("play").addEventListener("click", play);
 window.kairoticParts = { get P() { return P; }, get W() { return W; }, rebuild, render, set: (s, c) => { sid = s; cid = c; rebuild(); } };
 rebuild();
+
+// ─── the realization as MEI, for the app (discussion #319): three voices, the chords under the bass ───
+function exportIt() {
+  if (!W) return;
+  const ch = P.chords(W), { pickup, unitsPerBar } = barsOf(P.bass.map((b) => b.strong));
+  const key = { tonic: $("tonic").value, mode: $("mode").value };
+  const x = exportMei({
+    title: $("exp-title").value.trim() || `${P.schema.name}, ${P.cadence.name} cadence, in ${key.tonic} ${key.mode}`, source: "Kairotic Study 54 · parts", key, pickup, unitsPerBar,
+    voices: [{ label: "upper", notes: fromUnits(W.top.map(P.name)) }, { label: "middle", notes: fromUnits(W.middle.map(P.name)) },
+             { label: "bass", notes: fromUnits(P.bass.map((b) => P.key.name(b.d, b.r)), P.bass.map((b) => b.struck)) }],
+    figures: ch.map((c, t) => (c ? { unit: t, figs: String(c).split("/") } : null)).filter(Boolean),
+    doubleBars: P.bass.map((b, t) => (t > 0 && P.bass[t - 1].part !== b.part ? t : -1)).filter((t) => t > 0),
+    root: { study: "54 · parts", schema: P.schema.name, cadence: P.cadence.name, ref: `${P.schema.ref} · ${P.cadence.ref}`, figured: $("figured").checked,
+            realizations: P.count(), chords: ch, asked: P.bass.map((b) => b.chord), parts: P.bass.map((b) => b.part) },
+  });
+  offer(x).then((s) => { $("status").textContent = s; });
+}
+$("export").addEventListener("click", exportIt);
 </script>

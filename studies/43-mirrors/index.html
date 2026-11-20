@@ -218,6 +218,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
   <button class="act" data-act="clear">clear</button>
   <span class="sep"></span>
   <button class="act" data-act="play">▶ play</button>
+  <button class="act" data-act="export" id="export" title="The work as MEI, which the app opens as a tree box (on claude.ai saved as .mei.txt)">Export MEI, for the app</button>
   <button class="act" data-act="stop">■</button>
   <label>Tempo <input type="number" id="tempo" min="30" max="200" step="5" value="72"></label>
   <button class="act" data-act="turn" id="turn" title="The score as the other player reads it">⟲ turn the page</button>
@@ -242,8 +243,8 @@ window.addEventListener("DOMContentLoaded", function () {
     var st = document.getElementById("status");
     st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e);
   }
-  Promise.all([import("./kairotic/kernel.mjs"), import("./kairotic/mirror.mjs"), import("./kairotic/sound.mjs")]).then(function (ks) {
-    window.kairoticKernel = ks[0]; window.kairoticMirror = ks[1]; window.kairoticSound = ks[2];
+  Promise.all([import("./kairotic/kernel.mjs"), import("./kairotic/mirror.mjs"), import("./kairotic/sound.mjs"), import("./kairotic/export.mjs")]).then(function (ks) {
+    window.kairoticKernel = ks[0]; window.kairoticMirror = ks[1]; window.kairoticSound = ks[2]; window.kairoticExport = ks[3];
     scittle.core.eval_string(document.getElementById("page-cljs").textContent);
   }).catch(show);
 });
@@ -448,13 +449,37 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (defn num [id lo hi] (let [v (js/parseInt (.-value ($ id)))] (when-not (js/isNaN v) (max lo (min hi v)))))
 
+;; ───────── the work as MEI, for the app (discussion #319) ─────────
+;; The dux and the comes as two voices (the higher above), a beat a unit (a half note in 2/2 when a bar has two, else
+;; a quarter), a note repeated held; the transformation, the system and mode in the extMeta. Only a system whose
+;; steps are named on the staff (letters and accidentals) can be written.
+(defn export-mei! []
+  (let [X (.-kairoticExport js/window) S (made) o (mir) n (n-of) lns (.lines o (js-M)) D (vec (.-D lns)) C (vec (.-C lns))
+        nm (fn [v] (mapv (fn [t] (when-let [x (get v t)] (.pitchName S x))) (range n)))
+        dn (nm D) cn (nm C) b (:b @ui)
+        ok? (every? (fn [x] (or (nil? x) (re-matches #"[A-G](#|b|♯|♭)?-?\d+" x))) (concat dn cn))
+        mean (fn [v] (let [xs (remove nil? v)] (if (seq xs) (/ (reduce + xs) (count xs)) 0)))
+        [ud mt] (case b 1 [1 [4 4]] 2 [2 [2 2]] 3 [4 [3 4]] [4 [b 4]])
+        vs [{:label "dux" :notes (.fromUnits X (clj->js dn))} {:label "comes" :notes (.fromUnits X (clj->js cn))}]
+        vs (if (>= (mean D) (mean C)) vs (vec (reverse vs)))]
+    (cond
+      (not (some some? D)) (say! :warn "Nothing written yet.")
+      (not ok?) (say! :warn "This system's steps have no names on the staff: it cannot be written as MEI yet.")
+      :else
+      (let [x (.exportMei X (clj->js {:title (str "A " (:kind @ui) " in " (:mode @ui) ", " (:system @ui))
+                                     :source "Kairotic Study 43 · mirrors" :key {:tonic "C" :mode "major"}
+                                     :unitDen ud :unitsPerBar b :meter mt :voices vs
+                                     :root {:study "43 · mirrors" :kind (:kind @ui) :system (:system @ui) :mode (:mode @ui)
+                                            :k (:k @ui) :d (:d @ui) :axis (:axis @ui) :bars (:bars @ui) :complete (every? some? D)}}))]
+        (-> (.offer X x) (.then (fn [s] (say! :ok s))))))))
+
 (.addEventListener js/document "click"
   (fn [e]
     (when-let [el (.. e -target (closest "[data-choose]"))] (choose! (js/parseInt (.getAttribute el "data-choose"))))
     (when-let [el (.. e -target (closest "[data-act]"))]
       (case (.getAttribute el "data-act")
         "step" (engine-step!) "finish" (finish!) "back" (back!) "clear" (clear!)
-        "play" (play!) "stop" (stop!)
+        "play" (play!) "stop" (stop!) "export" (export-mei!)
         "turn" (do (swap! ui update :turned not) (render-controls!))
         nil))))
 (.addEventListener js/document "change"

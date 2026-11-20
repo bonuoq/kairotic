@@ -209,6 +209,7 @@ pre.code { margin: 0; font: 12px/1.55 var(--f-code); color: var(--ink); backgrou
   <label>Tempo <input type="number" id="tempo" min="30" max="200" step="5"> ♩/min</label>
   <button class="act" data-act="play">▶ Play</button>
   <button class="act" data-act="play-inv" id="play-inv" title="The canon with its voices inverted">▶ Inverted</button>
+  <button class="act" data-act="export" id="export" title="The canon as MEI, which the app opens as a tree box (on claude.ai saved as .mei.txt)">Export MEI, for the app</button>
   <select id="inv-play" aria-label="Which inversion to play" title="Which inversion to play"></select>
   <button class="act" data-act="stop" aria-label="Stop">■</button>
 </div>
@@ -276,8 +277,8 @@ window.addEventListener("DOMContentLoaded", function () {
   }
   var mods = ["kairotic/futuribles.cljs"];
   // the kernel and the sound (plain JS) first: the model reads them as window.kairoticKernel / kairoticSound
-  Promise.all([import("./kairotic/kernel.mjs"), import("./kairotic/sound.mjs")]).then(function (ks) {
-    window.kairoticKernel = ks[0]; window.kairoticSound = ks[1];
+  Promise.all([import("./kairotic/kernel.mjs"), import("./kairotic/sound.mjs"), import("./kairotic/export.mjs")]).then(function (ks) {
+    window.kairoticKernel = ks[0]; window.kairoticSound = ks[1]; window.kairoticExport = ks[2];
     return Promise.all(mods.map(function (m) {
     return fetch(m, { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error("could not read " + m); return r.text(); });
   })); }).then(function (srcs) {
@@ -767,6 +768,30 @@ window.addEventListener("DOMContentLoaded", function () {
                         (swap! audio assoc :raf (js/requestAnimationFrame tick)))))))]
       (reset! audio {:ctx ctx :raf (js/requestAnimationFrame tick)}))))
 
+;; ───────── the canon as MEI, for the app (discussion #319) ─────────
+;; The dux and the comes as two voices (the higher above), a beat a unit: a whole note when a bar has one beat, a
+;; half note when it has two, else a quarter; an upbeat's rests first. A note repeated is struck again. The mode, the
+;; interval and delay of the comes, the rules on: in the extMeta, for the app. Only names on the white keys and
+;; their accidentals can be written (a system of other steps is said so).
+(defn export-mei! []
+  (let [X (.-kairoticExport js/window) pp (p) n (:n pp) b (:b pp 1) ph (:phase pp 0) D (dux) C (:comes (fu/voices pp D))
+        names (fn [v] (vec (concat (repeat ph nil) (map (fn [i] (when-let [s (get v i)] (fu/pitch-name s))) (range (max n (count C)))))))
+        dn (names D) cn (names C)
+        ok? (every? (fn [x] (or (nil? x) (re-matches #"[A-G](#|b|♯|♭)?-?\d+" x))) (concat dn cn))
+        mean (fn [v] (let [xs (remove nil? v)] (if (seq xs) (/ (reduce + xs) (count xs)) 0)))
+        [ud mt] (case b 1 [1 [4 4]] 2 [2 [2 2]] 3 [4 [3 4]] [4 [b 4]])
+        voice (fn [lab nm held?] {:label lab :notes (.fromUnits X (clj->js nm) (when-not held? (clj->js (map some? nm))))})
+        vs [(voice "dux" dn false) (voice "comes" cn false)]
+        vs (if (>= (mean (remove nil? D)) (mean (remove nil? C))) vs (vec (reverse vs)))]
+    (if-not ok?
+      (do (say! "warn" "This system's steps have no names on the staff: it cannot be written as MEI yet.") (render-msg!))
+      (let [x (.exportMei X (clj->js {:title (str "A canon in " (name (:mode pp)) ", the comes " (if (neg? (:k pp)) "below" "above") " at " (js/Math.abs (:k pp)) " steps, " (:d pp) " beats later")
+                                     :source "Kairotic Study 38 · futuribles" :key {:tonic "C" :mode "major"}
+                                     :unitDen ud :unitsPerBar b :meter mt :voices vs
+                                     :root {:study "38 · futuribles" :mode (name (:mode pp)) :k (:k pp) :d (:d pp) :beats-per-bar b :upbeat ph :notes n
+                                            :complete (= n (count D)) :dux (mapv fu/pitch-name D) :comes (mapv (fn [s] (when s (fu/pitch-name s))) C)}}))]
+        (-> (.offer X x) (.then (fn [s] (say! "ok" s) (render-msg!))))))))
+
 ;; ───────── wiring the page ─────────
 
 (defn act! [a]
@@ -775,6 +800,7 @@ window.addEventListener("DOMContentLoaded", function () {
     "finish" (engine! true)
     "play" (when (seq (dux)) (play! false))
     "play-inv" (when (seq (dux)) (play! true))
+    "export" (when (seq (dux)) (export-mei!))
     "stop" (stop!)
     "back" (set-h! (fu/back (h)))
     "forward" (set-h! (fu/forward (h)))

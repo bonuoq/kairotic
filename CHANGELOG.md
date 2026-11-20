@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The studies export what they make, for the app** (discussion #319, step 2). One module, `studies/_shared/export.mjs`
+  (each study keeps a copy, checked equal by `tests/export.mjs`), writes MEI that the app opens as a tree box: voices
+  labelled, notes cut at the bar lines and tied, accidentals for their bar, an upbeat, figures under the bass
+  (`<harm><fb>`), keys reached over the staff, double bars between sections, and in `<extMeta type="kairotic">` what
+  each study knows that MEI has no place for. An **Export MEI** button in Studies 51 (the schema, its figures), 54, 57
+  and 59 (three voices, the chords, the keys), 56 (the melody, its middle voice, the chords and intervals found), the
+  canons 38–43 (the dux and the comes, mode, interval, delay; a system without staff names said so) and 50 (a canon
+  at any speed whose lattice is binary; thirds need tuplets, not yet). On claude.ai it is saved as `.mei.txt`.
+  Studies 58 and 60 now write through it too.
 - **`click~`: hear the clock you play along with** (`@kairotic/synth` 0.4.0). A metronome's click: each bang a short
   tick, every `accent` bangs one accented (a fifth higher, louder); a number is a tick, accented when it is 0 (a
   counter's cycle). The help of `phase` and of `necklace` step by step now let you hear their metro, the beats

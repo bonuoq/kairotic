@@ -44,6 +44,11 @@ try {
   is("the Folia moved to E minor: the same 568", total() === "568");
   d.getElementById("uniform").click();
   is("any valid one, sound", !/✗/.test(d.getElementById("msg").textContent) && /steps/.test(d.getElementById("msg").textContent));
+  // exported for the app (discussion #319): MEI through a scripted downloads capability, as claude.ai offers it
+  const saved = [];
+  w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
+  d.getElementById("export").click();
+  is("exported for the app: three voices, the chords, the keys in its extMeta", await wait(() => saved.length === 1) && /\.mei\.txt$/.test(saved[0].filename) && /label="middle"/.test(saved[0].text) && /:keys \[/.test(saved[0].text) && /:source "Kairotic Study 59 · galant"/.test(saved[0].text));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);

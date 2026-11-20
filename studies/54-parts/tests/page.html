@@ -34,6 +34,11 @@ try {
   is("stepwise Romanesca and a Galant cadence in A minor: some, the engine's sound", Number(total().replace(/,/g, "")) > 0 && !/✗/.test(d.getElementById("msg").textContent));
   d.getElementById("uniform").click();
   is("... any valid one, sound", !/✗/.test(d.getElementById("msg").textContent) && /steps/.test(d.getElementById("msg").textContent));
+  // exported for the app (discussion #319): MEI through a scripted downloads capability, as claude.ai offers it
+  const saved = [];
+  w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
+  d.getElementById("export").click();
+  is("exported for the app: three voices, the chords under the bass, the schema and cadence in its extMeta", await wait(() => saved.length === 1) && /\.mei\.txt$/.test(saved[0].filename) && /label="middle"/.test(saved[0].text) && /<harm place="below" staff="3"/.test(saved[0].text) && /:schema "stepwise Romanesca"/.test(saved[0].text) && /:chords \[/.test(saved[0].text));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);
