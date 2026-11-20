@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A note held is written as long as it lasts** (`@kairotic/cac` 0.5.1). Every engine reads the same note again
+  as the note held; what the studies and the `comes` box write for a score now says so too: one note with its whole
+  duration, tied only over the bar line, so a score draws the tie. The `comes` box's tree (outlet 4) merges the
+  beats of a held note in each measure (it wrote tied half notes); Studies 38, 39 and 40 export a repeated note as
+  held (they struck it again, unlike 41–43, 50–60). **Study 61** exports a level, or a variation, as MEI for the
+  app: the outer lines of each level's slices, a note held across slices one note (the 7–6 chain's suspensions as
+  half notes tied over the bar lines). **Study 62** exports its four parts as MEI too (soprano, alto, tenor, bass, the chords under the bass, the keys
+  over it), under the same rule.
 - **`click~ downbeat`, and help patches that start by themselves** (`@kairotic/synth` 0.4.1). With the word
   `downbeat`, a number ticks only when it is 0: a lower `click~ 500 0 0.06 downbeat` after a `counter 0 15`, a
   `phase` or any cycle's position marks where the cycle begins, to hear whether two clocks agree. The help patches of

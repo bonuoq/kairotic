@@ -12,8 +12,20 @@
 ;;               end; live (Study 46), your note and at the same beat the box's answer at the end of your own line,
 ;;               and at the middle the rest of your line to read while the box plays your first half backwards.
 ;; The other speeds of Study 50 (a hemiola, 2/3; a sesquialtera, 3/2; a diminution, 2…) are not in the box yet.
-(let [;; a line as a musical tree (for a tree box): a measure of b beats, a beat a half note (:dur 2), a note held
-      ;; over the beat tied, the last note to the end of its bar, nothing sounding a rest
+(let [;; a measure's beats with the notes held written as long as they last: a note tied to the next of the same pitch
+      ;; is one note, its durations summed (tied on only over the bar line), so a score draws it as written
+      held (fn [items]
+             (reduce (fn [acc x]
+                       (let [p (peek acc)]
+                         (if (and p (= :note (first p)) (= :note (first x)) (:tie (second p))
+                                  (= (:pitch (second p)) (:pitch (second x))))
+                           (conj (pop acc) [:note (cond-> (-> (second p) (dissoc :tie) (update :dur + (:dur (second x))))
+                                                    (:tie (second x)) (assoc :tie true))])
+                           (conj acc x))))
+                     [] items))
+      ;; a line as a musical tree (for a tree box): a measure of b beats, a beat a half note (:dur 2), a note held
+      ;; over the beat one note as long as it lasts (tied over the bar line), the last note to the end of its bar,
+      ;; nothing sounding a rest
       work-tree (fn [midi b & lines]
                   (let [voice (fn [xs]
                                 (let [xs (vec xs) n (count xs)
@@ -23,10 +35,10 @@
                                                        [:note (cond-> {:pitch (/ (js/Math.round (* 1000 (midi v))) 1000) :dur dur}
                                                                 (and (< (inc i) n) (= v (get xs (inc i)))) (assoc :tie true))])))]
                                   (into [:voice] (for [bar (partition-by #(quot % b) (range n))]
-                                                   (into [:measure {:meter [b 2]}] (map beat bar))))))]
+                                                   (into [:measure {:meter [b 2]}] (held (map beat bar)))))))]
                     (into [:piece] (map voice lines))))
       ;; ── forwards: a canon, an inversion, an augmentation ──
-      fwd (let [origins ["npm:@kairotic/cac@0.5.0/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
+      fwd (let [origins ["npm:@kairotic/cac@0.5.1/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
             hz (fn [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
             semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
             ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
@@ -281,8 +293,8 @@
                             :else {:state st})))))
       })
       ;; ── backwards: a crab or a table canon, from both ends to the middle ──
-      crab (let [origins-cp ["npm:@kairotic/cac@0.5.0/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
-            origins-mi ["npm:@kairotic/cac@0.5.0/dist/mirror.mjs" "kairotic/packages/cac/mirror.mjs"]
+      crab (let [origins-cp ["npm:@kairotic/cac@0.5.1/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
+            origins-mi ["npm:@kairotic/cac@0.5.1/dist/mirror.mjs" "kairotic/packages/cac/mirror.mjs"]
             semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
             ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
             log2 (fn [x] (/ (js/Math.log x) (js/Math.log 2)))
@@ -336,7 +348,7 @@
                                   (some? (:pending st)) (str "now the note at the end · " (.count mi (js-M st (.-n mi)) s) " ways")
                                   :else (str "step " (inc s) "/" steps ": the note at the start"))}))
             ;; a line as a musical tree, for a score (a tree box): a measure of b beats, a beat a half note
-            ;; (:dur 2), a note held over the beat tied, the last note to the end of its bar; from the bar of beat
+            ;; (:dur 2), a note held over the beat one note as long as it lasts (held), the last note to the end of its bar; from the bar of beat
             ;; `from`, and the beats before `upto` as rests (what is already played)
             voice-of (fn [cp xs b from upto]
                        (let [n (count xs) x (fn [i] (let [v (get xs i)] (when (and (some? v) (not (undefined? v))) v)))
@@ -348,7 +360,7 @@
                                                  (and (< (inc i) n) (>= (inc i) upto) (= v (x (inc i)))) (assoc :tie true))])))]
                          (into [:voice]
                                (for [bar (partition-by #(quot % b) (range (* b (quot from b)) n))]
-                                 (into [:measure {:meter [b 2]}] (map beat bar))))))
+                                 (into [:measure {:meter [b 2]}] (held (map beat bar)))))))
             ;; the whole work, both voices, as a tree
             piece-of (fn [cp mi M]
                        (let [b (or (.. mi -spec -b) 1) lns (.lines mi M)]

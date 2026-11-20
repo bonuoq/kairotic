@@ -56,6 +56,12 @@ export async function run() {
   is("A minor: its frame keeps the leading tone to the tonic (E G♯ – E B – A)", show(C.levels[C.levels.length - 1]).endsWith("E3G#4 E3B4 A2A4"));
   is("… every step says how many were possible, and its cost by part", A.steps.every((s) => s.among >= 1 && typeof s.parts.meter === "number"));
 
+  // ─── as MEI ───
+  const M0 = R.meiOf(B, 0).mei, ties = (m) => (m.match(/tie="i"/g) || []).length;
+  is("as MEI: the 7–6 chain's suspensions written as one note each, tied over the bar line (not struck again)", ties(M0) === 6 && (M0.match(/<note /g) || []).length === 15 + 8);
+  is("… a level held as drawn: level 1's C4 held over the bar line into B3's slice", /pname="c" oct="4" dur="1" tie="i"/.test(R.meiOf(B, 1).mei));
+  is("… a variation: the phrase's bass, its melody, flagged as such", (() => { const v = R.vary(A, 2, { r: rng(3) }), m = R.meiOf(A, 2, { melody: v.melody }); return /:variation true/.test(m.mei) && /label="bass"/.test(m.mei) && /\.mei$/.test(m.name); })());
+
   // ─── vary from depth k ───
   let all = true, kept = true, fewer = true;
   for (const [name, x] of Object.entries(INCIPITS)) {

@@ -153,6 +153,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
   <div class="row">
     <button class="act" id="play-level">▶ This level</button>
     <button class="act" id="halt">■ Stop</button>
+    <button class="act" id="mei-level" title="As MEI for the app: a note held written as long as it lasts, tied over the bar line">Export this level (MEI)</button>
     <span class="facts" id="level-facts">—</span>
   </div>
 </section>
@@ -172,6 +173,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
     <button class="act" id="play-orig">▶ The phrase</button>
     <button class="act" id="play-var">▶ The variation</button>
     <button class="act" id="take">Take it as the phrase</button>
+    <button class="act" id="mei-var">Export it (MEI)</button>
   </div>
   <div class="mel" id="var-mel"></div>
   <p class="facts" id="var-facts">—</p>
@@ -197,8 +199,8 @@ window.kairoticBase = window.kairoticBase || "kairotic/";
 window.addEventListener("DOMContentLoaded", function () {
   function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
   var b = "./" + window.kairoticBase;
-  Promise.all([import(b + "reduction.mjs"), import(b + "protovoices.mjs"), import(b + "incipit.mjs")]).then(function (ms) {
-    window.kairoticReduction = { R: ms[0], PV: ms[1], I: ms[2] };
+  Promise.all([import(b + "reduction.mjs"), import(b + "protovoices.mjs"), import(b + "incipit.mjs"), import(b + "export.mjs")]).then(function (ms) {
+    window.kairoticReduction = { R: ms[0], PV: ms[1], I: ms[2], X: ms[3] };
     try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
   }).catch(show);
 });
@@ -379,6 +381,9 @@ window.addEventListener("DOMContentLoaded", function () {
 (.addEventListener ($ "vary") "click" (fn [_] (vary! nil)))
 (.addEventListener ($ "play-orig") "click" (fn [_] (when-let [an (:an @st)] (play-events! (.soundOf R (.-phrase an) (.-per an))))))
 (.addEventListener ($ "play-var") "click" (fn [_] (when-let [v (:var @st)] (let [an (:an @st)] (play-events! (.soundOf R (js/Object.assign #js {} (.-phrase an) #js {:melody (.-melody v)}) (.-per an)))))))
+(defn export! [x] (-> (.offer (.-X K) x) (.then (fn [s] (status! s)))))
+(.addEventListener ($ "mei-level") "click" (fn [_] (when-let [{:keys [an k]} (and (:an @st) @st)] (export! (.meiOf R an k)))))
+(.addEventListener ($ "mei-var") "click" (fn [_] (when-let [v (:var @st)] (export! (.meiOf R (:an @st) (:vk @st) #js {:melody (.-melody v)})))))
 (.addEventListener ($ "take") "click" (fn [_] (when-let [v (:var @st)] (set! (.-value ($ "mel")) (.-melody v)) (analyse! nil))))
 
 (load-preset!)
