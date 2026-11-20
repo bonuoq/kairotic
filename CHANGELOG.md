@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`phase`: where a performer is in a cycle** (`@kairotic/rhythm` 0.6.0; discussion #204). A timeline follower, onsets
+  only: a pulse clock (a metro, the room's `pulse`) gives the grid, onsets (`onset~`, taps) fall on its nearest pulse,
+  and at each pulse the last pulses heard are compared with every rotation of the reference (Toussaint's swap distance,
+  plus two for each onset one has and the other has not): the nearest is the phase. The pulse just begun is not judged
+  (its onset may come late, as onset~ hears it); ties and near ties go to the phase the walk expects, so missing or
+  extra onsets do not throw it. Into a necklace's clock inlet, its hand follows the performer.
+
 - **A menu of classes while a box is written**: the field of a box offers the classes that match the first word
   typed — the core's, the work's own components, the classes of the official packages (in the work or not yet:
   writing one brings its package) and the functions of clojure.core —, each with where it comes from and the first

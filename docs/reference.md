@@ -1953,6 +1953,56 @@ A pitch-class set on the clock face: its polygon, the sets before it, its axes o
 
 See also: `fourier`, `tonnetz`, `chroma~`
 
+### phase · `@kairotic/rhythm`
+
+`phase [min 0]`
+
+**Where a performer is in a cycle, from the onsets heard** (discussion #204). Before following a score, follow a timeline: a clave, a bell pattern, any rhythm that repeats. Musicians keep their place in a cycle this way, and it needs no pitch.
+
+**A pulse clock gives the grid** — a `metro` at the pulse, or the room's `pulse` — and the onsets (`onset~`'s bangs, or taps) fall on its nearest pulse. At each pulse the last pulses heard are compared with every rotation of the reference, by Toussaint's swap distance: the nearest says which pulse of the reference this one is — the **phase**. The pulse that has just begun is not judged, since its onset may come a moment late: the last whole pulse is found and this one is the next. Ties and near ties go to the phase the walk expects, so a few missing or extra onsets do not throw it.
+
+Into a `necklace`'s clock inlet the phase moves its hand there and plays it: the electronics stay in the performer's cycle. Times a pulse's beats, it is a `player`'s position.
+
+Where a performer is in a cycle (a timeline follower, onsets only): onsets on the left, the reference as pulses in the middle (cold), the pulse clock on the right; at each pulse, the phase — which pulse of the reference this one is.
+
+**Arguments**
+
+- `min`: how many pulses must be heard before it says a phase (half the cycle by default)
+
+**Inlets** 
+
+0. onsets: a bang each (onset~, or taps) · :reset forgets what was heard
+1. the reference, as pulses (cold): a clave, a bell pattern, euclid's or a necklace's
+2. the pulse clock: a bang each pulse (a metro, the room's pulse)
+
+**Outlets** 
+
+0. the phase: the pulse of the reference this one is (for a necklace's clock inlet)
+1. {:phase :distance — 0: exactly the reference — :margin — how much nearer than the next guess; 0 ambiguous — :heard :window :n}
+
+**Try:** Click the son clave (the reference), press ▶ — the metro is the pulse, a sixteenth at 120 —, and clap the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects. Stop for a moment and go on: it keeps walking.
+
+```clojure
+(box :b1 "msg [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]" 40 20)
+(box :b2 "metro 125" 360 20)
+(box :b3 "adc~ 1" 480 20)
+(box :b4 "onset~" 480 70)
+(box :b5 "bang" 600 70)
+(box :b6 "phase" 360 130)
+(box :b7 "necklace" 40 180)
+(box :b8 "print phase" 360 180)
+(connect :b1 0 :b6 1)
+(connect :b1 0 :b7 0)
+(connect :b2 0 :b6 2)
+(connect :b3 0 :b4 0)
+(connect :b4 0 :b6 0)
+(connect :b5 0 :b6 0)
+(connect :b6 0 :b7 2)
+(connect :b6 1 :b8 0)
+```
+
+See also: `necklace`, `swap`, `onset~`, `follow`
+
 ### phasor~
 
 `phasor~ [hz]`

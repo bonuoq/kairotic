@@ -20,6 +20,7 @@ is their editor, measures them and writes them as music.
 | `swap` | **how far apart two rhythms are** (Toussaint's swap distance): the left one against the right one (the reference, cold) — in the bar, around the circle, and as necklaces at the best rotation; with the Hamming distance beside it, and the directed swap distance when they hold different numbers of onsets |
 | `morph [ratio 0]` | **from one rhythm to another, swap by swap**: a ratio 0…1 is a point on the swaps that turn the left rhythm into the target (middle, cold) — always a real rhythm; the way also as data (`[:swap from to]`, `[:remove i]`, `[:add j]`) |
 | `vary [d 1] [seed 1] [depth] [downbeat]` | **again, but different**, drawn with a seed: exactly d swaps away, or (`depth`) the onsets on the strong pulses kept down to metrical level d and the rest drawn again — the same skeleton, a new surface |
+| `phase [min 0]` | **where a performer is in a cycle**, from the onsets heard (#204): a pulse clock on the right, onsets on the left, the reference timeline in the middle; at each pulse, the rotation of the reference nearest to what was heard (swap distance) gives the phase — into a `necklace`'s clock inlet, its hand follows the performer |
 
 ```clojure
 (box :b1 "msg [:rotation 6]" 40 20)
