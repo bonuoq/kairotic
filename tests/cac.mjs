@@ -33,7 +33,7 @@ export async function cac(page, check) {
         await cljs(page, `[(second (last-shown ${cb})) (get-in @eng/rt [:states ${cb} :count])]`));
   const cnt = await cljs(page, `(get-in @eng/rt [:states ${cb} :count])`);
   check("... the realizations counted exactly: 13,925, as Study 62 counts them", cnt === '"13925"', cnt);
-  const figs = await cljs(page, `(mapv (comp :fig second) (rest (last (tree-data ${out}))))`);
+  const figs = await cljs(page, `(vec (keep #(when (vector? %) (:fig (second %))) (last (tree-data ${out}))))`);
   check("... the bass written again with the chords made over it (the analysis layer)", figs === '["5/3" "6/4/3" "6/3" "6/5/3" "5/3" "6/3" "6/5/3" "5/3"]', figs);
   const hidden = await cljs(page, `(str/includes? (editor-source (get-in (current) [:boxes ${out}])) ":fig")`);
   check("... its code window hides the analysis (Analysis off)", hidden === "false", hidden);
@@ -44,12 +44,12 @@ export async function cac(page, check) {
   // the written tree edited: its analysis kept
   const before = await cljs(page, `(get-in (tree-data ${out}) [1])`);
   await cljs(page, `(code ${out} (editor-source (get-in (current) [:boxes ${out}])))`);
-  check("the written tree applied again: the analysis kept on its notes", (await cljs(page, `(mapv (comp :fig second) (rest (last (tree-data ${out}))))`)) === figs);
+  check("the written tree applied again: the analysis kept on its notes", (await cljs(page, `(vec (keep #(when (vector? %) (:fig (second %))) (last (tree-data ${out}))))`)) === figs);
   // another realization, any valid one, three voices
   const first = await cljs(page, `(pr-str (rest (second (tree-data ${out}))))`);
-  await cljs(page, `(send! ${cb} :bang)`);
+  await cljs(page, `(send! ${cb} :any)`);
   const second = await until(page, `(pr-str (rest (second (tree-data ${out}))))`, (x) => x !== first, 10000);
-  check("a bang: another realization", second !== first);
+  check(":any: another realization, any valid one", second !== first);
   await cljs(page, `(send! ${cb} [:voices 3])`);
   const n3 = await until(page, `(count (filter #(= :voice (first %)) (rest (tree-data ${out}))))`, (x) => x === "3");
   check("[:voices 3]: three parts", n3 === "3");

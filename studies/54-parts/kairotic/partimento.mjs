@@ -1186,7 +1186,9 @@ export function bassFromNotes(notes, K, voices = 4) {
     const dr = degreeOf(K, nt.midi);
     if (!dr) throw new Error(`note ${i + 1}: not a pitch of ${K.tonic} ${K.mode}`);
     const next = notes[i + 1] && degreeOf(K, notes[i + 1].midi);
-    const fig = nt.fig ? String(nt.fig).replace(/\s+/g, "") : null;
+    // (fewer than four parts: a chord of four tones as three can sound it — the RO's 6/3 for its 6/5 and 6/4/3, 7/3 for 7)
+    const fig0 = nt.fig ? String(nt.fig).replace(/\s+/g, "") : null;
+    const fig = fig0 && voices < 4 ? ({ "6/5": "6/3", "6/5/3": "6/3", "6/4/3": "6/3", "7": "7/3", "7/5/3": "7/3", "6/4/2": "4/2" }[fig0] || fig0) : fig0;
     const chord = fig && table[fig] ? fig : fig && table[fig + "/3"] ? fig + "/3" : null;
     if (fig && !chord) unknown.push(`note ${i + 1}: ${fig}`);
     const key = parseKey(nt.key);
@@ -1220,7 +1222,16 @@ export function overBass(spec = {}) {
   const spell = (c) => K.name(codeDegree(c), codeAlter(c)).replace("𝄫", "bb").replace("𝄪", "##").replace("♭", "b").replace("♯", "#").replace(/^[A-G]/, (x) => x.toLowerCase());
   return { key, K, units, unknown, figured, voices, names, P, midi, code, spell, degAt: (t) => V0.locB(t),
            count: () => P.count(), engine: (o) => asVoices(P.engine(o)), sample: (r) => asVoices(P.sample(r)),
-           judge: (R) => P.judge(voices === 2 ? R.top : R), chords: (R) => (P.chords ? P.chords(voices === 2 ? R.top : R) : null) };
+           judge: (R) => judgeOf(R), chords: (R) => (P.chords ? P.chords(voices === 2 ? R.top : R) : null) };
+  // judged without figures, voices are read with the chords they make: those of four tones (the dominant's family,
+  // the 6/5) asked of them — so their dissonances are the semi-consonances they are
+  function judgeOf(R) {
+    if (figured || voices < 4) return P.judge(voices === 2 ? R.top : R);
+    const NAME = { "6/5/3": "6/5", "6/4/3": "6/4/3", "6/4/2": "4/2", "7": "7" };
+    const made = P.chords(R);
+    const B2 = units.map((u, t) => ({ ...u, chord: NAME[made[t]] || null }));
+    return four({ key, bass: B2, figured: true, ro }).judge(R);
+  }
 }
 
 // (a box loads the module's default export: api/import-module)
