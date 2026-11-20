@@ -40,6 +40,8 @@
             t2 (mei/add-take tree tk)]
         (t/eq "with a take: where it played each note, the notes it did not play left out" (mapv (juxt :id :t :dur) (ct/events t2 "t1"))
               [["n0" 0.2 1.2] ["n2" 2.8 3]])
+        (t/eq "a take that kept how loud each note sounded (:profile, discussion #308) gives the strokes their weight"
+              (mapv :amp (ct/events (mei/add-take tree (assoc tk :profile {"n0" {:rms 0.2} "n2" {:rms 0.4}})) "t1")) [0.5 1])
         (let [s (ct/svg (mt/update-attrs t2 assoc :continuum {:res (ct/preset-res :graphic) :take "t1"}) 600 200)]
           (t/is "the drawing shows the take the tree asks for" (= 2 (count (re-seq #"class=\"ct-stroke\"" s)))))))
     (let [s (ct/svg tree 600 200)]

@@ -83,7 +83,7 @@
 (defn events
   "The sounds of a tree's first voice, in order: {:id :beat :wbeats (written, a tied note's whole length) :wire :ws :wd
    (written, in seconds at its tempo) :t :dur (where it really sounded, or as written) :midi (exact) :midi2 (the end
-   of its glissando) :name (written) :amp}. With a take, where that take played each note (notes it did not play are
+   of its glissando) :name (written) :amp}. With a take, :amp is how loud the take heard the note when it kept that. With a take, where that take played each note (notes it did not play are
    left out)."
   ([tree] (events tree nil))
   ([tree take]
@@ -92,7 +92,11 @@
          a0 (mt/attrs v)
          tempo (or (:tempo a0) (:tempo (mt/attrs tree)) 60) spb (/ 60 tempo)
          sig (or (:sig (sp/parse-key (or (:key a0) (:key (mt/attrs tree))))) 0)
-         tw (when take (:when (first (filter #(= take (:id %)) (:takes (mt/attrs tree))))))
+         tk (when take (first (filter #(= take (:id %)) (:takes (mt/attrs tree)))))
+         tw (:when tk)
+         ;; what the take heard of each note (its :profile, discussion #308): how loud, as the stroke's weight
+         lk (first (filter (fn [k] (some #(number? (get % k)) (vals (:profile tk)))) [:loudness :rms :energy]))
+         lmax (when lk (reduce max 1e-9 (keep #(get % lk) (vals (:profile tk)))))
          name-of (fn [a m]
                    (or (when (or (string? (:pitch a)) (keyword? (:pitch a))) (name (:pitch a)))
                        (let [bm (js/Math.round m)]
@@ -131,10 +135,12 @@
      (->> @out
           (map (fn [e]
                  (let [ws (* (:beat e) spb) wd (* (:wbeats e) spb)
-                       [pt pd] (when take (get tw (:id e)))]
+                       [pt pd] (when take (get tw (:id e)))
+                       heard (when lk (get-in tk [:profile (:id e) lk]))]
                    (cond-> (assoc e :ws ws :wd wd
                                   :t (if take (or pt ws) (or (:t e) ws))
                                   :dur (if take (or pd wd) (or (:dur e) wd)))
+                     (number? heard) (assoc :amp (/ heard lmax))
                      (and take (nil? pt) (not (:rest e))) (assoc :skip true)))))
           (remove :skip)
           vec))))

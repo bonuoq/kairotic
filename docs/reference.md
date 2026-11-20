@@ -944,7 +944,7 @@ See also: `edn`, `sample`, `print`
 
 ### follow · `@kairotic/analysis`
 
-`follow [ahead] [band]`
+`follow [ahead] [band] [descriptor …]`
 
 Follows a performer through a tree (discussion #204): each note heard is matched with a note a little ahead of where the performer was, by pitch and by when it was expected at the performer's tempo; wrong notes pass, skipped notes are skipped. Wires written on the notes ([:note {… :wire {:send :swell}}], or (wire! :bN note :swell)) send what they send: rigid when the note is reached (or caught up once, if it was passed over), elastic on their own at the expected time plus a tolerance if the note does not come, or led by the electronics at that time. At :stop, the take — where each note was played — for the tree box.
 
@@ -953,6 +953,7 @@ Follows a performer through a tree (discussion #204): each note heard is matched
 0. Hz from pitch~ (0: silence); :start, :stop
 1. onsets (from onset~): a new note even on the same pitch
 2. the tree to follow (from a tree box)
+3. with words after its numbers (follow rms centroid chroma), one inlet each: a descriptor (features~, chroma~), whose mean while each note sounds goes into the take as what it sounded like (:profile)
 
 **Outlets** 
 

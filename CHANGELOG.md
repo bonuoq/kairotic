@@ -8,6 +8,12 @@
   `click~`, `phase` and `necklace` step by step start their metro with a `loadbang` (▶ is enough) and sound that
   lower click where the cycle begins — in `phase`'s, where the follower believes the clave begins.
 
+- **What each note sounded like, in the take** (discussion #308, step 1; `@kairotic/analysis` 0.8.5): `follow rms
+  centroid chroma` has an inlet for each descriptor written after its numbers (from `features~`, `chroma~`); while a
+  note of the tree sounds, their values are averaged, and at `stop` the take keeps them per note as its `:profile`
+  (`{"n3" {:rms 0.21 :centroid 1840 :chroma [...]}}`) — the measured fingerprint a rehearsal mode will learn from. A
+  take shown on the continuum gives its strokes the weight of how loud each note was heard (`:loudness`, `:rms` or
+  `:energy`).
 - **Study 61: a level plays as it is drawn** (fix): the player put a level's bass on the bars' starts only, but a
   slice of a reduced level may begin on a weak unit (in the 7–6 chain's first level B3 enters on unit 3), so the bass
   sounded a unit late. Each level now plays its slices' own notes (`eventsOf`), and the phrase and the variation
