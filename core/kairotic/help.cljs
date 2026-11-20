@@ -20,7 +20,9 @@
 
 (ns kairotic.help
   (:require [clojure.string :as str]
-            [kairotic.components :as comp]))
+            [kairotic.components :as comp]
+            [kairotic.library :as lib]
+            [kairotic.corefns :as cf]))
 
 (def lines (fn [& ls] (str/join "\n" ls)))
 
@@ -638,13 +640,14 @@
     :doc "Follows a performer through a tree (discussion #204): each note heard is matched with a note a little ahead of where the performer was, by pitch and by when it was expected at the performer's tempo; wrong notes pass, skipped notes are skipped. Wires written on the notes ([:note {… :wire {:send :swell}}], or (wire! :bN note :swell)) send what they send: rigid when the note is reached (or caught up once, if it was passed over), elastic on their own at the expected time plus a tolerance if the note does not come, or led by the electronics at that time. At :stop, the take — where each note was played — for the tree box."
     :inlets ["Hz from pitch~ (0: silence); :start, :stop" "onsets (from onset~): a new note even on the same pitch" "the tree to follow (from a tree box)"]
     :outlets ["the written beat where the performer is" "[:note id]: the note found" "what a wire sends when it goes on" "at :stop, [:take {…}]: into the tree box, kept only for you"]
-    :messages [[":start" "from the top of the tree"] [":stop" "ends, and sends the take"]]
+    :messages [[":start" "from the top of the tree"] [":stop" "ends, and sends the take"]
+               ["[:here \"n3\"] · (here! :bN 3) · a click on a note of the continuum" "the performer is there: ahead, as if heard; back, from there again (its wires go on again)"]]
     :example (lines "(box :b1 \"tree\" 420 30)" "(tree! :b1 [:voice {:tempo 72} [:measure {:meter [4 4]} \"c4/1 e4 g4 c5\"] [:measure [:note {:pitch \"g4\" :dur 2 :wire {:send :swell}}] [:note {:pitch \"e4\" :dur 1 :wire {:send :fade :kind :elastic :tol 0.5}}] \"c4/1\"]])"
                     "(box :b2 \"adc~ 1\" 40 30)" "(box :b3 \"pitch~ 80 1000\" 40 90)" "(box :b4 \"onset~\" 240 90)"
                     "(box :b5 \"msg :start\" 40 150)" "(box :b6 \"msg :stop\" 140 150)" "(box :b7 \"follow\" 40 210)" "(box :b8 \"print\" 200 270)"
                     "(connect :b2 0 :b3 0)" "(connect :b2 0 :b4 0)" "(connect :b3 0 :b7 0)" "(connect :b4 0 :b7 1)" "(connect :b1 0 :b7 2)"
                     "(connect :b5 0 :b7 0)" "(connect :b6 0 :b7 0)" "(connect :b7 2 :b8 0)" "(connect :b7 3 :b1 0)")
-    :try "Press ▶, click :start and play or sing the tree: its label shows the beat you are at, the print :swell when you reach the long G — even if you skip it, at the next note — and :fade at the E, or half a second after it was due if you stop before it. (view :b1 :continuum) draws the wires, rigid solid and elastic dashed. Click :stop: the take goes into the tree box, only for you; (continuum! :b1 {:take …}) — (takes :b1) gives its id — shows where you played each note."
+    :try "Press ▶, (view :b1 :continuum), click :start and play or sing the tree: the continuum shows the notes found, the ones skipped and where you are, the wires that went on — click a note to tell it where you are —; its label shows the beat you are at, the print :swell when you reach the long G — even if you skip it, at the next note — and :fade at the E, or half a second after it was due if you stop before it. The wires are drawn rigid solid and elastic dashed. Click :stop: the take goes into the tree box, only for you; (continuum! :b1 {:take …}) — (takes :b1) gives its id — shows where you played each note."
     :see ["pitch~" "onset~" "tree" "transcribe"]}
 
    "spectrum~"
@@ -981,6 +984,25 @@ Given a rhythm as pulses, it searches every rhythm of as many onsets among as ma
     :try "Click the son clave, then bang several times: on the left, variations two swaps away (swap prints 2 each time); on the right, the downbeat kept (level 0 and 1), the other onsets drawn again — the same skeleton, a new surface."
     :see ["morph" "swap" "chance" "necklace"]}
 
+   "phase"
+   {:package "@kairotic/rhythm" :usage "phase [min 0]"
+    :about "**Where a performer is in a cycle, from the onsets heard** (discussion #204). Before following a score, follow a timeline: a clave, a bell pattern, any rhythm that repeats. Musicians keep their place in a cycle this way, and it needs no pitch.
+
+**A pulse clock gives the grid** — a `metro` at the pulse, or the room's `pulse` — and the onsets (`onset~`'s bangs, or taps) fall on its nearest pulse. At each pulse the last pulses heard are compared with every rotation of the reference, by Toussaint's swap distance: the nearest says which pulse of the reference this one is — the **phase**. The pulse that has just begun is not judged, since its onset may come a moment late: the last whole pulse is found and this one is the next. Ties and near ties go to the phase the walk expects, so a few missing or extra onsets do not throw it.
+
+Into a `necklace`'s clock inlet the phase moves its hand there and plays it: the electronics stay in the performer's cycle. Times a pulse's beats, it is a `player`'s position."
+    :args [[:min "how many pulses must be heard before it says a phase (half the cycle by default)"]]
+    :doc "Where a performer is in a cycle (a timeline follower, onsets only): onsets on the left, the reference as pulses in the middle (cold), the pulse clock on the right; at each pulse, the phase — which pulse of the reference this one is."
+    :inlets ["onsets: a bang each (onset~, or taps) · :reset forgets what was heard" "the reference, as pulses (cold): a clave, a bell pattern, euclid's or a necklace's" "the pulse clock: a bang each pulse (a metro, the room's pulse)"]
+    :outlets ["the phase: the pulse of the reference this one is (for a necklace's clock inlet)" "{:phase :distance — 0: exactly the reference — :margin — how much nearer than the next guess; 0 ambiguous — :heard :window :n}"]
+    :example (lines "(box :b1 \"msg [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]\" 40 20)" "(box :b2 \"metro 125\" 360 20)" "(box :b3 \"adc~ 1\" 480 20)"
+                    "(box :b4 \"onset~\" 480 70)" "(box :b5 \"bang\" 600 70)" "(box :b6 \"phase\" 360 130)"
+                    "(box :b7 \"necklace\" 40 180)" "(box :b8 \"print phase\" 360 180)"
+                    "(connect :b1 0 :b6 1)" "(connect :b1 0 :b7 0)" "(connect :b2 0 :b6 2)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b6 0)" "(connect :b5 0 :b6 0)"
+                    "(connect :b6 0 :b7 2)" "(connect :b6 1 :b8 0)")
+    :try "Click the son clave (the reference), press ▶ — the metro is the pulse, a sixteenth at 120 —, and clap the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects. Stop for a moment and go on: it keeps walking."
+    :see ["necklace" "swap" "onset~" "follow"]}
+
    "comes"
    {:package "@kairotic/cac" :usage "comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [temp 0] [seed 1] [inverted] [fourth] [live] [nocues] [midi]"
     :about "**You play a line, the dux, and comes answers with a second voice, the comes, that reads it** — by the rules of 16th-century counterpoint. A note that breaks a rule, or from which the work could not be finished, is corrected to the nearest one that can be played, and the box says why.
@@ -1139,3 +1161,64 @@ Given a rhythm as pulses, it searches every rhythm of as many onsets among as ma
   "Every class with a help page (registered or listed here)."
   []
   (sort (distinct (concat (keys core) (map first (comp/listing))))))
+
+;; ───────── suggestions while a box is written ─────────
+;; The field where a box is written offers the classes that match what is typed: the registered ones (the core,
+;; the work's own components, the packages already in it), the classes of the official packages not brought in
+;; yet (writing one brings its package), and the functions of clojure.core. Each with where it comes from and the
+;; first sentence of its doc.
+
+(defn- first-sentence [s]
+  (let [s (str/trim (str (first (str/split-lines (str s)))))
+        i (str/index-of s ". ")]
+    (if i (subs s 0 (inc i)) s)))
+
+(defn- candidates
+  "Every class that can be written in a box: {name {:source :registered | :package | :fn}}."
+  []
+  (merge (into {} (for [f (cf/names)] [f {:source :fn}]))
+         (into {} (for [[_ p] lib/packages c (:classes p)] [c {:source :package}]))
+         (into {} (for [[c h] core :when (:package h)] [c {:source :package}]))
+         (into {} (for [[c] (comp/listing)] [c {:source :registered}]))))
+
+(defn- rank
+  "How well name n matches what is typed, t (lower is better), or nil if it does not."
+  [n t]
+  (let [n' (str/lower-case n) t' (str/lower-case t) i (str/index-of n' t')]
+    (cond (= n' t') 0
+          (= i 0) 1
+          (nil? i) nil
+          (< (count t) 2) nil
+          (re-find #"[-/~.]" (subs n' (dec i) i)) 2
+          :else 3)))
+
+(defn about
+  "What the field shows of class n: {:cls :usage :doc :from}, :from being where it comes from (\"core\", a
+   package's name, \"this work\" or \"clojure.core\"), or nil if n is not a class."
+  [n]
+  (let [d (comp/lookup n) h (get core n) pkg (lib/package-of n)]
+    (when (or d h pkg)
+      {:cls n
+       :usage (or (:usage d) (:usage h))
+       :doc (first-sentence (or (:doc d) (:doc h) ""))
+       :from (cond pkg (first pkg)
+                   (:package h) (:package h)
+                   (:corefn d) (if (str/starts-with? (str (:doc d)) "clojure.string") "clojure.string" "clojure.core")
+                   (= :work (:origin d)) "this work"
+                   :else "core")})))
+
+(defn suggest
+  "The classes that match what is typed (its first word), best first, at most n: [{:cls :usage :doc :from} …].
+   An exact match first, then those that begin with it, those where a word inside begins with it (after - / ~ .),
+   the rest that contain it; Kairotic's classes before the functions of clojure.core, the shorter first."
+  ([typed] (suggest typed 8))
+  ([typed n]
+   (let [t (first (str/split (str/triml (str typed)) #"\s+"))]
+     (when (seq t)
+       (->> (candidates)
+            (keep (fn [[c {:keys [source]}]]
+                    (when-let [r (rank c t)] [[r (if (= source :fn) 1 0) (count c) c] c])))
+            (sort-by first)
+            (take n)
+            (keep (fn [[_ c]] (about c)))
+            vec)))))

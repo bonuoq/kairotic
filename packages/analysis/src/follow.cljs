@@ -5,7 +5,11 @@
       onset-s 0.15       ; an onset at most this long before a pitch begins the note there (onset~ hears the attack first)
       apart 0.6          ; semitones: a pitch this far from the note that sounds is another note
       r3 (fn [x] (/ (js/Math.round (* x 1000)) 1000))
-      shown (fn [st] {:on (:on st) :notes (count (:score st)) :at (:at st) :found (count (get-in st [:fl :played])) :cue (:cue st)})
+      ;; what it shows: its label, and where the performer is on the tree it follows (its box, :from), which the page
+      ;; draws on that tree's continuum
+      shown (fn [st] (cond-> {:on (:on st) :notes (count (remove :rest (:score st))) :at (:at st) :found (count (get-in st [:fl :played])) :cue (:cue st)
+                              :from (:from st)}
+                       (:fl st) (merge (api/follow-view (:fl st)))))
       ;; what the follower found: where the performer is (outlets 0 and 1), the wires that went on (what they send, 2)
       found-out (fn [st found]
                   (let [at (last (keep (fn [[k x]] (when (= k :at) x)) found))
@@ -48,7 +52,7 @@
   {;; ── about ──
    :class "follow"
    :license "MPL-2.0"
-   :doc "Follows a performer through a tree (discussion #204): a tree on the right (from a tree box), Hz on the left (from pitch~: 0 when it hears none) and onsets in the middle (from onset~: a note begins there even on the same pitch). start begins at the top of the tree, stop ends. Each note heard is matched with a note of the tree a little ahead of where the performer was, by its pitch (an octave off still counts) and by when it was expected at the tempo the performer goes; wrong notes and ornaments are let pass, skipped notes are skipped. Out: the written beat where the performer is, [:note id], what each wire sends when it goes on — wires are written on their notes ([:note {… :wire {:send :swell :kind :elastic :tol 0.5}}], or (wire! :bN note :swell {…})): a rigid one on its note (or caught up once at the next note found if it was passed over), an elastic one on its note if the performer gets there in time and else on its own, at the time the note was expected plus its tolerance (or at that time whatever the performer does, if the electronics lead) —, and at stop the take — where each note was played, in seconds — as [:take {…}]: into the tree box's inlet it is kept only for you (a message [:take … :work] keeps it in the tree), and its continuum can show it."
+   :doc "Follows a performer through a tree (discussion #204): a tree on the right (from a tree box), Hz on the left (from pitch~: 0 when it hears none) and onsets in the middle (from onset~: a note begins there even on the same pitch). start begins at the top of the tree, stop ends; [:here id] tells it where the performer is (a click on a note of the tree's continuum does). Each note heard is matched with a note of the tree a little ahead of where the performer was, by its pitch (an octave off still counts) and by when it was expected at the tempo the performer goes; wrong notes and ornaments are let pass, skipped notes are skipped. Out: the written beat where the performer is, [:note id], what each wire sends when it goes on — wires are written on their notes ([:note {… :wire {:send :swell :kind :elastic :tol 0.5}}], or (wire! :bN note :swell {…})): a rigid one on its note (or caught up once at the next note found if it was passed over), an elastic one on its note if the performer gets there in time and else on its own, at the time the note was expected plus its tolerance (or at that time whatever the performer does, if the electronics lead) —, and at stop the take — where each note was played, in seconds — as [:take {…}]: into the tree box's inlet it is kept only for you (a message [:take … :work] keeps it in the tree), and its continuum can show it."
    :usage "follow [ahead] [band]"
    :io [3 4]
    :size [124 30]
@@ -61,7 +65,7 @@
                   ;; the tree to follow
                   (= inlet 2)
                   (if (and (vector? value) (keyword? (first value)))
-                    (let [sc (api/follow-score value) st (assoc st :score sc :wires (api/follow-wires sc))]
+                    (let [sc (api/follow-score value) st (assoc st :score sc :wires (api/follow-wires sc) :from (:from (meta value)))]
                       {:state st :show (shown st)})
                     {})
                   (= value :start)
@@ -81,6 +85,13 @@
                         st (assoc st :on false :fl fl :cur nil :takes n)]
                     (cond-> {:state st :show (shown st)} tk (assoc :out [[3 [:take tk]]])))
                   (= inlet 1) {:state (assoc st :onset (- at (:t0 st)))}
+                  ;; "I am here" (a click on a note of the continuum, discussion #308): the follower goes there
+                  (and (vector? value) (= :here (first value)))
+                  (if-let [j (first (keep-indexed (fn [i e] (when (= (str (second value)) (:id e)) i)) (:score st)))]
+                    (let [t (- at (:t0 st))
+                          [fl found] (api/follow-here (:fl st) t j)]
+                      (out-of (found-out (assoc st :fl fl :cur nil :pend nil :wake nil) found) nil at))
+                    {})
                   (and (= value [:settle]) (:pend st)) (out-of (hear st (api/midi->hz (second (:pend st))) (- at (:t0 st))) nil at)
                   ;; time passes: the elastic wires due go on
                   (= value [:tick])

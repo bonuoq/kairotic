@@ -11,6 +11,23 @@
   canons 38–43 (the dux and the comes, mode, interval, delay; a system without staff names said so) and 50 (a canon
   at any speed whose lattice is binary; thirds need tuplets, not yet). On claude.ai it is saved as `.mei.txt`.
   Studies 58 and 60 now write through it too.
+- **Following, seen on the continuum** (discussions #204, #308; `@kairotic/analysis` 0.8.4): while a `follow` box
+  follows a tree, that tree's continuum shows the notes found, the ones skipped, where the performer is (its note and
+  a line through it) and the wires that went on. **"I am here"**: a click on a note of the continuum (or `(here! :bN
+  note)`, `[:here id]` to the box) tells the follower where the performer is — ahead, as if heard there; back, from
+  there again, its wires going on again: the correction a rehearsal needs. `kairotic.follow`: `here`, `view`.
+- **`phase`: where a performer is in a cycle** (`@kairotic/rhythm` 0.6.0; discussion #204). A timeline follower, onsets
+  only: a pulse clock (a metro, the room's `pulse`) gives the grid, onsets (`onset~`, taps) fall on its nearest pulse,
+  and at each pulse the last pulses heard are compared with every rotation of the reference (Toussaint's swap distance,
+  plus two for each onset one has and the other has not): the nearest is the phase. The pulse just begun is not judged
+  (its onset may come late, as onset~ hears it); ties and near ties go to the phase the walk expects, so missing or
+  extra onsets do not throw it. Into a necklace's clock inlet, its hand follows the performer.
+
+- **A menu of classes while a box is written**: the field of a box offers the classes that match the first word
+  typed — the core's, the work's own components, the classes of the official packages (in the work or not yet:
+  writing one brings its package) and the functions of clojure.core —, each with where it comes from and the first
+  sentence of its doc. ↑ ↓ choose, Tab or Enter take one, a click too; once the class is written it shows what it
+  takes (its usage). `hlp/suggest` and `hlp/about` give the same from code.
 - **`morph` and `vary`: rhythms that move by a measured amount** (`@kairotic/rhythm` 0.5.0; discussions #206, #207,
   #321). `morph` turns one rhythm into another swap by swap: a ratio 0…1 is a point on the fewest swaps from the left
   rhythm to the target — always a real rhythm —, and the way goes out as data (`[:swap from to]`, `[:remove i]`,

@@ -241,6 +241,17 @@ export async function analysis(page, check) {
   const kept = await until(page, `(mapv :scope (takes ${ftb}))`, (x) => x === "[:me]", 6000);
   check("... its take into the tree box: kept only for me, the tree unchanged", kept === "[:me]" &&
         (await cljs(page, `(empty? (mei/takes (tree-data ${ftb})))`)) === "true", kept);
+  // the follow box shown on the continuum of its tree, and "I am here" (discussion #308)
+  await cljs(page, `(view ${ftb} :continuum) (send! ${fol} :start)`);
+  const following = await until(page, `(followers-of ${ftb})`, (x) => x === `[${fol}]`, 3000);
+  check("the follow box, started, follows its tree box", following === `[${fol}]`, following + " · " + await cljs(page, `(pr-str (second (last-shown ${fol})))`));
+  await cljs(page, `(here! ${ftb} 2)`);
+  const now = await until(page, `(:now (second (last-shown ${fol})))`, (x) => x === '"n2"', 3000);
+  check("(here! :bN 2) tells the follow box where the performer is", now === '"n2"', now);
+  const nowMarks = await until(page, `(count (array-seq (.querySelectorAll ($ "scene") ".ct-head.ct-now")))`, (x) => x === "1", 3000);
+  check("... and its tree's continuum shows it: the note now, the ones skipped",
+        nowMarks === "1" && (await cljs(page, `(count (array-seq (.querySelectorAll ($ "scene") ".ct-head.ct-skipped")))`)) === "2", nowMarks);
+  await cljs(page, `(send! ${fol} :stop)`);
   await cljs(page, `(doseq [t (takes ${ftb})] (forget-take! ${ftb} (:id t)))`);
 
   await cljs(page, "(stop)");

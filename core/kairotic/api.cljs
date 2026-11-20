@@ -370,5 +370,7 @@ registerProcessor('kairotic-tap', KairoticTap);
 (defn follow-wires "The wires of a score (its notes' :wire), for follow-start's :wires." [evs] (fl/wires evs))
 (defn follow-tick "Time passes until t: the elastic wires due go on → [state found]." [state t] (fl/tick state t))
 (defn follow-due "When the next elastic wire would go on by itself, or nil." [state] (fl/next-due state))
+(defn follow-here "The performer is told to be at note j at t (a correction: \"I am here\") → [state found]." [state t j] (fl/here state t j))
+(defn follow-view "What a follower shows on the tree it follows: {:played :skipped :now :fired}." [state] (fl/view state))
 (defn follow-release "The note found last stopped sounding at t." [state t] (fl/release state t))
 (defn follow-take "What was followed, as a take {:id :when {note-id [onset dur]} …}, or nil." [state m] (fl/take-of state m))

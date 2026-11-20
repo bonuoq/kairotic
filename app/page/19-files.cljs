@@ -464,3 +464,39 @@
    (let [t (tree-data id) i (note-index id t note)]
      (update-wire! id i (fn [ws] (if (= send ::all) [] (vec (remove #(= send (:send %)) ws)))))
      :unwired)))
+
+;; ───────── "I am here": a click on a note of a continuum tells the follow boxes that follow it (discussion #308) ─────────
+
+(defn followers-of
+  "The follow boxes of the patch on screen that follow tree box id (and are following now)."
+  [id]
+  (vec (for [[fid b] (:boxes (current))
+             :when (= "follow" (klass (:text b)))
+             :let [[_ sh] (last-shown fid)]
+             :when (and (:on sh) (= id (some-> (:from sh) local-id)))]
+         fid)))
+
+(defn here!
+  "Tells the follow boxes following tree box id that the performer is at a note (its id, \"n3\", or its index): a
+   correction while rehearsing, as a click on that note of the continuum does. Ahead, as if it was heard there; back,
+   from there again (its wires go on again)."
+  [id note]
+  (need-tree-box id)
+  (let [t (tree-data id)
+        evs (vec (remove :rest (ct/events t)))
+        nid (if (number? note) (or (:id (get evs note)) (fail (str "The tree has " (count evs) " notes"))) (str note))
+        fs (followers-of id)]
+    (when (empty? fs) (fail (str "No follow box is following " id " (start one: its :start)")))
+    (doseq [f fs] (send! f 0 [:here nid]))
+    (str "here: " nid)))
+
+(defonce here-listener
+  (do (.addEventListener js/document "click"
+        (fn [e]
+          (when-let [h (some-> (.-target e) (.closest "g.ct-root .ct-head[data-id]"))]
+            (when-let [root (.closest h "g.ct-root")]
+              (let [id (keyword (.getAttribute root "data-box"))]
+                (when (seq (followers-of id))
+                  (gesture! (str "(here! " id " " (pr-str (.getAttribute h "data-id")) ")")))))))
+        true)
+      true))

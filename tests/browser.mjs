@@ -18,6 +18,7 @@ import { probes } from "./probes.mjs";
 import { helplayout } from "./helplayout.mjs";
 import { recipe } from "./recipe.mjs";
 import { numinput } from "./numinput.mjs";
+import { suggest } from "./suggest.mjs";
 import { presets } from "./presets.mjs";
 import { present, presetsTutorial, oneTwoTreeTutorial, patternsTutorial } from "./present.mjs";
 import { audioin } from "./audioin.mjs";
@@ -106,6 +107,7 @@ const appSuites = [
   ["probes", probes, "the probe tests ran"],
   ["recipe", recipe, "the recipe tests ran"],
   ["numinput", numinput, "the number input tests ran"],
+  ["suggest", suggest, "the box suggestion tests ran"],
   ["presets", presets, "the presets tests ran"],
   ["present", present, "the present tests ran"],
   ["layout", layout, "the layout tests ran"],

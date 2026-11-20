@@ -173,11 +173,11 @@
   {"@kairotic/synth"    {:version "0.3.0" :classes #{"adsr~" "synth~" "gendy~"} :local "kairotic/packages/synth.mjs"}
    "@kairotic/spatial"  {:version "0.1.1" :classes #{"pan~" "space~"}   :local "kairotic/packages/spatial.mjs"}
    "@kairotic/controls" {:version "0.2.3" :classes #{"knob" "keyboard" "scale"} :local "kairotic/packages/controls.mjs"}
-   "@kairotic/analysis" {:version "0.8.3" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "follow" "monitor" "form~" "realize~"}
+   "@kairotic/analysis" {:version "0.8.4" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "follow" "monitor" "form~" "realize~"}
                          :local "kairotic/packages/analysis.mjs"}
    "@kairotic/theory"   {:version "0.14.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}
    "@kairotic/cac"      {:version "0.4.1" :classes #{"comes"} :local "kairotic/packages/cac.mjs"}
-   "@kairotic/rhythm"   {:version "0.5.0" :classes #{"euclid" "necklace" "chance" "homometric" "swap" "morph" "vary"} :local "kairotic/packages/rhythm.mjs"}
+   "@kairotic/rhythm"   {:version "0.6.0" :classes #{"euclid" "necklace" "chance" "homometric" "swap" "morph" "vary" "phase"} :local "kairotic/packages/rhythm.mjs"}
    "@kairotic/data"     {:version "0.1.4" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
    "@kairotic/patterns" {:version "0.3.0" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}
    "@kairotic/spectral" {:version "0.1.2" :classes #{"shift~"} :local "kairotic/packages/spectral.mjs"}

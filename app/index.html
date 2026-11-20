@@ -195,7 +195,7 @@ body.embed .line-tabs, body.present .line-tabs { display: none !important; }
 #canvas .ct-staff, #canvas .ct-ledger, #canvas .ct-bar { stroke: #1b2430; stroke-width: 1; }
 #canvas .ct-semi { stroke: #2f55d4; stroke-width: 0.6; }
 #canvas .ct-stroke { fill: none; stroke: #2f55d4; stroke-linecap: round; }
-#canvas .ct-head { fill: #1b2430; stroke: #1b2430; stroke-width: 1.2; cursor: default; }
+#canvas .ct-head { fill: #1b2430; stroke: #1b2430; stroke-width: 1.2; }
 #canvas .ct-line, #canvas .ct-stem { stroke: #1b2430; stroke-width: 1.3; fill: none; }
 #canvas .ct-flag { fill: none; stroke: #1b2430; stroke-width: 1.6; stroke-linecap: round; }
 #canvas .ct-acc { font: 14px serif; fill: #1b2430; }
@@ -207,6 +207,14 @@ body.embed .line-tabs, body.present .line-tabs { display: none !important; }
 #canvas .ct-wire line.ct-tol { stroke-width: 3; stroke-opacity: 0.35; stroke-dasharray: none; }
 #canvas .ct-wire circle, #canvas .ct-wire path { fill: #b4462e; }
 #canvas .ct-wire text { font: 9px var(--f-code, monospace); fill: #b4462e; }
+/* following a performer (follow box): notes found, skipped, where the performer is, wires that went on */
+#canvas .ct-head.ct-found { fill: #2f7d4f; stroke: #2f7d4f; }
+#canvas .ct-head.ct-skipped { fill: #c9ccd2; stroke: #9aa1ab; }
+#canvas .ct-head.ct-now { fill: #2f55d4; stroke: #2f55d4; stroke-width: 2.4; }
+#canvas .ct-head { cursor: pointer; }
+#canvas .ct-cursor { stroke: #2f55d4; stroke-width: 1.5; stroke-opacity: 0.55; }
+#canvas .ct-wire.ct-fired line, #canvas .ct-wire.ct-fired circle, #canvas .ct-wire.ct-fired path { stroke: #e0662a; fill: #e0662a; stroke-width: 2.4; }
+#canvas .ct-wire.ct-fired text { fill: #e0662a; font-weight: 700; }
 #canvas .prelude-slot .staff > path, #canvas .prelude-slot .barLine path { stroke: none !important; }
 #canvas .score-slot { color: #1b2430; fill: #1b2430; }
 #canvas .score-slot g.note, #canvas .score-slot g.rest { cursor: pointer; }
@@ -486,6 +494,17 @@ body.present .askbar { position: absolute; z-index: 6; left: 6px; top: 6px; marg
 .edit-out { position: absolute; z-index: 6; max-width: 520px; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft);
             background: var(--box); border: 1px solid var(--rule); border-radius: 3px; padding: 2px 8px; white-space: pre-wrap; word-break: break-word; }
 .edit-out:empty { display: none; }
+/* the classes that match what is typed in a new box: name, where it comes from, the first sentence of its doc */
+.suggest { position: absolute; z-index: 7; width: min(440px, calc(100vw - 32px)); max-height: 300px; overflow-y: auto;
+           background: var(--box); border: 1px solid var(--rule); border-radius: 3px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14); }
+.suggest:empty { display: none; }
+.suggest .sg { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 4px 8px; cursor: pointer; border-bottom: 1px solid var(--rule); }
+.suggest .sg:last-child { border-bottom: 0; }
+.suggest .sg:hover, .suggest .sg.on { background: var(--accent-soft); }
+.suggest .sg.hint { cursor: default; background: none; }
+.suggest .sg-name { font-family: var(--f-code); font-size: 12.5px; color: var(--ink); overflow-wrap: anywhere; }
+.suggest .sg-from { font: 11px var(--f-ui); color: var(--accent); white-space: nowrap; align-self: center; }
+.suggest .sg-doc { grid-column: 1 / -1; font: 11.5px var(--f-ui); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* the line of the REPL on the patch as a code editor: what it gave goes right below, inside it */
 .edit.repl-line { padding: 0 6px; display: flex; flex-direction: column; max-width: 640px; }
 .repl-line-host { min-width: 0; max-height: 40vh; overflow: auto; }
