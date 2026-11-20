@@ -1,0 +1,84 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 60 · development · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, its ClojureScript), driven as a person would, with a Claude that
+// answers from a script: a period begun, the motive found; three continuations of which one breaks the join (sent
+// back, repaired); each measured against the motive, ranked, its derivation confirmed or not; a motive marked; the
+// engine developing the motive by hand.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  const S = () => window.kairoticStudy;
+  const wait = async (ok, ms = 8000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+  const $ = (id) => document.getElementById(id);
+  const click = (el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  const nodeOf = (pred) => Object.values(S().state().tree.nodes).find(pred);
+  const yOf = (id) => Number(/translate\([\d.]+,([\d.]+)\)/.exec(document.querySelector(`#tree g.node[data-id="${id}"]`).getAttribute("transform"))[1]);
+  try {
+    const K = await import("./kernel.mjs");
+    const BAD = { ...K.HALF, melody: "C5 F4 G4 B4 B4 A4 B4" };
+    const asked = [];
+    const answers = [K.answer("Three ways on.", [BAD, K.INVERTED, K.HEAD]), K.answer("Repaired.", [K.HALF])];
+    const sample = async (input, opts) => { asked.push(String(input)); const text = answers[Math.min(asked.length - 1, answers.length - 1)]; opts && opts.onText && opts.onText({ text, delta: text }); return { text, truncated: false }; };
+    window.claude = { use: async (name) => (name === "sample" ? sample : null) };
+    window.kairoticFresh = true;
+
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    $("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticBase = "../kairotic/";
+    const loader = Array.from(doc.querySelectorAll("script:not([src]):not([type])")).map((s) => s.textContent).join("\n");
+    (0, eval)(loader.replace(/window\.addEventListener\("DOMContentLoaded"[\s\S]*$/, ""));
+    window.kairoticIncipit = await import("../kairotic/development.mjs");
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    is("ready, started from the first incipit as a period: its motive found and shown", $("status").textContent === "Ready" && S().state().nodes === 1 && /motive a G4 C5 B4 A4/.test($("motives").textContent) && /form: period/.test($("motives").textContent));
+    is("… the incipit measured: the motive itself", /the motive itself/.test($("point").textContent) && /antecedent/.test($("point").textContent));
+    is("… its score drawn", await wait(() => S().state().score, 30000));
+
+    // Claude: three continuations, one fails the join and is repaired; all measured
+    await wait(() => !$("ask").disabled, 3000);
+    click($("ask"));
+    is("Claude asked with the material and the form, then to repair the one that failed", await wait(() => asked.length === 2 && !S().state().busy, 5000) && /The material of the piece/.test(asked[0]) && /consequent/.test(asked[0]) && /held 2 units at most/.test(asked[1]));
+    is("… three offered, each measured", S().state().nodes === 4 && Object.values(S().state().tree.nodes).every((n) => n.dev));
+    const head = nodeOf((n) => n.phrase.melody === K.HEAD.melody), half = nodeOf((n) => n.phrase.melody === K.HALF.melody), inv = nodeOf((n) => n.phrase.melody === K.INVERTED.melody);
+    is("… ranked: the consequent that begins with the motive's head first, the half cadence (against the form) last", yOf(head.id) < yOf(inv.id) && yOf(inv.id) < yOf(half.id));
+    is("… each node shows its kinship", /k 0\.9/.test(document.querySelector(`#tree g.node[data-id="${head.id}"]`).textContent));
+
+    click(document.querySelector(`#tree g.node[data-id="${head.id}"]`));
+    is("the consequent selected: its role, its derivation confirmed, where the motive is, the form's asks met", /consequent/.test($("point").textContent) && /confirmed/.test($("point").textContent) && /its head, repeated/.test($("point").textContent) && /✓ a perfect cadence/.test($("point").textContent) && /score/.test($("point").textContent));
+    click(document.querySelector(`#tree g.node[data-id="${half.id}"]`));
+    is("the half cadence selected: what the form asks and it misses", /✗/.test($("point").innerHTML) && /a perfect cadence/.test($("point").textContent));
+    click(document.querySelector(`#tree g.node[data-id="${inv.id}"]`));
+    is("the inversion: measured and confirmed", /inverted, a step higher/.test($("point").textContent) && /confirmed/.test($("point").textContent));
+
+    // a motive marked on a later phrase
+    click(document.querySelector(`#tree g.node[data-id="${head.id}"]`));
+    $("mark-from").value = "5"; $("mark-to").value = "9";
+    click($("mark"));
+    is("a motive marked on the consequent (units 5–9): motive b, every phrase measured again", S().state().motives === 2 && /motive b A4 F4 G4 B4 C5/.test($("motives").textContent) && /motive b at units 5–9: the motive itself/.test($("point").textContent));
+
+    // chosen, and the engine develops by hand
+    click($("pick"));
+    $("hand-bass").value = "E3 A2 D3 G2 C3"; $("hand-cad").value = "perfect";
+    click($("engine"));
+    is("by hand, the engine develops the motive: a melody, its derivation, its kinship", $("hand-mel").value.split(" ").length === 9 && /kinship/.test($("hand-facts").textContent));
+    click($("add"));
+    is("… added under the point, measured with the derivation it said", await wait(() => S().state().nodes === 5) && S().state().tree.nodes[S().state().sel].dev.declared === $("hand-der").value && /derivation/.test($("point").textContent));
+
+    is("no error on the page", errors.length === 0);
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  $("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>

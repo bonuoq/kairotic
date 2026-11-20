@@ -10,6 +10,13 @@
   (the bass on ⑤ still), a change of key, held. **Study 56**'s cadence lets the middle voice go down to ⑤, the leading
   tone read in each unit's key. Measured: where it functions the engine now resolves it (or has a reason not to)
   about 70% of the time, 60% without the rule; the rest refused by hard rules (octaves, a leap that must turn).
+- **Study 60 · development: motives, their derivation measured, and a form** (discussion #309). On Study 58's
+  incipit: the motive found (the span that recurs most) or marked; Claude asked to develop it and to say how; the
+  page measures it (`motif.mjs`: exact transformations by name, else a kinship by weighted edit distance over
+  intervals, contour and rhythm) and says whether it is there; a form (period, sentence, small ternary) gives each
+  phrase its role; continuations ranked by cost, kinship's sweet spot, the memory of the work and the form's asks;
+  the engine develops by beginning phrases with the motive transformed. Study 58's `incipit.mjs` gains a prompt
+  option for `continueWith`, a kept `derivation`, and an engine melody begun from given notes.
 - **Study 59 · galant: the Galant schemata** (IJzerman, chapter 5; `@kairotic/cac` 0.4.0). `partimento.mjs` has the
   leaping Romanesca, the Quiescenza, the Prinner (and the modulating Prinner), the Monte Romanesca, the Fenaroli and
   the Folia as data (`GALANT`, `galantBass`), the book's prototypes among their realizations, and what they need: a

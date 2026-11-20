@@ -289,6 +289,7 @@ export function proposalsOf(text) {
   try { v = JSON.parse(src); } catch (e) { return { error: "the answer had no JSON block of continuations" }; }
   if (v && !Array.isArray(v)) v = v.continuations || v.phrases || [v];
   const out = (v || []).filter((x) => x && x.bass && x.melody).map((x) => ({ plan: String(x.plan || ""), cadence: String(x.cadence || "authentic"), bass: split(x.bass).join(" "), melody: split(x.melody).join(" "), about: String(x.about || ""),
+    ...(x.derivation ? { derivation: String(x.derivation) } : {}),
     ...(x.keys ? { keys: Array.isArray(x.keys) ? x.keys.map(String).join(" ") : String(x.keys) } : x.key ? { key: String(x.key) } : {}) }));
   return out.length ? { proposals: out } : { error: "the JSON block had no continuation with a bass and a melody" };
 }
@@ -296,16 +297,17 @@ export function proposalsOf(text) {
 /**
  * Asks Claude (sample: claude.ai's sample capability, or a scripted one) for k continuations at a point, checks them,
  * sends the failing ones back with their errors (tries in all); → {tree (with the passing ones offered under the
- * point), added: [nodes], failed: [{phrase, errors}], tries}. onTry(k) is told each try.
+ * point), added: [nodes], failed: [{phrase, errors}], tries}. onTry(k) is told each try; prompt (promptFor by default)
+ * writes what Claude is asked, from the same context (Study 60 adds the motives and the form).
  */
-export async function continueWith(sample, tree, at, { k = 3, request = "", tries = 3, signal, onTry, onText } = {}) {
+export async function continueWith(sample, tree, at, { k = 3, request = "", tries = 3, signal, onTry, onText, prompt = promptFor } = {}) {
   const offered = childrenOf(tree, at).map((x) => x.phrase);
   let repair = [], added = [], failed = [], t = tree, i = 0;
   for (i = 1; i <= tries; i++) {
     const want = i === 1 ? k : repair.length;
     if (!want) break;
     onTry && onTry(i);
-    const ans = await sample(promptFor({ tree: t, at, k: want, request, repair, offered: [...offered, ...added.map((x) => x.phrase)] }), { modelTier: "default", signal, cache: false, onText });
+    const ans = await sample(prompt({ tree: t, at, k: want, request, repair, offered: [...offered, ...added.map((x) => x.phrase)] }), { modelTier: "default", signal, cache: false, onText });
     const got = proposalsOf(ans.text);
     if (got.error) { repair = repair.length ? repair : [{ phrase: { bass: "", melody: "" }, errors: [{ reason: got.error }] }]; failed = repair; continue; }
     const next = [];
@@ -322,14 +324,24 @@ export async function continueWith(sample, tree, at, { k = 3, request = "", trie
 /** The frequency of a note's name in a key. */
 export function hzOf(key, name) { const K = keyOf(key), c = codeOf(K, split([name])[0]); return K.hz(codeDegree(c), codeAlter(c)); }
 
-/** The engine's melody for a bass under a point (no Claude): the phrase written by the soft rules, or null. */
-export function engineMelody(tree, at, bass, { cadence = "authentic", keys = "", temp = 0.5, r = Math.random } = {}) {
+/** The engine's melody for a bass under a point (no Claude): the phrase written by the soft rules, or null; start: its
+ *  first notes given (names, a unit each), or null where they break a rule. */
+export function engineMelody(tree, at, bass, { cadence = "authentic", keys = "", start = [], temp = 0.5, r = Math.random } = {}) {
   const K = keyOf(tree.key), prev = tree.nodes[at].phrase;
   const pn = bassNotes(prev, tree.key).notes, pm = split(prev.melody).map((x) => codeOf(K, x));
   const p = bassNotes({ bass, keys }, tree.key);
   if (p.error) throw new Error(p.error);
   const F = figuring({ bass: [...pn, ...p.notes], key: K, per: PER, ending: endingOf(cadence), line: LINE, lo: tree.range.lo, hi: tree.range.hi, ro: true });
   const U0 = [...pm, ...Array(PER - 1).fill(pm[pm.length - 1])];
+  // (start: the phrase's first notes given, a unit each — Study 60's motive transformed —, each held to the rules)
+  for (const nm of split(start)) {
+    let c;
+    try { c = codeOf(K, nm); } catch (e) { return null; }
+    if (U0.length >= F.n || F.voice.check(U0, U0.length, c)) return null;
+    U0.push(c);
+  }
+  const given = pm.length + PER - 1;
   const U = F.engine({ temp, r }, U0);
+  if (U) U0.length = given;
   return U ? U.slice(U0.length).map((c) => F.name(c).replace("♯", "#").replace("♭", "b")).join(" ") : null;
 }
