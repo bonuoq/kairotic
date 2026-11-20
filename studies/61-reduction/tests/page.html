@@ -30,7 +30,7 @@ await (async function () {
     is("… the first step: the passing B4", /B4 a step between two notes a 3rd apart/.test($("steps").children[0].textContent));
     is("… the derivation, in the proto-voice names", /PassingMid/.test($("deriv").textContent) && /spread/.test($("deriv").textContent));
 
-    click(document.querySelectorAll("#levels .lv")[2]);
+    click(document.querySelector(`#levels .lv[data-k="2"]`));
     is("a level chosen by a click (L2): its facts", S().state().k === 2 && /^L2:/.test($("level-facts").textContent));
     click($("vary"));
     is("varied from L2: a melody of 9 units, the notes kept marked, passing the rules", S().state().variation && S().state().variation.split(" ").length === 9 && document.querySelectorAll("#var-mel span.kept").length > 0 && /passes the rules/.test($("var-facts").textContent));
