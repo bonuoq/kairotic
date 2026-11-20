@@ -216,6 +216,19 @@ export async function analysis(page, check) {
    (let [[_ [_ tk]] (first (filter (fn [[o]] (= o 3)) outs))] (into (sorted-map) (map (fn [[k v]] [k (first v)])) (:when tk)))])`);
   check("follow: the beats where the performer is, the wire reached, and the take (onsets from the start)",
         followed === '[[0 1 2 3] [:swell] {"n0" 0, "n1" 1, "n2" 2, "n3" 3}]', followed);
+  // what each note sounded like (discussion #308): follow rms chroma has an inlet for each; their means while a note
+  // of the tree sounded go into the take, as its :profile
+  const prof = await cljs(page, `(let [rcv (:receive (comp/lookup "follow")) args [:rms :chroma]
+      step (fn [[st outs] m] (let [r (rcv (assoc m :state st :args args))] [(if (contains? r :state) (:state r) st) (into outs (:out r))]))
+      tr [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 e4 g4 c5"]]
+      msgs [[2 tr 0] [0 :start 0] [0 261.63 0.1] [3 0.2 0.2] [3 0.4 0.3] [4 [1 0 0] 0.25] [4 [0 1 0] 0.35] [0 0 0.9]
+            [3 0.9 1.0] [0 329.63 1.1] [3 0.6 1.2] [0 0 1.9] [0 :stop 2]]
+      [_ outs] (reduce (fn [acc [i v at]] (step acc {:inlet i :value v :at at})) [nil []] msgs)
+      [_ [_ tk]] (first (filter (fn [[o]] (= o 3)) outs))]
+  (into (sorted-map) (:profile tk)))`);
+  check("follow rms chroma: the take keeps what each note sounded like (means while it sounded; nothing in silence)",
+        prof === '{"n0" {:rms 0.3, :chroma [0.5 0.5 0]}, "n1" {:rms 0.6}}', prof);
+  check("follow rms chroma has an inlet for each", (await cljs(page, `(comp/io {:text "follow 4 rms chroma"})`)) === "[5 4]");
   // an elastic wire (discussion #217) whose note does not come: the box asks to look again when it is due, and then
   // sends it; one led by the electronics, at its own time even if the performer is early
   const elastic = await cljs(page, `(let [rcv (:receive (comp/lookup "follow")) args {:ahead 4 :band 0.6}
