@@ -1,0 +1,398 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 61 · Reduction</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the phrase (a bass and a melody); the levels (the analysis: the surface at the bottom, the
+   frame at the top, a slice a cell on the units' grid); the steps (how each level comes from the one below); varying
+   from a level (the notes kept, the ones written again, played); about. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f; --warn: #a86a00;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button.act.on { border-color: var(--accent); background: var(--accent-soft); }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 5.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.err { color: var(--error); font-size: 12px; }
+textarea.src { width: 100%; min-height: 11em; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; tab-size: 2; white-space: pre; }
+.scroll { overflow-x: auto; }
+
+input.line { width: 100%; font: 13px var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px 8px; }
+textarea.req { width: 100%; min-height: 2.6em; resize: vertical; font: 13px/1.5 var(--f-ui); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 7px 9px; }
+label.stack { display: grid; gap: 3px; font-size: 12px; color: var(--ink-soft); }
+.answer { font-size: 13px; line-height: 1.55; white-space: pre-wrap; max-height: 14em; overflow: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; margin: 0; }
+.answer:empty { display: none; }
+ul.fails { margin: 0; padding-left: 18px; font: 12px/1.5 var(--f-code); color: var(--ink-soft); }
+ul.fails:empty { display: none; }
+ul.fails b { color: var(--error); font-weight: 500; }
+svg.tree { display: block; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+svg.tree .node rect { fill: var(--box); stroke: var(--ink-soft); stroke-width: 1.2; stroke-dasharray: 4 3; }
+svg.tree .node.chosen rect { stroke: var(--ink); stroke-dasharray: none; }
+svg.tree .node.root rect { stroke: var(--kairos); stroke-width: 1.8; }
+svg.tree .node.on rect { stroke-width: 2; }
+svg.tree .node.sel rect { fill: var(--accent-soft); stroke: var(--accent); }
+svg.tree .node { cursor: pointer; }
+svg.tree .node text { font: 12px var(--f-code); fill: var(--ink); }
+svg.tree .node text.sub { font-size: 10px; fill: var(--ink-soft); }
+svg.tree .edge { fill: none; stroke: var(--rule); stroke-width: 1.4; }
+svg.tree .edge.chosen { stroke: var(--ink-soft); }
+svg.tree .edge.on { stroke: var(--accent); stroke-width: 2; }
+.score { background: #fff; border: 1px solid var(--grid); border-radius: 4px; padding: 6px; overflow-x: auto; min-height: 60px; }
+.score svg { max-width: 100%; height: auto; }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+dl.point { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; font-size: 13px; }
+dl.point dt { color: var(--ink-soft); font-size: 12px; }
+dl.point dd { margin: 0; font-family: var(--f-code); font-size: 12px; overflow-wrap: anywhere; }
+
+/* the levels: a row a level, a slice a cell spanning its units */
+.levels { display: grid; gap: 3px; font: 12px var(--f-code); }
+.lv { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 6px; align-items: stretch; cursor: pointer; }
+.lv .lab { display: flex; align-items: center; gap: 4px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.lv .lab .ok { color: var(--ok); } .lv .lab .no { color: var(--error); } .lv .lab .fr { color: var(--ink-soft); }
+.lv .cells { display: grid; gap: 2px; }
+.lv .cell { background: var(--sheet); border: 1px solid var(--grid); border-radius: 3px; padding: 2px 4px; display: flex; flex-direction: column-reverse; justify-content: flex-end; line-height: 1.3; min-height: 2.9em; overflow: hidden; }
+.lv .cell .m { color: var(--ink); } .lv .cell .b { color: var(--ink-soft); }
+.lv .cell.spread { border-style: dashed; }
+.lv .cell.next { border-color: var(--kairos); box-shadow: inset 0 0 0 1px var(--kairos); }
+.lv.sel .cell { background: var(--accent-soft); border-color: var(--accent); }
+.lv.sel .lab { color: var(--accent); font-weight: 600; }
+.grid-units { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 6px; font: 11px var(--f-code); color: var(--ink-soft); }
+.grid-units .cells { display: grid; gap: 2px; text-align: center; }
+ol.steps { margin: 0; padding-left: 22px; font: 12px/1.55 var(--f-code); color: var(--ink-soft); }
+ol.steps li { cursor: pointer; }
+ol.steps li.sel { color: var(--ink); }
+ol.steps li b { color: var(--ink); font-weight: 500; }
+.mel { font: 13px/1.8 var(--f-code); display: flex; flex-wrap: wrap; gap: 4px; }
+.mel span { padding: 1px 5px; border-radius: 3px; border: 1px solid var(--grid); background: var(--sheet); }
+.mel span.kept { border-color: var(--ink-soft); color: var(--ink); }
+.mel span.new { border-color: var(--kairos); color: var(--kairos); }
+</style>
+<main>
+<header>
+  <h1>Study 61 · reduction</h1>
+  <span class="sub">A phrase analysed into levels by one grammar read both ways (proto-voices, GTTM, the soft and hard rules of every engine), and varied from any level</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<section class="panel" aria-labelledby="h-phrase">
+  <h2 id="h-phrase">The phrase <span>a bass, a note a bar; a melody over it, a note a half bar (a note held written again)</span></h2>
+  <div class="row">
+    <label class="inline" for="ex">Phrase <select id="ex"></select></label>
+    <label class="inline" for="tonic">Key <select id="tonic">
+      <option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>A</option><option>B</option><option>Bb</option><option>Eb</option>
+    </select></label>
+    <select id="mode" aria-label="Mode"><option value="major">major</option><option value="minor">minor</option></select>
+    <label class="inline" for="cad">Cadence <select id="cad"><option value="perfect">perfect</option><option value="imperfect">imperfect</option><option value="authentic">perfect or imperfect</option><option value="half">half</option><option value="deceptive">deceptive</option></select></label>
+  </div>
+  <label class="stack" for="bass">Bass<input class="line" id="bass" spellcheck="false"></label>
+  <label class="stack" for="mel">Melody<input class="line" id="mel" spellcheck="false"></label>
+  <div class="row">
+    <label class="inline" for="temp" title="0: always the cheapest step; warmer, another reading">Reading <input type="number" id="temp" min="0" max="3" step="0.25" value="0"></label>
+    <button class="act primary" id="analyse">Analyse</button>
+    <button class="act" id="again" title="Another draw at this temperature">Another reading</button>
+    <span class="facts" id="facts">—</span>
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-levels">
+  <h2 id="h-levels">The levels <span>the surface below, the frame above · a slice a cell, dashed: a sonority spread · click a level</span></h2>
+  <div class="scroll"><div class="levels" id="levels"></div></div>
+  <div class="row">
+    <button class="act" id="play-level">▶ This level</button>
+    <button class="act" id="halt">■ Stop</button>
+    <span class="facts" id="level-facts">—</span>
+  </div>
+</section>
+
+<section class="panel" aria-labelledby="h-steps">
+  <h2 id="h-steps">The steps <span>each level from the one below it: what was taken away, and why (its cost by part; how many steps were possible)</span></h2>
+  <ol class="steps" id="steps"></ol>
+  <p class="facts" id="deriv">—</p>
+</section>
+
+<section class="panel" aria-labelledby="h-vary">
+  <h2 id="h-vary">Vary from the level chosen <span>its notes kept where they are, the rest written again by the engine, under the same rules</span></h2>
+  <div class="row">
+    <label class="inline" for="vtemp">Temperature <input type="number" id="vtemp" min="0" max="3" step="0.1" value="0.6"></label>
+    <label class="inline" for="novelty" title="What a note the surface had costs more">Novelty <input type="number" id="novelty" min="0" max="5" step="0.5" value="1.5"></label>
+    <button class="act primary" id="vary">Vary</button>
+    <button class="act" id="play-orig">▶ The phrase</button>
+    <button class="act" id="play-var">▶ The variation</button>
+    <button class="act" id="take">Take it as the phrase</button>
+  </div>
+  <div class="mel" id="var-mel"></div>
+  <p class="facts" id="var-facts">—</p>
+</section>
+
+<section class="panel" aria-labelledby="h-about">
+  <h2 id="h-about">About <span>discussion <a href="https://github.com/bonuoq/kairotic/discussions/321">#321</a></span></h2>
+  <p class="about">An analysis is the <em>perpendicular</em> of the history: the history runs along the time of composing; an analysis goes down, at one point of it, through the levels of what a phrase prolongs. Here a phrase is reduced a step at a time, each step one of the proto-voice model's operations read backwards (Finkensiep &amp; Rohrmeier, ISMIR 2021; <a href="https://github.com/DCMLab/protovoices-haskell">DCMLab/protovoices-haskell</a>): an <em>unsplit</em> takes away a slice whose notes are all ornaments of the notes around them (a note held, struck again, a neighbour, a passing tone, an incomplete neighbour), an <em>unspread</em> hears two slices as one sonority. Read forwards, the steps are the derivation that composes the phrase from its frame.</p>
+  <p class="about">Which step is taken is one policy: the ornaments' own cost, GTTM's metrical weight (a slice on a strong unit is dearer to take away) and its cadential retention (the frame keeps the first slice and the cadence), dissonance (a dissonant slice goes first), the soft rules of every engine (<code>soft.mjs</code>: how the melody left moves), and the hard rules of every phrase (<code>partimento.mjs</code>, through Study 58's check): a step that makes the level refuse itself around it is taken only when no other is left. A level below the surface is checked note against note, a slice a unit.</p>
+  <ul class="q">
+    <li>Varying from a level keeps the melody's notes that survive there (on their units, held as long) and writes the others again with the engine of Studies 56–60; the deeper the level, the less is kept. From the surface nothing changes; from the frame almost everything does.</li>
+    <li>An analysis is an interpretation: warmer readings take other steps, as an analyst might.</li>
+    <li>What comes next (#321): the levels drawn as a score with the proto-voice edges, exchange with DCMLab's annotation tool, the analysis kept in the work, and the futuribles taking its open obligations.</li>
+  </ul>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
+// is read first, as window.kairoticReduction ({R: reduction.mjs, PV: protovoices.mjs, I: incipit.mjs}).
+window.kairoticBase = window.kairoticBase || "kairotic/";
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  var b = "./" + window.kairoticBase;
+  Promise.all([import(b + "reduction.mjs"), import(b + "protovoices.mjs"), import(b + "incipit.mjs")]).then(function (ms) {
+    window.kairoticReduction = { R: ms[0], PV: ms[1], I: ms[2] };
+    try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns reduction-page (:require [clojure.string :as str]))
+
+;; Kairotic · Study 61 · reduction: the page. The kernel (kairotic/reduction.mjs on protovoices.mjs) analyses the
+;; phrase and varies it; this page keeps the state, draws the levels, the steps and the variation, and plays them.
+
+(def K (.-kairoticReduction js/window))
+(def R (.-R K))
+(def PV (.-PV K))
+(def I (.-I K))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
+(defn status! [s] (set! (.-textContent ($ "status")) s))
+(defn msg [e] (or (.-message e) (str e)))
+(defn val! [id] (str/trim (.-value ($ id))))
+(defn num! [id d] (let [x (js/parseFloat (.-value ($ id)))] (if (js/isNaN x) d x)))
+(defn text! [id s] (set! (.-textContent ($ id)) s))
+(defn html! [id s] (set! (.-innerHTML ($ id)) s))
+
+;; ───────── state ─────────
+;; :an the analysis (JS, reduction.mjs), :k the level chosen, :var the last variation (JS)
+(defonce st (atom {:an nil :k 0 :var nil}))
+
+(defn the-key [] #js {:tonic (.-value ($ "tonic")) :mode (.-value ($ "mode"))})
+(defn the-phrase [] #js {:bass (val! "bass") :melody (val! "mel") :cadence (.-value ($ "cad"))})
+
+;; ───────── the presets ─────────
+(def presets (js->clj (.-INCIPITS I)))
+(doseq [[id x] presets]
+  (let [o (js/document.createElement "option")]
+    (set! (.-value o) id) (set! (.-textContent o) (get x "name"))
+    (.appendChild ($ "ex") o)))
+(defn load-preset! []
+  (let [x (get presets (.-value ($ "ex"))) k (get x "key") p (get x "phrase")]
+    (set! (.-value ($ "tonic")) (get k "tonic"))
+    (set! (.-value ($ "mode")) (or (get k "mode") "major"))
+    (set! (.-value ($ "cad")) (get p "cadence"))
+    (set! (.-value ($ "bass")) (get p "bass"))
+    (set! (.-value ($ "mel")) (get p "melody"))))
+
+;; ───────── drawing ─────────
+(declare render!)
+(defn cell-html [s units-n next?]
+  (let [on (.-on s) end (.-end s)
+        ns (reverse (array-seq (.-notes s)))]
+    (str "<div class=\"cell" (when (.-spread s) " spread") (when next? " next") "\" style=\"grid-column:" (inc on) " / " (inc end) "\""
+         " title=\"units " (inc on) "–" end "\">"
+         (str/join "" (map (fn [n] (str "<span class=\"" (if (= "b" (.-voice n)) "b" "m") "\">" (esc (.-pitch n))
+                                         (when-not (.-start n) "⁀") "</span>")) (reverse ns)))
+         "</div>")))
+
+(defn check-mark [an k]
+  (let [c (.checkLevel R an k)]
+    (cond (.-short c) "<span class=\"fr\" title=\"the frame: fewer slices than a phrase asks\">·</span>"
+          (.-ok c) "<span class=\"ok\" title=\"passes the hard rules\">✓</span>"
+          :else (str "<span class=\"no\" title=\"" (esc (str/join "; " (map #(.-reason %) (.-errors c)))) "\">✗</span>"))))
+
+(defn draw-levels! []
+  (let [{:keys [an k]} @st
+        n (.-units an) levels (.-levels an) steps (.-steps an) cols (str "repeat(" n ", minmax(3.4em, 1fr))")]
+    (html! "levels"
+           (str (str/join ""
+                          (for [j (reverse (range (count levels)))]
+                            (let [L (aget levels j)
+                                  ;; the slice the next step up takes away or spreads, marked
+                                  nx (when (< j (count steps)) (.-on (aget steps j)))]
+                              (str "<div class=\"lv" (when (= j k) " sel") "\" data-k=\"" j "\">"
+                                   "<div class=\"lab\">L" j " " (check-mark an j) "</div>"
+                                   "<div class=\"cells\" style=\"grid-template-columns:" cols "\">"
+                                   (str/join "" (map (fn [s] (cell-html s n (= (.-on s) nx))) (array-seq L)))
+                                   "</div></div>"))))
+                "<div class=\"grid-units\"><div></div><div class=\"cells\" style=\"grid-template-columns:" cols "\">"
+                (str/join "" (for [u (range n)] (str "<span>" (inc u) (if (even? u) "" "·") "</span>")))
+                "</div></div>"))
+    (doseq [el (array-seq (.querySelectorAll ($ "levels") ".lv"))]
+      (.addEventListener el "click" (fn [_] (swap! st assoc :k (js/parseInt (.. el -dataset -k))) (render!))))))
+
+(defn draw-steps! []
+  (let [{:keys [an k]} @st steps (.-steps an)]
+    (html! "steps"
+           (str/join "" (for [j (range (count steps))]
+                          (let [s (aget steps j) parts (js->clj (.-parts s))]
+                            (str "<li data-k=\"" (inc j) "\"" (when (= (inc j) k) " class=\"sel\"") ">"
+                                 "<b>L" j " → L" (inc j) "</b> " (esc (.describe R s))
+                                 " · cost " (.toFixed (.-cost s) 2)
+                                 " (" (str/join ", " (for [[p v] parts] (str p " " (.toFixed v 2)))) ")"
+                                 " · " (.-among s) " possible</li>")))))
+    (doseq [el (array-seq (.querySelectorAll ($ "steps") "li"))]
+      (.addEventListener el "click" (fn [_] (swap! st assoc :k (js/parseInt (.. el -dataset -k))) (render!))))
+    (let [d (.derivation R an)]
+      (text! "deriv" (str "The derivation, from the frame to the surface: "
+                          (str/join " → " (for [x (array-seq d)]
+                                            (if (= "split" (.-op x))
+                                              (str "split (" (str/join ", " (map #(str (.-pitch %) " " (.-pv %)) (array-seq (.-notes x)))) ")")
+                                              "spread"))))))))
+
+(defn level-facts! []
+  (let [{:keys [an k]} @st c (.checkLevel R an k) p (.phraseAt R an k)]
+    (text! "level-facts"
+           (str "L" k ": " (count (aget (.-levels an) k)) " slices · melody on the grid " (.-melody p)
+                " · " (cond (.-short c) "the frame"
+                            (.-ok c) "passes the hard rules"
+                            :else (str "refused: " (str/join "; " (map #(str (.-at %) ": " (.-reason %)) (.-errors c)))))))))
+
+(defn draw-var! []
+  (let [{:keys [an k var]} @st]
+    (if-not var
+      (do (html! "var-mel" "") (text! "var-facts" (str "Varying from L" k ": " (if (zero? k) "the surface (nothing changes)" "its notes kept, the rest written again"))))
+      (let [names (str/split (.-melody var) #" ") kept (set (array-seq (.-kept var))) changed (set (array-seq (.-changed var)))
+            c (.check I nil (js/Object.assign #js {} (.-phrase an) #js {:melody (.-melody var)}) #js {:key (.-key an) :range (.rangeOf I (.-phrase an) (.-key an))})]
+        (html! "var-mel" (str/join "" (map-indexed (fn [t nm] (str "<span class=\"" (cond (kept t) "kept" (changed t) "new" :else "") "\" title=\"unit " (inc t) "\">" (esc nm) "</span>")) names)))
+        (text! "var-facts" (str "From L" (:vk @st) ": " (count kept) " units kept, " (count changed) " written anew · "
+                                (if (.-ok c) (str "passes the rules, soft cost " (.-cost c) " a unit") "refused")))))))
+
+(defn render! []
+  (when (:an @st)
+    (draw-levels!) (draw-steps!) (level-facts!) (draw-var!)))
+
+;; ───────── analysing ─────────
+(defn analyse! [r]
+  (try
+    (let [key (the-key) phrase (the-phrase)
+          c (.check I nil phrase #js {:key key :range (.rangeOf I phrase key)})]
+      (if-not (.-ok c)
+        (text! "facts" (str "It does not pass the rules of a phrase: " (str/join "; " (map #(str (or (.-at %) "") " " (.-reason %)) (.-errors c)))))
+        (let [an (.reduce R phrase #js {:key key :temp (num! "temp" 0) :r (or r js/Math.random)})]
+          (reset! st {:an an :k (dec (count (.-levels an))) :var nil})
+          (text! "facts" (str (count (.-notes an)) " notes, " (count (aget (.-levels an) 0)) " slices · "
+                              (count (.-steps an)) " steps to a frame of " (count (aget (.-levels an) (dec (count (.-levels an))))) " slices"))
+          (render!))))
+    (catch :default e (text! "facts" (str "Error: " (msg e))))))
+
+;; ───────── varying ─────────
+(defn vary! [r]
+  (when-let [{:keys [an k]} (and (:an @st) @st)]
+    (let [v (.vary R an k #js {:temp (num! "vtemp" 0.6) :novelty (num! "novelty" 1.5) :r (or r js/Math.random)})]
+      (if v
+        (swap! st assoc :var v :vk k)
+        (do (swap! st assoc :var nil) (text! "var-facts" "Nothing could be written under these notes kept: try another level.")))
+      (draw-var!))))
+
+;; ───────── sound ─────────
+(defonce ac (atom nil))
+(defonce playing (atom []))
+(defn halt! [] (doseq [o @playing] (try (.stop o) (catch :default _ nil))) (reset! playing []))
+(defn hz [name] (* 440 (js/Math.pow 2 (/ (- (.midiOf PV name) 69) 12))))
+(defn tone! [c f s e g0]
+  (let [o (.createOscillator c) g (.createGain c)]
+    (set! (.-type o) "triangle") (set! (.. o -frequency -value) f)
+    (.setValueAtTime (.-gain g) 0 s) (.linearRampToValueAtTime (.-gain g) g0 (+ s 0.02)) (.setTargetAtTime (.-gain g) 0 (- e 0.05) 0.03)
+    (.connect (.connect o g) (.-destination c)) (.start o s) (.stop o (+ e 0.3))
+    (swap! playing conj o)))
+(defn play-lines! [bass melody per]
+  (halt!)
+  (try
+    (let [c (or @ac (reset! ac (js/AudioContext.))) unit 0.42 t0 (+ (.-currentTime c) 0.1)
+          mel (vec (str/split melody #" ")) bas (vec (mapcat (fn [b] (repeat per b)) (str/split bass #" ")))]
+      (doseq [[v g] [[mel 0.09] [(subvec bas 0 (min (count bas) (count mel))) 0.12]]]
+        (let [n (count v)]
+          (loop [t 0]
+            (when (< t n)
+              (let [e (loop [e (inc t)] (if (and (< e n) (= (v e) (v t))) (recur (inc e)) e))]
+                (tone! c (hz (v t)) (+ t0 (* t unit)) (+ t0 (* (if (= e n) (inc e) e) unit)) g)
+                (recur e)))))))
+    (catch :default e (status! (str "No sound: " (msg e))))))
+(defn play-level! []
+  (when-let [{:keys [an k]} (and (:an @st) @st)]
+    (let [p (.phraseAt R an k)] (play-lines! (.-bass p) (.-melody p) (.-per an)))))
+
+;; ───────── wiring ─────────
+(.addEventListener ($ "ex") "change" (fn [_] (load-preset!) (analyse! nil)))
+(.addEventListener ($ "analyse") "click" (fn [_] (analyse! nil)))
+(.addEventListener ($ "again") "click" (fn [_] (when (zero? (num! "temp" 0)) (set! (.-value ($ "temp")) "1")) (analyse! nil)))
+(.addEventListener ($ "play-level") "click" (fn [_] (play-level!)))
+(.addEventListener ($ "halt") "click" (fn [_] (halt!)))
+(.addEventListener ($ "vary") "click" (fn [_] (vary! nil)))
+(.addEventListener ($ "play-orig") "click" (fn [_] (when-let [an (:an @st)] (play-lines! (.. an -phrase -bass) (.. an -phrase -melody) (.-per an)))))
+(.addEventListener ($ "play-var") "click" (fn [_] (when-let [v (:var @st)] (let [an (:an @st)] (play-lines! (.. an -phrase -bass) (.-melody v) (.-per an))))))
+(.addEventListener ($ "take") "click" (fn [_] (when-let [v (:var @st)] (set! (.-value ($ "mel")) (.-melody v)) (analyse! nil))))
+
+(load-preset!)
+(analyse! nil)
+(status! "Ready")
+
+;; for the tests (tests/page.html)
+(set! (.-kairoticStudy js/window)
+      #js {:state (fn [] (let [{:keys [an k var]} @st]
+                           #js {:levels (when an (count (.-levels an))) :k k :variation (when var (.-melody var))
+                                :rows (count (array-seq (.querySelectorAll ($ "levels") ".lv")))
+                                :steps (count (array-seq (.querySelectorAll ($ "steps") "li")))}))
+           :analyse analyse! :vary vary!
+           :select (fn [k] (swap! st assoc :k k) (render!))})
+</script>
