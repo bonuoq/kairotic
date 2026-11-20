@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// Kairotic · Study 61 · four: harmony in four parts (Job IJzerman, Harmony, Counterpoint, Partimento, OUP 2018,
+// Kairotic · Study 62 · four: harmony in four parts (Job IJzerman, Harmony, Counterpoint, Partimento, OUP 2018,
 // chapter 6), on @kairotic/cac's partimento.mjs (its copy beside this file): four() and its rules.
 //
 //   the voices     soprano, alto and tenor over the given bass: the outer voices in counterpoint, the inner ones

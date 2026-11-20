@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Study 61 · four: harmony in four parts** (IJzerman, chapter 6; `@kairotic/cac` 0.5.0). `partimento.mjs` has
+- **Study 62 · four: harmony in four parts** (IJzerman, chapter 6; `@kairotic/cac` 0.5.0). `partimento.mjs` has
   `four()`: soprano, alto and tenor over a given bass, counted exactly and written by the engine. The inner voices fill
   the chords (a common tone held long, no turning after a leap); no crossing, an octave at most between neighbours, no
   parallels between any two voices; the bass doubled as a rule, never the leading tone, a dissonance or a chord's 7th;

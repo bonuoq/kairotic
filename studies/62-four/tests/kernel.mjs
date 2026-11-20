@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
-// Study 61 · four: the kernel's tests. In the browser (tests/kernel.html) and in Node:
-//   node -e 'import("./studies/61-four/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
+// Study 62 · four: the kernel's tests. In the browser (tests/kernel.html) and in Node:
+//   node -e 'import("./studies/62-four/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import { fourParts, PHRASES } from "../kairotic/four.mjs";
 import { CHORDS4, RULE_OF_THE_OCTAVE4, octaveChord4 } from "../kairotic/partimento.mjs";
 
