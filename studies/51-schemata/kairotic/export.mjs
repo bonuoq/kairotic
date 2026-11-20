@@ -9,8 +9,9 @@
 //               the app writes one (kairotic.mt) — its name (or the nearest, spelled for the key), a quarter-tone
 //               accidental where it is half-way (± 8 cents) — and its exact Hz kept for it in the extMeta, by the
 //               xml:id of its first written note, as kairotic.mei reads it: the app plays it at that pitch
-//   time        a unit is 1/unitDen of a whole note (2: a half note, 4: a quarter); unitsPerBar a bar; pickup
-//               units before the first bar line (an upbeat); notes are cut at the bar lines and tied
+//   time        a unit is 1/unitDen of a whole note (2: a half note, 4: a quarter; 6: a third of a half note, in
+//               tuplets); unitsPerBar a bar; pickup units before the first bar line (an upbeat); notes are cut at
+//               the bar lines and tied
 //   spelling    the key's signature; an accidental written where the bar has not already said it, a natural where
 //               the bar or the signature said otherwise (the app reads accidentals for their bar)
 //   marks       text over a staff (a key reached, a phrase's plan), and figures under the bass (<harm><fb>)
@@ -129,34 +130,49 @@ export function exportMei(spec) {
   for (let s = 0, first = true; s < total; first = false) { const len = first && pickup ? pickup : unitsPerBar; bars.push([s, Math.min(total, s + len), first && pickup > 0]); s += len; }
   const barOf = (u) => bars.findIndex(([a, b]) => u >= a && u < b);
   const noteExt = {};
+  // a unit that is not a binary fraction of a whole note (unitDen 6: a third of a half note) is written in tuplets:
+  // f (the odd part of unitDen) in the time of nb (the power of two below it), a bar's notes in one tuplet — unless
+  // all of that bar's notes in a voice fall on whole groups of f units, which are binary, and written plainly
+  const odd = (() => { let x = unitDen; while (x % 2 === 0) x /= 2; return x; })();
+  const nb = (() => { let x = 1; while (x * 2 < odd) x *= 2; return x; })();
   const staffXml = voices.map((v, vi) => {
-    const layer = bars.map(() => []);
-    const carried = bars.map(() => ({})); // what the bar has said for each letter and octave
-    let nid = 0, at = 0;
+    const segs = bars.map(() => []);
+    // the notes cut at the bar lines: {w (written pitch, or null: a rest), len (units), first, last (of its note)}
+    let at = 0;
     for (const n of v.notes) {
       let left = n.units, s = at, first = true;
       const w = n.name || typeof n.midi === "number" ? writtenOf(n, fifths) : null;
       while (left > 0) {
-        const bi = barOf(s), end = Math.min(s + left, bars[bi][1]), len = end - s, last = end === at + n.units;
-        const ps = pieces(len / unitDen);
-        ps.forEach(([, dur, dots], k) => {
-          const tie = !w ? "" : first && last && ps.length === 1 ? "" : first && k === 0 ? "i" : last && k === ps.length - 1 ? "t" : "m";
-          const id = `v${vi + 1}${w ? "n" : "r"}${++nid}`;
-          if (!w) { layer[bi].push(`<rest xml:id="${id}" dur="${dur}"${dots ? ` dots="${dots}"` : ""}/>`); return; }
-          const { L, oct, alt } = w;
-          // (a pitch off the written one: its Hz for the app, by the id of its first written note)
-          if (w.hz && first && k === 0) noteExt[id] = { hz: w.hz };
-          const said = carried[bi][L + oct] ?? (sig[L] || 0);
-          // an accidental where the bar or the signature says another; else only as sounding (accid.ges)
-          const acc = alt === said ? (alt ? ` accid.ges="${ACC[alt]}"` : "") : ` accid="${ACC[alt]}"`;
-          carried[bi][L + oct] = alt;
-          layer[bi].push(`<note xml:id="${id}" pname="${L.toLowerCase()}" oct="${oct}" dur="${dur}"${dots ? ` dots="${dots}"` : ""}${acc}${tie ? ` tie="${tie}"` : ""}/>`);
-        });
+        const bi = barOf(s), end = Math.min(s + left, bars[bi][1]), len = end - s;
+        segs[bi].push({ w, len, first, last: end === at + n.units });
         left -= len; s = end; first = false;
       }
       at += n.units;
     }
-    return layer;
+    let nid = 0;
+    return segs.map((list, bi) => {
+      const carried = {}; // what the bar has said for each letter and octave
+      const tuplet = odd > 1 && list.some((x) => x.len % odd !== 0);
+      const scale = tuplet ? odd / (nb * unitDen) : 1 / unitDen;
+      const out = [];
+      for (const { w, len, first, last } of list) {
+        const ps = pieces(len * scale);
+        ps.forEach(([, dur, dots], k) => {
+          const tie = !w ? "" : first && last && ps.length === 1 ? "" : first && k === 0 ? "i" : last && k === ps.length - 1 ? "t" : "m";
+          const id = `v${vi + 1}${w ? "n" : "r"}${++nid}`;
+          if (!w) { out.push(`<rest xml:id="${id}" dur="${dur}"${dots ? ` dots="${dots}"` : ""}/>`); return; }
+          const { L, oct, alt } = w;
+          // (a pitch off the written one: its Hz for the app, by the id of its first written note)
+          if (w.hz && first && k === 0) noteExt[id] = { hz: w.hz };
+          const said = carried[L + oct] ?? (sig[L] || 0);
+          // an accidental where the bar or the signature says another; else only as sounding (accid.ges)
+          const acc = alt === said ? (alt ? ` accid.ges="${ACC[alt]}"` : "") : ` accid="${ACC[alt]}"`;
+          carried[L + oct] = alt;
+          out.push(`<note xml:id="${id}" pname="${L.toLowerCase()}" oct="${oct}" dur="${dur}"${dots ? ` dots="${dots}"` : ""}${acc}${tie ? ` tie="${tie}"` : ""}/>`);
+        });
+      }
+      return tuplet && out.length ? [`<tuplet xml:id="v${vi + 1}t${bi}" num="${odd}" numbase="${nb}" bracket.visible="true" num.visible="true">`, ...out, `</tuplet>`] : out;
+    });
   });
   const lowest = voices.length;
   const tstamp = (u, bi) => 1 + ((u - bars[bi][0]) / unitDen) * meter[1] * (bars[bi][2] ? 1 : 1);

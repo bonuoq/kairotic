@@ -49,6 +49,11 @@ try {
   w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
   d.getElementById("export").click();
   is("exported for the app: the crab's dux and comes, its speed and delay in the extMeta", await wait(() => saved.length === 1) && /\.mei\.txt$/.test(saved[0].filename) && /label="dux"/.test(saved[0].text) && /:speed "-1\/1"/.test(saved[0].text) && /:source "Kairotic Study 50 · lines"/.test(saved[0].text));
+  // a sesquialtera (3/2): the comes in thirds of a half note, written in tuplets
+  d.querySelector('[data-preset="sesquialtera"]').click();
+  await wait(() => d.getElementById("status").textContent === "ready" && !d.getElementById("export").disabled, 30000);
+  d.getElementById("export").click();
+  is("… a sesquialtera exported too: the comes's bars in tuplets 3:2", await wait(() => saved.length === 2) && /:speed "3\/2"/.test(saved[1].text) && /<tuplet xml:id="v\dt\d+" num="3" numbase="2"/.test(saved[1].text));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);

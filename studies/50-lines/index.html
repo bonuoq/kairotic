@@ -285,12 +285,11 @@ window.kairoticLines = { get L() { return L; }, get work() { return work; }, set
 setPreset("hemiola");
 
 // ─── the work as MEI, for the app (discussion #319): the dux and the comes, a dux note a half note ───
-// The lattice's unit is then a 2a-th of a whole note: written as such when a is a power of two; a lattice of thirds
-// (a hemiola, a sesquialtera) needs tuplets, not written yet.
+// The lattice's unit is then a 2a-th of a whole note: binary when a is a power of two; a lattice of thirds (a
+// sesquialtera, 3/2: a dux note 3 units, a comes note 2) is written in tuplets, 3 in the time of 2, where a bar needs them.
 function exportIt() {
   if (!work || !L) return;
   const a = L.a, n = L.n;
-  if ((a & (a - 1)) !== 0) { $("status").textContent = `a dux note of ${a} units needs tuplets: not written as MEI yet`; return; }
   const { D, C } = L.lines(work);
   let co = null; if (L.coda) for (let t = 0; t < n; t++) if (L.source(t) === L.m) { co = t; break; }
   // (each step with its exact pitch: a system off 12-TET is written as the app writes it, its Hz kept)
