@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 61: a suspension reduced as one** (discussion #321). The dissonance on the strong unit is the moment that
+  matters; what it delays is the consonance. A new operation, `unsuspend`: a note held over the beat, dissonant, going
+  down a step while the rest is held — reduced, its resolution sounds on the beat with the bass it was delayed from
+  (read forwards: `suspend`). The 7–6 chain's first pass brings its five resolutions onto their beats: parallel 6ths
+  on the strong units. A level below the surface is now checked on the phrase's own metrical grid (every rule but how
+  long a note may be held), so a strong unit stays strong.
 - **A note held is written as long as it lasts** (`@kairotic/cac` 0.5.1). Every engine reads the same note again
   as the note held; what the studies and the `comes` box write for a score now says so too: one note with its whole
   duration, tied only over the bar line, so a score draws the tie. The `comes` box's tree (outlet 4) merges the
