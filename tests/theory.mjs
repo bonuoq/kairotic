@@ -474,4 +474,26 @@ export async function theory(page, check) {
   check("vary: exactly 2 swaps from the son, as many onsets; the same seed the same draws (:reset), the next draw or another seed another; with depth 1 the downbeat kept and the four others drawn again off the strong pulses; downbeat keeps the first pulse",
         var_ === "[2 5 true true true [0] 1 5 0 true]", var_);
   await cljs(page, `(delete ${mo} ${va})`);
+  // phase: where a performer is in a cycle, from onsets on a pulse clock (#204)
+  const phb = (await cljs(page, '(box "phase" 10800 600)')).trim();
+  check("phase brings @kairotic/rhythm: three inlets (onsets, reference, clock), two outlets",
+        (await until(page, `(when (comp/lookup "phase") (io (get-in (current) [:boxes ${phb}])))`, (x) => x === "[3 2]", 20000)) === "[3 2]");
+  const phs = await cljs(page, `(let [d (comp/lookup "phase") son [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]
+                                      run (fn [start ticks off drop extra]
+                                            (let [msgs (concat [[1 son 0]]
+                                                               (sort-by (fn [[_ _ t]] t)
+                                                                        (mapcat (fn [i] (let [t (* 0.125 (inc i)) p (mod (+ start i) 16)
+                                                                                              on (or (contains? extra i) (and (= 1 (nth son p)) (not (contains? drop i))))]
+                                                                                          (concat [[2 :bang t]] (when on [[0 :bang (+ t off)]]))))
+                                                                                (range ticks))))]
+                                              (:phases (reduce (fn [acc [i m at]] (let [x ((:receive d) {:inlet i :value m :state (:s acc) :args {:min 0} :at at})]
+                                                                                   (cond-> (assoc acc :s (or (:state x) (:s acc)))
+                                                                                     (some (fn [[p _]] (= p 0)) (:out x)) (update :phases conj (some (fn [[p v]] (when (= p 0) v)) (:out x))))))
+                                                               {:s nil :phases []} msgs))))
+                                      ok (fn [start ticks ph] (let [n (count ph)] [(count ph) (= ph (mapv (fn [k] (mod (+ start (- ticks n) k) 16)) (range n)))]))]
+                                  [(ok 5 24 (run 5 24 -0.01 #{} #{})) (ok 5 24 (run 5 24 0.03 #{} #{}))
+                                   (ok 0 40 (run 0 40 0.03 (set (range 12 21)) #{})) (ok 3 40 (run 3 40 0.02 #{} #{20 25}))])`);
+  check("phase: the son clave clapped from its sixth pulse, early or late, is found after half a cycle and followed; nine pulses missing or two extra onsets do not throw it",
+        phs === "[[16 true] [16 true] [32 true] [32 true]]", phs);
+  await cljs(page, `(delete ${phb})`);
 }

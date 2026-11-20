@@ -981,6 +981,25 @@ Given a rhythm as pulses, it searches every rhythm of as many onsets among as ma
     :try "Click the son clave, then bang several times: on the left, variations two swaps away (swap prints 2 each time); on the right, the downbeat kept (level 0 and 1), the other onsets drawn again — the same skeleton, a new surface."
     :see ["morph" "swap" "chance" "necklace"]}
 
+   "phase"
+   {:package "@kairotic/rhythm" :usage "phase [min 0]"
+    :about "**Where a performer is in a cycle, from the onsets heard** (discussion #204). Before following a score, follow a timeline: a clave, a bell pattern, any rhythm that repeats. Musicians keep their place in a cycle this way, and it needs no pitch.
+
+**A pulse clock gives the grid** — a `metro` at the pulse, or the room's `pulse` — and the onsets (`onset~`'s bangs, or taps) fall on its nearest pulse. At each pulse the last pulses heard are compared with every rotation of the reference, by Toussaint's swap distance: the nearest says which pulse of the reference this one is — the **phase**. The pulse that has just begun is not judged, since its onset may come a moment late: the last whole pulse is found and this one is the next. Ties and near ties go to the phase the walk expects, so a few missing or extra onsets do not throw it.
+
+Into a `necklace`'s clock inlet the phase moves its hand there and plays it: the electronics stay in the performer's cycle. Times a pulse's beats, it is a `player`'s position."
+    :args [[:min "how many pulses must be heard before it says a phase (half the cycle by default)"]]
+    :doc "Where a performer is in a cycle (a timeline follower, onsets only): onsets on the left, the reference as pulses in the middle (cold), the pulse clock on the right; at each pulse, the phase — which pulse of the reference this one is."
+    :inlets ["onsets: a bang each (onset~, or taps) · :reset forgets what was heard" "the reference, as pulses (cold): a clave, a bell pattern, euclid's or a necklace's" "the pulse clock: a bang each pulse (a metro, the room's pulse)"]
+    :outlets ["the phase: the pulse of the reference this one is (for a necklace's clock inlet)" "{:phase :distance — 0: exactly the reference — :margin — how much nearer than the next guess; 0 ambiguous — :heard :window :n}"]
+    :example (lines "(box :b1 \"msg [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]\" 40 20)" "(box :b2 \"metro 125\" 360 20)" "(box :b3 \"adc~ 1\" 480 20)"
+                    "(box :b4 \"onset~\" 480 70)" "(box :b5 \"bang\" 600 70)" "(box :b6 \"phase\" 360 130)"
+                    "(box :b7 \"necklace\" 40 180)" "(box :b8 \"print phase\" 360 180)"
+                    "(connect :b1 0 :b6 1)" "(connect :b1 0 :b7 0)" "(connect :b2 0 :b6 2)" "(connect :b3 0 :b4 0)" "(connect :b4 0 :b6 0)" "(connect :b5 0 :b6 0)"
+                    "(connect :b6 0 :b7 2)" "(connect :b6 1 :b8 0)")
+    :try "Click the son clave (the reference), press ▶ — the metro is the pulse, a sixteenth at 120 —, and clap the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects. Stop for a moment and go on: it keeps walking."
+    :see ["necklace" "swap" "onset~" "follow"]}
+
    "comes"
    {:package "@kairotic/cac" :usage "comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [temp 0] [seed 1] [inverted] [fourth] [live] [nocues] [midi]"
     :about "**You play a line, the dux, and comes answers with a second voice, the comes, that reads it** — by the rules of 16th-century counterpoint. A note that breaks a rule, or from which the work could not be finished, is corrected to the nearest one that can be played, and the box says why.
