@@ -23,7 +23,9 @@ await (async function () {
     const asked = [];
     const answers = [K.answer("Three ways on.", [K.GOOD[0], K.BAD, K.GOOD[1]]), K.answer("Repaired.", [K.REPAIRED]), K.answer("To the dominant.", [K.MODULATING])];
     const sample = async (input, opts) => { asked.push(String(input)); const text = answers[Math.min(asked.length - 1, answers.length - 1)]; opts && opts.onText && opts.onText({ text, delta: text }); return { text, truncated: false }; };
-    window.claude = { use: async (name) => (name === "sample" ? sample : null) };
+    const saved = [];
+    const downloads = { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } };
+    window.claude = { use: async (name) => (name === "sample" ? sample : name === "downloads" ? downloads : null) };
     window.kairoticFresh = true;
 
     const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
@@ -90,6 +92,10 @@ await (async function () {
     click($("add"));
     is("a phrase by hand that breaks the rules: not added, said why", S().state().nodes === 6 && /does not pass/.test($("hand-facts").textContent));
 
+    // exported for the app: MEI, saved through the downloads capability as .mei.txt
+    $("exp-title").value = "My piece";
+    click($("export"));
+    is("exported for the app: my-piece.mei.txt, MEI with the phrases in its extMeta", await wait(() => saved.length === 1) && saved[0].filename === "my-piece.mei.txt" && (() => { const text = saved[0].text; return /<extMeta type="kairotic">/.test(text) && /:phrases \[\{:unit 1/.test(text) && /Study 58/.test(text); })() && /Saved my-piece\.mei\.txt/.test($("status").textContent));
     is("no error on the page", errors.length === 0);
   } catch (e) {
     is("the page ran: " + (e.message || e), false);

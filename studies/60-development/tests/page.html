@@ -25,7 +25,9 @@ await (async function () {
     const asked = [];
     const answers = [K.answer("Three ways on.", [BAD, K.INVERTED, K.HEAD]), K.answer("Repaired.", [K.HALF])];
     const sample = async (input, opts) => { asked.push(String(input)); const text = answers[Math.min(asked.length - 1, answers.length - 1)]; opts && opts.onText && opts.onText({ text, delta: text }); return { text, truncated: false }; };
-    window.claude = { use: async (name) => (name === "sample" ? sample : null) };
+    const saved = [];
+    const downloads = { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } };
+    window.claude = { use: async (name) => (name === "sample" ? sample : name === "downloads" ? downloads : null) };
     window.kairoticFresh = true;
 
     const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
@@ -72,6 +74,10 @@ await (async function () {
     click($("add"));
     is("… added under the point, measured with the derivation it said", await wait(() => S().state().nodes === 5) && S().state().tree.nodes[S().state().sel].dev.declared === $("hand-der").value && /derivation/.test($("point").textContent));
 
+    // exported for the app: MEI, saved through the downloads capability as .mei.txt
+    $("exp-title").value = "My piece";
+    click($("export"));
+    is("exported for the app: my-piece.mei.txt, MEI with the phrases in its extMeta", await wait(() => saved.length === 1) && saved[0].filename === "my-piece.mei.txt" && (() => { const text = saved[0].text; return /<extMeta type="kairotic">/.test(text) && /:form "period"/.test(text) && /:motives/.test(text); })() && /Saved my-piece\.mei\.txt/.test($("status").textContent));
     // the example made with Claude
     click($("example"));
     is("the example opened: 10 phrases, the way chosen to its last, measured", await wait(() => S().state().nodes === 10, 8000) && /Opened: A period in C/.test($("inc-facts").textContent) && /its tail/.test($("point").textContent) && document.querySelectorAll("#tree g.node.chosen").length === 4);

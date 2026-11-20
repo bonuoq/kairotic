@@ -76,6 +76,8 @@ export async function run() {
   is("the example rebuilt: 10 phrases, every one passing the rules, 4 chosen on its way", en.length === 10 && en.every((n) => n.check.ok) && D.pathTo(E, ex.sel).length === 4 && D.pathTo(E, ex.sel).every((n) => n.state === "chosen"));
   is("… Claude's derivations measured: 8 confirmed, and the one beginning with the tail found as such", en.filter((n) => /^confirmed/.test(n.dev.confirmed || "")).length === 8 && /its tail/.test(E.nodes[ex.sel].dev.confirmed));
   is("… its keys: C → G → F → C on the way chosen", D.pathTo(E, ex.sel).map((n) => n.check.keys.slice(-1)[0]).join(" → ") === "C major → G major → F major → C major");
+  const xm = D.exportOf(E, ex.sel, { title: "A period in C" });
+  is("the example exported for the app: the form, the motive, each phrase's role, what was measured, in its extMeta", xm.name === "a-period-in-c.mei" && /:form "period"/.test(xm.mei) && /:motives \[\{:id "a", :notes "G4 C5 B4 A4"/.test(xm.mei) && /:role "consequent"/.test(xm.mei) && /:measured "motive a, in sequence, a step higher"/.test(xm.mei) && (xm.mei.match(/:unit /g) || []).length === 4);
   return { results, notes };
 }
 

@@ -220,11 +220,12 @@
 
 ;; ───── saving a file the page made ─────
 ;; A page on claude.ai may not start a download itself: it offers the file through the `downloads` capability,
-;; the viewer confirms it, and only some extensions are allowed (zip, txt, json… not .kairotic nor .wav). So
-;; there a .kairotic is saved as .kairotic.zip (it is a zip, and opens as one) and a .jsonl as .jsonl.txt.
+;; the viewer confirms it, and only some extensions are allowed (zip, txt, json… not .kairotic, .mei nor .wav). So
+;; there a .kairotic is saved as .kairotic.zip (it is a zip, and opens as one), a .jsonl as .jsonl.txt and a .mei as
+;; .mei.txt (it opens as MEI).
 ;; Anywhere else, as always: a link clicked.
 
-(def download-names {".kairotic" ".kairotic.zip" ".jsonl" ".jsonl.txt"})
+(def download-names {".kairotic" ".kairotic.zip" ".jsonl" ".jsonl.txt" ".mei" ".mei.txt"})
 
 (defn save-file!
   "Offers blob as a file called nm. Promise of the name it was saved with, or nil (declined, or not possible

@@ -62,10 +62,12 @@ export async function run() {
   const piece = I.pieceAt(T2, a.id);
   is("the piece up to it: 9 + 1 held + 11 units, the phrases starting at 0 and 10", piece.units === 21 && piece.starts.join() === "0,10" && piece.melody[9] === "C5" && piece.bass[9] === "C3" && piece.path.length === 2);
   const mei = I.meiOf(piece, T2.key);
-  is("its score: 11 measures, a double bar where the phrase starts, a rest to fill the last", (mei.match(/<measure /g) || []).length === 11 && /right="dbl"/.test(mei) && /<rest dur="2"\/>/.test(mei) && /meter.sym="cut"/.test(mei));
+  is("its score: 11 measures, a double bar where the phrase starts, a rest to fill the last", (mei.match(/<measure /g) || []).length === 11 && /right="dbl"/.test(mei) && /<rest xml:id="mr11" dur="2"\/>/.test(mei) && /meter.sym="cut"/.test(mei));
   is("a note held over the bar line tied", /tie="i"/.test(I.meiOf(I.pieceAt(I.treeOf(I.INCIPITS["scale-76"].phrase, { key: { tonic: "C" } }), "p0"), { tonic: "C" })));
-  is("the score of a minor key: its signature, its raised ⑦ written", (() => { const x = I.INCIPITS["short-am"], T = I.treeOf(x.phrase, { key: x.key }), m = I.meiOf(I.pieceAt(T, "p0"), x.key); return /keysig="0"/.test(m) && /pname="g" oct="4" dur="2" accid="s"/.test(m); })());
+  is("the score of a minor key: its signature, its raised ⑦ written", (() => { const x = I.INCIPITS["short-am"], T = I.treeOf(x.phrase, { key: x.key }), m = I.meiOf(I.pieceAt(T, "p0"), x.key); return /key.sig="0"/.test(m) && /pname="g" oct="4" dur="2" accid="s"/.test(m); })());
   is("the score names the key reached, over the staff", (() => { const [Tm, x] = I.addPhrase(T0, "p0", MODULATING); const pc = I.pieceAt(Tm, x.id); return /<dir place="above" staff="1" tstamp="\d"><rend fontstyle="italic">G major<\/rend><\/dir>/.test(I.meiOf(pc, Tm.key)) && pc.keys[pc.keys.length - 1] === "G major"; })());
+  is("exported for the app: MEI with xml:ids, labelled staves, the phrases in its extMeta as EDN", (() => { const [Tm, x] = I.addPhrase(T0, "p0", MODULATING); const e = I.exportOf(I.choose(Tm, x.id), x.id, { title: "A test" }); return e.name === "a-test.mei" && /<extMeta type="kairotic"><!\[CDATA\[\{:kairotic 1, :root-tag :par, :root \{:name "A test"/.test(e.mei) && /:phrases \[\{:unit 1, :bar 1/.test(e.mei) && /:unit 11, :bar 6/.test(e.mei) && /:keys \["C major" "G major"\]/.test(e.mei) && /xml:id="mn1"/.test(e.mei) && /label="bass"/.test(e.mei); })());
+  is("… EDN written: keywords, strings, vectors, nil", I.edn({ a: 1, b: "x\"y", c: [1, null, true], d: { kw: "par" } }) === '{:a 1, :b "x\\"y", :c [1 nil true], :d :par}');
   is("a frequency from a name: A4 is 440 Hz", Math.abs(I.hzOf({ tonic: "C" }, "A4") - 440) < 1e-6);
 
   // the engine writes a melody for a bass given, from the point
