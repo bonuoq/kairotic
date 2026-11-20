@@ -37,6 +37,11 @@ try {
   is("the RO down moved to G: the same 25,312, its ⑥ in D major", total() === "25,312");
   d.getElementById("uniform").click();
   is("any valid one, sound", !/✗/.test(msg()) && /steps/.test(msg()));
+  // exported for the app (discussion #319): MEI through a scripted downloads capability, as claude.ai offers it
+  const saved = [];
+  w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
+  d.getElementById("export").click();
+  is("exported for the app: four voices, the chords, the keys in its extMeta", await wait(() => saved.length === 1) && /\.mei\.txt$/.test(saved[0].filename) && ["soprano", "alto", "tenor", "bass"].every((v) => saved[0].text.includes(`label="${v}"`)) && /:keys \[/.test(saved[0].text) && /:source "Kairotic Study 62 · four"/.test(saved[0].text));
   is("no errors on the page", errors.length === 0);
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);

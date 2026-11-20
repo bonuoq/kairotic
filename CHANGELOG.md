@@ -8,7 +8,8 @@
   beats of a held note in each measure (it wrote tied half notes); Studies 38, 39 and 40 export a repeated note as
   held (they struck it again, unlike 41–43, 50–60). **Study 61** exports a level, or a variation, as MEI for the
   app: the outer lines of each level's slices, a note held across slices one note (the 7–6 chain's suspensions as
-  half notes tied over the bar lines).
+  half notes tied over the bar lines). **Study 62** exports its four parts as MEI too (soprano, alto, tenor, bass, the chords under the bass, the keys
+  over it), under the same rule.
 - **What each note sounded like, in the take** (discussion #308, step 1; `@kairotic/analysis` 0.8.5): `follow rms
   centroid chroma` has an inlet for each descriptor written after its numbers (from `features~`, `chroma~`); while a
   note of the tree sounds, their values are averaged, and at `stop` the take keeps them per note as its `:profile`
