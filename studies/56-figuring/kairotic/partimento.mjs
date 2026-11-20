@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // @kairotic/cac · partimento.mjs: a given bass realized in two or three parts, as a partimento is — the hard rules of
 // tonal counterpoint over a bass, shared by every engine that realizes one (Studies 51 and 54, after Job IJzerman,
-// Harmony, Counterpoint, Partimento, OUP 2018, chapters 1–4). Beside soft.mjs, which weighs what these allow.
+// Harmony, Counterpoint, Partimento, OUP 2018, chapters 1–5). Beside soft.mjs, which weighs what these allow.
 //
 //   keyOf, codeOf          a key (a tonic, major or minor): a pitch is a degree, 0 the tonic of the bass's octave,
 //                          and in minor ⑥ and ⑦ raised or not
@@ -16,6 +16,8 @@
 //                          schema then a cadence (phraseBass)
 //   CHORDS                 the figures of a chord as the intervals that must sound and may sound above the bass
 //   RULE_OF_THE_OCTAVE     chapter 4: the chord for each degree of a scale in the bass, going up and going down
+//   GALANT, galantBass     chapter 5: the Galant schemata in three parts (a pedal, a canon with the bass, keys of
+//                          their own), with the book's prototypes
 //
 // Keys (chapter 4): a bass note may carry a key of its own, as the book boxes the keys of a modulating sequence. A
 // note is then a degree in the letters of the key of the whole and an alteration (−1, 0, +1) from its scale; whether
@@ -243,10 +245,11 @@ export function schemata(spec = {}) {
   /** Why a move of the upper voice from a to b (struck) is not melodic, or null. */
   function melodicError(a, b, t = 0) {
     const n = Math.abs(D(b) - D(a)), s = Math.abs(semiU(b) - semiU(a));
-    if (n === 0) return "a chromatic step";
+    if (n === 0) return t >= 1 && LOC[t].key !== LOC[t - 1].key && LOC[t].key.tonic !== LOC[t - 1].key.tonic ? null : "a chromatic step";
     if (n === 1) return s <= 2 ? null : "an augmented 2nd";
     if (n === 2) return s === 3 || s === 4 ? null : "this 3rd";
-    if (n === 3) return s === 5 ? null : "an augmented 4th";
+    // (in minor the diminished 4th between the raised ⑦ and ③ too: the Monte Romanesca's, the Fenaroli's)
+    if (n === 3) return s === 5 || (s === 4 && LOC[Math.min(t, n_ - 1)].key.mode === "minor" && [a, b].some((x) => { const l = loc(Math.min(t, n_ - 1), x); return l.deg === 6 && l.alt === 1; })) ? null : "an augmented 4th";
     if (n === 4) return s === 6 || s === 7 ? null : "an augmented 5th";
     if (n === 5) return s === 8 || s === 9 ? null : "this 6th";
     if (n === 6) return LOC[Math.min(t, n_ - 1)].key.mode === "minor" && s === 9 ? null : "a 7th (only the diminished one, in minor)";
@@ -261,6 +264,9 @@ export function schemata(spec = {}) {
    *  passing tone by step), or null. (It looks at prev only: the count's memo stays sound.) */
   function dissonance(t, c, prev, delayed) {
     const v = vertical(t, c), held = prev !== null && c === prev, struck = !held;
+    // chapter 5: over a pedal (the bass held under chords of its own: a Quiescenza) a dissonance comes by step, or is
+    // held — it moves on by step too
+    if (B[t].pedal && (held || (prev !== null && Math.abs(D(c) - D(prev)) === 1))) return null;
     if (strong(t)) {
       const bassHeld = !B[t].struck;
       // an accented passing tone, where the schema asks for one: struck by step from a consonance (it resolves
@@ -344,7 +350,9 @@ export function schemata(spec = {}) {
         ok4 = semiOk || passOk;
         if (special && !ok4) return pv.tri ? (pv.tri === "A4" ? "the augmented 4th resolves up to a 6th" : "the diminished 5th resolves down to a 3rd") : "over the passing bass the held note goes on into a consonance";
       }
-      if (!consonant(pv) && !special && !ok4) {
+      if (!consonant(pv) && B[t - 1].pedal && !special && !ok4) {
+        if (!(held || Math.abs(D(c) - D(prev)) === 1)) return "over the pedal a dissonance moves on by step";
+      } else if (!consonant(pv) && !special && !ok4) {
         if (strong(t - 1)) {
           // the suspension before resolves: the voice that held it goes down a step, to a consonance
           const upperHeld = t >= 2 && U[t - 2] === prev, bassHeldBefore = !B[t - 1].struck;
@@ -376,7 +384,8 @@ export function schemata(spec = {}) {
     }
     // the start and the end
     if (t === 0 && !middle && !(figured && B[0].fig) && locB(0) === 0 && ![0, 2, 4].includes(v.cls)) return "over ① the upper voice starts on an octave, a 5th or a 3rd";
-    if (t === n - 1 && !middle) {
+    // (spec.end false: the phrase goes on after it — a schema, not a close)
+    if (t === n - 1 && !middle && spec.end !== false) {
       if (![0, 2].includes(v.cls)) return "it ends on an octave or a 3rd";
       if (prev !== null && Math.abs(D(c) - D(prev)) !== 1) return "the last note is reached by step";
     }
@@ -597,6 +606,8 @@ export const CHORDS = {
 };
 // (chapter 4: the 6/5 that may stand on the ascending ④, a sixth chord with its 5th, the 3rd left out in three parts)
 CHORDS["6/5"] = { need: [5, 4], ok: [5, 4, 2] };
+// (chapter 5: the 7/4 over a pedal, the dominant's 7th chord over the tonic held — the Quiescenza)
+CHORDS["7/4"] = { need: [6, 3], ok: [6, 3] };
 
 // ─── the Rule of the Octave (chapter 4): a chord for each degree of a scale in the bass, going up and going down ───
 // ① and ⑤ stable (5/3), the degrees between them mobile (6/3); going down ④ passes under the chord of ⑤ (4/2), and
@@ -618,7 +629,7 @@ export function octaveChord(deg, dir, mode = "major") {
 
 const FIG = [8, 2, 3, 4, 5, 6, 7];
 // where the chord's 3rd is, by its figures (a class above the bass; 0: the bass itself, as in a 6/3)
-const THIRD = { "5/3": 2, "7/3": 2, "5/4": 2, "6/3": 0, "6": null, "6/4": 5, "4/2": 3, "6/5": 0 };
+const THIRD = { "5/3": 2, "7/3": 2, "5/4": 2, "6/3": 0, "6": null, "6/4": 5, "4/2": 3, "6/5": 0, "7/4": 6 };
 
 // ─── the phrase: a schema (chapter 2), then a cadence (chapter 3) ───
 // An event: [degree of the bass, units, the chord over each unit]; a unit is half a bar. A schema may have its own
@@ -653,6 +664,71 @@ export const CADENCES = {
   half: { name: "half", ref: "IJzerman 3.1, ex. 3.1–3.2", about: "a close on the penultimate ⑤, on a strong unit: open, waiting for the answer",
           events: [[3, 2, ["5/3", "6/3"]], [4, 1, ["5/3"]]] },
 };
+
+// ─── the Galant schemata (chapter 5), in three parts ───
+// An event: [degree of the bass, units, the chord over each unit, {pedal (the bass held under chords of its own),
+// keys (one a unit: a key on a degree of this one, {on, mode} — the chromatic tone read as a tonicization), dominant
+// (false: a ⑤ passed in a sequence, its ⑦ natural)}]. A schema may ask for a canon with the bass (imitate), for an
+// upper voice held long (hold: a pedal on 5̂), for its own ranges and meter (meter 1: every unit strong). Its book:
+// the book's prototype, its key and its two upper voices unit by unit.
+const ev = (d, chords, opts = {}) => [d, chords.length, chords, opts];
+export const GALANT = {
+  "leaping-romanesca": { name: "leaping Romanesca", ref: "IJzerman 5.1, ex. 5.8(a)", about: "the Pachelbel bass, a 4th down and a 2nd up, ① ⑤ ⑥ ③ ④ ①: a sequence in falling thirds, complete and incomplete 5/3 chords by turns, the upper voices in parallel 3rds",
+                         events: [7, 4, 5, 2, 3, 0].map((d) => ev(d, ["5/3"])),
+                         book: { key: { tonic: "C" }, top: "E5 D5 C5 B4 A4 G4", middle: "C5 B4 A4 G4 F4 E4" } },
+  "leaping-romanesca-minor": { name: "leaping Romanesca (minor)", ref: "IJzerman 5.1, ex. 5.8(c)", mode: "minor", about: "the same in minor, on the natural scale: ⑤ passed in the sequence keeps ⑦ natural",
+                               events: [7, 4, 5, 2, 3, 0].map((d) => ev(d, ["5/3"], { dominant: false })),
+                               book: { key: { tonic: "A", mode: "minor" }, top: "C5 B4 A4 G4 F4 E4", middle: "A4 G4 F4 E4 D4 C4" } },
+  quiescenza: { name: "Quiescenza", ref: "IJzerman 5.2, ex. 5.17(a)", about: "a pedal on ①, and over it (5)/3 – ♭7/3 – 6/4 – 7/4 – (5)/3: the lowered ⑦ leaves the key toward ④ (its diminished 5th to a 3rd), the 7/4 returns (its augmented 4th to a 6th)",
+                hold: { middle: 2 },
+                events: [ev(0, ["5/3", "7/3", "6/4", "7/4", "5/3"], { pedal: true, keys: [null, { on: 3 }, { on: 3 }, null, null] })],
+                book: { key: { tonic: "C" }, top: "C5 Bb4 A4 B4 C5", middle: "E4 E4 F4 F4 E4" } },
+  "quiescenza-minor": { name: "Quiescenza (minor)", ref: "IJzerman 5.2, ex. 5.17(d)", mode: "minor", about: "in minor the chromatic tone is the raised ③, the leading tone of ④: 7/3♯ – 6/4 – 7♯/4 over the pedal on ①, ⑥ raised on the way up to the raised ⑦ (the book's option)",
+                        events: [ev(0, ["5/3", "7/3", "6/4", "7/4", "5/3"], { pedal: true, keys: [null, { on: 3, mode: "minor" }, null, null, null] })],
+                        book: { key: { tonic: "A", mode: "minor" }, top: "A4 G4 F#4 G#4 A4", middle: "C4 C#4 D4 D4 C4" } },
+  prinner: { close: true, name: "Prinner", ref: "IJzerman 5.3, ex. 5.24(a)", about: "④ ③ ② ① in the bass, 6̂ 5̂ 4̂ 3̂ in 10ths above it: a soft close, its ② a 7–6 (a 5/3 on ④, not the RO's 4/2)",
+             hold: { middle: 3 }, events: [ev(3, ["5/3"]), ev(2, ["6/3"]), ev(1, ["7/3", "6/3"]), ev(0, ["5/3"])],
+             book: { key: { tonic: "C" }, top: "A4 G4 F4 F4 E4", middle: "C4 C4 C4 B3 C4" } },
+  "prinner-minor": { close: true, name: "Prinner (minor)", ref: "IJzerman 5.3, ex. 5.24(d)", mode: "minor", about: "the same in minor, the 6 on ② raised (the leading tone)",
+                     hold: { middle: 3 }, events: [ev(3, ["5/3"]), ev(2, ["6/3"]), ev(1, ["7/3", "6/3"]), ev(0, ["5/3"])],
+                     book: { key: { tonic: "A", mode: "minor" }, top: "F5 E5 D5 D5 C5", middle: "A4 A4 A4 G#4 A4" } },
+  "prinner-modulating": { close: true, name: "modulating Prinner", ref: "IJzerman 5.3, ex. 5.24(c)", about: "① ⑦ ⑥ ⑤ with the raised 6th on ⑥: the ④ ③ ② ① of the dominant — C major or G major",
+                          hold: { middle: 3 }, events: [ev(7, ["5/3"], { keys: [{ on: 4 }] }), ev(6, ["6/3"], { keys: [{ on: 4 }] }), ev(5, ["7/3", "6/3"], { keys: [{ on: 4 }, { on: 4 }] }), ev(4, ["5/3"], { keys: [{ on: 4 }] })],
+                          book: { key: { tonic: "C" }, top: "E5 D5 C5 C5 B4", middle: "G4 G4 G4 F#4 G4" } },
+  "monte-romanesca": { name: "Monte Romanesca", ref: "IJzerman 5.4, ex. 5.29(a)", about: "a 5th up and a 4th down, segments rising by step: ①–⑤, ②–⑥, ④–① (③–⑦ left out: its diminished 5/3), 5/3 chords only",
+                       top: [7, 22], events: [0, 4, 1, 5, 3, 7].map((d) => ev(d, ["5/3"])),
+                       book: { key: { tonic: "C" }, top: "E4 D4 F4 E4 A4 G4", middle: "C4 B3 D4 C4 F4 E4" } },
+  "monte-romanesca-minor": { name: "Monte Romanesca (minor)", ref: "IJzerman 5.4, ex. 5.29(b)", mode: "minor", about: "in minor ②–⑥ left out (the diminished 5/3 on ②): ①–⑤, ③–⑦, ④–①",
+                             top: [7, 22], events: [0, 4, 2, 6, 3, 7].map((d) => ev(d, ["5/3"])),
+                             book: { key: { tonic: "A", mode: "minor" }, top: "C4 B3 E4 D4 F4 E4", middle: "A3 G#3 C4 B3 D4 C4" } },
+  fenaroli: { name: "Fenaroli", ref: "IJzerman 5.5, ex. 5.41(a)", about: "the bass circling the tonic, ① ② ③ ⑦ twice: the middle voice sings it again two units later (a canon), the upper holds 5̂ (a pedal); the RO's chords but the 6/4 on ②",
+              hold: { top: 9 }, imitate: { voice: "middle", delay: 2, steps: 7 },
+              events: [0, 1, 2, -1, 0, 1, 2, -1, 0].map((d, i) => ev(d, [["5/3", "6/4", "6/3", "6/3"][i % 4]])),
+              book: { key: { tonic: "C" }, top: "G4 G4 G4 G4 G4 G4 G4 G4 G4", middle: "E4 B3 C4 D4 E4 B3 C4 D4 E4" } },
+  "fenaroli-minor": { name: "Fenaroli (minor)", ref: "IJzerman 5.5, ex. 5.41(b)", mode: "minor", about: "in minor the canon in the upper voice, the pedal on 5̂ in the middle; ⑦ raised",
+                      hold: { middle: 9 }, imitate: { voice: "top", delay: 2, steps: 14 },
+                      events: [0, 1, 2, -1, 0, 1, 2, -1, 0].map((d, i) => ev(d, [["5/3", "6/4", "6/3", "6/3"][i % 4]])),
+                      book: { key: { tonic: "A", mode: "minor" }, top: "C5 G#4 A4 B4 C5 G#4 A4 B4 C5", middle: "E4 E4 E4 E4 E4 E4 E4 E4 E4" } },
+  folia: { close: true, name: "Folia", ref: "IJzerman 5.6, ex. 5.43", mode: "minor", about: "D minor, a chord a bar: ① ⑤ ① ⑦ ③ ⑦ ① ⑤ — the natural ⑦ leaping to ③ (the relative major), back by the leaping Romanesca —, here closed on ①; the upper voices in parallel 6ths",
+           meter: 1, events: [0, -3, 0, -1, 2, -1, 0, -3, 0].map((d) => ev(d, ["5/3"])),
+           book: { key: { tonic: "D", mode: "minor" }, top: "D5 C#5 D5 E5 F5 E5 D5 C#5 D5", middle: "F4 E4 F4 G4 A4 G4 F4 E4 F4" } },
+};
+/** The bass of a Galant schema in a key, unit by unit: {d, r, struck, strong, chord, key, pedal, dominant}. */
+export function galantBass(schema, K) {
+  const evs = schema.events, units = [];
+  evs.forEach(([d, len, chords, o], i) => {
+    const next = evs[i + 1];
+    const r = K.mutable(d) && next && next[0] === d + 1 ? 1 : 0;
+    for (let j = 0; j < len; j++) {
+      const kk = o.keys && o.keys[j] ? o.keys[j] : null;
+      // a key on a degree of this one: its tonic that degree, natural (in minor ⑥ and ⑦ as the natural scale)
+      const key = kk ? { tonic: K.name(kk.on, 0).replace(/-?\d+$/, "").replace("♯", "#").replace("♭", "b"), mode: kk.mode || "major" } : null;
+      units.push({ d, r, struck: j === 0, strong: schema.meter === 1 ? true : units.length % 2 === 0, chord: chords[Math.min(j, chords.length - 1)],
+                   key, pedal: !!o.pedal && j > 0, dominant: o.dominant === false ? false : isDominant(d, next && next[0]) });
+    }
+  });
+  return units;
+}
 
 /** The bass of a phrase, unit by unit: {d, r, struck, strong, chord, ap}. The cadence's degrees are placed in the
  *  octave nearest the end of the schema; in minor ⑥ and ⑦ are raised going up a step (and ⑦ before ①). */
@@ -695,18 +771,24 @@ export function parts(spec = {}) {
   const figured = spec.figured ?? true;
   const [tlo, thi] = spec.top || [9, 22], [mlo, mhi] = spec.middle || [4, 17];
   const apart = spec.apart ?? 7;
-  const S = { schema: { events: [] }, key: K, bass: B, figured: false, ro: spec.ro, exchange: true };
+  const S = { schema: { events: [] }, key: K, bass: B, figured: false, ro: spec.ro, exchange: true, end: spec.end };
   // (the upper voice may be two octaves and a 4th above the bass: a bass that leaps down to ⑤ at a cadence)
   // (spec.line: how strictly each upper voice moves, one for both or {top, middle})
   const lineOf = (who) => (spec.line && typeof spec.line === "object" ? spec.line[who] : spec.line);
-  const T = schemata({ ...S, lo: tlo, hi: thi, voice: "top", spacing: spec.spacing ?? 18, weights: spec.weights, delayed: spec.delayed, line: lineOf("top") });
-  const M = schemata({ ...S, lo: mlo, hi: mhi, voice: "middle", weights: spec.weights, delayed: spec.delayed, line: lineOf("middle") });
+  // (spec.hold: the units a note of each upper voice may be held, {top, middle} — a pedal in an upper voice holds long)
+  const holdOf = (who) => (spec.hold && spec.hold[who]) || undefined;
+  const T = schemata({ ...S, lo: tlo, hi: thi, voice: "top", spacing: spec.spacing ?? 18, weights: spec.weights, delayed: spec.delayed, line: lineOf("top"), maxHold: holdOf("top") });
+  const M = schemata({ ...S, lo: mlo, hi: mhi, voice: "middle", weights: spec.weights, delayed: spec.delayed, line: lineOf("middle"), maxHold: holdOf("middle") });
+  // (spec.imitate: a canon with the bass, {voice: "top" | "middle", delay (units), steps (degrees above the bass)} —
+  // the Fenaroli's: a voice sings the bass again, later and higher)
+  const imit = spec.imitate || null;
   const D = T.degree, A = T.alter;
   const semi = (c) => K.semi(D(c), A(c));
 
   /** Why the pair (a over b) at unit t is refused by the voices between them and the chord, or null. */
   function between(TT, MM, t, a, b) {
     if (D(b) >= D(a)) return "the middle voice under the upper";
+    if (imit && t >= imit.delay && D(imit.voice === "top" ? a : b) !== B[t - imit.delay].d + imit.steps) return `the canon: the ${imit.voice === "top" ? "upper" : "middle"} voice sings the bass ${imit.delay} units later`;
     // chapter 4: over a passing bass a note of the chord before, not held, is the other voice's (the voices exchange)
     if (spec.ro && t >= 1 && T.bassPassing(t))
       for (const [x, own, other, V] of [[a, TT[t - 1], MM[t - 1], T], [b, MM[t - 1], TT[t - 1], M]])
@@ -719,7 +801,7 @@ export function parts(spec = {}) {
     if (vt.q === "dissonant" && vm.q === "dissonant" && vt.cls === vm.cls) return "the dissonance doubled";
     // a 6/4 over a bass that holds its note resolves to the 5/3 as a double appoggiatura: each voice down a step, the
     // 6th to the 5th and the 4th to the 3rd, in the same voice (no exchange between the voices)
-    if (t >= 1 && !B[t].struck) {
+    if (t >= 1 && !B[t].struck && !B[t].pedal) {
       const pa = TT[t - 1], pb = MM[t - 1], ca = T.vertical(t - 1, pa).cls, cb = M.vertical(t - 1, pb).cls;
       if (new Set([ca, cb]).size === 2 && [ca, cb].every((c) => c === 5 || c === 3)) {
         const down = (x, px, pc) => D(x) === D(px) - 1 && (pc === 5 ? 4 : 2) === (x === a ? vt : vm).cls;

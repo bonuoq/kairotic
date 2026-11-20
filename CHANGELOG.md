@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Study 59 · galant: the Galant schemata** (IJzerman, chapter 5; `@kairotic/cac` 0.4.0). `partimento.mjs` has the
+  leaping Romanesca, the Quiescenza, the Prinner (and the modulating Prinner), the Monte Romanesca, the Fenaroli and
+  the Folia as data (`GALANT`, `galantBass`), the book's prototypes among their realizations, and what they need: a
+  **pedal** (the bass held under chords of its own, dissonances coming and going by step; the 7/4), an upper voice
+  held long, a **canon with the bass** (`parts`' `imitate`), `hold` per voice, a schema that is not a close
+  (`end: false`), a chromatic step where the key changes, the diminished 4th in minor. **Study 56** has chapter 4's
+  rules on by default, writes its middle voice with the bass's keys and those rules, finds the Galant schemata by
+  their basses, and offers four of them to play over.
+
 - **Wires on their notes** (`@kairotic/analysis` 0.8.2): a wire is written on its note, `[:note {… :wire {:send :swell
   :kind :elastic :tol 0.5 :leader :electronics}}]` (several in a vector), instead of a list on the continuum that
   pointed at note ids: it moves with its note when the tree is edited, and needs no ids. `:cue` is gone (a rigid

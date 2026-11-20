@@ -38,6 +38,11 @@ export const BASSES = {
   fifths: { name: "falling fifths", degrees: [7, 3, 6, 2, 5, 1, 4, 0] },
   monte: { name: "a Monte, then a cadence", degrees: [0, 1, 2, 3, 4, 0] },
   cadence: { name: "① ④ ⑤ ①", degrees: [7, 3, 4, 7] },
+  // chapter 5's Galant schemata (IJzerman 5.1–5.6): a melody over them finds them again
+  prinner: { name: "a Prinner, ④ ③ ② ①", degrees: [3, 2, 1, 0] },
+  "monte-romanesca": { name: "a Monte Romanesca", degrees: [0, 4, 1, 5, 3, 7] },
+  fenaroli: { name: "a Fenaroli", degrees: [0, 1, 2, -1, 0, 1, 2, -1, 0] },
+  folia: { name: "the Folia (minor)", degrees: [0, -3, 0, -1, 2, -1, 0, -3, 0], mode: "minor" },
 };
 
 /** The degrees of a bass written as note names in a key ("C3 B2 A2"), or why not. */
@@ -233,6 +238,8 @@ export function figuring(spec = {}) {
     for (const [ch, def] of Object.entries(CHORDS)) {
       if (!def.ok.includes(v.cls)) continue;
       if (only && !only.includes(ch)) continue;
+      // (the 7/4 is a pedal's chord, chapter 5's Quiescenza: not over a bass that moves)
+      if (ch === "7/4" && units[t].struck) continue;
       let cost = 0; const why = [];
       if (bassHeld) {
         // over a bass that holds its note the chord stays, or resolves: a 6th a 6/3 (the 7–6), a 5th or a 3rd a 5/3
@@ -312,6 +319,25 @@ export function figuring(spec = {}) {
         else found.push({ from: p, to: t, name: `a ${two[2] === 3 ? "an imperfect" : "perfect"} cadence on ⑤–①`.replace("a an", "an") });
       }
     }
+    // chapter 5's Galant schemata, by their basses (the notes struck, their degrees in their keys) and, for the Prinner,
+    // the melody in 3rds (10ths) over it
+    const S = units.map((u, t) => t).filter((t) => units[t].struck && t < F.length);
+    const at = (i) => units[S[i]].deg, step = (i) => mod(units[S[i + 1]].d - units[S[i]].d, 7);
+    const end = (i) => (i + 1 < S.length ? S[i + 1] - 1 : F.length - 1);
+    const seq = (i, degs) => degs.every((g, k) => i + k < S.length && at(i + k) === g);
+    for (let i = 0; i < S.length; i++) {
+      for (const [degs, name, thirds] of [[[3, 2, 1, 0], "a Prinner (④ ③ ② ①, 6̂ 5̂ 4̂ 3̂ in 10ths)", true], [[0, 6, 5, 4], "a modulating Prinner (① ⑦ ⑥ ⑤: ④ ③ ② ① of the dominant)", true],
+                                          [[0, 1, 2, 6, 0], "a Fenaroli (① ② ③ ⑦ ①)", false], [[0, 4, 0, 6, 2, 6], "the Folia (① ⑤ ① ⑦ ③ ⑦)", false]])
+        if (seq(i, degs) && (!thirds || [0, 1, 2].every((k) => F[S[i + k]].f === 3)) && !(name.startsWith("the Folia") && K.mode !== "minor"))
+          found.push({ from: S[i], to: end(i + degs.length - 1), name });
+    }
+    // a 4th down and a 2nd up by turns (the leaping Romanesca), or a 5th up and a 4th down rising by step (the Monte
+    // Romanesca): four bass notes at least
+    const leaping = (i) => step(i) === 4 && step(i + 1) === 1, monteR = (i) => step(i) === 4 && step(i + 1) === 4 && units[S[i + 2]].d === units[S[i]].d + 1;
+    for (let i = 0; i + 3 < S.length; i++) {
+      if (leaping(i) && step(i + 2) === 4) { let j = i + 3; while (j + 1 < S.length && step(j) === (mod(j - i, 2) === 0 ? 4 : 1)) j++; found.push({ from: S[i], to: end(j), name: "a leaping Romanesca (a 4th down, a 2nd up)" }); i = j; }
+      else if (monteR(i)) { let j = i + 3; while (j + 1 < S.length && step(j) === 4) j++; found.push({ from: S[i], to: end(j), name: "a Monte Romanesca (a 5th up, a 4th down, rising)" }); i = j; }
+    }
     return found.sort((a, b) => a.from - b.from);
   }
 
@@ -338,8 +364,9 @@ export function figuring(spec = {}) {
   // ─── a third voice: a middle voice under the melody, asked the figures chosen ───
   /** The three-part kernel for the bass, the chords asked one a unit (null: none asked). */
   function three(chosen = units.map(() => null)) {
-    const events = notes.map((nt, i) => [nt.d, units.filter((u) => u.note === i).length, chosen.filter((x, t) => units[t].note === i)]);
-    return parts({ schema: { events }, cadence: null, key: K, top: [lo, hi], middle: spec.middle || [bottom + 2, hi - 2], spacing, line: { top: line, middle: middleLine } });
+    // (the bass as it is: each unit with its key, the chords asked; chapter 4's rules where the melody has them)
+    return parts({ bass: units.map((u, t) => ({ ...u, chord: chosen[t] || null })), cadence: null, key: K, top: [lo, hi], middle: spec.middle || [bottom + 2, hi - 2], spacing,
+                   line: { top: line, middle: middleLine }, ro: spec.ro });
   }
   // (the noise of the search: notes out of the middle voice's place, not reasons a musician needs)
   const PLACE = /below the bass|too far|wider than|under the upper|within an octave|out of|unison with the bass/;

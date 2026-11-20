@@ -140,6 +140,7 @@ table.cad button { font: 11.5px var(--f-ui); }
   <label title="a bass note lasts one unit, or two (a bar: strong, weak)">a bass note <select id="per"><option value="2">a bar (2 units)</option><option value="1">a beat (1 unit)</option></select></label>
   <label title="how the phrase closes: a perfect or imperfect cadence; a deceptive or a half one changes the end of the bass">ending <select id="ending"><option value="authentic">perfect or imperfect</option><option value="perfect">perfect</option><option value="imperfect">imperfect</option><option value="deceptive">deceptive (⑤–⑥)</option><option value="half">half (on ⑤)</option></select></label>
   <label title="how strictly the melody moves (the middle voice one step stricter): free, the rules of two parts alone; moderate, a leap of a 5th or more turns back by step; strict, leaps up to a 5th or the octave, from a 4th turned back by step, never two the same way">line <select id="line"><option value="free">free</option><option value="moderate" selected>moderate</option><option value="strict">strict</option></select></label>
+  <label title="chapter 4 (Study 57): the augmented 4th and the diminished 5th as semi-consonances, unprepared and resolved; over a passing bass a note of the chord before (the descending ④'s 4/2)"><input type="checkbox" id="ro" checked> chapter 4's rules</label>
   <label title="the melody's notes, and its figures, only where a middle voice can be written under them to the end"><input type="checkbox" id="three"> write a voice that allows a third voice</label>
   <span class="sep"></span>
   <button class="act" id="undo" disabled>⌫ Undo</button>
@@ -185,7 +186,8 @@ table.cad button { font: 11.5px var(--f-ui); }
       <p class="about">The partimento turned round: the bass comes without figures and the melody is improvised over it, under the two-part rules of Studies 51 and 54 (<code>@kairotic/cac</code>'s <code>partimento.mjs</code>) — a note played is taken as it is where the rules and the rest of the phrase allow it, else the nearest one that can be played, and why.</p>
       <ul class="q">
         <li><b>The figures are found, not given.</b> Each note of the melody is an interval over the bass; the chords it can belong to are those whose figures hold it, the likeliest first: the <b>rule of the octave</b> (the scale in the bass figured as the partimento schools taught it: ① 5/3, ② 6/3, ③ 6/3, ④ 6 going up and 4/2 going down, ⑤ 5/3, ⑥ 6/3, ⑦ 6/3), then what the melody's own dissonance names — a 7th held over the bass a 7/3, a 4th a 5/4, a 2nd over the bass gone down under it a 4/2 —, and a dominant ⑤ a 5/3 or a 7/3. A dissonance on a weak unit passes: it has no chord of its own.</li>
-        <li><b>The schemata are recognized</b> as the two lines make them: parallel 3rds or 6ths, the 3–6 progression, chains of 7–6 or 2–3, and the cadences of chapter 3 — imperfect 3–3, perfect 6–8, compound 7–6–8 on ②–①; on ⑤–① perfect, imperfect or with a 4–3.</li>
+        <li><b>The schemata are recognized</b> as the two lines make them: parallel 3rds or 6ths, the 3–6 progression, chains of 7–6 or 2–3, and the cadences of chapter 3 — imperfect 3–3, perfect 6–8, compound 7–6–8 on ②–①; on ⑤–① perfect, imperfect or with a 4–3 —, and chapter 5's Galant schemata by their basses: the leaping Romanesca, the Monte Romanesca, the Prinner (with the melody in 10ths) and the modulating Prinner, the Fenaroli, the Folia (Study 59).</li>
+        <li><b>Chapter 4's rules</b> (Study 57), on by default: the augmented 4th and the diminished 5th as semi-consonances, the descending ④'s 4/2 over a passing bass; a bass note may carry a key of its own.</li>
         <li><b>The cadence is counted ahead</b>: the ways the melody so far leaves to make each kind of cadence the ending allows, and one of them written by the engine.</li>
         <li><b>A middle voice is written from the figures</b> under the three-part rules of Study 54 — no 3rd doubled nor the leading tone, no parallel 5ths or octaves between the upper voices, the 6/4 a double appoggiatura —, and the cadence a cadence: its last chord a 5/3 (never a 6), and from the dominant the leading tone up to the tonic, the 7th (④) down to ③, in either voice. Where none can be written it says where, and why: a melody that doubles the leading tone of the bass, or leaps where the voice under it cannot follow.</li>
         <li><b>Writing a voice that allows a third</b>, the melody and its figures are chosen in three parts: a note only where a middle voice can still be written under it and the melody finished over it, and at each unit the likeliest chord such a middle voice can make with the chords before it — so a middle voice can always be written from the figures. The ways on are then the three-part realizations: the melody and a middle voice.</li>
@@ -206,7 +208,7 @@ let F = null, U = [], M = null, chosen = {}, sel = null, bid = "scale-down", ctx
 for (const [k, b] of Object.entries(BASSES)) {
   const el = document.createElement("button");
   el.className = "act"; el.dataset.bass = k; el.textContent = b.name;
-  el.addEventListener("click", () => { bid = k; $("bass-text").value = ""; rebuild(); });
+  el.addEventListener("click", () => { bid = k; $("bass-text").value = ""; if (b.mode) $("mode").value = b.mode; rebuild(); });
   $("basses").appendChild(el);
 }
 const key = () => ({ tonic: $("tonic").value, mode: $("mode").value });
@@ -214,7 +216,7 @@ function rebuild() {
   document.querySelectorAll("[data-bass]").forEach((b) => b.classList.toggle("on", b.dataset.bass === bid));
   const text = $("bass-text").value.trim();
   try {
-    F = figuring({ bass: text || BASSES[bid].degrees, key: key(), per: Number($("per").value), ending: $("ending").value, line: $("line").value });
+    F = figuring({ bass: text || BASSES[bid].degrees, key: key(), per: Number($("per").value), ending: $("ending").value, line: $("line").value, ro: $("ro").checked });
   } catch (e) {
     // an ending the bass cannot make: back to a perfect or imperfect cadence, and why
     if ($("ending").value !== "authentic") { $("ending").value = "authentic"; rebuild(); lastSaid = "✗ " + (e.message || e); $("said").textContent = lastSaid; return; }
@@ -411,6 +413,7 @@ for (const id of ["tonic", "mode", "per"]) $(id).addEventListener("change", rebu
 $("three").addEventListener("change", () => { $("status").textContent = three() ? "counting in three parts…" : ""; fanCache = null; M = null; setTimeout(() => { rebuildRef(); render(); }, 30); });
 $("ending").addEventListener("change", rebuild);
 $("line").addEventListener("change", rebuild);
+$("ro").addEventListener("change", rebuild);
 $("bass-use").addEventListener("click", rebuild);
 $("bass-text").addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") rebuild(); });
 $("undo").addEventListener("click", () => { U = U.slice(0, -1); M = null; lastSaid = ""; for (const k of Object.keys(chosen)) if (k >= U.length) delete chosen[k]; render(); });

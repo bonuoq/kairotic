@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 59 · galant · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:900px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the Galant schemata counted and realized, the book's prototypes, the pedal,
+// the canon, a phrase, a transposition.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+const total = () => d.getElementById("total").textContent;
+const keys = () => [...d.querySelectorAll("#sheet .keylab")].map((x) => x.textContent);
+const figs = () => [...d.querySelectorAll("#sheet text.fig")].map((x) => x.textContent);
+try {
+  await wait(() => w.kairoticGalant && /^\d/.test(total()));
+  const K = w.kairoticGalant;
+  is("it opens on the leaping Romanesca: 468 realizations, fourteen schemata and phrases to choose", total() === "468" && d.querySelector('[data-phrase="leaping-romanesca"]').classList.contains("on") && d.querySelectorAll("[data-phrase]").length === 14);
+  d.getElementById("book").click();
+  is("... the book's prototype (ex. 5.8a): sound, outlined", /the book's realization/.test(d.getElementById("msg").textContent) && !/✗/.test(d.getElementById("msg").textContent) && d.querySelector("#sheet rect.book"));
+  K.set("quiescenza");
+  await wait(() => total() === "3");
+  d.getElementById("book").click();
+  is("the Quiescenza: 3, its pedal one bass bar, 7/3 6/4 7/4 over it, F major boxed for its B♭", total() === "3" && d.querySelectorAll("#sheet rect.bass").length === 1 && figs().join(" ") === "(5)/3 7/3 6/4 7/4 (5)/3" && keys().includes("F major"));
+  K.set("fenaroli");
+  await wait(() => total() === "3");
+  is("the Fenaroli: 3, the canon marked", total() === "3" && [...d.querySelectorAll("#sheet text.ro")].some((x) => x.textContent === "canon"));
+  d.getElementById("ro").checked = false; d.getElementById("ro").dispatchEvent(new Event("change"));
+  await wait(() => total() === "0");
+  is("... without chapter 4's rules none, and why", total() === "0" && /chapter 4/.test(d.getElementById("msg").textContent));
+  d.getElementById("ro").checked = true; d.getElementById("ro").dispatchEvent(new Event("change"));
+  K.set("prinner-modulating");
+  await wait(() => total() === "8");
+  is("the modulating Prinner: 8, in G major", total() === "8" && keys().join(",") === "G major");
+  K.set("handel");
+  await wait(() => K.P && K.P.id === "handel" && /^\d/.test(total()));
+  is("Handel's phrase: a Monte Romanesca and a Galant cadence, realized", Number(total().replace(/,/g, "")) > 100 && figs().includes("6/4"));
+  K.set("folia", "E");
+  await wait(() => K.P.id === "folia" && /E minor/.test(d.getElementById("ref").textContent));
+  is("the Folia moved to E minor: the same 568", total() === "568");
+  d.getElementById("uniform").click();
+  is("one drawn uniformly, sound", !/✗/.test(d.getElementById("msg").textContent) && /steps/.test(d.getElementById("msg").textContent));
+  is("no errors on the page", errors.length === 0);
+} catch (e) { is("error: " + (e.message || e), false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(errors) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>

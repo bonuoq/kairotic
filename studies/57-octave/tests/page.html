@@ -31,8 +31,8 @@ try {
   is("Bach's tetrachords: 12 realizations, the keys D, G, C boxed", total() === "12" && keys().join(",") === "D major,G major,C major");
   is("... the 7/3 on each ⑥", [...d.querySelectorAll("#sheet text.fig")].filter((x) => x.textContent === "7/3").length === 3);
   K.set("beethoven-10-1");
-  await wait(() => total() === "16");
-  is("Beethoven's pentachords: 16, A♭ major → F minor → D♭ major", total() === "16" && keys().join(",") === "A♭ major,F minor,D♭ major");
+  await wait(() => total() === "149");
+  is("Beethoven's pentachords: 149, A♭ major → F minor → D♭ major", total() === "149" && keys().join(",") === "A♭ major,F minor,D♭ major");
   K.set("bach-541", "C");
   await wait(() => keys().join(",") === "C major,F major,B♭ major");
   is("... Bach's moved to C: C → F → B♭, the same 12", total() === "12");
