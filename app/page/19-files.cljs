@@ -250,19 +250,24 @@
 
 (defn mei
   "The MEI of a tree box, as text: (mei :b3). Its tree as it is when it is written in measures, quantized first when
-   it is in free time."
-  [id]
-  (let [t (tree-data id)]
-    (when (nil? t) (fail (str id " holds no tree")))
-    (mei/->mei (if (mt/measured? t) (qz/measure-free-voices t) (qz/quantize-tree t)))))
+   it is in free time. (mei :b3 :written): only what is written — no real times, velocities, wires, takes,
+   continuum — for notation programs and exchange (discussion #308)."
+  ([id] (mei id :all))
+  ([id which]
+   (let [t (tree-data id)]
+     (when (nil? t) (fail (str id " holds no tree")))
+     (when-not (#{:all :written} which) (fail "(mei :bN) or (mei :bN :written)"))
+     (let [m (if (mt/measured? t) (qz/measure-free-voices t) (qz/quantize-tree t))]
+       (mei/->mei (if (= which :written) (mt/descriptive m) m))))))
 
 (defn export-mei!
-  "Downloads the MEI of a tree box: (export-mei! :b3)."
-  [id]
-  (let [m (mei id)
-        nm (file-name (or (:name (mt/attrs (tree-data id))) (name id)) ".mei")]
-    (download-bytes! (.encode (js/TextEncoder.) m) nm)
-    nm))
+  "Downloads the MEI of a tree box: (export-mei! :b3), or only what is written: (export-mei! :b3 :written)."
+  ([id] (export-mei! id :all))
+  ([id which]
+   (let [m (mei id which)
+         nm (file-name (str (or (:name (mt/attrs (tree-data id))) (name id)) (when (= which :written) "-written")) ".mei")]
+     (download-bytes! (.encode (js/TextEncoder.) m) nm)
+     nm)))
 
 (defn music->tree
   "Promise of the tree of a MEI or MusicXML text (MusicXML through Verovio)."

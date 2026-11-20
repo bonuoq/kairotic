@@ -136,6 +136,10 @@ export async function views(page, check) {
     await cljs(page, `(pr-str (tree-data ${ct}))`));
   const wn = await page.evaluate(() => document.querySelectorAll(".ct-wire.ct-elastic").length);
   check("... drawn on the continuum", wn === 1, String(wn));
+  check("its code window shows the tree as written: no wire (discussion #308)",
+    (await cljs(page, `(boolean (re-find #":wire" (editor-source (need-box ${ct}))))`)) === "false");
+  await cljs(page, `(code ${ct} (editor-source (need-box ${ct})))`);
+  check("... and applying it keeps the wire", (await cljs(page, `(count (wires ${ct}))`)) === "1");
   await cljs(page, `(unwire! ${ct} 1)`);
   check("(unwire! :bN note) takes it away", (await cljs(page, `(wires ${ct})`)) === "[]");
   await cljs(page, `(view ${ct} :score)`);

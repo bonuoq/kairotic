@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The written tree and the performed one** (discussion #308): `mt/descriptive` leaves out what belongs to performing a
+  tree — real times and velocities (`:tstamp.real :dur.real :vel`), wires, takes, the continuum, the ids notes have
+  only for takes — and `mt/with-performative` puts back into the whole tree a written tree edited from it, each node
+  keeping what it had (an edit of its attributes, or a node replaced by one of its kind). A tree box's code window
+  shows it as written (**All** shows everything); `(code :bN text)` with nothing of performing it keeps what the
+  tree had. `(mei :bN :written)`, `(export-mei! :bN :written)`: MEI with only what is written, for notation programs.
 - **A canon loops from its end** (fix): a sequence lasted only until its last child placed in turn, not until a child
   placed `:at` a time ended — a canon's comes (`[:voice [:seq {:at 2} …]]`) — so `mt/duration` of a canon was the
   dux's, and `mt play loop` started again while the comes still sounded. A sequence now lasts until its last child
