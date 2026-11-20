@@ -58,6 +58,14 @@
   keeping what it had (an edit of its attributes, or a node replaced by one of its kind). A tree box's code window
   shows it as written (**All** shows everything); `(code :bN text)` with nothing of performing it keeps what the
   tree had. `(mei :bN :written)`, `(export-mei! :bN :written)`: MEI with only what is written, for notation programs.
+- **Study 61 · reduction: a phrase analysed into levels, and varied from any of them** (discussion #321). One grammar
+  read both ways: the proto-voice model's operations (Finkensiep & Rohrmeier 2021, after DCMLab/protovoices-haskell)
+  read backwards reduce a phrase of Study 58's slice by slice to its frame (unsplit: a slice of ornaments taken
+  away; unspread: two slices heard as one sonority), and read forwards they are the derivation that composes it. Each
+  step chosen by one policy: the ornaments' cost, GTTM's metrical weight and cadential retention, dissonance, the
+  soft rules of every engine (`soft.mjs`) and the hard rules of every phrase (`partimento.mjs`, a level checked note
+  against note). The 7–6 chain shows its parallel 6ths; *vary from level k* keeps the melody's notes that survive at
+  k and writes the rest again with the engine of Studies 56–60, under the same rules.
 - **A canon loops from its end** (fix): a sequence lasted only until its last child placed in turn, not until a child
   placed `:at` a time ended — a canon's comes (`[:voice [:seq {:at 2} …]]`) — so `mt/duration` of a canon was the
   dux's, and `mt play loop` started again while the comes still sounded. A sequence now lasts until its last child

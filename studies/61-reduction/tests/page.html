@@ -1,0 +1,55 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 61 · reduction · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, its ClojureScript), driven as a person would: the first phrase
+// analysed on loading, its levels drawn (the frame on top), a level chosen, a variation from it, taken as the phrase.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  const S = () => window.kairoticStudy;
+  const $ = (id) => document.getElementById(id);
+  const click = (el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  try {
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    $("host").appendChild(doc.querySelector("main").cloneNode(true));
+    window.kairoticBase = "../kairotic/";
+    const [R, PV, I] = await Promise.all([import("../kairotic/reduction.mjs"), import("../kairotic/protovoices.mjs"), import("../kairotic/incipit.mjs")]);
+    window.kairoticReduction = { R, PV, I };
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    is("ready, the first phrase analysed: five levels, a row each and the steps between them", $("status").textContent === "Ready" && S().state().levels === 5 && S().state().rows === 5 && S().state().steps === 4);
+    is("… the frame on top, chosen; the surface at the bottom", document.querySelector("#levels .lv").dataset.k === "4" && document.querySelector("#levels .lv.sel").dataset.k === "4" && document.querySelectorAll("#levels .lv")[4].dataset.k === "0");
+    is("… every level passing the rules (✓ or the frame)", [...document.querySelectorAll("#levels .lab")].every((l) => /✓|·/.test(l.textContent)));
+    is("… the first step: the passing B4", /B4 a step between two notes a 3rd apart/.test($("steps").children[0].textContent));
+    is("… the derivation, in the proto-voice names", /PassingMid/.test($("deriv").textContent) && /spread/.test($("deriv").textContent));
+
+    click(document.querySelectorAll("#levels .lv")[2]);
+    is("a level chosen by a click (L2): its facts", S().state().k === 2 && /^L2:/.test($("level-facts").textContent));
+    click($("vary"));
+    is("varied from L2: a melody of 9 units, the notes kept marked, passing the rules", S().state().variation && S().state().variation.split(" ").length === 9 && document.querySelectorAll("#var-mel span.kept").length > 0 && /passes the rules/.test($("var-facts").textContent));
+    const v = S().state().variation;
+    click($("take"));
+    is("… taken as the phrase: analysed again", $("mel").value === v && S().state().levels >= 2 && !S().state().variation);
+
+    $("ex").value = "scale-76"; $("ex").dispatchEvent(new Event("change"));
+    is("the 7–6 chain: analysed, eleven levels", S().state().levels === 11 && /7–6|B3G5/.test($("levels").textContent));
+    $("temp").value = "1";
+    click($("again"));
+    is("another reading at temperature 1: still analysed", S().state().levels >= 2);
+    is("no error on the page", errors.length === 0);
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  $("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>
