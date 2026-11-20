@@ -41,7 +41,7 @@
         (t/eq "… the rest of the tree keeps what it had" [(get-in t2 [2 2]) (dissoc (get-in t2 [1]) :name)]
               [[:note {:pitch "c4" :dur 1 :id "n0" :tstamp.real 0.1 :vel 0.7}] (dissoc (get full 1) :name)]))
       (t/eq "a note added has nothing of performing it, the others keep theirs"
-            (mapv #(dissoc % :pitch :dur) (map second (filter #(= :note (first %)) (get (mt/with-performative full (update w 2 conj [:note {:pitch "g4" :dur 1}])) 2))))
+            (mapv #(dissoc % :pitch :dur) (map second (filter #(and (vector? %) (= :note (first %))) (get (mt/with-performative full (update w 2 conj [:note {:pitch "g4" :dur 1}])) 2))))
             [{:id "n0" :tstamp.real 0.1 :vel 0.7} {:wire {:send :swell}} {} {}]))
     (let [m [:voice {:name "m"} [:measure {:meter [4 4]} "c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2"]]]
       (t/eq "a canon lasts until its comes ends (a sequence lasts until a child placed :at ends)" (mt/duration (mt/canon 2 7 m)) 9)

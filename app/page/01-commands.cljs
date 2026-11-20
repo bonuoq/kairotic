@@ -453,7 +453,7 @@
     (when-not (= :code (:display d)) (fail (str id " is not a code box (faust~, script…)")))
     d))
 
-(declare tree!)
+(declare tree! tree-data)
 
 (defn code-source!
   "Writes the source of a code box (as one event)."
