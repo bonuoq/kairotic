@@ -1424,7 +1424,7 @@ Reference: [EDN](https://github.com/edn-format/edn) · [Keywords and symbols](ht
 
 `mt <operation> [arguments]`
 
-Operations on musical trees: a tree on the left comes out transformed. transpose n (semitones, or an interval: M3, -P5, A4) · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval], or with the words of a reader on a ring: canon d 2 k P5 speed 0.5 inversion (the comes d beats later, k away, at a speed — 0.5 twice as slow, −1 backwards —, upside down) · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] [speed s] (a bang plays the last tree: Hz and voice ids for synth~, parameters and marks; at a speed, 0.5 twice as slow, −1 the tree backwards — msg :speed −1 —: the reader of a tree on its own clock, as a reader on a ring follows its head).
+Operations on musical trees: a tree on the left comes out transformed. transpose n (semitones, or an interval: M3, -P5, A4) · invert [pivot] · retrograde · augment f · rotate k · canon delay [interval], or with the words of a reader on a ring: canon d 2 k P5 speed 0.5 inversion (the comes d beats later, k away, at a speed — 0.5 twice as slow, −1 backwards —, upside down) · thin amount (keeps the notes on the strongest positions of each measure: a share, 0.5, or how many, 3) · seq / par (joins the left tree with the one on the right) · events · pitches · duration · play [loop] [speed s] (a bang plays the last tree: Hz and voice ids for synth~, parameters, marks, and on a fifth outlet what the wires of its notes and rests send, at their written time; at a speed, 0.5 twice as slow, −1 the tree backwards — msg :speed −1 —: the reader of a tree on its own clock, as a reader on a ring follows its head).
 
 **Inlets** 1: a tree: it comes out transformed (for play: a tree to play, then bang, :stop) · for transpose, invert, augment, rotate, canon, thin: the amount · for seq, par: the tree to join
 
@@ -1444,7 +1444,7 @@ Operations on musical trees: a tree on the left comes out transformed. transpose
 - `mt thin 0.5`: keeps half the notes of each measure, the ones on its strongest positions (metric weight)
 - `mt seq · mt par`: the left tree followed by (or with) the right one
 - `mt events · mt pitches · mt duration`: the tree as data
-- `mt play [loop]`: plays it: Hz (0) and voice ids (1) for synth~, parameters (2), dynamics and texts (3)
+- `mt play [loop]`: plays it: Hz (0) and voice ids (1) for synth~, parameters (2), dynamics and texts (3), and what the wires of its notes and rests send (4), at their written time — the same patch of electronics a follow box drives live, in fixed time
 - `mt play speed 0.5 · msg :speed -1`: at a speed: twice as slow, or the tree backwards — the reader of a tree on its own clock (a reader moved by positions reads the tree box instead: what sounds where it is)
 
 **Try:** Change the box text to mt retrograde, mt invert c4 or mt augment 2: the score follows. (The number on the right inlet takes effect with the next tree: click the bang.)
@@ -2824,7 +2824,7 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `(export-mei! :bN) · (mei :bN)`: its MEI (downloaded, or as text): the notation, where its notes really sounded (@tstamp.real, @dur.real, @vel) and the rest in an <extMeta type="kairotic">; read back it is the same tree
 - `(import-mei!) · (import-mei! :bN) · drop a file on the patch`: a .mei or MusicXML file as a tree box (a new one, or into bN)
 - `⇄ continuum · (continuum! :bN :dissolve)`: between a roll and a score: each axis — time (as it sounded → as written), pitch (Hz → keys → staff), glyph (stroke → head → value) — at its own resolution, changing over the piece (:written :proportional :tempered :graphic :mixed :dissolve :crystallize, or {:res …}); kept in the tree
-- `(wire! :bN 2 :swell) · (wire! :bN 2 :swell {:kind :elastic :tol 0.5}) · (unwire! :bN 2) · (wires :bN)`: a wire from a note to the electronics, written on the note (:wire) and drawn on the continuum: what a follow box sends when the performer gets there — rigid (on the note, or caught up once at the next), elastic (on its own at the expected time plus a tolerance if the note does not come), or led by the electronics ({:leader :electronics})
+- `(wire! :bN 2 :swell) · (wire! :bN 2 :swell {:kind :elastic :tol 0.5}) · (unwire! :bN 2) · (wires :bN)`: a wire from a note to the electronics, written on the note (:wire) — or on a rest, [:rest {:dur 4 :wire {:send :drone}}], an event of the electronics alone, silent, led at its time — and drawn on the continuum: what a follow box sends when the performer gets there — rigid (on the note, or caught up once at the next), elastic (on its own at the expected time plus a tolerance if the note does not come), or led by the electronics ({:leader :electronics})
 - `(keep-take! :bN take) · (continuum! :bN {:take "t1"})`: a performance of the tree (where each note was played), only for you by default (:work keeps it in the tree); the continuum can show it
 - `(track! :bN)`: its free time played (in seconds, at any tempo): the beats are found and kept in its :quant, so that its score and quantize! write it on them
 
