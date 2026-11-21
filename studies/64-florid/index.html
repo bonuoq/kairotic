@@ -1,0 +1,317 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 64 · Florid</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; the cantus firmus and the florid line over it (the frame, the figures, the surface, a cell an
+   eighth); the line reduced back (a row a level, on the frame's grid); about. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f; --warn: #a86a00;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button.act.on { border-color: var(--accent); background: var(--accent-soft); }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 5.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.err { color: var(--error); font-size: 12px; }
+textarea.src { width: 100%; min-height: 11em; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; tab-size: 2; white-space: pre; }
+.scroll { overflow-x: auto; }
+
+input.line { width: 100%; font: 13px var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px 8px; }
+textarea.req { width: 100%; min-height: 2.6em; resize: vertical; font: 13px/1.5 var(--f-ui); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 7px 9px; }
+label.stack { display: grid; gap: 3px; font-size: 12px; color: var(--ink-soft); }
+.answer { font-size: 13px; line-height: 1.55; white-space: pre-wrap; max-height: 14em; overflow: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; margin: 0; }
+.answer:empty { display: none; }
+ul.fails { margin: 0; padding-left: 18px; font: 12px/1.5 var(--f-code); color: var(--ink-soft); }
+ul.fails:empty { display: none; }
+ul.fails b { color: var(--error); font-weight: 500; }
+svg.tree { display: block; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+svg.tree .node rect { fill: var(--box); stroke: var(--ink-soft); stroke-width: 1.2; stroke-dasharray: 4 3; }
+svg.tree .node.chosen rect { stroke: var(--ink); stroke-dasharray: none; }
+svg.tree .node.root rect { stroke: var(--kairos); stroke-width: 1.8; }
+svg.tree .node.on rect { stroke-width: 2; }
+svg.tree .node.sel rect { fill: var(--accent-soft); stroke: var(--accent); }
+svg.tree .node { cursor: pointer; }
+svg.tree .node text { font: 12px var(--f-code); fill: var(--ink); }
+svg.tree .node text.sub { font-size: 10px; fill: var(--ink-soft); }
+svg.tree .edge { fill: none; stroke: var(--rule); stroke-width: 1.4; }
+svg.tree .edge.chosen { stroke: var(--ink-soft); }
+svg.tree .edge.on { stroke: var(--accent); stroke-width: 2; }
+.score { background: #fff; border: 1px solid var(--grid); border-radius: 4px; padding: 6px; overflow-x: auto; min-height: 60px; }
+.score svg { max-width: 100%; height: auto; }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+dl.point { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; font-size: 13px; }
+dl.point dt { color: var(--ink-soft); font-size: 12px; }
+dl.point dd { margin: 0; font-family: var(--f-code); font-size: 12px; overflow-wrap: anywhere; }
+
+/* the levels: a row a level, a slice a cell spanning its units */
+.levels { display: grid; gap: 3px; font: 12px var(--f-code); }
+.lv { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 6px; align-items: stretch; cursor: pointer; }
+.lv .lab { display: flex; align-items: center; gap: 4px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.lv .lab .ok { color: var(--ok); } .lv .lab .no { color: var(--error); } .lv .lab .fr { color: var(--ink-soft); }
+.lv .cells { display: grid; gap: 2px; }
+.lv .cell { background: var(--sheet); border: 1px solid var(--grid); border-radius: 3px; padding: 2px 4px; display: flex; flex-direction: column-reverse; justify-content: flex-end; line-height: 1.3; min-height: 2.9em; overflow: hidden; }
+.lv .cell .m { color: var(--ink); } .lv .cell .b { color: var(--ink-soft); }
+.lv .cell.spread { border-style: dashed; }
+.lv .cell.next { border-color: var(--kairos); box-shadow: inset 0 0 0 1px var(--kairos); }
+.lv.sel .cell { background: var(--accent-soft); border-color: var(--accent); }
+.lv.sel .lab { color: var(--accent); font-weight: 600; }
+.grid-units { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 6px; font: 11px var(--f-code); color: var(--ink-soft); }
+.grid-units .cells { display: grid; gap: 2px; text-align: center; }
+ol.steps { margin: 0; padding-left: 22px; font: 12px/1.55 var(--f-code); color: var(--ink-soft); }
+ol.steps li.pass { cursor: pointer; }
+ol.steps li.pass.sel { color: var(--ink); }
+ol.steps ul { margin: 0; padding-left: 18px; }
+ol.steps li b { color: var(--ink); font-weight: 500; }
+.mel { font: 13px/1.8 var(--f-code); display: flex; flex-wrap: wrap; gap: 4px; }
+.mel span { padding: 1px 5px; border-radius: 3px; border: 1px solid var(--grid); background: var(--sheet); }
+.mel span.kept { border-color: var(--ink-soft); color: var(--ink); }
+.mel span.new { border-color: var(--kairos); color: var(--kairos); }
+
+.rhythm { display: grid; gap: 3px; font: 12px var(--f-code); }
+.rhythm .row { display: grid; grid-template-columns: 3.2em repeat(16, 1fr); gap: 2px; align-items: center; }
+.rhythm .p { height: 18px; border-radius: 2px; background: var(--sheet); border: 1px solid var(--grid); }
+.rhythm .p.on { background: var(--ink); border-color: var(--ink); }
+.rhythm .p.beat { border-color: var(--ink-soft); }
+.rhythm .row.end .p.on { background: var(--kairos); border-color: var(--kairos); }
+.rhythm .lab { color: var(--ink-soft); }
+
+.grid8 { display: grid; gap: 2px; font: 11px var(--f-code); }
+.grid8 .row { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: 6px; align-items: stretch; }
+.grid8 .lab { color: var(--ink-soft); display: flex; align-items: center; }
+.grid8 .cells { display: grid; gap: 1px; }
+.grid8 .c { background: var(--sheet); border: 1px solid var(--grid); border-radius: 2px; padding: 1px 2px; overflow: hidden; white-space: nowrap; text-align: center; min-height: 1.7em; }
+.grid8 .c.fig { color: var(--kairos); font-size: 10px; }
+.grid8 .c.dis { border-color: var(--kairos); }
+.grid8 .c.ok { border-color: var(--ok); }
+.grid8 .c.no { border-color: var(--error); color: var(--error); }
+</style>
+<main>
+<header>
+  <h1>Study 64 · florid</h1>
+  <span class="sub">Florid counterpoint over a cantus firmus: a frame drawn by a bridge, elaborated by figures, every note justified by its derivation — and reduced back</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<section class="panel" aria-labelledby="h-line">
+  <h2 id="h-line">The florid line <span>the cantus firmus in the bass, a whole note a bar; the frame a half note; each half bar a figure, four eighths</span></h2>
+  <div class="row">
+    <label class="inline" for="cf">Cantus firmus <select id="cf"></select></label>
+    <label class="inline" for="ftemp" title="the frame's bridge: the lower, the more the cheapest ways weigh">Frame <input type="number" id="ftemp" min="0.1" max="3" step="0.1" value="0.4"></label>
+    <label class="inline" for="density" title="how busy the figures are, 0 … 1">Density <input type="number" id="density" min="0" max="1" step="0.1" value="0.6"></label>
+    <label class="inline" for="gtemp" title="the figures' choice">Figures <input type="number" id="gtemp" min="0" max="3" step="0.1" value="0.5"></label>
+    <button class="act primary" id="draw">Draw</button>
+    <button class="act" id="play">▶ Play</button>
+    <button class="act" id="play-frame">▶ The frame</button>
+    <button class="act" id="halt">■ Stop</button>
+    <button class="act" id="mei" title="As MEI for the app: a note held written as long as it lasts, tied over the bar line">Export MEI</button>
+  </div>
+  <div class="scroll"><div class="grid8" id="line"></div></div>
+  <p class="facts" id="facts">—</p>
+</section>
+
+<section class="panel" aria-labelledby="h-red">
+  <h2 id="h-red">Reduced back <span>Study 61's grammar on the eighths' grid, each level read on the frame's (a cell a half bar): green where it is the frame's note</span></h2>
+  <div class="scroll"><div class="grid8" id="levels"></div></div>
+  <p class="facts" id="red-facts">—</p>
+</section>
+
+<section class="panel" aria-labelledby="h-about">
+  <h2 id="h-about">About <span>discussion <a href="https://github.com/bonuoq/kairotic/discussions/342">#342</a></span></h2>
+  <p class="about">A note is legal if a legal derivation makes it. The <em>frame</em> is second and fourth species over the cantus firmus — consonance on the strong half, a passing note on the weak one, suspensions prepared and resolved — drawn by a bridge (Study 63) over the kernel every phrase answers to. Each half bar of the frame, from its note to the next, is then elaborated into four eighths by a <em>figure</em>: a rhythm, a shape relative to the two notes it joins, and the places where it may be dissonant — the dissonance it brings is justified by the frame it ornaments. A suspension of the frame may be prepared with a neighbour, or resolved later: early, in an eighth, or through a third below it (an ornamented resolution).</p>
+  <ul class="q">
+    <li>The figures: a passing quarter (<em>transitus</em>), a dotted passing eighth, a run (<em>tirata</em>), a neighbour, a turn (<em>circulatio</em>), an anticipation (<em>anticipatio</em>), an escape tone, a skip to a note of the chord, a cambiata, and the suspension's own.</li>
+    <li>Reduced by Study 61's grammar on the eighths' grid (GTTM's weights inside the bar), the frame's downbeats come back: the derivation read both ways.</li>
+    <li>Major keys for now; next (#342): mixed rhythms beyond the four eighths (triplets, longer figures over a bar), a motive kept through the elaboration, the ornamented chorale (BWV 622).</li>
+  </ul>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
+// is read first, as window.kairoticFlorid ({F: florid.mjs, PV: protovoices.mjs, X: export.mjs}).
+window.kairoticBase = window.kairoticBase || "kairotic/";
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  var b = "./" + window.kairoticBase;
+  Promise.all([import(b + "florid.mjs"), import(b + "protovoices.mjs"), import(b + "export.mjs")]).then(function (ms) {
+    window.kairoticFlorid = { F: ms[0], PV: ms[1], X: ms[2] };
+    try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns florid-page (:require [clojure.string :as str]))
+
+;; Kairotic · Study 64 · florid: the page. The kernel (kairotic/florid.mjs) draws the frame, elaborates it and reduces
+;; it back; this page keeps the state, draws the grids, plays and exports.
+
+(def K (.-kairoticFlorid js/window))
+(def F (.-F K))
+(def PV (.-PV K))
+(def X (.-X K))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;")))
+(defn status! [s] (set! (.-textContent ($ "status")) s))
+(defn msg [e] (or (.-message e) (str e)))
+(defn num! [id d] (let [x (js/parseFloat (.-value ($ id)))] (if (js/isNaN x) d x)))
+(defn text! [id s] (set! (.-textContent ($ id)) s))
+(defn html! [id s] (set! (.-innerHTML ($ id)) s))
+
+;; :x the florid line ({frame, eighths, spans}), :red its reduction
+(defonce st (atom {:x nil :red nil}))
+(def canti (js->clj (.-CANTI F)))
+(doseq [[k c] canti]
+  (let [o (js/document.createElement "option")]
+    (set! (.-value o) k) (set! (.-textContent o) (get c "name")) (.appendChild ($ "cf") o)))
+(defn cantus [] (get canti (.-value ($ "cf"))))
+(def SUB (.-SUB F))
+
+(defn row [label cols cells] (str "<div class=\"row\"><span class=\"lab\">" label "</span><div class=\"cells\" style=\"grid-template-columns:repeat(" cols ", minmax(2.6em, 1fr))\">" cells "</div></div>"))
+
+(defn draw-line! []
+  (when-let [x (:x @st)]
+    (let [c (cantus) bass (str/split (get c "cf") #" ") eighths (vec (array-seq (.-eighths x))) n8 (count eighths)
+          frame (vec (array-seq (.-frame x))) spans (array-seq (.-spans x))
+          cell (fn [span cls txt] (str "<span class=\"c " cls "\" style=\"grid-column: span " span "\">" (esc txt) "</span>"))
+          ;; the surface: a note held across eighths one cell
+          surf (loop [i 0 out []]
+                 (if (>= i n8) out
+                     (let [e (loop [e (inc i)] (if (and (< e n8) (= (eighths e) (eighths i))) (recur (inc e)) e))
+                           t (quot i SUB) b (get bass (quot t 2))
+                           dis (not (.consonant PV b (eighths i)))]
+                       (recur e (conj out (cell (- e i) (when dis "dis") (eighths i)))))))]
+      (html! "line"
+             (str (row "cantus" n8 (str/join "" (map-indexed (fn [i b] (cell (min 8 (- n8 (* 8 i))) "" b)) bass)))
+                  (row "frame" n8 (str/join "" (map (fn [nm] (cell SUB "" nm)) frame)))
+                  (row "figures" n8 (str/join "" (map (fn [sp] (cell SUB "fig" (.-figure sp))) spans)))
+                  (row "surface" n8 (str/join "" surf))))
+      (text! "facts" (str (count frame) " half bars, " n8 " eighths · figures: "
+                          (str/join ", " (map (fn [[k v]] (str k " " v)) (sort-by (comp - second) (frequencies (map #(.-figure %) spans)))))
+                          " · red border: a dissonance against the cantus firmus, justified by its figure")))))
+
+(defn draw-levels! []
+  (when-let [red (:red @st)]
+    (let [x (:x @st) frame (vec (array-seq (.-frame x))) levels (array-seq (.-levels red)) n (count frame)
+          an (.-an red)]
+      (html! "levels"
+             (str/join "" (for [k (reverse (range (count levels)))]
+                            (let [L (vec (array-seq (nth levels k)))]
+                              (row (str "L" k " · " (count (aget (.-levels an) k)))
+                                   n (str/join "" (map-indexed (fn [t nm] (str "<span class=\"c " (if (= nm (frame t)) "ok" "no") "\">" (esc nm) "</span>")) L)))))))
+      (let [down (fn [v] (vec (keep-indexed (fn [i x] (when (even? i) x)) v)))
+            k (or (first (keep-indexed (fn [k _] (when (<= (count (aget (.-levels an) k)) n) k)) levels)) (dec (count levels)))
+            a (.agreement F (clj->js (down (vec (array-seq (nth levels k))))) (clj->js (down frame)))]
+        (text! "red-facts" (str (count levels) " levels; at L" k " (as long as the frame) " (js/Math.round (* 100 a)) "% of its downbeats are the frame's"))))))
+
+(defn draw! []
+  (try
+    (let [c (cantus)
+          x (.florid F (get c "cf") (clj->js (get c "key")) #js {:temp (num! "ftemp" 0.4) :density (num! "density" 0.6) :ftemp (num! "gtemp" 0.5)})]
+      (if-not x
+        (text! "facts" "No florid line this time: draw again.")
+        (let [red (.reduceFlorid F (get c "cf") (clj->js (get c "key")) (.-eighths x) (.-frame x))]
+          (reset! st {:x x :red red})
+          (draw-line!) (draw-levels!))))
+    (catch :default e (text! "facts" (str "Error: " (msg e))))))
+
+;; ───────── sound ─────────
+(defonce ac (atom nil))
+(defonce playing (atom []))
+(defn halt! [] (doseq [o @playing] (try (.stop o) (catch :default _ nil))) (reset! playing []))
+(defn hz [name] (* 440 (js/Math.pow 2 (/ (- (.midiOf PV name) 69) 12))))
+(defn tone! [c f s e g0]
+  (let [o (.createOscillator c) g (.createGain c)]
+    (set! (.-type o) "triangle") (set! (.. o -frequency -value) f)
+    (.setValueAtTime (.-gain g) 0 s) (.linearRampToValueAtTime (.-gain g) g0 (+ s 0.01)) (.setTargetAtTime (.-gain g) 0 (- e 0.03) 0.02)
+    (.connect (.connect o g) (.-destination c)) (.start o s) (.stop o (+ e 0.3))
+    (swap! playing conj o)))
+(defn play-line! [line per-unit]
+  (halt!)
+  (try
+    (let [c (or @ac (reset! ac (js/AudioContext.))) eighth 0.16 t0 (+ (.-currentTime c) 0.1)
+          bass (str/split (get (cantus) "cf") #" ") n (* (count line) per-unit)]
+      (doseq [[i b] (map-indexed vector bass)]
+        (let [s (* i 8) e (min n (+ s 8))] (when (< s n) (tone! c (hz b) (+ t0 (* s eighth)) (+ t0 (* e eighth)) 0.12))))
+      (loop [i 0]
+        (when (< i (count line))
+          (let [e (loop [e (inc i)] (if (and (< e (count line)) (= (nth line e) (nth line i))) (recur (inc e)) e))]
+            (tone! c (hz (nth line i)) (+ t0 (* i per-unit eighth)) (+ t0 (* e per-unit eighth)) 0.09)
+            (recur e)))))
+    (catch :default e (status! (str "No sound: " (msg e))))))
+
+;; ───────── wiring ─────────
+(.addEventListener ($ "cf") "change" (fn [_] (draw!)))
+(.addEventListener ($ "draw") "click" (fn [_] (draw!)))
+(.addEventListener ($ "play") "click" (fn [_] (when-let [x (:x @st)] (play-line! (vec (array-seq (.-eighths x))) 1))))
+(.addEventListener ($ "play-frame") "click" (fn [_] (when-let [x (:x @st)] (play-line! (vec (array-seq (.-frame x))) SUB))))
+(.addEventListener ($ "halt") "click" (fn [_] (halt!)))
+(.addEventListener ($ "mei") "click"
+  (fn [_] (when-let [x (:x @st)]
+            (let [c (cantus)]
+              (-> (.offer X (.meiOf F (get c "cf") (clj->js (get c "key")) x #js {:title (str "Florid counterpoint over " (get c "name"))}))
+                  (.then (fn [s] (status! s))))))))
+
+(draw!)
+(status! "Ready")
+
+;; for the tests (tests/page.html)
+(set! (.-kairoticStudy js/window)
+      #js {:state (fn [] (let [{:keys [x red]} @st]
+                           #js {:frame (when x (count (.-frame x))) :eighths (when x (count (.-eighths x)))
+                                :levels (when red (count (.-levels red))) :rows (count (array-seq (.querySelectorAll ($ "levels") ".row")))}))
+           :draw draw!})
+</script>
