@@ -36,9 +36,15 @@ export const WEIGHTS = { meter: 1, dissonance: 1, line: 0.3, voice: 0.5, spread:
 const split = (s) => (Array.isArray(s) ? s : String(s || "").trim().split(/\s+/).filter(Boolean));
 const top = (s) => s.notes[s.notes.length - 1].pitch;
 
-/** GTTM's metrical weight of a unit (a bar is per units; bars in twos and fours). */
+/** GTTM's metrical weight of a unit (a bar is per units; bars in twos and fours). Inside the bar, below the
+ *  lightest bar: the half bar heavier than the quarters, the quarters than the eighths, the odd units nothing (with two
+ *  units a bar, as the incipits have, the second unit weighs 0). */
 export function meter(u, per = PER) {
-  if (u % per) return 0;
+  const pos = u % per;
+  if (pos) {
+    const low = pos & -pos;
+    return low === 1 ? 0 : 0.9 * Math.log2(low) / Math.log2(per);
+  }
   const bar = u / per;
   return bar % 4 === 0 ? 3 : bar % 2 === 0 ? 2 : 1;
 }
@@ -132,9 +138,11 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null 
  * temp (0: always the cheapest) and r (a random number in [0, 1), drawn anew at each step) give other readings: an
  * analysis is an interpretation.
  */
-export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, temp = 0, r = Math.random } = {}) {
+export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, temp = 0, r = Math.random, judge: judgeOf = null } = {}) {
   const notes = notesOfPhrase(phrase, per), units = split(phrase.melody).length;
-  const judge = (p) => checkPath(p, phrase, key, per);
+  // (judge: how a level is checked — by default checkPath, the rules of every phrase on its grid; a study with
+  // another grid gives its own, its errors' units on the phrase's units)
+  const judge = judgeOf || ((p) => checkPath(p, phrase, key, per));
   let path = slicesOf(notes);
   const levels = [path], steps = [], top = 3;
   const choose1 = (cs) => pick(cs, (x) => x.cost, temp, temp > 0 ? r() : undefined);
