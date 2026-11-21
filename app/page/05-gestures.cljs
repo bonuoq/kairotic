@@ -54,7 +54,8 @@
   "The field to write a box (a new one at x y, or the text of box id). What starts with ( is a line of the REPL
    instead (issue #163): Enter evaluates it, shows what it gave under the field and leaves it open for the next
    one (↑ ↓ go through the REPL's history); Esc, or Enter on an empty line, closes it. While the class is being
-   written, a menu (#box-suggest) offers the classes that match: ↑ ↓ choose, Tab or Enter take one, a click too."
+   written, a menu (#box-suggest) offers the classes that match: ↑ ↓ choose, Tab or Enter take one, a click too.
+   Its ? (or F1, Ctrl/⌘ + ?, in the field) opens the help of the class chosen or written, the field still open."
   [{:keys [id x y text]}]
   (when-let [old ($ "box-edit")] (.remove old))
   (when-let [old ($ "box-edit-out")] (.remove old))
@@ -64,6 +65,7 @@
         out (js/document.createElement "div")
         menu (js/document.createElement "div")
         repl? (atom false) hidx (atom nil)
+        helping (atom false)   ; while the Help tab opens: if it takes the focus, the field is not written
         ;; once: removing the field makes it lose the focus, and its blur closes it too
         close! (fn [] (when-not @done (reset! done true) (.remove inp) (.remove out) (.remove menu)))
         set-repl! (fn [on]
@@ -102,6 +104,8 @@
                         (set! (.-value inp) (if (< i n) (nth h i) ""))))))
         ;; the menu of classes: what matches the first word while it is written, then what the class takes
         sugg (atom {:items [] :sel nil})
+        help-button (fn [c] (str "<button type=\"button\" class=\"sg-help\" data-help=\"" (esc c) "\" title=\"Help of " (esc c)
+                                 " (F1)\" aria-label=\"Help of " (esc c) "\">?</button>"))
         draw-menu! (fn []
                      (let [{:keys [items sel hint]} @sugg]
                        (set! (.-innerHTML menu)
@@ -113,10 +117,12 @@
                                                   (when (= i sel) " aria-selected=\"true\"") ">"
                                                   "<span class=\"sg-name\">" (esc cls) "</span>"
                                                   "<span class=\"sg-from\">" (esc from) "</span>"
+                                                  (help-button cls)
                                                   (when (seq doc) (str "<span class=\"sg-doc\">" (esc doc) "</span>")) "</div>"))
                                            items))
                                hint (str "<div class=\"sg hint\"><span class=\"sg-name\">" (esc (or (:usage hint) (:cls hint))) "</span>"
                                          "<span class=\"sg-from\">" (esc (:from hint)) "</span>"
+                                         (help-button (:cls hint))
                                          (when (seq (:doc hint)) (str "<span class=\"sg-doc\">" (esc (:doc hint)) "</span>")) "</div>")
                                :else ""))))
         suggest! (fn []
@@ -133,6 +139,15 @@
                     (if (and commit? (not args?))
                       (finish true)
                       (do (.focus inp) (suggest!))))))
+        ;; the help of the class chosen, or else the one written, or else the first offered; the field stays open
+        help! (fn [c]
+                (let [{:keys [items sel]} @sugg
+                      w (klass (str/triml (.-value inp)))
+                      c (or c (:cls (get items sel)) (when (hlp/about w) w) (:cls (first items)))]
+                  (reset! helping true)
+                  (show-help! c)
+                  (.focus inp)
+                  (js/setTimeout (fn [] (reset! helping false) (when-not @done (.focus inp))) 0)))
         move! (fn [d] (let [{:keys [items sel]} @sugg n (count items)]
                         (when (pos? n)
                           (swap! sugg assoc :sel (mod (if sel (+ sel d) (if (pos? d) 0 (dec n))) n))
@@ -143,8 +158,10 @@
     (.setAttribute menu "role" "listbox")
     ;; a click on a class takes it; pressing on the menu does not take the focus away from the field
     (.addEventListener menu "pointerdown" (fn [e] (.preventDefault e)))
-    (.addEventListener menu "click" (fn [e] (when-let [el (.closest (.-target e) "[data-i]")]
-                                              (take! (js/parseInt (.. el -dataset -i) 10) false))))
+    (.addEventListener menu "click" (fn [e] (if-let [h (.closest (.-target e) "[data-help]")]
+                                              (help! (.. h -dataset -help))
+                                              (when-let [el (.closest (.-target e) "[data-i]")]
+                                                (take! (js/parseInt (.. el -dataset -i) 10) false)))))
     (set! (.-id inp) "box-edit")
     (set! (.-className inp) "edit")
     (.setAttribute inp "spellcheck" "false")
@@ -176,8 +193,10 @@
                     (upgrade-repl-line! inp x y close!))
                 (suggest!))))
     (.addEventListener inp "keydown"
-      (fn [e] (let [{:keys [items sel]} @sugg]
-                (case (.-key e)
+      (fn [e] (let [{:keys [items sel]} @sugg k (.-key e)]
+                (if (and (not @repl?) (or (= k "F1") (and (or (.-ctrlKey e) (.-metaKey e)) (#{"?" "/"} k))))
+                  (do (.preventDefault e) (help! nil))
+                (case k
                   "Enter" (do (.preventDefault e) (if sel (take! sel true) (finish true)))
                   "Tab" (when (seq items) (.preventDefault e) (take! (or sel 0) false))
                   "Escape" (do (.preventDefault e) (if sel (do (swap! sugg assoc :sel nil) (draw-menu!)) (finish false)))
@@ -185,9 +204,9 @@
                                   (move! -1) (.preventDefault e))
                   "ArrowDown" (cond @repl? (do (.preventDefault e) (recall! :down))
                                     (move! 1) (.preventDefault e))
-                  nil))))
+                  nil)))))
     ;; leaving it writes the box; a line of the REPL is closed without running it
-    (.addEventListener inp "blur" (fn [_] (if @repl? (close!) (finish true))))))
+    (.addEventListener inp "blur" (fn [_] (cond @helping nil @repl? (close!) :else (finish true))))))
 
 ;; ───── typing a number into a numeric control (issue #32) ─────
 ;; A double-click on a number box, on a component whose :gesture gives numbers (a knob), on a parameter
