@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Voice leading at the level of the structure** (`@kairotic/cac` 0.6.0; Study 61, #321, step 1 of the road
+- **Voice leading at the level of the structure** (`@kairotic/cac` 0.7.0; Study 61, #321, step 1 of the road
   there). `partimento.mjs` refuses **parallel 5ths and octaves hidden by the diminution**: the same perfect interval
   on two strong units in a row, both voices moved the same way, with only ornaments between them (steps or
   dissonances). A consonant leap between them breaks them, in the upper voice or in the bass, as the treatises allow
