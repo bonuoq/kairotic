@@ -1,0 +1,55 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 63 · bridges · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself (its styles, its markup, its ClojureScript), driven as a person would: on loading, the C
+// major incipit varied from its frame, a morph to the 7–6 chain and a rhythms' way; then the likeliest variation, a
+// level chosen, the 7–6 chain, a morph impossible, two rhythms with different onsets.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  const S = () => window.kairoticStudy;
+  const $ = (id) => document.getElementById(id);
+  const click = (el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  const change = (el, v) => { el.value = v; el.dispatchEvent(new Event("change")); };
+  try {
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    $("host").appendChild(doc.querySelector("main").cloneNode(true));
+    const [B, R, I, PV] = await Promise.all([import("../kairotic/bridge.mjs"), import("../kairotic/reduction.mjs"), import("../kairotic/incipit.mjs"), import("../kairotic/protovoices.mjs")]);
+    window.kairoticBridges = { B, R, I, PV };
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    is("ready: the C major incipit analysed (4 levels), varied from its frame, legal", $("status").textContent === "Ready" && S().state().levels === 4 && S().state().variation && /passes the rules/.test($("v-facts").textContent));
+    is("… the notes kept marked on the variation", document.querySelectorAll("#v-mel span.kept").length > 0);
+    click($("v-map"));
+    is("the likeliest variation: legal, marked as such", /the likeliest/.test($("v-facts").textContent) && /passes the rules/.test($("v-facts").textContent));
+    change($("v-k"), "0"); click($("v-draw"));
+    is("from the surface (L0) the phrase itself, nothing drawn anew", S().state().variation === "G4 C5 C5 B4 A4 A4 B4 D5 C5" && /0 drawn anew/.test($("v-facts").textContent));
+    change($("v-ex"), "scale-76"); click($("v-draw"));
+    is("the 7–6 chain from its frame: a variation of 15 units, legal", S().state().levels === 6 && S().state().variation.split(" ").length === 15 && /passes the rules/.test($("v-facts").textContent));
+
+    is("the morph on loading: the C major incipit into the 7–6 chain, 25 units, its ends kept", S().state().morph && S().state().morph.split(" ").length === 25 && document.querySelectorAll("#m-mel span.kept").length === 13);
+    change($("m-b"), "short-am"); click($("m-draw"));
+    is("… to A minor from C major: said impossible (another key), no error", /No bridge|Error/.test($("m-facts").textContent));
+
+    is("the rhythms' way on loading: from A to B, a row a step (distance 3 + 3 extra steps: 7 rows)", S().state().way === 7 && document.querySelectorAll("#r-way .row").length === 7);
+    click($("r-map"));
+    is("… the likeliest way", /the likeliest/.test($("r-facts").textContent));
+    $("r-b").value = "x...x...x...x..."; click($("r-draw"));
+    is("… two rhythms with different onsets: said so", /as many onsets/.test($("r-facts").textContent));
+    is("no error on the page", errors.length === 0);
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  $("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>

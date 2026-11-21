@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 63 · bridges: the most natural legal way from A to B** (discussion #341, step 2 of #321's road). The
+  futuribles' exact count turned into a Schrödinger bridge: each way weighs exp(−cost / temperature) by the soft
+  rules of every engine, the hard rules refuse, the ends are pinned; backward messages in the log domain on the
+  kernel's window, the forward draw by the product, so a bridge draws only legal lines and never gets stuck. Used
+  three ways: Study 61's *vary from a level* through its waypoints (no backtracking), a morph between two phrases
+  (A's beginning, B's end, the way between), and a bridge between two rhythms by swaps weighed by the metre.
 - **Voice leading at the level of the structure** (`@kairotic/cac` 0.7.0; Study 61, #321, step 1 of the road
   there). `partimento.mjs` refuses **parallel 5ths and octaves hidden by the diminution**: the same perfect interval
   on two strong units in a row, both voices moved the same way, with only ornaments between them (steps or

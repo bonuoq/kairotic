@@ -1,0 +1,360 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 63 · Bridges</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: Kairotic header; varying a phrase from a level by a bridge; a morph between two phrases; a bridge between two
+   rhythms; about. */
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --error: #b42318; --ok: #2e7d4f; --warn: #a86a00;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --error: #ff8a80; --ok: #7fd1a0; --warn: #f0b75a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1180px; margin: 0 auto; display: grid; gap: 14px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 6px 11px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.5; cursor: default; }
+button.act.on { border-color: var(--accent); background: var(--accent-soft); }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 6px; }
+input[type="number"] { width: 5.5em; font-family: var(--f-code); }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.facts { font: 12px/1.55 var(--f-code); color: var(--ink-soft); font-variant-numeric: tabular-nums; min-height: 1.55em; overflow-wrap: anywhere; }
+.facts b { color: var(--ink); font-weight: 500; }
+.two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.note { font-size: 12px; color: var(--ink-soft); line-height: 1.55; max-width: 95ch; margin: 0; }
+.note code { font-family: var(--f-code); color: var(--ink); }
+.err { color: var(--error); font-size: 12px; }
+textarea.src { width: 100%; min-height: 11em; resize: vertical; font: 12px/1.5 var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; tab-size: 2; white-space: pre; }
+.scroll { overflow-x: auto; }
+
+input.line { width: 100%; font: 13px var(--f-code); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px 8px; }
+textarea.req { width: 100%; min-height: 2.6em; resize: vertical; font: 13px/1.5 var(--f-ui); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 7px 9px; }
+label.stack { display: grid; gap: 3px; font-size: 12px; color: var(--ink-soft); }
+.answer { font-size: 13px; line-height: 1.55; white-space: pre-wrap; max-height: 14em; overflow: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 8px 10px; margin: 0; }
+.answer:empty { display: none; }
+ul.fails { margin: 0; padding-left: 18px; font: 12px/1.5 var(--f-code); color: var(--ink-soft); }
+ul.fails:empty { display: none; }
+ul.fails b { color: var(--error); font-weight: 500; }
+svg.tree { display: block; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+svg.tree .node rect { fill: var(--box); stroke: var(--ink-soft); stroke-width: 1.2; stroke-dasharray: 4 3; }
+svg.tree .node.chosen rect { stroke: var(--ink); stroke-dasharray: none; }
+svg.tree .node.root rect { stroke: var(--kairos); stroke-width: 1.8; }
+svg.tree .node.on rect { stroke-width: 2; }
+svg.tree .node.sel rect { fill: var(--accent-soft); stroke: var(--accent); }
+svg.tree .node { cursor: pointer; }
+svg.tree .node text { font: 12px var(--f-code); fill: var(--ink); }
+svg.tree .node text.sub { font-size: 10px; fill: var(--ink-soft); }
+svg.tree .edge { fill: none; stroke: var(--rule); stroke-width: 1.4; }
+svg.tree .edge.chosen { stroke: var(--ink-soft); }
+svg.tree .edge.on { stroke: var(--accent); stroke-width: 2; }
+.score { background: #fff; border: 1px solid var(--grid); border-radius: 4px; padding: 6px; overflow-x: auto; min-height: 60px; }
+.score svg { max-width: 100%; height: auto; }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+ul.q { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+ul.q li::marker { color: var(--kairos); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+dl.point { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; font-size: 13px; }
+dl.point dt { color: var(--ink-soft); font-size: 12px; }
+dl.point dd { margin: 0; font-family: var(--f-code); font-size: 12px; overflow-wrap: anywhere; }
+
+/* the levels: a row a level, a slice a cell spanning its units */
+.levels { display: grid; gap: 3px; font: 12px var(--f-code); }
+.lv { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 6px; align-items: stretch; cursor: pointer; }
+.lv .lab { display: flex; align-items: center; gap: 4px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.lv .lab .ok { color: var(--ok); } .lv .lab .no { color: var(--error); } .lv .lab .fr { color: var(--ink-soft); }
+.lv .cells { display: grid; gap: 2px; }
+.lv .cell { background: var(--sheet); border: 1px solid var(--grid); border-radius: 3px; padding: 2px 4px; display: flex; flex-direction: column-reverse; justify-content: flex-end; line-height: 1.3; min-height: 2.9em; overflow: hidden; }
+.lv .cell .m { color: var(--ink); } .lv .cell .b { color: var(--ink-soft); }
+.lv .cell.spread { border-style: dashed; }
+.lv .cell.next { border-color: var(--kairos); box-shadow: inset 0 0 0 1px var(--kairos); }
+.lv.sel .cell { background: var(--accent-soft); border-color: var(--accent); }
+.lv.sel .lab { color: var(--accent); font-weight: 600; }
+.grid-units { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 6px; font: 11px var(--f-code); color: var(--ink-soft); }
+.grid-units .cells { display: grid; gap: 2px; text-align: center; }
+ol.steps { margin: 0; padding-left: 22px; font: 12px/1.55 var(--f-code); color: var(--ink-soft); }
+ol.steps li.pass { cursor: pointer; }
+ol.steps li.pass.sel { color: var(--ink); }
+ol.steps ul { margin: 0; padding-left: 18px; }
+ol.steps li b { color: var(--ink); font-weight: 500; }
+.mel { font: 13px/1.8 var(--f-code); display: flex; flex-wrap: wrap; gap: 4px; }
+.mel span { padding: 1px 5px; border-radius: 3px; border: 1px solid var(--grid); background: var(--sheet); }
+.mel span.kept { border-color: var(--ink-soft); color: var(--ink); }
+.mel span.new { border-color: var(--kairos); color: var(--kairos); }
+
+.rhythm { display: grid; gap: 3px; font: 12px var(--f-code); }
+.rhythm .row { display: grid; grid-template-columns: 3.2em repeat(16, 1fr); gap: 2px; align-items: center; }
+.rhythm .p { height: 18px; border-radius: 2px; background: var(--sheet); border: 1px solid var(--grid); }
+.rhythm .p.on { background: var(--ink); border-color: var(--ink); }
+.rhythm .p.beat { border-color: var(--ink-soft); }
+.rhythm .row.end .p.on { background: var(--kairos); border-color: var(--kairos); }
+.rhythm .lab { color: var(--ink-soft); }
+</style>
+<main>
+<header>
+  <h1>Study 63 · bridges</h1>
+  <span class="sub">The most natural legal way from A to B: a Schrödinger bridge over the rules of every engine, weighed by the soft rules and the metre</span>
+  <span class="status" id="status">Loading…</span>
+</header>
+
+<section class="panel" aria-labelledby="h-vary">
+  <h2 id="h-vary">Vary from a level, by a bridge <span>Study 61's reduction: the notes that survive at the level kept, the rest drawn from the bridge between them</span></h2>
+  <div class="row">
+    <label class="inline" for="v-ex">Phrase <select id="v-ex"></select></label>
+    <label class="inline" for="v-k">Level <select id="v-k"></select></label>
+    <label class="inline" for="v-temp" title="the lower, the more the cheapest ways weigh">Temperature <input type="number" id="v-temp" min="0.1" max="3" step="0.1" value="0.6"></label>
+    <button class="act primary" id="v-draw">Draw</button>
+    <button class="act" id="v-map" title="the likeliest note at each step, its future weighed">The likeliest</button>
+    <button class="act" id="v-play-orig">▶ The phrase</button>
+    <button class="act" id="v-play">▶ The variation</button>
+  </div>
+  <div class="mel" id="v-mel"></div>
+  <p class="facts" id="v-facts">—</p>
+</section>
+
+<section class="panel" aria-labelledby="h-morph">
+  <h2 id="h-morph">A morph between two phrases <span>A's beginning and B's end kept, over A's bass then B's; the bridge draws the way between them</span></h2>
+  <div class="row">
+    <label class="inline" for="m-a">From <select id="m-a"></select></label>
+    <label class="inline" for="m-b">to <select id="m-b"></select></label>
+    <label class="inline" for="m-head">A's first <input type="number" id="m-head" min="1" max="20" value="5"> units</label>
+    <label class="inline" for="m-tail">B's last <input type="number" id="m-tail" min="1" max="20" value="8"> units</label>
+    <label class="inline" for="m-temp">Temperature <input type="number" id="m-temp" min="0.1" max="3" step="0.1" value="0.6"></label>
+    <button class="act primary" id="m-draw">Draw</button>
+    <button class="act" id="m-play">▶ Play</button>
+  </div>
+  <div class="mel" id="m-mel"></div>
+  <p class="facts" id="m-facts">—</p>
+</section>
+
+<section class="panel" aria-labelledby="h-rh">
+  <h2 id="h-rh">A bridge between two rhythms <span>16 pulses, a swap or a stay a step (as @kairotic/rhythm's morph moves); each rhythm on the way weighed by its onsets' metrical weight</span></h2>
+  <div class="row">
+    <label class="inline" for="r-a">From <input class="line" id="r-a" value="x..x..x...x.x..." spellcheck="false" style="width:12em"></label>
+    <label class="inline" for="r-b">to <input class="line" id="r-b" value="x.x...x.x...x..." spellcheck="false" style="width:12em"></label>
+    <label class="inline" for="r-extra" title="steps beyond the fewest swaps">extra steps <input type="number" id="r-extra" min="0" max="12" value="3"></label>
+    <label class="inline" for="r-beat" title="how much the metre weighs">metre <input type="number" id="r-beat" min="0" max="3" step="0.25" value="0.75"></label>
+    <label class="inline" for="r-temp">Temperature <input type="number" id="r-temp" min="0.1" max="3" step="0.1" value="1"></label>
+    <button class="act primary" id="r-draw">Draw</button>
+    <button class="act" id="r-map">The likeliest</button>
+    <button class="act" id="r-play">▶ Play</button>
+  </div>
+  <div class="rhythm" id="r-way"></div>
+  <p class="facts" id="r-facts">—</p>
+</section>
+
+<section class="panel" aria-labelledby="h-about">
+  <h2 id="h-about">About <span>discussion <a href="https://github.com/bonuoq/kairotic/discussions/341">#341</a></span></h2>
+  <p class="about">A <em>Schrödinger bridge</em> is the most likely random process from a given start to a given end, relative to a reference process that says which moves are natural. On a layered graph — a state a unit — it is the product of two messages, one forwards from the start, one backwards from the end. The futuribles (Study 38) already count the ways to the end exactly: that is the backward message with every way weighing one. Here each way weighs exp(−cost / temperature), the cost being the soft rules of every engine (<code>soft.mjs</code>, through the kernel's own costs); the hard rules weigh nothing (refused), so whatever a bridge draws is legal, and it never gets stuck: every note it offers has a future.</p>
+  <ul class="q">
+    <li>Varying from a level (Study 61) is a bridge through waypoints: the notes that survive are pinned, each span between them is drawn with its true probability — no backtracking.</li>
+    <li>A morph keeps the beginning of one phrase and the end of another, and draws the way between them under the rules of every phrase.</li>
+    <li>Between two rhythms the states are rhythms and a step is a swap: with the metre weighed, the way passes through rhythms that sit well in the bar; without it, any way of the right length.</li>
+    <li>What comes next (#341): the bridge as the engine of florid counterpoint (#342), presets, spectra and kairoi (continuous bridges), and the tiles of an endless zoom.</li>
+  </ul>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
+// is read first, as window.kairoticBridges ({B: bridge.mjs, R: reduction.mjs, I: incipit.mjs, PV: protovoices.mjs}).
+window.kairoticBase = window.kairoticBase || "kairotic/";
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  var b = "./" + window.kairoticBase;
+  Promise.all([import(b + "bridge.mjs"), import(b + "reduction.mjs"), import(b + "incipit.mjs"), import(b + "protovoices.mjs")]).then(function (ms) {
+    window.kairoticBridges = { B: ms[0], R: ms[1], I: ms[2], PV: ms[3] };
+    try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns bridges-page (:require [clojure.string :as str]))
+
+;; Kairotic · Study 63 · bridges: the page. The kernel (kairotic/bridge.mjs) draws from the bridges; this page keeps
+;; the state, draws what was drawn, and plays it.
+
+(def K (.-kairoticBridges js/window))
+(def B (.-B K))
+(def R (.-R K))
+(def I (.-I K))
+(def PV (.-PV K))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;")))
+(defn status! [s] (set! (.-textContent ($ "status")) s))
+(defn msg [e] (or (.-message e) (str e)))
+(defn num! [id d] (let [x (js/parseFloat (.-value ($ id)))] (if (js/isNaN x) d x)))
+(defn text! [id s] (set! (.-textContent ($ id)) s))
+(defn html! [id s] (set! (.-innerHTML ($ id)) s))
+
+;; :an Study 61's analysis of the phrase chosen, :v the variation, :m the morph, :way the rhythms' way
+(defonce st (atom {:an nil :v nil :m nil :way nil}))
+(def presets (js->clj (.-INCIPITS I)))
+
+(defn fill! [id]
+  (doseq [[k x] presets]
+    (let [o (js/document.createElement "option")]
+      (set! (.-value o) k) (set! (.-textContent o) (get x "name")) (.appendChild ($ id) o))))
+(fill! "v-ex") (fill! "m-a") (fill! "m-b")
+(set! (.-value ($ "m-b")) "scale-76")
+
+(defn mel-html [names pinned changed]
+  (str/join "" (map-indexed (fn [t nm] (str "<span class=\"" (cond (pinned t) "kept" (changed t) "new" :else "") "\" title=\"unit " (inc t) "\">" (esc nm) "</span>")) names)))
+
+;; ───────── vary from a level ─────────
+(defn analyse! []
+  (let [x (get presets (.-value ($ "v-ex")))
+        an (.reduce R (clj->js (get x "phrase")) #js {:key (clj->js (get x "key"))})
+        n (count (.-levels an))]
+    (swap! st assoc :an an :v nil)
+    (html! "v-k" (str/join "" (for [k (range n)] (str "<option value=\"" k "\"" (when (= k (dec n)) " selected") ">L" k (cond (zero? k) " (the surface)" (= k (dec n)) " (the frame)" :else "") "</option>"))))
+    (html! "v-mel" "") (text! "v-facts" (str n " levels: choose one and draw"))))
+
+(defn vary! [likeliest?]
+  (when-let [an (:an @st)]
+    (try
+      (let [k (js/parseInt (.-value ($ "v-k"))) t (num! "v-temp" 0.6)
+            v (if likeliest?
+                (let [vo (.voiceOver B (.-phrase an) (.-key an)) alive (.survivors R an k) pins (js/Map.)]
+                  (doseq [x (array-seq (.-notes an))]
+                    (when (and (= "m" (.-voice x)) (.has alive (.-id x)))
+                      (doseq [u (range (.-on x) (+ (.-on x) (.-dur x)))] (.set pins u (.code vo (.-pitch x))))))
+                  (let [br (.bridgeVoice B (.-V vo) #js {:pins pins :temp t}) U (.map br)]
+                    (when U #js {:melody (str/join " " (map #(.name vo %) (array-seq U))) :kept (clj->js (sort (array-seq (js/Array.from (.keys pins))))) :logZ (.-logZ br)})))
+                (.varyBridge B an k #js {:temp t}))]
+        (if-not v
+          (text! "v-facts" "No bridge through these notes.")
+          (let [names (str/split (.-melody v) #" ") orig (str/split (.. an -phrase -melody) #" ")
+                kept (set (array-seq (.-kept v))) changed (set (keep-indexed (fn [i nm] (when (not= nm (get orig i)) i)) names))
+                c (.check I nil (js/Object.assign #js {} (.-phrase an) #js {:melody (.-melody v)}) #js {:key (.-key an) :range (.rangeOf I (.-phrase an) (.-key an))})]
+            (swap! st assoc :v v)
+            (html! "v-mel" (mel-html names kept changed))
+            (text! "v-facts" (str "From L" k ": " (count kept) " units kept, " (count changed) " drawn anew · "
+                                  (if (.-ok c) (str "passes the rules, soft cost " (.-cost c) " a unit") "refused")
+                                  " · log weight of the bridge " (.toFixed (.-logZ v) 2) (when likeliest? " · the likeliest"))))))
+      (catch :default e (text! "v-facts" (str "Error: " (msg e)))))))
+
+;; ───────── a morph ─────────
+(defn morph! []
+  (try
+    (let [a (get-in presets [(.-value ($ "m-a")) "phrase"]) b (get-in presets [(.-value ($ "m-b")) "phrase"])
+          ka (get-in presets [(.-value ($ "m-a")) "key"])
+          m (.morphPhrases B (clj->js a) (clj->js b) (clj->js ka) #js {:head (js/parseInt (.-value ($ "m-head"))) :tail (js/parseInt (.-value ($ "m-tail"))) :temp (num! "m-temp" 0.6)})]
+      (if-not m
+        (do (swap! st assoc :m nil) (html! "m-mel" "") (text! "m-facts" "No bridge between them with these ends (another key, or the ends refused)."))
+        (let [names (str/split (.-melody m) #" ") pinned (set (array-seq (.-pinned m)))]
+          (swap! st assoc :m m)
+          (html! "m-mel" (mel-html names pinned (set (remove pinned (range (count names))))))
+          (text! "m-facts" (str (count names) " units over " (.-bass m) " · " (count pinned) " kept, " (- (count names) (count pinned)) " drawn · log weight " (.toFixed (.-logZ m) 2))))))
+    (catch :default e (text! "m-facts" (str "Error: " (msg e))))))
+
+;; ───────── rhythms ─────────
+(defn rhythm! [likeliest?]
+  (try
+    (let [a (.rhythmOf B (.-value ($ "r-a"))) b (.rhythmOf B (.-value ($ "r-b")))
+          d (.swapDistance B a b)
+          br (.bridgeRhythms B a b #js {:steps (+ d (js/parseInt (.-value ($ "r-extra")))) :temp (num! "r-temp" 1) :beat (num! "r-beat" 0.75)})]
+      (if-not (.-possible br)
+        (do (swap! st assoc :way nil) (html! "r-way" "")
+            (text! "r-facts" (if (js/isFinite d) "Not enough steps." "Two rhythms of 16 pulses with as many onsets, please (a swap keeps them).")))
+        (let [way (if likeliest? (.map br) (.draw br)) w (vec (array-seq way)) last-i (dec (count w))]
+          (swap! st assoc :way w)
+          (html! "r-way" (str/join "" (map-indexed (fn [i ps]
+                                                     (str "<div class=\"row" (when (or (zero? i) (= i last-i)) " end") "\"><span class=\"lab\">" (if (zero? i) "A" (if (= i last-i) "B" i)) "</span>"
+                                                          (str/join "" (map-indexed (fn [j x] (str "<span class=\"p" (when (= 1 x) " on") (when (zero? (mod j 4)) " beat") "\"></span>")) (array-seq ps)))
+                                                          "</div>")) w)))
+          (text! "r-facts" (str "swap distance " d " · " (.-steps br) " steps · " (.-states br) " rhythms reachable" (when likeliest? " · the likeliest"))))))
+    (catch :default e (text! "r-facts" (str "Error: " (msg e))))))
+
+;; ───────── sound ─────────
+(defonce ac (atom nil))
+(defonce playing (atom []))
+(defn halt! [] (doseq [o @playing] (try (.stop o) (catch :default _ nil))) (reset! playing []))
+(defn hz [name] (* 440 (js/Math.pow 2 (/ (- (.midiOf PV name) 69) 12))))
+(defn ctx [] (or @ac (reset! ac (js/AudioContext.))))
+(defn tone! [c f s e g0 kind]
+  (let [o (.createOscillator c) g (.createGain c)]
+    (set! (.-type o) kind) (set! (.. o -frequency -value) f)
+    (.setValueAtTime (.-gain g) 0 s) (.linearRampToValueAtTime (.-gain g) g0 (+ s 0.01)) (.setTargetAtTime (.-gain g) 0 (- e 0.04) 0.03)
+    (.connect (.connect o g) (.-destination c)) (.start o s) (.stop o (+ e 0.3))
+    (swap! playing conj o)))
+(defn play-phrase! [bass melody]
+  (halt!)
+  (try
+    (let [c (ctx) unit 0.42 t0 (+ (.-currentTime c) 0.1)]
+      (doseq [e (array-seq (.soundOf R #js {:bass bass :melody melody}))]
+        (tone! c (hz (.-pitch e)) (+ t0 (* (.-on e) unit)) (+ t0 (* (+ (.-on e) (.-dur e)) unit)) (if (= "b" (.-voice e)) 0.12 0.09) "triangle")))
+    (catch :default e (status! (str "No sound: " (msg e))))))
+(defn play-way! [w]
+  (halt!)
+  (try
+    (let [c (ctx) pulse 0.11 t0 (+ (.-currentTime c) 0.1)]
+      (doseq [[i ps] (map-indexed vector w) [j x] (map-indexed vector (array-seq ps)) :when (= 1 x)]
+        (let [s (+ t0 (* pulse (+ j (* 16 i))))]
+          (tone! c (if (zero? j) 880 660) s (+ s 0.06) 0.2 "square"))))
+    (catch :default e (status! (str "No sound: " (msg e))))))
+
+;; ───────── wiring ─────────
+(.addEventListener ($ "v-ex") "change" (fn [_] (analyse!)))
+(.addEventListener ($ "v-draw") "click" (fn [_] (vary! false)))
+(.addEventListener ($ "v-map") "click" (fn [_] (vary! true)))
+(.addEventListener ($ "v-play-orig") "click" (fn [_] (when-let [an (:an @st)] (play-phrase! (.. an -phrase -bass) (.. an -phrase -melody)))))
+(.addEventListener ($ "v-play") "click" (fn [_] (when-let [v (:v @st)] (play-phrase! (.. (:an @st) -phrase -bass) (.-melody v)))))
+(.addEventListener ($ "m-draw") "click" (fn [_] (morph!)))
+(.addEventListener ($ "m-play") "click" (fn [_] (when-let [m (:m @st)] (play-phrase! (.-bass m) (.-melody m)))))
+(.addEventListener ($ "r-draw") "click" (fn [_] (rhythm! false)))
+(.addEventListener ($ "r-map") "click" (fn [_] (rhythm! true)))
+(.addEventListener ($ "r-play") "click" (fn [_] (when-let [w (:way @st)] (play-way! w))))
+
+(analyse!)
+(vary! false)
+(morph!)
+(rhythm! false)
+(status! "Ready")
+
+;; for the tests (tests/page.html)
+(set! (.-kairoticStudy js/window)
+      #js {:state (fn [] (let [{:keys [an v m way]} @st]
+                           #js {:levels (when an (count (.-levels an))) :variation (when v (.-melody v)) :morph (when m (.-melody m))
+                                :way (when way (count way))}))
+           :vary vary! :morph morph! :rhythm rhythm!})
+</script>
