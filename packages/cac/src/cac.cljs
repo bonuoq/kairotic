@@ -10,7 +10,7 @@
 ;; What an analysis finds is written on the tree as its analysis layer (:fig the chord over a bass note, :deg its
 ;; degree, :local the key it is read in, :why a rule broken there), which a tree box's code window shows or hides
 ;; (Analysis).
-(let [origins ["npm:@kairotic/cac@0.7.0/dist/partimento.mjs" "kairotic/packages/cac/partimento.mjs"]
+(let [origins ["npm:@kairotic/cac@0.7.1/dist/partimento.mjs" "kairotic/packages/cac/partimento.mjs"]
       names {2 ["soprano"] 3 ["soprano" "alto"] 4 ["soprano" "alto" "tenor"]}
       kernel-keys {2 ["top"] 3 ["top" "middle"] 4 ["soprano" "alto" "tenor"]}
       ;; the notes of a voice: its events, in time order

@@ -2,7 +2,7 @@
 // Study 62 · four: the kernel's tests. In the browser (tests/kernel.html) and in Node:
 //   node -e 'import("./studies/62-four/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import { fourParts, PHRASES } from "../kairotic/four.mjs";
-import { CHORDS4, RULE_OF_THE_OCTAVE4, octaveChord4 } from "../kairotic/partimento.mjs";
+import { CHORDS4, RULE_OF_THE_OCTAVE4, octaveChord4, four } from "../kairotic/partimento.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const VOICES = ["soprano", "alto", "tenor"];
@@ -26,7 +26,7 @@ export async function run() {
     if (P.book) is(`${PHRASES[id].name} (${PHRASES[id].ref}): the book's realization is one of the ${c}`, !P.judge(P.book) && c > 0n);
   }
   notes.push(Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(" · "));
-  is("... the counts, pinned", ["ro-up 13925", "ro-up-minor 13190", "ro-down 25312", "ro-down-minor 269851", "perfect 23", "tenor 637", "alto 62", "discant 1120", "galant 356", "galant-7 6", "dominant-seventh 85", "deceptive 21"]
+  is("... the counts, pinned", ["ro-up 3610", "ro-up-minor 3425", "ro-down 8450", "ro-down-minor 143615", "perfect 23", "tenor 637", "alto 62", "discant 1120", "galant 356", "galant-7 23", "dominant-seventh 64", "deceptive 15"]
      .every((x) => { const [k, v] = x.split(" "); return counts[k] === BigInt(v); }));
 
   // the voices and the chords
@@ -69,6 +69,25 @@ export async function run() {
       if (cls(1).includes(4) && cls(2).filter((c) => c === 2).length < 2) return false;
     }
     return true;
+  })());
+
+  // 7ths: prepared, except the dominant's
+  is("the 7th of ii6/5 on ④ (C over F) prepared in every realization of the RO up, held from ③ in the same voice (20 drawn)", (() => {
+    const P = fourParts({ phrase: "ro-up" });
+    for (let i = 0; i < 20; i++) { const W = P.sample(r); for (const v of VOICES) { const k = VOICES.indexOf(v); if (P.voices[k].vertical(3, W[v][3]).cls === 4 && W[v][2] !== W[v][3]) return false; } }
+    return true;
+  })());
+  is("... the dominant's 7th needs no preparation, but is held or comes by step (the RO's V6/5 on ⑦, 20 drawn); leapt into, refused", (() => {
+    const P = fourParts({ phrase: "ro-up" });
+    for (let i = 0; i < 20; i++) { const W = P.sample(r); for (const v of VOICES) { const k = VOICES.indexOf(v); if (P.voices[k].vertical(6, W[v][6]).cls === 4 && W[v][5] !== W[v][6] && Math.abs(P.degree(W[v][6]) - P.degree(W[v][5])) !== 1) return false; } }
+    // (with freeSevenths the 7th may leap in: one such realization, judged by the rules)
+    const F = four({ ...P.spec, freeSevenths: true }), rr = rng(12);
+    for (let i = 0; i < 60; i++) {
+      const W = F.sample(rr);
+      if (VOICES.some((v, k) => P.voices[k].vertical(6, W[v][6]).cls === 4 && W[v][5] !== W[v][6] && Math.abs(P.degree(W[v][6]) - P.degree(W[v][5])) !== 1))
+        return /dominant's 7th is held or comes by step/.test(P.judge(W) || "") && F.count() > P.count();
+    }
+    return false;
   })());
 
   // doublings, everywhere: never the leading tone, never the 7th of the chord

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **7ths prepared** (`@kairotic/cac` 0.7.1). In four parts the 7th of a chord that is not the dominant's — ii6/5 on
+  ④, ii7 — is prepared: the same note, in the same voice, in the chord before. The dominant's family stays a
+  semi-consonance (IJzerman 6.4–6.6: no preparation needed), but its 7th is held or comes by step — a passing or
+  neighbour tone (ex. 6.23, 6.32) —, never by leap, except where nothing comes before it (`four({freeSevenths: true})`
+  lifts it). The four-part RO up counts 3,610 (it was 13,925), down 8,450; the book's realizations are still among them,
+  and `cac partimento` / `cac judge` follow the same rules.
 - **Study 63 · bridges: the most natural legal way from A to B** (discussion #341, step 2 of #321's road). The
   futuribles' exact count turned into a Schrödinger bridge: each way weighs exp(−cost / temperature) by the soft
   rules of every engine, the hard rules refuse, the ends are pinned; backward messages in the log domain on the
