@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Help from the menu of classes**: each class the field of a box offers has a **?** that opens its help; F1, or
+  Ctrl/⌘ + ?, in the field opens the help of the class chosen, or else the one written, or else the first offered.
+  The field stays open, with what was typed.
 - **Voice leading at the level of the structure** (`@kairotic/cac` 0.7.0; Study 61, #321, step 1 of the road
   there). `partimento.mjs` refuses **parallel 5ths and octaves hidden by the diminution**: the same perfect interval
   on two strong units in a row, both voices moved the same way, with only ornaments between them (steps or

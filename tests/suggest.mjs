@@ -71,6 +71,28 @@ export async function suggest(page, check) {
         && (await cljs(page, "(count (:boxes (current)))")) === n0, await value(page));
   await page.keyboard.press("Escape");
 
+  // the help, from the menu
+  await open(page);
+  await page.keyboard.type("metr");
+  check("each class in the menu has a ? for its help", await page.evaluate(() =>
+    document.querySelector('#box-suggest .sg [data-help="metro"]')?.textContent === "?"));
+  await page.click('#box-suggest [data-help="metro"]');
+  check("its ? opens the help of that class", (await until(page, "@help-cls", '"metro"')) === '"metro"');
+  check("... and the field stays open, with what was typed and the focus", (await value(page)) === "metr"
+        && await page.evaluate(() => document.activeElement?.id === "box-edit"));
+  await cljs(page, "(show-help! nil)");
+  await page.keyboard.press("F1");
+  check("F1 in the field: the help of the first offered when nothing is chosen", (await until(page, "@help-cls", '"metro"')) === '"metro"');
+  await page.keyboard.press("Escape");
+  await open(page);
+  await page.keyboard.type("loadbang 1");
+  await page.keyboard.press("Control+/");
+  check("Ctrl + ? (or ⌘): the help of the class written", (await until(page, "@help-cls", '"loadbang"')) === '"loadbang"'
+        && (await value(page)) === "loadbang 1", await value(page));
+  check("... the hint has its ? too", await page.evaluate(() => !!document.querySelector('#box-suggest .sg.hint [data-help="loadbang"]')));
+  await page.keyboard.press("Escape");
+  check("Esc still closes it, without writing a box", await page.evaluate(() => !document.getElementById("box-edit")));
+
   await open(page);
   await page.keyboard.type("(+ 1");
   check("no menu on a line of the REPL", (await shown(page)).length === 0);
