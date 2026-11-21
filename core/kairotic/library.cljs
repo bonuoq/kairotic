@@ -176,7 +176,7 @@
    "@kairotic/analysis" {:version "0.8.5" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "follow" "monitor" "form~" "realize~"}
                          :local "kairotic/packages/analysis.mjs"}
    "@kairotic/theory"   {:version "0.14.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}
-   "@kairotic/cac"      {:version "0.7.0" :classes #{"comes" "cac"} :local "kairotic/packages/cac.mjs"}
+   "@kairotic/cac"      {:version "0.7.1" :classes #{"comes" "cac"} :local "kairotic/packages/cac.mjs"}
    "@kairotic/rhythm"   {:version "0.6.0" :classes #{"euclid" "necklace" "chance" "homometric" "swap" "morph" "vary" "phase"} :local "kairotic/packages/rhythm.mjs"}
    "@kairotic/data"     {:version "0.1.4" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
    "@kairotic/patterns" {:version "0.3.0" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}

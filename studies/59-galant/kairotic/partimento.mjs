@@ -1044,7 +1044,22 @@ export function four(spec = {}) {
   const B = spec.bass, n = B.length;
   const figured = spec.figured ?? true;
   const asked = (t) => (figured && B[t].chord ? CHORDS4[B[t].chord] : null);
-  const free = (t) => { const ch = asked(t); return ch && (ch.free || ch.seventh !== undefined) ? { cls: ch.free || [], seventh: ch.seventh, up: ch.up, tri: !!ch.tri } : null; };
+  // a chord with a 7th: on what root (its degree, in the unit's key), and is it the dominant's (on ⑤)? The dominant's
+  // family is a semi-consonance (6.4–6.6): its 7th needs no preparation, but it is held or comes by step (a passing
+  // tone, 6.32), not by leap; any other 7th chord's 7th (ii6/5 on ④, ii7…) is prepared, held from the chord before
+  const ROOT = { "7": 0, "6/5": -2, "6/4/3": 3, "4/2": 1 };
+  let locB0 = null;
+  const sevenths = (t) => {
+    const ch = asked(t);
+    if (!ch || ch.seventh === undefined || ROOT[B[t].chord] === undefined) return null;
+    return { cls: ch.seventh, dominant: mod(locB0(t) + ROOT[B[t].chord], 7) === 4 };
+  };
+  const free = (t) => {
+    const ch = asked(t);
+    if (!ch || !(ch.free || ch.seventh !== undefined)) return null;
+    const sv = sevenths(t), cls = sv && !sv.dominant ? (ch.free || []).filter((c) => c !== ch.seventh) : ch.free || [];
+    return { cls, seventh: ch.seventh, up: ch.up, tri: !!ch.tri };
+  };
   // (a common tone may be held in four parts: the soprano three units, an inner voice as long as the chords keep it —
   // the count's memo looks three units back, so the soprano's hold stays within them)
   const S0 = { schema: { events: [] }, key: K, bass: B, figured: false, ro: spec.ro ?? true, exchange: true, end: spec.end, free, weights: spec.weights, delayed: spec.delayed };
@@ -1054,6 +1069,7 @@ export function four(spec = {}) {
   const Av = schemata({ ...S0, lo: alo, hi: ahi, voice: "middle", spacing: 22, line: lineOf("alto"), turn: false, maxHold: n });
   const Tv = schemata({ ...S0, lo: tlo, hi: thi, voice: "middle", spacing: 22, line: lineOf("tenor"), turn: false, maxHold: n });
   const V = [Sv, Av, Tv], NAMES = ["soprano", "alto", "tenor"];
+  locB0 = Sv.locB;
   const D = Sv.degree, A = Sv.alter;
   const semi = (c) => K.semi(D(c), A(c));
   const perfectOf = (x, y) => { const cls = mod(D(x) - D(y), 7), s = mod(semi(x) - semi(y), 12); return (cls === 0 && s === 0) || (cls === 4 && s === 7) ? cls : null; };
@@ -1080,6 +1096,15 @@ export function four(spec = {}) {
       if (v[i].cls === v[j].cls && mod(semi(x[i]) - semi(x[j]), 12) !== 0) return `a false relation between the ${NAMES[i]} and the ${NAMES[j]}`;
     }
     if (seventh === 0 && have.has(0)) return "the 7th of the chord doubled (in the bass)";
+    // the 7th of a chord that is not the dominant's is prepared: the same note, in the same voice, in the chord before
+    { const sv = sevenths(t);
+      if (sv && !sv.dominant && sv.cls !== 0)
+        for (let i = 0; i < 3; i++) if (v[i].cls === sv.cls && (t === 0 || W[i][t - 1] !== x[i])) return `the 7th of a chord on ${"①②③④⑤⑥⑦"[mod(Sv.locB(t) + ROOT[B[t].chord], 7)]} is prepared (the ${NAMES[i]})`;
+      // the dominant's 7th, a semi-consonance, needs no preparation — but it does not leap in: held, or by step (a
+      // passing or neighbour tone, ex. 6.23, 6.32); only where nothing comes before it (Beethoven's First opens on it),
+      // or with spec.freeSevenths, may it be struck anyhow
+      if (sv && sv.dominant && sv.cls !== 0 && t >= 1 && !spec.freeSevenths)
+        for (let i = 0; i < 3; i++) if (v[i].cls === sv.cls && W[i][t - 1] !== x[i] && Math.abs(D(x[i]) - D(W[i][t - 1])) !== 1) return `the dominant's 7th is held or comes by step (the ${NAMES[i]})`; }
     if ([codeOf3(B[t].d, B[t].r || 0), ...x].filter((c) => ltOf(t, c)).length >= 2) return "the leading tone doubled";
     // a 2nd or a 7th between two upper voices: one of them the dissonance, or a chord of four tones
     const four_ = ch && ch.need.length === 3;

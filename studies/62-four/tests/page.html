@@ -19,7 +19,7 @@ const figs = () => [...d.querySelectorAll("#sheet text.fig")].map((x) => x.textC
 try {
   await wait(() => w.kairoticFour && /^\d/.test(total()));
   const K = w.kairoticFour;
-  is("it opens on the RO up in C major: 13,925 realizations, thirteen phrases to choose", total() === "13,925" && d.querySelector('[data-phrase="ro-up"]').classList.contains("on") && d.querySelectorAll("[data-phrase]").length === 13);
+  is("it opens on the RO up in C major: 3,610 realizations, thirteen phrases to choose", total() === "3,610" && d.querySelector('[data-phrase="ro-up"]').classList.contains("on") && d.querySelectorAll("[data-phrase]").length === 13);
   is("... the engine's realization drawn: three upper voices over the bass", d.querySelectorAll("#sheet rect.upper").length > 0 && d.querySelectorAll("#sheet rect.middle").length > 0 && d.querySelectorAll("#sheet rect.tenor").length > 0);
   d.getElementById("book").click();
   is("the book's (ex. 6.37a): sound, outlined, its chords 6/4/3 on ② and 6/5/3 on ④ and ⑦", /the book's realization/.test(msg()) && !/✗/.test(msg()) && d.querySelector("#sheet rect.book") && figs().join(" ") === "5/3 6/4/3 6/3 6/5/3 5/3 6/3 6/5/3 5/3");
@@ -29,12 +29,12 @@ try {
   d.getElementById("wrong").click();
   is("the Galant cadence: the wrong one (ex. 6.13c) refused, its parallel 5ths named", /✗ unit 2: parallel 5ths between the alto and the tenor/.test(msg()));
   K.set("ro-down-minor");
-  await wait(() => total() === "269,851");
+  await wait(() => total() === "143,615");
   d.getElementById("book").click();
   is("the RO down in minor: the book's, sound, the French 6th on ⑥ (6/4/3)", !/✗/.test(msg()) && figs()[2] === "6/4/3" && /D♯4/.test(msg()));
   K.set("ro-down", "G");
-  await wait(() => total() === "25,312" && [...d.querySelectorAll("#sheet .keylab")].some((x) => x.textContent === "D major"));
-  is("the RO down moved to G: the same 25,312, its ⑥ in D major", total() === "25,312");
+  await wait(() => total() === "8,450" && [...d.querySelectorAll("#sheet .keylab")].some((x) => x.textContent === "D major"));
+  is("the RO down moved to G: the same 8,450, its ⑥ in D major", total() === "8,450");
   d.getElementById("uniform").click();
   is("any valid one, sound", !/✗/.test(msg()) && /steps/.test(msg()));
   // exported for the app (discussion #319): MEI through a scripted downloads capability, as claude.ai offers it

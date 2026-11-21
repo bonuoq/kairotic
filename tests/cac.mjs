@@ -32,7 +32,7 @@ export async function cac(page, check) {
   check("cac partimento: the RO's bass in, four voices out (soprano, alto, tenor, the bass)", n === "4",
         await cljs(page, `[(second (last-shown ${cb})) (get-in @eng/rt [:states ${cb} :count])]`));
   const cnt = await cljs(page, `(get-in @eng/rt [:states ${cb} :count])`);
-  check("... the realizations counted exactly: 13,925, as Study 62 counts them", cnt === '"13925"', cnt);
+  check("... the realizations counted exactly: 3,610, as Study 62 counts them", cnt === '"3610"', cnt);
   const figs = await cljs(page, `(vec (keep #(when (vector? %) (:fig (second %))) (last (tree-data ${out}))))`);
   check("... the bass written again with the chords made over it (the analysis layer)", figs === '["5/3" "6/4/3" "6/3" "6/5/3" "5/3" "6/3" "6/5/3" "5/3"]', figs);
   const hidden = await cljs(page, `(str/includes? (editor-source (get-in (current) [:boxes ${out}])) ":fig")`);

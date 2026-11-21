@@ -6,7 +6,8 @@
 //                  filling the chords (they may hold a common tone long, and need not turn after a leap)
 //   the chords     complete or not, the bass doubled as a rule, never the leading tone nor a dissonance; the
 //                  dominant's 7th chord and its family (7, 6/5, 6/4/3, 4/2) as semi-consonances — free to enter,
-//                  their 7th going down by step —, the augmented 6th going up to the octave
+//                  their 7th held or by step, and going down by step —, any other 7th chord's
+//                  7th prepared (ii6/5), the augmented 6th going up to the octave
 //   the phrases    the Rule of the Octave in four parts (ex. 6.37, 6.39, 6.42), the cadences of the early 1700s
 //                  (ex. 6.16: perfect, tenor, alto, discant), the four-part Galant cadence (ex. 6.13), the dominant
 //                  7th resolved (ex. 6.24) — the book's realizations among the ones counted
@@ -59,9 +60,9 @@ export const PHRASES = {
             about: "the four-part Galant cadence, complete and compound: a 6/3 on ④, the accented 6/4 on ⑤ (its 4th struck by step, falling to the 3rd), the soprano and the tenor in parallel 6ths — inverting the inner voices makes their 4ths 5ths, parallel (ex. 6.13(c), wrong!)",
             book: { soprano: "C5 D5 C5 B4 C5", alto: "G4 A4 G4 G4 G4", tenor: "E4 F4 E4 D4 E4" },
             wrong: { soprano: "E5 F5 E5 D5 E5", alto: "G4 A4 G4 G4 G4", tenor: "C4 D4 C4 B3 C4" } },
-  "galant-7": { name: "Galant cadence (6/5, 7)", ref: "IJzerman 6.2, ex. 6.7–6.10", key: { tonic: "C" }, start: 1,
-                units: () => [[3, "6/5"], [4, "6/4", { ap: true }], [4, "7", { held: true }], [0, "5/3"]],
-                about: "with the 6/5 on ④ and the 6/4 falling to the dominant's 7th: the 5th of ④'s chord (its 7th, ii6/5) held into the 6/4's 4th, then down to the 3rd" },
+  "galant-7": { name: "Galant cadence (6/5, 7)", ref: "IJzerman 6.2, ex. 6.7–6.10", key: { tonic: "C" },
+                units: () => [[0, "5/3"], [3, "6/5"], [4, "6/4", { ap: true }], [4, "7", { held: true }], [0, "5/3"]],
+                about: "with the 6/5 on ④ and the 6/4 falling to the dominant's 7th: the 5th of ④'s chord — its 7th, ii6/5, prepared by the tonic before it — held into the 6/4's 4th, then down to the 3rd" },
   "dominant-seventh": { name: "V7 → I", ref: "IJzerman 6.4, ex. 6.24(a, b)", key: { tonic: "C" }, start: 1,
                         units: () => [[0, "5/3"], [4, "7"], [0, "5/3"]],
                         about: "the dominant's 7th chord resolved: its augmented 4th to a 6th, its diminished 5th to a 3rd; complete, it goes to an incomplete tonic (the bass tripled), incomplete to a complete one" },
@@ -92,7 +93,7 @@ export function fourParts(spec = {}) {
   if (!ph) throw new Error(`no such phrase: ${id}`);
   const key = { tonic: spec.key && spec.key.tonic ? spec.key.tonic : ph.key.tonic, mode: ph.key.mode || "major" };
   const K = keyOf(key), B = unitsOf(ph, K);
-  const F = four({ key, bass: B, figured: spec.figured ?? true, ro: spec.ro ?? true, line: spec.line });
+  const F = four({ key, bass: B, figured: spec.figured ?? true, ro: spec.ro ?? true, line: spec.line, weights: spec.weights });
   for (let t = 0; t < B.length; t++) B[t].deg = F.soprano.locB(t);
   const KL = (t) => (B[t].key ? keyOf(B[t].key) : K);
   const sameKey = !spec.key || !spec.key.tonic || spec.key.tonic === ph.key.tonic;
