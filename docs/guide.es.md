@@ -28,7 +28,8 @@ los enlaces que compartes lo llevan. Ver [Kairotic Pages](pages.es.md).
   `osc~ 440`— y pulsa Intro. Las clases que acaban en `~` son sonido. Mientras escribes la clase, un menú
   ofrece las que coinciden, cada una con su origen (el núcleo, un paquete, clojure.core) y qué hace: ↑ ↓
   eligen, Tab o Intro toman una (o un clic), y luego muestra qué argumentos espera. Escribir una clase de un
-  paquete oficial trae el paquete a la obra.
+  paquete oficial trae el paquete a la obra. El **?** de cada una, o F1 (Ctrl/⌘ + ?) en el campo, abre su
+  ayuda, con el campo aún abierto.
 - **Conectar**: arrastra desde una salida (las marcas pequeñas bajo una caja) hasta una entrada (encima
   de otra caja). No hace falta acertar en la marca: cerca de una salida se ilumina y el puntero se vuelve
   una cruz, y un cable que sueltas sobre una caja, o justo encima de una de sus entradas, llega a la
@@ -537,6 +538,7 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 | arrastrar la barra junto al panel · » · ‹ | redimensiona el panel de la derecha · lo oculta · lo muestra |
 | espacio | ▶ / ■ |
 | ? o F1 | ayuda de la caja seleccionada |
+| F1 o Ctrl/⌘ + ? (escribiendo una caja) | ayuda de la clase elegida en el menú, o escrita |
 | Ctrl+Z · Ctrl+Mayús+Z · Ctrl+Y | atrás · adelante en la historia (en Perform, en la toma) |
 | Ctrl+Intro | aplica código (pestaña Code, cajas de código, pestaña Claude) |
 | ↑ ↓ + − ← → Supr | edita la nota seleccionada de una partitura, o el trazo de un canvas |
