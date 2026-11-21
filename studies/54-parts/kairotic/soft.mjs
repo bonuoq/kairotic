@@ -32,6 +32,8 @@ export const SOFT = [
   { id: "passing", scope: "vertical", weight: 1, doc: "A dissonance passing on a weak beat: the life of second species (it costs less)." },
   { id: "suspension-life", scope: "vertical", weight: 1.5, doc: "A suspension: the life of fourth species (it costs less)." },
   { id: "alternation", scope: "vertical", weight: 1.5, doc: "The same vertical as two notes before but not as the last (3 6 3 6 …)." },
+  { id: "structural-parallels", scope: "vertical", weight: 2.5, doc: "Parallel 5ths or octaves between two strong units in a row, the weak units between them only ornaments: hidden by the diminution, heard at the level of the structure (Study 61, #321). partimento.mjs refuses them as a hard rule; this weight is their cost where that rule is turned off (structural: false)." },
+  { id: "chord-skip", scope: "melodic", weight: 0.5, doc: "A skip inside the chord (the bass held, both notes consonant with it) is compound melody, one voice unfolding two: its leap costs this share less, and it asks no compensation." },
   { id: "modal", scope: "mode", weight: 1, doc: "The mode's final and tenor cost less (more on a strong beat): the dux of the comes box keeps to its mode." },
   { id: "imitation", scope: "imitation", weight: 1, doc: "How far the comes strays from imitating the dux, by the degree of imitation asked (the comes box)." },
 ];

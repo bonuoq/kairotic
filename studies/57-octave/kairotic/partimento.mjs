@@ -399,6 +399,10 @@ export function schemata(spec = {}) {
       if (pv.q === "perfect" && pv.cls === v.cls && (bm !== 0 || um !== 0)) return `parallel ${v.cls === 0 ? "octaves" : "5ths"}`;
       if (sign(bm) === sign(um) && bm !== 0 && Math.abs(um) > 1) return `${v.cls === 0 ? "an octave" : "a 5th"} by direct motion, the upper voice leaping`;
     }
+    // parallels at the level of the structure (Study 61, #321): a perfect 5th or octave on a strong unit after the same
+    // one on the strong unit before, both voices moved the same way, only weak units between them — the diminution
+    // hides them on the surface, the frame has them (spec.structural false: allowed; the memo's window holds them)
+    if (spec.structural !== false && structuralParallels(U, t, c)) return `parallel ${v.cls === 0 ? "octaves" : "5ths"} from the strong unit before, under the diminution`;
     // the start and the end
     if (t === 0 && !middle && !(figured && B[0].fig) && locB(0) === 0 && ![0, 2, 4].includes(v.cls)) return "over ① the upper voice starts on an octave, a 5th or a 3rd";
     // (spec.end false: the phrase goes on after it — a schema, not a close)
@@ -457,8 +461,47 @@ export function schemata(spec = {}) {
   /** The soft cost of the upper note c after U, by rule: {id: cost}. */
   function costParts(U, c) {
     const t = U.length, up = U.map(D);
-    const lt = leadingTone(U, t, c);
-    return { ...melodicParts(up, D(c), W), ...verticalParts(bassLine.slice(0, t), up, bassLine[t], D(c), softCtx(t, c), W), ...(lt ? { "leading-tone": lt } : {}) };
+    const lt = leadingTone(U, t, c), mel = melodicParts(up, D(c), W);
+    const ck = chordSkip(U, t, c, mel), sp = structuralParallels(U, t, c) ? W["structural-parallels"] ?? 0 : 0;
+    return { ...mel, ...verticalParts(bassLine.slice(0, t), up, bassLine[t], D(c), softCtx(t, c), W), ...(lt ? { "leading-tone": lt } : {}),
+             ...(ck ? { "chord-skip": ck } : {}), ...(sp ? { "structural-parallels": sp } : {}) };
+  }
+  // compound melody (Study 61, #321): a skip inside the chord — the bass held from the note before, both notes
+  // consonant with it — is one voice unfolding two proto-voices, not a leap to compensate: the leap's costs (its size,
+  // going on the same way, not turning back by step, two leaps in a row) weigh the share chord-skip less
+  function chordSkip(U, t, c, mel) {
+    const w = W["chord-skip"] ?? 0;
+    if (!w || t < 1 || B[t].struck) return 0;
+    const prev = U[t - 1];
+    if (prev === undefined || Math.abs(D(c) - D(prev)) < 2) return 0;
+    if (!consonant(vertical(t - 1, prev)) || !consonant(vertical(t, c))) return 0;
+    const leap = ["leap-size", "contrary-after-leap", "step-back", "leap-after-leap"].reduce((a, k) => a + (mel[k] || 0), 0);
+    return leap > 0 ? -Math.min(1, w) * leap : 0;
+  }
+  // parallels at the level of the structure (Study 61, #321): a perfect 5th or octave on a strong unit after the same
+  // one on the strong unit before, both voices moved the same way, the units between them weak — the diminution hides
+  // them on the surface, but the frame has them (adjacent units are the hard rules')
+  function structuralParallels(U, t, c) {
+    if (!strong(t) || (t >= 1 && U[t - 1] === c)) return 0;
+    let s = t - 1;
+    while (s >= 0 && !strong(s)) s--;
+    if (s < 0 || s === t - 1) return 0;
+    const a = vertical(s, U[s]), b = vertical(t, c);
+    if (a.q !== "perfect" || b.q !== "perfect" || a.cls !== b.cls) return 0;
+    const du = D(c) - D(U[s]), db = B[t].d - B[s].d;
+    if (!(du !== 0 && db !== 0 && Math.sign(du) === Math.sign(db))) return 0;
+    // only what is hidden by ornaments: every note between moves by step (a passing tone, a neighbour) or is a
+    // dissonance; a consonant leap between them (the 5–8 of a Monte Romanesca) breaks the parallels, as the
+    // treatises allow
+    // (nor when the bass itself leaps between them: the leaping and the Monte Romanesca double it at the octave on
+    // the strong units, the leap of its weak unit breaking them, as IJzerman's prototypes show)
+    for (let j = s + 1; j < t; j++) {
+      const x = U[j], y = U[j - 1];
+      if (B[j].struck && Math.abs(B[j].d - B[j - 1].d) > 1) return 0;
+      if (x === y) continue;
+      if (Math.abs(D(x) - D(y)) > 1 && consonant(vertical(j, x))) return 0;
+    }
+    return 1;
   }
   // the leading tone goes up to the tonic (a soft rule, everywhere: what the cadence asks of it as a hard one). Not
   // where it has a reason not to: in a middle voice down to ⑤ over ① (the chord of the tonic completed, as Bach's
