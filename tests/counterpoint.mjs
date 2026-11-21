@@ -215,7 +215,7 @@ for (const f of ["kernel.mjs", "mirror.mjs"])
   const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646, r = rng(7);
   const ctx = { N: 7, strong: (t) => t % 2 === 0, lowerFirst: (x, c) => (x <= c ? [x, c] : [c, x]), dissonant: (x, c) => [1, 3, 6].includes(((Math.abs(x - c) % 7) + 7) % 7),
                 quality: (l, h) => { const k = (((h - l) % 7) + 7) % 7; return k === 0 || k === 4 ? "perfect" : k === 2 || k === 5 ? "imperfect" : "dissonant"; }, suspension: false };
-  for (const study of ["50-lines", "51-schemata", "54-parts", "56-figuring", "57-octave", "58-incipit", "59-galant", "60-development", "61-reduction", "62-four"]) {
+  for (const study of ["50-lines", "51-schemata", "54-parts", "56-figuring", "57-octave", "58-incipit", "59-galant", "60-development", "61-reduction", "62-four", "63-bridges"]) {
     const theirs = await import(`../studies/${study}/kairotic/soft.mjs`);
     let same = true;
     for (let k = 0; k < 400 && same; k++) {
@@ -232,13 +232,15 @@ for (const f of ["kernel.mjs", "mirror.mjs"])
 // partimento.mjs: the hard rules over a bass (Studies 51 and 54), shared; the studies publish copies of it
 {
   const P = await import("../packages/cac/assets/partimento.mjs");
-  for (const st of ["51-schemata", "54-parts", "56-figuring", "57-octave", "58-incipit", "59-galant", "60-development", "61-reduction", "62-four"]) {
+  for (const st of ["51-schemata", "54-parts", "56-figuring", "57-octave", "58-incipit", "59-galant", "60-development", "61-reduction", "62-four", "63-bridges"]) {
     const same = readFileSync(join(root, `studies/${st}/kairotic/partimento.mjs`), "utf8") === readFileSync(join(root, "packages/cac/assets/partimento.mjs"), "utf8");
     is(`Study ${st.slice(0, 2)}'s partimento.mjs is the package's, as it is`, same);
   }
   is("Study 58's figuring.mjs is Study 56's, as it is", readFileSync(join(root, "studies/58-incipit/kairotic/figuring.mjs"), "utf8") === readFileSync(join(root, "studies/56-figuring/kairotic/figuring.mjs"), "utf8"));
   is("Study 60's figuring.mjs and incipit.mjs are Studies 56's and 58's, as they are", ["56-figuring/kairotic/figuring.mjs", "58-incipit/kairotic/incipit.mjs"].every((f) => readFileSync(join(root, "studies/60-development/kairotic/" + f.split("/").pop()), "utf8") === readFileSync(join(root, "studies/" + f), "utf8")));
   is("Study 61's figuring.mjs and incipit.mjs are Studies 56's and 58's, as they are", ["56-figuring/kairotic/figuring.mjs", "58-incipit/kairotic/incipit.mjs"].every((f) => readFileSync(join(root, "studies/61-reduction/kairotic/" + f.split("/").pop()), "utf8") === readFileSync(join(root, "studies/" + f), "utf8")));
+  is("Study 63's figuring.mjs and incipit.mjs are Studies 56's and 58's, as they are", ["56-figuring/kairotic/figuring.mjs", "58-incipit/kairotic/incipit.mjs"].every((f) => readFileSync(join(root, "studies/63-bridges/kairotic/" + f.split("/").pop()), "utf8") === readFileSync(join(root, "studies/" + f), "utf8")));
+  is("Study 63's protovoices.mjs and reduction.mjs are Study 61's, as they are", ["protovoices.mjs", "reduction.mjs"].every((f) => readFileSync(join(root, "studies/63-bridges/kairotic/" + f), "utf8") === readFileSync(join(root, "studies/61-reduction/kairotic/" + f), "utf8")));
   // structural voice leading (Study 61, #321): parallels hidden by the diminution are refused; a consonant leap between
   // the strong units breaks them (as the treatises allow); a skip inside the chord is compound melody, its leap cheaper
   {
