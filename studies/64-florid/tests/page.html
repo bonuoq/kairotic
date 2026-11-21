@@ -20,7 +20,7 @@ await (async function () {
     doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
     $("host").appendChild(doc.querySelector("main").cloneNode(true));
     const [F, PV, X] = await Promise.all([import("../kairotic/florid.mjs"), import("../kairotic/protovoices.mjs"), import("../kairotic/export.mjs")]);
-    window.kairoticFlorid = { F, PV, X };
+    window.kairoticFlorid = { F: { ...F }, PV: { ...PV }, X: { ...X } };
     const saved = [];
     window.claude = { use: async (name) => (name === "downloads" ? { save: async ({ filename, data }) => { saved.push({ filename, text: await data.text() }); } } : null) };
     scittle.core.eval_string(doc.getElementById("page-cljs").textContent);

@@ -187,7 +187,8 @@ window.addEventListener("DOMContentLoaded", function () {
   function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
   var b = "./" + window.kairoticBase;
   Promise.all([import(b + "florid.mjs"), import(b + "protovoices.mjs"), import(b + "export.mjs")]).then(function (ms) {
-    window.kairoticFlorid = { F: ms[0], PV: ms[1], X: ms[2] };
+    // (the modules spread into plain objects: Scittle cannot read florid.mjs's namespace object through a var)
+    window.kairoticFlorid = { F: { ...ms[0] }, PV: { ...ms[1] }, X: { ...ms[2] } };
     try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
   }).catch(show);
 });
