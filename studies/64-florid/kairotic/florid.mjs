@@ -17,9 +17,14 @@
 //   the figures   each half bar of the frame, from its note a to the next one b, given its cell, a figure of the
 //                 catalogue (FIGURES): a shape relative to a and b, and the notes where it may be dissonant — the
 //                 dissonance it brings is justified by the frame it ornaments (a passing tone between a and b, a
-//                 neighbour of a, an escape tone leaving a, a cambiata…); a suspension of the frame prepared with a
-//                 neighbour, or resolved later; chosen with the melody's coherence on the surface (the soft rules of
-//                 every engine on the florid line itself, a direction that goes on, a figure in sequence)
+//                 neighbour of a, an escape tone leaving a, a cambiata…); a suspension of the frame prepared by a
+//                 half note held over the bar, resolved then or later; chosen with the melody's coherence on the
+//                 surface (the soft rules of every engine on the florid line itself, a direction that goes on, a
+//                 figure in sequence)
+//   the ties      a note held into the next half bar (a suspension, an anticipation, a figure ending on the frame's
+//                 next note) is never tied to a longer one, nor is an eighth tied (Fux's fifth species, Jeppesen: a
+//                 half note tied to a half or a shorter value, never a quarter to a half): a hard rule of the rhythm's
+//                 bridge, which draws no rhythm that would force it
 //   the surface   the eighths, a note held across them one note (as every engine reads a name again)
 //
 // And the other way: the surface reduced by Study 61's grammar (protovoices.mjs, reduction.mjs) on the eighths' grid
@@ -61,15 +66,14 @@ export const FIGURES = [
   { id: "held", name: "the note held", cells: ["H"], shape: () => [0], fits: () => true, free: [], cost: 0.9 },
   { id: "passing", name: "a passing note (transitus)", cells: ["Q", "DQ"], shape: (s) => [0, Math.sign(s)], fits: (s, x) => Math.abs(s) === 2 && !x.sus, free: [1], cost: 0.2 },
   { id: "neighbor", name: "a neighbour", cells: ["Q", "DQ"], shape: (s, x) => [0, x.up ? 1 : -1], fits: (s, x) => s === 0 && !x.sus && !x.tie, free: [1], cost: 0.5, variants: [{ up: true }, { up: false }] },
-  { id: "anticipation", name: "an anticipation (anticipatio)", cells: ["Q", "DQ"], shape: (s) => [0, s], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [1], cost: 1.3 },
+  { id: "anticipation", name: "an anticipation (anticipatio)", cells: ["Q"], shape: (s) => [0, s], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [1], cost: 1.3 },
   { id: "escape", name: "an escape tone (échappée)", cells: ["DQ", "Q"], shape: (s) => [0, -Math.sign(s)], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [1], cost: 1.3 },
   { id: "skip", name: "a skip to a note of the chord", cells: ["Q", "DQ"], shape: (s, x) => [0, x.to], fits: (s, x) => !x.sus && !x.tie, free: [], cost: 0.8, variants: [{ to: 2 }, { to: -2 }, { to: 4 }, { to: -3 }] },
   { id: "tirata", name: "a run (tirata)", cells: ["QE"], shape: (s) => [0, Math.sign(s), 2 * Math.sign(s)], fits: (s, x) => Math.abs(s) === 3 && !x.sus && !x.tie, free: [1, 2], cost: 0.4 },
   { id: "turn", name: "a turn (circulatio)", cells: ["QE"], shape: (s) => [0, -Math.sign(s), 0], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [1], cost: 0.5 },
-  { id: "neighbor-eighths", name: "a neighbour in eighths", cells: ["QE"], shape: (s, x) => [0, x.up ? 1 : -1, 0], fits: (s, x) => s === 0 && x.within && !x.sus && !x.tie, free: [1], cost: 0.6, variants: [{ up: true }, { up: false }] },
+  { id: "double-neighbor", name: "a double neighbour in eighths (groppo)", cells: ["QE"], shape: (s, x) => [0, x.up ? 1 : -1, x.up ? -1 : 1], fits: (s, x) => s === 0 && !x.sus && !x.tie, free: [1, 2], cost: 0.7, variants: [{ up: true }, { up: false }] },
   { id: "passing-eighths", name: "a skip filled in eighths", cells: ["QE"], shape: (s) => [0, 2 * Math.sign(s), Math.sign(s)], fits: (s, x) => Math.abs(s) === 2 && !x.sus && !x.tie, free: [2], cost: 0.7 },
   { id: "cambiata", name: "a cambiata (nota cambiata)", cells: ["QE"], shape: () => [0, -1, -3], fits: (s, x) => s === -2 && !x.sus && !x.tie, free: [1], cost: 0.8 },
-  { id: "tie-neighbor", name: "a neighbour, then the note held over the bar (a suspension prepared)", cells: ["QE"], shape: () => [0, -1, 0], fits: (s, x) => x.tie, free: [1], cost: 0.4 },
   { id: "anticipated-resolution", name: "a suspension resolved early, in an eighth (anticipatio)", cells: ["DQ"], shape: () => [0, -1], fits: (s, x) => x.sus && s === -1, free: [], cost: 0.4 },
   { id: "ornamented-resolution", name: "a suspension resolved through a third below it (an ornamented resolution)", cells: ["Q"], shape: () => [0, -2], fits: (s, x) => x.sus && s === -1, free: [], cost: 0.5 },
 ];
@@ -116,6 +120,14 @@ const notesOfBar = (r) => { const out = []; let p = 0; for (const c of r) for (c
 /** How busy a bar is: 0 (two half notes) … 1 (a quarter and two eighths twice). */
 const activity = (r) => (notesOfBar(r).length - 2) / 4;
 
+/**
+ * A tie's rule (Fux, fifth species; Jeppesen): a note is never tied to a longer one — the first of a tied pair as long
+ * as the second or longer (a half note to a half, a dotted quarter or a quarter; never a quarter to a half) — and
+ * never an eighth (the first of a tie a beat at least). An option of a half bar keeps it with the next half bar's
+ * cell: its last note, if held into the next half bar's first, as long as that one and a quarter at least.
+ */
+export const tieOk = (o, next) => !o.ties || (o.last >= 2 && o.last >= CELLS[next][0]);
+
 /** The options of each half bar of the frame: for each cell, the figures that fit it and keep the rules. */
 function optionsOf(frame, cf, key) {
   const K = keyOf(key), V = frame.voice.V, U = frame.units, n = U.length, bass = split(cf);
@@ -149,7 +161,9 @@ function optionsOf(frame, cf, key) {
         if (i1 >= 0 && i1 === i2 && Math.sign(midiOf(frame.names[t + 1]) - midiOf(last)) === Math.sign(midiOf(nb) - midiOf(ob)) && last !== frame.names[t + 1]) ok = false;
       }
       if (!ok) continue;
-      for (const c of f.cells) (byCell[c] = byCell[c] || []).push({ f, v, names, shape, cost: f.cost });
+      // its last note the next half bar's first (the frame's b): held into it, a tie
+      const ties = names[names.length - 1] === frame.names[t + 1];
+      for (const c of f.cells) (byCell[c] = byCell[c] || []).push({ f, v, names, shape, cost: f.cost, ties, last: CELLS[c][CELLS[c].length - 1] });
     }
     out.push({ t, s, x, byCell });
   }
@@ -174,7 +188,8 @@ export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.ra
   // the bars: half bars 2i and 2i+1 (the last half bar, the final note, apart)
   const bars = Math.floor((n - 1) / 2), nb = bars;
   const cellsOk = (t) => Object.keys(CELLS).filter((c) => opts[t].byCell[c] && opts[t].byCell[c].length);
-  const minCost = (t, c) => Math.min(...opts[t].byCell[c].map((o) => o.cost));
+  // the cheapest figure of half bar t on cell c that keeps the tie's rule with the next half bar's cell
+  const minCost = (t, c, next) => Math.min(...opts[t].byCell[c].filter((o) => tieOk(o, next)).map((o) => o.cost));
   const barRhythms = Array.from({ length: nb }, (_, i) => {
     const out = [];
     for (const c1 of cellsOk(2 * i)) for (const c2 of cellsOk(2 * i + 1)) out.push([c1, c2]);
@@ -185,7 +200,12 @@ export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.ra
   const key2 = (r_) => r_.join("-");
   /** The cost of bar i's rhythm rr after p (the bar before) and q (the one before it). */
   function cost(i, rr, p, q) {
-    let c = minCost(2 * i, rr[0]) + minCost(2 * i + 1, rr[1]);
+    // the figures: this bar's first half (its next, the second); the bar before's second half (its next, this bar's
+    // first); the last bar's second half too (its next, the final note, held)
+    let c = minCost(2 * i, rr[0], rr[1]);
+    if (p) c += minCost(2 * i - 1, p[1], rr[0]);
+    if (i === nb - 1) c += minCost(2 * i + 1, rr[1], "H");
+    if (c === Infinity) return Infinity;
     const ns = notesOfBar(rr);
     // MPR 5: the downbeat's note the longest of the bar; a longer one on a weaker beat after it weighs against the
     // metre (a half note after a quarter on the downbeat), and more so off the half bar
@@ -213,19 +233,21 @@ export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.ra
       beta[i].set(sk(p, cur), z);
     }
   }
-  const pick = (cs) => { const m = Math.max(...cs.map((c) => c.lw)), ws = cs.map((c) => Math.exp(c.lw - m)); let y = r() * ws.reduce((a, b2) => a + b2, 0); for (let j = 0; j < cs.length; j++) { y -= ws[j]; if (y < 0) return cs[j]; } return cs[cs.length - 1]; };
+  const pick = (cs) => { cs = cs.filter((c) => c.lw > -Infinity); if (!cs.length) return null; const m = Math.max(...cs.map((c) => c.lw)), ws = cs.map((c) => Math.exp(c.lw - m)); let y = r() * ws.reduce((a, b2) => a + b2, 0); for (let j = 0; j < cs.length; j++) { y -= ws[j]; if (y < 0) return cs[j]; } return cs[cs.length - 1]; };
   const rhythm = [];
   let p = null, q = null;
   for (let i = 0; i < nb; i++) {
     const cs = barRhythms[i].map((rr) => ({ rr, lw: -cost(i, rr, p, q) / T + beta[i].get(sk(p, rr)) }));
-    const ch = pick(cs).rr;
+    const pc = pick(cs);
+    if (!pc) return null;
+    const ch = pc.rr;
     rhythm.push(...ch); q = p; p = ch;
   }
   // the figures, a half bar at a time, the melody's coherence on the surface
   const eighths = [], spans = [], line = [];
   const deg = (nm) => codeDegree(codeOf(K, nm));
   for (let t = 0; t < n - 1; t++) {
-    const cell = rhythm[t], cands = opts[t].byCell[cell];
+    const cell = rhythm[t], next = t + 1 < n - 1 ? rhythm[t + 1] : "H", cands = opts[t].byCell[cell].filter((o) => tieOk(o, next));
     const prev = spans[t - 1], prev2 = spans[t - 2];
     const scored = cands.map((o) => {
       let c = o.cost;
