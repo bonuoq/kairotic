@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 64 · florid · page tests</title>
+<pre id="out">Running…</pre>
+<div id="host"></div>
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
+<script type="module">
+// The study's page itself, driven as a person would: a florid line drawn on loading over the first cantus firmus, its
+// grids (cantus, frame, figures, surface), its reduction; another cantus firmus; exported as MEI.
+await (async function () {
+  const results = [], errors = [];
+  window.addEventListener("error", (e) => errors.push(String(e.message || e)));
+  const is = (what, ok) => results.push([what, !!ok]);
+  const S = () => window.kairoticStudy;
+  const $ = (id) => document.getElementById(id);
+  const click = (el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  try {
+    const html = await fetch("../index.html", { cache: "no-cache" }).then((r) => r.text());
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("style").forEach((s) => document.head.appendChild(s.cloneNode(true)));
+    $("host").appendChild(doc.querySelector("main").cloneNode(true));
+    const [F, PV, X] = await Promise.all([import("../kairotic/florid.mjs"), import("../kairotic/protovoices.mjs"), import("../kairotic/export.mjs")]);
+    window.kairoticFlorid = { F: { ...F }, PV: { ...PV }, X: { ...X } };
+    const saved = [];
+    window.claude = { use: async (name) => (name === "downloads" ? { save: async ({ filename, data }) => { saved.push({ filename, text: await data.text() }); } } : null) };
+    scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
+
+    is("ready: a florid line over the ten-bar cantus firmus, 19 half bars, 76 eighths", $("status").textContent === "Ready" && S().state().frame === 19 && S().state().eighths === 76);
+    is("… its four rows drawn (cantus, frame, figures, surface), the figures named", document.querySelectorAll("#line .row").length === 4 && /figures:/.test($("facts").textContent));
+    is("… reduced back: a row a level, the frame's downbeats counted", S().state().levels > 2 && S().state().rows === S().state().levels && /of its downbeats are the frame's/.test($("red-facts").textContent));
+    $("cf").value = "g-major"; $("cf").dispatchEvent(new Event("change"));
+    is("another cantus firmus (G major, eight bars): 15 half bars", S().state().frame === 15);
+    click($("mei"));
+    for (let i = 0; i < 40 && !saved.length; i++) await new Promise((r) => setTimeout(r, 50));
+    is("exported as MEI: the florid line and the cantus firmus, the figures in its extMeta", saved.length === 1 && /label="florid"/.test(saved[0].text) && /label="cantus firmus"/.test(saved[0].text) && /:figures \[/.test(saved[0].text));
+    is("no error on the page", errors.length === 0);
+  } catch (e) {
+    is("the page ran: " + (e.message || e), false);
+  }
+  const bad = results.filter((r) => !r[1]).map((r) => r[0]);
+  window.kairoticResults = { total: results.length, failed: bad.concat(errors.map((e) => "error: " + e)) };
+  $("out").textContent = (results.length - bad.length) + " / " + results.length + " passed\n\n" +
+    results.map((r) => (r[1] ? "  ok   " : "  FAIL ") + r[0]).join("\n") + (errors.length ? "\n\n" + errors.join("\n") : "");
+})();
+</script>
