@@ -130,3 +130,14 @@ phrases of Studies 54, 57, 59 and 62, the same reason tuple by tuple, the same e
 
 - Styles in EDN with `:extends`, `[:style …]` in `cac`; `comes` last.
 - Local search (OMClouds-like) or lazy counting where a count would take more than about 10 s.
+
+## The church modes (#362, and Fux's style)
+
+`keyOf` takes the church modes with their musica ficta (the `:scale` and `:ficta` rules). Their figures are mode-
+neutral; what chooses chords in a mode is the style `modal` (`modal-1`, `modal-2`, `modal-4`): note against note,
+every chord a consonant 5/3 or 6/3 (rule `modal`), the cadence's 6/3 over a bass falling by step to the last note,
+and the freedoms Fux's three and four parts take (a unison with the bass, voices crossing, direct 5ths and octaves
+among them, a leap not always turned, a chromatic step over a held bass, the top voice ending on the 5th). The
+oracle: his 27 examples in three and four parts (`tests/assets/fux`), 26 of them accepted; the 17th century's
+cadences of each mode (on the final, its 5th, its 3rd) come next.
+
