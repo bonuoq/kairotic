@@ -180,6 +180,28 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   is("a bass as notes (cac partimento, cac judge): fromNotes as partimento.mjs's overBass — counts, engine, judgement, chords", off.length === 0, off.slice(0, 4).join("; "));
 }
 
+// a time limit for the count (a page must not freeze): a 16-bar bass of half notes in A major without figures, in four
+// parts, takes about a minute to count — countWithin gives up in time, search finds a realization by the rules
+{
+  const A = { A2: 45, B2: 47, "C#3": 49, D3: 50, E3: 52, "F#3": 54, "G#3": 56, A3: 57 };
+  const line = "A2 B2 C#3 D3 E3 F#3 G#3 A3 A3 E3 F#3 C#3 D3 A2 D3 E3 D3 C#3 B2 A2 F#3 D3 E3 E3 A2 D3 E3 E3 F#3 D3 E3 A2".split(" ");
+  let seed = 7; const r = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  for (const voices of [4, 3, 2]) {
+    const ob = R.fromNotes({ notes: line.map((n) => ({ midi: A[n], units: voices === 4 ? 1 : 2 })), key: "A major", voices });
+    const t0 = Date.now(), c = ob.countWithin(300), dt = Date.now() - t0;
+    if (voices === 4) is("countWithin: a 16-bar bass without figures in four parts, too long to count, gives up in time", c === null && dt < 1500, `${c} in ${dt} ms`);
+    let found;
+    try { found = ob.search({ temp: 0.5, r, ms: 4000 }); } catch (e) { found = e.message; }
+    const ok = found && typeof found === "object" && (voices === 2 ? !ob.P.judge(found.top) : !ob.P.judgeW(Object.values(found).map((U) => U), "long"));
+    is(`search, ${voices} parts: a realization without counting, every unit by the rules`, ok, String(found).slice(0, 80));
+  }
+  const F = R.fromNotes({ notes: [0, 2, 4, 5].map((d, i) => ({ midi: 48 + d, units: 1, fig: ["5/3", "6/4/3", "6/3", "6/5"][i] })), key: "C major", voices: 4 });
+  is("... a short bass counts exactly, within the limit as without it", F.countWithin(1000) === F.count());
+  is("within: past its deadline a count throws TooLong", (() => {
+    try { R.within(0, () => R.fromNotes({ notes: line.map((n) => ({ midi: A[n], units: 2 })), key: "A major", voices: 4 }).count()); return false; } catch (e) { return e instanceof R.TooLong; }
+  })());
+}
+
 const failed = results.filter((r) => !r[1]);
 console.log(`${results.length - failed.length} / ${results.length} passed`);
 for (const [w, ok, d] of results) if (!ok) console.log("  FAIL " + w + (d ? " — " + d : ""));

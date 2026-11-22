@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`cac` does not freeze the page** (`@kairotic/rules` 0.3.1, `@kairotic/cac` 0.9.1). The exact count runs in the
+  page, and a long bass without figures in four parts takes minutes (16 bars of half notes in A major: about a minute;
+  of whole notes, more than eight) — an agent asked for a 16-bar partimento hung the page that way. Now `cac
+  partimento` counts for 1.5 s at most; past it, it says *too many to count here* and finds a realization by
+  **search** — depth first, the candidates in the engine's order (a softmax of the soft rules' cost, drawn), back from
+  dead ends, the dead states remembered on the memo's window — within 2.5 s, or says it found none in time. `cac judge`
+  no longer counts at all. In `rules.mjs`: `within(ms, f)` and `TooLong` (a deadline every count checks; what it
+  counted stays in its memo), `search` on `solve` and `solveVoices`, `fan(W, false)` (without the futures), and
+  `fromNotes`'s `countWithin` and `search`.
 - **Study 64 · florid: the frame measured** (discussion #342). Fux's frames (the notes on his half bars' downbeats)
   hold a note over the bar or move by a third far more often than the engine's (held 28%, thirds 31%; the engine 10%
   and 15%): the room his passing notes need. The frame's bridge takes a cost by interval (`costs.frame`, through

@@ -11,7 +11,12 @@
 ;; What an analysis finds is written on the tree as its analysis layer (:fig the chord over a bass note, :deg its
 ;; degree, :local the key it is read in, :why a rule broken there), which a tree box's code window shows or hides
 ;; (Analysis).
-(let [origins ["npm:@kairotic/rules@0.3.0/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
+(let [origins ["npm:@kairotic/rules@0.3.1/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
+      ;; how long the page may count, and search when it cannot (ms): past them the page would freeze (a long bass
+      ;; without figures in four parts takes minutes to count), so the box gives up counting and finds a realization
+      ;; by search, or says it found none in time
+      count-ms 1500
+      search-ms 2500
       names {2 ["soprano"] 3 ["soprano" "alto"] 4 ["soprano" "alto" "tenor"]}
       kernel-keys {2 ["top"] 3 ["top" "middle"] 4 ["soprano" "alto" "tenor"]}
       ;; the notes of a voice: its events, in time order
@@ -64,7 +69,8 @@
                                          (names n) ks)
                                     [(into [:voice {:name "bass"}] (bass-line ob bass chords))]))))
       shown (fn [ob st] {:main (str "cac " (name (:op st :partimento)) " · " (.-voices ob) " parts")
-                         :sub (str (:count st) " realizations · " (.. ob -key -tonic) " " (.. ob -key -mode))})]
+                         :sub (str (if (:count st) (str (:count st) " realizations") "too many to count here")
+                                   " · " (.. ob -key -tonic) " " (.. ob -key -mode))})]
   {:class "cac"
    :license "MPL-2.0"
    :doc "Composition assisted by computer on a tree: operations that follow the rules of a style and look ahead, beside mt's mechanical ones (discussion #323; Studies 51–62). cac partimento: a bass in (a tree — its lowest voice; its notes' figures, :fig \"6/5\", if it has them; a note's key, :local \"G major\", if it is read in another), the voices above it out, as a tree for a tree box: 4 parts by default (soprano, alto, tenor over the bass; [:voices 3] or 2), realized by the engine (its soft rules: steps rather than leaps, the leading tone up…) — a bang another one, :any any valid one, each as likely — and the realizations counted exactly (outlet 1). The bass written again carries the analysis: the chord made over each note (:fig), its degree (:deg), its key where it is read in another (:local) — the tree box's code window shows them with Analysis. The key: the box's words (cac partimento G, cac partimento e: lower case minor; cac partimento d dorian: a church mode, with its musica ficta), the tree's :key, or guessed from the bass. Its unit is the shortest note of the bass (or [:unit 2]); the even units are strong. cac judge: a tree of voices in, the lowest the bass: where they break the rules, and why (outlet 1), and the tree out with the chords over its bass and :why on the notes that break one. [:voices 3], [:key \"a minor\"], [:temp 1], [:seed 7], [:unit 1] change it."
@@ -74,11 +80,13 @@
    :args [[:op nil] [:voices 4] [:key nil] [:temp 0.5] [:seed 1] [:unit 0]]
 
    ;; ── a task: the kernel over the bass, counted (outside the pure logic) ──
-   :tasks {:build (fn [{:keys [notes key voices]} _box]
+   :tasks {:build (fn [{:keys [notes key voices count?]} _box]
                     (-> (api/import-module origins)
                         (.then (fn [m]
-                                 (let [ob (.fromNotes m (clj->js {:notes notes :key key :voices voices}))]
-                                   {:ob ob :count (str (.count ob)) :module m})))))}
+                                 (let [ob (.fromNotes m (clj->js {:notes notes :key key :voices voices}))
+                                       ;; counted within count-ms (nil: too long to count here); judging needs no count
+                                       c (when count? (if (fn? (.-countWithin ob)) (.countWithin ob count-ms) (.count ob)))]
+                                   {:ob ob :count (some-> c str) :module m})))))}
 
    ;; ── logic ──
    :receive (fn [{:keys [inlet value state args]}]
@@ -100,7 +108,8 @@
                                     :else
                                     {:state (assoc st :tree tree :bass bass :uppers (vec (rest vs)) :n n :seed (or (get-in st [:over :seed]) (:seed args) 1))
                                      :show {:main (str "cac " (name op)) :sub "counting…"}
-                                     :effects [[:build {:notes (mapv #(dissoc % :t :dur :name) (:notes bass)) :key (key-of st args tree) :voices n}]]})))))
+                                     :effects [[:build {:notes (mapv #(dissoc % :t :dur :name) (:notes bass)) :key (key-of st args tree) :voices n
+                                                        :count? (not= op :judge)}]]})))))
                     ;; one realization, or the judgement, sent out
                     emit (fn [st how]
                            (let [ob (:ob st)]
@@ -116,13 +125,22 @@
                                  {:state st :show {:main "cac judge" :sub (if why (str "✗ " why) "✓ by the rules")}
                                   :out [[1 {:ok (nil? why) :why why :chords (some-> chords js->clj)}]]})
                                (let [r (rng (:seed st 1))
-                                     R (if (= how :any) (.sample ob r) (.engine ob #js {:temp temp :r r}))]
-                                 (if (nil? R)
+                                     ;; not counted (too many): found by search — :any with more chance in its order
+                                     R (if (nil? (:count st))
+                                         (try (.search ob #js {:temp (if (= how :any) (max 2 temp) temp) :r r :ms search-ms})
+                                              (catch :default e (if (.-tooLong e) :too-long (throw e))))
+                                         (if (= how :any) (.sample ob r) (.engine ob #js {:temp temp :r r})))]
+                                 (cond
+                                   (= R :too-long)
+                                   {:state st :show {:main "cac partimento" :sub "✗ too long: no realization found in time"}
+                                    :out [[1 {:count nil :why "too many to count here, and no realization found in time"}]]}
+                                   (nil? R)
                                    {:state st :show {:main "cac partimento" :sub "✗ no realization over this bass"}
                                     :out [[1 {:count 0 :why "no realization over this bass"}]]}
+                                   :else
                                    {:state (update st :seed #(mod (* (or % 1) 48271) 2147483647))
                                     :show (shown ob st)
-                                    :out [[1 (cond-> {:count (:count st) :key (str (.. ob -key -tonic) " " (.. ob -key -mode))}
+                                    :out [[1 (cond-> {:count (or (:count st) "too many to count here") :key (str (.. ob -key -tonic) " " (.. ob -key -mode))}
                                                (seq (.-unknown ob)) (assoc :unknown (js->clj (.-unknown ob))))]
                                           [0 (realization ob st (:bass st) R)]]})))))]
                 (cond

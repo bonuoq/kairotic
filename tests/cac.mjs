@@ -62,4 +62,20 @@ export async function cac(page, check) {
   const bad = await until(page, `(:sub (second (last-shown ${jb})))`, (x) => /parallel/.test(x));
   check("... the book's wrong Galant cadence: its parallel 5ths between the alto and the tenor", /parallel 5ths between the alto and the tenor/.test(bad), bad);
   await cljs(page, `(delete ${tb}) (delete ${cb}) (delete ${out}) (delete ${jb})`);
+
+  // a bass too long to count (16 bars of half notes in A major, no figures: about a minute in four parts): the box
+  // does not freeze the page — it gives up counting in time and finds a realization by search
+  const LONG = `[:voice {:key "A major"} ${"a2 b2 c#3 d3 e3 f#3 g#3 a3 a3 e3 f#3 c#3 d3 a2 d3 e3 d3 c#3 b2 a2 f#3 d3 e3 e3 a2 d3 e3 e3 f#3 d3 e3 a2"
+    .split(" ").map((p) => `[:note {:pitch "${p}" :dur 2}]`).join(" ")}]`;
+  const lt = (await cljs(page, '(box "tree" 9400 600)')).trim();
+  await cljs(page, `(tree! ${lt} ${LONG})`);
+  const lc = (await cljs(page, '(box "cac partimento" 9400 700)')).trim();
+  const lo = (await cljs(page, '(box "tree" 9400 800)')).trim();
+  await until(page, `(io (get-in (current) [:boxes ${lc}]))`, (x) => x === "[1 2]");
+  const t0 = Date.now();
+  await cljs(page, `(connect ${lt} 0 ${lc} 0) (connect ${lc} 0 ${lo} 0) (send! ${lt} :bang)`);
+  const ln = await until(page, `(count (filter #(= :voice (first %)) (rest (tree-data ${lo}))))`, (x) => x === "4", 20000);
+  const sub = await cljs(page, `(:sub (second (last-shown ${lc})))`);
+  check("a bass too long to count: four voices all the same, found by search, in a few seconds", ln === "4" && /too many to count here/.test(sub) && Date.now() - t0 < 15000, `${ln} · ${sub} · ${Date.now() - t0} ms`);
+  await cljs(page, `(delete ${lt}) (delete ${lc}) (delete ${lo})`);
 }
