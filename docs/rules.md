@@ -108,9 +108,15 @@ Each study pins its exact counts and the book's prototypes (IJzerman's examples,
 51–64. A port of an engine onto the core is right when it reproduces them **to the number** — first Study 51 (one voice
 over a bass), then 54–62 (three and four parts) and `cac partimento`, then `comes` and Studies 61–64.
 
+## Step 2: the core (done)
+
+`@kairotic/rules` 0.1.0: `solve()` — the core —, the catalogue's first rules (`range`, `scale`, `from-bass`, `figures`,
+`leading-tone-raised`, `hold`, `intervals`, `leaps`, `melodic-minor`, `dissonance`, `parallels`, `edges`; soft: `soft.mjs`,
+`leading-tone`), the style `partimento-1` and `resolveStyle` (`:extends`, a rule reparametrized or removed). `tests/rules.mjs`:
+the same counts as `partimento.mjs` in 288 cases of Study 51's schemata and for every voice of Studies 54, 57, 59 and 62
+counted alone, the same reasons candidate by candidate, the same engine.
+
 ## Next
 
-- **Step 2**: the core of `@kairotic/rules` (voices, timeline, system, the memo window from the rules' lookback, count,
-  draw, engine, judge), and the first rules of the catalogue, until Study 51's counts come out the same.
 - Then three and four parts, styles in EDN with `:extends`, `[:style …]` in `cac`; `comes` last.
 - Local search (OMClouds-like) or lazy counting where a count would take more than about 10 s.

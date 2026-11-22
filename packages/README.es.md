@@ -20,6 +20,7 @@ publicados en npm bajo el ámbito `@kairotic` y servidos dentro de claude.ai por
 | [`@kairotic/io`](io/) | `midiin [canal] [rango]` MIDI de entrada como eventos, y Hz e ids de voz para synth~ · `midiout [mpe] [canal] [puerto] [rango]` notas a un puerto MIDI, MPE para microtonos · `oscin [patrón]` · `oscout [destino]` OSC a través del puente de un relay · `motion` la inclinación y sacudidas de un móvil · `gamepad` botones y sticks · `serial [baudios]` las líneas de una placa (Web Serial) · `control tipo [cuál]` un control (cc 74, pad lx, tilt x, osc /dir…) de entre sus eventos |
 | [`@kairotic/net`](net/) | `share [canal]` un valor para todos en la sala · `shared [canal]` lo que cualquiera de la sala comparte · `pulse [división]` el pulso de la sala: un tempo para todas las páginas |
 | [`@kairotic/faust-units`](faust-units/) | sin clases: módulos para la página — la vista de patch de un `faust~`, los elementos de Faust como cajas, sincronizada con su código; la receta de un `faust~` a partir de un sonido |
+| [`@kairotic/rules`](rules/) | sin clases: un único motor de restricciones para todos los estilos (#353) — el núcleo (contar, sortear, motor, juicio), un catálogo de reglas generales con parámetros, estilos con nombre, versión y herencia; hoy una voz sobre un bajo, como el `partimento.mjs` de `@kairotic/cac` |
 
 Previstos: `cac`, `notation`.
 

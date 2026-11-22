@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`@kairotic/rules` 0.1.0: one constraint engine, step 2 of #353.** A package of its own, no classes: the core
+  (`solve()`: hard rules that refuse with a reason, soft rules that cost, the exact count on a window as wide as the rules
+  look back, the engine, a uniform draw, a judgement, `why` a note is refused), the catalogue's first general rules —
+  those of a voice over a given bass — and styles named, versioned and inheriting (`resolveStyle`, `:extends`). The style
+  `partimento-1` reproduces `partimento.mjs`'s voice over a bass to the number: 288 counts of Study 51's schemata, every
+  voice of Studies 54, 57, 59 and 62, the reasons and the engine's choices (`tests/rules.mjs`, in CI).
 - **Study 53's soft rules: the package's** (`soft.mjs` of `@kairotic/cac`). Its copy had stayed behind; it now weighs
   as every engine does, and `tests/counterpoint.mjs` checks it with the others. Studies 38–42 keep their own kernels,
   frozen as the record of each step.
