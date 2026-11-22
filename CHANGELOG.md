@@ -6,8 +6,8 @@
   #353). A key may be a church mode — `{tonic: "D", mode: "dorian"}`, `"d dorian"` in `cac partimento` — ionian,
   dorian, phrygian, lydian, mixolydian, aeolian, on any tonic, with the ficta Fux writes in the *Gradus*'s examples
   (counted in Mark Gotham's encoding): dorian C♯ B♭ and F♯, phrygian G♯, lydian B♭, mixolydian F♯, aeolian G♯ F♯. A
-  raised note leads up by step, a lowered one goes down, and the final's raised 3rd (dorian F♯, phrygian G♯) sounds
-  only in the last chord. Major and minor are unchanged (every count the same); both engines count the modes alike
+  raised note leads up by step, a lowered one goes down, at the last cadence the leading tone is raised where the mode
+  raises it, and the final's raised 3rd (dorian F♯, phrygian G♯) sounds only in the last chord. Major and minor are unchanged (every count the same); both engines count the modes alike
   (`tests/rules.mjs`: 80 cases, counts and reasons).
 - **Study 64 · florid: ties as Fux writes them** (discussion #342). A note is never tied to a longer one, nor is an
   eighth tied: the first of a tied pair as long as the second or longer (a half note to a half, a dotted quarter or a

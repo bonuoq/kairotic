@@ -201,12 +201,16 @@ export const RULES = {
       return null;
     } }),
 
-  /** line · a church mode's musica ficta: a raised note leads up by step (C♯ to D), a lowered one goes down (B♭). */
+  /** line · a church mode's musica ficta: a raised note leads up by step (C♯ to D), a lowered one goes down (B♭); at
+   *  the last cadence the leading tone raised where the mode raises it. */
   ficta: (w) => ({ id: "ficta", lookback: 1,
     check: ({ t, c, prev, struck }) => {
       if (!struck || prev === null) return null;
-      const { K, D, A, LOC } = w, step = D(c) - D(prev), lp = w.loc(t - 1, prev), f = LOC[t - 1].key.ficta(lp.deg);
-      return f && lp.alt === f && (f > 0 ? step !== 1 : step >= 0) ? `${K.name(D(prev), A(prev))} ${f > 0 ? "goes up by step" : "goes down"} (musica ficta)` : null;
+      const { K, D, A, LOC } = w, step = D(c) - D(prev), lp = w.loc(t - 1, prev), lc = w.loc(t, c), f = LOC[t - 1].key.ficta(lp.deg);
+      if (f && lp.alt === f && (f > 0 ? step !== 1 : step >= 0)) return `${K.name(D(prev), A(prev))} ${f > 0 ? "goes up by step" : "goes down"} (musica ficta)`;
+      if (t === w.n - 1 && step === 1 && lc.deg === 0 && lp.deg === 6 && lp.alt === 0 && LOC[t - 1].key.ficta(6) > 0)
+        return `at the cadence the leading tone raised: ${K.name(D(prev), A(prev) + 1)}, not ${K.name(D(prev), A(prev))} (musica ficta)`;
+      return null;
     } }),
 
   /** line · in minor ⑥ and ⑦ go up raised and down natural; the raised ⑥ goes on up to the raised ⑦ (not over a bass rising through them). */
