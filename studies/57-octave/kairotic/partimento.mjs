@@ -352,7 +352,10 @@ export function schemata(spec = {}) {
       }
       // a church mode's musica ficta: a raised note leads up by step (C♯ to D), a lowered one goes down (B♭)
       { const f = LOC[t - 1].key.ficta(lp.deg);
-        if (f && lp.alt === f && (f > 0 ? step !== 1 : step >= 0)) return `${K.name(D(prev), A(prev))} ${f > 0 ? "goes up by step" : "goes down"} (musica ficta)`; }
+        if (f && lp.alt === f && (f > 0 ? step !== 1 : step >= 0)) return `${K.name(D(prev), A(prev))} ${f > 0 ? "goes up by step" : "goes down"} (musica ficta)`;
+        // and at the last cadence the leading tone raised, where the mode raises it (dorian C♯, mixolydian F♯, aeolian G♯)
+        if (t === n - 1 && step === 1 && lc.deg === 0 && lp.deg === 6 && lp.alt === 0 && LOC[t - 1].key.ficta(6) > 0)
+          return `at the cadence the leading tone raised: ${K.name(D(prev), A(prev) + 1)}, not ${K.name(D(prev), A(prev))} (musica ficta)`; }
       // the raised ⑥ is only on the way up to the tonic: it goes on up to the raised ⑦
       if (minorP && lp.deg === 5 && lp.alt === 1 && !(step === 1 && lc.alt === 1) && !(B[t].r === 1 || B[t - 1].r === 1))
         { const up = [-1, 0, 1].map((x) => codeOf3(D(prev) + 1, x)).find((x) => { const l = loc(t - 1, x); return l.deg === 6 && l.alt === 1; });
