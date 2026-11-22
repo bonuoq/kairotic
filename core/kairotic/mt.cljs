@@ -26,6 +26,7 @@
 ;; :tie true goes on into the next note of the same pitch (across a barline or into a tuplet: one sound,
 ;; tied in the score); :grace true is a grace note before the next one (it takes no time in its container).
 ;; A :voice with :staff "name" is written as a layer of that staff (voices that share it, layers 1, 2 …).
+;; A :voice with :clef "G", "F", "G8" (the tenor's treble clef an octave down), "C3" or "C4" sets its staff's clef.
 ;; A note without :dur lasts as long as the previous one of its container (1 at first). :defs (a map
 ;; of fragments) can sit in the attributes of any container; [:use {:ref k}] takes them from there.
 
@@ -1371,11 +1372,17 @@
                                                       :beam (and (not= :rest tg) (contains? #{"8" "16" "32" "64"} du))})))))]
                           (recur (rest ks) (+ abs (* scale d)) (into items part-items)))
                         :else (recur (rest ks) abs items))))))
-        clefs (mapv (fn [k] (let [ps (for [vs sec-voices [kk v] vs :when (= (voice-staff kk) k)
-                                           n (tree-seq node? kids v) :when (= :note (tag n))
-                                           :let [m (midi-of (attrs n))] :when m] m)
-                                  mean (if (seq ps) (/ (reduce + ps) (count ps)) 64)]
-                              (if (< mean 57) ["F" 4] ["G" 2])))
+        ;; a staff's clef: the one a voice on it asks for (:clef "G", "F", "G8" the tenor's treble clef an octave
+        ;; down, "C3", "C4"), else treble or bass by the mean of its notes
+        clefs (mapv (fn [k] (let [own (some (fn [[kk v]] (when (= (voice-staff kk) k) (:clef (attrs v)))) (apply concat sec-voices))
+                                  [_ shape line dis] (when own (re-matches #"([GFC])([1-5])?(8)?" (str own)))]
+                              (if shape
+                                [shape (js/parseInt (or line ({"G" "2" "F" "4" "C" "3"} shape)) 10) dis]
+                                (let [ps (for [vs sec-voices [kk v] vs :when (= (voice-staff kk) k)
+                                               n (tree-seq node? kids v) :when (= :note (tag n))
+                                               :let [m (midi-of (attrs n))] :when m] m)
+                                      mean (if (seq ps) (/ (reduce + ps) (count ps)) 64)]
+                                  (if (< mean 57) ["F" 4] ["G" 2])))))
                     staves)
         ;; every bar's staves first, then the measures with their control events: a tie into the next
         ;; bar is written in the bar where it starts, once that one is done
@@ -1413,9 +1420,10 @@
                "<music><body><mdiv><score>"
                "<scoreDef meter.count=\"" (meter-count 0) "\" meter.unit=\"" q0 "\" key.sig=\"" (sp/mei-key-sig (:sig (key-at 0))) "\">"
                "<staffGrp" (when (> (count staves) 1) " bar.thru=\"false\"") ">"
-               (apply str (for [[i [shape line]] (map-indexed vector clefs)
+               (apply str (for [[i [shape line dis]] (map-indexed vector clefs)
                                 :let [k (nth staves i)]]
                             (str "<staffDef n=\"" (inc i) "\" lines=\"5\" clef.shape=\"" shape "\" clef.line=\"" line "\""
+                                 (when dis " clef.dis=\"8\" clef.dis.place=\"below\"")
                                  (when (or (> (count staves) 1) (not (str/starts-with? k "voice "))) (str " label=\"" (esc-xml k) "\""))
                                  "/>")))
                "</staffGrp></scoreDef><section>"

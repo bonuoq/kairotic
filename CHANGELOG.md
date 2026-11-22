@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **`cac partimento`: notes without figures, and the score as a choir writes it** (`@kairotic/rules` 0.4.0,
+  `@kairotic/cac` 0.10.0). A note of the bass without figures took any chord the rules allowed (a 4/3/2 on ⑤ between
+  figured notes); it now takes the one a partimento player would — the Rule of the Octave's where the bass moves by step
+  through it, a 5/3 where it leaps (a 6/3 on ⑦) and at the start and the end (`fromNotes({fill})`, `octaveDefault`;
+  `cac judge` still reads the chords the voices make). The help's RO counts 3,610 again, Study 62's. The voices come
+  out in the tree's order, soprano, alto, tenor, bass (a tree in free time was quantized with its voices sorted by
+  name: alto, bass, soprano, tenor), in open score with the tenor in the treble clef an octave down; `[:staves 2]`
+  writes them in short score, soprano and alto on a treble staff, tenor and bass on a bass staff. In any tree a voice's
+  `:clef` ("G", "F", "G8", "C3", "C4") sets its staff's clef, and quantizing keeps a voice's `:staff` and `:clef`.
+
 - **Several voices on one engine: `cac partimento` and `cac judge` on `@kairotic/rules`** (`@kairotic/rules` 0.3.0,
   `@kairotic/cac` 0.9.0; step 3 of discussion #353). The core takes several voices (`solveVoices`: each voice a style of
   one voice over the bass, tuples of their candidates, rules between them, the exact count memoized on every voice's
