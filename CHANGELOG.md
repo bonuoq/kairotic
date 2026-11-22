@@ -12,6 +12,9 @@
   beside it and what reaches its inlets. **Offers:** `agent 3 "…"` answers each request with three contents (up to
   five), each told of the earlier ones, three sibling points of its line; it plays the first, and `(choose-offer :bN
   2)` or the Agents section of the Claude panel chooses another; the next request goes on from the one chosen.
+- **Study 53's soft rules: the package's** (`soft.mjs` of `@kairotic/cac`). Its copy had stayed behind; it now weighs
+  as every engine does, and `tests/counterpoint.mjs` checks it with the others. Studies 38–42 keep their own kernels,
+  frozen as the record of each step.
 - **Rules: an inventory, toward one engine** (`docs/rules.md`; discussion #353, step 1). Every rule the constraint
   engines hold today (`counterpoint.mjs`, `partimento.mjs`, `soft.mjs`, Studies 61–64), gathered into some twenty
   general, parametrized rules by context (note, line, vertical, pair, chord, progression, given, edge) with their
