@@ -61,17 +61,38 @@ export const FIGURES = [
 ];
 
 /**
- * A frame drawn by a bridge over the cantus firmus: a note a half bar (units), legal under the rules of every phrase.
- * {voice, units (codes), names} or null.
+ * The frame's voice: the kernel of every phrase with its strictest line (partimento.mjs's "strict": leaps up to a 5th
+ * or the octave, turned back by step from a 4th, never two the same way), and the species' own on top of it — no
+ * leap of a tritone (augmented 4th, diminished 5th), no 6th but the minor one going up (Fux). {voice, V (its check
+ * strict), phrase}.
  */
-export function frameOf(cf, key, { temp = 0.6, r = Math.random } = {}) {
+export function frameVoice(cf, key) {
   const bars = split(cf).length, n = (bars - 1) * 2 + 1;
   const phrase = { bass: split(cf).join(" "), melody: Array(n).fill("C5").join(" "), cadence: "perfect" };
-  const vo = voiceOver(phrase, key);
-  const B = bridgeVoice(vo.V, { temp });
+  const vo = voiceOver(phrase, key, { line: "strict" });
+  const V0 = vo.V;
+  const species = (U, t, c) => {
+    if (t < 1 || U[t - 1] === c) return null;
+    const a = midiOf(vo.name(U[t - 1])), b = midiOf(vo.name(c)), s = b - a, m = Math.abs(s);
+    if (m === 6) return "a leap of a tritone";
+    if (m === 9) return "a leap of a major 6th";
+    if (m === 8 && s < 0) return "a minor 6th going down";
+    return null;
+  };
+  const V = { ...V0, check: (U, t, c) => V0.check(U, t, c) || species(U, t, c) };
+  return { voice: { ...vo, V }, V, phrase, n };
+}
+
+/**
+ * A frame drawn by a bridge over the cantus firmus: a note a half bar (units), legal under the rules of every phrase
+ * with the strict line and the species' leaps (frameVoice). {voice, units (codes), names} or null.
+ */
+export function frameOf(cf, key, { temp = 0.6, r = Math.random } = {}) {
+  const { voice, V, phrase } = frameVoice(cf, key);
+  const B = bridgeVoice(V, { temp });
   if (!B.possible) return null;
   const U = B.draw(r);
-  return U ? { voice: vo, phrase, units: U, names: U.map(vo.name) } : null;
+  return U ? { voice, phrase, units: U, names: U.map(voice.name) } : null;
 }
 
 /**
@@ -170,8 +191,7 @@ export function frameAt(path, units, notes = null) {
 /** A level judged on the frame's grid by the kernel of every phrase (every rule but how long a note is held), its
  *  errors' units on the eighths. */
 export function judgeOn(cf, key) {
-  const bars = split(cf).length, n = (bars - 1) * 2 + 1;
-  const vo = voiceOver({ bass: split(cf).join(" "), melody: Array(n).fill("C5").join(" "), cadence: "perfect" }, key);
+  const { voice: vo, n } = frameVoice(cf, key);
   let notes = null;
   const judge = (path) => {
     const names = frameAt(path, n, notes), U = [];

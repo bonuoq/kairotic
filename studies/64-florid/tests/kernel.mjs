@@ -13,7 +13,17 @@ export async function run() {
 
   const c = F.CANTI["c-major"], bars = split(c.cf).length, n = (bars - 1) * 2 + 1;
   const fr = F.frameOf(c.cf, c.key, { r: rng(3) });
-  is("the frame: a note a half bar over the cantus firmus (19 for ten bars), every one legal under the rules of every phrase", fr && fr.names.length === n && fr.units.every((u, t) => fr.voice.V.check(fr.units.slice(0, t), t, u) === null));
+  is("the frame: a note a half bar over the cantus firmus (19 for ten bars), every one legal under the rules of every phrase with the strict line", fr && fr.names.length === n && fr.units.every((u, t) => fr.voice.V.check(fr.units.slice(0, t), t, u) === null));
+  // the species' leaps, over many frames: up to a 5th or the octave, no tritone, no 6th but the minor one going up
+  let leapsOk = true;
+  for (const [, cc] of Object.entries(F.CANTI)) for (let s = 1; s <= 8; s++) {
+    const f = F.frameOf(cc.cf, cc.key, { r: rng(s) });
+    if (!f) { leapsOk = false; continue; }
+    const ns = f.names.filter((x, i) => i === 0 || x !== f.names[i - 1]);
+    for (let i = 1; i < ns.length; i++) { const d = midiOf(ns[i]) - midiOf(ns[i - 1]), m = Math.abs(d); if (m === 6 || m === 9 || m === 10 || m === 11 || m > 12 || (m === 8 && d < 0)) leapsOk = false; }
+  }
+  is("… strict species leaps in every frame (24 drawn): no tritone, no 7th, no 6th but the minor one going up, nothing beyond the octave", leapsOk);
+  is("… the strict line refuses what the incipits' moderate one allows: F4 to D5 (a 6th) after E4 G4", F.frameVoice(c.cf, c.key).V.check(["E4", "G4", "F4"].map((x) => fr.voice.code(x)), 3, fr.voice.code("D5")) !== null);
 
   // many florid lines, every figure checked
   const runs = [];
@@ -42,8 +52,14 @@ export async function run() {
   is("… no tritone, 7th or leap beyond the octave between two notes of the surface", melodic);
 
   // suspensions: held, prepared with a neighbour, or resolved later (ornamented)
-  const susFigs = ["tie-neighbor", "anticipated-resolution", "ornamented-resolution"];
-  is("suspensions of the frame elaborated too: prepared with a neighbour, or resolved early or through a third below", susFigs.some((f) => used.has(f)));
+  {
+    const g = F.CANTI["g-major"], fs = F.frameOf(g.cf, g.key, { r: rng(21), temp: 0.6 }), U = fs.units;
+    const t = U.findIndex((u, i) => i >= 2 && i % 2 === 0 && U[i - 1] === u && fs.voice.V.vertical(i, u).q === "dissonant");
+    const E = t > 0 && F.elaborate(fs, g.cf, g.key, { r: rng(21) });
+    const before = E && E.spans[t - 1].figure, after = E && E.spans[t].figure;
+    is("a frame with a suspension (G major): the half bar before prepares it, held over the bar; the one after resolves it, held or later", E && ["held", "tie-neighbor"].includes(before) && ["held", "anticipated-resolution", "ornamented-resolution"].includes(after) && E.eighths[t * F.SUB - 1] === fs.names[t]);
+    notes.push(`the suspension at half bar ${t + 1} of ${fs.names.join(" ")}: ${before}, then ${after}`);
+  }
 
   // the other way: reduced, the frame's downbeats come back
   let tot = 0, perfect = 0;
