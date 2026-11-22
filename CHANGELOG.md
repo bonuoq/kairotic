@@ -9,6 +9,14 @@
   raised note leads up by step, a lowered one goes down, at the last cadence the leading tone is raised where the mode
   raises it, and the final's raised 3rd (dorian F♯, phrygian G♯) sounds only in the last chord. Major and minor are unchanged (every count the same); both engines count the modes alike
   (`tests/rules.mjs`: 80 cases, counts and reasons).
+- **Study 64 · florid: measured** (discussion #342, step 3). `measure.mjs` reads a florid line back into what the
+  engine draws — its frame (given, or found by Study 61's reduction), each half bar's cell and figure, its ties —
+  counts them over a corpus, and turns the counts into costs (`costsOf`, a first guess), then fits them (`fitCosts`:
+  rounds of drawing, measuring, and moving each cost by the log of the two shares' ratio — how often a figure is heard
+  is not how much it is preferred, where the frame leaves it more or less room). `florid({costs})` and
+  `elaborate({costs})` take them. Read back, every half bar of the engine's own lines is found as drawn (93% with the
+  reduced frame); fitted to a corpus drawn with other costs, the engine's figures come from 0.48 to 0.08 of it (total
+  variation). Next: Fux's own fifth-species examples as the corpus.
 - **Study 64 · florid: ties as Fux writes them** (discussion #342). A note is never tied to a longer one, nor is an
   eighth tied: the first of a tied pair as long as the second or longer (a half note to a half, a dotted quarter or a
   quarter; never a quarter to a half). A hard rule of the rhythm's bridge, which draws no rhythm that would force it

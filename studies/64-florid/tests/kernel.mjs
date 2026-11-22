@@ -2,6 +2,7 @@
 // Study 64 · florid: the kernel's tests (florid.mjs). In the browser (tests/kernel.html) and in Node:
 //   node -e 'import("./studies/64-florid/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import * as F from "../kairotic/florid.mjs";
+import * as M from "../kairotic/measure.mjs";
 import { consonant, midiOf } from "../kairotic/protovoices.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -112,6 +113,36 @@ export async function run() {
   const mean = tot / runs.length;
   is("reduced by Study 61's grammar on the eighths' grid: at the level as long as the frame, its downbeats come back (mean ≥ 90%)", mean >= 0.9);
   notes.push(`the frame's downbeats recovered: ${Math.round(100 * mean)}% on average, all of them in ${perfect} of ${runs.length} lines`);
+  // measured: the lines read back into the catalogue, counted, and the counts turned into costs, fitted
+  {
+    const lines = runs.map(({ cc, x }) => ({ cf: cc.cf, key: cc.key, eighths: x.eighths, frame: x.frame }));
+    let exact = 0, near = 0, tot = 0;
+    runs.forEach(({ x }, i) => {
+      const R = M.readLine(lines[i]), Rr = M.readLine({ ...lines[i], frame: null });
+      x.spans.slice(0, -1).forEach((sp, t) => {
+        tot++;
+        if (R.spans[t].figure === sp.figure && R.spans[t].cell === x.rhythm[t]) exact++;
+        if (Rr && Rr.spans[t].figure === sp.figure) near++;
+      });
+    });
+    is("measured: every half bar read back as drawn, its cell and its figure, given the frame", exact === tot);
+    is("… with the frame found by Study 61's reduction instead, most of the figures (≥ 85%)", near / tot >= 0.85);
+    notes.push(`read back with the reduced frame: ${Math.round(100 * near / tot)}% of ${tot} figures`);
+    const st = M.measure(lines), C = M.costsOf(st);
+    is("… counted: every tie to an equal or shorter value; the commonest figure costs 0, one never heard the most", st.ties > 0 && st.tiesOk === st.ties && Math.min(...Object.values(C.figures)) === 0 && C.figures["ornamented-resolution"] === Math.max(...Object.values(C.figures)));
+    // a corpus drawn with other costs (turns, runs, passing notes; few skips and held notes): fitted, the engine comes near
+    const gen = (costs, s0) => {
+      const out = [];
+      for (const [, cc] of Object.entries(F.CANTI)) for (let s = s0; s < s0 + 3; s++) { const x = F.florid(cc.cf, cc.key, { r: rng(s), costs }); if (x) out.push({ cf: cc.cf, key: cc.key, eighths: x.eighths, frame: x.frame }); }
+      return out;
+    };
+    const other = { figures: { held: 2, skip: 2, escape: 2, anticipation: 2, passing: 0, tirata: 0, turn: 0.2, neighbor: 0.3, cambiata: 0.3, "double-neighbor": 0.5, "passing-eighths": 0.3 }, cells: { H: 1.5, Q: 0, DQ: 0.8, QE: 0 } };
+    const T = M.measure(gen(other, 101)), d0 = M.distance(M.measure(gen(null, 1)), T);
+    const fit = M.fitCosts(T, (c) => gen(c, 1), { rounds: 3 });
+    is("fitted to a corpus drawn with other costs: the engine's figures come at least twice as near it (total variation)", fit.distance <= d0 / 2);
+    notes.push(`fitted: ${d0.toFixed(2)} → ${fit.rounds.map((r) => r.distance.toFixed(2)).join(" → ")}`);
+  }
+
   const x0 = runs[0].x;
   notes.push(`over ${runs[0].cc.cf}: frame ${x0.frame.join(" ")} · surface ${x0.eighths.join(" ")}`);
   return { results, notes };
