@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Study 53's soft rules: the package's** (`soft.mjs` of `@kairotic/cac`). Its copy had stayed behind; it now weighs
+  as every engine does, and `tests/counterpoint.mjs` checks it with the others. Studies 38–42 keep their own kernels,
+  frozen as the record of each step.
 - **Study 64 · florid: florid counterpoint over a cantus firmus, every note justified by a derivation** (discussion
   #342, step 3 of #321's road). A frame (second and fourth species) drawn by a bridge over the kernel, each half bar
   elaborated into four eighths by a figure of a catalogue (transitus, tirata, circulatio, anticipatio, escape tone,
