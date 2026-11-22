@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Safe mode: a page that froze starts the next one safe.** Code of a work (a component, a script, a package's
+  kernel) can keep the page busy until nothing answers, and a frozen page cannot say so — the next one can. Each
+  gesture or line of the REPL, opening a work, ▶ and an agent's content arriving open a window of a few seconds in the
+  tab's session storage (what, in which work), erased when it closes or when the page is closed or reloaded normally.
+  A page that froze inside one never erases it, so after reloading the tab Kairotic starts in **safe mode**: the
+  engine held (no message, no task, no ▶) and no code of the work or of the packages runs, with a notice saying what
+  froze it — open the work, take the cause away (choose another offer of an agent, delete a box), and *Leave safe
+  mode* (a reload). `(safe-mode!)` enters it by hand. Other tabs are not affected.
 - **Study 64 · florid: ties as Fux writes them** (discussion #342). A note is never tied to a longer one, nor is an
   eighth tied: the first of a tied pair as long as the second or longer (a half note to a half, a dotted quarter or a
   quarter; never a quarter to a half). A hard rule of the rhythm's bridge, which draws no rhythm that would force it

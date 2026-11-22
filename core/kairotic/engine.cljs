@@ -23,6 +23,10 @@
 
 (defonce rt (atom {:on false :shows {} :prints []}))
 
+;; Safe mode (a page that froze last time): held, the engine delivers no message, runs no task and does not start —
+;; the work can be opened, read and changed, and nothing in it runs (the page sets it; reloading leaves it).
+(defonce held (atom false))
+
 (def lookahead 0.12)
 
 ;; compatibility with code that already used these functions from the engine
@@ -229,13 +233,14 @@
          (assoc (comp/box-info t) :outlet o :inlet i :id b :class (comp/klass (:text t))))))
 
 (defn run-task! [id f k x]
+  (when-not @held
   (let [remote? *remote*
         p (patch)
         box (assoc (comp/box-info (get-in p [:boxes id])) :id id :state (get-in @rt [:states id]) :wired (wired p id))]
     (-> (js/Promise.resolve nil)
         (.then (fn [_] (f x box)))
         (.then (fn [v] (arrive! id {:task k :arg x :value v} remote?))
-               (fn [e] (arrive! id {:task k :arg x :error (str (or (.-message e) e))} remote?))))))
+               (fn [e] (arrive! id {:task k :arg x :error (str (or (.-message e) e))} remote?)))))))
 
 (defn effect! [id [k x label] at]
   (cond
@@ -341,6 +346,7 @@
 
 (defn deliver! [p id inlet value at]
   (cond
+    @held nil
     (>= (swap! counter inc) 20000)
     (when (= 20000 @counter) (print! at "too many messages in one instant (20000): the rest are not delivered"))
     (> (get (swap! visits update id (fnil inc 0)) id) loop-limit)
@@ -440,6 +446,7 @@
 (defn start!
   "Starts the engine (if it was not running). With `loadbang?`, fires the loadbang boxes."
   [patch-fn loadbang?]
+  (when-not @held
   (let [ac (ctx)]
     (.resume ac)
     (when-not (:on @rt)
@@ -455,7 +462,7 @@
       (let [p (patch) at (+ (now) 0.05)]
         (fresh-instant!)
         (doseq [[id b] (:boxes p) :when (= "loadbang" (comp/klass (:text b)))]
-          (deliver! p id 0 :bang at))))))
+          (deliver! p id 0 :bang at)))))))
 
 (defn stop! []
   (when (:on @rt)

@@ -285,6 +285,7 @@
                              data (merge {:line lid :request request :built chosen :by (my-author) :t (js/Date.now)}
                                          (first docs)
                                          (when (> (count points) 1) {:offers points :offer-docs docs}))]
+                         (risky! (str "the content agent " (name id) " built, arriving"))
                          (dispatch-root! [:batch [(wrap-in path [:data id data])
                                                   ;; several offers: it reads the first (pinned); one: it follows its line again
                                                   (wrap-in path [:pin id (when (> (count points) 1) chosen)])]])

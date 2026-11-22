@@ -1114,6 +1114,7 @@
 (defn play
   "Starts the engine and fires the loadbang boxes. Everything else acts when messages reach it."
   []
+  (risky! "▶ play")
   (let [was-on (eng/running?)]
     ;; the line on screen is the one that plays from now on (#117, decision 6)
     (swap! line-state assoc :playing (active-line))
