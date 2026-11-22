@@ -45,6 +45,11 @@ A rest can carry wires too — `[:rest {:dur 4 :wire {:send :drone}}]`: an event
 follow box sends at its time (from where the performer is) and the continuum draws on its lane; a tree of such rests,
 fragments and `[:param …]` ramps is a score of electronics. `mt play` sends what the wires send (its fifth outlet) at
 their written time: the same patch of electronics, driven live by `follow` or in fixed time by `mt play`.
+What is to be heard at an event can be written too, with `:listen` — a value or a `[lo hi]` range per descriptor,
+`:chroma` as pitch classes: `[:rest {:dur 1 :listen {:flatness [0.6 1] :loudness [0.5 1]}}]` is a loud noise the
+performer makes (a slap, a breath), `[:note {:pitch "e4" :listen {:chroma [4 11 5]}}]` a multiphonic. A `follow` box
+listening to those descriptors finds them by what it hears, and their wires go on as a note's; rehearsals
+(`(learn! :bN)`) refine what `:listen` says.
 
 The edits name the node where each note is written, so they work through transformations: a score
 showing `mt transpose 7` of a tree can edit the tree itself. Edits are messages like any other: they
