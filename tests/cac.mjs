@@ -70,9 +70,9 @@ export async function cac(page, check) {
   await cljs(page, `(send! ${cb} [:style {:style :free-sevenths :extends [:chorale-4 "1.0.0"] :between [[:seventh {:free true}]]}])`);
   const s4 = await until(page, `[(count (filter #(= :voice (first %)) (rest (tree-data ${out})))) (get-in @eng/rt [:states ${cb} :count]) (:main (second (last-shown ${cb})))]`, (x) => /^\[4 /.test(x) && /free-sevenths/.test(x));
   check("[:style {…}]: a style in EDN extending chorale-4, the dominant's 7th free — the RO up, 8,557 realizations", /^\[4 "8557"/.test(s4), s4);
-  const bad = await (async () => { await cljs(page, `(send! ${cb} [:style {:extends :chorale-4 :between [[:sevenths]]}])`);
+  const badStyle = await (async () => { await cljs(page, `(send! ${cb} [:style {:extends :chorale-4 :between [[:sevenths]]}])`);
     return until(page, `(:sub (second (last-shown ${cb})))`, (x) => /no rule sevenths/.test(x), 10000); })();
-  check("... a rule the catalogue does not have: the box says which", /no rule sevenths/.test(bad), bad);
+  check("... a rule the catalogue does not have: the box says which", /no rule sevenths/.test(badStyle), badStyle);
   await cljs(page, `(send! ${cb} [:style nil])`);
   await cljs(page, `(send! ${cb} [:voices 3])`);
   // cac judge
