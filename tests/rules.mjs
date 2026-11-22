@@ -86,12 +86,30 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   is("... the engine's realizations the same, at the same temperature and chance", diff === null, diff);
 }
 
+// the church modes (Fux's, with their musica ficta): the same counts and reasons in both engines, every schema in
+// five modes at two line levels; the ficta where Fux writes it
+{
+  const modes = [{ tonic: "D", mode: "dorian" }, { tonic: "E", mode: "phrygian" }, { tonic: "F", mode: "lydian" }, { tonic: "G", mode: "mixolydian" }, { tonic: "A", mode: "aeolian" }];
+  let n = 0, badM = [];
+  for (const id of Object.keys(P.SCHEMATA)) for (const key of modes) for (const line of ["free", "strict"]) {
+    const S = P.schemata({ schema: id, key, figured: false, line }), N = R.overBass({ bass: S.bass, key, figured: false, line, phase: S.phase });
+    n++;
+    if (S.count() !== N.count()) badM.push(`${id} ${key.mode} ${line}: ${S.count()} ≠ ${N.count()}`);
+    else { const a = S.fan([]).map((x) => x.reason), b = N.fan([]).map((x) => x.reason); if (JSON.stringify(a) !== JSON.stringify(b)) badM.push(`${id} ${key.mode} ${line}: reasons`); }
+  }
+  is(`the church modes: the same counts and reasons in ${n} cases (Study 51's schemata × 5 modes × 2 line levels)`, badM.length === 0, badM.slice(0, 5).join("; "));
+  const K = P.keyOf({ tonic: "D", mode: "dorian" });
+  const S = P.schemata({ schema: "7-6", key: { tonic: "D", mode: "dorian" }, figured: false });
+  const names = S.fan([]).map((x) => x.name + ":" + (x.reason || "ok"));
+  is("… D dorian: C♯ and B♭ its ficta, F♯ only in the last chord, E♭ never a candidate", K.name(6, 1) === "C♯4" && K.name(5, -1) === "B♭3" && names.some((x) => /^F♯\d:.*only in the last chord/.test(x)) && !names.some((x) => /^E♭/.test(x)));
+}
+
 // styles: inheritance, a rule removed or reparametrized
 {
   const lib = { ...R.STYLES, "no-leaps": { style: "no-leaps", version: "0.1.0", extends: "partimento-1", rules: [["leaps", { line: "strict" }], ["edges", { end: false }], ["melodic-minor", false]] } };
   const st = R.resolveStyle(lib["no-leaps"], lib);
   is("a style extends another: a rule named again takes its new parameters, [id false] removes it, the rest kept in order",
-     st.rules.length === 11 && st.rules.find(([x]) => x === "leaps")[1].line === "strict" && st.rules.find(([x]) => x === "edges")[1].end === false && !st.rules.some(([x]) => x === "melodic-minor") && st.rules[0][0] === "range");
+     st.rules.length === 12 && st.rules.find(([x]) => x === "leaps")[1].line === "strict" && st.rules.find(([x]) => x === "edges")[1].end === false && !st.rules.some(([x]) => x === "melodic-minor") && st.rules[0][0] === "range");
   const S = P.schemata({ schema: "thirds", figured: false, line: "strict", end: false });
   const N = R.overBass({ bass: S.bass, key: S.key, figured: false, phase: S.phase, style: st });
   is("... and counts as the parameters it names (the strict line, no end): " + N.count(), N.count() === S.count());

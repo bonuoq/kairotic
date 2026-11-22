@@ -5,12 +5,19 @@
 export const mod = (a, m) => ((a % m) + m) % m;
 export const sign = (x) => (x > 0) - (x < 0);
 
-const PAT = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10] };
+const PAT = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10],
+              ionian: [0, 2, 4, 5, 7, 9, 11], dorian: [0, 2, 3, 5, 7, 9, 10], phrygian: [0, 1, 3, 5, 7, 8, 10],
+              lydian: [0, 2, 4, 6, 7, 9, 11], mixolydian: [0, 2, 4, 5, 7, 9, 10], aeolian: [0, 2, 3, 5, 7, 8, 10] };
+// the modes' musica ficta, as Fux writes it (Gradus ad Parnassum, the examples in two and three parts): which degrees
+// may be altered (degree: alteration) — the leading tone raised at a cadence, the 3rd of the final raised in the last
+// chord, ⑥ or ④ lowered against the tritone with ②… (dorian: C♯ B♭ F♯; phrygian: G♯; lydian: B♭; mixolydian: F♯;
+// aeolian: G♯ F♯). "end": the final's raised 3rd, only in the last chord.
+const FICTA = { ionian: {}, dorian: { 6: 1, 5: -1, 2: "end" }, phrygian: { 2: "end" }, lydian: { 3: -1 }, mixolydian: { 6: 1 }, aeolian: { 6: 1, 5: 1 } };
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"], WHITE = [0, 2, 4, 5, 7, 9, 11];
 const ACC = { "-2": "𝄫", "-1": "♭", 0: "", 1: "♯", 2: "𝄪" };
 
 export function keyOf(k = {}) {
-  const name = k.tonic || "C", mode = k.mode === "minor" ? "minor" : "major";
+  const name = k.tonic || "C", mode = PAT[k.mode] && k.mode !== "major" ? k.mode : "major";
   const L = LETTERS.indexOf(name[0].toUpperCase());
   if (L < 0) throw new Error(`no such tonic: ${name}`);
   const acc = [...name.slice(1)].reduce((a, ch) => a + (ch === "#" || ch === "♯" ? 1 : ch === "b" || ch === "♭" ? -1 : 0), 0);
@@ -28,7 +35,12 @@ export function keyOf(k = {}) {
   };
   /** Whether a degree has two forms in this key (⑥ and ⑦ in minor). */
   const mutable = (d) => mode === "minor" && mod(d, 7) >= 5;
-  return { tonic: name, mode, tonicMidi, letter: L, pc, oct, semi, midi, name: name_, mutable, pattern: pat,
+  /** A mode's musica ficta: the alteration a degree may take (+1, −1), or 0 (none; major and minor have none). */
+  const fx = (d) => (FICTA[mode] && FICTA[mode][mod(d, 7)]) || 0;
+  const ficta = (d) => (fx(d) === "end" ? 1 : fx(d));
+  /** Whether a degree's ficta is the final's raised 3rd, only in the last chord. */
+  const fictaAtEnd = (d) => fx(d) === "end";
+  return { tonic: name, mode, tonicMidi, letter: L, pc, oct, semi, midi, name: name_, mutable, ficta, fictaAtEnd, modal: !!FICTA[mode], pattern: pat,
            hz: (d, r = 0) => 440 * Math.pow(2, (midi(d, r) - 69) / 12),
            circled: (d) => "①②③④⑤⑥⑦"[mod(d, 7)] };
 }
