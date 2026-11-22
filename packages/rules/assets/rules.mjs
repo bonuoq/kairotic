@@ -98,7 +98,7 @@ export function overBassWorld(K, B, o = {}) {
   const LOC = B.map((b) => localOf(K, b.key));
   const loc = (t, c) => localNote(K, LOC[t], D(c), A(c));
   const locB = (t) => localNote(K, LOC[t], B[t].d, B[t].r || 0).deg;
-  const inKey = (t, c) => { const l = loc(t, c); return l.alt === 0 || (l.alt === 1 && LOC[t].key.mode === "minor" && l.deg >= 5) || !!(B[t].chroma && B[t].chroma.some(([d, a]) => l.deg === d && l.alt === a)); };
+  const inKey = (t, c) => { const l = loc(t, c); return l.alt === 0 || (l.alt === 1 && LOC[t].key.mode === "minor" && l.deg >= 5) || (l.alt !== 0 && l.alt === LOC[t].key.ficta(l.deg)) || !!(B[t].chroma && B[t].chroma.some(([d, a]) => l.deg === d && l.alt === a)); };
   const strong = (t) => (B[t] && B[t].strong !== undefined ? B[t].strong : (t + phase) % 2 === 0);
   function vertical(t, c) {
     const steps = D(c) - B[t].d, cls = mod(steps, 7), s = mod(semiU(c) - semiB(t), 12);
@@ -136,9 +136,14 @@ export const RULES = {
   range: (w, { lo = 7, hi = 21 } = {}) => ({ id: "range", lookback: 0,
     check: ({ c }) => (w.D(c) < lo || w.D(c) > hi ? "out of range" : null) }),
 
-  /** note · the notes of the unit's key (its scale; in minor ⑥ and ⑦ raised; a unit's chromatic tones). */
+  /** note · the notes of the unit's key (its scale; in minor ⑥ and ⑦ raised; a church mode's musica ficta, the final's
+   *  raised 3rd only in the last chord; a unit's chromatic tones). */
   scale: (w) => ({ id: "scale", lookback: 0,
-    check: ({ t, c }) => (w.inKey(t, c) ? null : `not a note of ${w.LOC[t].key.tonic} ${w.LOC[t].key.mode}`) }),
+    check: ({ t, c }) => {
+      if (!w.inKey(t, c)) return `not a note of ${w.LOC[t].key.tonic} ${w.LOC[t].key.mode}`;
+      const l = w.loc(t, c);
+      return l.alt !== 0 && t < w.n - 1 && w.LOC[t].key.fictaAtEnd(l.deg) ? `${w.K.name(w.D(c), w.A(c))} only in the last chord (musica ficta: the final's 3rd raised)` : null;
+    } }),
 
   /** vertical · above the bass, not on its note but at the end, not too far from it. */
   "from-bass": (w, { spacing = 16 } = {}) => ({ id: "from-bass", lookback: 0,
@@ -194,6 +199,14 @@ export const RULES = {
       if (bb >= (line === "strict" ? 3 : 4) && !(aa === 1 && sign(step) !== sign(before))) return `after a leap of a ${line === "strict" ? "4th" : "5th"} or more the line turns back by step`;
       if (line === "strict" && bb >= 2 && aa >= 2 && sign(step) === sign(before)) return "two leaps in a row the same way";
       return null;
+    } }),
+
+  /** line · a church mode's musica ficta: a raised note leads up by step (C♯ to D), a lowered one goes down (B♭). */
+  ficta: (w) => ({ id: "ficta", lookback: 1,
+    check: ({ t, c, prev, struck }) => {
+      if (!struck || prev === null) return null;
+      const { K, D, A, LOC } = w, step = D(c) - D(prev), lp = w.loc(t - 1, prev), f = LOC[t - 1].key.ficta(lp.deg);
+      return f && lp.alt === f && (f > 0 ? step !== 1 : step >= 0) ? `${K.name(D(prev), A(prev))} ${f > 0 ? "goes up by step" : "goes down"} (musica ficta)` : null;
     } }),
 
   /** line · in minor ⑥ and ⑦ go up raised and down natural; the raised ⑥ goes on up to the raised ⑦ (not over a bass rising through them). */
@@ -405,7 +418,7 @@ export function resolveStyle(style, library = STYLES) {
 export const STYLES = {
   // partimento.mjs's schemata: one voice over a given bass (Studies 51–59), in the order its check reads them
   "partimento-1": { style: "partimento-1", version: "1.0.0",
-    rules: [["range"], ["scale"], ["from-bass"], ["figures"], ["leading-tone-raised"], ["hold"], ["intervals"], ["leaps"], ["melodic-minor"], ["dissonance"], ["parallels"], ["edges"]],
+    rules: [["range"], ["scale"], ["from-bass"], ["figures"], ["leading-tone-raised"], ["hold"], ["intervals"], ["leaps"], ["melodic-minor"], ["ficta"], ["dissonance"], ["parallels"], ["edges"]],
     soft: [["soft.mjs"], ["leading-tone"]],
     weights: { alternation: 0, "leading-tone": 1.5 } },
 };

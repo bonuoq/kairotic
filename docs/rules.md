@@ -51,7 +51,7 @@ rules in a style, so the count stays exact.
 | Rule | Context | Parameters (default: the styles we have) | Gathers today | Lookback |
 |---|---|---|---|---|
 | `:range` | note | `{:lo :hi}` per voice; `:from-bass` (spacing to the bass) | out of range; too far from the bass; below the bass; the unison with the bass only at the end | 0 |
-| `:scale` | note | `{:system :key :mode :melodic-minor true :chroma [...]}` | not a note of the key; melodic minor (raised up, natural down, ⑥♯ on to ⑦♯, the exceptions over a rising bass); the dominant major in minor; ②'s leading tone to ① (ch. 4); a unit's chromatic tones (aug. 6th); the system's own notes (`comes`) | 1 |
+| `:scale` | note | `{:system :key :mode :melodic-minor true :ficta true :chroma [...]}` | not a note of the key; melodic minor (raised up, natural down, ⑥♯ on to ⑦♯, the exceptions over a rising bass); the dominant major in minor; ②'s leading tone to ① (ch. 4); a unit's chromatic tones (aug. 6th); the system's own notes (`comes`); a church mode's musica ficta (the final's raised 3rd only at the end; `ficta`: raised up by step, lowered down) | 1 |
 | `:intervals` | line | `{:allowed [...] :max :octave :dim7-in-minor true :chromatic-at-key-change true}` | augmented 2nd, 4th, 5th; 7ths (only the diminished, in minor); wider than the octave; a chromatic step | 1 |
 | `:leaps` | line | `{:turn-after 4 :line :free|:moderate|:strict}` | the line turns after a leap; the `line` levels (a leap ≤ 5th, no two leaps the same way); `comes`'s leap rules | 2 |
 | `:hold` | line | `{:max 2}` per voice | a note held n units at most | ≤ 3 |
