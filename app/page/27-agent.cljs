@@ -19,6 +19,11 @@
 ;; The build is what the Claude tab does for a whole patch (07-claude.cljs: the catalog of classes, the page's
 ;; tools, check-patch-code), with what an agent's content must be, and with up to three tries: when a patch
 ;; does not pass the checks, its errors go back to Claude.
+;;
+;; Offers (discussion #351): `agent 3 "…"` answers each request with three contents, three sibling points of its
+;; line made from the same point; the box reads the first (pinned to it), and (choose-offer :b3 2) or the Agents
+;; section of the Claude panel chooses another. The next request goes on from the one chosen. Claude is told the
+;; patch the agent is in, and reads its boxes and applies the work's classes to them while it writes (28-craft.cljs).
 
 (in-ns 'user)
 
@@ -26,19 +31,31 @@
 
 (defn agent? [b] (and b (= "agent" (klass (:text b)))))
 
-(defn agent-request
-  "The request written in an agent box's text: agent \"…\" (or the words after agent)."
-  [text]
-  (let [t (str/trim (str text)) r (str/trim (if (> (count t) 5) (subs t 5) ""))]
-    (if (and (> (count r) 1) (str/starts-with? r "\"") (str/ends-with? r "\""))
-      (-> (subs r 1 (dec (count r))) (str/replace "\\\"" "\"") (str/replace "\\\\" "\\"))
-      r)))
+(def agent-max-offers 5)
 
-(defn agent-text [request] (str "agent " (pr-str (str request))))
+(defn agent-parts
+  "An agent box's text: agent \"…\", agent 3 \"…\" (three offers) or the words after agent → {:offers n :request r}."
+  [text]
+  (let [t (str/trim (str text)) r (str/trim (if (> (count t) 5) (subs t 5) ""))
+        [_ n more] (re-matches #"(\d+)(?:\s+([\s\S]*))?" r)
+        r (if n (str/trim (str more)) r)]
+    {:offers (if n (max 1 (min agent-max-offers (js/parseInt n 10))) 1)
+     :request (if (and (> (count r) 1) (str/starts-with? r "\"") (str/ends-with? r "\""))
+                (-> (subs r 1 (dec (count r))) (str/replace "\\\"" "\"") (str/replace "\\\\" "\\"))
+                r)}))
+
+(defn agent-request "The request written in an agent box's text." [text] (:request (agent-parts text)))
+
+(defn agent-offers "How many contents an agent offers for each request: agent 3 \"…\" → 3; 1 if it says none." [text]
+  (:offers (agent-parts text)))
+
+(defn agent-text
+  ([request] (agent-text request 1))
+  ([request offers] (str "agent " (when (> offers 1) (str offers " ")) (pr-str (str request)))))
 
 (comp/define! "agent"
-  {:doc "A box Claude builds inside, from the request in its text: agent \"…\". Its content is a patch you can open (double-click), read, edit and play without Claude; a new request is a new text, or a message to its last inlet."
-   :usage "agent \"request\""
+  {:doc "A box Claude builds inside, from the request in its text: agent \"…\". Its content is a patch you can open (double-click), read, edit and play without Claude; a new request is a new text, or a message to its last inlet. agent 3 \"…\" offers three contents for each request, three branches of its line: it plays the first, and (choose-offer :b3 2) or the Agents section of the Claude panel chooses another."
+   :usage "agent [offers] \"request\""
    ;; the content's ports, and the agent's own request inlet and state outlet, last
    :io (fn [b] (comp/patch-io (or (eng/inner-patch b) empty-patch)))
    :dynamic-io true})
@@ -69,13 +86,15 @@
 
 (defn agent-line [b] (get-in b [:data :line]))
 
-(defn agent-front [b] (when-let [lid (agent-line b)] (nodes-front (line-nodes lid))))
+(defn agent-front
+  "The point of its line an agent box reads: the one it is pinned to (an offer chosen), or the newest."
+  [b] (when-let [lid (agent-line b)] (ref-pos b lid)))
 
 (defn agent-content
-  "What an agent box holds now: the patch at the newest point of its line (empty before its first build)."
+  "What an agent box holds now: the patch at the point of its line it reads (empty before its first build)."
   [b]
   (if-let [lid (agent-line b)]
-    (line-patch-at lid (nodes-front (line-nodes lid)))
+    (line-patch-at lid (agent-front b))
     empty-patch))
 
 (defn agent-stale?
@@ -91,9 +110,11 @@
     (first (remove taken (cons base (map (fn [k] (str base " " k)) (range 2 100)))))))
 
 (defn append-line-node!
-  "Events evs as one more point of line lid (not the one on screen), after its newest one. Its new front."
-  [lid evs]
-  (if-let [[pid at] (nodes-front (line-nodes lid))]
+  "Events evs as one more point of line lid (not the one on screen), after point pos (by default its newest one):
+   the new point."
+  ([lid evs] (append-line-node! lid evs (nodes-front (line-nodes lid))))
+  ([lid evs pos]
+  (if-let [[pid at] pos]
     (let [id (new-id)
           n {:id id :parent pid :at at :author (my-author) :session session-id :t (js/Date.now) :merge nil
              :events (vec evs) :line lid}]
@@ -102,7 +123,7 @@
         (let [path (str (hist-path) "/" id) body (node->js n)]
           (enqueue! path (fn [] (.set (.doc @dbref path) body)))))
       [id (count evs)])
-    [(write-line-node! lid evs) (count evs)]))
+    [(write-line-node! lid evs) (count evs)])))
 
 ;; ───────────────────────── what it says ─────────────────────────
 
@@ -164,9 +185,48 @@
 
 (def agent-tries 3)
 
+(declare around-agent)
+
+(defn agent-answer
+  "Promise of {:src :doc}: one content asked of Claude (sample function s) with prompt (fn [previous] text), up to
+   agent-tries times — a patch that fails the checks goes back with its errors."
+  [s prompt path id]
+  (letfn [(attempt [k previous]
+            (-> (js/Promise.all #js [(load-ask-refs) (-> (js/Promise.resolve (when (fn? (.-limits s)) (.limits s))) (.catch (fn [_] nil)))])
+                (.then (fn [a]
+                         (let [refs (aget a 0) lim (aget a 1)]
+                           (s (prompt previous) (clj->js (cond-> {:modelTier "default"}
+                                                           (and lim (.-tools lim)) (assoc :tools (patch-tools refs))))))))
+                (.then (fn [r]
+                         (let [text (str (.-text r)) doc (agent-doc-of text)
+                               src (ai/source-of (str/replace text agent-doc-re ""))]
+                           (if (nil? src)
+                             (if (< k agent-tries) (attempt (inc k) {:src "(none)" :errors ["the answer had no patch code"]})
+                                 (throw (js/Error. "Claude's answer had no patch code")))
+                             (.then (check-patch-code src)
+                                    (fn [chk]
+                                      (cond (:ok chk) {:src src :doc doc}
+                                            (< k agent-tries) (do (agent-log! path id "err" (str "try " k ": " (ai/cut (first (:errors chk)) 160) " · sent back to Claude"))
+                                                                  (attempt (inc k) {:src src :errors (:errors chk)}))
+                                            :else (throw (js/Error. (str "after " agent-tries " tries: " (str/join "; " (take 3 (:errors chk)))))))))))))))]
+    (attempt 1 nil)))
+
+(defn agent-offer-note
+  "What Claude is told when it makes offer k of n: what the earlier ones were, so that this one is another."
+  [k n docs]
+  (when (> n 1)
+    (str "\n━━━ Offer " k " of " n " ━━━\nThis request is answered with " n " different contents, to choose from. "
+         (if (seq docs)
+           (str "The earlier offers were:\n"
+                (str/join "\n" (map-indexed (fn [i d] (str (inc i) ". " (or (:about d) "(not described)"))) docs))
+                "\nMake this one a real alternative to them: another approach, another material, another reading of the request.")
+           "This is the first: answer it as you think best; the next ones will be alternatives to it.")
+         "\n")))
+
 (defn agent-build!
-  "Asks Claude for the content of agent box id (in the patch at path of line host), for request. Promise of
-   the new front of its line, or nil."
+  "Asks Claude for the content of agent box id (in the patch at path of line host), for request: one content, or
+   as many as its text offers (agent 3 \"…\"), each a point of its line made from the point it reads. Promise of
+   the point it reads then, or nil."
   [host path id request]
   (let [s @sample-fn key [host path id]]
     (cond
@@ -174,59 +234,91 @@
       (contains? @agent-busy key) (do (agent-log! path id "err" "still building the last request") (js/Promise.resolve nil))
       :else
       (let [b (get-in (agent-host-patch path) [:boxes id])
+            n (agent-offers (:text b))
+            base (agent-front b)
             current (let [p (agent-content b)] (when (seq (:boxes p)) (patch->code p)))
-            ask (fn [previous]
-                  (str (ai/patch-prompt {:request (str agent-rules "\n\n" request) :current current :classes (ai/classes)})
-                       (when previous
-                         (str "\n━━━ Your last patch did not pass the checks ━━━\n" (:src previous)
-                              "\n\nIts errors: " (str/join "; " (take 6 (:errors previous))) "\nMend it, and check it again.\n"))))]
+            around (try (around-agent (agent-host-patch path) id) (catch :default _ nil))
+            prompt (fn [k docs]
+                     (fn [previous]
+                       (str (ai/patch-prompt {:request (str agent-rules "\n\n" (when around (str around "\n\n")) request)
+                                              :current current :classes (ai/classes)})
+                            (agent-offer-note k n docs)
+                            (when previous
+                              (str "\n━━━ Your last patch did not pass the checks ━━━\n" (:src previous)
+                                   "\n\nIts errors: " (str/join "; " (take 6 (:errors previous))) "\nMend it, and check it again.\n")))))
+            ;; the answers, one after another (each told of the earlier ones); an offer that fails is left out
+            answers (fn []
+                      (reduce (fn [p k]
+                                (.then p (fn [got]
+                                           (-> (agent-answer s (prompt k (map :doc got)) path id)
+                                               (.then (fn [a] (conj got a))
+                                                      (fn [e] (if (= n 1) (throw e)
+                                                                  (do (agent-log! path id "err" (str "offer " k ": " (or (.-message e) e))) got))))))))
+                              (js/Promise.resolve []) (range 1 (inc n))))]
         (swap! agent-busy conj key)
         (agent-say! path id :building)
-        (agent-log! path id "" (str "building · " (ai/cut request 120)))
-        (letfn [(attempt [k previous]
-                  (-> (js/Promise.all #js [(load-ask-refs) (-> (js/Promise.resolve (when (fn? (.-limits s)) (.limits s))) (.catch (fn [_] nil)))])
-                      (.then (fn [a]
-                               (let [refs (aget a 0) lim (aget a 1)]
-                                 (s (ask previous) (clj->js (cond-> {:modelTier "default"}
-                                                              (and lim (.-tools lim)) (assoc :tools (patch-tools refs))))))))
-                      (.then (fn [r]
-                               (let [text (str (.-text r)) doc (agent-doc-of text)
-                                     src (ai/source-of (str/replace text agent-doc-re ""))]
-                                 (if (nil? src)
-                                   (if (< k agent-tries) (attempt (inc k) {:src "(none)" :errors ["the answer had no patch code"]})
-                                       (throw (js/Error. "Claude's answer had no patch code")))
-                                   (.then (check-patch-code src)
-                                          (fn [chk]
-                                            (cond (:ok chk) {:src src :doc doc}
-                                                  (< k agent-tries) (do (agent-log! path id "err" (str "try " k ": " (ai/cut (first (:errors chk)) 160) " · sent back to Claude"))
-                                                                        (attempt (inc k) {:src src :errors (:errors chk)}))
-                                                  :else (throw (js/Error. (str "after " agent-tries " tries: " (str/join "; " (take 3 (:errors chk)))))))))))))))]
-          (-> (attempt 1 nil)
-              (.then (fn [{:keys [src doc]}]
-                       (let [code (link-code src) p (build code)
-                             srcs (for [bx (vals (:boxes p)) :when (#{"script" "component"} (klass (:text bx)))] (str (get-in bx [:data :source])))
-                             b (get-in (agent-host-patch path) [:boxes id])]
-                         (when-not (agent? b) (throw (js/Error. "the agent box is gone")))
-                         (when-not (= host (active-line)) (throw (js/Error. "its line is no longer on screen: built, but not kept")))
-                         (swap! cbox/trusted into srcs)
-                         (let [lid (or (agent-line b)
-                                       (let [lid (new-line-id)]
-                                         (save-line! lid {:name (agent-line-name id) :created (js/Date.now) :archived false})
-                                         lid))
-                               front (append-line-node! lid [[:load p]])]
-                           (dispatch-root! (wrap-in path [:data id (merge {:line lid :request request :built front :by (my-author) :t (js/Date.now)}
-                                                                          (select-keys doc [:about :inlets :outlets]))]))
-                           (doseq [bx (vals (:boxes (eng/flat p)))] (ensure-class! (str (:text bx))))
-                           (render-all!)
-                           (agent-say! path id :built)
-                           (agent-log! path id "ok" (str "built: " (count (:boxes p)) " boxes, a new point of its line «" (line-name lid) "»"))
-                           front))))
-              (.catch (fn [e]
-                        (let [msg (or (.-message e) (str e)) code (.-code e)]
-                          (agent-say! path id [:error (if code (ask-error-copy code) msg)])
-                          (agent-log! path id "err" (if code (ask-error-copy code) msg)))
-                        nil))
-              (.finally (fn [] (swap! agent-busy disj key)))))))))
+        (agent-log! path id "" (str "building" (when (> n 1) (str " " n " offers")) " · " (ai/cut request 120)))
+        (-> (answers)
+            (.then (fn [got]
+                     (when (empty? got) (throw (js/Error. "no offer passed the checks")))
+                     (let [b (get-in (agent-host-patch path) [:boxes id])]
+                       (when-not (agent? b) (throw (js/Error. "the agent box is gone")))
+                       (when-not (= host (active-line)) (throw (js/Error. "its line is no longer on screen: built, but not kept")))
+                       (let [made (vec (for [{:keys [src doc]} got
+                                             :let [p (build (link-code src))]]
+                                         {:p p :doc doc
+                                          :srcs (for [bx (vals (:boxes p)) :when (#{"script" "component"} (klass (:text bx)))] (str (get-in bx [:data :source])))}))
+                             _ (swap! cbox/trusted into (mapcat :srcs made))
+                             new? (nil? (agent-line b))
+                             lid (or (agent-line b)
+                                     (let [lid (new-line-id)]
+                                       (save-line! lid {:name (agent-line-name id) :created (js/Date.now) :archived false})
+                                       lid))
+                             ;; every offer from the same point: the one it read, or (a new line, several offers) an
+                             ;; empty first point they all grow from
+                             from (cond (not new?) base
+                                        (> (count made) 1) [(write-line-node! lid []) 0]
+                                        :else nil)
+                             points (mapv (fn [{:keys [p]}] (append-line-node! lid [[:load p]] from)) made)
+                             docs (mapv #(select-keys (:doc %) [:about :inlets :outlets]) made)
+                             chosen (first points)
+                             data (merge {:line lid :request request :built chosen :by (my-author) :t (js/Date.now)}
+                                         (first docs)
+                                         (when (> (count points) 1) {:offers points :offer-docs docs}))]
+                         (dispatch-root! [:batch [(wrap-in path [:data id data])
+                                                  ;; several offers: it reads the first (pinned); one: it follows its line again
+                                                  (wrap-in path [:pin id (when (> (count points) 1) chosen)])]])
+                         (doseq [{:keys [p]} made bx (vals (:boxes (eng/flat p)))] (ensure-class! (str (:text bx))))
+                         (render-all!)
+                         (agent-say! path id :built)
+                         (agent-log! path id "ok" (if (> (count points) 1)
+                                                    (str "built " (count points) " offers, " (count points) " branches of its line «" (line-name lid) "»: it plays the first")
+                                                    (str "built: " (count (:boxes (:p (first made)))) " boxes, a new point of its line «" (line-name lid) "»")))
+                         chosen))))
+            (.catch (fn [e]
+                      (let [msg (or (.-message e) (str e)) code (.-code e)]
+                        (agent-say! path id [:error (if code (ask-error-copy code) msg)])
+                        (agent-log! path id "err" (if code (ask-error-copy code) msg)))
+                      nil))
+            (.finally (fn [] (swap! agent-busy disj key))))))))
+
+(defn choose-offer
+  "(choose-offer :b3 2): agent box :b3 plays its second offer for the last request (agent 3 \"…\"); the next
+   request goes on from it."
+  [id k]
+  (let [b (need-box id) d (:data b) offers (:offers d)]
+    (when-not (agent? b) (fail (str id " is not an agent box")))
+    (when (empty? offers) (fail (str id " has no offers: write agent 3 \"…\" for three")))
+    (when-not (and (integer? k) (<= 1 k (count offers))) (fail (str "Which offer: 1 to " (count offers))))
+    (let [pos (nth offers (dec k))]
+      (dispatch! [:batch [[:data id (merge d (get (:offer-docs d) (dec k)) {:built pos})] [:pin id pos]]])
+      (render-all!)
+      k)))
+
+(defn agent-offer-chosen
+  "Which offer agent box b plays (1…), or nil if it has none or reads another point."
+  [b]
+  (let [d (:data b) i (.indexOf (to-array (:offers d)) (agent-front b))] (when (>= i 0) (inc i))))
 
 ;; ───────────────────────── commands ─────────────────────────
 
@@ -242,8 +334,8 @@
      (when (or @perf @lesson @scratch) (fail "Not now: an agent is asked outside Perform, a lesson or the scratch patch."))
      (let [r (str/trim (str (or request (agent-request (:text b)))))]
        (when (str/blank? r) (fail "An agent needs a request: agent \"…\""))
-       (when (and request (not= (agent-text r) (:text b)))
-         (dispatch! [:text id (agent-text r)]))
+       (when (and request (not= (agent-text r (agent-offers (:text b))) (:text b)))
+         (dispatch! [:text id (agent-text r (agent-offers (:text b)))]))
        (cond
          (and (not force?) (= r (get-in b [:data :request])) (agent-line b) (not (agent-stale? b)))
          (do (agent-say! (cmd-path) id :built) :built)
@@ -266,7 +358,9 @@
                :stale (agent-stale? b) :boxes (count (:boxes (agent-content b)))}
         (:about d) (assoc :about (:about d))
         (:inlets d) (assoc :inlets (:inlets d))
-        (:outlets d) (assoc :outlets (:outlets d))))))
+        (:outlets d) (assoc :outlets (:outlets d))
+        (seq (:offers d)) (assoc :offers (count (:offers d)) :chosen (agent-offer-chosen b)
+                                 :offered (mapv :about (:offer-docs d)))))))
 
 ;; ? on an agent box: what this one does and what its ports take and send, before the page of the class
 (reset! help-extra
@@ -359,6 +453,15 @@
                           "<div class=\"ag-q\">" (esc (agent-request (:text b))) "</div>"
                           (when-let [a (:about d)] (str "<div class=\"ag-about\">" (esc (ai/cut a 240)) "</div>"))
                           (when-let [lid (agent-line b)] (str "<div class=\"ag-line\">its line: «" (esc (line-name lid)) "»</div>"))
+                          (when (seq (:offers d))
+                            (let [ch (agent-offer-chosen b)]
+                              (str "<div class=\"ag-offers\">offers: "
+                                   (apply str (for [k (range 1 (inc (count (:offers d))))
+                                                    :let [about (:about (get (:offer-docs d) (dec k)))]]
+                                                (str "<button class=\"act" (when (= k ch) " primary") "\" data-agent-act=\"offer\" data-offer=\"" k "\""
+                                                     (when about (str " title=\"" (esc (ai/cut about 300)) "\""))
+                                                     (when-not on-screen? " disabled") ">" k "</button>")))
+                                   "</div>")))
                           "<div class=\"ag-acts\">"
                           "<button class=\"act\" data-agent-act=\"open\"" (if (agent-line b) off " disabled title=\"Not built yet\"") ">Open</button>"
                           "<button class=\"act\" data-agent-act=\"rebuild\"" off ">Build again</button>"
@@ -391,6 +494,7 @@
             (case (.getAttribute btn "data-agent-act")
               "open" (gesture! (str "(open-ref " id ")"))
               "rebuild" (gesture! (str "(rebuild-agent " id ")"))
+              "offer" (gesture! (str "(choose-offer " id " " (.getAttribute btn "data-offer") ")"))
               "ask" (reset! agent-asking (if (= @agent-asking [path id]) nil [path id]))
               "send" (let [v (str/trim (.-value (.querySelector li ".ag-ask-in")))]
                        (when (seq v)

@@ -285,6 +285,10 @@
                                  :boxes (vec (for [[id b] bs] (str (name id) " " (:text b) (when-let [x (io-of id)] (str " " (pr-str x))))))})))))))
       (.catch (fn [e] {:ok false :errors [(str (or (.-message e) e))]}))))
 
+(defonce more-patch-tools
+  ;; tools a later file of the page adds for Claude while it makes a patch: fns of refs → a tool (28-craft.cljs)
+  (atom []))
+
 (defn patch-tools
   "The page functions Claude may call while it makes a patch."
   [refs]
@@ -298,7 +302,9 @@
                        (.then (fn [r]
                                 (ask-log! (if (:ok r) "ok" "err") (str label (when-let [e (first (:errors r))] (str " · " (ai/cut e 160)))))
                                 (clj->js r))))))]
-    #js [(pick "list_classes") (pick "check_faust") (pick "read_example") (pick "check_component")
+    (into-array
+     (concat
+      [(pick "list_classes") (pick "check_faust") (pick "read_example") (pick "check_component")
          #js {:name "class_help"
               :description "What one class does: its doc, usage, inlets and outlets (what each takes and sends), and an example."
               :inputSchema (clj->js {:type "object" :properties {:class {:type "string"}} :required ["class"]})
@@ -313,7 +319,8 @@
          #js {:name "check_patch"
               :description "Checks the WHOLE patch code: only patch calls with literal arguments, classes that exist, every line between ports that exist, every Faust source compiled and every component evaluated. Returns {ok, errors, boxes}. Call it before answering, and again after every fix."
               :inputSchema (clj->js {:type "object" :properties {:code {:type "string" :description "the whole patch code"}} :required ["code"]})
-              :execute (logged "check patch" (fn [i] (check-patch-code (str (.-code i)))))}]))
+              :execute (logged "check patch" (fn [i] (check-patch-code (str (.-code i)))))}]
+      (keep (fn [f] (try (f refs) (catch :default e (js/console.error e) nil))) @more-patch-tools)))))
 
 (defn apply-patch-code!
   "Loads patch code made by Claude into the open work (one event). Its scripts and components run: you

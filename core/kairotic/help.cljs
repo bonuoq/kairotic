@@ -474,7 +474,10 @@
                ["?" "on an agent box: what this one does and what each of its ports takes and sends, as Claude described it when it built it, before this page"]
                ["double-click" "opens its content, in its line's tab"]
                ["(ask-agent :bN) · (ask-agent :bN \"…\")" "builds it again from its text · with a new request"]
-               ["(agent-info :bN)" "what it was built from, its line, who asked, and whether its content was changed after"]]
+               ["(agent-info :bN)" "what it was built from, its line, who asked, and whether its content was changed after"]
+               ["agent 3 \"…\"" "offers: three contents for each request (up to five), three branches of its line from the same point; it plays the first, the Agents section of the Claude panel shows them to choose (discussion #351)"]
+               ["(choose-offer :bN 2)" "plays its second offer; the next request goes on from the one chosen"]
+               ["the patch around it" "Claude is told the boxes beside the agent and what reaches its inlets, reads them (describe_box: a tree's voices as lines of notes, its key, meter and analysis) and applies the work's classes to them (apply_class: cac judge, cac partimento, comes…) while it writes"]]
     :see ["patch" "comes" "euclid"]}
 
    "inlet"  {:outlets ["what arrives at this inlet of the sub-patch"] :see ["patch" "outlet" "inlet~"]}
