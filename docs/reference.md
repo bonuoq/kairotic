@@ -173,11 +173,11 @@ See also: `gain~`, `reader~`, `synth~`
 
 ### agent
 
-`agent "request"`
+`agent [offers] "request"`
 
 Claude builds what you ask inside it (issue #269): write the request as its text, agent "harmonize this melody in four parts", and its content is made with the classes the work knows — the official packages carry the rules of counterpoint, rhythm and harmony — and checked before it arrives. The content is a patch you can open, read, edit and play without Claude: once built it makes no call, in releases, rooms and on phones. It lives in a line of its own (agent b3), so each build is one more point of that line and going back to ask for something else branches. Whoever asks pays, on their own Claude: who writes the text, or whose patch sends the message to its last inlet.
 
-A box Claude builds inside, from the request in its text: agent "…". Its content is a patch you can open (double-click), read, edit and play without Claude; a new request is a new text, or a message to its last inlet.
+A box Claude builds inside, from the request in its text: agent "…". Its content is a patch you can open (double-click), read, edit and play without Claude; a new request is a new text, or a message to its last inlet. agent 3 "…" offers three contents for each request, three branches of its line: it plays the first, and (choose-offer :b3 2) or the Agents section of the Claude panel chooses another.
 
 **Inlets** 1: one per inlet / inlet~ box of its content, left to right · last: a request, a string or [:ask "…"] — the text changes to it and Claude builds again (one build at a time; a request equal to the one that built it is not sent again)
 
@@ -190,6 +190,9 @@ A box Claude builds inside, from the request in its text: agent "…". Its conte
 - `double-click`: opens its content, in its line's tab
 - `(ask-agent :bN) · (ask-agent :bN "…")`: builds it again from its text · with a new request
 - `(agent-info :bN)`: what it was built from, its line, who asked, and whether its content was changed after
+- `agent 3 "…"`: offers: three contents for each request (up to five), three branches of its line from the same point; it plays the first, the Agents section of the Claude panel shows them to choose (discussion #351)
+- `(choose-offer :bN 2)`: plays its second offer; the next request goes on from the one chosen
+- `the patch around it`: Claude is told the boxes beside the agent and what reaches its inlets, reads them (describe_box: a tree's voices as lines of notes, its key, meter and analysis) and applies the work's classes to them (apply_class: cac judge, cac partimento, comes…) while it writes
 
 See also: `patch`, `comes`, `euclid`
 

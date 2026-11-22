@@ -52,9 +52,12 @@ export function writtenOf(n, fifths = 0) {
 
 /** A name normalized: "F♯4" → "F#4", "B♭3" → "Bb3". */
 export const plain = (s) => String(s).replace(/♯/g, "#").replace(/♭/g, "b").replace(/𝄪/g, "##").replace(/𝄫/g, "bb");
-/** The key signature of a key ({tonic, mode}): fifths (−7 … 7). */
+/** The key signature of a key ({tonic, mode}): fifths (−7 … 7). A church mode's is its scale's on that tonic (D
+ *  dorian none, G dorian one flat, A phrygian one sharp…). */
+const MODE_FIFTHS = { ionian: 0, dorian: -2, phrygian: -4, lydian: 1, mixolydian: -1, aeolian: -3 };
 export function fifthsOf(key = { tonic: "C" }) {
   const t = plain(key.tonic || "C");
+  if (key.mode in MODE_FIFTHS) { const f = (SIG[t] ?? 0) + MODE_FIFTHS[key.mode]; return f >= -7 && f <= 7 ? f : 0; }
   return SIG[key.mode === "minor" ? RELATIVE[t] ?? "C" : t] ?? 0;
 }
 /** The alteration of each letter in a signature: {F: 1, C: 1…}. */

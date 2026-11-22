@@ -48,6 +48,7 @@ is("… a bar of halves in a voice that needs no tuplet there: plain (the comes,
 // the copies, beside each study's kernel
 const original = readFileSync(join(root, "studies/_shared/export.mjs"), "utf8");
 const copies = readdirSync(join(root, "studies")).filter((s) => existsSync(join(root, "studies", s, "kairotic/export.mjs")));
+is("a church mode's signature: its scale's on its tonic (D dorian none, G dorian one flat, E phrygian none, F lydian none, G mixolydian none)", [["D", "dorian", 0], ["G", "dorian", -1], ["E", "phrygian", 0], ["F", "lydian", 0], ["G", "mixolydian", 0], ["A", "aeolian", 0], ["D", "major", 2]].every(([t, m, f]) => X.fifthsOf({ tonic: t, mode: m }) === f));
 is(`the studies' copies are the original (${copies.join(", ")})`, copies.length >= 1 && copies.every((s) => readFileSync(join(root, "studies", s, "kairotic/export.mjs"), "utf8") === original), copies.filter((s) => readFileSync(join(root, "studies", s, "kairotic/export.mjs"), "utf8") !== original).join(" "));
 
 const bad = results.filter((r) => !r[1]);

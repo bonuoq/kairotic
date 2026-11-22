@@ -76,14 +76,22 @@ const mod = (a, m) => ((a % m) + m) % m;
 const sign = (x) => (x > 0) - (x < 0);
 
 // ─── keys: a pitch is a degree (0 = the tonic of the bass's octave, 7 its octave) and, in minor, raised or not ───
-const PAT = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10] };
+const PAT = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10],
+              ionian: [0, 2, 4, 5, 7, 9, 11], dorian: [0, 2, 3, 5, 7, 9, 10], phrygian: [0, 1, 3, 5, 7, 8, 10],
+              lydian: [0, 2, 4, 6, 7, 9, 11], mixolydian: [0, 2, 4, 5, 7, 9, 10], aeolian: [0, 2, 3, 5, 7, 8, 10] };
+// the modes' musica ficta, as Fux writes it (Gradus ad Parnassum, the examples in two and three parts): which degrees
+// may be altered (degree: alteration) — the leading tone raised at a cadence, the 3rd of the final raised in the last
+// chord, ⑥ or ④ lowered against the tritone with ②… (dorian: C♯ B♭ F♯; phrygian: G♯; lydian: B♭; mixolydian: F♯;
+// aeolian: G♯ F♯). "end": the final's raised 3rd, only in the last chord.
+const FICTA = { ionian: {}, dorian: { 6: 1, 5: -1, 2: "end" }, phrygian: { 2: "end" }, lydian: { 3: -1 }, mixolydian: { 6: 1 }, aeolian: { 6: 1, 5: 1 } };
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"], WHITE = [0, 2, 4, 5, 7, 9, 11];
 const ACC = { "-2": "𝄫", "-1": "♭", 0: "", 1: "♯", 2: "𝄪" };
 
-/** A key: {tonic: "C" | "A" | "Bb" | "F#"…, mode: "major" | "minor"}. Degree 0 is the tonic in the bass's octave
+/** A key: {tonic: "C" | "A" | "Bb" | "F#"…, mode: "major" | "minor" | a church mode ("dorian", "phrygian", "lydian",
+ *  "mixolydian", "aeolian", "ionian": its scale on the tonic, and its musica ficta). Degree 0 is the tonic in the bass's octave
  *  (C3 to F3, F♯2 to B2). */
 export function keyOf(k = {}) {
-  const name = k.tonic || "C", mode = k.mode === "minor" ? "minor" : "major";
+  const name = k.tonic || "C", mode = PAT[k.mode] && k.mode !== "major" ? k.mode : "major";
   const L = LETTERS.indexOf(name[0].toUpperCase());
   if (L < 0) throw new Error(`no such tonic: ${name}`);
   const acc = [...name.slice(1)].reduce((a, ch) => a + (ch === "#" || ch === "♯" ? 1 : ch === "b" || ch === "♭" ? -1 : 0), 0);
@@ -101,7 +109,12 @@ export function keyOf(k = {}) {
   };
   /** Whether a degree has two forms in this key (⑥ and ⑦ in minor). */
   const mutable = (d) => mode === "minor" && mod(d, 7) >= 5;
-  return { tonic: name, mode, tonicMidi, letter: L, pc, oct, semi, midi, name: name_, mutable, pattern: pat,
+  /** A mode's musica ficta: the alteration a degree may take (+1, −1), or 0 (none; major and minor have none). */
+  const fx = (d) => (FICTA[mode] && FICTA[mode][mod(d, 7)]) || 0;
+  const ficta = (d) => (fx(d) === "end" ? 1 : fx(d));
+  /** Whether a degree's ficta is the final's raised 3rd, only in the last chord. */
+  const fictaAtEnd = (d) => fx(d) === "end";
+  return { tonic: name, mode, tonicMidi, letter: L, pc, oct, semi, midi, name: name_, mutable, ficta, fictaAtEnd, modal: !!FICTA[mode], pattern: pat,
            hz: (d, r = 0) => 440 * Math.pow(2, (midi(d, r) - 69) / 12),
            circled: (d) => "①②③④⑤⑥⑦"[mod(d, 7)] };
 }
@@ -222,10 +235,11 @@ export function schemata(spec = {}) {
   const loc = (t, c) => localNote(K, LOC[t], D(c), A(c));
   /** The degree of the bass at unit t in its key. */
   const locB = (t) => localNote(K, LOC[t], B[t].d, B[t].r || 0).deg;
-  /** Whether c is a note of the key of unit t: its scale, and in minor ⑥ and ⑦ raised too. */
+  /** Whether c is a note of the key of unit t: its scale, and in minor ⑥ and ⑦ raised too; in a church mode its
+   *  musica ficta. */
   // (chapter 6: a unit may allow a chromatic tone of its chord, B[t].chroma [[degree, alteration]…] in its key — the
   // augmented 6th's raised ④)
-  const inKey = (t, c) => { const l = loc(t, c); return l.alt === 0 || (l.alt === 1 && LOC[t].key.mode === "minor" && l.deg >= 5) || !!(B[t].chroma && B[t].chroma.some(([d, a]) => l.deg === d && l.alt === a)); };
+  const inKey = (t, c) => { const l = loc(t, c); return l.alt === 0 || (l.alt === 1 && LOC[t].key.mode === "minor" && l.deg >= 5) || (l.alt !== 0 && l.alt === LOC[t].key.ficta(l.deg)) || !!(B[t].chroma && B[t].chroma.some(([d, a]) => l.deg === d && l.alt === a)); };
   const codes = [];
   for (let d = lo; d <= hi; d++) for (const a of [-1, 0, 1]) { const c = codeOf3(d, a); if (B.some((b, t) => inKey(t, c))) codes.push(c); }
 
@@ -294,6 +308,7 @@ export function schemata(spec = {}) {
     if (t >= n) return "the work is finished";
     if (D(c) < lo || D(c) > hi) return "out of range";
     if (!inKey(t, c)) return `not a note of ${LOC[t].key.tonic} ${LOC[t].key.mode}`;
+    { const l = loc(t, c); if (l.alt !== 0 && t < n - 1 && LOC[t].key.fictaAtEnd(l.deg)) return `${K.name(D(c), A(c))} only in the last chord (musica ficta: the final's 3rd raised)`; }
     const v = vertical(t, c);
     // the voices
     if (v.steps < 0) return "below the bass";
@@ -335,6 +350,12 @@ export function schemata(spec = {}) {
         // (but to a raised ⑥ itself, or over a bass rising through the raised ⑥ and ⑦: the chords of the RO in four parts)
         if (step < 0 && lp.alt === 1 && lc.alt !== 1 && !(B[t].r === 1 || B[t - 1].r === 1)) return `${K.name(D(prev), A(prev))} goes down natural (melodic minor)`;
       }
+      // a church mode's musica ficta: a raised note leads up by step (C♯ to D), a lowered one goes down (B♭)
+      { const f = LOC[t - 1].key.ficta(lp.deg);
+        if (f && lp.alt === f && (f > 0 ? step !== 1 : step >= 0)) return `${K.name(D(prev), A(prev))} ${f > 0 ? "goes up by step" : "goes down"} (musica ficta)`;
+        // and at the last cadence the leading tone raised, where the mode raises it (dorian C♯, mixolydian F♯, aeolian G♯)
+        if (t === n - 1 && step === 1 && lc.deg === 0 && lp.deg === 6 && lp.alt === 0 && LOC[t - 1].key.ficta(6) > 0)
+          return `at the cadence the leading tone raised: ${K.name(D(prev), A(prev) + 1)}, not ${K.name(D(prev), A(prev))} (musica ficta)`; }
       // the raised ⑥ is only on the way up to the tonic: it goes on up to the raised ⑦
       if (minorP && lp.deg === 5 && lp.alt === 1 && !(step === 1 && lc.alt === 1) && !(B[t].r === 1 || B[t - 1].r === 1))
         { const up = [-1, 0, 1].map((x) => codeOf3(D(prev) + 1, x)).find((x) => { const l = loc(t - 1, x); return l.deg === 6 && l.alt === 1; });
@@ -1234,8 +1255,10 @@ export function degreeOf(K, midi) {
 const parseKey = (k) => {
   if (!k) return null;
   if (typeof k === "object") return k;
-  const s = String(k).trim(), m = s.match(/^([A-Ga-g])([#♯b♭]?)\s*(major|minor|maj|min|m)?$/);
+  const s = String(k).trim(), m = s.match(/^([A-Ga-g])([#♯b♭]?)\s*(major|minor|maj|min|m|ionian|dorian|phrygian|lydian|mixolydian|aeolian)?$/i);
   if (!m) return null;
+  // a church mode by its name ("d dorian", "E phrygian")
+  if (m[3] && /ian$/i.test(m[3])) return { tonic: m[1].toUpperCase() + m[2].replace("♯", "#").replace("♭", "b"), mode: m[3].toLowerCase() };
   const minor = m[3] ? /^m(in(or)?)?$/.test(m[3]) && m[3] !== "maj" : m[1] === m[1].toLowerCase();
   return { tonic: m[1].toUpperCase() + m[2].replace("♯", "#").replace("♭", "b"), mode: minor ? "minor" : "major" };
 };

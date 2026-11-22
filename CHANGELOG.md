@@ -10,6 +10,47 @@
   engine held (no message, no task, no ▶) and no code of the work or of the packages runs, with a notice saying what
   froze it — open the work, take the cause away (choose another offer of an agent, delete a box), and *Leave safe
   mode* (a reload). `(safe-mode!)` enters it by hand. Other tabs are not affected.
+- **Study 64 · florid: the frame measured** (discussion #342). Fux's frames (the notes on his half bars' downbeats)
+  hold a note over the bar or move by a third far more often than the engine's (held 28%, thirds 31%; the engine 10%
+  and 15%): the room his passing notes need. The frame's bridge takes a cost by interval (`costs.frame`, through
+  `bridgeVoice`'s `extra(t, c, U)`, which now sees the line before), measured and fitted with the rest: `FUX_COSTS`,
+  on seeds the fit did not see, from 0.53 to 0.15 of his figures, 0.61 to 0.11 of his bars' rhythms and 0.40 to 0.16
+  of his frames' moves (total variation).
+- **Several voices on one engine: `cac partimento` and `cac judge` on `@kairotic/rules`** (`@kairotic/rules` 0.3.0,
+  `@kairotic/cac` 0.9.0; step 3 of discussion #353). The core takes several voices (`solveVoices`: each voice a style of
+  one voice over the bass, tuples of their candidates, rules between them, the exact count memoized on every voice's
+  last units, the engine, a uniform draw, a judgement) and the catalogue rules between the voices (`BETWEEN`: `order`,
+  `imitation`, `exchange`, `apart`, `seconds`, `six-four`, `parallels-upper`, `false-relation`, `chord`, `doubling`,
+  `seventh`, `leading-tone-doubled`, `resolution`, `dominant-major`; soft, `doubling`), each with its parameters (three
+  parts or four). Two styles order them as `partimento.mjs` did: `partimento-2` (two upper voices, `partsOverBass`) and
+  `chorale-4` (three, `fourOverBass`); `fromNotes` takes a bass given as notes, as the cac box does. Every count the same
+  — the 38 phrases of Studies 54, 57, 59 and 62 (up to 839,310 realizations), the same reasons tuple by tuple, the same
+  engine, judgement and chords made (`tests/rules.mjs`) —, and the cac box now loads `rules.mjs`. Next: styles in EDN
+  (`[:style …]` in `cac`), then `comes`.
+
+- **Study 64 · florid: Fux's own, measured** (discussion #342, step 3). Fux's twelve two-part florid examples
+  (*Gradus ad Parnassum*, figures 82–88; Mark Gotham's `**kern` encoding, CC0, in `studies/64-florid/corpus/fux`)
+  read back into the catalogue (`fromKern`, `loadFux`; a note struck again told from one tied): half bars held over
+  the bar (his syncopations), passing notes, skips, a run now and then; quarters and halves, the dotted rhythms never;
+  every tie to an equal or shorter value. Fux's six canti firmi join the study in their modes, and `FUX_COSTS`, the
+  costs fitted to him (`corpus/fit.mjs`), bring the engine's lines over them from 0.53 to 0.18 of his figures and from
+  0.61 to 0.05 of his bars' rhythms (total variation); the page's *Costs*. The figures keep the spelling of the frame's
+  notes (a cadence's C♯ stays C♯); the MEI export writes a mode's signature (D dorian none, G dorian one flat).
+- **The church modes, with their musica ficta** (`@kairotic/cac` 0.8.0, `@kairotic/rules` 0.2.0; discussions #342,
+  #353). A key may be a church mode — `{tonic: "D", mode: "dorian"}`, `"d dorian"` in `cac partimento` — ionian,
+  dorian, phrygian, lydian, mixolydian, aeolian, on any tonic, with the ficta Fux writes in the *Gradus*'s examples
+  (counted in Mark Gotham's encoding): dorian C♯ B♭ and F♯, phrygian G♯, lydian B♭, mixolydian F♯, aeolian G♯ F♯. A
+  raised note leads up by step, a lowered one goes down, at the last cadence the leading tone is raised where the mode
+  raises it, and the final's raised 3rd (dorian F♯, phrygian G♯) sounds only in the last chord. Major and minor are unchanged (every count the same); both engines count the modes alike
+  (`tests/rules.mjs`: 80 cases, counts and reasons).
+- **Study 64 · florid: measured** (discussion #342, step 3). `measure.mjs` reads a florid line back into what the
+  engine draws — its frame (given, or found by Study 61's reduction), each half bar's cell and figure, its ties —
+  counts them over a corpus, and turns the counts into costs (`costsOf`, a first guess), then fits them (`fitCosts`:
+  rounds of drawing, measuring, and moving each cost by the log of the two shares' ratio — how often a figure is heard
+  is not how much it is preferred, where the frame leaves it more or less room). `florid({costs})` and
+  `elaborate({costs})` take them. Read back, every half bar of the engine's own lines is found as drawn (93% with the
+  reduced frame); fitted to a corpus drawn with other costs, the engine's figures come from 0.48 to 0.08 of it (total
+  variation). Next: Fux's own fifth-species examples as the corpus.
 - **Study 64 · florid: ties as Fux writes them** (discussion #342). A note is never tied to a longer one, nor is an
   eighth tied: the first of a tied pair as long as the second or longer (a half note to a half, a dotted quarter or a
   quarter; never a quarter to a half). A hard rule of the rhythm's bridge, which draws no rhythm that would force it

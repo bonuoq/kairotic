@@ -51,7 +51,7 @@ rules in a style, so the count stays exact.
 | Rule | Context | Parameters (default: the styles we have) | Gathers today | Lookback |
 |---|---|---|---|---|
 | `:range` | note | `{:lo :hi}` per voice; `:from-bass` (spacing to the bass) | out of range; too far from the bass; below the bass; the unison with the bass only at the end | 0 |
-| `:scale` | note | `{:system :key :mode :melodic-minor true :chroma [...]}` | not a note of the key; melodic minor (raised up, natural down, ⑥♯ on to ⑦♯, the exceptions over a rising bass); the dominant major in minor; ②'s leading tone to ① (ch. 4); a unit's chromatic tones (aug. 6th); the system's own notes (`comes`) | 1 |
+| `:scale` | note | `{:system :key :mode :melodic-minor true :ficta true :chroma [...]}` | not a note of the key; melodic minor (raised up, natural down, ⑥♯ on to ⑦♯, the exceptions over a rising bass); the dominant major in minor; ②'s leading tone to ① (ch. 4); a unit's chromatic tones (aug. 6th); the system's own notes (`comes`); a church mode's musica ficta (the final's raised 3rd only at the end; `ficta`: raised up by step, lowered down) | 1 |
 | `:intervals` | line | `{:allowed [...] :max :octave :dim7-in-minor true :chromatic-at-key-change true}` | augmented 2nd, 4th, 5th; 7ths (only the diminished, in minor); wider than the octave; a chromatic step | 1 |
 | `:leaps` | line | `{:turn-after 4 :line :free|:moderate|:strict}` | the line turns after a leap; the `line` levels (a leap ≤ 5th, no two leaps the same way); `comes`'s leap rules | 2 |
 | `:hold` | line | `{:max 2}` per voice | a note held n units at most | ≤ 3 |
@@ -116,7 +116,17 @@ over a bass), then 54–62 (three and four parts) and `cac partimento`, then `co
 the same counts as `partimento.mjs` in 288 cases of Study 51's schemata and for every voice of Studies 54, 57, 59 and 62
 counted alone, the same reasons candidate by candidate, the same engine.
 
+## Step 3: several voices (done)
+
+`@kairotic/rules` 0.3.0: `solveVoices()` — several voices, each a style of one voice over the bass, the rules between
+them in a style's order —, the catalogue's rules between voices (`BETWEEN`: `order`, `imitation`, `exchange`, `apart`,
+`seconds`, `six-four`, `parallels-upper`, `false-relation`, `chord`, `doubling`, `seventh`, `leading-tone-doubled`,
+`resolution`, `dominant-major`; soft: `doubling`), the styles `partimento-2` (two upper voices) and `chorale-4` (three),
+and `fromNotes` (a bass as notes). `tests/rules.mjs`: the same counts as `partimento.mjs`'s `parts` and `four` in the 38
+phrases of Studies 54, 57, 59 and 62, the same reason tuple by tuple, the same engine, judgement and chords; the cac box
+(`@kairotic/cac` 0.9.0) loads `rules.mjs`.
+
 ## Next
 
-- Then three and four parts, styles in EDN with `:extends`, `[:style …]` in `cac`; `comes` last.
+- Styles in EDN with `:extends`, `[:style …]` in `cac`; `comes` last.
 - Local search (OMClouds-like) or lazy counting where a count would take more than about 10 s.
