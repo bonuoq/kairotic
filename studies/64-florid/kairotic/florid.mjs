@@ -128,19 +128,39 @@ const activity = (r) => (notesOfBar(r).length - 2) / 4;
  */
 export const tieOk = (o, next) => !o.ties || (o.last >= 2 && o.last >= CELLS[next][0]);
 
-/** The options of each half bar of the frame: for each cell, the figures that fit it and keep the rules. */
-function optionsOf(frame, cf, key) {
-  const K = keyOf(key), V = frame.voice.V, U = frame.units, n = U.length, bass = split(cf);
-  const deg = (c) => codeDegree(c), nameAt = (d) => K.name(d, 0).replace("♯", "#").replace("♭", "b");
-  const bassAt = (t) => bass[Math.floor(t / 2)];
+/** A frame from its notes' names (one a half bar), as frameOf gives it: {voice, phrase, units, names}. */
+export function frameFrom(cf, key, names) {
+  const { voice, phrase } = frameVoice(cf, key);
+  return { voice, phrase, units: names.map((nm) => voice.code(nm)), names: [...names] };
+}
+
+/**
+ * Each half bar of a frame in its context, as the figures read it: s, the steps from its note a to the next one b; and
+ * x: {sus: a is a suspension (held from the half bar before, dissonant on its strong half: this half bar resolves it),
+ * tie: a is held into the next strong half, dissonant there (this half bar prepares it), within: a and b in one bar}.
+ */
+export function contextOf(frame) {
+  const V = frame.voice.V, U = frame.units, n = U.length;
   const dis = (t, c) => V.vertical(t, c).q === "dissonant";
-  const lo = frame.voice.F.voice.lo, hi = frame.voice.F.voice.hi;
   const out = [];
   for (let t = 0; t < n - 1; t++) {
-    const a = U[t], b = U[t + 1], s = deg(b) - deg(a);
-    // a suspension: a itself held and dissonant on its strong unit (this half bar resolves it); or a held into the
-    // strong unit t+1, dissonant there (this half bar prepares it)
-    const x = { sus: t > 0 && U[t - 1] === a && t % 2 === 0 && dis(t, a), tie: b === a && (t + 1) % 2 === 0 && dis(t + 1, b), within: t % 2 === 0 };
+    const a = U[t], b = U[t + 1];
+    out.push({ t, s: codeDegree(b) - codeDegree(a), x: { sus: t > 0 && U[t - 1] === a && t % 2 === 0 && dis(t, a), tie: b === a && (t + 1) % 2 === 0 && dis(t + 1, b), within: t % 2 === 0 } });
+  }
+  return out;
+}
+
+/** The options of each half bar of the frame: for each cell, the figures that fit it and keep the rules. costs: a
+ *  figure's cost by its id, in place of the catalogue's (measured, see measure.mjs). */
+function optionsOf(frame, cf, key, costs = {}) {
+  const K = keyOf(key), U = frame.units, n = U.length, bass = split(cf);
+  const deg = (c) => codeDegree(c), nameAt = (d) => K.name(d, 0).replace("♯", "#").replace("♭", "b");
+  const bassAt = (t) => bass[Math.floor(t / 2)];
+  const lo = frame.voice.F.voice.lo, hi = frame.voice.F.voice.hi;
+  const ctx = contextOf(frame);
+  const out = [];
+  for (let t = 0; t < n - 1; t++) {
+    const a = U[t], { s, x } = ctx[t];
     const byCell = {};
     for (const f of FIGURES) for (const v of f.variants || [{}]) {
       const xv = { ...x, ...v };
@@ -163,7 +183,7 @@ function optionsOf(frame, cf, key) {
       if (!ok) continue;
       // its last note the next half bar's first (the frame's b): held into it, a tie
       const ties = names[names.length - 1] === frame.names[t + 1];
-      for (const c of f.cells) (byCell[c] = byCell[c] || []).push({ f, v, names, shape, cost: f.cost, ties, last: CELLS[c][CELLS[c].length - 1] });
+      for (const c of f.cells) (byCell[c] = byCell[c] || []).push({ f, v, names, shape, cost: costs[f.id] ?? f.cost, ties, last: CELLS[c][CELLS[c].length - 1] });
     }
     out.push({ t, s, x, byCell });
   }
@@ -181,10 +201,11 @@ export const RHYTHM = { mpr5: 0.6, again: -0.6, third: 1.2, aba: -0.3, inner: 0.
  * last), by a softmax at temperature temp. density: the arc's height (0 … 1). → {eighths (names), spans: [{unit,
  * cell, figure, name, notes}], rhythm: [cells a half bar], frame (names)} or null.
  */
-export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.random, density = 0.6, weights = {} } = {}) {
+export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.random, density = 0.6, weights = {}, costs = null } = {}) {
   const Wt = { ...RHYTHM, ...weights };
   const K = keyOf(key), U = frame.units, n = U.length;
-  const opts = optionsOf(frame, cf, key);
+  const opts = optionsOf(frame, cf, key, (costs && costs.figures) || {});
+  const cellCost = (c) => (costs && costs.cells && costs.cells[c]) || 0;
   // the bars: half bars 2i and 2i+1 (the last half bar, the final note, apart)
   const bars = Math.floor((n - 1) / 2), nb = bars;
   const cellsOk = (t) => Object.keys(CELLS).filter((c) => opts[t].byCell[c] && opts[t].byCell[c].length);
@@ -206,6 +227,8 @@ export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.ra
     if (p) c += minCost(2 * i - 1, p[1], rr[0]);
     if (i === nb - 1) c += minCost(2 * i + 1, rr[1], "H");
     if (c === Infinity) return Infinity;
+    // the cells' own costs, where measured
+    c += cellCost(rr[0]) + cellCost(rr[1]);
     const ns = notesOfBar(rr);
     // MPR 5: the downbeat's note the longest of the bar; a longer one on a weaker beat after it weighs against the
     // metre (a half note after a quarter on the downbeat), and more so off the half bar
@@ -279,12 +302,13 @@ function choose(opts, temp, r) {
   return opts[opts.length - 1];
 }
 
-/** Florid counterpoint over a cantus firmus: the frame drawn, then elaborated. {frame, eighths, spans} or null. */
-export function florid(cf, key, { temp = 0.4, ftemp = 0.5, rtemp = 0.5, density = 0.6, r = Math.random, tries = 6 } = {}) {
+/** Florid counterpoint over a cantus firmus: the frame drawn, then elaborated. costs: {figures, cells} measured
+ *  (measure.mjs). {frame, eighths, spans, rhythm} or null. */
+export function florid(cf, key, { temp = 0.4, ftemp = 0.5, rtemp = 0.5, density = 0.6, r = Math.random, tries = 6, costs = null } = {}) {
   for (let i = 0; i < tries; i++) {
     const F = frameOf(cf, key, { temp, r });
     if (!F) return null;
-    const E = elaborate(F, cf, key, { temp: ftemp, rtemp, r, density });
+    const E = elaborate(F, cf, key, { temp: ftemp, rtemp, r, density, costs });
     if (E) return { ...E, frameUnits: F.units };
   }
   return null;
