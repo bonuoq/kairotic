@@ -7,6 +7,14 @@
   general, parametrized rules by context (note, line, vertical, pair, chord, progression, given, edge) with their
   lookback — the catalogue of a package of its own, `@kairotic/rules`, with styles in EDN (named, versioned,
   inheriting), local search beyond about 10 s, and room for learning.
+- **Rehearsal: the score learns how it sounds** (discussion #308, steps 2–4; `@kairotic/analysis` 0.8.6). Each note
+  has a profile — from the notation (its pitch class as a chroma), or learned with `(learn! :bN)` from the takes that
+  kept what each note sounded like: each descriptor's mean, spread, and weight (how well it tells the note from its
+  neighbours, for how little it varies). `follow` with descriptors matches notes by pitch and by how near what it
+  hears is to their profile, and finds a sound **without a pitch** (a multiphonic, a noise: an onset and no pitch)
+  by its profile alone. Profiles are kept on the tree's root (`:profiles`, a performative key: hidden in the code
+  window); `(unlearn! :bN)` forgets them. `kairotic.follow`: `default-profile`, `learn`, `obs-dist`, `hear` with
+  what is heard.
 - **Study 64 · florid: florid counterpoint over a cantus firmus, every note justified by a derivation** (discussion
   #342, step 3 of #321's road). A frame (second and fourth species, the kernel's strict line and the species' leaps:
   no tritone, no 6th but the minor one going up) drawn by a bridge over the kernel, each half bar

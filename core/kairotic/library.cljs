@@ -173,7 +173,7 @@
   {"@kairotic/synth"    {:version "0.4.1" :classes #{"adsr~" "synth~" "gendy~" "click~"} :local "kairotic/packages/synth.mjs"}
    "@kairotic/spatial"  {:version "0.1.1" :classes #{"pan~" "space~"}   :local "kairotic/packages/spatial.mjs"}
    "@kairotic/controls" {:version "0.2.3" :classes #{"knob" "keyboard" "scale"} :local "kairotic/packages/controls.mjs"}
-   "@kairotic/analysis" {:version "0.8.5" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "follow" "monitor" "form~" "realize~"}
+   "@kairotic/analysis" {:version "0.8.6" :classes #{"features~" "pitch~" "onset~" "chroma~" "spectrum~" "transcribe" "follow" "monitor" "form~" "realize~"}
                          :local "kairotic/packages/analysis.mjs"}
    "@kairotic/theory"   {:version "0.14.0" :classes #{"pcclock" "fourier" "tonnetz"} :local "kairotic/packages/theory.mjs"}
    "@kairotic/cac"      {:version "0.7.1" :classes #{"comes" "cac"} :local "kairotic/packages/cac.mjs"}
