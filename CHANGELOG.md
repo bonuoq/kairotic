@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Rules: an inventory, toward one engine** (`docs/rules.md`; discussion #353, step 1). Every rule the constraint
+  engines hold today (`counterpoint.mjs`, `partimento.mjs`, `soft.mjs`, Studies 61–64), gathered into some twenty
+  general, parametrized rules by context (note, line, vertical, pair, chord, progression, given, edge) with their
+  lookback — the catalogue of a package of its own, `@kairotic/rules`, with styles in EDN (named, versioned,
+  inheriting), local search beyond about 10 s, and room for learning.
 - **Study 64 · florid: florid counterpoint over a cantus firmus, every note justified by a derivation** (discussion
   #342, step 3 of #321's road). A frame (second and fourth species, the kernel's strict line and the species' leaps:
   no tritone, no 6th but the minor one going up) drawn by a bridge over the kernel, each half bar
