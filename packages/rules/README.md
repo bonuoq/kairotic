@@ -9,7 +9,7 @@ engines of [`@kairotic/cac`](../cac/) and the studies.
 - **`rules.mjs`** — the core, `solve()`: voices advancing unit by unit, candidates from a system, **hard rules** that
   refuse with a reason and **soft rules** that cost, the **exact count** of every realization memoized on a window as
   wide as the rules look back, the engine (a softmax of −cost / temperature among the candidates with a future), a
-  uniform draw, a judgement, and which rule refuses a note (`why`). The **catalogue**, `RULES`: general rules with
+  uniform draw, a judgement, and which rule refuses a note (`why`). A count may be given a time limit (`within(ms, f)`: past it, `TooLong`, its memo kept) and a realization found without counting (`search`: depth first in the engine's order, back from dead ends), for what is too long to count in a page. The **catalogue**, `RULES`: general rules with
   parameters, each a context and a condition and how far back it looks — today those of a voice over a given bass
   (`range`, `scale`, `from-bass`, `figures`, `leading-tone-raised`, `hold`, `intervals`, `leaps`, `melodic-minor`,
   `dissonance`, `parallels`, `edges`) and the soft rules (`soft.mjs`, `leading-tone`). **Styles**, `STYLES`: rules

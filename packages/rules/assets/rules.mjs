@@ -15,6 +15,44 @@
 import { mod, sign, keyOf, codeOf3, codeDegree, codeAlter, localOf, localNote, FIG_CLASS, CLASS_FIG, isDominant, degreeOf, parseKey, guessKey } from "./tonal.mjs";
 import { melodicParts, verticalParts, total, choose, temperature, defaultWeights } from "./soft.mjs";
 
+// ─── a time limit for the count ───
+// The exact count runs where it is asked — in a page, on its only thread —, and a long bass without figures in four
+// parts takes minutes (16 bars of half notes: about a minute; of whole notes, more than eight): the page would freeze.
+// within(ms, f) runs f with a deadline every count checks as it goes; past it the count gives up (TooLong). What it
+// counted stays in its memo (an entry is written only when complete), so asking again goes on from there. A solver's
+// search finds a realization without counting, for what is too long to count.
+let STOP = Infinity, TICKS = 0;
+export class TooLong extends Error { constructor() { super("too long to count here"); this.tooLong = true; } }
+const tick = () => { if ((++TICKS & 1023) === 0 && Date.now() > STOP) throw new TooLong(); };
+export function within(ms, f) {
+  const before = STOP;
+  STOP = Math.min(before, Date.now() + ms);
+  try { return f(); } finally { STOP = before; }
+}
+/**
+ * Depth first, unit by unit, the candidates (from cands(), each {x, cost}) in the engine's order — a softmax of
+ * −cost / temp, drawn (Gumbel) —, back from dead ends, the states found dead remembered by key(t) (the memo's window:
+ * the rules look no further back). push/pop place a candidate. True when complete; false if there is none; TooLong
+ * past ms milliseconds.
+ */
+function depthFirst({ n, at, cands, push, pop, key, temp = 0.5, r = Math.random, ms = 2000 }) {
+  const deadline = Date.now() + ms, dead = new Set();
+  let nodes = 0;
+  const g = () => -Math.log(-Math.log(Math.min(1 - 1e-12, Math.max(1e-12, r()))));
+  function go() {
+    const t = at();
+    if (t >= n) return true;
+    const k = key(t);
+    if (dead.has(k)) return false;
+    if ((++nodes & 63) === 0 && Date.now() > deadline) throw new TooLong();
+    const cs = cands().map((c) => ({ c, o: -c.cost / Math.max(temp, 1e-3) + g() })).sort((a, b) => b.o - a.o);
+    for (const { c } of cs) { push(c); if (go()) return true; pop(); }
+    dead.add(k);
+    return false;
+  }
+  return go();
+}
+
 // ─────────────────────────────── the core ───────────────────────────────
 /**
  * A voice to write over n units. spec: {n, codes (the candidates), at (U, t, c) → x (what every rule reads of the
@@ -43,6 +81,7 @@ export function solve(spec) {
   function countFrom(U) {
     const t = U.length;
     if (t >= n) return 1n;
+    tick();
     const k = keyOfU(U, t), got = memo.get(k);
     if (got !== undefined) return got;
     let v = 0n;
@@ -85,7 +124,13 @@ export function solve(spec) {
     for (let t = 0; t < n; t++) { const r = check(U.slice(0, t), t, U[t]); if (r) return `unit ${t + 1}: ${r}`; }
     return null;
   }
-  return { n, codes, window, rules, soft, check, why, count, fan, sample, engine, judge, costParts, memo };
+  /** A realization without counting (too long to count): depthFirst, null if none, TooLong past ms. */
+  function search({ temp = 0.5, r = Math.random, ms = 2000 } = {}) {
+    const U = [];
+    const cands = () => codes.filter((c) => check(U, U.length, c) === null).map((c) => ({ x: c, cost: total(costParts(U, c)) }));
+    return depthFirst({ n, at: () => U.length, cands, push: (c) => U.push(c.x), pop: () => U.pop(), key: (t) => keyOfU(U, t), temp, r, ms }) ? U : null;
+  }
+  return { n, codes, window, rules, soft, check, why, count, search, fan, sample, engine, judge, costParts, memo };
 }
 
 // ─────────────────────────────── a voice over a given bass: what its rules read ───────────────────────────────
@@ -510,6 +555,7 @@ export function solveVoices(spec) {
   function countFrom(W) {
     const t = W[0].length;
     if (t >= n) return 1n;
+    tick();
     const key = t + ":" + W.map((U) => U.slice(Math.max(0, t - window)).join(",")).join("|");
     const got = memo.get(key);
     if (got !== undefined) return got;
@@ -520,13 +566,14 @@ export function solveVoices(spec) {
   }
   const empty = () => voices.map(() => []);
   const count = (W = empty()) => countFrom(W.map((U) => [...U]));
-  function fan(W = empty()) {
+  /** The tuples at the next unit with their futures and soft cost (futures false: not counted, null). */
+  function fan(W = empty(), futures = true) {
     return tuples(W).map((x) => {
       const t = W[0].length, parts = {};
       voices.forEach((v, i) => { for (const [id, c] of Object.entries(v.solver.costParts(W[i], x[i]))) parts[(v.prefix || "") + id] = c * (v.weight ?? 1); });
       const xx = X(W, t, x);
       for (const s of soft) Object.assign(parts, s.cost(xx));
-      return { x, futures: count(W.map((U, i) => [...U, x[i]])), parts, cost: total(parts) };
+      return { x, futures: futures ? count(W.map((U, i) => [...U, x[i]])) : null, parts, cost: total(parts) };
     });
   }
   const result = spec.result || ((W) => W);
@@ -557,7 +604,15 @@ export function solveVoices(spec) {
     for (let t = 0; t < n; t++) { const r = check(W, t, W.map((U) => U[t])); if (r) return `unit ${t + 1}: ${r}`; }
     return null;
   }
-  return { n, voices, between, check, tuples, count, fan, sample, engine, judgeW, memo };
+  /** A realization without counting (too long to count): depthFirst, null if none, TooLong past ms. */
+  function search({ temp = 0.5, r = Math.random, ms = 2000 } = {}) {
+    const W = empty();
+    const ok = depthFirst({ n, at: () => W[0].length, cands: () => fan(W, false), push: (c) => W.forEach((U, i) => U.push(c.x[i])),
+                            pop: () => W.forEach((U) => U.pop()),
+                            key: (t) => t + ":" + W.map((U) => U.slice(Math.max(0, t - window)).join(",")).join("|"), temp, r, ms });
+    return ok ? result(W) : null;
+  }
+  return { n, voices, between, check, tuples, count, search, fan, sample, engine, judgeW, memo };
 }
 
 // ─── the catalogue: rules between the voices (context: pair, chord, progression, given) ───
@@ -940,11 +995,14 @@ export function fromNotes(spec = {}) {
     const made = P.chords(R);
     return make(units.map((u, t) => ({ ...u, chord: NAME[made[t]] || null })), true).judge(R);
   }
+  // the count within ms milliseconds, or null when it would take longer (what it counted is kept: ask again to go on)
+  const countWithin = (ms) => { try { return within(ms, () => P.count()); } catch (e) { if (e.tooLong) return null; throw e; } };
   return { key, K, units, unknown, figured, voices, names, P, midi, code, spell, degAt: (t) => V0.world.locB(t),
-           count: () => P.count(), engine: (o) => asVoices(P.engine(o)), sample: (r) => asVoices(P.sample(r)),
+           count: () => P.count(), countWithin, search: (o) => asVoices(P.search(o)),
+           engine: (o) => asVoices(P.engine(o)), sample: (r) => asVoices(P.sample(r)),
            judge: judgeOf, chords: (R) => (P.chords ? P.chords(R) : null) };
 }
 
 // (a box loads the module's default export: api/import-module)
-export default { solve, solveVoices, overBass, partsOverBass, fourOverBass, fromNotes, bassFromNotes, degreeOf, parseKey, guessKey, keyOf,
+export default { within, TooLong, solve, solveVoices, overBass, partsOverBass, fourOverBass, fromNotes, bassFromNotes, degreeOf, parseKey, guessKey, keyOf,
                  RULES, SOFT_RULES, BETWEEN, SOFT_BETWEEN, STYLES, resolveStyle, CHORDS, CHORDS4, RULE_OF_THE_OCTAVE, octaveDefault };

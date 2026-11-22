@@ -71,4 +71,18 @@ export async function cac(page, check) {
   const bad = await until(page, `(:sub (second (last-shown ${jb})))`, (x) => /parallel/.test(x));
   check("... the book's wrong Galant cadence: its parallel 5ths between the alto and the tenor", /parallel 5ths between the alto and the tenor/.test(bad), bad);
   await cljs(page, `(delete ${tb}) (delete ${cb}) (delete ${out}) (delete ${jb})`);
+
+  // a long bass (16 bars of half notes in A major): the box answers in a few seconds — counted within its limit, or,
+  // too long to count, realized by search (tests/rules.mjs times both) — and the page goes on
+  const LONG = `[:voice {:key "A major"} ${"a2 b2 c#3 d3 e3 f#3 g#3 a3 a3 e3 f#3 c#3 d3 a2 d3 e3 d3 c#3 b2 a2 f#3 d3 e3 e3 a2 d3 e3 e3 f#3 d3 e3 a2"
+    .split(" ").map((p) => `[:note {:pitch "${p}" :dur 2}]`).join(" ")}]`;
+  const lt = (await cljs(page, '(box "tree" 9400 600)')).trim();
+  await cljs(page, `(tree! ${lt} ${LONG})`);
+  const lc = (await cljs(page, '(box "cac partimento" 9400 700)')).trim();
+  await until(page, `(io (get-in (current) [:boxes ${lc}]))`, (x) => x === "[1 2]");
+  const t0 = Date.now();
+  await cljs(page, `(connect ${lt} 0 ${lc} 0) (send! ${lt} :bang)`);
+  const sub = await until(page, `(:sub (second (last-shown ${lc})))`, (x) => /realizations|too many|✗/.test(x), 20000);
+  check("a long bass: the box answers in a few seconds, and the page with it", /realizations|too many|✗/.test(sub) && Date.now() - t0 < 15000, `${sub} · ${Date.now() - t0} ms`);
+  await cljs(page, `(delete ${lt}) (delete ${lc})`);
 }
