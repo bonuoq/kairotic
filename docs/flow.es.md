@@ -50,6 +50,11 @@ que no suena, que una caja follow envía a su tiempo (desde donde está el inté
 franja; un árbol de estos silencios, fragmentos y rampas `[:param …]` es una partitura de electrónica. `mt play` envía
 lo que envían los cables (su quinta salida) en su tiempo escrito: el mismo patch de electrónica, movido en directo por
 `follow` o en tiempo fijo por `mt play`.
+También puede escribirse qué se oirá en un evento, con `:listen` — un valor o un rango `[lo hi]` por descriptor,
+`:chroma` como clases de altura: `[:rest {:dur 1 :listen {:flatness [0.6 1] :loudness [0.5 1]}}]` es un ruido fuerte
+que hace el intérprete (un golpe, una respiración), `[:note {:pitch "e4" :listen {:chroma [4 11 5]}}]` un
+multifónico. Una caja `follow` que escuche esos descriptores los encuentra por lo que oye, y sus cables se disparan
+como los de una nota; los ensayos (`(learn! :bN)`) afinan lo que dice `:listen`.
 
 Las ediciones nombran el nodo donde está escrita cada nota, así que funcionan a través de
 transformaciones: una partitura que muestra `mt transpose 7` de un árbol puede editar el propio árbol.

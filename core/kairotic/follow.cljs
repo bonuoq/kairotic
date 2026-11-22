@@ -107,11 +107,36 @@
 ;; heard is matched by pitch and, where descriptors are heard, by how near they are to the note's profile; a sound
 ;; without a pitch (a multiphonic, a noise) by the profile alone.
 
+(defn listen-profile
+  "What a score says is to be heard at an event (:listen), as a profile: {descriptor value}, a value or a [lo hi]
+   range (its middle, half its width as the spread), :chroma as the pitch classes that sound ([4 11 5]) or 12 values."
+  [l]
+  (when (map? l)
+    (let [ps (for [[k v] l]
+               (cond
+                 (and (= :chroma k) (sequential? v) (= 12 (count v)) (every? number? v)) [k (vec v) nil]
+                 (and (= :chroma k) (sequential? v) (every? integer? v))
+                 [k (reduce (fn [c pc] (assoc c (mod pc 12) 1)) (vec (repeat 12 0)) v) nil]
+                 (and (sequential? v) (= 2 (count v)) (every? number? v))
+                 (let [[lo hi] (sort v)] [k (/ (+ lo hi) 2) (/ (- hi lo) 2)])
+                 (number? v) [k v nil]
+                 :else nil))
+          ps (remove nil? ps)]
+      (when (seq ps)
+        {:mean (into {} (map (fn [[k m]] [k m]) ps))
+         :sd (into {} (keep (fn [[k _ sd]] (when sd [k sd])) ps))
+         :w (into {} (map (fn [[k]] [k 1]) ps))}))))
+
 (defn default-profile
-  "What the notation says a note sounds like: its pitch class, as a chroma."
+  "What the notation says an event sounds like: a note's pitch class, as a chroma, and what its :listen says (which
+   takes the place of the pitch's chroma when it names one: a multiphonic)."
   [e]
-  (when-let [m (:midi e)]
-    {:mean {:chroma (assoc (vec (repeat 12 0)) (mod (js/Math.round m) 12) 1)} :w {:chroma 1}}))
+  (let [base (when-let [m (:midi e)]
+               {:mean {:chroma (assoc (vec (repeat 12 0)) (mod (js/Math.round m) 12) 1)} :w {:chroma 1}})
+        l (listen-profile (:listen e))]
+    (if l
+      {:mean (merge (:mean base) (:mean l)) :sd (:sd l) :w (merge (:w base) (:w l))}
+      base)))
 
 (defn- vdist [a b]
   ;; between two vectors: 1 − their cosine (0 the same shape, 1 unrelated)
@@ -202,10 +227,12 @@
         js (take ahead (filter #(not (:rest (get evs %))) (range next (count evs))))]
     (for [[n j] (map-indexed vector js)
           :let [e (get evs j)
-                [d oct] (if midi (dist midi (:midi e) band octave) [0 false])
+                pitched (and midi (:midi e))
+                [d oct] (if pitched (dist midi (:midi e) band octave) [0 false])
                 od (when (seq obs) (obs-dist (profile-at st j) obs))]
-          ;; with a pitch: by pitch, and the profile weighs in; without one (a multiphonic, a noise): by the profile
-          :when (if midi d (and od (<= od 1)))]
+          ;; with a pitch, a note: by pitch, and the profile weighs in; without one (a multiphonic, a noise), or an
+          ;; event without a pitch (a rest with :listen): by the profile
+          :when (if pitched d (and od (<= od 1)))]
       ;; the cost: the notes it would skip, how far it is in pitch (an octave off costs more), how far from what is
       ;; heard (its profile), how far from when it was expected (in its own written length, so that a short note
       ;; expected late weighs as much as a long one)

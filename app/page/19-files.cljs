@@ -410,7 +410,7 @@
     @out))
 
 (defn- note-index [id t note]
-  (let [evs (vec (remove :rest (ct/events t)))]
+  (let [evs (vec (filter :midi (ct/events t)))]
     (cond (number? note) (if (< -1 note (count evs)) note (fail (str "The tree has " (count evs) " notes (0 … " (dec (count evs)) ")")))
           :else (or (first (keep-indexed (fn [i e] (when (= (str note) (:id e)) i)) evs))
                     (fail (str "No note " note " in " id " (its notes: " (str/join " " (map :id evs)) ")"))))))
