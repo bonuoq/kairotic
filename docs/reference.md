@@ -1024,7 +1024,7 @@ Follows a performer through a tree (discussion #204): each note heard is matched
 0. Hz from pitch~ (0: silence); :start, :stop
 1. onsets (from onset~): a new note even on the same pitch
 2. the tree to follow (from a tree box)
-3. with words after its numbers (follow rms centroid chroma), one inlet each: a descriptor (features~, chroma~), whose mean while each note sounds goes into the take as what it sounded like (:profile)
+3. with words after its numbers (follow rms centroid chroma), one inlet each: a descriptor (features~, chroma~), whose mean while each note sounds goes into the take as what it sounded like (:profile); notes are matched by them too (by the notation's chroma, or by what (learn! :bN) learned), and a sound without a pitch is found by them alone
 
 **Outlets** 
 
@@ -3048,6 +3048,7 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `(import-mei!) · (import-mei! :bN) · drop a file on the patch`: a .mei or MusicXML file as a tree box (a new one, or into bN)
 - `⇄ continuum · (continuum! :bN :dissolve)`: between a roll and a score: each axis — time (as it sounded → as written), pitch (Hz → keys → staff), glyph (stroke → head → value) — at its own resolution, changing over the piece (:written :proportional :tempered :graphic :mixed :dissolve :crystallize, or {:res …}); kept in the tree
 - `(wire! :bN 2 :swell) · (wire! :bN 2 :swell {:kind :elastic :tol 0.5}) · (unwire! :bN 2) · (wires :bN)`: a wire from a note to the electronics, written on the note (:wire) — or on a rest, [:rest {:dur 4 :wire {:send :drone}}], an event of the electronics alone, silent, led at its time — and drawn on the continuum: what a follow box sends when the performer gets there — rigid (on the note, or caught up once at the next), elastic (on its own at the expected time plus a tolerance if the note does not come), or led by the electronics ({:leader :electronics})
+- `(learn! :bN) · (unlearn! :bN)`: learns from its takes that kept what each note sounded like (a follow box with descriptors) how each note sounds — each descriptor's mean, spread and weight —: a follow box then matches notes by them too, and finds sounds without a pitch (a multiphonic, a noise) by them alone
 - `(keep-take! :bN take) · (continuum! :bN {:take "t1"})`: a performance of the tree (where each note was played), only for you by default (:work keeps it in the tree); the continuum can show it
 - `(track! :bN)`: its free time played (in seconds, at any tempo): the beats are found and kept in its :quant, so that its score and quantize! write it on them
 
