@@ -114,6 +114,28 @@ export async function craft(page, check) {
       await page.unroute(api);
       if (!hadKey) await page.evaluate(`${s}.setKey(null)`);
     }
+    // ── safe mode: a page that froze ──
+    await cljs(page, '(risky! "(a gesture)")');
+    check("a gesture opens a window: what it was, in this tab's session storage", /a gesture/.test(await page.evaluate(() => sessionStorage.getItem("kairotic-risky") || "")));
+    await page.waitForTimeout(4500);
+    check("... erased when the window closes (the page did not freeze)", (await page.evaluate(() => sessionStorage.getItem("kairotic-risky"))) === null);
+    await page.evaluate(() => sessionStorage.setItem("kairotic-risky", JSON.stringify({ what: "(send! :b3 :bang)", work: "w", t: Date.now() })));
+    const froze = await cljs(page, "((juxt :what :work) (froze-last-time))");
+    check("a window left open (the page froze): the next page finds what it was, and forgets it", froze === '["(send! :b3 :bang)" "w"]' && (await page.evaluate(() => sessionStorage.getItem("kairotic-risky"))) === null, froze);
+    const sb = (await cljs(page, '(box "number" 9900 1200)')).trim(), sc = (await cljs(page, '(box "number" 9900 1260)')).trim();
+    made.push(sb, sc);
+    await cljs(page, `(connect ${sb} 0 ${sc} 0)`);
+    try {
+      await cljs(page, '(safe-mode! {:what "(send! :b3 :bang)" :work "w" :t 0})');
+      check("safe mode: the engine held, no code runs, the notice on top", (await cljs(page, "[@eng/held @cbox/held (cbox/allowed? \"x\")]")) === "[true true false]" &&
+        /Safe mode/.test(await page.evaluate(() => (document.getElementById("safe-banner") || {}).textContent || "")));
+      await cljs(page, `(send! ${sb} 7)`);
+      await page.waitForTimeout(300);
+      check("... a message is not delivered", (await cljs(page, `(second (get-in @eng/rt [:shows ${sc} 0]))`)) !== "7");
+      check("... and no class is applied", /safe mode/.test(await awaited(page, '(run-class "cac judge" [[0 [:voice "c4/2"]]])')));
+    } finally {
+      await cljs(page, '(do (reset! eng/held false) (reset! cbox/held false) (reset! safe-mode nil) (some-> (.getElementById js/document "safe-banner") .remove))');
+    }
   } catch (e) {
     check("the craft tests ran: " + (e.message || e), false);
   } finally {

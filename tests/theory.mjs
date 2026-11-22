@@ -513,6 +513,28 @@ export async function theory(page, check) {
                                    (ok 0 40 (run 0 40 0.03 (set (range 12 21)) #{})) (ok 3 40 (run 3 40 0.02 #{} #{20 25}))])`);
   check("phase: the son clave clapped from its sixth pulse, early or late, is found after half a cycle and followed; nine pulses missing or two extra onsets do not throw it",
         phs === "[[16 true] [16 true] [32 true] [32 true]]", phs);
+  // without a clock: the pulse found from the onsets themselves, the phase said at each onset (hands a little loose)
+  const phf = await cljs(page, `(let [d (comp/lookup "phase") son [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0] bembe [1 0 1 0 1 1 0 1 0 1 0 1]
+                                      jit [0 0.012 -0.008 0.015 -0.012 0.005 -0.015 0.01]
+                                      run (fn [ref start pulses step drop extra]
+                                            (let [n (count ref)
+                                                  ts (sort (concat (for [i (range pulses) :when (and (= 1 (nth ref (mod (+ start i) n))) (not (contains? drop i)))]
+                                                                     (+ (step i) (nth jit (mod i 8))))
+                                                                   (map (fn [i] (+ (step i) 0.01)) extra)))
+                                                  idx (fn [t] (apply min-key (fn [i] (js/Math.abs (- (step i) t))) (range (+ pulses 2))))
+                                                  r (reduce (fn [acc t] (let [x ((:receive d) {:inlet 0 :value :bang :state (:s acc) :args {:min 0} :at t})
+                                                                              ph (some (fn [[p v]] (when (= p 0) v)) (:out x))]
+                                                                          (cond-> (assoc acc :s (or (:state x) (:s acc)))
+                                                                            ph (update :out conj [ph (mod (+ start (idx t)) n) (some (fn [[p v]] (when (= p 1) (:pulse v))) (:out x))]))))
+                                                            {:s (:state ((:receive d) {:inlet 1 :value ref :state nil :args {:min 0}})) :out []} ts)
+                                                  outs (:out r)]
+                                              [(count outs) (every? (fn [[p e]] (= p e)) outs) (js/Math.round (* 1000 (nth (peek outs) 2)))]))
+                                      acc (fn [i] (reduce + 1 (map (fn [k] (- 0.2 (/ (* 0.04 k) 64))) (range i))))]
+                                  [(run son 5 48 (fn [i] (+ 1 (* 0.2 i))) #{} []) (run bembe 3 36 (fn [i] (+ 1 (* 0.18 i))) #{} [])
+                                   (run son 0 64 (fn [i] (+ 1 (* 0.15 i))) #{20 22 26} []) (run son 3 64 (fn [i] (+ 1 (* 0.15 i))) #{} [20 33])
+                                   (run son 4 64 acc #{} [])])`);
+  check("phase without a clock: the pulse found from the onsets (the son at 200 ms, the bembé at 180), and each onset's phase — through missing and extra onsets, and an accelerando",
+        /^\[\[11 true 199\] \[17 true 18[01]\] \[14 true 1(49|50)\] \[18 true 1(49|50)\] \[16 true 1(69|70)\]\]$/.test(phf), phf);
   await cljs(page, `(delete ${phb})`);
   // click~ (@kairotic/synth): a tick each bang, every accent bangs one accented; a number 0 accented
   const ck = (await cljs(page, '(box "click~ 1200 4" 11100 600)')).trim();
