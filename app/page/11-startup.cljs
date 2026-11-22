@@ -11,6 +11,10 @@
 (render-controls!)
 (render-manager!)
 (repl-print! "out" (str "; Kairotic " version " — " (cond (.-claude js/window) "inside claude.ai: works, rooms and Claude come from claude.ai." (backend) "on its own: works and rooms in GUN (your solo works are encrypted in this browser), Claude with your own API key (Claude tab)." :else "without a database: local works only.")))
+(when-let [f (froze-last-time)]
+  (safe-mode! f)
+  (repl-print! "err" (esc (str "; Safe mode: the page froze last time" (when (seq (str (:work f))) (str " in «" (:work f) "»"))
+                               ", while: " (:what f) ". Nothing plays and no code of the work runs here; reload to leave it."))))
 (repl-print! "out" "; New here? The Help tab has the tutorials and a page for every class (select a box and press ?). The Claude tab makes patches and components from a description. Share/Export gives a link to a patch, or puts it in another page.")
 
 ;; on Pages, the address carries ?peer= while this page's relays are not the site's

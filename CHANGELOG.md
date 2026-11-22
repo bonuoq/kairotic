@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Safe mode: a page that froze starts the next one safe.** Code of a work (a component, a script, a package's
+  kernel) can keep the page busy until nothing answers, and a frozen page cannot say so — the next one can. Each
+  gesture or line of the REPL, opening a work, ▶ and an agent's content arriving open a window of a few seconds in the
+  tab's session storage (what, in which work), erased when it closes or when the page is closed or reloaded normally.
+  A page that froze inside one never erases it, so after reloading the tab Kairotic starts in **safe mode**: the
+  engine held (no message, no task, no ▶) and no code of the work or of the packages runs, with a notice saying what
+  froze it — open the work, take the cause away (choose another offer of an agent, delete a box), and *Leave safe
+  mode* (a reload). `(safe-mode!)` enters it by hand. Other tabs are not affected.
 - **`phase` without a clock** (`@kairotic/rhythm` 0.7.0; discussion #204). With nothing on its right inlet, `phase`
   finds the pulse from the onsets themselves: of the last intervals between them, the longest pulse they fill as
   whole numbers of it (the fit plus a small price for each pulse, so the simplest grid wins, after Sethares'

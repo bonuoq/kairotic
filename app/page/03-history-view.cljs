@@ -445,6 +445,8 @@
   (repl-print! (str "in" (when (= source :patch) " from-patch"))
                (str "<span class=\"p\">" (if (= source :patch) "⟵" "λ") "</span>"
                     (esc (if (and (= source :patch) (> (count code) 240)) (str (subs code 0 200) " … (" (count code) " characters)") code))))
+  ;; a gesture or a line of the REPL: if the page froze now, the next one starts in safe mode
+  (risky! (if (> (count code) 160) (str (subs code 0 150) " …") code))
   (try
     (let [v (eval-str code)]
       (when (= source :repl) (repl-print! "out" (esc (pr-str v)))))
