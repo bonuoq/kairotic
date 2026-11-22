@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The modes in three and four parts: Fux's style** (`@kairotic/rules` 0.5.0, `@kairotic/cac` 0.10.1; discussion #353).
+  Styles `modal-1`, `modal-2` and `modal-4`, the default for a church mode's bass (`cac partimento d dorian`; no Rule
+  of the Octave filled in there, the style chooses between a 5/3 and a 6/3 itself): every chord a consonant 5/3 or 6/3 (a 5/3 only where its 5th is perfect; the bass falling by step to the last note under a
+  6/3; the last chord without a 6th — rule `modal`), and what his practice lets in where the galant style does not:
+  a unison with the bass, a note held longer, the voices crossing, direct 5ths and octaves among three or four, a leap
+  not always turned, a chromatic step over a held bass, the top voice ending on the 5th. Read against Fux's 27
+  examples note against note in three and four parts (Gotham's encoding, CC0, in `tests/assets/fux`), the modal
+  styles accept 26 (the one left: a voice crossing under the bass), the galant ones almost none. And the ficta as he
+  writes it: the final's raised 3rd in any chord on the final (his phrygian starts on E major), a lowered note free to
+  go up (his B♭ to C), the aeolian's F♯ on up to G♯ — in both engines.
 - **Safe mode: a page that froze starts the next one safe.** Code of a work (a component, a script, a package's
   kernel) can keep the page busy until nothing answers, and a frozen page cannot say so — the next one can. Each
   gesture or line of the REPL, opening a work, ▶ and an agent's content arriving open a window of a few seconds in the

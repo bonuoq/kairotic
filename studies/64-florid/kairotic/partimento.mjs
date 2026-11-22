@@ -82,7 +82,7 @@ const PAT = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10],
 // the modes' musica ficta, as Fux writes it (Gradus ad Parnassum, the examples in two and three parts): which degrees
 // may be altered (degree: alteration) — the leading tone raised at a cadence, the 3rd of the final raised in the last
 // chord, ⑥ or ④ lowered against the tritone with ②… (dorian: C♯ B♭ F♯; phrygian: G♯; lydian: B♭; mixolydian: F♯;
-// aeolian: G♯ F♯). "end": the final's raised 3rd, only in the last chord.
+// aeolian: G♯ F♯). "end": the final's raised 3rd, only in a chord on the final.
 const FICTA = { ionian: {}, dorian: { 6: 1, 5: -1, 2: "end" }, phrygian: { 2: "end" }, lydian: { 3: -1 }, mixolydian: { 6: 1 }, aeolian: { 6: 1, 5: 1 } };
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"], WHITE = [0, 2, 4, 5, 7, 9, 11];
 const ACC = { "-2": "𝄫", "-1": "♭", 0: "", 1: "♯", 2: "𝄪" };
@@ -112,7 +112,7 @@ export function keyOf(k = {}) {
   /** A mode's musica ficta: the alteration a degree may take (+1, −1), or 0 (none; major and minor have none). */
   const fx = (d) => (FICTA[mode] && FICTA[mode][mod(d, 7)]) || 0;
   const ficta = (d) => (fx(d) === "end" ? 1 : fx(d));
-  /** Whether a degree's ficta is the final's raised 3rd, only in the last chord. */
+  /** Whether a degree's ficta is the final's raised 3rd, only in a chord on the final. */
   const fictaAtEnd = (d) => fx(d) === "end";
   return { tonic: name, mode, tonicMidi, letter: L, pc, oct, semi, midi, name: name_, mutable, ficta, fictaAtEnd, modal: !!FICTA[mode], pattern: pat,
            hz: (d, r = 0) => 440 * Math.pow(2, (midi(d, r) - 69) / 12),
@@ -308,7 +308,7 @@ export function schemata(spec = {}) {
     if (t >= n) return "the work is finished";
     if (D(c) < lo || D(c) > hi) return "out of range";
     if (!inKey(t, c)) return `not a note of ${LOC[t].key.tonic} ${LOC[t].key.mode}`;
-    { const l = loc(t, c); if (l.alt !== 0 && t < n - 1 && LOC[t].key.fictaAtEnd(l.deg)) return `${K.name(D(c), A(c))} only in the last chord (musica ficta: the final's 3rd raised)`; }
+    { const l = loc(t, c); if (l.alt !== 0 && t < n - 1 && locB(t) !== 0 && LOC[t].key.fictaAtEnd(l.deg)) return `${K.name(D(c), A(c))} only in a chord on the final (musica ficta: the final's 3rd raised)`; }
     const v = vertical(t, c);
     // the voices
     if (v.steps < 0) return "below the bass";
@@ -350,9 +350,12 @@ export function schemata(spec = {}) {
         // (but to a raised ⑥ itself, or over a bass rising through the raised ⑥ and ⑦: the chords of the RO in four parts)
         if (step < 0 && lp.alt === 1 && lc.alt !== 1 && !(B[t].r === 1 || B[t - 1].r === 1)) return `${K.name(D(prev), A(prev))} goes down natural (melodic minor)`;
       }
-      // a church mode's musica ficta: a raised note leads up by step (C♯ to D), a lowered one goes down (B♭)
+      // a church mode's musica ficta: a raised note leads up by step (C♯ to D; a lowered one, B♭, either way, as Fux's)
       { const f = LOC[t - 1].key.ficta(lp.deg);
-        if (f && lp.alt === f && (f > 0 ? step !== 1 : step >= 0)) return `${K.name(D(prev), A(prev))} ${f > 0 ? "goes up by step" : "goes down"} (musica ficta)`;
+        if (f > 0 && lp.alt === f && step !== 1) return `${K.name(D(prev), A(prev))} goes up by step (musica ficta)`;
+        // (to a degree the mode raises too, raised: the aeolian's F♯ to G♯)
+        if (f > 0 && lp.alt === f && step === 1 && LOC[t].key.ficta(lc.deg) > 0 && !LOC[t].key.fictaAtEnd(lc.deg) && lc.alt === 0)
+          return `${K.name(D(prev), A(prev))} goes on up to ${K.name(D(c), A(c) + 1)} (musica ficta)`;
         // and at the last cadence the leading tone raised, where the mode raises it (dorian C♯, mixolydian F♯, aeolian G♯)
         if (t === n - 1 && step === 1 && lc.deg === 0 && lp.deg === 6 && lp.alt === 0 && LOC[t - 1].key.ficta(6) > 0)
           return `at the cadence the leading tone raised: ${K.name(D(prev), A(prev) + 1)}, not ${K.name(D(prev), A(prev))} (musica ficta)`; }

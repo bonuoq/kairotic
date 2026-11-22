@@ -99,9 +99,57 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   }
   is(`the church modes: the same counts and reasons in ${n} cases (Study 51's schemata × 5 modes × 2 line levels)`, badM.length === 0, badM.slice(0, 5).join("; "));
   const K = P.keyOf({ tonic: "D", mode: "dorian" });
-  const S = P.schemata({ schema: "7-6", key: { tonic: "D", mode: "dorian" }, figured: false });
-  const names = S.fan([]).map((x) => x.name + ":" + (x.reason || "ok"));
-  is("… D dorian: C♯ and B♭ its ficta, F♯ only in the last chord, E♭ never a candidate", K.name(6, 1) === "C♯4" && K.name(5, -1) === "B♭3" && names.some((x) => /^F♯\d:.*only in the last chord/.test(x)) && !names.some((x) => /^E♭/.test(x)));
+  // (the scale up from ①: over ① the final's raised 3rd may sound, over ② not)
+  const S = P.schemata({ schema: "thirds", key: { tonic: "D", mode: "dorian" }, figured: false });
+  const first = S.fan([]), names0 = first.map((x) => x.name + ":" + (x.reason || "ok"));
+  const line = S.engine({ temp: 0.5, r: rng(3) }), t2 = S.bass.findIndex((b) => b.d === 1);
+  const names = S.fan(line.slice(0, t2)).map((x) => x.name + ":" + (x.reason || "ok"));
+  is("… D dorian: C♯ and B♭ its ficta, F♯ only in a chord on the final (over ①, not over ②), E♭ never a candidate", K.name(6, 1) === "C♯4" && K.name(5, -1) === "B♭3" && names0.some((x) => /^F♯\d:ok/.test(x)) && names.some((x) => /^F♯\d:.*only in a chord on the final/.test(x)) && !names.some((x) => /^E♭/.test(x)));
+}
+
+// a church mode's style, Fux's: his examples note against note in three and four parts (tests/assets/fux, Gotham's
+// encoding, CC0) judged by modal-2 and modal-4 — which accept them, where the galant styles refuse them; and the engine
+// realizing his canti firmi with it
+{
+  const T = await import("../packages/rules/assets/tonal.mjs");
+  const MODE = { c: "ionian", d: "dorian", e: "phrygian", f: "lydian", g: "mixolydian", a: "aeolian" };
+  const L = "CDEFGAB", noteOf = (tok) => {
+    const m = /^[[(]*\d+\.?([a-gA-G]+)([#-]*)/.exec(tok.trim());
+    if (!m) return null;
+    const p = m[1], o = p[0] === p[0].toLowerCase() ? 3 + p.length : 4 - p.length;
+    return p[0].toUpperCase() + m[2].replace(/-/g, "b") + o;
+  };
+  const dir = join(root, "tests/assets/fux");
+  const { readdirSync } = await import("node:fs");
+  const files = readdirSync(dir).filter((f) => f.endsWith(".krn")).sort();
+  let modalOk = 0, galantOk = 0, why = [];
+  for (const f of files) {
+    const txt = readFileSync(join(dir, f), "utf8"), final = /Modal final: (\w)/.exec(txt)[1].toLowerCase();
+    const rows = txt.split("\n").filter((l) => l && !/^[!*=]/.test(l)).map((l) => l.split("\t"));
+    const key = { tonic: final.toUpperCase(), mode: MODE[final] }, K = T.keyOf(key);
+    const V = rows[0].map((_, i) => rows.map((r) => r[i]).filter((x) => x && x !== ".").map(noteOf).filter(Boolean).map((nm) => T.codeOf(K, nm)));
+    const avg = (v) => v.reduce((a, c) => a + T.codeDegree(c), 0) / v.length, order = V.map((v, i) => [avg(v), i]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+    const bass = V[order[0]], up = order.slice(1).reverse().map((i) => V[i]), n = up.length + 1;
+    const units = bass.map((c, i) => ({ d: T.codeDegree(c), r: T.codeAlter(c), struck: true, strong: true, chord: null, key: null, note: i, dominant: false }));
+    const span = (u) => { const d = u.map(T.codeDegree); return [Math.min(...d), Math.max(...d)]; };
+    const judge = (style) => {
+      const P = n === 3 ? R.partsOverBass({ key, bass: units, figured: false, style: style + "-2", top: span(up[0]), middle: span(up[1]), apart: 14, spacing: 22 })
+        : R.fourOverBass({ key, bass: units, figured: false, style: style === "modal" ? "modal-4" : "chorale-4", soprano: span(up[0]), alto: span(up[1]), tenor: span(up[2]) });
+      return P.judge(n === 3 ? { top: up[0], middle: up[1] } : { soprano: up[0], alto: up[1], tenor: up[2] });
+    };
+    const w = judge("modal");
+    if (w === null) modalOk++; else why.push(`${f}: ${w}`);
+    if (judge("partimento") === null) galantOk++;
+  }
+  is(`Fux's ${files.length} examples note against note in three and four parts: the modal styles accept ${modalOk} (but the lowest voice crossing under the bass), the galant ones ${galantOk}`, files.length === 27 && modalOk >= 26 && galantOk <= 5, why.join("; "));
+  // the engine with modal-2 over his phrygian cantus firmus (fig. 106's): a realization it judges its own, every chord a 5/3 or a 6/3
+  const key = { tonic: "E", mode: "phrygian" }, K = T.keyOf(key);
+  const units = "E3 C3 D3 C3 A2 A3 G3 E3 F3 E3".split(" ").map((nm, i) => { const c = T.codeOf(K, nm); return { d: T.codeDegree(c), r: T.codeAlter(c), struck: true, strong: true, chord: null, key: null, note: i, dominant: false }; });
+  const P = R.partsOverBass({ key, bass: units, figured: false, style: "modal-2" }), x = P.engine({ temp: 0.5, r: rng(5) });
+  is("… and the engine with modal-2 over his E phrygian cantus firmus: a realization it judges legal, every chord a 5/3 or a 6/3 (or less)", x && P.judge(x) === null && P.chords(x).every((c) => ["5/3", "(5)/3", "6/3", "6", "5", "8"].includes(c)));
+  notes.push("modal-2 over Fux's E phrygian: " + (x ? P.chords(x).join(" ") : "none"));
+  const ob = R.fromNotes({ notes: "D3 F3 E3 D3".split(" ").map((nm) => ({ midi: T.keyOf({ tonic: "D", mode: "dorian" }).midi(T.codeDegree(T.codeOf(T.keyOf({ tonic: "D", mode: "dorian" }), nm)), 0) })), key: "d dorian", voices: 3 });
+  is("… a church mode's bass in a tree (cac partimento d dorian): the modal style by default", ob.P.style.style === "modal-2");
 }
 
 // styles: inheritance, a rule removed or reparametrized
