@@ -1,0 +1,37 @@
+{
+  "name": "@kairotic/rules",
+  "version": "0.1.0",
+  "description": "One constraint engine for every style (discussion #353): voices advancing unit by unit, hard rules that refuse with a reason and soft rules that cost, the exact count of every realization, the engine, a uniform draw, a judgement; a catalogue of general rules with parameters, and styles that choose them (named, versioned, inheriting)",
+  "author": "bonuoq",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonuoq/kairotic.git",
+    "directory": "packages/rules"
+  },
+  "homepage": "https://github.com/bonuoq/kairotic/tree/main/packages/rules#readme",
+  "type": "module",
+  "main": "dist/rules.mjs",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "kairotic": {
+    "api": 1
+  },
+  "scripts": {
+    "build": "node ../build.mjs rules",
+    "prepublishOnly": "node ../build.mjs rules"
+  },
+  "keywords": [
+    "kairotic",
+    "constraints",
+    "counterpoint",
+    "harmony",
+    "partimento",
+    "algorithmic composition"
+  ]
+}

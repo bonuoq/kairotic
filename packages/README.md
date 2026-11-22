@@ -20,6 +20,7 @@ npm under the scope `@kairotic` and served inside claude.ai by jsDelivr.
 | [`@kairotic/io`](io/) | `midiin [channel] [range]` MIDI in as events, and Hz and voice ids for synth~ · `midiout [mpe] [channel] [port] [range]` notes to a MIDI port, MPE for microtones · `oscin [pattern]` · `oscout [target]` OSC through a relay's bridge · `motion` a phone's tilt and shakes · `gamepad` buttons and sticks · `serial [baud]` a board's lines (Web Serial) · `control kind [which]` one control (cc 74, pad lx, tilt x, osc /addr…) out of their events |
 | [`@kairotic/net`](net/) | `share [channel]` a value to everyone in the room · `shared [channel]` what anyone in the room shares · `pulse [division]` the room's beat: one tempo for every page |
 | [`@kairotic/faust-units`](faust-units/) | no classes: modules for the page — the patch view of a `faust~`, Faust's own elements as boxes, kept in sync with its code; the recipe of a `faust~` from a sound |
+| [`@kairotic/rules`](rules/) | no classes: one constraint engine for every style (#353) — the core (count, draw, engine, judge), a catalogue of general rules with parameters, styles named, versioned and inheriting; today one voice over a bass, as `@kairotic/cac`'s `partimento.mjs` |
 
 Planned: `cac`, `notation`.
 
