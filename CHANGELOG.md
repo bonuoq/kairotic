@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`phase` without a clock** (`@kairotic/rhythm` 0.7.0; discussion #204). With nothing on its right inlet, `phase`
+  finds the pulse from the onsets themselves: of the last intervals between them, the longest pulse they fill as
+  whole numbers of it (the fit plus a small price for each pulse, so the simplest grid wins, after Sethares'
+  periodicity), each interval rounded on its own from the last onset back, so that a tempo that moves is followed.
+  It says the phase at each onset, of the pulse that onset is on — the first from five onsets, and only when one
+  rotation of the reference is nearer than every other —, and the pulse found (`:pulse`, in seconds, also with a
+  clock) on the right. Tested on the son clave and the bembé with loose hands, missing and extra onsets, and an
+  accelerando from 200 to 160 ms.
 - **Study 64 · florid: the frame measured** (discussion #342). Fux's frames (the notes on his half bars' downbeats)
   hold a note over the bar or move by a third far more often than the engine's (held 28%, thirds 31%; the engine 10%
   and 15%): the room his passing notes need. The frame's bridge takes a cost by interval (`costs.frame`, through
