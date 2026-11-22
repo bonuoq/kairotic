@@ -11,7 +11,7 @@
 ;; What an analysis finds is written on the tree as its analysis layer (:fig the chord over a bass note, :deg its
 ;; degree, :local the key it is read in, :why a rule broken there), which a tree box's code window shows or hides
 ;; (Analysis).
-(let [origins ["npm:@kairotic/rules@0.4.0/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
+(let [origins ["npm:@kairotic/rules@0.5.0/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
       names {2 ["soprano"] 3 ["soprano" "alto"] 4 ["soprano" "alto" "tenor"]}
       kernel-keys {2 ["top"] 3 ["top" "middle"] 4 ["soprano" "alto" "tenor"]}
       ;; the notes of a voice: its events, in time order
@@ -54,30 +54,37 @@
                                        (and chords (aget chords t)) (assoc :fig (aget chords t))
                                        local (assoc :local (str (.-tonic local) " " (.-mode local))))]))
                           (range) (:notes bass))))
+      ;; how each voice is written: in open score (a staff each, the tenor in the treble clef an octave down) or, with
+      ;; [:staves 2], in short score (soprano and alto on a treble staff, tenor and bass on a bass staff)
+      written (fn [vn staves n]
+                (if (and (= 2 staves) (> n 2))
+                  (if (#{"soprano" "alto"} vn) {:staff "S A" :clef "G"} {:staff "T B" :clef "F"})
+                  ({"tenor" {:clef "G8"} "bass" {:clef "F"}} vn {})))
       ;; the realization as a tree: the upper voices, then the bass
       realization (fn [ob st bass R]
                     (let [n (.-voices ob) ks (kernel-keys n) u (:u bass)
+                          staves (or (get-in st [:over :staves]) (:staves st) 4)
                           chords (when (.-chords (.-P ob)) (.chords ob R))
                           k (.-key ob)]
                       (into [:piece {:key (str (.-tonic k) " " (.-mode k))}]
-                            (concat (map (fn [vn kk] (into [:voice {:name vn}] (line ob (vec (aget R kk)) u (constantly {}))))
+                            (concat (map (fn [vn kk] (into [:voice (merge {:name vn} (written vn staves n))] (line ob (vec (aget R kk)) u (constantly {}))))
                                          (names n) ks)
-                                    [(into [:voice {:name "bass"}] (bass-line ob bass chords))]))))
+                                    [(into [:voice (merge {:name "bass"} (written "bass" staves n))] (bass-line ob bass chords))]))))
       shown (fn [ob st] {:main (str "cac " (name (:op st :partimento)) " · " (.-voices ob) " parts")
                          :sub (str (:count st) " realizations · " (.. ob -key -tonic) " " (.. ob -key -mode))})]
   {:class "cac"
    :license "MPL-2.0"
-   :doc "Composition assisted by computer on a tree: operations that follow the rules of a style and look ahead, beside mt's mechanical ones (discussion #323; Studies 51–62). cac partimento: a bass in (a tree — its lowest voice; its notes' figures, :fig \"6/5\", if it has them; a note's key, :local \"G major\", if it is read in another), the voices above it out, as a tree for a tree box: 4 parts by default (soprano, alto, tenor over the bass; [:voices 3] or 2), realized by the engine (its soft rules: steps rather than leaps, the leading tone up…) — a bang another one, :any any valid one, each as likely — and the realizations counted exactly (outlet 1). The bass written again carries the analysis: the chord made over each note (:fig), its degree (:deg), its key where it is read in another (:local) — the tree box's code window shows them with Analysis. The key: the box's words (cac partimento G, cac partimento e: lower case minor; cac partimento d dorian: a church mode, with its musica ficta, in Fux's style — note against note, every chord a 5/3 or a 6/3), the tree's :key, or guessed from the bass. Its unit is the shortest note of the bass (or [:unit 2]); the even units are strong. cac judge: a tree of voices in, the lowest the bass: where they break the rules, and why (outlet 1), and the tree out with the chords over its bass and :why on the notes that break one. [:voices 3], [:key \"a minor\"], [:temp 1], [:seed 7], [:unit 1] change it."
-   :usage "cac partimento|judge [voices 4] [key] [temp 0.5] [seed 1] [unit 0]"
+   :doc "Composition assisted by computer on a tree: operations that follow the rules of a style and look ahead, beside mt's mechanical ones (discussion #323; Studies 51–62). cac partimento: a bass in (a tree — its lowest voice; its notes' figures, :fig \"6/5\", if it has them; a note's key, :local \"G major\", if it is read in another), the voices above it out, as a tree for a tree box: 4 parts by default (soprano, alto, tenor over the bass; [:voices 3] or 2), realized by the engine (its soft rules: steps rather than leaps, the leading tone up…) — a bang another one, :any any valid one, each as likely — and the realizations counted exactly (outlet 1). The bass written again carries the analysis: the chord made over each note (:fig), its degree (:deg), its key where it is read in another (:local) — the tree box's code window shows them with Analysis. The key: the box's words (cac partimento G, cac partimento e: lower case minor; cac partimento d dorian: a church mode, with its musica ficta), the tree's :key, or guessed from the bass. Its unit is the shortest note of the bass (or [:unit 2]); the even units are strong. cac judge: a tree of voices in, the lowest the bass: where they break the rules, and why (outlet 1), and the tree out with the chords over its bass and :why on the notes that break one. A note without figures takes the chord a partimento player would: the Rule of the Octave's where the bass moves by step through it, a 5/3 where it leaps (a 6/3 on ⑦) and at the start and the end. The voices are written in open score, soprano, alto, tenor (in the treble clef an octave down) and bass; [:staves 2] writes them in short score, soprano and alto on a treble staff, tenor and bass on a bass staff. [:voices 3], [:key \"a minor\"], [:temp 1], [:seed 7], [:unit 1], [:staves 2] change it."
+   :usage "cac partimento|judge [voices 4] [key] [temp 0.5] [seed 1] [unit 0] [staves 4]"
    :io [1 2]
    :size [190 46]
-   :args [[:op nil] [:voices 4] [:key nil] [:temp 0.5] [:seed 1] [:unit 0]]
+   :args [[:op nil] [:voices 4] [:key nil] [:temp 0.5] [:seed 1] [:unit 0] [:staves 4]]
 
    ;; ── a task: the kernel over the bass, counted (outside the pure logic) ──
-   :tasks {:build (fn [{:keys [notes key voices]} _box]
+   :tasks {:build (fn [{:keys [notes key voices fill]} _box]
                     (-> (api/import-module origins)
                         (.then (fn [m]
-                                 (let [ob (.fromNotes m (clj->js {:notes notes :key key :voices voices}))]
+                                 (let [ob (.fromNotes m (clj->js {:notes notes :key key :voices voices :fill fill}))]
                                    {:ob ob :count (str (.count ob)) :module m})))))}
 
    ;; ── logic ──
@@ -86,7 +93,7 @@
                     op (or (some-> (:op args) name keyword) :partimento)
                     st (assoc st :op op)
                     ;; a change asked for on the way: kept, and the tree done again
-                    over? (and (vector? value) (#{:voices :key :temp :seed :unit} (first value)))
+                    over? (and (vector? value) (#{:voices :key :temp :seed :unit :staves} (first value)))
                     st (if over? (assoc-in st [:over (first value)] (second value)) st)
                     temp (or (get-in st [:over :temp]) (:temp args) 0.5)
                     build (fn [st tree]
@@ -98,9 +105,10 @@
                                   (cond
                                     (not (#{2 3 4} n)) {:state st :show {:main "cac judge" :sub (str "✗ " n " voices: 2, 3 or 4")}}
                                     :else
-                                    {:state (assoc st :tree tree :bass bass :uppers (vec (rest vs)) :n n :seed (or (get-in st [:over :seed]) (:seed args) 1))
+                                    {:state (assoc st :tree tree :bass bass :uppers (vec (rest vs)) :n n :seed (or (get-in st [:over :seed]) (:seed args) 1)
+                                                    :staves (:staves args))
                                      :show {:main (str "cac " (name op)) :sub "counting…"}
-                                     :effects [[:build {:notes (mapv #(dissoc % :t :dur :name) (:notes bass)) :key (key-of st args tree) :voices n}]]})))))
+                                     :effects [[:build {:notes (mapv #(dissoc % :t :dur :name) (:notes bass)) :key (key-of st args tree) :voices n :fill (not= op :judge)}]]})))))
                     ;; one realization, or the judgement, sent out
                     emit (fn [st how]
                            (let [ob (:ob st)]

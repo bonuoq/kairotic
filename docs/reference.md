@@ -230,7 +230,7 @@ See also: `msg`, `loadbang`, `metro`
 
 **mt changes a tree and does not question it; cac adds to it, or questions it, by the rules of a style.** Its operations take a tree as what is given and look ahead — the kernel of Studies 51–62 (IJzerman's *Harmony, Counterpoint, Partimento*).
 
-**cac partimento** — a bass in, the voices above it out. Send it a tree: its lowest voice is the bass (its notes may carry figures, `:fig "6/5"`, and a key of their own, `:local "G major"`). Out comes a tree for a `tree` box: soprano, alto and tenor over the bass (`[:voices 3]` or `2` for fewer), written by the engine — its soft rules prefer steps, the leading tone up, the bass doubled — among the realizations it counts exactly. A bang writes another one, `:any` any valid one, each as likely.
+**cac partimento** — a bass in, the voices above it out. Send it a tree: its lowest voice is the bass (its notes may carry figures, `:fig "6/5"`, and a key of their own, `:local "G major"`). A note without figures takes the chord a partimento player would: the Rule of the Octave's where the bass moves by step through it, a 5/3 where it leaps (a 6/3 on ⑦), and at the start and the end. Out comes a tree for a `tree` box: soprano, alto and tenor over the bass (`[:voices 3]` or `2` for fewer), in open score with the tenor in the treble clef an octave down — or, with `[:staves 2]`, in short score (soprano and alto on a treble staff, tenor and bass on a bass staff) — written by the engine — its soft rules prefer steps, the leading tone up, the bass doubled — among the realizations it counts exactly. A bang writes another one, `:any` any valid one, each as likely.
 
 **cac judge** — a tree of voices in, the lowest the bass: whether they keep the rules, and where and why they do not (parallel 5ths between the alto and the tenor, the 7th not going down…), and the chords they make.
 
@@ -246,10 +246,11 @@ Composition assisted by computer on a tree, beside mt (discussion #323): cac par
 - `temp`: the engine's chance: 0 always its cheapest, higher more free
 - `seed`: the seed of its chance
 - `unit`: the beats a chord lasts: 0, the shortest note of the bass
+- `staves`: 4: open score, a staff for each voice (the tenor in the treble clef an octave down); 2: short score, SA and TB
 
 **Inlets** 
 
-0. a tree (the given: a bass, or voices to judge) · a bang: another realization · :any: any valid one · [:voices 3], [:key "a minor"], [:temp 1], [:seed 7], [:unit 2]: done again
+0. a tree (the given: a bass, or voices to judge) · a bang: another realization · :any: any valid one · [:voices 3], [:key "a minor"], [:temp 1], [:seed 7], [:unit 2], [:staves 2]: done again
 
 **Outlets** 
 
@@ -264,6 +265,7 @@ Composition assisted by computer on a tree, beside mt (discussion #323): cac par
 - `[:key "e"]`: another key (lower case: minor)
 - `[:temp 1]`: more chance in the engine
 - `[:seed 7]`: its chance: the same seed, the same realization
+- `[:staves 2]`: short score: soprano and alto on one staff, tenor and bass on another
 
 **Try:** Click the bang beside the tree: its bass — the Rule of the Octave going up, its figures 6/4/3 on ②, 6/5 on ④ and ⑦ — goes into cac partimento, and the four parts come out as a score; print says how many there are. Click the bang over cac for another; open its code (double-click) and press Analysis to see the chords it made over the bass.
 
@@ -273,7 +275,7 @@ Composition assisted by computer on a tree, beside mt (discussion #323): cac par
 (code :b1 "[:voice {:key \"C major\"} [:note {:pitch \"c3\" :dur 2}] [:note {:pitch \"d3\" :dur 2 :fig \"6/4/3\"}] [:note {:pitch \"e3\" :dur 2 :fig \"6/3\"}] [:note {:pitch \"f3\" :dur 2 :fig \"6/5\"}] [:note {:pitch \"g3\" :dur 2}] [:note {:pitch \"a3\" :dur 2 :fig \"6/3\"}] [:note {:pitch \"b3\" :dur 2 :fig \"6/5\"}] [:note {:pitch \"c4\" :dur 2}]]")
 (box :b2 "cac partimento" 40 170)
 (box :b3 "tree" 40 230)
-(resize :b3 420 200)
+(resize :b3 420 320)
 (box :b4 "print" 260 170)
 (box :b5 "bang" 480 30)
 (box :b6 "bang" 260 120)
@@ -3051,6 +3053,7 @@ A musical tree written in EDN (hiccup style: [:voice [:measure {:meter [4 4]} "c
 - `(import-mei!) · (import-mei! :bN) · drop a file on the patch`: a .mei or MusicXML file as a tree box (a new one, or into bN)
 - `⇄ continuum · (continuum! :bN :dissolve)`: between a roll and a score: each axis — time (as it sounded → as written), pitch (Hz → keys → staff), glyph (stroke → head → value) — at its own resolution, changing over the piece (:written :proportional :tempered :graphic :mixed :dissolve :crystallize, or {:res …}); kept in the tree
 - `(wire! :bN 2 :swell) · (wire! :bN 2 :swell {:kind :elastic :tol 0.5}) · (unwire! :bN 2) · (wires :bN)`: a wire from a note to the electronics, written on the note (:wire) — or on a rest, [:rest {:dur 4 :wire {:send :drone}}], an event of the electronics alone, silent, led at its time — and drawn on the continuum: what a follow box sends when the performer gets there — rigid (on the note, or caught up once at the next), elastic (on its own at the expected time plus a tolerance if the note does not come), or led by the electronics ({:leader :electronics})
+- `(confidence :bN)`: how sure a follower can be at each note, weakest first: where to rehearse more; once learned, a mark under each note of its continuum, red to green
 - `(learn! :bN) · (unlearn! :bN)`: learns from its takes that kept what each note sounded like (a follow box with descriptors) how each note sounds — each descriptor's mean, spread and weight —: a follow box then matches notes by them too, and finds sounds without a pitch (a multiphonic, a noise) by them alone
 - `(keep-take! :bN take) · (continuum! :bN {:take "t1"})`: a performance of the tree (where each note was played), only for you by default (:work keeps it in the tree); the continuum can show it
 - `(track! :bN)`: its free time played (in seconds, at any tempo): the beats are found and kept in its :quant, so that its score and quantize! write it on them

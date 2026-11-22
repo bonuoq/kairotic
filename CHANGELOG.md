@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- **The modes in three and four parts: Fux's style** (`@kairotic/rules` 0.4.0, `@kairotic/cac` 0.9.1; discussion #353).
-  Styles `modal-1`, `modal-2` and `modal-4`, the default for a church mode's bass (`cac partimento d dorian`): every
+- **The modes in three and four parts: Fux's style** (`@kairotic/rules` 0.5.0, `@kairotic/cac` 0.10.1; discussion #353).
+  Styles `modal-1`, `modal-2` and `modal-4`, the default for a church mode's bass (`cac partimento d dorian`; no Rule of the Octave filled in there, the style
+  chooses between a 5/3 and a 6/3 itself): every
   chord a consonant 5/3 or 6/3 (a 5/3 only where its 5th is perfect; the bass falling by step to the last note under a
   6/3; the last chord without a 6th — rule `modal`), and what his practice lets in where the galant style does not:
   a unison with the bass, a note held longer, the voices crossing, direct 5ths and octaves among three or four, a leap
@@ -12,6 +13,20 @@
   styles accept 26 (the one left: a voice crossing under the bass), the galant ones almost none. And the ficta as he
   writes it: the final's raised 3rd in any chord on the final (his phrygian starts on E major), a lowered note free to
   go up (his B♭ to C), the aeolian's F♯ on up to G♯ — in both engines.
+- **`cac partimento`: notes without figures, and the score as a choir writes it** (`@kairotic/rules` 0.4.0,
+  `@kairotic/cac` 0.10.0). A note of the bass without figures took any chord the rules allowed (a 4/3/2 on ⑤ between
+  figured notes); it now takes the one a partimento player would — the Rule of the Octave's where the bass moves by step
+  through it, a 5/3 where it leaps (a 6/3 on ⑦) and at the start and the end (`fromNotes({fill})`, `octaveDefault`;
+  `cac judge` still reads the chords the voices make). The help's RO counts 3,610 again, Study 62's. The voices come
+  out in the tree's order, soprano, alto, tenor, bass (a tree in free time was quantized with its voices sorted by
+  name: alto, bass, soprano, tenor), in open score with the tenor in the treble clef an octave down; `[:staves 2]`
+  writes them in short score, soprano and alto on a treble staff, tenor and bass on a bass staff. In any tree a voice's
+  `:clef` ("G", "F", "G8", "C3", "C4") sets its staff's clef, and quantizing keeps a voice's `:staff` and `:clef`.
+
+- **Where to rehearse more** (discussion #308, step 5): `(confidence :bN)` — how sure a follower can be at each note,
+  weakest first: a note is easy to find when it sounds unlike its neighbours (by its learned profile, or its
+  notation) and, once rehearsed, when the takes found it. Once a tree has been learned (`(learn! :bN)`), its
+  continuum shows a mark under each note, red to green. `kairotic.follow/confidence`.
 - **Study 64 · florid: the frame measured** (discussion #342). Fux's frames (the notes on his half bars' downbeats)
   hold a note over the bar or move by a third far more often than the engine's (held 28%, thirds 31%; the engine 10%
   and 15%): the room his passing notes need. The frame's bridge takes a cost by interval (`costs.frame`, through

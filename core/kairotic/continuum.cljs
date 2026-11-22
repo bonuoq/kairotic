@@ -230,6 +230,14 @@
         staff (fn [t] ((:staff-alpha p) t)) grid (fn [t] ((:grid-alpha p) t))
         lane 12]
     (str
+     ;; how sure a follower can be at each note (opts :confidence {id 0…1}, discussion #308): a mark under it, from red
+     ;; (rehearse there) to green
+     (when-let [cf (:confidence opts)]
+       (apply str
+              (for [n (remove :rest (:notes p)) :let [c (get cf (:id n))] :when (number? c)]
+                (let [x (sx (:x n))]
+                  (str "<rect class=\"ct-conf\" data-id=\"" (esc (or (:id n) "")) "\" x=\"" (f1 (- x 3)) "\" y=\"" (f1 (- h 9)) "\" width=\"6\" height=\"6\" rx=\"1.5\""
+                       " style=\"fill:hsl(" (js/Math.round (* 120 c)) ",60%,42%)\"><title>" (esc (str (:id n) " · " (js/Math.round (* 100 c)) "% sure")) "</title></rect>")))))
      ;; the wires (discussion #217), written on their notes (:wire): from the note up to the electronics' lane —
      ;; rigid solid, elastic dashed with its tolerance along the lane, led by the electronics with a diamond
      (apply str
