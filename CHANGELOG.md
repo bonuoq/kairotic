@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 64 · florid: ties as Fux writes them** (discussion #342). A note is never tied to a longer one, nor is an
+  eighth tied: the first of a tied pair as long as the second or longer (a half note to a half, a dotted quarter or a
+  quarter; never a quarter to a half). A hard rule of the rhythm's bridge, which draws no rhythm that would force it
+  (`tieOk`); 23 of the 42 ties of the 18 test lines broke it before, mostly anticipations. A suspension is prepared by
+  a half note held over the bar (the neighbour in eighths tied into it is gone); the anticipation is a quarter; a
+  double neighbour in eighths (*groppo*) takes the place of the neighbour in eighths that came back tied.
 - **One Claude for every box, step 1: the craft as tools, and offers** (discussion #351). While Claude makes a
   patch — an agent's content, the Claude tab's — it can read any box of the patch on screen in one common shape
   (`describe_box`: class, text, ports, connections, and for a tree its key, meter, voices as lines of the melody

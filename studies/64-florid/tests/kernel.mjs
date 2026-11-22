@@ -72,6 +72,17 @@ export async function run() {
         if (i === 0 || i === R.length - 1) { ends += a; ne++; } else if (Math.abs(i - (R.length - 1) / 2) < 1.5) { mid += a; nm++; }
       });
     }
+    // the ties: a note held into the next half bar never tied to a longer one, nor an eighth tied
+    let ties = 0, tiesOk = true;
+    for (const { x } of runs) x.spans.forEach((sp, t) => {
+      const nx = x.spans[t + 1];
+      if (!nx || sp.notes[sp.notes.length - 1] !== nx.notes[0]) return;
+      ties++;
+      const d1 = F.CELLS[x.rhythm[t]].at(-1), d2 = F.CELLS[x.rhythm[t + 1]][0];
+      if (d1 < d2 || d1 < 2) tiesOk = false;
+    });
+    is("the ties: a note never tied to a longer one (a quarter to a half), nor an eighth tied (Fux, fifth species)", tiesOk && ties > 0);
+    notes.push(`the ties: ${ties} in ${runs.length} lines, every one to an equal or shorter value`);
     is("the rhythm: every half bar a cell (a half note, two quarters, a dotted quarter and an eighth, a quarter and two eighths), its figure's notes on it", cellsOk);
     is("… eighths only on the half bar's weak quarter, in pairs (Fux)", pairs);
     is("… parallelism: a bar's rhythm heard again in the next one now and then (≥ 8% of the bars), never a third time running", !third && again / bars >= 0.08);
@@ -79,13 +90,13 @@ export async function run() {
     notes.push(`the rhythm: a bar like the one before in ${Math.round(100 * again / bars)}% of ${bars} bars; notes a bar ${(mid / nm).toFixed(1)} in the middle, ${(ends / ne).toFixed(1)} at the ends`);
   }
 
-  // suspensions: held, prepared with a neighbour, or resolved later (ornamented)
+  // suspensions: prepared by a half note held over the bar, resolved then or later (ornamented)
   {
     const g = F.CANTI["g-major"], fs = F.frameOf(g.cf, g.key, { r: rng(21), temp: 0.6 }), U = fs.units;
     const t = U.findIndex((u, i) => i >= 2 && i % 2 === 0 && U[i - 1] === u && fs.voice.V.vertical(i, u).q === "dissonant");
     const E = t > 0 && F.elaborate(fs, g.cf, g.key, { r: rng(21) });
     const before = E && E.spans[t - 1].figure, after = E && E.spans[t].figure;
-    is("a frame with a suspension (G major): the half bar before prepares it, held over the bar; the one after resolves it, held or later", E && ["held", "tie-neighbor"].includes(before) && ["held", "anticipated-resolution", "ornamented-resolution"].includes(after) && E.eighths[t * F.SUB - 1] === fs.names[t]);
+    is("a frame with a suspension (G major): the half bar before prepares it, a half note held over the bar; the one after resolves it, held or later", E && before === "held" && ["held", "anticipated-resolution", "ornamented-resolution"].includes(after) && E.eighths[t * F.SUB - 1] === fs.names[t]);
     notes.push(`the suspension at half bar ${t + 1} of ${fs.names.join(" ")}: ${before}, then ${after}`);
   }
 
