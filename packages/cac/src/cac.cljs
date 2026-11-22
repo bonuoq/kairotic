@@ -1,7 +1,8 @@
 ;; cac · composition assisted by computer, on a tree: operations that follow rules and look ahead (discussion #323)
 ;; Part of @kairotic/cac. Written against the Kairotic API (api/…).
 ;; mt's operations change a tree mechanically, and do not question it; cac's take a tree as what is given and add to
-;; it, or question it, by the rules of a style — Studies 51–62's kernel, partimento.mjs:
+;; it, or question it, by the rules of a style — @kairotic/rules (discussion #353): its styles partimento-1 (one upper
+;; voice), partimento-2 (two) and chorale-4 (three), Studies 51–62's kernel ported onto one engine:
 ;;   cac partimento   a bass in (a tree: its lowest voice, its notes' figures if it has them, :fig "6/5"), the voices
 ;;                    above it out — 2, 3 or 4 parts (the bass and 1, 2 or 3 upper voices), realized by the engine
 ;;                    (its soft rules) or any valid one, the realizations counted exactly
@@ -10,7 +11,7 @@
 ;; What an analysis finds is written on the tree as its analysis layer (:fig the chord over a bass note, :deg its
 ;; degree, :local the key it is read in, :why a rule broken there), which a tree box's code window shows or hides
 ;; (Analysis).
-(let [origins ["npm:@kairotic/cac@0.8.0/dist/partimento.mjs" "kairotic/packages/cac/partimento.mjs"]
+(let [origins ["npm:@kairotic/rules@0.3.0/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
       names {2 ["soprano"] 3 ["soprano" "alto"] 4 ["soprano" "alto" "tenor"]}
       kernel-keys {2 ["top"] 3 ["top" "middle"] 4 ["soprano" "alto" "tenor"]}
       ;; the notes of a voice: its events, in time order
@@ -76,7 +77,7 @@
    :tasks {:build (fn [{:keys [notes key voices]} _box]
                     (-> (api/import-module origins)
                         (.then (fn [m]
-                                 (let [ob (.overBass m (clj->js {:notes notes :key key :voices voices}))]
+                                 (let [ob (.fromNotes m (clj->js {:notes notes :key key :voices voices}))]
                                    {:ob ob :count (str (.count ob)) :module m})))))}
 
    ;; ── logic ──

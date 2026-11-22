@@ -115,6 +115,71 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   is("... and counts as the parameters it names (the strict line, no end): " + N.count(), N.count() === S.count());
 }
 
+// several voices over the bass (step 3): the two and three upper voices of Studies 54, 57, 59 and 62 — the same count,
+// the same reason for every tuple along realizations drawn, the same engine; the tables the same
+{
+  is("the chords in three and four parts: partimento.mjs's tables, as they are", JSON.stringify(R.CHORDS) === JSON.stringify(P.CHORDS) && JSON.stringify(R.CHORDS4) === JSON.stringify(P.CHORDS4));
+  const multi = [];
+  const { galant, SCHEMATA: GS } = await import("../studies/59-galant/kairotic/galant.mjs");
+  for (const id of Object.keys(GS)) multi.push([`59 ${id}`, galant({ schema: id }), "parts"]);
+  const { octave, PHRASES: OP } = await import("../studies/57-octave/kairotic/octave.mjs");
+  for (const id of Object.keys(OP)) multi.push([`57 ${id}`, octave({ phrase: id }), "parts"]);
+  for (const [cad, sch] of [["simple", "fauxbourdon"], ["galant", "romanesca"], ["compound-64", "tied-bass"]]) multi.push([`54 ${sch}+${cad}`, P.parts({ schema: sch, cadence: cad }), "parts"]);
+  const { fourParts, PHRASES: FP } = await import("../studies/62-four/kairotic/four.mjs");
+  for (const id of Object.keys(FP)) multi.push([`62 ${id}`, fourParts({ phrase: id }), "four"]);
+  const t0 = Date.now(), off = [], whys = [], eng = [];
+  const r = rng(62);
+  for (const [name, Q, kind] of multi) {
+    const N = (kind === "parts" ? R.partsOverBass : R.fourOverBass)({ ...Q.spec, bass: Q.bass, key: Q.key });
+    if (Q.count() !== N.count()) { off.push(`${name}: ${Q.count()} ≠ ${N.count()}`); continue; }
+    // the reasons: every pair or triple of the voices' own candidates, at every unit of a realization drawn
+    const W0 = Q.sample(r);
+    if (W0 && !whys.length) {
+      const W = kind === "parts" ? [W0.top, W0.middle] : [W0.soprano, W0.alto, W0.tenor], Vs = kind === "parts" ? [Q.top, Q.middle] : Q.voices;
+      for (let t = 0; t < W[0].length && whys.length < 1; t += 2) {
+        const pre = W.map((U) => U.slice(0, t)), ok = Vs.map((V, i) => V.codes.filter((c) => V.check(pre[i], t, c) === null));
+        const tuples = ok.reduce((acc, cs) => acc.flatMap((x) => cs.map((c) => [...x, c])), [[]]);
+        for (const x of tuples.slice(0, 400)) {
+          const a = kind === "parts" ? Q.check(W[0], W[1], t, x[0], x[1]) : Q.check(W, t, x), b = N.check(W, t, x);
+          if (a !== b) { whys.push(`${name} unit ${t + 1}: "${a}" ≠ "${b}"`); break; }
+        }
+      }
+    }
+    const e1 = Q.engine({ temp: 0.5, r: rng(11) }), e2 = N.engine({ temp: 0.5, r: rng(11) });
+    if (JSON.stringify(e1) !== JSON.stringify(e2)) eng.push(name);
+    if (W0 && Q.judge(W0) !== N.judge(W0)) eng.push(name + " (judge)");
+    if (W0 && JSON.stringify(Q.chords(W0)) !== JSON.stringify(N.chords(W0))) eng.push(name + " (chords)");
+  }
+  is(`two and three upper voices: the same counts in ${multi.length} phrases (Studies 54, 57, 59, 62)`, off.length === 0, off.slice(0, 4).join("; "));
+  is("... the same reason for every tuple of the voices' candidates (the first rule between them that refuses it)", whys.length === 0, whys[0]);
+  is("... the same engine, judgement and chords made", eng.length === 0, eng.slice(0, 4).join("; "));
+  notes.push(`${multi.length} phrases in three and four parts compared in ${Date.now() - t0} ms`);
+}
+
+// a bass as notes (the cac box): the same as partimento.mjs's overBass — 2, 3 and 4 parts, figured or not, judged
+{
+  const RO = ["c3 5/3", "d3 6/4/3", "e3 6/3", "f3 6/5", "g3 5/3", "a3 6/3", "b3 6/5", "c4 5/3"].map((x, i) => { const [p, f] = x.split(" "); return { midi: 48 + [0, 2, 4, 5, 7, 9, 11, 12][i], units: 1, fig: f }; });
+  const bare = RO.map(({ fig, ...n }) => n), off = [];
+  for (const notes of [RO, bare]) for (const voices of [2, 3, 4]) for (const key of ["C", undefined]) {
+    // (four parts over a bare bass count 4,901,760,148 realizations in about a minute in each engine — the same, but too
+    // long for CI: decision 4's local search will take it)
+    if ((voices === 4 && notes === bare)) continue;
+    const a = P.overBass({ notes, key, voices }), b = R.fromNotes({ notes, key, voices });
+    const tag = `${voices} parts ${notes === RO ? "figured" : "bare"} ${key || "guessed"}`;
+    if (a.count() !== b.count()) { off.push(`${tag}: ${a.count()} ≠ ${b.count()}`); continue; }
+    const ea = a.engine({ temp: 0.5, r: rng(3) }), eb = b.engine({ temp: 0.5, r: rng(3) });
+    if (JSON.stringify(ea) !== JSON.stringify(eb)) off.push(`${tag}: the engine`);
+    else if (ea && (a.judge(ea) !== b.judge(eb) || JSON.stringify(a.chords(ea)) !== JSON.stringify(b.chords(eb)))) off.push(`${tag}: judge or chords`);
+    if (a.degAt(3) !== b.degAt(3) || a.spell(a.code(54)) !== b.spell(b.code(54))) off.push(`${tag}: degree or spelling`);
+  }
+  const book = { soprano: "g5 g5 g5 a5 g5 f5 f5 e5", alto: "e5 f5 e5 d5 d5 c5 d5 c5", tenor: "c5 b4 c5 c5 b4 a4 g4 g4" };
+  const a = P.overBass({ notes: bare, key: "C", voices: 4 }), b = R.fromNotes({ notes: bare, key: "C", voices: 4 });
+  const M = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }, mi = (s) => 12 * (+s.slice(-1) + 1) + M[s[0]];
+  const W = Object.fromEntries(Object.entries(book).map(([k, v]) => [k, v.split(" ").map((s) => b.code(mi(s)))]));
+  if (a.judge(W) !== b.judge(W)) off.push(`the book's RO judged: "${a.judge(W)}" ≠ "${b.judge(W)}"`);
+  is("a bass as notes (cac partimento, cac judge): fromNotes as partimento.mjs's overBass — counts, engine, judgement, chords", off.length === 0, off.slice(0, 4).join("; "));
+}
+
 const failed = results.filter((r) => !r[1]);
 console.log(`${results.length - failed.length} / ${results.length} passed`);
 for (const [w, ok, d] of results) if (!ok) console.log("  FAIL " + w + (d ? " — " + d : ""));
