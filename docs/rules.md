@@ -126,9 +126,30 @@ and `fromNotes` (a bass as notes). `tests/rules.mjs`: the same counts as `partim
 phrases of Studies 54, 57, 59 and 62, the same reason tuple by tuple, the same engine, judgement and chords; the cac box
 (`@kairotic/cac` 0.9.0) loads `rules.mjs`.
 
+## Step 4: styles in EDN (done)
+
+`@kairotic/rules` 0.6.0, `@kairotic/cac` 0.11.0. A style is data — EDN in the app, the object `clj->js` makes of it
+here — and every part of it inherits: its rules (`:rules`, `:soft`), those between voices (`:between`,
+`:softBetween`), its voices' style (`:voice`: a name, or a style that extends the parent's voice), its weights. A rule
+named again takes its new parameters, `[:rule false]` removes it, a new one goes at the end. `:extends` takes a name or
+`[name version]`: the same major version, the minor at least, or it says why not. A style says how many parts it
+writes (`:parts`). `checkStyle` names a rule the catalogue does not have; `defineStyle` makes a style nameable (and
+extensible) from then on. In `cac`: `[:style :partimento-2]`, `[:style {…}]`, `:styles`.
+
+```clojure
+[:style {:style :free-sevenths :extends [:chorale-4 "1.0.0"]
+         :between [[:seventh {:free true}]]           ; the dominant's 7th may leap in
+         :voice {:rules [[:leaps {:line :strict}]]}   ; every voice by step, or a leap and back
+         :weights {:doubling 2}}]
+```
+
+The styles there are: `partimento-1` (a voice over a bass, 2 parts), `partimento-2` (3), `chorale-4` (4), `modal-1`,
+`modal-voice`, `modal-2`, `modal-4` (Fux's church modes). `tests/rules.mjs`: a style that frees the dominant's 7th
+counts as `freeSevenths`, one whose voices are strict as `line: "strict"`, versions and unknown rules refused.
+
 ## Next
 
-- Styles in EDN with `:extends`, `[:style …]` in `cac`; `comes` last.
+- `comes` on the core, last.
 - Local search (OMClouds-like) or lazy counting where a count would take more than about 10 s.
 
 ## The church modes (#362, and Fux's style)

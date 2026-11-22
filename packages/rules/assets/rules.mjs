@@ -451,14 +451,35 @@ function leadingTone(w, W, middle, U, t, c) {
 }
 
 // ─────────────────────────────── styles ───────────────────────────────
-// A style: {style, version, extends, rules: [[id params]…], soft: [[id params]…], weights}. A rule named again in a
-// style that extends another replaces it (its parameters merged); [id false] removes it.
+// A style: {style, version, parts (the bass and the upper voices it writes), extends (a name, or [name version]),
+// rules: [[id params]…], soft: [[id params]…], weights, and for several voices voice (the style of each: a name or a
+// style), between: [[id params]…], softBetween}. A style that extends another takes its rules in their order; a rule
+// named again replaces it (its parameters merged), [id false] removes it, a new one goes at the end; its weights are
+// merged; its voice, if it has one, extends the parent's (a style without its own extends). Written in EDN
+// ({:style :my-chorale :extends [:chorale-4 "1.0.0"] :between [[:seventh {:free true}]]}), it comes here as the data
+// clj->js makes of it: keywords as strings.
+const semver = (v) => String(v || "0.0.0").split(".").map((x) => parseInt(x, 10) || 0);
 export function resolveStyle(style, library = STYLES) {
-  if (!style.extends) return { ...style, rules: [...(style.rules || [])], soft: [...(style.soft || [])], weights: { ...(style.weights || {}) } };
-  const parent = resolveStyle(library[style.extends] || (() => { throw new Error(`no such style: ${style.extends}`); })(), library);
-  const merge = (base, own = []) => {
+  if (typeof style === "string") {
+    if (!library[style]) throw new Error(`no such style: ${style} (there are ${Object.keys(library).join(", ")})`);
+    return resolveStyle(library[style], library);
+  }
+  const lists = ["rules", "soft", "between", "softBetween"];
+  const own = Object.fromEntries(lists.map((k) => [k, (style[k] || []).map((r) => (Array.isArray(r) ? [r[0], r[1] ?? undefined] : [r, undefined]))]));
+  if (!style.extends) return { ...style, ...own, weights: { ...(style.weights || {}) } };
+  // (the parent: a name, [name version], or a style itself — a voice that extends its parent's voice)
+  const inline = typeof style.extends === "object" && !Array.isArray(style.extends);
+  const [pname, pver] = inline ? [style.extends.style, null] : Array.isArray(style.extends) ? style.extends : [style.extends, null];
+  if (!inline && !library[pname]) throw new Error(`no such style: ${pname} (there are ${Object.keys(library).join(", ")})`);
+  const parent = resolveStyle(inline ? style.extends : library[pname], library);
+  // (a version asked of the parent: the same major, its minor at least — a change that counts otherwise raises it)
+  if (pver) {
+    const [a, b] = semver(parent.version), [x, y] = semver(pver);
+    if (a !== x || b < y) throw new Error(`${style.style || "a style"} extends ${pname} ${pver}, but ${pname} is ${parent.version}`);
+  }
+  const merge = (base = [], mine = []) => {
     const out = base.map(([id, p]) => [id, p]);
-    for (const [id, p] of own) {
+    for (const [id, p] of mine) {
       const i = out.findIndex(([x]) => x === id);
       if (p === false) { if (i >= 0) out.splice(i, 1); }
       else if (i >= 0) out[i] = [id, { ...(out[i][1] || {}), ...(p || {}) }];
@@ -466,11 +487,42 @@ export function resolveStyle(style, library = STYLES) {
     }
     return out;
   };
-  return { ...parent, ...style, rules: merge(parent.rules, style.rules), soft: merge(parent.soft, style.soft), weights: { ...parent.weights, ...(style.weights || {}) } };
+  const voice = style.voice === undefined ? parent.voice
+    : typeof style.voice === "object" && !style.voice.extends && parent.voice ? { ...style.voice, extends: parent.voice } : style.voice;
+  const out = { ...parent, ...style, voice, extends: pname, weights: { ...parent.weights, ...(style.weights || {}) } };
+  for (const k of lists) out[k] = merge(parent[k], own[k]);
+  return out;
 }
+
+/** A style written as data (EDN, through clj->js) checked: its rules exist where it names them, its voice is a style.
+ *  Returns the style resolved, or throws saying what is wrong. */
+export function checkStyle(style, library = STYLES) {
+  const st = resolveStyle(style, library);
+  const known = { rules: RULES, soft: SOFT_RULES, between: BETWEEN, softBetween: SOFT_BETWEEN };
+  for (const [k, cat] of Object.entries(known))
+    for (const [id] of st[k] || []) if (!cat[id]) throw new Error(`${st.style || "the style"}: no rule ${id} in ${k} (there are ${Object.keys(cat).join(", ")})`);
+  if (st.voice) checkStyle(st.voice, library);
+  if (!st.voice && (st.between || []).length) throw new Error(`${st.style || "the style"}: rules between voices, but no voice style`);
+  return st;
+}
+
+/** Defines a style by its name (from then on it may be named, and extended), checked; returns it resolved. */
+export function defineStyle(style, library = STYLES) {
+  if (!style || !style.style) throw new Error("a style needs a name: {:style :my-style …}");
+  const st = checkStyle(style, library);
+  library[style.style] = { version: "0.1.0", ...style };
+  return st;
+}
+
+/** How many parts a style writes: its own parts, the parent's, else by its kind (a voice over a bass: 2). */
+export function partsOf(style, library = STYLES) {
+  const st = resolveStyle(style, library);
+  return st.parts || (st.voice ? null : 2);
+}
+
 export const STYLES = {
   // partimento.mjs's schemata: one voice over a given bass (Studies 51–59), in the order its check reads them
-  "partimento-1": { style: "partimento-1", version: "1.0.0",
+  "partimento-1": { style: "partimento-1", version: "1.0.0", parts: 2,
     rules: [["range"], ["scale"], ["from-bass"], ["figures"], ["leading-tone-raised"], ["hold"], ["intervals"], ["leaps"], ["melodic-minor"], ["ficta"], ["dissonance"], ["parallels"], ["edges"]],
     soft: [["soft.mjs"], ["leading-tone"]],
     weights: { alternation: 0, "leading-tone": 1.5 } },
@@ -807,15 +859,15 @@ STYLES["modal-voice"] = { style: "modal-voice", version: "0.1.0", extends: "moda
 // the styles of several voices: partimento.mjs's parts (two upper voices) and four (three), their rules between the
 // voices in the order they read them; each voice a style of one voice over the bass
 Object.assign(STYLES, {
-  "partimento-2": { style: "partimento-2", version: "1.0.0", voice: "partimento-1",
+  "partimento-2": { style: "partimento-2", version: "1.0.0", parts: 3, voice: "partimento-1",
     between: [["order", { form: "three" }], ["imitation"], ["exchange"], ["apart"], ["seconds"], ["six-four"], ["parallels-upper"], ["false-relation"], ["chord"], ["doubling"], ["dominant-major"]],
     softBetween: [] },
   // (a church mode in three and four parts, note against note: the voices may cross; every chord a consonant 5/3 or 6/3)
-  "modal-2": { style: "modal-2", version: "0.1.0", voice: "modal-voice",
+  "modal-2": { style: "modal-2", version: "0.1.0", parts: 3, voice: "modal-voice",
     between: [["order", { form: "three", cross: true }], ["seconds"], ["parallels-upper"], ["false-relation"], ["modal"]], softBetween: [] },
-  "modal-4": { style: "modal-4", version: "0.1.0", voice: "modal-voice",
+  "modal-4": { style: "modal-4", version: "0.1.0", parts: 4, voice: "modal-voice",
     between: [["order", { cross: true }], ["modal"], ["doubling", { form: "four" }], ["seconds", { form: "four" }], ["parallels-upper", { form: "four" }]], softBetween: [] },
-  "chorale-4": { style: "chorale-4", version: "1.0.0", voice: "partimento-1",
+  "chorale-4": { style: "chorale-4", version: "1.0.0", parts: 4, voice: "partimento-1",
     between: [["order", { within: 7 }], ["chord", { form: "four" }], ["doubling", { form: "four" }], ["seventh"], ["leading-tone-doubled"], ["seconds", { form: "four" }],
               ["parallels-upper", { form: "four" }], ["resolution"], ["six-four", { form: "four" }], ["dominant-major", { form: "four" }]],
     softBetween: [["doubling"]] },
@@ -839,7 +891,7 @@ export function partsOverBass(spec = {}) {
   const [tlo, thi] = spec.top || [9, 22], [mlo, mhi] = spec.middle || [4, 17];
   const lineOf = (who) => (spec.line && typeof spec.line === "object" ? spec.line[who] : spec.line);
   const holdOf = (who) => (spec.hold && spec.hold[who]) || undefined;
-  const S = { bass: B, key: K, figured: false, ro: spec.ro, exchange: true, end: spec.end, weights: spec.weights, delayed: spec.delayed, style: st.voice };
+  const S = { bass: B, key: K, figured: false, ro: spec.ro, exchange: true, end: spec.end, weights: { ...(st.weights || {}), ...(spec.weights || {}) }, delayed: spec.delayed, style: st.voice };
   const T = overBass({ ...S, lo: tlo, hi: thi, voice: "top", spacing: spec.spacing ?? 18, line: lineOf("top"), maxHold: holdOf("top") });
   const M = overBass({ ...S, lo: mlo, hi: mhi, voice: "middle", line: lineOf("middle"), maxHold: holdOf("middle") });
   const N = voicesWorld(K, B, [T.world, M.world], ["top", "middle"], { figured, ro: !!spec.ro });
@@ -881,7 +933,7 @@ export function fourOverBass(spec = {}) {
     const sv = sevenths(t), cls = sv && !sv.dominant ? (ch.free || []).filter((c) => c !== ch.seventh) : ch.free || [];
     return { cls, seventh: ch.seventh, up: ch.up, tri: !!ch.tri };
   };
-  const S0 = { bass: B, key: K, figured: false, ro: spec.ro ?? true, exchange: true, end: spec.end, free, weights: spec.weights, delayed: spec.delayed, style: st.voice };
+  const S0 = { bass: B, key: K, figured: false, ro: spec.ro ?? true, exchange: true, end: spec.end, free, weights: { ...(st.weights || {}), ...(spec.weights || {}) }, delayed: spec.delayed, style: st.voice };
   const lineOf = (who) => (spec.line && typeof spec.line === "object" ? spec.line[who] : spec.line);
   const [slo, shi] = spec.soprano || [9, 20], [alo, ahi] = spec.alto || [6, 17], [tlo, thi] = spec.tenor || [3, 14];
   const Sv = overBass({ ...S0, lo: slo, hi: shi, voice: "top", spacing: 22, line: lineOf("soprano"), maxHold: 3 });
@@ -892,7 +944,8 @@ export function fourOverBass(spec = {}) {
   const N = voicesWorld(K, B, [Sv.world, Av.world, Tv.world], NAMES, { figured, ro: spec.ro ?? true, asked, sevenths });
   const params = { seventh: { free: !!spec.freeSevenths } };
   const between = st.between.map(([id, p]) => BETWEEN[id](N, { ...(params[id] || {}), ...(p || {}) }));
-  const W = { doubling: 0.6, ...(spec.weights || {}) };
+  // (a style's weights, then the spec's: the voices' soft rules and the doubling between them)
+  const W = { doubling: 0.6, ...(st.weights || {}), ...(spec.weights || {}) };
   const soft = (st.softBetween || []).map(([id, p]) => SOFT_BETWEEN[id](N, { weight: W.doubling, ...(p || {}) }));
   const D = codeDegree;
   // (the order of the voices and their octave, at once: as partimento.mjs's triples)
@@ -967,7 +1020,12 @@ export function octaveDefault(K, notes, drs, i, voices = 4) {
  */
 export function fromNotes(spec = {}) {
   const key = parseKey(spec.key) || guessKey(spec.notes.map((n) => n.midi));
-  const K = keyOf(key), voices = spec.voices || 4;
+  // (a style, a name or written as data, says how many parts it writes, unless voices asks for them)
+  const style = spec.style || null;
+  if (style) checkStyle(style);
+  const sp = style ? partsOf(style) : null;
+  const K = keyOf(key), voices = spec.voices || sp || 4;
+  if (sp && spec.voices && sp !== spec.voices) throw new Error(`the style ${style.style || style} writes ${sp} parts, not ${spec.voices}`);
   // (a church mode: its own style by default, Fux's, note against note — modal-1, modal-2, modal-4 —, which chooses
   // between a 5/3 and a 6/3 itself: no Rule of the Octave filled in, a tonal table)
   if (!spec.style && K.modal) spec = { ...spec, style: voices >= 4 ? "modal-4" : voices === 3 ? "modal-2" : "modal-1" };
@@ -997,7 +1055,7 @@ export function fromNotes(spec = {}) {
   }
   // the count within ms milliseconds, or null when it would take longer (what it counted is kept: ask again to go on)
   const countWithin = (ms) => { try { return within(ms, () => P.count()); } catch (e) { if (e.tooLong) return null; throw e; } };
-  return { key, K, units, unknown, figured, voices, names, P, midi, code, spell, degAt: (t) => V0.world.locB(t),
+  return { key, K, units, unknown, figured, voices, names, P, style: P.style, midi, code, spell, degAt: (t) => V0.world.locB(t),
            count: () => P.count(), countWithin, search: (o) => asVoices(P.search(o)),
            engine: (o) => asVoices(P.engine(o)), sample: (r) => asVoices(P.sample(r)),
            judge: judgeOf, chords: (R) => (P.chords ? P.chords(R) : null) };
@@ -1005,4 +1063,4 @@ export function fromNotes(spec = {}) {
 
 // (a box loads the module's default export: api/import-module)
 export default { within, TooLong, solve, solveVoices, overBass, partsOverBass, fourOverBass, fromNotes, bassFromNotes, degreeOf, parseKey, guessKey, keyOf,
-                 RULES, SOFT_RULES, BETWEEN, SOFT_BETWEEN, STYLES, resolveStyle, CHORDS, CHORDS4, RULE_OF_THE_OCTAVE, octaveDefault };
+                 RULES, SOFT_RULES, BETWEEN, SOFT_BETWEEN, STYLES, resolveStyle, checkStyle, defineStyle, partsOf, CHORDS, CHORDS4, RULE_OF_THE_OCTAVE, octaveDefault };

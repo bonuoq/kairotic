@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Styles in EDN** (`@kairotic/rules` 0.6.0, `@kairotic/cac` 0.11.0; step 4 of discussion #353). A style is data, and
+  every part of it inherits: its rules, those between the voices, its voices' own style, its weights — a rule named
+  again takes its new parameters, `[:rule false]` removes it. `:extends` takes a name or `[name version]` (the same major
+  version, its minor at least). A style says how many parts it writes; `checkStyle` names a rule the catalogue does
+  not have, `defineStyle` makes one nameable. In the app, `cac partimento [:style :partimento-2]` (three parts) or a
+  style written in EDN, `[:style {:style :free-sevenths :extends [:chorale-4 "1.0.0"] :between [[:seventh {:free true}]]}]`;
+  `:styles` lists them; the box shows the style it writes in.
+
 - **`cac` does not freeze the page** (`@kairotic/rules` 0.5.1, `@kairotic/cac` 0.10.1). The exact count runs in the
   page, and a long bass without figures in four parts takes minutes (16 bars of half notes in A major: about a minute;
   of whole notes, more than eight) — an agent asked for a 16-bar partimento hung the page that way. Now `cac
