@@ -90,6 +90,7 @@
   "Opens a work: :room (shared), :solo (private) or :local (not saved)."
   [kind id nm]
   (eng/stop!)
+  (risky! (str "opening the work «" nm "»"))
   (reset! lesson nil)
   (reset! cbox/trust (not= kind :room))
   (cbox/forget-language! "clojurescript")

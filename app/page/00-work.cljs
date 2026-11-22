@@ -620,6 +620,82 @@
 
 (defonce work (atom {:kind nil :id nil :name nil}))
 
+;; ───────────────────────── safe mode: a page that froze ─────────────────────────
+;; Code of a work (a component, a script, a package's kernel) can keep the page's only thread busy, and then nothing
+;; answers. A page frozen cannot say so; the next one can. Each gesture, opening a work, ▶ and an agent's content
+;; arriving open a window of a few seconds, written in this tab's session storage (what, in which work, when — a reload keeps it, another tab has its own) and erased
+;; when the window closes — or when the page is closed or reloaded normally. A page that froze inside one never erases
+;; it: the next page finds it and starts in safe mode — the engine held, no code of the work or of the packages run —
+;; so the work can be opened, the cause found and taken away (an agent's offer chosen again, a box deleted). Reloading
+;; leaves it. (safe-mode!) enters it by hand.
+
+(def risky-key "kairotic-risky")
+(def risky-ms 4000)
+(defonce safe-mode (atom nil))   ; nil, or {:what :work :t}: what the page was doing when it froze
+
+(defn risky!
+  "A few seconds in which this page may freeze, and if it does, what it was doing (for the next page)."
+  [what]
+  (try
+    (let [v (js/JSON.stringify #js {:what (str what) :work (str (or (:name @work) "")) :t (js/Date.now)})]
+      (.setItem js/sessionStorage risky-key v)
+      (js/setTimeout (fn [] (try (when (= v (.getItem js/sessionStorage risky-key)) (.removeItem js/sessionStorage risky-key))
+                                 (catch :default _ nil)))
+                     risky-ms))
+    (catch :default _ nil))
+  nil)
+
+(defn froze-last-time
+  "What the last page was doing when it froze ({:what :work :t}, within the last half hour), or nil; and forgets it."
+  []
+  (try
+    (let [raw (.getItem js/sessionStorage risky-key)]
+      (.removeItem js/sessionStorage risky-key)
+      (when raw
+        (let [o (js->clj (js/JSON.parse raw) :keywordize-keys true)]
+          (when (< (- (js/Date.now) (:t o 0)) (* 30 60 1000)) o))))
+    (catch :default _ nil)))
+
+(defn safe-banner!
+  "The notice of safe mode, on top of the page, with a button to leave it (reload)."
+  []
+  (try
+    (when-not (.getElementById js/document "safe-banner")
+      (let [el (.createElement js/document "div")
+            {:keys [what work]} @safe-mode]
+        (set! (.-id el) "safe-banner")
+        (.setAttribute el "role" "alert")
+        (set! (.. el -style -cssText)
+              (str "position:fixed;top:0;left:0;right:0;z-index:99999;padding:8px 14px;font:13px/1.4 ui-sans-serif,system-ui,sans-serif;"
+                   "background:#fff4d6;color:#4a3800;border-bottom:1px solid #e2c26a;display:flex;gap:12px;align-items:center"))
+        (set! (.-innerHTML el)
+              (str "<span><b>Safe mode</b>: " (if (seq (str what))
+                                                (str "the page froze last time" (when (seq (str work)) (str " in «" (esc work) "»"))
+                                                     ", while: <code>" (esc (ai/cut what 140)) "</code>. ")
+                                                "")
+                   "Nothing plays and no code of the work runs, so you can open it and take away what froze it "
+                   "(choose another offer of an agent, delete a box). </span>"
+                   "<button class=\"act\" id=\"safe-leave\" style=\"margin-left:auto\">Leave safe mode</button>"))
+        (.appendChild (.-body js/document) el)
+        (.addEventListener (.getElementById js/document "safe-leave") "click" (fn [_] (.reload js/location)))))
+    (catch :default _ nil)))
+
+(defn safe-mode!
+  "Safe mode: the engine held and no code of the work or of the packages run (a page that froze last time starts
+   in it). (safe-mode!) enters it by hand; reloading the page leaves it."
+  ([] (safe-mode! {:what "" :work (:name @work) :t (js/Date.now)}))
+  ([info]
+   (reset! safe-mode info)
+   (eng/stop!)
+   (reset! eng/held true)
+   (reset! cbox/held true)
+   (safe-banner!)
+   :safe))
+
+;; a page closed or reloaded normally did not freeze
+(try (.addEventListener js/window "pagehide" (fn [_] (try (.removeItem js/sessionStorage risky-key) (catch :default _ nil))))
+     (catch :default _ nil))
+
 (defn uid [] (:id @me))
 
 (defn base-of [kind id]

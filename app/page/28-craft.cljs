@@ -158,7 +158,7 @@
    the work."
   [text msgs]
   (let [k (klass text)]
-    (-> (craft-def k)
+    (-> (if @eng/held (js/Promise.reject (js/Error. "safe mode: no class runs (reload the page to leave it)")) (craft-def k))
         (.then
          (fn [d]
            (when-not (fn? (:receive d)) (throw (js/Error. (str k " receives no messages"))))

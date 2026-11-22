@@ -78,7 +78,8 @@
 (defonce trust (atom false))
 ;; sources this page brought itself from the official library (Study 22): they run without asking
 (defonce trusted (atom #{}))
-(defn allowed? [source] (or @trust (contains? @trusted source)))
+(defonce held (atom false))   ; safe mode (the page sets it): no code of the work runs, nor of the packages
+(defn allowed? [source] (and (not @held) (or @trust (contains? @trusted source))))
 
 (register-language! "clojurescript"
   (fn [source]
