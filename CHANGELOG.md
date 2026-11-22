@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Rules: an inventory, toward one engine** (`docs/rules.md`; discussion #353, step 1). Every rule the constraint
+  engines hold today (`counterpoint.mjs`, `partimento.mjs`, `soft.mjs`, Studies 61–64), gathered into some twenty
+  general, parametrized rules by context (note, line, vertical, pair, chord, progression, given, edge) with their
+  lookback — the catalogue of a package of its own, `@kairotic/rules`, with styles in EDN (named, versioned,
+  inheriting), local search beyond about 10 s, and room for learning.
 - **Rehearsal: the score learns how it sounds** (discussion #308, steps 2–4; `@kairotic/analysis` 0.8.6). Each note
   has a profile — from the notation (its pitch class as a chroma), or learned with `(learn! :bN)` from the takes that
   kept what each note sounded like: each descriptor's mean, spread, and weight (how well it tells the note from its
