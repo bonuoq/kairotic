@@ -108,13 +108,21 @@ export function frameVoice(cf, key) {
   return { voice: { ...vo, V }, V, phrase, n };
 }
 
+/** A move of the frame by its interval in steps: "0" (the note again, held: a syncopation), "+1" … "+8", "−1" … "−8"
+ *  (an octave or more as 8). */
+export const intervalKey = (s) => (s === 0 ? "0" : (s > 0 ? "+" : "-") + Math.min(8, Math.abs(s)));
+
 /**
  * A frame drawn by a bridge over the cantus firmus: a note a half bar (units), legal under the rules of every phrase
- * with the strict line and the species' leaps (frameVoice). {voice, units (codes), names} or null.
+ * with the strict line and the species' leaps (frameVoice); costs.frame, a cost by interval, where measured. {voice,
+ * units (codes), names} or null.
  */
-export function frameOf(cf, key, { temp = 0.6, r = Math.random } = {}) {
+export function frameOf(cf, key, { temp = 0.6, r = Math.random, costs = null } = {}) {
   const { voice, V, phrase } = frameVoice(cf, key);
-  const B = bridgeVoice(V, { temp });
+  // the frame's moves, where measured (costs.frame: a cost by interval, intervalKey): beside the rules', in the bridge
+  const fc = costs && costs.frame;
+  const extra = fc ? (t, c, U) => (t > 0 ? fc[intervalKey(codeDegree(c) - codeDegree(U[t - 1]))] || 0 : 0) : null;
+  const B = bridgeVoice(V, { temp, extra });
   if (!B.possible) return null;
   const U = B.draw(r);
   return U ? { voice, phrase, units: U, names: U.map(voice.name) } : null;
@@ -314,7 +322,7 @@ function choose(opts, temp, r) {
  *  (measure.mjs). {frame, eighths, spans, rhythm} or null. */
 export function florid(cf, key, { temp = 0.4, ftemp = 0.5, rtemp = 0.5, density = 0.6, r = Math.random, tries = 6, costs = null } = {}) {
   for (let i = 0; i < tries; i++) {
-    const F = frameOf(cf, key, { temp, r });
+    const F = frameOf(cf, key, { temp, r, costs });
     if (!F) return null;
     const E = elaborate(F, cf, key, { temp: ftemp, rtemp, r, density, costs });
     if (E) return { ...E, frameUnits: F.units };

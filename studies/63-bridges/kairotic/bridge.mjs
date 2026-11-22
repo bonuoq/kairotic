@@ -35,14 +35,15 @@ const lse = (a, b) => (a === LOG0 ? b : b === LOG0 ? a : Math.max(a, b) + Math.l
 /**
  * A bridge over a kernel's voice V ({n, codes, check(U, t, c), costParts(U, c)}): {logZ (the log weight of every
  * legal line through the pins), draw(r) → a line (codes) or null, map() → the likeliest line step by step}.
- * pins: Map unit → code. temp: the temperature (the lower, the more the cheapest ways weigh). extra(t, c): a cost
- * added to the rules' (a variation's novelty: the surface's own note dearer).
+ * pins: Map unit → code. temp: the temperature (the lower, the more the cheapest ways weigh). extra(t, c, U): a cost
+ * added to the rules' (a variation's novelty: the surface's own note dearer; a measured interval's, from U's last note).
  */
 export function bridgeVoice(V, { pins = new Map(), temp = 0.6, window = 3, extra = null } = {}) {
   const T = Math.max(1e-3, temp), n = V.n;
   const memo = new Map();
-  // (extra(t, c): a cost of the bridge's own beside the rules', as a variation's novelty)
-  const cost = (U, c) => total(V.costParts(U, c)) + (extra ? extra(U.length, c) : 0);
+  // (extra(t, c, U): a cost of the bridge's own beside the rules', as a variation's novelty; U the line before t, read
+  // no further back than the window)
+  const cost = (U, c) => total(V.costParts(U, c)) + (extra ? extra(U.length, c, U) : 0);
   const cands = (t) => (pins.has(t) ? [pins.get(t)] : V.codes);
   /** log of the weight of every legal way from U (length t) to the end, through the pins. */
   function back(U) {
