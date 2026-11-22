@@ -642,11 +642,12 @@
     :see ["pitch~" "onset~" "freqt" "quantize"]}
 
    "follow"
-   {:package "@kairotic/analysis" :usage "follow [ahead] [band] [descriptor …]"
+   {:package "@kairotic/analysis" :usage "follow [ahead] [band] [hmm] [descriptor …]"
     :doc "Follows a performer through a tree (discussion #204): each note heard is matched with a note a little ahead of where the performer was, by pitch and by when it was expected at the performer's tempo; wrong notes pass, skipped notes are skipped. Wires written on the notes ([:note {… :wire {:send :swell}}], or (wire! :bN note :swell)) send what they send: rigid when the note is reached (or caught up once, if it was passed over), elastic on their own at the expected time plus a tolerance if the note does not come, or led by the electronics at that time. At :stop, the take — where each note was played — for the tree box."
     :inlets ["Hz from pitch~ (0: silence); :start, :stop" "onsets (from onset~): a new note even on the same pitch" "the tree to follow (from a tree box)" "with words after its numbers (follow rms centroid chroma), one inlet each: a descriptor (features~, chroma~), whose mean while each note sounds goes into the take as what it sounded like (:profile); notes are matched by them too (by the notation's chroma, or by what (learn! :bN) learned), and a sound without a pitch is found by them alone"]
     :outlets ["the written beat where the performer is" "[:note id]: the note found" "what a wire sends when it goes on" "at :stop, [:take {…}]: into the tree box, kept only for you"]
-    :messages [[":start" "from the top of the tree"] [":stop" "ends, and sends the take"]
+    :messages [["follow hmm" "the probabilistic follower: a probability for every note instead of one bet, so that a doubtful sound does not lose the place and a wrong step is undone when the next sounds point back (discussion #308)"]
+               [":start" "from the top of the tree"] [":stop" "ends, and sends the take"]
                ["[:here \"n3\"] · (here! :bN 3) · a click on a note of the continuum" "the performer is there: ahead, as if heard; back, from there again (its wires go on again)"]]
     :example (lines "(box :b1 \"tree\" 420 30)" "(tree! :b1 [:voice {:tempo 72} [:measure {:meter [4 4]} \"c4/1 e4 g4 c5\"] [:measure [:note {:pitch \"g4\" :dur 2 :wire {:send :swell}}] [:note {:pitch \"e4\" :dur 1 :wire {:send :fade :kind :elastic :tol 0.5}}] \"c4/1\"]])"
                     "(box :b2 \"adc~ 1\" 40 30)" "(box :b3 \"pitch~ 80 1000\" 40 90)" "(box :b4 \"onset~\" 240 90)"
