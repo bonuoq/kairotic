@@ -5,16 +5,20 @@
 // that the frequencies of Fux's own florid examples (Gradus ad Parnassum, fifth species) can weigh what the engine
 // draws (discussion #342, step 3 of the florid road).
 //
-//   a line      {cf, key, eighths, frame?}: the cantus firmus a note a bar, the florid line on the eighths' grid
-//               (a note held across eighths names them again), the frame's names (a note a half bar) if known
-//   read        readLine(line) → {frame, spans: [{t, notes, durs, cell, figure, loose, shape, tiedIn}]}: each half
+//   a line      {cf, key, eighths, frame?, skip?}: the cantus firmus a note a bar, the florid line on the eighths' grid
+//               (a note held across eighths names them again), the frame's names (a note a half bar) if known,
+//               the half bars to leave out of the counts (a rest it starts with)
+//   read        readLine(line) → {frame, spans: [{t, notes, durs, cell, figure, loose, shape, tiedIn}]}: the frame as
+//               the engine writes it (each half bar's downbeat; or Study 61's reduction), each half
 //               bar's struck notes and their lengths, its cell (CELLS, or "other:…"), its figure (FIGURES: the one
 //               whose shape it has, and whose context fits — or, loose, the shape alone; or "other:…")
 //   measure     measure(lines) → the counts: figures, cells, bars' rhythms, ties (to an equal or shorter value or
 //               not), a bar like the one before, notes a bar along the phrase
-//   costs       costsOf(stats) → {figures, cells}: a cost each, −log of its share against the commonest (smoothed),
+//   costs       costsOf(stats) → {figures, cells, bars}: a cost each, −log of its share against the commonest (smoothed),
 //               for florid({costs}) — a first guess: how often a figure is heard is not how much it is preferred,
 //               where the frame leaves room for it or not
+//   Fux         loadFux() his twelve two-part florid examples (corpus/fux, **kern, CC0); FUX_COSTS the costs fitted
+//               to them (corpus/fit.mjs)
 //   fit         fitCosts(stats, generate) → the costs with which the engine's own lines are heard as often as the
 //               corpus's: rounds of drawing, measuring, and moving each cost by the log of the two shares' ratio (a
 //               maximum-entropy fit, its moments the figures' and the cells' shares)
@@ -28,33 +32,39 @@ const cellKey = (durs) => Object.keys(CELLS).find((c) => CELLS[c].join() === dur
 export const eighthsOf = (notes) => notes.flatMap(({ name, dur }) => Array(dur).fill(name));
 
 /** The struck notes of half bar t of a line on the eighths' grid: their names, lengths (cut at the half bar's end),
- *  and whether the first is held into it from the half bar before (a tie). */
-export function struckAt(eighths, t) {
+ *  and whether the first is held into it from the half bar before (a tie). struck: where a note is struck, if known
+ *  (else a name again is held). */
+export function struckAt(eighths, t, struck = null) {
   const p = t * SUB, names = [], durs = [];
+  const on = (i) => (struck ? struck[i] : i === 0 || eighths[i] !== eighths[i - 1]);
   for (let i = p; i < p + SUB && i < eighths.length; i++) {
-    if (i === p || eighths[i] !== eighths[i - 1]) { names.push(eighths[i]); durs.push(1); } else durs[durs.length - 1]++;
+    if (i === p || on(i)) { names.push(eighths[i]); durs.push(1); } else durs[durs.length - 1]++;
   }
-  return { names, durs, tiedIn: p > 0 && eighths[p] === eighths[p - 1] };
+  return { names, durs, tiedIn: p > 0 && !on(p) };
 }
 
-/** The frame of a line: given, or the level of Study 61's reduction as long as the frame (a note a half bar). */
-export function frameOfLine({ cf, key, eighths, frame = null }) {
+/** The frame of a line: given; or as the engine writes it, the note on each half bar's downbeat (a suspension the
+ *  dissonance, held over); or (by: "reduce") the level of Study 61's reduction as long as the frame, which reads a
+ *  suspension by its resolution, brought onto the strong beat. */
+export function frameOfLine({ cf, key, eighths, frame = null }, by = "downbeats") {
   if (frame) return frame;
-  const n = (split(cf).length - 1) * 2 + 1, R = reduceFlorid(cf, key, eighths);
+  const n = (split(cf).length - 1) * 2 + 1;
+  if (by === "downbeats") return Array.from({ length: n }, (_, t) => eighths[t * SUB]);
+  const R = reduceFlorid(cf, key, eighths);
   const k = R.an.levels.findIndex((l) => l.length <= n);
   return R.levels[k < 0 ? R.levels.length - 1 : k];
 }
 
 /** A line read back: its frame, and each half bar's notes, cell and figure (as florid.mjs's catalogue names them). */
-export function readLine(line) {
+export function readLine(line, { frame: by = "downbeats" } = {}) {
   const { cf, key, eighths } = line, K = keyOf(key);
-  const names = frameOfLine(line), n = names.length;
+  const names = frameOfLine(line, by), n = names.length;
   let fr;
   try { fr = frameFrom(cf, key, names); } catch (e) { return null; }
   const ctx = contextOf(fr), deg = (nm) => codeDegree(codeOf(K, nm));
   const spans = [];
   for (let t = 0; t < n - 1; t++) {
-    const { names: ns, durs, tiedIn } = struckAt(eighths, t), cell = cellKey(durs);
+    const { names: ns, durs, tiedIn } = struckAt(eighths, t, line.struck), cell = cellKey(durs);
     const shape = ns.map((nm) => deg(nm) - deg(names[t])), { s, x } = ctx[t];
     let figure = null, loose = false;
     if (ns[0] === names[t]) {
@@ -78,6 +88,7 @@ export function measure(lines) {
     st.lines++;
     const S = R.spans;
     S.forEach((sp, t) => {
+      if (t < (line.skip || 0)) return;
       st.halves++; inc(st.figures, sp.figure); inc(st.cells, sp.cell); if (sp.loose) st.loose++;
       if (sp.tiedIn && t > 0) { st.ties++; const d1 = S[t - 1].durs[S[t - 1].durs.length - 1]; if (d1 >= 2 && d1 >= sp.durs[0]) st.tiesOk++; }
     });
@@ -102,8 +113,9 @@ export function costsOf(st, { alpha = 0.5, scale = 0.5 } = {}) {
     const c = ids.map((id) => (counts.get(id) || 0) + alpha), max = Math.max(...c);
     return Object.fromEntries(ids.map((id, i) => [id, +(scale * Math.log(max / c[i])).toFixed(3)]));
   };
-  return { figures: table(FIGURES.map((f) => f.id), st.figures), cells: table(Object.keys(CELLS), st.cells) };
+  return { figures: table(FIGURE_IDS, st.figures), cells: table(CELL_IDS, st.cells), bars: table(BAR_IDS, st.bars) };
 }
+const FIGURE_IDS = FIGURES.map((f) => f.id), CELL_IDS = Object.keys(CELLS), BAR_IDS = CELL_IDS.flatMap((a) => CELL_IDS.map((b) => a + "+" + b));
 
 /** The counts in a few lines of text. */
 export function describe(st) {
@@ -121,30 +133,98 @@ export function describe(st) {
 
 const shares = (m, ids, alpha) => { const c = ids.map((id) => (m.get(id) || 0) + alpha), z = c.reduce((a, b) => a + b, 0); return Object.fromEntries(ids.map((id, i) => [id, c[i] / z])); };
 
-/** How far two counts' figure shares are apart: total variation, 0 … 1. */
-export function distance(a, b, alpha = 0.5) {
-  const ids = FIGURES.map((f) => f.id), p = shares(a.figures, ids, alpha), q = shares(b.figures, ids, alpha);
-  return ids.reduce((s, id) => s + Math.abs(p[id] - q[id]), 0) / 2;
+/** How far two counts are apart: the total variation (0 … 1) of their figures' shares and of their bars' rhythms',
+ *  the mean of the two ({figures, bars} each apart with parts: true). */
+export function distance(a, b, alpha = 0.5, { parts = false } = {}) {
+  const tv = (ids, m) => { const p = shares(a[m], ids, alpha), q = shares(b[m], ids, alpha); return ids.reduce((s, id) => s + Math.abs(p[id] - q[id]), 0) / 2; };
+  const figures = tv(FIGURE_IDS, "figures"), bars = tv(BAR_IDS, "bars");
+  return parts ? { figures, bars } : (figures + bars) / 2;
 }
 
 /**
  * The costs fitted to a corpus's counts: from costsOf, rounds of generate(costs) → lines, measured, each figure's and
- * cell's cost moved by eta × log(its share in the engine's lines / its share in the corpus); the round nearest the
+ * cell's and bar rhythm's cost moved by eta × log(its share in the engine's lines / its share in the corpus); the round nearest the
  * corpus kept. → {costs, distance, rounds: [{distance}]}.
  */
 export function fitCosts(target, generate, { rounds = 5, eta = 0.5, alpha = 0.5 } = {}) {
   let costs = costsOf(target, { alpha }), best = null;
-  const fids = FIGURES.map((f) => f.id), cids = Object.keys(CELLS), log = [];
-  const pt = shares(target.figures, fids, alpha), ct = shares(target.cells, cids, alpha);
+  const fids = FIGURE_IDS, cids = CELL_IDS, bids = BAR_IDS, log = [];
+  const pt = shares(target.figures, fids, alpha), ct = shares(target.cells, cids, alpha), bt = shares(target.bars, bids, alpha);
   for (let k = 0; k <= rounds; k++) {
     const st = measure(generate(costs)), d = distance(st, target, alpha);
     log.push({ distance: d });
     if (!best || d < best.d) best = { d, costs };
     if (k === rounds) break;
-    const pm = shares(st.figures, fids, alpha), cm = shares(st.cells, cids, alpha);
+    const pm = shares(st.figures, fids, alpha), cm = shares(st.cells, cids, alpha), bm = shares(st.bars, bids, alpha);
     const step = (tab, ids, m, t) => { const out = {}; for (const id of ids) out[id] = Math.max(0, tab[id] + eta * Math.log(m[id] / t[id])); const lo = Math.min(...Object.values(out)); for (const id of ids) out[id] = +(out[id] - lo).toFixed(3); return out; };
-    costs = { figures: step(costs.figures, fids, pm, pt), cells: step(costs.cells, cids, cm, ct) };
+    costs = { figures: step(costs.figures, fids, pm, pt), cells: step(costs.cells, cids, cm, ct), bars: step(costs.bars, bids, bm, bt) };
   }
   // the round nearest the corpus (a round may overshoot: the frames leave each figure more or less room)
   return { costs: best.costs, distance: best.d, rounds: log };
 }
+
+// ─── a corpus in Humdrum **kern (Fux's examples, as Mark Gotham's species corpus has them) ───
+const MODE_OF = { c: "ionian", d: "dorian", e: "phrygian", f: "lydian", g: "mixolydian", a: "aeolian" };
+const DUR8 = { 1: 8, 2: 4, 4: 2, 8: 1 };
+
+/** A **kern token's note: {name ("D4", "Bb3", "C#5"; null a rest), dur (eighths), tied (the second of a tie: held,
+ *  not struck)}. */
+export function kernNote(tok) {
+  const m = /^[[(]*(\d+)(\.?)([a-gA-Gr]+)([#-]*)/.exec(tok.trim());
+  if (!m) return null;
+  const d = DUR8[m[1]];
+  if (!d) throw new Error(`a duration not on the eighths' grid: ${tok}`);
+  const dur = m[2] ? d + d / 2 : d, p = m[3];
+  if (p[0] === "r") return { name: null, dur };
+  const letter = p[0].toUpperCase(), oct = p[0] === p[0].toLowerCase() ? 3 + p.length : 4 - p.length;
+  return { name: letter + m[4].replace(/-/g, "b") + oct, dur, tied: /[\]_]/.test(tok) };
+}
+
+/**
+ * Fux's example from its **kern: {id, figure, mode, key, cf (a note a bar), cfPart ("Lower" | "Upper"), notes ([{name,
+ * dur}] of the added part), rest (the eighths of rest it starts with)}. octave: added to the cantus firmus's octaves (−1,
+ * the bass an octave down, where the engine has it; the counterpoint stays, its intervals compound).
+ */
+export function fromKern(text, { octave = -1 } = {}) {
+  const lines = text.split(/\r?\n/);
+  const opr = lines.find((l) => l.startsWith("!!!OPR")) || "";
+  const fig = (/Fig\. (\w+)/.exec(opr) || [])[1], final = ((/Modal final: (\w)/.exec(opr) || [])[1] || "c").toLowerCase();
+  const cfPart = (/Cantus firmus: (\w+)/.exec(opr) || [])[1];
+  const data = lines.filter((l) => l && !/^[!*=]/.test(l)).map((l) => l.split("\t"));
+  const voices = [0, 1].map((i) => data.map((r) => r[i]).filter((x) => x && x !== ".").map(kernNote).filter(Boolean));
+  const ci = voices.findIndex((v) => v.every((x) => x.name === null || x.dur === 8));
+  const shift = (nm) => nm.replace(/-?\d+$/, (o) => String(Number(o) + octave));
+  const cf = voices[ci].filter((x) => x.name).map((x) => shift(x.name));
+  const notes = [];
+  let rest = 0;
+  for (const x of voices[1 - ci]) {
+    if (x.name === null) { if (!notes.length) rest += x.dur; continue; }
+    notes.push(x);
+  }
+  return { id: "gap_" + fig, figure: fig, mode: MODE_OF[final], key: { tonic: final.toUpperCase(), mode: MODE_OF[final] }, cf, cfPart, notes, rest };
+}
+
+/** Fux's example as a line to read: the rest it starts with held as its first note (the engine's half bars start on
+ *  the downbeat), the half bars it covers left out of the counts (skip). */
+export function lineOfKern(ex) {
+  const eighths = [...Array(ex.rest).fill(ex.notes[0].name), ...eighthsOf(ex.notes)];
+  // where a note is struck (a note again, not tied, is struck again: Fux's anticipation in quarters)
+  const struck = [...Array(ex.rest).fill(false), ...ex.notes.flatMap((x) => [!x.tied, ...Array(x.dur - 1).fill(false)])];
+  struck[0] = true;
+  return { cf: ex.cf.join(" "), key: ex.key, eighths, struck, skip: Math.ceil(ex.rest / SUB), id: ex.id, mode: ex.mode };
+}
+
+const FUX_FILES = ["082", "083", "084a", "084b", "085a", "085b", "086a", "086b", "087a", "087b", "088a", "088b"].map((x) => `gap_${x}.krn`);
+/** Fux's twelve two-part florid examples (corpus/fux, Mark Gotham's encoding, CC0), read (fromKern): in Node from
+ *  the files, in the browser fetched beside this module. */
+export async function loadFux() {
+  const base = new URL("../corpus/fux/", import.meta.url);
+  const isNode = typeof process !== "undefined" && process.versions && process.versions.node && base.protocol === "file:";
+  const read = isNode ? async (f) => (await import("node:fs")).readFileSync(new URL(f, base), "utf8") : async (f) => (await fetch(new URL(f, base))).text();
+  return Promise.all(FUX_FILES.map(async (f) => fromKern(await read(f))));
+}
+
+/** The engine's costs fitted to Fux's examples (corpus/fit.mjs: the five with the cantus firmus below, 97 half bars;
+ *  drawn over his six canti firmi in their modes, figures 0.53 → 0.18 and bars' rhythms 0.61 → 0.05 from his, total
+ *  variation). florid({costs: FUX_COSTS}). */
+export const FUX_COSTS = {"figures":{"held":0.57,"passing":0,"neighbor":1.55,"anticipation":2.68,"escape":3.63,"skip":1.94,"tirata":0,"turn":1.91,"double-neighbor":1.88,"passing-eighths":0.23,"cambiata":0,"anticipated-resolution":0,"ornamented-resolution":0},"cells":{"H":0.49,"Q":0,"DQ":1.56,"QE":0.32},"bars":{"H+H":0.89,"H+Q":0.77,"H+DQ":0.1,"H+QE":1.6,"Q+H":0.01,"Q+Q":0,"Q+DQ":0,"Q+QE":0.61,"DQ+H":0,"DQ+Q":0,"DQ+DQ":0,"DQ+QE":0,"QE+H":0.83,"QE+Q":0,"QE+DQ":0,"QE+QE":0}};

@@ -17,7 +17,7 @@ export async function run() {
   is("the frame: a note a half bar over the cantus firmus (19 for ten bars), every one legal under the rules of every phrase with the strict line", fr && fr.names.length === n && fr.units.every((u, t) => fr.voice.V.check(fr.units.slice(0, t), t, u) === null));
   // the species' leaps, over many frames: up to a 5th or the octave, no tritone, no 6th but the minor one going up
   let leapsOk = true;
-  for (const [, cc] of Object.entries(F.CANTI)) for (let s = 1; s <= 8; s++) {
+  for (const [, cc] of Object.entries(F.CANTI).filter(([, cc]) => !cc.fux)) for (let s = 1; s <= 8; s++) {
     const f = F.frameOf(cc.cf, cc.key, { r: rng(s) });
     if (!f) { leapsOk = false; continue; }
     const ns = f.names.filter((x, i) => i === 0 || x !== f.names[i - 1]);
@@ -28,7 +28,7 @@ export async function run() {
 
   // many florid lines, every figure checked
   const runs = [];
-  for (const [id, cc] of Object.entries(F.CANTI)) for (let s = 1; s <= 6; s++) { const x = F.florid(cc.cf, cc.key, { r: rng(s) }); if (x) runs.push({ id, cc, x }); }
+  for (const [id, cc] of Object.entries(F.CANTI).filter(([, cc]) => !cc.fux)) for (let s = 1; s <= 6; s++) { const x = F.florid(cc.cf, cc.key, { r: rng(s) }); if (x) runs.push({ id, cc, x }); }
   is("florid lines drawn over the three canti firmi, six seeds each: every one made", runs.length === 18);
   let shapes = true, frameKept = true, diss = true, count = true;
   const used = new Map();
@@ -118,14 +118,14 @@ export async function run() {
     const lines = runs.map(({ cc, x }) => ({ cf: cc.cf, key: cc.key, eighths: x.eighths, frame: x.frame }));
     let exact = 0, near = 0, tot = 0;
     runs.forEach(({ x }, i) => {
-      const R = M.readLine(lines[i]), Rr = M.readLine({ ...lines[i], frame: null });
+      const R = M.readLine(lines[i]), Rd = M.readLine({ ...lines[i], frame: null }), Rr = M.readLine({ ...lines[i], frame: null }, { frame: "reduce" });
       x.spans.slice(0, -1).forEach((sp, t) => {
         tot++;
-        if (R.spans[t].figure === sp.figure && R.spans[t].cell === x.rhythm[t]) exact++;
+        if (R.spans[t].figure === sp.figure && R.spans[t].cell === x.rhythm[t] && Rd.spans[t].figure === sp.figure) exact++;
         if (Rr && Rr.spans[t].figure === sp.figure) near++;
       });
     });
-    is("measured: every half bar read back as drawn, its cell and its figure, given the frame", exact === tot);
+    is("measured: every half bar read back as drawn, its cell and its figure, given the frame or read on the downbeats", exact === tot);
     is("… with the frame found by Study 61's reduction instead, most of the figures (≥ 85%)", near / tot >= 0.85);
     notes.push(`read back with the reduced frame: ${Math.round(100 * near / tot)}% of ${tot} figures`);
     const st = M.measure(lines), C = M.costsOf(st);
@@ -133,7 +133,7 @@ export async function run() {
     // a corpus drawn with other costs (turns, runs, passing notes; few skips and held notes): fitted, the engine comes near
     const gen = (costs, s0) => {
       const out = [];
-      for (const [, cc] of Object.entries(F.CANTI)) for (let s = s0; s < s0 + 3; s++) { const x = F.florid(cc.cf, cc.key, { r: rng(s), costs }); if (x) out.push({ cf: cc.cf, key: cc.key, eighths: x.eighths, frame: x.frame }); }
+      for (const [, cc] of Object.entries(F.CANTI).filter(([, cc]) => !cc.fux)) for (let s = s0; s < s0 + 3; s++) { const x = F.florid(cc.cf, cc.key, { r: rng(s), costs }); if (x) out.push({ cf: cc.cf, key: cc.key, eighths: x.eighths, frame: x.frame }); }
       return out;
     };
     const other = { figures: { held: 2, skip: 2, escape: 2, anticipation: 2, passing: 0, tirata: 0, turn: 0.2, neighbor: 0.3, cambiata: 0.3, "double-neighbor": 0.5, "passing-eighths": 0.3 }, cells: { H: 1.5, Q: 0, DQ: 0.8, QE: 0 } };
@@ -141,6 +141,31 @@ export async function run() {
     const fit = M.fitCosts(T, (c) => gen(c, 1), { rounds: 3 });
     is("fitted to a corpus drawn with other costs: the engine's figures come at least twice as near it (total variation)", fit.distance <= d0 / 2);
     notes.push(`fitted: ${d0.toFixed(2)} → ${fit.rounds.map((r) => r.distance.toFixed(2)).join(" → ")}`);
+  }
+
+  // Fux's own: his twelve florid examples read in their modes, their ficta the modes'; the engine over his canti
+  // firmi, his cadences; drawn with the costs fitted to him, nearer him
+  {
+    const { keyOf, codeOf, codeDegree, codeAlter } = await import("../kairotic/partimento.mjs");
+    const ex = await M.loadFux();
+    let fictaOk = true;
+    for (const e of ex) { const K = keyOf(e.key); for (const x of e.notes) { const c = codeOf(K, x.name), a = codeAlter(c); if (a !== 0 && a !== K.ficta(codeDegree(c))) fictaOk = false; } }
+    is("Fux's twelve florid examples read (figures 82–88, in six modes), every altered note a ficta of its mode", ex.length === 12 && new Set(ex.map((e) => e.mode)).size === 6 && fictaOk);
+    const lines = ex.filter((e) => e.cfPart === "Lower").map(M.lineOfKern), st = M.measure(lines);
+    const known = [...st.figures.entries()].filter(([k]) => !k.startsWith("other")).reduce((a, [, v]) => a + v, 0);
+    is("… the five with the cantus firmus below: every half bar's figure one of the catalogue's; every tie to an equal or shorter value", st.lines === 5 && known === st.halves && st.ties > 0 && st.tiesOk === st.ties);
+    notes.push("Fux, measured: " + M.describe(st).slice(1, 5).join(" · "));
+    const fux = Object.values(F.CANTI).filter((cc) => cc.fux);
+    const gen = (costs, s0) => {
+      const out = [];
+      for (const cc of fux) for (let s = s0; s < s0 + 3; s++) { const x = F.florid(cc.cf, cc.key, { r: rng(s), costs }); if (x) out.push({ cc, x, line: { cf: cc.cf, key: cc.key, eighths: x.eighths, frame: x.frame } }); }
+      return out;
+    };
+    const plain = gen(null, 11), dorian = plain.filter(({ cc }) => cc.key.mode === "dorian");
+    is("florid over Fux's six canti firmi in their modes: every one drawn, the dorian cadence through C♯", plain.length === 18 && dorian.every(({ x }) => x.frame[x.frame.length - 2] === "C#5" || x.frame[x.frame.length - 2] === "C#4" || !/^C/.test(x.frame[x.frame.length - 2])));
+    const d0 = M.distance(M.measure(plain.map((g) => g.line)), st), d1 = M.distance(M.measure(gen(M.FUX_COSTS, 11).map((g) => g.line)), st);
+    is("… drawn with the costs fitted to Fux (FUX_COSTS), at most half as far from his figures and bars' rhythms", d1 <= d0 / 2);
+    notes.push(`Fux's costs: ${d0.toFixed(2)} → ${d1.toFixed(2)} from his figures and rhythms`);
   }
 
   const x0 = runs[0].x;
