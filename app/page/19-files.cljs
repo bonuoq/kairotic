@@ -500,3 +500,27 @@
                   (gesture! (str "(here! " id " " (pr-str (.getAttribute h "data-id")) ")")))))))
         true)
       true))
+
+;; ───────── rehearsal: what the takes heard of each note, learned (discussion #308) ─────────
+
+(defn learn!
+  "Learns how each note of a tree box sounds from its takes that kept it (a follow box with descriptors: follow rms
+   centroid chroma): for each descriptor its mean, how much it varies, and how well it tells the note from its
+   neighbours. Kept on the tree's root (:profiles, with what belongs to performing it: hidden in the code window);
+   a follow box then matches notes by them too, and finds sounds without a pitch by them alone. The takes kept only
+   for you count too. (learn! :b3) → how many notes, from how many takes."
+  [id]
+  (need-tree-box id)
+  (let [t (tree-data id)
+        tks (filter :profile (concat (mei/takes t) (get @my-takes id)))
+        _ (when (empty? tks) (fail (str id " has no take that kept what its notes sounded like (follow with descriptors: follow rms chroma …)")))
+        ps (fl/learn (ct/events t) tks)]
+    (tree! id (mt/update-attrs t assoc :profiles ps))
+    (str (count ps) " notes learned from " (count tks) (if (= 1 (count tks)) " take" " takes"))))
+
+(defn unlearn!
+  "Forgets what rehearsals learned of a tree box: its notes are matched by their notation again."
+  [id]
+  (need-tree-box id)
+  (tree! id (mt/update-attrs (tree-data id) dissoc :profiles))
+  :unlearned)

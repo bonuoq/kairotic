@@ -92,6 +92,28 @@
       (t/eq "told it is back: from there again, the later notes to be played again"
             [(:now (fl/view back)) (:played (fl/view back)) (:next back)] ["n1" #{"n0" "n1"} 2])
       (t/is "… and the wire on that note goes on again" (some #(= "n1" (:id (second %))) (filter #(= :wire (first %)) (second (fl/here ahead 3 1))))))
+    ;; how a note sounds: from the notation, learned from takes, and matched by it (discussion #308, steps 2–4)
+    (let [sc (fl/score [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 d4 e4 f4"]])
+          ch (fn [& pcs] (reduce (fn [v p] (assoc v p 1)) (vec (repeat 12 0)) pcs))
+          ids (fn [found] (mapv :id (keep (fn [[k x]] (when (= k :at) x)) found)))]
+      (t/eq "from the notation: a note's pitch class, as a chroma" (:mean (fl/default-profile (nth sc 2))) {:chroma (ch 4)})
+      (t/eq "a sound without a pitch (pitch~ hears none) is found by its chroma"
+            (ids (:found (fl/follow sc [[0 60 0.8] [1 62 0.8] [2 nil 0.8 {:chroma (ch 4)}] [3 65 0.8]]))) ["n0" "n1" "n2" "n3"])
+      (t/eq "… and not when it sounds like none of the notes ahead"
+            (ids (:found (fl/follow sc [[0 60 0.8] [1 62 0.8] [2 nil 0.8 {:chroma (ch 9)}]]))) ["n0" "n1"])
+      ;; two rehearsals: the third note is a multiphonic (a chroma of E, B and F, noisy); the others are plain notes
+      (let [take (fn [fl e-chroma] {:id (str "r" fl) :profile {"n0" {:chroma (ch 0) :flatness 0.1} "n1" {:chroma (ch 2) :flatness 0.12}
+                                                             "n2" {:chroma e-chroma :flatness fl} "n3" {:chroma (ch 5) :flatness 0.1}}})
+            ps (fl/learn sc [(take 0.7 (ch 4 11 5)) (take 0.8 (ch 4 11 5 6))])]
+        (t/eq "learned from the takes that kept it: each note's mean, how much it varies, from how many takes"
+              [(get-in ps ["n2" :n]) (get-in ps ["n2" :mean :flatness]) (get-in ps ["n2" :sd :flatness])] [2 0.75 0.05])
+        (t/is "… and its weights: the multiphonic is told from its neighbours by how noisy it is more than by its chroma"
+              (> (get-in ps ["n2" :w :flatness]) (get-in ps ["n2" :w :chroma])))
+        (t/eq "with what was learned, the multiphonic is found by what is heard of it"
+              (ids (:found (fl/follow sc [[0 60 0.8] [1 62 0.8] [2 nil 0.8 {:chroma (ch 4 11 5) :flatness 0.74}] [3 65 0.8]] {:profiles ps})))
+              ["n0" "n1" "n2" "n3"])
+        (t/is "… where its notation alone would not (its chroma is not E's)"
+              (> (fl/obs-dist (fl/default-profile (nth sc 2)) {:chroma (ch 4 11 5)}) (fl/obs-dist (get ps "n2") {:chroma (ch 4 11 5) :flatness 0.74})))))
     (let [rep [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 c4 c4 d4"]]
           {:keys [found]} (fl/follow (fl/score rep) [[0 60 0.5] [1.1 60 0.5] [2.3 60 0.5] [3.2 62 0.5]])]
       (t/eq "repeated notes, one after the other" (mapv :id (keep (fn [[k x]] (when (= k :at) x)) found)) ["n0" "n1" "n2" "n3"]))
