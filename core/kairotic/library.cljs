@@ -188,7 +188,8 @@
 ;; Official packages that carry modules for the page itself rather than box classes (nothing to bring into
 ;; a work): where their files are, npm first at the pinned version, then the page's own copy.
 (def module-packages
-  {"@kairotic/faust-units" {:version "0.1.5" :local "kairotic/packages/faust-units/"}})
+  {"@kairotic/faust-units" {:version "0.1.5" :local "kairotic/packages/faust-units/"}
+   "@kairotic/rules"       {:version "0.1.0" :local "kairotic/packages/rules/"}})
 
 (defn module-origins
   "Where file `f` of a module package is, in order: npm (pinned version), then the page's own copy."
