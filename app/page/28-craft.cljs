@@ -39,7 +39,7 @@
     (if-not es
       (str/join " " out)
       (let [s (:t (first es))
-            same (take-while #(< (js/Math.abs (- (:t %) s)) 1e-6) es)
+            same (sort-by :pitch (take-while #(< (js/Math.abs (- (:t %) s)) 1e-6) es))
             more (drop (count same) es)
             d (apply max (map :dur same))
             gap (- s t)

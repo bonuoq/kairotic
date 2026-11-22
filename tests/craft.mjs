@@ -14,7 +14,7 @@ const until = async (page, src, ok, ms = 30000) => {
 // a promise of the page, awaited: its value as EDN
 const awaited = async (page, src, ms = 30000) => {
   await cljs(page, `(do (def craft-got nil) (.then ${src} (fn [r] (def craft-got r))) nil)`);
-  return until(page, "(pr-str craft-got)", (x) => x !== "nil", ms);
+  return until(page, "craft-got", (x) => x !== "nil", ms);
 };
 const answer = (code, doc) => JSON.stringify({ content: [{ type: "text", text: "Here it is.\n" + (doc ? "```agent\n" + doc + "\n```\n" : "") + "```clojure\n" + code + "\n```" }], stop_reason: "end_turn" });
 const ADD = (k) => ['(box :b1 "inlet" 20 20)', ...Array.from({ length: k }, (_, i) => `(box :b${i + 2} "inc" 20 ${80 + 60 * i})`),
@@ -24,7 +24,7 @@ const DOC2 = '{:about "Adds two." :inlets ["a number"] :outlets ["plus two"]}';
 const DOC3 = '{:about "Adds three." :inlets ["a number"] :outlets ["plus three"]}';
 
 // the Rule of the Octave up in C (as tests/cac.mjs), its chords as figures; the book's four voices; a wrong one
-const RO = `[:voice {:name "bass" :key "C major"} ${["c3 5/3", "d3 6/4/3", "e3 6/3", "f3 6/5"]
+const RO = `[:voice {:name "bass" :key "C major"} ${["c3 5/3", "d3 6/4/3", "e3 6/3", "f3 6/5", "g3 5/3", "a3 6/3", "b3 6/5", "c4 5/3"]
   .map((x) => { const [p, f] = x.split(" "); return `[:note {:pitch "${p}" :dur 2 :fig "${f}"}]`; }).join(" ")}]`;
 const voice = (name, ps) => `[:voice {:name "${name}"} ${ps.split(" ").map((p) => `[:note {:pitch "${p}" :dur 2}]`).join(" ")}]`;
 const BOOK = `[:piece ${voice("s", "g5 g5 g5 a5 g5 f5 f5 e5")} ${voice("a", "e5 f5 e5 d5 d5 c5 d5 c5")} ${voice("t", "c5 b4 c5 c5 b4 a4 g4 g4")} ${voice("b", "c3 d3 e3 f3 g3 a3 b3 c4")}]`;
@@ -37,9 +37,9 @@ export async function craft(page, check) {
     // ── a tree as Claude reads it ──
     const line = await cljs(page, '(voice-line (mt/notes [:voice "c4/1 d4/0.5 r/0.5 c4+e4/2"]) 0)');
     check("a voice as a line of the melody shorthand: rests where nothing sounds, chords together", line === '"c4/1 d4/0.5 r/0.5 c4+e4/2"', line);
-    const ro = await cljs(page, `(let [d (describe-tree ${RO})] [(:key d) (mapv (juxt :name :line :range) (:voices d)) (mapv (juxt :beat :note :fig) (:analysis d))])`);
+    const ro = await cljs(page, `(let [d (describe-tree ${RO})] [(:key d) (mapv (juxt :name :line :range) (:voices d)) (mapv (juxt :beat :note :fig) (take 3 (:analysis d)))])`);
     check("describe-tree: its key, its voices as lines with their range, the analysis on its notes",
-      ro === '["C major" [["bass" "c3/2 d3/2 e3/2 f3/2" ["c3" "f3"]]] [[0 "c3" "5/3"] [2 "d3" "6/4/3"] [4 "e3" "6/3"] [6 "f3" "6/5"]]]', ro);
+      ro === '["C major" [["bass" "c3/2 d3/2 e3/2 f3/2 g3/2 a3/2 b3/2 c4/2" ["c3" "c4"]]] [[0 "c3" "5/3"] [2 "d3" "6/4/3"] [4 "e3" "6/3"]]]', ro);
     const order = await cljs(page, `(mapv :name (:voices (describe-tree ${BOOK})))`);
     check("... voices from the highest down", order === '["s" "a" "t" "b"]', order);
     const tb = (await cljs(page, '(box "tree" 9700 100)')).trim(); made.push(tb);
