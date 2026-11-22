@@ -43,13 +43,41 @@ export async function run() {
       if (f) sp.notes.forEach((nm, j) => { if (nm !== x.frame[sp.unit] && !f.free.includes(j) && !consonant(bs[Math.floor(sp.unit / 2)], nm)) diss = false; });
     }
   }
-  is("… four eighths a half bar, the last half bar its final note", count);
+  is("… eight eighths a bar, the last half bar its final note", count);
   is("… every half bar begins on the frame's note (the figures ornament it)", frameKept);
   is("… every figure from the catalogue, and a dissonance only where its figure allows it", shapes && diss);
   is("… the catalogue at work: at least eight different figures used", used.size >= 8);
   notes.push("figures used: " + [...used.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(", "));
   const melodic = runs.every(({ x }) => x.eighths.every((nm, i) => i === 0 || ![6, 10, 11].includes(Math.abs(midiOf(nm) - midiOf(x.eighths[i - 1]))) && Math.abs(midiOf(nm) - midiOf(x.eighths[i - 1])) <= 12));
   is("… no tritone, 7th or leap beyond the octave between two notes of the surface", melodic);
+
+  // the rhythm: a cell a half bar, eighths in pairs on the weak quarter, parallelism, the arc
+  {
+    let cellsOk = true, pairs = true, third = false, again = 0, bars = 0, mid = 0, nm = 0, ends = 0, ne = 0;
+    for (const { x } of runs) {
+      const m = x.frame.length;
+      x.spans.forEach((sp) => {
+        const d = F.CELLS[x.rhythm[sp.unit]];
+        if (!d || d.length !== sp.notes.length) { cellsOk = false; return; }
+        let p = sp.unit * F.SUB;
+        d.forEach((len, j) => { for (let k = 0; k < len; k++) if (x.eighths[p + k] !== sp.notes[j]) cellsOk = false; if (len === 1 && p % F.SUB < 2) pairs = false; p += len; });
+      });
+      const R = [];
+      for (let i = 0; i + 1 < m - 1; i += 2) R.push(x.rhythm[i] + "+" + x.rhythm[i + 1]);
+      R.forEach((r, i) => {
+        bars++;
+        if (i && R[i - 1] === r) again++;
+        if (i > 1 && R[i - 1] === r && R[i - 2] === r) third = true;
+        const a = r.split("+").reduce((s2, c2) => s2 + F.CELLS[c2].length, 0);
+        if (i === 0 || i === R.length - 1) { ends += a; ne++; } else if (Math.abs(i - (R.length - 1) / 2) < 1.5) { mid += a; nm++; }
+      });
+    }
+    is("the rhythm: every half bar a cell (a half note, two quarters, a dotted quarter and an eighth, a quarter and two eighths), its figure's notes on it", cellsOk);
+    is("… eighths only on the half bar's weak quarter, in pairs (Fux)", pairs);
+    is("… parallelism: a bar's rhythm heard again in the next one now and then (≥ 8% of the bars), never a third time running", !third && again / bars >= 0.08);
+    is("… the arc: the phrase's middle bars busier than its first and last", mid / nm > ends / ne);
+    notes.push(`the rhythm: a bar like the one before in ${Math.round(100 * again / bars)}% of ${bars} bars; notes a bar ${(mid / nm).toFixed(1)} in the middle, ${(ends / ne).toFixed(1)} at the ends`);
+  }
 
   // suspensions: held, prepared with a neighbour, or resolved later (ornamented)
   {

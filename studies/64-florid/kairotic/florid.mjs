@@ -7,11 +7,19 @@
 //                 drawn by a bridge (Study 63) over the kernel every phrase answers to (partimento.mjs through
 //                 figuring.mjs: consonance on the strong half, passing on the weak one, suspensions prepared and
 //                 resolved, structural parallels refused…)
-//   the figures   each half bar of the frame, from its note a to the next one b, elaborated into four eighths by a
-//                 figure of the catalogue (FIGURES): a figure has a rhythm, a shape relative to a and b, and the
-//                 places where it may be dissonant — the dissonance it brings is justified by the frame it ornaments
-//                 (a passing tone between a and b, a neighbour of a, an escape tone leaving a, a cambiata…); and a
-//                 suspension of the frame may be held, or resolved later, ornamented
+//   the rhythm    each bar's rhythm chosen first, a cell a half bar (CELLS: a half note, two quarters, a dotted quarter
+//                 and an eighth, a quarter and two eighths — eighths only in pairs, on the weak quarter, as Fux
+//                 writes them), the whole line's rhythm drawn by a bridge over the bars with GTTM's preferences:
+//                 longer notes on stronger beats (MPR 5), a bar like the one before it once but not a third time
+//                 (parallelism, MPR 1, with Study 60's sweet spot: coherence without monotony), the bar's second half
+//                 the busier, and an arc of activity over the phrase (calm, busier towards its middle, calmer to the
+//                 cadence)
+//   the figures   each half bar of the frame, from its note a to the next one b, given its cell, a figure of the
+//                 catalogue (FIGURES): a shape relative to a and b, and the notes where it may be dissonant — the
+//                 dissonance it brings is justified by the frame it ornaments (a passing tone between a and b, a
+//                 neighbour of a, an escape tone leaving a, a cambiata…); a suspension of the frame prepared with a
+//                 neighbour, or resolved later; chosen with the melody's coherence on the surface (the soft rules of
+//                 every engine on the florid line itself, a direction that goes on, a figure in sequence)
 //   the surface   the eighths, a note held across them one note (as every engine reads a name again)
 //
 // And the other way: the surface reduced by Study 61's grammar (protovoices.mjs, reduction.mjs) on the eighths' grid
@@ -24,6 +32,7 @@ import { consonant as cons, midiOf, notesOfPhrase } from "./protovoices.mjs";
 import { bridgeVoice, voiceOver } from "./bridge.mjs";
 import { reduce, survivors } from "./reduction.mjs";
 import { exportMei, fromUnits, fileName } from "./export.mjs";
+import { melodicParts, total } from "./soft.mjs";
 
 const split = (s) => (Array.isArray(s) ? s : String(s || "").trim().split(/\s+/).filter(Boolean));
 const HOLD = /held \d+ units? at most/;
@@ -37,27 +46,32 @@ export const CANTI = {
   "g-major": { name: "G major, eight bars", key: { tonic: "G" }, cf: "G2 A2 C3 B2 E3 D3 A2 G2" },
 };
 
+// ─── the rhythm: a cell a half bar (four eighths) ───
+/** The cells of a half bar, in eighths: Fux's florid rhythms (eighths only in pairs, on the weak quarter). */
+export const CELLS = { H: [4], Q: [2, 2], DQ: [3, 1], QE: [2, 1, 1] };
+
 // ─── the figures ───
 /**
- * The catalogue. Each figure: its eighths as offsets in steps from a (the note it starts on), given s (the steps from
- * a to b); when it fits (s, and whether a is a suspension or the note before one); which of its notes may be
- * dissonant (free), the others consonant with the bass; its cost (how plain or how rare); and its name in the
- * Baroque figures where it has one (Bernhard, Walther).
+ * The catalogue. Each figure: the cells it may take (its number of notes), its notes as offsets in steps from a (the
+ * note it starts on) given s (the steps from a to b) and x ({sus: a is a suspension, tie: a is held into a suspension
+ * on b, within: a and b in one bar}), when it fits, which of its notes may be dissonant (free; the others consonant
+ * with the bass), its cost, and its name in the Baroque figures where it has one (Bernhard, Walther).
  */
 export const FIGURES = [
-  { id: "held", name: "a half note", shape: () => [0, 0, 0, 0], fits: () => true, free: [], cost: 1.2 },
-  { id: "passing", name: "a passing quarter (transitus)", shape: (s) => [0, 0, Math.sign(s), Math.sign(s)], fits: (s, x) => Math.abs(s) === 2 && !x.sus, free: [2, 3], cost: 0.2 },
-  { id: "dotted-passing", name: "a passing eighth, dotted", shape: (s) => [0, 0, 0, Math.sign(s)], fits: (s, x) => Math.abs(s) === 2 && !x.sus, free: [3], cost: 0.6 },
-  { id: "run", name: "a run of eighths (tirata)", shape: (s) => [0, Math.sign(s), 2 * Math.sign(s), 3 * Math.sign(s)], fits: (s, x) => Math.abs(s) === 4 && !x.sus, free: [1, 3], cost: 0.5 },
-  { id: "neighbor", name: "a neighbour quarter", shape: (s, x) => [0, 0, x.up ? 1 : -1, x.up ? 1 : -1], fits: (s, x) => s === 0 && !x.sus && !x.tie, free: [2, 3], cost: 0.4, variants: [{ up: true }, { up: false }] },
-  { id: "turn", name: "a turn (circulatio)", shape: (s) => [0, 1, 0, -1], fits: (s, x) => (s === 0 || s === -2) && !x.sus && !x.tie, free: [1, 3], cost: 0.7 },
-  { id: "anticipation", name: "an anticipation (anticipatio)", shape: (s) => [0, 0, s, s], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [2, 3], cost: 0.8 },
-  { id: "escape", name: "an escape tone (échappée)", shape: (s) => [0, 0, -Math.sign(s), -Math.sign(s)], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [2, 3], cost: 1.0 },
-  { id: "skip", name: "a skip to a note of the chord", shape: (s, x) => [0, 0, x.to, x.to], fits: (s, x) => !x.sus && !x.tie, free: [], cost: 0.9, variants: [{ to: 2 }, { to: -2 }, { to: 4 }, { to: -3 }] },
-  { id: "cambiata", name: "a cambiata (nota cambiata)", shape: () => [0, -1, -3, -3], fits: (s, x) => s === -2 && !x.sus && !x.tie, free: [1], cost: 0.9 },
-  { id: "tie-neighbor", name: "a neighbour, then the note held over the bar (a suspension prepared)", shape: () => [0, -1, 0, 0], fits: (s, x) => x.tie, free: [1], cost: 0.5 },
-  { id: "anticipated-resolution", name: "a suspension resolved early, in an eighth (anticipatio)", shape: () => [0, 0, 0, -1], fits: (s, x) => x.sus, free: [3], cost: 0.5 },
-  { id: "ornamented-resolution", name: "a suspension resolved through a third below it (an ornamented resolution)", shape: () => [0, 0, -2, -2], fits: (s, x) => x.sus && s === -1, free: [], cost: 0.6 },
+  { id: "held", name: "the note held", cells: ["H"], shape: () => [0], fits: () => true, free: [], cost: 0.9 },
+  { id: "passing", name: "a passing note (transitus)", cells: ["Q", "DQ"], shape: (s) => [0, Math.sign(s)], fits: (s, x) => Math.abs(s) === 2 && !x.sus, free: [1], cost: 0.2 },
+  { id: "neighbor", name: "a neighbour", cells: ["Q", "DQ"], shape: (s, x) => [0, x.up ? 1 : -1], fits: (s, x) => s === 0 && !x.sus && !x.tie, free: [1], cost: 0.5, variants: [{ up: true }, { up: false }] },
+  { id: "anticipation", name: "an anticipation (anticipatio)", cells: ["Q", "DQ"], shape: (s) => [0, s], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [1], cost: 1.3 },
+  { id: "escape", name: "an escape tone (échappée)", cells: ["DQ", "Q"], shape: (s) => [0, -Math.sign(s)], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [1], cost: 1.3 },
+  { id: "skip", name: "a skip to a note of the chord", cells: ["Q", "DQ"], shape: (s, x) => [0, x.to], fits: (s, x) => !x.sus && !x.tie, free: [], cost: 0.8, variants: [{ to: 2 }, { to: -2 }, { to: 4 }, { to: -3 }] },
+  { id: "tirata", name: "a run (tirata)", cells: ["QE"], shape: (s) => [0, Math.sign(s), 2 * Math.sign(s)], fits: (s, x) => Math.abs(s) === 3 && !x.sus && !x.tie, free: [1, 2], cost: 0.4 },
+  { id: "turn", name: "a turn (circulatio)", cells: ["QE"], shape: (s) => [0, -Math.sign(s), 0], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [1], cost: 0.5 },
+  { id: "neighbor-eighths", name: "a neighbour in eighths", cells: ["QE"], shape: (s, x) => [0, x.up ? 1 : -1, 0], fits: (s, x) => s === 0 && x.within && !x.sus && !x.tie, free: [1], cost: 0.6, variants: [{ up: true }, { up: false }] },
+  { id: "passing-eighths", name: "a skip filled in eighths", cells: ["QE"], shape: (s) => [0, 2 * Math.sign(s), Math.sign(s)], fits: (s, x) => Math.abs(s) === 2 && !x.sus && !x.tie, free: [2], cost: 0.7 },
+  { id: "cambiata", name: "a cambiata (nota cambiata)", cells: ["QE"], shape: () => [0, -1, -3], fits: (s, x) => s === -2 && !x.sus && !x.tie, free: [1], cost: 0.8 },
+  { id: "tie-neighbor", name: "a neighbour, then the note held over the bar (a suspension prepared)", cells: ["QE"], shape: () => [0, -1, 0], fits: (s, x) => x.tie, free: [1], cost: 0.4 },
+  { id: "anticipated-resolution", name: "a suspension resolved early, in an eighth (anticipatio)", cells: ["DQ"], shape: () => [0, -1], fits: (s, x) => x.sus && s === -1, free: [], cost: 0.4 },
+  { id: "ornamented-resolution", name: "a suspension resolved through a third below it (an ornamented resolution)", cells: ["Q"], shape: () => [0, -2], fits: (s, x) => x.sus && s === -1, free: [], cost: 0.5 },
 ];
 
 /**
@@ -95,62 +109,144 @@ export function frameOf(cf, key, { temp = 0.6, r = Math.random } = {}) {
   return U ? { voice, phrase, units: U, names: U.map(voice.name) } : null;
 }
 
-/**
- * The frame elaborated: each half bar a figure, chosen by a softmax of −cost / temp among those that fit and keep
- * the rules (density: how busy, 0 … 1; the same figure twice in a row costs `again` more). → {eighths (names),
- * spans: [{unit, figure, name, notes}], frame (names)} or null.
- */
-export function elaborate(frame, cf, key, { temp = 0.5, r = Math.random, density = 0.6, again = 0.4 } = {}) {
+/** GTTM's metrical weight of an eighth of the bar: the downbeat, the half bar, the quarters, the eighths. */
+const W8 = [1, 0, 0.3, 0, 0.6, 0, 0.3, 0];
+/** The onsets and durations of a bar's rhythm (two cells). */
+const notesOfBar = (r) => { const out = []; let p = 0; for (const c of r) for (const d of CELLS[c]) { out.push([p, d]); p += d; } return out; };
+/** How busy a bar is: 0 (two half notes) … 1 (a quarter and two eighths twice). */
+const activity = (r) => (notesOfBar(r).length - 2) / 4;
+
+/** The options of each half bar of the frame: for each cell, the figures that fit it and keep the rules. */
+function optionsOf(frame, cf, key) {
   const K = keyOf(key), V = frame.voice.V, U = frame.units, n = U.length, bass = split(cf);
   const deg = (c) => codeDegree(c), nameAt = (d) => K.name(d, 0).replace("♯", "#").replace("♭", "b");
   const bassAt = (t) => bass[Math.floor(t / 2)];
   const dis = (t, c) => V.vertical(t, c).q === "dissonant";
-  const eighths = [], spans = [];
-  let prevFig = null;
-  for (let t = 0; t < n; t++) {
-    const a = U[t];
-    if (t === n - 1) { for (let j = 0; j < SUB; j++) eighths.push(frame.names[t]); spans.push({ unit: t, figure: "held", name: "the final note", notes: [frame.names[t]] }); break; }
-    const b = U[t + 1], s = deg(b) - deg(a);
-    // a suspension: a held into the strong unit t+1 and dissonant there (this half bar prepares it, holding a); or
-    // a itself a suspension (struck before, held, dissonant on its strong unit): this half bar resolves it
-    const x = { sus: t > 0 && U[t - 1] === a && t % 2 === 0 && dis(t, a), tie: b === a && (t + 1) % 2 === 0 && dis(t + 1, b) };
-    const opts = [];
+  const lo = frame.voice.F.voice.lo, hi = frame.voice.F.voice.hi;
+  const out = [];
+  for (let t = 0; t < n - 1; t++) {
+    const a = U[t], b = U[t + 1], s = deg(b) - deg(a);
+    // a suspension: a itself held and dissonant on its strong unit (this half bar resolves it); or a held into the
+    // strong unit t+1, dissonant there (this half bar prepares it)
+    const x = { sus: t > 0 && U[t - 1] === a && t % 2 === 0 && dis(t, a), tie: b === a && (t + 1) % 2 === 0 && dis(t + 1, b), within: t % 2 === 0 };
+    const byCell = {};
     for (const f of FIGURES) for (const v of f.variants || [{}]) {
       const xv = { ...x, ...v };
       if (!f.fits(s, xv)) continue;
       const shape = f.shape(s, xv), ds = shape.map((o) => deg(a) + o);
-      // in range; no tritone and no 7th between two notes (a leap of the frame itself, up to the octave, is the
-      // frame's)
-      const names = ds.map(nameAt);
-      if (ds.some((d) => d < frame.voice.F.voice.lo || d > frame.voice.F.voice.hi)) continue;
-      const seq = [...names, frame.names[t + 1]];
+      if (ds.some((d) => d < lo || d > hi)) continue;
+      const names = ds.map(nameAt), seq = [...names, frame.names[t + 1]];
       let ok = true;
-      for (let j = 1; j < seq.length && ok; j++) {
-        const semi = Math.abs(midiOf(seq[j]) - midiOf(seq[j - 1]));
-        if (semi === 6 || semi === 10 || semi === 11 || semi > 12) ok = false;
-      }
-      // the new notes not free consonant with the bass (a note of the frame is the frame's: a passing tone of it may be
-      // held); a free one is approached and left as its figure says
-      for (let j = 1; j < SUB && ok; j++) if (shape[j] !== 0 && !f.free.includes(j) && !cons(bassAt(t), names[j])) ok = false;
-      // the last eighth to b over a new bass: no parallel 5ths or octaves on the surface either
+      // no tritone, no 7th, nothing beyond the octave between two notes (a leap of the frame itself is the frame's)
+      for (let j = 1; j < seq.length && ok; j++) { const m = Math.abs(midiOf(seq[j]) - midiOf(seq[j - 1])); if (m === 6 || m === 10 || m === 11 || m > 12) ok = false; }
+      // the new notes not free consonant with the bass
+      for (let j = 1; j < names.length && ok; j++) if (shape[j] !== 0 && !f.free.includes(j) && !cons(bassAt(t), names[j])) ok = false;
+      // the last note to b over a new bass: no parallel 5ths or octaves on the surface either
       if (ok && (t + 1) % 2 === 0) {
-        const last = names[SUB - 1], nb = bassAt(t + 1), ob = bassAt(t);
-        const pi = (lo, hi) => { const d = ((midiOf(hi) - midiOf(lo)) % 12 + 12) % 12; return d === 0 ? 0 : d === 7 ? 7 : -1; };
+        const last = names[names.length - 1], nb = bassAt(t + 1), ob = bassAt(t);
+        const pi = (l, h) => { const d = ((midiOf(h) - midiOf(l)) % 12 + 12) % 12; return d === 0 ? 0 : d === 7 ? 7 : -1; };
         const i1 = pi(ob, last), i2 = pi(nb, frame.names[t + 1]);
         if (i1 >= 0 && i1 === i2 && Math.sign(midiOf(frame.names[t + 1]) - midiOf(last)) === Math.sign(midiOf(nb) - midiOf(ob)) && last !== frame.names[t + 1]) ok = false;
       }
       if (!ok) continue;
-      const activity = new Set(shape.map((o, j) => (j && o === shape[j - 1] ? null : j)).filter((j) => j !== null)).size / SUB;
-      const cost = f.cost + Math.abs(activity - density) + (prevFig === f.id ? again : 0);
-      opts.push({ f, v, names, cost });
+      for (const c of f.cells) (byCell[c] = byCell[c] || []).push({ f, v, names, shape, cost: f.cost });
     }
-    if (!opts.length) return null;
-    const pick = choose(opts, temp, r);
-    for (const nm of pick.names) eighths.push(nm);
-    spans.push({ unit: t, figure: pick.f.id, name: pick.f.name, notes: pick.names });
-    prevFig = pick.f.id;
+    out.push({ t, s, x, byCell });
   }
-  return { eighths, spans, frame: frame.names };
+  return out;
+}
+
+/** The rhythm's weights (GTTM): MPR 5 (longer notes on stronger beats), parallelism (MPR 1), the bar's second half the
+ *  busier, the arc of activity over the phrase. */
+export const RHYTHM = { mpr5: 0.6, again: -0.6, third: 1.2, aba: -0.3, inner: 0.3, arc: 1.5 };
+
+/**
+ * The frame elaborated: first the rhythm, a cell a half bar, drawn by a bridge over the bars (RHYTHM's preferences, at
+ * temperature rtemp), then each half bar's figure for its cell, chosen with the melody's coherence on the surface (the
+ * soft rules on the florid line so far, a direction that goes on, a figure in sequence with the half bar before the
+ * last), by a softmax at temperature temp. density: the arc's height (0 … 1). → {eighths (names), spans: [{unit,
+ * cell, figure, name, notes}], rhythm: [cells a half bar], frame (names)} or null.
+ */
+export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.random, density = 0.6, weights = {} } = {}) {
+  const Wt = { ...RHYTHM, ...weights };
+  const K = keyOf(key), U = frame.units, n = U.length;
+  const opts = optionsOf(frame, cf, key);
+  // the bars: half bars 2i and 2i+1 (the last half bar, the final note, apart)
+  const bars = Math.floor((n - 1) / 2), nb = bars;
+  const cellsOk = (t) => Object.keys(CELLS).filter((c) => opts[t].byCell[c] && opts[t].byCell[c].length);
+  const minCost = (t, c) => Math.min(...opts[t].byCell[c].map((o) => o.cost));
+  const barRhythms = Array.from({ length: nb }, (_, i) => {
+    const out = [];
+    for (const c1 of cellsOk(2 * i)) for (const c2 of cellsOk(2 * i + 1)) out.push([c1, c2]);
+    return out;
+  });
+  if (barRhythms.some((l) => !l.length)) return null;
+  const target = (i) => density * Math.sin(Math.PI * (i + 0.5) / nb);
+  const key2 = (r_) => r_.join("-");
+  /** The cost of bar i's rhythm rr after p (the bar before) and q (the one before it). */
+  function cost(i, rr, p, q) {
+    let c = minCost(2 * i, rr[0]) + minCost(2 * i + 1, rr[1]);
+    const ns = notesOfBar(rr);
+    // MPR 5: the downbeat's note the longest of the bar; a longer one on a weaker beat after it weighs against the
+    // metre (a half note after a quarter on the downbeat), and more so off the half bar
+    for (let j = 1; j < ns.length; j++) if (ns[j][1] > ns[0][1]) c += Wt.mpr5 * (1 - W8[ns[j][0]] / 2);
+    // the bar's first half calmer than its second (the downbeat steady, the motion after it)
+    if (CELLS[rr[0]].length > CELLS[rr[1]].length) c += Wt.inner;
+    // parallelism: like the bar before once (a cell heard again), not a third time; like the one before that (A B A)
+    if (p && key2(p) === key2(rr)) c += q && key2(q) === key2(rr) ? Wt.third : Wt.again;
+    else if (q && key2(q) === key2(rr)) c += Wt.aba;
+    // the arc
+    c += Wt.arc * Math.abs(activity(rr) - target(i));
+    return c;
+  }
+  // the bridge over the bars: backward messages on the state (the bar before, this bar)
+  const T = Math.max(1e-3, rtemp), LOG0 = -Infinity;
+  const lse = (x, y) => (x === LOG0 ? y : y === LOG0 ? x : Math.max(x, y) + Math.log1p(Math.exp(-Math.abs(x - y))));
+  const beta = Array.from({ length: nb + 1 }, () => new Map());
+  const sk = (p, cur) => (p ? key2(p) : "_") + "|" + key2(cur);
+  for (let i = nb - 1; i >= 0; i--) {
+    const prevs = i > 0 ? barRhythms[i - 1] : [null];
+    for (const p of prevs) for (const cur of barRhythms[i]) {
+      if (i === nb - 1) { beta[i].set(sk(p, cur), 0); continue; }
+      let z = LOG0;
+      for (const nx of barRhythms[i + 1]) z = lse(z, -cost(i + 1, nx, cur, p) / T + beta[i + 1].get(sk(cur, nx)));
+      beta[i].set(sk(p, cur), z);
+    }
+  }
+  const pick = (cs) => { const m = Math.max(...cs.map((c) => c.lw)), ws = cs.map((c) => Math.exp(c.lw - m)); let y = r() * ws.reduce((a, b2) => a + b2, 0); for (let j = 0; j < cs.length; j++) { y -= ws[j]; if (y < 0) return cs[j]; } return cs[cs.length - 1]; };
+  const rhythm = [];
+  let p = null, q = null;
+  for (let i = 0; i < nb; i++) {
+    const cs = barRhythms[i].map((rr) => ({ rr, lw: -cost(i, rr, p, q) / T + beta[i].get(sk(p, rr)) }));
+    const ch = pick(cs).rr;
+    rhythm.push(...ch); q = p; p = ch;
+  }
+  // the figures, a half bar at a time, the melody's coherence on the surface
+  const eighths = [], spans = [], line = [];
+  const deg = (nm) => codeDegree(codeOf(K, nm));
+  for (let t = 0; t < n - 1; t++) {
+    const cell = rhythm[t], cands = opts[t].byCell[cell];
+    const prev = spans[t - 1], prev2 = spans[t - 2];
+    const scored = cands.map((o) => {
+      let c = o.cost;
+      // the soft rules of every engine on the florid line itself (its notes struck, as degrees)
+      const L = line.slice();
+      for (const nm of o.names) { const d = deg(nm); if (L[L.length - 1] !== d) { c += 0.3 * total(melodicParts(L, d)); L.push(d); } }
+      // a direction that goes on: a passing motion after one the same way
+      const dir = (sh) => Math.sign(sh[sh.length - 1] - sh[0]);
+      if (prev && prev.shape && dir(prev.shape) !== 0 && dir(prev.shape) === dir(o.shape)) c -= 0.2;
+      // a figure in sequence: the same shape and cell as two half bars before (the same place in the bar before)
+      if (prev2 && prev2.figure === o.f.id && prev2.cell === cell && prev2.shape.join() === o.shape.join()) c -= 0.4;
+      return { ...o, cost: c };
+    });
+    const ch = choose(scored, temp, r);
+    CELLS[cell].forEach((d, j) => { for (let k = 0; k < d; k++) eighths.push(ch.names[j]); });
+    for (const nm of ch.names) { const d = deg(nm); if (line[line.length - 1] !== d) line.push(d); }
+    spans.push({ unit: t, cell, figure: ch.f.id, name: ch.f.name, notes: ch.names, shape: ch.shape });
+  }
+  for (let j = 0; j < SUB; j++) eighths.push(frame.names[n - 1]);
+  spans.push({ unit: n - 1, cell: "H", figure: "held", name: "the final note", notes: [frame.names[n - 1]], shape: [0] });
+  return { eighths, spans, rhythm: [...rhythm, "H"], frame: frame.names };
 }
 
 function choose(opts, temp, r) {
@@ -162,11 +258,11 @@ function choose(opts, temp, r) {
 }
 
 /** Florid counterpoint over a cantus firmus: the frame drawn, then elaborated. {frame, eighths, spans} or null. */
-export function florid(cf, key, { temp = 0.4, ftemp = 0.5, density = 0.6, r = Math.random, tries = 6 } = {}) {
+export function florid(cf, key, { temp = 0.4, ftemp = 0.5, rtemp = 0.5, density = 0.6, r = Math.random, tries = 6 } = {}) {
   for (let i = 0; i < tries; i++) {
     const F = frameOf(cf, key, { temp, r });
     if (!F) return null;
-    const E = elaborate(F, cf, key, { temp: ftemp, r, density });
+    const E = elaborate(F, cf, key, { temp: ftemp, rtemp, r, density });
     if (E) return { ...E, frameUnits: F.units };
   }
   return null;

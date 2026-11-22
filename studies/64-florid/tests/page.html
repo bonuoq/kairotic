@@ -6,7 +6,7 @@
 <script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js"></script>
 <script type="module">
 // The study's page itself, driven as a person would: a florid line drawn on loading over the first cantus firmus, its
-// grids (cantus, frame, figures, surface), its reduction; another cantus firmus; exported as MEI.
+// grids (cantus, frame, rhythm, figures, surface), its reduction; another cantus firmus; exported as MEI.
 await (async function () {
   const results = [], errors = [];
   window.addEventListener("error", (e) => errors.push(String(e.message || e)));
@@ -26,7 +26,7 @@ await (async function () {
     scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
 
     is("ready: a florid line over the ten-bar cantus firmus, 19 half bars, 76 eighths", $("status").textContent === "Ready" && S().state().frame === 19 && S().state().eighths === 76);
-    is("… its four rows drawn (cantus, frame, figures, surface), the figures named", document.querySelectorAll("#line .row").length === 4 && /figures:/.test($("facts").textContent));
+    is("… its five rows drawn (cantus, frame, rhythm, figures, surface), the figures named", document.querySelectorAll("#line .row").length === 5 && /figures:/.test($("facts").textContent));
     is("… reduced back: a row a level, the frame's downbeats counted", S().state().levels > 2 && S().state().rows === S().state().levels && /of its downbeats are the frame's/.test($("red-facts").textContent));
     $("cf").value = "g-major"; $("cf").dispatchEvent(new Event("change"));
     is("another cantus firmus (G major, eight bars): 15 half bars", S().state().frame === 15);
