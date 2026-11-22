@@ -203,7 +203,7 @@
                            (if (nil? src)
                              (if (< k agent-tries) (attempt (inc k) {:src "(none)" :errors ["the answer had no patch code"]})
                                  (throw (js/Error. "Claude's answer had no patch code")))
-                             (.then (check-patch-code src)
+                             (.then (do (risky! (str "checking what Claude wrote for agent " (name id))) (check-patch-code src))
                                     (fn [chk]
                                       (cond (:ok chk) {:src src :doc doc}
                                             (< k agent-tries) (do (agent-log! path id "err" (str "try " k ": " (ai/cut (first (:errors chk)) 160) " · sent back to Claude"))
