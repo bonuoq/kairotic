@@ -883,14 +883,17 @@ export function fourOverBass(spec = {}) {
 
 // ─────────────────────────────── from a tree: a bass given as notes (the cac box, discussion #323) ───────────────────────────────
 /** The bass's units from notes [{midi, units, fig (a figuring: "6/5"), key, strong: [one a unit]}] in K. */
-export function bassFromNotes(notes, K, voices = 4) {
+export function bassFromNotes(notes, K, voices = 4, fill = false) {
   const table = voices >= 4 ? CHORDS4 : CHORDS, units = [], unknown = [];
+  const drs = notes.map((nt) => degreeOf(K, nt.midi));
   notes.forEach((nt, i) => {
-    const dr = degreeOf(K, nt.midi);
+    const dr = drs[i];
     if (!dr) throw new Error(`note ${i + 1}: not a pitch of ${K.tonic} ${K.mode}`);
-    const next = notes[i + 1] && degreeOf(K, notes[i + 1].midi);
+    const next = notes[i + 1] && drs[i + 1];
+    // (fill: a note without figures takes the chord a partimento player would — the Rule of the Octave's)
+    const filled = !nt.fig && fill && drs.every(Boolean) ? octaveDefault(K, notes, drs, i, voices) : null;
     // (fewer than four parts: a chord of four tones as three can sound it — the RO's 6/3 for its 6/5 and 6/4/3, 7/3 for 7)
-    const fig0 = nt.fig ? String(nt.fig).replace(/\s+/g, "") : null;
+    const fig0 = nt.fig ? String(nt.fig).replace(/\s+/g, "") : filled;
     const fig = fig0 && voices < 4 ? ({ "6/5": "6/3", "6/5/3": "6/3", "6/4/3": "6/3", "7": "7/3", "7/5/3": "7/3", "6/4/2": "4/2" }[fig0] || fig0) : fig0;
     const chord = fig && table[fig] ? fig : fig && table[fig + "/3"] ? fig + "/3" : null;
     if (fig && !chord) unknown.push(`note ${i + 1}: ${fig}`);
@@ -903,6 +906,27 @@ export function bassFromNotes(notes, K, voices = 4) {
   return { units, unknown };
 }
 
+// the Rule of the Octave (chapters 4 and 6): a chord for each degree of the scale in the bass, going up and going down
+// (the plain one: the descending ⑥ as a 6/3, without the key of ⑤ it would tonicize)
+export const RULE_OF_THE_OCTAVE = {
+  3: { up: ["5/3", "6/3", "6/3", "6/3", "5/3", "6/3", "6/3"], down: ["5/3", "6/3", "6/3", "4/2", "5/3", "6/3", "6/3"] },
+  4: { up: ["5/3", "6/4/3", "6/3", "6/5", "5/3", "6/3", "6/5"], down: ["5/3", "6/4/3", "6/3", "4/2", "5/3", "6/3", "6/3"] },
+};
+/** The chord a partimento player takes over a note without figures: the Rule of the Octave's where the bass moves by
+ *  step through it (its direction: to the next note, else from the one before), a 5/3 where it leaps (a 6/3 on ⑦), and
+ *  a 5/3 at the start and the end. */
+export function octaveDefault(K, notes, drs, i, voices = 4) {
+  const n = notes.length, lo = (j) => localOf(K, parseKey(notes[j].key));
+  const deg = localNote(K, lo(i), drs[i].d, drs[i].r).deg;
+  if (i === 0 || i === n - 1) return "5/3";
+  const step = (a, b) => Math.abs(drs[b].d - drs[a].d) === 1 ? Math.sign(drs[b].d - drs[a].d) : 0;
+  const dir = step(i, i + 1) || step(i - 1, i);
+  if (!dir) return deg === 6 ? "6/3" : "5/3";
+  const RO = RULE_OF_THE_OCTAVE[voices >= 4 ? 4 : 3][dir > 0 ? "up" : "down"][deg];
+  // (the 4/2 on the descending ④ passes from ⑤: only where the bass comes down to it from ⑤)
+  return RO === "4/2" && !(i >= 1 && step(i - 1, i) === -1) ? "6/3" : RO;
+}
+
 /**
  * The voices over a bass given as notes: spec {notes (bassFromNotes's), key (a name, "a minor", or {tonic, mode}; else
  * guessed), voices (2, 3 or 4: the bass and the upper voices), ro (chapter 4's rules: true), style}. Its count, sample,
@@ -911,7 +935,9 @@ export function bassFromNotes(notes, K, voices = 4) {
 export function fromNotes(spec = {}) {
   const key = parseKey(spec.key) || guessKey(spec.notes.map((n) => n.midi));
   const K = keyOf(key), voices = spec.voices || 4;
-  const { units, unknown } = bassFromNotes(spec.notes, K, voices);
+  // (fill: the notes without figures take the Rule of the Octave's chords — as cac partimento writes; a judgement reads
+  // the chords the voices make instead)
+  const { units, unknown } = bassFromNotes(spec.notes, K, voices, !!spec.fill);
   const figured = units.some((u) => u.chord);
   const ro = spec.ro ?? true;
   const make = (bass, fig) => (voices >= 4 ? fourOverBass({ key, bass, figured: fig, ro, style: spec.style })
@@ -943,4 +969,4 @@ export function fromNotes(spec = {}) {
 
 // (a box loads the module's default export: api/import-module)
 export default { within, TooLong, solve, solveVoices, overBass, partsOverBass, fourOverBass, fromNotes, bassFromNotes, degreeOf, parseKey, guessKey, keyOf,
-                 RULES, SOFT_RULES, BETWEEN, SOFT_BETWEEN, STYLES, resolveStyle, CHORDS, CHORDS4 };
+                 RULES, SOFT_RULES, BETWEEN, SOFT_BETWEEN, STYLES, resolveStyle, CHORDS, CHORDS4, RULE_OF_THE_OCTAVE, octaveDefault };

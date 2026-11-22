@@ -35,6 +35,15 @@ export async function cac(page, check) {
   check("... the realizations counted exactly: 3,610, as Study 62 counts them", cnt === '"3610"', cnt);
   const figs = await cljs(page, `(vec (keep #(when (vector? %) (:fig (second %))) (last (tree-data ${out}))))`);
   check("... the bass written again with the chords made over it (the analysis layer)", figs === '["5/3" "6/4/3" "6/3" "6/5/3" "5/3" "6/3" "6/5/3" "5/3"]', figs);
+  // the score: the voices in the tree's order, soprano, alto, tenor (treble clef an octave down), bass
+  const defs = await cljs(page, `(vec (map (fn [x] [(second (re-find #"label=\\"([^\\"]*)\\"" x)) (str/includes? x "clef.dis")]) (re-seq #"<staffDef[^>]*>" (mei ${out}))))`);
+  check("... written in open score, in order: soprano, alto, tenor (its treble clef an octave down), bass",
+        defs === '[["soprano" false] ["alto" false] ["tenor" true] ["bass" false]]', defs);
+  await cljs(page, `(send! ${cb} [:staves 2])`);
+  const two = await until(page, `(vec (map second (re-seq #"<staffDef[^>]*label=\\"([^\\"]*)\\"" (mei ${out}))))`, (x) => x === '["S A" "T B"]', 30000);
+  check("[:staves 2]: short score, soprano and alto on one staff, tenor and bass on another", two === '["S A" "T B"]', two);
+  await cljs(page, `(send! ${cb} [:staves 4])`);
+  await until(page, `(count (re-seq #"<staffDef" (mei ${out})))`, (x) => x === "4", 30000);
   const hidden = await cljs(page, `(str/includes? (editor-source (get-in (current) [:boxes ${out}])) ":fig")`);
   check("... its code window hides the analysis (Analysis off)", hidden === "false", hidden);
   await cljs(page, "(swap! ui assoc :code-analysis true)");

@@ -180,6 +180,20 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   is("a bass as notes (cac partimento, cac judge): fromNotes as partimento.mjs's overBass — counts, engine, judgement, chords", off.length === 0, off.slice(0, 4).join("; "));
 }
 
+// a bass with notes left without figures (cac partimento fills them): the Rule of the Octave's chord where the bass
+// moves by step, a 5/3 where it leaps and at the ends — the help's RO with ①, ⑤ and ① unfigured is Study 62's RO up
+{
+  const figs = [null, "6/4/3", "6/3", "6/5", null, "6/3", "6/5", null];
+  const notes = [48, 50, 52, 53, 55, 57, 59, 60].map((m, i) => ({ midi: m, units: 1, ...(figs[i] ? { fig: figs[i] } : {}) }));
+  const ob = R.fromNotes({ notes, key: "C", voices: 4, fill: true });
+  is("figures filled: the help's RO, ①, ⑤ and ① left unfigured, takes 5/3 there — 3,610 realizations, as Study 62's RO up", ob.count() === 3610n && ob.units.map((u) => u.chord).join(" ") === "5/3 6/4/3 6/3 6/5 5/3 6/3 6/5 5/3", String(ob.count()));
+  const bare = (ms, v) => R.fromNotes({ notes: ms.map((m) => ({ midi: m, units: 1 })), key: "C", voices: v, fill: true }).units.map((u) => u.chord).join(" ");
+  is("... a bare bass: the RO going down (4/2 on ④ from ⑤), a cadence's leaps 5/3 (④ going up to ⑤ its 6/5), three parts plainer",
+     bare([60, 59, 57, 55, 53, 52, 50, 48], 4) === "5/3 6/3 6/3 5/3 4/2 6/3 6/4/3 5/3" && bare([48, 53, 55, 48], 4) === "5/3 6/5 5/3 5/3" && bare([48, 50, 52, 53, 55], 3) === "5/3 6/3 6/3 6/3 5/3",
+     [bare([60, 59, 57, 55, 53, 52, 50, 48], 4), bare([48, 53, 55, 48], 4), bare([48, 50, 52, 53, 55], 3)].join(" | "));
+  is("... and judged, nothing filled (a judgement reads the chords the voices make)", R.fromNotes({ notes, key: "C", voices: 4 }).units[0].chord === null);
+}
+
 // a time limit for the count (a page must not freeze): a 16-bar bass of half notes in A major without figures, in four
 // parts, takes about a minute to count — countWithin gives up in time, search finds a realization by the rules
 {
@@ -192,7 +206,7 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
     if (voices === 4) is("countWithin: a 16-bar bass without figures in four parts, too long to count, gives up in time", c === null && dt < 1500, `${c} in ${dt} ms`);
     let found;
     try { found = ob.search({ temp: 0.5, r, ms: 4000 }); } catch (e) { found = e.message; }
-    const ok = found && typeof found === "object" && (voices === 2 ? !ob.P.judge(found.top) : !ob.P.judgeW(Object.values(found).map((U) => U), "long"));
+    const ok = found && typeof found === "object" && (voices === 2 ? !ob.P.judge(found.top) : !ob.P.judgeW(Object.values(found), "long"));
     is(`search, ${voices} parts: a realization without counting, every unit by the rules`, ok, String(found).slice(0, 80));
   }
   const F = R.fromNotes({ notes: [0, 2, 4, 5].map((d, i) => ({ midi: 48 + d, units: 1, fig: ["5/3", "6/4/3", "6/3", "6/5"][i] })), key: "C major", voices: 4 });

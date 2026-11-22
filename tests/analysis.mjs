@@ -149,8 +149,8 @@ export async function analysis(page, check) {
         (at (+ (* i 0.7) 0.4) ${g} 1 0))
       (at 2.1 ${osc} 0 330) (at 2.1 ${g} 1 1)
       (at 2.6 ${g} 1 0)
-      (at 2.9 ${tr} 0 :stop))`);
-  await page.waitForTimeout(3100);
+      (at 3.4 ${tr} 0 :stop))`);
+  await page.waitForTimeout(3600);
   const strokes = `(mapv (fn [[_ s]] (:pts s)) (sort-by (fn [[_ s]] (ffirst (:pts s))) (:strokes (box-data ${fq}))))`;
   const n4 = await until(page, `(count ${strokes})`, (x) => x === "4", 8000);
   const pts = await cljs(page, strokes);
@@ -163,11 +163,13 @@ export async function analysis(page, check) {
         hzs + " " + await cljs(page, `(mapv (fn [p] (second (first p))) ${strokes})`));
   const durs = await cljs(page, `(mapv (fn [p] (/ (js/Math.round (* 10 (- (first (last p)) (first (first p))))) 10)) ${strokes})`);
   // (each note is found a few analysis frames after it starts, and the first of a take may lose a frame or two
-  // more on a loaded machine: what is checked is that every note is there with about its length)
+  // more on a loaded machine: what is checked is that every note is there with about its length; the end of the
+  // last, after the change of pitch, has been found up to 0.3 later under load: the take now stops 0.8 after it, so
+  // a note that is not closed at all (cut by the stop, 1.3) still fails)
   const nums = (x) => { try { return JSON.parse(String(x).replace(/ /g, ",")); } catch (_) { return []; } };
   const ds = nums(durs);
   check("... with their length in beats (about 0.4, and 0.5)",
-        ds.length === 4 && ds[0] > 0 && ds[0] <= 0.5 && ds.slice(1, 3).every((d) => d >= 0.3 && d <= 0.5) && ds[3] >= 0.4 && ds[3] <= 0.6, durs);
+        ds.length === 4 && ds[0] > 0 && ds[0] <= 0.5 && ds.slice(1, 3).every((d) => d >= 0.3 && d <= 0.5) && ds[3] >= 0.4 && ds[3] <= 0.8, durs);
   const starts = await cljs(page, `(mapv (fn [p] (first (first p))) ${strokes})`);
   const st = nums(starts);
   check("... from the beginning of the take, 0.7 beats apart", st[0] < 0.45 && Math.abs(st[2] - st[1] - 0.7) < 0.15 && Math.abs(st[3] - st[2] - 0.7) < 0.15, starts);
