@@ -182,17 +182,17 @@ export const RULES = {
     check: ({ c }) => (w.D(c) < lo || w.D(c) > hi ? "out of range" : null) }),
 
   /** note · the notes of the unit's key (its scale; in minor ⑥ and ⑦ raised; a church mode's musica ficta, the final's
-   *  raised 3rd only in the last chord; a unit's chromatic tones). */
+   *  raised 3rd only in a chord on the final; a unit's chromatic tones). */
   scale: (w) => ({ id: "scale", lookback: 0,
     check: ({ t, c }) => {
       if (!w.inKey(t, c)) return `not a note of ${w.LOC[t].key.tonic} ${w.LOC[t].key.mode}`;
       const l = w.loc(t, c);
-      return l.alt !== 0 && t < w.n - 1 && w.LOC[t].key.fictaAtEnd(l.deg) ? `${w.K.name(w.D(c), w.A(c))} only in the last chord (musica ficta: the final's 3rd raised)` : null;
+      return l.alt !== 0 && t < w.n - 1 && w.locB(t) !== 0 && w.LOC[t].key.fictaAtEnd(l.deg) ? `${w.K.name(w.D(c), w.A(c))} only in a chord on the final (musica ficta: the final's 3rd raised)` : null;
     } }),
 
-  /** vertical · above the bass, not on its note but at the end, not too far from it. */
-  "from-bass": (w, { spacing = 16 } = {}) => ({ id: "from-bass", lookback: 0,
-    check: ({ t, v }) => (v.steps < 0 ? "below the bass" : v.steps === 0 && t < w.n - 1 ? "the unison with the bass (only at the end)" : v.steps > spacing ? "too far from the bass" : null) }),
+  /** vertical · above the bass, not on its note but at the end (unison: "any", anywhere: Fux's), not too far from it. */
+  "from-bass": (w, { spacing = 16, unison = "end" } = {}) => ({ id: "from-bass", lookback: 0,
+    check: ({ t, v }) => (v.steps < 0 ? "below the bass" : v.steps === 0 && t < w.n - 1 && unison !== "any" ? "the unison with the bass (only at the end)" : v.steps > spacing ? "too far from the bass" : null) }),
 
   /** vertical · the figures asked over the bass (one of them). */
   figures: (w, { figured = true } = {}) => ({ id: "figures", lookback: 0,
@@ -216,12 +216,12 @@ export const RULES = {
     check: ({ U, t, held, delayed }) => (held && t - w.onsetOf(U, t - 1) >= max + (delayed ? 1 : 0) ? `a note is held ${max} units at most` : null) }),
 
   /** line · the melodic intervals: no augmented ones (the diminished 4th in minor and 7th allowed), within an octave. */
-  intervals: (w) => ({ id: "intervals", lookback: 1,
+  intervals: (w, { chromatic = false } = {}) => ({ id: "intervals", lookback: 1,
     check: ({ t, c, prev, struck }) => {
       if (!struck || prev === null) return null;
       const { D, semiU, LOC, loc } = w, nn = w.n, a = prev, b = c;
       const d = Math.abs(D(b) - D(a)), s = Math.abs(semiU(b) - semiU(a));
-      if (d === 0) return t >= 1 && LOC[t].key !== LOC[t - 1].key && LOC[t].key.tonic !== LOC[t - 1].key.tonic ? null : "a chromatic step";
+      if (d === 0) return chromatic || (t >= 1 && LOC[t].key !== LOC[t - 1].key && LOC[t].key.tonic !== LOC[t - 1].key.tonic) ? null : "a chromatic step";
       if (d === 1) return s <= 2 ? null : "an augmented 2nd";
       if (d === 2) return s === 3 || s === 4 ? null : "this 3rd";
       if (d === 3) return s === 5 || (s === 4 && LOC[Math.min(t, nn - 1)].key.mode === "minor" && [a, b].some((x) => { const l = loc(Math.min(t, nn - 1), x); return l.deg === 6 && l.alt === 1; })) ? null : "an augmented 4th";
@@ -246,13 +246,16 @@ export const RULES = {
       return null;
     } }),
 
-  /** line · a church mode's musica ficta: a raised note leads up by step (C♯ to D), a lowered one goes down (B♭); at
-   *  the last cadence the leading tone raised where the mode raises it. */
+  /** line · a church mode's musica ficta: a raised note leads up by step (C♯ to D; a lowered one, B♭, goes either way,
+   *  as Fux's do); at the last cadence the leading tone raised where the mode raises it. */
   ficta: (w) => ({ id: "ficta", lookback: 1,
     check: ({ t, c, prev, struck }) => {
       if (!struck || prev === null) return null;
       const { K, D, A, LOC } = w, step = D(c) - D(prev), lp = w.loc(t - 1, prev), lc = w.loc(t, c), f = LOC[t - 1].key.ficta(lp.deg);
-      if (f && lp.alt === f && (f > 0 ? step !== 1 : step >= 0)) return `${K.name(D(prev), A(prev))} ${f > 0 ? "goes up by step" : "goes down"} (musica ficta)`;
+      if (f > 0 && lp.alt === f && step !== 1) return `${K.name(D(prev), A(prev))} goes up by step (musica ficta)`;
+      // (to a degree the mode raises too, raised: the aeolian's F♯ to G♯)
+      if (f > 0 && lp.alt === f && step === 1 && LOC[t].key.ficta(lc.deg) > 0 && !LOC[t].key.fictaAtEnd(lc.deg) && lc.alt === 0)
+        return `${K.name(D(prev), A(prev))} goes on up to ${K.name(D(c), A(c) + 1)} (musica ficta)`;
       if (t === w.n - 1 && step === 1 && lc.deg === 0 && lp.deg === 6 && lp.alt === 0 && LOC[t - 1].key.ficta(6) > 0)
         return `at the cadence the leading tone raised: ${K.name(D(prev), A(prev) + 1)}, not ${K.name(D(prev), A(prev))} (musica ficta)`;
       return null;
@@ -347,29 +350,30 @@ export const RULES = {
     } };
   },
 
-  /** pair · no parallel 5ths or octaves with the bass, no direct ones with the upper voice leaping; structural: not
-   *  from the strong unit before either, under a diminution. */
-  parallels: (w, { structural = true } = {}) => ({ id: "parallels", lookback: 3,
+  /** pair · no parallel 5ths or octaves with the bass, no direct ones with the upper voice leaping (direct: "outer",
+   *  only between the outer voices; "none", as Fux in three and four parts); structural: not from the strong unit before
+   *  either, under a diminution. */
+  parallels: (w, { structural = true, direct = "all", middle = false } = {}) => ({ id: "parallels", lookback: 3,
     check: ({ U, t, c, v, prev, struck }) => {
       const { B, D } = w;
       if (t >= 1 && v.q === "perfect" && struck && B[t].struck) {
         const pv = w.vertical(t - 1, prev), bm = B[t].d - B[t - 1].d, um = D(c) - D(prev);
         if (pv.q === "perfect" && pv.cls === v.cls && (bm !== 0 || um !== 0)) return `parallel ${v.cls === 0 ? "octaves" : "5ths"}`;
-        if (sign(bm) === sign(um) && bm !== 0 && Math.abs(um) > 1) return `${v.cls === 0 ? "an octave" : "a 5th"} by direct motion, the upper voice leaping`;
+        if (direct !== "none" && !(direct === "outer" && middle) && sign(bm) === sign(um) && bm !== 0 && Math.abs(um) > 1) return `${v.cls === 0 ? "an octave" : "a 5th"} by direct motion, the upper voice leaping`;
       }
       if (structural && structuralParallels(w, U, t, c)) return `parallel ${v.cls === 0 ? "octaves" : "5ths"} from the strong unit before, under the diminution`;
       return null;
     } }),
 
   /** edge · over ① the upper voice starts on an octave, 5th or 3rd; it ends on an octave or a 3rd (or the 6th over ③),
-   *  reached by step. middle: an inner voice, free; end false: the phrase goes on. */
-  edges: (w, { middle = false, end = true, figured = true } = {}) => ({ id: "edges", lookback: 1,
+   *  reached by step (ends: [0, 2, 4], the 5th too, as Fux's top voice in four parts, reached by leap if need be). middle: an inner voice, free; end false: the phrase goes on. */
+  edges: (w, { middle = false, end = true, figured = true, ends = [0, 2] } = {}) => ({ id: "edges", lookback: 1,
     check: ({ t, c, v, prev }) => {
       if (middle) return null;
       if (t === 0 && !(figured && w.B[0].fig) && w.locB(0) === 0 && ![0, 2, 4].includes(v.cls)) return "over ① the upper voice starts on an octave, a 5th or a 3rd";
       if (t === w.n - 1 && end !== false) {
-        if (![0, 2].includes(v.cls) && !(v.cls === 5 && w.locB(t) === 2)) return "it ends on an octave or a 3rd";
-        if (prev !== null && Math.abs(w.D(c) - w.D(prev)) !== 1) return "the last note is reached by step";
+        if (!ends.includes(v.cls) && !(v.cls === 5 && w.locB(t) === 2)) return ends.includes(4) ? "it ends on an octave, a 5th or a 3rd" : "it ends on an octave or a 3rd";
+        if (prev !== null && Math.abs(w.D(c) - w.D(prev)) !== 1 && !(v.cls === 4 && ends.includes(4))) return "the last note is reached by step";
       }
       return null;
     } }),
@@ -487,7 +491,7 @@ export function overBass(spec = {}) {
   const fromSpec = {
     range: { lo, hi }, "from-bass": { spacing: spec.spacing ?? 16 }, figures: { figured }, "leading-tone-raised": { ro },
     hold: { max: spec.maxHold ?? 2 }, leaps: { turn: spec.turn ?? true, line: spec.line || "free" },
-    dissonance: { ro, exchange: !!spec.exchange, free }, parallels: { structural: spec.structural !== false },
+    dissonance: { ro, exchange: !!spec.exchange, free }, parallels: { structural: spec.structural !== false, middle },
     edges: { middle, end: spec.end, figured },
   };
   const rules = st.rules.map(([id, p]) => RULES[id](w, { ...(fromSpec[id] || {}), ...(p || {}) }));
@@ -615,10 +619,24 @@ export function solveVoices(spec) {
 // A rule between voices: (world N, params) → {id, check (X)}. N: {K, B, D, A, semi, V (each voice's world), names,
 // asked (t) (the chord asked at t), sevenths (t), figured, ro, ltOf (t, c), loc (t, c), keys}.
 export const BETWEEN = {
-  /** pair · no voice under the one above it; within (four parts): neighbours within an octave, pair by pair. */
-  order: (N, { within = null, form = "four" } = {}) => ({ id: "order", check: ({ x }) => {
+  /** chord · a church mode's chords (Fux; the 17th century's rule for the tones): a consonant chord over every bass
+   *  note, a 5/3 or a 6/3 (its 5th or 6th may be left out, never both: no 6/5, no 6/4); a 5/3 only where its 5th is
+   *  perfect; the bass falling by step to the last note under a 6/3 (the cadence's 6th going to the octave); the last
+   *  chord without a 6th. */
+  modal: (N) => ({ id: "modal", check: ({ t, x }) => {
+    const v = x.map((c, i) => N.V[i].vertical(t, c)), have = new Set(v.map((u) => u.cls)), n = N.B.length;
+    if (v.some((u) => u.q === "dissonant")) return "a dissonance in the chord (note against note, every chord consonant)";
+    if (have.has(4) && have.has(5)) return "a 6/5: a 5th and a 6th together";
+    if (have.has(3)) return "a 4th above the bass";
+    if (t === n - 1 && have.has(5)) return "the last chord without a 6th";
+    if (t === n - 2 && N.B[n - 1].d === N.B[t].d - 1 && !have.has(5)) return "the bass falls by step to the last note: a 6/3 over it (the cadence's 6th to the octave)";
+    return null;
+  } }),
+  /** pair · no voice under the one above it (cross: they may cross, as Fux's do); within (four parts): neighbours within
+   *  an octave, pair by pair. */
+  order: (N, { within = null, form = "four", cross = false } = {}) => ({ id: "order", check: ({ x }) => {
     for (let i = 0; i + 1 < x.length; i++) {
-      if (N.D(x[i + 1]) >= N.D(x[i])) return form === "three" ? "the middle voice under the upper" : `the ${N.names[i + 1]} under the ${N.names[i]}`;
+      if (!cross && N.D(x[i + 1]) >= N.D(x[i])) return form === "three" ? "the middle voice under the upper" : `the ${N.names[i + 1]} under the ${N.names[i]}`;
       if (within !== null && N.D(x[i]) - N.D(x[i + 1]) > within) return `the ${N.names[i]} and the ${N.names[i + 1]} within an octave`;
     }
     return null;
@@ -776,12 +794,27 @@ export const SOFT_BETWEEN = {
   } }),
 };
 
+// a church mode's style, as Fux writes (Gradus ad Parnassum; tests/rules.mjs reads his examples in three and four parts
+// with it): a voice may meet the bass in a unison, hold its note longer, and reach a 5th or an octave by direct motion
+// where it is an inner voice; the minor's own rules out
+STYLES["modal-1"] = { style: "modal-1", version: "0.1.0", extends: "partimento-1",
+  rules: [["from-bass", { unison: "any" }], ["hold", { max: 4 }], ["parallels", { direct: "outer" }], ["leading-tone-raised", false], ["melodic-minor", false]] };
+// (a voice among three or four, as his: no direct 5ths or octaves asked of it, a leap not always turned, a chromatic
+// step over a held bass, the last chord with its 5th on top)
+STYLES["modal-voice"] = { style: "modal-voice", version: "0.1.0", extends: "modal-1",
+  rules: [["parallels", { direct: "none" }], ["leaps", { turn: false }], ["intervals", { chromatic: true }], ["edges", { ends: [0, 2, 4] }]] };
+
 // the styles of several voices: partimento.mjs's parts (two upper voices) and four (three), their rules between the
 // voices in the order they read them; each voice a style of one voice over the bass
 Object.assign(STYLES, {
   "partimento-2": { style: "partimento-2", version: "1.0.0", voice: "partimento-1",
     between: [["order", { form: "three" }], ["imitation"], ["exchange"], ["apart"], ["seconds"], ["six-four"], ["parallels-upper"], ["false-relation"], ["chord"], ["doubling"], ["dominant-major"]],
     softBetween: [] },
+  // (a church mode in three and four parts, note against note: the voices may cross; every chord a consonant 5/3 or 6/3)
+  "modal-2": { style: "modal-2", version: "0.1.0", voice: "modal-voice",
+    between: [["order", { form: "three", cross: true }], ["seconds"], ["parallels-upper"], ["false-relation"], ["modal"]], softBetween: [] },
+  "modal-4": { style: "modal-4", version: "0.1.0", voice: "modal-voice",
+    between: [["order", { cross: true }], ["modal"], ["doubling", { form: "four" }], ["seconds", { form: "four" }], ["parallels-upper", { form: "four" }]], softBetween: [] },
   "chorale-4": { style: "chorale-4", version: "1.0.0", voice: "partimento-1",
     between: [["order", { within: 7 }], ["chord", { form: "four" }], ["doubling", { form: "four" }], ["seventh"], ["leading-tone-doubled"], ["seconds", { form: "four" }],
               ["parallels-upper", { form: "four" }], ["resolution"], ["six-four", { form: "four" }], ["dominant-major", { form: "four" }]],
@@ -935,9 +968,12 @@ export function octaveDefault(K, notes, drs, i, voices = 4) {
 export function fromNotes(spec = {}) {
   const key = parseKey(spec.key) || guessKey(spec.notes.map((n) => n.midi));
   const K = keyOf(key), voices = spec.voices || 4;
+  // (a church mode: its own style by default, Fux's, note against note — modal-1, modal-2, modal-4 —, which chooses
+  // between a 5/3 and a 6/3 itself: no Rule of the Octave filled in, a tonal table)
+  if (!spec.style && K.modal) spec = { ...spec, style: voices >= 4 ? "modal-4" : voices === 3 ? "modal-2" : "modal-1" };
   // (fill: the notes without figures take the Rule of the Octave's chords — as cac partimento writes; a judgement reads
   // the chords the voices make instead)
-  const { units, unknown } = bassFromNotes(spec.notes, K, voices, !!spec.fill);
+  const { units, unknown } = bassFromNotes(spec.notes, K, voices, !!spec.fill && !K.modal);
   const figured = units.some((u) => u.chord);
   const ro = spec.ro ?? true;
   const make = (bass, fig) => (voices >= 4 ? fourOverBass({ key, bass, figured: fig, ro, style: spec.style })
