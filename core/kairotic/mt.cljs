@@ -1627,12 +1627,12 @@
 
 ;; ───────── the written tree and the performed one (discussion #308) ─────────
 ;; A tree holds what is written (notes, rests, measures, keys, tempo…) and what belongs to performing it: where its
-;; notes really sounded (:tstamp.real :dur.real :vel), its wires to the electronics (:wire), its takes (:takes), its
+;; notes really sounded (:tstamp.real :dur.real :vel), its wires to the electronics (:wire), what is to be heard there (:listen), its takes (:takes), its
 ;; continuum (:continuum), what rehearsals learned of how it sounds (:profiles), and the ids notes have only so that
 ;; takes point at them. The code window shows the
 ;; written tree; what is written there is put back into the whole tree, each node keeping what it had of the rest.
 
-(def performative-keys #{:tstamp.real :dur.real :vel :wire :takes :continuum :profiles})
+(def performative-keys #{:tstamp.real :dur.real :vel :wire :listen :takes :continuum :profiles})
 
 (defn- performative-key? [tg k] (or (contains? performative-keys k) (and (= :note tg) (= :id k))))
 

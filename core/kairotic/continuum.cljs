@@ -106,10 +106,17 @@
      (letfn [(walk [n]
                (cond
                  (not (mt/node? n)) nil
-                 ;; a rest with a :wire: an event for the electronics, silent (no pitch), at its written time
+                 ;; a rest with a :wire: an event for the electronics, silent (no pitch), at its written time; a rest with
+                 ;; :listen: something the performer does that has no pitch (a slap, a breath, a noise), heard by what
+                 ;; it is to sound like (discussion #308)
                  (= :rest (mt/tag n)) (let [a (mt/attrs n)]
                                         (close!)
-                                        (when (some? (:wire a))
+                                        (cond
+                                          (some? (:listen a))
+                                          (swap! out conj (cond-> {:id (str "r" (r3 @beat)) :beat @beat :wbeats (or (:dur a) 0)
+                                                                   :listen (:listen a) :amp 0.6}
+                                                            (some? (:wire a)) (assoc :wire (:wire a))))
+                                          (some? (:wire a))
                                           (swap! out conj {:id (str "r" (r3 @beat)) :rest true :beat @beat :wbeats (or (:dur a) 0)
                                                            :wire (:wire a) :amp 0}))
                                         (swap! beat + (or (:dur a) 0)))
@@ -125,6 +132,7 @@
                              (reset! open (cond-> {:id (:id a) :beat @beat :wbeats d :midi m :name (name-of a m)
                                                    :amp (or (:vel a) 0.6) :t (:tstamp.real a) :dur (:dur.real a)}
                                             (some? (:wire a)) (assoc :wire (:wire a))
+                                            (some? (:listen a)) (assoc :listen (:listen a))
                                             (seq (:gliss a)) (assoc :midi2 (+ m (/ (second (last (:gliss a))) 100))))))))
                        (when-not (:tie a) (close!))
                        (swap! beat + d))))
@@ -178,10 +186,11 @@
      :grid-alpha (fn [t] (- 1 (* 2 (js/Math.abs (- (r :pitch t) 0.5)))))
      :bars (mapv (fn [x] {:x x :alpha (r :time x)}) (rest bars))
      :notes (mapv (fn [e]
-                    (if (:rest e)
-                      ;; an event for the electronics: nothing drawn but its wires, from the top of the staff
+                    (if (or (:rest e) (nil? (:midi e)))
+                      ;; an event for the electronics, or one without a pitch (:listen): its wires from the top of the
+                      ;; staff, and for the second a mark of what is to be heard
                       (let [rt (r :time (:t e))]
-                        {:id (:id e) :rest true :wires (note-wires (:wire e)) :r {:time rt :pitch 1 :glyph 1}
+                        {:id (:id e) :rest true :listen (:listen e) :wires (note-wires (:wire e)) :r {:time rt :pitch 1 :glyph 1}
                          :x (lerp (:t e) (:ws e) rt) :x1 (lerp (+ (:t e) (:dur e)) (+ (:ws e) (:wd e)) rt) :y 9 :y1 9})
                     (let [rt (r :time (:t e)) rp (r :pitch (:t e)) rg (r :glyph (:t e))
                           h0 (heights (:midi e) (:name e))
@@ -230,6 +239,12 @@
         staff (fn [t] ((:staff-alpha p) t)) grid (fn [t] ((:grid-alpha p) t))
         lane 12]
     (str
+     ;; what is to be heard where there is no pitch (:listen): a hollow diamond over the staff, its descriptors as a title
+     (apply str
+            (for [n (:notes p) :when (and (:rest n) (some? (:listen n)))]
+              (let [x (sx (:x n)) y (sy 10)]
+                (str "<path class=\"ct-head ct-listen\" data-id=\"" (esc (or (:id n) "")) "\" d=\"M" (f1 x) " " (f1 (- y 5)) " l5 5 l-5 5 l-5 -5 z\"><title>"
+                     (esc (str (:id n) " · listen " (pr-str (:listen n)))) "</title></path>"))))
      ;; how sure a follower can be at each note (opts :confidence {id 0…1}, discussion #308): a mark under it, from red
      ;; (rehearse there) to green
      (when-let [cf (:confidence opts)]
@@ -243,8 +258,9 @@
      (apply str
             (for [n (:notes p) [i w] (map-indexed vector (:wires n))
                   ;; a rest's wires (the electronics' own events) are led, at their time
-                  :let [kind (if (:rest n) :elastic (keyword (name (or (:kind w) :rigid))))
-                        lead (if (:rest n) :electronics (keyword (name (or (:leader w) :performer))))
+                  :let [led (and (:rest n) (nil? (:listen n)))
+                        kind (if led :elastic (keyword (name (or (:kind w) :rigid))))
+                        lead (if led :electronics (keyword (name (or (:leader w) :performer))))
                         x (sx (:x n)) y (- (sy (:y n)) (* 1.4 step))
                         wid (str (:id n) (when (> (count (:wires n)) 1) (str "/" i)))
                         label (pr-str (:send w))]]

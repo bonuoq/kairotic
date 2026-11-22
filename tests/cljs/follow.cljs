@@ -114,6 +114,23 @@
               ["n0" "n1" "n2" "n3"])
         (t/is "… where its notation alone would not (its chroma is not E's)"
               (> (fl/obs-dist (fl/default-profile (nth sc 2)) {:chroma (ch 4 11 5)}) (fl/obs-dist (get ps "n2") {:chroma (ch 4 11 5) :flatness 0.74})))))
+;; :listen — what a score says is to be heard at an event (discussion #308)
+    (let [lt [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1"
+                                  [:rest {:dur 1 :listen {:flatness [0.6 1] :loudness [0.5 1]} :wire {:send :hit}}]
+                                  [:note {:pitch "e4" :dur 1 :listen {:chroma [4 11 5]}}] "f4/1"]]
+          sc (fl/score lt)
+          ids (fn [found] (mapv :id (keep (fn [[k x]] (when (= k :at) x)) found)))
+          sent (fn [found] (vec (keep (fn [[k x]] (when (= k :wire) [(:send x) (:status x)])) found)))]
+      (t/eq "a rest with :listen is an event the performer makes, without a pitch" (mapv (juxt :id :midi) sc) [["n0" 60] ["r1" nil] ["n1" 64] ["n2" 65]])
+      (t/eq "its profile is what :listen says: a range's middle, half its width as its spread"
+            (select-keys (fl/default-profile (nth sc 1)) [:mean :sd]) {:mean {:flatness 0.8 :loudness 0.75} :sd {:flatness 0.2 :loudness 0.25}})
+      (t/eq "a note's :listen chroma takes the place of its pitch's (a multiphonic)" (get-in (fl/default-profile (nth sc 2)) [:mean :chroma]) [0 0 0 0 1 1 0 0 0 0 0 1])
+      (let [{:keys [found]} (fl/follow sc [[0 60 0.8] [1 nil 0.5 {:flatness 0.85 :loudness 0.9}] [2 nil 0.8 {:chroma [0 0 0 0 1 1 0 0 0 0 0 1]}] [3 65 0.8]])]
+        (t/eq "the noise is heard where :listen says it is, the multiphonic too" (ids found) ["n0" "r1" "n1" "n2"])
+        (t/eq "… and the noise's wire goes on when it is heard, as a note's" (sent found) [[:hit "on the note"]]))
+      (t/eq "a quiet, pitched-less sound is not the loud noise"
+            (ids (:found (fl/follow sc [[0 60 0.8] [1 nil 0.5 {:flatness 0.1 :loudness 0.1}]]))) ["n0"])
+      (t/is "the continuum marks what is to be heard there" (re-find #"ct-head ct-listen\" data-id=\"r1\"" (ct/svg lt 600 200))))
     ;; how sure a follower can be at each note (discussion #308, step 5)
     (let [sc (fl/score [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 c4 d4 f4"]])]
       (t/eq "from the notation: a note like its neighbour is harder to be sure of"
