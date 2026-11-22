@@ -49,6 +49,13 @@ export const CANTI = {
   "c-major": { name: "C major, ten bars", key: { tonic: "C" }, cf: "C3 D3 F3 E3 A3 G3 F3 E3 D3 C3" },
   "c-short": { name: "C major, six bars", key: { tonic: "C" }, cf: "C3 E3 F3 G3 D3 C3" },
   "g-major": { name: "G major, eight bars", key: { tonic: "G" }, cf: "G2 A2 C3 B2 E3 D3 A2 G2" },
+  // Fux's own, in their modes (Gradus ad Parnassum, the two-part examples: Mann's figures 82–88)
+  "fux-d": { name: "Fux · D dorian (fig. 82)", key: { tonic: "D", mode: "dorian" }, cf: "D3 F3 E3 D3 G3 F3 A3 G3 F3 E3 D3", fux: true },
+  "fux-e": { name: "Fux · E phrygian (fig. 84)", key: { tonic: "E", mode: "phrygian" }, cf: "E3 C3 D3 C3 A2 A3 G3 E3 F3 E3", fux: true },
+  "fux-f": { name: "Fux · F lydian (fig. 85)", key: { tonic: "F", mode: "lydian" }, cf: "F2 G2 A2 F2 D2 E2 F2 C3 A2 F2 G2 F2", fux: true },
+  "fux-g": { name: "Fux · G mixolydian (fig. 86)", key: { tonic: "G", mode: "mixolydian" }, cf: "G2 C3 B2 G2 C3 E3 D3 G3 E3 C3 D3 B2 A2 G2", fux: true },
+  "fux-a": { name: "Fux · A aeolian (fig. 87)", key: { tonic: "A", mode: "aeolian" }, cf: "A2 C3 B2 D3 C3 E3 F3 E3 D3 C3 B2 A2", fux: true },
+  "fux-c": { name: "Fux · C ionian (fig. 88)", key: { tonic: "C", mode: "ionian" }, cf: "C3 D3 F3 E3 G3 F3 E3 D3 C3", fux: true },
 };
 
 // ─── the rhythm: a cell a half bar (four eighths) ───
@@ -68,7 +75,7 @@ export const FIGURES = [
   { id: "neighbor", name: "a neighbour", cells: ["Q", "DQ"], shape: (s, x) => [0, x.up ? 1 : -1], fits: (s, x) => s === 0 && !x.sus && !x.tie, free: [1], cost: 0.5, variants: [{ up: true }, { up: false }] },
   { id: "anticipation", name: "an anticipation (anticipatio)", cells: ["Q"], shape: (s) => [0, s], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [1], cost: 1.3 },
   { id: "escape", name: "an escape tone (échappée)", cells: ["DQ", "Q"], shape: (s) => [0, -Math.sign(s)], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [1], cost: 1.3 },
-  { id: "skip", name: "a skip to a note of the chord", cells: ["Q", "DQ"], shape: (s, x) => [0, x.to], fits: (s, x) => !x.sus && !x.tie, free: [], cost: 0.8, variants: [{ to: 2 }, { to: -2 }, { to: 4 }, { to: -3 }] },
+  { id: "skip", name: "a skip to a note of the chord", cells: ["Q", "DQ"], shape: (s, x) => [0, x.to], fits: (s, x) => !x.sus && !x.tie, free: [], cost: 0.8, variants: [{ to: 2 }, { to: -2 }, { to: 4 }, { to: -3 }, { to: -4 }] },
   { id: "tirata", name: "a run (tirata)", cells: ["QE"], shape: (s) => [0, Math.sign(s), 2 * Math.sign(s)], fits: (s, x) => Math.abs(s) === 3 && !x.sus && !x.tie, free: [1, 2], cost: 0.4 },
   { id: "turn", name: "a turn (circulatio)", cells: ["QE"], shape: (s) => [0, -Math.sign(s), 0], fits: (s, x) => Math.abs(s) === 1 && !x.sus && !x.tie, free: [1], cost: 0.5 },
   { id: "double-neighbor", name: "a double neighbour in eighths (groppo)", cells: ["QE"], shape: (s, x) => [0, x.up ? 1 : -1, x.up ? -1 : 1], fits: (s, x) => s === 0 && !x.sus && !x.tie, free: [1, 2], cost: 0.7, variants: [{ up: true }, { up: false }] },
@@ -167,7 +174,7 @@ function optionsOf(frame, cf, key, costs = {}) {
       if (!f.fits(s, xv)) continue;
       const shape = f.shape(s, xv), ds = shape.map((o) => deg(a) + o);
       if (ds.some((d) => d < lo || d > hi)) continue;
-      const names = ds.map(nameAt), seq = [...names, frame.names[t + 1]];
+      const names = ds.map((d) => (d === deg(a) ? frame.names[t] : d === deg(U[t + 1]) ? frame.names[t + 1] : nameAt(d))), seq = [...names, frame.names[t + 1]];
       let ok = true;
       // no tritone, no 7th, nothing beyond the octave between two notes (a leap of the frame itself is the frame's)
       for (let j = 1; j < seq.length && ok; j++) { const m = Math.abs(midiOf(seq[j]) - midiOf(seq[j - 1])); if (m === 6 || m === 10 || m === 11 || m > 12) ok = false; }
@@ -206,6 +213,7 @@ export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.ra
   const K = keyOf(key), U = frame.units, n = U.length;
   const opts = optionsOf(frame, cf, key, (costs && costs.figures) || {});
   const cellCost = (c) => (costs && costs.cells && costs.cells[c]) || 0;
+  const barCost = (rr) => (costs && costs.bars && costs.bars[rr.join("+")]) || 0;
   // the bars: half bars 2i and 2i+1 (the last half bar, the final note, apart)
   const bars = Math.floor((n - 1) / 2), nb = bars;
   const cellsOk = (t) => Object.keys(CELLS).filter((c) => opts[t].byCell[c] && opts[t].byCell[c].length);
@@ -227,8 +235,8 @@ export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.ra
     if (p) c += minCost(2 * i - 1, p[1], rr[0]);
     if (i === nb - 1) c += minCost(2 * i + 1, rr[1], "H");
     if (c === Infinity) return Infinity;
-    // the cells' own costs, where measured
-    c += cellCost(rr[0]) + cellCost(rr[1]);
+    // the cells' and the bar's rhythm's own costs, where measured
+    c += cellCost(rr[0]) + cellCost(rr[1]) + barCost(rr);
     const ns = notesOfBar(rr);
     // MPR 5: the downbeat's note the longest of the bar; a longer one on a weaker beat after it weighs against the
     // metre (a half note after a quarter on the downbeat), and more so off the half bar
@@ -302,7 +310,7 @@ function choose(opts, temp, r) {
   return opts[opts.length - 1];
 }
 
-/** Florid counterpoint over a cantus firmus: the frame drawn, then elaborated. costs: {figures, cells} measured
+/** Florid counterpoint over a cantus firmus: the frame drawn, then elaborated. costs: {figures, cells, bars} measured
  *  (measure.mjs). {frame, eighths, spans, rhythm} or null. */
 export function florid(cf, key, { temp = 0.4, ftemp = 0.5, rtemp = 0.5, density = 0.6, r = Math.random, tries = 6, costs = null } = {}) {
   for (let i = 0; i < tries; i++) {

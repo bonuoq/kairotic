@@ -151,6 +151,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
     <label class="inline" for="ftemp" title="the frame's bridge: the lower, the more the cheapest ways weigh">Frame <input type="number" id="ftemp" min="0.1" max="3" step="0.1" value="0.4"></label>
     <label class="inline" for="density" title="the height of the arc of activity over the phrase, 0 … 1">Density <input type="number" id="density" min="0" max="1" step="0.1" value="0.6"></label>
     <label class="inline" for="gtemp" title="the figures' choice">Figures <input type="number" id="gtemp" min="0" max="3" step="0.1" value="0.5"></label>
+    <label class="inline" for="costs" title="the figures' and the rhythms' costs: the catalogue's, or fitted to Fux's own florid examples (measured)">Costs <select id="costs"><option value="fux">Fux's, measured</option><option value="catalogue">the catalogue's</option></select></label>
     <button class="act primary" id="draw">Draw</button>
     <button class="act" id="play">▶ Play</button>
     <button class="act" id="play-frame">▶ The frame</button>
@@ -173,7 +174,8 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
   <ul class="q">
     <li>The figures: a passing note (<em>transitus</em>), a neighbour, a double neighbour in eighths (<em>groppo</em>), a run (<em>tirata</em>), a turn (<em>circulatio</em>), a skip filled in eighths, an anticipation (<em>anticipatio</em>), an escape tone, a skip to a note of the chord, a cambiata, and the suspension's own.</li>
     <li>Reduced by Study 61's grammar on the eighths' grid (GTTM's weights inside the bar), the frame's downbeats come back: the derivation read both ways.</li>
-    <li>Major keys for now; next (#342): the figures' and the rhythms' frequencies measured in Fux's own florid examples, reduced by this same grammar, as their costs; longer figures over a bar; a motive kept through the elaboration, the ornamented chorale (BWV 622).</li>
+    <li>Measured: Fux's own florid examples (<em>Gradus ad Parnassum</em>, figures 82–88, in Mark Gotham's encoding) read back into this catalogue — half bars held over the bar (his syncopations), passing notes, skips, a run now and then; quarters and halves, the dotted rhythms never — and the costs fitted until the engine's lines, over his canti firmi in their modes (with their musica ficta: the dorian C♯ at the cadence, B♭…), are heard as often: <em>Costs</em>, Fux's.</li>
+    <li>Next (#342): the frame measured too (Fux's frames move by a third more often, the room his passing notes need); longer figures over a bar; a motive kept through the elaboration, the ornamented chorale (BWV 622).</li>
   </ul>
 </section>
 </main>
@@ -181,14 +183,14 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
 <script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
 <script>
 // The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
-// is read first, as window.kairoticFlorid ({F: florid.mjs, PV: protovoices.mjs, X: export.mjs}).
+// is read first, as window.kairoticFlorid ({F: florid.mjs, PV: protovoices.mjs, X: export.mjs, M: measure.mjs}).
 window.kairoticBase = window.kairoticBase || "kairotic/";
 window.addEventListener("DOMContentLoaded", function () {
   function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
   var b = "./" + window.kairoticBase;
-  Promise.all([import(b + "florid.mjs"), import(b + "protovoices.mjs"), import(b + "export.mjs")]).then(function (ms) {
+  Promise.all([import(b + "florid.mjs"), import(b + "protovoices.mjs"), import(b + "export.mjs"), import(b + "measure.mjs")]).then(function (ms) {
     // (the modules spread into plain objects: Scittle cannot read florid.mjs's namespace object through a var)
-    window.kairoticFlorid = { F: { ...ms[0] }, PV: { ...ms[1] }, X: { ...ms[2] } };
+    window.kairoticFlorid = { F: { ...ms[0] }, PV: { ...ms[1] }, X: { ...ms[2] }, M: { ...ms[3] } };
     try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
   }).catch(show);
 });
@@ -204,6 +206,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (def F (.-F K))
 (def PV (.-PV K))
 (def X (.-X K))
+(def M (.-M K))
 (defn $ [id] (js/document.getElementById id))
 (defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;")))
 (defn status! [s] (set! (.-textContent ($ "status")) s))
@@ -265,7 +268,8 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn draw! []
   (try
     (let [c (cantus)
-          x (.florid F (get c "cf") (clj->js (get c "key")) #js {:temp (num! "ftemp" 0.4) :density (num! "density" 0.6) :ftemp (num! "gtemp" 0.5)})]
+          x (.florid F (get c "cf") (clj->js (get c "key")) #js {:temp (num! "ftemp" 0.4) :density (num! "density" 0.6) :ftemp (num! "gtemp" 0.5)
+                                                                    :costs (when (= (.-value ($ "costs")) "fux") (.-FUX_COSTS M))})]
       (if-not x
         (text! "facts" "No florid line this time: draw again.")
         (let [red (.reduceFlorid F (get c "cf") (clj->js (get c "key")) (.-eighths x) (.-frame x))]
@@ -300,6 +304,7 @@ window.addEventListener("DOMContentLoaded", function () {
 
 ;; ───────── wiring ─────────
 (.addEventListener ($ "cf") "change" (fn [_] (draw!)))
+(.addEventListener ($ "costs") "change" (fn [_] (draw!)))
 (.addEventListener ($ "draw") "click" (fn [_] (draw!)))
 (.addEventListener ($ "play") "click" (fn [_] (when-let [x (:x @st)] (play-line! (vec (array-seq (.-eighths x))) 1))))
 (.addEventListener ($ "play-frame") "click" (fn [_] (when-let [x (:x @st)] (play-line! (vec (array-seq (.-frame x))) SUB))))

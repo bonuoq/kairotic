@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Study 64 · florid: Fux's own, measured** (discussion #342, step 3). Fux's twelve two-part florid examples
+  (*Gradus ad Parnassum*, figures 82–88; Mark Gotham's `**kern` encoding, CC0, in `studies/64-florid/corpus/fux`)
+  read back into the catalogue (`fromKern`, `loadFux`; a note struck again told from one tied): half bars held over
+  the bar (his syncopations), passing notes, skips, a run now and then; quarters and halves, the dotted rhythms never;
+  every tie to an equal or shorter value. Fux's six canti firmi join the study in their modes, and `FUX_COSTS`, the
+  costs fitted to him (`corpus/fit.mjs`), bring the engine's lines over them from 0.53 to 0.18 of his figures and from
+  0.61 to 0.05 of his bars' rhythms (total variation); the page's *Costs*. The figures keep the spelling of the frame's
+  notes (a cadence's C♯ stays C♯); the MEI export writes a mode's signature (D dorian none, G dorian one flat).
 - **Study 64 · florid: measured** (discussion #342, step 3). `measure.mjs` reads a florid line back into what the
   engine draws — its frame (given, or found by Study 61's reduction), each half bar's cell and figure, its ties —
   counts them over a corpus, and turns the counts into costs (`costsOf`, a first guess), then fits them (`fitCosts`:
