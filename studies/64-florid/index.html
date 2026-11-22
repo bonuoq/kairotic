@@ -149,7 +149,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
   <div class="row">
     <label class="inline" for="cf">Cantus firmus <select id="cf"></select></label>
     <label class="inline" for="ftemp" title="the frame's bridge: the lower, the more the cheapest ways weigh">Frame <input type="number" id="ftemp" min="0.1" max="3" step="0.1" value="0.4"></label>
-    <label class="inline" for="density" title="how busy the figures are, 0 … 1">Density <input type="number" id="density" min="0" max="1" step="0.1" value="0.6"></label>
+    <label class="inline" for="density" title="the height of the arc of activity over the phrase, 0 … 1">Density <input type="number" id="density" min="0" max="1" step="0.1" value="0.6"></label>
     <label class="inline" for="gtemp" title="the figures' choice">Figures <input type="number" id="gtemp" min="0" max="3" step="0.1" value="0.5"></label>
     <button class="act primary" id="draw">Draw</button>
     <button class="act" id="play">▶ Play</button>
@@ -169,11 +169,11 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
 
 <section class="panel" aria-labelledby="h-about">
   <h2 id="h-about">About <span>discussion <a href="https://github.com/bonuoq/kairotic/discussions/342">#342</a></span></h2>
-  <p class="about">A note is legal if a legal derivation makes it. The <em>frame</em> is second and fourth species over the cantus firmus — consonance on the strong half, a passing note on the weak one, suspensions prepared and resolved — drawn by a bridge (Study 63) over the kernel every phrase answers to. Each half bar of the frame, from its note to the next, is then elaborated into four eighths by a <em>figure</em>: a rhythm, a shape relative to the two notes it joins, and the places where it may be dissonant — the dissonance it brings is justified by the frame it ornaments. A suspension of the frame may be prepared with a neighbour, or resolved later: early, in an eighth, or through a third below it (an ornamented resolution).</p>
+  <p class="about">A note is legal if a legal derivation makes it. The <em>frame</em> is second and fourth species over the cantus firmus — consonance on the strong half, a passing note on the weak one, suspensions prepared and resolved — drawn by a bridge (Study 63) over the kernel every phrase answers to. The <em>rhythm</em> comes next, a cell a half bar — a half note, two quarters, a dotted quarter and an eighth, a quarter and two eighths (eighths in pairs, on the weak quarter, as Fux writes them) — drawn by a bridge over the bars with GTTM's preferences: the downbeat's note the longest (MPR 5), a bar like the one before it once but not a third time (parallelism, MPR 1), the bar's second half the busier, and an arc of activity over the phrase. Each half bar of the frame, from its note to the next, is then elaborated on its cell by a <em>figure</em>: a shape relative to the two notes it joins, and the places where it may be dissonant — the dissonance it brings is justified by the frame it ornaments — chosen with the melody's coherence on the surface (the soft rules of every engine on the florid line itself, a direction that goes on, a figure in sequence). A suspension of the frame may be prepared with a neighbour, or resolved later: early, in an eighth, or through a third below it (an ornamented resolution).</p>
   <ul class="q">
-    <li>The figures: a passing quarter (<em>transitus</em>), a dotted passing eighth, a run (<em>tirata</em>), a neighbour, a turn (<em>circulatio</em>), an anticipation (<em>anticipatio</em>), an escape tone, a skip to a note of the chord, a cambiata, and the suspension's own.</li>
+    <li>The figures: a passing note (<em>transitus</em>), a neighbour, in quarters or eighths, a run (<em>tirata</em>), a turn (<em>circulatio</em>), a skip filled in eighths, an anticipation (<em>anticipatio</em>), an escape tone, a skip to a note of the chord, a cambiata, and the suspension's own.</li>
     <li>Reduced by Study 61's grammar on the eighths' grid (GTTM's weights inside the bar), the frame's downbeats come back: the derivation read both ways.</li>
-    <li>Major keys for now; next (#342): mixed rhythms beyond the four eighths (triplets, longer figures over a bar), a motive kept through the elaboration, the ornamented chorale (BWV 622).</li>
+    <li>Major keys for now; next (#342): the figures' and the rhythms' frequencies measured in Fux's own florid examples, reduced by this same grammar, as their costs; longer figures over a bar; a motive kept through the elaboration, the ornamented chorale (BWV 622).</li>
   </ul>
 </section>
 </main>
@@ -223,6 +223,9 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (defn row [label cols cells] (str "<div class=\"row\"><span class=\"lab\">" label "</span><div class=\"cells\" style=\"grid-template-columns:repeat(" cols ", minmax(2.6em, 1fr))\">" cells "</div></div>"))
 
+;; the cells of a half bar, as notes
+(def rsym {"H" "𝅗𝅥" "Q" "♩ ♩" "DQ" "♩. ♪" "QE" "♩ ♫"})
+
 (defn draw-line! []
   (when-let [x (:x @st)]
     (let [c (cantus) bass (str/split (get c "cf") #" ") eighths (vec (array-seq (.-eighths x))) n8 (count eighths)
@@ -238,6 +241,7 @@ window.addEventListener("DOMContentLoaded", function () {
       (html! "line"
              (str (row "cantus" n8 (str/join "" (map-indexed (fn [i b] (cell (min 8 (- n8 (* 8 i))) "" b)) bass)))
                   (row "frame" n8 (str/join "" (map (fn [nm] (cell SUB "" nm)) frame)))
+                  (row "rhythm" n8 (str/join "" (map (fn [r] (cell SUB "fig" (get rsym r r))) (array-seq (.-rhythm x)))))
                   (row "figures" n8 (str/join "" (map (fn [sp] (cell SUB "fig" (.-figure sp))) spans)))
                   (row "surface" n8 (str/join "" surf))))
       (text! "facts" (str (count frame) " half bars, " n8 " eighths · figures: "
