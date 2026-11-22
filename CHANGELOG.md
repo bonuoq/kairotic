@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 64 · florid: the frame measured** (discussion #342). Fux's frames (the notes on his half bars' downbeats)
+  hold a note over the bar or move by a third far more often than the engine's (held 28%, thirds 31%; the engine 10%
+  and 15%): the room his passing notes need. The frame's bridge takes a cost by interval (`costs.frame`, through
+  `bridgeVoice`'s `extra(t, c, U)`, which now sees the line before), measured and fitted with the rest: `FUX_COSTS`,
+  on seeds the fit did not see, from 0.53 to 0.15 of his figures, 0.61 to 0.11 of his bars' rhythms and 0.40 to 0.16
+  of his frames' moves (total variation).
 - **Several voices on one engine: `cac partimento` and `cac judge` on `@kairotic/rules`** (`@kairotic/rules` 0.3.0,
   `@kairotic/cac` 0.9.0; step 3 of discussion #353). The core takes several voices (`solveVoices`: each voice a style of
   one voice over the bass, tuples of their candidates, rules between them, the exact count memoized on every voice's

@@ -164,8 +164,13 @@ export async function run() {
     const plain = gen(null, 11), dorian = plain.filter(({ cc }) => cc.key.mode === "dorian");
     is("florid over Fux's six canti firmi in their modes: every one drawn, the dorian cadence through C♯", plain.length === 18 && dorian.every(({ x }) => x.frame[x.frame.length - 2] === "C#5" || x.frame[x.frame.length - 2] === "C#4" || !/^C/.test(x.frame[x.frame.length - 2])));
     const d0 = M.distance(M.measure(plain.map((g) => g.line)), st), d1 = M.distance(M.measure(gen(M.FUX_COSTS, 11).map((g) => g.line)), st);
-    is("… drawn with the costs fitted to Fux (FUX_COSTS), at most half as far from his figures and bars' rhythms", d1 <= d0 / 2);
-    notes.push(`Fux's costs: ${d0.toFixed(2)} → ${d1.toFixed(2)} from his figures and rhythms`);
+    is("… drawn with the costs fitted to Fux (FUX_COSTS), at most half as far from his figures, bars' rhythms and frames' moves", d1 <= d0 / 2);
+    notes.push(`Fux's costs: ${d0.toFixed(2)} → ${d1.toFixed(2)} from his figures, rhythms and frames`);
+    // the frame measured: his syncopations (a note held over the bar) and thirds, drawn as often as he writes them
+    const share = (st2, ks) => ks.reduce((a, k) => a + (st2.frame.get(k) || 0), 0) / [...st2.frame.values()].reduce((a, b) => a + b, 0);
+    const sf = M.measure(gen(M.FUX_COSTS, 11).map((g) => g.line)), sp = M.measure(plain.map((g) => g.line));
+    is("… its frames: held over the bar and moving by thirds about as often as his (within 12 points), more than with the catalogue's", Math.abs(share(sf, ["0"]) - share(st, ["0"])) <= 0.12 && Math.abs(share(sf, ["+2", "-2"]) - share(st, ["+2", "-2"])) <= 0.12 && share(sf, ["0", "+2", "-2"]) > share(sp, ["0", "+2", "-2"]));
+    notes.push(`the frame held / by thirds: Fux ${Math.round(100 * share(st, ["0"]))}% / ${Math.round(100 * share(st, ["+2", "-2"]))}%, the engine with his costs ${Math.round(100 * share(sf, ["0"]))}% / ${Math.round(100 * share(sf, ["+2", "-2"]))}%, with the catalogue's ${Math.round(100 * share(sp, ["0"]))}% / ${Math.round(100 * share(sp, ["+2", "-2"]))}%`);
   }
 
   const x0 = runs[0].x;

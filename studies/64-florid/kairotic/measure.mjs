@@ -13,8 +13,8 @@
 //               bar's struck notes and their lengths, its cell (CELLS, or "other:…"), its figure (FIGURES: the one
 //               whose shape it has, and whose context fits — or, loose, the shape alone; or "other:…")
 //   measure     measure(lines) → the counts: figures, cells, bars' rhythms, ties (to an equal or shorter value or
-//               not), a bar like the one before, notes a bar along the phrase
-//   costs       costsOf(stats) → {figures, cells, bars}: a cost each, −log of its share against the commonest (smoothed),
+//               not), a bar like the one before, notes a bar along the phrase, the frame's moves
+//   costs       costsOf(stats) → {figures, cells, bars, frame}: a cost each (frame: the frame's moves by interval), −log of its share against the commonest (smoothed),
 //               for florid({costs}) — a first guess: how often a figure is heard is not how much it is preferred,
 //               where the frame leaves room for it or not
 //   Fux         loadFux() his twelve two-part florid examples (corpus/fux, **kern, CC0); FUX_COSTS the costs fitted
@@ -22,7 +22,7 @@
 //   fit         fitCosts(stats, generate) → the costs with which the engine's own lines are heard as often as the
 //               corpus's: rounds of drawing, measuring, and moving each cost by the log of the two shares' ratio (a
 //               maximum-entropy fit, its moments the figures' and the cells' shares)
-import { SUB, CELLS, FIGURES, frameFrom, contextOf, reduceFlorid } from "./florid.mjs";
+import { SUB, CELLS, FIGURES, frameFrom, contextOf, reduceFlorid, intervalKey } from "./florid.mjs";
 import { keyOf, codeOf, codeDegree } from "./partimento.mjs";
 
 const split = (s) => (Array.isArray(s) ? s : String(s || "").trim().split(/\s+/).filter(Boolean));
@@ -81,12 +81,14 @@ export function readLine(line, { frame: by = "downbeats" } = {}) {
 /** The counts over a corpus of lines. */
 export function measure(lines) {
   const inc = (m, k) => m.set(k, (m.get(k) || 0) + 1);
-  const st = { lines: 0, unread: 0, figures: new Map(), cells: new Map(), bars: new Map(), loose: 0, halves: 0, ties: 0, tiesOk: 0, again: 0, barsN: 0, arc: [0, 0, 0, 0, 0], arcN: [0, 0, 0, 0, 0] };
+  const st = { lines: 0, unread: 0, figures: new Map(), cells: new Map(), bars: new Map(), frame: new Map(), loose: 0, halves: 0, ties: 0, tiesOk: 0, again: 0, barsN: 0, arc: [0, 0, 0, 0, 0], arcN: [0, 0, 0, 0, 0] };
   for (const line of lines) {
     const R = readLine(line);
     if (!R) { st.unread++; continue; }
     st.lines++;
-    const S = R.spans;
+    const S = R.spans, K = keyOf(line.key), deg = (nm) => codeDegree(codeOf(K, nm));
+    // the frame's moves, from the first half bar counted on
+    for (let t = Math.max(1, (line.skip || 0) + 1); t < R.frame.length; t++) inc(st.frame, intervalKey(deg(R.frame[t]) - deg(R.frame[t - 1])));
     S.forEach((sp, t) => {
       if (t < (line.skip || 0)) return;
       st.halves++; inc(st.figures, sp.figure); inc(st.cells, sp.cell); if (sp.loose) st.loose++;
@@ -113,9 +115,10 @@ export function costsOf(st, { alpha = 0.5, scale = 0.5 } = {}) {
     const c = ids.map((id) => (counts.get(id) || 0) + alpha), max = Math.max(...c);
     return Object.fromEntries(ids.map((id, i) => [id, +(scale * Math.log(max / c[i])).toFixed(3)]));
   };
-  return { figures: table(FIGURE_IDS, st.figures), cells: table(CELL_IDS, st.cells), bars: table(BAR_IDS, st.bars) };
+  return { figures: table(FIGURE_IDS, st.figures), cells: table(CELL_IDS, st.cells), bars: table(BAR_IDS, st.bars), frame: table(FRAME_IDS, st.frame) };
 }
 const FIGURE_IDS = FIGURES.map((f) => f.id), CELL_IDS = Object.keys(CELLS), BAR_IDS = CELL_IDS.flatMap((a) => CELL_IDS.map((b) => a + "+" + b));
+const FRAME_IDS = ["0", ...[1, 2, 3, 4, 5, 6, 7, 8].flatMap((k) => ["+" + k, "-" + k])];
 
 /** The counts in a few lines of text. */
 export function describe(st) {
@@ -128,17 +131,18 @@ export function describe(st) {
     `bars: ${top(st.bars, 8)}; a bar like the one before ${Math.round(100 * st.again / Math.max(1, st.barsN))}%`,
     `ties: ${st.ties}, to an equal or shorter value ${st.tiesOk}`,
     `notes a bar along the phrase: ${arc}`,
+    `the frame's moves: ${top(st.frame, 10)}`,
   ];
 }
 
 const shares = (m, ids, alpha) => { const c = ids.map((id) => (m.get(id) || 0) + alpha), z = c.reduce((a, b) => a + b, 0); return Object.fromEntries(ids.map((id, i) => [id, c[i] / z])); };
 
-/** How far two counts are apart: the total variation (0 … 1) of their figures' shares and of their bars' rhythms',
- *  the mean of the two ({figures, bars} each apart with parts: true). */
+/** How far two counts are apart: the total variation (0 … 1) of their figures' shares, of their bars' rhythms' and of
+ *  their frames' moves, the mean of the three ({figures, bars, frame} each apart with parts: true). */
 export function distance(a, b, alpha = 0.5, { parts = false } = {}) {
   const tv = (ids, m) => { const p = shares(a[m], ids, alpha), q = shares(b[m], ids, alpha); return ids.reduce((s, id) => s + Math.abs(p[id] - q[id]), 0) / 2; };
-  const figures = tv(FIGURE_IDS, "figures"), bars = tv(BAR_IDS, "bars");
-  return parts ? { figures, bars } : (figures + bars) / 2;
+  const figures = tv(FIGURE_IDS, "figures"), bars = tv(BAR_IDS, "bars"), frame = tv(FRAME_IDS, "frame");
+  return parts ? { figures, bars, frame } : (figures + bars + frame) / 3;
 }
 
 /**
@@ -148,16 +152,16 @@ export function distance(a, b, alpha = 0.5, { parts = false } = {}) {
  */
 export function fitCosts(target, generate, { rounds = 5, eta = 0.5, alpha = 0.5 } = {}) {
   let costs = costsOf(target, { alpha }), best = null;
-  const fids = FIGURE_IDS, cids = CELL_IDS, bids = BAR_IDS, log = [];
-  const pt = shares(target.figures, fids, alpha), ct = shares(target.cells, cids, alpha), bt = shares(target.bars, bids, alpha);
+  const fids = FIGURE_IDS, cids = CELL_IDS, bids = BAR_IDS, rids = FRAME_IDS, log = [];
+  const pt = shares(target.figures, fids, alpha), ct = shares(target.cells, cids, alpha), bt = shares(target.bars, bids, alpha), rt = shares(target.frame, rids, alpha);
   for (let k = 0; k <= rounds; k++) {
     const st = measure(generate(costs)), d = distance(st, target, alpha);
     log.push({ distance: d });
     if (!best || d < best.d) best = { d, costs };
     if (k === rounds) break;
-    const pm = shares(st.figures, fids, alpha), cm = shares(st.cells, cids, alpha), bm = shares(st.bars, bids, alpha);
+    const pm = shares(st.figures, fids, alpha), cm = shares(st.cells, cids, alpha), bm = shares(st.bars, bids, alpha), rm = shares(st.frame, rids, alpha);
     const step = (tab, ids, m, t) => { const out = {}; for (const id of ids) out[id] = Math.max(0, tab[id] + eta * Math.log(m[id] / t[id])); const lo = Math.min(...Object.values(out)); for (const id of ids) out[id] = +(out[id] - lo).toFixed(3); return out; };
-    costs = { figures: step(costs.figures, fids, pm, pt), cells: step(costs.cells, cids, cm, ct), bars: step(costs.bars, bids, bm, bt) };
+    costs = { figures: step(costs.figures, fids, pm, pt), cells: step(costs.cells, cids, cm, ct), bars: step(costs.bars, bids, bm, bt), frame: step(costs.frame, rids, rm, rt) };
   }
   // the round nearest the corpus (a round may overshoot: the frames leave each figure more or less room)
   return { costs: best.costs, distance: best.d, rounds: log };
@@ -225,6 +229,7 @@ export async function loadFux() {
 }
 
 /** The engine's costs fitted to Fux's examples (corpus/fit.mjs: the five with the cantus firmus below, 97 half bars;
- *  drawn over his six canti firmi in their modes, figures 0.53 → 0.18 and bars' rhythms 0.61 → 0.05 from his, total
- *  variation). florid({costs: FUX_COSTS}). */
-export const FUX_COSTS = {"figures":{"held":0.57,"passing":0,"neighbor":1.55,"anticipation":2.68,"escape":3.63,"skip":1.94,"tirata":0,"turn":1.91,"double-neighbor":1.88,"passing-eighths":0.23,"cambiata":0,"anticipated-resolution":0,"ornamented-resolution":0},"cells":{"H":0.49,"Q":0,"DQ":1.56,"QE":0.32},"bars":{"H+H":0.89,"H+Q":0.77,"H+DQ":0.1,"H+QE":1.6,"Q+H":0.01,"Q+Q":0,"Q+DQ":0,"Q+QE":0.61,"DQ+H":0,"DQ+Q":0,"DQ+DQ":0,"DQ+QE":0,"QE+H":0.83,"QE+Q":0,"QE+DQ":0,"QE+QE":0}};
+ *  drawn over his six canti firmi in their modes, on seeds the fit did not see: figures 0.53 → 0.15, bars' rhythms
+ *  0.61 → 0.11, the frame's moves 0.40 → 0.16 from his, total variation — his syncopations and thirds in the frame,
+ *  the room his passing notes need). florid({costs: FUX_COSTS}). */
+export const FUX_COSTS = {"figures":{"held":0.62,"passing":0,"neighbor":2.56,"anticipation":3.12,"escape":3.16,"skip":2.05,"tirata":0,"turn":1.71,"double-neighbor":2.16,"passing-eighths":0,"cambiata":0,"anticipated-resolution":0,"ornamented-resolution":0},"cells":{"H":0.47,"Q":0,"DQ":1.89,"QE":0.45},"bars":{"H+H":0.93,"H+Q":1.46,"H+DQ":0,"H+QE":2.35,"Q+H":0.01,"Q+Q":0.09,"Q+DQ":0,"Q+QE":0.44,"DQ+H":0,"DQ+Q":0,"DQ+DQ":0,"DQ+QE":0,"QE+H":0.55,"QE+Q":0,"QE+DQ":0,"QE+QE":0.2},"frame":{"0":0.16,"+1":2.34,"-1":1.2,"+2":0.95,"-2":0,"+3":1.17,"-3":0.08,"+4":2.83,"-4":0,"+5":0,"-5":0,"+6":0,"-6":0,"+7":3,"-7":0,"+8":0,"-8":0}};
