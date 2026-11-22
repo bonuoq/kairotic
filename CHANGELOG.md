@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Study 53's soft rules: the package's** (`soft.mjs` of `@kairotic/cac`). Its copy had stayed behind; it now weighs
+  as every engine does, and `tests/counterpoint.mjs` checks it with the others. Studies 38–42 keep their own kernels,
+  frozen as the record of each step.
 - **Rules: an inventory, toward one engine** (`docs/rules.md`; discussion #353, step 1). Every rule the constraint
   engines hold today (`counterpoint.mjs`, `partimento.mjs`, `soft.mjs`, Studies 61–64), gathered into some twenty
   general, parametrized rules by context (note, line, vertical, pair, chord, progression, given, edge) with their

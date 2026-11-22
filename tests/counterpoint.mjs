@@ -215,7 +215,7 @@ for (const f of ["kernel.mjs", "mirror.mjs"])
   const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646, r = rng(7);
   const ctx = { N: 7, strong: (t) => t % 2 === 0, lowerFirst: (x, c) => (x <= c ? [x, c] : [c, x]), dissonant: (x, c) => [1, 3, 6].includes(((Math.abs(x - c) % 7) + 7) % 7),
                 quality: (l, h) => { const k = (((h - l) % 7) + 7) % 7; return k === 0 || k === 4 ? "perfect" : k === 2 || k === 5 ? "imperfect" : "dissonant"; }, suspension: false };
-  for (const study of ["50-lines", "51-schemata", "54-parts", "56-figuring", "57-octave", "58-incipit", "59-galant", "60-development", "61-reduction", "62-four", "63-bridges", "64-florid"]) {
+  for (const study of ["50-lines", "51-schemata", "53-harmonize", "54-parts", "56-figuring", "57-octave", "58-incipit", "59-galant", "60-development", "61-reduction", "62-four", "63-bridges", "64-florid"]) {
     const theirs = await import(`../studies/${study}/kairotic/soft.mjs`);
     let same = true;
     for (let k = 0; k < 400 && same; k++) {
