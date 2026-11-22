@@ -7,8 +7,11 @@
       r3 (fn [x] (/ (js/Math.round (* x 1000)) 1000))
       ;; its words: follow [ahead] [band] [descriptor …] — numbers first, then the names of what it listens to on
       ;; inlets 3, 4 … (from features~, chroma~: a number or a list of numbers each)
-      opts (fn [args] (let [ns (filter number? args)]
-                        {:ahead (or (first ns) 4) :band (or (second ns) 0.6) :listen (vec (filter keyword? args))}))
+      ;; the word hmm: the probabilistic follower (discussion #308)
+      opts (fn [args] (let [ns (filter number? args) ws (filter keyword? args)]
+                        {:ahead (or (first ns) 4) :band (or (second ns) 0.6)
+                         :model (if (some #{:hmm} ws) :hmm :greedy)
+                         :listen (vec (remove #{:hmm :greedy} ws))}))
       ;; what a note sounded like (discussion #308): the mean of each descriptor while it sounded, kept in the take
       mean (fn [[sum n]] (if (number? sum)
                            (/ (js/Math.round (* 10000 (/ sum n))) 10000)
@@ -70,9 +73,9 @@
   {;; ── about ──
    :class "follow"
    :license "MPL-2.0"
-   :doc "Follows a performer through a tree (discussion #204): a tree on the right (from a tree box), Hz on the left (from pitch~: 0 when it hears none) and onsets in the middle (from onset~: a note begins there even on the same pitch). start begins at the top of the tree, stop ends; [:here id] tells it where the performer is (a click on a note of the tree's continuum does). Each note heard is matched with a note of the tree a little ahead of where the performer was, by its pitch (an octave off still counts) and by when it was expected at the tempo the performer goes; wrong notes and ornaments are let pass, skipped notes are skipped. Out: the written beat where the performer is, [:note id], what each wire sends when it goes on — wires are written on their notes ([:note {… :wire {:send :swell :kind :elastic :tol 0.5}}], or (wire! :bN note :swell {…})): a rigid one on its note (or caught up once at the next note found if it was passed over), an elastic one on its note if the performer gets there in time and else on its own, at the time the note was expected plus its tolerance (or at that time whatever the performer does, if the electronics lead) —, and at stop the take — where each note was played, in seconds, and with descriptors named after its numbers (follow rms centroid chroma: one inlet each, from features~ or chroma~) what each note sounded like (their means while it sounded, :profile) — as [:take {…}]: into the tree box's inlet it is kept only for you (a message [:take … :work] keeps it in the tree), and its continuum can show it."
-   :usage "follow [ahead] [band] [descriptor …]"
-   :io (fn [b] [(+ 3 (count (filter keyword? (:args b)))) 4])
+   :doc "Follows a performer through a tree (discussion #204): a tree on the right (from a tree box), Hz on the left (from pitch~: 0 when it hears none) and onsets in the middle (from onset~: a note begins there even on the same pitch). start begins at the top of the tree, stop ends; [:here id] tells it where the performer is (a click on a note of the tree's continuum does). Each note heard is matched with a note of the tree a little ahead of where the performer was (with the word hmm, a probability is kept for every note instead, so that a doubtful sound does not lose the place and a wrong step is undone when the next sounds point elsewhere), by its pitch (an octave off still counts) and by when it was expected at the tempo the performer goes; wrong notes and ornaments are let pass, skipped notes are skipped. Out: the written beat where the performer is, [:note id], what each wire sends when it goes on — wires are written on their notes ([:note {… :wire {:send :swell :kind :elastic :tol 0.5}}], or (wire! :bN note :swell {…})): a rigid one on its note (or caught up once at the next note found if it was passed over), an elastic one on its note if the performer gets there in time and else on its own, at the time the note was expected plus its tolerance (or at that time whatever the performer does, if the electronics lead) —, and at stop the take — where each note was played, in seconds, and with descriptors named after its numbers (follow rms centroid chroma: one inlet each, from features~ or chroma~) what each note sounded like (their means while it sounded, :profile) — as [:take {…}]: into the tree box's inlet it is kept only for you (a message [:take … :work] keeps it in the tree), and its continuum can show it."
+   :usage "follow [ahead] [band] [hmm] [descriptor …]"
+   :io (fn [b] [(+ 3 (count (remove #{:hmm :greedy} (filter keyword? (:args b))))) 4])
    :dynamic-io true
    :size [124 30]
 
@@ -93,7 +96,7 @@
                   (= value :start)
                   (if (seq (:score st))
                     (let [st (assoc st :on true :t0 at :fl (api/follow-start (:score st) {:ahead (api/clamp (:ahead (opts args)) 1 32) :band (api/clamp (:band (opts args)) 0.1 2)
-                                                                                         :wires (:wires st) :profiles (:profiles st)})
+                                                                                         :wires (:wires st) :profiles (:profiles st) :model (:model (opts args))})
                                     :cur nil :pend nil :onset nil :at nil :cue nil :wake nil :acc nil :cur-id nil :prof {} :desc {})]
                       (out-of [st []] nil at))
                     {:effects [[:print "follow: no tree yet (connect a tree box to its right inlet)"]]})

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The probabilistic follower** (discussion #308; `@kairotic/analysis` 0.8.7): `follow hmm` — a hidden Markov model
+  over the events of the score, in the manner of Antescofo: a probability for every event the performer may be at,
+  moved by each sound heard (on to the next events, each skipped one less likely, weighed by how the sound fits —
+  pitch, octave errors, what is heard against the profile — and by when it comes against when each was expected at
+  the performer's tempo), or staying (a wrong note). A doubtful sound lowers a probability instead of losing the place;
+  a wrong step is undone when the next sounds point back (its wires to go on again). Wires, ticks, takes and
+  corrections as before. `(fl/start evs {:model :hmm})`.
 - **`cac` does not freeze the page** (`@kairotic/rules` 0.5.1, `@kairotic/cac` 0.10.1). The exact count runs in the
   page, and a long bass without figures in four parts takes minutes (16 bars of half notes in A major: about a minute;
   of whole notes, more than eight) — an agent asked for a 16-bar partimento hung the page that way. Now `cac
