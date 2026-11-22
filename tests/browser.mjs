@@ -37,6 +37,7 @@ import { cac } from "./cac.mjs";
 import { data } from "./data.mjs";
 import { claude } from "./claude.mjs";
 import { agent } from "./agent.mjs";
+import { craft } from "./craft.mjs";
 import { help } from "./help.mjs";
 import { components } from "./components.mjs";
 import { gendy } from "./gendy.mjs";
@@ -120,6 +121,7 @@ const appSuites = [
   ["data", data, "the data tests ran"],
   ["claude", claude, "the Claude tab tests ran"],
   ["agent", agent, "the agent box tests ran"],
+  ["craft", craft, "the craft tests ran"],
   // opens a solo work and a room of its own, then a local one again
   ["lines", lines, "the lines tests ran"],
   // opens the solo work a file makes, deletes it, then a local one again

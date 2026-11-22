@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **One Claude for every box, step 1: the craft as tools, and offers** (discussion #351). While Claude makes a
+  patch — an agent's content, the Claude tab's — it can read any box of the patch on screen in one common shape
+  (`describe_box`: class, text, ports, connections, and for a tree its key, meter, voices as lines of the melody
+  shorthand with their range, and the analysis on its root and notes) and apply any class to a box apart, as a box of
+  that class would receive it (`apply_class`: `cac judge`, `cac partimento`, `comes`…; its tasks run, a package
+  fetched if the work has none, nothing goes into the work): every class is a tool. From the page, `(describe-box
+  :bN)`, `(describe-tree t)`, `(apply-class "cac judge" :bN)` and `(run-class text msgs)`. An agent is told the boxes
+  beside it and what reaches its inlets. **Offers:** `agent 3 "…"` answers each request with three contents (up to
+  five), each told of the earlier ones, three sibling points of its line; it plays the first, and `(choose-offer :bN
+  2)` or the Agents section of the Claude panel chooses another; the next request goes on from the one chosen.
 - **`@kairotic/rules` 0.1.0: one constraint engine, step 2 of #353.** A package of its own, no classes: the core
   (`solve()`: hard rules that refuse with a reason, soft rules that cost, the exact count on a window as wide as the rules
   look back, the engine, a uniform draw, a judgement, `why` a note is refused), the catalogue's first general rules —

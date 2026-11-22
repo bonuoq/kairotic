@@ -35,8 +35,9 @@
   [t]
   (let [t (str t)]
     (if (and (= "agent" (klass t)) (> (count t) (+ 8 agent-shown)))
-      (if (str/starts-with? (str/triml (subs t 5)) "\"")
-        (str (subs t 0 (+ 7 agent-shown)) "…\"")
+      ;; agent "…", or agent 3 "…" (three offers, discussion #351)
+      (if-let [[_ pre] (re-find #"^(agent\s+(?:\d+\s+)?)\"" t)]
+        (str (subs t 0 (+ (count pre) 1 agent-shown)) "…\"")
         (str (subs t 0 (+ 6 agent-shown)) "…"))
       t)))
 
