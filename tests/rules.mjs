@@ -264,6 +264,33 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   })());
 }
 
+// styles written as data (EDN through clj->js: keywords as strings): inheritance of a style of several voices — its
+// rules between voices, its voice's style —, versions, a style defined by name, the parts a style writes
+{
+  const { fourParts } = await import("../studies/62-four/kairotic/four.mjs");
+  const F = fourParts({ phrase: "dominant-seventh" }), G = fourParts({ phrase: "ro-up" });
+  const free = { style: "free-sevenths", extends: ["chorale-4", "1.0.0"], between: [["seventh", { free: true }]] };
+  const a = R.fourOverBass({ ...F.spec, bass: F.bass, key: F.key, style: free }).count(), b = R.fourOverBass({ ...F.spec, bass: F.bass, key: F.key, freeSevenths: true }).count();
+  is(`a style extends chorale-4 with the dominant's 7th free: as freeSevenths (${a})`, a === b && a !== F.count());
+  const strict = { style: "strict-lines", extends: "chorale-4", voice: { rules: [["leaps", { line: "strict" }]] } };
+  const c = R.fourOverBass({ ...G.spec, bass: G.bass, key: G.key, style: strict }).count(), d = R.fourOverBass({ ...G.spec, bass: G.bass, key: G.key, line: "strict" }).count();
+  is(`... its voices' style extends the parent's (every line strict): as line strict (${c} of ${G.count()})`, c === d && c < G.count());
+  const st = R.resolveStyle(strict);
+  is("... the rest kept, in order: its rules between voices, its voice's other rules", st.between.length === R.resolveStyle("chorale-4").between.length && R.resolveStyle(st.voice).rules.length === R.resolveStyle("partimento-1").rules.length);
+  const err = (f) => { try { f(); return null; } catch (e) { return e.message; } };
+  is("... a version asked of the parent: the same major, its minor at least", /is 1\.0\.0/.test(err(() => R.resolveStyle({ extends: ["chorale-4", "2.0.0"] })) || "") && err(() => R.resolveStyle({ extends: ["chorale-4", "1.0.0"] })) === null);
+  is("... a rule the catalogue does not have, named", /no rule sevenths in between/.test(err(() => R.checkStyle({ style: "x", extends: "chorale-4", between: [["sevenths"]] })) || ""));
+  const heavy = R.fourOverBass({ ...G.spec, bass: G.bass, key: G.key, style: { extends: "chorale-4", weights: { doubling: 5 } } }).fan()[0];
+  const light = R.fourOverBass({ ...G.spec, bass: G.bass, key: G.key, weights: { doubling: 5 } }).fan()[0];
+  is("... a style's weights reach its voices and the rules between them, as the spec's", JSON.stringify(heavy.parts) === JSON.stringify(light.parts));
+  const lib = { ...R.STYLES };
+  R.defineStyle({ style: "my-chorale", version: "0.2.0", extends: "chorale-4", weights: { doubling: 2 } }, lib);
+  is("a style defined by its name may be named, and extended", R.resolveStyle({ extends: ["my-chorale", "0.1.0"] }, lib).weights.doubling === 2 && R.partsOf("my-chorale", lib) === 4);
+  const notes = [48, 50, 52, 53, 55].map((m) => ({ midi: m, units: 1 }));
+  const three = R.fromNotes({ notes, key: "C", style: "partimento-2", fill: true });
+  is("a style says how many parts it writes: partimento-2, three, unless voices asks for others", three.voices === 3 && /writes 3 parts, not 4/.test(err(() => R.fromNotes({ notes, key: "C", style: "partimento-2", voices: 4 })) || ""));
+}
+
 const failed = results.filter((r) => !r[1]);
 console.log(`${results.length - failed.length} / ${results.length} passed`);
 for (const [w, ok, d] of results) if (!ok) console.log("  FAIL " + w + (d ? " — " + d : ""));
