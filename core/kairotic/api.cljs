@@ -377,7 +377,8 @@ registerProcessor('kairotic-tap', KairoticTap);
 
 (defn follow-score "The notes a tree is followed by ({:id :midi :ws :wd :beat :wire}), its first voice." [tree] (fl/score tree))
 (defn follow-start "A follower at the beginning of a score; opts :ahead (4) :band (0.6 semitones) :octave (true) :wires." [evs opts] (fl/start evs opts))
-(defn follow-hear "A note heard at t (seconds) at midi → [state found]: [:at {:id :i :beat :t :skipped}] and [:wire {:send :id :status}]." [state t midi] (fl/hear state t midi))
+(defn follow-hear "A note heard at t (seconds) at midi (nil: a sound without a pitch), with what is heard of it (obs: {descriptor value}) → [state found]: [:at {:id :i :beat :t :skipped}] and [:wire {:send :id :status}]." ([state t midi] (fl/hear state t midi nil)) ([state t midi obs] (fl/hear state t midi obs)))
+(defn follow-learn "What rehearsals learned of how each note sounds, from takes with :profile → {note-id {:n :mean :sd :w}}." [evs takes] (fl/learn evs takes))
 (defn follow-wires "The wires of a score (its notes' :wire), for follow-start's :wires." [evs] (fl/wires evs))
 (defn follow-tick "Time passes until t: the elastic wires due go on → [state found]." [state t] (fl/tick state t))
 (defn follow-due "When the next elastic wire would go on by itself, or nil." [state] (fl/next-due state))

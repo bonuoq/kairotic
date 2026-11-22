@@ -20,6 +20,7 @@
 
 - [Musical trees](mt.md) — music as data: voices, measures, tuplets, chords, marks; transforming and
   playing them; the work as a tree.
+- [Rules](rules.md) — the constraint engines' rules, inventoried toward one engine with styles in EDN (discussion #353).
 - [Data that flows](flow.md) — messages without ▶, data boxes that send themselves, views that send
   their edits back, loops.
 - [Asking Claude](ask.md) — patches and components from a description; `?ask=` links; your log of
