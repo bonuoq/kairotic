@@ -12,6 +12,10 @@
   writes them in short score, soprano and alto on a treble staff, tenor and bass on a bass staff. In any tree a voice's
   `:clef` ("G", "F", "G8", "C3", "C4") sets its staff's clef, and quantizing keeps a voice's `:staff` and `:clef`.
 
+- **Where to rehearse more** (discussion #308, step 5): `(confidence :bN)` — how sure a follower can be at each note,
+  weakest first: a note is easy to find when it sounds unlike its neighbours (by its learned profile, or its
+  notation) and, once rehearsed, when the takes found it. Once a tree has been learned (`(learn! :bN)`), its
+  continuum shows a mark under each note, red to green. `kairotic.follow/confidence`.
 - **Study 64 · florid: the frame measured** (discussion #342). Fux's frames (the notes on his half bars' downbeats)
   hold a note over the bar or move by a third far more often than the engine's (held 28%, thirds 31%; the engine 10%
   and 15%): the room his passing notes need. The frame's bridge takes a cost by interval (`costs.frame`, through
