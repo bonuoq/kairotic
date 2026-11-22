@@ -173,6 +173,26 @@
                    :sd (into {} (map (fn [[k v]] [k (r4 (:sd v))]) h))
                    :w (into {} (map (fn [[k v]] [k (r4 (/ v tot))]) raw))}])))))
 
+(defn confidence
+  "How sure a follower can be at each note (discussion #308, step 5): 0 … 1, by note id. A note is easy to find when it
+   sounds unlike the notes beside it (by its profile, learned or from the notation) and, once rehearsed, when the
+   takes found it; a note the takes often missed, or that sounds like its neighbours, is where to rehearse more."
+  [evs profiles takes]
+  (let [ns (vec (remove :rest evs))
+        prof (fn [e] (or (get profiles (:id e)) (default-profile e)))
+        tk (filter #(map? (:when %)) takes)
+        r2 (fn [x] (/ (js/Math.round (* 100 x)) 100))]
+    (into {}
+          (for [[i e] (map-indexed vector ns) :let [p (prof e)] :when p]
+            (let [nbrs (keep #(get ns %) [(dec i) (inc i)])
+                  sep (if (seq nbrs) (reduce min (map #(or (when-let [q (prof %)] (obs-dist p (:mean q))) 3) nbrs)) 3)
+                  apart (min 1 (/ sep 1.5))
+                  played (when (seq tk) (/ (count (filter #(contains? (:when %) (:id e)) tk)) (count tk)))
+                  sure (cond (get profiles (:id e)) (+ 0.4 (* 0.6 (or played 1)))
+                             played (+ 0.3 (* 0.5 played))
+                             :else 0.6)]
+              [(:id e) (r2 (* (+ 0.25 (* 0.75 apart)) sure))])))))
+
 (defn profile-at "The profile of note j: learned, or from the notation." [st j]
   (let [e (get-in st [:evs j])] (or (get (:profiles st) (:id e)) (default-profile e))))
 

@@ -11,6 +11,22 @@ const until = async (page, src, ok, ms = 20000) => {
 const printed = (page) => cljs(page, "(pr-str (map second (:prints @eng/rt)))");
 // what reached a print box, waiting a moment for it (a message may be due an instant later)
 const printedHas = (page, ...xs) => until(page, "(pr-str (map second (:prints @eng/rt)))", (p) => xs.every((x) => p.includes(x)), 3000);
+// a message to a box (comes): send! answers "ERR …" when it could not be sent (the box not there yet); then it is
+// sent again, for up to 10 s, and what went wrong is told in the log. The comes tests wait for the futures to be
+// counted for up to 2 minutes, and for what follows for 15 s: under load (the blocks run at the same time) the
+// counting has taken longer than 30 s, and the 3 s after it too little. A wait ends as soon as it is met.
+const refused = [];
+const sent = async (page, src) => {
+  let r;
+  for (let i = 0; i < 20; i++) {
+    r = await cljs(page, src);
+    if (!String(r).startsWith("ERR")) { if (i > 0) refused.push(`${src} — taken on try ${i + 1}`); return r; }
+    await page.waitForTimeout(500);
+  }
+  refused.push(`${src} — ${r}`);
+  return r;
+};
+const lastPrints = (page) => cljs(page, "(pr-str (take-last 4 (map second (:prints @eng/rt))))");
 
 export async function theory(page, check) {
   if ((await cljs(page, "(:mode @hist)")) !== ":local") { check("a local work is open for the theory tests", false); return; }
@@ -89,16 +105,16 @@ export async function theory(page, check) {
   await cljs(page, `(connect ${cm} 3 ${cp} 0) (connect ${cm} 0 ${cq} 0)`);
   check("comes brings @kairotic/cac: two inlets (notes, the pulse) and five outlets", (await until(page, `(io (get-in (current) [:boxes ${cm}]))`, (x) => x === "[2 5]", 20000)) === "[2 5]");
   const st = (k) => `(get-in @eng/rt [:states ${cm} :fwd ${k}])`;
-  await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${cm} 62)`);
+  await sent(page, `(swap! eng/rt assoc :prints []) (send! ${cm} 62)`);
   check("comes: the first note waits for the futures to be counted, then is played",
-    (await until(page, st(":D"), (x) => x === "[1]", 30000)) === "[1]", await cljs(page, `[${st(":D")} ${st(":error")}]`));
-  await cljs(page, `(send! ${cm} 61)`);
-  const fixed = await until(page, `(:reason (second (last-shown ${cm})))`, (x) => /not a note of the system/.test(x), 3000);
+    (await until(page, st(":D"), (x) => x === "[1]", 120000)) === "[1]", await cljs(page, `[${st(":D")} ${st(":error")}]`));
+  await sent(page, `(send! ${cm} 61)`);
+  const fixed = await until(page, `(:reason (second (last-shown ${cm})))`, (x) => /not a note of the system/.test(x), 15000);
   check("... a black key is corrected to a note of the mode, and it says why", /not a note of the system/.test(fixed), fixed);
-  await cljs(page, `(send! ${cm} 65) (send! ${cm} 67)`);
-  const C = await until(page, st(":C"), (x) => /\d+\]$/.test(x), 3000);
+  await sent(page, `(send! ${cm} 65) (send! ${cm} 67)`);
+  const C = await until(page, st(":C"), (x) => /\d+\]$/.test(x), 15000);
   check("... from the fourth note on the comes answers (a canon: the first note, an octave below)", C.endsWith(" -6]"), C);
-  check("... and sounds, both voices as a list of Hz (the dux, then the comes D3)", (await until(page, "(pr-str (map second (:prints @eng/rt)))", (x) => /146\.8\d*\]/.test(x), 3000)).match(/146\.8\d*\]/) !== null);
+  check("... and sounds, both voices as a list of Hz (the dux, then the comes D3)", (await until(page, "(pr-str (map second (:prints @eng/rt)))", (x) => /146\.8\d*\]/.test(x), 15000)).match(/146\.8\d*\]/) !== null);
   // the voice ids: a note held keeps its id (it goes on sounding), a new note a new one; with the comes, two voices
   const ids = await cljs(page, `(let [d (comp/lookup "comes") st (get-in @eng/rt [:states ${cm}]) a (comp/args-for d (:text (get-in (current) [:boxes ${cm}])))
                                       go (fn [[s _] m] (let [r ((:receive d) {:inlet 0 :value m :state s :args a})] [(:state r) (:out r)]))
@@ -114,20 +130,20 @@ export async function theory(page, check) {
                                   (count (:D (:fwd (:state r)))))`);
   check("... a player's event (:hz) plays as a note", pev === String(Number(await cljs(page, `(count ${st(":D")})`)) + 1), pev);
   check("... the box shows the pair", (await cljs(page, `(:comes (second (last-shown ${cm})))`)) === '"D3"', await cljs(page, `(second (last-shown ${cm}))`));
-  for (let i = 0; i < 11; i++) await cljs(page, `(send! ${cm} :engine)`);
-  check("... engine plays on to the end of the canon", (await until(page, `(count ${st(":D")})`, (x) => x === "15", 5000)) === "15");
-  check("... and it is finished: the next note begins a new canon", (await until(page, st(":idle"), (x) => x === "true", 3000)) === "true");
-  await cljs(page, `(send! ${cm} :back)`);
-  check("... back takes the last pair back", (await until(page, `(count ${st(":D")})`, (x) => x === "14", 3000)) === "14");
-  await cljs(page, `(send! ${cm} :reset)`);
-  check("... reset starts again", (await until(page, `(count ${st(":D")})`, (x) => x === "0", 3000)) === "0");
+  for (let i = 0; i < 11; i++) await sent(page, `(send! ${cm} :engine)`);
+  check("... engine plays on to the end of the canon", (await until(page, `(count ${st(":D")})`, (x) => x === "15", 15000)) === "15");
+  check("... and it is finished: the next note begins a new canon", (await until(page, st(":idle"), (x) => x === "true", 15000)) === "true");
+  await sent(page, `(send! ${cm} :back)`);
+  check("... back takes the last pair back", (await until(page, `(count ${st(":D")})`, (x) => x === "14", 15000)) === "14");
+  await sent(page, `(send! ${cm} :reset)`);
+  check("... reset starts again", (await until(page, `(count ${st(":D")})`, (x) => x === "0", 15000)) === "0");
   // by turns, the same note again is held over the beat
-  await cljs(page, `(send! ${cm} 62)`);
-  await until(page, `(count ${st(":D")})`, (x) => x === "1", 3000);
-  await cljs(page, `(send! ${cm} :hold)`);
-  check("... hold holds the note over the beat (a tie)", (await until(page, st(":D"), (x) => x === "[1 1]", 3000)) === "[1 1]");
+  await sent(page, `(send! ${cm} 62)`);
+  await until(page, `(count ${st(":D")})`, (x) => x === "1", 15000);
+  await sent(page, `(send! ${cm} :hold)`);
+  check("... hold holds the note over the beat (a tie)", (await until(page, st(":D"), (x) => x === "[1 1]", 15000)) === "[1 1]");
   // a parameter on the way: by turns, a new canon at once
-  await cljs(page, `(send! ${cm} [:k -4])`);
+  await sent(page, `(send! ${cm} [:k -4])`);
   check("... [:k -4]: a new canon, the comes a 5th below", (await until(page, `[(count ${st(":D")}) (:k (:over (get-in @eng/rt [:states ${cm} :fwd])))]`, (x) => x === "[0 -4]", 20000)) === "[0 -4]");
   await cljs(page, `(delete ${cm} ${cp} ${cq})`);
 
@@ -136,59 +152,59 @@ export async function theory(page, check) {
   const lp = (await cljs(page, '(box "print" 7600 680)')).trim();
   await cljs(page, `(connect ${lv} 3 ${lp} 0)`);
   const ls = (k) => `(get-in @eng/rt [:states ${lv} :fwd ${k}])`;
-  await cljs(page, `(swap! eng/rt assoc :prints []) (send! ${lv} 62)`);
-  await until(page, `(count (:cps (get-in @eng/rt [:states ${lv} :fwd])))`, (x) => x === "2", 30000);
+  await sent(page, `(swap! eng/rt assoc :prints []) (send! ${lv} 62)`);
+  await until(page, `(count (:cps (get-in @eng/rt [:states ${lv} :fwd])))`, (x) => x === "2", 120000);
   check("live: the canon is counted, in 2/2 and in 3/2", (await cljs(page, `(count (:cps (get-in @eng/rt [:states ${lv} :fwd])))`)) === "2");
-  await cljs(page, `(send! ${lv} 1 :bang)`);
-  check("live: the note struck is played on the pulse", (await until(page, ls(":D"), (x) => x === "[1]", 3000)) === "[1]");
-  await cljs(page, `(send! ${lv} 1 :bang)`);
-  check("... and held over the next one (a tie)", (await until(page, ls(":D"), (x) => x === "[1 1]", 3000)) === "[1 1]");
-  await cljs(page, `(send! ${lv} 1 :bang)`);
-  check("... held three pulses in 2/2: the canon turns to 3/2", (await until(page, ls(":meter"), (x) => x === "3", 3000)) === "3" &&
+  await sent(page, `(send! ${lv} 1 :bang)`);
+  check("live: the note struck is played on the pulse", (await until(page, ls(":D"), (x) => x === "[1]", 15000)) === "[1]");
+  await sent(page, `(send! ${lv} 1 :bang)`);
+  check("... and held over the next one (a tie)", (await until(page, ls(":D"), (x) => x === "[1 1]", 15000)) === "[1 1]");
+  await sent(page, `(send! ${lv} 1 :bang)`);
+  check("... held three pulses in 2/2: the canon turns to 3/2", (await until(page, ls(":meter"), (x) => x === "3", 15000)) === "3" &&
         (await cljs(page, `[${ls(":idle")} ${ls(":section")}]`)) === "[true 2]");
   // (D4: the dux begins on the final, its 5th or its octave; a note struck just after a pulse counts for it)
-  await cljs(page, `(send! ${lv} 62) (send! ${lv} 1 :bang)`);
-  check("... the next note begins a new canon, in 3/2", /^\[\[1( 1)?\] 3\]$/.test(await until(page, `[${ls(":D")} (.-beats ${ls(":cp")})]`, (x) => /^\[\[1\]|^\[\[1 1\] 3/.test(x), 5000)),
+  await sent(page, `(send! ${lv} 62) (send! ${lv} 1 :bang)`);
+  check("... the next note begins a new canon, in 3/2", /^\[\[1( 1)?\] 3\]$/.test(await until(page, `[${ls(":D")} (.-beats ${ls(":cp")})]`, (x) => /^\[\[1\]|^\[\[1 1\] 3/.test(x), 15000)),
         await cljs(page, `[${ls(":D")} ${ls(":section")} ${ls(":idle")}]`));
-  for (let i = 0; i < 4 && (await cljs(page, ls(":idle"))) !== "true"; i++) await cljs(page, `(send! ${lv} 1 :bang)`);
-  check("... held longer than a bar: the end of the section", (await until(page, ls(":idle"), (x) => x === "true", 3000)) === "true" &&
+  for (let i = 0; i < 4 && (await cljs(page, ls(":idle"))) !== "true"; i++) await sent(page, `(send! ${lv} 1 :bang)`);
+  check("... held longer than a bar: the end of the section", (await until(page, ls(":idle"), (x) => x === "true", 15000)) === "true" &&
         (await cljs(page, ls(":section"))) === "3");
   // end, from outside: the section ends
-  await cljs(page, `(send! ${lv} 62) (send! ${lv} 1 :bang)`);
-  await until(page, ls(":idle"), (x) => x === "false", 3000);
+  await sent(page, `(send! ${lv} 62) (send! ${lv} 1 :bang)`);
+  await until(page, ls(":idle"), (x) => x === "false", 15000);
   const sec = Number(await cljs(page, ls(":section")));
-  await cljs(page, `(send! ${lv} :end)`);
-  check("... end, from an analysis: the section ends", (await until(page, ls(":idle"), (x) => x === "true", 3000)) === "true" &&
+  await sent(page, `(send! ${lv} :end)`);
+  check("... end, from an analysis: the section ends", (await until(page, ls(":idle"), (x) => x === "true", 15000)) === "true" &&
         Number(await cljs(page, ls(":section"))) === sec + 1);
   await cljs(page, `(delete ${lv} ${lp})`);
 
   // nocues: the meter and the sections are for other boxes; a note held too long makes the canon wait
   const nc = (await cljs(page, '(box "comes midi live nocues" 7600 760)')).trim();
   const ns = (k) => `(get-in @eng/rt [:states ${nc} :fwd ${k}])`;
-  await cljs(page, `(send! ${nc} 62)`);
-  await until(page, `(count (:cps (get-in @eng/rt [:states ${nc} :fwd])))`, (x) => x === "2", 30000);
-  for (let i = 0; i < 4; i++) await cljs(page, `(send! ${nc} 1 :bang)`);
-  check("nocues: held four pulses, no 3/2 and no end of section: the canon waits", (await until(page, `[${ns(":D")} (boolean ${ns(":idle")}) ${ns(":meter")}]`, (x) => x === "[[1 1] false nil]", 3000)) === "[[1 1] false nil]",
+  await sent(page, `(send! ${nc} 62)`);
+  await until(page, `(count (:cps (get-in @eng/rt [:states ${nc} :fwd])))`, (x) => x === "2", 120000);
+  for (let i = 0; i < 4; i++) await sent(page, `(send! ${nc} 1 :bang)`);
+  check("nocues: held four pulses, no 3/2 and no end of section: the canon waits", (await until(page, `[${ns(":D")} (boolean ${ns(":idle")}) ${ns(":meter")}]`, (x) => x === "[[1 1] false nil]", 15000)) === "[[1 1] false nil]",
         await cljs(page, `[${ns(":D")} ${ns(":idle")} ${ns(":meter")}]`));
-  await cljs(page, `(send! ${nc} [:beats 3])`);
+  await sent(page, `(send! ${nc} [:beats 3])`);
   check("... and [:beats 3] from outside: 3/2 at the next section", (await cljs(page, ns(":meter"))) === "3");
   await cljs(page, `(delete ${nc})`);
 
   // comes inverted: the comes upside down about D4
   const iv = (await cljs(page, '(box "comes midi 1 0 inverted" 7800 600)')).trim();
   const is_ = (k) => `(get-in @eng/rt [:states ${iv} :fwd ${k}])`;
-  await cljs(page, `(send! ${iv} 62)`);
-  await until(page, `(count ${is_(":D")})`, (x) => x === "1", 30000);
-  for (const m of [64, 65, 67, 65]) await cljs(page, `(send! ${iv} ${m})`);
-  const ivDC = await until(page, `[${is_(":D")} ${is_(":C")}]`, (x) => /^\[\[\d+ \d+ \d+ \d+ \d+\]/.test(x), 5000);
+  await sent(page, `(send! ${iv} 62)`);
+  await until(page, `(count ${is_(":D")})`, (x) => x === "1", 120000);
+  for (const m of [64, 65, 67, 65]) await sent(page, `(send! ${iv} ${m})`);
+  const ivDC = await until(page, `[${is_(":D")} ${is_(":C")}]`, (x) => /^\[\[\d+ \d+ \d+ \d+ \d+\]/.test(x), 15000);
   const [ivD, ivC] = JSON.parse(ivDC.replace(/nil/g, "null").replace(/\] \[/, "],[").replace(/ /g, ","));
   check("comes inverted: the comes is the dux upside down about D, three beats later", ivC.every((c, t) => (t < 3 ? c === null : c === 2 - ivD[t - 3])), ivDC);
   await cljs(page, `(delete ${iv})`);
 
   // comes with a temperature and a seed: the same seed, the same game
   const ct = (await cljs(page, '(box "comes midi 1 -7 3 2 0.5" 7800 760)')).trim();
-  await cljs(page, `(send! ${ct} 62)`);
-  await until(page, `(some? (get-in @eng/rt [:states ${ct} :fwd :cp]))`, (x) => x === "true", 30000);
+  await sent(page, `(send! ${ct} 62)`);
+  await until(page, `(some? (get-in @eng/rt [:states ${ct} :fwd :cp]))`, (x) => x === "true", 120000);
   const ctChance = await cljs(page, `(let [d (comp/lookup "comes") st (get-in @eng/rt [:states ${ct}]) a (comp/args-for d (:text (get-in (current) [:boxes ${ct}])))
                                           go (fn [s m] (:state ((:receive d) {:inlet 0 :value m :state s :args a})))
                                           play (fn [temp seed] (let [s (-> st (go [:temp temp]) (go [:seed seed]) (go :reset))]
@@ -203,13 +219,13 @@ export async function theory(page, check) {
   const zp = (await cljs(page, '(box "print" 8000 680)')).trim();
   await cljs(page, `(connect ${cz} 0 ${zp} 0)`);
   const zs = (k) => `(get-in @eng/rt [:states ${cz} :crab ${k}])`;
-  await cljs(page, `(send! ${cz} 62)`);
-  check("comes -1: the first note waits for the futures, then is the note at the start", (await until(page, `(some? ${zs(":pending")})`, (x) => x === "true", 30000)) === "true");
-  await cljs(page, `(send! ${cz} 62)`);
-  check("... then the note at the end: a step written at both ends", (await until(page, zs(":s"), (x) => x === "1", 3000)) === "1" &&
+  await sent(page, `(send! ${cz} 62)`);
+  check("comes -1: the first note waits for the futures, then is the note at the start", (await until(page, `(some? ${zs(":pending")})`, (x) => x === "true", 120000)) === "true");
+  await sent(page, `(send! ${cz} 62)`);
+  check("... then the note at the end: a step written at both ends", (await until(page, zs(":s"), (x) => x === "1", 15000)) === "1" &&
         (await cljs(page, `[(first ${zs(":M")}) (last ${zs(":M")})]`)) === "[1 1]");
   for (let i = 0; i < 12 && (await cljs(page, `(:main (second (last-shown ${cz})))`)) !== null && !/closed/.test(await cljs(page, `(:sub (second (last-shown ${cz})))`)); i++)
-    await cljs(page, `(send! ${cz} :engine)`);
+    await sent(page, `(send! ${cz} :engine)`);
   check("... the engine closes the work in the middle", /closed/.test(await cljs(page, `(:sub (second (last-shown ${cz})))`)), await cljs(page, `(second (last-shown ${cz}))`));
   check("... a crab: the comes is the dux backwards, an octave below", (await cljs(page, `(let [M ${zs(":M")}] (= (count M) 7))`)) === "true");
   const czTree = await cljs(page, `(let [d (comp/lookup "comes") st (get-in @eng/rt [:states ${cz}]) a (comp/args-for d (:text (get-in (current) [:boxes ${cz}])))
@@ -218,22 +234,22 @@ export async function theory(page, check) {
                                         t (some (fn [[o v]] (when (= o 4) v)) out)]
                                     [(first t) (count (rest t)) (mapv first (rest t)) (get-in t [1 1 1])])`);
   check("... and as a score: both voices as a musical tree (outlet 4)", czTree === "[:piece 2 [:voice :voice] {:meter [2 2]}]", czTree);
-  await cljs(page, `(send! ${cz} :back)`);
+  await sent(page, `(send! ${cz} :back)`);
   check("... back: not closed any more", !/closed/.test(await cljs(page, `(:sub (second (last-shown ${cz})))`)));
   await cljs(page, `(delete ${cz} ${zp})`);
 
   // comes -1 live (Study 46): the crab played beat by beat — your note, and the end of your line answered
   const lz = (await cljs(page, '(box "comes midi live -1 -7 3 2 1 4" 8200 600)')).trim();
   const ls_ = (k) => `(get-in @eng/rt [:states ${lz} :crab ${k}])`;
-  await cljs(page, `(send! ${lz} 62)`);
-  check("comes -1 live: a note is a beat (no pulse): yours at the start, the box's at the end", (await until(page, ls_(":t"), (x) => x === "1", 30000)) === "1" &&
+  await sent(page, `(send! ${lz} 62)`);
+  check("comes -1 live: a note is a beat (no pulse): yours at the start, the box's at the end", (await until(page, ls_(":t"), (x) => x === "1", 120000)) === "1" &&
         (await cljs(page, `[(first ${ls_(":M")}) (last ${ls_(":M")})]`)) === "[1 1]",
-        await cljs(page, `[(dissoc (get-in @eng/rt [:states ${lz} :crab]) :cp :mi :sig) (second (last-shown ${lz}))]`));
-  for (const m of [64, 65, 64]) await cljs(page, `(send! ${lz} ${m})`);
-  check("... at the middle the rest of the line is written: the score to read", (await until(page, ls_(":t"), (x) => x === "4", 3000)) === "4" &&
+        await cljs(page, `[(dissoc (get-in @eng/rt [:states ${lz} :crab]) :cp :mi :sig) (second (last-shown ${lz})) (some? (get-in (current) [:boxes ${lz}]))]`) + " · " + await lastPrints(page));
+  for (const m of [64, 65, 64]) await sent(page, `(send! ${lz} ${m})`);
+  check("... at the middle the rest of the line is written: the score to read", (await until(page, ls_(":t"), (x) => x === "4", 15000)) === "4" &&
         (await cljs(page, `(every? some? ${ls_(":M")})`)) === "true");
-  await cljs(page, `(send! ${lz} 50)`);
-  check("... a note that is not the one written is said: a deviation", (await until(page, `(or ${ls_(":devs")} 0)`, (x) => x === "1", 3000)) === "1");
+  await sent(page, `(send! ${lz} 50)`);
+  check("... a note that is not the one written is said: a deviation", (await until(page, `(or ${ls_(":devs")} 0)`, (x) => x === "1", 15000)) === "1");
   check("... the box shows what to read next", /read:/.test(await cljs(page, `(:sub (second (last-shown ${lz})))`)));
   // the futuribles say beforehand what the box will answer at the end of your line (:end), and it does
   const endChk = await cljs(page, `(let [d (comp/lookup "comes") st (get-in @eng/rt [:states ${lz}])
@@ -272,10 +288,10 @@ export async function theory(page, check) {
   // on a pulse: if you play nothing, the box plays your note for you
   const pz = (await cljs(page, '(box "comes midi live -1 -7 3 2 1 4" 8400 600)')).trim();
   const ps_ = (k) => `(get-in @eng/rt [:states ${pz} :crab ${k}])`;
-  await cljs(page, `(send! ${pz} 1 :bang)`);
-  await until(page, `(some? ${ps_(":mi")})`, (x) => x === "true", 30000);
-  for (let i = 0; i < 12 && (await cljs(page, `(or ${ps_(":t")} 0)`)) !== "7"; i++) await cljs(page, `(send! ${pz} 1 :bang)`);
-  check("comes -1 live on a pulse: the crab played to the end without a note of yours", (await until(page, ps_(":t"), (x) => x === "7", 3000)) === "7" &&
+  await sent(page, `(send! ${pz} 1 :bang)`);
+  await until(page, `(some? ${ps_(":mi")})`, (x) => x === "true", 120000);
+  for (let i = 0; i < 12 && (await cljs(page, `(or ${ps_(":t")} 0)`)) !== "7"; i++) await sent(page, `(send! ${pz} 1 :bang)`);
+  check("comes -1 live on a pulse: the crab played to the end without a note of yours", (await until(page, ps_(":t"), (x) => x === "7", 15000)) === "7" &&
         /done/.test(await cljs(page, `(:sub (second (last-shown ${pz})))`)),
         await cljs(page, `[(dissoc (get-in @eng/rt [:states ${pz} :crab]) :cp :mi :sig) (second (last-shown ${pz}))]`));
   await cljs(page, `(delete ${pz})`);
@@ -283,38 +299,40 @@ export async function theory(page, check) {
   // systems (Study 42) in the boxes: the pentatonic, then septimal 31 on the way; a pentatonic crab
   const sy = (await cljs(page, '(box "comes pentatonic midi" 8600 600)')).trim();
   const ys = (k) => `(get-in @eng/rt [:states ${sy} :fwd ${k}])`;
-  await cljs(page, `(send! ${sy} 60)`);
-  check("comes pentatonic: C4 as played, the first note of penta-C", (await until(page, ys(":D"), (x) => x === "[0]", 30000)) === "[0]", await cljs(page, `[${ys(":D")} ${ys(":error")}]`));
-  await cljs(page, `(send! ${sy} 65)`);
-  const pf = await until(page, `(:reason (second (last-shown ${sy})))`, (x) => /not a note of the system/.test(x), 3000);
+  await sent(page, `(send! ${sy} 60)`);
+  check("comes pentatonic: C4 as played, the first note of penta-C", (await until(page, ys(":D"), (x) => x === "[0]", 120000)) === "[0]", await cljs(page, `[${ys(":D")} ${ys(":error")}]`));
+  await sent(page, `(send! ${sy} 65)`);
+  const pf = await until(page, `(:reason (second (last-shown ${sy})))`, (x) => /not a note of the system/.test(x), 15000);
   check("... F4 is not a note of the pentatonic: corrected, and it says why", /not a note of the system/.test(pf), pf);
-  await cljs(page, `(send! ${sy} [:system :septimal31])`);
-  await until(page, `(count ${ys(":D")})`, (x) => x === "0", 20000);
-  await cljs(page, `(send! ${sy} 60)`);
-  const b7 = await until(page, `(some-> ${ys(":cp")} (.midi 6) (* 100) js/Math.round)`, (x) => x === "6968", 30000);
+  await sent(page, `(send! ${sy} [:system :septimal31])`);
+  await until(page, `(count ${ys(":D")})`, (x) => x === "0", 60000);
+  await sent(page, `(send! ${sy} 60)`);
+  const b7 = await until(page, `(some-> ${ys(":cp")} (.midi 6) (* 100) js/Math.round)`, (x) => x === "6968", 120000);
   check("... [:system :septimal31]: a new canon, its B♭ a harmonic seventh above C (MIDI 69.68)", b7 === "6968", b7);
   await cljs(page, `(delete ${sy})`);
   // the words name the system and a mode of it, in any order; a mode it does not have is said
   const wm = (await cljs(page, '(box "comes dorian pentatonic midi" 8600 680)')).trim();
-  await cljs(page, `(send! ${wm} 60)`);
-  const wmr = await until(page, `(:reason (second (last-shown ${wm})))`, (x) => /not a mode of pentatonic/.test(x), 30000);
+  await sent(page, `(send! ${wm} 60)`);
+  const wmr = await until(page, `(:reason (second (last-shown ${wm})))`, (x) => /not a mode of pentatonic/.test(x), 120000);
   check("comes dorian pentatonic: dorian is not a mode of the pentatonic, it says so and takes penta-C",
         /dorian is not a mode of pentatonic/.test(wmr) && (await cljs(page, `(.-mode (get-in @eng/rt [:states ${wm} :fwd :cp]))`)) === '"penta-C"', wmr);
   await cljs(page, `(delete ${wm})`);
   const pc5 = (await cljs(page, '(box "comes pentatonic midi -1 -7 3 2 1 4" 8600 760)')).trim();
   const p5 = (k) => `(get-in @eng/rt [:states ${pc5} :crab ${k}])`;
-  await cljs(page, `(send! ${pc5} 60)`);
-  await until(page, `(some? ${p5(":pending")})`, (x) => x === "true", 30000);
-  for (let i = 0; i < 14 && !/closed/.test(await cljs(page, `(:sub (second (last-shown ${pc5})))`)); i++) await cljs(page, `(send! ${pc5} :engine)`);
+  await sent(page, `(send! ${pc5} 60)`);
+  await until(page, `(some? ${p5(":pending")})`, (x) => x === "true", 120000);
+  for (let i = 0; i < 14 && !/closed/.test(await cljs(page, `(:sub (second (last-shown ${pc5})))`)); i++) await sent(page, `(send! ${pc5} :engine)`);
   const pent = await cljs(page, `(let [st (get-in @eng/rt [:states ${pc5} :crab]) cp (:cp st)] [(count (:M st)) (every? (fn [x] (#{0 2 4 7 9} (mod (js/Math.round (.midi cp x)) 12))) (:M st))])`);
   const pentDetail = await cljs(page, `(let [st (get-in @eng/rt [:states ${pc5} :crab]) cp (:cp st)] [(:M st) (mapv #(.midi cp %) (:M st)) (.-mode cp) (.-N cp) (.-k cp)])`);
   check("comes pentatonic -1: the crab closed, every note a note of the pentatonic", /closed/.test(await cljs(page, `(:sub (second (last-shown ${pc5})))`)) && pent === "[7 true]", pentDetail);
   const hypo = (await cljs(page, '(box "comes hypodorian midi -1 -7 3 2 1 4" 8800 760)')).trim();
-  await cljs(page, `(send! ${hypo} 62)`);
+  await sent(page, `(send! ${hypo} 62)`);
   check("comes hypodorian -1: the mode in the box's text is the mode (it was lost before a message)",
-    (await until(page, `(some-> (get-in @eng/rt [:states ${hypo} :crab :cp]) .-mode)`, (x) => x === '"hypodorian"', 30000)) === '"hypodorian"');
+    (await until(page, `(some-> (get-in @eng/rt [:states ${hypo} :crab :cp]) .-mode)`, (x) => x === '"hypodorian"', 120000)) === '"hypodorian"');
   await cljs(page, `(delete ${hypo})`);
   await cljs(page, `(delete ${pc5})`);
+
+  if (refused.length) console.log("theory · comes: messages sent again\n  " + refused.join("\n  "));
 
   // @kairotic/rhythm · euclid: a Euclidean rhythm (Bjorklund, after Toussaint), a generator of pulses
   const eu = (await cljs(page, '(box "euclid 3 8" 9000 600)')).trim();

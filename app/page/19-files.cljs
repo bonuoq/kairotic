@@ -524,3 +524,11 @@
   (need-tree-box id)
   (tree! id (mt/update-attrs (tree-data id) dissoc :profiles))
   :unlearned)
+
+(defn confidence
+  "How sure a follower can be at each note of a tree box, weakest first: [[note-id 0…1] …] — where to rehearse more
+   (discussion #308). Shown under each note of its continuum once it has been learned ((learn! :bN))."
+  [id]
+  (let [t (or (tree-data id) (fail (str id " holds no tree")))
+        a (mt/attrs t)]
+    (vec (sort-by second (fl/confidence (ct/events t) (:profiles a) (concat (:takes a) (get @my-takes id)))))))

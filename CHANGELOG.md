@@ -10,6 +10,20 @@
   engine held (no message, no task, no ▶) and no code of the work or of the packages runs, with a notice saying what
   froze it — open the work, take the cause away (choose another offer of an agent, delete a box), and *Leave safe
   mode* (a reload). `(safe-mode!)` enters it by hand. Other tabs are not affected.
+- **`cac partimento`: notes without figures, and the score as a choir writes it** (`@kairotic/rules` 0.4.0,
+  `@kairotic/cac` 0.10.0). A note of the bass without figures took any chord the rules allowed (a 4/3/2 on ⑤ between
+  figured notes); it now takes the one a partimento player would — the Rule of the Octave's where the bass moves by step
+  through it, a 5/3 where it leaps (a 6/3 on ⑦) and at the start and the end (`fromNotes({fill})`, `octaveDefault`;
+  `cac judge` still reads the chords the voices make). The help's RO counts 3,610 again, Study 62's. The voices come
+  out in the tree's order, soprano, alto, tenor, bass (a tree in free time was quantized with its voices sorted by
+  name: alto, bass, soprano, tenor), in open score with the tenor in the treble clef an octave down; `[:staves 2]`
+  writes them in short score, soprano and alto on a treble staff, tenor and bass on a bass staff. In any tree a voice's
+  `:clef` ("G", "F", "G8", "C3", "C4") sets its staff's clef, and quantizing keeps a voice's `:staff` and `:clef`.
+
+- **Where to rehearse more** (discussion #308, step 5): `(confidence :bN)` — how sure a follower can be at each note,
+  weakest first: a note is easy to find when it sounds unlike its neighbours (by its learned profile, or its
+  notation) and, once rehearsed, when the takes found it. Once a tree has been learned (`(learn! :bN)`), its
+  continuum shows a mark under each note, red to green. `kairotic.follow/confidence`.
 - **Study 64 · florid: the frame measured** (discussion #342). Fux's frames (the notes on his half bars' downbeats)
   hold a note over the bar or move by a third far more often than the engine's (held 28%, thirds 31%; the engine 10%
   and 15%): the room his passing notes need. The frame's bridge takes a cost by interval (`costs.frame`, through
