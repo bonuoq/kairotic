@@ -3,11 +3,11 @@
 ## Unreleased
 
 - **Study 64 · florid: florid counterpoint over a cantus firmus, every note justified by a derivation** (discussion
-  #342, step 3 of #321's road). A frame (second and fourth species) drawn by a bridge over the kernel, each half bar
+  #342, step 3 of #321's road). A frame (second and fourth species, the kernel's strict line and the species' leaps:
+  no tritone, no 6th but the minor one going up) drawn by a bridge over the kernel, each half bar
   elaborated into four eighths by a figure of a catalogue (transitus, tirata, circulatio, anticipatio, escape tone,
   cambiata, chord skip, a suspension prepared with a neighbour or resolved later), the dissonance each brings
-  justified by the frame. Reduced back by Study 61's grammar on the eighths' grid, 99% of the frame's downbeats
-  return. Study 61's `meter` now weighs the units inside the bar (GTTM: the half bar, the quarters, the eighths; with
+  justified by the frame. Reduced back by Study 61's grammar on the eighths' grid, the frame's downbeats return. Study 61's `meter` now weighs the units inside the bar (GTTM: the half bar, the quarters, the eighths; with
   two units a bar nothing changes), and `reduce` takes a `judge` for a level read on another grid.
 - **7ths prepared** (`@kairotic/cac` 0.7.1). In four parts the 7th of a chord that is not the dominant's — ii6/5 on
   ④, ii7 — is prepared: the same note, in the same voice, in the chord before. The dominant's family stays a

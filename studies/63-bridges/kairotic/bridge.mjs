@@ -101,10 +101,11 @@ export function bridgeVoice(V, { pins = new Map(), temp = 0.6, window = 3, extra
 }
 
 /** The melody's voice over a phrase's bass (figuring.mjs, the rules of every phrase), with the phrase's range. */
-export function voiceOver(phrase, key, { per = PER, range = null } = {}) {
+export function voiceOver(phrase, key, { per = PER, range = null, line = LINE } = {}) {
   const K = keyOf(key), rg = range || rangeOf(phrase, key);
   const bass = split(phrase.bass).map((nm) => { const c = codeOf(K, nm); return { d: codeDegree(c), r: codeAlter(c) }; });
-  const F = figuring({ bass, key: K, per, ending: endingOf(phrase.cadence), line: LINE, lo: rg.lo, hi: rg.hi, ro: true });
+  // (line: how strictly the melody moves, partimento.mjs's "free", "moderate" — the incipits' — or "strict")
+  const F = figuring({ bass, key: K, per, ending: endingOf(phrase.cadence), line, lo: rg.lo, hi: rg.hi, ro: true });
   const name = (c) => F.name(c).replace("♯", "#").replace("♭", "b");
   return { F, V: F.voice, K, n: F.n, code: (nm) => codeOf(K, nm), name };
 }
