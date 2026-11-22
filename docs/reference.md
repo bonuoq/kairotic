@@ -2084,9 +2084,11 @@ See also: `fourier`, `tonnetz`, `chroma~`
 
 **A pulse clock gives the grid** — a `metro` at the pulse, or the room's `pulse` — and the onsets (`onset~`'s bangs, or taps) fall on its nearest pulse. At each pulse the last pulses heard are compared with every rotation of the reference, by Toussaint's swap distance: the nearest says which pulse of the reference this one is — the **phase**. The pulse that has just begun is not judged, since its onset may come a moment late: the last whole pulse is found and this one is the next. Ties and near ties go to the phase the walk expects, so a few missing or extra onsets do not throw it.
 
+**Without a clock** — nothing on the right — it finds the pulse from the onsets themselves: the longest pulse that the intervals between them fill as whole numbers of it (the simplest grid that fits, after Sethares), each interval rounded on its own so that it follows a tempo that moves. It then says the phase at each onset, of the pulse that onset is on (the first one from five onsets), and the pulse it found in seconds on the right.
+
 Into a `necklace`'s clock inlet the phase moves its hand there and plays it: the electronics stay in the performer's cycle. Times a pulse's beats, it is a `player`'s position.
 
-Where a performer is in a cycle (a timeline follower, onsets only): onsets on the left, the reference as pulses in the middle (cold), the pulse clock on the right; at each pulse, the phase — which pulse of the reference this one is.
+Where a performer is in a cycle (a timeline follower, onsets only): onsets on the left, the reference as pulses in the middle (cold), the pulse clock on the right; at each pulse, the phase — which pulse of the reference this one is. Without a clock it finds the pulse from the onsets and says the phase at each onset.
 
 **Arguments**
 
@@ -2096,12 +2098,12 @@ Where a performer is in a cycle (a timeline follower, onsets only): onsets on th
 
 0. onsets: a bang each (onset~, or taps) · :reset forgets what was heard
 1. the reference, as pulses (cold): a clave, a bell pattern, euclid's or a necklace's
-2. the pulse clock: a bang each pulse (a metro, the room's pulse)
+2. the pulse clock: a bang each pulse (a metro, the room's pulse) — without one, the pulse is found from the onsets
 
 **Outlets** 
 
 0. the phase: the pulse of the reference this one is (for a necklace's clock inlet)
-1. {:phase :distance — 0: exactly the reference — :margin — how much nearer than the next guess; 0 ambiguous — :heard :window :n}
+1. {:phase :distance — 0: exactly the reference — :margin — how much nearer than the next guess; 0 ambiguous — :heard :window :n :pulse — in seconds}
 
 **Try:** Click the son clave (the reference), press ▶ — the loadbang starts the metro, the pulse, a sixteenth at 120, and click~ lets you hear it, the beats accented —, and clap (with headphones, so the microphone hears you and not the click) the son into the microphone (or tap the bang), starting anywhere in it: after half a cycle the necklace's hand finds where you are and follows you, playing the onsets it expects; a lower click sounds where the follower believes the clave begins (its phase 0, through click~ downbeat): if it falls on your first clap of the clave, you and it agree. Stop for a moment and go on: it keeps walking.
 
