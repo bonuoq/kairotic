@@ -12,7 +12,7 @@
 //
 // Step 2 of #353: one voice over a bass. Two and three upper voices, styles in EDN and comes come next.
 
-import { mod, sign, keyOf, codeOf3, codeDegree, codeAlter, localOf, localNote, FIG_CLASS, CLASS_FIG } from "./tonal.mjs";
+import { mod, sign, keyOf, codeOf3, codeDegree, codeAlter, localOf, localNote, FIG_CLASS, CLASS_FIG, isDominant, degreeOf, parseKey, guessKey } from "./tonal.mjs";
 import { melodicParts, verticalParts, total, choose, temperature, defaultWeights } from "./soft.mjs";
 
 // ─────────────────────────────── the core ───────────────────────────────
@@ -455,3 +455,434 @@ export function overBass(spec = {}) {
   const S = solve({ n: B.length, codes, at: w.at, rules, soft, window: spec.window ?? 3, name: (c) => K.name(w.D(c), w.A(c)) });
   return { ...S, style: st, world: w, key: K, bass: B, vertical: w.vertical, degree: w.D, alter: w.A, name: (c) => K.name(w.D(c), w.A(c)) };
 }
+
+// ─────────────────────────────── several voices over the bass (step 3) ───────────────────────────────
+// The chords, as figures over the bass: the classes of interval above it (0 the octave, 2 the 3rd, 4 the 5th, 5 the
+// 6th…) every one of them sounds (need) and nothing else does (ok). In three parts (CHORDS) and in four (CHORDS4: the
+// dominant's family free to enter, its 7th's class, an augmented 6th going up) — as @kairotic/cac's partimento.mjs.
+export const CHORDS = {
+  "5/3": { need: [2], ok: [2, 4, 0] }, "6/3": { need: [5, 2], ok: [5, 2] }, "6": { need: [5], ok: [5, 2, 0] },
+  "7/3": { need: [6, 2], ok: [6, 2] }, "4/2": { need: [1, 3], ok: [1, 3, 5] }, "6/4": { need: [5, 3], ok: [5, 3, 0] },
+  "5/4": { need: [3], ok: [3, 4, 0] }, "6/5": { need: [5, 4], ok: [5, 4, 2] }, "7/4": { need: [6, 3], ok: [6, 3] },
+};
+export const CHORDS4 = {
+  "5/3": { need: [2], ok: [2, 4, 0] }, "6/3": { need: [5, 2], ok: [5, 2, 0] }, "6": { need: [5], ok: [5, 2, 0] },
+  "6/4": { need: [5, 3], ok: [5, 3, 0] }, "5/4": { need: [3], ok: [3, 4, 0] }, "7/3": { need: [6, 2], ok: [6, 2, 4, 0] },
+  "7/4": { need: [6, 3], ok: [6, 3, 4, 0] }, "5/2": { need: [1, 4], ok: [1, 4, 0] },
+  "7": { need: [6, 2], ok: [6, 2, 4, 0], free: [6], seventh: 6 }, "6/5": { need: [5, 4, 2], ok: [5, 4, 2], free: [4], seventh: 4 },
+  "6/4/3": { need: [5, 3, 2], ok: [5, 3, 2], free: [3], seventh: 2 }, "4/2": { need: [5, 3, 1], ok: [5, 3, 1], free: [1, 3], seventh: 0 },
+  "+6": { need: [5, 2], ok: [5, 2, 0], free: [5], up: 5 }, "+6/4/3": { need: [5, 3, 2], ok: [5, 3, 2], free: [5, 3], up: 5, tri: true },
+  "+6/5/3": { need: [5, 4, 2], ok: [5, 4, 2], free: [5], up: 5 },
+};
+// where a chord's 3rd is, by its figures (a class above the bass; 0 the bass itself, as in a 6/3)
+const THIRD = { "5/3": 2, "7/3": 2, "5/4": 2, "6/3": 0, "6": null, "6/4": 5, "4/2": 3, "6/5": 0, "7/4": 6 };
+const FIG = [8, 2, 3, 4, 5, 6, 7];
+// the root of a 7th chord above its bass (in degrees), by its figures
+const ROOT = { "7": 0, "6/5": -2, "6/4/3": 3, "4/2": 1 };
+
+/**
+ * Several voices to write over n units. spec: {n, voices [{name, solver (solve()'s: its codes, check, costParts),
+ * prefix (its costs' names), weight (of its costs)}], between [{id, check (X) → reason | null}] (X: {W the voices so
+ * far, t, x the notes at t, p those at t − 1}), quick (W, t, x) → false (a tuple refused at once: the order of the
+ * voices), soft [{id, cost (X)}], window, result (W) → a realization}.
+ */
+export function solveVoices(spec) {
+  const { n, voices, between, soft = [] } = spec;
+  const k = voices.length, window = spec.window ?? 3;
+  const quick = spec.quick || (() => true);
+  const X = (W, t, x) => ({ W, t, x, p: t >= 1 ? W.map((U) => U[t - 1]) : null });
+  const betweenCheck = (W, t, x) => { const xx = X(W, t, x); for (const r of between) { const e = r.check(xx); if (e) return e; } return null; };
+  const check = (W, t, x) => voices.reduce((r, v, i) => r || v.solver.check(W[i].slice(0, t), t, x[i]), null) || betweenCheck(W, t, x);
+  function tuples(W) {
+    const t = W[0].length, ok = voices.map((v, i) => v.solver.codes.filter((c) => v.solver.check(W[i], t, c) === null)), out = [];
+    const go = (i, x) => {
+      if (i === k) { if (betweenCheck(W, t, x) === null) out.push([...x]); return; }
+      for (const c of ok[i]) { x.push(c); if (quick(W, t, x)) go(i + 1, x); x.pop(); }
+    };
+    go(0, []);
+    return out;
+  }
+  const memo = new Map();
+  function countFrom(W) {
+    const t = W[0].length;
+    if (t >= n) return 1n;
+    const key = t + ":" + W.map((U) => U.slice(Math.max(0, t - window)).join(",")).join("|");
+    const got = memo.get(key);
+    if (got !== undefined) return got;
+    let v = 0n;
+    for (const x of tuples(W)) { W.forEach((U, i) => U.push(x[i])); v += countFrom(W); W.forEach((U) => U.pop()); }
+    memo.set(key, v);
+    return v;
+  }
+  const empty = () => voices.map(() => []);
+  const count = (W = empty()) => countFrom(W.map((U) => [...U]));
+  function fan(W = empty()) {
+    return tuples(W).map((x) => {
+      const t = W[0].length, parts = {};
+      voices.forEach((v, i) => { for (const [id, c] of Object.entries(v.solver.costParts(W[i], x[i]))) parts[(v.prefix || "") + id] = c * (v.weight ?? 1); });
+      const xx = X(W, t, x);
+      for (const s of soft) Object.assign(parts, s.cost(xx));
+      return { x, futures: count(W.map((U, i) => [...U, x[i]])), parts, cost: total(parts) };
+    });
+  }
+  const result = spec.result || ((W) => W);
+  function sample(r = Math.random) {
+    const W = empty();
+    while (W[0].length < n) {
+      const cs = fan(W).filter((c) => c.futures > 0n);
+      if (!cs.length) return null;
+      const tot = cs.reduce((s, c) => s + c.futures, 0n);
+      let y = (tot * BigInt(Math.floor(r() * 2 ** 52))) / 2n ** 52n;
+      const c = cs.find((c) => (y -= c.futures) < 0n) || cs[cs.length - 1];
+      W.forEach((U, i) => U.push(c.x[i]));
+    }
+    return result(W);
+  }
+  function engine({ temp = 1, follow = true, r = Math.random } = {}) {
+    const W = empty();
+    while (W[0].length < n) {
+      const cs = fan(W).filter((c) => c.futures > 0n).map((c, i) => ({ ...c, note: i }));
+      const pick = choose(cs, temperature(temp, follow, count(W)), r);
+      if (!pick) return null;
+      W.forEach((U, i) => U.push(pick.x[i]));
+    }
+    return result(W);
+  }
+  function judgeW(W, long) {
+    if (W.some((U) => U.length !== n)) return long;
+    for (let t = 0; t < n; t++) { const r = check(W, t, W.map((U) => U[t])); if (r) return `unit ${t + 1}: ${r}`; }
+    return null;
+  }
+  return { n, voices, between, check, tuples, count, fan, sample, engine, judgeW, memo };
+}
+
+// ─── the catalogue: rules between the voices (context: pair, chord, progression, given) ───
+// A rule between voices: (world N, params) → {id, check (X)}. N: {K, B, D, A, semi, V (each voice's world), names,
+// asked (t) (the chord asked at t), sevenths (t), figured, ro, ltOf (t, c), loc (t, c), keys}.
+export const BETWEEN = {
+  /** pair · no voice under the one above it; within (four parts): neighbours within an octave, pair by pair. */
+  order: (N, { within = null, form = "four" } = {}) => ({ id: "order", check: ({ x }) => {
+    for (let i = 0; i + 1 < x.length; i++) {
+      if (N.D(x[i + 1]) >= N.D(x[i])) return form === "three" ? "the middle voice under the upper" : `the ${N.names[i + 1]} under the ${N.names[i]}`;
+      if (within !== null && N.D(x[i]) - N.D(x[i + 1]) > within) return `the ${N.names[i]} and the ${N.names[i + 1]} within an octave`;
+    }
+    return null;
+  } }),
+  /** given · a voice sings the bass again, later and higher (the Fenaroli's canon). */
+  imitation: (N, { voice = null, delay = 2, steps = 7 } = {}) => ({ id: "imitation", check: ({ t, x }) => {
+    if (voice === null || t < delay) return null;
+    const i = N.names.indexOf(voice);
+    return N.D(x[i]) !== N.B[t - delay].d + steps ? `the canon: the ${voice === "top" ? "upper" : voice} voice sings the bass ${delay} units later` : null;
+  } }),
+  /** pair · chapter 4: over a passing bass a dissonance that is not held is the other voice's note before (exchanged). */
+  exchange: (N) => ({ id: "exchange", check: ({ t, x, p }) => {
+    if (!N.ro || t < 1 || !N.V[0].bassPassing(t)) return null;
+    for (let i = 0; i < x.length; i++) {
+      const v = N.V[i].vertical(t, x[i]), other = p[1 - i];
+      if (x[i] !== p[i] && v.q === "dissonant" && !v.tri && mod(N.semi(x[i]) - N.semi(other), 12) !== 0) return "over the passing bass a dissonance is a note held, or taken from the other voice";
+    }
+    return null;
+  } }),
+  /** pair · the upper voices at most apart (degrees). */
+  apart: (N, { max = 7 } = {}) => ({ id: "apart", check: ({ x }) => (N.D(x[0]) - N.D(x[1]) > max ? "the upper voices within an octave" : null) }),
+  /** pair · a 2nd or a 7th between two upper voices: one of them the dissonance (four parts: or a chord of four tones). */
+  seconds: (N, { form = "three" } = {}) => ({ id: "seconds", check: ({ t, x }) => {
+    const v = x.map((c, i) => N.V[i].vertical(t, c));
+    if (form === "three") {
+      const cls = mod(N.D(x[0]) - N.D(x[1]), 7);
+      if ((cls === 1 || cls === 6) && v[0].q !== "dissonant" && v[1].q !== "dissonant") return "a 2nd or a 7th between the upper voices, neither of them the dissonance";
+      if (v[0].q === "dissonant" && v[1].q === "dissonant" && v[0].cls === v[1].cls) return "the dissonance doubled";
+      return null;
+    }
+    const ch = N.asked(t), seventh = ch && ch.seventh !== undefined ? ch.seventh : null, four_ = ch && ch.need.length === 3;
+    for (let i = 0; i < x.length; i++) for (let j = i + 1; j < x.length; j++) {
+      const cls = mod(N.D(x[i]) - N.D(x[j]), 7);
+      if ((cls === 1 || cls === 6) && v[i].q !== "dissonant" && v[j].q !== "dissonant" && !four_ && seventh === null) return `a 2nd or a 7th between the ${N.names[i]} and the ${N.names[j]}`;
+    }
+    return null;
+  } }),
+  /** progression · a 6/4 over a held bass resolves to the 5/3: the 6th down to the 5th, the 4th down to the 3rd. */
+  "six-four": (N, { form = "three" } = {}) => ({ id: "six-four", check: ({ t, x, p }) => {
+    const { B, D } = N;
+    if (t < 1 || B[t].struck || B[t].pedal) return null;
+    const pv = p.map((c, i) => N.V[i].vertical(t - 1, c).cls), v = x.map((c, i) => N.V[i].vertical(t, c));
+    if (form === "three") {
+      if (new Set(pv).size === 2 && pv.every((c) => c === 5 || c === 3)) {
+        const down = (i) => D(x[i]) === D(p[i]) - 1 && (pv[i] === 5 ? 4 : 2) === v[i].cls;
+        if (!down(0) || !down(1)) return "the 6/4 resolves to the 5/3, each voice down a step (6 to 5, 4 to 3)";
+      }
+      return null;
+    }
+    const pc = new Set(pv);
+    if (pc.has(5) && pc.has(3) && !pc.has(2) && !pc.has(1))
+      for (let i = 0; i < x.length; i++) if ((pv[i] === 5 || pv[i] === 3) && !(D(x[i]) === D(p[i]) - 1 && v[i].cls === pv[i] - 1)) return "the 6/4 resolves to the 5/3 (6 to 5, 4 to 3)";
+    return null;
+  } }),
+  /** pair · no parallel 5ths or octaves between two upper voices. */
+  "parallels-upper": (N, { form = "three" } = {}) => ({ id: "parallels-upper", check: ({ t, x, p }) => {
+    if (t < 1) return null;
+    const { D } = N, perfectOf = (a, b) => { const cls = mod(D(a) - D(b), 7), s = mod(N.semi(a) - N.semi(b), 12); return (cls === 0 && s === 0) || (cls === 4 && s === 7) ? cls : null; };
+    for (let i = 0; i < x.length; i++) for (let j = i + 1; j < x.length; j++) {
+      const a = perfectOf(x[i], x[j]), b = perfectOf(p[i], p[j]);
+      if (form === "three") { if (a !== null && a === b && x[i] !== p[i] && x[j] !== p[j]) return `parallel ${a === 0 ? "octaves" : "5ths"} between the upper voices`; }
+      else if (a !== null && a === b && (x[i] !== p[i] || x[j] !== p[j]) && D(x[i]) - D(p[i]) !== 0) return `parallel ${a === 0 ? "octaves" : "5ths"} between the ${N.names[i]} and the ${N.names[j]}`;
+    }
+    return null;
+  } }),
+  /** chord · the same note a semitone apart in two upper voices (an augmented unison or octave). */
+  "false-relation": (N) => ({ id: "false-relation", check: ({ x }) => {
+    const cls = mod(N.D(x[0]) - N.D(x[1]), 7), s = mod(N.semi(x[0]) - N.semi(x[1]), 12);
+    return cls === 0 && s !== 0 ? "a false relation between the upper voices (an augmented octave)" : null;
+  } }),
+  /** chord · the chord asked (its figures): what it needs, what it allows (four: the bass's octave counted). */
+  chord: (N, { form = "three" } = {}) => ({ id: "chord", check: ({ t, x }) => {
+    const have = new Set(x.map((c, i) => N.V[i].vertical(t, c).cls));
+    if (form === "three") {
+      if (!(N.figured && N.B[t].chord)) return null;
+      const ch = CHORDS[N.B[t].chord];
+      return !ch.need.every((c) => have.has(c)) || ![...have].every((c) => ch.ok.includes(c)) ? `the chord asked is ${N.B[t].chord}` : null;
+    }
+    const ch = N.asked(t);
+    if (!ch) return null;
+    const all = new Set([0, ...have]);
+    return !ch.need.every((c) => all.has(c)) || ![...have].every((c) => ch.ok.includes(c)) ? `the chord asked is ${N.B[t].chord}` : null;
+  } }),
+  /** chord · doublings: three parts, not the 3rd nor the leading tone; four, never a dissonance, the 7th or the leading
+   *  tone (and a false relation between any two voices). */
+  doubling: (N, { form = "three" } = {}) => ({ id: "doubling", check: ({ t, x }) => {
+    const { B, D } = N, v = x.map((c, i) => N.V[i].vertical(t, c));
+    const ltCount = () => [codeOf3(B[t].d, B[t].r || 0), ...x].filter((c) => N.ltOf(t, c)).length;
+    if (form === "three") {
+      const have = new Set(v.map((u) => u.cls));
+      const chord = N.figured && B[t].chord ? B[t].chord : have.has(5) && have.has(2) ? "6/3" : have.has(5) && have.has(3) ? "6/4" : have.has(1) && have.has(3) ? "4/2" : "5/3";
+      const third = THIRD[chord];
+      if (third !== null && (third === 0 ? 1 : 0) + v.filter((u) => u.cls === third).length >= 2) return "the 3rd of the chord doubled";
+      return ltCount() >= 2 ? "the leading tone doubled" : null;
+    }
+    const ch = N.asked(t), seventh = ch && ch.seventh !== undefined ? ch.seventh : null, have = new Set(v.map((u) => u.cls));
+    for (let i = 0; i < x.length; i++) for (let j = i + 1; j < x.length; j++) {
+      if (v[i].cls === v[j].cls && ((v[i].q === "dissonant" && !(v[i].cls === 1 && !B[t].struck)) || v[i].cls === seventh)) return `the ${v[i].cls === seventh ? "7th of the chord" : "dissonance"} doubled`;
+      if (v[i].cls === v[j].cls && mod(N.semi(x[i]) - N.semi(x[j]), 12) !== 0) return `a false relation between the ${N.names[i]} and the ${N.names[j]}`;
+    }
+    if (seventh === 0 && have.has(0)) return "the 7th of the chord doubled (in the bass)";
+    return null;
+  } }),
+  /** chord · the leading tone doubled (four parts: after the 7ths). */
+  "leading-tone-doubled": (N) => ({ id: "leading-tone-doubled", check: ({ t, x }) =>
+    ([codeOf3(N.B[t].d, N.B[t].r || 0), ...x].filter((c) => N.ltOf(t, c)).length >= 2 ? "the leading tone doubled" : null) }),
+  /** chord, line · a 7th chord's 7th: prepared where the chord is not the dominant's; the dominant's held or by step. */
+  seventh: (N, { free = false } = {}) => ({ id: "seventh", check: ({ W, t, x }) => {
+    const sv = N.sevenths(t);
+    if (!sv || sv.cls === 0) return null;
+    const v = x.map((c, i) => N.V[i].vertical(t, c));
+    if (!sv.dominant)
+      for (let i = 0; i < x.length; i++) if (v[i].cls === sv.cls && (t === 0 || W[i][t - 1] !== x[i])) return `the 7th of a chord on ${"①②③④⑤⑥⑦"[mod(N.V[0].locB(t) + ROOT[N.B[t].chord], 7)]} is prepared (the ${N.names[i]})`;
+    if (sv.dominant && t >= 1 && !free)
+      for (let i = 0; i < x.length; i++) if (v[i].cls === sv.cls && W[i][t - 1] !== x[i] && Math.abs(N.D(x[i]) - N.D(W[i][t - 1])) !== 1) return `the dominant's 7th is held or comes by step (the ${N.names[i]})`;
+    return null;
+  } }),
+  /** progression · the dominant resolved: its leading tone up (an inner voice may fall to ⑤ over ①); the deceptive ⑥
+   *  doubles its 3rd. */
+  resolution: (N) => ({ id: "resolution", check: ({ t, x, p }) => {
+    if (t < 1) return null;
+    const { B, D } = N, V0 = N.V[0];
+    if (B[t - 1].dominant && B[t].struck && V0.locB(t - 1) === 4 && (V0.locB(t) === 0 || (V0.locB(t) === 5 && B[t - 1].chord === "7")) && N.keys[t].key.tonic === N.keys[t - 1].key.tonic)
+      for (let i = 0; i < x.length; i++) if (N.ltOf(t - 1, p[i]) && D(x[i]) !== D(p[i]) + 1 && !(i > 0 && V0.locB(t) === 0 && D(x[i]) === D(p[i]) - 2))
+        return `the leading tone goes up to the tonic (the ${N.names[i]}${i > 0 ? "; an inner voice may fall to ⑤ over ①" : ""})`;
+    const v = x.map((c, i) => N.V[i].vertical(t, c));
+    if (B[t - 1].dominant && B[t].struck && V0.locB(t - 1) === 4 && V0.locB(t) === 5 && (!N.figured || ["5/3", undefined].includes(B[t].chord)) && v.filter((u) => u.cls === 2).length < 2)
+      return "the deceptive ⑥ doubles its 3rd";
+    return null;
+  } }),
+  /** chord · in minor the dominant's chord major (its ⑦ raised); four: in the dominant's family too. */
+  "dominant-major": (N, { form = "three" } = {}) => ({ id: "dominant-major", check: ({ t, x }) => {
+    const { B, K, D, A } = N, kt = N.keys[t].key;
+    let on;
+    if (form === "three") {
+      const have = new Set(x.map((c, i) => N.V[i].vertical(t, c).cls));
+      const chord = N.figured && B[t].chord ? B[t].chord : have.has(5) && have.has(2) ? "6/3" : have.has(5) && have.has(3) ? "6/4" : have.has(1) && have.has(3) ? "4/2" : "5/3";
+      on = kt.mode === "minor" && B[t].dominant && chord !== "6/3";
+    } else {
+      const ch = N.asked(t);
+      on = kt.mode === "minor" && ((B[t].dominant && B[t].chord !== "6/3") || (ch && ch.seventh !== undefined));
+    }
+    if (on) for (const c of x) { const l = N.loc(t, c); if (l.deg === 6 && l.alt !== 1) return `the chord on the dominant is major: ${K.name(D(c), A(c) + 1)}, not ${K.name(D(c), A(c))}`; }
+    return null;
+  } }),
+};
+// soft rules between the voices: four parts, the bass doubled in a 5/3, a 6/4, a 5/4, a 7/3
+export const SOFT_BETWEEN = {
+  doubling: (N, { weight = 0.6 } = {}) => ({ id: "doubling", cost: ({ t, x }) => {
+    const ch = N.B[t].chord;
+    if (!["5/3", "6/4", "5/4", "7/3"].includes(ch) && N.figured) return {};
+    const v = x.map((c, i) => N.V[i].vertical(t, c).cls), cnt = {};
+    for (const c of [0, ...v]) cnt[c] = (cnt[c] || 0) + 1;
+    return Object.entries(cnt).some(([c, k]) => +c !== 0 && k >= 2) ? { doubling: weight } : {};
+  } }),
+};
+
+// the styles of several voices: partimento.mjs's parts (two upper voices) and four (three), their rules between the
+// voices in the order they read them; each voice a style of one voice over the bass
+Object.assign(STYLES, {
+  "partimento-2": { style: "partimento-2", version: "1.0.0", voice: "partimento-1",
+    between: [["order", { form: "three" }], ["imitation"], ["exchange"], ["apart"], ["seconds"], ["six-four"], ["parallels-upper"], ["false-relation"], ["chord"], ["doubling"], ["dominant-major"]],
+    softBetween: [] },
+  "chorale-4": { style: "chorale-4", version: "1.0.0", voice: "partimento-1",
+    between: [["order", { within: 7 }], ["chord", { form: "four" }], ["doubling", { form: "four" }], ["seventh"], ["leading-tone-doubled"], ["seconds", { form: "four" }],
+              ["parallels-upper", { form: "four" }], ["resolution"], ["six-four", { form: "four" }], ["dominant-major", { form: "four" }]],
+    softBetween: [["doubling"]] },
+});
+
+/** The world the rules between the voices read. */
+function voicesWorld(K, B, V, names, o) {
+  const D = codeDegree, A = codeAlter, semi = (c) => K.semi(D(c), A(c));
+  const ltOf = (t, c) => { const kt = V[0].LOC[t].key, l = V[0].loc(t, c); return l.deg === 6 && (kt.mode === "major" ? l.alt === 0 : l.alt === 1); };
+  return { K, B, D, A, semi, V, names, ltOf, loc: V[0].loc, keys: V[0].LOC, figured: o.figured, ro: o.ro, asked: o.asked || (() => null), sevenths: o.sevenths || (() => null) };
+}
+
+/**
+ * Two upper voices over a given bass (partimento.mjs's parts): spec {bass, key, figured, ro, top, middle ([lo, hi]),
+ * apart, spacing, line ({top, middle} or one), hold ({top, middle}), imitate ({voice, delay, steps}), end, delayed,
+ * weights, style}.
+ */
+export function partsOverBass(spec = {}) {
+  const K = keyOf(spec.key || { tonic: "C" }), B = spec.bass, n = B.length, figured = spec.figured ?? true;
+  const st = resolveStyle(typeof spec.style === "object" ? spec.style : STYLES[spec.style || "partimento-2"]);
+  const [tlo, thi] = spec.top || [9, 22], [mlo, mhi] = spec.middle || [4, 17];
+  const lineOf = (who) => (spec.line && typeof spec.line === "object" ? spec.line[who] : spec.line);
+  const holdOf = (who) => (spec.hold && spec.hold[who]) || undefined;
+  const S = { bass: B, key: K, figured: false, ro: spec.ro, exchange: true, end: spec.end, weights: spec.weights, delayed: spec.delayed, style: st.voice };
+  const T = overBass({ ...S, lo: tlo, hi: thi, voice: "top", spacing: spec.spacing ?? 18, line: lineOf("top"), maxHold: holdOf("top") });
+  const M = overBass({ ...S, lo: mlo, hi: mhi, voice: "middle", line: lineOf("middle"), maxHold: holdOf("middle") });
+  const N = voicesWorld(K, B, [T.world, M.world], ["top", "middle"], { figured, ro: !!spec.ro });
+  const im = spec.imitate || {};
+  const params = { imitation: { voice: im.voice ?? null, delay: im.delay, steps: im.steps }, apart: { max: spec.apart ?? 7 } };
+  const between = st.between.map(([id, p]) => BETWEEN[id](N, { ...(params[id] || {}), ...(p || {}) }));
+  const soft = (st.softBetween || []).map(([id, p]) => SOFT_BETWEEN[id](N, p || {}));
+  const SV = solveVoices({ n, voices: [{ name: "top", solver: T }, { name: "middle", solver: M, prefix: "middle/" }], between, soft,
+                           result: (W) => ({ top: W[0], middle: W[1] }) });
+  /** The chords a realization makes, unit by unit: "6/3", "(5)/3" (a 5/3 without its 5th), "7/3", "4/2"… */
+  const chords = (R) => R.top.map((a, t) => {
+    const fs = [...new Set([T.vertical(t, a).cls, M.vertical(t, R.middle[t]).cls])].map((c) => FIG[c]).sort((x, y) => y - x);
+    if (fs.length === 2 && fs[0] === 8 && fs[1] === 3) return "(5)/3";
+    if (fs.length === 1) return fs[0] === 3 ? "(5)/3" : String(fs[0]);
+    return fs.filter((f) => f !== 8).join("/") || "8";
+  });
+  return { ...SV, style: st, key: K, bass: B, top: T, middle: M, chords,
+           judge: (R) => (R.top.length !== n || R.middle.length !== n ? `${R.top.length} units, the bass has ${n}` : SV.judgeW([R.top, R.middle], null)),
+           count: (TT = [], MM = []) => SV.count([TT, MM]), name: T.name, degree: T.degree };
+}
+
+/**
+ * Three upper voices over a given bass (partimento.mjs's four): spec {bass, key, figured, ro, soprano / alto / tenor
+ * ([lo, hi]), line, end, delayed, weights, freeSevenths, style}.
+ */
+export function fourOverBass(spec = {}) {
+  const K = keyOf(spec.key || { tonic: "C" }), B = spec.bass, n = B.length, figured = spec.figured ?? true;
+  const st = resolveStyle(typeof spec.style === "object" ? spec.style : STYLES[spec.style || "chorale-4"]);
+  const asked = (t) => (figured && B[t].chord ? CHORDS4[B[t].chord] : null);
+  let locB0 = null;
+  const sevenths = (t) => {
+    const ch = asked(t);
+    if (!ch || ch.seventh === undefined || ROOT[B[t].chord] === undefined) return null;
+    return { cls: ch.seventh, dominant: mod(locB0(t) + ROOT[B[t].chord], 7) === 4 };
+  };
+  const free = (t) => {
+    const ch = asked(t);
+    if (!ch || !(ch.free || ch.seventh !== undefined)) return null;
+    const sv = sevenths(t), cls = sv && !sv.dominant ? (ch.free || []).filter((c) => c !== ch.seventh) : ch.free || [];
+    return { cls, seventh: ch.seventh, up: ch.up, tri: !!ch.tri };
+  };
+  const S0 = { bass: B, key: K, figured: false, ro: spec.ro ?? true, exchange: true, end: spec.end, free, weights: spec.weights, delayed: spec.delayed, style: st.voice };
+  const lineOf = (who) => (spec.line && typeof spec.line === "object" ? spec.line[who] : spec.line);
+  const [slo, shi] = spec.soprano || [9, 20], [alo, ahi] = spec.alto || [6, 17], [tlo, thi] = spec.tenor || [3, 14];
+  const Sv = overBass({ ...S0, lo: slo, hi: shi, voice: "top", spacing: 22, line: lineOf("soprano"), maxHold: 3 });
+  const Av = overBass({ ...S0, lo: alo, hi: ahi, voice: "middle", spacing: 22, line: lineOf("alto"), turn: false, maxHold: n });
+  const Tv = overBass({ ...S0, lo: tlo, hi: thi, voice: "middle", spacing: 22, line: lineOf("tenor"), turn: false, maxHold: n });
+  locB0 = Sv.world.locB;
+  const NAMES = ["soprano", "alto", "tenor"];
+  const N = voicesWorld(K, B, [Sv.world, Av.world, Tv.world], NAMES, { figured, ro: spec.ro ?? true, asked, sevenths });
+  const params = { seventh: { free: !!spec.freeSevenths } };
+  const between = st.between.map(([id, p]) => BETWEEN[id](N, { ...(params[id] || {}), ...(p || {}) }));
+  const W = { doubling: 0.6, ...(spec.weights || {}) };
+  const soft = (st.softBetween || []).map(([id, p]) => SOFT_BETWEEN[id](N, { weight: W.doubling, ...(p || {}) }));
+  const D = codeDegree;
+  // (the order of the voices and their octave, at once: as partimento.mjs's triples)
+  const quick = (_W, _t, x) => x.length < 2 || !(D(x[x.length - 1]) >= D(x[x.length - 2]) || D(x[x.length - 2]) - D(x[x.length - 1]) > 7);
+  const SV = solveVoices({ n, voices: [{ name: "soprano", solver: Sv }, { name: "alto", solver: Av, prefix: "alto/", weight: 0.6 }, { name: "tenor", solver: Tv, prefix: "tenor/", weight: 0.6 }],
+                           between, soft, quick, result: (W_) => ({ soprano: W_[0], alto: W_[1], tenor: W_[2] }) });
+  /** The chords a realization makes, unit by unit, as figures ("6/4/3", "(5)/3"…). */
+  const chords = (R) => {
+    const W_ = [R.soprano, R.alto, R.tenor], V = [Sv, Av, Tv];
+    return W_[0].map((_, t) => {
+      const fs = [...new Set(W_.map((U, i) => V[i].vertical(t, U[t]).cls))].map((c) => FIG[c]).filter((f) => f !== 8).sort((a, b) => b - a);
+      if (!fs.length) return "8";
+      if (fs.length === 1 && fs[0] === 3) return "(5)/3";
+      if (fs[0] === 7 && fs.includes(3) && fs.every((f) => [7, 5, 3].includes(f))) return "7";
+      return fs.join("/");
+    });
+  };
+  return { ...SV, style: st, key: K, bass: B, voices: [Sv, Av, Tv], soprano: Sv, alto: Av, tenor: Tv, chords,
+           judge: (R) => SV.judgeW([R.soprano, R.alto, R.tenor], `the voices are not ${n} units long`), name: Sv.name, degree: Sv.degree };
+}
+
+// ─────────────────────────────── from a tree: a bass given as notes (the cac box, discussion #323) ───────────────────────────────
+/** The bass's units from notes [{midi, units, fig (a figuring: "6/5"), key, strong: [one a unit]}] in K. */
+export function bassFromNotes(notes, K, voices = 4) {
+  const table = voices >= 4 ? CHORDS4 : CHORDS, units = [], unknown = [];
+  notes.forEach((nt, i) => {
+    const dr = degreeOf(K, nt.midi);
+    if (!dr) throw new Error(`note ${i + 1}: not a pitch of ${K.tonic} ${K.mode}`);
+    const next = notes[i + 1] && degreeOf(K, notes[i + 1].midi);
+    // (fewer than four parts: a chord of four tones as three can sound it — the RO's 6/3 for its 6/5 and 6/4/3, 7/3 for 7)
+    const fig0 = nt.fig ? String(nt.fig).replace(/\s+/g, "") : null;
+    const fig = fig0 && voices < 4 ? ({ "6/5": "6/3", "6/5/3": "6/3", "6/4/3": "6/3", "7": "7/3", "7/5/3": "7/3", "6/4/2": "4/2" }[fig0] || fig0) : fig0;
+    const chord = fig && table[fig] ? fig : fig && table[fig + "/3"] ? fig + "/3" : null;
+    if (fig && !chord) unknown.push(`note ${i + 1}: ${fig}`);
+    const key = parseKey(nt.key);
+    for (let j = 0; j < Math.max(1, nt.units || 1); j++)
+      units.push({ d: dr.d, r: dr.r, struck: j === 0, strong: nt.strong ? !!nt.strong[j] : units.length % 2 === 0, chord, key,
+                   fig: voices === 2 && chord ? CHORDS[chord] && chord.split("/").map(Number) : undefined, note: i,
+                   dominant: mod(dr.d, 7) === 4 && (!next || isDominant(dr.d, next.d)) });
+  });
+  return { units, unknown };
+}
+
+/**
+ * The voices over a bass given as notes: spec {notes (bassFromNotes's), key (a name, "a minor", or {tonic, mode}; else
+ * guessed), voices (2, 3 or 4: the bass and the upper voices), ro (chapter 4's rules: true), style}. Its count, sample,
+ * engine, judge, chords; midi, code and spell (a code as a tree writes it).
+ */
+export function fromNotes(spec = {}) {
+  const key = parseKey(spec.key) || guessKey(spec.notes.map((n) => n.midi));
+  const K = keyOf(key), voices = spec.voices || 4;
+  const { units, unknown } = bassFromNotes(spec.notes, K, voices);
+  const figured = units.some((u) => u.chord);
+  const ro = spec.ro ?? true;
+  const make = (bass, fig) => (voices >= 4 ? fourOverBass({ key, bass, figured: fig, ro, style: spec.style })
+    : voices === 3 ? partsOverBass({ key, bass, figured: fig, ro, style: spec.style })
+    : overBass({ key, bass, figured: fig, ro, voice: "top", lo: 7, hi: 21, style: spec.style }));
+  const P = make(units, figured);
+  const names = voices >= 4 ? ["soprano", "alto", "tenor"] : voices === 3 ? ["top", "middle"] : ["top"];
+  const asVoices = (R) => (R === null || R === undefined ? null : voices === 2 ? { top: R } : R);
+  const midi = (c) => K.midi(codeDegree(c), codeAlter(c));
+  const code = (m) => { const dr = degreeOf(K, m); return dr ? codeOf3(dr.d, dr.r) : null; };
+  const V0 = voices >= 4 ? P.soprano : voices === 3 ? P.top : P;
+  // (a code's name as a tree writes it: "bb4", "f#3")
+  const spell = (c) => K.name(codeDegree(c), codeAlter(c)).replace("𝄫", "bb").replace("𝄪", "##").replace("♭", "b").replace("♯", "#").replace(/^[A-G]/, (x) => x.toLowerCase());
+  // judged without figures, voices are read with the chords they make: those of four tones (the dominant's family,
+  // the 6/5) asked of them — so their dissonances are the semi-consonances they are
+  function judgeOf(R) {
+    if (figured || voices < 4) return voices === 2 ? P.judge(R.top) : P.judge(R);
+    const NAME = { "6/5/3": "6/5", "6/4/3": "6/4/3", "6/4/2": "4/2", "7": "7" };
+    const made = P.chords(R);
+    return make(units.map((u, t) => ({ ...u, chord: NAME[made[t]] || null })), true).judge(R);
+  }
+  return { key, K, units, unknown, figured, voices, names, P, midi, code, spell, degAt: (t) => V0.world.locB(t),
+           count: () => P.count(), engine: (o) => asVoices(P.engine(o)), sample: (r) => asVoices(P.sample(r)),
+           judge: judgeOf, chords: (R) => (P.chords ? P.chords(R) : null) };
+}
+
+// (a box loads the module's default export: api/import-module)
+export default { solve, solveVoices, overBass, partsOverBass, fourOverBass, fromNotes, bassFromNotes, degreeOf, parseKey, guessKey, keyOf,
+                 RULES, SOFT_RULES, BETWEEN, SOFT_BETWEEN, STYLES, resolveStyle, CHORDS, CHORDS4 };

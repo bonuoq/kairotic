@@ -116,7 +116,17 @@ over a bass), then 54–62 (three and four parts) and `cac partimento`, then `co
 the same counts as `partimento.mjs` in 288 cases of Study 51's schemata and for every voice of Studies 54, 57, 59 and 62
 counted alone, the same reasons candidate by candidate, the same engine.
 
+## Step 3: several voices (done)
+
+`@kairotic/rules` 0.3.0: `solveVoices()` — several voices, each a style of one voice over the bass, the rules between
+them in a style's order —, the catalogue's rules between voices (`BETWEEN`: `order`, `imitation`, `exchange`, `apart`,
+`seconds`, `six-four`, `parallels-upper`, `false-relation`, `chord`, `doubling`, `seventh`, `leading-tone-doubled`,
+`resolution`, `dominant-major`; soft: `doubling`), the styles `partimento-2` (two upper voices) and `chorale-4` (three),
+and `fromNotes` (a bass as notes). `tests/rules.mjs`: the same counts as `partimento.mjs`'s `parts` and `four` in the 38
+phrases of Studies 54, 57, 59 and 62, the same reason tuple by tuple, the same engine, judgement and chords; the cac box
+(`@kairotic/cac` 0.9.0) loads `rules.mjs`.
+
 ## Next
 
-- Then three and four parts, styles in EDN with `:extends`, `[:style …]` in `cac`; `comes` last.
+- Styles in EDN with `:extends`, `[:style …]` in `cac`; `comes` last.
 - Local search (OMClouds-like) or lazy counting where a count would take more than about 10 s.

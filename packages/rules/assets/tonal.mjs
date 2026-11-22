@@ -75,3 +75,29 @@ export function localNote(K, lo, d, a) {
   const deg = mod(d - lo.o, 7), sem = mod(K.semi(d, a) - lo.s, 12);
   return { deg, alt: mod(sem - lo.key.pattern[deg] + 6, 12) - 6 };
 }
+
+// ─── a bass given as notes (the cac box) ───
+/** The degree and alteration of a MIDI note in the key K (its scale first, then raised, then lowered), or null. */
+export function degreeOf(K, midi) {
+  const m = Math.round(midi);
+  for (const r of [0, 1, -1]) for (let d = -28; d <= 35; d++) if (K.midi(d, r) === m) return { d, r };
+  return null;
+}
+/** A key from its name ("G", "e" minor, "a minor", "d dorian") or {tonic, mode}, or null. */
+export const parseKey = (k) => {
+  if (!k) return null;
+  if (typeof k === "object") return k;
+  const s = String(k).trim(), m = s.match(/^([A-Ga-g])([#♯b♭]?)\s*(major|minor|maj|min|m|ionian|dorian|phrygian|lydian|mixolydian|aeolian)?$/i);
+  if (!m) return null;
+  // a church mode by its name ("d dorian", "E phrygian")
+  if (m[3] && /ian$/i.test(m[3])) return { tonic: m[1].toUpperCase() + m[2].replace("♯", "#").replace("♭", "b"), mode: m[3].toLowerCase() };
+  const minor = m[3] ? /^m(in(or)?)?$/.test(m[3]) && m[3] !== "maj" : m[1] === m[1].toLowerCase();
+  return { tonic: m[1].toUpperCase() + m[2].replace("♯", "#").replace("♭", "b"), mode: minor ? "minor" : "major" };
+};
+/** A key for a bass that has none: its last note's the tonic, minor where its minor 3rd sounds more than its major. */
+export function guessKey(midis) {
+  const last = midis[midis.length - 1], pc = (m) => ((Math.round(m) % 12) + 12) % 12, t = pc(last);
+  const n = (i) => midis.filter((m) => pc(m) === (t + i) % 12).length;
+  const names = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+  return { tonic: names[t], mode: n(3) > n(4) ? "minor" : "major" };
+}

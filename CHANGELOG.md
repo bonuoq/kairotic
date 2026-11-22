@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Several voices on one engine: `cac partimento` and `cac judge` on `@kairotic/rules`** (`@kairotic/rules` 0.3.0,
+  `@kairotic/cac` 0.9.0; step 3 of discussion #353). The core takes several voices (`solveVoices`: each voice a style of
+  one voice over the bass, tuples of their candidates, rules between them, the exact count memoized on every voice's
+  last units, the engine, a uniform draw, a judgement) and the catalogue rules between the voices (`BETWEEN`: `order`,
+  `imitation`, `exchange`, `apart`, `seconds`, `six-four`, `parallels-upper`, `false-relation`, `chord`, `doubling`,
+  `seventh`, `leading-tone-doubled`, `resolution`, `dominant-major`; soft, `doubling`), each with its parameters (three
+  parts or four). Two styles order them as `partimento.mjs` did: `partimento-2` (two upper voices, `partsOverBass`) and
+  `chorale-4` (three, `fourOverBass`); `fromNotes` takes a bass given as notes, as the cac box does. Every count the same
+  — the 38 phrases of Studies 54, 57, 59 and 62 (up to 839,310 realizations), the same reasons tuple by tuple, the same
+  engine, judgement and chords made (`tests/rules.mjs`) —, and the cac box now loads `rules.mjs`. Next: styles in EDN
+  (`[:style …]` in `cac`), then `comes`.
+
 - **The church modes, with their musica ficta** (`@kairotic/cac` 0.8.0, `@kairotic/rules` 0.2.0; discussions #342,
   #353). A key may be a church mode — `{tonic: "D", mode: "dorian"}`, `"d dorian"` in `cac partimento` — ionian,
   dorian, phrygian, lydian, mixolydian, aeolian, on any tonic, with the ficta Fux writes in the *Gradus*'s examples
