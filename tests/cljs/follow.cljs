@@ -114,6 +114,14 @@
               ["n0" "n1" "n2" "n3"])
         (t/is "… where its notation alone would not (its chroma is not E's)"
               (> (fl/obs-dist (fl/default-profile (nth sc 2)) {:chroma (ch 4 11 5)}) (fl/obs-dist (get ps "n2") {:chroma (ch 4 11 5) :flatness 0.74})))))
+    ;; how sure a follower can be at each note (discussion #308, step 5)
+    (let [sc (fl/score [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 c4 d4 f4"]])]
+      (t/eq "from the notation: a note like its neighbour is harder to be sure of"
+            (fl/confidence sc nil nil) {"n0" 0.15 "n1" 0.15 "n2" 0.6 "n3" 0.6})
+      (let [ps (into {} (map (fn [e] [(:id e) (fl/default-profile e)]) sc))]
+        (t/eq "once rehearsed: a note the takes missed is less sure"
+              (select-keys (fl/confidence sc ps [{:when {"n2" [2 1] "n3" [3 1]}} {:when {"n3" [3 1]}}]) ["n2" "n3"])
+              {"n2" 0.7 "n3" 1})))
     (let [rep [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 c4 c4 d4"]]
           {:keys [found]} (fl/follow (fl/score rep) [[0 60 0.5] [1.1 60 0.5] [2.3 60 0.5] [3.2 62 0.5]])]
       (t/eq "repeated notes, one after the other" (mapv :id (keep (fn [[k x]] (when (= k :at) x)) found)) ["n0" "n1" "n2" "n3"]))

@@ -802,7 +802,10 @@
     (str "<rect class=\"paper mus-body\" data-box=\"" idn "\" x=\"2\" y=\"" hdr "\" width=\"" (- w 4) "\" height=\"" (- h hdr 2) "\"></rect>"
          "<g class=\"ct-root\" data-box=\"" idn "\" transform=\"translate(0," hdr ")\">"
          (if t
-           (try (ct/svg t w (- h hdr)) (catch :default e (str "<text class=\"wait\" x=\"12\" y=\"26\">" (esc (str "Could not draw: " (.-message e))) "</text>")))
+           (try (ct/svg t w (- h hdr)
+                        ;; once rehearsed ((learn! :bN)), how sure a follower can be at each note
+                        (when-let [ps (:profiles (mt/attrs t))]
+                          {:confidence (fl/confidence (ct/events t) ps (:takes (mt/attrs t)))})) (catch :default e (str "<text class=\"wait\" x=\"12\" y=\"26\">" (esc (str "Could not draw: " (.-message e))) "</text>")))
            "<text class=\"wait\" x=\"12\" y=\"26\">an empty tree</text>")
          "<g class=\"prelude-slot\" data-box=\"" idn "\" data-key=\"" k "\" data-meter=\"" (str/join "/" m) "\" data-step=\"" step "\" data-base=\"" base "\"></g>"
          "</g>")))
