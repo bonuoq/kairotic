@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The comes on the one engine** (`@kairotic/rules` 0.6.0; discussion #353, step 4). `systems.mjs`: the comes's
+  systems as data (a tuning, a scale's steps, each interval's quality by its real size), the same as
+  `counterpoint.mjs`'s. `canon.mjs`: two free voices on a system — the dux and the comes, a canon, an imitation or free
+  counterpoint, species and suspensions, the comes inverted or augmented, the counterpoint asked to stand inversion —
+  on `solveVoices`, its rules entries of the catalogue (`CANON_VOICE`, `CANON_BETWEEN`) and the style `canon-2` naming
+  them. The same counts as `counterpoint.canon` in 40 random canons over the four systems (`tests/rules.mjs`); a memo
+  key of its own (`solveVoices({key})`). Next: its engine and soft rules, and one tonal layer for both worlds.
 - **`cac` does not freeze the page** (`@kairotic/rules` 0.5.1, `@kairotic/cac` 0.10.1). The exact count runs in the
   page, and a long bass without figures in four parts takes minutes (16 bars of half notes in A major: about a minute;
   of whole notes, more than eight) — an agent asked for a 16-bar partimento hung the page that way. Now `cac

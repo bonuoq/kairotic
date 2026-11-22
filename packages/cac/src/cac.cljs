@@ -11,7 +11,7 @@
 ;; What an analysis finds is written on the tree as its analysis layer (:fig the chord over a bass note, :deg its
 ;; degree, :local the key it is read in, :why a rule broken there), which a tree box's code window shows or hides
 ;; (Analysis).
-(let [origins ["npm:@kairotic/rules@0.5.1/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
+(let [origins ["npm:@kairotic/rules@0.6.0/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
       ;; how long the page may count, and search when it cannot (ms): past them the page would freeze (a long bass
       ;; without figures in four parts takes minutes to count), so the box gives up counting and finds a realization
       ;; by search, or says it found none in time

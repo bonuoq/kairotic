@@ -126,9 +126,39 @@ and `fromNotes` (a bass as notes). `tests/rules.mjs`: the same counts as `partim
 phrases of Studies 54, 57, 59 and 62, the same reason tuple by tuple, the same engine, judgement and chords; the cac box
 (`@kairotic/cac` 0.9.0) loads `rules.mjs`.
 
+## Step 4: the comes (begun)
+
+`@kairotic/rules` 0.6.0: `systems.mjs` — the comes's systems as data (a tuning, the steps of a scale, what each interval
+is by its real size: the diatonic one, meantone, a septimal scale in 31-TET, the pentatonic), the same as
+`counterpoint.mjs`'s — and `canon.mjs`: two free voices on a system, the dux and the comes, on `solveVoices`. Its
+rules are now entries of the catalogue, of a voice (`CANON_VOICE`: `range`, `entry`, `final`, `approach`,
+`syncopation`, `melodic` — the system's melodic intervals and the leap's recovery, small and large) and between the
+two (`CANON_BETWEEN`: `resolution`, `imitation` — a canon, near, under a transformation —, `crossing`, `vertical` —
+the counterpoint as it is and under every inversion asked: parallels, direct octaves, perfect intervals on consecutive
+strong beats, a strong dissonance a suspension of the kinds the system allows, a weak one passing —, the entry, the
+final, the cadence); the style `canon-2` names them. `tests/rules.mjs`: the same counts as `counterpoint.canon` in 40
+random canons, imitations and free counterpoints over the four systems, with species, inversions asked, the comes
+inverted or augmented and rules turned off. The memo takes a key of its own (`solveVoices({key})`: a window for each
+voice, the dux's reaching back to the note the comes repeats).
+
+What the comes's rules bring the rest, as they come in: the system as data (a vertical's quality by its real size,
+not by a key's letters: the same rules in 31-TET or a pentatonic), invertible counterpoint as a condition every
+vertical must stand, the suspensions a system allows by kind, perfect intervals on consecutive strong beats, a leap's
+recovery by its size.
+
 ## Next
 
-- Styles in EDN with `:extends`, `[:style …]` in `cac`; `comes` last.
+- The comes's engine on it: its soft rules (the mode, the imitation) and the box's `live` (a note asked for, corrected
+  to the nearest legal one with a future); the box loading `canon.mjs` once it counts as fast (its keys numbers, as
+  `counterpoint.mjs`'s, not strings).
+- One tonal layer for both worlds: `keyOf`'s keys and modes a system of `systems.mjs` (the diatonic one, its modes and
+  their ficta), so the partimento styles may use the comes's rules (invertible counterpoint, strong-beat parallels,
+  suspension kinds) and the canon the modes' ficta.
+- Coherence as a preference (discussion #342's grammar, read the other way): of the legal solutions, the simpler ones —
+  a derivation with fewer distinct cells, a figure or a rhythm heard again, transformed (inverted, augmented, in
+  sequence) rather than new — as Bach's cells that unfold and vary without losing what holds them together. A soft rule
+  that costs the description, not the note.
+- Styles in EDN with `:extends`, `[:style …]` in `cac`.
 - Local search (OMClouds-like) or lazy counting where a count would take more than about 10 s.
 
 ## The church modes (#362, and Fux's style)

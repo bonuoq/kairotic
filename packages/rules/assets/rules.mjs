@@ -533,7 +533,8 @@ const ROOT = { "7": 0, "6/5": -2, "6/4/3": 3, "4/2": 1 };
  * Several voices to write over n units. spec: {n, voices [{name, solver (solve()'s: its codes, check, costParts),
  * prefix (its costs' names), weight (of its costs)}], between [{id, check (X) → reason | null}] (X: {W the voices so
  * far, t, x the notes at t, p those at t − 1}), quick (W, t, x) → false (a tuple refused at once: the order of the
- * voices), soft [{id, cost (X)}], window, result (W) → a realization}.
+ * voices), soft [{id, cost (X)}], window, key (W, t) → the memo's key (a window of its own for each voice: the canon's),
+ * result (W) → a realization}.
  */
 export function solveVoices(spec) {
   const { n, voices, between, soft = [] } = spec;
@@ -556,7 +557,7 @@ export function solveVoices(spec) {
     const t = W[0].length;
     if (t >= n) return 1n;
     tick();
-    const key = t + ":" + W.map((U) => U.slice(Math.max(0, t - window)).join(",")).join("|");
+    const key = spec.key ? spec.key(W, t) : t + ":" + W.map((U) => U.slice(Math.max(0, t - window)).join(",")).join("|");
     const got = memo.get(key);
     if (got !== undefined) return got;
     let v = 0n;
@@ -609,7 +610,7 @@ export function solveVoices(spec) {
     const W = empty();
     const ok = depthFirst({ n, at: () => W[0].length, cands: () => fan(W, false), push: (c) => W.forEach((U, i) => U.push(c.x[i])),
                             pop: () => W.forEach((U) => U.pop()),
-                            key: (t) => t + ":" + W.map((U) => U.slice(Math.max(0, t - window)).join(",")).join("|"), temp, r, ms });
+                            key: (t) => (spec.key ? spec.key(W, t) : t + ":" + W.map((U) => U.slice(Math.max(0, t - window)).join(",")).join("|")), temp, r, ms });
     return ok ? result(W) : null;
   }
   return { n, voices, between, check, tuples, count, search, fan, sample, engine, judgeW, memo };

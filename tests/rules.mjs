@@ -264,6 +264,38 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   })());
 }
 
+// the comes on the one engine (canon.mjs, step 4): its systems the same as counterpoint.mjs's, and its canons counted
+// to the number — random specs over the four systems, species, imitation, inversions asked, the comes inverted or
+// augmented, a rule turned off
+{
+  const CP = await import("../packages/cac/assets/counterpoint.mjs");
+  const CV = await import("../packages/rules/assets/canon.mjs");
+  const SY = await import("../packages/rules/assets/systems.mjs");
+  is("systems.mjs: counterpoint.mjs's systems, as they are", ["DIATONIC", "MEANTONE", "SEPTIMAL31", "PENTATONIC"].every((k) => JSON.stringify(SY[k]) === JSON.stringify(CP[k])) && String(SY.makeSystem) === String(CP.makeSystem));
+  const r = rng(11), pick = (a) => a[Math.floor(r() * a.length)];
+  let tot = 0, diff = [];
+  const t0 = Date.now();
+  for (let i = 0; i < 40; i++) {
+    const sys = SY.SYSTEMS[pick(["diatonic", "diatonic", "diatonic", "pentatonic", "septimal31", "meantone"])], N = (sys.steps || sys.tuning.cents).length;
+    const tonic = pick([0, 1, 4, 5]), b = pick([1, 2, 2]);
+    const spec = { tonic, k: pick([N, -N, 0, Math.round(4 * N / 7), -Math.round(4 * N / 7), 2]), d: pick([1, 2, 2, 3]), b, n: pick([5, 6, 7]),
+      lo: tonic - pick([1, 2, 3]), hi: tonic + pick([5, 7, 8]), system: sys, imitation: pick([1, 1, 0.6, 0.3, 0]),
+      species: b === 2 && r() < 0.25 ? 4 : undefined, phase: b === 2 && r() < 0.2 ? 1 : 0, maxHold: pick([2, 2, 3]),
+      invert: r() < 0.25 ? [pick([8, 10, 12])] : [], transform: r() < 0.15 ? { kind: "inversion" } : r() < 0.1 ? { kind: "augmentation", m: 2 } : undefined,
+      on: r() < 0.3 ? { [pick(["suspension-kinds", "strong-parallels", "leap-recovery", "strict-direct", "no-crossing", "cadence", "weak-dissonance"])]: r() < 0.5 } : undefined };
+    const a = CP.canon(spec).count([], []), z = CV.canonVoices(spec).count();
+    tot++;
+    if (!(a < 2 ** 53 ? BigInt(a) === z : Math.abs(a - Number(z)) / a < 1e-9)) diff.push(`${JSON.stringify({ ...spec, system: sys.name })}: ${a} ≠ ${z}`);
+  }
+  is(`the comes on the one engine (canon-2): the same counts in ${tot} canons, imitations and free counterpoints`, diff.length === 0, diff.slice(0, 3).join("; "));
+  notes.push(`${tot} canons compared in ${Date.now() - t0} ms`);
+  // and a canon the engine draws is legal by both
+  const spec = { tonic: 0, k: 7, d: 2, b: 2, n: 8, lo: -2, hi: 8 }, CVs = CV.canonVoices(spec), x = CVs.sample(rng(3));
+  const K = CP.canon(spec);
+  const legal = x && x.dux.every((_, t) => K.checkDux(x.dux.slice(0, t), x.comes.slice(0, t), x.dux[t]) === null && K.checkPair(x.dux.slice(0, t), x.comes.slice(0, t), x.dux[t], x.comes[t]) === null);
+  is("… a canon drawn on the one engine: legal for counterpoint.mjs too, beat by beat", legal && CVs.judge(x.dux, x.comes) === null);
+}
+
 const failed = results.filter((r) => !r[1]);
 console.log(`${results.length - failed.length} / ${results.length} passed`);
 for (const [w, ok, d] of results) if (!ok) console.log("  FAIL " + w + (d ? " — " + d : ""));
