@@ -45,7 +45,8 @@
                (range) evs)))
 
 (defn start
-  "A follower at the beginning of a score. opts: :ahead :band :octave, :wires (by default its notes')."
+  "A follower at the beginning of a score. opts: :ahead :band :octave, :wires (by default its notes'), :profiles
+   (what rehearsals learned: learn)."
   ([evs] (start evs {}))
   ([evs opts]
    (let [ws (vec (or (:wires opts) (wires evs)))]
@@ -99,16 +100,96 @@
   (let [ds (keep (fn [w] (when (contains? (:pending st) (:id w)) (due st w))) (:wires st))]
     (when (seq ds) (reduce min ds))))
 
-(defn- candidates [st t midi]
+;; ───────── how a note sounds (discussion #308) ─────────
+;; Each note has a profile: what is expected to be heard there. By default, from the notation (its pitch class as a
+;; chroma); learned from takes that kept what each note sounded like (:profile, by follow rms chroma …): for each
+;; descriptor its mean, how much it varies, and a weight — how well it tells the note from its neighbours. A note
+;; heard is matched by pitch and, where descriptors are heard, by how near they are to the note's profile; a sound
+;; without a pitch (a multiphonic, a noise) by the profile alone.
+
+(defn default-profile
+  "What the notation says a note sounds like: its pitch class, as a chroma."
+  [e]
+  (when-let [m (:midi e)]
+    {:mean {:chroma (assoc (vec (repeat 12 0)) (mod (js/Math.round m) 12) 1)} :w {:chroma 1}}))
+
+(defn- vdist [a b]
+  ;; between two vectors: 1 − their cosine (0 the same shape, 1 unrelated)
+  (let [dot (reduce + (map * a b)) na (js/Math.sqrt (reduce + (map * a a))) nb (js/Math.sqrt (reduce + (map * b b)))]
+    (if (or (zero? na) (zero? nb)) 1 (- 1 (/ dot (* na nb))))))
+
+(defn- kdist
+  "How far a value heard is from a mean, in its spread (numbers) or as 1 − cosine × 3 (vectors), at most 3."
+  [o m sd]
+  (min 3 (cond (and (number? o) (number? m)) (/ (js/Math.abs (- o m)) (max (or sd 0) (* 0.1 (js/Math.abs m)) 1e-6))
+               (and (sequential? o) (sequential? m) (= (count o) (count m))) (* 3 (vdist o m))
+               :else 3)))
+
+(defn obs-dist
+  "How far what is heard (obs: {descriptor value}) is from a profile ({:mean :sd :w}): the weighted mean of each
+   descriptor's distance (0 … 3), over the descriptors both have; nil if they share none."
+  [prof obs]
+  (let [ks (filter #(and (contains? obs %) (contains? (:mean prof) %)) (keys (:w prof)))
+        ws (map #(get-in prof [:w %] 1) ks)]
+    (when (and (seq ks) (pos? (reduce + ws)))
+      (/ (reduce + (map (fn [k w] (* w (kdist (get obs k) (get-in prof [:mean k]) (get-in prof [:sd k])))) ks ws))
+         (reduce + ws)))))
+
+(defn- mean-of [xs]
+  (if (number? (first xs))
+    (/ (reduce + xs) (count xs))
+    (apply mapv (fn [& v] (/ (reduce + v) (count v))) xs)))
+
+(defn- sd-of [xs m]
+  (if (number? m)
+    (js/Math.sqrt (/ (reduce + (map #(let [d (- % m)] (* d d)) xs)) (count xs)))
+    (/ (reduce + (map #(vdist % m) xs)) (count xs))))
+
+(defn learn
+  "What rehearsals learned of how each note sounds, from takes that kept what each note sounded like (:profile):
+   {note-id {:n takes :mean {k v} :sd {k v} :w {k weight}}}. A descriptor weighs more the better its mean tells the
+   note from the notes beside it, for how little it varies (weights of a note sum to 1)."
+  [evs takes]
+  (let [ids (mapv :id (remove :rest evs))
+        heard (into {} (for [id ids
+                             :let [ps (keep #(get-in % [:profile id]) takes)]
+                             :when (seq ps)]
+                         [id (let [ks (distinct (mapcat keys ps))]
+                               (into {} (for [k ks :let [xs (vec (keep #(get % k) ps))] :when (seq xs)
+                                              :when (or (every? number? xs) (and (every? sequential? xs) (apply = (map count xs))))]
+                                          [k (let [m (mean-of xs)] {:mean m :sd (sd-of xs m) :n (count xs)})])))]))
+        r4 (fn [x] (if (number? x) (/ (js/Math.round (* 10000 x)) 10000) (mapv #(/ (js/Math.round (* 10000 %)) 10000) x)))]
+    (into {}
+          (for [[i id] (map-indexed vector ids) :let [h (get heard id)] :when h]
+            (let [nbrs (keep #(get heard (get ids %)) [(dec i) (inc i)])
+                  raw (into {} (for [[k {:keys [mean sd]}] h]
+                                 (let [sep (if (seq nbrs)
+                                             (reduce min (map #(if-let [o (get-in % [k :mean])] (kdist o mean sd) 3) nbrs))
+                                             1)]
+                                   [k (/ (+ 0.1 sep) (+ 0.1 (if (number? mean) 0 sd)))])))
+                  tot (reduce + (vals raw))]
+              [id {:n (reduce max (map :n (vals h)))
+                   :mean (into {} (map (fn [[k v]] [k (r4 (:mean v))]) h))
+                   :sd (into {} (map (fn [[k v]] [k (r4 (:sd v))]) h))
+                   :w (into {} (map (fn [[k v]] [k (r4 (/ v tot))]) raw))}])))))
+
+(defn profile-at "The profile of note j: learned, or from the notation." [st j]
+  (let [e (get-in st [:evs j])] (or (get (:profiles st) (:id e)) (default-profile e))))
+
+(defn- candidates [st t midi obs]
   (let [{:keys [evs next ahead band octave]} st
         ;; the next `ahead` notes (a rest with a wire is no note: it is not heard)
         js (take ahead (filter #(not (:rest (get evs %))) (range next (count evs))))]
     (for [[n j] (map-indexed vector js)
-          :let [e (get evs j) [d oct] (dist midi (:midi e) band octave)]
-          :when d]
-      ;; the cost: the notes it would skip, how far it is in pitch (an octave off costs more), how far from when it
-      ;; was expected (in its own written length, so that a short note expected late weighs as much as a long one)
-      [(+ n (* 0.5 d) (if oct 0.75 0)
+          :let [e (get evs j)
+                [d oct] (if midi (dist midi (:midi e) band octave) [0 false])
+                od (when (seq obs) (obs-dist (profile-at st j) obs))]
+          ;; with a pitch: by pitch, and the profile weighs in; without one (a multiphonic, a noise): by the profile
+          :when (if midi d (and od (<= od 1)))]
+      ;; the cost: the notes it would skip, how far it is in pitch (an octave off costs more), how far from what is
+      ;; heard (its profile), how far from when it was expected (in its own written length, so that a short note
+      ;; expected late weighs as much as a long one)
+      [(+ n (* 0.5 d) (if oct 0.75 0) (* 0.5 (or od 0))
           (if (:last st) (/ (js/Math.abs (- t (expected st j))) (max 0.25 (* 2 (:wd e)))) 0))
        j])))
 
@@ -141,16 +222,18 @@
     [st3 (into [[:at {:id (:id e) :i j :beat (:beat e) :t t :skipped (count (remove #(:rest (get-in st [:evs %])) (range (:next st) j)))}]] found)]))
 
 (defn hear
-  "A note heard at t (seconds) at midi (with decimals). → [state found], found a vector of [:at {…}] and
+  "A note heard at t (seconds) at midi (with decimals; nil for a sound without a pitch, found by what is heard of it
+   alone), and what is heard of it (obs: {descriptor value}, from follow's descriptor inlets). → [state found], found a vector of [:at {…}] and
    [:wire {…}] (the wires that went on): nothing if it is not a note of the score near where the performer is (a
    wrong note, an ornament) — but the elastic wires due by then."
-  [st t midi]
+  ([st t midi] (hear st t midi nil))
+  ([st t midi obs]
   (let [[st early] (tick st t)
-        cs (candidates st t midi)]
+        cs (candidates st t midi obs)]
     (if (empty? cs)
       [(update st :extra inc) early]
       (let [[st found] (arrive st t (second (first (sort-by first cs))))]
-        [st (into early found)]))))
+        [st (into early found)])))))
 
 (defn here
   "The performer is told to be at note j at t (a correction in a rehearsal, discussion #308: \"I am here\"). Ahead, as
@@ -200,13 +283,13 @@
               :when (into {} (for [[id [t d]] (:played st) :when id] [id [(r3 (- t t0)) (r3 d)]]))}))))
 
 (defn follow
-  "Offline: a performance ([[t midi dur] …], seconds) followed through a score → {:found [...] :take take :state st}."
+  "Offline: a performance ([[t midi dur obs] …], seconds; midi nil for a sound without a pitch) followed through a score → {:found [...] :take take :state st}."
   [evs performance & [opts]]
-  (loop [st (start evs opts) [[t m d] & more] performance found []]
+  (loop [st (start evs opts) [[t m d obs] & more] performance found []]
     (if (nil? t)
       ;; the end: the elastic wires still pending go on at their time
       (let [[st f] (tick st js/Infinity)]
         {:found (into found f) :state st :take (take-of st {:id (or (:id opts) "followed")})})
-      (let [[st2 f] (hear st t m)
+      (let [[st2 f] (hear st t m obs)
             st2 (if (and d (seq f)) (release st2 (+ t d)) st2)]
         (recur st2 more (into found f))))))

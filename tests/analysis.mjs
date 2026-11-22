@@ -228,6 +228,17 @@ export async function analysis(page, check) {
   (into (sorted-map) (:profile tk)))`);
   check("follow rms chroma: the take keeps what each note sounded like (means while it sounded; nothing in silence)",
         prof === '{"n0" {:rms 0.3, :chroma [0.5 0.5 0]}, "n1" {:rms 0.6}}', prof);
+  // an onset and no pitch after it (a multiphonic, a noise): found by its chroma (discussion #308)
+  const pitchless = await cljs(page, `(let [rcv (:receive (comp/lookup "follow")) args [:chroma]
+      step (fn [[st outs lat] m] (let [r (rcv (assoc m :state st :args args))] [(if (contains? r :state) (:state r) st) (into outs (:out r)) (into lat (:later r))]))
+      tr [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 e4"]]
+      E [0 0 0 0 1 0 0 0 0 0 0 0]
+      msgs [[2 tr 0] [0 :start 0] [0 261.63 0.1] [0 0 0.9] [3 E 1.0] [1 0.8 1.05]]
+      [st outs lat] (reduce (fn [acc [i v at]] (step acc {:inlet i :value v :at at})) [nil [] []] msgs)
+      [at _ v] (last lat)
+      [_ outs2 _] (step [st [] []] {:inlet 0 :value v :at at})]
+  [v (mapv second (filter (fn [[o]] (= o 0)) outs2))])`);
+  check("follow: an onset with no pitch after it is a sound found by its chroma", pitchless === "[[:pitchless 1.05] [1]]", pitchless);
   check("follow rms chroma has an inlet for each", (await cljs(page, `(comp/io {:text "follow 4 rms chroma"})`)) === "[5 4]");
   // an elastic wire (discussion #217) whose note does not come: the box asks to look again when it is due, and then
   // sends it; one led by the electronics, at its own time even if the performer is early

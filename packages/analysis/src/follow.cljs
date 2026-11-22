@@ -36,8 +36,8 @@
       ;; a note begins at t (seconds from start) at midi: the follower hears it
       note-on (fn [st t midi]
                 (let [fl (if (:cur st) (api/follow-release (:fl st) t) (:fl st))
-                      [fl found] (api/follow-hear fl t midi)]
-                  (found-out (assoc (close-note st) :fl fl :cur {:t t :midi midi} :pend nil
+                      [fl found] (api/follow-hear fl t midi (:desc st))]
+                  (found-out (assoc (close-note st) :fl fl :cur {:t t :midi midi :pitchless (nil? midi)} :pend nil
                                     :cur-id (:id (second (last (filter (fn [[k]] (= k :at)) found)))))
                              found)))
       ;; an elastic wire that will go on by itself if no note comes first: a look again then
@@ -56,8 +56,8 @@
              (let [cur (:cur st) m (when (pos? hz) (api/hz->midi hz))]
                (cond
                  (nil? m) [(cond-> (assoc (close-note st) :pend nil :cur nil) cur (update :fl api/follow-release t)) []]
-                 ;; after silence, or an onset just before: a note begins
-                 (nil? cur) (note-on st (if (and (:onset st) (<= (- t (:onset st)) onset-s)) (:onset st) t) m)
+                 ;; after silence (or a sound without a pitch), or an onset just before: a note begins
+                 (or (nil? cur) (:pitchless cur)) (note-on st (if (and (:onset st) (<= (- t (:onset st)) onset-s)) (:onset st) t) m)
                  (and (:onset st) (> (:onset st) (+ (:t cur) 0.05)) (<= (- t (:onset st)) onset-s))
                  (note-on (assoc st :onset nil) (:onset st) m)
                  ;; near the note that sounds: still it
@@ -84,14 +84,17 @@
                   ;; the tree to follow
                   (= inlet 2)
                   (if (and (vector? value) (keyword? (first value)))
-                    (let [sc (api/follow-score value) st (assoc st :score sc :wires (api/follow-wires sc) :from (:from (meta value)))]
+                    (let [sc (api/follow-score value)
+                          st (assoc st :score sc :wires (api/follow-wires sc) :from (:from (meta value))
+                                    ;; what rehearsals learned of how its notes sound ((learn! :bN), discussion #308)
+                                    :profiles (when (map? (second value)) (:profiles (second value))))]
                       {:state st :show (shown st)})
                     {})
                   (= value :start)
                   (if (seq (:score st))
                     (let [st (assoc st :on true :t0 at :fl (api/follow-start (:score st) {:ahead (api/clamp (:ahead (opts args)) 1 32) :band (api/clamp (:band (opts args)) 0.1 2)
-                                                                                         :wires (:wires st)})
-                                    :cur nil :pend nil :onset nil :at nil :cue nil :wake nil :acc nil :cur-id nil :prof {})]
+                                                                                         :wires (:wires st) :profiles (:profiles st)})
+                                    :cur nil :pend nil :onset nil :at nil :cue nil :wake nil :acc nil :cur-id nil :prof {} :desc {})]
                       (out-of [st []] nil at))
                     {:effects [[:print "follow: no tree yet (connect a tree box to its right inlet)"]]})
                   (not (:on st)) {}
@@ -108,12 +111,21 @@
                              tk)
                         st (assoc st :on false :fl fl :cur nil :takes n)]
                     (cond-> {:state st :show (shown st)} tk (assoc :out [[3 [:take tk]]])))
-                  (= inlet 1) {:state (assoc st :onset (- at (:t0 st)))}
+                  ;; an onset: a note begins there; with descriptors and no pitch heard soon after, a sound without a pitch
+                  ;; (a multiphonic, a noise), found by what is heard of it
+                  (= inlet 1) (cond-> {:state (assoc st :onset (- at (:t0 st)))}
+                                (seq (:listen (opts args))) (assoc :later [[(+ at 0.08) 0 [:pitchless (- at (:t0 st))]]]))
+                  (and (vector? value) (= :pitchless (first value)))
+                  (if (and (seq (:desc st)) (or (nil? (:cur st)) (:pitchless (:cur st))) (= (second value) (:onset st)))
+                    (out-of (note-on (assoc st :onset nil) (second value) nil) nil at)
+                    {})
                   ;; a descriptor (inlet 3 on: features~, chroma~), added to what the note that sounds sounded like
                   (>= inlet 3)
                   (if-let [k (get (:listen (opts args)) (- inlet 3))]
-                    (if (and (:cur-id st) (or (number? value) (and (sequential? value) (every? number? value))))
-                      {:state (update-in st [:acc k] add (if (number? value) value (vec value)))}
+                    (if (or (number? value) (and (sequential? value) (every? number? value)))
+                      (let [v (if (number? value) value (vec value))]
+                        ;; the latest value of each (what a note is matched with), and its mean while a note sounds (the take)
+                        {:state (cond-> (assoc-in st [:desc k] v) (:cur-id st) (update-in [:acc k] add v))})
                       {})
                     {})
                   ;; "I am here" (a click on a note of the continuum, discussion #308): the follower goes there
