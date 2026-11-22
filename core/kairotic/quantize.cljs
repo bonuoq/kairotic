@@ -753,10 +753,20 @@
          o (if-let [r (and m (number? (:ref-bpm o)) (pos? (:ref-bpm o)) (:ref-bpm o))]
              (let [f (js/Math.min 1 (js/Math.max 0.33 (/ r (tm/tempo-of-map m))))] (update-in o [:w :err] * f))
              o)
-         by-voice (sort-by key (group-by (fn [n] (or (:voice n) "")) ns))
+         ;; the voices in the order the tree writes them (a choir's soprano, alto, tenor, bass — not by name)
+         pos (let [lex (fn [p] (apply str (interpose "." (map #(.padStart (str %) 6 "0") p))))
+                   es (sort-by (comp lex :path) (filter #(= :note (:kind %)) (mt/events (mt/expand tree))))]
+               (into {} (map-indexed (fn [i v] [v i]) (distinct (map #(or (:voice %) "") es)))))
+         by-voice (sort-by (fn [[nm _]] [(get pos nm 1e9) nm]) (group-by (fn [n] (or (:voice n) "")) ns))
          ;; a voice keeps its name; one without (named by mt/events v<depth>-<index>) stays without
-         voices (fn [[nm ns]] (notes->voices (mapv (fn [n] (dissoc n :voice)) ns) o
-                                             (when (and (seq nm) (not (re-matches #"v\d+-\d*" nm))) nm)))
+         ;; (and keeps how it is written: its :staff, shared with others, and its :clef)
+         kept (into {} (keep (fn [v] (let [a (mt/attrs v) k (or (:name a) (:id a))
+                                           w (select-keys a [:staff :clef])]
+                                       (when (and k (seq w)) [(str k) w])))
+                             (mt/voices-of (mt/expand tree))))
+         voices (fn [[nm ns]] (mapv (fn [v] (if-let [w (get kept nm)] (mt/update-attrs v merge w) v))
+                                    (notes->voices (mapv (fn [n] (dissoc n :voice)) ns) o
+                                                   (when (and (seq nm) (not (re-matches #"v\d+-\d*" nm))) nm))))
          vs (vec (mapcat voices by-voice))
          t (if (> (count vs) 1) (into [:par {}] vs) (or (first vs) (notes->voice [] o)))]
      (respell-by-hand (mt/spell (mt/update-attrs t assoc :tempo (or (:tempo opts)
