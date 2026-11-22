@@ -27,7 +27,7 @@
 (defn score
   "The notes a tree is followed by: its first voice's sounds, in order ({:id :midi :ws :wd :beat :wire})."
   [tree]
-  (mapv (fn [e] (select-keys e [:id :midi :ws :wd :beat :wire :name :rest])) (ct/events tree)))
+  (mapv (fn [e] (select-keys e [:id :midi :ws :wd :beat :wire :listen :name :rest])) (ct/events tree)))
 
 (defn wires
   "The wires of a score, from its notes' :wire ({:send x :kind :rigid|:elastic :tol s :leader :performer|:electronics},
