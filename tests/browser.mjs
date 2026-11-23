@@ -72,6 +72,12 @@ const timed = async (name, fn) => {
   try { return await fn(); } finally { timings.push({ name, ms: Date.now() - t0 }); }
 };
 
+// the analysis suite waits for the other blocks to finish (see the end): its transcriptions hear a take as it
+// sounds, and with the app block still running beside it (longer now than the audio block) notes came late,
+// split or missing
+let quietNow;
+const quiet = new Promise((r) => { quietNow = r; });
+
 // The blocks below run at the same time: each has a browser context of its own (browser.newPage makes
 // one, browser.newContext too), so they share no page, localStorage or IndexedDB. Inside each app block
 // the suites run one after another, in their order, on the same page.
@@ -156,9 +162,10 @@ const audioSuites = [
   ["io", io, "the @kairotic/io tests ran"],
   ["net", net, "the @kairotic/net tests ran"],
   ["learn", learn, "the learn tests ran"],
-  // last: its transcriptions depend on timing, and by then the other blocks have (nearly) finished
-  // (alongside them, a take could start late and an overwrite check fail)
-  ["analysis", analysis, "the analysis tests ran"],
+  // last, and alone: its transcriptions depend on timing, so it waits for the other blocks to finish
+  // (alongside them, a take could start late, a note split or lost and an overwrite check fail); its limit
+  // counts the wait
+  ["analysis", async (app, check) => { await quiet; return analysis(app, check); }, "the analysis tests ran", 900000],
 ];
 
 // loads the app in a page of its own and runs suites in it; before(app, check) first and after(app,
@@ -277,8 +284,13 @@ async function storage() {
 // rule out that a failure comes from running them together
 const blocks = [["tests.html", unit], ["app", app], ["audio", audio], ["help layout", helpLayout], ["embed", embedded], ["storage", storage]];
 const t0 = Date.now();
-if (process.env.KAIROTIC_TESTS_SERIAL) for (const [name, fn] of blocks) await timed(name, fn);
-else await Promise.all(blocks.map(([name, fn]) => timed(name, fn)));
+if (process.env.KAIROTIC_TESTS_SERIAL) { quietNow(); for (const [name, fn] of blocks) await timed(name, fn); }
+else {
+  const runs = blocks.map(([name, fn]) => [name, timed(name, fn)]);
+  // every block but the audio one done (or failed): the analysis suite may start
+  Promise.allSettled(runs.filter(([n]) => n !== "audio").map(([, p]) => p)).then(() => quietNow());
+  await Promise.all(runs.map(([, p]) => p));
+}
 const wall = Date.now() - t0;
 await browser.close();
 const secs = (ms) => (ms / 1000).toFixed(1) + " s";
