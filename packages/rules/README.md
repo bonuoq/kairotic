@@ -20,4 +20,4 @@ engines of [`@kairotic/cac`](../cac/) and the studies.
 
 Step 2 of #353: the style `partimento-1` reproduces `partimento.mjs`'s one voice over a bass to the number — every
 count of Study 51's schemata, every voice of Studies 54, 57, 59 and 62 counted alone, the reasons and the engine's
-choices (`tests/rules.mjs`). Several voices (`solveVoices`, `BETWEEN`, the styles `partimento-2` and `chorale-4`, `fromNotes` for a bass as notes) reproduce `partimento.mjs`'s `parts` and `four` the same way; the cac box loads it. Next: styles in EDN, `comes`.
+choices (`tests/rules.mjs`). Several voices (`solveVoices`, `BETWEEN`, the styles `partimento-2` and `chorale-4`, `fromNotes` for a bass as notes) reproduce `partimento.mjs`'s `parts` and `four` the same way; the cac box loads it. The comes (`canon.mjs`, on `systems.mjs`): two free voices on a system, a canon or free counterpoint, counted as `counterpoint.mjs` counts it. Next: its engine, one tonal layer for both worlds, styles in EDN.

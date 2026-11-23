@@ -38,7 +38,7 @@
                                                    (into [:measure {:meter [b 2]}] (held (map beat bar)))))))]
                     (into [:piece] (map voice lines))))
       ;; ── forwards: a canon, an inversion, an augmentation ──
-      fwd (let [origins ["npm:@kairotic/cac@0.12.0/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
+      fwd (let [origins ["npm:@kairotic/cac@0.13.0/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
             hz (fn [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
             semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
             ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
@@ -293,8 +293,8 @@
                             :else {:state st})))))
       })
       ;; ── backwards: a crab or a table canon, from both ends to the middle ──
-      crab (let [origins-cp ["npm:@kairotic/cac@0.12.0/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
-            origins-mi ["npm:@kairotic/cac@0.12.0/dist/mirror.mjs" "kairotic/packages/cac/mirror.mjs"]
+      crab (let [origins-cp ["npm:@kairotic/cac@0.13.0/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
+            origins-mi ["npm:@kairotic/cac@0.13.0/dist/mirror.mjs" "kairotic/packages/cac/mirror.mjs"]
             semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
             ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
             log2 (fn [x] (/ (js/Math.log x) (js/Math.log 2)))

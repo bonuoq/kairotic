@@ -158,6 +158,19 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   is("… a church mode's bass in a tree (cac partimento d dorian): the modal style by default", ob.P.style.style === "modal-2");
 }
 
+// the comes's invertible counterpoint in the partimento's world: a voice over a bass that stands inversion at the
+// octave, the 10th or the 12th (rule invertible, named by a style): fewer lines, never none; at the octave no 5th
+// with the bass (it would turn into a 4th)
+{
+  const S = P.schemata({ schema: "thirds", figured: false });
+  const base = R.overBass({ bass: S.bass, key: S.key, figured: false, phase: S.phase }).count();
+  const inv = (at) => R.overBass({ bass: S.bass, key: S.key, figured: false, phase: S.phase, style: R.resolveStyle({ style: "inv", version: "0", extends: "partimento-1", rules: [["invertible", { at }]] }) });
+  const I8 = inv(8), counts = [8, 10, 12].map((at) => (at === 8 ? I8 : inv(at)).count());
+  const x = I8.engine({ temp: 0.5, r: rng(2) });
+  const fifths = x.filter((c, t) => I8.vertical(t, c).cls === 4).length;
+  is(`invertible counterpoint over a bass (the comes's, now the partimento's): the scale in 3rds standing inversion at the octave, 10th, 12th — ${counts.join(", ")} of ${base}`, counts.every((c) => c > 0n && c < base) && fifths === 0);
+}
+
 // styles: inheritance, a rule removed or reparametrized
 {
   const lib = { ...R.STYLES, "no-leaps": { style: "no-leaps", version: "0.1.0", extends: "partimento-1", rules: [["leaps", { line: "strict" }], ["edges", { end: false }], ["melodic-minor", false]] } };
@@ -295,6 +308,69 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   const notes = [48, 50, 52, 53, 55].map((m) => ({ midi: m, units: 1 }));
   const three = R.fromNotes({ notes, key: "C", style: "partimento-2", fill: true });
   is("a style says how many parts it writes: partimento-2, three, unless voices asks for others", three.voices === 3 && /writes 3 parts, not 4/.test(err(() => R.fromNotes({ notes, key: "C", style: "partimento-2", voices: 4 })) || ""));
+}
+
+// the comes on the one engine (canon.mjs, step 5): its systems the same as counterpoint.mjs's, and its canons counted
+// to the number — random specs over the four systems, species, imitation, inversions asked, the comes inverted or
+// augmented, a rule turned off
+{
+  const CP = await import("../packages/cac/assets/counterpoint.mjs");
+  const CV = await import("../packages/rules/assets/canon.mjs");
+  const SY = await import("../packages/rules/assets/systems.mjs");
+  is("systems.mjs: counterpoint.mjs's systems, as they are", ["DIATONIC", "MEANTONE", "SEPTIMAL31", "PENTATONIC"].every((k) => JSON.stringify(SY[k]) === JSON.stringify(CP[k])) && String(SY.makeSystem) === String(CP.makeSystem));
+  const r = rng(11), pick = (a) => a[Math.floor(r() * a.length)];
+  let tot = 0, diff = [];
+  const t0 = Date.now();
+  for (let i = 0; i < 40; i++) {
+    const sys = SY.SYSTEMS[pick(["diatonic", "diatonic", "diatonic", "pentatonic", "septimal31", "meantone"])], N = (sys.steps || sys.tuning.cents).length;
+    const tonic = pick([0, 1, 4, 5]), b = pick([1, 2, 2]);
+    const spec = { tonic, k: pick([N, -N, 0, Math.round(4 * N / 7), -Math.round(4 * N / 7), 2]), d: pick([1, 2, 2, 3]), b, n: pick([5, 6, 7]),
+      lo: tonic - pick([1, 2, 3]), hi: tonic + pick([5, 7, 8]), system: sys, imitation: pick([1, 1, 0.6, 0.3, 0]),
+      species: b === 2 && r() < 0.25 ? 4 : undefined, phase: b === 2 && r() < 0.2 ? 1 : 0, maxHold: pick([2, 2, 3]),
+      invert: r() < 0.25 ? [pick([8, 10, 12])] : [], transform: r() < 0.15 ? { kind: "inversion" } : r() < 0.1 ? { kind: "augmentation", m: 2 } : undefined,
+      on: r() < 0.3 ? { [pick(["suspension-kinds", "strong-parallels", "leap-recovery", "strict-direct", "no-crossing", "cadence", "weak-dissonance"])]: r() < 0.5 } : undefined };
+    const a = CP.canon(spec).count([], []), z = CV.canonVoices(spec).count();
+    tot++;
+    if (!(a < 2 ** 53 ? BigInt(a) === z : Math.abs(a - Number(z)) / a < 1e-9)) diff.push(`${JSON.stringify({ ...spec, system: sys.name })}: ${a} ≠ ${z}`);
+  }
+  is(`the comes on the one engine (canon-2): the same counts in ${tot} canons, imitations and free counterpoints`, diff.length === 0, diff.slice(0, 3).join("; "));
+  notes.push(`${tot} canons compared in ${Date.now() - t0} ms`);
+  // and a canon the engine draws is legal by both
+  const spec = { tonic: 0, k: 7, d: 2, b: 2, n: 8, lo: -2, hi: 8 }, CVs = CV.canonVoices(spec), x = CVs.sample(rng(3));
+  const K = CP.canon(spec);
+  const legal = x && x.dux.every((_, t) => K.checkDux(x.dux.slice(0, t), x.comes.slice(0, t), x.dux[t]) === null && K.checkPair(x.dux.slice(0, t), x.comes.slice(0, t), x.dux[t], x.comes[t]) === null);
+  is("… a canon drawn on the one engine: legal for counterpoint.mjs too, beat by beat", legal && CVs.judge(x.dux, x.comes) === null);
+
+  // one tonal layer for both worlds: the canon in a key of tonal.mjs's (the partimento's). A church mode without its
+  // ficta counts as on the white keys; with it, the canon sings the cadence's raised leading tone
+  const WHITE = { ionian: ["C", 0], dorian: ["D", 1], phrygian: ["E", 2], lydian: ["F", 3], mixolydian: ["G", 4], aeolian: ["A", 5] };
+  const r2 = rng(5), pick2 = (a) => a[Math.floor(r2() * a.length)];
+  let same = 0, n2 = 0, richer = 0;
+  for (let i = 0; i < 20; i++) {
+    const mode = pick2(Object.keys(WHITE)), [tn, wt] = WHITE[mode], b = pick2([1, 2, 2]);
+    const rel = { k: pick2([7, -7, 4, -4, 0]), d: pick2([1, 2, 3]), b, n: pick2([5, 6, 7]), lo: -pick2([1, 2, 3]), hi: pick2([5, 7, 8]), imitation: pick2([1, 0.6, 0]),
+      species: b === 2 && r2() < 0.25 ? 4 : undefined, invert: r2() < 0.2 ? [pick2([8, 10, 12])] : [] };
+    const white = CV.canonVoices({ ...rel, tonic: wt, lo: wt + rel.lo, hi: wt + rel.hi }).count();
+    const keyed = CV.canonVoices({ ...rel, tonic: 0, key: { tonic: tn, mode }, ficta: false }).count();
+    n2++; if (white === keyed) same++;
+    if (CV.canonVoices({ ...rel, tonic: 0, key: { tonic: tn, mode } }).count() > keyed) richer++;
+  }
+  is(`one tonal layer: a church mode as a key of tonal.mjs, without its ficta, counts as on the white keys (${same} of ${n2} canons); with it, more (${richer})`, same === n2 && richer > 0);
+  const DD = CV.canonVoices({ tonic: 0, key: { tonic: "D", mode: "dorian" }, k: -7, d: 2, b: 2, n: 10, lo: -1, hi: 8 });
+  const xs = [1, 2, 3, 4, 5, 6].map((s) => DD.sample(rng(s))), nm = DD.world.S.pitchName;
+  const m7 = (v) => ((v % 7) + 7) % 7, dg = DD.world.S.deg;
+  const cad = (L) => { const a = L[L.length - 2], z = L[L.length - 1]; return !(m7(dg(z)) === 0 && m7(dg(a)) === 6 && dg(z) - dg(a) === 1) || /♯/.test(nm(a)); };
+  is("… a canon in D dorian: whoever rises to the final through the leading tone at the end sings C♯ (six drawn)", xs.every((x) => x && cad(x.dux) && cad(x.comes)));
+  notes.push("D dorian canon: " + xs[0].dux.map(nm).join(" ") + " / " + xs[0].comes.map((c) => (c === null ? "–" : nm(c))).join(" "));
+  // its style among the others, written as data: one that extends canon-2 and removes a rule counts as the spec that
+  // turns it off; a rule the canon's catalogue does not have named; not a style for a bass's upper voices
+  const sp = { tonic: 0, k: 7, d: 2, b: 2, n: 7, lo: -2, hi: 8, imitation: 0.3 };
+  const freeStyle = { style: "crossing-free", extends: ["canon-2", "1.0.0"], between: [["crossing", false]] };
+  const e2 = (f) => { try { f(); return null; } catch (e) { return e.message; } };
+  is("the canon's style in EDN: extending canon-2 without crossing counts as the spec turning crossing and spacing off",
+     CV.canonVoices(sp, freeStyle).count() === CV.canonVoices({ ...sp, on: { "no-crossing": false, spacing: false } }).count() && R.partsOf("canon-2") === 2 &&
+     /no rule parallels in between/.test(e2(() => R.checkStyle({ extends: "canon-2", between: [["parallels"]] })) || "") &&
+     /not of a bass's upper voices/.test(e2(() => R.fromNotes({ notes: [{ midi: 48, units: 1 }, { midi: 55, units: 1 }], key: "C", style: "canon-2" })) || ""));
 }
 
 const failed = results.filter((r) => !r[1]);

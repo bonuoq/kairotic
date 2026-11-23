@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **One tonal layer for both worlds** (`@kairotic/rules` 0.9.0; discussion #353, step 5). `keySystem(key)`: a key of
+  `tonal.mjs` — major, minor, a church mode with its musica ficta — as a system the comes sings in (a pitch a degree
+  and an alteration, intervals by their real size). The canon in a key (`canonVoices({key})`) reads the partimento's
+  ficta (rule `ficta`: a raised note up by step, the cadence's leading tone raised where the mode raises it, the
+  final's raised 3rd only at the end): a D dorian canon cadences through C♯; without the ficta a church mode counts as
+  on the white keys, canon by canon. And the comes's invertible counterpoint in the partimento's world: rule
+  `invertible` (`{at: 8 | 10 | 12}`), a voice over a bass that stands inversion — in the app through a style
+  (`@kairotic/cac` 0.13.0): `cac partimento [:voices 2]` then `[:style {:extends :partimento-1 :rules [[:invertible {:at 8}]]}]`.
+- **The comes on the one engine** (`@kairotic/rules` 0.8.0; discussion #353, step 5). `systems.mjs`: the comes's
+  systems as data (a tuning, a scale's steps, each interval's quality by its real size), the same as
+  `counterpoint.mjs`'s. `canon.mjs`: two free voices on a system — the dux and the comes, a canon, an imitation or free
+  counterpoint, species and suspensions, the comes inverted or augmented, the counterpoint asked to stand inversion —
+  on `solveVoices`, its rules entries of the catalogue (`CANON_VOICE`, `CANON_BETWEEN`) and the style `canon-2` naming
+  them. The same counts as `counterpoint.canon` in 40 random canons over the four systems (`tests/rules.mjs`); a memo
+  key of its own (`solveVoices({key})`). Its style is one of the styles in EDN (`canon-2`, `:engine "canon"`): extended,
+  reparametrized, a rule removed, checked against the canon's catalogue. Next: its engine and soft rules, and one
+  tonal layer for both worlds.
 - **Study 65 · circle: beyond the Rule of the Octave** (IJzerman, chapter 7; `@kairotic/rules` 0.7.0, `@kairotic/cac`
   0.12.0). The **diminished 7th family** (7/5/3 on ⑦♯, 6/5/3 on ②, 6/4/3 on ④, 6/4/2 on ⑥; in major with the lowered
   ⑥) joins the dominant's as semi-consonances: free to enter, its 7th down a half step, a tritone in it free where it
