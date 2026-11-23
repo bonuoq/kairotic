@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`cac imitation`: a dux with rests, and a long dux counted within a limit** (`@kairotic/rules` 0.11.0,
+  `@kairotic/cac` 0.15.0). The dux may rest (the gaps between its notes, read from the start; they were lost, and what
+  came after them shifted): a canon's comes rests where the dux rested, a near or free one need not, and the dux is
+  written again with its rests. A long dux is counted within the box's limit, as `cac partimento`'s bass is
+  (`imitation`'s `countWithin`); past it, a comes is found by search, and the page does not freeze. Fux's cantus
+  firmus as a dux, a near imitation a 5th below: 375 comes, pinned.
 - **`cac imitation`: a melody in, the comes added** (`@kairotic/rules` 0.10.0, `@kairotic/cac` 0.14.0; discussion
   #353). The tree's highest voice is the dux, given note by note (its unit its shortest note); the comes is found
   against it by the comes's engine on the one engine (`canon.mjs`'s `imitation`, the style `imitation-2`: `canon-2`
