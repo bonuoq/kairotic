@@ -7,6 +7,11 @@
   partimento` (a box's text, not a class). Now the catalog adds every official package's classes the work does not
   have yet (with the first sentence of their help: a box of one brings its package), and `class_help` takes the class
   out of a box's text and gives its help's text when the class is not loaded.
+- **The menu ☰ beside the logo, and a dialog for what it opens.** The menu's button is larger, the first thing of the
+  header at the top left. What it opens that is a place of its own opens in the app's dialog, over the app as Sessions
+  does (Close, Esc or a click on the shade back to the work): **Share/Export** and **Feedback** (no longer a tab);
+  the global preferences will go there too. Help pages (keys and gestures, the documentation) stay in the Help tab.
+
 - **Room on screen, and the layers each box's own.** The layers of a tree (its analysis — the figures under the bass,
   degrees, keys —, what belongs to playing it) are shown or hidden **box by box**, in its score and its code window
   alike: the **analysis** chip in a tree box's header (when its tree has one), the Performed/Analysis buttons of the
