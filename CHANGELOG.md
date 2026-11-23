@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Following frame by frame** (discussion #308; `@kairotic/analysis` 0.8.8): `follow dtw` — online dynamic time
+  warping, in the manner of Dixon's MATCH: the score turned into what it should sound like, a frame every 50 ms (each
+  event as long as the work's last take played it, or as written; each frame its profile — learned, `:listen` or its
+  pitch class — and its pitch), and what is heard every 50 ms aligned with it along the cheapest path in a band
+  around where the performer was. No notes are detected: good with rubato and with sounds that are not notes; it
+  never goes back. `fl/reference`, `fl/dtw-start`, `fl/dtw-step`. A descriptor's distance uses its spread when it has
+  one (a tenth of its value only when it has none).
 - **The figures in the score.** A note's `:fig` (`"6/5"`, the analysis layer's or the bass's own) is written under it
   as figured bass (`<harm><fb>`), and Verovio shows it: the chords `cac partimento` made, or a bass's figures, under
   the bass of a tree box's score. The score obeys the layers as the code window does: with **Analysis** off its

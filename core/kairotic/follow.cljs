@@ -23,7 +23,8 @@
   {:ahead 4        ; how many notes ahead of the next expected a note heard may be (the rest are skipped)
    :band 0.6       ; semitones: how far from a written pitch a note heard still is that note
    :octave true    ; an octave off (a pitch tracker's usual error) still counts, at a cost
-   :model :greedy}) ; :greedy (the best note ahead, at once) or :hmm (a probability for every note: see below)
+   :model :greedy}) ; :greedy (the best note ahead, at once), :hmm (a probability for every note) or :dtw (frame by
+                    ; frame, against what the score should sound like): see below
 
 (defn score
   "The notes a tree is followed by: its first voice's sounds, in order ({:id :midi :ws :wd :beat :wire})."
@@ -147,7 +148,7 @@
 (defn- kdist
   "How far a value heard is from a mean, in its spread (numbers) or as 1 − cosine × 3 (vectors), at most 3."
   [o m sd]
-  (min 3 (cond (and (number? o) (number? m)) (/ (js/Math.abs (- o m)) (max (or sd 0) (* 0.1 (js/Math.abs m)) 1e-6))
+  (min 3 (cond (and (number? o) (number? m)) (/ (js/Math.abs (- o m)) (max (if (and sd (pos? sd)) sd (* 0.1 (js/Math.abs m))) 1e-6))
                (and (sequential? o) (sequential? m) (= (count o) (count m))) (* 3 (vdist o m))
                :else 3)))
 
@@ -278,8 +279,10 @@
    wrong note, an ornament) — but the elastic wires due by then."
   ([st t midi] (hear st t midi nil))
   ([st t midi obs]
-  (if (= :hmm (:model st))
-    (hear-hmm st t midi obs)
+  (case (:model st)
+    ;; frame by frame (dtw-step): a note heard says nothing by itself
+    :dtw [st []]
+    :hmm (hear-hmm st t midi obs)
   (let [[st early] (tick st t)
         cs (candidates st t midi obs)]
     (if (empty? cs)
@@ -382,6 +385,63 @@
       ;; back: an earlier step was wrong (the sounds since point here)
       :else (let [[st found] (arrive (rewind st best) t best)] [(update st :undone (fnil inc 0)) (into early found)]))))
 
+;; ───────── following frame by frame (:model :dtw, discussion #308) ─────────
+;; Online dynamic time warping, in the manner of Dixon's MATCH (Arzt & Widmer): no notes are detected. The score is
+;; turned into what it should sound like, frame by frame (each event for as long as it lasts — as a take of it played
+;; it, or as written —, each frame its profile: learned, :listen or its pitch class, and its pitch); what is heard
+;; every hop (the descriptors, and the pitch sounding) is aligned with it, the cheapest path through a band around
+;; where the performer was. Where the path is, is where the performer is: entering an event is arriving there. Good
+;; with rubato and sounds that are not notes; it never goes back.
+
+(def ^:private dtw-hop 0.05)
+
+(defn reference
+  "What a score should sound like, frame by frame (hop seconds): [{:j event :prof profile} …]. Each event lasts as the
+   take (its :when) played it, or as written; a note's frames carry its pitch too."
+  ([st] (reference st nil dtw-hop))
+  ([st take hop]
+   (let [evs (:evs st) tw (:when take)
+         onset (fn [j] (first (get tw (get-in evs [j :id]))))
+         dur (fn [j] (let [o (onset j) o2 (some onset (range (inc j) (count evs)))]
+                       (if (and o o2 (> o2 o)) (- o2 o) (or (get-in evs [j :wd]) dtw-hop))))]
+     (vec (mapcat (fn [j]
+                    (let [e (get evs j)
+                          p (when-not (:rest e) (profile-at st j))
+                          p (if (and p (:midi e)) (-> p (assoc-in [:mean :midi] (:midi e)) (assoc-in [:sd :midi] 0.5) (assoc-in [:w :midi] 1)) p)]
+                      (repeat (max 1 (js/Math.round (/ (dur j) hop))) {:j j :prof p})))
+                  (range (count evs)))))))
+
+(defn dtw-start
+  "A follower frame by frame: st (start) with its reference (from take, if given)."
+  ([st] (dtw-start st nil))
+  ([st take] (assoc st :model :dtw :ref (reference st take dtw-hop) :dtw {:i 0 :D nil :pos 0})))
+
+(defn dtw-step
+  "What is heard at t (obs: {descriptor value}, :midi when a pitch sounds), one frame. → [state found]."
+  [st t obs]
+  (let [[st early] (tick st t)
+        ref (:ref st) n (count ref)
+        {:keys [i D pos]} (:dtw st)
+        lo (max 0 (- pos 30)) hi (min (dec n) (+ pos 60))
+        d (fn [j] (if-let [p (:prof (get ref j))] (or (obs-dist p obs) 1.5) 1))
+        inf js/Infinity
+        D2 (reduce (fn [m j]
+                     (let [dj (d j)
+                           v (if (nil? D)
+                               (if (zero? j) dj (+ (get m (dec j) inf) dj))
+                               (min (+ (get D j inf) dj)                 ; the performer stays in this frame
+                                    (+ (get D (dec j) inf) (* 2 dj))      ; both go on
+                                    (+ (get m (dec j) inf) dj)))]         ; the score goes on alone
+                       (assoc m j v)))
+                   {} (range (if (nil? D) 0 lo) (inc hi)))
+        pos2 (key (apply min-key (fn [[j v]] (/ v (+ i j 2))) D2))
+        st (assoc st :dtw {:i (inc i) :D D2 :pos (max pos pos2)})
+        j (:j (get ref (max pos pos2)))
+        cur (if-let [[c] (:last st)] c -1)]
+    (if (and j (> j cur) (not (:rest (get-in st [:evs j]))))
+      (let [[st found] (arrive st t j)] [st (into early found)])
+      [st early])))
+
 (defn view
   "What a follower shows (for a view of it on the tree it follows): the ids played, skipped, the one where the
    performer is, the wires that went on."
@@ -413,8 +473,15 @@
               :when (into {} (for [[id [t d]] (:played st) :when id] [id [(r3 (- t t0)) (r3 d)]]))}))))
 
 (defn follow
-  "Offline: a performance ([[t midi dur obs] …], seconds; midi nil for a sound without a pitch) followed through a score → {:found [...] :take take :state st}."
+  "Offline: a performance ([[t midi dur obs] …], seconds; midi nil for a sound without a pitch) followed through a score
+   (with :model :dtw, frames instead: [[t obs] …] every hop, obs with :midi when a pitch sounds) → {:found [...] :take take :state st}."
   [evs performance & [opts]]
+  (if (= :dtw (:model opts))
+    (loop [st (dtw-start (start evs opts) (:reference opts)) [[t obs] & more] performance found []]
+      (if (nil? t)
+        (let [[st f] (tick st js/Infinity)]
+          {:found (into found f) :state st :take (take-of st {:id (or (:id opts) "followed")})})
+        (let [[st2 f] (dtw-step st t obs)] (recur st2 more (into found f)))))
   (loop [st (start evs opts) [[t m d obs] & more] performance found []]
     (if (nil? t)
       ;; the end: the elastic wires still pending go on at their time
@@ -422,4 +489,4 @@
         {:found (into found f) :state st :take (take-of st {:id (or (:id opts) "followed")})})
       (let [[st2 f] (hear st t m obs)
             st2 (if (and d (seq f)) (release st2 (+ t d)) st2)]
-        (recur st2 more (into found f))))))
+        (recur st2 more (into found f)))))))
