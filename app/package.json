@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/app",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "The Kairotic app as files, for the claude.ai shell (site/shell.html) that loads it from jsDelivr",
   "author": "bonuoq",
   "license": "MPL-2.0",

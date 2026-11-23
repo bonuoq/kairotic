@@ -192,6 +192,10 @@ not by a key's letters: the same rules in 31-TET or a pentatonic), invertible co
 vertical must stand, the suspensions a system allows by kind, perfect intervals on consecutive strong beats, a leap's
 recovery by its size.
 
+`@kairotic/rules` 0.10.0: `imitation(spec)` — a dux given (a tree's voice), the comes found against it — and the style
+`imitation-2` (`canon-2`, the dux's own rules off, the rule `given`); the comes weighed by `soft.mjs` on its degrees.
+`cac imitation` (`@kairotic/cac` 0.14.0) is its box: the bench of `canon.mjs` with real trees.
+
 ## Next
 
 - The comes's engine on it: its soft rules (the mode, the imitation) and the box's `live` (a note asked for, corrected

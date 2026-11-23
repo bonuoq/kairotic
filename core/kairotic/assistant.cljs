@@ -19,7 +19,8 @@
             [kairotic.components :as comp]
             [kairotic.shapes :as shp]
             [kairotic.code :as code]
-            [kairotic.library :as lib]))
+            [kairotic.library :as lib]
+            [kairotic.help :as hlp]))
 
 ;; ───────── evaluating a source ─────────
 
@@ -240,6 +241,12 @@
                    :when (not (:internal d))      ; put by the engine, not written (agent-core)
                    :let [io (:io d) doc (first (str/split (str (:doc d)) #"(?<=\.)\s"))]]
                (str k " " (if (vector? io) (pr-str io) "") " — " (cut doc 110) " (" (name (or (:origin d) :core)) ")")))
+        ;; the official packages' classes the work does not have yet: a box of one brings its package (cac, comes…)
+        (str "Also the official packages' classes, not in the work yet: a box of one brings its package into the work. "
+             (str/join "; " (for [[pkg p] (sort-by key lib/packages) k (sort (:classes p))
+                                  :when (not (contains? @comp/registry k))
+                                  :let [about (first (str/split (str (:about (hlp/of k))) #"(?<=\.)\s"))]]
+                              (str k " (" pkg ")" (when (seq about) (str " — " (cut about 110)))))))
         (str "Also, without defining anything, a box named after one of these pure functions is that function: its "
              "other words are its EDN arguments, the message goes last (or where % is) and is always the left inlet, the only "
              "hot one; one more inlet per other argument, in order (vector % 0 0 is a pack, hash-map :freq % :amp 0.5 makes an "
