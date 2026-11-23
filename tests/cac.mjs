@@ -39,6 +39,8 @@ export async function cac(page, check) {
   const defs = await cljs(page, `(vec (map (fn [x] [(second (re-find #"label=\\"([^\\"]*)\\"" x)) (str/includes? x "clef.dis")]) (re-seq #"<staffDef[^>]*>" (mei ${out}))))`);
   check("... written in open score, in order: soprano, alto, tenor (its treble clef an octave down), bass",
         defs === '[["soprano" false] ["alto" false] ["tenor" true] ["bass" false]]', defs);
+  const fb = await cljs(page, `(let [m (mei ${out})] [(count (re-seq #"<fb>" m)) (boolean (re-find #"<f>6</f><f>4</f><f>3</f>" m))])`);
+  check("... the figures under the bass in the score (figured bass, <harm><fb>): one a chord, the 6/4/3 on ②", fb === "[8 true]", fb);
   await cljs(page, `(send! ${cb} [:staves 2])`);
   const two = await until(page, `(vec (map second (re-seq #"<staffDef[^>]*label=\\"([^\\"]*)\\"" (mei ${out}))))`, (x) => x === '["S A" "T B"]', 30000);
   check("[:staves 2]: short score, soprano and alto on one staff, tenor and bass on another", two === '["S A" "T B"]', two);
