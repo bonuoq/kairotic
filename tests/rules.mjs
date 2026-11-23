@@ -18,6 +18,12 @@ const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483
   const same = ["keyOf", "codeOf", "localOf", "localNote", "isDominant", "codeOf3", "codeDegree", "codeAlter"].every((f) => String(T[f]) === String(P[f]));
   is("tonal.mjs: partimento.mjs's keys, codes and local keys, as they are", same);
   is("soft.mjs: @kairotic/cac's, as it is", readFileSync(join(root, "packages/rules/assets/soft.mjs"), "utf8") === readFileSync(join(root, "packages/cac/assets/soft.mjs"), "utf8"));
+  // the studies written on @kairotic/rules keep a copy of it beside their kernel (Study 65 on): the package's, as it is
+  const { readdirSync, existsSync } = await import("node:fs");
+  const copies = readdirSync(join(root, "studies")).filter((d) => existsSync(join(root, "studies", d, "kairotic", "rules.mjs")));
+  const off = copies.flatMap((d) => ["rules.mjs", "tonal.mjs", "soft.mjs"].filter((f) =>
+    readFileSync(join(root, "studies", d, "kairotic", f), "utf8") !== readFileSync(join(root, "packages/rules/assets", f), "utf8")).map((f) => `${d}/${f}`));
+  is(`the studies' copies of @kairotic/rules, as it is (${copies.join(", ")})`, copies.length && off.length === 0);
 }
 
 // one voice over a bass: every schema of Study 51, in major and minor, figured or not, with and without chapter 4's
@@ -278,7 +284,7 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   const st = R.resolveStyle(strict);
   is("... the rest kept, in order: its rules between voices, its voice's other rules", st.between.length === R.resolveStyle("chorale-4").between.length && R.resolveStyle(st.voice).rules.length === R.resolveStyle("partimento-1").rules.length);
   const err = (f) => { try { f(); return null; } catch (e) { return e.message; } };
-  is("... a version asked of the parent: the same major, its minor at least", /is 1\.0\.0/.test(err(() => R.resolveStyle({ extends: ["chorale-4", "2.0.0"] })) || "") && err(() => R.resolveStyle({ extends: ["chorale-4", "1.0.0"] })) === null);
+  is("... a version asked of the parent: the same major, its minor at least", /is 1\.\d+\.\d+/.test(err(() => R.resolveStyle({ extends: ["chorale-4", "2.0.0"] })) || "") && err(() => R.resolveStyle({ extends: ["chorale-4", "1.0.0"] })) === null);
   is("... a rule the catalogue does not have, named", /no rule sevenths in between/.test(err(() => R.checkStyle({ style: "x", extends: "chorale-4", between: [["sevenths"]] })) || ""));
   const heavy = R.fourOverBass({ ...G.spec, bass: G.bass, key: G.key, style: { extends: "chorale-4", weights: { doubling: 5 } } }).fan()[0];
   const light = R.fourOverBass({ ...G.spec, bass: G.bass, key: G.key, weights: { doubling: 5 } }).fan()[0];

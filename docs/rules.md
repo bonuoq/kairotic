@@ -147,6 +147,15 @@ The styles there are: `partimento-1` (a voice over a bass, 2 parts), `partimento
 `modal-voice`, `modal-2`, `modal-4` (Fux's church modes). `tests/rules.mjs`: a style that frees the dominant's 7th
 counts as `freeSevenths`, one whose voices are strict as `line: "strict"`, versions and unknown rules refused.
 
+## Chapter 7 (Study 65)
+
+`@kairotic/rules` 0.7.0: the 7th chords' families — the dominant's (on ⑤) and the diminished 7th's (on the leading
+tone: in minor ⑦♯, the bass raised in root position; in major with the lowered ⑥) — are semi-consonances, free to
+enter; a tritone in the diminished family is free where it is the chord's 7th (going down by step) or held while the
+bass moves on. A unit may say it is part of a `sequence` (a diminished triad's tritone goes on by step into whatever
+consonance comes) and of minor's `natural` scale; `family` names a 7th chord's family outright; a chroma may be
+required (`[degree alteration true]`). `chorale-4` is 1.1.0 (nothing it counted before changes).
+
 ## Next
 
 - `comes` on the core, last.
