@@ -22,7 +22,8 @@
 (def defaults
   {:ahead 4        ; how many notes ahead of the next expected a note heard may be (the rest are skipped)
    :band 0.6       ; semitones: how far from a written pitch a note heard still is that note
-   :octave true})  ; an octave off (a pitch tracker's usual error) still counts, at a cost
+   :octave true    ; an octave off (a pitch tracker's usual error) still counts, at a cost
+   :model :greedy}) ; :greedy (the best note ahead, at once) or :hmm (a probability for every note: see below)
 
 (defn score
   "The notes a tree is followed by: its first voice's sounds, in order ({:id :midi :ws :wd :beat :wire})."
@@ -46,7 +47,7 @@
 
 (defn start
   "A follower at the beginning of a score. opts: :ahead :band :octave, :wires (by default its notes'), :profiles
-   (what rehearsals learned: learn)."
+   (what rehearsals learned: learn), :model (:greedy, or :hmm: a probability for every event)."
   ([evs] (start evs {}))
   ([evs opts]
    (let [ws (vec (or (:wires opts) (wires evs)))]
@@ -268,6 +269,8 @@
                             [st2 []] (:wires st2))]
     [st3 (into [[:at {:id (:id e) :i j :beat (:beat e) :t t :skipped (count (remove #(:rest (get-in st [:evs %])) (range (:next st) j)))}]] found)]))
 
+(declare hear-hmm)
+
 (defn hear
   "A note heard at t (seconds) at midi (with decimals; nil for a sound without a pitch, found by what is heard of it
    alone), and what is heard of it (obs: {descriptor value}, from follow's descriptor inlets). → [state found], found a vector of [:at {…}] and
@@ -275,29 +278,109 @@
    wrong note, an ornament) — but the elastic wires due by then."
   ([st t midi] (hear st t midi nil))
   ([st t midi obs]
+  (if (= :hmm (:model st))
+    (hear-hmm st t midi obs)
   (let [[st early] (tick st t)
         cs (candidates st t midi obs)]
     (if (empty? cs)
       [(update st :extra inc) early]
       (let [[st found] (arrive st t (second (first (sort-by first cs))))]
-        [st (into early found)])))))
+        [st (into early found)]))))))
+
+(defn- rewind
+  "Back to note j: the notes from j on are to be played again (the take keeps the new attempt), their wires to go on
+   again."
+  [st j]
+  (let [again (set (keep (fn [w] (when (>= (:note w) j) (:id w))) (:wires st)))]
+    (-> st
+        (update :order (fn [o] (vec (filter #(< % j) o))))
+        (update :played (fn [p] (apply dissoc p (map :id (subvec (:evs st) j)))))
+        (update :pending into again)
+        (assoc :next j :last nil))))
 
 (defn here
   "The performer is told to be at note j at t (a correction in a rehearsal, discussion #308: \"I am here\"). Ahead, as
    if heard there; back (they start again), the notes from j on are to be played again (the take keeps this
    attempt) and their wires to go on again."
   [st t j]
-  (let [st (if (< j (:next st))
-             (let [again (set (keep (fn [w] (when (>= (:note w) j) (:id w))) (:wires st)))]
-               (-> st
-                   (update :order (fn [o] (vec (filter #(< % j) o))))
-                   (update :played (fn [p] (apply dissoc p (map :id (subvec (:evs st) j)))))
-                   (update :pending into again)
-                   (assoc :next j :last nil :rate (:rate st))))
-             st)
+  (let [st (if (< j (:next st)) (rewind st j) st)
         [st early] (tick st t)
         [st found] (arrive st t j)]
-    [(update st :corrected (fnil inc 0)) (into early found)]))
+    [(-> st (update :corrected (fnil inc 0)) (assoc :belief {j 1} :since {j t})) (into early found)]))
+
+;; ───────── the probabilistic follower (:model :hmm, discussion #308) ─────────
+;; A hidden Markov model over the events of the score, in the manner of Antescofo (Cont): instead of one bet, a
+;; probability for every event that the performer may be at. Each sound heard moves it: from each event the performer
+;; may be at to the next ones (one ahead likely, each skipped one less so), weighed by how well the sound fits each
+;; (pitch, and what is heard of it against its profile) and by when it comes against when each was expected (at the
+;; performer's tempo, from when the performer reached the event it comes from); or it stays, the sound taken for a
+;; wrong note. The follower is where the probability is greatest: a doubtful sound lowers a probability instead of
+;; losing the place, and a wrong step is undone when the next sounds point elsewhere (back there, its wires to go on
+;; again). The rest — wires, ticks, takes, corrections — is the same as the greedy follower's.
+
+(def ^:private p-next 0.8)      ; going on to the next event
+(def ^:private p-skip 0.15)     ; each event skipped multiplies by this
+(def ^:private p-wrong 0.08)    ; a sound that is no event (a wrong note, an ornament): the performer stays
+(def ^:private l-wrong 0.05)    ; how well a wrong note fits (against an event's fit)
+
+(defn- fit
+  "How well a sound fits event j (0 … 1): its pitch (an octave off a little), and what is heard of it against the
+   event's profile; a sound or an event without a pitch by the profile alone."
+  [st j midi obs]
+  (let [e (get-in st [:evs j])
+        od (when (seq obs) (obs-dist (profile-at st j) obs))
+        g (fn [d s] (js/Math.exp (- (/ (* d d) (* 2 s s)))))]
+    (cond
+      (and midi (:midi e))
+      (let [d (js/Math.abs (- midi (:midi e)))
+            o (js/Math.abs (- (mod (+ (- midi (:midi e)) 6) 12) 6))]
+        (* (max (g d 0.35) (if (and (:octave st) (> d 6) (<= d 24.6)) (* 0.25 (g o 0.35)) 0))
+           (if od (js/Math.exp (- od)) 1)))
+      od (js/Math.exp (* -2 od))
+      :else 0.001)))
+
+(defn- timing
+  "How likely event j comes at t, from event i reached at since: at the performer's rate, within its written length."
+  [st i since j t]
+  (if (or (neg? i) (nil? since))
+    1
+    (let [wi (get-in st [:evs i :ws]) wj (get-in st [:evs j :ws])
+          e (+ since (* (:rate st) (- wj wi)))
+          s (max 0.2 (+ (* 0.5 (get-in st [:evs j :wd])) (* 0.15 (js/Math.abs (- wj wi)))))
+          z (/ (- t e) s)]
+      (js/Math.exp (- (/ (* z z) 2))))))
+
+(defn- heard-after
+  "The events the performer makes (not the electronics' own) after i, at most n."
+  [st i n]
+  (take n (filter #(not (:rest (get-in st [:evs %]))) (range (inc i) (count (:evs st))))))
+
+(defn- hmm-hear [st t midi obs]
+  (let [b (or (:belief st) {-1 1})
+        since (or (:since st) {})
+        n (* 2 (:ahead st))
+        ;; from each event it may be at, on to the next ones, or staying (the sound taken for a wrong note)
+        moves (for [[i pi] b :when (> pi 1e-4)
+                    [k j] (map-indexed vector (heard-after st i n))]
+                [j (* pi p-next (js/Math.pow p-skip k) (fit st j midi obs) (timing st i (get since i) j t))])
+        stays (for [[i pi] b] [i (* pi p-wrong l-wrong)])
+        moved (reduce (fn [m [j p]] (update m j (fnil + 0) p)) {} moves)
+        b2 (reduce (fn [m [j p]] (update m j (fnil + 0) p)) moved stays)
+        tot (reduce + (vals b2))
+        b2 (if (pos? tot) (into {} (keep (fn [[j p]] (let [q (/ p tot)] (when (> q 1e-5) [j q])))) b2) b)
+        since2 (reduce (fn [m [j p]] (if (> p (* (get b j 0) p-wrong l-wrong)) (assoc m j t) m)) since moved)
+        best (key (apply max-key val b2))
+        cur (if-let [[j] (:last st)] j -1)]
+    [(assoc st :belief b2 :since since2) best cur]))
+
+(defn- hear-hmm [st t midi obs]
+  (let [[st early] (tick st t)
+        [st best cur] (hmm-hear st t midi obs)]
+    (cond
+      (or (= best cur) (neg? best)) [(update st :extra inc) early]
+      (> best cur) (let [[st found] (arrive st t best)] [st (into early found)])
+      ;; back: an earlier step was wrong (the sounds since point here)
+      :else (let [[st found] (arrive (rewind st best) t best)] [(update st :undone (fnil inc 0)) (into early found)]))))
 
 (defn view
   "What a follower shows (for a view of it on the tree it follows): the ids played, skipped, the one where the

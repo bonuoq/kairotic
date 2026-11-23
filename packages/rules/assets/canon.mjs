@@ -18,7 +18,7 @@
 // canonVoices(spec) takes counterpoint.canon's spec and counts the same (tests/rules.mjs: to the number); a style
 // names its rules, `canon-2` all of them in the order counterpoint.mjs reads them, and a spec's `on` turns one off.
 
-import { solveVoices } from "./rules.mjs";
+import { solveVoices, STYLES, CATALOGUES, resolveStyle } from "./rules.mjs";
 import { makeSystem, DIATONIC } from "./systems.mjs";
 
 const mod = (a, m) => ((a % m) + m) % m;
@@ -234,20 +234,19 @@ export const CANON_BETWEEN = {
   } }),
 };
 
-/** The canon's style: its voices' rules and those between them, in counterpoint.mjs's order. */
-export const CANON_STYLES = {
-  "canon-2": { style: "canon-2", version: "1.0.0",
-    dux: ["range", "entry", "melodic", "final", "approach", "syncopation"],
-    comes: ["entry", "range", "syncopation", "melodic"],
-    between: [["resolution", "dux"], ["imitation"], ["resolution", "comes"], ["crossing"], ["vertical"]] },
-};
+// the canon's catalogue, for the styles that name its engine (canon-2, in rules.mjs's STYLES, and those that extend it)
+CATALOGUES.canon = { dux: CANON_VOICE, comes: CANON_VOICE, between: CANON_BETWEEN };
+/** The canon's styles: canon-2, its voices' rules and those between them in counterpoint.mjs's order (rules.mjs). */
+export const CANON_STYLES = { "canon-2": STYLES["canon-2"] };
 
 /**
  * The comes on the one engine: counterpoint.canon's spec ({tonic, k, d, b, n, lo, hi, spacing, phase, maxHold,
  * system, transform, imitation, invert, species, starts, cstarts, clo, chi, on}), its style (canon-2). → solveVoices's
  * count, fan, sample, engine, judge (over [D, C]), and the world.
  */
-export function canonVoices(spec, style = CANON_STYLES["canon-2"]) {
+export function canonVoices(spec, style0 = "canon-2") {
+  // (a style: a name, or one written as data that extends canon-2 — EDN in the app)
+  const style = resolveStyle(style0), ids = (k) => style[k].map(([id]) => id);
   const w = canonWorld(spec), { n, d, lo, hi, clo, chi, maxHold, b, aug, bnd } = w;
   const solver = (role, ids, codes) => {
     const fs = ids.map((id) => CANON_VOICE[id](w, role));
@@ -255,13 +254,13 @@ export function canonVoices(spec, style = CANON_STYLES["canon-2"]) {
   };
   const dcodes = []; for (let x = lo; x <= hi; x++) dcodes.push(x);
   const ccodes = [null]; for (let c = clo; c <= chi; c++) ccodes.push(c);
-  const between = style.between.map(([id, p]) => CANON_BETWEEN[id](w, p));
+  const between = style.between.map(([id, p]) => CANON_BETWEEN[id](w, p && typeof p === "object" && p.of ? p.of : p));
   // the memo: the notes the rules look back at — a note held (maxHold beats) and the note struck before it, the
   // strong beat before, and (a canon) the dux's note the comes repeats, further back in an augmentation
   const LD = Math.max(maxHold + 1, b, bnd === "canon" || bnd === "near" ? d : 0), LC = Math.max(maxHold * aug + 1, b);
   const fromD = (t) => Math.max(0, aug > 1 && (bnd === "canon" || bnd === "near") ? Math.min(t - LD, Math.floor((t - d) / aug)) : t - LD);
   const key = (W, t) => t + ":" + W[0].slice(fromD(t), t).join(",") + ":" + W[1].slice(Math.max(0, t - LC), t).join(",");
-  const SV = solveVoices({ n, voices: [{ name: "dux", solver: solver("dux", style.dux, dcodes) }, { name: "comes", solver: solver("comes", style.comes, ccodes) }],
+  const SV = solveVoices({ n, voices: [{ name: "dux", solver: solver("dux", ids("dux"), dcodes) }, { name: "comes", solver: solver("comes", ids("comes"), ccodes) }],
                            between, key, result: (W) => ({ dux: W[0], comes: W[1] }) });
   return { ...SV, world: w, style, count: (D = [], C = []) => SV.count([D, C]),
            judge: (D, C) => SV.judgeW([D, C], `the voices are not ${n} beats long`) };

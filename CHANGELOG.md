@@ -2,13 +2,41 @@
 
 ## Unreleased
 
-- **The comes on the one engine** (`@kairotic/rules` 0.6.0; discussion #353, step 4). `systems.mjs`: the comes's
+- **The comes on the one engine** (`@kairotic/rules` 0.8.0; discussion #353, step 5). `systems.mjs`: the comes's
   systems as data (a tuning, a scale's steps, each interval's quality by its real size), the same as
   `counterpoint.mjs`'s. `canon.mjs`: two free voices on a system — the dux and the comes, a canon, an imitation or free
   counterpoint, species and suspensions, the comes inverted or augmented, the counterpoint asked to stand inversion —
   on `solveVoices`, its rules entries of the catalogue (`CANON_VOICE`, `CANON_BETWEEN`) and the style `canon-2` naming
   them. The same counts as `counterpoint.canon` in 40 random canons over the four systems (`tests/rules.mjs`); a memo
-  key of its own (`solveVoices({key})`). Next: its engine and soft rules, and one tonal layer for both worlds.
+  key of its own (`solveVoices({key})`). Its style is one of the styles in EDN (`canon-2`, `:engine "canon"`): extended,
+  reparametrized, a rule removed, checked against the canon's catalogue. Next: its engine and soft rules, and one
+  tonal layer for both worlds.
+- **Study 65 · circle: beyond the Rule of the Octave** (IJzerman, chapter 7; `@kairotic/rules` 0.7.0, `@kairotic/cac`
+  0.12.0). The **diminished 7th family** (7/5/3 on ⑦♯, 6/5/3 on ②, 6/4/3 on ④, 6/4/2 on ⑥; in major with the lowered
+  ⑥) joins the dominant's as semi-consonances: free to enter, its 7th down a half step, a tritone in it free where it
+  is the chord's 7th or held while the bass moves on (style `chorale-4` 1.1.0; nothing counted before changes). A
+  unit may be part of a `sequence` (a diminished triad taken for the pattern's sake, its tritone going on by step the
+  way it leans) and of minor's `natural` scale (⑥ and ⑦ not raised, a 7th on the natural ⑦ diatonic); a chroma may be
+  required (`[degree alteration true]`). The study: thirteen phrases — vii° in minor and major, the Meyer, Fifth Down
+  Fourth Up (7ths or 5/3s, major and minor), Third Down Second Up, the Tied Bass in four parts, Descending Thirds (the
+  Neapolitan ②♭ in minor), the modulating Folia —, each prototype's properties checked in every realization drawn
+  (kernel 36/36, page 8/8). Studies on `@kairotic/rules` keep a copy of it, checked equal in `tests/rules.mjs`.
+
+- **Styles in EDN** (`@kairotic/rules` 0.6.0, `@kairotic/cac` 0.11.0; step 4 of discussion #353). A style is data, and
+  every part of it inherits: its rules, those between the voices, its voices' own style, its weights — a rule named
+  again takes its new parameters, `[:rule false]` removes it. `:extends` takes a name or `[name version]` (the same major
+  version, its minor at least). A style says how many parts it writes; `checkStyle` names a rule the catalogue does
+  not have, `defineStyle` makes one nameable. In the app, `cac partimento [:style :partimento-2]` (three parts) or a
+  style written in EDN, `[:style {:style :free-sevenths :extends [:chorale-4 "1.0.0"] :between [[:seventh {:free true}]]}]`;
+  `:styles` lists them; the box shows the style it writes in.
+
+- **The probabilistic follower** (discussion #308; `@kairotic/analysis` 0.8.7): `follow hmm` — a hidden Markov model
+  over the events of the score, in the manner of Antescofo: a probability for every event the performer may be at,
+  moved by each sound heard (on to the next events, each skipped one less likely, weighed by how the sound fits —
+  pitch, octave errors, what is heard against the profile — and by when it comes against when each was expected at
+  the performer's tempo), or staying (a wrong note). A doubtful sound lowers a probability instead of losing the place;
+  a wrong step is undone when the next sounds point back (its wires to go on again). Wires, ticks, takes and
+  corrections as before. `(fl/start evs {:model :hmm})`.
 - **`cac` does not freeze the page** (`@kairotic/rules` 0.5.1, `@kairotic/cac` 0.10.1). The exact count runs in the
   page, and a long bass without figures in four parts takes minutes (16 bars of half notes in A major: about a minute;
   of whole notes, more than eight) — an agent asked for a 16-bar partimento hung the page that way. Now `cac

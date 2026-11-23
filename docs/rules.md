@@ -126,9 +126,39 @@ and `fromNotes` (a bass as notes). `tests/rules.mjs`: the same counts as `partim
 phrases of Studies 54, 57, 59 and 62, the same reason tuple by tuple, the same engine, judgement and chords; the cac box
 (`@kairotic/cac` 0.9.0) loads `rules.mjs`.
 
-## Step 4: the comes (begun)
+## Step 4: styles in EDN (done)
 
-`@kairotic/rules` 0.6.0: `systems.mjs` — the comes's systems as data (a tuning, the steps of a scale, what each interval
+`@kairotic/rules` 0.6.0, `@kairotic/cac` 0.11.0. A style is data — EDN in the app, the object `clj->js` makes of it
+here — and every part of it inherits: its rules (`:rules`, `:soft`), those between voices (`:between`,
+`:softBetween`), its voices' style (`:voice`: a name, or a style that extends the parent's voice), its weights. A rule
+named again takes its new parameters, `[:rule false]` removes it, a new one goes at the end. `:extends` takes a name or
+`[name version]`: the same major version, the minor at least, or it says why not. A style says how many parts it
+writes (`:parts`). `checkStyle` names a rule the catalogue does not have; `defineStyle` makes a style nameable (and
+extensible) from then on. In `cac`: `[:style :partimento-2]`, `[:style {…}]`, `:styles`.
+
+```clojure
+[:style {:style :free-sevenths :extends [:chorale-4 "1.0.0"]
+         :between [[:seventh {:free true}]]           ; the dominant's 7th may leap in
+         :voice {:rules [[:leaps {:line :strict}]]}   ; every voice by step, or a leap and back
+         :weights {:doubling 2}}]
+```
+
+The styles there are: `partimento-1` (a voice over a bass, 2 parts), `partimento-2` (3), `chorale-4` (4), `modal-1`,
+`modal-voice`, `modal-2`, `modal-4` (Fux's church modes). `tests/rules.mjs`: a style that frees the dominant's 7th
+counts as `freeSevenths`, one whose voices are strict as `line: "strict"`, versions and unknown rules refused.
+
+## Chapter 7 (Study 65)
+
+`@kairotic/rules` 0.7.0: the 7th chords' families — the dominant's (on ⑤) and the diminished 7th's (on the leading
+tone: in minor ⑦♯, the bass raised in root position; in major with the lowered ⑥) — are semi-consonances, free to
+enter; a tritone in the diminished family is free where it is the chord's 7th (going down by step) or held while the
+bass moves on. A unit may say it is part of a `sequence` (a diminished triad's tritone goes on by step into whatever
+consonance comes) and of minor's `natural` scale; `family` names a 7th chord's family outright; a chroma may be
+required (`[degree alteration true]`). `chorale-4` is 1.1.0 (nothing it counted before changes).
+
+## Step 5: the comes (begun)
+
+`@kairotic/rules` 0.8.0: `systems.mjs` — the comes's systems as data (a tuning, the steps of a scale, what each interval
 is by its real size: the diatonic one, meantone, a septimal scale in 31-TET, the pentatonic), the same as
 `counterpoint.mjs`'s — and `canon.mjs`: two free voices on a system, the dux and the comes, on `solveVoices`. Its
 rules are now entries of the catalogue, of a voice (`CANON_VOICE`: `range`, `entry`, `final`, `approach`,
@@ -140,6 +170,12 @@ final, the cadence); the style `canon-2` names them. `tests/rules.mjs`: the same
 random canons, imitations and free counterpoints over the four systems, with species, inversions asked, the comes
 inverted or augmented and rules turned off. The memo takes a key of its own (`solveVoices({key})`: a window for each
 voice, the dux's reaching back to the note the comes repeats).
+
+Its style is one of the others (`STYLES["canon-2"]`, `:engine "canon"`, `:parts 2`): written as data, it extends,
+reparametrizes and removes as any style — its voices' lists (`:dux`, `:comes`) and the rules between them, a rule
+taken twice told apart by what it is of (`["resolution" {:of :dux}]`) —; `checkStyle` reads the catalogue of the
+engine a style names (`CATALOGUES`: the bass's, and the canon's that `canon.mjs` registers); a style of the canon is
+refused for a bass's upper voices.
 
 What the comes's rules bring the rest, as they come in: the system as data (a vertical's quality by its real size,
 not by a key's letters: the same rules in 31-TET or a pentatonic), invertible counterpoint as a condition every
@@ -158,7 +194,6 @@ recovery by its size.
   a derivation with fewer distinct cells, a figure or a rhythm heard again, transformed (inverted, augmented, in
   sequence) rather than new — as Bach's cells that unfold and vary without losing what holds them together. A soft rule
   that costs the description, not the note.
-- Styles in EDN with `:extends`, `[:style …]` in `cac`.
 - Local search (OMClouds-like) or lazy counting where a count would take more than about 10 s.
 
 ## The church modes (#362, and Fux's style)
