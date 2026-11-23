@@ -1030,7 +1030,7 @@ See also: `edn`, `sample`, `print`
 
 ### follow · `@kairotic/analysis`
 
-`follow [ahead] [band] [hmm] [descriptor …]`
+`follow [ahead] [band] [hmm|dtw] [descriptor …]`
 
 Follows a performer through a tree (discussion #204): each note heard is matched with a note a little ahead of where the performer was, by pitch and by when it was expected at the performer's tempo; wrong notes pass, skipped notes are skipped. Wires written on the notes ([:note {… :wire {:send :swell}}], or (wire! :bN note :swell)) send what they send: rigid when the note is reached (or caught up once, if it was passed over), elastic on their own at the expected time plus a tolerance if the note does not come, or led by the electronics at that time. At :stop, the take — where each note was played — for the tree box.
 
@@ -1050,6 +1050,7 @@ Follows a performer through a tree (discussion #204): each note heard is matched
 
 **Messages and gestures**
 
+- `follow dtw`: frame by frame (online DTW, as Dixon's MATCH): every 50 ms what it hears — its descriptors, the pitch sounding — against what the score should sound like, each event as long as the work's last take played it (or as written); no notes detected, good with rubato and with sounds that are not notes; it never goes back (discussion #308)
 - `follow hmm`: the probabilistic follower: a probability for every note instead of one bet, so that a doubtful sound does not lose the place and a wrong step is undone when the next sounds point back (discussion #308)
 - `:start`: from the top of the tree
 - `:stop`: ends, and sends the take
