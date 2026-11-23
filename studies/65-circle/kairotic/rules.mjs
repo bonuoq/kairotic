@@ -1122,8 +1122,45 @@ export function fromNotes(spec = {}) {
   }
   // the count within ms milliseconds, or null when it would take longer (what it counted is kept: ask again to go on)
   const countWithin = (ms) => { try { return within(ms, () => P.count()); } catch (e) { if (e.tooLong) return null; throw e; } };
+  /**
+   * Where a bass with no realization dies: going forward unit by unit through the states the rules allow (at most cap
+   * of them a unit, by the memo's window), the first unit nothing can reach — {unit, note (its index), states, reasons
+   * [[reason, how many candidates it refused] …], the most first} —, or null if every unit is reached (the dead end is
+   * then further on than cap states see, or there is none). For saying why a bass cannot be realized.
+   */
+  function deadEnd({ cap = 1500, ms = 1500 } = {}) {
+    const deadline = Date.now() + ms, n = units.length, k = voices >= 4 ? 3 : voices === 3 ? 2 : 1;
+    const own = voices === 2 ? [P] : (P.voices || []).map((v) => v.solver || v);
+    const next = (W) => (voices === 2 ? P.codes.filter((c) => P.check(W[0], W[0].length, c) === null).map((c) => [c]) : P.tuples(W));
+    let states = [Array.from({ length: k }, () => [])];
+    for (let t = 0; t < n; t++) {
+      const seen = new Map();
+      for (const W of states) {
+        for (const x of next(W)) {
+          const W2 = W.map((U, i) => [...U, x[i]]), key = W2.map((U) => U.slice(-3).join(",")).join("|");
+          if (!seen.has(key)) seen.set(key, W2);
+          if (seen.size >= cap) break;
+        }
+        if (seen.size >= cap || Date.now() > deadline) break;
+      }
+      if (!seen.size) {
+        const why = {}, W = states[0], add = (r) => { if (r) why[r] = (why[r] || 0) + 1; };
+        own.forEach((v, i) => v.codes.forEach((c) => add(v.check(W[i], t, c))));
+        if (voices > 2 && P.check) {
+          const ok = own.map((v, i) => v.codes.filter((c) => v.check(W[i], t, c) === null));
+          let tried = 0;
+          const go = (i, x) => { if (tried > 800) return; if (i === ok.length) { tried++; add(P.check(W, t, x)); return; } for (const c of ok[i]) { x.push(c); go(i + 1, x); x.pop(); } };
+          if (ok.every((o) => o.length)) go(0, []);
+        }
+        return { unit: t, note: units[t].note, states: states.length, reasons: Object.entries(why).sort((a, b) => b[1] - a[1]).slice(0, 4) };
+      }
+      if (Date.now() > deadline) return null;
+      states = [...seen.values()];
+    }
+    return null;
+  }
   return { key, K, units, unknown, figured, voices, names, P, style: P.style, midi, code, spell, degAt: (t) => V0.world.locB(t),
-           count: () => P.count(), countWithin, search: (o) => asVoices(P.search(o)),
+           count: () => P.count(), countWithin, deadEnd, search: (o) => asVoices(P.search(o)),
            engine: (o) => asVoices(P.engine(o)), sample: (r) => asVoices(P.sample(r)),
            judge: judgeOf, chords: (R) => (P.chords ? P.chords(R) : null) };
 }

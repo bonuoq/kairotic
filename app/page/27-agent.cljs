@@ -159,7 +159,10 @@
        "outlets the request needs, and place them left to right in the order you mean. Inside it adc~ and dac~ are quiet: "
        "sound goes in and out by inlet~ / outlet~. Build with the classes that exist — the official packages carry the "
        "rules of counterpoint, rhythm and harmony of Kairotic (comes, euclid, patterns, mt…) and are to be preferred — and "
-       "write a component only for what none of them does, small. Keep the patch readable: it will be opened and read.\n\n"
+       "write a component only for what none of them does, small. Keep the patch readable: it will be opened and read. "
+       "Before it is offered the page tries what flows in it — each tree box's tree sent to the box of a package's class it "
+       "goes to (a bass to cac partimento) —, and a box that answers ✗ (a bass with no realization) sends it back to you "
+       "with why: try it yourself first with apply_class.\n\n"
        "If it has controls to play it (knobs, sliders, number boxes, a keyboard), present them with (present :bN x y), laid "
        "out as a small panel: the presented boxes of an agent's content are its panel, played from outside without "
        "opening it.\n\n"
@@ -185,7 +188,7 @@
 
 (def agent-tries 3)
 
-(declare around-agent)
+(declare around-agent agent-trial)
 
 (defn agent-answer
   "Promise of {:src :doc}: one content asked of Claude (sample function s) with prompt (fn [previous] text), up to
@@ -203,12 +206,16 @@
                            (if (nil? src)
                              (if (< k agent-tries) (attempt (inc k) {:src "(none)" :errors ["the answer had no patch code"]})
                                  (throw (js/Error. "Claude's answer had no patch code")))
-                             (.then (do (risky! (str "checking what Claude wrote for agent " (name id))) (check-patch-code src))
-                                    (fn [chk]
-                                      (cond (:ok chk) {:src src :doc doc}
-                                            (< k agent-tries) (do (agent-log! path id "err" (str "try " k ": " (ai/cut (first (:errors chk)) 160) " · sent back to Claude"))
-                                                                  (attempt (inc k) {:src src :errors (:errors chk)}))
-                                            :else (throw (js/Error. (str "after " agent-tries " tries: " (str/join "; " (take 3 (:errors chk)))))))))))))))]
+                             (-> (do (risky! (str "checking what Claude wrote for agent " (name id))) (check-patch-code src))
+                                 ;; it holds together: then what flows in it is tried (a tree into a class of the work's craft)
+                                 (.then (fn [chk] (if (:ok chk)
+                                                    (.then (agent-trial src) (fn [errs] {:ok (empty? errs) :errors errs :tried true}))
+                                                    chk)))
+                                 (.then (fn [chk]
+                                          (cond (:ok chk) {:src src :doc doc}
+                                                (< k agent-tries) (do (agent-log! path id "err" (str "try " k (when (:tried chk) " (tried)") ": " (ai/cut (first (:errors chk)) 200) " · sent back to Claude"))
+                                                                      (attempt (inc k) {:src src :errors (:errors chk)}))
+                                                :else (throw (js/Error. (str "after " agent-tries " tries: " (str/join "; " (take 3 (:errors chk))))))))))))))))]
     (attempt 1 nil)))
 
 (defn agent-offer-note

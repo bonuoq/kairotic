@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **An agent's offers tried before they are offered, and kept when a work is opened from a file**
+  (`@kairotic/rules` 0.10.1, `@kairotic/cac` 0.14.1). Asked for a 16-bar partimento in A major, an agent offered two
+  basses with no realization and a third whose `cac partimento 3 A major` gave nothing; opened on Pages, its offers
+  were empty. Now:
+  - **The page tries what flows in an offer** before offering it: each tree box's tree is sent, apart, to the box of a
+    package's class it goes to (a bass to `cac partimento`), and a box that answers ✗ sends the offer back to Claude
+    with why — one of its three tries. Claude is told so, and to try it first with `apply_class`.
+  - **`cac partimento` says where a bass dies**: *no realization over this bass — nothing can go on at note 22 (e3,
+    5/3): the 7th of the chord goes down by step; …* (`rules.mjs`: `fromNotes().deadEnd()`, going forward through the
+    states the rules allow until a unit none reaches, and the reasons that refused its candidates).
+  - **A mode after the key is the key's**: `cac partimento 3 A major`, `d dorian` (the second word filled the style's
+    place, and the box gave nothing).
+  - **A local work opened from a file keeps its agents' offers**: its points get new ids, and now so does every id in
+    its events — the point an agent (or a `patch @name`) is pinned to, its offers, the point it built.
 - **`cac imitation`: a melody in, the comes added** (`@kairotic/rules` 0.10.0, `@kairotic/cac` 0.14.0; discussion
   #353). The tree's highest voice is the dux, given note by note (its unit its shortest note); the comes is found
   against it by the comes's engine on the one engine (`canon.mjs`'s `imitation`, the style `imitation-2`: `canon-2`

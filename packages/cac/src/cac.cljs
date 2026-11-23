@@ -11,8 +11,8 @@
 ;; What an analysis finds is written on the tree as its analysis layer (:fig the chord over a bass note, :deg its
 ;; degree, :local the key it is read in, :why a rule broken there), which a tree box's code window shows or hides
 ;; (Analysis).
-(let [origins ["npm:@kairotic/rules@0.10.0/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
-      canon-origins ["npm:@kairotic/rules@0.10.0/dist/canon.mjs" "kairotic/packages/rules/canon.mjs"]
+(let [origins ["npm:@kairotic/rules@0.10.1/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
+      canon-origins ["npm:@kairotic/rules@0.10.1/dist/canon.mjs" "kairotic/packages/rules/canon.mjs"]
       ;; how long the page may count, and search when it cannot (ms): past them the page would freeze (a long bass
       ;; without figures in four parts takes minutes to count), so the box gives up counting and finds a realization
       ;; by search, or says it found none in time
@@ -35,12 +35,18 @@
                                            :strong (mapv #(even? (js/Math.round (/ (+ (:t e) (* % u)) u))) (range k))
                                            :t (:t e) :dur (:dur e)}))
                                 ns)}))
-      key-of (fn [st args tree] (or (some-> (get-in st [:over :key]) name) (some-> (:key args) name)
+      ;; a mode written after the key (cac partimento 3 A major, d dorian) is the key's: its words would else fill
+      ;; the next word's place, the style
+      mode-words #{"major" "minor" "ionian" "dorian" "phrygian" "lydian" "mixolydian" "aeolian" "locrian"}
+      mode-word? (fn [x] (and (or (keyword? x) (string? x) (symbol? x)) (contains? mode-words (str/lower-case (name x)))))
+      key-of (fn [st args tree] (or (some-> (get-in st [:over :key]) name)
+                                    (when-let [k (some-> (:key args) name)]
+                                      (if (mode-word? (:style args)) (str k " " (str/lower-case (name (:style args)))) k))
                                     (some-> (:key (api/tree-attrs tree)) str)))
       voices-n (fn [st args] (let [v (or (get-in st [:over :voices]) (:voices args) 4)] (if (#{2 3 4} v) v 4)))
       ;; the style: a name (:chorale-4, "partimento-2") or one written in EDN ({:style :my-chorale :extends
       ;; [:chorale-4 "1.0.0"] :between [[:seventh {:free true}]]}), from [:style …] or the box's words
-      style-of (fn [st args] (let [x (or (get-in st [:over :style]) (:style args))]
+      style-of (fn [st args] (let [x (or (get-in st [:over :style]) (when-not (mode-word? (:style args)) (:style args)))]
                                (cond (map? x) x (keyword? x) (name x) (string? x) x :else nil)))
       style-name (fn [ob] (when-let [s (.-style ob)] (str (.-style s) (when (.-version s) (str " " (.-version s))))))
       ;; chance: the box's own random numbers (Park–Miller), kept in its state
@@ -219,8 +225,16 @@
                                    {:state st :show {:main "cac partimento" :sub "✗ too long: no realization found in time"}
                                     :out [[1 {:count nil :why "too many to count here, and no realization found in time"}]]}
                                    (nil? R)
-                                   {:state st :show {:main "cac partimento" :sub "✗ no realization over this bass"}
-                                    :out [[1 {:count 0 :why "no realization over this bass"}]]}
+                                   ;; where it dies, and why: for whoever wrote the bass (a person, or Claude)
+                                   (let [d (when (fn? (.-deadEnd ob)) (try (.deadEnd ob) (catch :default _ nil)))
+                                         nt (when d (get (:notes (:bass st)) (.-note d)))
+                                         where (when nt (str "nothing can go on at note " (inc (.-note d)) " (" (or (:name nt) (api/midi-name (:midi nt)))
+                                                             (when-let [f (some-> (aget (.-units ob) (.-unit d)) .-chord)] (str ", " f)) ")"
+                                                             (when-let [rs (seq (js->clj (.-reasons d)))]
+                                                               (str ": " (str/join "; " (map first (take 3 rs)))))))
+                                         why (str "no realization over this bass" (when where (str " — " where)))]
+                                     {:state st :show {:main "cac partimento" :sub (str "✗ " why)}
+                                      :out [[1 (cond-> {:count 0 :why why} d (assoc :note (inc (.-note d))))]]})
                                    :else
                                    {:state (update st :seed #(mod (* (or % 1) 48271) 2147483647))
                                     :show (shown ob st)
