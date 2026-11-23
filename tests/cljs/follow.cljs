@@ -114,6 +114,22 @@
               ["n0" "n1" "n2" "n3"])
         (t/is "… where its notation alone would not (its chroma is not E's)"
               (> (fl/obs-dist (fl/default-profile (nth sc 2)) {:chroma (ch 4 11 5)}) (fl/obs-dist (get ps "n2") {:chroma (ch 4 11 5) :flatness 0.74})))))
+;; the probabilistic follower (:model :hmm, discussion #308)
+    (let [sc (fl/score [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 d4 e4 f4"] [:measure "g4/1"]])
+          perf [[0 60 0.4] [0.5 64 0.3] [1 62 0.8] [2 64 0.8] [3 65 0.8] [4 67 0.8]]
+          when-of (fn [st] (into (sorted-map) (map (fn [[k [t]]] [k t])) (:played st)))
+          g (fl/follow sc perf)
+          h (fl/follow sc perf {:model :hmm})]
+      (t/is "a slip that sounds like a later note: the greedy follower jumps there and loses the note it skipped"
+            (not (contains? (:played (:state g)) "n1")))
+      (t/eq "the probabilistic one jumps too, and undoes it when the next sounds point back"
+            [(when-of (:state h)) (:undone (:state h))] [{"n0" 0 "n1" 1 "n2" 2 "n3" 3 "n4" 4} 1])
+      (t/eq "played slower than written, every note found, as the greedy one does"
+            (mapv :beat (keep (fn [[k x]] (when (= k :at) x)) (:found (fl/follow (fl/score tree) (played 1.25 0.3 (map-indexed vector midis)) {:model :hmm}))))
+            [0 1 2 3 4 5 6 7])
+      (t/eq "a wrong note between two: it stays where it was"
+            (mapv :id (keep (fn [[k x]] (when (= k :at) x)) (:found (fl/follow (fl/score tree) (played 1 0 [[0 60] [1 62] [1.5 66] [2 64] [3 65]]) {:model :hmm}))))
+            ["n0" "n1" "n2" "n3"]))
 ;; :listen — what a score says is to be heard at an event (discussion #308)
     (let [lt [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1"
                                   [:rest {:dur 1 :listen {:flatness [0.6 1] :loudness [0.5 1]} :wire {:send :hit}}]
@@ -125,6 +141,9 @@
       (t/eq "its profile is what :listen says: a range's middle, half its width as its spread"
             (select-keys (fl/default-profile (nth sc 1)) [:mean :sd]) {:mean {:flatness 0.8 :loudness 0.75} :sd {:flatness 0.2 :loudness 0.25}})
       (t/eq "a note's :listen chroma takes the place of its pitch's (a multiphonic)" (get-in (fl/default-profile (nth sc 2)) [:mean :chroma]) [0 0 0 0 1 1 0 0 0 0 0 1])
+      (t/eq "the probabilistic follower hears them too"
+            (ids (:found (fl/follow sc [[0 60 0.8] [1 nil 0.5 {:flatness 0.85 :loudness 0.9}] [2 nil 0.8 {:chroma [0 0 0 0 1 1 0 0 0 0 0 1]}] [3 65 0.8]] {:model :hmm})))
+            ["n0" "r1" "n1" "n2"])
       (let [{:keys [found]} (fl/follow sc [[0 60 0.8] [1 nil 0.5 {:flatness 0.85 :loudness 0.9}] [2 nil 0.8 {:chroma [0 0 0 0 1 1 0 0 0 0 0 1]}] [3 65 0.8]])]
         (t/eq "the noise is heard where :listen says it is, the multiphonic too" (ids found) ["n0" "r1" "n1" "n2"])
         (t/eq "… and the noise's wire goes on when it is heard, as a note's" (sent found) [[:hit "on the note"]]))

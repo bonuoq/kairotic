@@ -642,11 +642,12 @@
     :see ["pitch~" "onset~" "freqt" "quantize"]}
 
    "follow"
-   {:package "@kairotic/analysis" :usage "follow [ahead] [band] [descriptor …]"
+   {:package "@kairotic/analysis" :usage "follow [ahead] [band] [hmm] [descriptor …]"
     :doc "Follows a performer through a tree (discussion #204): each note heard is matched with a note a little ahead of where the performer was, by pitch and by when it was expected at the performer's tempo; wrong notes pass, skipped notes are skipped. Wires written on the notes ([:note {… :wire {:send :swell}}], or (wire! :bN note :swell)) send what they send: rigid when the note is reached (or caught up once, if it was passed over), elastic on their own at the expected time plus a tolerance if the note does not come, or led by the electronics at that time. At :stop, the take — where each note was played — for the tree box."
     :inlets ["Hz from pitch~ (0: silence); :start, :stop" "onsets (from onset~): a new note even on the same pitch" "the tree to follow (from a tree box)" "with words after its numbers (follow rms centroid chroma), one inlet each: a descriptor (features~, chroma~), whose mean while each note sounds goes into the take as what it sounded like (:profile); notes are matched by them too (by the notation's chroma, or by what (learn! :bN) learned), and a sound without a pitch is found by them alone"]
     :outlets ["the written beat where the performer is" "[:note id]: the note found" "what a wire sends when it goes on" "at :stop, [:take {…}]: into the tree box, kept only for you"]
-    :messages [[":start" "from the top of the tree"] [":stop" "ends, and sends the take"]
+    :messages [["follow hmm" "the probabilistic follower: a probability for every note instead of one bet, so that a doubtful sound does not lose the place and a wrong step is undone when the next sounds point back (discussion #308)"]
+               [":start" "from the top of the tree"] [":stop" "ends, and sends the take"]
                ["[:here \"n3\"] · (here! :bN 3) · a click on a note of the continuum" "the performer is there: ahead, as if heard; back, from there again (its wires go on again)"]]
     :example (lines "(box :b1 \"tree\" 420 30)" "(tree! :b1 [:voice {:tempo 72} [:measure {:meter [4 4]} \"c4/1 e4 g4 c5\"] [:measure [:note {:pitch \"g4\" :dur 2 :wire {:send :swell}}] [:note {:pitch \"e4\" :dur 1 :wire {:send :fade :kind :elastic :tol 0.5}}] \"c4/1\"]])"
                     "(box :b2 \"adc~ 1\" 40 30)" "(box :b3 \"pitch~ 80 1000\" 40 90)" "(box :b4 \"onset~\" 240 90)"
@@ -1014,10 +1015,16 @@ Into a `necklace`'s clock inlet the phase moves its hand there and plays it: the
     :see ["necklace" "swap" "onset~" "follow"]}
 
    "cac"
-   {:package "@kairotic/cac" :usage "cac partimento|judge [voices 4] [key] [temp 0.5] [seed 1] [unit 0]"
+   {:package "@kairotic/cac" :usage "cac partimento|judge [voices 4] [key] [temp 0.5] [seed 1] [unit 0] [staves 4] [style]"
     :about "**mt changes a tree and does not question it; cac adds to it, or questions it, by the rules of a style.** Its operations take a tree as what is given and look ahead — the kernel of Studies 51–62 (IJzerman's *Harmony, Counterpoint, Partimento*).
 
 **cac partimento** — a bass in, the voices above it out. Send it a tree: its lowest voice is the bass (its notes may carry figures, `:fig \"6/5\"`, and a key of their own, `:local \"G major\"`). A note without figures takes the chord a partimento player would: the Rule of the Octave's where the bass moves by step through it, a 5/3 where it leaps (a 6/3 on ⑦), and at the start and the end. Out comes a tree for a `tree` box: soprano, alto and tenor over the bass (`[:voices 3]` or `2` for fewer), in open score with the tenor in the treble clef an octave down — or, with `[:staves 2]`, in short score (soprano and alto on a treble staff, tenor and bass on a bass staff) — written by the engine — its soft rules prefer steps, the leading tone up, the bass doubled — among the realizations it counts exactly. A bang writes another one, `:any` any valid one, each as likely.
+
+**Styles.** The rules are a style's: `[:style :chorale-4]` (four parts, the default), `:partimento-2` (three), `:partimento-1` (two), `:modal-4`… — or one written in EDN that extends another and changes what it names:
+
+`[:style {:style :free-sevenths :extends [:chorale-4 \"1.0.0\"] :between [[:seventh {:free true}]] :voice {:rules [[:leaps {:line :strict}]]} :weights {:doubling 2}}]` — the dominant's 7th may leap in, every voice moves by step (or a leap and back), the bass doubled more strongly preferred.
+
+A rule named again takes its new parameters, `[:rule false]` removes it; `:voice` is each voice's own style, `:between` the rules between voices, `:weights` the soft rules' weights. Named (`:style :free-sevenths`), it can be named from then on, and extended. `:styles` lists those there are (outlet 1), with their versions; the catalogue of rules is in `docs/rules.md`.
 
 **cac judge** — a tree of voices in, the lowest the bass: whether they keep the rules, and where and why they do not (parallel 5ths between the alto and the tenor, the 7th not going down…), and the chords they make.
 
@@ -1028,14 +1035,17 @@ Into a `necklace`'s clock inlet the phase moves its hand there and plays it: the
            [:temp "the engine's chance: 0 always its cheapest, higher more free"]
            [:seed "the seed of its chance"]
            [:unit "the beats a chord lasts: 0, the shortest note of the bass"]
-           [:staves "4: open score, a staff for each voice (the tenor in the treble clef an octave down); 2: short score, SA and TB"]]
+           [:staves "4: open score, a staff for each voice (the tenor in the treble clef an octave down); 2: short score, SA and TB"]
+           [:style "the rules: a style's name (chorale-4, partimento-2, partimento-1, modal-4…); [:style {…}] one in EDN"]]
     :doc "Composition assisted by computer on a tree, beside mt (discussion #323): cac partimento writes the voices above a bass (2–4 parts, by the rules of Studies 51–62, its figures if it has them), counting the realizations; cac judge says whether voices keep the rules, where and why not. What it finds is written as the tree's analysis layer (:fig, :deg, :local), shown in the code window with Analysis."
-    :inlets ["a tree (the given: a bass, or voices to judge) · a bang: another realization · :any: any valid one · [:voices 3], [:key \"a minor\"], [:temp 1], [:seed 7], [:unit 2], [:staves 2]: done again"]
+    :inlets ["a tree (the given: a bass, or voices to judge) · a bang: another realization · :any: any valid one · [:voices 3], [:key \"a minor\"], [:temp 1], [:seed 7], [:unit 2], [:staves 2], [:style …]: done again · :styles: the styles there are"]
     :outlets ["the tree: the upper voices, then the bass with its analysis (:fig :deg :local)" "what it counted, or why not: {:count :key …}; judging, {:ok :why :chords}"]
     :messages [["bang" "another realization by the engine"] [":any" "any valid one, each as likely"]
                ["[:voices 3]" "three parts (or 2, 4)"] ["[:key \"e\"]" "another key (lower case: minor)"]
                ["[:temp 1]" "more chance in the engine"] ["[:seed 7]" "its chance: the same seed, the same realization"]
-               ["[:staves 2]" "short score: soprano and alto on one staff, tenor and bass on another"]]
+               ["[:staves 2]" "short score: soprano and alto on one staff, tenor and bass on another"]
+               ["[:style :partimento-2]" "another style: its rules, its parts"] ["[:style {:extends :chorale-4 …}]" "a style in EDN, extending another"]
+               [":styles" "the styles there are, with their versions (outlet 1)"]]
     :example (lines "(box :b1 \"tree\" 40 30)" "(resize :b1 420 120)"
                     "(code :b1 \"[:voice {:key \\\"C major\\\"} [:note {:pitch \\\"c3\\\" :dur 2}] [:note {:pitch \\\"d3\\\" :dur 2 :fig \\\"6/4/3\\\"}] [:note {:pitch \\\"e3\\\" :dur 2 :fig \\\"6/3\\\"}] [:note {:pitch \\\"f3\\\" :dur 2 :fig \\\"6/5\\\"}] [:note {:pitch \\\"g3\\\" :dur 2}] [:note {:pitch \\\"a3\\\" :dur 2 :fig \\\"6/3\\\"}] [:note {:pitch \\\"b3\\\" :dur 2 :fig \\\"6/5\\\"}] [:note {:pitch \\\"c4\\\" :dur 2}]]\")"
                     "(box :b2 \"cac partimento\" 40 170)" "(box :b3 \"tree\" 40 230)" "(resize :b3 420 320)" "(box :b4 \"print\" 260 170)"
