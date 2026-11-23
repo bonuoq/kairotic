@@ -107,7 +107,7 @@ export async function theory(page, check) {
   const st = (k) => `(get-in @eng/rt [:states ${cm} :fwd ${k}])`;
   await sent(page, `(swap! eng/rt assoc :prints []) (send! ${cm} 62)`);
   check("comes: the first note waits for the futures to be counted, then is played",
-    (await until(page, st(":D"), (x) => x === "[1]", 120000)) === "[1]", await cljs(page, `[${st(":D")} ${st(":error")}]`));
+    (await until(page, st(":D"), (x) => x === "[1]", 120000)) === "[1]", await cljs(page, `[${st(":D")} ${st(":error")}]`) + " · " + await lastPrints(page));
   await sent(page, `(send! ${cm} 61)`);
   const fixed = await until(page, `(:reason (second (last-shown ${cm})))`, (x) => /not a note of the system/.test(x), 15000);
   check("... a black key is corrected to a note of the mode, and it says why", /not a note of the system/.test(fixed), fixed);
@@ -300,7 +300,7 @@ export async function theory(page, check) {
   const sy = (await cljs(page, '(box "comes pentatonic midi" 8600 600)')).trim();
   const ys = (k) => `(get-in @eng/rt [:states ${sy} :fwd ${k}])`;
   await sent(page, `(send! ${sy} 60)`);
-  check("comes pentatonic: C4 as played, the first note of penta-C", (await until(page, ys(":D"), (x) => x === "[0]", 120000)) === "[0]", await cljs(page, `[${ys(":D")} ${ys(":error")}]`));
+  check("comes pentatonic: C4 as played, the first note of penta-C", (await until(page, ys(":D"), (x) => x === "[0]", 120000)) === "[0]", await cljs(page, `[${ys(":D")} ${ys(":error")} (some? (get-in (current) [:boxes ${sy}])) (some? (get-in @eng/rt [:states ${sy}]))]`) + " · " + await lastPrints(page));
   await sent(page, `(send! ${sy} 65)`);
   const pf = await until(page, `(:reason (second (last-shown ${sy})))`, (x) => /not a note of the system/.test(x), 15000);
   check("... F4 is not a note of the pentatonic: corrected, and it says why", /not a note of the system/.test(pf), pf);
