@@ -384,8 +384,20 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
      I8.count() === 1n && I2.count() === 0n && x.comes.slice(8).map(I8.spell).join(" ") === "c3 d3 e3 c3 c3 d3 e3 c3" && x.dux.every((c, t) => c === I8.dux[t]));
   const cf = "D4 F4 E4 D4 G4 F4 A4 G4 F4 E4 D4".split(" ").map((x) => ({ midi: { D4: 62, E4: 64, F4: 65, G4: 67, A4: 69 }[x], units: 1 }));
   const IF = CV.imitation({ notes: cf, key: "d dorian", k: -4, d: 2, imitation: 0.6 }), y = IF.engine({ temp: 0.5, r: rng(3) });
-  is(`... Fux's D dorian cantus firmus as a dux, a near imitation a 5th below: ${IF.count()} comes, the drawn one through C♯ to its final`,
-     IF.count() > 0n && y && /c#4 d4$/.test(y.comes.filter((c) => c !== null).map(IF.spell).join(" ")));
+  is(`... Fux's D dorian cantus firmus as a dux, a near imitation a 5th below: ${IF.count()} comes (375), the drawn one through C♯ to its final`,
+     IF.count() === 375n && y && /c#4 d4$/.test(y.comes.filter((c) => c !== null).map(IF.spell).join(" ")));
+  // a dux with rests (C D E – in the first phrase and E F G – in the third): the canon's comes rests where the dux rested
+  const jr = jq.map((x, i) => (i === 3 || i === 11 ? { midi: null, units: 1 } : x));
+  const IR = CV.imitation({ notes: jr, key: "C", k: -7, d: 8 }), xr = IR.sample(rng(1));
+  is("... a dux with rests: the comes still the round, resting where the dux rested (the rest a null code, kept in place)",
+     IR.count() === 1n && xr.comes.slice(8).map((c) => (c === null ? "-" : IR.spell(c))).join(" ") === "c3 d3 e3 - c3 d3 e3 c3" &&
+     xr.dux[3] === null && xr.dux[11] === null);
+  // a long dux: counted within a limit (null past it), else found by search — the page does not freeze
+  const longCf = Array.from({ length: 8 }, () => cf).flat();
+  const IL = CV.imitation({ notes: longCf, key: "d dorian", k: -4, d: 2, imitation: 0 });
+  const t1 = Date.now(), cl = IL.countWithin(1500);
+  is(`... a long dux (88 notes, free counterpoint): counted within the limit (${cl === null ? "too long" : String(cl).length + " digits"}, ${Date.now() - t1} ms), or null past it`,
+     (cl === null || cl > 0n) && Date.now() - t1 < 4000 && IL.search({ temp: 0.5, r: rng(5), ms: 2000 }) !== null);
 }
 
 const failed = results.filter((r) => !r[1]);
