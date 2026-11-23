@@ -13,7 +13,8 @@
 //               bar's struck notes and their lengths, its cell (CELLS, or "other:…"), its figure (FIGURES: the one
 //               whose shape it has, and whose context fits — or, loose, the shape alone; or "other:…")
 //   measure     measure(lines) → the counts: figures, cells, bars' rhythms, ties (to an equal or shorter value or
-//               not), a bar like the one before, notes a bar along the phrase, the frame's moves
+//               not), a bar like the one before, notes a bar along the phrase, the frame's moves, its coherence (the
+//               derivation's length: bits a half bar, distinct cells a line)
 //   costs       costsOf(stats) → {figures, cells, bars, frame}: a cost each (frame: the frame's moves by interval), −log of its share against the commonest (smoothed),
 //               for florid({costs}) — a first guess: how often a figure is heard is not how much it is preferred,
 //               where the frame leaves room for it or not
@@ -22,7 +23,7 @@
 //   fit         fitCosts(stats, generate) → the costs with which the engine's own lines are heard as often as the
 //               corpus's: rounds of drawing, measuring, and moving each cost by the log of the two shares' ratio (a
 //               maximum-entropy fit, its moments the figures' and the cells' shares)
-import { SUB, CELLS, FIGURES, frameFrom, contextOf, reduceFlorid, intervalKey } from "./florid.mjs";
+import { SUB, CELLS, FIGURES, frameFrom, contextOf, reduceFlorid, intervalKey, derivationLength } from "./florid.mjs";
 import { keyOf, codeOf, codeDegree } from "./partimento.mjs";
 
 const split = (s) => (Array.isArray(s) ? s : String(s || "").trim().split(/\s+/).filter(Boolean));
@@ -81,12 +82,14 @@ export function readLine(line, { frame: by = "downbeats" } = {}) {
 /** The counts over a corpus of lines. */
 export function measure(lines) {
   const inc = (m, k) => m.set(k, (m.get(k) || 0) + 1);
-  const st = { lines: 0, unread: 0, figures: new Map(), cells: new Map(), bars: new Map(), frame: new Map(), loose: 0, halves: 0, ties: 0, tiesOk: 0, again: 0, barsN: 0, arc: [0, 0, 0, 0, 0], arcN: [0, 0, 0, 0, 0] };
+  const st = { lines: 0, unread: 0, figures: new Map(), cells: new Map(), bars: new Map(), frame: new Map(), bits: 0, halves2: 0, kinds: 0, loose: 0, halves: 0, ties: 0, tiesOk: 0, again: 0, barsN: 0, arc: [0, 0, 0, 0, 0], arcN: [0, 0, 0, 0, 0] };
   for (const line of lines) {
     const R = readLine(line);
     if (!R) { st.unread++; continue; }
     st.lines++;
     const S = R.spans, K = keyOf(line.key), deg = (nm) => codeDegree(codeOf(K, nm));
+    // its coherence: the derivation's length, cell by cell (florid.mjs's derivationLength)
+    { const dl = derivationLength(S.slice(line.skip || 0)); st.bits += dl.bits; st.halves2 += S.length - (line.skip || 0); st.kinds += dl.cells; }
     // the frame's moves, from the first half bar counted on
     for (let t = Math.max(1, (line.skip || 0) + 1); t < R.frame.length; t++) inc(st.frame, intervalKey(deg(R.frame[t]) - deg(R.frame[t - 1])));
     S.forEach((sp, t) => {
@@ -132,6 +135,7 @@ export function describe(st) {
     `ties: ${st.ties}, to an equal or shorter value ${st.tiesOk}`,
     `notes a bar along the phrase: ${arc}`,
     `the frame's moves: ${top(st.frame, 10)}`,
+    `coherence: ${(st.bits / Math.max(1, st.halves2)).toFixed(2)} bits a half bar, ${(st.kinds / Math.max(1, st.lines)).toFixed(1)} distinct cells a line`,
   ];
 }
 
@@ -229,7 +233,11 @@ export async function loadFux() {
 }
 
 /** The engine's costs fitted to Fux's examples (corpus/fit.mjs: the five with the cantus firmus below, 97 half bars;
- *  drawn over his six canti firmi in their modes, on seeds the fit did not see: figures 0.53 → 0.15, bars' rhythms
- *  0.61 → 0.11, the frame's moves 0.40 → 0.16 from his, total variation — his syncopations and thirds in the frame,
- *  the room his passing notes need). florid({costs: FUX_COSTS}). */
-export const FUX_COSTS = {"figures":{"held":0.62,"passing":0,"neighbor":2.56,"anticipation":3.12,"escape":3.16,"skip":2.05,"tirata":0,"turn":1.71,"double-neighbor":2.16,"passing-eighths":0,"cambiata":0,"anticipated-resolution":0,"ornamented-resolution":0},"cells":{"H":0.47,"Q":0,"DQ":1.89,"QE":0.45},"bars":{"H+H":0.93,"H+Q":1.46,"H+DQ":0,"H+QE":2.35,"Q+H":0.01,"Q+Q":0.09,"Q+DQ":0,"Q+QE":0.44,"DQ+H":0,"DQ+Q":0,"DQ+DQ":0,"DQ+QE":0,"QE+H":0.55,"QE+Q":0,"QE+DQ":0,"QE+QE":0.2},"frame":{"0":0.16,"+1":2.34,"-1":1.2,"+2":0.95,"-2":0,"+3":1.17,"-3":0.08,"+4":2.83,"-4":0,"+5":0,"-5":0,"+6":0,"-6":0,"+7":3,"-7":0,"+8":0,"-8":0}};
+ *  drawn over his six canti firmi in their modes with his economy, on seeds the fit did not see: figures 0.53 → 0.15,
+ *  bars' rhythms 0.61 → 0.13, the frame's moves 0.40 → 0.16 from his, total variation — his syncopations and thirds in
+ *  the frame, the room his passing notes need). florid({costs: FUX_COSTS, economy: FUX_ECONOMY}). */
+export const FUX_COSTS = {"figures":{"held":0.64,"passing":0,"neighbor":3.23,"anticipation":5.9,"escape":6.75,"skip":2.26,"tirata":0,"turn":1.95,"double-neighbor":2.23,"passing-eighths":0,"cambiata":0,"anticipated-resolution":0,"ornamented-resolution":0},"cells":{"H":0.49,"Q":0,"DQ":2.55,"QE":0.48},"bars":{"H+H":0.95,"H+Q":1.58,"H+DQ":0.44,"H+QE":2.74,"Q+H":0,"Q+Q":0.19,"Q+DQ":0,"Q+QE":0.78,"DQ+H":0,"DQ+Q":0,"DQ+DQ":0,"DQ+QE":0,"QE+H":0.65,"QE+Q":0,"QE+DQ":0,"QE+QE":0.09},"frame":{"0":0.14,"+1":2.35,"-1":1.2,"+2":0.95,"-2":0,"+3":1.18,"-3":0.09,"+4":2.77,"-4":0,"+5":0,"-5":0,"+6":0,"-6":0,"+7":3,"-7":0,"+8":0,"-8":0}};
+/** How much Fux's lines save in what they take to say (the derivation's length as a cost, florid({economy})): fitted with
+ *  FUX_COSTS, his examples at 2.85 bits a half bar and 5.2 distinct cells a line, the engine's then at 2.8 and 5.3 (at 3.7
+ *  and 7.5 without it). */
+export const FUX_ECONOMY = 3;

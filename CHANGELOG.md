@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Study 64 · florid: coherence, read both ways** (discussion #342). A line's derivation — its cells, each a rhythm
+  and a shape relative to the frame, so a figure in sequence is the same cell — has a length: the bits a listener
+  learning the piece as it goes needs for it (`derivationLength`, `lexicon`: a cell heard before is cheap, its
+  inversion half as good, a new one dear). Read: Fux's own examples take 2.85 bits a half bar and about five distinct
+  cells a line (`measure`'s coherence). Drawn: `florid({economy})` weighs it as a cost, the derivation's length beside
+  every other preference; with his economy (`FUX_ECONOMY`, 3) and his costs refitted with it, the engine's lines over
+  his canti firmi take 2.8 bits and 5.3 cells (3.7 and 7.5 without), as near his figures as before. The page's
+  *Economy*, and each line's coherence in its facts.
 - **`cac imitation`: a melody in, the comes added** (`@kairotic/rules` 0.10.0, `@kairotic/cac` 0.14.0; discussion
   #353). The tree's highest voice is the dux, given note by note (its unit its shortest note); the comes is found
   against it by the comes's engine on the one engine (`canon.mjs`'s `imitation`, the style `imitation-2`: `canon-2`
