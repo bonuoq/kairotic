@@ -223,7 +223,7 @@
         ;; the layers the code window hides, the score hides too: the analysis (its figures under the bass) with Analysis
         ;; off (discussion #323)
         an (boolean (:code-analysis @ui))
-        lt (if (and lt (not an)) (mt/without-layers lt #{:analysis}) lt)
+        lt (if (and lt (not an) (mt/has-layer? lt :analysis)) (mt/without-layers lt #{:analysis}) lt)
         sw (first (box-size id b))
         d [d0 lt sw an] c (get @score-cache id)]
     (cond

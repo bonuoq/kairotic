@@ -1698,7 +1698,9 @@
   [t ls]
   (if (and (node? t) (seq ls))
     (let [tg (tag t)]
-      (make tg (into {} (remove (fn [[k _]] (in-layers? ls tg k))) (attrs t)) (map #(without-layers % ls) (kids t))))
+      ;; (each node keeps its metadata: a score's pieces point back at the nodes they come from by it)
+      (with-meta (make tg (into {} (remove (fn [[k _]] (in-layers? ls tg k))) (attrs t)) (map #(without-layers % ls) (kids t)))
+                 (meta t)))
     t))
 
 (defn has-layer? "Does the tree hold anything of the layer l?" [t l]
