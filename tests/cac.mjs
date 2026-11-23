@@ -108,6 +108,23 @@ export async function cac(page, check) {
   check("... the book's wrong Galant cadence: its parallel 5ths between the alto and the tenor", /parallel 5ths between the alto and the tenor/.test(bad), bad);
   await cljs(page, `(delete ${tb}) (delete ${cb}) (delete ${out}) (delete ${jb})`);
 
+  // cac imitation: a melody in, the comes found against it (canon.mjs, imitation-2): Frère Jacques, a canon at the
+  // octave below two bars later — exactly one, the round itself; two units later, none
+  const JQ = `[:voice {:key "C major"} ${"c4 d4 e4 c4 c4 d4 e4 c4 e4 f4 g4 g4 e4 f4 g4 g4".split(" ").map((p) => `[:note {:pitch "${p}" :dur 1}]`).join(" ")}]`;
+  const it = (await cljs(page, '(box "tree" 9800 100)')).trim();
+  await cljs(page, `(tree! ${it} ${JQ})`);
+  const ib = (await cljs(page, '(box "cac imitation" 9800 300)')).trim();
+  const io2 = (await cljs(page, '(box "tree" 9800 400)')).trim();
+  await until(page, `(io (get-in (current) [:boxes ${ib}]))`, (x) => x === "[1 2]");
+  await cljs(page, `(connect ${it} 0 ${ib} 0) (connect ${ib} 0 ${io2} 0) (send! ${it} :bang)`);
+  const none = await until(page, `(:sub (second (last-shown ${ib})))`, (x) => /✗|comes/.test(x), 20000);
+  check("cac imitation: Frère Jacques, a canon two units later — none (the box says so)", /✗ no comes/.test(none), none);
+  await cljs(page, `(send! ${ib} [:d 8])`);
+  const one = await until(page, `[(get-in @eng/rt [:states ${ib} :count]) (count (filter #(= :voice (first %)) (rest (tree-data ${io2}))))]`, (x) => x === '["1" 2]', 20000);
+  const comes = await cljs(page, `(vec (map (fn [n] (if (= :rest (first n)) [:rest (:dur (second n))] (:pitch (second n)))) (rest (nth (tree-data ${io2}) 3))))`);
+  check("... two bars later, at the octave below: exactly one comes, the round itself", one === '["1" 2]' && /^\[\[:rest 8\] "c3" "d3" "e3" "c3"/.test(comes), `${one} ${comes}`);
+  await cljs(page, `(delete ${it}) (delete ${ib}) (delete ${io2})`);
+
   // a long bass (16 bars of half notes in A major): the box answers in a few seconds — counted within its limit, or,
   // too long to count, realized by search (tests/rules.mjs times both) — and the page goes on
   const LONG = `[:voice {:key "A major"} ${"a2 b2 c#3 d3 e3 f#3 g#3 a3 a3 e3 f#3 c#3 d3 a2 d3 e3 d3 c#3 b2 a2 f#3 d3 e3 e3 a2 d3 e3 e3 f#3 d3 e3 a2"

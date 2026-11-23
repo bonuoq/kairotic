@@ -373,6 +373,21 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
      /not of a bass's upper voices/.test(e2(() => R.fromNotes({ notes: [{ midi: 48, units: 1 }, { midi: 55, units: 1 }], key: "C", style: "canon-2" })) || ""));
 }
 
+// cac imitation (canon.mjs's imitation, style imitation-2): a dux given, the comes found against it
+{
+  const CV = await import("../packages/rules/assets/canon.mjs");
+  const M = { C4: 60, D4: 62, E4: 64, F4: 65, G4: 67, A4: 69, B4: 71, C5: 72 };
+  const jq = "C4 D4 E4 C4 C4 D4 E4 C4 E4 F4 G4 G4 E4 F4 G4 G4".split(" ").map((x) => ({ midi: M[x], units: 1 }));
+  const I8 = CV.imitation({ notes: jq, key: "C", k: -7, d: 8 }), I2 = CV.imitation({ notes: jq, key: "C", k: -7, d: 2 });
+  const x = I8.sample(rng(1));
+  is("imitation: Frère Jacques, a canon at the octave below two bars later — exactly one comes, the round; two units later none",
+     I8.count() === 1n && I2.count() === 0n && x.comes.slice(8).map(I8.spell).join(" ") === "c3 d3 e3 c3 c3 d3 e3 c3" && x.dux.every((c, t) => c === I8.dux[t]));
+  const cf = "D4 F4 E4 D4 G4 F4 A4 G4 F4 E4 D4".split(" ").map((x) => ({ midi: { D4: 62, E4: 64, F4: 65, G4: 67, A4: 69 }[x], units: 1 }));
+  const IF = CV.imitation({ notes: cf, key: "d dorian", k: -4, d: 2, imitation: 0.6 }), y = IF.engine({ temp: 0.5, r: rng(3) });
+  is(`... Fux's D dorian cantus firmus as a dux, a near imitation a 5th below: ${IF.count()} comes, the drawn one through C♯ to its final`,
+     IF.count() > 0n && y && /c#4 d4$/.test(y.comes.filter((c) => c !== null).map(IF.spell).join(" ")));
+}
+
 const failed = results.filter((r) => !r[1]);
 console.log(`${results.length - failed.length} / ${results.length} passed`);
 for (const [w, ok, d] of results) if (!ok) console.log("  FAIL " + w + (d ? " — " + d : ""));

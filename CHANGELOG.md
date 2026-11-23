@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`cac imitation`: a melody in, the comes added** (`@kairotic/rules` 0.10.0, `@kairotic/cac` 0.14.0; discussion
+  #353). The tree's highest voice is the dux, given note by note (its unit its shortest note); the comes is found
+  against it by the comes's engine on the one engine (`canon.mjs`'s `imitation`, the style `imitation-2`: `canon-2`
+  with the dux's own rules off and `given`), weighed by the soft rules every engine weighs a line with. `[:k -7]` steps
+  away, `[:d 2]` units later, `[:imitation 1]` a canon (0.6 near, 0.3 by motion, 0 free counterpoint), `[:species 4]`,
+  `[:invert 12]`, in the tree's key or `[:key "d dorian"]` with its musica ficta; a bang another comes, `:any` any,
+  counted (outlet 1). Frère Jacques two bars later at the octave below: exactly one comes, the round itself; two
+  units later, none — the box says so.
 - **Room on screen, and the layers each box's own.** The layers of a tree (its analysis — the figures under the bass,
   degrees, keys —, what belongs to playing it) are shown or hidden **box by box**, in its score and its code window
   alike: the **analysis** chip in a tree box's header (when its tree has one), the Performed/Analysis buttons of the
