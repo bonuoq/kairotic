@@ -173,11 +173,38 @@
                    (set! (.-value ($ "ep-iframe")) (iframe-of u mode)))))
         (.catch (fn [e] (set! (.-value ($ "ep-url")) (str "Error: " (or (.-message e) e))))))))
 
+;; ───── the app's dialog: what the menu opens that is a place of its own — Share/Export, Feedback (and later the
+;; preferences) — as Sessions is: over the app, Esc or Close back to the work ─────
+
+(def modal-titles
+  {"share" ["Share/Export" "A link to this patch, an iframe for another page, or the work as a file."]
+   "feedback" ["Feedback" "Kairotic is in alpha: tell us what fails and what you miss."]})
+
+(defn open-modal!
+  "Opens the app's dialog on one of its sections: \"share\", \"feedback\"."
+  [k]
+  (let [[t sub] (get modal-titles k)]
+    (doseq [sec (array-seq (.querySelectorAll ($ "modal-body") "section[data-modal]"))]
+      (set! (.-hidden sec) (not= k (.. sec -dataset -modal))))
+    (set! (.-textContent ($ "modal-title")) (or t ""))
+    (set! (.-textContent ($ "modal-sub")) (or sub ""))
+    (set! (.-hidden ($ "app-modal")) false)
+    (.focus ($ "modal-close"))
+    k))
+
+(defn close-modal! [] (set! (.-hidden ($ "app-modal")) true) nil)
+(defn modal-open "The section the dialog shows, or nil." []
+  (when-not (.-hidden ($ "app-modal"))
+    (some (fn [sec] (when-not (.-hidden sec) (.. sec -dataset -modal))) (array-seq (.querySelectorAll ($ "modal-body") "section[data-modal]")))))
+
+(.addEventListener ($ "modal-close") "click" (fn [_] (close-modal!)))
+;; a click on the shade around it closes it too
+(.addEventListener ($ "app-modal") "click" (fn [e] (when (= (.-target e) ($ "app-modal")) (close-modal!))))
+(.addEventListener js/document "keydown"
+  (fn [e] (when (and (= "Escape" (.-key e)) (not (.-hidden ($ "app-modal")))) (close-modal!))))
+
 (.addEventListener ($ "embed-btn") "click"
-  (fn [_]
-    (let [el ($ "embed-pop")]
-      (set! (.-hidden el) (not (.-hidden el)))
-      (when-not (.-hidden el) (render-embed-pop!)))))
+  (fn [_] (open-modal! "share") (render-embed-pop!)))
 
 (.addEventListener ($ "embed-pop") "change" (fn [_] (render-embed-pop!)))
 
@@ -190,6 +217,7 @@
   (when open? (some-> ($ "app-menu") (.querySelector ".mi") .focus)))
 
 (defn keys-page! "The keys and gestures of the patch, in the Help tab." [] (show-doc! "keys"))
+(declare feedback-open!)
 
 (.addEventListener ($ "menu-btn") "click" (fn [e] (.stopPropagation e) (menu-open! (.-hidden ($ "app-menu")))))
 (.addEventListener ($ "app-menu") "click"
@@ -198,7 +226,7 @@
       (menu-open! false)
       (cond
         (= "menu-keys" (.-id it)) (keys-page!)
-        (= "menu-feedback" (.-id it)) (.click ($ "tab-feedback"))
+        (= "menu-feedback" (.-id it)) (feedback-open!)
         (.getAttribute it "data-kfile")
         (gesture! (str "(export-work " (pr-str (if (= "release" (.getAttribute it "data-kfile")) {:release true} {})) ")"))))))
 (.addEventListener ($ "keys-btn") "click" (fn [_] (keys-page!)))
@@ -212,7 +240,7 @@
   (fn [e]
     (let [t (.-target e)]
       (cond
-        (.closest t "#ep-close") (set! (.-hidden ($ "embed-pop")) true)
+        (.closest t "#ep-close") (close-modal!)
         (.closest t "[data-copy]")
         (let [b (.closest t "[data-copy]") src ($ (.getAttribute b "data-copy"))]
           (.select src)

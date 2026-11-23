@@ -590,7 +590,7 @@ pre.view { margin: 0; flex: 1; min-height: 300px; overflow: auto; padding: 10px 
 .work-bar b { color: var(--ink); font-weight: 600; }
 /* the app's menu (☰): Sessions, Share/Export, the work as a file, Feedback, keys, docs */
 header { position: relative; }
-.app-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 60; min-width: 230px; max-width: min(320px, 92vw);
+.app-menu { position: absolute; left: 0; top: calc(100% + 4px); z-index: 60; min-width: 230px; max-width: min(320px, 92vw);
   background: var(--box); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,0.16);
   padding: 6px; display: grid; gap: 2px; }
 .app-menu .mi { display: block; text-align: left; border: 0; background: none; color: var(--ink); font: 13px var(--f-ui);
@@ -598,7 +598,16 @@ header { position: relative; }
 .app-menu .mi:hover, .app-menu .mi:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
 .app-menu hr { border: 0; border-top: 1px solid var(--rule); margin: 4px 2px; }
 .app-menu .menu-ed { margin: 4px 10px 2px; font-size: 11.5px; line-height: 1.4; color: var(--ink-soft); }
-#menu-btn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.menu-btn { align-self: center; font-size: 22px; line-height: 1; width: 38px; height: 34px; padding: 0; border: 1px solid var(--rule);
+  border-radius: 7px; background: var(--box); color: var(--ink); cursor: pointer; }
+.menu-btn:hover, .menu-btn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+/* what the menu opens that is a place of its own (Share/Export, Feedback…) opens as a dialog, as Sessions does */
+.modal-panel { max-width: 760px; }
+.modal-body { padding: 14px 18px 18px; }
+.modal-body > section[hidden] { display: none; }
+.modal-body #embed-pop { position: static; inset: auto; box-shadow: none; border: 0; padding: 0; margin: 0; max-width: none; width: auto; background: none; }
+.modal-body #embed-pop > .ep-head:first-child { display: none; }
+.modal-body #panel-feedback { display: block; }
 
 /* session manager */
 .manager { position: fixed; inset: 0; z-index: 20; background: rgba(18, 22, 28, 0.42); display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: calc(24px + env(safe-area-inset-top, 0px)) 16px 24px; }
@@ -722,6 +731,7 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
 
 <div class="app">
   <header>
+    <button class="menu-btn" id="menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="app-menu" title="Sessions, Share/Export, the work as a file, Feedback, keys and gestures, documentation" aria-label="Menu">☰</button>
     <h1><svg class="logo" viewBox="15.2 -86.5 627.6 104.3" role="img" aria-label="Kairotic"><g><path class="t" d="M19.2 -31.1Q19.2 -38.4 20.85 -45.15Q22.5 -51.9 25.35 -57.7Q28.2 -63.5 32 -68.15Q35.8 -72.8 40 -76H50.9Q46.4 -72.8 42.4 -68.5Q38.4 -64.2 35.4 -59Q32.4 -53.8 30.6 -47.95Q28.8 -42.1 28.8 -35.7V-26.5Q28.8 -20.1 30.6 -14.25Q32.4 -8.4 35.4 -3.2Q38.4 2 42.4 6.3Q46.4 10.6 50.9 13.8H40Q35.8 10.7 32 6Q28.2 1.3 25.35 -4.5Q22.5 -10.3 20.85 -17.05Q19.2 -23.8 19.2 -31.1Z"/><svg x="60" y="-75" width="60" height="78" viewBox="20 6 68 88"><path d="M30 12 V88" stroke-width="11"/>
 <path d="M30 56 C48 56 54 26 67 20.7" stroke-width="9"/>
 <path d="M30 56 C48 56 56 76 75 82" stroke-width="9"/>
@@ -730,8 +740,7 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
 <circle cx="30" cy="56" r="11" class="d" stroke="none"/></svg><path class="t" d="M169.2 0Q164.5 0 162.15 -2.4Q159.8 -4.8 159.3 -8.7H158.8Q157.3 -4 153.35 -1.4Q149.4 1.2 143.3 1.2Q135.4 1.2 130.7 -2.95Q126 -7.1 126 -14.4Q126 -21.9 131.55 -25.85Q137.1 -29.8 148.6 -29.8H158.5V-33.8Q158.5 -44.3 147.4 -44.3Q142.4 -44.3 139.3 -42.35Q136.2 -40.4 134.1 -37.2L127.6 -42.5Q129.8 -46.7 135 -49.75Q140.2 -52.8 148.4 -52.8Q158.2 -52.8 163.8 -48.1Q169.4 -43.4 169.4 -34.5V-8.6H175.9V0ZM146.4 -6.8Q151.7 -6.8 155.1 -9.2Q158.5 -11.6 158.5 -15.4V-22.9H148.8Q137 -22.9 137 -15.8V-13.8Q137 -10.3 139.5 -8.55Q142 -6.8 146.4 -6.8Z"/><path class="t" d="M213.2 -61Q209 -61 207.35 -62.7Q205.7 -64.4 205.7 -66.9V-69Q205.7 -71.5 207.35 -73.2Q209 -74.9 213.1 -74.9Q217.3 -74.9 218.95 -73.2Q220.6 -71.5 220.6 -69V-66.9Q220.6 -64.4 218.95 -62.7Q217.3 -61 213.2 -61ZM190.1 -8.8H207.7V-42.8H190.1V-51.6H218.6V-8.8H235.1V0H190.1Z"/><path class="t" d="M247.6 -8.8H261.3V-42.8H247.6V-51.6H272.2V-37.9H272.8Q273.5 -40.6 274.8 -43.1Q276.1 -45.6 278.1 -47.45Q280.1 -49.3 283 -50.45Q285.9 -51.6 289.8 -51.6H296V-41.2H285.8Q279.8 -41.2 276 -37.65Q272.2 -34.1 272.2 -28.1V-8.8H286.9V0H247.6Z"/><path class="t" d="M330 1.2Q324.3 1.2 319.75 -0.7Q315.2 -2.6 312.05 -6.1Q308.9 -9.6 307.2 -14.6Q305.5 -19.6 305.5 -25.8Q305.5 -32 307.2 -37Q308.9 -42 312.05 -45.5Q315.2 -49 319.75 -50.9Q324.3 -52.8 330 -52.8Q335.7 -52.8 340.25 -50.9Q344.8 -49 347.95 -45.5Q351.1 -42 352.8 -37Q354.5 -32 354.5 -25.8Q354.5 -19.6 352.8 -14.6Q351.1 -9.6 347.95 -6.1Q344.8 -2.6 340.25 -0.7Q335.7 1.2 330 1.2ZM330 -7.4Q336 -7.4 339.55 -11.05Q343.1 -14.7 343.1 -21.9V-29.7Q343.1 -36.9 339.55 -40.55Q336 -44.2 330 -44.2Q324 -44.2 320.45 -40.55Q316.9 -36.9 316.9 -29.7V-21.9Q316.9 -14.7 320.45 -11.05Q324 -7.4 330 -7.4Z"/><path class="t" d="M393.1 0Q386.3 0 383.1 -3.65Q379.9 -7.3 379.9 -13.1V-42.8H364V-51.6H375.3Q378.2 -51.6 379.4 -52.75Q380.6 -53.9 380.6 -56.9V-69.8H390.8V-51.6H412.8V-42.8H390.8V-8.8H412.8V0Z"/><path class="t" d="M453.2 -61Q449 -61 447.35 -62.7Q445.7 -64.4 445.7 -66.9V-69Q445.7 -71.5 447.35 -73.2Q449 -74.9 453.1 -74.9Q457.3 -74.9 458.95 -73.2Q460.6 -71.5 460.6 -69V-66.9Q460.6 -64.4 458.95 -62.7Q457.3 -61 453.2 -61ZM430.1 -8.8H447.7V-42.8H430.1V-51.6H458.6V-8.8H475.1V0H430.1Z"/><path class="t" d="M511.9 1.2Q506.1 1.2 501.55 -0.7Q497 -2.6 493.85 -6.1Q490.7 -9.6 489.05 -14.6Q487.4 -19.6 487.4 -25.8Q487.4 -32 489.05 -37Q490.7 -42 493.85 -45.5Q497 -49 501.55 -50.9Q506.1 -52.8 511.8 -52.8Q519.8 -52.8 524.65 -49.4Q529.5 -46 531.9 -40.6L523.4 -36Q522 -39.6 519.15 -41.7Q516.3 -43.8 511.8 -43.8Q505.6 -43.8 502.2 -40.05Q498.8 -36.3 498.8 -30.1V-21.5Q498.8 -15.4 502.2 -11.6Q505.6 -7.8 512 -7.8Q516.8 -7.8 519.85 -10Q522.9 -12.2 524.7 -16L532.7 -11.1Q530.2 -5.7 525.1 -2.25Q520 1.2 511.9 1.2Z"/><svg x="544" y="-82.5" width="50" height="90" viewBox="30 14 40 72"><path d="M34 50 H44 M44 50 C52 50 54 33 62 32 M44 50 C52 50 54 67 62 68" stroke-width="7"/>
 <circle cx="44" cy="50" r="7.5" class="d" stroke="none"/></svg><path class="t" d="M638.8 -31.1Q638.8 -23.8 637.15 -17.05Q635.5 -10.3 632.65 -4.5Q629.8 1.3 626 6Q622.2 10.7 618 13.8H607.1Q611.6 10.6 615.6 6.3Q619.6 2 622.6 -3.2Q625.6 -8.4 627.4 -14.25Q629.2 -20.1 629.2 -26.5V-35.7Q629.2 -42.1 627.4 -47.95Q625.6 -53.8 622.6 -59Q619.6 -64.2 615.6 -68.5Q611.6 -72.8 607.1 -76H618Q622.2 -72.8 626 -68.15Q629.8 -63.5 632.65 -57.7Q635.5 -51.9 637.15 -45.15Q638.8 -38.4 638.8 -31.1Z"/></g></svg></h1>
     <span class="status" id="status">loading ClojureScript…</span>
-    <span class="work-bar"><span id="work-name">No work open</span>
-      <button class="act" id="menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="app-menu" title="Sessions, Share/Export, the work as a file, Feedback, keys and gestures, documentation">☰</button></span>
+    <span class="work-bar"><span id="work-name">No work open</span></span>
     <!-- the app's menu: what used to take room on screen all the time (#ui-room) -->
     <div class="app-menu" id="app-menu" role="menu" aria-label="Kairotic" hidden>
       <button class="mi" role="menuitem" id="open-manager" title="Your works and the shared rooms: open, create, copy one into another">Sessions…</button>
@@ -758,27 +767,16 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
     </div>
   </div>
 
-  <div class="work">
-    <section class="pane" aria-label="Patch">
-      <div class="pane-head">
-        <span class="label">Patch</span>
-        <span id="crumbs" class="crumbs"></span>
-        <span class="transport">
-          <button class="act" id="play" title="Start the engine and fire the loadbang boxes (space)">▶</button>
-          <button class="act" id="stop" title="Stop the engine: silence and initial state">■</button>
-          <span id="transport-info">engine stopped</span>
-          <button class="act" id="pres-toggle" title="Presentation: only the presented boxes, where the performer sees them (with boxes selected, it offers to present them where they are)">Present</button>
-          <button class="act" id="perform-toggle" title="Perform: rehearse, try and improvise outside the history">Perform</button>
-          <button class="act" id="learn-toggle" title="Learn: select a box, press Learn and move a controller (MIDI, a gamepad, the phone's tilt, OSC): it is wired to the box">Learn</button>
-          <button class="act" id="annot-toggle" title="Annotate: draw lines, arrows and texts on a layer of the patch, anchored to the boxes nearest them">Annotate</button>
-          <span id="perform-info" class="perform-info" hidden></span>
-          <button class="act" id="keys-btn" title="Keys and gestures: how to edit, select, play and draw in the patch">?</button>
-          <button class="act embed-only" id="fs-btn" title="Fullscreen">⛶</button>
-          <a class="act embed-only" id="open-full" target="_blank" rel="noopener" title="Open it in Kairotic, with the whole editor">Kairotic ↗</a>
-        </span>
+  <div class="manager" id="app-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+    <div class="mgr-panel modal-panel">
+      <div class="mgr-head">
+        <h2 id="modal-title"></h2>
+        <span class="mgr-sub" id="modal-sub"></span>
+        <button class="act" id="modal-close" title="Back to the work (Esc)">Close</button>
       </div>
-      <div class="line-tabs" id="line-tabs" role="tablist" aria-label="The lines of this work" hidden></div>
-      <div class="embed-pop" id="embed-pop" hidden>
+      <div class="modal-body" id="modal-body">
+        <section data-modal="share" hidden>
+      <div class="embed-pop" id="embed-pop">
         <div class="ep-head">
           <b>Share/Export</b>
           <span class="spacer"></span>
@@ -808,6 +806,59 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
         <div class="ep-row"><textarea id="ep-iframe" readonly spellcheck="false" rows="3"></textarea><button class="act" data-copy="ep-iframe">Copy</button></div>
         <p class="ep-note">The link carries the patch itself (its code, compressed): it is a copy of this moment, not a live work. Whoever opens it plays it in their browser, without saving anything; “Kairotic ↗” opens it with the whole editor.</p>
       </div>
+        </section>
+        <section data-modal="feedback" hidden>
+      <div class="panel" id="panel-feedback">
+        <div class="fb">
+          <p class="ask-note">Kairotic is in <b>alpha</b>: tell us what fails and what you miss. This writes a GitHub issue for you (with what you choose to add below); it is published only when you press the button on GitHub, under your own account. Nothing is sent from here, and never your API key.</p>
+          <div class="fb-kind" role="radiogroup" aria-label="Kind">
+            <label><input type="radio" name="fb-kind" value="bug" checked> Something fails</label>
+            <label><input type="radio" name="fb-kind" value="idea"> An idea for the next version</label>
+            <label><input type="radio" name="fb-kind" value="question"> A question</label>
+          </div>
+          <input id="fb-title" spellcheck="true" placeholder="A short title">
+          <textarea id="fb-text" spellcheck="true"></textarea>
+          <div class="fb-opts">
+            <label><input type="checkbox" id="fb-patch" checked> the patch on screen (as a link)</label>
+            <label><input type="checkbox" id="fb-errors" checked> recent errors <span id="fb-errn"></span></label>
+            <label><input type="checkbox" id="fb-env" checked> version and browser</label>
+          </div>
+          <div class="ask-bar">
+            <span class="spacer"></span>
+            <button class="act" id="fb-copy" title="The text, to paste wherever you like">Copy</button>
+            <button class="act primary" id="fb-go">Write it on GitHub…</button>
+          </div>
+          <details class="fb-prev"><summary>What will be written</summary><pre id="fb-preview"></pre></details>
+          <h4>Open issues</h4>
+          <p class="ask-note">Before writing, see if it is already here: a 👍 or a comment there helps as much.</p>
+          <ol class="fb-list" id="fb-list"><li class="soft">…</li></ol>
+        </div>
+      </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="work">
+    <section class="pane" aria-label="Patch">
+      <div class="pane-head">
+        <span class="label">Patch</span>
+        <span id="crumbs" class="crumbs"></span>
+        <span class="transport">
+          <button class="act" id="play" title="Start the engine and fire the loadbang boxes (space)">▶</button>
+          <button class="act" id="stop" title="Stop the engine: silence and initial state">■</button>
+          <span id="transport-info">engine stopped</span>
+          <button class="act" id="pres-toggle" title="Presentation: only the presented boxes, where the performer sees them (with boxes selected, it offers to present them where they are)">Present</button>
+          <button class="act" id="perform-toggle" title="Perform: rehearse, try and improvise outside the history">Perform</button>
+          <button class="act" id="learn-toggle" title="Learn: select a box, press Learn and move a controller (MIDI, a gamepad, the phone's tilt, OSC): it is wired to the box">Learn</button>
+          <button class="act" id="annot-toggle" title="Annotate: draw lines, arrows and texts on a layer of the patch, anchored to the boxes nearest them">Annotate</button>
+          <span id="perform-info" class="perform-info" hidden></span>
+          <button class="act" id="keys-btn" title="Keys and gestures: how to edit, select, play and draw in the patch">?</button>
+          <button class="act embed-only" id="fs-btn" title="Fullscreen">⛶</button>
+          <a class="act embed-only" id="open-full" target="_blank" rel="noopener" title="Open it in Kairotic, with the whole editor">Kairotic ↗</a>
+        </span>
+      </div>
+      <div class="line-tabs" id="line-tabs" role="tablist" aria-label="The lines of this work" hidden></div>
       <div class="askbar" id="askbar" hidden>
         <div class="ab-q"><b>Claude</b> · <span id="ab-text"></span></div>
         <div class="ab-row" id="ab-keyrow" hidden>
@@ -881,7 +932,6 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
           <button class="tab" role="tab" id="tab-claude" data-tab="claude" aria-selected="false" hidden>Claude</button>
           <button class="tab" role="tab" id="tab-help" data-tab="help" aria-selected="false" title="How each component works, and tutorials (? on a selected box)">Help</button>
           <button class="tab" role="tab" id="tab-talk" data-tab="talk" aria-selected="false" title="Talk with the people in this room: write, hold to talk, voice notes, camera">Room</button>
-          <button class="tab" role="tab" id="tab-feedback" data-tab="feedback" aria-selected="false" title="Report a bug, propose an idea or ask a question (on GitHub)" hidden>Feedback</button>
         </div>
         <button class="side-hide" id="side-hide" type="button" title="Hide the panel (it comes back with ‹, with help, or with (side-panel true))">»</button>
       </div>
@@ -900,32 +950,6 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
       </div>
       <div class="panel" id="panel-comp" hidden>
         <div class="comp-list" id="comp-list"></div>
-      </div>
-      <div class="panel" id="panel-feedback" hidden>
-        <div class="fb">
-          <p class="ask-note">Kairotic is in <b>alpha</b>: tell us what fails and what you miss. This writes a GitHub issue for you (with what you choose to add below); it is published only when you press the button on GitHub, under your own account. Nothing is sent from here, and never your API key.</p>
-          <div class="fb-kind" role="radiogroup" aria-label="Kind">
-            <label><input type="radio" name="fb-kind" value="bug" checked> Something fails</label>
-            <label><input type="radio" name="fb-kind" value="idea"> An idea for the next version</label>
-            <label><input type="radio" name="fb-kind" value="question"> A question</label>
-          </div>
-          <input id="fb-title" spellcheck="true" placeholder="A short title">
-          <textarea id="fb-text" spellcheck="true"></textarea>
-          <div class="fb-opts">
-            <label><input type="checkbox" id="fb-patch" checked> the patch on screen (as a link)</label>
-            <label><input type="checkbox" id="fb-errors" checked> recent errors <span id="fb-errn"></span></label>
-            <label><input type="checkbox" id="fb-env" checked> version and browser</label>
-          </div>
-          <div class="ask-bar">
-            <span class="spacer"></span>
-            <button class="act" id="fb-copy" title="The text, to paste wherever you like">Copy</button>
-            <button class="act primary" id="fb-go">Write it on GitHub…</button>
-          </div>
-          <details class="fb-prev"><summary>What will be written</summary><pre id="fb-preview"></pre></details>
-          <h4>Open issues</h4>
-          <p class="ask-note">Before writing, see if it is already here: a 👍 or a comment there helps as much.</p>
-          <ol class="fb-list" id="fb-list"><li class="soft">…</li></ol>
-        </div>
       </div>
       <div class="panel" id="panel-talk" hidden>
         <div class="talk">

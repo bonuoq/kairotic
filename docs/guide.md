@@ -17,7 +17,7 @@ Open [the app](https://bonuoq.github.io/kairotic/) (or the Kairotic artifact ins
 - **Try locally, without saving** — a patch to play with; nothing is kept.
 
 A solo work can be copied into a room and a room into a solo work (with its history). **Sessions**, in the
-menu ☰ at the top right, brings this window back (the menu also has Share/Export, the work as a file, Feedback and
+menu ☰ at the top left, beside the logo, brings this window back (the menu also has Share/Export, the work as a file, Feedback and
 the keys and gestures).
 
 On Pages, rooms sync through a **relay**. **Relay**, in the same window, shows the ones in use and
