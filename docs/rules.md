@@ -141,6 +141,15 @@ random canons, imitations and free counterpoints over the four systems, with spe
 inverted or augmented and rules turned off. The memo takes a key of its own (`solveVoices({key})`: a window for each
 voice, the dux's reaching back to the note the comes repeats).
 
+**One tonal layer for both worlds.** `keySystem(key)` (`systems.mjs`): a key of `tonal.mjs` — major, minor, a church
+mode with its musica ficta — as a system the comes sings in, a pitch a code (a degree and an alteration), its
+intervals judged by their real size. The canon (`canonVoices({key})`) then counts degrees and reads the key's ficta
+(rule `ficta`: a raised note leads up by step, the cadence's leading tone raised where the mode raises it, the final's
+raised 3rd only at the end) — the partimento's, the same rules. A church mode without its ficta counts as on the
+white keys of the diatonic system, to the canon (`tests/rules.mjs`); with it, a D dorian canon cadences through C♯.
+And the other way, the comes's invertible counterpoint is the partimento's too (rule `invertible`, `{at: 8 | 10 | 12}`,
+compound intervals as simple ones): a voice over a bass that stands inversion.
+
 What the comes's rules bring the rest, as they come in: the system as data (a vertical's quality by its real size,
 not by a key's letters: the same rules in 31-TET or a pentatonic), invertible counterpoint as a condition every
 vertical must stand, the suspensions a system allows by kind, perfect intervals on consecutive strong beats, a leap's
@@ -151,9 +160,6 @@ recovery by its size.
 - The comes's engine on it: its soft rules (the mode, the imitation) and the box's `live` (a note asked for, corrected
   to the nearest legal one with a future); the box loading `canon.mjs` once it counts as fast (its keys numbers, as
   `counterpoint.mjs`'s, not strings).
-- One tonal layer for both worlds: `keyOf`'s keys and modes a system of `systems.mjs` (the diatonic one, its modes and
-  their ficta), so the partimento styles may use the comes's rules (invertible counterpoint, strong-beat parallels,
-  suspension kinds) and the canon the modes' ficta.
 - Coherence as a preference (discussion #342's grammar, read the other way): of the legal solutions, the simpler ones —
   a derivation with fewer distinct cells, a figure or a rhythm heard again, transformed (inverted, augmented, in
   sequence) rather than new — as Bach's cells that unfold and vary without losing what holds them together. A soft rule

@@ -4,6 +4,8 @@
 // (the comes) has them, where they came from: the diatonic one of Studies 38–41, meantone, a septimal scale in 31-TET,
 // the pentatonic. tests/rules.mjs checks they stay the same as counterpoint.mjs's until it reads them from here.
 
+import { keyOf, codeOf3, codeDegree, codeAlter } from "./tonal.mjs";
+
 const mod = (a, m) => ((a % m) + m) % m;
 
 const NAMES = ["unison", "2nd", "3rd", "4th", "5th", "6th", "7th", "octave"];
@@ -142,5 +144,53 @@ export function makeSystem(def = DIATONIC) {
     pitchName: (s) => names[mod(s, N)] + (4 + octaveOf(s)),
     hz: (s) => ref * Math.pow(2, cents(s) / 1200),
     midi: (s) => 69 + 12 * Math.log2((ref * Math.pow(2, cents(s) / 1200)) / 440),
+  };
+}
+
+// ─── one tonal layer for both worlds: a key (tonal.mjs's, the partimento's) as a system (the comes's) ───
+
+/**
+ * A key ({tonic, mode}: major, minor or a church mode) as a system the comes can sing in: a pitch is a code of the
+ * key (3·degree + alteration + 1, degree 0 its tonic), the notes of its scale and, where the mode allows, its musica
+ * ficta (ficta: false, the scale alone); what an interval is, by the degrees it spans and its real size in semitones,
+ * as the diatonic system has it (the 5th perfect only when it is one, an altered unison or octave a false relation);
+ * the melodic intervals as Fux's (no augmented 2nd, no tritone, the minor 6th up only, no 7th, a chromatic step
+ * never). A system made so answers deg (a pitch's degree, the steps the rules count), alt, shift (a pitch moved by
+ * steps, its alteration kept), codesIn (the pitches from one degree to another) and key.
+ */
+export function keySystem(key, { ficta = true } = {}) {
+  const K = keyOf(key), N = 7;
+  const deg = codeDegree, alt = codeAlter, semi = (c) => K.semi(deg(c), alt(c));
+  const base = makeSystem(DIATONIC);
+  const quality = (a, b) => {
+    const [l, h] = deg(a) <= deg(b) ? [a, b] : [b, a];
+    const cls = mod(deg(h) - deg(l), N), s = mod(semi(h) - semi(l), 12);
+    if (cls === 0) return s === 0 ? "perfect" : "dissonant";
+    if (cls === 4) return s === 7 ? "perfect" : "dissonant";
+    if (cls === 2) return s === 3 || s === 4 ? "imperfect" : "dissonant";
+    if (cls === 5) return s === 8 || s === 9 ? "imperfect" : "dissonant";
+    return "dissonant";
+  };
+  const ordinalName = base.intervalName;
+  function melodicError(a, b) {
+    const n = Math.abs(deg(b) - deg(a)), up = deg(b) > deg(a), s = Math.abs(semi(b) - semi(a));
+    if (n === 0) return a === b ? null : "a chromatic step";
+    if (n === 1) return s <= 2 ? null : "an augmented 2nd";
+    if (n === 2) return s === 3 || s === 4 ? null : "this 3rd";
+    if (n === 3) return s === 5 ? null : "an augmented 4th (tritone)";
+    if (n === 4) return s === 7 ? null : "a diminished 5th (tritone)";
+    if (n === 5) return up && s === 8 ? null : "a 6th (only the minor 6th up)";
+    if (n === 6) return "a 7th";
+    if (n === 7) return s === 12 ? null : "this octave";
+    return "a leap wider than the octave";
+  }
+  const alters = (d) => { const f = ficta ? K.ficta(d) : 0; return f ? [0, f] : [0]; };
+  const codesIn = (lo, hi) => { const out = []; for (let d = lo; d <= hi; d++) for (const a of alters(d)) out.push(codeOf3(d, a)); return out; };
+  return {
+    def: { name: `${K.tonic} ${K.mode}`, key }, name: `${K.tonic} ${K.mode}`, N, period: 1200, key: K, ficta,
+    deg, alt, shift: (c, steps) => codeOf3(deg(c) + steps, alt(c)), codesIn, at: (d) => codeOf3(d, 0),
+    cents: (c) => 100 * semi(c), quality, melodicError, intervalName: ordinalName, periodName: "octave",
+    leaps: base.leaps, suspensions: base.suspensions, forbidCadence: base.forbidCadence,
+    pitchName: (c) => K.name(deg(c), alt(c)), midi: (c) => K.midi(deg(c), alt(c)), hz: (c) => K.hz(deg(c), alt(c)),
   };
 }

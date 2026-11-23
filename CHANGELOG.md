@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **One tonal layer for both worlds** (`@kairotic/rules` 0.6.0; discussion #353). `keySystem(key)`: a key of
+  `tonal.mjs` — major, minor, a church mode with its musica ficta — as a system the comes sings in (a pitch a degree
+  and an alteration, intervals by their real size). The canon in a key (`canonVoices({key})`) reads the partimento's
+  ficta (rule `ficta`: a raised note up by step, the cadence's leading tone raised where the mode raises it, the
+  final's raised 3rd only at the end): a D dorian canon cadences through C♯; without the ficta a church mode counts as
+  on the white keys, canon by canon. And the comes's invertible counterpoint in the partimento's world: rule
+  `invertible` (`{at: 8 | 10 | 12}`), a voice over a bass that stands inversion.
 - **The comes on the one engine** (`@kairotic/rules` 0.6.0; discussion #353, step 4). `systems.mjs`: the comes's
   systems as data (a tuning, a scale's steps, each interval's quality by its real size), the same as
   `counterpoint.mjs`'s. `canon.mjs`: two free voices on a system — the dux and the comes, a canon, an imitation or free

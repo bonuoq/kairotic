@@ -350,6 +350,31 @@ export const RULES = {
     } };
   },
 
+  /** vertical, pair · the comes's invertible counterpoint, over a bass: the voice and the bass must stand inversion at
+   *  the octave, the 10th or the 12th (at: 8, 10, 12; the bass taken up at − 1 steps, above the voice; compound: a
+   *  compound interval read as its simple one, the octaves free, as double counterpoint has it — false: never wider
+   *  apart than the inversion, as the comes asks) — no consonance turned into a dissonance (at the octave a 5th becomes a 4th), no parallel perfect
+   *  intervals once inverted. Not in the styles until one names it. */
+  invertible: (w, { at = 8, compound = true } = {}) => {
+    const name = at === 8 ? "octave" : at + "th";
+    const inverted = (t, c) => {
+      const steps = (at - 1) - (w.D(c) - w.B[t].d), cls = mod(steps, 7), s = mod(w.K.semi(w.B[t].d + at - 1, w.B[t].r || 0) - w.semiU(c), 12);
+      const q = cls === 0 ? (s === 0 ? "perfect" : "dissonant") : cls === 4 ? (s === 7 ? "perfect" : "dissonant")
+              : cls === 2 ? (s === 3 || s === 4 ? "imperfect" : "dissonant") : cls === 5 ? (s === 8 || s === 9 ? "imperfect" : "dissonant") : "dissonant";
+      return { steps, cls, q };
+    };
+    return { id: "invertible", lookback: 1, check: ({ t, c, v, prev, struck }) => {
+      if (!compound && v.steps > at - 1) return `under inversion at the ${name}: wider than the ${name}`;
+      const iv = inverted(t, c);
+      if (iv.q === "dissonant" && v.q !== "dissonant") return `under inversion at the ${name}: a consonance turned dissonant`;
+      if (t >= 1 && prev !== null && iv.q === "perfect" && (struck || w.B[t].struck)) {
+        const pv = inverted(t - 1, prev);
+        if (pv.q === "perfect" && pv.cls === iv.cls && (prev !== c || w.B[t].d !== w.B[t - 1].d)) return `under inversion at the ${name}: parallel ${iv.cls === 0 ? "octaves" : "5ths"}`;
+      }
+      return null;
+    } };
+  },
+
   /** pair · no parallel 5ths or octaves with the bass, no direct ones with the upper voice leaping (direct: "outer",
    *  only between the outer voices; "none", as Fux in three and four parts); structural: not from the strong unit before
    *  either, under a diminution. */
