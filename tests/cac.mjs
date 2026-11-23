@@ -121,8 +121,8 @@ export async function cac(page, check) {
   check("cac imitation: Frère Jacques, a canon two units later — none (the box says so)", /✗ no comes/.test(none), none);
   await cljs(page, `(send! ${ib} [:d 8])`);
   const one = await until(page, `[(get-in @eng/rt [:states ${ib} :count]) (count (filter #(= :voice (first %)) (rest (tree-data ${io2}))))]`, (x) => x === '["1" 2]', 20000);
-  const comes = await cljs(page, `(vec (map (fn [n] (if (= :rest (first n)) [:rest (:dur (second n))] (:pitch (second n)))) (rest (nth (tree-data ${io2}) 3))))`);
-  check("... two bars later, at the octave below: exactly one comes, the round itself", one === '["1" 2]' && /^\[\[:rest 8\] "c3" "d3" "e3" "c3"/.test(comes), `${one} ${comes}`);
+  const comes = await cljs(page, `(vec (map (fn [n] (if (= :rest (first n)) [:rest (:dur (second n))] (:pitch (second n)))) (drop 2 (nth (tree-data ${io2}) 3))))`);
+  check("... two bars later, at the octave below: exactly one comes, the round itself, struck as the dux strikes it", one === '["1" 2]' && comes === '[[:rest 8] "c3" "d3" "e3" "c3" "c3" "d3" "e3" "c3"]', `${one} ${comes}`);
   await cljs(page, `(delete ${it}) (delete ${ib}) (delete ${io2})`);
 
   // a long bass (16 bars of half notes in A major): the box answers in a few seconds — counted within its limit, or,

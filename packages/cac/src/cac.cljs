@@ -83,18 +83,21 @@
                                     [(into [:voice (merge {:name "bass"} (written "bass" staves n))] (bass-line ob bass chords))]))))
       ;; cac imitation: the dux (the tree's highest voice) written again, the comes under it from the canon's codes, one
       ;; a unit (silent before it enters)
-      comes-line (fn [ob codes u]
+      ;; (a note again where the dux strikes one, d units before: the comes articulates as the dux it imitates)
+      comes-line (fn [ob codes u strikes]
                    (loop [i 0 out []]
                      (if (>= i (count codes))
                        out
                        (let [c (nth codes i)
-                             j (loop [j (inc i)] (if (and (< j (count codes)) (= c (nth codes j))) (recur (inc j)) j))]
+                             j (loop [j (inc i)] (if (and (< j (count codes)) (= c (nth codes j)) (not (strikes j))) (recur (inc j)) j))]
                          (recur j (conj out (if (nil? c) [:rest {:dur (* u (- j i))}] [:note {:pitch (.spell ob c) :dur (* u (- j i))}])))))))
       imitation-tree (fn [ob st R]
-                       (let [k (.-K ob) u (:u (:dux st))]
+                       (let [k (.-K ob) u (:u (:dux st))
+                             onsets (reductions + 0 (map :units (:notes (:dux st))))
+                             strikes (set (map #(+ % (.-d ob)) onsets))]
                          [:piece {:key (str (.-tonic k) " " (.-mode k))}
                           (into [:voice {:name "dux"}] (map (fn [nt] [:note {:pitch (or (:name nt) (api/midi-name (:midi nt))) :dur (:dur nt)}]) (:notes (:dux st))))
-                          (into [:voice {:name "comes" :clef (if (neg? (.-k ob)) "F" "G")}] (comes-line ob (vec (.-comes R)) u))]))
+                          (into [:voice {:name "comes" :clef (if (neg? (.-k ob)) "F" "G")}] (comes-line ob (vec (.-comes R)) u strikes))]))
       band-name (fn [x] (cond (>= x 0.999) "a canon" (>= x 0.5) "near imitation" (>= x 0.2) "imitation by motion" :else "free counterpoint"))
       shown (fn [ob st] {:main (str "cac " (name (:op st :partimento)) " · " (.-voices ob) " parts" (when-let [s (style-name ob)] (str " · " s)))
                          :sub (str (if (:count st) (str (:count st) " realizations") "too many to count here")
