@@ -143,7 +143,13 @@ export function overBassWorld(K, B, o = {}) {
   const LOC = B.map((b) => localOf(K, b.key));
   const loc = (t, c) => localNote(K, LOC[t], D(c), A(c));
   const locB = (t) => localNote(K, LOC[t], B[t].d, B[t].r || 0).deg;
-  const inKey = (t, c) => { const l = loc(t, c); return l.alt === 0 || (l.alt === 1 && LOC[t].key.mode === "minor" && l.deg >= 5) || (l.alt !== 0 && l.alt === LOC[t].key.ficta(l.deg)) || !!(B[t].chroma && B[t].chroma.some(([d, a]) => l.deg === d && l.alt === a)); };
+  // (a unit's chroma: [degree alteration] its chord may take — [degree alteration true]: must take, the degree's own
+  // note out; natural: in minor the natural scale, ⑥ and ⑦ not raised — a sequence's, chapter 7)
+  const inKey = (t, c) => {
+    const l = loc(t, c), ch = B[t].chroma;
+    if (ch && ch.some(([d, a, only]) => only && l.deg === d && l.alt !== a)) return false;
+    return l.alt === 0 || (l.alt === 1 && LOC[t].key.mode === "minor" && l.deg >= 5 && !B[t].natural) || (l.alt !== 0 && l.alt === LOC[t].key.ficta(l.deg)) || !!(ch && ch.some(([d, a]) => l.deg === d && l.alt === a));
+  };
   const strong = (t) => (B[t] && B[t].strong !== undefined ? B[t].strong : (t + phase) % 2 === 0);
   function vertical(t, c) {
     const steps = D(c) - B[t].d, cls = mod(steps, 7), s = mod(semiU(c) - semiB(t), 12);
@@ -311,7 +317,10 @@ export const RULES = {
         return "the 7th of the chord goes down by step";
       if (fp && fp.up === pv0.cls && pv0.q === "dissonant" && !(held && !B[t].struck) && !(struck && D(c) === D(prev) + 1))
         return "the augmented 6th goes up by step";
-      const freeBefore = !!(fp && !consonant(pv0) && fp.cls.includes(pv0.cls) && (!pv0.tri || fp.tri));
+      // (chapter 7: in the diminished 7th's family a tritone is free too where it is the chord's 7th — which goes down
+      // by step, whatever it meets over the next bass, ex. 7.9b — or where it is held and the bass moves on, ex. 7.9e)
+      const dimFree = !!(fp && fp.family === "diminished" && pv0 && (pv0.cls === fp.seventh || (held && B[t].struck)));
+      const freeBefore = !!(fp && !consonant(pv0) && fp.cls.includes(pv0.cls) && (!pv0.tri || fp.tri || dimFree));
       if (t >= 1 && !delayed && !freeBefore) {
         const pv = pv0;
         let special = false, ok4 = false;
@@ -320,7 +329,10 @@ export const RULES = {
           const pdel = w.delayedOn && pp !== null && prev === pp && B[t - 1].struck && strong(t - 1) && t >= 2 && strong(t - 2) &&
                        vertical(t - 2, pp).q === "dissonant" && vertical(t - 2, pp).cls === 6 && pv.cls === 3;
           special = entry(t - 1, prev, pp, pdel) !== null;
-          const semiOk = pv.tri && struck && ((pv.tri === "A4" && D(c) === D(prev) + 1 && v.cls === 5) || (pv.tri === "d5" && D(c) === D(prev) - 1 && v.cls === 2));
+          // (in a sequence — a unit's sequence: chapter 7 — the diminished triad on ⑦ or ② is taken for the pattern's
+          // sake: its tritone goes on by step the way it leans, into whatever consonance the next bass makes)
+          const seqOk = !!(B[t - 1].sequence && pv.tri && struck && consonant(v) && D(c) === D(prev) + (pv.tri === "A4" ? 1 : -1));
+          const semiOk = seqOk || (pv.tri && struck && ((pv.tri === "A4" && D(c) === D(prev) + 1 && v.cls === 5) || (pv.tri === "d5" && D(c) === D(prev) - 1 && v.cls === 2)));
           const passOk = !pv.tri && bassPassing(t - 1) && consonant(vertical(t - 2 >= 0 ? t - 2 : 0, prev)) && consonant(v) && (held || Math.abs(D(c) - D(prev)) === 1);
           ok4 = semiOk || passOk;
           if (special && !ok4) return pv.tri ? (pv.tri === "A4" ? "the augmented 4th resolves up to a 6th" : "the diminished 5th resolves down to a 3rd") : "over the passing bass the held note goes on into a consonance";
@@ -829,7 +841,9 @@ export const BETWEEN = {
       on = kt.mode === "minor" && B[t].dominant && chord !== "6/3";
     } else {
       const ch = N.asked(t);
-      on = kt.mode === "minor" && ((B[t].dominant && B[t].chord !== "6/3") || (ch && ch.seventh !== undefined));
+      // (and in the dominant's family and the diminished 7th's — not a 7th of a sequence, on the natural ⑦)
+      const sv = N.sevenths(t);
+      on = kt.mode === "minor" && ((B[t].dominant && B[t].chord !== "6/3") || (ch && ch.seventh !== undefined && (!sv || sv.dominant)));
     }
     if (on) for (const c of x) { const l = N.loc(t, c); if (l.deg === 6 && l.alt !== 1) return `the chord on the dominant is major: ${K.name(D(c), A(c) + 1)}, not ${K.name(D(c), A(c))}`; }
     return null;
@@ -867,7 +881,7 @@ Object.assign(STYLES, {
     between: [["order", { form: "three", cross: true }], ["seconds"], ["parallels-upper"], ["false-relation"], ["modal"]], softBetween: [] },
   "modal-4": { style: "modal-4", version: "0.1.0", parts: 4, voice: "modal-voice",
     between: [["order", { cross: true }], ["modal"], ["doubling", { form: "four" }], ["seconds", { form: "four" }], ["parallels-upper", { form: "four" }]], softBetween: [] },
-  "chorale-4": { style: "chorale-4", version: "1.0.0", parts: 4, voice: "partimento-1",
+  "chorale-4": { style: "chorale-4", version: "1.1.0", parts: 4, voice: "partimento-1",
     between: [["order", { within: 7 }], ["chord", { form: "four" }], ["doubling", { form: "four" }], ["seventh"], ["leading-tone-doubled"], ["seconds", { form: "four" }],
               ["parallels-upper", { form: "four" }], ["resolution"], ["six-four", { form: "four" }], ["dominant-major", { form: "four" }]],
     softBetween: [["doubling"]] },
@@ -922,16 +936,24 @@ export function fourOverBass(spec = {}) {
   const st = resolveStyle(typeof spec.style === "object" ? spec.style : STYLES[spec.style || "chorale-4"]);
   const asked = (t) => (figured && B[t].chord ? CHORDS4[B[t].chord] : null);
   let locB0 = null;
+  // (a 7th chord's family: the dominant's, on ⑤, and — chapter 7 — the diminished 7th's, on the leading tone: in
+  // minor its ⑦ raised (in root position, the bass raised), in major with the lowered ⑥ (molldur, the unit's chroma);
+  // both semi-consonances, free to enter. Any other 7th chord prepares its 7th; a unit's family says it outright)
   const sevenths = (t) => {
     const ch = asked(t);
     if (!ch || ch.seventh === undefined || ROOT[B[t].chord] === undefined) return null;
-    return { cls: ch.seventh, dominant: mod(locB0(t) + ROOT[B[t].chord], 7) === 4 };
+    const root = mod(locB0(t) + ROOT[B[t].chord], 7), u = B[t];
+    const minor = Sv.world.LOC[t].key.mode === "minor";
+    // (in minor a natural ⑦ — the bass's, or a unit of the natural scale, a sequence's — makes it a diatonic 7th)
+    const dim = root === 6 && (minor ? !u.natural && (B[t].chord !== "7" || (u.r || 0) === 1) : !!(u.chroma && u.chroma.some(([d, a]) => mod(d, 7) === 5 && a === -1)));
+    const family = u.family || (root === 4 ? "dominant" : dim ? "diminished" : null);
+    return { cls: ch.seventh, dominant: family === "dominant" || family === "diminished", family, root };
   };
   const free = (t) => {
     const ch = asked(t);
     if (!ch || !(ch.free || ch.seventh !== undefined)) return null;
     const sv = sevenths(t), cls = sv && !sv.dominant ? (ch.free || []).filter((c) => c !== ch.seventh) : ch.free || [];
-    return { cls, seventh: ch.seventh, up: ch.up, tri: !!ch.tri };
+    return { cls, seventh: ch.seventh, up: ch.up, tri: !!ch.tri, family: sv ? sv.family : null };
   };
   const S0 = { bass: B, key: K, figured: false, ro: spec.ro ?? true, exchange: true, end: spec.end, free, weights: { ...(st.weights || {}), ...(spec.weights || {}) }, delayed: spec.delayed, style: st.voice };
   const lineOf = (who) => (spec.line && typeof spec.line === "object" ? spec.line[who] : spec.line);

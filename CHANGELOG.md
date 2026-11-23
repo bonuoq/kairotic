@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Study 65 · circle: beyond the Rule of the Octave** (IJzerman, chapter 7; `@kairotic/rules` 0.7.0, `@kairotic/cac`
+  0.12.0). The **diminished 7th family** (7/5/3 on ⑦♯, 6/5/3 on ②, 6/4/3 on ④, 6/4/2 on ⑥; in major with the lowered
+  ⑥) joins the dominant's as semi-consonances: free to enter, its 7th down a half step, a tritone in it free where it
+  is the chord's 7th or held while the bass moves on (style `chorale-4` 1.1.0; nothing counted before changes). A
+  unit may be part of a `sequence` (a diminished triad taken for the pattern's sake, its tritone going on by step the
+  way it leans) and of minor's `natural` scale (⑥ and ⑦ not raised, a 7th on the natural ⑦ diatonic); a chroma may be
+  required (`[degree alteration true]`). The study: thirteen phrases — vii° in minor and major, the Meyer, Fifth Down
+  Fourth Up (7ths or 5/3s, major and minor), Third Down Second Up, the Tied Bass in four parts, Descending Thirds (the
+  Neapolitan ②♭ in minor), the modulating Folia —, each prototype's properties checked in every realization drawn
+  (kernel 36/36, page 8/8). Studies on `@kairotic/rules` keep a copy of it, checked equal in `tests/rules.mjs`.
+
 - **Styles in EDN** (`@kairotic/rules` 0.6.0, `@kairotic/cac` 0.11.0; step 4 of discussion #353). A style is data, and
   every part of it inherits: its rules, those between the voices, its voices' own style, its weights — a rule named
   again takes its new parameters, `[:rule false]` removes it. `:extends` takes a name or `[name version]` (the same major

@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 65 · circle · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1000px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the circle of fifths counted and realized, the diminished 7th family, the
+// Folia's keys, a transposition, the export.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+const total = () => d.getElementById("total").textContent;
+const msg = () => d.getElementById("msg").textContent;
+const figs = () => [...d.querySelectorAll("#sheet text.fig")].map((x) => x.textContent);
+try {
+  await wait(() => w.kairoticCircle && /^\d/.test(total()));
+  const K = w.kairoticCircle;
+  is("it opens on Fifth Down Fourth Up in C major: 5,147 realizations, thirteen phrases to choose", total() === "5,147" && d.querySelector('[data-phrase="fifths"]').classList.contains("on") && d.querySelectorAll("[data-phrase]").length === 13);
+  is("... the engine's realization drawn, sound: three upper voices over the bass, a 7th on every inner bass note", d.querySelectorAll("#sheet rect.upper").length > 0 && d.querySelectorAll("#sheet rect.tenor").length > 0 && !/✗/.test(msg()) && figs().slice(1, 7).every((f) => f === "7"));
+  K.set("vii-minor");
+  await wait(() => total() === "211,043");
+  is("vii° in minor: 211,043, the diminished family on ⑦♯, ②, ④ and ⑥", figs()[1] === "7" && figs()[3] === "6/5/3" && figs()[7] === "6/4/3" && figs()[9] === "6/4/2" && /G♯/.test(msg()));
+  K.set("folia");
+  await wait(() => total() === "572");
+  const keys = [...d.querySelectorAll("#sheet .keylab")].map((x) => x.textContent);
+  is("the modulating Folia: A minor, C major, E minor boxed", keys.join(" · ") === "A minor · C major · E minor");
+  K.set("descending-thirds-minor", "D");
+  await wait(() => total() === "25,957");
+  is("Descending Thirds in minor moved to D: the same 25,957, the Neapolitan E♭ in the bass", /E♭/.test([...d.querySelectorAll("#sheet .nname")].map((x) => x.textContent).join(" ")));
+  d.getElementById("uniform").click();
+  is("any valid one, sound", !/✗/.test(msg()) && /steps/.test(msg()));
+  const saved = [];
+  w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
+  d.getElementById("export").click();
+  is("exported for the app: four voices, the chords, the keys in its extMeta", await wait(() => saved.length === 1) && ["soprano", "alto", "tenor", "bass"].every((v) => saved[0].text.includes(`label="${v}"`)) && /:source "Kairotic Study 65 · circle"/.test(saved[0].text));
+  is("no errors on the page", errors.length === 0);
+} catch (e) { is("error: " + (e.message || e), false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(errors) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>
