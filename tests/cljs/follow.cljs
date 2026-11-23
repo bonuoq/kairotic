@@ -130,6 +130,19 @@
       (t/eq "a wrong note between two: it stays where it was"
             (mapv :id (keep (fn [[k x]] (when (= k :at) x)) (:found (fl/follow (fl/score tree) (played 1 0 [[0 60] [1 62] [1.5 66] [2 64] [3 65]]) {:model :hmm}))))
             ["n0" "n1" "n2" "n3"]))
+;; following frame by frame (:model :dtw, discussion #308)
+    (let [sc (fl/score [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1 d4 e4 f4"]])
+          frames (fn [rate glitch] (vec (for [k (range 110) :let [t (* k 0.05) i (min 3 (js/Math.floor (/ t rate)))]]
+                                          [t {:midi (if (and glitch (= k 12)) 64 (nth [60 62 64 65] i))}])))
+          arrivals (fn [found] (mapv (fn [x] [(:id x) (/ (js/Math.round (* 100 (:t x))) 100)]) (keep (fn [[k x]] (when (= k :at) x)) found)))]
+      (t/eq "what the score should sound like: a frame every 50 ms, each event as long as it is written"
+            [(count (fl/reference (fl/start sc))) (get-in (first (fl/reference (fl/start sc))) [:prof :mean :midi])] [80 60])
+      (t/eq "frame by frame, slower than written: each note reached when it begins to sound"
+            (arrivals (:found (fl/follow sc (frames 1.25 false) {:model :dtw}))) [["n0" 0] ["n1" 1.25] ["n2" 2.5] ["n3" 3.75]])
+      (t/eq "… a frame heard wrong (an E in the middle of the C) does not move it"
+            (arrivals (:found (fl/follow sc (frames 1.25 true) {:model :dtw}))) [["n0" 0] ["n1" 1.25] ["n2" 2.5] ["n3" 3.75]])
+      (t/eq "… and timed by a take, the reference lasts as the take played it"
+            (count (fl/reference (fl/start sc) {:when {"n0" [0 1] "n1" [2 1] "n2" [3 1] "n3" [4 1]}} 0.05)) 100))
 ;; :listen — what a score says is to be heard at an event (discussion #308)
     (let [lt [:voice {:tempo 60} [:measure {:meter [4 4]} "c4/1"
                                   [:rest {:dur 1 :listen {:flatness [0.6 1] :loudness [0.5 1]} :wire {:send :hit}}]

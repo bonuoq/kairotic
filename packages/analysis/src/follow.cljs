@@ -10,8 +10,8 @@
       ;; the word hmm: the probabilistic follower (discussion #308)
       opts (fn [args] (let [ns (filter number? args) ws (filter keyword? args)]
                         {:ahead (or (first ns) 4) :band (or (second ns) 0.6)
-                         :model (if (some #{:hmm} ws) :hmm :greedy)
-                         :listen (vec (remove #{:hmm :greedy} ws))}))
+                         :model (cond (some #{:hmm} ws) :hmm (some #{:dtw} ws) :dtw :else :greedy)
+                         :listen (vec (remove #{:hmm :greedy :dtw} ws))}))
       ;; what a note sounded like (discussion #308): the mean of each descriptor while it sounded, kept in the take
       mean (fn [[sum n]] (if (number? sum)
                            (/ (js/Math.round (* 10000 (/ sum n))) 10000)
@@ -73,9 +73,9 @@
   {;; ── about ──
    :class "follow"
    :license "MPL-2.0"
-   :doc "Follows a performer through a tree (discussion #204): a tree on the right (from a tree box), Hz on the left (from pitch~: 0 when it hears none) and onsets in the middle (from onset~: a note begins there even on the same pitch). start begins at the top of the tree, stop ends; [:here id] tells it where the performer is (a click on a note of the tree's continuum does). Each note heard is matched with a note of the tree a little ahead of where the performer was (with the word hmm, a probability is kept for every note instead, so that a doubtful sound does not lose the place and a wrong step is undone when the next sounds point elsewhere), by its pitch (an octave off still counts) and by when it was expected at the tempo the performer goes; wrong notes and ornaments are let pass, skipped notes are skipped. Out: the written beat where the performer is, [:note id], what each wire sends when it goes on — wires are written on their notes ([:note {… :wire {:send :swell :kind :elastic :tol 0.5}}], or (wire! :bN note :swell {…})): a rigid one on its note (or caught up once at the next note found if it was passed over), an elastic one on its note if the performer gets there in time and else on its own, at the time the note was expected plus its tolerance (or at that time whatever the performer does, if the electronics lead) —, and at stop the take — where each note was played, in seconds, and with descriptors named after its numbers (follow rms centroid chroma: one inlet each, from features~ or chroma~) what each note sounded like (their means while it sounded, :profile) — as [:take {…}]: into the tree box's inlet it is kept only for you (a message [:take … :work] keeps it in the tree), and its continuum can show it."
-   :usage "follow [ahead] [band] [hmm] [descriptor …]"
-   :io (fn [b] [(+ 3 (count (remove #{:hmm :greedy} (filter keyword? (:args b))))) 4])
+   :doc "Follows a performer through a tree (discussion #204): a tree on the right (from a tree box), Hz on the left (from pitch~: 0 when it hears none) and onsets in the middle (from onset~: a note begins there even on the same pitch). start begins at the top of the tree, stop ends; [:here id] tells it where the performer is (a click on a note of the tree's continuum does). Each note heard is matched with a note of the tree a little ahead of where the performer was (with the word hmm, a probability is kept for every note instead, so that a doubtful sound does not lose the place and a wrong step is undone when the next sounds point elsewhere; with dtw it follows frame by frame, every 50 ms, what it hears against what the score should sound like — timed as the work's last take played it —, without detecting notes), by its pitch (an octave off still counts) and by when it was expected at the tempo the performer goes; wrong notes and ornaments are let pass, skipped notes are skipped. Out: the written beat where the performer is, [:note id], what each wire sends when it goes on — wires are written on their notes ([:note {… :wire {:send :swell :kind :elastic :tol 0.5}}], or (wire! :bN note :swell {…})): a rigid one on its note (or caught up once at the next note found if it was passed over), an elastic one on its note if the performer gets there in time and else on its own, at the time the note was expected plus its tolerance (or at that time whatever the performer does, if the electronics lead) —, and at stop the take — where each note was played, in seconds, and with descriptors named after its numbers (follow rms centroid chroma: one inlet each, from features~ or chroma~) what each note sounded like (their means while it sounded, :profile) — as [:take {…}]: into the tree box's inlet it is kept only for you (a message [:take … :work] keeps it in the tree), and its continuum can show it."
+   :usage "follow [ahead] [band] [hmm|dtw] [descriptor …]"
+   :io (fn [b] [(+ 3 (count (remove #{:hmm :greedy :dtw} (filter keyword? (:args b))))) 4])
    :dynamic-io true
    :size [124 30]
 
@@ -90,15 +90,20 @@
                     (let [sc (api/follow-score value)
                           st (assoc st :score sc :wires (api/follow-wires sc) :from (:from (meta value))
                                     ;; what rehearsals learned of how its notes sound ((learn! :bN), discussion #308)
-                                    :profiles (when (map? (second value)) (:profiles (second value))))]
+                                    :profiles (when (map? (second value)) (:profiles (second value)))
+                                    ;; the last take of the work: how the score's events last, for following frame by frame
+                                    :ref-take (when (map? (second value)) (last (filter #(map? (:when %)) (:takes (second value))))))]
                       {:state st :show (shown st)})
                     {})
                   (= value :start)
                   (if (seq (:score st))
                     (let [st (assoc st :on true :t0 at :fl (api/follow-start (:score st) {:ahead (api/clamp (:ahead (opts args)) 1 32) :band (api/clamp (:band (opts args)) 0.1 2)
                                                                                          :wires (:wires st) :profiles (:profiles st) :model (:model (opts args))})
-                                    :cur nil :pend nil :onset nil :at nil :cue nil :wake nil :acc nil :cur-id nil :prof {} :desc {})]
-                      (out-of [st []] nil at))
+                                    :cur nil :pend nil :onset nil :at nil :cue nil :wake nil :acc nil :cur-id nil :prof {} :desc {})
+                          ;; frame by frame (dtw): what the score should sound like, and a frame every 50 ms
+                          dtw? (= :dtw (:model (opts args)))
+                          st (cond-> st dtw? (update :fl api/follow-dtw-start (:ref-take st)))]
+                      (cond-> (out-of [st []] nil at) dtw? (update :later (fnil conj []) [(+ at 0.05) 0 [:frame]])))
                     {:effects [[:print "follow: no tree yet (connect a tree box to its right inlet)"]]})
                   (not (:on st)) {}
                   (= value :stop)
@@ -139,6 +144,14 @@
                       (out-of (found-out (assoc (close-note st) :fl fl :cur nil :pend nil :wake nil) found) nil at))
                     {})
                   (and (= value [:settle]) (:pend st)) (out-of (hear st (api/midi->hz (second (:pend st))) (- at (:t0 st))) nil at)
+                  ;; a frame (dtw): what is heard now — the descriptors, the pitch sounding — against the score
+                  (= value [:frame])
+                  (let [t (- at (:t0 st))
+                        obs (cond-> (or (:desc st) {}) (and (:cur st) (:midi (:cur st))) (assoc :midi (:midi (:cur st))))
+                        [fl found] (if (seq obs) (api/follow-frame (:fl st) t obs) [(:fl st) []])
+                        [st2 outs] (found-out (assoc st :fl fl) found)
+                        st2 (if-let [id (:id (second (last (filter (fn [[k]] (= k :at)) found))))] (assoc (close-note st2) :cur-id id) st2)]
+                    (update (out-of [st2 outs] nil at) :later (fnil conj []) [(+ at 0.05) 0 [:frame]]))
                   ;; time passes: the elastic wires due go on
                   (= value [:tick])
                   (let [[fl found] (api/follow-tick (:fl st) (- at (:t0 st)))]
