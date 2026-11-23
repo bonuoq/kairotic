@@ -156,21 +156,36 @@ export async function run() {
     is("… the five with the cantus firmus below: every half bar's figure one of the catalogue's; every tie to an equal or shorter value", st.lines === 5 && known === st.halves && st.ties > 0 && st.tiesOk === st.ties);
     notes.push("Fux, measured: " + M.describe(st).slice(1, 5).join(" · "));
     const fux = Object.values(F.CANTI).filter((cc) => cc.fux);
-    const gen = (costs, s0) => {
+    const gen = (costs, s0, economy = 0) => {
       const out = [];
-      for (const cc of fux) for (let s = s0; s < s0 + 3; s++) { const x = F.florid(cc.cf, cc.key, { r: rng(s), costs }); if (x) out.push({ cc, x, line: { cf: cc.cf, key: cc.key, eighths: x.eighths, frame: x.frame } }); }
+      for (const cc of fux) for (let s = s0; s < s0 + 3; s++) { const x = F.florid(cc.cf, cc.key, { r: rng(s), costs, economy }); if (x) out.push({ cc, x, line: { cf: cc.cf, key: cc.key, eighths: x.eighths, frame: x.frame } }); }
       return out;
     };
     const plain = gen(null, 11), dorian = plain.filter(({ cc }) => cc.key.mode === "dorian");
     is("florid over Fux's six canti firmi in their modes: every one drawn, the dorian cadence through C♯", plain.length === 18 && dorian.every(({ x }) => x.frame[x.frame.length - 2] === "C#5" || x.frame[x.frame.length - 2] === "C#4" || !/^C/.test(x.frame[x.frame.length - 2])));
-    const d0 = M.distance(M.measure(plain.map((g) => g.line)), st), d1 = M.distance(M.measure(gen(M.FUX_COSTS, 11).map((g) => g.line)), st);
+    const d0 = M.distance(M.measure(plain.map((g) => g.line)), st), d1 = M.distance(M.measure(gen(M.FUX_COSTS, 11, M.FUX_ECONOMY).map((g) => g.line)), st);
     is("… drawn with the costs fitted to Fux (FUX_COSTS), at most half as far from his figures, bars' rhythms and frames' moves", d1 <= d0 / 2);
     notes.push(`Fux's costs: ${d0.toFixed(2)} → ${d1.toFixed(2)} from his figures, rhythms and frames`);
     // the frame measured: his syncopations (a note held over the bar) and thirds, drawn as often as he writes them
     const share = (st2, ks) => ks.reduce((a, k) => a + (st2.frame.get(k) || 0), 0) / [...st2.frame.values()].reduce((a, b) => a + b, 0);
-    const sf = M.measure(gen(M.FUX_COSTS, 11).map((g) => g.line)), sp = M.measure(plain.map((g) => g.line));
+    const sf = M.measure(gen(M.FUX_COSTS, 11, M.FUX_ECONOMY).map((g) => g.line)), sp = M.measure(plain.map((g) => g.line));
     is("… its frames: held over the bar and moving by thirds about as often as his (within 12 points), more than with the catalogue's", Math.abs(share(sf, ["0"]) - share(st, ["0"])) <= 0.12 && Math.abs(share(sf, ["+2", "-2"]) - share(st, ["+2", "-2"])) <= 0.12 && share(sf, ["0", "+2", "-2"]) > share(sp, ["0", "+2", "-2"]));
     notes.push(`the frame held / by thirds: Fux ${Math.round(100 * share(st, ["0"]))}% / ${Math.round(100 * share(st, ["+2", "-2"]))}%, the engine with his costs ${Math.round(100 * share(sf, ["0"]))}% / ${Math.round(100 * share(sf, ["+2", "-2"]))}%, with the catalogue's ${Math.round(100 * share(sp, ["0"]))}% / ${Math.round(100 * share(sp, ["+2", "-2"]))}%`);
+  }
+
+  // coherence, read both ways: a derivation's length (a cell heard again, or inverted, cheaper than a new one); Fux's
+  // own, and the engine's with his economy as near it as his figures are
+  {
+    const k1 = { cell: "Q", shape: [0, 2] }, inv = { cell: "Q", shape: [0, -2] }, other = { cell: "QE", shape: [0, 1, 2] };
+    const same = F.derivationLength([k1, k1, k1, k1]).bits, inverted = F.derivationLength([k1, inv, k1, inv]).bits, mixed = F.derivationLength([k1, other, inv, { cell: "DQ", shape: [0, -1] }]).bits;
+    is("the derivation's length: a cell again cheaper than its inversion, an inversion cheaper than a new cell", same < inverted && inverted < mixed);
+    const fuxLines = (await M.loadFux()).filter((e) => e.cfPart === "Lower").map(M.lineOfKern), sf = M.measure(fuxLines);
+    const fuxBits = sf.bits / sf.halves2;
+    const fux = Object.values(F.CANTI).filter((cc) => cc.fux);
+    const bitsOf = (o) => { let b = 0, h = 0, k = 0, m = 0; for (const cc of fux) for (let s = 31; s < 34; s++) { const x = F.florid(cc.cf, cc.key, { r: rng(s), ...o }); if (x) { const d = F.derivationLength(x.spans.slice(0, -1)); b += d.bits; h += x.spans.length - 1; k += d.cells; m++; } } return { perHalf: b / h, cells: k / m }; };
+    const plain = bitsOf({ costs: M.FUX_COSTS, economy: 0 }), eco = bitsOf({ costs: M.FUX_COSTS, economy: M.FUX_ECONOMY });
+    is(`… Fux's examples ${fuxBits.toFixed(2)} bits a half bar; the engine ${plain.perHalf.toFixed(2)} without economy, ${eco.perHalf.toFixed(2)} with his (within half a bit of his), with fewer distinct cells (${plain.cells.toFixed(1)} → ${eco.cells.toFixed(1)})`,
+       eco.perHalf < plain.perHalf && Math.abs(eco.perHalf - fuxBits) < 0.5 && eco.cells < plain.cells);
   }
 
   const x0 = runs[0].x;

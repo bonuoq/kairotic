@@ -26,6 +26,7 @@ await (async function () {
     scittle.core.eval_string(doc.getElementById("page-cljs").textContent);
 
     is("ready: a florid line over the ten-bar cantus firmus, 19 half bars, 76 eighths", $("status").textContent === "Ready" && S().state().frame === 19 && S().state().eighths === 76);
+    is("… its coherence measured: the derivation's bits a half bar and its distinct cells", /coherence: \d+\.\d+ bits a half bar, \d+ distinct cells/.test($("facts").textContent));
     is("… its five rows drawn (cantus, frame, rhythm, figures, surface), the figures named", document.querySelectorAll("#line .row").length === 5 && /figures:/.test($("facts").textContent));
     is("… reduced back: a row a level, the frame's downbeats counted", S().state().levels > 2 && S().state().rows === S().state().levels && /of its downbeats are the frame's/.test($("red-facts").textContent));
     $("cf").value = "g-major"; $("cf").dispatchEvent(new Event("change"));
