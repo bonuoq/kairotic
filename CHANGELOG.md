@@ -9,7 +9,9 @@
   away, `[:d 2]` units later, `[:imitation 1]` a canon (0.6 near, 0.3 by motion, 0 free counterpoint), `[:species 4]`,
   `[:invert 12]`, in the tree's key or `[:key "d dorian"]` with its musica ficta; a bang another comes, `:any` any,
   counted (outlet 1). Frère Jacques two bars later at the octave below: exactly one comes, the round itself; two
-  units later, none — the box says so.
+  units later, none — the box says so. The dux may rest (the gaps between its notes, read from the start): a canon's
+  comes rests where the dux rested, a near or free one need not. A long dux is counted within the box's limit, as
+  `cac partimento`'s bass is; past it, a comes is found by search (`countWithin`), and the page does not freeze.
 - **The menu ☰ beside the logo, and a dialog for what it opens.** The menu's button is larger, the first thing of the
   header at the top left. What it opens that is a place of its own opens in the app's dialog, over the app as Sessions
   does (Close, Esc or a click on the shade back to the work): **Share/Export** and **Feedback** (no longer a tab);
