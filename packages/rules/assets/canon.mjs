@@ -25,6 +25,8 @@
 // names its rules, `canon-2` all of them in the order counterpoint.mjs reads them, and a spec's `on` turns one off.
 
 import { solveVoices, STYLES, CATALOGUES, resolveStyle } from "./rules.mjs";
+import { degreeOf, parseKey, guessKey, codeOf3 } from "./tonal.mjs";
+import { melodicParts, defaultWeights } from "./soft.mjs";
 import { makeSystem, keySystem, DIATONIC } from "./systems.mjs";
 
 const mod = (a, m) => ((a % m) + m) % m;
@@ -146,6 +148,8 @@ export const CANON_VOICE = {
       return `${role === "comes" ? "the comes: " : ""}at the cadence the leading tone raised (musica ficta)`;
     return null;
   },
+  /** given · the dux given, note by note (cac imitation: a tree's voice; spec.given, one code a beat). */
+  given: (w, role) => (U, t, x) => (role === "dux" && w.spec.given && x !== w.spec.given[t] ? "the dux is given" : null),
   /** line · a note held some beats at most; the system's melodic intervals; after a leap the line turns. */
   melodic: (w, role) => (U, t, x) => (role === "comes" && (t < w.d || x === null) ? null : melodicOf(w, U, t, x, role === "dux" ? "" : "the comes: ", role === "dux" ? w.maxHold : w.maxHold * w.aug)),
 };
@@ -278,7 +282,13 @@ export function canonVoices(spec, style0 = "canon-2") {
   const w = canonWorld(spec), { n, d, lo, hi, clo, chi, maxHold, b, aug, bnd } = w;
   const solver = (role, ids, codes) => {
     const fs = ids.map((id) => CANON_VOICE[id](w, role));
-    return { codes, check: (U, t, x) => { if (t >= n) return "the work is finished"; for (const f of fs) { const e = f(U, t, x); if (e) return e; } return null; }, costParts: () => ({}) };
+    // (soft: the comes's line weighed as every engine's — steps rather than leaps, a leap turned, no hovering —, on
+    // its degrees; the dux given costs nothing)
+    const W = { ...defaultWeights(), ...(style.weights || {}), ...(spec.weights || {}) };
+    const costParts = spec.soft && role === "comes"
+      ? (U, x) => (x === null ? {} : melodicParts(U.filter((y) => y !== null && y !== undefined).map(w.deg), w.deg(x), W))
+      : () => ({});
+    return { codes, check: (U, t, x) => { if (t >= n) return "the work is finished"; for (const f of fs) { const e = f(U, t, x); if (e) return e; } return null; }, costParts };
   };
   const dcodes = w.codesIn(lo, hi), ccodes = [null, ...w.codesIn(clo, chi)];
   const between = style.between.map(([id, p]) => CANON_BETWEEN[id](w, p && typeof p === "object" && p.of ? p.of : p));
@@ -293,4 +303,33 @@ export function canonVoices(spec, style0 = "canon-2") {
            judge: (D, C) => SV.judgeW([D, C], `the voices are not ${n} beats long`) };
 }
 
-export default { canonVoices, canonWorld, CANON_VOICE, CANON_BETWEEN, CANON_STYLES, band };
+/**
+ * A dux given, the comes found (cac imitation): spec {notes [{midi, units}] (the dux, a unit its shortest note), key
+ * (a name, {tonic, mode}; else guessed), k (steps away, −7: an octave below), d (units later), b (2: strong on the even
+ * units), imitation (1 a canon, 0.6 near, 0.3 by motion, 0 free counterpoint), species, invert, maxHold, transform,
+ * style (imitation-2 or one that extends it), weights}. The dux keeps its notes (its own rules off: it is given); the
+ * comes follows every rule of the style, against it. → canonVoices's count, engine, sample, judge, and dux (its codes),
+ * key, unknown (the dux's notes out of the key), spell (a code as a tree writes it).
+ */
+export function imitation(spec = {}) {
+  const key = parseKey(spec.key) || guessKey(spec.notes.map((x) => x.midi));
+  const W0 = canonWorld({ tonic: 0, k: 0, d: 1, n: 1, lo: 0, hi: 0, key }), S = W0.S, K = S.key;
+  const dux = [], unknown = [];
+  spec.notes.forEach((x, i) => {
+    const dr = degreeOf(K, x.midi), c = dr && S.codesIn(dr.d, dr.d).find((y) => S.alt(y) === dr.r);
+    if (c === undefined || !dr) unknown.push(`note ${i + 1}`);
+    for (let j = 0; j < Math.max(1, x.units || 1); j++) dux.push(c ?? null);
+  });
+  const degs = dux.filter((c) => c !== null).map(S.deg);
+  const n = dux.length, d = Math.min(spec.d ?? 2, Math.max(1, n - 1)), k = spec.k ?? -7;
+  const lo = Math.min(...degs), hi = Math.max(...degs);
+  const first = degs.length ? degs[0] : 0;
+  const cspec = { tonic: 0, key, k, d, b: spec.b ?? 2, n, lo, hi, imitation: spec.imitation ?? 1, species: spec.species, invert: spec.invert || [],
+                  maxHold: spec.maxHold, transform: spec.transform, given: dux, starts: [...new Set([first, 0, 4, 7])], soft: true, weights: spec.weights };
+  const CV = unknown.length ? null : canonVoices(cspec, spec.style || "imitation-2");
+  const spell = (c) => S.pitchName(c).replace("𝄫", "bb").replace("𝄪", "##").replace("♭", "b").replace("♯", "#").replace(/^[A-G]/, (x) => x.toLowerCase());
+  return { ...(CV || {}), key, K, dux, unknown, n, d, k, spell, midi: (c) => S.midi(c),
+           count: () => (CV ? CV.count() : 0n) };
+}
+
+export default { canonVoices, canonWorld, imitation, CANON_VOICE, CANON_BETWEEN, CANON_STYLES, band };

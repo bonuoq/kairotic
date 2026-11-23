@@ -914,6 +914,9 @@ Object.assign(STYLES, {
     dux: [["range"], ["entry"], ["melodic"], ["final"], ["approach"], ["syncopation"], ["ficta"]],
     comes: [["entry"], ["range"], ["syncopation"], ["melodic"], ["ficta"]],
     between: [["resolution", { of: "dux" }], ["imitation"], ["resolution", { of: "comes" }], ["crossing"], ["vertical"]] },
+  // (a dux given — cac imitation: a tree's voice —, the comes found against it: the dux's own rules off, it is given)
+  "imitation-2": { style: "imitation-2", version: "1.0.0", parts: 2, engine: "canon", extends: "canon-2",
+    dux: [["range", false], ["entry", false], ["melodic", false], ["final", false], ["approach", false], ["syncopation", false], ["ficta", false], ["given"]] },
   "partimento-2": { style: "partimento-2", version: "1.0.0", parts: 3, voice: "partimento-1",
     between: [["order", { form: "three" }], ["imitation"], ["exchange"], ["apart"], ["seconds"], ["six-four"], ["parallels-upper"], ["false-relation"], ["chord"], ["doubling"], ["dominant-major"]],
     softBetween: [] },
