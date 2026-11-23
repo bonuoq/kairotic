@@ -1046,10 +1046,10 @@ A rule named again takes its new parameters, `[:rule false]` removes it; `:voice
                ["[:staves 2]" "short score: soprano and alto on one staff, tenor and bass on another"]
                ["[:style :partimento-2]" "another style: its rules, its parts"] ["[:style {:extends :chorale-4 …}]" "a style in EDN, extending another"]
                [":styles" "the styles there are, with their versions (outlet 1)"]]
-    :example (lines "(box :b1 \"tree\" 40 30)" "(resize :b1 420 120)"
+    :example (lines "(box :b1 \"tree\" 40 30)" "(resize :b1 420 150)"
                     "(code :b1 \"[:voice {:key \\\"C major\\\"} [:note {:pitch \\\"c3\\\" :dur 2}] [:note {:pitch \\\"d3\\\" :dur 2 :fig \\\"6/4/3\\\"}] [:note {:pitch \\\"e3\\\" :dur 2 :fig \\\"6/3\\\"}] [:note {:pitch \\\"f3\\\" :dur 2 :fig \\\"6/5\\\"}] [:note {:pitch \\\"g3\\\" :dur 2}] [:note {:pitch \\\"a3\\\" :dur 2 :fig \\\"6/3\\\"}] [:note {:pitch \\\"b3\\\" :dur 2 :fig \\\"6/5\\\"}] [:note {:pitch \\\"c4\\\" :dur 2}]]\")"
-                    "(box :b2 \"cac partimento\" 40 170)" "(box :b3 \"tree\" 40 230)" "(resize :b3 420 320)" "(box :b4 \"print\" 260 170)"
-                    "(box :b5 \"bang\" 480 30)" "(box :b6 \"bang\" 260 120)"
+                    "(box :b2 \"cac partimento\" 40 230)" "(box :b3 \"tree\" 40 290)" "(resize :b3 420 340)" "(box :b4 \"print\" 260 230)"
+                    "(box :b5 \"bang\" 480 30)" "(box :b6 \"bang\" 260 190)"
                     "(connect :b5 0 :b1 0)" "(connect :b1 0 :b2 0)" "(connect :b6 0 :b2 0)" "(connect :b2 0 :b3 0)" "(connect :b2 1 :b4 0)")
     :try "Click the bang beside the tree: its bass — the Rule of the Octave going up, its figures 6/4/3 on ②, 6/5 on ④ and ⑦ — goes into cac partimento, and the four parts come out as a score; print says how many there are. Click the bang over cac for another; open its code (double-click) and press Analysis to see the chords it made over the bass."
     :see ["tree" "mt" "comes"]}
