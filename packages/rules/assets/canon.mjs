@@ -24,7 +24,7 @@
 // canonVoices(spec) takes counterpoint.canon's spec and counts the same (tests/rules.mjs: to the number); a style
 // names its rules, `canon-2` all of them in the order counterpoint.mjs reads them, and a spec's `on` turns one off.
 
-import { solveVoices, STYLES, CATALOGUES, resolveStyle } from "./rules.mjs";
+import { solveVoices, STYLES, CATALOGUES, resolveStyle, within } from "./rules.mjs";
 import { degreeOf, parseKey, guessKey, codeOf3 } from "./tonal.mjs";
 import { melodicParts, defaultWeights } from "./soft.mjs";
 import { makeSystem, keySystem, DIATONIC } from "./systems.mjs";
@@ -64,9 +64,13 @@ export function canonWorld(spec) {
   const transforms = [[null, (a, z) => [a, z]], ...invert.map((N) => [N, (a, z) => [z, shift(a, N - 1)]])];
   const label = (N) => (N ? `under inversion at the ${S.intervalName(N - 1)}: ` : "");
   const source = (t) => (t - d >= 0 ? Math.floor((t - d) / aug) : null);
-  // (the comes's note in a strict canon: the dux's degree, transformed; its alteration its own)
-  const model = (D, t) => { const i = source(t); return i !== null && i < D.length ? Tx(deg(D[i])) : null; };
+  // (the comes's note in a strict canon: the dux's degree, transformed; its alteration its own; null where the dux
+  // rests — a given dux, cac imitation's, may)
+  const model = (D, t) => { const i = source(t); return i !== null && i < D.length && D[i] !== null && D[i] !== undefined ? Tx(deg(D[i])) : null; };
+  // (the dux rested there, d beats before: a given dux's rest, which the comes may imitate)
+  const restAt = (t) => { const G = spec.given, i = source(t); return !!G && i !== null && i < G.length && G[i] === null; };
   function dissonant(x, c) {
+    if (x === null || x === undefined || c === null || c === undefined) return false;
     const [l0, h0] = lowerFirst(x, c);
     for (const [, f] of transforms) { const [l, h] = f(l0, h0); if (deg(h) >= deg(l) && S.quality(l, h) === "dissonant") return true; }
     return false;
@@ -78,14 +82,14 @@ export function canonWorld(spec) {
   };
   const suspensionAt = (D, C, t) => b > 1 && t >= 1 && strong(t) && C[t] !== null && dissonant(D[t], C[t]) && holder(D, C, t) !== null;
   return { spec, S, N7, deg, shift, codesIn, tonic, k, d, b, n, lo, hi, clo, chi, spacing, phase, maxHold, aug, Tx, bnd, invert, on, starts, cstarts,
-           finals, strong, lowerFirst, transforms, label, source, model, dissonant, holder, suspensionAt };
+           finals, strong, lowerFirst, transforms, label, source, model, restAt, dissonant, holder, suspensionAt };
 }
 
 /** A line's melodic rules at t (the same pitch again: the note held, hold beats at most; the moves struck): a reason
  *  or null. who: "" (the dux), "the comes: ". */
 function melodicOf(w, line, t, x, who, hold) {
   const { S, on, deg } = w, prev = t >= 1 ? line[t - 1] : null;
-  if (prev === null || prev === undefined) return null;
+  if (prev === null || prev === undefined || x === null) return null;
   let j = t - 1;
   while (j >= 1 && line[j - 1] === prev) j--;
   if (x === prev) return t - j >= hold ? `${who}a note is held for ${hold === 2 ? "two" : hold} beats at most` : null;
@@ -104,13 +108,13 @@ function melodicOf(w, line, t, x, who, hold) {
 // (U the voice's line before t, x its note at t; role "dux" or "comes")
 export const CANON_VOICE = {
   /** note · within its range (the comes's: the dux's, transformed). */
-  range: (w, role) => (U, t, x) => (role === "comes" && x === null ? null : w.on("range") && (role === "dux" ? w.deg(x) < w.lo || w.deg(x) > w.hi : w.deg(x) < w.clo || w.deg(x) > w.chi) ? (role === "dux" ? "out of range" : "the comes: out of range") : null),
+  range: (w, role) => (U, t, x) => (x === null ? null : w.on("range") && (role === "dux" ? w.deg(x) < w.lo || w.deg(x) > w.hi : w.deg(x) < w.clo || w.deg(x) > w.chi) ? (role === "dux" ? "out of range" : "the comes: out of range") : null),
   /** edge · the comes silent until it enters (d beats after the dux), sounding from then on; it enters on the final,
    *  its 5th, its octave or the 4th below, shifted as the canon shifts it. The dux starts so too. */
   entry: (w, role) => (U, t, x) => {
     if (role === "dux") return w.on("start") && t === 0 && !w.starts.includes(w.deg(x)) ? "the dux starts on the final, its 5th, its octave or the 4th below" : null;
     if (t < w.d) return x === null ? null : "the comes has not entered yet";
-    if (x === null) return "the comes sounds from its entry on";
+    if (x === null) return w.restAt(t) ? null : "the comes sounds from its entry on";
     return null;
   },
   /** edge · the dux ends on the final, approached by step. */
@@ -161,7 +165,7 @@ export const CANON_BETWEEN = {
   resolution: (w, role) => ({ id: "resolution-" + role, check: ({ W, t, x: [x, c] }) => {
     const [D, C] = W;
     const i = role === "dux" ? 0 : 1, L = W[i], y = role === "dux" ? x : c;
-    if (role === "comes" && (t < w.d || c === null)) return null;
+    if (y === null || y === undefined || (role === "comes" && t < w.d)) return null;
     const DD = [...D, x], CC = [...C, c];
     if (t >= 2 && w.suspensionAt(DD, CC, t - 1)) {
       return w.holder(DD, CC, t - 1) === role && w.deg(y) !== w.deg(L[t - 1]) - 1 ? `the suspension resolves down by step (the ${role})` : null;
@@ -172,8 +176,12 @@ export const CANON_BETWEEN = {
   } }),
   /** given · a canon: the comes is the dux's note (d beats later, k steps away, transformed); near: within a 3rd. */
   imitation: (w) => ({ id: "imitation", check: ({ W: [D], t, x: [, c] }) => {
-    if (t < w.d || c === null) return null;
-    const m = w.model(D, t), cadence = w.on("syncopation") && w.b === 2 && t === w.n - 1;
+    if (t < w.d) return null;
+    const m = w.model(D, t);
+    // (where the dux rested — a given dux — a canon rests too, a near imitation may; a free one need not)
+    if (m === null) return c !== null && (w.bnd === "canon") ? "a canon: the comes rests where the dux rested" : null;
+    if (c === null) return null;
+    const cadence = w.on("syncopation") && w.b === 2 && t === w.n - 1;
     if (w.bnd === "canon" && w.deg(c) !== m && !cadence) return "a canon: the comes is the dux's note";
     if (w.bnd === "near" && Math.abs(w.deg(c) - m) > 2) return "the comes keeps within a 3rd of the dux's note";
     if (w.on("start") && t === w.d && !w.cstarts.includes(w.deg(c))) return "the comes enters on the final, its 5th, its octave or the 4th below (shifted)";
@@ -181,7 +189,7 @@ export const CANON_BETWEEN = {
   } }),
   /** pair · the voices do not cross; not further apart than the spacing. */
   crossing: (w) => ({ id: "crossing", check: ({ t, x: [x, c] }) => {
-    if (t < w.d || c === null) return null;
+    if (t < w.d || c === null || x === null) return null;
     if (w.on("no-crossing") && w.k !== 0) { const [l, h] = w.lowerFirst(x, c); if (w.deg(l) > w.deg(h)) return "the voices cross"; }
     if (w.on("spacing") && Math.abs(w.deg(x) - w.deg(c)) > w.spacing) return `more than a ${w.S.intervalName(w.spacing)} apart`;
     return null;
@@ -192,15 +200,16 @@ export const CANON_BETWEEN = {
    *  voices by step, never two in a row; the comes enters on no unison; the last vertical perfect, by no forbidden
    *  cadence. */
   vertical: (w) => ({ id: "vertical", check: ({ W: [D, C], t, x: [x, c] }) => {
-    if (t < w.d || c === null) return null;
+    // (one voice resting — the comes, or a given dux —: nothing sounds together)
+    if (t < w.d || c === null || x === null) return null;
     const { S, N7, b, n, on, lowerFirst, transforms, label, strong, deg } = w;
     const quality = S.quality, intervalName = S.intervalName;
     const prev = t >= 1 ? D[t - 1] : null, pc = t >= 1 ? C[t - 1] : null;
     const resolving = t >= 2 && w.suspensionAt([...D, x], [...C, c], t - 1);
     const [l0, h0] = lowerFirst(x, c);
-    const hasPrev = pc !== null && pc !== undefined;
+    const hasPrev = pc !== null && pc !== undefined && prev !== null && prev !== undefined;
     const [pl0, ph0] = hasPrev ? lowerFirst(prev, pc) : [0, 0];
-    const sb = b > 1 && strong(t) && t - b >= 0 && C[t - b] !== null ? lowerFirst(D[t - b], C[t - b]) : null;
+    const sb = b > 1 && strong(t) && t - b >= 0 && C[t - b] !== null && D[t - b] !== null ? lowerFirst(D[t - b], C[t - b]) : null;
     const hd = hasPrev && x === prev, hc = hasPrev && c === pc;
     const held = hd !== hc ? (hd ? "dux" : "comes") : null;
     const heldLower0 = held && (w.k > 0 ? held === "dux" : held === "comes");
@@ -250,6 +259,7 @@ export const CANON_BETWEEN = {
     if (diss && b > 1 && strong(t) && on("consonance")) {
       if (t === n - 1) return "the work does not end on a dissonance";
     } else if (diss && b > 1 && on("weak-dissonance")) {
+      if (prev === null || prev === undefined) return "a dissonance on a weak beat: the dux comes to it by step";
       if (Math.abs(deg(x) - deg(prev)) !== 1) return "a dissonance on a weak beat: the dux comes to it by step";
       if (!hasPrev) return "the comes cannot enter on a dissonance";
       if (Math.abs(deg(c) - deg(pc)) !== 1) return "a dissonance on a weak beat: the comes comes to it by step";
@@ -290,7 +300,8 @@ export function canonVoices(spec, style0 = "canon-2") {
       : () => ({});
     return { codes, check: (U, t, x) => { if (t >= n) return "the work is finished"; for (const f of fs) { const e = f(U, t, x); if (e) return e; } return null; }, costParts };
   };
-  const dcodes = w.codesIn(lo, hi), ccodes = [null, ...w.codesIn(clo, chi)];
+  // (a given dux may rest: null among its codes)
+  const dcodes = [...(spec.given && spec.given.includes(null) ? [null] : []), ...w.codesIn(lo, hi)], ccodes = [null, ...w.codesIn(clo, chi)];
   const between = style.between.map(([id, p]) => CANON_BETWEEN[id](w, p && typeof p === "object" && p.of ? p.of : p));
   // the memo: the notes the rules look back at — a note held (maxHold beats) and the note struck before it, the
   // strong beat before, and (a canon) the dux's note the comes repeats, further back in an augmentation
@@ -306,16 +317,18 @@ export function canonVoices(spec, style0 = "canon-2") {
 /**
  * A dux given, the comes found (cac imitation): spec {notes [{midi, units}] (the dux, a unit its shortest note), key
  * (a name, {tonic, mode}; else guessed), k (steps away, −7: an octave below), d (units later), b (2: strong on the even
- * units), imitation (1 a canon, 0.6 near, 0.3 by motion, 0 free counterpoint), species, invert, maxHold, transform,
+ * units; a rest {midi: null, units}), imitation (1 a canon, 0.6 near, 0.3 by motion, 0 free counterpoint), species, invert, maxHold, transform,
  * style (imitation-2 or one that extends it), weights}. The dux keeps its notes (its own rules off: it is given); the
  * comes follows every rule of the style, against it. → canonVoices's count, engine, sample, judge, and dux (its codes),
- * key, unknown (the dux's notes out of the key), spell (a code as a tree writes it).
+ * key, unknown (the dux's notes out of the key), spell (a code as a tree writes it), countWithin(ms) (the count, or
+ * null when it would take longer: then search finds a comes without counting).
  */
 export function imitation(spec = {}) {
-  const key = parseKey(spec.key) || guessKey(spec.notes.map((x) => x.midi));
+  const key = parseKey(spec.key) || guessKey(spec.notes.filter((x) => x.midi !== null && x.midi !== undefined).map((x) => x.midi));
   const W0 = canonWorld({ tonic: 0, k: 0, d: 1, n: 1, lo: 0, hi: 0, key }), S = W0.S, K = S.key;
   const dux = [], unknown = [];
   spec.notes.forEach((x, i) => {
+    if (x.midi === null || x.midi === undefined) { for (let j = 0; j < Math.max(1, x.units || 1); j++) dux.push(null); return; }
     const dr = degreeOf(K, x.midi), c = dr && S.codesIn(dr.d, dr.d).find((y) => S.alt(y) === dr.r);
     if (c === undefined || !dr) unknown.push(`note ${i + 1}`);
     for (let j = 0; j < Math.max(1, x.units || 1); j++) dux.push(c ?? null);
@@ -324,12 +337,14 @@ export function imitation(spec = {}) {
   const n = dux.length, d = Math.min(spec.d ?? 2, Math.max(1, n - 1)), k = spec.k ?? -7;
   const lo = Math.min(...degs), hi = Math.max(...degs);
   const first = degs.length ? degs[0] : 0;
+  if (!degs.length) unknown.push("no notes");
   const cspec = { tonic: 0, key, k, d, b: spec.b ?? 2, n, lo, hi, imitation: spec.imitation ?? 1, species: spec.species, invert: spec.invert || [],
                   maxHold: spec.maxHold, transform: spec.transform, given: dux, starts: [...new Set([first, 0, 4, 7])], soft: true, weights: spec.weights };
   const CV = unknown.length ? null : canonVoices(cspec, spec.style || "imitation-2");
   const spell = (c) => S.pitchName(c).replace("𝄫", "bb").replace("𝄪", "##").replace("♭", "b").replace("♯", "#").replace(/^[A-G]/, (x) => x.toLowerCase());
   return { ...(CV || {}), key, K, dux, unknown, n, d, k, spell, midi: (c) => S.midi(c),
-           count: () => (CV ? CV.count() : 0n) };
+           count: () => (CV ? CV.count() : 0n),
+           countWithin: (ms) => { if (!CV) return 0n; try { return within(ms, () => CV.count()); } catch (e) { if (e.tooLong) return null; throw e; } } };
 }
 
 export default { canonVoices, canonWorld, imitation, CANON_VOICE, CANON_BETWEEN, CANON_STYLES, band };
