@@ -7,6 +7,14 @@
   `necklace` after it plays in the gaps of what the performer plays. The next onset takes over (a new generation
   forgets the beats planned), early or late, and nothing is said twice; a whole cycle without onsets and it waits.
   On the right a kept beat is `{:phase :n :pulse :kept true}`. The help's example shows it with the metro taken away.
+- **Study 64 · florid: coherence, read both ways** (discussion #342). A line's derivation — its cells, each a rhythm
+  and a shape relative to the frame, so a figure in sequence is the same cell — has a length: the bits a listener
+  learning the piece as it goes needs for it (`derivationLength`, `lexicon`: a cell heard before is cheap, its
+  inversion half as good, a new one dear). Read: Fux's own examples take 2.85 bits a half bar and about five distinct
+  cells a line (`measure`'s coherence). Drawn: `florid({economy})` weighs it as a cost, the derivation's length beside
+  every other preference; with his economy (`FUX_ECONOMY`, 3) and his costs refitted with it, the engine's lines over
+  his canti firmi take 2.8 bits and 5.3 cells (3.7 and 7.5 without), as near his figures as before. The page's
+  *Economy*, and each line's coherence in its facts.
 - **`cac imitation`: a dux with rests, and a long dux counted within a limit** (`@kairotic/rules` 0.11.0,
   `@kairotic/cac` 0.15.0). The dux may rest (the gaps between its notes, read from the start; they were lost, and what
   came after them shifted): a canon's comes rests where the dux rested, a near or free one need not, and the dux is

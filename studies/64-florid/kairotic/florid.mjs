@@ -216,7 +216,7 @@ export const RHYTHM = { mpr5: 0.6, again: -0.6, third: 1.2, aba: -0.3, inner: 0.
  * last), by a softmax at temperature temp. density: the arc's height (0 … 1). → {eighths (names), spans: [{unit,
  * cell, figure, name, notes}], rhythm: [cells a half bar], frame (names)} or null.
  */
-export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.random, density = 0.6, weights = {}, costs = null } = {}) {
+export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.random, density = 0.6, weights = {}, costs = null, economy = 0 } = {}) {
   const Wt = { ...RHYTHM, ...weights };
   const K = keyOf(key), U = frame.units, n = U.length;
   const opts = optionsOf(frame, cf, key, (costs && costs.figures) || {});
@@ -285,6 +285,8 @@ export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.ra
   // the figures, a half bar at a time, the melody's coherence on the surface
   const eighths = [], spans = [], line = [];
   const deg = (nm) => codeDegree(codeOf(K, nm));
+  // (economy: the derivation's length as a cost — a cell heard before, or its inversion, cheaper than a new one)
+  const lex = lexicon();
   for (let t = 0; t < n - 1; t++) {
     const cell = rhythm[t], next = t + 1 < n - 1 ? rhythm[t + 1] : "H", cands = opts[t].byCell[cell].filter((o) => tieOk(o, next));
     const prev = spans[t - 1], prev2 = spans[t - 2];
@@ -298,16 +300,48 @@ export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.ra
       if (prev && prev.shape && dir(prev.shape) !== 0 && dir(prev.shape) === dir(o.shape)) c -= 0.2;
       // a figure in sequence: the same shape and cell as two half bars before (the same place in the bar before)
       if (prev2 && prev2.figure === o.f.id && prev2.cell === cell && prev2.shape.join() === o.shape.join()) c -= 0.4;
+      // the derivation's length: what this cell costs to say after the ones heard
+      if (economy) c += economy * lex.bits(cellKey(cell, o.shape)) / 4;
       return { ...o, cost: c };
     });
     const ch = choose(scored, temp, r);
     CELLS[cell].forEach((d, j) => { for (let k = 0; k < d; k++) eighths.push(ch.names[j]); });
     for (const nm of ch.names) { const d = deg(nm); if (line[line.length - 1] !== d) line.push(d); }
     spans.push({ unit: t, cell, figure: ch.f.id, name: ch.f.name, notes: ch.names, shape: ch.shape });
+    lex.add(cellKey(cell, ch.shape));
   }
   for (let j = 0; j < SUB; j++) eighths.push(frame.names[n - 1]);
   spans.push({ unit: n - 1, cell: "H", figure: "held", name: "the final note", notes: [frame.names[n - 1]], shape: [0] });
   return { eighths, spans, rhythm: [...rhythm, "H"], frame: frame.names };
+}
+
+// ─── coherence: the derivation's length ───
+/** A cell of the surface: its rhythm and its shape relative to the frame's note (so a figure in sequence, the same
+ *  shape at another pitch, is the same cell). */
+export const cellKey = (cell, shape) => cell + ":" + shape.join(",");
+const inverted = (key) => { const [c, sh] = key.split(":"); return c + ":" + sh.split(",").map((x) => String(-Number(x) || 0)).join(","); };
+/**
+ * What a derivation costs to say, cell by cell, as a listener learning the piece as it goes would hear it: a cell
+ * heard before is cheap (the more, the cheaper), its inversion half as good as itself, a new one dear — bits(key)
+ * = −log2 of its chance (its count, half its inversion's, and alpha shared among `kinds` possible cells, over all heard).
+ * The same measure reads a line (measure.mjs) and weighs the engine's choices (elaborate's economy).
+ */
+export function lexicon({ alpha = 1, kinds = 40 } = {}) {
+  const n = new Map();
+  let N = 0;
+  const count = (k) => n.get(k) || 0;
+  return {
+    bits: (key) => -Math.log2((count(key) + 0.5 * (inverted(key) === key ? 0 : count(inverted(key))) + alpha / kinds) / (N + alpha)),
+    add: (key) => { n.set(key, count(key) + 1); N++; },
+    get size() { return n.size; },
+  };
+}
+/** A derivation's length: the bits of its cells, one after the other (spans [{cell, shape}]), in all and a half bar. */
+export function derivationLength(spans, o = {}) {
+  const lex = lexicon(o);
+  let bits = 0;
+  for (const sp of spans) { const k = cellKey(sp.cell, sp.shape); bits += lex.bits(k); lex.add(k); }
+  return { bits, perHalf: spans.length ? bits / spans.length : 0, cells: lex.size };
 }
 
 function choose(opts, temp, r) {
@@ -320,11 +354,11 @@ function choose(opts, temp, r) {
 
 /** Florid counterpoint over a cantus firmus: the frame drawn, then elaborated. costs: {figures, cells, bars} measured
  *  (measure.mjs). {frame, eighths, spans, rhythm} or null. */
-export function florid(cf, key, { temp = 0.4, ftemp = 0.5, rtemp = 0.5, density = 0.6, r = Math.random, tries = 6, costs = null } = {}) {
+export function florid(cf, key, { temp = 0.4, ftemp = 0.5, rtemp = 0.5, density = 0.6, r = Math.random, tries = 6, costs = null, economy = 0 } = {}) {
   for (let i = 0; i < tries; i++) {
     const F = frameOf(cf, key, { temp, r, costs });
     if (!F) return null;
-    const E = elaborate(F, cf, key, { temp: ftemp, rtemp, r, density, costs });
+    const E = elaborate(F, cf, key, { temp: ftemp, rtemp, r, density, costs, economy });
     if (E) return { ...E, frameUnits: F.units };
   }
   return null;
