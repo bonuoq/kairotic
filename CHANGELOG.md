@@ -3,7 +3,7 @@
 ## Unreleased
 
 - **An agent's offers tried before they are offered, and kept when a work is opened from a file**
-  (`@kairotic/rules` 0.10.1, `@kairotic/cac` 0.14.1). Asked for a 16-bar partimento in A major, an agent offered two
+  (`@kairotic/rules` 0.11.1, `@kairotic/cac` 0.15.1). Asked for a 16-bar partimento in A major, an agent offered two
   basses with no realization and a third whose `cac partimento 3 A major` gave nothing; opened on Pages, its offers
   were empty. Now:
   - **The page tries what flows in an offer** before offering it: each tree box's tree is sent, apart, to the box of a
@@ -16,6 +16,12 @@
     place, and the box gave nothing).
   - **A local work opened from a file keeps its agents' offers**: its points get new ids, and now so does every id in
     its events — the point an agent (or a `patch @name`) is pinned to, its offers, the point it built.
+- **`cac imitation`: a dux with rests, and a long dux counted within a limit** (`@kairotic/rules` 0.11.0,
+  `@kairotic/cac` 0.15.0). The dux may rest (the gaps between its notes, read from the start; they were lost, and what
+  came after them shifted): a canon's comes rests where the dux rested, a near or free one need not, and the dux is
+  written again with its rests. A long dux is counted within the box's limit, as `cac partimento`'s bass is
+  (`imitation`'s `countWithin`); past it, a comes is found by search, and the page does not freeze. Fux's cantus
+  firmus as a dux, a near imitation a 5th below: 375 comes, pinned.
 - **`cac imitation`: a melody in, the comes added** (`@kairotic/rules` 0.10.0, `@kairotic/cac` 0.14.0; discussion
   #353). The tree's highest voice is the dux, given note by note (its unit its shortest note); the comes is found
   against it by the comes's engine on the one engine (`canon.mjs`'s `imitation`, the style `imitation-2`: `canon-2`

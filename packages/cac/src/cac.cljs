@@ -11,8 +11,8 @@
 ;; What an analysis finds is written on the tree as its analysis layer (:fig the chord over a bass note, :deg its
 ;; degree, :local the key it is read in, :why a rule broken there), which a tree box's code window shows or hides
 ;; (Analysis).
-(let [origins ["npm:@kairotic/rules@0.10.1/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
-      canon-origins ["npm:@kairotic/rules@0.10.1/dist/canon.mjs" "kairotic/packages/rules/canon.mjs"]
+(let [origins ["npm:@kairotic/rules@0.11.1/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
+      canon-origins ["npm:@kairotic/rules@0.11.1/dist/canon.mjs" "kairotic/packages/rules/canon.mjs"]
       ;; how long the page may count, and search when it cannot (ms): past them the page would freeze (a long bass
       ;; without figures in four parts takes minutes to count), so the box gives up counting and finds a realization
       ;; by search, or says it found none in time
@@ -97,12 +97,21 @@
                        (let [c (nth codes i)
                              j (loop [j (inc i)] (if (and (< j (count codes)) (= c (nth codes j)) (not (strikes j))) (recur (inc j)) j))]
                          (recur j (conj out (if (nil? c) [:rest {:dur (* u (- j i))}] [:note {:pitch (.spell ob c) :dur (* u (- j i))}])))))))
+      ;; (a melody's rests, which voices-of does not see: the gaps between its notes, from the start, as units without
+      ;; a note — the dux rests there, and a canon's comes after it)
+      with-rests (fn [ns u]
+                   (loop [ns ns end 0 out []]
+                     (if-let [nt (first ns)]
+                       (let [gap (js/Math.round (/ (- (:t nt) end) u))]
+                         (recur (rest ns) (+ (:t nt) (:dur nt))
+                                (cond-> out (pos? gap) (conj {:midi nil :units gap :dur (* gap u)}) true (conj nt))))
+                       out)))
       imitation-tree (fn [ob st R]
-                       (let [k (.-K ob) u (:u (:dux st))
-                             onsets (reductions + 0 (map :units (:notes (:dux st))))
+                       (let [k (.-K ob) u (:u (:dux st)) ns (:notes (:dux st))
+                             onsets (keep (fn [[t nt]] (when (:midi nt) t)) (map vector (reductions + 0 (map :units ns)) ns))
                              strikes (set (map #(+ % (.-d ob)) onsets))]
                          [:piece {:key (str (.-tonic k) " " (.-mode k))}
-                          (into [:voice {:name "dux"}] (map (fn [nt] [:note {:pitch (or (:name nt) (api/midi-name (:midi nt))) :dur (:dur nt)}]) (:notes (:dux st))))
+                          (into [:voice {:name "dux"}] (map (fn [nt] (if (:midi nt) [:note {:pitch (or (:name nt) (api/midi-name (:midi nt))) :dur (:dur nt)}] [:rest {:dur (:dur nt)}])) ns))
                           (into [:voice {:name "comes" :clef (if (neg? (.-k ob)) "F" "G")}] (comes-line ob (vec (.-comes R)) u strikes))]))
       band-name (fn [x] (cond (>= x 0.999) "a canon" (>= x 0.5) "near imitation" (>= x 0.2) "imitation by motion" :else "free counterpoint"))
       shown (fn [ob st] {:main (str "cac " (name (:op st :partimento)) " · " (.-voices ob) " parts" (when-let [s (style-name ob)] (str " · " s)))
@@ -124,7 +133,8 @@
                                                                       species (assoc :species species)
                                                                       invert (assoc :invert (if (number? invert) [invert] invert))
                                                                       style (assoc :style (if (map? style) (clj->js style) style)))))]
-                                     {:ob ob :count (str (.count ob))})))))
+                                     ;; counted within count-ms (nil: too long to count here, then found by search)
+                                     {:ob ob :count (some-> (.countWithin ob count-ms) str)})))))
            :build (fn [{:keys [notes key voices fill count? style]} _box]
                     (-> (api/import-module origins)
                         (.then (fn [m]
@@ -161,7 +171,8 @@
                                 (empty? vs) {:state st :show {:main "cac" :sub "✗ no notes in the tree"}}
                                 ;; cac imitation: the highest voice is the dux; the comes is found against it
                                 (= op :imitation)
-                                (let [dux (bass-of (last vs) (arg :unit nil))]
+                                (let [dux (bass-of (last vs) (arg :unit nil))
+                                      dux (update dux :notes with-rests (:u dux))]
                                   {:state (assoc st :tree tree :dux dux :seed (arg :seed 1))
                                    :show {:main "cac imitation" :sub "counting…"}
                                    :effects [[:imitate {:notes (mapv (fn [nt] {:midi (:midi nt) :units (:units nt)}) (:notes dux))
@@ -186,21 +197,27 @@
                              (cond
                                (= op :imitation)
                                (let [r (rng (:seed st 1))
-                                     R (when (and (seq (:count st)) (not= "0" (:count st)))
-                                         (if (= how :any) (.sample ob r) (.engine ob #js {:temp temp :r r})))
-                                     info {:count (:count st) :k (.-k ob) :d (.-d ob) :imitation (band-name (arg :imitation 1))
+                                     ;; (not counted — too long here —: found by search, or none in time)
+                                     R (cond
+                                         (nil? (:count st)) (try (.search ob #js {:temp (if (= how :any) (max 2 temp) temp) :r r :ms search-ms})
+                                                                 (catch :default e (if (.-tooLong e) nil (throw e))))
+                                         (not= "0" (:count st)) (if (= how :any) (.sample ob r) (.engine ob #js {:temp temp :r r})))
+                                     info {:count (or (:count st) "too many to count here") :k (.-k ob) :d (.-d ob) :imitation (band-name (arg :imitation 1))
                                            :key (str (.. ob -K -tonic) " " (.. ob -K -mode))}]
                                  (cond
                                    (seq (.-unknown ob))
                                    {:state st :show {:main "cac imitation" :sub (str "✗ out of the key: " (first (.-unknown ob)))}
                                     :out [[1 (assoc info :count 0 :why (str "notes out of the key: " (apply str (interpose ", " (.-unknown ob)))))]]}
+                                   (and (nil? R) (nil? (:count st)))
+                                   {:state st :show {:main "cac imitation" :sub "✗ too long: no comes found in time"}
+                                    :out [[1 (assoc info :count nil :why "too many to count here, and no comes found in time")]]}
                                    (nil? R)
                                    {:state st :show {:main "cac imitation" :sub (str "✗ no comes: " (band-name (arg :imitation 1)) " · k " (.-k ob) " · d " (.-d ob))}
                                     :out [[1 (assoc info :count 0 :why "no comes for this dux: another k or d, a freer imitation")]]}
                                    :else
                                    {:state (update st :seed #(mod (* (or % 1) 48271) 2147483647))
                                     :show {:main (str "cac imitation · " (band-name (arg :imitation 1)))
-                                           :sub (str (:count st) " comes · k " (.-k ob) " · d " (.-d ob) " · " (.. ob -K -tonic) " " (.. ob -K -mode))}
+                                           :sub (str (or (:count st) "too many to count:") " comes · k " (.-k ob) " · d " (.-d ob) " · " (.. ob -K -tonic) " " (.. ob -K -mode))}
                                     :out [[1 info] [0 (imitation-tree ob st R)]]}))
                                (= op :judge)
                                (let [u (:u (:bass st)) units (.-units ob) ks (kernel-keys (:n st))
