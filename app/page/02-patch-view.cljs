@@ -220,9 +220,9 @@
         d0 (if tree-box? cv/empty (canvas-data b))
         ;; a tree shown live, or the tree a buffer was kept from while it is unchanged (its recipe)
         lt (if tree-box? (own-tree id b) (or (live-tree id) (kept-tree b)))
-        ;; the layers the code window hides, the score hides too: the analysis (its figures under the bass) with Analysis
-        ;; off (discussion #323)
-        an (boolean (:code-analysis @ui))
+        ;; the layers a box does not show (show-layers, its own) its score hides too: the analysis, its figures under the
+        ;; bass (discussion #323)
+        an (contains? (shown-layers b) :analysis)
         lt (if (and lt (not an) (mt/has-layer? lt :analysis)) (mt/without-layers lt #{:analysis}) lt)
         sw (first (box-size id b))
         d [d0 lt sw an] c (get @score-cache id)]
@@ -672,22 +672,27 @@
       (nth vs (mod (inc (or (first (keep-indexed (fn [i v] (when (= v cur) i)) vs)) 0)) (count vs))))))
 
 (defn header-chips
-  "[[kind label title] …] for the header of a box: from right to left."
+  "[[kind label title on?] …] for the header of a box: from right to left."
   [id b]
-  (let [nv (next-view b)]
+  (let [nv (next-view b)
+        t (when (= "tree" (klass (:text b))) (mtb/tree-of (:data b)))
+        an (contains? (shown-layers b) :analysis)]
     (cond-> []
       (and (comp/source-of b) (not= :code (display-of b)))
       (conj [:code "{ }" (str "Its data as text, in the code window: (source " id ")")])
-      nv (conj [:view (str "⇄ " (name nv)) (str "Show it as " (name nv) ": (view " id " " nv ")")]))))
+      nv (conj [:view (str "⇄ " (name nv)) (str "Show it as " (name nv) ": (view " id " " nv ")")])
+      ;; a tree with an analysis (figures under its bass…): this box shows it, or not — its own (show-layers)
+      (and t (mt/has-layer? t :analysis))
+      (conj [:analysis "analysis" (str (if an "Hide" "Show") " its analysis (the figures under the bass, degrees, keys) in its score and its code: (show-layers " id (when-not an " :analysis") ")") an]))))
 
 (def chip-ch 6.4)   ; width of a character of a chip (10.5px mono)
 
 (defn chips-svg
   "The chips drawn from the right edge `x1` of the header; returns [svg width]."
   [id chips x1]
-  (reduce (fn [[acc right] [kind label title]]
+  (reduce (fn [[acc right] [kind label title on]]
             (let [cw (+ 10 (* chip-ch (count label))) x (- right cw)]
-              [(str acc "<g class=\"hchip\" data-chip=\"" (name kind) "\" data-box=\"" (esc (name id)) "\">"
+              [(str acc "<g class=\"hchip" (when on " on") "\" data-chip=\"" (name kind) "\" data-box=\"" (esc (name id)) "\">"
                     "<rect x=\"" x "\" y=\"3\" width=\"" cw "\" height=\"" (- hdr 6) "\" rx=\"3\"></rect>"
                     "<text x=\"" (+ x (/ cw 2)) "\" y=\"" (- hdr 6) "\" text-anchor=\"middle\">" (esc label) "</text>"
                     "<title>" (esc title) "</title></g>")

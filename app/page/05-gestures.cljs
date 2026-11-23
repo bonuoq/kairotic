@@ -926,6 +926,8 @@
             (case (.. el -dataset -chip)
               "view" (gesture! (str "(view " id " " (next-view b) ")"))
               "code" (js/setTimeout (fn [] (open-code-editor! id)) 0)
+              "analysis" (let [now (shown-layers b) ks (if (now :analysis) (disj now :analysis) (conj now :analysis))]
+                           (gesture! (str "(show-layers " id (apply str (map #(str " " (pr-str %)) (sort ks))) ")")))
               nil)))
 
         ;; a control presented in the panel of a sub-patch

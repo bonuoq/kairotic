@@ -151,6 +151,8 @@
                          (and (vector? (:present b)) (= 2 (count (:present b))) (every? number? (:present b)))
                          (assoc :present (:present b))
                          (keyword? (:view b)) (assoc :view (:view b))
+                         ;; the layers a tree box shows of its tree (discussion #323): [:analysis :performance]
+                         (sequential? (:shows b)) (assoc :shows (vec (filter #{:analysis :performance} (:shows b))))
                          ;; a `patch @name` pinned to a point of its line (#117)
                          (and (vector? (:pin b)) (= 2 (count (:pin b))) (string? (first (:pin b))) (number? (second (:pin b))))
                          (assoc :pin (:pin b))
@@ -182,6 +184,11 @@
                   (cond (not (get-in p [:boxes id])) p
                         (keyword? k) (assoc-in p [:boxes id :view] k)
                         :else (update-in p [:boxes id] dissoc :view)))
+    ;; [:shows :b3 [:analysis]]: the layers a tree box shows of its tree, in its score and its code window; [] or nil none
+    :shows      (let [[id ks] args ks (when (sequential? ks) (vec (sort (distinct (filter #{:analysis :performance} ks)))))]
+                  (cond (not (get-in p [:boxes id])) p
+                        (seq ks) (assoc-in p [:boxes id :shows] ks)
+                        :else (update-in p [:boxes id] dissoc :shows)))
     ;; [:pin :b3 [node n]]: a `patch @name` reads its line at that point (#117); nil follows its front again
     :pin        (let [[id pos] args]
                   (cond (not (get-in p [:boxes id])) p

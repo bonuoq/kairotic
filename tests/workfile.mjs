@@ -96,7 +96,17 @@ export async function workfile(page, check) {
   // where it is offered
   await cljs(page, '(open-work! :local "local" "Local")');
   await until(page, "(:loaded @hist)", "true");
+  // Share/Export lives in the menu ☰ now, with Sessions, the work as a file, Feedback and the keys
+  check("the menu ☰ is closed at first", await page.evaluate(() => document.getElementById("app-menu").hidden));
+  await page.click("#menu-btn");
+  check("☰ opens the menu: Sessions, Share/Export, the work as a file (and a release), keys, Feedback, the documentation",
+    await page.evaluate(() => { const m = document.getElementById("app-menu"); const t = m.textContent;
+      return !m.hidden && ["Sessions", "Share/Export", "Download the work", "Download a release", "Keys and gestures", "Feedback", "Documentation"].every((x) => t.includes(x)); }));
+  await page.keyboard.press("Escape");
+  check("... Esc closes it", await page.evaluate(() => document.getElementById("app-menu").hidden));
+  await page.click("#menu-btn");
   await page.click("#embed-btn");
+  check("... an item closes it as it acts", await page.evaluate(() => document.getElementById("app-menu").hidden));
   check("Share/Export offers the work as a file first", await page.evaluate(() => {
     const pop = document.getElementById("embed-pop");
     const blocks = [...pop.children].filter((el) => !el.hidden);

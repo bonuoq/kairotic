@@ -15,8 +15,9 @@ ventana **Sessions** ofrece tres entradas:
 - **Shared rooms** — una obra que todos los de la sala editan a la vez, cada gesto en la misma historia.
 - **Try locally, without saving** — un patch para jugar; no se guarda nada.
 
-Una obra solo puede copiarse a una sala y una sala a una obra solo (con su historia). **Sessions**, arriba
-a la derecha, vuelve a abrir esta ventana.
+Una obra solo puede copiarse a una sala y una sala a una obra solo (con su historia). **Sessions**, en el
+menú ☰ de arriba a la derecha, vuelve a abrir esta ventana (el menú tiene también Share/Export, la obra como archivo,
+Feedback y las teclas y gestos).
 
 En Pages, las salas se sincronizan a través de un **relay**. **Relay**, en la misma ventana, muestra los
 que se usan y si responden; una comunidad puede tener el suyo (`npx @kairotic/relay`) y elegirlo ahí, y
