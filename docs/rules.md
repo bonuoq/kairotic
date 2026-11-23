@@ -194,6 +194,7 @@ recovery by its size.
 
 `@kairotic/rules` 0.10.0: `imitation(spec)` — a dux given (a tree's voice), the comes found against it — and the style
 `imitation-2` (`canon-2`, the dux's own rules off, the rule `given`); the comes weighed by `soft.mjs` on its degrees.
+`@kairotic/rules` 0.11.0: a given dux may rest (a null code): a canon's comes rests there too; `countWithin(ms)` counts within a limit.
 `cac imitation` (`@kairotic/cac` 0.14.0) is its box: the bench of `canon.mjs` with real trees.
 
 ## Next
