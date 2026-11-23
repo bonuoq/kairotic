@@ -400,6 +400,20 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
      (cl === null || cl > 0n) && Date.now() - t1 < 4000 && IL.search({ temp: 0.5, r: rng(5), ms: 2000 }) !== null);
 }
 
+// where a bass with no realization dies (deadEnd): an agent's 16-bar bass in A, half and whole notes, a V7 then V
+// again over the same note; and none for one that has realizations
+{
+  const MI = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+  const mi = (p) => { const m = p.match(/([a-g])(#?)(\d)/); return 12 * (+m[3] + 1) + MI[m[1]] + (m[2] ? 1 : 0); };
+  const asNotes = (bass) => { const u = Math.min(...bass.map(([, d]) => d)); let t = 0;
+    return bass.map(([p, d, f]) => { const units = Math.round(d / u), n = { midi: mi(p), units, fig: f || undefined, strong: Array.from({ length: units }, (_, j) => Math.round((t + j * u) / u) % 2 === 0) }; t += d; return n; }); };
+  const NONE = [["a2", 2, ""], ["c#3", 2, "6"], ["d3", 2, ""], ["b2", 2, "6"], ["e3", 2, ""], ["e3", 2, "7"], ["a2", 4, ""], ["c#3", 2, "6"], ["d3", 2, ""], ["e3", 2, ""], ["c#3", 2, "6"], ["d3", 2, ""], ["e3", 2, ""], ["e3", 4, ""], ["a3", 2, ""], ["g#3", 2, "6"], ["f#3", 2, ""], ["e3", 2, ""], ["d3", 2, ""], ["c#3", 2, "6"], ["b2", 2, ""], ["e3", 2, ""], ["a2", 2, ""], ["d3", 2, ""], ["b2", 2, "6"], ["e3", 2, ""], ["e3", 2, ""], ["e3", 2, "7"], ["a2", 4, ""]], SOME = [["a2", 4, ""], ["b2", 4, "6"], ["c#3", 4, "6"], ["d3", 4, ""], ["e3", 4, ""], ["f#3", 4, "6"], ["g#3", 4, "6"], ["a3", 4, ""], ["f#3", 4, ""], ["b2", 4, ""], ["e3", 4, "7"], ["a2", 4, ""], ["d3", 4, ""], ["b2", 4, "6/5"], ["e3", 4, ""], ["a2", 4, ""]];
+  const a = R.fromNotes({ notes: asNotes(NONE), key: "A major", voices: 4, fill: true }), d = a.deadEnd();
+  is("deadEnd: a bass with no realization says where it dies and why", a.countWithin(3000) === 0n && d && d.note >= 0 && d.reasons.length > 0, JSON.stringify(d));
+  const b = R.fromNotes({ notes: asNotes(SOME), key: "A major", voices: 3, fill: true });
+  is("... and nothing for one that has realizations", b.countWithin(3000) > 0n && b.deadEnd() === null);
+}
+
 const failed = results.filter((r) => !r[1]);
 console.log(`${results.length - failed.length} / ${results.length} passed`);
 for (const [w, ok, d] of results) if (!ok) console.log("  FAIL " + w + (d ? " — " + d : ""));
