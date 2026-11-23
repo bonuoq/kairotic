@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/rhythm",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Kairotic rhythm as geometry (after Toussaint): necklace, the rhythm box (a cyclic rhythm on the circle: drawn, edited, measured — interval vector, evenness, deep, flat, axes of symmetry, oddity, Fourier coefficients — and written as a musical tree whose :rtm merges with any pitches); generators of pulses (euclid, chance, homometric); swap, how far apart two rhythms are; morph and vary, from one rhythm to another swap by swap, and again but different; and phase, where a performer is in a timeline, from the onsets heard",
   "author": "bonuoq",
   "license": "MPL-2.0",

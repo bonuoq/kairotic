@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`phase` keeps time between onsets** (`@kairotic/rhythm` 0.8.0; discussion #204). Without a clock, from the last
+  onset judged the box sends itself a beat each pulse it found (`:later`, with ▶): the phase walks on, so a
+  `necklace` after it plays in the gaps of what the performer plays. The next onset takes over (a new generation
+  forgets the beats planned), early or late, and nothing is said twice; a whole cycle without onsets and it waits.
+  On the right a kept beat is `{:phase :n :pulse :kept true}`. The help's example shows it with the metro taken away.
 - **The menu ☰ beside the logo, and a dialog for what it opens.** The menu's button is larger, the first thing of the
   header at the top left. What it opens that is a place of its own opens in the app's dialog, over the app as Sessions
   does (Close, Esc or a click on the shade back to the work): **Share/Export** and **Feedback** (no longer a tab);
