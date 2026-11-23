@@ -76,7 +76,7 @@ export async function craft(page, check) {
     check("agent-trial: a bass with no realization (an agent's offer, 16 bars in A) is an error, with where and why", /b2 .*no realization over this bass — nothing can go on at note \d+/.test(triedNone), triedNone.slice(0, 400));
     const triedSome = await awaited(page, `(agent-trial ${code(BASS_SOME, "cac partimento 3 A major")})`, 40000);
     check("... a bass that has them passes (and A major after the parts is the key, not a style)", triedSome === "[]", triedSome.slice(0, 400));
-    const fresh = await cljs(page, '(let [[n] (fresh-ids [{:id "local-x1" :parent nil :events [[:batch [[:data :b3 {:built ["local-x1" 1] :offers [["local-x1" 1]]}] [:pin :b3 ["local-x1" 1]]]]]}])] [(= (:id n) (get-in n [:events 0 1 1 2 :built 0]) (get-in n [:events 0 1 1 2 0]) (first (first (get-in n [:events 0 1 0 2 :offers])))) (not= "local-x1" (:id n))])');
+    const fresh = await cljs(page, '(let [[n] (fresh-ids [{:id "local-x1" :parent nil :events [[:batch [[:data :b3 {:built ["local-x1" 1] :offers [["local-x1" 1]]}] [:pin :b3 ["local-x1" 1]]]]]}])] [(= (:id n) (get-in n [:events 0 1 0 2 :built 0]) (get-in n [:events 0 1 1 2 0]) (get-in n [:events 0 1 0 2 :offers 0 0])) (not= "local-x1" (:id n))])');
     check("a local work opened from a file: an agent's pin and offers follow its points' new ids", fresh === "[true true]", fresh);
     check("both are tools Claude has while it makes a patch", /describe_box/.test(tools) && /apply_class/.test(tools) && /check_patch/.test(tools), tools);
 
