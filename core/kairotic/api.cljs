@@ -384,5 +384,7 @@ registerProcessor('kairotic-tap', KairoticTap);
 (defn follow-due "When the next elastic wire would go on by itself, or nil." [state] (fl/next-due state))
 (defn follow-here "The performer is told to be at note j at t (a correction: \"I am here\") → [state found]." [state t j] (fl/here state t j))
 (defn follow-view "What a follower shows on the tree it follows: {:played :skipped :now :fired}." [state] (fl/view state))
+(defn follow-dtw-start "A follower frame by frame (online DTW) against what the score should sound like, timed by a take if given." [state take] (fl/dtw-start state take))
+(defn follow-frame "One frame heard at t (obs: {descriptor value}, :midi when a pitch sounds) → [state found]." [state t obs] (fl/dtw-step state t obs))
 (defn follow-release "The note found last stopped sounding at t." [state t] (fl/release state t))
 (defn follow-take "What was followed, as a take {:id :when {note-id [onset dur]} …}, or nil." [state m] (fl/take-of state m))
