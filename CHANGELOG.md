@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Claude knows the official packages' classes before the work has them.** Its catalog listed only the classes the
+  work had loaded, so an agent asked for a partimento did not see `cac`, and `class_help` answered *no class* to `cac
+  partimento` (a box's text, not a class). Now the catalog adds every official package's classes the work does not
+  have yet (with the first sentence of their help: a box of one brings its package), and `class_help` takes the class
+  out of a box's text and gives its help's text when the class is not loaded.
 - **Following frame by frame** (discussion #308; `@kairotic/analysis` 0.8.8): `follow dtw` — online dynamic time
   warping, in the manner of Dixon's MATCH: the score turned into what it should sound like, a frame every 50 ms (each
   event as long as the work's last take played it, or as written; each frame its profile — learned, `:listen` or its
