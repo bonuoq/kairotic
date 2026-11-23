@@ -220,8 +220,12 @@
         d0 (if tree-box? cv/empty (canvas-data b))
         ;; a tree shown live, or the tree a buffer was kept from while it is unchanged (its recipe)
         lt (if tree-box? (own-tree id b) (or (live-tree id) (kept-tree b)))
+        ;; the layers the code window hides, the score hides too: the analysis (its figures under the bass) with Analysis
+        ;; off (discussion #323)
+        an (boolean (:code-analysis @ui))
+        lt (if (and lt (not an)) (mt/without-layers lt #{:analysis}) lt)
         sw (first (box-size id b))
-        d [d0 lt sw] c (get @score-cache id)]
+        d [d0 lt sw an] c (get @score-cache id)]
     (cond
       (and c (= (:key c) d)) c
       (nil? @vrv) nil

@@ -41,6 +41,21 @@ export async function cac(page, check) {
         defs === '[["soprano" false] ["alto" false] ["tenor" true] ["bass" false]]', defs);
   const fb = await cljs(page, `(let [m (mei ${out})] [(count (re-seq #"<fb>" m)) (boolean (re-find #"<f>6</f><f>4</f><f>3</f>" m))])`);
   check("... the figures under the bass in the score (figured bass, <harm><fb>): one a chord, the 6/4/3 on ②", fb === "[8 true]", fb);
+  // the score obeys the layers as the code window does: with Analysis off its figures are hidden, with it on shown
+  const harms = () => cljs(page, `(some-> (get @score-cache ${out}) :node (.querySelectorAll "g.harm") .-length)`);
+  await cljs(page, "(swap! ui assoc :code-analysis false)");
+  const off = await until(page, `(some-> (get @score-cache ${out}) :node (.querySelectorAll "g.harm") .-length)`, (x) => x === "0", 10000);
+  await cljs(page, "(swap! ui assoc :code-analysis true)");
+  const on = await until(page, `(some-> (get @score-cache ${out}) :node (.querySelectorAll "g.harm") .-length)`, (x) => x === "8", 10000);
+  await cljs(page, "(swap! ui assoc :code-analysis false)");
+  check("... the score obeys Analysis as the code window does: the figures hidden with it off, shown with it on", off === "0" && on === "8", `${off} ${on}`);
+  void harms;
+  // and back: a MEI's figured bass read into the tree's analysis layer (:fig) — by @startid (kairotic's) and by @tstamp
+  // (the studies' exports, elsewhere's)
+  const back = await cljs(page, `(vec (keep (fn [n] (when (and (vector? n) (= :note (first n))) (:fig (second n)))) (tree-seq vector? seq (mei/<-mei (str/replace (mei ${out}) #"<extMeta[\\s\\S]*?</extMeta>" "")))))`);
+  check("a MEI imported: its figured bass back on its notes as :fig (by startid)", back === figs, back);
+  const ts = await cljs(page, `(vec (keep (fn [n] (when (and (vector? n) (= :note (first n))) [(:pitch (second n)) (:fig (second n))])) (tree-seq vector? seq (mei/<-mei "<mei xmlns='http://www.music-encoding.org/ns/mei' meiversion='5.0'><music><body><mdiv><score><scoreDef meter.count='4' meter.unit='4'><staffGrp><staffDef n='1' lines='5' clef.shape='F' clef.line='4'/></staffGrp></scoreDef><section><measure n='1'><staff n='1'><layer n='1'><note xml:id='a' pname='c' oct='3' dur='2'/><note xml:id='b' pname='f' oct='3' dur='2'/></layer></staff><harm staff='1' tstamp='3'><fb><f>6</f><f>5</f></fb></harm></measure></section></score></mdiv></body></music></mei>"))))`);
+  check("... and by tstamp: the 6/5 on the note at beat 3", ts === '[["c3" nil] ["f3" "6/5"]]', ts);
   await cljs(page, `(send! ${cb} [:staves 2])`);
   const two = await until(page, `(vec (map second (re-seq #"<staffDef[^>]*label=\\"([^\\"]*)\\"" (mei ${out}))))`, (x) => x === '["S A" "T B"]', 30000);
   check("[:staves 2]: short score, soprano and alto on one staff, tenor and bass on another", two === '["S A" "T B"]', two);
