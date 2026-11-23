@@ -306,12 +306,13 @@
      (concat
       [(pick "list_classes") (pick "check_faust") (pick "read_example") (pick "check_component")
          #js {:name "class_help"
-              :description "What one class does: its doc, usage, inlets and outlets (what each takes and sends), and an example."
+              :description "What one class does: its doc, usage, inlets and outlets (what each takes and sends), and an example. Give the class alone (cac, not cac partimento: its words are arguments)."
               :inputSchema (clj->js {:type "object" :properties {:class {:type "string"}} :required ["class"]})
               :execute (logged "help"
-                               (fn [i] (let [k (str (.-class i)) d (comp/lookup k) h (hlp/of k)]
+                               ;; the class alone: Claude may give a box's text (cac partimento)
+                               (fn [i] (let [k (klass (str/trim (str (.-class i)))) d (comp/lookup k) h (hlp/of k)]
                                          (if (or d (seq h) (lib/package-of k))
-                                           {:ok true :class k :doc (or (:doc d) (:doc h)) :usage (:usage d)
+                                           {:ok true :class k :doc (or (:doc d) (:about h) (:doc h)) :usage (or (:usage d) (:usage h))
                                             :io (let [x (:io d)] (if (vector? x) x "depends on its arguments"))
                                             :inlets (:inlets h) :outlets (:outlets h) :example (:example h)
                                             :note (when-not d "an official class: it comes into the work when a box uses it")}

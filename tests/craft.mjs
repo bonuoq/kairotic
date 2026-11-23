@@ -65,6 +65,10 @@ export async function craft(page, check) {
     const none = await awaited(page, '(run-class "no-such-class" [[0 1]])');
     check("a class that does not exist: an error, not a throw", /:ok false/.test(none) && /no class/.test(none), none);
     const tools = await cljs(page, "(set (map #(.-name %) (patch-tools {})))");
+    const help = await awaited(page, '(.then ((.-execute (first (filter #(= "class_help" (.-name %)) (patch-tools {})))) #js {:class "cac partimento"} nil) (fn [r] [(.-ok r) (.-class r) (boolean (seq (.-doc r)))]))');
+    check("class_help takes a box's text: cac partimento is the class cac, with its doc", help === '[true "cac" true]', help);
+    const cat = await cljs(page, '(let [k (first (for [[_ p] lib/packages k (sort (:classes p)) :when (not (contains? @comp/registry k))] k)) line (first (filter #(str/includes? % "official packages") (ai/classes)))] (boolean (and line (or (nil? k) (str/includes? line (str k " (@kairotic/"))))))');
+    check("the catalog names the official packages' classes the work does not have yet", cat === "true", cat);
     check("both are tools Claude has while it makes a patch", /describe_box/.test(tools) && /apply_class/.test(tools) && /check_patch/.test(tools), tools);
 
     // ── an agent's offers ──

@@ -10,6 +10,11 @@
   `[:invert 12]`, in the tree's key or `[:key "d dorian"]` with its musica ficta; a bang another comes, `:any` any,
   counted (outlet 1). Frère Jacques two bars later at the octave below: exactly one comes, the round itself; two
   units later, none — the box says so.
+- **Claude knows the official packages' classes before the work has them.** Its catalog listed only the classes the
+  work had loaded, so an agent asked for a partimento did not see `cac`, and `class_help` answered *no class* to `cac
+  partimento` (a box's text, not a class). Now the catalog adds every official package's classes the work does not
+  have yet (with the first sentence of their help: a box of one brings its package), and `class_help` takes the class
+  out of a box's text and gives its help's text when the class is not loaded.
 - **The menu ☰ beside the logo, and a dialog for what it opens.** The menu's button is larger, the first thing of the
   header at the top left. What it opens that is a place of its own opens in the app's dialog, over the app as Sessions
   does (Close, Esc or a click on the shade back to the work): **Share/Export** and **Feedback** (no longer a tab);
