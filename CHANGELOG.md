@@ -10,6 +10,11 @@
   `[:invert 12]`, in the tree's key or `[:key "d dorian"]` with its musica ficta; a bang another comes, `:any` any,
   counted (outlet 1). Frère Jacques two bars later at the octave below: exactly one comes, the round itself; two
   units later, none — the box says so.
+- **The menu ☰ beside the logo, and a dialog for what it opens.** The menu's button is larger, the first thing of the
+  header at the top left. What it opens that is a place of its own opens in the app's dialog, over the app as Sessions
+  does (Close, Esc or a click on the shade back to the work): **Share/Export** and **Feedback** (no longer a tab);
+  the global preferences will go there too. Help pages (keys and gestures, the documentation) stay in the Help tab.
+
 - **Room on screen, and the layers each box's own.** The layers of a tree (its analysis — the figures under the bass,
   degrees, keys —, what belongs to playing it) are shown or hidden **box by box**, in its score and its code window
   alike: the **analysis** chip in a tree box's header (when its tree has one), the Performed/Analysis buttons of the

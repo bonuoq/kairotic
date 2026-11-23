@@ -157,7 +157,10 @@
         (.catch (fn [_] (reset! fb-issues :error)))
         (.finally (fn [] (render-fb-issues!))))))
 
-(.addEventListener ($ "tab-feedback") "click" (fn [_] (render-fb-preview!) (load-fb-issues!)))
+(defn feedback-open!
+  "Opens Feedback in the app's dialog (from the menu ☰)."
+  []
+  (open-modal! "feedback") (render-fb-preview!) (load-fb-issues!) :feedback)
 
 ;; the draft that was being written
 (let [d (try (some-> (.getItem js/localStorage fb-draft-key) js/JSON.parse) (catch :default _ nil))]
@@ -167,6 +170,6 @@
   (set! (.-value ($ "fb-text")) (or (some-> d .-text) (get fb-templates (fb-kind)))))
 
 (defn feedback
-  "Opens the Feedback tab: (feedback), or with a title (feedback \"the score does not redraw\")."
-  ([] (.click ($ "tab-feedback")) :feedback)
+  "Opens Feedback (in the app's dialog): (feedback), or with a title (feedback \"the score does not redraw\")."
+  ([] (feedback-open!))
   ([title] (set! (.-value ($ "fb-title")) (str title)) (fb-save-draft!) (feedback)))

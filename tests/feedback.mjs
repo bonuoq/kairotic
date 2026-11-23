@@ -14,4 +14,12 @@ export async function feedback(page, check) {
   check("... short enough to travel in an address", href.length < 4000, String(href.length));
   check("it opens in a new tab", await page.evaluate(() => document.querySelector("#fb-list a.fb-claude")?.target === "_blank"));
   await cljs(page, "(reset! fb-issues nil)");
+  // Feedback opens from the menu ☰ in the app's dialog (no tab of its own any more); Esc closes it
+  await page.click("#menu-btn");
+  await page.click("#menu-feedback");
+  check("Feedback opens from the menu in the app's dialog, its form there", await page.evaluate(() =>
+    !document.getElementById("app-modal").hidden && document.getElementById("modal-title").textContent === "Feedback" &&
+    !document.querySelector('[data-modal="feedback"]').hidden && document.querySelector('[data-modal="share"]').hidden && !!document.getElementById("fb-title") && !document.getElementById("tab-feedback")));
+  await page.keyboard.press("Escape");
+  check("... Esc takes it away", await page.evaluate(() => document.getElementById("app-modal").hidden));
 }

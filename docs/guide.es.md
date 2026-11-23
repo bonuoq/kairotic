@@ -16,7 +16,7 @@ ventana **Sessions** ofrece tres entradas:
 - **Try locally, without saving** — un patch para jugar; no se guarda nada.
 
 Una obra solo puede copiarse a una sala y una sala a una obra solo (con su historia). **Sessions**, en el
-menú ☰ de arriba a la derecha, vuelve a abrir esta ventana (el menú tiene también Share/Export, la obra como archivo,
+menú ☰ de arriba a la izquierda, junto al logo, vuelve a abrir esta ventana (el menú tiene también Share/Export, la obra como archivo,
 Feedback y las teclas y gestos).
 
 En Pages, las salas se sincronizan a través de un **relay**. **Relay**, en la misma ventana, muestra los
