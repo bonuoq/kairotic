@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The figures in the score.** A note's `:fig` (`"6/5"`, the analysis layer's or the bass's own) is written under it
+  as figured bass (`<harm><fb>`), and Verovio shows it: the chords `cac partimento` made, or a bass's figures, under
+  the bass of a tree box's score. The score obeys the layers as the code window does: with **Analysis** off its
+  figures are hidden. And back: a MEI's figured bass is read into the tree's analysis layer (`:fig` on the note, by
+  `@startid` as Kairotic writes it, or by `@tstamp` and `@staff` as the studies' exports and other programs do).
+  Quantizing a tree in free time keeps what an analysis wrote on its notes (`:fig`, `:deg`, `:local`, `:why`,
+  `:harmony`).
+
 - **One tonal layer for both worlds** (`@kairotic/rules` 0.9.0; discussion #353, step 5). `keySystem(key)`: a key of
   `tonal.mjs` — major, minor, a church mode with its musica ficta — as a system the comes sings in (a pitch a degree
   and an alteration, intervals by their real size). The canon in a key (`canonVoices({key})`) reads the partimento's

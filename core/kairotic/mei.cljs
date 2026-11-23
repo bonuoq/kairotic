@@ -149,6 +149,7 @@
         sig0 (:sig @state)
         labels (into {} (for [d (all doc "staffDef")] [(at d "n") (at d "label")]))
         pitch-of (atom {})                                   ; id → [name cents] (a tie end takes its start's)
+        figs (atom {})                                       ; id → "6/5": the figured bass under a note (<harm><fb>)
         out (atom [])
         layer-segs
         (fn layer-segs [el scale mem]
@@ -211,22 +212,45 @@
                                                   (mapv (fn [s] (if (= :bar (:dur s)) (assoc s :dur len) s))
                                                         (join (layer-segs ly 1 (atom {}))))]))]
                               (swap! state assoc :last-sig sig)
+                              ;; the figured bass of the measure (<harm><fb><f>6</f><f>5</f></fb></harm>): on the note
+                              ;; it starts at (@startid), or the one sounding at its @tstamp on its staff (layer 1)
+                              (doseq [h (filter #(= "harm" (lname %)) (el-kids x))
+                                      :let [fb (first (filter #(= "fb" (lname %)) (el-kids h)))
+                                            fs (when fb (map #(str/trim (.-textContent %)) (filter #(= "f" (lname %)) (el-kids fb))))
+                                            f (str/join "/" (remove str/blank? fs))]
+                                      :when (seq f)]
+                                (if-let [id (strip-hash (at h "startid"))]
+                                  (swap! figs assoc id f)
+                                  (when-let [ts (some-> (at h "tstamp") js/parseFloat)]
+                                    (let [onset (* (dec ts) (/ 4 q))
+                                          st (or (at h "staff") (ffirst (sort (keys voices))))
+                                          segs (get voices [(str st) "1"])]
+                                      (loop [[sg & more] segs b 0]
+                                        (when sg
+                                          (if (< (js/Math.abs (- b onset)) 1e-6)
+                                            (when (#{:note :chord} (:kind sg)) (swap! figs assoc (first (:ids sg)) f))
+                                            (when (< b onset) (recur more (+ b (:dur sg)))))))))))
                               (swap! out conj {:attrs (cond-> meter (and (some? prev-sig) (not= prev-sig sig)) (assoc :key sig))
                                                :voices voices}))
                   nil)))]
       (walk (first (all doc "score"))))
-    {:measures @out :sig sig0 :labels labels}))
+    {:measures @out :sig sig0 :labels labels :figs @figs}))
 
-(defn- seg->node [s]
-  (case (:kind s)
-    :rest [:rest {:dur (:dur s)}]
-    :note (with-meta [:note (cond-> {:pitch (:name s) :dur (:dur s)}
-                              (not (zero? (:cents s))) (assoc :cents (:cents s))
-                              (:grace s) (-> (assoc :grace true) (dissoc :dur))
-                              (:tie-out s) (assoc :tie true))]
-            {:written (:name s) :mei-id (first (:ids s))})
-    :chord (into [:chord {:dur (:dur s)}] (map (fn [k] (let [[t a] (seg->node k)] [t (dissoc a :dur)])) (:kids s)))
-    :tuplet (into [:tuplet {:ratio (:ratio s)}] (map seg->node (:kids s)))))
+(defn- seg->node
+  "A segment as a node; figs: {xml:id \"6/5\"} the figured bass read, the note's :fig (its analysis layer)."
+  ([s] (seg->node {} s))
+  ([figs s]
+   (let [f (some #(get figs %) (:ids s))]
+     (case (:kind s)
+       :rest [:rest {:dur (:dur s)}]
+       :note (with-meta [:note (cond-> {:pitch (:name s) :dur (:dur s)}
+                                 (not (zero? (:cents s))) (assoc :cents (:cents s))
+                                 (:grace s) (-> (assoc :grace true) (dissoc :dur))
+                                 (:tie-out s) (assoc :tie true)
+                                 f (assoc :fig f))]
+               {:written (:name s) :mei-id (first (:ids s))})
+       :chord (into [:chord (cond-> {:dur (:dur s)} f (assoc :fig f))] (map (fn [k] (let [[t a] (seg->node figs k)] [t (dissoc a :dur)])) (:kids s)))
+       :tuplet (into [:tuplet {:ratio (:ratio s)}] (map #(seg->node figs %) (:kids s)))))))
 
 (def ^:private eps 1e-6)
 
@@ -320,7 +344,7 @@
   (let [doc (.parseFromString (js/DOMParser.) text "application/xml")]
     (when (seq (all doc "parsererror")) (throw (js/Error. "this is not well-formed XML")))
     (when-not (first (all doc "score")) (throw (js/Error. "no <score> in this MEI")))
-    (let [{:keys [measures sig labels]} (segments doc)
+    (let [{:keys [measures sig labels figs]} (segments doc)
           ext (read-ext doc)
           vkeys (vec (sort-by (fn [[st ly]] [(js/parseInt st 10) (js/parseInt ly 10)]) (distinct (mapcat (comp keys :voices) measures))))
           kept (:voices ext)
@@ -333,7 +357,7 @@
                                 (> (count vkeys) 1) (assoc :staff (or label st))))]
                     (into [:voice a]
                           (map (fn [mi {:keys [attrs voices]}]
-                                 (with-rests (with-ext (into [:measure attrs] (map seg->node (get voices k []))) (:notes ext))
+                                 (with-rests (with-ext (into [:measure attrs] (map #(seg->node figs %) (get voices k []))) (:notes ext))
                                    (keep (fn [[v m b x]] (when (and (= v i) (= m mi)) [b x])) (:rests ext))))
                                (range) measures))))]
       (let [t (if (and (= 1 (count vkeys)) (not= :par (:root-tag ext)))

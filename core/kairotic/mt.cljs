@@ -1258,7 +1258,13 @@
                             "/>"))))
         marks! (fn [a staff bar id]
                  (when-let [d (:dyn a)] (ctl! bar (str "<dynam staff=\"" staff "\" startid=\"#" id "\">" (esc-xml d) "</dynam>")))
-                 (when-let [x (:text a)] (ctl! bar (str "<dir staff=\"" staff "\" startid=\"#" id "\"><rend fontstyle=\"italic\">" (esc-xml x) "</rend></dir>"))))
+                 (when-let [x (:text a)] (ctl! bar (str "<dir staff=\"" staff "\" startid=\"#" id "\"><rend fontstyle=\"italic\">" (esc-xml x) "</rend></dir>")))
+                 ;; a note's figures (:fig "6/5", the analysis layer's or the bass's own), under it as figured bass
+                 (when-let [f (:fig a)]
+                   (let [fs (remove str/blank? (str/split (str f) #"/"))]
+                     (when (seq fs)
+                       (ctl! bar (str "<harm place=\"below\" staff=\"" staff "\" startid=\"#" id "\"><fb>"
+                                      (apply str (map (fn [x] (str "<f>" (esc-xml x) "</f>")) fs)) "</fb></harm>"))))))
         ;; writes the children of a container; scale converts written beats to sounding beats (tuplets);
         ;; spans: where beams may run (:all inside a tuplet)
         layer (fn layer [ks staff bar abs scale spans]
@@ -1692,7 +1698,9 @@
   [t ls]
   (if (and (node? t) (seq ls))
     (let [tg (tag t)]
-      (make tg (into {} (remove (fn [[k _]] (in-layers? ls tg k))) (attrs t)) (map #(without-layers % ls) (kids t))))
+      ;; (each node keeps its metadata: a score's pieces point back at the nodes they come from by it)
+      (with-meta (make tg (into {} (remove (fn [[k _]] (in-layers? ls tg k))) (attrs t)) (map #(without-layers % ls) (kids t)))
+                 (meta t)))
     t))
 
 (defn has-layer? "Does the tree hold anything of the layer l?" [t l]
