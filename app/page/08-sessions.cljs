@@ -255,7 +255,7 @@
          "<li><b>Double-click</b> an empty place to create a box (<code>osc~ 440</code>); drag from an outlet to an inlet to connect; <b>▶</b> starts the sound.</li>"
          "<li>The <b>Help</b> tab has the guide, the concepts, the tutorials and a page for every box; <b>Claude</b> makes patches from what you describe.</li>"
          "</ul>"
-         "<p class=\"alpha-note\">This is an <b>alpha</b>: it may fail, and it will change. What you tell us decides what comes next; the <b>Feedback</b> tab turns it into a GitHub issue. Thank you for trying it!</p>"
+         "<p class=\"alpha-note\">This is an <b>alpha</b>: it may fail, and it will change. What you tell us decides what comes next; <b>Feedback</b>, in the menu ☰, turns it into a GitHub issue. Thank you for trying it!</p>"
          "<p class=\"wb\"><button class=\"act primary\" data-act=\"guide\">Read the guide</button> <button class=\"act\" data-act=\"local\">Start locally</button> <button class=\"act\" data-act=\"feedback\">Feedback</button></p>"
          "</div>")))
 
@@ -368,7 +368,7 @@
                          (choose-relays! (let [left (remove #{u} (current-relays))] (if (seq left) (str/join "," left) "off"))))
           "learn" (do (open-work! :local "local" "Local") (show-help! nil))
           "guide" (do (open-work! :local "local" "Local") (docs "guide"))
-          "feedback" (do (when-not (:kind @work) (open-work! :local "local" "Local")) (swap! mgr assoc :open false) (.click ($ "tab-feedback")))
+          "feedback" (do (when-not (:kind @work) (open-work! :local "local" "Local")) (swap! mgr assoc :open false) (.click ($ "menu-feedback")))
           "open-file" (open-work-file!)
           "export-file" (gesture! "(export-work)")
           nil)))))

@@ -97,7 +97,7 @@ export async function workfile(page, check) {
   await cljs(page, '(open-work! :local "local" "Local")');
   await until(page, "(:loaded @hist)", "true");
   // Share/Export lives in the menu ☰ now, with Sessions, the work as a file, Feedback and the keys
-  check("the menu ☰ is closed at first", await page.evaluate(() => document.getElementById("app-menu").hidden));
+  check("the menu ☰ is closed at first, and is the first thing of the header, beside the logo", await page.evaluate(() => document.getElementById("app-menu").hidden && document.querySelector("header").firstElementChild.id === "menu-btn"));
   await page.click("#menu-btn");
   check("☰ opens the menu: Sessions, Share/Export, the work as a file (and a release), keys, Feedback, the documentation",
     await page.evaluate(() => { const m = document.getElementById("app-menu"); const t = m.textContent;
@@ -112,7 +112,9 @@ export async function workfile(page, check) {
     const blocks = [...pop.children].filter((el) => !el.hidden);
     return blocks[1] && blocks[1].id === "ep-file" && !!pop.querySelector('[data-kfile="history"]') && !!pop.querySelector('[data-kfile="release"]');
   }));
-  await page.click("#ep-close");
+  check("Share/Export opens in the app's dialog, as Sessions does", await page.evaluate(() => !document.getElementById("app-modal").hidden && document.getElementById("modal-title").textContent === "Share/Export"));
+  await page.click("#modal-close");
+  check("... Close takes it away", await page.evaluate(() => document.getElementById("app-modal").hidden));
   await cljs(page, "(show-manager!)");
   check("the session manager opens a file", await page.evaluate(() => !!document.querySelector('#mgr-body [data-act="open-file"]')));
   await cljs(page, "(hide-manager!)");
