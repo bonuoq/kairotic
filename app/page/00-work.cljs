@@ -598,6 +598,61 @@
 
 (defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;") (str/replace "\"" "&quot;")))
 
+
+;; ───────────────────────── transactions (discussion #382, idea 4) ─────────────────────────
+;; As in Datomic, a transaction is a thing of its own, with what made it. Each event of a segment has its
+;; transaction beside it, in :meta, a vector parallel to :events:
+;;   {:t     when it was made (ms)
+;;    :via   where it came from: :gesture (the patch) · :repl · :claude (the Claude tab) · :agent · :merge ·
+;;           :take (kept from Perform) · :with (tried first with `with`, then transacted) · …
+;;    :box   the box that made it (an agent box)
+;;    :why   its request, for what Claude or an agent built}
+;; Who made it is the segment's (:author, :session). What a change is (layout, or the work: issue #5) is
+;; not kept: it is read from the event itself (tx-at). Segments written before #382 have no :meta, and their
+;; events have none (nil).
+;; Whatever makes events says where they come from, while it makes them: (with-tx {:via :claude} f) calls f
+;; with that said. (An atom set and restored rather than a dynamic var: it must reach code evaluated through
+;; scittle, and calls made from callbacks set it again.)
+
+(defonce tx-now (atom nil))
+
+(defn with-tx
+  "Calls f with the events it makes coming from tx ({:via :agent :box :b3 :why \"…\"}); what was said
+   before is said again afterwards."
+  [tx f]
+  (let [prev @tx-now]
+    (reset! tx-now tx)
+    (try (f) (finally (reset! tx-now prev)))))
+
+(defn sane-tx
+  "A transaction as it may arrive (from the shared history, from a file): only what it can say, or nil."
+  [m]
+  (when (map? m)
+    (let [why (:why m)]
+      (not-empty
+       (cond-> {}
+         (and (number? (:t m)) (js/isFinite (:t m))) (assoc :t (:t m))
+         (keyword? (:via m)) (assoc :via (:via m))
+         (keyword? (:box m)) (assoc :box (:box m))
+         (and (string? why) (seq why)) (assoc :why (subs why 0 (min 300 (count why)))))))))
+
+(defn tx-meta
+  "The transaction of an event made now: when, and where from (as with-tx says)."
+  []
+  (merge (sane-tx @tx-now) {:t (js/Date.now)}))
+
+(defn sane-metas
+  "The transactions of n events (nil for an event without one), or nil if there are none."
+  [ms n]
+  (when (sequential? ms)
+    (let [v (vec (take n (concat (map sane-tx ms) (repeat nil))))]
+      (when (some some? v) v))))
+
+(defn metas-of
+  "The transactions of segment n, one per event (nil where there is none)."
+  [n]
+  (vec (take (count (:events n)) (concat (:meta n) (repeat nil)))))
+
 (defn db-failed! [e]
   (let [code (or (.-code e) "error")]
     (when (#{"invalid_argument" "revoked" "not_granted"} code)
@@ -612,6 +667,7 @@
 (defn node->js [n]
   (clj->js (cond-> {:parent (:parent n) :at (:at n) :author (:author n) :session (:session n) :t (:t n)
                     :merge (:merge n) :events (mapv enc (:events n))}
+             (:meta n) (assoc :meta (mapv enc (:meta n)))
              (:line n) (assoc :line (:line n)))))
 
 ;; ───────────────────────── works: shared rooms and solo work ─────────────────────────
@@ -717,23 +773,28 @@
     (.-id (.doc (.collection @dbref (hist-path))))
     (str "local-" (.toString (js/Math.floor (* (js/Math.random) 2176782336)) 36) (.toString (js/Date.now) 36))))
 
-(defn new-node! [parent at evs merge]
+(defn new-node!
+  "A new segment with events evs, from point [parent at]; metas are their transactions (by default, each one
+   made now, as with-tx says)."
+  ([parent at evs merge] (new-node! parent at evs merge nil))
+  ([parent at evs merge metas]
   (let [id (new-id)
+        evs (vec evs)
         n (cond-> {:id id :parent parent :at at :author (my-author) :session session-id :t (js/Date.now)
-                   :merge merge :events (vec evs)}
+                   :merge merge :events evs :meta (or (sane-metas metas (count evs)) (vec (repeat (count evs) (tx-meta))))}
             (not (on-main-line?)) (assoc :line (active-line)))]
     (swap! hist assoc-in [:nodes id] n)
     (when (and (persist?) (not (str/starts-with? id "local-")))
       (let [path (str (hist-path) "/" id) body (node->js n)]
         (enqueue! path (fn [] (.set (.doc @dbref path) body)))))
-    id))
+    id)))
 
 (defn append-event! [nid ev]
-  (swap! hist update-in [:nodes nid] (fn [n] (-> n (update :events conj ev) (assoc :t (js/Date.now)))))
+  (swap! hist update-in [:nodes nid] (fn [n] (-> n (assoc :meta (conj (metas-of n) (tx-meta))) (update :events conj ev) (assoc :t (js/Date.now)))))
   (when (and (persist?) (not (str/starts-with? nid "local-")))
     (let [n (node nid)
           path (str (hist-path) "/" nid)
-          body (clj->js {:events (mapv enc (:events n)) :t (:t n)})]
+          body (clj->js {:events (mapv enc (:events n)) :meta (mapv enc (:meta n)) :t (:t n)})]
       (enqueue! path (fn [] (.update (.doc @dbref path) body))))))
 
 (defn own-open-tip? [[nid idx]]

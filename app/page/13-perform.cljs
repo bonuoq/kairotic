@@ -194,8 +194,10 @@
   "Writes the changes of a take since its last snapshot as a new segment from where it starts, closed by
    `mark`; returns the position after it."
   [st mark]
-  (let [evs (vec (map :ev (perf-events st))) origin (:origin st)
-        id (new-node! (first origin) (if origin (second origin) 0) (conj evs mark) nil)]
+  (let [es (vec (perf-events st)) evs (mapv :ev es) origin (:origin st)
+        ;; each change keeps when it was made in the take, kept from Perform (#382)
+        metas (conj (mapv (fn [e] {:t (:t e) :via :take}) es) {:t (js/Date.now) :via :take})
+        id (new-node! (first origin) (if origin (second origin) 0) (conj evs mark) nil metas)]
     [id (inc (count evs))]))
 
 (defn compose

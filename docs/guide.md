@@ -304,6 +304,25 @@ Every gesture is an event of the history, at the bottom of the page.
 - **◆ Snapshot** — `(snapshot)`, or `(snapshot "intro")` with a name — writes a keyframe: a point of
   the history with the work as it is now. It is drawn as a square.
 
+### The history as a database
+
+The work at each point of its history is a value: the events up to there, applied in order (as Datomic's
+database is its facts accumulated). Every event keeps its **transaction**: when it was made and where from — a
+gesture, the REPL, the Claude tab, an agent box (with its request), a merge, a take from Perform. The history's
+tooltips tell it, and the REPL reads it as data (discussion #382).
+
+- `(as-of ["segment" n])` — the work as it was at that point; `(as-of)` where you are.
+- `(with "(box \"osc~ 440\" 40 40)")` **tries** a change without making it: `{:db-before :db-after :tx-data}`,
+  the work as it would be and the events it would make, with nothing kept. It also tries events
+  (`(with [[:move :b3 40 60]])`), at a point of the past (`(with ["segment" n] …)`) or on a patch.
+- `(transact! (with …))` makes what was tried, as one change, from the point it was tried at.
+- `(tx-at)` — the transaction of the event that leads here: `{:event :kind :author :t :via :box :why}`, where
+  `:kind` is `:work`, `:layout` (boxes moved, placed, shown in another view) or `:mark`.
+- `(tx-log)` — the transactions from the start to here, a seq to read with Clojure:
+  `(filter #(= :agent (:via %)) (tx-log))`, `(remove #(= :layout (:kind %)) (tx-log))`, `(group-by :author (tx-log))`.
+
+Events made before this have no transaction: they say who made them (their segment's), not when or from where.
+
 ### Lines
 
 A work can have several **lines**: independent histories, each a tab above the patch. The main line

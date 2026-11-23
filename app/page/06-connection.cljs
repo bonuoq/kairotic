@@ -9,7 +9,15 @@
 (defn js->node [d]
   (let [m (js->clj (.data d))
         at (get m "at") parent (get m "parent") evs (get m "events") t (get m "t")
-        sess (get m "session") mg (get m "merge") ln (get m "line")]
+        sess (get m "session") mg (get m "merge") ln (get m "line")
+        ms (get m "meta")
+        ;; each event with its transaction (#382): an event that cannot be read leaves with its own
+        pairs (if (sequential? evs)
+                (vec (keep-indexed (fn [i x] (let [v (dec* x)]
+                                               (when (and (vector? v) (keyword? (first v)))
+                                                 [v (when (sequential? ms) (dec* (nth ms i nil)))])))
+                                   evs))
+                [])]
     {:id (.-id d)
      :line (when (and (string? ln) (seq ln) (not= ln main-line)) ln)
      :parent (when (string? parent) parent)
@@ -18,9 +26,8 @@
      :session (when (string? sess) sess)
      :merge (when (valid-pos? mg) mg)
      :t (if (number? t) t 0)
-     :events (if (sequential? evs)
-               (vec (keep (fn [x] (let [v (dec* x)] (when (and (vector? v) (keyword? (first v))) v))) evs))
-               [])}))
+     :events (mapv first pairs)
+     :meta (sane-metas (map second pairs) (count pairs))}))
 
 (defn merge-incoming
   "The segments of one line as they arrive, with yours not saved yet (or longer here than there) kept."
