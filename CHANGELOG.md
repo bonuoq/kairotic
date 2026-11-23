@@ -26,6 +26,15 @@
   `@startid` as Kairotic writes it, or by `@tstamp` and `@staff` as the studies' exports and other programs do).
   Quantizing a tree in free time keeps what an analysis wrote on its notes (`:fig`, `:deg`, `:local`, `:why`,
   `:harmony`).
+- **The history as a database, in Datomic's terms** (discussion #382, ideas 1 and 4). Every event keeps its
+  **transaction** beside it (`:meta`, parallel to a segment's `:events`): when it was made (`:t`) and where from
+  (`:via` — `:gesture`, `:repl`, `:claude`, `:agent` with its `:box` and request as `:why`, `:merge`, `:take` from
+  Perform, `:with`); who made it stays the segment's. Saved with the history, carried by `.kairotic` files, told in
+  the history's tooltips; segments written before have none. `(with "…")` / `(with [events])` tries a change without
+  making it, as `d/with`: `{:db-before :db-after :tx-data}`, at a point of the past or on a patch too, and
+  `(transact! r)` makes it from where it was tried. `(as-of pos)`, `(tx-at pos)` (with `:kind` — `:work`, `:layout`,
+  `:mark` —, read from the event, issue #5) and `(tx-log)`, the transactions to here as a seq. `build` is a `with` on
+  an empty patch; a try no longer resets the engine's state of the work's boxes with the same ids.
 
 - **One tonal layer for both worlds** (`@kairotic/rules` 0.9.0; discussion #353, step 5). `keySystem(key)`: a key of
   `tonal.mjs` — major, minor, a church mode with its musica ficta — as a system the comes sings in (a pitch a degree
