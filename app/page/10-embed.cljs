@@ -181,6 +181,33 @@
 
 (.addEventListener ($ "embed-pop") "change" (fn [_] (render-embed-pop!)))
 
+;; ───── the app's menu (☰): what used to take room on screen all the time ─────
+;; Sessions, Share/Export, the work as a file, keys and gestures, Feedback, the documentation, the edition.
+
+(defn menu-open! [open?]
+  (set! (.-hidden ($ "app-menu")) (not open?))
+  (.setAttribute ($ "menu-btn") "aria-expanded" (str (boolean open?)))
+  (when open? (some-> ($ "app-menu") (.querySelector ".mi") .focus)))
+
+(defn keys-page! "The keys and gestures of the patch, in the Help tab." [] (show-doc! "keys"))
+
+(.addEventListener ($ "menu-btn") "click" (fn [e] (.stopPropagation e) (menu-open! (.-hidden ($ "app-menu")))))
+(.addEventListener ($ "app-menu") "click"
+  (fn [e]
+    (when-let [it (.closest (.-target e) ".mi")]
+      (menu-open! false)
+      (cond
+        (= "menu-keys" (.-id it)) (keys-page!)
+        (= "menu-feedback" (.-id it)) (.click ($ "tab-feedback"))
+        (.getAttribute it "data-kfile")
+        (gesture! (str "(export-work " (pr-str (if (= "release" (.getAttribute it "data-kfile")) {:release true} {})) ")"))))))
+(.addEventListener ($ "keys-btn") "click" (fn [_] (keys-page!)))
+;; a click elsewhere, or Esc, closes it
+(.addEventListener js/document "click"
+  (fn [e] (when (and (not (.-hidden ($ "app-menu"))) (not (.closest (.-target e) "#app-menu"))) (menu-open! false))))
+(.addEventListener js/document "keydown"
+  (fn [e] (when (and (= "Escape" (.-key e)) (not (.-hidden ($ "app-menu")))) (menu-open! false) (.focus ($ "menu-btn")))))
+
 (.addEventListener ($ "embed-pop") "click"
   (fn [e]
     (let [t (.-target e)]

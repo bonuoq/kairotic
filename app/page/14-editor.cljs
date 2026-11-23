@@ -201,31 +201,32 @@
 (declare set-editor-text!)
 
 (defn hidden-layers
-  "The layers of a tree the code window hides: :performance (real times, wires, takes, the continuum: discussion #308)
-   and :analysis (figures, degrees, keys, why: #323), each but the ones its buttons show."
-  []
-  (cond-> #{} (not (:code-perf @ui)) (conj :performance) (not (:code-analysis @ui)) (conj :analysis)))
+  "The layers of a tree box the code window hides: :performance (real times, wires, takes, the continuum: discussion
+   #308) and :analysis (figures, degrees, keys, why: #323), each but the ones the box shows (show-layers), its own."
+  [b]
+  (set (remove (shown-layers b) mt/layer-names)))
 
 (defn editor-source
   "The text of a box in the code window: a tree box's tree as written, with the layers its buttons show (Performed,
    Analysis); any other box's source."
   [b]
   (if (= "tree" (klass (:text b)))
-    (let [t (mtb/tree-of (:data b)) hide (when t (set (filter #(mt/has-layer? t %) (hidden-layers))))]
+    (let [t (mtb/tree-of (:data b)) hide (when t (set (filter #(mt/has-layer? t %) (hidden-layers b))))]
       (if (or (nil? t) (empty? hide)) (str (comp/source-of b)) (mt/pp (mt/without-layers t hide))))
     (str (comp/source-of b))))
 
 (defn toggle-code-layer!
-  "A layer of a tree box shown or hidden in its code window: :performance (Performed) or :analysis (Analysis)."
+  "A layer of the tree box open in the code window shown or hidden — in its code window and its score, the box's own
+   (show-layers): :performance (Performed) or :analysis (Analysis)."
   [layer]
-  (let [k (if (= layer :analysis) :code-analysis :code-perf)]
-    (swap! ui update k not)
-    (when-let [btn (some-> (cw-el) (.querySelector (str "[data-cw=" (name layer) "]")))] (.setAttribute btn "aria-pressed" (str (boolean (get @ui k)))))
-    (when-let [{:keys [id path dirty]} @code-win]
-      (if dirty
-        (repl-print! "out" "; apply or discard what is edited first: the layers show the tree again")
-        (when-let [b (get-in (patch-in (root-patch) path) [:boxes id])]
-          (let [v (editor-source b)]
+  (when-let [{:keys [id path dirty]} @code-win]
+    (if dirty
+      (repl-print! "out" "; apply or discard what is edited first: the layers show the tree again")
+      (when-let [b (get-in (patch-in (root-patch) path) [:boxes id])]
+        (let [now (shown-layers b) ks (if (now layer) (disj now layer) (conj now layer))]
+          (gesture! (wrap-path path (str "(show-layers " id (apply str (map #(str " " (pr-str %)) (sort ks))) ")")))
+          (when-let [btn (some-> (cw-el) (.querySelector (str "[data-cw=" (name layer) "]")))] (.setAttribute btn "aria-pressed" (str (contains? ks layer))))
+          (let [v (editor-source (assoc b :shows (vec ks)))]
             (swap! code-win assoc :original v)
             (set-editor-text! v)))))))
 
@@ -246,9 +247,9 @@
                "</span>"
                "<span class=\"cw-lang\">" (esc lang) "</span>"
                (when (= "tree" (klass (:text b)))
-                 (str "<button class=\"act cw-pv\" data-cw=\"performance\" aria-pressed=\"" (boolean (:code-perf @ui))
+                 (str "<button class=\"act cw-pv\" data-cw=\"performance\" aria-pressed=\"" (contains? (shown-layers b) :performance)
                       "\" title=\"Show also what belongs to performing it: real times, wires, takes, the continuum\">Performed</button>"
-                      "<button class=\"act cw-pv\" data-cw=\"analysis\" aria-pressed=\"" (boolean (:code-analysis @ui))
+                      "<button class=\"act cw-pv\" data-cw=\"analysis\" aria-pressed=\"" (contains? (shown-layers b) :analysis)
                       "\" title=\"Show also what an analysis wrote on it: figures, degrees, keys, why a rule is broken\">Analysis</button>"))
                (when (= lang "faust")
                  (str "<button class=\"act cw-pv\" data-cw=\"patch\" aria-pressed=\"" (not (false? (:faust-patch? @ui)))

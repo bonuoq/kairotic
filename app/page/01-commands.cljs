@@ -527,6 +527,19 @@
         (dispatch! [:view id (when-not (= k (first vs)) k)]))
       (or k (first vs)))))
 
+(defn shown-layers "The layers a box shows of its tree: a set of :analysis, :performance (none by default)." [b] (set (:shows b)))
+
+(defn show-layers
+  "The layers a tree box shows of its tree, in its score and its code window: (show-layers :b3 :analysis) its
+   analysis (the figures under the bass, degrees, keys, why a rule is broken), :performance what belongs to playing it
+   (real times, wires, takes); (show-layers :b3) none. Each box its own, kept in the work."
+  [id & ks]
+  (let [b (need-box id) ks (vec (sort (distinct ks)))]
+    (when-not (= "tree" (klass (:text b))) (fail (str id " is not a tree box: only a tree has layers to show")))
+    (when-let [bad (seq (remove #{:analysis :performance} ks))] (fail (str "A tree's layers are :analysis and :performance, not " (str/join " " (map pr-str bad)))))
+    (when-not (= (set ks) (shown-layers b)) (dispatch! [:shows id (when (seq ks) ks)]))
+    (set ks)))
+
 ;; musical trees (Study 19): mt/… are the functions on trees (mt/transpose, mt/events, mt/pp …)
 ;; A tree box keeps its tree and its history is made of node edits (Study 20): tree! writes the
 ;; difference with what it had; tree-edit! writes exact edits.
@@ -1029,6 +1042,10 @@
                         (when (seq vw)
                           (concat ["" ";; views"]
                                   (for [id vw] (str "(view " id " " (pr-str (get-in p [:boxes id :view])) ")")))))
+                      (let [sh (filter (fn [id] (seq (get-in p [:boxes id :shows]))) ids)]
+                        (when (seq sh)
+                          (concat ["" ";; layers shown"]
+                                  (for [id sh] (str "(show-layers " id " " (str/join " " (map pr-str (get-in p [:boxes id :shows]))) ")")))))
                       ;; the `patch @name` boxes pinned to a point of their line (#117)
                       (let [pn (filter (fn [id] (:pin (get-in p [:boxes id]))) ids)]
                         (when (seq pn)

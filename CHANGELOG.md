@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Room on screen, and the layers each box's own.** The layers of a tree (its analysis — the figures under the bass,
+  degrees, keys —, what belongs to playing it) are shown or hidden **box by box**, in its score and its code window
+  alike: the **analysis** chip in a tree box's header (when its tree has one), the Performed/Analysis buttons of the
+  code window, or `(show-layers :b3 :analysis)`; kept in the work (and in links, releases). Hidden by default; no
+  global switch any more. A **menu ☰** at the top right holds what took room all the time: Sessions, Share/Export, the
+  work as a file (and a release), Keys and gestures, Feedback (its tab is gone from the side panel), the documentation
+  and the edition. The fixed line of keys under the patch's header is a page of the Help tab now, **Keys and gestures**
+  (`docs/keys.md`, in Spanish too), opened by the **?** beside Annotate. A lesson's text folds (**▾**) to its head and
+  stays folded from step to step and lesson to lesson.
+
 - **Following frame by frame** (discussion #308; `@kairotic/analysis` 0.8.8): `follow dtw` — online dynamic time
   warping, in the manner of Dixon's MATCH: the score turned into what it should sound like, a frame every 50 ms (each
   event as long as the work's last take played it, or as written; each frame its profile — learned, `:listen` or its

@@ -41,15 +41,21 @@ export async function cac(page, check) {
         defs === '[["soprano" false] ["alto" false] ["tenor" true] ["bass" false]]', defs);
   const fb = await cljs(page, `(let [m (mei ${out})] [(count (re-seq #"<fb>" m)) (boolean (re-find #"<f>6</f><f>4</f><f>3</f>" m))])`);
   check("... the figures under the bass in the score (figured bass, <harm><fb>): one a chord, the 6/4/3 on ②", fb === "[8 true]", fb);
-  // the score obeys the layers as the code window does: with Analysis off its figures are hidden, with it on shown
-  const harms = () => cljs(page, `(some-> (get @score-cache ${out}) :node (.querySelectorAll "g.harm") .-length)`);
-  await cljs(page, "(swap! ui assoc :code-analysis false)");
-  const off = await until(page, `(some-> (get @score-cache ${out}) :node (.querySelectorAll "g.harm") .-length)`, (x) => x === "0", 10000);
-  await cljs(page, "(swap! ui assoc :code-analysis true)");
-  const on = await until(page, `(some-> (get @score-cache ${out}) :node (.querySelectorAll "g.harm") .-length)`, (x) => x === "8", 10000);
-  await cljs(page, "(swap! ui assoc :code-analysis false)");
-  check("... the score obeys Analysis as the code window does: the figures hidden with it off, shown with it on", off === "0" && on === "8", `${off} ${on}`);
-  void harms;
+  // the layers are each box's own (show-layers), in its score and its code window: hidden by default, shown by the
+  // analysis chip of its header or (show-layers :bN :analysis); another tree box keeps its own
+  const harms = `(some-> (get @score-cache ${out}) :node (.querySelectorAll "g.harm") .-length)`;
+  const off = await until(page, harms, (x) => x === "0", 10000);
+  const chip = await cljs(page, `(boolean (some (fn [[k]] (= k :analysis)) (header-chips ${out} (get-in (current) [:boxes ${out}]))))`);
+  await cljs(page, `(show-layers ${out} :analysis)`);
+  const on = await until(page, harms, (x) => x === "8", 10000);
+  const other = await cljs(page, `(shown-layers (get-in (current) [:boxes ${tb}]))`);
+  const kept = await cljs(page, `(str/includes? (patch->code (current)) "(show-layers ${out} :analysis)")`);
+  await cljs(page, `(show-layers ${out})`);
+  const off2 = await until(page, harms, (x) => x === "0", 10000);
+  check("the layers are the box's: its score hides the figures by default, shows them with (show-layers … :analysis), hides them again",
+        off === "0" && on === "8" && off2 === "0", `${off} ${on} ${off2}`);
+  check("... the tree box with an analysis has an analysis chip in its header; another tree box keeps its own layers; the work's code keeps it",
+        chip === "true" && other === "#{}" && kept === "true", `${chip} ${other} ${kept}`);
   // and back: a MEI's figured bass read into the tree's analysis layer (:fig) — by @startid (kairotic's) and by @tstamp
   // (the studies' exports, elsewhere's)
   const back = await cljs(page, `(vec (keep (fn [n] (when (and (vector? n) (= :note (first n))) (:fig (second n)))) (tree-seq vector? seq (mei/<-mei (str/replace (mei ${out}) #"<extMeta[\\s\\S]*?</extMeta>" "")))))`);
@@ -62,11 +68,11 @@ export async function cac(page, check) {
   await cljs(page, `(send! ${cb} [:staves 4])`);
   await until(page, `(count (re-seq #"<staffDef" (mei ${out})))`, (x) => x === "4", 30000);
   const hidden = await cljs(page, `(str/includes? (editor-source (get-in (current) [:boxes ${out}])) ":fig")`);
-  check("... its code window hides the analysis (Analysis off)", hidden === "false", hidden);
-  await cljs(page, "(swap! ui assoc :code-analysis true)");
+  check("... its code window hides the analysis (the box does not show it)", hidden === "false", hidden);
+  await cljs(page, `(show-layers ${out} :analysis)`);
   const shown = await cljs(page, `(str/includes? (editor-source (get-in (current) [:boxes ${out}])) ":fig")`);
-  await cljs(page, "(swap! ui assoc :code-analysis false)");
-  check("... and shows it with Analysis on", shown === "true", shown);
+  await cljs(page, `(show-layers ${out})`);
+  check("... and shows it when the box shows its analysis", shown === "true", shown);
   // the written tree edited: its analysis kept
   const before = await cljs(page, `(get-in (tree-data ${out}) [1])`);
   await cljs(page, `(code ${out} (editor-source (get-in (current) [:boxes ${out}])))`);
