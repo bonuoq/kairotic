@@ -179,7 +179,7 @@
 (defonce help-doc (atom nil))    ; the page of the documentation on screen, or nil
 
 (def doc-groups
-  [[{:en "Start here" :es "Para empezar"} ["guide" "concepts"]]
+  [[{:en "Start here" :es "Para empezar"} ["guide" "concepts" "keys"]]
    [{:en "Topics" :es "Temas"} ["mt" "flow" "ask" "embed" "pages"]]
    [{:en "Extending" :es "Ampliarlo"} ["writing-a-component"]]
    [{:en "Reference" :es "Referencia"} ["reference"]]])
@@ -310,7 +310,7 @@
 
 (defn docs
   "The documentation in the Help tab: (docs) its index, (docs \"guide\") a page — guide, concepts, mt,
-   flow, ask, embed, pages, writing-a-component, reference."
+   flow, ask, embed, pages, writing-a-component, reference, keys (keys and gestures)."
   ([] (show-help! nil) (mapv first (mapcat (fn [[_ ids]] (map vector ids)) doc-groups)))
   ([id] (show-doc! (str id)) (str id)))
 
@@ -386,10 +386,23 @@
 ;; ───── lessons ─────
 
 (defonce lesson-back (atom nil))   ; what was open before the first lesson
+(declare render-lesson!)
+;; the text of a lesson's step folded (only its head: title, step, ◀ ▶), as each viewer leaves it, in their browser
+(defonce lesson-folded (atom (try (= "1" (.getItem js/localStorage "kairotic.lesson-folded")) (catch :default _ false))))
+(defn fold-lesson!
+  "Folds the text of the lesson's steps (true), unfolds it (false), or turns it over (no argument)."
+  ([] (fold-lesson! (not @lesson-folded)))
+  ([v] (reset! lesson-folded (boolean v))
+       (try (.setItem js/localStorage "kairotic.lesson-folded" (if v "1" "0")) (catch :default _ nil))
+       (render-lesson!)
+       @lesson-folded))
 
 (defn render-lesson! []
   (let [el ($ "lesson") l @lesson]
     (set! (.-hidden el) (nil? l))
+    (.toggle (.-classList el) "folded" (boolean @lesson-folded))
+    (.setAttribute ($ "lesson-fold") "aria-expanded" (str (not @lesson-folded)))
+    (set! (.-textContent ($ "lesson-fold")) (if @lesson-folded "▸" "▾"))
     (when l
       (let [steps (:steps l) n (count steps) i (min (:at l) (dec n)) st (nth steps i nil)
             here (norm (:pos @world))
@@ -601,5 +614,6 @@
         (.closest t "#lesson-prev") (lesson-go! (dec (:at @lesson)))
         (.closest t "#lesson-next") (lesson-go! (inc (:at @lesson)))
         (.closest t "#lesson-back") (close-lesson!)
+        (.closest t "#lesson-fold") (fold-lesson!)
         (.closest t "[data-lang]") (set-lang! (keyword (.. (.closest t "[data-lang]") -dataset -lang)))
         (.closest t "code.run") (to-repl! (.getAttribute (.closest t "code.run") "data-code"))))))

@@ -3,6 +3,7 @@
 import { chromium } from "playwright";
 import { gestures, cljs } from "./gestures.mjs";
 import { perform } from "./perform.mjs";
+import { db } from "./db.mjs";
 import { editor } from "./editor.mjs";
 import { jam } from "./jam.mjs";
 import { corefns } from "./corefns.mjs";
@@ -95,6 +96,7 @@ const appSuites = [
   ["gestures", gestures, "the gestures ran"],
   ["patching", patching, "the patching tests ran"],
   ["perform", perform, "the Perform tests ran"],
+  ["db", db, "the history-as-database tests ran"],
   ["editor", editor, "the editor tests ran"],
   ["jam", jam, "the jam tests ran"],
   ["corefns", corefns, "the function box tests ran"],

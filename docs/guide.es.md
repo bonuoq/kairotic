@@ -15,8 +15,9 @@ ventana **Sessions** ofrece tres entradas:
 - **Shared rooms** — una obra que todos los de la sala editan a la vez, cada gesto en la misma historia.
 - **Try locally, without saving** — un patch para jugar; no se guarda nada.
 
-Una obra solo puede copiarse a una sala y una sala a una obra solo (con su historia). **Sessions**, arriba
-a la derecha, vuelve a abrir esta ventana.
+Una obra solo puede copiarse a una sala y una sala a una obra solo (con su historia). **Sessions**, en el
+menú ☰ de arriba a la derecha, vuelve a abrir esta ventana (el menú tiene también Share/Export, la obra como archivo,
+Feedback y las teclas y gestos).
 
 En Pages, las salas se sincronizan a través de un **relay**. **Relay**, en la misma ventana, muestra los
 que se usan y si responden; una comunidad puede tener el suyo (`npx @kairotic/relay`) y elegirlo ahí, y
@@ -316,6 +317,26 @@ Cada gesto es un evento de la historia, abajo en la página.
   punto más nuevo.
 - **◆ Snapshot** —`(snapshot)`, o `(snapshot "intro")` con un nombre— escribe un fotograma clave: un
   punto de la historia con la obra tal como está ahora. Se dibuja como un cuadrado.
+
+### La historia como base de datos
+
+La obra en cada punto de su historia es un valor: los eventos hasta ahí, aplicados en orden (como la base de
+datos de Datomic es sus hechos acumulados). Cada evento guarda su **transacción**: cuándo se hizo y de dónde vino
+—un gesto, la REPL, la pestaña Claude, una caja agent (con su petición), un merge, una toma de Perform—. Lo dicen
+los tooltips de la historia, y la REPL lo lee como datos (discusión #382).
+
+- `(as-of ["segmento" n])` — la obra tal como era en ese punto; `(as-of)` donde estás.
+- `(with "(box \"osc~ 440\" 40 40)")` **prueba** un cambio sin hacerlo: `{:db-before :db-after :tx-data}`, la
+  obra tal como quedaría y los eventos que haría, sin guardar nada. También prueba eventos
+  (`(with [[:move :b3 40 60]])`), en un punto del pasado (`(with ["segmento" n] …)`) o sobre un patch.
+- `(transact! (with …))` hace lo que se probó, como un solo cambio, desde el punto donde se probó.
+- `(tx-at)` — la transacción del evento que lleva hasta aquí: `{:event :kind :author :t :via :box :why}`, donde
+  `:kind` es `:work`, `:layout` (cajas movidas, colocadas, mostradas en otra vista) o `:mark`.
+- `(tx-log)` — las transacciones desde el principio hasta aquí, una secuencia para leer con Clojure:
+  `(filter #(= :agent (:via %)) (tx-log))`, `(remove #(= :layout (:kind %)) (tx-log))`, `(group-by :author (tx-log))`.
+
+Los eventos hechos antes de esto no tienen transacción: dicen quién los hizo (los de su segmento), no cuándo ni de
+dónde.
 
 ### Líneas
 

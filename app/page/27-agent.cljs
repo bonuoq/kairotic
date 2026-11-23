@@ -117,7 +117,7 @@
   (if-let [[pid at] pos]
     (let [id (new-id)
           n {:id id :parent pid :at at :author (my-author) :session session-id :t (js/Date.now) :merge nil
-             :events (vec evs) :line lid}]
+             :events (vec evs) :meta (vec (repeat (count evs) (tx-meta))) :line lid}]
       (swap! hist assoc-in [:other lid id] n)
       (when (and (persist?) (not (str/starts-with? id "local-")))
         (let [path (str (hist-path) "/" id) body (node->js n)]
@@ -260,6 +260,8 @@
         (agent-log! path id "" (str "building" (when (> n 1) (str " " n " offers")) " · " (ai/cut request 120)))
         (-> (answers)
             (.then (fn [got]
+                     ;; what it builds comes from this agent box and its request (#382)
+                     (with-tx {:via :agent :box id :why request} (fn []
                      (when (empty? got) (throw (js/Error. "no offer passed the checks")))
                      (let [b (get-in (agent-host-patch path) [:boxes id])]
                        (when-not (agent? b) (throw (js/Error. "the agent box is gone")))
@@ -295,7 +297,7 @@
                          (agent-log! path id "ok" (if (> (count points) 1)
                                                     (str "built " (count points) " offers, " (count points) " branches of its line «" (line-name lid) "»: it plays the first")
                                                     (str "built: " (count (:boxes (:p (first made)))) " boxes, a new point of its line «" (line-name lid) "»")))
-                         chosen))))
+                         chosen))))))
             (.catch (fn [e]
                       (let [msg (or (.-message e) (str e)) code (.-code e)]
                         (agent-say! path id [:error (if code (ask-error-copy code) msg)])

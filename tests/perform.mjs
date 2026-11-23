@@ -56,6 +56,7 @@ export async function perform(page, check) {
   const kept = await cljs(page, "(compose :keep)");
   check("(compose :keep) writes the take", (await cljs(page, `(contains? (:boxes (current)) ${d})`)) === "true", kept);
   check("... closed by a take keyframe", (await cljs(page, lastEv)) === "[:mark {:kind :take}]");
+  check("... its events kept from Perform (#382)", (await cljs(page, "(:via (tx-at))")) === ":take");
   const parent = await cljs(page, "(let [n (node (first (:pos @world)))] [(:parent n) (:at n)])");
   check("... as a branch from where it started", parent === from, parent + " vs " + from);
 

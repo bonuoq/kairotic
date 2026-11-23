@@ -16,8 +16,9 @@ Open [the app](https://bonuoq.github.io/kairotic/) (or the Kairotic artifact ins
   history.
 - **Try locally, without saving** — a patch to play with; nothing is kept.
 
-A solo work can be copied into a room and a room into a solo work (with its history). **Sessions**, at
-the top right, brings this window back.
+A solo work can be copied into a room and a room into a solo work (with its history). **Sessions**, in the
+menu ☰ at the top right, brings this window back (the menu also has Share/Export, the work as a file, Feedback and
+the keys and gestures).
 
 On Pages, rooms sync through a **relay**. **Relay**, in the same window, shows the ones in use and
 whether they answer; a community can run its own (`npx @kairotic/relay`) and choose it there, and the
@@ -303,6 +304,25 @@ Every gesture is an event of the history, at the bottom of the page.
   newest point.
 - **◆ Snapshot** — `(snapshot)`, or `(snapshot "intro")` with a name — writes a keyframe: a point of
   the history with the work as it is now. It is drawn as a square.
+
+### The history as a database
+
+The work at each point of its history is a value: the events up to there, applied in order (as Datomic's
+database is its facts accumulated). Every event keeps its **transaction**: when it was made and where from — a
+gesture, the REPL, the Claude tab, an agent box (with its request), a merge, a take from Perform. The history's
+tooltips tell it, and the REPL reads it as data (discussion #382).
+
+- `(as-of ["segment" n])` — the work as it was at that point; `(as-of)` where you are.
+- `(with "(box \"osc~ 440\" 40 40)")` **tries** a change without making it: `{:db-before :db-after :tx-data}`,
+  the work as it would be and the events it would make, with nothing kept. It also tries events
+  (`(with [[:move :b3 40 60]])`), at a point of the past (`(with ["segment" n] …)`) or on a patch.
+- `(transact! (with …))` makes what was tried, as one change, from the point it was tried at.
+- `(tx-at)` — the transaction of the event that leads here: `{:event :kind :author :t :via :box :why}`, where
+  `:kind` is `:work`, `:layout` (boxes moved, placed, shown in another view) or `:mark`.
+- `(tx-log)` — the transactions from the start to here, a seq to read with Clojure:
+  `(filter #(= :agent (:via %)) (tx-log))`, `(remove #(= :layout (:kind %)) (tx-log))`, `(group-by :author (tx-log))`.
+
+Events made before this have no transaction: they say who made them (their segment's), not when or from where.
 
 ### Lines
 

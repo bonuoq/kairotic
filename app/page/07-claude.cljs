@@ -332,7 +332,8 @@
     (swap! cbox/trusted into srcs)
     (cbox/forget-language! "component")
     (cbox/forget-language! "clojurescript")
-    (dispatch! [:load p])
+    ;; it comes from the Claude tab (#382), unless whoever called it already said where from
+    (with-tx (or @tx-now {:via :claude}) (fn [] (dispatch! [:load p])))
     (ensure-classes!)
     (render-all!)
     code))
@@ -373,7 +374,7 @@
                                 (fn [chk]
                                   (if-not (:ok chk)
                                     (do (ask-log! "err" (str "The patch does not work yet: " (str/join "; " (take 3 (:errors chk))) " (it is in the answer, in the Claude tab).")) nil)
-                                    (let [code (apply-patch-code! src)]
+                                    (let [code (with-tx {:via :claude :why request} (fn [] (apply-patch-code! src)))]
                                       (ask-log! "done" (str "Patch loaded (" (count (:boxes (work-patch))) " boxes): ▶ to hear it."
                                                             (when (.-truncated r) " The answer was cut short.")))
                                       code))))))))

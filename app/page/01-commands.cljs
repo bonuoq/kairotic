@@ -23,12 +23,15 @@
 
 (defn fail [msg] (throw (js/Error. msg)))
 
+(defonce tried (atom nil))   ; the events of a try (`with`, 29-db.cljs) while it runs, or nil
+
 (defn dispatch-root!
   "An event of the whole work (its ids already lead from the top: [:in :b5 …] for a sub-patch), wherever the
    view is: to the scratch patch, to the take in Perform, or to the history."
   [ev]
   (cond
-    @scratch (swap! scratch step ev)
+    ;; a scratch patch (build, or a try with `with`, #382): what is tried is also written down
+    @scratch (do (swap! scratch step ev) (when @tried (swap! tried conj ev)))
     @perf (perform-event! ev)
     (= :connecting (:mode @hist)) (fail "Still connecting to the shared history; try again in a moment.")
     (= :none (:mode @hist)) (fail "Open or create a work from the session manager.")
@@ -527,6 +530,19 @@
         (dispatch! [:view id (when-not (= k (first vs)) k)]))
       (or k (first vs)))))
 
+(defn shown-layers "The layers a box shows of its tree: a set of :analysis, :performance (none by default)." [b] (set (:shows b)))
+
+(defn show-layers
+  "The layers a tree box shows of its tree, in its score and its code window: (show-layers :b3 :analysis) its
+   analysis (the figures under the bass, degrees, keys, why a rule is broken), :performance what belongs to playing it
+   (real times, wires, takes); (show-layers :b3) none. Each box its own, kept in the work."
+  [id & ks]
+  (let [b (need-box id) ks (vec (sort (distinct ks)))]
+    (when-not (= "tree" (klass (:text b))) (fail (str id " is not a tree box: only a tree has layers to show")))
+    (when-let [bad (seq (remove #{:analysis :performance} ks))] (fail (str "A tree's layers are :analysis and :performance, not " (str/join " " (map pr-str bad)))))
+    (when-not (= (set ks) (shown-layers b)) (dispatch! [:shows id (when (seq ks) ks)]))
+    (set ks)))
+
 ;; musical trees (Study 19): mt/… are the functions on trees (mt/transpose, mt/events, mt/pp …)
 ;; A tree box keeps its tree and its history is made of node edits (Study 20): tree! writes the
 ;; difference with what it had; tree-edit! writes exact edits.
@@ -987,7 +1003,7 @@
     (let [{:keys [error events renamed]} (plan-merge tgt src)]
       (when error (fail error))
       (stop-follow!)
-      (let [id (new-node! (first tgt) (second tgt) events src)]
+      (let [id (with-tx {:via :merge} (fn [] (new-node! (first tgt) (second tgt) events src)))]
         (swap! world assoc :pos [id (count events)] :auto true :prev-pos nil))
       (cond-> {:events-merged (dec (count events))}
         (seq renamed) (assoc :renamed renamed)))))
@@ -1029,6 +1045,10 @@
                         (when (seq vw)
                           (concat ["" ";; views"]
                                   (for [id vw] (str "(view " id " " (pr-str (get-in p [:boxes id :view])) ")")))))
+                      (let [sh (filter (fn [id] (seq (get-in p [:boxes id :shows]))) ids)]
+                        (when (seq sh)
+                          (concat ["" ";; layers shown"]
+                                  (for [id sh] (str "(show-layers " id " " (str/join " " (map pr-str (get-in p [:boxes id :shows]))) ")")))))
                       ;; the `patch @name` boxes pinned to a point of their line (#117)
                       (let [pn (filter (fn [id] (:pin (get-in p [:boxes id]))) ids)]
                         (when (seq pn)
@@ -1209,14 +1229,24 @@
 
 (defn box-num-e [k] (cv/id-num k))
 
+(defn try-code
+  "Evaluates code (a string: calls) or applies events (a vector of them) on patch p, in a scratch patch,
+   without touching the history: [the patch after, the events made]. The base of `with` (29-db.cljs)."
+  [p code-or-evs]
+  (let [prev-s @scratch prev-t @tried]
+    (reset! scratch p)
+    (reset! tried [])
+    (try
+      (if (string? code-or-evs)
+        (eval-str (str "(do " code-or-evs "\n nil)"))
+        (doseq [ev code-or-evs] (when (vector? ev) (dispatch-root! ev))))
+      [@scratch @tried]
+      (finally (reset! scratch prev-s) (reset! tried prev-t)))))
+
 (defn build
   "Evaluates code in a scratch patch and returns the resulting patch, without touching the history."
   [code]
-  (reset! scratch empty-patch)
-  (try
-    (eval-str (str "(do " code "\n nil)"))
-    (let [p @scratch] (reset! scratch nil) p)
-    (catch :default e (reset! scratch nil) (throw e))))
+  (first (try-code empty-patch code)))
 
 (defn run-code!
   "Rebuilds the patch from the code: it stays as a single :load event."

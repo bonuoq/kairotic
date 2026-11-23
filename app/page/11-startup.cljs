@@ -15,7 +15,7 @@
   (safe-mode! f)
   (repl-print! "err" (esc (str "; Safe mode: the page froze last time" (when (seq (str (:work f))) (str " in «" (:work f) "»"))
                                ", while: " (:what f) ". Nothing plays and no code of the work runs here; reload to leave it."))))
-(repl-print! "out" "; New here? The Help tab has the tutorials and a page for every class (select a box and press ?). The Claude tab makes patches and components from a description. Share/Export gives a link to a patch, or puts it in another page.")
+(repl-print! "out" "; New here? The Help tab has the tutorials and a page for every class (select a box and press ?). The Claude tab makes patches and components from a description. The menu ☰ has Sessions, Share/Export (a link to a patch, or it in another page), the work as a file, and the keys and gestures (also the ? beside Annotate).")
 
 ;; on Pages, the address carries ?peer= while this page's relays are not the site's
 (address-carries-relay!)

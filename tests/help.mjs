@@ -57,6 +57,19 @@ export async function help(page, check) {
   await cljs(page, '(open-help-patch! "freqt" 2)');
   const at = await until(page, "(:at @lesson)", "2", 30000);
   check("a step of the list opens the help patch at that step", at === "2", at);
+  // the text of the steps folds (▾), and stays folded for the next lesson; unfolded again
+  await page.click("#lesson-fold");
+  const folded = await page.evaluate(() => [document.getElementById("lesson").classList.contains("folded"), getComputedStyle(document.getElementById("lesson-note")).display]);
+  await cljs(page, "(lesson-go! 1)");
+  const still = await page.evaluate(() => document.getElementById("lesson").classList.contains("folded"));
+  await page.click("#lesson-fold");
+  const unfolded = await page.evaluate(() => !document.getElementById("lesson").classList.contains("folded"));
+  check("a lesson's text folds (only its head left), stays folded from step to step, and unfolds", folded[0] && folded[1] === "none" && still && unfolded, JSON.stringify([folded, still, unfolded]));
   await cljs(page, "(when @lesson (close-lesson!))");
   await until(page, "(nil? @lesson)", "true", 8000);
+  // the keys and gestures: no longer a line under the patch's header, a page of the Help tab (? beside Annotate, ☰)
+  check("the patch's header has no line of keys any more", await page.evaluate(() => !document.querySelector('.pane[aria-label="Patch"] .pane-head .hint')));
+  await page.click("#keys-btn");
+  const keys = await until(page, '(str/includes? (.-innerHTML ($ "help-view")) "Messages travel without")', "true", 8000);
+  check("? beside Annotate opens Keys and gestures in the Help tab", keys === "true", keys);
 }

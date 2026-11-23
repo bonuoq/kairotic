@@ -48,7 +48,7 @@
                [{:id "release" :parent nil :at 0 :author (my-author) :session session-id :t now :merge nil
                  :events (release-events)}]
                (all-segments))
-        segs (mapv (fn [n] (select-keys n [:id :parent :at :author :session :t :merge :events :line])) segs)
+        segs (mapv (fn [n] (select-keys n [:id :parent :at :author :session :t :merge :events :meta :line])) segs)
         segs (if anonymous (anonymize segs) segs)
         idx (:index @line-state)]
     {:manifest {:format kfile-format :kairotic version :made now :kind (if release :release :history) :anonymous (boolean anonymous)}
@@ -115,6 +115,13 @@
 
 ;; ───────────────────────── opening one ─────────────────────────
 
+(defn sane-segment-pairs
+  "The events of segment n that can be read, each with its transaction: [[event tx] …]."
+  [n]
+  (if (sequential? (:events n))
+    (vec (keep-indexed (fn [i e] (when (and (vector? e) (keyword? (first e))) [e (when (sequential? (:meta n)) (nth (:meta n) i nil))])) (:events n)))
+    []))
+
 (defn sane-segment [n]
   (when (and (map? n) (string? (:id n)) (seq (:id n)))
     {:id (:id n)
@@ -125,7 +132,9 @@
      :t (if (number? (:t n)) (:t n) 0)
      :merge (when (valid-pos? (:merge n)) (:merge n))
      :line (when (and (string? (:line n)) (seq (:line n)) (not= main-line (:line n))) (:line n))
-     :events (if (sequential? (:events n)) (vec (filter (fn [e] (and (vector? e) (keyword? (first e)))) (:events n))) [])}))
+     ;; each event with its transaction (#382)
+     :events (mapv first (sane-segment-pairs n))
+     :meta (sane-metas (map second (sane-segment-pairs n)) (count (sane-segment-pairs n)))}))
 
 (defn read-work-bytes
   "Promise of what a .kairotic holds: {:manifest :work :lines :history :people :sounds {hash {:sr :chans}}}."

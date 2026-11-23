@@ -361,7 +361,7 @@
   [lid evs]
   (let [id (new-id)
         n {:id id :parent nil :at 0 :author (my-author) :session session-id :t (js/Date.now) :merge nil
-           :events (vec evs) :line lid}]
+           :events (vec evs) :meta (vec (repeat (count evs) (tx-meta))) :line lid}]
     (swap! hist assoc-in [:other lid id] n)
     (when (and (persist?) (not (str/starts-with? id "local-")))
       (let [path (str (hist-path) "/" id) body (node->js n)]

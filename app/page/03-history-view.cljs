@@ -53,6 +53,19 @@
 
 (declare mark-picked!)   ; 16-release.cljs: the points chosen to be forgotten (issue #45)
 
+(defn tx-label
+  "A transaction as the history's tooltips tell it (#382): \" · 17:03 · agent b3 «…»\", or \"\" if it says nothing."
+  [m]
+  (let [t (:t m) v (:via m)]
+    (str (when (number? t)
+           (str " · " (.toLocaleTimeString (js/Date. t) js/undefined #js {:hour "2-digit" :minute "2-digit"})))
+         (when v
+           (str " · " (case v
+                        :gesture "gesture" :repl "REPL" :claude "Claude tab" :merge "merge" :take "take from Perform"
+                        :with "tried first (with)" :agent (str "agent" (when (keyword? (:box m)) (str " " (name (:box m)))))
+                        (name v))))
+         (when (seq (:why m)) (str " «" (ai/cut (:why m) 60) "»")))))
+
 (defn render-tree! []
   (let [{:keys [order lane-of lanes]} (lane-layout)
         ls order
@@ -75,6 +88,7 @@
                    (let [i (lane-of (:id n)) s (starts (:id n)) cnt (count (:events n)) y (Y i)
                          c (session-color (node-session n)) nid (esc (:id n))
                          who (person-name (:author n))
+                         metas (metas-of n)
                          pl (when (:parent n) (lane-of (:parent n)))
                          [mn mk] (when (vector? (:merge n)) (:merge n))
                          ml (when mn (lane-of mn))]
@@ -99,7 +113,7 @@
                                         (let [{:keys [label kind]} (when (map? (second ev)) (second ev))]
                                           (str "<rect class=\"ev keyframe" (when (= kind :take) " take") "\" data-goto=\"" nid "|" (inc k) "\""
                                                " x=\"" (- xk 5.5) "\" y=\"" (- y 5.5) "\" width=\"11\" height=\"11\" rx=\"2\" stroke=\"" c "\">"
-                                               "<title>" (esc (str who " · " (if (= kind :take) "take kept from Perform" "snapshot")
+                                               "<title>" (esc (str who (tx-label (get metas k)) " · " (if (= kind :take) "take kept from Perform" "snapshot")
                                                                    (when (seq (str label)) (str ": " label)))) "</title></rect>"))
                                         :else
                                         (str "<" (if mark? "rect" "circle") " class=\"ev" (when mark? " mergemark") "\" data-goto=\"" nid "|" (inc k) "\""
@@ -107,7 +121,7 @@
                                                (str " x=\"" (- xk 5) "\" y=\"" (- y 5) "\" width=\"10\" height=\"10\" transform=\"rotate(45 " xk " " y ")\"")
                                                (str " cx=\"" xk "\" cy=\"" y "\" r=\"4.5\""))
                                              " fill=\"" c "\">"
-                                             "<title>" (esc (str who " · " (if mark? "merge" (let [t (pr-str ev)] (if (> (count t) 90) (str (subs t 0 90) "…") t))))) "</title></"
+                                             "<title>" (esc (str who (tx-label (get metas k)) " · " (if mark? "merge" (let [t (pr-str ev)] (if (> (count t) 90) (str (subs t 0 90) "…") t))))) "</title></"
                                              (if mark? "rect" "circle") ">"))))
                                   (:events n))))))
             mark (fn [pos r cls color]
@@ -302,13 +316,15 @@
 (defn forget-box!
   "A box that is created or deleted starts from nothing: what a box with its id showed and held is forgotten."
   [id]
+  ;; nothing to forget while trying in a scratch patch (build, `with`): the boxes of the work stay as they are
+  (when-not @scratch
   (let [f (fid id)]
     (eng/forget! f)
     (swap! live-trees dissoc f)
     (swap! dismissed-trees dissoc f)
     (swap! sent-trees dissoc f)
     (swap! sent-data dissoc f)
-    (swap! score-cache dissoc id)))
+    (swap! score-cache dissoc id))))
 
 (defn resume!
   "Lets a tree box be changed by messages again, after a loop was stopped: (resume! :b2)."
@@ -433,8 +449,7 @@
 (add-watch profiles ::render (fn [_ _ _ _] (render-tree!) (render-peers!) (render-foot!)))
 (add-watch ui ::render
   (fn [_ _ o n]
-    ;; (:code-analysis: the scores of the tree boxes show or hide the analysis, as the code window does)
-    (when (not= (select-keys o [:sel :insp :drag :wire :hover-in :nsel :ldrag :code-analysis]) (select-keys n [:sel :insp :drag :wire :hover-in :nsel :ldrag :code-analysis]))
+    (when (not= (select-keys o [:sel :insp :drag :wire :hover-in :nsel :ldrag]) (select-keys n [:sel :insp :drag :wire :hover-in :nsel :ldrag]))
       (render-scene (current)))
     (when (not= (:follow o) (:follow n)) (render-peers!))
     (when (not= (:merge-pick o) (:merge-pick n)) (render-controls!) (render-foot!))))
@@ -449,7 +464,8 @@
   ;; a gesture or a line of the REPL: if the page froze now, the next one starts in safe mode
   (risky! (if (> (count code) 160) (str (subs code 0 150) " …") code))
   (try
-    (let [v (eval-str code)]
+    ;; its events say where they came from (#382), unless whoever asked for it already did
+    (let [v (with-tx (or @tx-now {:via (if (= source :patch) :gesture :repl)}) (fn [] (eval-str code)))]
       (when (= source :repl) (repl-print! "out" (esc (pr-str v)))))
     (catch :default e
       (repl-print! "err" (esc (or (.-message e) (str e)))))))

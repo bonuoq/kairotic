@@ -7,6 +7,16 @@
   partimento` (a box's text, not a class). Now the catalog adds every official package's classes the work does not
   have yet (with the first sentence of their help: a box of one brings its package), and `class_help` takes the class
   out of a box's text and gives its help's text when the class is not loaded.
+- **Room on screen, and the layers each box's own.** The layers of a tree (its analysis — the figures under the bass,
+  degrees, keys —, what belongs to playing it) are shown or hidden **box by box**, in its score and its code window
+  alike: the **analysis** chip in a tree box's header (when its tree has one), the Performed/Analysis buttons of the
+  code window, or `(show-layers :b3 :analysis)`; kept in the work (and in links, releases). Hidden by default; no
+  global switch any more. A **menu ☰** at the top right holds what took room all the time: Sessions, Share/Export, the
+  work as a file (and a release), Keys and gestures, Feedback (its tab is gone from the side panel), the documentation
+  and the edition. The fixed line of keys under the patch's header is a page of the Help tab now, **Keys and gestures**
+  (`docs/keys.md`, in Spanish too), opened by the **?** beside Annotate. A lesson's text folds (**▾**) to its head and
+  stays folded from step to step and lesson to lesson.
+
 - **Following frame by frame** (discussion #308; `@kairotic/analysis` 0.8.8): `follow dtw` — online dynamic time
   warping, in the manner of Dixon's MATCH: the score turned into what it should sound like, a frame every 50 ms (each
   event as long as the work's last take played it, or as written; each frame its profile — learned, `:listen` or its
@@ -21,6 +31,15 @@
   `@startid` as Kairotic writes it, or by `@tstamp` and `@staff` as the studies' exports and other programs do).
   Quantizing a tree in free time keeps what an analysis wrote on its notes (`:fig`, `:deg`, `:local`, `:why`,
   `:harmony`).
+- **The history as a database, in Datomic's terms** (discussion #382, ideas 1 and 4). Every event keeps its
+  **transaction** beside it (`:meta`, parallel to a segment's `:events`): when it was made (`:t`) and where from
+  (`:via` — `:gesture`, `:repl`, `:claude`, `:agent` with its `:box` and request as `:why`, `:merge`, `:take` from
+  Perform, `:with`); who made it stays the segment's. Saved with the history, carried by `.kairotic` files, told in
+  the history's tooltips; segments written before have none. `(with "…")` / `(with [events])` tries a change without
+  making it, as `d/with`: `{:db-before :db-after :tx-data}`, at a point of the past or on a patch too, and
+  `(transact! r)` makes it from where it was tried. `(as-of pos)`, `(tx-at pos)` (with `:kind` — `:work`, `:layout`,
+  `:mark` —, read from the event, issue #5) and `(tx-log)`, the transactions to here as a seq. `build` is a `with` on
+  an empty patch; a try no longer resets the engine's state of the work's boxes with the same ids.
 
 - **One tonal layer for both worlds** (`@kairotic/rules` 0.9.0; discussion #353, step 5). `keySystem(key)`: a key of
   `tonal.mjs` — major, minor, a church mode with its musica ficta — as a system the comes sings in (a pitch a degree
