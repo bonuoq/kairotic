@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Tension: `tension.mjs`** (`@kairotic/rules` 0.13.0; discussions #399, #321). Lerdahl's *Tonal Pitch Space*: a
+- **Tension: `tension.mjs`** (`@kairotic/rules` 0.14.0; discussions #399, #321). Lerdahl's *Tonal Pitch Space*: a
   chord's basic space in a region, the chord distance δ = i + j + k (I → V 5, I → ii 8, as his tables), an applied
   dominant's region its target's key, surface tension (an inversion, a 7th, a foreign note), and sequential, global
   and hierarchical tension. In Study 67:
@@ -13,6 +13,15 @@
     tonic as his at that bar): its tension curve correlates 0.74 with his from the frame, 0.50 without.
   - `reduceNotes` takes an `extra` cost (the tension a step takes away, `tensionCost`); on BWV 846 it changes no
     level — the functions and the ornaments already decide them.
+- **The soprano does not double the bass's line at the octave** (`@kairotic/rules` 0.14.0, `chorale-4` 1.3.0;
+  `@kairotic/cac` 0.16.2). In Fifth Down Fourth Up the engine still wrote the soprano F–E–D held over each weak unit
+  above F–B–E–A–D: an octave with the bass on every strong unit, both moving down — a sequence's parallels, a chord of
+  its own between and the bass leaping, which the rules allowed (the book writes them in ex. 7.12b; Bach's chorales,
+  in 1 of their 24 circle-of-fifths stretches). The rule `outer-octaves`: no octave between the soprano and the bass
+  on two strong units in a row, the soprano held between them and moving the bass's way. The sequence's other
+  parallels (between inner voices, 5ths between the outer ones) stay allowed. Study 65's counts: Fifth Down Fourth Up
+  5,621, with 5/3s 139,158, in minor 3,753, Third Down Second Up 992 and in minor 19,238; Study 69's Chain of
+  Dominants in minor 530. The parity with Study 62's kernel is kept (none of its phrases has such octaves).
 - **The tonal functions in two voices: Studies 61 and 63** (`@kairotic/rules` 0.13.0: `impliedChord`; discussion
   #399). Two voices imply their chord (a 3rd or a 5th over the bass its root, a 6th the bass its 3rd, a 4th the
   cadential 6/4), so the grammar of `functions.mjs` reads a partimento's phrase too:
