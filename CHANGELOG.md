@@ -13,6 +13,15 @@
     draws exactly as before. The page has an Economy field for the variation and the morph (3) and says each line's
     figures in bits.
   - The studies keep a copy of `bits.mjs`, checked equal to the package's (`tests/rules.mjs`).
+- **`cac judge` with a canon's style: two voices judged by the canon's rules** (`@kairotic/rules` 0.12.0,
+  `@kairotic/cac` 0.16.0; discussion #353). `[:style :canon-2]` (or a style that extends it) and a tree of two voices:
+  each voice's line and what is between them (parallels, dissonances and their suspensions, the imitation), unit by
+  unit — the reasons on outlet 1, each with its unit and its voice (the dux, the comes or both), and the voices written
+  again with `:why` on the notes that break a rule (their analysis layer). The dux is the voice that enters first (the
+  lower if together, or `[:dux :upper]`); k and d are read from their entries (or `[:k -4]`, `[:d 2]`); a canon if the
+  comes enters later, free counterpoint if they enter together (or `[:imitation 0.6]`). With another style the two
+  voices are judged over their bass, as before. `canon.mjs`'s `judgeTwo`: the canons the engine draws are judged by
+  the rules, and a first species written badly shows its parallel 5ths and its leaps.
 - **Study 66 · compression** (discussion #399): the shortest description of a piece — figures (a pattern of a few
   pitches with its rhythm, over other pitches), motifs (the same intervals elsewhere) and repeats, counted in bits
   (MDL), taken greedily and checked lossless. Bach's preludes from the Mutopia Project's public-domain typesets: BWV 846

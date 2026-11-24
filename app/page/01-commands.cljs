@@ -90,7 +90,7 @@
   [id x y] (need-box id) (dispatch! [:move id (js/Math.round x) (js/Math.round y)]) [x y])
 (defn text!
   "Rewrites the text of a box (its class and arguments): (text! :b3 \"osc~ 220\")."
-  [id text] (need-box id) (check-ref-text! text) (dispatch! [:text id (str text)]) (when-not @scratch (eng/forget! (fid id))) (ensure-class! text) id)
+  [id text] (need-box id) (check-ref-text! text) (dispatch! [:text id (str text)]) (when-not @scratch (eng/forget! (fid id)) (swap! forgotten-now conj (fid id))) (ensure-class! text) id)
 
 (defn delete
   "Deletes boxes, with their lines: (delete :b3) · (delete :b3 :b4 :b7)."

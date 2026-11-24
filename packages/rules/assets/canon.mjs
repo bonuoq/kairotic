@@ -112,14 +112,14 @@ export const CANON_VOICE = {
   /** edge · the comes silent until it enters (d beats after the dux), sounding from then on; it enters on the final,
    *  its 5th, its octave or the 4th below, shifted as the canon shifts it. The dux starts so too. */
   entry: (w, role) => (U, t, x) => {
-    if (role === "dux") return w.on("start") && t === 0 && !w.starts.includes(w.deg(x)) ? "the dux starts on the final, its 5th, its octave or the 4th below" : null;
+    if (role === "dux") return w.on("start") && t === 0 && x !== null && !w.starts.includes(w.deg(x)) ? "the dux starts on the final, its 5th, its octave or the 4th below" : null;
     if (t < w.d) return x === null ? null : "the comes has not entered yet";
     if (x === null) return w.restAt(t) ? null : "the comes sounds from its entry on";
     return null;
   },
   /** edge · the dux ends on the final, approached by step. */
-  final: (w, role) => (U, t, x) => (role === "dux" && w.on("final") && t === w.n - 1 && !w.finals.includes(w.deg(x)) ? "the dux ends on the final" : null),
-  approach: (w, role) => (U, t, x) => (role === "dux" && w.on("approach") && t === w.n - 2 && !w.finals.some((f) => Math.abs(w.deg(x) - f) === 1) ? "the final is approached by step" : null),
+  final: (w, role) => (U, t, x) => (role === "dux" && x !== null && w.on("final") && t === w.n - 1 && !w.finals.includes(w.deg(x)) ? "the dux ends on the final" : null),
+  approach: (w, role) => (U, t, x) => (role === "dux" && x !== null && w.on("approach") && t === w.n - 2 && !w.finals.some((f) => Math.abs(w.deg(x) - f) === 1) ? "the final is approached by step" : null),
   /** line · fourth species: the dux (the cantus firmus) a note a bar; the comes syncopated, holding over the strong
    *  beat, striking on the weak one and the final. */
   syncopation: (w, role) => (U, t, x) => {
@@ -326,13 +326,7 @@ export function canonVoices(spec, style0 = "canon-2") {
 export function imitation(spec = {}) {
   const key = parseKey(spec.key) || guessKey(spec.notes.filter((x) => x.midi !== null && x.midi !== undefined).map((x) => x.midi));
   const W0 = canonWorld({ tonic: 0, k: 0, d: 1, n: 1, lo: 0, hi: 0, key }), S = W0.S, K = S.key;
-  const dux = [], unknown = [];
-  spec.notes.forEach((x, i) => {
-    if (x.midi === null || x.midi === undefined) { for (let j = 0; j < Math.max(1, x.units || 1); j++) dux.push(null); return; }
-    const dr = degreeOf(K, x.midi), c = dr && S.codesIn(dr.d, dr.d).find((y) => S.alt(y) === dr.r);
-    if (c === undefined || !dr) unknown.push(`note ${i + 1}`);
-    for (let j = 0; j < Math.max(1, x.units || 1); j++) dux.push(c ?? null);
-  });
+  const unknown = [], dux = codesOf(S, spec.notes, unknown);
   const degs = dux.filter((c) => c !== null).map(S.deg);
   const n = dux.length, d = Math.min(spec.d ?? 2, Math.max(1, n - 1)), k = spec.k ?? -7;
   const lo = Math.min(...degs), hi = Math.max(...degs);
@@ -347,4 +341,65 @@ export function imitation(spec = {}) {
            countWithin: (ms) => { if (!CV) return 0n; try { return within(ms, () => CV.count()); } catch (e) { if (e.tooLong) return null; throw e; } } };
 }
 
-export default { canonVoices, canonWorld, imitation, CANON_VOICE, CANON_BETWEEN, CANON_STYLES, band };
+/** A melody's notes ([{midi, units}], a rest {midi: null}) as a key's codes, one a unit (null: a rest); the notes out
+ *  of the key named in unknown. */
+function codesOf(S, notes, unknown, who = "note") {
+  const out = [];
+  notes.forEach((x, i) => {
+    const u = Math.max(1, x.units || 1);
+    if (x.midi === null || x.midi === undefined) { for (let j = 0; j < u; j++) out.push(null); return; }
+    const dr = degreeOf(S.key, x.midi), c = dr && S.codesIn(dr.d, dr.d).find((y) => S.alt(y) === dr.r);
+    if (c === undefined || !dr) unknown.push(`${who} ${i + 1}`);
+    for (let j = 0; j < u; j++) out.push(c ?? null);
+  });
+  return out;
+}
+
+/**
+ * Two voices judged by the canon's rules (cac judge with canon-2, or a style that extends it): spec {upper, lower
+ * ([{midi, units}], a rest {midi: null}; one unit the shortest note), key (else guessed), dux ("upper" or "lower";
+ * else the voice that enters first, the lower if they enter together), k and d (else read: the steps between their
+ * first notes, the units between their entries), imitation (else a canon if the comes enters later, free counterpoint
+ * if they enter together), b (2), species, invert, style (canon-2)}. → {ok, why (the first, "unit t: …"), reasons
+ * [{unit, voice ("dux", "comes" or "both": between them), why}] (every unit that breaks a rule: the first reason of each
+ * voice's line, and of what is between them), dux, k, d,
+ * imitation (its band), key, unknown, style}.
+ */
+export function judgeTwo(spec = {}) {
+  const all = [...spec.upper, ...spec.lower].filter((x) => x.midi !== null && x.midi !== undefined).map((x) => x.midi);
+  const key = parseKey(spec.key) || guessKey(all.length ? all : [60]);
+  const S = canonWorld({ tonic: 0, k: 0, d: 1, n: 1, lo: 0, hi: 0, key }).S;
+  const unknown = [];
+  const U = codesOf(S, spec.upper, unknown, "upper voice, note"), L = codesOf(S, spec.lower, unknown, "lower voice, note");
+  const entry = (V) => { const i = V.findIndex((c) => c !== null); return i < 0 ? Infinity : i; };
+  const eu = entry(U), el = entry(L);
+  const base = { key: `${S.key.tonic} ${S.key.mode}`, unknown, style: typeof spec.style === "string" ? spec.style : (spec.style && spec.style.style) || "canon-2" };
+  if (!Number.isFinite(eu) || !Number.isFinite(el)) return { ...base, ok: false, why: "two voices, each with notes", reasons: [] };
+  if (unknown.length) return { ...base, ok: false, why: `notes out of the key: ${unknown.join(", ")}`, reasons: [] };
+  const duxIs = spec.dux || (eu < el ? "upper" : el < eu ? "lower" : "lower");
+  // (both voices from where the first enters, as long as the longer)
+  const s0 = Math.min(eu, el), n = Math.max(U.length, L.length) - s0;
+  const pad = (V) => [...V.slice(s0), ...Array(Math.max(0, n - (V.length - s0))).fill(null)];
+  const D = pad(duxIs === "upper" ? U : L), C = pad(duxIs === "upper" ? L : U);
+  const d = spec.d ?? entry(C), dd = D.filter((c) => c !== null).map(S.deg), cd = C.filter((c) => c !== null).map(S.deg);
+  const k = spec.k ?? cd[0] - dd[0];
+  const imitationOf = spec.imitation ?? (d > 0 ? 1 : 0);
+  const cspec = { tonic: 0, key, k, d, b: spec.b ?? 2, n, lo: Math.min(...dd), hi: Math.max(...dd), clo: Math.min(...cd), chi: Math.max(...cd),
+                  imitation: imitationOf, species: spec.species, invert: spec.invert || [], maxHold: spec.maxHold, given: D,
+                  starts: spec.starts, on: spec.on };
+  const CV = canonVoices(cspec, spec.style || "canon-2");
+  const [vd, vc] = CV.voices, W = [D, C], reasons = [];
+  for (let t = 0; t < n; t++) {
+    const x = [D[t], C[t]];
+    // (each voice's line, and what is between them: the first reason of each)
+    const ed = vd.solver.check(D.slice(0, t), t, D[t]), ec = vc.solver.check(C.slice(0, t), t, C[t]);
+    const eb = CV.between.reduce((r, b) => r || b.check({ W, t, x, p: t >= 1 ? [D[t - 1], C[t - 1]] : null }), null);
+    if (ed) reasons.push({ unit: t + s0, voice: "dux", why: ed });
+    if (ec) reasons.push({ unit: t + s0, voice: "comes", why: ec });
+    if (eb) reasons.push({ unit: t + s0, voice: "both", why: eb });
+  }
+  return { ...base, ok: reasons.length === 0, why: reasons.length ? `unit ${reasons[0].unit + 1}: ${reasons[0].why}` : null, reasons,
+           dux: duxIs, k, d, imitation: band(imitationOf), style: CV.style.style || base.style };
+}
+
+export default { canonVoices, canonWorld, imitation, judgeTwo, CANON_VOICE, CANON_BETWEEN, CANON_STYLES, band };

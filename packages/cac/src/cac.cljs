@@ -11,8 +11,8 @@
 ;; What an analysis finds is written on the tree as its analysis layer (:fig the chord over a bass note, :deg its
 ;; degree, :local the key it is read in, :why a rule broken there), which a tree box's code window shows or hides
 ;; (Analysis).
-(let [origins ["npm:@kairotic/rules@0.11.1/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
-      canon-origins ["npm:@kairotic/rules@0.11.1/dist/canon.mjs" "kairotic/packages/rules/canon.mjs"]
+(let [origins ["npm:@kairotic/rules@0.12.0/dist/rules.mjs" "kairotic/packages/rules/rules.mjs"]
+      canon-origins ["npm:@kairotic/rules@0.12.0/dist/canon.mjs" "kairotic/packages/rules/canon.mjs"]
       ;; how long the page may count, and search when it cannot (ms): past them the page would freeze (a long bass
       ;; without figures in four parts takes minutes to count), so the box gives up counting and finds a realization
       ;; by search, or says it found none in time
@@ -119,8 +119,8 @@
                                    " · " (.. ob -key -tonic) " " (.. ob -key -mode))})]
   {:class "cac"
    :license "MPL-2.0"
-   :doc "Composition assisted by computer on a tree: operations that follow the rules of a style and look ahead, beside mt's mechanical ones (discussion #323; Studies 51–62). cac partimento: a bass in (a tree — its lowest voice; its notes' figures, :fig \"6/5\", if it has them; a note's key, :local \"G major\", if it is read in another), the voices above it out, as a tree for a tree box: 4 parts by default (soprano, alto, tenor over the bass; [:voices 3] or 2), realized by the engine (its soft rules: steps rather than leaps, the leading tone up…) — a bang another one, :any any valid one, each as likely — and the realizations counted exactly (outlet 1). The bass written again carries the analysis: the chord made over each note (:fig), its degree (:deg), its key where it is read in another (:local) — the tree box's code window shows them with Analysis. The key: the box's words (cac partimento G, cac partimento e: lower case minor; cac partimento d dorian: a church mode, with its musica ficta), the tree's :key, or guessed from the bass. Its unit is the shortest note of the bass (or [:unit 2]); the even units are strong. cac judge: a tree of voices in, the lowest the bass: where they break the rules, and why (outlet 1), and the tree out with the chords over its bass and :why on the notes that break one. A note without figures takes the chord a partimento player would: the Rule of the Octave's where the bass moves by step through it, a 5/3 where it leaps (a 6/3 on ⑦) and at the start and the end. The voices are written in open score, soprano, alto, tenor (in the treble clef an octave down) and bass; [:staves 2] writes them in short score, soprano and alto on a treble staff, tenor and bass on a bass staff. A style chooses the rules: [:style :partimento-2] (or :chorale-4, :partimento-1, :modal-4…) by its name, or one written in EDN that extends another — [:style {:style :free-sevenths :extends [:chorale-4 \"1.0.0\"] :between [[:seventh {:free true}]]}]: a rule named again takes its new parameters, [:rule false] removes it, :voice the style of each voice ({:rules [[:leaps {:line :strict}]]}), :weights the soft rules' weights; a style with its name is defined, and may be named from then on. A style says how many parts it writes. :styles lists them (outlet 1). cac imitation: a melody in (a tree — its highest voice, the dux, its unit its shortest note), the comes added under it (or over it), as the comes's engine finds it against the dux given (@kairotic/rules's canon.mjs, the style imitation-2): [:k -7] steps away (−7 an octave below, −4 a 5th below, 7 an octave above), [:d 2] units later, [:imitation 1] a canon (0.6 near, 0.3 by motion, 0 free counterpoint), [:species 4], [:invert 12] (the counterpoint must stand inversion at the 12th); in the key of the tree or [:key \"d dorian\"], with its musica ficta; the comes found by the engine, a bang another, :any any, counted (outlet 1). [:voices 3], [:key \"a minor\"], [:temp 1], [:seed 7], [:unit 1], [:staves 2] change it."
-   :usage "cac partimento|judge|imitation [voices 4] [key] [temp 0.5] [seed 1] [unit 0] [staves 4] [style] [k -7] [d 2] [imitation 1] [species] [invert]"
+   :doc "Composition assisted by computer on a tree: operations that follow the rules of a style and look ahead, beside mt's mechanical ones (discussion #323; Studies 51–62). cac partimento: a bass in (a tree — its lowest voice; its notes' figures, :fig \"6/5\", if it has them; a note's key, :local \"G major\", if it is read in another), the voices above it out, as a tree for a tree box: 4 parts by default (soprano, alto, tenor over the bass; [:voices 3] or 2), realized by the engine (its soft rules: steps rather than leaps, the leading tone up…) — a bang another one, :any any valid one, each as likely — and the realizations counted exactly (outlet 1). The bass written again carries the analysis: the chord made over each note (:fig), its degree (:deg), its key where it is read in another (:local) — the tree box's code window shows them with Analysis. The key: the box's words (cac partimento G, cac partimento e: lower case minor; cac partimento d dorian: a church mode, with its musica ficta), the tree's :key, or guessed from the bass. Its unit is the shortest note of the bass (or [:unit 2]); the even units are strong. cac judge: a tree of voices in, the lowest the bass: where they break the rules, and why (outlet 1), and the tree out with the chords over its bass and :why on the notes that break one. A note without figures takes the chord a partimento player would: the Rule of the Octave's where the bass moves by step through it, a 5/3 where it leaps (a 6/3 on ⑦) and at the start and the end. The voices are written in open score, soprano, alto, tenor (in the treble clef an octave down) and bass; [:staves 2] writes them in short score, soprano and alto on a treble staff, tenor and bass on a bass staff. A style chooses the rules: [:style :partimento-2] (or :chorale-4, :partimento-1, :modal-4…) by its name, or one written in EDN that extends another — [:style {:style :free-sevenths :extends [:chorale-4 \"1.0.0\"] :between [[:seventh {:free true}]]}]: a rule named again takes its new parameters, [:rule false] removes it, :voice the style of each voice ({:rules [[:leaps {:line :strict}]]}), :weights the soft rules' weights; a style with its name is defined, and may be named from then on. A style says how many parts it writes. :styles lists them (outlet 1). cac judge with a canon's style ([:style :canon-2], or one that extends it): two voices judged by the canon's rules — each voice's line, and what is between them (parallels, dissonances, suspensions, the imitation) —, unit by unit: the reasons (outlet 1, each with its unit and its voice, the dux, the comes or both) and the voices written again with :why on the notes that break a rule (their analysis layer); the dux the voice that enters first (the lower if together, or [:dux :upper]), k and d read from their entries (or [:k -4], [:d 2]), a canon if the comes enters later, free counterpoint if together (or [:imitation 0.6]). cac imitation: a melody in (a tree — its highest voice, the dux, its unit its shortest note), the comes added under it (or over it), as the comes's engine finds it against the dux given (@kairotic/rules's canon.mjs, the style imitation-2): [:k -7] steps away (−7 an octave below, −4 a 5th below, 7 an octave above), [:d 2] units later, [:imitation 1] a canon (0.6 near, 0.3 by motion, 0 free counterpoint), [:species 4], [:invert 12] (the counterpoint must stand inversion at the 12th); in the key of the tree or [:key \"d dorian\"], with its musica ficta; the comes found by the engine, a bang another, :any any, counted (outlet 1). [:voices 3], [:key \"a minor\"], [:temp 1], [:seed 7], [:unit 1], [:staves 2] change it."
+   :usage "cac partimento|judge|imitation [voices 4] [key] [temp 0.5] [seed 1] [unit 0] [staves 4] [style] [k -7] [d 2] [imitation 1] [species] [invert] ([:dux :upper] for cac judge with a canon's style)"
    :io [1 2]
    :size [190 46]
    :args [[:op nil] [:voices 4] [:key nil] [:temp 0.5] [:seed 1] [:unit 0] [:staves 4] [:style nil] [:k -7] [:d 2] [:imitation 1] [:species nil] [:invert nil]]
@@ -135,6 +135,21 @@
                                                                       style (assoc :style (if (map? style) (clj->js style) style)))))]
                                      ;; counted within count-ms (nil: too long to count here, then found by search)
                                      {:ob ob :count (some-> (.countWithin ob count-ms) str)})))))
+           ;; cac judge with a canon's style (canon-2, or one that extends it): two voices judged by the canon's rules —
+           ;; another style's engine answers {:bass true}, and the voices are judged over their bass as before
+           :judge-two (fn [{:keys [upper lower key style dux k d imitation species invert]} _box]
+                        (-> (js/Promise.all #js [(api/import-module origins) (api/import-module canon-origins)])
+                            (.then (fn [ms]
+                                     (let [m (aget ms 0) c (aget ms 1)
+                                           sj (if (map? style) (clj->js style) style)
+                                           _ (when (and (map? style) (:style style)) (.defineStyle m sj))]
+                                       (if (not= "canon" (.-engine (.resolveStyle m sj)))
+                                         {:bass true}
+                                         {:judgement (js->clj (.judgeTwo c (clj->js (cond-> {:upper upper :lower lower :key key :style sj}
+                                                                                      dux (assoc :dux (name dux)) k (assoc :k k) d (assoc :d d)
+                                                                                      imitation (assoc :imitation imitation) species (assoc :species species)
+                                                                                      invert (assoc :invert (if (number? invert) [invert] invert)))))
+                                                              :keywordize-keys true)}))))))
            :build (fn [{:keys [notes key voices fill count? style]} _box]
                     (-> (api/import-module origins)
                         (.then (fn [m]
@@ -161,7 +176,7 @@
                     op (or (some-> (:op args) name keyword) :partimento)
                     st (assoc st :op op)
                     ;; a change asked for on the way: kept, and the tree done again
-                    over? (and (vector? value) (#{:voices :key :temp :seed :unit :staves :style :k :d :imitation :species :invert} (first value)))
+                    over? (and (vector? value) (#{:voices :key :temp :seed :unit :staves :style :k :d :imitation :species :invert :dux} (first value)))
                     st (if over? (assoc-in st [:over (first value)] (second value)) st)
                     temp (or (get-in st [:over :temp]) (:temp args) 0.5)
                     arg (fn [k dflt] (let [v (get-in st [:over k] (get args k))] (if (nil? v) dflt v)))
@@ -178,6 +193,18 @@
                                    :effects [[:imitate {:notes (mapv (fn [nt] {:midi (:midi nt) :units (:units nt)}) (:notes dux))
                                                         :key (key-of st args tree) :k (arg :k -7) :d (arg :d 2) :imitation (arg :imitation 1)
                                                         :species (arg :species nil) :invert (arg :invert nil) :style (style-of st args)}]]})
+                                ;; cac judge, two voices, a style: perhaps a canon's (the task says; if not, as below)
+                                (and (= op :judge) (= 2 (count vs)) (style-of st args) (not (:bass-judge st)))
+                                (let [unit (or (get-in st [:over :unit]) (let [x (:unit args)] (when (and x (pos? x)) x)))
+                                      u (or unit (apply min (map :dur (concat (first vs) (second vs)))))
+                                      one (fn [ns] (let [b (bass-of ns u)] (update b :notes with-rests u)))
+                                      lo (one (first vs)) hi (one (second vs))
+                                      notes-of (fn [b] (mapv (fn [nt] {:midi (:midi nt) :units (:units nt)}) (:notes b)))
+                                      o (fn [k] (get-in st [:over k]))]
+                                  {:state (assoc st :tree tree :two {:u u :upper hi :lower lo})
+                                   :show {:main "cac judge" :sub "judging…"}
+                                   :effects [[:judge-two {:upper (notes-of hi) :lower (notes-of lo) :key (key-of st args tree) :style (style-of st args)
+                                                          :dux (o :dux) :k (o :k) :d (o :d) :imitation (o :imitation) :species (o :species) :invert (o :invert)}]]})
                                 :else
                                 (let [style (style-of st args)
                                       ;; (a style says how many parts it writes, unless [:voices n] asks)
@@ -265,14 +292,42 @@
                   (and (= inlet :task) (= :styles (:task value)))
                   (if (:error value) {:state st :show {:main "cac" :sub (str "✗ " (:error value))}} {:state st :out [[1 {:styles (:value value)}]]})
                   (= value :styles) {:state st :effects [[:styles {}]]}
+                  ;; two voices judged by a canon's rules: where they break them, and why (outlet 1), and the voices written
+                  ;; again with :why on the notes that break one (their analysis layer)
+                  (and (= inlet :task) (= :judge-two (:task value)))
+                  (cond
+                    (:error value) {:state st :show {:main "cac judge" :sub (str "✗ " (:error value))}}
+                    (:bass (:value value)) (build (dissoc (assoc st :bass-judge true) :ob) (:tree st))
+                    :else
+                    (let [J (:judgement (:value value)) {:keys [upper lower]} (:two st) dv (:dux J)
+                          write (fn [b vname]
+                                  (let [role (if (= vname dv) "dux" "comes")
+                                        rs (filter #(#{role "both"} (:voice %)) (:reasons J))]
+                                    (into [:voice {:name role}]
+                                          (map (fn [s nt]
+                                                 (let [w (seq (distinct (keep #(when (and (<= s (:unit %)) (< (:unit %) (+ s (:units nt)))) (:why %)) rs)))
+                                                       a (cond-> {:dur (:dur nt)} w (assoc :why (str/join "; " w)))]
+                                                   (if (:midi nt) [:note (assoc a :pitch (or (:name nt) (api/midi-name (:midi nt))))] [:rest a])))
+                                               (reductions + 0 (map :units (:notes b))) (:notes b)))))
+                          ;; (from the highest voice down, whichever is the dux)
+                          voices [(write upper "upper") (write lower "lower")]]
+                      {:state (dissoc st :bass-judge)
+                       :show {:main (str "cac judge · " (:style J))
+                              :sub (cond (:ok J) (str "✓ by the rules · " (:imitation J) " · k " (:k J) " · d " (:d J))
+                                         (:reasons J) (str "✗ " (count (:reasons J)) " · " (:why J))
+                                         :else (str "✗ " (:why J)))}
+                       :out (cond-> [[1 (-> (select-keys J [:ok :why :dux :k :d :imitation :key :style])
+                                            (assoc :reasons (mapv #(update % :unit inc) (:reasons J)))
+                                            (cond-> (seq (:unknown J)) (assoc :unknown (:unknown J))))]]
+                              (:dux J) (conj [0 (into [:piece {:key (:key J)}] voices)]))}))
                   (= inlet :task)
                   (if (:error value)
                     {:state st :show {:main (str "cac " (name op)) :sub (str "✗ " (:error value))}}
                     (emit (assoc st :ob (:ob (:value value)) :count (:count (:value value))) :engine))
                   ;; (a change first: [:voices 3] is a vector with a keyword first, as a tree's node is)
-                  over? (if (:tree st) (build (dissoc st :ob) (:tree st)) {:state st})
+                  over? (if (:tree st) (build (dissoc st :ob :bass-judge) (:tree st)) {:state st})
                   ;; a tree: the given
-                  (api/tree? value) (build (dissoc st :ob) value)
+                  (api/tree? value) (build (dissoc st :ob :bass-judge) value)
                   (nil? (:ob st)) {:state st}
                   (= value :any) (emit st :any)
                   (#{:bang :engine} value) (emit st :engine)
