@@ -113,7 +113,7 @@ export async function codetab(page, check) {
 
   // ⇧+Enter: the form at the cursor, written at the end of the tab
   await cljs(page, '(swap! ui assoc :dirty false) (render-code (current))');
-  await cljs(page, `(let [t (str (patch->code (current)) "\n(box \\"mtof\\" 9800 700)")] (.setValue @code-ed t)
+  await cljs(page, `(let [t (str (shown-code (current)) "\n(box \\"mtof\\" 9800 700)")] (.setValue @code-ed t)
                       (.dispatch (.-view @code-ed) #js {:selection #js {:anchor (count t)}}) (swap! ui assoc :dirty true) (eval-code-form!))`);
   const c3 = await cljs(page, '(some (fn [[id b]] (when (and (= "mtof" (:text b)) (= 9800 (:x b)) (= 700 (:y b))) id)) (:boxes (current)))');
   check("⇧+Enter evaluates the form at the cursor: a new box", /^:b\d+$/.test(c3), c3);
@@ -232,5 +232,7 @@ export async function codetab(page, check) {
   await cljs(page, '(chains! false)');
   check("... and a connect each again", (await cljs(page, `(str/includes? (.getValue @code-ed) "(connect :b")`)) === "true"
         && (await cljs(page, '(.getItem js/localStorage "kairotic.code-style")')) === '"flat"');
-  await cljs(page, `(delete ${x} ${y} ${z} ${w} ${v})`);
+  await cljs(page, `(delete ${x} ${y} ${z} ${w} ${v}) (chains! true)`);
+  check("chains are the default writing (#433)", (await cljs(page, '(do (.removeItem js/localStorage "kairotic.code-style") (try (some-> (.getItem js/localStorage "kairotic.code-style") keyword) (catch :default _ nil)))')) === "nil"
+        && (await cljs(page, "@code-style")) === ":chains");
 }

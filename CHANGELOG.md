@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The Code tab writes the work in chains by default** (#433, discussion #407): lines that follow each other as
+  `(-> :b1 (to :b2) (to :b3))` and `(doto …)`, a `connect` for a line alone; **-> chains** off writes a `connect` for
+  each line. Links, the clipboard, Claude and the agents keep reading and writing the work flat. The tutorial *From
+  patch to code* and the guide say so.
 - **Bach's 7ths, and his notes spelt in their keys** (`@kairotic/rules` 0.19.0, `bach-4` 1.2.0; `@kairotic/cac` 0.16.6).
   `bach-4` keeps 494 of Bach's 2,272 phrases as he wrote them (1.1.0: 426). `dissonance`'s `bachSevenths`: a 7th held
   while the bass moves under it into a consonance (ii7 → I6, vi7 over the bass rising a step), up by step where the bass
