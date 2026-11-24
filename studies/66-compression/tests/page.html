@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 66 · compression · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1000px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the four preludes compressed, their facts, rules and chords.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 30000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+try {
+  await wait(() => w.kairoticStudy && d.getElementById("facts").textContent.includes("lossless"));
+  const facts = () => d.getElementById("facts").textContent;
+  is("it opens on BWV 846: described in fewer bits, lossless, two rules", /✓/.test(facts()) && /2 \(taken/.test(facts()) && d.querySelectorAll("#rules .rule").length === 2);
+  is("… its chords, from C", d.getElementById("harmony").textContent.startsWith("C  Dm7/C  G7/B"));
+  is("… the piece written with its figure", d.querySelector("#written span.use").textContent.startsWith("F1(C4 E4 G4 C5 E5)"));
+  is("how much each piece compresses: four bars", d.querySelectorAll("#bars .bar").length === 4);
+  w.kairoticStudy.select("bwv1007-prelude");
+  is("the first cello suite's prelude: more rules, its first figure over G D B A", d.querySelectorAll("#rules .rule").length > 5 && d.querySelector("#written span").textContent.startsWith("F1(G3 D4 B4 A4)"));
+} catch (e) { errors.push(String(e.message || e)); }
+const bad = results.filter((r) => !r[1]).map((r) => r[0]).concat(errors.map((e) => "error: " + e));
+window.kairoticResults = { total: results.length, failed: bad };
+document.getElementById("out").textContent = `${results.length - results.filter((r) => !r[1]).length} / ${results.length}\n` + results.map(([w2, ok]) => (ok ? "  ok   " : "  FAIL ") + w2).join("\n") + (errors.length ? "\n" + errors.join("\n") : "");
+</script>
