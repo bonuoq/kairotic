@@ -18,9 +18,11 @@
 //                  bass ⑤–① or ⑦–① (a half cadence ending on ⑤), as the chorale's B asks
 //   functions      the chord the two voices imply (functions.mjs' impliedChord), and a succession the grammar of a
 //                  tonal phrase refuses (D → S, an applied dominant unresolved) weighing `functions` more
-//   tension        each unit's chord as far from the tonic (tension.mjs, Lerdahl's global tension) as an arch
-//                  asks: rising from A to its peak two thirds of the way, released into B — not Bach's own curve:
-//                  the shape any phrase has
+//   tension        each unit's chord as far from the tonic (tension.mjs, Lerdahl's global tension) as the
+//                  corpus's profile asks (PROFILE: Bach's mean tension by tenth of a phrase, read in the cadence's key
+//                  — a plateau released at the cadence): the shape the chorales have, not each phrase's own curve, so
+//                  nothing of the phrase leaks into its bridge; `target: "arch"` follows a generic arch instead (rising
+//                  to a peak two thirds of the way, released into B), the variant the blind test compares
 //   economy        the voices' motion together as a word (bits.mjs: "m|s,b", their steps in degrees), one said before cheaper
 //                  — in the forward draw only (the line's memory), as this study's figure economy
 //
@@ -63,7 +65,7 @@ export const consonant = (s, b) => CONS.has(mod(s - b, 12));
  * The outer voices' bridge for a phrase: {n, key, strong, A: [S, A, T, B], B, layers: {functions, tension, economy}}.
  * → {logZ, possible, draw(r) → {soprano, bass}, best() → {soprano, bass}}.
  */
-export function outerBridge(phrase, { layers = {}, temp = 0.4, weights = {} } = {}) {
+export function outerBridge(phrase, { layers = {}, temp = 0.4, weights = {}, target = "profile" } = {}) {
   const L = { functions: 6, tension: 2, economy: 1, ...layers };
   const W = { step: 0, third: 0.5, leap: 1.6, sixth: 3, octave: 2.5, bassLeap: 0.3, repeat: 1.2, bassRepeat: 1.2, sameChord: 0.8, back: 0.8, similar: 0.3, inverted: 0.3, chromatic: 0.6, outOfScale: 0.8, tessitura: 0.25, ...weights };
   const key = phrase.key, n = phrase.n || (phrase.satb ? phrase.satb.length : 0), strong = phrase.strong || [];
@@ -107,9 +109,8 @@ export function outerBridge(phrase, { layers = {}, temp = 0.4, weights = {} } = 
     }
     return v;
   };
-  // the arch the tension follows: 0 at A (its own tension), a peak two thirds of the way, 0 at B
-  const peak = weights.peak ?? 6, at = Math.max(1, Math.round((n - 1) * 2 / 3));
-  const arch = (t) => (t <= at ? peak * t / at : peak * (n - 1 - t) / Math.max(1, n - 1 - at));
+  // the curve the tension follows: the corpus's profile (a plateau released at the cadence), or the generic arch
+  const curve = target === "arch" ? archOf(n, weights.peak ?? 6) : profileOf(n);
   // (a melodic interval by its degrees and its semitones: augmented and diminished ones refused — the augmented 2nd of
   // minor's 6th and raised 7th, the tritone, the 7th —, a chromatic semitone allowed, dearer)
   const ALLOWED = { 0: [0, 1], 1: [1, 2], 2: [3, 4], 3: [5], 4: [7], 5: [8, 9], 7: [12] };
@@ -152,7 +153,7 @@ export function outerBridge(phrase, { layers = {}, temp = 0.4, weights = {} } = 
     const I0x = info(s0, b0);
     if (I0x.f && I.f && I0x.f.chord.root === I.f.chord.root && I0x.f.chord.kind === I.f.chord.kind) c += W.sameChord;
     if (L.functions) c += L.functions * fnErrors(s0, b0, s, bb);
-    if (L.tension && t > 0 && t < n - 1) c += L.tension * Math.abs(I.tension - arch(t)) / 5;
+    if (L.tension && t > 0 && t < n - 1) c += L.tension * Math.abs(I.tension - curve[t]) / 5;
     return c;
   };
   // the cadence: the bass into B by ⑤–① (or ⑦–①), as B's bass asks — the unit before B a dominant's bass
@@ -223,14 +224,15 @@ export function outerBridge(phrase, { layers = {}, temp = 0.4, weights = {} } = 
   };
 }
 
-/** The layers' names, and every combination the blind test asks: all on, and each one off. */
+/** The layers' names, and every combination the blind test asks: all on, each one off, and all on with the tension
+ *  following the generic arch instead of the corpus's profile. */
 export const LAYERS = ["functions", "tension", "economy"];
-export const VARIANTS = [{ name: "all", off: [] }, ...LAYERS.map((l) => ({ name: "no-" + l, off: [l] }))];
+export const VARIANTS = [{ name: "all", off: [] }, ...LAYERS.map((l) => ({ name: "no-" + l, off: [l] })), { name: "arch", off: [], target: "arch" }];
 
 /**
  * Bridges for a phrase of the corpus, as the engine reads them: [{phrase, soprano, bass, key (the chorale's),
  * readIn (the key the layers read it in: the cadence's, or the chorale's), strong, layers, variant}] — for each variant
- * (all layers, and each off) `count` draws.
+ * (all layers, each off, and `arch`) `count` draws.
  */
 export function bridgesFor(phrase, { count = 2, r = Math.random, temp = 0.4 } = {}) {
   const n = phrase.satb.length, out = [];
@@ -241,7 +243,7 @@ export function bridgesFor(phrase, { count = 2, r = Math.random, temp = 0.4 } = 
     const layers = Object.fromEntries(LAYERS.map((l) => [l, v.off.includes(l) ? 0 : undefined]).filter(([, x]) => x !== undefined));
     let B = null, key = null;
     const fk = [...relatedKeys(phrase.key), ...(phrase.cadence ? [{ tonic: phrase.cadence.tonic, mode: phrase.cadence.mode }] : [])];
-    for (const k of keys) { const b = outerBridge({ ...phrase, key: k, keys: fk, n }, { layers, temp }); if (b.possible) { B = b; key = k; break; } }
+    for (const k of keys) { const b = outerBridge({ ...phrase, key: k, keys: fk, n }, { layers, temp, target: v.target }); if (b.possible) { B = b; key = k; break; } }
     if (!B) continue;
     for (let i = 0; i < count; i++) {
       const x = B.draw(r);
@@ -251,7 +253,13 @@ export function bridgesFor(phrase, { count = 2, r = Math.random, temp = 0.4 } = 
   return out;
 }
 
-/** The arch a phrase's tension follows (outerBridge's tension layer): 0 at its ends, `peak` two thirds of the way. */
+/** Bach's mean tension (tension.mjs: distance from the tonic + surface, of the chord the soprano and bass imply) by
+ *  tenth of a phrase, read in the cadence's key, over the 2,272 phrases of the corpus: a plateau, released at the
+ *  cadence. The tension layer's target — the same for every phrase, so no phrase's own curve leaks into its bridge. */
+export const PROFILE = [5.94, 6.71, 6.6, 6.86, 6.54, 6.73, 6.89, 6.61, 5.98, 0.57];
+/** The profile over a phrase of `n` units: unit t in the tenth min(9, ⌊10t/(n−1)⌋). */
+export function profileOf(n) { return Array.from({ length: n }, (_, t) => PROFILE[Math.min(9, Math.floor(10 * t / Math.max(1, n - 1)))]); }
+/** The generic arch (the `arch` variant): 0 at its ends, `peak` two thirds of the way. */
 export function archOf(n, peak = 6) { const at = Math.max(1, Math.round((n - 1) * 2 / 3)); return Array.from({ length: n }, (_, t) => (t <= at ? peak * t / at : peak * (n - 1 - t) / Math.max(1, n - 1 - at))); }
 /** How many different motions (the voices' steps together, as the economy says them) a pair of lines has. */
 export const motionWords = (x, key) => new Set(x.soprano.slice(1).map((s, t) => "m|" + (degreeOf(s, key) - degreeOf(x.soprano[t], key)) + "," + (degreeOf(x.bass[t + 1], key) - degreeOf(x.bass[t], key)))).size;
@@ -267,7 +275,7 @@ export function rulesBroken(x) {
   return out;
 }
 
-/** A line's functions and its grammar's errors, its tension against the arch: what the layers did (for the tests and
+/** A line's functions and its grammar's errors, its tension: what the layers did (for the tests and
  *  the page). */
 export function measure(phrase, x) {
   const key = phrase.key, n = x.soprano.length;
