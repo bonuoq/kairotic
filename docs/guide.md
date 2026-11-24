@@ -136,7 +136,10 @@ id: `(connect :osc 0 :out 0)`, `(text! :osc "osc~ 440")`, `(send! :osc 220)`, `(
 box's: `(name-box :b9 :osc)` gives it to another; `(name-box :b9 nil)` takes it away. `to` takes a name too, for the box
 it makes: `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))` can be evaluated again and again —
 only what changed changes, and a named box you moved by hand stays where you put it. `(to a o :amp "text" i)` for
-other ports.
+other ports. A chain (`->`, `doto`) evaluated from the tab owns the lines it wrote: evaluated again, it takes away
+those it no longer writes — put `(to :lpf "lop~ 800")` between `:osc` and `:amp` and the old line `:osc` → `:amp` goes,
+in the same event. A chain is known by the box it starts from; lines made otherwise stay. What each chain wrote is kept
+in this browser for each work.
 
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as
 `str/…`) is that function, with no component to write: its other words are its arguments, read as EDN,

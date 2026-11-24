@@ -140,7 +140,10 @@ comandos lo aceptan en lugar del id: `(connect :osc 0 :out 0)`, `(text! :osc "os
 se lo quita. `to` también acepta un nombre para la caja que hace:
 `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))` se puede evaluar una y otra vez —solo cambia
 lo que ha cambiado, y una caja con nombre que moviste a mano se queda donde la pusiste—. `(to a o :amp "texto" i)`
-para otros puertos.
+para otros puertos. Una cadena (`->`, `doto`) evaluada desde la pestaña es dueña de las líneas que escribió: evaluada
+otra vez, quita las que ya no escribe —mete `(to :lpf "lop~ 800")` entre `:osc` y `:amp` y la línea vieja `:osc` →
+`:amp` se va, en el mismo evento—. Una cadena se reconoce por la caja de la que sale; las líneas hechas de otra manera se
+quedan. Lo que escribió cada cadena se guarda en este navegador para cada obra.
 
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
 `clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son
