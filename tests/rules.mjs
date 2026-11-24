@@ -28,6 +28,20 @@ const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483
   const bitsCopies = readdirSync(join(root, "studies")).filter((d) => existsSync(join(root, "studies", d, "kairotic", "bits.mjs")));
   const bitsOff = bitsCopies.filter((d) => readFileSync(join(root, "studies", d, "kairotic", "bits.mjs"), "utf8") !== readFileSync(join(root, "packages/rules/assets/bits.mjs"), "utf8"));
   is(`the studies' copies of bits.mjs, as it is (${bitsCopies.join(", ")})`, bitsCopies.length >= 3 && bitsOff.length === 0);
+  // the tonal functions (functions.mjs): the studies that keep a copy, the package's
+  const fnCopies = readdirSync(join(root, "studies")).filter((d) => existsSync(join(root, "studies", d, "kairotic", "functions.mjs")));
+  is(`the studies' copies of functions.mjs, as it is (${fnCopies.join(", ")})`, fnCopies.length >= 1 && fnCopies.every((d) => readFileSync(join(root, "studies", d, "kairotic", "functions.mjs"), "utf8") === readFileSync(join(root, "packages/rules/assets/functions.mjs"), "utf8")));
+  const Fn = await import("../packages/rules/assets/functions.mjs"), C = { tonic: "C" }, Am = { tonic: "A", mode: "minor" };
+  const lab = (chords, key = C) => Fn.functionsOf(chords, key).map(Fn.label).join(" ");
+  is("functions.mjs: in C, C Dm7 G7 C read T S D T; C/G over G the cadential 6/4, a dominant; D7 V/G; B°7 the dominant, C♯°7 an applied dominant",
+     lab([[48, 64, 67], [50, 65, 69, 72], [43, 59, 65, 74], [48, 64, 72]]) === "T S D T" && lab([[43, 60, 64]]) === "D" && lab([[50, 66, 69, 72]]) === "V/G" && lab([[47, 62, 65, 68]]) === "D" && Fn.functionOf([49, 64, 67, 70], C).fn === "A");
+  is("… in A minor: Am Dm E7 Am read T S D T, F (⑥) the tonic's parallel",
+     lab([[45, 60, 64], [50, 65, 69], [40, 56, 62, 71], [45, 60, 69]], Am) === "T S D T" && lab([[41, 60, 65]], Am) === "T");
+  is("… the grammar: G7 → F a retrogression, D7 → C an applied dominant unresolved, G → C/E fine, a phrase ending on G7 not ended",
+     Fn.grammarErrors(Fn.functionsOf([[43, 59, 65], [41, 57, 65]], C), { end: false }).length === 1 &&
+     Fn.grammarErrors(Fn.functionsOf([[50, 66, 72], [48, 64, 67]], C), { end: false }).length === 1 &&
+     Fn.grammarErrors(Fn.functionsOf([[43, 59, 62], [52, 60, 67]], C)).length === 0 &&
+     Fn.grammarErrors(Fn.functionsOf([[48, 64, 67], [43, 59, 65]], C)).some((e) => /tonic/.test(e.reason)));
   const Bt = await import("../packages/rules/assets/bits.mjs"), lx = Bt.lexicon();
   const first = lx.bits("Q:0,1"); lx.add("Q:0,1");
   is("bits.mjs: a word heard again cheaper than at first, its inversion between, a new one dearest; the inversion negates every number",
