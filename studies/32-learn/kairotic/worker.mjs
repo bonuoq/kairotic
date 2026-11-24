@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 32 · everything that takes time happens here, away from the page: making the bank, training the
 // network, and the search that listens (it renders and analyses a patch for every step).
 // A classic worker: Meyda's web build (the one features~ loads) puts itself on `self`; the study's modules

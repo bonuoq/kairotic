@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; form~ · how alike the moments are: a self-similarity matrix over the last seconds, its changes, its periods
 ;; Part of @kairotic/analysis. Written against the Kairotic API (api/…): the matrix, novelty and beat spectrum
 ;; are those of the core (kairotic.structure, issue #120), through api/ssm, api/novelty-at, api/beat-spectrum.

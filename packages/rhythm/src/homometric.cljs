@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; homometric · the other rhythms with the same interval vector
 ;; Part of @kairotic/rhythm. Written against the Kairotic API (api/…).
 ;; Two rhythms are homometric when they hold the same distances between onsets, as many times each — the

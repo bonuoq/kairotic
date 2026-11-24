@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 37 · a voice to be written by descriptors: no envelope of its own (the loudness lane is its
 // envelope), every slider smoothed so it can move while it sounds. pitch and gain are set directly from
 // their lanes; wave, noise, cutoff and resonance are what the realiser chooses to give the brightness and

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 37 · descriptors as notation (discussion #114): a few curves over time — pitch, loudness, brightness,
 // noisiness — written as a score, and a faust~ that realises them.
 //

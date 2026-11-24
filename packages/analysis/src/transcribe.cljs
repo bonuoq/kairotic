@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; transcribe · what pitch~ hears, written as strokes of a freqt
 ;; Part of @kairotic/analysis. Written against the Kairotic API (api/…). Pure logic: no audio of its own.
 (let [;; ── what it understands ──

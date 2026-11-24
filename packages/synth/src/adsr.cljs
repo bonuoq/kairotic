@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; adsr~ · an envelope that follows a gate
 ;; Part of @kairotic/synth. Written against the Kairotic API (api/…), with its AudioWorklet inside.
 (let [;; ── the worklet: a linear envelope, one value per sample ──

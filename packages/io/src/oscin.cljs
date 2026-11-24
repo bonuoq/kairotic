@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; oscin · OSC in, through a relay's bridge: from SuperCollider, Max, Pd, TouchOSC… as Kairotic events
 ;; Part of @kairotic/io. Written against the Kairotic API (api/…). Discussion #135, Study 34 · io.
 (let [default-url "ws://localhost:8765/osc"

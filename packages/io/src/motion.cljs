@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; motion · a phone's tilt and shake as Kairotic events
 ;; Part of @kairotic/io. Written against the Kairotic API (api/…). Discussion #135, Study 34 · io.
 (let [r (fn [x d] (let [k (js/Math.pow 10 d)] (/ (js/Math.round (* x k)) k)))

@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; about: a melody as a musical tree (kairotic.mt): a random walk on a scale, written in measures, for score, mt boxes and mt play
 ;; walk · a random walk on a scale, as a tree
 {;; ── about ──

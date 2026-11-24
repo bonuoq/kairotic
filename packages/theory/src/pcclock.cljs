@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; pcclock · a pitch-class set on the clock face
 ;; Part of @kairotic/theory. Written against the Kairotic API (api/…).
 ;; The twelve pitch classes around a circle (C at the top, clockwise by semitones). What arrives is drawn

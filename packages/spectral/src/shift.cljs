@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; shift~ · pitch shifting in real time, one interval or a whole chord, with the formants kept
 ;; Part of @kairotic/spectral. Written against the Kairotic API (api/…), with its AudioWorklet inside.
 ;; The shifting is stftPitchShift 2.0 by Jürgen Hock (https://github.com/jurihock/stftPitchShift, MIT),

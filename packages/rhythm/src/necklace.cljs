@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; necklace · a cyclic rhythm on the circle, and its geometry (Toussaint)
 ;; Part of @kairotic/rhythm. Written against the Kairotic API (api/…).
 ;; A rhythm that repeats is a necklace: k onsets among n pulses around a circle, time clockwise from the

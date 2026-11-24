@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; monitor · the messages that arrive, drawn over the last seconds
 ;; Part of @kairotic/analysis. Written against the Kairotic API (api/…).
 ;; One lane per inlet. What a lane draws depends on what arrives: a number is a line in the range it has

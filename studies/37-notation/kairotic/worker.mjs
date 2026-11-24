@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 37 · the bank, the realisation and the listening happen here, away from the page. The page compiles
 // the voice (faustwasm) and hands over its WebAssembly and its JSON; Meyda is the web build features~ loads.
 

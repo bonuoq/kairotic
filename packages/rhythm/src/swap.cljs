@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; swap · how far apart two rhythms are (Toussaint's swap distance)
 ;; Part of @kairotic/rhythm. Written against the Kairotic API (api/…).
 ;; Two rhythms of n pulses, as pulses. A swap exchanges an onset and the silence beside it, and the swap

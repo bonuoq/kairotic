@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // about: a two-operator FM voice played by freq and gate (a reader's list of Hz sets freq and gate = 1)
 import("stdfaust.lib");
 freq = hslider("freq", 220, 20, 4000, 0.01);

@@ -1,0 +1,27 @@
+# Every source file carries its SPDX licence header (tests/spdx.mjs, CONTRIBUTING.md). On every pull request and
+# push to main, whatever it touches: it only reads the files, in a few seconds.
+name: headers
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: headers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spdx:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tests/spdx.mjs

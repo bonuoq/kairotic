@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 37 · descriptors as notation: the voice realises scores (the presets), curves heard in another
 // instrument (the Faust twin of Study 30's synth, a note with a filter sweep) and curves of its own (sliders
 // moved along known paths); each against the voice held still at the mean of what is written.

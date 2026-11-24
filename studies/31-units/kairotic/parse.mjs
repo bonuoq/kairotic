@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 31 · Faust code → a subpatch of unit boxes.
 //
 // Not a compiler: a small evaluator of Faust's block-diagram algebra over the vocabulary of units.mjs.

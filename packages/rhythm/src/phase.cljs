@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; phase · where a performer is in a cycle, from the onsets heard (discussion #204)
 ;; Part of @kairotic/rhythm. Written against the Kairotic API (api/…).
 ;; Before following a score, follow a timeline: a clave, a bell pattern, any rhythm that repeats. A pulse

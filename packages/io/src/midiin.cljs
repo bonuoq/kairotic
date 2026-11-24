@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; midiin · MIDI from a keyboard, a controller or another program, as Kairotic events
 ;; Part of @kairotic/io. Written against the Kairotic API (api/…). Discussion #135, Study 34 · io.
 (let [;; ── the page's MIDI, asked once and shared by every midi box (Chrome, Edge, Firefox; not Safari) ──

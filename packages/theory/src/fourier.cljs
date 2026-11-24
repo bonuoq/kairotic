@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; fourier · the six Fourier coefficients of a pitch-class distribution
 ;; Part of @kairotic/theory. Written against the Kairotic API (api/…).
 ;; The DFT of the weights of the twelve pitch classes (Lewin, Quinn, Amiot, Yust): coefficient k measures

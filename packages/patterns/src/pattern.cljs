@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; pattern · a pattern as code: a Clojure expression that returns events, its randomness seeded
 ;; Part of @kairotic/patterns. Written against the Kairotic API (api/…).
 ;; Its source is evaluated (like a script), so in a shared room it does not run until this tab allows it:

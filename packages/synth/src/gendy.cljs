@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; gendy~ · a dynamic stochastic oscillator, after Iannis Xenakis's GENDY
 ;; Part of @kairotic/synth. Written against the Kairotic API (api/…), with its AudioWorklet inside.
 ;; After GendyJS by Andrew Bernstein (https://github.com/abbernie/gendy, MIT License).

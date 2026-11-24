@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 31 · a subpatch of unit boxes, and the Faust code it is.
 //
 // The graph: {boxes: [{id, type, args, name, x, y, io?}], wires: [{from: [id, outlet], to: [id, inlet]}]}

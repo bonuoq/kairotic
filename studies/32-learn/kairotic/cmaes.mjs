@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 32 · a search that listens: CMA-ES on the descriptor distance (discussion #114).
 //
 // Starting from a guess (the network's, or the nearest neighbour's), it renders candidate patches with the

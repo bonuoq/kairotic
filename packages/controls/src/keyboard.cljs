@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; keyboard · a virtual MIDI keyboard with press and release tied to the mouse
 ;; Part of @kairotic/controls. Written against the Kairotic API (api/…).
 ;; First made with Claude inside Kairotic (Gallery, discussion #2), reviewed for the package.

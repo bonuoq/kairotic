@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 35 · a faust~ found from its sound: random settings of the Faust twin of Study 30's synth are
 // rendered, then fitted back from their sound alone; and a sine, to check the renderer and the pitch.
 //

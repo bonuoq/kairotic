@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 31 · the boxes of @kairotic/faust-units: Faust's own vocabulary, one box per element.
 //
 // Every unit has slots, in the order Faust takes them:

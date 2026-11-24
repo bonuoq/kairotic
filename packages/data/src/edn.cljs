@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; edn · any value as a tree to open, read and pick from
 ;; Part of @kairotic/data. Written against the Kairotic API (api/…).
 ;; After Portal (djblue/portal): what arrives is shown as a tree whose collections open and close, each

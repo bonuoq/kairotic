@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 35 · a faust~ played offline: compiled code (its WebAssembly and its JSON) rendered to samples.
 //
 // The DSP's own interface does the work (init, setParamValue, compute), with the dsp at the start of its

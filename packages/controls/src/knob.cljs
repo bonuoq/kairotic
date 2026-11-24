@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; knob · a rotary control with its own view in the patch
 ;; Part of @kairotic/controls. Written against the Kairotic API (api/…).
 {;; ── about ──────────────────────────────────────────────

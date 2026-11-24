@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; about: a twelve-tone row and its forms (P, R, I, RI and transpositions); a bang plays its next note
 ;; row · a twelve-tone row and its forms
 {;; ── about ──

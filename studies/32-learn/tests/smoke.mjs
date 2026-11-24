@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 32 · the two pieces of maths, on problems whose answer is known.
 //   node studies/32-learn/tests/smoke.mjs
 import { cmaes } from "../kairotic/cmaes.mjs";

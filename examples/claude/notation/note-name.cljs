@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; about: turns frequencies (Hz) or MIDI notes into note names with cents ("A4", "C#5 +14c"); for labels and scores
 ;; note-name · a frequency or MIDI note as a note name
 {;; ── about ──

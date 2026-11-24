@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; serial · a board on a serial port (an Arduino, an ESP32…): its lines of text as values and events
 ;; Part of @kairotic/io. Written against the Kairotic API (api/…). Discussion #135, Study 34 · io.
 (let [number-of (fn [s] (when (re-matches #"[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?" s) (js/parseFloat s)))

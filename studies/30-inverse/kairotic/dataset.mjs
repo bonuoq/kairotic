@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 30 · from patches to descriptors (the dataset) and back (a first, naive inverse).
 //
 // Meyda is passed in rather than imported, so the same code runs in the page (Meyda from jsDelivr), in a

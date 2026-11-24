@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; chroma~ · how much of each pitch class a sound has
 ;; Part of @kairotic/analysis. Written against the Kairotic API (api/…). The chroma is Meyda's (MIT,
 ;; meyda.js.org), loaded from jsDelivr the first time one is needed.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 # A small reader of the LilyPond Mutopia typesets of a few Bach preludes: notes as {t, d, p} (16ths, MIDI).
 import re, json, sys
 STEP = {'c':0,'d':2,'e':4,'f':5,'g':7,'a':9,'b':11}

@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; about: an abstraction (bpatcher): a Faust resonant filter with two knobs; its instances show the knobs as a panel
 {:class "filter-panel"
  :license "MPL-2.0"

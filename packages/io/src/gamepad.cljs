@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; gamepad · a game controller's buttons and sticks as Kairotic events
 ;; Part of @kairotic/io. Written against the Kairotic API (api/…). Discussion #135, Study 34 · io.
 (let [buttons [:a :b :x :y :lb :rb :lt :rt :back :start :ls :rs :up :down :left :right :home]

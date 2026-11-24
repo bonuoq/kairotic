@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 35 · the rendering and the search happen here, away from the page. The page compiles the code
 // (faustwasm) and hands over its WebAssembly and its JSON; this worker renders it as many times as the
 // search asks, and listens with Meyda's web build (the one features~ loads).

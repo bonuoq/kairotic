@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; shared · what is shared in the room on a channel
 ;; Part of @kairotic/net. Written against the Kairotic API (api/…). Discussion #135.
 (let [room (fn [] (.-kairoticRoom js/window))]

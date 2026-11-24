@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; render · a stretch of a pattern drawn into a freqt, through a time map
 ;; Part of @kairotic/patterns. Written against the Kairotic API (api/…).
 ;; What a player at a position would play, worked out at once (discussion #93): it sends a musical tree, so

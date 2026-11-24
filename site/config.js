@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Kairotic Pages · configuration
 // The GUN relays this site connects to. A relay is a small Node server (see relay/) that passes the
 // graph between browsers and keeps a copy; without any, each browser works alone (its own

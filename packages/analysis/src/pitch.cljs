@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; pitch~ · the pitch of a sound, by YIN
 ;; Part of @kairotic/analysis. Written against the Kairotic API (api/…), with its AudioWorklet inside.
 (let [worklet "class KairoticYin extends AudioWorkletProcessor {

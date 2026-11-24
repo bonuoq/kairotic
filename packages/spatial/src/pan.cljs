@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; pan~ · stereo panning with equal power
 ;; Part of @kairotic/spatial. Written against the Kairotic API (api/…).
 {;; ── about ──

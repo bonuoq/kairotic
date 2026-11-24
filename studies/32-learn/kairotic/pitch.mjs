@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 32 · the pitch of a sound, by YIN, apart from its timbre (discussion #114).
 //
 // A descriptor distance such as Meyda's gives a search almost no sense of which way the pitch lies (an

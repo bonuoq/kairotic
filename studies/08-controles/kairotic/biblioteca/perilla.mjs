@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Generado por scripts/construir.mjs a partir de src/perilla.cljs
 export default {
   "clase": "perilla",

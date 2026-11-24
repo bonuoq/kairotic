@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 30 · the same dataset, made in Node when it has to be large.
 //
 //   npm i meyda@5.6.3
