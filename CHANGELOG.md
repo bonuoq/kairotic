@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The Code tab writes the work in chains by default** (#433, discussion #407): lines that follow each other as
+  `(-> :b1 (to :b2) (to :b3))` and `(doto …)`, a `connect` for a line alone; **-> chains** off writes a `connect` for
+  each line. Links, the clipboard, Claude and the agents keep reading and writing the work flat. The tutorial *From
+  patch to code* and the guide say so.
 - **The chorales' phrases in their keys** (#301, #399). Every phrase of `studies/_shared/chorales/phrases.json` has
   `keys`: the key each quarter is in, read from the four voices (`localKeys` in `tools/kern.mjs`: among the chorale's
   key and its neighbours, the path whose scales hold most of the notes, a change of key costing as one note out; in

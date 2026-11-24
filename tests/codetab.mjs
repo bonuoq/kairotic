@@ -232,5 +232,7 @@ export async function codetab(page, check) {
   await cljs(page, '(chains! false)');
   check("... and a connect each again", (await cljs(page, `(str/includes? (.getValue @code-ed) "(connect :b")`)) === "true"
         && (await cljs(page, '(.getItem js/localStorage "kairotic.code-style")')) === '"flat"');
-  await cljs(page, `(delete ${x} ${y} ${z} ${w} ${v})`);
+  await cljs(page, `(delete ${x} ${y} ${z} ${w} ${v}) (chains! true)`);
+  check("chains are the default writing (#433)", (await cljs(page, '(do (.removeItem js/localStorage "kairotic.code-style") (try (some-> (.getItem js/localStorage "kairotic.code-style") keyword) (catch :default _ nil)))')) === "nil"
+        && (await cljs(page, "@code-style")) === ":chains");
 }
