@@ -15,6 +15,10 @@
     (t/eq "its duration in beats" (mt/duration motif) 4)
     (t/eq "transpose 7" (mt/pitches (mt/transpose 7 motif)) ["g4" "b4" "d5"])
     (t/eq "retrograde" (mt/pitches (mt/retrograde motif)) ["g4" "e4" "c4"])
+    ;; a figure said again over another chord (discussion #399)
+    (let [fig [:voice {:defs {:F1 [:seq [:note {:pitch "c4" :dur 0.25}] [:note {:pitch "e4" :dur 0.25}] [:note {:pitch "g4" :dur 0.25}] [:note {:pitch "e4" :dur 0.25}]]}}
+               [:use {:ref :F1}] [:use {:ref :F1 :pitches ["d4" "f4" "a4"]}] [:use {:ref :F1 :pitches [59 62 67]}]]]
+      (t/eq "a use re-pitches its fragment" (mt/pitches (mt/expand fig)) ["c4" "e4" "g4" "e4" "d4" "f4" "a4" "f4" "b3" "d4" "g4" "d4"]))
     (t/eq "augment 2 doubles the duration" (mt/duration (mt/augment 2 motif)) 8)
     (t/eq "a read tree is the same tree" (mt/read-tree (mt/pp motif)) motif)
     (let [b (mt/transpose 2 motif)]

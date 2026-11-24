@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Study 66 · compression: the kernel's tests. In the browser (tests/kernel.html) and in Node:
 //   node -e 'import("./studies/66-compression/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
-import { compress, lossless, expand, stream, notesOf, chordOf, harmony, describeRule, written } from "../kairotic/compress.mjs";
+import { compress, lossless, expand, stream, notesOf, chordOf, harmony, describeRule, written, codeLength, treeOf } from "../kairotic/compress.mjs";
 
 const load = async (id) => {
   const url = new URL(`../data/${id}.json`, import.meta.url);
@@ -61,8 +61,53 @@ export async function run() {
      s.rules.length === 1 && s.rules[0].k === 3 && s.rules[0].idx.join("") === "01210121" && s.items.length === 4 &&
      written(s).join(" · ") === "F1(C4 E4 G4) C · F1(C4 F4 A4) F/C · F1(B3 D4 G4) G/B · F1(C4 E4 G4) C" && lossless(s));
   is("… and its description is shorter", s.bits < s.raw);
+
+  // the uses as a listener hears them (bits.mjs; discussion #399)
+  const K = Object.fromEntries(Object.entries(P).map(([k, c]) => [k, codeLength(c)]));
+  notes.push("heard: " + Object.entries(K).map(([k, x]) => `${k} ${x.bits} bits (${(x.ratio * 100).toFixed(1)} %)`).join(" · "));
+  is("heard, BWV 846 is told in under a fifth of its notes (its figure's voices hold or move by step)", K["bwv846-prelude"].ratio < 0.2);
+  is("… every piece shorter heard than at fixed prices, and shorter with its voices than without",
+     Object.entries(P).every(([k, c]) => K[k].bits < c.bits && K[k].bits < codeLength(c, { voices: false }).bits));
+  is("… the parts add up", Object.values(K).every((x) => Math.abs(Object.values(x.parts).reduce((a, b) => a + b, 0) - x.bits) <= 5));
+
+  // in a tree: :defs and :use (re-pitched), the same notes
+  const tree = treeOf(c, { name: "BWV 846" });
+  is("BWV 846 as a tree: its figure in :defs, 32 uses re-pitched", /:defs \{:F1 \[:seq/.test(tree) && (tree.match(/\[:use \{:ref :F1 :pitches/g) || []).length === 32);
+  is("… and every tree is the piece again", Object.entries(P).every(([k, c]) => sameNotes(readTree(treeOf(c)), expand(c.items).length ? notesOf(expand(c.items)) : [])));
   return { results, notes };
 }
+
+// a small reader of the trees treeOf writes (notes, uses with :pitches/:transpose, :at in beats) — what kairotic.mt
+// expand does with them, enough to check that they are the piece
+const MIDI = { c: 0, "c#": 1, d: 2, eb: 3, e: 4, f: 5, "f#": 6, g: 7, ab: 8, a: 9, bb: 10, b: 11 };
+const midi = (n) => { const m = /^([a-g][#b]?)(-?\d+)$/.exec(n); return MIDI[m[1]] + 12 * (+m[2] + 1); };
+function readTree(edn) {
+  const defsAt = edn.indexOf(":defs {"), bodyAt = edn.indexOf("}}\n", defsAt);
+  const defs = {};
+  for (const m of edn.slice(defsAt + 7, bodyAt).matchAll(/:(\w+) (\[:seq .*?\]\])(?=\n|$)/gs)) defs[m[1]] = m[2];
+  const items = (s) => [...s.matchAll(/\[:(note|use) \{([^}]*)\}\]/g)].map(([, k, a]) => ({ k, a }));
+  const get = (a, key) => { const m = new RegExp(":" + key + " (\\[[^\\]]*\\]|\\S+)").exec(a); return m && m[1]; };
+  const out = [];
+  const play = (s, t0, map) => {
+    for (const { k, a } of items(s)) {
+      const at = t0 + 4 * +get(a, "at");
+      if (k === "note") { const p = midi(JSON.parse(get(a, "pitch"))); out.push([at, 4 * +get(a, "dur"), map(p)]); continue; }
+      const body = defs[get(a, "ref").slice(1)];
+      const ps = get(a, "pitches"), tr = +(get(a, "transpose") || 0);
+      if (ps) {
+        const to = ps.slice(1, -1).split(" ").map((x) => midi(JSON.parse(x)));
+        const order = [...new Set(items(body).map(({ a }) => midi(JSON.parse(get(a, "pitch")))))];
+        play(body, at, (p) => map(to[order.indexOf(p)]));
+      } else play(body, at, (p) => map(p + tr));
+    }
+  };
+  play(edn.slice(bodyAt + 2), 0, (p) => p);
+  return out;
+}
+const sameNotes = (a, b) => {
+  const key = (xs) => JSON.stringify(xs.map(([t, d, p]) => [Math.round(t * 1000), Math.round(d * 1000), p]).sort((x, y) => x[0] - y[0] || x[2] - y[2] || x[1] - y[1]));
+  return key(a) === key(b);
+};
 
 export function report({ results, notes }) {
   for (const [w, ok] of results) console.log((ok ? "  ok   " : "  FAIL ") + w);

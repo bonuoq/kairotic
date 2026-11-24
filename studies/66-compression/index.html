@@ -52,6 +52,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .bars { display: grid; gap: 4px; font: 12px var(--f-code); }
 .bar { display: grid; grid-template-columns: 9em 1fr 4em; gap: 8px; align-items: center; }
 .bar i { display: block; height: 10px; background: var(--accent); border-radius: 2px; }
+.bar.heard i { background: var(--kairos); height: 6px; } .bar.heard span { color: var(--ink-soft); }
 .rules { display: grid; gap: 8px; }
 .rule { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; font-size: 13px; }
 .rule svg { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
@@ -61,6 +62,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .written span.use { border-color: var(--accent); }
 .written span.rep { border-color: var(--kairos); }
 .harmony { font: 13px var(--f-code); line-height: 1.7; word-spacing: 0.3em; }
+.tree { margin: 0; font: 11px var(--f-code); max-height: 260px; overflow: auto; white-space: pre; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px; }
 .about { margin: 0; font-size: 13px; line-height: 1.55; }
 </style>
 <main>
@@ -74,6 +76,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <section class="panel"><h2>Rules <span id="rules-n"></span></h2><div class="rules" id="rules"></div></section>
     <section class="panel"><h2>The piece written with them <span>a use, its notes and the chord they spell</span></h2><div class="written" id="written"></div></section>
     <section class="panel"><h2>What is left: the chords <span>the figures' notes, in order</span></h2><div class="harmony" id="harmony"></div></section>
+    <section class="panel"><h2>As a tree <span>its rules in :defs, each use re-pitched — paste it in a tree box</span></h2>
+      <pre class="tree" id="tree"></pre><div class="toolbar"><button class="act" id="copy-tree">copy the tree</button></div></section>
   </div>
   <div style="display:grid; gap:12px; min-width:0">
     <section class="panel"><h2>Facts</h2><dl class="facts" id="facts"></dl>
@@ -86,12 +90,17 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       tried, the shortest kept), and the description is always written out again and compared note by note: it is lossless.
       What compresses well is figuration over harmony — what is left is the chords. The keyboard preludes compress to a third,
       the cello's to a little more than half: a line that is a melody says more. The scores are the Mutopia Project's public-domain
-      typesets (BWV 846, 999 in its guitar edition in D minor, 1007, 1009), read by a small reader of their LilyPond.</p></section>
+      typesets (BWV 846, 999 in its guitar edition in D minor, 1007, 1009), read by a small reader of their LilyPond.
+      <b>Heard</b>, the same rules cost less: which rule comes is a word of a lexicon that learns as it goes (a rule used again costs
+      almost nothing; the first time, an escape and its number), and a figure's pitches are told as each voice's step from the same
+      voice of its last use — holding or moving by a step, the cheap words of voice leading (@kairotic/rules bits.mjs; discussion
+      #399). The C major prelude comes to under a sixth. <b>As a tree</b>, the description is kairotic.mt's own: the rules in
+      <code>:defs</code>, a figure used with <code>:pitches</code>, a motif with <code>:transpose</code>.</p></section>
   </div>
 </div>
 </main>
 <script type="module">
-import { compress, lossless, describeRule, written, harmony, chordOf, pitchName } from "./kairotic/compress.mjs";
+import { compress, lossless, describeRule, written, harmony, chordOf, pitchName, codeLength, treeOf } from "./kairotic/compress.mjs";
 const PIECES = [
   { id: "bwv846-prelude", name: "BWV 846 · WTC I, Prelude in C", bar: 16 },
   { id: "bwv999-prelude", name: "BWV 999 · Prelude (D minor)", bar: 12 },
@@ -101,7 +110,8 @@ const PIECES = [
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
 const data = {}, done = {};
-for (const p of PIECES) { data[p.id] = await (await fetch(`./data/${p.id}.json`)).json(); done[p.id] = compress(data[p.id]); }
+const heard = {};
+for (const p of PIECES) { data[p.id] = await (await fetch(`./data/${p.id}.json`)).json(); done[p.id] = compress(data[p.id]); heard[p.id] = codeLength(done[p.id]); }
 let cur = PIECES[0].id;
 
 function figureSvg(r) {
@@ -119,6 +129,8 @@ function show() {
   $("facts").innerHTML = [
     ["notes", c.tokens.length], ["written out", c.raw + " bits"], ["described", c.bits + " bits"],
     ["ratio", (c.ratio * 100).toFixed(1) + " %"], ["rules", c.rules.length + " (taken: " + c.by + ")"],
+    ["heard", `${heard[cur].bits} bits · ${(heard[cur].ratio * 100).toFixed(1)} % <small>(uses in a lexicon, voices by step)</small>`],
+    ["its parts", Object.entries(heard[cur].parts).map(([k, v]) => k + " " + v).join(" · ")],
     ["lossless", `<span class="${lossless(c) ? "ok" : "bad"}">${lossless(c) ? "✓ written out again, the same notes" : "✗"}</span>`],
   ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
   $("rules-n").textContent = c.rules.length + " rules";
@@ -126,12 +138,15 @@ function show() {
   const w = written(c);
   $("written").innerHTML = w.map((s) => `<span class="${s.includes("×") ? "rep" : /^[FM]\d/.test(s) ? "use" : ""}">${esc(s)}</span>`).join("");
   $("harmony").textContent = harmony(c).join("  ");
+  $("tree").textContent = treeOf(c, { name: PIECES.find((p) => p.id === cur).name.split(" · ")[0] });
 }
+$("copy-tree").addEventListener("click", () => navigator.clipboard && navigator.clipboard.writeText($("tree").textContent));
 
 $("pieces").innerHTML = PIECES.map((p) => `<button class="act" data-id="${p.id}">${p.name}</button>`).join("");
 $("pieces").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { cur = b.dataset.id; show(); } });
 const max = Math.max(...PIECES.map((p) => done[p.id].ratio));
-$("bars").innerHTML = PIECES.map((p) => `<div class="bar"><span>${p.id.replace("-prelude", "").toUpperCase()}</span><i style="width:${(done[p.id].ratio / max * 100).toFixed(1)}%"></i><span>${(done[p.id].ratio * 100).toFixed(0)} %</span></div>`).join("");
+$("bars").innerHTML = PIECES.map((p) => `<div class="bar"><span>${p.id.replace("-prelude", "").toUpperCase()}</span><i style="width:${(done[p.id].ratio / max * 100).toFixed(1)}%"></i><span>${(done[p.id].ratio * 100).toFixed(0)} %</span></div>` +
+  `<div class="bar heard"><span>  heard</span><i style="width:${(heard[p.id].ratio / max * 100).toFixed(1)}%"></i><span>${(heard[p.id].ratio * 100).toFixed(0)} %</span></div>`).join("");
 
 // ── sound: the piece, or its chords (each use of a figure as one chord, as long as the figure)
 let ac = null, stopAt = [];

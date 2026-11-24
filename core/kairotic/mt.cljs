@@ -474,10 +474,25 @@
    (let [t (with-meters (explicit (expand tree)))]
      (canon* delay t (transpose interval t)))))
 
+(defn repitch
+  "The fragment over other pitches: its distinct pitches, in the order they first come, become `ps` (names or
+   numbers), and every note of each takes its new pitch — a figure (a broken chord, an Alberti bass) said again
+   over another chord. Pitches beyond the ones given stay."
+  [ps tree]
+  (let [t (expand tree)
+        order (distinct (keep (fn [x] (when (and (node? x) (= :note (tag x))) (midi-of (attrs x)))) (tree-seq node? kids t)))
+        to (zipmap order ps)]
+    (walk-notes (fn [a] (let [p (get to (midi-of a))]
+                          (cond (nil? p) a
+                                (number? p) (set-midi a p)
+                                :else (assoc (dissoc a :cents :hz) :pitch (name p)))))
+                t)))
+
 (defn apply-ops
   "The variations a [:use …] or a box can ask for, in a fixed order."
   [a tree]
   (cond->> tree
+    (:pitches a) (repitch (:pitches a))
     (:transpose a) (transpose (:transpose a))
     (some? (:invert a)) (invert (if (true? (:invert a)) nil (:invert a)))
     (:retrograde a) retrograde
@@ -485,7 +500,7 @@
 
 ;; ───────── expansion: strings and references ─────────
 
-(def op-keys #{:ref :transpose :invert :retrograde :augment})
+(def op-keys #{:ref :pitches :transpose :invert :retrograde :augment})
 
 (defn- from [x src] (if (node? x) (with-meta x src) x))
 

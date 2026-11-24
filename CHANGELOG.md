@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Study 66 · compression: the uses heard, and the description as a tree** (discussion #399). The same rules, their
+  uses coded the way a listener learns them (`bits.mjs`): which rule comes is a word of a lexicon (the first time an
+  escape and its number), a figure's pitches each voice's step from the same voice of its last use, a motif's start
+  its step from the last. BWV 846 comes to 846 bits, 15.8 % of its notes (28.7 % at fixed prices), BWV 999 20.8 %, the
+  cello preludes about 51 %. And the description written as a tree (`treeOf`): the rules in `:defs`, each use a
+  `[:use {:ref :F1 :pitches [...]}]` — **`:use` takes `:pitches`** in `kairotic.mt` (`repitch`: a fragment's distinct
+  pitches, in the order they first come, become these: a figure said again over another chord). The page shows both
+  codings and the tree to copy; read back, every tree is the piece again.
 - **Study 68 · mixture: a piece said bar by bar the cheaper of two ways** (discussion #399). The surface way (a
   figure and its pitches, Study 66's) or the genetic way (the bar's sonority, its notes as chord tones or ornaments,
   Studies 61 and 67's), in one measure (`bits.mjs`), a word saying which, both ways learning every bar. Lossless; the

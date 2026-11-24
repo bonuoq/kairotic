@@ -18,7 +18,8 @@ try {
   is("it opens on BWV 846: described in fewer bits, lossless, two rules", /✓/.test(facts()) && /2 \(taken/.test(facts()) && d.querySelectorAll("#rules .rule").length === 2);
   is("… its chords, from C", d.getElementById("harmony").textContent.startsWith("C  Dm7/C  G7/B"));
   is("… the piece written with its figure", d.querySelector("#written span.use").textContent.startsWith("F1(C4 E4 G4 C5 E5)"));
-  is("how much each piece compresses: four bars", d.querySelectorAll("#bars .bar").length === 4);
+  is("how much each piece compresses: four bars, and each heard", d.querySelectorAll("#bars .bar").length === 8 && d.querySelectorAll("#bars .bar.heard").length === 4);
+  is("… heard, BWV 846 under a fifth; as a tree, its figure in :defs", /heard\s*\d+ bits · 1\d\.\d %/.test(facts()) && /:defs \{:F1/.test(d.getElementById("tree").textContent));
   w.kairoticStudy.select("bwv1007-prelude");
   is("the first cello suite's prelude: more rules, its first figure over G D B A", d.querySelectorAll("#rules .rule").length > 5 && d.querySelector("#written span").textContent.startsWith("F1(G3 D4 B4 A4)"));
 } catch (e) { errors.push(String(e.message || e)); }
