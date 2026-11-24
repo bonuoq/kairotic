@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- **Study 69 · chromatic: IJzerman's chapter 8** (`@kairotic/rules` 0.13.0, `@kairotic/cac` 0.16.1). Twelve phrases on
+  the engine — the **Fonte** (ii then I a step down; inverted; with diminished 7ths), the **chromatic Monte** (ii, IV,
+  V, vi tonicized; in minor III, iv, V), **tonicizations in Descending Thirds**, the **Lamento** in three and four
+  parts, the **Morte** (IV tonicized, then the augmented 6th — in major on the molldur ⑥) and the **Chain of
+  Dominants** — each a unit in a key of its own where a degree is tonicized, the book's prototypes (ex. 8.8, 8.17,
+  8.22, 8.27, 8.33, 8.42) checked among the realizations counted. What the engine finds is what the book says: in four
+  parts every Lamento has a voice that leaps a 4th or more (1,298 of 1,298), in three none does; in the chain every
+  leading tone goes down a chromatic half step into the next 7th. What the engine learnt:
+  - **a 7th by chromatic step**: the dominant's 7th held, or come to by step — a chromatic one too (A to A♭ into the
+    molldur's diminished 7th, a leading tone down into the next dominant's 7th);
+  - **a 7th held into a weak unit** (the alto's suspensions in Fifth Down Fourth Up, ex. 7.12a: "inevitably on the
+    weak beat"), resolving down as every 7th;
+  - **in a sequence ⑦ is a degree as the others**: its bass doubled where the 7th chord is incomplete (ex. 7.12a–b);
+  - **the 6/4 in two steps**, a 5/4 asked between (the 6 to the 5, the 4 held);
+  - **structural parallels between the upper voices** (chorale-4 1.2.0): the same 5th or octave on two strong units in
+    a row with only ornaments between, as each voice's with the bass already was. The sequence's — a chord of its own
+    between, the bass leaping — stay allowed: Bach writes them (in 21 of the 24 circle-of-fifths stretches of the 371
+    chorales, 8 of them between soprano and bass), and so does the book (ex. 7.12a–b);
+  - **the memo reads back to where a held note began**: it read three units back, and two states it took for one could
+    have different futures (a soprano held three units). Three of Study 62's counts were its memo's — RO down 8,390
+    (not 8,450), in minor 142,905 (not 143,615), Bach's 131,519 (not 132,347) —, checked against every realization
+    enumerated without a memo.
+  Study 65's Fifth Down Fourth Up now has the book's bars (① | ④ ⑦ | ③ ⑥ | ② ⑤ | ①), and its counts what the engine
+  now allows: Fifth Down Fourth Up 6,336, with 5/3s 239,000, Third Down Second Up 998, the Tied Bass 27,685,639 and in
+  minor 12,635,133.
 - **Study 68 · mixture: a piece said bar by bar the cheaper of two ways** (discussion #399). The surface way (a
   figure and its pitches, Study 66's) or the genetic way (the bar's sonority, its notes as chord tones or ornaments,
   Studies 61 and 67's), in one measure (`bits.mjs`), a word saying which, both ways learning every bar. Lossless; the
@@ -15,7 +40,7 @@
   bits against the surface's 442, but with the derivation back to the surface 532 — the reduction explains the
   harmony more than it compresses it. And the way back: a new harmony drawn from a level's frame (triads, the steps
   already said preferred), Study 66's figure on it, a new prelude, played on the page.
-- **One measure of a description: `bits.mjs`** (`@kairotic/rules` 0.12.0; discussions #342, #399). The length of a
+- **One measure of a description: `bits.mjs`** (`@kairotic/rules` 0.13.0 — the release `rules-v0.12.0` was made before it came in; discussions #342, #399). The length of a
   piece, a line or an analysis said as words — a cell of a florid line, a step of a reduction, a bar's figure — each
   costing the bits a listener learning it as it goes needs: a word heard before cheap, its inversion half as good, a
   new one dear (`lexicon`, `lengthOf`; `economyOf`, an engine's discount for a word heard before). Studies 64

@@ -206,7 +206,11 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   const r = rng(62);
   for (const [name, Q, kind] of multi) {
     const N = (kind === "parts" ? R.partsOverBass : R.fourOverBass)({ ...Q.spec, bass: Q.bass, key: Q.key });
-    if (Q.count() !== N.count()) { off.push(`${name}: ${Q.count()} ≠ ${N.count()}`); continue; }
+    // (three of Study 62's counts are its memo's, which reads three units back and not where a note held began: two
+    // states it took for one had different futures. The engine's memo reads that far — its counts, checked against
+    // every realization enumerated without a memo)
+    const exact = { "62 ro-down": [8450n, 8390n], "62 ro-down-minor": [143615n, 142905n], "62 bach": [132347n, 131519n] }[name];
+    if (exact ? !(Q.count() === exact[0] && N.count() === exact[1]) : Q.count() !== N.count()) { off.push(`${name}: ${Q.count()} ≠ ${N.count()}`); continue; }
     // the reasons: every pair or triple of the voices' own candidates, at every unit of a realization drawn
     const W0 = Q.sample(r);
     if (W0 && !whys.length) {

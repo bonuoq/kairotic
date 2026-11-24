@@ -5,8 +5,8 @@ import { circle, PHRASES } from "../kairotic/circle.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const VOICES = ["soprano", "alto", "tenor"];
-const PINNED = { "vii-minor": 211043n, "vii-major": 4794n, meyer: 53n, fifths: 5147n, "fifths-53": 49708n, "fifths-minor": 4216n,
-                 "thirds-seconds": 392n, "thirds-seconds-minor": 19302n, "tied-bass": 16359770n, "tied-bass-minor": 14077321n,
+const PINNED = { "vii-minor": 211043n, "vii-major": 4794n, meyer: 53n, fifths: 6336n, "fifths-53": 239000n, "fifths-minor": 4216n,
+                 "thirds-seconds": 998n, "thirds-seconds-minor": 19302n, "tied-bass": 27685639n, "tied-bass-minor": 12635133n,
                  "descending-thirds": 18176n, "descending-thirds-minor": 25957n, folia: 572n };
 
 export async function run() {
@@ -34,7 +34,7 @@ export async function run() {
   is("... free to enter: in some realization its 7th comes without being held (unprepared, as the dominant's)",
      (() => { for (let i = 0; i < 60; i++) { const W = VM.sample(r); if (dimUnits.some((t) => VOICES.some((v) => VM.name(W[v][t]).startsWith("F") && W[v][t - 1] !== W[v][t]))) return true; } return false; })());
   const asDiatonic = (() => { const P = circle({ phrase: "vii-minor", style: { extends: "chorale-4", between: [["seventh", {}]] } }); return P.count(); })();
-  is("... a style that names it so changes nothing: the family is the engine's (chorale-4 1.1.0)", asDiatonic === counts["vii-minor"]);
+  is("... a style that names it so changes nothing: the family is the engine's (chorale-4 1.2.0)", asDiatonic === counts["vii-minor"]);
   const VMa = circle({ phrase: "vii-major" });
   is("vii° in major with the lowered ⑥ (A♭ in C): A♭ in every diminished chord, going down to G (30 drawn)",
      every(VMa, 30, (W) => [1, 3].every((t) => VOICES.some((v) => VMa.name(W[v][t]).startsWith("A♭") && VMa.name(W[v][t + 1]).startsWith("G")))));
