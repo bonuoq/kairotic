@@ -43,7 +43,7 @@ await (async function () {
     is("… taken as the phrase: analysed again", $("mel").value === v && S().state().levels >= 2 && !S().state().variation);
 
     $("ex").value = "scale-76"; $("ex").dispatchEvent(new Event("change"));
-    is("the 7–6 chain: analysed in eight levels (the functions kept), five suspensions taken in the first pass", S().state().levels === 8 && document.querySelectorAll('#levels .lv[data-k="0"] .cell.next').length === 5);
+    is("the 7–6 chain: analysed in six levels, five suspensions taken in the first pass (a line: the functions change nothing)", S().state().levels === 6 && document.querySelectorAll('#levels .lv[data-k="0"] .cell.next').length === 5);
     click(document.querySelector(`#levels .lv[data-k="0"]`));
     click($("mei-level"));
     is("the 7–6 surface exported: its suspensions written as half notes tied over the bar line, not struck again", await (async () => { for (let i = 0; i < 40 && saved.length < 2; i++) await new Promise((r) => setTimeout(r, 50)); const t = saved[1] && saved[1].text; return t && (t.match(/tie="i"/g) || []).length >= 6 && !/pname="a" oct="5" dur="4"/.test(t); })());

@@ -7,8 +7,9 @@
   cadential 6/4), so the grammar of `functions.mjs` reads a partimento's phrase too:
   - **Study 61 · reduction:** `reduce(…, {functional: true})` (on in the page) — no level may break the grammar where
     the surface did not (`functionalJudge`, any notes: `reduceNotes`' `functional`), never given up even where
-    nothing else is left. The 7–6 chain and the rising sequence keep their direction (without them the economy
-    reached D → S); the incipits where nothing broke read as before.
+    nothing else is left. A chain of 6/3s over a bass moving by step (a fauxbourdon, a 7–6 chain resolved) is a line,
+    not a succession of functions: the 7–6 chain reads as before; the rising sequence keeps its direction (without
+    them the economy reached D → S).
   - **Study 63 · bridges:** `functionalCost` — each unit's implied chord, a succession the grammar refuses costing
     `functional` more (6 on the page, for the variation and the morph): a unit's cost, so the bridge stays exact. A
     morph broke the grammar 0.95 times a line with the economy alone, 0.05 with the functions.

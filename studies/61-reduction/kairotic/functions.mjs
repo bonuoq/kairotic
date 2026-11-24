@@ -20,7 +20,8 @@
 //                       not its own, or a diminished chord whose root is not the leading tone — the dominant of the
 //                       chord it leads to (its target: a 5th below its root; a semitone above a diminished root)
 //   the grammar    T → T S D · S → S D T (plagal) · D → D T (the deceptive cadence is T: ⑥) — never D → S, the
-//                  retrogression that takes back a dominant before it is resolved; an applied dominant goes to its
+//                  retrogression that takes back a dominant before it is resolved (but a chain of 6/3s over a bass
+//                  moving by step is a line, a sequence, not a succession of functions); an applied dominant goes to its
 //                  target (its root, or its bass: the target's cadential 6/4) or to another applied dominant (a
 //                  chain), and may come after anything; the phrase ends on the tonic
 //
@@ -168,6 +169,11 @@ export function grammarErrors(fs, { end = true, key = { tonic: "C" } } = {}) {
       continue;
     }
     if (b.fn === "A") continue;
+    // (a chain of 6/3s, the bass by step under them — a fauxbourdon, a 7–6 chain resolved — is a line, not a
+    // succession of functions: the sequence prolongs, and the grammar holds again where it ends)
+    const sixth = (f) => f.chord.bass !== f.chord.root && mod(f.chord.bass - f.chord.root, 12) <= 4 && mod(f.chord.bass - f.chord.root, 12) >= 3;
+    const step = mod(a.chord.bass - b.chord.bass, 12);
+    if (sixth(a) && sixth(b) && (step === 1 || step === 2 || step === 10 || step === 11)) continue;
     if (!ALLOWED[a.fn].includes(b.fn)) errs.push({ i: i + 1, reason: `${a.fn} → ${b.fn}: the dominant taken back before it is resolved` });
   }
   if (end && fs.length && fs[fs.length - 1] && fs[fs.length - 1].fn !== "T") errs.push({ i: fs.length - 1, reason: "the phrase does not end on the tonic" });
