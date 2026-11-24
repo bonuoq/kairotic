@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Tension: `tension.mjs`** (`@kairotic/rules` 0.14.0; discussions #399, #321). Lerdahl's *Tonal Pitch Space*: a
+  chord's basic space in a region, the chord distance δ = i + j + k (I → V 5, I → ii 8, as his tables), an applied
+  dominant's region its target's key, surface tension (an inversion, a 7th, a foreign note), and sequential, global
+  and hierarchical tension. In Study 67:
+  - **BWV 846's tension**, hierarchically from its reduction (each chord's δ from the chord it prolongs, the frame's
+    from the tonic): 0 where it begins and ends, tighter in the tonicization of G and over the dominant pedal, drawn
+    on the page under the chords.
+  - **A new harmony keeps Bach's tension shape** (`rewrite`'s `shape`, 3 on the page: each new chord as far from the
+    tonic as his at that bar): its tension curve correlates 0.74 with his from the frame, 0.50 without.
+  - `reduceNotes` takes an `extra` cost (the tension a step takes away, `tensionCost`); on BWV 846 it changes no
+    level — the functions and the ornaments already decide them.
 - **The soprano does not double the bass's line at the octave** (`@kairotic/rules` 0.14.0, `chorale-4` 1.3.0;
   `@kairotic/cac` 0.16.2). In Fifth Down Fourth Up the engine still wrote the soprano F–E–D held over each weak unit
   above F–B–E–A–D: an octave with the bass on every strong unit, both moving down — a sequence's parallels, a chord of
