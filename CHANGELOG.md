@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The chorales' phrases in their keys** (#301, #399). Every phrase of `studies/_shared/chorales/phrases.json` has
+  `keys`: the key each quarter is in, read from the four voices (`localKeys` in `tools/kern.mjs`: among the chorale's
+  key and its neighbours, the path whose scales hold most of the notes, a change of key costing as one note out; in
+  minor the natural ⑦ is the relative major's). 0.45 changes a phrase; nearly half the phrases (1,058) end in another key than the
+  chorale's. Judged in them, Bach's inner voices are kept by `bach-4` in 426 of 2,272 phrases (in the chorale's key:
+  234) — `tests/chorales.mjs` gives the bass's notes their keys, as `fromOuter` takes them.
 - **The chorale test's outer voices, for the whole corpus; the functions read in local keys** (`@kairotic/rules`
   0.18.0: `localFunctions`, `relatedKeys`, `grammarErrors`' `passing`; Study 63 · bridges; #399 / #353).
   - **Against Bach:** his 2,272 phrases read in the home key alone break the grammar in 491 phrases (an applied
