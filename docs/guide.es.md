@@ -335,6 +335,20 @@ los tooltips de la historia, y la REPL lo lee como datos (discusión #382).
 - `(tx-log)` — las transacciones desde el principio hasta aquí, una secuencia para leer con Clojure:
   `(filter #(= :agent (:via %)) (tx-log))`, `(remove #(= :layout (:kind %)) (tx-log))`, `(group-by :author (tx-log))`.
 
+- `(db)` — la historia como **valor**: no cambia cuando la historia crece, así que una consulta larga, un agente o
+  Claude leen un valor coherente. Todas las funciones de aquí lo aceptan como primer argumento: `(as-of db)`,
+  `(tx-log db)`, `(with db …)`, `(datoms db)`.
+- `(datoms)` — los **hechos** de la historia hasta aquí, como los datoms de Datomic: `{:e :a :v :added}` (una entidad
+  —una caja por su ruta, `[:b3]`, o `[:b5 :b2]` dentro de un subpatch—, un atributo —`:text`, `:x`, `:y`, `:data`,
+  `:line`…—, un valor, afirmado o retirado), cada uno con su transacción. Se leen de la obra antes y después de cada
+  evento, así que todos los eventos los tienen, sea cual sea su forma. `(history-of :b3)` — los hechos de una caja,
+  del más antiguo al más nuevo.
+- Claude, en la pestaña Claude y en una caja agent, lee la historia igual: su herramienta `work_history` da las últimas
+  transacciones, o los hechos de una caja, del valor que tenía la historia cuando empezó la petición.
+- `(schema)` — qué son los atributos de un árbol y los eventos de la historia, como datos: `(schema :tree)`, cada
+  atributo con su capa (`:performance`, `:analysis`; ninguna para lo escrito), que leen las capas, la ventana de
+  código y las lentes (#380); `(schema :events)`, cada evento con lo que cambia.
+
 Los eventos hechos antes de esto no tienen transacción: dicen quién los hizo (los de su segmento), no cuándo ni de
 dónde.
 
@@ -436,7 +450,9 @@ patch. `(presets! :b18 nil)` los olvida.
   **Forget…**. La obra en esos momentos se pierde (y un snapshot que hubiera allí con ella), y los momentos
   posteriores quedan exactamente como están. No se pueden olvidar la punta de una rama ni un punto donde
   empieza una rama, y en una sala compartida la historia es de todos: allí el camino hacia una versión
-  compacta es un release. Desde la REPL: `(forget-points [["segmento" 3] …])`.
+  compacta es un release. Desde la REPL: `(excise! [["segmento" 3] …])` —la única manera de que algo salga de una
+  historia, como la excisión de Datomic: el cambio que sustituye a los puntos lo dice (`:via :excise`), y cada
+  segmento guarda constancia de ello (`(excisions)`).
 
 ## 5. Las pestañas de la derecha
 

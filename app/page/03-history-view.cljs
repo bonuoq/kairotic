@@ -62,7 +62,7 @@
          (when v
            (str " · " (case v
                         :gesture "gesture" :repl "REPL" :claude "Claude tab" :merge "merge" :take "take from Perform"
-                        :with "tried first (with)" :agent (str "agent" (when (keyword? (:box m)) (str " " (name (:box m)))))
+                        :with "tried first (with)" :excise "points forgotten here (excise!)" :agent (str "agent" (when (keyword? (:box m)) (str " " (name (:box m)))))
                         (name v))))
          (when (seq (:why m)) (str " «" (ai/cut (:why m) 60) "»")))))
 

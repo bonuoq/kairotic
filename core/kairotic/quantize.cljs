@@ -725,7 +725,7 @@
             (let [a (mt/attrs (mt/node-at xt (:path e))) w (mt/spelling-of a)]
               {:on (:t e) :off (+ (:t e) (:dur e)) :voice (:voice e)
                ;; (and what an analysis wrote on it: the figures over a bass, its degree, its key — the score shows the figures)
-              :attrs (cond-> (merge (select-keys e [:art :dyn :text :vel :env :gliss :fig :deg :local :why :harmony])
+              :attrs (cond-> (merge (select-keys e (into [:art :dyn :text :vel :env :gliss] mt/analysis-keys))
                                      (if w
                                        (cond-> {:pitch (sp/->name w)} (:cents a) (assoc :cents (:cents a)))
                                        {:pitch (if (whole? (:pitch e)) (js/Math.round (:pitch e)) (cv/round-to (:pitch e) 2))}))
