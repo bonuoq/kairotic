@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Study 61 · reduction: the briefest reading** (discussion #342). The analysis now weighs what its derivation takes
+  to say, as Study 64's florid lines do: each step is a word — its operation and, for each note it explains, the
+  ornament, the voice and the step from its parent, wherever it stands — and costs `economy · bits / 4`, the bits of
+  that word given the words already said (a word said before cheap, its inversion half as good, a new one dear). An
+  unsplit now offers every way to explain its notes (`unsplits`), so where a note could be read two ways the
+  analysis can prefer the way it has used. **Measured:** the three incipits read exactly as before; a rising sequence
+  (`D3 E3 F3 G3 G2 C3` under `B4 A4 C5 B4 D5 C5 E5 D5 D5 B4 C5`, a new phrase in the list) is read with one figure at
+  all four links, the step below an incomplete neighbour, where without economy the last link was an anticipation:
+  28.0 bits in 4 different steps become 21.5 in 3, every level passing the rules. The page has an Economy field
+  (3) and says the derivation's length. The copies in Studies 63 and 64 follow.
 - **`phase` keeps time between onsets** (`@kairotic/rhythm` 0.8.0; discussion #204). Without a clock, from the last
   onset judged the box sends itself a beat each pulse it found (`:later`, with ▶): the phase walks on, so a
   `necklace` after it plays in the gaps of what the performer plays. The next onset takes over (a new generation

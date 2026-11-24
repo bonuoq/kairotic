@@ -141,6 +141,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
   <label class="stack" for="mel">Melody<input class="line" id="mel" spellcheck="false"></label>
   <div class="row">
     <label class="inline" for="temp" title="0: always the cheapest step; warmer, another reading">Reading <input type="number" id="temp" min="0" max="3" step="0.25" value="0"></label>
+    <label class="inline" for="economy" title="How much the briefest derivation is preferred: a step said before is cheap (0: none)">Economy <input type="number" id="economy" min="0" max="8" step="0.5" value="3"></label>
     <button class="act primary" id="analyse">Analyse</button>
     <button class="act" id="again" title="Another draw at this temperature">Another reading</button>
     <span class="facts" id="facts">—</span>
@@ -183,9 +184,11 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
   <h2 id="h-about">About <span>discussion <a href="https://github.com/bonuoq/kairotic/discussions/321">#321</a></span></h2>
   <p class="about">An analysis is the <em>perpendicular</em> of the history: the history runs along the time of composing; an analysis goes down, at one point of it, through the levels of what a phrase prolongs. Here a phrase is reduced pass by pass, each level a pass over the whole phrase (as GTTM's time-span reduction goes down the metrical grid: the weak units first, then the bars by their weight, a dissonance wherever it stands), each step in it one of the proto-voice model's operations read backwards (Finkensiep &amp; Rohrmeier, ISMIR 2021; <a href="https://github.com/DCMLab/protovoices-haskell">DCMLab/protovoices-haskell</a>): an <em>unsplit</em> takes away a slice whose notes are all ornaments of the notes around them (a note held, struck again, a neighbour, a passing tone, an incomplete neighbour), an <em>unsuspend</em> brings a suspension's resolution onto the beat it was delayed from (the dissonance on the strong unit is the moment that matters: what it delays is the consonance, which sounds there with the bass), an <em>unspread</em> hears two slices as one sonority. Read forwards, the steps are the derivation that composes the phrase from its frame.</p>
   <p class="about">Which step is taken is one policy: the ornaments' own cost, GTTM's metrical weight (a slice on a strong unit is dearer to take away) and its cadential retention (the frame keeps the first slice and the cadence), dissonance (a dissonant slice goes first), the soft rules of every engine (<code>soft.mjs</code>: how the melody left moves), and the hard rules of every phrase (<code>partimento.mjs</code>, through Study 58's check): a step that makes the level refuse itself around it is taken only when no other is left. A level below the surface is checked on the phrase's own metrical grid, its notes held over what they prolong (every rule but how long a note may be held), so a strong unit stays strong.</p>
+  <p class="about">And the <em>economy</em> of a reading (as Study 64's florid lines): each step is also a word of the derivation — its operation and, for each note it explains, the ornament, the voice and the step from its parent, wherever in the phrase it stands — and costs what it takes to say given the words already said: a word said before is cheap, its inversion half as good, a new one dear. So where a note could be explained two ways the analysis prefers the way it has used, and a sequence is read the same at every link: the briefest derivation, the one that says the phrase with the fewest different cells.</p>
   <ul class="q">
     <li>Varying from a level keeps the melody's notes that survive there (on their units, held as long) and writes the others again with the engine of Studies 56–60; the deeper the level, the less is kept. From the surface nothing changes; from the frame almost everything does.</li>
     <li>An analysis is an interpretation: warmer readings take other steps, as an analyst might.</li>
+    <li>The economy prefers the briefest derivation: the rising sequence (its own phrase in the list) is read with one figure at every link, and without it (economy 0) its last link becomes an anticipation of the cadence. The facts say how long the derivation is, in bits, and how many different steps it says.</li>
     <li>What comes next (#321): the levels drawn as a score with the proto-voice edges, exchange with DCMLab's annotation tool, the analysis kept in the work, and the futuribles taking its open obligations.</li>
   </ul>
 </section>
@@ -233,7 +236,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn the-phrase [] #js {:bass (val! "bass") :melody (val! "mel") :cadence (.-value ($ "cad"))})
 
 ;; ───────── the presets ─────────
-(def presets (js->clj (.-INCIPITS I)))
+(def presets (js->clj (js/Object.assign #js {} (.-INCIPITS I) (.-EXAMPLES R))))
 (doseq [[id x] presets]
   (let [o (js/document.createElement "option")]
     (set! (.-value o) id) (set! (.-textContent o) (get x "name"))
@@ -334,10 +337,11 @@ window.addEventListener("DOMContentLoaded", function () {
           c (.check I nil phrase #js {:key key :range (.rangeOf I phrase key)})]
       (if-not (.-ok c)
         (text! "facts" (str "It does not pass the rules of a phrase: " (str/join "; " (map #(str (or (.-at %) "") " " (.-reason %)) (.-errors c)))))
-        (let [an (.reduce R phrase #js {:key key :temp (num! "temp" 0) :r (or r js/Math.random)})]
+        (let [an (.reduce R phrase #js {:key key :temp (num! "temp" 0) :economy (num! "economy" 3) :r (or r js/Math.random)})]
           (reset! st {:an an :k (dec (count (.-levels an))) :var nil})
           (text! "facts" (str (count (.-notes an)) " notes, " (count (aget (.-levels an) 0)) " slices · "
-                              (count (.-steps an)) " steps to a frame of " (count (aget (.-levels an) (dec (count (.-levels an))))) " slices"))
+                              (count (.-steps an)) " steps to a frame of " (count (aget (.-levels an) (dec (count (.-levels an))))) " slices · "
+                              (let [d (.derivationLength R an)] (str "the derivation " (.toFixed (.-bits d) 1) " bits, " (.-words d) " different steps"))))
           (render!))))
     (catch :default e (text! "facts" (str "Error: " (msg e))))))
 
@@ -375,6 +379,7 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; ───────── wiring ─────────
 (.addEventListener ($ "ex") "change" (fn [_] (load-preset!) (analyse! nil)))
 (.addEventListener ($ "analyse") "click" (fn [_] (analyse! nil)))
+(.addEventListener ($ "economy") "change" (fn [_] (analyse! nil)))
 (.addEventListener ($ "again") "click" (fn [_] (when (zero? (num! "temp" 0)) (set! (.-value ($ "temp")) "1")) (analyse! nil)))
 (.addEventListener ($ "play-level") "click" (fn [_] (play-level!)))
 (.addEventListener ($ "halt") "click" (fn [_] (halt!)))
