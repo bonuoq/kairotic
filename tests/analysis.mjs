@@ -138,17 +138,21 @@ export async function analysis(page, check) {
   // starts: the first note of the take was the one that came late, under load, its start found a few frames after
   await cljs(page, `(send! ${g} 1 1)`); await page.waitForTimeout(300);
   await cljs(page, `(send! ${g} 1 0)`); await page.waitForTimeout(400);
-  // the take is played by the page on the audio clock, all of it scheduled at once (issue #125): its notes
-  // last what they say whatever the load of the machine running the tests, which used to stretch them when
-  // each gate was a round trip from here
+  // the take is played on the audio clock (issue #125): the gates are delivered now, each with its time, and
+  // gain~ schedules them (setTargetAtTime), so its notes last what they say whatever the load of the machine
+  // running the tests. Through the engine's queue they were sent only 0.12 s ahead, from the page: a page busy
+  // for longer let a gate open late, and the note came 0.2–0.3 s late and as short (the second, mostly). The
+  // osc~'s change of pitch (a ramp from its last change) and the stop still go through the queue, in the silence
+  // before the fourth note and after the last
   await cljs(page, `(send! ${tr} :rec)
-    (let [t0 (+ (eng/now) 0.05)
+    (let [t0 (+ (eng/now) 0.05) p (eng/patch)
+          now! (fn [s id inlet v] (eng/fresh-instant!) (eng/deliver! p (fid id) inlet v (+ t0 s)))
           at (fn [s id inlet v] (eng/enqueue! (+ t0 s) (fid id) inlet v))]
       (doseq [i (range 3)]
-        (at (* i 0.7) ${g} 1 1)
-        (at (+ (* i 0.7) 0.4) ${g} 1 0))
-      (at 2.1 ${osc} 0 330) (at 2.1 ${g} 1 1)
-      (at 2.6 ${g} 1 0)
+        (now! (* i 0.7) ${g} 1 1)
+        (now! (+ (* i 0.7) 0.4) ${g} 1 0))
+      (at 1.95 ${osc} 0 330) (now! 2.1 ${g} 1 1)
+      (now! 2.6 ${g} 1 0)
       (at 3.4 ${tr} 0 :stop))`);
   await page.waitForTimeout(3600);
   const strokes = `(mapv (fn [[_ s]] (:pts s)) (sort-by (fn [[_ s]] (ffirst (:pts s))) (:strokes (box-data ${fq}))))`;
