@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Study 63 · bridges: the outer voices of a chorale phrase, from A to B** (`outer.mjs`; the chorale test, #399 /
+  #353). A bridge whose states are pairs (soprano, bass), exact for every cost one unit back: the rules (consonant,
+  no parallel or direct 5ths and octaves, no augmented or diminished melodic interval, an altered note going on the
+  way it was bent, the ends pinned, the cadence's bass ⑤–① or ⑦–① and its soprano by step), the line (steps cheap,
+  a new chord each unit, each voice near its register), and three layers, each on or off: **functions** (the implied
+  harmony's grammar, `functions.mjs`), **tension** (`tension.mjs`, an arch rising to two thirds of the phrase and
+  released into B) and **economy** (`bits.mjs`, the voices' motion as words). On two invented test phrases (20 draws):
+  without functions the grammar breaks 0.70 / 0.95 times a phrase, with them never; the arch correlates 0.27 / 0.31
+  without tension, 0.64 / 0.55 with it; fewer different motions with economy. `bridgesFor` gives the engine's format
+  for every variant (all layers, each off); `tools/bridges.mjs` writes them for the corpus once it is in
+  `studies/_shared/chorales/`.
 - **One clock for a room** (discussion #382, idea 8, phase 1). In a shared room with a relay, the time things are made
   at — each transaction's `:t`, each segment's (where the newest point of the history comes from), each change of a
   jam in Perform and its live messages — is the room's shared time: the relay's clock as each page reads it on
