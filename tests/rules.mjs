@@ -24,6 +24,14 @@ const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483
   const off = copies.flatMap((d) => ["rules.mjs", "tonal.mjs", "soft.mjs"].filter((f) =>
     readFileSync(join(root, "studies", d, "kairotic", f), "utf8") !== readFileSync(join(root, "packages/rules/assets", f), "utf8")).map((f) => `${d}/${f}`));
   is(`the studies' copies of @kairotic/rules, as it is (${copies.join(", ")})`, copies.length && off.length === 0);
+  // the measure of a description (bits.mjs): the studies that compose or analyse by it keep a copy, the package's
+  const bitsCopies = readdirSync(join(root, "studies")).filter((d) => existsSync(join(root, "studies", d, "kairotic", "bits.mjs")));
+  const bitsOff = bitsCopies.filter((d) => readFileSync(join(root, "studies", d, "kairotic", "bits.mjs"), "utf8") !== readFileSync(join(root, "packages/rules/assets/bits.mjs"), "utf8"));
+  is(`the studies' copies of bits.mjs, as it is (${bitsCopies.join(", ")})`, bitsCopies.length >= 3 && bitsOff.length === 0);
+  const Bt = await import("../packages/rules/assets/bits.mjs"), lx = Bt.lexicon();
+  const first = lx.bits("Q:0,1"); lx.add("Q:0,1");
+  is("bits.mjs: a word heard again cheaper than at first, its inversion between, a new one dearest; the inversion negates every number",
+     lx.bits("Q:0,1") < lx.bits("Q:0,-1") && lx.bits("Q:0,-1") < lx.bits("H:0") && lx.bits("Q:0,1") < first && Bt.invert("unsplit:passing-mid.m|-1,top|2") === "unsplit:passing-mid.m|1,top|-2" && Bt.economyOf(lx, "Q:0,1", 4) < 0 && Bt.economyOf(lx, "H:0", 4) === 0);
 }
 
 // one voice over a bass: every schema of Study 51, in major and minor, figured or not, with and without chapter 4's

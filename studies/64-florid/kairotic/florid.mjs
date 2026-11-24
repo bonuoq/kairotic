@@ -38,6 +38,7 @@ import { bridgeVoice, voiceOver } from "./bridge.mjs";
 import { reduce, survivors } from "./reduction.mjs";
 import { exportMei, fromUnits, fileName } from "./export.mjs";
 import { melodicParts, total } from "./soft.mjs";
+import { word, lexicon as bitsLexicon, lengthOf } from "./bits.mjs";
 
 const split = (s) => (Array.isArray(s) ? s : String(s || "").trim().split(/\s+/).filter(Boolean));
 const HOLD = /held \d+ units? at most/;
@@ -317,31 +318,19 @@ export function elaborate(frame, cf, key, { temp = 0.5, rtemp = 0.5, r = Math.ra
 
 // ─── coherence: the derivation's length ───
 /** A cell of the surface: its rhythm and its shape relative to the frame's note (so a figure in sequence, the same
- *  shape at another pitch, is the same cell). */
-export const cellKey = (cell, shape) => cell + ":" + shape.join(",");
-const inverted = (key) => { const [c, sh] = key.split(":"); return c + ":" + sh.split(",").map((x) => String(-Number(x) || 0)).join(","); };
+ *  shape at another pitch, is the same cell): a word of @kairotic/rules' bits.mjs. */
+export const cellKey = (cell, shape) => word(cell, shape);
 /**
- * What a derivation costs to say, cell by cell, as a listener learning the piece as it goes would hear it: a cell
- * heard before is cheap (the more, the cheaper), its inversion half as good as itself, a new one dear — bits(key)
- * = −log2 of its chance (its count, half its inversion's, and alpha shared among `kinds` possible cells, over all heard).
- * The same measure reads a line (measure.mjs) and weighs the engine's choices (elaborate's economy).
+ * What a derivation costs to say, cell by cell, as a listener learning the piece as it goes would hear it
+ * (@kairotic/rules' bits.mjs, the measure shared with Studies 61 and 63): a cell heard before is cheap, its inversion
+ * half as good as itself, a new one dear (alpha shared among `kinds` possible cells). The same measure reads a line
+ * (measure.mjs) and weighs the engine's choices (elaborate's economy).
  */
-export function lexicon({ alpha = 1, kinds = 40 } = {}) {
-  const n = new Map();
-  let N = 0;
-  const count = (k) => n.get(k) || 0;
-  return {
-    bits: (key) => -Math.log2((count(key) + 0.5 * (inverted(key) === key ? 0 : count(inverted(key))) + alpha / kinds) / (N + alpha)),
-    add: (key) => { n.set(key, count(key) + 1); N++; },
-    get size() { return n.size; },
-  };
-}
+export const lexicon = ({ alpha = 1, kinds = 40 } = {}) => bitsLexicon({ alpha, kinds });
 /** A derivation's length: the bits of its cells, one after the other (spans [{cell, shape}]), in all and a half bar. */
-export function derivationLength(spans, o = {}) {
-  const lex = lexicon(o);
-  let bits = 0;
-  for (const sp of spans) { const k = cellKey(sp.cell, sp.shape); bits += lex.bits(k); lex.add(k); }
-  return { bits, perHalf: spans.length ? bits / spans.length : 0, cells: lex.size };
+export function derivationLength(spans, { alpha = 1, kinds = 40 } = {}) {
+  const L = lengthOf(spans.map((sp) => cellKey(sp.cell, sp.shape)), { alpha, kinds });
+  return { bits: L.bits, perHalf: L.perWord, cells: L.words };
 }
 
 function choose(opts, temp, r) {

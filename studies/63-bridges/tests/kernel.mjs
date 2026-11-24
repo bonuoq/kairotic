@@ -54,6 +54,17 @@ export async function run() {
   const vm = mo && B.voiceOver({ bass: mo.bass, melody: mo.melody, cadence: mo.cadence }, { tonic: "C" }, { range: { lo: Math.min(rangeOf(A, { tonic: "C" }).lo, rangeOf(Bp, { tonic: "C" }).lo), hi: Math.min(rangeOf(A, { tonic: "C" }).lo, rangeOf(Bp, { tonic: "C" }).lo) + 12 } });
   is("… every note of it legal under the rules of every phrase", vm && mm.every((nm, t) => vm.V.check(mm.slice(0, t).map(vm.code), t, vm.code(nm)) === null));
 
+  // ─── the economy of a bridge: its figures as words (bits.mjs) ───
+  const vc = B.voiceOver(A, { tonic: "C" }), cs = (s) => s.split(" ").map(vc.code);
+  is("a bar's figure is its shape from its first note: B4 A4 and C5 B4 one word, D5 C5 another's inversion", B.figureAt(cs("B4 A4 C5 B4"), 1) === B.figureAt(cs("B4 A4 C5 B4"), 3) && B.figureAt(cs("B4 A4"), 1) === "bar:-1" && B.figuresOf(cs("B4 A4 C5 B4 D5")).join(" ") === "bar:-1 bar:-1 bar:");
+  const draws = (e) => Array.from({ length: 20 }, (_, i) => B.morphPhrases(A, Bp, { tonic: "C" }, { r: rng(1 + i), economy: e, head: 3, tail: 4 })).filter(Boolean);
+  const mean = (ms, f) => ms.reduce((a, m) => a + f(B.figureLength(m.melody.split(" ").map(vc.code))), 0) / ms.length;
+  const m0 = draws(0), m3 = draws(3);
+  is("a morph with economy 3 says its way with fewer figures: shorter in bits and in different words than without (20 draws each)", m0.length === 20 && m3.length === 20 && mean(m3, (L) => L.bits) < mean(m0, (L) => L.bits) - 8 && mean(m3, (L) => L.words) < mean(m0, (L) => L.words) - 1.5);
+  notes.push(`a morph's figures: ${mean(m0, (L) => L.bits).toFixed(1)} bits in ${mean(m0, (L) => L.words).toFixed(1)} words without economy, ${mean(m3, (L) => L.bits).toFixed(1)} in ${mean(m3, (L) => L.words).toFixed(1)} with economy 3 · e.g. ${m3[0].melody}`);
+  is("… every note of them legal (the bridge's hard rules untouched)", m3.every((m) => { const v = B.voiceOver({ bass: m.bass, melody: m.melody, cadence: m.cadence }, { tonic: "C" }, { range: { lo: rangeOf(A, { tonic: "C" }).lo, hi: rangeOf(A, { tonic: "C" }).lo + 12 } }); const u = m.melody.split(" "); return u.every((nm, t) => v.V.check(u.slice(0, t).map(v.code), t, v.code(nm)) === null); }));
+  is("… and economy 0 is the bridge as it was: the same draws", JSON.stringify(m0.map((m) => m.melody)) === JSON.stringify(Array.from({ length: 20 }, (_, i) => B.morphPhrases(A, Bp, { tonic: "C" }, { r: rng(1 + i), head: 3, tail: 4 })).filter(Boolean).map((m) => m.melody)));
+
   // ─── rhythms ───
   is("the metrical weight of 16 pulses: the downbeat 4, the half bar 3, the quarters 2, the eighths 1, the rest 0", B.pulseWeight(16).slice(0, 8).join("") === "40102010" && B.pulseWeight(16)[8] === 3);
   const r1 = B.rhythmOf("x..x..x...x.x..."), r2 = B.rhythmOf("x.x...x.x...x...");

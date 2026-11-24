@@ -35,6 +35,7 @@ await (async function () {
     is("the 7–6 chain from its frame: a variation of 15 units, legal", S().state().levels === 6 && S().state().variation.split(" ").length === 15 && /passes the rules/.test($("v-facts").textContent));
 
     is("the morph on loading: the C major incipit into the 7–6 chain, 25 units, its ends kept", S().state().morph && S().state().morph.split(" ").length === 25 && document.querySelectorAll("#m-mel span.kept").length === 13);
+    is("… its figures said in bits (economy 3), as the variation's", /its figures [\d.]+ bits, \d+ different/.test($("m-facts").textContent) && /its figures [\d.]+ bits/.test($("v-facts").textContent));
     change($("m-b"), "short-am"); click($("m-draw"));
     is("… to A minor from C major: said impossible (another key), no error", /No bridge|Error/.test($("m-facts").textContent));
 

@@ -14,6 +14,10 @@
 //                 forward draw by the product (the cost of a candidate on the whole line so far, its future's weight)
 //   pins          units whose note is given (a waypoint): the start of a passage, its end, the notes a reduction
 //                 keeps (Study 61's vary from depth k, now drawn exactly instead of by backtracking)
+//   economy       a bar's figure is a word (@kairotic/rules' bits.mjs: its shape, in degrees from its first note):
+//                 in the forward draw a figure heard before in the line is discounted, so a bridge prefers to
+//                 say its way with the figures it has already said — a sequence (discussions #342, #399). The
+//                 backward message does not see it (the line's memory, as the soft rules' climax and memory)
 //   rhythms       a bridge between two rhythms of n pulses, a swap a step (an onset to the silence beside it, as
 //                 @kairotic/rhythm's morph moves) or a stay, each rhythm weighing its onsets' metrical weight
 //
@@ -27,18 +31,34 @@ import { figuring } from "./figuring.mjs";
 import { keyOf, codeOf, codeDegree, codeAlter } from "./partimento.mjs";
 import { rangeOf, endingOf, PER, LINE } from "./incipit.mjs";
 import { survivors } from "./reduction.mjs";
+import { word, lexicon, lengthOf, economyOf } from "./bits.mjs";
 
 const split = (s) => (Array.isArray(s) ? s : String(s || "").trim().split(/\s+/).filter(Boolean));
 const LOG0 = -Infinity;
 const lse = (a, b) => (a === LOG0 ? b : b === LOG0 ? a : Math.max(a, b) + Math.log1p(Math.exp(-Math.abs(a - b))));
+
+// ─── a line's figures, as words ───
+/** The word of the bar ending at unit t of a line of codes (per units a bar): its notes' steps in degrees from its
+ *  first (as Study 64's cells, a shape relative to the bar's note), so a figure in sequence, at any pitch and however
+ *  reached, is one word. */
+export function figureAt(U, t, per = PER) {
+  const t0 = t - (t % per), shape = [];
+  for (let u = t0 + 1; u <= t; u++) shape.push(codeDegree(U[u]) - codeDegree(U[t0]));
+  return word("bar", shape);
+}
+/** A line's figures (codes, per units a bar; the last bar may be short): its words, bar by bar. */
+export const figuresOf = (U, per = PER) => U.map((_, t) => ((t + 1) % per === 0 || t === U.length - 1 ? figureAt(U, t, per) : null)).filter(Boolean);
+/** A line's length as figures (bits.mjs): {bits, perWord, words}. */
+export const figureLength = (U, per = PER, o = {}) => lengthOf(figuresOf(U, per), { kinds: 30, ...o });
 
 /**
  * A bridge over a kernel's voice V ({n, codes, check(U, t, c), costParts(U, c)}): {logZ (the log weight of every
  * legal line through the pins), draw(r) → a line (codes) or null, map() → the likeliest line step by step}.
  * pins: Map unit → code. temp: the temperature (the lower, the more the cheapest ways weigh). extra(t, c, U): a cost
  * added to the rules' (a variation's novelty: the surface's own note dearer; a measured interval's, from U's last note).
+ * economy (0: none): a bar's figure heard before in the line discounted in the forward draw (figureAt, bits.mjs).
  */
-export function bridgeVoice(V, { pins = new Map(), temp = 0.6, window = 3, extra = null } = {}) {
+export function bridgeVoice(V, { pins = new Map(), temp = 0.6, window = 3, extra = null, economy = 0, per = PER } = {}) {
   const T = Math.max(1e-3, temp), n = V.n;
   const memo = new Map();
   // (extra(t, c, U): a cost of the bridge's own beside the rules', as a variation's novelty; U the line before t, read
@@ -63,24 +83,29 @@ export function bridgeVoice(V, { pins = new Map(), temp = 0.6, window = 3, extra
     memo.set(key, z);
     return z;
   }
+  // (the economy: the figures of the line so far, heard; a candidate that ends a bar weighed by its figure)
+  const ends = (t) => (t + 1) % per === 0 || t === n - 1;
+  const heard = (U) => { const lex = lexicon({ kinds: 30 }); for (const f of figuresOf(U.slice(0, U.length - (U.length % per)), per)) lex.add(f); return lex; };
   /** The candidates at U's next unit with their log weight: the candidate's cost on the whole line, its future's. */
-  function step(U) {
+  function step(U, lex = economy ? heard(U) : null) {
     const t = U.length, out = [];
     for (const c of cands(t)) {
       if (V.check(U, t, c) !== null) continue;
       U.push(c);
       const rest = back(U);
+      const e = economy && ends(t) ? economyOf(lex, figureAt(U, t, per), economy) : 0;
       U.pop();
-      if (rest !== LOG0) out.push({ c, lw: -cost(U, c) / T + rest });
+      if (rest !== LOG0) out.push({ c, lw: -(cost(U, c) + e) / T + rest });
     }
     return out;
   }
   function walk(pick) {
-    const U = [];
+    const U = [], lex = economy ? lexicon({ kinds: 30 }) : null;
     while (U.length < n) {
-      const cs = step(U);
+      const cs = step(U, lex);
       if (!cs.length) return null;
       U.push(pick(cs));
+      if (economy && ends(U.length - 1)) lex.add(figureAt(U, U.length - 1, per));
     }
     return U;
   }
@@ -114,14 +139,14 @@ export function voiceOver(phrase, key, { per = PER, range = null, line = LINE } 
 // ─── vary from depth k, by a bridge (Study 61's, exactly) ───
 /** Study 61's vary from level k as a bridge: the melody's notes that survive at k pinned on their units (held as
  *  long), the rest drawn from the bridge between them. {melody, kept, changed, logZ} or null. */
-export function varyBridge(an, k, { temp = 0.6, r = Math.random, novelty = 1.5 } = {}) {
+export function varyBridge(an, k, { temp = 0.6, r = Math.random, novelty = 1.5, economy = 0 } = {}) {
   const { V, code, name, n } = voiceOver(an.phrase, an.key, { per: an.per });
   const mel = split(an.phrase.melody), alive = survivors(an, k), pins = new Map();
   for (const x of an.notes) if (x.voice === "m" && alive.has(x.id)) for (let t = x.on; t < x.on + x.dur; t++) pins.set(t, code(x.pitch));
   if (n !== mel.length) throw new Error(`the melody has ${mel.length} units, its bass ${n}`);
   const orig = mel.map(code);
   // (as Study 61's vary: a note other than the surface's preferred where the bridge is free)
-  const B = bridgeVoice(V, { pins, temp, extra: (t, c) => (!pins.has(t) && c === orig[t] ? novelty : 0) });
+  const B = bridgeVoice(V, { pins, temp, economy, per: an.per, extra: (t, c) => (!pins.has(t) && c === orig[t] ? novelty : 0) });
   if (!B.possible) return null;
   const U = B.draw(r);
   if (!U) return null;
@@ -135,7 +160,7 @@ export function varyBridge(an, k, { temp = 0.6, r = Math.random, novelty = 1.5 }
  * first `head` units of A's melody and the last `tail` units of B's pinned, the middle drawn from the bridge — the
  * most natural legal way from the one to the other. {bass, melody, pinned: [units], logZ} or null.
  */
-export function morphPhrases(A, B, key, { head = null, tail = null, temp = 0.6, r = Math.random, per = PER } = {}) {
+export function morphPhrases(A, B, key, { head = null, tail = null, temp = 0.6, r = Math.random, per = PER, economy = 0 } = {}) {
   const ma = split(A.melody), mb = split(B.melody), ba = split(A.bass), bb = split(B.bass);
   const bass = [...ba, ...bb], n = (bass.length - 1) * per + 1;
   // A's melody runs over its bass and its last note is held over A's last bar (as the join of two phrases is)
@@ -146,7 +171,7 @@ export function morphPhrases(A, B, key, { head = null, tail = null, temp = 0.6, 
   const pins = new Map();
   for (let t = 0; t < hA; t++) pins.set(t, code(ma[t]));
   for (let j = 0; j < tB; j++) pins.set(n - tB + j, code(mb[mb.length - tB + j]));
-  const Bd = bridgeVoice(V, { pins, temp });
+  const Bd = bridgeVoice(V, { pins, temp, economy, per });
   if (!Bd.possible) return null;
   const U = Bd.draw(r);
   return U ? { bass: phrase.bass, melody: U.map(name).join(" "), pinned: [...pins.keys()].sort((a, b) => a - b), cadence: B.cadence, logZ: Bd.logZ } : null;
