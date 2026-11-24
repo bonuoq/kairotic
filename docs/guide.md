@@ -102,6 +102,25 @@ The Code tab and the REPL use the same code editor as code boxes (brackets that 
 completion of the commands). In the REPL, Enter evaluates when every bracket is closed — otherwise it
 starts a new line, and ⇧+Enter always does — and ↑ ↓ bring back what you wrote before.
 
+**Live coding in the Code tab** (discussion #407). Ctrl/⌘+Enter applies the whole tab by the difference: what
+the code changes becomes one event of the history (the boxes, lines and texts that changed), and what stays the
+same stays as it was, in the history and in the sound. **⇧+Enter** evaluates only the selection, or the form the
+cursor is in (or the one just before it): calls that make the patch — `box`, `connect`, `text!`, the data of a
+box… — change it by the difference too, and a box written again as it was keeps what it keeps; anything else —
+`(play)`, `(send! :b3 60)`, `(snapshot)`, a `def` — is a line of the REPL. So a set can be played from the tab
+alone, a form at a time:
+
+```clojure
+(def o (box "osc~ 220"))      ; ⇧+Enter: a box
+(def d (box "dac~ 1 2"))
+(connect o 0 d 0)
+(play)
+(text! o "osc~ 330")          ; the oscillator changes, the sound goes on
+```
+
+If the tab held nothing else that was not applied, it is written again from the patch afterwards (the new box as
+`(box :b7 "osc~ 220" …)`), the cursor on its line.
+
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as
 `str/…`) is that function, with no component to write: its other words are its arguments, read as EDN,
 and the message that arrives goes last, as with `->>`. `%` puts it elsewhere. The text reads as Clojure,
@@ -445,8 +464,8 @@ shows it too. Drag the bar between the patch and the panel to give it another wi
 the bar hides or shows it. This browser remembers how you left it. From the REPL: `(side-panel false)`,
 `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
 
-- **Code** — the work as **Calls** (`box`, `connect`, …), editable: Ctrl/⌘+Enter runs them and rebuilds
-  the patch. **Data** shows the same work as data (EDN): the state the history produces, every key of
+- **Code** — the work as **Calls** (`box`, `connect`, …), editable: Ctrl/⌘+Enter applies them (only what
+  they change, as one event), ⇧+Enter evaluates the form at the cursor alone. **Data** shows the same work as data (EDN): the state the history produces, every key of
   every box, read-only, to inspect it (folding and search with Ctrl/⌘+F). Edits not run yet stay in the
   calls while you look at the data.
 - **Components** — the classes this work knows. The boxes that define them (`component`) are kept
@@ -558,5 +577,6 @@ history), *Present without them* leaves them out. From the REPL: `(present-in-pl
 | F1 or Ctrl/⌘ + ? (writing a box) | help of the class chosen in the menu, or written |
 | Ctrl+Z · Ctrl+Shift+Z · Ctrl+Y | back · forward in the history (in Perform, in the take) |
 | Ctrl+Enter | apply code (Code tab, code boxes, Claude tab) |
+| ⇧+Enter (Code tab) | evaluate the selection, or the form at the cursor, alone |
 | ↑ ↓ + − ← → Delete | edit the selected note of a score, or the stroke of a canvas |
 | Enter · a…g | the selected rest of a score becomes a note (a…g also re-pitches a note) |

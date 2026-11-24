@@ -104,6 +104,25 @@ La pestaña Code y la REPL usan el mismo editor que las cajas de código (parén
 emparejan, autocompletado de los comandos). En la REPL, Intro evalúa cuando todos los paréntesis están
 cerrados —si no, empieza una línea nueva, y ⇧+Intro siempre lo hace— y ↑ ↓ recuperan lo escrito antes.
 
+**Live coding en la pestaña Code** (discusión #407). Ctrl/⌘+Intro aplica toda la pestaña por la diferencia: lo
+que el código cambia es un evento de la historia (las cajas, líneas y textos que cambiaron), y lo que sigue igual
+queda como estaba, en la historia y en el sonido. **⇧+Intro** evalúa solo la selección, o la forma donde está el
+cursor (o la que acaba justo antes): las llamadas que hacen el patch —`box`, `connect`, `text!`, los datos de una
+caja…— también lo cambian por la diferencia, y una caja escrita otra vez como estaba conserva lo que guarda; todo
+lo demás —`(play)`, `(send! :b3 60)`, `(snapshot)`, un `def`— es una línea de la REPL. Así un set se puede tocar
+solo desde la pestaña, forma a forma:
+
+```clojure
+(def o (box "osc~ 220"))      ; ⇧+Intro: una caja
+(def d (box "dac~ 1 2"))
+(connect o 0 d 0)
+(play)
+(text! o "osc~ 330")          ; cambia el oscilador, el sonido sigue
+```
+
+Si la pestaña no tenía nada más sin aplicar, después se escribe de nuevo desde el patch (la caja nueva como
+`(box :b7 "osc~ 220" …)`), con el cursor en su línea.
+
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
 `clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son
 sus argumentos, leídos como EDN, y el mensaje que llega va al final, como con `->>`. `%` lo pone en otro
@@ -462,8 +481,8 @@ también lo muestra. Arrastra la barra entre el patch y el panel para darle otro
 la barra lo oculta o lo muestra. Este navegador recuerda cómo lo dejaste. Desde la REPL:
 `(side-panel false)`, `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
 
-- **Code** — la obra como **Calls** (llamadas: `box`, `connect`, …), editable: Ctrl/⌘+Enter las ejecuta y
-  reconstruye el patch. **Data** muestra la misma obra como datos (EDN): el estado que produce la
+- **Code** — la obra como **Calls** (llamadas: `box`, `connect`, …), editable: Ctrl/⌘+Enter las aplica (solo
+  lo que cambian, como un evento), ⇧+Intro evalúa sola la forma del cursor. **Data** muestra la misma obra como datos (EDN): el estado que produce la
   historia, todas las claves de todas las cajas, en solo lectura, para inspeccionarlo (plegado y búsqueda
   con Ctrl/⌘+F). Lo que hayas editado sin ejecutar sigue en las llamadas mientras miras los datos.
 - **Components** — las clases que conoce esta obra. Las cajas que las definen (`component`) se guardan
@@ -578,5 +597,6 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 | F1 o Ctrl/⌘ + ? (escribiendo una caja) | ayuda de la clase elegida en el menú, o escrita |
 | Ctrl+Z · Ctrl+Mayús+Z · Ctrl+Y | atrás · adelante en la historia (en Perform, en la toma) |
 | Ctrl+Intro | aplica código (pestaña Code, cajas de código, pestaña Claude) |
+| ⇧+Intro (pestaña Code) | evalúa sola la selección, o la forma del cursor |
 | ↑ ↓ + − ← → Supr | edita la nota seleccionada de una partitura, o el trazo de un canvas |
 | Intro · a…g | el silencio seleccionado de una partitura se vuelve nota (a…g también cambia la altura de una nota) |
