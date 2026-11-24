@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **One clock for a room** (discussion #382, idea 8, phase 1). In a shared room with a relay, the time things are made
+  at — each transaction's `:t`, each segment's (where the newest point of the history comes from), each change of a
+  jam in Perform and its live messages — is the room's shared time: the relay's clock as each page reads it on
+  `/signal` (`talk.cljs`), so every page sees the same front and the same order in a jam whatever its own clock says.
+  Elsewhere, and before the relay first answers, it is the machine's clock as before. `(work-now)`, `(work-clock)`.
+  Phase 2, a transactor on `/signal`, is proposed in #382 for after 0.3.0.
+
 - **Tension: `tension.mjs`** (`@kairotic/rules` 0.14.0; discussions #399, #321). Lerdahl's *Tonal Pitch Space*: a
   chord's basic space in a region, the chord distance δ = i + j + k (I → V 5, I → ii 8, as his tables), an applied
   dominant's region its target's key, surface tension (an inversion, a 7th, a foreign note), and sequential, global

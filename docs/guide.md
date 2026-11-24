@@ -356,6 +356,11 @@ tooltips tell it, and the REPL reads it as data (discussion #382).
 
 Events made before this have no transaction: they say who made them (their segment's), not when or from where.
 
+In a shared room with a relay, *when* is read from one clock for the whole room: the relay's, as each page reads it
+(the same clock the room's talk and tempo use). So every page sees the same newest point of the history and the same
+order of the changes in a jam, whatever each machine's clock says. Elsewhere it is this machine's clock.
+`(work-clock)` says which one: `{:source :relay :offset … :error …}` or `{:source :local}`.
+
 ### Querying the history with Datalog
 
 `(q '[:find … :where …])` asks the history a question in Datalog, the query language of Datomic, and

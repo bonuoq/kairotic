@@ -371,6 +371,12 @@ los tooltips de la historia, y la REPL lo lee como datos (discusión #382).
 Los eventos hechos antes de esto no tienen transacción: dicen quién los hizo (los de su segmento), no cuándo ni de
 dónde.
 
+En una sala compartida con relay, el *cuándo* se lee de un solo reloj para toda la sala: el del relay, tal como lo
+lee cada página (el mismo reloj que usan la conversación y el tempo de la sala). Así todas las páginas ven el mismo
+punto más nuevo de la historia y el mismo orden de los cambios en un jam, diga lo que diga el reloj de cada máquina.
+En otro caso es el reloj de esta máquina. `(work-clock)` dice cuál: `{:source :relay :offset … :error …}` o
+`{:source :local}`.
+
 ### Consultar la historia con Datalog
 
 `(q '[:find … :where …])` le hace una pregunta a la historia en Datalog, el lenguaje de consultas de Datomic, y
