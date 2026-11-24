@@ -195,7 +195,7 @@ export async function codetab(page, check) {
 
   // ── the work's code in chains (#407, a lens of the code: #380, #399) ──
   const x = (await cljs(page, '(box "mtof" 9800 1800)')).trim(), y = (await cljs(page, '(box "ftom" 9800 1860)')).trim();
-  const z = (await cljs(page, '(box "mtof" 9800 1920)')).trim(), w = (await cljs(page, '(box "print" 9900 1920)')).trim();
+  const z = (await cljs(page, '(box "mtof" 9800 1920)')).trim(), w = (await cljs(page, '(box "mtof" 9900 1920)')).trim();
   await cljs(page, `(connect ${x} 0 ${y} 0) (connect ${y} 0 ${z} 0) (connect ${w} 0 ${x} 0) (connect ${w} 0 ${y} 0)`);
   const chn = await cljs(page, "(lines->chains (current))");
   check("lines that follow each other are written as a chain", chn.includes(`"(-> ${x} (to ${y}) (to ${z}))"`), chn.slice(-300));
