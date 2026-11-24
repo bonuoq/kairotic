@@ -270,10 +270,13 @@
 (defn run-panel-code! []
   (let [code (code-text)]
     (try
-      (run-code! code)
-      (swap! ui assoc :dirty false)
-      (render-code (current))
-      (repl-print! "out" "; code run: the patch has been rebuilt (1 :load event)")
+      (let [r (run-code! code)]
+        (swap! ui assoc :dirty false)
+        (render-code (current))
+        (repl-print! "out" (case r
+                             :load "; code applied: the patch has been rebuilt (1 :load event)"
+                             0 "; code applied: nothing changed"
+                             (str "; code applied: " r (if (= 1 r) " change" " changes") " (1 event)"))))
       (catch :default e
         (repl-print! "err" (esc (str "Error in the code: " (or (.-message e) (str e)))))))))
 

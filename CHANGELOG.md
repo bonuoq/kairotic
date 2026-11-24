@@ -27,6 +27,15 @@
   Study 65's Fifth Down Fourth Up now has the book's bars (① | ④ ⑦ | ③ ⑥ | ② ⑤ | ①), and its counts what the engine
   now allows: Fifth Down Fourth Up 6,336, with 5/3s 239,000, Third Down Second Up 998, the Tied Bass 27,685,639 and in
   minor 12,635,133.
+- **Live coding in the Code tab, step 1: changes instead of a whole patch** (discussion #407). Ctrl/⌘+Enter applies
+  the tab by the difference with the patch on screen: one event of the history with the boxes, lines, texts and data
+  that changed (a `[:batch …]`), instead of a `:load` of the whole patch, so the history stays granular and mergeable
+  and what stays the same stays as it was (a `:load` only if the changes could not rebuild the patch exactly).
+  **⇧+Enter** evaluates the selection, or the form at the cursor, alone: calls that make the patch change it by the
+  difference (a box written again as it was keeps its data, presentation…), anything else (`(play)`, `(send! …)`,
+  a `def`) is a line of the REPL; the tab is written again from the patch if nothing else in it was unapplied.
+  `patch-diff` (`kairotic.release`) now also writes pinned lines, layers, marks and projections, so a release keeps
+  them too.
 - **Study 66 · compression: the uses heard, and the description as a tree** (discussion #399). The same rules, their
   uses coded the way a listener learns them (`bits.mjs`): which rule comes is a word of a lexicon (the first time an
   escape and its number), a figure's pitches each voice's step from the same voice of its last use, a motif's start

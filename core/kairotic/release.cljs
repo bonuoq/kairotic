@@ -15,7 +15,7 @@
 
 (def box-keys
   "What a box keeps besides its text and place, and the event that sets each (nil removes it)."
-  [:present :view :size :recipe :shows])
+  [:present :view :size :recipe :shows :pin])
 
 (defn- set-ev [k id v]
   (case k
@@ -23,11 +23,22 @@
     :view [:view id v]
     :size (if v (into [:size id] v) [:size id nil])
     :recipe [:recipe id v]
-    :shows [:shows id v]))
+    :shows [:shows id v]
+    :pin [:pin id v]))
+
+(defn- keyed-diff
+  "The events that turn the map k of p (layers, marks, projections) into that of q: [op id nil] for what went,
+   [op id v] for what is new or changed. `gone?` says which ids went already (with a layer, or a box)."
+  [op k p q gone?]
+  (let [a (get p k) b (get q k)]
+    (concat
+     (for [id (sort (keys a)) :when (not (contains? b id)) :when (not (gone? id (get a id)))] [op id nil])
+     (for [[id v] (sort-by key b) :when (not= v (get a id))] [op id v]))))
 
 (defn patch-diff
   "The events that turn patch p into patch q (top level; a sub-patch that changed is written whole, as the
-   data of its box). Applying them in order, with the step of the history, gives q."
+   data of its box). Applying them in order, with the step of the history, gives q: its boxes and lines,
+   then its layers, its marks and its projections (#407: the Code tab applies a patch this way)."
   [p q]
   (let [pb (:boxes p) qb (:boxes q)
         gone (sort (remove (fn [id] (contains? qb id)) (keys pb)))
@@ -56,7 +67,13 @@
               [[:data id (:data b)]]))))
        (sort-by key qb))
       (for [l old-lines :when (alive? l)] (into [:disconnect] l))
-      (for [l new-lines] (into [:connect] l))))))
+      (for [l new-lines] (into [:connect] l))
+      ;; a layer that goes takes its marks and projections with it; a box that goes, its projection
+      (let [layer-gone? (fn [l] (and (contains? (:layers p) l) (not (contains? (:layers q) l))))]
+        (concat
+         (keyed-diff :layer :layers p q (fn [_ _] false))
+         (keyed-diff :annot :marks p q (fn [_ m] (layer-gone? (:layer m))))
+         (keyed-diff :project :projections p q (fn [id pr] (or (layer-gone? (:layer pr)) (not (contains? qb id)))))))))))
 
 (defn as-event
   "Several events as one event of the history: nothing, the event itself, or a [:batch …]."

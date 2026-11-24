@@ -1248,9 +1248,33 @@
   [code]
   (first (try-code empty-patch code)))
 
+(defn same-data-code?
+  "Whether box id keeps data that writes the same code in patches a and b (the code is the work as the Code tab
+   reads it: data read back from it may differ in what the code does not say, as the text of a tree's source)."
+  [a b id]
+  (let [x (get-in a [:boxes id]) y (get-in b [:boxes id]) f (:code (comp/model-of y))]
+    (boolean (and x f (= (:text x) (:text y)) (= (f id (:data x)) (f id (:data y)))))))
+
+(defn code-events
+  "The events that turn patch cur into p, the patch some code builds (boxes, lines, what they keep, layers and
+   marks), leaving alone the data that already writes the same code; nil if the patch they give would not read
+   as p's code."
+  [cur p]
+  (let [evs (vec (remove (fn [[op id]] (and (= op :data) (same-data-code? cur p id))) (rel/patch-diff cur p)))]
+    (when (= (patch->code (reduce step cur evs)) (patch->code p)) evs)))
+
 (defn run-code!
-  "Rebuilds the patch from the code: it stays as a single :load event."
+  "Applies the code to the patch on screen (discussion #407). Only what the code changes becomes the history:
+   one event with its boxes, lines and texts (a [:batch …]), so what stays the same stays as it was, there and in
+   the sound; a whole patch (:load) only if those changes could not rebuild it exactly. Returns how many
+   changes it made (0: none), or :load."
   [code]
-  (let [p (build code)] (dispatch! [:load p]) :ok))
+  (let [p (build code) evs (code-events (current) p)]
+    (cond (nil? evs) (do (dispatch! [:load p]) :load)
+          (empty? evs) 0
+          ;; a box made or deleted starts from nothing, as when it is made or deleted by hand
+          :else (do (doseq [[op id] evs :when (#{:box :delete} op)] (forget-box! id))
+                    (dispatch-all! evs)
+                    (count evs)))))
 
 (defn load-example [] (run-code! example))
