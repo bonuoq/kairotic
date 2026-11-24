@@ -111,8 +111,8 @@ function kept(path, notes) {
 }
 
 /** The candidate steps from a path, each with its cost: [{op, at, on, cost, parts, path, explained | notes}]. */
-export function candidates(path, notes, { per = PER, weights = {}, judge = null, explanations = 1 } = {}) {
-  const W = { ...WEIGHTS, ...weights }, out = [], keep = kept(path, notes), base = lineCost(path);
+export function candidates(path, notes, { per = PER, weights = {}, judge = null, explanations = 1, maxSpread = 4, keep: keepOf = null } = {}) {
+  const W = { ...WEIGHTS, ...weights }, out = [], keep = (keepOf || kept)(path, notes), base = lineCost(path);
   // (the hard rules: a step that makes a level they refuse around it costs `illegal` more — taken only where no other
   // is left; a level halfway through a sequence may be irregular elsewhere, which is not this step's doing)
   const legal = (p, i) => {
@@ -158,7 +158,7 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null,
       }
     }
     if (!keep(i)) {
-      const s = unspread(path, i - 1);
+      const s = unspread(path, i - 1, { max: maxSpread });
       if (s.ok) {
         const parts = {
           spread: W.spread, meter: W.meter * meter(path[i].on, per), crowd: W.crowd * Math.max(0, s.notes.length - 2),
@@ -190,11 +190,23 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null,
  * bits of its word given the words of the steps already taken (lexicon) — a discount for a word said before: the
  * briefest derivation preferred.
  */
-export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, temp = 0, r = Math.random, judge: judgeOf = null, economy = 0, explanations = economy ? 8 : 1 } = {}) {
+export function reduce(phrase, { key = { tonic: "C" }, per = PER, judge: judgeOf = null, ...o } = {}) {
   const notes = notesOfPhrase(phrase, per), units = split(phrase.melody).length;
   // (judge: how a level is checked — by default checkPath, the rules of every phrase on its grid; a study with
   // another grid gives its own, its errors' units on the phrase's units)
   const judge = judgeOf || ((p) => checkPath(p, phrase, key, per));
+  return { phrase, key, units, ...reduceNotes(notes, { per, judge, ...o }) };
+}
+
+/**
+ * Any notes analysed ({id, pitch, voice, on, dur}, the lowest voice "b" — the bass the cadence is kept on — as many
+ * voices as they have): reduce's passes, its policy and its economy, without a phrase of the incipits' (Study 67 reads
+ * a prelude's harmony so, five voices a bar). judge: how a level is checked (null: by no hard rules, the
+ * ornaments and the consonance of a sonority only); maxSpread: the notes one sonority may have; keep(path, notes) →
+ * (i → whether slice i stays: the frame's retention; by default the first slice and the cadence's). → {per, notes,
+ * levels, steps}.
+ */
+export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math.random, judge = null, economy = 0, explanations = economy ? 8 : 1, maxSpread = 4, keep = null } = {}) {
   let path = slicesOf(notes);
   const levels = [path], steps = [], top = 3;
   const lex = lexicon();
@@ -209,7 +221,7 @@ export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, 
     const kept = new Set(), fresh = new Set();
     let taken = 0;
     for (;;) {
-      const all = candidates(path, notes, { per, weights, judge, explanations });
+      const all = candidates(path, notes, { per, weights, judge, explanations, maxSpread, keep });
       const no = (j) => !kept.has(path[j].on) && !fresh.has(path[j].on);
       const free = (c) => (c.op === "unsplit" ? no(c.at) && !fresh.has(path[c.at - 1].on) && !fresh.has(path[c.at + 1].on)
         : c.op === "unsuspend" ? no(c.at) && !fresh.has(path[c.at + 1].on) && !fresh.has(path[c.at - 1].on)
@@ -230,13 +242,13 @@ export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, 
     if (taken) { levels.push(path); continue; }
     if (stratum < top) { stratum++; continue; }
     // nothing legal left: the cheapest step the rules refuse, alone, if any
-    const all = candidates(path, notes, { per, weights, judge, explanations });
+    const all = candidates(path, notes, { per, weights, judge, explanations, maxSpread, keep });
     if (!all.length) break;
     const { path: next, touches, ...step } = choose1(all);
     steps.push({ ...step, level: levels.length, among: all.length });
     levels.push((path = next));
   }
-  return { phrase, key, per, notes, units, levels, steps };
+  return { per, notes, levels, steps };
 }
 
 /** The steps that lead from level k − 1 to level k. */

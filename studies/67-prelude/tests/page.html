@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 67 · prelude · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1000px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: BWV 846's harmony, its levels and their bits, a new harmony from a level.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 30000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+try {
+  await wait(() => w.kairoticStudy && d.getElementById("facts").textContent.includes("level chosen"));
+  const facts = () => d.getElementById("facts").textContent;
+  const S = w.kairoticStudy;
+  is("it opens on BWV 846's harmony: 33 chords, five voices, its levels drawn, the frame chosen", /33 chords, 5 voices/.test(facts()) && d.querySelectorAll("#levels .lv").length === S.an.levels.length && d.querySelector("#levels .lv.sel").dataset.k === String(S.an.levels.length - 1));
+  is("… the frame's chords: C first, C last, nine in all", d.querySelectorAll("#levels .lv.sel span.on").length === 9 && d.querySelector("#levels .lv.sel span.on").textContent === "C");
+  is("… the bits of every level, a bar each", d.querySelectorAll("#bars .bar").length === S.an.levels.length);
+  is("… a new harmony drawn from the frame, its kept chords marked", S.state().rows && S.state().rows.length === 33 && d.querySelectorAll("#new span.kept").length === 9);
+  S.select(1);
+  is("a level chosen (L1): its steps listed, its chords", /L0 → L1/.test(d.getElementById("steps-n").textContent) && d.querySelectorAll("#steps li").length > 5 && /L1: 22 chords/.test(facts()));
+  d.getElementById("draw").click();
+  is("… a harmony drawn from it: more of Bach's kept", S.state().rows && d.querySelectorAll("#new span.kept").length === 22);
+  S.select(0);
+  is("the surface: nothing taken away", /nothing/.test(d.getElementById("steps-n").textContent));
+} catch (e) { errors.push(String(e.message || e)); }
+is("no error on the page", errors.length === 0);
+const bad = results.filter((r) => !r[1]).map((r) => r[0]).concat(errors.map((e) => "error: " + e));
+window.kairoticResults = { total: results.length, failed: bad };
+document.getElementById("out").textContent = `${results.length - results.filter((r) => !r[1]).length} / ${results.length} passed\n` + results.map(([w2, ok]) => (ok ? "  ok   " : "  FAIL ") + w2).join("\n") + (errors.length ? "\n" + errors.join("\n") : "");
+</script>

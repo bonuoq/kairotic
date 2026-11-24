@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Study 67 · prelude: the second level of a prelude's description** (discussions #399, #321). Study 66's figure
+  leaves BWV 846's harmony: read as five voices (a voice keeping its pitch holds its note), it is reduced by Study
+  61's grammar (`reduceNotes`: any notes, any number of voices, a `keep` for the frame's retention) to its frame, C –
+  Am/C – D7 – Dm/F – G7 – G7 (the pedal) – C/G – C7 – C. Each level said in bits (`bits.mjs`): the frame's voices 282
+  bits against the surface's 442, but with the derivation back to the surface 532 — the reduction explains the
+  harmony more than it compresses it. And the way back: a new harmony drawn from a level's frame (triads, the steps
+  already said preferred), Study 66's figure on it, a new prelude, played on the page.
 - **One measure of a description: `bits.mjs`** (`@kairotic/rules` 0.12.0; discussions #342, #399). The length of a
   piece, a line or an analysis said as words — a cell of a florid line, a step of a reduction, a bar's figure — each
   costing the bits a listener learning it as it goes needs: a word heard before cheap, its inversion half as good, a
