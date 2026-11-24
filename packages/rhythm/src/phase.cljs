@@ -11,7 +11,10 @@
 ;; Without a clock (nothing on the right) it finds the pulse itself: the longest one that the intervals
 ;; between onsets fill as whole numbers of it (the simplest grid that fits them, after Sethares' periodicity),
 ;; each interval rounded on its own from the last onset back, so that a tempo that moves does not shift the old
-;; onsets; the phase is then said at each onset, of the pulse that onset is on.
+;; onsets; the phase is then said at each onset, of the pulse that onset is on — and between them it keeps
+;; time: from the last onset judged, a beat each pulse (the box sends itself [:beat …] a pulse later, with ▶),
+;; the phase walking on, until an onset comes (it takes over, early or late, and says nothing twice) or a whole
+;; cycle passes without one (the performer stopped: it waits).
 (let [onsets-of (fn [ps] (vec (keep-indexed (fn [i x] (when (= 1 x) i)) ps)))
       pulses? (fn [v] (and (sequential? v) (seq v) (every? #{0 1} v)))
       ;; the directed swap distance between two lists of onsets of one segment (each onset of the shorter
@@ -125,13 +128,31 @@
                        j {:phase ph :distance (nth raw ph) :margin (- second-best (nth raw ph)) :heard m :window w :n n :pulse T}]
                    (if-not ready
                      {:state st :show (str "listening · " m "/" (:min st))}
-                     {:state (assoc st :free {:phase ph :t t})
-                      :show (str "pulse " ph " of " n " · " (js/Math.round (* 1000 T)) " ms · distance " (nth raw ph))
-                      :out [[1 j] [0 ph]]})))))]
+                     (let [gen (inc (or (:gen st) 0))
+                           ;; a beat already said this pulse a moment ago (the onset came late): not said again
+                           said (:beat st)
+                           again (and said (= (:phase said) ph) (< (js/Math.abs (- t (:at said))) (/ T 2)))]
+                       {:state (assoc st :free {:phase ph :t t} :gen gen :T T :beat {:phase ph :at t})
+                        :show (str "pulse " ph " of " n " · " (js/Math.round (* 1000 T)) " ms · distance " (nth raw ph))
+                        :out (if again [[1 j]] [[1 j] [0 ph]])
+                        ;; the next pulse, kept by the box until an onset comes (a new generation forgets this one)
+                        :later [[(+ t T) 0 [:beat gen (mod (inc ph) n)]]]}))))))
+      ;; a beat kept between onsets: the phase walks on, a pulse at a time, for a cycle after the last onset
+      beat (fn [st t [_ g p]]
+             (let [n (count (:ref st)) T (:T st) last-on (:t (:free st))]
+               (cond
+                 (or (not= g (:gen st)) (seq (:ticks st)) (nil? T) (zero? n) (nil? last-on)) {}
+                 (> (- t last-on) (+ (* n T) (/ T 2)))
+                 {:state (assoc st :gen (inc g) :beat nil) :show "waiting · a cycle without onsets"}
+                 :else
+                 {:state (assoc st :beat {:phase p :at t})
+                  :show (str "pulse " p " of " n " · " (js/Math.round (* 1000 T)) " ms · keeping time")
+                  :out [[1 {:phase p :n n :pulse T :kept true}] [0 p]]
+                  :later [[(+ t T) 0 [:beat g (mod (inc p) n)]]]})))]
   {;; ── about ──
    :class "phase"
    :license "MPL-2.0"
-   :doc "Where a performer is in a cycle, from the onsets heard (discussion #204): a timeline follower, onsets only. The right inlet is the pulse clock (a metro or the room's pulse, a bang a pulse), the left one the onsets (onset~'s bangs, or taps), each falling on its nearest pulse; the middle one the reference, as pulses (cold: a clave, a bell pattern, euclid's or a necklace's). At each pulse the last pulses heard are compared with every rotation of the reference (Toussaint's swap distance, two more for each onset one has and the other has not): the nearest says which pulse of the reference this is — the phase, sent on the left once enough is heard (min pulses, half the cycle by default, and two onsets). The pulse that just began is not judged (its onset may come a moment late, as onset~ hears it): the last whole pulse is found and this one is the next. Ties and near ties (less than a swap and a half) go to the phase the walk expects, so a few missing or extra onsets do not throw it. Into a necklace's clock inlet the phase moves its hand there and plays it. Without a clock (nothing has come on the right) it finds the pulse from the onsets themselves — the longest pulse that the intervals between them fill as whole numbers of it, each interval rounded on its own so that a tempo that moves is followed — and says the phase at each onset, of the pulse that onset is on (the first from five onsets, and only when one rotation is nearer than every other). Out on the right: {:phase :distance (0: exactly the reference) :margin (how much nearer than the next guess: 0 is ambiguous) :heard :window :n :pulse (in seconds)}. :reset forgets what was heard (and the clock)."
+   :doc "Where a performer is in a cycle, from the onsets heard (discussion #204): a timeline follower, onsets only. The right inlet is the pulse clock (a metro or the room's pulse, a bang a pulse), the left one the onsets (onset~'s bangs, or taps), each falling on its nearest pulse; the middle one the reference, as pulses (cold: a clave, a bell pattern, euclid's or a necklace's). At each pulse the last pulses heard are compared with every rotation of the reference (Toussaint's swap distance, two more for each onset one has and the other has not): the nearest says which pulse of the reference this is — the phase, sent on the left once enough is heard (min pulses, half the cycle by default, and two onsets). The pulse that just began is not judged (its onset may come a moment late, as onset~ hears it): the last whole pulse is found and this one is the next. Ties and near ties (less than a swap and a half) go to the phase the walk expects, so a few missing or extra onsets do not throw it. Into a necklace's clock inlet the phase moves its hand there and plays it. Without a clock (nothing has come on the right) it finds the pulse from the onsets themselves — the longest pulse that the intervals between them fill as whole numbers of it, each interval rounded on its own so that a tempo that moves is followed — and says the phase at each onset, of the pulse that onset is on (the first from five onsets, and only when one rotation is nearer than every other); between onsets it keeps time (with ▶): a beat each pulse, the phase walking on, until the next onset takes over (early or late, nothing said twice) or a whole cycle passes without one. Out on the right: {:phase :distance (0: exactly the reference) :margin (how much nearer than the next guess: 0 is ambiguous) :heard :window :n :pulse (in seconds)}, or for a kept beat {:phase :n :pulse :kept true}. :reset forgets what was heard (and the clock)."
    :usage "phase [min 0]"
    :io [3 2]
 
@@ -144,9 +165,10 @@
                     st (or state {:ticks [] :onsets []})
                     min-of (fn [ref] (let [m (js/Math.round (or (:min args) 0))] (if (pos? m) m (max 2 (quot (count ref) 2)))))]
                 (case inlet
-                  1 (if (pulses? value) {:state (assoc st :ref (vec value) :min (min-of value) :phase nil :free nil)} {})
+                  1 (if (pulses? value) {:state (assoc st :ref (vec value) :min (min-of value) :phase nil :free nil :gen (inc (or (:gen st) 0)) :beat nil)} {})
                   2 (if (#{:bang} value) (tick st t) {})
-                  (cond (#{:reset} value) {:state (assoc st :ticks [] :onsets [] :phase nil :free nil) :show "listening"}
+                  (cond (#{:reset} value) {:state (assoc st :ticks [] :onsets [] :phase nil :free nil :gen (inc (or (:gen st) 0)) :beat nil :T nil) :show "listening"}
+                        (and (vector? value) (= :beat (first value))) (beat st t value)
                         ;; with a clock the onsets wait for its pulses; without one, each is judged as it comes
                         (or (#{:bang} value) (number? value)) (if (seq (:ticks st)) (onset st t) (free st t))
                         :else {}))))})

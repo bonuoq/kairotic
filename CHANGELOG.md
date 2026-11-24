@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`phase` keeps time between onsets** (`@kairotic/rhythm` 0.8.0; discussion #204). Without a clock, from the last
+  onset judged the box sends itself a beat each pulse it found (`:later`, with ▶): the phase walks on, so a
+  `necklace` after it plays in the gaps of what the performer plays. The next onset takes over (a new generation
+  forgets the beats planned), early or late, and nothing is said twice; a whole cycle without onsets and it waits.
+  On the right a kept beat is `{:phase :n :pulse :kept true}`. The help's example shows it with the metro taken away.
 - **An agent's offers tried before they are offered, and kept when a work is opened from a file**
   (`@kairotic/rules` 0.11.1, `@kairotic/cac` 0.15.1). Asked for a 16-bar partimento in A major, an agent offered two
   basses with no realization and a third whose `cac partimento 3 A major` gave nothing; opened on Pages, its offers

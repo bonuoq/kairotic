@@ -459,7 +459,8 @@ Rules:
   `phase`: a timeline follower, onsets only — onsets (onset~ bangs, taps) left, the reference pulses middle
   (cold), a pulse clock right (metro at the pulse, or pulse): at each pulse it sends the phase (which pulse of
   the reference this is); into a necklace's clock inlet (inlet 2) the hand follows the performer. Without a
-  clock it finds the pulse from the onsets (the longest that fits their intervals) and sends the phase at each onset.
+  clock it finds the pulse from the onsets (the longest that fits their intervals), sends the phase at each onset
+  and keeps time between them (a phase each pulse, with ▶) until the next onset or a cycle without one.
 - The outside (package @kairotic/io, it comes by itself; listening while ▶ runs): `midiin` (MIDI in: Hz and
   voice ids for synth~ like a keyboard, and every event as a map {:type :note :freq :amp :gate …}),
   `midiout [mpe]` (Hz after voice ids, or events, to a MIDI port; mpe for microtones), `oscout [target]` and

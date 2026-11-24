@@ -107,7 +107,7 @@ export async function theory(page, check) {
   const st = (k) => `(get-in @eng/rt [:states ${cm} :fwd ${k}])`;
   await sent(page, `(swap! eng/rt assoc :prints []) (send! ${cm} 62)`);
   check("comes: the first note waits for the futures to be counted, then is played",
-    (await until(page, st(":D"), (x) => x === "[1]", 120000)) === "[1]", await cljs(page, `[${st(":D")} ${st(":error")}]`));
+    (await until(page, st(":D"), (x) => x === "[1]", 120000)) === "[1]", await cljs(page, `[${st(":D")} ${st(":error")}]`) + " · " + await lastPrints(page));
   await sent(page, `(send! ${cm} 61)`);
   const fixed = await until(page, `(:reason (second (last-shown ${cm})))`, (x) => /not a note of the system/.test(x), 15000);
   check("... a black key is corrected to a note of the mode, and it says why", /not a note of the system/.test(fixed), fixed);
@@ -300,7 +300,7 @@ export async function theory(page, check) {
   const sy = (await cljs(page, '(box "comes pentatonic midi" 8600 600)')).trim();
   const ys = (k) => `(get-in @eng/rt [:states ${sy} :fwd ${k}])`;
   await sent(page, `(send! ${sy} 60)`);
-  check("comes pentatonic: C4 as played, the first note of penta-C", (await until(page, ys(":D"), (x) => x === "[0]", 120000)) === "[0]", await cljs(page, `[${ys(":D")} ${ys(":error")}]`));
+  check("comes pentatonic: C4 as played, the first note of penta-C", (await until(page, ys(":D"), (x) => x === "[0]", 120000)) === "[0]", await cljs(page, `[${ys(":D")} ${ys(":error")} (some? (get-in (current) [:boxes ${sy}])) (some? (get-in @eng/rt [:states ${sy}]))]`) + " · " + await lastPrints(page));
   await sent(page, `(send! ${sy} 65)`);
   const pf = await until(page, `(:reason (second (last-shown ${sy})))`, (x) => /not a note of the system/.test(x), 15000);
   check("... F4 is not a note of the pentatonic: corrected, and it says why", /not a note of the system/.test(pf), pf);
@@ -535,6 +535,31 @@ export async function theory(page, check) {
                                    (run son 4 64 acc #{} [])])`);
   check("phase without a clock: the pulse found from the onsets (the son at 200 ms, the bembé at 180), and each onset's phase — through missing and extra onsets, and an accelerando",
         /^\[\[11 true 199\] \[17 true 18[01]\] \[14 true 1(49|50)\] \[18 true 1(49|50)\] \[16 true 1(69|70)\]\]$/.test(phf), phf);
+  // and between onsets it keeps time: a beat each pulse (the box's own :later, played here as the engine would),
+  // nothing said twice when an onset comes a moment after its beat, a cycle more after the performer stops
+  const phk = await cljs(page, `(let [d (comp/lookup "phase") son [1 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0]
+                                      jit [0 0.012 -0.008 0.015 -0.012 0.005 -0.015 0.01]
+                                      sim (fn [start pulses until step]
+                                            (let [claps (vec (for [i (range until) :when (= 1 (nth son (mod (+ start i) 16)))] [(+ (step i) (nth jit (mod i 8))) 0 :bang]))
+                                                  idx (fn [t] (apply min-key (fn [i] (js/Math.abs (- (step i) t))) (range (+ pulses 20))))
+                                                  s0 (:state ((:receive d) {:inlet 1 :value son :state nil :args {:min 0}}))
+                                                  outs (loop [q claps s s0 outs [] guard 0]
+                                                         (if (or (empty? q) (> guard 3000)) outs
+                                                             (let [e (apply min-key first q) q (vec (remove (fn [x] (identical? x e)) q))
+                                                                   [t i v] e
+                                                                   x ((:receive d) {:inlet i :value v :state s :args {:min 0} :at t})
+                                                                   ph (some (fn [[p v]] (when (= p 0) v)) (:out x))]
+                                                               (recur (into q (:later x)) (or (:state x) s) (cond-> outs ph (conj [t ph])) (inc guard)))))
+                                                  last-clap (first (peek claps))]
+                                              [(count outs)
+                                               (every? (fn [[[_ a] [_ b]]] (= b (mod (inc a) 16))) (partition 2 1 outs))
+                                               ;; in time while the performer plays (after the last onset the box keeps the pulse it found)
+                                               (every? (fn [[t ph]] (= ph (mod (+ start (idx t)) 16))) (filter (fn [[t _]] (<= t (+ last-clap 0.1))) outs))
+                                               (count (filter (fn [[t _]] (> t (+ last-clap 0.05))) outs))]))
+                                      acc (fn [i] (reduce + 1 (map (fn [k] (- 0.2 (/ (* 0.04 (min k 64)) 64))) (range i))))]
+                                  [(sim 5 48 32 (fn [i] (+ 1 (* 0.2 i)))) (sim 4 64 64 acc)])`);
+  check("phase without a clock keeps time between onsets: a phase every pulse, in order and in time, nothing twice; a cycle more after the last onset, then it waits (and through an accelerando)",
+        /^\[\[\d+ true true 16\] \[\d+ true true 1[56]\]\]$/.test(phk) && Number((phk.match(/^\[\[(\d+)/) || [])[1]) >= 25, phk);
   await cljs(page, `(delete ${phb})`);
   // click~ (@kairotic/synth): a tick each bang, every accent bangs one accented; a number 0 accented
   const ck = (await cljs(page, '(box "click~ 1200 4" 11100 600)')).trim();
