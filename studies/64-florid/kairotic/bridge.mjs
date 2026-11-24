@@ -18,6 +18,9 @@
 //                 in the forward draw a figure heard before in the line is discounted, so a bridge prefers to
 //                 say its way with the figures it has already said — a sequence (discussions #342, #399). The
 //                 backward message does not see it (the line's memory, as the soft rules' climax and memory)
+//   functions     the tonal functions (@kairotic/rules' functions.mjs) above the economy: the chord each unit's two
+//                 voices imply, and a succession the grammar of a tonal phrase refuses (D → S, an applied dominant
+//                 unresolved) weighing `functional` more — a unit's cost, read on the window, so the bridge stays exact
 //   rhythms       a bridge between two rhythms of n pulses, a swap a step (an onset to the silence beside it, as
 //                 @kairotic/rhythm's morph moves) or a stay, each rhythm weighing its onsets' metrical weight
 //
@@ -32,6 +35,7 @@ import { keyOf, codeOf, codeDegree, codeAlter } from "./partimento.mjs";
 import { rangeOf, endingOf, PER, LINE } from "./incipit.mjs";
 import { survivors } from "./reduction.mjs";
 import { word, lexicon, lengthOf, economyOf } from "./bits.mjs";
+import { functionOf, impliedChord, grammarErrors } from "./functions.mjs";
 
 const split = (s) => (Array.isArray(s) ? s : String(s || "").trim().split(/\s+/).filter(Boolean));
 const LOG0 = -Infinity;
@@ -136,17 +140,36 @@ export function voiceOver(phrase, key, { per = PER, range = null, line = LINE } 
   return { F, V: F.voice, K, n: F.n, code: (nm) => codeOf(K, nm), name };
 }
 
+// ─── the tonal functions, as a cost of the bridge's ───
+/**
+ * A unit's functional cost over a voice (voiceOver's): weight for each succession the grammar of a tonal phrase
+ * refuses between the unit before and this one (functions.mjs; each unit's chord its bass and the melody's note
+ * imply). → extra(t, c, U), as bridgeVoice reads it.
+ */
+export function functionalCost(vo, key, weight = 6) {
+  const K = vo.F.key, bassMidi = (t) => K.midi(vo.F.units[t].d, vo.F.units[t].r), memo = new Map();
+  const fnAt = (t, c) => { const k = t + ":" + c; let f = memo.get(k); if (f === undefined) { f = functionOf(impliedChord([bassMidi(t), vo.F.midiOf(c)], key), key); memo.set(k, f); } return f; };
+  return (t, c, U) => (t === 0 || !weight ? 0 : weight * grammarErrors([fnAt(t - 1, U[t - 1]), fnAt(t, c)], { key, end: false }).length);
+}
+/** A line's functions over its phrase (each unit's implied chord's), and the successions the grammar refuses. */
+export function lineFunctions(phrase, key, melody, o = {}) {
+  const vo = voiceOver(phrase, key, o), K = vo.F.key, mel = split(melody).map(vo.code);
+  const fs = mel.map((c, t) => functionOf(impliedChord([K.midi(vo.F.units[t].d, vo.F.units[t].r), vo.F.midiOf(c)], key), key));
+  return { fs, errors: grammarErrors(fs, { key, end: false }) };
+}
+
 // ─── vary from depth k, by a bridge (Study 61's, exactly) ───
 /** Study 61's vary from level k as a bridge: the melody's notes that survive at k pinned on their units (held as
  *  long), the rest drawn from the bridge between them. {melody, kept, changed, logZ} or null. */
-export function varyBridge(an, k, { temp = 0.6, r = Math.random, novelty = 1.5, economy = 0 } = {}) {
+export function varyBridge(an, k, { temp = 0.6, r = Math.random, novelty = 1.5, economy = 0, functional = 0 } = {}) {
   const { V, code, name, n } = voiceOver(an.phrase, an.key, { per: an.per });
   const mel = split(an.phrase.melody), alive = survivors(an, k), pins = new Map();
   for (const x of an.notes) if (x.voice === "m" && alive.has(x.id)) for (let t = x.on; t < x.on + x.dur; t++) pins.set(t, code(x.pitch));
   if (n !== mel.length) throw new Error(`the melody has ${mel.length} units, its bass ${n}`);
   const orig = mel.map(code);
   // (as Study 61's vary: a note other than the surface's preferred where the bridge is free)
-  const B = bridgeVoice(V, { pins, temp, economy, per: an.per, extra: (t, c) => (!pins.has(t) && c === orig[t] ? novelty : 0) });
+  const fc = functional ? functionalCost({ F: voiceOver(an.phrase, an.key, { per: an.per }).F }, an.key, functional) : null;
+  const B = bridgeVoice(V, { pins, temp, economy, per: an.per, extra: (t, c, U) => (!pins.has(t) && c === orig[t] ? novelty : 0) + (fc ? fc(t, c, U) : 0) });
   if (!B.possible) return null;
   const U = B.draw(r);
   if (!U) return null;
@@ -160,18 +183,18 @@ export function varyBridge(an, k, { temp = 0.6, r = Math.random, novelty = 1.5, 
  * first `head` units of A's melody and the last `tail` units of B's pinned, the middle drawn from the bridge — the
  * most natural legal way from the one to the other. {bass, melody, pinned: [units], logZ} or null.
  */
-export function morphPhrases(A, B, key, { head = null, tail = null, temp = 0.6, r = Math.random, per = PER, economy = 0 } = {}) {
+export function morphPhrases(A, B, key, { head = null, tail = null, temp = 0.6, r = Math.random, per = PER, economy = 0, functional = 0 } = {}) {
   const ma = split(A.melody), mb = split(B.melody), ba = split(A.bass), bb = split(B.bass);
   const bass = [...ba, ...bb], n = (bass.length - 1) * per + 1;
   // A's melody runs over its bass and its last note is held over A's last bar (as the join of two phrases is)
   const hA = head ?? Math.ceil(ma.length / 2), tB = tail ?? Math.ceil(mb.length / 2);
   const phrase = { bass: bass.join(" "), melody: Array(n).fill("C5").join(" "), cadence: B.cadence };
   const lo = Math.min(rangeOf(A, key).lo, rangeOf(B, key).lo), range = { lo, hi: lo + 12 };
-  const { V, code, name } = voiceOver(phrase, key, { per, range });
+  const vo = voiceOver(phrase, key, { per, range }), { V, code, name } = vo;
   const pins = new Map();
   for (let t = 0; t < hA; t++) pins.set(t, code(ma[t]));
   for (let j = 0; j < tB; j++) pins.set(n - tB + j, code(mb[mb.length - tB + j]));
-  const Bd = bridgeVoice(V, { pins, temp, economy, per });
+  const Bd = bridgeVoice(V, { pins, temp, economy, per, extra: functional ? functionalCost(vo, key, functional) : null });
   if (!Bd.possible) return null;
   const U = Bd.draw(r);
   return U ? { bass: phrase.bass, melody: U.map(name).join(" "), pinned: [...pins.keys()].sort((a, b) => a - b), cadence: B.cadence, logZ: Bd.logZ } : null;

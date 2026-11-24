@@ -141,6 +141,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
     <label class="inline" for="v-k">Level <select id="v-k"></select></label>
     <label class="inline" for="v-temp" title="the lower, the more the cheapest ways weigh">Temperature <input type="number" id="v-temp" min="0.1" max="3" step="0.1" value="0.6"></label>
     <label class="inline" for="v-economy" title="a bar's figure said before in the line is cheaper (0: none)">Economy <input type="number" id="v-economy" min="0" max="8" step="0.5" value="3"></label>
+    <label class="inline" for="v-functional" title="the tonal functions above the economy: what a succession the grammar of a tonal phrase refuses costs (0: none)">Functions <input type="number" id="v-functional" min="0" max="20" step="1" value="6"></label>
     <button class="act primary" id="v-draw">Draw</button>
     <button class="act" id="v-map" title="the likeliest note at each step, its future weighed">The likeliest</button>
     <button class="act" id="v-play-orig">▶ The phrase</button>
@@ -159,6 +160,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
     <label class="inline" for="m-tail">B's last <input type="number" id="m-tail" min="1" max="20" value="8"> units</label>
     <label class="inline" for="m-temp">Temperature <input type="number" id="m-temp" min="0.1" max="3" step="0.1" value="0.6"></label>
     <label class="inline" for="m-economy" title="a bar's figure said before in the line is cheaper (0: none)">Economy <input type="number" id="m-economy" min="0" max="8" step="0.5" value="3"></label>
+    <label class="inline" for="m-functional" title="the tonal functions above the economy: what a succession the grammar of a tonal phrase refuses costs (0: none)">Functions <input type="number" id="m-functional" min="0" max="20" step="1" value="6"></label>
     <button class="act primary" id="m-draw">Draw</button>
     <button class="act" id="m-play">▶ Play</button>
   </div>
@@ -189,6 +191,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
     <li>Varying from a level (Study 61) is a bridge through waypoints: the notes that survive are pinned, each span between them is drawn with its true probability — no backtracking.</li>
     <li>A morph keeps the beginning of one phrase and the end of another, and draws the way between them under the rules of every phrase.</li>
     <li>The economy (#342, #399): a bar's figure — its shape from its first note — is a word, and the forward draw prefers a figure the line has already said (<code>bits.mjs</code>, the measure Studies 61 and 64 share), so the way between two phrases is said with fewer figures, a sequence where it can: a morph from the C major incipit to the 7–6 chain goes from 62 bits in 8 different figures without it to 47 in 5 with it (20 draws). The facts say each line's figures in bits.</li>
+    <li>Above the economy, the tonal functions (<code>functions.mjs</code>, @kairotic/rules): each unit's chord as its bass and the melody's note imply it, and a succession the grammar of a tonal phrase refuses (a dominant taken back by a subdominant, an applied dominant unresolved) costs more — a unit's cost, so the bridge stays exact. A morph from the C major incipit to the 7–6 chain broke the grammar about once a line with the economy alone; with the functions, almost never.</li>
     <li>Between two rhythms the states are rhythms and a step is a swap: with the metre weighed, the way passes through rhythms that sit well in the bar; without it, any way of the right length.</li>
     <li>What comes next (#341): the bridge as the engine of florid counterpoint (#342), presets, spectra and kairoi (continuous bridges), and the tiles of an endless zoom.</li>
   </ul>
@@ -267,9 +270,9 @@ window.addEventListener("DOMContentLoaded", function () {
                   (doseq [x (array-seq (.-notes an))]
                     (when (and (= "m" (.-voice x)) (.has alive (.-id x)))
                       (doseq [u (range (.-on x) (+ (.-on x) (.-dur x)))] (.set pins u (.code vo (.-pitch x))))))
-                  (let [br (.bridgeVoice B (.-V vo) #js {:pins pins :temp t :economy (num! "v-economy" 3)}) U (.map br)]
+                  (let [br (.bridgeVoice B (.-V vo) #js {:pins pins :temp t :economy (num! "v-economy" 3) :extra (.functionalCost B vo (.-key an) (num! "v-functional" 6))}) U (.map br)]
                     (when U #js {:melody (str/join " " (map #(.name vo %) (array-seq U))) :kept (clj->js (sort (array-seq (js/Array.from (.keys pins))))) :logZ (.-logZ br)})))
-                (.varyBridge B an k #js {:temp t :economy (num! "v-economy" 3)}))]
+                (.varyBridge B an k #js {:temp t :economy (num! "v-economy" 3) :functional (num! "v-functional" 6)}))]
         (if-not v
           (text! "v-facts" "No bridge through these notes.")
           (let [names (str/split (.-melody v) #" ") orig (str/split (.. an -phrase -melody) #" ")
@@ -288,7 +291,7 @@ window.addEventListener("DOMContentLoaded", function () {
   (try
     (let [a (get-in presets [(.-value ($ "m-a")) "phrase"]) b (get-in presets [(.-value ($ "m-b")) "phrase"])
           ka (get-in presets [(.-value ($ "m-a")) "key"])
-          m (.morphPhrases B (clj->js a) (clj->js b) (clj->js ka) #js {:head (js/parseInt (.-value ($ "m-head"))) :tail (js/parseInt (.-value ($ "m-tail"))) :temp (num! "m-temp" 0.6) :economy (num! "m-economy" 3)})]
+          m (.morphPhrases B (clj->js a) (clj->js b) (clj->js ka) #js {:head (js/parseInt (.-value ($ "m-head"))) :tail (js/parseInt (.-value ($ "m-tail"))) :temp (num! "m-temp" 0.6) :economy (num! "m-economy" 3) :functional (num! "m-functional" 6)})]
       (if-not m
         (do (swap! st assoc :m nil) (html! "m-mel" "") (text! "m-facts" "No bridge between them with these ends (another key, or the ends refused)."))
         (let [names (str/split (.-melody m) #" ") pinned (set (array-seq (.-pinned m)))]
