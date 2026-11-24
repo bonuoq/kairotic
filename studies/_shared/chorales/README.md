@@ -3,15 +3,17 @@
 The corpus the chorale studies read (#301, #399): **2,272 phrases from the 370 chorales**, cut at the fermatas.
 
 - `phrases.json` — `{source, license, phrases}`; a phrase is
-  `{id, chorale, bwv, title, meter, key: {tonic, mode, church?}, cadence, keys, satb, held, strong, A, B, lines}`:
+  `{id, chorale, bwv, title, meter, key: {tonic, mode, church?}, cadence, keys, satb, names, held, strong, A, B, lines}`:
   - `satb` — the four voices a quarter at a time, MIDI, soprano first: the note sounding on each quarter (the eighths
     between, passing and neighbour notes, are in `lines`);
+  - `names` — the same notes as the edition spells them (`"F#4"`, `"Bb3"`): the engine reads them as they are spelt
+    (a note's `name`, `fromNotes`'s `code("F#4")`), a 6th as a 6th where a MIDI number could be read as a 7th;
   - `held` — for each quarter and voice, whether its note began before it (a half note, a tie);
   - `strong` — the quarters on a strong beat (1 and 3 in 4/4, the downbeat in 3/4);
   - `A`, `B` — the first and the last chord (the ends of a bridge, Study 63);
   - `key` — the chorale's key as the edition gives it (a church mode in `church`); `cadence` — the triad the phrase
     ends on, `null` when it is not a complete major or minor 5/3;
-  - `lines` — each voice's notes in the phrase, `[onset in quarters, MIDI, quarters]`.
+  - `lines` — each voice's notes in the phrase, `[onset in quarters, MIDI, quarters, name]`.
   - `keys` — the key each quarter is in (`"G major"`, `"E minor"`), read from the four voices: among the chorale's key
     and its neighbours two 5ths either way, in either mode, the path whose scales hold most of the notes (in minor ⑥ and
     ⑦ raised; the natural ⑦ counts as out of it, the relative major's), a change of key costing as one note out, the
