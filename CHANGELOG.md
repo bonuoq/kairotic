@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **C7 is V of ④, not the tonic** (`functions.mjs`, `@kairotic/rules` 0.14.0). A dominant 7th on the tonic now
+  reads as an applied dominant whose target is ④ (a major 7th on the tonic is still the tonic): it must go to F. In
+  Study 67 BWV 846's frame keeps the coda's plagal close, C – … – C/G – C7 – F/C – C, where it ended C7 → C.
 - **Study 63 · bridges: the outer voices of a chorale phrase, from A to B** (`outer.mjs`; the chorale test, #399 /
   #353). A bridge whose states are pairs (soprano, bass), exact for every cost one unit back: the rules (consonant,
   no parallel or direct 5ths and octaves, no augmented or diminished melodic interval, an altered note going on the

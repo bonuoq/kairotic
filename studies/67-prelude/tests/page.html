@@ -17,9 +17,9 @@ try {
   const facts = () => d.getElementById("facts").textContent;
   const S = w.kairoticStudy;
   is("it opens on BWV 846's harmony: 35 chords, five voices, its levels drawn, the frame chosen", /35 chords, 5 voices/.test(facts()) && d.querySelectorAll("#levels .lv").length === S.an.levels.length && d.querySelector("#levels .lv.sel").dataset.k === String(S.an.levels.length - 1));
-  is("… the frame's chords with their functions: C (T) first, C last, thirteen in all, none breaking the grammar", d.querySelectorAll("#levels .lv.sel span.on").length === 13 && d.querySelector("#levels .lv.sel span.on").textContent === "CT" && !d.querySelector("#levels span.broken") && /kept: no level breaks/.test(facts()));
+  is("… the frame's chords with their functions: C (T) first, C last, fourteen in all, none breaking the grammar", d.querySelectorAll("#levels .lv.sel span.on").length === 14 && d.querySelector("#levels .lv.sel span.on").textContent === "CT" && !d.querySelector("#levels span.broken") && /kept: no level breaks/.test(facts()));
   is("… the bits of every level, a bar each", d.querySelectorAll("#bars .bar").length === S.an.levels.length);
-  is("… a new harmony drawn from the frame, its kept chords marked", S.state().rows && S.state().rows.length === 35 && d.querySelectorAll("#new span.kept").length === 13);
+  is("… a new harmony drawn from the frame, its kept chords marked", S.state().rows && S.state().rows.length === 35 && d.querySelectorAll("#new span.kept").length === 14);
   S.select(1);
   is("a level chosen (L1): its steps listed, its chords", /L0 → L1/.test(d.getElementById("steps-n").textContent) && d.querySelectorAll("#steps li").length > 5 && /L1: 24 chords/.test(facts()));
   d.getElementById("draw").click();
@@ -28,7 +28,7 @@ try {
   is("the surface: nothing taken away", /nothing/.test(d.getElementById("steps-n").textContent));
   is("the tension curve drawn: Bach's (hierarchical and from the tonic) and the new harmony's, how alike they are", d.querySelectorAll("#tension polyline").length === 3 && d.querySelectorAll("#tension circle").length === 35 && /alike: [-\d.]+/.test(d.getElementById("tension").textContent));
   const box = d.getElementById("functional"); box.checked = false; box.dispatchEvent(new Event("change"));
-  is("the tonal functions off: a shorter frame, and levels that break their grammar marked in red", /not kept: \d+ levels break it/.test(facts()) && d.querySelectorAll("#levels span.broken").length > 0 && d.querySelectorAll("#levels .lv.sel span.on").length < 13);
+  is("the tonal functions off: a shorter frame, and levels that break their grammar marked in red", /not kept: \d+ levels break it/.test(facts()) && d.querySelectorAll("#levels span.broken").length > 0 && d.querySelectorAll("#levels .lv.sel span.on").length < 14);
 } catch (e) { errors.push(String(e.message || e)); }
 is("no error on the page", errors.length === 0);
 const bad = results.filter((r) => !r[1]).map((r) => r[0]).concat(errors.map((e) => "error: " + e));
