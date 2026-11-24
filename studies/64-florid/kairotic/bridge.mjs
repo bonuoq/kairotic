@@ -36,6 +36,8 @@ import { rangeOf, endingOf, PER, LINE } from "./incipit.mjs";
 import { survivors } from "./reduction.mjs";
 import { word, lexicon, lengthOf, economyOf } from "./bits.mjs";
 import { functionOf, impliedChord, grammarErrors } from "./functions.mjs";
+import { exportMei, fromUnits, fileName, offer } from "./export.mjs";
+export { offer };
 
 const split = (s) => (Array.isArray(s) ? s : String(s || "").trim().split(/\s+/).filter(Boolean));
 const LOG0 = -Infinity;
@@ -151,6 +153,16 @@ export function functionalCost(vo, key, weight = 6) {
   const fnAt = (t, c) => { const k = t + ":" + c; let f = memo.get(k); if (f === undefined) { f = functionOf(impliedChord([bassMidi(t), vo.F.midiOf(c)], key), key); memo.set(k, f); } return f; };
   return (t, c, U) => (t === 0 || !weight ? 0 : weight * grammarErrors([fnAt(t - 1, U[t - 1]), fnAt(t, c)], { key, end: false }).length);
 }
+/**
+ * A unit's leap cost over a voice (voiceOver's): what an interval beyond a 3rd costs, weight · (semitones − 4) / 3 —
+ * a 4th 0.33 · weight, an octave 2.7 · weight — so the bridge goes by steps where it can, into the notes kept too
+ * (a unit's cost, read on the window: the bridge stays exact). → extra(t, c, U).
+ */
+export function leapCost(vo, weight = 1) {
+  return (t, c, U) => { if (!t || !weight) return 0; const d = Math.abs(vo.F.midiOf(c) - vo.F.midiOf(U[t - 1])); return d > 4 ? weight * (d - 4) / 3 : 0; };
+}
+const sumExtra = (...fs) => { const xs = fs.filter(Boolean); return xs.length ? (t, c, U) => xs.reduce((a, f) => a + f(t, c, U), 0) : null; };
+
 /** A line's functions over its phrase (each unit's implied chord's), and the successions the grammar refuses. */
 export function lineFunctions(phrase, key, melody, o = {}) {
   const vo = voiceOver(phrase, key, o), K = vo.F.key, mel = split(melody).map(vo.code);
@@ -161,14 +173,15 @@ export function lineFunctions(phrase, key, melody, o = {}) {
 // ─── vary from depth k, by a bridge (Study 61's, exactly) ───
 /** Study 61's vary from level k as a bridge: the melody's notes that survive at k pinned on their units (held as
  *  long), the rest drawn from the bridge between them. {melody, kept, changed, logZ} or null. */
-export function varyBridge(an, k, { temp = 0.6, r = Math.random, novelty = 1.5, economy = 0, functional = 0 } = {}) {
+export function varyBridge(an, k, { temp = 0.6, r = Math.random, novelty = 1.5, economy = 0, functional = 0, smooth = 0 } = {}) {
   const { V, code, name, n } = voiceOver(an.phrase, an.key, { per: an.per });
   const mel = split(an.phrase.melody), alive = survivors(an, k), pins = new Map();
   for (const x of an.notes) if (x.voice === "m" && alive.has(x.id)) for (let t = x.on; t < x.on + x.dur; t++) pins.set(t, code(x.pitch));
   if (n !== mel.length) throw new Error(`the melody has ${mel.length} units, its bass ${n}`);
   const orig = mel.map(code);
   // (as Study 61's vary: a note other than the surface's preferred where the bridge is free)
-  const fc = functional ? functionalCost({ F: voiceOver(an.phrase, an.key, { per: an.per }).F }, an.key, functional) : null;
+  const vo0 = { F: voiceOver(an.phrase, an.key, { per: an.per }).F };
+  const fc = sumExtra(functional ? functionalCost(vo0, an.key, functional) : null, smooth ? leapCost(vo0, smooth) : null);
   const B = bridgeVoice(V, { pins, temp, economy, per: an.per, extra: (t, c, U) => (!pins.has(t) && c === orig[t] ? novelty : 0) + (fc ? fc(t, c, U) : 0) });
   if (!B.possible) return null;
   const U = B.draw(r);
@@ -183,7 +196,7 @@ export function varyBridge(an, k, { temp = 0.6, r = Math.random, novelty = 1.5, 
  * first `head` units of A's melody and the last `tail` units of B's pinned, the middle drawn from the bridge — the
  * most natural legal way from the one to the other. {bass, melody, pinned: [units], logZ} or null.
  */
-export function morphPhrases(A, B, key, { head = null, tail = null, temp = 0.6, r = Math.random, per = PER, economy = 0, functional = 0 } = {}) {
+export function morphPhrases(A, B, key, { head = null, tail = null, temp = 0.6, r = Math.random, per = PER, economy = 0, functional = 0, smooth = 0 } = {}) {
   const ma = split(A.melody), mb = split(B.melody), ba = split(A.bass), bb = split(B.bass);
   const bass = [...ba, ...bb], n = (bass.length - 1) * per + 1;
   // A's melody runs over its bass and its last note is held over A's last bar (as the join of two phrases is)
@@ -194,10 +207,22 @@ export function morphPhrases(A, B, key, { head = null, tail = null, temp = 0.6, 
   const pins = new Map();
   for (let t = 0; t < hA; t++) pins.set(t, code(ma[t]));
   for (let j = 0; j < tB; j++) pins.set(n - tB + j, code(mb[mb.length - tB + j]));
-  const Bd = bridgeVoice(V, { pins, temp, economy, per, extra: functional ? functionalCost(vo, key, functional) : null });
+  const Bd = bridgeVoice(V, { pins, temp, economy, per, extra: sumExtra(functional ? functionalCost(vo, key, functional) : null, smooth ? leapCost(vo, smooth) : null) });
   if (!Bd.possible) return null;
   const U = Bd.draw(r);
   return U ? { bass: phrase.bass, melody: U.map(name).join(" "), pinned: [...pins.keys()].sort((a, b) => a - b), cadence: B.cadence, logZ: Bd.logZ } : null;
+}
+
+// ─── as MEI, for the app (discussion #319) ───
+/** A phrase (a bass a note a bar of per units, a melody a note a unit, a note held written again) as MEI: the melody
+ *  and the bass, each note as long as it lasts. → {mei, name}. */
+export function meiOfPhrase(phrase, key, { title = "A phrase", per = PER, root = {} } = {}) {
+  const mel = split(phrase.melody), bass = split(phrase.bass), units = [];
+  bass.forEach((b, i) => { for (let k = 0; k < (i === bass.length - 1 ? 1 : per); k++) units.push(b); });
+  const x = exportMei({ title, source: "Kairotic Study 63 · bridges", key,
+                        voices: [{ label: "melody", clef: "G", notes: fromUnits(mel) }, { label: "bass", clef: "F", notes: fromUnits(units, units.map((_, t) => t % per === 0)) }],
+                        root: { study: "63 · bridges", phrase: { bass: phrase.bass, melody: phrase.melody }, ...root } });
+  return { mei: x.mei, name: fileName(title) };
 }
 
 // ─── rhythms: a bridge in the space of swaps ───

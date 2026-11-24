@@ -54,6 +54,9 @@ const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483
      Tn.distance(Tn.placed([43, 47, 50], C), I0).d === 5 && Tn.distance(I0, Tn.placed([50, 54, 57, 60], C)).i === 1);
   is("… a chord's surface tension: an inversion 2, a 7th 1 (G7/B 3); a succession's sequential and global tension (I IV V7 I: 0 5 8 5 · 0 5 6 0)",
      Tn.surface(Tn.placed([47, 50, 53, 55], C)) === 3 && Tn.tensions([[48, 52, 55], [41, 45, 48], [43, 47, 50, 53], [48, 52, 55]], C).map((t) => t.sequential + "/" + t.global).join(" ") === "0/0 5/5 8/6 5/0");
+  is("… the tonic with a minor 7th is V of ④: C7 reads V/F, and goes to F (C7 → C unresolved, C7 → F/C fine — and F/C → C a plagal close)",
+     lab([[48, 52, 55, 58]]) === "V/F" && Fn.grammarErrors(Fn.functionsOf([[48, 52, 55, 58], [48, 52, 55]], C), { end: false }).length === 1 &&
+     Fn.grammarErrors(Fn.functionsOf([[48, 52, 55, 58], [48, 53, 57], [48, 52, 55]], C)).length === 0 && lab([[48, 52, 55, 59]]) === "T");
   const Bt = await import("../packages/rules/assets/bits.mjs"), lx = Bt.lexicon();
   const first = lx.bits("Q:0,1"); lx.add("Q:0,1");
   is("bits.mjs: a word heard again cheaper than at first, its inversion between, a new one dearest; the inversion negates every number",

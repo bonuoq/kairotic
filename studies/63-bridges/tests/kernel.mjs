@@ -2,6 +2,7 @@
 // Study 63 · bridges: the kernel's tests (bridge.mjs). In the browser (tests/kernel.html) and in Node:
 //   node -e 'import("./studies/63-bridges/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import * as B from "../kairotic/bridge.mjs";
+import * as O from "../kairotic/outer.mjs";
 import * as R from "../kairotic/reduction.mjs";
 import { INCIPITS, check, rangeOf } from "../kairotic/incipit.mjs";
 
@@ -71,6 +72,41 @@ export async function run() {
   is("a morph with economy alone: its two voices imply a harmony that goes back (D → S) or leaves an applied dominant unresolved, about once a line", errsOf(m3) > 0.5);
   is("… with the functions above the economy (6 a broken succession): almost never (20 draws each), every draw still found", mf.length === 20 && errsOf(mf) < 0.2);
   notes.push(`grammar errors a morph: ${errsOf(m3).toFixed(2)} with economy alone, ${errsOf(mf).toFixed(2)} with the functions · e.g. ${mf[0].melody}`);
+
+  // ─── the outer voices of a chorale phrase, from A to B (outer.mjs: the chorale test, #399 / #353) ───
+  // (two phrases invented for the tests, in the corpus's format — not Bach's: the corpus comes from the engine's thread)
+  const ph1 = { id: "test-c", key: { tonic: "C", mode: "major" }, satb: Array(8).fill([0, 0, 0, 0]), strong: [1, 0, 1, 0, 1, 0, 1, 0].map(Boolean), A: [72, 64, 55, 48], B: [72, 67, 64, 48] };
+  const ph2 = { id: "test-am", key: { tonic: "A", mode: "minor" }, satb: Array(10).fill([0, 0, 0, 0]), strong: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0].map(Boolean), A: [69, 64, 60, 45], B: [69, 64, 61, 45] };
+  const wr = (seed) => { let x = seed * 7919 + 13; const f = () => ((x = (x * 16807) % 2147483647) - 1) / 2147483646; for (let i = 0; i < 5; i++) f(); return f; };
+  const corr = (a, b) => { const m = (x) => x.reduce((s, v) => s + v, 0) / x.length, ma = m(a), mb = m(b); let ab = 0, aa = 0, bb = 0; for (let i = 0; i < a.length; i++) { ab += (a[i] - ma) * (b[i] - mb); aa += (a[i] - ma) ** 2; bb += (b[i] - mb) ** 2; } return ab / Math.sqrt(aa * bb || 1); };
+  const stats = (ph, off) => {
+    const B = O.outerBridge({ ...ph, n: ph.satb.length }, { layers: Object.fromEntries(off.map((l) => [l, 0])) });
+    const xs = Array.from({ length: 20 }, (_, i) => B.draw(wr(i + 1)));
+    const ms = xs.map((x) => O.measure(ph, x));
+    return { xs, errs: ms.reduce((a, m) => a + m.errors, 0) / xs.length, arch: ms.reduce((a, m) => a + corr(m.tension, O.archOf(ph.satb.length)), 0) / xs.length,
+             words: xs.reduce((a, x) => a + O.motionWords(x, ph.key), 0) / xs.length };
+  };
+  const all1 = stats(ph1, []), all2 = stats(ph2, []);
+  is("outer voices from A to B: every draw begins on A's soprano and bass and ends on B's, the cadence's soprano by step, the bass ⑤–① or ⑦–①",
+     [[ph1, all1], [ph2, all2]].every(([ph, st]) => st.xs.every((x) => x.soprano[0] === ph.A[0] && x.bass[0] === ph.A[3] && x.soprano.at(-1) === ph.B[0] && x.bass.at(-1) === ph.B[3] && Math.abs(x.soprano.at(-2) - ph.B[0]) <= 2)));
+  is("… keeping the rules (consonant, no parallel 5ths or octaves, the soprano above), and singable: a leap of a 6th at most, few leaps", [all1, all2].every((st) => st.xs.every((x) => O.rulesBroken(x).length === 0 && x.soprano.slice(1).every((s, t) => Math.abs(s - x.soprano[t]) <= 9))));
+  const nf1 = stats(ph1, ["functions"]), nf2 = stats(ph2, ["functions"]);
+  is("the functions layer: without it the two voices imply a harmony that goes back (D → S) or leaves an applied dominant unresolved about every other phrase; with it, never", nf1.errs + nf2.errs > 0.8 && all1.errs + all2.errs === 0);
+  const nt1 = stats(ph1, ["tension"]), nt2 = stats(ph2, ["tension"]);
+  is("the tension layer: the implied harmony's tension follows the arch (rising to two thirds, released into B) more closely with it than without", all1.arch > nt1.arch + 0.2 && all2.arch > nt2.arch + 0.2);
+  const ne1 = stats(ph1, ["economy"]), ne2 = stats(ph2, ["economy"]);
+  is("the economy layer: the voices' motions said with fewer different words with it than without", all1.words < ne1.words && all2.words < ne2.words);
+  notes.push(`outer voices (20 draws): grammar errors ${nf1.errs.toFixed(2)}/${nf2.errs.toFixed(2)} without functions, 0 with · arch ${nt1.arch.toFixed(2)}/${nt2.arch.toFixed(2)} → ${all1.arch.toFixed(2)}/${all2.arch.toFixed(2)} · words ${ne1.words.toFixed(2)}/${ne2.words.toFixed(2)} → ${all1.words.toFixed(2)}/${all2.words.toFixed(2)}`);
+  const bs = O.bridgesFor(ph1, { count: 2, r: wr(9) });
+  is("bridgesFor: the engine's format for every variant (all, and each layer off), two draws each", bs.length === 8 && ["all", "no-functions", "no-tension", "no-economy"].every((v) => bs.filter((b) => b.variant === v).length === 2) &&
+     bs.every((b) => b.phrase === "test-c" && b.soprano.length === 8 && b.bass.length === 8 && b.key.tonic === "C" && b.strong.length === 8 && Array.isArray(b.layers)) && bs.find((b) => b.variant === "no-tension").layers.join() === "functions,economy");
+
+  // ─── smooth: what a leap costs (leapCost) ───
+  const meanInterval = (ms) => { let s2 = 0, n = 0; for (const m of ms) { const v = B.voiceOver({ bass: m.bass, melody: m.melody, cadence: m.cadence }, { tonic: "C" }); const u = m.melody.split(" ").map((x) => v.F.midiOf(v.code(x))); for (let t = 1; t < u.length; t++) { s2 += Math.abs(u[t] - u[t - 1]); n++; } } return s2 / n; };
+  const sm = Array.from({ length: 12 }, (_, i) => B.morphPhrases(A, Bp, { tonic: "C" }, { r: rng(1 + i), economy: 3, functional: 6, smooth: 2, head: 3, tail: 4 })).filter(Boolean);
+  const s0 = Array.from({ length: 12 }, (_, i) => B.morphPhrases(A, Bp, { tonic: "C" }, { r: rng(1 + i), economy: 3, functional: 6, smooth: 0, head: 3, tail: 4 })).filter(Boolean);
+  is("smooth: a morph moves by smaller intervals with leaps dearer (mean interval, 12 draws each)", sm.length === 12 && meanInterval(sm) < meanInterval(s0));
+  notes.push(`a morph's mean interval: ${meanInterval(s0).toFixed(2)} semitones without smooth, ${meanInterval(sm).toFixed(2)} with smooth 2`);
 
   // ─── rhythms ───
   is("the metrical weight of 16 pulses: the downbeat 4, the half bar 3, the quarters 2, the eighths 1, the rest 0", B.pulseWeight(16).slice(0, 8).join("") === "40102010" && B.pulseWeight(16)[8] === 3);

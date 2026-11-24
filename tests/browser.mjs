@@ -282,7 +282,12 @@ async function storage() {
 
 // KAIROTIC_TESTS_SERIAL=1 runs the blocks one after another, as before: to compare the times, or to
 // rule out that a failure comes from running them together
-const blocks = [["tests.html", unit], ["app", app], ["audio", audio], ["help layout", helpLayout], ["embed", embedded], ["storage", storage]];
+// KAIROTIC_BENCH=1 (the tests workflow run by hand with bench) measures the Datalog index with long histories: only
+// the db suite runs (after gestures, which opens the local work), alone, so the numbers are taken with the machine
+// free and nothing that depends on real time (the audio suites) runs beside it
+const blocks = process.env.KAIROTIC_BENCH
+  ? [["app (bench)", () => inApp("app", appSuites.filter(([n]) => n === "gestures" || n === "db"), "gestures")]]
+  : [["tests.html", unit], ["app", app], ["audio", audio], ["help layout", helpLayout], ["embed", embedded], ["storage", storage]];
 const t0 = Date.now();
 if (process.env.KAIROTIC_TESTS_SERIAL) { quietNow(); for (const [name, fn] of blocks) await timed(name, fn); }
 else {

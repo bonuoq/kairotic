@@ -290,22 +290,23 @@
 ;; Calls / Data: the Code tab shows the work as calls (editable, run with Ctrl/⌘+Enter) or as data (the
 ;; state the history produces, read-only). Edits not run yet stay in the calls while the data is shown.
 (defn show-code-view!
-  "Shows the work in the Code tab as :calls or :data."
+  "Shows the work in the Code tab as :calls or :data, or your own code to play it live (:live, discussion #407)."
   [v]
-  (let [data (= v :data)
+  (let [v (if (#{:data :live} v) v :calls)
         panel ($ "panel-code")
-        ;; once the editor is loaded, the hosts it put in place of the text area and the <pre>
-        calls-el (or (.querySelector panel ".code-host") ($ "code"))
-        data-el (or (.querySelector panel ".data-host") ($ "edn"))]
-    (swap! ui assoc :code-view (if data :data :calls))
-    (set! (.-hidden calls-el) data)
-    (set! (.-hidden data-el) (not data))
-    (.setAttribute ($ "view-calls") "aria-pressed" (str (not data)))
-    (.setAttribute ($ "view-data") "aria-pressed" (str data))
+        ;; once the editor is loaded, the hosts it put in place of the text areas and the <pre>
+        els {:calls (or (.querySelector panel ".code-host") ($ "code"))
+             :data (or (.querySelector panel ".data-host") ($ "edn"))
+             :live (or (.querySelector panel ".live-host") ($ "live"))}]
+    (swap! ui assoc :code-view v)
+    (doseq [[k el] els] (set! (.-hidden el) (not= k v)))
+    (doseq [[k id] {:calls "view-calls" :data "view-data" :live "view-live"}]
+      (.setAttribute ($ id) "aria-pressed" (str (= k v))))
     (render-code (current))))
 
 (.addEventListener ($ "view-calls") "click" (fn [_] (show-code-view! :calls)))
 (.addEventListener ($ "view-data") "click" (fn [_] (show-code-view! :data)))
+(.addEventListener ($ "view-live") "click" (fn [_] (show-code-view! :live)))
 
 ;; ───── the panel on the right (issue #40): hidden or shown, and as wide as you drag it ─────
 ;; {:open bool :w px-or-nil}: nil keeps the proportion of the page. It is a preference of this browser, kept in

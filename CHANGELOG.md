@@ -14,6 +14,57 @@
   the step for the chorales (A to B: a bridge's outer voices, filled in four parts). Bach's *Aus meines Herzens
   Grunde* (BWV 269), its first phrase's soprano and bass: 14,267,964 inner voices (15,105,996 without the functions),
   the grammar kept in every one drawn.
+- **Voice leading in the new harmonies and the morphs; MEI from Studies 63 and 67.**
+  - **Study 67:** a new harmony is now an exact bridge over chords, span by span between the chords kept (the
+    chords reached by every voice's step, a beam of the cheapest, the backward weights exact over it): triads or
+    sevenths (a 7th going down by step), the five voices in order — none lost on another's pitch —, no upper voice
+    leaping more than a 4th nor the bass more than a 5th, into the chord kept next too, no parallel 5ths or octaves
+    between any two voices, the same chord again a little dearer. Where no new way keeps them Bach's chords stay
+    (`rows.kept`). From the frame: about 16 chords new, the tension curve's correlation with Bach's 0.92 (0.61 without
+    the shape). Before, the voices met (unisons), and leapt into the chords kept.
+  - **Study 63:** `leapCost` — a leap beyond a 3rd costs `smooth · (semitones − 4) / 3`, a unit's cost (the bridge
+    exact); "Smooth" (2) on the page for the variation and the morph: a morph's mean interval 2.67 → 2.19 semitones.
+  - **MEI:** Study 67 exports the new prelude (a staff for each of the figure's voices, in 16ths), its chords and any
+    level (a staff a voice); Study 63 the variation and the morph (`meiOfPhrase`).
+- **C7 is V of ④, not the tonic** (`functions.mjs`, `@kairotic/rules` 0.14.0). A dominant 7th on the tonic now
+  reads as an applied dominant whose target is ④ (a major 7th on the tonic is still the tonic): it must go to F. In
+  Study 67 BWV 846's frame keeps the coda's plagal close, C – … – C/G – C7 – F/C – C, where it ended C7 → C.
+- **Live coding, names** (discussion #407). `(box :osc "osc~ 220")` makes the box live code calls `:osc`; evaluated
+  again it is the same box, its text (and place, if given) changed as one event if they changed, so a block can be
+  evaluated again and again. The box keeps its `:bN` id for the system: the name is one more thing it keeps (`:name`,
+  a `[:name id :osc]` event, one box per name), shown beside its id, written as `(name-box :b7 :osc)`, and every
+  command takes it in place of the id (`rid`: events name boxes by their ids in the history).
+- **Study 70 · open form: the performer chooses the path, the follower decides the form** (discussion #212). A work of
+  fragments and rules of succession (`next`, `not`, `near` a rhythm at most n swaps away; `then` how the next is
+  played; ending when a fragment comes a third time), in *Klavierstück XI*'s manner: "Eleven cells", ten rhythm cells
+  over a twelve-tone row, 8.4 million performances of at most eight fragments. Followed live, each fragment that may
+  come a hypothesis aligned with what is heard (after 2 notes, the median); read again whole once the performance is
+  over (under 1 % of fragments off with slips). The performances kept as a tree of branches; the work as EDN,
+  `[:open … [:frag …] …]`, for an `open` box to come.
+- **Live coding in the Code tab, step 2: a short syntax and a page of your own** (discussion #407). **`to`** makes a
+  box below another, fed by it, as one event, and returns its id: `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`
+  (`(to a o "text" i)` for other ports, `(to :b3 :b9)` to connect only); a chain (`->`, `doto`) of calls that make the
+  patch evaluated from the tab is one event (`as-one-event!`). **Live**, a third view of the Code tab beside Calls and
+  Data: your own code, never written over by the work, kept in this browser for each work; ⇧+Enter evaluates the form
+  at the cursor, Ctrl/⌘+Enter the block (the lines between empty ones), and what was evaluated flashes.
+- **Study 63 · bridges: the outer voices of a chorale phrase, from A to B** (`outer.mjs`; the chorale test, #399 /
+  #353). A bridge whose states are pairs (soprano, bass), exact for every cost one unit back: the rules (consonant,
+  no parallel or direct 5ths and octaves, no augmented or diminished melodic interval, an altered note going on the
+  way it was bent, the ends pinned, the cadence's bass ⑤–① or ⑦–① and its soprano by step), the line (steps cheap,
+  a new chord each unit, each voice near its register), and three layers, each on or off: **functions** (the implied
+  harmony's grammar, `functions.mjs`), **tension** (`tension.mjs`, an arch rising to two thirds of the phrase and
+  released into B) and **economy** (`bits.mjs`, the voices' motion as words). On two invented test phrases (20 draws):
+  without functions the grammar breaks 0.70 / 0.95 times a phrase, with them never; the arch correlates 0.27 / 0.31
+  without tension, 0.64 / 0.55 with it; fewer different motions with economy. `bridgesFor` gives the engine's format
+  for every variant (all layers, each off); `tools/bridges.mjs` writes them for the corpus once it is in
+  `studies/_shared/chorales/`.
+- **One clock for a room** (discussion #382, idea 8, phase 1). In a shared room with a relay, the time things are made
+  at — each transaction's `:t`, each segment's (where the newest point of the history comes from), each change of a
+  jam in Perform and its live messages — is the room's shared time: the relay's clock as each page reads it on
+  `/signal` (`talk.cljs`), so every page sees the same front and the same order in a jam whatever its own clock says.
+  Elsewhere, and before the relay first answers, it is the machine's clock as before. `(work-now)`, `(work-clock)`.
+  Phase 2, a transactor on `/signal`, is proposed in #382 for after 0.3.0.
+
 - **Tension: `tension.mjs`** (`@kairotic/rules` 0.14.0; discussions #399, #321). Lerdahl's *Tonal Pitch Space*: a
   chord's basic space in a region, the chord distance δ = i + j + k (I → V 5, I → ii 8, as his tables), an applied
   dominant's region its target's key, surface tension (an inversion, a 7th, a foreign note), and sequential, global

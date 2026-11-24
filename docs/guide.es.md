@@ -123,6 +123,22 @@ solo desde la pestaña, forma a forma:
 Si la pestaña no tenía nada más sin aplicar, después se escribe de nuevo desde el patch (la caja nueva como
 `(box :b7 "osc~ 220" …)`), con el cursor en su línea.
 
+**Live**, la tercera vista de la pestaña Code (junto a Calls y Data), es una página tuya que la obra nunca
+reescribe: los nombres (`def`) y las cadenas quedan como los escribiste. ⇧+Intro evalúa la forma del cursor,
+**Ctrl/⌘+Intro el bloque** donde está (las líneas entre dos vacías), y lo evaluado parpadea. Se guarda en este
+navegador para cada obra, no en la obra. **`to`** hace una caja debajo de otra, alimentada por ella, como un evento,
+y devuelve su id, así que una cadena se lee como va la señal —`(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`,
+toda la cadena un evento si se evalúa desde la pestaña; `(to a o "texto" i)` elige la salida y la entrada, y
+`(to :b3 :b9)` solo conecta.
+
+**Nombres.** `(box :osc "osc~ 220")` hace una caja que el código llama `:osc`: evaluada otra vez es la misma caja, con
+su texto cambiado si ha cambiado (`(box :osc "osc~ 330")` cambia el oscilador, como un evento, y el sonido sigue), así
+que un bloque se puede evaluar tantas veces como quieras. La caja conserva su id (`:b7`) para la obra; el nombre es
+una cosa más que guarda, se muestra junto a su id, se escribe en el código como `(name-box :b7 :osc)`, y todos los
+comandos lo aceptan en lugar del id: `(connect :osc 0 :out 0)`, `(text! :osc "osc~ 440")`, `(send! :osc 220)`,
+`(-> :osc (to "dac~ 1 2"))`. Un nombre es de una sola caja: `(name-box :b9 :osc)` se lo da a otra; `(name-box :b9 nil)`
+se lo quita.
+
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
 `clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son
 sus argumentos, leídos como EDN, y el mensaje que llega va al final, como con `->>`. `%` lo pone en otro
@@ -371,6 +387,12 @@ los tooltips de la historia, y la REPL lo lee como datos (discusión #382).
 Los eventos hechos antes de esto no tienen transacción: dicen quién los hizo (los de su segmento), no cuándo ni de
 dónde.
 
+En una sala compartida con relay, el *cuándo* se lee de un solo reloj para toda la sala: el del relay, tal como lo
+lee cada página (el mismo reloj que usan la conversación y el tempo de la sala). Así todas las páginas ven el mismo
+punto más nuevo de la historia y el mismo orden de los cambios en un jam, diga lo que diga el reloj de cada máquina.
+En otro caso es el reloj de esta máquina. `(work-clock)` dice cuál: `{:source :relay :offset … :error …}` o
+`{:source :local}`.
+
 ### Consultar la historia con Datalog
 
 `(q '[:find … :where …])` le hace una pregunta a la historia en Datalog, el lenguaje de consultas de Datomic, y
@@ -395,9 +417,9 @@ medida que la historia crece.
 - Lo que cuesta: el índice de un valor se hace la primera vez que se consulta, se guarda y crece solo con los
   eventos nuevos cuando la historia sigue. Medido en el Chromium sin interfaz de los tests (GitHub Actions, noviembre
   de 2026), con una historia de un segmento sobre 100 cajas: 300 eventos, unos 40 ms la primera vez, 2–3 ms otra vez,
-  11–14 ms tras un evento más; 2000 eventos, 360–700 ms la primera vez, 20–30 ms otra vez, 27–60 ms tras un evento
-  más; 5000 eventos, alrededor de 1 s la primera vez. (`KAIROTIC_BENCH=1`, o *bench* al lanzar a mano el workflow de
-  tests, mide 2000 y 5000.)
+  11–14 ms tras un evento más; 2000 eventos, 270 ms la primera vez, 17 ms otra vez, 20 ms tras un evento más; 5000
+  eventos, alrededor de 0,5 s la primera vez (medido a solas; con el resto de los tests a la vez, más o menos el doble). (`KAIROTIC_BENCH=1`, o *bench* al lanzar a mano el workflow de
+  tests, ejecuta solo estas medidas, con 2000 y 5000 eventos.)
 
 Algunas preguntas:
 
@@ -644,5 +666,6 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 | Ctrl+Z · Ctrl+Mayús+Z · Ctrl+Y | atrás · adelante en la historia (en Perform, en la toma) |
 | Ctrl+Intro | aplica código (pestaña Code, cajas de código, pestaña Claude) |
 | ⇧+Intro (pestaña Code) | evalúa sola la selección, o la forma del cursor |
+| Ctrl/⌘+Intro (vista Live) | evalúa el bloque del cursor (las líneas entre vacías) |
 | ↑ ↓ + − ← → Supr | edita la nota seleccionada de una partitura, o el trazo de un canvas |
 | Intro · a…g | el silencio seleccionado de una partitura se vuelve nota (a…g también cambia la altura de una nota) |

@@ -41,6 +41,7 @@
     (t/eq "a size of its own" (rel/patch-diff p (assoc-in p [:boxes :b3 :size] [600 300])) [[:size :b3 600 300]])
     ;; #407: what else a patch keeps, so the Code tab and a release can write it as changes
     (t/eq "a pinned line" (rel/patch-diff p (assoc-in p [:boxes :b2 :pin] ["n1" 3])) [[:pin :b2 ["n1" 3]]])
+    (t/eq "a live-code name" (rel/patch-diff p (assoc-in p [:boxes :b2 :name] :osc)) [[:name :b2 :osc]])
     (let [l {:z :over :show #{:patch :present}}
           m {:layer :notes :kind :text :at [:patch 1 2] :txt "hi"}
           q (assoc p :layers {:notes l} :marks {:a1 m})]
