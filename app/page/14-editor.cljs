@@ -671,22 +671,61 @@
                          (for [[id b] bs :let [a (get-in cur [:boxes id])]]
                            [id (if (and a (= #{:text :x :y} (set (keys b)))) (merge a b) b)])))))
 
+;; A chain owns the lines it wrote (#432): evaluated again, it takes away those it no longer writes — taking a box out
+;; of (-> :osc (to :amp …) (to :out …)) takes its lines with it. A chain is known by the box it starts from; what each
+;; one wrote is kept in this browser for each work (not in the work). Lines made by anything else stay.
+
+(defn chains-key "Where this browser keeps the lines each chain of the work wrote." []
+  (let [{:keys [kind id]} @work] (when kind (str "kairotic.chains/" (name kind) "/" id))))
+
+(defn owned-lines "{box the chain starts from #{lines it wrote}}, as kept for the work open." []
+  (or (try (some-> (chains-key) (->> (.getItem js/localStorage)) clojure.edn/read-string) (catch :default _ nil)) {}))
+
+(defn keep-owned! [m] (when-let [k (chains-key)] (try (.setItem js/localStorage k (pr-str m)) (catch :default _ nil))))
+
+(defn chain-form? "Whether a form is a chain: (-> …) or (doto …)." [f] (contains? #{"->" "doto"} (form-head f)))
+
+(defn build-forms
+  "Evaluates the forms of code one by one on a copy of patch cur: [the patch after, {box #{lines}}: the lines each
+   chain wrote — made now, or already there — by the box it starts from]."
+  [cur code]
+  (let [prev-s @scratch prev-t @tried]
+    (reset! scratch cur)
+    (reset! tried [])
+    (try
+      (let [written (reduce (fn [acc [a b]]
+                              (let [f (subs code a b) n (count @tried)]
+                                (eval-str f)
+                                (let [ls (when (chain-form? f)
+                                           (keep (fn [[op & args]] (when (= op :connect) (vec args))) (drop n @tried)))]
+                                  (if (seq ls) (update acc (first (first ls)) (fnil into #{}) ls) acc))))
+                            {} (top-forms code))]
+        [@scratch written])
+      (finally (reset! scratch prev-s) (reset! tried prev-t)))))
+
 (defn eval-calls!
   "Evaluates calls of the Code tab on the patch on screen (discussion #407): calls that make the patch change it by
-   the difference, as one event; anything else is evaluated as a line of the REPL. Returns how many changes it made,
-   or the value, as the REPL shows it."
+   the difference, as one event, and a chain evaluated again takes away the lines it no longer writes (#432);
+   anything else is evaluated as a line of the REPL. Returns how many changes it made, or the value, as the REPL
+   shows it."
   [code]
   (if (patch-form? code)
     (do
       (repl-print! "in" (str "<span class=\"p\">λ</span>" (esc code)))
       (try
         (let [cur (current)
-              p (keep-what-stays cur (first (try-code cur code)))
+              [p0 written] (build-forms cur code)
+              owned (owned-lines)
+              gone (set (mapcat (fn [[k ls]] (remove ls (get owned k))) written))
+              p (keep-what-stays cur (update p0 :lines (fn [ls] (vec (remove gone ls)))))
               evs (code-events cur p)
-              evs (or evs (fail "These calls cannot be applied as changes: apply the whole tab (Ctrl/⌘+Enter)."))]
+              evs (or evs (fail "These calls cannot be applied as changes: apply the whole tab (Ctrl/⌘+Enter)."))
+              taken (count (filter (fn [[op]] (= op :disconnect)) evs))]
           (doseq [[op id] evs :when (#{:box :delete} op)] (forget-box! id))
           (with-tx (or @tx-now {:via :repl}) (fn [] (dispatch-all! evs)))
-          (repl-print! "out" (esc (str "; " (count evs) (if (= 1 (count evs)) " change" " changes"))))
+          (when (seq written) (keep-owned! (merge owned written)))
+          (repl-print! "out" (esc (str "; " (count evs) (if (= 1 (count evs)) " change" " changes")
+                                       (when (pos? taken) (str " (" taken (if (= 1 taken) " line" " lines") " taken away)")))))
           (count evs))
         (catch :default e (repl-print! "err" (esc (or (.-message e) (str e)))) nil)))
     (repl-eval! code :repl)))

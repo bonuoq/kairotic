@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A chain owns the lines it wrote** (#432, discussion #407). A chain (`->`, `doto`) evaluated from the Code tab
+  (a form, or a block of calls that make the patch) takes away, when evaluated again, the lines it wrote before and no
+  longer writes, in the same event: put a box into `(-> :osc (to :amp …) (to :out …))` and the old line goes. A chain is
+  known by the box it starts from; lines made otherwise stay; what each chain wrote is kept in this browser for each
+  work (`build-forms`, `owned-lines`).
 - **The Code tab writes the work in chains by default** (#433, discussion #407): lines that follow each other as
   `(-> :b1 (to :b2) (to :b3))` and `(doto …)`, a `connect` for a line alone; **-> chains** off writes a `connect` for
   each line. Links, the clipboard, Claude and the agents keep reading and writing the work flat. The tutorial *From

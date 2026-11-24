@@ -235,4 +235,22 @@ export async function codetab(page, check) {
   await cljs(page, `(delete ${x} ${y} ${z} ${w} ${v}) (chains! true)`);
   check("chains are the default writing (#433)", (await cljs(page, '(do (.removeItem js/localStorage "kairotic.code-style") (try (some-> (.getItem js/localStorage "kairotic.code-style") keyword) (catch :default _ nil)))')) === "nil"
         && (await cljs(page, "@code-style")) === ":chains");
+
+  // ── a chain owns the lines it wrote (#432) ──
+  await cljs(page, '(.removeItem js/localStorage (chains-key))');
+  await cljs(page, '(eval-calls! "(-> (box :pa \\"mtof\\" 9800 2100) (to :pb \\"ftom\\") (to :pc \\"mtof\\"))")');
+  const [pa, pb, pc] = await Promise.all([":pa", ":pb", ":pc"].map((n) => cljs(page, `(rid ${n})`)));
+  await cljs(page, `(connect ${pa} 0 ${pc} 0)`);   // a line made by something else
+  const k1 = Number(await cljs(page, nEv));
+  const r432 = await cljs(page, '(eval-calls! "(-> :pa (to :pd \\"ftom\\") (to :pb \\"ftom\\") (to :pc \\"mtof\\"))")');
+  const pd = await cljs(page, "(rid :pd)");
+  const has = (l) => cljs(page, `(boolean (some #{${l}} (:lines (current))))`);
+  check("a chain evaluated again with a box put in: the box and its lines, in one event", /^:b\d+$/.test(pd)
+        && (await has(`[${pa} 0 ${pd} 0]`)) === "true" && (await has(`[${pd} 0 ${pb} 0]`)) === "true" && Number(await cljs(page, nEv)) === k1 + 1, r432);
+  check("... the line it no longer writes is taken away", (await has(`[${pa} 0 ${pb} 0]`)) === "false");
+  check("... the lines it still writes, and a line made by something else, stay",
+        (await has(`[${pb} 0 ${pc} 0]`)) === "true" && (await has(`[${pa} 0 ${pc} 0]`)) === "true");
+  check("... and what it wrote is kept for the work, by the box it starts from",
+        (await cljs(page, `(= #{[${pa} 0 ${pd} 0] [${pd} 0 ${pb} 0] [${pb} 0 ${pc} 0]} (get (owned-lines) ${pa}))`)) === "true");
+  await cljs(page, `(delete ${pa} ${pb} ${pc} ${pd})`);
 }
