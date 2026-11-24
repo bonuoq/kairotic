@@ -1080,7 +1080,37 @@
 
 (defn box-num [k] (let [m (re-matches #"b(\d+)" (name k))] (if m (js/parseInt (second m) 10) 1e9)))
 
-(defn patch->code [p]
+(defonce code-style
+  ;; how the Code tab writes the lines of the work: :flat (a connect each) or :chains (->, doto, to), #407
+  (atom (or (try (some-> (.getItem js/localStorage "kairotic.code-style") keyword #{:flat :chains}) (catch :default _ nil)) :flat)))
+
+(defn lines->chains
+  "The lines of patch p written as chains where they follow each other in the work's order (#407, #380, #399): a
+   line that leaves the box the one before it reached goes on its chain, (-> :b1 (to :b2) (to 1 :b3 0)); lines in a
+   row from one box go together, (doto :b1 (to :b2) (to :b3)); a line alone is a connect. Boxes are called by their
+   names if they have them. Applied, the lines come back in exactly the same order (the order messages fan out in)."
+  [p]
+  (let [ls (vec (:lines p)) n (count ls)
+        nm (fn [id] (or (get-in p [:boxes id :name]) id))
+        step (fn [[_ o b i]] (if (and (zero? o) (zero? i)) (str "(to " (nm b) ")") (str "(to " o " " (nm b) " " i ")")))
+        run (fn [i same?] (loop [j i] (if (and (< (inc j) n) (same? (nth ls j) (nth ls (inc j)))) (recur (inc j)) j)))]
+    (loop [i 0 out []]
+      (if (>= i n)
+        out
+        (let [[a o b k :as l] (nth ls i)
+              j (run i (fn [x y] (= (nth x 2) (first y))))
+              d (run i (fn [_ y] (= a (first y))))]
+          (cond
+            (> j i) (recur (inc j) (conj out (str "(-> " (nm a) " " (str/join " " (map step (subvec ls i (inc j)))) ")")))
+            (> d i) (recur (inc d) (conj out (str "(doto " (nm a) " " (str/join " " (map step (subvec ls i (inc d)))) ")")))
+            :else (recur (inc i) (conj out (str "(connect " (nm a) " " o " " (nm b) " " k ")")))))))))
+
+(declare patch->code)
+(defn shown-code "The work's code as the Code tab writes it (flat, or in chains)." [p] (patch->code p @code-style))
+
+(defn patch->code
+  ([p] (patch->code p :flat))
+  ([p style]
   (let [ids (sort-by box-num (keys (:boxes p)))]
     (str/join "\n"
               (concat [";; boxes"]
@@ -1114,8 +1144,10 @@
                           (concat ["" ";; sizes"]
                                   (for [id sz :let [[w h] (get-in p [:boxes id :size])]] (str "(resize " id " " w " " h ")")))))
                       (when (seq (:lines p)) ["" ";; lines"])
-                      (for [[a o b i] (:lines p)]
-                        (str "(connect " a " " o " " b " " i ")"))
+                      (if (= style :chains)
+                        (lines->chains p)
+                        (for [[a o b i] (:lines p)]
+                          (str "(connect " a " " o " " b " " i ")")))
                       (mapcat (fn [id]
                                 (let [b (get-in p [:boxes id])
                                       ls ((:code (comp/model-of b)) id (:data b))]
@@ -1135,7 +1167,7 @@
                                 (when-let [r (get-in p [:boxes id :recipe])]
                                   ["" (str ";; recipe of " id (when (:stale r) " (stale: the buffer changed since)"))
                                    (str "(recipe " id " " (pr-str r) ")")]))
-                              ids)))))
+                              ids))))))
 
 ;; ───── the work as data, pretty: what the Data view of the Code tab shows ─────
 ;; Collections that fit in the width stay on one line; the others put one entry per line, aligned.

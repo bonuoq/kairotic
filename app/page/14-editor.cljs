@@ -715,11 +715,11 @@
         code (when from (str/trim (subs text from to)))]
     (if-not (and (seq code) (balanced? code))
       (repl-print! "err" "Nothing to evaluate here: put the cursor on a form, or select some code.")
-      (let [rest-clean (same-code? (str (subs text 0 from) (subs text to)) (patch->code (current)))
+      (let [rest-clean (same-code? (str (subs text 0 from) (subs text to)) (shown-code (current)))
             line (when-let [e @code-ed] (.cursorLine e))]
         (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
         (eval-calls! code)
-        (when (or rest-clean (same-code? (code-text) (patch->code (current))))
+        (when (or rest-clean (same-code? (code-text) (shown-code (current))))
           (swap! ui assoc :dirty false)
           (render-code (current))
           (when-let [e @code-ed]

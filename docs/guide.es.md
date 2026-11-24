@@ -550,7 +550,9 @@ la barra lo oculta o lo muestra. Este navegador recuerda cómo lo dejaste. Desde
 `(side-panel false)`, `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
 
 - **Code** — la obra como **Calls** (llamadas: `box`, `connect`, …), editable: Ctrl/⌘+Enter las aplica (solo
-  lo que cambian, como un evento), ⇧+Intro evalúa sola la forma del cursor. **Data** muestra la misma obra como datos (EDN): el estado que produce la
+  lo que cambian, como un evento), ⇧+Intro evalúa sola la forma del cursor. **-> chains** escribe las líneas
+  que se siguen como cadenas —`(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, con los nombres en
+  lugar de los ids—: la misma obra, en el mismo orden, leída como va la señal (este navegador recuerda la elección). **Data** muestra la misma obra como datos (EDN): el estado que produce la
   historia, todas las claves de todas las cajas, en solo lectura, para inspeccionarlo (plegado y búsqueda
   con Ctrl/⌘+F). Lo que hayas editado sin ejecutar sigue en las llamadas mientras miras los datos.
 - **Components** — las clases que conoce esta obra. Las cajas que las definen (`component`) se guardan
