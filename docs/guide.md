@@ -372,6 +372,13 @@ for each value of it that is queried, DataScript gets an index of it, made once 
 - `(pull '[*] [:box/path [:b3]])` — an entity with its attributes; `(entity e)` is `(pull '[*] e)`.
 - A path or a point is compared through `:in`, not written inside a clause: `(q '[:find … :in $ ?e :where [?f :fact/e ?e] …] (db) [:b3])`.
 - Claude reads the history the same way: its `work_history` tool also takes a query.
+- DataScript comes as soon as the REPL or the Code tab is opened, so the first query usually finds it there.
+- What it costs: the index of a value is made the first time it is queried, then kept, and grown with only the new
+  events when the history goes on. Measured in the tests' headless Chromium (GitHub Actions, November 2026), on a
+  history of one segment over 100 boxes: 300 events, about 40 ms the first time, 2–3 ms again, 11–14 ms after one
+  more event; 2000 events, 360–700 ms the first time, 20–30 ms again, 27–60 ms after one more event; 5000 events,
+  about 1 s the first time. (`KAIROTIC_BENCH=1`, or *bench* when the tests workflow is run by hand, measures 2000
+  and 5000.)
 
 Some questions:
 

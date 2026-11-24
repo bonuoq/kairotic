@@ -22,6 +22,10 @@
   parallels (between inner voices, 5ths between the outer ones) stay allowed. Study 65's counts: Fifth Down Fourth Up
   5,621, with 5/3s 139,158, in minor 3,753, Third Down Second Up 992 and in minor 19,238; Study 69's Chain of
   Dominants in minor 530. The parity with Study 62's kernel is kept (none of its phrases has such octaves).
+- **Datalog: DataScript comes with the REPL or the Code tab**, opened (a focus or a click there), so the first query
+  finds it. The tests workflow, run by hand, takes *bench* (`KAIROTIC_BENCH=1`: the index with 2000 and 5000
+  events); the numbers are in the guide (2000 events: 360–700 ms the first query, 20–30 ms again; 5000: about 1 s).
+
 - **The tonal functions in two voices: Studies 61 and 63** (`@kairotic/rules` 0.13.0: `impliedChord`; discussion
   #399). Two voices imply their chord (a 3rd or a 5th over the bass its root, a 6th the bass its 3rd, a 4th the
   cadential 6/4), so the grammar of `functions.mjs` reads a partimento's phrase too:
