@@ -207,6 +207,9 @@ units in a row, the soprano held between them and moving the bass's way — not 
 dominant resolved on the weak ones too); `fromOuter`: the inner voices between a soprano and a bass given.
 `@kairotic/rules` 0.16.0: the style `bach-4` (Bach's chorales): `chorale-4`, neighbouring voices meeting on one note as a
 doubling (`order`'s `unison`, `from-bass`'s `unison: "any"`); `fromOuter`'s default.
+`@kairotic/rules` 0.17.0: `bach-4` 1.1.0, learnt from Bach's own chorales (`tests/chorales.mjs`): the voices' ranges as his,
+in MIDI (a style's `ranges`); `dissonance`'s `overStruck` (a passing tone against a moving bass), `neighbour` and
+`weakHeld` (a note held into a dissonance on a weak unit, down by step after); `parallels` `direct: "outer"`.
 
 ## Next
 

@@ -13,6 +13,12 @@
     their layers 0.07 (150 phrases).
   - **`studies/_shared/chorales/bridges.json`:** for every phrase, two draws of each variant (all layers, each
     off), as `fromOuter` reads them (CC BY-NC-SA, as `phrases.json`).
+- **`bach-4` learns from Bach** (`@kairotic/rules` 0.17.0, `bach-4` 1.1.0; `@kairotic/cac` 0.16.5). Judged on the
+  corpus, Bach's own inner voices: 234 of his 2,272 phrases kept as he wrote them (1.0.0: 112). The voices' ranges as
+  his, the same in every key (a style's `ranges`, in MIDI: soprano A3–A5, alto E3–D5, tenor C3–A4); a passing tone
+  against a bass that moves too (`dissonance`'s `overStruck`), a neighbour note (`neighbour`), a note held into a
+  dissonance as the bass moves under it on a weak unit, down by step after (`weakHeld`); direct 5ths and octaves free
+  in the inner voices (`parallels` `direct: "outer"`). `chorale-4`, the book's, is as it was.
 - **The `paths` box: an open form in the app** (`@kairotic/analysis` 0.9.0; discussion #212, Study 70). A work of
   fragments and rules of succession, `[:open {:start :any :end {:repeat 3}} [:frag {:id :A :next … :not … :near n
   :then {:tempo :dyn :touch}} …notes…] …]`, from a tree box; the performer chooses the path. Chosen by hand

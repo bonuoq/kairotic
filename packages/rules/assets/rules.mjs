@@ -292,7 +292,7 @@ export const RULES = {
    * (unprepared, resolved up to a 6th, down to a 3rd), over a passing bass a note of the chord before (exchange).
    * free (t) (chapter 6): the dissonances a chord of four tones lets in, its 7th down by step, an augmented 6th up.
    */
-  dissonance: (w, { ro = false, exchange = false, free = () => null } = {}) => {
+  dissonance: (w, { ro = false, exchange = false, free = () => null, overStruck = false, neighbour = false, weakHeld = false } = {}) => {
     const { B, n, D, strong, vertical, consonant, bassPassing } = w;
     function entry(t, c, prev, delayed) {
       const v = vertical(t, c), held = prev !== null && c === prev, struck = !held;
@@ -309,7 +309,11 @@ export const RULES = {
         // Fourth Up, ex. 7.12a: "inevitably on the weak beat" —; it goes down by step after, as every 7th)
         const f = free(t);
         if (B[t].struck && held && f && f.seventh === v.cls && t >= 1 && consonant(vertical(t - 1, prev))) return null;
-        if (B[t].struck) return "a dissonance on a weak unit: over a held bass";
+        // (weakHeld: Bach's — any note held from a consonance becomes a dissonance as the bass moves under it on a weak
+        // unit; it goes down by step after)
+        if (weakHeld && B[t].struck && held && t >= 1 && consonant(vertical(t - 1, prev))) return null;
+        // (overStruck: Bach's — a passing tone against a bass that moves too, by step from a consonance and on by step)
+        if (B[t].struck && !overStruck) return "a dissonance on a weak unit: over a held bass";
         if (!struck || t === 0 || Math.abs(D(c) - D(prev)) !== 1) return "a dissonance on a weak unit passes by step";
         if (!consonant(vertical(t - 1, prev))) return "two dissonances in a row";
       }
@@ -353,8 +357,10 @@ export const RULES = {
             else if (!(B[t].struck && B[t].d === B[t - 1].d - 1)) return "the suspension resolves down by step (the bass)";
             if (!consonant(v) && !(ro && v.tri)) return "the suspension resolves to a consonance";
           } else {
+            // (neighbour: Bach's — the tone back where it came from, a neighbour note)
             const a = U[w.onsetOf(U, t - 1) - 1];
-            if (!(struck && D(c) - D(prev) === D(prev) - D(a))) return "the passing tone goes on by step, the same way";
+            if (weakHeld && t >= 2 && U[t - 2] === prev && B[t - 1].struck) { if (!(struck && D(c) === D(prev) - 1)) return "the note held into a dissonance goes down by step"; }
+            else if (!(struck && (D(c) - D(prev) === D(prev) - D(a) || (neighbour && c === a)))) return neighbour ? "the passing tone goes on by step (the same way, or back: a neighbour)" : "the passing tone goes on by step, the same way";
           }
         }
       }
@@ -1049,8 +1055,10 @@ Object.assign(STYLES, {
   // Bach's chorales (the corpus, the bridges filled from A to B): chorale-4, and two neighbouring voices may meet on one
   // note — the tenor and the bass, the alto and the tenor… —, a doubling: what binds a doubled note binds it, the
   // parallels and the doublings (BWV 269's first phrase: the tenor on the bass's G)
-  "bach-4": { style: "bach-4", version: "1.0.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }]] },
-    between: [["order", { within: 7, unison: true }]] },
+  "bach-4": { style: "bach-4", version: "1.1.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true }], ["parallels", { direct: "outer" }]] },
+    between: [["order", { within: 7, unison: true }]],
+    // (the voices' ranges as Bach's in the chorales, MIDI: the same in every key)
+    ranges: { soprano: [57, 81], alto: [52, 74], tenor: [48, 69] } },
 });
 
 /** The world the rules between the voices read. */
@@ -1124,7 +1132,10 @@ export function fourOverBass(spec = {}) {
   };
   const S0 = { bass: B, key: K, figured: false, ro: spec.ro ?? true, exchange: true, end: spec.end, free, weights: { ...(st.weights || {}), ...(spec.weights || {}) }, delayed: spec.delayed, style: st.voice };
   const lineOf = (who) => (spec.line && typeof spec.line === "object" ? spec.line[who] : spec.line);
-  const [slo, shi] = spec.soprano || [9, 20], [alo, ahi] = spec.alto || [6, 17], [tlo, thi] = spec.tenor || [3, 14];
+  // (a voice's range: the spec's, in degrees; or the style's, in MIDI — Bach's, the same in every key —; or the book's)
+  const fromMidi = ([lo, hi]) => { let a = -40; while (K.midi(a, 0) < lo) a++; let b = 50; while (K.midi(b, 0) > hi) b--; return [a, b]; };
+  const rangeOf = (who, dflt) => spec[who] || (st.ranges && st.ranges[who] ? fromMidi(st.ranges[who]) : dflt);
+  const [slo, shi] = rangeOf("soprano", [9, 20]), [alo, ahi] = rangeOf("alto", [6, 17]), [tlo, thi] = rangeOf("tenor", [3, 14]);
   const Sv = overBass({ ...S0, lo: slo, hi: shi, voice: "top", spacing: 22, line: lineOf("soprano"), maxHold: 3 });
   const Av = overBass({ ...S0, lo: alo, hi: ahi, voice: "middle", spacing: 22, line: lineOf("alto"), turn: false, maxHold: n });
   const Tv = overBass({ ...S0, lo: tlo, hi: thi, voice: "middle", spacing: 22, line: lineOf("tenor"), turn: false, maxHold: n });
