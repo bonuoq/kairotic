@@ -133,7 +133,10 @@ changed if it changed (`(box :osc "osc~ 330")` changes the oscillator, as one ev
 block can be evaluated as often as you like. The box keeps its id (`:b7`) for the work; the name is one more thing it
 keeps, shown beside its id, written in the code as `(name-box :b7 :osc)`, and every command takes it in place of the
 id: `(connect :osc 0 :out 0)`, `(text! :osc "osc~ 440")`, `(send! :osc 220)`, `(-> :osc (to "dac~ 1 2"))`. A name is one
-box's: `(name-box :b9 :osc)` gives it to another; `(name-box :b9 nil)` takes it away.
+box's: `(name-box :b9 :osc)` gives it to another; `(name-box :b9 nil)` takes it away. `to` takes a name too, for the box
+it makes: `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))` can be evaluated again and again —
+only what changed changes, and a named box you moved by hand stays where you put it. `(to a o :amp "text" i)` for
+other ports.
 
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as
 `str/…`) is that function, with no component to write: its other words are its arguments, read as EDN,

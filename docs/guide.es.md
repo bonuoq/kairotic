@@ -137,7 +137,10 @@ que un bloque se puede evaluar tantas veces como quieras. La caja conserva su id
 una cosa más que guarda, se muestra junto a su id, se escribe en el código como `(name-box :b7 :osc)`, y todos los
 comandos lo aceptan en lugar del id: `(connect :osc 0 :out 0)`, `(text! :osc "osc~ 440")`, `(send! :osc 220)`,
 `(-> :osc (to "dac~ 1 2"))`. Un nombre es de una sola caja: `(name-box :b9 :osc)` se lo da a otra; `(name-box :b9 nil)`
-se lo quita.
+se lo quita. `to` también acepta un nombre para la caja que hace:
+`(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))` se puede evaluar una y otra vez —solo cambia
+lo que ha cambiado, y una caja con nombre que moviste a mano se queda donde la pusiste—. `(to a o :amp "texto" i)`
+para otros puertos.
 
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
 `clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son

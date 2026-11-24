@@ -1387,12 +1387,27 @@
 (defn to
   "A box below box a, fed by it, as one event; returns its id, so a chain reads as the signal goes (#407):
    (-> (box \"osc~ 220\") (to \"gain~ 0.2\") (to \"dac~ 1 2\")). Outlet 0 to inlet 0, or (to a o \"text\" i);
-   with an id instead of a text it connects a to that box: (to :b3 :b9)."
+   with an id or a name instead of a text it connects a to that box: (to :b3 :b9). With a name and a text,
+   (to a :amp \"gain~ 0.2\"), the box is the one live code calls :amp: made the first time, the same after (its
+   text changed if it changed, left where it is), so a chain can be evaluated again and again:
+   (-> (box :osc \"osc~ 220\") (to :amp \"gain~ 0.2\") (to :out \"dac~ 1 2\")). (to a o :amp \"text\" i) for other ports."
   ([a b] (to a 0 b 0))
+  ([a nm text] (to a 0 nm text 0))
   ([a o b i]
    (as-one-event!
     (fn []
       (let [src (need-box a)
             id (if (keyword? b) (rid b) (box (str b) (:x src) (+ (:y src) to-gap)))]
+        (connect a o id i)
+        id))))
+  ([a o nm text i]
+   (when-not (live-name? nm) (fail "A name is a keyword that is not a box id: :amp, :out (not :b3)"))
+   (as-one-event!
+    (fn []
+      (let [src (need-box a)
+            ;; a box that already has the name stays where it is (it may have been moved by hand)
+            id (if (get-in (current) [:boxes (rid nm)])
+                 (named-box nm text nil nil)
+                 (named-box nm text (:x src) (+ (:y src) to-gap)))]
         (connect a o id i)
         id)))))

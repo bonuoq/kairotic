@@ -831,7 +831,7 @@
 ;; a box called by its name is the same box each time: change 220 and evaluate again
 (box :osc \"osc~ 220\")
 
-(-> :osc (to \"gain~ 0.2\") (to \"dac~ 1 2\"))
+(-> :osc (to :amp \"gain~ 0.2\") (to :out \"dac~ 1 2\"))
 
 (play)
 ")

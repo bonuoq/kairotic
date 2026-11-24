@@ -8,6 +8,19 @@
   `connect`, and names in place of ids. Applied, it gives back the same lines in the same order (the order messages
   fan out in), so it changes nothing: a second writing of the same patch, its structure easier to read
   (`lines->chains`, `(patch->code p :chains)`, `(chains! true)`).
+- **Live coding: chains that can be evaluated again** (discussion #407). `to` takes a name for the box it makes,
+  `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))`: the first time the boxes are made below
+  each other; evaluated again only what changed changes (nothing, or one text), a named box moved by hand stays where
+  it is, and a line already there is not made twice. `(to a o :amp "text" i)` for other ports. The Live view's example
+  uses it.
+- **Bach's chorales, phrase by phrase** (#301, #399). `studies/_shared/chorales/phrases.json`: 2,272 phrases from the
+  370 chorales, cut at the fermatas, in the engine's format (`satb` a quarter at a time, `held`, `strong`, the ends
+  `A` and `B`, the key and the cadence, each voice's `lines` with its eighths) — what Study 63's `bridges.mjs` and
+  `fromOuter` read. Cut from Craig Sapp's Humdrum edition by `tools/kern.mjs`; the data is **CC BY-NC-SA 4.0**, after
+  Sapp's edition, not MPL-2.0 (the folder's `LICENSE.md`). `tests/chorales.mjs`: the corpus whole, BWV 269's first
+  phrase, and Bach's own inner voices judged by `bach-4` — it keeps 112 of the 2,272 as he wrote them; the others
+  break first on the ranges, a dissonance over a held bass, direct 5ths and octaves, the 7th's resolution: what the
+  rules are to learn from him.
 - **Bach's chorales: `bach-4`, neighbouring voices meeting on one note** (`@kairotic/rules` 0.16.0; `@kairotic/cac`
   0.16.4). A style for the chorales (the corpus, the bridges filled from A to B): `chorale-4`, and two neighbouring
   voices may meet on the unison — the tenor and the bass, the alto and the tenor, the soprano and the alto —, a
