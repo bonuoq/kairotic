@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Live coding: chains that can be evaluated again** (discussion #407). `to` takes a name for the box it makes,
+  `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))`: the first time the boxes are made below
+  each other; evaluated again only what changed changes (nothing, or one text), a named box moved by hand stays where
+  it is, and a line already there is not made twice. `(to a o :amp "text" i)` for other ports. The Live view's example
+  uses it.
 - **Bach's chorales, phrase by phrase** (#301, #399). `studies/_shared/chorales/phrases.json`: 2,272 phrases from the
   370 chorales, cut at the fermatas, in the engine's format (`satb` a quarter at a time, `held`, `strong`, the ends
   `A` and `B`, the key and the cadence, each voice's `lines` with its eighths) — what Study 63's `bridges.mjs` and
