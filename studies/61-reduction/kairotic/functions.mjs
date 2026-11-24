@@ -11,8 +11,9 @@
 //                  suspension), its root, its kind and its bass
 //   its function   in a key (tonic and mode), after Riemann as the generative grammars of harmony read it
 //                  (Rohrmeier's GSM):
-//                    T  the tonic: ①, and ⑥ and ③ (its parallel and its counter-chord); the tonic with its 7th
-//                       still the tonic (a pedal's colour), not yet the dominant of ④
+//                    T  the tonic: ①, and ⑥ and ③ (its parallel and its counter-chord); the tonic with its major
+//                       7th still the tonic; with a minor 7th (a dominant 7th) it is V of ④, an applied dominant
+//                       that must go to ④
 //                    S  the subdominant: ④ and ②, the Neapolitan, ④ minor in major
 //                    D  the dominant: ⑤ and ⑦ (the diminished triad and seventh on the leading tone), and the tonic
 //                       in second inversion over ⑤ (the cadential 6/4: a dominant with its suspensions)
@@ -78,7 +79,8 @@ export function functionOf(pitches, key = { tonic: "C" }) {
   const out = (fn, target = null, targets = target === null ? [] : [target]) => ({ fn, target, targets, degree: deg, chord: c });
   // the tonic, any kind but the dominant's own (a 7th over the tonic stays the tonic) — in second inversion over ⑤,
   // the cadential 6/4: the dominant
-  if (deg === 0 && !dim) return bassDeg === 7 && c.bass !== c.root ? out("D") : out("T");
+  // (but a dominant 7th on the tonic is no longer the tonic: it is V of ④, and goes there)
+  if (deg === 0 && !dim && c.kind !== "7") return bassDeg === 7 && c.bass !== c.root ? out("D") : out("T");
   // the leading tone's diminished chords (in minor too: the raised ⑦), and the dominant — a diminished 7th is
   // symmetric, any of its notes may be its root: it is the dominant's where the leading tone is one of them, the
   // leading-tone chord of any chord a semitone above one of its notes otherwise

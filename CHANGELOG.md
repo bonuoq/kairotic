@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **C7 is V of ④, not the tonic** (`functions.mjs`, `@kairotic/rules` 0.14.0). A dominant 7th on the tonic now
+  reads as an applied dominant whose target is ④ (a major 7th on the tonic is still the tonic): it must go to F. In
+  Study 67 BWV 846's frame keeps the coda's plagal close, C – … – C/G – C7 – F/C – C, where it ended C7 → C.
 - **Live coding, names** (discussion #407). `(box :osc "osc~ 220")` makes the box live code calls `:osc`; evaluated
   again it is the same box, its text (and place, if given) changed as one event if they changed, so a block can be
   evaluated again and again. The box keeps its `:bN` id for the system: the name is one more thing it keeps (`:name`,

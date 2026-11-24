@@ -42,10 +42,10 @@ export async function run() {
 
   // ─── its levels (Study 61's reduction, a chord a unit, the functions as its judge) ───
   const last = an.levels[an.levels.length - 1];
-  is("reduced level by level to a frame of 13 chords, the first and the last kept", an.levels.length >= 5 && last.length === 13 && last[0].on === 0 && last[last.length - 1].on === 34);
+  is("reduced level by level to a frame of 14 chords, the first and the last kept", an.levels.length >= 5 && last.length === 14 && last[0].on === 0 && last[last.length - 1].on === 34);
   const fr = P.frameChords(an);
-  is("… the frame: C – Am/C – D7 – C♯°7 (written G°7, over G) – Dm/F – G7 – C – Fmaj7 – F♯°7 – G7 – C/G – C7 – C: the applied dominants kept with what they lead to, the cadence over the tonic pedal (C7, not the retrogression G7 → F/C)",
-     fr.join(" ") === "C Am/C D7 G°7 Dm/F G7 C Fmaj7 F♯°7 G7 C/G C7 C");
+  is("… the frame: C – Am/C – D7 – C♯°7 (written G°7, over G) – Dm/F – G7 – C – Fmaj7 – F♯°7 – G7 – C/G – C7 – F/C – C: the applied dominants kept with what they lead to — C7, V of ④, with its F — and the plagal cadence over the tonic pedal (not the retrogression G7 → F/C)",
+     fr.join(" ") === "C Am/C D7 G°7 Dm/F G7 C Fmaj7 F♯°7 G7 C/G C7 F/C C");
   notes.push("the frame: " + fr.join(" – ") + " · without the functions: " + P.frameChords(free).join(" – "));
   is("… every step an ornament of the grammar (unsplit: notes held, passing, neighbours)", an.steps.length >= 20 && an.steps.every((s) => s.op === "unsplit" || s.op === "unspread" || s.op === "unsuspend"));
 
