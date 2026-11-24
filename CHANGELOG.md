@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Bach's chorales: `bach-4`, neighbouring voices meeting on one note** (`@kairotic/rules` 0.16.0; `@kairotic/cac`
+  0.16.4). A style for the chorales (the corpus, the bridges filled from A to B): `chorale-4`, and two neighbouring
+  voices may meet on the unison — the tenor and the bass, the alto and the tenor, the soprano and the alto —, a
+  doubling: what binds a doubled note binds it (the parallels, the doublings; an augmented unison stays a false
+  relation). The rule `order` takes `unison`, `from-bass` its `unison: "any"`. Bach's own alto and tenor in BWV 269's
+  first phrase (the tenor on the bass's G) are by `bach-4`'s rules, not by `chorale-4`'s. `fromOuter` writes in
+  `bach-4` by default. `chorale-4` (the book's, Studies 62, 65 and 69) is as it was.
 - **Tonal functions in four parts, and the inner voices between a soprano and a bass given** (`@kairotic/rules`
   0.15.0, `chorale-4` 1.4.0; `@kairotic/cac` 0.16.3; discussions #353, #399, #321). The rule `functions` reads the
   chord on each strong unit as `functions.mjs` does — T, S, D or an applied dominant — and keeps the grammar into it,

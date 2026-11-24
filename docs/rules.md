@@ -205,6 +205,8 @@ in a sequence as the others, the 6/4 in two steps (a 5/4 between), structural pa
 units in a row, the soprano held between them and moving the bass's way — not even a sequence's.
 `@kairotic/rules` 0.15.0: `functions` (`chorale-4` 1.4.0): the tonal grammar of `functions.mjs` on the strong units (an applied
 dominant resolved on the weak ones too); `fromOuter`: the inner voices between a soprano and a bass given.
+`@kairotic/rules` 0.16.0: the style `bach-4` (Bach's chorales): `chorale-4`, neighbouring voices meeting on one note as a
+doubling (`order`'s `unison`, `from-bass`'s `unison: "any"`); `fromOuter`'s default.
 
 ## Next
 
