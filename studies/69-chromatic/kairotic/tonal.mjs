@@ -83,6 +83,14 @@ export function degreeOf(K, midi) {
   for (const r of [0, 1, -1]) for (let d = -28; d <= 35; d++) if (K.midi(d, r) === m) return { d, r };
   return null;
 }
+/** The same, spelt as the local key L would spell it (a note of A minor's F, not G major's E♯), and given in K's
+ *  degrees; K's own spelling where L is missing or spells it too far from K. */
+export function degreeIn(K, midi, L) {
+  if (!L) return degreeOf(K, midi);
+  const KL = L.semi ? L : keyOf(L), dl = degreeOf(KL, midi);
+  if (!dl) return degreeOf(K, midi);
+  try { const c = codeOf(K, KL.name(dl.d, dl.r)); return { d: codeDegree(c), r: codeAlter(c) }; } catch (e) { return degreeOf(K, midi); }
+}
 /** A key from its name ("G", "e" minor, "a minor", "d dorian") or {tonic, mode}, or null. */
 export const parseKey = (k) => {
   if (!k) return null;
