@@ -91,6 +91,7 @@ paquetes oficiales llegan solos a una obra cuando una caja usa una de sus clases
 | | Licencia |
 |---|---|
 | [Scittle](https://github.com/babashka/scittle) (SCI, ClojureScript interpretado) | EPL-1.0 |
+| [DataScript](https://github.com/tonsky/datascript) (consultas Datalog sobre la historia; se carga con la primera consulta) | EPL-1.0 |
 | [Verovio](https://www.verovio.org) (notación) | LGPL-3.0 o posterior |
 | [faustwasm](https://github.com/grame-cncm/faustwasm) (compilador Faust en WebAssembly) | LGPL-3.0 |
 | [IBM Plex](https://github.com/IBM/plex) (tipografías, vía Google Fonts) | OFL-1.1 |

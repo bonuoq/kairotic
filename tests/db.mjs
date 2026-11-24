@@ -108,4 +108,96 @@ export async function db(page, check) {
   check("... while rewriting it in the work does forget it", (await cljs(page, held)) === "nil", await cljs(page, held));
 
   await cljs(page, "(delete :b9301) (delete :b9302) (delete :b9303) (delete :b9305) (delete :b9310)");
+
+  // ───── Datalog over the history, answered by DataScript (#382, idea 7) ─────
+  const loaded = await page.evaluate(() => scittle.core.eval_string("(in-ns 'user) (load-datascript!)").then(() => true, (e) => "ERR " + e.message));
+  check("DataScript loads from the CDN", loaded === true, String(loaded));
+  if (loaded !== true) return;
+  check("the history's schema for Datalog comes from (schema)", (await cljs(page, "[(get-in (schema :history) [:fact/tx :ref]) (get-in (schema :history) [:box/path :unique])]")) === "[true :identity]");
+
+  // where you are
+  await cljs(page, '(gesture! "(box :b9401 \\"mtof\\" 1600 300)")');
+  const pre = await cljs(page, "(norm (:pos @world))");
+  check("q finds the boxes of the work where you are",
+    (await cljs(page, `(contains? (set (q '[:find [?id ...] :where [?b :box/class "mtof"] [?b :box/id ?id]])) :b9401)`)) === "true");
+  check("... and a box's attributes with pull", (await cljs(page, "(= {:box/text \"mtof\" :box/id :b9401} (pull '[:box/text :box/id] [:box/path [:b9401]]))")) === "true", await cljs(page, "(pull '[:box/text :box/id] [:box/path [:b9401]])"));
+
+  // what Claude changed (a transaction's metadata as an entity)
+  await cljs(page, '(with-tx {:via :claude :why "a bass"} (fn [] (box :b9402 "mtof" 1600 340)))');
+  const byClaude = "'[:find [?id ...] :where [?t :tx/via :claude] [?f :fact/tx ?t] [?f :fact/e ?p] [?b :box/path ?p] [?b :box/id ?id]]";
+  check("q: the boxes Claude changed on this branch", (await cljs(page, `(q ${byClaude})`)) === "[:b9402]", await cljs(page, `(q ${byClaude})`));
+  check("... with inputs, as :in binds them",
+    (await cljs(page, "(q '[:find ?why . :in $ ?via :where [?t :tx/via ?via] [?t :tx/why ?why]] (db) :claude)")) === '"a bass"');
+  const claudePos = await cljs(page, "(norm (:pos @world))");
+
+  // in the past (as-of)
+  check("q at a point of the past: what the work was then", (await cljs(page, `(q ${byClaude} (db) ${pre})`)) === "[]");
+  check("... the boxes it had then", (await cljs(page, `(contains? (set (q '[:find [?id ...] :where [?b :box/id ?id]] (db) ${pre})) :b9402)`)) === "false");
+
+  // over a try (with), which does not enter the history
+  await cljs(page, '(def try1 (with "(box :b9404 \\"mtof\\" 1600 380)"))');
+  const tried = "'[:find [?id ...] :where [?t :tx/via :with] [?f :fact/tx ?t] [?f :fact/e ?p] [?b :box/path ?p] [?b :box/id ?id]]";
+  check("q over what (with …) tried", (await cljs(page, `(q ${tried} try1)`)) === "[:b9404]", await cljs(page, `(q ${tried} try1)`));
+  check("... which is not in the history", (await cljs(page, `(q ${tried})`)) === "[]");
+
+  // after an excision, what was excised is not there
+  await cljs(page, '(gesture! "(text! :b9401 \\"mtof 7\\")")');
+  const p7 = await cljs(page, "(norm (:pos @world))");
+  await cljs(page, '(gesture! "(text! :b9401 \\"mtof 8\\")")');
+  await cljs(page, '(gesture! "(move :b9401 1610 300)")');
+  const textsQ = "(set (q '[:find [?v ...] :in $ ?e :where [?f :fact/e ?e] [?f :fact/a :text] [?f :fact/v ?v]] (db) [:b9401]))";
+  check("q reads the facts of a box", (await cljs(page, `(contains? ${textsQ} "mtof 7")`)) === "true", await cljs(page, textsQ));
+  const blocked = await cljs(page, `(forget-blocker ${p7})`);
+  if (blocked !== "nil") check("a point can be excised for the test", false, blocked);
+  else {
+    await cljs(page, `(excise! [${p7}])`);
+    check("after excise!, what was excised is not in the index", (await cljs(page, `(contains? ${textsQ} "mtof 7")`)) === "false", await cljs(page, textsQ));
+    check("... what came after still is", (await cljs(page, `(contains? ${textsQ} "mtof 8")`)) === "true");
+    check("... and the excision's own transaction", (await cljs(page, "(pos? (count (q '[:find [?t ...] :where [?t :tx/via :excise]])))")) === "true");
+  }
+
+  // on another branch
+  const claudeTip = await cljs(page, "(norm (:pos @world))");
+  await cljs(page, `(goto ${JSON.stringify(pre.match(/"([^"]+)"/)[1])} ${pre.match(/ (\d+)\]$/)[1]})`);
+  await cljs(page, '(gesture! "(box :b9403 \\"mtof\\" 1600 420)")');
+  const ids = "(set (q '[:find [?id ...] :where [?b :box/id ?id]]))";
+  check("q on another branch: its boxes", (await cljs(page, `[(contains? ${ids} :b9403) (contains? ${ids} :b9402)]`)) === "[true false]", await cljs(page, ids));
+  check("... and the other branch's, at its point", (await cljs(page, `(let [s (set (q '[:find [?id ...] :where [?b :box/id ?id]] (db) ${claudeTip}))] [(contains? s :b9402) (contains? s :b9403)])`)) === "[true false]");
+
+  // Claude's work_history takes a query too
+  const tool = await page.evaluate((qs) => scittle.core.eval_string(`(in-ns 'user) (.execute (history-tool (db)) #js {:query ${JSON.stringify(qs)}} nil)`).then((r) => r.result || ("ERR " + r.error)), "[:find [?id ...] :where [?b :box/class \"mtof\"] [?b :box/id ?id]]");
+  check("work_history answers a Datalog query", String(tool).includes(":b9403"), String(tool));
+
+  // the facts of an event read where it acts are those of the whole work before and after it
+  check("ev-datoms gives the same facts as patch-datoms, for every event to here",
+    (await cljs(page, "(let [d (db)] (every? (fn [tx] (let [[nid k] (:pos tx) p0 (db-patch d [nid (dec k)]) p1 (db-patch d [nid k])] (= (set (ev-datoms p0 p1 (:event tx))) (set (patch-datoms p0 p1))))) (tx-log d)))")) === "true");
+
+  // the cost, with a long history (a value of the history made here: one segment of n events over 100 boxes). In
+  // the tests, 300 events: enough to see the index made once, kept and grown, without loading the machine while the
+  // audio suites run beside it; KAIROTIC_BENCH=1 measures 2000 and 5000 and prints the times.
+  const bench = !!process.env.KAIROTIC_BENCH;
+  const n = bench ? 2000 : 300;
+  const cost = await cljs(page, `(let [mk (fn [n] (let [evs (vec (concat (for [i (range 100)] [:box (keyword (str "b" (+ 5000 i))) "mtof" i 0])
+                                                                         (for [i (range (- n 100))] (if (even? i) [:move (keyword (str "b" (+ 5000 (mod i 100)))) i 1]
+                                                                                                        [:text (keyword (str "b" (+ 5000 (mod i 100)))) (str "mtof " i)]))))]
+                                                    {:kairotic/db true :line "bench" :nodes {"bench" {:id "bench" :parent nil :at 0 :author "p" :events evs :meta (vec (repeat n {:t 0 :via :repl}))}}
+                                                     :pos ["bench" n]}))
+                                      cnt '[:find (count ?f) . :where [?f :fact/a :text]]
+                                      t (fn [f] (let [t0 (js/performance.now) r (f)] [(js/Math.round (- (js/performance.now) t0)) r]))
+                                      big (mk ${n})
+                                      [t1 r1] (t #(q cnt big))
+                                      [t2 r2] (t #(q cnt big))
+                                      big2 (-> big (update-in [:nodes "bench" :events] conj [:text :b5000 "mtof last"])
+                                                   (update-in [:nodes "bench" :meta] conj {:t 0 :via :repl}) (assoc :pos ["bench" ${n + 1}]))
+                                      [t3 r3] (t #(q cnt big2))
+                                      grown (:grown @ds-stats)
+                                      [t4 _] (if ${bench} (t #(q cnt (mk 5000))) [nil nil])]
+                                  {:first t1 :again t2 :grown-by-one t3 :grown grown :n5000 t4 :counts [r1 r2 r3]})`);
+  console.log(`Datalog index cost, ${n} events (ms):`, cost);
+  check("the index is built once and kept", /:again (\d+)/.test(cost) && Number(cost.match(/:again (\d+)/)[1]) < Number(cost.match(/:first (\d+)/)[1]), cost);
+  check("... and grown by what is new", /:grown 1\b/.test(cost) && cost.includes(`:counts [${n} ${n} ${n + 2}]`), cost);
+
+  // back where the other suites expect: the branch with the boxes, which are taken away
+  await cljs(page, `(goto ${JSON.stringify(claudeTip.match(/"([^"]+)"/)[1])} ${claudeTip.match(/ (\d+)\]$/)[1]})`);
+  await cljs(page, "(delete :b9401) (delete :b9402)");
 }

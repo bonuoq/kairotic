@@ -45,6 +45,18 @@
   a `def`) is a line of the REPL; the tab is written again from the patch if nothing else in it was unapplied.
   `patch-diff` (`kairotic.release`) now also writes pinned lines, layers, marks and projections, so a release keeps
   them too.
+- **Querying the history with Datalog** (discussion #382, idea 7). `(q '[:find …])` and `(pull pattern eid)` /
+  `(entity eid)`, answered by DataScript itself (`datascript@1.8.1`, its npm build from jsDelivr, loaded with the
+  first query; EPL-1.0): `(q query)` where you are, `(q query db)`, `(q query db pos)` at any point of any branch,
+  `(q query (with …))` over a try; more arguments are the inputs of its `:in`. The history stays the source of truth:
+  DataScript gets an index made from it, one per value of the history, when a query first asks for it, kept while
+  that value serves and grown with the new events when the history goes on along the same path (only what is new is
+  read); nothing is written back. The index holds the transactions (`:tx/via :tx/box :tx/why :tx/kind :tx/op :tx/seq
+  :tx/t :tx/author :tx/pos`), the facts of each (`:fact/tx :fact/e :fact/a :fact/v :fact/added`) and the work at the
+  point (`:box/…`, `:line/…`), with the schema made from `(schema :history)`. Through DataScript's JS API keywords
+  travel as their text and vectors as EDN, and q writes the query and decodes the results the same way. Claude's
+  `work_history` tool takes a Datalog query too. Nothing changes in the interface and nothing loads with the page.
+
 - **Study 66 · compression: the uses heard, and the description as a tree** (discussion #399). The same rules, their
   uses coded the way a listener learns them (`bits.mjs`): which rule comes is a word of a lexicon (the first time an
   escape and its number), a figure's pitches each voice's step from the same voice of its last use, a motif's start
