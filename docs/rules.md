@@ -212,7 +212,8 @@ in MIDI (a style's `ranges`); `dissonance`'s `overStruck` (a passing tone agains
 `weakHeld` (a note held into a dissonance on a weak unit, down by step after); `parallels` `direct: "outer"`.
 `@kairotic/rules` 0.19.0: `bach-4` 1.2.0, `dissonance`'s `bachSevenths` (a 7th held while the bass moves under it into a
 consonance; up by step where the bass takes its resolution, V4/3 → I6; free where the bass takes the 7th itself);
-notes given with a key (a bass note's `key`, `fromNotes`'s `code(m, t)`) are spelt in it (`degreeIn` in `tonal.mjs`).
+notes given with a key (a bass note's `key`, `fromNotes`'s `code(m, t)`) are spelt in it (`degreeIn` in `tonal.mjs`), and
+notes given with a name (a note's `name`, `code("F#4")`) as they are spelt.
 
 ## Next
 

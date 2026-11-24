@@ -3,11 +3,14 @@
 ## Unreleased
 
 - **Bach's 7ths, and his notes spelt in their keys** (`@kairotic/rules` 0.19.0, `bach-4` 1.2.0; `@kairotic/cac` 0.16.6).
-  `bach-4` keeps 486 of Bach's 2,272 phrases as he wrote them (1.1.0: 426). `dissonance`'s `bachSevenths`: a 7th held
+  `bach-4` keeps 494 of Bach's 2,272 phrases as he wrote them (1.1.0: 426). `dissonance`'s `bachSevenths`: a 7th held
   while the bass moves under it into a consonance (ii7 → I6, vi7 over the bass rising a step), up by step where the bass
   takes the note it would have gone down to (V7 → I6, V4/3 → I6), free where the bass takes the 7th itself. And a
   note given with a key — a bass note's `key`, `fromNotes`'s `code(m, t)`, the soprano given — is spelt in it
   (`degreeIn` in `tonal.mjs`): F in A minor where the chorale is in G, not E♯, which read a 6th as a 7th.
+  The corpus keeps **Bach's own spelling**: `names` beside `satb` (`"F#4"`, `"Bb3"`, as Sapp's edition writes them),
+  and a name in each note of `lines`; the engine reads a note as it is spelt — a bass or soprano note's `name`,
+  `fromNotes`'s `code("F#4")` — (486 phrases kept spelling the MIDI numbers in their keys, 494 as Bach spelt them).
   `chorale-4` and the book's studies as they were.
 - **The chorales' phrases in their keys** (#301, #399). Every phrase of `studies/_shared/chorales/phrases.json` has
   `keys`: the key each quarter is in, read from the four voices (`localKeys` in `tools/kern.mjs`: among the chorale's

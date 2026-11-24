@@ -12,7 +12,7 @@
 //
 // Step 2 of #353: one voice over a bass. Two and three upper voices, styles in EDN and comes come next.
 
-import { mod, sign, keyOf, codeOf3, codeDegree, codeAlter, localOf, localNote, FIG_CLASS, CLASS_FIG, isDominant, degreeOf, degreeIn, parseKey, guessKey } from "./tonal.mjs";
+import { mod, sign, keyOf, codeOf3, codeDegree, codeAlter, localOf, localNote, FIG_CLASS, CLASS_FIG, isDominant, degreeOf, degreeIn, codeOf, parseKey, guessKey } from "./tonal.mjs";
 import { melodicParts, verticalParts, total, choose, temperature, defaultWeights } from "./soft.mjs";
 import { functionOf, grammarErrors } from "./functions.mjs";
 
@@ -1176,12 +1176,16 @@ export function fourOverBass(spec = {}) {
            judge: (R) => SV.judgeW([R.soprano, R.alto, R.tenor], `the voices are not ${n} units long`), name: Sv.name, degree: Sv.degree };
 }
 
+// a note's name ("F#4", "Bb3", "C##5") as degree and alteration in K, or null (no name, or too far from K to write)
+const spelt = (K, name) => { if (!name) return null; try { const c = codeOf(K, name); return { d: codeDegree(c), r: codeAlter(c) }; } catch (e) { return null; } };
+
 // ─────────────────────────────── from a tree: a bass given as notes (the cac box, discussion #323) ───────────────────────────────
-/** The bass's units from notes [{midi, units, fig (a figuring: "6/5"), key, strong: [one a unit]}] in K. */
+/** The bass's units from notes [{midi, name (as spelt: "F#4"), units, fig (a figuring: "6/5"), key, strong: [one a unit]}] in K. */
 export function bassFromNotes(notes, K, voices = 4, fill = false) {
   const table = voices >= 4 ? CHORDS4 : CHORDS, units = [], unknown = [];
-  // (each note spelt in its own key, where it has one: F in A minor, not E♯ as G major would)
-  const drs = notes.map((nt) => degreeIn(K, nt.midi, parseKey(nt.key)));
+  // (each note as it is spelt — its name, "F#4", where it has one: an edition's —, else in its own key, where it has
+  // one: F in A minor, not E♯ as G major would)
+  const drs = notes.map((nt) => spelt(K, nt.name) || degreeIn(K, nt.midi, parseKey(nt.key)));
   notes.forEach((nt, i) => {
     const dr = drs[i];
     if (!dr) throw new Error(`note ${i + 1}: not a pitch of ${K.tonic} ${K.mode}`);
@@ -1249,8 +1253,9 @@ export function fromNotes(spec = {}) {
   // (a soprano given — notes [{midi, units}] in the bass's units, a rest {midi: null} —: its code a unit; the alto and
   // the tenor written between it and the bass, the chords chosen by the rules — the functions among them)
   // (a note spelt in its unit's key, where the bass gives one)
+  // (or as it is spelt, where it has a name)
   const codeOfMidi = (m, t) => { const dr = degreeIn(K, m, units[t] && units[t].key); return dr ? codeOf3(dr.d, dr.r) : null; };
-  const given = spec.soprano && voices >= 4 ? { soprano: spec.soprano.flatMap((x) => Array(Math.max(1, x.units || 1)).fill(x.midi === null || x.midi === undefined ? null : x.midi)).map((m, t) => (m === null ? null : codeOfMidi(m, t))) } : null;
+  const given = spec.soprano && voices >= 4 ? { soprano: spec.soprano.flatMap((x) => Array(Math.max(1, x.units || 1)).fill(x.midi === null || x.midi === undefined ? null : x)).map((x, t) => { if (x === null) return null; const dr = spelt(K, x.name); return dr ? codeOf3(dr.d, dr.r) : codeOfMidi(x.midi, t); }) } : null;
   if (given && given.soprano.length !== units.length) throw new Error(`the soprano is ${given.soprano.length} units long, the bass ${units.length}`);
   const make = (bass, fig) => (voices >= 4 ? fourOverBass({ key, bass, figured: fig, ro, style: spec.style, given })
     : voices === 3 ? partsOverBass({ key, bass, figured: fig, ro, style: spec.style })
@@ -1259,8 +1264,8 @@ export function fromNotes(spec = {}) {
   const names = voices >= 4 ? ["soprano", "alto", "tenor"] : voices === 3 ? ["top", "middle"] : ["top"];
   const asVoices = (R) => (R === null || R === undefined ? null : voices === 2 ? { top: R } : R);
   const midi = (c) => K.midi(codeDegree(c), codeAlter(c));
-  // (a MIDI note's code; given a unit, spelt in its key)
-  const code = (m, t) => { const dr = t === undefined ? degreeOf(K, m) : degreeIn(K, m, units[t] && units[t].key); return dr ? codeOf3(dr.d, dr.r) : null; };
+  // (a MIDI note's code; given a unit, spelt in its key; a name's — "F#4" — as it is spelt)
+  const code = (m, t) => { if (typeof m === "string") { const dr = spelt(K, m); return dr ? codeOf3(dr.d, dr.r) : null; } const dr = t === undefined ? degreeOf(K, m) : degreeIn(K, m, units[t] && units[t].key); return dr ? codeOf3(dr.d, dr.r) : null; };
   const V0 = voices >= 4 ? P.soprano : voices === 3 ? P.top : P;
   // (a code's name as a tree writes it: "bb4", "f#3")
   const spell = (c) => K.name(codeDegree(c), codeAlter(c)).replace("𝄫", "bb").replace("𝄪", "##").replace("♭", "b").replace("♯", "#").replace(/^[A-G]/, (x) => x.toLowerCase());
