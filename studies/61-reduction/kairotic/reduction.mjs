@@ -198,8 +198,9 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null,
  * slice wherever it stands (an appoggiatura on a strong unit is an ornament too); when a pass finds nothing the
  * stratum goes up. Only where nothing legal is left does a pass take one step the rules refuse, the cheapest.
  * temp (0: always the cheapest) and r (a random number in [0, 1), drawn anew at each step) give other readings: an
- * analysis is an interpretation. economy (0: none) adds to each step economy · bits / 4, the bits of its word given
- * the words of the steps already taken (lexicon): the briefest derivation preferred.
+ * analysis is an interpretation. economy (0: none) adds to each step economy · (bits − bits of a new word) / 4, the
+ * bits of its word given the words of the steps already taken (lexicon) — a discount for a word said before: the
+ * briefest derivation preferred.
  */
 export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, temp = 0, r = Math.random, judge: judgeOf = null, economy = 0, explanations = economy ? 8 : 1 } = {}) {
   const notes = notesOfPhrase(phrase, per), units = split(phrase.melody).length;
@@ -209,7 +210,9 @@ export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, 
   let path = slicesOf(notes);
   const levels = [path], steps = [], top = 3;
   const lex = lexicon();
-  const priced = (cs) => (economy ? cs.map((c) => { const e = economy * lex.bits(c.key) / 4, parts = { ...c.parts, economy: e }; return { ...c, parts, cost: c.cost + e }; }) : cs);
+  // (counted from a word never said: a discount for a word said before — the same choices, every candidate weighed at
+  // the same moment)
+  const priced = (cs) => (economy ? cs.map((c) => { const e = economy * (lex.bits(c.key) - lex.bits("")) / 4, parts = { ...c.parts, economy: e }; return { ...c, parts, cost: c.cost + e }; }) : cs);
   const choose1 = (cs) => { const c = pick(priced(cs), (x) => x.cost, temp, temp > 0 ? r() : undefined); lex.add(c.key); return c; };
   let stratum = 0;
   for (;;) {

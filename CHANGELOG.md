@@ -4,7 +4,7 @@
 
 - **Study 61 · reduction: the briefest reading** (discussion #342). The analysis now weighs what its derivation takes
   to say, as Study 64's florid lines do: each step is a word — its operation and, for each note it explains, the
-  ornament, the voice and the step from its parent, wherever it stands — and costs `economy · bits / 4`, the bits of
+  ornament, the voice and the step from its parent, wherever it stands — and is discounted by `economy · (bits − bits of a new word) / 4`, the bits of
   that word given the words already said (a word said before cheap, its inversion half as good, a new one dear). An
   unsplit now offers every way to explain its notes (`unsplits`), so where a note could be read two ways the
   analysis can prefer the way it has used. **Measured:** the three incipits read exactly as before; a rising sequence
