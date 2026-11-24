@@ -7,6 +7,17 @@
   0.3.0, *How Kairotic is built*, issue, pull request and Discussions templates; the README lists every official
   package and every dependency with its version and licence. Every source file carries its SPDX header, and
   `tests/spdx.mjs` fails on one that does not.
+- **The work's code in chains** (discussions #407, #380, #399). The Code tab can write the lines of the work as
+  chains (**-> chains**, remembered in this browser): lines that follow each other in the work's order as
+  `(-> :b1 (to :b2) (to 1 :b3 0))`, lines in a row from one box as `(doto :b1 (to :b2) (to :b3))`, a line alone as a
+  `connect`, and names in place of ids. Applied, it gives back the same lines in the same order (the order messages
+  fan out in), so it changes nothing: a second writing of the same patch, its structure easier to read
+  (`lines->chains`, `(patch->code p :chains)`, `(chains! true)`).
+- **Live coding: chains that can be evaluated again** (discussion #407). `to` takes a name for the box it makes,
+  `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))`: the first time the boxes are made below
+  each other; evaluated again only what changed changes (nothing, or one text), a named box moved by hand stays where
+  it is, and a line already there is not made twice. `(to a o :amp "text" i)` for other ports. The Live view's example
+  uses it.
 - **Bach's chorales, phrase by phrase** (#301, #399). `studies/_shared/chorales/phrases.json`: 2,272 phrases from the
   370 chorales, cut at the fermatas, in the engine's format (`satb` a quarter at a time, `held`, `strong`, the ends
   `A` and `B`, the key and the cadence, each voice's `lines` with its eighths) — what Study 63's `bridges.mjs` and

@@ -715,11 +715,11 @@
         code (when from (str/trim (subs text from to)))]
     (if-not (and (seq code) (balanced? code))
       (repl-print! "err" "Nothing to evaluate here: put the cursor on a form, or select some code.")
-      (let [rest-clean (same-code? (str (subs text 0 from) (subs text to)) (patch->code (current)))
+      (let [rest-clean (same-code? (str (subs text 0 from) (subs text to)) (shown-code (current)))
             line (when-let [e @code-ed] (.cursorLine e))]
         (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
         (eval-calls! code)
-        (when (or rest-clean (same-code? (code-text) (patch->code (current))))
+        (when (or rest-clean (same-code? (code-text) (shown-code (current))))
           (swap! ui assoc :dirty false)
           (render-code (current))
           (when-let [e @code-ed]
@@ -831,7 +831,7 @@
 ;; a box called by its name is the same box each time: change 220 and evaluate again
 (box :osc \"osc~ 220\")
 
-(-> :osc (to \"gain~ 0.2\") (to \"dac~ 1 2\"))
+(-> :osc (to :amp \"gain~ 0.2\") (to :out \"dac~ 1 2\"))
 
 (play)
 ")

@@ -137,7 +137,10 @@ que un bloque se puede evaluar tantas veces como quieras. La caja conserva su id
 una cosa más que guarda, se muestra junto a su id, se escribe en el código como `(name-box :b7 :osc)`, y todos los
 comandos lo aceptan en lugar del id: `(connect :osc 0 :out 0)`, `(text! :osc "osc~ 440")`, `(send! :osc 220)`,
 `(-> :osc (to "dac~ 1 2"))`. Un nombre es de una sola caja: `(name-box :b9 :osc)` se lo da a otra; `(name-box :b9 nil)`
-se lo quita.
+se lo quita. `to` también acepta un nombre para la caja que hace:
+`(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))` se puede evaluar una y otra vez —solo cambia
+lo que ha cambiado, y una caja con nombre que moviste a mano se queda donde la pusiste—. `(to a o :amp "texto" i)`
+para otros puertos.
 
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
 `clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son
@@ -550,7 +553,9 @@ la barra lo oculta o lo muestra. Este navegador recuerda cómo lo dejaste. Desde
 `(side-panel false)`, `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
 
 - **Code** — la obra como **Calls** (llamadas: `box`, `connect`, …), editable: Ctrl/⌘+Enter las aplica (solo
-  lo que cambian, como un evento), ⇧+Intro evalúa sola la forma del cursor. **Data** muestra la misma obra como datos (EDN): el estado que produce la
+  lo que cambian, como un evento), ⇧+Intro evalúa sola la forma del cursor. **-> chains** escribe las líneas
+  que se siguen como cadenas —`(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, con los nombres en
+  lugar de los ids—: la misma obra, en el mismo orden, leída como va la señal (este navegador recuerda la elección). **Data** muestra la misma obra como datos (EDN): el estado que produce la
   historia, todas las claves de todas las cajas, en solo lectura, para inspeccionarlo (plegado y búsqueda
   con Ctrl/⌘+F). Lo que hayas editado sin ejecutar sigue en las llamadas mientras miras los datos.
 - **Components** — las clases que conoce esta obra. Las cajas que las definen (`component`) se guardan
