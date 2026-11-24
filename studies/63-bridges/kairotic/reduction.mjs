@@ -27,9 +27,10 @@
 //
 // Pure data and functions.
 
-import { notesOfPhrase, slicesOf, unsplits, unspread, unsuspend, sonorous, phraseOfPath, pitchOf, steps as stepsOf, ORNAMENTS } from "./protovoices.mjs";
+import { notesOfPhrase, slicesOf, unsplits, unspread, unsuspend, sonorous, phraseOfPath, pitchOf, steps as stepsOf, midiOf as midiOfName, ORNAMENTS } from "./protovoices.mjs";
 import { melodicParts, total, pick, choose, temperature } from "./soft.mjs";
 import { lexicon as bitsLexicon, lengthOf, economyOf } from "./bits.mjs";
+import { functionOf, impliedChord, grammarErrors } from "./functions.mjs";
 import { check, rangeOf, endingOf, PER, LINE, MIN_NOTES } from "./incipit.mjs";
 import { figuring } from "./figuring.mjs";
 import { keyOf, codeOf, codeDegree, codeAlter } from "./partimento.mjs";
@@ -190,12 +191,31 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null,
  * bits of its word given the words of the steps already taken (lexicon) — a discount for a word said before: the
  * briefest derivation preferred.
  */
-export function reduce(phrase, { key = { tonic: "C" }, per = PER, judge: judgeOf = null, ...o } = {}) {
+export function reduce(phrase, { key = { tonic: "C" }, per = PER, judge: judgeOf = null, functional = false, ...o } = {}) {
   const notes = notesOfPhrase(phrase, per), units = split(phrase.melody).length;
   // (judge: how a level is checked — by default checkPath, the rules of every phrase on its grid; a study with
   // another grid gives its own, its errors' units on the phrase's units)
   const judge = judgeOf || ((p) => checkPath(p, phrase, key, per));
-  return { phrase, key, units, ...reduceNotes(notes, { per, judge, ...o }) };
+  // (functional: the tonal functions judge the levels too, the chord of each slice as its two voices imply it)
+  return { phrase, key, units, functional, ...reduceNotes(notes, { per, judge, functional: functional ? key : null, ...o }) };
+}
+
+// ─── the tonal functions a level must keep (@kairotic/rules' functions.mjs) ───
+/** Each slice's function in the key: its notes as a chord (two voices completed as they imply it). */
+export const slicesFunctions = (path, key) => path.map((s) => functionOf(impliedChord(s.notes.map((n) => midiOfName(n.pitch)), key), key));
+/**
+ * A judge of the tonal functions for any level (a reduction's judge): the grammar of a tonal phrase (functions.mjs:
+ * never D → S, every applied dominant resolved) on the level's slices, an error counting only where the level makes it
+ * — between two slices that were not neighbours on the surface (a succession the piece itself has is the piece's,
+ * not the step's: two voices only imply their chords, and a partimento's ⑥ with a 6th after ⑦ may read S after D).
+ * Its errors on the units' grid (1-based), as checkPath's.
+ */
+export function functionalJudge(key, surface) {
+  const near = new Set(surface.slice(1).map((s, i) => surface[i].on + ":" + s.on));
+  return (path) => {
+    const errs = grammarErrors(slicesFunctions(path, key), { key, end: false }).filter((e) => !near.has(path[e.i - 1].on + ":" + path[e.i].on));
+    return { ok: !errs.length, errors: errs.map((e) => ({ unit: path[e.i].on + 1, at: `unit ${path[e.i].on + 1}`, reason: e.reason })) };
+  };
 }
 
 /**
@@ -205,11 +225,16 @@ export function reduce(phrase, { key = { tonic: "C" }, per = PER, judge: judgeOf
  * ornaments and the consonance of a sonority only); maxSpread: the notes one sonority may have; keep(path, notes) →
  * (i → whether slice i stays: the frame's retention; by default the first slice and the cadence's); strict: where
  * nothing legal is left the reduction stops (by default it takes the cheapest step the judge refuses, alone, and
- * goes on — strict for a judge whose rules no level may break, as the tonal functions). → {per, notes,
+ * goes on — strict for a judge whose rules no level may break, as the tonal functions); functional: a key, and the
+ * tonal functions judge every level too (functionalJudge). → {per, notes,
  * levels, steps}.
  */
-export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math.random, judge = null, economy = 0, explanations = economy ? 8 : 1, maxSpread = 4, keep = null, strict = false } = {}) {
+export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math.random, judge: judge0 = null, economy = 0, explanations = economy ? 8 : 1, maxSpread = 4, keep = null, strict = false, functional = null } = {}) {
   let path = slicesOf(notes);
+  // (the tonal functions, where a key is given: a level may not make the harmony go back — its own judge beside the
+  // phrase's)
+  const fj = functional ? functionalJudge(functional, path) : null;
+  const judge = !fj ? judge0 : !judge0 ? fj : (p) => { const a = judge0(p), b = fj(p); return { ok: a.ok && b.ok, short: a.short, errors: [...(a.errors || []), ...b.errors] }; };
   const levels = [path], steps = [], top = 3;
   const lex = lexicon();
   // (counted from a word never said: a discount for a word said before — the same choices, every candidate weighed at
@@ -245,7 +270,8 @@ export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math
     if (stratum < top) { stratum++; continue; }
     // nothing legal left: the cheapest step the rules refuse, alone, if any (none where strict)
     if (strict) break;
-    const all = candidates(path, notes, { per, weights, judge, explanations, maxSpread, keep });
+    // (the tonal functions are never given up: only a step that keeps them, if any)
+    const all = candidates(path, notes, { per, weights, judge, explanations, maxSpread, keep }).filter((c) => !fj || fj(c.path).ok);
     if (!all.length) break;
     const { path: next, touches, ...step } = choose1(all);
     steps.push({ ...step, level: levels.length, among: all.length });

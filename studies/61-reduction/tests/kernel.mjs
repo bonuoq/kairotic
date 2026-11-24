@@ -3,6 +3,7 @@
 //   node -e 'import("./studies/61-reduction/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import * as PV from "../kairotic/protovoices.mjs";
 import * as R from "../kairotic/reduction.mjs";
+import * as F from "../kairotic/functions.mjs";
 import { INCIPITS, check, rangeOf } from "../kairotic/incipit.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -74,6 +75,16 @@ export async function run() {
   is("… and every level of it passes the hard rules", Q3.levels.every((_, k) => R.checkLevel(Q3, k).ok));
   notes.push(`the rising sequence: ${dq0.bits.toFixed(1)} bits in ${dq0.words} words without economy, ${dq3.bits.toFixed(1)} in ${dq3.words} with`);
   is("every way to unsplit a slice: the first is unsplit's, the others dearer", (() => { const us = PV.unsplits(S0, 3); return us.length > 1 && us[0].explained.map((e) => e.orn).join() === PV.unsplit(S0, 3).explained.map((e) => e.orn).join() && us.every((x, j) => j === 0 || x.explained.reduce((a, e) => a + e.cost, 0) >= us[0].explained.reduce((a, e) => a + e.cost, 0)); })());
+
+  // ─── the tonal functions (functions.mjs): what the economy may not take away ───
+  const breaks = (an) => an.levels.some((L) => R.functionalJudge(an.key, an.levels[0])(L).errors.length > 0);
+  const s76f = R.reduce(s76.phrase, { key: s76.key, economy: 3 }), s76t = R.reduce(s76.phrase, { key: s76.key, economy: 3, functional: true });
+  is("two voices imply their chords: the C major incipit reads T T T T S D D T (⑤ with a 4th above, C/G, the cadential 6/4: a dominant)", R.slicesFunctions(A.levels[0], sc.key).map(F.label).join("") === "TTTTSDDT");
+  is("without the functions, the economy makes a level go back in the 7–6 chain (D → S where the surface never does)", breaks(s76f));
+  is("… with them, no level does: a step that would is refused, even where nothing else is left", !breaks(s76t) && s76t.levels.length >= s76f.levels.length);
+  const sqf = R.reduce(sq.phrase, { key: sq.key, economy: 3 }), sqt = R.reduce(sq.phrase, { key: sq.key, economy: 3, functional: true });
+  is("… the rising sequence too: its frame without them goes D → S, with them D D D T", breaks(sqf) && !breaks(sqt) && R.slicesFunctions(sqt.levels[sqt.levels.length - 1], sq.key).map(F.label).join("") === "DDDT");
+  is("… and where nothing was broken, nothing changes: the A minor incipit's levels the same", JSON.stringify(R.reduce(am.phrase, { key: am.key, functional: true }).levels.map((L) => L.length)) === JSON.stringify(C.levels.map((L) => L.length)));
 
   // ─── as MEI ───
   const M0 = R.meiOf(B, 0).mei, ties = (m) => (m.match(/tie="i"/g) || []).length;

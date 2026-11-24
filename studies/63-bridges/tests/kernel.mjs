@@ -65,6 +65,13 @@ export async function run() {
   is("… every note of them legal (the bridge's hard rules untouched)", m3.every((m) => { const v = B.voiceOver({ bass: m.bass, melody: m.melody, cadence: m.cadence }, { tonic: "C" }, { range: { lo: rangeOf(A, { tonic: "C" }).lo, hi: rangeOf(A, { tonic: "C" }).lo + 12 } }); const u = m.melody.split(" "); return u.every((nm, t) => v.V.check(u.slice(0, t).map(v.code), t, v.code(nm)) === null); }));
   is("… and economy 0 is the bridge as it was: the same draws", JSON.stringify(m0.map((m) => m.melody)) === JSON.stringify(Array.from({ length: 20 }, (_, i) => B.morphPhrases(A, Bp, { tonic: "C" }, { r: rng(1 + i), head: 3, tail: 4 })).filter(Boolean).map((m) => m.melody)));
 
+  // ─── the tonal functions above the economy ───
+  const errsOf = (ms) => ms.reduce((a, m) => a + B.lineFunctions(m, { tonic: "C" }, m.melody, { range: { lo: rangeOf(A, { tonic: "C" }).lo, hi: rangeOf(A, { tonic: "C" }).lo + 12 } }).errors.length, 0) / ms.length;
+  const mf = Array.from({ length: 20 }, (_, i) => B.morphPhrases(A, Bp, { tonic: "C" }, { r: rng(1 + i), economy: 3, functional: 6, head: 3, tail: 4 })).filter(Boolean);
+  is("a morph with economy alone: its two voices imply a harmony that goes back (D → S) or leaves an applied dominant unresolved, about once a line", errsOf(m3) > 0.5);
+  is("… with the functions above the economy (6 a broken succession): almost never (20 draws each), every draw still found", mf.length === 20 && errsOf(mf) < 0.2);
+  notes.push(`grammar errors a morph: ${errsOf(m3).toFixed(2)} with economy alone, ${errsOf(mf).toFixed(2)} with the functions · e.g. ${mf[0].melody}`);
+
   // ─── rhythms ───
   is("the metrical weight of 16 pulses: the downbeat 4, the half bar 3, the quarters 2, the eighths 1, the rest 0", B.pulseWeight(16).slice(0, 8).join("") === "40102010" && B.pulseWeight(16)[8] === 3);
   const r1 = B.rhythmOf("x..x..x...x.x..."), r2 = B.rhythmOf("x.x...x.x...x...");

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **The tonal functions in two voices: Studies 61 and 63** (`@kairotic/rules` 0.13.0: `impliedChord`; discussion
+  #399). Two voices imply their chord (a 3rd or a 5th over the bass its root, a 6th the bass its 3rd, a 4th the
+  cadential 6/4), so the grammar of `functions.mjs` reads a partimento's phrase too:
+  - **Study 61 · reduction:** `reduce(…, {functional: true})` (on in the page) — no level may break the grammar where
+    the surface did not (`functionalJudge`, any notes: `reduceNotes`' `functional`), never given up even where
+    nothing else is left. The 7–6 chain and the rising sequence keep their direction (without them the economy
+    reached D → S); the incipits where nothing broke read as before.
+  - **Study 63 · bridges:** `functionalCost` — each unit's implied chord, a succession the grammar refuses costing
+    `functional` more (6 on the page, for the variation and the morph): a unit's cost, so the bridge stays exact. A
+    morph broke the grammar 0.95 times a line with the economy alone, 0.05 with the functions.
+  - Study 64 (florid) keeps the copies but not the rule: its counterpoint is modal, Fux's, where these functions do
+    not hold.
 - **Tonal functions the economy may not take away: `functions.mjs`** (`@kairotic/rules` 0.13.0; discussions #399,
   #321). What a chord does in a key (T, S, D, an applied dominant and its target; the cadential 6/4 a dominant, a
   diminished 7th the dominant's where it holds the leading tone) and the grammar of a tonal phrase: never D → S,

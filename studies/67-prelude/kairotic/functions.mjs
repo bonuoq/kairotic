@@ -107,6 +107,32 @@ export function functionOf(pitches, key = { tonic: "C" }) {
   return out("T");
 }
 
+/**
+ * The chord two voices imply (a bass and a melody, as a partimento's are heard): the missing members added, the
+ * notes sounding kept — over a 3rd or a 5th the bass the root (its 5th or 3rd added, as the key's scale has it), over
+ * a 6th the melody the root (the bass its 3rd: its 5th added), over a 4th the bass the 5th (the root's 3rd added: a
+ * 6/4), over an octave the bass's triad; a dissonance (a 2nd, a 7th: a suspension, a passing note) the bass's triad.
+ * Three notes or more that already make a chord are taken as they are. → MIDI pitches.
+ */
+export function impliedChord(pitches, key = { tonic: "C" }) {
+  if (pitches.length >= 3 && chordOf(pitches) && chordOf(pitches).extra === null) return pitches;
+  const K = keyPc(key), scale = K.minor ? MINOR : MAJOR;
+  const lo = Math.min(...pitches), hi = Math.max(...pitches);
+  // (a pitch's degree: the scale's note at or below it; its pitch class back from a degree, ⑦ raised in minor's ⑤)
+  const degOf = (p) => { const x = mod(p - K.tonic, 12); let i = 6; while (i > 0 && scale[i] > x) i--; return 7 * Math.floor((p - K.tonic) / 12) + i; };
+  const pcOf = (d, rootDeg) => { let x = scale[mod(d, 7)]; if (K.minor && mod(rootDeg, 7) === 4 && mod(d, 7) === 6) x += 1; return mod(K.tonic + x, 12); };
+  const iv = mod(degOf(hi) - degOf(lo), 7), b = degOf(lo);
+  const add = [];
+  if (iv === 2) add.push([b, 4]);
+  else if (iv === 4) add.push([b, 2]);
+  else if (iv === 5) add.push([b - 2, 4]);
+  else if (iv === 3) add.push([b - 4, 2]);
+  else { add.push([b, 2]); add.push([b, 4]); }
+  const out = [lo, hi];
+  for (const [root, off] of add) { const pc = pcOf(root + off, root); let p = lo; while (mod(p, 12) !== pc) p++; out.push(p); }
+  return out.sort((a, b2) => a - b2);
+}
+
 /** The functions of a succession of chords (pitches each). */
 export const functionsOf = (chords, key) => chords.map((ps) => functionOf(ps, key));
 

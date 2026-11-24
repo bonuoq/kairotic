@@ -42,6 +42,9 @@ const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483
      Fn.grammarErrors(Fn.functionsOf([[50, 66, 72], [48, 64, 67]], C), { end: false }).length === 1 &&
      Fn.grammarErrors(Fn.functionsOf([[43, 59, 62], [52, 60, 67]], C)).length === 0 &&
      Fn.grammarErrors(Fn.functionsOf([[48, 64, 67], [43, 59, 65]], C)).some((e) => /tonic/.test(e.reason)));
+  is("… two voices imply their chord: C over C an octave the tonic; F–D (a 6th) Dm/F, the subdominant; G–C (a 4th) the cadential 6/4; D–F♯ V/G; in A minor E–B the dominant with its G♯",
+     lab([Fn.impliedChord([48, 72], C)]) === "T" && lab([Fn.impliedChord([53, 74], C)]) === "S" && lab([Fn.impliedChord([43, 72], C)]) === "D" &&
+     lab([Fn.impliedChord([50, 66], C)]) === "V/G" && Fn.impliedChord([52, 71], Am).includes(56));
   const Bt = await import("../packages/rules/assets/bits.mjs"), lx = Bt.lexicon();
   const first = lx.bits("Q:0,1"); lx.add("Q:0,1");
   is("bits.mjs: a word heard again cheaper than at first, its inversion between, a new one dearest; the inversion negates every number",
