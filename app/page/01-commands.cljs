@@ -1080,7 +1080,37 @@
 
 (defn box-num [k] (let [m (re-matches #"b(\d+)" (name k))] (if m (js/parseInt (second m) 10) 1e9)))
 
-(defn patch->code [p]
+(defonce code-style
+  ;; how the Code tab writes the lines of the work: :flat (a connect each) or :chains (->, doto, to), #407
+  (atom (or (try (some-> (.getItem js/localStorage "kairotic.code-style") keyword #{:flat :chains}) (catch :default _ nil)) :flat)))
+
+(defn lines->chains
+  "The lines of patch p written as chains where they follow each other in the work's order (#407, #380, #399): a
+   line that leaves the box the one before it reached goes on its chain, (-> :b1 (to :b2) (to 1 :b3 0)); lines in a
+   row from one box go together, (doto :b1 (to :b2) (to :b3)); a line alone is a connect. Boxes are called by their
+   names if they have them. Applied, the lines come back in exactly the same order (the order messages fan out in)."
+  [p]
+  (let [ls (vec (:lines p)) n (count ls)
+        nm (fn [id] (or (get-in p [:boxes id :name]) id))
+        step (fn [[_ o b i]] (if (and (zero? o) (zero? i)) (str "(to " (nm b) ")") (str "(to " o " " (nm b) " " i ")")))
+        run (fn [i same?] (loop [j i] (if (and (< (inc j) n) (same? (nth ls j) (nth ls (inc j)))) (recur (inc j)) j)))]
+    (loop [i 0 out []]
+      (if (>= i n)
+        out
+        (let [[a o b k :as l] (nth ls i)
+              j (run i (fn [x y] (= (nth x 2) (first y))))
+              d (run i (fn [_ y] (= a (first y))))]
+          (cond
+            (> j i) (recur (inc j) (conj out (str "(-> " (nm a) " " (str/join " " (map step (subvec ls i (inc j)))) ")")))
+            (> d i) (recur (inc d) (conj out (str "(doto " (nm a) " " (str/join " " (map step (subvec ls i (inc d)))) ")")))
+            :else (recur (inc i) (conj out (str "(connect " (nm a) " " o " " (nm b) " " k ")")))))))))
+
+(declare patch->code)
+(defn shown-code "The work's code as the Code tab writes it (flat, or in chains)." [p] (patch->code p @code-style))
+
+(defn patch->code
+  ([p] (patch->code p :flat))
+  ([p style]
   (let [ids (sort-by box-num (keys (:boxes p)))]
     (str/join "\n"
               (concat [";; boxes"]
@@ -1114,8 +1144,10 @@
                           (concat ["" ";; sizes"]
                                   (for [id sz :let [[w h] (get-in p [:boxes id :size])]] (str "(resize " id " " w " " h ")")))))
                       (when (seq (:lines p)) ["" ";; lines"])
-                      (for [[a o b i] (:lines p)]
-                        (str "(connect " a " " o " " b " " i ")"))
+                      (if (= style :chains)
+                        (lines->chains p)
+                        (for [[a o b i] (:lines p)]
+                          (str "(connect " a " " o " " b " " i ")")))
                       (mapcat (fn [id]
                                 (let [b (get-in p [:boxes id])
                                       ls ((:code (comp/model-of b)) id (:data b))]
@@ -1135,7 +1167,7 @@
                                 (when-let [r (get-in p [:boxes id :recipe])]
                                   ["" (str ";; recipe of " id (when (:stale r) " (stale: the buffer changed since)"))
                                    (str "(recipe " id " " (pr-str r) ")")]))
-                              ids)))))
+                              ids))))))
 
 ;; ───── the work as data, pretty: what the Data view of the Code tab shows ─────
 ;; Collections that fit in the width stay on one line; the others put one entry per line, aligned.
@@ -1355,12 +1387,27 @@
 (defn to
   "A box below box a, fed by it, as one event; returns its id, so a chain reads as the signal goes (#407):
    (-> (box \"osc~ 220\") (to \"gain~ 0.2\") (to \"dac~ 1 2\")). Outlet 0 to inlet 0, or (to a o \"text\" i);
-   with an id instead of a text it connects a to that box: (to :b3 :b9)."
+   with an id or a name instead of a text it connects a to that box: (to :b3 :b9). With a name and a text,
+   (to a :amp \"gain~ 0.2\"), the box is the one live code calls :amp: made the first time, the same after (its
+   text changed if it changed, left where it is), so a chain can be evaluated again and again:
+   (-> (box :osc \"osc~ 220\") (to :amp \"gain~ 0.2\") (to :out \"dac~ 1 2\")). (to a o :amp \"text\" i) for other ports."
   ([a b] (to a 0 b 0))
+  ([a nm text] (to a 0 nm text 0))
   ([a o b i]
    (as-one-event!
     (fn []
       (let [src (need-box a)
             id (if (keyword? b) (rid b) (box (str b) (:x src) (+ (:y src) to-gap)))]
+        (connect a o id i)
+        id))))
+  ([a o nm text i]
+   (when-not (live-name? nm) (fail "A name is a keyword that is not a box id: :amp, :out (not :b3)"))
+   (as-one-event!
+    (fn []
+      (let [src (need-box a)
+            ;; a box that already has the name stays where it is (it may have been moved by hand)
+            id (if (get-in (current) [:boxes (rid nm)])
+                 (named-box nm text nil nil)
+                 (named-box nm text (:x src) (+ (:y src) to-gap)))]
         (connect a o id i)
         id)))))

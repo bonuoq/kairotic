@@ -133,7 +133,10 @@ changed if it changed (`(box :osc "osc~ 330")` changes the oscillator, as one ev
 block can be evaluated as often as you like. The box keeps its id (`:b7`) for the work; the name is one more thing it
 keeps, shown beside its id, written in the code as `(name-box :b7 :osc)`, and every command takes it in place of the
 id: `(connect :osc 0 :out 0)`, `(text! :osc "osc~ 440")`, `(send! :osc 220)`, `(-> :osc (to "dac~ 1 2"))`. A name is one
-box's: `(name-box :b9 :osc)` gives it to another; `(name-box :b9 nil)` takes it away.
+box's: `(name-box :b9 :osc)` gives it to another; `(name-box :b9 nil)` takes it away. `to` takes a name too, for the box
+it makes: `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))` can be evaluated again and again —
+only what changed changes, and a named box you moved by hand stays where you put it. `(to a o :amp "text" i)` for
+other ports.
 
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as
 `str/…`) is that function, with no component to write: its other words are its arguments, read as EDN,
@@ -526,7 +529,9 @@ the bar hides or shows it. This browser remembers how you left it. From the REPL
 `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
 
 - **Code** — the work as **Calls** (`box`, `connect`, …), editable: Ctrl/⌘+Enter applies them (only what
-  they change, as one event), ⇧+Enter evaluates the form at the cursor alone. **Data** shows the same work as data (EDN): the state the history produces, every key of
+  they change, as one event), ⇧+Enter evaluates the form at the cursor alone. **-> chains** writes the lines
+  that follow each other as chains — `(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, names in
+  place of ids — the same work, in the same order, read as the signal goes (this browser remembers the choice). **Data** shows the same work as data (EDN): the state the history produces, every key of
   every box, read-only, to inspect it (folding and search with Ctrl/⌘+F). Edits not run yet stay in the
   calls while you look at the data.
 - **Components** — the classes this work knows. The boxes that define them (`component`) are kept

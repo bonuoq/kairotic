@@ -101,6 +101,13 @@ export async function run() {
   is("bridgesFor: the engine's format for every variant (all, and each layer off), two draws each", bs.length === 8 && ["all", "no-functions", "no-tension", "no-economy"].every((v) => bs.filter((b) => b.variant === v).length === 2) &&
      bs.every((b) => b.phrase === "test-c" && b.soprano.length === 8 && b.bass.length === 8 && b.key.tonic === "C" && b.strong.length === 8 && Array.isArray(b.layers)) && bs.find((b) => b.variant === "no-tension").layers.join() === "functions,economy");
 
+  // ─── smooth: what a leap costs (leapCost) ───
+  const meanInterval = (ms) => { let s2 = 0, n = 0; for (const m of ms) { const v = B.voiceOver({ bass: m.bass, melody: m.melody, cadence: m.cadence }, { tonic: "C" }); const u = m.melody.split(" ").map((x) => v.F.midiOf(v.code(x))); for (let t = 1; t < u.length; t++) { s2 += Math.abs(u[t] - u[t - 1]); n++; } } return s2 / n; };
+  const sm = Array.from({ length: 12 }, (_, i) => B.morphPhrases(A, Bp, { tonic: "C" }, { r: rng(1 + i), economy: 3, functional: 6, smooth: 2, head: 3, tail: 4 })).filter(Boolean);
+  const s0 = Array.from({ length: 12 }, (_, i) => B.morphPhrases(A, Bp, { tonic: "C" }, { r: rng(1 + i), economy: 3, functional: 6, smooth: 0, head: 3, tail: 4 })).filter(Boolean);
+  is("smooth: a morph moves by smaller intervals with leaps dearer (mean interval, 12 draws each)", sm.length === 12 && meanInterval(sm) < meanInterval(s0));
+  notes.push(`a morph's mean interval: ${meanInterval(s0).toFixed(2)} semitones without smooth, ${meanInterval(sm).toFixed(2)} with smooth 2`);
+
   // ─── rhythms ───
   is("the metrical weight of 16 pulses: the downbeat 4, the half bar 3, the quarters 2, the eighths 1, the rest 0", B.pulseWeight(16).slice(0, 8).join("") === "40102010" && B.pulseWeight(16)[8] === 3);
   const r1 = B.rhythmOf("x..x..x...x.x..."), r2 = B.rhythmOf("x.x...x.x...x...");
