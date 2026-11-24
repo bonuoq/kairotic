@@ -18,7 +18,9 @@
     ;; a figure said again over another chord (discussion #399)
     (let [fig [:voice {:defs {:F1 [:seq [:note {:pitch "c4" :dur 0.25}] [:note {:pitch "e4" :dur 0.25}] [:note {:pitch "g4" :dur 0.25}] [:note {:pitch "e4" :dur 0.25}]]}}
                [:use {:ref :F1}] [:use {:ref :F1 :pitches ["d4" "f4" "a4"]}] [:use {:ref :F1 :pitches [59 62 67]}]]]
-      (t/eq "a use re-pitches its fragment" (mt/pitches (mt/expand fig)) ["c4" "e4" "g4" "e4" "d4" "f4" "a4" "f4" "b3" "d4" "g4" "d4"]))
+      (t/eq "a use re-pitches its fragment" (mt/pitches (mt/expand fig)) ["c4" "e4" "g4" "e4" "d4" "f4" "a4" "f4" "b3" "d4" "g4" "d4"])
+      (t/eq "… or moves its voices from the use before" (mt/pitches (mt/expand (into [:voice (second fig)] [[:use {:ref :F1}] [:use {:ref :F1 :voices [0 1 2]}] [:use {:ref :F1 :voices [-1 0 -2]}]])))
+            ["c4" "e4" "g4" "e4" "c4" "f4" "a4" "f4" "b3" "f4" "g4" "f4"]))
     (t/eq "augment 2 doubles the duration" (mt/duration (mt/augment 2 motif)) 8)
     (t/eq "a read tree is the same tree" (mt/read-tree (mt/pp motif)) motif)
     (let [b (mt/transpose 2 motif)]

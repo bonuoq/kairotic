@@ -51,7 +51,7 @@ Any node can carry `:at`: an offset from the start of its parent that does not m
 | `:param` | `:name`, `:value`, and for a ramp `:to` and `:dur`: a parameter change coordinated with the score |
 | `:dyn` | `:mark "mf"`; `"<"` or `">"` with `:dur` is a hairpin |
 | `:text` | `:text "dolce"` |
-| `:use` | `:ref` (a key of `:defs`) and optionally `:pitches` (the fragment over other pitches: its distinct pitches, in the order they first come, become these — a figure said again over another chord), `:transpose`, `:invert`, `:retrograde`, `:augment` |
+| `:use` | `:ref` (a key of `:defs`) and optionally `:pitches` (the fragment over other pitches: its distinct pitches, in the order they first come, become these — a figure said again over another chord), `:voices` (the same, said as each voice's step in semitones from the same voice of the fragment's use before — the first time, from the fragment as written: `[0 -1 0 1 0]`), `:transpose`, `:invert`, `:retrograde`, `:augment` |
 
 The curves (`:gliss`, `:env`) go from 0 to 1 over the duration of the note, the same way a stroke
 of a freqt is drawn.

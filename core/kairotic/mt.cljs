@@ -474,13 +474,18 @@
    (let [t (with-meters (explicit (expand tree)))]
      (canon* delay t (transpose interval t)))))
 
+(defn distinct-pitches
+  "The distinct pitches of a fragment (MIDI), in the order they first come."
+  [t]
+  (vec (distinct (keep (fn [x] (when (and (node? x) (= :note (tag x))) (midi-of (attrs x)))) (tree-seq node? kids t)))))
+
 (defn repitch
   "The fragment over other pitches: its distinct pitches, in the order they first come, become `ps` (names or
    numbers), and every note of each takes its new pitch — a figure (a broken chord, an Alberti bass) said again
    over another chord. Pitches beyond the ones given stay."
   [ps tree]
   (let [t (expand tree)
-        order (distinct (keep (fn [x] (when (and (node? x) (= :note (tag x))) (midi-of (attrs x)))) (tree-seq node? kids t)))
+        order (distinct-pitches t)
         to (zipmap order ps)]
     (walk-notes (fn [a] (let [p (get to (midi-of a))]
                           (cond (nil? p) a
@@ -500,7 +505,7 @@
 
 ;; ───────── expansion: strings and references ─────────
 
-(def op-keys #{:ref :pitches :transpose :invert :retrograde :augment})
+(def op-keys #{:ref :voices :pitches :transpose :invert :retrograde :augment})
 
 (defn- from [x src] (if (node? x) (with-meta x src) x))
 
@@ -647,7 +652,7 @@
    melody string, {:rtm true} for what an :rtm stands for); nodes that come from :defs have no :src.
    ctx carries the meter in force (as :with-meters reads it) so that an :rtm can fill its measure."
   ([n defs depth] (expand* n defs depth nil))
-  ([n defs depth path] (expand* n defs depth path {:meter (volatile! [4 4]) :bar nil}))
+  ([n defs depth path] (expand* n defs depth path {:meter (volatile! [4 4]) :bar nil :last (volatile! {})}))
   ([n defs depth path ctx]
   (cond
     (string? n) (vec (map-indexed (fn [i x]
@@ -663,8 +668,16 @@
       (when-not d (throw (js/Error. (str "No fragment " (pr-str r) " in :defs"))))
       (let [xs (expand* d defs (inc depth) nil ctx)
             body (if (= 1 (count xs)) (first xs) (into [:seq] xs))
+            ;; :voices — each voice's step from the same voice of the fragment's use before (the first time, from the
+            ;; fragment as written): said as the :pitches it gives
+            last (:last ctx)
+            a (if-let [vs (:voices a)]
+                (let [before (or (when last (get @last k)) (distinct-pitches body))]
+                  (assoc (dissoc a :voices) :pitches (mapv (fn [p s] (+ p s)) before vs)))
+                a)
             varied (apply-ops a body)
             extra (apply dissoc a op-keys)]
+        (when last (vswap! last assoc k (distinct-pitches varied)))
         [(from (if (seq extra) [:seq extra varied] varied) (if path {:src path :use true} (meta n)))]))
     (= :rtm (tag n)) (rtm-expand n path (:bar ctx))
     :else

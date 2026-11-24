@@ -73,7 +73,10 @@ export async function run() {
   // in a tree: :defs and :use (re-pitched), the same notes
   const tree = treeOf(c, { name: "BWV 846" });
   is("BWV 846 as a tree: its figure in :defs, 32 uses re-pitched", /:defs \{:F1 \[:seq/.test(tree) && (tree.match(/\[:use \{:ref :F1 :pitches/g) || []).length === 32);
-  is("… and every tree is the piece again", Object.entries(P).every(([k, c]) => sameNotes(readTree(treeOf(c)), expand(c.items).length ? notesOf(expand(c.items)) : [])));
+  is("… and every tree is the piece again", Object.entries(P).every(([k, c]) => sameNotes(readTree(treeOf(c)), notesOf(expand(c.items)))));
+  const tv = treeOf(c, { voices: true });
+  is("… its uses as voices, each voice's step from the use before ([:use {:ref :F1 :voices [0 -2 2 2 1]}]), the piece again",
+     (tv.match(/:ref :F1 :voices \[/g) || []).length === 31 && tv.includes(":voices [0 -2 2 2 1]") && Object.values(P).every((c) => sameNotes(readTree(treeOf(c, { voices: true })), notesOf(expand(c.items)))));
   return { results, notes };
 }
 
@@ -87,16 +90,18 @@ function readTree(edn) {
   for (const m of edn.slice(defsAt + 7, bodyAt).matchAll(/:(\w+) (\[:seq .*?\]\])(?=\n|$)/gs)) defs[m[1]] = m[2];
   const items = (s) => [...s.matchAll(/\[:(note|use) \{([^}]*)\}\]/g)].map(([, k, a]) => ({ k, a }));
   const get = (a, key) => { const m = new RegExp(":" + key + " (\\[[^\\]]*\\]|\\S+)").exec(a); return m && m[1]; };
-  const out = [];
+  const out = [], last = {};
   const play = (s, t0, map) => {
     for (const { k, a } of items(s)) {
       const at = t0 + 4 * +get(a, "at");
       if (k === "note") { const p = midi(JSON.parse(get(a, "pitch"))); out.push([at, 4 * +get(a, "dur"), map(p)]); continue; }
       const body = defs[get(a, "ref").slice(1)];
-      const ps = get(a, "pitches"), tr = +(get(a, "transpose") || 0);
-      if (ps) {
-        const to = ps.slice(1, -1).split(" ").map((x) => midi(JSON.parse(x)));
-        const order = [...new Set(items(body).map(({ a }) => midi(JSON.parse(get(a, "pitch")))))];
+      const ps = get(a, "pitches"), vs = get(a, "voices"), tr = +(get(a, "transpose") || 0), ref = get(a, "ref");
+      const order = [...new Set(items(body).filter((x) => x.k === "note").map(({ a }) => midi(JSON.parse(get(a, "pitch")))))];
+      if (ps || vs) {
+        const to = ps ? ps.slice(1, -1).split(" ").map((x) => midi(JSON.parse(x)))
+          : vs.slice(1, -1).split(" ").map((d, i) => (last[ref] || order)[i] + +d);
+        last[ref] = to;
         play(body, at, (p) => map(to[order.indexOf(p)]));
       } else play(body, at, (p) => map(p + tr));
     }

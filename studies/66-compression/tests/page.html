@@ -20,6 +20,9 @@ try {
   is("… the piece written with its figure", d.querySelector("#written span.use").textContent.startsWith("F1(C4 E4 G4 C5 E5)"));
   is("how much each piece compresses: four bars, and each heard", d.querySelectorAll("#bars .bar").length === 8 && d.querySelectorAll("#bars .bar.heard").length === 4);
   is("… heard, BWV 846 under a fifth; as a tree, its figure in :defs", /heard\s*\d+ bits · 1\d\.\d %/.test(facts()) && /:defs \{:F1/.test(d.getElementById("tree").textContent));
+  d.getElementById("tree-voices").click();
+  is("… and as voices, each voice's step from the use before", d.getElementById("tree").textContent.includes(":ref :F1 :voices [0 -2 2 2 1]"));
+  d.getElementById("tree-voices").click();
   w.kairoticStudy.select("bwv1007-prelude");
   is("the first cello suite's prelude: more rules, its first figure over G D B A", d.querySelectorAll("#rules .rule").length > 5 && d.querySelector("#written span").textContent.startsWith("F1(G3 D4 B4 A4)"));
 } catch (e) { errors.push(String(e.message || e)); }

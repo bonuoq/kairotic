@@ -5,8 +5,12 @@
 - **Study 66 · compression: the uses heard, and the description as a tree** (discussion #399). The same rules, their
   uses coded the way a listener learns them (`bits.mjs`): which rule comes is a word of a lexicon (the first time an
   escape and its number), a figure's pitches each voice's step from the same voice of its last use, a motif's start
-  its step from the last. BWV 846 comes to 846 bits, 15.8 % of its notes (28.7 % at fixed prices), BWV 999 20.8 %, the
-  cello preludes about 51 %. And the description written as a tree (`treeOf`): the rules in `:defs`, each use a
+  its step from the last; a lexicon for each context. BWV 846 comes to 864 bits, 16.1 % of its notes (28.7 % at fixed
+  prices), BWV 999 22.0 %, the cello preludes about 49 %. **One coder for both sides** (`coder`, `sayRows`): Study 67
+  says its levels with it, so its surface (569 bits) and Study 66's heard figure pitches (562) are the same measure;
+  its frame 286, with the derivation back (a step never heard said by its parts) 946. And **`:use` takes `:voices`** too (each voice's
+  step from the same voice of the fragment's use before): `treeOf(c, {voices: true})` writes BWV 846 as 32 uses of one
+  figure, `[:use {:ref :F1 :voices [0 -2 2 2 1]}]`… And the description written as a tree (`treeOf`): the rules in `:defs`, each use a
   `[:use {:ref :F1 :pitches [...]}]` — **`:use` takes `:pitches`** in `kairotic.mt` (`repitch`: a fragment's distinct
   pitches, in the order they first come, become these: a figure said again over another chord). The page shows both
   codings and the tree to copy; read back, every tree is the piece again.
