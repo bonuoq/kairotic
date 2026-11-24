@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **The chorale test's outer voices, for the whole corpus; the functions read in local keys** (`@kairotic/rules`
+  0.14.0: `localFunctions`, `relatedKeys`, `grammarErrors`' `passing`; Study 63 · bridges; #399 / #353).
+  - **Against Bach:** his 2,272 phrases read in the home key alone break the grammar in 491 phrases (an applied
+    dominant read in the wrong key, a passing V – IV6); read in local keys — each chord in one of the keys related to
+    the chorale's or in the cadence's, a change of key costing — with passing chords (an inverted chord over a bass
+    by step), in 161 (7 %). `localFunctions` gives each chord its key, its function and the errors left.
+  - **Study 63's outer voices:** a succession is grammatical where it is so in one of those keys; the tension read
+    in the cadence's key. Bach's own outer voices break the local grammar 0.09 times a phrase, the bridges with all
+    their layers 0.07 (150 phrases).
+  - **`studies/_shared/chorales/bridges.json`:** for every phrase, two draws of each variant (all layers, each
+    off), as `fromOuter` reads them (CC BY-NC-SA, as `phrases.json`).
 - **The work's code in chains** (discussions #407, #380, #399). The Code tab can write the lines of the work as
   chains (**-> chains**, remembered in this browser): lines that follow each other in the work's order as
   `(-> :b1 (to :b2) (to 1 :b3 0))`, lines in a row from one box as `(doto :b1 (to :b2) (to :b3))`, a line alone as a

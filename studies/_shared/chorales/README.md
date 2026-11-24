@@ -18,3 +18,14 @@ The corpus the chorale studies read (#301, #399): **2,272 phrases from the 370 c
 
 **License:** `phrases.json` is CC BY-NC-SA 4.0, after Craig Sapp's edition — not the MPL-2.0 of the rest of the
 repository. See [LICENSE.md](LICENSE.md).
+
+## `bridges.json` — the outer voices for the blind test (Study 63)
+
+`{source, license, count, seed, bridges}`; a bridge is `{phrase, soprano, bass, key, readIn, strong, layers, variant}`:
+the soprano and the bass of a phrase drawn from its first chord A to its last chord B by Study 63's `outer.mjs`, as
+`fromOuter` reads them — for every phrase, two draws of each variant: `all` (functions, tension, economy) and each layer
+off (`no-functions`, `no-tension`, `no-economy`). `readIn`: the key the tension is read in (the cadence's, or the
+chorale's); the functions are read in the keys close to the chorale's and the cadence's. Written by
+`node studies/63-bridges/tools/bridges.mjs studies/_shared/chorales studies/_shared/chorales/bridges.json 2 1`.
+Adapted from `phrases.json` (its A and B), so under the same license, CC BY-NC-SA 4.0.
+
