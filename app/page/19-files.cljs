@@ -166,9 +166,22 @@
                          :archived (true? (:archived v))}
                   (sequential? (:aliases v)) (assoc :aliases (vec (filter string? (:aliases v)))))])))
 
+(defn renamed
+  "x with every string that is a key of m (an id) replaced by its value, however deep (in vectors and maps)."
+  [m x]
+  (cond (string? x) (get m x x)
+        (map-entry? x) [(renamed m (key x)) (renamed m (val x))]
+        (map? x) (into (empty x) (map (fn [[k v]] [(renamed m k) (renamed m v)]) x))
+        (vector? x) (mapv #(renamed m %) x)
+        (seq? x) (map #(renamed m %) x)
+        (set? x) (into #{} (map #(renamed m %) x))
+        :else x))
+
 (defn fresh-ids
   "The segments with the ids made in a local work (local-…, never saved, so never extended there either) made
-   ids of their own, and every reference to them (a parent, a merge, a [:merge-from …] event) with them."
+   ids of their own, and every reference to them with them: a parent, a merge, and any id in an event — a
+   [:merge-from …], the point a `patch @name` or an agent is pinned to ([:pin :b3 [id n]]), an agent's offers and the
+   point it built (its data) — or a box would read a point its line no longer has."
   [segs]
   (let [m (into {} (for [n segs :when (str/starts-with? (:id n) "local-")]
                      [(:id n) (str "f" (.toString (js/Math.floor (* (js/Math.random) 2176782336)) 36) (.toString (js/Date.now) 36)
@@ -178,7 +191,7 @@
       segs
       (mapv (fn [n] (cond-> (-> n (update :id f) (update :parent (fn [p] (when p (f p)))))
                       (:merge n) (update :merge (fn [[a i]] [(f a) i]))
-                      true (update :events (fn [evs] (mapv (fn [e] (if (= :merge-from (first e)) (assoc e 1 (f (second e))) e)) evs)))))
+                      true (update :events (fn [evs] (renamed m evs)))))
             segs))))
 
 (defn open-work-data!

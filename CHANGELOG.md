@@ -7,6 +7,20 @@
   `necklace` after it plays in the gaps of what the performer plays. The next onset takes over (a new generation
   forgets the beats planned), early or late, and nothing is said twice; a whole cycle without onsets and it waits.
   On the right a kept beat is `{:phase :n :pulse :kept true}`. The help's example shows it with the metro taken away.
+- **An agent's offers tried before they are offered, and kept when a work is opened from a file**
+  (`@kairotic/rules` 0.11.1, `@kairotic/cac` 0.15.1). Asked for a 16-bar partimento in A major, an agent offered two
+  basses with no realization and a third whose `cac partimento 3 A major` gave nothing; opened on Pages, its offers
+  were empty. Now:
+  - **The page tries what flows in an offer** before offering it: each tree box's tree is sent, apart, to the box of a
+    package's class it goes to (a bass to `cac partimento`), and a box that answers ✗ sends the offer back to Claude
+    with why — one of its three tries. Claude is told so, and to try it first with `apply_class`.
+  - **`cac partimento` says where a bass dies**: *no realization over this bass — nothing can go on at note 22 (e3,
+    5/3): the 7th of the chord goes down by step; …* (`rules.mjs`: `fromNotes().deadEnd()`, going forward through the
+    states the rules allow until a unit none reaches, and the reasons that refused its candidates).
+  - **A mode after the key is the key's**: `cac partimento 3 A major`, `d dorian` (the second word filled the style's
+    place, and the box gave nothing).
+  - **A local work opened from a file keeps its agents' offers**: its points get new ids, and now so does every id in
+    its events — the point an agent (or a `patch @name`) is pinned to, its offers, the point it built.
 - **Study 64 · florid: coherence, read both ways** (discussion #342). A line's derivation — its cells, each a rhythm
   and a shape relative to the frame, so a figure in sequence is the same cell — has a length: the bits a listener
   learning the piece as it goes needs for it (`derivationLength`, `lexicon`: a cell heard before is cheap, its

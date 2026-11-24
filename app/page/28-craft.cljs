@@ -255,3 +255,38 @@
                                (apply-class (str (.-text i)) (when (seq (str (.-box i))) (craft-box-id (.-box i))) msgs))))}]))
 
 (swap! more-patch-tools conj (fn [_] (first (craft-tools))) (fn [_] (second (craft-tools))))
+
+;; ───────────────────────── trying what flows in a patch (an agent's offer, before it is offered) ─────────────────────────
+
+(def trial-max 6)   ; how many flows are tried at most
+
+(defn agent-trial
+  "Promise of the errors of trying what flows in patch code src: each tree box whose tree goes to a box of an official
+   package's class (a bass to cac partimento) is sent to it apart (run-class), as when it plays; a box that answers ✗
+   in what it shows is an error, with its reason. [] when everything tried answers (or could not be tried here)."
+  [src]
+  (-> (js/Promise.resolve nil)
+      (.then
+       (fn [_]
+         (let [p (build (link-code src)) bs (:boxes p)
+               flows (vec (take trial-max
+                                (for [[a _ b i] (:lines p)
+                                      :let [ta (get bs a) tb (get bs b)]
+                                      :when (and ta tb (tree-box? ta) (some? (:data ta)) (lib/package-of (klass (:text tb))))]
+                                  [a b i])))]
+           (js/Promise.all
+            (into-array
+             (for [[a b i] flows
+                   :let [text (:text (get bs b))
+                         tr (try (mt/expand (mtb/tree-of (:data (get bs a)))) (catch :default _ nil))]
+                   :when tr]
+               (.then (run-class text [[i tr]])
+                      (fn [r]
+                        (let [sub (some-> (:shown r) :sub str)]
+                          ;; (a class that could not be run here — its package not reached — is not tried: not an error)
+                          (cond (not (:ok r)) nil
+                                (and sub (str/starts-with? sub "✗"))
+                                (str (name b) " («" text "») with the tree of " (name a) ": " (str/trim (subs sub 1)))
+                                :else nil))))))))))
+      (.then (fn [rs] (vec (remove nil? (array-seq rs)))))
+      (.catch (fn [e] (js/console.error e) []))))
