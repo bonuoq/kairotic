@@ -6,7 +6,13 @@
   with a check on every pull request), a Code of Conduct (Contributor Covenant 2.1), SECURITY, a ROADMAP after
   0.3.0, *How Kairotic is built*, issue, pull request and Discussions templates; the README lists every official
   package and every dependency with its version and licence. Every source file carries its SPDX header, and
-  `tests/spdx.mjs` fails on one that does not.
+  `tests/spdx.mjs` fails on one that does not; `tests/licences.mjs` keeps the chorales corpus (CC BY-NC-SA) out
+  of the app, the packages and the relay. The DCO check asks for a person as every commit's author, an AI
+  assistant credited with `Co-Authored-By`.
+- **Studies 1–23 and the deprecated packages removed.** The prototype's studies (1–8 in Spanish, 9–23 on
+  `kairotic-components`) would not run today: they stay as a record in [the studies](docs/studies.md), and their
+  code in the repository's history. `componentes/` and `components/` (`kairotic-componentes`,
+  `kairotic-components`) are gone too.
 - **The work's code in chains** (discussions #407, #380, #399). The Code tab can write the lines of the work as
   chains (**-> chains**, remembered in this browser): lines that follow each other in the work's order as
   `(-> :b1 (to :b2) (to 1 :b3 0))`, lines in a row from one box as `(doto :b1 (to :b2) (to :b3))`, a line alone as a

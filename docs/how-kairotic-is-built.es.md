@@ -24,8 +24,10 @@ componente y por qué, discutimos el diseño, Claude escribe el código y sus pr
 toco y decido. Primero van los ensayos, páginas pequeñas que prueban una idea, y solo lo que se demuestra
 pasa a la app.
 
-Lo puedes ver en cada commit que escribe Claude:
+Lo puedes ver en cada commit en el que ha ayudado Claude:
 
+- yo soy su autor y lo firmo: respondo de él, como el
+  [DCO](../CONTRIBUTING.es.md#certificado-de-origen-del-desarrollador-dco) pide a todo el mundo;
 - lleva una línea `Co-Authored-By: Claude …`, y
 - un enlace `Claude-Session:` a la sesión de la que salió.
 

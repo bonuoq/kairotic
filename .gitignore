@@ -1,7 +1,5 @@
 node_modules/
-componentes/dist/
 .DS_Store
-components/dist/
 packages/*/dist/
 _site/
 _artifact/

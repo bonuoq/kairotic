@@ -43,9 +43,7 @@ examples/             the catalog Claude reads when it writes
 docs/                 documentation (English and Spanish), tutorials, generated class reference
 tests/                tests (cljs/*.cljs), run in the browser (tests.html) and in CI
 relay/                a GUN relay for rooms
-studies/              the studies (01–70), each as it was published; studies/_shared, what they share
-components/           deprecated npm package kairotic-components (studies 9–23), replaced by @kairotic/controls
-componentes/          the package before it (kairotic-componentes, studies 7–8)
+studies/              the studies from 24 on, each as it was published; studies/_shared, what they share
 ```
 
 ## Official packages
@@ -117,6 +115,9 @@ packages come into a work by themselves when a box uses one of their classes (`k
   authors choose.
 - **Documentation** (these READMEs and the project documents):
   [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- **Data under other licences** stays apart, with its own `LICENSE.md`: Bach's chorales corpus
+  (`studies/_shared/chorales/`, CC BY-NC-SA 4.0, non-commercial) is used by the studies and never by the app,
+  the packages or the relay ([tests/licences.mjs](tests/licences.mjs) checks it).
 - **Works belong to whoever creates them.** Kairotic imposes no licence on the works, patches,
   canvases, scores or components made with it.
 - **Community components:** every definition declares its licence with `:license` (an
@@ -148,8 +149,7 @@ packages come into a work by themselves when a box uses one of their classes (`k
 | [stftPitchShift](https://github.com/jurihock/stftPitchShift) (Jürgen Hock) | 2.0 | MIT | compiled to WebAssembly inside `@kairotic/spectral` (`shift~`) |
 | [GendyJS](https://github.com/abbernie/gendy) (Andrew Bernstein) | — | MIT | ported to the `gendy~` worklet in `@kairotic/synth` |
 
-**Only in some studies:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Study 24, from jsDelivr); the
-deprecated `kairotic-componentes` 0.2.0 and `kairotic-components` 0.1.2 (MPL-2.0, Studies 7–23).
+**Only in a study:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Study 24, from jsDelivr).
 
 **Data:** the phrases of Bach's 370 chorales ([`studies/_shared/chorales/`](studies/_shared/chorales/README.md)), cut
 from [Craig Sapp's Humdrum edition](https://github.com/craigsapp/bach-370-chorales): **CC BY-NC-SA 4.0**, not

@@ -44,9 +44,7 @@ examples/             el catálogo que Claude lee cuando escribe
 docs/                 documentación (inglés y castellano), tutoriales, referencia de clases generada
 tests/                pruebas (cljs/*.cljs), en el navegador (tests.html) y en CI
 relay/                un relay GUN para las salas
-studies/              los ensayos (01–70), cada uno tal como se publicó; studies/_shared, lo que comparten
-components/           el paquete npm obsoleto kairotic-components (ensayos 9–23), sustituido por @kairotic/controls
-componentes/          el paquete anterior (kairotic-componentes, ensayos 7–8), sustituido por kairotic-components
+studies/              los ensayos desde el 24, cada uno tal como se publicó; studies/_shared, lo que comparten
 ```
 
 ## Paquetes oficiales
@@ -119,6 +117,9 @@ paquetes oficiales llegan solos a una obra cuando una caja usa una de sus clases
   licencia que quieran sus autores.
 - **Documentación** (estos README y los documentos del proyecto):
   [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).
+- **Los datos con otras licencias** quedan aparte, con su propio `LICENSE.md`: el corpus de corales de Bach
+  (`studies/_shared/chorales/`, CC BY-NC-SA 4.0, no comercial) lo usan los ensayos y nunca la app, los
+  paquetes ni el relay ([tests/licences.mjs](tests/licences.mjs) lo comprueba).
 - **Las obras son de quien las crea.** Kairotic no impone ninguna licencia a las obras, patches,
   lienzos, partituras ni componentes que se hagan con él.
 - **Componentes de la comunidad:** cada definición declara su licencia con `:license` (identificador
@@ -150,8 +151,7 @@ paquetes oficiales llegan solos a una obra cuando una caja usa una de sus clases
 | [stftPitchShift](https://github.com/jurihock/stftPitchShift) (Jürgen Hock) | 2.0 | MIT | compilado a WebAssembly dentro de `@kairotic/spectral` (`shift~`) |
 | [GendyJS](https://github.com/abbernie/gendy) (Andrew Bernstein) | — | MIT | portado al worklet de `gendy~` en `@kairotic/synth` |
 
-**Solo en algunos ensayos:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Ensayo 24, desde jsDelivr);
-los obsoletos `kairotic-componentes` 0.2.0 y `kairotic-components` 0.1.2 (MPL-2.0, ensayos 7–23).
+**Solo en un ensayo:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Ensayo 24, desde jsDelivr).
 
 **Datos:** las frases de los 370 corales de Bach ([`studies/_shared/chorales/`](studies/_shared/chorales/README.md)),
 cortadas de [la edición Humdrum de Craig Sapp](https://github.com/craigsapp/bach-370-chorales): **CC BY-NC-SA 4.0**,

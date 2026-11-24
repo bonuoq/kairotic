@@ -20,10 +20,6 @@ const EXCLUDED = [
   /^site\/vendor\//,               // GUN (MIT OR Zlib OR Apache-2.0), site/vendor/gun/LICENSE.md
   /^core\/vendor\/codemirror\.mjs$/, // the editor bundle (CodeMirror, clojure-mode…): its first line names their licences
   /(^|\/)node_modules\//,
-  // the sources of the two deprecated npm packages (kairotic-componentes, kairotic-components): whether they stay,
-  // move or go is still to be decided; until then they are left as they were published
-  /^componentes\//,
-  /^components\//,
 ];
 
 const files = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" })

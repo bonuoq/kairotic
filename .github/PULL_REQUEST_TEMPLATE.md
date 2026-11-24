@@ -10,8 +10,8 @@
 
 ## Checklist
 
-- [ ] Every commit is signed off (`git commit -s`): I certify the [DCO](https://developercertificate.org/) for each.
-      Commits written with an AI assistant carry my sign-off and a `Co-Authored-By` line.
+- [ ] I am the author of every commit and signed each off (`git commit -s`): I certify the [DCO](https://developercertificate.org/).
+      An AI assistant that helped is credited with `Co-Authored-By`, never as the author.
 - [ ] Tests added or updated, and they pass locally (`node tests/spdx.mjs`, the Node checks, `tests/browser.mjs`).
 - [ ] New source files start with their SPDX header (`SPDX-License-Identifier: MPL-2.0`).
 - [ ] Documentation updated (English, and Spanish if I can), and a line under *Unreleased* in CHANGELOG.md.

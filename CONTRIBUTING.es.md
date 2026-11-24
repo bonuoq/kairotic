@@ -53,6 +53,7 @@ request ([tests.yml](.github/workflows/tests.yml), [studies.yml](.github/workflo
 ```sh
 # comprobaciones rápidas, en Node (segundos)
 node tests/spdx.mjs          # cada fuente empieza con su cabecera de licencia SPDX
+node tests/licences.mjs      # los datos con otra licencia (los corales) fuera de la app y los paquetes
 node tests/names.mjs         # cada nombre de primer nivel de la página, definido una vez
 node tests/versions.mjs      # cada paquete oficial fijado por la página a la versión de su package.json
 node tests/keywords.mjs      # las órdenes son keywords, nunca strings
@@ -133,12 +134,25 @@ y luego `git push --force-with-lease`.
 
 **Commits escritos con un asistente de IA.** Puedes usar uno (el propio Kairotic se construye con Claude
 Code, ver [Cómo se construye Kairotic](docs/how-kairotic-is-built.es.md)), y sigues siendo responsable de lo
-que envías: la firma es siempre de una persona. Un commit cuyo autor es la identidad de un asistente (por
-ejemplo `Claude <noreply@anthropic.com>`) necesita el `Signed-off-by` de la persona que dirigió el trabajo
-y lo envía, y te pedimos que lo digas con una línea `Co-Authored-By`.
+que envías. Haz los commits con **tu propia** identidad de Git: tú eres el autor y tú firmas. Al asistente
+se le reconoce con una línea final, nunca como autor:
+
+```
+Co-Authored-By: Claude <noreply@anthropic.com>
+Signed-off-by: Tu Nombre <tu@ejemplo.com>
+```
+
+Si un asistente hizo commits con su propia identidad, hazte cargo de ellos antes de subirlos — esto te hace
+su autor y los firma, conservando sus mensajes y sus líneas finales:
+
+```sh
+git rebase origin/main --exec 'git commit --amend --no-edit --reset-author --signoff'
+git push --force-with-lease
+```
 
 La [comprobación del DCO](.github/workflows/dco.yml) se ejecuta en cada pull request y nombra los commits
-a los que les falta la firma.
+sin firma, con una firma que no es la de su autor, o cuyo autor es un asistente de IA. Como cualquier
+comprobación de DCO, lee lo que los commits dicen de sí mismos: la certificación es tuya.
 
 ## Licencia
 

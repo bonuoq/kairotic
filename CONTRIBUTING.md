@@ -52,6 +52,7 @@ request ([tests.yml](.github/workflows/tests.yml), [studies.yml](.github/workflo
 ```sh
 # quick checks, in Node (seconds)
 node tests/spdx.mjs          # every source file starts with its SPDX licence header
+node tests/licences.mjs      # data under another licence (the chorales) kept out of the app and the packages
 node tests/names.mjs         # every top-level name of the page defined once
 node tests/versions.mjs      # every official package pinned by the page to its package.json version
 node tests/keywords.mjs      # orders are keywords, never strings
@@ -128,13 +129,26 @@ Forgot it? `git commit --amend -s` for the last commit, or `git rebase --signoff
 then `git push --force-with-lease`.
 
 **Commits written with an AI assistant.** You may use one (Kairotic itself is built with Claude Code,
-see [How Kairotic is built](docs/how-kairotic-is-built.md)), and you stay responsible for what you submit:
-the sign-off is always a person's. A commit whose author is an assistant's identity (for example
-`Claude <noreply@anthropic.com>`) needs the `Signed-off-by` of the person who directed the work and
-submits it, and we ask you to say so with a `Co-Authored-By` line.
+see [How Kairotic is built](docs/how-kairotic-is-built.md)), and you stay responsible for what you submit.
+Commit under **your own** Git identity: you are the author and you sign off. The assistant is credited
+with a trailer, never as the author:
 
-The [DCO check](.github/workflows/dco.yml) runs on every pull request and names any commit that is missing
-its sign-off.
+```
+Co-Authored-By: Claude <noreply@anthropic.com>
+Signed-off-by: Your Name <you@example.com>
+```
+
+If an assistant made commits under its own identity, take them over before you push — this makes you
+their author and signs them off, keeping their messages and trailers:
+
+```sh
+git rebase origin/main --exec 'git commit --amend --no-edit --reset-author --signoff'
+git push --force-with-lease
+```
+
+The [DCO check](.github/workflows/dco.yml) runs on every pull request and names any commit that has no
+sign-off, whose sign-off is not its author's, or whose author is an AI assistant. Like any DCO check it
+reads what commits say about themselves: the certification is yours.
 
 ## Licence
 

@@ -8,6 +8,11 @@ written in Spanish; from Study 9 on, code and interface are in English (the [glo
 maps the old names to the new ones). From 0.1.0-alpha on, the app lives in [`app/`](../app) and grows
 as one.
 
+**Studies 1–23, the prototype, are recorded here but no longer in the repository.** They were written
+against the deprecated packages `kairotic-componentes` and `kairotic-components` (and 1–8 in Spanish), and
+would not run today; their code was removed for 0.3.0-alpha. It remains in the repository's history:
+[`studies/` as it was](https://github.com/bonuoq/kairotic/tree/3ebf2720598aec938849c999f9c0ffe0a78d3804/studies). The table below still says what each one tested.
+
 **Opening a study.** Kairotic Pages serves every study at its folder:
 `https://bonuoq.github.io/kairotic/studies/<folder>/`, for example
 [`studies/29-live/`](https://bonuoq.github.io/kairotic/studies/29-live/). There a study can use what a

@@ -1,11 +1,13 @@
 # The Developer Certificate of Origin (https://developercertificate.org/, see CONTRIBUTING.md): every commit of a
-# pull request carries a Signed-off-by line.
+# pull request is authored by a person and carries that person's Signed-off-by.
 #
-#   - a commit by a person: a Signed-off-by with the author's own email (what `git commit -s` writes)
-#   - a commit whose author is an AI assistant's identity (AI_AUTHORS below): the Signed-off-by of a person,
-#     the one who directed the work and submits it — an assistant cannot certify the DCO
+#   - the Signed-off-by must have the author's own email (what `git commit -s` writes when you are the author)
+#   - an AI assistant is never the author (AI_AUTHORS below): it is credited with a Co-Authored-By line, and the
+#     person who directed the work is the author and signs off — an assistant cannot hold copyright nor certify
 #   - merge commits and GitHub's bots (…[bot]@users.noreply.github.com, e.g. the vendor workflow) are not checked
 #
+# Like every DCO check, this reads what a commit says about itself; it is an attestation, not an authentication.
+# Requiring signed commits on main (branch protection) is what binds an author to a key.
 # It reads the commits through the API, so it needs no checkout and works for pull requests from forks.
 name: dco
 
@@ -42,16 +44,17 @@ jobs:
               if (author.endsWith("[bot]@users.noreply.github.com")) continue;
               const signers = [...c.commit.message.matchAll(/^Signed-off-by:\s*.+?<([^>]+)>\s*$/gim)]
                 .map((m) => m[1].trim().toLowerCase());
-              const ok = ai.has(author) ? signers.some((s) => !ai.has(s)) : signers.includes(author);
+              const ok = !ai.has(author) && signers.includes(author);
               if (!ok) bad.push({ sha: c.sha.slice(0, 7), subject: c.commit.message.split("\n")[0], author,
                                   why: ai.has(author)
-                                    ? "written by an assistant: needs the Signed-off-by of the person who submits it"
+                                    ? "authored by an AI assistant: the person who directs the work is the author (credit the assistant with Co-Authored-By)"
                                     : signers.length ? "Signed-off-by does not match the author's email (" + author + ")"
                                                      : "no Signed-off-by" });
             }
             core.info(`${commits.length} commit(s), ${bad.length} without a valid sign-off.`);
             if (bad.length) {
               for (const b of bad) core.error(`${b.sha} ${b.subject} — ${b.why}`);
-              core.setFailed("Some commits are not signed off. Sign them off with `git rebase --signoff " +
-                context.payload.pull_request.base.ref + "` and `git push --force-with-lease` (see CONTRIBUTING.md, DCO).");
+              core.setFailed("Some commits are not authored and signed off by a person. As their author: `git rebase " +
+                context.payload.pull_request.base.ref + " --exec 'git commit --amend --no-edit --reset-author --signoff'` " +
+                "and `git push --force-with-lease` (see CONTRIBUTING.md, DCO).");
             }

@@ -24,8 +24,10 @@ assistant, working with me in sessions: I describe what a study or a component s
 we discuss the design, Claude writes the code and its tests, and I try it, play it, and decide.
 Studies come first, small pages that try one idea, and only what proves itself moves into the app.
 
-You can see this in every commit Claude writes:
+You can see this in every commit Claude helped write:
 
+- I am its author and I sign it off: I answer for it, as the
+  [DCO](../CONTRIBUTING.md#developer-certificate-of-origin-dco) asks of everyone;
 - it carries a `Co-Authored-By: Claude …` line, and
 - a `Claude-Session:` link to the session it came from.
 
