@@ -1,0 +1,142 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 68 · Mixture</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; padding: 14px 16px 28px; }
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* Study 68: each prelude described bar by bar the cheaper of two ways — its figure (the surface) or its sonority and
+   ornaments (the genetic) — the bars drawn as a strip, a bar's two costs, the signature of each piece. */
+.views { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; }
+.facts dt { color: var(--ink-soft); } .facts dd { margin: 0; font-family: var(--f-code); }
+.strip { display: flex; align-items: flex-end; gap: 2px; height: 120px; overflow-x: auto; padding-bottom: 2px; border-bottom: 1px solid var(--grid); }
+.strip i { flex: 0 0 9px; border-radius: 2px 2px 0 0; cursor: pointer; }
+.strip i.f { background: var(--accent); } .strip i.g { background: var(--kairos); }
+.strip i.sel { outline: 2px solid var(--ink); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin: 0 3px 0 8px; }
+.bars { display: grid; gap: 4px; font: 12px var(--f-code); }
+.bar { display: grid; grid-template-columns: 6em 1fr 9em; gap: 8px; align-items: center; }
+.bar .st { display: flex; height: 10px; } .bar .st i { display: block; height: 10px; }
+.bar .st i.f { background: var(--accent); } .bar .st i.g { background: var(--kairos); }
+.barinfo { font: 12px var(--f-code); line-height: 1.6; }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+</style>
+<main>
+<header>
+  <h1>Study 68 · mixture</h1>
+  <span class="sub">a piece said bar by bar the cheaper of two ways: its figure (the surface) or its sonority and ornaments (the genetic) — discussion #399</span>
+</header>
+<div class="toolbar" id="pieces"></div>
+<div class="views">
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>Bar by bar <span class="legend"><i style="background:var(--accent)"></i>said as a figure <i style="background:var(--kairos)"></i>said genetically · the height its bits · click a bar</span></h2><div class="strip" id="strip"></div></section>
+    <section class="panel"><h2>The bar chosen <span id="bar-n"></span></h2><div class="barinfo" id="barinfo"></div>
+      <div class="toolbar"><button class="act" id="play-bar">▶ the bar</button><button class="act" id="play">▶ the piece</button><button class="act" id="stop">■</button></div></section>
+  </div>
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>Facts</h2><dl class="facts" id="facts"></dl></section>
+    <section class="panel"><h2>The signature of each piece <span>bars said each way · bits of the mixture</span></h2><div class="bars" id="sig"></div></section>
+    <section class="panel"><h2>About</h2>
+      <p class="about">Two kinds of reduction describe a piece (#399). The <em>surface</em> one (Study 66) says a bar as a figure — which of its pitches comes when — and its pitches, each voice as its step from the last figure's. The <em>genetic</em> one (Studies 61 and 67) says which notes are the bar's sonority (the triad or seventh covering most of its time) and which are ornaments of them: a chord tone by its move in the sonority from the one before (a broken chord rising is the same word over any chord), an ornament by its step from the note before (a passing note, a neighbour). Both are said with one measure (<code>bits.mjs</code>: a lexicon for each context, an escape for a word never heard), so each bar can be said the cheaper way — and after each bar both ways learn it, as a listener who has heard it could say it to itself either way.</p>
+      <p class="about">Which way each bar took is a signature. BWV 846 and 999 are figuration over harmony: almost every bar a figure. The cello's preludes are a line that unfolds a harmony with its ornaments: a quarter of their bars are said more briefly genetically, and the mixture says them in fewer bits than either way alone. Every bar is said back both ways and gives its pitches again. The scores are Study 66's (the Mutopia Project's public-domain typesets).</p>
+    </section>
+  </div>
+</div>
+</main>
+<script type="module">
+import * as M from "./kairotic/mixture.mjs";
+const PIECES = [
+  { id: "bwv846-prelude", name: "BWV 846 · WTC I, Prelude in C", bar: 16 },
+  { id: "bwv999-prelude", name: "BWV 999 · Prelude (D minor)", bar: 12 },
+  { id: "bwv1007-prelude", name: "BWV 1007 · Cello Suite 1, Prelude", bar: 16 },
+  { id: "bwv1009-prelude", name: "BWV 1009 · Cello Suite 3, Prelude", bar: 12 },
+];
+const $ = (id) => document.getElementById(id);
+const NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+const nm = (p) => NAMES[((p % 12) + 12) % 12] + (Math.floor(p / 12) - 1);
+const D = {};
+for (const p of PIECES) {
+  const n = await (await fetch(`./data/${p.id}.json`)).json();
+  D[p.id] = { n, bar: p.bar, bars: M.barsOf(n, p.bar), f: M.describe(n, { bar: p.bar, way: "figure" }), g: M.describe(n, { bar: p.bar, way: "genetic" }), m: M.describe(n, { bar: p.bar, way: "mixture" }) };
+}
+const st = { id: PIECES[0].id, b: 0 };
+function show() {
+  const d = D[st.id], m = d.m;
+  for (const b of $("pieces").children) b.classList.toggle("on", b.dataset.id === st.id);
+  $("facts").innerHTML = [
+    ["notes", d.n.length + ` in ${m.bars.length} bars`], ["written out", m.raw + " bits"],
+    ["as figures", d.f.bits.toFixed(0) + " bits"], ["genetically", d.g.bits.toFixed(0) + " bits"],
+    ["the mixture", `${m.bits.toFixed(0)} bits (${(m.ratio * 100).toFixed(1)} %)`], ["bars genetic", `${m.bars.filter((b) => b.way === "genetic").length} of ${m.bars.length} (${(m.share * 100).toFixed(0)} %)`],
+    ["lossless", M.lossless(d.n, d.bar) ? "✓ every bar said back, both ways" : "✗"],
+  ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  const max = Math.max(...m.bars.map((b) => b.bits));
+  $("strip").innerHTML = m.bars.map((b, i) => `<i class="${b.way[0]}${i === st.b ? " sel" : ""}" data-i="${i}" style="height:${(b.bits / max * 100).toFixed(1)}%" title="bar ${i + 1}: ${b.way}, ${b.bits.toFixed(1)} bits"></i>`).join("");
+  const b = m.bars[st.b], bar = d.bars[st.b], g = M.readBar(bar.notes), f = M.figureOf(bar.notes);
+  $("bar-n").textContent = `bar ${st.b + 1}: said ${b.way === "genetic" ? "genetically" : "as a figure"}, ${b.bits.toFixed(1)} bits`;
+  $("barinfo").innerHTML = [
+    `notes: ${bar.notes.map((x) => nm(x.p)).join(" ")}`,
+    `as a figure (${b.fig.toFixed(1)} bits): ${f.pattern.slice(4)} over ${f.pitches.map(nm).join(" ")}`,
+    `genetically (${b.gen.toFixed(1)} bits): sonority ${g.sonority.map(nm).join(" ")} · ${M.noteWords(bar.notes, g).join(" ")}`,
+  ].map((s) => `<div>${s}</div>`).join("");
+  $("sig").innerHTML = PIECES.map((p) => { const x = D[p.id].m, gs = x.share * 100; return `<div class="bar"><span>${p.id.replace("-prelude", "").toUpperCase()}</span><span class="st"><i class="f" style="width:${(100 - gs).toFixed(1)}%"></i><i class="g" style="width:${gs.toFixed(1)}%"></i></span><span>${gs.toFixed(0)} % · ${x.bits.toFixed(0)} bits</span></div>`; }).join("");
+}
+$("pieces").innerHTML = PIECES.map((p) => `<button class="act" data-id="${p.id}">${p.name}</button>`).join("");
+$("pieces").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { st.id = b.dataset.id; st.b = 0; show(); } });
+$("strip").addEventListener("click", (e) => { const i = e.target.closest("i"); if (i) { st.b = +i.dataset.i; show(); } });
+let ac = null, live = [];
+function play(events) {
+  ac = ac || new AudioContext(); stopAll();
+  const t0 = ac.currentTime + 0.1, s16 = 0.12, start = Math.min(...events.map((x) => x[0]));
+  for (const [t, d, p] of events) {
+    const o = ac.createOscillator(), g = ac.createGain(), at = t0 + (t - start) * s16;
+    o.type = "triangle"; o.frequency.value = 440 * Math.pow(2, (p - 69) / 12);
+    g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.08, at + 0.01); g.gain.setTargetAtTime(0, at + d * s16 - 0.02, 0.03);
+    o.connect(g).connect(ac.destination); o.start(at); o.stop(at + d * s16 + 0.2); live.push(o);
+  }
+}
+function stopAll() { for (const o of live) try { o.stop(); } catch {} live = []; }
+$("play").onclick = () => play(D[st.id].n);
+$("play-bar").onclick = () => { const bar = D[st.id].bars[st.b]; play(bar.notes.map((x) => [x.t, x.d, x.p])); };
+$("stop").onclick = stopAll;
+show();
+window.kairoticStudy = { D, select: (id, b = 0) => { st.id = id; st.b = b; show(); }, state: () => ({ ...st }) };
+</script>

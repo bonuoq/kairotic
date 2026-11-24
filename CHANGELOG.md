@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 68 · mixture: a piece said bar by bar the cheaper of two ways** (discussion #399). The surface way (a
+  figure and its pitches, Study 66's) or the genetic way (the bar's sonority, its notes as chord tones or ornaments,
+  Studies 61 and 67's), in one measure (`bits.mjs`), a word saying which, both ways learning every bar. Lossless; the
+  mixture never worse than the better way, better than both in the cello preludes (BWV 1009: 4483 as figures, 5375
+  genetically, 4237 mixed). Which way each bar took is the piece's signature: BWV 846 3 % genetic, 999 9 %, the cello's
+  1007 27 % and 1009 28 %.
 - **Study 67 · prelude: the second level of a prelude's description** (discussions #399, #321). Study 66's figure
   leaves BWV 846's harmony: read as five voices (a voice keeping its pitch holds its note), it is reduced by Study
   61's grammar (`reduceNotes`: any notes, any number of voices, a `keep` for the frame's retention) to its frame, C –
