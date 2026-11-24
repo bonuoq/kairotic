@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Live coding: chains that can be evaluated again** (discussion #407). `to` takes a name for the box it makes,
+  `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))`: the first time the boxes are made below
+  each other; evaluated again only what changed changes (nothing, or one text), a named box moved by hand stays where
+  it is, and a line already there is not made twice. `(to a o :amp "text" i)` for other ports. The Live view's example
+  uses it.
 - **C7 is V of ④, not the tonic** (`functions.mjs`, `@kairotic/rules` 0.14.0). A dominant 7th on the tonic now
   reads as an applied dominant whose target is ④ (a major 7th on the tonic is still the tonic): it must go to F. In
   Study 67 BWV 846's frame keeps the coda's plagal close, C – … – C/G – C7 – F/C – C, where it ended C7 → C.
