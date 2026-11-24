@@ -123,6 +123,14 @@ solo desde la pestaña, forma a forma:
 Si la pestaña no tenía nada más sin aplicar, después se escribe de nuevo desde el patch (la caja nueva como
 `(box :b7 "osc~ 220" …)`), con el cursor en su línea.
 
+**Live**, la tercera vista de la pestaña Code (junto a Calls y Data), es una página tuya que la obra nunca
+reescribe: los nombres (`def`) y las cadenas quedan como los escribiste. ⇧+Intro evalúa la forma del cursor,
+**Ctrl/⌘+Intro el bloque** donde está (las líneas entre dos vacías), y lo evaluado parpadea. Se guarda en este
+navegador para cada obra, no en la obra. **`to`** hace una caja debajo de otra, alimentada por ella, como un evento,
+y devuelve su id, así que una cadena se lee como va la señal —`(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`,
+toda la cadena un evento si se evalúa desde la pestaña; `(to a o "texto" i)` elige la salida y la entrada, y
+`(to :b3 :b9)` solo conecta.
+
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
 `clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son
 sus argumentos, leídos como EDN, y el mensaje que llega va al final, como con `->>`. `%` lo pone en otro
@@ -598,5 +606,6 @@ pregunta: *Present the selection* las pone en ella donde están en el patch (un 
 | Ctrl+Z · Ctrl+Mayús+Z · Ctrl+Y | atrás · adelante en la historia (en Perform, en la toma) |
 | Ctrl+Intro | aplica código (pestaña Code, cajas de código, pestaña Claude) |
 | ⇧+Intro (pestaña Code) | evalúa sola la selección, o la forma del cursor |
+| Ctrl/⌘+Intro (vista Live) | evalúa el bloque del cursor (las líneas entre vacías) |
 | ↑ ↓ + − ← → Supr | edita la nota seleccionada de una partitura, o el trazo de un canvas |
 | Intro · a…g | el silencio seleccionado de una partitura se vuelve nota (a…g también cambia la altura de una nota) |

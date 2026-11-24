@@ -541,6 +541,8 @@ body.present .askbar { position: absolute; z-index: 6; left: 6px; top: 6px; marg
 .panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 #code { flex: 1; min-height: 300px; resize: none; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 12.5px; line-height: 1.6; padding: 10px 12px; white-space: pre; overflow: auto; tab-size: 2; }
 #code:focus { outline: none; background: var(--accent-soft); }
+#live { flex: 1; min-height: 300px; resize: none; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 12.5px; line-height: 1.6; padding: 10px 12px; white-space: pre; overflow: auto; tab-size: 2; }
+#live[hidden] { display: none; }
 .code-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-soft); }
 .code-bar .state.dirty { color: var(--kairos); font-weight: 500; }
 .code-bar .spacer { flex: 1; }
@@ -554,7 +556,8 @@ pre.view { margin: 0; flex: 1; min-height: 300px; overflow: auto; padding: 10px 
 .code-views { display: inline-flex; }
 .code-views button.act { border-radius: 0; font-size: 12px; padding: 3px 9px; }
 .code-views button.act:first-child { border-radius: 4px 0 0 4px; }
-.code-views button.act:last-child { border-radius: 0 4px 4px 0; margin-left: -1px; }
+.code-views button.act:last-child { border-radius: 0 4px 4px 0; }
+.code-views button.act + button.act { margin-left: -1px; }
 .code-views button.act[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; position: relative; }
 
 /* history band */
@@ -674,8 +677,8 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
 #repl-in { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--f-code); font-size: 13px; padding: 6px 0; }
 #repl-in:focus { outline: none; }
 /* the Code tab and the REPL line, with the code editor (14-editor.cljs) */
-.code-host, .data-host { flex: 1; min-height: 300px; max-height: 560px; display: flex; min-width: 0; }
-.code-host[hidden], .data-host[hidden] { display: none; }
+.code-host, .data-host, .live-host { flex: 1; min-height: 300px; max-height: 560px; display: flex; min-width: 0; }
+.code-host[hidden], .data-host[hidden], .live-host[hidden] { display: none; }
 .data-host .cm-editor { flex: 1; min-width: 0; background: transparent !important; }
 .data-host .cm-gutters { background: transparent !important; }
 .code-host .cm-editor { flex: 1; min-width: 0; background: transparent !important; }
@@ -938,9 +941,10 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
       <div class="panel" id="panel-code">
         <textarea id="code" spellcheck="false" aria-label="Patch code"></textarea>
         <pre class="view" id="edn" aria-label="The work as data (EDN)" hidden></pre>
+        <textarea id="live" spellcheck="false" aria-label="Live code" hidden></textarea>
         <div class="code-bar">
           <span class="code-views" role="group" aria-label="Show the work as">
-            <button class="act" type="button" id="view-calls" aria-pressed="true" title="The work as calls (box, connect, …): edit it and run it">Calls</button><button class="act" type="button" id="view-data" aria-pressed="false" title="The work as data (EDN): the state the history produces, to read">Data</button>
+            <button class="act" type="button" id="view-calls" aria-pressed="true" title="The work as calls (box, connect, …): edit it and run it">Calls</button><button class="act" type="button" id="view-live" aria-pressed="false" title="Your own code, to play the work live: ⇧+Enter evaluates a form, Ctrl/⌘+Enter a block. It is kept in this browser, not in the work">Live</button><button class="act" type="button" id="view-data" aria-pressed="false" title="The work as data (EDN): the state the history produces, to read">Data</button>
           </span>
           <span class="state" id="code-state">in sync with the patch</span>
           <span class="spacer"></span>

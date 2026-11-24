@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Live coding in the Code tab, step 2: a short syntax and a page of your own** (discussion #407). **`to`** makes a
+  box below another, fed by it, as one event, and returns its id: `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`
+  (`(to a o "text" i)` for other ports, `(to :b3 :b9)` to connect only); a chain (`->`, `doto`) of calls that make the
+  patch evaluated from the tab is one event (`as-one-event!`). **Live**, a third view of the Code tab beside Calls and
+  Data: your own code, never written over by the work, kept in this browser for each work; ⇧+Enter evaluates the form
+  at the cursor, Ctrl/⌘+Enter the block (the lines between empty ones), and what was evaluated flashes.
 - **Study 69 · chromatic: IJzerman's chapter 8** (`@kairotic/rules` 0.13.0, `@kairotic/cac` 0.16.1). Twelve phrases on
   the engine — the **Fonte** (ii then I a step down; inverted; with diminished 7ths), the **chromatic Monte** (ii, IV,
   V, vi tonicized; in minor III, iv, V), **tonicizations in Descending Thirds**, the **Lamento** in three and four
