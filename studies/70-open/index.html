@@ -1,0 +1,256 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 70 · Open form</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; padding: 14px 16px 28px; }
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* Study 70: the fragments on one page (a map: each a necklace of its rhythm, how often it came, whether it can come
+   next), the path taken drawn over it, the indications the next fragment will be played with, a performance heard and
+   followed, the performances kept as branches, the work as a tree. */
+.views { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(320px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+#map { width: 100%; height: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 6px; }
+.node circle.ring { fill: var(--box); stroke: var(--rule); stroke-width: 1.5; }
+.node.can circle.ring { stroke: var(--accent); stroke-width: 2.5; fill: var(--accent-soft); cursor: pointer; }
+.node.cur circle.ring { stroke: var(--kairos); stroke-width: 3; }
+.node.off { opacity: 0.38; }
+.node text.id { font: 600 15px var(--f-head); fill: var(--ink); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.node text.n { font: 11px var(--f-code); fill: var(--kairos); text-anchor: middle; pointer-events: none; }
+.node .pulse { fill: var(--grid); } .node .pulse.on { fill: var(--ink); }
+.node .prob { fill: var(--kairos); opacity: 0.85; }
+.step { stroke: var(--kairos); stroke-width: 2; fill: none; opacity: 0.55; marker-end: url(#arrow); }
+.step.last { opacity: 1; stroke-width: 2.5; }
+.path { font: 13px var(--f-code); display: flex; flex-wrap: wrap; gap: 4px; min-height: 22px; }
+.path span { border: 1px solid var(--rule); border-radius: 4px; padding: 1px 6px; background: var(--sheet); }
+.path span.miss { border-color: var(--error); color: var(--error); }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; }
+.facts dt { color: var(--ink-soft); } .facts dd { margin: 0; font-family: var(--f-code); }
+.ok { color: var(--ok); } .bad { color: var(--error); }
+#branches { width: 100%; height: auto; }
+.br line { stroke: var(--rule); stroke-width: 1.5; } .br text { font: 12px var(--f-code); fill: var(--ink); dominant-baseline: central; }
+.br circle { fill: var(--accent); }
+pre.edn { margin: 0; font: 11px var(--f-code); max-height: 220px; overflow: auto; white-space: pre; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px; }
+select, label { font: 13px var(--f-ui); color: var(--ink); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+</style>
+<main>
+<header>
+  <h1>Study 70 · open form</h1>
+  <span class="sub">fragments on one page, the performer choosing the path; the follower recognises the fragment chosen; every performance a branch (discussion #212)</span>
+</header>
+<div class="toolbar">
+  <button class="act" id="draw">⚄ a performance</button><button class="act" id="undo">↶</button><button class="act" id="reset">new</button>
+  <button class="act" id="play">▶ play the path</button><button class="act" id="stop">■</button>
+  <span style="width:12px"></span>
+  <label>heard <select id="noise"><option value="0">as written</option><option value="1" selected>with a few slips</option><option value="2">with many</option></select></label>
+  <button class="act" id="perform">▶ perform and follow</button>
+  <button class="act" id="keep">keep as a branch</button>
+</div>
+<div class="views">
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>The page <span>click a lit fragment to play it next · its rhythm as a necklace · how often it came</span></h2>
+      <svg id="map" viewBox="0 0 560 520"></svg></section>
+    <section class="panel"><h2>The path <span id="path-state"></span></h2><div class="path" id="path"></div>
+      <dl class="facts" id="facts"></dl></section>
+  </div>
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>Heard and followed <span>the fragment chosen recognised from its first notes</span></h2>
+      <dl class="facts" id="followed"><dt>—</dt><dd>perform a path to follow it</dd></dl></section>
+    <section class="panel"><h2>Performances <span id="kept-n">kept as branches</span></h2>
+      <svg id="branches" viewBox="0 0 400 60"></svg><dl class="facts" id="kept"></dl></section>
+    <section class="panel"><h2>As a tree <span>kairotic.mt EDN</span></h2><pre class="edn" id="edn"></pre></section>
+    <section class="panel"><h2>About</h2><p class="about">An open form is a page of fragments and the rules of their succession: the
+      performer chooses the path, and the work is every path it allows — its futuribles. "Eleven cells" is written in
+      <i>Klavierstück XI</i>'s manner (not its notes): ten fragments, any of them first, each leaving how the next is played
+      (tempo, dynamics, touch), the performance over when a fragment comes a third time; a few rules more — F never followed
+      by F or G, H never by itself, after C only a rhythm at most six swaps from its own (the fragments' rhythms as necklaces
+      of 16 pulses). Each fragment is a rhythm cell over four notes of one twelve-tone row; some begin alike (H and J share
+      their pitches an octave apart). <b>Followed:</b> while a fragment sounds, every fragment that may come is a hypothesis,
+      its opening aligned with what is heard (a wrong, missed or added note allowed); the one sure first is taken, and the path
+      moves on by itself — the follower decides the form. Once the performance is over it is <b>read again</b> whole (the
+      paths the rules allow, the readings at each point of the performance kept in a beam), and what was decided from the
+      first notes only is corrected. <b>Kept</b>, the performances are a tree of branches: a beginning played twice is one
+      branch. The work is a tree too, <code>[:open … [:frag …] …]</code>, for the app's <code>open</code> box to come.</p></section>
+  </div>
+</div>
+</main>
+<script type="module">
+import * as O from "./kairotic/open.mjs";
+import { ELEVEN } from "./kairotic/works.mjs";
+const W = ELEVEN, $ = (id) => document.getElementById(id);
+const st = { path: [], kept: [], probs: null, heard: null, playing: false };
+const ids = W.frags.map((f) => f.id), CX = 280, CY = 255, RAD = 200;
+const posOf = (id) => { const i = ids.indexOf(id), a = -Math.PI / 2 + (i / ids.length) * 2 * Math.PI; return [CX + RAD * Math.cos(a), CY + RAD * Math.sin(a)]; };
+const counts = (p) => p.reduce((m, id) => (m[id] = (m[id] || 0) + 1, m), {});
+const ind = (path) => path.reduce((a, id) => ({ ...a, ...(O.fragOf(W, id).then || {}) }), { tempo: 1, dyn: "mf", touch: "normal", ...(W.first || {}) });
+
+function drawMap() {
+  const cs = new Set(O.choices(W, st.path)), n = counts(st.path), last = st.path[st.path.length - 1];
+  let out = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--kairos)"/></marker></defs>`;
+  st.path.slice(1).forEach((id, i) => {
+    const [x1, y1] = posOf(st.path[i]), [x2, y2] = posOf(id);
+    const mx = (x1 + x2) / 2 + (CY - (y1 + y2) / 2) * 0.12 + (i % 3) * 3, my = (y1 + y2) / 2 - (CX - (x1 + x2) / 2) * 0.12;
+    const dx = x2 - mx, dy = y2 - my, L = Math.hypot(dx, dy) || 1;
+    out += x1 === x2 && y1 === y2
+      ? `<path class="step${i === st.path.length - 2 ? " last" : ""}" d="M${x1 + 30},${y1 - 10} q 40,-40 4,-40"/>`
+      : `<path class="step${i === st.path.length - 2 ? " last" : ""}" d="M${x1},${y1} Q${mx},${my} ${x2 - dx / L * 44},${y2 - dy / L * 44}"/>`;
+  });
+  for (const f of W.frags) {
+    const [x, y] = posOf(f.id), ps = O.pulsesOf(f);
+    const cls = ["node", cs.has(f.id) ? "can" : st.path.length ? "off" : "", f.id === last ? "cur" : ""].join(" ");
+    let dots = "";
+    for (let k = 0; k < 16; k++) { const a = -Math.PI / 2 + (k / 16) * 2 * Math.PI; dots += `<circle class="pulse${ps.includes(k) ? " on" : ""}" cx="${x + 30 * Math.cos(a)}" cy="${y + 30 * Math.sin(a)}" r="${ps.includes(k) ? 3.2 : 1.8}"/>`; }
+    const p = st.probs && st.probs[f.id];
+    out += `<g class="${cls}" data-id="${f.id}"><circle class="ring" cx="${x}" cy="${y}" r="40"/>${dots}<text class="id" x="${x}" y="${y}">${f.id}</text>` +
+      (n[f.id] ? `<text class="n" x="${x}" y="${y + 56}">${"●".repeat(n[f.id])}${"○".repeat(Math.max(0, (W.end.repeat || 3) - n[f.id]))}</text>` : "") +
+      (p ? `<rect class="prob" x="${x - 40}" y="${y - 52}" width="${80 * p}" height="5" rx="2"/>` : "") + `</g>`;
+  }
+  $("map").innerHTML = out;
+}
+
+function show() {
+  drawMap();
+  $("path").innerHTML = st.path.map((id, i) => `<span>${i + 1}·${id}</span>`).join("") || "<i>choose a first fragment</i>";
+  const ended = O.done(W, st.path), next = ind(st.path);
+  $("path-state").textContent = ended ? "over: a fragment came a third time" : st.path.length ? `${O.choices(W, st.path).length} fragments can come next` : "any fragment first";
+  const cv = O.curve(W, st.path);
+  $("facts").innerHTML = [
+    ["next played", ended ? "—" : `tempo ×${next.tempo} · ${next.dyn} · ${next.touch}`],
+    ["steps travelled", cv.length ? cv.join(" ") + ` <small>(rhythmic distance, swaps)</small>` : "—"],
+    ["legal", O.legal(W, st.path) ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'],
+  ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  drawBranches();
+}
+
+function drawBranches() {
+  const B = O.branches(st.kept.map((k) => k.path)), rows = [];
+  let y = 0;
+  const walk = (node, depth, px, py) => {
+    for (const c of node.children) {
+      const x = 20 + depth * 44, yy = 26 + y * 30;
+      rows.push(`<line x1="${px}" y1="${py}" x2="${x}" y2="${yy}"/><circle cx="${x}" cy="${yy}" r="${3 + Math.min(4, c.n)}"/><text x="${x}" y="${yy - 11}" text-anchor="middle">${c.id}${c.n > 1 ? "×" + c.n : ""}</text>`);
+      if (!c.children.length) y++;
+      walk(c, depth + 1, x, yy);
+    }
+  };
+  walk(B, 0, 6, 26);
+  const h = Math.max(40, 26 + y * 30), wd = 44 * (Math.max(0, ...st.kept.map((k) => k.path.length)) + 1) + 40;
+  $("branches").setAttribute("viewBox", `0 0 ${Math.max(400, wd)} ${h}`);
+  $("branches").innerHTML = `<g class="br">${rows.join("")}</g>`;
+  $("kept-n").textContent = st.kept.length ? `${st.kept.length} kept as branches` : "kept as branches";
+  $("kept").innerHTML = st.kept.map((k, i) => `<dt>${i + 1}</dt><dd>${k.path.join(" ")}${i ? ` <small>· ${O.pathDistance(st.kept[0].path, k.path)} from the first</small>` : ""}</dd>`).join("");
+}
+
+function choose(id) { if (O.choices(W, st.path).includes(id)) { st.path.push(id); st.probs = null; show(); } }
+$("map").addEventListener("click", (e) => { const g = e.target.closest("g.node"); if (g) choose(g.dataset.id); });
+$("undo").onclick = () => { st.path.pop(); show(); };
+$("reset").onclick = () => { st.path = []; st.probs = null; show(); };
+let seed = 1;
+const rng = (s) => () => (s = (s * 16807) % 2147483647) / 2147483647;
+$("draw").onclick = () => { st.path = O.draw(W, rng(seed++ * 7919)); show(); };
+
+// ── sound
+let ac = null, voices = [], timers = [];
+function stopAll() { for (const o of voices) try { o.stop(); } catch {} voices = []; timers.forEach(clearTimeout); timers = []; st.playing = false; }
+function sound(notes) {
+  ac = ac || new AudioContext(); stopAll();
+  const t0 = ac.currentTime + 0.1;
+  for (const n of notes) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "triangle"; o.frequency.value = 440 * Math.pow(2, (n.midi - 69) / 12);
+    g.gain.setValueAtTime(0, t0 + n.on); g.gain.linearRampToValueAtTime(0.12 * n.vel, t0 + n.on + 0.008);
+    g.gain.setTargetAtTime(0, t0 + n.on + n.dur, 0.04);
+    o.connect(g).connect(ac.destination); o.start(t0 + n.on); o.stop(t0 + n.on + n.dur + 0.3); voices.push(o);
+  }
+}
+$("play").onclick = () => { if (st.path.length) sound(O.realize(W, st.path).notes); };
+$("stop").onclick = () => { stopAll(); };
+
+// ── a performance heard and followed: the notes of the path, a few slipped, fed to the follower one by one
+const NOISE = [{}, { wrong: 0.08, miss: 0.05, extra: 0.03 }, { wrong: 0.15, miss: 0.1, extra: 0.05 }];
+function hear(notes, r, { wrong = 0, miss = 0, extra = 0 }) {
+  const out = [];
+  for (const n of notes) {
+    const x = r(); if (x < miss) continue;
+    let m = n.midi; if (x < miss + wrong) m += (r() < 0.5 ? -1 : 1) * (1 + Math.floor(r() * 2));
+    out.push({ ...n, midi: m }); if (r() < extra) out.push({ ...n, on: n.on + 0.03, midi: m + (r() < 0.5 ? 2 : -3) });
+  }
+  return out;
+}
+function showFollowed(played, heard, f, d) {
+  const mark = (p) => p.map((id, i) => `<span class="${played[i] === id ? "" : "miss"}">${id}</span>`).join(" ");
+  $("followed").innerHTML = [
+    ["played", played.join(" ")], ["heard", `${heard.length} notes`],
+    ["followed live", f ? `${mark(f.path)} <small>(${O.pathDistance(f.path, played)} off; decided after ${f.decisions.map((x) => x.after).join(" ")} notes)</small>` : "…"],
+    ["read again", d ? `${mark(d.path)} <small>(${O.pathDistance(d.path, played)} off)</small>` : "…"],
+  ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+}
+function perform({ fast = false } = {}) {
+  const played = st.path.length && O.done(W, st.path) ? st.path.slice() : O.draw(W, rng(seed++ * 104729));
+  const R = O.realize(W, played), heard = hear(R.notes, rng(seed++ * 31), NOISE[+$("noise").value]);
+  st.heard = { played, heard };
+  st.path = []; st.probs = null; show();
+  return new Promise((resolve) => {
+    const finish = () => {
+      const f = O.follow(W, heard), d = O.decode(W, heard);
+      st.path = d.path; st.probs = null; st.last = { played, f, d }; show(); showFollowed(played, heard, f, d); st.playing = false; resolve(st.last);
+    };
+    if (fast) return finish();
+    sound(heard); st.playing = true;
+    heard.forEach((n, k) => timers.push(setTimeout(() => {
+      // (the follower live: the path so far, and the candidates for the fragment sounding now)
+      const sofar = heard.slice(0, k + 1), f = O.follow(W, sofar);
+      const last = f.decisions[f.decisions.length - 1], path = f.path.slice(0, -1);
+      const rec = O.recognize(W, path, sofar.slice(sofar.length - Math.min(sofar.length, last ? last.after : 1)).map((x) => x.midi));
+      st.path = f.path; st.probs = Object.fromEntries(rec.map((x) => [x.id, x.p])); drawMap();
+      $("path").innerHTML = f.path.map((id, i) => `<span class="${played[i] === id ? "" : "miss"}">${i + 1}·${id}</span>`).join("");
+      showFollowed(played, sofar, f, null);
+    }, 100 + n.on * 1000)));
+    timers.push(setTimeout(finish, 400 + R.end * 1000));
+  });
+}
+$("perform").onclick = () => perform();
+$("keep").onclick = () => { if (st.path.length) { st.kept.push({ path: st.path.slice() }); drawBranches(); } };
+
+$("edn").textContent = O.toEdn(W);
+show();
+window.kairoticStudy = { choose, state: () => st, reset: () => $("reset").click(), draw: () => $("draw").click(), keep: () => $("keep").click(), perform, W };
+</script>

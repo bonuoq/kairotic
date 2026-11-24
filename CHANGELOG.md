@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Study 70 · open form: the performer chooses the path, the follower decides the form** (discussion #212). A work of
+  fragments and rules of succession (`next`, `not`, `near` a rhythm at most n swaps away; `then` how the next is
+  played; ending when a fragment comes a third time), in *Klavierstück XI*'s manner: "Eleven cells", ten rhythm cells
+  over a twelve-tone row, 8.4 million performances of at most eight fragments. Followed live, each fragment that may
+  come a hypothesis aligned with what is heard (after 2 notes, the median); read again whole once the performance is
+  over (under 1 % of fragments off with slips). The performances kept as a tree of branches; the work as EDN,
+  `[:open … [:frag …] …]`, for an `open` box to come.
 - **One clock for a room** (discussion #382, idea 8, phase 1). In a shared room with a relay, the time things are made
   at — each transaction's `:t`, each segment's (where the newest point of the history comes from), each change of a
   jam in Perform and its live messages — is the room's shared time: the relay's clock as each page reads it on
