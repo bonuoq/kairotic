@@ -113,7 +113,7 @@ export async function codetab(page, check) {
 
   // ⇧+Enter: the form at the cursor, written at the end of the tab
   await cljs(page, '(swap! ui assoc :dirty false) (render-code (current))');
-  await cljs(page, `(let [t (str (patch->code (current)) "\n(box \\"mtof\\" 9800 700)")] (.setValue @code-ed t)
+  await cljs(page, `(let [t (str (shown-code (current)) "\n(box \\"mtof\\" 9800 700)")] (.setValue @code-ed t)
                       (.dispatch (.-view @code-ed) #js {:selection #js {:anchor (count t)}}) (swap! ui assoc :dirty true) (eval-code-form!))`);
   const c3 = await cljs(page, '(some (fn [[id b]] (when (and (= "mtof" (:text b)) (= 9800 (:x b)) (= 700 (:y b))) id)) (:boxes (current)))');
   check("⇧+Enter evaluates the form at the cursor: a new box", /^:b\d+$/.test(c3), c3);
