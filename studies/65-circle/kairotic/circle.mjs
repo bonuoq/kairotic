@@ -21,7 +21,7 @@ const NAP = [[1, -1]], MOLL = [[5, -1, true]];
 
 // a phrase: units [degree (of the phrase's key), chord, {r (raised, lowered), held (the bass not struck), key (a key
 // of its own), chroma (chromatic tones its chord may take: [degree alteration] in its key), family}]; strong: "all"
-// (a chord a bar, every unit strong) or alternating from the first; sequence [first last]: the units of a sequence,
+// (a chord a bar, every unit strong), alternating from the first, or one flag a unit (the book's bars: ① | ④ ⑦ | ③ ⑥…); sequence [first last]: the units of a sequence,
 // where a diminished triad is taken for the pattern's sake; natural [first last]: in minor the natural scale there
 export const PHRASES = {
   "vii-minor": { name: "vii° in minor", ref: "IJzerman 7.1, ex. 7.5, 7.9(a–e)", key: { tonic: "A", mode: "minor" },
@@ -33,13 +33,13 @@ export const PHRASES = {
   meyer: { name: "Meyer", ref: "IJzerman 7.1, ex. 7.3–7.4(b)", key: { tonic: "D", mode: "minor" }, strong: "all",
     units: [[0, "5/3"], [1, "6/5"], [-1, "6/5", { r: 1 }], [0, "5/3"]],
     about: "a question and its answer, ①–② / ⑦–①, the soprano 1̂–7̂ / 4̂–3̂: the diminished 6/5 on ② and the dominant's 6/5 on ⑦♯ — exchangeable, sharing three tones (Haydn, The Seven Last Words)" },
-  fifths: { name: "Fifth Down Fourth Up", ref: "IJzerman 7.2, ex. 7.12(a)", key: { tonic: "C" }, sequence: [1, 6], strong: "all",
+  fifths: { name: "Fifth Down Fourth Up", ref: "IJzerman 7.2, ex. 7.12(a)", key: { tonic: "C" }, sequence: [1, 6], strong: [1, 1, 0, 1, 0, 1, 0, 1],
     units: [[0, "5/3"], [3, "7"], [-1, "7"], [2, "7"], [-2, "7"], [1, "7"], [-3, "7"], [0, "5/3"]],
     about: "the circle of fifths in four parts: a 7th chord on every bass note, complete and incomplete by turns (its 5th left out, the bass doubled), each 7th prepared in the chord before and resolved down in the next" },
-  "fifths-53": { name: "Fifth Down Fourth Up (5/3)", ref: "IJzerman 7.2, ex. 7.12(b)", key: { tonic: "C" }, sequence: [1, 6], strong: "all",
+  "fifths-53": { name: "Fifth Down Fourth Up (5/3)", ref: "IJzerman 7.2, ex. 7.12(b)", key: { tonic: "C" }, sequence: [1, 6], strong: [1, 1, 0, 1, 0, 1, 0, 1],
     units: [[0, "5/3"], [3, "5/3"], [-1, "5/3"], [2, "5/3"], [-2, "5/3"], [1, "5/3"], [-3, "5/3"], [0, "5/3"]],
     about: "the same with 5/3s in place of the 7ths: every chord complete, its bass doubled" },
-  "fifths-minor": { name: "Fifth Down Fourth Up (minor)", ref: "IJzerman 7.2, ex. 7.12(c)", key: { tonic: "A", mode: "minor" }, sequence: [1, 6], natural: [1, 5], strong: "all",
+  "fifths-minor": { name: "Fifth Down Fourth Up (minor)", ref: "IJzerman 7.2, ex. 7.12(c)", key: { tonic: "A", mode: "minor" }, sequence: [1, 6], natural: [1, 5], strong: [1, 1, 0, 1, 0, 1, 0, 1],
     units: [[0, "5/3"], [3, "7"], [-1, "7"], [2, "7"], [-2, "7"], [1, "7"], [-3, "7"], [0, "5/3"]],
     about: "in minor from the natural scale, the natural ⑦ (G) in the sequence; the raised ⑦ (G♯) only in the cadence, to close on the tonic" },
   "thirds-seconds": { name: "Third Down Second Up", ref: "IJzerman 7.2, ex. 7.16(a)", key: { tonic: "C" }, sequence: [1, 6],
@@ -74,7 +74,7 @@ export function unitsOf(ph, K) {
     const next = raw.slice(t + 1).find((u) => !(u[2] && u[2].held));
     const ndeg = next ? localNote(K, lo, next[0], (next[2] && next[2].r) || 0).deg : null;
     const seq = ph.sequence && t >= ph.sequence[0] && t <= ph.sequence[1], nat = ph.natural && t >= ph.natural[0] && t <= ph.natural[1];
-    out.push({ d, r: o.r || 0, struck: !o.held, strong: ph.strong === "all" ? true : t % 2 === 0, chord, key, chroma: o.chroma || null, sequence: !!seq, natural: !!nat,
+    out.push({ d, r: o.r || 0, struck: !o.held, strong: Array.isArray(ph.strong) ? !!ph.strong[t] : ph.strong === "all" ? true : t % 2 === 0, chord, key, chroma: o.chroma || null, sequence: !!seq, natural: !!nat,
                family: o.family, dominant: deg === 4 && (ndeg === null || isDominant(4, ndeg)), deg });
   });
   return out;

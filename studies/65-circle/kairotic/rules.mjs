@@ -304,6 +304,10 @@ export const RULES = {
         if (held && !(v.cls === 6 || v.cls === 3 || (v.cls === 1 && v.steps >= 8))) return "held in the upper voice: a 7th, a 4th or a 9th";
         if (bassHeld && v.cls !== 1 && v.cls !== 3) return "held in the bass: a 2nd or a 4th (2–3, 4/2)";
       } else {
+        // (a 7th chord's 7th held over from the chord before into a weak unit — the alto's suspensions in Fifth Down
+        // Fourth Up, ex. 7.12a: "inevitably on the weak beat" —; it goes down by step after, as every 7th)
+        const f = free(t);
+        if (B[t].struck && held && f && f.seventh === v.cls && t >= 1 && consonant(vertical(t - 1, prev))) return null;
         if (B[t].struck) return "a dissonance on a weak unit: over a held bass";
         if (!struck || t === 0 || Math.abs(D(c) - D(prev)) !== 1) return "a dissonance on a weak unit passes by step";
         if (!consonant(vertical(t - 1, prev))) return "two dissonances in a row";
@@ -321,7 +325,9 @@ export const RULES = {
       // by step, whatever it meets over the next bass, ex. 7.9b — or where it is held and the bass moves on, ex. 7.9e)
       const dimFree = !!(fp && fp.family === "diminished" && pv0 && (pv0.cls === fp.seventh || (held && B[t].struck)));
       const freeBefore = !!(fp && !consonant(pv0) && fp.cls.includes(pv0.cls) && (!pv0.tri || fp.tri || dimFree));
-      if (t >= 1 && !delayed && !freeBefore) {
+      // (a 7th held into a weak unit — a suspension there, ex. 7.12a — goes down by step, as above; not a passing tone)
+      const heldSeventh = !!(fp && pv0 && fp.seventh === pv0.cls && t >= 2 && !strong(t - 1) && B[t - 1].struck && U[t - 2] === prev);
+      if (t >= 1 && !delayed && !freeBefore && !heldSeventh) {
         const pv = pv0;
         let special = false, ok4 = false;
         if (ro && !consonant(pv)) {
@@ -649,12 +655,20 @@ export function solveVoices(spec) {
     go(0, []);
     return out;
   }
+  // the memo's key: the last units the rules look back at — window of them, and further back to where a note held at
+  // the end began, and the note before it (the hold's length, a passing tone's way, which the rules read): two states
+  // the same there have the same futures
+  const keyOf = (W, t) => t + ":" + W.map((U) => {
+    let j = t - 1;
+    while (j > 0 && U[j - 1] === U[t - 1]) j--;
+    return U.slice(Math.max(0, Math.min(t - window, j - 1))).join(",");
+  }).join("|");
   const memo = new Map();
   function countFrom(W) {
     const t = W[0].length;
     if (t >= n) return 1n;
     tick();
-    const key = spec.key ? spec.key(W, t) : t + ":" + W.map((U) => U.slice(Math.max(0, t - window)).join(",")).join("|");
+    const key = spec.key ? spec.key(W, t) : keyOf(W, t);
     const got = memo.get(key);
     if (got !== undefined) return got;
     let v = 0n;
@@ -707,7 +721,7 @@ export function solveVoices(spec) {
     const W = empty();
     const ok = depthFirst({ n, at: () => W[0].length, cands: () => fan(W, false), push: (c) => W.forEach((U, i) => U.push(c.x[i])),
                             pop: () => W.forEach((U) => U.pop()),
-                            key: (t) => (spec.key ? spec.key(W, t) : t + ":" + W.map((U) => U.slice(Math.max(0, t - window)).join(",")).join("|")), temp, r, ms });
+                            key: (t) => (spec.key ? spec.key(W, t) : keyOf(W, t)), temp, r, ms });
     return ok ? result(W) : null;
   }
   return { n, voices, between, check, tuples, count, search, fan, sample, engine, judgeW, memo };
@@ -777,26 +791,50 @@ export const BETWEEN = {
     const { B, D } = N;
     if (t < 1 || B[t].struck || B[t].pedal) return null;
     const pv = p.map((c, i) => N.V[i].vertical(t - 1, c).cls), v = x.map((c, i) => N.V[i].vertical(t, c));
+    // (or in two steps, a 5/4 asked between: the 6 down to the 5, the 4 held, then down — the Lamento's double cadence,
+    // chapter 8)
+    const fourHeld = (i) => B[t].chord === "5/4" && pv[i] === 3 && x[i] === p[i];
     if (form === "three") {
       if (new Set(pv).size === 2 && pv.every((c) => c === 5 || c === 3)) {
-        const down = (i) => D(x[i]) === D(p[i]) - 1 && (pv[i] === 5 ? 4 : 2) === v[i].cls;
+        const down = (i) => (D(x[i]) === D(p[i]) - 1 && (pv[i] === 5 ? 4 : 2) === v[i].cls) || fourHeld(i);
         if (!down(0) || !down(1)) return "the 6/4 resolves to the 5/3, each voice down a step (6 to 5, 4 to 3)";
       }
       return null;
     }
     const pc = new Set(pv);
     if (pc.has(5) && pc.has(3) && !pc.has(2) && !pc.has(1))
-      for (let i = 0; i < x.length; i++) if ((pv[i] === 5 || pv[i] === 3) && !(D(x[i]) === D(p[i]) - 1 && v[i].cls === pv[i] - 1)) return "the 6/4 resolves to the 5/3 (6 to 5, 4 to 3)";
+      for (let i = 0; i < x.length; i++) if ((pv[i] === 5 || pv[i] === 3) && !(D(x[i]) === D(p[i]) - 1 && v[i].cls === pv[i] - 1) && !fourHeld(i)) return "the 6/4 resolves to the 5/3 (6 to 5, 4 to 3)";
     return null;
   } }),
-  /** pair · no parallel 5ths or octaves between two upper voices. */
-  "parallels-upper": (N, { form = "three" } = {}) => ({ id: "parallels-upper", check: ({ t, x, p }) => {
+  /** pair · no parallel 5ths or octaves between two upper voices; structural (as each voice's with the bass): not from
+   *  the strong unit before either, only ornaments between (each voice by step or held, the bass not leaping) — chorale-4
+   *  from 1.2.0; partimento-2 as partimento.mjs, without it. */
+  "parallels-upper": (N, { form = "three", structural = false } = {}) => ({ id: "parallels-upper", lookback: 3, check: ({ W, t, x, p }) => {
     if (t < 1) return null;
-    const { D } = N, perfectOf = (a, b) => { const cls = mod(D(a) - D(b), 7), s = mod(N.semi(a) - N.semi(b), 12); return (cls === 0 && s === 0) || (cls === 4 && s === 7) ? cls : null; };
+    const { D, B } = N, perfectOf = (a, b) => { const cls = mod(D(a) - D(b), 7), s = mod(N.semi(a) - N.semi(b), 12); return (cls === 0 && s === 0) || (cls === 4 && s === 7) ? cls : null; };
     for (let i = 0; i < x.length; i++) for (let j = i + 1; j < x.length; j++) {
       const a = perfectOf(x[i], x[j]), b = perfectOf(p[i], p[j]);
       if (form === "three") { if (a !== null && a === b && x[i] !== p[i] && x[j] !== p[j]) return `parallel ${a === 0 ? "octaves" : "5ths"} between the upper voices`; }
       else if (a !== null && a === b && (x[i] !== p[i] || x[j] !== p[j]) && D(x[i]) - D(p[i]) !== 0) return `parallel ${a === 0 ? "octaves" : "5ths"} between the ${N.names[i]} and the ${N.names[j]}`;
+    }
+    // (at the level of the structure, the weak units between ornaments: the same perfect interval on two strong units in
+    // a row, both voices moved the same way — the sequence's, with a chord of its own between and the bass leaping, are
+    // not this: Bach writes them, ex. 7.12)
+    const strong = N.V[0].strong;
+    if (!structural || !W || !strong(t)) return null;
+    let s = t - 1;
+    while (s >= 0 && !strong(s)) s--;
+    if (s < 0 || s === t - 1) return null;
+    for (let k = s + 1; k <= t; k++) if (B[k].struck && Math.abs(B[k].d - B[k - 1].d) > 1) return null;
+    const at = (i, k) => (k === t ? x[i] : W[i][k]);
+    for (let i = 0; i < x.length; i++) for (let j = i + 1; j < x.length; j++) {
+      const a = perfectOf(W[i][s], W[j][s]), b = perfectOf(x[i], x[j]);
+      if (a === null || a !== b) continue;
+      const di = D(x[i]) - D(W[i][s]), dj = D(x[j]) - D(W[j][s]);
+      if (!di || !dj || Math.sign(di) !== Math.sign(dj)) continue;
+      let orn = true;
+      for (let k = s + 1; k <= t && orn; k++) for (const v of [i, j]) if (Math.abs(D(at(v, k)) - D(at(v, k - 1))) > 1) orn = false;
+      if (orn) return `parallel ${a === 0 ? "octaves" : "5ths"} from the strong unit before, under the diminution (${form === "three" ? "the upper voices" : `the ${N.names[i]} and the ${N.names[j]}`})`;
     }
     return null;
   } }),
@@ -822,7 +860,9 @@ export const BETWEEN = {
    *  tone (and a false relation between any two voices). */
   doubling: (N, { form = "three" } = {}) => ({ id: "doubling", check: ({ t, x }) => {
     const { B, D } = N, v = x.map((c, i) => N.V[i].vertical(t, c));
-    const ltCount = () => [codeOf3(B[t].d, B[t].r || 0), ...x].filter((c) => N.ltOf(t, c)).length;
+    // (in a sequence ⑦ is a degree as the others, its chord not the dominant's: its bass doubled where the 7th chord
+    // is incomplete, ex. 7.12a)
+    const ltCount = () => (B[t].sequence && N.V[0].locB(t) === 6 ? 0 : [codeOf3(B[t].d, B[t].r || 0), ...x].filter((c) => N.ltOf(t, c)).length);
     if (form === "three") {
       const have = new Set(v.map((u) => u.cls));
       const chord = N.figured && B[t].chord ? B[t].chord : have.has(5) && have.has(2) ? "6/3" : have.has(5) && have.has(3) ? "6/4" : have.has(1) && have.has(3) ? "4/2" : "5/3";
@@ -840,7 +880,7 @@ export const BETWEEN = {
   } }),
   /** chord · the leading tone doubled (four parts: after the 7ths). */
   "leading-tone-doubled": (N) => ({ id: "leading-tone-doubled", check: ({ t, x }) =>
-    ([codeOf3(N.B[t].d, N.B[t].r || 0), ...x].filter((c) => N.ltOf(t, c)).length >= 2 ? "the leading tone doubled" : null) }),
+    (N.B[t].sequence && N.V[0].locB(t) === 6 ? null : [codeOf3(N.B[t].d, N.B[t].r || 0), ...x].filter((c) => N.ltOf(t, c)).length >= 2 ? "the leading tone doubled" : null) }),
   /** chord, line · a 7th chord's 7th: prepared where the chord is not the dominant's; the dominant's held or by step. */
   seventh: (N, { free = false } = {}) => ({ id: "seventh", check: ({ W, t, x }) => {
     const sv = N.sevenths(t);
@@ -849,7 +889,9 @@ export const BETWEEN = {
     if (!sv.dominant)
       for (let i = 0; i < x.length; i++) if (v[i].cls === sv.cls && (t === 0 || W[i][t - 1] !== x[i])) return `the 7th of a chord on ${"①②③④⑤⑥⑦"[mod(N.V[0].locB(t) + ROOT[N.B[t].chord], 7)]} is prepared (the ${N.names[i]})`;
     if (sv.dominant && t >= 1 && !free)
-      for (let i = 0; i < x.length; i++) if (v[i].cls === sv.cls && W[i][t - 1] !== x[i] && Math.abs(N.D(x[i]) - N.D(W[i][t - 1])) !== 1) return `the dominant's 7th is held or comes by step (the ${N.names[i]})`;
+      // (by step, diatonic or chromatic — chapter 8: the leading tone of one dominant down a chromatic half step to the
+      // 7th of the next, A to A♭ into the molldur's diminished 7th)
+      for (let i = 0; i < x.length; i++) if (v[i].cls === sv.cls && W[i][t - 1] !== x[i] && Math.abs(N.D(x[i]) - N.D(W[i][t - 1])) > 1) return `the dominant's 7th is held or comes by step (the ${N.names[i]})`;
     return null;
   } }),
   /** progression · the dominant resolved: its leading tone up (an inner voice may fall to ⑤ over ①); the deceptive ⑥
@@ -925,9 +967,9 @@ Object.assign(STYLES, {
     between: [["order", { form: "three", cross: true }], ["seconds"], ["parallels-upper"], ["false-relation"], ["modal"]], softBetween: [] },
   "modal-4": { style: "modal-4", version: "0.1.0", parts: 4, voice: "modal-voice",
     between: [["order", { cross: true }], ["modal"], ["doubling", { form: "four" }], ["seconds", { form: "four" }], ["parallels-upper", { form: "four" }]], softBetween: [] },
-  "chorale-4": { style: "chorale-4", version: "1.1.0", parts: 4, voice: "partimento-1",
+  "chorale-4": { style: "chorale-4", version: "1.2.0", parts: 4, voice: "partimento-1",
     between: [["order", { within: 7 }], ["chord", { form: "four" }], ["doubling", { form: "four" }], ["seventh"], ["leading-tone-doubled"], ["seconds", { form: "four" }],
-              ["parallels-upper", { form: "four" }], ["resolution"], ["six-four", { form: "four" }], ["dominant-major", { form: "four" }]],
+              ["parallels-upper", { form: "four", structural: true }], ["resolution"], ["six-four", { form: "four" }], ["dominant-major", { form: "four" }]],
     softBetween: [["doubling"]] },
 });
 

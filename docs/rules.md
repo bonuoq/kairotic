@@ -198,6 +198,9 @@ recovery by its size.
 `cac imitation` (`@kairotic/cac` 0.14.0) is its box: the bench of `canon.mjs` with real trees.
 `@kairotic/rules` 0.12.0: `judgeTwo(spec)` — two voices judged by the canon's rules, unit by unit (each voice's line and what
 is between them), the dux, k and d read from their entries; `cac judge` with `[:style :canon-2]` is its box.
+`@kairotic/rules` 0.13.0 (Study 69, IJzerman's chapter 8): a 7th by chromatic step, a 7th held into a weak unit, ⑦
+in a sequence as the others, the 6/4 in two steps (a 5/4 between), structural parallels between the upper voices
+(`chorale-4` 1.2.0), the memo reading back to where a held note began; `bits.mjs`.
 
 ## Next
 
