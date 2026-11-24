@@ -11,6 +11,28 @@
   a `def`) is a line of the REPL; the tab is written again from the patch if nothing else in it was unapplied.
   `patch-diff` (`kairotic.release`) now also writes pinned lines, layers, marks and projections, so a release keeps
   them too.
+- **Study 66 · compression: the uses heard, and the description as a tree** (discussion #399). The same rules, their
+  uses coded the way a listener learns them (`bits.mjs`): which rule comes is a word of a lexicon (the first time an
+  escape and its number), a figure's pitches each voice's step from the same voice of its last use, a motif's start
+  its step from the last; a lexicon for each context. BWV 846 comes to 864 bits, 16.1 % of its notes (28.7 % at fixed
+  prices), BWV 999 22.0 %, the cello preludes about 49 %. **One coder for both sides** (`coder`, `sayRows`): Study 67
+  says its levels with it, so its surface and Study 66's heard figure pitches are the same measure; its frame 270
+  bits against the surface's 591, with the derivation back (a step never heard said by its parts) 1025. **The harmony
+  where no figure is** (`harmonySpans`, `sonorityOf`): a chord a bar, the bars no figure covers read from their notes
+  (weighed by how long they sound; an anticipation of the next chord and the lightest passing notes left out), so BWV
+  846's cadence over the tonic pedal, C7 – F/C – G7 – C, is in Study 66's harmony and in Study 67's levels (its frame
+  now C – Am/C – D7 – Dm/F – G7 – G7 – F/C – C). And **`:use` takes `:voices`** too (each voice's
+  step from the same voice of the fragment's use before): `treeOf(c, {voices: true})` writes BWV 846 as 32 uses of one
+  figure, `[:use {:ref :F1 :voices [0 -2 2 2 1]}]`… And the description written as a tree (`treeOf`): the rules in `:defs`, each use a
+  `[:use {:ref :F1 :pitches [...]}]` — **`:use` takes `:pitches`** in `kairotic.mt` (`repitch`: a fragment's distinct
+  pitches, in the order they first come, become these: a figure said again over another chord). The page shows both
+  codings and the tree to copy; read back, every tree is the piece again.
+- **Study 68 · mixture: a piece said bar by bar the cheaper of two ways** (discussion #399). The surface way (a
+  figure and its pitches, Study 66's) or the genetic way (the bar's sonority, its notes as chord tones or ornaments,
+  Studies 61 and 67's), in one measure (`bits.mjs`), a word saying which, both ways learning every bar. Lossless; the
+  mixture never worse than the better way, better than both in the cello preludes (BWV 1009: 4483 as figures, 5375
+  genetically, 4237 mixed). Which way each bar took is the piece's signature: BWV 846 3 % genetic, 999 9 %, the cello's
+  1007 27 % and 1009 28 %.
 - **Study 67 · prelude: the second level of a prelude's description** (discussions #399, #321). Study 66's figure
   leaves BWV 846's harmony: read as five voices (a voice keeping its pitch holds its note), it is reduced by Study
   61's grammar (`reduceNotes`: any notes, any number of voices, a `keep` for the frame's retention) to its frame, C –

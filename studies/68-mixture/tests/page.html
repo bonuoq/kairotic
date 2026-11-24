@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 68 · mixture · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1000px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the four preludes said bar by bar, their signatures, a bar chosen.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 30000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+try {
+  await wait(() => w.kairoticStudy && d.getElementById("facts").textContent.includes("lossless"));
+  const facts = () => d.getElementById("facts").textContent;
+  is("it opens on BWV 846: 35 bars drawn, lossless, almost every bar a figure", d.querySelectorAll("#strip i").length === 35 && /✓/.test(facts()) && d.querySelectorAll("#strip i.f").length >= 33);
+  is("… its first bar: the figure over C4 E4 G4 C5 E5, its genetic words", /over C4 E4 G4 C5 E5/.test(d.getElementById("barinfo").textContent) && /c0\|0 ct\|1/.test(d.getElementById("barinfo").textContent));
+  is("the signatures of the four preludes", d.querySelectorAll("#sig .bar").length === 4);
+  w.kairoticStudy.select("bwv1009-prelude", 1);
+  is("BWV 1009: 88 bars, a quarter or more genetic, bar 2 chosen", d.querySelectorAll("#strip i").length === 88 && d.querySelectorAll("#strip i.g").length >= 20 && /^bar 2:/.test(d.getElementById("bar-n").textContent));
+} catch (e) { errors.push(String(e.message || e)); }
+is("no error on the page", errors.length === 0);
+const bad = results.filter((r) => !r[1]).map((r) => r[0]).concat(errors.map((e) => "error: " + e));
+window.kairoticResults = { total: results.length, failed: bad };
+document.getElementById("out").textContent = `${results.length - results.filter((r) => !r[1]).length} / ${results.length} passed\n` + results.map(([w2, ok]) => (ok ? "  ok   " : "  FAIL ") + w2).join("\n") + (errors.length ? "\n" + errors.join("\n") : "");
+</script>

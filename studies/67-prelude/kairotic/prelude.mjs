@@ -11,20 +11,21 @@
 //   its levels     Study 61's reduction on those notes (reduceNotes: unsplit, unspread, unsuspend, GTTM's metre, the
 //                  economy of the derivation), the first and the last chord kept, and the chord where the bass
 //                  arrives for the cadence
-//   their bits     a level said as voices: each note struck said as its step from the voice's note before (a word
-//                  "v|n" of bits.mjs) and each chord's length ("dt|n"); what was taken away to reach it said as the
-//                  derivation's words (Study 61's). The lexicon is shared, @kairotic/rules' bits.mjs: the numbers are
-//                  comparable with Studies 61, 63, 64 and 66
+//   their bits     Study 66's coder (compress.mjs: bits.mjs, a lexicon for each context, an escape and a literal
+//                  for a word never heard): a level said as rows, each chord its length ("dt|n") and every voice its
+//                  step from its pitch before ("v|n", semitones, 0 when it holds) — level 0 is then said as Study
+//                  66's heard figure pitches are —; what was taken away to reach it as the derivation's words (Study
+//                  61's), a step never heard said by its parts
 //   a new prelude  the way back (both ways, #321): the frame of level k kept, every voice between two of its chords
 //                  written again by the grammar read forwards — held, a passing note, a neighbour — the sonorities
 //                  consonant, the words already said preferred (economy); the figure applied to every chord again
 //
 // Pure data and functions.
 
-import { compress, pitchName, chordOf, notesOf, expand } from "./compress.mjs";
+import { compress, pitchName, chordOf, notesOf, expand, coder, sayRows, harmonySpans } from "./compress.mjs";
 import { reduceNotes, derivationLength, eventsOf } from "./reduction.mjs";
-import { midiOf, steps as stepsOf } from "./protovoices.mjs";
-import { lexicon, lengthOf } from "./bits.mjs";
+import { midiOf } from "./protovoices.mjs";
+import { lexicon } from "./bits.mjs";
 
 /** A MIDI pitch spelled as protovoices.mjs reads it (Study 66's names: C♯, E♭, F♯, A♭, B♭). */
 export const spell = (p) => pitchName(p).replace("♯", "#").replace("♭", "b");
@@ -79,7 +80,24 @@ export function meet(from, to) {
     return best;
   };
   const b = go(0, 0);
-  return b ? b.js.map((j) => to[j]) : to.slice(0, k);
+  if (b) return b.js.map((j) => to[j]);
+  // (more pitches than voices: the bass keeps the lowest, every other voice the nearest pitch above the voice below
+  // it, the cheapest such choice by motion — a doubling left out)
+  const memo2 = new Map();
+  const pick = (i, j) => {
+    if (i === k) return { c: 0, js: [] };
+    const key = i + ":" + j;
+    if (memo2.has(key)) return memo2.get(key);
+    let best = null;
+    for (let jj = i === 0 ? 0 : j + 1; jj <= m - (k - i) && (i > 0 || jj === 0); jj++) {
+      const rest = pick(i + 1, jj);
+      const c = Math.abs(to[jj] - from[i]) + rest.c;
+      if (!best || c < best.c) best = { c, js: [jj, ...rest.js] };
+    }
+    memo2.set(key, best);
+    return best;
+  };
+  return m > k ? pick(0, 0).js.map((j) => to[j]) : to.slice(0, k);
 }
 
 /**
@@ -88,20 +106,18 @@ export function meet(from, to) {
  * sonority at its last onset (its bass the lowest note of the last figure's length before it) closes the harmony.
  */
 export function harmonyOf(c, raw, { final = true } = {}) {
-  const cs = chordsOf(c);
-  if (!cs.length) throw new Error("no figure: nothing to read as chords");
-  const k = Math.max(...cs.map((x) => x.pitches.length));
+  const fig = chordsOf(c);
+  if (!fig.length) throw new Error("no figure: nothing to read as chords");
+  const k = Math.max(...fig.map((x) => x.pitches.length));
+  // Study 66's harmony, a chord a bar: the figure's chords, and the bars it does not cover (BWV 846's F/C and G7 over
+  // the tonic pedal, written out; the final chord) read as sonorities — the harmony does not stop where the pattern
+  // does. Without final, the last bar is left out when it is read.
+  let cs = harmonySpans(c);
+  if (!final && cs.length && cs[cs.length - 1].read) cs = cs.slice(0, -1);
   const rows = cs.map((x) => (x.pitches.length === k ? x.pitches : null));
-  // (a chord of fewer notes than the voices: its voices met from the chord before)
-  for (let i = 0; i < rows.length; i++) if (!rows[i]) rows[i] = meet(rows[i - 1] || cs[i].pitches, cs[i].pitches);
-  let end = null;
-  if (final && raw && raw.length) {
-    const last = Math.max(...raw.map((x) => x[0])), len = cs[cs.length - 1].len;
-    const top = raw.filter((x) => x[0] === last).map((x) => x[2]);
-    const bass = Math.min(...raw.filter((x) => x[0] >= last - len).map((x) => x[2]));
-    end = [...new Set([bass, ...top])].sort((a, b) => a - b);
-    rows.push(meet(rows[rows.length - 1], end));
-  }
+  // (a chord of more or fewer notes than the voices: its voices met from the chord before)
+  for (let i = 0; i < rows.length; i++) if (!rows[i]) rows[i] = meet(rows[i - 1] || cs[i].pitches.slice(0, k), cs[i].pitches);
+  const end = final && cs.length && cs[cs.length - 1].read ? cs[cs.length - 1].pitches : null;
   const V = voicesOf(k), notes = [];
   V.forEach((v, i) => {
     let cur = null, n = 0;
@@ -128,33 +144,41 @@ export function analyse(H, { economy = 3, temp = 0, r = Math.random } = {}) {
   return { ...reduceNotes(H.notes, { per: 1, economy, temp, r, judge: null, maxSpread: H.voices.length + 1, keep: keepCadence }), harmony: H };
 }
 
-/** A level said as voices: the words of its notes struck (each its step from its voice's note before; the first of
- *  each voice its pitch) and of its slices' lengths, in time. */
-export function levelWords(path) {
-  const words = [], last = new Map();
-  for (const s of path) {
-    words.push("dt|" + (s.end - s.on));
-    for (const n of s.notes) {
-      if (!n.start) continue;
-      const before = last.get(n.voice);
-      words.push(before ? "v|" + stepsOf(before, n.pitch) : "p:" + n.pitch);
-      last.set(n.voice, n.pitch);
-    }
+/** A level as rows: each slice its length and the pitch of every voice (held or struck), voice by voice. */
+export function levelRows(path, voices) {
+  return path.map((sl) => ({ dt: sl.end - sl.on, row: voices.map((v) => { const n = sl.notes.find((x) => x.voice === v); return n ? midiOf(n.pitch) : null; }) }));
+}
+
+/** A step of a reduction never heard, said by its parts (Study 61's key, "unsplit:passing-mid.v2|1,tie-right.v1|0"):
+ *  the operation, how many notes, and each note's ornament, voice and step — each part a word of its own context. */
+export function sayStepParts(say, key, nVoices) {
+  const [op, rest = ""] = key.split(":"), parts = rest ? rest.split(",") : [];
+  let b = say("op", op, 3) + Math.log2(nVoices + 1);
+  for (const x of parts) {
+    const m = /^(.*)\.(\w+)\|(-?\d+)$/.exec(x);
+    if (!m) { b += say("part", x, 8); continue; }
+    b += say("orn", m[1], 4) + Math.log2(nVoices) + say("dstep", m[3], Math.log2(9));
   }
-  return words;
+  return b;
 }
 
 /**
- * The bits of describing the harmony from level k: the level itself (levelWords) and what was taken away to reach it
- * (the derivation's words of the steps into levels 1 … k), in one lexicon — {level, derivation, total, slices}.
+ * The bits of describing the harmony from level k: the level itself and what was taken away to reach it (the
+ * derivation's words of the steps into levels 1 … k), with Study 66's coder (compress.mjs; discussion #399): a lexicon
+ * for each context, a word never heard an escape and its literal. The level said as rows, Study 66's figure pitches'
+ * way: each slice its length (context "dt"), then each voice its step from its pitch before (0 when it holds) — so
+ * level 0 and Study 66's heard figure pitches measure the same thing. A step of the derivation is one word, Study 61's
+ * (context "step"); never heard, said by its parts (sayStepParts). {level, derivation, total, slices}.
  */
 export function bitsAt(an, k) {
-  const lex = lexicon({ kinds: 40 });
+  const { say } = coder({ kinds: 40 });
+  const voices = an.harmony.voices, last = [];
   let level = 0, derivation = 0;
-  for (const w of levelWords(an.levels[k])) { level += lex.bits(w); lex.add(w); }
-  // (a step said as one word, Study 61's: said by its parts instead — the operation, each note's ornament — it costs
-  // more, the parts being many and the whole coming back: measured, BWV 846's frame 1158 bits against 532)
-  for (const s of an.steps.filter((x) => x.level <= k)) { derivation += lex.bits(s.key); lex.add(s.key); }
+  for (const { dt, row } of levelRows(an.levels[k], voices)) {
+    level += say("dt", "dt|" + dt, Math.log2(64));
+    level += sayRows(say, [row.map((p, i) => (p === null ? last[i] : p))], last);
+  }
+  for (const s of an.steps.filter((x) => x.level <= k)) derivation += say("step", s.key, () => sayStepParts(say, s.key, voices.length));
   return { level, derivation, total: level + derivation, slices: an.levels[k].length };
 }
 
@@ -215,7 +239,8 @@ export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budge
       for (const d of CANDIDATE_STEPS) {
         const p = moveBy(prev[i], d);
         if (i > 0 && p < row[i - 1]) continue;
-        if (goal && Math.abs(goal[i] - p) > 2 * (w - u) + 2) continue;
+        // (into the chord pinned next a voice may also leap an octave: a doubling closing, as into the final chord)
+        if (goal && Math.abs(goal[i] - p) > (w - u === 1 ? 12 : 2 * (w - u) + 2)) continue;
         row.push(p); words.push("v|" + d);
         rec(i + 1, row, words);
         row.pop(); words.pop();
