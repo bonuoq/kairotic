@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The work's code in chains** (discussions #407, #380, #399). The Code tab can write the lines of the work as
+  chains (**-> chains**, remembered in this browser): lines that follow each other in the work's order as
+  `(-> :b1 (to :b2) (to 1 :b3 0))`, lines in a row from one box as `(doto :b1 (to :b2) (to :b3))`, a line alone as a
+  `connect`, and names in place of ids. Applied, it gives back the same lines in the same order (the order messages
+  fan out in), so it changes nothing: a second writing of the same patch, its structure easier to read
+  (`lines->chains`, `(patch->code p :chains)`, `(chains! true)`).
 - **Live coding: chains that can be evaluated again** (discussion #407). `to` takes a name for the box it makes,
   `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))`: the first time the boxes are made below
   each other; evaluated again only what changed changes (nothing, or one text), a named box moved by hand stays where

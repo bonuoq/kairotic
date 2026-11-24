@@ -193,6 +193,30 @@ export async function codetab(page, check) {
   check("... and the id shown over a box says its name", tag === `${n2.slice(1)} :tosc`, String(tag));
   await cljs(page, `(delete ${n1} ${n2})`);
 
+<<<<<<< HEAD
+  // ── the work's code in chains (#407, a lens of the code: #380, #399) ──
+  const x = (await cljs(page, '(box "mtof" 9800 1800)')).trim(), y = (await cljs(page, '(box "ftom" 9800 1860)')).trim();
+  const z = (await cljs(page, '(box "mtof" 9800 1920)')).trim(), w = (await cljs(page, '(box "mtof" 9900 1920)')).trim();
+  await cljs(page, `(connect ${x} 0 ${y} 0) (connect ${y} 0 ${z} 0) (connect ${w} 0 ${x} 0) (connect ${w} 0 ${y} 0)`);
+  const chn = await cljs(page, "(lines->chains (current))");
+  check("lines that follow each other are written as a chain", chn.includes(`"(-> ${x} (to ${y}) (to ${z}))"`), chn.slice(-300));
+  check("... lines in a row from one box, with doto", chn.includes(`"(doto ${w} (to ${x}) (to ${y}))"`), chn.slice(-300));
+  check("the whole work written in chains gives back its lines, in their order",
+        (await cljs(page, "(= (:lines (current)) (:lines (build (patch->code (current) :chains))))")) === "true");
+  check("... and applied, it changes nothing", (await cljs(page, "(run-code! (patch->code (current) :chains))")) === "0");
+  await cljs(page, `(name-box ${x} :cx)`);
+  check("names are written in place of ids", (await cljs(page, "(lines->chains (current))")).includes(`"(-> :cx (to ${y}) (to ${z}))"`));
+  const v = (await cljs(page, '(box "+" 9900 1980)')).trim();
+  await cljs(page, `(connect ${z} 0 ${v} 1) (connect ${v} 0 ${w} 0)`);
+  check("other ports are written in the step", (await cljs(page, "(lines->chains (current))")).includes(`"(-> ${z} (to 0 ${v} 1) (to ${w}))"`), await cljs(page, "(last (lines->chains (current)))"));
+  await cljs(page, '(swap! ui assoc :dirty false) (chains! true)');
+  check("the Code tab writes the work in chains when asked", (await cljs(page, `(str/includes? (.getValue @code-ed) "(-> :cx (to ${y})")`)) === "true"
+        && (await page.evaluate(() => document.getElementById("code-chains").getAttribute("aria-pressed"))) === "true");
+  await cljs(page, '(chains! false)');
+  check("... and a connect each again", (await cljs(page, `(str/includes? (.getValue @code-ed) "(connect :b")`)) === "true"
+        && (await cljs(page, '(.getItem js/localStorage "kairotic.code-style")')) === '"flat"');
+  await cljs(page, `(delete ${x} ${y} ${z} ${w} ${v})`);
+=======
   // ── chains that can be evaluated again (#407): to with a name ──
   const chain = (t) => `(eval-calls! "(-> (box :ca \\"mtof\\" 9800 1500) (to :cb \\"${t}\\") (to :cc \\"mtof\\"))")`;
   const k0 = Number(await cljs(page, nEv));
@@ -210,4 +234,5 @@ export async function codetab(page, check) {
         && (await cljs(page, `(:x (get-in (current) [:boxes ${cb}]))`)) === "9950",
         await cljs(page, lastEv));
   await cljs(page, `(delete ${ca} ${cb} ${cc})`);
+>>>>>>> origin/main
 }

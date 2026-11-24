@@ -529,7 +529,9 @@ the bar hides or shows it. This browser remembers how you left it. From the REPL
 `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
 
 - **Code** — the work as **Calls** (`box`, `connect`, …), editable: Ctrl/⌘+Enter applies them (only what
-  they change, as one event), ⇧+Enter evaluates the form at the cursor alone. **Data** shows the same work as data (EDN): the state the history produces, every key of
+  they change, as one event), ⇧+Enter evaluates the form at the cursor alone. **-> chains** writes the lines
+  that follow each other as chains — `(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, names in
+  place of ids — the same work, in the same order, read as the signal goes (this browser remembers the choice). **Data** shows the same work as data (EDN): the state the history produces, every key of
   every box, read-only, to inspect it (folding and search with Ctrl/⌘+F). Edits not run yet stay in the
   calls while you look at the data.
 - **Components** — the classes this work knows. The boxes that define them (`component`) are kept
