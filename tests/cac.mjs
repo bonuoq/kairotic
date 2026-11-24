@@ -106,7 +106,21 @@ export async function cac(page, check) {
   await cljs(page, `(send! ${jb} ${WRONG})`);
   const bad = await until(page, `(:sub (second (last-shown ${jb})))`, (x) => /parallel/.test(x));
   check("... the book's wrong Galant cadence: its parallel 5ths between the alto and the tenor", /parallel 5ths between the alto and the tenor/.test(bad), bad);
-  await cljs(page, `(delete ${tb}) (delete ${cb}) (delete ${out}) (delete ${jb})`);
+  // cac judge with canon-2: two voices judged by the canon's rules, the notes that break one marked (:why); entering
+  // together, free counterpoint
+  const FIRST = `[:piece ${voice("up", "c4 d4 e4 f4 e4 d4 c4")} ${voice("lo", "c3 g3 a3 d3 c3 b2 c3")}]`;
+  const kb = (await cljs(page, '(box "cac judge" 9600 500)')).trim();
+  const ko = (await cljs(page, '(box "tree" 9600 600)')).trim();
+  await until(page, `(io (get-in (current) [:boxes ${kb}]))`, (x) => x === "[1 2]");
+  await cljs(page, `(connect ${kb} 0 ${ko} 0) (send! ${kb} [:style :canon-2]) (send! ${kb} ${FIRST})`);
+  const kj = await until(page, `(:sub (second (last-shown ${kb})))`, (x) => /✓|✗/.test(x), 20000);
+  const marked = await until(page, `(vec (keep (fn [n] (:why (second n))) (drop 2 (nth (tree-data ${ko}) 3))))`, (x) => /parallel 5ths/.test(x), 20000);
+  check("cac judge [:style :canon-2]: a first species written badly — its parallel 5ths and the lower voice's leaps, :why on the notes", /✗/.test(kj) && /parallel 5ths/.test(marked) && /leap/.test(marked), `${kj} ${marked}`);
+  // ... another style's two voices: judged over their bass, as before
+  await cljs(page, `(send! ${kb} [:style :partimento-1])`);
+  const kp = await until(page, `(let [s (second (last-shown ${kb}))] [(:main s) (:sub s)])`, (x) => /^\["cac judge" "[✓✗]/.test(x), 20000);
+  check("... with partimento-1 the same two voices are judged over their bass", /^\["cac judge" "[✓✗]/.test(kp), kp);
+  await cljs(page, `(delete ${tb}) (delete ${cb}) (delete ${out}) (delete ${jb}) (delete ${kb}) (delete ${ko})`);
 
   // cac imitation: a melody in, the comes found against it (canon.mjs, imitation-2): Frère Jacques, a canon at the
   // octave below two bars later — exactly one, the round itself; two units later, none

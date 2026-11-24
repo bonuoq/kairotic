@@ -414,6 +414,28 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   is("... and nothing for one that has realizations", b.countWithin(3000) > 0n && b.deadEnd() === null);
 }
 
+// cac judge with canon-2 (canon.mjs's judgeTwo): two voices judged by the canon's rules
+{
+  const CV = await import("../packages/rules/assets/canon.mjs");
+  let fine = 0, tried = 0;
+  for (const [im, k, d] of [[1, -7, 2], [1, -4, 2], [0.6, -7, 2]]) {
+    const V = CV.canonVoices({ tonic: 0, key: "C", k, d, b: 2, n: 10, lo: 0, hi: 7, imitation: im }, "canon-2");
+    const m = (c) => ({ midi: c === null ? null : V.world.S.midi(c), units: 1 });
+    for (let i = 0; i < 3; i++) {
+      const R = V.sample(rng(i + 11)); tried++;
+      const J = CV.judgeTwo({ upper: R.dux.map(m), lower: R.comes.map(m), key: "C", imitation: im });
+      if (J.ok && J.dux === "upper" && J.k === k && J.d === d) fine++;
+    }
+  }
+  is(`judgeTwo: canons the engine draws (at the octave and the 5th below, a near imitation) are by the rules, their k and d read from the voices (${fine}/${tried})`, fine === tried);
+  const P = (s) => s.split(" ").map((p) => (p === "-" ? { midi: null, units: 1 } : { midi: { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 }[p[0]] + 12 * (+p[1] + 1), units: 1 }));
+  const J = CV.judgeTwo({ upper: P("c4 d4 e4 f4 e4 d4 c4"), lower: P("c3 g3 a3 d3 c3 b2 c3"), key: "C" });
+  is(`... a first species written badly: free counterpoint (they enter together), the parallel 5ths between them and the lower voice's leaps found, by unit — ${J.reasons.map((r) => `${r.unit + 1} ${r.voice}: ${r.why}`).join("; ")}`,
+     !J.ok && J.imitation === "free" && J.reasons.some((r) => r.unit === 2 && r.voice === "both" && /parallel 5ths/.test(r.why)) && J.reasons.some((r) => r.voice === "dux" && /leap/.test(r.why)));
+  const Jc = CV.judgeTwo({ upper: P("c4 d4 e4 c4 g4 f4 e4 d4 c4 -"), lower: P("- - c3 d3 e3 c3 a3 f3 e3 d3"), key: "C" });
+  is(`... a canon whose comes leaves the dux (A for G): the unit where it does — ${Jc.reasons.filter((r) => /canon/.test(r.why)).map((r) => `${r.unit + 1}: ${r.why}`).join("; ")}`, !Jc.ok && Jc.d === 2 && Jc.k === -7 && Jc.reasons.some((r) => r.unit === 6 && /a canon: the comes is the dux.s note/.test(r.why)));
+}
+
 const failed = results.filter((r) => !r[1]);
 console.log(`${results.length - failed.length} / ${results.length} passed`);
 for (const [w, ok, d] of results) if (!ok) console.log("  FAIL " + w + (d ? " — " + d : ""));
