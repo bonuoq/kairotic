@@ -265,6 +265,38 @@
     :clear      empty-patch
     p))
 
+;; ───── the schema of the events (discussion #382, idea 5) ─────
+;; As the attributes of a tree (kairotic.mt/attr-schema), the events of the history are data: what each one is and
+;; what it changes — :work, :layout (where a box is, or how it is shown: issue #5) or :mark (a point of the history
+;; itself: a keyframe, a merge's mark). A take's summary, (tx-at) and (tx-log) read it here.
+
+(def event-schema
+  {:box        {:kind :work   :doc "a box made: [:box id text x y]"}
+   :text       {:kind :work   :doc "a box's text: [:text id text]"}
+   :move       {:kind :layout :doc "a box moved: [:move id x y]"}
+   :present    {:kind :layout :doc "where a box appears in presentation: [:present id x y]"}
+   :view       {:kind :layout :doc "the view a box is shown in: [:view id :score]"}
+   :size       {:kind :layout :doc "a box's own size: [:size id w h]"}
+   :shows      {:kind :work   :doc "the layers a tree box shows: [:shows id [:analysis]]"}
+   :pin        {:kind :work   :doc "a `patch @name` pinned to a point of its line: [:pin id [node n]]"}
+   :connect    {:kind :work   :doc "a line between two ports: [:connect a o b i]"}
+   :disconnect {:kind :work   :doc "a line taken away: [:disconnect a o b i]"}
+   :delete     {:kind :work   :doc "a box deleted: [:delete id]"}
+   :layer      {:kind :work   :doc "a layer of marks: [:layer id {…}]"}
+   :annot      {:kind :work   :doc "a mark on a layer: [:annot id {…}]"}
+   :project    {:kind :work   :doc "a projection of a box's view: [:project id {…}]"}
+   :in         {:kind :work   :doc "an event of a box's data, or of a sub-patch: [:in id event]"}
+   :kept       {:kind :work   :doc "a buffer written from a tree, with its recipe: [:kept id data recipe]"}
+   :recipe     {:kind :work   :doc "a box's recipe: [:recipe id r]"}
+   :data       {:kind :work   :doc "the whole data of a box: [:data id d]"}
+   :batch      {:kind :work   :doc "several changes as one: [:batch [event …]]"}
+   :load       {:kind :work   :doc "the whole patch: [:load patch]"}
+   :clear      {:kind :work   :doc "the patch emptied: [:clear]"}
+   :mark       {:kind :mark   :doc "a keyframe: a snapshot, or a take kept from Perform: [:mark {:kind :label}]"}
+   :merge-from {:kind :mark   :doc "where a merge brought a branch from: [:merge-from node n]"}})
+
+(defn ev-op-kind "What an event of op changes, by the schema (:work if it says nothing)." [op] (get-in event-schema [op :kind] :work))
+
 ;; ───────────────────────── EDN ⇄ JSON encoding ─────────────────────────
 ;; db stores JSON; keywords, names (symbols) and maps are tagged so they come back as EDN without evaluating anything.
 
@@ -655,6 +687,13 @@
     (let [v (vec (take n (concat (map sane-tx ms) (repeat nil))))]
       (when (some some? v) v))))
 
+(defn sane-excised
+  "The record a segment keeps of what was excised from it (#382): [{:t :author :points} …], or nil."
+  [xs]
+  (when (sequential? xs)
+    (not-empty (vec (for [x xs :when (and (map? x) (number? (:t x)))]
+                      (cond-> {:t (:t x) :author (str (:author x))} (number? (:points x)) (assoc :points (:points x))))))))
+
 (defn metas-of
   "The transactions of segment n, one per event (nil where there is none)."
   [n]
@@ -675,6 +714,7 @@
   (clj->js (cond-> {:parent (:parent n) :at (:at n) :author (:author n) :session (:session n) :t (:t n)
                     :merge (:merge n) :events (mapv enc (:events n))}
              (:meta n) (assoc :meta (mapv enc (:meta n)))
+             (seq (:excised n)) (assoc :excised (mapv enc (:excised n)))
              (:line n) (assoc :line (:line n)))))
 
 ;; ───────────────────────── works: shared rooms and solo work ─────────────────────────

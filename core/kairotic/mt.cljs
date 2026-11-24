@@ -1638,9 +1638,42 @@
 ;; takes point at them. The code window shows the
 ;; written tree; what is written there is put back into the whole tree, each node keeping what it had of the rest.
 
-(def performative-keys #{:tstamp.real :dur.real :vel :wire :listen :takes :continuum :profiles})
+;; ───────── the schema: what each attribute of a tree is (discussion #382, idea 5) ─────────
+;; As in Datomic, the attributes are data: each one says which layer it belongs to (nil: the written tree) and,
+;; where it matters, on which nodes (:on, a set of tags). The layers below, the code window and the lenses
+;; (#380) read from here what a layer is; a new key of a layer is a new entry here, not a change to their code.
 
-(defn- performative-key? [tg k] (or (contains? performative-keys k) (and (= :note tg) (= :id k))))
+(def attr-schema
+  {:tstamp.real {:layer :performance :doc "where the note really sounded: its onset, in seconds"}
+   :dur.real    {:layer :performance :doc "how long it really sounded, in seconds"}
+   :vel         {:layer :performance :doc "how strongly it was played (0…1)"}
+   :wire        {:layer :performance :doc "a wire from the note to the electronics (#217)"}
+   :listen      {:layer :performance :doc "what is to be heard at the event (#308)"}
+   :takes       {:layer :performance :doc "the takes of the tree, by note :id (#289)"}
+   :continuum   {:layer :performance :doc "how the continuum draws the tree (#217)"}
+   :profiles    {:layer :performance :doc "what rehearsals learned of how each note sounds (#308)"}
+   :id          {:layer :performance :on #{:note} :doc "a note's id: what takes and wires point at"}
+   :fig         {:layer :analysis :doc "the figures over a bass note"}
+   :deg         {:layer :analysis :doc "the degree of a bass note"}
+   :local       {:layer :analysis :doc "the key a note is read in"}
+   :why         {:layer :analysis :doc "why a rule was broken there"}
+   :harmony     {:layer :analysis :doc "a chord's name"}})
+
+(defn layer-of
+  "The layer attribute k of a node tagged tg belongs to (:performance, :analysis…), or nil: what is written."
+  [tg k]
+  (when-let [s (get attr-schema k)]
+    (when (or (nil? (:on s)) (contains? (:on s) tg)) (:layer s))))
+
+(defn layer-keys
+  "The attributes of layer l that belong to it on any node (a key that does only on some, as a note's :id, is not
+   among them)."
+  [l]
+  (set (for [[k s] attr-schema :when (and (= l (:layer s)) (nil? (:on s)))] k)))
+
+(def performative-keys (layer-keys :performance))
+
+(defn- performative-key? [tg k] (= :performance (layer-of tg k)))
 
 (defn performative-attrs "What a node has of performing it." [n]
   (let [tg (tag n)] (into {} (filter (fn [[k _]] (performative-key? tg k))) (attrs n))))
@@ -1679,14 +1712,10 @@
 ;; :harmony). Hidden, a layer is kept: what is written is put back into the whole tree, each node keeping its hidden
 ;; keys (as with-performative does for one layer).
 
-(def analysis-keys #{:fig :deg :local :why :harmony})
+(def analysis-keys (layer-keys :analysis))
 (def layer-names [:performance :analysis])
 
-(defn- layer-key? [layer tg k]
-  (case layer
-    :performance (performative-key? tg k)
-    :analysis (contains? analysis-keys k)
-    false))
+(defn- layer-key? [layer tg k] (= layer (layer-of tg k)))
 
 (defn- in-layers? [ls tg k] (some (fn [l] (layer-key? l tg k)) ls))
 

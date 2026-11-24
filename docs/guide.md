@@ -322,6 +322,10 @@ tooltips tell it, and the REPL reads it as data (discussion #382).
 - `(tx-log)` — the transactions from the start to here, a seq to read with Clojure:
   `(filter #(= :agent (:via %)) (tx-log))`, `(remove #(= :layout (:kind %)) (tx-log))`, `(group-by :author (tx-log))`.
 
+- `(schema)` — what the attributes of a tree and the events of the history are, as data: `(schema :tree)`, each
+  attribute with its layer (`:performance`, `:analysis`; none for what is written), which the layers, the code
+  window and the lenses (#380) read; `(schema :events)`, each event with what it changes.
+
 Events made before this have no transaction: they say who made them (their segment's), not when or from where.
 
 ### Lines
@@ -421,7 +425,8 @@ forgets them.
   work at those moments is lost (and a snapshot there with it), and the moments after them stay exactly as
   they are. The tip of a branch and a point where a branch starts cannot be forgotten, and in a shared room
   the history belongs to everyone, so there a release is the way to a compact version. From the REPL:
-  `(forget-points [["segment" 3] …])`.
+  `(excise! [["segment" 3] …])` — the only way anything leaves a history, as Datomic's excision: the change that
+  replaces the points says so (`:via :excise`), and each segment keeps a record of it (`(excisions)`).
 
 ## 5. The tabs on the right
 

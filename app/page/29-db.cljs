@@ -68,9 +68,9 @@
   "What an event changes, given the patch before it: :mark (a keyframe, a merge's mark), :layout (boxes moved,
    placed in presentation, shown in another view: issue #5) or :work."
   [p ev]
-  (case (first ev)
-    (:mark :merge-from) :mark
-    (if (layout-ev? p ev) :layout :work)))
+  (cond (= :mark (ev-op-kind (first ev))) :mark
+        (layout-ev? p ev) :layout
+        :else :work))
 
 (defn tx-at
   "The transaction of the event that leads to a point of the history: (tx-at [\"segment\" n]); (tx-at) where
@@ -95,3 +95,15 @@
    (if-let [p (norm pos)]
      (for [[sid k] (segments p) i (range 1 (inc k))] (tx-at [sid i]))
      ())))
+
+(defn schema
+  "What the attributes of a tree and the events of the history are, as data (#382): {:tree … :events …}.
+   (schema :tree) the attributes of a tree, each with its layer (:performance, :analysis; none: what is written);
+   (schema :events) the events, each with what it changes (:work, :layout, :mark)."
+  ([] {:tree mt/attr-schema :events event-schema})
+  ([k] (case k :tree mt/attr-schema :events event-schema (fail "(schema :tree) or (schema :events)"))))
+
+(defn excisions
+  "What was excised from the history of the line on screen (excise!): [{:segment :t :author :points} …], oldest first."
+  []
+  (sort-by :t (for [n (vals (:nodes @hist)) x (:excised n)] (assoc x :segment (:id n)))))

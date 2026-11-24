@@ -84,6 +84,11 @@ export async function release(page, check) {
   check("... and the work as it is stays the same", (await cljs(page, "(sane-patch (work-patch))")) === now0);
   check("... the point before them too", (await cljs(page, at(n - 3))) === tBefore, await cljs(page, at(n - 3)) + " vs " + tBefore);
   check("... the one after, as one change", (await cljs(page, at(n - 2))) === tAfter, await cljs(page, at(n - 2)) + " vs " + tAfter);
+  // the excision (#382): its own transaction on the change that replaces the points, and its record on the segment
+  check("... a change the excision made", (await cljs(page, `(:via (tx-at [${JSON.stringify(nid)} ${n - 2}]))`)) === ":excise");
+  check("... each event still with its transaction",
+    (await cljs(page, `(let [nd (node ${JSON.stringify(nid)})] (or (nil? (:meta nd)) (= (count (:meta nd)) (count (:events nd)))))`)) === "true");
+  check("... and the segment keeps the excision's record", (await cljs(page, "(mapv :points (excisions))")) === "[2]", await cljs(page, "(excisions)"));
   check("nothing is chosen any more", (await cljs(page, "(count @picked)")) === "0" && !(await visible(page, "forget-btn")));
   const tip = await cljs(page, "(let [[nid i] (norm (:pos @world))] (forget-blocker [nid i]))");
   check("the tip of a branch cannot be forgotten", tip.includes("tip"), tip);

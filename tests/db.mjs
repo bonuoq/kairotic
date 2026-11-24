@@ -56,6 +56,13 @@ export async function db(page, check) {
   check("... to filter as any seq", (await cljs(page, "(count (filter #(= :with (:via %)) (tx-log)))")) === "1");
   check("... and they say what they changed", (await cljs(page, "(some? (some #(= :layout (:kind %)) (tx-log)))")) === "true");
 
+  // the schema (#382, idea 5): attributes and events as data
+  check("the schema says a tree's attributes' layers", (await cljs(page, "(get-in (schema :tree) [:tstamp.real :layer])")) === ":performance");
+  check("... a note's :id is performative, a measure's is not",
+    (await cljs(page, "[(mt/layer-of :note :id) (mt/layer-of :measure :id)]")) === "[:performance nil]");
+  check("... the layers' keys come from it", (await cljs(page, "(= mt/analysis-keys #{:fig :deg :local :why :harmony})")) === "true");
+  check("... and what each event changes", (await cljs(page, "(mapv ev-op-kind [:move :box :mark :something-new])")) === "[:layout :work :mark :work]");
+
   // a transaction as the history's tooltips tell it
   check("the history tells where an event came from", (await cljs(page, "(tx-label {:t 0 :via :agent :box :b3 :why \"a bass\"})")).includes("agent b3 «a bass»"));
 

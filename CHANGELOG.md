@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The schema as data, and one excision** (discussion #382, ideas 5 and 6). `kairotic.mt/attr-schema`: each
+  attribute of a tree with its layer (`:performance`, `:analysis`) and, where it matters, the nodes it belongs to on
+  (`:on`, as a note's `:id`); `performative-keys`, `analysis-keys` and the layers are read from it (`mt/layer-of`,
+  `mt/layer-keys`), and so is what `quantize` carries of an analysis. `event-schema` (the page): each event of the
+  history with what it changes (`:work`, `:layout`, `:mark`), read by a take's summary and `tx-at`. `(schema)`,
+  `(schema :tree)`, `(schema :events)` in the REPL. `forget-points` is now `excise!`: the one way anything leaves a
+  history; the change that replaces the points says `:via :excise`, each event keeps its transaction (they no longer
+  shift when points are forgotten), and each segment changed keeps a record (`:excised`, saved, carried by files,
+  anonymized with them; `(excisions)`).
+
 - **`phase` keeps time between onsets** (`@kairotic/rhythm` 0.8.0; discussion #204). Without a clock, from the last
   onset judged the box sends itself a beat each pulse it found (`:later`, with ▶): the phase walks on, so a
   `necklace` after it plays in the gaps of what the performer plays. The next onset takes over (a new generation
