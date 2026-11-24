@@ -5,6 +5,7 @@
 // → out file (default studies/_shared/chorales/phrases.json): {source, license, phrases: [phrase]}, a phrase
 //   {id, chorale, bwv, title, meter, key: {tonic, mode}, cadence: {tonic, mode} | null, satb: [[S, A, T, B] a quarter],
 //    (key.church: the edition's church mode, dorian, mixolydian…),
+//    keys: ["G major" a quarter: the key it is in, read from the four voices (localKeys)],
 //    held: [[s, a, t, b] a quarter: the note began before it], strong: [bool a quarter], A, B: the first and last chord,
 //    lines: {soprano, alto, tenor, bass: [[onset in quarters, MIDI, quarters]]}} — the engine's format (Study 63's
 //   bridgesFor, fromOuter): a unit a quarter, the note sounding on it (the passing eighths are in the lines).
@@ -74,6 +75,36 @@ const triadOn = (ch) => {
   return null;
 };
 
+// the keys a phrase goes through, a quarter at a time: among the chorale's and its neighbours on the circle of fifths
+// (a 5th and two 5ths up, a 5th and two down, in either mode), the path whose scales hold the most of the four voices'
+// notes — a change of key costs, the chorale's own key is a little preferred, and the phrase's last chord, a complete
+// triad, is the key's I or V. (In minor, ⑥ and ⑦ both ways.)
+const FIFTHS = ["G♭", "D♭", "A♭", "E♭", "B♭", "F", "C", "G", "D", "A", "E", "B", "F♯", "C♯", "G♯", "D♯", "A♯"];
+const PCOF = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const pcOf = (name) => (PCOF[name[0]] + (name.includes("♯") ? 1 : 0) - (name.includes("♭") ? 1 : 0) + 12) % 12;
+const MAJ = [0, 2, 4, 5, 7, 9, 11], MIN = [0, 2, 3, 5, 7, 8, 9, 10, 11];
+export function localKeys(satb, key, { change = 1, home = 0.1, subtonic = 1 } = {}) {
+  const f0 = FIFTHS.indexOf(key.tonic) - (key.mode === "minor" ? 3 : 0); // the major key of its signature
+  const cands = [];
+  for (let f = f0 - 2; f <= f0 + 2; f++) {
+    if (FIFTHS[f]) cands.push({ tonic: FIFTHS[f], mode: "major" });
+    if (FIFTHS[f + 3]) cands.push({ tonic: FIFTHS[f + 3], mode: "minor" });
+  }
+  const inKey = (k, m) => (k.mode === "major" ? MAJ : MIN).includes((((m - pcOf(k.tonic)) % 12) + 12) % 12);
+  const same = (a, b) => a.tonic === b.tonic && a.mode === b.mode;
+  const n = satb.length, last = triadOn(satb[n - 1]);
+  // (in minor the natural ⑦ is out of the key, as a chromatic note is: it is the relative major's, where its dominant
+  // 7th stands — read in minor, the 4/2 on ⑥ would be a diminished 7th asking for ⑦ raised)
+  const rel = (k, m) => (((m - pcOf(k.tonic)) % 12) + 12) % 12;
+  const cost = (k, t) => satb[t].filter((m) => !inKey(k, m)).length + (k.mode === "minor" ? subtonic * satb[t].filter((m) => rel(k, m) === 10).length : 0) + (same(k, key) ? 0 : home)
+    + (t === n - 1 && last && !(pcOf(last.tonic) === pcOf(k.tonic) && last.mode === k.mode) && !(pcOf(last.tonic) === (pcOf(k.tonic) + 7) % 12 && last.mode === "major") ? 1 : 0);
+  let best = cands.map((k, i) => ({ c: cost(k, 0), path: [i] }));
+  for (let t = 1; t < n; t++)
+    best = cands.map((k, i) => { const p = best.reduce((a, b, j) => { const c = b.c + (j === i ? 0 : change); return c < a.c ? { c, path: b.path } : a; }, { c: Infinity }); return { c: p.c + cost(k, t), path: [...p.path, i] }; });
+  const win = best.reduce((a, b) => (b.c < a.c ? b : a));
+  return win.path.map((i) => cands[i]);
+}
+
 export function phrasesOf(score, id = "") {
   const { voices, meters, bars, key, meta } = score;
   const at = (V, x) => V.find((e) => e.s <= x && x < e.s + e.d);
@@ -108,6 +139,7 @@ export function phrasesOf(score, id = "") {
     out.push({
       id: `${id}-${i + 1}`, chorale: Number(meta["PC#"]) || null, bwv: meta.SCT || null, title: meta["OTL@@DE"] || meta.OTL || null,
       meter: meterAt(lo).join("/"), key, cadence: triadOn(satb[satb.length - 1]),
+      keys: localKeys(satb, key).map((k) => `${k.tonic} ${k.mode}`),
       satb, held, strong: units.map(strongAt), A: satb[0], B: satb[satb.length - 1],
       lines: Object.fromEntries(voices.map((V, k) => [names[k], V.filter((e) => e.s + e.d > lo + 1e-9 && e.s < hi - 1e-9 && e.p !== null).map((e) => [e.s - lo, e.p, e.d])])),
     });

@@ -13,6 +13,30 @@
   `kairotic-components`) would not run today: they stay as a record in [the studies](docs/studies.md), and their
   code in the repository's history. `componentes/` and `components/` (`kairotic-componentes`,
   `kairotic-components`) are gone too, and both packages are unpublished from npm.
+- **Bach's 7ths, and his notes spelt in their keys** (`@kairotic/rules` 0.19.0, `bach-4` 1.2.0; `@kairotic/cac` 0.16.6).
+  `bach-4` keeps 486 of Bach's 2,272 phrases as he wrote them (1.1.0: 426). `dissonance`'s `bachSevenths`: a 7th held
+  while the bass moves under it into a consonance (ii7 → I6, vi7 over the bass rising a step), up by step where the bass
+  takes the note it would have gone down to (V7 → I6, V4/3 → I6), free where the bass takes the 7th itself. And a
+  note given with a key — a bass note's `key`, `fromNotes`'s `code(m, t)`, the soprano given — is spelt in it
+  (`degreeIn` in `tonal.mjs`): F in A minor where the chorale is in G, not E♯, which read a 6th as a 7th.
+  `chorale-4` and the book's studies as they were.
+- **The chorales' phrases in their keys** (#301, #399). Every phrase of `studies/_shared/chorales/phrases.json` has
+  `keys`: the key each quarter is in, read from the four voices (`localKeys` in `tools/kern.mjs`: among the chorale's
+  key and its neighbours, the path whose scales hold most of the notes, a change of key costing as one note out; in
+  minor the natural ⑦ is the relative major's). 0.45 changes a phrase; nearly half the phrases (1,058) end in another key than the
+  chorale's. Judged in them, Bach's inner voices are kept by `bach-4` in 426 of 2,272 phrases (in the chorale's key:
+  234) — `tests/chorales.mjs` gives the bass's notes their keys, as `fromOuter` takes them.
+- **The chorale test's outer voices, for the whole corpus; the functions read in local keys** (`@kairotic/rules`
+  0.18.0: `localFunctions`, `relatedKeys`, `grammarErrors`' `passing`; Study 63 · bridges; #399 / #353).
+  - **Against Bach:** his 2,272 phrases read in the home key alone break the grammar in 491 phrases (an applied
+    dominant read in the wrong key, a passing V – IV6); read in local keys — each chord in one of the keys related to
+    the chorale's or in the cadence's, a change of key costing — with passing chords (an inverted chord over a bass
+    by step), in 161 (7 %). `localFunctions` gives each chord its key, its function and the errors left.
+  - **Study 63's outer voices:** a succession is grammatical where it is so in one of those keys; the tension read
+    in the cadence's key. Bach's own outer voices break the local grammar 0.09 times a phrase, the bridges with all
+    their layers 0.07 (150 phrases).
+  - **`studies/_shared/chorales/bridges.json`:** for every phrase, two draws of each variant (all layers, each
+    off), as `fromOuter` reads them (CC BY-NC-SA, as `phrases.json`).
 - **`bach-4` learns from Bach** (`@kairotic/rules` 0.17.0, `bach-4` 1.1.0; `@kairotic/cac` 0.16.5). Judged on the
   corpus, Bach's own inner voices: 234 of his 2,272 phrases kept as he wrote them (1.0.0: 112). The voices' ranges as
   his, the same in every key (a style's `ranges`, in MIDI: soprano A3–A5, alto E3–D5, tenor C3–A4); a passing tone

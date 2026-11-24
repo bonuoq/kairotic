@@ -152,9 +152,11 @@ const ALLOWED = { T: ["T", "S", "D"], S: ["S", "D", "T"], D: ["D", "T"] };
  * Where a succession of functions breaks the grammar: [{i (the chord that breaks it), reason}]. A dominant followed
  * by a subdominant (a retrogression), an applied dominant not followed by its target (its root or its bass), by a
  * chord of its target's function in the key, nor by another applied dominant, and — with end — a phrase not ending
- * on the tonic. key: the key the functions were read in.
+ * on the tonic. key: the key the functions were read in. passing: an inverted chord over a bass going on by step from
+ * the chord before is a passing chord, never a retrogression (V – IV6 over ⑤–⑥: Bach's chorales do it in one phrase of
+ * ten) — off by default, so that the engine's rule reads the grammar as it was.
  */
-export function grammarErrors(fs, { end = true, key = { tonic: "C" } } = {}) {
+export function grammarErrors(fs, { end = true, key = { tonic: "C" }, passing = false } = {}) {
   const errs = [], K = keyPc(key);
   for (let i = 0; i + 1 < fs.length; i++) {
     const a = fs[i], b = fs[i + 1];
@@ -173,9 +175,12 @@ export function grammarErrors(fs, { end = true, key = { tonic: "C" } } = {}) {
     if (b.fn === "A") continue;
     // (a chain of 6/3s, the bass by step under them — a fauxbourdon, a 7–6 chain resolved — is a line, not a
     // succession of functions: the sequence prolongs, and the grammar holds again where it ends)
+    // (and a chord inverted over a bass going on by step from the one before is a passing chord: V – IV6 over ⑤–⑥,
+    // as Bach's chorales pass — the bass's line, not a function taken back)
     const sixth = (f) => f.chord.bass !== f.chord.root && mod(f.chord.bass - f.chord.root, 12) <= 4 && mod(f.chord.bass - f.chord.root, 12) >= 3;
-    const step = mod(a.chord.bass - b.chord.bass, 12);
-    if (sixth(a) && sixth(b) && (step === 1 || step === 2 || step === 10 || step === 11)) continue;
+    const step = mod(a.chord.bass - b.chord.bass, 12), byStep = step === 1 || step === 2 || step === 10 || step === 11;
+    if (sixth(a) && sixth(b) && byStep) continue;
+    if (passing && b.chord.bass !== b.chord.root && byStep) continue;
     if (!ALLOWED[a.fn].includes(b.fn)) errs.push({ i: i + 1, reason: `${a.fn} → ${b.fn}: the dominant taken back before it is resolved` });
   }
   if (end && fs.length && fs[fs.length - 1] && fs[fs.length - 1].fn !== "T") errs.push({ i: fs.length - 1, reason: "the phrase does not end on the tonic" });
@@ -183,5 +188,48 @@ export function grammarErrors(fs, { end = true, key = { tonic: "C" } } = {}) {
 }
 
 const NAMES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+const KEYNAMES = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+
+/** The keys closely related to a key (as {tonic, mode}): itself, its dominant's and subdominant's, and its relative
+ *  (in minor: its relative major, its minor dominant's and subdominant's). */
+export function relatedKeys(key = { tonic: "C" }) {
+  const K = keyPc(key), k = (pc, mode) => ({ tonic: KEYNAMES[mod(pc, 12)], mode });
+  return K.minor ? [k(K.tonic, "minor"), k(K.tonic + 3, "major"), k(K.tonic + 7, "minor"), k(K.tonic + 5, "minor")]
+                 : [k(K.tonic, "major"), k(K.tonic + 7, "major"), k(K.tonic + 5, "major"), k(K.tonic + 9, "minor")];
+}
+
+/**
+ * The functions of a succession of chords read in local keys: a phrase moves (a chorale's tonicizes where it closes),
+ * so each chord is read in one of the keys close to the home key — and in the key it ends in, where given — the
+ * succession that breaks the grammar least, a change of key costing `change` (a modulation is heard, not free). The
+ * last chord in `end` where given. → {keys (one a chord), fs (each chord's function in its key), errors ([{i,
+ * reason}], each succession read in the later chord's key)}.
+ */
+export function localFunctions(chords, home = { tonic: "C" }, { end = null, change = 0.6, passing = true } = {}) {
+  const keys = relatedKeys(home);
+  if (end && !keys.some((k) => keyPc(k).tonic === keyPc(end).tonic && keyPc(k).minor === keyPc(end).minor)) keys.push(end);
+  const n = chords.length, K = keys.length;
+  if (!n) return { keys: [], fs: [], errors: [] };
+  const fs = keys.map((k) => functionsOf(chords, k));
+  const errAt = (k, i) => grammarErrors([fs[k][i - 1], fs[k][i]], { key: keys[k], end: false, passing }).length;
+  let cost = keys.map(() => 0);
+  const from = [];
+  for (let i = 1; i < n; i++) {
+    const nc = [], fr = [];
+    for (let k = 0; k < K; k++) {
+      let best = Infinity, bj = 0;
+      for (let j = 0; j < K; j++) { const c = cost[j] + (j === k ? 0 : change); if (c < best) { best = c; bj = j; } }
+      nc.push(best + errAt(k, i)); fr.push(bj);
+    }
+    cost = nc; from.push(fr);
+  }
+  let k = end ? keys.findIndex((x) => keyPc(x).tonic === keyPc(end).tonic && keyPc(x).minor === keyPc(end).minor) : cost.indexOf(Math.min(...cost));
+  const path = [k];
+  for (let i = n - 1; i >= 1; i--) { k = from[i - 1][k]; path.unshift(k); }
+  const errors = [];
+  for (let i = 1; i < n; i++) for (const e of grammarErrors([fs[path[i]][i - 1], fs[path[i]][i]], { key: keys[path[i]], end: false, passing })) errors.push({ ...e, i, key: keys[path[i]] });
+  return { keys: path.map((x) => keys[x]), fs: path.map((x, i) => fs[x][i]), errors };
+}
+
 /** A function in words: T, S, D, or V/x for an applied dominant. */
 export const label = (f) => (!f ? "?" : f.fn === "A" ? "V/" + NAMES[f.target] : f.fn);

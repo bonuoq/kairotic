@@ -26,7 +26,7 @@
 //
 // Pure data and functions.
 
-import { impliedChord, functionOf, grammarErrors } from "./functions.mjs";
+import { impliedChord, functionOf, grammarErrors, relatedKeys, localFunctions } from "./functions.mjs";
 import { placed, distance, tonicOf, surface } from "./tension.mjs";
 import { lexicon, economyOf } from "./bits.mjs";
 
@@ -83,12 +83,26 @@ export function outerBridge(phrase, { layers = {}, temp = 0.4, weights = {} } = 
   const states = Array.from({ length: n }, (_, t) => statesAt(t));
   // the chord each state implies, its function and its tension (memoized by pitches)
   const memo = new Map();
+  // (the keys the functions may be read in: a phrase tonicizes, so a succession is grammatical where it is so in one of
+  // the keys close to the chorale's or in the one it closes in — `keys`, by default the phrase's own)
+  const fkeys = phrase.keys || [key];
+  const pairMemo = new Map();
+  const fnErrors = (s0, b0, s, bb) => {
+    const k = ((s0 * 128 + b0) * 128 + s) * 128 + bb;
+    let v = pairMemo.get(k);
+    if (v === undefined) {
+      const I0 = info(s0, b0), I = info(s, bb);
+      v = Math.min(...fkeys.map((k2, i) => grammarErrors([I0.fs[i], I.fs[i]], { key: k2, end: false, passing: true }).length));
+      pairMemo.set(k, v);
+    }
+    return v;
+  };
   const info = (s, bb) => {
     const k = s * 128 + bb;
     let v = memo.get(k);
     if (!v) {
-      const ch = impliedChord([bb, s], key), f = functionOf(ch, key), p = placed(ch, key);
-      v = { f, tension: p ? distance(tonicOf(key), p).d + surface(p) : 0, inverted: p ? p.chord.bass !== p.chord.root : false };
+      const ch = impliedChord([bb, s], key), f = functionOf(ch, key), p = placed(ch, key), fs = fkeys.map((k2) => functionOf(ch, k2));
+      v = { f, fs, tension: p ? distance(tonicOf(key), p).d + surface(p) : 0, inverted: p ? p.chord.bass !== p.chord.root : false };
       memo.set(k, v);
     }
     return v;
@@ -137,7 +151,7 @@ export function outerBridge(phrase, { layers = {}, temp = 0.4, weights = {} } = 
     // (the harmonic rhythm of a chorale: a new chord each unit, the same one again dearer)
     const I0x = info(s0, b0);
     if (I0x.f && I.f && I0x.f.chord.root === I.f.chord.root && I0x.f.chord.kind === I.f.chord.kind) c += W.sameChord;
-    if (L.functions) { const I0 = info(s0, b0); c += L.functions * grammarErrors([I0.f, I.f], { key, end: false }).length; }
+    if (L.functions) c += L.functions * fnErrors(s0, b0, s, bb);
     if (L.tension && t > 0 && t < n - 1) c += L.tension * Math.abs(I.tension - arch(t)) / 5;
     return c;
   };
@@ -214,18 +228,24 @@ export const LAYERS = ["functions", "tension", "economy"];
 export const VARIANTS = [{ name: "all", off: [] }, ...LAYERS.map((l) => ({ name: "no-" + l, off: [l] }))];
 
 /**
- * Bridges for a phrase of the corpus, as the engine reads them: [{phrase, soprano, bass, key, strong, layers,
- * variant}] — for each variant (all layers, and each off) `count` draws.
+ * Bridges for a phrase of the corpus, as the engine reads them: [{phrase, soprano, bass, key (the chorale's),
+ * readIn (the key the layers read it in: the cadence's, or the chorale's), strong, layers, variant}] — for each variant
+ * (all layers, and each off) `count` draws.
  */
 export function bridgesFor(phrase, { count = 2, r = Math.random, temp = 0.4 } = {}) {
   const n = phrase.satb.length, out = [];
+  // (the key the functions and the tension are read in: the cadence's, where the phrase closes on a triad — a phrase
+  // of a chorale tonicizes where it ends —, the chorale's where it does not, or where no bridge goes in the cadence's)
+  const keys = [phrase.cadence ? { tonic: phrase.cadence.tonic, mode: phrase.cadence.mode } : null, phrase.key].filter(Boolean);
   for (const v of VARIANTS) {
     const layers = Object.fromEntries(LAYERS.map((l) => [l, v.off.includes(l) ? 0 : undefined]).filter(([, x]) => x !== undefined));
-    const B = outerBridge({ ...phrase, n }, { layers, temp });
-    if (!B.possible) continue;
-    for (let k = 0; k < count; k++) {
+    let B = null, key = null;
+    const fk = [...relatedKeys(phrase.key), ...(phrase.cadence ? [{ tonic: phrase.cadence.tonic, mode: phrase.cadence.mode }] : [])];
+    for (const k of keys) { const b = outerBridge({ ...phrase, key: k, keys: fk, n }, { layers, temp }); if (b.possible) { B = b; key = k; break; } }
+    if (!B) continue;
+    for (let i = 0; i < count; i++) {
       const x = B.draw(r);
-      if (x) out.push({ phrase: phrase.id, soprano: x.soprano, bass: x.bass, key: phrase.key, strong: phrase.strong, layers: LAYERS.filter((l) => !v.off.includes(l)), variant: v.name });
+      if (x) out.push({ phrase: phrase.id, soprano: x.soprano, bass: x.bass, key: phrase.key, readIn: key, strong: phrase.strong, layers: LAYERS.filter((l) => !v.off.includes(l)), variant: v.name });
     }
   }
   return out;
@@ -252,7 +272,9 @@ export function rulesBroken(x) {
 export function measure(phrase, x) {
   const key = phrase.key, n = x.soprano.length;
   const fs = x.soprano.map((s, t) => functionOf(impliedChord([x.bass[t], s], key), key));
+  const chords = x.soprano.map((s, t) => impliedChord([x.bass[t], s], key));
+  const local = phrase.keys ? localFunctions(chords, phrase.home || key, { end: phrase.cadence ? { tonic: phrase.cadence.tonic, mode: phrase.cadence.mode } : null }).errors.length : null;
   const ten = x.soprano.map((s, t) => { const p = placed(impliedChord([x.bass[t], s], key), key); return p ? distance(tonicOf(key), p).d + surface(p) : 0; });
-  return { functions: fs, errors: grammarErrors(fs, { key, end: false }).length, tension: ten,
+  return { functions: fs, errors: grammarErrors(fs, { key, end: false, passing: true }).length, local, tension: ten,
            leaps: x.soprano.slice(1).filter((s, t) => Math.abs(s - x.soprano[t]) > 4).length, n };
 }
