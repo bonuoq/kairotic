@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Tonal functions the economy may not take away: `functions.mjs`** (`@kairotic/rules` 0.13.0; discussions #399,
+  #321). What a chord does in a key (T, S, D, an applied dominant and its target; the cadential 6/4 a dominant, a
+  diminished 7th the dominant's where it holds the leading tone) and the grammar of a tonal phrase: never D → S,
+  every applied dominant resolved, the end on the tonic. Study 67 reads it as its reduction's judge, strictly
+  (`reduceNotes`' new `strict`: where no legal step is left, the frame): BWV 846's frame becomes C – Am/C – D7 – C♯°7 –
+  Dm/F – G7 – C – Fmaj7 – F♯°7 – G7 – C/G – C7 – C, every level a tonal phrase, where the economy alone reached
+  G7 → F/C (a retrogression) and left D7 without its G. The rewrite keeps the grammar too, span by span between the
+  chords kept. The page marks each chord's function, and with the functions off shows in red the levels that break
+  them.
 - **Study 69 · chromatic: IJzerman's chapter 8** (`@kairotic/rules` 0.13.0, `@kairotic/cac` 0.16.1). Twelve phrases on
   the engine — the **Fonte** (ii then I a step down; inverted; with diminished 7ths), the **chromatic Monte** (ii, IV,
   V, vi tonicized; in minor III, iv, V), **tonicizations in Descending Thirds**, the **Lamento** in three and four
