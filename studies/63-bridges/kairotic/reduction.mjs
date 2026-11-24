@@ -29,6 +29,7 @@
 
 import { notesOfPhrase, slicesOf, unsplits, unspread, unsuspend, sonorous, phraseOfPath, pitchOf, steps as stepsOf, ORNAMENTS } from "./protovoices.mjs";
 import { melodicParts, total, pick, choose, temperature } from "./soft.mjs";
+import { lexicon as bitsLexicon, lengthOf, economyOf } from "./bits.mjs";
 import { check, rangeOf, endingOf, PER, LINE, MIN_NOTES } from "./incipit.mjs";
 import { figuring } from "./figuring.mjs";
 import { keyOf, codeOf, codeDegree, codeAlter } from "./partimento.mjs";
@@ -91,29 +92,16 @@ export function stepKey(c, path) {
   }
   return c.op + ":" + toks.join(",");
 }
-const inverted = (key) => key.replace(/\|(-?\d+)/g, (_, n) => "|" + (-Number(n) || 0));
 /**
- * What a derivation costs to say, word by word, as a listener learning the piece as it goes would hear it (Study 64's
- * lexicon): a word heard before is cheap (the more, the cheaper), its inversion half as good as itself, a new one dear —
- * bits(key) = −log2 of its chance (its count, half its inversion's, and alpha shared among `kinds` possible words, over
- * all heard). Counted so, the length hardly depends on the order the words are said in.
+ * What a derivation costs to say, word by word, as a listener learning the piece as it goes would hear it
+ * (@kairotic/rules' bits.mjs, the measure shared with Studies 63 and 64): a word heard before is cheap (the more, the
+ * cheaper), its inversion half as good as itself, a new one dear (alpha shared among `kinds` possible words).
  */
-export function lexicon({ alpha = 1, kinds = 30 } = {}) {
-  const n = new Map();
-  let N = 0;
-  const count = (k) => n.get(k) || 0;
-  return {
-    bits: (key) => -Math.log2((count(key) + 0.5 * (inverted(key) === key ? 0 : count(inverted(key))) + alpha / kinds) / (N + alpha)),
-    add: (key) => { n.set(key, count(key) + 1); N++; },
-    get size() { return n.size; },
-  };
-}
+export const lexicon = ({ alpha = 1, kinds = 30 } = {}) => bitsLexicon({ alpha, kinds });
 /** An analysis's derivation length: the bits of its steps' words, in all and a step, and how many different words. */
-export function derivationLength(an, o = {}) {
-  const lex = lexicon(o);
-  let bits = 0;
-  for (const s of an.steps) { bits += lex.bits(s.key); lex.add(s.key); }
-  return { bits, perStep: an.steps.length ? bits / an.steps.length : 0, words: lex.size };
+export function derivationLength(an, { alpha = 1, kinds = 30 } = {}) {
+  const L = lengthOf(an.steps.map((s) => s.key), { alpha, kinds });
+  return { bits: L.bits, perStep: L.perWord, words: L.words };
 }
 
 /** The slices the frame keeps (GTTM's cadential retention): the first, and from the last bass note but one. */
@@ -212,7 +200,7 @@ export function reduce(phrase, { key = { tonic: "C" }, per = PER, weights = {}, 
   const lex = lexicon();
   // (counted from a word never said: a discount for a word said before — the same choices, every candidate weighed at
   // the same moment)
-  const priced = (cs) => (economy ? cs.map((c) => { const e = economy * (lex.bits(c.key) - lex.bits("")) / 4, parts = { ...c.parts, economy: e }; return { ...c, parts, cost: c.cost + e }; }) : cs);
+  const priced = (cs) => (economy ? cs.map((c) => { const e = economyOf(lex, c.key, economy), parts = { ...c.parts, economy: e }; return { ...c, parts, cost: c.cost + e }; }) : cs);
   const choose1 = (cs) => { const c = pick(priced(cs), (x) => x.cost, temp, temp > 0 ? r() : undefined); lex.add(c.key); return c; };
   let stratum = 0;
   for (;;) {

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **One measure of a description: `bits.mjs`** (`@kairotic/rules` 0.12.0; discussions #342, #399). The length of a
+  piece, a line or an analysis said as words — a cell of a florid line, a step of a reduction, a bar's figure — each
+  costing the bits a listener learning it as it goes needs: a word heard before cheap, its inversion half as good, a
+  new one dear (`lexicon`, `lengthOf`; `economyOf`, an engine's discount for a word heard before). Studies 64
+  (florid) and 61 (reduction) now use it instead of their own copies of the formula (the same numbers), and:
+  - **Study 63 · bridges: the economy of a way.** A bar's figure (its shape from its first note) is a word, and the
+    bridge's forward draw prefers a figure the line has already said: a morph from the C major incipit to the 7–6
+    chain goes from 61.9 bits in 7.8 different figures to 46.8 in 5.2 (20 draws each), every note legal; economy 0
+    draws exactly as before. The page has an Economy field for the variation and the morph (3) and says each line's
+    figures in bits.
+  - The studies keep a copy of `bits.mjs`, checked equal to the package's (`tests/rules.mjs`).
 - **Study 61 · reduction: the briefest reading** (discussion #342). The analysis now weighs what its derivation takes
   to say, as Study 64's florid lines do: each step is a word — its operation and, for each note it explains, the
   ornament, the voice and the step from its parent, wherever it stands — and is discounted by `economy · (bits − bits of a new word) / 4`, the bits of

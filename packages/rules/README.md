@@ -17,6 +17,7 @@ engines of [`@kairotic/cac`](../cac/) and the studies.
   removes it). `overBass()`: one voice over a bass in a style.
 - **`tonal.mjs`** — keys, degrees and alterations, a note's code, a unit's key.
 - **`soft.mjs`** — the soft rules' weights and costs (as `@kairotic/cac`'s).
+- **`bits.mjs`** — the length of a description (discussions #342, #399): a piece, a line or an analysis said as words (a cell, a step of a reduction, a bar's figure), each costing the bits a listener learning it as it goes needs — a word heard before cheap, its inversion half as good, a new one dear. `lexicon`, `lengthOf`, `economyOf` (an engine's discount for a word heard before). One measure for composing and analysing: Studies 61 (reduction), 63 (bridges) and 64 (florid) keep a copy.
 
 Step 2 of #353: the style `partimento-1` reproduces `partimento.mjs`'s one voice over a bass to the number — every
 count of Study 51's schemata, every voice of Studies 54, 57, 59 and 62 counted alone, the reasons and the engine's

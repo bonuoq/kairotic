@@ -140,6 +140,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
     <label class="inline" for="v-ex">Phrase <select id="v-ex"></select></label>
     <label class="inline" for="v-k">Level <select id="v-k"></select></label>
     <label class="inline" for="v-temp" title="the lower, the more the cheapest ways weigh">Temperature <input type="number" id="v-temp" min="0.1" max="3" step="0.1" value="0.6"></label>
+    <label class="inline" for="v-economy" title="a bar's figure said before in the line is cheaper (0: none)">Economy <input type="number" id="v-economy" min="0" max="8" step="0.5" value="3"></label>
     <button class="act primary" id="v-draw">Draw</button>
     <button class="act" id="v-map" title="the likeliest note at each step, its future weighed">The likeliest</button>
     <button class="act" id="v-play-orig">▶ The phrase</button>
@@ -157,6 +158,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
     <label class="inline" for="m-head">A's first <input type="number" id="m-head" min="1" max="20" value="5"> units</label>
     <label class="inline" for="m-tail">B's last <input type="number" id="m-tail" min="1" max="20" value="8"> units</label>
     <label class="inline" for="m-temp">Temperature <input type="number" id="m-temp" min="0.1" max="3" step="0.1" value="0.6"></label>
+    <label class="inline" for="m-economy" title="a bar's figure said before in the line is cheaper (0: none)">Economy <input type="number" id="m-economy" min="0" max="8" step="0.5" value="3"></label>
     <button class="act primary" id="m-draw">Draw</button>
     <button class="act" id="m-play">▶ Play</button>
   </div>
@@ -186,6 +188,7 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
   <ul class="q">
     <li>Varying from a level (Study 61) is a bridge through waypoints: the notes that survive are pinned, each span between them is drawn with its true probability — no backtracking.</li>
     <li>A morph keeps the beginning of one phrase and the end of another, and draws the way between them under the rules of every phrase.</li>
+    <li>The economy (#342, #399): a bar's figure — its shape from its first note — is a word, and the forward draw prefers a figure the line has already said (<code>bits.mjs</code>, the measure Studies 61 and 64 share), so the way between two phrases is said with fewer figures, a sequence where it can: a morph from the C major incipit to the 7–6 chain goes from 62 bits in 8 different figures without it to 47 in 5 with it (20 draws). The facts say each line's figures in bits.</li>
     <li>Between two rhythms the states are rhythms and a step is a swap: with the metre weighed, the way passes through rhythms that sit well in the bar; without it, any way of the right length.</li>
     <li>What comes next (#341): the bridge as the engine of florid counterpoint (#342), presets, spectra and kairoi (continuous bridges), and the tiles of an endless zoom.</li>
   </ul>
@@ -249,6 +252,12 @@ window.addEventListener("DOMContentLoaded", function () {
     (html! "v-k" (str/join "" (for [k (range n)] (str "<option value=\"" k "\"" (when (= k (dec n)) " selected") ">L" k (cond (zero? k) " (the surface)" (= k (dec n)) " (the frame)" :else "") "</option>"))))
     (html! "v-mel" "") (text! "v-facts" (str n " levels: choose one and draw"))))
 
+(defn figures
+  "A line's figures, said as words (bits.mjs): how long, and how many different."
+  [vo names]
+  (let [L (.figureLength B (clj->js (map #(.code vo %) names)))]
+    (str "its figures " (.toFixed (.-bits L) 1) " bits, " (.-words L) " different")))
+
 (defn vary! [likeliest?]
   (when-let [an (:an @st)]
     (try
@@ -258,9 +267,9 @@ window.addEventListener("DOMContentLoaded", function () {
                   (doseq [x (array-seq (.-notes an))]
                     (when (and (= "m" (.-voice x)) (.has alive (.-id x)))
                       (doseq [u (range (.-on x) (+ (.-on x) (.-dur x)))] (.set pins u (.code vo (.-pitch x))))))
-                  (let [br (.bridgeVoice B (.-V vo) #js {:pins pins :temp t}) U (.map br)]
+                  (let [br (.bridgeVoice B (.-V vo) #js {:pins pins :temp t :economy (num! "v-economy" 3)}) U (.map br)]
                     (when U #js {:melody (str/join " " (map #(.name vo %) (array-seq U))) :kept (clj->js (sort (array-seq (js/Array.from (.keys pins))))) :logZ (.-logZ br)})))
-                (.varyBridge B an k #js {:temp t}))]
+                (.varyBridge B an k #js {:temp t :economy (num! "v-economy" 3)}))]
         (if-not v
           (text! "v-facts" "No bridge through these notes.")
           (let [names (str/split (.-melody v) #" ") orig (str/split (.. an -phrase -melody) #" ")
@@ -270,7 +279,8 @@ window.addEventListener("DOMContentLoaded", function () {
             (html! "v-mel" (mel-html names kept changed))
             (text! "v-facts" (str "From L" k ": " (count kept) " units kept, " (count changed) " drawn anew · "
                                   (if (.-ok c) (str "passes the rules, soft cost " (.-cost c) " a unit") "refused")
-                                  " · log weight of the bridge " (.toFixed (.-logZ v) 2) (when likeliest? " · the likeliest"))))))
+                                  " · log weight of the bridge " (.toFixed (.-logZ v) 2) (when likeliest? " · the likeliest")
+                                  " · " (figures (.voiceOver B (.-phrase an) (.-key an)) names))))))
       (catch :default e (text! "v-facts" (str "Error: " (msg e)))))))
 
 ;; ───────── a morph ─────────
@@ -278,13 +288,14 @@ window.addEventListener("DOMContentLoaded", function () {
   (try
     (let [a (get-in presets [(.-value ($ "m-a")) "phrase"]) b (get-in presets [(.-value ($ "m-b")) "phrase"])
           ka (get-in presets [(.-value ($ "m-a")) "key"])
-          m (.morphPhrases B (clj->js a) (clj->js b) (clj->js ka) #js {:head (js/parseInt (.-value ($ "m-head"))) :tail (js/parseInt (.-value ($ "m-tail"))) :temp (num! "m-temp" 0.6)})]
+          m (.morphPhrases B (clj->js a) (clj->js b) (clj->js ka) #js {:head (js/parseInt (.-value ($ "m-head"))) :tail (js/parseInt (.-value ($ "m-tail"))) :temp (num! "m-temp" 0.6) :economy (num! "m-economy" 3)})]
       (if-not m
         (do (swap! st assoc :m nil) (html! "m-mel" "") (text! "m-facts" "No bridge between them with these ends (another key, or the ends refused)."))
         (let [names (str/split (.-melody m) #" ") pinned (set (array-seq (.-pinned m)))]
           (swap! st assoc :m m)
           (html! "m-mel" (mel-html names pinned (set (remove pinned (range (count names))))))
-          (text! "m-facts" (str (count names) " units over " (.-bass m) " · " (count pinned) " kept, " (- (count names) (count pinned)) " drawn · log weight " (.toFixed (.-logZ m) 2))))))
+          (text! "m-facts" (str (count names) " units over " (.-bass m) " · " (count pinned) " kept, " (- (count names) (count pinned)) " drawn · log weight " (.toFixed (.-logZ m) 2)
+                               " · " (figures (.voiceOver B #js {:bass (.-bass m) :melody (.-melody m) :cadence (.-cadence m)} (clj->js ka)) names))))))
     (catch :default e (text! "m-facts" (str "Error: " (msg e))))))
 
 ;; ───────── rhythms ─────────
