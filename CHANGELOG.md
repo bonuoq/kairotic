@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Live coding, names** (discussion #407). `(box :osc "osc~ 220")` makes the box live code calls `:osc`; evaluated
+  again it is the same box, its text (and place, if given) changed as one event if they changed, so a block can be
+  evaluated again and again. The box keeps its `:bN` id for the system: the name is one more thing it keeps (`:name`,
+  a `[:name id :osc]` event, one box per name), shown beside its id, written as `(name-box :b7 :osc)`, and every
+  command takes it in place of the id (`rid`: events name boxes by their ids in the history).
 - **Live coding in the Code tab, step 2: a short syntax and a page of your own** (discussion #407). **`to`** makes a
   box below another, fed by it, as one event, and returns its id: `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`
   (`(to a o "text" i)` for other ports, `(to :b3 :b9)` to connect only); a chain (`->`, `doto`) of calls that make the

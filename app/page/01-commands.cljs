@@ -25,6 +25,14 @@
 
 (defonce tried (atom nil))   ; the events of a try (`with`, 29-db.cljs) while it runs, or nil
 
+(defn resolve-ev
+  "An event with the boxes it names by their live-code names (:osc) named by their ids (:b7), as the history keeps them."
+  [[op & args :as ev]]
+  (case op
+    (:connect :disconnect) (let [[a o b i] args] [op (rid a) o (rid b) i])
+    (:batch :load :clear :mark :layer :annot :box) ev
+    (if (keyword? (first args)) (into [op (rid (first args))] (rest args)) ev)))
+
 (defn dispatch-root!
   "An event of the whole work (its ids already lead from the top: [:in :b5 …] for a sub-patch), wherever the
    view is: to the scratch patch, to the take in Perform, or to the history."
@@ -38,12 +46,12 @@
     :else (do (when (:follow @ui) (swap! ui assoc :follow nil))
               (commit! ev))))
 
-(defn dispatch! [ev] (dispatch-root! (wrap-in (cmd-path) ev)))
+(defn dispatch! [ev] (dispatch-root! (wrap-in (cmd-path) (resolve-ev ev))))
 
 (declare ensure-class!)
 
 (defn need-box [id]
-  (or (get-in (current) [:boxes id]) (fail (str "There is no box " id))))
+  (or (get-in (current) [:boxes (rid id)]) (fail (str "There is no box " id))))
 
 (defn next-id []
   (let [nums (keep (fn [k] (let [m (re-matches #"b(\d+)" (name k))] (when m (js/parseInt (second m) 10))))
@@ -58,17 +66,59 @@
   "Several events as one event of the history (nothing if there are none)."
   [evs] (when-let [e (rel/as-event evs)] (dispatch! e)))
 
-(defn box
-  "Makes a box: (box \"osc~ 440\"), (box \"osc~ 440\" 40 120), or with its id, (box :b3 \"osc~ 440\" 40 120). Returns its id."
-  ([text] (let [[x y] (auto-pos)] (box (next-id) text x y)))
-  ([text x y] (box (next-id) text x y))
-  ([id text x y]
+(defn- box-with-id [id text x y]
    (when-not (keyword? id) (fail "A box id is a keyword, e.g. :b3"))
    (check-ref-text! text)
    (forget-box! id)
    (dispatch! [:box id (str text) (js/Math.round x) (js/Math.round y)])
    (ensure-class! text)
-   id))
+   id)
+
+(defn named-box
+  "The box live code calls nm (discussion #407): made the first time, as one event with its name; then the same box,
+   with its text (and place, if given) changed if they changed. Returns its id."
+  [nm text x y]
+  (check-ref-text! text)
+  (let [t (str text) id (rid nm) b (get-in (current) [:boxes id])]
+    (if b
+      (let [evs (cond-> []
+                  (not= t (:text b)) (conj [:text id t])
+                  (and (number? x) (number? y) (not= [(js/Math.round x) (js/Math.round y)] [(:x b) (:y b)]))
+                  (conj [:move id (js/Math.round x) (js/Math.round y)]))]
+        (when (seq evs)
+          (when (and (not= t (:text b)) (not @scratch)) (eng/forget! (fid id)) (swap! forgotten-now conj (fid id)))
+          (dispatch-all! evs)
+          (ensure-class! t))
+        id)
+      (let [id (next-id) [x y] (if (and (number? x) (number? y)) [x y] (auto-pos))]
+        (forget-box! id)
+        (dispatch-all! [[:box id t (js/Math.round x) (js/Math.round y)] [:name id nm]])
+        (ensure-class! t)
+        id))))
+
+(defn name-box
+  "Gives box id the name live code calls it by (discussion #407): (name-box :b3 :osc); nil takes it away. A name is
+   one box's: given to another, it leaves the first."
+  [id nm]
+  (need-box id)
+  (when-not (or (nil? nm) (live-name? nm)) (fail "A name is a keyword that is not a box id: :osc, :lead (not :b3)"))
+  (dispatch! [:name id nm])
+  (rid id))
+
+(defn box
+  "Makes a box: (box \"osc~ 440\"), (box \"osc~ 440\" 40 120), or with its id, (box :b3 \"osc~ 440\" 40 120). Returns
+   its id. With a name instead of an id, (box :osc \"osc~ 440\"), it is the box live code calls :osc (#407): made the
+   first time, the same box after, its text changed if it changed."
+  ([text] (let [[x y] (auto-pos)] (box (next-id) text x y)))
+  ([nm text] (when-not (live-name? nm) (fail "A name is a keyword that is not a box id: :osc, :lead (not :b3)"))
+   (named-box nm text nil nil))
+  ([text x y] (box (next-id) text x y))
+  ([id text x y]
+   (when-not (keyword? id) (fail "A box id is a keyword, e.g. :b3"))
+   (if (live-name? id)
+     (named-box id text x y)
+     (box-with-id id text x y))))
+
 
 (defn connect
   "Connects outlet o of box a to inlet i of box b: (connect :b1 0 :b2 0)."
@@ -1036,6 +1086,11 @@
               (concat [";; boxes"]
                       (for [id ids :let [{:keys [text x y]} (get-in p [:boxes id])]]
                         (str "(box " id " " (pr-str text) " " x " " y ")"))
+                      ;; the names live code calls boxes by (#407)
+                      (let [nm (filter (fn [id] (:name (get-in p [:boxes id]))) ids)]
+                        (when (seq nm)
+                          (concat ["" ";; names"]
+                                  (for [id nm] (str "(name-box " id " " (get-in p [:boxes id :name]) ")")))))
                       (let [pr (filter (fn [id] (:present (get-in p [:boxes id]))) ids)]
                         (when (seq pr)
                           (concat ["" ";; presentation"]
@@ -1306,6 +1361,6 @@
    (as-one-event!
     (fn []
       (let [src (need-box a)
-            id (if (keyword? b) b (box (str b) (:x src) (+ (:y src) to-gap)))]
+            id (if (keyword? b) (rid b) (box (str b) (:x src) (+ (:y src) to-gap)))]
         (connect a o id i)
         id)))))

@@ -128,6 +128,13 @@ each work, not in the work. **`to`** makes a box below another, fed by it, as on
 chain reads as the signal goes — `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`, the whole chain one event
 when evaluated from the tab; `(to a o "text" i)` chooses the outlet and the inlet, and `(to :b3 :b9)` only connects.
 
+**Names.** `(box :osc "osc~ 220")` makes a box the code calls `:osc`: evaluated again it is the same box, its text
+changed if it changed (`(box :osc "osc~ 330")` changes the oscillator, as one event, and the sound goes on), so a
+block can be evaluated as often as you like. The box keeps its id (`:b7`) for the work; the name is one more thing it
+keeps, shown beside its id, written in the code as `(name-box :b7 :osc)`, and every command takes it in place of the
+id: `(connect :osc 0 :out 0)`, `(text! :osc "osc~ 440")`, `(send! :osc 220)`, `(-> :osc (to "dac~ 1 2"))`. A name is one
+box's: `(name-box :b9 :osc)` gives it to another; `(name-box :b9 nil)` takes it away.
+
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as
 `str/…`) is that function, with no component to write: its other words are its arguments, read as EDN,
 and the message that arrives goes last, as with `->>`. `%` puts it elsewhere. The text reads as Clojure,

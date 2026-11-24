@@ -639,7 +639,7 @@
 
 (def patch-calls
   "The calls that make the patch, as the Code tab writes it: a form of them alone changes it by the difference."
-  #{"box" "to" "connect" "disconnect" "move" "text!" "delete" "present" "unpresent" "view" "resize" "show-layers"
+  #{"box" "to" "name-box" "connect" "disconnect" "move" "text!" "delete" "present" "unpresent" "view" "resize" "show-layers"
     "pin-ref" "layer" "mark" "unmark" "project" "recipe" "code" "stroke" "axis" "tuning" "grid-x" "grid-y"
     "tree!" "values!" "presets!"})
 
@@ -828,13 +828,12 @@
   ";; Live: your own code, kept in this browser (not in the work).
 ;; ⇧+Enter evaluates a form, Ctrl/⌘+Enter a block (lines between empty ones).
 
-(def o (box \"osc~ 220\"))
+;; a box called by its name is the same box each time: change 220 and evaluate again
+(box :osc \"osc~ 220\")
 
-(-> o (to \"gain~ 0.2\") (to \"dac~ 1 2\"))
+(-> :osc (to \"gain~ 0.2\") (to \"dac~ 1 2\"))
 
 (play)
-
-(text! o \"osc~ 330\")
 ")
 
 (defn live-key "Where this browser keeps the Live code of the work open." []

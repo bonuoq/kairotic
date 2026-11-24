@@ -945,7 +945,9 @@
                      ;; its id, over its top right corner: shown when it is hovered or selected, or for all with I
                      ;; (issue #163)
                      (when-not @pres-mode
-                       (str "<text class=\"idtag\" x=\"" w "\" y=\"-5\" text-anchor=\"end\">" idn "</text>"))
+                       (str "<text class=\"idtag\" x=\"" w "\" y=\"-5\" text-anchor=\"end\">" idn
+                            ;; and the name live code calls it by (#407)
+                            (when-let [nm (:name b)] (str " " (esc (str nm)))) "</text>"))
                      ;; what changes while it plays (a value, a flash, its own view) is drawn here, in the box,
                      ;; so that a box over it covers it too (issue #166); in patch coordinates
                      "<g class=\"live\" data-live=\"" idn "\" transform=\"translate(" (- x) "," (- y) ")\"></g>"
