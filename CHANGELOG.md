@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The tonal functions in Bach's local keys, as a cost; and a plagal ending** (`@kairotic/rules` 0.20.0, `bach-4`
+  1.3.0; `@kairotic/cac` 0.16.7; discussion #353). `functions` reads each unit in its own key (`local`: the bass
+  note's — the corpus's `keys`), two units in different keys kept where either key reads them well, and lets a passing
+  chord pass (`passing`: an inverted chord over a bass going on by step, V – IV6 over ⑤–⑥). Read so, Bach breaks the
+  grammar in 78 of his 2,272 phrases (136 in the chorale's key): in `bach-4` it is a cost (`SOFT_BETWEEN`'s
+  `functions`, weight 2), no longer a refusal, and `bach-4` keeps **504** of his phrases (494). A style's soft rules
+  between the voices take their weight by their id (`weights`). `chorale-4` as it was. Study 56's figuring (and its
+  copies) knows a **plagal ending**: `ending: "plagal"`, the bass ④–①, IV a 5/3, the melody 5–8 (the tonic held),
+  3–5 (⑥ to ⑤) or 8–3 (④ to ③).
+
 - **The chorale test's tension: Bach's profile, the arch a variant** (#399, #353). Study 63's `outer.mjs` draws the
   implied harmony's tension toward the corpus's profile (`PROFILE`, `profileOf`: Bach's mean tension by tenth of a phrase,
   read in the cadence's key — 5.9 6.7 6.6 6.9 6.5 6.7 6.9 6.6 6.0 0.6, a plateau released at the cadence), the same
