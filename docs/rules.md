@@ -201,6 +201,8 @@ is between them), the dux, k and d read from their entries; `cac judge` with `[:
 `@kairotic/rules` 0.13.0 (Study 69, IJzerman's chapter 8): a 7th by chromatic step, a 7th held into a weak unit, ⑦
 in a sequence as the others, the 6/4 in two steps (a 5/4 between), structural parallels between the upper voices
 (`chorale-4` 1.2.0), the memo reading back to where a held note began; `bits.mjs`.
+`@kairotic/rules` 0.14.0: `outer-octaves` (`chorale-4` 1.3.0): no octave between the soprano and the bass on two strong
+units in a row, the soprano held between them and moving the bass's way — not even a sequence's.
 
 ## Next
 

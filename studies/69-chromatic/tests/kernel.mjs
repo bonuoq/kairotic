@@ -5,7 +5,7 @@ import { chromatic, PHRASES } from "../kairotic/chromatic.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const PINNED = { fonte: 181n, "fonte-inverted": 5680n, "fonte-diminished": 95n, monte: 6852n, "monte-minor": 1422n, "descending-thirds": 56198n,
-                 lamento: 6n, "lamento-4": 1298n, morte: 3156n, "morte-minor": 3156n, chain: 36n, "chain-minor": 586n };
+                 lamento: 6n, "lamento-4": 1298n, morte: 3156n, "morte-minor": 3156n, chain: 36n, "chain-minor": 530n };
 
 export async function run() {
   const results = [], notes = [];

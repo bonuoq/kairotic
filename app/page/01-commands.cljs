@@ -991,7 +991,7 @@
                     (if (or (zero? k) (nil? e))
                       (perf-recompute st)
                       ;; brought again now: it takes its place at the end of the take
-                      (recur (-> st (update :redo pop) (update :own conj (assoc e :t (js/Date.now)))) (dec k)))))))
+                      (recur (-> st (update :redo pop) (update :own conj (assoc e :t (work-now)))) (dec k)))))))
   (jam-push!)
   {:take (count (perf-events @perf))})
 

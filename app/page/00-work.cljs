@@ -370,6 +370,19 @@
 (defonce userref (atom nil))
 (defonce settings (atom {:simul-ms 1500}))
 
+;; ───── the work's time (discussion #382, idea 8, phase 1) ─────
+;; When things are made — each transaction, each segment (the front is its newest), each change of a jam — is read
+;; from one clock for the whole room when there is one: the relay's, as this page reads it (talk.cljs asks it for
+;; its time on /signal and keeps this page's offset). 20-talk.cljs gives it here once the page is in a room;
+;; elsewhere (a local or solo work, a room without a relay, claude.ai) it is this machine's clock, as before.
+
+(defonce clock-source (atom nil))   ; nil, or a fn of no arguments: the shared time in ms, or nil before it is known
+
+(defn work-now
+  "The time things are made at (ms): the room's shared time when there is one, this machine's otherwise."
+  []
+  (js/Math.round (or (when-let [f @clock-source] (try (f) (catch :default _ nil))) (js/Date.now))))
+
 ;; a session = a tab; it survives reloads of that tab
 (def session-id
   (or (try (.getItem js/sessionStorage "kairotic-session") (catch :default _ nil))
@@ -430,7 +443,7 @@
 (defn perform-event!
   "A change made in Perform: it goes to the take (and to the jam), not to the history."
   [ev]
-  (swap! perf (fn [st] (-> st (update :own conj {:t (js/Date.now) :s session-id :ev ev}) (assoc :redo []) (update :patch step ev))))
+  (swap! perf (fn [st] (-> st (update :own conj {:t (work-now) :s session-id :ev ev}) (assoc :redo []) (update :patch step ev))))
   (jam-push!))
 
 (defn work-patch [] (or (:patch @perf) (patch-at (:pos @world))))
@@ -705,7 +718,7 @@
 (defn tx-meta
   "The transaction of an event made now: when, and where from (as with-tx says)."
   []
-  (merge (sane-tx @tx-now) {:t (js/Date.now)}))
+  (merge (sane-tx @tx-now) {:t (work-now)}))
 
 (defn sane-metas
   "The transactions of n events (nil for an event without one), or nil if there are none."
@@ -854,7 +867,7 @@
   ([parent at evs merge metas]
   (let [id (new-id)
         evs (vec evs)
-        n (cond-> {:id id :parent parent :at at :author (my-author) :session session-id :t (js/Date.now)
+        n (cond-> {:id id :parent parent :at at :author (my-author) :session session-id :t (work-now)
                    :merge merge :events evs :meta (or (sane-metas metas (count evs)) (vec (repeat (count evs) (tx-meta))))}
             (not (on-main-line?)) (assoc :line (active-line)))]
     (swap! hist assoc-in [:nodes id] n)
@@ -864,7 +877,7 @@
     id)))
 
 (defn append-event! [nid ev]
-  (swap! hist update-in [:nodes nid] (fn [n] (-> n (assoc :meta (conj (metas-of n) (tx-meta))) (update :events conj ev) (assoc :t (js/Date.now)))))
+  (swap! hist update-in [:nodes nid] (fn [n] (-> n (assoc :meta (conj (metas-of n) (tx-meta))) (update :events conj ev) (assoc :t (work-now)))))
   (when (and (persist?) (not (str/starts-with? nid "local-")))
     (let [n (node nid)
           path (str (hist-path) "/" nid)

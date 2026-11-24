@@ -14,6 +14,11 @@ on:
   pull_request:
     paths: *paths
   workflow_dispatch:
+    inputs:
+      bench:
+        description: "Only measure the Datalog index with long histories (2000 and 5000 events), alone: KAIROTIC_BENCH=1"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -55,3 +60,5 @@ jobs:
           npx --yes http-server@14 _site -p 8000 -s &
           for i in $(seq 1 30); do curl -sf http://localhost:8000/tests.html > /dev/null && break; sleep 1; done
           node tests/browser.mjs http://localhost:8000/tests.html
+        env:
+          KAIROTIC_BENCH: ${{ inputs.bench && '1' || '' }}

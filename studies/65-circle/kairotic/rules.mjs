@@ -838,6 +838,22 @@ export const BETWEEN = {
     }
     return null;
   } }),
+  /** pair · the outer voices: no octave on two strong units in a row, the soprano held between them and moving the
+   *  bass's way — not even in a sequence, a chord of its own between and the bass leaping: the soprano would double the
+   *  bass's line at the level of the structure (Fifth Down Fourth Up, the soprano F–E–D over F–B–E–A–D). Bach's chorales:
+   *  in 1 of their 24 circle-of-fifths stretches (5ths between soprano and bass in 8). chorale-4 1.3.0. */
+  "outer-octaves": (N) => ({ id: "outer-octaves", lookback: 3, check: ({ W, t, x }) => {
+    const V0 = N.V[0], strong = V0.strong, B = N.B;
+    if (!W || t < 2 || !strong(t)) return null;
+    let s = t - 1;
+    while (s >= 0 && !strong(s)) s--;
+    if (s < 0) return null;
+    const a = V0.vertical(s, W[0][s]), b = V0.vertical(t, x[0]);
+    if (!(a.q === "perfect" && a.cls === 0 && b.q === "perfect" && b.cls === 0)) return null;
+    for (let k = s + 1; k < t; k++) if (W[0][k] !== W[0][s]) return null;
+    const du = N.D(x[0]) - N.D(W[0][s]), db = B[t].d - B[s].d;
+    return du !== 0 && db !== 0 && Math.sign(du) === Math.sign(db) ? `octaves between the ${N.names[0]} and the bass on strong units in a row` : null;
+  } }),
   /** chord · the same note a semitone apart in two upper voices (an augmented unison or octave). */
   "false-relation": (N) => ({ id: "false-relation", check: ({ x }) => {
     const cls = mod(N.D(x[0]) - N.D(x[1]), 7), s = mod(N.semi(x[0]) - N.semi(x[1]), 12);
@@ -967,9 +983,9 @@ Object.assign(STYLES, {
     between: [["order", { form: "three", cross: true }], ["seconds"], ["parallels-upper"], ["false-relation"], ["modal"]], softBetween: [] },
   "modal-4": { style: "modal-4", version: "0.1.0", parts: 4, voice: "modal-voice",
     between: [["order", { cross: true }], ["modal"], ["doubling", { form: "four" }], ["seconds", { form: "four" }], ["parallels-upper", { form: "four" }]], softBetween: [] },
-  "chorale-4": { style: "chorale-4", version: "1.2.0", parts: 4, voice: "partimento-1",
+  "chorale-4": { style: "chorale-4", version: "1.3.0", parts: 4, voice: "partimento-1",
     between: [["order", { within: 7 }], ["chord", { form: "four" }], ["doubling", { form: "four" }], ["seventh"], ["leading-tone-doubled"], ["seconds", { form: "four" }],
-              ["parallels-upper", { form: "four", structural: true }], ["resolution"], ["six-four", { form: "four" }], ["dominant-major", { form: "four" }]],
+              ["parallels-upper", { form: "four", structural: true }], ["outer-octaves"], ["resolution"], ["six-four", { form: "four" }], ["dominant-major", { form: "four" }]],
     softBetween: [["doubling"]] },
 });
 

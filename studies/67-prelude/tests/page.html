@@ -26,6 +26,7 @@ try {
   is("… a harmony drawn from it: more of Bach's kept", S.state().rows && d.querySelectorAll("#new span.kept").length === 24);
   S.select(0);
   is("the surface: nothing taken away", /nothing/.test(d.getElementById("steps-n").textContent));
+  is("the tension curve drawn: Bach's (hierarchical and from the tonic) and the new harmony's, how alike they are", d.querySelectorAll("#tension polyline").length === 3 && d.querySelectorAll("#tension circle").length === 35 && /alike: [-\d.]+/.test(d.getElementById("tension").textContent));
   const box = d.getElementById("functional"); box.checked = false; box.dispatchEvent(new Event("change"));
   is("the tonal functions off: a shorter frame, and levels that break their grammar marked in red", /not kept: \d+ levels break it/.test(facts()) && d.querySelectorAll("#levels span.broken").length > 0 && d.querySelectorAll("#levels .lv.sel span.on").length < 13);
 } catch (e) { errors.push(String(e.message || e)); }
