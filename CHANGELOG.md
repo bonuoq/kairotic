@@ -7,6 +7,37 @@
   each other; evaluated again only what changed changes (nothing, or one text), a named box moved by hand stays where
   it is, and a line already there is not made twice. `(to a o :amp "text" i)` for other ports. The Live view's example
   uses it.
+- **Bach's chorales: `bach-4`, neighbouring voices meeting on one note** (`@kairotic/rules` 0.16.0; `@kairotic/cac`
+  0.16.4). A style for the chorales (the corpus, the bridges filled from A to B): `chorale-4`, and two neighbouring
+  voices may meet on the unison — the tenor and the bass, the alto and the tenor, the soprano and the alto —, a
+  doubling: what binds a doubled note binds it (the parallels, the doublings; an augmented unison stays a false
+  relation). The rule `order` takes `unison`, `from-bass` its `unison: "any"`. Bach's own alto and tenor in BWV 269's
+  first phrase (the tenor on the bass's G) are by `bach-4`'s rules, not by `chorale-4`'s. `fromOuter` writes in
+  `bach-4` by default. `chorale-4` (the book's, Studies 62, 65 and 69) is as it was.
+- **Tonal functions in four parts, and the inner voices between a soprano and a bass given** (`@kairotic/rules`
+  0.15.0, `chorale-4` 1.4.0; `@kairotic/cac` 0.16.3; discussions #353, #399, #321). The rule `functions` reads the
+  chord on each strong unit as `functions.mjs` does — T, S, D or an applied dominant — and keeps the grammar into it,
+  from the unit before or from the strong one before: never D → S, an applied dominant into its target (on a weak unit
+  too). The weak units between are the prolongation's (the RO's 6/3 on ⑥ going up, a passing chord), as GTTM's
+  prolongational reduction reads them; an augmented 6th prepares the dominant (S); a chain of 6/3s and 7–6s over a
+  bass by step (the Lamento) is a line; a figured 7th chord is read whole (a diminished 7th without its 5th is still
+  one). Every prototype of Studies 62, 65 and 69 keeps the grammar: the same counts with the rule. `fromOuter` (and
+  `fromNotes`'s `soprano`): a soprano given with the bass, the alto and the tenor written between, the chords free —
+  the step for the chorales (A to B: a bridge's outer voices, filled in four parts). Bach's *Aus meines Herzens
+  Grunde* (BWV 269), its first phrase's soprano and bass: 14,267,964 inner voices (15,105,996 without the functions),
+  the grammar kept in every one drawn.
+- **Voice leading in the new harmonies and the morphs; MEI from Studies 63 and 67.**
+  - **Study 67:** a new harmony is now an exact bridge over chords, span by span between the chords kept (the
+    chords reached by every voice's step, a beam of the cheapest, the backward weights exact over it): triads or
+    sevenths (a 7th going down by step), the five voices in order — none lost on another's pitch —, no upper voice
+    leaping more than a 4th nor the bass more than a 5th, into the chord kept next too, no parallel 5ths or octaves
+    between any two voices, the same chord again a little dearer. Where no new way keeps them Bach's chords stay
+    (`rows.kept`). From the frame: about 16 chords new, the tension curve's correlation with Bach's 0.92 (0.61 without
+    the shape). Before, the voices met (unisons), and leapt into the chords kept.
+  - **Study 63:** `leapCost` — a leap beyond a 3rd costs `smooth · (semitones − 4) / 3`, a unit's cost (the bridge
+    exact); "Smooth" (2) on the page for the variation and the morph: a morph's mean interval 2.67 → 2.19 semitones.
+  - **MEI:** Study 67 exports the new prelude (a staff for each of the figure's voices, in 16ths), its chords and any
+    level (a staff a voice); Study 63 the variation and the morph (`meiOfPhrase`).
 - **C7 is V of ④, not the tonic** (`functions.mjs`, `@kairotic/rules` 0.14.0). A dominant 7th on the tonic now
   reads as an applied dominant whose target is ④ (a major 7th on the tonic is still the tonic): it must go to F. In
   Study 67 BWV 846's frame keeps the coda's plagal close, C – … – C/G – C7 – F/C – C, where it ended C7 → C.

@@ -44,6 +44,11 @@ await (async function () {
     is("… the likeliest way", /the likeliest/.test($("r-facts").textContent));
     $("r-b").value = "x...x...x...x..."; click($("r-draw"));
     is("… two rhythms with different onsets: said so", /as many onsets/.test($("r-facts").textContent));
+    const saved = [];
+    window.claude = { use: async (name) => (name === "downloads" ? { save: async ({ filename, data }) => { saved.push({ filename, text: await data.text() }); } } : null) };
+    change($("m-b"), "scale-76"); click($("m-draw"));
+    $("v-mei").click(); $("m-mei").click();
+    is("the variation and the morph exported as MEI: a melody and a bass each", await (async () => { for (let i = 0; i < 60 && saved.length < 2; i++) await new Promise((r) => setTimeout(r, 50)); return saved.length === 2 && saved.every((x) => /\.mei\.txt$/.test(x.filename) && /label="melody"/.test(x.text) && /label="bass"/.test(x.text)); })());
     is("no error on the page", errors.length === 0);
   } catch (e) {
     is("the page ran: " + (e.message || e), false);

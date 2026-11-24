@@ -24,6 +24,7 @@
 
 import { compress, pitchName, chordOf, notesOf, expand, coder, sayRows, harmonySpans } from "./compress.mjs";
 import { reduceNotes, derivationLength, eventsOf } from "./reduction.mjs";
+import { exportMei, fromUnits, fileName } from "./export.mjs";
 import { midiOf } from "./protovoices.mjs";
 import { lexicon } from "./bits.mjs";
 import { functionsOf, grammarErrors, label } from "./functions.mjs";
@@ -265,7 +266,7 @@ const CANDIDATE_STEPS = [0, 1, -1, 2, -2];
  * said before preferred (economy, bits.mjs), each chord's tension near the original's at its unit (shape: Lerdahl's
  * global tension, tension.mjs), drawn at temperature temp. → rows (MIDI, a chord a unit) or null.
  */
-export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budget = 4000, functional = an.functional ?? true, shape = 3 } = {}) {
+export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, functional = an.functional ?? true, shape = 3, smooth = 1, beam = 80 } = {}) {
   const H = an.harmony, U = H.units, V = H.voices.length, key = an.key || { tonic: "C" };
   // (the tension's shape: each new chord's global tension near the original's at its unit — a variation keeps where
   // the harmony tightens and where it releases)
@@ -288,63 +289,135 @@ export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budge
   const fnOf = new Map();
   const fn = (row) => { const kk = row.join(); let f = fnOf.get(kk); if (f === undefined) { f = functionsOf([row], key)[0]; fnOf.set(kk, f); } return f; };
   const follows = (a, b) => !functional || !grammarErrors([fn(a), fn(b)], { key, end: false }).length;
+  // ─── the voice leading every new chord keeps (with the chord before it and the one after) ───
+  // the chord: a major or minor triad, or a seventh (dominant, minor, major: its 7th prepared or approached by step,
+  // and going down by step), in any position; the voices in order, none on another's pitch (no voice lost), the upper
+  // ones within an octave of each other
+  const okMemo = new Map();
+  const chordOk = (row) => { const kk = row.join(); let v = okMemo.get(kk); if (v === undefined) { v = chordOk0(row); okMemo.set(kk, v); } return v; };
+  const chordOk0 = (row) => {
+    const ch = chordOf(row);
+    if (!ch || !["", "m", "7", "m7", "maj7"].includes(ch.kind) || ch.extra !== undefined) return false;
+    for (let i = 1; i < V; i++) if (row[i] <= row[i - 1]) return false;
+    for (let i = 2; i < V; i++) if (row[i] - row[i - 1] > 12) return false;
+    return true;
+  };
+  const sevenths = (row) => { const ch = chordOf(row); if (!ch || !/7/.test(ch.kind)) return []; const iv = ch.kind === "maj7" ? 11 : 10, pc = (ch.root + iv) % 12; return row.map((p, i) => (((p % 12) + 12) % 12 === pc ? i : -1)).filter((i) => i >= 0); };
+  const perfect = (x, y) => { const d = ((y - x) % 12 + 12) % 12; return d === 0 || d === 7; };
+  /** Whether a can go to b: no voice leaps more than a 4th (a 5th in the bass, an octave where the chord kept next
+   *  doubles one), no parallel 5ths or octaves between any two voices, a 7th going down by step. → its cost, or
+   *  Infinity. */
+  const link = (a, b, into = false) => {
+    let c = 0;
+    for (let i = 0; i < V; i++) {
+      const d = Math.abs(b[i] - a[i]);
+      if (d > (i === 0 ? 7 : 5) && !(into && d === 12)) return Infinity;
+      c += d <= 2 ? d * 0.1 : d <= 4 ? 0.5 : 1.2;
+    }
+    // (a new chord each bar, as the prelude's harmony moves: the same chord again a little dearer)
+    if (a.join() === b.join()) c += 0.8;
+    for (let i = 0; i < V; i++) for (let j = i + 1; j < V; j++)
+      if (a[i] !== b[i] && perfect(a[i], a[j]) && perfect(b[i], b[j]) && (((a[j] - a[i]) % 12) + 12) % 12 === (((b[j] - b[i]) % 12) + 12) % 12) return Infinity;
+    for (const i of sevenths(a)) if (b[i] !== a[i] && !(a[i] - b[i] >= 1 && a[i] - b[i] <= 2)) return Infinity;
+    return smooth * c;
+  };
+  const stateCost = (u, row) => (target ? shape * Math.abs(tensionAt(row) - target[u]) / 5 : 0);
   const lex = lexicon({ kinds: 40 });
   const gumbel = () => -Math.log(-Math.log(Math.min(0.999999, Math.max(1e-6, r()))));
   const rows = new Array(U).fill(null);
   for (const [u, row] of pinned) rows[u] = row;
-  // span by span: the bars between two chords kept, drawn so the first follows the chord before and the last leads
-  // into the chord after (each span its own search: the chords kept cut the phrase into independent spans)
-  const pins = [...pinned.keys()].sort((a, b) => a - b);
+  const pins = [...pinned.keys()].sort((x, y) => x - y), kept = [];
+  const T = Math.max(0.05, temp);
+  // span by span, an exact bridge: the chords each unit may take (reached from the chord before by every voice's step,
+  // a third at most, and still able to reach the chord kept next), the backward weights from that chord, a draw forwards
   for (let j = 0; j + 1 < pins.length; j++) {
-    const a = pins[j], b = pins[j + 1], goal = pinned.get(b);
-    if (b - a < 2) { if (!follows(pinned.get(a), goal)) return null; continue; }
-    let nodes = 0;
-    const span = [];
-    const go = (u) => {
-      const prev = u === a + 1 ? pinned.get(a) : span[span.length - 1];
-      if (u === b) return follows(prev, goal);
-      if (++nodes > budget) return false;
-      const opts = [];
-      const rec = (i, row, words) => {
-        if (i === V) {
-          // (a consonant sonority: a major or minor triad in any position, as chordOf names it — by pitch classes)
-          const ch = chordOf(row);
-          if (!ch || (ch.kind !== "" && ch.kind !== "m") || ch.extra !== undefined) return;
-          if (!follows(prev, row)) return;
-          let c = 0;
-          for (const wd of words) c += economy * (lex.bits(wd) - lex.bits("")) / 4;
-          // (motion costs: a voice moving costs a little, a leap more — the smoothest preferred)
-          c += row.reduce((s2, p, jj) => s2 + Math.abs(p - prev[jj]) * 0.05, 0);
-          // (the tension's shape: as far from the tonic as the original's chord at this unit)
-          if (target) c += shape * Math.abs(tensionAt(row) - target[u]) / 5;
-          opts.push({ row: row.slice(), words: words.slice(), key: c - temp * gumbel() });
-          return;
-        }
-        for (const d of CANDIDATE_STEPS) {
-          const p = moveBy(prev[i], d);
-          if (i > 0 && p < row[i - 1]) continue;
-          // (into the chord kept next a voice may also leap an octave: a doubling closing, as into the final chord)
-          // (further away, the distance as pitch classes: the octave leap may come at the end)
-          const gap = goal[i] - p, near = b - u === 1 ? Math.abs(gap) : Math.min(Math.abs(gap), Math.abs(gap - 12), Math.abs(gap + 12));
-          if (near > (b - u === 1 ? 12 : 2 * (b - u) + 2)) continue;
-          row.push(p); words.push("v|" + d);
-          rec(i + 1, row, words);
-          row.pop(); words.pop();
-        }
-      };
-      rec(0, [], []);
-      opts.sort((x, y) => x.key - y.key);
-      for (const o of opts.slice(0, 6)) {
-        span.push(o.row);
-        if (go(u + 1)) return true;
-        span.pop();
+    const a = pins[j], b = pins[j + 1], A = pinned.get(a), G = pinned.get(b);
+    if (b - a < 2) continue;
+    // (forwards, a beam: the chords reached, each with the cheapest way to it, the `beam` cheapest kept a unit)
+    const layer = [new Map([[A.join(), { row: A, f: 0 }]])];
+    let dead = false;
+    for (let u = a + 1; u < b && !dead; u++) {
+      const next = new Map(), left = b - u;
+      for (const { row: prev, f } of layer[layer.length - 1].values()) {
+        const rec = (i, row) => {
+          if (i === V) {
+            const kk = row.join(), old = next.get(kk);
+            if (old && old.f <= f) return;
+            if (!chordOk(row) || !follows(prev, row)) return;
+            const c = link(prev, row);
+            if (c === Infinity) return;
+            const g = f + c + stateCost(u, row);
+            if (!old || g < old.f) next.set(kk, { row: row.slice(), f: g });
+            return;
+          }
+          for (const d of CANDIDATE_STEPS) {
+            const p = moveBy(prev[i], d);
+            if (i > 0 && p <= row[i - 1]) continue;
+            const gap = Math.abs(G[i] - p), oct = Math.min(gap, Math.abs(gap - 12));
+            if ((left === 1 ? (G[i] !== p && gap > 5 && gap !== 12) : oct > 4 * left)) continue;
+            row.push(p); rec(i + 1, row); row.pop();
+          }
+        };
+        rec(0, []);
       }
-      return false;
-    };
-    if (!go(a + 1)) { if (rewrite.debug) rewrite.debug(a, b, nodes); return null; }
-    span.forEach((row, i) => { rows[a + 1 + i] = row; for (let v = 0; v < V; v++) lex.add("v|" + stepIn(i === 0 ? pinned.get(a)[v] : span[i - 1][v], row[v])); });
+      if (!next.size) { dead = true; break; }
+      layer.push(new Map([...next.entries()].sort((x, y) => x[1].f - y[1].f).slice(0, beam)));
+    }
+    // (from here on each layer's chords only: the backward weights are exact over the chords the beam kept)
+    for (let L = 1; L < layer.length; L++) layer[L] = new Map([...layer[L].entries()].map(([kk, v]) => [kk, v.row]));
+    // (no new way through this span under the rules: Bach's chords kept there)
+    if (dead || ![...layer[layer.length - 1].values()].some((row) => follows(row, G) && link(row, G, true) !== Infinity)) {
+      for (let u = a + 1; u < b; u++) rows[u] = H.rows[u];
+      kept.push([a + 1, b - 1]);
+      continue;
+    }
+    layer[0] = new Map([[A.join(), A]]);
+    // backward: log weight of every way from a chord of unit u to the chord kept at b
+    const lse = (x, y) => (x === -Infinity ? y : y === -Infinity ? x : Math.max(x, y) + Math.log1p(Math.exp(-Math.abs(x - y))));
+    const back = new Array(layer.length).fill(null);
+    const last = layer.length - 1;
+    back[last] = new Map([...layer[last].entries()].map(([kk, row]) => { const c = follows(row, G) ? link(row, G, true) : Infinity; return [kk, c === Infinity ? -Infinity : -(c + stateCost(b - 1, row)) / T]; }));
+    for (let L = last - 1; L >= 1; L--) {
+      const m = new Map();
+      for (const [kk, row] of layer[L]) {
+        let z = -Infinity;
+        for (const [k2, row2] of layer[L + 1]) {
+          const w = back[L + 1].get(k2);
+          if (w === -Infinity || !follows(row, row2)) continue;
+          const c = link(row, row2);
+          if (c !== Infinity) z = lse(z, -c / T + w);
+        }
+        m.set(kk, z === -Infinity ? -Infinity : z - stateCost(a + L - 1, row) / T);
+      }
+      back[L] = m;
+    }
+    // forwards: each chord drawn by its weight, the words already said cheaper (economy, forward only)
+    let prev = A;
+    for (let L = 1; L <= last; L++) {
+      const cs = [];
+      for (const [kk, row] of layer[L]) {
+        const w = back[L].get(kk);
+        if (w === -Infinity || !follows(prev, row)) continue;
+        const c = link(prev, row);
+        if (c === Infinity) continue;
+        let e = 0;
+        for (let v = 0; v < V; v++) e += economy * (lex.bits("v|" + stepIn(prev[v], row[v])) - lex.bits("")) / 4;
+        cs.push({ row, lw: -(c + e) / T + w });
+      }
+      if (!cs.length) return null;
+      const m = Math.max(...cs.map((x) => x.lw));
+      let x = r() * cs.reduce((s2, y) => s2 + Math.exp(y.lw - m), 0), pick = cs[cs.length - 1];
+      for (const y of cs) { x -= Math.exp(y.lw - m); if (x < 0) { pick = y; break; } }
+      for (let v = 0; v < V; v++) lex.add("v|" + stepIn(prev[v], pick.row[v]));
+      rows[a + L] = pick.row;
+      prev = pick.row;
+    }
   }
-  return rows.some((x) => x === null) ? null : rows;
+  void gumbel;
+  if (rows.some((x) => x === null)) return null;
+  // (the spans no new way could go through, Bach's chords kept there)
+  rows.kept = kept;
+  return rows;
 }
 /** The scale steps (C major's) from one pitch to another, signed: the word a voice's move is. */
 function stepIn(p, q) {
@@ -372,6 +445,37 @@ export function realize(figure, rows) {
     figure.idx.forEach((i, j) => { out.push([t, figure.rhythm[j].d, row[Math.min(i, row.length - 1)]]); t += figure.rhythm[j].g; });
   }
   return out;
+}
+
+// ─── as MEI, for the app (discussion #319) ───
+/** Chords (rows of MIDI pitches, a chord a bar) as MEI: a staff a voice, top first, each chord a whole note (a note
+ *  held where the voice keeps its pitch). → {mei, name}. */
+export function meiOfChords(rows, { title = "A harmony", key = { tonic: "C", mode: "major" } } = {}) {
+  const V = rows[0].length, labels = voicesOf(V).slice().reverse();
+  const voices = labels.map((label, j) => {
+    const i = V - 1 - j, names = rows.map((r) => spell(r[i]));
+    return { label, clef: i < V / 2 ? "F" : "G", notes: fromUnits(names) };
+  });
+  const x = exportMei({ title, source: "Kairotic Study 67 · prelude", key, voices, unitDen: 1, unitsPerBar: 1, root: { study: "67 · prelude", chords: rows.map((r) => (chordOf(r) || { name: "?" }).name) } });
+  return { mei: x.mei, name: fileName(title) };
+}
+/** A prelude (a figure over chords, realize's) as MEI: a staff for each of the figure's voices, top first, in 16ths
+ *  (a note held as long as it lasts, the rest silent). → {mei, name}. */
+export function meiOfPrelude(figure, rows, { title = "A prelude", key = { tonic: "C", mode: "major" } } = {}) {
+  const k = Math.max(...figure.idx) + 1, bar = figure.rhythm.reduce((a, x) => a + x.g, 0), n = rows.length * bar;
+  const grid = Array.from({ length: k }, () => Array(n).fill(null)), struck = Array.from({ length: k }, () => Array(n).fill(false));
+  rows.forEach((row, b) => {
+    let t = b * bar;
+    figure.idx.forEach((i, j) => {
+      const p = row[Math.min(i, row.length - 1)], d = figure.rhythm[j].d;
+      for (let u = t; u < Math.min(n, t + d); u++) grid[i][u] = spell(p);
+      struck[i][t] = true;
+      t += figure.rhythm[j].g;
+    });
+  });
+  const voices = grid.map((names, i) => ({ label: "voice " + (i + 1), clef: i < 2 ? "F" : "G", notes: fromUnits(names, struck[i]) })).reverse();
+  const x = exportMei({ title, source: "Kairotic Study 67 · prelude", key, voices, unitDen: 16, unitsPerBar: bar, root: { study: "67 · prelude", chords: rows.map((r) => (chordOf(r) || { name: "?" }).name) } });
+  return { mei: x.mei, name: fileName(title) };
 }
 
 /** The whole reading of a piece: Study 66's compression, its harmony, the harmony analysed. */
