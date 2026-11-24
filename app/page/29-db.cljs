@@ -619,3 +619,15 @@
    (entity eid), (entity db eid)."
   ([eid] (pull '[*] eid))
   ([d eid] (pull d '[*] eid)))
+
+;; DataScript is brought as soon as the REPL or the Code tab is opened — the REPL line, the floating one ("(" on the
+;; patch), the Code tab — so the first query finds it there (in a demo, it does not have to be asked twice). Nothing
+;; loads with the page; if the CDN fails, the first query says so.
+(defonce ds-preload
+  (let [near? (fn [e] (let [t (.-target e)]
+                        (and t (fn? (.-closest t))
+                             (.closest t "#repl-line, .repl-line, #panel-code, .tab[data-tab=\"code\"]"))))
+        go! (fn [e] (when (and (nil? (ds-js)) (near? e)) (.catch (load-datascript!) (fn [_] nil))))]
+    (.addEventListener js/document "focusin" go! true)
+    (.addEventListener js/document "click" go! true)
+    true))
