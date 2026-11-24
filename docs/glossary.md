@@ -188,7 +188,7 @@ Code box data: `{:fuente}` → `{:source}`; events `:fuente :cargar` → `:sourc
 | — | ? or F1 on a box · (help "osc~") · (tutorial "patch-to-code") · the Help tab and the lesson bar (Study 18) |
 | — | (axis :b6 :y -1 1) (grid-y :b6 0.25) (read-at :b6 :y 0.5) · classes freqt, pan~, space~; dac~ 1 2 … (Study 12) |
 | (rewind) (forward) (tip) (goto …) (here) (branches) (merge-from …) | (same) |
-| — | (as-of …) (with …) (transact! …) (tx-at) (tx-log) (schema) (excise! …) (excisions) (db) (datoms) (history-of …) (#382) |
+| — | (as-of …) (with …) (transact! …) (tx-at) (tx-log) (schema) (excise! …) (excisions) (db) (datoms) (history-of …) (q …) (pull …) (entity …) (#382) |
 
 ## Storage · Almacenamiento (new artifact, new database)
 
