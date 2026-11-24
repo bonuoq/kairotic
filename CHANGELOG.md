@@ -12,6 +12,15 @@
   all four links, the step below an incomplete neighbour, where without economy the last link was an anticipation:
   28.0 bits in 4 different steps become 21.5 in 3, every level passing the rules. The page has an Economy field
   (3) and says the derivation's length. The copies in Studies 63 and 64 follow.
+- **The history as a value, and its facts** (discussion #382, ideas 2 and 3). `(db)`: the history of the line on
+  screen as a value that does not change while the history grows; `as-of`, `with`, `tx-at`, `tx-log` take it as their
+  first argument (`db-norm`, `db-patch`, `db-segments` read it). `(datoms)`: the facts of the history as Datomic's
+  datoms — `{:e :a :v :added}` with each one's transaction, an entity a box by its path (`[:b5 :b2]` inside a
+  sub-patch), a patch for its lines, a layer, a mark or a projection —, read from the work before and after every event
+  (`patch-datoms`), so every event has them whatever its form; `(history-of :b3)`. Claude (the Claude tab, agent boxes)
+  gets a `work_history` tool: the last transactions, or a box's facts, from the value the history had when the request
+  began. `text!` no longer resets the engine's state of a box while trying (`with`, `build`).
+
 - **The schema as data, and one excision** (discussion #382, ideas 5 and 6). `kairotic.mt/attr-schema`: each
   attribute of a tree with its layer (`:performance`, `:analysis`) and, where it matters, the nodes it belongs to on
   (`:on`, as a note's `:id`); `performative-keys`, `analysis-keys` and the layers are read from it (`mt/layer-of`,

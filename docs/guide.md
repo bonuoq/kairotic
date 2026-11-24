@@ -322,6 +322,15 @@ tooltips tell it, and the REPL reads it as data (discussion #382).
 - `(tx-log)` — the transactions from the start to here, a seq to read with Clojure:
   `(filter #(= :agent (:via %)) (tx-log))`, `(remove #(= :layout (:kind %)) (tx-log))`, `(group-by :author (tx-log))`.
 
+- `(db)` — the history as a **value**: it does not change when the history grows, so a long query, an agent or Claude
+  reads one consistent value. Every function here takes it as its first argument: `(as-of db)`, `(tx-log db)`,
+  `(with db …)`, `(datoms db)`.
+- `(datoms)` — the **facts** of the history to here, as Datomic's datoms: `{:e :a :v :added}` (an entity — a box by
+  its path, `[:b3]`, or `[:b5 :b2]` inside a sub-patch —, an attribute — `:text`, `:x`, `:y`, `:data`, `:line`… —, a
+  value, asserted or retracted), each with its transaction. Read from the work before and after every event, so every
+  event has them, whatever its form. `(history-of :b3)` — the facts of one box, oldest first.
+- Claude, in the Claude tab and in an agent box, reads the history the same way: its `work_history` tool gives the last
+  transactions, or a box's facts, from the value the history had when the request began.
 - `(schema)` — what the attributes of a tree and the events of the history are, as data: `(schema :tree)`, each
   attribute with its layer (`:performance`, `:analysis`; none for what is written), which the layers, the code
   window and the lenses (#380) read; `(schema :events)`, each event with what it changes.
