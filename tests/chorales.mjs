@@ -34,7 +34,7 @@ is("Aus meines Herzens Grunde (BWV 269), the first phrase: Bach's soprano and ba
 const notesOf = (p, v) => { const out = []; p.satb.forEach((c, t) => { if (t && p.held[t][v] && out.at(-1).midi === c[v]) { out.at(-1).units++; out.at(-1).strong.push(p.strong[t]); } else out.push({ midi: c[v], units: 1, strong: [p.strong[t]], ...(v === 3 && p.keys ? { key: p.keys[t] } : {}) }); }); return out; };
 const judgeBach = (p, style = "bach-4") => {
   const ob = R.fromOuter({ bass: notesOf(p, 3), soprano: notesOf(p, 0), key: `${p.key.tonic.replace("♯", "#").replace("♭", "b")} ${p.key.mode}`, style });
-  return ob.judge({ soprano: p.satb.map((c) => ob.code(c[0])), alto: p.satb.map((c) => ob.code(c[1])), tenor: p.satb.map((c) => ob.code(c[2])) });
+  return ob.judge({ soprano: p.satb.map((c, t) => ob.code(c[0], t)), alto: p.satb.map((c, t) => ob.code(c[1], t)), tenor: p.satb.map((c, t) => ob.code(c[2], t)) });
 };
 is("... its alto and tenor by bach-4's rules (judged from the corpus)", judgeBach(p1) === null);
 const why = {};
@@ -43,8 +43,8 @@ for (const p of P) { const j = judgeBach(p); if (j === null) kept++; else { cons
 notes.push(`bach-4 keeps ${kept} of Bach's ${P.length} phrases as he wrote them; the others break first — ` +
   Object.entries(why).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} (${v})`).join(" · "));
 // (pinned: a change of bach-4's rules changes it — say why, and pin it again)
-is(`... bach-4 ${R.STYLES["bach-4"].version} keeps 426 of them, read in their keys (in the chorale's: 234; 1.0.0: 112) — Bach's ranges, his passing and neighbour notes over a moving bass, a note held into a dissonance, direct 5ths and octaves free in the inner voices`,
-   R.STYLES["bach-4"].version === "1.1.0" && kept === 426, String(kept));
+is(`... bach-4 ${R.STYLES["bach-4"].version} keeps 486 of them, each note spelt in its key (1.1.0: 426, 234 in the chorale's key; 1.0.0: 112) — Bach's ranges, his passing and neighbour notes over a moving bass, a note held into a dissonance, direct 5ths and octaves free in the inner voices, his 7ths held into a consonance, rising as the bass takes their note's resolution, passed into the bass`,
+   R.STYLES["bach-4"].version === "1.2.0" && kept === 486, String(kept));
 
 const bad = results.filter((r) => !r[1]);
 console.log(`${results.length - bad.length} / ${results.length} passed`);
