@@ -48,6 +48,8 @@ jobs:
       # The counterpoint of the comes box (@kairotic/cac), in Node: Study 40's kernel, the corrections
       - run: node tests/counterpoint.mjs
       - run: node tests/rules.mjs
+      # Bach's chorales, phrase by phrase (studies/_shared/chorales/): the corpus, and what bach-4 makes of it
+      - run: node tests/chorales.mjs
       # The studies' export to the app (#319): the common export.mjs, and its copies beside each study's kernel
       - run: node tests/export.mjs
       - run: node site/build.mjs
