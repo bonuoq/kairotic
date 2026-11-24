@@ -112,7 +112,7 @@ function kept(path, notes) {
 }
 
 /** The candidate steps from a path, each with its cost: [{op, at, on, cost, parts, path, explained | notes}]. */
-export function candidates(path, notes, { per = PER, weights = {}, judge = null, explanations = 1, maxSpread = 4, keep: keepOf = null } = {}) {
+export function candidates(path, notes, { per = PER, weights = {}, judge = null, explanations = 1, maxSpread = 4, keep: keepOf = null, extra = null } = {}) {
   const W = { ...WEIGHTS, ...weights }, out = [], keep = (keepOf || kept)(path, notes), base = lineCost(path);
   // (the hard rules: a step that makes a level they refuse around it costs `illegal` more — taken only where no other
   // is left; a level halfway through a sequence may be irregular elsewhere, which is not this step's doing)
@@ -172,6 +172,9 @@ export function candidates(path, notes, { per = PER, weights = {}, judge = null,
       }
     }
   }
+  // (a cost of the study's beside the policy's: extra(step, path) — Study 67's tension, the distance of what a step
+  // takes away from what it is taken into)
+  if (extra) for (const c of out) { const e = extra(c, path); if (e) { c.parts = { ...c.parts, tension: e }; c.cost += e; } }
   return out;
 }
 
@@ -226,10 +229,11 @@ export function functionalJudge(key, surface) {
  * (i → whether slice i stays: the frame's retention; by default the first slice and the cadence's); strict: where
  * nothing legal is left the reduction stops (by default it takes the cheapest step the judge refuses, alone, and
  * goes on — strict for a judge whose rules no level may break, as the tonal functions); functional: a key, and the
- * tonal functions judge every level too (functionalJudge). → {per, notes,
+ * tonal functions judge every level too (functionalJudge); extra(step, path): a cost of the caller's added to each
+ * candidate step's (its part "tension"). → {per, notes,
  * levels, steps}.
  */
-export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math.random, judge: judge0 = null, economy = 0, explanations = economy ? 8 : 1, maxSpread = 4, keep = null, strict = false, functional = null } = {}) {
+export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math.random, judge: judge0 = null, economy = 0, explanations = economy ? 8 : 1, maxSpread = 4, keep = null, strict = false, functional = null, extra = null } = {}) {
   let path = slicesOf(notes);
   // (the tonal functions, where a key is given: a level may not make the harmony go back — its own judge beside the
   // phrase's)
@@ -248,7 +252,7 @@ export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math
     const kept = new Set(), fresh = new Set();
     let taken = 0;
     for (;;) {
-      const all = candidates(path, notes, { per, weights, judge, explanations, maxSpread, keep });
+      const all = candidates(path, notes, { per, weights, judge, explanations, maxSpread, keep, extra });
       const no = (j) => !kept.has(path[j].on) && !fresh.has(path[j].on);
       const free = (c) => (c.op === "unsplit" ? no(c.at) && !fresh.has(path[c.at - 1].on) && !fresh.has(path[c.at + 1].on)
         : c.op === "unsuspend" ? no(c.at) && !fresh.has(path[c.at + 1].on) && !fresh.has(path[c.at - 1].on)
@@ -271,7 +275,7 @@ export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math
     // nothing legal left: the cheapest step the rules refuse, alone, if any (none where strict)
     if (strict) break;
     // (the tonal functions are never given up: only a step that keeps them, if any)
-    const all = candidates(path, notes, { per, weights, judge, explanations, maxSpread, keep }).filter((c) => !fj || fj(c.path).ok);
+    const all = candidates(path, notes, { per, weights, judge, explanations, maxSpread, keep, extra }).filter((c) => !fj || fj(c.path).ok);
     if (!all.length) break;
     const { path: next, touches, ...step } = choose1(all);
     steps.push({ ...step, level: levels.length, among: all.length });

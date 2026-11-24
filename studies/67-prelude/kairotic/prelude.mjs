@@ -27,6 +27,7 @@ import { reduceNotes, derivationLength, eventsOf } from "./reduction.mjs";
 import { midiOf } from "./protovoices.mjs";
 import { lexicon } from "./bits.mjs";
 import { functionsOf, grammarErrors, label } from "./functions.mjs";
+import { placed, distance, hierarchical, tensions, surface, tonicOf } from "./tension.mjs";
 
 /** A MIDI pitch spelled as protovoices.mjs reads it (Study 66's names: C♯, E♭, F♯, A♭, B♭). */
 export const spell = (p) => pitchName(p).replace("♯", "#").replace("♭", "b");
@@ -141,9 +142,27 @@ export function keepCadence(path, notes) {
 
 /** A prelude's harmony analysed: reduceNotes with a chord a unit (a bar's weight by GTTM's metre), no hard rules but
  *  the ornaments' and the sonorities', a sonority as many notes as the voices, the economy of the derivation. */
-export function analyse(H, { economy = 3, temp = 0, r = Math.random, functional = true, key = { tonic: "C" } } = {}) {
+export function analyse(H, { economy = 3, temp = 0, r = Math.random, functional = true, tension = 1, key = { tonic: "C" } } = {}) {
   const judge = functional ? functionalJudge(key) : null;
-  return { ...reduceNotes(H.notes, { per: 1, economy, temp, r, judge, strict: functional, maxSpread: H.voices.length + 1, keep: keepCadence }), harmony: H, functional, key };
+  const extra = tension ? tensionCost(key, tension) : null;
+  return { ...reduceNotes(H.notes, { per: 1, economy, temp, r, judge, strict: functional, maxSpread: H.voices.length + 1, keep: keepCadence, extra }), harmony: H, functional, tension, key };
+}
+
+/**
+ * The tension a step takes away, as a cost of the reduction's (Lerdahl's prolongational reduction: a chord close to
+ * the one it prolongs — a weak prolongation — is taken away first; one far from both around it is a progression, and
+ * stays longer): weight · δ / 5, δ the distance (tension.mjs) from the closer of the chords around it to the chord taken
+ * away (for a spread, between the two slices heard as one). A suspension's resolution brought onto its beat costs none.
+ */
+export function tensionCost(key = { tonic: "C" }, weight = 1) {
+  const chordAt = (s) => placed(s.notes.map((n) => midiOf(n.pitch)), key), memo = new Map();
+  const pl = (s) => { const k = s.notes.map((n) => n.pitch).join(); let v = memo.get(k); if (!v) { v = chordAt(s); memo.set(k, v); } return v; };
+  const d = (a, b) => { const x = pl(a), y = pl(b); return x && y ? distance(x, y).d : 0; };
+  return (step, path) => {
+    if (step.op === "unsplit") return weight * Math.min(d(path[step.at - 1], path[step.at]), d(path[step.at + 1], path[step.at])) / 5;
+    if (step.op === "unspread") return weight * d(path[step.at], path[step.at + 1]) / 5;
+    return 0;
+  };
 }
 
 // ─── the tonal functions a level must keep (functions.mjs, @kairotic/rules) ───
@@ -208,15 +227,50 @@ export const frameChords = (an) => levelChords(an);
 /** The bits of every level, from the surface (k 0) to the frame. */
 export const bitsByLevel = (an) => an.levels.map((_, k) => ({ k, ...bitsAt(an, k) }));
 
+// ─── tension (tension.mjs, @kairotic/rules: Lerdahl's Tonal Pitch Space) ───
+/**
+ * The harmony's tension, chord by chord, from its analysis: each surface chord's prolongational parent is the chord
+ * of the level above it was taken into — of the two around it there, the closer (Lerdahl's δ), the one before where
+ * they tie — and its tension its δ from the parent plus the parent's (the frame's chords from the tonic), with what
+ * it adds itself (an inversion, a 7th, a foreign note). → [{on, name, parent (onset, or −1), global, sequential,
+ * hierarchical, level (the deepest it reaches)}].
+ */
+export function tensionOf(an, key = an.key || { tonic: "C" }) {
+  const L = an.levels, ons = L[0].map((s) => s.on), idx = new Map(ons.map((o, i) => [o, i]));
+  const chordAt = (s) => s.notes.map((n) => midiOf(n.pitch));
+  // (each onset's chord where it stands deepest, and the deepest level it reaches)
+  const deepest = new Map(), level = new Map();
+  L.forEach((path, k) => path.forEach((s) => { deepest.set(s.on, chordAt(s)); level.set(s.on, k); }));
+  const parent = new Map();
+  for (let k = 0; k + 1 < L.length; k++) {
+    const up = L[k + 1], upOn = new Set(up.map((s) => s.on));
+    for (const s of L[k]) {
+      if (upOn.has(s.on) || parent.has(s.on)) continue;
+      const before = up.filter((x) => x.on < s.on).pop(), after = up.find((x) => x.on > s.on);
+      const me = placed(chordAt(s), key);
+      const d = (x) => (x ? distance(placed(chordAt(x), key), me).d : Infinity);
+      parent.set(s.on, (d(after) < d(before) ? after : before || after).on);
+    }
+  }
+  const chords = ons.map((o) => deepest.get(o)), parents = ons.map((o) => (parent.has(o) ? idx.get(parent.get(o)) : -1));
+  const H = hierarchical(chords, parents, key), S = tensions(L[0].map(chordAt), key);
+  return ons.map((o, i) => ({ on: o, name: (chordOf(L[0][i].notes.map((n) => midiOf(n.pitch))) || { name: "?" }).name, parent: parents[i] < 0 ? -1 : ons[parents[i]], global: S[i].global + S[i].surface, sequential: S[i].sequential, hierarchical: H[i], level: level.get(o) }));
+}
+
 // ─── the way back: a new harmony from a level's frame, the figure on it ───
 const CANDIDATE_STEPS = [0, 1, -1, 2, -2];
 /**
  * A new harmony from level k: its slices kept on their units; every unit between two of them written again, voice by
  * voice, by the grammar read forwards (a voice holds, or moves a step or a third to a consonant sonority), the words
- * said before preferred (economy, bits.mjs), drawn at temperature temp. → rows (MIDI, a chord a unit) or null.
+ * said before preferred (economy, bits.mjs), each chord's tension near the original's at its unit (shape: Lerdahl's
+ * global tension, tension.mjs), drawn at temperature temp. → rows (MIDI, a chord a unit) or null.
  */
-export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budget = 4000, functional = an.functional ?? true } = {}) {
+export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budget = 4000, functional = an.functional ?? true, shape = 3 } = {}) {
   const H = an.harmony, U = H.units, V = H.voices.length, key = an.key || { tonic: "C" };
+  // (the tension's shape: each new chord's global tension near the original's at its unit — a variation keeps where
+  // the harmony tightens and where it releases)
+  const target = shape ? tensions(H.rows, key).map((t) => t.global + t.surface) : null;
+  const tensionAt = (row) => { const p = placed(row, key); return p ? distance(tonicOf(key), p).d + surface(p) : 0; };
   const pinned = new Map();
   for (const s of an.levels[k]) {
     const row = H.voices.map((v) => { const n = s.notes.find((x) => x.voice === v); return n ? midiOf(n.pitch) : null; });
@@ -261,6 +315,8 @@ export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budge
           for (const wd of words) c += economy * (lex.bits(wd) - lex.bits("")) / 4;
           // (motion costs: a voice moving costs a little, a leap more — the smoothest preferred)
           c += row.reduce((s2, p, jj) => s2 + Math.abs(p - prev[jj]) * 0.05, 0);
+          // (the tension's shape: as far from the tonic as the original's chord at this unit)
+          if (target) c += shape * Math.abs(tensionAt(row) - target[u]) / 5;
           opts.push({ row: row.slice(), words: words.slice(), key: c - temp * gumbel() });
           return;
         }
@@ -294,6 +350,18 @@ export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budge
 function stepIn(p, q) {
   const sc = [0, 2, 4, 5, 7, 9, 11], deg = (x) => 7 * Math.floor(x / 12) + sc.filter((v) => v <= ((x % 12) + 12) % 12).length - 1;
   return deg(q) - deg(p);
+}
+
+/** A harmony's tension from the tonic, chord by chord (global δ and surface, tension.mjs). */
+export const tensionsOf = (rows, key = { tonic: "C" }) => tensions(rows, key).map((t) => t.global + t.surface);
+
+/** How alike two harmonies' tension curves are (each chord's global tension, tension.mjs): their correlation. */
+export function tensionCorrelation(rowsA, rowsB, key = { tonic: "C" }) {
+  const a = tensionsOf(rowsA, key), b = tensionsOf(rowsB, key);
+  const m = (x) => x.reduce((s2, v) => s2 + v, 0) / x.length, ma = m(a), mb = m(b);
+  let sab = 0, saa = 0, sbb = 0;
+  for (let i = 0; i < a.length; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; }
+  return sab / Math.sqrt(saa * sbb || 1);
 }
 
 /** A figure (Study 66's rule) over chords (rows of MIDI pitches, a chord a figure): the notes [[onset dur midi] …]. */

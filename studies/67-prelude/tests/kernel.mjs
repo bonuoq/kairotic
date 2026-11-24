@@ -66,6 +66,17 @@ export async function run() {
   notes.push("a new harmony from the frame: " + names(rows).join(" "));
   const shallow = P.rewrite(an, 1, { r: rng(3) });
   is("from a shallower level, more of Bach's kept", shallow && shallow.filter((r, u) => r.join() === H.rows[u].join()).length > rows.filter((r, u) => r.join() === H.rows[u].join()).length);
+  // ─── tension (tension.mjs: Lerdahl's Tonal Pitch Space) ───
+  const T = P.tensionOf(an), at = (u) => T.find((t) => t.on === u);
+  is("tension, chord by chord (its δ from its prolongational parent, the parent's from the frame, the frame's from the tonic): C at 0 where it begins and ends", at(0).hierarchical === 0 && at(34).hierarchical === 0);
+  is("… tighter in the tonicization of G (bars 5–11) than in the first bars, and the dominant pedal (bars 24–31) tighter than the tonic it resolves into",
+     Math.max(...T.filter((t) => t.on >= 4 && t.on <= 10).map((t) => t.hierarchical)) > Math.max(...T.filter((t) => t.on <= 3).map((t) => t.hierarchical)) &&
+     T.filter((t) => t.on >= 23 && t.on <= 30).every((t) => t.hierarchical > 0) && at(34).hierarchical < at(30).hierarchical);
+  notes.push("hierarchical tension: " + T.map((t) => `${t.name} ${t.hierarchical}`).join(" · "));
+  const corr = (shape) => [1, 2, 3, 4].map((sd) => P.tensionCorrelation(P.rewrite(an, k, { r: rng(sd), shape }), H.rows)).reduce((a, b) => a + b, 0) / 4;
+  const c0 = corr(0), c3 = corr(3);
+  is("a new harmony that keeps Bach's tension shape (each chord as far from the tonic as his at that bar): its tension curve closer to his than without (correlation, 4 draws)", c3 > c0 + 0.1);
+  notes.push(`tension curve against Bach's: ${c0.toFixed(2)} without the shape, ${c3.toFixed(2)} with it`);
   const prelude = P.realize(figure, rows);
   is("the figure on it: a new prelude of 35 bars, 16 notes a bar, its first bar Bach's", prelude.length === 35 * 16 && prelude.slice(0, 16).map((x) => x[2]).join() === raw.slice().sort((a, b) => a[0] - b[0] || a[2] - b[2]).slice(0, 16).map((x) => x[2]).join());
   is("… drawn again, another prelude", P.rewrite(an, k, { r: rng(11) }).some((r, u) => r.join() !== rows[u].join()));
