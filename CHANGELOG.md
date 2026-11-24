@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **`cac judge` with a canon's style: two voices judged by the canon's rules** (`@kairotic/rules` 0.12.0,
+  `@kairotic/cac` 0.16.0; discussion #353). `[:style :canon-2]` (or a style that extends it) and a tree of two voices:
+  each voice's line and what is between them (parallels, dissonances and their suspensions, the imitation), unit by
+  unit — the reasons on outlet 1, each with its unit and its voice (the dux, the comes or both), and the voices written
+  again with `:why` on the notes that break a rule (their analysis layer). The dux is the voice that enters first (the
+  lower if together, or `[:dux :upper]`); k and d are read from their entries (or `[:k -4]`, `[:d 2]`); a canon if the
+  comes enters later, free counterpoint if they enter together (or `[:imitation 0.6]`). With another style the two
+  voices are judged over their bass, as before. `canon.mjs`'s `judgeTwo`: the canons the engine draws are judged by
+  the rules, and a first species written badly shows its parallel 5ths and its leaps.
 - **The schema as data, and one excision** (discussion #382, ideas 5 and 6). `kairotic.mt/attr-schema`: each
   attribute of a tree with its layer (`:performance`, `:analysis`) and, where it matters, the nodes it belongs to on
   (`:on`, as a note's `:id`); `performative-keys`, `analysis-keys` and the layers are read from it (`mt/layer-of`,
