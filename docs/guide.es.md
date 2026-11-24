@@ -391,6 +391,13 @@ medida que la historia crece.
 - Una ruta o un punto se comparan a través de `:in`, no escritos dentro de una cláusula:
   `(q '[:find … :in $ ?e :where [?f :fact/e ?e] …] (db) [:b3])`.
 - Claude lee la historia igual: su herramienta `work_history` también acepta una consulta.
+- DataScript llega en cuanto se abre la REPL o la pestaña Code, así que la primera consulta suele encontrarlo ya.
+- Lo que cuesta: el índice de un valor se hace la primera vez que se consulta, se guarda y crece solo con los
+  eventos nuevos cuando la historia sigue. Medido en el Chromium sin interfaz de los tests (GitHub Actions, noviembre
+  de 2026), con una historia de un segmento sobre 100 cajas: 300 eventos, unos 40 ms la primera vez, 2–3 ms otra vez,
+  11–14 ms tras un evento más; 2000 eventos, 360–700 ms la primera vez, 20–30 ms otra vez, 27–60 ms tras un evento
+  más; 5000 eventos, alrededor de 1 s la primera vez. (`KAIROTIC_BENCH=1`, o *bench* al lanzar a mano el workflow de
+  tests, mide 2000 y 5000.)
 
 Algunas preguntas:
 

@@ -111,7 +111,8 @@ export async function db(page, check) {
 
   // ───── Datalog over the history, answered by DataScript (#382, idea 7) ─────
   // opening the REPL brings DataScript, before any query asks for it
-  await page.focus("#repl-in");
+  // (the REPL is a code editor once the page has started; before, its plain input)
+  if (await page.$(".repl-host .cm-content")) await page.click(".repl-host .cm-content"); else await page.focus("#repl-in");
   const early = await page.waitForFunction(() => !!window.datascript, null, { timeout: 20000 }).then(() => true, () => false);
   check("opening the REPL loads DataScript before the first query", early);
   const loaded = await page.evaluate(() => scittle.core.eval_string("(in-ns 'user) (load-datascript!)").then(() => true, (e) => "ERR " + e.message));
