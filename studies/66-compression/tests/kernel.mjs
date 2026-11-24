@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Study 66 · compression: the kernel's tests. In the browser (tests/kernel.html) and in Node:
 //   node -e 'import("./studies/66-compression/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
-import { compress, lossless, expand, stream, notesOf, chordOf, harmony, describeRule, written, codeLength, treeOf } from "../kairotic/compress.mjs";
+import { compress, lossless, expand, stream, notesOf, chordOf, harmony, harmonySpans, describeRule, written, codeLength, treeOf } from "../kairotic/compress.mjs";
 
 const load = async (id) => {
   const url = new URL(`../data/${id}.json`, import.meta.url);
@@ -32,6 +32,10 @@ export async function run() {
   is("… and what is left is its harmony: C, Dm7/C, G7/B, C, Am/C, D7/C, G/B, Cmaj7/B",
      harmony(c).slice(0, 8).join(" ") === "C Dm7/C G7/B C Am/C D7/C G/B Cmaj7/B");
   is("… the dominant pedal of its end named over its bass", harmony(c).slice(23).some((h) => h === "G7(+C)"));
+  const hs = harmonySpans(c, { bar: 16 });
+  is("… and where no figure is, read from its notes: the cadence over the tonic pedal, C7 – F/C – G7 (B over C) – C, a chord a bar",
+     hs.length === 35 && hs.slice(31).map((h) => h.name).join(" ") === "C7 F/C G7/B(+C) C" && hs.filter((h) => h.read).length === 3 && hs[34].pitches[0] === 36);
+  is("… a line's bars read too (BWV 1009, a chord a bar of 3/4)", harmonySpans(P["bwv1009-prelude"], { bar: 12 }).filter((h) => h.name !== "?").length > 70);
 
   // the others
   const r999 = P["bwv999-prelude"], c1007 = P["bwv1007-prelude"], c1009 = P["bwv1009-prelude"];

@@ -16,10 +16,10 @@ try {
   await wait(() => w.kairoticStudy && d.getElementById("facts").textContent.includes("level chosen"));
   const facts = () => d.getElementById("facts").textContent;
   const S = w.kairoticStudy;
-  is("it opens on BWV 846's harmony: 33 chords, five voices, its levels drawn, the frame chosen", /33 chords, 5 voices/.test(facts()) && d.querySelectorAll("#levels .lv").length === S.an.levels.length && d.querySelector("#levels .lv.sel").dataset.k === String(S.an.levels.length - 1));
-  is("… the frame's chords: C first, C last, nine in all", d.querySelectorAll("#levels .lv.sel span.on").length === 9 && d.querySelector("#levels .lv.sel span.on").textContent === "C");
+  is("it opens on BWV 846's harmony: 35 chords, five voices, its levels drawn, the frame chosen", /35 chords, 5 voices/.test(facts()) && d.querySelectorAll("#levels .lv").length === S.an.levels.length && d.querySelector("#levels .lv.sel").dataset.k === String(S.an.levels.length - 1));
+  is("… the frame's chords: C first, C last, eight in all", d.querySelectorAll("#levels .lv.sel span.on").length === 8 && d.querySelector("#levels .lv.sel span.on").textContent === "C");
   is("… the bits of every level, a bar each", d.querySelectorAll("#bars .bar").length === S.an.levels.length);
-  is("… a new harmony drawn from the frame, its kept chords marked", S.state().rows && S.state().rows.length === 33 && d.querySelectorAll("#new span.kept").length === 9);
+  is("… a new harmony drawn from the frame, its kept chords marked", S.state().rows && S.state().rows.length === 35 && d.querySelectorAll("#new span.kept").length === 8);
   S.select(1);
   is("a level chosen (L1): its steps listed, its chords", /L0 → L1/.test(d.getElementById("steps-n").textContent) && d.querySelectorAll("#steps li").length > 5 && /L1: 22 chords/.test(facts()));
   d.getElementById("draw").click();

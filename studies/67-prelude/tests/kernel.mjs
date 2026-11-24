@@ -21,18 +21,19 @@ export async function run() {
 
   // ─── the harmony: Study 66's figure, its chords as voices ───
   is("BWV 846's figure (Study 66): a broken chord over five notes, used in 32 bars", figure && figure.k === 5 && P.chordsOf(c).length === 32);
-  is("its harmony: 32 chords and the final one, five voices (b v1 v2 v3 m)", H.units === 33 && H.voices.join(" ") === "b v1 v2 v3 m" && H.rows.every((r) => r.length === 5));
-  is("… from C, Dm7/C, G7/B, C, Am/C, D7/C… to the final C (its bass the last bar's C2)", names(H.rows).slice(0, 6).join(" ") === "C Dm7/C G7/B C Am/C D7/C" && names(H.rows)[32] === "C" && H.rows[32][0] === 36);
+  is("its harmony: 32 chords of the figure, the two bars written out before the end, the final one; five voices (b v1 v2 v3 m)", H.units === 35 && H.voices.join(" ") === "b v1 v2 v3 m" && H.rows.every((r) => r.length === 5));
+  is("… from C, Dm7/C, G7/B, C, Am/C, D7/C… to the final C (its bass the last bar's C2)", names(H.rows).slice(0, 6).join(" ") === "C Dm7/C G7/B C Am/C D7/C" && names(H.rows)[34] === "C" && H.rows[34][0] === 36);
+  is("… the cadence the figure does not cover read too, over the tonic pedal: C7 – F/C – G7 (B over C) – C", names(H.rows).slice(31).join(" ") === "C7 F/C G7/B(+C) C");
   const held = H.notes.filter((n) => n.dur > 1);
   is("a voice keeping its pitch holds its note: the common tones (the G2 pedal of bars 24–31 one note)", held.length > 10 && H.notes.some((n) => n.voice === "b" && n.pitch === "G2" && n.dur >= 8));
   is("a voice meeting another at the end: the four notes of the final chord reached by the five voices, none crossing",
-     new Set(H.rows[32]).size === 4 && H.rows[32].every((p, i) => i === 0 || p >= H.rows[32][i - 1]));
+     new Set(H.rows[34]).size === 4 && H.rows[34].every((p, i) => i === 0 || p >= H.rows[34][i - 1]));
 
   // ─── its levels (Study 61's reduction, a chord a unit) ───
   const last = an.levels[an.levels.length - 1];
-  is("reduced level by level to a frame of 9 chords, the first and the last kept", an.levels.length >= 6 && last.length === 9 && last[0].on === 0 && last[last.length - 1].on === 32);
+  is("reduced level by level to a frame of 8 chords, the first and the last kept", an.levels.length >= 6 && last.length === 8 && last[0].on === 0 && last[last.length - 1].on === 34);
   const fr = P.frameChords(an);
-  is("… the frame: C – Am/C – D7 – Dm/F – G7 – the dominant pedal (G7 over G) – C/G – C7 – C", fr.join(" ") === "C Am/C D7 Dm/F G7 G7 C/G C7 C");
+  is("… the frame: C – Am/C – D7 – Dm/F – G7 – the dominant pedal (G7 over G) – F/C (the subdominant over the tonic pedal) – C", fr.join(" ") === "C Am/C D7 Dm/F G7 G7 F/C C");
   notes.push("the frame: " + fr.join(" – "));
   is("… every step an ornament of the grammar (unsplit: notes held, passing, neighbours), none refused", an.steps.length >= 20 && an.steps.every((s) => s.op === "unsplit" || s.op === "unspread" || s.op === "unsuspend"));
 
@@ -44,7 +45,7 @@ export async function run() {
 
   // ─── both ways: a new harmony from a level's frame, the figure on it ───
   const k = an.levels.length - 1, rows = P.rewrite(an, k, { r: rng(3) });
-  is("a new harmony from the frame: 33 chords, every frame chord where it was", rows && rows.length === 33 && last.every((s) => rows[s.on].join() === H.rows[s.on].join()));
+  is("a new harmony from the frame: 35 chords, every frame chord where it was", rows && rows.length === 35 && last.every((s) => rows[s.on].join() === H.rows[s.on].join()));
   const fresh = rows.filter((r, u) => !last.some((s) => s.on === u));
   is("… every chord written anew a major or minor triad, the voices not crossing, no voice leaping more than a fourth", fresh.every((r) => ["", "m"].includes(chordOf(r).kind)) && rows.every((r) => r.every((p, i) => i === 0 || p >= r[i - 1])) &&
      rows.every((r, u) => u === 0 || r.every((p, i) => Math.abs(p - rows[u - 1][i]) <= 5 || last.some((s) => s.on === u))));
@@ -53,7 +54,7 @@ export async function run() {
   const shallow = P.rewrite(an, 1, { r: rng(3) });
   is("from a shallower level, more of Bach's kept", shallow && shallow.filter((r, u) => r.join() === H.rows[u].join()).length > rows.filter((r, u) => r.join() === H.rows[u].join()).length);
   const prelude = P.realize(figure, rows);
-  is("the figure on it: a new prelude of 33 bars, 16 notes a bar, its first bar Bach's", prelude.length === 33 * 16 && prelude.slice(0, 16).map((x) => x[2]).join() === raw.slice().sort((a, b) => a[0] - b[0] || a[2] - b[2]).slice(0, 16).map((x) => x[2]).join());
+  is("the figure on it: a new prelude of 35 bars, 16 notes a bar, its first bar Bach's", prelude.length === 35 * 16 && prelude.slice(0, 16).map((x) => x[2]).join() === raw.slice().sort((a, b) => a[0] - b[0] || a[2] - b[2]).slice(0, 16).map((x) => x[2]).join());
   is("… drawn again, another prelude", P.rewrite(an, k, { r: rng(11) }).some((r, u) => r.join() !== rows[u].join()));
   return { results, notes };
 }

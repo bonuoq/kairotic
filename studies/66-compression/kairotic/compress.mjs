@@ -252,16 +252,76 @@ export function written(c, { limit = Infinity } = {}) {
 }
 
 /** The chords the figures spell, in order (a harmonic reduction): what a compression of a prelude leaves. */
-export function harmony(c) {
-  const out = [];
-  const walk = (x, n = 1) => {
-    if (isNote(x)) return;
-    if (x.rule.kind === "repeat") { for (const y of x.body) walk(y, x.n); return; }
-    if (x.rule.kind === "figure") { const ch = chordOf(x.pitches); if (ch) out.push(ch.name); }
-  };
-  c.items.forEach((x) => walk(x));
-  return out;
+/**
+ * The sonority of a span no figure covers ([[onset dur midi]] notes, from on for len): the pitches sounding
+ * in it, weighed by how long they sound; a pitch heard only in its last quarter that belongs to the next chord is an
+ * anticipation and left out; then, while the pitches name no chord (Study 66's chordOf, one note foreign to it
+ * allowed: a pedal), the lightest is left out — a passing note. Its pitches, low to high.
+ */
+export function sonorityOf(raw, on, len, next = []) {
+  const w = new Map(), late = new Map();
+  for (const [t, d, p] of raw) {
+    const a = Math.max(t, on), b = Math.min(t + d, on + len);
+    if (b <= a) continue;
+    w.set(p, (w.get(p) || 0) + (b - a));
+    late.set(p, (late.get(p) ?? true) && t >= on + 0.75 * len);
+  }
+  const nextPcs = new Set(next.map((p) => ((p % 12) + 12) % 12));
+  let ps = [...w.keys()].filter((p) => !(late.get(p) && nextPcs.has(p % 12)));
+  const pcW = (pc) => ps.filter((p) => p % 12 === pc).reduce((s, p) => s + w.get(p), 0);
+  while (ps.length > 3 && !chordOf(ps)) {
+    const pcs = [...new Set(ps.map((p) => p % 12))], bass = Math.min(...ps) % 12;
+    const light = pcs.filter((pc) => pc !== bass).sort((x, y) => pcW(x) - pcW(y))[0];
+    ps = ps.filter((p) => p % 12 !== light);
+  }
+  return [...new Set(ps)].sort((a, b) => a - b);
 }
+
+/** The chords a description leaves, in time: [{name, on, len, read, pitches}], a chord for every length of the figure
+ *  used most (a bar of BWV 846), from its first use. A bar where that figure is used names the chord of its pitches;
+ *  every other bar — written out, another figure, a cadence, the final chord — is read as a sonority of all its notes
+ *  (sonorityOf; read: true): the harmony does not stop where the pattern does. The last bar, if its bass is not struck
+ *  again, keeps the bar before's (a pedal held to the end). With bar (in 16ths), a chord a bar: the figure names it
+ *  only if it fills the bar. */
+export function harmonySpans(c, { bar } = {}) {
+  const uses = new Map(), at = new Map();
+  let t = 0;
+  const walk = (x) => {
+    if (!isNote(x) && x.rule.kind === "repeat") { for (let i = 0; i < x.n; i++) x.body.forEach(walk); return; }
+    const len = expand([x]).reduce((s, y) => s + y.g, 0);
+    if (!isNote(x) && x.rule.kind === "figure") { uses.set(x.rule, (uses.get(x.rule) || 0) + 1); if (!at.has(t)) at.set(t, []); at.get(t).push(x); }
+    t += len;
+  };
+  c.items.forEach(walk);
+  let main = null;
+  for (const [r, n] of uses) if (!main || n > uses.get(main)) main = r;
+  if (!main) return [];
+  const F = main.rhythm.reduce((s, r) => s + r.g, 0), L = bar || F;
+  const raw = notesOf(c.tokens), end = Math.max(...raw.map((x) => x[0] + x[1])), lastOn = Math.max(...raw.map((x) => x[0]));
+  const firstUse = Math.min(...[...at.entries()].filter(([, xs]) => xs.some((x) => x.rule === main)).map(([t]) => t));
+  const first = bar ? firstUse % L : firstUse;
+  const spans = [];
+  for (let s = first; s < end && s <= lastOn; s += L) {
+    const own = F >= L && (at.get(s) || []).find((x) => x.rule === main);
+    spans.push(own ? { on: s, len: L, pitches: own.pitches } : { on: s, len: Math.min(L, end - s), read: true });
+  }
+  let next = [];
+  for (let i = spans.length - 1; i >= 0; i--) {
+    const x = spans[i];
+    if (x.read) {
+      x.pitches = sonorityOf(raw, x.on, x.len, next);
+      if (i === spans.length - 1 && i > 0) {
+        const before = raw.filter((n) => n[0] < x.on && n[0] >= x.on - L), bass = before.length ? Math.min(...before.map((n) => n[2])) : null;
+        if (bass !== null && bass < Math.min(...x.pitches) && !raw.some((n) => n[0] >= x.on && n[2] === bass)) x.pitches = [bass, ...x.pitches];
+      }
+    }
+    next = x.pitches;
+  }
+  return spans.map((x) => { const ch = chordOf(x.pitches); return { name: ch ? ch.name : "?", on: x.on, len: x.len, read: !!x.read, pitches: x.pitches }; });
+}
+
+/** The chords a description leaves, by name (harmonySpans). */
+export function harmony(c, o) { return harmonySpans(c, o).map((x) => x.name); }
 
 // ───────── the uses coded as a listener hears them (bits.mjs, @kairotic/rules; discussion #399) ─────────
 // The rules stay; only how their uses are said changes. One coder for every level of a description, shared with Study

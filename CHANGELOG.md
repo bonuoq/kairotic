@@ -7,8 +7,12 @@
   escape and its number), a figure's pitches each voice's step from the same voice of its last use, a motif's start
   its step from the last; a lexicon for each context. BWV 846 comes to 864 bits, 16.1 % of its notes (28.7 % at fixed
   prices), BWV 999 22.0 %, the cello preludes about 49 %. **One coder for both sides** (`coder`, `sayRows`): Study 67
-  says its levels with it, so its surface (569 bits) and Study 66's heard figure pitches (562) are the same measure;
-  its frame 286, with the derivation back (a step never heard said by its parts) 946. And **`:use` takes `:voices`** too (each voice's
+  says its levels with it, so its surface and Study 66's heard figure pitches are the same measure; its frame 270
+  bits against the surface's 591, with the derivation back (a step never heard said by its parts) 1025. **The harmony
+  where no figure is** (`harmonySpans`, `sonorityOf`): a chord a bar, the bars no figure covers read from their notes
+  (weighed by how long they sound; an anticipation of the next chord and the lightest passing notes left out), so BWV
+  846's cadence over the tonic pedal, C7 – F/C – G7 – C, is in Study 66's harmony and in Study 67's levels (its frame
+  now C – Am/C – D7 – Dm/F – G7 – G7 – F/C – C). And **`:use` takes `:voices`** too (each voice's
   step from the same voice of the fragment's use before): `treeOf(c, {voices: true})` writes BWV 846 as 32 uses of one
   figure, `[:use {:ref :F1 :voices [0 -2 2 2 1]}]`… And the description written as a tree (`treeOf`): the rules in `:defs`, each use a
   `[:use {:ref :F1 :pitches [...]}]` — **`:use` takes `:pitches`** in `kairotic.mt` (`repitch`: a fragment's distinct

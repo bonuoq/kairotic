@@ -22,7 +22,7 @@
 //
 // Pure data and functions.
 
-import { compress, pitchName, chordOf, notesOf, expand, coder, sayRows } from "./compress.mjs";
+import { compress, pitchName, chordOf, notesOf, expand, coder, sayRows, harmonySpans } from "./compress.mjs";
 import { reduceNotes, derivationLength, eventsOf } from "./reduction.mjs";
 import { midiOf } from "./protovoices.mjs";
 import { lexicon } from "./bits.mjs";
@@ -80,7 +80,24 @@ export function meet(from, to) {
     return best;
   };
   const b = go(0, 0);
-  return b ? b.js.map((j) => to[j]) : to.slice(0, k);
+  if (b) return b.js.map((j) => to[j]);
+  // (more pitches than voices: the bass keeps the lowest, every other voice the nearest pitch above the voice below
+  // it, the cheapest such choice by motion — a doubling left out)
+  const memo2 = new Map();
+  const pick = (i, j) => {
+    if (i === k) return { c: 0, js: [] };
+    const key = i + ":" + j;
+    if (memo2.has(key)) return memo2.get(key);
+    let best = null;
+    for (let jj = i === 0 ? 0 : j + 1; jj <= m - (k - i) && (i > 0 || jj === 0); jj++) {
+      const rest = pick(i + 1, jj);
+      const c = Math.abs(to[jj] - from[i]) + rest.c;
+      if (!best || c < best.c) best = { c, js: [jj, ...rest.js] };
+    }
+    memo2.set(key, best);
+    return best;
+  };
+  return m > k ? pick(0, 0).js.map((j) => to[j]) : to.slice(0, k);
 }
 
 /**
@@ -89,20 +106,18 @@ export function meet(from, to) {
  * sonority at its last onset (its bass the lowest note of the last figure's length before it) closes the harmony.
  */
 export function harmonyOf(c, raw, { final = true } = {}) {
-  const cs = chordsOf(c);
-  if (!cs.length) throw new Error("no figure: nothing to read as chords");
-  const k = Math.max(...cs.map((x) => x.pitches.length));
+  const fig = chordsOf(c);
+  if (!fig.length) throw new Error("no figure: nothing to read as chords");
+  const k = Math.max(...fig.map((x) => x.pitches.length));
+  // Study 66's harmony, a chord a bar: the figure's chords, and the bars it does not cover (BWV 846's F/C and G7 over
+  // the tonic pedal, written out; the final chord) read as sonorities — the harmony does not stop where the pattern
+  // does. Without final, the last bar is left out when it is read.
+  let cs = harmonySpans(c);
+  if (!final && cs.length && cs[cs.length - 1].read) cs = cs.slice(0, -1);
   const rows = cs.map((x) => (x.pitches.length === k ? x.pitches : null));
-  // (a chord of fewer notes than the voices: its voices met from the chord before)
-  for (let i = 0; i < rows.length; i++) if (!rows[i]) rows[i] = meet(rows[i - 1] || cs[i].pitches, cs[i].pitches);
-  let end = null;
-  if (final && raw && raw.length) {
-    const last = Math.max(...raw.map((x) => x[0])), len = cs[cs.length - 1].len;
-    const top = raw.filter((x) => x[0] === last).map((x) => x[2]);
-    const bass = Math.min(...raw.filter((x) => x[0] >= last - len).map((x) => x[2]));
-    end = [...new Set([bass, ...top])].sort((a, b) => a - b);
-    rows.push(meet(rows[rows.length - 1], end));
-  }
+  // (a chord of more or fewer notes than the voices: its voices met from the chord before)
+  for (let i = 0; i < rows.length; i++) if (!rows[i]) rows[i] = meet(rows[i - 1] || cs[i].pitches.slice(0, k), cs[i].pitches);
+  const end = final && cs.length && cs[cs.length - 1].read ? cs[cs.length - 1].pitches : null;
   const V = voicesOf(k), notes = [];
   V.forEach((v, i) => {
     let cur = null, n = 0;
@@ -224,7 +239,8 @@ export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budge
       for (const d of CANDIDATE_STEPS) {
         const p = moveBy(prev[i], d);
         if (i > 0 && p < row[i - 1]) continue;
-        if (goal && Math.abs(goal[i] - p) > 2 * (w - u) + 2) continue;
+        // (into the chord pinned next a voice may also leap an octave: a doubling closing, as into the final chord)
+        if (goal && Math.abs(goal[i] - p) > (w - u === 1 ? 12 : 2 * (w - u) + 2)) continue;
         row.push(p); words.push("v|" + d);
         rec(i + 1, row, words);
         row.pop(); words.pop();
