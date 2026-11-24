@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Live coding in the Code tab, step 2: a short syntax and a page of your own** (discussion #407). **`to`** makes a
+  box below another, fed by it, as one event, and returns its id: `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`
+  (`(to a o "text" i)` for other ports, `(to :b3 :b9)` to connect only); a chain (`->`, `doto`) of calls that make the
+  patch evaluated from the tab is one event (`as-one-event!`). **Live**, a third view of the Code tab beside Calls and
+  Data: your own code, never written over by the work, kept in this browser for each work; ⇧+Enter evaluates the form
+  at the cursor, Ctrl/⌘+Enter the block (the lines between empty ones), and what was evaluated flashes.
 - **Study 63 · bridges: the outer voices of a chorale phrase, from A to B** (`outer.mjs`; the chorale test, #399 /
   #353). A bridge whose states are pairs (soprano, bass), exact for every cost one unit back: the rules (consonant,
   no parallel or direct 5ths and octaves, no augmented or diminished melodic interval, an altered note going on the

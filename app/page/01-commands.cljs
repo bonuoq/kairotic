@@ -1278,3 +1278,34 @@
                     (count evs)))))
 
 (defn load-example [] (run-code! example))
+
+(defn as-one-event!
+  "Calls f, which makes the patch (box, connect…), on a copy of the patch on screen, and writes what it changed
+   as one event of the history (discussion #407): what f makes is one gesture, one Ctrl+Z. Returns what f
+   returns. Inside a scratch patch (the Code tab being applied), f just runs."
+  [f]
+  (if @scratch
+    (f)
+    (let [cur (current) prev-s @scratch prev-t @tried
+          [p v] (try (reset! scratch cur) (reset! tried [])
+                     (let [v (f)] [@scratch v])
+                     (finally (reset! scratch prev-s) (reset! tried prev-t)))
+          evs (or (code-events cur p) (fail "These changes cannot be written as one event."))]
+      (doseq [[op id] evs :when (#{:box :delete} op)] (forget-box! id))
+      (dispatch-all! evs)
+      v)))
+
+(def to-gap "How far below its source `to` puts a new box." 60)
+
+(defn to
+  "A box below box a, fed by it, as one event; returns its id, so a chain reads as the signal goes (#407):
+   (-> (box \"osc~ 220\") (to \"gain~ 0.2\") (to \"dac~ 1 2\")). Outlet 0 to inlet 0, or (to a o \"text\" i);
+   with an id instead of a text it connects a to that box: (to :b3 :b9)."
+  ([a b] (to a 0 b 0))
+  ([a o b i]
+   (as-one-event!
+    (fn []
+      (let [src (need-box a)
+            id (if (keyword? b) b (box (str b) (:x src) (+ (:y src) to-gap)))]
+        (connect a o id i)
+        id)))))

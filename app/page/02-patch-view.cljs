@@ -1178,16 +1178,17 @@
     (when (not= v (.-textContent ($ "edn"))) (set! (.-textContent ($ "edn")) v))))
 
 (defn render-code [p]
-  (let [{:keys [dirty]} @ui data (data-view?)]
+  (let [{:keys [dirty]} @ui data (data-view?) live (= :live (:code-view @ui))]
     (when-not dirty (set-code-text! (patch->code p)))
     ;; the data is written only while it is shown: it is the whole state, pretty-printed
     (when data (set-data-text! (patch->edn p)))
     (let [st ($ "code-state")]
-      (set! (.-textContent st) (cond data "read-only: the state the history produces"
+      (set! (.-textContent st) (cond live "yours, kept in this browser · ⇧+Enter a form · Ctrl/⌘+Enter a block"
+                                     data "read-only: the state the history produces"
                                      dirty "edited: run it to apply it to the patch"
                                      :else "in sync with the patch"))
-      (set! (.-className st) (if (and dirty (not data)) "state dirty" "state")))
-    (set! (.-hidden ($ "code-run")) data)
-    (set! (.-hidden ($ "code-revert")) data)
+      (set! (.-className st) (if (and dirty (not data) (not live)) "state dirty" "state")))
+    (set! (.-hidden ($ "code-run")) (or data live))
+    (set! (.-hidden ($ "code-revert")) (or data live))
     (set! (.-disabled ($ "code-run")) (not dirty))
     (set! (.-disabled ($ "code-revert")) (not dirty))))
