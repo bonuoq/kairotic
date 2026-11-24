@@ -1248,12 +1248,20 @@
   [code]
   (first (try-code empty-patch code)))
 
+(defn same-data-code?
+  "Whether box id keeps data that writes the same code in patches a and b (the code is the work as the Code tab
+   reads it: data read back from it may differ in what the code does not say, as the text of a tree's source)."
+  [a b id]
+  (let [x (get-in a [:boxes id]) y (get-in b [:boxes id]) f (:code (comp/model-of y))]
+    (boolean (and x f (= (:text x) (:text y)) (= (f id (:data x)) (f id (:data y)))))))
+
 (defn code-events
-  "The events that turn patch cur into p (boxes, lines, what they keep, layers and marks), or nil if applying
-   them would not give p exactly."
+  "The events that turn patch cur into p, the patch some code builds (boxes, lines, what they keep, layers and
+   marks), leaving alone the data that already writes the same code; nil if the patch they give would not read
+   as p's code."
   [cur p]
-  (let [evs (rel/patch-diff cur p)]
-    (when (= (sane-patch (reduce step cur evs)) (sane-patch p)) evs)))
+  (let [evs (vec (remove (fn [[op id]] (and (= op :data) (same-data-code? cur p id))) (rel/patch-diff cur p)))]
+    (when (= (patch->code (reduce step cur evs)) (patch->code p)) evs)))
 
 (defn run-code!
   "Applies the code to the patch on screen (discussion #407). Only what the code changes becomes the history:

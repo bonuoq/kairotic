@@ -89,7 +89,7 @@ export async function codetab(page, check) {
   const strokes = `(count (:strokes (get-in (current) [:boxes ${c2} :data])))`;
   // applying the tab: only what it changes, as one event
   const r1 = await cljs(page, `(run-code! (str/replace (patch->code (current)) "(box ${c1} \\"mtof\\"" "(box ${c1} \\"ftom\\""))`);
-  check("applying the Code tab with one text changed makes one change", r1 === "1", r1);
+  check("applying the Code tab with one text changed makes one change", r1 === "1", r1 + " · " + await cljs(page, lastEv));
   check("... written as that change, not as the whole patch (:load)", (await cljs(page, lastEv)) === `[:text ${c1} "ftom"]`, await cljs(page, lastEv));
   check("... and a buffer it did not touch keeps its strokes", (await cljs(page, strokes)) === "1", await cljs(page, strokes));
   check("applying it again unchanged changes nothing", (await cljs(page, "(run-code! (patch->code (current)))")) === "0");
