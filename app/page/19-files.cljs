@@ -37,7 +37,9 @@
   (let [ids (fn [k pre] (into {} (map-indexed (fn [i a] [a (str pre (inc i))]) (distinct (keep k segs)))))
         as (ids :author "p") ss (ids :session "s")]
     (mapv (fn [n] (cond-> (assoc n :author (get as (:author n) "p0"))
-                    (:session n) (assoc :session (get ss (:session n)))))
+                    (:session n) (assoc :session (get ss (:session n)))
+                    ;; who excised points from it too (#382)
+                    (seq (:excised n)) (update :excised (fn [xs] (mapv (fn [x] (assoc x :author (get as (:author x) "p0"))) xs)))))
           segs)))
 
 (defn work-data
@@ -48,7 +50,7 @@
                [{:id "release" :parent nil :at 0 :author (my-author) :session session-id :t now :merge nil
                  :events (release-events)}]
                (all-segments))
-        segs (mapv (fn [n] (select-keys n [:id :parent :at :author :session :t :merge :events :meta :line])) segs)
+        segs (mapv (fn [n] (select-keys n [:id :parent :at :author :session :t :merge :events :meta :excised :line])) segs)
         segs (if anonymous (anonymize segs) segs)
         idx (:index @line-state)]
     {:manifest {:format kfile-format :kairotic version :made now :kind (if release :release :history) :anonymous (boolean anonymous)}
@@ -134,7 +136,8 @@
      :line (when (and (string? (:line n)) (seq (:line n)) (not= main-line (:line n))) (:line n))
      ;; each event with its transaction (#382)
      :events (mapv first (sane-segment-pairs n))
-     :meta (sane-metas (map second (sane-segment-pairs n)) (count (sane-segment-pairs n)))}))
+     :meta (sane-metas (map second (sane-segment-pairs n)) (count (sane-segment-pairs n)))
+     :excised (sane-excised (:excised n))}))
 
 (defn read-work-bytes
   "Promise of what a .kairotic holds: {:manifest :work :lines :history :people :sounds {hash {:sr :chans}}}."

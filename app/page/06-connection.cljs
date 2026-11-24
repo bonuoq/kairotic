@@ -27,7 +27,8 @@
      :merge (when (valid-pos? mg) mg)
      :t (if (number? t) t 0)
      :events (mapv first pairs)
-     :meta (sane-metas (map second pairs) (count pairs))}))
+     :meta (sane-metas (map second pairs) (count pairs))
+     :excised (sane-excised (dec* (get m "excised")))}))
 
 (defn merge-incoming
   "The segments of one line as they arrive, with yours not saved yet (or longer here than there) kept."
