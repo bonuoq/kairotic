@@ -131,6 +131,14 @@ y devuelve su id, así que una cadena se lee como va la señal —`(-> (box "osc
 toda la cadena un evento si se evalúa desde la pestaña; `(to a o "texto" i)` elige la salida y la entrada, y
 `(to :b3 :b9)` solo conecta.
 
+**Nombres.** `(box :osc "osc~ 220")` hace una caja que el código llama `:osc`: evaluada otra vez es la misma caja, con
+su texto cambiado si ha cambiado (`(box :osc "osc~ 330")` cambia el oscilador, como un evento, y el sonido sigue), así
+que un bloque se puede evaluar tantas veces como quieras. La caja conserva su id (`:b7`) para la obra; el nombre es
+una cosa más que guarda, se muestra junto a su id, se escribe en el código como `(name-box :b7 :osc)`, y todos los
+comandos lo aceptan en lugar del id: `(connect :osc 0 :out 0)`, `(text! :osc "osc~ 440")`, `(send! :osc 220)`,
+`(-> :osc (to "dac~ 1 2"))`. Un nombre es de una sola caja: `(name-box :b9 :osc)` se lo da a otra; `(name-box :b9 nil)`
+se lo quita.
+
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
 `clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son
 sus argumentos, leídos como EDN, y el mensaje que llega va al final, como con `->>`. `%` lo pone en otro

@@ -162,4 +162,34 @@ export async function codetab(page, check) {
   check("... and the Live view keeps what you wrote", (await cljs(page, "(live-text)")) === JSON.stringify(liveCode));
   check("... kept in this browser for the work", (await cljs(page, "(= (live-text) (.getItem js/localStorage (live-key)))")) === "true");
   await cljs(page, `(apply delete (keep (fn [[id b]] (when (and (= 9800 (:x b)) (<= 1100 (:y b) 1200)) id)) (:boxes (current)))) (show-code-view! :calls)`);
+
+  // ── names (#407): (box :osc "osc~ 220") is always the same box, still :bN for the system ──
+  check("a name is a keyword that is not a box id", (await cljs(page, "[(live-name? :osc) (live-name? :b7) (live-name? \"osc\") (live-name? :a/b)]")) === "[true false false false]");
+  const e0 = Number(await cljs(page, nEv));
+  const n1 = (await cljs(page, '(box :tosc "mtof" 9800 1300)')).trim();
+  check("a box made by its name has an id of the system and the name", /^:b\d+$/.test(n1) && (await cljs(page, `(:name (get-in (current) [:boxes ${n1}]))`)) === ":tosc"
+        && Number(await cljs(page, nEv)) === e0 + 1, `${n1} ${await cljs(page, `(get-in (current) [:boxes ${n1}])`)}`);
+  const n1b = (await cljs(page, '(box :tosc "ftom")')).trim();
+  check("... made again by its name, it is the same box, its text changed in one event", n1b === n1
+        && (await cljs(page, `(let [b (get-in (current) [:boxes ${n1}])] [(:text b) (:x b) (:y b)])`)) === '["ftom" 9800 1300]'
+        && (await cljs(page, lastEv)) === `[:text ${n1} "ftom"]`, `${n1b} · ${await cljs(page, lastEv)}`);
+  check("... and as it was, nothing", (await cljs(page, '(box :tosc "ftom")')).trim() === n1 && (await cljs(page, lastEv)) === `[:text ${n1} "ftom"]`);
+  const n2 = (await cljs(page, '(box :tmtof "mtof" 9900 1300)')).trim();
+  await cljs(page, "(connect :tosc 0 :tmtof 0)");
+  check("names are ids for every command: a line between two named boxes, kept by their ids",
+        (await cljs(page, `(boolean (some #{[${n1} 0 ${n2} 0]} (:lines (current))))`)) === "true");
+  await cljs(page, '(text! :tmtof "ftom")');
+  check("... text!", (await cljs(page, `(:text (get-in (current) [:boxes ${n2}]))`)) === '"ftom"');
+  check("... to, with a name, connects to that box", (await cljs(page, "(to :tmtof :tosc)")) === n1);
+  check("the work's code writes the names", (await cljs(page, `(str/includes? (patch->code (current)) "(name-box ${n1} :tosc)")`)) === "true"
+        && (await cljs(page, "(run-code! (patch->code (current)))")) === "0");
+  await cljs(page, `(name-box ${n2} :tosc)`);
+  check("a name given to another box leaves the first", (await cljs(page, `[(:name (get-in (current) [:boxes ${n1}])) (:name (get-in (current) [:boxes ${n2}]))]`)) === "[nil :tosc]");
+  let tag = null;
+  for (let i = 0; i < 30 && tag !== `${n2.slice(1)} :tosc`; i++) {
+    tag = await page.evaluate((id) => document.querySelector(`#scene g.box[data-box="${id}"] text.idtag`)?.textContent, n2.slice(1));
+    if (tag !== `${n2.slice(1)} :tosc`) await page.waitForTimeout(60);
+  }
+  check("... and the id shown over a box says its name", tag === `${n2.slice(1)} :tosc`, String(tag));
+  await cljs(page, `(delete ${n1} ${n2})`);
 }
