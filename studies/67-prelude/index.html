@@ -1,0 +1,179 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 67 · Prelude</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; padding: 14px 16px 28px; }
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* Study 67: a prelude's harmony read as voices (Study 66's figure → chords), reduced level by level (Study 61), each
+   level's bits (bits.mjs), and a new harmony drawn from a level's frame, the figure on it again. */
+.views { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; }
+.facts dt { color: var(--ink-soft); } .facts dd { margin: 0; font-family: var(--f-code); }
+.levels { display: grid; gap: 3px; font: 11px var(--f-code); overflow-x: auto; }
+.lv { display: grid; grid-template-columns: 3.2em repeat(33, minmax(2.7em, 1fr)); gap: 2px; cursor: pointer; align-items: stretch; }
+.lv b { font-weight: 600; color: var(--ink-soft); align-self: center; }
+.lv.sel b { color: var(--accent); }
+.lv span { border: 1px solid var(--grid); background: var(--sheet); border-radius: 3px; padding: 1px 2px; text-align: center; overflow: hidden; white-space: nowrap; }
+.lv span.on { border-color: var(--accent); background: var(--accent-soft); }
+.lv.sel span.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+.lv span.gone { visibility: hidden; }
+.bars { display: grid; gap: 4px; font: 12px var(--f-code); }
+.bar { display: grid; grid-template-columns: 3em 1fr 7em; gap: 8px; align-items: center; cursor: pointer; }
+.bar .st { display: flex; height: 10px; }
+.bar .st i { display: block; height: 10px; }
+.bar .st i.l { background: var(--accent); border-radius: 2px 0 0 2px; } .bar .st i.d { background: var(--kairos); border-radius: 0 2px 2px 0; }
+.steps { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.5; max-height: 260px; overflow: auto; }
+.steps code { font-size: 11px; }
+.chords { font: 12px var(--f-code); line-height: 1.8; word-spacing: 0.25em; }
+.chords .kept { color: var(--accent); font-weight: 600; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+.row input { width: 4.5em; font: 13px var(--f-code); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin: 0 3px 0 8px; }
+</style>
+<main>
+<header>
+  <h1>Study 67 · prelude</h1>
+  <span class="sub">the second level of a prelude's description: its harmony as voices, reduced, and composed again (discussions #399, #321)</span>
+</header>
+<div class="views">
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>The harmony, level by level <span>a chord a bar · the surface below, the frame on top · click a level</span></h2><div class="levels" id="levels"></div></section>
+    <section class="panel"><h2>What the chosen level takes away <span id="steps-n"></span></h2><ol class="steps" id="steps"></ol></section>
+    <section class="panel"><h2>Both ways: a new harmony from the level <span>its chords kept, the rest written again, the figure on it</span></h2>
+      <div class="row">
+        <label>Temperature <input type="number" id="temp" min="0" max="3" step="0.1" value="0.7"></label>
+        <label title="a voice's step said before is cheaper (bits.mjs; 0: none)">Economy <input type="number" id="economy" min="0" max="8" step="0.5" value="3"></label>
+        <button class="act" id="draw">Draw a harmony</button>
+        <button class="act" id="play-new">▶ the new prelude</button>
+        <button class="act" id="play-new-chords">▶ its chords</button>
+      </div>
+      <div class="chords" id="new"></div>
+    </section>
+  </div>
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>Facts</h2><dl class="facts" id="facts"></dl>
+      <div class="row"><button class="act" id="play">▶ Bach</button><button class="act" id="play-level">▶ the level as chords</button><button class="act" id="stop">■</button></div></section>
+    <section class="panel"><h2>The bits of each level <span class="legend"><i style="background:var(--accent)"></i>the level <i style="background:var(--kairos)"></i>its derivation</span></h2><div class="bars" id="bars"></div></section>
+    <section class="panel"><h2>About</h2>
+      <p class="about">Study 66 describes BWV 846 by one figure and the five pitches each bar gives it. What is left is a progression of five <em>voices</em>: each bar's pitches, low to high, a voice each; a voice that keeps its pitch from one bar to the next holds its note (the G of the dominant pedal is one note across eight bars). A progression of voices is what Study 61 reduces: the same grammar (unsplit, unspread, unsuspend — the proto-voices of Finkensiep and Rohrmeier read backwards), GTTM's metre, the economy of the derivation, a chord a unit, the first and the last chord kept and the one where the bass arrives for the cadence. Its frame: <b>C – Am/C – D7 – Dm/F – G7 – G7 (the pedal) – C/G – C7 – C</b>.</p>
+      <p class="about">Each level is said in bits (<code>bits.mjs</code>, the lexicon Studies 61, 63, 64 and 66 share): its voices, each note as its step from the voice's note before, and each chord's length. The frame says the harmony in about two thirds of the surface's bits: as a <em>lossy</em> description, a level is a compression. To come back to the surface exactly, the derivation must be said too, and it costs more than it saves: the five voices already move by small steps, cheap words. The reduction <em>explains</em> the harmony more than it compresses it.</p>
+      <p class="about">Read forwards, the grammar composes (#321: one grammar, both ways). From a level, its chords are kept where they are and every bar between them is written again, voice by voice — held, a step, a third — to a major or minor triad, the voices not crossing, the steps already said preferred; then Study 66's figure is put on every chord: a new prelude in Bach's manner, the deeper the level the less of his. Its chords are triads (a seventh is a dissonance the grammar still reads only as an ornament), and its key is C major's scale.</p>
+    </section>
+  </div>
+</div>
+</main>
+<script type="module">
+import * as P from "./kairotic/prelude.mjs";
+import { chordOf } from "./kairotic/compress.mjs";
+import { describe } from "./kairotic/reduction.mjs";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+const raw = await (await fetch("./data/bwv846-prelude.json")).json();
+const R = P.read(raw), { c, H, an, figure } = R;
+const B = P.bitsByLevel(an);
+const st = { k: an.levels.length - 1, rows: null };
+const name = (r) => (chordOf(r) || { name: "?" }).name;
+
+function show() {
+  const n = an.levels.length;
+  $("facts").innerHTML = [
+    ["piece", "BWV 846 · WTC I, Prelude in C"], ["Study 66", `${c.raw} → ${c.bits} bits, the figure over ${P.chordsOf(c).length} chords`],
+    ["harmony", `${H.units} chords, ${H.voices.length} voices, ${H.notes.length} notes`], ["levels", `${n} (L0 the surface … L${n - 1} the frame)`],
+    ["level chosen", `L${st.k}: ${an.levels[st.k].length} chords · ${B[st.k].level.toFixed(0)} bits, its derivation ${B[st.k].derivation.toFixed(0)}`],
+  ].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
+  let rows = "";
+  for (let k = n - 1; k >= 0; k--) {
+    const at = new Map(an.levels[k].map((s) => [s.on, s]));
+    const names = P.levelChords(an, k);
+    let cells = "", j = 0;
+    for (let u = 0; u < H.units; u++) cells += at.has(u) ? `<span class="on" title="${esc(at.get(u).notes.map((x) => x.pitch).join(" "))}">${esc(names[j++])}</span>` : `<span class="gone"></span>`;
+    rows += `<div class="lv${k === st.k ? " sel" : ""}" data-k="${k}"><b>L${k}</b>${cells}</div>`;
+  }
+  $("levels").innerHTML = rows;
+  const steps = an.steps.filter((s) => s.level === st.k);
+  $("steps-n").textContent = st.k ? `L${st.k - 1} → L${st.k}: ${steps.length} step${steps.length === 1 ? "" : "s"}` : "the surface: nothing";
+  $("steps").innerHTML = steps.map((s) => `<li>${esc(describe(s).replace(/^bar (\d+)(, weak)?/, (m, b) => "chord " + (s.on + 1)))} · <code>${esc(s.key)}</code></li>`).join("");
+  const max = Math.max(...B.map((b) => b.total));
+  $("bars").innerHTML = B.map((b) => `<div class="bar" data-k="${b.k}"><span>L${b.k}</span><span class="st"><i class="l" style="width:${(b.level / max * 100).toFixed(1)}%"></i><i class="d" style="width:${(b.derivation / max * 100).toFixed(1)}%"></i></span><span>${b.level.toFixed(0)} + ${b.derivation.toFixed(0)}</span></div>`).join("");
+  drawNew();
+}
+function drawNew() {
+  if (!st.rows) { $("new").textContent = "—"; return; }
+  const kept = new Set(an.levels[st.rows.k].map((s) => s.on));
+  $("new").innerHTML = `From L${st.rows.k}: ` + st.rows.rows.map((r, u) => `<span class="${kept.has(u) ? "kept" : ""}">${esc(name(r))}</span>`).join(" ") +
+    ` · ${st.rows.rows.filter((r, u) => r.join() !== H.rows[u].join()).length} of ${H.units} chords new`;
+}
+function draw() {
+  const rows = P.rewrite(an, st.k, { temp: +$("temp").value, economy: +$("economy").value });
+  st.rows = rows ? { k: st.k, rows } : null;
+  if (!rows) $("new").textContent = "No harmony through these chords."; else drawNew();
+}
+$("levels").addEventListener("click", (e) => { const d = e.target.closest(".lv"); if (d) { st.k = +d.dataset.k; show(); } });
+$("bars").addEventListener("click", (e) => { const d = e.target.closest(".bar"); if (d) { st.k = +d.dataset.k; show(); } });
+$("draw").onclick = draw;
+
+// ── sound
+let ac = null, live = [];
+function play(events, s16 = 0.11) {
+  ac = ac || new AudioContext(); stopAll();
+  const t0 = ac.currentTime + 0.1;
+  for (const [t, d, p] of events) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "triangle"; o.frequency.value = 440 * Math.pow(2, (p - 69) / 12);
+    g.gain.setValueAtTime(0, t0 + t * s16); g.gain.linearRampToValueAtTime(0.07, t0 + t * s16 + 0.01);
+    g.gain.setTargetAtTime(0, t0 + (t + d) * s16 - 0.02, 0.03);
+    o.connect(g).connect(ac.destination); o.start(t0 + t * s16); o.stop(t0 + (t + d) * s16 + 0.2); live.push(o);
+  }
+}
+function stopAll() { for (const o of live) try { o.stop(); } catch {} live = []; }
+const bar = 16;
+const levelEvents = (k) => P.eventsOf(an.levels[k]).map((e) => [e.on * bar, e.dur * bar, P.midiOf(e.pitch)]);
+const chordEvents = (rows) => rows.flatMap((r, u) => [...new Set(r)].map((p) => [u * bar, bar, p]));
+$("play").onclick = () => play(raw);
+$("play-level").onclick = () => play(levelEvents(st.k), 0.06);
+$("play-new").onclick = () => { if (!st.rows) draw(); if (st.rows) play(P.realize(figure, st.rows.rows)); };
+$("play-new-chords").onclick = () => { if (!st.rows) draw(); if (st.rows) play(chordEvents(st.rows.rows), 0.06); };
+$("stop").onclick = stopAll;
+draw(); show();
+window.kairoticStudy = { an, H, B, state: () => ({ k: st.k, rows: st.rows && st.rows.rows.map(name) }), select: (k) => { st.k = k; show(); }, draw };
+</script>

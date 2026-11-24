@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: MPL-2.0
+// Study 67 · prelude: the kernel's tests. In the browser (tests/kernel.html) and in Node:
+//   node -e 'import("./studies/67-prelude/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
+import * as P from "../kairotic/prelude.mjs";
+import { chordOf } from "../kairotic/compress.mjs";
+
+const load = async (id) => {
+  const url = new URL(`../data/${id}.json`, import.meta.url);
+  if (typeof window !== "undefined") return (await fetch(url)).json();
+  const { readFileSync } = await import("node:fs");
+  return JSON.parse(readFileSync(url, "utf8"));
+};
+const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+const names = (rows) => rows.map((r) => (chordOf(r) || { name: "?" }).name);
+
+export async function run() {
+  const results = [], notes = [];
+  const is = (what, ok) => results.push([what, !!ok]);
+  const raw = await load("bwv846-prelude");
+  const { c, H, an, figure } = P.read(raw);
+
+  // ─── the harmony: Study 66's figure, its chords as voices ───
+  is("BWV 846's figure (Study 66): a broken chord over five notes, used in 32 bars", figure && figure.k === 5 && P.chordsOf(c).length === 32);
+  is("its harmony: 32 chords and the final one, five voices (b v1 v2 v3 m)", H.units === 33 && H.voices.join(" ") === "b v1 v2 v3 m" && H.rows.every((r) => r.length === 5));
+  is("… from C, Dm7/C, G7/B, C, Am/C, D7/C… to the final C (its bass the last bar's C2)", names(H.rows).slice(0, 6).join(" ") === "C Dm7/C G7/B C Am/C D7/C" && names(H.rows)[32] === "C" && H.rows[32][0] === 36);
+  const held = H.notes.filter((n) => n.dur > 1);
+  is("a voice keeping its pitch holds its note: the common tones (the G2 pedal of bars 24–31 one note)", held.length > 10 && H.notes.some((n) => n.voice === "b" && n.pitch === "G2" && n.dur >= 8));
+  is("a voice meeting another at the end: the four notes of the final chord reached by the five voices, none crossing",
+     new Set(H.rows[32]).size === 4 && H.rows[32].every((p, i) => i === 0 || p >= H.rows[32][i - 1]));
+
+  // ─── its levels (Study 61's reduction, a chord a unit) ───
+  const last = an.levels[an.levels.length - 1];
+  is("reduced level by level to a frame of 9 chords, the first and the last kept", an.levels.length >= 6 && last.length === 9 && last[0].on === 0 && last[last.length - 1].on === 32);
+  const fr = P.frameChords(an);
+  is("… the frame: C – Am/C – D7 – Dm/F – G7 – the dominant pedal (G7 over G) – C/G – C7 – C", fr.join(" ") === "C Am/C D7 Dm/F G7 G7 C/G C7 C");
+  notes.push("the frame: " + fr.join(" – "));
+  is("… every step an ornament of the grammar (unsplit: notes held, passing, neighbours), none refused", an.steps.length >= 20 && an.steps.every((s) => s.op === "unsplit" || s.op === "unspread" || s.op === "unsuspend"));
+
+  // ─── the bits of each level (bits.mjs) ───
+  const B = P.bitsByLevel(an);
+  notes.push("bits by level: " + B.map((b) => `L${b.k} ${b.slices} chords ${b.level.toFixed(0)}+${b.derivation.toFixed(0)}`).join(" · "));
+  is("a level says less than the surface: the frame's voices in about two thirds of the surface's bits", B[B.length - 1].level < 0.7 * B[0].level && B.every((b, k) => k === 0 || b.level <= B[k - 1].level + 1));
+  is("… but saying how the surface comes from it costs more than it saves: the reduction explains the harmony, it does not compress it (the voice-leading is already cheap)", B[B.length - 1].total > B[0].total && B[0].derivation === 0);
+
+  // ─── both ways: a new harmony from a level's frame, the figure on it ───
+  const k = an.levels.length - 1, rows = P.rewrite(an, k, { r: rng(3) });
+  is("a new harmony from the frame: 33 chords, every frame chord where it was", rows && rows.length === 33 && last.every((s) => rows[s.on].join() === H.rows[s.on].join()));
+  const fresh = rows.filter((r, u) => !last.some((s) => s.on === u));
+  is("… every chord written anew a major or minor triad, the voices not crossing, no voice leaping more than a fourth", fresh.every((r) => ["", "m"].includes(chordOf(r).kind)) && rows.every((r) => r.every((p, i) => i === 0 || p >= r[i - 1])) &&
+     rows.every((r, u) => u === 0 || r.every((p, i) => Math.abs(p - rows[u - 1][i]) <= 5 || last.some((s) => s.on === u))));
+  is("… and different from Bach's", rows.filter((r, u) => r.join() !== H.rows[u].join()).length >= 15);
+  notes.push("a new harmony from the frame: " + names(rows).join(" "));
+  const shallow = P.rewrite(an, 1, { r: rng(3) });
+  is("from a shallower level, more of Bach's kept", shallow && shallow.filter((r, u) => r.join() === H.rows[u].join()).length > rows.filter((r, u) => r.join() === H.rows[u].join()).length);
+  const prelude = P.realize(figure, rows);
+  is("the figure on it: a new prelude of 33 bars, 16 notes a bar, its first bar Bach's", prelude.length === 33 * 16 && prelude.slice(0, 16).map((x) => x[2]).join() === raw.slice().sort((a, b) => a[0] - b[0] || a[2] - b[2]).slice(0, 16).map((x) => x[2]).join());
+  is("… drawn again, another prelude", P.rewrite(an, k, { r: rng(11) }).some((r, u) => r.join() !== rows[u].join()));
+  return { results, notes };
+}
+
+export function report({ results, notes }) {
+  for (const [w, ok] of results) console.log((ok ? "  ok   " : "  FAIL ") + w);
+  for (const s of notes) console.log("  · " + s);
+  const bad = results.filter((r) => !r[1]).length;
+  console.log(`${results.length - bad} / ${results.length}`);
+  return bad ? 1 : 0;
+}
