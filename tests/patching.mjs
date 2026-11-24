@@ -53,4 +53,14 @@ export async function patching(page, check) {
   await page.mouse.move(far.x + 80, far.bottom + 60);
   check("far from outlets nothing lights up", await page.evaluate(() => !document.querySelector("#scene .port.out.hot")));
   await cljs(page, `(delete ${a}) (delete ${b})`);
+  // a message sent to a box just made is its own: the tree emitter, which runs a moment later (later still on a
+  // busy page), used to forget the state of every new box, and the message with it (the comes tests' [nil nil])
+  const kept = await cljs(page, `(let [c (box "counter" 3000 1940)]
+                                   (send! c :bang) (send! c :bang)
+                                   (let [before (get-in @eng/rt [:states (fid c)])]
+                                     (emit-trees!)
+                                     (let [after (get-in @eng/rt [:states (fid c)])]
+                                       (delete c)
+                                       [(some? before) (= before after)])))`);
+  check("a box just made keeps what its first messages gave it when the trees are sent", kept === "[true true]", kept);
 }
