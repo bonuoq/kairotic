@@ -57,6 +57,24 @@ export async function run() {
   is("A minor: its frame keeps the leading tone to the tonic (E G♯ – E B – A)", show(C.levels[C.levels.length - 1]).endsWith("E3G#4 E3B4 A2A4"));
   is("… every step says how many were possible, and its cost by part", A.steps.every((s) => s.among >= 1 && typeof s.parts.meter === "number"));
 
+  // ─── the economy of a reading (the derivation's length) ───
+  is("a step as a word: the 7–6 chain's five suspensions are one word, said five times", new Set(B.steps.slice(0, 5).map((s) => s.key)).size === 1 && B.steps[0].key === "unsuspend:suspension.m|-1");
+  const lx = R.lexicon(), w = "unsplit:right-neighbor.m|-1", wi = "unsplit:right-neighbor.m|1";
+  const b0 = lx.bits(w); lx.add(w);
+  is("the lexicon: a word said again is cheaper than at first, its inversion half way between, a new one dearest", lx.bits(w) < lx.bits(wi) && lx.bits(wi) < lx.bits("unspread:top|2,bass|0") && lx.bits(w) < b0);
+  is("… no economy, no change: the incipits read as before with economy 3 (nothing there to say more briefly)", ["short-c", "scale-76", "short-am"].every((k) => {
+    const x = INCIPITS[k], a = R.reduce(x.phrase, { key: x.key }), e = R.reduce(x.phrase, { key: x.key, economy: 3 });
+    return a.steps.map((s) => s.key).join() === e.steps.map((s) => s.key).join(); }));
+  const sq = R.EXAMPLES["sequence-up"], Q0 = R.reduce(sq.phrase, { key: sq.key }), Q3 = R.reduce(sq.phrase, { key: sq.key, economy: 3 });
+  const links = (an) => an.steps.filter((s) => s.on % 2 === 1 && s.on < 8).map((s) => s.key);
+  is("a rising sequence read without economy: three links incomplete neighbours, the last an anticipation", new Set(links(Q0)).size === 2 && links(Q0).length === 4);
+  is("… with economy: the four links one word, the step below as an incomplete neighbour", links(Q3).length === 4 && new Set(links(Q3)).size === 1 && links(Q3)[0] === "unsplit:right-neighbor.m|-1");
+  const dq0 = R.derivationLength(Q0), dq3 = R.derivationLength(Q3);
+  is("… its derivation briefer: fewer bits, fewer different steps, as many steps", dq3.bits < dq0.bits - 3 && dq3.words < dq0.words && Q3.steps.length === Q0.steps.length);
+  is("… and every level of it passes the hard rules", Q3.levels.every((_, k) => R.checkLevel(Q3, k).ok));
+  notes.push(`the rising sequence: ${dq0.bits.toFixed(1)} bits in ${dq0.words} words without economy, ${dq3.bits.toFixed(1)} in ${dq3.words} with`);
+  is("every way to unsplit a slice: the first is unsplit's, the others dearer", (() => { const us = PV.unsplits(S0, 3); return us.length > 1 && us[0].explained.map((e) => e.orn).join() === PV.unsplit(S0, 3).explained.map((e) => e.orn).join() && us.every((x, j) => j === 0 || x.explained.reduce((a, e) => a + e.cost, 0) >= us[0].explained.reduce((a, e) => a + e.cost, 0)); })());
+
   // ─── as MEI ───
   const M0 = R.meiOf(B, 0).mei, ties = (m) => (m.match(/tie="i"/g) || []).length;
   is("as MEI: the 7–6 chain's suspensions written as one note each, tied over the bar line (not struck again)", ties(M0) === 6 && (M0.match(/<note /g) || []).length === 15 + 8);
