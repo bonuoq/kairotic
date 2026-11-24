@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Voice leading in the new harmonies and the morphs; MEI from Studies 63 and 67.**
+  - **Study 67:** a new harmony is now an exact bridge over chords, span by span between the chords kept (the
+    chords reached by every voice's step, a beam of the cheapest, the backward weights exact over it): triads or
+    sevenths (a 7th going down by step), the five voices in order — none lost on another's pitch —, no upper voice
+    leaping more than a 4th nor the bass more than a 5th, into the chord kept next too, no parallel 5ths or octaves
+    between any two voices, the same chord again a little dearer. Where no new way keeps them Bach's chords stay
+    (`rows.kept`). From the frame: about 16 chords new, the tension curve's correlation with Bach's 0.92 (0.61 without
+    the shape). Before, the voices met (unisons), and leapt into the chords kept.
+  - **Study 63:** `leapCost` — a leap beyond a 3rd costs `smooth · (semitones − 4) / 3`, a unit's cost (the bridge
+    exact); "Smooth" (2) on the page for the variation and the morph: a morph's mean interval 2.67 → 2.19 semitones.
+  - **MEI:** Study 67 exports the new prelude (a staff for each of the figure's voices, in 16ths), its chords and any
+    level (a staff a voice); Study 63 the variation and the morph (`meiOfPhrase`).
 - **C7 is V of ④, not the tonic** (`functions.mjs`, `@kairotic/rules` 0.14.0). A dominant 7th on the tonic now
   reads as an applied dominant whose target is ④ (a major 7th on the tonic is still the tonic): it must go to F. In
   Study 67 BWV 846's frame keeps the coda's plagal close, C – … – C/G – C7 – F/C – C, where it ended C7 → C.
