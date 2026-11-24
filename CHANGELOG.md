@@ -9,6 +9,23 @@
   come a hypothesis aligned with what is heard (after 2 notes, the median); read again whole once the performance is
   over (under 1 % of fragments off with slips). The performances kept as a tree of branches; the work as EDN,
   `[:open … [:frag …] …]`, for an `open` box to come.
+- **Live coding in the Code tab, step 2: a short syntax and a page of your own** (discussion #407). **`to`** makes a
+  box below another, fed by it, as one event, and returns its id: `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`
+  (`(to a o "text" i)` for other ports, `(to :b3 :b9)` to connect only); a chain (`->`, `doto`) of calls that make the
+  patch evaluated from the tab is one event (`as-one-event!`). **Live**, a third view of the Code tab beside Calls and
+  Data: your own code, never written over by the work, kept in this browser for each work; ⇧+Enter evaluates the form
+  at the cursor, Ctrl/⌘+Enter the block (the lines between empty ones), and what was evaluated flashes.
+- **Study 63 · bridges: the outer voices of a chorale phrase, from A to B** (`outer.mjs`; the chorale test, #399 /
+  #353). A bridge whose states are pairs (soprano, bass), exact for every cost one unit back: the rules (consonant,
+  no parallel or direct 5ths and octaves, no augmented or diminished melodic interval, an altered note going on the
+  way it was bent, the ends pinned, the cadence's bass ⑤–① or ⑦–① and its soprano by step), the line (steps cheap,
+  a new chord each unit, each voice near its register), and three layers, each on or off: **functions** (the implied
+  harmony's grammar, `functions.mjs`), **tension** (`tension.mjs`, an arch rising to two thirds of the phrase and
+  released into B) and **economy** (`bits.mjs`, the voices' motion as words). On two invented test phrases (20 draws):
+  without functions the grammar breaks 0.70 / 0.95 times a phrase, with them never; the arch correlates 0.27 / 0.31
+  without tension, 0.64 / 0.55 with it; fewer different motions with economy. `bridgesFor` gives the engine's format
+  for every variant (all layers, each off); `tools/bridges.mjs` writes them for the corpus once it is in
+  `studies/_shared/chorales/`.
 - **One clock for a room** (discussion #382, idea 8, phase 1). In a shared room with a relay, the time things are made
   at — each transaction's `:t`, each segment's (where the newest point of the history comes from), each change of a
   jam in Perform and its live messages — is the room's shared time: the relay's clock as each page reads it on

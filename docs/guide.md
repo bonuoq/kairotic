@@ -121,6 +121,13 @@ alone, a form at a time:
 If the tab held nothing else that was not applied, it is written again from the patch afterwards (the new box as
 `(box :b7 "osc~ 220" …)`), the cursor on its line.
 
+**Live**, the third view of the Code tab (beside Calls and Data), is a page of your own that the work never writes
+over: names (`def`) and chains stay as you wrote them. ⇧+Enter evaluates the form at the cursor, **Ctrl/⌘+Enter the
+block** it is in (the lines between two empty ones), and what was evaluated flashes. It is kept in this browser for
+each work, not in the work. **`to`** makes a box below another, fed by it, as one event, and returns its id, so a
+chain reads as the signal goes — `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`, the whole chain one event
+when evaluated from the tab; `(to a o "text" i)` chooses the outlet and the inlet, and `(to :b3 :b9)` only connects.
+
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as
 `str/…`) is that function, with no component to write: its other words are its arguments, read as EDN,
 and the message that arrives goes last, as with `->>`. `%` puts it elsewhere. The text reads as Clojure,
@@ -625,5 +632,6 @@ history), *Present without them* leaves them out. From the REPL: `(present-in-pl
 | Ctrl+Z · Ctrl+Shift+Z · Ctrl+Y | back · forward in the history (in Perform, in the take) |
 | Ctrl+Enter | apply code (Code tab, code boxes, Claude tab) |
 | ⇧+Enter (Code tab) | evaluate the selection, or the form at the cursor, alone |
+| Ctrl/⌘+Enter (Live view) | evaluate the block at the cursor (the lines between empty ones) |
 | ↑ ↓ + − ← → Delete | edit the selected note of a score, or the stroke of a canvas |
 | Enter · a…g | the selected rest of a score becomes a note (a…g also re-pitches a note) |
