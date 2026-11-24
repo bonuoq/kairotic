@@ -193,7 +193,24 @@ export async function codetab(page, check) {
   check("... and the id shown over a box says its name", tag === `${n2.slice(1)} :tosc`, String(tag));
   await cljs(page, `(delete ${n1} ${n2})`);
 
-<<<<<<< HEAD
+  // ── chains that can be evaluated again (#407): to with a name ──
+  const chain = (t) => `(eval-calls! "(-> (box :ca \\"mtof\\" 9800 1500) (to :cb \\"${t}\\") (to :cc \\"mtof\\"))")`;
+  const k0 = Number(await cljs(page, nEv));
+  await cljs(page, chain("ftom"));
+  const [ca, cb, cc] = await Promise.all([":ca", ":cb", ":cc"].map((n) => cljs(page, `(rid ${n})`)));
+  check("a chain with names: three named boxes below each other, two lines, one event",
+        [ca, cb, cc].every((x) => /^:b\d+$/.test(x)) && Number(await cljs(page, nEv)) === k0 + 1
+        && (await cljs(page, `[(:y (get-in (current) [:boxes ${cb}])) (:y (get-in (current) [:boxes ${cc}]))]`)) === "[1560 1620]"
+        && (await cljs(page, `(every? (set (:lines (current))) [[${ca} 0 ${cb} 0] [${cb} 0 ${cc} 0]])`)) === "true",
+        `${ca} ${cb} ${cc} · ${k0} → ${await cljs(page, nEv)}`);
+  check("... evaluated again as it was: nothing changes", (await cljs(page, chain("ftom"))) === "0" && Number(await cljs(page, nEv)) === k0 + 1);
+  await cljs(page, `(move ${cb} 9950 1560)`);
+  check("... with a text changed: that change only, and a box moved by hand stays where it is",
+        (await cljs(page, chain("mtof"))) === "1" && (await cljs(page, lastEv)) === `[:text ${cb} "mtof"]`
+        && (await cljs(page, `(:x (get-in (current) [:boxes ${cb}]))`)) === "9950",
+        await cljs(page, lastEv));
+  await cljs(page, `(delete ${ca} ${cb} ${cc})`);
+
   // ── the work's code in chains (#407, a lens of the code: #380, #399) ──
   const x = (await cljs(page, '(box "mtof" 9800 1800)')).trim(), y = (await cljs(page, '(box "ftom" 9800 1860)')).trim();
   const z = (await cljs(page, '(box "mtof" 9800 1920)')).trim(), w = (await cljs(page, '(box "mtof" 9900 1920)')).trim();
@@ -216,23 +233,4 @@ export async function codetab(page, check) {
   check("... and a connect each again", (await cljs(page, `(str/includes? (.getValue @code-ed) "(connect :b")`)) === "true"
         && (await cljs(page, '(.getItem js/localStorage "kairotic.code-style")')) === '"flat"');
   await cljs(page, `(delete ${x} ${y} ${z} ${w} ${v})`);
-=======
-  // ── chains that can be evaluated again (#407): to with a name ──
-  const chain = (t) => `(eval-calls! "(-> (box :ca \\"mtof\\" 9800 1500) (to :cb \\"${t}\\") (to :cc \\"mtof\\"))")`;
-  const k0 = Number(await cljs(page, nEv));
-  await cljs(page, chain("ftom"));
-  const [ca, cb, cc] = await Promise.all([":ca", ":cb", ":cc"].map((n) => cljs(page, `(rid ${n})`)));
-  check("a chain with names: three named boxes below each other, two lines, one event",
-        [ca, cb, cc].every((x) => /^:b\d+$/.test(x)) && Number(await cljs(page, nEv)) === k0 + 1
-        && (await cljs(page, `[(:y (get-in (current) [:boxes ${cb}])) (:y (get-in (current) [:boxes ${cc}]))]`)) === "[1560 1620]"
-        && (await cljs(page, `(every? (set (:lines (current))) [[${ca} 0 ${cb} 0] [${cb} 0 ${cc} 0]])`)) === "true",
-        `${ca} ${cb} ${cc} · ${k0} → ${await cljs(page, nEv)}`);
-  check("... evaluated again as it was: nothing changes", (await cljs(page, chain("ftom"))) === "0" && Number(await cljs(page, nEv)) === k0 + 1);
-  await cljs(page, `(move ${cb} 9950 1560)`);
-  check("... with a text changed: that change only, and a box moved by hand stays where it is",
-        (await cljs(page, chain("mtof"))) === "1" && (await cljs(page, lastEv)) === `[:text ${cb} "mtof"]`
-        && (await cljs(page, `(:x (get-in (current) [:boxes ${cb}]))`)) === "9950",
-        await cljs(page, lastEv));
-  await cljs(page, `(delete ${ca} ${cb} ${cc})`);
->>>>>>> origin/main
 }
