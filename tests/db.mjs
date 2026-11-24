@@ -168,6 +168,10 @@ export async function db(page, check) {
   const tool = await page.evaluate((qs) => scittle.core.eval_string(`(in-ns 'user) (.execute (history-tool (db)) #js {:query ${JSON.stringify(qs)}} nil)`).then((r) => r.result || ("ERR " + r.error)), "[:find [?id ...] :where [?b :box/class \"mtof\"] [?b :box/id ?id]]");
   check("work_history answers a Datalog query", String(tool).includes(":b9403"), String(tool));
 
+  // the facts of an event read where it acts are those of the whole work before and after it
+  check("ev-datoms gives the same facts as patch-datoms, for every event to here",
+    (await cljs(page, "(let [d (db)] (every? (fn [tx] (let [[nid k] (:pos tx) p0 (db-patch d [nid (dec k)]) p1 (db-patch d [nid k])] (= (set (ev-datoms p0 p1 (:event tx))) (set (patch-datoms p0 p1))))) (tx-log d)))")) === "true");
+
   // the cost, with a long history (a value of the history made here: one segment of n events over 100 boxes)
   const cost = await cljs(page, `(let [mk (fn [n] (let [evs (vec (concat (for [i (range 100)] [:box (keyword (str "b" (+ 5000 i))) "mtof" i 0])
                                                                          (for [i (range (- n 100))] (if (even? i) [:move (keyword (str "b" (+ 5000 (mod i 100)))) i 1]

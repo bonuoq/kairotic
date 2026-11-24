@@ -152,40 +152,61 @@
   [e a u v]
   (cond-> [] (some? u) (conj {:e e :a a :v u :added false}) (some? v) (conj {:e e :a a :v v :added true})))
 
+(declare patch-datoms)
+
+(defn- box-facts
+  "What changed of box id (in the patch at path) from x to y, sub-patch included."
+  [path id x y]
+  (when-not (identical? x y)
+    (let [e (conj path id)
+          attrs (fn [x y] (mapcat (fn [a] (let [u (get x a) v (get y a)] (when (not= u v) (fact-change e a u v)))) box-attrs))]
+      (if (and (embedded? x) (embedded? y) (map? (:data x)) (map? (:data y)))
+        ;; a sub-patch: its boxes are entities of their own
+        (concat (attrs (dissoc x :data) (dissoc y :data)) (patch-datoms (:data x) (:data y) e))
+        (attrs x y)))))
+
+(defn- around-facts
+  "What changed around the boxes of a patch: its lines, layers, marks and projections."
+  [path p0 p1]
+  (concat
+   (when-not (identical? (:lines p0) (:lines p1))
+     (let [l0 (set (:lines p0)) l1 (set (:lines p1))]
+       (concat (for [l (:lines p0) :when (not (l1 l))] {:e path :a :line :v l :added false})
+               (for [l (:lines p1) :when (not (l0 l))] {:e path :a :line :v l :added true}))))
+   (for [[k a] [[:layers :layer] [:marks :mark] [:projections :projection]]
+         :when (not (identical? (get p0 k) (get p1 k)))
+         id (distinct (concat (keys (get p0 k)) (keys (get p1 k))))
+         :let [u (get-in p0 [k id]) v (get-in p1 [k id])]
+         :when (not= u v)
+         d (fact-change (conj path id) a u v)]
+     d)))
+
 (defn patch-datoms
   "What changed from patch p0 to patch p1, as facts [{:e :a :v :added} …] (path: where they are, [] the work)."
   ([p0 p1] (patch-datoms p0 p1 []))
   ([p0 p1 path]
    (if (identical? p0 p1)
      []
-     (let [b0 (:boxes p0) b1 (:boxes p1)
-           attrs (fn [e x y] (mapcat (fn [a] (let [u (get x a) v (get y a)] (when (not= u v) (fact-change e a u v)))) box-attrs))]
-       (vec
-        (concat
-         (for [id (distinct (concat (keys b0) (keys b1)))
-               :let [x (get b0 id) y (get b1 id) e (conj path id)]
-               :when (not (identical? x y))
-               d (if (and (embedded? x) (embedded? y) (map? (:data x)) (map? (:data y)))
-                   ;; a sub-patch: its boxes are entities of their own
-                   (concat (attrs e (dissoc x :data) (dissoc y :data)) (patch-datoms (:data x) (:data y) e))
-                   (attrs e x y))]
-           d)
-         (let [l0 (set (:lines p0)) l1 (set (:lines p1))]
-           (concat (for [l (:lines p0) :when (not (l1 l))] {:e path :a :line :v l :added false})
-                   (for [l (:lines p1) :when (not (l0 l))] {:e path :a :line :v l :added true})))
-         (for [[k a] [[:layers :layer] [:marks :mark] [:projections :projection]]
-               id (distinct (concat (keys (get p0 k)) (keys (get p1 k))))
-               :let [u (get-in p0 [k id]) v (get-in p1 [k id])]
-               :when (not= u v)
-               d (fact-change (conj path id) a u v)]
-           d)))))))
+     (let [b0 (:boxes p0) b1 (:boxes p1)]
+       (vec (concat (when-not (identical? b0 b1)
+                      (mapcat (fn [id] (box-facts path id (get b0 id) (get b1 id))) (distinct (concat (keys b0) (keys b1)))))
+                    (around-facts path p0 p1)))))))
+
+(defn ev-datoms
+  "What event ev changed from p0 to p1, as patch-datoms gives it, but read only where the event acts when it names
+   one box (most do): the same facts, without going through every box of the work."
+  [p0 p1 ev]
+  (let [[op id] ev]
+    (if (and (#{:box :text :move :present :view :size :pin :recipe :data :kept :delete :in :shows} op) (keyword? id))
+      (vec (concat (box-facts [] id (get-in p0 [:boxes id]) (get-in p1 [:boxes id])) (around-facts [] p0 p1)))
+      (patch-datoms p0 p1))))
 
 (defn tx-datoms
   "The facts of transaction tx (as tx-at gives it) in db: what its event changed, each with its transaction."
   [d tx]
   (let [[nid k] (:pos tx)
         txi (select-keys tx [:pos :t :author :via :box :why :kind])]
-    (map #(merge % txi) (patch-datoms (db-patch d [nid (dec k)]) (db-patch d [nid k])))))
+    (map #(merge % txi) (ev-datoms (db-patch d [nid (dec k)]) (db-patch d [nid k]) (:event tx)))))
 
 (defn datoms
   "The facts of the history to a point, as Datomic's datoms: (datoms) to where you are, (datoms pos), (datoms db),
@@ -370,17 +391,24 @@
         (into {} (for [k (js-keys x)] [(ds-dec k) (ds-dec (aget x k))]))
         :else x))
 
-;; the words of a query and of a pull pattern, which DataScript must read as keywords
-(def query-words #{:find :in :where :with :keys :strs :syms :db/id :as :limit :default :xform})
+;; the words DataScript must read as keywords: a query's clauses (only where they begin a clause, so a value such as
+;; :with stays a value), and what a pull pattern says of an attribute (anywhere in it)
+(def query-words #{:find :in :where :with :keys :strs :syms :rules})
+(def pull-words #{:db/id :as :limit :default :xform})
+
+(defn- enc-form [x]
+  (clojure.walk/postwalk (fn [x] (cond (keyword? x) (if (pull-words x) x (ds-enc x))
+                                       (string? x) (ds-enc x)
+                                       :else x))
+                         x))
 
 (defn enc-query
   "A query or pull pattern as DataScript reads it from text: its keywords and strings written as the index keeps
-   them, its words (query-words) and its structure as they are."
+   them, its clause words, pull options and structure as they are."
   [qy]
-  (clojure.walk/postwalk (fn [x] (cond (keyword? x) (if (query-words x) x (ds-enc x))
-                                       (string? x) (ds-enc x)
-                                       :else x))
-                         qy))
+  (cond (map? qy) (into {} (for [[k v] qy] [k (enc-form v)]))
+        (vector? qy) (mapv (fn [x] (if (and (keyword? x) (query-words x)) x (enc-form x))) qy)
+        :else (enc-form qy)))
 
 ;; ───── the index ─────
 
@@ -397,7 +425,7 @@
              (:via meta) (conj [e ":tx/via" (ds-enc (:via meta))])
              (:box meta) (conj [e ":tx/box" (ds-enc (:box meta))])
              (:why meta) (conj [e ":tx/why" (ds-enc (:why meta))]))
-        facts (patch-datoms before after)
+        facts (ev-datoms before after ev)
         fds (apply concat
                    (map-indexed (fn [i f]
                                   (let [fe (+ e 1 i)
@@ -523,7 +551,8 @@
   ([d pos]
    (let [p (db-norm d pos)
          ix (history-index d p)]
-     (with-work ix (if p (db-patch d p) empty-patch) nil))))
+     ;; the work at the point is the one the index reached there (the same value: its last laying-over is kept)
+     (with-work ix (:patch ix) nil))))
 
 ;; ───── q, pull, entity ─────
 
@@ -583,7 +612,7 @@
   ([pattern eid] (pull (db) pattern eid))
   ([d pattern eid]
    (let [D (need-datascript)]
-     (ds-dec (.pull D (ds-db d) (pr-str (enc-query pattern)) (lookup eid))))))
+     (ds-dec (.pull D (ds-db d) (pr-str (enc-form pattern)) (lookup eid))))))
 
 (defn entity
   "An entity of the history's index with all its attributes (as (pull '[*] eid): a map, not a lazy entity):
