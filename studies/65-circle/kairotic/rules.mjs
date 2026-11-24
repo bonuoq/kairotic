@@ -747,9 +747,10 @@ export const BETWEEN = {
   } }),
   /** pair · no voice under the one above it (cross: they may cross, as Fux's do); within (four parts): neighbours within
    *  an octave, pair by pair. */
-  order: (N, { within = null, form = "four", cross = false } = {}) => ({ id: "order", check: ({ x }) => {
+  order: (N, { within = null, form = "four", cross = false, unison = false } = {}) => ({ id: "order", check: ({ x }) => {
     for (let i = 0; i + 1 < x.length; i++) {
-      if (!cross && N.D(x[i + 1]) >= N.D(x[i])) return form === "three" ? "the middle voice under the upper" : `the ${N.names[i + 1]} under the ${N.names[i]}`;
+      // (unison: two neighbours may meet on one note — a doubling, bound as one)
+      if (!cross && N.D(x[i + 1]) >= N.D(x[i]) && !(unison && x[i + 1] === x[i])) return form === "three" ? "the middle voice under the upper" : `the ${N.names[i + 1]} under the ${N.names[i]}`;
       if (within !== null && N.D(x[i]) - N.D(x[i + 1]) > within) return `the ${N.names[i]} and the ${N.names[i + 1]} within an octave`;
     }
     return null;
@@ -1045,6 +1046,11 @@ Object.assign(STYLES, {
     between: [["order", { within: 7 }], ["chord", { form: "four" }], ["doubling", { form: "four" }], ["seventh"], ["leading-tone-doubled"], ["seconds", { form: "four" }],
               ["parallels-upper", { form: "four", structural: true }], ["outer-octaves"], ["resolution"], ["six-four", { form: "four" }], ["dominant-major", { form: "four" }], ["functions"]],
     softBetween: [["doubling"]] },
+  // Bach's chorales (the corpus, the bridges filled from A to B): chorale-4, and two neighbouring voices may meet on one
+  // note — the tenor and the bass, the alto and the tenor… —, a doubling: what binds a doubled note binds it, the
+  // parallels and the doublings (BWV 269's first phrase: the tenor on the bass's G)
+  "bach-4": { style: "bach-4", version: "1.0.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }]] },
+    between: [["order", { within: 7, unison: true }]] },
 });
 
 /** The world the rules between the voices read. */
@@ -1132,7 +1138,9 @@ export function fourOverBass(spec = {}) {
   const soft = (st.softBetween || []).map(([id, p]) => SOFT_BETWEEN[id](N, { weight: W.doubling, ...(p || {}) }));
   const D = codeDegree;
   // (the order of the voices and their octave, at once: as partimento.mjs's triples)
-  const quick = (_W, _t, x) => x.length < 2 || !(D(x[x.length - 1]) >= D(x[x.length - 2]) || D(x[x.length - 2]) - D(x[x.length - 1]) > 7);
+  // (the voices in order as they are chosen — neighbours on one note where the style lets them meet)
+  const meet = st.between.some(([id, p]) => id === "order" && p && p.unison);
+  const quick = (_W, _t, x) => { if (x.length < 2) return true; const a = x[x.length - 2], b = x[x.length - 1]; return !((D(b) >= D(a) && !(meet && a === b)) || D(a) - D(b) > 7); };
   // (a soprano given: its note at each unit, and nothing else; what it makes with the others the rules between them read)
   const gs = spec.given && spec.given.soprano;
   const Sgiven = gs ? { ...Sv, check: (U, t, c) => (t >= n ? "the work is finished" : gs[t] === null || gs[t] === undefined ? Sv.check(U, t, c) : c === gs[t] ? null : "the soprano is given"), costParts: (U, c) => (gs[U.length] === null || gs[U.length] === undefined ? Sv.costParts(U, c) : {}) } : Sv;
@@ -1294,10 +1302,11 @@ export function fromNotes(spec = {}) {
 // (a box loads the module's default export: api/import-module)
 /**
  * The inner voices between a soprano and a bass given (a chorale's outer voices, a bridge's): spec {soprano, bass
- * (notes [{midi, units}], the same units), key, style (chorale-4: the functions among its rules)}. fromNotes, the
+ * (notes [{midi, units}], the same units), key, style (bach-4: chorale-4 — its functions — with neighbours meeting
+ * on the unison, as in Bach's chorales)}. fromNotes, the
  * chords free (no figures), the soprano given.
  */
-export const fromOuter = (spec = {}) => fromNotes({ ...spec, notes: spec.bass, soprano: spec.soprano, voices: 4, fill: false });
+export const fromOuter = (spec = {}) => fromNotes({ ...spec, style: spec.style || "bach-4", notes: spec.bass, soprano: spec.soprano, voices: 4, fill: false });
 
 export default { within, TooLong, solve, solveVoices, overBass, partsOverBass, fourOverBass, fromNotes, fromOuter, bassFromNotes, degreeOf, parseKey, guessKey, keyOf,
                  RULES, SOFT_RULES, BETWEEN, SOFT_BETWEEN, STYLES, CATALOGUES, resolveStyle, checkStyle, defineStyle, partsOf, CHORDS, CHORDS4, RULE_OF_THE_OCTAVE, octaveDefault };

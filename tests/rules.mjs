@@ -488,18 +488,26 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   // Aus meines Herzens Grunde (BWV 269, chorale 1), the first phrase: Bach's soprano and bass, the inner voices found
   const S = [67, 67, 67, 74, 71, 71, 67, 67, 67, 71, 69], B = [43, 55, 52, 54, 55, 50, 52, 48, 47, 43, 50], len = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2];
   const notes = (xs) => { let t = 0; return xs.map((m, i) => { const o = { midi: m, units: len[i], strong: Array.from({ length: len[i] }, (_, k) => (t + k - 1) % 3 === 0) }; t += len[i]; return o; }); };
-  const ob = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G" }), free = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G", style: noF });
+  const ob = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G" }), free = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G", style: { extends: "bach-4", between: [["functions", false]] } });
   const c1 = ob.count(), c0 = free.count(), r = rng(269);
   const Bu = B.flatMap((m, i) => Array(len[i]).fill(m));
   let kept = 0, given = 0;
   for (let i = 0; i < 20; i++) {
     const W = ob.sample(r);
     if (W.soprano.every((c, t) => ob.midi(c) === S.flatMap((m, j) => Array(len[j]).fill(m))[t])) given++;
-    const fs = Bu.map((b, t) => F.functionOf([b, ...["soprano", "alto", "tenor"].map((v) => ob.midi(W[v][t]))], { tonic: "G" }));
+    // (the grammar on the strong units, the level the rule reads)
+    const fs = Bu.map((b, t) => F.functionOf([b, ...["soprano", "alto", "tenor"].map((v) => ob.midi(W[v][t]))], { tonic: "G" })).filter((f, t) => (t - 1) % 3 === 0);
     if (!F.grammarErrors(fs, { end: false, key: { tonic: "G" } }).length) kept++;
   }
-  is(`fromOuter: BWV 269's first phrase, its soprano and bass given — the inner voices found (${c1} realizations; ${c0} without the functions), the soprano Bach's and the grammar kept in every one drawn (20)`,
+  is(`fromOuter: BWV 269's first phrase, its soprano and bass given — the inner voices found (${c1} realizations; ${c0} without the functions), the soprano Bach's and the grammar kept from strong unit to strong unit in every one drawn (20)`,
      c1 > 0n && c1 < c0 && given === 20 && kept === 20);
+  // (bach-4: neighbours may meet on one note — Bach's tenor on the bass's G at the 5th unit — and Bach's own inner voices
+  // are by its rules; chorale-4 does not let them)
+  const Su = S.flatMap((m, j) => Array(len[j]).fill(m)), Au = [62, 62, 64, 62, 62, 62, 59, 64, 64, 67, 66, 66], Tu = [59, 59, 60, 57, 55, 54, 55, 60, 60, 62, 62, 62];
+  const bachW = { soprano: Su.map(ob.code), alto: Au.map(ob.code), tenor: Tu.map(ob.code) };
+  const strict = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G", style: "chorale-4" });
+  is(`... Bach's own alto and tenor there are by bach-4's rules; chorale-4 refuses the tenor's unison with the bass (${strict.judge(bachW)})`,
+     ob.judge(bachW) === null && /unison with the bass/.test(strict.judge(bachW) || ""));
 }
 
 const failed = results.filter((r) => !r[1]);
