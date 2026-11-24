@@ -92,5 +92,20 @@ export async function db(page, check) {
   check("... or a box's facts", (await cljs(page, "(pos? (count (:facts (work-history (db) :b9305 10))))")) === "true");
   check("... as a tool for the Claude tab and agents", (await cljs(page, '(some? (some #(= "work_history" (.-name %)) (patch-tools nil)))')) === "true");
 
-  await cljs(page, "(delete :b9301) (delete :b9302) (delete :b9303) (delete :b9305)");
+  // trying never touches what the work's boxes hold in the engine: not when the try rewrites a box's text, nor
+  // when the tree boxes send again afterwards (emit-trees! compares the texts of the engine's patch, never the try's)
+  await cljs(page, '(gesture! "(box :b9310 \\"mtof\\" 1500 600)")');
+  const held = "(get-in @eng/rt [:states (fid :b9310)])";
+  await cljs(page, `(swap! eng/rt assoc-in [:states (fid :b9310)] {:held 1})`);
+  await cljs(page, '(with "(text! :b9310 \\"mtof 3\\")")');
+  await cljs(page, '(build "(box :b9310 \\"mtof 4\\" 0 0)")');
+  await cljs(page, '(with [[:text :b9310 "mtof 5"]])');
+  await cljs(page, "(render-all!)");
+  await page.waitForTimeout(200);
+  check("a try that rewrites a box's text leaves the work's box as it was in the engine", (await cljs(page, held)) === "{:held 1}", await cljs(page, held));
+  await cljs(page, '(gesture! "(text! :b9310 \\"mtof 6\\")")');
+  await page.waitForTimeout(200);
+  check("... while rewriting it in the work does forget it", (await cljs(page, held)) === "nil", await cljs(page, held));
+
+  await cljs(page, "(delete :b9301) (delete :b9302) (delete :b9303) (delete :b9305) (delete :b9310)");
 }
