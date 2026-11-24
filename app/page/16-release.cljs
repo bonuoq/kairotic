@@ -115,6 +115,7 @@
   "The events of node nid with the points `ks` forgotten, and how its old points map to the new ones."
   [nid ks]
   (let [evs (vec (:events (node nid)))
+        ms (metas-of (node nid))
         rs (runs ks)
         ;; each run k1…k2: the events from k1 to k2+1 become the changes from the point before to the one after
         ;; (and the mark of that next point, if it is a keyframe, stays a point of its own)
@@ -122,23 +123,28 @@
                             :let [diff (rel/as-event (rel/patch-diff (patch-at [nid (dec k1)]) (patch-at [nid (inc k2)])))
                                   nxt (nth evs k2)
                                   mark? (and (vector? nxt) (= :mark (first nxt)))]]
-                        [k1 {:to k2 :evs (vec (remove nil? (if mark? [diff nxt] [diff])))}]))
-        [new-evs mapping]
-        (loop [i 1 out [] m {0 0}]
+                        ;; each event with its transaction (#382): the changes that replace a run are the excision's,
+                        ;; made when the last of them was; a keyframe kept keeps its own
+                        [k1 (let [m (merge (select-keys (nth ms k2 nil) [:t]) {:via :excise})
+                                  pairs (remove (comp nil? first) (if mark? [[diff m] [nxt (nth ms k2 nil)]] [[diff m]]))]
+                              {:to k2 :evs (mapv first pairs) :metas (mapv second pairs)})]))
+        [new-evs new-metas mapping]
+        (loop [i 1 out [] outm [] m {0 0}]
           (if (> i (count evs))
-            [out m]
-            (if-let [{:keys [to] r :evs} (get repl i)]
+            [out outm m]
+            (if-let [{:keys [to metas] r :evs} (get repl i)]
               ;; old points i…to are gone; the point after the run (to+1) is the last of its replacement
-              (let [out (into out r) last-old (inc to)]
-                (recur (inc last-old) out (assoc m last-old (count out))))
-              (let [out (conj out (nth evs (dec i)))]
-                (recur (inc i) out (assoc m i (count out)))))))]
-    {:events new-evs :map mapping}))
+              (let [outm (into outm metas) out (into out r) last-old (inc to)]
+                (recur (inc last-old) out outm (assoc m last-old (count out))))
+              (let [out (conj out (nth evs (dec i))) outm (conj outm (nth ms (dec i) nil))]
+                (recur (inc i) out outm (assoc m i (count out)))))))]
+    {:events new-evs :meta new-metas :map mapping}))
 
-(defn forget-points
-  "Forgets points of the history of a solo or local work: [[\"node-id\" k] …]. The moments after them stay as
-   they were; the work at those moments is lost (and a keyframe there with it). Branch points and tips cannot
-   be forgotten. It cannot be undone."
+(defn excise!
+  "Forgets points of the history of a solo or local work: [[\"node-id\" k] …] — the one way anything leaves a
+   history, as Datomic's excision (#382). The moments after them stay as they were; the work at those moments is
+   lost (and a keyframe there with it). Branch points and tips cannot be forgotten. It cannot be undone, and it
+   leaves its own record on each segment it changed (:excised: when, by whom, how many points; see (excisions))."
   [pts]
   (when-not (forget-allowed?)
     (fail (if (= :room (:kind @work))
@@ -158,7 +164,9 @@
              (fn [ns]
                (into {} (for [[id n] ns]
                           [id (cond-> n
-                                (contains? plans id) (assoc :events (:events (get plans id)))
+                                (contains? plans id) (assoc :events (:events (get plans id)) :meta (sane-metas (:meta (get plans id)) (count (:events (get plans id))))
+                                                            :excised (conj (vec (:excised n)) {:t (js/Date.now) :author (my-author)
+                                                                                               :points (count (get by-node id))}))
                                 (contains? plans (:parent n)) (assoc :at (second (remap [(:parent n) (:at n)])))
                                 (and (vector? (:merge n)) (contains? plans (first (:merge n)))) (assoc :merge (remap (:merge n))))]))))
       (swap! world (fn [w] (cond-> w (:pos w) (update :pos remap) (:prev-pos w) (assoc :prev-pos nil))))
@@ -214,7 +222,7 @@
     (when-let [a (.. e -target -dataset -rel)]
       (set! (.-hidden (release-pop)) true)
       (case a
-        "forget" (gesture! (str "(forget-points " (pr-str (vec (sort @picked))) ")"))
+        "forget" (gesture! (str "(excise! " (pr-str (vec (sort @picked))) ")"))
         "release" (gesture! "(release)")
         nil))))
 

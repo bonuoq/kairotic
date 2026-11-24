@@ -19,11 +19,11 @@
   "A change of layout only: a box moved, placed in presentation or shown in another view (also inside a sub-patch)."
   [p [op & args]]
   (case op
-    (:move :present :view :size) true
+    ;; the events the schema says are layout (00-work.cljs, #382); a batch or a sub-patch's, if all of theirs are
     :batch (let [[evs] args] (boolean (and (sequential? evs) (seq evs) (every? (fn [e] (and (vector? e) (layout-ev? p e))) evs))))
     :in (let [[id inner] args b (get-in p [:boxes id])]
           (boolean (and (embedded? b) (vector? inner) (layout-ev? (or (:data b) empty-patch) inner))))
-    false))
+    (= :layout (ev-op-kind op))))
 
 (defn take-summary
   "How many changes a take has, and how many of them change the work (the rest only move boxes)."
