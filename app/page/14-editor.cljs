@@ -651,9 +651,10 @@
   (let [h (form-head f)]
     (or (contains? patch-calls h)
         (and (contains? #{"->" "doto"} h)
+             ;; what goes first is anything (a box, a name); every step after it a call that makes the patch
              (let [inner (subs f (+ (str/index-of f h) (count h)) (max 0 (dec (count f))))
-                   fs (map (fn [[a b]] (subs inner a b)) (top-forms inner))]
-               (and (seq fs) (every? (fn [g] (or (not (str/starts-with? g "(")) (patch-call? g))) fs)))))))
+                   steps (rest (map (fn [[a b]] (subs inner a b)) (top-forms inner)))]
+               (and (seq steps) (every? (fn [g] (and (str/starts-with? g "(") (patch-call? g))) steps)))))))
 
 (defn patch-form?
   "Whether a piece of code is only calls that make the patch (and at least one)."
@@ -880,7 +881,8 @@
         code (when from (str/trim (subs text from to)))]
     (if-not (and (seq code) (balanced? code))
       (repl-print! "err" "Nothing to evaluate here: put the cursor on a form, or select some code.")
-      (do (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
+      (do (save-live!)
+          (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
           (flash-lines! @live-ed from to)
           (eval-calls! code)))))
 
