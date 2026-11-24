@@ -144,6 +144,10 @@
   [m i a]
   (if (and (:pts m) (< -1 i (count (:pts m))) (sane-anchor a)) (assoc-in m [:pts i] (sane-anchor a)) m))
 
+(defn live-name?
+  "Whether k can be a box's live-code name: a keyword that is not a box id (:osc, :lead; not :b7)."
+  [k] (boolean (and (keyword? k) (nil? (namespace k)) (not (re-matches #"b\d+" (name k))))))
+
 (defn sane-patch
   "Events may come from other people: whatever arrives is normalized."
   [x]
@@ -164,7 +168,9 @@
                          (and (vector? (:size b)) (= 2 (count (:size b))) (every? number? (:size b)))
                          (assoc :size (:size b))
                          (and (map? (:data b)) (comp/model-of b)) (assoc :data ((:load (comp/model-of b)) (:data b)))
-                         (sane-recipe (:recipe b)) (assoc :recipe (sane-recipe (:recipe b))))]))
+                         (sane-recipe (:recipe b)) (assoc :recipe (sane-recipe (:recipe b)))
+                         ;; its live-code name (discussion #407): (box :osc "osc~ 220")
+                         (live-name? (:name b)) (assoc :name (:name b)))]))
      :lines (vec (filter (fn [l] (and (vector? l) (= 4 (count l)))) (:lines x)))}
     x)
     empty-patch))
@@ -184,6 +190,13 @@
                   (cond (not (get-in p [:boxes id])) p
                         (and (number? x) (number? y)) (assoc-in p [:boxes id :present] [x y])
                         :else (update-in p [:boxes id] dissoc :present)))
+    ;; [:name :b3 :osc]: the name live code calls a box by (discussion #407), one box per name; nil takes it away
+    :name       (let [[id nm] args]
+                  (cond (not (get-in p [:boxes id])) p
+                        (live-name? nm) (-> p
+                                            (update :boxes (fn [bs] (into (empty bs) (for [[k b] bs] [k (if (= nm (:name b)) (dissoc b :name) b)]))))
+                                            (assoc-in [:boxes id :name] nm))
+                        :else (update-in p [:boxes id] dissoc :name)))
     ;; how a box is shown, among the views of its class (discussion #30), or nil for its default
     :view       (let [[id k] args]
                   (cond (not (get-in p [:boxes id])) p
@@ -284,6 +297,7 @@
    :size       {:kind :layout :doc "a box's own size: [:size id w h]"}
    :shows      {:kind :work   :doc "the layers a tree box shows: [:shows id [:analysis]]"}
    :pin        {:kind :work   :doc "a `patch @name` pinned to a point of its line: [:pin id [node n]]"}
+   :name       {:kind :work   :doc "the name live code calls a box by: [:name id :osc]"}
    :connect    {:kind :work   :doc "a line between two ports: [:connect a o b i]"}
    :disconnect {:kind :work   :doc "a line taken away: [:disconnect a o b i]"}
    :delete     {:kind :work   :doc "a box deleted: [:delete id]"}
@@ -568,9 +582,17 @@
   "Where the engine knows the sub-patch on screen: its path, after the prefix of its line while another plays."
   [] (into (view-prefix) (cmd-path)))
 
+(defn rid
+  "The id of a box of the view on screen given by its id (:b7) or by its live-code name (:osc, discussion #407)."
+  [k]
+  (let [bs (:boxes (current))]
+    (if (or (not (keyword? k)) (contains? bs k))
+      k
+      (or (some (fn [[id b]] (when (= k (:name b)) id)) bs) k))))
+
 (defn fid
-  "The id the engine knows a box of the current view by."
-  [id] (eng/flat-id (engine-path) id))
+  "The id the engine knows a box of the current view by (or by its name)."
+  [id] (eng/flat-id (engine-path) (rid id)))
 
 ;; ───── which box is drawn over which (issue #166) ─────
 ;; Boxes are drawn in the order of the number of their ids (not as text, which put :b10–:b19 under :b2): a
@@ -598,7 +620,7 @@
 (defn target
   "Where a message to inlet i of box id goes in the engine: a sub-patch receives it in its i-th inlet box."
   [id inlet]
-  (let [b (get-in (current) [:boxes id])]
+  (let [id (rid id) b (get-in (current) [:boxes id])]
     (if (and b (comp/subpatch? b))
       (let [inner (eng/inner-patch b) x (get (:inlets (comp/patch-ports inner)) inlet)]
         (if x [(eng/flat-id (conj (engine-path) id) x) 0] (throw (js/Error. (str id " has no inlet " inlet)))))

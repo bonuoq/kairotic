@@ -639,17 +639,28 @@
 
 (def patch-calls
   "The calls that make the patch, as the Code tab writes it: a form of them alone changes it by the difference."
-  #{"box" "connect" "disconnect" "move" "text!" "delete" "present" "unpresent" "view" "resize" "show-layers"
+  #{"box" "to" "name-box" "connect" "disconnect" "move" "text!" "delete" "present" "unpresent" "view" "resize" "show-layers"
     "pin-ref" "layer" "mark" "unmark" "project" "recipe" "code" "stroke" "axis" "tuning" "grid-x" "grid-y"
     "tree!" "values!" "presets!"})
 
 (defn form-head "The name a list form starts with, or nil." [f] (second (re-find #"^\(\s*([^\s()\[\]{}\"]+)" f)))
 
+(defn patch-call?
+  "Whether a form is a call that makes the patch, or a chain of them: (-> (box \"osc~\") (to \"dac~\"))."
+  [f]
+  (let [h (form-head f)]
+    (or (contains? patch-calls h)
+        (and (contains? #{"->" "doto"} h)
+             ;; what goes first is anything (a box, a name); every step after it a call that makes the patch
+             (let [inner (subs f (+ (str/index-of f h) (count h)) (max 0 (dec (count f))))
+                   steps (rest (map (fn [[a b]] (subs inner a b)) (top-forms inner)))]
+               (and (seq steps) (every? (fn [g] (and (str/starts-with? g "(") (patch-call? g))) steps)))))))
+
 (defn patch-form?
   "Whether a piece of code is only calls that make the patch (and at least one)."
   [code]
   (let [fs (map (fn [[a b]] (subs code a b)) (top-forms code))]
-    (boolean (and (seq fs) (every? (fn [f] (contains? patch-calls (form-head f))) fs)))))
+    (boolean (and (seq fs) (every? patch-call? fs)))))
 
 (defn keep-what-stays
   "Patch p made by code on top of cur: a box made again as `box` makes it (a text and a place) over one that was
@@ -683,13 +694,17 @@
 (defn same-code? [a b]
   (= (str/replace (str/trim (str a)) #"\s+" " ") (str/replace (str/trim (str b)) #"\s+" " ")))
 
+(defn editor-selection
+  "[text from to] of an editor (or of its text area, before the editor is loaded)."
+  [ed ta]
+  (if ed
+    (let [m (.. ed -view -state -selection -main)] [(.getValue ed) (.-from m) (.-to m)])
+    [(.-value ta) (.-selectionStart ta) (.-selectionEnd ta)]))
+
 (defn code-selection
   "What the Code tab has selected, or the form at its cursor: [text from to], or nil."
   []
-  (let [ta ($ "code")
-        [text a b] (if-let [e @code-ed]
-                     (let [m (.. e -view -state -selection -main)] [(.getValue e) (.-from m) (.-to m)])
-                     [(.-value ta) (.-selectionStart ta) (.-selectionEnd ta)])]
+  (let [[text a b] (editor-selection @code-ed ($ "code"))]
     (if (< a b) [text a b] (when-let [[f t] (form-at text a)] [text f t]))))
 
 (defn eval-code-form!
@@ -800,6 +815,97 @@
       (.setAttribute (.-contentDOM (.-view ed)) "aria-label" "The work as data (EDN)")
       (reset! data-ed ed))))
 
+;; ───── Live: your own code, to play the work (discussion #407) ─────
+;; A third view of the Code tab, beside Calls and Data: a page of your own that the work never writes over, where
+;; names (def) and chains (->, to) stay as you wrote them. ⇧+Enter evaluates the form at the cursor (or the
+;; selection), Ctrl/⌘+Enter the block it is in (the lines between two empty ones), as the Calls view does with a
+;; form: calls that make the patch by the difference, as one event; anything else as a line of the REPL. What was
+;; evaluated flashes. It is kept in this browser for each work, not in the work.
+
+(defonce live-ed (atom nil))
+
+(def live-start
+  ";; Live: your own code, kept in this browser (not in the work).
+;; ⇧+Enter evaluates a form, Ctrl/⌘+Enter a block (lines between empty ones).
+
+;; a box called by its name is the same box each time: change 220 and evaluate again
+(box :osc \"osc~ 220\")
+
+(-> :osc (to \"gain~ 0.2\") (to \"dac~ 1 2\"))
+
+(play)
+")
+
+(defn live-key "Where this browser keeps the Live code of the work open." []
+  (let [{:keys [kind id]} @work] (when kind (str "kairotic.live/" (name kind) "/" id))))
+
+(defn live-text [] (if-let [e @live-ed] (.getValue e) (.-value ($ "live"))))
+(defn set-live-text! [v] (if-let [e @live-ed] (when (not= v (.getValue e)) (.setValue e v)) (set! (.-value ($ "live")) v)))
+
+(defn save-live! []
+  (when-let [k (live-key)] (try (.setItem js/localStorage k (live-text)) (catch :default _ nil))))
+
+(defn load-live! []
+  (set-live-text! (or (when-let [k (live-key)] (try (.getItem js/localStorage k) (catch :default _ nil))) live-start)))
+
+(defn block-at
+  "The block of code s around position pos, as [from to]: its lines between two empty ones (from the cursor on
+   an empty line, the block just above); nil if there is none."
+  [s pos]
+  (let [ls (loop [i 0 out []]
+             (let [j (.indexOf s "\n" i)]
+               (if (neg? j) (conj out [i (count s)]) (recur (inc j) (conj out [i j])))))
+        blank? (fn [[a b]] (str/blank? (subs s a b)))
+        k (or (first (keep-indexed (fn [i [a b]] (when (<= a pos b) i)) ls)) (dec (count ls)))
+        k (loop [k k] (if (and (>= k 0) (blank? (nth ls k))) (recur (dec k)) k))]
+    (when (>= k 0)
+      (let [top (loop [i k] (if (and (pos? i) (not (blank? (nth ls (dec i))))) (recur (dec i)) i))
+            bot (loop [i k] (if (and (< (inc i) (count ls)) (not (blank? (nth ls (inc i))))) (recur (inc i)) i))]
+        [(first (nth ls top)) (second (nth ls bot))]))))
+
+(defn flash-lines!
+  "Marks for a moment the lines of an editor from position a to b: what was just evaluated."
+  [ed a b]
+  (when (and ed (.-highlight ed))
+    (let [doc (.. ed -view -state -doc)
+          l1 (.-number (.lineAt doc a)) l2 (.-number (.lineAt doc (max a (dec b))))]
+      (.highlight ed (clj->js (range l1 (inc l2))))
+      (js/setTimeout (fn [] (.highlight ed #js [])) 350))))
+
+(defn eval-live!
+  "Evaluates the selection of the Live view, or the form (what :form) or block (:block) at its cursor."
+  [what]
+  (let [[text a b] (editor-selection @live-ed ($ "live"))
+        [from to] (if (< a b) [a b] (if (= what :block) (block-at text a) (form-at text a)))
+        code (when from (str/trim (subs text from to)))]
+    (if-not (and (seq code) (balanced? code))
+      (repl-print! "err" "Nothing to evaluate here: put the cursor on a form, or select some code.")
+      (do (save-live!)
+          (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
+          (flash-lines! @live-ed from to)
+          (eval-calls! code)))))
+
+(defn upgrade-live-view! [cm]
+  (when-not @live-ed
+    (let [ta ($ "live") host (host-for! ta "live-host")
+          ed ((.-createEditor cm)
+              #js {:parent host :doc (.-value ta) :language "clojurescript" :words (clj->js (command-words))
+                   :onApply (fn [_] (eval-live! :block))
+                   :keys #js [#js {:key "Shift-Enter" :run (fn [] (eval-live! :form) true)}]
+                   :onChange (fn [_] (save-live!))})]
+      (.setAttribute (.-contentDOM (.-view ed)) "aria-label" "Live code")
+      (reset! live-ed ed))))
+
+;; the text area, before the editor is loaded (or without it)
+(.addEventListener ($ "live") "input" (fn [_] (save-live!)))
+(.addEventListener ($ "live") "keydown"
+  (fn [e] (when (= (.-key e) "Enter")
+            (cond (.-shiftKey e) (do (.preventDefault e) (eval-live! :form))
+                  (or (.-ctrlKey e) (.-metaKey e)) (do (.preventDefault e) (eval-live! :block))))))
+
+;; each work has its own: the page of the work opened
+(add-watch work ::live (fn [_ _ o n] (when (not= (select-keys o [:kind :id]) (select-keys n [:kind :id])) (load-live!))))
+
 (defn upgrade-repl! [cm]
   (when-not @repl-ed
     (let [inp ($ "repl-in") host (host-for! inp "repl-host")
@@ -821,7 +927,7 @@
 ;; a moment after the page starts (not in an embed, which shows neither)
 (when-not embed-mode
   (js/setTimeout
-   (fn [] (.then (load-cm) (fn [cm] (when cm (upgrade-code-tab! cm) (upgrade-data-view! cm) (upgrade-repl! cm)
+   (fn [] (.then (load-cm) (fn [cm] (when cm (upgrade-code-tab! cm) (upgrade-data-view! cm) (upgrade-live-view! cm) (upgrade-repl! cm)
                          ;; the hosts take the place of what was shown: show again the view that was chosen
                          (show-code-view! (or (:code-view @ui) :calls))))))
    300))

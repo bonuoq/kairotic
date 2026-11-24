@@ -5,6 +5,24 @@
 - **C7 is V of ④, not the tonic** (`functions.mjs`, `@kairotic/rules` 0.14.0). A dominant 7th on the tonic now
   reads as an applied dominant whose target is ④ (a major 7th on the tonic is still the tonic): it must go to F. In
   Study 67 BWV 846's frame keeps the coda's plagal close, C – … – C/G – C7 – F/C – C, where it ended C7 → C.
+- **Live coding, names** (discussion #407). `(box :osc "osc~ 220")` makes the box live code calls `:osc`; evaluated
+  again it is the same box, its text (and place, if given) changed as one event if they changed, so a block can be
+  evaluated again and again. The box keeps its `:bN` id for the system: the name is one more thing it keeps (`:name`,
+  a `[:name id :osc]` event, one box per name), shown beside its id, written as `(name-box :b7 :osc)`, and every
+  command takes it in place of the id (`rid`: events name boxes by their ids in the history).
+- **Study 70 · open form: the performer chooses the path, the follower decides the form** (discussion #212). A work of
+  fragments and rules of succession (`next`, `not`, `near` a rhythm at most n swaps away; `then` how the next is
+  played; ending when a fragment comes a third time), in *Klavierstück XI*'s manner: "Eleven cells", ten rhythm cells
+  over a twelve-tone row, 8.4 million performances of at most eight fragments. Followed live, each fragment that may
+  come a hypothesis aligned with what is heard (after 2 notes, the median); read again whole once the performance is
+  over (under 1 % of fragments off with slips). The performances kept as a tree of branches; the work as EDN,
+  `[:open … [:frag …] …]`, for an `open` box to come.
+- **Live coding in the Code tab, step 2: a short syntax and a page of your own** (discussion #407). **`to`** makes a
+  box below another, fed by it, as one event, and returns its id: `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`
+  (`(to a o "text" i)` for other ports, `(to :b3 :b9)` to connect only); a chain (`->`, `doto`) of calls that make the
+  patch evaluated from the tab is one event (`as-one-event!`). **Live**, a third view of the Code tab beside Calls and
+  Data: your own code, never written over by the work, kept in this browser for each work; ⇧+Enter evaluates the form
+  at the cursor, Ctrl/⌘+Enter the block (the lines between empty ones), and what was evaluated flashes.
 - **Study 63 · bridges: the outer voices of a chorale phrase, from A to B** (`outer.mjs`; the chorale test, #399 /
   #353). A bridge whose states are pairs (soprano, bass), exact for every cost one unit back: the rules (consonant,
   no parallel or direct 5ths and octaves, no augmented or diminished melodic interval, an altered note going on the

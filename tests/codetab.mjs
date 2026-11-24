@@ -122,4 +122,74 @@ export async function codetab(page, check) {
         await cljs(page, `[(:dirty @ui) (str/includes? (.getValue @code-ed) "(box ${c3} ")]`));
 
   await cljs(page, `(delete ${c1} ${c2} ${c3})`);
+
+  // ── a short syntax (#407, step 2): to, chains, the Live view ──
+  const nEv = "(count (:events (node (first (:pos @world)))))";
+  const t0 = await cljs(page, nEv);
+  const t1 = (await cljs(page, '(box "mtof" 9800 800)')).trim();
+  const t2 = (await cljs(page, `(to ${t1} "ftom")`)).trim();
+  check("to makes a box below its source and returns its id", /^:b\d+$/.test(t2)
+        && (await cljs(page, `(let [b (get-in (current) [:boxes ${t2}])] [(:text b) (:x b) (:y b)])`)) === `["ftom" 9800 ${800 + 60}]`,
+        await cljs(page, `(get-in (current) [:boxes ${t2}])`));
+  check("... connected to it, as one event", (await cljs(page, `(boolean (some #{[${t1} 0 ${t2} 0]} (:lines (current))))`)) === "true"
+        && Number(await cljs(page, nEv)) === Number(t0) + 2, `${t0} → ${await cljs(page, nEv)}`);
+  check("... and with an id, it only connects", (await cljs(page, `(to ${t2} ${t1})`)) === t1
+        && (await cljs(page, `(boolean (some #{[${t2} 0 ${t1} 0]} (:lines (current))))`)) === "true");
+  await cljs(page, `(delete ${t1} ${t2})`);
+  check("chains of calls that make the patch", (await cljs(page, '[(patch-call? "(-> (box \\"osc~\\") (to \\"dac~\\"))") (patch-call? "(-> o (to 0 \\"dac~ 1 2\\" 1))") (patch-call? "(-> 1 inc)")]')) === "[true true false]");
+  const before = Number(await cljs(page, nEv));
+  const ch = await cljs(page, '(eval-calls! "(-> (box \\"mtof\\" 9800 900) (to \\"ftom\\") (to \\"mtof\\"))")');
+  check("a chain evaluated alone: three boxes and two lines, one event", ch === "5" && Number(await cljs(page, nEv)) === before + 1, `${ch} · ${before} → ${await cljs(page, nEv)}`);
+  await cljs(page, '(apply delete (keep (fn [[id b]] (when (and (= 9800 (:x b)) (<= 900 (:y b) 1020)) id)) (:boxes (current))))');
+
+  // blocks: the lines between empty ones
+  check("the block around the cursor", (await cljs(page, '(block-at "a\\nb\\n\\nc\\nd\\n" 5)')) === "[5 8]", await cljs(page, '(block-at "a\\nb\\n\\nc\\nd\\n" 5)'));
+  check("... and from an empty line, the block above", (await cljs(page, '(block-at "a\\nb\\n\\nc" 4)')) === "[0 3]");
+
+  // the Live view: yours, evaluated a form or a block at a time, never written over
+  await cljs(page, "(show-code-view! :live)");
+  check("the Live view is shown, Calls and Data hidden", (await page.evaluate(() => {
+    const p = document.getElementById("panel-code");
+    const vis = (sel, id) => { const e = p.querySelector(sel) || document.getElementById(id); return e && !e.hidden; };
+    return [vis(".live-host", "live"), vis(".code-host", "code"), vis(".data-host", "edn")].join(" ");
+  })) === "true false false");
+  const liveCode = ';; mine\n(def lv (box "mtof" 9800 1100))\n\n(-> lv (to "ftom"))\n';
+  await cljs(page, `(set-live-text! ${JSON.stringify(liveCode)}) (.dispatch (.-view @live-ed) #js {:selection #js {:anchor 20}}) (eval-live! :block)`);
+  const lv = await cljs(page, "lv");
+  check("Ctrl/⌘+Enter in the Live view evaluates its block: a def and a box", /^:b\d+$/.test(lv) && (await cljs(page, `(:text (get-in (current) [:boxes ${lv}]))`)) === '"mtof"', lv);
+  await cljs(page, `(.dispatch (.-view @live-ed) #js {:selection #js {:anchor ${liveCode.indexOf("(to")}}}) (eval-live! :form)`);
+  check("⇧+Enter there evaluates the form at the cursor: the chain", (await cljs(page, `(some (fn [[a _ b _]] (when (= a ${lv}) b)) (:lines (current)))`)) !== "nil");
+  check("... and the Live view keeps what you wrote", (await cljs(page, "(live-text)")) === JSON.stringify(liveCode));
+  check("... kept in this browser for the work", (await cljs(page, "(= (live-text) (.getItem js/localStorage (live-key)))")) === "true");
+  await cljs(page, `(apply delete (keep (fn [[id b]] (when (and (= 9800 (:x b)) (<= 1100 (:y b) 1200)) id)) (:boxes (current)))) (show-code-view! :calls)`);
+
+  // ── names (#407): (box :osc "osc~ 220") is always the same box, still :bN for the system ──
+  check("a name is a keyword that is not a box id", (await cljs(page, "[(live-name? :osc) (live-name? :b7) (live-name? \"osc\") (live-name? :a/b)]")) === "[true false false false]");
+  const e0 = Number(await cljs(page, nEv));
+  const n1 = (await cljs(page, '(box :tosc "mtof" 9800 1300)')).trim();
+  check("a box made by its name has an id of the system and the name", /^:b\d+$/.test(n1) && (await cljs(page, `(:name (get-in (current) [:boxes ${n1}]))`)) === ":tosc"
+        && Number(await cljs(page, nEv)) === e0 + 1, `${n1} ${await cljs(page, `(get-in (current) [:boxes ${n1}])`)}`);
+  const n1b = (await cljs(page, '(box :tosc "ftom")')).trim();
+  check("... made again by its name, it is the same box, its text changed in one event", n1b === n1
+        && (await cljs(page, `(let [b (get-in (current) [:boxes ${n1}])] [(:text b) (:x b) (:y b)])`)) === '["ftom" 9800 1300]'
+        && (await cljs(page, lastEv)) === `[:text ${n1} "ftom"]`, `${n1b} · ${await cljs(page, lastEv)}`);
+  check("... and as it was, nothing", (await cljs(page, '(box :tosc "ftom")')).trim() === n1 && (await cljs(page, lastEv)) === `[:text ${n1} "ftom"]`);
+  const n2 = (await cljs(page, '(box :tmtof "mtof" 9900 1300)')).trim();
+  await cljs(page, "(connect :tosc 0 :tmtof 0)");
+  check("names are ids for every command: a line between two named boxes, kept by their ids",
+        (await cljs(page, `(boolean (some #{[${n1} 0 ${n2} 0]} (:lines (current))))`)) === "true");
+  await cljs(page, '(text! :tmtof "ftom")');
+  check("... text!", (await cljs(page, `(:text (get-in (current) [:boxes ${n2}]))`)) === '"ftom"');
+  check("... to, with a name, connects to that box", (await cljs(page, "(to :tmtof :tosc)")) === n1);
+  check("the work's code writes the names", (await cljs(page, `(str/includes? (patch->code (current)) "(name-box ${n1} :tosc)")`)) === "true"
+        && (await cljs(page, "(run-code! (patch->code (current)))")) === "0");
+  await cljs(page, `(name-box ${n2} :tosc)`);
+  check("a name given to another box leaves the first", (await cljs(page, `[(:name (get-in (current) [:boxes ${n1}])) (:name (get-in (current) [:boxes ${n2}]))]`)) === "[nil :tosc]");
+  let tag = null;
+  for (let i = 0; i < 30 && tag !== `${n2.slice(1)} :tosc`; i++) {
+    tag = await page.evaluate((id) => document.querySelector(`#scene g.box[data-box="${id}"] text.idtag`)?.textContent, n2.slice(1));
+    if (tag !== `${n2.slice(1)} :tosc`) await page.waitForTimeout(60);
+  }
+  check("... and the id shown over a box says its name", tag === `${n2.slice(1)} :tosc`, String(tag));
+  await cljs(page, `(delete ${n1} ${n2})`);
 }

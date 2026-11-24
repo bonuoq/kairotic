@@ -945,7 +945,9 @@
                      ;; its id, over its top right corner: shown when it is hovered or selected, or for all with I
                      ;; (issue #163)
                      (when-not @pres-mode
-                       (str "<text class=\"idtag\" x=\"" w "\" y=\"-5\" text-anchor=\"end\">" idn "</text>"))
+                       (str "<text class=\"idtag\" x=\"" w "\" y=\"-5\" text-anchor=\"end\">" idn
+                            ;; and the name live code calls it by (#407)
+                            (when-let [nm (:name b)] (str " " (esc (str nm)))) "</text>"))
                      ;; what changes while it plays (a value, a flash, its own view) is drawn here, in the box,
                      ;; so that a box over it covers it too (issue #166); in patch coordinates
                      "<g class=\"live\" data-live=\"" idn "\" transform=\"translate(" (- x) "," (- y) ")\"></g>"
@@ -1178,16 +1180,17 @@
     (when (not= v (.-textContent ($ "edn"))) (set! (.-textContent ($ "edn")) v))))
 
 (defn render-code [p]
-  (let [{:keys [dirty]} @ui data (data-view?)]
+  (let [{:keys [dirty]} @ui data (data-view?) live (= :live (:code-view @ui))]
     (when-not dirty (set-code-text! (patch->code p)))
     ;; the data is written only while it is shown: it is the whole state, pretty-printed
     (when data (set-data-text! (patch->edn p)))
     (let [st ($ "code-state")]
-      (set! (.-textContent st) (cond data "read-only: the state the history produces"
+      (set! (.-textContent st) (cond live "yours, kept in this browser · ⇧+Enter a form · Ctrl/⌘+Enter a block"
+                                     data "read-only: the state the history produces"
                                      dirty "edited: run it to apply it to the patch"
                                      :else "in sync with the patch"))
-      (set! (.-className st) (if (and dirty (not data)) "state dirty" "state")))
-    (set! (.-hidden ($ "code-run")) data)
-    (set! (.-hidden ($ "code-revert")) data)
+      (set! (.-className st) (if (and dirty (not data) (not live)) "state dirty" "state")))
+    (set! (.-hidden ($ "code-run")) (or data live))
+    (set! (.-hidden ($ "code-revert")) (or data live))
     (set! (.-disabled ($ "code-run")) (not dirty))
     (set! (.-disabled ($ "code-revert")) (not dirty))))

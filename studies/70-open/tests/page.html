@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 70 · open form · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1000px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the page of fragments, a path chosen, a performance followed, branches kept.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 30000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+try {
+  await wait(() => w.kairoticStudy && d.querySelectorAll("#map g.node").length === 10);
+  const S = w.kairoticStudy;
+  is("the page: ten fragments, every one lit (any first)", d.querySelectorAll("#map g.node.can").length === 10 && d.getElementById("edn").textContent.startsWith("[:open"));
+  d.querySelector('#map g.node[data-id="F"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  is("F chosen: F and G no longer lit, its indications for the next shown", S.state().path.join() === "F" && !d.querySelector('#map g.node[data-id="G"]').classList.contains("can") &&
+     d.querySelector('#map g.node[data-id="A"]').classList.contains("can") && /tempo ×0.75 · pp · legato/.test(d.getElementById("facts").textContent));
+  for (const id of ["A", "F", "B", "F"]) S.choose(id);
+  is("… the path drawn, and over when F comes a third time", d.querySelectorAll("#map path.step").length === 4 && d.querySelectorAll("#map g.node.can").length === 0 && /over/.test(d.getElementById("path-state").textContent));
+  d.getElementById("noise").value = "0";
+  const r = await S.perform({ fast: true });
+  is("performed as written and followed: the path recognised live and read again", r.f.path.join() === r.played.join() && r.d.path.join() === r.played.join() && /0 off/.test(d.getElementById("followed").textContent));
+  S.keep(); S.draw(); S.keep();
+  is("kept as branches: two performances in the tree", S.state().kept.length === 2 && d.querySelectorAll("#branches circle").length >= 2 && d.querySelectorAll("#kept dt").length === 2);
+} catch (e) { errors.push(String(e.message || e)); }
+const bad = results.filter((r) => !r[1]).map((r) => r[0]).concat(errors.map((e) => "error: " + e));
+window.kairoticResults = { total: results.length, failed: bad };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n` + results.map(([w2, ok]) => (ok ? "  ok   " : "  FAIL ") + w2).join("\n") + (errors.length ? "\n" + errors.join("\n") : "");
+</script>
