@@ -658,6 +658,26 @@
     :try "Press ▶, (view :b1 :continuum), click :start and play or sing the tree: the continuum shows the notes found, the ones skipped and where you are, the wires that went on — click a note to tell it where you are —; its label shows the beat you are at, the print :swell when you reach the long G — even if you skip it, at the next note — and :fade at the E, or half a second after it was due if you stop before it. The wires are drawn rigid solid and elastic dashed. Click :stop: the take goes into the tree box, only for you; (continuum! :b1 {:take …}) — (takes :b1) gives its id — shows where you played each note."
     :see ["pitch~" "onset~" "tree" "transcribe"]}
 
+   "paths"
+   {:package "@kairotic/analysis" :usage "paths [sure]"
+    :doc "An open form (discussion #212, Study 70): a work of fragments and rules of succession, the performer choosing the path — chosen by hand, played by the box, or followed: every fragment that can come next is a hypothesis, its opening aligned with what is heard, and the one it is sure of is taken. Each fragment's :then is how the next is played; the work ends when a fragment comes a third time (:end {:repeat 3}), after n ({:after n}) or at a :final one."
+    :inlets ["the work ([:open {…} [:frag {:id :A …} …] …], from a tree box); [:choose :A] or :A, :next, :back, :reset; :play, :start, :stop" "Hz from pitch~ (0: silence), while following" "onsets (from onset~): a new note even on the same pitch" "MIDI notes: numbers, or notes from midiin"]
+    :outlets ["the fragment chosen (its id)" "it as a tree to play, with the indications the one before left (and a :bang when the box plays it): into mt play" "the fragments that can come next" "at :stop, [:performance {:path :live :notes}]: the performance read again whole, kept"]
+    :messages [["[:choose :A] · :A" "that fragment next, if it can come"] [":next" "one at random among those that can come"]
+               [":play" "the box plays the form itself: a fragment at random, the next when it ends, until the end"]
+               [":start" "follows a performer: the fragment played recognised from its first notes, the path moving on by itself"]
+               [":stop" "ends: a performance followed is read again whole (what was decided from the first notes is corrected) and kept as a branch"]
+               [":back · :reset" "the last fragment undone · from the beginning"]
+               ["[:open {:start :any :end {:repeat 3}} …]" "the work: :start (:any or a set), :end; each [:frag {:id :next (:any or a set) :not (a set) :near n (a rhythm at most n swaps from its own) :then {:tempo :dyn :touch} :final}] and its notes"]]
+    :example (lines "(box :b1 \"tree\" 40 30)"
+                    "(tree! :b1 [:open {:name \"four cells\" :start :any :end {:repeat 2} :tempo 84} [:frag {:id :A :then {:tempo 1.5 :dyn \"pp\"}} \"c4/0.5 e4 g4 c5\"] [:frag {:id :B :not #{:B} :then {:dyn \"f\"}} \"b3/0.75 d4/0.25 f4/0.5 g4\"] [:frag {:id :C :next #{:A :D} :then {:tempo 0.75 :dyn \"p\"}} \"a4/1 e4\"] [:frag {:id :D :then {:tempo 1.25}} \"f4/0.25 a4 c5 a4 f4/1\"]])"
+                    "(box :b2 \"msg :next\" 40 90)" "(box :b3 \"msg :play\" 120 90)" "(box :b4 \"msg :stop\" 200 90)" "(box :b5 \"msg :reset\" 280 90)"
+                    "(box :b6 \"paths\" 40 150)" "(box :b7 \"mt play\" 40 220)" "(box :b8 \"synth~\" 40 280)" "(box :b9 \"dac~\" 40 340)" "(box :b10 \"print\" 260 220)"
+                    "(connect :b1 0 :b6 0)" "(connect :b2 0 :b6 0)" "(connect :b3 0 :b6 0)" "(connect :b4 0 :b6 0)" "(connect :b5 0 :b6 0)"
+                    "(connect :b6 1 :b7 0)" "(connect :b7 0 :b8 0)" "(connect :b7 1 :b8 1)" "(connect :b8 0 :b9 0)" "(connect :b8 0 :b9 1)" "(connect :b6 2 :b10 0)")
+    :try "Press ▶ and click :next: a fragment sounds, the label shows the path, the print what can come next — after C only A or D, B never twice in a row; the work ends when a fragment comes a second time. :play lets the box play the form itself. To follow a performer, an adc~ into pitch~ (and onset~) on its second (and third) inlet, or a midiin on its fourth, and :start: play any fragment, then another that can come after it — the label shows what it guesses until it is sure, and the path moves on by itself; :stop reads the performance again and keeps it."
+    :see ["follow" "tree" "mt" "pitch~" "midiin"]}
+
    "spectrum~"
    {:package "@kairotic/analysis" :usage "spectrum~ [lo hi]"
     :doc "The spectrum of a signal drawn in the patch, on a log scale of frequency (dB from -90 to 0)."

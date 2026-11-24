@@ -16,6 +16,7 @@
             [kairotic.patterns :as pat]
             [kairotic.structure :as st]
             [kairotic.follow :as fl]
+            [kairotic.paths :as paths]
             [kairotic.mt :as mt]))
 
 (def version 1)
@@ -388,3 +389,23 @@ registerProcessor('kairotic-tap', KairoticTap);
 (defn follow-frame "One frame heard at t (obs: {descriptor value}, :midi when a pitch sounds) → [state found]." [state t obs] (fl/dtw-step state t obs))
 (defn follow-release "The note found last stopped sounding at t." [state t] (fl/release state t))
 (defn follow-take "What was followed, as a take {:id :when {note-id [onset dur]} …}, or nil." [state m] (fl/take-of state m))
+
+;; ───────── open form: a work of fragments, the performer choosing the path (discussion #212) ─────────
+
+(defn paths-open? "Is x the tree of an open work ([:open {…} [:frag {…} …] …])?" [x] (paths/open? x))
+(defn paths-work "An open work from its tree: {:name :start :end :tempo :frags [{:id :next :not :near :then :final :midi …}]}." [tree] (paths/work tree))
+(defn paths-ids "The ids of a work's fragments, in its order." [w] (paths/ids w))
+(defn paths-choices "The fragments that can come next after a path (ids); [] when the performance has ended." [w path] (paths/choices w path))
+(defn paths-done? "Has the performance ended (a fragment come a n-th time, n fragments, a final one)?" [w path] (paths/done? w path))
+(defn paths-legal? "Is a path one the work allows?" [w path] (paths/legal? w path))
+(defn paths-draw "A performance drawn at random." [w] (paths/draw w))
+(defn paths-indications "How the next fragment is played after a path: {:tempo :dyn :touch}." [w path] (paths/indications w path))
+(defn paths-fragment "A fragment as a tree to play, with the indications the path before it left." [w path id] (paths/fragment-tree w path id))
+(defn paths-realize "A path as one tree to play." [w path] (paths/realize w path))
+(defn paths-seconds "How long a fragment lasts played after a path, in seconds." [w path id] (paths/fragment-seconds w path id))
+(defn paths-recognize "Which fragment that can come next is being played, from the pitches heard (MIDI): [{:id :cost :p} …] best first." [w path heard] (paths/recognize w path heard))
+(defn paths-follow-start "A performance to follow, from its beginning." [] (paths/follow-start))
+(defn paths-hear "A note heard (MIDI) → [state found]: [[:frag id {:after :p}]] when a fragment is recognised." [w st m sure] (paths/hear w st m sure))
+(defn paths-decode "A whole performance read again once it is over (MIDI heard) → {:path :cost}." [w heard] (paths/decode w heard))
+(defn paths-distance "The fragments to change, add or leave out to make one performance the other." [a b] (paths/path-distance a b))
+(defn paths-branches "Performances (paths) as a tree of branches {:id :n :children}." [ps] (paths/branches ps))

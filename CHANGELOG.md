@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The `paths` box: an open form in the app** (`@kairotic/analysis` 0.9.0; discussion #212, Study 70). A work of
+  fragments and rules of succession, `[:open {:start :any :end {:repeat 3}} [:frag {:id :A :next … :not … :near n
+  :then {:tempo :dyn :touch}} …notes…] …]`, from a tree box; the performer chooses the path. Chosen by hand
+  (`[:choose :A]`, `:next`), played by the box itself (`:play`: a fragment at random, the next when it ends), or
+  followed (`:start`, with `pitch~` and `onset~` or MIDI notes): every fragment that can come next a hypothesis, its
+  opening aligned with what is heard, the one it is sure of taken — the follower decides the form. Out: the fragment
+  chosen, it as a tree to play with the indications the one before left (into `mt play`), what can come next, and at
+  `:stop` the performance read again whole and kept. The kernel, `kairotic.paths` (on `kairotic.mt`), through the API
+  (`paths-…`).
 - **C7 is V of ④, not the tonic** (`functions.mjs`, `@kairotic/rules` 0.14.0). A dominant 7th on the tonic now
   reads as an applied dominant whose target is ④ (a major 7th on the tonic is still the tonic): it must go to F. In
   Study 67 BWV 846's frame keeps the coda's plagal close, C – … – C/G – C7 – F/C – C, where it ended C7 → C.
@@ -16,7 +25,7 @@
   over a twelve-tone row, 8.4 million performances of at most eight fragments. Followed live, each fragment that may
   come a hypothesis aligned with what is heard (after 2 notes, the median); read again whole once the performance is
   over (under 1 % of fragments off with slips). The performances kept as a tree of branches; the work as EDN,
-  `[:open … [:frag …] …]`, for an `open` box to come.
+  `[:open … [:frag …] …]`.
 - **Live coding in the Code tab, step 2: a short syntax and a page of your own** (discussion #407). **`to`** makes a
   box below another, fed by it, as one event, and returns its id: `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`
   (`(to a o "text" i)` for other ports, `(to :b3 :b9)` to connect only); a chain (`->`, `doto`) of calls that make the
