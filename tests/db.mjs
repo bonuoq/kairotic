@@ -110,6 +110,11 @@ export async function db(page, check) {
   await cljs(page, "(delete :b9301) (delete :b9302) (delete :b9303) (delete :b9305) (delete :b9310)");
 
   // ───── Datalog over the history, answered by DataScript (#382, idea 7) ─────
+  // opening the REPL brings DataScript, before any query asks for it
+  // (the REPL is a code editor once the page has started; before, its plain input)
+  if (await page.$(".repl-host .cm-content")) await page.click(".repl-host .cm-content"); else await page.focus("#repl-in");
+  const early = await page.waitForFunction(() => !!window.datascript, null, { timeout: 20000 }).then(() => true, () => false);
+  check("opening the REPL loads DataScript before the first query", early);
   const loaded = await page.evaluate(() => scittle.core.eval_string("(in-ns 'user) (load-datascript!)").then(() => true, (e) => "ERR " + e.message));
   check("DataScript loads from the CDN", loaded === true, String(loaded));
   if (loaded !== true) return;
@@ -200,4 +205,13 @@ export async function db(page, check) {
   // back where the other suites expect: the branch with the boxes, which are taken away
   await cljs(page, `(goto ${JSON.stringify(claudeTip.match(/"([^"]+)"/)[1])} ${claudeTip.match(/ (\d+)\]$/)[1]})`);
   await cljs(page, "(delete :b9401) (delete :b9402)");
+
+  // the work's time (#382, idea 8, phase 1): the room's shared time when there is one, this machine's otherwise
+  check("outside a room the work's time is this machine's", (await cljs(page, "[(:source (work-clock)) (< (js/Math.abs (- (work-now) (js/Date.now))) 1000)]")) === "[:local true]");
+  await cljs(page, "(def clock-was @clock-source) (reset! clock-source (fn [] (- (js/Date.now) 777000)))");
+  await cljs(page, '(gesture! "(box :b9501 \\"mtof\\" 1600 460)")');
+  const skew = await cljs(page, "(let [n (node (first (norm (:pos @world))))] [(< (js/Math.abs (- (:t (tx-at)) (- (js/Date.now) 777000))) 1000) (< (js/Math.abs (- (:t n) (- (js/Date.now) 777000))) 1000)])");
+  await cljs(page, "(reset! clock-source clock-was)");
+  check("with a shared clock, a transaction and its segment take their time from it", skew === "[true true]", skew);
+  await cljs(page, "(delete :b9501)");
 }
