@@ -8,6 +8,15 @@
   patch evaluated from the tab is one event (`as-one-event!`). **Live**, a third view of the Code tab beside Calls and
   Data: your own code, never written over by the work, kept in this browser for each work; ⇧+Enter evaluates the form
   at the cursor, Ctrl/⌘+Enter the block (the lines between empty ones), and what was evaluated flashes.
+- **Tonal functions the economy may not take away: `functions.mjs`** (`@kairotic/rules` 0.13.0; discussions #399,
+  #321). What a chord does in a key (T, S, D, an applied dominant and its target; the cadential 6/4 a dominant, a
+  diminished 7th the dominant's where it holds the leading tone) and the grammar of a tonal phrase: never D → S,
+  every applied dominant resolved, the end on the tonic. Study 67 reads it as its reduction's judge, strictly
+  (`reduceNotes`' new `strict`: where no legal step is left, the frame): BWV 846's frame becomes C – Am/C – D7 – C♯°7 –
+  Dm/F – G7 – C – Fmaj7 – F♯°7 – G7 – C/G – C7 – C, every level a tonal phrase, where the economy alone reached
+  G7 → F/C (a retrogression) and left D7 without its G. The rewrite keeps the grammar too, span by span between the
+  chords kept. The page marks each chord's function, and with the functions off shows in red the levels that break
+  them.
 - **Study 69 · chromatic: IJzerman's chapter 8** (`@kairotic/rules` 0.13.0, `@kairotic/cac` 0.16.1). Twelve phrases on
   the engine — the **Fonte** (ii then I a step down; inverted; with diminished 7ths), the **chromatic Monte** (ii, IV,
   V, vi tonicized; in minor III, iv, V), **tonicizations in Descending Thirds**, the **Lamento** in three and four
@@ -42,6 +51,18 @@
   a `def`) is a line of the REPL; the tab is written again from the patch if nothing else in it was unapplied.
   `patch-diff` (`kairotic.release`) now also writes pinned lines, layers, marks and projections, so a release keeps
   them too.
+- **Querying the history with Datalog** (discussion #382, idea 7). `(q '[:find …])` and `(pull pattern eid)` /
+  `(entity eid)`, answered by DataScript itself (`datascript@1.8.1`, its npm build from jsDelivr, loaded with the
+  first query; EPL-1.0): `(q query)` where you are, `(q query db)`, `(q query db pos)` at any point of any branch,
+  `(q query (with …))` over a try; more arguments are the inputs of its `:in`. The history stays the source of truth:
+  DataScript gets an index made from it, one per value of the history, when a query first asks for it, kept while
+  that value serves and grown with the new events when the history goes on along the same path (only what is new is
+  read); nothing is written back. The index holds the transactions (`:tx/via :tx/box :tx/why :tx/kind :tx/op :tx/seq
+  :tx/t :tx/author :tx/pos`), the facts of each (`:fact/tx :fact/e :fact/a :fact/v :fact/added`) and the work at the
+  point (`:box/…`, `:line/…`), with the schema made from `(schema :history)`. Through DataScript's JS API keywords
+  travel as their text and vectors as EDN, and q writes the query and decodes the results the same way. Claude's
+  `work_history` tool takes a Datalog query too. Nothing changes in the interface and nothing loads with the page.
+
 - **Study 66 · compression: the uses heard, and the description as a tree** (discussion #399). The same rules, their
   uses coded the way a listener learns them (`bits.mjs`): which rule comes is a word of a lexicon (the first time an
   escape and its number), a figure's pitches each voice's step from the same voice of its last use, a motif's start

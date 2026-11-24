@@ -363,6 +363,41 @@ tooltips tell it, and the REPL reads it as data (discussion #382).
 
 Events made before this have no transaction: they say who made them (their segment's), not when or from where.
 
+### Querying the history with Datalog
+
+`(q '[:find … :where …])` asks the history a question in Datalog, the query language of Datomic, and
+[DataScript](https://github.com/tonsky/datascript) answers it: it is loaded from the CDN the first time it is needed
+(the very first query may answer that it is still loading: ask again a moment later). The history stays what it is;
+for each value of it that is queried, DataScript gets an index of it, made once and grown as the history grows.
+
+- `(q query)` where you are; `(q query db)` in a value of the history; `(q query db ["segment" n])` at any point of any
+  branch; `(q query (with …))` over a try, as if it had been made. More arguments are the inputs of its `:in`.
+- What it can ask, `(schema :history)`: **transactions** (`:tx/via`, `:tx/box`, `:tx/why`, `:tx/kind`, `:tx/op`,
+  `:tx/seq`, `:tx/t`, `:tx/author`, `:tx/pos`), the **facts** each one asserted or retracted (`:fact/tx`, `:fact/e` —
+  a box by its path, `[:b3]` —, `:fact/a`, `:fact/v`, `:fact/added`), and the **work at that point** (`:box/id`,
+  `:box/class`, `:box/text`, `:box/path`, `:box/parent`…; `:line/from`, `:line/outlet`, `:line/to`, `:line/inlet`).
+- `(pull '[*] [:box/path [:b3]])` — an entity with its attributes; `(entity e)` is `(pull '[*] e)`.
+- A path or a point is compared through `:in`, not written inside a clause: `(q '[:find … :in $ ?e :where [?f :fact/e ?e] …] (db) [:b3])`.
+- Claude reads the history the same way: its `work_history` tool also takes a query.
+
+Some questions:
+
+```clojure
+;; which boxes Claude changed on this branch
+(q '[:find [?id ...] :where [?t :tx/via :claude] [?f :fact/tx ?t] [?f :fact/e ?p] [?b :box/path ?p] [?b :box/id ?id]])
+
+;; every text the bass box :b3 has had, in order (the voice it played before it became what it is)
+(sort-by first (q '[:find ?s ?v :in $ ?e :where [?f :fact/e ?e] [?f :fact/a :text] [?f :fact/added true]
+                                               [?f :fact/v ?v] [?f :fact/tx ?t] [?t :tx/seq ?s]] (db) [:b3]))
+
+;; what agent :b7 did since a point of the history: each change and its request
+(q '[:find ?s ?why ?op :in $ ?from :where [?x :tx/pos ?from] [?x :tx/seq ?s0] [?t :tx/box :b7] [?t :tx/seq ?s]
+                                         [(>= ?s ?s0)] [?t :tx/why ?why] [?t :tx/op ?op]] (db) ["segment" 12])
+
+;; what feeds the dac~: the boxes wired into it now
+(q '[:find [?id ...] :where [?d :box/class "dac~"] [?l :line/to ?d] [?l :line/from ?b] [?b :box/id ?id]])
+```
+
 ### Lines
 
 A work can have several **lines**: independent histories, each a tab above the patch. The main line

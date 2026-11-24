@@ -379,6 +379,45 @@ los tooltips de la historia, y la REPL lo lee como datos (discusión #382).
 Los eventos hechos antes de esto no tienen transacción: dicen quién los hizo (los de su segmento), no cuándo ni de
 dónde.
 
+### Consultar la historia con Datalog
+
+`(q '[:find … :where …])` le hace una pregunta a la historia en Datalog, el lenguaje de consultas de Datomic, y
+[DataScript](https://github.com/tonsky/datascript) la responde: se carga desde el CDN la primera vez que hace falta
+(la primera consulta puede contestar que todavía está cargando: vuelve a preguntar un momento después). La historia
+sigue siendo lo que es; para cada valor suyo que se consulta, DataScript recibe un índice, hecho una vez y ampliado a
+medida que la historia crece.
+
+- `(q query)` donde estás; `(q query db)` en un valor de la historia; `(q query db ["segmento" n])` en cualquier punto
+  de cualquier rama; `(q query (with …))` sobre una prueba, como si se hubiera hecho. Más argumentos son las entradas
+  de su `:in`.
+- Lo que puede preguntar, `(schema :history)`: las **transacciones** (`:tx/via`, `:tx/box`, `:tx/why`, `:tx/kind`,
+  `:tx/op`, `:tx/seq`, `:tx/t`, `:tx/author`, `:tx/pos`), los **hechos** que cada una afirmó o retiró (`:fact/tx`,
+  `:fact/e` —una caja por su ruta, `[:b3]`—, `:fact/a`, `:fact/v`, `:fact/added`), y la **obra en ese punto**
+  (`:box/id`, `:box/class`, `:box/text`, `:box/path`, `:box/parent`…; `:line/from`, `:line/outlet`, `:line/to`,
+  `:line/inlet`).
+- `(pull '[*] [:box/path [:b3]])` — una entidad con sus atributos; `(entity e)` es `(pull '[*] e)`.
+- Una ruta o un punto se comparan a través de `:in`, no escritos dentro de una cláusula:
+  `(q '[:find … :in $ ?e :where [?f :fact/e ?e] …] (db) [:b3])`.
+- Claude lee la historia igual: su herramienta `work_history` también acepta una consulta.
+
+Algunas preguntas:
+
+```clojure
+;; qué cajas cambió Claude en esta rama
+(q '[:find [?id ...] :where [?t :tx/via :claude] [?f :fact/tx ?t] [?f :fact/e ?p] [?b :box/path ?p] [?b :box/id ?id]])
+
+;; todos los textos que ha tenido la caja del bajo :b3, en orden (la voz que tocaba antes de ser lo que es)
+(sort-by first (q '[:find ?s ?v :in $ ?e :where [?f :fact/e ?e] [?f :fact/a :text] [?f :fact/added true]
+                                               [?f :fact/v ?v] [?f :fact/tx ?t] [?t :tx/seq ?s]] (db) [:b3]))
+
+;; qué hizo el agente :b7 desde un punto de la historia: cada cambio y su petición
+(q '[:find ?s ?why ?op :in $ ?from :where [?x :tx/pos ?from] [?x :tx/seq ?s0] [?t :tx/box :b7] [?t :tx/seq ?s]
+                                         [(>= ?s ?s0)] [?t :tx/why ?why] [?t :tx/op ?op]] (db) ["segmento" 12])
+
+;; qué alimenta el dac~: las cajas conectadas a él ahora
+(q '[:find [?id ...] :where [?d :box/class "dac~"] [?l :line/to ?d] [?l :line/from ?b] [?b :box/id ?id]])
+```
+
 ### Líneas
 
 Una obra puede tener varias **líneas**: historias independientes, cada una en una pestaña sobre el patch.

@@ -3,6 +3,7 @@
 //   node -e 'import("./studies/67-prelude/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import * as P from "../kairotic/prelude.mjs";
 import { chordOf } from "../kairotic/compress.mjs";
+import { grammarErrors } from "../kairotic/functions.mjs";
 
 const load = async (id) => {
   const url = new URL(`../data/${id}.json`, import.meta.url);
@@ -29,13 +30,24 @@ export async function run() {
   is("a voice meeting another at the end: the four notes of the final chord reached by the five voices, none crossing",
      new Set(H.rows[34]).size === 4 && H.rows[34].every((p, i) => i === 0 || p >= H.rows[34][i - 1]));
 
-  // ─── its levels (Study 61's reduction, a chord a unit) ───
+  // ─── its tonal functions (functions.mjs, @kairotic/rules) ───
+  const F = P.levelFunctions(an.levels[0]);
+  is("the surface's functions: T S D T, T V/G D T…, and the grammar of a tonal phrase kept throughout (no dominant taken back, every applied dominant resolved)",
+     F.slice(0, 7).map(P.label).join(" ") === "T S D T T V/G D" && grammarErrors(F).length === 0);
+  const free = P.analyse(H, { functional: false });
+  is("reduced without them, the economy takes away what the harmony needs: some level goes D → S (G7 → F/C) or leaves an applied dominant unresolved",
+     free.levels.some((L) => grammarErrors(P.levelFunctions(L)).length > 0));
+  is("reduced with them, every level a tonal phrase: no step may break the grammar (strict: where none is left, the frame)",
+     an.functional && an.levels.every((L) => grammarErrors(P.levelFunctions(L)).length === 0));
+
+  // ─── its levels (Study 61's reduction, a chord a unit, the functions as its judge) ───
   const last = an.levels[an.levels.length - 1];
-  is("reduced level by level to a frame of 8 chords, the first and the last kept", an.levels.length >= 6 && last.length === 8 && last[0].on === 0 && last[last.length - 1].on === 34);
+  is("reduced level by level to a frame of 13 chords, the first and the last kept", an.levels.length >= 5 && last.length === 13 && last[0].on === 0 && last[last.length - 1].on === 34);
   const fr = P.frameChords(an);
-  is("… the frame: C – Am/C – D7 – Dm/F – G7 – the dominant pedal (G7 over G) – F/C (the subdominant over the tonic pedal) – C", fr.join(" ") === "C Am/C D7 Dm/F G7 G7 F/C C");
-  notes.push("the frame: " + fr.join(" – "));
-  is("… every step an ornament of the grammar (unsplit: notes held, passing, neighbours), none refused", an.steps.length >= 20 && an.steps.every((s) => s.op === "unsplit" || s.op === "unspread" || s.op === "unsuspend"));
+  is("… the frame: C – Am/C – D7 – C♯°7 (written G°7, over G) – Dm/F – G7 – C – Fmaj7 – F♯°7 – G7 – C/G – C7 – C: the applied dominants kept with what they lead to, the cadence over the tonic pedal (C7, not the retrogression G7 → F/C)",
+     fr.join(" ") === "C Am/C D7 G°7 Dm/F G7 C Fmaj7 F♯°7 G7 C/G C7 C");
+  notes.push("the frame: " + fr.join(" – ") + " · without the functions: " + P.frameChords(free).join(" – "));
+  is("… every step an ornament of the grammar (unsplit: notes held, passing, neighbours)", an.steps.length >= 20 && an.steps.every((s) => s.op === "unsplit" || s.op === "unspread" || s.op === "unsuspend"));
 
   // ─── the bits of each level (bits.mjs) ───
   const B = P.bitsByLevel(an);
@@ -50,6 +62,7 @@ export async function run() {
   is("… every chord written anew a major or minor triad, the voices not crossing, no voice leaping more than a fourth", fresh.every((r) => ["", "m"].includes(chordOf(r).kind)) && rows.every((r) => r.every((p, i) => i === 0 || p >= r[i - 1])) &&
      rows.every((r, u) => u === 0 || r.every((p, i) => Math.abs(p - rows[u - 1][i]) <= 5 || last.some((s) => s.on === u))));
   is("… and different from Bach's", rows.filter((r, u) => r.join() !== H.rows[u].join()).length >= 15);
+  is("… a tonal phrase too: the functions' grammar kept in every bar written anew", grammarErrors(P.levelFunctions(rows.map((r) => ({ notes: r.map((p) => ({ pitch: P.spell(p) })) })))).length === 0);
   notes.push("a new harmony from the frame: " + names(rows).join(" "));
   const shallow = P.rewrite(an, 1, { r: rng(3) });
   is("from a shallower level, more of Bach's kept", shallow && shallow.filter((r, u) => r.join() === H.rows[u].join()).length > rows.filter((r, u) => r.join() === H.rows[u].join()).length);

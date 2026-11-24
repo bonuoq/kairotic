@@ -26,6 +26,7 @@ import { compress, pitchName, chordOf, notesOf, expand, coder, sayRows, harmonyS
 import { reduceNotes, derivationLength, eventsOf } from "./reduction.mjs";
 import { midiOf } from "./protovoices.mjs";
 import { lexicon } from "./bits.mjs";
+import { functionsOf, grammarErrors, label } from "./functions.mjs";
 
 /** A MIDI pitch spelled as protovoices.mjs reads it (Study 66's names: C♯, E♭, F♯, A♭, B♭). */
 export const spell = (p) => pitchName(p).replace("♯", "#").replace("♭", "b");
@@ -140,8 +141,26 @@ export function keepCadence(path, notes) {
 
 /** A prelude's harmony analysed: reduceNotes with a chord a unit (a bar's weight by GTTM's metre), no hard rules but
  *  the ornaments' and the sonorities', a sonority as many notes as the voices, the economy of the derivation. */
-export function analyse(H, { economy = 3, temp = 0, r = Math.random } = {}) {
-  return { ...reduceNotes(H.notes, { per: 1, economy, temp, r, judge: null, maxSpread: H.voices.length + 1, keep: keepCadence }), harmony: H };
+export function analyse(H, { economy = 3, temp = 0, r = Math.random, functional = true, key = { tonic: "C" } } = {}) {
+  const judge = functional ? functionalJudge(key) : null;
+  return { ...reduceNotes(H.notes, { per: 1, economy, temp, r, judge, strict: functional, maxSpread: H.voices.length + 1, keep: keepCadence }), harmony: H, functional, key };
+}
+
+// ─── the tonal functions a level must keep (functions.mjs, @kairotic/rules) ───
+/** A level's chords (each slice's pitches) and their functions in the key. */
+export const levelFunctions = (path, key = { tonic: "C" }) => functionsOf(path.map((s) => s.notes.map((n) => midiOf(n.pitch))), key);
+/**
+ * The judge a reduction reads (reduceNotes' judge): a level whose functions break the grammar of a tonal phrase — a
+ * dominant taken back by a subdominant, an applied dominant left without its target — is refused around the step
+ * that made it, so the economy can never take away the chord that makes the harmony go where it goes (GTTM's
+ * prolongational reduction: a chord taken away as the prolongation of another, never so that what is left goes back).
+ * Its errors on the units' grid (a chord a unit, 1-based), as checkPath's.
+ */
+export function functionalJudge(key = { tonic: "C" }) {
+  return (path) => {
+    const errs = grammarErrors(levelFunctions(path, key), { key });
+    return { ok: !errs.length, errors: errs.map((e) => ({ unit: path[e.i].on + 1, at: `chord ${path[e.i].on + 1}`, reason: e.reason })) };
+  };
 }
 
 /** A level as rows: each slice its length and the pitch of every voice (held or struck), voice by voice. */
@@ -196,8 +215,8 @@ const CANDIDATE_STEPS = [0, 1, -1, 2, -2];
  * voice, by the grammar read forwards (a voice holds, or moves a step or a third to a consonant sonority), the words
  * said before preferred (economy, bits.mjs), drawn at temperature temp. → rows (MIDI, a chord a unit) or null.
  */
-export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budget = 20000 } = {}) {
-  const H = an.harmony, U = H.units, V = H.voices.length;
+export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budget = 4000, functional = an.functional ?? true } = {}) {
+  const H = an.harmony, U = H.units, V = H.voices.length, key = an.key || { tonic: "C" };
   const pinned = new Map();
   for (const s of an.levels[k]) {
     const row = H.voices.map((v) => { const n = s.notes.find((x) => x.voice === v); return n ? midiOf(n.pitch) : null; });
@@ -211,51 +230,70 @@ export function rewrite(an, k, { temp = 0.7, r = Math.random, economy = 3, budge
     for (let i = 0; i < Math.abs(d); i++) { do q += Math.sign(d); while (!scale.includes(((q % 12) + 12) % 12)); }
     return q;
   };
+  // (the tonal functions, as the reduction keeps them: a chord may follow another only as the grammar allows)
+  const fnOf = new Map();
+  const fn = (row) => { const kk = row.join(); let f = fnOf.get(kk); if (f === undefined) { f = functionsOf([row], key)[0]; fnOf.set(kk, f); } return f; };
+  const follows = (a, b) => !functional || !grammarErrors([fn(a), fn(b)], { key, end: false }).length;
   const lex = lexicon({ kinds: 40 });
   const gumbel = () => -Math.log(-Math.log(Math.min(0.999999, Math.max(1e-6, r()))));
-  const rows = [];
-  let nodes = 0;
-  const nextPin = (u) => { for (let w = u; w < U; w++) if (pinned.has(w)) return w; return null; };
-  function go(u) {
-    if (u === U) return true;
-    if (++nodes > budget) return false;
-    if (pinned.has(u)) { rows.push(pinned.get(u)); if (go(u + 1)) return true; rows.pop(); return false; }
-    const prev = rows[u - 1], w = nextPin(u), goal = w === null ? null : pinned.get(w);
-    // every voice a candidate step; the chord consonant, the voices not crossing, each still able to reach the goal
-    const opts = [];
-    const rec = (i, row, words) => {
-      if (i === V) {
-        // (a consonant sonority: a major or minor triad in any position, as chordOf names it — by pitch classes, so
-        // no spelling can pass an augmented triad off as a 6th)
-        const ch = chordOf(row);
-        if (!ch || (ch.kind !== "" && ch.kind !== "m") || ch.extra !== undefined) return;
-        let c = 0;
-        for (const wd of words) c += economy * (lex.bits(wd) - lex.bits("")) / 4;
-        // (motion costs: a voice moving costs a little, a leap more — the smoothest preferred)
-        c += row.reduce((s, p, j) => s + Math.abs(p - prev[j]) * 0.05, 0);
-        opts.push({ row: row.slice(), words: words.slice(), key: c - temp * gumbel() });
-        return;
+  const rows = new Array(U).fill(null);
+  for (const [u, row] of pinned) rows[u] = row;
+  // span by span: the bars between two chords kept, drawn so the first follows the chord before and the last leads
+  // into the chord after (each span its own search: the chords kept cut the phrase into independent spans)
+  const pins = [...pinned.keys()].sort((a, b) => a - b);
+  for (let j = 0; j + 1 < pins.length; j++) {
+    const a = pins[j], b = pins[j + 1], goal = pinned.get(b);
+    if (b - a < 2) { if (!follows(pinned.get(a), goal)) return null; continue; }
+    let nodes = 0;
+    const span = [];
+    const go = (u) => {
+      const prev = u === a + 1 ? pinned.get(a) : span[span.length - 1];
+      if (u === b) return follows(prev, goal);
+      if (++nodes > budget) return false;
+      const opts = [];
+      const rec = (i, row, words) => {
+        if (i === V) {
+          // (a consonant sonority: a major or minor triad in any position, as chordOf names it — by pitch classes)
+          const ch = chordOf(row);
+          if (!ch || (ch.kind !== "" && ch.kind !== "m") || ch.extra !== undefined) return;
+          if (!follows(prev, row)) return;
+          let c = 0;
+          for (const wd of words) c += economy * (lex.bits(wd) - lex.bits("")) / 4;
+          // (motion costs: a voice moving costs a little, a leap more — the smoothest preferred)
+          c += row.reduce((s2, p, jj) => s2 + Math.abs(p - prev[jj]) * 0.05, 0);
+          opts.push({ row: row.slice(), words: words.slice(), key: c - temp * gumbel() });
+          return;
+        }
+        for (const d of CANDIDATE_STEPS) {
+          const p = moveBy(prev[i], d);
+          if (i > 0 && p < row[i - 1]) continue;
+          // (into the chord kept next a voice may also leap an octave: a doubling closing, as into the final chord)
+          // (further away, the distance as pitch classes: the octave leap may come at the end)
+          const gap = goal[i] - p, near = b - u === 1 ? Math.abs(gap) : Math.min(Math.abs(gap), Math.abs(gap - 12), Math.abs(gap + 12));
+          if (near > (b - u === 1 ? 12 : 2 * (b - u) + 2)) continue;
+          row.push(p); words.push("v|" + d);
+          rec(i + 1, row, words);
+          row.pop(); words.pop();
+        }
+      };
+      rec(0, [], []);
+      opts.sort((x, y) => x.key - y.key);
+      for (const o of opts.slice(0, 6)) {
+        span.push(o.row);
+        if (go(u + 1)) return true;
+        span.pop();
       }
-      for (const d of CANDIDATE_STEPS) {
-        const p = moveBy(prev[i], d);
-        if (i > 0 && p < row[i - 1]) continue;
-        // (into the chord pinned next a voice may also leap an octave: a doubling closing, as into the final chord)
-        if (goal && Math.abs(goal[i] - p) > (w - u === 1 ? 12 : 2 * (w - u) + 2)) continue;
-        row.push(p); words.push("v|" + d);
-        rec(i + 1, row, words);
-        row.pop(); words.pop();
-      }
+      return false;
     };
-    rec(0, [], []);
-    opts.sort((a, b) => a.key - b.key);
-    for (const o of opts.slice(0, 6)) {
-      rows.push(o.row); o.words.forEach((x) => lex.add(x));
-      if (go(u + 1)) return true;
-      rows.pop();
-    }
-    return false;
+    if (!go(a + 1)) { if (rewrite.debug) rewrite.debug(a, b, nodes); return null; }
+    span.forEach((row, i) => { rows[a + 1 + i] = row; for (let v = 0; v < V; v++) lex.add("v|" + stepIn(i === 0 ? pinned.get(a)[v] : span[i - 1][v], row[v])); });
   }
-  return go(0) ? rows : null;
+  return rows.some((x) => x === null) ? null : rows;
+}
+/** The scale steps (C major's) from one pitch to another, signed: the word a voice's move is. */
+function stepIn(p, q) {
+  const sc = [0, 2, 4, 5, 7, 9, 11], deg = (x) => 7 * Math.floor(x / 12) + sc.filter((v) => v <= ((x % 12) + 12) % 12).length - 1;
+  return deg(q) - deg(p);
 }
 
 /** A figure (Study 66's rule) over chords (rows of MIDI pitches, a chord a figure): the notes [[onset dur midi] …]. */
@@ -275,4 +313,4 @@ export function read(raw, o = {}) {
   return { c, H, an: analyse(H, o), figure: mainFigure(c) };
 }
 
-export { notesOf, derivationLength, eventsOf, midiOf };
+export { label, grammarErrors, notesOf, derivationLength, eventsOf, midiOf };

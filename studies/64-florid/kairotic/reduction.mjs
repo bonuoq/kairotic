@@ -203,10 +203,12 @@ export function reduce(phrase, { key = { tonic: "C" }, per = PER, judge: judgeOf
  * voices as they have): reduce's passes, its policy and its economy, without a phrase of the incipits' (Study 67 reads
  * a prelude's harmony so, five voices a bar). judge: how a level is checked (null: by no hard rules, the
  * ornaments and the consonance of a sonority only); maxSpread: the notes one sonority may have; keep(path, notes) →
- * (i → whether slice i stays: the frame's retention; by default the first slice and the cadence's). → {per, notes,
+ * (i → whether slice i stays: the frame's retention; by default the first slice and the cadence's); strict: where
+ * nothing legal is left the reduction stops (by default it takes the cheapest step the judge refuses, alone, and
+ * goes on — strict for a judge whose rules no level may break, as the tonal functions). → {per, notes,
  * levels, steps}.
  */
-export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math.random, judge = null, economy = 0, explanations = economy ? 8 : 1, maxSpread = 4, keep = null } = {}) {
+export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math.random, judge = null, economy = 0, explanations = economy ? 8 : 1, maxSpread = 4, keep = null, strict = false } = {}) {
   let path = slicesOf(notes);
   const levels = [path], steps = [], top = 3;
   const lex = lexicon();
@@ -241,7 +243,8 @@ export function reduceNotes(notes, { per = PER, weights = {}, temp = 0, r = Math
     }
     if (taken) { levels.push(path); continue; }
     if (stratum < top) { stratum++; continue; }
-    // nothing legal left: the cheapest step the rules refuse, alone, if any
+    // nothing legal left: the cheapest step the rules refuse, alone, if any (none where strict)
+    if (strict) break;
     const all = candidates(path, notes, { per, weights, judge, explanations, maxSpread, keep });
     if (!all.length) break;
     const { path: next, touches, ...step } = choose1(all);

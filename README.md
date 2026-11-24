@@ -88,6 +88,7 @@ packages come into a work by themselves when a box uses one of their classes (`k
 | | Licence |
 |---|---|
 | [Scittle](https://github.com/babashka/scittle) (SCI, interpreted ClojureScript) | EPL-1.0 |
+| [DataScript](https://github.com/tonsky/datascript) (Datalog queries over the history; loaded on the first query) | EPL-1.0 |
 | [Verovio](https://www.verovio.org) (notation) | LGPL-3.0 or later |
 | [faustwasm](https://github.com/grame-cncm/faustwasm) (Faust compiler in WebAssembly) | LGPL-3.0 |
 | [IBM Plex](https://github.com/IBM/plex) (typefaces, via Google Fonts) | OFL-1.1 |
