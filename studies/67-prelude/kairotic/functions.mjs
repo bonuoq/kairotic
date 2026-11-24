@@ -20,7 +20,8 @@
 //                       not its own, or a diminished chord whose root is not the leading tone — the dominant of the
 //                       chord it leads to (its target: a 5th below its root; a semitone above a diminished root)
 //   the grammar    T → T S D · S → S D T (plagal) · D → D T (the deceptive cadence is T: ⑥) — never D → S, the
-//                  retrogression that takes back a dominant before it is resolved; an applied dominant goes to its
+//                  retrogression that takes back a dominant before it is resolved (but a chain of 6/3s over a bass
+//                  moving by step is a line, a sequence, not a succession of functions); an applied dominant goes to its
 //                  target (its root, or its bass: the target's cadential 6/4) or to another applied dominant (a
 //                  chain), and may come after anything; the phrase ends on the tonic
 //
@@ -107,6 +108,32 @@ export function functionOf(pitches, key = { tonic: "C" }) {
   return out("T");
 }
 
+/**
+ * The chord two voices imply (a bass and a melody, as a partimento's are heard): the missing members added, the
+ * notes sounding kept — over a 3rd or a 5th the bass the root (its 5th or 3rd added, as the key's scale has it), over
+ * a 6th the melody the root (the bass its 3rd: its 5th added), over a 4th the bass the 5th (the root's 3rd added: a
+ * 6/4), over an octave the bass's triad; a dissonance (a 2nd, a 7th: a suspension, a passing note) the bass's triad.
+ * Three notes or more that already make a chord are taken as they are. → MIDI pitches.
+ */
+export function impliedChord(pitches, key = { tonic: "C" }) {
+  if (pitches.length >= 3 && chordOf(pitches) && chordOf(pitches).extra === null) return pitches;
+  const K = keyPc(key), scale = K.minor ? MINOR : MAJOR;
+  const lo = Math.min(...pitches), hi = Math.max(...pitches);
+  // (a pitch's degree: the scale's note at or below it; its pitch class back from a degree, ⑦ raised in minor's ⑤)
+  const degOf = (p) => { const x = mod(p - K.tonic, 12); let i = 6; while (i > 0 && scale[i] > x) i--; return 7 * Math.floor((p - K.tonic) / 12) + i; };
+  const pcOf = (d, rootDeg) => { let x = scale[mod(d, 7)]; if (K.minor && mod(rootDeg, 7) === 4 && mod(d, 7) === 6) x += 1; return mod(K.tonic + x, 12); };
+  const iv = mod(degOf(hi) - degOf(lo), 7), b = degOf(lo);
+  const add = [];
+  if (iv === 2) add.push([b, 4]);
+  else if (iv === 4) add.push([b, 2]);
+  else if (iv === 5) add.push([b - 2, 4]);
+  else if (iv === 3) add.push([b - 4, 2]);
+  else { add.push([b, 2]); add.push([b, 4]); }
+  const out = [lo, hi];
+  for (const [root, off] of add) { const pc = pcOf(root + off, root); let p = lo; while (mod(p, 12) !== pc) p++; out.push(p); }
+  return out.sort((a, b2) => a - b2);
+}
+
 /** The functions of a succession of chords (pitches each). */
 export const functionsOf = (chords, key) => chords.map((ps) => functionOf(ps, key));
 
@@ -142,6 +169,11 @@ export function grammarErrors(fs, { end = true, key = { tonic: "C" } } = {}) {
       continue;
     }
     if (b.fn === "A") continue;
+    // (a chain of 6/3s, the bass by step under them — a fauxbourdon, a 7–6 chain resolved — is a line, not a
+    // succession of functions: the sequence prolongs, and the grammar holds again where it ends)
+    const sixth = (f) => f.chord.bass !== f.chord.root && mod(f.chord.bass - f.chord.root, 12) <= 4 && mod(f.chord.bass - f.chord.root, 12) >= 3;
+    const step = mod(a.chord.bass - b.chord.bass, 12);
+    if (sixth(a) && sixth(b) && (step === 1 || step === 2 || step === 10 || step === 11)) continue;
     if (!ALLOWED[a.fn].includes(b.fn)) errs.push({ i: i + 1, reason: `${a.fn} → ${b.fn}: the dominant taken back before it is resolved` });
   }
   if (end && fs.length && fs[fs.length - 1] && fs[fs.length - 1].fn !== "T") errs.push({ i: fs.length - 1, reason: "the phrase does not end on the tonic" });

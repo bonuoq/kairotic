@@ -43,15 +43,15 @@ await (async function () {
     is("… taken as the phrase: analysed again", $("mel").value === v && S().state().levels >= 2 && !S().state().variation);
 
     $("ex").value = "scale-76"; $("ex").dispatchEvent(new Event("change"));
-    is("the 7–6 chain: analysed in six levels, five suspensions taken in the first pass", S().state().levels === 6 && document.querySelectorAll('#levels .lv[data-k="0"] .cell.next').length === 5);
+    is("the 7–6 chain: analysed in six levels, five suspensions taken in the first pass (a line: the functions change nothing)", S().state().levels === 6 && document.querySelectorAll('#levels .lv[data-k="0"] .cell.next').length === 5);
     click(document.querySelector(`#levels .lv[data-k="0"]`));
     click($("mei-level"));
     is("the 7–6 surface exported: its suspensions written as half notes tied over the bar line, not struck again", await (async () => { for (let i = 0; i < 40 && saved.length < 2; i++) await new Promise((r) => setTimeout(r, 50)); const t = saved[1] && saved[1].text; return t && (t.match(/tie="i"/g) || []).length >= 6 && !/pname="a" oct="5" dur="4"/.test(t); })());
     $("ex").value = "sequence-up"; $("ex").dispatchEvent(new Event("change"));
     const links = () => [...$("steps").querySelectorAll("li li")].map((li) => li.textContent).filter((t) => /weak:/.test(t) && /bar [1-4],/.test(t));
-    is("the rising sequence, with economy 3: its four links one ornament, the step below an incomplete neighbour", links().length === 4 && links().every((t) => /a step away from the note before, not coming back/.test(t)) && /the derivation [\d.]+ bits, 3 different steps/.test($("facts").textContent));
+    is("the rising sequence, with economy 3: its four links one ornament, the step below an incomplete neighbour", links().length === 4 && links().every((t) => /a step away from the note before, not coming back/.test(t)) && /the derivation [\d.]+ bits, 4 different steps/.test($("facts").textContent));
     $("economy").value = "0"; $("economy").dispatchEvent(new Event("change"));
-    is("… with economy 0: the last link an anticipation, the derivation longer", links().some((t) => /struck early and held into it/.test(t)) && /4 different steps/.test($("facts").textContent));
+    is("… with economy 0: the last link an anticipation, the derivation longer", links().some((t) => /struck early and held into it/.test(t)) && /5 different steps/.test($("facts").textContent));
     $("economy").value = "3";
     $("temp").value = "1";
     click($("again"));
