@@ -1,0 +1,57 @@
+# The Developer Certificate of Origin (https://developercertificate.org/, see CONTRIBUTING.md): every commit of a
+# pull request carries a Signed-off-by line.
+#
+#   - a commit by a person: a Signed-off-by with the author's own email (what `git commit -s` writes)
+#   - a commit whose author is an AI assistant's identity (AI_AUTHORS below): the Signed-off-by of a person,
+#     the one who directed the work and submits it — an assistant cannot certify the DCO
+#   - merge commits and GitHub's bots (…[bot]@users.noreply.github.com, e.g. the vendor workflow) are not checked
+#
+# It reads the commits through the API, so it needs no checkout and works for pull requests from forks.
+name: dco
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: dco-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  signed-off:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          AI_AUTHORS: "noreply@anthropic.com"
+        with:
+          script: |
+            const ai = new Set(process.env.AI_AUTHORS.split(/[\s,]+/).filter(Boolean).map((e) => e.toLowerCase()));
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number, per_page: 100 });
+            const bad = [];
+            for (const c of commits) {
+              if (c.parents.length > 1) continue;
+              const author = (c.commit.author.email || "").toLowerCase();
+              if (author.endsWith("[bot]@users.noreply.github.com")) continue;
+              const signers = [...c.commit.message.matchAll(/^Signed-off-by:\s*.+?<([^>]+)>\s*$/gim)]
+                .map((m) => m[1].trim().toLowerCase());
+              const ok = ai.has(author) ? signers.some((s) => !ai.has(s)) : signers.includes(author);
+              if (!ok) bad.push({ sha: c.sha.slice(0, 7), subject: c.commit.message.split("\n")[0], author,
+                                  why: ai.has(author)
+                                    ? "written by an assistant: needs the Signed-off-by of the person who submits it"
+                                    : signers.length ? "Signed-off-by does not match the author's email (" + author + ")"
+                                                     : "no Signed-off-by" });
+            }
+            core.info(`${commits.length} commit(s), ${bad.length} without a valid sign-off.`);
+            if (bad.length) {
+              for (const b of bad) core.error(`${b.sha} ${b.subject} — ${b.why}`);
+              core.setFailed("Some commits are not signed off. Sign them off with `git rebase --signoff " +
+                context.payload.pull_request.base.ref + "` and `git push --force-with-lease` (see CONTRIBUTING.md, DCO).");
+            }

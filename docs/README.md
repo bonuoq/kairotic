@@ -36,6 +36,12 @@
 - [Claude's examples](../examples/README.md) — the catalog Claude reads when it writes.
 - [The relay](../relay/README.md) — a GUN relay for rooms.
 
+## Contributing
+
+- [Contributing](../CONTRIBUTING.md) — setting up, the tests, the conventions, the DCO.
+- [How Kairotic is built](how-kairotic-is-built.md) — human direction, Claude Code as the assistant, your own Claude.
+- [Roadmap](../ROADMAP.md) — what comes after 0.3.0.
+
 ## History
 
 - [The studies](studies.md) — the 23 studies of the prototype, and what each one tested.

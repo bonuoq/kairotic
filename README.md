@@ -3,7 +3,7 @@
   <img src="brand/kairotic-logo.svg" alt="Kairotic" height="72">
 </picture></h1>
 
-*[Leer en castellano](README.es.md)* · **0.2.0-alpha** · [open the app](https://bonuoq.github.io/kairotic/) · [documentation](docs/README.md)
+*[Leer en castellano](README.es.md)* · **0.3.0-alpha** · [open the app](https://bonuoq.github.io/kairotic/) · [documentation](docs/README.md)
 
 A collaborative visual-acoustic space for musical improvisation, composition and performance:
 a patcher where **code and patch are the same work**, with a branching, shared history, an EDN tree for extensible musical notation, Verovio integration, different graphical representations, DSP, code boxes (Faust, ClojureScript) and components
@@ -38,14 +38,40 @@ app/                  the app: index.html (interface and styles) and page/*.cljs
 core/kairotic/        the modules: components, engine, canvas, score, mt (musical trees), links, assistant (Claude)…
 core/backends/        the GUN backend for Pages (db, rooms, user, Claude with your own key)
 site/                 the Pages edition: build.mjs, configuration (relays), GUN, the embed test page
-packages/             official packages: @kairotic/synth, @kairotic/spatial, @kairotic/controls
+packages/             the official component packages, @kairotic/* (see below)
 examples/             the catalog Claude reads when it writes
 docs/                 documentation (English and Spanish), tutorials, generated class reference
 tests/                tests (cljs/*.cljs), run in the browser (tests.html) and in CI
 relay/                a GUN relay for rooms
-studies/              the 23 studies of the prototype, as they were published
+studies/              the studies (01–70), each as it was published; studies/_shared, what they share
 components/           deprecated npm package kairotic-components (studies 9–23), replaced by @kairotic/controls
+componentes/          the package before it (kairotic-componentes, studies 7–8)
 ```
+
+## Official packages
+
+All published on npm under the `@kairotic` scope, MPL-2.0, from this repository:
+
+| Package | What it is |
+|---|---|
+| [`@kairotic/app`](app/) | the app as files, loaded from jsDelivr by the claude.ai shell |
+| [`@kairotic/relay`](relay/) | a GUN relay for rooms and saved works, with an OSC bridge and a shared clock |
+| [`@kairotic/synth`](packages/synth/) | synthesis: `adsr~`, `synth~`, `gendy~` (after Xenakis), `click~` |
+| [`@kairotic/spatial`](packages/spatial/) | space: `pan~`, `space~` (binaural) |
+| [`@kairotic/controls`](packages/controls/) | controls with their own views: `knob`, `keyboard`, `scale` |
+| [`@kairotic/analysis`](packages/analysis/) | listening: `features~`, `pitch~`, `onset~`, `chroma~`, `spectrum~`, `transcribe`, `follow`, `form~`, `monitor` |
+| [`@kairotic/data`](packages/data/) | data from outside: `fetch`, `edn` |
+| [`@kairotic/theory`](packages/theory/) | theory views: `pcclock`, `fourier`, `tonnetz` |
+| [`@kairotic/cac`](packages/cac/) | computer-assisted composition: `cac` (partimento, judge), `comes` (live counterpoint) and the shared kernels |
+| [`@kairotic/rules`](packages/rules/) | one constraint engine for every style: rules, catalogue and styles (no boxes) |
+| [`@kairotic/rhythm`](packages/rhythm/) | rhythm as geometry: `necklace`, `euclid`, `chance`, `homometric`, `swap`, `morph`, `vary`, `phase` |
+| [`@kairotic/patterns`](packages/patterns/) | patterns after SuperCollider: `pbind`, `pattern`, `player`, `render` |
+| [`@kairotic/spectral`](packages/spectral/) | spectral processing: `shift~` (stftPitchShift in WebAssembly) |
+| [`@kairotic/io`](packages/io/) | the outside world: MIDI (with MPE), OSC, motion, gamepads, serial, `control` |
+| [`@kairotic/net`](packages/net/) | a shared room: `share`, `shared`, `pulse` |
+| [`@kairotic/faust-units`](packages/faust-units/) | Faust as unit boxes, kept in sync with the code, and the recipe of a `faust~` (no boxes) |
+
+The classes and their arguments are in [`packages/`](packages/README.md) and in the app's Help.
 
 ## Development
 
@@ -62,6 +88,19 @@ cd _site && python3 -m http.server 8000
 `site/build.mjs` builds the packages, Claude's examples and the tutorials first. On every
 push, GitHub Actions deploys Pages, runs the tests in a headless Chromium, and regenerates
 [docs/reference.md](docs/reference.md) from the help. See the [Changelog](CHANGELOG.md).
+
+## Contributing
+
+Kairotic is open to contributions: components, studies, documentation, translations, tests, bug reports.
+
+- **[Contributing](CONTRIBUTING.md)**: setting up, running the tests, the project's conventions, and the
+  [DCO](https://developercertificate.org/) (every commit signed off: `git commit -s`).
+- **Ideas** go to [Discussions](https://github.com/bonuoq/kairotic/discussions/categories/ideas);
+  **bugs** to [Issues](https://github.com/bonuoq/kairotic/issues).
+- **[Roadmap](ROADMAP.md)**: what comes after 0.3.0.
+- **[How Kairotic is built](docs/how-kairotic-is-built.md)**: human direction, Claude Code as the assistant
+  that writes much of the code, and what that means for you.
+- [Code of Conduct](CODE_OF_CONDUCT.md) · [Security](SECURITY.md)
 
 ## Components
 
@@ -83,15 +122,46 @@ packages come into a work by themselves when a box uses one of their classes (`k
 - **Community components:** every definition declares its licence with `:license` (an
   [SPDX](https://spdx.org/licenses/) id); when imported, the licence stays in the header of the copy.
 
-### Dependencies (loaded from a CDN, not included in the repository)
+### Dependencies
 
-| | Licence |
-|---|---|
-| [Scittle](https://github.com/babashka/scittle) (SCI, interpreted ClojureScript) | EPL-1.0 |
-| [DataScript](https://github.com/tonsky/datascript) (Datalog queries over the history; loaded on the first query) | EPL-1.0 |
-| [Verovio](https://www.verovio.org) (notation) | LGPL-3.0 or later |
-| [faustwasm](https://github.com/grame-cncm/faustwasm) (Faust compiler in WebAssembly) | LGPL-3.0 |
-| [IBM Plex](https://github.com/IBM/plex) (typefaces, via Google Fonts) | OFL-1.1 |
+**Loaded from a CDN** (jsDelivr) when the app needs them, pinned to a version; not in the repository:
+
+| | Version | Licence | Used for |
+|---|---|---|---|
+| [Scittle](https://github.com/babashka/scittle) (SCI) | 0.7.30 | EPL-1.0 | interpreting the ClojureScript of the page and of the boxes |
+| [DataScript](https://github.com/tonsky/datascript) | 1.8.1 | EPL-1.0 | Datalog queries over the history (loaded on the first query) |
+| [Verovio](https://www.verovio.org) (toolkit in WebAssembly) | 5.7.0 | LGPL-3.0-or-later | engraving scores (MEI) |
+| [faustwasm](https://github.com/grame-cncm/faustwasm) (`@grame/faustwasm`) | 0.18.5 | LGPL-3.0 | compiling `faust~` boxes in the browser; carries the Faust libraries |
+| [Meyda](https://meyda.js.org) | 5.6.3 | MIT | audio descriptors (`@kairotic/analysis`, the recipe of a `faust~`) |
+| [IBM Plex](https://github.com/IBM/plex) Sans, Sans Condensed, Mono (via Google Fonts) | — | OFL-1.1 | typefaces |
+| the official `@kairotic/*` packages | their own | MPL-2.0 | brought into a work at the version it pins |
+
+**Included in the repository** (bundled or vendored, with their licences):
+
+| | Version | Licence | Where |
+|---|---|---|---|
+| [CodeMirror 6](https://codemirror.net) and [Lezer](https://lezer.codemirror.net) (`@codemirror/*`, `@lezer/*`) | state 6.7.6, view 6.43.14, language 6.13.1, commands 6.11.1, autocomplete 6.20.3, search 6.7.2, lint 6.9.7, lang-markdown 6.0.0; Lezer common 1.5.3, lr 1.4.11, highlight 1.2.5, markdown 1.8.0 | MIT | the code editor, bundled into `core/vendor/codemirror.mjs` ([lock file](core/vendor/codemirror/package-lock.json)) |
+| [clojure-mode](https://github.com/nextjournal/clojure-mode) (`@nextjournal/clojure-mode`) | 0.3.3 | EPL-2.0 | Clojure editing in that bundle |
+| [lezer-clojure](https://github.com/nextjournal/lezer-clojure) (`@nextjournal/lezer-clojure`) | 1.0.0 | ISC | Clojure grammar, in that bundle |
+| [squint](https://github.com/squint-cljs/squint) (`squint-cljs`, its runtime) | 0.7.111 | EPL-1.0 | used by clojure-mode, in that bundle |
+| [GUN](https://gun.eco) (`gun.js`, `sea.js`, `lib/radix`, `radisk`, `store`, `rindexed`) | commit `054ca85` (0.2020.1239) | MIT OR Zlib OR Apache-2.0 | rooms and saved works in Pages: [`site/vendor/gun/`](site/vendor/gun/VERSION.md); the relay installs the same commit |
+| [stftPitchShift](https://github.com/jurihock/stftPitchShift) (Jürgen Hock) | 2.0 | MIT | compiled to WebAssembly inside `@kairotic/spectral` (`shift~`) |
+| [GendyJS](https://github.com/abbernie/gendy) (Andrew Bernstein) | — | MIT | ported to the `gendy~` worklet in `@kairotic/synth` |
+
+**Only in some studies:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Study 24, from jsDelivr); the
+deprecated `kairotic-componentes` 0.2.0 and `kairotic-components` 0.1.2 (MPL-2.0, Studies 7–23).
+
+**The relay** (`@kairotic/relay`, installed with npm): GUN at the same commit and
+[ws](https://github.com/websockets/ws) ^7.5.10 (MIT).
+
+**To build and test only** (not shipped): [esbuild](https://esbuild.github.io) ^0.28 (MIT, the editor bundle),
+[wasi-sdk](https://github.com/WebAssembly/wasi-sdk) (Apache-2.0 WITH LLVM-exception, the WebAssembly of
+`shift~`), [Playwright](https://playwright.dev) 1.56.0 (Apache-2.0) and
+[http-server](https://github.com/http-party/http-server) 14 (MIT) in CI.
+
+**Services:** jsDelivr and Google Fonts serve the files above; Claude is reached with **your own**
+Anthropic API key in Pages (or your own claude.ai account inside claude.ai); rooms go through a GUN relay
+(the site's, `kairotic-relay.onrender.com`, or your own).
 
 Faust code written in a `faust~` box can use the [Faust libraries](https://faustlibraries.grame.fr/);
 every function declares its licence, and whoever distributes a work must respect those of the

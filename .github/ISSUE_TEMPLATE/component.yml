@@ -1,0 +1,60 @@
+name: New component
+description: A box class you want to write, or would like to see, in an official package.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A component is a box class: a map of data and functions (see
+        [Writing a component](https://github.com/bonuoq/kairotic/blob/main/docs/writing-a-component.md)).
+        If it is a larger idea than one box, or the direction is still open, start in
+        [Discussions → Ideas](https://github.com/bonuoq/kairotic/discussions/categories/ideas) instead.
+  - type: input
+    id: usage
+    attributes:
+      label: Usage
+      description: Its class and arguments, as it would be written in a box. A name from clojure.core where one fits.
+      placeholder: "partition [n step]"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What it does
+      description: What it receives on each inlet, what it sends, its view if it has one. Orders are keywords (:bang, :clear…); pitches in Hz by default.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What for
+      description: A musical situation it serves, a patch it would make simpler, a study it comes from.
+    validations:
+      required: true
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      description: Where it belongs.
+      options:
+        - I don't know
+        - "@kairotic/synth"
+        - "@kairotic/spatial"
+        - "@kairotic/controls"
+        - "@kairotic/analysis"
+        - "@kairotic/data"
+        - "@kairotic/theory"
+        - "@kairotic/cac"
+        - "@kairotic/rhythm"
+        - "@kairotic/patterns"
+        - "@kairotic/spectral"
+        - "@kairotic/io"
+        - "@kairotic/net"
+        - a new package
+        - the core
+  - type: checkboxes
+    id: write
+    attributes:
+      label: Writing it
+      options:
+        - label: I would like to write it myself (with its tests and its help page)

@@ -1,0 +1,32 @@
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are where Kairotic's direction is decided, in the open. Please write in English so everyone can
+        follow. Search first: the idea may already be under discussion — then add to that one.
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What you would like Kairotic to do or be, in a few sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: music
+    attributes:
+      label: The musical situation
+      description: Who would use it and how — an improvisation, a piece, a class, a rehearsal. An example helps more than a feature list.
+    validations:
+      required: true
+  - type: textarea
+    id: related
+    attributes:
+      label: What it touches
+      description: Discussions, studies, packages or tools it relates to; prior art elsewhere (Max, SuperCollider, OpenMusic, INScore…).
+  - type: textarea
+    id: first-step
+    attributes:
+      label: A first step
+      description: The smallest study or box that would try it out (optional).
