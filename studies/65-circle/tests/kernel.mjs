@@ -5,8 +5,8 @@ import { circle, PHRASES } from "../kairotic/circle.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const VOICES = ["soprano", "alto", "tenor"];
-const PINNED = { "vii-minor": 211043n, "vii-major": 4794n, meyer: 53n, fifths: 6336n, "fifths-53": 239000n, "fifths-minor": 4216n,
-                 "thirds-seconds": 998n, "thirds-seconds-minor": 19302n, "tied-bass": 27685639n, "tied-bass-minor": 12635133n,
+const PINNED = { "vii-minor": 211043n, "vii-major": 4794n, meyer: 53n, fifths: 5621n, "fifths-53": 139158n, "fifths-minor": 3753n,
+                 "thirds-seconds": 992n, "thirds-seconds-minor": 19238n, "tied-bass": 27685639n, "tied-bass-minor": 12635133n,
                  "descending-thirds": 18176n, "descending-thirds-minor": 25957n, folia: 572n };
 
 export async function run() {
@@ -46,6 +46,12 @@ export async function run() {
   const FI = circle({ phrase: "fifths" });
   is("Fifth Down Fourth Up (ex. 7.12a): every 7th prepared — held from the chord before in the same voice — and going down by step (30 drawn)",
      every(FI, 30, (W) => [1, 2, 3, 4, 5].every((t) => VOICES.every((v, i) => FI.voices[i].vertical(t, W[v][t]).cls !== 6 || (W[v][t - 1] === W[v][t] && FI.degree(W[v][t + 1]) === FI.degree(W[v][t]) - 1)))));
+  // (the soprano held over the weak unit and down a step, the bass a 5th down and a 4th up: F–E–D over F–B–E–A–D, the
+  // soprano doubling the bass's line on the strong units — chorale-4 1.3.0 no longer writes it)
+  const doubled = { soprano: ["G5", "F5", "F5", "E5", "E5", "D5", "D5", "C5"], alto: ["E5", "E5", "D5", "D5", "C5", "C5", "B4", "G4"], tenor: ["C5", "A4", "A4", "G4", "G4", "F4", "F4", "E4"] };
+  const why = FI.judge(Object.fromEntries(Object.entries(doubled).map(([v, ns]) => [v, ns.map(FI.code)])));
+  is(`... the soprano not doubling the bass at the octave on the strong units, F/F, E/E, D/D (${why})`, /octaves between the soprano and the bass on strong units in a row/.test(why || "") &&
+     every(FI, 30, (W) => [3, 5].every((t) => !(FI.voices[0].vertical(t, W.soprano[t]).cls === 0 && FI.voices[0].vertical(t - 2, W.soprano[t - 2]).cls === 0 && W.soprano[t - 1] === W.soprano[t - 2]))));
   const E = FI.engine({ temp: 0, r });
   is("... the engine's: 7ths complete and incomplete (the 5th left out, the bass doubled)", (() => {
     const kinds = [1, 2, 3, 4, 5, 6].map((t) => cls(FI, E, t).includes(4) ? "complete" : "incomplete");

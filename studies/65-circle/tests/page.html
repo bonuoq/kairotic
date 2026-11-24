@@ -19,7 +19,7 @@ const figs = () => [...d.querySelectorAll("#sheet text.fig")].map((x) => x.textC
 try {
   await wait(() => w.kairoticCircle && /^\d/.test(total()));
   const K = w.kairoticCircle;
-  is("it opens on Fifth Down Fourth Up in C major: 6,336 realizations, thirteen phrases to choose", total() === "6,336" && d.querySelector('[data-phrase="fifths"]').classList.contains("on") && d.querySelectorAll("[data-phrase]").length === 13);
+  is("it opens on Fifth Down Fourth Up in C major: 5,621 realizations, thirteen phrases to choose", total() === "5,621" && d.querySelector('[data-phrase="fifths"]').classList.contains("on") && d.querySelectorAll("[data-phrase]").length === 13);
   is("... the engine's realization drawn, sound: three upper voices over the bass, a 7th on every inner bass note", d.querySelectorAll("#sheet rect.upper").length > 0 && d.querySelectorAll("#sheet rect.tenor").length > 0 && !/✗/.test(msg()) && figs().slice(1, 7).every((f) => f === "7"));
   K.set("vii-minor");
   await wait(() => total() === "211,043");
