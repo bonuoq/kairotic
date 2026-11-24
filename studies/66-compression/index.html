@@ -1,0 +1,167 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 66 · Compression</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; padding: 14px 16px 28px; }
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* Study 66: the pieces as buttons; how much each compresses (bars); for the piece chosen, its facts, its rules (each
+   figure drawn as which of its notes comes when), the piece written with them, and the chords its figures spell. */
+.views { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; }
+.facts dt { color: var(--ink-soft); } .facts dd { margin: 0; font-family: var(--f-code); }
+.ok { color: var(--ok); } .bad { color: var(--error); }
+.bars { display: grid; gap: 4px; font: 12px var(--f-code); }
+.bar { display: grid; grid-template-columns: 9em 1fr 4em; gap: 8px; align-items: center; }
+.bar i { display: block; height: 10px; background: var(--accent); border-radius: 2px; }
+.rules { display: grid; gap: 8px; }
+.rule { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; font-size: 13px; }
+.rule svg { background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; }
+.dot { fill: var(--kairos); } .lane { stroke: var(--grid); }
+.written { display: flex; flex-wrap: wrap; gap: 4px; font: 12px var(--f-code); max-height: 320px; overflow: auto; }
+.written span { border: 1px solid var(--rule); border-radius: 4px; padding: 1px 5px; background: var(--sheet); }
+.written span.use { border-color: var(--accent); }
+.written span.rep { border-color: var(--kairos); }
+.harmony { font: 13px var(--f-code); line-height: 1.7; word-spacing: 0.3em; }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+</style>
+<main>
+<header>
+  <h1>Study 66 · compression</h1>
+  <span class="sub">the shortest description of a piece: figures, motifs and repeats, counted in bits (discussion #399)</span>
+</header>
+<div class="toolbar" id="pieces"></div>
+<div class="views">
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>Rules <span id="rules-n"></span></h2><div class="rules" id="rules"></div></section>
+    <section class="panel"><h2>The piece written with them <span>a use, its notes and the chord they spell</span></h2><div class="written" id="written"></div></section>
+    <section class="panel"><h2>What is left: the chords <span>the figures' notes, in order</span></h2><div class="harmony" id="harmony"></div></section>
+  </div>
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>Facts</h2><dl class="facts" id="facts"></dl>
+      <div class="toolbar"><button class="act" id="play">▶ the piece</button><button class="act" id="play-red">▶ the chords</button><button class="act" id="stop">■</button></div></section>
+    <section class="panel"><h2>How much each piece compresses <span>bits of its description / written out</span></h2><div class="bars" id="bars"></div></section>
+    <section class="panel"><h2>About</h2><p class="about">A piece is a stream of notes, each with its pitch and its rhythm; written out, a note costs
+      7 bits of pitch and the bits of its rhythm. A <b>figure</b> is a pattern of a few pitches with its rhythm, used over other pitches
+      (Bach's C major prelude: one figure over 32 chords); a <b>motif</b> is the same intervals from another pitch; a <b>repeat</b> says the
+      same again. Each rule is paid once, each use only for what changes; the rules that save most are taken first (three orders are
+      tried, the shortest kept), and the description is always written out again and compared note by note: it is lossless.
+      What compresses well is figuration over harmony — what is left is the chords. The keyboard preludes compress to a third,
+      the cello's to a little more than half: a line that is a melody says more. The scores are the Mutopia Project's public-domain
+      typesets (BWV 846, 999 in its guitar edition in D minor, 1007, 1009), read by a small reader of their LilyPond.</p></section>
+  </div>
+</div>
+</main>
+<script type="module">
+import { compress, lossless, describeRule, written, harmony, chordOf, pitchName } from "./kairotic/compress.mjs";
+const PIECES = [
+  { id: "bwv846-prelude", name: "BWV 846 · WTC I, Prelude in C", bar: 16 },
+  { id: "bwv999-prelude", name: "BWV 999 · Prelude (D minor)", bar: 12 },
+  { id: "bwv1007-prelude", name: "BWV 1007 · Cello Suite 1, Prelude", bar: 16 },
+  { id: "bwv1009-prelude", name: "BWV 1009 · Cello Suite 3, Prelude", bar: 12 },
+];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+const data = {}, done = {};
+for (const p of PIECES) { data[p.id] = await (await fetch(`./data/${p.id}.json`)).json(); done[p.id] = compress(data[p.id]); }
+let cur = PIECES[0].id;
+
+function figureSvg(r) {
+  const n = r.rhythm.length, k = r.kind === "figure" ? r.k : 1;
+  const w = Math.max(80, n * 9 + 10), lanes = r.kind === "figure" ? r.k : 12, h = 10 + lanes * 6;
+  const ys = r.kind === "figure" ? r.idx.map((i) => h - 6 - i * 6) : (() => { const lo = Math.min(...r.steps); return r.steps.map((s) => h - 6 - (s - lo) * (h - 12) / Math.max(1, Math.max(...r.steps) - lo)); })();
+  let x = 6, out = "";
+  for (let i = 0; i < n; i++) { out += `<circle class="dot" cx="${x}" cy="${ys[i]}" r="3"/>`; x += Math.max(4, r.rhythm[i].g * 9 || 4); if (x > w - 4) break; }
+  return `<svg width="${w}" height="${h}">${out}</svg>`;
+}
+
+function show() {
+  const c = done[cur];
+  for (const b of $("pieces").children) b.classList.toggle("on", b.dataset.id === cur);
+  $("facts").innerHTML = [
+    ["notes", c.tokens.length], ["written out", c.raw + " bits"], ["described", c.bits + " bits"],
+    ["ratio", (c.ratio * 100).toFixed(1) + " %"], ["rules", c.rules.length + " (taken: " + c.by + ")"],
+    ["lossless", `<span class="${lossless(c) ? "ok" : "bad"}">${lossless(c) ? "✓ written out again, the same notes" : "✗"}</span>`],
+  ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  $("rules-n").textContent = c.rules.length + " rules";
+  $("rules").innerHTML = c.rules.map((r) => `<div class="rule">${figureSvg(r)}<div><b>${r.id}</b> · ${esc(describeRule(r))}<br><small>${r.rhythm.length} notes</small></div></div>`).join("");
+  const w = written(c);
+  $("written").innerHTML = w.map((s) => `<span class="${s.includes("×") ? "rep" : /^[FM]\d/.test(s) ? "use" : ""}">${esc(s)}</span>`).join("");
+  $("harmony").textContent = harmony(c).join("  ");
+}
+
+$("pieces").innerHTML = PIECES.map((p) => `<button class="act" data-id="${p.id}">${p.name}</button>`).join("");
+$("pieces").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { cur = b.dataset.id; show(); } });
+const max = Math.max(...PIECES.map((p) => done[p.id].ratio));
+$("bars").innerHTML = PIECES.map((p) => `<div class="bar"><span>${p.id.replace("-prelude", "").toUpperCase()}</span><i style="width:${(done[p.id].ratio / max * 100).toFixed(1)}%"></i><span>${(done[p.id].ratio * 100).toFixed(0)} %</span></div>`).join("");
+
+// ── sound: the piece, or its chords (each use of a figure as one chord, as long as the figure)
+let ac = null, stopAt = [];
+function play(events) {
+  ac = ac || new AudioContext(); stopAll();
+  const t0 = ac.currentTime + 0.1, s16 = 0.125;
+  for (const [t, d, p] of events) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "triangle"; o.frequency.value = 440 * Math.pow(2, (p - 69) / 12);
+    g.gain.setValueAtTime(0, t0 + t * s16); g.gain.linearRampToValueAtTime(0.08, t0 + t * s16 + 0.01);
+    g.gain.setTargetAtTime(0, t0 + (t + d) * s16 - 0.02, 0.03);
+    o.connect(g).connect(ac.destination); o.start(t0 + t * s16); o.stop(t0 + (t + d) * s16 + 0.2); stopAt.push(o);
+  }
+}
+function stopAll() { for (const o of stopAt) try { o.stop(); } catch {} stopAt = []; }
+function reduction(c) {
+  const out = []; let t = 0;
+  const walk = (x) => {
+    if (x.p !== undefined && !x.rule) { t += x.g; return; }
+    if (x.rule.kind === "repeat") { for (let i = 0; i < x.n; i++) x.body.forEach(walk); return; }
+    const len = x.rule.rhythm.reduce((s, r) => s + r.g, 0);
+    if (x.rule.kind === "figure") for (const p of x.pitches) out.push([t, len, p]);
+    t += len;
+  };
+  c.items.forEach(walk);
+  return out;
+}
+$("play").onclick = () => play(data[cur]);
+$("play-red").onclick = () => play(reduction(done[cur]));
+$("stop").onclick = stopAll;
+show();
+window.kairoticStudy = { done, show, select: (id) => { cur = id; show(); } };
+</script>

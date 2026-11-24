@@ -13,6 +13,11 @@
     draws exactly as before. The page has an Economy field for the variation and the morph (3) and says each line's
     figures in bits.
   - The studies keep a copy of `bits.mjs`, checked equal to the package's (`tests/rules.mjs`).
+- **Study 66 · compression** (discussion #399): the shortest description of a piece — figures (a pattern of a few
+  pitches with its rhythm, over other pitches), motifs (the same intervals elsewhere) and repeats, counted in bits
+  (MDL), taken greedily and checked lossless. Bach's preludes from the Mutopia Project's public-domain typesets: BWV 846
+  is one figure over 32 chords (28.7 %), and what is left is its harmony; BWV 999 39.9 %; the cello suites' preludes
+  BWV 1007 and 1009 a little more than half.
 - **Study 61 · reduction: the briefest reading** (discussion #342). The analysis now weighs what its derivation takes
   to say, as Study 64's florid lines do: each step is a word — its operation and, for each note it explains, the
   ornament, the voice and the step from its parent, wherever it stands — and is discounted by `economy · (bits − bits of a new word) / 4`, the bits of
