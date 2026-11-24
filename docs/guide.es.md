@@ -403,7 +403,7 @@ medida que la historia crece.
   de 2026), con una historia de un segmento sobre 100 cajas: 300 eventos, unos 40 ms la primera vez, 2–3 ms otra vez,
   11–14 ms tras un evento más; 2000 eventos, 360–700 ms la primera vez, 20–30 ms otra vez, 27–60 ms tras un evento
   más; 5000 eventos, alrededor de 1 s la primera vez. (`KAIROTIC_BENCH=1`, o *bench* al lanzar a mano el workflow de
-  tests, mide 2000 y 5000.)
+  tests, ejecuta solo estas medidas, con 2000 y 5000 eventos.)
 
 Algunas preguntas:
 
