@@ -360,7 +360,7 @@
   "A first segment for line lid (not on screen): events evs, saved as any other."
   [lid evs]
   (let [id (new-id)
-        n {:id id :parent nil :at 0 :author (my-author) :session session-id :t (js/Date.now) :merge nil
+        n {:id id :parent nil :at 0 :author (my-author) :session session-id :t (work-now) :merge nil
            :events (vec evs) :meta (vec (repeat (count evs) (tx-meta))) :line lid}]
     (swap! hist assoc-in [:other lid id] n)
     (when (and (persist?) (not (str/starts-with? id "local-")))

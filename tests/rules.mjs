@@ -45,6 +45,15 @@ const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483
   is("… two voices imply their chord: C over C an octave the tonic; F–D (a 6th) Dm/F, the subdominant; G–C (a 4th) the cadential 6/4; D–F♯ V/G; in A minor E–B the dominant with its G♯",
      lab([Fn.impliedChord([48, 72], C)]) === "T" && lab([Fn.impliedChord([53, 74], C)]) === "S" && lab([Fn.impliedChord([43, 72], C)]) === "D" &&
      lab([Fn.impliedChord([50, 66], C)]) === "V/G" && Fn.impliedChord([52, 71], Am).includes(56));
+  // tension (tension.mjs): Lerdahl's chord distance, the studies' copies
+  const tCopies = readdirSync(join(root, "studies")).filter((d) => existsSync(join(root, "studies", d, "kairotic", "tension.mjs")));
+  is(`the studies' copies of tension.mjs, as it is (${tCopies.join(", ")})`, tCopies.length >= 1 && tCopies.every((d) => readFileSync(join(root, "studies", d, "kairotic", "tension.mjs"), "utf8") === readFileSync(join(root, "packages/rules/assets/tension.mjs"), "utf8")));
+  const Tn = await import("../packages/rules/assets/tension.mjs"), I0 = Tn.placed([48, 52, 55], C), dd = (ps) => Tn.distance(I0, Tn.placed(ps, C)).d;
+  is("tension.mjs: Lerdahl's δ from I in C — V 5, IV 5, vi 7, iii 7, ii 8, I 0; V → I 5; V/V in G's region (i 1)",
+     dd([43, 47, 50]) === 5 && dd([41, 45, 48]) === 5 && dd([45, 48, 52]) === 7 && dd([40, 43, 47]) === 7 && dd([50, 53, 57]) === 8 && dd([48, 52, 55]) === 0 &&
+     Tn.distance(Tn.placed([43, 47, 50], C), I0).d === 5 && Tn.distance(I0, Tn.placed([50, 54, 57, 60], C)).i === 1);
+  is("… a chord's surface tension: an inversion 2, a 7th 1 (G7/B 3); a succession's sequential and global tension (I IV V7 I: 0 5 8 5 · 0 5 6 0)",
+     Tn.surface(Tn.placed([47, 50, 53, 55], C)) === 3 && Tn.tensions([[48, 52, 55], [41, 45, 48], [43, 47, 50, 53], [48, 52, 55]], C).map((t) => t.sequential + "/" + t.global).join(" ") === "0/0 5/5 8/6 5/0");
   const Bt = await import("../packages/rules/assets/bits.mjs"), lx = Bt.lexicon();
   const first = lx.bits("Q:0,1"); lx.add("Q:0,1");
   is("bits.mjs: a word heard again cheaper than at first, its inversion between, a new one dearest; the inversion negates every number",

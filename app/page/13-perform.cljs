@@ -50,7 +50,7 @@
   []
   (when-let [{:keys [jam jam-path at own]} @perf]
     (when (and jam jam-path @dbref)
-      (let [body (clj->js {:jam jam :at at :session session-id :author (my-author) :t (js/Date.now)
+      (let [body (clj->js {:jam jam :at at :session session-id :author (my-author) :t (work-now)
                            :events (mapv (fn [e] (enc [(:t e) (:ev e)])) own)})]
         (enqueue! jam-path (fn [] (.set (.doc @dbref jam-path) body)))))))
 
@@ -70,7 +70,7 @@
   (reset! live-timer nil)
   (when-let [path (live-path)]
     (when @dbref
-      (let [body (clj->js {:jam (:jam @perf) :kind "live" :session session-id :t (js/Date.now)
+      (let [body (clj->js {:jam (:jam @perf) :kind "live" :session session-id :t (work-now)
                            :msgs (mapv (fn [{:keys [t f i v]}] (enc [t f i v])) @live-buf)})]
         (enqueue! path (fn [] (.set (.doc @dbref path) body)))))))
 
@@ -78,7 +78,7 @@
   "A message played here: in a jam, it goes to the others too (sent every 60 ms at most)."
   [f inlet v]
   (when (and (:jam @perf) (:jam-path @perf))
-    (swap! live-buf (fn [b] (vec (take-last live-keep (conj b {:t (js/Date.now) :f f :i inlet :v v})))))
+    (swap! live-buf (fn [b] (vec (take-last live-keep (conj b {:t (work-now) :f f :i inlet :v v})))))
     (when-not @live-timer (reset! live-timer (js/setTimeout live-flush! 60)))))
 
 (defn play-live!
@@ -196,7 +196,7 @@
   [st mark]
   (let [es (vec (perf-events st)) evs (mapv :ev es) origin (:origin st)
         ;; each change keeps when it was made in the take, kept from Perform (#382)
-        metas (conj (mapv (fn [e] {:t (:t e) :via :take}) es) {:t (js/Date.now) :via :take})
+        metas (conj (mapv (fn [e] {:t (:t e) :via :take}) es) {:t (work-now) :via :take})
         id (new-node! (first origin) (if origin (second origin) 0) (conj evs mark) nil metas)]
     [id (inc (count evs))]))
 

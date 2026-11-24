@@ -525,3 +525,14 @@
   (.addEventListener ($ "tab-talk") "click" (fn [_] (.remove (.-classList ($ "tab-talk")) "attn") (render-talk!)))
   (add-watch work :talk (fn [_ _ o n] (when (not= [(:kind o) (:id o)] [(:kind n) (:id n)]) (talk-sync!))))
   (talk-sync!))
+
+;; the work's time is the room's while this page is in one (00-work.cljs, #382): the relay's clock as read here, or
+;; nil (this machine's) before the first answer and outside a room
+(reset! clock-source (fn [] (tk/shared-time (:clock @talk-room) (talk-ms))))
+
+(defn work-clock
+  "Where the work's time comes from now: {:source :relay :offset ms :error ms} in a room whose relay has answered,
+   {:source :local} otherwise."
+  []
+  (let [c (:clock @talk-room) o (tk/clock-offset c)]
+    (if o {:source :relay :offset (js/Math.round o) :error (some-> (tk/clock-error c) js/Math.round)} {:source :local})))
