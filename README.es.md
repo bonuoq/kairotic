@@ -153,6 +153,10 @@ paquetes oficiales llegan solos a una obra cuando una caja usa una de sus clases
 **Solo en algunos ensayos:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Ensayo 24, desde jsDelivr);
 los obsoletos `kairotic-componentes` 0.2.0 y `kairotic-components` 0.1.2 (MPL-2.0, ensayos 7–23).
 
+**Datos:** las frases de los 370 corales de Bach ([`studies/_shared/chorales/`](studies/_shared/chorales/README.md)),
+cortadas de [la edición Humdrum de Craig Sapp](https://github.com/craigsapp/bach-370-chorales): **CC BY-NC-SA 4.0**,
+no MPL-2.0 (no comercial; ver su `LICENSE.md`).
+
 **El relay** (`@kairotic/relay`, se instala con npm): GUN en el mismo commit y
 [ws](https://github.com/websockets/ws) ^7.5.10 (MIT).
 

@@ -151,6 +151,10 @@ packages come into a work by themselves when a box uses one of their classes (`k
 **Only in some studies:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Study 24, from jsDelivr); the
 deprecated `kairotic-componentes` 0.2.0 and `kairotic-components` 0.1.2 (MPL-2.0, Studies 7–23).
 
+**Data:** the phrases of Bach's 370 chorales ([`studies/_shared/chorales/`](studies/_shared/chorales/README.md)), cut
+from [Craig Sapp's Humdrum edition](https://github.com/craigsapp/bach-370-chorales): **CC BY-NC-SA 4.0**, not
+MPL-2.0 (non-commercial; see its `LICENSE.md`).
+
 **The relay** (`@kairotic/relay`, installed with npm): GUN at the same commit and
 [ws](https://github.com/websockets/ws) ^7.5.10 (MIT).
 
