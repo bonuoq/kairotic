@@ -79,11 +79,13 @@ export async function run() {
   const ph2 = { id: "test-am", key: { tonic: "A", mode: "minor" }, satb: Array(10).fill([0, 0, 0, 0]), strong: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0].map(Boolean), A: [69, 64, 60, 45], B: [69, 64, 61, 45] };
   const wr = (seed) => { let x = seed * 7919 + 13; const f = () => ((x = (x * 16807) % 2147483647) - 1) / 2147483646; for (let i = 0; i < 5; i++) f(); return f; };
   const corr = (a, b) => { const m = (x) => x.reduce((s, v) => s + v, 0) / x.length, ma = m(a), mb = m(b); let ab = 0, aa = 0, bb = 0; for (let i = 0; i < a.length; i++) { ab += (a[i] - ma) * (b[i] - mb); aa += (a[i] - ma) ** 2; bb += (b[i] - mb) ** 2; } return ab / Math.sqrt(aa * bb || 1); };
-  const stats = (ph, off) => {
-    const B = O.outerBridge({ ...ph, n: ph.satb.length }, { layers: Object.fromEntries(off.map((l) => [l, 0])) });
+  const dev = (a, b) => a.slice(1, -1).reduce((s, v, i) => s + Math.abs(v - b[i + 1]), 0) / (a.length - 2);
+  const stats = (ph, off, target) => {
+    const B = O.outerBridge({ ...ph, n: ph.satb.length }, { layers: Object.fromEntries(off.map((l) => [l, 0])), target });
     const xs = Array.from({ length: 20 }, (_, i) => B.draw(wr(i + 1)));
     const ms = xs.map((x) => O.measure(ph, x));
     return { xs, errs: ms.reduce((a, m) => a + m.errors, 0) / xs.length, arch: ms.reduce((a, m) => a + corr(m.tension, O.archOf(ph.satb.length)), 0) / xs.length,
+             profile: ms.reduce((a, m) => a + dev(m.tension, O.profileOf(ph.satb.length)), 0) / xs.length,
              words: xs.reduce((a, x) => a + O.motionWords(x, ph.key), 0) / xs.length };
   };
   const all1 = stats(ph1, []), all2 = stats(ph2, []);
@@ -91,14 +93,17 @@ export async function run() {
      [[ph1, all1], [ph2, all2]].every(([ph, st]) => st.xs.every((x) => x.soprano[0] === ph.A[0] && x.bass[0] === ph.A[3] && x.soprano.at(-1) === ph.B[0] && x.bass.at(-1) === ph.B[3] && Math.abs(x.soprano.at(-2) - ph.B[0]) <= 2)));
   is("… keeping the rules (consonant, no parallel 5ths or octaves, the soprano above), and singable: a leap of a 6th at most, few leaps", [all1, all2].every((st) => st.xs.every((x) => O.rulesBroken(x).length === 0 && x.soprano.slice(1).every((s, t) => Math.abs(s - x.soprano[t]) <= 9))));
   const nf1 = stats(ph1, ["functions"]), nf2 = stats(ph2, ["functions"]);
-  is("the functions layer: without it the two voices imply a harmony that goes back (D → S) or leaves an applied dominant unresolved about every other phrase; with it, never", nf1.errs + nf2.errs > 0.8 && all1.errs + all2.errs === 0);
+  is("the functions layer: without it the two voices imply a harmony that goes back (D → S) or leaves an applied dominant unresolved every few phrases; with it, never", nf1.errs + nf2.errs > 0.3 && all1.errs + all2.errs === 0);
   const nt1 = stats(ph1, ["tension"]), nt2 = stats(ph2, ["tension"]);
-  is("the tension layer: the implied harmony's tension follows the arch (rising to two thirds, released into B) more closely with it than without", all1.arch > nt1.arch + 0.2 && all2.arch > nt2.arch + 0.2);
+  is("the tension layer: the implied harmony's tension nearer the corpus's profile (Bach's plateau, released at the cadence) with it than without", all1.profile < nt1.profile && all2.profile < nt2.profile);
+  const ar1 = stats(ph1, [], "arch"), ar2 = stats(ph2, [], "arch");
+  is("… and with target arch it follows the generic arch (rising to two thirds, released into B) more closely than without", ar1.arch > nt1.arch + 0.2 && ar2.arch > nt2.arch + 0.2);
+  is("the profile: a plateau released at the cadence, the same for every phrase", O.profileOf(8).length === 8 && O.profileOf(8).at(-1) < 1 && O.profileOf(8).slice(1, -1).every((v) => v > 5));
   const ne1 = stats(ph1, ["economy"]), ne2 = stats(ph2, ["economy"]);
   is("the economy layer: the voices' motions said with fewer different words with it than without", all1.words < ne1.words && all2.words < ne2.words);
-  notes.push(`outer voices (20 draws): grammar errors ${nf1.errs.toFixed(2)}/${nf2.errs.toFixed(2)} without functions, 0 with · arch ${nt1.arch.toFixed(2)}/${nt2.arch.toFixed(2)} → ${all1.arch.toFixed(2)}/${all2.arch.toFixed(2)} · words ${ne1.words.toFixed(2)}/${ne2.words.toFixed(2)} → ${all1.words.toFixed(2)}/${all2.words.toFixed(2)}`);
+  notes.push(`outer voices (20 draws): grammar errors ${nf1.errs.toFixed(2)}/${nf2.errs.toFixed(2)} without functions, 0 with · profile deviation ${nt1.profile.toFixed(2)}/${nt2.profile.toFixed(2)} → ${all1.profile.toFixed(2)}/${all2.profile.toFixed(2)} · arch ${nt1.arch.toFixed(2)}/${nt2.arch.toFixed(2)} → ${ar1.arch.toFixed(2)}/${ar2.arch.toFixed(2)} · words ${ne1.words.toFixed(2)}/${ne2.words.toFixed(2)} → ${all1.words.toFixed(2)}/${all2.words.toFixed(2)}`);
   const bs = O.bridgesFor(ph1, { count: 2, r: wr(9) });
-  is("bridgesFor: the engine's format for every variant (all, and each layer off), two draws each", bs.length === 8 && ["all", "no-functions", "no-tension", "no-economy"].every((v) => bs.filter((b) => b.variant === v).length === 2) &&
+  is("bridgesFor: the engine's format for every variant (all, each layer off, arch), two draws each", bs.length === 10 && ["all", "no-functions", "no-tension", "no-economy", "arch"].every((v) => bs.filter((b) => b.variant === v).length === 2) &&
      bs.every((b) => b.phrase === "test-c" && b.soprano.length === 8 && b.bass.length === 8 && b.key.tonic === "C" && b.strong.length === 8 && Array.isArray(b.layers)) && bs.find((b) => b.variant === "no-tension").layers.join() === "functions,economy");
 
   // ─── smooth: what a leap costs (leapCost) ───

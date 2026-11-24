@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The chorale test's tension: Bach's profile, the arch a variant** (#399, #353). Study 63's `outer.mjs` draws the
+  implied harmony's tension toward the corpus's profile (`PROFILE`, `profileOf`: Bach's mean tension by tenth of a phrase,
+  read in the cadence's key — 5.9 6.7 6.6 6.9 6.5 6.7 6.9 6.6 6.0 0.6, a plateau released at the cadence), the same
+  for every phrase, so none of a phrase's own curve leaks into its bridge; the generic arch (rising two thirds of the
+  way, released into B) is kept as a variant, `arch` (`target: "arch"`), for the blind test to compare.
+  `studies/_shared/chorales/bridges.json` drawn again: five variants per phrase.
 - **A chain owns the lines it wrote** (#432, discussion #407). A chain (`->`, `doto`) evaluated from the Code tab
   (a form, or a block of calls that make the patch) takes away, when evaluated again, the lines it wrote before and no
   longer writes, in the same event: put a box into `(-> :osc (to :amp …) (to :out …))` and the old line goes. A chain is
