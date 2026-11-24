@@ -401,8 +401,8 @@ medida que la historia crece.
 - Lo que cuesta: el índice de un valor se hace la primera vez que se consulta, se guarda y crece solo con los
   eventos nuevos cuando la historia sigue. Medido en el Chromium sin interfaz de los tests (GitHub Actions, noviembre
   de 2026), con una historia de un segmento sobre 100 cajas: 300 eventos, unos 40 ms la primera vez, 2–3 ms otra vez,
-  11–14 ms tras un evento más; 2000 eventos, 360–700 ms la primera vez, 20–30 ms otra vez, 27–60 ms tras un evento
-  más; 5000 eventos, alrededor de 1 s la primera vez. (`KAIROTIC_BENCH=1`, o *bench* al lanzar a mano el workflow de
+  11–14 ms tras un evento más; 2000 eventos, 270 ms la primera vez, 17 ms otra vez, 20 ms tras un evento más; 5000
+  eventos, alrededor de 0,5 s la primera vez (medido a solas; con el resto de los tests a la vez, más o menos el doble). (`KAIROTIC_BENCH=1`, o *bench* al lanzar a mano el workflow de
   tests, ejecuta solo estas medidas, con 2000 y 5000 eventos.)
 
 Algunas preguntas:
