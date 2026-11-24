@@ -138,22 +138,43 @@ export function bestExplanation(x, L, R, w = {}) {
 
 // ─── the inverse operations, on a path ───
 /** Unsplit slice i (0 < i < last): {ok, why, explained: [{id, pitch, voice, orn, parents, cost}], path}. Every note of
- *  the slice must be an ornament of the notes around it; the notes it held on into the next slice are struck there. */
+ *  the slice must be an ornament of the notes around it, each explained the cheapest way; the notes it held on into
+ *  the next slice are struck there. */
 export function unsplit(path, i, w = {}) {
+  const all = unsplits(path, i, w, 1);
+  return all.ok === false ? all : all[0];
+}
+
+/** Every way to unsplit slice i, as unsplit's, cheapest first (the first is unsplit's): each note of the slice
+ *  explained by any of its ornaments, at most `max` ways (an analysis that weighs more than the ornaments' own cost —
+ *  the economy of a reading — may prefer another). {ok: false, why} where there is none. */
+export function unsplits(path, i, w = {}, max = 8) {
   if (i <= 0 || i >= path.length - 1) return { ok: false, why: "the first and the last slice stay (the phrase's frame)" };
-  const L = path[i - 1], S = path[i], R = path[i + 1], explained = [];
+  const L = path[i - 1], S = path[i], R = path[i + 1];
+  const cv = w.voice ?? 0.5, oc = (o) => (w.ornaments && w.ornaments[o]) ?? ORNAMENTS[o].cost;
+  const per = [];
   for (const x of S.notes) {
-    const e = bestExplanation(x, L, R, w);
-    if (!e) return { ok: false, why: `${x.pitch} (${x.id}) is no ornament of the notes around it` };
-    explained.push({ id: x.id, pitch: x.pitch, voice: x.voice, ...e });
+    const ex = explain(x, L, R).map((e) => ({ id: x.id, pitch: x.pitch, voice: x.voice, ...e, cost: oc(e.orn) + (e.same ? 0 : cv) }))
+      .sort((a, b) => a.cost - b.cost);
+    if (!ex.length) return { ok: false, why: `${x.pitch} (${x.id}) is no ornament of the notes around it` };
+    per.push(ex);
+  }
+  // (the combinations, cheapest first: a note's explanations in their order, the first ones of every note first)
+  let combos = [[]];
+  for (const ex of per) {
+    const next = [];
+    for (const c of combos) for (const e of ex) next.push([...c, e]);
+    combos = next.sort((a, b) => sum(a) - sum(b)).slice(0, max);
   }
   const gone = new Set(S.notes.filter((x) => !L.notes.some((l) => l.id === x.id)).map((x) => x.id));
   const L2 = { ...L, end: S.end };
   // (a note struck in the slice and held into the next one now starts there — unless it is an anticipation of it)
   const R2 = { ...R, notes: R.notes.map((r) => (gone.has(r.id) ? { ...r, start: true } : r)) };
   // L's notes held through S into R stay held; L is prolonged over S's time
-  return { ok: true, explained, path: [...path.slice(0, i - 1), L2, R2, ...path.slice(i + 2)] };
+  const reduced = [...path.slice(0, i - 1), L2, R2, ...path.slice(i + 2)];
+  return combos.map((explained) => ({ ok: true, explained, path: reduced }));
 }
+const sum = (es) => es.reduce((a, e) => a + e.cost, 0);
 
 /**
  * Unsuspend slice i: a suspension's displacement undone. In slice i a note held from the slice before (its

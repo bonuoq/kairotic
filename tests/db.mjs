@@ -66,5 +66,31 @@ export async function db(page, check) {
   // a transaction as the history's tooltips tell it
   check("the history tells where an event came from", (await cljs(page, "(tx-label {:t 0 :via :agent :box :b3 :why \"a bass\"})")).includes("agent b3 «a bass»"));
 
-  await cljs(page, "(delete :b9301) (delete :b9302) (delete :b9303)");
+  // the history as a value (#382, idea 2): it does not change when the history grows
+  await cljs(page, "(def db0 (db))");
+  check("(db) is a value of the history", (await cljs(page, "(db? db0)")) === "true");
+  await cljs(page, '(gesture! "(box :b9305 \\"mtof\\" 1500 540)")');
+  check("... the history goes on, the value does not", (await cljs(page, "[(contains? (:boxes (as-of db0)) :b9305) (contains? (:boxes (as-of)) :b9305)]")) === "[false true]");
+  check("... nor its transactions", (await cljs(page, "(= (inc (count (tx-log db0))) (count (tx-log)))")) === "true");
+  check("with in a value of the history starts from it", (await cljs(page, '(contains? (:boxes (:db-before (with db0 "(box \\"mtof\\" 9 9)"))) :b9305)')) === "false");
+
+  // facts (#382, idea 3): what each event changed, as datoms
+  await cljs(page, '(gesture! "(text! :b9305 \\"mtof 2\\")")');
+  await cljs(page, '(gesture! "(move :b9305 1520 540)")');
+  await cljs(page, '(gesture! "(connect :b9301 0 :b9305 0)")');
+  const facts = await cljs(page, "(mapv (juxt :a :v :added) (filter #(= :text (:a %)) (history-of :b9305)))");
+  check("history-of tells a box's text asserted, retracted, asserted again", facts === '[[:text "mtof" true] [:text "mtof" false] [:text "mtof 2" true]]', facts);
+  check("... its position", (await cljs(page, "(some? (some #(and (= :x (:a %)) (= 1520 (:v %)) (:added %)) (history-of :b9305)))")) === "true");
+  check("... with each fact's transaction", (await cljs(page, "(:via (last (filter #(= :x (:a %)) (history-of :b9305))))")) === ":gesture");
+  check("a line is a fact of its patch", (await cljs(page, "(some? (some #(and (= :line (:a %)) (= [:b9301 0 :b9305 0] (:v %)) (:added %)) (datoms)))")) === "true");
+  check("a move is a fact of layout", (await cljs(page, "(:kind (last (filter #(= :x (:a %)) (datoms))))")) === ":layout");
+  check("facts of a sub-patch's boxes are entities of their own",
+    (await cljs(page, '(mapv :e (patch-datoms {:boxes {:b1 {:text "patch" :x 0 :y 0 :data {:boxes {} :lines []}}}} {:boxes {:b1 {:text "patch" :x 0 :y 0 :data {:boxes {:b2 {:text "mtof" :x 1 :y 1}} :lines []}}}}))')).includes("[:b1 :b2]"));
+
+  // Claude reads the history as a value too
+  check("work_history gives Claude the last transactions", (await cljs(page, "(let [r (work-history (db) nil 3)] [(:ok r) (count (:transactions r))])")) === "[true 3]");
+  check("... or a box's facts", (await cljs(page, "(pos? (count (:facts (work-history (db) :b9305 10))))")) === "true");
+  check("... as a tool for the Claude tab and agents", (await cljs(page, '(some? (some #(= "work_history" (.-name %)) (patch-tools nil)))')) === "true");
+
+  await cljs(page, "(delete :b9301) (delete :b9302) (delete :b9303) (delete :b9305)");
 }
