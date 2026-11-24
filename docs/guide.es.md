@@ -371,6 +371,12 @@ los tooltips de la historia, y la REPL lo lee como datos (discusión #382).
 Los eventos hechos antes de esto no tienen transacción: dicen quién los hizo (los de su segmento), no cuándo ni de
 dónde.
 
+En una sala compartida con relay, el *cuándo* se lee de un solo reloj para toda la sala: el del relay, tal como lo
+lee cada página (el mismo reloj que usan la conversación y el tempo de la sala). Así todas las páginas ven el mismo
+punto más nuevo de la historia y el mismo orden de los cambios en un jam, diga lo que diga el reloj de cada máquina.
+En otro caso es el reloj de esta máquina. `(work-clock)` dice cuál: `{:source :relay :offset … :error …}` o
+`{:source :local}`.
+
 ### Consultar la historia con Datalog
 
 `(q '[:find … :where …])` le hace una pregunta a la historia en Datalog, el lenguaje de consultas de Datomic, y
@@ -397,7 +403,7 @@ medida que la historia crece.
   de 2026), con una historia de un segmento sobre 100 cajas: 300 eventos, unos 40 ms la primera vez, 2–3 ms otra vez,
   11–14 ms tras un evento más; 2000 eventos, 360–700 ms la primera vez, 20–30 ms otra vez, 27–60 ms tras un evento
   más; 5000 eventos, alrededor de 1 s la primera vez. (`KAIROTIC_BENCH=1`, o *bench* al lanzar a mano el workflow de
-  tests, mide 2000 y 5000.)
+  tests, ejecuta solo estas medidas, con 2000 y 5000 eventos.)
 
 Algunas preguntas:
 

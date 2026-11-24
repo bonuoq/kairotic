@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       bench:
-        description: "Also measure the Datalog index with long histories (2000 and 5000 events): KAIROTIC_BENCH=1"
+        description: "Only measure the Datalog index with long histories (2000 and 5000 events), alone: KAIROTIC_BENCH=1"
         type: boolean
         default: false
 

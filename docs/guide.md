@@ -356,6 +356,11 @@ tooltips tell it, and the REPL reads it as data (discussion #382).
 
 Events made before this have no transaction: they say who made them (their segment's), not when or from where.
 
+In a shared room with a relay, *when* is read from one clock for the whole room: the relay's, as each page reads it
+(the same clock the room's talk and tempo use). So every page sees the same newest point of the history and the same
+order of the changes in a jam, whatever each machine's clock says. Elsewhere it is this machine's clock.
+`(work-clock)` says which one: `{:source :relay :offset … :error …}` or `{:source :local}`.
+
 ### Querying the history with Datalog
 
 `(q '[:find … :where …])` asks the history a question in Datalog, the query language of Datomic, and
@@ -377,8 +382,8 @@ for each value of it that is queried, DataScript gets an index of it, made once 
   events when the history goes on. Measured in the tests' headless Chromium (GitHub Actions, November 2026), on a
   history of one segment over 100 boxes: 300 events, about 40 ms the first time, 2–3 ms again, 11–14 ms after one
   more event; 2000 events, 360–700 ms the first time, 20–30 ms again, 27–60 ms after one more event; 5000 events,
-  about 1 s the first time. (`KAIROTIC_BENCH=1`, or *bench* when the tests workflow is run by hand, measures 2000
-  and 5000.)
+  about 1 s the first time. (`KAIROTIC_BENCH=1`, or *bench* when the tests workflow is run by hand, runs only these
+  measurements, with 2000 and 5000 events.)
 
 Some questions:
 
