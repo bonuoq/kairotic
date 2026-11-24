@@ -258,11 +258,13 @@
     (when changed
       ;; a box that is new, or whose text changed, starts empty: nothing of what an earlier box with
       ;; that id showed or held
+      ;; (not one already forgotten when it was made or rewritten here: what it received since is its own)
       (doseq [[f text] (second shape) :when (not= text (get old-texts f))]
-        (eng/forget! f)
+        (when-not (contains? @forgotten-now f) (eng/forget! f))
         (swap! live-trees dissoc f)
         (swap! score-cache dissoc f))
       (reset! sent-shape shape)
+      (reset! forgotten-now #{})
       (doseq [[f text] (second shape)
               :when (and old-texts (contains? old-texts f) (not= text (get old-texts f))
                          (:persist (comp/lookup (klass text))))]
@@ -320,6 +322,7 @@
   (when-not @scratch
   (let [f (fid id)]
     (eng/forget! f)
+    (swap! forgotten-now conj f)
     (swap! live-trees dissoc f)
     (swap! dismissed-trees dissoc f)
     (swap! sent-trees dissoc f)

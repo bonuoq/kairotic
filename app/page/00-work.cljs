@@ -19,6 +19,11 @@
 
 (declare open-work-file! view-instances inline-lines on-lines render-lines! line-name switch-line! check-ref-text! ref-badge ref-warning resolve-ref refs-in followed-fronts open-ref es? docs open-work! show-help! refresh-help! tsel-piece-id refill-data! forget-box! update-trust-bar! render-askbar! present-what! url-with copy-text!)   ; the Help tab (Study 18), defined further down
 (def klass comp/klass)
+;; boxes whose state was forgotten here and now (a box made, its text rewritten, one deleted or pasted): the tree
+;; emitter, which runs a moment later, forgets what a new box or a new text held for changes that came from
+;; elsewhere (the history, a jam), and must not forget these again — a message sent to the box in between (the
+;; REPL right after (box …), a line that delivers at once) would be lost
+(defonce forgotten-now (atom #{}))
 (defn box-def [b] (comp/lookup (klass (:text b))))
 ;; how a box is shown: the view it chose among those of its class (a tree as a score or a roll, a freqt
 ;; as a canvas or a score: discussion #30), or the :display of its class
