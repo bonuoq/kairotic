@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; paths · an open form: fragments and rules of succession, the performer choosing the path, the follower deciding it
 ;; (discussion #212, Study 70). Part of @kairotic/analysis. Written against the Kairotic API (api/…).
 (let [;; ── a note heard: where the pitch settles (as follow's) ──
