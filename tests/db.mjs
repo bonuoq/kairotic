@@ -172,7 +172,11 @@ export async function db(page, check) {
   check("ev-datoms gives the same facts as patch-datoms, for every event to here",
     (await cljs(page, "(let [d (db)] (every? (fn [tx] (let [[nid k] (:pos tx) p0 (db-patch d [nid (dec k)]) p1 (db-patch d [nid k])] (= (set (ev-datoms p0 p1 (:event tx))) (set (patch-datoms p0 p1))))) (tx-log d)))")) === "true");
 
-  // the cost, with a long history (a value of the history made here: one segment of n events over 100 boxes)
+  // the cost, with a long history (a value of the history made here: one segment of n events over 100 boxes). In
+  // the tests, 300 events: enough to see the index made once, kept and grown, without loading the machine while the
+  // audio suites run beside it; KAIROTIC_BENCH=1 measures 2000 and 5000 and prints the times.
+  const bench = !!process.env.KAIROTIC_BENCH;
+  const n = bench ? 2000 : 300;
   const cost = await cljs(page, `(let [mk (fn [n] (let [evs (vec (concat (for [i (range 100)] [:box (keyword (str "b" (+ 5000 i))) "mtof" i 0])
                                                                          (for [i (range (- n 100))] (if (even? i) [:move (keyword (str "b" (+ 5000 (mod i 100)))) i 1]
                                                                                                         [:text (keyword (str "b" (+ 5000 (mod i 100)))) (str "mtof " i)]))))]
@@ -180,18 +184,18 @@ export async function db(page, check) {
                                                      :pos ["bench" n]}))
                                       cnt '[:find (count ?f) . :where [?f :fact/a :text]]
                                       t (fn [f] (let [t0 (js/performance.now) r (f)] [(js/Math.round (- (js/performance.now) t0)) r]))
-                                      big (mk 2000)
+                                      big (mk ${n})
                                       [t1 r1] (t #(q cnt big))
                                       [t2 r2] (t #(q cnt big))
                                       big2 (-> big (update-in [:nodes "bench" :events] conj [:text :b5000 "mtof last"])
-                                                   (update-in [:nodes "bench" :meta] conj {:t 0 :via :repl}) (assoc :pos ["bench" 2001]))
+                                                   (update-in [:nodes "bench" :meta] conj {:t 0 :via :repl}) (assoc :pos ["bench" ${n + 1}]))
                                       [t3 r3] (t #(q cnt big2))
                                       grown (:grown @ds-stats)
-                                      [t4 _] (t #(q cnt (mk 5000)))]
+                                      [t4 _] (if ${bench} (t #(q cnt (mk 5000))) [nil nil])]
                                   {:first t1 :again t2 :grown-by-one t3 :grown grown :n5000 t4 :counts [r1 r2 r3]})`);
-  console.log("Datalog index cost (ms):", cost);
+  console.log(`Datalog index cost, ${n} events (ms):`, cost);
   check("the index is built once and kept", /:again (\d+)/.test(cost) && Number(cost.match(/:again (\d+)/)[1]) < Number(cost.match(/:first (\d+)/)[1]), cost);
-  check("... and grown by what is new", /:grown 1\b/.test(cost) && /:counts \[2000 2000 2002\]/.test(cost), cost);
+  check("... and grown by what is new", /:grown 1\b/.test(cost) && cost.includes(`:counts [${n} ${n} ${n + 2}]`), cost);
 
   // back where the other suites expect: the branch with the boxes, which are taken away
   await cljs(page, `(goto ${JSON.stringify(claudeTip.match(/"([^"]+)"/)[1])} ${claudeTip.match(/ (\d+)\]$/)[1]})`);
