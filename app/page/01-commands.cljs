@@ -1248,9 +1248,25 @@
   [code]
   (first (try-code empty-patch code)))
 
+(defn code-events
+  "The events that turn patch cur into p (boxes, lines, what they keep, layers and marks), or nil if applying
+   them would not give p exactly."
+  [cur p]
+  (let [evs (rel/patch-diff cur p)]
+    (when (= (sane-patch (reduce step cur evs)) (sane-patch p)) evs)))
+
 (defn run-code!
-  "Rebuilds the patch from the code: it stays as a single :load event."
+  "Applies the code to the patch on screen (discussion #407). Only what the code changes becomes the history:
+   one event with its boxes, lines and texts (a [:batch …]), so what stays the same stays as it was, there and in
+   the sound; a whole patch (:load) only if those changes could not rebuild it exactly. Returns how many
+   changes it made (0: none), or :load."
   [code]
-  (let [p (build code)] (dispatch! [:load p]) :ok))
+  (let [p (build code) evs (code-events (current) p)]
+    (cond (nil? evs) (do (dispatch! [:load p]) :load)
+          (empty? evs) 0
+          ;; a box made or deleted starts from nothing, as when it is made or deleted by hand
+          :else (do (doseq [[op id] evs :when (#{:box :delete} op)] (forget-box! id))
+                    (dispatch-all! evs)
+                    (count evs)))))
 
 (defn load-example [] (run-code! example))

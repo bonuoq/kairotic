@@ -39,6 +39,20 @@
           (rel/patch-diff p (assoc p :lines [[:b2 0 :b3 0] [:b1 0 :b2 0]]))
           [[:disconnect :b1 0 :b2 0] [:disconnect :b2 0 :b3 0] [:connect :b2 0 :b3 0] [:connect :b1 0 :b2 0]])
     (t/eq "a size of its own" (rel/patch-diff p (assoc-in p [:boxes :b3 :size] [600 300])) [[:size :b3 600 300]])
+    ;; #407: what else a patch keeps, so the Code tab and a release can write it as changes
+    (t/eq "a pinned line" (rel/patch-diff p (assoc-in p [:boxes :b2 :pin] ["n1" 3])) [[:pin :b2 ["n1" 3]]])
+    (let [l {:z :over :show #{:patch :present}}
+          m {:layer :notes :kind :text :at [:patch 1 2] :txt "hi"}
+          q (assoc p :layers {:notes l} :marks {:a1 m})]
+      (t/eq "a layer and a mark" (rel/patch-diff p q) [[:layer :notes l] [:annot :a1 m]])
+      (t/eq "... a mark changed" (rel/patch-diff q (assoc-in q [:marks :a1 :txt] "ho")) [[:annot :a1 (assoc m :txt "ho")]])
+      (t/eq "... a layer gone takes its marks with it" (rel/patch-diff q p) [[:layer :notes nil]])
+      (t/eq "... a projection, and gone with its box"
+            [(rel/patch-diff q (assoc q :projections {:b3 {:layer :notes :rect [0 0 100 80]}}))
+             (rel/patch-diff (assoc q :projections {:b3 {:layer :notes :rect [0 0 100 80]}})
+                             (-> q (update :boxes dissoc :b3) (assoc :lines [[:b1 0 :b2 0]])))]
+            [[[:project :b3 {:layer :notes :rect [0 0 100 80]}]]
+             [[:delete :b3]]]))
     (t/eq "as one event: nothing" (rel/as-event []) nil)
     (t/eq "... one" (rel/as-event [[:move :b1 1 2]]) [:move :b1 1 2])
     (t/eq "... several, a batch" (rel/as-event [[:move :b1 1 2] [:delete :b2]]) [:batch [[:move :b1 1 2] [:delete :b2]]])

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Live coding in the Code tab, step 1: changes instead of a whole patch** (discussion #407). Ctrl/⌘+Enter applies
+  the tab by the difference with the patch on screen: one event of the history with the boxes, lines, texts and data
+  that changed (a `[:batch …]`), instead of a `:load` of the whole patch, so the history stays granular and mergeable
+  and what stays the same stays as it was (a `:load` only if the changes could not rebuild the patch exactly).
+  **⇧+Enter** evaluates the selection, or the form at the cursor, alone: calls that make the patch change it by the
+  difference (a box written again as it was keeps its data, presentation…), anything else (`(play)`, `(send! …)`,
+  a `def`) is a line of the REPL; the tab is written again from the patch if nothing else in it was unapplied.
+  `patch-diff` (`kairotic.release`) now also writes pinned lines, layers, marks and projections, so a release keeps
+  them too.
 - **Study 67 · prelude: the second level of a prelude's description** (discussions #399, #321). Study 66's figure
   leaves BWV 846's harmony: read as five voices (a voice keeping its pitch holds its note), it is reduced by Study
   61's grammar (`reduceNotes`: any notes, any number of voices, a `keep` for the frame's retention) to its frame, C –

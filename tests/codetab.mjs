@@ -80,4 +80,46 @@ export async function codetab(page, check) {
         && (await cljs(page, `(str/includes? (.-textContent (.-contentDOM (.-view @code-ed))) "w299")`)) === "true");
 
   await cljs(page, `(swap! ui assoc :sel nil) (reset! code-unfolded #{}) (delete ${s} ${a} ${b})`);
+
+  // ── live coding in the Code tab (discussion #407) ──
+  const lastEv = "(last (:events (node (first (:pos @world)))))";
+  const c1 = (await cljs(page, '(box "mtof" 9800 600)')).trim();
+  const c2 = (await cljs(page, '(box "freqt" 9900 600)')).trim();
+  await cljs(page, `(stroke ${c2} [[0 220] [1 440]])`);
+  const strokes = `(count (:strokes (get-in (current) [:boxes ${c2} :data])))`;
+  // applying the tab: only what it changes, as one event
+  const r1 = await cljs(page, `(run-code! (str/replace (patch->code (current)) "(box ${c1} \\"mtof\\"" "(box ${c1} \\"ftom\\""))`);
+  check("applying the Code tab with one text changed makes one change", r1 === "1", r1);
+  check("... written as that change, not as the whole patch (:load)", (await cljs(page, lastEv)) === `[:text ${c1} "ftom"]`, await cljs(page, lastEv));
+  check("... and a buffer it did not touch keeps its strokes", (await cljs(page, strokes)) === "1", await cljs(page, strokes));
+  check("applying it again unchanged changes nothing", (await cljs(page, "(run-code! (patch->code (current)))")) === "0");
+
+  // forms of the tab, found by the cursor
+  check("the top-level forms of some code", (await cljs(page, '(top-forms "(a 1) ;c\n[b] x #{1} \\"s\\" (c (d))")'))
+        === "[[0 5] [9 12] [13 14] [15 19] [20 23] [24 31]]", await cljs(page, '(top-forms "(a 1) ;c\n[b] x #{1} \\"s\\" (c (d))")'));
+  check("... the form the cursor is in", (await cljs(page, '(form-at "(a 1) ;c\n[b] x #{1} \\"s\\" (c (d))" 28)')) === "[24 31]");
+  check("... or the one just before it (a comment between)", (await cljs(page, '(form-at "(a 1) ;c\n" 8)')) === "[0 5]");
+  check("... and none in an empty place", (await cljs(page, '(form-at "  (a 1)" 0)')) === "nil");
+  check("calls that make the patch, and those that do not",
+        (await cljs(page, '[(patch-form? "(box \\"osc~\\") (connect :b1 0 :b2 0)") (patch-form? "(play)") (patch-form? "(def o (box \\"osc~\\"))")]')) === "[true false false]");
+
+  // a form alone: a box written again as it was keeps what it keeps
+  const r2 = await cljs(page, `(eval-calls! "(box ${c2} \\"freqt\\" 9950 600)")`);
+  check("a box written again in another place is one change", r2 === "1", r2);
+  check("... a move", (await cljs(page, lastEv)) === `[:move ${c2} 9950 600]`, await cljs(page, lastEv));
+  check("... and its strokes stay", (await cljs(page, strokes)) === "1", await cljs(page, strokes));
+  check("a connect alone", (await cljs(page, `(eval-calls! "(connect ${c1} 0 ${c2} 0)")`)) === "1"
+        && (await cljs(page, `(boolean (some #{[${c1} 0 ${c2} 0]} (:lines (current))))`)) === "true");
+
+  // ⇧+Enter: the form at the cursor, written at the end of the tab
+  await cljs(page, '(swap! ui assoc :dirty false) (render-code (current))');
+  await cljs(page, `(let [t (str (patch->code (current)) "\n(box \\"mtof\\" 9800 700)")] (.setValue @code-ed t)
+                      (.dispatch (.-view @code-ed) #js {:selection #js {:anchor (count t)}}) (swap! ui assoc :dirty true) (eval-code-form!))`);
+  const c3 = await cljs(page, '(some (fn [[id b]] (when (and (= "mtof" (:text b)) (= 9800 (:x b)) (= 700 (:y b))) id)) (:boxes (current)))');
+  check("⇧+Enter evaluates the form at the cursor: a new box", /^:b\d+$/.test(c3), c3);
+  check("... and the tab, with nothing else unapplied, is written again from the patch",
+        (await cljs(page, `[(:dirty @ui) (str/includes? (.getValue @code-ed) "(box ${c3} \\"mtof\\" 9800 700)")]`)) === "[false true]",
+        await cljs(page, `[(:dirty @ui) (str/includes? (.getValue @code-ed) "(box ${c3} ")]`));
+
+  await cljs(page, `(delete ${c1} ${c2} ${c3})`);
 }

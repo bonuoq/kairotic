@@ -582,6 +582,135 @@
         :else (recur (next cs) depth false))
       (and (<= depth 0) (not in-str)))))
 
+;; ───── a form of the Code tab, alone (discussion #407) ─────
+;; ⇧+Enter evaluates the selection, or the form the cursor is in (or the one just before it), without applying
+;; the rest of the tab: live coding a line at a time. Calls that make the patch (box, connect, text!, the data of
+;; a box…) change it as the whole tab does, by the difference, as one event: a box written again as it was keeps
+;; what it keeps. Anything else — (play), (send! :b3 60), (snapshot), a def — is a line of the REPL.
+
+(defn top-forms
+  "The top-level forms of a piece of code, as [from to] (to exclusive), outside comments: lists, vectors,
+   maps, strings and words, with what goes before them (#{ ' @ ^)."
+  [s]
+  (let [n (count s) prefix? (fn [c] (contains? #{"#" "'" "@" "`" "~" "^"} c))
+        space? (fn [c] (or (= c ",") (re-matches #"\s" c)))]
+    (loop [i 0 depth 0 in-str false start nil pre false out []]
+      (if (>= i n)
+        (if start (conj out [start n]) out)
+        (let [c (.charAt s i)]
+          (cond
+            in-str (cond (= c "\\") (recur (+ i 2) depth true start pre out)
+                         (= c "\"") (if (zero? depth)
+                                      (recur (inc i) 0 false nil false (conj out [start (inc i)]))
+                                      (recur (inc i) depth false start pre out))
+                         :else (recur (inc i) depth true start pre out))
+            (= c ";") (let [j (let [k (.indexOf s "\n" i)] (if (neg? k) n k))]
+                        (if (and (zero? depth) start)
+                          (recur j 0 false nil false (conj out [start i]))
+                          (recur j depth false start pre out)))
+            (or (= c "\"") (contains? #{"(" "[" "{"} c))
+            (let [str? (= c "\"")]
+              (if (zero? depth)
+                (let [[out st] (cond (nil? start) [out i] pre [out start] :else [(conj out [start i]) i])]
+                  (recur (inc i) (if str? 0 1) str? st false out))
+                (recur (inc i) (if str? depth (inc depth)) str? start false out)))
+            (contains? #{")" "]" "}"} c)
+            (cond (zero? depth) (recur (inc i) 0 false start pre out)
+                  (and (= depth 1) start) (recur (inc i) 0 false nil false (conj out [start (inc i)]))
+                  :else (recur (inc i) (dec depth) false start pre out))
+            (= c "\\") (if (and (zero? depth) (nil? start))
+                         (recur (+ i 2) 0 false i false out)
+                         (recur (+ i 2) depth false start false out))
+            (space? c) (if (and (zero? depth) start)
+                         (recur (inc i) 0 false nil false (conj out [start i]))
+                         (recur (inc i) depth false start pre out))
+            :else (if (and (zero? depth) (nil? start))
+                    (recur (inc i) 0 false i (prefix? c) out)
+                    (recur (inc i) depth false start (and pre (prefix? c)) out))))))))
+
+(defn form-at
+  "The top-level form of code s at position pos, as [from to]: the one the cursor is in or touches, otherwise the
+   last one before it with only spaces between; nil if there is none."
+  [s pos]
+  (let [fs (top-forms s)]
+    (or (first (filter (fn [[a b]] (and (<= a pos) (< pos b))) fs))
+        ;; only spaces and comments between it and the cursor
+        (last (filter (fn [[_ b]] (and (<= b pos) (str/blank? (str/replace (subs s b pos) #";[^\n]*" "")))) fs)))))
+
+(def patch-calls
+  "The calls that make the patch, as the Code tab writes it: a form of them alone changes it by the difference."
+  #{"box" "connect" "disconnect" "move" "text!" "delete" "present" "unpresent" "view" "resize" "show-layers"
+    "pin-ref" "layer" "mark" "unmark" "project" "recipe" "code" "stroke" "axis" "tuning" "grid-x" "grid-y"
+    "tree!" "values!" "presets!"})
+
+(defn form-head "The name a list form starts with, or nil." [f] (second (re-find #"^\(\s*([^\s()\[\]{}\"]+)" f)))
+
+(defn patch-form?
+  "Whether a piece of code is only calls that make the patch (and at least one)."
+  [code]
+  (let [fs (map (fn [[a b]] (subs code a b)) (top-forms code))]
+    (boolean (and (seq fs) (every? (fn [f] (contains? patch-calls (form-head f))) fs)))))
+
+(defn keep-what-stays
+  "Patch p made by code on top of cur: a box made again as `box` makes it (a text and a place) over one that was
+   there keeps what that one kept (its data, presentation, view, size…), as a line evaluated alone must not empty it."
+  [cur p]
+  (update p :boxes
+          (fn [bs] (into (empty bs)
+                         (for [[id b] bs :let [a (get-in cur [:boxes id])]]
+                           [id (if (and a (= #{:text :x :y} (set (keys b)))) (merge a b) b)])))))
+
+(defn eval-calls!
+  "Evaluates calls of the Code tab on the patch on screen (discussion #407): calls that make the patch change it by
+   the difference, as one event; anything else is evaluated as a line of the REPL. Returns how many changes it made,
+   or the value, as the REPL shows it."
+  [code]
+  (if (patch-form? code)
+    (do
+      (repl-print! "in" (str "<span class=\"p\">λ</span>" (esc code)))
+      (try
+        (let [cur (current)
+              p (keep-what-stays cur (first (try-code cur code)))
+              evs (code-events cur p)
+              evs (or evs (fail "These calls cannot be applied as changes: apply the whole tab (Ctrl/⌘+Enter)."))]
+          (doseq [[op id] evs :when (#{:box :delete} op)] (forget-box! id))
+          (with-tx (or @tx-now {:via :repl}) (fn [] (dispatch-all! evs)))
+          (repl-print! "out" (esc (str "; " (count evs) (if (= 1 (count evs)) " change" " changes"))))
+          (count evs))
+        (catch :default e (repl-print! "err" (esc (or (.-message e) (str e)))) nil)))
+    (repl-eval! code :repl)))
+
+(defn same-code? [a b]
+  (= (str/replace (str/trim (str a)) #"\s+" " ") (str/replace (str/trim (str b)) #"\s+" " ")))
+
+(defn code-selection
+  "What the Code tab has selected, or the form at its cursor: [text from to], or nil."
+  []
+  (let [ta ($ "code")
+        [text a b] (if-let [e @code-ed]
+                     (let [m (.. e -view -state -selection -main)] [(.getValue e) (.-from m) (.-to m)])
+                     [(.-value ta) (.-selectionStart ta) (.-selectionEnd ta)])]
+    (if (< a b) [text a b] (when-let [[f t] (form-at text a)] [text f t]))))
+
+(defn eval-code-form!
+  "⇧+Enter in the Code tab (discussion #407): evaluates the selection, or the form at the cursor, alone. If the tab
+   held nothing else that was not applied, it is written again from the patch, the cursor kept on its line."
+  []
+  (let [[text from to] (code-selection)
+        code (when from (str/trim (subs text from to)))]
+    (if-not (and (seq code) (balanced? code))
+      (repl-print! "err" "Nothing to evaluate here: put the cursor on a form, or select some code.")
+      (let [rest-clean (same-code? (str (subs text 0 from) (subs text to)) (patch->code (current)))
+            line (when-let [e @code-ed] (.cursorLine e))]
+        (swap! ui (fn [u] (-> u (update :hist conj code) (assoc :hidx nil))))
+        (eval-calls! code)
+        (when (or rest-clean (same-code? (code-text) (patch->code (current))))
+          (swap! ui assoc :dirty false)
+          (render-code (current))
+          (when-let [e @code-ed]
+            (let [v (.-view e) doc (.. v -state -doc) l (.line doc (max 1 (min (or line 1) (.-lines doc))))]
+              (.dispatch v #js {:selection #js {:anchor (.-to l)}}))))))))
+
 (defn host-for!
   "A place for an editor next to element `el`, which hides: keys typed there stay there."
   [el cls]
@@ -653,6 +782,7 @@
           ed ((.-createEditor cm)
               #js {:parent host :doc (.-value ta) :language "clojurescript" :words (clj->js (command-words))
                    :onApply (fn [_] (run-panel-code!))
+                   :keys #js [#js {:key "Shift-Enter" :run (fn [] (eval-code-form!) true)}]
                    :onChange (fn [_] (when-not (:dirty @ui) (swap! ui assoc :dirty true) (render-code (current))))
                    :onLine (fn [_ text] (code-line-chosen! text))
                    :onUnfold (fn [text] (when-let [k (line-key text)] (swap! code-unfolded conj k)))})]
