@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Opening the repository to the community.** CONTRIBUTING (setting up, the tests, the conventions, the DCO
+  with a check on every pull request), a Code of Conduct (Contributor Covenant 2.1), SECURITY, a ROADMAP after
+  0.3.0, *How Kairotic is built*, issue, pull request and Discussions templates; the README lists every official
+  package and every dependency with its version and licence. Every source file carries its SPDX header, and
+  `tests/spdx.mjs` fails on one that does not.
 - **Bach's chorales, phrase by phrase** (#301, #399). `studies/_shared/chorales/phrases.json`: 2,272 phrases from the
   370 chorales, cut at the fermatas, in the engine's format (`satb` a quarter at a time, `held`, `strong`, the ends
   `A` and `B`, the key and the cadence, each voice's `lines` with its eighths) — what Study 63's `bridges.mjs` and
