@@ -12,7 +12,7 @@
 - **Studies 1–23 and the deprecated packages removed.** The prototype's studies (1–8 in Spanish, 9–23 on
   `kairotic-components`) would not run today: they stay as a record in [the studies](docs/studies.md), and their
   code in the repository's history. `componentes/` and `components/` (`kairotic-componentes`,
-  `kairotic-components`) are gone too.
+  `kairotic-components`) are gone too, and both packages are unpublished from npm.
 - **`bach-4` learns from Bach** (`@kairotic/rules` 0.17.0, `bach-4` 1.1.0; `@kairotic/cac` 0.16.5). Judged on the
   corpus, Bach's own inner voices: 234 of his 2,272 phrases kept as he wrote them (1.0.0: 112). The voices' ranges as
   his, the same in every key (a style's `ranges`, in MIDI: soprano A3–A5, alto E3–D5, tenor C3–A4); a passing tone
