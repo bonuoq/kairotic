@@ -14,6 +14,8 @@
 // over uses of rules (two halves of a bar). What it finds can always be written out again (expand), the same notes:
 // the compression is lossless, and checked.
 
+import { lexicon } from "./bits.mjs";
+
 export const PITCH_BITS = 7;
 
 /** A piece from [[onset dur midi] …] (16ths): its notes in order, each with the gap to the next onset. */
@@ -250,13 +252,183 @@ export function written(c, { limit = Infinity } = {}) {
 }
 
 /** The chords the figures spell, in order (a harmonic reduction): what a compression of a prelude leaves. */
-export function harmony(c) {
-  const out = [];
-  const walk = (x, n = 1) => {
-    if (isNote(x)) return;
-    if (x.rule.kind === "repeat") { for (const y of x.body) walk(y, x.n); return; }
-    if (x.rule.kind === "figure") { const ch = chordOf(x.pitches); if (ch) out.push(ch.name); }
+/**
+ * The sonority of a span no figure covers ([[onset dur midi]] notes, from on for len): the pitches sounding
+ * in it, weighed by how long they sound; a pitch heard only in its last quarter that belongs to the next chord is an
+ * anticipation and left out; then, while the pitches name no chord (Study 66's chordOf, one note foreign to it
+ * allowed: a pedal), the lightest is left out — a passing note. Its pitches, low to high.
+ */
+export function sonorityOf(raw, on, len, next = []) {
+  const w = new Map(), late = new Map();
+  for (const [t, d, p] of raw) {
+    const a = Math.max(t, on), b = Math.min(t + d, on + len);
+    if (b <= a) continue;
+    w.set(p, (w.get(p) || 0) + (b - a));
+    late.set(p, (late.get(p) ?? true) && t >= on + 0.75 * len);
+  }
+  const nextPcs = new Set(next.map((p) => ((p % 12) + 12) % 12));
+  let ps = [...w.keys()].filter((p) => !(late.get(p) && nextPcs.has(p % 12)));
+  const pcW = (pc) => ps.filter((p) => p % 12 === pc).reduce((s, p) => s + w.get(p), 0);
+  while (ps.length > 3 && !chordOf(ps)) {
+    const pcs = [...new Set(ps.map((p) => p % 12))], bass = Math.min(...ps) % 12;
+    const light = pcs.filter((pc) => pc !== bass).sort((x, y) => pcW(x) - pcW(y))[0];
+    ps = ps.filter((p) => p % 12 !== light);
+  }
+  return [...new Set(ps)].sort((a, b) => a - b);
+}
+
+/** The chords a description leaves, in time: [{name, on, len, read, pitches}], a chord for every length of the figure
+ *  used most (a bar of BWV 846), from its first use. A bar where that figure is used names the chord of its pitches;
+ *  every other bar — written out, another figure, a cadence, the final chord — is read as a sonority of all its notes
+ *  (sonorityOf; read: true): the harmony does not stop where the pattern does. The last bar, if its bass is not struck
+ *  again, keeps the bar before's (a pedal held to the end). With bar (in 16ths), a chord a bar: the figure names it
+ *  only if it fills the bar. */
+export function harmonySpans(c, { bar } = {}) {
+  const uses = new Map(), at = new Map();
+  let t = 0;
+  const walk = (x) => {
+    if (!isNote(x) && x.rule.kind === "repeat") { for (let i = 0; i < x.n; i++) x.body.forEach(walk); return; }
+    const len = expand([x]).reduce((s, y) => s + y.g, 0);
+    if (!isNote(x) && x.rule.kind === "figure") { uses.set(x.rule, (uses.get(x.rule) || 0) + 1); if (!at.has(t)) at.set(t, []); at.get(t).push(x); }
+    t += len;
   };
-  c.items.forEach((x) => walk(x));
-  return out;
+  c.items.forEach(walk);
+  let main = null;
+  for (const [r, n] of uses) if (!main || n > uses.get(main)) main = r;
+  if (!main) return [];
+  const F = main.rhythm.reduce((s, r) => s + r.g, 0), L = bar || F;
+  const raw = notesOf(c.tokens), end = Math.max(...raw.map((x) => x[0] + x[1])), lastOn = Math.max(...raw.map((x) => x[0]));
+  const firstUse = Math.min(...[...at.entries()].filter(([, xs]) => xs.some((x) => x.rule === main)).map(([t]) => t));
+  const first = bar ? firstUse % L : firstUse;
+  const spans = [];
+  for (let s = first; s < end && s <= lastOn; s += L) {
+    const own = F >= L && (at.get(s) || []).find((x) => x.rule === main);
+    spans.push(own ? { on: s, len: L, pitches: own.pitches } : { on: s, len: Math.min(L, end - s), read: true });
+  }
+  let next = [];
+  for (let i = spans.length - 1; i >= 0; i--) {
+    const x = spans[i];
+    if (x.read) {
+      x.pitches = sonorityOf(raw, x.on, x.len, next);
+      if (i === spans.length - 1 && i > 0) {
+        const before = raw.filter((n) => n[0] < x.on && n[0] >= x.on - L), bass = before.length ? Math.min(...before.map((n) => n[2])) : null;
+        if (bass !== null && bass < Math.min(...x.pitches) && !raw.some((n) => n[0] >= x.on && n[2] === bass)) x.pitches = [bass, ...x.pitches];
+      }
+    }
+    next = x.pitches;
+  }
+  return spans.map((x) => { const ch = chordOf(x.pitches); return { name: ch ? ch.name : "?", on: x.on, len: x.len, read: !!x.read, pitches: x.pitches }; });
+}
+
+/** The chords a description leaves, by name (harmonySpans). */
+export function harmony(c, o) { return harmonySpans(c, o).map((x) => x.name); }
+
+// ───────── the uses coded as a listener hears them (bits.mjs, @kairotic/rules; discussion #399) ─────────
+// The rules stay; only how their uses are said changes. One coder for every level of a description, shared with Study
+// 67 so their numbers measure the same thing: a lexicon (bits.mjs) for each context a listener knows he is in — which
+// rule comes, a voice's step, a slice's length, a step of a reduction —; in each, a word heard before is a word of the
+// lexicon, a word never heard an escape and its literal (a pitch 7 bits, a step log2 25, a rule its number). Voices are said as rows, a chord after another, every voice in every row: the first row its pitches, then
+// each voice's step from its pitch before ("v|n", in semitones, 0 for a voice that holds; beyond an octave an escape
+// and 7 bits). Which rule comes, a figure's pitches (a row a use, each voice its index in the figure), a motif's start
+// (its step from the last) and Study 67's levels are all said this way.
+
+export const ESC = "esc";
+
+/** A coder: say(context, word, literal) → its bits now, and learns it; a lexicon for each context. The literal is a
+ *  number of bits, or a function saying the word by its parts (its bits). {say, lexicons}. */
+export function coder({ kinds = 40 } = {}) {
+  const lexicons = new Map();
+  const say = (ctx, w, literal) => {
+    if (!lexicons.has(ctx)) lexicons.set(ctx, lexicon({ kinds }));
+    const lex = lexicons.get(ctx);
+    if (lex.count(w)) { const b = lex.bits(w); lex.add(w); return b; }
+    const b = lex.bits(ESC); lex.add(ESC); lex.add(w); return b + (typeof literal === "function" ? literal() : literal);
+  };
+  return { say, lexicons };
+}
+
+const STEP_BITS = log2(25);
+/** A voice's word from its pitch before to p (undefined before: the pitch itself). */
+export function sayVoice(say, before, p) {
+  if (before === undefined) return say("pitch", "p:" + p, PITCH_BITS);
+  const d = p - before;
+  return Math.abs(d) <= 12 ? say("voice", "v|" + d, STEP_BITS) : say("voice", ESC, PITCH_BITS);
+}
+
+/** Rows of voices (each an array of pitches, voice i at index i) said one after another: their bits. */
+export function sayRows(say, rows, last = []) {
+  let bits = 0;
+  for (const row of rows) row.forEach((p, i) => { bits += sayVoice(say, last[i], p); last[i] = p; });
+  return bits;
+}
+
+/** The length of a description with its uses coded as heard: {bits, ratio, parts {rules, which, pitches, notes, repeats}}.
+ *  voices: false says a figure's pitches as pitches every time (to see what the steps save). */
+export function codeLength(c, { voices = true, kinds = 40 } = {}) {
+  const M = c.model, R = c.rules.length, { say } = coder({ kinds });
+  const parts = { rules: c.rules.reduce((s, r) => s + ruleCost(r, M), 0), which: 0, pitches: 0, notes: 0, repeats: 0 };
+  const last = new Map();
+  const walk = (x) => {
+    if (isNote(x)) { parts.notes += M.pitch + M.rhythm; return; }
+    if (x.rule.kind === "repeat") { parts.repeats += 1 + log2(x.n); x.body.forEach(walk); return; }
+    const id = x.rule.id;
+    parts.which += say("which", "use:" + id, log2(R));
+    if (!last.has(id)) last.set(id, []);
+    const before = last.get(id);
+    if (x.rule.kind === "figure") parts.pitches += voices ? sayRows(say, [x.pitches], before) : x.pitches.length * M.pitch;
+    else parts.pitches += voices ? sayVoice(say, before[0], x.start) + ((before[0] = x.start), 0) : M.pitch;
+  };
+  c.items.forEach(walk);
+  const bits = Object.values(parts).reduce((a, b) => a + b, 0);
+  for (const k of Object.keys(parts)) parts[k] = Math.round(parts[k]);
+  return { bits: Math.round(bits), ratio: bits / c.raw, parts };
+}
+
+// ───────── in a tree (kairotic.mt): :defs and :use ─────────
+// A figure is a fragment written with the pitches of its first use; a use re-pitches it ([:use {:ref :F1 :pitches
+// ["c4" …]}]: the fragment's distinct pitches, in the order they first sound, become those). A motif is used
+// transposed ({:transpose n}); a repeat is a fragment used n times. Every note and use stands where it begins (:at, in
+// beats), so voices that overlap (a bass held under the figure) stay as they are.
+
+const NAMES_EDN = ["c", "c#", "d", "eb", "e", "f", "f#", "g", "ab", "a", "bb", "b"];
+const nameOf = (p) => NAMES_EDN[((p % 12) + 12) % 12] + (Math.floor(p / 12) - 1);
+const num = (x) => String(Math.round(x * 10000) / 10000);
+const noteEdn = (p, d, at) => `[:note {:pitch "${nameOf(p)}" :dur ${num(d / 4)} :at ${num(at / 4)}}]`;
+
+/** The description as a tree (EDN text): [:voice {:defs {…}} …uses and notes…]. Its notes are the piece's. With
+ *  voices, a figure used again says :voices — each voice's step from its use before — instead of its :pitches. */
+export function treeOf(c, { name = "piece", tempo = 60, voices = false } = {}) {
+  const defs = new Map(), lastP = new Map();
+  let reps = 0;
+  const span = (x) => isNote(x) ? x.g
+    : x.rule.kind === "repeat" ? x.n * x.body.reduce((s, y) => s + span(y), 0)
+    : x.rule.rhythm.reduce((s, r) => s + r.g, 0);
+  const fragment = (tokens) => { let t = 0; return "[:seq " + tokens.map((x) => { const e = noteEdn(x.p, x.d, t); t += x.g; return e; }).join(" ") + "]"; };
+  // (inside a repeat a use says its :pitches: said again, its :voices would move from the round before)
+  let inRepeat = 0;
+  const item = (x, at) => {
+    if (isNote(x)) return noteEdn(x.p, x.d, at);
+    if (x.rule.kind === "repeat") {
+      const id = "R" + (++reps); let t = 0;
+      inRepeat++;
+      const def = "[:seq " + x.body.map((y) => { const e = item(y, t); t += span(y); return e; }).join(" ") + "]";
+      inRepeat--;
+      defs.set(id, def);
+      const len = span(x) / x.n;
+      return Array.from({ length: x.n }, (_, i) => `[:use {:ref :${id} :at ${num((at + i * len) / 4)}}]`).join(" ");
+    }
+    const notes = expand([x]);
+    if (!defs.has(x.rule.id)) defs.set(x.rule.id, { first: x, edn: fragment(notes) });
+    const first = defs.get(x.rule.id).first;
+    if (x.rule.kind === "figure") {
+      const before = lastP.get(x.rule.id); lastP.set(x.rule.id, x.pitches);
+      if (voices && before && !inRepeat) return `[:use {:ref :${x.rule.id} :voices [${x.pitches.map((p, i) => p - before[i]).join(" ")}] :at ${num(at / 4)}}]`;
+      return `[:use {:ref :${x.rule.id} :pitches [${x.pitches.map((p) => '"' + nameOf(p) + '"').join(" ")}] :at ${num(at / 4)}}]`;
+    }
+    return `[:use {:ref :${x.rule.id} :transpose ${x.start - first.start} :at ${num(at / 4)}}]`;
+  };
+  let t = 0;
+  const body = c.items.map((x) => { const e = item(x, t); t += span(x); return e; });
+  const ds = [...defs.entries()].map(([k, v]) => `:${k} ${typeof v === "string" ? v : v.edn}`).join("\n   ");
+  return `[:voice {:name "${name}" :tempo ${tempo}\n  :defs {${ds}}}\n ${body.join("\n ")}]`;
 }
