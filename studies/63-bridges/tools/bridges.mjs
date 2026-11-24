@@ -16,11 +16,17 @@ for (let i = 0; i < 5; i++) r();
 
 const phrases = [];
 const read = (f) => { const v = JSON.parse(readFileSync(f, "utf8")); (Array.isArray(v) ? v : v.phrases || [v]).forEach((p) => p && p.satb && phrases.push(p)); };
+const t0 = Date.now();
 if (!existsSync(dir)) { console.error(`no corpus at ${dir}`); process.exit(1); }
 const walk = (d) => readdirSync(d).forEach((f) => { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (f.endsWith(".json") && f !== "bridges.json") read(p); });
 walk(dir);
 const all = [];
 let none = 0;
-for (const p of phrases) { const bs = bridgesFor(p, { count, r }); if (!bs.length) none++; all.push(...bs); }
-writeFileSync(out, JSON.stringify(all));
+phrases.forEach((p, i) => {
+  const bs = bridgesFor(p, { count, r });
+  if (!bs.length) none++;
+  all.push(...bs);
+  if (i % 200 === 199) console.log(`${i + 1} phrases, ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+});
+writeFileSync(out, JSON.stringify({ source: "Kairotic Study 63 · bridges, outer.mjs (tools/bridges.mjs)", license: "CC BY-NC-SA 4.0 (adapted from phrases.json: its A and B; see LICENSE.md)", count, seed, bridges: all }));
 console.log(`${phrases.length} phrases, ${all.length} bridges (${count} a variant), ${none} phrases without one → ${out}`);

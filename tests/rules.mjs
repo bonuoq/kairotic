@@ -57,6 +57,23 @@ const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483
   is("… the tonic with a minor 7th is V of ④: C7 reads V/F, and goes to F (C7 → C unresolved, C7 → F/C fine — and F/C → C a plagal close)",
      lab([[48, 52, 55, 58]]) === "V/F" && Fn.grammarErrors(Fn.functionsOf([[48, 52, 55, 58], [48, 52, 55]], C), { end: false }).length === 1 &&
      Fn.grammarErrors(Fn.functionsOf([[48, 52, 55, 58], [48, 53, 57], [48, 52, 55]], C)).length === 0 && lab([[48, 52, 55, 59]]) === "T");
+  // the grammar against Bach: his chorales' phrases (studies/_shared/chorales, Sapp's edition, CC BY-NC-SA), read in
+  // the home key alone, and in local keys with passing chords
+  {
+    const corpus = join(root, "studies/_shared/chorales/phrases.json");
+    if (existsSync(corpus)) {
+      const ps = JSON.parse(readFileSync(corpus, "utf8")).phrases;
+      let home = 0, local = 0;
+      for (const p of ps) {
+        const ch = p.satb.map((r) => [...r]), end = p.cadence ? { tonic: p.cadence.tonic, mode: p.cadence.mode } : null;
+        if (Fn.grammarErrors(Fn.functionsOf(ch, p.key), { key: p.key, end: false }).length) home++;
+        if (Fn.localFunctions(ch, p.key, { end }).errors.length) local++;
+      }
+      is(`… Bach's chorales against the grammar: read in the home key alone ${home} of ${ps.length} phrases break it (an applied dominant to another key, a passing V – IV6); read in local keys (the related ones and the cadence's) with passing chords, ${local} — under 8 %`,
+         home > 0.15 * ps.length && local < 0.08 * ps.length);
+    }
+  }
+  is("… local keys: a phrase from C closing in G reads its last chords in G, its first in C", (() => { const L = Fn.localFunctions([[48, 52, 55], [41, 57, 60], [43, 59, 62], [48, 52, 57], [50, 54, 57, 60], [43, 59, 62]], C, { end: { tonic: "G", mode: "major" } }); return L.keys[0].tonic === "C" && L.keys.at(-1).tonic === "G" && L.errors.length === 0; })());
   const Bt = await import("../packages/rules/assets/bits.mjs"), lx = Bt.lexicon();
   const first = lx.bits("Q:0,1"); lx.add("Q:0,1");
   is("bits.mjs: a word heard again cheaper than at first, its inversion between, a new one dearest; the inversion negates every number",
