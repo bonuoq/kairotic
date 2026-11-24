@@ -203,6 +203,8 @@ in a sequence as the others, the 6/4 in two steps (a 5/4 between), structural pa
 (`chorale-4` 1.2.0), the memo reading back to where a held note began; `bits.mjs`.
 `@kairotic/rules` 0.14.0: `outer-octaves` (`chorale-4` 1.3.0): no octave between the soprano and the bass on two strong
 units in a row, the soprano held between them and moving the bass's way — not even a sequence's.
+`@kairotic/rules` 0.15.0: `functions` (`chorale-4` 1.4.0): the tonal grammar of `functions.mjs` on the strong units (an applied
+dominant resolved on the weak ones too); `fromOuter`: the inner voices between a soprano and a bass given.
 
 ## Next
 

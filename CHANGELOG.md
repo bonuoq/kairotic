@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Tonal functions in four parts, and the inner voices between a soprano and a bass given** (`@kairotic/rules`
+  0.15.0, `chorale-4` 1.4.0; `@kairotic/cac` 0.16.3; discussions #353, #399, #321). The rule `functions` reads the
+  chord on each strong unit as `functions.mjs` does — T, S, D or an applied dominant — and keeps the grammar into it,
+  from the unit before or from the strong one before: never D → S, an applied dominant into its target (on a weak unit
+  too). The weak units between are the prolongation's (the RO's 6/3 on ⑥ going up, a passing chord), as GTTM's
+  prolongational reduction reads them; an augmented 6th prepares the dominant (S); a chain of 6/3s and 7–6s over a
+  bass by step (the Lamento) is a line; a figured 7th chord is read whole (a diminished 7th without its 5th is still
+  one). Every prototype of Studies 62, 65 and 69 keeps the grammar: the same counts with the rule. `fromOuter` (and
+  `fromNotes`'s `soprano`): a soprano given with the bass, the alto and the tenor written between, the chords free —
+  the step for the chorales (A to B: a bridge's outer voices, filled in four parts). Bach's *Aus meines Herzens
+  Grunde* (BWV 269), its first phrase's soprano and bass: 14,267,964 inner voices (15,105,996 without the functions),
+  the grammar kept in every one drawn.
 - **Tension: `tension.mjs`** (`@kairotic/rules` 0.14.0; discussions #399, #321). Lerdahl's *Tonal Pitch Space*: a
   chord's basic space in a region, the chord distance δ = i + j + k (I → V 5, I → ii 8, as his tables), an applied
   dominant's region its target's key, surface tension (an inversion, a 7th, a foreign note), and sequential, global
