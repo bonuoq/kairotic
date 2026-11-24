@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Study 70 · open form: the performer chooses the path, the follower decides the form** (discussion #212). A work of
+  fragments and rules of succession (`next`, `not`, `near` a rhythm at most n swaps away; `then` how the next is
+  played; ending when a fragment comes a third time), in *Klavierstück XI*'s manner: "Eleven cells", ten rhythm cells
+  over a twelve-tone row, 8.4 million performances of at most eight fragments. Followed live, each fragment that may
+  come a hypothesis aligned with what is heard (after 2 notes, the median); read again whole once the performance is
+  over (under 1 % of fragments off with slips). The performances kept as a tree of branches; the work as EDN,
+  `[:open … [:frag …] …]`, for an `open` box to come.
 - **Live coding in the Code tab, step 2: a short syntax and a page of your own** (discussion #407). **`to`** makes a
   box below another, fed by it, as one event, and returns its id: `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`
   (`(to a o "text" i)` for other ports, `(to :b3 :b9)` to connect only); a chain (`->`, `doto`) of calls that make the
