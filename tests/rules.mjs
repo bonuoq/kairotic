@@ -505,7 +505,9 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   // Aus meines Herzens Grunde (BWV 269, chorale 1), the first phrase: Bach's soprano and bass, the inner voices found
   const S = [67, 67, 67, 74, 71, 71, 67, 67, 67, 71, 69], B = [43, 55, 52, 54, 55, 50, 52, 48, 47, 43, 50], len = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2];
   const notes = (xs) => { let t = 0; return xs.map((m, i) => { const o = { midi: m, units: len[i], strong: Array.from({ length: len[i] }, (_, k) => (t + k - 1) % 3 === 0) }; t += len[i]; return o; }); };
-  const ob = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G" }), free = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G", style: { extends: "bach-4", between: [["functions", false]] } });
+  // (bach-4's functions a cost since 1.3.0: here a refusal again, local, so every draw keeps them)
+  const hard = { extends: "bach-4", between: [["functions", { local: true, passing: true }]], softBetween: [["functions", false]] };
+  const ob = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G", style: hard }), free = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G", style: { extends: "bach-4", between: [["functions", false]] } });
   const c1 = ob.count(), c0 = free.count(), r = rng(269);
   const Bu = B.flatMap((m, i) => Array(len[i]).fill(m));
   let kept = 0, given = 0;

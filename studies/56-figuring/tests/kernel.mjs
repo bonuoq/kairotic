@@ -80,6 +80,10 @@ export async function run() {
   const Rd = figuring({ bass: BASSES.romanesca.degrees, key: { tonic: "C" }, per: 2, ending: "deceptive" }), Rh = figuring({ bass: BASSES.romanesca.degrees, key: { tonic: "C" }, per: 2, ending: "half" });
   is("a deceptive ending: the last ① becomes the ⑥ above ⑤ (G3 A3), its cadence ⑤–⑥", Rd.notes.slice(-2).map((x) => Rd.key.name(x.d)).join(" ") === "G3 A3" && Rd.closes()[0].kind === "⑤–⑥" && Rd.count() > 0n);
   is("a half ending: the phrase ends on ⑤ (G3)", Rh.notes.length === 8 && Rh.key.name(Rh.notes[7].d) === "G3" && Rh.closes()[0].kind === "⑤" && Rh.count() > 0n);
+  // (a plagal ending, IV–I: the bass ④–①, IV a 5/3, the melody's three ways — the tonic held, ⑥ to ⑤, ④ to ③; discussion #353)
+  const Rp = figuring({ bass: "C3 D3 E3 F3 C3", key: { tonic: "C" }, per: 1, ending: "plagal" });
+  is("a plagal ending: the bass ④–① (F3 C3), its cadence ④–①, the melody 5–8, 3–5 or 8–3 over it", Rp.closes()[0].kind === "④–①" && Rp.count() > 0n && Rp.closes()[0].options.map((o) => `${o.pen}-${o.last}`).join() === "5-8,3-5,8-3");
+  is("... over a bass that does not end ④–①, refused, and why", (() => { try { figuring({ bass: BASSES.romanesca.degrees, ending: "plagal" }); return false; } catch (e) { return /needs a bass ending ④–①/.test(e.message); } })());
   is("... a deceptive or half ending over a bass that does not end ⑤–① is refused, and why", (() => { try { figuring({ bass: BASSES["scale-down"].degrees, ending: "deceptive" }); return false; } catch (e) { return /needs a bass ending ⑤–①/.test(e.message); } })());
   is("the engine's melodies end with a perfect or imperfect cadence, recognized", (() => {
     const rr = rng(8);

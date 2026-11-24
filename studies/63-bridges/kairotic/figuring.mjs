@@ -90,6 +90,8 @@ export const ENDINGS = {
   imperfect: { name: "imperfect", kinds: ["imperfect"] },
   deceptive: { name: "deceptive (⑤–⑥)", kinds: ["deceptive"] },
   half: { name: "half (on ⑤)", kinds: ["half"] },
+  // (IV–I: the bass ④–①, as Bach's chorales close many of their phrases; discussion #353)
+  plagal: { name: "plagal (IV–I)", kinds: ["plagal"] },
 };
 const CADENCE_KINDS = {
   "②–①": [{ name: "imperfect (3–3)", kind: "imperfect", pen: [3], last: [3] }, { name: "perfect (6–8)", kind: "perfect", pen: [6], last: [8] },
@@ -98,6 +100,8 @@ const CADENCE_KINDS = {
           { name: "compound (4–3), perfect", kind: "perfect", two: [[4], [3]], last: [8] }, { name: "compound (4–3), imperfect", kind: "imperfect", two: [[4], [3]], last: [3] }],
   "⑤–⑥": [{ name: "deceptive (⑦ to ①)", kind: "deceptive", pen: [3, 5], last: [3] }],
   "⑤": [{ name: "half (on ⑤)", kind: "half", pen: null, last: [8, 3] }],
+  "④–①": [{ name: "plagal, the tonic held (5–8)", kind: "plagal", pen: [5], last: [8] }, { name: "plagal, ⑥ to ⑤ (3–5)", kind: "plagal", pen: [3], last: [5] },
+          { name: "plagal, ④ to ③ (8–3)", kind: "plagal", pen: [8], last: [3] }],
 };
 /** The bass made to end as the ending asks: a deceptive cadence turns its last ① after ⑤ into the ⑥ above that ⑤,
  *  a half cadence leaves the last ① after ⑤ out; or why it cannot. */
@@ -109,6 +113,10 @@ function endWith(notes, ending, K) {
     if (pen && dp === 4 && dl === 5 && last.d === pen.d + 1) return notes;
     if (!fiveOne) throw new Error("a deceptive cadence needs a bass ending ⑤–①");
     return [...notes.slice(0, -1), { d: pen.d + 1, r: 0, key: last.key }];
+  }
+  if (ending === "plagal") {
+    if (pen && dl === 0 && dp === 3) return notes;
+    throw new Error("a plagal cadence needs a bass ending ④–①");
   }
   if (ending === "half") {
     if (dl === 4) return notes;
@@ -125,6 +133,7 @@ function finalClose(notes, units, ending, K) {
   const dl = degOf(K, last), dp = pen && degOf(K, { ...pen, key: last.key });
   let kind = null;
   if (ending === "half") { if (dl === 4) kind = "⑤"; }
+  else if (ending === "plagal") { if (pen && dl === 0 && dp === 3) kind = "④–①"; }
   else if (pen && dp === 1 && dl === 0 && Math.abs(pen.d - last.d) === 1) kind = "②–①";
   else if (pen && dp === 4 && dl === 0) kind = "⑤–①";
   else if (pen && dp === 4 && dl === 5 && last.d === pen.d + 1) kind = "⑤–⑥";
@@ -145,7 +154,7 @@ function optionFigs(o, cl) {
 
 /**
  * spec: {bass: "C4 B3 …" | degrees, key: {tonic, mode}, per (units a bass note: 1 or 2), ending ("authentic",
- *        "perfect", "imperfect", "deceptive", "half"), line (how strictly the melody moves: "free", "moderate",
+ *        "perfect", "imperfect", "deceptive", "half", "plagal"), line (how strictly the melody moves: "free", "moderate",
  *        "strict"), middleLine (the middle voice's), lo, hi (the melody's range in degrees), middle: [lo, hi],
  *        ro (chapter 4's rules, partimento.mjs's spec.ro)}
  * A bass given as notes ({d, r}) may give a note a key of its own ({d, r, key: {tonic, mode}}, Study 57's boxed keys):
@@ -187,6 +196,8 @@ export function figuring(spec = {}) {
   const cadenceChords = (t) => {
     if (t === n - 1) return ["5/3"];
     if (fin && fin.kind === "⑤–①" && t === n - 2) return ["5/3", "7/3"];
+    // (IV before it: a 5/3 over ④)
+    if (fin && fin.kind === "④–①" && t === n - 2) return ["5/3"];
     return null;
   };
   const D = V.degree, R = V.raised;
