@@ -46,6 +46,10 @@
   becomes its `:tree`; `(ptree t)` in a `pattern` box. The way back of `render` (#93): what cac writes can now be
   played by a `player` and varied with the generators.
 
+- **A rhythm that comes back is written the same way** (issue #108, point 2). The quantizer finds the spans whose onsets
+  fall at the same places, prefers for all of them the division of their mean (`:rep` 1 for another; `:repeat` the
+  tolerance, 0.08 of the span; `:repeat false` for none), and so writes a repeated rhythm alike each time. On the
+  benchmark, onsets gain up to 2 points and durations up to 7 (Essen rough 57.9 → 64.7 %); Weimar 66.6 → 67.2 %.
 - **Study 72 · reveal** (discussion #407): a live-coding set is only code while it is played; at the end it reveals
   its patch, drawn by its flow (`layout.mjs`: a layered drawing after Sugiyama — rows after what feeds them, the order
   uncrossing the wires, each box under what feeds it; the app's example work in seven rows with no crossing), and its

@@ -37,7 +37,10 @@
 ;; :meters a meter for each bar (the last going on: meter changes, issue #107), :fix {beat-start choice} the divisions chosen by hand (n, [n1 n2] or [:merge n]: see `choices`).
 ;; With :time (played time), :ref-bpm (100) weighs the error of a note in seconds rather than in beats: faster than
 ;; ref-bpm, :err weighs less, in proportion (down to a third), so that what a player is off by in milliseconds does
-;; not turn into finer divisions at fast tempos (nil: in beats, as without :time).
+;; not turn into finer divisions at fast tempos (nil: in beats, as without :time). A rhythm that comes back (the same
+;; onsets in spans of the same length, within :repeat of the span, 0.08) is written the same way each time: the
+;; division of the mean of its returns is preferred for all of them, :rep (1) of the weights for another (issue #108;
+;; :repeat false for none).
 ;; :real (true) keeps on each note where it really sounded, as :tstamp.real and :dur.real (seconds: the material's
 ;; time at its tempo — a tree's :tempo, 60 for a freqt), on its first piece only: what kairotic.mei writes as MEI's
 ;; gestural attributes, and what tc/free-form places a note by when it is made free again (discussion #217).
@@ -63,7 +66,7 @@
    :voices 2
    :nest true
    :overlap 0.15
-   :w {:err 8 :off 0.35 :cpx 1 :lost 1.5 :coh 0.5}})
+   :w {:err 8 :off 0.35 :cpx 1 :lost 1.5 :coh 0.5 :rep 1}})
 
 ;; ───────── 1. the frame ─────────
 
@@ -166,7 +169,7 @@
     (let [{[p q] :meter} (:meter o) BL (* p (/ 4 q))
           P (/ (- (peek beats) (first beats)) (max 1 (dec (count beats))))
           lp (fn [bpm] (let [x (/ (js/Math.log (/ bpm (or (:prior-bpm o) 100))) js/Math.LN2)] (* x x)))
-          o1 (dissoc o :time :fix)
+          o1 (assoc (dissoc o :time :fix) :repeat false)   ; (repetition forces divisions: their costs would not compare)
           ;; for each value of the beat, the two phases where the notes weigh most (tempo/phase-weights)
           ;; (with :downbeat, the time of a note known to be on a downbeat, the phase that puts one there)
           db (:downbeat o)
@@ -388,8 +391,16 @@
          n (count sps)
          simple? (and (<= q 4) (empty? g))
          ;; a division chosen by hand (:fix) is the only candidate there; else the few cheapest
+         ;; a rhythm that comes back prefers the division chosen for all its returns (issue #108): another costs :rep
+         prefer (fn [s rs] (if-let [n (some (fn [[k v]] (when (near? k s) v)) (:prefer o))]
+                             (let [rs (if (some (fn [r] (and (= n (:n r)) (not (:parts r)))) rs) rs
+                                          (if-let [x (first (filter (fn [x] (= n (:n x))) (let [[_ L u] (first (filter (fn [[s2]] (near? s2 s)) sps))]
+                                                                                                (span-options s L u (points-in pts s (+ s L)) (update o :divs conj n) false))))]
+                                            (conj rs (assoc x :s s :L (:L (first rs)))) rs))]
+                               (mapv (fn [r] (if (and (= n (:n r)) (not (:parts r))) r (update r :cost + (or (:rep (:w o)) 0)))) rs))
+                             rs))
          single (mapv (fn [[s L u]] (or (let [c (fix-at o s)] (when (and c (not (merge-choice? c))) (some-> (choose-span s L u pts o c) vector)))
-                                        (span-candidates s L u pts o)))
+                                        (prefer s (span-candidates s L u pts o))))
                       sps)
          merged (fn [i] (when (and simple? (even? i) (< (inc i) n) (near? (second (sps i)) (second (sps (inc i)))))
                           (let [[s L u] (sps i) c (fix-at o s) mc (when (merge-choice? c) (second c))
@@ -511,6 +522,41 @@
 (defn bar-at "The bar of a plan that holds beat t (the last one past the end)." [bs t]
   (or (first (filter (fn [b] (< t (- (+ (:b0 b) (:L b)) eps))) bs)) (peek bs)))
 
+(defn repeats
+  "A rhythm that comes back is written the same way each time (issue #108, point 2). Spans of the same length
+   whose onsets fall at the same places relative to their start (each within :repeat of the span: 0.08 by
+   default) are one rhythm, played several times: the mean of its onsets is nearer what was meant than any one
+   of its returns (the noise of each falls by the square root of how many there are), and the division that
+   mean takes is the one the plan prefers for every return (:rep of the weights for another). A {span-start
+   division}. Only spans with something off the beat count, and not what is fixed by hand."
+  [bs pts o]
+  (let [tol (let [x (:repeat o)] (if (number? x) x 0.08))
+        sps (vec (for [{:keys [b0 meter]} bs [s L u] (spans meter)
+                       :let [s (+ b0 s) in (points-in pts s (+ s L))
+                             rel (mapv (fn [p] (/ (- (:t p) s) L)) (filter (fn [p] (= :on (:kind p))) in))]
+                       :when (some (fn [x] (> x 0.02)) rel)
+                       :when (not (fix-at o s))]
+                   {:s s :L L :u u :rel rel}))
+        same? (fn [a b] (and (near? (:L a) (:L b)) (= (count (:rel a)) (count (:rel b)))
+                             (every? (fn [[x y]] (<= (js/Math.abs (- x y)) tol)) (map vector (:rel a) (:rel b)))))
+        ;; (each compared with the mean of a rhythm's returns so far, not with its first)
+        mean-of (fn [g] {:L (:L (first g)) :rel (apply mapv (fn [& xs] (/ (reduce + xs) (count g))) (map :rel g))})
+        groups (reduce (fn [gs sp] (if-let [i (first (keep-indexed (fn [i g] (when (same? (mean-of g) sp) i)) gs))]
+                                     (update gs i conj sp) (conj gs [sp])))
+                       [] sps)]
+    (into {}
+          (for [g groups :when (> (count g) 1)
+                :let [{:keys [s L u]} (first g) k (count g)
+                      mean (apply map (fn [& xs] (/ (reduce + xs) k)) (map :rel g))
+                      ;; among the divisions its returns would take alone (the first two of each): a mean fits some odd
+                      ;; division exactly (a septuplet for swung eighths) that no return would have chosen
+                      own (set (mapcat (fn [sp] (map :n (take 2 (span-options (:s sp) L u (points-in pts (:s sp) (+ (:s sp) L)) o false)))) g))
+                      n (:n (first (filter (fn [x] (own (:n x)))
+                                           (span-options s L u (mapv (fn [x i] {:t (+ s (* x L)) :kind :on :note i}) mean (range)) o false))))]
+                :when n
+                sp g]
+            [(:s sp) n]))))
+
 (defn plan
   "How the bars are divided for all these notes together (every voice on the same points): its bars
    [{:b0 :L :meter}], and the regions [{:s :L :n :tup}] of every bar. (:meter and :BL are those of the first.)"
@@ -518,7 +564,9 @@
   (let [maxoff (reduce max 0 (map :off notes))
         maxon (reduce max 0 (map :on notes))
         bs (bars o maxoff maxon)
-        pts (vec (sort-by :t (mapcat (fn [i n] [{:t (:on n) :kind :on :note i} {:t (:off n) :kind :off :note i}]) (range) notes)))]
+        pts (vec (sort-by :t (mapcat (fn [i n] [{:t (:on n) :kind :on :note i} {:t (:off n) :kind :off :note i}]) (range) notes)))
+        ;; a rhythm that comes back, written the same way each time (issue #108)
+        o (if (false? (:repeat o)) o (assoc o :prefer (repeats bs pts o)))]
     {:meter (:meter (first bs)) :BL (:L (first bs)) :bars bs :nbars (count bs)
      :total (let [b (peek bs)] (+ (:b0 b) (:L b)))
      ;; bar by bar, each starting from the kind of division the one before ended with (issue #108)
