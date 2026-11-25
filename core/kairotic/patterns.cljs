@@ -381,7 +381,8 @@
                    (let [ss (map (fn [k] (:stream (stream-of (get m k) {:seed seed :key k :pass p}))) streamed)]
                      (cond->> (if (seq ss)
                                 (apply map (fn [& vs] (zipmap streamed vs)) ss)
-                                (repeat {}))
+                                ;; (clojure.core's: repeat is the passes here)
+                                (clojure.core/repeat {}))
                        ;; the tree's notes under every key: what the keys say goes over what the tree says
                        tree (map merge (cycle tree)))))
         rows (cond endless? (one-pass 0)
