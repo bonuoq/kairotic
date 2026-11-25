@@ -43,8 +43,9 @@ Adapted from `phrases.json` (its A and B), so under the same license, CC BY-NC-S
 
 `{source, license, seed, perVariant, variants, trials, tried, failures}`; a trial is `{id, phrase, variant, draw, title,
 bwv, key, strong, bach, bridge}`, `bach` and `bridge` each `{satb, held}` (MIDI a quarter, soprano to bass; a note held
-where it is): a phrase of Bach's and one of its bridges of that variant, the alto and the tenor written by
-`@kairotic/rules`' `fromOuter` (`bach-4`). Every phrase is in the deck once, `perVariant` trials of each variant; `tried`
+where it is): a phrase of Bach's and one of its bridges of that variant, from his first chord to his last kept whole
+(the alto and the tenor given there), the inner voices between written by `@kairotic/rules`' `fromOuter` (`bach-4`,
+its moves weighed as his: `bach-motion`; the engine at temperature 1). Every phrase is in the deck once, `perVariant` trials of each variant; `tried`
 counts, by variant, the phrases tried and those whose bridge `bach-4` could fill, and `failures` why it could not. The
 same trials for every listener. Written by `node studies/71-blind/tools/deck.mjs 40 71`. Adapted from `phrases.json`
 and `bridges.json`, so under the same license, CC BY-NC-SA 4.0.

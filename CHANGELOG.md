@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The blind test's bridges between two of Bach's chords, their inner voices moving as his** (`@kairotic/rules`
+  0.21.0, `bach-4` 1.4.0; `@kairotic/cac` 0.16.9; Study 71). A bridge now begins and ends on Bach's chords whole: the
+  alto and the tenor given there (`fromOuter`'s `inner`, `fourOverBass`'s `given.alto` / `given.tenor`, where a unit has
+  a note) — before, only 31 of 200 began on his chord. `bach-4`'s voices weigh each move by how often Bach's alto and
+  tenor make it (`bach-motion`, weight 2: −log of its frequency in the chorales, `BACH_INNER_MOTION`), so the voice that
+  takes each chord tone is the one whose line it suits: in the deck the inner voices keep a note, step, leap a 3rd, a
+  4th or wider 30.9 / 40.9 / 13.9 / 9.3 / 4.9% of the time, Bach's 30.0 / 40.5 / 18.2 / 7.6 / 3.7% (before: 20 / 41 /
+  14 / 12 / 13). A kept note is struck again, as Bach mostly does, unless it is held into a dissonance. The deck drawn
+  again: `bach-4` fills 55–58% of the bridges tried. Bach's phrases judged as before (504).
+
 - **Study 71 · blind: the chorale test** (discussions #353, #399). A phrase of Bach's and a bridge — Study 63's outer
   voices from its first chord to its last, the alto and the tenor by `fromOuter` (`bach-4`) — heard one after the
   other: which is Bach? Five variants of the bridges (`all`, `no-functions`, `no-tension`, `no-economy`, `arch`); a

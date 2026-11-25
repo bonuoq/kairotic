@@ -35,10 +35,15 @@ export async function run() {
   is(`the deck: ${D.trials.length} trials, ${D.perVariant} of each variant, every phrase once`,
      Bl.VARIANTS.every((v) => by[v].length === D.perVariant) && new Set(D.trials.map((t) => t.phrase)).size === D.trials.length);
   const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
-  is("... each bridge as long as Bach's phrase, from his first chord's soprano and bass to his last's",
-     D.trials.every((t) => { const B = t.bridge.satb, A = t.bach.satb, n = A.length; return B.length === n && same([B[0][0], B[0][3]], [A[0][0], A[0][3]]) && same([B[n - 1][0], B[n - 1][3]], [A[n - 1][0], A[n - 1][3]]); }));
-  is("... the inner voices between the soprano and the bass, the voices in order (a unison allowed)",
-     D.trials.every((t) => t.bridge.satb.every(([s, a, tn, b]) => s >= a && a >= tn && tn >= b)));
+  is("... each bridge as long as Bach's phrase, from his first chord to his last, whole (the four voices as his)",
+     D.trials.every((t) => { const B = t.bridge.satb, A = t.bach.satb, n = A.length; return B.length === n && same(B[0], A[0]) && same(B[n - 1], A[n - 1]); }));
+  // (the inner voices' moves, as often as Bach's: a note kept, a step, a 3rd, a 4th, wider)
+  const motion = (key) => { const c = [0, 0, 0, 0, 0]; let n = 0; for (const t of D.trials) { const X = t[key].satb; for (const v of [1, 2]) for (let u = 1; u < X.length; u++) { const d = Math.abs(X[u][v] - X[u - 1][v]); c[d === 0 ? 0 : d <= 2 ? 1 : d <= 4 ? 2 : d === 5 ? 3 : 4]++; n++; } } return c.map((x) => (100 * x) / n); };
+  const mb = motion("bach"), mr = motion("bridge"), fmt = (m) => m.map((x) => x.toFixed(1)).join(" / ");
+  is(`... their inner voices move nearly as Bach's: kept / step / 3rd / 4th / wider — ${fmt(mr)}% (Bach ${fmt(mb)}%), a 4th or wider within 4 points of his`, Math.abs(mr[3] + mr[4] - mb[3] - mb[4]) < 4);
+  notes.push(`the inner voices' moves, kept / step / 3rd / 4th / wider: bridges ${fmt(mr)}%, Bach ${fmt(mb)}%`);
+  is("... between the ends (Bach's, his voices crossing where they do) the inner voices between the soprano and the bass, in order (a unison allowed)",
+     D.trials.every((t) => t.bridge.satb.slice(1, -1).every(([s, a, tn, b]) => s >= a && a >= tn && tn >= b)));
   const filled = Bl.VARIANTS.map((v) => `${v} ${D.tried[v].filled}/${D.tried[v].tried}`).join(", ");
   is(`... the phrases tried and filled by bach-4, counted (${filled})`, Bl.VARIANTS.every((v) => D.tried[v].filled === D.perVariant && D.tried[v].tried >= D.perVariant));
   notes.push(`the deck: phrases tried and filled by variant — ${filled}`);

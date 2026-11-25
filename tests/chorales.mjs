@@ -43,8 +43,8 @@ for (const p of P) { const j = judgeBach(p); if (j === null) kept++; else { cons
 notes.push(`bach-4 keeps ${kept} of Bach's ${P.length} phrases as he wrote them; the others break first — ` +
   Object.entries(why).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} (${v})`).join(" · "));
 // (pinned: a change of bach-4's rules changes it — say why, and pin it again)
-is(`... bach-4 ${R.STYLES["bach-4"].version} keeps 504 of them, each note as Bach spelt it, the functions read in his local keys a cost (1.2.0: 494, the functions a refusal in the chorale's key; 486 spelt from its MIDI in its key; 1.1.0: 426, 234 in the chorale's key; 1.0.0: 112) — Bach's ranges, his passing and neighbour notes over a moving bass, a note held into a dissonance, direct 5ths and octaves free in the inner voices, his 7ths held into a consonance, rising as the bass takes their note's resolution, passed into the bass`,
-   R.STYLES["bach-4"].version === "1.3.1" && kept === 504, String(kept));
+is(`... bach-4 ${R.STYLES["bach-4"].version} keeps 504 of them (its soft rules — his own moves among them — weigh, they do not refuse), each note as Bach spelt it, the functions read in his local keys a cost (1.2.0: 494, the functions a refusal in the chorale's key; 486 spelt from its MIDI in its key; 1.1.0: 426, 234 in the chorale's key; 1.0.0: 112) — Bach's ranges, his passing and neighbour notes over a moving bass, a note held into a dissonance, direct 5ths and octaves free in the inner voices, his 7ths held into a consonance, rising as the bass takes their note's resolution, passed into the bass`,
+   R.STYLES["bach-4"].version === "1.4.0" && kept === 504, String(kept));
 
 const bad = results.filter((r) => !r[1]);
 console.log(`${results.length - bad.length} / ${results.length} passed`);

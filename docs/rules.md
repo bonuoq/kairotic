@@ -219,6 +219,9 @@ in different keys kept where either key reads them well) and `passing` (an inver
 is a passing chord); in `bach-4` it is a cost (`SOFT_BETWEEN`'s `functions`, weight 2), not a refusal — read in his local
 keys Bach breaks it in 78 of his 2,272 phrases (136 in the chorale's key). `chorale-4` as it was (discussion #353).
 `@kairotic/rules` 0.20.1: `bach-4` 1.3.1: `from-bass` takes a unison a semitone under the bass (D over D♯) as below it.
+`@kairotic/rules` 0.21.0: `bach-4` 1.4.0: `bach-motion` (a voice's soft rule: a move costs −log of how often Bach's alto and
+tenor make it, `BACH_INNER_MOTION`; weight 2); `fourOverBass`'s `given.alto` / `given.tenor` and `fromOuter`'s `inner`
+(an inner voice given where a unit has a note: a bridge's ends as Bach's chords).
 
 ## Next
 
