@@ -9,6 +9,10 @@
   `GREEK` (`aoidos({style: "greek"})`): leaps dear, a note struck again free (up to eight times), a melisma dear, no
   turn asked after a 4th or a 5th (`turnAfterSmallLeap`). Seikilos, held out, becomes more likely. The engine takes a
   given rhythm (`time`) and altered notes (`chromatic`). Tests: `tests/style.html`; the page: a style to choose.
+- **The chorale test's sixth variant, `no-keys`** (#353). Study 63's `outer.mjs` draws bridges without a path of keys
+  — every unit in the chorale's key, the rest as `all` — so the blind test can hear how much the tonicizations do.
+  `tools/bridges.mjs` can draw one variant by itself (its last argument) and `tools/merge.mjs` puts it in place in
+  `bridges.json`.
 - **Study 74 · aoidos exports its text under the notes** (#192). `export!` sends the dux with its syllables: each
   syllable's text on the first note of its melisma, its `wordpos` from its word (`i`, `m`, `t`; none for a word of one
   syllable), through the kernel's `lyricNotesOf`; the app's MEI has them as `<verse><syl>` (the text and the
