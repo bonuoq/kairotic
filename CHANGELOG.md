@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
+  voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of
+  0…13 semitones in the corpus, times the temperature, so the draw moves as often as he does), in place of the fixed
+  step/leap/repeat costs. Over the corpus (`all`): the soprano keeps its note 18% of the time (was 2%; Bach 22%), the
+  bass leaps a 3rd or more 48% (was 24%; Bach 53%), oblique motion 18% (was 3%; Bach 25%); similar motion no dearer
+  than contrary, the tessitura looser. `bridgesFor`'s `accept` draws a bridge again until it says yes, and
+  `tools/bridges.mjs` asks whether bach-4 can fill the inner voices (fromOuter's count above 0) — `fillable` on every
+  bridge (20,155 of 22,690, 89%; was 55–58%), false where ten
+  draws could not; the tool runs in shards (`tools/merge.mjs`). `bridges.json` drawn again.
 - **The blind test's bridges between two of Bach's chords, their inner voices moving as his** (`@kairotic/rules`
   0.21.0, `bach-4` 1.5.0; `@kairotic/cac` 0.16.9; Study 71). A bridge now begins and ends on Bach's chords whole: the
   alto and the tenor given there (`fromOuter`'s `inner`, `fourOverBass`'s `given.alto` / `given.tenor`, where a unit has
