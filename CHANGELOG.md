@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **The bridges' dissonances as rare as Bach's, his melodic minor's raised ⑥ as seldom** (`@kairotic/rules` 0.22.0,
+  `bach-4` 1.6.0; `@kairotic/cac` 0.16.10; Study 71). Heard by @bonuoq: dissonances that did not seem justified. The
+  inner voices dissonated against the bass twice as often as Bach's, with seven times his semitone clashes (a ♭9, a
+  major 7th) — mostly notes held into a dissonance and neighbours. Two of the species' rewards (`passing`,
+  `suspension-life`: "the life of second and fourth species") are off in `bach-4`, and a voice weighs what it sounds
+  against the bass by Bach's own frequencies (`bach-vertical`, 1.5: −log of how often his alto and tenor sound each
+  interval, `BACH_INNER_VERTICAL`), its moves weighed more (`bach-motion` 4) so it does not leap to keep consonant,
+  the voice exchange more (4). In minor, the raised ⑥ in an inner voice costs (`raised-sixth`, 2), more where it does
+  not go on up. In the deck: chords with a dissonance 18.1% (Bach 21.8%, before 37.7%), semitone clashes 1.7 per 100
+  chords (Bach 1.7, before 9.8). Study 71's `fill` reads a bridge's `keys` (a key a unit) where it has them, so its
+  inner voices may take a tonicization's leading tone, as Bach's do. Bach's phrases judged as before (504).
+
 - **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
   voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of
   0…13 semitones in the corpus, times the temperature, so the draw moves as often as he does), in place of the fixed

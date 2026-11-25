@@ -50,6 +50,12 @@ export async function run() {
   const xb = rate("bach"), xr = rate("bridge");
   is(`... and trade their notes with another voice (a voice exchange) about as often as Bach's: ${xr.toFixed(1)} per 100 chords (Bach ${xb.toFixed(1)})`, Math.abs(xr - xb) < 2.5);
   notes.push(`voice exchanges with an inner voice, per 100 chords: bridges ${xr.toFixed(1)}, Bach ${xb.toFixed(1)}`);
+  // (the dissonances against the bass as rare as Bach's: the chords with one, the semitone's clashes — a ♭9, a major 7th)
+  const DISS = new Set([1, 2, 5, 6, 10, 11]);
+  const dis = (key) => { let ch = 0, cl = 0, u = 0; for (const t of D.trials) for (const c of t[key].satb) { u++; const iv = [0, 1, 2].map((v) => pc(c[v] - c[3])); if (iv.some((x) => DISS.has(x))) ch++; cl += iv.filter((x) => x === 1 || x === 11).length; } return [(100 * ch) / u, (100 * cl) / u]; };
+  const [db, cb] = dis("bach"), [dr, cr] = dis("bridge");
+  is(`... and dissonate against the bass about as often as Bach's: ${dr.toFixed(1)}% of the chords (Bach ${db.toFixed(1)}%), a semitone's clash in ${cr.toFixed(1)} per 100 (Bach ${cb.toFixed(1)})`, Math.abs(dr - db) < 5 && cr < 2 * cb + 1);
+  notes.push(`chords with a dissonance against the bass: bridges ${dr.toFixed(1)}%, Bach ${db.toFixed(1)}%; semitone clashes per 100 chords: ${cr.toFixed(1)}, Bach ${cb.toFixed(1)}`);
   is("... between the ends (Bach's, his voices crossing where they do) the inner voices between the soprano and the bass, in order (a unison allowed)",
      D.trials.every((t) => t.bridge.satb.slice(1, -1).every(([s, a, tn, b]) => s >= a && a >= tn && tn >= b)));
   const filled = Bl.VARIANTS.map((v) => `${v} ${D.tried[v].filled}/${D.tried[v].tried}`).join(", ");
