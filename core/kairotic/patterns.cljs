@@ -86,6 +86,8 @@
 (defn gen "A generator as data." [g args] {:pat/gen g :pat/args args})
 (defn gen? [x] (and (map? x) (contains? x :pat/gen)))
 
+(declare tree-arg)   ; a pbind's :tree (below, with the streams)
+
 (def readers (into {} (for [g gen-names] [(symbol "pat" (name g)) (fn [x] (gen g x))])))
 
 (defn read-spec
