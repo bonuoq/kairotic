@@ -182,6 +182,23 @@ izquierda, como en Pd y Max (`[:gain- [:adsr- …]]` es el factor de `gain~`), s
 `phasor~` y `sig~` fijan su entrada izquierda); no se escribe en el texto de la caja, y `0` ocupa su lugar si le siguen
 valores. Una keyword sigue siendo un valor (`[:route :a :b]`).
 
+**Faust como datos.** `[:faust- …]` es una caja `faust~` cuyo código escribe la misma gramática: sus argumentos son una
+cadena de los elementos propios de Faust, y son su `process`.
+
+```clojure
+(=> [:faust- [:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])] [:* 0.1]]
+    [:_ :_] [:dac- 1 2])
+;; process = os.osc((os.osc(5) : *(10) : +(440))) : *(0.1);
+```
+
+Una caja es una función de Faust con sus primeros argumentos dados —`[:fi.lowpass 2 800]` es `fi.lowpass(2, 800)`, y el
+resto de sus argumentos son sus entradas—; una cadena es `:` (`<:` antes de un vector, `:>` después, así que `[:_ :_]`
+reparte una señal como en el patch); un vector que no es una caja es `,`; `:_` es `_` y `:!` es `!`; un número es una
+señal constante, un string es código Faust tal cual, y un argumento puede ser una señal, como el vibrato de arriba.
+`[:hslider "freq" 220 50 2000 1]` es un control: `[:freq 440]` a la caja lo cambia. Evaluada otra vez, el código de la
+caja solo se escribe si ha cambiado (y se vuelve a compilar). `(faust-code …)` da el código, y la ventana de la caja lo
+muestra también como un patch de los elementos de Faust.
+
 **Voces.** Un mapa de cadenas toca voces, cada una reconocida por su clave, como `d1` en Tidal:
 
 ```clojure

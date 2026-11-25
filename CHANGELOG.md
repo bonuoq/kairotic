@@ -47,6 +47,11 @@
   as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
   circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
 
+- **Faust as data** (discussions #407, #115): `[:faust- …]` is a `faust~` box whose `process` the same grammar writes —
+  `[:faust- [:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])] [:* 0.1]]` is `process = os.osc((os.osc(5) : *(10) : +(440))) :
+  *(0.1);` —: a box is a function with its first arguments given, a chain `:` (`<:` before a vector, `:>` after it), a
+  vector `,`, `:_` and `:!` Faust's wires, a string Faust code as it is. Evaluated again, the code is written only if it
+  changed. `(faust-code …)` gives it.
 - **Arguments that are boxes** (discussion #407): in a patch as data an argument can be a box, a chain or a named box,
   made and wired to the inlet that argument sets — `[:osc- (=> [:metro 250] [:counter 1 72 60] [:mtof])]` —, the one
   after the left as in Pd and Max unless the class says another (`osc~`, `phasor~`, `sig~`: the left one).
