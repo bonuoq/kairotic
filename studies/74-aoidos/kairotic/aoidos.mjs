@@ -1,25 +1,28 @@
 // SPDX-License-Identifier: MPL-2.0
 // Kairotic · Study 74 · aoidos (ἀοιδός, the singer): a poem sung syllable by syllable (discussion #192), on
-// @kairotic/rules (its copy beside this file): solve() writes one voice, a note a syllable, and imitation() tries it as
+// @kairotic/rules (its copy beside this file): solve() writes one voice, a beat at a time, and imitation() tries it as
 // the dux of a canon.
 //
-//   the notes     the text's prosody (prosody.mjs) gives the time: a syllable a note, a short one beat and a long two
-//                 (held over the beat: Study 41's tie), a line's last syllable held to the end of its bar; a long
-//                 syllable with a circumflex is two notes of a beat each, as Seikilos sings it
+//   the time      the text's prosody (prosody.mjs): a short syllable a beat, a long one two, a line's last syllable to
+//                 the end of its bar — or, in Seikilos's metre, every line twelve chronoi, filled as the stele fills
+//                 them. The melody is written a beat at a time: at a syllable's first beat a note is struck (the same
+//                 pitch again is struck again); within the syllable it is held or moves on — a melisma, up to
+//                 `melisma` notes a syllable (Seikilos sings φαί on three)
 //   hard rules    the line's own, as every engine's (Study 42's system, Fux's melodic intervals): within the mode's
 //                 ambitus, a start on the final, its 3rd, 4th, 5th or octave, the system's melodic intervals, after a
-//                 leap the line turns (from a large one by step), a note struck at most three times in a row, the end
-//                 on the final approached by step
+//                 leap the line turns (from a large one by step), a note struck at most three times in a row, a
+//                 melisma moving by step or a 3rd, the end on the final approached by step
 //   the accent    Greek's accent was a pitch, and the music that survives follows it: the voice rises to an acute
-//                 (acute-rise), the accented syllable is the word's highest (peak), a circumflex falls on its long
-//                 syllable (circumflex-fall), after the accent the voice falls (after-accent), after a grave it does
-//                 not fall until the next accent (grave), a line ends on the final, its 4th or its 5th (line-end).
-//                 Costs, weighed with soft.mjs's melodic ones (the same weights as every engine); `strict` makes the
-//                 peak and the circumflex hard rules — what the hymns keep almost always
+//                 (acute-rise: the syllable's highest note above the note before), the accented syllable holds the
+//                 word's highest note (peak), a circumflex falls within its syllable (circumflex-fall: on one note it
+//                 costs half), after the accent the voice falls (after-accent), after a grave it does not fall
+//                 (grave), a melisma costs a little (melisma), a line ends on the final, its 4th or its 5th
+//                 (line-end). Costs, weighed with soft.mjs's melodic ones (the same weights as every engine); `strict`
+//                 makes the peak and the circumflex (never rising) hard — what the hymns keep almost always
 //   imitable      a melody tried as the dux of cac imitation (canon.mjs): how many comes it has at a distance k and
 //                 an entry d — the examiner that says whether it can be sung in canon or in imitation
 
-import { solve, solveVoices, within } from "./rules.mjs";
+import { solveVoices, within } from "./rules.mjs";
 import { keySystem } from "./systems.mjs";
 import { melodicParts, defaultWeights, total, shape } from "./soft.mjs";
 import { imitation, canonVoices } from "./canon.mjs";
@@ -30,11 +33,12 @@ const mod = (a, m) => ((a % m) + m) % m;
 
 /** The accent's soft rules, with their weights (data: a page or a style may change them). */
 export const PROSODY = [
-  { id: "acute-rise", weight: 2, doc: "The voice rises to an acute: its note not higher than the note before costs (the same note, half)." },
-  { id: "peak", weight: 2, doc: "The accented syllable is the word's highest: each note of the word above it costs." },
-  { id: "circumflex-fall", weight: 3, doc: "A circumflex falls on its long syllable: its second note not lower than its first costs." },
-  { id: "after-accent", weight: 1.5, doc: "After the accent the voice falls: the next note not lower costs (the same note, half)." },
-  { id: "grave", weight: 1, doc: "After a grave the voice does not fall until the next accent: a lower next note costs." },
+  { id: "acute-rise", weight: 2, doc: "The voice rises to an acute: the syllable's highest note not above the note before costs (the same, half)." },
+  { id: "peak", weight: 2, doc: "The accented syllable holds the word's highest note: each note of the word above it costs." },
+  { id: "circumflex-fall", weight: 3, doc: "A circumflex falls within its syllable: rising costs, ending not lower than it began costs; sung on one note, half." },
+  { id: "after-accent", weight: 1.5, doc: "After the accent the voice falls: the next syllable's first note not lower costs (the same, half)." },
+  { id: "grave", weight: 1, doc: "After a grave the voice does not fall: a lower next note costs." },
+  { id: "melisma", weight: 1, doc: "A syllable sung on more than one note: each note more (a circumflex's fall is free)." },
   { id: "line-end", weight: 1, doc: "A line ends on the final, its 4th or its 5th." },
   { id: "repeat", weight: 0.5, doc: "A note struck again (a new syllable on the same pitch)." },
 ];
@@ -46,20 +50,20 @@ export const TEXTS = {
            text: "μῆνιν ἄειδε θεὰ Πηληϊάδεω Ἀχιλῆος\nοὐλομένην, ἣ μυρί’ Ἀχαιοῖς ἄλγε’ ἔθηκε" },
   odyssey: { name: "Odyssey 1.1", metre: "hexameter", key: { tonic: "E", mode: "dorian" },
              text: "ἄνδρα μοι ἔννεπε, Μοῦσα, πολύτροπον, ὃς μάλα πολλὰ" },
-  seikilos: { name: "Seikilos (the song)", metre: "free", key: { tonic: "E", mode: "dorian" },
-              text: "Ὅσον ζῇς φαίνου\nμηδὲν ὅλως σὺ λυποῦ·\nπρὸς ὀλίγον ἐστὶ τὸ ζῆν,\nτὸ τέλος ὁ χρόνος ἀπαιτεῖ." },
+  // (λῡποῦ: the υ of λύπη long, marked — the prosody cannot know it)
+  seikilos: { name: "Seikilos (the song)", metre: "seikilos", key: { tonic: "E", mode: "dorian" },
+              text: "Ὅσον ζῇς φαίνου\nμηδὲν ὅλως σὺ λῡποῦ·\nπρὸς ὀλίγον ἐστὶ τὸ ζῆν,\nτὸ τέλος ὁ χρόνος ἀπαιτεῖ." },
   stele: { name: "Seikilos (the distich)", metre: ["hexameter", "pentameter"], key: { tonic: "E", mode: "dorian" },
            text: "Εἰκὼν ἡ λίθος εἰμί· τίθησί με Σείκιλος ἔνθα\nμνήμης ἀθανάτου σῆμα πολυχρόνιον." },
 };
 
 /**
- * The notes a text is sung on: its lines read and scanned, each sung syllable a note (a long circumflex two) →
- * {lines [{text, scansion, ok}], notes [{syl, text (the syllable, on the first of its notes), accent ("acute",
- * "grave", "circumflex", "circumflex-tail" or null), word (in the poem), wordStart, wordEnd, line, lineEnd, beats, at,
- * strong}], syllables, error}.
+ * The time a text is sung in: its lines read and scanned → {lines [{text, metre, ok, scansion}], syllables [{text,
+ * accent, word (in the poem), line, first/last (in its word), lineEnd, q, beats, at, strong}], beats, sylAt (a beat's
+ * syllable), error}.
  */
 export function plan(text, metre = "hexameter") {
-  const L = readText(text), lines = [], notes = [], syllables = [];
+  const L = readText(text), lines = [], syllables = [];
   let at = 0, word0 = 0;
   L.forEach((line, li) => {
     const m = Array.isArray(metre) ? metre[li % metre.length] : metre;
@@ -67,28 +71,53 @@ export function plan(text, metre = "hexameter") {
     if (!sc.ok) { lines.push({ text: line.text, metre: m, ok: false }); return; }
     lines.push({ text: line.text, metre: m, ok: true, scansion: scansionText(sc), scansions: sc.all });
     const T = timeOf(line, sc);
-    T.forEach((u, i) => {
-      const s = syllables.length, wd = word0 + u.word, lineEnd = i === T.length - 1;
-      syllables.push({ ...u, word: wd, line: li });
-      const base = { syl: s, word: wd, line: li, strong: u.strong, q: u.q };
-      if (u.accent === "circumflex" && u.beats >= 2) {
-        notes.push({ ...base, text: u.text, accent: "circumflex", beats: 1, at: at + u.at, wordStart: u.first, wordEnd: false, lineEnd: false });
-        notes.push({ ...base, text: "", accent: "circumflex-tail", beats: u.beats - 1, at: at + u.at + 1, strong: false, wordStart: false, wordEnd: u.last, lineEnd });
-      } else notes.push({ ...base, text: u.text, accent: u.accent, beats: u.beats, at: at + u.at, wordStart: u.first, wordEnd: u.last, lineEnd });
-    });
+    T.forEach((u, i) => syllables.push({ ...u, word: word0 + u.word, line: li, lineEnd: i === T.length - 1, at: at + u.at }));
     at += T.reduce((a, u) => a + u.beats, 0);
     word0 += line.words.length;
   });
+  const sylAt = []; syllables.forEach((s, i) => { for (let j = 0; j < s.beats; j++) sylAt.push(i); });
   const bad = lines.filter((l) => !l.ok);
-  return { lines, notes, syllables, beats: at, error: bad.length ? `does not scan as ${bad[0].metre}: ${bad[0].text}` : null };
+  return { lines, syllables, beats: at, sylAt, error: bad.length ? `does not scan as ${bad[0].metre}: ${bad[0].text}` : null };
 }
 
 /**
- * A melody for a text: spec {text, metre ("hexameter", "pentameter", "iambic-trimeter", "free"; a list: one a line,
- * in turn), key ({tonic, mode}: a church mode, its tonic the final; ficta off: the mode's own scale), ambitus ([lo, hi]
- * in degrees from the final, [-1, 8]), starts (degrees, [0, 2, 3, 4, 7]), strict (the peak and the circumflex hard),
- * maxRepeat (3), weights (the melodic and the accent's)} → solve()'s count, sample, engine, judge, fan, why, and the
- * plan (notes, lines), the system, names, midi, hz.
+ * How a sung text keeps the accent rules, syllable by syllable: syllables [{accent, word, line}] and the pitches of
+ * each ([[pitch…]…], a melisma several) → {rule: [kept, where it applies, [the syllables where it is not kept]]}:
+ *   acute-rise       an acute's highest note above the note before
+ *   peak             the accented syllable (acute, circumflex) holds the word's highest note
+ *   circumflex-fall  a circumflex's syllable ends lower than it begins (sung on one note: not kept)
+ *   after-accent     after an acute or a circumflex (the next syllable not accented) the next note is lower
+ *   grave            after a grave the next note is not lower
+ * (the last two within a line).
+ */
+export function judgeAccent(syllables, pitches) {
+  const r = { "acute-rise": [0, 0, []], peak: [0, 0, []], "circumflex-fall": [0, 0, []], "after-accent": [0, 0, []], grave: [0, 0, []] };
+  const count = (id, ok, i) => { r[id][1]++; if (ok) r[id][0]++; else r[id][2].push(i); };
+  const last = (i) => pitches[i][pitches[i].length - 1], first = (i) => pitches[i][0];
+  syllables.forEach((s, i) => {
+    if (s.accent === "acute" && i >= 1) count("acute-rise", Math.max(...pitches[i]) > last(i - 1), i);
+    if (s.accent === "acute" || s.accent === "circumflex") {
+      const top = Math.max(...pitches[i]);
+      const word = syllables.map((t, j) => j).filter((j) => syllables[j].word === s.word);
+      count("peak", word.every((j) => j === i || Math.max(...pitches[j]) <= top), i);
+    }
+    if (s.accent === "circumflex") count("circumflex-fall", last(i) < first(i), i);
+    const next = syllables[i + 1];
+    if (next && next.line === s.line && (s.accent === "acute" || s.accent === "circumflex") && next.accent !== "acute" && next.accent !== "circumflex")
+      count("after-accent", first(i + 1) < last(i), i);
+    if (next && next.line === s.line && s.accent === "grave") count("grave", first(i + 1) >= last(i), i);
+  });
+  return r;
+}
+
+/**
+ * A melody for a text: spec {text, metre ("hexameter", "pentameter", "iambic-trimeter", "free", "seikilos"; a list:
+ * one a line, in turn), key ({tonic, mode}: a church mode, its tonic the final; ficta off: the mode's own scale),
+ * ambitus ([lo, hi] in degrees from the final, [-1, 8]), starts (degrees, [0, 2, 3, 4, 7]), melisma (the most notes a
+ * syllable, 3; 1: a note a syllable), strict (the peak and the circumflex hard), maxRepeat (3), weights (the melodic
+ * and the accent's)} → solve()'s count, sample, engine, judge, fan, why (a code a beat), and the plan, the system,
+ * names, midi, hz; notesOf (a melody's notes: [{code, at, beats, syl}]), pitchesOf (each syllable's pitches),
+ * accentReport, asDux.
  */
 export function aoidos(spec = {}) {
   const P = plan(spec.text, spec.metre || "hexameter");
@@ -97,21 +126,38 @@ export function aoidos(spec = {}) {
   const [lo, hi] = spec.ambitus || [-1, 8];
   const starts = spec.starts || [0, 2, 3, 4, 7];
   const finals = [0, 7].filter((f) => f >= lo && f <= hi);
-  const maxRepeat = spec.maxRepeat ?? 3, strict = !!spec.strict;
+  const maxRepeat = spec.maxRepeat ?? 3, strict = !!spec.strict, maxNotes = Math.max(1, spec.melisma ?? 3);
   const W = { ...defaultWeights(), ...prosodyWeights(), ...(spec.weights || {}) };
-  const N = P.notes, n = N.length;
-  // (where each note's word begins, and its accented note: the peak)
-  const wordFrom = N.map((x, t) => { let j = t; while (j > 0 && N[j - 1].word === x.word) j--; return j; });
-  const peakOf = N.map((x, t) => { let j = wordFrom[t]; while (j < n && N[j].word === x.word) { if (N[j].accent === "acute" || N[j].accent === "circumflex") return j; j++; } return -1; });
-  const wordLen = Math.max(1, ...N.map((x, t) => t - wordFrom[t] + 1));
+  const Y = P.syllables, n = P.beats, sylAt = P.sylAt;
+  const startOf = (s) => Y[s].at, isStart = (t) => t === Y[sylAt[t]].at, isEnd = (t) => t === Y[sylAt[t]].at + Y[sylAt[t]].beats - 1;
+  // (each syllable's word: where it begins, and its accented syllable — the peak)
+  const wordFrom = Y.map((x, i) => { let j = i; while (j > 0 && Y[j - 1].word === x.word) j--; return j; });
+  const peakOf = Y.map((x, i) => { for (let j = wordFrom[i]; j < Y.length && Y[j].word === x.word; j++) if (Y[j].accent === "acute" || Y[j].accent === "circumflex") return j; return -1; });
+  const maxSyl = Math.max(1, ...Y.map((y) => y.beats));
+  const wordBeats = Math.max(1, ...Y.map((y, i) => y.at + y.beats - Y[wordFrom[i]].at));
   const codes = S.codesIn(lo, hi);
+  const struckAt = (U, t) => t === 0 || isStart(t) || U[t] !== U[t - 1];
+  /** A syllable's pitches (degrees) as written up to beat t (exclusive), and c at t if given. */
+  const sylNotes = (U, s, t, c) => {
+    const out = [], a = startOf(s);
+    for (let j = a; j < t; j++) if (j === a || U[j] !== U[j - 1]) out.push(deg(U[j]));
+    if (c !== undefined && (t === a || c !== U[t - 1])) out.push(deg(c));
+    return out;
+  };
 
-  // ─── the hard rules (each with how far back it looks) ───
+  // ─── the hard rules ───
   const rules = [
-    { id: "start", lookback: 0, check: ({ t, d }) => (t === 0 && !starts.includes(d) ? "the melody starts on the final, its 3rd, 4th, 5th or octave" : null) },
-    { id: "melodic", lookback: 1, check: ({ U, t, c }) => (t >= 1 ? S.melodicError(U[t - 1], c) : null) },
-    { id: "leap-recovery", lookback: maxRepeat + 1, check: ({ U, t, d }) => {
-      if (t < 2) return null;
+    { id: "start", check: ({ t, d }) => (t === 0 && !starts.includes(d) ? "the melody starts on the final, its 3rd, 4th, 5th or octave" : null) },
+    { id: "melodic", check: ({ U, t, c, struck }) => (struck && t >= 1 ? S.melodicError(U[t - 1], c) : null) },
+    { id: "melisma", check: ({ U, t, c, struck }) => {
+      if (!struck || isStart(t)) return null;
+      if (Math.abs(deg(c) - deg(U[t - 1])) > 2) return "a melisma moves by step or a 3rd";
+      const s = sylAt[t], k = sylNotes(U, s, t, c).length;
+      const most = Y[s].accent === "circumflex" ? Math.max(2, maxNotes) : maxNotes;
+      return k > most ? (most === 1 ? "a note a syllable" : `${most} notes a syllable at most`) : null;
+    } },
+    { id: "leap-recovery", check: ({ U, t, d, struck }) => {
+      if (!struck || t < 2) return null;
       const prev = U[t - 1]; let j = t - 1; while (j >= 1 && U[j - 1] === prev) j--;
       if (j < 1 || d === deg(prev)) return null;
       const m = deg(prev) - deg(U[j - 1]), s = d - deg(prev);
@@ -119,148 +165,171 @@ export function aoidos(spec = {}) {
       if (Math.abs(m) >= S.leaps.small && Math.abs(m) < S.leaps.large && sign(s) !== -sign(m)) return `after the leap of a ${S.intervalName(Math.abs(m))} the line turns ${m > 0 ? "down" : "up"}`;
       return null;
     } },
-    { id: "repeat", lookback: maxRepeat, check: ({ U, t, c }) => (t >= maxRepeat && U.slice(t - maxRepeat, t).every((y) => y === c) ? `a note struck ${maxRepeat + 1} times in a row` : null) },
-    { id: "final", lookback: 0, check: ({ t, d }) => (t === n - 1 && !finals.includes(d) ? "the melody ends on the final" : null) },
-    { id: "approach", lookback: 0, check: ({ t, d }) => (t === n - 2 && !finals.some((f) => Math.abs(d - f) === 1) ? "the final is approached by step" : null) },
+    { id: "repeat", check: ({ U, t, c }) => {
+      if (!isStart(t) || t < 1 || U[t - 1] !== c) return null;
+      let k = 1, j = t - 1; while (j >= 0 && U[j] === c) { if (isStart(j) || j === 0) k++; j--; }
+      return k > maxRepeat ? `a note struck ${maxRepeat + 1} times in a row` : null;
+    } },
+    { id: "final", check: ({ U, t, c, d }) => {
+      if (t !== n - 1) return null;
+      if (!finals.includes(d)) return "the melody ends on the final";
+      let j = t; while (j > 0 && (j === t ? c : U[j]) === U[j - 1]) j--;
+      return j > 0 && Math.abs(deg(U[j - 1]) - d) === 1 ? null : "the final is approached by step";
+    } },
   ];
   if (strict) rules.push(
-    { id: "circumflex", lookback: 1, check: ({ U, t, d, x }) => (x.accent === "circumflex-tail" && !(d < deg(U[t - 1])) ? "a circumflex falls on its syllable" : null) },
-    { id: "peak", lookback: wordLen - 1, check: ({ U, t, d }) => {
-      const p = peakOf[t], f = wordFrom[t];
+    { id: "circumflex", check: ({ U, t, d, struck }) => (struck && !isStart(t) && Y[sylAt[t]].accent === "circumflex" && d > deg(U[t - 1]) ? "a circumflex does not rise" : null) },
+    { id: "peak", check: ({ U, t, c, d, struck }) => {
+      const s = sylAt[t], p = peakOf[s];
       if (p < 0) return null;
-      if (t === p) { for (let j = f; j < t; j++) if (deg(U[j]) > d) return "the accented syllable is the word's highest"; return null; }
-      if (t > p && d > deg(U[p])) return "the accented syllable is the word's highest";
+      if (s > p && struck && d > Math.max(...sylNotes(U, p, startOf(p) + Y[p].beats))) return "the accented syllable holds the word's highest note";
+      if (s === p && isEnd(t)) {
+        const top = Math.max(...sylNotes(U, s, t, c));
+        for (let j = startOf(wordFrom[s]); j < startOf(s); j++) if (deg(U[j]) > top) return "the accented syllable holds the word's highest note";
+      }
       return null;
     } });
+  // the memo's key: what the rules read of the past — the syllable's notes so far, the pitch sounding, the pitch before
+  // it and how many syllables have struck the one sounding (a leap turned, a note struck again, the final's
+  // approach), and, strict, the word's highest note before its accent or the accent's own: two pasts the same there
+  // have the same futures
+  const runOf = (U, t) => { let j = t - 1; while (j >= 1 && U[j - 1] === U[t - 1]) j--; return j; };
+  const memoKey = (U, t) => {
+    if (t === 0 || t >= n) return String(t);
+    const s = sylAt[t], a = startOf(s), j = runOf(U, t);
+    let k = 0; for (let i = j; i < t; i++) if (i === 0 || isStart(i)) k++;
+    let wi = "";
+    if (strict) {
+      const p = peakOf[s];
+      if (p >= 0 && s > p) wi = Math.max(...sylNotes(U, p, startOf(p) + Y[p].beats));
+      else if (p >= 0) { let m = -99; for (let i = startOf(wordFrom[s]); i < Math.min(t, startOf(p)); i++) m = Math.max(m, deg(U[i])); wi = "<" + m; }
+    }
+    return t + "|" + U.slice(a, t).join(",") + "|" + U[t - 1] + "|" + (j >= 1 ? U[j - 1] : "") + "|" + Math.min(k, maxRepeat + 1) + "|" + wi;
+  };
 
-  // ─── the soft rules: the line's shape (soft.mjs) and the accent ───
+  // ─── the soft rules: the line's shape (soft.mjs) and the accent, a syllable's cost as it grows ───
+  const pen = (U, s, ps, final) => {
+    const y = Y[s], parts = {}, k = ps.length;
+    if (!k) return parts;
+    const top = Math.max(...ps), first = ps[0], last = ps[k - 1];
+    const before = y.at >= 1 ? deg(U[y.at - 1]) : null, prevSyl = s >= 1 && Y[s - 1].line === y.line ? Y[s - 1] : null;
+    if (y.accent === "acute" && before !== null) { if (top < before) parts["acute-rise"] = W["acute-rise"]; else if (top === before) parts["acute-rise"] = W["acute-rise"] / 2; }
+    if (y.accent === "circumflex") {
+      if (k === 1) { if (final) parts["circumflex-fall"] = W["circumflex-fall"] / 2; }
+      else if (ps.some((x, i) => i > 0 && x > ps[i - 1]) || last >= first) parts["circumflex-fall"] = W["circumflex-fall"];
+      if (k > 2) parts.melisma = (k - 2) * W.melisma;
+    } else if (k > 1) parts.melisma = (k - 1) * W.melisma;
+    const p = peakOf[s];
+    if (p === s) { const above = []; for (let j = startOf(wordFrom[s]); j < y.at; j++) if (deg(U[j]) > top) above.push(j); if (above.length) parts.peak = above.length * W.peak; }
+    else if (p >= 0 && s > p && top > Math.max(...sylNotes(U, p, startOf(p) + Y[p].beats))) parts.peak = W.peak;
+    if (prevSyl && before !== null) {
+      if ((prevSyl.accent === "acute" || prevSyl.accent === "circumflex") && y.accent !== "acute" && y.accent !== "circumflex") {
+        if (first > before) parts["after-accent"] = W["after-accent"]; else if (first === before && prevSyl.accent === "acute") parts["after-accent"] = W["after-accent"] / 2;
+      }
+      if (prevSyl.accent === "grave" && first < before) parts.grave = W.grave;
+    }
+    if (final && y.lineEnd && s < Y.length - 1 && ![0, 3, 4].includes(mod(last, 7))) parts["line-end"] = W["line-end"];
+    return parts;
+  };
+  const diff = (a, b) => { const out = {}; for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) { const v = (a[id] || 0) - (b[id] || 0); if (v) out[id] = v; } return out; };
   const soft = [
-    { id: "melodic", cost: ({ U, t, d }) => {
+    { id: "melodic", cost: ({ U, t, d, struck }) => {
+      if (!struck) return {};
       if (t >= 1 && deg(U[t - 1]) === d) return { repeat: W.repeat };
-      return melodicParts(U.map(deg), d, W);
+      const line = []; for (let j = 0; j < t; j++) if (j === 0 || U[j] !== U[j - 1] || isStart(j)) line.push(deg(U[j]));
+      return melodicParts(line, d, W);
     } },
-    { id: "accent", cost: ({ U, t, d, x }) => {
-      const parts = {}, prev = t >= 1 ? deg(U[t - 1]) : null;
-      if (x.accent === "acute" && prev !== null) { if (d < prev) parts["acute-rise"] = W["acute-rise"]; else if (d === prev) parts["acute-rise"] = W["acute-rise"] / 2; }
-      if (!strict && x.accent === "circumflex-tail" && d >= prev) parts["circumflex-fall"] = W["circumflex-fall"];
-      const p = peakOf[t], f = wordFrom[t];
-      if (!strict && p >= 0) {
-        if (t === p) { const above = U.slice(f, t).filter((y) => deg(y) > d).length; if (above) parts.peak = above * W.peak; }
-        else if (t > p && d > deg(U[p])) parts.peak = W.peak;
-      }
-      // (after the accent: the next note; a circumflex's tail is already its fall)
-      if (t >= 1) {
-        const a = N[t - 1];
-        if ((a.accent === "acute" || a.accent === "circumflex-tail") && x.accent !== "acute" && x.accent !== "circumflex") {
-          if (d > prev) parts["after-accent"] = W["after-accent"]; else if (d === prev && a.accent === "acute") parts["after-accent"] = W["after-accent"] / 2;
-        }
-        if (a.accent === "grave" && d < prev) parts.grave = W.grave;
-      }
-      if (x.lineEnd && t < n - 1 && ![0, 3, 4].includes(mod(d, 7))) parts["line-end"] = W["line-end"];
-      return parts;
+    { id: "accent", cost: ({ U, t, c, struck }) => {
+      const s = sylAt[t], end = isEnd(t);
+      if (!struck && !end) return {};
+      const now = sylNotes(U, s, t, c), then = sylNotes(U, s, t);
+      return diff(pen(U, s, now, end), pen(U, s, then, false));
     } },
   ];
-  const at = (U, t, c) => ({ U, t, c, d: deg(c), x: N[t] });
-  const window = Math.max(1, maxRepeat + 1, strict ? wordLen : 1);
-  const core = solve({ n, codes, at, rules, soft, window, name: (c) => S.pitchName(c) });
+  // one voice on solveVoices (the memo keyed by what the rules read, not by a window of beats)
+  const at = (U, t, c) => ({ U, t, c, d: deg(c), struck: t === 0 || isStart(t) || c !== U[t - 1] });
+  const check = (U, t, c) => { if (t >= n) return "the work is finished"; const x = at(U, t, c); for (const r of rules) { const e = r.check(x); if (e) return e; } return null; };
+  const why = (U, t, c) => { if (t >= n) return { id: "edges", reason: "the work is finished" }; const x = at(U, t, c); for (const r of rules) { const e = r.check(x); if (e) return { id: r.id, reason: e }; } return null; };
+  const costParts = (U, c) => { const x = at(U, U.length, c); return Object.assign({}, ...soft.map((f) => f.cost(x))); };
+  const SV = solveVoices({ n, voices: [{ name: "melody", solver: { codes, check, costParts } }], between: [], key: (W, t) => memoKey(W[0], t), result: (W) => W[0] });
+  const core = {
+    codes, check, why, costParts, memo: SV.memo,
+    count: (U = []) => SV.count([[...U]]),
+    sample: (r = Math.random) => SV.sample(r),
+    engine: (o = {}) => SV.engine(o),
+    search: (o = {}) => SV.search(o),
+    fan: (U = []) => SV.fan([[...U]]).map((f) => ({ note: f.x[0], name: S.pitchName(f.x[0]), futures: f.futures, parts: f.parts, cost: f.cost })),
+    judge: (U) => SV.judgeW([U], `${U.length} beats, the text has ${n}`),
+  };
   const name = (c) => S.pitchName(c);
+  /** A melody's notes: [{code, at, beats, syl, first (of its syllable)}]. */
+  const notesOf = (U) => {
+    const out = [];
+    for (let t = 0; t < U.length; t++) {
+      if (struckAt(U, t)) out.push({ code: U[t], at: t, beats: 1, syl: sylAt[t], first: isStart(t) });
+      else out[out.length - 1].beats++;
+    }
+    return out;
+  };
+  const pitchesOf = (U) => Y.map((y, s) => sylNotes(U, s, y.at + y.beats));
   return {
-    ...core, plan: P, notes: N, S, key, deg, name, midi: (c) => S.midi(c), hz: (c) => S.hz(c), strict, weights: W, error: P.error,
-    // (the note's own rules, for canonic(): the accent's hard ones when strict, and the soft costs)
-    own: { strictRules: strict ? rules.slice(-2) : [], soft, wordFrom, peakOf, wordLen, finals, starts, lo, hi },
+    ...core, plan: P, syllables: Y, S, key, deg, name, midi: (c) => S.midi(c), hz: (c) => S.hz(c), strict, weights: W, error: P.error, memoKey,
+    // (for canonic(): the hard rules and the costs a beat, as the dux takes them)
+    own: { finals, starts, lo, hi, maxSyl },
     count: (U = []) => (P.error || !n ? 0n : core.count(U)),
     countWithin: (ms, U = []) => { if (P.error || !n) return 0n; try { return within(ms, () => core.count(U)); } catch (e) { if (e.tooLong) return null; throw e; } },
-    /** How a melody keeps the accent: for each rule, the notes where it holds and where it could hold. */
-    accentReport: (U) => accentReport(N, U.map(deg), peakOf, wordFrom),
-    shape: (U) => shape([U.map(deg)]),
+    notesOf, pitchesOf,
+    /** How a melody keeps the accent: judgeAccent's {rule: [kept, applies, where not]}. */
+    accentReport: (U) => judgeAccent(Y, pitchesOf(U)),
+    /** How many syllables are sung on more than one note. */
+    melismas: (U) => pitchesOf(U).filter((ps) => ps.length > 1).length,
+    shape: (U) => shape([notesOf(U).map((x) => deg(x.code))]),
     /** The melody as notes for cac imitation (a note's units its beats), with a rest before it if it starts on a weak
      *  beat (the strong beats on the even units, as imitation reads them). */
-    asDux: (U) => duxOf(N, U, (c) => S.midi(c)),
+    asDux: (U) => duxOf(Y, notesOf(U), (c) => S.midi(c)),
   };
 }
 
 /**
  * The poem sung in canon (#192 as it was first thought: the singer choosing among the futuribles of the comes): the
- * dux sings the text — a beat a unit, a new syllable a new note, a long one held — and the comes answers it by
- * canon.mjs's rules (canon-2: the comes k steps away, d beats later, at a degree of imitation), the two counted
- * together. spec: aoidos()'s, and k (−7), d (4 beats: a foot; at 2 a long note held against the comes's move leaves a dissonance that does not pass), imitation (1: a canon; 0.6 near; 0.3 by motion), invert
- * (invertible counterpoint at the octave [8], the 10th, the 12th). The dux's own rules are canon-2's (range, start,
- * melodic intervals, leap recovery; the final approached by step, read on the notes struck), with the text's rhythm
- * and, strict, the accent's; its costs aoidos's. → solveVoices's count, sample, engine (→ {dux, comes} a code a beat),
- * fan, judge; notes (the plan), beats, and the comes as names.
+ * dux sings the text — aoidos's voice, a beat a unit, with its rules and costs — and the comes answers it by canon.mjs's
+ * rules (canon-2: the comes k steps away, d beats later, at a degree of imitation), the two counted together. spec:
+ * aoidos()'s, and k (−7), d (4 beats: a foot; at 2 a long note held against the comes's move leaves a dissonance that
+ * does not pass), imitation (1: a canon; 0.6 near; 0.3 by motion), invert (invertible counterpoint at the octave [8],
+ * the 10th, the 12th), maxRepeat (1: a new syllable a new pitch). The dux keeps canon-2's own rules too (range, start,
+ * its melodic intervals). → solveVoices's
+ * count, sample, engine (→ {dux, comes} a code a beat), fan, judge; A (the dux's aoidos), beats.
  */
 export function canonic(spec = {}) {
-  const A = aoidos(spec);
-  const N = A.notes, n = A.plan.beats, deg = A.deg, own = A.own;
-  // (beat → the note sounding, and whether it is struck there)
-  const noteAt = [], struck = [];
-  N.forEach((x, i) => { for (let j = 0; j < x.beats; j++) { noteAt.push(i); struck.push(j === 0); } });
-  const firstStrong = N.find((x) => x.strong), phase = firstStrong ? firstStrong.at % 2 : 0;
-  const maxHold = Math.max(2, ...N.map((x) => x.beats));
+  // (in canon a new syllable strikes a new pitch: a canon reads a pitch struck again as held, and the holds stay short)
+  const A = aoidos({ ...spec, maxRepeat: spec.maxRepeat ?? 1 });
+  const n = A.plan.beats, own = A.own, Y = A.syllables;
+  if (A.error || !n) return { error: A.error || "no text", A, count: () => 0n, countWithin: () => 0n, beats: n };
+  const firstStrong = Y.find((x) => x.strong), phase = firstStrong ? firstStrong.at % 2 : 0;
+  const maxHold = Math.max(2, own.maxSyl * (spec.maxRepeat ?? 1));
   const k = spec.k ?? -7, d = Math.min(spec.d ?? 4, Math.max(1, n - 1));
   const cspec = { key: A.key, ficta: false, tonic: 0, k, d, b: 2, phase, n, lo: own.lo, hi: own.hi, imitation: spec.imitation ?? 1, maxHold,
                   invert: spec.invert || [], starts: own.starts, soft: true, weights: A.weights, on: { approach: false } };
   const CV = canonVoices(cspec, spec.style || "canon-2");
-  if (A.error || !n) return { error: A.error || "no text", count: () => 0n, countWithin: () => 0n, notes: N, beats: n };
-  // the dux's notes struck before beat t (the melody as aoidos reads it), and the note at t
-  const notesOf = (D, t) => { const out = []; for (let j = 0; j < t; j++) if (struck[j]) out.push(D[j]); return out; };
-  const lastNote = N.length - 1;
-  const duxCheck = (D, t, x) => {
-    if (t >= n) return "the work is finished";
-    if (t >= 1 && struck[t] && x === D[t - 1]) return "a new syllable, a new note";
-    if (!struck[t] && x !== D[t - 1]) return "the syllable is held";
-    if (struck[t]) {
-      const U = notesOf(D, t), i = noteAt[t], c = { U, t: i, c: x, d: deg(x), x: N[i] };
-      if (i === lastNote && U.length && !own.finals.some((f) => deg(x) === f && Math.abs(deg(U[U.length - 1]) - f) === 1)) return "the final is approached by step";
-      for (const r of own.strictRules) { const e = r.check(c); if (e) return e; }
-    }
-    return CV.voices[0].solver.check(D, t, x);
-  };
-  const duxCost = (D, x) => {
-    const t = D.length;
-    if (t >= n || !struck[t]) return {};
-    const U = notesOf(D, t), i = noteAt[t], c = { U, t: i, c: x, d: deg(x), x: N[i] };
-    return Object.assign({}, ...own.soft.map((s) => s.cost(c)));
-  };
-  const duxSolver = { codes: CV.voices[0].solver.codes.filter((c) => c !== null), check: duxCheck, costParts: duxCost };
-  // the memo: as the canon's, and as far back as a word (the accent's peak) when strict
+  const duxCheck = (D, t, x) => A.check(D, t, x) || CV.voices[0].solver.check(D, t, x);
+  const duxSolver = { codes: CV.voices[0].solver.codes.filter((c) => c !== null), check: duxCheck, costParts: (D, x) => A.costParts(D, x) };
+  // the memo: the dux as far back as aoidos's rules look, the comes as the canon's
   const w = CV.world, aug = w.aug;
-  const wordBeats = Math.max(...N.map((x, i) => x.at + x.beats - N[own.wordFrom[i]].at));
-  const LD = Math.max(maxHold + 1, 2, d + 1, A.strict ? wordBeats + 1 : 0, 3), LC = Math.max(maxHold * aug + 1, 2);
-  const key = (W, t) => t + ":" + W[0].slice(Math.max(0, t - LD), t).join(",") + ":" + W[1].slice(Math.max(0, t - LC), t).join(",");
+  const LD = Math.max(maxHold + 1, d + 1), LC = Math.max(maxHold * aug + 1, 2);
+  const key = (W, t) => t + ":" + A.memoKey(W[0], t) + ":" + W[0].slice(Math.max(0, t - LD), t).join(",") + ":" + W[1].slice(Math.max(0, t - LC), t).join(",");
   const SV = solveVoices({ n, voices: [{ name: "dux", solver: duxSolver }, { name: "comes", solver: CV.voices[1].solver }],
                            between: CV.between, key, result: (W) => ({ dux: W[0], comes: W[1] }) });
-  return { ...SV, A, notes: N, beats: n, k, d, phase, world: w, struck, noteAt, name: A.name, midi: A.midi, hz: A.hz, key: A.key,
+  return { ...SV, A, beats: n, k, d, phase, world: w, name: A.name, midi: A.midi, hz: A.hz, key: A.key,
            count: () => SV.count(),
            countWithin: (ms) => { try { return within(ms, () => SV.count()); } catch (e) { if (e.tooLong) return null; throw e; } },
-           judge: (D, C) => SV.judgeW([D, C], `the voices are not ${n} beats long`),
-           /** the dux as aoidos's notes (a code a note) */
-           melody: (D) => D.filter((c, t) => struck[t]) };
+           judge: (D, C) => SV.judgeW([D, C], `the voices are not ${n} beats long`) };
 }
 
 /** A melody's notes [{midi, units}] for imitation(): a beat a unit; a rest first where the first strong beat is odd. */
-export function duxOf(N, U, midi) {
-  const firstStrong = N.find((x) => x.strong);
+export function duxOf(Y, notes, midi) {
+  const firstStrong = Y.find((x) => x.strong);
   const pad = firstStrong && firstStrong.at % 2 === 1 ? [{ midi: null, units: 1 }] : [];
-  return [...pad, ...N.map((x, t) => ({ midi: midi(U[t]), units: x.beats }))];
-}
-
-/** How a melody (degrees D) keeps the accent rules: {rule: [kept, where it applies]}. */
-export function accentReport(N, D, peakOf, wordFrom) {
-  const r = { "acute-rise": [0, 0], peak: [0, 0], "circumflex-fall": [0, 0], "after-accent": [0, 0] };
-  N.forEach((x, t) => {
-    if (x.accent === "acute" && t >= 1) { r["acute-rise"][1]++; if (D[t] > D[t - 1]) r["acute-rise"][0]++; }
-    if (x.accent === "circumflex-tail") { r["circumflex-fall"][1]++; if (D[t] < D[t - 1]) r["circumflex-fall"][0]++; }
-    if ((x.accent === "acute" || x.accent === "circumflex") && peakOf[t] === t) {
-      let j = wordFrom[t], ok = true; const w = x.word;
-      for (; j < N.length && N[j].word === w; j++) if (j !== t && D[j] > D[t]) ok = false;
-      r.peak[1]++; if (ok) r.peak[0]++;
-    }
-    if (t >= 1 && (N[t - 1].accent === "acute" || N[t - 1].accent === "circumflex-tail") && x.accent !== "acute" && x.accent !== "circumflex") {
-      r["after-accent"][1]++; if (D[t] < D[t - 1]) r["after-accent"][0]++;
-    }
-  });
-  return r;
+  return [...pad, ...notes.map((x) => ({ midi: midi(x.code), units: x.beats }))];
 }
 
 /**
@@ -304,4 +373,4 @@ function runs(notes) {
   return out;
 }
 
-export default { aoidos, plan, examine, accentReport, duxOf, PROSODY, TEXTS, prosodyWeights };
+export default { aoidos, canonic, plan, examine, judgeAccent, duxOf, PROSODY, TEXTS, prosodyWeights };
