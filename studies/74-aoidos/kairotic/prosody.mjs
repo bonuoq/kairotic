@@ -130,7 +130,8 @@ export function readText(text) {
       const s = syl[i], next = syl[i + 1];
       const after = s.coda + (next ? next.onset : "");
       const count = [...after].reduce((a, c) => a + (DOUBLE.includes(c) ? 2 : 1), 0);
-      const mclHere = s.mcl || (!s.coda && next && next.onset.length === 2 && STOPS.includes(next.onset[0]) && LIQUIDS.includes(next.onset[1]) && s.last === false);
+      // (a stop and a liquid beginning the next word too: ὁ χρόνος, sung short on Seikilos's stele)
+      const mclHere = s.mcl || (!s.coda && next && next.onset.length === 2 && STOPS.includes(next.onset[0]) && LIQUIDS.includes(next.onset[1]));
       s.position = count >= 2 && !mclHere ? "long" : mclHere ? "common" : null;
       // epic correption: a long vowel or a diphthong at the end of a word, before a vowel
       s.correption = s.last && next && !s.coda && !next.onset && s.nature === "long";
