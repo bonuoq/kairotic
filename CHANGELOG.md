@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The blind test's deck drawn on bridges that tonicize** (Study 71; `@kairotic/rules` 0.22.1, `bach-4` 1.6.1;
+  `@kairotic/cac` 0.16.11; discussion #353, #466). The bridges now carry their keys (a key a unit) and tonicize ii, V,
+  vi and IV as Bach does; `fill` reads them, so the inner voices may take a tonicization's leading tone. `bach-4` fills
+  89–98% of the bridges tried (before 55–58%). With the keys the inner voices kept fewer dissonances (15.7% of the
+  chords, Bach 21.8%): `bach-vertical` weighs 1 (was 1.5) — now 19.4%.
+
 - **The chorale test's bridges tonicize, and say their keys** (#353). Study 63's `outer.mjs` draws for each bridge a
   path of keys (`keyPathFor`), one a unit, on Bach's own moves between keys (`KEY_MOVES`: phrases.json's keys, each
   against the chorale's — in major ii, V, vi and IV, in minor iv, III, VII and v), from the key his phrase begins in to

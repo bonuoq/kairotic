@@ -227,6 +227,7 @@ costs less).
 `@kairotic/rules` 0.22.0: `bach-4` 1.6.0: `bach-vertical` (a voice's interval above the bass costs −log of how often Bach's alto
 and tenor sound it, `BACH_INNER_VERTICAL`; weight 1.5), `raised-sixth` (minor's raised ⑥ in an inner voice costs, more
 where it does not go on up; weight 2); `passing` and `suspension-life` 0, `bach-motion` 4, `voice-exchange` 4.
+`@kairotic/rules` 0.22.1: `bach-4` 1.6.1: `bach-vertical` 1, measured on bridges that tonicize (#466).
 
 ## Next
 
