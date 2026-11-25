@@ -141,6 +141,26 @@ those it no longer writes — put `(to :lpf "lop~ 800")` between `:osc` and `:am
 in the same event. A chain is known by the box it starts from; lines made otherwise stay. What each chain wrote is kept
 in this browser for each work.
 
+**Forms.** In live code a box is the form it reads as: `(osc~ 220)` is the box `osc~ 220`, `(map inc)` the box
+`map inc`. A chain with `->` is in series, each box fed by the one before; a vector is in parallel — after one wire every
+element is fed by it, after as many wires as it has elements each by its own —, `_` is a wire that goes on, and a box
+after several wires takes them on its inlets 0, 1… (the grammar of Faust's `:`, `,` and `<:`):
+
+```clojure
+(def osc (osc~ 220))                       ; a box by a name: the same box each time
+(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))     ; stereo: one wire split in two
+(-> :osc (lop~ 800) (gain~ 0.2) [_ _] (dac~ 1 2))   ; a filter put in: only that box is new
+(osc~ ~(* 2 110))                          ; ~ computes a value now: the box osc~ 220
+```
+
+A chain owns the boxes it made, as it owns its wires: evaluated again, each form takes the box it made before with the
+same class (its text changed if it changed), so changing a number changes that box, a box put in is the only new one,
+and a box taken out is deleted. Start a chain from a name (`:osc`, or a `def`) to change its structure as you go; named
+boxes are never deleted this way. At the top level a list whose head is a command or a Clojure function is code
+(`(+ 1 2)`, `(play)`); inside a chain every list is a box, but `to`, `def` and the calls that make the patch. `(to o
+(box~ …) i)` chooses the ports. What each chain made is kept in this browser for each work.
+
+
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as
 `str/…`) is that function, with no component to write: its other words are its arguments, read as EDN,
 and the message that arrives goes last, as with `->>`. `%` puts it elsewhere. The text reads as Clojure,
