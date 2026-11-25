@@ -157,6 +157,7 @@ const save = () => { try { localStorage.setItem(STORE, JSON.stringify(st.mine));
 const st = { deck: null, session: [], i: 0, answered: false, mine: load(), pooled: [], heard: [false, false] };
 // (the variants: the deck's, as the bridges were drawn)
 const V = () => (st.deck && st.deck.variants) || Bl.VARIANTS;
+const thisDeck = (a) => !st.deck || !st.deck.drawn || a.deck === st.deck.drawn;
 const pct = (x) => (x === null || x === undefined ? "—" : `${Math.round(x * 100)}%`);
 
 // ── the drawings: a piano roll of the four voices
@@ -218,7 +219,7 @@ function showTrial() {
 function answer(k) {
   const tr = st.session[st.i]; if (!tr || st.answered) return;
   const correct = (k === 0) === tr.bachFirst, bachSide = tr.bachFirst ? 0 : 1, t = tr.trial;
-  st.mine.push({ who: $("who").value.trim() || "anonymous", id: t.id, variant: t.variant, phrase: t.phrase, bachFirst: tr.bachFirst, correct, sure: $("sure").checked, at: new Date().toISOString() });
+  st.mine.push({ who: $("who").value.trim() || "anonymous", deck: st.deck.drawn || null, id: t.id, variant: t.variant, phrase: t.phrase, bachFirst: tr.bachFirst, correct, sure: $("sure").checked, at: new Date().toISOString() });
   save(); st.answered = true;
   $(`side-${bachSide}`).classList.add("bach"); if (!correct) $(`side-${k}`).classList.add("wrong");
   $(`who-${bachSide}`).textContent = "Bach"; $(`who-${1 - bachSide}`).textContent = `a bridge · ${t.variant}`;
@@ -238,7 +239,8 @@ function start(seed = Date.now(), per = +$("per").value) {
 
 // ── the scores: mine and the ones imported, pooled
 function showScore() {
-  const all = [...st.mine, ...st.pooled], S = Bl.score(all, V()), who = new Set(all.map((a) => a.who));
+  // (the answers to this deck only: a deck drawn again is other bridges; earlier ones kept, not counted)
+  const ever = [...st.mine, ...st.pooled], all = ever.filter(thisDeck), S = Bl.score(all, V()), who = new Set(all.map((a) => a.who));
   const rows = [...V(), "overall"].map((v) => {
     const s = S[v];
     return `<tr class="${v === "overall" ? "overall" : ""}"><td>${v}</td><td>${s.n}</td><td>${pct(s.rate)}</td><td>${s.n ? `${pct(s.ci[0])}–${pct(s.ci[1])}` : "—"}</td><td>${s.n ? s.p.toFixed(3) : "—"}</td><td>${s.sure.n ? `${s.sure.found}/${s.sure.n}` : "—"}</td></tr>`;
@@ -255,7 +257,8 @@ function showScore() {
   });
   g += `<text x="${X(0)}" y="${142}" text-anchor="middle">0%</text><text x="${X(0.5)}" y="${142}" text-anchor="middle">chance</text><text x="${X(1)}" y="${142}" text-anchor="middle">100%</text>`;
   $("ci").innerHTML = g;
-  $("score-note").textContent = st.pooled.length ? `${st.mine.length} answers yours (kept in this browser), ${st.pooled.length} imported.` : `${st.mine.length} answer${st.mine.length === 1 ? "" : "s"}, kept in this browser. Import other listeners' exports to pool them.`;
+  const older = ever.length - all.length;
+  $("score-note").textContent = (older ? `${older} answer${older === 1 ? "" : "s"} to earlier decks kept, not counted. ` : "") + (st.pooled.length ? `${st.mine.length} answers yours (kept in this browser), ${st.pooled.length} imported.` : `${st.mine.length} answer${st.mine.length === 1 ? "" : "s"}, kept in this browser. Import other listeners' exports to pool them.`);
 }
 function showDeck() {
   const D = st.deck;
@@ -268,7 +271,7 @@ function showDeck() {
 
 // ── export and import
 $("export").onclick = async () => {
-  const text = JSON.stringify({ study: "Kairotic Study 71 · blind", deck: st.deck.seed, answers: st.mine }, null, 1);
+  const text = JSON.stringify({ study: "Kairotic Study 71 · blind", deck: st.deck.drawn || st.deck.seed, answers: st.mine }, null, 1);
   const filename = `study71-${($("who").value.trim() || "answers").replace(/\W+/g, "-")}.json`;
   const dl = window.claude && (await window.claude.use("downloads").catch(() => null));
   if (dl) { await dl.save({ filename, data: new Blob([text], { type: "application/json" }) }); $("status").textContent = `exported ${st.mine.length} answers`; return; }
@@ -291,5 +294,5 @@ try {
 } catch (e) { $("status").textContent = "No deck: " + (e.message || e); }
 
 // for the tests (tests/page.html)
-window.kairoticStudy = { state: () => st, start, play, answer, next, score: () => Bl.score([...st.mine, ...st.pooled], V()), clear: () => { st.mine = []; save(); showScore(); } };
+window.kairoticStudy = { state: () => st, start, play, answer, next, score: () => Bl.score([...st.mine, ...st.pooled].filter(thisDeck), V()), clear: () => { st.mine = []; save(); showScore(); } };
 </script>

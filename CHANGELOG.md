@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 71's deck with a sixth variant, `no-keys`** (#477: the bridges without tonicizations, every unit in the
+  chorale's key): 240 trials, `bach-4` filling 40 of 53 `no-keys` phrases tried (the others 40 of 42–45). The deck
+  carries when it was `drawn`, and each answer the deck it answered: the scores count the answers to this deck only,
+  those to earlier ones kept and said, not counted (a deck drawn again is other bridges).
+
 - **The chorale test's sixth variant, `no-keys`** (#353). Study 63's `outer.mjs` draws bridges without a path of keys
   — every unit in the chorale's key, the rest as `all` — so the blind test can hear how much the tonicizations do.
   `tools/bridges.mjs` can draw one variant by itself (its last argument) and `tools/merge.mjs` puts it in place in
