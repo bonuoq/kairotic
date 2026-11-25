@@ -337,7 +337,8 @@ export function outerBridge(phrase, { layers = {}, temp = 0.4, weights = {}, tar
 /** The layers' names, and every combination the blind test asks: all on, each one off, and all on with the tension
  *  following the generic arch instead of the corpus's profile. */
 export const LAYERS = ["functions", "tension", "economy"];
-export const VARIANTS = [{ name: "all", off: [] }, ...LAYERS.map((l) => ({ name: "no-" + l, off: [l] })), { name: "arch", off: [], target: "arch" }];
+export const VARIANTS = [{ name: "all", off: [] }, ...LAYERS.map((l) => ({ name: "no-" + l, off: [l] })), { name: "arch", off: [], target: "arch" },
+  { name: "no-keys", off: [], keys: false }];
 
 /**
  * Bridges for a phrase of the corpus, as the engine reads them: [{phrase, soprano, bass, key (the chorale's),
@@ -364,9 +365,21 @@ export function bridgesFor(phrase, { count = 2, r = Math.random, temp = 0.4, onl
       for (const k of keys) { const b = outerBridge({ ...phrase, key: k, keys: fk, n }, { layers, temp, target: v.target }); if (b.possible) { flat = { B: b, key: k }; break; } }
       return flat;
     };
+    // (no-keys: every unit in the chorale's key, no tonicization drawn — the rest as `all`; built once)
+    let home;
+    const homeBridge = () => {
+      if (home !== undefined) return home;
+      home = null;
+      const path = Array.from({ length: n }, () => phrase.key);
+      for (const k of keys) { const B = outerBridge({ ...phrase, key: k, unitKeys: path, n }, { layers, temp, target: v.target }); if (B.possible) { home = { B, key: k, keys: path.map(keyName) }; break; } }
+      return home;
+    };
     // a draw: a path of keys (Bach's moves between keys, from A's to B's), the outer voices through it
     const drawOne = () => {
-      if (tonicize && phrase.keys) {
+      if (v.keys === false) {
+        const h = homeBridge(), x = h && h.B.draw(r);
+        if (x) return { x, readIn: h.key, keys: h.keys };
+      } else if (tonicize && phrase.keys) {
         const path = keyPathFor(phrase, r, { rate: keyRate });
         for (const k of keys) {
           const B = outerBridge({ ...phrase, key: k, unitKeys: path, n }, { layers, temp, target: v.target });

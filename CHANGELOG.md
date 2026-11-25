@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The chorale test's sixth variant, `no-keys`** (#353). Study 63's `outer.mjs` draws bridges without a path of keys
+  — every unit in the chorale's key, the rest as `all` — so the blind test can hear how much the tonicizations do.
+  `tools/bridges.mjs` can draw one variant by itself (its last argument) and `tools/merge.mjs` puts it in place in
+  `bridges.json`.
 - **The studies' export writes lyrics** (#192, #319). In `studies/_shared/export.mjs` (and its copies beside every
   study's kernel) a note may carry the syllable it begins — `{name, units, syl, wordpos, con}` — and the syllables of
   the verses after the first, `verses: [{syl, wordpos, con} …]` (a strophe and its antistrophe); `exportMei` writes
