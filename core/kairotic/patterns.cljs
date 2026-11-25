@@ -27,12 +27,20 @@
 ;; gives the pulses one by one, 1 or 0, and an event whose :pulse is 0 is a silence (with :dur the pulse).
 ;; A generator can be an element of a vector: [1 #pat/choose [2 3]]. Each key has its own seed, made of
 ;; the box's seed and its name, so changing :dur does not change the randomness of :amp.
+;;
+;; A tree (discussion #450): :tree in a pbind is a musical tree — what cac partimento writes, a comes canon, a
+;; transcription, a tree box — whose notes are its events ({:midinote :sustain :dur :amp :voice}, :dur the time to
+;; the next onset, 0 for notes that start together). Every other key goes on over them note by note and says what
+;; the tree does not, or says it again: {:tree … :dur #pat/euclid [3 8]} plays its pitches on a tresillo (a talea
+;; over a color), {:tree … :pan #pat/white [-1 1]} each note somewhere else. {:tree {:of … :voices [0]} …} plays
+;; only some of its voices (by their order in it).
 
 (ns kairotic.patterns
   (:require [clojure.string :as str]
             [clojure.edn :as edn]
             [kairotic.score :as sc]
             [kairotic.canvas :as cv]
+            [kairotic.mt :as mt]
             [kairotic.code :as code]))
 
 (def max-period
@@ -77,6 +85,8 @@
 
 (defn gen "A generator as data." [g args] {:pat/gen g :pat/args args})
 (defn gen? [x] (and (map? x) (contains? x :pat/gen)))
+
+(declare tree-arg)   ; a pbind's :tree (below, with the streams)
 
 (def readers (into {} (for [g gen-names] [(symbol "pat" (name g)) (fn [x] (gen g x))])))
 
@@ -188,9 +198,49 @@
     ["a pbind is a map {:key values …}: {:degree [0 2 4] :dur 1/2}"]
     (concat
      (for [k (keys m) :when (not (keyword? k))] (str "the keys of a pbind are keywords (" (pr-str k) " is not)"))
-     (->> (tree-seq (fn [x] (or (map? x) (sequential? x))) (fn [x] (if (map? x) (if (gen? x) [(:pat/args x)] (vals x)) x)) m)
+     (when (and (contains? m :tree) (not (tree-arg (:tree m))))
+       [":tree takes a musical tree ([:voice \"c4/1 d4 e4\"], what a tree box sends) or {:of tree :voices [0]}"])
+     (->> (tree-seq (fn [x] (or (map? x) (sequential? x))) (fn [x] (if (map? x) (if (gen? x) [(:pat/args x)] (vals x)) x)) (dissoc m :tree))
           (filter gen?)
           (keep gen-problem)))))
+
+;; ───────── a tree as events (discussion #450) ─────────
+
+(defn tree-arg
+  "What :tree holds: a tree, or {:of tree :voices [i …]}. → [tree voices], or nil if it is not a tree."
+  [x]
+  (cond (and (map? x) (mt/tree? (:of x)) (or (nil? (:voices x)) (and (sequential? (:voices x)) (every? integer? (:voices x)))))
+        [(:of x) (seq (:voices x))]
+        (and (not (map? x)) (mt/tree? x)) [x nil]
+        :else nil))
+
+(defn tree-events
+  "The notes of a musical tree as event maps, in time order: {:midinote (MIDI, fractional for microtones)
+   :sustain (beats it sounds) :dur (beats to the next onset: 0 for notes that start together, as a chord's or two
+   voices') :voice (its voice, by its order in the tree) :amp (its :vel, if it has one)}, with a silence first when
+   it does not begin at 0. voices: the voices to keep (by order), all if nil."
+  ([t] (tree-events t nil))
+  ([t voices]
+   (let [ns (mt/notes t)
+         ids (vec (distinct (map :voice ns)))
+         index (fn [v] (first (keep-indexed (fn [i x] (when (= x v) i)) ids)))
+         ns (if (seq voices) (let [keep (set voices)] (filterv (fn [n] (keep (index (:voice n)))) ns)) (vec ns))
+         end (reduce max 0 (map (fn [n] (+ (:t n) (:dur n))) ns))
+         t0 (:t (first ns))]
+     (vec (concat
+           (when (and t0 (pos? t0)) [{:type :rest :dur (cv/round-to t0 6)}])
+           (map-indexed (fn [i n]
+                          (let [nxt (get ns (inc i))]
+                            (cond-> {:midinote (cv/round-to (:pitch n) 4) :sustain (:dur n)
+                                     :dur (cv/round-to (- (if nxt (:t nxt) end) (:t n)) 6) :voice (index (:voice n))}
+                              (number? (:vel n)) (assoc :amp (:vel n)))))
+                        ns))))))
+
+(defn tree-rows
+  "The events of a pbind's :tree, or nil (an empty tree gives none)."
+  [x]
+  (when-let [[t voices] (tree-arg x)]
+    (not-empty (tree-events t voices))))
 
 ;; ───────── streams: one per key ─────────
 ;; stream-of gives {:stream (lazy, infinite) :period n-or-nil}: a finite sequence of n values cycles (so a
@@ -318,18 +368,23 @@
    in Overtone, a pattern with an endless key is endless; otherwise one pass lasts as long as its longest
    sequence, and there are `repeat` passes."
   [m {:keys [seed repeat]}]
-  (let [ks (sort-by str (keys m))
+  (let [tree (tree-rows (:tree m))
+        m (dissoc m :tree)
+        ks (sort-by str (keys m))
         holds (keep (fn [k] (let [v (get m k)] (when (and (gen? v) (= :hold (:pat/gen v))) [k (:held (stream-of v {:key k}))]))) ks)
         streamed (remove (set (map first holds)) ks)
         periods (map (fn [k] (static-period (get m k) k)) streamed)
-        seqs (remove #{:const} periods)
+        seqs (concat (remove #{:const} periods) (when tree [(count tree)]))
         endless? (some nil? seqs)
         n (if (seq seqs) (apply max seqs) 1)
         one-pass (fn [p]
                    (let [ss (map (fn [k] (:stream (stream-of (get m k) {:seed seed :key k :pass p}))) streamed)]
-                     (if (seq ss)
-                       (apply map (fn [& vs] (zipmap streamed vs)) ss)
-                       (repeat {}))))
+                     (cond->> (if (seq ss)
+                                (apply map (fn [& vs] (zipmap streamed vs)) ss)
+                                ;; (clojure.core's: repeat is the passes here)
+                                (clojure.core/repeat {}))
+                       ;; the tree's notes under every key: what the keys say goes over what the tree says
+                       tree (map merge (cycle tree)))))
         rows (cond endless? (one-pass 0)
                    (= repeat :inf) (letfn [(passes [p] (lazy-seq (concat (take n (one-pass p)) (passes (inc p)))))] (passes 0))
                    :else (mapcat (fn [p] (take n (one-pass p))) (range (max 1 (or repeat 1)))))]
@@ -338,7 +393,9 @@
 (defn summary
   "A few words about a pbind map: its keys and how many events a pass has."
   [m]
-  (let [periods (keep (fn [[k v]] (let [p (static-period v k)] (when-not (#{:const :held} p) p))) m)
+  (let [tree (tree-rows (:tree m))
+        periods (concat (keep (fn [[k v]] (let [p (static-period v k)] (when-not (#{:const :held} p) p))) (dissoc m :tree))
+                        (when tree [(count tree)]))
         pass (cond (some nil? periods) "endless"
                    (seq periods) (str (apply max periods) " events a pass")
                    :else "1 event")]
@@ -383,7 +440,9 @@
      :pchoose (fn [xs] (let [v (vec xs)] (repeatedly (fn [] (pick r v)))))
      :pshuffle (fn [xs] (let [v (vec xs)] ((fn pass [] (lazy-seq (concat (shuffled r v) (pass)))))))
      :pseries (fn ([x step] (iterate (fn [x] (+ x step)) x)) ([x step n] (take n (iterate (fn [x] (+ x step)) x))))
-     :pwalk (fn [x0 step lo hi] (:stream (stream-of (gen :walk [x0 step lo hi]) {:seed [seed (r)]})))}))
+     :pwalk (fn [x0 step lo hi] (:stream (stream-of (gen :walk [x0 step lo hi]) {:seed [seed (r)]})))
+     ;; the notes of a tree as events (#450): (ptree t), (ptree t [0]) some of its voices
+     :ptree (fn ([t] (tree-events t nil)) ([t voices] (tree-events t voices)))}))
 
 (def code-names (sort (map name (keys (code-env (constantly 0) 0 1)))))
 

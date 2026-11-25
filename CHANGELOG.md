@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **The blind test's bridges between two of Bach's chords, their inner voices moving as his** (`@kairotic/rules`
+  0.21.0, `bach-4` 1.5.0; `@kairotic/cac` 0.16.9; Study 71). A bridge now begins and ends on Bach's chords whole: the
+  alto and the tenor given there (`fromOuter`'s `inner`, `fourOverBass`'s `given.alto` / `given.tenor`, where a unit has
+  a note) — before, only 31 of 200 began on his chord. `bach-4`'s voices weigh each move by how often Bach's alto and
+  tenor make it (`bach-motion`, weight 2: −log of its frequency in the chorales, `BACH_INNER_MOTION`), so the voice that
+  takes each chord tone is the one whose line it suits: in the deck the inner voices keep a note, step, leap a 3rd, a
+  4th or wider 30.9 / 40.9 / 13.9 / 9.3 / 4.9% of the time, Bach's 30.0 / 40.5 / 18.2 / 7.6 / 3.7% (before: 20 / 41 /
+  14 / 12 / 13). And a **voice exchange** costs less (`voice-exchange`, weight 2, `bach-4` 1.5.0): an inner voice and
+  another trading their notes in contrary motion, over one unit (a 3rd or 6th each way) or two (a passing note
+  between) — the chord kept and each line moving where one voice alone would leap, a shortcut of four-part writing;
+  the bridges do it about as often as Bach (with an inner voice, 9 chords in 100). A kept note is struck again, as Bach mostly does, unless it is held into a dissonance. The deck drawn
+  again: `bach-4` fills 55–58% of the bridges tried. Bach's phrases judged as before (504).
+- **A tree as the events of a pattern** (discussion #450, piece 1; `@kairotic/patterns` 0.3.1). `:tree` in a pbind is a
+  musical tree whose notes are its events (`:midinote :sustain :dur :voice :amp`, in time order, `:dur` the time to the
+  next onset — 0 for notes that start together —, a silence first when it does not begin at 0), every other key going
+  on over them note by note: `{:tree … :dur #pat/euclid [3 8]}` its pitches on a tresillo, `{:tree {:of … :voices
+  [0]}}` some of its voices. A tree on a pbind's inlet (a tree box, `cac partimento`, `comes`, a transcription)
+  becomes its `:tree`; `(ptree t)` in a `pattern` box. The way back of `render` (#93): what cac writes can now be
+  played by a `player` and varied with the generators.
+
 - **A rhythm that comes back is written the same way** (issue #108, point 2). The quantizer finds the spans whose onsets
   fall at the same places, prefers for all of them the division of their mean (`:rep` 1 for another; `:repeat` the
   tolerance, 0.08 of the span; `:repeat false` for none), and so writes a repeated rhythm alike each time. On the
