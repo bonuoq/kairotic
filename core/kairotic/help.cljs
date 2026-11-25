@@ -752,7 +752,7 @@
    "pbind"
    {:package "@kairotic/patterns" :usage "pbind [seed] [repeat] [loop]"
     :doc "A pattern as EDN data: a map of constants, sequences and #pat/… generators, with its randomness seeded. It sends its pattern whenever it changes, for a player."
-    :inlets ["bang: sends its pattern again · a map: replaces it (one event of the history) · [:set :dur [1 0.5]]: one key · [:unset :amp]"]
+    :inlets ["bang: sends its pattern again · a map: replaces it (one event of the history) · [:set :dur [1 0.5]]: one key · [:unset :amp] · a musical tree (a tree box, cac partimento, comes): becomes its :tree"]
     :outlets ["its pattern (a factory of streams), for a player"]
     :messages [["{:degree [0 2 4] :dur 0.5}" "a key with a vector is a sequence; the shorter ones start again until the longest ends"]
                ["#pat/choose [0.25 0.5] · #pat/white [0 7] · #pat/walk [0 2 -7 7]" "endless random values (the same for everyone: the seed)"]
@@ -763,6 +763,8 @@
                ["{:pulse #pat/euclid [3 8] :dur 0.5}" "a rhythm in another key: one event a pulse, :pulse 0 a silence (a step sequencer)"]
                ["{:degree [0 2 :rest 4]} · [0 nil 4]" "a silence: :rest (:_ :- :r) or nil as the degree, note or freq"]
                [":amp #pat/white [0.2 0.6]" "the loudness of each note (0…1), for synth~ and a polyphonic faust~"]
+               ["{:tree [:voice \"c4/1 e4 g4\"] :dur #pat/euclid [3 8]}" "a musical tree's notes as the events (:midinote :sustain :dur :voice :amp; notes that start together at :dur 0), the other keys going on over them note by note: here its pitches on a tresillo"]
+               ["{:tree {:of … :voices [0]}}" "only some of the tree's voices, by their order in it"]
                ["pbind 7 · pbind 7 4 · pbind 7 loop" "the seed · four passes · for ever"]]
     :example (lines "(box :b1 \"pbind 7 loop\" 40 30)"
                     "(code :b1 \"{:degree #pat/shuffle [0 2 4 7]\\n :dur    [0.5 0.5 1]\\n :amp    #pat/white [0.1 0.3]}\")"
