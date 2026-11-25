@@ -221,7 +221,9 @@ keys Bach breaks it in 78 of his 2,272 phrases (136 in the chorale's key). `chor
 `@kairotic/rules` 0.20.1: `bach-4` 1.3.1: `from-bass` takes a unison a semitone under the bass (D over D♯) as below it.
 `@kairotic/rules` 0.21.0: `bach-4` 1.4.0: `bach-motion` (a voice's soft rule: a move costs −log of how often Bach's alto and
 tenor make it, `BACH_INNER_MOTION`; weight 2); `fourOverBass`'s `given.alto` / `given.tenor` and `fromOuter`'s `inner`
-(an inner voice given where a unit has a note: a bridge's ends as Bach's chords).
+(an inner voice given where a unit has a note: a bridge's ends as Bach's chords). `bach-4` 1.5.0: `voice-exchange` (between
+the voices, weight 2: an inner voice and another trading their notes in contrary motion, over one unit or two by step,
+costs less).
 
 ## Next
 

@@ -42,6 +42,14 @@ export async function run() {
   const mb = motion("bach"), mr = motion("bridge"), fmt = (m) => m.map((x) => x.toFixed(1)).join(" / ");
   is(`... their inner voices move nearly as Bach's: kept / step / 3rd / 4th / wider — ${fmt(mr)}% (Bach ${fmt(mb)}%), a 4th or wider within 4 points of his`, Math.abs(mr[3] + mr[4] - mb[3] - mb[4]) < 4);
   notes.push(`the inner voices' moves, kept / step / 3rd / 4th / wider: bridges ${fmt(mr)}%, Bach ${fmt(mb)}%`);
+  // (voice exchanges with an inner voice: two voices trading their notes' classes in contrary motion, over one unit or
+  // two by step — as often in the bridges as in Bach's phrases)
+  const pc = (m) => ((m % 12) + 12) % 12;
+  const exchanges = (X) => { let e = 0; for (let t = 1; t < X.length; t++) for (const k of [1, 2]) { const s = t - k; if (s < 0) continue; for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) { if (![i, j].some((v) => v === 1 || v === 2)) continue; const a0 = X[s][i], b0 = X[s][j], a1 = X[t][i], b1 = X[t][j]; if (pc(a0) === pc(b0) || pc(a1) !== pc(b0) || pc(b1) !== pc(a0) || a1 === a0 || Math.sign(a1 - a0) !== -Math.sign(b1 - b0)) continue; if (k === 2 && [[a0, X[t - 1][i], a1], [b0, X[t - 1][j], b1]].some(([x, y, z]) => Math.abs(y - x) > 2 || Math.abs(z - y) > 2)) continue; e++; } } return e; };
+  const rate = (key) => { let e = 0, u = 0; for (const t of D.trials) { e += exchanges(t[key].satb); u += t[key].satb.length; } return (100 * e) / u; };
+  const xb = rate("bach"), xr = rate("bridge");
+  is(`... and trade their notes with another voice (a voice exchange) about as often as Bach's: ${xr.toFixed(1)} per 100 chords (Bach ${xb.toFixed(1)})`, Math.abs(xr - xb) < 2.5);
+  notes.push(`voice exchanges with an inner voice, per 100 chords: bridges ${xr.toFixed(1)}, Bach ${xb.toFixed(1)}`);
   is("... between the ends (Bach's, his voices crossing where they do) the inner voices between the soprano and the bass, in order (a unison allowed)",
      D.trials.every((t) => t.bridge.satb.slice(1, -1).every(([s, a, tn, b]) => s >= a && a >= tn && tn >= b)));
   const filled = Bl.VARIANTS.map((v) => `${v} ${D.tried[v].filled}/${D.tried[v].tried}`).join(", ");

@@ -1045,6 +1045,26 @@ export const SOFT_BETWEEN = {
     for (const c of [0, ...v]) cnt[c] = (cnt[c] || 0) + 1;
     return Object.entries(cnt).some(([c, k]) => +c !== 0 && k >= 2) ? { doubling: weight } : {};
   } }),
+  /** a voice exchange (Stimmtausch): an inner voice and another voice trade their notes' classes in contrary motion —
+   *  over one unit (a 3rd or a 6th each way: the alto C→E, the bass E→C) or two (a passing note between, each voice by
+   *  step) —, the chord kept and each line moving where one voice alone would leap: it costs less (−weight), as Bach
+   *  writes it in about one chord in eleven. bach-4 1.5.0. */
+  "voice-exchange": (N, { weight = 1 } = {}) => ({ id: "voice-exchange", cost: ({ W, t, x }) => {
+    const pitch = (u, i, xs) => (i === 3 ? N.K.semi(N.B[u].d, N.B[u].r || 0) : N.semi(xs ? xs[i] : W[i][u]));
+    const pc = (m) => mod(m, 12);
+    for (const k of [1, 2]) {
+      const s = t - k;
+      if (s < 0) continue;
+      for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) {
+        if (i !== 1 && i !== 2 && j !== 1 && j !== 2) continue;
+        const a0 = pitch(s, i), b0 = pitch(s, j), a1 = pitch(t, i, x), b1 = pitch(t, j, x);
+        if (pc(a0) === pc(b0) || pc(a1) !== pc(b0) || pc(b1) !== pc(a0) || a1 === a0 || Math.sign(a1 - a0) !== -Math.sign(b1 - b0)) continue;
+        if (k === 2) { const am = pitch(t - 1, i), bm = pitch(t - 1, j); if (Math.abs(am - a0) > 2 || Math.abs(a1 - am) > 2 || Math.abs(bm - b0) > 2 || Math.abs(b1 - bm) > 2) continue; }
+        return { "voice-exchange": -weight };
+      }
+    }
+    return {};
+  } }),
   /** the tonal functions (BETWEEN's functions, its parameters) as a cost: a unit whose chord the grammar does not let
    *  follow the one before pays weight — Bach breaks it, read in his local keys, in 78 of his 2,272 phrases
    *  (discussion #353: soft until the keys are the engine's own). */
@@ -1092,10 +1112,12 @@ Object.assign(STYLES, {
   // (the functions read in each unit's key, the passing chords let pass, and as a cost, not a refusal: 1.3.0)
   // (each voice's moves weighed as often as Bach's alto and tenor make them — bach-motion, weight 2: with the engine at
   // temperature 1 they keep a note, step, leap a 4th or more nearly as often as his: 1.4.0)
-  "bach-4": { style: "bach-4", version: "1.4.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
+  // (and an inner voice trading its note with another's in contrary motion — a voice exchange — costing less, weight
+  // 2: as often as Bach, about one chord in eleven: 1.5.0)
+  "bach-4": { style: "bach-4", version: "1.5.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
                                                                                           soft: [["bach-motion"]], weights: { "bach-motion": 2 } },
     between: [["order", { within: 7, unison: true }], ["functions", false]],
-    softBetween: [["functions", { local: true, passing: true }]], weights: { functions: 2 },
+    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"]], weights: { functions: 2, "voice-exchange": 2 },
     // (the voices' ranges as Bach's in the chorales, MIDI: the same in every key)
     ranges: { soprano: [57, 81], alto: [52, 74], tenor: [48, 69] } },
 });
