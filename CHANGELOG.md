@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
+  voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of
+  0…13 semitones in the corpus, times the temperature, so the draw moves as often as he does), in place of the fixed
+  step/leap/repeat costs: the soprano keeps its note 16% of the time (was 2%; Bach 21%), the bass leaps a 3rd or more
+  46% (was 24%; Bach 50%), oblique motion 16% (was 3%; Bach 24%); similar motion no dearer than contrary, the
+  tessitura looser. `bridgesFor`'s `accept` draws a bridge again until it says yes, and `tools/bridges.mjs` asks
+  whether bach-4 can fill the inner voices (fromOuter's count above 0) — `fillable` on every bridge, false where ten
+  draws could not; the tool runs in shards (`tools/merge.mjs`). `bridges.json` drawn again.
 - **Study 72 · reveal** (discussion #407): a live-coding set is only code while it is played; at the end it reveals
   its patch, drawn by its flow (`layout.mjs`: a layered drawing after Sugiyama — rows after what feeds them, the order
   uncrossing the wires, each box under what feeds it; the app's example work in seven rows with no crossing), and its

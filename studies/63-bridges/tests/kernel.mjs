@@ -92,6 +92,10 @@ export async function run() {
   is("outer voices from A to B: every draw begins on A's soprano and bass and ends on B's, the cadence's soprano by step, the bass ⑤–① or ⑦–①",
      [[ph1, all1], [ph2, all2]].every(([ph, st]) => st.xs.every((x) => x.soprano[0] === ph.A[0] && x.bass[0] === ph.A[3] && x.soprano.at(-1) === ph.B[0] && x.bass.at(-1) === ph.B[3] && Math.abs(x.soprano.at(-2) - ph.B[0]) <= 2)));
   is("… keeping the rules (consonant, no parallel 5ths or octaves, the soprano above), and singable: a leap of a 6th at most, few leaps", [all1, all2].every((st) => st.xs.every((x) => O.rulesBroken(x).length === 0 && x.soprano.slice(1).every((s, t) => Math.abs(s - x.soprano[t]) <= 9))));
+  const moves = [all1, all2].flatMap((st) => st.xs.flatMap((x) => x.soprano.slice(1).map((v, t) => [Math.abs(v - x.soprano[t]), Math.abs(x.bass[t + 1] - x.bass[t])])));
+  const keeps = moves.filter(([d]) => d === 0).length / moves.length, bassLeaps = moves.filter(([, d]) => d >= 3).length / moves.length;
+  is("the line moves as Bach's (BACH_OUTER_MOTION): the soprano keeps its note now and then, the bass leaps a 3rd or more often", keeps > 0.08 && bassLeaps > 0.25 && O.BACH_OUTER_MOTION.soprano[2] === 0);
+  notes.push(`outer voices' moves (20 draws): the soprano keeps its note ${(100 * keeps).toFixed(0)}% (Bach 22%), the bass leaps a 3rd or more ${(100 * bassLeaps).toFixed(0)}% (Bach 47%)`);
   const nf1 = stats(ph1, ["functions"]), nf2 = stats(ph2, ["functions"]);
   is("the functions layer: without it the two voices imply a harmony that goes back (D → S) or leaves an applied dominant unresolved every few phrases; with it, never", nf1.errs + nf2.errs > 0.3 && all1.errs + all2.errs === 0);
   const nt1 = stats(ph1, ["tension"]), nt2 = stats(ph2, ["tension"]);
