@@ -30,6 +30,11 @@
   as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
   circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
 
+- **A patch as data is a value** (discussion #407): `=>` is a pure function that writes `[:=> …]` and changes nothing;
+  the Live view (and ⇧+Enter in the Code tab) plays each form whose value is a chain or voices, and `(play value …)`
+  plays it anywhere, starting the engine if it is not running. So chains nest — `(=> [:mtof] (=> [:ftom] [:mtof 3]))` —
+  and are kept, made by functions and joined as any data; voices are just a map, `{:frame {…} :lead (=> …)}`, and
+  `(play {})` stops them all.
 - **Live code as data** (discussion #407): a patch written as plain EDN, which Clojure's reader and any editor read,
   played with one function, `=>`: `(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])`. A box is a vector of its
   class and arguments, as hiccup writes a tag, a class with `~` written with `-` (`[:osc- 220]` is `osc~ 220`); `=>` in
