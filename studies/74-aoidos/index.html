@@ -392,13 +392,18 @@ window.addEventListener("DOMContentLoaded", function () {
       (voice C (fn [b] (or (zero? b) (not= (nth C b) (nth C (dec b))))) 0.08)
       (status! "playing the imitation"))))
 
-;; ───── export: the melody (and its comes) as MEI for the app; the text and the scansion in its extMeta ─────
+;; ───── export: the melody (and its comes) as MEI for the app, the dux with its syllables under it; the text and the
+;;       scansion in its extMeta ─────
 (defn export! []
   (let [{:keys [made sung]} @S]
     (when sung
-      (let [A (.-A made) Y (vec (.-syllables A)) NS (notes-of A sung)
+      (let [A (.-A made) Y (vec (.-syllables A))
             nm (fn [c] (.plain X (.name A c)))
-            dux (clj->js (map (fn [n] {:name (nm (.-code n)) :units (.-beats n)}) NS))
+            ;; the dux sings the text: each syllable on the first note of its melisma, its place in its word
+            dux (clj->js (map (fn [n] (cond-> {:name (nm (.-code n)) :units (.-beats n)}
+                                        (.-text n) (assoc :syl (.-text n))
+                                        (.-wordpos n) (assoc :wordpos (.-wordpos n))))
+                              (.lyricNotesOf A (beats-of sung))))
             comes (when (canon?) (.fromUnits X (clj->js (map #(when (some? %) (nm %)) (.-comes sung)))))
             m (val-of "metre")
             first-strong (or (some #(when (.-strong %) (.-at %)) Y) 0)

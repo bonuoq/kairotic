@@ -5,7 +5,7 @@
 <iframe id="page" src="../index.html" style="width:1320px;height:1000px;border:0"></iframe>
 <script type="module">
 // The study's page itself, in a frame: Odyssey 1.1 read, scanned, counted and sung; strict; in canon; Seikilos;
-// imitable?; the export.
+// imitable?; the export, with the text under the dux.
 const results = [], errors = [];
 const is = (what, ok) => results.push([what, !!ok]);
 const frame = document.getElementById("page");
@@ -51,6 +51,10 @@ try {
   w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
   d.getElementById("export").click();
   is("exported for the app: the dux, the text in its extMeta", await wait(() => saved.length === 1) && saved[0].text.includes('label="dux"') && /:source "Kairotic Study 74 · aoidos"/.test(saved[0].text) && saved[0].text.includes("Μοῦσα"));
+  const syls = saved[0] ? [...saved[0].text.matchAll(/<verse n="1"><syl([^>]*)>([^<]*)<\/syl><\/verse>/g)].map((m) => [m[2], m[1]]) : [];
+  is("... the dux sings its text: Odyssey 1.1's 17 syllables under its notes, each on the first note of its melisma, its place in its word (ἄν-δρα μοι)",
+     syls.length === 17 && syls.map((x) => x[0]).join(" ").startsWith("ἄν δρα μοι ἔν νε πε Μοῦ σα") && / wordpos="i" con="d"/.test(syls[0][1]) && / wordpos="t"/.test(syls[1][1]) && !/wordpos/.test(syls[2][1])
+     && (saved[0].text.match(/<note [^>]*>(?!<verse)|<note [^>]*\/>/g) || []).length > 0);
   d.getElementById("style").value = "greek";
   P.set("odyssey", "melody");
   await wait(() => total() === "1,035,536,158,789,085,949" && status() === "sung");

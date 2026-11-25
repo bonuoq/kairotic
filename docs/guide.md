@@ -137,39 +137,74 @@ box's: `(name-box :b9 :osc)` gives it to another; `(name-box :b9 nil)` takes it 
 it makes: `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))` can be evaluated again and again —
 only what changed changes, and a named box you moved by hand stays where you put it. `(to a o :amp "text" i)` for
 other ports. A chain (`->`, `doto`) evaluated from the tab owns the lines it wrote: evaluated again, it takes away
-those it no longer writes — put `(to :lpf "lop~ 800")` between `:osc` and `:amp` and the old line `:osc` → `:amp` goes,
+those it no longer writes — put `(to :half "gain~ 0.5")` between `:osc` and `:amp` and the old line `:osc` → `:amp` goes,
 in the same event. A chain is known by the box it starts from; lines made otherwise stay. What each chain wrote is kept
 in this browser for each work.
 
 **A patch as data.** In live code a patch is written as plain EDN — which Clojure's reader, clj-kondo and any editor
-read — and played with one function, `=>`. A box is a vector of its class and arguments, as hiccup writes a tag:
+read — made by any code and played as a value. A box is a vector of its class and arguments, as hiccup writes a tag:
 `[:mtof]`, `[:gain- 0.2]`, `[:map 'inc]`. A class with `~` is written with `-` (`[:osc- 220]` is the box `osc~ 220`),
 since Clojure's reader reads `~` as unquote; a class whose own name ends in `-` (`-`, `!-`) stays itself, and a string
 works too (`["osc~" 220]`).
 
 ```clojure
-(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])
+[:=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2]]
+(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])   ; the same
 ```
 
-`=>` is in series, each element fed by the one before. A vector that is not a box is in parallel — after one wire every
+The Live view plays the value of each form it evaluates when it is a patch as data — a chain or voices —, and
+`(play value)` plays it anywhere (the REPL, a function), starting the engine if it is not running. Nothing else has an
+effect: `=>` is a pure function that writes `[:=> …]`, so chains nest, and are kept, made and joined as any value —
+`(def lead (=> …))`, `(for …)`, `(assoc voices :bass (=> …))`.
+
+A chain is in series, each element fed by the one before. A vector that is not a box is in parallel — after one wire every
 element is fed by it, after as many wires as it has elements each by its own —, `:_` is a wire that goes on, and a box
 after several wires takes them on its inlets 0, 1… (the grammar of Faust's `:`, `,` and `<:`). A map names a box:
 `{:osc [:osc- 220]}` is the box called `:osc`, the same box each time it is evaluated; `:osc` alone is that box;
-`[:to o box i]` chooses the ports; `[:=> …]` is a chain inside another. Arguments are values, so they can be computed
+`[:to o box i]` chooses the ports; a chain inside another, `(=> …)` or `[:=> …]`, goes on in it. Arguments are values, so they can be computed
 (`[:osc- (* 2 110)]`) and a sequence is spliced: `[:=> :osc (for [g [0.1 0.2]] [:gain- g])]`.
+
+**Arguments that are boxes.** An argument can be a part of the patch instead of a value — a box, a chain, or a box
+named by a map —: it is made and feeds the inlet that argument sets, so a patch reads as an expression.
+
+```clojure
+(=> [:osc- (=> [:loadbang] [:metro 250] [:counter 1 72 60] [:mtof])]
+    [:gain- 0.2] [:_ :_] [:dac- 1 2])
+```
+
+The chain of `metro`, `counter` and `mtof` plays the frequency of `osc~`. An argument sets the inlet after the left one,
+as in Pd and Max (`[:gain- [:adsr- …]]` is the factor of `gain~`), unless the class says another (`osc~`, `phasor~` and
+`sig~` set their left inlet); it is not written in the box's text, and `0` holds its place if values follow it. A
+keyword stays a value (`[:route :a :b]`).
+
+**Faust as data.** `[:faust- …]` is a `faust~` box whose code the same grammar writes: its arguments are a chain of
+Faust's own elements, and they are its `process`.
+
+```clojure
+(=> [:faust- [:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])] [:* 0.1]]
+    [:_ :_] [:dac- 1 2])
+;; process = os.osc((os.osc(5) : *(10) : +(440))) : *(0.1);
+```
+
+A box is a Faust function with its first arguments given — `[:fi.lowpass 2 800]` is `fi.lowpass(2, 800)`, the rest of
+its arguments its inputs —; a chain is `:` (`<:` before a vector, `:>` after one, so `[:_ :_]` splits a signal as in
+the patch); a vector that is not a box is `,`; `:_` is `_` and `:!` is `!`; a number is a constant signal, a string is
+Faust code as it is, and an argument can be a signal itself, as the vibrato above. `[:hslider "freq" 220 50 2000 1]` is
+a control: `[:freq 440]` to the box sets it. Evaluated again, the box's code is written only if it changed (and
+compiled again). `(faust-code …)` gives the code, and the box's window shows it as a patch of Faust's elements too.
 
 **Voices.** A map of chains plays voices, each known by its key, as `d1` in Tidal:
 
 ```clojure
-(=> {:frame {:mic [:adc- 1] :out [:dac- 1 2]}
-     :lead  [:=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out]
-     :echo  [:=> :mic [:gain- 0.3] [:_ :_] :out]})
+{:frame {:mic [:adc- 1] :out [:dac- 1 2]}
+ :lead  (=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out)
+ :echo  (=> :mic [:gain- 0.3] [:_ :_] :out)}
 ```
 
 Evaluated again, a voice changes only what changed; a voice taken out of the map stops (its boxes and wires go);
 `:frame` holds the boxes every voice uses — the ins and outs of the set (`adc~`, `dac~`, a `knob`), or the `inlet~` and
 `outlet~` of a line used as a sub-patch — made once and never taken away by a voice. `#_` before a box leaves it out:
-evaluated again, the chain goes round it.
+evaluated again, the chain goes round it. `(play {})` stops every voice.
 
 A chain owns the boxes and wires it made: evaluated again, each box takes the box it made before with the same class
 (its text changed if it changed, the sound going on), a box put in is the only new one, and a box or a wire it no longer

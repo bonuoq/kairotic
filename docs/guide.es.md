@@ -141,39 +141,76 @@ se lo quita. `to` también acepta un nombre para la caja que hace:
 `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))` se puede evaluar una y otra vez —solo cambia
 lo que ha cambiado, y una caja con nombre que moviste a mano se queda donde la pusiste—. `(to a o :amp "texto" i)`
 para otros puertos. Una cadena (`->`, `doto`) evaluada desde la pestaña es dueña de las líneas que escribió: evaluada
-otra vez, quita las que ya no escribe —mete `(to :lpf "lop~ 800")` entre `:osc` y `:amp` y la línea vieja `:osc` →
+otra vez, quita las que ya no escribe —mete `(to :half "gain~ 0.5")` entre `:osc` y `:amp` y la línea vieja `:osc` →
 `:amp` se va, en el mismo evento—. Una cadena se reconoce por la caja de la que sale; las líneas hechas de otra manera se
 quedan. Lo que escribió cada cadena se guarda en este navegador para cada obra.
 
 **Un patch como datos.** En el código en vivo un patch se escribe como EDN normal —que leen el lector de Clojure,
-clj-kondo y cualquier editor— y se toca con una función, `=>`. Una caja es un vector de su clase y sus argumentos, como
+clj-kondo y cualquier editor—, lo hace cualquier código y se toca como un valor. Una caja es un vector de su clase y sus argumentos, como
 hiccup escribe una etiqueta: `[:mtof]`, `[:gain- 0.2]`, `[:map 'inc]`. Una clase con `~` se escribe con `-` (`[:osc- 220]`
 es la caja `osc~ 220`), porque el lector de Clojure lee `~` como unquote; una clase cuyo nombre acaba en `-` (`-`, `!-`)
 sigue siendo ella, y un string también vale (`["osc~" 220]`).
 
 ```clojure
-(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])
+[:=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2]]
+(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])   ; lo mismo
 ```
 
-`=>` va en serie, cada elemento alimentado por el anterior. Un vector que no es una caja va en paralelo —después de un
+La vista Live toca el valor de cada forma que evalúa cuando es un patch como datos —una cadena o voces—, y
+`(play valor)` lo toca en cualquier sitio (la REPL, una función), arrancando el motor si no está en marcha. Nada más tiene
+efecto: `=>` es una función pura que escribe `[:=> …]`, así que las cadenas se anidan, y se guardan, se hacen y se juntan
+como cualquier valor: `(def lead (=> …))`, `(for …)`, `(assoc voces :bass (=> …))`.
+
+Una cadena va en serie, cada elemento alimentado por el anterior. Un vector que no es una caja va en paralelo —después de un
 cable cada elemento se alimenta de él, después de tantos cables como elementos tiene cada uno del suyo—, `:_` es un cable
 que sigue, y una caja después de varios cables los toma en sus entradas 0, 1… (la gramática de `:`, `,` y `<:` de Faust).
 Un mapa da nombre a una caja: `{:osc [:osc- 220]}` es la caja llamada `:osc`, la misma cada vez que se evalúa; `:osc`
-sola es esa caja; `[:to o caja i]` elige los puertos; `[:=> …]` es una cadena dentro de otra. Los argumentos son valores,
+sola es esa caja; `[:to o caja i]` elige los puertos; una cadena dentro de otra, `(=> …)` o `[:=> …]`, sigue en ella. Los argumentos son valores,
 así que se pueden calcular (`[:osc- (* 2 110)]`) y una secuencia se inserta: `[:=> :osc (for [g [0.1 0.2]] [:gain- g])]`.
+
+**Argumentos que son cajas.** Un argumento puede ser una parte del patch en lugar de un valor —una caja, una cadena, o
+una caja con nombre en un mapa—: se hace y alimenta la entrada que ese argumento fija, así que un patch se lee como una
+expresión.
+
+```clojure
+(=> [:osc- (=> [:loadbang] [:metro 250] [:counter 1 72 60] [:mtof])]
+    [:gain- 0.2] [:_ :_] [:dac- 1 2])
+```
+
+La cadena de `metro`, `counter` y `mtof` toca la frecuencia de `osc~`. Un argumento fija la entrada siguiente a la
+izquierda, como en Pd y Max (`[:gain- [:adsr- …]]` es el factor de `gain~`), salvo que la clase diga otra (`osc~`,
+`phasor~` y `sig~` fijan su entrada izquierda); no se escribe en el texto de la caja, y `0` ocupa su lugar si le siguen
+valores. Una keyword sigue siendo un valor (`[:route :a :b]`).
+
+**Faust como datos.** `[:faust- …]` es una caja `faust~` cuyo código escribe la misma gramática: sus argumentos son una
+cadena de los elementos propios de Faust, y son su `process`.
+
+```clojure
+(=> [:faust- [:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])] [:* 0.1]]
+    [:_ :_] [:dac- 1 2])
+;; process = os.osc((os.osc(5) : *(10) : +(440))) : *(0.1);
+```
+
+Una caja es una función de Faust con sus primeros argumentos dados —`[:fi.lowpass 2 800]` es `fi.lowpass(2, 800)`, y el
+resto de sus argumentos son sus entradas—; una cadena es `:` (`<:` antes de un vector, `:>` después, así que `[:_ :_]`
+reparte una señal como en el patch); un vector que no es una caja es `,`; `:_` es `_` y `:!` es `!`; un número es una
+señal constante, un string es código Faust tal cual, y un argumento puede ser una señal, como el vibrato de arriba.
+`[:hslider "freq" 220 50 2000 1]` es un control: `[:freq 440]` a la caja lo cambia. Evaluada otra vez, el código de la
+caja solo se escribe si ha cambiado (y se vuelve a compilar). `(faust-code …)` da el código, y la ventana de la caja lo
+muestra también como un patch de los elementos de Faust.
 
 **Voces.** Un mapa de cadenas toca voces, cada una reconocida por su clave, como `d1` en Tidal:
 
 ```clojure
-(=> {:frame {:mic [:adc- 1] :out [:dac- 1 2]}
-     :lead  [:=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out]
-     :echo  [:=> :mic [:gain- 0.3] [:_ :_] :out]})
+{:frame {:mic [:adc- 1] :out [:dac- 1 2]}
+ :lead  (=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out)
+ :echo  (=> :mic [:gain- 0.3] [:_ :_] :out)}
 ```
 
 Evaluada otra vez, una voz cambia solo lo que ha cambiado; una voz quitada del mapa se para (se van sus cajas y sus
 cables); `:frame` guarda las cajas que usan todas las voces —las entradas y salidas del set (`adc~`, `dac~`, un `knob`), o
 los `inlet~` y `outlet~` de una línea usada como sub-patch—, hechas una vez y que ninguna voz quita. `#_` delante de una
-caja la deja fuera: evaluada otra vez, la cadena la rodea.
+caja la deja fuera: evaluada otra vez, la cadena la rodea. `(play {})` para todas las voces.
 
 Una cadena es dueña de las cajas y cables que hizo: evaluada otra vez, cada caja toma la que hizo antes con la misma clase
 (con su texto cambiado si ha cambiado, y el sonido sigue), una caja añadida es la única nueva, y una caja o un cable que

@@ -666,7 +666,7 @@
 
 (defn keep-owned! [m] (when-let [k (chains-key)] (try (.setItem js/localStorage k (pr-str m)) (catch :default _ nil))))
 
-(defn chain-form? "Whether a form is a chain: (=> …) of forms, or (-> …) / (doto …) of calls." [f] (contains? #{"=>" "->" "doto"} (form-head f)))
+(defn chain-form? "Whether a form is a chain of calls: (-> …) or (doto …)." [f] (contains? #{"->" "doto"} (form-head f)))
 
 (defn calls-chain-ok?
   "Whether a Clojure chain, (-> …) or (doto …), makes the patch: every step a call that does — (-> :osc (to :amp
@@ -707,11 +707,12 @@
         [@scratch written])
       (finally (reset! scratch prev-s) (reset! tried prev-t)))))
 
+(declare eval-values!)
 (defn eval-calls!
   "Evaluates calls of the Code tab on the patch on screen (discussion #407): calls that make the patch change it by
    the difference, as one event, and a chain evaluated again takes away the lines it no longer writes (#432);
-   anything else is evaluated as a line of the REPL (a patch as data, (=> …), makes its own event). Returns how many
-   changes it made, or the value, as the REPL shows it."
+   anything else is evaluated form by form as lines of the REPL, and a value that is a patch as data, (=> …) or
+   voices, is played (its own event). Returns how many changes it made."
   [code]
   (if (patch-form? code)
     (do
@@ -732,12 +733,14 @@
                                        (when (pos? taken) (str " (" taken (if (= 1 taken) " line" " lines") " taken away)")))))
           (count evs))
         (catch :default e (repl-print! "err" (esc (or (.-message e) (str e)))) nil)))
-    (repl-eval! code :repl)))
+    (eval-values! code)))
 
 ;; ───── a patch as data (discussion #407) ─────
-;; A patch written as plain EDN, which Clojure's reader and any editor read, played live with one function, =>:
+;; A patch written as plain EDN, which Clojure's reader and any editor read: values, made by any code, and played as
+;; they are given — the Live view plays the value of each form it evaluates, and (play value) anywhere:
 ;;
-;;   (=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])
+;;   [:=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2]]
+;;   (=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])      the same: => is a pure function that writes it
 ;;
 ;; - a box is a vector of its class and arguments, as hiccup writes a tag: [:mtof], [:gain- 0.2], [:map 'inc],
 ;;   ["osc~" 220]. A class with ~ is written with - ([:osc- 220] is osc~ 220), since Clojure's reader reads ~ as
@@ -747,7 +750,7 @@
 ;;   a box after several wires takes them on its inlets 0, 1…; [:=> …] a chain inside another.
 ;; - a map names: {:osc [:osc- 220]} is that box called :osc, the same box each time; :osc alone is it; [:to o box i]
 ;;   chooses the ports.
-;; - (=> {:lead [:=> …] :bass [:=> …]}): voices, each a chain known by its key, as d1 in Tidal. Evaluated again, a voice
+;; - {:lead [:=> …] :bass [:=> …]}: voices, each a chain known by its key, as d1 in Tidal. Evaluated again, a voice
 ;;   changes only what changed, a voice gone from the map is taken away, and :frame holds the boxes every voice uses —
 ;;   {:frame {:mic [:adc- 1] :out [:dac- 1 2]}} —, never taken away by a voice.
 ;; - #_ before a box leaves it out (Clojure's reader does): evaluated again, the chain goes round it.
@@ -779,8 +782,33 @@
                       (and (or (keyword? h) (symbol? h)) (not (contains? data-ops h)) (class-known? (class-name h))))))))
 
 (defn arg-text [a] (cond (string? a) (pr-str a) (number? a) (str a) (or (keyword? a) (symbol? a)) (str a) :else (pr-str a)))
-(defn box-text "The text of the box a vector writes: [:gain- 0.2] → \"gain~ 0.2\"." [v]
-  (str/join " " (cons (class-name (first v)) (map arg-text (rest v)))))
+
+(defn source-arg?
+  "Whether an argument of a box is itself a part of the patch that feeds it — a box, a chain, or a box named by a map
+   — rather than a value: [:osc- [:mtof]], [:gain- (=> [:osc- 2] [:gain- 0.5])]."
+  [a]
+  (boolean (or (box-vec? a)
+               (and (vector? a) (= :=> (first a)))
+               (and (map? a) (= 1 (count a)) (keyword? (ffirst a)) (box-vec? (val (first a)))))))
+
+(defn box-text
+  "The text of the box a vector writes: [:gain- 0.2] → \"gain~ 0.2\". An argument that is a part of the patch is not
+   written (0 holds its place if values follow it): it feeds the box."
+  [v]
+  (let [kept (if (= "faust~" (class-name (first v))) [] (reverse (drop-while source-arg? (reverse (rest v)))))]
+    (str/join " " (cons (class-name (first v)) (map (fn [a] (if (source-arg? a) "0" (arg-text a))) kept)))))
+
+(def arg-inlets
+  "The inlet each argument of a class sets, where it is not the one after the left (as + 1, gain~ 0.2, metro 500):
+   osc~ 220 sets the frequency, its left inlet."
+  {"osc~" [0] "phasor~" [0] "sig~" [0]})
+
+(defn arg-inlet
+  "The inlet that argument k of a box of class cls sets: the class says it (:arg-inlets, or arg-inlets), or else the
+   one after the left (k + 1), as Pd and Max give arguments to the cold inlets."
+  [cls k]
+  (let [m (or (:arg-inlets (comp/lookup cls)) (get arg-inlets cls))]
+    (if m (get m k) (inc k))))
 
 (defn spliced [xs] (mapcat (fn [x] (if (seq? x) x [x])) xs))
 
@@ -807,6 +835,77 @@
   [nm t [x y]]
   (if (get-in (current) [:boxes (rid nm)]) (named-box nm t nil nil) (named-box nm t x y)))
 
+;; ───── Faust as data (discussion #407, #115) ─────
+;; [:faust- …] is a faust~ box whose code is written by the same grammar: its arguments, a chain of Faust's own
+;; elements, are its process —
+;;   [:faust- [:os.sawtooth 110] [:fi.lowpass 2 800] [:* 0.1]]  →  process = os.sawtooth(110) : fi.lowpass(2, 800) : *(0.1);
+;; a box is a Faust function with the first arguments given ([:fi.lowpass 2 800] is fi.lowpass(2, 800): partial
+;; application, the rest its inputs); a chain, (=> …) or [:=> …], is : (<: before a vector, :> after one); a vector
+;; that is not a box is , (in parallel); :_ is _ and :! is ! ; a number is a constant signal, a string is Faust code
+;; as it is; an argument may be a signal itself: [:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])].
+
+(defn faust-box-vec? [v] (boolean (and (vector? v) (seq v) (let [h (first v)] (or (string? h) (and (or (keyword? h) (symbol? h)) (not (contains? #{:=> :_ :! :to} h))))))))
+
+(defn faust-expr
+  "The Faust code of an element written as data."
+  [x]
+  (letfn [(wire [k] (case k :_ "_" :! "!" nil))
+          (arg [a] (cond (number? a) (str a) (string? a) (pr-str a)
+                         (or (vector? a) (seq? a)) (faust-expr a)
+                         (or (keyword? a) (symbol? a)) (or (wire a) (name a))
+                         :else (fail (str "Not a Faust argument: " (pr-str a)))))
+          (par? [e] (and (vector? e) (not (faust-box-vec? e)) (not (= :=> (first e)))))]
+    (cond
+      (number? x) (str x)
+      (string? x) x
+      (and (keyword? x) (wire x)) (wire x)
+      (seq? x) (faust-expr (into [:=>] x))
+      (and (vector? x) (= :=> (first x)))
+      (let [es (vec (spliced (rest x)))]
+        (when (empty? es) (fail "An empty chain"))
+        (if (= 1 (count es))
+          (faust-expr (first es))
+          (str "(" (faust-expr (first es))
+               (apply str (map (fn [a b] (str (cond (par? b) " <: " (par? a) " :> " :else " : ") (faust-expr b)))
+                               es (rest es)))
+               ")")))
+      (faust-box-vec? x)
+      (let [h (first x) nm (if (string? h) h (name h)) as (rest x)]
+        (if (seq as) (str nm "(" (str/join ", " (map arg as)) ")") nm))
+      (vector? x) (str "(" (str/join ", " (map faust-expr (spliced x))) ")")
+      :else (fail (str "Not a part of a Faust process: " (pr-str x))))))
+
+(defn faust-code
+  "The code of a faust~ box written as data, its process the chain of els: (faust-code [:os.osc 220] [:* 0.1])
+   writes process = os.osc(220) : *(0.1); after importing stdfaust.lib."
+  [& els]
+  (let [e (faust-expr (into [:=>] els))
+        e (if (and (str/starts-with? e "(") (= (count (top-forms e)) 1) (str/ends-with? e ")")) (subs e 1 (dec (count e))) e)]
+    (str "import(\"stdfaust.lib\");\nprocess = " e ";")))
+
+(defn faust-vec? [v] (and (vector? v) (seq v) (or (keyword? (first v)) (symbol? (first v)) (string? (first v))) (= "faust~" (class-name (first v)))))
+
+(defn faust-source!
+  "The code of faust~ box id written by its vector v, if it is not that already."
+  [id v]
+  (let [src (apply faust-code (rest v))]
+    (when (not= src (comp/source-of (get-in (current) [:boxes id]))) (code id src))))
+
+(declare run-data)
+(defn feed-args!
+  "The arguments of box vector v that are parts of the patch, each made and wired to the inlet its argument sets."
+  [ctx v id j]
+  (let [cls (class-name (first v)) t (get-in (current) [:boxes id :text])
+        n-in (first (comp/io {:text t}))]
+    (if (= "faust~" cls)
+      (faust-source! id v)
+    (doseq [[k a] (map-indexed vector (rest v)) :when (source-arg? a)]
+      (let [i (arg-inlet cls k)]
+        (when-not (and i (< i n-in)) (fail (str cls " has no inlet for its argument " (inc k))))
+        (doseq [[b o] (run-data ctx [] a (+ j k))]
+          (connect b o id i)
+          (swap! ctx update :wrote conj [b o id i])))))))
+
 (defn feed! [ctx ends id]
   (doseq [[j [a o]] (map-indexed vector ends)]
     (let [l [a o id (if (= 1 (count ends)) 0 j)]]
@@ -815,7 +914,6 @@
 
 (defn existing! [k] (let [id (rid k)] (if (get-in (current) [:boxes id]) id (fail (str "No box called " k ", nor a class " (class-name k))))))
 
-(declare run-data)
 (defn run-chain-data
   "The elements of a chain, in series: each fed by the wires the one before leaves."
   [ctx els ends]
@@ -831,9 +929,11 @@
       (map? x) (let [[[nm b]] (seq x)]
                  (when (not= 1 (count x)) (fail "A map names one box: {:osc [:osc- 220]}"))
                  (if (box-vec? b)
-                   (make (named-data-box! (keyword (name nm)) (box-text b) (below ends j)))
+                   (let [id (named-data-box! (keyword (name nm)) (box-text b) (below ends j))]
+                     (feed-args! ctx b id j) (make id))
                    (fail (str "Not a box: " (pr-str b)))))
-      (box-vec? x) (make (data-box! ctx (box-text x) (below ends j)))
+      (box-vec? x) (let [id (data-box! ctx (box-text x) (below ends j))]
+                     (feed-args! ctx x id j) (make id))
       (and (vector? x) (= :=> (first x))) (run-chain-data ctx (rest x) ends)
       (and (vector? x) (= :to (first x)))
       (let [args (vec (rest x)) [[a]] ends
@@ -877,17 +977,30 @@
   (doseq [l lines :when (some #{l} (:lines (current)))] (apply disconnect l))
   (doseq [[_ id] boxes :let [b (get-in (current) [:boxes id])] :when (and b (not (:name b)))] (delete id)))
 
-(defn =>
-  "Plays a patch written as data (discussion #407), as one event of the history:
-     (=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])            a chain: in series
-     (=> {:frame {:out [:dac- 1 2]} :lead [:=> [:osc- 220] [:_ :_] :out]})   voices, each known by its key
-   A box is a vector of its class and arguments ([:osc- 220] is osc~ 220); a vector that is not a box is in parallel;
-   :_ a wire; a map names a box; :osc is a box by its name; [:to o box i] chooses the ports. Evaluated again, a chain
-   changes what changed: its boxes are reused by class, and what it no longer writes is taken away. Returns the id of
-   the last box (of a chain), or the voices played."
-  [& els]
-  (let [records (made-records)
-        voices? (and (= 1 (count els)) (map? (first els)) (every? (fn [v] (and (vector? v) (= :=> (first v)))) (vals (dissoc (first els) :frame))))
+(defn chain-vec? [v] (and (vector? v) (= :=> (first v))))
+
+(defn voices-map?
+  "Whether a map is voices: each value a chain, [:=> …], and perhaps a :frame. {} is no voices: all of them stop."
+  [m]
+  (boolean (and (map? m) (or (contains? m :frame) (every? chain-vec? (vals m))))))
+
+(defn playable?
+  "Whether a value is a patch as data that the Live view plays: a chain, [:=> …], or voices, {:lead [:=> …] …}."
+  [v]
+  (or (chain-vec? v) (voices-map? v)))
+
+(defn play-data!
+  "Puts a patch written as data in the patch on screen, as one event of the history (discussion #407): a chain,
+   [:=> …] or a box, or voices, {:frame {…} :lead [:=> …] …}. Evaluated again, a chain changes what changed: its
+   boxes are reused by class, and what it no longer writes is taken away; a voice gone from the map stops. Returns
+   the id of the last box of a chain, or the keys of the voices."
+  [v]
+  (let [els (cond (chain-vec? v) (vec (rest v))
+                  (voices-map? v) [v]
+                  (or (box-vec? v) (map? v)) [v]
+                  :else (fail (str "Not a patch as data: " (pr-str v))))
+        records (made-records)
+        voices? (and (= 1 (count els)) (voices-map? (first els)))
         out (atom nil) recs (atom records)]
     (as-one-event!
      (fn []
@@ -896,7 +1009,8 @@
            ;; the frame: boxes by their names, made once, never taken away by a voice
            (doseq [[nm b] (:frame m)]
              (when-not (box-vec? b) (fail (str "Not a box in :frame: " (pr-str b))))
-             (named-data-box! (keyword (name nm)) (box-text b) [nil nil]))
+             (let [id (named-data-box! (keyword (name nm)) (box-text b) [nil nil])]
+               (when (faust-vec? b) (faust-source! id b))))
            (doseq [[k v] (dissoc m :frame)]
              (let [[_ rec] (run-owned! [::voice k] (rest v) records)] (swap! recs assoc [::voice k] rec)))
            (doseq [k prev :when (not (contains? m k))]
@@ -908,6 +1022,29 @@
            (reset! out (ffirst ends))))))
     (keep-records! @recs)
     @out))
+
+(defn =>
+  "A chain, as data: (=> [:osc- 220] [:gain- 0.2] :out) is [:=> [:osc- 220] [:gain- 0.2] :out]. Pure: it changes
+   nothing; the Live view plays the chains a block gives, and (play chain) anywhere. So chains nest, and are made,
+   kept and joined as any value: (def lead (=> …)), (for …), (assoc voices :bass (=> …))."
+  [& els]
+  (into [:=>] els))
+
+(defn eval-values!
+  "Evaluates code form by form, as lines of the REPL: a form whose value is a patch as data — a chain, [:=> …], or
+   voices — is played, as (play value)."
+  [code]
+  (repl-print! "in" (str "<span class=\"p\">λ</span>" (esc code)))
+  (risky! (if (> (count code) 160) (str (subs code 0 150) " …") code))
+  (try
+    (with-tx (or @tx-now {:via :repl})
+      (fn []
+        (doseq [[a b] (top-forms code)]
+          (let [v (eval-str (subs code a b))]
+            (if (playable? v)
+              (let [r (play v)] (repl-print! "out" (esc (str "; ▶ " (if (vector? r) (str/join " " r) (pr-str r))))))
+              (repl-print! "out" (esc (pr-str v))))))))
+    (catch :default e (repl-print! "err" (esc (or (.-message e) (str e)))) nil)))
 
 (defn same-code? [a b]
   (= (str/replace (str/trim (str a)) #"\s+" " ") (str/replace (str/trim (str b)) #"\s+" " ")))
@@ -1046,16 +1183,22 @@
   ";; Live: your own code, kept in this browser (not in the work).
 ;; ⇧+Enter evaluates a form, Ctrl/⌘+Enter a block (lines between empty ones).
 
-;; a patch as data: a box is a vector of its class and arguments ([:osc- 220] is osc~ 220),
-;; => in series, [:_ :_] one wire split in two, a map gives a box a name
+;; a patch as data, played as it is evaluated: a box is a vector of its class and arguments
+;; ([:osc- 220] is osc~ 220), => in series, [:_ :_] one wire split in two, a map gives a box a name
 (=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])
 
 ;; voices, each known by its key: evaluated again, only what changed changes;
 ;; #_ leaves a box out, and a voice taken out of the map stops
-(=> {:frame {:out [:dac- 1 2]}
-     :lead  [:=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out]})
+{:frame {:out [:dac- 1 2]}
+ :lead  (=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out)}
 
-(play)
+;; chains are values: kept, made by functions, joined as any data
+(defn drone [f] (=> [:osc- f] [:gain- 0.1] :out))
+{:frame {:out [:dac- 1 2]}
+ :lead  (=> [:gendy- 110] [:gain- 0.2] [:_ :_] :out)
+ :low   (drone 55)}
+
+(stop)
 ")
 
 (defn live-key "Where this browser keeps the Live code of the work open." []

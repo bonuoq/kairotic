@@ -142,7 +142,8 @@ export function planFromTime(syls) {
  * syllable, 3; 1: a note a syllable), strict (the peak and the circumflex hard), maxRepeat (3), chromatic (altered
  * notes allowed: [[degree, alteration]…]), time (the syllables and their beats given: planFromTime), weights (the melodic
  * and the accent's)} → solve()'s count, sample, engine, judge, fan, why (a code a beat), and the plan, the system,
- * names, midi, hz; notesOf (a melody's notes: [{code, at, beats, syl}]), pitchesOf (each syllable's pitches),
+ * names, midi, hz; notesOf (a melody's notes: [{code, at, beats, syl}]), lyricNotesOf (with the text they sing),
+ * pitchesOf (each syllable's pitches),
  * accentReport, asDux.
  */
 export function aoidos(spec = {}) {
@@ -310,6 +311,14 @@ export function aoidos(spec = {}) {
     count: (U = []) => (P.error || !n ? 0n : core.count(U)),
     countWithin: (ms, U = []) => { if (P.error || !n) return 0n; try { return within(ms, () => core.count(U)); } catch (e) { if (e.tooLong) return null; throw e; } },
     notesOf, pitchesOf,
+    /** A melody's notes with the text they sing: notesOf's, each syllable's text on the first note of its melisma
+     *  (text, and wordpos: "i", "m", "t" in its word, none for a word of one syllable) — what export.mjs writes as
+     *  MEI's <verse><syl>; the notes after it in the syllable carry none. */
+    lyricNotesOf: (U) => notesOf(U).map((x) => {
+      if (!x.first) return x;
+      const y = Y[x.syl], wordpos = y.first && y.last ? null : y.first ? "i" : y.last ? "t" : "m";
+      return { ...x, text: y.text, ...(wordpos ? { wordpos } : {}) };
+    }),
     /** How a melody keeps the accent: judgeAccent's {rule: [kept, applies, where not]}. */
     accentReport: (U) => judgeAccent(Y, pitchesOf(U)),
     /** How many syllables are sung on more than one note. */

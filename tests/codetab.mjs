@@ -261,37 +261,92 @@ export async function codetab(page, check) {
         (await cljs(page, "[(box-vec? [:gain- 0.2]) (box-vec? [:map 'inc]) (box-vec? [:_ :_]) (box-vec? [:osc :amp]) (box-vec? [[:mtof] [:mtof]])]")) === "[true true false false false]");
   check("... and writes its text", (await cljs(page, "(box-text [:gain- 0.2])")) === '"gain~ 0.2"' && (await cljs(page, '(box-text ["dispatch" 2 {60 0}])')) === '"dispatch 2 {60 0}"');
   const k2 = Number(await cljs(page, nEv));
-  const fd = await cljs(page, "(=> {:fo [:mtof]} [:ftom] [:_ :_] [:+])");
+  const fd = await cljs(page, "(play (=> {:fo [:mtof]} [:ftom] [:_ :_] [:+]))");
   const fo = await cljs(page, "(rid :fo)"), fg = await cljs(page, `(some (fn [[a _ b _]] (when (= a ${fo}) b)) (:lines (current)))`);
   const txt = (id) => cljs(page, `(:text (get-in (current) [:boxes ${id}]))`);
   check("=>: the boxes in series, a name, as one event", /^:b\d+$/.test(fo) && (await txt(fg)) === '"ftom"' && (await txt(fd)) === '"+"'
         && Number(await cljs(page, nEv)) === k2 + 1, `${fo} ${fg} ${fd}`);
   check("... [:_ :_]: one wire split in two, on the inlets 0 and 1 of the box after", (await has(`[${fg} 0 ${fd} 0]`)) === "true" && (await has(`[${fg} 0 ${fd} 1]`)) === "true");
   check("... each box below the one that feeds it", (await cljs(page, `(- (:y (get-in (current) [:boxes ${fg}])) (:y (get-in (current) [:boxes ${fo}])))`)) === "60");
-  await cljs(page, "(=> {:fo [:mtof]} [:ftom] [:_ :_] [:+])");
+  await cljs(page, "(play (=> {:fo [:mtof]} [:ftom] [:_ :_] [:+]))");
   check("evaluated again as it was: nothing changes", Number(await cljs(page, nEv)) === k2 + 1);
-  await cljs(page, "(=> {:fo [:mtof]} [:ftom 1] [:_ :_] [:+])");
+  await cljs(page, "(play (=> {:fo [:mtof]} [:ftom 1] [:_ :_] [:+]))");
   check("... a number changed: that box's text only", (await cljs(page, lastEv)) === `[:text ${fg} "ftom 1"]`, await cljs(page, lastEv));
-  await cljs(page, "(=> {:fo [:mtof]} [:mtof 2] [:ftom 1] [:_ :_] [:+])");
+  await cljs(page, "(play (=> {:fo [:mtof]} [:mtof 2] [:ftom 1] [:_ :_] [:+]))");
   const fl = await cljs(page, `(some (fn [[a _ b _]] (when (= a ${fo}) b)) (:lines (current)))`);
   check("... a box put in: only that box new, the others the same, the old wire taken away",
         fl !== fg && (await txt(fl)) === '"mtof 2"' && (await has(`[${fl} 0 ${fg} 0]`)) === "true" && (await has(`[${fo} 0 ${fg} 0]`)) === "false" && (await txt(fg)) === '"ftom 1"', `${fl} ${fg}`);
-  await cljs(page, "(=> {:fo [:mtof]} [:mtof 2] #_[:ftom 1] [:_ :_] [:+])");
+  await cljs(page, "(play (=> {:fo [:mtof]} [:mtof 2] #_[:ftom 1] [:_ :_] [:+]))");
   check("... #_ leaves a box out: it goes, its wires with it", (await cljs(page, `(contains? (:boxes (current)) ${fg})`)) === "false" && (await has(`[${fl} 0 ${fd} 1]`)) === "true");
-  await cljs(page, "(=> {:fv [:mtof (* 2 110)]})");
+  await cljs(page, "(play (=> {:fv [:mtof (* 2 110)]}))");
   check("arguments are values: computed", (await txt(await cljs(page, "(rid :fv)"))) === '"mtof 220"');
   await cljs(page, `(delete ${fo} ${fl} ${fd} (rid :fv))`);
 
   // voices: each chain known by its key; the frame never taken away
   const k3 = Number(await cljs(page, nEv));
-  await cljs(page, "(=> {:frame {:vout [:+]} :va [:=> [:mtof 1] :vout] :vb [:=> [:mtof 2] [:ftom] :vout]})");
+  await cljs(page, "(play (=> {:frame {:vout [:+]} :va [:=> [:mtof 1] :vout] :vb [:=> [:mtof 2] [:ftom] :vout]}))");
   const vout = await cljs(page, "(rid :vout)");
   const into = () => cljs(page, `(vec (sort (keep (fn [[a _ b _]] (when (= b ${vout}) (:text (get-in (current) [:boxes a])))) (:lines (current)))))`);
   check("voices: each chain made, into the frame's box, as one event", (await into()) === '["ftom" "mtof 1"]' && Number(await cljs(page, nEv)) === k3 + 1, await into());
-  await cljs(page, "(=> {:frame {:vout [:+]} :va [:=> [:mtof 1] :vout]})");
+  await cljs(page, "(play (=> {:frame {:vout [:+]} :va [:=> [:mtof 1] :vout]}))");
   check("... a voice taken out of the map stops: its boxes go, the frame stays", (await into()) === '["mtof 1"]' && (await cljs(page, `(contains? (:boxes (current)) ${vout})`)) === "true", await into());
-  await cljs(page, "(=> {:frame {:vout [:+]} :va [:=> [:mtof 3] :vout]})");
+  await cljs(page, "(play (=> {:frame {:vout [:+]} :va [:=> [:mtof 3] :vout]}))");
   check("... a voice changed: only what changed", (await into()) === '["mtof 3"]' && (await cljs(page, lastEv)).startsWith("[:text "), await cljs(page, lastEv));
-  await cljs(page, `(=> {:frame {:vout [:+]}}) (delete ${vout})`);
+  await cljs(page, `(play {:frame {:vout [:+]}}) (delete ${vout})`);
+
+  // => is pure: chains are values, nested, played by (play …) or by the Live view
+  const k4 = Number(await cljs(page, nEv));
+  check("=> is pure: it writes the chain as data and changes nothing", (await cljs(page, "(=> [:mtof] (=> [:ftom] [:mtof 3]))")) === "[:=> [:mtof] [:=> [:ftom] [:mtof 3]]]"
+        && Number(await cljs(page, nEv)) === k4);
+  await cljs(page, "(play (=> {:na [:mtof]} (=> [:ftom] [:mtof 3])))");
+  const na = await cljs(page, "(rid :na)"), nb = await cljs(page, `(some (fn [[a _ b _]] (when (= a ${na}) b)) (:lines (current)))`);
+  const nc = await cljs(page, `(some (fn [[a _ b _]] (when (= a ${nb}) b)) (:lines (current)))`);
+  check("... a chain nested in another, played", (await txt(nb)) === '"ftom"' && (await txt(nc)) === '"mtof 3"' && Number(await cljs(page, nEv)) === k4 + 1, `${nb} ${nc}`);
+  await cljs(page, '(eval-values! "(def lv-f 7)\n[:=> {:lv [:mtof lv-f]}]\n(+ 1 2)")');
+  check("the Live view plays a form whose value is a chain, and only that", (await txt(await cljs(page, "(rid :lv)"))) === '"mtof 7"' && Number(await cljs(page, nEv)) === k4 + 2,
+        await cljs(page, nEv));
+  check("... voices are played as values too", (await cljs(page, '[(playable? {:a [:=> [:mtof]]}) (playable? {:frame {}}) (playable? {:a 1}) (playable? [:mtof]) (playable? [:=> [:mtof]])]'))
+        === "[true true false false true]");
+  await cljs(page, `(stop) (delete ${na} ${nb} ${nc} (rid :lv))`);
+
+  // arguments that are parts of the patch: each feeds the inlet its argument sets
+  check("an argument that is a box, a chain or a named box feeds the box; a value stays an argument",
+        (await cljs(page, "[(source-arg? [:mtof]) (source-arg? [:=> [:mtof]]) (source-arg? {:l [:mtof]}) (source-arg? [:_ :_]) (source-arg? {60 0}) (source-arg? :a)]")) === "[true true true false false false]");
+  check("... not written in the text, 0 holding its place before values",
+        (await cljs(page, '[(box-text [:gain- [:mtof]]) (box-text [:metro [:mtof] 3]) (box-text [:osc- 220])]')) === '["gain~" "metro 0 3" "osc~ 220"]');
+  check("... the inlet each argument sets: the one after the left, or the class says",
+        (await cljs(page, '[(arg-inlet "gain~" 0) (arg-inlet "+" 0) (arg-inlet "osc~" 0)]')) === "[1 1 0]");
+  const k5 = Number(await cljs(page, nEv));
+  await cljs(page, "(play (=> {:ng [:gain- [:mtof 3]]} {:no [:osc- (=> [:ftom] {:nm [:mtof]})]}))");
+  const ng = await cljs(page, "(rid :ng)"), no = await cljs(page, "(rid :no)"), nm = await cljs(page, "(rid :nm)");
+  const from = (id, i) => cljs(page, `(vec (sort (keep (fn [[a _ b j]] (when (and (= b ${id}) (= j ${i})) (:text (get-in (current) [:boxes a])))) (:lines (current)))))`);
+  check("nested: a box into gain~'s factor, a chain into osc~'s frequency, as one event",
+        (await txt(ng)) === '"gain~"' && (await from(ng, 1)) === '["mtof 3"]' && (await txt(no)) === '"osc~"' && (await from(no, 0)) === '["gain~" "mtof"]'
+        && (await from(nm, 0)) === '["ftom"]' && Number(await cljs(page, nEv)) === k5 + 1, `${await from(ng, 1)} ${await from(no, 0)}`);
+  await cljs(page, "(play (=> {:ng [:gain- [:mtof 3]]} {:no [:osc- (=> [:ftom] {:nm [:mtof]})]}))");
+  check("... evaluated again as it was: nothing changes", Number(await cljs(page, nEv)) === k5 + 1);
+  await cljs(page, "(play (=> {:ng [:gain- [:mtof 4]]} {:no [:osc- (=> [:ftom] {:nm [:mtof]})]}))");
+  check("... a nested number changed: that box's text only", (await cljs(page, lastEv)).startsWith("[:text ") && (await from(ng, 1)) === '["mtof 4"]', await cljs(page, lastEv));
+  check("... an argument with no inlet: said", (await cljs(page, '(try (play (=> [:+ 1 [:mtof]])) (catch :default e (.-message e)))')).includes("no inlet for its argument 2"));
+  await cljs(page, `(stop) (apply delete (keep (fn [[id b]] (when (#{"gain~" "osc~" "mtof 4" "ftom" "mtof" "+ 1"} (:text b)) (when (or (#{${ng} ${no} ${nm}} id) (some (fn [[a _ c _]] (and (= a id) (#{${ng} ${no} ${nm}} c))) (:lines (current)))) id))) (:boxes (current))))`);
+
+  // Faust as data: [:faust- …] is a faust~ whose process is written by the same grammar
+  const fc = (els, want) => cljs(page, `(= (faust-code ${els}) (str "import(\\"stdfaust.lib\\");\\nprocess = " ${JSON.stringify(want)} ";"))`);
+  check("Faust as data: a chain is :, a box is partial application", (await fc("[:os.sawtooth 110] [:fi.lowpass 2 800] [:* 0.1]", "os.sawtooth(110) : fi.lowpass(2, 800) : *(0.1)")) === "true");
+  check("... a vector in parallel: <: before it, :> after it", (await fc("[:no.noise] [[:fi.lowpass 2 400] [:fi.highpass 2 4000]] [:+]", "no.noise <: (fi.lowpass(2, 400), fi.highpass(2, 4000)) :> +")) === "true");
+  check("... an argument that is a signal, a control with its label, wires",
+        (await fc("[:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])]", "os.osc((os.osc(5) : *(10) : +(440)))")) === "true"
+        && (await fc('[:os.osc [:hslider "freq" 220 50 2000 1]] [:_ :_]', 'os.osc(hslider("freq", 220, 50, 2000, 1)) <: (_, _)')) === "true");
+  const k6 = Number(await cljs(page, nEv));
+  await cljs(page, "(play (=> {:fz [:faust- [:os.osc 220] [:* 0.1]]} [:gain- 0.5]))");
+  const fz = await cljs(page, "(rid :fz)");
+  const fsrc = () => cljs(page, `(source ${fz})`);
+  check("... played: a faust~ box with that code, as one event", (await txt(fz)) === '"faust~"' && (await fsrc()).includes("process = os.osc(220) : *(0.1);")
+        && Number(await cljs(page, nEv)) === k6 + 1, `${await txt(fz)} ${await fsrc()}`);
+  await cljs(page, "(play (=> {:fz [:faust- [:os.osc 220] [:* 0.1]]} [:gain- 0.5]))");
+  check("... evaluated again as it was: nothing changes", Number(await cljs(page, nEv)) === k6 + 1);
+  await cljs(page, "(play (=> {:fz [:faust- [:os.osc 330] [:* 0.1]]} [:gain- 0.5]))");
+  check("... a number changed: the code only", (await fsrc()).includes("os.osc(330)") && Number(await cljs(page, nEv)) === k6 + 2, await cljs(page, lastEv));
+  await cljs(page, `(stop) (apply delete ${fz} (keep (fn [[a _ b _]] (when (= a ${fz}) b)) (:lines (current))))`);
 
 }
