@@ -795,7 +795,7 @@
   "The text of the box a vector writes: [:gain- 0.2] → \"gain~ 0.2\". An argument that is a part of the patch is not
    written (0 holds its place if values follow it): it feeds the box."
   [v]
-  (let [kept (reverse (drop-while source-arg? (reverse (rest v))))]
+  (let [kept (if (= "faust~" (class-name (first v))) [] (reverse (drop-while source-arg? (reverse (rest v)))))]
     (str/join " " (cons (class-name (first v)) (map (fn [a] (if (source-arg? a) "0" (arg-text a))) kept)))))
 
 (def arg-inlets
@@ -835,18 +835,76 @@
   [nm t [x y]]
   (if (get-in (current) [:boxes (rid nm)]) (named-box nm t nil nil) (named-box nm t x y)))
 
+;; ───── Faust as data (discussion #407, #115) ─────
+;; [:faust- …] is a faust~ box whose code is written by the same grammar: its arguments, a chain of Faust's own
+;; elements, are its process —
+;;   [:faust- [:os.sawtooth 110] [:fi.lowpass 2 800] [:* 0.1]]  →  process = os.sawtooth(110) : fi.lowpass(2, 800) : *(0.1);
+;; a box is a Faust function with the first arguments given ([:fi.lowpass 2 800] is fi.lowpass(2, 800): partial
+;; application, the rest its inputs); a chain, (=> …) or [:=> …], is : (<: before a vector, :> after one); a vector
+;; that is not a box is , (in parallel); :_ is _ and :! is ! ; a number is a constant signal, a string is Faust code
+;; as it is; an argument may be a signal itself: [:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])].
+
+(defn faust-box-vec? [v] (boolean (and (vector? v) (seq v) (let [h (first v)] (or (string? h) (and (or (keyword? h) (symbol? h)) (not (contains? #{:=> :_ :! :to} h))))))))
+
+(defn faust-expr
+  "The Faust code of an element written as data."
+  [x]
+  (letfn [(wire [k] (case k :_ "_" :! "!" nil))
+          (arg [a] (cond (number? a) (str a) (string? a) (pr-str a)
+                         (or (vector? a) (seq? a)) (faust-expr a)
+                         (or (keyword? a) (symbol? a)) (or (wire a) (name a))
+                         :else (fail (str "Not a Faust argument: " (pr-str a)))))
+          (par? [e] (and (vector? e) (not (faust-box-vec? e)) (not (= :=> (first e)))))]
+    (cond
+      (number? x) (str x)
+      (string? x) x
+      (and (keyword? x) (wire x)) (wire x)
+      (seq? x) (faust-expr (into [:=>] x))
+      (and (vector? x) (= :=> (first x)))
+      (let [es (vec (spliced (rest x)))]
+        (when (empty? es) (fail "An empty chain"))
+        (if (= 1 (count es))
+          (faust-expr (first es))
+          (str "(" (faust-expr (first es))
+               (apply str (map (fn [a b] (str (cond (par? b) " <: " (par? a) " :> " :else " : ") (faust-expr b)))
+                               es (rest es)))
+               ")")))
+      (faust-box-vec? x)
+      (let [h (first x) nm (if (string? h) h (name h)) as (rest x)]
+        (if (seq as) (str nm "(" (str/join ", " (map arg as)) ")") nm))
+      (vector? x) (str "(" (str/join ", " (map faust-expr (spliced x))) ")")
+      :else (fail (str "Not a part of a Faust process: " (pr-str x))))))
+
+(defn faust-code
+  "The code of a faust~ box written as data, its process the chain of els: (faust-code [:os.osc 220] [:* 0.1])
+   writes process = os.osc(220) : *(0.1); after importing stdfaust.lib."
+  [& els]
+  (let [e (faust-expr (into [:=>] els))
+        e (if (and (str/starts-with? e "(") (= (count (top-forms e)) 1) (str/ends-with? e ")")) (subs e 1 (dec (count e))) e)]
+    (str "import(\"stdfaust.lib\");\nprocess = " e ";")))
+
+(defn faust-vec? [v] (and (vector? v) (seq v) (or (keyword? (first v)) (symbol? (first v)) (string? (first v))) (= "faust~" (class-name (first v)))))
+
+(defn faust-source!
+  "The code of faust~ box id written by its vector v, if it is not that already."
+  [id v]
+  (let [src (apply faust-code (rest v))]
+    (when (not= src (comp/source-of (get-in (current) [:boxes id]))) (code id src))))
+
 (declare run-data)
 (defn feed-args!
   "The arguments of box vector v that are parts of the patch, each made and wired to the inlet its argument sets."
   [ctx v id j]
   (let [cls (class-name (first v)) t (get-in (current) [:boxes id :text])
         n-in (first (comp/io {:text t}))]
+    (if (= "faust~" cls)
+      (faust-source! id v)
     (doseq [[k a] (map-indexed vector (rest v)) :when (source-arg? a)]
       (let [i (arg-inlet cls k)]
         (when-not (and i (< i n-in)) (fail (str cls " has no inlet for its argument " (inc k))))
         (doseq [[b o] (run-data ctx [] a (+ j k))]
           (connect b o id i)
-          (swap! ctx update :wrote conj [b o id i]))))))
+          (swap! ctx update :wrote conj [b o id i])))))))
 
 (defn feed! [ctx ends id]
   (doseq [[j [a o]] (map-indexed vector ends)]
@@ -951,7 +1009,8 @@
            ;; the frame: boxes by their names, made once, never taken away by a voice
            (doseq [[nm b] (:frame m)]
              (when-not (box-vec? b) (fail (str "Not a box in :frame: " (pr-str b))))
-             (named-data-box! (keyword (name nm)) (box-text b) [nil nil]))
+             (let [id (named-data-box! (keyword (name nm)) (box-text b) [nil nil])]
+               (when (faust-vec? b) (faust-source! id b))))
            (doseq [[k v] (dissoc m :frame)]
              (let [[_ rec] (run-owned! [::voice k] (rest v) records)] (swap! recs assoc [::voice k] rec)))
            (doseq [k prev :when (not (contains? m k))]

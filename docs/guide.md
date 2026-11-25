@@ -177,6 +177,22 @@ as in Pd and Max (`[:gain- [:adsr- …]]` is the factor of `gain~`), unless the 
 `sig~` set their left inlet); it is not written in the box's text, and `0` holds its place if values follow it. A
 keyword stays a value (`[:route :a :b]`).
 
+**Faust as data.** `[:faust- …]` is a `faust~` box whose code the same grammar writes: its arguments are a chain of
+Faust's own elements, and they are its `process`.
+
+```clojure
+(=> [:faust- [:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])] [:* 0.1]]
+    [:_ :_] [:dac- 1 2])
+;; process = os.osc((os.osc(5) : *(10) : +(440))) : *(0.1);
+```
+
+A box is a Faust function with its first arguments given — `[:fi.lowpass 2 800]` is `fi.lowpass(2, 800)`, the rest of
+its arguments its inputs —; a chain is `:` (`<:` before a vector, `:>` after one, so `[:_ :_]` splits a signal as in
+the patch); a vector that is not a box is `,`; `:_` is `_` and `:!` is `!`; a number is a constant signal, a string is
+Faust code as it is, and an argument can be a signal itself, as the vibrato above. `[:hslider "freq" 220 50 2000 1]` is
+a control: `[:freq 440]` to the box sets it. Evaluated again, the box's code is written only if it changed (and
+compiled again). `(faust-code …)` gives the code, and the box's window shows it as a patch of Faust's elements too.
+
 **Voices.** A map of chains plays voices, each known by its key, as `d1` in Tidal:
 
 ```clojure
