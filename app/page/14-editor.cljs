@@ -668,244 +668,29 @@
 
 (defn chain-form? "Whether a form is a chain: (=> …) of forms, or (-> …) / (doto …) of calls." [f] (contains? #{"=>" "->" "doto"} (form-head f)))
 
-;; ───── forms: a box written as the form it reads as (discussion #407) ─────
-;; The text of a box already reads as Clojure, so in live code a form is the box: (osc~ 220) is the box "osc~ 220",
-;; (map inc) the box "map inc". The same grammar as Faust's: a chain (=>) is in series, each box fed by the one
-;; before it; a vector is in parallel — after one wire every element is fed by it (a split), after as many wires as
-;; it has elements each by its own; `_` is a wire that goes on; a box after several wires takes them on its inlets
-;; 0, 1… So (=> (osc~ 220) (gain~ 0.2) [_ _] (dac~ 1 2)) is a stereo patch. ~expr puts a value computed now in a box:
-;; (osc~ ~(* 2 f)). (def osc (osc~ 220)) gives the box the name :osc, so it is the same box each time; (to o X i)
-;; chooses the ports. A list whose head is a command of the page or a Clojure function or form is code, not a box:
-;; inside a chain every list is a box (but box, to and the other calls that make the patch).
-
-(def code-specials
-  #{"def" "defn" "defn-" "defonce" "defmacro" "let" "do" "fn" "if" "if-not" "when" "when-not" "when-let" "if-let"
-    "cond" "condp" "case" "loop" "recur" "doseq" "dotimes" "for" "quote" "->>" "as->" "some->" "cond->" "comment"
-    "try" "throw" "binding" "set!" "new" "ns" "in-ns" "require"})
-
-(defonce code-names
-  ;; the names of the page and of clojure.core, as strings: kept while the page defines no new name
-  (atom {:n -1 :names #{}}))
-
-(defn code-name? [h]
-  (let [pub (try (ns-publics 'user) (catch :default _ {})) n (count pub)]
-    (when (not= n (:n @code-names))
-      (reset! code-names {:n n :names (into (set (map str (keys pub))) (ns-names 'clojure.core ""))}))
-    (contains? (:names @code-names) h)))
-
-(defn code-head?
-  "Whether a list starting with h is code to evaluate — a command of the page (or anything defined there), a
-   Clojure function or form, a name with a namespace — and not a box."
-  [h]
-  (boolean (or (nil? h) (contains? code-specials h) (str/includes? (str h) "/") (code-name? h))))
-
-(defn elems "The forms inside a list or a vector, as text (the list's head first)." [f]
-  (let [inner (subs f 1 (max 1 (dec (count f))))] (mapv (fn [[a b]] (subs inner a b)) (top-forms inner))))
-
-(defn box-form? "Whether a form is a box written as the form it reads as: (osc~ 220)." [f]
-  (boolean (and (str/starts-with? f "(") (not (code-head? (form-head f))) (not (contains? #{"to" "=>" "->" "doto"} (form-head f))))))
-
-(def chain-specials (into patch-calls #{"to" "=>" "->" "doto" "def"}))
-(defn chain-box? "Inside a chain every list is a box, but the calls that make the patch, to, def and chains." [e]
-  (and (str/starts-with? e "(") (not (contains? chain-specials (form-head e)))))
-
-(declare patch-el? patch-call?)
-(defn def-box?
-  "Whether x, what (def name x) names, is a box: a box form, a name, or a chain or call that makes the patch."
-  [x]
-  (boolean (or (box-form? x) (str/starts-with? x ":")
-               (and (str/starts-with? x "(") (contains? (into patch-calls #{"=>" "->" "doto"}) (form-head x)) (patch-call? x)))))
-
-(defn chain-steps-ok?
-  "Whether a chain of forms, (=> …), makes the patch: it starts from something that does (or a name bound to a box)
-   and every step after it does."
-  [f]
-  (let [[_ e0 & steps] (elems f)]
-    (boolean (and e0 (seq steps) (or (patch-el? e0) (re-matches #"[^\s()\[\]{}\"~:#0-9][^\s()\[\]{}\"]*" e0))
-                  (every? patch-el? steps)))))
-
 (defn calls-chain-ok?
   "Whether a Clojure chain, (-> …) or (doto …), makes the patch: every step a call that does — (-> :osc (to :amp
    \"gain~ 0.2\")), as the Code tab writes the work. It is Clojure's own -> (or doto): (-> 1 inc) stays code."
   [f]
-  (let [[_ e0 & steps] (elems f)]
-    (boolean (and e0 (seq steps) (or (patch-el? e0) (re-matches #"[^\s()\[\]{}\"~:#0-9][^\s()\[\]{}\"]*" e0))
+  (let [inner (subs f 1 (max 1 (dec (count f))))
+        [_ e0 & steps] (mapv (fn [[a b]] (subs inner a b)) (top-forms inner))]
+    (boolean (and e0 (seq steps)
                   (every? (fn [g] (and (str/starts-with? g "(") (contains? patch-calls (form-head g)))) steps)))))
 
-(defn patch-el?
-  "Whether an element of a chain makes the patch: a box form, a name (:osc), a wire (_), a vector of them, (to …),
-   (def name box), a nested chain, or a call that makes the patch."
-  [e]
-  (cond (= e "_") true
-        (str/starts-with? e "[") (every? patch-el? (elems e))
-        (str/starts-with? e ":") true
-        (str/starts-with? e "\"") true
-        (str/starts-with? e "(")
-        (let [h (form-head e)]
-          (cond (= h "=>") (chain-steps-ok? e)
-                (contains? #{"->" "doto"} h) (calls-chain-ok? e)
-                (= h "def") (let [es (elems e)] (and (= 3 (count es)) (def-box? (nth es 2))))
-                :else true))
-        :else false))
-
 (defn patch-call?
-  "Whether a form makes the patch: a call that does (box, connect, to…), a box form, (def name box) or a chain whose
-   steps all do: (=> (osc~ 220) (gain~ 0.2) [_ _] (dac~ 1 2)), (-> (box \"osc~\") (to \"dac~\"))."
+  "Whether a form makes the patch: a call that does (box, connect, to…), or a chain of them: (-> :osc (to :amp \"gain~\"))."
   [f]
   (let [h (form-head f)]
-    (cond (contains? patch-calls h) true
-          (= h "=>") (chain-steps-ok? f)
-          (contains? #{"->" "doto"} h) (calls-chain-ok? f)
-          (= h "def") (let [es (elems f)] (and (= 3 (count es)) (def-box? (nth es 2))))
-          :else (box-form? f))))
+    (or (contains? patch-calls h) (and (contains? #{"->" "doto"} h) (calls-chain-ok? f)))))
 
 (defn patch-form?
-  "Whether a piece of code is only forms that make the patch (and at least one)."
+  "Whether a piece of code is only calls that make the patch (and at least one)."
   [code]
   (let [fs (map (fn [[a b]] (subs code a b)) (top-forms code))]
     (boolean (and (seq fs) (every? patch-call? fs)))))
 
-(defn form-text
-  "The text of the box a form writes: what is inside its brackets, with ~expr computed now."
-  [f]
-  (let [es (elems f)]
-    (if (some (fn [e] (str/starts-with? e "~")) es)
-      (str/join " " (map (fn [e] (if (str/starts-with? e "~") (let [v (eval-str (subs e 1))] (if (number? v) (str v) (pr-str v))) e)) es))
-      (str/trim (subs f 1 (max 1 (dec (count f))))))))
-
-(defn text-head [t] (first (str/split (str/trim (str t)) #"\s+")))
-
-;; A chain owns the boxes it made, as it owns its lines: evaluated again, a box form takes the next box it made with the
-;; same class (its text changed if it changed), so changing a number changes that box and putting a box in makes only
-;; that one; the boxes it made and no longer writes are deleted. A chain is known by its first box's name (:osc, a def)
-;; or else by the classes it is made of; what it made is kept in this browser for each work. Named boxes are never
-;; deleted this way.
-
-(defn made-key "Where this browser keeps the boxes each chain of the work made." []
-  (let [{:keys [kind id]} @work] (when kind (str "kairotic.chainboxes/" (name kind) "/" id))))
-(defn made-boxes [] (or (try (some-> (made-key) (->> (.getItem js/localStorage)) clojure.edn/read-string) (catch :default _ nil)) {}))
-(defonce made-now (atom {}))   ; what the chains evaluated now made, kept once their event is written
-(defn keep-made! []
-  (when (seq @made-now)
-    (when-let [k (made-key)] (try (.setItem js/localStorage k (pr-str (merge (made-boxes) @made-now))) (catch :default _ nil))))
-  (reset! made-now {}))
-
-(defn chain-key [f]
-  (let [es (rest (elems f)) e0 (first es)]
-    (cond (nil? e0) nil
-          (str/starts-with? e0 ":") e0
-          (= "def" (form-head e0)) (str ":" (second (elems e0)))
-          (re-matches #"[^\s()\[\]{}\"~:]+" e0) e0
-          :else (str/join " " (map (fn [e] (cond (str/starts-with? e "(") (or (when (box-form? e) (text-head (form-text e))) (form-head e))
-                                                 (str/starts-with? e "[") "[]" :else e)) es)))))
-
-(defn below [ends j]
-  (if-let [[id] (first ends)]
-    (let [b (get-in (current) [:boxes id])] (if b [(+ (:x b) (* j 110)) (+ (:y b) to-gap)] [nil nil]))
-    [nil nil]))
-
-(defn new-box! [ctx t nm [x y]]
-  (if nm
-    (named-box nm t x y)
-    (let [h (text-head t)
-          id (first (filter (fn [id] (and (get-in (current) [:boxes id]) (not (get-in (current) [:boxes id :name])))) (get-in @ctx [:old h])))]
-      (if id
-        (do (swap! ctx update-in [:old h] (fn [q] (vec (remove #{id} q))))
-            (when (not= t (get-in (current) [:boxes id :text])) (text! id t)))
-        nil)
-      (let [id (or id (if (number? x) (box t x y) (box t)))]
-        (swap! ctx update :made conj [h id])
-        id))))
-
-(defn feed! [ends id]
-  (if (= 1 (count ends))
-    (let [[a o] (first ends)] (connect a o id 0))
-    (doseq [[j [a o]] (map-indexed vector ends)] (connect a o id j))))
-
-(defn as-id [v e] (let [id (rid v)] (if (and (keyword? id) (get-in (current) [:boxes id])) id (fail (str "Not a box: " e)))))
-
-(declare run-chain)
-(defn run-el
-  "Runs an element of a chain fed by `ends` ([[box outlet] …]); returns the ends it leaves."
-  [ctx ends e j]
-  (let [make (fn [id] (when (seq ends) (feed! ends id)) [[id 0]])]
-    (cond
-      (= e "_") (if (seq ends) ends (fail "A wire (_) with nothing before it"))
-      (str/starts-with? e "[")
-      (let [es (elems e) n (count ends)]
-        (vec (apply concat
-                    (map-indexed (fn [k x] (run-el ctx (cond (<= n 1) ends (= n (count es)) [(nth ends k)]
-                                                             :else (fail (str n " wires into a vector of " (count es))))
-                                                   x (+ j k)))
-                                 es))))
-      (str/starts-with? e ":") (make (as-id (keyword (subs e 1)) e))
-      (str/starts-with? e "\"") (make (new-box! ctx (clojure.edn/read-string e) nil (below ends j)))
-      (str/starts-with? e "(")
-      (let [h (form-head e)]
-        (cond
-          (= h "=>") (run-chain ctx e ends)
-          (contains? #{"->" "doto"} h) (make (as-id (eval-str e) e))
-          (= h "to") (let [es (rest (elems e)) [[a]] ends]
-                       (when-not a (fail "(to …) with nothing before it"))
-                       (if (some chain-box? es)
-                         ;; (to (gain~ 0.2)) · (to 1 (gain~ 0.2) 0): a box form, fed by the box before
-                         (let [[o x i] (if (= 3 (count es)) [(js/parseInt (first es)) (second es) (js/parseInt (nth es 2))] [0 (first es) 0])
-                               id (ffirst (run-el ctx [] x j))]
-                           (connect a o id i) [[id 0]])
-                         ;; as the command: (to :amp "gain~ 0.2"), (to 1 :b3 0)…
-                         [[(as-id (eval-str (str "(to " a " " (str/join " " es) ")")) e) 0]]))
-          (= h "def") (let [[_ nm x] (elems e)
-                            ;; a box by a name: placed by its chain the first time, left where it is after
-                            [bx by] (if (get-in (current) [:boxes (rid (keyword nm))]) [nil nil] (below ends j))
-                            id (if (chain-box? x) (named-box (keyword nm) (form-text x) bx by) (ffirst (run-el ctx [] x j)))]
-                        (eval-str (str "(def " nm " " id ")"))
-                        (make id))
-          (contains? patch-calls h) (make (as-id (eval-str e) e))
-          :else (make (new-box! ctx (form-text e) nil (below ends j)))))
-      :else (make (as-id (eval-str e) e)))))
-
-(defn run-chain "A chain of forms, (=> …): each element fed by the wires the one before leaves." [ctx f ends]
-  (reduce (fn [acc s] (run-el ctx acc s 0)) ends (rest (elems f))))
-
-(defn run-form
-  "Runs one top-level form of live code (discussion #407): a chain, a box form or (def name box) as boxes and wires;
-   anything else as code. Returns what it gives (a box's id for a box)."
-  [f]
-  (let [h (form-head f)]
-    (cond
-      (= h "=>")
-      (let [k (chain-key f) old (get (made-boxes) k)
-            ctx (atom {:made [] :old (reduce (fn [m [hh id]] (update m hh (fnil conj []) id)) {} old)})
-            ends (run-chain ctx f [])]
-        ;; the boxes it made before and no longer writes
-        (doseq [id (distinct (mapcat val (:old @ctx)))
-                :let [b (get-in (current) [:boxes id])]
-                :when (and b (not (:name b)) (not (some #{id} (map second (:made @ctx)))))]
-          (delete id))
-        (when k (swap! made-now assoc k (:made @ctx)))
-        (ffirst ends))
-      (and (= h "def") (let [es (elems f)] (and (= 3 (count es)) (def-box? (nth es 2)))))
-      (ffirst (run-el (atom {:made [] :old {}}) [] f 0))
-      (box-form? f) (new-box! (atom {:made [] :old {}}) (form-text f) nil [nil nil])
-      :else (eval-str f))))
-
-(defn forms-code?
-  "Whether code has forms that only live code reads (a box form, a chain of them, a box by a name), and not only
-   calls and Clojure."
-  [code]
-  (boolean (some (fn [[a b]] (let [f (subs code a b) h (form-head f)]
-                               ;; (the calls the work's code is written with first: quick, and most of a work)
-                               (and (not (contains? patch-calls h)) (str/starts-with? f "(")
-                               (or (box-form? f)
-                                   (and (= h "=>") (chain-steps-ok? f))
-                                   (and (= h "def") (let [es (elems f)] (and (= 3 (count es)) (box-form? (nth es 2)))))))))
-                 (top-forms code))))
-
-(defn run-forms! "Runs every top-level form of code, as live code reads it." [code]
-  (doseq [[a b] (top-forms code)] (run-form (subs code a b))))
-
 (defn build-forms
-  "Runs the forms of code one by one on a copy of patch cur: [the patch after, {box #{lines}}: the lines each
+  "Evaluates the forms of code one by one on a copy of patch cur: [the patch after, {box #{lines}}: the lines each
    chain wrote — made now, or already there — by the box it starts from]."
   [cur code]
   (let [prev-s @scratch prev-t @tried]
@@ -914,7 +699,7 @@
     (try
       (let [written (reduce (fn [acc [a b]]
                               (let [f (subs code a b) n (count @tried)]
-                                (run-form f)
+                                (eval-str f)
                                 (let [ls (when (chain-form? f)
                                            (keep (fn [[op & args]] (when (= op :connect) (vec args))) (drop n @tried)))]
                                   (if (seq ls) (update acc (first (first ls)) (fnil into #{}) ls) acc))))
@@ -923,12 +708,11 @@
       (finally (reset! scratch prev-s) (reset! tried prev-t)))))
 
 (defn eval-calls!
-  "Evaluates calls of the Code tab on the patch on screen (discussion #407): forms that make the patch change it by
-   the difference, as one event, and a chain evaluated again takes away the lines and boxes it no longer writes
-   (#432); with anything else among them, each form on its own — a form that makes the patch as one event, the rest
-   as lines of the REPL. Returns how many changes it made, or the value, as the REPL shows it."
+  "Evaluates calls of the Code tab on the patch on screen (discussion #407): calls that make the patch change it by
+   the difference, as one event, and a chain evaluated again takes away the lines it no longer writes (#432);
+   anything else is evaluated as a line of the REPL (a patch as data, (=> …), makes its own event). Returns how many
+   changes it made, or the value, as the REPL shows it."
   [code]
-  (reset! made-now {})
   (if (patch-form? code)
     (do
       (repl-print! "in" (str "<span class=\"p\">λ</span>" (esc code)))
@@ -944,57 +728,186 @@
           (doseq [[op id] evs :when (#{:box :delete} op)] (forget-box! id))
           (with-tx (or @tx-now {:via :repl}) (fn [] (dispatch-all! evs)))
           (when (seq written) (keep-owned! (merge owned written)))
-          (keep-made!)
           (repl-print! "out" (esc (str "; " (count evs) (if (= 1 (count evs)) " change" " changes")
                                        (when (pos? taken) (str " (" taken (if (= 1 taken) " line" " lines") " taken away)")))))
           (count evs))
-        (catch :default e (reset! made-now {}) (repl-print! "err" (esc (or (.-message e) (str e)))) nil)))
-    (let [fs (map (fn [[a b]] (subs code a b)) (top-forms code))]
-      (if (and (> (count fs) 1) (some patch-call? fs))
-        ;; forms that make the patch among others: each on its own
-        (last (doall (for [f fs] (if (patch-call? f) (eval-calls! f) (repl-eval! f :repl)))))
-        (repl-eval! code :repl)))))
+        (catch :default e (repl-print! "err" (esc (or (.-message e) (str e)))) nil)))
+    (repl-eval! code :repl)))
 
-;; ───── the patch as a value (discussion #407) ─────
-;; The same grammar as plain EDN, which Clojure's reader (and any editor, clj-kondo…) reads, so patches can be
-;; values made by functions: [:=> a b …] in series, [:par a b …] in parallel, :_ a wire, [:as :osc box] a box by a
-;; name, [:to o box i] other ports, a name :osc a box already there, and a box as a vector of its class and
-;; arguments — [\"osc~\" 220] (a class with ~ written as a string: Clojure's reader reads ~ as unquote), [:mtof],
-;; [:map 'inc]. A sequence inside is spliced: [:par (for [f [220 330]] [\"osc~\" f])].
+;; ───── a patch as data (discussion #407) ─────
+;; A patch written as plain EDN, which Clojure's reader and any editor read, played live with one function, =>:
+;;
+;;   (=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])
+;;
+;; - a box is a vector of its class and arguments, as hiccup writes a tag: [:mtof], [:gain- 0.2], [:map 'inc],
+;;   ["osc~" 220]. A class with ~ is written with - ([:osc- 220] is osc~ 220), since Clojure's reader reads ~ as
+;;   unquote; a class whose own name ends in - (-, !-) stays itself.
+;; - => is in series, each element fed by the one before; a vector that is not a box is in parallel (after one wire
+;;   every element is fed by it, after as many wires as it has elements each by its own), :_ a wire that goes on, and
+;;   a box after several wires takes them on its inlets 0, 1…; [:=> …] a chain inside another.
+;; - a map names: {:osc [:osc- 220]} is that box called :osc, the same box each time; :osc alone is it; [:to o box i]
+;;   chooses the ports.
+;; - (=> {:lead [:=> …] :bass [:=> …]}): voices, each a chain known by its key, as d1 in Tidal. Evaluated again, a voice
+;;   changes only what changed, a voice gone from the map is taken away, and :frame holds the boxes every voice uses —
+;;   {:frame {:mic [:adc- 1] :out [:dac- 1 2]}} —, never taken away by a voice.
+;; - #_ before a box leaves it out (Clojure's reader does): evaluated again, the chain goes round it.
+;; A chain owns the boxes and wires it made: evaluated again, each box takes the box it made before with the same class
+;; (its text changed if it changed), a box put in is the only new one, and a box or a wire it no longer writes is taken
+;; away. Named boxes are never taken away so. What each chain made is kept in this browser for each work.
 
-(def patch-ops #{:=> :par :as :to :_})
+(defn class-known? [k] (boolean (and (seq k) (or (comp/lookup k) (lib/package-of k)))))
+
+(defn class-name
+  "The class a box vector starts with: a string as it is, a keyword by its name — with ~ for a final - ([:osc- …] is
+   osc~), unless a class has that name ending in - (- and !- stay themselves)."
+  [h]
+  (cond (string? h) h
+        (or (keyword? h) (symbol? h))
+        (let [n (name h)]
+          (if (and (> (count n) 1) (str/ends-with? n "-") (not (class-known? n)))
+            (str (subs n 0 (dec (count n))) "~")
+            n))))
+
+(def data-ops #{:=> :to :_})
+
+(defn box-vec?
+  "Whether a vector is a box: it starts with a class (a string, or a keyword or symbol a class answers to)."
+  [v]
+  (boolean (and (vector? v) (seq v)
+                (let [h (first v)]
+                  (or (string? h)
+                      (and (or (keyword? h) (symbol? h)) (not (contains? data-ops h)) (class-known? (class-name h))))))))
 
 (defn arg-text [a] (cond (string? a) (pr-str a) (number? a) (str a) (or (keyword? a) (symbol? a)) (str a) :else (pr-str a)))
+(defn box-text "The text of the box a vector writes: [:gain- 0.2] → \"gain~ 0.2\"." [v]
+  (str/join " " (cons (class-name (first v)) (map arg-text (rest v)))))
 
-(defn spliced [xs] (mapcat (fn [x] (if (and (seq? x) (not (vector? x))) x [x])) xs))
+(defn spliced [xs] (mapcat (fn [x] (if (seq? x) x [x])) xs))
 
-(defn data->form
-  "The live code of a patch written as a value: [:=> [\"osc~\" 220] [\"gain~\" 0.2]] → (=> (osc~ 220) (gain~ 0.2))."
-  [x]
-  (cond
-    (= x :_) "_"
-    (keyword? x) (str x)
-    (string? x) (str "(" x ")")
-    (vector? x)
-    (let [[h & args] x args (spliced args)]
-      (case h
-        :=> (str "(=> " (str/join " " (map data->form args)) ")")
-        :par (str "[" (str/join " " (map data->form args)) "]")
-        :as (let [[nm b] args] (str "(def " (name nm) " " (data->form b) ")"))
-        :to (if (= 3 (count args))
-              (str "(to " (first args) " " (data->form (second args)) " " (nth args 2) ")")
-              (str "(to " (data->form (first args)) ")"))
-        (if (or (string? h) (and (keyword? h) (not (contains? patch-ops h))) (symbol? h))
-          (str "(" (str/join " " (cons (if (keyword? h) (name h) (str h)) (map arg-text args))) ")")
-          (throw (js/Error. (str "Not a box nor a part of a patch: " (pr-str x)))))))
-    (seq? x) (str/join "\n" (map data->form x))
-    :else (throw (js/Error. (str "Not a box nor a part of a patch: " (pr-str x))))))
+(defn below [ends j]
+  (if-let [[id] (first ends)]
+    (let [b (get-in (current) [:boxes id])] (if b [(+ (:x b) (* j 110)) (+ (:y b) to-gap)] [nil nil]))
+    [nil nil]))
 
-(defn patch!
-  "Makes the patch a value describes, as live code does (one event; a chain made again changes what changed):
-   (patch! [:=> [:as :osc [\"osc~\" 220]] [\"gain~\" 0.2] [:par :_ :_] [\"dac~\" 1 2]]). Several values, several forms."
-  [x & more]
-  (eval-calls! (str/join "\n" (map data->form (cons x more)))))
+(defn data-box!
+  "A box a chain writes: the one it made before with the same class (its text changed if it changed), or a new one."
+  [ctx t [x y]]
+  (let [h (first (str/split t #"\s+"))
+        old (first (filter (fn [id] (and (get-in (current) [:boxes id]) (not (get-in (current) [:boxes id :name]))))
+                           (get-in @ctx [:old h])))]
+    (when old
+      (swap! ctx update-in [:old h] (fn [q] (vec (remove #{old} q))))
+      (when (not= t (get-in (current) [:boxes old :text])) (text! old t)))
+    (let [id (or old (if (number? x) (box t x y) (box t)))]
+      (swap! ctx update :made conj [h id])
+      id)))
+
+(defn named-data-box!
+  "A box by a name: made the first time (where its chain puts it), the same box after, its text changed if it changed."
+  [nm t [x y]]
+  (if (get-in (current) [:boxes (rid nm)]) (named-box nm t nil nil) (named-box nm t x y)))
+
+(defn feed! [ctx ends id]
+  (doseq [[j [a o]] (map-indexed vector ends)]
+    (let [l [a o id (if (= 1 (count ends)) 0 j)]]
+      (apply connect l)
+      (swap! ctx update :wrote conj l))))
+
+(defn existing! [k] (let [id (rid k)] (if (get-in (current) [:boxes id]) id (fail (str "No box called " k ", nor a class " (class-name k))))))
+
+(declare run-data)
+(defn run-chain-data
+  "The elements of a chain, in series: each fed by the wires the one before leaves."
+  [ctx els ends]
+  (reduce (fn [acc x] (run-data ctx acc x 0)) ends (spliced els)))
+
+(defn run-data
+  "Runs an element of a patch written as data, fed by `ends` ([[box outlet] …]); returns the ends it leaves."
+  [ctx ends x j]
+  (let [make (fn [id] (when (seq ends) (feed! ctx ends id)) [[id 0]])]
+    (cond
+      (= x :_) (if (seq ends) ends (fail "A wire (:_) with nothing before it"))
+      (or (keyword? x) (symbol? x)) (make (existing! x))
+      (map? x) (let [[[nm b]] (seq x)]
+                 (when (not= 1 (count x)) (fail "A map names one box: {:osc [:osc- 220]}"))
+                 (if (box-vec? b)
+                   (make (named-data-box! (keyword (name nm)) (box-text b) (below ends j)))
+                   (fail (str "Not a box: " (pr-str b)))))
+      (box-vec? x) (make (data-box! ctx (box-text x) (below ends j)))
+      (and (vector? x) (= :=> (first x))) (run-chain-data ctx (rest x) ends)
+      (and (vector? x) (= :to (first x)))
+      (let [args (vec (rest x)) [[a]] ends
+            [o b i] (if (= 3 (count args)) args [0 (first args) 0])
+            id (ffirst (run-data ctx [] b j))]
+        (when-not a (fail "[:to …] with nothing before it"))
+        (connect a o id i) (swap! ctx update :wrote conj [a o id i]) [[id 0]])
+      (vector? x)
+      (let [es (vec (spliced x)) n (count ends)]
+        (vec (apply concat (map-indexed (fn [k e] (run-data ctx (cond (<= n 1) ends (= n (count es)) [(nth ends k)]
+                                                                      :else (fail (str n " wires into a vector of " (count es))))
+                                                            e (+ j k)))
+                                        es))))
+      (seq? x) (run-chain-data ctx x ends)
+      :else (fail (str "Not a box nor a part of a patch: " (pr-str x))))))
+
+(defn made-key "Where this browser keeps the boxes and wires each chain of the work made." []
+  (let [{:keys [kind id]} @work] (when kind (str "kairotic.patchdata/" (name kind) "/" id))))
+(defn made-records [] (or (try (some-> (made-key) (->> (.getItem js/localStorage)) clojure.edn/read-string) (catch :default _ nil)) {}))
+(defn keep-records! [m] (when-let [k (made-key)] (try (.setItem js/localStorage k (pr-str m)) (catch :default _ nil))))
+
+(defn chain-key-of "A chain known by its first box's name, or by the classes it is made of." [els]
+  (let [e0 (first els)]
+    (cond (keyword? e0) e0
+          (map? e0) (keyword (name (ffirst e0)))
+          :else (str/join " " (map (fn [x] (cond (box-vec? x) (class-name (first x)) (map? x) (name (ffirst x)) :else (pr-str x))) els)))))
+
+(defn run-owned!
+  "Runs a chain as its key's: boxes reused by class, and the boxes and wires it made before and no longer writes taken
+   away. Returns [ends record]."
+  [k els records]
+  (let [{:keys [boxes lines]} (get records k)
+        ctx (atom {:made [] :wrote [] :old (reduce (fn [m [h id]] (update m h (fnil conj []) id)) {} boxes)})
+        ends (run-chain-data ctx els [])
+        made (set (map second (:made @ctx))) wrote (set (:wrote @ctx))]
+    (doseq [l lines :when (and (not (wrote l)) (some #{l} (:lines (current))))] (apply disconnect l))
+    (doseq [[_ id] boxes :let [b (get-in (current) [:boxes id])] :when (and b (not (:name b)) (not (made id)))] (delete id))
+    [ends {:boxes (:made @ctx) :lines (vec wrote)}]))
+
+(defn drop-voice! [{:keys [boxes lines]}]
+  (doseq [l lines :when (some #{l} (:lines (current)))] (apply disconnect l))
+  (doseq [[_ id] boxes :let [b (get-in (current) [:boxes id])] :when (and b (not (:name b)))] (delete id)))
+
+(defn =>
+  "Plays a patch written as data (discussion #407), as one event of the history:
+     (=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])            a chain: in series
+     (=> {:frame {:out [:dac- 1 2]} :lead [:=> [:osc- 220] [:_ :_] :out]})   voices, each known by its key
+   A box is a vector of its class and arguments ([:osc- 220] is osc~ 220); a vector that is not a box is in parallel;
+   :_ a wire; a map names a box; :osc is a box by its name; [:to o box i] chooses the ports. Evaluated again, a chain
+   changes what changed: its boxes are reused by class, and what it no longer writes is taken away. Returns the id of
+   the last box (of a chain), or the voices played."
+  [& els]
+  (let [records (made-records)
+        voices? (and (= 1 (count els)) (map? (first els)) (every? (fn [v] (and (vector? v) (= :=> (first v)))) (vals (dissoc (first els) :frame))))
+        out (atom nil) recs (atom records)]
+    (as-one-event!
+     (fn []
+       (if voices?
+         (let [m (first els) prev (get records ::voices #{})]
+           ;; the frame: boxes by their names, made once, never taken away by a voice
+           (doseq [[nm b] (:frame m)]
+             (when-not (box-vec? b) (fail (str "Not a box in :frame: " (pr-str b))))
+             (named-data-box! (keyword (name nm)) (box-text b) [nil nil]))
+           (doseq [[k v] (dissoc m :frame)]
+             (let [[_ rec] (run-owned! [::voice k] (rest v) records)] (swap! recs assoc [::voice k] rec)))
+           (doseq [k prev :when (not (contains? m k))]
+             (drop-voice! (get records [::voice k])) (swap! recs dissoc [::voice k]))
+           (swap! recs assoc ::voices (set (keys (dissoc m :frame))))
+           (reset! out (vec (keys (dissoc m :frame)))))
+         (let [k (chain-key-of els) [ends rec] (run-owned! k els records)]
+           (swap! recs assoc k rec)
+           (reset! out (ffirst ends))))))
+    (keep-records! @recs)
+    @out))
 
 (defn same-code? [a b]
   (= (str/replace (str/trim (str a)) #"\s+" " ") (str/replace (str/trim (str b)) #"\s+" " ")))
@@ -1133,12 +1046,14 @@
   ";; Live: your own code, kept in this browser (not in the work).
 ;; ⇧+Enter evaluates a form, Ctrl/⌘+Enter a block (lines between empty ones).
 
-;; a box is the form it reads as: (osc~ 220) is the box \"osc~ 220\"
-;; a name makes it the same box each time: change 220 and evaluate again
-(def osc (osc~ 220))
+;; a patch as data: a box is a vector of its class and arguments ([:osc- 220] is osc~ 220),
+;; => in series, [:_ :_] one wire split in two, a map gives a box a name
+(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])
 
-;; in series with =>, [_ _] splits one wire in two: left and right
-(=> :osc (gain~ 0.2) [_ _] (dac~ 1 2))
+;; voices, each known by its key: evaluated again, only what changed changes;
+;; #_ leaves a box out, and a voice taken out of the map stops
+(=> {:frame {:out [:dac- 1 2]}
+     :lead  [:=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out]})
 
 (play)
 ")

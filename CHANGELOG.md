@@ -2,11 +2,14 @@
 
 ## Unreleased
 
-- **Live code as forms, more Clojure** (discussion #407). The chain of forms is `=>`, Kairotic's own: `->` and `doto`
-  are Clojure's again (with `to` and the calls that make the patch, as the Code tab writes the work; `(-> :o (+ 1))`
-  is code). And **a patch as a value**: the same grammar as plain EDN, read by Clojure's reader and any editor —
-  `[:=> [:as :osc ["osc~" 220]] ["gain~" 0.2] [:par :_ :_] ["dac~" 1 2]]`, a class with `~` as a string, sequences
-  spliced so patches can be made by functions — made by `(patch! …)` as live code does (`data->form`).
+- **Live code as data** (discussion #407): a patch written as plain EDN, which Clojure's reader and any editor read,
+  played with one function, `=>`: `(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])`. A box is a vector of its
+  class and arguments, as hiccup writes a tag, a class with `~` written with `-` (`[:osc- 220]` is `osc~ 220`); `=>` in
+  series, a vector that is not a box in parallel, `:_` a wire (Faust's `:`, `,`, `<:`); a map names a box; `#_` leaves a
+  box out. **Voices**: `(=> {:frame {:out [:dac- 1 2]} :lead [:=> … :out]})`, each chain known by its key as `d1` in
+  Tidal, a voice taken out of the map stopped, `:frame` the ins and outs every voice uses (or a line's `inlet~` and
+  `outlet~`). A chain owns the boxes and wires it made: evaluated again, only what changed changes. The forms written
+  as lists (`(osc~ 220)`, #451) are gone: one grammar, data. `->` and `doto` are Clojure's own again.
 - **The bridges' dissonances as rare as Bach's, his melodic minor's raised ⑥ as seldom** (`@kairotic/rules` 0.22.0,
   `bach-4` 1.6.0; `@kairotic/cac` 0.16.10; Study 71). Heard by @bonuoq: dissonances that did not seem justified. The
   inner voices dissonated against the bass twice as often as Bach's, with seven times his semitone clashes (a ♭9, a
