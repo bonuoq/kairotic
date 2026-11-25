@@ -142,14 +142,14 @@ in the same event. A chain is known by the box it starts from; lines made otherw
 in this browser for each work.
 
 **Forms.** In live code a box is the form it reads as: `(osc~ 220)` is the box `osc~ 220`, `(map inc)` the box
-`map inc`. A chain with `->` is in series, each box fed by the one before; a vector is in parallel — after one wire every
+`map inc`. A chain with `=>` is in series, each box fed by the one before; a vector is in parallel — after one wire every
 element is fed by it, after as many wires as it has elements each by its own —, `_` is a wire that goes on, and a box
 after several wires takes them on its inlets 0, 1… (the grammar of Faust's `:`, `,` and `<:`):
 
 ```clojure
 (def osc (osc~ 220))                       ; a box by a name: the same box each time
-(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))     ; stereo: one wire split in two
-(-> :osc (lop~ 800) (gain~ 0.2) [_ _] (dac~ 1 2))   ; a filter put in: only that box is new
+(=> :osc (gain~ 0.2) [_ _] (dac~ 1 2))     ; stereo: one wire split in two
+(=> :osc (lop~ 800) (gain~ 0.2) [_ _] (dac~ 1 2))   ; a filter put in: only that box is new
 (osc~ ~(* 2 110))                          ; ~ computes a value now: the box osc~ 220
 ```
 
@@ -157,8 +157,20 @@ A chain owns the boxes it made, as it owns its wires: evaluated again, each form
 same class (its text changed if it changed), so changing a number changes that box, a box put in is the only new one,
 and a box taken out is deleted. Start a chain from a name (`:osc`, or a `def`) to change its structure as you go; named
 boxes are never deleted this way. At the top level a list whose head is a command or a Clojure function is code
-(`(+ 1 2)`, `(play)`); inside a chain every list is a box, but `to`, `def` and the calls that make the patch. `(to o
+(`(+ 1 2)`, `(play)`); inside a chain every list is a box, but `to`, `def` and the calls that make the patch. `=>` is Kairotic's own: `->` and `doto` stay Clojure's (with `to` and the other calls that make the patch, as the Code tab writes the work). `(to o
 (box~ …) i)` chooses the ports. What each chain made is kept in this browser for each work.
+
+**A patch as a value.** The same grammar written as plain EDN, which Clojure's reader and any editor read, so a patch
+can be made by functions: `[:=> a b …]` in series, `[:par a b …]` in parallel, `:_` a wire, `[:as :osc box]` a box by a
+name, `[:to o box i]`, `:osc` a box already there, and a box as a vector of its class and arguments — `["osc~" 220]`
+(a class with `~` as a string, since Clojure's reader reads `~` as unquote), `[:mtof]`, `[:map 'inc]`. A sequence
+inside is spliced. `(patch! …)` makes it, as live code does:
+
+```clojure
+(patch! [:=> [:as :osc ["osc~" 220]] ["gain~" 0.2] [:par :_ :_] ["dac~" 1 2]])
+(patch! [:=> :osc [:par (for [r [1 1.5 2]] ["*~" r])] ["dac~" 1 2 3]])
+```
+
 
 
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as

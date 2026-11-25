@@ -257,11 +257,11 @@ export async function codetab(page, check) {
   // ── forms: a box written as the form it reads as (#407) ──
   check("a head that is code, and one that is a box", (await cljs(page, '[(code-head? "osc~") (code-head? "map") (code-head? "box") (code-head? "dac~")]')) === "[false true true false]");
   check("forms that make the patch, and code",
-        (await cljs(page, `[(patch-call? "(-> (osc~ 220) (gain~ 0.2) [_ _] (dac~ 1 2))") (patch-call? "(-> {:a 1} (assoc :b 2))") (patch-call? "(def f (fn [x] x))")
-                            (patch-call? "(def lo (osc~ 220))") (patch-call? "(osc~ 220)") (patch-call? "(+ 1 2)") (patch-call? "(-> :o (+ 1) (print))")]`)) === "[true false false true true false true]");
+        (await cljs(page, `[(patch-call? "(=> (osc~ 220) (gain~ 0.2) [_ _] (dac~ 1 2))") (patch-call? "(-> {:a 1} (assoc :b 2))") (patch-call? "(def f (fn [x] x))")
+                            (patch-call? "(def lo (osc~ 220))") (patch-call? "(osc~ 220)") (patch-call? "(+ 1 2)") (patch-call? "(=> :o (+ 1) (print))") (patch-call? "(-> :o (+ 1))") (patch-call? "(-> :o (to :b2))")]`)) === "[true false false true true false true false true]");
   const fev = (code) => cljs(page, `(eval-calls! ${JSON.stringify(code)})`);
   const k2 = Number(await cljs(page, nEv));
-  await fev("(-> (def fo (mtof)) (ftom) [_ _] (+))");
+  await fev("(=> (def fo (mtof)) (ftom) [_ _] (+))");
   const fo = await cljs(page, "fo"), fg = await cljs(page, `(some (fn [[a _ b _]] (when (= a ${fo}) b)) (:lines (current)))`);
   const fd = await cljs(page, `(some (fn [[a _ b _]] (when (= a ${fg}) b)) (:lines (current)))`);
   const txt = (id) => cljs(page, `(:text (get-in (current) [:boxes ${id}]))`);
@@ -269,18 +269,33 @@ export async function codetab(page, check) {
         && Number(await cljs(page, nEv)) === k2 + 1 && (await cljs(page, `(:name (get-in (current) [:boxes ${fo}]))`)) === ":fo", `${fo} ${fg} ${fd}`);
   check("... [_ _]: one wire split in two, on the inlets 0 and 1 of the box after", (await has(`[${fg} 0 ${fd} 0]`)) === "true" && (await has(`[${fg} 0 ${fd} 1]`)) === "true");
   check("... each box below the one that feeds it", (await cljs(page, `(- (:y (get-in (current) [:boxes ${fg}])) (:y (get-in (current) [:boxes ${fo}])))`)) === "60");
-  check("evaluated again as it was: nothing changes", (await fev("(-> (def fo (mtof)) (ftom) [_ _] (+))")) === "0");
-  check("... a number changed: that box's text only", (await fev("(-> (def fo (mtof)) (ftom 1) [_ _] (+))")) === "1" && (await cljs(page, lastEv)) === `[:text ${fg} "ftom 1"]`, await cljs(page, lastEv));
-  await fev("(-> (def fo (mtof)) (mtof 2) (ftom 1) [_ _] (+))");
+  check("evaluated again as it was: nothing changes", (await fev("(=> (def fo (mtof)) (ftom) [_ _] (+))")) === "0");
+  check("... a number changed: that box's text only", (await fev("(=> (def fo (mtof)) (ftom 1) [_ _] (+))")) === "1" && (await cljs(page, lastEv)) === `[:text ${fg} "ftom 1"]`, await cljs(page, lastEv));
+  await fev("(=> (def fo (mtof)) (mtof 2) (ftom 1) [_ _] (+))");
   const fl = await cljs(page, `(some (fn [[a _ b _]] (when (= a ${fo}) b)) (:lines (current)))`);
   check("... a box put in: only that box new, the others the same, the old wire taken away",
         fl !== fg && (await txt(fl)) === '"mtof 2"' && (await has(`[${fl} 0 ${fg} 0]`)) === "true" && (await has(`[${fo} 0 ${fg} 0]`)) === "false" && (await txt(fg)) === '"ftom 1"', `${fl} ${fg}`);
-  await fev("(-> (def fo (mtof)) (mtof 2) [_ _] (+))");
+  await fev("(=> (def fo (mtof)) (mtof 2) [_ _] (+))");
   check("... a box taken out: deleted, its wires with it", (await cljs(page, `(contains? (:boxes (current)) ${fg})`)) === "false" && (await has(`[${fl} 0 ${fd} 1]`)) === "true");
   await fev("(def fu (mtof ~(* 2 110)))");
   check("~expr: a value computed now in the box", (await txt(await cljs(page, "fu"))) === '"mtof 220"');
   await fev("(def fw (mtof))\n(+ 1 2)");
   check("forms that make the patch among code: each on its own", /^:b\d+$/.test(await cljs(page, "fw")));
-  check("the whole tab can be written as forms too", (await cljs(page, '(let [p (build "(-> (mtof) (ftom) (+))")] [(count (:boxes p)) (count (:lines p))])')) === "[3 2]");
+  check("the whole tab can be written as forms too", (await cljs(page, '(let [p (build "(=> (mtof) (ftom) (+))")] [(count (:boxes p)) (count (:lines p))])')) === "[3 2]");
   await cljs(page, `(delete ${fo} ${fl} ${fd} (rid :fu) (rid :fw))`);
+
+  // ── a patch as a value (#407): plain EDN, made by functions ──
+  check("a patch as a value, written as live code", (await cljs(page, '(data->form [:=> [:as :osc ["osc~" 220]] ["gain~" 0.2] [:par :_ :_] ["dac~" 1 2]])'))
+        === JSON.stringify('(=> (def osc (osc~ 220)) (gain~ 0.2) [_ _] (dac~ 1 2))'), await cljs(page, '(data->form [:=> [:as :osc ["osc~" 220]] ["gain~" 0.2] [:par :_ :_] ["dac~" 1 2]])'));
+  check("... a sequence spliced, keyword and symbol classes, other ports",
+        (await cljs(page, "(data->form [:=> :pv [:par (for [r [1 2]] [:mtof r])] [:to 1 [:map 'inc] 0]])")) === JSON.stringify("(=> :pv [(mtof 1) (mtof 2)] (to 1 (map inc) 0))"),
+        await cljs(page, "(data->form [:=> :pv [:par (for [r [1 2]] [:mtof r])] [:to 1 [:map 'inc] 0]])"));
+  const k3 = Number(await cljs(page, nEv));
+  await cljs(page, '(patch! [:=> [:as :pv [:mtof]] [:par (for [r [1 2]] ["ftom" r])] [:+]])');
+  const pv = await cljs(page, "(rid :pv)");
+  const outs = await cljs(page, `(vec (sort (keep (fn [[a _ b _]] (when (= a ${pv}) (:text (get-in (current) [:boxes b])))) (:lines (current)))))`);
+  check("patch! makes it, as one event: the boxes a function made", outs === '["ftom 1" "ftom 2"]' && Number(await cljs(page, nEv)) === k3 + 1, outs);
+  check("... and made again, nothing changes", (await cljs(page, '(patch! [:=> [:as :pv [:mtof]] [:par (for [r [1 2]] ["ftom" r])] [:+]])')) === "0");
+  await cljs(page, `(let [ls (:lines (current)) to (fn [ids] (set (keep (fn [[a _ b _]] (when (ids a) b)) ls))) l1 (to #{${pv}})]
+                      (apply delete (distinct (concat [${pv}] l1 (to l1)))))`);
 }

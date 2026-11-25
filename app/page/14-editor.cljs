@@ -666,14 +666,14 @@
 
 (defn keep-owned! [m] (when-let [k (chains-key)] (try (.setItem js/localStorage k (pr-str m)) (catch :default _ nil))))
 
-(defn chain-form? "Whether a form is a chain: (-> …) or (doto …)." [f] (contains? #{"->" "doto"} (form-head f)))
+(defn chain-form? "Whether a form is a chain: (=> …) of forms, or (-> …) / (doto …) of calls." [f] (contains? #{"=>" "->" "doto"} (form-head f)))
 
 ;; ───── forms: a box written as the form it reads as (discussion #407) ─────
 ;; The text of a box already reads as Clojure, so in live code a form is the box: (osc~ 220) is the box "osc~ 220",
-;; (map inc) the box "map inc". The same grammar as Faust's: a chain (->) is in series, each box fed by the one
+;; (map inc) the box "map inc". The same grammar as Faust's: a chain (=>) is in series, each box fed by the one
 ;; before it; a vector is in parallel — after one wire every element is fed by it (a split), after as many wires as
 ;; it has elements each by its own; `_` is a wire that goes on; a box after several wires takes them on its inlets
-;; 0, 1… So (-> (osc~ 220) (gain~ 0.2) [_ _] (dac~ 1 2)) is a stereo patch. ~expr puts a value computed now in a box:
+;; 0, 1… So (=> (osc~ 220) (gain~ 0.2) [_ _] (dac~ 1 2)) is a stereo patch. ~expr puts a value computed now in a box:
 ;; (osc~ ~(* 2 f)). (def osc (osc~ 220)) gives the box the name :osc, so it is the same box each time; (to o X i)
 ;; chooses the ports. A list whose head is a command of the page or a Clojure function or form is code, not a box:
 ;; inside a chain every list is a box (but box, to and the other calls that make the patch).
@@ -703,9 +703,9 @@
   (let [inner (subs f 1 (max 1 (dec (count f))))] (mapv (fn [[a b]] (subs inner a b)) (top-forms inner))))
 
 (defn box-form? "Whether a form is a box written as the form it reads as: (osc~ 220)." [f]
-  (boolean (and (str/starts-with? f "(") (not (code-head? (form-head f))) (not (contains? #{"to" "->" "doto"} (form-head f))))))
+  (boolean (and (str/starts-with? f "(") (not (code-head? (form-head f))) (not (contains? #{"to" "=>" "->" "doto"} (form-head f))))))
 
-(def chain-specials (into patch-calls #{"to" "->" "doto" "def"}))
+(def chain-specials (into patch-calls #{"to" "=>" "->" "doto" "def"}))
 (defn chain-box? "Inside a chain every list is a box, but the calls that make the patch, to, def and chains." [e]
   (and (str/starts-with? e "(") (not (contains? chain-specials (form-head e)))))
 
@@ -714,15 +714,23 @@
   "Whether x, what (def name x) names, is a box: a box form, a name, or a chain or call that makes the patch."
   [x]
   (boolean (or (box-form? x) (str/starts-with? x ":")
-               (and (str/starts-with? x "(") (contains? (into patch-calls #{"->" "doto"}) (form-head x)) (patch-call? x)))))
+               (and (str/starts-with? x "(") (contains? (into patch-calls #{"=>" "->" "doto"}) (form-head x)) (patch-call? x)))))
 
 (defn chain-steps-ok?
-  "Whether a chain makes the patch: it starts from something that does (or a name bound to a box) and every step
-   after it does. (-> 1 inc) and (-> {:a 1} (assoc :b 2)) stay Clojure."
+  "Whether a chain of forms, (=> …), makes the patch: it starts from something that does (or a name bound to a box)
+   and every step after it does."
   [f]
   (let [[_ e0 & steps] (elems f)]
     (boolean (and e0 (seq steps) (or (patch-el? e0) (re-matches #"[^\s()\[\]{}\"~:#0-9][^\s()\[\]{}\"]*" e0))
                   (every? patch-el? steps)))))
+
+(defn calls-chain-ok?
+  "Whether a Clojure chain, (-> …) or (doto …), makes the patch: every step a call that does — (-> :osc (to :amp
+   \"gain~ 0.2\")), as the Code tab writes the work. It is Clojure's own -> (or doto): (-> 1 inc) stays code."
+  [f]
+  (let [[_ e0 & steps] (elems f)]
+    (boolean (and e0 (seq steps) (or (patch-el? e0) (re-matches #"[^\s()\[\]{}\"~:#0-9][^\s()\[\]{}\"]*" e0))
+                  (every? (fn [g] (and (str/starts-with? g "(") (contains? patch-calls (form-head g)))) steps)))))
 
 (defn patch-el?
   "Whether an element of a chain makes the patch: a box form, a name (:osc), a wire (_), a vector of them, (to …),
@@ -734,18 +742,20 @@
         (str/starts-with? e "\"") true
         (str/starts-with? e "(")
         (let [h (form-head e)]
-          (cond (contains? #{"->" "doto"} h) (chain-steps-ok? e)
+          (cond (= h "=>") (chain-steps-ok? e)
+                (contains? #{"->" "doto"} h) (calls-chain-ok? e)
                 (= h "def") (let [es (elems e)] (and (= 3 (count es)) (def-box? (nth es 2))))
                 :else true))
         :else false))
 
 (defn patch-call?
   "Whether a form makes the patch: a call that does (box, connect, to…), a box form, (def name box) or a chain whose
-   steps all do: (-> (osc~ 220) (gain~ 0.2) [_ _] (dac~ 1 2)), (-> (box \"osc~\") (to \"dac~\"))."
+   steps all do: (=> (osc~ 220) (gain~ 0.2) [_ _] (dac~ 1 2)), (-> (box \"osc~\") (to \"dac~\"))."
   [f]
   (let [h (form-head f)]
     (cond (contains? patch-calls h) true
-          (contains? #{"->" "doto"} h) (chain-steps-ok? f)
+          (= h "=>") (chain-steps-ok? f)
+          (contains? #{"->" "doto"} h) (calls-chain-ok? f)
           (= h "def") (let [es (elems f)] (and (= 3 (count es)) (def-box? (nth es 2))))
           :else (box-form? f))))
 
@@ -833,7 +843,8 @@
       (str/starts-with? e "(")
       (let [h (form-head e)]
         (cond
-          (contains? #{"->" "doto"} h) (run-chain ctx e ends)
+          (= h "=>") (run-chain ctx e ends)
+          (contains? #{"->" "doto"} h) (make (as-id (eval-str e) e))
           (= h "to") (let [es (rest (elems e)) [[a]] ends]
                        (when-not a (fail "(to …) with nothing before it"))
                        (if (some chain-box? es)
@@ -853,13 +864,8 @@
           :else (make (new-box! ctx (form-text e) nil (below ends j)))))
       :else (make (as-id (eval-str e) e)))))
 
-(defn run-chain [ctx f ends]
-  (let [[h & es] (elems f)]
-    (if (= h "doto")
-      (let [e0 (run-el ctx ends (first es) 0)]
-        (doseq [[k s] (map-indexed vector (rest es))] (run-el ctx e0 s k))
-        e0)
-      (reduce (fn [acc s] (run-el ctx acc s 0)) ends es))))
+(defn run-chain "A chain of forms, (=> …): each element fed by the wires the one before leaves." [ctx f ends]
+  (reduce (fn [acc s] (run-el ctx acc s 0)) ends (rest (elems f))))
 
 (defn run-form
   "Runs one top-level form of live code (discussion #407): a chain, a box form or (def name box) as boxes and wires;
@@ -867,7 +873,7 @@
   [f]
   (let [h (form-head f)]
     (cond
-      (contains? #{"->" "doto"} h)
+      (= h "=>")
       (let [k (chain-key f) old (get (made-boxes) k)
             ctx (atom {:made [] :old (reduce (fn [m [hh id]] (update m hh (fnil conj []) id)) {} old)})
             ends (run-chain ctx f [])]
@@ -891,13 +897,53 @@
                                ;; (the calls the work's code is written with first: quick, and most of a work)
                                (and (not (contains? patch-calls h)) (str/starts-with? f "(")
                                (or (box-form? f)
-                                   (and (contains? #{"->" "doto"} h) (chain-steps-ok? f)
-                                        (some (fn [e] (or (chain-box? e) (= e "_") (str/starts-with? e "["))) (rest (elems f))))
+                                   (and (= h "=>") (chain-steps-ok? f))
                                    (and (= h "def") (let [es (elems f)] (and (= 3 (count es)) (box-form? (nth es 2)))))))))
                  (top-forms code))))
 
 (defn run-forms! "Runs every top-level form of code, as live code reads it." [code]
   (doseq [[a b] (top-forms code)] (run-form (subs code a b))))
+
+;; ───── the patch as a value (discussion #407) ─────
+;; The same grammar as plain EDN, which Clojure's reader (and any editor, clj-kondo…) reads, so patches can be
+;; values made by functions: [:=> a b …] in series, [:par a b …] in parallel, :_ a wire, [:as :osc box] a box by a
+;; name, [:to o box i] other ports, a name :osc a box already there, and a box as a vector of its class and
+;; arguments — [\"osc~\" 220] (a class with ~ written as a string: Clojure's reader reads ~ as unquote), [:mtof],
+;; [:map 'inc]. A sequence inside is spliced: [:par (for [f [220 330]] [\"osc~\" f])].
+
+(def patch-ops #{:=> :par :as :to :_})
+
+(defn arg-text [a] (cond (string? a) (pr-str a) (number? a) (str a) (or (keyword? a) (symbol? a)) (str a) :else (pr-str a)))
+
+(defn spliced [xs] (mapcat (fn [x] (if (and (seq? x) (not (vector? x))) x [x])) xs))
+
+(defn data->form
+  "The live code of a patch written as a value: [:=> [\"osc~\" 220] [\"gain~\" 0.2]] → (=> (osc~ 220) (gain~ 0.2))."
+  [x]
+  (cond
+    (= x :_) "_"
+    (keyword? x) (str x)
+    (string? x) (str "(" x ")")
+    (vector? x)
+    (let [[h & args] x args (spliced args)]
+      (case h
+        :=> (str "(=> " (str/join " " (map data->form args)) ")")
+        :par (str "[" (str/join " " (map data->form args)) "]")
+        :as (let [[nm b] args] (str "(def " (name nm) " " (data->form b) ")"))
+        :to (if (= 3 (count args))
+              (str "(to " (first args) " " (data->form (second args)) " " (nth args 2) ")")
+              (str "(to " (data->form (first args)) ")"))
+        (if (or (string? h) (and (keyword? h) (not (contains? patch-ops h))) (symbol? h))
+          (str "(" (str/join " " (cons (if (keyword? h) (name h) (str h)) (map arg-text args))) ")")
+          (throw (js/Error. (str "Not a box nor a part of a patch: " (pr-str x)))))))
+    (seq? x) (str/join "\n" (map data->form x))
+    :else (throw (js/Error. (str "Not a box nor a part of a patch: " (pr-str x))))))
+
+(defn patch!
+  "Makes the patch a value describes, as live code does (one event; a chain made again changes what changed):
+   (patch! [:=> [:as :osc [\"osc~\" 220]] [\"gain~\" 0.2] [:par :_ :_] [\"dac~\" 1 2]]). Several values, several forms."
+  [x & more]
+  (eval-calls! (str/join "\n" (map data->form (cons x more)))))
 
 (defn build-forms
   "Runs the forms of code one by one on a copy of patch cur: [the patch after, {box #{lines}}: the lines each
@@ -1091,8 +1137,8 @@
 ;; a name makes it the same box each time: change 220 and evaluate again
 (def osc (osc~ 220))
 
-;; in series with ->, [_ _] splits one wire in two: left and right
-(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))
+;; in series with =>, [_ _] splits one wire in two: left and right
+(=> :osc (gain~ 0.2) [_ _] (dac~ 1 2))
 
 (play)
 ")

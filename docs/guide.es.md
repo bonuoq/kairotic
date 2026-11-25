@@ -146,15 +146,15 @@ otra vez, quita las que ya no escribe —mete `(to :lpf "lop~ 800")` entre `:osc
 quedan. Lo que escribió cada cadena se guarda en este navegador para cada obra.
 
 **Formas.** En el código en vivo una caja es la forma que se lee: `(osc~ 220)` es la caja `osc~ 220`, `(map inc)` la
-caja `map inc`. Una cadena con `->` va en serie, cada caja alimentada por la anterior; un vector va en paralelo —después
+caja `map inc`. Una cadena con `=>` va en serie, cada caja alimentada por la anterior; un vector va en paralelo —después
 de un cable cada elemento se alimenta de él, después de tantos cables como elementos tiene cada uno del suyo—, `_` es un
 cable que sigue, y una caja después de varios cables los toma en sus entradas 0, 1… (la gramática de `:`, `,` y `<:` de
 Faust):
 
 ```clojure
 (def osc (osc~ 220))                       ; una caja con nombre: la misma cada vez
-(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))     ; estéreo: un cable partido en dos
-(-> :osc (lop~ 800) (gain~ 0.2) [_ _] (dac~ 1 2))   ; un filtro añadido: solo esa caja es nueva
+(=> :osc (gain~ 0.2) [_ _] (dac~ 1 2))     ; estéreo: un cable partido en dos
+(=> :osc (lop~ 800) (gain~ 0.2) [_ _] (dac~ 1 2))   ; un filtro añadido: solo esa caja es nueva
 (osc~ ~(* 2 110))                          ; ~ calcula un valor ahora: la caja osc~ 220
 ```
 
@@ -163,8 +163,20 @@ antes con la misma clase (con su texto cambiado si ha cambiado), así que cambia
 añadida es la única nueva y una caja quitada se borra. Empieza una cadena por un nombre (`:osc`, o un `def`) para cambiar
 su estructura sobre la marcha; las cajas con nombre nunca se borran así. En el nivel superior, una lista cuyo primer
 elemento es un comando o una función de Clojure es código (`(+ 1 2)`, `(play)`); dentro de una cadena toda lista es una
-caja, menos `to`, `def` y las llamadas que hacen el patch. `(to o (caja~ …) i)` elige los puertos. Lo que hizo cada
+caja, menos `to`, `def` y las llamadas que hacen el patch. `=>` es propio de Kairotic: `->` y `doto` siguen siendo los de Clojure (con `to` y las demás llamadas que hacen el patch, como la pestaña Code escribe la obra). `(to o (caja~ …) i)` elige los puertos. Lo que hizo cada
 cadena se guarda en este navegador para cada obra.
+
+**Un patch como valor.** La misma gramática escrita como EDN normal, que leen el lector de Clojure y cualquier editor,
+así que un patch se puede hacer con funciones: `[:=> a b …]` en serie, `[:par a b …]` en paralelo, `:_` un cable,
+`[:as :osc caja]` una caja con nombre, `[:to o caja i]`, `:osc` una caja que ya está, y una caja como un vector de su
+clase y sus argumentos —`["osc~" 220]` (una clase con `~` como string, porque el lector de Clojure lee `~` como unquote),
+`[:mtof]`, `[:map 'inc]`—. Una secuencia dentro se inserta. `(patch! …)` la hace, como el código en vivo:
+
+```clojure
+(patch! [:=> [:as :osc ["osc~" 220]] ["gain~" 0.2] [:par :_ :_] ["dac~" 1 2]])
+(patch! [:=> :osc [:par (for [r [1 1.5 2]] ["*~" r])] ["dac~" 1 2 3]])
+```
+
 
 
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de

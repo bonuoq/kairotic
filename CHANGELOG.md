@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Live code as forms, more Clojure** (discussion #407). The chain of forms is `=>`, Kairotic's own: `->` and `doto`
+  are Clojure's again (with `to` and the calls that make the patch, as the Code tab writes the work; `(-> :o (+ 1))`
+  is code). And **a patch as a value**: the same grammar as plain EDN, read by Clojure's reader and any editor —
+  `[:=> [:as :osc ["osc~" 220]] ["gain~" 0.2] [:par :_ :_] ["dac~" 1 2]]`, a class with `~` as a string, sequences
+  spliced so patches can be made by functions — made by `(patch! …)` as live code does (`data->form`).
 - **Study 74 · aoidos** (discussion #192): a poem sung syllable by syllable. `prosody.mjs` reads polytonic Greek —
   syllables, quantity (by nature, by position, doubtful; the laws of the accent; epic correption), accents — and scans
   a line (hexameter, pentameter, iambic, free; synizesis), the scansion its time (a short a beat, a long two, held).
