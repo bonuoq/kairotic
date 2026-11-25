@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos** (discussion #192): a poem sung syllable by syllable. `prosody.mjs` reads polytonic Greek —
+  syllables, quantity (by nature, by position, doubtful; the laws of the accent; epic correption), accents — and scans
+  a line (hexameter, pentameter, iambic, free; synizesis), the scansion its time (a short a beat, a long two, held).
+  `aoidos.mjs`: the melody as one voice of `@kairotic/rules` (`solve()`), the accent as costs (rise to the acute, the
+  accent the word's highest, the circumflex falling, a fall after the accent; `strict` makes the peak and the
+  circumflex hard), an examiner that tries a melody as the dux of `cac imitation`, and `canonic()`: the dux written
+  with its comes on `canon-2`, the singer choosing among the comes's futuribles (Odyssey 1.1 in strict canon at the
+  octave below a foot later: 4,285 canons).
+
 - **Quantize → describe → annotate** (step 2 of the motive layer; #108). With `:describe true`, the quantizer writes on
   what it wrote its motives: `kairotic.motif/motives` finds spans of 3 to 5 notes that come back repeated, transposed,
   in sequence or inverted (with their rhythm, augmented or diminished), in the same voice or another (an imitation),
