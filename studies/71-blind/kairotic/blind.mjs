@@ -28,10 +28,10 @@ export const rng = (seed) => { let s = seed % 2147483647 || 1; return () => ((s 
 /** A voice given unit by unit (MIDI) as notes for fromOuter: a note repeated onto a weak unit is held, onto a strong
  *  one struck again. */
 export function notesOf(xs, strong, keys = null) {
-  const out = [];
+  const out = [], kOf = (t) => (keys && keys[t] ? (typeof keys[t] === "string" ? keys[t] : keyName(keys[t])) : null);
   xs.forEach((m, t) => {
-    if (t && out[out.length - 1].midi === m && !strong[t]) { const o = out[out.length - 1]; o.units++; o.strong.push(!!strong[t]); }
-    else out.push({ midi: m, units: 1, strong: [!!strong[t]], ...(keys ? { key: keys[t] } : {}) });
+    if (t && out[out.length - 1].midi === m && !strong[t] && kOf(t) === kOf(t - 1)) { const o = out[out.length - 1]; o.units++; o.strong.push(!!strong[t]); }
+    else out.push({ midi: m, units: 1, strong: [!!strong[t]], ...(kOf(t) ? { key: kOf(t) } : {}) });
   });
   return out;
 }
@@ -45,7 +45,9 @@ const keyName = (k) => `${String(k.tonic).replace("♯", "#").replace("♭", "b"
  *  likeliest; 1, as the style was measured, moves as often as Bach's inner voices do). A note an inner voice keeps is
  *  struck again, as Bach mostly does, but where it is held into a dissonance with the bass (a suspension). */
 export function fill(bridge, { phrase = null, r = Math.random, temp = 1, style = "bach-4" } = {}) {
-  const S = notesOf(bridge.soprano, bridge.strong), B = notesOf(bridge.bass, bridge.strong), n = bridge.soprano.length;
+  // (the bass's units in their keys where the bridge gives them — a tonicization: the inner voices may then take its
+  // leading tone, as Bach's do)
+  const S = notesOf(bridge.soprano, bridge.strong), B = notesOf(bridge.bass, bridge.strong, bridge.keys || null), n = bridge.soprano.length;
   const ends = (i) => Array.from({ length: n }, (_, t) => (t === 0 || t === n - 1 ? { midi: phrase.satb[t][i], ...(phrase.names ? { name: phrase.names[t][i] } : {}) } : null));
   const inner = phrase ? { alto: ends(1), tenor: ends(2) } : undefined;
   let ob;

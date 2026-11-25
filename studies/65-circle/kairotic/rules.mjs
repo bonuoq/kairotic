@@ -458,6 +458,10 @@ function structuralParallels(w, U, t, c) {
 // (Bach's alto and tenor in the chorales: how much a move of 0, 1 … 12, 13+ semitones costs, −log of its frequency
 // against the note kept — 31.3%, 16.0%, 23.2%, 10.0%, 8.6%, 7.0%, 0.4%, 2.6%, 0.3%, 0.2%, 0.1%, 0.0%, 0.2%, 0.0%)
 export const BACH_INNER_MOTION = [0, 0.67, 0.3, 1.14, 1.29, 1.5, 4.36, 2.48, 4.65, 5.02, 5.97, 9.19, 5.15, 8.5];
+// (and what they sound against the bass: an interval of 0 … 11 semitones above it, −log of its frequency against the
+// commonest, the 5th — 21.5%, 0.4%, 2.9%, 17.0%, 17.3%, 3.4%, 1.9%, 22.3%, 6.7%, 4.2%, 2.1%, 0.3%: a semitone's clash
+// with the bass, the ♭9 or the major 7th, is the rarest)
+export const BACH_INNER_VERTICAL = [0.04, 4.13, 2.05, 0.27, 0.25, 1.89, 2.45, 0, 1.2, 1.68, 2.37, 4.17];
 // ─── soft rules: what a candidate costs (soft.mjs's, with those of a voice over a bass) ───
 export const SOFT_RULES = {
   /** soft.mjs: the shape of the line and the vertical it makes, by its ids and weights. */
@@ -482,6 +486,19 @@ export const SOFT_RULES = {
     if (t < 1) return {};
     const d = Math.min(table.length - 1, Math.abs(w.semiU(c) - w.semiU(U[t - 1])));
     return { "bach-motion": table[d] * (W["bach-motion"] ?? 1) };
+  } }),
+  /** a vertical as often as Bach sounds it: an inner voice's interval above the bass, in semitones (its class), costs
+   *  −log of how often his alto and tenor sound it in the chorales against the commonest (the 5th) — 35,882 notes:
+   *  the dissonances as rare as his, a semitone's clash rarest. bach-4 1.6.0. */
+  "bach-vertical": (w, { W, table = BACH_INNER_VERTICAL }) => ({ id: "bach-vertical", cost: ({ t, c }) => ({ "bach-vertical": table[w.vertical(t, c).semis] * (W["bach-vertical"] ?? 1) }) }),
+  /** minor's raised ⑥ (the melodic minor's) as seldom as Bach writes it in an inner voice: it costs weight, more where
+   *  it does not go on up by step (read on the note after it). bach-4 1.6.0. */
+  "raised-sixth": (w, { W }) => ({ id: "raised-sixth", lookback: 1, cost: ({ U, t, c }) => {
+    const wt = W["raised-sixth"] ?? 1, minor = (u) => w.LOC[u].key.mode === "minor";
+    let cost = 0;
+    if (minor(t)) { const l = w.loc(t, c); if (l.deg === 5 && l.alt === 1) cost += wt; }
+    if (t >= 1 && minor(t - 1)) { const p = U[t - 1], l = w.loc(t - 1, p); if (l.deg === 5 && l.alt === 1 && !(w.D(c) === w.D(p) + 1)) cost += wt; }
+    return cost ? { "raised-sixth": cost } : {};
   } }),
   /** the leading tone goes up to the tonic, everywhere — but where it has a reason not to (see partimento.mjs). */
   "leading-tone": (w, { W, middle = false }) => ({ id: "leading-tone", cost: ({ U, t, c }) => {
@@ -1114,10 +1131,14 @@ Object.assign(STYLES, {
   // temperature 1 they keep a note, step, leap a 4th or more nearly as often as his: 1.4.0)
   // (and an inner voice trading its note with another's in contrary motion — a voice exchange — costing less, weight
   // 2: as often as Bach, about one chord in eleven: 1.5.0)
-  "bach-4": { style: "bach-4", version: "1.5.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
-                                                                                          soft: [["bach-motion"]], weights: { "bach-motion": 2 } },
+  // (and the dissonances as rare as his: what an inner voice sounds against the bass weighed by his own frequencies —
+  // bach-vertical, 1.5 —, the species' rewards for a passing note and a suspension off, the moves weighed more — 4 —
+  // so a voice does not leap to keep consonant; minor's raised ⑥ as seldom as his in the inner voices — raised-sixth, 2:
+  // 1.6.0)
+  "bach-4": { style: "bach-4", version: "1.6.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
+                                                                                          soft: [["bach-motion"], ["bach-vertical"], ["raised-sixth"]], weights: { "bach-motion": 4, "bach-vertical": 1.5, "raised-sixth": 2, passing: 0, "suspension-life": 0 } },
     between: [["order", { within: 7, unison: true }], ["functions", false]],
-    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"]], weights: { functions: 2, "voice-exchange": 2 },
+    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"]], weights: { functions: 2, "voice-exchange": 4 },
     // (the voices' ranges as Bach's in the chorales, MIDI: the same in every key)
     ranges: { soprano: [57, 81], alto: [52, 74], tenor: [48, 69] } },
 });
