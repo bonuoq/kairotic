@@ -154,6 +154,9 @@ export const METRES = {
   "iambic-trimeter": { name: "iambic trimeter", feet: Array(3).fill([["X", "L", "S", "L"]]), bar: 6 },
   "iambic-dimeter": { name: "iambic dimeter", feet: Array(2).fill([["X", "L", "S", "L"]]), bar: 6 },
   free: { name: "free (as the syllables are)", feet: null, bar: 2 },
+  // (Seikilos's lines: each twelve chronoi — two bars of 6/8 —, filled as the stele fills them: the last syllable one
+  // more, then the long ones from the end backwards, one more each)
+  seikilos: { name: "Seikilos's (twelve chronoi a line)", feet: null, bar: 12, fill: true },
 };
 
 const fits = (q, p) => p === "X" || q === "doubtful" || (p === "L" ? q === "long" : q === "short");
@@ -170,8 +173,10 @@ const canMerge = (syl, i) => i + 1 < syl.length && syl[i + 1].inWord > 0 && !syl
  */
 export function scan(line, metreId = "hexameter") {
   const M = METRES[metreId] || METRES.free, syl = line.syllables, n = syl.length;
+  // (free: a doubtful syllable long only where its vowel is — a long vowel before a vowel —; a stop and a liquid, as
+  // later Greek and Seikilos's ὁ χρόνος, do not lengthen it)
   if (!M.feet) return { ok: true, metre: metreId, feet: null, all: 1,
-                        units: syl.map((s, i) => ({ syl: [i], q: s.quantity === "doubtful" ? (s.position === "common" || s.nature === "long" ? "long" : "short") : s.quantity })) };
+                        units: syl.map((s, i) => ({ syl: [i], q: s.quantity === "doubtful" ? (s.nature === "long" ? "long" : "short") : s.quantity })) };
   const ways = [];
   // (f the foot, i the syllable; units the line's sung syllables so far)
   const go = (f, i, feet, units, merges) => {
@@ -205,11 +210,19 @@ export function timeOf(line, sc, { lastLonger = true } = {}) {
   const strongAt = new Set(sc.feet ? sc.feet.map((f) => f.from) : sc.units.map((u, i) => (u.q === "long" ? i : -1)).filter((i) => i >= 0));
   const bar = (METRES[sc.metre] || METRES.free).bar, plain = sc.units.reduce((a, u) => a + (u.q === "long" ? 2 : 1), 0);
   // (the last syllable held to the end of its bar — a foot's time; in a free line one beat longer, then to the bar)
-  const extra = !lastLonger ? 0 : sc.feet ? (bar - (plain % bar)) % bar : 1 + ((bar - ((plain + 1) % bar)) % bar);
+  const M = METRES[sc.metre] || METRES.free, last = sc.units.length - 1;
+  const add = sc.units.map(() => 0);
+  if (lastLonger && M.fill) {
+    // (to the bar: the last syllable one more, then the longs from the end backwards, then the last again)
+    let extra = (bar - (plain % bar)) % bar;
+    if (extra) { add[last]++; extra--; }
+    for (let i = last - 1; i >= 0 && extra; i--) if (sc.units[i].q === "long") { add[i]++; extra--; }
+    add[last] += extra;
+  } else add[last] = !lastLonger ? 0 : sc.feet ? (bar - (plain % bar)) % bar : 1 + ((bar - ((plain + 1) % bar)) % bar);
   let at = 0;
   return sc.units.map((u, i) => {
     const ss = u.syl.map((k) => line.syllables[k]), s0 = ss[0], s1 = ss[ss.length - 1];
-    const beats = (u.q === "long" ? 2 : 1) + (i === sc.units.length - 1 ? extra : 0);
+    const beats = (u.q === "long" ? 2 : 1) + add[i];
     const r = { text: ss.map((s) => s.text).join(""), accent: ss.map((s) => s.accent).find(Boolean) || null, word: s0.word,
                 first: s0.inWord === 0, last: s1.last, pause: s1.pause, q: u.q, beats, at, strong: strongAt.has(i), synizesis: !!u.synizesis };
     at += beats;

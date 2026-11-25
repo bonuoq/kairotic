@@ -6,6 +6,14 @@
   take the variants `bridges.json` has (`variantsOf`: Study 63's known ones in their order, any new one after them), so
   a layer Study 63 turns off — `no-keys`, the bridges without tonicizations — is compared as the others with nothing
   changed here; `deck.json` keeps its `variants`.
+- **Study 74 · aoidos: melismas, and Seikilos's rhythm** (#192). The melody is written a beat at a time (`solveVoices`
+  with one voice, its memo keyed by what the rules read: the syllable's notes, the pitch sounding and the one before,
+  how often it was struck): a syllable may take up to three notes (`melisma`, by step or a 3rd), the accent judged on
+  each syllable's notes (a circumflex on one note costs half). `prosody.mjs`'s metre `seikilos` — twelve chronoi a
+  line, the last syllable and then the longs from the end lengthened — gives the stele's rhythm syllable by syllable;
+  the stele's melody keeps every hard rule of the engine. In canon melismas open the entry two beats later (Odyssey 1.1,
+  strict: 1,934,946); a new syllable strikes a new pitch there. The page: notes a syllable, the metre, the stele's melody.
+
 - **Study 74 · aoidos: Seikilos's own melody against the rules** (#192). `seikilos.mjs`: the song as the stele has it
   (Pöhlmann and West, DAGM no. 23), sign by sign with its chronoi. Its rhythm is the quantities `prosody.mjs` reads
   (every long syllable 2 or 3 chronoi, every short one 1, each line twelve) once a stop and a liquid across words count
