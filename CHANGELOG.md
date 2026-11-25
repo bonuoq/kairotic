@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The chorale test's bridges tonicize, and say their keys** (#353). Study 63's `outer.mjs` draws for each bridge a
+  path of keys (`keyPathFor`), one a unit, on Bach's own moves between keys (`KEY_MOVES`: phrases.json's keys, each
+  against the chorale's — in major ii, V, vi and IV, in minor iv, III, VII and v), from the key his phrase begins in to
+  the one it ends in, a move four times as likely as there (`KEY_RATE`: the corpus's keys, read by scales over spans,
+  miss his quick tonicizations); the outer voices go through it (`unitKeys`): each unit's notes in its key, a
+  succession read in the keys of its two units, a key entered on its dominant with its leading tone in the soprano or
+  the bass. In minor, the outer voices' ⑥–⑦ go up raised and come down natural, a natural ⑦ next to ① dearer — as
+  Bach writes them. In major, per 100 chords, a leading tone rising in the soprano 1.4 (Bach 1.1) and in the bass 2.3
+  (Bach 3.7; before 1.2, toward V alone), toward ii, V and vi. Every bridge carries its `keys`, and Study 71's fill reads
+  them: with them bach-4 fills 87% of single draws (without, 50%). `bridges.json` drawn again.
 - **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
   voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of
   0…13 semitones in the corpus, times the temperature, so the draw moves as often as he does), in place of the fixed

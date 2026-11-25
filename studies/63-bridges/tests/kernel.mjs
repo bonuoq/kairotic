@@ -110,6 +110,24 @@ export async function run() {
   is("bridgesFor: the engine's format for every variant (all, each layer off, arch), two draws each", bs.length === 10 && ["all", "no-functions", "no-tension", "no-economy", "arch"].every((v) => bs.filter((b) => b.variant === v).length === 2) &&
      bs.every((b) => b.phrase === "test-c" && b.soprano.length === 8 && b.bass.length === 8 && b.key.tonic === "C" && b.strong.length === 8 && Array.isArray(b.layers)) && bs.find((b) => b.variant === "no-tension").layers.join() === "functions,economy");
 
+  // ─── keys: a path through Bach's moves between keys, the outer voices tonicizing it (#353) ───
+  const ph3 = { ...ph1, id: "test-keys", keys: Array(8).fill("C major") };
+  const paths = Array.from({ length: 200 }, (_, i) => O.keyPathFor(ph3, wr(i + 1), { rate: O.KEY_RATE }).map(O.keyName));
+  is("keyPathFor: a key a unit, from the key A is in to the key B is in, now and then another (ii, V, vi … as Bach goes)",
+     paths.every((p) => p.length === 8 && p[0] === "C major" && p[7] === "C major") && paths.some((p) => p.some((k) => k !== "C major")) && paths.filter((p) => p.some((k) => k !== "C major")).length < 150);
+  const am = Array.from({ length: 8 }, (_, t) => (t >= 2 && t <= 4 ? { tonic: "A", mode: "minor" } : { tonic: "C", mode: "major" }));
+  const BK = O.outerBridge({ ...ph1, unitKeys: am, n: 8 });
+  const gs = Array.from({ length: 20 }, (_, i) => BK.draw(wr(i + 1))).filter((x) => x && x.soprano.concat(x.bass).some((v) => v % 12 === 8)).length;
+  const g0 = Array.from({ length: 20 }, (_, i) => O.outerBridge({ ...ph1, n: 8 }).draw(wr(i + 1))).filter((x) => x && x.soprano.concat(x.bass).some((v) => v % 12 === 8)).length;
+  is("a bridge through A minor (vi of C) tonicizes it: its leading tone G♯ in the soprano or the bass (a quarter of 20 draws or more; never without the keys)", gs >= 5 && g0 === 0);
+  const minorLine = (x, k) => x.slice(1).every((v, t) => { const a = ((x[t] - k) % 12 + 12) % 12, b = ((v - k) % 12 + 12) % 12, d = v - x[t];
+    return !(d > 0 && d <= 2 && [8, 9].includes(a) && [10, 11].includes(b) && !(a === 9 && b === 11)) && !(d < 0 && d >= -2 && [10, 11].includes(a) && [8, 9].includes(b) && !(a === 10 && b === 8)); });
+  const am2 = stats(ph2, []);
+  is("minor's turns as Bach's: ⑥–⑦ up raised both, ⑦–⑥ down natural both (A minor, 20 draws)", am2.xs.every((x) => minorLine(x.soprano, 9) && minorLine(x.bass, 9)));
+  const bk = O.bridgesFor(ph3, { count: 2, r: wr(3), only: "all" });
+  is("bridgesFor writes each bridge's keys, one a unit, as the corpus writes them (\"A minor\")", bk.length === 2 && bk.every((b) => b.keys.length === 8 && b.keys.every((k) => /^[A-G][#b]? (major|minor)$/.test(k))));
+  notes.push(`keys: ${paths.filter((p) => p.some((k) => k !== "C major")).length} of 200 paths leave C major · through A minor, G♯ in ${gs} of 20 draws · e.g. ${paths.find((p) => p.some((k) => k !== "C major")).join(", ")}`);
+
   // ─── smooth: what a leap costs (leapCost) ───
   const meanInterval = (ms) => { let s2 = 0, n = 0; for (const m of ms) { const v = B.voiceOver({ bass: m.bass, melody: m.melody, cadence: m.cadence }, { tonic: "C" }); const u = m.melody.split(" ").map((x) => v.F.midiOf(v.code(x))); for (let t = 1; t < u.length; t++) { s2 += Math.abs(u[t] - u[t - 1]); n++; } } return s2 / n; };
   const sm = Array.from({ length: 12 }, (_, i) => B.morphPhrases(A, Bp, { tonic: "C" }, { r: rng(1 + i), economy: 3, functional: 6, smooth: 2, head: 3, tail: 4 })).filter(Boolean);
