@@ -157,7 +157,7 @@ export function overBassWorld(K, B, o = {}) {
     const q = cls === 0 ? (s === 0 ? "perfect" : "dissonant") : cls === 4 ? (s === 7 ? "perfect" : "dissonant")
             : cls === 2 ? (s === 3 || s === 4 ? "imperfect" : "dissonant") : cls === 5 ? (s === 8 || s === 9 ? "imperfect" : "dissonant") : "dissonant";
     const tri = s === 6 ? (cls === 3 ? "A4" : cls === 4 ? "d5" : null) : null;
-    return { steps, cls, q, tri };
+    return { steps, cls, q, tri, semis: s };
   }
   const consonant = (v) => v.q !== "dissonant";
   function bassPassing(t) {
@@ -199,7 +199,8 @@ export const RULES = {
 
   /** vertical · above the bass, not on its note but at the end (unison: "any", anywhere: Fux's), not too far from it. */
   "from-bass": (w, { spacing = 16, unison = "end" } = {}) => ({ id: "from-bass", lookback: 0,
-    check: ({ t, v }) => (v.steps < 0 ? "below the bass" : v.steps === 0 && t < w.n - 1 && unison !== "any" ? "the unison with the bass (only at the end)" : v.steps > spacing ? "too far from the bass" : null) }),
+    // (a unison a semitone under the bass — the bass's letter, lowered — is under it: D over D♯)
+    check: ({ t, v }) => (v.steps < 0 || (v.steps === 0 && v.semis > 6) ? "below the bass" : v.steps === 0 && t < w.n - 1 && unison !== "any" ? "the unison with the bass (only at the end)" : v.steps > spacing ? "too far from the bass" : null) }),
 
   /** vertical · the figures asked over the bass (one of them). */
   figures: (w, { figured = true } = {}) => ({ id: "figures", lookback: 0,
@@ -1077,7 +1078,7 @@ Object.assign(STYLES, {
   // note — the tenor and the bass, the alto and the tenor… —, a doubling: what binds a doubled note binds it, the
   // parallels and the doublings (BWV 269's first phrase: the tenor on the bass's G)
   // (the functions read in each unit's key, the passing chords let pass, and as a cost, not a refusal: 1.3.0)
-  "bach-4": { style: "bach-4", version: "1.3.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]] },
+  "bach-4": { style: "bach-4", version: "1.3.1", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]] },
     between: [["order", { within: 7, unison: true }], ["functions", false]],
     softBetween: [["functions", { local: true, passing: true }]], weights: { functions: 2 },
     // (the voices' ranges as Bach's in the chorales, MIDI: the same in every key)
