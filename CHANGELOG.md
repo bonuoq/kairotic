@@ -10,6 +10,19 @@
   again, each form takes the box it made with the same class, so a number changed is one text, a box put in the only
   new one, a box taken out deleted. At the top level a command or Clojure function is code; inside a chain every list
   is a box. The Live view's example is written so; the whole tab can be too (`run-form`, `forms-code?`).
+- **The blind test's bridges between two of Bach's chords, their inner voices moving as his** (`@kairotic/rules`
+  0.21.0, `bach-4` 1.5.0; `@kairotic/cac` 0.16.9; Study 71). A bridge now begins and ends on Bach's chords whole: the
+  alto and the tenor given there (`fromOuter`'s `inner`, `fourOverBass`'s `given.alto` / `given.tenor`, where a unit has
+  a note) — before, only 31 of 200 began on his chord. `bach-4`'s voices weigh each move by how often Bach's alto and
+  tenor make it (`bach-motion`, weight 2: −log of its frequency in the chorales, `BACH_INNER_MOTION`), so the voice that
+  takes each chord tone is the one whose line it suits: in the deck the inner voices keep a note, step, leap a 3rd, a
+  4th or wider 30.9 / 40.9 / 13.9 / 9.3 / 4.9% of the time, Bach's 30.0 / 40.5 / 18.2 / 7.6 / 3.7% (before: 20 / 41 /
+  14 / 12 / 13). And a **voice exchange** costs less (`voice-exchange`, weight 2, `bach-4` 1.5.0): an inner voice and
+  another trading their notes in contrary motion, over one unit (a 3rd or 6th each way) or two (a passing note
+  between) — the chord kept and each line moving where one voice alone would leap, a shortcut of four-part writing;
+  the bridges do it about as often as Bach (with an inner voice, 9 chords in 100). A kept note is struck again, as Bach mostly does, unless it is held into a dissonance. The deck drawn
+  again: `bach-4` fills 55–58% of the bridges tried. Bach's phrases judged as before (504).
+
 - **Study 72 · reveal** (discussion #407): a live-coding set is only code while it is played; at the end it reveals
   its patch, drawn by its flow (`layout.mjs`: a layered drawing after Sugiyama — rows after what feeds them, the order
   uncrossing the wires, each box under what feeds it; the app's example work in seven rows with no crossing), and its
