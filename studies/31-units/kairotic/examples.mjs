@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 31 · examples, written as Faust code (what a faust~ box keeps); each opens as a patch.
 const I = 'import("stdfaust.lib");\n\n';
 

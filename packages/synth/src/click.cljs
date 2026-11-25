@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; click~ · a metronome's click: a short tick each bang, louder and higher on the accents
 ;; Part of @kairotic/synth. Written against the Kairotic API (api/…).
 ;; To play along with a clock you have to hear it: a metro, the room's pulse or a necklace into click~, and

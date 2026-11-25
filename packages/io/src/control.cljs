@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; control · one control of a controller, out of the events of midiin, gamepad, motion, oscin or serial
 ;; Part of @kairotic/io. Written against the Kairotic API (api/…). Discussion #135.
 (let [num (fn [s] (let [n (js/parseFloat s)] (when (js/isFinite n) n)))

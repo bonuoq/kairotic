@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; space~ · a sound placed around the listener (binaural)
 ;; Part of @kairotic/spatial. Written against the Kairotic API (api/…).
 (let [pos-of (fn [v] (when (and (sequential? v) (= 2 (count v)) (every? number? v))

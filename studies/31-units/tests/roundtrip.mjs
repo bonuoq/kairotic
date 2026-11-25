@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 31 · round trip: Faust code → boxes → code, compiled and run, sample by sample.
 //
 //   npm i @grame/faustwasm

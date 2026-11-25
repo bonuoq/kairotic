@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; fetch · what is at a URL (JSON, text or EDN), brought in as a task
 ;; Part of @kairotic/data. Written against the Kairotic API (api/…).
 ;; Its logic never touches the network: a URL asks for the task :get, the engine runs it (api/http-get)

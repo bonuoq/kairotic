@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import("stdfaust.lib");
 pitch = hslider("pitch", 60, 36, 84, 0.01);
 wave = hslider("wave", 0.5, 0, 1, 0.001);

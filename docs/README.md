@@ -32,11 +32,17 @@
 
 - [Writing a component](writing-a-component.md) — the component contract, sections, views,
   abstractions, help, sharing.
-- [Packages](../packages/README.md) and [published components](../components/README.md).
+- [Packages](../packages/README.md).
 - [Claude's examples](../examples/README.md) — the catalog Claude reads when it writes.
 - [The relay](../relay/README.md) — a GUN relay for rooms.
 
+## Contributing
+
+- [Contributing](../CONTRIBUTING.md) — setting up, the tests, the conventions, the DCO.
+- [How Kairotic is built](how-kairotic-is-built.md) — human direction, Claude Code as the assistant, your own Claude.
+- [Roadmap](../ROADMAP.md) — what comes after 0.3.0.
+
 ## History
 
-- [The studies](studies.md) — the 23 studies of the prototype, and what each one tested.
+- [The studies](studies.md) — every study and what it tested (1–23, the prototype, only as a record).
 - [Changelog](../CHANGELOG.md).

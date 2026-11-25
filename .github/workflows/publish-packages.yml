@@ -49,6 +49,14 @@ jobs:
         run: node packages/build.mjs "$NAME"
       - if: env.NAME == 'app'
         run: node site/build.mjs
+      # Every package carries the project's licence and THIRD_PARTY.md (the third-party code Kairotic adapts or
+      # bundles, with its notices; LICENSES/ holds the texts it points to): npm keeps LICENSE by itself, the others
+      # are added to a "files" list where the package has one. tests/licences.mjs checks this step is here.
+      - name: The licence and the third-party notices
+        run: |
+          cp LICENSE THIRD_PARTY.md "$OUT"/
+          cp -r LICENSES "$OUT"/
+          node -e 'const f=process.argv[1], p=JSON.parse(require("fs").readFileSync(f)); if (p.files) { for (const x of ["THIRD_PARTY.md","LICENSES"]) if (!p.files.includes(x)) p.files.push(x); require("fs").writeFileSync(f, JSON.stringify(p, null, 2) + "\n"); }' "$OUT/package.json"
       # A version already on npm (a first version published by hand, before its trusted publisher could be set)
       # is not published again — npm would refuse it —: the run ends green, with a notice.
       - name: Is this version already on npm

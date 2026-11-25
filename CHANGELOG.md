@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Opening the repository to the community.** CONTRIBUTING (setting up, the tests, the conventions, the DCO
+  with a check on every pull request), a Code of Conduct (Contributor Covenant 2.1), SECURITY, a ROADMAP after
+  0.3.0, *How Kairotic is built*, issue, pull request and Discussions templates; the README lists every official
+  package and every dependency with its version and licence. Every source file carries its SPDX header, and
+  `tests/spdx.mjs` fails on one that does not; `tests/licences.mjs` keeps the chorales corpus (CC BY-NC-SA) out
+  of the app, the packages and the relay. Code by others keeps its own permissive licence (**THIRD_PARTY.md**, with
+  the notices; `LICENSES/`): Basic Pitch's port in Study 73 (Apache-2.0), stftPitchShift compiled into `shift~`
+  (the module's header now `MPL-2.0 AND MIT`), the editor bundle; a header other than MPL-2.0 must be listed there,
+  and a package that publishes such code declares its licence (`@kairotic/spectral` 0.1.3 `MPL-2.0 AND MIT`,
+  `@kairotic/app` with the editor's) — both checked; every package is published with `LICENSE` and THIRD_PARTY.md. The DCO check asks for a person as every commit's author, an AI
+  assistant credited with `Co-Authored-By`.
+- **Studies 1–23 and the deprecated packages removed.** The prototype's studies (1–8 in Spanish, 9–23 on
+  `kairotic-components`) would not run today: they stay as a record in [the studies](docs/studies.md), and their
+  code in the repository's history. `componentes/` and `components/` (`kairotic-componentes`,
+  `kairotic-components`) are gone too, and both packages are unpublished from npm.
 - **The bridges' dissonances as rare as Bach's, his melodic minor's raised ⑥ as seldom** (`@kairotic/rules` 0.22.0,
   `bach-4` 1.6.0; `@kairotic/cac` 0.16.10; Study 71). Heard by @bonuoq: dissonances that did not seem justified. The
   inner voices dissonated against the bass twice as often as Bach's, with seven times his semitone clashes (a ♭9, a

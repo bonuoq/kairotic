@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; features~ · descriptors of a sound, every few milliseconds
 ;; Part of @kairotic/analysis. Written against the Kairotic API (api/…). The descriptors are Meyda's
 ;; (MIT, meyda.js.org), loaded from jsDelivr the first time one is needed.

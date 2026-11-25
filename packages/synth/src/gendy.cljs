@@ -1,6 +1,8 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; gendy~ · a dynamic stochastic oscillator, after Iannis Xenakis's GENDY
 ;; Part of @kairotic/synth. Written against the Kairotic API (api/…), with its AudioWorklet inside.
-;; After GendyJS by Andrew Bernstein (https://github.com/abbernie/gendy, MIT License).
+;; Its parameters are named as in GendyJS by Andrew Bernstein (https://github.com/abbernie/gendy, MIT), which it
+;; was first compared with; the worklet is Kairotic's own (no code of GendyJS), written from Xenakis's GENDY.
 (let [;; ── the worklet ──
       ;; A waveform of n breakpoints. Each breakpoint keeps its own amplitude and its own duration, and
       ;; both take a random walk between mirror barriers every time the wave passes through it: the

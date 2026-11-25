@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 (in-ns 'user)
 ;; ───────────────────────── talking in a room (discussion #135, Studies 34 and 36) ─────────────────────────
 ;; In a shared room, the pages of the people in it find each other through the relay's rooms (/signal,

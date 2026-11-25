@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
 """Generate the Kairotic brand SVGs, letters outlined from IBM Plex Mono Medium.
 
 Usage: python3 brand/generate.py path/to/IBMPlexMono-Medium.ttf brand   (needs fonttools)

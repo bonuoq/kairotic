@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; scale · a number from one range to another, straight or logarithmic, smoothed if asked
 ;; Part of @kairotic/controls. Written against the Kairotic API (api/…). Discussion #135.
 (let [lin (fn [v a b] (if (== a b) 0 (/ (- v a) (- b a))))

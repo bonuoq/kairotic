@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; player · plays a pattern: by its own clock, one step at a time, or at a position in beats
 ;; Part of @kairotic/patterns. Written against the Kairotic API (api/…).
 ;; Like a reader: the pattern comes in on the right (as the buffer does) and time on the left, so one

@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; spectrum~ · the spectrum of a sound, drawn in the patch
 ;; Part of @kairotic/analysis. Written against the Kairotic API (api/…). The spectrum is Meyda's (MIT,
 ;; meyda.js.org), loaded from jsDelivr the first time one is needed.

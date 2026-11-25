@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Kairotic Pages · boot
 // Runs after gun.js, sea.js and the adapter, and before the ClojureScript: it chooses the relays and
 // installs the GUN backend as window.kairoticBackend, which the page uses wherever claude.ai is not

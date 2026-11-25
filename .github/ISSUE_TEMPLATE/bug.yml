@@ -1,0 +1,46 @@
+name: Bug
+description: Something does not do what the documentation says it does.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting it. Issues are for bugs; ideas and questions go to
+        [Discussions](https://github.com/bonuoq/kairotic/discussions). A security problem? Report it
+        privately ([SECURITY.md](https://github.com/bonuoq/kairotic/blob/main/SECURITY.md)).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      description: |
+        The smallest patch or code that shows it. Paste the work's EDN or the REPL code if you can
+        (Share → Copy, or the code tab), or a room link.
+      render: clojure
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Kairotic Pages, the claude.ai artifact, a study (which one), a local build…
+      placeholder: Pages, Chrome 131 on macOS
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The app's version (evaluate `version` in the REPL), or the commit, or the package and its version (@kairotic/rhythm 0.8.0).
+  - type: textarea
+    id: console
+    attributes:
+      label: Console
+      description: Any error in the browser's console (it opens with F12 or ⌥⌘I).
+      render: text

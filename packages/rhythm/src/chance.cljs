@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; chance · k onsets among n pulses, drawn with a seed
 ;; Part of @kairotic/rhythm. Written against the Kairotic API (api/…).
 ;; A generator of pulses, as euclid is, with chance instead of evenness: each bang draws another rhythm of k

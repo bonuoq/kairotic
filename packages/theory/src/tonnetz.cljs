@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; tonnetz · triads on the Tonnetz, and the path of the harmony
 ;; Part of @kairotic/theory. Written against the Kairotic API (api/…).
 ;; Pitch classes on a triangular lattice: fifths to the right, major thirds up and to the right, minor

@@ -8,6 +8,11 @@ Los ensayos 1–8 se escribieron en castellano; desde el Ensayo 9 el código y l
 (el [glosario](glossary.md) relaciona los nombres antiguos con los nuevos). Desde la 0.1.0-alpha, la app
 vive en [`app/`](../app) y crece como una sola.
 
+**Los ensayos 1–23, el prototipo, quedan registrados aquí pero ya no están en el repositorio.** Se escribieron
+sobre los paquetes obsoletos `kairotic-componentes` y `kairotic-components` (y los 1–8 en castellano), y hoy no
+funcionarían; su código se retiró con la 0.3.0-alpha. Sigue en la historia del repositorio:
+[`studies/` tal como estaba](https://github.com/bonuoq/kairotic/tree/3ebf2720598aec938849c999f9c0ffe0a78d3804/studies). La tabla sigue diciendo qué probó cada uno.
+
 **Abrir un ensayo.** Kairotic Pages sirve cada ensayo en su carpeta:
 `https://bonuoq.github.io/kairotic/studies/<carpeta>/`, por ejemplo
 [`studies/29-live/`](https://bonuoq.github.io/kairotic/studies/29-live/). Ahí un ensayo puede usar lo que

@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 (in-ns 'user)
 ;; ───────────────────────── learn: move a controller, and it moves a box (discussion #135) ─────────────────────────
 ;; (learn :b5), or Learn with a box selected: the next controller that moves — a MIDI controller or key, a

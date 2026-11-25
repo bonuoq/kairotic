@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 32 · a bank of patches that sound (discussion #114).
 //
 // Study 30 drew patches anywhere in the space, so about one in eleven was nearly silent (a cutoff far below

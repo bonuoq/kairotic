@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; euclid · a Euclidean rhythm, as pulses: k onsets spread as evenly as they can be over n pulses
 ;; Part of @kairotic/rhythm. Written against the Kairotic API (api/…).
 ;; Bjorklund's algorithm (Toussaint, "The Euclidean algorithm generates traditional musical rhythms", 2005):

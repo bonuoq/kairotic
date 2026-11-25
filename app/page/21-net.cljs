@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 (in-ns 'user)
 ;; ───────────────────────── the room's channels and tempo (@kairotic/net, discussion #135) ─────────────────────────
 ;; Boxes of @kairotic/net (share, shared, pulse) reach the room through window.kairoticRoom, so a package

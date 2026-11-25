@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; pbind · a pattern as data: an EDN map of sequences and #pat/… generators
 ;; Part of @kairotic/patterns. Written against the Kairotic API (api/…).
 ;; Its source is EDN, read without evaluating anything: safe in a shared room, like a tree box. What it

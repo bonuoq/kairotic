@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; pulse · the room's beat: one tempo for everyone in the room, the same beat on every page
 ;; Part of @kairotic/net. Written against the Kairotic API (api/…). Discussion #135.
 (let [room (fn [] (.-kairoticRoom js/window))]

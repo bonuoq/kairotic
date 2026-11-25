@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; oscout · Kairotic events and messages as OSC, through a relay's bridge (SuperCollider, Max, Pd, TouchOSC…)
 ;; Part of @kairotic/io. Written against the Kairotic API (api/…). Discussion #135, Study 34 · io.
 (let [;; ── the bridge: one socket per address, shared by every osc box of the page ──

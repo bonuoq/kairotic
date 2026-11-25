@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; vary · again, but different: a rhythm d swaps away, or redrawn below a metrical depth
 ;; Part of @kairotic/rhythm. Written against the Kairotic API (api/…).
 ;; Discussion #207 (redo with variation): "again, but different" with a measured likeness. Two readings of

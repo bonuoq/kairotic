@@ -32,11 +32,17 @@
 
 - [Escribir un componente](writing-a-component.es.md) — el contrato de componentes, secciones, vistas,
   abstracciones, ayuda, compartir.
-- [Paquetes](../packages/README.es.md) y [componentes publicados](../components/README.es.md).
+- [Paquetes](../packages/README.es.md).
 - [Los ejemplos de Claude](../examples/README.md) — el catálogo que Claude lee cuando escribe.
 - [El relay](../relay/README.es.md) — un relay GUN para las salas.
 
+## Contribuir
+
+- [Contribuir](../CONTRIBUTING.es.md) — montar el entorno, las pruebas, las convenciones, el DCO.
+- [Cómo se construye Kairotic](how-kairotic-is-built.es.md) — dirección humana, Claude Code como asistente, tu propio Claude.
+- [Hoja de ruta](../ROADMAP.es.md) — lo que viene después de la 0.3.0.
+
 ## Historia
 
-- [Los ensayos](studies.es.md) — los 23 ensayos del prototipo y qué probó cada uno.
+- [Los ensayos](studies.es.md) — todos los ensayos y qué probó cada uno (1–23, el prototipo, solo como registro).
 - [Cambios](../CHANGELOG.md).

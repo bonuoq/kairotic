@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 30 · the bank is made here, away from the page, so the page keeps playing while it grows.
 // A classic worker: Meyda's web build (the one features~ loads) puts itself on `self`; the study's
 // modules come in with import().

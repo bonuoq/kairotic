@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 35 · a sound → the values of a faust~'s sliders that sound closest to it → a recipe.
 //
 // Nothing in it is about one synth: the code's own sliders are the parameters (their range, and a log

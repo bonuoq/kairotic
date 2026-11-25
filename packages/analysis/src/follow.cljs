@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; follow · where a performer is in a tree, from what pitch~ and onset~ hear (discussion #204)
 ;; Part of @kairotic/analysis. Written against the Kairotic API (api/…). Pure logic: no audio of its own.
 (let [;; ── a note heard: where the pitch settles ──

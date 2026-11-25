@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; realize~ · descriptors written → the sliders of a faust~ that sound like them (discussion #114, Study 37)
 ;; Part of @kairotic/analysis. Written against the Kairotic API (api/…).
 ;; What arrives is a frame of a score: a loudness, a brightness (the spectral centroid, Hz), a noisiness (the

@@ -1,0 +1,27 @@
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share something you made with Kairotic: a work, a patch, a component, a recording, a performance.
+        It stays yours: say under which licence others may use it, if any.
+  - type: textarea
+    id: what
+    attributes:
+      label: What it is
+      description: A few words about it, and how it was made (with Claude, by hand, in a room with others…).
+    validations:
+      required: true
+  - type: textarea
+    id: work
+    attributes:
+      label: The work
+      description: A link (a room, a share link), the work's EDN, or the prompts that made it. Screenshots, audio or video are welcome.
+    validations:
+      required: true
+  - type: input
+    id: license
+    attributes:
+      label: Licence (optional)
+      description: If others may reuse it, under what terms (an SPDX id such as CC-BY-4.0, or "all rights reserved").

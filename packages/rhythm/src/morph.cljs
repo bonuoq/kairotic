@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; morph · from one rhythm to another, swap by swap
 ;; Part of @kairotic/rhythm. Written against the Kairotic API (api/…).
 ;; Toussaint's swap distance does not only measure how far two rhythms are: it gives the way, the swaps

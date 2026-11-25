@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 32 · the same bank of patches that sound, made in Node when it has to be large.
 //
 //   npm i meyda@5.6.3

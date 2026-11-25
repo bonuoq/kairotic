@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; cac · composition assisted by computer, on a tree: operations that follow rules and look ahead (discussion #323)
 ;; Part of @kairotic/cac. Written against the Kairotic API (api/…).
 ;; mt's operations change a tree mechanically, and do not question it; cac's take a tree as what is given and add to

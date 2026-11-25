@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; comes · counterpoint live: you play the dux and the comes answers (discussions #172, #192 and #248)
 ;; Part of @kairotic/cac. Written against the Kairotic API (api/…).
 ;; One box for the canon and its mirrors, as Study 50 found them: the comes is a reader of the dux at a speed — 1 a

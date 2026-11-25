@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; shift~ · pitch shifting in real time, one interval or a whole chord, with the formants kept
 ;; Part of @kairotic/spectral. Written against the Kairotic API (api/…), with its AudioWorklet inside.
 ;; The shifting is stftPitchShift 2.0 by Jürgen Hock (https://github.com/jurihock/stftPitchShift, MIT),
@@ -5,7 +6,7 @@
 ;; not weigh on the history of a work: it is the module dist/shift.mjs of this same version of the
 ;; package, loaded the first time a shift~ sounds, and handed to the worklet as bytes.
 (let [;; ── the WebAssembly: this version of the package on npm, or the page's own copy ──
-      origins ["npm:@kairotic/spectral@0.1.2/dist/shift.mjs" "kairotic/packages/spectral/shift.mjs"]
+      origins ["npm:@kairotic/spectral@0.1.3/dist/shift.mjs" "kairotic/packages/spectral/shift.mjs"]
       frame 1024
       hop 128
 

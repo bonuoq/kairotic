@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 32 · a small network that learns the way back: descriptors → a patch (discussion #114).
 //
 // Plain JavaScript, no library: the same code trains in a worker, in Node and runs in the page, and a

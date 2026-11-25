@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; synth~ · a polyphonic triangle-wave synthesizer, one voice per id
 ;; Part of @kairotic/synth. Written against the Kairotic API (api/…).
 (let [;; each id is a voice: a new id attacks (at the level [:gain v] set, 0.5 by default), one that continues

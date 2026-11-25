@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 // Study 30 · the synth whose sounds the dataset is made of.
 //
 // A small subtractive voice written in plain JavaScript, sample by sample, so that the same parameters give

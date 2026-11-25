@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: An idea or a proposal
+    url: https://github.com/bonuoq/kairotic/discussions/new?category=ideas
+    about: Ideas are discussed in Discussions before they are built.
+  - name: A question
+    url: https://github.com/bonuoq/kairotic/discussions/new?category=q-a
+    about: How something works, how to do something.
+  - name: Something you made
+    url: https://github.com/bonuoq/kairotic/discussions/new?category=gallery
+    about: Share a work, a patch or a component in the Gallery.
+  - name: A security problem
+    url: https://github.com/bonuoq/kairotic/security/advisories/new
+    about: Report it privately, not as an issue (see SECURITY.md).

@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 (box :b1 "knob 0.02 2 0.25 log rate" 20 20)
 (box :b2 "knob 0.02 1 0.15 log decay" 120 20)
 (box :b3 "faust~" 20 100)

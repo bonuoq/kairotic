@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; midiout · Kairotic events and notes to a MIDI port, plain or MPE (microtones without rounding)
 ;; Part of @kairotic/io. Written against the Kairotic API (api/…). Discussion #135, Study 34 · io.
 (let [access (fn []

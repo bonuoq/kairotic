@@ -1,3 +1,4 @@
+;; SPDX-License-Identifier: MPL-2.0
 ;; onset~ · the beginnings of sounds: a note, a stroke, a syllable
 ;; Part of @kairotic/analysis. Written against the Kairotic API (api/…). The spectrum is Meyda's (MIT,
 ;; meyda.js.org), loaded from jsDelivr the first time one is needed.
