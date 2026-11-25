@@ -1125,17 +1125,24 @@
       (when (> (count ps) 12) (repl-print! "out" (esc (str "print: … and " (- (count ps) 12) " more")))))
     (js/requestAnimationFrame (fn [_] (live!)))))
 
+(declare play-data!)
 (defn play
-  "Starts the engine and fires the loadbang boxes. Everything else acts when messages reach it."
-  []
-  (risky! "▶ play")
-  (let [was-on (eng/running?)]
-    ;; the line on screen is the one that plays from now on (#117, decision 6)
-    (swap! line-state assoc :playing (active-line))
-    (eng/start! engine-patch true)
-    (transport-info!)
-    (when-not was-on (js/requestAnimationFrame (fn [_] (live!))))
-    :running))
+  "Starts the engine and fires the loadbang boxes. Everything else acts when messages reach it.
+   (play x …): puts each patch written as data in the patch first — a chain, (=> …), or voices (discussion #407) —
+   and starts the engine if it is not running: what plays goes on playing. Returns what the last one made."
+  ([]
+   (risky! "▶ play")
+   (let [was-on (eng/running?)]
+     ;; the line on screen is the one that plays from now on (#117, decision 6)
+     (swap! line-state assoc :playing (active-line))
+     (eng/start! engine-patch true)
+     (transport-info!)
+     (when-not was-on (js/requestAnimationFrame (fn [_] (live!))))
+     :running))
+  ([x & more]
+   (let [r (reduce (fn [_ v] (play-data! v)) nil (cons x more))]
+     (when-not (eng/running?) (play))
+     r)))
 
 (defn stop
   "Stops the engine: silence, and ramps, metros and counters go back to their initial state."
