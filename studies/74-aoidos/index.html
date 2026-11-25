@@ -89,9 +89,10 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
   <label>metre <select id="metre">
     <option value="hexameter">dactylic hexameter</option><option value="elegiac">elegiac couplet</option>
     <option value="pentameter">elegiac pentameter</option><option value="iambic-trimeter">iambic trimeter</option>
-    <option value="iambic-dimeter">iambic dimeter</option><option value="free">free</option></select></label>
+    <option value="iambic-dimeter">iambic dimeter</option><option value="free">free</option><option value="seikilos">Seikilos's (12 chronoi a line)</option></select></label>
   <label>final <select id="tonic"><option>C</option><option>D</option><option selected>E</option><option>F</option><option>G</option><option>A</option><option>B</option></select></label>
   <select id="mode" aria-label="the mode"><option value="dorian" selected>dorian</option><option value="phrygian">phrygian</option><option value="lydian">lydian</option><option value="mixolydian">mixolydian</option><option value="aeolian">aeolian</option><option value="ionian">ionian</option></select>
+  <label>notes a syllable <select id="melisma"><option value="1">1</option><option value="2">up to 2</option><option value="3" selected>up to 3</option></select></label>
   <label><input type="checkbox" id="strict"> strict accent</label>
   <span class="tag">sung</span>
   <select id="form" aria-label="alone or in canon"><option value="melody" selected>alone</option><option value="canon">in canon</option></select>
@@ -102,6 +103,7 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
   </span>
   <label>temperature <input type="number" id="temp" min="0" max="3" step="0.1" value="0.5"></label>
   <button class="act primary" id="engine">the engine sings</button><button class="act" id="uniform">any valid one</button>
+  <button class="act" id="stele" hidden title="the melody of the stele (Pöhlmann–West, DAGM 23), an octave lower">the stele's melody</button>
   <button class="act" id="play">▶ play</button><button class="act" id="export">export MEI</button>
   <span id="status">loading…</span>
 </div>
@@ -129,19 +131,23 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
   the accent settle some, the metre the rest), long by position before two consonants, and a long vowel before a vowel
   shortened (epic correption) — and their <b>accent</b>. The line is <b>scanned</b> in its metre (the hexameter's
   dactyls and spondees, with synizesis where the line needs it: Πηληϊάδεω), and the scansion is the <b>time</b>: a short
-  syllable a beat, a long one two, held over the beat (Study 41's tie), the line's last syllable to the end of its foot.
+  syllable a beat, a long one two, held over the beat (Study 41's tie), the line's last syllable to the end of its foot
+  — in <b>Seikilos's metre</b> every line twelve chronoi, the last syllable and then the longs from the end lengthened,
+  which is the stele's rhythm syllable by syllable. The melody is written <b>a beat at a time</b>: a syllable may be
+  sung on up to three notes (a <b>melisma</b>, by step or a 3rd, as Seikilos sings φαί on three).
   The melody is a voice of <code>@kairotic/rules</code> (<code>solve()</code>, counted exactly): its <b>hard rules</b>
   are every line's (the mode's ambitus, the start, Fux's melodic intervals, a leap turned, the end on the final by
   step), its <b>costs</b> the accent's — Greek's accent was a pitch, and the music that survives follows it: the voice
-  <b>rises to an acute</b>, the accented syllable is the <b>word's highest</b>, a <b>circumflex falls</b> on its long
-  syllable (two notes), <b>after the accent</b> the voice falls, after a grave it does not fall until the next accent —
+  <b>rises to an acute</b>, the accented syllable holds the <b>word's highest</b> note, a <b>circumflex falls</b>
+  within its syllable (on one note, half the cost), <b>after the accent</b> the voice falls, after a grave it does not fall until the next accent —
   weighed with <code>soft.mjs</code>'s melodic costs, the same as every engine's. <b>Strict</b> makes the peak and the
   circumflex hard rules. <b>Imitable?</b> tries the melody as the dux of <code>cac imitation</code> (▶ hears it with the comes the engine chose): a melody sung alone
   almost never has a strict canon, but often imitation near it. <b>In canon</b> the dux is written together with its
   comes (canon.mjs's rules, <code>canon-2</code>): the singer chooses among the futuribles of the comes, as #192 first
   thought it — the dux sings the text, a new syllable a new note, the comes answers a foot later. Odyssey 1.1 in strict
-  canon at the octave below has 4285 such canons; Seikilos's song, 6522. Not yet: Seikilos's own melody as a test of the
-  accent rules, the poem's text under the notes in the MEI, the harmonization as a chorale.</p></section>
+  canon at the octave below has 4285 such canons; Seikilos's song, 6522. <b>The stele's melody</b> (Pöhlmann–West, DAGM 23) keeps every hard rule of the engine: it is one of the melodies
+  aoidos may sing; the engine would choose its note at 21 of its 48 beats. Not yet: the poem's text under the notes in
+  the MEI, the harmonization as a chorale.</p></section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
@@ -150,8 +156,8 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
 // is read first, as window.kairoticAoidos ({A: aoidos.mjs, X: export.mjs}).
 window.addEventListener("DOMContentLoaded", function () {
   function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
-  Promise.all([import("./kairotic/aoidos.mjs"), import("./kairotic/export.mjs")]).then(function (ms) {
-    window.kairoticAoidos = { A: { ...ms[0] }, X: { ...ms[1] } };
+  Promise.all([import("./kairotic/aoidos.mjs"), import("./kairotic/export.mjs"), import("./kairotic/seikilos.mjs")]).then(function (ms) {
+    window.kairoticAoidos = { A: { ...ms[0] }, X: { ...ms[1] }, K: { ...ms[2] } };
     try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
   }).catch(show);
 });
@@ -183,7 +189,8 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn spec []
   (let [form (val-of "form")]
     (clj->js (cond-> {:text (val-of "text") :metre (metre-of (val-of "metre"))
-                      :key {:tonic (val-of "tonic") :mode (val-of "mode")} :strict (.-checked ($ "strict"))}
+                      :key {:tonic (val-of "tonic") :mode (val-of "mode")} :strict (.-checked ($ "strict"))
+                      :melisma (js/Number (val-of "melisma"))}
                (= form "canon") (assoc :k (js/Number (val-of "k")) :d (js/Number (val-of "d")) :imitation (js/Number (val-of "imitation")))))))
 
 (defn canon? [] (= (val-of "form") "canon"))
@@ -206,7 +213,7 @@ window.addEventListener("DOMContentLoaded", function () {
         A (.-A made)]
     (set! (.-innerHTML ($ "counts"))
           (str "<dt>" (if (canon?) "canons" "melodies") "</dt><dd id=\"total\">" (fmt count) "</dd>"
-               "<dt>notes</dt><dd>" (.-length (.-notes A)) " (" (.. A -plan -beats) " beats)</dd>"
+               "<dt>syllables</dt><dd>" (.-length (.-syllables A)) " (" (.. A -plan -beats) " beats)</dd>"
                (when other (str "<dt>" (if (.-strict A) "free" "strict") "</dt><dd>" (fmt other) "</dd>"))
                "<dt>counted in</dt><dd>" ms " ms</dd>"))))
 
@@ -225,7 +232,7 @@ window.addEventListener("DOMContentLoaded", function () {
              ms (js/Math.round (- (js/performance.now) t0))
              other (when-not (canon?)
                      (let [o (.aoidos AO (doto sp (aset "strict" (not (.-strict sp)))))] (.countWithin o 1500)))]
-         (swap! S assoc :made made :count c :ms ms :other other :sung nil)
+         (swap! S assoc :made made :count c :ms ms :other other :sung nil :stele false)
          (scansion! made)
          (counts!)
          (set! (.-innerHTML ($ "exam")) "")
@@ -247,25 +254,24 @@ window.addEventListener("DOMContentLoaded", function () {
                  (= how :uniform) (.sample made)
                  :else (.engine made #js {:temp temp}))
                (catch :default _ nil))]
-    (swap! S assoc :sung sung)
+    (swap! S assoc :sung sung :stele false)
     (status! (if sung "sung" "nothing found in time"))
     (render!)))
 
-(defn dux-notes
-  "The melody a code a note: alone, what solve() wrote; in canon, the dux's notes struck."
-  [made sung]
-  (if (canon?) (.melody made (.-dux sung)) sung))
+;; the melody a code a beat (alone what the engine wrote, in canon the dux), and its notes [{code at beats syl first}]
+(defn beats-of [sung] (if (canon?) (.-dux sung) sung))
+(defn notes-of [A sung] (vec (.notesOf A (beats-of sung))))
 
 ;; ───── drawing: a beat a column, a degree a row ─────
 (defn render! []
   (let [{:keys [made sung]} @S
         A (.-A made)
-        N (vec (.-notes A))
+        Y (vec (.-syllables A))
         beats (.. A -plan -beats)
         deg (fn [c] (.deg A c))
-        U (when sung (vec (dux-notes made sung)))
+        NS (when sung (notes-of A sung))
         C (when (and sung (canon?)) (vec (.-comes sung)))
-        degs (concat (when U (map deg U)) (when C (keep #(when (some? %) (deg %)) C)) [-1 8])
+        degs (concat (when NS (map #(deg (.-code %)) NS)) (when C (keep #(when (some? %) (deg %)) C)) [-1 8])
         lo (apply min degs) hi (apply max degs)
         bw (max 14 (min 34 (/ 900 (max 1 beats))))
         X0 46 top 26 rowh 13
@@ -279,22 +285,22 @@ window.addEventListener("DOMContentLoaded", function () {
                     (when (and label (> (* bw len) 24)) (str "<text class=\"nname\" x=\"" (+ (x b) 3) "\" y=\"" (y d) "\">" (esc label) "</text>"))))
         svg (str
              ;; the strong beats, the beats, the lines' ends
-             (str/join (for [n N :when (.-strong n)] (str "<rect class=\"strong\" x=\"" (x (.-at n)) "\" y=\"" (- top 10) "\" width=\"" (* bw 2) "\" height=\"" (+ (- bot top) 20) "\"/>")))
+             (str/join (for [n Y :when (.-strong n)] (str "<rect class=\"strong\" x=\"" (x (.-at n)) "\" y=\"" (- top 10) "\" width=\"" (* bw 2) "\" height=\"" (+ (- bot top) 20) "\"/>")))
              (str/join (for [b (range (inc beats))] (str "<line class=\"beat\" x1=\"" (x b) "\" x2=\"" (x b) "\" y1=\"" (- top 10) "\" y2=\"" (+ bot 10) "\"/>")))
-             (str/join (for [n N :when (.-lineEnd n)] (let [e (+ (.-at n) (.-beats n))] (str "<line class=\"lineend\" x1=\"" (x e) "\" x2=\"" (x e) "\" y1=\"" (- top 14) "\" y2=\"" (+ bot 56) "\"/>"))))
+             (str/join (for [n Y :when (.-lineEnd n)] (let [e (+ (.-at n) (.-beats n))] (str "<line class=\"lineend\" x1=\"" (x e) "\" x2=\"" (x e) "\" y1=\"" (- top 14) "\" y2=\"" (+ bot 56) "\"/>"))))
              ;; the final and its octave
              (str/join (for [d [0 7 -7] :when (<= lo d hi)] (str "<line class=\"final\" x1=\"" X0 "\" x2=\"" (x beats) "\" y1=\"" (y d) "\" y2=\"" (y d) "\"/><text class=\"lab\" x=\"4\" y=\"" (+ (y d) 3) "\">" (esc (.name A (.at (.-S A) d))) "</text>")))
-             ;; the comes, then the dux
+             ;; the comes, then the dux (a melisma: several notes over one syllable)
              (when C
                (str/join (for [[b c] (map-indexed vector C) :when (and (some? c) (or (zero? b) (not= c (nth C (dec b)))))]
                            (let [len (count (take-while #(= % c) (drop b C)))] (rect "comes" b len (deg c) nil)))))
-             (when U
-               (str/join (for [[i n] (map-indexed vector N)] (rect "dux" (.-at n) (.-beats n) (deg (nth U i)) (.name A (nth U i))))))
+             (when NS
+               (str/join (for [n NS] (rect "dux" (.-at n) (.-beats n) (deg (.-code n)) (.name A (.-code n))))))
              ;; the syllables, their accent, their quantity
-             (str/join (for [n N :when (seq (.-text n))]
+             (str/join (for [n Y]
                          (let [acc (.-accent n) xb (x (.-at n))]
                            (str "<text class=\"syl" (when (#{"acute" "circumflex"} acc) " acc") "\" x=\"" (+ xb 2) "\" y=\"" (+ bot 30) "\">" (esc (.-text n)) "</text>"
-                                "<text class=\"qty\" x=\"" (+ xb (/ (* bw (if (= (.-q n) "long") 2 1)) 2)) "\" y=\"" (+ bot 48) "\">" (if (= (.-q n) "long") "–" "⏑") "</text>"))))
+                                "<text class=\"qty\" x=\"" (+ xb (/ (* bw (.-beats n)) 2)) "\" y=\"" (+ bot 48) "\">" (if (= (.-q n) "long") "–" "⏑") "</text>"))))
              (str "<text class=\"lab\" x=\"4\" y=\"" (+ bot 30) "\">text</text><text class=\"lab\" x=\"4\" y=\"" (+ bot 48) "\">metre</text>"))]
     (doto ($ "sheet") (.setAttribute "width" W) (.setAttribute "height" H) (.setAttribute "viewBox" (str "0 0 " W " " H)))
     (set! (.-innerHTML ($ "sheet")) svg)
@@ -302,16 +308,21 @@ window.addEventListener("DOMContentLoaded", function () {
     (set! (.-disabled ($ "play")) (nil? sung))
     (set! (.-disabled ($ "export")) (nil? sung))
     (set! (.-disabled ($ "examine")) (or (nil? sung) (canon?)))
+    (set! (.-hidden ($ "stele")) (not (and (not (canon?)) (= (val-of "metre") "seikilos") (= (val-of "tonic") "E") (= (val-of "mode") "dorian")
+                                           (= (str/replace (val-of "text") #"\s+" " ") (str/replace (.-TEXT (.-K K)) #"\s+" " ")))))
     (set! (.-innerHTML ($ "report"))
-          (if-not U ""
-            (let [R (js->clj (.accentReport A (clj->js U))) sh (.shape A (clj->js U))
+          (if-not NS ""
+            (let [U (beats-of sung)
+                  R (js->clj (.accentReport A U)) sh (.shape A U)
                   part (fn [id label] (let [[k n] (get R id)] (str label " <b>" k "/" n "</b>")))
-                  why (if (canon?) (.judge made (.-dux sung) (.-comes sung)) (.judge made sung))]
-              (str (if why (str "✗ " (esc why)) "✓ every rule kept") " · "
+                  why (if (canon?) (.judge made (.-dux sung) (.-comes sung)) (.judge made sung))
+                  by-syl (group-by #(.-syl %) NS)]
+              (str (when (:stele @S) "the stele's melody · ")
+                   (if why (str "✗ " (esc why)) "✓ every rule kept") " · "
                    (str/join " · " [(part "acute-rise" "rises to the acute") (part "peak" "the accent the word's highest")
-                                    (part "circumflex-fall" "a circumflex falls") (part "after-accent" "falls after the accent")])
-                   " · steps " (js/Math.round (* 100 (.-steps sh))) "%<br>"
-                   (str/join " " (map (fn [n c] (str (esc (if (seq (.-text n)) (.-text n) "~")) ":" (esc (.name A c)))) N U))))))))
+                                    (part "circumflex-fall" "a circumflex falls") (part "after-accent" "falls after the accent") (part "grave" "no fall after a grave")])
+                   " · melismas <b>" (.melismas A U) "</b> · steps " (js/Math.round (* 100 (.-steps sh))) "%<br>"
+                   (str/join " " (map-indexed (fn [i y] (str (esc (.-text y)) ":" (str/join "–" (map #(esc (.name A (.-code %))) (get by-syl i))))) Y))))))))
 
 ;; ───── imitable? ─────
 (defn examine! []
@@ -345,9 +356,9 @@ window.addEventListener("DOMContentLoaded", function () {
                      (set! (.-type o) "triangle") (set! (.. o -frequency -value) hz)
                      (.setValueAtTime (.-gain g) 0 s) (.linearRampToValueAtTime (.-gain g) g0 (+ s 0.02)) (.setTargetAtTime (.-gain g) 0 (- e 0.04) 0.03)
                      (.connect (.connect o g) (.-destination ac)) (.start o s) (.stop o (+ e 0.3))))
-            N (vec (.-notes A)) U (vec (dux-notes made sung))]
-        (doseq [[i n] (map-indexed vector N)]
-          (tone (.hz A (nth U i)) (+ t0 (* beat (.-at n))) (+ t0 (* beat (+ (.-at n) (.-beats n)))) 0.12))
+            NS (notes-of A sung)]
+        (doseq [n NS]
+          (tone (.hz A (.-code n)) (+ t0 (* beat (.-at n))) (+ t0 (* beat (+ (.-at n) (.-beats n)))) 0.12))
         (when (canon?)
           (let [C (vec (.-comes sung))]
             (doseq [[b c] (map-indexed vector C) :when (and (some? c) (or (zero? b) (not= c (nth C (dec b)))))]
@@ -379,21 +390,31 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn export! []
   (let [{:keys [made sung]} @S]
     (when sung
-      (let [A (.-A made) N (vec (.-notes A)) U (vec (dux-notes made sung))
+      (let [A (.-A made) Y (vec (.-syllables A)) NS (notes-of A sung)
             nm (fn [c] (.plain X (.name A c)))
-            dux (clj->js (map (fn [n c] {:name (nm c) :units (.-beats n)}) N U))
+            dux (clj->js (map (fn [n] {:name (nm (.-code n)) :units (.-beats n)}) NS))
             comes (when (canon?) (.fromUnits X (clj->js (map #(when (some? %) (nm %)) (.-comes sung)))))
             m (val-of "metre")
-            first-strong (or (some #(when (.-strong %) (.-at %)) N) 0)
+            first-strong (or (some #(when (.-strong %) (.-at %)) Y) 0)
             title (str (:name (get TEXTS (keyword (:text-id @S))) "a poem") " · " (if (canon?) "in canon" "sung"))
             x (.exportMei X (clj->js {:title title :source "Kairotic Study 74 · aoidos" :key {:tonic (val-of "tonic") :mode (val-of "mode")}
-                                     :unitDen 8 :unitsPerBar (if (= m "free") 6 (if (str/starts-with? m "iambic") 6 4)) :pickup first-strong
+                                     :unitDen 8 :unitsPerBar (if (#{"free" "seikilos"} m) 6 (if (str/starts-with? m "iambic") 6 4)) :pickup first-strong
                                      :voices (cond-> [{:label "dux" :notes (js->clj dux :keywordize-keys true)}]
                                                comes (conj {:label "comes" :notes (js->clj comes :keywordize-keys true)}))
                                      :root {:study "74 · aoidos" :text (val-of "text") :metre m
                                             :scansion (map #(.-scansion %) (.. A -plan -lines))
-                                            :syllables (map #(.-text %) N) :strict (.-strict A)}}))]
+                                            :syllables (map #(.-text %) Y) :strict (.-strict A) :stele (boolean (:stele @S))}}))]
         (.then (.offer X x) status!)))))
+
+;; the stele's own melody (seikilos.mjs: Pöhlmann–West, DAGM 23), as a melody of the engine — an octave lower, a code a beat
+(defn stele! []
+  (let [{:keys [made]} @S A (.-A made) codes (vec (.-codes A)) KK (.-K K)
+        U (vec (for [line (.-SONG KK) [_ signs] line [g c] signs _ (range c)]
+                 (first (filter #(= (.midi A %) (- (aget (.-MIDI KK) g) 12)) codes))))]
+    (when (every? some? U)
+      (swap! S assoc :sung (clj->js U) :stele true)
+      (status! "the stele's melody")
+      (render!))))
 
 ;; ───── the controls ─────
 (defn load-text! [id]
@@ -412,11 +433,12 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (.addEventListener ($ "text-id") "change" (fn [_] (load-text! (val-of "text-id")) (rebuild!)))
 (.addEventListener ($ "form") "change" (fn [_] (set! (.-hidden ($ "canon-opts")) (not (canon?))) (rebuild!)))
-(doseq [id ["metre" "tonic" "mode" "strict" "k" "d" "imitation"]] (.addEventListener ($ id) "change" (fn [_] (rebuild!))))
+(doseq [id ["metre" "tonic" "mode" "strict" "melisma" "k" "d" "imitation"]] (.addEventListener ($ id) "change" (fn [_] (rebuild!))))
 (.addEventListener ($ "text") "input" (fn [_] (when-not (= (val-of "text-id") "own") (set! (.-value ($ "text-id")) "own") (swap! S assoc :text-id "own"))))
 (.addEventListener ($ "read") "click" (fn [_] (rebuild!)))
 (.addEventListener ($ "engine") "click" (fn [_] (sing! :engine)))
 (.addEventListener ($ "uniform") "click" (fn [_] (sing! :uniform)))
+(.addEventListener ($ "stele") "click" (fn [_] (stele!)))
 (.addEventListener ($ "examine") "click" (fn [_] (examine!)))
 (.addEventListener ($ "exam") "click" (fn [ev] (when-let [b (.closest (.-target ev) "button[data-row]")] (play-exam! (js/Number (.getAttribute b "data-row"))))))
 (.addEventListener ($ "play") "click" (fn [_] (play!)))
@@ -424,7 +446,7 @@ window.addEventListener("DOMContentLoaded", function () {
 
 ;; for the page's tests
 (set! (.-kairoticAoidosPage js/window)
-      #js {:state (fn [] (clj->js (select-keys @S [:text-id :count]))) :rebuild rebuild! :sing sing! :examine examine!
+      #js {:state (fn [] (clj->js (select-keys @S [:text-id :count :stele]))) :rebuild rebuild! :sing sing! :examine examine! :stele stele!
            :set (fn [id form] (set! (.-value ($ "text-id")) id) (load-text! id) (set! (.-value ($ "form")) form) (set! (.-hidden ($ "canon-opts")) (not (canon?))) (rebuild!))})
 
 (rebuild!)
