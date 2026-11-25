@@ -64,6 +64,17 @@ export async function run() {
     else mels += A.melismas(U);
   }
   is("any valid melody keeps the hard rules, ends on the final, three notes a syllable at most", okAll);
+  {
+    // the text under the notes (export.mjs's <verse><syl>): a melody with melismas
+    let U = null; for (let i = 0; i < 40 && !U; i++) { const x = A.sample(r); if (x && A.melismas(x) > 0) U = x; }
+    const L = U && A.lyricNotesOf(U), sung = L ? L.filter((x) => x.text) : [];
+    const wp = sung.slice(0, 9).map((x) => `${x.text}:${x.wordpos || "-"}`).join(" ");
+    is("the text sung: each syllable on the first note of its melisma, the others none; its place in its word (ἄν-δρα μοι ἔν-νε-πε Μοῦ-σα)",
+       !!U && sung.length === A.syllables.length && sung.map((x) => x.text).join("") === A.syllables.map((y) => y.text).join("")
+       && L.length > sung.length && L.every((x) => !!x.text === !!x.first)
+       && wp === "ἄν:i δρα:t μοι:- ἔν:i νε:m πε:t Μοῦ:i σα:t πο:i");
+    if (U) notes.push(`lyrics: ${wp} … (${L.length} notes, ${sung.length} syllables)`);
+  }
   is("... and a note a syllable when asked (melisma 1): only a circumflex may take two",
      (() => { for (let i = 0; i < 10; i++) { const U = A1.sample(r); if (A1.pitchesOf(U).some((ps, s) => ps.length > (A1.syllables[s].accent === "circumflex" ? 2 : 1))) return false; } return true; })());
   const As = aoidos({ text: O.text, metre: O.metre, key: O.key, strict: true });

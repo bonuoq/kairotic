@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos exports its text under the notes** (#192). `export!` sends the dux with its syllables: each
+  syllable's text on the first note of its melisma, its `wordpos` from its word (`i`, `m`, `t`; none for a word of one
+  syllable), through the kernel's `lyricNotesOf`; the app's MEI has them as `<verse><syl>` (the text and the
+  scansion stay in the extMeta). Tested in the kernel's tests (Odyssey 1.1: ἄν-δρα μοι ἔν-νε-πε Μοῦ-σα) and the page's.
 - **The studies' export writes lyrics** (#192, #319). In `studies/_shared/export.mjs` (and its copies beside every
   study's kernel) a note may carry the syllable it begins — `{name, units, syl, wordpos, con}` — and the syllables of
   the verses after the first, `verses: [{syl, wordpos, con} …]` (a strophe and its antistrophe); `exportMei` writes
