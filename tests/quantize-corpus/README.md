@@ -207,6 +207,34 @@ What fails now:
 - **Aksak usuls.** Their beats are uneven (2+2+2+3), which a single period cannot follow; SymbTr is hardest.
 - **`free`** (±12 % and a strong ritardando) loses the tempo more often than not.
 
+## Repetition (issue #108, point 2)
+
+A rhythm that comes back is played a little differently each time, and quantized alone each return can come out
+written differently (swung eighths as eighths, then as a dotted eighth, then as a triplet). Now, spans of the same
+length whose onsets fall at the same places (each within 0.08 of the span of the mean of the returns so far) are
+one rhythm. The mean of its returns is nearer what was meant than any one of them, so the division that mean takes
+(among those the returns would take alone, so that a mean does not fit an odd septuplet) is preferred for all of
+them: another division, or the span cut in parts, costs `:rep` (1) more.
+
+| seeds 3 | before (`:repeat false`): onsets · durations · tuplets added | now |
+|---|---|---|
+| Essen loose | 93.8 · 86.3 · 166 | **94.8 · 89.0** · 185 |
+| Essen rough | 74.6 · 57.9 · 1011 | **76.7 · 64.7** · 1085 |
+| own loose | 87.9 · 71.9 · 19 | **88.7 · 72.4** · 19 |
+| own rough | 71.2 · 44.7 · 55 | 71.2 · **46.2** · 60 |
+| SymbTr exact | 99.9 · 99.9 · 36 (97 % perfect) | 99.9 · 99.9 · **33** (97 %) |
+| SymbTr tight | 99.3 · 98.9 · 106 | **99.5 · 99.0 · 87** |
+| SymbTr loose | 89.4 · 87.3 · 1564 | **90.7 · 89.1 · 1337** |
+| SymbTr rough | 63.7 · 59.5 · 5641 | **65.8 · 64.1 · 5334** |
+| Weimar, 40 solos (in place · triplets) | 66.6 · 41.7 | **67.2 · 44.7** |
+| Weimar, 60 others (`--seed 7`) | 66.0 · 42.1 | **67.1 · 46.3** |
+
+Durations gain the most, because a return whose end was misread takes the division of the others. In Essen a few
+more tuplets are added: a rhythm whose returns lean towards a triplet is now a triplet every time. `--timed` does
+not change (within 0.4). Tracking (`track-map`) compares plans without repetition, since what it prefers would not
+compare. Two choices that did not work: the division cheapest for all the returns together, which spreads each
+return's own bias to the others (Weimar 65.5 %), and forcing the shared division instead of preferring it.
+
 ## Real performances: ASAP (`--asap`)
 
 `fetch-asap.mjs` clones [ASAP](https://github.com/fosfrancesco/asap-dataset) (Foscarin et al., ISMIR 2020). These

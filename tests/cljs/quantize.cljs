@@ -171,3 +171,12 @@
       (t/eq "the bars of a plan" (mapv (juxt :b0 :L) (qz/bars (qz/options {:meters ["3/4" "5/8"]} nil) 8 7)) [[0 3] [3 2.5] [5.5 2.5]])
       (t/eq "without :meters, one meter as before" (mapv (juxt :b0 :L) (qz/bars (qz/options {:meter "3/4"} nil) 7 6)) [[0 3] [3 3] [6 3]])
       (t/eq "a meter that does not read is left out" (count (:meters (qz/options {:meters ["3/4" "x" [5 8]]} nil))) 2))))
+
+(t/run! "a rhythm that comes back is written the same way (issue #108)"
+  (fn []
+    ;; swung eighths, each played a little differently: alone, some come out as a dotted eighth or a triplet
+    (let [xs [0.55 0.6 0.64 0.53 0.57 0.62]
+          perf (into [:par] (mapcat (fn [b x] [[:note {:at b :dur x :pitch 60}] [:note {:at (+ b x) :dur (- 1 x) :pitch 62}]]) (range) xs))
+          offbeats (fn [o] (mapv (fn [n] (- (:t n) (js/Math.floor (:t n)))) (filter (fn [n] (= 62 (:pitch n))) (mt/notes (qz/quantize-tree perf (merge {:meter [3 4]} o))))))]
+      (t/is (str "alone, not all the same: " (offbeats {:repeat false})) (apply not= (offbeats {:repeat false})))
+      (t/eq "together, all on the half of the beat" (offbeats {}) [0.5 0.5 0.5 0.5 0.5 0.5]))))
