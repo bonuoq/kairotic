@@ -13,8 +13,8 @@
 //                  the soprano above the bass by a 3rd to two octaves and a 5th; each voice in its range; the ends A
 //                  and B pinned; the scale of the key, minor's 6th and 7th both ways, a raised ④ and a lowered ⑦
 //                  for the applied dominants
-//   the line       always: a step cheap, a leap dearer (the bass's cheaper than the soprano's), a repeated note in
-//                  the soprano dear, the voices in similar motion a little dearer than in contrary; the cadence's
+//   the line       always: each voice's move as often as Bach's (BACH_OUTER_MOTION: the soprano keeping its note a
+//                  fifth of the time, the bass leaping a 3rd or more nearly half), similar and contrary motion alike; the cadence's
 //                  bass ⑤–① or ⑦–① (a half cadence ending on ⑤), as the chorale's B asks
 //   functions      the chord the two voices imply (functions.mjs' impliedChord), and a succession the grammar of a
 //                  tonal phrase refuses (D → S, an applied dominant unresolved) weighing `functions` more
@@ -58,6 +58,18 @@ function degreeOf(p, key) {
 export const RANGES = { soprano: [60, 81], bass: [40, 62] };
 const CONS = new Set([0, 3, 4, 7, 8, 9]);
 
+/** How Bach's soprano and bass move from one quarter to the next in the corpus (phrases.json, 2,272 phrases): −log of the
+ *  frequency of a move of 0…12 semitones (13: wider), less the likeliest's — 0 the move he makes most. The soprano
+ *  keeps its note 22% of the time, steps 59%, leaps a 3rd 13%; the bass keeps 11%, steps 36%, leaps a 3rd 26%, a 4th
+ *  or 5th 22%, an octave 3%. */
+export const BACH_OUTER_MOTION = (() => {
+  const nl = (a) => { const m = Math.min(...a); return a.map((x) => +(x - m).toFixed(2)); };
+  return {
+    soprano: nl([1.49, 1.62, 0.93, 2.42, 3.12, 3.24, 8.27, 4.51, 6.83, 8.27, 8.56, 9.66, 8.27, 9.66]),
+    bass: nl([2.22, 1.75, 1.7, 1.82, 2.34, 2.14, 4.68, 2.24, 5.29, 5.67, 6.02, 6.48, 3.51, 7.09]),
+  };
+})();
+
 /** Whether two simultaneous pitches are consonant for the outer voices (a 4th never; a tritone never). */
 export const consonant = (s, b) => CONS.has(mod(s - b, 12));
 
@@ -67,7 +79,7 @@ export const consonant = (s, b) => CONS.has(mod(s - b, 12));
  */
 export function outerBridge(phrase, { layers = {}, temp = 0.4, weights = {}, target = "profile" } = {}) {
   const L = { functions: 6, tension: 2, economy: 1, ...layers };
-  const W = { step: 0, third: 0.5, leap: 1.6, sixth: 3, octave: 2.5, bassLeap: 0.3, repeat: 1.2, bassRepeat: 1.2, sameChord: 0.8, back: 0.8, similar: 0.3, inverted: 0.3, chromatic: 0.6, outOfScale: 0.8, tessitura: 0.25, ...weights };
+  const W = { motion: 1, sameChord: 0.2, back: 0.4, similar: 0, inverted: 0.3, chromatic: 0.6, outOfScale: 0.8, tessitura: 0.08, ...weights };
   const key = phrase.key, n = phrase.n || (phrase.satb ? phrase.satb.length : 0), strong = phrase.strong || [];
   const T = Math.max(1e-3, temp);
   const pcs = pitchesOf(key);
@@ -120,12 +132,9 @@ export function outerBridge(phrase, { layers = {}, temp = 0.4, weights = {}, tar
     const d = Math.abs(y - x), k = Math.abs(degreeOf(y, key) - degreeOf(x, key));
     if (!(ALLOWED[k] || []).includes(d)) return Infinity;
     if (!bass && d > 9) return Infinity;
-    if (d === 0) return bass ? W.bassRepeat : W.repeat;
-    if (k === 0) return W.chromatic;
-    if (d <= 2) return W.step;
-    if (d <= 4) return W.third;
-    if (d === 12) return W.octave;
-    return bass ? W.bassLeap + 0.1 * d : d >= 8 ? W.sixth : W.leap;
+    // (how often Bach's voice moves so: −log of its frequency, times the temperature, so that the draw, on this cost
+    // alone, moves each voice as often as he does — a note kept, a step, a leap — and not only by the likeliest step)
+    return W.motion * T * BACH_OUTER_MOTION[bass ? "bass" : "soprano"][Math.min(13, d)] + (k === 0 && d ? W.chromatic : 0);
   };
   // (a note out of the scale, raised or lowered for an applied dominant or minor's ascent, goes on by step the way it
   // was bent: up after a raised one, down after a lowered one)
@@ -232,22 +241,32 @@ export const VARIANTS = [{ name: "all", off: [] }, ...LAYERS.map((l) => ({ name:
 /**
  * Bridges for a phrase of the corpus, as the engine reads them: [{phrase, soprano, bass, key (the chorale's),
  * readIn (the key the layers read it in: the cadence's, or the chorale's), strong, layers, variant}] — for each variant
- * (all layers, each off, and `arch`) `count` draws.
+ * (all layers, each off, and `arch`) `count` draws. accept(bridge): whether to keep a draw (the tool asks whether
+ * bach-4 can fill its inner voices), else drawn again, `tries` times at most.
  */
-export function bridgesFor(phrase, { count = 2, r = Math.random, temp = 0.4 } = {}) {
+export function bridgesFor(phrase, { count = 2, r = Math.random, temp = 0.4, only = null, accept = null, tries = 10 } = {}) {
   const n = phrase.satb.length, out = [];
   // (the key the functions and the tension are read in: the cadence's, where the phrase closes on a triad — a phrase
   // of a chorale tonicizes where it ends —, the chorale's where it does not, or where no bridge goes in the cadence's)
   const keys = [phrase.cadence ? { tonic: phrase.cadence.tonic, mode: phrase.cadence.mode } : null, phrase.key].filter(Boolean);
   for (const v of VARIANTS) {
+    if (only && v.name !== only) continue;
     const layers = Object.fromEntries(LAYERS.map((l) => [l, v.off.includes(l) ? 0 : undefined]).filter(([, x]) => x !== undefined));
     let B = null, key = null;
     const fk = [...relatedKeys(phrase.key), ...(phrase.cadence ? [{ tonic: phrase.cadence.tonic, mode: phrase.cadence.mode }] : [])];
     for (const k of keys) { const b = outerBridge({ ...phrase, key: k, keys: fk, n }, { layers, temp, target: v.target }); if (b.possible) { B = b; key = k; break; } }
     if (!B) continue;
     for (let i = 0; i < count; i++) {
-      const x = B.draw(r);
-      if (x) out.push({ phrase: phrase.id, soprano: x.soprano, bass: x.bass, key: phrase.key, readIn: key, strong: phrase.strong, layers: LAYERS.filter((l) => !v.off.includes(l)), variant: v.name });
+      // (with `accept`, drawn again until it says yes — fromOuter can fill the inner voices —, `tries` times at most:
+      // the last kept, marked `fillable: false`, where none is)
+      let b = null;
+      for (let k = 0; k < (accept ? tries : 1); k++) {
+        const x = B.draw(r);
+        if (!x) continue;
+        b = { phrase: phrase.id, soprano: x.soprano, bass: x.bass, key: phrase.key, readIn: key, strong: phrase.strong, layers: LAYERS.filter((l) => !v.off.includes(l)), variant: v.name };
+        if (accept) { b.fillable = !!accept(b); if (b.fillable) break; }
+      }
+      if (b) out.push(b);
     }
   }
   return out;

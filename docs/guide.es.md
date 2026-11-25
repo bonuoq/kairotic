@@ -145,6 +145,28 @@ otra vez, quita las que ya no escribe —mete `(to :lpf "lop~ 800")` entre `:osc
 `:amp` se va, en el mismo evento—. Una cadena se reconoce por la caja de la que sale; las líneas hechas de otra manera se
 quedan. Lo que escribió cada cadena se guarda en este navegador para cada obra.
 
+**Formas.** En el código en vivo una caja es la forma que se lee: `(osc~ 220)` es la caja `osc~ 220`, `(map inc)` la
+caja `map inc`. Una cadena con `->` va en serie, cada caja alimentada por la anterior; un vector va en paralelo —después
+de un cable cada elemento se alimenta de él, después de tantos cables como elementos tiene cada uno del suyo—, `_` es un
+cable que sigue, y una caja después de varios cables los toma en sus entradas 0, 1… (la gramática de `:`, `,` y `<:` de
+Faust):
+
+```clojure
+(def osc (osc~ 220))                       ; una caja con nombre: la misma cada vez
+(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))     ; estéreo: un cable partido en dos
+(-> :osc (lop~ 800) (gain~ 0.2) [_ _] (dac~ 1 2))   ; un filtro añadido: solo esa caja es nueva
+(osc~ ~(* 2 110))                          ; ~ calcula un valor ahora: la caja osc~ 220
+```
+
+Una cadena es dueña de las cajas que hizo, como lo es de sus cables: evaluada otra vez, cada forma toma la caja que hizo
+antes con la misma clase (con su texto cambiado si ha cambiado), así que cambiar un número cambia esa caja, una caja
+añadida es la única nueva y una caja quitada se borra. Empieza una cadena por un nombre (`:osc`, o un `def`) para cambiar
+su estructura sobre la marcha; las cajas con nombre nunca se borran así. En el nivel superior, una lista cuyo primer
+elemento es un comando o una función de Clojure es código (`(+ 1 2)`, `(play)`); dentro de una cadena toda lista es una
+caja, menos `to`, `def` y las llamadas que hacen el patch. `(to o (caja~ …) i)` elige los puertos. Lo que hizo cada
+cadena se guarda en este navegador para cada obra.
+
+
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
 `clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son
 sus argumentos, leídos como EDN, y el mensaje que llega va al final, como con `->>`. `%` lo pone en otro

@@ -192,5 +192,12 @@ export async function patterns(page, check) {
   await page.waitForTimeout(500);
   check("stop: it stops", (await cljs(page, events)) === after, after);
   await cljs(page, "(stop)");
+
+  // a tree on a pbind's inlet becomes its :tree, whose notes are the events (#450)
+  await cljs(page, `(send! ${pb} [:voice "c4/1 e4 g4"])`);
+  const tsrc = await until(page, `(get-in (current) [:boxes ${pb} :data :source])`, (x) => x.includes(":tree"));
+  check("a tree on a pbind's inlet becomes its :tree", tsrc.includes(':tree [:voice \\"c4/1 e4 g4\\"]'), tsrc);
+  const tk = await until(page, pkey, (x) => x.includes(":tree"));
+  check("... and the pbind sends the pattern of its notes", tk.includes(":tree"), tk);
   await cljs(page, `(delete ${pb} ${pl} ${sk})`);
 }
