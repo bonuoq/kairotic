@@ -141,24 +141,42 @@ those it no longer writes — put `(to :lpf "lop~ 800")` between `:osc` and `:am
 in the same event. A chain is known by the box it starts from; lines made otherwise stay. What each chain wrote is kept
 in this browser for each work.
 
-**Forms.** In live code a box is the form it reads as: `(osc~ 220)` is the box `osc~ 220`, `(map inc)` the box
-`map inc`. A chain with `->` is in series, each box fed by the one before; a vector is in parallel — after one wire every
-element is fed by it, after as many wires as it has elements each by its own —, `_` is a wire that goes on, and a box
-after several wires takes them on its inlets 0, 1… (the grammar of Faust's `:`, `,` and `<:`):
+**A patch as data.** In live code a patch is written as plain EDN — which Clojure's reader, clj-kondo and any editor
+read — and played with one function, `=>`. A box is a vector of its class and arguments, as hiccup writes a tag:
+`[:mtof]`, `[:gain- 0.2]`, `[:map 'inc]`. A class with `~` is written with `-` (`[:osc- 220]` is the box `osc~ 220`),
+since Clojure's reader reads `~` as unquote; a class whose own name ends in `-` (`-`, `!-`) stays itself, and a string
+works too (`["osc~" 220]`).
 
 ```clojure
-(def osc (osc~ 220))                       ; a box by a name: the same box each time
-(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))     ; stereo: one wire split in two
-(-> :osc (lop~ 800) (gain~ 0.2) [_ _] (dac~ 1 2))   ; a filter put in: only that box is new
-(osc~ ~(* 2 110))                          ; ~ computes a value now: the box osc~ 220
+(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])
 ```
 
-A chain owns the boxes it made, as it owns its wires: evaluated again, each form takes the box it made before with the
-same class (its text changed if it changed), so changing a number changes that box, a box put in is the only new one,
-and a box taken out is deleted. Start a chain from a name (`:osc`, or a `def`) to change its structure as you go; named
-boxes are never deleted this way. At the top level a list whose head is a command or a Clojure function is code
-(`(+ 1 2)`, `(play)`); inside a chain every list is a box, but `to`, `def` and the calls that make the patch. `(to o
-(box~ …) i)` chooses the ports. What each chain made is kept in this browser for each work.
+`=>` is in series, each element fed by the one before. A vector that is not a box is in parallel — after one wire every
+element is fed by it, after as many wires as it has elements each by its own —, `:_` is a wire that goes on, and a box
+after several wires takes them on its inlets 0, 1… (the grammar of Faust's `:`, `,` and `<:`). A map names a box:
+`{:osc [:osc- 220]}` is the box called `:osc`, the same box each time it is evaluated; `:osc` alone is that box;
+`[:to o box i]` chooses the ports; `[:=> …]` is a chain inside another. Arguments are values, so they can be computed
+(`[:osc- (* 2 110)]`) and a sequence is spliced: `[:=> :osc (for [g [0.1 0.2]] [:gain- g])]`.
+
+**Voices.** A map of chains plays voices, each known by its key, as `d1` in Tidal:
+
+```clojure
+(=> {:frame {:mic [:adc- 1] :out [:dac- 1 2]}
+     :lead  [:=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out]
+     :echo  [:=> :mic [:gain- 0.3] [:_ :_] :out]})
+```
+
+Evaluated again, a voice changes only what changed; a voice taken out of the map stops (its boxes and wires go);
+`:frame` holds the boxes every voice uses — the ins and outs of the set (`adc~`, `dac~`, a `knob`), or the `inlet~` and
+`outlet~` of a line used as a sub-patch — made once and never taken away by a voice. `#_` before a box leaves it out:
+evaluated again, the chain goes round it.
+
+A chain owns the boxes and wires it made: evaluated again, each box takes the box it made before with the same class
+(its text changed if it changed, the sound going on), a box put in is the only new one, and a box or a wire it no longer
+writes is taken away. A chain is known by its voice's key, or by its first box's name, or else by its classes; named
+boxes are never taken away so. What each chain made is kept in this browser for each work. `(-> :osc (to :amp
+"gain~ 0.2"))` is still Clojure's own `->` with `to`, as the Code tab writes the work.
+
 
 
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as

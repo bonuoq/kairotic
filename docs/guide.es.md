@@ -145,26 +145,42 @@ otra vez, quita las que ya no escribe —mete `(to :lpf "lop~ 800")` entre `:osc
 `:amp` se va, en el mismo evento—. Una cadena se reconoce por la caja de la que sale; las líneas hechas de otra manera se
 quedan. Lo que escribió cada cadena se guarda en este navegador para cada obra.
 
-**Formas.** En el código en vivo una caja es la forma que se lee: `(osc~ 220)` es la caja `osc~ 220`, `(map inc)` la
-caja `map inc`. Una cadena con `->` va en serie, cada caja alimentada por la anterior; un vector va en paralelo —después
-de un cable cada elemento se alimenta de él, después de tantos cables como elementos tiene cada uno del suyo—, `_` es un
-cable que sigue, y una caja después de varios cables los toma en sus entradas 0, 1… (la gramática de `:`, `,` y `<:` de
-Faust):
+**Un patch como datos.** En el código en vivo un patch se escribe como EDN normal —que leen el lector de Clojure,
+clj-kondo y cualquier editor— y se toca con una función, `=>`. Una caja es un vector de su clase y sus argumentos, como
+hiccup escribe una etiqueta: `[:mtof]`, `[:gain- 0.2]`, `[:map 'inc]`. Una clase con `~` se escribe con `-` (`[:osc- 220]`
+es la caja `osc~ 220`), porque el lector de Clojure lee `~` como unquote; una clase cuyo nombre acaba en `-` (`-`, `!-`)
+sigue siendo ella, y un string también vale (`["osc~" 220]`).
 
 ```clojure
-(def osc (osc~ 220))                       ; una caja con nombre: la misma cada vez
-(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))     ; estéreo: un cable partido en dos
-(-> :osc (lop~ 800) (gain~ 0.2) [_ _] (dac~ 1 2))   ; un filtro añadido: solo esa caja es nueva
-(osc~ ~(* 2 110))                          ; ~ calcula un valor ahora: la caja osc~ 220
+(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])
 ```
 
-Una cadena es dueña de las cajas que hizo, como lo es de sus cables: evaluada otra vez, cada forma toma la caja que hizo
-antes con la misma clase (con su texto cambiado si ha cambiado), así que cambiar un número cambia esa caja, una caja
-añadida es la única nueva y una caja quitada se borra. Empieza una cadena por un nombre (`:osc`, o un `def`) para cambiar
-su estructura sobre la marcha; las cajas con nombre nunca se borran así. En el nivel superior, una lista cuyo primer
-elemento es un comando o una función de Clojure es código (`(+ 1 2)`, `(play)`); dentro de una cadena toda lista es una
-caja, menos `to`, `def` y las llamadas que hacen el patch. `(to o (caja~ …) i)` elige los puertos. Lo que hizo cada
-cadena se guarda en este navegador para cada obra.
+`=>` va en serie, cada elemento alimentado por el anterior. Un vector que no es una caja va en paralelo —después de un
+cable cada elemento se alimenta de él, después de tantos cables como elementos tiene cada uno del suyo—, `:_` es un cable
+que sigue, y una caja después de varios cables los toma en sus entradas 0, 1… (la gramática de `:`, `,` y `<:` de Faust).
+Un mapa da nombre a una caja: `{:osc [:osc- 220]}` es la caja llamada `:osc`, la misma cada vez que se evalúa; `:osc`
+sola es esa caja; `[:to o caja i]` elige los puertos; `[:=> …]` es una cadena dentro de otra. Los argumentos son valores,
+así que se pueden calcular (`[:osc- (* 2 110)]`) y una secuencia se inserta: `[:=> :osc (for [g [0.1 0.2]] [:gain- g])]`.
+
+**Voces.** Un mapa de cadenas toca voces, cada una reconocida por su clave, como `d1` en Tidal:
+
+```clojure
+(=> {:frame {:mic [:adc- 1] :out [:dac- 1 2]}
+     :lead  [:=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out]
+     :echo  [:=> :mic [:gain- 0.3] [:_ :_] :out]})
+```
+
+Evaluada otra vez, una voz cambia solo lo que ha cambiado; una voz quitada del mapa se para (se van sus cajas y sus
+cables); `:frame` guarda las cajas que usan todas las voces —las entradas y salidas del set (`adc~`, `dac~`, un `knob`), o
+los `inlet~` y `outlet~` de una línea usada como sub-patch—, hechas una vez y que ninguna voz quita. `#_` delante de una
+caja la deja fuera: evaluada otra vez, la cadena la rodea.
+
+Una cadena es dueña de las cajas y cables que hizo: evaluada otra vez, cada caja toma la que hizo antes con la misma clase
+(con su texto cambiado si ha cambiado, y el sonido sigue), una caja añadida es la única nueva, y una caja o un cable que
+ya no escribe se quita. Una cadena se reconoce por la clave de su voz, por el nombre de su primera caja, o si no por sus
+clases; las cajas con nombre nunca se quitan así. Lo que hizo cada cadena se guarda en este navegador para cada obra.
+`(-> :osc (to :amp "gain~ 0.2"))` sigue siendo el `->` de Clojure con `to`, como la pestaña Code escribe la obra.
+
 
 
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de

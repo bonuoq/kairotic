@@ -1317,7 +1317,6 @@
 
 (defn box-num-e [k] (cv/id-num k))
 
-(declare forms-code? run-forms!)
 (defn try-code
   "Evaluates code (a string: calls) or applies events (a vector of them) on patch p, in a scratch patch,
    without touching the history: [the patch after, the events made]. The base of `with` (29-db.cljs)."
@@ -1327,10 +1326,7 @@
     (reset! tried [])
     (try
       (if (string? code-or-evs)
-        ;; live code written as forms ((osc~ 220), chains of them: #407) is run form by form; the rest as before
-        (if (forms-code? code-or-evs)
-          (run-forms! code-or-evs)
-          (eval-str (str "(do " code-or-evs "\n nil)")))
+        (eval-str (str "(do " code-or-evs "\n nil)"))
         (doseq [ev code-or-evs] (when (vector? ev) (dispatch-root! ev))))
       [@scratch @tried]
       (finally (reset! scratch prev-s) (reset! tried prev-t)))))

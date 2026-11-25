@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Live code as data** (discussion #407): a patch written as plain EDN, which Clojure's reader and any editor read,
+  played with one function, `=>`: `(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])`. A box is a vector of its
+  class and arguments, as hiccup writes a tag, a class with `~` written with `-` (`[:osc- 220]` is `osc~ 220`); `=>` in
+  series, a vector that is not a box in parallel, `:_` a wire (Faust's `:`, `,`, `<:`); a map names a box; `#_` leaves a
+  box out. **Voices**: `(=> {:frame {:out [:dac- 1 2]} :lead [:=> … :out]})`, each chain known by its key as `d1` in
+  Tidal, a voice taken out of the map stopped, `:frame` the ins and outs every voice uses (or a line's `inlet~` and
+  `outlet~`). A chain owns the boxes and wires it made: evaluated again, only what changed changes. The forms written
+  as lists (`(osc~ 220)`, #451) are gone: one grammar, data. `->` and `doto` are Clojure's own again.
 - **One clock for every box that keeps time: `transport`** (discussion #450, piece 3; `@kairotic/net` 0.2.0,
   `@kairotic/patterns` 0.3.2). Where `pulse` counts the room's beat, `transport` says where it is — `[:sync t0 bpm]`,
   the audio-clock time of beat 0 and the tempo — and a `player` that gets it plays on that grid: it joins on the next
