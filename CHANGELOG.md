@@ -12,6 +12,14 @@
   Bach writes them. In major, per 100 chords, a leading tone rising in the soprano 1.4 (Bach 1.1) and in the bass 2.3
   (Bach 3.7; before 1.2, toward V alone), toward ii, V and vi. Every bridge carries its `keys`, and Study 71's fill reads
   them: with them bach-4 fills 87% of single draws (without, 50%). `bridges.json` drawn again.
+- **Live code as data** (discussion #407): a patch written as plain EDN, which Clojure's reader and any editor read,
+  played with one function, `=>`: `(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])`. A box is a vector of its
+  class and arguments, as hiccup writes a tag, a class with `~` written with `-` (`[:osc- 220]` is `osc~ 220`); `=>` in
+  series, a vector that is not a box in parallel, `:_` a wire (Faust's `:`, `,`, `<:`); a map names a box; `#_` leaves a
+  box out. **Voices**: `(=> {:frame {:out [:dac- 1 2]} :lead [:=> … :out]})`, each chain known by its key as `d1` in
+  Tidal, a voice taken out of the map stopped, `:frame` the ins and outs every voice uses (or a line's `inlet~` and
+  `outlet~`). A chain owns the boxes and wires it made: evaluated again, only what changed changes. The forms written
+  as lists (`(osc~ 220)`, #451) are gone: one grammar, data. `->` and `doto` are Clojure's own again.
 - **One clock for every box that keeps time: `transport`** (discussion #450, piece 3; `@kairotic/net` 0.2.0,
   `@kairotic/patterns` 0.3.2). Where `pulse` counts the room's beat, `transport` says where it is — `[:sync t0 bpm]`,
   the audio-clock time of beat 0 and the tempo — and a `player` that gets it plays on that grid: it joins on the next
@@ -47,6 +55,12 @@
   finished canon begins another; the chance (temperature, seed) the box's, so every tab makes the same stream. With
   `imitation` below 1 the comes is free counterpoint over the pattern's line. `api/make-pattern` for components.
 
+- **Quantize → describe → annotate** (step 2 of the motive layer; #108). With `:describe true`, the quantizer writes on
+  what it wrote its motives: `kairotic.motif/motives` finds spans of 3 to 5 notes that come back repeated, transposed,
+  in sequence or inverted (with their rhythm, augmented or diminished), in the same voice or another (an imitation),
+  the one covering most notes first; `annotate` writes `:motif` (the label) and `:motif.rel` (how a return is related
+  to the statement) on their first notes, two new keys of the analysis layer (#382). The score draws them above the
+  notes. `api/motif-annotate` for components. Docs: `docs/mt.md`.
 - **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
   voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of
   0…13 semitones in the corpus, times the temperature, so the draw moves as often as he does), in place of the fixed

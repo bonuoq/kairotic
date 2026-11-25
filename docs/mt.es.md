@@ -274,8 +274,16 @@ Las otras opciones son `:chord` (lo cerca que deben estar dos ataques para ser u
 (`{:err 8 :off 0.35 :cpx 1 :lost 1.5 :coh 0.5}`). `:coh` es lo que cuesta cambiar de tipo de división (binaria,
 tresillo, quintillo…) entre pulsos vecinos: un tresillo suelto entre corcheas lo paga dos veces, una serie de
 tresillos una, así que las notas tocadas un poco antes o después no se vuelven grupos irregulares (issue #108;
-`0` decide cada pulso por su cuenta). `(as-tree :bN)` sigue leyendo los trazos de un freqt tal cual, sin
-cuantizarlos.
+`0` decide cada pulso por su cuenta). Un ritmo que vuelve se escribe igual cada vez: se prefiere para todas sus
+vueltas la división de su media (`:rep` 1 de los pesos para otra, `:repeat` la tolerancia, 0.08 del pulso;
+`:repeat false` para ninguna). `(as-tree :bN)` sigue leyendo los trazos de un freqt tal cual, sin cuantizarlos.
+
+**Sus motivos.** Con `:describe true`, lo escrito también se describe: sus motivos (`kairotic.motif`, tramos de 3 a 5
+notas que vuelven repetidos, transportados, en secuencia o invertidos, en la misma voz o en otra) se escriben en sus
+notas, en la capa de análisis: `:motif` la etiqueta en la primera nota de cada exposición y cada vuelta (`"a"`,
+`"b"`…), `:motif.rel` cómo se relaciona una vuelta con la exposición (`"in sequence, a step higher"`). La partitura
+los dibuja sobre las notas. `(quant :b1 {:describe true})` lo guarda para un freqt; `(motif/annotate tree)` describe
+cualquier árbol, y `api/motif-annotate` hace lo mismo para un componente.
 
 **Elegir otra división.** El cuantizador adivina; cuando se equivoca, **alt+clic en una nota** de la partitura:
 su parte toma la siguiente manera de dividirla (primero la del cuantizador, luego las demás, de más barata a más
