@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The chorale test's sixth variant, `no-keys`** (#353). Study 63's `outer.mjs` draws bridges without a path of keys
+  — every unit in the chorale's key, the rest as `all` — so the blind test can hear how much the tonicizations do.
+  `tools/bridges.mjs` can draw one variant by itself (its last argument) and `tools/merge.mjs` puts it in place in
+  `bridges.json`.
 - **Study 74 · aoidos exports its text under the notes** (#192). `export!` sends the dux with its syllables: each
   syllable's text on the first note of its melisma, its `wordpos` from its word (`i`, `m`, `t`; none for a word of one
   syllable), through the kernel's `lyricNotesOf`; the app's MEI has them as `<verse><syl>` (the text and the

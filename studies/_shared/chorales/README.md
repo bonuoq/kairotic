@@ -31,7 +31,8 @@ repository. See [LICENSE.md](LICENSE.md).
 `{source, license, count, seed, bridges}`; a bridge is `{phrase, soprano, bass, key, keys, readIn, strong, layers, variant, fillable}`:
 the soprano and the bass of a phrase drawn from its first chord A to its last chord B by Study 63's `outer.mjs`, as
 `fromOuter` reads them — for every phrase, two draws of each variant: `all` (functions, tension, economy) and each layer
-off (`no-functions`, `no-tension`, `no-economy`), and `arch` (all on, the tension following a generic arch instead).
+off (`no-functions`, `no-tension`, `no-economy`), `arch` (all on, the tension following a generic arch instead), and
+`no-keys` (all on, but no path of keys: every unit in the chorale's key, no tonicization).
 The tension layer's target is the corpus's profile (`outer.mjs`' `PROFILE`: Bach's mean tension by tenth of a phrase,
 a plateau released at the cadence) — the same for every phrase, so no phrase's own curve leaks into its bridge. Each
 voice moves as often as Bach's does (`BACH_OUTER_MOTION`); `keys`, one a unit (`"A minor"`), is the path of keys the
@@ -42,7 +43,8 @@ coming down; and each bridge is drawn again, ten times at most, until
 bach-4 can fill its inner voices (`fillable`: fromOuter's count above 0; false where no draw could be). `readIn`: the key the tension is read in (the cadence's, or the
 chorale's); the functions are read in the keys close to the chorale's and the cadence's. Written by
 `node studies/63-bridges/tools/bridges.mjs studies/_shared/chorales studies/_shared/chorales/bridges.json 2 1 i/2` for
-i = 0, 1 (two shards, side by side), then `node studies/63-bridges/tools/merge.mjs studies/_shared/chorales/bridges.json 2`.
+i = 0, 1 (two shards, side by side), then `node studies/63-bridges/tools/merge.mjs studies/_shared/chorales/bridges.json 2`;
+`no-keys` was added afterwards, by itself: the same with seed 7 and `no-keys` as the last argument.
 Adapted from `phrases.json` (its A and B), so under the same license, CC BY-NC-SA 4.0.
 
 

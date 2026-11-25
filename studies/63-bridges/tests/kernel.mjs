@@ -107,7 +107,7 @@ export async function run() {
   is("the economy layer: the voices' motions said with fewer different words with it than without", all1.words < ne1.words && all2.words < ne2.words);
   notes.push(`outer voices (20 draws): grammar errors ${nf1.errs.toFixed(2)}/${nf2.errs.toFixed(2)} without functions, 0 with · profile deviation ${nt1.profile.toFixed(2)}/${nt2.profile.toFixed(2)} → ${all1.profile.toFixed(2)}/${all2.profile.toFixed(2)} · arch ${nt1.arch.toFixed(2)}/${nt2.arch.toFixed(2)} → ${ar1.arch.toFixed(2)}/${ar2.arch.toFixed(2)} · words ${ne1.words.toFixed(2)}/${ne2.words.toFixed(2)} → ${all1.words.toFixed(2)}/${all2.words.toFixed(2)}`);
   const bs = O.bridgesFor(ph1, { count: 2, r: wr(9) });
-  is("bridgesFor: the engine's format for every variant (all, each layer off, arch), two draws each", bs.length === 10 && ["all", "no-functions", "no-tension", "no-economy", "arch"].every((v) => bs.filter((b) => b.variant === v).length === 2) &&
+  is("bridgesFor: the engine's format for every variant (all, each layer off, arch, no-keys), two draws each", bs.length === 12 && ["all", "no-functions", "no-tension", "no-economy", "arch", "no-keys"].every((v) => bs.filter((b) => b.variant === v).length === 2) &&
      bs.every((b) => b.phrase === "test-c" && b.soprano.length === 8 && b.bass.length === 8 && b.key.tonic === "C" && b.strong.length === 8 && Array.isArray(b.layers)) && bs.find((b) => b.variant === "no-tension").layers.join() === "functions,economy");
 
   // ─── keys: a path through Bach's moves between keys, the outer voices tonicizing it (#353) ───
@@ -126,6 +126,8 @@ export async function run() {
   is("minor's turns as Bach's: ⑥–⑦ up raised both, ⑦–⑥ down natural both (A minor, 20 draws)", am2.xs.every((x) => minorLine(x.soprano, 9) && minorLine(x.bass, 9)));
   const bk = O.bridgesFor(ph3, { count: 2, r: wr(3), only: "all" });
   is("bridgesFor writes each bridge's keys, one a unit, as the corpus writes them (\"A minor\")", bk.length === 2 && bk.every((b) => b.keys.length === 8 && b.keys.every((k) => /^[A-G][#b]? (major|minor)$/.test(k))));
+  const nk = O.bridgesFor({ ...ph3, keys: ["C major", ...Array(6).fill("A minor"), "C major"] }, { count: 3, r: wr(5), only: "no-keys" });
+  is("no-keys: every unit in the chorale's key, whatever keys the phrase went through", nk.length === 3 && nk.every((b) => b.keys.every((k) => k === "C major") && !b.soprano.concat(b.bass).some((v) => v % 12 === 8)));
   notes.push(`keys: ${paths.filter((p) => p.some((k) => k !== "C major")).length} of 200 paths leave C major · through A minor, G♯ in ${gs} of 20 draws · e.g. ${paths.find((p) => p.some((k) => k !== "C major")).join(", ")}`);
 
   // ─── smooth: what a leap costs (leapCost) ───
