@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Study 71 reads its variants from the bridges** (discussion #353): the deck, the listenings, the scores and the page
+  take the variants `bridges.json` has (`variantsOf`: Study 63's known ones in their order, any new one after them), so
+  a layer Study 63 turns off — `no-keys`, the bridges without tonicizations — is compared as the others with nothing
+  changed here; `deck.json` keeps its `variants`.
 - **Study 74 · aoidos: melismas, and Seikilos's rhythm** (#192). The melody is written a beat at a time (`solveVoices`
   with one voice, its memo keyed by what the rules read: the syllable's notes, the pitch sounding and the one before,
   how often it was struck): a syllable may take up to three notes (`melisma`, by step or a 3rd), the accent judged on

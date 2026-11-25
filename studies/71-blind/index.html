@@ -137,12 +137,12 @@ input[type="text"] { font: 13px var(--f-ui); color: var(--ink); background: var(
       he wrote them —: Study 63's outer voices drawn from one to the other, the same length, the alto and the tenor then
       written by <code>@kairotic/rules</code>' <code>fromOuter</code> in the style <code>bach-4</code>, each move weighed
       by how often Bach's own inner voices make it (<code>bach-motion</code>). Both are played alike: a chord a quarter, a note tied where it is held (a kept note struck again, as Bach mostly does,
-      unless it is held into a dissonance), the last chord a fermata. Answer which one is Bach, then see what the two were. The bridges come in five <b>variants</b>:
+      unless it is held into a dissonance), the last chord a fermata. Answer which one is Bach, then see what the two were. The bridges come in <b>variants</b>:
       <code>all</code> (the tonal functions, the tension following Bach's mean profile, the economy of the voices' motion),
       each of those layers off (<code>no-functions</code>, <code>no-tension</code>, <code>no-economy</code>), and
-      <code>arch</code> (all on, the tension following a generic arch instead). Where Bach is found no more often than
+      <code>arch</code> (all on, the tension following a generic arch instead). Any other layer Study 63 turns off comes as a variant of its own, read from the deck. Where Bach is found no more often than
       chance (50%), the bridges pass; a layer whose absence makes him easier to find is one listeners hear. The deck
-      (200 trials, drawn once) is the same for everyone: export your answers and pool them with others' by importing
+      (drawn once) is the same for everyone: export your answers and pool them with others' by importing
       theirs. <b>The deck</b> also counts the bridges <code>bach-4</code> could not fill — no inner voices by its rules
       over those outer voices — by variant. The phrases are from Craig Sapp's edition of the chorales (CC BY-NC-SA 4.0).</p></section>
   </div>
@@ -155,6 +155,8 @@ const STORE = "kairotic.study71.answers";
 const load = () => { try { return JSON.parse(localStorage.getItem(STORE) || "[]"); } catch { return []; } };
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(st.mine)); } catch {} };
 const st = { deck: null, session: [], i: 0, answered: false, mine: load(), pooled: [], heard: [false, false] };
+// (the variants: the deck's, as the bridges were drawn)
+const V = () => (st.deck && st.deck.variants) || Bl.VARIANTS;
 const pct = (x) => (x === null || x === undefined ? "—" : `${Math.round(x * 100)}%`);
 
 // ── the drawings: a piano roll of the four voices
@@ -230,21 +232,21 @@ function start(seed = Date.now(), per = +$("per").value) {
   stop();
   const done = new Set(st.mine.map((a) => a.id));
   st.session = Bl.sessionOf(st.deck, { perVariant: per, seed, done });
-  if (st.session.length < per * Bl.VARIANTS.length) st.session = Bl.sessionOf(st.deck, { perVariant: per, seed });
+  if (st.session.length < per * V().length) st.session = Bl.sessionOf(st.deck, { perVariant: per, seed });
   st.i = 0; showTrial();
 }
 
 // ── the scores: mine and the ones imported, pooled
 function showScore() {
-  const all = [...st.mine, ...st.pooled], S = Bl.score(all), who = new Set(all.map((a) => a.who));
-  const rows = [...Bl.VARIANTS, "overall"].map((v) => {
+  const all = [...st.mine, ...st.pooled], S = Bl.score(all, V()), who = new Set(all.map((a) => a.who));
+  const rows = [...V(), "overall"].map((v) => {
     const s = S[v];
     return `<tr class="${v === "overall" ? "overall" : ""}"><td>${v}</td><td>${s.n}</td><td>${pct(s.rate)}</td><td>${s.n ? `${pct(s.ci[0])}–${pct(s.ci[1])}` : "—"}</td><td>${s.n ? s.p.toFixed(3) : "—"}</td><td>${s.sure.n ? `${s.sure.found}/${s.sure.n}` : "—"}</td></tr>`;
   });
   $("score").innerHTML = `<tr><th>variant</th><th>heard</th><th>Bach found</th><th>95%</th><th>p vs chance</th><th>sure</th></tr>${rows.join("")}`;
   $("score-who").textContent = `${all.length} answer${all.length === 1 ? "" : "s"} · ${who.size} listener${who.size === 1 ? "" : "s"} · lower: the bridges sound as his`;
   // (each variant's rate with its interval, chance marked)
-  const X = (p) => 90 + p * 250, rowsY = [...Bl.VARIANTS, "overall"];
+  const X = (p) => 90 + p * 250, rowsY = [...V(), "overall"];
   let g = `<line class="axis" x1="${X(0)}" y1="6" x2="${X(0)}" y2="${12 + rowsY.length * 20}"/><line class="chance" x1="${X(0.5)}" y1="6" x2="${X(0.5)}" y2="${12 + rowsY.length * 20}"/>`;
   rowsY.forEach((v, k) => {
     const s = S[v], y = 16 + k * 20;
@@ -259,7 +261,7 @@ function showDeck() {
   const D = st.deck;
   $("deck-n").textContent = `${D.trials.length} trials, the same for every listener (seed ${D.seed})`;
   $("deck").innerHTML = `<tr><th>variant</th><th>trials</th><th>phrases tried</th><th>filled by bach-4</th></tr>` +
-    Bl.VARIANTS.map((v) => `<tr><td>${v}</td><td>${D.trials.filter((t) => t.variant === v).length}</td><td>${D.tried[v].tried}</td><td>${pct(D.tried[v].filled / D.tried[v].tried)}</td></tr>`).join("");
+    V().map((v) => `<tr><td>${v}</td><td>${D.trials.filter((t) => t.variant === v).length}</td><td>${D.tried[v].tried}</td><td>${pct(D.tried[v].filled / D.tried[v].tried)}</td></tr>`).join("");
   const top = Object.entries(D.failures).sort((a, b) => b[1] - a[1]).slice(0, 3);
   $("deck-note").textContent = top.length ? `Why a bridge was not filled, most often: ${top.map(([w, n]) => `${w.replace(/^no inner voices: (unit #, )?/, "")} (${n})`).join("; ")}.` : "";
 }
@@ -289,5 +291,5 @@ try {
 } catch (e) { $("status").textContent = "No deck: " + (e.message || e); }
 
 // for the tests (tests/page.html)
-window.kairoticStudy = { state: () => st, start, play, answer, next, score: () => Bl.score([...st.mine, ...st.pooled]), clear: () => { st.mine = []; save(); showScore(); } };
+window.kairoticStudy = { state: () => st, start, play, answer, next, score: () => Bl.score([...st.mine, ...st.pooled], V()), clear: () => { st.mine = []; save(); showScore(); } };
 </script>

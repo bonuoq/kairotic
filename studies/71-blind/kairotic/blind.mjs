@@ -20,7 +20,10 @@
 
 import { fromOuter } from "./rules.mjs";
 
+// (the variants Study 63 draws, in this order where it draws them; any other it adds — a layer off — after them: the
+// list is the bridges', read from them, so a new layer needs nothing here)
 export const VARIANTS = ["all", "no-functions", "no-tension", "no-economy", "arch"];
+export const variantsOf = (bridges) => { const seen = [...new Set(bridges.map((b) => b.variant))]; return [...VARIANTS.filter((v) => seen.includes(v)), ...seen.filter((v) => !VARIANTS.includes(v)).sort()]; };
 export const VOICES = ["soprano", "alto", "tenor", "bass"];
 
 export const rng = (seed) => { let s = seed % 2147483647 || 1; return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646; };
@@ -75,16 +78,16 @@ export const bachOf = (p) => ({ satb: p.satb.map((c) => c.slice()), held: p.held
  * one of that phrase's draws of the variant that bach-4 can fill. phrases: the corpus's; bridges: bridges.json's.
  * {trials: [{id, phrase, variant, draw, key, strong, bach, bridge}], tried: {variant: {tried, filled}}, failures: {why: n}}
  */
-export function deckOf(phrases, bridges, { perVariant = 40, seed = 71, temp = 1, maxLen = 16, log = null } = {}) {
+export function deckOf(phrases, bridges, { perVariant = 40, seed = 71, temp = 1, maxLen = 16, log = null, variants = variantsOf(bridges) } = {}) {
   const r = rng(seed), P = new Map(phrases.map((p) => [p.id, p]));
   const of = new Map();
   for (const b of bridges) { const k = `${b.phrase}|${b.variant}`; if (!of.has(k)) of.set(k, []); of.get(k).push(b); }
   // (the phrases with a bridge of every variant, no longer than maxLen units, in an order drawn once)
-  const ids = [...P.keys()].filter((id) => P.get(id).satb.length <= maxLen && VARIANTS.every((v) => of.has(`${id}|${v}`)));
+  const ids = [...P.keys()].filter((id) => P.get(id).satb.length <= maxLen && variants.every((v) => of.has(`${id}|${v}`)));
   for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-  const trials = [], tried = Object.fromEntries(VARIANTS.map((v) => [v, { tried: 0, filled: 0 }])), failures = {};
+  const trials = [], tried = Object.fromEntries(variants.map((v) => [v, { tried: 0, filled: 0 }])), failures = {};
   let next = 0;
-  for (let k = 0; k < perVariant; k++) for (const v of VARIANTS) {
+  for (let k = 0; k < perVariant; k++) for (const v of variants) {
     let done = false;
     while (!done && next < ids.length) {
       const id = ids[next++], p = P.get(id);
@@ -100,13 +103,13 @@ export function deckOf(phrases, bridges, { perVariant = 40, seed = 71, temp = 1,
       if (log) log(`${trials.length} trials · ${id} ${v} ${done ? "filled" : "not filled"}`);
     }
   }
-  return { trials, tried, failures };
+  return { variants, trials, tried, failures };
 }
 
 /** A listening: perVariant trials of each variant, shuffled; Bach first or second at random. [{trial, bachFirst}] */
 export function sessionOf(deck, { perVariant = 4, seed = Date.now(), done = new Set() } = {}) {
   const r = rng(seed), out = [];
-  for (const v of VARIANTS) {
+  for (const v of deck.variants || VARIANTS) {
     const pool = deck.trials.filter((t) => t.variant === v && !done.has(t.id));
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     out.push(...pool.slice(0, perVariant));
@@ -133,12 +136,13 @@ export function wilson(k, n, z = 1.96) {
   return [Math.max(0, c - h), Math.min(1, c + h)];
 }
 /** answers: [{id, variant, correct, sure}] → {variant: {n, found, rate, ci, p, sure: {n, found}}, overall: …} */
-export function score(answers) {
+export function score(answers, variants = VARIANTS) {
   const of = (as) => {
     const n = as.length, found = as.filter((a) => a.correct).length, s = as.filter((a) => a.sure);
     return { n, found, rate: n ? found / n : null, ci: wilson(found, n), p: binomialP(found, n), sure: { n: s.length, found: s.filter((a) => a.correct).length } };
   };
-  return { ...Object.fromEntries(VARIANTS.map((v) => [v, of(answers.filter((a) => a.variant === v))])), overall: of(answers) };
+  const vs = [...variants, ...[...new Set(answers.map((a) => a.variant))].filter((v) => !variants.includes(v))];
+  return { ...Object.fromEntries(vs.map((v) => [v, of(answers.filter((a) => a.variant === v))])), overall: of(answers) };
 }
 
 /** The notes to play of {satb, held}: a quarter a unit (unit seconds), a note held tied to the one before, the last

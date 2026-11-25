@@ -31,9 +31,9 @@ export async function run() {
 
   // the deck, as it is kept
   const D = await json("../../_shared/chorales/deck.json");
-  const by = Object.fromEntries(Bl.VARIANTS.map((v) => [v, D.trials.filter((t) => t.variant === v)]));
+  const by = Object.fromEntries(D.variants.map((v) => [v, D.trials.filter((t) => t.variant === v)]));
   is(`the deck: ${D.trials.length} trials, ${D.perVariant} of each variant, every phrase once`,
-     Bl.VARIANTS.every((v) => by[v].length === D.perVariant) && new Set(D.trials.map((t) => t.phrase)).size === D.trials.length);
+     D.variants.every((v) => by[v].length === D.perVariant) && new Set(D.trials.map((t) => t.phrase)).size === D.trials.length);
   const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
   is("... each bridge as long as Bach's phrase, from his first chord to his last, whole (the four voices as his)",
      D.trials.every((t) => { const B = t.bridge.satb, A = t.bach.satb, n = A.length; return B.length === n && same(B[0], A[0]) && same(B[n - 1], A[n - 1]); }));
@@ -58,15 +58,15 @@ export async function run() {
   notes.push(`chords with a dissonance against the bass: bridges ${dr.toFixed(1)}%, Bach ${db.toFixed(1)}%; semitone clashes per 100 chords: ${cr.toFixed(1)}, Bach ${cb.toFixed(1)}`);
   is("... between the ends (Bach's, his voices crossing where they do) the inner voices between the soprano and the bass, in order (a unison allowed)",
      D.trials.every((t) => t.bridge.satb.slice(1, -1).every(([s, a, tn, b]) => s >= a && a >= tn && tn >= b)));
-  const filled = Bl.VARIANTS.map((v) => `${v} ${D.tried[v].filled}/${D.tried[v].tried}`).join(", ");
-  is(`... the phrases tried and filled by bach-4, counted (${filled})`, Bl.VARIANTS.every((v) => D.tried[v].filled === D.perVariant && D.tried[v].tried >= D.perVariant));
+  const filled = D.variants.map((v) => `${v} ${D.tried[v].filled}/${D.tried[v].tried}`).join(", ");
+  is(`... the phrases tried and filled by bach-4, counted (${filled})`, D.variants.every((v) => D.tried[v].filled === D.perVariant && D.tried[v].tried >= D.perVariant));
   notes.push(`the deck: phrases tried and filled by variant — ${filled}`);
   // a listening
   const S = Bl.sessionOf(D, { perVariant: 4, seed: 7 });
-  is("sessionOf: 20 trials, 4 of each variant, Bach first in some and second in others",
-     S.length === 20 && Bl.VARIANTS.every((v) => S.filter((x) => x.trial.variant === v).length === 4) && S.some((x) => x.bachFirst) && S.some((x) => !x.bachFirst));
+  is(`sessionOf: ${4 * D.variants.length} trials, 4 of each variant, Bach first in some and second in others`,
+     S.length === 4 * D.variants.length && D.variants.every((v) => S.filter((x) => x.trial.variant === v).length === 4) && S.some((x) => x.bachFirst) && S.some((x) => !x.bachFirst));
   const S2 = Bl.sessionOf(D, { perVariant: 4, seed: 7, done: new Set(S.map((x) => x.trial.id)) });
-  is("... the next one without the trials already heard", S2.length === 20 && S2.every((x) => !S.some((y) => y.trial.id === x.trial.id)));
+  is("... the next one without the trials already heard", S2.length === 4 * D.variants.length && S2.every((x) => !S.some((y) => y.trial.id === x.trial.id)));
   return { results, notes };
 }
 
