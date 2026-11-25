@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Study 71 · blind · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1000px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the deck loaded, a listening started, both heard, an answer, the reveal, the
+// score, the export.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 20000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+try {
+  await wait(() => w.kairoticStudy && w.kairoticStudy.state().deck);
+  const K = w.kairoticStudy, st = K.state();
+  K.clear();
+  is("the deck loaded: 200 trials, the variants and the bridges filled counted", st.deck.trials.length === 200 && d.querySelectorAll("#deck tr").length === 6);
+  K.start(71, 2);
+  is("a listening of 10: the first trial, the answer not yet possible", st.session.length === 10 && /^1 of 10/.test(d.getElementById("trial-n").textContent) && d.getElementById("ans-0").disabled);
+  K.play(0); K.play(1);
+  is("both heard: the answer possible", !d.getElementById("ans-0").disabled && !d.getElementById("ans-1").disabled);
+  const bachFirst = st.session[0].bachFirst;
+  d.getElementById(bachFirst ? "ans-0" : "ans-1").click();
+  is("answered right: found, Bach and the bridge named, both drawn", /Found/.test(d.getElementById("reveal").textContent) && d.getElementById(bachFirst ? "who-0" : "who-1").textContent === "Bach" &&
+     d.querySelectorAll("#roll-0 rect").length > 0 && d.querySelectorAll("#roll-1 rect").length > 0 && !d.getElementById("next").disabled);
+  is("... the score: one answer, found", K.score().overall.n === 1 && K.score().overall.found === 1 && /^1 answer /.test(d.getElementById("score-who").textContent));
+  d.getElementById("next").click();
+  K.play(0); K.play(1);
+  d.getElementById(st.session[1].bachFirst ? "ans-1" : "ans-0").click();
+  is("the second answered wrong: not found", /Not found/.test(d.getElementById("reveal").textContent) && K.score().overall.n === 2 && K.score().overall.found === 1);
+  const saved = [];
+  w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
+  d.getElementById("export").click();
+  is("exported: the two answers", await wait(() => saved.length === 1) && JSON.parse(saved[0].text).answers.length === 2);
+  K.clear();
+  is("no errors on the page", errors.length === 0);
+} catch (e) { errors.push(String(e.message || e)); is("ran: " + e.message, false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>

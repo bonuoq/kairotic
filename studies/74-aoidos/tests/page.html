@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Study 74 · aoidos · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1320px;height:1000px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: Odyssey 1.1 read, scanned, counted and sung; strict; in canon; Seikilos;
+// imitable?; the export.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 30000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+const total = () => (d.getElementById("total") || {}).textContent || "";
+const report = () => d.getElementById("report").textContent;
+const status = () => d.getElementById("status").textContent;
+try {
+  await wait(() => w.kairoticAoidosPage && /^\d/.test(total()) && status() === "sung");
+  const P = w.kairoticAoidosPage;
+  is("it opens on Odyssey 1.1, scanned (five dactyls and a spondee) and counted: 11,362,047,911,977 melodies",
+     total() === "11,362,047,911,977" && d.querySelector("#scansion .sc").textContent === "– ⏑ ⏑ | – ⏑ ⏑ | – ⏑ ⏑ | – ⏑ ⏑ | – ⏑ ⏑ | – –");
+  is("... sung: 18 notes drawn, the syllables under them, every rule kept", d.querySelectorAll("#sheet rect.dux").length === 18 && d.querySelectorAll("#sheet text.syl").length === 17 && /✓ every rule kept/.test(report()));
+  d.getElementById("strict").click();
+  await wait(() => total() === "157,525,198,582" && status() === "sung");
+  is("strict: 157,525,198,582, the peak and the circumflex always kept", total() === "157,525,198,582" && /the accent the word's highest (\d+)\/\1/.test(report()) && /a circumflex falls (\d+)\/\1/.test(report()));
+  P.set("odyssey", "canon");
+  await wait(() => total() === "4,285" && status() === "sung");
+  is("in canon (strict, the comes an octave below a foot later): 4,285 canons, both voices drawn",
+     total() === "4,285" && d.querySelectorAll("#sheet rect.comes").length > 0 && /✓ every rule kept/.test(report()));
+  P.set("seikilos", "canon");
+  await wait(() => total() === "6,522" && status() === "sung");
+  is("Seikilos's song in canon, strict, E dorian: 6,522; four lines scanned", total() === "6,522" && d.querySelectorAll("#scansion .ln").length === 4);
+  d.getElementById("strict").click();
+  P.set("odyssey", "melody");
+  await wait(() => total() === "11,362,047,911,977" && status() === "sung");
+  d.getElementById("examine").click();
+  await wait(() => d.querySelectorAll("#exam tr").length > 1 && status() === "tried", 60000);
+  is("imitable?: the melody tried as a dux at 24 distances, entries and degrees", d.querySelectorAll("#exam tr").length === 25);
+  const saved = [];
+  w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
+  d.getElementById("export").click();
+  is("exported for the app: the dux, the text in its extMeta", await wait(() => saved.length === 1) && saved[0].text.includes('label="dux"') && /:source "Kairotic Study 74 · aoidos"/.test(saved[0].text) && saved[0].text.includes("Μοῦσα"));
+  is("no errors on the page", errors.length === 0 && !/^Error/.test(status()));
+} catch (e) { is("error: " + (e.message || e), false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(errors) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>

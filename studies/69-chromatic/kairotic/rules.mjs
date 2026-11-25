@@ -12,7 +12,7 @@
 //
 // Step 2 of #353: one voice over a bass. Two and three upper voices, styles in EDN and comes come next.
 
-import { mod, sign, keyOf, codeOf3, codeDegree, codeAlter, localOf, localNote, FIG_CLASS, CLASS_FIG, isDominant, degreeOf, degreeIn, parseKey, guessKey } from "./tonal.mjs";
+import { mod, sign, keyOf, codeOf3, codeDegree, codeAlter, localOf, localNote, FIG_CLASS, CLASS_FIG, isDominant, degreeOf, degreeIn, codeOf, parseKey, guessKey } from "./tonal.mjs";
 import { melodicParts, verticalParts, total, choose, temperature, defaultWeights } from "./soft.mjs";
 import { functionOf, grammarErrors } from "./functions.mjs";
 
@@ -157,7 +157,7 @@ export function overBassWorld(K, B, o = {}) {
     const q = cls === 0 ? (s === 0 ? "perfect" : "dissonant") : cls === 4 ? (s === 7 ? "perfect" : "dissonant")
             : cls === 2 ? (s === 3 || s === 4 ? "imperfect" : "dissonant") : cls === 5 ? (s === 8 || s === 9 ? "imperfect" : "dissonant") : "dissonant";
     const tri = s === 6 ? (cls === 3 ? "A4" : cls === 4 ? "d5" : null) : null;
-    return { steps, cls, q, tri };
+    return { steps, cls, q, tri, semis: s };
   }
   const consonant = (v) => v.q !== "dissonant";
   function bassPassing(t) {
@@ -199,7 +199,8 @@ export const RULES = {
 
   /** vertical · above the bass, not on its note but at the end (unison: "any", anywhere: Fux's), not too far from it. */
   "from-bass": (w, { spacing = 16, unison = "end" } = {}) => ({ id: "from-bass", lookback: 0,
-    check: ({ t, v }) => (v.steps < 0 ? "below the bass" : v.steps === 0 && t < w.n - 1 && unison !== "any" ? "the unison with the bass (only at the end)" : v.steps > spacing ? "too far from the bass" : null) }),
+    // (a unison a semitone under the bass — the bass's letter, lowered — is under it: D over D♯)
+    check: ({ t, v }) => (v.steps < 0 || (v.steps === 0 && v.semis > 6) ? "below the bass" : v.steps === 0 && t < w.n - 1 && unison !== "any" ? "the unison with the bass (only at the end)" : v.steps > spacing ? "too far from the bass" : null) }),
 
   /** vertical · the figures asked over the bass (one of them). */
   figures: (w, { figured = true } = {}) => ({ id: "figures", lookback: 0,
@@ -454,6 +455,9 @@ function structuralParallels(w, U, t, c) {
   return 1;
 }
 
+// (Bach's alto and tenor in the chorales: how much a move of 0, 1 … 12, 13+ semitones costs, −log of its frequency
+// against the note kept — 31.3%, 16.0%, 23.2%, 10.0%, 8.6%, 7.0%, 0.4%, 2.6%, 0.3%, 0.2%, 0.1%, 0.0%, 0.2%, 0.0%)
+export const BACH_INNER_MOTION = [0, 0.67, 0.3, 1.14, 1.29, 1.5, 4.36, 2.48, 4.65, 5.02, 5.97, 9.19, 5.15, 8.5];
 // ─── soft rules: what a candidate costs (soft.mjs's, with those of a voice over a bass) ───
 export const SOFT_RULES = {
   /** soft.mjs: the shape of the line and the vertical it makes, by its ids and weights. */
@@ -470,6 +474,15 @@ export const SOFT_RULES = {
       return { ...mel, ...verticalParts(bassLine.slice(0, t), up, bassLine[t], w.D(c), ctx(t, c), W), ...(ck ? { "chord-skip": ck } : {}), ...(sp ? { "structural-parallels": sp } : {}) };
     } };
   },
+  /** a move as often as Bach makes it: an inner voice's move from the note before, by its size in semitones (0 the
+   *  note kept, 13 more than an octave), costs −log of how often his alto and tenor make it in the chorales against
+   *  the commonest (the note kept) — 31,338 moves of the 2,272 phrases (tests/chorales.mjs reads them again). table:
+   *  another voice's, or another corpus's. bach-4 1.4.0. */
+  "bach-motion": (w, { W, table = BACH_INNER_MOTION }) => ({ id: "bach-motion", cost: ({ U, t, c }) => {
+    if (t < 1) return {};
+    const d = Math.min(table.length - 1, Math.abs(w.semiU(c) - w.semiU(U[t - 1])));
+    return { "bach-motion": table[d] * (W["bach-motion"] ?? 1) };
+  } }),
   /** the leading tone goes up to the tonic, everywhere — but where it has a reason not to (see partimento.mjs). */
   "leading-tone": (w, { W, middle = false }) => ({ id: "leading-tone", cost: ({ U, t, c }) => {
     const v = leadingTone(w, W, middle, U, t, c);
@@ -873,9 +886,13 @@ export const BETWEEN = {
    *  applied one); a chain of 6/3s over a bass by step is a line. The weak units between are the prolongation's (a
    *  passing chord, the RO's 6/3 on ⑥ going up): not read, as GTTM's prolongational reduction would not. Where the
    *  chords are given (a figured bass) it checks them; where they are free (a bass not figured, a melody given) it
-   *  chooses with them. chorale-4 1.4.0. */
-  functions: (N) => ({ id: "functions", lookback: 3, check: ({ W, t, x }) => {
+   *  chooses with them. chorale-4 1.4.0.
+   *  local: each unit read in its own key (the bass note's, Bach's phrases tonicizing as they go, discussion #353),
+   *  two units in different keys kept where either key reads them well (the pivot); passing: an inverted chord over a
+   *  bass going on by step is a passing chord (V – IV6 over ⑤–⑥), never a retrogression. bach-4 1.3.0. */
+  functions: (N, { local = false, passing = false } = {}) => ({ id: "functions", lookback: 3, check: ({ W, t, x }) => {
     const { K, B } = N, strong = N.V[0].strong, kt = { tonic: K.tonic, mode: K.mode };
+    const keyAt = (u) => (local && B[u].key ? { tonic: B[u].key.tonic, mode: B[u].key.mode } : kt);
     if (!W || t < 1) return null;
     // (a unit's chord: the bass and the voices; where its figures ask for a tone no voice has — a diminished 7th
     // without its 5th — that tone added as the unit's key has it, so the chord is read as what it is)
@@ -894,30 +911,39 @@ export const BETWEEN = {
     };
     // (an augmented 6th is the dominant's preparation: S; a chain of 6/3s and 7–6s over a bass by step, a Lamento's
     // too, is a line, not a succession of functions)
-    const fnAt = (u, xs) => (B[u].chord && B[u].chord[0] === "+" ? { fn: "S", target: null, targets: [], degree: null, chord: { root: null, kind: "+6", bass: mod(K.midi(B[u].d, B[u].r || 0), 12), extra: null } } : functionOf(chordAt(u, xs), kt));
+    const fnAt = (u, xs, k = kt) => (B[u].chord && B[u].chord[0] === "+" ? { fn: "S", target: null, targets: [], degree: null, chord: { root: null, kind: "+6", bass: mod(K.midi(B[u].d, B[u].r || 0), 12), extra: null } } : functionOf(chordAt(u, xs), k));
     const LINE = new Set(["6/3", "6", "7/3", "7/4"]);
     const line = (u, v) => B[u].chord && B[v].chord && LINE.has(B[u].chord) && LINE.has(B[v].chord) && Math.abs(K.midi(B[v].d, B[v].r || 0) - K.midi(B[u].d, B[u].r || 0)) <= 2;
-    const ok = (u, a, b) => line(u, t) || grammarErrors([a, b], { end: false, key: kt });
-    const errOf = (u, a, b) => { const e = ok(u, a, b); return e === true || !e.length ? null : e[0].reason; };
+    // (the two chords read in one key: the later unit's, then the earlier's where it is another — null where either
+    // reads them as the grammar allows, or where a chord is none)
+    const keysOf = (u) => { const a = keyAt(t), b = keyAt(u); return a.tonic === b.tonic && a.mode === b.mode ? [a] : [a, b]; };
+    const errOf = (u, xs, xt) => {
+      if (line(u, t)) return null;
+      let why = null;
+      for (const k of keysOf(u)) {
+        const a = fnAt(u, xs, k), b = fnAt(t, xt, k);
+        if (!a || !b) return null;
+        const e = grammarErrors([a, b], { end: false, key: k, passing });
+        if (!e.length) return null;
+        why = why || e[0].reason;
+      }
+      return why;
+    };
     // (on a weak unit only an applied dominant's resolution is read: it goes to its target, weak or strong)
     if (!strong(t)) {
-      const a = fnAt(t - 1, W.map((U) => U[t - 1]));
-      if (!a || a.fn !== "A" || (!B[t].struck && x.every((c, i) => c === W[i][t - 1]))) return null;
-      const b = fnAt(t, x);
-      return b ? errOf(t - 1, a, b) : null;
+      const xs = W.map((U) => U[t - 1]);
+      if (!B[t].struck && x.every((c, i) => c === W[i][t - 1])) return null;
+      if (!keysOf(t - 1).some((k) => { const a = fnAt(t - 1, xs, k); return a && a.fn === "A"; })) return null;
+      return errOf(t - 1, xs, x);
     }
     let s = t - 1;
     while (s >= 0 && !strong(s)) s--;
     if (s < 0) return null;
     // (the strong unit reached from the one before — a weak unit's chord resolved there, an applied dominant on the
     // weak unit into its target — or from the strong one before: either way the grammar is kept)
-    const b = fnAt(t, x);
-    if (!b) return null;
     let why = null;
     for (const u of s === t - 1 ? [s] : [t - 1, s]) {
-      const a = fnAt(u, W.map((U) => U[u]));
-      if (!a) return null;
-      const e = errOf(u, a, b);
+      const e = errOf(u, W.map((U) => U[u]), x);
       if (!e) return null;
       why = why || e;
     }
@@ -1019,6 +1045,30 @@ export const SOFT_BETWEEN = {
     for (const c of [0, ...v]) cnt[c] = (cnt[c] || 0) + 1;
     return Object.entries(cnt).some(([c, k]) => +c !== 0 && k >= 2) ? { doubling: weight } : {};
   } }),
+  /** a voice exchange (Stimmtausch): an inner voice and another voice trade their notes' classes in contrary motion —
+   *  over one unit (a 3rd or a 6th each way: the alto C→E, the bass E→C) or two (a passing note between, each voice by
+   *  step) —, the chord kept and each line moving where one voice alone would leap: it costs less (−weight), as Bach
+   *  writes it in about one chord in eleven. bach-4 1.5.0. */
+  "voice-exchange": (N, { weight = 1 } = {}) => ({ id: "voice-exchange", cost: ({ W, t, x }) => {
+    const pitch = (u, i, xs) => (i === 3 ? N.K.semi(N.B[u].d, N.B[u].r || 0) : N.semi(xs ? xs[i] : W[i][u]));
+    const pc = (m) => mod(m, 12);
+    for (const k of [1, 2]) {
+      const s = t - k;
+      if (s < 0) continue;
+      for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) {
+        if (i !== 1 && i !== 2 && j !== 1 && j !== 2) continue;
+        const a0 = pitch(s, i), b0 = pitch(s, j), a1 = pitch(t, i, x), b1 = pitch(t, j, x);
+        if (pc(a0) === pc(b0) || pc(a1) !== pc(b0) || pc(b1) !== pc(a0) || a1 === a0 || Math.sign(a1 - a0) !== -Math.sign(b1 - b0)) continue;
+        if (k === 2) { const am = pitch(t - 1, i), bm = pitch(t - 1, j); if (Math.abs(am - a0) > 2 || Math.abs(a1 - am) > 2 || Math.abs(bm - b0) > 2 || Math.abs(b1 - bm) > 2) continue; }
+        return { "voice-exchange": -weight };
+      }
+    }
+    return {};
+  } }),
+  /** the tonal functions (BETWEEN's functions, its parameters) as a cost: a unit whose chord the grammar does not let
+   *  follow the one before pays weight — Bach breaks it, read in his local keys, in 78 of his 2,272 phrases
+   *  (discussion #353: soft until the keys are the engine's own). */
+  functions: (N, { weight = 2, ...p } = {}) => { const r = BETWEEN.functions(N, p); return { id: "functions", cost: (xx) => (r.check(xx) ? { functions: weight } : {}) }; },
 };
 
 // a church mode's style, as Fux writes (Gradus ad Parnassum; tests/rules.mjs reads his examples in three and four parts
@@ -1059,8 +1109,15 @@ Object.assign(STYLES, {
   // Bach's chorales (the corpus, the bridges filled from A to B): chorale-4, and two neighbouring voices may meet on one
   // note — the tenor and the bass, the alto and the tenor… —, a doubling: what binds a doubled note binds it, the
   // parallels and the doublings (BWV 269's first phrase: the tenor on the bass's G)
-  "bach-4": { style: "bach-4", version: "1.2.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]] },
-    between: [["order", { within: 7, unison: true }]],
+  // (the functions read in each unit's key, the passing chords let pass, and as a cost, not a refusal: 1.3.0)
+  // (each voice's moves weighed as often as Bach's alto and tenor make them — bach-motion, weight 2: with the engine at
+  // temperature 1 they keep a note, step, leap a 4th or more nearly as often as his: 1.4.0)
+  // (and an inner voice trading its note with another's in contrary motion — a voice exchange — costing less, weight
+  // 2: as often as Bach, about one chord in eleven: 1.5.0)
+  "bach-4": { style: "bach-4", version: "1.5.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
+                                                                                          soft: [["bach-motion"]], weights: { "bach-motion": 2 } },
+    between: [["order", { within: 7, unison: true }], ["functions", false]],
+    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"]], weights: { functions: 2, "voice-exchange": 2 },
     // (the voices' ranges as Bach's in the chorales, MIDI: the same in every key)
     ranges: { soprano: [57, 81], alto: [52, 74], tenor: [48, 69] } },
 });
@@ -1150,16 +1207,18 @@ export function fourOverBass(spec = {}) {
   const between = st.between.map(([id, p]) => BETWEEN[id](N, { ...(params[id] || {}), ...(p || {}) }));
   // (a style's weights, then the spec's: the voices' soft rules and the doubling between them)
   const W = { doubling: 0.6, ...(st.weights || {}), ...(spec.weights || {}) };
-  const soft = (st.softBetween || []).map(([id, p]) => SOFT_BETWEEN[id](N, { weight: W.doubling, ...(p || {}) }));
+  const soft = (st.softBetween || []).map(([id, p]) => SOFT_BETWEEN[id](N, { ...(W[id] !== undefined ? { weight: W[id] } : {}), ...(p || {}) }));
   const D = codeDegree;
   // (the order of the voices and their octave, at once: as partimento.mjs's triples)
   // (the voices in order as they are chosen — neighbours on one note where the style lets them meet)
   const meet = st.between.some(([id, p]) => id === "order" && p && p.unison);
   const quick = (_W, _t, x) => { if (x.length < 2) return true; const a = x[x.length - 2], b = x[x.length - 1]; return !((D(b) >= D(a) && !(meet && a === b)) || D(a) - D(b) > 7); };
   // (a soprano given: its note at each unit, and nothing else; what it makes with the others the rules between them read)
-  const gs = spec.given && spec.given.soprano;
-  const Sgiven = gs ? { ...Sv, check: (U, t, c) => (t >= n ? "the work is finished" : gs[t] === null || gs[t] === undefined ? Sv.check(U, t, c) : c === gs[t] ? null : "the soprano is given"), costParts: (U, c) => (gs[U.length] === null || gs[U.length] === undefined ? Sv.costParts(U, c) : {}) } : Sv;
-  const SV = solveVoices({ n, voices: [{ name: "soprano", solver: Sgiven }, { name: "alto", solver: Av, prefix: "alto/", weight: 0.6 }, { name: "tenor", solver: Tv, prefix: "tenor/", weight: 0.6 }],
+  // (and the alto or the tenor given where a unit has a note for it — a bridge's ends, Bach's chords —: there its note
+  // and nothing else, its own rules off there; elsewhere free)
+  const pin = (V, g, who) => (g ? { ...V, check: (U, t, c) => (t >= n ? "the work is finished" : g[t] === null || g[t] === undefined ? V.check(U, t, c) : c === g[t] ? null : `the ${who} is given`), costParts: (U, c) => (g[U.length] === null || g[U.length] === undefined ? V.costParts(U, c) : {}) } : V);
+  const Sgiven = pin(Sv, spec.given && spec.given.soprano, "soprano");
+  const SV = solveVoices({ n, voices: [{ name: "soprano", solver: Sgiven }, { name: "alto", solver: pin(Av, spec.given && spec.given.alto, "alto"), prefix: "alto/", weight: 0.6 }, { name: "tenor", solver: pin(Tv, spec.given && spec.given.tenor, "tenor"), prefix: "tenor/", weight: 0.6 }],
                            between, soft, quick, result: (W_) => ({ soprano: W_[0], alto: W_[1], tenor: W_[2] }) });
   /** The chords a realization makes, unit by unit, as figures ("6/4/3", "(5)/3"…). */
   const chords = (R) => {
@@ -1176,12 +1235,16 @@ export function fourOverBass(spec = {}) {
            judge: (R) => SV.judgeW([R.soprano, R.alto, R.tenor], `the voices are not ${n} units long`), name: Sv.name, degree: Sv.degree };
 }
 
+// a note's name ("F#4", "Bb3", "C##5") as degree and alteration in K, or null (no name, or too far from K to write)
+const spelt = (K, name) => { if (!name) return null; try { const c = codeOf(K, name); return { d: codeDegree(c), r: codeAlter(c) }; } catch (e) { return null; } };
+
 // ─────────────────────────────── from a tree: a bass given as notes (the cac box, discussion #323) ───────────────────────────────
-/** The bass's units from notes [{midi, units, fig (a figuring: "6/5"), key, strong: [one a unit]}] in K. */
+/** The bass's units from notes [{midi, name (as spelt: "F#4"), units, fig (a figuring: "6/5"), key, strong: [one a unit]}] in K. */
 export function bassFromNotes(notes, K, voices = 4, fill = false) {
   const table = voices >= 4 ? CHORDS4 : CHORDS, units = [], unknown = [];
-  // (each note spelt in its own key, where it has one: F in A minor, not E♯ as G major would)
-  const drs = notes.map((nt) => degreeIn(K, nt.midi, parseKey(nt.key)));
+  // (each note as it is spelt — its name, "F#4", where it has one: an edition's —, else in its own key, where it has
+  // one: F in A minor, not E♯ as G major would)
+  const drs = notes.map((nt) => spelt(K, nt.name) || degreeIn(K, nt.midi, parseKey(nt.key)));
   notes.forEach((nt, i) => {
     const dr = drs[i];
     if (!dr) throw new Error(`note ${i + 1}: not a pitch of ${K.tonic} ${K.mode}`);
@@ -1249,9 +1312,16 @@ export function fromNotes(spec = {}) {
   // (a soprano given — notes [{midi, units}] in the bass's units, a rest {midi: null} —: its code a unit; the alto and
   // the tenor written between it and the bass, the chords chosen by the rules — the functions among them)
   // (a note spelt in its unit's key, where the bass gives one)
+  // (or as it is spelt, where it has a name)
   const codeOfMidi = (m, t) => { const dr = degreeIn(K, m, units[t] && units[t].key); return dr ? codeOf3(dr.d, dr.r) : null; };
-  const given = spec.soprano && voices >= 4 ? { soprano: spec.soprano.flatMap((x) => Array(Math.max(1, x.units || 1)).fill(x.midi === null || x.midi === undefined ? null : x.midi)).map((m, t) => (m === null ? null : codeOfMidi(m, t))) } : null;
+  const given = spec.soprano && voices >= 4 ? { soprano: spec.soprano.flatMap((x) => Array(Math.max(1, x.units || 1)).fill(x.midi === null || x.midi === undefined ? null : x)).map((x, t) => { if (x === null) return null; const dr = spelt(K, x.name); return dr ? codeOf3(dr.d, dr.r) : codeOfMidi(x.midi, t); }) } : null;
   if (given && given.soprano.length !== units.length) throw new Error(`the soprano is ${given.soprano.length} units long, the bass ${units.length}`);
+  // (the alto and the tenor given where a unit has a note for them — inner: {alto: [a note a unit, or null]…}, a note
+  // {midi, name} or a MIDI number —: a bridge's ends as Bach's chords)
+  if (given && spec.inner) for (const v of ["alto", "tenor"]) if (spec.inner[v]) {
+    if (spec.inner[v].length !== units.length) throw new Error(`the ${v} is ${spec.inner[v].length} units long, the bass ${units.length}`);
+    given[v] = spec.inner[v].map((x, t) => { if (x === null || x === undefined) return null; const o = typeof x === "number" ? { midi: x } : x; const dr = spelt(K, o.name); return dr ? codeOf3(dr.d, dr.r) : codeOfMidi(o.midi, t); });
+  }
   const make = (bass, fig) => (voices >= 4 ? fourOverBass({ key, bass, figured: fig, ro, style: spec.style, given })
     : voices === 3 ? partsOverBass({ key, bass, figured: fig, ro, style: spec.style })
     : overBass({ key, bass, figured: fig, ro, voice: "top", lo: 7, hi: 21, style: spec.style }));
@@ -1259,8 +1329,8 @@ export function fromNotes(spec = {}) {
   const names = voices >= 4 ? ["soprano", "alto", "tenor"] : voices === 3 ? ["top", "middle"] : ["top"];
   const asVoices = (R) => (R === null || R === undefined ? null : voices === 2 ? { top: R } : R);
   const midi = (c) => K.midi(codeDegree(c), codeAlter(c));
-  // (a MIDI note's code; given a unit, spelt in its key)
-  const code = (m, t) => { const dr = t === undefined ? degreeOf(K, m) : degreeIn(K, m, units[t] && units[t].key); return dr ? codeOf3(dr.d, dr.r) : null; };
+  // (a MIDI note's code; given a unit, spelt in its key; a name's — "F#4" — as it is spelt)
+  const code = (m, t) => { if (typeof m === "string") { const dr = spelt(K, m); return dr ? codeOf3(dr.d, dr.r) : null; } const dr = t === undefined ? degreeOf(K, m) : degreeIn(K, m, units[t] && units[t].key); return dr ? codeOf3(dr.d, dr.r) : null; };
   const V0 = voices >= 4 ? P.soprano : voices === 3 ? P.top : P;
   // (a code's name as a tree writes it: "bb4", "f#3")
   const spell = (c) => K.name(codeDegree(c), codeAlter(c)).replace("𝄫", "bb").replace("𝄪", "##").replace("♭", "b").replace("♯", "#").replace(/^[A-G]/, (x) => x.toLowerCase());
@@ -1324,7 +1394,7 @@ export function fromNotes(spec = {}) {
  * on the unison, as in Bach's chorales)}. fromNotes, the
  * chords free (no figures), the soprano given.
  */
-export const fromOuter = (spec = {}) => fromNotes({ ...spec, style: spec.style || "bach-4", notes: spec.bass, soprano: spec.soprano, voices: 4, fill: false });
+export const fromOuter = (spec = {}) => fromNotes({ ...spec, style: spec.style || "bach-4", notes: spec.bass, soprano: spec.soprano, inner: spec.inner, voices: 4, fill: false });
 
 export default { within, TooLong, solve, solveVoices, overBass, partsOverBass, fourOverBass, fromNotes, fromOuter, bassFromNotes, degreeOf, parseKey, guessKey, keyOf,
                  RULES, SOFT_RULES, BETWEEN, SOFT_BETWEEN, STYLES, CATALOGUES, resolveStyle, checkStyle, defineStyle, partsOf, CHORDS, CHORDS4, RULE_OF_THE_OCTAVE, octaveDefault };

@@ -136,7 +136,30 @@ id: `(connect :osc 0 :out 0)`, `(text! :osc "osc~ 440")`, `(send! :osc 220)`, `(
 box's: `(name-box :b9 :osc)` gives it to another; `(name-box :b9 nil)` takes it away. `to` takes a name too, for the box
 it makes: `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))` can be evaluated again and again —
 only what changed changes, and a named box you moved by hand stays where you put it. `(to a o :amp "text" i)` for
-other ports.
+other ports. A chain (`->`, `doto`) evaluated from the tab owns the lines it wrote: evaluated again, it takes away
+those it no longer writes — put `(to :lpf "lop~ 800")` between `:osc` and `:amp` and the old line `:osc` → `:amp` goes,
+in the same event. A chain is known by the box it starts from; lines made otherwise stay. What each chain wrote is kept
+in this browser for each work.
+
+**Forms.** In live code a box is the form it reads as: `(osc~ 220)` is the box `osc~ 220`, `(map inc)` the box
+`map inc`. A chain with `->` is in series, each box fed by the one before; a vector is in parallel — after one wire every
+element is fed by it, after as many wires as it has elements each by its own —, `_` is a wire that goes on, and a box
+after several wires takes them on its inlets 0, 1… (the grammar of Faust's `:`, `,` and `<:`):
+
+```clojure
+(def osc (osc~ 220))                       ; a box by a name: the same box each time
+(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))     ; stereo: one wire split in two
+(-> :osc (lop~ 800) (gain~ 0.2) [_ _] (dac~ 1 2))   ; a filter put in: only that box is new
+(osc~ ~(* 2 110))                          ; ~ computes a value now: the box osc~ 220
+```
+
+A chain owns the boxes it made, as it owns its wires: evaluated again, each form takes the box it made before with the
+same class (its text changed if it changed), so changing a number changes that box, a box put in is the only new one,
+and a box taken out is deleted. Start a chain from a name (`:osc`, or a `def`) to change its structure as you go; named
+boxes are never deleted this way. At the top level a list whose head is a command or a Clojure function is code
+(`(+ 1 2)`, `(play)`); inside a chain every list is a box, but `to`, `def` and the calls that make the patch. `(to o
+(box~ …) i)` chooses the ports. What each chain made is kept in this browser for each work.
+
 
 **Functions as boxes.** A box named after a pure function of `clojure.core` (or `clojure.string`, as
 `str/…`) is that function, with no component to write: its other words are its arguments, read as EDN,
@@ -529,9 +552,10 @@ the bar hides or shows it. This browser remembers how you left it. From the REPL
 `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
 
 - **Code** — the work as **Calls** (`box`, `connect`, …), editable: Ctrl/⌘+Enter applies them (only what
-  they change, as one event), ⇧+Enter evaluates the form at the cursor alone. **-> chains** writes the lines
-  that follow each other as chains — `(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, names in
-  place of ids — the same work, in the same order, read as the signal goes (this browser remembers the choice). **Data** shows the same work as data (EDN): the state the history produces, every key of
+  they change, as one event), ⇧+Enter evaluates the form at the cursor alone. The lines that follow each other
+  are written as chains — `(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, names in place of ids —
+  the same work, in the same order, read as the signal goes; **-> chains** off writes a `connect` for each line
+  (this browser remembers the choice). Links, the clipboard and Claude always use the flat writing. **Data** shows the same work as data (EDN): the state the history produces, every key of
   every box, read-only, to inspect it (folding and search with Ctrl/⌘+F). Edits not run yet stay in the
   calls while you look at the data.
 - **Components** — the classes this work knows. The boxes that define them (`component`) are kept

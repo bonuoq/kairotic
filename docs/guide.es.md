@@ -140,7 +140,32 @@ comandos lo aceptan en lugar del id: `(connect :osc 0 :out 0)`, `(text! :osc "os
 se lo quita. `to` también acepta un nombre para la caja que hace:
 `(-> (box :osc "osc~ 220") (to :amp "gain~ 0.2") (to :out "dac~ 1 2"))` se puede evaluar una y otra vez —solo cambia
 lo que ha cambiado, y una caja con nombre que moviste a mano se queda donde la pusiste—. `(to a o :amp "texto" i)`
-para otros puertos.
+para otros puertos. Una cadena (`->`, `doto`) evaluada desde la pestaña es dueña de las líneas que escribió: evaluada
+otra vez, quita las que ya no escribe —mete `(to :lpf "lop~ 800")` entre `:osc` y `:amp` y la línea vieja `:osc` →
+`:amp` se va, en el mismo evento—. Una cadena se reconoce por la caja de la que sale; las líneas hechas de otra manera se
+quedan. Lo que escribió cada cadena se guarda en este navegador para cada obra.
+
+**Formas.** En el código en vivo una caja es la forma que se lee: `(osc~ 220)` es la caja `osc~ 220`, `(map inc)` la
+caja `map inc`. Una cadena con `->` va en serie, cada caja alimentada por la anterior; un vector va en paralelo —después
+de un cable cada elemento se alimenta de él, después de tantos cables como elementos tiene cada uno del suyo—, `_` es un
+cable que sigue, y una caja después de varios cables los toma en sus entradas 0, 1… (la gramática de `:`, `,` y `<:` de
+Faust):
+
+```clojure
+(def osc (osc~ 220))                       ; una caja con nombre: la misma cada vez
+(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))     ; estéreo: un cable partido en dos
+(-> :osc (lop~ 800) (gain~ 0.2) [_ _] (dac~ 1 2))   ; un filtro añadido: solo esa caja es nueva
+(osc~ ~(* 2 110))                          ; ~ calcula un valor ahora: la caja osc~ 220
+```
+
+Una cadena es dueña de las cajas que hizo, como lo es de sus cables: evaluada otra vez, cada forma toma la caja que hizo
+antes con la misma clase (con su texto cambiado si ha cambiado), así que cambiar un número cambia esa caja, una caja
+añadida es la única nueva y una caja quitada se borra. Empieza una cadena por un nombre (`:osc`, o un `def`) para cambiar
+su estructura sobre la marcha; las cajas con nombre nunca se borran así. En el nivel superior, una lista cuyo primer
+elemento es un comando o una función de Clojure es código (`(+ 1 2)`, `(play)`); dentro de una cadena toda lista es una
+caja, menos `to`, `def` y las llamadas que hacen el patch. `(to o (caja~ …) i)` elige los puertos. Lo que hizo cada
+cadena se guarda en este navegador para cada obra.
+
 
 **Funciones como cajas.** Una caja con el nombre de una función pura de `clojure.core` (o de
 `clojure.string`, como `str/…`) es esa función, sin escribir ningún componente: sus otras palabras son
@@ -553,9 +578,10 @@ la barra lo oculta o lo muestra. Este navegador recuerda cómo lo dejaste. Desde
 `(side-panel false)`, `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
 
 - **Code** — la obra como **Calls** (llamadas: `box`, `connect`, …), editable: Ctrl/⌘+Enter las aplica (solo
-  lo que cambian, como un evento), ⇧+Intro evalúa sola la forma del cursor. **-> chains** escribe las líneas
-  que se siguen como cadenas —`(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, con los nombres en
-  lugar de los ids—: la misma obra, en el mismo orden, leída como va la señal (este navegador recuerda la elección). **Data** muestra la misma obra como datos (EDN): el estado que produce la
+  lo que cambian, como un evento), ⇧+Intro evalúa sola la forma del cursor. Las líneas que se siguen se
+  escriben como cadenas —`(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, con los nombres en lugar de
+  los ids—: la misma obra, en el mismo orden, leída como va la señal; con **-> chains** apagado se escribe un `connect`
+  por línea (este navegador recuerda la elección). Los enlaces, el portapapeles y Claude usan siempre la escritura plana. **Data** muestra la misma obra como datos (EDN): el estado que produce la
   historia, todas las claves de todas las cajas, en solo lectura, para inspeccionarlo (plegado y búsqueda
   con Ctrl/⌘+F). Lo que hayas editado sin ejecutar sigue en las llamadas mientras miras los datos.
 - **Components** — las clases que conoce esta obra. Las cajas que las definen (`component`) se guardan

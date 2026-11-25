@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Study 72 · reveal · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1320px;height:1100px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the set as code, the reveal (the patch by its flow, the history), the set played
+// again at another time, from another branch.
+const results = [], errors = [];
+const is = (what, ok, detail) => results.push([what + (ok || detail === undefined ? "" : " — " + detail), !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 30000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+try {
+  await wait(() => w.kairoticStudy && d.querySelectorAll("#code .ev").length > 0);
+  const S = w.kairoticStudy;
+  is("act 1: only the code, every evaluation of the set", S.state().act === "code" && d.getElementById("revealed").hidden && d.querySelectorAll("#code .ev").length === 13, d.querySelectorAll("#code .ev").length);
+  is("... a chain evaluated as one event, written as its calls", /\(box :b1 "osc~ 220" 40 40\)\n  \(name-box :b1 :osc\)/.test(d.getElementById("code").textContent));
+  S.act("reveal");
+  await wait(() => d.querySelectorAll("#patch g.bx").length === 10);
+  const sh = S.shown();
+  is("act 2, the reveal: the patch at the end of the set", sh.boxes === 10 && sh.lines === 10 && d.querySelectorAll("#patch path.wire").length === 10, JSON.stringify(sh));
+  is("... by its flow: the sources above, the dac~ at the bottom", S.place(":b4")[1] < S.place(":b1")[1] && S.place(":b1")[1] < S.place(":b3")[1] && S.place(":b8")[1] < S.place(":b9")[1], JSON.stringify([S.place(":b4"), S.place(":b1"), S.place(":b3")]));
+  S.places("built");
+  is("... or as it was placed", JSON.stringify(S.place(":b1")) === "[40,40]");
+  S.places("flow");
+  is("the history: every segment a row, every change a tick", d.querySelectorAll("#hist g.seg").length === 3 && d.querySelectorAll("#hist line.tick").length === 16);
+  S.seek(0.3);
+  is("played back to a point: the patch as it was then", S.shown().k < S.shown().n && S.shown().boxes < 10 && d.querySelectorAll("#code .ev.late").length > 0, JSON.stringify(S.shown()));
+  S.mode("real"); const real = S.total();
+  S.mode("squeezed"); const sq = S.total();
+  S.mode("even"); const even = S.total();
+  is("flexible time: as it was, silences shortened, a step each change", real === 205000 && sq < real && sq <= 12 * 5000 && even === 12000, JSON.stringify([real, sq, even]));
+  S.mode("squeezed");
+  is("two ways through the history: two tips, the latest first", JSON.stringify(Array.from(S.tips())) === '["b","c"]');
+  S.tip("c"); S.seek(1);
+  is("another branch: the set taken up from after the filter, another way", S.shown().boxes === 8 && S.shown().lines === 8 && d.querySelectorAll("#hist g.seg.on").length === 2, JSON.stringify(S.shown()));
+  d.querySelector('#hist line.tick[data-seg="b"][data-i="2"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  is("a tick clicked: that branch, at that point", S.state().tip === "b" && S.shown().k === 11, JSON.stringify([S.state().tip, S.shown()]));
+} catch (e) { errors.push(String(e.message || e)); }
+const bad = results.filter((r) => !r[1]).map((r) => r[0]).concat(errors.map((e) => "error: " + e));
+window.kairoticResults = { total: results.length, failed: bad };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n` + results.map(([w2, ok]) => (ok ? "  ok   " : "  FAIL ") + w2).join("\n") + (errors.length ? "\n" + errors.join("\n") : "");
+</script>

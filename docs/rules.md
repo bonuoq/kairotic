@@ -212,7 +212,18 @@ in MIDI (a style's `ranges`); `dissonance`'s `overStruck` (a passing tone agains
 `weakHeld` (a note held into a dissonance on a weak unit, down by step after); `parallels` `direct: "outer"`.
 `@kairotic/rules` 0.19.0: `bach-4` 1.2.0, `dissonance`'s `bachSevenths` (a 7th held while the bass moves under it into a
 consonance; up by step where the bass takes its resolution, V4/3 → I6; free where the bass takes the 7th itself);
-notes given with a key (a bass note's `key`, `fromNotes`'s `code(m, t)`) are spelt in it (`degreeIn` in `tonal.mjs`).
+notes given with a key (a bass note's `key`, `fromNotes`'s `code(m, t)`) are spelt in it (`degreeIn` in `tonal.mjs`), and
+notes given with a name (a note's `name`, `code("F#4")`) as they are spelt.
+`@kairotic/rules` 0.20.0: `bach-4` 1.3.0: `functions`' `local` (each unit read in its own key, the bass note's; two units
+in different keys kept where either key reads them well) and `passing` (an inverted chord over a bass going on by step
+is a passing chord); in `bach-4` it is a cost (`SOFT_BETWEEN`'s `functions`, weight 2), not a refusal — read in his local
+keys Bach breaks it in 78 of his 2,272 phrases (136 in the chorale's key). `chorale-4` as it was (discussion #353).
+`@kairotic/rules` 0.20.1: `bach-4` 1.3.1: `from-bass` takes a unison a semitone under the bass (D over D♯) as below it.
+`@kairotic/rules` 0.21.0: `bach-4` 1.4.0: `bach-motion` (a voice's soft rule: a move costs −log of how often Bach's alto and
+tenor make it, `BACH_INNER_MOTION`; weight 2); `fourOverBass`'s `given.alto` / `given.tenor` and `fromOuter`'s `inner`
+(an inner voice given where a unit has a note: a bridge's ends as Bach's chords). `bach-4` 1.5.0: `voice-exchange` (between
+the voices, weight 2: an inner voice and another trading their notes in contrary motion, over one unit or two by step,
+costs less).
 
 ## Next
 

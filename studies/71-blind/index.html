@@ -1,0 +1,294 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Kairotic Study 71 · Blind</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+/* Study 71: a trial at a time — the two phrases to hear, the answer, then what they were; beside it the scores by
+   variant and the deck */
+.views { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--sheet); border: 1px solid var(--grid); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.panel h2 { margin: 0 0 10px; font: 600 14px var(--f-head); letter-spacing: 0.02em; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.side { border: 1px solid var(--rule); border-radius: 8px; background: var(--box); padding: 10px; display: grid; gap: 8px; justify-items: start; min-width: 0; }
+.side .lab { font: 600 12px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.side.playing { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.side.bach { border-color: var(--ok); } .side.wrong { border-color: var(--error); }
+.side .who { font: 600 13px var(--f-ui); }
+.side svg { width: 100%; height: auto; background: var(--sheet); border-radius: 4px; }
+.roll rect { rx: 1.5; } .roll .soprano { fill: var(--accent); } .roll .alto { fill: var(--kairos); } .roll .tenor { fill: var(--ok); } .roll .bass { fill: var(--ink-soft); }
+.roll line { stroke: var(--grid); stroke-width: 1; }
+.answer { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 10px; }
+.answer button.act { padding: 8px 14px; font-size: 14px; }
+.reveal { margin-top: 10px; font-size: 13px; line-height: 1.5; min-height: 1.5em; }
+.progress { height: 4px; background: var(--grid); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+.progress div { height: 100%; background: var(--accent); width: 0; transition: width 0.2s; }
+table.score { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.score th, table.score td { text-align: right; padding: 4px 5px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+table.score th:first-child, table.score td:first-child { text-align: left; }
+table.score th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+table.score td { font-family: var(--f-code); font-size: 12.5px; }
+table.score tr.overall td { font-weight: 600; }
+.ci svg { width: 100%; max-width: 440px; height: auto; display: block; margin-top: 8px; }
+.scroll { overflow-x: auto; }
+.ci .chance { stroke: var(--kairos); stroke-dasharray: 3 3; } .ci .bar { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+.ci .dot { fill: var(--accent); } .ci text { font: 11px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; } .ci .axis { stroke: var(--rule); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+.ok { color: var(--ok); } .bad { color: var(--error); }
+.answer .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.small { font-size: 12px; color: var(--ink-soft); }
+input[type="text"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; width: 9em; }
+</style>
+<main>
+<header>
+  <h1>Study 71 · blind</h1>
+  <span class="sub">a phrase of Bach's and a bridge between its first and last chords, the inner voices by the rules: which is Bach? (discussions #353, #399)</span>
+  <span class="status" id="status">loading the deck…</span>
+</header>
+<div class="toolbar">
+  <label>listener <input type="text" id="who" placeholder="your name" autocomplete="off"></label>
+  <label>trials <select id="per"><option value="2">10 (2 a variant)</option><option value="4" selected>20 (4 a variant)</option><option value="8">40 (8 a variant)</option></select></label>
+  <button class="act primary" id="start">new listening</button>
+  <span class="sep"></span>
+  <label>tempo <select id="tempo"><option value="0.8">slow</option><option value="0.62" selected>moderate</option><option value="0.48">flowing</option></select></label>
+  <button class="act" id="export">export answers</button>
+  <label class="act" style="cursor:pointer">import answers <input type="file" id="import" accept=".json,application/json" multiple hidden></label>
+</div>
+<div class="views">
+  <section class="panel" id="trial-panel">
+    <h2>The trial <span id="trial-n">start a listening</span></h2>
+    <div class="progress"><div id="bar"></div></div>
+    <div class="pair">
+      <div class="side" id="side-0"><span class="lab">first</span><button class="act" id="play-0" disabled>▶ hear the first</button><span class="who" id="who-0"></span><svg class="roll" id="roll-0" viewBox="0 0 300 120"></svg></div>
+      <div class="side" id="side-1"><span class="lab">second</span><button class="act" id="play-1" disabled>▶ hear the second</button><span class="who" id="who-1"></span><svg class="roll" id="roll-1" viewBox="0 0 300 120"></svg></div>
+    </div>
+    <div class="answer">
+      <button class="act" id="stop">■</button>
+      <span class="tag">Bach is</span>
+      <button class="act" id="ans-0" disabled>the first</button><button class="act" id="ans-1" disabled>the second</button>
+      <label class="small"><input type="checkbox" id="sure"> I am sure</label>
+      <span class="sep"></span>
+      <button class="act primary" id="next" disabled>next →</button>
+    </div>
+    <div class="reveal" id="reveal"></div>
+  </section>
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>Found <span id="score-who">how often Bach was found, by variant · lower: the bridges sound as his</span></h2>
+      <div class="scroll"><table class="score" id="score"></table></div>
+      <div class="ci"><svg id="ci" viewBox="0 0 360 150"></svg></div>
+      <p class="small" id="score-note"></p></section>
+    <section class="panel"><h2>The deck <span id="deck-n"></span></h2>
+      <div class="scroll"><table class="score" id="deck"></table></div><p class="small" id="deck-note"></p></section>
+    <section class="panel"><h2>About</h2><p class="about">Each trial is one chorale phrase twice: as Bach harmonized it,
+      and as a <b>bridge</b> between two of his chords — the phrase's first and its last, kept whole, the four voices as
+      he wrote them —: Study 63's outer voices drawn from one to the other, the same length, the alto and the tenor then
+      written by <code>@kairotic/rules</code>' <code>fromOuter</code> in the style <code>bach-4</code>, each move weighed
+      by how often Bach's own inner voices make it (<code>bach-motion</code>). Both are played alike: a chord a quarter, a note tied where it is held (a kept note struck again, as Bach mostly does,
+      unless it is held into a dissonance), the last chord a fermata. Answer which one is Bach, then see what the two were. The bridges come in five <b>variants</b>:
+      <code>all</code> (the tonal functions, the tension following Bach's mean profile, the economy of the voices' motion),
+      each of those layers off (<code>no-functions</code>, <code>no-tension</code>, <code>no-economy</code>), and
+      <code>arch</code> (all on, the tension following a generic arch instead). Where Bach is found no more often than
+      chance (50%), the bridges pass; a layer whose absence makes him easier to find is one listeners hear. The deck
+      (200 trials, drawn once) is the same for everyone: export your answers and pool them with others' by importing
+      theirs. <b>The deck</b> also counts the bridges <code>bach-4</code> could not fill — no inner voices by its rules
+      over those outer voices — by variant. The phrases are from Craig Sapp's edition of the chorales (CC BY-NC-SA 4.0).</p></section>
+  </div>
+</div>
+</main>
+<script type="module">
+import * as Bl from "./kairotic/blind.mjs";
+const $ = (id) => document.getElementById(id);
+const STORE = "kairotic.study71.answers";
+const load = () => { try { return JSON.parse(localStorage.getItem(STORE) || "[]"); } catch { return []; } };
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify(st.mine)); } catch {} };
+const st = { deck: null, session: [], i: 0, answered: false, mine: load(), pooled: [], heard: [false, false] };
+const pct = (x) => (x === null || x === undefined ? "—" : `${Math.round(x * 100)}%`);
+
+// ── the drawings: a piano roll of the four voices
+function roll(svg, item) {
+  const notes = Bl.soundOf(item, { unit: 1, fermata: 2 }), end = Math.max(...notes.map((x) => x.on + x.dur));
+  const lo = Math.min(...notes.map((x) => x.midi)) - 1, hi = Math.max(...notes.map((x) => x.midi)) + 1;
+  const W = 300, H = 120, x = (t) => 4 + (t / end) * (W - 8), y = (m) => 4 + ((hi - m) / (hi - lo)) * (H - 12);
+  let out = "";
+  for (let t = 0; t <= item.satb.length; t++) out += `<line x1="${x(Math.min(t, end))}" y1="0" x2="${x(Math.min(t, end))}" y2="${H}"/>`;
+  for (const n of notes) out += `<rect class="${n.voice}" x="${x(n.on) + 0.5}" y="${y(n.midi) - 2.5}" width="${Math.max(2, x(n.on + n.dur) - x(n.on) - 1.5)}" height="5"/>`;
+  svg.innerHTML = out;
+}
+
+// ── sound: a soft organ, the outer voices a little louder
+let ac = null, nodes = [], timer = null;
+function stop() { for (const o of nodes) try { o.stop(); } catch {} nodes = []; clearTimeout(timer); ["side-0", "side-1"].forEach((s) => $(s).classList.remove("playing")); }
+function play(k) {
+  const tr = st.session[st.i]; if (!tr) return;
+  stop(); ac = ac || new AudioContext(); if (ac.state === "suspended") ac.resume();
+  const item = itemOf(tr, k), unit = +$("tempo").value, notes = Bl.soundOf(item, { unit }), t0 = ac.currentTime + 0.08;
+  const gainOf = { soprano: 0.075, alto: 0.055, tenor: 0.055, bass: 0.08 };
+  for (const n of notes) {
+    const f = 440 * Math.pow(2, (n.midi - 69) / 12), g = ac.createGain(), s = t0 + n.on, e = s + n.dur;
+    g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(gainOf[n.voice], s + 0.03); g.gain.setValueAtTime(gainOf[n.voice], e - 0.05); g.gain.linearRampToValueAtTime(0, e);
+    g.connect(ac.destination);
+    for (const [type, mul, amp] of [["triangle", 1, 1], ["sine", 2, 0.35]]) {
+      const o = ac.createOscillator(), a = ac.createGain(); o.type = type; o.frequency.value = f * mul; a.gain.value = amp;
+      o.connect(a).connect(g); o.start(s); o.stop(e + 0.05); nodes.push(o);
+    }
+  }
+  $(`side-${k}`).classList.add("playing");
+  st.heard[k] = true; enable();
+  timer = setTimeout(() => $(`side-${k}`).classList.remove("playing"), (Bl.lengthOf(item, { unit }) + 0.2) * 1000);
+}
+// (k: 0 the first heard, 1 the second; Bach is first where bachFirst)
+const itemOf = (tr, k) => ((k === 0) === tr.bachFirst ? tr.trial.bach : tr.trial.bridge);
+
+function enable() {
+  const on = !!st.session[st.i] && !st.answered;
+  $("play-0").disabled = $("play-1").disabled = !st.session[st.i];
+  $("ans-0").disabled = $("ans-1").disabled = !(on && st.heard[0] && st.heard[1]);
+  $("next").disabled = !st.answered;
+}
+function showTrial() {
+  const tr = st.session[st.i];
+  st.answered = false; st.heard = [false, false];
+  ["side-0", "side-1"].forEach((s) => $(s).classList.remove("bach", "wrong", "playing"));
+  ["who-0", "who-1"].forEach((s) => ($(s).textContent = "")); ["roll-0", "roll-1"].forEach((s) => ($(s).innerHTML = ""));
+  $("reveal").textContent = ""; $("sure").checked = false;
+  if (!tr) {
+    $("trial-n").textContent = st.session.length ? `done: ${st.session.length} trials — start another listening, or export` : "start a listening";
+    $("bar").style.width = st.session.length ? "100%" : "0";
+  } else {
+    $("trial-n").textContent = `${st.i + 1} of ${st.session.length} · hear both, then answer`;
+    $("bar").style.width = `${(100 * st.i) / st.session.length}%`;
+  }
+  enable();
+}
+function answer(k) {
+  const tr = st.session[st.i]; if (!tr || st.answered) return;
+  const correct = (k === 0) === tr.bachFirst, bachSide = tr.bachFirst ? 0 : 1, t = tr.trial;
+  st.mine.push({ who: $("who").value.trim() || "anonymous", id: t.id, variant: t.variant, phrase: t.phrase, bachFirst: tr.bachFirst, correct, sure: $("sure").checked, at: new Date().toISOString() });
+  save(); st.answered = true;
+  $(`side-${bachSide}`).classList.add("bach"); if (!correct) $(`side-${k}`).classList.add("wrong");
+  $(`who-${bachSide}`).textContent = "Bach"; $(`who-${1 - bachSide}`).textContent = `a bridge · ${t.variant}`;
+  roll($(`roll-${bachSide}`), t.bach); roll($(`roll-${1 - bachSide}`), t.bridge);
+  $("reveal").innerHTML = `${correct ? '<span class="ok">Found.</span>' : '<span class="bad">Not found:</span> the bridge was taken for Bach.'} ` +
+    `${t.title ? `<i>${t.title}</i>` : t.phrase}${t.bwv ? ` (${/^BWV/.test(t.bwv) ? t.bwv : "BWV " + t.bwv})` : ""}, ${t.key.tonic} ${t.key.mode}, phrase ${t.phrase.split("-").pop()} · the bridge's variant <code>${t.variant}</code>`;
+  enable(); showScore();
+}
+function next() { stop(); st.i++; showTrial(); }
+function start(seed = Date.now(), per = +$("per").value) {
+  stop();
+  const done = new Set(st.mine.map((a) => a.id));
+  st.session = Bl.sessionOf(st.deck, { perVariant: per, seed, done });
+  if (st.session.length < per * Bl.VARIANTS.length) st.session = Bl.sessionOf(st.deck, { perVariant: per, seed });
+  st.i = 0; showTrial();
+}
+
+// ── the scores: mine and the ones imported, pooled
+function showScore() {
+  const all = [...st.mine, ...st.pooled], S = Bl.score(all), who = new Set(all.map((a) => a.who));
+  const rows = [...Bl.VARIANTS, "overall"].map((v) => {
+    const s = S[v];
+    return `<tr class="${v === "overall" ? "overall" : ""}"><td>${v}</td><td>${s.n}</td><td>${pct(s.rate)}</td><td>${s.n ? `${pct(s.ci[0])}–${pct(s.ci[1])}` : "—"}</td><td>${s.n ? s.p.toFixed(3) : "—"}</td><td>${s.sure.n ? `${s.sure.found}/${s.sure.n}` : "—"}</td></tr>`;
+  });
+  $("score").innerHTML = `<tr><th>variant</th><th>heard</th><th>Bach found</th><th>95%</th><th>p vs chance</th><th>sure</th></tr>${rows.join("")}`;
+  $("score-who").textContent = `${all.length} answer${all.length === 1 ? "" : "s"} · ${who.size} listener${who.size === 1 ? "" : "s"} · lower: the bridges sound as his`;
+  // (each variant's rate with its interval, chance marked)
+  const X = (p) => 90 + p * 250, rowsY = [...Bl.VARIANTS, "overall"];
+  let g = `<line class="axis" x1="${X(0)}" y1="6" x2="${X(0)}" y2="${12 + rowsY.length * 20}"/><line class="chance" x1="${X(0.5)}" y1="6" x2="${X(0.5)}" y2="${12 + rowsY.length * 20}"/>`;
+  rowsY.forEach((v, k) => {
+    const s = S[v], y = 16 + k * 20;
+    g += `<text x="4" y="${y}">${v}</text>`;
+    if (s.n) g += `<line class="bar" x1="${X(s.ci[0])}" y1="${y}" x2="${X(s.ci[1])}" y2="${y}" opacity="0.45"/><circle class="dot" cx="${X(s.rate)}" cy="${y}" r="4"/>`;
+  });
+  g += `<text x="${X(0)}" y="${142}" text-anchor="middle">0%</text><text x="${X(0.5)}" y="${142}" text-anchor="middle">chance</text><text x="${X(1)}" y="${142}" text-anchor="middle">100%</text>`;
+  $("ci").innerHTML = g;
+  $("score-note").textContent = st.pooled.length ? `${st.mine.length} answers yours (kept in this browser), ${st.pooled.length} imported.` : `${st.mine.length} answer${st.mine.length === 1 ? "" : "s"}, kept in this browser. Import other listeners' exports to pool them.`;
+}
+function showDeck() {
+  const D = st.deck;
+  $("deck-n").textContent = `${D.trials.length} trials, the same for every listener (seed ${D.seed})`;
+  $("deck").innerHTML = `<tr><th>variant</th><th>trials</th><th>phrases tried</th><th>filled by bach-4</th></tr>` +
+    Bl.VARIANTS.map((v) => `<tr><td>${v}</td><td>${D.trials.filter((t) => t.variant === v).length}</td><td>${D.tried[v].tried}</td><td>${pct(D.tried[v].filled / D.tried[v].tried)}</td></tr>`).join("");
+  const top = Object.entries(D.failures).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  $("deck-note").textContent = top.length ? `Why a bridge was not filled, most often: ${top.map(([w, n]) => `${w.replace(/^no inner voices: (unit #, )?/, "")} (${n})`).join("; ")}.` : "";
+}
+
+// ── export and import
+$("export").onclick = async () => {
+  const text = JSON.stringify({ study: "Kairotic Study 71 · blind", deck: st.deck.seed, answers: st.mine }, null, 1);
+  const filename = `study71-${($("who").value.trim() || "answers").replace(/\W+/g, "-")}.json`;
+  const dl = window.claude && (await window.claude.use("downloads").catch(() => null));
+  if (dl) { await dl.save({ filename, data: new Blob([text], { type: "application/json" }) }); $("status").textContent = `exported ${st.mine.length} answers`; return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = filename; a.click();
+};
+$("import").onchange = async (e) => {
+  for (const f of e.target.files) { try { const j = JSON.parse(await f.text()); st.pooled.push(...(j.answers || []).filter((a) => a.id && a.variant)); } catch {} }
+  showScore();
+};
+$("start").onclick = () => start();
+$("play-0").onclick = () => play(0); $("play-1").onclick = () => play(1); $("stop").onclick = stop;
+$("ans-0").onclick = () => answer(0); $("ans-1").onclick = () => answer(1); $("next").onclick = next;
+try { $("who").value = localStorage.getItem(STORE + ".who") || ""; } catch {}
+$("who").onchange = () => { try { localStorage.setItem(STORE + ".who", $("who").value); } catch {} };
+
+try {
+  st.deck = await (await fetch("../_shared/chorales/deck.json")).json();
+  showDeck(); showScore(); showTrial();
+  $("status").textContent = `${st.deck.trials.length} trials`;
+} catch (e) { $("status").textContent = "No deck: " + (e.message || e); }
+
+// for the tests (tests/page.html)
+window.kairoticStudy = { state: () => st, start, play, answer, next, score: () => Bl.score([...st.mine, ...st.pooled]), clear: () => { st.mine = []; save(); showScore(); } };
+</script>

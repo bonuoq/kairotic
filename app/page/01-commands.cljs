@@ -1081,8 +1081,9 @@
 (defn box-num [k] (let [m (re-matches #"b(\d+)" (name k))] (if m (js/parseInt (second m) 10) 1e9)))
 
 (defonce code-style
-  ;; how the Code tab writes the lines of the work: :flat (a connect each) or :chains (->, doto, to), #407
-  (atom (or (try (some-> (.getItem js/localStorage "kairotic.code-style") keyword #{:flat :chains}) (catch :default _ nil)) :flat)))
+  ;; how the Code tab writes the lines of the work: :chains (->, doto, to; the default, #433) or :flat (a connect
+  ;; each), #407. Links, the clipboard, Claude and the agents always read and write the work flat (patch->code).
+  (atom (or (try (some-> (.getItem js/localStorage "kairotic.code-style") keyword #{:flat :chains}) (catch :default _ nil)) :chains)))
 
 (defn lines->chains
   "The lines of patch p written as chains where they follow each other in the work's order (#407, #380, #399): a
@@ -1316,6 +1317,7 @@
 
 (defn box-num-e [k] (cv/id-num k))
 
+(declare forms-code? run-forms!)
 (defn try-code
   "Evaluates code (a string: calls) or applies events (a vector of them) on patch p, in a scratch patch,
    without touching the history: [the patch after, the events made]. The base of `with` (29-db.cljs)."
@@ -1325,7 +1327,10 @@
     (reset! tried [])
     (try
       (if (string? code-or-evs)
-        (eval-str (str "(do " code-or-evs "\n nil)"))
+        ;; live code written as forms ((osc~ 220), chains of them: #407) is run form by form; the rest as before
+        (if (forms-code? code-or-evs)
+          (run-forms! code-or-evs)
+          (eval-str (str "(do " code-or-evs "\n nil)")))
         (doseq [ev code-or-evs] (when (vector? ev) (dispatch-root! ev))))
       [@scratch @tried]
       (finally (reset! scratch prev-s) (reset! tried prev-t)))))

@@ -13,12 +13,121 @@
   `kairotic-components`) would not run today: they stay as a record in [the studies](docs/studies.md), and their
   code in the repository's history. `componentes/` and `components/` (`kairotic-componentes`,
   `kairotic-components`) are gone too, and both packages are unpublished from npm.
+- **Study 74 · aoidos** (discussion #192): a poem sung syllable by syllable. `prosody.mjs` reads polytonic Greek —
+  syllables, quantity (by nature, by position, doubtful; the laws of the accent; epic correption), accents — and scans
+  a line (hexameter, pentameter, iambic, free; synizesis), the scansion its time (a short a beat, a long two, held).
+  `aoidos.mjs`: the melody as one voice of `@kairotic/rules` (`solve()`), the accent as costs (rise to the acute, the
+  accent the word's highest, the circumflex falling, a fall after the accent; `strict` makes the peak and the
+  circumflex hard), an examiner that tries a melody as the dux of `cac imitation`, and `canonic()`: the dux written
+  with its comes on `canon-2`, the singer choosing among the comes's futuribles (Odyssey 1.1 in strict canon at the
+  octave below a foot later: 4,285 canons).
+
+- **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
+  voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of
+  0…13 semitones in the corpus, times the temperature, so the draw moves as often as he does), in place of the fixed
+  step/leap/repeat costs. Over the corpus (`all`): the soprano keeps its note 18% of the time (was 2%; Bach 22%), the
+  bass leaps a 3rd or more 48% (was 24%; Bach 53%), oblique motion 18% (was 3%; Bach 25%); similar motion no dearer
+  than contrary, the tessitura looser. `bridgesFor`'s `accept` draws a bridge again until it says yes, and
+  `tools/bridges.mjs` asks whether bach-4 can fill the inner voices (fromOuter's count above 0) — `fillable` on every
+  bridge (20,155 of 22,690, 89%; was 55–58%), false where ten
+  draws could not; the tool runs in shards (`tools/merge.mjs`). `bridges.json` drawn again.
+- **Live code as forms** (discussion #407): a box is the form it reads as — `(osc~ 220)` is the box `osc~ 220`, `(map
+  inc)` the box `map inc` —, so live code needs no `box`, quotes or ids: `(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))`. The
+  grammar of Faust's `:`, `,` and `<:`: `->` in series, a vector in parallel (a split after one wire, wire by wire
+  after as many), `_` a wire that goes on, a box after several wires taking them on its inlets 0, 1…; `(def osc (osc~
+  220))` a box by a name; `~expr` a value computed now. A chain owns the boxes it made, as it owns its wires: evaluated
+  again, each form takes the box it made with the same class, so a number changed is one text, a box put in the only
+  new one, a box taken out deleted. At the top level a command or Clojure function is code; inside a chain every list
+  is a box. The Live view's example is written so; the whole tab can be too (`run-form`, `forms-code?`).
+- **Study 73 · polyphony** (discussions #137, #308): the first ONNX model run in the page — Spotify's Basic Pitch
+  (Apache-2.0, code and weights), from jsDelivr, checked by its SHA-256 and kept in Cache Storage, through ONNX Runtime
+  Web 1.20.1 in a worker (`onnx.mjs`: a session from a URL, a run with arrays, the API #137 proposes). Its windows and
+  its way of reading notes ported to plain JS (`basicpitch.mjs`, under Basic Pitch's own licence); the notes read again
+  as the thresholds move, without running the model again. On a cadence rendered in the page the notes are scored
+  against what was written, and each chord heard against itself with a note an octave off: the 88 keys tell them
+  apart, a chroma cannot — what the followers of #308 would gain. Not in the app yet (after 0.3.0-alpha).
+- **`kairotic.motif`: one motive module for the whole system** (discussion: one motive layer; issues #108, #309). Study
+  60's motives move into the core: notes from a melody or from notes as played, Conklin's viewpoints, the exact
+  relations (repetition, transposition, sequence, inversion, retrograde, with the rhythm kept, augmented, diminished or
+  another), a kinship by weighted edit distance, `find-in`, `discover`, the memory of the work and the sweet spot. For
+  played time, rhythms are compared by their onsets within a tolerance. `returns` groups a rhythm played several
+  times: the quantizer's repetition (#108) is now that case of it. In the API as `api/motif-notes`, `api/motif-relate`,
+  `api/motif-find` and `api/motif-discover`. Tests: Study 60's, ported (`tests/cljs/motif.cljs`).
+- **The blind test's bridges between two of Bach's chords, their inner voices moving as his** (`@kairotic/rules`
+  0.21.0, `bach-4` 1.5.0; `@kairotic/cac` 0.16.9; Study 71). A bridge now begins and ends on Bach's chords whole: the
+  alto and the tenor given there (`fromOuter`'s `inner`, `fourOverBass`'s `given.alto` / `given.tenor`, where a unit has
+  a note) — before, only 31 of 200 began on his chord. `bach-4`'s voices weigh each move by how often Bach's alto and
+  tenor make it (`bach-motion`, weight 2: −log of its frequency in the chorales, `BACH_INNER_MOTION`), so the voice that
+  takes each chord tone is the one whose line it suits: in the deck the inner voices keep a note, step, leap a 3rd, a
+  4th or wider 30.9 / 40.9 / 13.9 / 9.3 / 4.9% of the time, Bach's 30.0 / 40.5 / 18.2 / 7.6 / 3.7% (before: 20 / 41 /
+  14 / 12 / 13). And a **voice exchange** costs less (`voice-exchange`, weight 2, `bach-4` 1.5.0): an inner voice and
+  another trading their notes in contrary motion, over one unit (a 3rd or 6th each way) or two (a passing note
+  between) — the chord kept and each line moving where one voice alone would leap, a shortcut of four-part writing;
+  the bridges do it about as often as Bach (with an inner voice, 9 chords in 100). A kept note is struck again, as Bach mostly does, unless it is held into a dissonance. The deck drawn
+  again: `bach-4` fills 55–58% of the bridges tried. Bach's phrases judged as before (504).
+- **A tree as the events of a pattern** (discussion #450, piece 1; `@kairotic/patterns` 0.3.1). `:tree` in a pbind is a
+  musical tree whose notes are its events (`:midinote :sustain :dur :voice :amp`, in time order, `:dur` the time to the
+  next onset — 0 for notes that start together —, a silence first when it does not begin at 0), every other key going
+  on over them note by note: `{:tree … :dur #pat/euclid [3 8]}` its pitches on a tresillo, `{:tree {:of … :voices
+  [0]}}` some of its voices. A tree on a pbind's inlet (a tree box, `cac partimento`, `comes`, a transcription)
+  becomes its `:tree`; `(ptree t)` in a `pattern` box. The way back of `render` (#93): what cac writes can now be
+  played by a `player` and varied with the generators.
+
+- **A rhythm that comes back is written the same way** (issue #108, point 2). The quantizer finds the spans whose onsets
+  fall at the same places, prefers for all of them the division of their mean (`:rep` 1 for another; `:repeat` the
+  tolerance, 0.08 of the span; `:repeat false` for none), and so writes a repeated rhythm alike each time. On the
+  benchmark, onsets gain up to 2 points and durations up to 7 (Essen rough 57.9 → 64.7 %); Weimar 66.6 → 67.2 %.
+- **Study 72 · reveal** (discussion #407): a live-coding set is only code while it is played; at the end it reveals
+  its patch, drawn by its flow (`layout.mjs`: a layered drawing after Sugiyama — rows after what feeds them, the order
+  uncrossing the wires, each box under what feeds it; the app's example work in seven rows with no crossing), and its
+  history on a time axis, every change a tick and every segment a row. The set can be played again from any point, at
+  ×1–×64, as it was, with its silences shortened or a step each change, and from another branch. A short set is built
+  in; a `.kairotic` exported from the app opens too.
+- **Study 71 · blind: the chorale test** (discussions #353, #399). A phrase of Bach's and a bridge — Study 63's outer
+  voices from its first chord to its last, the alto and the tenor by `fromOuter` (`bach-4`) — heard one after the
+  other: which is Bach? Five variants of the bridges (`all`, `no-functions`, `no-tension`, `no-economy`, `arch`); a
+  deck of 200 trials drawn once (`studies/_shared/chorales/deck.json`, `tools/deck.mjs`), the same for every listener;
+  the scores by variant with their 95% interval and an exact binomial p against chance; answers kept in the browser,
+  exported and pooled. `bach-4` fills 63–82% of the bridges tried (`arch` the most); the rest it cannot, most often for
+  a leap wider than the octave or a weak-unit dissonance not passing by step.
+- **A voice no longer meets the bass a semitone under it** (`@kairotic/rules` 0.20.1, `bach-4` 1.3.1;
+  `@kairotic/cac` 0.16.8). `from-bass`'s `unison: "any"` took the bass's letter lowered (D over D♯) for a unison; it is
+  below the bass. Bach's phrases are kept as before (504).
+
+- **The tonal functions in Bach's local keys, as a cost; and a plagal ending** (`@kairotic/rules` 0.20.0, `bach-4`
+  1.3.0; `@kairotic/cac` 0.16.7; discussion #353). `functions` reads each unit in its own key (`local`: the bass
+  note's — the corpus's `keys`), two units in different keys kept where either key reads them well, and lets a passing
+  chord pass (`passing`: an inverted chord over a bass going on by step, V – IV6 over ⑤–⑥). Read so, Bach breaks the
+  grammar in 78 of his 2,272 phrases (136 in the chorale's key): in `bach-4` it is a cost (`SOFT_BETWEEN`'s
+  `functions`, weight 2), no longer a refusal, and `bach-4` keeps **504** of his phrases (494). A style's soft rules
+  between the voices take their weight by their id (`weights`). `chorale-4` as it was. Study 56's figuring (and its
+  copies) knows a **plagal ending**: `ending: "plagal"`, the bass ④–①, IV a 5/3, the melody 5–8 (the tonic held),
+  3–5 (⑥ to ⑤) or 8–3 (④ to ③).
+
+- **The chorale test's tension: Bach's profile, the arch a variant** (#399, #353). Study 63's `outer.mjs` draws the
+  implied harmony's tension toward the corpus's profile (`PROFILE`, `profileOf`: Bach's mean tension by tenth of a phrase,
+  read in the cadence's key — 5.9 6.7 6.6 6.9 6.5 6.7 6.9 6.6 6.0 0.6, a plateau released at the cadence), the same
+  for every phrase, so none of a phrase's own curve leaks into its bridge; the generic arch (rising two thirds of the
+  way, released into B) is kept as a variant, `arch` (`target: "arch"`), for the blind test to compare.
+  `studies/_shared/chorales/bridges.json` drawn again: five variants per phrase.
+- **A chain owns the lines it wrote** (#432, discussion #407). A chain (`->`, `doto`) evaluated from the Code tab
+  (a form, or a block of calls that make the patch) takes away, when evaluated again, the lines it wrote before and no
+  longer writes, in the same event: put a box into `(-> :osc (to :amp …) (to :out …))` and the old line goes. A chain is
+  known by the box it starts from; lines made otherwise stay; what each chain wrote is kept in this browser for each
+  work (`build-forms`, `owned-lines`).
+- **The Code tab writes the work in chains by default** (#433, discussion #407): lines that follow each other as
+  `(-> :b1 (to :b2) (to :b3))` and `(doto …)`, a `connect` for a line alone; **-> chains** off writes a `connect` for
+  each line. Links, the clipboard, Claude and the agents keep reading and writing the work flat. The tutorial *From
+  patch to code* and the guide say so.
 - **Bach's 7ths, and his notes spelt in their keys** (`@kairotic/rules` 0.19.0, `bach-4` 1.2.0; `@kairotic/cac` 0.16.6).
-  `bach-4` keeps 486 of Bach's 2,272 phrases as he wrote them (1.1.0: 426). `dissonance`'s `bachSevenths`: a 7th held
+  `bach-4` keeps 494 of Bach's 2,272 phrases as he wrote them (1.1.0: 426). `dissonance`'s `bachSevenths`: a 7th held
   while the bass moves under it into a consonance (ii7 → I6, vi7 over the bass rising a step), up by step where the bass
   takes the note it would have gone down to (V7 → I6, V4/3 → I6), free where the bass takes the 7th itself. And a
   note given with a key — a bass note's `key`, `fromNotes`'s `code(m, t)`, the soprano given — is spelt in it
   (`degreeIn` in `tonal.mjs`): F in A minor where the chorale is in G, not E♯, which read a 6th as a 7th.
+  The corpus keeps **Bach's own spelling**: `names` beside `satb` (`"F#4"`, `"Bb3"`, as Sapp's edition writes them),
+  and a name in each note of `lines`; the engine reads a note as it is spelt — a bass or soprano note's `name`,
+  `fromNotes`'s `code("F#4")` — (486 phrases kept spelling the MIDI numbers in their keys, 494 as Bach spelt them).
   `chorale-4` and the book's studies as they were.
 - **The chorales' phrases in their keys** (#301, #399). Every phrase of `studies/_shared/chorales/phrases.json` has
   `keys`: the key each quarter is in, read from the four voices (`localKeys` in `tools/kern.mjs`: among the chorale's

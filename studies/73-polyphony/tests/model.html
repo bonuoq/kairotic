@@ -1,0 +1,50 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Study 73 · polyphony · the model</title>
+<pre id="out">Running…</pre>
+<script type="module">
+// SPDX-License-Identifier: MPL-2.0
+// Basic Pitch itself, from jsDelivr through ONNX Runtime Web in a worker: the cadence rendered in the page is heard,
+// its notes scored against what was written, its chords against the same chords with a note an octave off.
+const results = [], notes = [];
+const is = (what, ok) => results.push([what, !!ok]);
+try {
+  const BP = await import("../kairotic/basicpitch.mjs");
+  const L = await import("../kairotic/listen.mjs");
+  const T = await import("../kairotic/transcribe.mjs");
+  const piece = L.pieceNotes();
+  const audio = L.render(piece);
+
+  const s = await T.model();
+  notes.push(`model: ${s.bytes} bytes from ${s.url} (${s.ep}${s.cached ? ", cached" : ""}); in ${s.inputs.join()} · out ${s.outputs.join(", ")}`);
+  is("the model loads from jsDelivr, its hash checked: one input, three outputs", s.inputs.length === 1 && s.outputs.length === 3);
+
+  const r = await T.transcribe(audio);
+  notes.push(`heard ${r.seconds.toFixed(2)} s in ${Math.round(r.ms)} ms (${r.windows} windows); outputs ${JSON.stringify(r.names)}${r.swapped ? " — notes and onsets swapped" : ""}`);
+  is("the posteriorgrams: a frame for each 1/86 s of the sound", r.n === Math.floor(audio.length * BP.FPS / BP.SR) && r.frames.length === r.n * 88 && r.contours.length === r.n * 264);
+  is("the notes' output is the denser one, as its names say (StatefulPartitionedCall:1 before :2)", !r.swapped);
+
+  const evs = L.events(BP.notes(r.frames, r.onsets, r.n));
+  const sc = L.score(evs, piece);
+  notes.push(`notes: ${sc.found} found, ${sc.written} written, ${sc.matched} matched — P ${sc.precision} R ${sc.recall} F ${sc.f}`);
+  is("the cadence's notes found (F ≥ 0.6)", sc.f >= 0.6);
+  const oct = L.octaves(r.frames, r.n, L.pieceChords());
+  notes.push(`an octave off told apart: by the keys ${oct.keys.join(" / ")}, by a chroma ${oct.chroma.join(" / ")}`);
+  is("each chord told from itself with a note an octave off, by the keys (at least 80%)", oct.keys[0] >= 0.8 * oct.keys[1] && oct.chroma[0] === 0);
+
+  const again = await T.transcribe(audio);
+  is("heard again: the same posteriorgram", again.frames.every((x, i) => x === r.frames[i]));
+  const back = await T.useModel();
+  is("loaded again: from the browser's cache", back.cached === true);
+  let refused = false;
+  try { await T.useModel({ sha256: "0".repeat(64) }); } catch (e) { refused = /not the model asked for/.test(e.message); }
+  is("a model whose bytes are not the ones asked for is refused", refused);
+  await T.useModel();
+} catch (e) { results.push(["error: " + (e.message || e), false]); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` +
+  results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + "\n\n" + notes.map((s) => "  · " + s).join("\n");
+console.log(notes.join("\n"));
+</script>

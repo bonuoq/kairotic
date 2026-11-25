@@ -1,0 +1,338 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Kairotic Study 73 · Polyphony</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; padding: 14px 16px 28px; }
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* Study 73: a sound → Basic Pitch's posteriorgram (drawn as a heat map under the keys) → the notes read from it (and,
+   for the built-in cadence, what was written, outlined); the thresholds change the notes without running the model
+   again; what a follower would hear: each written chord against the same chord with a note an octave off. */
+.views { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 960px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+#roll { width: 100%; height: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 6px; }
+#roll .c line { stroke: var(--grid); } #roll .c text { font: 10px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; }
+#roll rect.found { fill: var(--kairos); stroke: var(--kairos); stroke-width: 0.5; }
+#roll rect.written { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 3 2; }
+#roll line.head { stroke: var(--accent); stroke-width: 1.5; }
+.controls { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; font-size: 13px; }
+.controls output { font-family: var(--f-code); font-size: 12px; min-width: 4em; text-align: right; }
+input[type=range] { width: 100%; }
+progress { width: 160px; height: 10px; }
+#status { font-size: 13px; color: var(--ink-soft); }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; margin: 0; }
+.facts dt { color: var(--ink-soft); } .facts dd { margin: 0; font-family: var(--f-code); }
+table.chords { border-collapse: collapse; font: 12px var(--f-code); width: 100%; }
+table.chords th { font: 500 11px var(--f-ui); color: var(--ink-soft); text-align: left; border-bottom: 1px solid var(--rule); padding: 2px 4px; }
+table.chords td { padding: 2px 4px; border-bottom: 1px solid var(--grid); }
+.ok { color: var(--ok); } .bad { color: var(--error); }
+pre.edn { margin: 0; font: 11px var(--f-code); max-height: 220px; overflow: auto; white-space: pre; background: var(--sheet); border: 1px solid var(--grid); border-radius: 4px; padding: 6px; }
+label { font: 13px var(--f-ui); color: var(--ink); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+</style>
+<main>
+<header>
+  <h1>Study 73 · polyphony</h1>
+  <span class="sub">a sound → Basic Pitch, a small ONNX model run in the page → the notes, and what a follower could hear of them (discussions #137, #308)</span>
+</header>
+<div class="toolbar">
+  <button class="act" id="cadence">▶ the cadence</button>
+  <button class="act" id="open">open a sound…</button><input type="file" id="file" accept="audio/*" hidden>
+  <button class="act" id="rec">● record</button>
+  <span style="width:10px"></span>
+  <button class="act" id="play-sound">▶ the sound</button><button class="act" id="play-notes">▶ the notes</button><button class="act" id="stop">■</button>
+  <span style="width:10px"></span>
+  <button class="act" id="stop-run" hidden>stop</button>
+  <progress id="prog" max="1" value="0" hidden></progress><span id="status">Loading…</span>
+</div>
+<div class="views">
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>Heard <span id="roll-sub">the frames' posterior as a heat map, the notes read from it; written notes outlined</span></h2>
+      <svg id="roll" viewBox="0 0 900 340"></svg>
+      <div class="controls">
+        <label for="onset">onset</label><input type="range" id="onset" min="0.1" max="0.9" step="0.05" value="0.5"><output id="onset-v">0.5</output>
+        <label for="frame">frame</label><input type="range" id="frame" min="0.1" max="0.7" step="0.05" value="0.3"><output id="frame-v">0.3</output>
+        <label for="min">shortest</label><input type="range" id="min" min="30" max="300" step="10" value="130"><output id="min-v">130 ms</output>
+        <span></span><label><input type="checkbox" id="melodia" checked> notes without an onset (melodia trick)</label><span></span>
+      </div>
+    </section>
+    <section class="panel"><h2>As events <span>EDN, the shape of a pattern's events</span></h2><pre class="edn" id="edn"></pre></section>
+  </div>
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>The run <span>the model and the time it took</span></h2><dl class="facts" id="run"><dt>—</dt><dd>nothing heard yet</dd></dl></section>
+    <section class="panel"><h2>Against what was written <span>the cadence only</span></h2><dl class="facts" id="score"><dt>—</dt><dd>play the cadence</dd></dl>
+      <table class="chords" id="chords"></table></section>
+    <section class="panel"><h2>About</h2><p class="about">The followers of discussion #308 hear a performer through
+      <code>pitch~</code> (YIN: one pitch at a time), onsets and descriptors such as the chroma — which folds every octave
+      into twelve pitch classes. A piano, a guitar or an ensemble needs more. <b>Basic Pitch</b> (Spotify, 2022; Apache-2.0,
+      code and weights) is a network of about 17,000 parameters that hears, 86 times a second, how likely each of the 88
+      keys is to sound and to begin there: small enough to be fetched from jsDelivr and run here with <b>ONNX Runtime
+      Web</b>, in a worker, on this machine — no sound leaves the page. This is the first use of discussion #137: one API for
+      any model (<code>kairotic/onnx.mjs</code>: a session from a URL, kept in the browser's cache and checked by its hash;
+      a run with arrays), and around it Basic Pitch's windows and its way of reading notes, ported
+      (<code>kairotic/basicpitch.mjs</code>). <b>The cadence</b> is rendered here, so what was written is known: the notes
+      found are scored against it, and each chord is heard against the same chord with one note an octave off — the
+      keys tell them apart, a chroma cannot. A recording works too (<b>record</b> needs a page that may use the
+      microphone, as Kairotic Pages). Next: the 88 keys as a descriptor the followers take (<code>follow hmm notes</code>),
+      the profiles of a rehearsal with real pitches, and a take transcribed into a tree.</p></section>
+  </div>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
+// is read first, as window.kairoticPoly ({BP: basicpitch.mjs, L: listen.mjs, T: transcribe.mjs}).
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  Promise.all([import("./kairotic/basicpitch.mjs"), import("./kairotic/listen.mjs"), import("./kairotic/transcribe.mjs")]).then(function (ms) {
+    window.kairoticPoly = { BP: ms[0], L: ms[1], T: ms[2] };
+    try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+;; SPDX-License-Identifier: MPL-2.0
+(ns poly-page (:require [clojure.string :as str]))
+
+;; Kairotic · Study 73 · polyphony: the page. A sound (the cadence rendered here, a file, the microphone) is resampled
+;; to 22050 Hz and heard by Basic Pitch in a worker; its posteriorgrams are kept, and the notes are read from them on
+;; the page, so the thresholds can change without running the model again.
+
+(def K (.-kairoticPoly js/window))
+(def BP (.-BP K))
+(def L (.-L K))
+(def T (.-T K))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;")))
+(defn status! [s] (set! (.-textContent ($ "status")) s) (set! (.. ($ "status") -style -color) ""))
+(defn fail! [e] (set! (.-textContent ($ "status")) (str "Error: " (or (.-message e) e))) (set! (.. ($ "status") -style -color) "var(--error)"))
+(defn r2 [x] (/ (js/Math.round (* 100 x)) 100))
+(def note-names ["C" "C♯" "D" "E♭" "E" "F" "F♯" "G" "A♭" "A" "B♭" "B"])
+(defn note-name [m] (str (note-names (mod m 12)) (dec (quot m 12))))
+
+(defonce st (atom {:audio nil :label nil :res nil :found #js [] :events #js [] :written nil :busy false :abort nil}))
+
+;; ───── the notes, from the posteriorgrams kept ─────
+(defn opts []
+  #js {:onset (js/parseFloat (.-value ($ "onset"))) :frame (js/parseFloat (.-value ($ "frame")))
+       :minMs (js/parseFloat (.-value ($ "min"))) :melodia (.-checked ($ "melodia"))})
+
+;; ───── drawing ─────
+(def W 900) (def H 340) (def X0 34)
+(defn heat-url [frames n lo hi]
+  ;; the frames' posterior of keys lo…hi as an image, a pixel per frame and key, the highest key on top
+  (let [rows (inc (- hi lo)) c (js/document.createElement "canvas") _ (set! (.-width c) n) _ (set! (.-height c) rows)
+        g (.getContext c "2d") img (.createImageData g n rows) d (.-data img)
+        dark (.. js/window (matchMedia "(prefers-color-scheme: dark)") -matches)
+        [r g0 b] (if dark [125 155 255] [47 85 212])]
+    (dotimes [t n]
+      (dotimes [row rows]
+        (let [k (- hi row 21) v (aget frames (+ (* t 88) k)) i (* 4 (+ (* row n) t))]
+          (aset d i r) (aset d (+ i 1) g0) (aset d (+ i 2) b) (aset d (+ i 3) (js/Math.round (* 230 (js/Math.min 1 v)))))))
+    (.putImageData g img 0 0)
+    (.toDataURL c)))
+
+(defn draw! []
+  (let [{:keys [res events written]} @st
+        svg ($ "roll")]
+    (if-not res
+      (set! (.-innerHTML svg) "")
+      (let [n (.-n res) secs (.-seconds res)
+            midis (concat (map #(.-midi %) events) (map :midi written))
+            lo (max 21 (- (if (seq midis) (apply min midis) 48) 3))
+            hi (min 108 (+ (if (seq midis) (apply max midis) 84) 3))
+            rows (inc (- hi lo)) kh (/ H rows)
+            x (fn [t] (+ X0 (* (- W X0) (/ t secs))))
+            y (fn [m] (* kh (- hi m)))
+            cs (for [m (range lo (inc hi)) :when (zero? (mod m 12))]
+                 (str "<g class='c'><line x1='" X0 "' x2='" W "' y1='" (+ (y m) kh) "' y2='" (+ (y m) kh) "'/><text x='2' y='" (+ (y m) (/ kh 2)) "'>" (note-name m) "</text></g>"))
+            heat (str "<image href='" (heat-url (.-frames res) n lo hi) "' x='" X0 "' y='0' width='" (- W X0) "' height='" H "' preserveAspectRatio='none' style='image-rendering:pixelated'/>")
+            ws (for [{:keys [t dur midi]} written]
+                 (str "<rect class='written' x='" (x t) "' y='" (y midi) "' width='" (- (x (+ t dur)) (x t)) "' height='" kh "'/>"))
+            fs (for [e events]
+                 (str "<rect class='found' x='" (x (.-t e)) "' y='" (+ (y (.-midi e)) (* 0.2 kh)) "' width='" (max 1 (- (x (+ (.-t e) (.-dur e))) (x (.-t e))))
+                      "' height='" (* 0.6 kh) "' opacity='" (+ 0.35 (* 0.65 (min 1 (.-amp e)))) "'><title>" (note-name (.-midi e)) " · " (.-t e) " s · "
+                      (.-dur e) " s · amp " (.-amp e) "</title></rect>"))]
+        (set! (.-innerHTML svg) (str heat (apply str cs) (apply str ws) (apply str fs) "<line class='head' id='head' x1='-10' x2='-10' y1='0' y2='" H "'/>"))))))
+
+(defn facts! [id pairs]
+  (set! (.-innerHTML ($ id)) (apply str (for [[k v] pairs] (str "<dt>" (esc k) "</dt><dd>" v "</dd>")))))
+
+(defn listen! []
+  (let [{:keys [res events written]} @st]
+    (if-not (and res written)
+      (do (facts! "score" [["—" (if res "nothing written to compare with" "play the cadence")]])
+          (set! (.-innerHTML ($ "chords")) ""))
+      (let [sc (.score L events (clj->js written))
+            oct (.octaves L (.-frames res) (.-n res) (.pieceChords L))
+            [kw kof] (.-keys oct) [cw cof] (.-chroma oct)]
+        (facts! "score" [["notes found" (str (.-found sc) " (" (.-written sc) " written)")]
+                         ["matched" (str (.-matched sc) " · same key, begun within 50 ms")]
+                         ["precision · recall · F" (str (.-precision sc) " · " (.-recall sc) " · <b>" (.-f sc) "</b>")]
+                         ["an octave off, told apart" (str "<span class='" (if (= kw kof) "ok" "bad") "'>by the keys " kw " / " kof "</span> · by a chroma " cw " / " cof)]])
+        (set! (.-innerHTML ($ "chords"))
+              (str "<tr><th>chord</th><th>keys</th><th>nearest octave-off</th><th>chroma</th></tr>"
+                   (apply str (for [c (.-chords oct)]
+                                (str "<tr><td>" (str/join " " (map note-name (.-midis c))) "</td><td class='" (if (.-keysOk c) "ok" "bad") "'>" (.-keys c)
+                                     "</td><td>" (.-worst c) "</td><td>" (.-chroma c) " = its octaves</td></tr>")))))))))
+
+(defn read-notes! []
+  (when-let [res (:res @st)]
+    (let [found (.notes BP (.-frames res) (.-onsets res) (.-n res) (opts))
+          evs (.events L found)]
+      (swap! st assoc :found found :events evs)
+      (set! (.-textContent ($ "edn")) (.edn L evs))
+      (set! (.-textContent ($ "roll-sub")) (str (.-length evs) " notes · the frames' posterior as a heat map" (when (:written @st) "; written notes outlined")))
+      (draw!) (listen!))))
+
+(doseq [[id unit] [["onset" ""] ["frame" ""] ["min" " ms"]]]
+  (.addEventListener ($ id) "input" (fn [] (set! (.-textContent ($ (str id "-v"))) (str (.-value ($ id)) unit)) (read-notes!))))
+(.addEventListener ($ "melodia") "change" read-notes!)
+
+;; ───── hearing a sound ─────
+(defn busy! [on?]
+  (swap! st assoc :busy on?)
+  (set! (.-hidden ($ "prog")) (not on?)) (set! (.-hidden ($ "stop-run")) (not on?))
+  (doseq [id ["cadence" "open" "rec"]] (set! (.-disabled ($ id)) on?)))
+
+(defn analyse! [audio label written]
+  (let [ctl (js/AbortController.)]
+    (swap! st assoc :audio audio :label label :written written :abort ctl)
+    (busy! true) (set! (.-value ($ "prog")) 0)
+    (status! (str "Hearing " label "…"))
+    (-> (.transcribe T audio #js {:signal (.-signal ctl)
+                                  :onProgress (fn [d of] (set! (.-value ($ "prog")) (/ d of)) (status! (str "Hearing " label "… window " d " of " of)))})
+        (.then (fn [res]
+                 (swap! st assoc :res res)
+                 (let [s (.-session res)]
+                   (facts! "run" [["sound" (str (esc label) " · " (r2 (.-seconds res)) " s")]
+                                  ["model" (str (esc (.. T -MODEL -name)) " · " (js/Math.round (/ (.-bytes s) 1024)) " KB" (when (.-cached s) " · from the cache"))]
+                                  ["licence" (esc (.. T -MODEL -licence))]
+                                  ["runtime" (str "ONNX Runtime Web " (esc (.-ep s)) " · in a worker")]
+                                  ["heard in" (str (js/Math.round (.-ms res)) " ms · " (.-windows res) " windows · " (r2 (/ (.-seconds res) (/ (.-ms res) 1000))) "× real time")]
+                                  ["frames" (str (.-n res) " × 88 keys" (when (.-swapped res) " · <span class='bad'>outputs swapped</span>"))]]))
+                 (busy! false) (read-notes!)
+                 (status! (str "Heard " label "."))
+                 res))
+        (.catch (fn [e] (busy! false) (if (= "AbortError" (.-name e)) (status! "Stopped.") (fail! e)) nil)))))
+
+(.addEventListener ($ "stop-run") "click" (fn [] (when-let [c (:abort @st)] (.abort c))))
+
+(defn cadence! []
+  (let [ns (.pieceNotes L)]
+    (analyse! (.render L ns) "the cadence"
+              (vec (for [x ns] {:t (.-t x) :dur (.-dur x) :midi (.-midi x)})))))
+(.addEventListener ($ "cadence") "click" cadence!)
+
+(defonce actx (atom nil))
+(defn ctx [] (or @actx (reset! actx (js/AudioContext.))))
+
+(defn decode-and-hear! [buf label]
+  (-> (.decodeAudioData (ctx) buf)
+      (.then (fn [ab] (.toModelRate T ab)))
+      (.then (fn [audio] (analyse! audio label nil)))
+      (.catch fail!)))
+
+(.addEventListener ($ "open") "click" #(.click ($ "file")))
+(.addEventListener ($ "file") "change"
+  (fn [] (when-let [f (aget (.-files ($ "file")) 0)]
+           (-> (.arrayBuffer f) (.then #(decode-and-hear! % (.-name f))) (.catch fail!)))))
+
+(defonce rec (atom nil))
+(.addEventListener ($ "rec") "click"
+  (fn []
+    (if-let [{:keys [mr]} @rec]
+      (.stop mr)
+      (-> (.. js/navigator -mediaDevices (getUserMedia #js {:audio #js {:echoCancellation false :noiseSuppression false :autoGainControl false}}))
+          (.then (fn [stream]
+                   (let [mr (js/MediaRecorder. stream) chunks #js []]
+                     (set! (.-ondataavailable mr) (fn [e] (.push chunks (.-data e))))
+                     (set! (.-onstop mr) (fn []
+                                           (doseq [t (.getTracks stream)] (.stop t))
+                                           (reset! rec nil) (set! (.-textContent ($ "rec")) "● record")
+                                           (-> (.arrayBuffer (js/Blob. chunks)) (.then #(decode-and-hear! % "a recording")) (.catch fail!))))
+                     (reset! rec {:mr mr}) (.start mr)
+                     (set! (.-textContent ($ "rec")) "■ stop recording") (status! "Recording…"))))
+          (.catch fail!)))))
+
+;; ───── playing back: the sound heard, or the notes found ─────
+(defonce playing (atom nil))
+(defn stop! []
+  (when-let [{:keys [nodes raf]} @playing]
+    (doseq [n nodes] (try (.stop n) (catch :default _ nil)))
+    (js/cancelAnimationFrame raf))
+  (reset! playing nil)
+  (when-let [h ($ "head")] (.setAttribute h "x1" -10) (.setAttribute h "x2" -10)))
+
+(defn follow-head! [t0 secs]
+  (letfn [(step [] (let [t (- (.-currentTime (ctx)) t0) h ($ "head")]
+                     (if (or (> t secs) (nil? @playing)) (stop!)
+                         (do (when h (let [xx (+ X0 (* (- W X0) (/ t secs)))] (.setAttribute h "x1" xx) (.setAttribute h "x2" xx)))
+                             (swap! playing assoc :raf (js/requestAnimationFrame step))))))]
+    (swap! playing assoc :raf (js/requestAnimationFrame step))))
+
+(.addEventListener ($ "play-sound") "click"
+  (fn [] (when-let [audio (:audio @st)]
+           (stop!)
+           (let [c (ctx) b (.createBuffer c 1 (.-length audio) 22050) s (.createBufferSource c) t0 (+ (.-currentTime c) 0.05)]
+             (.copyToChannel b audio 0) (set! (.-buffer s) b) (.connect s (.-destination c)) (.start s t0)
+             (reset! playing {:nodes [s]}) (follow-head! t0 (.-seconds (:res @st)))))))
+
+(.addEventListener ($ "play-notes") "click"
+  (fn [] (when (:res @st)
+           (stop!)
+           (let [c (ctx) t0 (+ (.-currentTime c) 0.05)
+                 nodes (vec (for [e (:events @st)]
+                              (let [o (.createOscillator c) g (.createGain c) a (+ t0 (.-t e)) d (max 0.08 (.-dur e))]
+                                (set! (.-type o) "triangle") (set! (.. o -frequency -value) (* 440 (js/Math.pow 2 (/ (- (.-midi e) 69) 12))))
+                                (.setValueAtTime (.-gain g) 0 a) (.linearRampToValueAtTime (.-gain g) (* 0.12 (min 1 (+ 0.3 (.-amp e)))) (+ a 0.01))
+                                (.exponentialRampToValueAtTime (.-gain g) 0.001 (+ a d))
+                                (.connect o g) (.connect g (.-destination c)) (.start o a) (.stop o (+ a d 0.05)) o)))]
+             (reset! playing {:nodes nodes}) (follow-head! t0 (.-seconds (:res @st)))))))
+(.addEventListener ($ "stop") "click" stop!)
+
+;; for the tests: the cadence heard, and the state
+(set! (.-kairoticStudy js/window)
+      #js {:cadence cadence!
+           :state (fn [] (let [{:keys [res events written]} @st] #js {:res res :events events :written (clj->js written)}))
+           :readNotes read-notes!})
+(status! "Ready: play the cadence, open a sound or record one.")
+</script>

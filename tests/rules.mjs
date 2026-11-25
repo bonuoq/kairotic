@@ -505,7 +505,9 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   // Aus meines Herzens Grunde (BWV 269, chorale 1), the first phrase: Bach's soprano and bass, the inner voices found
   const S = [67, 67, 67, 74, 71, 71, 67, 67, 67, 71, 69], B = [43, 55, 52, 54, 55, 50, 52, 48, 47, 43, 50], len = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2];
   const notes = (xs) => { let t = 0; return xs.map((m, i) => { const o = { midi: m, units: len[i], strong: Array.from({ length: len[i] }, (_, k) => (t + k - 1) % 3 === 0) }; t += len[i]; return o; }); };
-  const ob = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G" }), free = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G", style: { extends: "bach-4", between: [["functions", false]] } });
+  // (bach-4's functions a cost since 1.3.0: here a refusal again, local, so every draw keeps them)
+  const hard = { extends: "bach-4", between: [["functions", { local: true, passing: true }]], softBetween: [["functions", false]] };
+  const ob = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G", style: hard }), free = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G", style: { extends: "bach-4", between: [["functions", false]] } });
   const c1 = ob.count(), c0 = free.count(), r = rng(269);
   const Bu = B.flatMap((m, i) => Array(len[i]).fill(m));
   let kept = 0, given = 0;
@@ -518,6 +520,21 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   }
   is(`fromOuter: BWV 269's first phrase, its soprano and bass given — the inner voices found (${c1} realizations; ${c0} without the functions), the soprano Bach's and the grammar kept from strong unit to strong unit in every one drawn (20)`,
      c1 > 0n && c1 < c0 && given === 20 && kept === 20);
+  // (the alto and the tenor given at the ends — a bridge from Bach's first chord to his last —: kept there in every draw,
+  // free between; and bach-motion, Bach's own moves weighed)
+  const AuE = [62, null, null, null, null, null, null, null, null, null, 66], TuE = [59, null, null, null, null, null, null, null, null, null, 62];
+  const obE = R.fromOuter({ bass: notes(B), soprano: notes(S), key: "G", inner: { alto: AuE.flatMap((m, i) => Array(len[i]).fill(m)), tenor: TuE.flatMap((m, i) => Array(len[i]).fill(m)) } });
+  const rE = rng(270), drawsE = Array.from({ length: 10 }, () => obE.sample(rE));
+  is(`fromOuter's inner: BWV 269's first phrase with Bach's first and last chords given whole — ${obE.count()} realizations, each with his alto and tenor there`,
+     obE.count() > 0n && drawsE.every((W) => W && obE.midi(W.alto[0]) === 62 && obE.midi(W.tenor[0]) === 59 && obE.midi(W.alto[11]) === 66 && obE.midi(W.tenor[11]) === 62));
+  // (a voice exchange costs less: the alto C→E against the bass E→C over a C chord kept)
+  {
+    const VX = R.fourOverBass({ key: { tonic: "C" }, bass: [{ d: 2, r: 0, struck: true, strong: true }, { d: 0, r: 0, struck: true, strong: false }], style: "bach-4" });
+    is("voice-exchange (bach-4): a soft rule between the voices, rewarded (a negative cost) where an inner voice trades its note with another",
+       R.SOFT_BETWEEN["voice-exchange"] && JSON.stringify(R.resolveStyle("bach-4").softBetween).includes("voice-exchange") && R.resolveStyle("bach-4").weights["voice-exchange"] === 2 && VX.count() > 0n);
+  }
+  is(`bach-motion (bach-4 ${R.STYLES["bach-4"].version}): a move costs as rarely as Bach's alto and tenor make it — the note kept 0, a whole step 0.3, a tritone 4.36, a 5th 2.48`,
+     R.BACH_INNER_MOTION[0] === 0 && R.BACH_INNER_MOTION[2] === 0.3 && R.BACH_INNER_MOTION[6] === 4.36 && R.BACH_INNER_MOTION[7] === 2.48 && JSON.stringify(R.resolveStyle("bach-4").voice).includes("bach-motion"));
   // (bach-4: neighbours may meet on one note — Bach's tenor on the bass's G at the 5th unit — and Bach's own inner voices
   // are by its rules; chorale-4 does not let them)
   const Su = S.flatMap((m, j) => Array(len[j]).fill(m)), Au = [62, 62, 64, 62, 62, 62, 59, 64, 64, 67, 66, 66], Tu = [59, 59, 60, 57, 55, 54, 55, 60, 60, 62, 62, 62];

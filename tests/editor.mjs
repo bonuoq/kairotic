@@ -102,7 +102,7 @@ export async function editor(page, check) {
   check("the Code tab is the code editor", tab);
   if (tab) {
     const before = await cljs(page, "(code-text)");
-    check("it shows the code of the patch", before === (await cljs(page, "(patch->code (current))")));
+    check("it shows the code of the patch", before === (await cljs(page, "(shown-code (current))")));
     await page.click("#panel-code .cm-content");
     await page.keyboard.press("Control+End");
     await page.keyboard.type("\n;; a note");

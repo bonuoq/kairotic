@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Study 73 · polyphony · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1000px;border:0"></iframe>
+<script type="module">
+// SPDX-License-Identifier: MPL-2.0
+// The study's page itself, in a frame: the cadence heard, its notes drawn and scored, the thresholds changing the notes
+// without running the model again.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 90000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+try {
+  await wait(() => w.kairoticStudy && /Ready/.test(d.getElementById("status").textContent), 30000);
+  const S = w.kairoticStudy;
+  is("the page is ready", !!S);
+  d.getElementById("cadence").click();
+  is("the cadence heard", await wait(() => /Heard the cadence/.test(d.getElementById("status").textContent)));
+  const found = d.querySelectorAll("#roll rect.found").length, written = d.querySelectorAll("#roll rect.written").length;
+  is(`its notes drawn over the heat map, the written ones outlined (${found} found, ${written} written)`,
+     d.querySelector("#roll image") && found > 20 && written === 35);
+  is("scored against what was written", /precision/.test(d.getElementById("score").textContent) && d.querySelectorAll("#chords tr").length === 8);
+  is("as EDN events", d.getElementById("edn").textContent.startsWith("[{:t "));
+  const res = S.state().res;
+  const onset = d.getElementById("onset");
+  onset.value = "0.9"; onset.dispatchEvent(new w.Event("input"));
+  const melodia = d.getElementById("melodia");
+  melodia.checked = false; melodia.dispatchEvent(new w.Event("change"));
+  is("stricter thresholds: fewer notes, the model not run again",
+     d.querySelectorAll("#roll rect.found").length < found && S.state().res === res);
+} catch (e) { errors.push(String(e.message || e)); }
+const bad = results.filter((r) => !r[1]).map((r) => r[0]).concat(errors.map((e) => "error: " + e));
+window.kairoticResults = { total: results.length, failed: bad };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n` + results.map(([w2, ok]) => (ok ? "  ok   " : "  FAIL ") + w2).join("\n") + (errors.length ? "\n" + errors.join("\n") : "");
+</script>

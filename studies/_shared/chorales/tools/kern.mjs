@@ -6,8 +6,9 @@
 //   {id, chorale, bwv, title, meter, key: {tonic, mode}, cadence: {tonic, mode} | null, satb: [[S, A, T, B] a quarter],
 //    (key.church: the edition's church mode, dorian, mixolydian…),
 //    keys: ["G major" a quarter: the key it is in, read from the four voices (localKeys)],
+//    names: [[S, A, T, B] a quarter: as the edition spells them, "F#4", "Bb3"],
 //    held: [[s, a, t, b] a quarter: the note began before it], strong: [bool a quarter], A, B: the first and last chord,
-//    lines: {soprano, alto, tenor, bass: [[onset in quarters, MIDI, quarters]]}} — the engine's format (Study 63's
+//    lines: {soprano, alto, tenor, bass: [[onset in quarters, MIDI, quarters, name]]}} — the engine's format (Study 63's
 //   bridgesFor, fromOuter): a unit a quarter, the note sounding on it (the passing eighths are in the lines).
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, basename } from "node:path";
@@ -24,7 +25,9 @@ const token = (tok) => {
   const s = /([a-gA-G])\1*/.exec(tok)[0], L = s[0].toLowerCase();
   const oct = s[0] === L ? 3 + s.length : 4 - s.length;
   const acc = (tok.match(/#/g) || []).length - (tok.match(/-/g) || []).length;
-  return { d, p: PC[L] + acc + 12 * (oct + 1), tied: tok.includes("]") || tok.includes("_"), fermata: tok.includes(";") };
+  // (its name as the edition spells it: "F#4", "Bb3", "C##5")
+  const name = NAME[L] + (acc > 0 ? "#".repeat(acc) : "b".repeat(-acc)) + oct;
+  return { d, p: PC[L] + acc + 12 * (oct + 1), name, tied: tok.includes("]") || tok.includes("_"), fermata: tok.includes(";") };
 };
 // (a church mode, *a:dor, *G:mix, is the edition's reading: the key keeps its tonic and its major or minor 3rd)
 const CHURCH = { dor: "dorian", phr: "phrygian", lyd: "lydian", mix: "mixolydian", aeo: "aeolian", ion: "ionian", loc: "locrian" };
@@ -127,21 +130,22 @@ export function phrasesOf(score, id = "") {
     const sounds = (x) => voices.every((V) => { const e = at(V, x); return e && e.p !== null; });
     while (units.length && !sounds(units[0])) units.shift();
     if (units.length < 2) return;
-    const satb = [], held = [];
+    const satb = [], held = [], names = [];
     for (const x of units) {
       const es = voices.map((V) => at(V, x));
       if (es.some((e) => !e || e.p === null)) return;
       satb.push(es.map((e) => e.p));
+      names.push(es.map((e) => e.name));
       held.push(es.map((e) => e.s < x - 1e-9));
     }
     const lo = units[0], hi = c.s + c.d;
-    const names = ["soprano", "alto", "tenor", "bass"];
+    const VOICES = ["soprano", "alto", "tenor", "bass"];
     out.push({
       id: `${id}-${i + 1}`, chorale: Number(meta["PC#"]) || null, bwv: meta.SCT || null, title: meta["OTL@@DE"] || meta.OTL || null,
       meter: meterAt(lo).join("/"), key, cadence: triadOn(satb[satb.length - 1]),
       keys: localKeys(satb, key).map((k) => `${k.tonic} ${k.mode}`),
-      satb, held, strong: units.map(strongAt), A: satb[0], B: satb[satb.length - 1],
-      lines: Object.fromEntries(voices.map((V, k) => [names[k], V.filter((e) => e.s + e.d > lo + 1e-9 && e.s < hi - 1e-9 && e.p !== null).map((e) => [e.s - lo, e.p, e.d])])),
+      satb, names, held, strong: units.map(strongAt), A: satb[0], B: satb[satb.length - 1],
+      lines: Object.fromEntries(voices.map((V, k) => [VOICES[k], V.filter((e) => e.s + e.d > lo + 1e-9 && e.s < hi - 1e-9 && e.p !== null).map((e) => [e.s - lo, e.p, e.d, e.name])])),
     });
   });
   return out;

@@ -100,8 +100,8 @@ export async function codetab(page, check) {
   check("... the form the cursor is in", (await cljs(page, '(form-at "(a 1) ;c\n[b] x #{1} \\"s\\" (c (d))" 28)')) === "[24 31]");
   check("... or the one just before it (a comment between)", (await cljs(page, '(form-at "(a 1) ;c\n" 8)')) === "[0 5]");
   check("... and none in an empty place", (await cljs(page, '(form-at "  (a 1)" 0)')) === "nil");
-  check("calls that make the patch, and those that do not",
-        (await cljs(page, '[(patch-form? "(box \\"osc~\\") (connect :b1 0 :b2 0)") (patch-form? "(play)") (patch-form? "(def o (box \\"osc~\\"))")]')) === "[true false false]");
+  check("calls that make the patch, and those that do not (a def of a box makes it: #407, forms)",
+        (await cljs(page, '[(patch-form? "(box \\"osc~\\") (connect :b1 0 :b2 0)") (patch-form? "(play)") (patch-form? "(def o (box \\"osc~\\"))")]')) === "[true false true]");
 
   // a form alone: a box written again as it was keeps what it keeps
   const r2 = await cljs(page, `(eval-calls! "(box ${c2} \\"freqt\\" 9950 600)")`);
@@ -113,7 +113,7 @@ export async function codetab(page, check) {
 
   // ⇧+Enter: the form at the cursor, written at the end of the tab
   await cljs(page, '(swap! ui assoc :dirty false) (render-code (current))');
-  await cljs(page, `(let [t (str (patch->code (current)) "\n(box \\"mtof\\" 9800 700)")] (.setValue @code-ed t)
+  await cljs(page, `(let [t (str (shown-code (current)) "\n(box \\"mtof\\" 9800 700)")] (.setValue @code-ed t)
                       (.dispatch (.-view @code-ed) #js {:selection #js {:anchor (count t)}}) (swap! ui assoc :dirty true) (eval-code-form!))`);
   const c3 = await cljs(page, '(some (fn [[id b]] (when (and (= "mtof" (:text b)) (= 9800 (:x b)) (= 700 (:y b))) id)) (:boxes (current)))');
   check("⇧+Enter evaluates the form at the cursor: a new box", /^:b\d+$/.test(c3), c3);
@@ -232,5 +232,55 @@ export async function codetab(page, check) {
   await cljs(page, '(chains! false)');
   check("... and a connect each again", (await cljs(page, `(str/includes? (.getValue @code-ed) "(connect :b")`)) === "true"
         && (await cljs(page, '(.getItem js/localStorage "kairotic.code-style")')) === '"flat"');
-  await cljs(page, `(delete ${x} ${y} ${z} ${w} ${v})`);
+  await cljs(page, `(delete ${x} ${y} ${z} ${w} ${v}) (chains! true)`);
+  check("chains are the default writing (#433)", (await cljs(page, '(do (.removeItem js/localStorage "kairotic.code-style") (try (some-> (.getItem js/localStorage "kairotic.code-style") keyword) (catch :default _ nil)))')) === "nil"
+        && (await cljs(page, "@code-style")) === ":chains");
+
+  // ── a chain owns the lines it wrote (#432) ──
+  await cljs(page, '(.removeItem js/localStorage (chains-key))');
+  await cljs(page, '(eval-calls! "(-> (box :pa \\"mtof\\" 9800 2100) (to :pb \\"ftom\\") (to :pc \\"mtof\\"))")');
+  const [pa, pb, pc] = await Promise.all([":pa", ":pb", ":pc"].map((n) => cljs(page, `(rid ${n})`)));
+  await cljs(page, `(connect ${pa} 0 ${pc} 0)`);   // a line made by something else
+  const k1 = Number(await cljs(page, nEv));
+  const r432 = await cljs(page, '(eval-calls! "(-> :pa (to :pd \\"ftom\\") (to :pb \\"ftom\\") (to :pc \\"mtof\\"))")');
+  const pd = await cljs(page, "(rid :pd)");
+  const has = (l) => cljs(page, `(boolean (some #{${l}} (:lines (current))))`);
+  check("a chain evaluated again with a box put in: the box and its lines, in one event", /^:b\d+$/.test(pd)
+        && (await has(`[${pa} 0 ${pd} 0]`)) === "true" && (await has(`[${pd} 0 ${pb} 0]`)) === "true" && Number(await cljs(page, nEv)) === k1 + 1, r432);
+  check("... the line it no longer writes is taken away", (await has(`[${pa} 0 ${pb} 0]`)) === "false");
+  check("... the lines it still writes, and a line made by something else, stay",
+        (await has(`[${pb} 0 ${pc} 0]`)) === "true" && (await has(`[${pa} 0 ${pc} 0]`)) === "true");
+  check("... and what it wrote is kept for the work, by the box it starts from",
+        (await cljs(page, `(= #{[${pa} 0 ${pd} 0] [${pd} 0 ${pb} 0] [${pb} 0 ${pc} 0]} (get (owned-lines) ${pa}))`)) === "true");
+  await cljs(page, `(delete ${pa} ${pb} ${pc} ${pd})`);
+
+  // ── forms: a box written as the form it reads as (#407) ──
+  check("a head that is code, and one that is a box", (await cljs(page, '[(code-head? "osc~") (code-head? "map") (code-head? "box") (code-head? "dac~")]')) === "[false true true false]");
+  check("forms that make the patch, and code",
+        (await cljs(page, `[(patch-call? "(-> (osc~ 220) (gain~ 0.2) [_ _] (dac~ 1 2))") (patch-call? "(-> {:a 1} (assoc :b 2))") (patch-call? "(def f (fn [x] x))")
+                            (patch-call? "(def lo (osc~ 220))") (patch-call? "(osc~ 220)") (patch-call? "(+ 1 2)") (patch-call? "(-> :o (+ 1) (print))")]`)) === "[true false false true true false true]");
+  const fev = (code) => cljs(page, `(eval-calls! ${JSON.stringify(code)})`);
+  const k2 = Number(await cljs(page, nEv));
+  await fev("(-> (def fo (mtof)) (ftom) [_ _] (+))");
+  const fo = await cljs(page, "fo"), fg = await cljs(page, `(some (fn [[a _ b _]] (when (= a ${fo}) b)) (:lines (current)))`);
+  const fd = await cljs(page, `(some (fn [[a _ b _]] (when (= a ${fg}) b)) (:lines (current)))`);
+  const txt = (id) => cljs(page, `(:text (get-in (current) [:boxes ${id}]))`);
+  check("a chain of forms: the boxes, in series, as one event", /^:b\d+$/.test(fo) && (await txt(fo)) === '"mtof"' && (await txt(fg)) === '"ftom"' && (await txt(fd)) === '"+"'
+        && Number(await cljs(page, nEv)) === k2 + 1 && (await cljs(page, `(:name (get-in (current) [:boxes ${fo}]))`)) === ":fo", `${fo} ${fg} ${fd}`);
+  check("... [_ _]: one wire split in two, on the inlets 0 and 1 of the box after", (await has(`[${fg} 0 ${fd} 0]`)) === "true" && (await has(`[${fg} 0 ${fd} 1]`)) === "true");
+  check("... each box below the one that feeds it", (await cljs(page, `(- (:y (get-in (current) [:boxes ${fg}])) (:y (get-in (current) [:boxes ${fo}])))`)) === "60");
+  check("evaluated again as it was: nothing changes", (await fev("(-> (def fo (mtof)) (ftom) [_ _] (+))")) === "0");
+  check("... a number changed: that box's text only", (await fev("(-> (def fo (mtof)) (ftom 1) [_ _] (+))")) === "1" && (await cljs(page, lastEv)) === `[:text ${fg} "ftom 1"]`, await cljs(page, lastEv));
+  await fev("(-> (def fo (mtof)) (mtof 2) (ftom 1) [_ _] (+))");
+  const fl = await cljs(page, `(some (fn [[a _ b _]] (when (= a ${fo}) b)) (:lines (current)))`);
+  check("... a box put in: only that box new, the others the same, the old wire taken away",
+        fl !== fg && (await txt(fl)) === '"mtof 2"' && (await has(`[${fl} 0 ${fg} 0]`)) === "true" && (await has(`[${fo} 0 ${fg} 0]`)) === "false" && (await txt(fg)) === '"ftom 1"', `${fl} ${fg}`);
+  await fev("(-> (def fo (mtof)) (mtof 2) [_ _] (+))");
+  check("... a box taken out: deleted, its wires with it", (await cljs(page, `(contains? (:boxes (current)) ${fg})`)) === "false" && (await has(`[${fl} 0 ${fd} 1]`)) === "true");
+  await fev("(def fu (mtof ~(* 2 110)))");
+  check("~expr: a value computed now in the box", (await txt(await cljs(page, "fu"))) === '"mtof 220"');
+  await fev("(def fw (mtof))\n(+ 1 2)");
+  check("forms that make the patch among code: each on its own", /^:b\d+$/.test(await cljs(page, "fw")));
+  check("the whole tab can be written as forms too", (await cljs(page, '(let [p (build "(-> (mtof) (ftom) (+))")] [(count (:boxes p)) (count (:lines p))])')) === "[3 2]");
+  await cljs(page, `(delete ${fo} ${fl} ${fd} (rid :fu) (rid :fw))`);
 }
