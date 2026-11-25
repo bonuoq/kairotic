@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos: a Greek style learned from Mesomedes** (#192). `corpus.mjs`: Mesomedes's hymns with music (DAGM
+  nos. 24, 25, 27, 28), sign by sign with their chronoi, the notes the editors supply and the lines only N carries
+  marked. `style.mjs`: the engine's choice as a softmax of −cost over the notes its hard rules allow, the weights fitted
+  so that what Mesomedes wrote is most likely (a conditional logit with a pull towards the engine's own weights).
+  `GREEK` (`aoidos({style: "greek"})`): leaps dear, a note struck again free (up to eight times), a melisma dear, no
+  turn asked after a 4th or a 5th (`turnAfterSmallLeap`). Seikilos, held out, becomes more likely. The engine takes a
+  given rhythm (`time`) and altered notes (`chromatic`). Tests: `tests/style.html`; the page: a style to choose.
 - **The chorale test's sixth variant, `no-keys`** (#353). Study 63's `outer.mjs` draws bridges without a path of keys
   — every unit in the chorale's key, the rest as `all` — so the blind test can hear how much the tonicizations do.
   `tools/bridges.mjs` can draw one variant by itself (its last argument) and `tools/merge.mjs` puts it in place in
