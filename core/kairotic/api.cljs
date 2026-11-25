@@ -17,7 +17,8 @@
             [kairotic.structure :as st]
             [kairotic.follow :as fl]
             [kairotic.paths :as paths]
-            [kairotic.mt :as mt]))
+            [kairotic.mt :as mt]
+            [kairotic.motif :as motif]))
 
 (def version 1)
 
@@ -409,3 +410,10 @@ registerProcessor('kairotic-tap', KairoticTap);
 (defn paths-decode "A whole performance read again once it is over (MIDI heard) → {:path :cost}." [w heard] (paths/decode w heard))
 (defn paths-distance "The fragments to change, add or leave out to make one performance the other." [a b] (paths/path-distance a b))
 (defn paths-branches "Performances (paths) as a tree of branches {:id :n :children}." [ps] (paths/branches ps))
+
+;; ───────── motives: what comes back, and how it is related (kairotic.motif) ─────────
+
+(defn motif-notes "Notes for kairotic.motif: from a melody \"C5 D5 E5\" (a unit each), or [{:on :dur :pitch}] / [[on dur pitch] …]." [x] (motif/notes-of x))
+(defn motif-relate "How notes S are related to motive M: an exact transformation, named, or a kinship 0 … 1 (tol for played rhythms)." [M S tol] (motif/relate M S (or tol 0)))
+(defn motif-find "Where in notes ns motive M (or its head or tail) is most related: {:from :to :notes :kinship :name …}." [M ns opts] (motif/find-in M ns (or opts {})))
+(defn motif-discover "The motive of notes: the span of 3 to 5 that recurs most, or the head: {:from :to :notes :why}." [ns tol] (motif/discover ns (or tol 0)))

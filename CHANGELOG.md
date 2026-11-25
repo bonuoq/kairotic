@@ -26,6 +26,13 @@
   as the thresholds move, without running the model again. On a cadence rendered in the page the notes are scored
   against what was written, and each chord heard against itself with a note an octave off: the 88 keys tell them
   apart, a chroma cannot — what the followers of #308 would gain. Not in the app yet (after 0.3.0-alpha).
+- **`kairotic.motif`: one motive module for the whole system** (discussion: one motive layer; issues #108, #309). Study
+  60's motives move into the core: notes from a melody or from notes as played, Conklin's viewpoints, the exact
+  relations (repetition, transposition, sequence, inversion, retrograde, with the rhythm kept, augmented, diminished or
+  another), a kinship by weighted edit distance, `find-in`, `discover`, the memory of the work and the sweet spot. For
+  played time, rhythms are compared by their onsets within a tolerance. `returns` groups a rhythm played several
+  times: the quantizer's repetition (#108) is now that case of it. In the API as `api/motif-notes`, `api/motif-relate`,
+  `api/motif-find` and `api/motif-discover`. Tests: Study 60's, ported (`tests/cljs/motif.cljs`).
 - **The blind test's bridges between two of Bach's chords, their inner voices moving as his** (`@kairotic/rules`
   0.21.0, `bach-4` 1.5.0; `@kairotic/cac` 0.16.9; Study 71). A bridge now begins and ends on Bach's chords whole: the
   alto and the tenor given there (`fromOuter`'s `inner`, `fourOverBass`'s `given.alto` / `given.tenor`, where a unit has
