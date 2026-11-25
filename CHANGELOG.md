@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 71 reads its variants from the bridges** (discussion #353): the deck, the listenings, the scores and the page
+  take the variants `bridges.json` has (`variantsOf`: Study 63's known ones in their order, any new one after them), so
+  a layer Study 63 turns off — `no-keys`, the bridges without tonicizations — is compared as the others with nothing
+  changed here; `deck.json` keeps its `variants`.
+
 - **Live code as data** (discussion #407): a patch written as plain EDN, which Clojure's reader and any editor read,
   played with one function, `=>`: `(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])`. A box is a vector of its
   class and arguments, as hiccup writes a tag, a class with `~` written with `-` (`[:osc- 220]` is `osc~ 220`); `=>` in

@@ -17,9 +17,10 @@ try {
   await wait(() => w.kairoticStudy && w.kairoticStudy.state().deck);
   const K = w.kairoticStudy, st = K.state();
   K.clear();
-  is("the deck loaded: 200 trials, the variants and the bridges filled counted", st.deck.trials.length === 200 && d.querySelectorAll("#deck tr").length === 6);
+  is(`the deck loaded: ${st.deck.trials.length} trials, its variants (${st.deck.variants.join(", ")}) and the bridges filled counted`, st.deck.trials.length === st.deck.perVariant * st.deck.variants.length && d.querySelectorAll("#deck tr").length === st.deck.variants.length + 1);
   K.start(71, 2);
-  is("a listening of 10: the first trial, the answer not yet possible", st.session.length === 10 && /^1 of 10/.test(d.getElementById("trial-n").textContent) && d.getElementById("ans-0").disabled);
+  const nS = 2 * st.deck.variants.length;
+  is(`a listening of ${nS}: the first trial, the answer not yet possible`, st.session.length === nS && new RegExp(`^1 of ${nS}`).test(d.getElementById("trial-n").textContent) && d.getElementById("ans-0").disabled);
   K.play(0); K.play(1);
   is("both heard: the answer possible", !d.getElementById("ans-0").disabled && !d.getElementById("ans-1").disabled);
   const bachFirst = st.session[0].bachFirst;
