@@ -6,6 +6,11 @@
   take the variants `bridges.json` has (`variantsOf`: Study 63's known ones in their order, any new one after them), so
   a layer Study 63 turns off — `no-keys`, the bridges without tonicizations — is compared as the others with nothing
   changed here; `deck.json` keeps its `variants`.
+- **Study 74 · aoidos: Seikilos's own melody against the rules** (#192). `seikilos.mjs`: the song as the stele has it
+  (Pöhlmann and West, DAGM no. 23), sign by sign with its chronoi. Its rhythm is the quantities `prosody.mjs` reads
+  (every long syllable 2 or 3 chronoi, every short one 1, each line twelve) once a stop and a liquid across words count
+  as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
+  circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
 
 - **Live code as data** (discussion #407): a patch written as plain EDN, which Clojure's reader and any editor read,
   played with one function, `=>`: `(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])`. A box is a vector of its
