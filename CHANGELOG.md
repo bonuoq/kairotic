@@ -10,6 +10,14 @@
   Tidal, a voice taken out of the map stopped, `:frame` the ins and outs every voice uses (or a line's `inlet~` and
   `outlet~`). A chain owns the boxes and wires it made: evaluated again, only what changed changes. The forms written
   as lists (`(osc~ 220)`, #451) are gone: one grammar, data. `->` and `doto` are Clojure's own again.
+- **One clock for every box that keeps time: `transport`** (discussion #450, piece 3; `@kairotic/net` 0.2.0,
+  `@kairotic/patterns` 0.3.2). Where `pulse` counts the room's beat, `transport` says where it is — `[:sync t0 bpm]`,
+  the audio-clock time of beat 0 and the tempo — and a `player` that gets it plays on that grid: it joins on the next
+  beat (or multiple of its quant) from the beginning of its pattern, follows every change of tempo without a jump
+  (the next tick moves), and joins again after a jump; stopped by hand it waits for `start`, `[:sync]` lets it go. So
+  a pattern, a canon from `comes` (piece 2) and the players of every page in a room play on one beat. A beat on
+  `transport`'s right makes it follow a performer instead: `follow`'s written beat or `phase`'s `{:phase :n :pulse}`
+  (its cycle unwrapped), the tempo fitted to the last `smooth` (4) beats heard; `:room` goes back to the room.
 - **The bridges' dissonances as rare as Bach's, his melodic minor's raised ⑥ as seldom** (`@kairotic/rules` 0.22.0,
   `bach-4` 1.6.0; `@kairotic/cac` 0.16.10; Study 71). Heard by @bonuoq: dissonances that did not seem justified. The
   inner voices dissonated against the bass twice as often as Bach's, with seven times his semitone clashes (a ♭9, a
@@ -29,6 +37,13 @@
   circumflex hard), an examiner that tries a melody as the dux of `cac imitation`, and `canonic()`: the dux written
   with its comes on `canon-2`, the singer choosing among the comes's futuribles (Odyssey 1.1 in strict canon at the
   octave below a foot later: 4,285 canons).
+- **The rules as the judge of a pattern** (discussion #450, piece 2; `@kairotic/cac` 0.16.10). A pattern on `comes`'s left
+  inlet (a `pbind`, a `pattern` box) gives a pattern on a new outlet 5, for a `player`: each note with a pitch is the
+  dux's note asked for, kept or corrected to the nearest one that keeps the rules and leaves a future (the same `play`
+  as a note played into the box), sounding with the comes's beside it — a chord `[dux comes]` in `:freq`, and what was
+  done in `:counter {:dux :comes :asked :corrected :reason}`. Rests and events without a pitch pass as they are; a
+  finished canon begins another; the chance (temperature, seed) the box's, so every tab makes the same stream. With
+  `imitation` below 1 the comes is free counterpoint over the pattern's line. `api/make-pattern` for components.
 
 - **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
   voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of

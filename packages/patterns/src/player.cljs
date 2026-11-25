@@ -3,6 +3,8 @@
 ;; Like a reader: the pattern comes in on the right (as the buffer does) and time on the left, so one
 ;; pattern can feed several players that move through it each in its own way.
 ;;   start / stop      its own clock: every event lasts its :dur in beats, at `player bpm`
+;;   [:sync t0 bpm]    a shared clock (a transport's: the room's, or a performer's): it joins its grid and
+;;                     follows it
 ;;   bang              one step: the next event, now (from a metro, an onset~, a key…)
 ;;   a number          a position in beats (a ramp, a counter…): every event is a span that sounds
 ;;                     while the position is inside it, entered at its onset going forwards and at its
@@ -73,18 +75,43 @@
              (let [[st2 outs later] (play-until st (:tick st) at)
                    more? (some? (first (evs st2)))
                    nb (:beat st2)]
-               (result st (if more? (assoc st2 :tick nb) (assoc st2 :mode nil :tick nil)) outs
+               (result st (if more? (assoc st2 :tick nb) (assoc st2 :mode nil :tick nil :done (some? (:anchor st2)))) outs
                        (if more? (conj later [(+ (:t0 st2) (* nb (spb st2))) 0 [:tick (:gen st2)]]) later)
                        (:tick st))))
+      ;; its own clock from the beginning of the pattern: on a beat of the AudioContext clock (on a multiple of
+      ;; quant), or, with a shared clock (a transport's [:sync t0 bpm]), on its next beat (or multiple of quant),
+      ;; remembering on which beat of it the pattern began (:off), to follow it when it moves
       start (fn [st at args]
               (let [[st0 off] (silence st)
+                    [a0 abpm] (:anchor st0)
+                    st0 (if a0 (assoc st0 :bpm abpm) st0)
                     q (:quant args)
-                    b (/ at (spb st0))                ; the beat of the AudioContext clock now
-                    sb (if (and (number? q) (pos? q)) (* q (js/Math.ceil (- (/ b q) eps))) b)
-                    t0 (* sb (spb st0))
+                    q (if (and (number? q) (pos? q)) q (when a0 1))
+                    b (/ (- at (or a0 0)) (spb st0))  ; the beat now: of the shared clock, or of the AudioContext's
+                    sb (if q (* q (js/Math.ceil (- (/ b q) eps))) b)
+                    t0 (+ (or a0 0) (* sb (spb st0)))
                     g (inc (:gen st0))
-                    st1 (-> st0 fresh (assoc :mode :clock :gen g :t0 t0 :tick 0 :waiting false))]
+                    st1 (-> st0 fresh (assoc :mode :clock :gen g :t0 t0 :tick 0 :waiting false :held false :done false
+                                             :off (when a0 sb)))]
                 {:state st1 :out off :later [[t0 0 [:tick g]]]}))
+      ;; a shared clock: [:sync t0 bpm] (the audio-clock time of its beat 0, its tempo; from a transport).
+      ;; Playing on it, the same beat of the pattern at its new place and tempo (nothing jumps, the next tick
+      ;; moves); if it jumped (a performer went back, or far ahead), the pattern joins it again from the
+      ;; beginning; not playing, it joins it — unless stopped by hand (stop) until start, or played to its end. [:sync] (the clock
+      ;; stopped): silence, and its own clock again.
+      sync (fn [st at args t0 bpm]
+             (let [st (assoc st :anchor [t0 bpm])]
+               (cond
+                 (and (= :clock (:mode st)) (not (:waiting st)) (some? (:off st)) (:tick st))
+                 (let [st2 (assoc st :bpm bpm :t0 (+ t0 (* (:off st) (/ 60 bpm))))
+                       pb (/ (- at (:t0 st2)) (spb st2))]
+                   (if (or (< pb -0.5) (> pb (+ (:tick st2) 4)))
+                     (start st2 at args)
+                     (let [g (inc (:gen st2))]
+                       {:state (assoc st2 :gen g) :later [[(+ (:t0 st2) (* (:tick st2) (spb st2))) 0 [:tick g]]]})))
+                 (or (:held st) (:done st)) {:state st}   ; stopped by hand, or played to its end
+                 (:pattern st) (start st at args)
+                 :else {:state (assoc st :mode :clock :waiting true)})))
       ;; ── a position in beats: every event is a span, [onset, onset + sustain), and sounds while the
       ;; position is inside it, whichever way the position moves: forwards it is entered at its onset,
       ;; backwards at its end (and then goes out with :dir :back). Spans passed over in one step sound and
@@ -251,7 +278,7 @@
   {;; ── about ──
    :class "player"
    :license "MPL-2.0"
-   :doc "Plays a pattern (from a pbind or a pattern box, on its right inlet) in one of three ways, chosen by what arrives on the left: start / stop — its own clock, every event lasting its :dur in beats at its bpm (quant: start on a multiple of that many beats); bang — one step, the next event now; a number — a position in beats (a ramp, a counter, a number you drag), where every event is a span from its onset to its end that sounds while the position is inside it: forwards it is entered at its onset, backwards at its end (:dir :back), and the spans passed over in one step sound within it; seek p, or a step more than jump (8) times the one before it or longer than limit (8) beats, goes there at once, sounding what contains p (with edges, only what starts at p); with spread, what a step passes keeps its rhythm, one step later. Out: the Hz of the notes sounding, their voice ids (for synth~ or a polyphonic faust~), the whole event (:beat :hz :ids added) and the beat; an event with :amp (0…1) sends [:gain amp] on the Hz outlet just before its notes, the loudness of the notes that start (synth~, a polyphonic faust~). A new pattern while it plays goes on from the same beat; the same pattern again changes nothing. Pitch: :freq, :note (MIDI, \"c4\", :c4), or :degree with :scale :root :octave; :dur, :legato or :sustain; :rest (or nil) is a silence."
+   :doc "Plays a pattern (from a pbind or a pattern box, on its right inlet) in one of three ways, chosen by what arrives on the left: start / stop — its own clock, every event lasting its :dur in beats at its bpm (quant: start on a multiple of that many beats); [:sync t0 bpm] from a transport puts that clock on a shared grid (the room's beat, or a performer's): it joins on the next beat (or multiple of quant) from the beginning of the pattern and follows every change of tempo without a jump, and goes back to it after a jump; stopped by hand it waits for start, [:sync] lets it go; bang — one step, the next event now; a number — a position in beats (a ramp, a counter, a number you drag), where every event is a span from its onset to its end that sounds while the position is inside it: forwards it is entered at its onset, backwards at its end (:dir :back), and the spans passed over in one step sound within it; seek p, or a step more than jump (8) times the one before it or longer than limit (8) beats, goes there at once, sounding what contains p (with edges, only what starts at p); with spread, what a step passes keeps its rhythm, one step later. Out: the Hz of the notes sounding, their voice ids (for synth~ or a polyphonic faust~), the whole event (:beat :hz :ids added) and the beat; an event with :amp (0…1) sends [:gain amp] on the Hz outlet just before its notes, the loudness of the notes that start (synth~, a polyphonic faust~). A new pattern while it plays goes on from the same beat; the same pattern again changes nothing. Pitch: :freq, :note (MIDI, \"c4\", :c4), or :degree with :scale :root :octave; :dur, :legato or :sustain; :rest (or nil) is a silence."
    :usage "player [bpm] [quant] [jump] [limit] [edges] [spread]"
    :io [2 4]
 
@@ -308,13 +335,20 @@
                           {:state st2 :later [[(+ (:t0 st2) (* (:tick st2) (spb st2))) 0 [:tick (:gen st2)]]]})
                         {:state (assoc st :bpm nbpm)}))
 
+                    ;; a shared clock (a transport)
+                    (and (vector? value) (= :sync (first value)) (number? (second value)) (number? (get value 2)) (pos? (get value 2)))
+                    (sync st at args (second value) (get value 2))
+                    (and (vector? value) (= :sync (first value)) (= 1 (count value)))
+                    (let [[st2 off] (silence st)]
+                      {:state (-> st2 (dissoc :anchor :off :done) (assoc :mode nil :gen (inc (:gen st2)) :waiting false)) :out off})
+
                     (= w :start)
-                    (if (:pattern st) (start st at args) {:state (assoc st :mode :clock :waiting true)
+                    (if (:pattern st) (start st at args) {:state (assoc st :mode :clock :waiting true :held false)
                                                           :effects [[:print "player: waiting for a pattern on its right inlet"]]})
                     (= w :stop)
-                    (let [[st2 off] (silence st)] {:state (assoc st2 :mode nil :gen (inc (:gen st2)) :pgen (inc (or (:pgen st2) 0)) :waiting false) :out off})
+                    (let [[st2 off] (silence st)] {:state (assoc st2 :mode nil :gen (inc (:gen st2)) :pgen (inc (or (:pgen st2) 0)) :waiting false :held true) :out off})
                     (= w :reset)
-                    (let [[st2 off] (silence st)] {:state (-> st2 fresh (dissoc :win) (assoc :mode nil :pos nil :gen (inc (:gen st2)) :pgen (inc (or (:pgen st2) 0)))) :out off})
+                    (let [[st2 off] (silence st)] {:state (-> st2 fresh (dissoc :win :anchor :off) (assoc :mode nil :pos nil :held false :gen (inc (:gen st2)) :pgen (inc (or (:pgen st2) 0)))) :out off})
                     (= w :bang) (if (:pattern st) (step st at) {:state st :effects [[:print "player: no pattern yet (on its right inlet)"]]})
                     (number? value) (if (:pattern st) (position st value at args false) {:state st})
                     ;; seek p: there at once, without sounding what is in between

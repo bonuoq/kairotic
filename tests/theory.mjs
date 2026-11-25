@@ -146,7 +146,7 @@ export async function theory(page, check) {
   const cp = (await cljs(page, '(box "print" 7600 480)')).trim();
   const cq = (await cljs(page, '(box "print" 7800 480)')).trim();
   await cljs(page, `(connect ${cm} 3 ${cp} 0) (connect ${cm} 0 ${cq} 0)`);
-  check("comes brings @kairotic/cac: two inlets (notes, the pulse) and five outlets", (await until(page, `(io (get-in (current) [:boxes ${cm}]))`, (x) => x === "[2 5]", 20000)) === "[2 5]");
+  check("comes brings @kairotic/cac: two inlets (notes, the pulse) and six outlets", (await until(page, `(io (get-in (current) [:boxes ${cm}]))`, (x) => x === "[2 6]", 20000)) === "[2 6]");
   const st = (k) => `(get-in @eng/rt [:states ${cm} :fwd ${k}])`;
   await firstSent(page, cm, `(swap! eng/rt assoc :prints []) (send! ${cm} 62)`);
   check("comes: the first note waits for the futures to be counted, then is played",
@@ -180,6 +180,17 @@ export async function theory(page, check) {
   check("... back takes the last pair back", (await until(page, `(count ${st(":D")})`, (x) => x === "14", 15000)) === "14");
   await sent(page, `(send! ${cm} :reset)`);
   check("... reset starts again", (await until(page, `(count ${st(":D")})`, (x) => x === "0", 15000)) === "0");
+  // a pattern in, a pattern out (#450, piece 2): its notes as the dux, kept or corrected, with the comes beside them
+  const pat = await cljs(page, `(let [d (comp/lookup "comes") st (get-in @eng/rt [:states ${cm}]) a (comp/args-for d (:text (get-in (current) [:boxes ${cm}])))
+                                      p (api/pbind-pattern {:midinote [62 61 65 67 69 67 65 64 62] :dur 1} {:seed 0 :repeat 1})
+                                      r ((:receive d) {:inlet 0 :value p :state st :args a})
+                                      out (some (fn [[o v]] (when (= o 5) v)) (:out r))
+                                      evs (when (api/pattern? out) (vec (take 9 (api/pattern-events out))))]
+                                  [(api/pattern? out) (count evs) (every? number? (map (comp :dux :counter) evs))
+                                   (:corrected (:counter (second evs))) (count (:freq (first evs))) (count (:freq (nth evs 4)))
+                                   (= evs (vec (take 9 (api/pattern-events out))))])`);
+  check("a pattern in gives a pattern out (outlet 5): every note judged, the black key corrected, the comes beside the dux once it enters, the same each time",
+        pat === "[true 9 true true 1 2 true]", pat);
   // by turns, the same note again is held over the beat
   await sent(page, `(send! ${cm} 62)`);
   await until(page, `(count ${st(":D")})`, (x) => x === "1", 15000);

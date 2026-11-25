@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/net",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Kairotic in a shared room: share values on channels with everyone in it, and one tempo for the whole room (the same beat on every page)",
   "author": "bonuoq",
   "license": "MPL-2.0",
