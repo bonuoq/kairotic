@@ -164,6 +164,19 @@ after several wires takes them on its inlets 0, 1… (the grammar of Faust's `:`
 `[:to o box i]` chooses the ports; a chain inside another, `(=> …)` or `[:=> …]`, goes on in it. Arguments are values, so they can be computed
 (`[:osc- (* 2 110)]`) and a sequence is spliced: `[:=> :osc (for [g [0.1 0.2]] [:gain- g])]`.
 
+**Arguments that are boxes.** An argument can be a part of the patch instead of a value — a box, a chain, or a box
+named by a map —: it is made and feeds the inlet that argument sets, so a patch reads as an expression.
+
+```clojure
+(=> [:osc- (=> [:loadbang] [:metro 250] [:counter 1 72 60] [:mtof])]
+    [:gain- 0.2] [:_ :_] [:dac- 1 2])
+```
+
+The chain of `metro`, `counter` and `mtof` plays the frequency of `osc~`. An argument sets the inlet after the left one,
+as in Pd and Max (`[:gain- [:adsr- …]]` is the factor of `gain~`), unless the class says another (`osc~`, `phasor~` and
+`sig~` set their left inlet); it is not written in the box's text, and `0` holds its place if values follow it. A
+keyword stays a value (`[:route :a :b]`).
+
 **Voices.** A map of chains plays voices, each known by its key, as `d1` in Tidal:
 
 ```clojure

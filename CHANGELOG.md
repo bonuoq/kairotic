@@ -30,6 +30,9 @@
   as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
   circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
 
+- **Arguments that are boxes** (discussion #407): in a patch as data an argument can be a box, a chain or a named box,
+  made and wired to the inlet that argument sets — `[:osc- (=> [:metro 250] [:counter 1 72 60] [:mtof])]` —, the one
+  after the left as in Pd and Max unless the class says another (`osc~`, `phasor~`, `sig~`: the left one).
 - **A patch as data is a value** (discussion #407): `=>` is a pure function that writes `[:=> …]` and changes nothing;
   the Live view (and ⇧+Enter in the Code tab) plays each form whose value is a chain or voices, and `(play value …)`
   plays it anywhere, starting the engine if it is not running. So chains nest — `(=> [:mtof] (=> [:ftom] [:mtof 3]))` —

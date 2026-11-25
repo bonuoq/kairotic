@@ -168,6 +168,20 @@ Un mapa da nombre a una caja: `{:osc [:osc- 220]}` es la caja llamada `:osc`, la
 sola es esa caja; `[:to o caja i]` elige los puertos; una cadena dentro de otra, `(=> …)` o `[:=> …]`, sigue en ella. Los argumentos son valores,
 así que se pueden calcular (`[:osc- (* 2 110)]`) y una secuencia se inserta: `[:=> :osc (for [g [0.1 0.2]] [:gain- g])]`.
 
+**Argumentos que son cajas.** Un argumento puede ser una parte del patch en lugar de un valor —una caja, una cadena, o
+una caja con nombre en un mapa—: se hace y alimenta la entrada que ese argumento fija, así que un patch se lee como una
+expresión.
+
+```clojure
+(=> [:osc- (=> [:loadbang] [:metro 250] [:counter 1 72 60] [:mtof])]
+    [:gain- 0.2] [:_ :_] [:dac- 1 2])
+```
+
+La cadena de `metro`, `counter` y `mtof` toca la frecuencia de `osc~`. Un argumento fija la entrada siguiente a la
+izquierda, como en Pd y Max (`[:gain- [:adsr- …]]` es el factor de `gain~`), salvo que la clase diga otra (`osc~`,
+`phasor~` y `sig~` fijan su entrada izquierda); no se escribe en el texto de la caja, y `0` ocupa su lugar si le siguen
+valores. Una keyword sigue siendo un valor (`[:route :a :b]`).
+
 **Voces.** Un mapa de cadenas toca voces, cada una reconocida por su clave, como `d1` en Tidal:
 
 ```clojure
