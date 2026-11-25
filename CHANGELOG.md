@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **One clock for every box that keeps time: `transport`** (discussion #450, piece 3; `@kairotic/net` 0.2.0,
+  `@kairotic/patterns` 0.3.2). Where `pulse` counts the room's beat, `transport` says where it is — `[:sync t0 bpm]`,
+  the audio-clock time of beat 0 and the tempo — and a `player` that gets it plays on that grid: it joins on the next
+  beat (or multiple of its quant) from the beginning of its pattern, follows every change of tempo without a jump
+  (the next tick moves), and joins again after a jump; stopped by hand it waits for `start`, `[:sync]` lets it go. So
+  a pattern, a canon from `comes` (piece 2) and the players of every page in a room play on one beat. A beat on
+  `transport`'s right makes it follow a performer instead: `follow`'s written beat or `phase`'s `{:phase :n :pulse}`
+  (its cycle unwrapped), the tempo fitted to the last `smooth` (4) beats heard; `:room` goes back to the room.
 - **The bridges' dissonances as rare as Bach's, his melodic minor's raised ⑥ as seldom** (`@kairotic/rules` 0.22.0,
   `bach-4` 1.6.0; `@kairotic/cac` 0.16.10; Study 71). Heard by @bonuoq: dissonances that did not seem justified. The
   inner voices dissonated against the bass twice as often as Bach's, with seven times his semitone clashes (a ♭9, a

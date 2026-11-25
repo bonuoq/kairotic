@@ -808,13 +808,14 @@
    "player"
    {:package "@kairotic/patterns" :usage "player [bpm] [quant] [jump] [limit] [edges] [spread]"
     :doc "Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a position in beats (a number): the Hz and voice ids of the notes sounding, the whole event and the beat."
-    :inlets [":start · :stop: its own clock · bang: one step, now · a number: a position in beats · :seek p · :reset · [:bpm 90]"
+    :inlets [":start · :stop: its own clock · [:sync t0 bpm]: a shared clock (a transport) · bang: one step, now · a number: a position in beats · :seek p · :reset · [:bpm 90]"
              "a pattern (from a pbind or a pattern box): a new one goes on from the same beat"]
     :outlets ["the Hz of the notes sounding (a list), after [:gain amp] when the event has :amp" "their voice ids, sent first (for synth~ or a polyphonic faust~)"
               "the whole event, with :beat, :hz and :ids (and :dir :back when entered from its end)" "the beat"]
     :messages [[":start · :stop" "its own clock: every event lasts its :dur in beats at its bpm"]
                ["player 120 4" "start on a multiple of 4 beats: players with the same tempo meet"]
                ["[:bpm 90]" "another tempo, without a jump"]
+               ["[:sync t0 bpm] (from a transport)" "the room's beat, or a performer's: it joins on the next beat (or multiple of quant), from the beginning of the pattern, and follows every change of tempo without a jump; [:sync] lets it go"]
                ["bang" "the next event now (and the ones of :dur 0 right after it)"]
                ["a number" "a position in beats: every event is a span, from its onset to its end, that sounds while the position is inside it — entered at its onset going forwards, at its end going backwards (:dir :back); what a step passes over sounds within it"]
                [":seek 8 · [:seek 8]" "there at once, nothing in between: what still sounds there goes on, what starts to contain that position starts"]

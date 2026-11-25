@@ -13,6 +13,7 @@ computer's clock says.
 | `share [channel]` | what arrives goes to everyone in the room on that channel (`main` if none): any value, an event, a list; in order, with or without ▶. A message of the moment: the history does not keep it |
 | `shared [channel]` | what anyone in the room shares on that channel — this page included —, while ▶ runs; on the right, who shared it |
 | `pulse [division]` | the room's beat, while ▶ runs: the count of each pulse on the audio clock (division 1 beats, 2 eighths, 0.25 bars of four), the bpm on the right; `start [bpm]`, `stop`, `bpm n` change the tempo for everyone |
+| `transport [smooth]` | one clock for every box that keeps time: `[:sync t0 bpm]` (the audio-clock time of beat 0, the tempo) for a `player`, which plays on that grid and follows it; the room's tempo while ▶ runs, or a performer's beat on the right (`follow`'s written beat, `phase`'s `{:phase :n :pulse}`), the tempo fitted to the last `smooth` (4) beats; `:room` goes back to the room |
 
 ```clojure
 ;; on one page: a keyboard that others play

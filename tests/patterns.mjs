@@ -99,6 +99,29 @@ export async function patterns(page, check) {
   check("... an endless pattern: far ahead and back again, from the window", got.includes(" [[0 nil] [3 :back]] true "), got);
   check("... a curve leaving rest (each step 15 times the one before) is motion, and a seek inside a sounding note neither cuts nor restarts it",
     got.endsWith(" [] false]"), got);
+  // a shared clock (a transport's [:sync t0 bpm]): it joins on its next beat, from the beginning; a tempo
+  // change keeps the beat of the pattern; stopped by hand it waits for start; [:sync] lets it go
+  const synced = await cljs(page, `(let [d (comp/lookup "player")
+        go (fn [st msgs] (reduce (fn [[st rs] [inl v at]]
+                                   (let [r ((:receive d) {:state st :args (comp/args-for d "player") :inlet inl :value v :at at})]
+                                     [(:state r) (conj rs r)]))
+                                 [st []] msgs))
+        p (api/pbind-pattern (api/read-pbind "{:degree [0 2 4] :dur 1}") {:seed 1 :repeat :inf})
+        [s1 r1] (go nil [[1 p 0] [0 [:sync 10 60] 10.3]])
+        [s2 r2] (go s1 [[0 [:tick (:gen s1)] 11]])
+        [s3 r3] (go s2 [[0 [:sync 10.75 120] 11.5]])
+        [s4 r4] (go s3 [[0 [:tick (:gen s3)] 11.75]])
+        [s5 r5] (go s4 [[0 :stop 11.8] [0 [:sync 10.75 100] 12]])
+        [s6 r6] (go s5 [[0 :start 12.1]])
+        [s7 _] (go s6 [[0 [:sync] 12.2]])]
+    [(:later (last r1)) (vec (for [[o v] (:out (last r2)) :when (= o 2)] (:degree v))) (:later (last r3))
+     (vec (for [[o v] (:out (last r4)) :when (= o 2)] (:degree v))) (:later (last r5)) (:later (last r6)) [(:mode s7) (:anchor s7)]])`);
+  check("[:sync t0 bpm]: it joins the shared clock on its next beat, from the beginning of the pattern",
+    synced.startsWith("[[[11 0 [:tick 1]]] [0] "), synced);
+  check("... a tempo change keeps the pattern's beat (the next tick moves, nothing jumps)", synced.includes(" [[11.75 0 [:tick 2]]] [2] "), synced);
+  check("... stopped by hand, a sync does not start it; start joins the grid (here at 100 bpm)", synced.includes(" nil [[12.55 0 [:tick 4]]] "), synced);
+  check("... [:sync]: the clock stopped, and it is free again", synced.endsWith(" [nil nil]]"), synced);
+
   // the same pattern again changes nothing; a new one goes on from the same place
   const before = await cljs(page, `(:pos (get-in @eng/rt [:states ${pl}]))`);
   await cljs(page, "(refill-data!)");
