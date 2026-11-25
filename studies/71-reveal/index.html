@@ -401,5 +401,5 @@ window.addEventListener("DOMContentLoaded", function () {
            :tips (fn [] (clj->js (tips (:segs @st))))
            :tip tip!
            :total (fn [] (or (last (axis (the-way) (:mode @st))) 0))
-           :place (fn [id] (clj->js (get (places-of (:patch (:shown @st))) (keyword id))))})
+           :place (fn [id] (clj->js (get (places-of (:patch (:shown @st))) (keyword (str/replace id #"^:" "")))))})
 </script>
