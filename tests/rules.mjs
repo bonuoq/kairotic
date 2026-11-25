@@ -531,7 +531,7 @@ notes.push(`${counted} counts compared in ${Date.now() - t0} ms`);
   {
     const VX = R.fourOverBass({ key: { tonic: "C" }, bass: [{ d: 2, r: 0, struck: true, strong: true }, { d: 0, r: 0, struck: true, strong: false }], style: "bach-4" });
     is("voice-exchange (bach-4): a soft rule between the voices, rewarded (a negative cost) where an inner voice trades its note with another",
-       R.SOFT_BETWEEN["voice-exchange"] && JSON.stringify(R.resolveStyle("bach-4").softBetween).includes("voice-exchange") && R.resolveStyle("bach-4").weights["voice-exchange"] === 2 && VX.count() > 0n);
+       R.SOFT_BETWEEN["voice-exchange"] && JSON.stringify(R.resolveStyle("bach-4").softBetween).includes("voice-exchange") && R.resolveStyle("bach-4").weights["voice-exchange"] === 4 && VX.count() > 0n);
   }
   is(`bach-motion (bach-4 ${R.STYLES["bach-4"].version}): a move costs as rarely as Bach's alto and tenor make it — the note kept 0, a whole step 0.3, a tritone 4.36, a 5th 2.48`,
      R.BACH_INNER_MOTION[0] === 0 && R.BACH_INNER_MOTION[2] === 0.3 && R.BACH_INNER_MOTION[6] === 4.36 && R.BACH_INNER_MOTION[7] === 2.48 && JSON.stringify(R.resolveStyle("bach-4").voice).includes("bach-motion"));

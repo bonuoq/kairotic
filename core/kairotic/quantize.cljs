@@ -49,7 +49,8 @@
   (:require [kairotic.canvas :as cv]
             [kairotic.spell :as sp]
             [kairotic.mt :as mt]
-            [kairotic.tempo :as tm]))
+            [kairotic.tempo :as tm]
+            [kairotic.motif :as motif]))
 
 (def eps 1e-6)
 (defn- near? [a b] (< (js/Math.abs (- a b)) eps))
@@ -537,17 +538,12 @@
                        :when (some (fn [x] (> x 0.02)) rel)
                        :when (not (fix-at o s))]
                    {:s s :L L :u u :rel rel}))
-        same? (fn [a b] (and (near? (:L a) (:L b)) (= (count (:rel a)) (count (:rel b)))
-                             (every? (fn [[x y]] (<= (js/Math.abs (- x y)) tol)) (map vector (:rel a) (:rel b)))))
-        ;; (each compared with the mean of a rhythm's returns so far, not with its first)
-        mean-of (fn [g] {:L (:L (first g)) :rel (apply mapv (fn [& xs] (/ (reduce + xs) (count g))) (map :rel g))})
-        groups (reduce (fn [gs sp] (if-let [i (first (keep-indexed (fn [i g] (when (same? (mean-of g) sp) i)) gs))]
-                                     (update gs i conj sp) (conj gs [sp])))
-                       [] sps)]
+        ;; one rhythm played several times: kairotic.motif's returns (each compared with the mean of the returns so far)
+        groups (motif/returns sps tol)]
     (into {}
           (for [g groups :when (> (count g) 1)
-                :let [{:keys [s L u]} (first g) k (count g)
-                      mean (apply map (fn [& xs] (/ (reduce + xs) k)) (map :rel g))
+                :let [{:keys [s L u]} (first g)
+                      mean (motif/mean-rel g)
                       ;; among the divisions its returns would take alone (the first two of each): a mean fits some odd
                       ;; division exactly (a septuplet for swung eighths) that no return would have chosen
                       own (set (mapcat (fn [sp] (map :n (take 2 (span-options (:s sp) L u (points-in pts (:s sp) (+ (:s sp) L)) o false)))) g))

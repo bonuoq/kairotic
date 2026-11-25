@@ -38,7 +38,7 @@
                                                    (into [:measure {:meter [b 2]}] (held (map beat bar)))))))]
                     (into [:piece] (map voice lines))))
       ;; ── forwards: a canon, an inversion, an augmentation ──
-      fwd (let [origins ["npm:@kairotic/cac@0.16.9/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
+      fwd (let [origins ["npm:@kairotic/cac@0.16.10/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
             hz (fn [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
             semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
             ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
@@ -135,6 +135,43 @@
             merge-res (fn [a b] {:state (:state b) :show (or (:show b) (:show a)) :out (into (vec (:out a)) (:out b))
                                  :effects (into (vec (:effects a)) (:effects b))})
             chain (fn [cp st askeds] (reduce (fn [acc a] (merge-res acc (play cp (:state acc) a))) {:state st :out []} askeds))
+            ;; ── a pattern in, a pattern out (discussion #450, piece 2): the rules as the judge of a stream ──
+            ;; Each event of the pattern with a pitch is a beat of the canon: its pitch is the dux's note asked for,
+            ;; played or corrected to the nearest one that keeps the rules and the futures (as a note played here is),
+            ;; with the comes's note beside it: the event sounds both, a chord [dux comes] in :freq, and says what was
+            ;; done in :counter {:dux :comes (MIDI) :asked :corrected :reason}. Rests and events without a pitch pass as
+            ;; they are; a canon finished, the next event begins another. The stream is made in each tab from the
+            ;; pattern and the box's seed (the chance at its temperature), so everyone hears the same.
+            counter-pattern (fn [cp p temp seed]
+                              (letfn [(rnd [s] (let [x (mod (* (max 1 s) 16807) 2147483647)] [x (/ (dec x) 2147483646)]))
+                                      (go [es D C s]
+                                        (lazy-seq
+                                         (when-let [e (first es)]
+                                           (let [h (api/event-hz e)]
+                                             (if (or (nil? h) (empty? h) (not (pos? (first h))))
+                                               (cons e (go (rest es) D C s))
+                                               (let [fresh? (>= (count D) (.-n cp))
+                                                     D (if fresh? [] D) C (if fresh? [] C)
+                                                     [s r] (rnd s) [s r2] (rnd s)
+                                                     o (if (> (or temp 0) 0.001) #js {:temp temp :r r :r2 r2} #js {})
+                                                     res (.play cp (clj->js D) (clj->js C) (semis-of-hz (first h)) o)]
+                                                 (if (nil? res)
+                                                   (cons e (go (rest es) [] [] s))
+                                                   (let [x (.-note res) c (.-comes res)
+                                                         dm (.midi cp x) cm (when (some? c) (.midi cp c))]
+                                                     (cons (-> (apply dissoc e [:degree :note :midinote :freq :hz])
+                                                               (assoc :freq (vec (cons (hz dm) (when cm [(hz cm)])))
+                                                                      :counter (cond-> {:dux (round2 dm) :asked (+ 60 (.-asked res))
+                                                                                        :corrected (.-corrected res)}
+                                                                                 cm (assoc :comes (round2 cm))
+                                                                                 (.-reason res) (assoc :reason (.-reason res)))))
+                                                           (go (rest es) (conj D x) (conj C c) s))))))))))]
+                                (api/make-pattern (fn [] (go (api/pattern-events p) [] [] (or seed 1)))
+                                                  [:comes (:key p) (.-n cp) (.-mode cp) (.-k cp) temp seed]
+                                                  (str "comes · " (.-mode cp)))))
+            ;; the pattern out (outlet 5), made with the kernel there is
+            send-pattern (fn [cp st p] {:state (assoc st :pattern p) :out [[5 (counter-pattern cp p (:temp st) (:seed0 st))]]
+                                        :show {:status (str "a pattern in, " (.-mode cp) " out")}})
             at-point (fn [cp st]
                        {:state st :show (shown cp st nil)
                         :out (into [[3 (report cp st nil)] [2 (futs cp (:D st) (:C st))]] silence)})
@@ -226,6 +263,8 @@
                             (let [k (:cp (:value value))
                                   st (-> st (update :wanted disj o2) (update :cps assoc o2 k))]
                               (cond
+                                ;; a pattern waited for its kernel: it goes out now
+                                (and (= o2 o) (:pattern st) (not (:live st))) (send-pattern k (assoc st :cp (or cp k)) (:pattern st))
                                 (or (not= o2 o) (and cp (not (:idle st)))) {:state st}
                                 (:live st) {:state (assoc st :cp k) :show (shown k st nil)}
                                 :else (let [waiting (:pending st) st (assoc st :cp k :pending [])]
@@ -245,8 +284,16 @@
                             {:state st :effects fx}
                             (let [k (get (:cps st) o)
                                   st (assoc st :cp k :D [] :C [] :idle false)]
-                              (if k (assoc (at-point k st) :effects fx) {:state st :effects fx}))))
+                              (cond (and k (:pattern st)) (assoc (send-pattern k st (:pattern st)) :effects fx)
+                                    k (assoc (at-point k st) :effects fx)
+                                    :else {:state st :effects fx}))))
       
+                        ;; a pattern (from a pbind, a pattern box): a pattern out, judged by the rules (outlet 5)
+                        (and (= inlet 0) (api/pattern? value))
+                        (if-let [k (or cp (get (:cps st) o))]
+                          (send-pattern k (assoc st :cp k) value)
+                          (let [[st fx] (ensure (assoc st :pattern value) o)] {:state st :effects fx :show {:status "counting the futures…"}}))
+
                         ;; the pulse (live)
                         (= inlet 1)
                         (if (and (:live st) (or cp (get (:cps st) o)))
@@ -293,8 +340,8 @@
                             :else {:state st})))))
       })
       ;; ── backwards: a crab or a table canon, from both ends to the middle ──
-      crab (let [origins-cp ["npm:@kairotic/cac@0.16.9/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
-            origins-mi ["npm:@kairotic/cac@0.16.9/dist/mirror.mjs" "kairotic/packages/cac/mirror.mjs"]
+      crab (let [origins-cp ["npm:@kairotic/cac@0.16.10/dist/counterpoint.mjs" "kairotic/packages/cac/counterpoint.mjs"]
+            origins-mi ["npm:@kairotic/cac@0.16.10/dist/mirror.mjs" "kairotic/packages/cac/mirror.mjs"]
             semis-of-hz (fn [f] (* 12 (/ (js/Math.log (/ f 261.6255653005986)) (js/Math.log 2))))
             ev-hz (fn [e] (let [h (or (:freq e) (:hz e))] (if (sequential? h) (first h) h)))
             log2 (fn [x] (/ (js/Math.log x) (js/Math.log 2)))
@@ -589,9 +636,9 @@
   {;; ── about ──
    :class "comes"
    :license "MPL-2.0"
-   :doc "Counterpoint live: you play the dux and the comes answers (Studies 41–46, 50). The comes is a reader of the dux at a speed: 1 a canon (the default), 0.5 an augmentation (twice as slow, a strict canon), −1 a crab (the dux backwards); inverted turns it upside down about the final (or [:axis 62]): an inversion, or with −1 a table canon, the score read from across the table. k steps away (−7 an octave below) and, forwards, d beats late. Each note is checked against the rules of the style — the mode's range, its melodic intervals, consonance on the strong beats, a dissonance passing on a weak one or held as a suspension, no parallel 5ths or octaves… — and against the future: a note from which the work could not be finished is not allowed either, and is corrected to the nearest one that can (a black key too), the box saying why. Forwards (speed 1 or 0.5) you play the dux and the comes answers: by turns (the default) one note in is one beat, the same note again (or :hold) held over it; with live a pulse on the right inlet (a metro) is a beat, a note lasts until the next, a note of three pulses in 2/2 turns the canon to 3/2 and one longer than a bar ends the section (with nocues neither: other boxes decide, with [:beats 3] and :end). With imitation below 1 the comes is chosen by the soft rules: near the dux's notes (0.5–0.9), following its motion (0.2–0.4) or free; with fourth your line is a cantus firmus and the comes syncopated. Backwards (speed −1) the work is written from both ends to the middle: by turns a note at the start, then one at the end; live (Study 46) your note, and at the same beat the box's answer at the end of your own line, a cue two beats before the middle, and at the middle the rest of your line to read (outlet 4) while the box plays your first half backwards. The system (Study 42) is diatonic by default, or meantone, septimal31, pentatonic, or an EDN map; the mode one of its modes; the box's words name them in any order (comes hypodorian, comes pentatonic penta-A -1). Out: the Hz of both voices sounding after their voice ids (outlet 1), for one synth~; the futuribles (outlet 2), the notes that can come next with their futures counted exactly; where the work is (outlet 3); and the finished work as a musical tree (outlet 4), for a tree box. [:speed -1], [:inverted true], [:k -4], [:d 2], [:mode …], [:system …], [:bars 5], [:imitation 0.5], [:beats 3], [:species 4], [:axis 62] change it; :engine, :back, :reset; [:temp 1.5], [:seed 7] its chance. Numbers are Hz (MIDI with midi); a list is the keys held; an event (:freq, or a player's :hz)."
+   :doc "Counterpoint live: you play the dux and the comes answers (Studies 41–46, 50). The comes is a reader of the dux at a speed: 1 a canon (the default), 0.5 an augmentation (twice as slow, a strict canon), −1 a crab (the dux backwards); inverted turns it upside down about the final (or [:axis 62]): an inversion, or with −1 a table canon, the score read from across the table. k steps away (−7 an octave below) and, forwards, d beats late. Each note is checked against the rules of the style — the mode's range, its melodic intervals, consonance on the strong beats, a dissonance passing on a weak one or held as a suspension, no parallel 5ths or octaves… — and against the future: a note from which the work could not be finished is not allowed either, and is corrected to the nearest one that can (a black key too), the box saying why. Forwards (speed 1 or 0.5) you play the dux and the comes answers: by turns (the default) one note in is one beat, the same note again (or :hold) held over it; with live a pulse on the right inlet (a metro) is a beat, a note lasts until the next, a note of three pulses in 2/2 turns the canon to 3/2 and one longer than a bar ends the section (with nocues neither: other boxes decide, with [:beats 3] and :end). With imitation below 1 the comes is chosen by the soft rules: near the dux's notes (0.5–0.9), following its motion (0.2–0.4) or free; with fourth your line is a cantus firmus and the comes syncopated. Backwards (speed −1) the work is written from both ends to the middle: by turns a note at the start, then one at the end; live (Study 46) your note, and at the same beat the box's answer at the end of your own line, a cue two beats before the middle, and at the middle the rest of your line to read (outlet 4) while the box plays your first half backwards. The system (Study 42) is diatonic by default, or meantone, septimal31, pentatonic, or an EDN map; the mode one of its modes; the box's words name them in any order (comes hypodorian, comes pentatonic penta-A -1). Out: the Hz of both voices sounding after their voice ids (outlet 1), for one synth~; the futuribles (outlet 2), the notes that can come next with their futures counted exactly; where the work is (outlet 3); and the finished work as a musical tree (outlet 4), for a tree box. A pattern on its left inlet (a pbind, a pattern box) gives a pattern on outlet 5, for a player: each of its notes is the dux's note asked for, kept or corrected by the rules and the futures as a note played here is, sounding with the comes's (a chord [dux comes] in :freq, what was done in :counter), rests passing as they are, a finished canon beginning another (#450). [:speed -1], [:inverted true], [:k -4], [:d 2], [:mode …], [:system …], [:bars 5], [:imitation 0.5], [:beats 3], [:species 4], [:axis 62] change it; :engine, :back, :reset; [:temp 1.5], [:seed 7] its chance. Numbers are Hz (MIDI with midi); a list is the keys held; an event (:freq, or a player's :hz)."
    :usage "comes [system] [mode] [speed 1] [k -7] [d 3] [beats 2] [imitation 1] [bars 0] [upbeat 0] [temp 0] [seed 1] [inverted] [fourth] [live] [nocues] [midi]"
-   :io [2 5]
+   :io [2 6]
    :size [170 46]
    :args [[:system nil] [:mode nil] [:speed 1] [:k -7] [:d 3] [:beats 2] [:imitation 1] [:bars 0] [:upbeat 0] [:temp 0] [:seed 1]
           [:inverted false] [:fourth false] [:live false] [:nocues false] [:midi false]]

@@ -472,7 +472,9 @@ Rules:
 - The room (package @kairotic/net, it comes by itself): `share [channel]` sends any value to everyone in the
   shared room (and this page), `shared [channel]` gives what anyone shares (value left, who right, while ▶);
   `pulse [division]` counts the room's beat on the audio clock — one tempo for every page; `start [bpm]`,
-  `stop`, `bpm n` change it for everyone.
+  `stop`, `bpm n` change it for everyone. `transport [smooth]` says where that beat is, [:sync t0 bpm], into a
+  `player`'s left inlet (it plays on the room's grid and follows its tempo); a beat on its right (follow's written
+  beat, phase's {:phase :n :pulse}) makes it follow a performer instead.
 - Data (package @kairotic/data, it comes by itself): `fetch [json|text|edn] [live]` brings in what is at a
   URL (a msg with the URL, or `github:owner/repo@ref/path`) and keeps it in the work (live: only here); on
   the left what it found, [:get k …] a part of it; `edn [w h]` shows any value as a tree to open and pick

@@ -522,7 +522,7 @@ Counterpoint live (Studies 41–46, 50): the comes reads the dux at a speed — 
 
 **Inlets** 
 
-0. the dux's next note (backwards: at the start, then at the end): Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event (:freq from midiin, or a player's :hz) · :hold (forwards, by turns) · :engine · :back · :reset · :end (forwards: the section ends) · [:speed -1], [:inverted true], [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:beats 3], [:species 4], [:axis 62]: the work changed
+0. a pattern (a pbind, a pattern box): a pattern out of outlet 5, its notes judged by the rules · the dux's next note (backwards: at the start, then at the end): Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event (:freq from midiin, or a player's :hz) · :hold (forwards, by turns) · :engine · :back · :reset · :end (forwards: the section ends) · [:speed -1], [:inverted true], [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:beats 3], [:species 4], [:axis 62]: the work changed
 1. live: the pulse (a bang from a metro or a pulse): a beat
 
 **Outlets** 
@@ -532,6 +532,7 @@ Counterpoint live (Studies 41–46, 50): the comes reads the dux at a speed — 
 2. the futuribles: the notes that can come next, with their futures ({:midi :name :futures …}; backwards live, with :end, what the box will answer at the end of your line)
 3. where the work is: forwards {:t :n :bar :beat :held :asked :played :corrected :reason :futures :obligations :section :meter …} or a cue {:cue :ternary|:end}; backwards {:step :steps :writing :beat :futures :dux :comes :closed …} or live {:t :phase :you :engine :ways …}, with the cue {:cue :middle :in 2}
 4. the work as a musical tree, both voices (for a tree box, its score): when it is finished; backwards live also at the middle, what is left of your line to read
+5. a pattern (from a pattern on the left inlet): its notes as the dux, kept or corrected by the rules, with the comes beside them — a chord [dux comes] in :freq, what was done in :counter — for a player
 
 **Messages and gestures**
 
@@ -2265,7 +2266,7 @@ Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a
 
 **Inlets** 
 
-0. :start · :stop: its own clock · bang: one step, now · a number: a position in beats · :seek p · :reset · [:bpm 90]
+0. :start · :stop: its own clock · [:sync t0 bpm]: a shared clock (a transport) · bang: one step, now · a number: a position in beats · :seek p · :reset · [:bpm 90]
 1. a pattern (from a pbind or a pattern box): a new one goes on from the same beat
 
 **Outlets** 
@@ -2280,6 +2281,7 @@ Plays a pattern by its own clock (start/stop), one step at a time (bang) or at a
 - `:start · :stop`: its own clock: every event lasts its :dur in beats at its bpm
 - `player 120 4`: start on a multiple of 4 beats: players with the same tempo meet
 - `[:bpm 90]`: another tempo, without a jump
+- `[:sync t0 bpm] (from a transport)`: the room's beat, or a performer's: it joins on the next beat (or multiple of quant), from the beginning of the pattern, and follows every change of tempo without a jump; [:sync] lets it go
 - `bang`: the next event now (and the ones of :dur 0 right after it)
 - `a number`: a position in beats: every event is a span, from its onset to its end, that sounds while the position is inside it — entered at its onset going forwards, at its end going backwards (:dir :back); what a step passes over sounds within it
 - `:seek 8 · [:seek 8]`: there at once, nothing in between: what still sounds there goes on, what starts to contain that position starts
