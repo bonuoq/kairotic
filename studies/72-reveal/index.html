@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Kairotic Study 71 · Reveal</title>
+<title>Kairotic Study 72 · Reveal</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,7 +38,7 @@ select, label, input { font: 13px var(--f-ui); color: var(--ink); }
 .panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
 .panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; }
 .panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
-/* Study 71: during the set only the code; at the end the reveal — the patch by its flow, and the history on a
+/* Study 72: during the set only the code; at the end the reveal — the patch by its flow, and the history on a
    time axis that can be played again at another speed, or from another branch. */
 .stage { display: grid; grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.4fr); gap: 12px; align-items: start; }
 .stage.code-only { grid-template-columns: minmax(0, 1fr); }
@@ -71,7 +71,7 @@ select, label, input { font: 13px var(--f-ui); color: var(--ink); }
 </style>
 <main>
 <header>
-  <h1>Study 71 · reveal</h1>
+  <h1>Study 72 · reveal</h1>
   <span class="sub">a live-coding set is only code while it is played; at the end it reveals its patch, by its flow, and its history, a time that can be played again (discussion #407)</span>
 </header>
 <div class="toolbar">
@@ -122,7 +122,7 @@ window.addEventListener("DOMContentLoaded", function () {
 <script type="application/x-kairotic" id="page-cljs">
 (ns reveal-page (:require [clojure.string :as str] [clojure.edn :as edn]))
 
-;; Kairotic · Study 71 · reveal: the page. A set is a history: segments of events, each event with the time it was
+;; Kairotic · Study 72 · reveal: the page. A set is a history: segments of events, each event with the time it was
 ;; made ({:id :parent :at :events :meta [{:t}]}, as a .kairotic keeps them). The page replays a way through it (from
 ;; the root to a tip), shows the code of each event, the patch at the point reached and the history on a time axis.
 

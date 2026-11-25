@@ -2,12 +2,23 @@
 
 ## Unreleased
 
-- **Study 71 · reveal** (discussion #407): a live-coding set is only code while it is played; at the end it reveals
+- **Study 72 · reveal** (discussion #407): a live-coding set is only code while it is played; at the end it reveals
   its patch, drawn by its flow (`layout.mjs`: a layered drawing after Sugiyama — rows after what feeds them, the order
   uncrossing the wires, each box under what feeds it; the app's example work in seven rows with no crossing), and its
   history on a time axis, every change a tick and every segment a row. The set can be played again from any point, at
   ×1–×64, as it was, with its silences shortened or a step each change, and from another branch. A short set is built
   in; a `.kairotic` exported from the app opens too.
+- **Study 71 · blind: the chorale test** (discussions #353, #399). A phrase of Bach's and a bridge — Study 63's outer
+  voices from its first chord to its last, the alto and the tenor by `fromOuter` (`bach-4`) — heard one after the
+  other: which is Bach? Five variants of the bridges (`all`, `no-functions`, `no-tension`, `no-economy`, `arch`); a
+  deck of 200 trials drawn once (`studies/_shared/chorales/deck.json`, `tools/deck.mjs`), the same for every listener;
+  the scores by variant with their 95% interval and an exact binomial p against chance; answers kept in the browser,
+  exported and pooled. `bach-4` fills 63–82% of the bridges tried (`arch` the most); the rest it cannot, most often for
+  a leap wider than the octave or a weak-unit dissonance not passing by step.
+- **A voice no longer meets the bass a semitone under it** (`@kairotic/rules` 0.20.1, `bach-4` 1.3.1;
+  `@kairotic/cac` 0.16.8). `from-bass`'s `unison: "any"` took the bass's letter lowered (D over D♯) for a unison; it is
+  below the bass. Bach's phrases are kept as before (504).
+
 - **The tonal functions in Bach's local keys, as a cost; and a plagal ending** (`@kairotic/rules` 0.20.0, `bach-4`
   1.3.0; `@kairotic/cac` 0.16.7; discussion #353). `functions` reads each unit in its own key (`local`: the bass
   note's — the corpus's `keys`), two units in different keys kept where either key reads them well, and lets a passing

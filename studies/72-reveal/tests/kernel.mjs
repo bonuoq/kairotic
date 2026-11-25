@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
-// Study 71 · reveal: the kernel's tests. In the browser (tests/kernel.html) and in Node:
-//   node -e 'import("./studies/71-reveal/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
+// Study 72 · reveal: the kernel's tests. In the browser (tests/kernel.html) and in Node:
+//   node -e 'import("./studies/72-reveal/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import { layout, crossings } from "../kairotic/layout.mjs";
 
 const P = (boxes, lines) => ({ boxes: Object.fromEntries(boxes.map(([id, text]) => [id, { text }])), lines });

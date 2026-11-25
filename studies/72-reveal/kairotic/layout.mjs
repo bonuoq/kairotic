@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// Kairotic · Study 71 · reveal: a patch laid out by its flow (discussion #407).
+// Kairotic · Study 72 · reveal: a patch laid out by its flow (discussion #407).
 // A layered drawing (after Sugiyama, Tagawa & Toda): every box gets a row (a rank) after the boxes that feed it, the
 // boxes of a row are ordered so that wires cross as little as they can, and each box sits under the boxes that feed
 // it. Sources at the top, the dac~ at the bottom: the patch reads as the signal goes. Pure: a patch in, places out.
