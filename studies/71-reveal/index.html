@@ -276,12 +276,13 @@ window.addEventListener("DOMContentLoaded", function () {
         rows (into {} (map-indexed (fn [i s] [(:id s) i]) (sort-by (fn [s] [(if (contains? on (:id s)) 0 1) (:t (first (:meta s)))]) all)))
         tx (fn [ms] (+ 30 (* wd (/ ms total))))
         ;; a segment off the way is placed from the point it starts at
+        ;; (a segment's events past where the way leaves it are placed by the way to its own end)
+        idx (fn [w sid i] (first (keep-indexed (fn [k p] (when (and (= (:seg p) sid) (= (:i p) i)) k)) w)))
         x-of (fn [s i]
-               (if (contains? on (:id s))
-                 (tx (nth xs (first (keep-indexed (fn [k p] (when (and (= (:seg p) (:id s)) (= (:i p) i)) k)) pts))))
-                 (let [w (way segs (:id s)) ax (axis w (:mode @st))
-                       k (first (keep-indexed (fn [k p] (when (and (= (:seg p) (:id s)) (= (:i p) i)) k)) w))]
-                   (tx (nth ax k)))))
+               (if-let [k (idx pts (:id s) i)]
+                 (tx (nth xs k))
+                 (let [w (way segs (:id s)) ax (axis w (:mode @st))]
+                   (tx (nth ax (idx w (:id s) i))))))
         y-of (fn [id] (+ 26 (* 30 (get rows id))))
         h (+ 46 (* 30 (count all)))
         ticks (fn [s] (for [i (range (count (:events s)))] (let [x (x-of s i)] (str "<line class=\"tick\" x1=\"" x "\" x2=\"" x "\" y1=\"" (- (y-of (:id s)) 7) "\" y2=\"" (+ (y-of (:id s)) 7) "\" data-seg=\"" (:id s) "\" data-i=\"" i "\"/>"))))
