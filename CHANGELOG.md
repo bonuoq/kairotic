@@ -23,6 +23,21 @@
   `tools/bridges.mjs` asks whether bach-4 can fill the inner voices (fromOuter's count above 0) — `fillable` on every
   bridge (20,155 of 22,690, 89%; was 55–58%), false where ten
   draws could not; the tool runs in shards (`tools/merge.mjs`). `bridges.json` drawn again.
+- **Live code as forms** (discussion #407): a box is the form it reads as — `(osc~ 220)` is the box `osc~ 220`, `(map
+  inc)` the box `map inc` —, so live code needs no `box`, quotes or ids: `(-> :osc (gain~ 0.2) [_ _] (dac~ 1 2))`. The
+  grammar of Faust's `:`, `,` and `<:`: `->` in series, a vector in parallel (a split after one wire, wire by wire
+  after as many), `_` a wire that goes on, a box after several wires taking them on its inlets 0, 1…; `(def osc (osc~
+  220))` a box by a name; `~expr` a value computed now. A chain owns the boxes it made, as it owns its wires: evaluated
+  again, each form takes the box it made with the same class, so a number changed is one text, a box put in the only
+  new one, a box taken out deleted. At the top level a command or Clojure function is code; inside a chain every list
+  is a box. The Live view's example is written so; the whole tab can be too (`run-form`, `forms-code?`).
+- **Study 73 · polyphony** (discussions #137, #308): the first ONNX model run in the page — Spotify's Basic Pitch
+  (Apache-2.0, code and weights), from jsDelivr, checked by its SHA-256 and kept in Cache Storage, through ONNX Runtime
+  Web 1.20.1 in a worker (`onnx.mjs`: a session from a URL, a run with arrays, the API #137 proposes). Its windows and
+  its way of reading notes ported to plain JS (`basicpitch.mjs`, under Basic Pitch's own licence); the notes read again
+  as the thresholds move, without running the model again. On a cadence rendered in the page the notes are scored
+  against what was written, and each chord heard against itself with a note an octave off: the 88 keys tell them
+  apart, a chroma cannot — what the followers of #308 would gain. Not in the app yet (after 0.3.0-alpha).
 - **The blind test's bridges between two of Bach's chords, their inner voices moving as his** (`@kairotic/rules`
   0.21.0, `bach-4` 1.5.0; `@kairotic/cac` 0.16.9; Study 71). A bridge now begins and ends on Bach's chords whole: the
   alto and the tenor given there (`fromOuter`'s `inner`, `fourOverBass`'s `given.alto` / `given.tenor`, where a unit has
