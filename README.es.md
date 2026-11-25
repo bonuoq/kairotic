@@ -151,7 +151,6 @@ paquetes oficiales llegan solos a una obra cuando una caja usa una de sus clases
 | [squint](https://github.com/squint-cljs/squint) (`squint-cljs`, su runtime) | 0.7.111 | EPL-1.0 | lo usa clojure-mode, en ese paquete |
 | [GUN](https://gun.eco) (`gun.js`, `sea.js`, `lib/radix`, `radisk`, `store`, `rindexed`) | commit `054ca85` (0.2020.1239) | MIT OR Zlib OR Apache-2.0 | salas y obras guardadas en Pages: [`site/vendor/gun/`](site/vendor/gun/VERSION.md); el relay instala el mismo commit |
 | [stftPitchShift](https://github.com/jurihock/stftPitchShift) (Jürgen Hock) | 2.0 | MIT | compilado a WebAssembly dentro de `@kairotic/spectral` (`shift~`) |
-| [GendyJS](https://github.com/abbernie/gendy) (Andrew Bernstein) | — | MIT | portado al worklet de `gendy~` en `@kairotic/synth` |
 
 **Solo en un ensayo:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Ensayo 24, desde jsDelivr); [ONNX Runtime Web](https://onnxruntime.ai) 1.20.1 (MIT, Ensayo 73, desde jsDelivr) y el modelo de [Basic Pitch](https://github.com/spotify/basic-pitch) (Apache-2.0, Ensayo 73, traído de su repositorio a través de jsDelivr; su lectura de notas, portada al ensayo).
 
@@ -179,7 +178,7 @@ distribuya una obra debe respetar las de las funciones que use.
 
 ### Inspiración
 
-Ideas, no código: [DSim](https://github.com/helins/dsim.cljc) (estado y tiempo como datos),
+Ideas, no código: [GendyJS](https://github.com/abbernie/gendy) (los nombres de los parámetros de `gendy~`), [DSim](https://github.com/helins/dsim.cljc) (estado y tiempo como datos),
 [editscript](https://github.com/juji-io/editscript), [INScore](https://inscore.grame.fr/) (relación
 tiempo ⇄ espacio), [bach](https://www.bachproject.net/) (partituras como objetos del patch),
 [JSPatcher](https://github.com/Fr0stbyteR/jspatcher), [OSSIA score](https://ossia.io/),

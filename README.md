@@ -149,7 +149,6 @@ packages come into a work by themselves when a box uses one of their classes (`k
 | [squint](https://github.com/squint-cljs/squint) (`squint-cljs`, its runtime) | 0.7.111 | EPL-1.0 | used by clojure-mode, in that bundle |
 | [GUN](https://gun.eco) (`gun.js`, `sea.js`, `lib/radix`, `radisk`, `store`, `rindexed`) | commit `054ca85` (0.2020.1239) | MIT OR Zlib OR Apache-2.0 | rooms and saved works in Pages: [`site/vendor/gun/`](site/vendor/gun/VERSION.md); the relay installs the same commit |
 | [stftPitchShift](https://github.com/jurihock/stftPitchShift) (Jürgen Hock) | 2.0 | MIT | compiled to WebAssembly inside `@kairotic/spectral` (`shift~`) |
-| [GendyJS](https://github.com/abbernie/gendy) (Andrew Bernstein) | — | MIT | ported to the `gendy~` worklet in `@kairotic/synth` |
 
 **Only in a study:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Study 24, from jsDelivr); [ONNX Runtime Web](https://onnxruntime.ai) 1.20.1 (MIT, Study 73, from jsDelivr) and [Basic Pitch](https://github.com/spotify/basic-pitch)'s model (Apache-2.0, Study 73, fetched from its repository through jsDelivr; its note reading ported into the study).
 
@@ -177,7 +176,7 @@ functions it uses.
 
 ### Inspiration
 
-Ideas, not code: [DSim](https://github.com/helins/dsim.cljc) (state and time as data),
+Ideas, not code: [GendyJS](https://github.com/abbernie/gendy) (the parameter names of `gendy~`), [DSim](https://github.com/helins/dsim.cljc) (state and time as data),
 [editscript](https://github.com/juji-io/editscript), [INScore](https://inscore.grame.fr/) (time ⇄ space),
 [bach](https://www.bachproject.net/) (scores as patch objects),
 [JSPatcher](https://github.com/Fr0stbyteR/jspatcher), [OSSIA score](https://ossia.io/),

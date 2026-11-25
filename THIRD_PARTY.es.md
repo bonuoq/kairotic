@@ -19,6 +19,9 @@ en el repositorio, aparecen en el [README](README.es.md#dependencias).
 | `studies/29-live/kairotic/shift.mjs` | MPL-2.0 AND MIT | el mismo módulo, para el Study 29 | stftPitchShift, como arriba |
 | `studies/73-polyphony/kairotic/basicpitch.mjs` | Apache-2.0 | las ventanas y la lectura de notas de Basic Pitch, portadas | [Basic Pitch](https://github.com/spotify/basic-pitch) (Spotify), `basic_pitch` y `basic-pitch-ts` |
 
+No figura, porque no hay código suyo en el repositorio: `gendy~` solo toma los nombres de sus parámetros de
+[GendyJS](https://github.com/abbernie/gendy) (MIT); su worklet es propio de Kairotic, escrito a partir del GENDY de Xenakis.
+
 Un paquete que publique alguno de estos declara sus licencias en su `package.json` (`"license": "MPL-2.0 AND MIT"`) y
 lleva este archivo. Los pesos de modelos que se descargan al ejecutar (los de Basic Pitch, Apache-2.0, en el Study 73)
 no están en el repositorio y Kairotic no los redistribuye.
