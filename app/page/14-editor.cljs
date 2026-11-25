@@ -683,12 +683,21 @@
     "cond" "condp" "case" "loop" "recur" "doseq" "dotimes" "for" "quote" "->>" "as->" "some->" "cond->" "comment"
     "try" "throw" "binding" "set!" "new" "ns" "in-ns" "require"})
 
+(defonce code-names
+  ;; the names of the page and of clojure.core, as strings: kept while the page defines no new name
+  (atom {:n -1 :names #{}}))
+
+(defn code-name? [h]
+  (let [pub (try (ns-publics 'user) (catch :default _ {})) n (count pub)]
+    (when (not= n (:n @code-names))
+      (reset! code-names {:n n :names (into (set (map str (keys pub))) (ns-names 'clojure.core ""))}))
+    (contains? (:names @code-names) h)))
+
 (defn code-head?
   "Whether a list starting with h is code to evaluate — a command of the page (or anything defined there), a
    Clojure function or form, a name with a namespace — and not a box."
   [h]
-  (boolean (or (nil? h) (contains? code-specials h) (str/includes? (str h) "/")
-               (contains? (set (ns-names 'user "")) h) (contains? (set (ns-names 'clojure.core "")) h))))
+  (boolean (or (nil? h) (contains? code-specials h) (str/includes? (str h) "/") (code-name? h))))
 
 (defn elems "The forms inside a list or a vector, as text (the list's head first)." [f]
   (let [inner (subs f 1 (max 1 (dec (count f))))] (mapv (fn [[a b]] (subs inner a b)) (top-forms inner))))
@@ -879,10 +888,12 @@
    calls and Clojure."
   [code]
   (boolean (some (fn [[a b]] (let [f (subs code a b) h (form-head f)]
+                               ;; (the calls the work's code is written with first: quick, and most of a work)
+                               (and (not (contains? patch-calls h)) (str/starts-with? f "(")
                                (or (box-form? f)
                                    (and (contains? #{"->" "doto"} h) (chain-steps-ok? f)
                                         (some (fn [e] (or (chain-box? e) (= e "_") (str/starts-with? e "["))) (rest (elems f))))
-                                   (and (= h "def") (let [es (elems f)] (and (= 3 (count es)) (box-form? (nth es 2))))))))
+                                   (and (= h "def") (let [es (elems f)] (and (= 3 (count es)) (box-form? (nth es 2)))))))))
                  (top-forms code))))
 
 (defn run-forms! "Runs every top-level form of code, as live code reads it." [code]
