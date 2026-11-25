@@ -100,8 +100,8 @@ export async function codetab(page, check) {
   check("... the form the cursor is in", (await cljs(page, '(form-at "(a 1) ;c\n[b] x #{1} \\"s\\" (c (d))" 28)')) === "[24 31]");
   check("... or the one just before it (a comment between)", (await cljs(page, '(form-at "(a 1) ;c\n" 8)')) === "[0 5]");
   check("... and none in an empty place", (await cljs(page, '(form-at "  (a 1)" 0)')) === "nil");
-  check("calls that make the patch, and those that do not",
-        (await cljs(page, '[(patch-form? "(box \\"osc~\\") (connect :b1 0 :b2 0)") (patch-form? "(play)") (patch-form? "(def o (box \\"osc~\\"))")]')) === "[true false false]");
+  check("calls that make the patch, and those that do not (a def of a box makes it: #407, forms)",
+        (await cljs(page, '[(patch-form? "(box \\"osc~\\") (connect :b1 0 :b2 0)") (patch-form? "(play)") (patch-form? "(def o (box \\"osc~\\"))")]')) === "[true false true]");
 
   // a form alone: a box written again as it was keeps what it keeps
   const r2 = await cljs(page, `(eval-calls! "(box ${c2} \\"freqt\\" 9950 600)")`);
