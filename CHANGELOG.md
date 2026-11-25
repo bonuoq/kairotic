@@ -14,6 +14,13 @@
   between) — the chord kept and each line moving where one voice alone would leap, a shortcut of four-part writing;
   the bridges do it about as often as Bach (with an inner voice, 9 chords in 100). A kept note is struck again, as Bach mostly does, unless it is held into a dissonance. The deck drawn
   again: `bach-4` fills 55–58% of the bridges tried. Bach's phrases judged as before (504).
+- **A tree as the events of a pattern** (discussion #450, piece 1; `@kairotic/patterns` 0.3.1). `:tree` in a pbind is a
+  musical tree whose notes are its events (`:midinote :sustain :dur :voice :amp`, in time order, `:dur` the time to the
+  next onset — 0 for notes that start together —, a silence first when it does not begin at 0), every other key going
+  on over them note by note: `{:tree … :dur #pat/euclid [3 8]}` its pitches on a tresillo, `{:tree {:of … :voices
+  [0]}}` some of its voices. A tree on a pbind's inlet (a tree box, `cac partimento`, `comes`, a transcription)
+  becomes its `:tree`; `(ptree t)` in a `pattern` box. The way back of `render` (#93): what cac writes can now be
+  played by a `player` and varied with the generators.
 
 - **Study 72 · reveal** (discussion #407): a live-coding set is only code while it is played; at the end it reveals
   its patch, drawn by its flow (`layout.mjs`: a layered drawing after Sugiyama — rows after what feeds them, the order

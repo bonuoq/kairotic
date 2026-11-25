@@ -179,7 +179,7 @@
    "@kairotic/cac"      {:version "0.16.9" :classes #{"comes" "cac"} :local "kairotic/packages/cac.mjs"}
    "@kairotic/rhythm"   {:version "0.8.0" :classes #{"euclid" "necklace" "chance" "homometric" "swap" "morph" "vary" "phase"} :local "kairotic/packages/rhythm.mjs"}
    "@kairotic/data"     {:version "0.1.4" :classes #{"fetch" "edn"} :local "kairotic/packages/data.mjs"}
-   "@kairotic/patterns" {:version "0.3.0" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}
+   "@kairotic/patterns" {:version "0.3.1" :classes #{"pbind" "pattern" "player" "render"} :local "kairotic/packages/patterns.mjs"}
    "@kairotic/spectral" {:version "0.1.2" :classes #{"shift~"} :local "kairotic/packages/spectral.mjs"}
    "@kairotic/io"       {:version "0.2.5" :classes #{"midiin" "midiout" "oscin" "oscout" "motion" "gamepad" "serial" "control"}
                          :local "kairotic/packages/io.mjs"}
