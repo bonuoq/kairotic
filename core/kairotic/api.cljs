@@ -337,6 +337,10 @@ registerProcessor('kairotic-tap', KairoticTap);
 
 (defn pattern? "Is x a pattern value?" [x] (pat/pattern? x))
 (defn pattern-events "A new stream of a pattern: a lazy, perhaps endless, seq of event maps." [p] (pat/events p))
+(defn make-pattern
+  "A pattern value made by a component: make gives a new stream (a lazy seq of event maps) each time it is called; key
+   tells whether two patterns are the same (equal keys, the same music); info a few words about it (#450)."
+  [make key info] (pat/pattern make key info))
 (defn pbind-pattern "The pattern of a pbind map, with {:seed n :repeat n|:inf}." [m opts] (pat/pbind-pattern m opts))
 (defn code-pattern "The pattern of a compiled \"pattern\" source, with {:seed :repeat :source}." [f opts] (pat/code-pattern f opts))
 (defn read-pbind "The text of a pbind as a map (#pat/… as generators); throws when it does not read." [source] (pat/read-spec source))
