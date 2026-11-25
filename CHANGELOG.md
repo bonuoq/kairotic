@@ -17,6 +17,17 @@
   `kairotic-components`) would not run today: they stay as a record in [the studies](docs/studies.md), and their
   code in the repository's history. `componentes/` and `components/` (`kairotic-componentes`,
   `kairotic-components`) are gone too, and both packages are unpublished from npm.
+- **The bridges' dissonances as rare as Bach's, his melodic minor's raised ⑥ as seldom** (`@kairotic/rules` 0.22.0,
+  `bach-4` 1.6.0; `@kairotic/cac` 0.16.10; Study 71). Heard by @bonuoq: dissonances that did not seem justified. The
+  inner voices dissonated against the bass twice as often as Bach's, with seven times his semitone clashes (a ♭9, a
+  major 7th) — mostly notes held into a dissonance and neighbours. Two of the species' rewards (`passing`,
+  `suspension-life`: "the life of second and fourth species") are off in `bach-4`, and a voice weighs what it sounds
+  against the bass by Bach's own frequencies (`bach-vertical`, 1.5: −log of how often his alto and tenor sound each
+  interval, `BACH_INNER_VERTICAL`), its moves weighed more (`bach-motion` 4) so it does not leap to keep consonant,
+  the voice exchange more (4). In minor, the raised ⑥ in an inner voice costs (`raised-sixth`, 2), more where it does
+  not go on up. In the deck: chords with a dissonance 18.1% (Bach 21.8%, before 37.7%), semitone clashes 1.7 per 100
+  chords (Bach 1.7, before 9.8). Study 71's `fill` reads a bridge's `keys` (a key a unit) where it has them, so its
+  inner voices may take a tonicization's leading tone, as Bach's do. Bach's phrases judged as before (504).
 - **Study 74 · aoidos** (discussion #192): a poem sung syllable by syllable. `prosody.mjs` reads polytonic Greek —
   syllables, quantity (by nature, by position, doubtful; the laws of the accent; epic correption), accents — and scans
   a line (hexameter, pentameter, iambic, free; synizesis), the scansion its time (a short a beat, a long two, held).
@@ -25,6 +36,13 @@
   circumflex hard), an examiner that tries a melody as the dux of `cac imitation`, and `canonic()`: the dux written
   with its comes on `canon-2`, the singer choosing among the comes's futuribles (Odyssey 1.1 in strict canon at the
   octave below a foot later: 4,285 canons).
+- **The rules as the judge of a pattern** (discussion #450, piece 2; `@kairotic/cac` 0.16.10). A pattern on `comes`'s left
+  inlet (a `pbind`, a `pattern` box) gives a pattern on a new outlet 5, for a `player`: each note with a pitch is the
+  dux's note asked for, kept or corrected to the nearest one that keeps the rules and leaves a future (the same `play`
+  as a note played into the box), sounding with the comes's beside it — a chord `[dux comes]` in `:freq`, and what was
+  done in `:counter {:dux :comes :asked :corrected :reason}`. Rests and events without a pitch pass as they are; a
+  finished canon begins another; the chance (temperature, seed) the box's, so every tab makes the same stream. With
+  `imitation` below 1 the comes is free counterpoint over the pattern's line. `api/make-pattern` for components.
 
 - **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
   voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of
