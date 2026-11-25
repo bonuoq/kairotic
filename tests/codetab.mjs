@@ -330,4 +330,23 @@ export async function codetab(page, check) {
   check("... an argument with no inlet: said", (await cljs(page, '(try (play (=> [:+ 1 [:mtof]])) (catch :default e (.-message e)))')).includes("no inlet for its argument 2"));
   await cljs(page, `(stop) (apply delete (keep (fn [[id b]] (when (#{"gain~" "osc~" "mtof 4" "ftom" "mtof" "+ 1"} (:text b)) (when (or (#{${ng} ${no} ${nm}} id) (some (fn [[a _ c _]] (and (= a id) (#{${ng} ${no} ${nm}} c))) (:lines (current)))) id))) (:boxes (current))))`);
 
+  // Faust as data: [:faust- …] is a faust~ whose process is written by the same grammar
+  const fc = (els, want) => cljs(page, `(= (faust-code ${els}) (str "import(\\"stdfaust.lib\\");\\nprocess = " ${JSON.stringify(want)} ";"))`);
+  check("Faust as data: a chain is :, a box is partial application", (await fc("[:os.sawtooth 110] [:fi.lowpass 2 800] [:* 0.1]", "os.sawtooth(110) : fi.lowpass(2, 800) : *(0.1)")) === "true");
+  check("... a vector in parallel: <: before it, :> after it", (await fc("[:no.noise] [[:fi.lowpass 2 400] [:fi.highpass 2 4000]] [:+]", "no.noise <: (fi.lowpass(2, 400), fi.highpass(2, 4000)) :> +")) === "true");
+  check("... an argument that is a signal, a control with its label, wires",
+        (await fc("[:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])]", "os.osc((os.osc(5) : *(10) : +(440)))")) === "true"
+        && (await fc('[:os.osc [:hslider "freq" 220 50 2000 1]] [:_ :_]', 'os.osc(hslider("freq", 220, 50, 2000, 1)) <: (_, _)')) === "true");
+  const k6 = Number(await cljs(page, nEv));
+  await cljs(page, "(play (=> {:fz [:faust- [:os.osc 220] [:* 0.1]]} [:gain- 0.5]))");
+  const fz = await cljs(page, "(rid :fz)");
+  const fsrc = () => cljs(page, `(source ${fz})`);
+  check("... played: a faust~ box with that code, as one event", (await txt(fz)) === '"faust~"' && (await fsrc()).includes("process = os.osc(220) : *(0.1);")
+        && Number(await cljs(page, nEv)) === k6 + 1, `${await txt(fz)} ${await fsrc()}`);
+  await cljs(page, "(play (=> {:fz [:faust- [:os.osc 220] [:* 0.1]]} [:gain- 0.5]))");
+  check("... evaluated again as it was: nothing changes", Number(await cljs(page, nEv)) === k6 + 1);
+  await cljs(page, "(play (=> {:fz [:faust- [:os.osc 330] [:* 0.1]]} [:gain- 0.5]))");
+  check("... a number changed: the code only", (await fsrc()).includes("os.osc(330)") && Number(await cljs(page, nEv)) === k6 + 2, await cljs(page, lastEv));
+  await cljs(page, `(stop) (apply delete ${fz} (keep (fn [[a _ b _]] (when (= a ${fz}) b)) (:lines (current))))`);
+
 }
