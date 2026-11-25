@@ -19,7 +19,8 @@
 
 (ns kairotic.motif
   (:require [clojure.string :as str]
-            [kairotic.spell :as sp]))
+            [kairotic.spell :as sp]
+            [kairotic.mt :as mt]))
 
 (defn- sign [x] (cond (pos? x) 1 (neg? x) -1 :else 0))
 (defn- log2 [x] (/ (js/Math.log x) js/Math.LN2))
@@ -223,3 +224,65 @@
 
 (defn mean-rel "Where the onsets of a group of returns fall, on average." [g]
   (apply mapv (fn [& xs] (/ (reduce + xs) (count g))) (map :rel g)))
+
+;; ───────── the motives of a piece, written on its notes (quantize → describe → annotate) ─────────
+
+(defn- r6 [x] (/ (js/Math.round (* 1e6 x)) 1e6))
+
+(defn motives
+  "The motives of voices (each a vector of notes, in time order): spans of 3 to 5 notes that come back with the same
+   intervals (repeated, transposed, in sequence) or inverted, and the same rhythm (or augmented, diminished), in the
+   same voice or another (an imitation). The one that covers most notes first, then the next among what is left, at
+   most n (4). [{:label \"a\" :at [{:voice :i :len :rel}]}], :at in time order, the first its statement (:rel nil), the
+   others how they are related to it (kairotic.motif's exact)."
+  ([voices] (motives voices {}))
+  ([voices {:keys [n] :or {n 4}}]
+   (let [voices (mapv vec voices)
+         ;; a window's class: its steps (or their inversion) and its rhythm as ratios of its first duration
+         klass (fn [S inv?] (let [v (views S)] [(if inv? (mapv - (:dia v)) (:dia v)) (mapv r6 (:rhythm v))]))
+         windows (for [len [5 4 3] [vi ns] (map-indexed vector voices) i (range (inc (- (count ns) len)))]
+                   {:voice vi :i i :len len :notes (subvec ns i (+ i len))})
+         free? (fn [covered {:keys [voice i len]}] (not-any? (fn [k] (covered [voice k])) (range i (+ i len))))
+         pick (fn [covered]
+                (let [ws (filter (partial free? covered) windows)
+                      by (group-by (fn [w] [(:len w) (klass (:notes w) false)]) ws)
+                      inv (group-by (fn [w] [(:len w) (klass (:notes w) true)]) ws)
+                      ;; the occurrences of a class: its windows and its inversions', none overlapping in a voice
+                      occ (fn [[k g]] (let [all (sort-by (fn [w] [(:on (first (:notes w))) (:voice w)]) (distinct (concat g (when (some (fn [x] (not= 0 x)) (first (second k))) (get inv k)))))]
+                                        (reduce (fn [acc w] (if (some (fn [x] (and (= (:voice x) (:voice w)) (< (:i w) (+ (:i x) (:len x))) (< (:i x) (+ (:i w) (:len w))))) acc) acc (conj acc w)))
+                                                [] all)))
+                      cands (keep (fn [kg] (let [o (occ kg)] (when (>= (count o) 2) {:at o :score (* (count o) (:len (first o)))}))) by)]
+                  ;; the one that covers most notes; of those, the one heard first
+                  (first (sort-by (fn [c] [(- (:score c)) (:on (first (:notes (first (:at c)))))]) cands))))]
+     (loop [covered #{} out []]
+       (if (>= (count out) n)
+         out
+         (if-let [{:keys [at]} (pick covered)]
+           (let [M (:notes (first at))
+                 label (str (char (+ 97 (count out))))]
+             (recur (into covered (for [w at k (range (:i w) (+ (:i w) (:len w)))] [(:voice w) k]))
+                    (conj out {:label label
+                               :at (mapv (fn [w j] (assoc (dissoc w :notes) :rel (when (pos? j) (:name (exact M (:notes w))))))
+                                         at (range))})))
+           out))))))
+
+(defn annotate
+  "A tree with its motives written on its notes (the analysis layer): on the first note of each statement and return,
+   :motif its label (\"a\", \"b\"…) and, on a return, :motif.rel how it is related to the statement (\"transposed,
+   a 4th lower\"). Graces left out; notes already labelled are relabelled."
+  ([t] (annotate t {}))
+  ([t o]
+   (let [x (mt/expand t)
+         es (filter (fn [e] (and (= :note (:kind e)) (not (:grace e)) (number? (:pitch e)))) (mt/events x))
+         by-voice (vec (vals (group-by (fn [e] (or (:voice e) "")) es)))
+         voices (mapv (fn [vs] (mapv (fn [e] (merge (pitch-of (or (:name e) (:pitch e))) {:on (:t e) :dur (:dur e) :path (:path e)})) (sort-by :t vs))) by-voice)
+         clean (reduce (fn [t e] (let [n (mt/node-at t (:path e))]
+                                   (if (and (mt/node? n) (or (:motif (mt/attrs n)) (:motif.rel (mt/attrs n))))
+                                     (mt/apply-op t [:attrs (:path e) (dissoc (mt/attrs n) :motif :motif.rel)]) t)))
+                       x es)]
+     (reduce (fn [t {:keys [label at]}]
+               (reduce (fn [t {:keys [voice i rel]}]
+                         (let [path (:path (get-in voices [voice i])) n (mt/node-at t path)]
+                           (mt/apply-op t [:attrs path (cond-> (assoc (mt/attrs n) :motif label) rel (assoc :motif.rel rel))])))
+                       t at))
+             clean (motives voices o)))))

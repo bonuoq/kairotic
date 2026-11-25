@@ -8,6 +8,22 @@
   as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
   circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
 
+- **Live code as data** (discussion #407): a patch written as plain EDN, which Clojure's reader and any editor read,
+  played with one function, `=>`: `(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])`. A box is a vector of its
+  class and arguments, as hiccup writes a tag, a class with `~` written with `-` (`[:osc- 220]` is `osc~ 220`); `=>` in
+  series, a vector that is not a box in parallel, `:_` a wire (Faust's `:`, `,`, `<:`); a map names a box; `#_` leaves a
+  box out. **Voices**: `(=> {:frame {:out [:dac- 1 2]} :lead [:=> … :out]})`, each chain known by its key as `d1` in
+  Tidal, a voice taken out of the map stopped, `:frame` the ins and outs every voice uses (or a line's `inlet~` and
+  `outlet~`). A chain owns the boxes and wires it made: evaluated again, only what changed changes. The forms written
+  as lists (`(osc~ 220)`, #451) are gone: one grammar, data. `->` and `doto` are Clojure's own again.
+- **One clock for every box that keeps time: `transport`** (discussion #450, piece 3; `@kairotic/net` 0.2.0,
+  `@kairotic/patterns` 0.3.2). Where `pulse` counts the room's beat, `transport` says where it is — `[:sync t0 bpm]`,
+  the audio-clock time of beat 0 and the tempo — and a `player` that gets it plays on that grid: it joins on the next
+  beat (or multiple of its quant) from the beginning of its pattern, follows every change of tempo without a jump
+  (the next tick moves), and joins again after a jump; stopped by hand it waits for `start`, `[:sync]` lets it go. So
+  a pattern, a canon from `comes` (piece 2) and the players of every page in a room play on one beat. A beat on
+  `transport`'s right makes it follow a performer instead: `follow`'s written beat or `phase`'s `{:phase :n :pulse}`
+  (its cycle unwrapped), the tempo fitted to the last `smooth` (4) beats heard; `:room` goes back to the room.
 - **The bridges' dissonances as rare as Bach's, his melodic minor's raised ⑥ as seldom** (`@kairotic/rules` 0.22.0,
   `bach-4` 1.6.0; `@kairotic/cac` 0.16.10; Study 71). Heard by @bonuoq: dissonances that did not seem justified. The
   inner voices dissonated against the bass twice as often as Bach's, with seven times his semitone clashes (a ♭9, a
@@ -35,6 +51,12 @@
   finished canon begins another; the chance (temperature, seed) the box's, so every tab makes the same stream. With
   `imitation` below 1 the comes is free counterpoint over the pattern's line. `api/make-pattern` for components.
 
+- **Quantize → describe → annotate** (step 2 of the motive layer; #108). With `:describe true`, the quantizer writes on
+  what it wrote its motives: `kairotic.motif/motives` finds spans of 3 to 5 notes that come back repeated, transposed,
+  in sequence or inverted (with their rhythm, augmented or diminished), in the same voice or another (an imitation),
+  the one covering most notes first; `annotate` writes `:motif` (the label) and `:motif.rel` (how a return is related
+  to the statement) on their first notes, two new keys of the analysis layer (#382). The score draws them above the
+  notes. `api/motif-annotate` for components. Docs: `docs/mt.md`.
 - **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
   voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of
   0…13 semitones in the corpus, times the temperature, so the draw moves as often as he does), in place of the fixed

@@ -268,8 +268,16 @@ much a note may run into the next one and stay in its voice, 0.15 beats) and `:w
 cost (`{:err 8 :off 0.35 :cpx 1 :lost 1.5 :coh 0.5}`). `:coh` is what changing kind of division (binary,
 triplet, quintuplet…) between neighbouring beats costs: a lone triplet among eighths pays it twice, a run of
 triplets once, so notes played a little early or late do not become tuplets (issue #108; `0` decides each
-beat on its own). `(as-tree :bN)` still reads a freqt's strokes exactly,
-without quantizing them.
+beat on its own). A rhythm that comes back is written the same way each time: the division of the mean of its
+returns is preferred for all of them (`:rep` 1 of the weights for another, `:repeat` the tolerance, 0.08 of the
+beat; `:repeat false` for none). `(as-tree :bN)` still reads a freqt's strokes exactly, without quantizing them.
+
+**Its motives.** With `:describe true`, what is written is described too: its motives (`kairotic.motif`, spans of
+3 to 5 notes that come back repeated, transposed, in sequence or inverted, in the same voice or another) are written
+on its notes, in the analysis layer: `:motif` the label on the first note of each statement and return (`"a"`,
+`"b"`…), `:motif.rel` how a return is related to the statement (`"in sequence, a step higher"`). The score draws them
+above the notes. `(quant :b1 {:describe true})` keeps it for a freqt; `(motif/annotate tree)` describes any tree, and
+`api/motif-annotate` is the same for a component.
 
 **Choosing another division.** The quantizer guesses; when it guesses wrong, **alt-click a note** of the
 score: its beat takes the next way to divide it (the quantizer's own first, then the others, cheapest

@@ -40,7 +40,8 @@
 ;; not turn into finer divisions at fast tempos (nil: in beats, as without :time). A rhythm that comes back (the same
 ;; onsets in spans of the same length, within :repeat of the span, 0.08) is written the same way each time: the
 ;; division of the mean of its returns is preferred for all of them, :rep (1) of the weights for another (issue #108;
-;; :repeat false for none).
+;; :repeat false for none). :describe true writes the motives of what is written on its notes (kairotic.motif/annotate:
+;; :motif and :motif.rel, the analysis layer), drawn above them in the score.
 ;; :real (true) keeps on each note where it really sounded, as :tstamp.real and :dur.real (seconds: the material's
 ;; time at its tempo — a tree's :tempo, 60 for a freqt), on its first piece only: what kairotic.mei writes as MEI's
 ;; gestural attributes, and what tc/free-form places a note by when it is made free again (discussion #217).
@@ -756,7 +757,8 @@
          vs (notes->voices ns o)
          t (if (= 1 (count vs)) (first vs) (into [:par {}] vs))
          tempo (or (:tempo opts) (when m (js/Math.round (tm/tempo-of-map m))))]
-     (respell-by-hand (mt/spell (cond-> t tempo (mt/update-attrs assoc :tempo tempo))) (:spell o)))))
+     (cond-> (respell-by-hand (mt/spell (cond-> t tempo (mt/update-attrs assoc :tempo tempo))) (:spell o))
+       (:describe o) motif/annotate))))
 
 (defn tree-notes
   "The notes of a tree without measures as notes in free time ({:on :off :attrs :voice}): a written name
@@ -814,10 +816,12 @@
                                                    (when (and (seq nm) (not (re-matches #"v\d+-\d*" nm))) nm))))
          vs (vec (mapcat voices by-voice))
          t (if (> (count vs) 1) (into [:par {}] vs) (or (first vs) (notes->voice [] o)))]
-     (respell-by-hand (mt/spell (mt/update-attrs t assoc :tempo (or (:tempo opts)
-                                                                     (when m (js/Math.round (* (tm/tempo-of-map m) (/ (mt/tempo-of tree) 60))))
-                                                                     (mt/tempo-of tree))))
-                      (:spell o)))))
+     (cond-> (respell-by-hand (mt/spell (mt/update-attrs t assoc :tempo (or (:tempo opts)
+                                                                             (when m (js/Math.round (* (tm/tempo-of-map m) (/ (mt/tempo-of tree) 60))))
+                                                                             (mt/tempo-of tree))))
+                              (:spell o))
+       ;; quantize → describe → annotate: the motives of what was written, on its notes (kairotic.motif)
+       (:describe o) motif/annotate))))
 
 (defn measure-free-voices
   "A measured tree whose voices without measures (a free voice beside the measured ones) are quantized

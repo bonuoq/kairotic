@@ -38,6 +38,8 @@ try {
   d.getElementById("examine").click();
   await wait(() => d.querySelectorAll("#exam tr").length > 1 && status() === "tried", 60000);
   is("imitable?: the melody tried as a dux at 24 distances, entries and degrees", d.querySelectorAll("#exam tr").length === 25);
+  const plays = d.querySelectorAll("#exam button[data-row]");
+  is("... a ▶ on every row that has a comes, and it plays", plays.length > 0 && plays.length === [...d.querySelectorAll("#exam td.yes")].length && (plays[0].click(), await wait(() => status() === "playing the imitation", 3000)));
   const saved = [];
   w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
   d.getElementById("export").click();
