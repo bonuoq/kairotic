@@ -19,22 +19,29 @@ const status = () => d.getElementById("status").textContent;
 try {
   await wait(() => w.kairoticAoidosPage && /^\d/.test(total()) && status() === "sung");
   const P = w.kairoticAoidosPage;
-  is("it opens on Odyssey 1.1, scanned (five dactyls and a spondee) and counted: 11,362,047,911,977 melodies",
-     total() === "11,362,047,911,977" && d.querySelector("#scansion .sc").textContent === "– ⏑ ⏑ | – ⏑ ⏑ | – ⏑ ⏑ | – ⏑ ⏑ | – ⏑ ⏑ | – –");
-  is("... sung: 18 notes drawn, the syllables under them, every rule kept", d.querySelectorAll("#sheet rect.dux").length === 18 && d.querySelectorAll("#sheet text.syl").length === 17 && /✓ every rule kept/.test(report()));
+  is("it opens on Odyssey 1.1, scanned (five dactyls and a spondee) and counted: 135,750,965,863,333,805 melodies (up to three notes a syllable)",
+     total() === "135,750,965,863,333,805" && d.querySelector("#scansion .sc").textContent === "– ⏑ ⏑ | – ⏑ ⏑ | – ⏑ ⏑ | – ⏑ ⏑ | – ⏑ ⏑ | – –");
+  is("... sung: a note or more a syllable drawn, the 17 syllables under them, every rule kept", d.querySelectorAll("#sheet rect.dux").length >= 17 && d.querySelectorAll("#sheet text.syl").length === 17 && /✓ every rule kept/.test(report()));
   d.getElementById("strict").click();
-  await wait(() => total() === "157,525,198,582" && status() === "sung");
-  is("strict: 157,525,198,582, the peak and the circumflex always kept", total() === "157,525,198,582" && /the accent the word's highest (\d+)\/\1/.test(report()) && /a circumflex falls (\d+)\/\1/.test(report()));
+  await wait(() => total() === "3,972,124,968,366,906" && status() === "sung");
+  is("strict: 3,972,124,968,366,906, the peak always kept", total() === "3,972,124,968,366,906" && /the accent the word's highest (\d+)\/\1/.test(report()));
+  d.getElementById("melisma").value = "1";
   P.set("odyssey", "canon");
-  await wait(() => total() === "4,285" && status() === "sung");
-  is("in canon (strict, the comes an octave below a foot later): 4,285 canons, both voices drawn",
-     total() === "4,285" && d.querySelectorAll("#sheet rect.comes").length > 0 && /✓ every rule kept/.test(report()));
+  await wait(() => total() === "7,823" && status() === "sung");
+  is("in canon (strict, a note a syllable, the comes an octave below a foot later): 7,823 canons, both voices drawn",
+     total() === "7,823" && d.querySelectorAll("#sheet rect.comes").length > 0 && /✓ every rule kept/.test(report()));
   P.set("seikilos", "canon");
-  await wait(() => total() === "6,522" && status() === "sung");
-  is("Seikilos's song in canon, strict, E dorian: 6,522; four lines scanned", total() === "6,522" && d.querySelectorAll("#scansion .ln").length === 4);
+  await wait(() => total() === "175,807" && status() === "sung");
+  is("Seikilos's song in canon, in its own rhythm, strict, a note a syllable, E dorian: 175,807; four lines scanned", total() === "175,807" && d.querySelectorAll("#scansion .ln").length === 4);
   d.getElementById("strict").click();
+  d.getElementById("melisma").value = "3";
+  P.set("seikilos", "melody");
+  await wait(() => /^\d/.test(total()) && status() === "sung" && !d.getElementById("stele").hidden);
+  d.getElementById("stele").click();
+  is("the stele's own melody: every rule of the engine kept, six melismas, the accent as the stele keeps it (peak 9/10)",
+     P.state().stele && /the stele's melody/.test(report()) && /✓ every rule kept/.test(report()) && /melismas 6/.test(report()) && /the accent the word's highest 9\/10/.test(report()));
   P.set("odyssey", "melody");
-  await wait(() => total() === "11,362,047,911,977" && status() === "sung");
+  await wait(() => total() === "135,750,965,863,333,805" && status() === "sung");
   d.getElementById("examine").click();
   await wait(() => d.querySelectorAll("#exam tr").length > 1 && status() === "tried", 60000);
   is("imitable?: the melody tried as a dux at 24 distances, entries and degrees", d.querySelectorAll("#exam tr").length === 25);
