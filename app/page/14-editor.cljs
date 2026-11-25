@@ -666,7 +666,7 @@
 
 (defn keep-owned! [m] (when-let [k (chains-key)] (try (.setItem js/localStorage k (pr-str m)) (catch :default _ nil))))
 
-(defn chain-form? "Whether a form is a chain: (=> …) of forms, or (-> …) / (doto …) of calls." [f] (contains? #{"=>" "->" "doto"} (form-head f)))
+(defn chain-form? "Whether a form is a chain of calls: (-> …) or (doto …)." [f] (contains? #{"->" "doto"} (form-head f)))
 
 (defn calls-chain-ok?
   "Whether a Clojure chain, (-> …) or (doto …), makes the patch: every step a call that does — (-> :osc (to :amp
@@ -707,11 +707,12 @@
         [@scratch written])
       (finally (reset! scratch prev-s) (reset! tried prev-t)))))
 
+(declare eval-values!)
 (defn eval-calls!
   "Evaluates calls of the Code tab on the patch on screen (discussion #407): calls that make the patch change it by
    the difference, as one event, and a chain evaluated again takes away the lines it no longer writes (#432);
-   anything else is evaluated as a line of the REPL (a patch as data, (=> …), makes its own event). Returns how many
-   changes it made, or the value, as the REPL shows it."
+   anything else is evaluated form by form as lines of the REPL, and a value that is a patch as data, (=> …) or
+   voices, is played (its own event). Returns how many changes it made."
   [code]
   (if (patch-form? code)
     (do
@@ -732,12 +733,14 @@
                                        (when (pos? taken) (str " (" taken (if (= 1 taken) " line" " lines") " taken away)")))))
           (count evs))
         (catch :default e (repl-print! "err" (esc (or (.-message e) (str e)))) nil)))
-    (repl-eval! code :repl)))
+    (eval-values! code)))
 
 ;; ───── a patch as data (discussion #407) ─────
-;; A patch written as plain EDN, which Clojure's reader and any editor read, played live with one function, =>:
+;; A patch written as plain EDN, which Clojure's reader and any editor read: values, made by any code, and played as
+;; they are given — the Live view plays the value of each form it evaluates, and (play value) anywhere:
 ;;
-;;   (=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])
+;;   [:=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2]]
+;;   (=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])      the same: => is a pure function that writes it
 ;;
 ;; - a box is a vector of its class and arguments, as hiccup writes a tag: [:mtof], [:gain- 0.2], [:map 'inc],
 ;;   ["osc~" 220]. A class with ~ is written with - ([:osc- 220] is osc~ 220), since Clojure's reader reads ~ as
@@ -747,7 +750,7 @@
 ;;   a box after several wires takes them on its inlets 0, 1…; [:=> …] a chain inside another.
 ;; - a map names: {:osc [:osc- 220]} is that box called :osc, the same box each time; :osc alone is it; [:to o box i]
 ;;   chooses the ports.
-;; - (=> {:lead [:=> …] :bass [:=> …]}): voices, each a chain known by its key, as d1 in Tidal. Evaluated again, a voice
+;; - {:lead [:=> …] :bass [:=> …]}: voices, each a chain known by its key, as d1 in Tidal. Evaluated again, a voice
 ;;   changes only what changed, a voice gone from the map is taken away, and :frame holds the boxes every voice uses —
 ;;   {:frame {:mic [:adc- 1] :out [:dac- 1 2]}} —, never taken away by a voice.
 ;; - #_ before a box leaves it out (Clojure's reader does): evaluated again, the chain goes round it.
@@ -877,17 +880,30 @@
   (doseq [l lines :when (some #{l} (:lines (current)))] (apply disconnect l))
   (doseq [[_ id] boxes :let [b (get-in (current) [:boxes id])] :when (and b (not (:name b)))] (delete id)))
 
-(defn =>
-  "Plays a patch written as data (discussion #407), as one event of the history:
-     (=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])            a chain: in series
-     (=> {:frame {:out [:dac- 1 2]} :lead [:=> [:osc- 220] [:_ :_] :out]})   voices, each known by its key
-   A box is a vector of its class and arguments ([:osc- 220] is osc~ 220); a vector that is not a box is in parallel;
-   :_ a wire; a map names a box; :osc is a box by its name; [:to o box i] chooses the ports. Evaluated again, a chain
-   changes what changed: its boxes are reused by class, and what it no longer writes is taken away. Returns the id of
-   the last box (of a chain), or the voices played."
-  [& els]
-  (let [records (made-records)
-        voices? (and (= 1 (count els)) (map? (first els)) (every? (fn [v] (and (vector? v) (= :=> (first v)))) (vals (dissoc (first els) :frame))))
+(defn chain-vec? [v] (and (vector? v) (= :=> (first v))))
+
+(defn voices-map?
+  "Whether a map is voices: each value a chain, [:=> …], and perhaps a :frame. {} is no voices: all of them stop."
+  [m]
+  (boolean (and (map? m) (or (contains? m :frame) (every? chain-vec? (vals m))))))
+
+(defn playable?
+  "Whether a value is a patch as data that the Live view plays: a chain, [:=> …], or voices, {:lead [:=> …] …}."
+  [v]
+  (or (chain-vec? v) (voices-map? v)))
+
+(defn play-data!
+  "Puts a patch written as data in the patch on screen, as one event of the history (discussion #407): a chain,
+   [:=> …] or a box, or voices, {:frame {…} :lead [:=> …] …}. Evaluated again, a chain changes what changed: its
+   boxes are reused by class, and what it no longer writes is taken away; a voice gone from the map stops. Returns
+   the id of the last box of a chain, or the keys of the voices."
+  [v]
+  (let [els (cond (chain-vec? v) (vec (rest v))
+                  (voices-map? v) [v]
+                  (or (box-vec? v) (map? v)) [v]
+                  :else (fail (str "Not a patch as data: " (pr-str v))))
+        records (made-records)
+        voices? (and (= 1 (count els)) (voices-map? (first els)))
         out (atom nil) recs (atom records)]
     (as-one-event!
      (fn []
@@ -908,6 +924,29 @@
            (reset! out (ffirst ends))))))
     (keep-records! @recs)
     @out))
+
+(defn =>
+  "A chain, as data: (=> [:osc- 220] [:gain- 0.2] :out) is [:=> [:osc- 220] [:gain- 0.2] :out]. Pure: it changes
+   nothing; the Live view plays the chains a block gives, and (play chain) anywhere. So chains nest, and are made,
+   kept and joined as any value: (def lead (=> …)), (for …), (assoc voices :bass (=> …))."
+  [& els]
+  (into [:=>] els))
+
+(defn eval-values!
+  "Evaluates code form by form, as lines of the REPL: a form whose value is a patch as data — a chain, [:=> …], or
+   voices — is played, as (play value)."
+  [code]
+  (repl-print! "in" (str "<span class=\"p\">λ</span>" (esc code)))
+  (risky! (if (> (count code) 160) (str (subs code 0 150) " …") code))
+  (try
+    (with-tx (or @tx-now {:via :repl})
+      (fn []
+        (doseq [[a b] (top-forms code)]
+          (let [v (eval-str (subs code a b))]
+            (if (playable? v)
+              (let [r (play v)] (repl-print! "out" (esc (str "; ▶ " (if (vector? r) (str/join " " r) (pr-str r))))))
+              (repl-print! "out" (esc (pr-str v))))))))
+    (catch :default e (repl-print! "err" (esc (or (.-message e) (str e)))) nil)))
 
 (defn same-code? [a b]
   (= (str/replace (str/trim (str a)) #"\s+" " ") (str/replace (str/trim (str b)) #"\s+" " ")))
@@ -1046,16 +1085,22 @@
   ";; Live: your own code, kept in this browser (not in the work).
 ;; ⇧+Enter evaluates a form, Ctrl/⌘+Enter a block (lines between empty ones).
 
-;; a patch as data: a box is a vector of its class and arguments ([:osc- 220] is osc~ 220),
-;; => in series, [:_ :_] one wire split in two, a map gives a box a name
+;; a patch as data, played as it is evaluated: a box is a vector of its class and arguments
+;; ([:osc- 220] is osc~ 220), => in series, [:_ :_] one wire split in two, a map gives a box a name
 (=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])
 
 ;; voices, each known by its key: evaluated again, only what changed changes;
 ;; #_ leaves a box out, and a voice taken out of the map stops
-(=> {:frame {:out [:dac- 1 2]}
-     :lead  [:=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out]})
+{:frame {:out [:dac- 1 2]}
+ :lead  (=> [:gendy- 110] #_[:gain- 0.5] [:gain- 0.2] [:_ :_] :out)}
 
-(play)
+;; chains are values: kept, made by functions, joined as any data
+(defn drone [f] (=> [:osc- f] [:gain- 0.1] :out))
+{:frame {:out [:dac- 1 2]}
+ :lead  (=> [:gendy- 110] [:gain- 0.2] [:_ :_] :out)
+ :low   (drone 55)}
+
+(stop)
 ")
 
 (defn live-key "Where this browser keeps the Live code of the work open." []

@@ -9,6 +9,12 @@
   The notes after it with no syllable of that verse sing it on (a melisma); `con`, when not given, is a hyphen (`d`)
   after a word's first or middle syllable, an extender (`u`) after its last one (or a word of one) when a melisma
   follows. Tested in `tests/export.mjs`: syllables, melismas, a word over three notes, a tie, two verses.
+- **The blind test's deck drawn on bridges that tonicize** (Study 71; `@kairotic/rules` 0.22.1, `bach-4` 1.6.1;
+  `@kairotic/cac` 0.16.11; discussion #353, #466). The bridges now carry their keys (a key a unit) and tonicize ii, V,
+  vi and IV as Bach does; `fill` reads them, so the inner voices may take a tonicization's leading tone. `bach-4` fills
+  89–98% of the bridges tried (before 55–58%). With the keys the inner voices kept fewer dissonances (15.7% of the
+  chords, Bach 21.8%): `bach-vertical` weighs 1 (was 1.5) — now 19.4%.
+
 - **The chorale test's bridges tonicize, and say their keys** (#353). Study 63's `outer.mjs` draws for each bridge a
   path of keys (`keyPathFor`), one a unit, on Bach's own moves between keys (`KEY_MOVES`: phrases.json's keys, each
   against the chorale's — in major ii, V, vi and IV, in minor iv, III, VII and v), from the key his phrase begins in to
@@ -37,6 +43,11 @@
   as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
   circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
 
+- **A patch as data is a value** (discussion #407): `=>` is a pure function that writes `[:=> …]` and changes nothing;
+  the Live view (and ⇧+Enter in the Code tab) plays each form whose value is a chain or voices, and `(play value …)`
+  plays it anywhere, starting the engine if it is not running. So chains nest — `(=> [:mtof] (=> [:ftom] [:mtof 3]))` —
+  and are kept, made by functions and joined as any data; voices are just a map, `{:frame {…} :lead (=> …)}`, and
+  `(play {})` stops them all.
 - **Live code as data** (discussion #407): a patch written as plain EDN, which Clojure's reader and any editor read,
   played with one function, `=>`: `(=> {:osc [:osc- 220]} [:gain- 0.2] [:_ :_] [:dac- 1 2])`. A box is a vector of its
   class and arguments, as hiccup writes a tag, a class with `~` written with `-` (`[:osc- 220]` is `osc~ 220`); `=>` in

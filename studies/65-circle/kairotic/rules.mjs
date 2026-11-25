@@ -1134,9 +1134,9 @@ Object.assign(STYLES, {
   // (and the dissonances as rare as his: what an inner voice sounds against the bass weighed by his own frequencies —
   // bach-vertical, 1.5 —, the species' rewards for a passing note and a suspension off, the moves weighed more — 4 —
   // so a voice does not leap to keep consonant; minor's raised ⑥ as seldom as his in the inner voices — raised-sixth, 2:
-  // 1.6.0)
-  "bach-4": { style: "bach-4", version: "1.6.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
-                                                                                          soft: [["bach-motion"], ["bach-vertical"], ["raised-sixth"]], weights: { "bach-motion": 4, "bach-vertical": 1.5, "raised-sixth": 2, passing: 0, "suspension-life": 0 } },
+  // 1.6.0; bach-vertical 1 in 1.6.1, the bridges tonicizing)
+  "bach-4": { style: "bach-4", version: "1.6.1", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
+                                                                                          soft: [["bach-motion"], ["bach-vertical"], ["raised-sixth"]], weights: { "bach-motion": 4, "bach-vertical": 1, "raised-sixth": 2, passing: 0, "suspension-life": 0 } },
     between: [["order", { within: 7, unison: true }], ["functions", false]],
     softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"]], weights: { functions: 2, "voice-exchange": 4 },
     // (the voices' ranges as Bach's in the chorales, MIDI: the same in every key)
