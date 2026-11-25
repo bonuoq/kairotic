@@ -171,3 +171,29 @@
     (t/is "... and box notation must be one" (seq (pat/problems (pat/read-spec "{:dur #pat/necklace \"x.y\"}"))))
     (t/eq "a pass of a rhythm in :dur is its onsets; in another key its pulses"
           [(pat/static-period (pat/gen :euclid [3 8]) :dur) (pat/static-period (pat/gen :euclid [3 8]) :pulse)] [3 8])))
+
+(t/run! "patterns: a tree as the events (#450)"
+  (fn []
+    (let [e (pat/tree-events [:voice "c4/1 e4/0.5 g4/1.5"])]
+      (t/eq "a melody's notes, in order" (mapv :midinote e) [60 64 67])
+      (t/eq "... :dur the time to the next onset, the last to the end" (mapv :dur e) [1 0.5 1.5])
+      (t/eq "... :sustain how long each sounds" (mapv :sustain e) [1 0.5 1.5]))
+    (let [e (pat/tree-events [:par [:voice "c5/2"] [:voice "c4/1 g3/1"]])]
+      (t/eq "two voices: notes that start together at :dur 0" (mapv (juxt :midinote :dur :sustain) e) [[72 0 2] [60 1 1] [55 1 1]])
+      (t/eq "... each with its voice by its order" (mapv :voice e) [0 1 1])
+      (t/eq "... and only some voices" (mapv :midinote (pat/tree-events [:par [:voice "c5/2"] [:voice "c4/1 g3/1"]] [1])) [60 55]))
+    (t/eq "a tree that does not begin at 0: a silence first"
+          (mapv (juxt :type :dur) (take 2 (pat/tree-events [:voice "r/1 c4/1"]))) [[:rest 1] [nil 1]])
+    (let [m (pat/read-spec "{:tree [:voice \"c4/1 d4 e4 f4\"] :dur #pat/euclid [3 8]}")
+          e (evs m {:seed 0 :repeat 1} 8)]
+      (t/is "a pbind with a tree has no problems" (empty? (pat/problems m)))
+      (t/eq "the tree's pitches" (mapv :midinote e) [60 62 64 65])
+      (t/eq "... on another key's rhythm: a talea over a color" (mapv :dur e) [1.5 1.5 1 1.5])
+      (t/eq "written back as the same text" (pat/read-spec (pat/spec->source m)) m))
+    (t/eq "a constant goes over every note" (mapv :pan (evs {:tree [:voice "c4/1 d4"] :pan 0.5} {:seed 0 :repeat 1} 5)) [0.5 0.5])
+    (t/eq "a pass is the tree's notes, repeat times" (count (evs {:tree [:voice "c4/1 d4 e4"]} {:seed 0 :repeat 2} 20)) 6)
+    (t/is "a :tree that is not a tree is a problem" (seq (pat/problems {:tree 42})))
+    (t/eq "the summary counts its notes" (pat/summary {:tree [:voice "c4/1 d4 e4"]}) "1 key · 3 events a pass")
+    (let [p (pat/pbind-pattern {:tree [:voice "c4/1 e4 g4"]} {:seed 0 :repeat 1})
+          back (rnotes (pat/render-tree p {:from 0 :to 3}))]
+      (t/eq "render draws it back: the way there and back" (mapv (fn [[at _ m]] [at m]) back) [[0 60] [1 64] [2 67]]))))
