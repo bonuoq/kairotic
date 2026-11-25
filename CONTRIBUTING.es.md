@@ -101,6 +101,11 @@ Las pruebas de la app están en `tests/cljs/*.cljs` (ClojureScript, se ejecutan 
 - **Cabeceras de licencia.** Cada archivo fuente empieza con `SPDX-License-Identifier: MPL-2.0` en un
   comentario (después de `<!DOCTYPE html>` en una página); [tests/spdx.mjs](tests/spdx.mjs) lo comprueba.
   Un componente declara además su licencia con `:license`.
+- **Código de otros.** El código que portes, empaquetes o compiles de otro proyecto mantiene su licencia si es
+  permisiva (MIT, BSD, ISC, Zlib, Apache-2.0): su cabecera lo dice (`Apache-2.0`, o `MPL-2.0 AND MIT` si comparte
+  archivo con el nuestro), con su aviso de copyright, y va a [THIRD_PARTY.md](THIRD_PARTY.es.md) con sus avisos; un
+  paquete que lo publique declara también esa licencia. `tests/spdx.mjs` y `tests/licences.mjs` lo comprueban. El
+  código copyleft (GPL, AGPL) no entra en el repositorio; una biblioteca LGPL se carga, no se copia.
 - **Paquetes.** Un cambio en un paquete sube su versión en `package.json`, y la que fija la página con ella.
 - **Changelog.** Añade una línea en *Unreleased* de [CHANGELOG.md](CHANGELOG.md) (en inglés).
 - **Commits.** Un asunto corto que diga qué cambia (`rhythm: vary redraws below a metrical depth`), el porqué
@@ -158,4 +163,6 @@ comprobación de DCO, lee lo que los commits dicen de sí mismos: la certificaci
 
 Al contribuir aceptas que tu contribución se licencie como el resto del proyecto: el código con la
 [Mozilla Public License 2.0](LICENSE), la documentación con [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.es).
+El código de otros que traiga tu contribución mantiene su propia licencia, como lo recoge [THIRD_PARTY.md](THIRD_PARTY.es.md)
+(el punto (b) del DCO lo cubre).
 Las obras que hagas con Kairotic siguen siendo tuyas.

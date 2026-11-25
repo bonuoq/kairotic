@@ -118,6 +118,8 @@ packages come into a work by themselves when a box uses one of their classes (`k
 - **Data under other licences** stays apart, with its own `LICENSE.md`: Bach's chorales corpus
   (`studies/_shared/chorales/`, CC BY-NC-SA 4.0, non-commercial) is used by the studies and never by the app,
   the packages or the relay ([tests/licences.mjs](tests/licences.mjs) checks it).
+- **Code by others** that Kairotic ports, bundles or compiles keeps its own permissive licence, said in its files'
+  headers and listed with its notices in [THIRD_PARTY.md](THIRD_PARTY.md).
 - **Works belong to whoever creates them.** Kairotic imposes no licence on the works, patches,
   canvases, scores or components made with it.
 - **Community components:** every definition declares its licence with `:license` (an
@@ -149,7 +151,9 @@ packages come into a work by themselves when a box uses one of their classes (`k
 | [stftPitchShift](https://github.com/jurihock/stftPitchShift) (Jürgen Hock) | 2.0 | MIT | compiled to WebAssembly inside `@kairotic/spectral` (`shift~`) |
 | [GendyJS](https://github.com/abbernie/gendy) (Andrew Bernstein) | — | MIT | ported to the `gendy~` worklet in `@kairotic/synth` |
 
-**Only in a study:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Study 24, from jsDelivr).
+**Only in a study:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Study 24, from jsDelivr); [ONNX Runtime Web](https://onnxruntime.ai) 1.20.1 (MIT, Study 73, from jsDelivr) and [Basic Pitch](https://github.com/spotify/basic-pitch)'s model (Apache-2.0, Study 73, fetched from its repository through jsDelivr; its note reading ported into the study).
+
+Code by others inside the repository's own files (ported, bundled or compiled) is listed, with its notices, in [THIRD_PARTY.md](THIRD_PARTY.md).
 
 **Data:** the phrases of Bach's 370 chorales ([`studies/_shared/chorales/`](studies/_shared/chorales/README.md)), cut
 from [Craig Sapp's Humdrum edition](https://github.com/craigsapp/bach-370-chorales): **CC BY-NC-SA 4.0**, not

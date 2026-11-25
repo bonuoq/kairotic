@@ -1,9 +1,9 @@
 {
   "name": "@kairotic/spectral",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Kairotic spectral components: shift~ (pitch shifting in real time, one interval or a whole chord, with the formants kept), made with stftPitchShift (MIT) in WebAssembly",
   "author": "bonuoq",
-  "license": "MPL-2.0",
+  "license": "MPL-2.0 AND MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bonuoq/kairotic.git",

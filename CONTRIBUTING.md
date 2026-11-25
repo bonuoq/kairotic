@@ -98,6 +98,11 @@ browser driver and the Node checks). A study keeps its own tests in `studies/NN-
 - **Licence headers.** Every source file starts with `SPDX-License-Identifier: MPL-2.0` in a comment
   (after `<!DOCTYPE html>` in a page); [tests/spdx.mjs](tests/spdx.mjs) checks it. A component also
   declares its licence with `:license`.
+- **Code by others.** Code you port, bundle or compile from another project keeps its own licence, if it is
+  permissive (MIT, BSD, ISC, Zlib, Apache-2.0): its header says so (`Apache-2.0`, or `MPL-2.0 AND MIT` when it
+  shares a file with ours), with its copyright notice, and it goes into [THIRD_PARTY.md](THIRD_PARTY.md) with its
+  notices; a package that publishes it declares that licence too. `tests/spdx.mjs` and `tests/licences.mjs` check
+  both. Copyleft code (GPL, AGPL) does not go into the repository; a library under the LGPL is loaded, not copied.
 - **Packages.** A change to a package bumps its version in `package.json`, and the page's pin with it.
 - **Changelog.** Add a line under *Unreleased* in [CHANGELOG.md](CHANGELOG.md).
 - **Commits.** A short subject saying what changes (`rhythm: vary redraws below a metrical depth`), the why
@@ -154,4 +159,6 @@ reads what commits say about themselves: the certification is yours.
 
 By contributing you agree that your contribution is licensed as the rest of the project: code under the
 [Mozilla Public License 2.0](LICENSE), documentation under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+Code by others that your contribution brings keeps its own licence, as [THIRD_PARTY.md](THIRD_PARTY.md) lists it
+(the DCO's point (b) covers it).
 Works you make with Kairotic remain yours.

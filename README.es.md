@@ -120,6 +120,8 @@ paquetes oficiales llegan solos a una obra cuando una caja usa una de sus clases
 - **Los datos con otras licencias** quedan aparte, con su propio `LICENSE.md`: el corpus de corales de Bach
   (`studies/_shared/chorales/`, CC BY-NC-SA 4.0, no comercial) lo usan los ensayos y nunca la app, los
   paquetes ni el relay ([tests/licences.mjs](tests/licences.mjs) lo comprueba).
+- **El código de otros** que Kairotic porta, empaqueta o compila mantiene su propia licencia permisiva, dicha en la
+  cabecera de sus archivos y recogida con sus avisos en [THIRD_PARTY.md](THIRD_PARTY.es.md).
 - **Las obras son de quien las crea.** Kairotic no impone ninguna licencia a las obras, patches,
   lienzos, partituras ni componentes que se hagan con él.
 - **Componentes de la comunidad:** cada definición declara su licencia con `:license` (identificador
@@ -151,7 +153,9 @@ paquetes oficiales llegan solos a una obra cuando una caja usa una de sus clases
 | [stftPitchShift](https://github.com/jurihock/stftPitchShift) (Jürgen Hock) | 2.0 | MIT | compilado a WebAssembly dentro de `@kairotic/spectral` (`shift~`) |
 | [GendyJS](https://github.com/abbernie/gendy) (Andrew Bernstein) | — | MIT | portado al worklet de `gendy~` en `@kairotic/synth` |
 
-**Solo en un ensayo:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Ensayo 24, desde jsDelivr).
+**Solo en un ensayo:** [thi.ng/geom](https://thi.ng/geom) 8.3.35 (Apache-2.0, Ensayo 24, desde jsDelivr); [ONNX Runtime Web](https://onnxruntime.ai) 1.20.1 (MIT, Ensayo 73, desde jsDelivr) y el modelo de [Basic Pitch](https://github.com/spotify/basic-pitch) (Apache-2.0, Ensayo 73, traído de su repositorio a través de jsDelivr; su lectura de notas, portada al ensayo).
+
+El código de otros dentro de los archivos del repositorio (portado, empaquetado o compilado) aparece, con sus avisos, en [THIRD_PARTY.md](THIRD_PARTY.es.md).
 
 **Datos:** las frases de los 370 corales de Bach ([`studies/_shared/chorales/`](studies/_shared/chorales/README.md)),
 cortadas de [la edición Humdrum de Craig Sapp](https://github.com/craigsapp/bach-370-chorales): **CC BY-NC-SA 4.0**,

@@ -2,10 +2,11 @@
 // Every source file of the repository starts with its licence, as an SPDX header in a comment within its first
 // lines (CONTRIBUTING.md): `;; SPDX-License-Identifier: MPL-2.0` in ClojureScript, `// …` in JavaScript and
 // Faust, `# …` in Python, `<!-- … -->` in a page (after its <!DOCTYPE html>). Generated files carry it too:
-// their generator writes it.
+// their generator writes it. A header other than MPL-2.0 (CC-BY-SA-4.0 for documentation) is third-party code (ported, bundled, compiled): its
+// file must be listed in THIRD_PARTY.md with the same licence, and every licence in it must be one we accept.
 // In Node, from the repository:  node tests/spdx.mjs   (lists the files without one, and fails)
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,14 +26,43 @@ const EXCLUDED = [
 const files = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8" })
   .split("\0").filter((f) => SOURCES.test(f) && !EXCLUDED.some((re) => re.test(f)));
 
-const missing = files.filter((f) => {
-  const head = readFileSync(join(root, f), "utf8").split("\n", LINES).join("\n");
-  return !/SPDX-License-Identifier:\s*\S/.test(head);
-});
+// the project's own: code, and documentation (CC BY-SA 4.0, as a tutorial's catalogue)
+const OWN = new Set(["MPL-2.0", "CC-BY-SA-4.0"]);
+// the licences third-party code may come with (THIRD_PARTY.md says why)
+const ACCEPTED = new Set(["MPL-2.0", "MIT", "ISC", "Zlib", "BSD-2-Clause", "BSD-3-Clause", "Apache-2.0", "EPL-1.0", "EPL-2.0"]);
+// THIRD_PARTY.md's table: | `path` | licence | … (a path ending in / covers a folder)
+function thirdParty() {
+  const p = join(root, "THIRD_PARTY.md");
+  if (!existsSync(p)) return [];
+  return [...readFileSync(p, "utf8").matchAll(/^\|\s*`([^`]+)`\s*\|\s*([^|]+?)\s*\|/gm)].map((m) => ({ path: m[1], spdx: m[2] }));
+}
+const ids = (expr) => expr.split(/\s+(?:AND|OR|WITH)\s+|[()]/).map((s) => s.trim()).filter(Boolean);
+const listed = thirdParty();
+const entry = (f) => listed.find((e) => (e.path.endsWith("/") ? f.startsWith(e.path) : f === e.path));
 
-if (missing.length) {
-  console.log(`✗ ${missing.length} of ${files.length} source files without an SPDX header in their first ${LINES} lines:`);
-  for (const f of missing) console.log("   " + f);
+const missing = [], unlisted = [], refused = [];
+for (const f of files) {
+  const head = readFileSync(join(root, f), "utf8").split("\n", LINES).join("\n");
+  const m = head.match(/SPDX-License-Identifier:\s*(.+?)\s*(?:-->|\*\/)?\s*$/m);
+  if (!m) { missing.push(f); continue; }
+  const expr = m[1];
+  if (OWN.has(expr)) continue;
+  const e = entry(f);
+  if (!e || e.spdx !== expr) unlisted.push(`${f} (${expr}${e ? `; THIRD_PARTY.md says ${e.spdx}` : ""})`);
+  for (const id of ids(expr)) if (!ACCEPTED.has(id)) refused.push(`${f}: ${id}`);
+}
+// every path listed is in the repository
+const gone = listed.filter((e) => !existsSync(join(root, e.path))).map((e) => e.path);
+
+const report = [[missing, `source files without an SPDX header in their first ${LINES} lines`],
+                [unlisted, "files under another licence than MPL-2.0, not listed so in THIRD_PARTY.md"],
+                [refused, "licences we do not take code under"],
+                [gone, "paths in THIRD_PARTY.md that are not in the repository"]].filter(([xs]) => xs.length);
+if (report.length) {
+  for (const [xs, what] of report) {
+    console.log(`✗ ${xs.length} ${what}:`);
+    for (const x of xs) console.log("   " + x);
+  }
   process.exit(1);
 }
-console.log(`✓ ${files.length} source files, every one with its SPDX header`);
+console.log(`✓ ${files.length} source files, every one with its SPDX header; third-party code listed in THIRD_PARTY.md`);

@@ -7,7 +7,11 @@
   0.3.0, *How Kairotic is built*, issue, pull request and Discussions templates; the README lists every official
   package and every dependency with its version and licence. Every source file carries its SPDX header, and
   `tests/spdx.mjs` fails on one that does not; `tests/licences.mjs` keeps the chorales corpus (CC BY-NC-SA) out
-  of the app, the packages and the relay. The DCO check asks for a person as every commit's author, an AI
+  of the app, the packages and the relay. Code by others keeps its own permissive licence (**THIRD_PARTY.md**, with
+  the notices; `LICENSES/`): Basic Pitch's port in Study 73 (Apache-2.0), stftPitchShift compiled into `shift~`
+  (the module's header now `MPL-2.0 AND MIT`), the editor bundle; a header other than MPL-2.0 must be listed there,
+  and a package that publishes such code declares its licence (`@kairotic/spectral` 0.1.3 `MPL-2.0 AND MIT`,
+  `@kairotic/app` with the editor's) — both checked; every package is published with `LICENSE` and THIRD_PARTY.md. The DCO check asks for a person as every commit's author, an AI
   assistant credited with `Co-Authored-By`.
 - **Studies 1–23 and the deprecated packages removed.** The prototype's studies (1–8 in Spanish, 9–23 on
   `kairotic-components`) would not run today: they stay as a record in [the studies](docs/studies.md), and their
