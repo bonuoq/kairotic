@@ -19,6 +19,13 @@
   again, each form takes the box it made with the same class, so a number changed is one text, a box put in the only
   new one, a box taken out deleted. At the top level a command or Clojure function is code; inside a chain every list
   is a box. The Live view's example is written so; the whole tab can be too (`run-form`, `forms-code?`).
+- **Study 73 · polyphony** (discussions #137, #308): the first ONNX model run in the page — Spotify's Basic Pitch
+  (Apache-2.0, code and weights), from jsDelivr, checked by its SHA-256 and kept in Cache Storage, through ONNX Runtime
+  Web 1.20.1 in a worker (`onnx.mjs`: a session from a URL, a run with arrays, the API #137 proposes). Its windows and
+  its way of reading notes ported to plain JS (`basicpitch.mjs`, under Basic Pitch's own licence); the notes read again
+  as the thresholds move, without running the model again. On a cadence rendered in the page the notes are scored
+  against what was written, and each chord heard against itself with a note an octave off: the 88 keys tell them
+  apart, a chroma cannot — what the followers of #308 would gain. Not in the app yet (after 0.3.0-alpha).
 - **The blind test's bridges between two of Bach's chords, their inner voices moving as his** (`@kairotic/rules`
   0.21.0, `bach-4` 1.5.0; `@kairotic/cac` 0.16.9; Study 71). A bridge now begins and ends on Bach's chords whole: the
   alto and the tenor given there (`fromOuter`'s `inner`, `fourOverBass`'s `given.alto` / `given.tenor`, where a unit has
