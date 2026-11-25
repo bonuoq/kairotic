@@ -77,12 +77,13 @@ input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5
 .progress { height: 4px; background: var(--grid); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
 .progress div { height: 100%; background: var(--accent); width: 0; transition: width 0.2s; }
 table.score { width: 100%; border-collapse: collapse; font-size: 13px; }
-table.score th, table.score td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+table.score th, table.score td { text-align: right; padding: 4px 5px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
 table.score th:first-child, table.score td:first-child { text-align: left; }
 table.score th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
 table.score td { font-family: var(--f-code); font-size: 12.5px; }
 table.score tr.overall td { font-weight: 600; }
-.ci svg { width: 100%; height: auto; display: block; margin-top: 8px; }
+.ci svg { width: 100%; max-width: 440px; height: auto; display: block; margin-top: 8px; }
+.scroll { overflow-x: auto; }
 .ci .chance { stroke: var(--kairos); stroke-dasharray: 3 3; } .ci .bar { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
 .ci .dot { fill: var(--accent); } .ci text { font: 11px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; } .ci .axis { stroke: var(--rule); }
 .about { margin: 0; font-size: 13px; line-height: 1.55; }
@@ -126,11 +127,11 @@ input[type="text"] { font: 13px var(--f-ui); color: var(--ink); background: var(
   </section>
   <div style="display:grid; gap:12px; min-width:0">
     <section class="panel"><h2>Found <span id="score-who">how often Bach was found, by variant · lower: the bridges sound as his</span></h2>
-      <table class="score" id="score"></table>
+      <div class="scroll"><table class="score" id="score"></table></div>
       <div class="ci"><svg id="ci" viewBox="0 0 360 150"></svg></div>
       <p class="small" id="score-note"></p></section>
     <section class="panel"><h2>The deck <span id="deck-n"></span></h2>
-      <table class="score" id="deck"></table><p class="small" id="deck-note"></p></section>
+      <div class="scroll"><table class="score" id="deck"></table></div><p class="small" id="deck-note"></p></section>
     <section class="panel"><h2>About</h2><p class="about">Each trial is one chorale phrase twice: as Bach harmonized it,
       and as a <b>bridge</b> — Study 63's outer voices drawn from the phrase's first chord to its last, the same length,
       the alto and the tenor then written by <code>@kairotic/rules</code>' <code>fromOuter</code> in the style
@@ -220,7 +221,7 @@ function answer(k) {
   $(`who-${bachSide}`).textContent = "Bach"; $(`who-${1 - bachSide}`).textContent = `a bridge · ${t.variant}`;
   roll($(`roll-${bachSide}`), t.bach); roll($(`roll-${1 - bachSide}`), t.bridge);
   $("reveal").innerHTML = `${correct ? '<span class="ok">Found.</span>' : '<span class="bad">Not found:</span> the bridge was taken for Bach.'} ` +
-    `${t.title ? `<i>${t.title}</i>` : t.phrase}${t.bwv ? ` (BWV ${t.bwv})` : ""}, ${t.key.tonic} ${t.key.mode}, phrase ${t.phrase.split("-").pop()} · the bridge's variant <code>${t.variant}</code>`;
+    `${t.title ? `<i>${t.title}</i>` : t.phrase}${t.bwv ? ` (${/^BWV/.test(t.bwv) ? t.bwv : "BWV " + t.bwv})` : ""}, ${t.key.tonic} ${t.key.mode}, phrase ${t.phrase.split("-").pop()} · the bridge's variant <code>${t.variant}</code>`;
   enable(); showScore();
 }
 function next() { stop(); st.i++; showTrial(); }
@@ -251,7 +252,7 @@ function showScore() {
   });
   g += `<text x="${X(0)}" y="${142}" text-anchor="middle">0%</text><text x="${X(0.5)}" y="${142}" text-anchor="middle">chance</text><text x="${X(1)}" y="${142}" text-anchor="middle">100%</text>`;
   $("ci").innerHTML = g;
-  $("score-note").textContent = st.pooled.length ? `${st.mine.length} answers yours (kept in this browser), ${st.pooled.length} imported.` : `${st.mine.length} answers, kept in this browser. Import other listeners' exports to pool them.`;
+  $("score-note").textContent = st.pooled.length ? `${st.mine.length} answers yours (kept in this browser), ${st.pooled.length} imported.` : `${st.mine.length} answer${st.mine.length === 1 ? "" : "s"}, kept in this browser. Import other listeners' exports to pool them.`;
 }
 function showDeck() {
   const D = st.deck;
@@ -259,7 +260,7 @@ function showDeck() {
   $("deck").innerHTML = `<tr><th>variant</th><th>trials</th><th>phrases tried</th><th>filled by bach-4</th></tr>` +
     Bl.VARIANTS.map((v) => `<tr><td>${v}</td><td>${D.trials.filter((t) => t.variant === v).length}</td><td>${D.tried[v].tried}</td><td>${pct(D.tried[v].filled / D.tried[v].tried)}</td></tr>`).join("");
   const top = Object.entries(D.failures).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  $("deck-note").textContent = top.length ? `Why a bridge was not filled, most often: ${top.map(([w, n]) => `${w.replace(/^no inner voices: /, "")} (${n})`).join("; ")}.` : "";
+  $("deck-note").textContent = top.length ? `Why a bridge was not filled, most often: ${top.map(([w, n]) => `${w.replace(/^no inner voices: (unit #, )?/, "")} (${n})`).join("; ")}.` : "";
 }
 
 // ── export and import

@@ -218,6 +218,7 @@ notes given with a name (a note's `name`, `code("F#4")`) as they are spelt.
 in different keys kept where either key reads them well) and `passing` (an inverted chord over a bass going on by step
 is a passing chord); in `bach-4` it is a cost (`SOFT_BETWEEN`'s `functions`, weight 2), not a refusal — read in his local
 keys Bach breaks it in 78 of his 2,272 phrases (136 in the chorale's key). `chorale-4` as it was (discussion #353).
+`@kairotic/rules` 0.20.1: `bach-4` 1.3.1: `from-bass` takes a unison a semitone under the bass (D over D♯) as below it.
 
 ## Next
 
