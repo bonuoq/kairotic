@@ -522,7 +522,7 @@ Counterpoint live (Studies 41–46, 50): the comes reads the dux at a speed — 
 
 **Inlets** 
 
-0. the dux's next note (backwards: at the start, then at the end): Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event (:freq from midiin, or a player's :hz) · :hold (forwards, by turns) · :engine · :back · :reset · :end (forwards: the section ends) · [:speed -1], [:inverted true], [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:beats 3], [:species 4], [:axis 62]: the work changed
+0. a pattern (a pbind, a pattern box): a pattern out of outlet 5, its notes judged by the rules · the dux's next note (backwards: at the start, then at the end): Hz (a number, or the list of notes held, as a keyboard or midiin sends them), [:midi 62], or an event (:freq from midiin, or a player's :hz) · :hold (forwards, by turns) · :engine · :back · :reset · :end (forwards: the section ends) · [:speed -1], [:inverted true], [:k -4], [:d 2], [:imitation 0.5], [:mode :hypodorian], [:system :pentatonic], [:bars 5], [:beats 3], [:species 4], [:axis 62]: the work changed
 1. live: the pulse (a bang from a metro or a pulse): a beat
 
 **Outlets** 
@@ -532,6 +532,7 @@ Counterpoint live (Studies 41–46, 50): the comes reads the dux at a speed — 
 2. the futuribles: the notes that can come next, with their futures ({:midi :name :futures …}; backwards live, with :end, what the box will answer at the end of your line)
 3. where the work is: forwards {:t :n :bar :beat :held :asked :played :corrected :reason :futures :obligations :section :meter …} or a cue {:cue :ternary|:end}; backwards {:step :steps :writing :beat :futures :dux :comes :closed …} or live {:t :phase :you :engine :ways …}, with the cue {:cue :middle :in 2}
 4. the work as a musical tree, both voices (for a tree box, its score): when it is finished; backwards live also at the middle, what is left of your line to read
+5. a pattern (from a pattern on the left inlet): its notes as the dux, kept or corrected by the rules, with the comes beside them — a chord [dux comes] in :freq, what was done in :counter — for a player
 
 **Messages and gestures**
 
