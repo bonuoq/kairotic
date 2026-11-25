@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The studies' export writes lyrics** (#192, #319). In `studies/_shared/export.mjs` (and its copies beside every
+  study's kernel) a note may carry the syllable it begins — `{name, units, syl, wordpos, con}` — and the syllables of
+  the verses after the first, `verses: [{syl, wordpos, con} …]` (a strophe and its antistrophe); `exportMei` writes
+  them as MEI's `<verse n><syl wordpos con>` on the note, on its first piece when it is cut at a bar line and tied.
+  The notes after it with no syllable of that verse sing it on (a melisma); `con`, when not given, is a hyphen (`d`)
+  after a word's first or middle syllable, an extender (`u`) after its last one (or a word of one) when a melisma
+  follows. Tested in `tests/export.mjs`: syllables, melismas, a word over three notes, a tie, two verses.
 - **The chorale test's bridges tonicize, and say their keys** (#353). Study 63's `outer.mjs` draws for each bridge a
   path of keys (`keyPathFor`), one a unit, on Bach's own moves between keys (`KEY_MOVES`: phrases.json's keys, each
   against the chorale's — in major ii, V, vi and IV, in minor iv, III, VII and v), from the key his phrase begins in to
