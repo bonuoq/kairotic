@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 72 · reveal** (discussion #407): a live-coding set is only code while it is played; at the end it reveals
+  its patch, drawn by its flow (`layout.mjs`: a layered drawing after Sugiyama — rows after what feeds them, the order
+  uncrossing the wires, each box under what feeds it; the app's example work in seven rows with no crossing), and its
+  history on a time axis, every change a tick and every segment a row. The set can be played again from any point, at
+  ×1–×64, as it was, with its silences shortened or a step each change, and from another branch. A short set is built
+  in; a `.kairotic` exported from the app opens too.
 - **Study 71 · blind: the chorale test** (discussions #353, #399). A phrase of Bach's and a bridge — Study 63's outer
   voices from its first chord to its last, the alto and the tenor by `fromOuter` (`bach-4`) — heard one after the
   other: which is Bach? Five variants of the bridges (`all`, `no-functions`, `no-tension`, `no-economy`, `arch`); a

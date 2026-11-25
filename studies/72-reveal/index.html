@@ -1,0 +1,406 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 72 · Reveal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; padding: 14px 16px 28px; }
+main { max-width: 1320px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+button.act.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+select, label, input { font: 13px var(--f-ui); color: var(--ink); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+/* Study 72: during the set only the code; at the end the reveal — the patch by its flow, and the history on a
+   time axis that can be played again at another speed, or from another branch. */
+.stage { display: grid; grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.4fr); gap: 12px; align-items: start; }
+.stage.code-only { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 900px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+#code { margin: 0; font: 12.5px/1.6 var(--f-code); background: #10151c; color: #d8e0ea; border-radius: 6px; padding: 12px 14px; min-height: 360px; max-height: 560px; overflow: auto; white-space: pre-wrap; }
+.stage.code-only #code { font-size: 15px; min-height: 480px; }
+#code .ev { display: block; } #code .ev.last { color: #fff; background: rgba(125, 155, 255, 0.22); }
+#code .ev.late { opacity: 0.35; }
+#code .t { color: #6d7a8a; margin-right: 10px; user-select: none; }
+#patch { width: 100%; height: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 6px; }
+.bx rect { fill: var(--box); stroke: var(--ink-soft); stroke-width: 1; rx: 3; }
+.bx.new rect { stroke: var(--kairos); stroke-width: 2; }
+.bx text { font: 12px var(--f-code); fill: var(--ink); dominant-baseline: central; }
+.bx .nm { font: 600 10px var(--f-code); fill: var(--accent); }
+.port { fill: var(--ink-soft); }
+.wire { fill: none; stroke: var(--ink-soft); stroke-width: 1.4; }
+#hist { width: 100%; height: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 6px; cursor: pointer; }
+.seg line.bar { stroke: var(--rule); stroke-width: 10; stroke-linecap: round; }
+.seg.on line.bar { stroke: var(--accent-soft); }
+.seg .tick { stroke: var(--ink-soft); stroke-width: 1.5; }
+.seg.on .tick { stroke: var(--accent); }
+.seg .from { stroke: var(--rule); stroke-dasharray: 3 3; fill: none; }
+.seg text { font: 11px var(--f-code); fill: var(--ink-soft); }
+.head { stroke: var(--kairos); stroke-width: 2; }
+.axis text { font: 10px var(--f-code); fill: var(--ink-soft); } .axis line { stroke: var(--grid); }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; }
+.facts dt { color: var(--ink-soft); } .facts dd { margin: 0; font-family: var(--f-code); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+#status { font-size: 12px; color: var(--ink-soft); }
+</style>
+<main>
+<header>
+  <h1>Study 72 · reveal</h1>
+  <span class="sub">a live-coding set is only code while it is played; at the end it reveals its patch, by its flow, and its history, a time that can be played again (discussion #407)</span>
+</header>
+<div class="toolbar">
+  <button class="act on" id="act-code">1 · the code</button><button class="act" id="act-reveal">2 · reveal</button>
+  <span style="width:8px"></span>
+  <button class="act" id="play">▶</button><button class="act" id="stop">■</button>
+  <label>speed <select id="speed"><option value="1">×1</option><option value="4" selected>×4</option><option value="16">×16</option><option value="64">×64</option></select></label>
+  <label>time <select id="mode"><option value="real">as it was</option><option value="squeezed" selected>silences shortened</option><option value="even">a step each change</option></select></label>
+  <label>patch <select id="places"><option value="flow" selected>by its flow</option><option value="built">as it was placed</option></select></label>
+  <span style="width:8px"></span>
+  <label>a set <select id="set"><option value="demo">a short set (with a branch)</option></select></label>
+  <label class="act" style="padding:4px 9px; border:1px solid var(--rule); border-radius:6px; cursor:pointer">open a .kairotic<input type="file" id="file" accept=".kairotic" hidden></label>
+  <span id="status">loading…</span>
+</div>
+<input type="range" id="scrub" min="0" max="1000" value="1000" style="width:100%">
+<div class="stage code-only" id="stage">
+  <section class="panel"><h2>The code <span id="code-at">as it was evaluated</span></h2><pre id="code"></pre></section>
+  <div style="display:grid; gap:12px; min-width:0" id="revealed" hidden>
+    <section class="panel"><h2>The patch <span id="patch-n"></span></h2><svg id="patch" viewBox="0 0 800 400"></svg></section>
+    <section class="panel"><h2>The history <span>each change a tick · click a branch or a time to go there</span></h2>
+      <svg id="hist" viewBox="0 0 800 120"></svg><dl class="facts" id="facts"></dl></section>
+  </div>
+</div>
+<section class="panel"><h2>About</h2><p class="about">While a live-coding set is played the screen is only code (TOPLAP's
+  <i>show us your screens</i>). Kairotic keeps every evaluation as an event of the history, with the time it was made, so
+  when the set ends it can <b>reveal</b> what the code never showed: <b>the patch</b> it built, drawn by its flow (a layered
+  drawing after Sugiyama: every box in a row after the boxes that feed it, the order in each row uncrossing the wires,
+  each box under what feeds it; <code>kairotic/layout.mjs</code>), and <b>the history</b> on a time axis — every change a
+  tick, every branch a row. The set can be <b>played again</b> from any point, at another speed, <b>as it was</b>, with its
+  <b>silences shortened</b> (a pause of more than five seconds heard as five), or <b>a step each change</b>; and from
+  another branch: a set is not a recording but a time that can be taken up again. A <code>.kairotic</code> file exported
+  from the app opens here too (its main line).</p></section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
+// is read first, as window.kairoticReveal ({L: layout.mjs, K: kfile.mjs}).
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  Promise.all([import("./kairotic/layout.mjs"), import("./kairotic/kfile.mjs")]).then(function (ms) {
+    window.kairoticReveal = { L: { ...ms[0] }, K: ms[1].default };
+    try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns reveal-page (:require [clojure.string :as str] [clojure.edn :as edn]))
+
+;; Kairotic · Study 72 · reveal: the page. A set is a history: segments of events, each event with the time it was
+;; made ({:id :parent :at :events :meta [{:t}]}, as a .kairotic keeps them). The page replays a way through it (from
+;; the root to a tip), shows the code of each event, the patch at the point reached and the history on a time axis.
+
+(def R (.-kairoticReveal js/window))
+(def L (.-L R))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;")))
+(defn status! [s] (set! (.-textContent ($ "status")) s))
+
+;; ───── a short set, with a branch ─────
+;; [seconds event]: what a live coder evaluates, as the app writes it (named boxes, chains as one event).
+(defn named [id nm text x y] [[:box id text x y] [:name id nm]])
+(def demo-steps
+  [[0 (into [:batch] [(vec (concat (named :b1 :osc "osc~ 220" 40 40) (named :b2 :amp "gain~ 0.2" 40 100) (named :b3 :out "dac~ 1 2" 40 160)
+                                   [[:connect :b1 0 :b2 0] [:connect :b2 0 :b3 0] [:connect :b2 0 :b3 1]]))])]
+   [14 [:text :b1 "osc~ 330"]]
+   [21 [:text :b2 "gain~ 0.3"]]
+   [38 (into [:batch] [(vec (concat (named :b4 :lfo "osc~ 0.25" 64 76) (named :b5 :depth "*~ 40" 88 112) (named :b6 :base "+~ 330" 112 148)
+                                    [[:connect :b4 0 :b5 0] [:connect :b5 0 :b6 0] [:connect :b6 0 :b1 0]]))])]
+   [52 [:text :b5 "*~ 80"]]
+   [80 (into [:batch] [(vec (concat (named :b7 :lpf "lop~ 900" 136 184) [[:disconnect :b1 0 :b2 0] [:connect :b1 0 :b7 0] [:connect :b7 0 :b2 0]]))])]
+   [86 [:text :b7 "lop~ 600"]]
+   [93 [:text :b7 "lop~ 1200"]]])
+(def demo-more
+  [[104 (into [:batch] [(vec (concat (named :b8 :beat "metro 250" 160 220) (named :b9 :env "adsr~ 5 80 0 50" 184 256)
+                                     [[:connect :b8 0 :b9 0] [:disconnect :b2 0 :b3 0] [:disconnect :b2 0 :b3 1]]
+                                     (named :b10 :vca "*~" 208 292)
+                                     [[:connect :b2 0 :b10 0] [:connect :b9 0 :b10 1] [:connect :b10 0 :b3 0] [:connect :b10 0 :b3 1]]))])]
+   [131 [:text :b8 "metro 125"]]
+   [150 [:text :b1 "osc~ 220"]]
+   [190 [:text :b8 "metro 500"]]
+   [205 [:text :b2 "gain~ 0"]]])
+(def demo-branch
+  ;; from just after the filter, another way: a second oscillator a fifth above, instead of the beat
+  [[160 (into [:batch] [(vec (concat (named :b8 :osc2 "osc~ 495" 160 40) [[:connect :b8 0 :b7 0]]))])]
+   [172 [:text :b8 "osc~ 440"]]
+   [181 [:text :b7 "lop~ 2000"]]])
+(def T0 1795000000000)
+(defn seg [id parent at steps]
+  {:id id :parent parent :at at :t (+ T0 (* 1000 (first (last steps))))
+   :events (mapv second steps) :meta (mapv (fn [[s _]] {:t (+ T0 (* 1000 s))}) steps)})
+(def demo [(seg "a" nil 0 demo-steps) (seg "b" "a" 8 demo-more) (seg "c" "a" 6 demo-branch)])
+
+;; ───── the history ─────
+(defonce st (atom {:segs {} :tip nil :head 1 :act :code :mode "squeezed" :places "flow" :playing false :shown nil}))
+
+(defn by-id [segs] (into {} (map (fn [s] [(:id s) s]) segs)))
+(defn tips "Segments no other starts from at their end, the latest first." [segs]
+  (let [ends (set (keep (fn [s] (when (:parent s) [(:parent s) (:at s)])) (vals segs)))]
+    (->> (vals segs) (remove (fn [s] (contains? ends [(:id s) (count (:events s))]))) (sort-by (comp - :t)) (map :id))))
+(defn way "The points from the root to the end of segment tip: [{:seg :i :ev :t}]." [segs tip]
+  (loop [id tip upto nil acc ()]
+    (if-let [s (get segs id)]
+      (let [n (or upto (count (:events s)))
+            pts (for [i (range n)] {:seg id :i i :ev (nth (:events s) i) :t (or (:t (get (:meta s) i)) (:t s))})]
+        (recur (:parent s) (:at s) (concat pts acc)))
+      (vec acc))))
+
+;; flexible time: where each point falls on the axis
+(def squeeze-ms 5000)
+(defn axis [pts mode]
+  (let [ts (mapv :t pts)]
+    (case mode
+      "even" (mapv (fn [i] (* 1000 i)) (range (count ts)))
+      "squeezed" (vec (reductions (fn [acc [a b]] (+ acc (min squeeze-ms (max 0 (- b a))))) 0 (partition 2 1 ts)))
+      (mapv (fn [t] (- t (first ts))) ts))))
+
+;; ───── the patch at a point (what a live-coding set uses of the app's events) ─────
+(defn step [p [op & args :as ev]]
+  (case op
+    :box (let [[id text x y] args] (assoc-in p [:boxes id] {:text text :x x :y y}))
+    :text (let [[id t] args] (if (get-in p [:boxes id]) (assoc-in p [:boxes id :text] t) p))
+    :move (let [[id x y] args] (if (get-in p [:boxes id]) (update-in p [:boxes id] assoc :x x :y y) p))
+    :name (let [[id nm] args] (if (get-in p [:boxes id]) (assoc-in p [:boxes id :name] nm) p))
+    :delete (let [[id] args] (-> p (update :boxes dissoc id) (update :lines (fn [ls] (vec (remove (fn [[a _ b]] (or (= a id) (= b id))) ls))))))
+    :connect (let [l (vec args)] (if (some #{l} (:lines p)) p (update p :lines conj l)))
+    :disconnect (let [l (vec args)] (update p :lines (fn [ls] (vec (remove #{l} ls)))))
+    :batch (reduce step p (first args))
+    :load (let [x (first args)] {:boxes (into {} (:boxes x)) :lines (vec (:lines x))})
+    :clear {:boxes {} :lines []}
+    p))
+(def empty-patch {:boxes {} :lines []})
+(defn patch-upto [pts k] (reduce step empty-patch (map :ev (take k pts))))
+
+;; ───── the code of an event ─────
+(defn call [[op & args :as ev]]
+  (case op
+    :box (let [[id t x y] args] (str "(box " id " " (pr-str t) " " x " " y ")"))
+    :text (let [[id t] args] (str "(text! " id " " (pr-str t) ")"))
+    :move (let [[id x y] args] (str "(move " id " " x " " y ")"))
+    :name (let [[id nm] args] (str "(name-box " id " " nm ")"))
+    :delete (str "(delete " (first args) ")")
+    (:connect :disconnect) (str "(" (name op) " " (str/join " " args) ")")
+    :batch (str/join "\n  " (map call (first args)))
+    :load (str "; the whole patch (" (count (:boxes (first args))) " boxes)")
+    (let [s (pr-str ev)] (if (> (count s) 90) (str (subs s 0 88) " …") s))))
+(defn clock [ms] (let [s (js/Math.floor (/ ms 1000))] (str (quot s 60) ":" (.padStart (str (mod s 60)) 2 "0"))))
+
+;; ───── drawing ─────
+(defn ports [p id dir]
+  (let [ls (:lines p) k (if (= dir :out) [0 1] [2 3])]
+    (inc (reduce max 0 (keep (fn [l] (when (= id (nth l (first k))) (nth l (second k)))) ls)))))
+(defn port-x [x w n i] (if (<= n 1) (+ x 6) (+ x 6 (* i (/ (- w 12) (dec n))))))
+
+(defn places-of [p]
+  (if (= "built" (:places @st))
+    (into {} (for [[id b] (:boxes p)] [id [(:x b) (:y b)]]))
+    (let [jsp (clj->js {:boxes (into {} (for [[id b] (:boxes p)] [(str id) {:text (:text b)}]))
+                        :lines (mapv (fn [[a o b i]] [(str a) o (str b) i]) (:lines p))})
+          r (.layout L jsp)]
+      (into {} (for [[k v] (js->clj (.-places r))] [(keyword (subs k 1)) v])))))
+
+(defonce anim (atom {:from {} :to {} :t0 0}))
+(defn width [b] (.boxWidth L (clj->js {:text (:text b)})))
+
+(defn draw-patch! [p fresh]
+  (let [now (js/performance.now) {:keys [from to t0]} @anim
+        k (min 1 (/ (- now t0) 600)) e (- 1 (js/Math.pow (- 1 k) 3))
+        at (into {} (for [[id [x2 y2]] to :let [[x1 y1] (get from id [x2 y2])]] [id [(+ x1 (* e (- x2 x1))) (+ y1 (* e (- y2 y1)))]]))
+        bs (:boxes p)
+        maxx (reduce max 400 (for [[id [x _]] at :let [b (get bs id)] :when b] (+ x (width b) 30)))
+        maxy (reduce max 200 (for [[_ [_ y]] at] (+ y 60)))
+        wires (for [[a o b i] (:lines p) :let [pa (get at a) pb (get at b) ba (get bs a) bb (get bs b)] :when (and pa pb ba bb)]
+                (let [x1 (port-x (first pa) (width ba) (ports p a :out) o) y1 (+ (second pa) 24)
+                      x2 (port-x (first pb) (width bb) (ports p b :in) i) y2 (second pb)
+                      dy (max 30 (* 0.5 (js/Math.abs (- y2 y1))))]
+                  (str "<path class=\"wire\" d=\"M" x1 "," y1 " C" x1 "," (+ y1 dy) " " x2 "," (- y2 dy) " " x2 "," y2 "\"/>")))
+        boxes (for [[id b] bs :let [[x y] (get at id) w (width b)] :when x]
+                (str "<g class=\"bx" (when (contains? fresh id) " new") "\" data-id=\"" (name id) "\"><rect x=\"" x "\" y=\"" y "\" width=\"" w "\" height=\"24\"/>"
+                     "<text x=\"" (+ x 7) "\" y=\"" (+ y 12) "\">" (esc (:text b)) "</text>"
+                     (when (:name b) (str "<text class=\"nm\" x=\"" x "\" y=\"" (- y 5) "\">" (esc (:name b)) "</text>")) "</g>"))]
+    (.setAttribute ($ "patch") "viewBox" (str "0 0 " (js/Math.ceil maxx) " " (js/Math.ceil maxy)))
+    (set! (.-innerHTML ($ "patch")) (str (str/join "" wires) (str/join "" boxes)))
+    (when (< k 1) (js/requestAnimationFrame (fn [_] (draw-patch! p fresh))))))
+
+(defn show-patch! [p fresh]
+  (let [to (places-of p) {cur :to t0 :t0} @anim
+        now (js/performance.now)
+        ;; where each box is now (mid-way through a move, if one is going on)
+        from (merge to cur)]
+    (when (not= to cur) (reset! anim {:from from :to to :t0 now}))
+    (set! (.-textContent ($ "patch-n")) (str (count (:boxes p)) " boxes · " (count (:lines p)) " wires · " (if (= "built" (:places @st)) "as it was placed" "by its flow")))
+    (draw-patch! p fresh)))
+
+(defn the-way [] (way (:segs @st) (:tip @st)))
+
+(defn draw-hist! [pts xs head-ms]
+  (let [segs (:segs @st) all (vals segs) t0 (:t (first pts)) wd 760 total (max 1 (last xs))
+        on (set (map :seg pts))
+        ;; every segment: where its events fall on the axis of the way shown (others: by their own times, squeezed alike)
+        rows (into {} (map-indexed (fn [i s] [(:id s) i]) (sort-by (fn [s] [(if (contains? on (:id s)) 0 1) (:t (first (:meta s)))]) all)))
+        tx (fn [ms] (+ 30 (* wd (/ ms total))))
+        ;; a segment off the way is placed from the point it starts at
+        ;; (a segment's events past where the way leaves it are placed by the way to its own end)
+        idx (fn [w sid i] (first (keep-indexed (fn [k p] (when (and (= (:seg p) sid) (= (:i p) i)) k)) w)))
+        x-of (fn [s i]
+               (if-let [k (idx pts (:id s) i)]
+                 (tx (nth xs k))
+                 (let [w (way segs (:id s)) ax (axis w (:mode @st))]
+                   (tx (nth ax (idx w (:id s) i))))))
+        y-of (fn [id] (+ 26 (* 30 (get rows id))))
+        h (+ 46 (* 30 (count all)))
+        ticks (fn [s] (for [i (range (count (:events s)))] (let [x (x-of s i)] (str "<line class=\"tick\" x1=\"" x "\" x2=\"" x "\" y1=\"" (- (y-of (:id s)) 7) "\" y2=\"" (+ (y-of (:id s)) 7) "\" data-seg=\"" (:id s) "\" data-i=\"" i "\"/>"))))
+        segsvg (for [s all :let [y (y-of (:id s)) x1 (x-of s 0) x2 (x-of s (dec (count (:events s))))
+                                 px (when-let [ps (get segs (:parent s))] [(x-of ps (dec (:at s))) (y-of (:parent s))])]]
+                 (str "<g class=\"seg" (when (contains? on (:id s)) " on") "\" data-seg=\"" (:id s) "\">"
+                      (when px (str "<path class=\"from\" d=\"M" (first px) "," (second px) " C" (+ 20 (first px)) "," (second px) " " (- x1 20) "," y " " x1 "," y "\"/>"))
+                      "<line class=\"bar\" x1=\"" x1 "\" x2=\"" (max x2 (+ x1 1)) "\" y1=\"" y "\" y2=\"" y "\" data-seg=\"" (:id s) "\"/>"
+                      (str/join "" (ticks s))
+                      "<text x=\"" (+ 8 (max x1 x2)) "\" y=\"" (+ y 4) "\">" (esc (:id s)) "</text></g>"))
+        marks (for [m (range 0 (inc total) (cond (> total 600000) 120000 (> total 120000) 30000 :else 10000))]
+                (str "<line x1=\"" (tx m) "\" x2=\"" (tx m) "\" y1=\"8\" y2=\"" (- h 18) "\"/><text x=\"" (tx m) "\" y=\"" (- h 6) "\" text-anchor=\"middle\">" (clock m) "</text>"))]
+    (.setAttribute ($ "hist") "viewBox" (str "0 0 " (+ wd 80) " " h))
+    (set! (.-innerHTML ($ "hist"))
+          (str "<g class=\"axis\">" (str/join "" marks) "</g>" (str/join "" segsvg)
+               "<line class=\"head\" x1=\"" (tx head-ms) "\" x2=\"" (tx head-ms) "\" y1=\"6\" y2=\"" (- h 16) "\"/>"))))
+
+(defn render! []
+  (let [{:keys [head mode act]} @st
+        pts (the-way) xs (axis pts mode) total (or (last xs) 0)
+        head-ms (* head total)
+        k (count (take-while (fn [x] (<= x (+ head-ms 0.5))) xs))
+        p (patch-upto pts k)
+        fresh (if (pos? k) (let [before (patch-upto pts (dec k))] (set (remove (fn [id] (get-in before [:boxes id])) (keys (:boxes p))))) #{})]
+    (swap! st assoc :shown {:k k :n (count pts) :patch p})
+    (set! (.-innerHTML ($ "code"))
+          (str/join "" (map-indexed (fn [i pt] (str "<span class=\"ev" (cond (= i (dec k)) " last" (>= i k) " late") "\"><span class=\"t\">" (clock (nth xs i)) "</span>" (esc (call (:ev pt))) "</span>")) pts)))
+    (set! (.-textContent ($ "code-at")) (str k " of " (count pts) " evaluations · " (clock head-ms) " of " (clock total)))
+    (when (= act :reveal)
+      (show-patch! p fresh)
+      (draw-hist! pts xs head-ms)
+      (set! (.-innerHTML ($ "facts"))
+            (str/join "" (for [[a b] [["the way" (str (str/join " → " (distinct (map :seg pts))) " · " (count (tips (:segs @st))) " tips")]
+                                      ["as it was" (clock (- (:t (last pts)) (:t (first pts))))]
+                                      ["silences shortened" (clock (last (axis pts "squeezed")))]
+                                      ["now" (str (clock head-ms) " · " k " / " (count pts))]]]
+                           (str "<dt>" a "</dt><dd>" (esc b) "</dd>")))))
+    (set! (.-value ($ "scrub")) (js/Math.round (* 1000 head)))))
+
+;; ───── acts, playing, choosing ─────
+(defn act! [a]
+  (swap! st assoc :act a)
+  (.toggle (.-classList ($ "act-code")) "on" (= a :code))
+  (.toggle (.-classList ($ "act-reveal")) "on" (= a :reveal))
+  (.toggle (.-classList ($ "stage")) "code-only" (= a :code))
+  (set! (.-hidden ($ "revealed")) (not= a :reveal))
+  (reset! anim {:from {} :to {} :t0 0})
+  (render!))
+
+(defn seek! [h] (swap! st assoc :head (max 0 (min 1 h))) (render!))
+
+(defonce last-frame (atom nil))
+(defn tick! [now]
+  (when (:playing @st)
+    (let [pts (the-way) total (max 1 (or (last (axis pts (:mode @st))) 0))
+          dt (- now (or @last-frame now)) sp (js/parseFloat (.-value ($ "speed")))]
+      (reset! last-frame now)
+      (let [h (+ (:head @st) (/ (* dt sp) total))]
+        (if (>= h 1) (do (swap! st assoc :playing false :head 1) (render!)) (seek! h)))
+      (js/requestAnimationFrame tick!))))
+(defn play! [] (when (>= (:head @st) 1) (swap! st assoc :head 0)) (swap! st assoc :playing true) (reset! last-frame nil) (js/requestAnimationFrame tick!))
+(defn stop! [] (swap! st assoc :playing false))
+
+(defn tip! [id] (swap! st assoc :tip id) (render!))
+
+(defn load-segs! [segs label]
+  (let [m (by-id segs)]
+    (swap! st assoc :segs m :tip (first (tips m)) :head 1)
+    (status! (str label ": " (count segs) " segments, " (reduce + (map (comp count :events) segs)) " events"))
+    (render!)))
+
+;; a .kairotic exported from the app: its main line
+(defn open-file! [f]
+  (-> (.arrayBuffer f)
+      (.then (fn [buf] (.unzip (.-K R) (js/Uint8Array. buf))))
+      (.then (fn [entries]
+               (let [txt (fn [nm] (some (fn [e] (when (= nm (.-name e)) (.text (.-K R) (.-data e)))) (array-seq entries)))
+                     h (edn/read-string {:default (fn [_ v] v)} (txt "history.edn"))
+                     segs (filterv (fn [s] (nil? (:line s))) h)]
+                 (load-segs! segs (.-name f)))))
+      (.catch (fn [e] (status! (str "Could not open it: " (or (.-message e) e)))))))
+
+(.addEventListener ($ "act-code") "click" (fn [_] (act! :code)))
+(.addEventListener ($ "act-reveal") "click" (fn [_] (act! :reveal)))
+(.addEventListener ($ "play") "click" (fn [_] (play!)))
+(.addEventListener ($ "stop") "click" (fn [_] (stop!)))
+(.addEventListener ($ "scrub") "input" (fn [e] (stop!) (seek! (/ (js/parseFloat (.. e -target -value)) 1000))))
+(.addEventListener ($ "mode") "change" (fn [e] (swap! st assoc :mode (.. e -target -value)) (render!)))
+(.addEventListener ($ "places") "change" (fn [e] (swap! st assoc :places (.. e -target -value)) (render!)))
+(.addEventListener ($ "set") "change" (fn [_] (load-segs! demo "a short set")))
+(.addEventListener ($ "file") "change" (fn [e] (when-let [f (aget (.. e -target -files) 0)] (open-file! f))))
+;; the history: a branch clicked is the way shown; a tick, that point of it
+(.addEventListener ($ "hist") "click"
+  (fn [e]
+    (when-let [g (.closest (.-target e) "[data-seg]")]
+      (let [sid (.getAttribute g "data-seg") i (.getAttribute (.-target e) "data-i") segs (:segs @st)
+            tip (first (filter (fn [t] (some #{sid} (map :seg (way segs t)))) (tips segs)))]
+        (stop!)
+        (swap! st assoc :tip tip)
+        (if i
+          (let [pts (the-way) xs (axis pts (:mode @st))
+                k (first (keep-indexed (fn [k p] (when (and (= sid (:seg p)) (= (js/parseInt i) (:i p))) k)) pts))]
+            (seek! (/ (nth xs k) (max 1 (last xs)))))
+          (render!))))))
+
+(load-segs! demo "a short set")
+(act! :code)
+
+;; for the tests
+(set! (.-kairoticStudy js/window)
+      #js {:state (fn [] (clj->js (select-keys @st [:tip :head :act :mode :places])))
+           :shown (fn [] (let [{:keys [k n patch]} (:shown @st)] #js {:k k :n n :boxes (count (:boxes patch)) :lines (count (:lines patch))}))
+           :act (fn [a] (act! (keyword a)))
+           :seek seek!
+           :mode (fn [m] (swap! st assoc :mode m) (render!))
+           :places (fn [m] (swap! st assoc :places m) (render!))
+           :tips (fn [] (clj->js (tips (:segs @st))))
+           :tip tip!
+           :total (fn [] (or (last (axis (the-way) (:mode @st))) 0))
+           :place (fn [id] (clj->js (get (places-of (:patch (:shown @st))) (keyword (str/replace id #"^:" "")))))})
+</script>
