@@ -136,7 +136,7 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
   <b>rises to an acute</b>, the accented syllable is the <b>word's highest</b>, a <b>circumflex falls</b> on its long
   syllable (two notes), <b>after the accent</b> the voice falls, after a grave it does not fall until the next accent —
   weighed with <code>soft.mjs</code>'s melodic costs, the same as every engine's. <b>Strict</b> makes the peak and the
-  circumflex hard rules. <b>Imitable?</b> tries the melody as the dux of <code>cac imitation</code>: a melody sung alone
+  circumflex hard rules. <b>Imitable?</b> tries the melody as the dux of <code>cac imitation</code> (▶ hears it with the comes the engine chose): a melody sung alone
   almost never has a strict canon, but often imitation near it. <b>In canon</b> the dux is written together with its
   comes (canon.mjs's rules, <code>canon-2</code>): the singer chooses among the futuribles of the comes, as #192 first
   thought it — the dux sings the text, a new syllable a new note, the comes answers a foot later. Odyssey 1.1 in strict
@@ -322,11 +322,12 @@ window.addEventListener("DOMContentLoaded", function () {
        (fn []
          (let [E (.examine AO made sung #js {:degrees #js [1 0.6 0.3] :ks #js [-7 -4 -3 7] :ds #js [2 4] :ms 600})
                kname {-7 "an octave below" -4 "a 5th below" -3 "a 4th below" 7 "an octave above"}]
+           (swap! S assoc :exam E)
            (set! (.-innerHTML ($ "exam"))
-                 (str "<table class=\"exam\"><tr><th>imitation</th><th>the comes</th><th>after</th><th>how many</th><th>the engine's comes</th></tr>"
-                      (str/join (for [e E]
+                 (str "<table class=\"exam\"><tr><th></th><th>imitation</th><th>the comes</th><th>after</th><th>how many</th><th>the engine's comes</th></tr>"
+                      (str/join (for [[i e] (map-indexed vector E)]
                                   (let [c (.-comes e)]
-                                    (str "<tr><td>" (.-imitation e) "</td><td>" (kname (.-k e)) "</td><td>" (.-d e) " beats</td>"
+                                    (str "<tr><td>" (if (.-sound e) (str "<button class=\"act\" data-row=\"" i "\" title=\"hear the melody with this comes\">▶</button>") "") "</td><td>" (.-imitation e) "</td><td>" (kname (.-k e)) "</td><td>" (.-d e) " beats</td>"
                                          "<td class=\"" (if (and (some? c) (pos? (js/Number c))) "yes" "no") "\">" (if (nil? c) "too long to count" (.toLocaleString c "en")) "</td>"
                                          "<td>" (if (.-engine e) (esc (str/join " " (map #(or % "·") (.-engine e)))) "") "</td></tr>"))))
                       "</table>"))
@@ -352,6 +353,27 @@ window.addEventListener("DOMContentLoaded", function () {
             (doseq [[b c] (map-indexed vector C) :when (and (some? c) (or (zero? b) (not= c (nth C (dec b)))))]
               (let [len (count (take-while #(= % c) (drop b C)))]
                 (tone (.hz A c) (+ t0 (* beat b)) (+ t0 (* beat (+ b len))) 0.08)))))))))
+
+;; an examiner's row heard: the melody and the comes the engine chose for it, a unit a beat (the dux struck where its
+;; syllables begin, the comes a note held while its pitch stays)
+(defn hz-of [m] (* 440 (js/Math.pow 2 (/ (- m 69) 12))))
+(defn play-exam! [i]
+  (when-let [snd (some-> (:exam @S) (aget i) (.-sound))]
+    (let [ac (or @ctx (reset! ctx (js/AudioContext.))) beat 0.26 t0 (+ (.-currentTime ac) 0.1)
+          tone (fn [m s e g0]
+                 (let [o (.createOscillator ac) g (.createGain ac)]
+                   (set! (.-type o) "triangle") (set! (.. o -frequency -value) (hz-of m))
+                   (.setValueAtTime (.-gain g) 0 s) (.linearRampToValueAtTime (.-gain g) g0 (+ s 0.02)) (.setTargetAtTime (.-gain g) 0 (- e 0.04) 0.03)
+                   (.connect (.connect o g) (.-destination ac)) (.start o s) (.stop o (+ e 0.3))))
+          voice (fn [V struck? g0]
+                  (let [n (count V)]
+                    (doseq [b (range n) :let [m (nth V b)] :when (and (some? m) (struck? b))]
+                      (let [e (or (first (filter #(or (struck? %) (not= (nth V %) m)) (range (inc b) n))) n)]
+                        (tone m (+ t0 (* beat b)) (+ t0 (* beat e)) g0)))))
+          D (vec (.-dux snd)) DS (vec (.-duxStruck snd)) C (vec (.-comes snd))]
+      (voice D (fn [b] (nth DS b)) 0.12)
+      (voice C (fn [b] (or (zero? b) (not= (nth C b) (nth C (dec b))))) 0.08)
+      (status! "playing the imitation"))))
 
 ;; ───── export: the melody (and its comes) as MEI for the app; the text and the scansion in its extMeta ─────
 (defn export! []
@@ -396,6 +418,7 @@ window.addEventListener("DOMContentLoaded", function () {
 (.addEventListener ($ "engine") "click" (fn [_] (sing! :engine)))
 (.addEventListener ($ "uniform") "click" (fn [_] (sing! :uniform)))
 (.addEventListener ($ "examine") "click" (fn [_] (examine!)))
+(.addEventListener ($ "exam") "click" (fn [ev] (when-let [b (.closest (.-target ev) "button[data-row]")] (play-exam! (js/Number (.getAttribute b "data-row"))))))
 (.addEventListener ($ "play") "click" (fn [_] (play!)))
 (.addEventListener ($ "export") "click" (fn [_] (export!)))
 

@@ -266,7 +266,8 @@ export function accentReport(N, D, peakOf, wordFrom) {
 /**
  * The examiner: a melody tried as the dux of cac imitation at each distance k (steps: −7 an octave below, −4 a 5th,
  * −3 a 4th, 7 an octave above…) and entry d (beats), at a degree of imitation (1 a canon, 0.6 near) → [{k, d,
- * imitation, comes (how many, or null: too long to count in ms), engine (one comes the engine chose, as names)}],
+ * imitation, comes (how many, or null: too long to count in ms), engine (one comes the engine chose, as names), sound
+ * ({dux, comes}: MIDI or null a unit, and duxStruck: where the dux strikes — to hear them together)}],
  * the best first.
  */
 export function examine(A, U, { ks = [-7, -4, -3, 7], ds = [2, 4], degrees = [1], ms = 1500, b = 2 } = {}) {
@@ -276,9 +277,19 @@ export function examine(A, U, { ks = [-7, -4, -3, 7], ds = [2, 4], degrees = [1]
   for (const imitationDegree of degrees) for (const k of ks) for (const d of ds) {
     const I = imitation({ notes, key: A.key, k, d, b, imitation: imitationDegree, maxHold });
     const comes = I.unknown && I.unknown.length ? 0n : I.countWithin(ms);
-    let engine = null;
-    if (comes) { const C = I.engine({ temp: 0 }); if (C) engine = (C.comes || C[1]).map((c) => (c === null ? null : I.spell(c))); }
-    out.push({ k, d, imitation: imitationDegree, comes, engine });
+    let engine = null, sound = null;
+    if (comes) {
+      const C = I.engine({ temp: 0 });
+      if (C) {
+        const cs = C.comes || C[1];
+        engine = cs.map((c) => (c === null ? null : I.spell(c)));
+        // (to hear it: both voices a unit a value, MIDI or null, and where each note is struck)
+        const mid = (V) => V.map((c) => (c === null || c === undefined ? null : I.midi(c)));
+        const duxStruck = []; notes.forEach((x) => { for (let j = 0; j < x.units; j++) duxStruck.push(j === 0); });
+        sound = { dux: mid(I.dux), duxStruck, comes: mid(cs) };
+      }
+    }
+    out.push({ k, d, imitation: imitationDegree, comes, engine, sound });
   }
   // (those with a comes first, the most first; then those too long to count; then those with none)
   const rank = (x) => (x.comes === null ? 1 : x.comes > 0n ? 2 : 0);

@@ -73,6 +73,9 @@ export async function run() {
   const E = examine(A, U0, { degrees: [1, 0.6], ks: [-7], ds: [4], ms: 1500 });
   is("the examiner: a melody of the engine tried as a dux — no strict canon, but imitation near it (0.6)",
      E.find((e) => e.imitation === 1).comes === 0n && E.find((e) => e.imitation === 0.6).comes > 0n && E[0].imitation === 0.6);
+  const near = E.find((e) => e.imitation === 0.6);
+  is("... and its comes can be heard: both voices a value a unit, as long as each other, the dux struck where its syllables begin",
+     near.sound && near.sound.dux.length === near.sound.comes.length && near.sound.duxStruck.filter(Boolean).length === A.n && near.sound.comes.slice(0, 4).every((m) => m === null));
   const C = canonic({ text: O.text, metre: O.metre, key: O.key, strict: true, k: -7, d: 4 });
   const cc = C.count();
   is("in canon (the dux sings the text, the comes an octave below a foot later): 4285 canons, strict", cc === 4285n);
