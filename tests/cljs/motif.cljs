@@ -2,6 +2,8 @@
 ;; Kairotic · tests · what comes back, and how it is related (kairotic.motif; Study 60's motif tests, in the core)
 (ns kairotic.test.motif
   (:require [kairotic.motif :as m]
+            [kairotic.mt :as mt]
+            [kairotic.quantize :as qz]
             [kairotic.test :as t]))
 
 (t/run! "motives (kairotic.motif)"
@@ -40,3 +42,22 @@
     (let [g (m/returns [{:L 1 :rel [0 0.55]} {:L 1 :rel [0 0.62]} {:L 1 :rel [0 0.25 0.5]} {:L 1 :rel [0 0.64]} {:L 1 :rel [0 0.5]}] 0.08)]
       (t/eq "returns: a rhythm played several times is one, each compared with the mean so far" (mapv count g) [3 1 1])
       (t/is "… and its mean" (< (js/Math.abs (- (second (m/mean-rel (first g))) 0.6033)) 0.001)))))
+
+(t/run! "the motives of a piece, on its notes (quantize → describe → annotate)"
+  (fn []
+    (let [mel (m/notes-of "C5 D5 E5 C5 D5 E5 F5 D5 C5 B4 A4 C5 G4 G4")
+          ms (m/motives [mel])]
+      (t/eq "a motive and its returns: where, and how related to the statement"
+            (mapv (fn [x] [(:i x) (:rel x)]) (:at (first ms)))
+            [[0 nil] [4 "in sequence, a step higher"] [8 "inverted, at the same pitch"]])
+      (t/eq "… in another voice too: an imitation, a 4th lower"
+            (mapv (fn [x] [(:voice x) (:rel x)]) (:at (first (m/motives [(m/notes-of "C5 D5 E5 C5 B4 B4") (m/notes-of "E4 E4 E4 G4 A4 B4 G4 F4")]))))
+            [[0 nil] [1 "transposed, a 4th lower"]])
+      (let [played (into [:par] (map (fn [n] [:note {:at (+ (:on n) (* 0.03 (js/Math.sin (* 7 (:on n))))) :dur (* 0.9 (:dur n)) :pitch (:semi n)}]) mel))
+            q (qz/quantize-tree played {:meter [4 4] :describe true})]
+        (t/eq "quantized with :describe, the motives written on the notes"
+              (keep (fn [e] (when (:motif e) [(:t e) (:motif e) (:motif.rel e)])) (mt/notes q))
+              [[0 "a" nil] [4 "a" "in sequence, a step higher"] [8 "a" "inverted, at the same pitch"]])
+        (t/is "… in the analysis layer" (every? mt/analysis-keys [:motif :motif.rel]))
+        (t/is "… and drawn above them in the score" (re-find #"<dir place=\"above\"[^>]*><rend fontweight=\"bold\">a</rend>" (str (:mei (qz/->score q nil)))))
+        (t/eq "without :describe, nothing" (count (filter :motif (mt/notes (qz/quantize-tree played {:meter [4 4]})))) 0)))))

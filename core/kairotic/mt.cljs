@@ -1287,6 +1287,11 @@
         marks! (fn [a staff bar id]
                  (when-let [d (:dyn a)] (ctl! bar (str "<dynam staff=\"" staff "\" startid=\"#" id "\">" (esc-xml d) "</dynam>")))
                  (when-let [x (:text a)] (ctl! bar (str "<dir staff=\"" staff "\" startid=\"#" id "\"><rend fontstyle=\"italic\">" (esc-xml x) "</rend></dir>")))
+                 ;; the motive a note begins (the analysis layer's :motif, kairotic.motif), above it: its label, and how a
+                 ;; return is related to the statement
+                 (when-let [m (:motif a)]
+                   (ctl! bar (str "<dir place=\"above\" staff=\"" staff "\" startid=\"#" id "\"><rend fontweight=\"bold\">" (esc-xml m) "</rend>"
+                                  (when-let [r (:motif.rel a)] (str "<rend fontstyle=\"italic\" fontsize=\"small\">\u00a0" (esc-xml r) "</rend>")) "</dir>")))
                  ;; a note's figures (:fig "6/5", the analysis layer's or the bass's own), under it as figured bass
                  (when-let [f (:fig a)]
                    (let [fs (remove str/blank? (str/split (str f) #"/"))]
@@ -1685,7 +1690,9 @@
    :deg         {:layer :analysis :doc "the degree of a bass note"}
    :local       {:layer :analysis :doc "the key a note is read in"}
    :why         {:layer :analysis :doc "why a rule was broken there"}
-   :harmony     {:layer :analysis :doc "a chord's name"}})
+   :harmony     {:layer :analysis :doc "a chord's name"}
+   :motif       {:layer :analysis :doc "the motive a note begins (a, b…; kairotic.motif)"}
+   :motif.rel   {:layer :analysis :doc "how that return of the motive is related to its statement"}})
 
 (defn layer-of
   "The layer attribute k of a node tagged tg belongs to (:performance, :analysis…), or nil: what is written."
