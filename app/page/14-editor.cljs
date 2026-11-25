@@ -904,47 +904,6 @@
 (defn run-forms! "Runs every top-level form of code, as live code reads it." [code]
   (doseq [[a b] (top-forms code)] (run-form (subs code a b))))
 
-;; ───── the patch as a value (discussion #407) ─────
-;; The same grammar as plain EDN, which Clojure's reader (and any editor, clj-kondo…) reads, so patches can be
-;; values made by functions: [:=> a b …] in series, [:par a b …] in parallel, :_ a wire, [:as :osc box] a box by a
-;; name, [:to o box i] other ports, a name :osc a box already there, and a box as a vector of its class and
-;; arguments — [\"osc~\" 220] (a class with ~ written as a string: Clojure's reader reads ~ as unquote), [:mtof],
-;; [:map 'inc]. A sequence inside is spliced: [:par (for [f [220 330]] [\"osc~\" f])].
-
-(def patch-ops #{:=> :par :as :to :_})
-
-(defn arg-text [a] (cond (string? a) (pr-str a) (number? a) (str a) (or (keyword? a) (symbol? a)) (str a) :else (pr-str a)))
-
-(defn spliced [xs] (mapcat (fn [x] (if (and (seq? x) (not (vector? x))) x [x])) xs))
-
-(defn data->form
-  "The live code of a patch written as a value: [:=> [\"osc~\" 220] [\"gain~\" 0.2]] → (=> (osc~ 220) (gain~ 0.2))."
-  [x]
-  (cond
-    (= x :_) "_"
-    (keyword? x) (str x)
-    (string? x) (str "(" x ")")
-    (vector? x)
-    (let [[h & args] x args (spliced args)]
-      (case h
-        :=> (str "(=> " (str/join " " (map data->form args)) ")")
-        :par (str "[" (str/join " " (map data->form args)) "]")
-        :as (let [[nm b] args] (str "(def " (name nm) " " (data->form b) ")"))
-        :to (if (= 3 (count args))
-              (str "(to " (first args) " " (data->form (second args)) " " (nth args 2) ")")
-              (str "(to " (data->form (first args)) ")"))
-        (if (or (string? h) (and (keyword? h) (not (contains? patch-ops h))) (symbol? h))
-          (str "(" (str/join " " (cons (if (keyword? h) (name h) (str h)) (map arg-text args))) ")")
-          (throw (js/Error. (str "Not a box nor a part of a patch: " (pr-str x)))))))
-    (seq? x) (str/join "\n" (map data->form x))
-    :else (throw (js/Error. (str "Not a box nor a part of a patch: " (pr-str x))))))
-
-(defn patch!
-  "Makes the patch a value describes, as live code does (one event; a chain made again changes what changed):
-   (patch! [:=> [:as :osc [\"osc~\" 220]] [\"gain~\" 0.2] [:par :_ :_] [\"dac~\" 1 2]]). Several values, several forms."
-  [x & more]
-  (eval-calls! (str/join "\n" (map data->form (cons x more)))))
-
 (defn build-forms
   "Runs the forms of code one by one on a copy of patch cur: [the patch after, {box #{lines}}: the lines each
    chain wrote — made now, or already there — by the box it starts from]."
@@ -995,6 +954,47 @@
         ;; forms that make the patch among others: each on its own
         (last (doall (for [f fs] (if (patch-call? f) (eval-calls! f) (repl-eval! f :repl)))))
         (repl-eval! code :repl)))))
+
+;; ───── the patch as a value (discussion #407) ─────
+;; The same grammar as plain EDN, which Clojure's reader (and any editor, clj-kondo…) reads, so patches can be
+;; values made by functions: [:=> a b …] in series, [:par a b …] in parallel, :_ a wire, [:as :osc box] a box by a
+;; name, [:to o box i] other ports, a name :osc a box already there, and a box as a vector of its class and
+;; arguments — [\"osc~\" 220] (a class with ~ written as a string: Clojure's reader reads ~ as unquote), [:mtof],
+;; [:map 'inc]. A sequence inside is spliced: [:par (for [f [220 330]] [\"osc~\" f])].
+
+(def patch-ops #{:=> :par :as :to :_})
+
+(defn arg-text [a] (cond (string? a) (pr-str a) (number? a) (str a) (or (keyword? a) (symbol? a)) (str a) :else (pr-str a)))
+
+(defn spliced [xs] (mapcat (fn [x] (if (and (seq? x) (not (vector? x))) x [x])) xs))
+
+(defn data->form
+  "The live code of a patch written as a value: [:=> [\"osc~\" 220] [\"gain~\" 0.2]] → (=> (osc~ 220) (gain~ 0.2))."
+  [x]
+  (cond
+    (= x :_) "_"
+    (keyword? x) (str x)
+    (string? x) (str "(" x ")")
+    (vector? x)
+    (let [[h & args] x args (spliced args)]
+      (case h
+        :=> (str "(=> " (str/join " " (map data->form args)) ")")
+        :par (str "[" (str/join " " (map data->form args)) "]")
+        :as (let [[nm b] args] (str "(def " (name nm) " " (data->form b) ")"))
+        :to (if (= 3 (count args))
+              (str "(to " (first args) " " (data->form (second args)) " " (nth args 2) ")")
+              (str "(to " (data->form (first args)) ")"))
+        (if (or (string? h) (and (keyword? h) (not (contains? patch-ops h))) (symbol? h))
+          (str "(" (str/join " " (cons (if (keyword? h) (name h) (str h)) (map arg-text args))) ")")
+          (throw (js/Error. (str "Not a box nor a part of a patch: " (pr-str x)))))))
+    (seq? x) (str/join "\n" (map data->form x))
+    :else (throw (js/Error. (str "Not a box nor a part of a patch: " (pr-str x))))))
+
+(defn patch!
+  "Makes the patch a value describes, as live code does (one event; a chain made again changes what changed):
+   (patch! [:=> [:as :osc [\"osc~\" 220]] [\"gain~\" 0.2] [:par :_ :_] [\"dac~\" 1 2]]). Several values, several forms."
+  [x & more]
+  (eval-calls! (str/join "\n" (map data->form (cons x more)))))
 
 (defn same-code? [a b]
   (= (str/replace (str/trim (str a)) #"\s+" " ") (str/replace (str/trim (str b)) #"\s+" " ")))
