@@ -37,6 +37,12 @@
   finished canon begins another; the chance (temperature, seed) the box's, so every tab makes the same stream. With
   `imitation` below 1 the comes is free counterpoint over the pattern's line. `api/make-pattern` for components.
 
+- **Quantize → describe → annotate** (step 2 of the motive layer; #108). With `:describe true`, the quantizer writes on
+  what it wrote its motives: `kairotic.motif/motives` finds spans of 3 to 5 notes that come back repeated, transposed,
+  in sequence or inverted (with their rhythm, augmented or diminished), in the same voice or another (an imitation),
+  the one covering most notes first; `annotate` writes `:motif` (the label) and `:motif.rel` (how a return is related
+  to the statement) on their first notes, two new keys of the analysis layer (#382). The score draws them above the
+  notes. `api/motif-annotate` for components. Docs: `docs/mt.md`.
 - **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
   voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of
   0…13 semitones in the corpus, times the temperature, so the draw moves as often as he does), in place of the fixed

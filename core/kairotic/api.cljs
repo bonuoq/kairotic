@@ -421,3 +421,4 @@ registerProcessor('kairotic-tap', KairoticTap);
 (defn motif-relate "How notes S are related to motive M: an exact transformation, named, or a kinship 0 … 1 (tol for played rhythms)." [M S tol] (motif/relate M S (or tol 0)))
 (defn motif-find "Where in notes ns motive M (or its head or tail) is most related: {:from :to :notes :kinship :name …}." [M ns opts] (motif/find-in M ns (or opts {})))
 (defn motif-discover "The motive of notes: the span of 3 to 5 that recurs most, or the head: {:from :to :notes :why}." [ns tol] (motif/discover ns (or tol 0)))
+(defn motif-annotate "A tree with its motives written on its notes (:motif, :motif.rel: the analysis layer), as quantizing with :describe does." [t] (motif/annotate t))
