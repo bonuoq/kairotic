@@ -93,6 +93,7 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
   <label>final <select id="tonic"><option>C</option><option>D</option><option selected>E</option><option>F</option><option>G</option><option>A</option><option>B</option></select></label>
   <select id="mode" aria-label="the mode"><option value="dorian" selected>dorian</option><option value="phrygian">phrygian</option><option value="lydian">lydian</option><option value="mixolydian">mixolydian</option><option value="aeolian">aeolian</option><option value="ionian">ionian</option></select>
   <label>notes a syllable <select id="melisma"><option value="1">1</option><option value="2">up to 2</option><option value="3" selected>up to 3</option></select></label>
+  <label>style <select id="style"><option value="engine" selected>the engine's</option><option value="greek">Greek (Mesomedes)</option></select></label>
   <label><input type="checkbox" id="strict"> strict accent</label>
   <span class="tag">sung</span>
   <select id="form" aria-label="alone or in canon"><option value="melody" selected>alone</option><option value="canon">in canon</option></select>
@@ -146,7 +147,11 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
   comes (canon.mjs's rules, <code>canon-2</code>): the singer chooses among the futuribles of the comes, as #192 first
   thought it — the dux sings the text, a new syllable a new note, the comes answers a foot later. Odyssey 1.1 in strict
   canon at the octave below has 4285 such canons; Seikilos's song, 6522. <b>The stele's melody</b> (Pöhlmann–West, DAGM 23) keeps every hard rule of the engine: it is one of the melodies
-  aoidos may sing; the engine would choose its note at 21 of its 48 beats. Not yet: the poem's text under the notes in
+  aoidos may sing; the engine would choose its note at 21 of its 48 beats. <b>The Greek style</b> is learned from
+  Mesomedes's hymns (DAGM 24, 25, 27; <code>corpus.mjs</code>, <code>style.mjs</code>): the weights under which what he
+  wrote is most likely — leaps dear, a note struck again free (a recitation tone, up to eight times), a melisma dear, no
+  turn asked after a 4th or a 5th. Seikilos, which it has not seen, becomes more likely: the cheapest note at 25 of its
+  48 beats. Not yet: the poem's text under the notes in
   the MEI, the harmonization as a chorale.</p></section>
 </main>
 
@@ -191,6 +196,7 @@ window.addEventListener("DOMContentLoaded", function () {
     (clj->js (cond-> {:text (val-of "text") :metre (metre-of (val-of "metre"))
                       :key {:tonic (val-of "tonic") :mode (val-of "mode")} :strict (.-checked ($ "strict"))
                       :melisma (js/Number (val-of "melisma"))}
+               (= (val-of "style") "greek") (assoc :style "greek")
                (= form "canon") (assoc :k (js/Number (val-of "k")) :d (js/Number (val-of "d")) :imitation (js/Number (val-of "imitation")))))))
 
 (defn canon? [] (= (val-of "form") "canon"))
@@ -433,7 +439,7 @@ window.addEventListener("DOMContentLoaded", function () {
 
 (.addEventListener ($ "text-id") "change" (fn [_] (load-text! (val-of "text-id")) (rebuild!)))
 (.addEventListener ($ "form") "change" (fn [_] (set! (.-hidden ($ "canon-opts")) (not (canon?))) (rebuild!)))
-(doseq [id ["metre" "tonic" "mode" "strict" "melisma" "k" "d" "imitation"]] (.addEventListener ($ id) "change" (fn [_] (rebuild!))))
+(doseq [id ["metre" "tonic" "mode" "strict" "melisma" "style" "k" "d" "imitation"]] (.addEventListener ($ id) "change" (fn [_] (rebuild!))))
 (.addEventListener ($ "text") "input" (fn [_] (when-not (= (val-of "text-id") "own") (set! (.-value ($ "text-id")) "own") (swap! S assoc :text-id "own"))))
 (.addEventListener ($ "read") "click" (fn [_] (rebuild!)))
 (.addEventListener ($ "engine") "click" (fn [_] (sing! :engine)))

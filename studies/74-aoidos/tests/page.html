@@ -51,6 +51,10 @@ try {
   w.claude = { use: async (n) => (n === "downloads" ? { save: async (o) => { saved.push({ filename: o.filename, text: await o.data.text() }); return { status: "saved" }; } } : null) };
   d.getElementById("export").click();
   is("exported for the app: the dux, the text in its extMeta", await wait(() => saved.length === 1) && saved[0].text.includes('label="dux"') && /:source "Kairotic Study 74 · aoidos"/.test(saved[0].text) && saved[0].text.includes("Μοῦσα"));
+  d.getElementById("style").value = "greek";
+  P.set("odyssey", "melody");
+  await wait(() => total() === "1,035,536,158,789,085,949" && status() === "sung");
+  is("the Greek style (learned from Mesomedes): Odyssey 1.1, 1,035,536,158,789,085,949 melodies, sung, every rule kept", total() === "1,035,536,158,789,085,949" && /✓ every rule kept/.test(report()));
   is("no errors on the page", errors.length === 0 && !/^Error/.test(status()));
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);

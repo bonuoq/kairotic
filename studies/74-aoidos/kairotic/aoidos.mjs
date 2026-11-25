@@ -27,6 +27,7 @@ import { keySystem } from "./systems.mjs";
 import { melodicParts, defaultWeights, total, shape } from "./soft.mjs";
 import { imitation, canonVoices } from "./canon.mjs";
 import { readText, scan, timeOf, scansionText } from "./prosody.mjs";
+import { codeOf3 } from "./tonal.mjs";
 
 const sign = (x) => (x > 0) - (x < 0);
 const mod = (a, m) => ((a % m) + m) % m;
@@ -43,6 +44,17 @@ export const PROSODY = [
   { id: "repeat", weight: 0.5, doc: "A note struck again (a new syllable on the same pitch)." },
 ];
 export const prosodyWeights = () => Object.fromEntries(PROSODY.map((r) => [r.id, r.weight]));
+
+/**
+ * The Greek style: the weights under which the reliable lines of Mesomedes's hymns (corpus.mjs; style.mjs's fit, 187
+ * choices) are most likely, a note struck up to eight times in a row (a recitation tone), and no turn asked after a
+ * 4th or a 5th (Fux's; Mesomedes goes on). Fitted once and kept here as data: tests/style.mjs fits it again.
+ */
+export const GREEK = {
+  name: "greek", from: "Mesomedes, DAGM nos. 24, 25, 27.7–12 (the reliable lines)", maxRepeat: 8, turnAfterSmallLeap: false,
+  // (every rule of soft.mjs and the accent's not listed keeps the engine's weight: none of the corpus's choices weighs it)
+  weights: { "acute-rise": 2.24, "after-accent": 0.47, "circumflex-fall": 2.38, "climax": 0, "contrary-after-leap": 0.51, "grave": 1.43, "hover": 0, "leap-after-leap": 0.13, "leap-size": 4.02, "line-end": 1.26, "melisma": 2.86, "memory": 0.25, "novelty": 0, "open": 0.78, "peak": 2.26, "repeat": 0, "return": 0.02, "run": 0.9, "sequence": 1.03, "step-back": 0.31 },
+};
 
 /** Example texts: lines of polytonic Greek, their metre, and a mode (a church mode of tonal.mjs: the final its tonic). */
 export const TEXTS = {
@@ -111,23 +123,40 @@ export function judgeAccent(syllables, pitches) {
 }
 
 /**
+ * The time given instead of read: syllables [{text, accent, word, line, first, last, lineEnd, beats}] (a corpus's, as
+ * corpus.mjs reads it) → plan()'s shape, a long syllable one of two beats or more (the strong ones).
+ */
+export function planFromTime(syls) {
+  let at = 0;
+  const syllables = syls.map((y) => { const r = { text: y.text, accent: y.accent ?? null, word: y.word, line: y.line, first: y.first, last: y.last,
+                                                  lineEnd: y.lineEnd, beats: y.beats, q: y.beats >= 2 ? "long" : "short", strong: y.beats >= 2, at }; at += y.beats; return r; });
+  const sylAt = []; syllables.forEach((s, i) => { for (let j = 0; j < s.beats; j++) sylAt.push(i); });
+  const lines = [...new Set(syllables.map((y) => y.line))].map((li) => ({ text: syllables.filter((y) => y.line === li).map((y) => y.text).join(" "), ok: true, scansion: "" }));
+  return { lines, syllables, beats: at, sylAt, error: null };
+}
+
+/**
  * A melody for a text: spec {text, metre ("hexameter", "pentameter", "iambic-trimeter", "free", "seikilos"; a list:
  * one a line, in turn), key ({tonic, mode}: a church mode, its tonic the final; ficta off: the mode's own scale),
  * ambitus ([lo, hi] in degrees from the final, [-1, 8]), starts (degrees, [0, 2, 3, 4, 7]), melisma (the most notes a
- * syllable, 3; 1: a note a syllable), strict (the peak and the circumflex hard), maxRepeat (3), weights (the melodic
+ * syllable, 3; 1: a note a syllable), strict (the peak and the circumflex hard), maxRepeat (3), chromatic (altered
+ * notes allowed: [[degree, alteration]…]), time (the syllables and their beats given: planFromTime), weights (the melodic
  * and the accent's)} → solve()'s count, sample, engine, judge, fan, why (a code a beat), and the plan, the system,
  * names, midi, hz; notesOf (a melody's notes: [{code, at, beats, syl}]), pitchesOf (each syllable's pitches),
  * accentReport, asDux.
  */
 export function aoidos(spec = {}) {
-  const P = plan(spec.text, spec.metre || "hexameter");
+  const P = spec.time ? planFromTime(spec.time) : plan(spec.text, spec.metre || "hexameter");
   const key = spec.key || { tonic: "E", mode: "dorian" };
   const S = keySystem(key, { ficta: false }), deg = S.deg;
   const [lo, hi] = spec.ambitus || [-1, 8];
   const starts = spec.starts || [0, 2, 3, 4, 7];
   const finals = [0, 7].filter((f) => f >= lo && f <= hi);
-  const maxRepeat = spec.maxRepeat ?? 3, strict = !!spec.strict, maxNotes = Math.max(1, spec.melisma ?? 3);
-  const W = { ...defaultWeights(), ...prosodyWeights(), ...(spec.weights || {}) };
+  // (a style: weights, and its own way with repeated notes and small leaps — GREEK, learned from Mesomedes)
+  const style = spec.style === "greek" ? GREEK : spec.style && typeof spec.style === "object" ? spec.style : {};
+  const maxRepeat = spec.maxRepeat ?? style.maxRepeat ?? 3, strict = !!spec.strict, maxNotes = Math.max(1, spec.melisma ?? 3);
+  const turnSmall = spec.turnAfterSmallLeap ?? style.turnAfterSmallLeap ?? true;
+  const W = { ...defaultWeights(), ...prosodyWeights(), ...(style.weights || {}), ...(spec.weights || {}) };
   const Y = P.syllables, n = P.beats, sylAt = P.sylAt;
   const startOf = (s) => Y[s].at, isStart = (t) => t === Y[sylAt[t]].at, isEnd = (t) => t === Y[sylAt[t]].at + Y[sylAt[t]].beats - 1;
   // (each syllable's word: where it begins, and its accented syllable — the peak)
@@ -135,7 +164,9 @@ export function aoidos(spec = {}) {
   const peakOf = Y.map((x, i) => { for (let j = wordFrom[i]; j < Y.length && Y[j].word === x.word; j++) if (Y[j].accent === "acute" || Y[j].accent === "circumflex") return j; return -1; });
   const maxSyl = Math.max(1, ...Y.map((y) => y.beats));
   const wordBeats = Math.max(1, ...Y.map((y, i) => y.at + y.beats - Y[wordFrom[i]].at));
-  const codes = S.codesIn(lo, hi);
+  // (the mode's own notes, and the altered ones asked for — chromatic: [[degree, alteration]…], as Mesomedes's c♯')
+  const codes = [...S.codesIn(lo, hi)];
+  for (const [d0, a] of spec.chromatic || []) for (let d = d0 - 21; d <= d0 + 21; d += 7) if (d >= lo && d <= hi) codes.push(codeOf3(d, a));
   const struckAt = (U, t) => t === 0 || isStart(t) || U[t] !== U[t - 1];
   /** A syllable's pitches (degrees) as written up to beat t (exclusive), and c at t if given. */
   const sylNotes = (U, s, t, c) => {
@@ -162,7 +193,7 @@ export function aoidos(spec = {}) {
       if (j < 1 || d === deg(prev)) return null;
       const m = deg(prev) - deg(U[j - 1]), s = d - deg(prev);
       if (Math.abs(m) >= S.leaps.large && s !== -sign(m)) return `after a leap of a ${S.intervalName(Math.abs(m))}, a step ${m > 0 ? "down" : "up"}`;
-      if (Math.abs(m) >= S.leaps.small && Math.abs(m) < S.leaps.large && sign(s) !== -sign(m)) return `after the leap of a ${S.intervalName(Math.abs(m))} the line turns ${m > 0 ? "down" : "up"}`;
+      if (turnSmall && Math.abs(m) >= S.leaps.small && Math.abs(m) < S.leaps.large && sign(s) !== -sign(m)) return `after the leap of a ${S.intervalName(Math.abs(m))} the line turns ${m > 0 ? "down" : "up"}`;
       return null;
     } },
     { id: "repeat", check: ({ U, t, c }) => {
