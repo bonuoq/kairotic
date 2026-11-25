@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0
 // Kairotic · the studies' export (discussion #319): what a study made, as MEI the app opens as a tree box
 // (kairotic.mei, Study 55). Every study that makes music keeps a copy of this file beside its kernel (the copies are
-// checked equal in tests/counterpoint.mjs); this one, in studies/_shared, is the original.
+// checked equal in tests/export.mjs); this one, in studies/_shared, is the original.
 //
 //   voices      each a list of notes {name ("F#4", "Bb3", or null: a rest), units} — or made from a list of names a
 //               unit each (fromUnits: a name repeated is a note held, unless the unit is struck again)
+//   lyrics      a note may carry the syllable it begins, {syl, wordpos ("i" | "m" | "t"; none: a word of one
+//               syllable), con}, and the syllables of the verses after the first, verses [{syl, wordpos, con} …]
+//               (verse 2, 3 …: a strophe and its antistrophe); written as MEI's <verse n><syl> on the note, on its
+//               first piece when it is cut at a bar line. The notes after it with no syllable (of that verse) sing
+//               it on: a melisma. con, when not given: "d" (a hyphen) after a word's first or middle syllable, "u"
+//               (an extender) after its last one, or a word of one, when a melisma follows
 //   microtones  a note may say its exact pitch, midi (a fraction: 60.5 a quarter tone above C4): it is written as
 //               the app writes one (kairotic.mt) — its name (or the nearest, spelled for the key), a quarter-tone
 //               accidental where it is half-way (± 8 cents) — and its exact Hz kept for it in the extMeta, by the
@@ -110,13 +116,39 @@ export function edn(v) {
   return "{" + Object.entries(v).filter(([, x]) => x !== undefined).map(([k, x]) => ":" + k.replace(/[^A-Za-z0-9*+!_?<>=.-]/g, "-") + " " + edn(x)).join(", ") + "}";
 }
 const xml = (x) => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/** The syllables a note begins, a verse each (verse 1 first; null where that verse has none here). */
+const versesOf = (n) => {
+  const v1 = n.syl !== undefined && n.syl !== null && n.syl !== "" ? { syl: n.syl, wordpos: n.wordpos, con: n.con } : null;
+  const vs = [v1, ...(Array.isArray(n.verses) ? n.verses.map((x) => (x && x.syl !== undefined && x.syl !== null && x.syl !== "" ? x : null)) : [])];
+  while (vs.length && vs[vs.length - 1] === null) vs.pop();
+  return vs;
+};
+/**
+ * The <verse>s of the i-th note of a voice's notes: each syllable with its wordpos and its con (given, or: "d" after
+ * a word's first or middle syllable; "u" after its last, or a word of one, when the next note sings it on — a note
+ * with no syllable of that verse, not a rest).
+ */
+export function versesXml(notes, i) {
+  const n = notes[i];
+  if (!n || !(n.name || typeof n.midi === "number")) return "";
+  const next = notes[i + 1];
+  return versesOf(n).map((v, k) => {
+    if (!v) return "";
+    const wp = v.wordpos || null;
+    const melisma = !!next && !!(next.name || typeof next.midi === "number") && !versesOf(next)[k];
+    const con = v.con || (wp === "i" || wp === "m" ? "d" : melisma ? "u" : null);
+    return `<verse n="${k + 1}"><syl${wp ? ` wordpos="${wp}"` : ""}${con ? ` con="${con}"` : ""}>${xml(v.syl)}</syl></verse>`;
+  }).join("");
+}
 /** A file name from a title: "A period in C" → "a-period-in-c.mei". */
 export const fileName = (title, ext = ".mei") => (String(title).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "kairotic") + ext;
 
 /**
  * The MEI of what a study made. spec:
  *   title, source (the study), key {tonic, mode}
- *   voices [{label, clef ("G" | "F", or by its notes), notes [{name | null, units}]}], top first
+ *   voices [{label, clef ("G" | "F", or by its notes), notes [{name | null, units, syl?, wordpos?, con?, verses?}]}],
+ *   top first
  *   unitDen (2: a unit is a half note), unitsPerBar (2), meter [count, unit] (default from them), pickup (units)
  *   marks [{unit, text, staff (1)}], figures [{unit, figs ["6", "3"]}] (under the lowest staff), doubleBars [units
  *   where a section begins: the bar line before it double]
@@ -142,12 +174,13 @@ export function exportMei(spec) {
     const segs = bars.map(() => []);
     // the notes cut at the bar lines: {w (written pitch, or null: a rest), len (units), first, last (of its note)}
     let at = 0;
-    for (const n of v.notes) {
+    for (const [i, n] of v.notes.entries()) {
       let left = n.units, s = at, first = true;
       const w = n.name || typeof n.midi === "number" ? writtenOf(n, fifths) : null;
+      const verses = w ? versesXml(v.notes, i) : "";
       while (left > 0) {
         const bi = barOf(s), end = Math.min(s + left, bars[bi][1]), len = end - s;
-        segs[bi].push({ w, len, first, last: end === at + n.units });
+        segs[bi].push({ w, len, first, last: end === at + n.units, verses });
         left -= len; s = end; first = false;
       }
       at += n.units;
@@ -158,7 +191,7 @@ export function exportMei(spec) {
       const tuplet = odd > 1 && list.some((x) => x.len % odd !== 0);
       const scale = tuplet ? odd / (nb * unitDen) : 1 / unitDen;
       const out = [];
-      for (const { w, len, first, last } of list) {
+      for (const { w, len, first, last, verses } of list) {
         const ps = pieces(len * scale);
         ps.forEach(([, dur, dots], k) => {
           const tie = !w ? "" : first && last && ps.length === 1 ? "" : first && k === 0 ? "i" : last && k === ps.length - 1 ? "t" : "m";
@@ -171,7 +204,9 @@ export function exportMei(spec) {
           // an accidental where the bar or the signature says another; else only as sounding (accid.ges)
           const acc = alt === said ? (alt ? ` accid.ges="${ACC[alt]}"` : "") : ` accid="${ACC[alt]}"`;
           carried[L + oct] = alt;
-          out.push(`<note xml:id="${id}" pname="${L.toLowerCase()}" oct="${oct}" dur="${dur}"${dots ? ` dots="${dots}"` : ""}${acc}${tie ? ` tie="${tie}"` : ""}/>`);
+          // (its syllables on its first written piece only: the pieces a tie goes on into sing it on)
+          const sung = first && k === 0 ? verses : "";
+          out.push(`<note xml:id="${id}" pname="${L.toLowerCase()}" oct="${oct}" dur="${dur}"${dots ? ` dots="${dots}"` : ""}${acc}${tie ? ` tie="${tie}"` : ""}${sung ? `>${sung}</note>` : "/>"}`);
         });
       }
       return tuplet && out.length ? [`<tuplet xml:id="v${vi + 1}t${bi}" num="${odd}" numbase="${nb}" bracket.visible="true" num.visible="true">`, ...out, `</tuplet>`] : out;

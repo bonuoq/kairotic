@@ -45,6 +45,29 @@ is("tuplets: a bar of thirds of a half note in one tuplet 3:2, its notes as half
 is("… a bar whose notes fall on whole halves written plainly (the dux)", /<staff n="1"><layer n="1"><note[^>]*pname="d" oct="4" dur="2"\/><note[^>]*pname="e" oct="4" dur="2"\/><\/layer>/.test(bar1));
 is("… a bar of halves in a voice that needs no tuplet there: plain (the comes, bar 2)", /<staff n="2"><layer n="1"><note[^>]*pname="d" oct="4" dur="2"\/><note[^>]*pname="c" oct="4" dur="2"\/><\/layer>/.test(tu.mei));
 
+// lyrics: a syllable on the note that begins it, as MEI's <verse><syl>
+const ly = X.exportMei({ title: "lyrics", unitDen: 4, unitsPerBar: 3, voices: [{ label: "voice", notes: [
+  { name: "E4", units: 1, syl: "Ἄν", wordpos: "i" }, { name: "F4", units: 1 },            // a word's first syllable, a melisma
+  { name: "G4", units: 2, syl: "δρα", wordpos: "t" },                                    // its last, cut at the bar line and tied
+  { name: "A4", units: 1, syl: "μοι" }, { name: "G4", units: 1 }, { name: "F4", units: 1 }, // a word of one syllable, a melisma of three
+  { name: "E4", units: 1, syl: "ἔν", wordpos: "i" }, { name: "D4", units: 1, syl: "νε", wordpos: "m" }, { name: "E4", units: 1, syl: "πε", wordpos: "t" }, // a word over three notes
+  { name: null, units: 1 }, { name: "D4", units: 1, syl: "Μοῦ", wordpos: "i", con: "d" }, { name: "C4", units: 1, syl: "σα", wordpos: "t" }] }] });
+const noteXml = (id) => (ly.mei.match(new RegExp(`<note xml:id="${id}"[^>]*?(/>|>.*?</note>)`)) || [""])[0];
+is("lyrics: a syllable on its note, as <verse n=\"1\"><syl wordpos con>", /<note xml:id="v1n1" pname="e" oct="4" dur="4"><verse n="1"><syl wordpos="i" con="d">Ἄν<\/syl><\/verse><\/note>/.test(ly.mei), noteXml("v1n1"));
+is("… a melisma: the notes after it with no syllable sing it on (no <verse>)", noteXml("v1n2") && !/<verse/.test(noteXml("v1n2")));
+is("… a note cut at the bar line and tied: its syllable on the first piece only", /<verse n="1"><syl wordpos="t">δρα<\/syl>/.test(noteXml("v1n3")) && /tie="i"/.test(noteXml("v1n3")) && /tie="t"\/>$/.test(noteXml("v1n4")), noteXml("v1n3") + " " + noteXml("v1n4"));
+is("… a word of one syllable before a melisma: an extender (con=\"u\"), no wordpos", /<verse n="1"><syl con="u">μοι<\/syl><\/verse>/.test(noteXml("v1n5")) && !/<verse/.test(noteXml("v1n6") + noteXml("v1n7")), noteXml("v1n5"));
+is("… a word over three notes: i, m, t, hyphens after the first two, nothing after the last", /<syl wordpos="i" con="d">ἔν</.test(noteXml("v1n8")) && /<syl wordpos="m" con="d">νε</.test(noteXml("v1n9")) && /<syl wordpos="t">πε</.test(noteXml("v1n10")));
+is("… a rest after a word's last syllable is no melisma (no extender); a con given is written as it is", !/con=/.test(noteXml("v1n10")) && /<syl wordpos="i" con="d">Μοῦ</.test(noteXml("v1n12")) && /<syl wordpos="t">σα</.test(noteXml("v1n13")), noteXml("v1n12"));
+const st = X.exportMei({ title: "strophe", voices: [{ notes: [
+  { name: "C5", units: 1, syl: "a", wordpos: "i", verses: [{ syl: "x" }] }, { name: "D5", units: 1, syl: "b", wordpos: "t", verses: [{ syl: "y", wordpos: "i" }] },
+  { name: "E5", units: 1, verses: [{ syl: "z", wordpos: "t" }] }, { name: "F5", units: 1, syl: "c", verses: [{ syl: "w", con: "u" }] }] }] });
+const sx = (id) => (st.mei.match(new RegExp(`<note xml:id="${id}"[^>]*?(/>|>.*?</note>)`)) || [""])[0];
+is("verses: strophe and antistrophe as verse n=\"1\" and n=\"2\" on the same note", /><verse n="1"><syl wordpos="i" con="d">a<\/syl><\/verse><verse n="2"><syl>x<\/syl><\/verse><\/note>/.test(sx("v1n1")), sx("v1n1"));
+is("… each verse its own melisma: verse 1 sings \"b\" on over a note that has only verse 2's \"z\"", /<verse n="1"><syl wordpos="t" con="u">b<\/syl><\/verse><verse n="2"><syl wordpos="i" con="d">y<\/syl><\/verse>/.test(sx("v1n2")) && /^<note[^>]*><verse n="2"><syl wordpos="t">z<\/syl><\/verse><\/note>$/.test(sx("v1n3")), sx("v1n2") + " " + sx("v1n3"));
+is("… the last note: its syllables, an extender only where it is given", /<verse n="1"><syl>c<\/syl><\/verse><verse n="2"><syl con="u">w<\/syl><\/verse>/.test(sx("v1n4")), sx("v1n4"));
+is("… the extMeta keeps nothing of the lyrics (they are in the notation); a voice without them is written as before", !/:syl/.test(ly.mei) && !/<verse/.test(m.mei));
+
 // the copies, beside each study's kernel
 const original = readFileSync(join(root, "studies/_shared/export.mjs"), "utf8");
 const copies = readdirSync(join(root, "studies")).filter((s) => existsSync(join(root, "studies", s, "kairotic/export.mjs")));
