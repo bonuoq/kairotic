@@ -5,7 +5,9 @@
 // in either order: which is Bach? Where listeners cannot tell, the bridge sounds as his; where they can, the variant
 // says which layer they heard missing.
 //
-//   fill(bridge)      the inner voices of a bridge (bach-4), or why none: the bridges no rule can fill are a result too
+//   fill(bridge)      the inner voices of a bridge (bach-4), from Bach's first chord to his last (the alto and the tenor
+//                     given there, as the soprano and the bass are), or why none: the bridges no rule can fill are a
+//                     result too
 //   bachOf(phrase)    Bach's four voices, as the corpus has them (a chord a quarter, a note held where he holds it)
 //   deckOf(…)         the trials, drawn once and kept (deck.json): for each variant, phrases not used before, a bridge
 //                     of that variant filled — the bridges tried and not filled counted
@@ -37,12 +39,17 @@ export function notesOf(xs, strong, keys = null) {
 const heldOf = (notes) => notes.flatMap((n) => Array.from({ length: n.units }, (_, k) => k > 0));
 const keyName = (k) => `${String(k.tonic).replace("♯", "#").replace("♭", "b")} ${k.mode || "major"}`;
 
-/** The inner voices of a bridge by bach-4: {satb: [[s, a, t, b]…] (MIDI), held: [[…4]…]}, or {fail: why}. temp: the
- *  engine's (its soft rules — the functions in local keys among them — weighed; 0 the likeliest). */
-export function fill(bridge, { r = Math.random, temp = 0.5, style = "bach-4" } = {}) {
-  const S = notesOf(bridge.soprano, bridge.strong), B = notesOf(bridge.bass, bridge.strong);
+/** The inner voices of a bridge by bach-4: {satb: [[s, a, t, b]…] (MIDI), held: [[…4]…]}, or {fail: why}. phrase:
+ *  Bach's, whose first and last chords the bridge keeps whole (its alto and tenor given there). temp: the engine's
+ *  (its soft rules weighed — Bach's own moves, bach-motion, and the functions in local keys among them —; 0 the
+ *  likeliest; 1, as the style was measured, moves as often as Bach's inner voices do). A note an inner voice keeps is
+ *  struck again, as Bach mostly does, but where it is held into a dissonance with the bass (a suspension). */
+export function fill(bridge, { phrase = null, r = Math.random, temp = 1, style = "bach-4" } = {}) {
+  const S = notesOf(bridge.soprano, bridge.strong), B = notesOf(bridge.bass, bridge.strong), n = bridge.soprano.length;
+  const ends = (i) => Array.from({ length: n }, (_, t) => (t === 0 || t === n - 1 ? { midi: phrase.satb[t][i], ...(phrase.names ? { name: phrase.names[t][i] } : {}) } : null));
+  const inner = phrase ? { alto: ends(1), tenor: ends(2) } : undefined;
   let ob;
-  try { ob = fromOuter({ bass: B, soprano: S, key: keyName(bridge.key), style }); } catch (e) { return { fail: e.message || String(e) }; }
+  try { ob = fromOuter({ bass: B, soprano: S, key: keyName(bridge.key), style, inner }); } catch (e) { return { fail: e.message || String(e) }; }
   if (ob.count() === 0n) {
     const d = ob.deadEnd ? ob.deadEnd() : null;
     const top = d && d.reasons ? d.reasons.filter(([w]) => w !== "the soprano is given")[0] : null;
@@ -50,9 +57,11 @@ export function fill(bridge, { r = Math.random, temp = 0.5, style = "bach-4" } =
   }
   const W = ob.engine({ temp, r });
   if (!W) return { fail: "no inner voices" };
-  const n = bridge.soprano.length, hS = heldOf(S), hB = heldOf(B);
+  const hS = heldOf(S), hB = heldOf(B);
   const satb = Array.from({ length: n }, (_, t) => [bridge.soprano[t], ob.midi(W.alto[t]), ob.midi(W.tenor[t]), bridge.bass[t]]);
-  const held = Array.from({ length: n }, (_, t) => [hS[t], t > 0 && W.alto[t] === W.alto[t - 1], t > 0 && W.tenor[t] === W.tenor[t - 1], hB[t]]);
+  const into = (m, t) => [1, 2, 5, 6, 10, 11].includes((((m - bridge.bass[t]) % 12) + 12) % 12);
+  const keep = (V, i, t) => t > 0 && V[t] === V[t - 1] && into(satb[t][i], t);
+  const held = Array.from({ length: n }, (_, t) => [hS[t], keep(W.alto, 1, t), keep(W.tenor, 2, t), hB[t]]);
   return { satb, held };
 }
 
@@ -64,7 +73,7 @@ export const bachOf = (p) => ({ satb: p.satb.map((c) => c.slice()), held: p.held
  * one of that phrase's draws of the variant that bach-4 can fill. phrases: the corpus's; bridges: bridges.json's.
  * {trials: [{id, phrase, variant, draw, key, strong, bach, bridge}], tried: {variant: {tried, filled}}, failures: {why: n}}
  */
-export function deckOf(phrases, bridges, { perVariant = 40, seed = 71, temp = 0.5, maxLen = 16, log = null } = {}) {
+export function deckOf(phrases, bridges, { perVariant = 40, seed = 71, temp = 1, maxLen = 16, log = null } = {}) {
   const r = rng(seed), P = new Map(phrases.map((p) => [p.id, p]));
   const of = new Map();
   for (const b of bridges) { const k = `${b.phrase}|${b.variant}`; if (!of.has(k)) of.set(k, []); of.get(k).push(b); }
@@ -79,7 +88,7 @@ export function deckOf(phrases, bridges, { perVariant = 40, seed = 71, temp = 0.
       const id = ids[next++], p = P.get(id);
       tried[v].tried++;
       for (const [draw, b] of of.get(`${id}|${v}`).entries()) {
-        const f = fill(b, { r, temp });
+        const f = fill(b, { phrase: p, r, temp });
         if (f.fail) { const w = f.fail.replace(/unit \d+/, "unit #").replace(/\d+/g, "#"); failures[w] = (failures[w] || 0) + 1; continue; }
         tried[v].filled++;
         trials.push({ id: `${id}/${v}/${draw}`, phrase: id, variant: v, draw, title: p.title, bwv: p.bwv, key: p.key, strong: p.strong, bach: bachOf(p), bridge: f });
