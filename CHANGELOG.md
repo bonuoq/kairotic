@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos: Seikilos's own melody against the rules** (#192). `seikilos.mjs`: the song as the stele has it
+  (Pöhlmann and West, DAGM no. 23), sign by sign with its chronoi. Its rhythm is the quantities `prosody.mjs` reads
+  (every long syllable 2 or 3 chronoi, every short one 1, each line twelve) once a stop and a liquid across words count
+  as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
+  circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
+
 - **The bridges' dissonances as rare as Bach's, his melodic minor's raised ⑥ as seldom** (`@kairotic/rules` 0.22.0,
   `bach-4` 1.6.0; `@kairotic/cac` 0.16.10; Study 71). Heard by @bonuoq: dissonances that did not seem justified. The
   inner voices dissonated against the bass twice as often as Bach's, with seven times his semitone clashes (a ♭9, a
