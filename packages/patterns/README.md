@@ -61,6 +61,18 @@ keys going on through the silences too.
 A generator can be an element of a vector: `[0 #pat/choose [2 4] 7]`. As in Overtone, a pattern with an
 endless key is endless; otherwise a pass lasts as long as its longest sequence.
 
+## A tree as the events
+
+**`:tree`** is a musical tree — what a `tree` box sends, what `cac partimento` writes, a `comes` canon, a
+transcription — whose notes are the events: `{:midinote :sustain :dur :voice :amp}`, in time order, `:dur` the
+time to the next onset (0 for notes that start together, a chord's or two voices'), `:voice` its voice by its order
+in the tree, `:amp` its `:vel` if it has one, and a silence first when it does not begin at 0. Every other key goes
+on over them note by note, and says what the tree does not, or says it again: `{:tree … :dur #pat/euclid [3 8]}` its
+pitches on a tresillo (a *color* under a *talea*), `{:tree … :pan #pat/white [-1 1]}` each note somewhere else,
+`{:tree … :transpose [0 0 12]}`. `{:tree {:of … :voices [0]}}` plays only some of its voices. A tree arriving on a
+pbind's inlet becomes its `:tree` (one event of the history). In a `pattern` box, `(ptree t)` and `(ptree t [0])`
+give the same events, to combine as any sequence. The way back of `render` (discussion #450).
+
 ## Events
 
 Pitch: `:freq` in Hz, `:note` (MIDI, `"c4"` or `:c4`), or `:degree` with `:scale` (`:major`, `:dorian`,

@@ -2053,7 +2053,7 @@ A pattern as EDN data: a map of constants, sequences and #pat/… generators, wi
 
 **Inlets** 
 
-0. bang: sends its pattern again · a map: replaces it (one event of the history) · [:set :dur [1 0.5]]: one key · [:unset :amp]
+0. bang: sends its pattern again · a map: replaces it (one event of the history) · [:set :dur [1 0.5]]: one key · [:unset :amp] · a musical tree (a tree box, cac partimento, comes): becomes its :tree
 
 **Outlets** 
 
@@ -2070,6 +2070,8 @@ A pattern as EDN data: a map of constants, sequences and #pat/… generators, wi
 - `{:pulse #pat/euclid [3 8] :dur 0.5}`: a rhythm in another key: one event a pulse, :pulse 0 a silence (a step sequencer)
 - `{:degree [0 2 :rest 4]} · [0 nil 4]`: a silence: :rest (:_ :- :r) or nil as the degree, note or freq
 - `:amp #pat/white [0.2 0.6]`: the loudness of each note (0…1), for synth~ and a polyphonic faust~
+- `{:tree [:voice "c4/1 e4 g4"] :dur #pat/euclid [3 8]}`: a musical tree's notes as the events (:midinote :sustain :dur :voice :amp; notes that start together at :dur 0), the other keys going on over them note by note: here its pitches on a tresillo
+- `{:tree {:of … :voices [0]}}`: only some of the tree's voices, by their order in it
 - `pbind 7 · pbind 7 4 · pbind 7 loop`: the seed · four passes · for ever
 
 **Try:** Press ▶ and start: four notes in a new order every pass. Change :dur in the pbind (double-click it) and apply: the player goes on with it from the same beat. Change the seed (pbind 8 loop): other orders, but the same for everyone in a room.
