@@ -309,4 +309,25 @@ export async function codetab(page, check) {
         === "[true true false false true]");
   await cljs(page, `(stop) (delete ${na} ${nb} ${nc} (rid :lv))`);
 
+  // arguments that are parts of the patch: each feeds the inlet its argument sets
+  check("an argument that is a box, a chain or a named box feeds the box; a value stays an argument",
+        (await cljs(page, "[(source-arg? [:mtof]) (source-arg? [:=> [:mtof]]) (source-arg? {:l [:mtof]}) (source-arg? [:_ :_]) (source-arg? {60 0}) (source-arg? :a)]")) === "[true true true false false false]");
+  check("... not written in the text, 0 holding its place before values",
+        (await cljs(page, '[(box-text [:gain- [:mtof]]) (box-text [:metro [:mtof] 3]) (box-text [:osc- 220])]')) === '["gain~" "metro 0 3" "osc~ 220"]');
+  check("... the inlet each argument sets: the one after the left, or the class says",
+        (await cljs(page, '[(arg-inlet "gain~" 0) (arg-inlet "+" 0) (arg-inlet "osc~" 0)]')) === "[1 1 0]");
+  const k5 = Number(await cljs(page, nEv));
+  await cljs(page, "(play (=> {:ng [:gain- [:mtof 3]]} {:no [:osc- (=> [:ftom] {:nm [:mtof]})]}))");
+  const ng = await cljs(page, "(rid :ng)"), no = await cljs(page, "(rid :no)"), nm = await cljs(page, "(rid :nm)");
+  const from = (id, i) => cljs(page, `(vec (sort (keep (fn [[a _ b j]] (when (and (= b ${id}) (= j ${i})) (:text (get-in (current) [:boxes a])))) (:lines (current)))))`);
+  check("nested: a box into gain~'s factor, a chain into osc~'s frequency, as one event",
+        (await txt(ng)) === '"gain~"' && (await from(ng, 1)) === '["mtof 3"]' && (await txt(no)) === '"osc~"' && (await from(no, 0)) === '["gain~" "mtof"]'
+        && (await from(nm, 0)) === '["ftom"]' && Number(await cljs(page, nEv)) === k5 + 1, `${await from(ng, 1)} ${await from(no, 0)}`);
+  await cljs(page, "(play (=> {:ng [:gain- [:mtof 3]]} {:no [:osc- (=> [:ftom] {:nm [:mtof]})]}))");
+  check("... evaluated again as it was: nothing changes", Number(await cljs(page, nEv)) === k5 + 1);
+  await cljs(page, "(play (=> {:ng [:gain- [:mtof 4]]} {:no [:osc- (=> [:ftom] {:nm [:mtof]})]}))");
+  check("... a nested number changed: that box's text only", (await cljs(page, lastEv)).startsWith("[:text ") && (await from(ng, 1)) === '["mtof 4"]', await cljs(page, lastEv));
+  check("... an argument with no inlet: said", (await cljs(page, '(try (play (=> [:+ 1 [:mtof]])) (catch :default e (.-message e)))')).includes("no inlet for its argument 2"));
+  await cljs(page, `(stop) (apply delete (keep (fn [[id b]] (when (#{"gain~" "osc~" "mtof 4" "ftom" "mtof" "+ 1"} (:text b)) (when (or (#{${ng} ${no} ${nm}} id) (some (fn [[a _ c _]] (and (= a id) (#{${ng} ${no} ${nm}} c))) (:lines (current)))) id))) (:boxes (current))))`);
+
 }

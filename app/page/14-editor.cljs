@@ -782,8 +782,33 @@
                       (and (or (keyword? h) (symbol? h)) (not (contains? data-ops h)) (class-known? (class-name h))))))))
 
 (defn arg-text [a] (cond (string? a) (pr-str a) (number? a) (str a) (or (keyword? a) (symbol? a)) (str a) :else (pr-str a)))
-(defn box-text "The text of the box a vector writes: [:gain- 0.2] → \"gain~ 0.2\"." [v]
-  (str/join " " (cons (class-name (first v)) (map arg-text (rest v)))))
+
+(defn source-arg?
+  "Whether an argument of a box is itself a part of the patch that feeds it — a box, a chain, or a box named by a map
+   — rather than a value: [:osc- [:mtof]], [:gain- (=> [:osc- 2] [:gain- 0.5])]."
+  [a]
+  (boolean (or (box-vec? a)
+               (and (vector? a) (= :=> (first a)))
+               (and (map? a) (= 1 (count a)) (keyword? (ffirst a)) (box-vec? (val (first a)))))))
+
+(defn box-text
+  "The text of the box a vector writes: [:gain- 0.2] → \"gain~ 0.2\". An argument that is a part of the patch is not
+   written (0 holds its place if values follow it): it feeds the box."
+  [v]
+  (let [kept (reverse (drop-while source-arg? (reverse (rest v))))]
+    (str/join " " (cons (class-name (first v)) (map (fn [a] (if (source-arg? a) "0" (arg-text a))) kept)))))
+
+(def arg-inlets
+  "The inlet each argument of a class sets, where it is not the one after the left (as + 1, gain~ 0.2, metro 500):
+   osc~ 220 sets the frequency, its left inlet."
+  {"osc~" [0] "phasor~" [0] "sig~" [0]})
+
+(defn arg-inlet
+  "The inlet that argument k of a box of class cls sets: the class says it (:arg-inlets, or arg-inlets), or else the
+   one after the left (k + 1), as Pd and Max give arguments to the cold inlets."
+  [cls k]
+  (let [m (or (:arg-inlets (comp/lookup cls)) (get arg-inlets cls))]
+    (if m (get m k) (inc k))))
 
 (defn spliced [xs] (mapcat (fn [x] (if (seq? x) x [x])) xs))
 
@@ -810,6 +835,19 @@
   [nm t [x y]]
   (if (get-in (current) [:boxes (rid nm)]) (named-box nm t nil nil) (named-box nm t x y)))
 
+(declare run-data)
+(defn feed-args!
+  "The arguments of box vector v that are parts of the patch, each made and wired to the inlet its argument sets."
+  [ctx v id j]
+  (let [cls (class-name (first v)) t (get-in (current) [:boxes id :text])
+        n-in (first (comp/io {:text t}))]
+    (doseq [[k a] (map-indexed vector (rest v)) :when (source-arg? a)]
+      (let [i (arg-inlet cls k)]
+        (when-not (and i (< i n-in)) (fail (str cls " has no inlet for its argument " (inc k))))
+        (doseq [[b o] (run-data ctx [] a (+ j k))]
+          (connect b o id i)
+          (swap! ctx update :wrote conj [b o id i]))))))
+
 (defn feed! [ctx ends id]
   (doseq [[j [a o]] (map-indexed vector ends)]
     (let [l [a o id (if (= 1 (count ends)) 0 j)]]
@@ -818,7 +856,6 @@
 
 (defn existing! [k] (let [id (rid k)] (if (get-in (current) [:boxes id]) id (fail (str "No box called " k ", nor a class " (class-name k))))))
 
-(declare run-data)
 (defn run-chain-data
   "The elements of a chain, in series: each fed by the wires the one before leaves."
   [ctx els ends]
@@ -834,9 +871,11 @@
       (map? x) (let [[[nm b]] (seq x)]
                  (when (not= 1 (count x)) (fail "A map names one box: {:osc [:osc- 220]}"))
                  (if (box-vec? b)
-                   (make (named-data-box! (keyword (name nm)) (box-text b) (below ends j)))
+                   (let [id (named-data-box! (keyword (name nm)) (box-text b) (below ends j))]
+                     (feed-args! ctx b id j) (make id))
                    (fail (str "Not a box: " (pr-str b)))))
-      (box-vec? x) (make (data-box! ctx (box-text x) (below ends j)))
+      (box-vec? x) (let [id (data-box! ctx (box-text x) (below ends j))]
+                     (feed-args! ctx x id j) (make id))
       (and (vector? x) (= :=> (first x))) (run-chain-data ctx (rest x) ends)
       (and (vector? x) (= :to (first x)))
       (let [args (vec (rest x)) [[a]] ends
