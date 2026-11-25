@@ -13,6 +13,14 @@
   not go on up. In the deck: chords with a dissonance 18.1% (Bach 21.8%, before 37.7%), semitone clashes 1.7 per 100
   chords (Bach 1.7, before 9.8). Study 71's `fill` reads a bridge's `keys` (a key a unit) where it has them, so its
   inner voices may take a tonicization's leading tone, as Bach's do. Bach's phrases judged as before (504).
+- **Study 74 · aoidos** (discussion #192): a poem sung syllable by syllable. `prosody.mjs` reads polytonic Greek —
+  syllables, quantity (by nature, by position, doubtful; the laws of the accent; epic correption), accents — and scans
+  a line (hexameter, pentameter, iambic, free; synizesis), the scansion its time (a short a beat, a long two, held).
+  `aoidos.mjs`: the melody as one voice of `@kairotic/rules` (`solve()`), the accent as costs (rise to the acute, the
+  accent the word's highest, the circumflex falling, a fall after the accent; `strict` makes the peak and the
+  circumflex hard), an examiner that tries a melody as the dux of `cac imitation`, and `canonic()`: the dux written
+  with its comes on `canon-2`, the singer choosing among the comes's futuribles (Odyssey 1.1 in strict canon at the
+  octave below a foot later: 4,285 canons).
 
 - **The chorale test's outer voices move as Bach's; every bridge fillable** (#353). Study 63's `outer.mjs` costs each
   voice's move by how often Bach's soprano and bass make it (`BACH_OUTER_MOTION`: −log of the frequency of a move of
@@ -38,6 +46,13 @@
   as the thresholds move, without running the model again. On a cadence rendered in the page the notes are scored
   against what was written, and each chord heard against itself with a note an octave off: the 88 keys tell them
   apart, a chroma cannot — what the followers of #308 would gain. Not in the app yet (after 0.3.0-alpha).
+- **`kairotic.motif`: one motive module for the whole system** (discussion: one motive layer; issues #108, #309). Study
+  60's motives move into the core: notes from a melody or from notes as played, Conklin's viewpoints, the exact
+  relations (repetition, transposition, sequence, inversion, retrograde, with the rhythm kept, augmented, diminished or
+  another), a kinship by weighted edit distance, `find-in`, `discover`, the memory of the work and the sweet spot. For
+  played time, rhythms are compared by their onsets within a tolerance. `returns` groups a rhythm played several
+  times: the quantizer's repetition (#108) is now that case of it. In the API as `api/motif-notes`, `api/motif-relate`,
+  `api/motif-find` and `api/motif-discover`. Tests: Study 60's, ported (`tests/cljs/motif.cljs`).
 - **The blind test's bridges between two of Bach's chords, their inner voices moving as his** (`@kairotic/rules`
   0.21.0, `bach-4` 1.5.0; `@kairotic/cac` 0.16.9; Study 71). A bridge now begins and ends on Bach's chords whole: the
   alto and the tenor given there (`fromOuter`'s `inner`, `fourOverBass`'s `given.alto` / `given.tenor`, where a unit has
@@ -58,6 +73,10 @@
   becomes its `:tree`; `(ptree t)` in a `pattern` box. The way back of `render` (#93): what cac writes can now be
   played by a `player` and varied with the generators.
 
+- **A rhythm that comes back is written the same way** (issue #108, point 2). The quantizer finds the spans whose onsets
+  fall at the same places, prefers for all of them the division of their mean (`:rep` 1 for another; `:repeat` the
+  tolerance, 0.08 of the span; `:repeat false` for none), and so writes a repeated rhythm alike each time. On the
+  benchmark, onsets gain up to 2 points and durations up to 7 (Essen rough 57.9 → 64.7 %); Weimar 66.6 → 67.2 %.
 - **Study 72 · reveal** (discussion #407): a live-coding set is only code while it is played; at the end it reveals
   its patch, drawn by its flow (`layout.mjs`: a layered drawing after Sugiyama — rows after what feeds them, the order
   uncrossing the wires, each box under what feeds it; the app's example work in seven rows with no crossing), and its

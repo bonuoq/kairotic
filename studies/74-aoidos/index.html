@@ -1,0 +1,408 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 74 · Aoidos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=Noto+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --f-greek: "Noto Serif", "Gentium Plus", "GFS Didot", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; padding: 14px 16px 28px; }
+main { max-width: 1320px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+select, label, input { font: 13px var(--f-ui); color: var(--ink); }
+select, input[type="number"] { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; }
+input[type="number"] { width: 4.4em; font-family: var(--f-code); }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+/* Study 74: the text and its scansion on the left, the melody (and its comes) on the right, a beat a column, the
+   syllables under the notes; the accents marked over them. */
+.stage { display: grid; grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.6fr); gap: 12px; align-items: start; }
+@media (max-width: 920px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+#text { width: 100%; min-height: 120px; resize: vertical; font: 17px/1.55 var(--f-greek); color: var(--ink); background: var(--sheet); border: 1px solid var(--grid); border-radius: 6px; padding: 8px 10px; }
+#scansion { margin: 0; display: grid; gap: 6px; font-size: 13px; }
+#scansion .ln { display: grid; gap: 1px; }
+#scansion .gr { font: 15px var(--f-greek); }
+#scansion .sc { font: 14px var(--f-code); letter-spacing: 0.08em; color: var(--accent); }
+#scansion .bad { color: var(--error); }
+.counts { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; }
+.counts dt { color: var(--ink-soft); } .counts dd { margin: 0; font-family: var(--f-code); overflow-wrap: anywhere; }
+#sheet-wrap { overflow-x: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 6px; }
+#sheet { display: block; }
+#sheet .strong { fill: var(--accent-soft); }
+#sheet .beat { stroke: var(--grid); stroke-width: 1; }
+#sheet .lineend { stroke: var(--ink-soft); stroke-width: 1.4; }
+#sheet .staffline { stroke: var(--grid); stroke-dasharray: 2 4; }
+#sheet .final { stroke: var(--rule); stroke-width: 1.2; }
+#sheet .dux { fill: var(--kairos); }
+#sheet .comes { fill: var(--accent); opacity: 0.75; }
+#sheet .nname { font: 10px var(--f-code); fill: #fff; dominant-baseline: central; pointer-events: none; }
+#sheet .syl { font: 15px var(--f-greek); fill: var(--ink); }
+#sheet .syl.acc { font-weight: 600; fill: var(--kairos); }
+#sheet .qty { font: 12px var(--f-code); fill: var(--ink-soft); text-anchor: middle; }
+#sheet .mark { font: 15px var(--f-greek); fill: var(--kairos); text-anchor: middle; }
+#sheet .lab { font: 10px var(--f-code); fill: var(--ink-soft); }
+#report { font: 12.5px/1.5 var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+#report b { color: var(--ink); font-weight: 600; }
+table.exam { border-collapse: collapse; font: 12px var(--f-code); }
+table.exam th, table.exam td { padding: 3px 8px; border-bottom: 1px solid var(--grid); text-align: left; }
+table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+#status { font: 12px var(--f-code); color: var(--ink-soft); margin-left: auto; }
+</style>
+<main>
+<header>
+  <h1>Study 74 · aoidos</h1>
+  <span class="sub">a poem sung syllable by syllable: the prosody of classical Greek as the rules of a melody, alone or as the dux of a canon (discussion #192)</span>
+</header>
+<div class="toolbar">
+  <span class="tag">text</span>
+  <select id="text-id" aria-label="the text"></select>
+  <label>metre <select id="metre">
+    <option value="hexameter">dactylic hexameter</option><option value="elegiac">elegiac couplet</option>
+    <option value="pentameter">elegiac pentameter</option><option value="iambic-trimeter">iambic trimeter</option>
+    <option value="iambic-dimeter">iambic dimeter</option><option value="free">free</option></select></label>
+  <label>final <select id="tonic"><option>C</option><option>D</option><option selected>E</option><option>F</option><option>G</option><option>A</option><option>B</option></select></label>
+  <select id="mode" aria-label="the mode"><option value="dorian" selected>dorian</option><option value="phrygian">phrygian</option><option value="lydian">lydian</option><option value="mixolydian">mixolydian</option><option value="aeolian">aeolian</option><option value="ionian">ionian</option></select>
+  <label><input type="checkbox" id="strict"> strict accent</label>
+  <span class="tag">sung</span>
+  <select id="form" aria-label="alone or in canon"><option value="melody" selected>alone</option><option value="canon">in canon</option></select>
+  <span id="canon-opts" hidden>
+    <label>comes <select id="k"><option value="-7" selected>an octave below</option><option value="-4">a 5th below</option><option value="-3">a 4th below</option><option value="7">an octave above</option><option value="4">a 5th above</option></select></label>
+    <label>after <select id="d"><option value="2">2 beats</option><option value="4" selected>4 beats (a foot)</option><option value="6">6 beats</option><option value="8">8 beats</option></select></label>
+    <label>imitation <select id="imitation"><option value="1" selected>1 · canon</option><option value="0.6">0.6 · near</option><option value="0.3">0.3 · motion</option></select></label>
+  </span>
+  <label>temperature <input type="number" id="temp" min="0" max="3" step="0.1" value="0.5"></label>
+  <button class="act primary" id="engine">the engine sings</button><button class="act" id="uniform">any valid one</button>
+  <button class="act" id="play">▶ play</button><button class="act" id="export">export MEI</button>
+  <span id="status">loading…</span>
+</div>
+<div class="stage">
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>The text <span>polytonic Greek, a line a verse</span></h2>
+      <textarea id="text" spellcheck="false" lang="grc" aria-label="the poem"></textarea>
+      <div class="toolbar"><button class="act" id="read">read and count</button></div>
+      <div id="scansion"></div></section>
+    <section class="panel"><h2>Counted <span>exactly, every melody the rules allow</span></h2><dl class="counts" id="counts"></dl></section>
+  </div>
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>The melody <span id="sheet-sub">a beat a column, the strong beats shaded</span></h2>
+      <div id="sheet-wrap"><svg id="sheet" width="800" height="300"></svg></div>
+      <div id="report"></div></section>
+    <section class="panel" id="exam-panel"><h2>Imitable? <span>the melody as the dux of <code>cac imitation</code>: how many comes</span></h2>
+      <div class="toolbar"><button class="act" id="examine">try it in imitation</button></div>
+      <div id="exam"></div></section>
+  </div>
+</div>
+<section class="panel"><h2>About</h2><p class="about"><b>Study 74.</b> The <b>singer</b> (ἀοιδός) reads the text before
+  singing it: its <b>syllables</b> (a diphthong one nucleus unless a diaeresis parts it; between two vowels one consonant
+  begins the next syllable, of two the first closes the one before, a stop and a liquid may begin the next together),
+  their <b>quantity</b> — long by nature (η, ω, a diphthong, a circumflex), short (ε, ο), doubtful (α, ι, υ: the laws of
+  the accent settle some, the metre the rest), long by position before two consonants, and a long vowel before a vowel
+  shortened (epic correption) — and their <b>accent</b>. The line is <b>scanned</b> in its metre (the hexameter's
+  dactyls and spondees, with synizesis where the line needs it: Πηληϊάδεω), and the scansion is the <b>time</b>: a short
+  syllable a beat, a long one two, held over the beat (Study 41's tie), the line's last syllable to the end of its foot.
+  The melody is a voice of <code>@kairotic/rules</code> (<code>solve()</code>, counted exactly): its <b>hard rules</b>
+  are every line's (the mode's ambitus, the start, Fux's melodic intervals, a leap turned, the end on the final by
+  step), its <b>costs</b> the accent's — Greek's accent was a pitch, and the music that survives follows it: the voice
+  <b>rises to an acute</b>, the accented syllable is the <b>word's highest</b>, a <b>circumflex falls</b> on its long
+  syllable (two notes), <b>after the accent</b> the voice falls, after a grave it does not fall until the next accent —
+  weighed with <code>soft.mjs</code>'s melodic costs, the same as every engine's. <b>Strict</b> makes the peak and the
+  circumflex hard rules. <b>Imitable?</b> tries the melody as the dux of <code>cac imitation</code>: a melody sung alone
+  almost never has a strict canon, but often imitation near it. <b>In canon</b> the dux is written together with its
+  comes (canon.mjs's rules, <code>canon-2</code>): the singer chooses among the futuribles of the comes, as #192 first
+  thought it — the dux sings the text, a new syllable a new note, the comes answers a foot later. Odyssey 1.1 in strict
+  canon at the octave below has 4285 such canons; Seikilos's song, 6522. Not yet: Seikilos's own melody as a test of the
+  accent rules, the poem's text under the notes in the MEI, the harmonization as a chorale.</p></section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
+// is read first, as window.kairoticAoidos ({A: aoidos.mjs, X: export.mjs}).
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  Promise.all([import("./kairotic/aoidos.mjs"), import("./kairotic/export.mjs")]).then(function (ms) {
+    window.kairoticAoidos = { A: { ...ms[0] }, X: { ...ms[1] } };
+    try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+(ns aoidos-page (:require [clojure.string :as str]))
+
+;; Kairotic · Study 74 · aoidos: the page. The kernel reads and counts (aoidos.mjs, prosody.mjs, on @kairotic/rules);
+;; the page keeps what is asked and what was sung, draws it and plays it.
+
+(def K (.-kairoticAoidos js/window))
+(def AO (.-A K))
+(def X (.-X K))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;")))
+(defn status! [s] (set! (.-textContent ($ "status")) s))
+(defn val-of [id] (.-value ($ id)))
+
+(def TEXTS (js->clj (.-TEXTS AO) :keywordize-keys true))
+(def COUNT-MS 4000)
+
+;; what is asked, what was counted and what was sung
+(defonce S (atom {:text-id "odyssey" :made nil :sung nil :count nil}))
+
+(defn metre-of [m] (if (= m "elegiac") #js ["hexameter" "pentameter"] m))
+(defn metre-name [m] (if (sequential? m) "elegiac" m))
+
+(defn spec []
+  (let [form (val-of "form")]
+    (clj->js (cond-> {:text (val-of "text") :metre (metre-of (val-of "metre"))
+                      :key {:tonic (val-of "tonic") :mode (val-of "mode")} :strict (.-checked ($ "strict"))}
+               (= form "canon") (assoc :k (js/Number (val-of "k")) :d (js/Number (val-of "d")) :imitation (js/Number (val-of "imitation")))))))
+
+(defn canon? [] (= (val-of "form") "canon"))
+
+;; ───── reading and counting ─────
+(defn scansion! [made]
+  (let [lines (.. made -A -plan -lines)]
+    (set! (.-innerHTML ($ "scansion"))
+          (str/join (for [l lines]
+                      (str "<div class=\"ln\"><span class=\"gr\">" (esc (.-text l)) "</span>"
+                           (if (.-ok l)
+                             (str "<span class=\"sc\">" (esc (.-scansion l)) "</span>")
+                             (str "<span class=\"sc bad\">does not scan as " (esc (.-metre l)) "</span>"))
+                           "</div>"))))))
+
+(defn fmt [c] (if (nil? c) "more than can be counted here" (.toLocaleString c "en")))
+
+(defn counts! []
+  (let [{:keys [made count ms other]} @S
+        A (.-A made)]
+    (set! (.-innerHTML ($ "counts"))
+          (str "<dt>" (if (canon?) "canons" "melodies") "</dt><dd id=\"total\">" (fmt count) "</dd>"
+               "<dt>notes</dt><dd>" (.-length (.-notes A)) " (" (.. A -plan -beats) " beats)</dd>"
+               (when other (str "<dt>" (if (.-strict A) "free" "strict") "</dt><dd>" (fmt other) "</dd>"))
+               "<dt>counted in</dt><dd>" ms " ms</dd>"))))
+
+(declare sing! render!)
+
+(defn rebuild! []
+  (status! "counting…")
+  (js/setTimeout
+   (fn []
+     (try
+       (let [sp (spec)
+             ;; (alone, the melody's own solver; in canon, the two voices' — each knows the melody as .A)
+             made (if (canon?) (.canonic AO sp) (let [a (.aoidos AO sp)] (set! (.-A a) a) a))
+             t0 (js/performance.now)
+             c (.countWithin made COUNT-MS)
+             ms (js/Math.round (- (js/performance.now) t0))
+             other (when-not (canon?)
+                     (let [o (.aoidos AO (doto sp (aset "strict" (not (.-strict sp)))))] (.countWithin o 1500)))]
+         (swap! S assoc :made made :count c :ms ms :other other :sung nil)
+         (scansion! made)
+         (counts!)
+         (set! (.-innerHTML ($ "exam")) "")
+         (if (and (some? c) (zero? (js/Number c)))
+           (do (status! (or (.. made -A -error) (if (canon?) "no canon: try another distance or entry" "no melody"))) (render!))
+           (sing! :engine)))
+       (catch :default e (status! (str "Error: " (.-message e))))))
+   20))
+
+;; ───── singing: the engine (by the costs, among the melodies with a future), a uniform draw, or a search when the
+;; count is too long ─────
+(defn sing! [how]
+  (let [{:keys [made count]} @S
+        t (js/Number (val-of "temp"))
+        temp (if (js/isNaN t) 0.5 (max 0 t))
+        sung (try
+               (cond
+                 (nil? count) (.search made #js {:temp temp :ms 3000})
+                 (= how :uniform) (.sample made)
+                 :else (.engine made #js {:temp temp}))
+               (catch :default _ nil))]
+    (swap! S assoc :sung sung)
+    (status! (if sung "sung" "nothing found in time"))
+    (render!)))
+
+(defn dux-notes
+  "The melody a code a note: alone, what solve() wrote; in canon, the dux's notes struck."
+  [made sung]
+  (if (canon?) (.melody made (.-dux sung)) sung))
+
+;; ───── drawing: a beat a column, a degree a row ─────
+(defn render! []
+  (let [{:keys [made sung]} @S
+        A (.-A made)
+        N (vec (.-notes A))
+        beats (.. A -plan -beats)
+        deg (fn [c] (.deg A c))
+        U (when sung (vec (dux-notes made sung)))
+        C (when (and sung (canon?)) (vec (.-comes sung)))
+        degs (concat (when U (map deg U)) (when C (keep #(when (some? %) (deg %)) C)) [-1 8])
+        lo (apply min degs) hi (apply max degs)
+        bw (max 14 (min 34 (/ 900 (max 1 beats))))
+        X0 46 top 26 rowh 13
+        bot (+ top (* rowh (- hi lo)))
+        H (+ bot 74)
+        W (+ X0 (* bw beats) 14)
+        y (fn [d] (+ top (* rowh (- hi d))))
+        x (fn [b] (+ X0 (* bw b)))
+        rect (fn [cls b len d label]
+               (str "<rect class=\"" cls "\" x=\"" (+ (x b) 1) "\" y=\"" (- (y d) 5) "\" width=\"" (- (* bw len) 2) "\" height=\"10\" rx=\"2\"/>"
+                    (when (and label (> (* bw len) 24)) (str "<text class=\"nname\" x=\"" (+ (x b) 3) "\" y=\"" (y d) "\">" (esc label) "</text>"))))
+        svg (str
+             ;; the strong beats, the beats, the lines' ends
+             (str/join (for [n N :when (.-strong n)] (str "<rect class=\"strong\" x=\"" (x (.-at n)) "\" y=\"" (- top 10) "\" width=\"" (* bw 2) "\" height=\"" (+ (- bot top) 20) "\"/>")))
+             (str/join (for [b (range (inc beats))] (str "<line class=\"beat\" x1=\"" (x b) "\" x2=\"" (x b) "\" y1=\"" (- top 10) "\" y2=\"" (+ bot 10) "\"/>")))
+             (str/join (for [n N :when (.-lineEnd n)] (let [e (+ (.-at n) (.-beats n))] (str "<line class=\"lineend\" x1=\"" (x e) "\" x2=\"" (x e) "\" y1=\"" (- top 14) "\" y2=\"" (+ bot 56) "\"/>"))))
+             ;; the final and its octave
+             (str/join (for [d [0 7 -7] :when (<= lo d hi)] (str "<line class=\"final\" x1=\"" X0 "\" x2=\"" (x beats) "\" y1=\"" (y d) "\" y2=\"" (y d) "\"/><text class=\"lab\" x=\"4\" y=\"" (+ (y d) 3) "\">" (esc (.name A (.at (.-S A) d))) "</text>")))
+             ;; the comes, then the dux
+             (when C
+               (str/join (for [[b c] (map-indexed vector C) :when (and (some? c) (or (zero? b) (not= c (nth C (dec b)))))]
+                           (let [len (count (take-while #(= % c) (drop b C)))] (rect "comes" b len (deg c) nil)))))
+             (when U
+               (str/join (for [[i n] (map-indexed vector N)] (rect "dux" (.-at n) (.-beats n) (deg (nth U i)) (.name A (nth U i))))))
+             ;; the syllables, their accent, their quantity
+             (str/join (for [n N :when (seq (.-text n))]
+                         (let [acc (.-accent n) xb (x (.-at n))]
+                           (str "<text class=\"syl" (when (#{"acute" "circumflex"} acc) " acc") "\" x=\"" (+ xb 2) "\" y=\"" (+ bot 30) "\">" (esc (.-text n)) "</text>"
+                                "<text class=\"qty\" x=\"" (+ xb (/ (* bw (if (= (.-q n) "long") 2 1)) 2)) "\" y=\"" (+ bot 48) "\">" (if (= (.-q n) "long") "–" "⏑") "</text>"))))
+             (str "<text class=\"lab\" x=\"4\" y=\"" (+ bot 30) "\">text</text><text class=\"lab\" x=\"4\" y=\"" (+ bot 48) "\">metre</text>"))]
+    (doto ($ "sheet") (.setAttribute "width" W) (.setAttribute "height" H) (.setAttribute "viewBox" (str "0 0 " W " " H)))
+    (set! (.-innerHTML ($ "sheet")) svg)
+    (set! (.-textContent ($ "sheet-sub")) (if (canon?) "the dux (red) sings the text, the comes (blue) answers · a beat a column" "a beat a column, the strong beats shaded"))
+    (set! (.-disabled ($ "play")) (nil? sung))
+    (set! (.-disabled ($ "export")) (nil? sung))
+    (set! (.-disabled ($ "examine")) (or (nil? sung) (canon?)))
+    (set! (.-innerHTML ($ "report"))
+          (if-not U ""
+            (let [R (js->clj (.accentReport A (clj->js U))) sh (.shape A (clj->js U))
+                  part (fn [id label] (let [[k n] (get R id)] (str label " <b>" k "/" n "</b>")))
+                  why (if (canon?) (.judge made (.-dux sung) (.-comes sung)) (.judge made sung))]
+              (str (if why (str "✗ " (esc why)) "✓ every rule kept") " · "
+                   (str/join " · " [(part "acute-rise" "rises to the acute") (part "peak" "the accent the word's highest")
+                                    (part "circumflex-fall" "a circumflex falls") (part "after-accent" "falls after the accent")])
+                   " · steps " (js/Math.round (* 100 (.-steps sh))) "%<br>"
+                   (str/join " " (map (fn [n c] (str (esc (if (seq (.-text n)) (.-text n) "~")) ":" (esc (.name A c)))) N U))))))))
+
+;; ───── imitable? ─────
+(defn examine! []
+  (let [{:keys [made sung]} @S]
+    (when (and sung (not (canon?)))
+      (status! "trying it in imitation…")
+      (js/setTimeout
+       (fn []
+         (let [E (.examine AO made sung #js {:degrees #js [1 0.6 0.3] :ks #js [-7 -4 -3 7] :ds #js [2 4] :ms 600})
+               kname {-7 "an octave below" -4 "a 5th below" -3 "a 4th below" 7 "an octave above"}]
+           (set! (.-innerHTML ($ "exam"))
+                 (str "<table class=\"exam\"><tr><th>imitation</th><th>the comes</th><th>after</th><th>how many</th><th>the engine's comes</th></tr>"
+                      (str/join (for [e E]
+                                  (let [c (.-comes e)]
+                                    (str "<tr><td>" (.-imitation e) "</td><td>" (kname (.-k e)) "</td><td>" (.-d e) " beats</td>"
+                                         "<td class=\"" (if (and (some? c) (pos? (js/Number c))) "yes" "no") "\">" (if (nil? c) "too long to count" (.toLocaleString c "en")) "</td>"
+                                         "<td>" (if (.-engine e) (esc (str/join " " (map #(or % "·") (.-engine e)))) "") "</td></tr>"))))
+                      "</table>"))
+           (status! "tried")))
+       20))))
+
+;; ───── sound ─────
+(defonce ctx (atom nil))
+(defn play! []
+  (let [{:keys [made sung]} @S]
+    (when sung
+      (let [ac (or @ctx (reset! ctx (js/AudioContext.))) A (.-A made) beat 0.26 t0 (+ (.-currentTime ac) 0.1)
+            tone (fn [hz s e g0]
+                   (let [o (.createOscillator ac) g (.createGain ac)]
+                     (set! (.-type o) "triangle") (set! (.. o -frequency -value) hz)
+                     (.setValueAtTime (.-gain g) 0 s) (.linearRampToValueAtTime (.-gain g) g0 (+ s 0.02)) (.setTargetAtTime (.-gain g) 0 (- e 0.04) 0.03)
+                     (.connect (.connect o g) (.-destination ac)) (.start o s) (.stop o (+ e 0.3))))
+            N (vec (.-notes A)) U (vec (dux-notes made sung))]
+        (doseq [[i n] (map-indexed vector N)]
+          (tone (.hz A (nth U i)) (+ t0 (* beat (.-at n))) (+ t0 (* beat (+ (.-at n) (.-beats n)))) 0.12))
+        (when (canon?)
+          (let [C (vec (.-comes sung))]
+            (doseq [[b c] (map-indexed vector C) :when (and (some? c) (or (zero? b) (not= c (nth C (dec b)))))]
+              (let [len (count (take-while #(= % c) (drop b C)))]
+                (tone (.hz A c) (+ t0 (* beat b)) (+ t0 (* beat (+ b len))) 0.08)))))))))
+
+;; ───── export: the melody (and its comes) as MEI for the app; the text and the scansion in its extMeta ─────
+(defn export! []
+  (let [{:keys [made sung]} @S]
+    (when sung
+      (let [A (.-A made) N (vec (.-notes A)) U (vec (dux-notes made sung))
+            nm (fn [c] (.plain X (.name A c)))
+            dux (clj->js (map (fn [n c] {:name (nm c) :units (.-beats n)}) N U))
+            comes (when (canon?) (.fromUnits X (clj->js (map #(when (some? %) (nm %)) (.-comes sung)))))
+            m (val-of "metre")
+            first-strong (or (some #(when (.-strong %) (.-at %)) N) 0)
+            title (str (:name (get TEXTS (keyword (:text-id @S))) "a poem") " · " (if (canon?) "in canon" "sung"))
+            x (.exportMei X (clj->js {:title title :source "Kairotic Study 74 · aoidos" :key {:tonic (val-of "tonic") :mode (val-of "mode")}
+                                     :unitDen 8 :unitsPerBar (if (= m "free") 6 (if (str/starts-with? m "iambic") 6 4)) :pickup first-strong
+                                     :voices (cond-> [{:label "dux" :notes (js->clj dux :keywordize-keys true)}]
+                                               comes (conj {:label "comes" :notes (js->clj comes :keywordize-keys true)}))
+                                     :root {:study "74 · aoidos" :text (val-of "text") :metre m
+                                            :scansion (map #(.-scansion %) (.. A -plan -lines))
+                                            :syllables (map #(.-text %) N) :strict (.-strict A)}}))]
+        (.then (.offer X x) status!)))))
+
+;; ───── the controls ─────
+(defn load-text! [id]
+  (when-let [t (get TEXTS (keyword id))]
+    (set! (.-value ($ "text")) (:text t))
+    (set! (.-value ($ "metre")) (if (sequential? (:metre t)) "elegiac" (:metre t)))
+    (set! (.-value ($ "tonic")) (get-in t [:key :tonic]))
+    (set! (.-value ($ "mode")) (get-in t [:key :mode])))
+  (swap! S assoc :text-id id))
+
+(set! (.-innerHTML ($ "text-id"))
+      (str (str/join (for [[k t] TEXTS] (str "<option value=\"" (name k) "\">" (esc (:name t)) "</option>")))
+           "<option value=\"own\">your own text</option>"))
+(set! (.-value ($ "text-id")) "odyssey")
+(load-text! "odyssey")
+
+(.addEventListener ($ "text-id") "change" (fn [_] (load-text! (val-of "text-id")) (rebuild!)))
+(.addEventListener ($ "form") "change" (fn [_] (set! (.-hidden ($ "canon-opts")) (not (canon?))) (rebuild!)))
+(doseq [id ["metre" "tonic" "mode" "strict" "k" "d" "imitation"]] (.addEventListener ($ id) "change" (fn [_] (rebuild!))))
+(.addEventListener ($ "text") "input" (fn [_] (when-not (= (val-of "text-id") "own") (set! (.-value ($ "text-id")) "own") (swap! S assoc :text-id "own"))))
+(.addEventListener ($ "read") "click" (fn [_] (rebuild!)))
+(.addEventListener ($ "engine") "click" (fn [_] (sing! :engine)))
+(.addEventListener ($ "uniform") "click" (fn [_] (sing! :uniform)))
+(.addEventListener ($ "examine") "click" (fn [_] (examine!)))
+(.addEventListener ($ "play") "click" (fn [_] (play!)))
+(.addEventListener ($ "export") "click" (fn [_] (export!)))
+
+;; for the page's tests
+(set! (.-kairoticAoidosPage js/window)
+      #js {:state (fn [] (clj->js (select-keys @S [:text-id :count]))) :rebuild rebuild! :sing sing! :examine examine!
+           :set (fn [id form] (set! (.-value ($ "text-id")) id) (load-text! id) (set! (.-value ($ "form")) form) (set! (.-hidden ($ "canon-opts")) (not (canon?))) (rebuild!))})
+
+(rebuild!)
+</script>
