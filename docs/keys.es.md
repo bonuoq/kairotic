@@ -19,7 +19,8 @@ Cómo editar, seleccionar, tocar y dibujar en el patch. (Era la línea bajo la c
 - **Las cajas `tree`**: clic en una nota de la partitura para seleccionarla (↑ ↓ la mueven, una letra le da esa
   altura, Supr la vuelve silencio, Enter otra vez nota). Las fichas de su cabecera: **⇄** otra vista, **{ }** su código,
   **analysis** muestra u oculta lo que un análisis escribió en él (las cifras bajo el bajo), solo en esa caja —
-  `(show-layers :b3 :analysis)`.
+  `(show-layers :b3 :analysis)`; **lyrics**, en un árbol que canta un texto, muestra u oculta sus sílabas bajo las notas
+  (se ven hasta que la caja las oculta: `(show-layers :b3)` las oculta, `(show-layers :b3 :lyrics)` las muestra).
 
 ## Lienzo
 

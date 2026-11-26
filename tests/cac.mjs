@@ -42,7 +42,8 @@ export async function cac(page, check) {
   const fb = await cljs(page, `(let [m (mei ${out})] [(count (re-seq #"<fb>" m)) (boolean (re-find #"<f>6</f><f>4</f><f>3</f>" m))])`);
   check("... the figures under the bass in the score (figured bass, <harm><fb>): one a chord, the 6/4/3 on ②", fb === "[8 true]", fb);
   // the layers are each box's own (show-layers), in its score and its code window: hidden by default, shown by the
-  // analysis chip of its header or (show-layers :bN :analysis); another tree box keeps its own
+  // analysis chip of its header or (show-layers :bN :analysis); another tree box keeps its own (the lyrics, shown by
+  // default, its only one)
   const harms = `(some-> (get @score-cache ${out}) :node (.querySelectorAll "g.harm") .-length)`;
   const off = await until(page, harms, (x) => x === "0", 10000);
   const chip = await cljs(page, `(boolean (some (fn [[k]] (= k :analysis)) (header-chips ${out} (get-in (current) [:boxes ${out}]))))`);
@@ -55,7 +56,7 @@ export async function cac(page, check) {
   check("the layers are the box's: its score hides the figures by default, shows them with (show-layers … :analysis), hides them again",
         off === "0" && on === "8" && off2 === "0", `${off} ${on} ${off2}`);
   check("... the tree box with an analysis has an analysis chip in its header; another tree box keeps its own layers; the work's code keeps it",
-        chip === "true" && other === "#{}" && kept === "true", `${chip} ${other} ${kept}`);
+        chip === "true" && other === "#{:lyrics}" && kept === "true", `${chip} ${other} ${kept}`);
   // and back: a MEI's figured bass read into the tree's analysis layer (:fig) — by @startid (kairotic's) and by @tstamp
   // (the studies' exports, elsewhere's)
   const back = await cljs(page, `(vec (keep (fn [n] (when (and (vector? n) (= :note (first n))) (:fig (second n)))) (tree-seq vector? seq (mei/<-mei (str/replace (mei ${out}) #"<extMeta[\\s\\S]*?</extMeta>" "")))))`);
@@ -121,6 +122,26 @@ export async function cac(page, check) {
   const kp = await until(page, `(let [s (second (last-shown ${kb}))] [(:main s) (:sub s)])`, (x) => /^\["cac judge" "[✓✗]/.test(x), 20000);
   check("... with partimento-1 the same two voices are judged over their bass", /^\["cac judge" "[✓✗]/.test(kp), kp);
   await cljs(page, `(delete ${tb}) (delete ${cb}) (delete ${out}) (delete ${jb}) (delete ${kb}) (delete ${ko})`);
+
+  // the lyrics layer (#192): a tree that sings a text — its syllables drawn under its notes by Verovio, shown by default,
+  // hidden and shown again by the box (the lyrics chip, show-layers), in its score and its code window
+  const LY = `[:voice {:name "s"} [:measure {:meter [3 4]} [:note {:pitch "e4" :dur 1 :syl "Ἄν" :wordpos :i}] [:note {:pitch "f4" :dur 1}] [:note {:pitch "g4" :dur 1 :syl "δρα" :wordpos :t}]] [:measure {:meter [3 4]} [:note {:pitch "a4" :dur 3 :syl "μοι"}]]]`;
+  const lb = (await cljs(page, '(box "tree" 9400 700)')).trim();
+  await cljs(page, `(tree! ${lb} ${LY})`);
+  const syls = `(some-> (get @score-cache ${lb}) :node (.querySelectorAll "g.syl") .-length)`;
+  const lyOn = await until(page, syls, (x) => x === "3", 10000);
+  const lyMei = await cljs(page, `(let [m (mei ${lb})] [(boolean (re-find #"<verse n=\\"1\\"><syl wordpos=\\"i\\" con=\\"d\\">Ἄν</syl></verse>" m)) (count (re-seq #"<verse " m))])`);
+  const lyChip = await cljs(page, `(boolean (some (fn [[k _ _ on]] (and (= k :lyrics) on)) (header-chips ${lb} (get-in (current) [:boxes ${lb}]))))`);
+  await cljs(page, `(show-layers ${lb})`);
+  const lyOff = await until(page, syls, (x) => x === "0", 10000);
+  const lyCode = await cljs(page, `(str/includes? (editor-source (get-in (current) [:boxes ${lb}])) ":syl")`);
+  await cljs(page, `(show-layers ${lb} :lyrics)`);
+  const lyBack = await until(page, syls, (x) => x === "3", 10000);
+  check("the lyrics layer: a tree's syllables under its notes (Verovio's <syl>), written as <verse><syl> with the hyphen derived; shown by default, with a chip",
+        lyOn === "3" && lyMei === "[true 3]" && lyChip === "true", `${lyOn} ${lyMei} ${lyChip}`);
+  check("... hidden by the box (show-layers, its own) in its score and its code window, shown again",
+        lyOff === "0" && lyCode === "false" && lyBack === "3", `${lyOff} ${lyCode} ${lyBack}`);
+  await cljs(page, `(delete ${lb})`);
 
   // cac imitation: a melody in, the comes found against it (canon.mjs, imitation-2): Frère Jacques, a canon at the
   // octave below two bars later — exactly one, the round itself; two units later, none

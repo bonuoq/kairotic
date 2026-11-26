@@ -66,6 +66,32 @@
     (t/is "not MEI says so" (try (mei/<-mei "<html>") false (catch :default _ true)))
     (t/is "MusicXML is told from MEI" (and (mei/musicxml? "<?xml version=\"1.0\"?><score-partwise version=\"4.0\">") (not (mei/musicxml? foreign))))
 
+    ;; the lyrics layer (#192): a tree's syllables in MEI's notation and back
+    (let [tr [:voice {:name "s" :key 0}
+              [:measure {:meter [3 4]} [:note {:pitch "e4" :dur 1 :syl "Ἄν" :wordpos :i}] [:note {:pitch "f4" :dur 1}]
+               [:note {:pitch "g4" :dur 1 :syl "δρα" :wordpos :t :tie true}]]
+              [:measure {:meter [3 4]} [:note {:pitch "g4" :dur 1}] [:note {:pitch "a4" :dur 1 :syl "μοι" :verses [{:syl "τί" :wordpos :i}]}]
+               [:note {:pitch "b4" :dur 1 :syl "ς" :con :u}]]]
+          m (mei/->mei tr)]
+      (t/is "lyrics: each syllable as <verse><syl> on the note that begins it, the hyphen derived (con=\"d\")"
+            (and (re-find #"<verse n=\"1\"><syl wordpos=\"i\" con=\"d\">Ἄν</syl></verse>" m) (re-find #"<syl wordpos=\"t\">δρα</syl>" m)))
+      (t/eq "… the melisma's note, and the piece a tie goes on into, sing it on: four syllables in verse 1" (count (re-seq #"<verse n=\"1\">" m)) 4)
+      (t/is "… a second verse on the same note (n=\"2\"), its hyphen derived; a :con that is not the derived one written as it is"
+            (and (re-find #"<syl>μοι</syl></verse><verse n=\"2\"><syl wordpos=\"i\" con=\"d\">τί</syl>" m) (re-find #"<syl con=\"u\">ς</syl>" m)))
+      (t/is "… nothing of them in the extMeta: they are in the notation" (not (re-find #":syl|:verses|:wordpos" m)))
+      (t/is "… read back, the same tree (the derived :con left out again), and the same MEI" (and (= tr (mei/<-mei m)) (= m (mei/->mei (mei/<-mei m)))))
+      (t/eq "… hidden (the lyrics layer), the tree has no text and its MEI no <verse>" (count (re-seq #"<verse" (mei/->mei (mt/without-layers tr #{:lyrics})))) 0))
+    (let [doc (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?><mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\"><meiHead/>"
+                   "<music><body><mdiv><score><scoreDef key.sig=\"0\" meter.count=\"4\" meter.unit=\"4\"><staffGrp><staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\"/></staffGrp></scoreDef>"
+                   "<section><measure n=\"1\"><staff n=\"1\"><layer n=\"1\">"
+                   "<note xml:id=\"a\" pname=\"c\" oct=\"5\" dur=\"4\"><verse n=\"1\"><syl wordpos=\"i\" con=\"d\">Μοῦ</syl></verse></note>"
+                   "<note xml:id=\"b\" pname=\"d\" oct=\"5\" dur=\"4\"><verse n=\"1\"><syl wordpos=\"t\" con=\"u\">σα</syl></verse><verse n=\"2\" type=\"cents\"><syl>+14</syl></verse></note>"
+                   "<note xml:id=\"c\" pname=\"e\" oct=\"5\" dur=\"2\"/></layer></staff></measure></section></score></mdiv></body></music></mei>")]
+      (t/eq "a MEI from elsewhere (as the studies export it): its syllables read into the lyrics layer, the derived :con left out, a line of cents not taken for a verse"
+            (mei/<-mei doc)
+            [:voice {:name "voice 1" :key 0}
+             [:measure {:meter [4 4]} [:note {:pitch "c5" :dur 1 :syl "Μοῦ" :wordpos :i}] [:note {:pitch "d5" :dur 1 :syl "σα" :wordpos :t}] [:note {:pitch "e5" :dur 2}]]]))
+
     ;; quantize keeps where the notes really sounded
     (let [free [:voice {:tempo 120} [:par [:note {:pitch "c4" :at 0 :dur 1.1}] [:note {:pitch "e4" :at 1.05 :dur 0.9}] [:note {:pitch "g4" :at 3 :dur 2}]]]
           q (qz/quantize-tree free {:meter [4 4]})

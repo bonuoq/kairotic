@@ -202,7 +202,8 @@
 
 (defn hidden-layers
   "The layers of a tree box the code window hides: :performance (real times, wires, takes, the continuum: discussion
-   #308) and :analysis (figures, degrees, keys, why: #323), each but the ones the box shows (show-layers), its own."
+   #308), :analysis (figures, degrees, keys, why: #323) and :lyrics (the text it sings, #192), each but the ones the box
+   shows (show-layers), its own."
   [b]
   (set (remove (shown-layers b) mt/layer-names)))
 
@@ -217,7 +218,7 @@
 
 (defn toggle-code-layer!
   "A layer of the tree box open in the code window shown or hidden — in its code window and its score, the box's own
-   (show-layers): :performance (Performed) or :analysis (Analysis)."
+   (show-layers): :performance (Performed), :analysis (Analysis) or :lyrics (Lyrics)."
   [layer]
   (when-let [{:keys [id path dirty]} @code-win]
     (if dirty
@@ -250,7 +251,9 @@
                  (str "<button class=\"act cw-pv\" data-cw=\"performance\" aria-pressed=\"" (contains? (shown-layers b) :performance)
                       "\" title=\"Show also what belongs to performing it: real times, wires, takes, the continuum\">Performed</button>"
                       "<button class=\"act cw-pv\" data-cw=\"analysis\" aria-pressed=\"" (contains? (shown-layers b) :analysis)
-                      "\" title=\"Show also what an analysis wrote on it: figures, degrees, keys, why a rule is broken\">Analysis</button>"))
+                      "\" title=\"Show also what an analysis wrote on it: figures, degrees, keys, why a rule is broken\">Analysis</button>"
+                      "<button class=\"act cw-pv\" data-cw=\"lyrics\" aria-pressed=\"" (contains? (shown-layers b) :lyrics)
+                      "\" title=\"Show the text it sings: the syllables on its notes (:syl, :wordpos, :con, :verses)\">Lyrics</button>"))
                (when (= lang "faust")
                  (str "<button class=\"act cw-pv\" data-cw=\"patch\" aria-pressed=\"" (not (false? (:faust-patch? @ui)))
                       "\" title=\"Show or hide its patch: the code as Faust's own elements\">Patch</button>"
@@ -281,6 +284,7 @@
           "recipe" (toggle-recipe!)
           "performance" (toggle-code-layer! :performance)
           "analysis" (toggle-code-layer! :analysis)
+          "lyrics" (toggle-code-layer! :lyrics)
           "find" (find-recipe-click!)
           "play-target" (play-recipe! :target)
           "play-found" (play-recipe! :found)

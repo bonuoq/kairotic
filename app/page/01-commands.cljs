@@ -580,17 +580,29 @@
         (dispatch! [:view id (when-not (= k (first vs)) k)]))
       (or k (first vs)))))
 
-(defn shown-layers "The layers a box shows of its tree: a set of :analysis, :performance (none by default)." [b] (set (:shows b)))
+(defn- layers-toggled
+  "A set of layers turned from their default: what a box keeps as its :shows (the layers shown by default — the
+   lyrics, mt/shown-by-default — are kept when hidden, the others when shown), and back."
+  [s]
+  (into (set (remove mt/shown-by-default s)) (remove (set s) mt/shown-by-default)))
+
+(defn shown-layers
+  "The layers a box shows of its tree: a set of :analysis, :performance, :lyrics (by default only the lyrics: its
+   :shows keeps the layers it turned from their default)."
+  [b]
+  (layers-toggled (set (:shows b))))
 
 (defn show-layers
   "The layers a tree box shows of its tree, in its score and its code window: (show-layers :b3 :analysis) its
    analysis (the figures under the bass, degrees, keys, why a rule is broken), :performance what belongs to playing it
-   (real times, wires, takes); (show-layers :b3) none. Each box its own, kept in the work."
+   (real times, wires, takes), :lyrics the text its voices sing (shown until a box hides it); (show-layers :b3) none.
+   Each box its own, kept in the work."
   [id & ks]
   (let [b (need-box id) ks (vec (sort (distinct ks)))]
     (when-not (= "tree" (klass (:text b))) (fail (str id " is not a tree box: only a tree has layers to show")))
-    (when-let [bad (seq (remove #{:analysis :performance} ks))] (fail (str "A tree's layers are :analysis and :performance, not " (str/join " " (map pr-str bad)))))
-    (when-not (= (set ks) (shown-layers b)) (dispatch! [:shows id (when (seq ks) ks)]))
+    (when-let [bad (seq (remove #{:analysis :performance :lyrics} ks))] (fail (str "A tree's layers are :analysis, :performance and :lyrics, not " (str/join " " (map pr-str bad)))))
+    (when-not (= (set ks) (shown-layers b))
+      (let [kept (layers-toggled (set ks))] (dispatch! [:shows id (when (seq kept) (vec (sort kept)))])))
     (set ks)))
 
 ;; musical trees (Study 19): mt/… are the functions on trees (mt/transpose, mt/events, mt/pp …)
@@ -1134,7 +1146,7 @@
                       (let [sh (filter (fn [id] (seq (get-in p [:boxes id :shows]))) ids)]
                         (when (seq sh)
                           (concat ["" ";; layers shown"]
-                                  (for [id sh] (str "(show-layers " id " " (str/join " " (map pr-str (get-in p [:boxes id :shows]))) ")")))))
+                                  (for [id sh] (str "(show-layers " id (apply str (map #(str " " (pr-str %)) (sort (shown-layers (get-in p [:boxes id]))))) ")")))))
                       ;; the `patch @name` boxes pinned to a point of their line (#117)
                       (let [pn (filter (fn [id] (:pin (get-in p [:boxes id]))) ids)]
                         (when (seq pn)

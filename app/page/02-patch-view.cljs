@@ -221,9 +221,10 @@
         ;; a tree shown live, or the tree a buffer was kept from while it is unchanged (its recipe)
         lt (if tree-box? (own-tree id b) (or (live-tree id) (kept-tree b)))
         ;; the layers a box does not show (show-layers, its own) its score hides too: the analysis, its figures under the
-        ;; bass (discussion #323)
-        an (contains? (shown-layers b) :analysis)
-        lt (if (and lt (not an) (mt/has-layer? lt :analysis)) (mt/without-layers lt #{:analysis}) lt)
+        ;; bass (discussion #323); the lyrics, the text under the notes (#192)
+        an (shown-layers b)
+        hide (when lt (set (filter #(and (not (an %)) (mt/has-layer? lt %)) [:analysis :lyrics])))
+        lt (if (seq hide) (mt/without-layers lt hide) lt)
         sw (first (box-size id b))
         d [d0 lt sw an] c (get @score-cache id)]
     (cond
@@ -676,14 +677,19 @@
   [id b]
   (let [nv (next-view b)
         t (when (= "tree" (klass (:text b))) (mtb/tree-of (:data b)))
-        an (contains? (shown-layers b) :analysis)]
+        an (contains? (shown-layers b) :analysis)
+        ly (contains? (shown-layers b) :lyrics)]
     (cond-> []
       (and (comp/source-of b) (not= :code (display-of b)))
       (conj [:code "{ }" (str "Its data as text, in the code window: (source " id ")")])
       nv (conj [:view (str "⇄ " (name nv)) (str "Show it as " (name nv) ": (view " id " " nv ")")])
       ;; a tree with an analysis (figures under its bass…): this box shows it, or not — its own (show-layers)
       (and t (mt/has-layer? t :analysis))
-      (conj [:analysis "analysis" (str (if an "Hide" "Show") " its analysis (the figures under the bass, degrees, keys) in its score and its code: (show-layers " id (when-not an " :analysis") ")") an]))))
+      (conj [:analysis "analysis" (str (if an "Hide" "Show") " its analysis (the figures under the bass, degrees, keys) in its score and its code: (show-layers " id (when-not an " :analysis") ")") an])
+      ;; a tree that sings a text: its syllables under the notes, shown or hidden — its own
+      (and t (mt/has-layer? t :lyrics))
+      (conj [:lyrics "lyrics" (str (if ly "Hide" "Show") " the text it sings (its syllables under the notes) in its score and its code: (show-layers " id
+                                   (apply str (map #(str " " (pr-str %)) (sort (if ly (disj (shown-layers b) :lyrics) (conj (shown-layers b) :lyrics))))) ")") ly]))))
 
 (def chip-ch 6.4)   ; width of a character of a chip (10.5px mono)
 

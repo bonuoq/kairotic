@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Lyrics in the app's MEI ↔ tree, drawn under the notes** (#192). `mt/->mei` writes a tree's syllables (the lyrics
+  layer: `:syl`, `:wordpos`, `:con`, `:verses`) as MEI's `<verse n><syl wordpos con>` on the note that begins each one
+  — the hyphen and the extender derived where `:con` is not written (`mt/with-cons`) — so Verovio engraves them under
+  the notes in a tree box's score. `kairotic.mei/<-mei` reads them back (a MEI from elsewhere, or a study's export, too;
+  the line of cents is not taken for a verse), leaving out each `:con` that is the derived one
+  (`mt/without-derived-cons`): tree → MEI → tree gives the tree, MEI → tree → MEI the MEI; the extMeta keeps nothing of
+  them. The layer is shown by default: a box hides it with its **lyrics** chip, the code window's **Lyrics** button or
+  `(show-layers :b3)` (and shows it with `(show-layers :b3 :lyrics)`); its `:shows` keeps the layers turned from their
+  default, so works saved before keep their layers.
 - **Study 75 · voice** (discussion #467): a sung line made of parts that can be read, instead of a neural voice.
   Syllables (Seikilos's song, or an MEI from Study 74 with its text under the notes) → phonemes in a chosen
   pronunciation (Attic or Koine) → each phoneme's targets from a table shown and edited as EDN → curves every 5 ms
@@ -17,8 +26,7 @@
 - **The lyrics layer, and the cents on a line of their own** (#192). `kairotic.mt`'s schema has a layer `:lyrics`:
   the text a voice sings, on its notes — `:syl` (the syllable a note begins, verse 1; the notes after it with none
   sing it on), `:wordpos` (`:i`, `:m`, `:t`), `:con` (where not derived), `:verses` (the verses after the first) —
-  read by `(schema :tree)`, `without-layers` and `with-layers` like the others (`mt/lyrics-keys`); the code window
-  and `:shows` do not hide it yet. A note's cents off its name, which `mt/->mei` writes under it, are now a verse of
+  read by `(schema :tree)`, `without-layers` and `with-layers` like the others (`mt/lyrics-keys`). A note's cents off its name, which `mt/->mei` writes under it, are now a verse of
   their own (`type="cents"`) on the line after its staff's lyrics, so they will not take a verse of the text.
 - **Study 71's deck with a sixth variant, `no-keys`** (#477: the bridges without tonicizations, every unit in the
   chorale's key): 240 trials, `bach-4` filling 40 of 53 `no-keys` phrases tried (the others 40 of 42–45). The deck
