@@ -128,6 +128,10 @@
   as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
   circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
 
+- **Only the code** (discussion #407): ‹ under the splitter's › (or Ctrl/⌘+Shift+L) hides the patch, and the Live view
+  takes the whole work; the patch is not drawn meanwhile (the sound, the history and the REPL go on) and › brings it
+  back. **⇆ work** shows beside the code the work as data as it is now. The views of the Code tab are now **Work**,
+  **Live** and **EDN** (were Calls, Live, Data). `(code-only true)`, `(live-mirror true)`.
 - **The Code tab writes the work as data** (discussion #407, plan step 5): **[:=> data]** writes the boxes and lines
   as chains of box vectors — `(=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]})`, each box by its id
   the first time, `[:to o box i]` for other ports, the boxes alone after — and `(places {…})`; applied, the same work.

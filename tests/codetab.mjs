@@ -392,4 +392,30 @@ export async function codetab(page, check) {
         && (await page.evaluate(() => document.getElementById("code-asdata").getAttribute("aria-pressed"))) === "true");
   await cljs(page, "(code-style! :chains)");
 
+
+  // the patch hidden: the code takes the whole work (#407)
+  check("the views are Work, Live and EDN", (await page.evaluate(() => ["view-calls", "view-live", "view-data"].map((id) => document.getElementById(id).textContent).join(" "))) === "Work Live EDN");
+  await cljs(page, "(code-only true)");
+  check("code-only: the patch hidden, the Live view as wide as the work",
+        (await page.evaluate(() => [document.querySelector(".work").classList.contains("patch-off"), document.getElementById("view-live").getAttribute("aria-pressed"), document.getElementById("patch-toggle").getAttribute("aria-pressed")].join(" "))) === "true true true");
+  const hb = (await cljs(page, '(box "mtof" 9800 2300)')).trim();
+  await page.waitForTimeout(150);
+  const drawn = () => page.evaluate((id) => !!document.querySelector(`#scene g.box[data-box="${id}"]`), hb.slice(1));
+  check("... meanwhile the patch is not drawn, the history goes on", (await drawn()) === false && (await cljs(page, `(contains? (:boxes (current)) ${hb})`)) === "true");
+  await cljs(page, "(live-mirror true)");
+  await page.waitForTimeout(100);
+  const mirror = () => page.evaluate(() => { const m = document.getElementById("live-mirror"); return m.hidden ? null : m.textContent; });
+  check("... ⇆ work: the work as data beside the code", ((await mirror()) || "").includes(`{${hb} [:mtof]}`), (await mirror() || "").slice(0, 200));
+  await cljs(page, `(text! ${hb} "ftom")`);
+  await page.waitForTimeout(150);
+  check("... and as it changes", ((await mirror()) || "").includes(`{${hb} [:ftom]}`));
+  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "L", ctrlKey: true, shiftKey: true, bubbles: true })));
+  await page.waitForTimeout(150);
+  check("Ctrl/⌘+Shift+L: the patch back, drawn again", (await cljs(page, "(code-only)")) === "false" && (await drawn()) === true
+        && (await page.evaluate(() => document.querySelector(".work").classList.contains("patch-off"))) === false);
+  await cljs(page, "(code-only true)");
+  await cljs(page, "(side-panel false)");
+  check("hiding the panel with the patch hidden brings the patch back", (await cljs(page, "(code-only)")) === "false");
+  await cljs(page, `(side-panel true) (live-mirror false) (show-code-view! :calls) (delete ${hb})`);
+
 }

@@ -123,13 +123,19 @@ solo desde la pestaña, forma a forma:
 Si la pestaña no tenía nada más sin aplicar, después se escribe de nuevo desde el patch (la caja nueva como
 `(box :b7 "osc~ 220" …)`), con el cursor en su línea.
 
-**Live**, la tercera vista de la pestaña Code (junto a Calls y Data), es una página tuya que la obra nunca
+**Live**, la tercera vista de la pestaña Code (junto a Work y EDN), es una página tuya que la obra nunca
 reescribe: los nombres (`def`) y las cadenas quedan como los escribiste. ⇧+Intro evalúa la forma del cursor,
 **Ctrl/⌘+Intro el bloque** donde está (las líneas entre dos vacías), y lo evaluado parpadea. Se guarda en este
 navegador para cada obra, no en la obra. **`to`** hace una caja debajo de otra, alimentada por ella, como un evento,
 y devuelve su id, así que una cadena se lee como va la señal —`(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`,
 toda la cadena un evento si se evalúa desde la pestaña; `(to a o "texto" i)` elige la salida y la entrada, y
 `(to :b3 :b9)` solo conecta.
+
+**Solo el código.** ‹ bajo el › del separador (o **Ctrl/⌘+Mayús+L**, también desde dentro de la vista Live) oculta
+el patch: el código ocupa toda la obra, en la vista Live, con una letra mayor para una pantalla proyectada. Mientras
+tanto el patch no se dibuja —el sonido, la historia y la REPL siguen— y › lo devuelve, dibujado como está ahora.
+**⇆ work** muestra junto a tu código la obra como datos tal como está: lo que existe y suena, el patch sin el patch.
+`(code-only true)`, `(live-mirror true)`.
 
 **Nombres.** `(box :osc "osc~ 220")` hace una caja que el código llama `:osc`: evaluada otra vez es la misma caja, con
 su texto cambiado si ha cambiado (`(box :osc "osc~ 330")` cambia el oscilador, como un evento, y el sonido sigue), así
@@ -645,14 +651,14 @@ también lo muestra. Arrastra la barra entre el patch y el panel para darle otro
 la barra lo oculta o lo muestra. Este navegador recuerda cómo lo dejaste. Desde la REPL:
 `(side-panel false)`, `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
 
-- **Code** — la obra como **Calls** (llamadas: `box`, `connect`, …), editable: Ctrl/⌘+Enter las aplica (solo
+- **Code** — la obra (**Work**) como código (`box`, `connect`, …, o como datos), editable: Ctrl/⌘+Enter las aplica (solo
   lo que cambian, como un evento), ⇧+Intro evalúa sola la forma del cursor. Las líneas que se siguen se
   escriben como cadenas —`(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, con los nombres en lugar de
   los ids—: la misma obra, en el mismo orden, leída como va la señal; con **-> chains** apagado se escribe un `connect`
   por línea (este navegador recuerda la elección). **[:=> data]** escribe las cajas y las líneas como un patch como
   datos —`(=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]})`, cada caja por su id la primera vez y
   `:b1` después, `[:to o caja i]` donde lo dicen los puertos, y `(places {:b1 [40 30] …})` para dónde están—: aplicado,
-  la misma obra; un texto que ningún vector vuelve a escribir exacto queda como string, `["osc~ 220.0"]`. Los enlaces, el portapapeles y Claude usan siempre la escritura plana. **Data** muestra la misma obra como datos (EDN): el estado que produce la
+  la misma obra; un texto que ningún vector vuelve a escribir exacto queda como string, `["osc~ 220.0"]`. Los enlaces, el portapapeles y Claude usan siempre la escritura plana. **EDN** muestra la misma obra como datos (EDN): el estado que produce la
   historia, todas las claves de todas las cajas, en solo lectura, para inspeccionarlo (plegado y búsqueda
   con Ctrl/⌘+F). Lo que hayas editado sin ejecutar sigue en las llamadas mientras miras los datos.
 - **Components** — las clases que conoce esta obra. Las cajas que las definen (`component`) se guardan

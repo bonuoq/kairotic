@@ -402,8 +402,8 @@ El buffer son datos sin más, pero **junto a él la caja guarda la receta que lo
 - `(remake! :bN)` vuelve a escribir en el buffer el árbol de la receta (un evento), sin los cambios.
 - `:calls` es el código de las cajas de antes, así que la receta sigue diciendo cómo se hizo aunque esas
   cajas se borren o cambien: pégalo en la pestaña Code para volver a construirlas.
-- El código de la obra (Calls) escribe cada receta como `(recipe :b5 {…})`, después de los datos; la
-  vista Data la muestra como `:recipe`, junto a `:data`.
+- El código de la obra (Work) escribe cada receta como `(recipe :b5 {…})`, después de los datos; la
+  vista EDN la muestra como `:recipe`, junto a `:data`.
 
 ## Historia
 
