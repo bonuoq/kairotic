@@ -444,8 +444,8 @@ tooltips tell it, and the REPL reads it as data (discussion #382).
 - Claude, in the Claude tab and in an agent box, reads the history the same way: its `work_history` tool gives the last
   transactions, or a box's facts, from the value the history had when the request began.
 - `(schema)` — what the attributes of a tree and the events of the history are, as data: `(schema :tree)`, each
-  attribute with its layer (`:performance`, `:analysis`; none for what is written), which the layers, the code
-  window and the lenses (#380) read; `(schema :events)`, each event with what it changes.
+  attribute with its layer (`:performance`, `:analysis`, `:lyrics` — the text a voice sings: `:syl`, `:wordpos`,
+  `:con`, `:verses`; none for what is written), which the layers, the code window and the lenses (#380) read; `(schema :events)`, each event with what it changes.
 
 Events made before this have no transaction: they say who made them (their segment's), not when or from where.
 

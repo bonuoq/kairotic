@@ -27,6 +27,9 @@
 ;; tied in the score); :grace true is a grace note before the next one (it takes no time in its container).
 ;; A :voice with :staff "name" is written as a layer of that staff (voices that share it, layers 1, 2 …).
 ;; A :voice with :clef "G", "F", "G8" (the tenor's treble clef an octave down), "C3" or "C4" sets its staff's clef.
+;; A note may carry the text it sings (the lyrics layer, #192): :syl the syllable it begins, :wordpos :i :m :t (its place
+;; in its word), :con (:d, :u, where not derived), :verses [{:syl …} …] the verses after the first; the notes after it
+;; with no :syl sing it on (a melisma), and the piece a tie goes on into never has one.
 ;; A note without :dur lasts as long as the previous one of its container (1 at first). :defs (a map
 ;; of fragments) can sit in the attributes of any container; [:use {:ref k}] takes them from there.
 
@@ -1164,6 +1167,14 @@
         staves (vec (distinct (map voice-staff voice-order)))
         layers-of (into {} (for [sk staves] [sk (filterv (fn [k] (= sk (voice-staff k))) voice-order)]))
         staff-of (zipmap staves (map inc (range)))
+        ;; the lines of text under each staff: as many as the most verses a note of its voices sings (the lyrics
+        ;; layer: :syl verse 1, :verses the ones after it); the cents a note is off its name go on the line after them
+        verse-count (fn [a] (max (if (some? (:syl a)) 1 0) (if (seq (:verses a)) (inc (count (:verses a))) 0)))
+        staff-lines (into {} (for [sk staves]
+                               [(staff-of sk)
+                                (reduce max 0 (for [vs sec-voices [k v] vs :when (= sk (voice-staff k))
+                                                    n (tree-seq node? kids v) :when (= :note (tag n))]
+                                                (verse-count (attrs n))))]))
         cur-layer (atom 1)
         bar-list (vec (mapcat (fn [si vs]
                                 (let [mss (mapv (fn [[k v]] [k (measures-of v)]) vs)
@@ -1282,7 +1293,7 @@
                           durattr
                           (when arts (str " artic=\"" (str/join " " arts) "\""))
                           (if (>= (js/Math.abs dv) 5)
-                            (str "><verse n=\"1\"><syl>" (when (pos? dv) "+") dv "</syl></verse></note>")
+                            (str "><verse n=\"" (inc (get staff-lines staff 0)) "\" type=\"cents\"><syl>" (when (pos? dv) "+") dv "</syl></verse></note>")
                             "/>"))))
         marks! (fn [a staff bar id]
                  (when-let [d (:dyn a)] (ctl! bar (str "<dynam staff=\"" staff "\" startid=\"#" id "\">" (esc-xml d) "</dynam>")))
@@ -1692,7 +1703,11 @@
    :why         {:layer :analysis :doc "why a rule was broken there"}
    :harmony     {:layer :analysis :doc "a chord's name"}
    :motif       {:layer :analysis :doc "the motive a note begins (a, b…; kairotic.motif)"}
-   :motif.rel   {:layer :analysis :doc "how that return of the motive is related to its statement"}})
+   :motif.rel   {:layer :analysis :doc "how that return of the motive is related to its statement"}
+   :syl         {:layer :lyrics :doc "the syllable a note begins (verse 1); the notes after it with none sing it on: a melisma"}
+   :wordpos     {:layer :lyrics :doc "the syllable's place in its word: :i, :m, :t (none: a word of one syllable)"}
+   :con         {:layer :lyrics :doc "what follows the syllable, where it is not the one derived: :d a hyphen, :u an extender (MEI's @con)"}
+   :verses      {:layer :lyrics :doc "the syllables of the verses after the first: [{:syl :wordpos :con} …] (a strophe's antistrophe)"}})
 
 (defn layer-of
   "The layer attribute k of a node tagged tg belongs to (:performance, :analysis…), or nil: what is written."
@@ -1748,6 +1763,9 @@
 ;; keys (as with-performative does for one layer).
 
 (def analysis-keys (layer-keys :analysis))
+;; the text a voice sings (discussion #192): data on the notes, as the analysis is; not yet among layer-names (the code
+;; window and the boxes' :shows do not hide it), so for now it is always shown
+(def lyrics-keys (layer-keys :lyrics))
 (def layer-names [:performance :analysis])
 
 (defn- layer-key? [layer tg k] (= layer (layer-of tg k)))

@@ -58,6 +58,18 @@
       (t/eq "a pitch edited in the written tree: the note keeps its figures and its real time"
             (get-in (mt/with-layers full (assoc-in w [3 1 :pitch] "g3") #{:analysis :performance}) [3 1]) {:pitch "g3" :dur 2 :fig "6/5" :tstamp.real 2.1})
       (t/eq "… written back unchanged, the whole tree" (mt/with-layers full w #{:analysis :performance}) full))
+    ;; the lyrics layer (#192): the text a voice sings, on its notes; hidden and kept like the others
+    (let [full [:voice {:name "s"} [:note {:pitch "e4" :dur 1 :syl "Ἄν" :wordpos :i :verses [{:syl "τί" :wordpos :i}]}]
+                [:note {:pitch "f4" :dur 1 :fig "6"}] [:note {:pitch "g4" :dur 2 :syl "δρα" :wordpos :t :con :u}]]
+          w (mt/without-layers full #{:lyrics})]
+      (t/is "the lyrics layer: :syl :wordpos :con :verses, its own (not the analysis, not the performance)"
+            (and (= mt/lyrics-keys #{:syl :wordpos :con :verses}) (= :lyrics (mt/layer-of :note :syl)) (not (some mt/analysis-keys mt/lyrics-keys))
+                 (not (some mt/performative-keys mt/lyrics-keys))))
+      (t/eq "… hidden: the notes without their text, the analysis stays" w [:voice {:name "s"} [:note {:pitch "e4" :dur 1}] [:note {:pitch "f4" :dur 1 :fig "6"}] [:note {:pitch "g4" :dur 2}]])
+      (t/is "… which the tree held" (and (mt/has-layer? full :lyrics) (not (mt/has-layer? w :lyrics))))
+      (t/eq "… a pitch edited without it: the note keeps its syllable" (get-in (mt/with-layers full (assoc-in w [2 1 :pitch] "d4") #{:lyrics}) [2 1])
+            {:pitch "d4" :dur 1 :syl "Ἄν" :wordpos :i :verses [{:syl "τί" :wordpos :i}]})
+      (t/eq "… written back unchanged, the whole tree" (mt/with-layers full w #{:lyrics}) full))
     (let [m [:voice {:name "m"} [:measure {:meter [4 4]} "c4/1 d4/.5 e4 g4/1 e4 f4/.5 e4 d4/2"]]]
       (t/eq "a canon lasts until its comes ends (a sequence lasts until a child placed :at ends)" (mt/duration (mt/canon 2 7 m)) 9)
       (t/eq "… and mt play loops it there, after its last silence" (:len (mtb/play-schedule (mt/canon 2 7 m) 1)) 9))
@@ -166,7 +178,15 @@
       (t/eq "a dotted half rest in 4/4 is a half and a quarter" (ms [4 4] [1 2 3] 0 3 true) [2 1])
       (t/eq "a dotted half in 6/8" (ms [6 8] [1.5] 0 3) [3]))
     (t/is "a rest that fills its bar is a bar rest"
-          (str/includes? (:mei (mt/->mei [:voice [:measure {:meter [3 4]} [:rest {:dur 3}]]] "r-")) "<mRest"))))
+          (str/includes? (:mei (mt/->mei [:voice [:measure {:meter [3 4]} [:rest {:dur 3}]]] "r-")) "<mRest"))
+    ;; a note's cents off its name under it, as a verse of its own (type="cents"), on the line after its staff's lyrics
+    (let [micro (fn [tree] (:mei (mt/->mei tree "c-")))
+          plain [:voice [:measure {:meter [2 4]} [:note {:pitch "c4" :cents 14 :dur 1}] [:note {:pitch "d4" :dur 1}]]]
+          sung [:voice [:measure {:meter [2 4]} [:note {:pitch "c4" :cents 14 :dur 1 :syl "a"}] [:note {:pitch "d4" :dur 1 :syl "b" :verses [{:syl "x"}]}]]]]
+      (t/is "the cents a note is off its name: a verse of type \"cents\", the first line where its staff sings nothing"
+            (re-find #"<verse n=\"1\" type=\"cents\"><syl>\+14</syl></verse>" (micro plain)))
+      (t/is "… after the lyrics where its staff sings two verses: line 3"
+            (re-find #"<verse n=\"3\" type=\"cents\"><syl>\+14</syl></verse>" (micro sung))))))
 
 (t/run! "mt and the heads' words"
   (fn []

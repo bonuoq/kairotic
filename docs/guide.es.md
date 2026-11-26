@@ -462,8 +462,8 @@ los tooltips de la historia, y la REPL lo lee como datos (discusión #382).
 - Claude, en la pestaña Claude y en una caja agent, lee la historia igual: su herramienta `work_history` da las últimas
   transacciones, o los hechos de una caja, del valor que tenía la historia cuando empezó la petición.
 - `(schema)` — qué son los atributos de un árbol y los eventos de la historia, como datos: `(schema :tree)`, cada
-  atributo con su capa (`:performance`, `:analysis`; ninguna para lo escrito), que leen las capas, la ventana de
-  código y las lentes (#380); `(schema :events)`, cada evento con lo que cambia.
+  atributo con su capa (`:performance`, `:analysis`, `:lyrics` — el texto que canta una voz: `:syl`, `:wordpos`,
+  `:con`, `:verses`; ninguna para lo escrito), que leen las capas, la ventana de código y las lentes (#380); `(schema :events)`, cada evento con lo que cambia.
 
 Los eventos hechos antes de esto no tienen transacción: dicen quién los hizo (los de su segmento), no cuándo ni de
 dónde.
