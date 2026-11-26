@@ -11,6 +11,22 @@
   `tools/continuo.mjs`): the soprano over the bass (`BACH_OUTER_VERTICAL`), their moves together (`BACH_OUTER_PAIR`), the
   chord over each degree of the bass in the key the quarter is in (`BACH_DEGREE_CHORD`, major and minor), the cadences
   (`BACH_CADENCES`). `@kairotic/cac` 0.16.12 (its pin).
+- **A bass under Bach's soprano: the engine of Study 76 · continuo** (#353). Study 63's `under.mjs`: the bridge of the
+  outer voices with the soprano given at every quarter — each quarter's state (local key, bass note, chord over it),
+  drawn exactly (backward messages) — `bassUnder({soprano, key, strong, fermata, costs, weights, variant})` →
+  `{bass, figures, chords, keys}` a quarter, and `underBridge(…).logProb(bass)`, the probability of a given bass, every
+  chord and key under it summed. Hard: the soprano a chord tone, the bass in its range and below it, no tritone, 7th
+  or augmented 2nd leaps nor wider than the octave, no parallel or direct 5ths and octaves between the outer voices.
+  Soft, −log of how often Bach does it (`under-tables.mjs`, counted by `tools/under-tables.mjs` in each quarter's own
+  key, the chorales numbered a multiple of 5 left out — the chorale thread's tables replace them through `costs`):
+  the chord over its bass degree by mode, the soprano over the bass, their relative motion, the bass's move, held on
+  strong or weak beats, the cadence's bass and chord, the key it begins in; the functions in the local keys; the
+  local keys moving as Bach's (`KEY_MOVES`); the economy of the bass's figures. Variants `all`, `no-functions`,
+  `no-keys`, `no-economy`. `figureText` writes the figures against the key signature (♯, ♭, ♮; not yet Bach's
+  abbreviations). `tools/under-measure.mjs`, on 150 held-out phrases: Bach's bass note for note 21.7% (its pitch class
+  36.5%), Bach's bass 2.39 bits a note under the model (no-keys 2.85); figures 5/3 61.5% (Bach 54.4), 6/3 15.9 (23.1),
+  7 8.4 (5.1), 6/5 7.4 (5.1); held 7.7% (9.9), steps 30.2% (35.6), leaps 62.1% (54.5); ⑤–① ends 54.7% (57.3; no-keys
+  38.0).
 - **Lyrics in the app's MEI ↔ tree, drawn under the notes** (#192). `mt/->mei` writes a tree's syllables (the lyrics
   layer: `:syl`, `:wordpos`, `:con`, `:verses`) as MEI's `<verse n><syl wordpos con>` on the note that begins each one
   — the hyphen and the extender derived where `:con` is not written (`mt/with-cons`) — so Verovio engraves them under
