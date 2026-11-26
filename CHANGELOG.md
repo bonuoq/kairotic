@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Chords that sing a syllable, and chords through the MEI and back** (#192, #217). A chord sings its syllable as a
+  note does: on its attributes (`[:chord {:dur 1 :syl "Ἄν" :wordpos :i} …]`), written as the `<verse>` of the
+  `<chord>` (not of one of its notes) and read back from it — or from one of its notes, in a MEI from elsewhere. A
+  melisma goes on over chords too (the next chord struck with no syllable, a tied chord's piece no new one), so the
+  extender is derived before them. Tested: a chord tied across the bar line, with and without text, tree → MEI → tree
+  and MEI → tree → MEI (there was no test of chords through the MEI before). **Fixed:** a chord read from a MEI came
+  back with no notes (each note was read as a layer, its children: none); now its notes, their `<accid>`s too.
 - **Bach's dissonant quarters, read** (Study 76, for the bass engine of #487). `@kairotic/rules` 0.24.0's `continuo.mjs`:
   `dissonanceOf(phrase, t)` reads a quarter that is no chord as a chord and the one voice not of it, by how that voice
   moves (`motionOf`: a suspension, up or down, a note held over a moving bass, a passing or neighbour note, an
