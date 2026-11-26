@@ -1147,11 +1147,11 @@
             t names)))
 
 ;; ───────── lyrics: the text a voice sings (discussion #192) ─────────
-;; A syllable is on the note that begins it (:syl, :wordpos, :con; the verses after the first in :verses); the notes
-;; after it with none sing it on (a melisma). Its :con is derived where it is not written: :d (a hyphen) after a word's
+;; A syllable is on the note (or the chord: the chord sings it, not one of its notes) that begins it (:syl, :wordpos,
+;; :con; the verses after the first in :verses); the notes and chords after it with none sing it on (a melisma). Its :con is derived where it is not written: :d (a hyphen) after a word's
 ;; first or middle syllable, :u (an extender) after its last one, or a word of one, when the next note struck sings it
-;; on (a note, not a rest, with no syllable of that verse; the piece a tie goes on into and a grace note are no new
-;; note). A canonical tree writes :con only where it is not the derived one.
+;; on (a note or a chord, not a rest, with no syllable of that verse; the piece a tie goes on into and a grace note are
+;; no new note). A canonical tree writes :con only where it is not the derived one.
 
 (defn syllables-of
   "The syllables a note's attributes begin, a verse each: [verse-1 verse-2 …], nil where a verse has none here."
@@ -1159,6 +1159,17 @@
   (let [v1 (when (some? (:syl a)) (select-keys a [:syl :wordpos :con]))
         vs (into [v1] (:verses a))]
     (loop [vs vs] (if (and (seq vs) (nil? (peek vs))) (recur (pop vs)) vs))))
+
+(defn lyrics-xml
+  "A note's or a chord's syllables as MEI's <verse n><syl wordpos con>, verse by verse."
+  [a]
+  (apply str (map-indexed (fn [k x]
+                            (when x
+                              (str "<verse n=\"" (inc k) "\"><syl"
+                                   (when-let [w (:wordpos x)] (str " wordpos=\"" (name w) "\""))
+                                   (when-let [c (:con x)] (str " con=\"" (name c) "\""))
+                                   ">" (esc-xml (:syl x)) "</syl></verse>")))
+                          (syllables-of a))))
 
 (defn- leaf-paths
   "The paths of the leaves of a tree that take time (notes, rests, chords), in order."
@@ -1173,7 +1184,7 @@
 (defn- derived-con [syl nxt k]
   (let [wp (some-> (:wordpos syl) name)]
     (cond (#{"i" "m"} wp) :d
-          (and nxt (= :note (tag nxt)) (nil? (get (syllables-of (attrs nxt)) k))) :u)))
+          (and nxt (#{:note :chord} (tag nxt)) (nil? (get (syllables-of (attrs nxt)) k))) :u)))
 
 (defn- map-cons
   "Each syllable of each voice of t through (f syllable derived-con)."
@@ -1185,14 +1196,20 @@
                       struck (loop [i 0 prev-tie false out []]
                                (if (= i (count leaves))
                                  out
-                                 (let [n (nth leaves i) a (attrs n)]
+                                 (let [n (nth leaves i) a (attrs n)
+                                       sounds? (#{:note :chord} (tag n))
+                                       ;; (a chord goes on into the next when it is tied, or all its notes are)
+                                       tie? (boolean (and sounds? (or (:tie a)
+                                                                      (and (= :chord (tag n))
+                                                                           (let [ms (filter #(and (node? %) (= :note (tag %))) (kids n))]
+                                                                             (and (seq ms) (every? #(:tie (attrs %)) ms)))))))]
                                    (cond (:grace a) (recur (inc i) prev-tie out)
-                                         (and prev-tie (= :note (tag n))) (recur (inc i) (boolean (:tie a)) out)
-                                         :else (recur (inc i) (and (= :note (tag n)) (boolean (:tie a))) (conj out i))))))
+                                         (and prev-tie sounds?) (recur (inc i) tie? out)
+                                         :else (recur (inc i) tie? (conj out i))))))
                       next-of (into {} (map vector struck (concat (rest struck) [nil])))]
                   (reduce (fn [v i]
                             (let [n (nth leaves i) a (attrs n) ss (syllables-of a)]
-                              (if (or (not= :note (tag n)) (empty? (remove nil? ss)))
+                              (if (or (not (#{:note :chord} (tag n))) (empty? (remove nil? ss)))
                                 v
                                 (let [nxt (some->> (get next-of i) (nth leaves))
                                       ss (vec (map-indexed (fn [k x] (when x (f x (derived-con x nxt k)))) ss))
@@ -1243,7 +1260,7 @@
         staff-lines (into {} (for [sk staves]
                                [(staff-of sk)
                                 (reduce max 0 (for [vs sec-voices [k v] vs :when (= sk (voice-staff k))
-                                                    n (tree-seq node? kids v) :when (= :note (tag n))]
+                                                    n (tree-seq node? kids v) :when (#{:note :chord} (tag n))]
                                                 (verse-count (attrs n))))]))
         cur-layer (atom 1)
         bar-list (vec (mapcat (fn [si vs]
@@ -1363,14 +1380,7 @@
                           durattr
                           (when arts (str " artic=\"" (str/join " " arts) "\""))
                           (let [;; its syllables (the lyrics layer), on its first piece only; then its cents, on the line after them
-                                lyr (when art?
-                                      (apply str (map-indexed (fn [k x]
-                                                                (when x
-                                                                  (str "<verse n=\"" (inc k) "\"><syl"
-                                                                       (when-let [w (:wordpos x)] (str " wordpos=\"" (name w) "\""))
-                                                                       (when-let [c (:con x)] (str " con=\"" (name c) "\""))
-                                                                       ">" (esc-xml (:syl x)) "</syl></verse>")))
-                                                              (syllables-of a))))
+                                lyr (when art? (lyrics-xml a))
                                 cts (when (>= (js/Math.abs dv) 5)
                                       (str "<verse n=\"" (inc (get staff-lines staff 0)) "\" type=\"cents\"><syl>" (when (pos? dv) "+") dv "</syl></verse>"))
                                 inner (str lyr cts)]
@@ -1478,6 +1488,8 @@
                                                                    (when (and first? arts) (str " artic=\"" (str/join " " arts) "\"")))
                                                                  ">"
                                                                  (apply str (map (fn [n id] (note-xml (attrs n) staff pabs id "" first? (meta n))) ns ids))
+                                                                 ;; the syllable the chord sings, on its first piece
+                                                                 (when first? (lyrics-xml a))
                                                                  "</chord>")
                                                             ids]))]
                                     (when (and first? (seq ids)) (marks! a staff b (first ids)))
@@ -1784,6 +1796,7 @@
    :harmony     {:layer :analysis :doc "a chord's name"}
    :motif       {:layer :analysis :doc "the motive a note begins (a, b…; kairotic.motif)"}
    :motif.rel   {:layer :analysis :doc "how that return of the motive is related to its statement"}
+   :compression {:layer :analysis :doc "how much of the tree its own formulas say, in bits (kairotic.compress)"}
    :syl         {:layer :lyrics :doc "the syllable a note begins (verse 1); the notes after it with none sing it on: a melisma"}
    :wordpos     {:layer :lyrics :doc "the syllable's place in its word: :i, :m, :t (none: a word of one syllable)"}
    :con         {:layer :lyrics :doc "what follows the syllable, where it is not the one derived: :d a hyphen, :u an extender (MEI's @con)"}

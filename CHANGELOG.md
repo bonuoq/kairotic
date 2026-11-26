@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos: the Delphic paean of Athenaios in the corpus** (#192). `corpus.mjs` reads DAGM no. 20 as the
+  edition transcribes it, a note as its pitch, checked against the stone's signs: 16 fragments, 273 notes, the
+  melismas the stone writes as a doubled vowel; `runsOf` gives each fragment alone and `aoidos({open})` leaves a
+  fragment's start and end free. The hard rules refuse 28 notes (22 the chromatic genus); the Greek style, learned from
+  Mesomedes alone, makes the paean's notes more likely (the cheapest 144 → 187 of 317 times). Only the melodies and the
+  readings are kept, with their references.
+- **Chords that sing a syllable, and chords through the MEI and back** (#192, #217). A chord sings its syllable as a
+  note does: on its attributes (`[:chord {:dur 1 :syl "Ἄν" :wordpos :i} …]`), written as the `<verse>` of the
+  `<chord>` (not of one of its notes) and read back from it — or from one of its notes, in a MEI from elsewhere. A
+  melisma goes on over chords too (the next chord struck with no syllable, a tied chord's piece no new one), so the
+  extender is derived before them. Tested: a chord tied across the bar line, with and without text, tree → MEI → tree
+  and MEI → tree → MEI (there was no test of chords through the MEI before). **Fixed:** a chord read from a MEI came
+  back with no notes (each note was read as a layer, its children: none); now its notes, their `<accid>`s too.
 - **Bach's dissonant quarters, read** (Study 76, for the bass engine of #487). `@kairotic/rules` 0.24.0's `continuo.mjs`:
   `dissonanceOf(phrase, t)` reads a quarter that is no chord as a chord and the one voice not of it, by how that voice
   moves (`motionOf`: a suspension, up or down, a note held over a moving bass, a passing or neighbour note, an
@@ -41,6 +54,13 @@
   36.5%), Bach's bass 2.39 bits a note under the model (no-keys 2.85); figures 5/3 61.5% (Bach 54.4), 6/3 15.9 (23.1),
   7 8.4 (5.1), 6/5 7.4 (5.1); held 7.7% (9.9), steps 30.2% (35.6), leaps 62.1% (54.5); ⑤–① ends 54.7% (57.3; no-keys
   38.0).
+- **The motive layer, step 3: compression in the core.** `kairotic.compress` is Study 66's shortest description of a piece
+  (figures, motifs and repeats as rules, minimum description length, always written out again the same notes), and
+  `kairotic.bits` the measure of `@kairotic/rules`' `bits.mjs`, so that a description is counted in bits as a listener
+  hears it (`code-length`). Describing a tree (`:describe true`, `motif/annotate`) now writes on its root, in the
+  analysis layer, `:compression {:bits :raw :ratio :rules}`: how much of what is written its own formulas say — a
+  diagnosis, not a preference. Bach's C major prelude: its five-note broken chord used in 32 bars, 16 % of the bits;
+  folk melodies 65 to 98 %. Tests: Study 66's, ported (`tests/cljs/compress.cljs`).
 - **Lyrics in the app's MEI ↔ tree, drawn under the notes** (#192). `mt/->mei` writes a tree's syllables (the lyrics
   layer: `:syl`, `:wordpos`, `:con`, `:verses`) as MEI's `<verse n><syl wordpos con>` on the note that begins each one
   — the hyphen and the extender derived where `:con` is not written (`mt/with-cons`) — so Verovio engraves them under
@@ -137,6 +157,9 @@
   the first time, `[:to o box i]` for other ports, the boxes alone after — and `(places {…})`; applied, the same work.
   A box's text a vector would not write again exactly stays a string. Applying code builds each chain or voices value
   it gives (plain: no records of what live code made); `(code-style! :data)`.
+- **Faust as data: names, feedback, voices** (discussions #407, #115): in `[:faust- …]`, `{:lfo [:os.osc 5]}` defines
+  `lfo` once and `:lfo` is it after; `[:rec a b]` is `a ~ b`; a first map `{:nvoices 8 :effect …}` makes it polyphonic,
+  with `:freq`, `:gain` and `:gate` each voice's own and `:effect` applied to their sum — played by a `player`.
 - **Patterns as data** (discussion #407): a box that keeps a source takes it as its last argument — a map for a `pbind`
   (`[:pbind 7 {:degree [0 2 4] :dur #pat/euclid [3 8]}]`), a string for a code box —, written only if it changed; the
   `#pat/…` generators are read in live code as tagged literals, printed as written; a `player` takes a nested pattern

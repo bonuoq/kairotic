@@ -195,8 +195,21 @@
                                    :grace (some? (at x "grace")) :tie-out (contains? ties id) :tie-in (contains? tied-into id)}
                             (verses-of x) (assoc :lyr (verses-of x)))])
                 "chord" (let [ns (filter #(= "note" (lname %)) (el-kids x))
-                              kids (vec (mapcat #(layer-segs (doto (.cloneNode %) (.setAttribute "dur" (or (at x "dur") "4"))) scale mem) ns))]
-                          [{:kind :chord :ids [(at x "xml:id")] :dur (beats-of x scale) :kids kids}])
+                              ;; each note read as the only child of a layer (layer-segs reads an element's children):
+                              ;; a whole copy (its <accid>s), with the chord's duration, without its <verse>s (the
+                              ;; syllable is the chord's)
+                              kids (vec (mapcat (fn [n]
+                                                  (let [c (.cloneNode n true)
+                                                        w (.createElementNS (.-ownerDocument x) mei-ns "layer")]
+                                                    (doseq [v (filter #(= "verse" (lname %)) (el-kids c))] (.removeChild c v))
+                                                    (.setAttribute c "dur" (or (at x "dur") "4"))
+                                                    (when-let [d (at x "dots")] (.setAttribute c "dots" d))
+                                                    (.appendChild w c)
+                                                    (layer-segs w scale mem)))
+                                                ns))]
+                          ;; the syllable the chord sings: its own <verse>, or one of its notes' (a MEI from elsewhere)
+                          [(cond-> {:kind :chord :ids [(at x "xml:id")] :dur (beats-of x scale) :kids kids}
+                             (or (verses-of x) (some verses-of ns)) (assoc :lyr (or (verses-of x) (some verses-of ns))))])
                 "rest" [{:kind :rest :ids [(at x "xml:id")] :dur (beats-of x scale)}]
                 ("mRest" "mSpace") [{:kind :rest :ids [(at x "xml:id")] :dur :bar}]
                 "space" [{:kind :rest :ids [(at x "xml:id")] :dur (beats-of x scale)}]
@@ -270,7 +283,11 @@
                                  (:tie-out s) (assoc :tie true)
                                  f (assoc :fig f))]
                {:written (:name s) :mei-id (first (:ids s))})
-       :chord (into [:chord (cond-> {:dur (:dur s)} f (assoc :fig f))] (map (fn [k] (let [[t a] (seg->node figs k)] [t (dissoc a :dur)])) (:kids s)))
+       :chord (into [:chord (cond-> {:dur (:dur s)}
+                              f (assoc :fig f)
+                              (first (:lyr s)) (merge (first (:lyr s)))
+                              (seq (rest (:lyr s))) (assoc :verses (vec (rest (:lyr s)))))]
+                    (map (fn [k] (let [[t a] (seg->node figs k)] [t (dissoc a :dur)])) (:kids s)))
        :tuplet (into [:tuplet {:ratio (:ratio s)}] (map #(seg->node figs %) (:kids s)))))))
 
 (def ^:private eps 1e-6)
@@ -385,7 +402,7 @@
                 (voice (first vkeys))
                 (into [(or (:root-tag ext) :par) (or (:root ext) {})] (map voice vkeys)))
             ;; (a syllable's :con only where it is not the one derived: the canonical tree)
-            t (if (some #(and (vector? %) (= :note (first %)) (mt/syllables-of (second %)) (seq (mt/syllables-of (second %))))
+            t (if (some #(and (vector? %) (#{:note :chord} (first %)) (map? (second %)) (seq (mt/syllables-of (second %))))
                         (tree-seq vector? seq t))
                 (mt/without-derived-cons t)
                 t)

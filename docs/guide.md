@@ -199,6 +199,20 @@ Faust code as it is, and an argument can be a signal itself, as the vibrato abov
 a control: `[:freq 440]` to the box sets it. Evaluated again, the box's code is written only if it changed (and
 compiled again). `(faust-code …)` gives the code, and the box's window shows it as a patch of Faust's elements too.
 
+Names work as in the patch: `{:lfo [:os.osc 5]}` defines `lfo = os.osc(5);` once, and `:lfo` is it again after —
+a signal used in two places. `[:rec a b]` is Faust's `a ~ b`, a feedback loop: `[:rec [:+] [:* 0.99]]`. A first map
+of options makes the box polyphonic: `{:nvoices 8}` declares the voices, and `:freq`, `:gain` and `:gate` are each
+voice's own (the sliders and button Faust's allocator sets note by note); `:effect` is applied once to their sum. With a
+`player`, which leaves the Hz and the voice ids together, a pattern plays it:
+
+```clojure
+(=> [:loadbang] [:msg :start]
+    [:player 120 [:pbind 7 'loop {:degree #pat/shuffle [0 2 4 7] :dur [0.5 0.5 1]}]]
+    [:faust- {:nvoices 8 :effect [:ef.echo 1 0.33 0.45]}
+             [:os.sawtooth :freq] [:* :gain] [:* [:en.adsr 0.01 0.2 0.6 0.4 :gate]] [:* 0.1]]
+    [:_ :_] [:dac- 1 2])
+```
+
 **Patterns as data.** A box that keeps a source takes it as its last argument: a map for a `pbind` (and for any box
 of a package not loaded yet), a string for a code box (`script`, `pattern`). The generators of `@kairotic/patterns`
 are written in live code as in a pbind — `#pat/shuffle`, `#pat/euclid`, `#pat/necklace`… —, read as values that print

@@ -92,6 +92,38 @@
             [:voice {:name "voice 1" :key 0}
              [:measure {:meter [4 4]} [:note {:pitch "c5" :dur 1 :syl "Μοῦ" :wordpos :i}] [:note {:pitch "d5" :dur 1 :syl "σα" :wordpos :t}] [:note {:pitch "e5" :dur 2}]]]))
 
+    ;; chords through the MEI and back: without text, and singing a syllable (the chord's, #192)
+    (let [ch [:voice {:name "c" :key 0}
+              [:measure {:meter [3 4]} [:note {:pitch "c4" :dur 1}] [:chord {:dur 1} [:note {:pitch "e4"}] [:note {:pitch "g4"}]]
+               [:chord {:dur 1} [:note {:pitch "f4" :tie true}] [:note {:pitch "a4" :tie true}]]]
+              [:measure {:meter [3 4]} [:chord {:dur 1} [:note {:pitch "f4"}] [:note {:pitch "a4"}]] [:note {:pitch "g4" :dur 2}]]]
+          m (mei/->mei ch)]
+      (t/is "chords: written as <chord>, one tied across the bar line" (and (= 3 (count (re-seq #"<chord " m))) (re-find #"<tie " m)))
+      (t/is "… read back, the same tree, and the same MEI" (and (= ch (mei/<-mei m)) (= m (mei/->mei (mei/<-mei m))))))
+    (let [ch [:voice {:name "c" :key 0}
+              [:measure {:meter [3 4]} [:note {:pitch "c4" :dur 1 :syl "Ἄν" :wordpos :i}]
+               [:chord {:dur 1 :syl "δρα" :wordpos :t} [:note {:pitch "e4"}] [:note {:pitch "g4"}]]
+               [:chord {:dur 1} [:note {:pitch "f4" :tie true}] [:note {:pitch "a4" :tie true}]]]
+              [:measure {:meter [3 4]} [:chord {:dur 1} [:note {:pitch "f4"}] [:note {:pitch "a4"}]]
+               [:chord {:dur 2 :syl "μοι" :verses [{:syl "τί"}]} [:note {:pitch "e4"}] [:note {:pitch "c5"}]]]]
+          m (mei/->mei ch)]
+      (t/is "a chord that sings a syllable: <verse> in the <chord>, not in its notes; the hyphen before it"
+            (and (re-find #"<syl wordpos=\"i\" con=\"d\">Ἄν</syl>" m)
+                 (re-find #"<chord [^>]*>(<note [^>]*/>)+<verse n=\"1\"><syl wordpos=\"t\" con=\"u\">δρα</syl></verse></chord>" m)))
+      (t/is "… a melisma onto chords (the next chord, then its tied piece, sing it on): the extender derived (con=\"u\")"
+            (= 3 (count (re-seq #"<verse n=\"1\">" m))))
+      (t/is "… two verses on a chord" (re-find #"<syl>μοι</syl></verse><verse n=\"2\"><syl>τί</syl></verse></chord>" m))
+      (t/is "… read back, the same tree (the derived :con left out), and the same MEI" (and (= ch (mei/<-mei m)) (= m (mei/->mei (mei/<-mei m))))))
+    (let [doc (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?><mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\"><meiHead/>"
+                   "<music><body><mdiv><score><scoreDef key.sig=\"0\" meter.count=\"2\" meter.unit=\"4\"><staffGrp><staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\"/></staffGrp></scoreDef>"
+                   "<section><measure n=\"1\"><staff n=\"1\"><layer n=\"1\">"
+                   "<chord xml:id=\"k\" dur=\"4\"><note xml:id=\"k1\" pname=\"c\" oct=\"4\"><verse n=\"1\"><syl>la</syl></verse></note><note xml:id=\"k2\" pname=\"e\" oct=\"4\"/></chord>"
+                   "<note xml:id=\"z\" pname=\"d\" oct=\"4\" dur=\"4\"/></layer></staff></measure></section></score></mdiv></body></music></mei>")]
+      (t/eq "a MEI from elsewhere with the syllable on a note of a chord: the chord sings it"
+            (mei/<-mei doc)
+            [:voice {:name "voice 1" :key 0}
+             [:measure {:meter [2 4]} [:chord {:dur 1 :syl "la"} [:note {:pitch "c4"}] [:note {:pitch "e4"}]] [:note {:pitch "d4" :dur 1}]]]))
+
     ;; quantize keeps where the notes really sounded
     (let [free [:voice {:tempo 120} [:par [:note {:pitch "c4" :at 0 :dur 1.1}] [:note {:pitch "e4" :at 1.05 :dur 0.9}] [:note {:pitch "g4" :at 3 :dur 2}]]]
           q (qz/quantize-tree free {:meter [4 4]})

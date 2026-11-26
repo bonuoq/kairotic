@@ -282,7 +282,11 @@ vueltas la división de su media (`:rep` 1 de los pesos para otra, `:repeat` la 
 notas que vuelven repetidos, transportados, en secuencia o invertidos, en la misma voz o en otra) se escriben en sus
 notas, en la capa de análisis: `:motif` la etiqueta en la primera nota de cada exposición y cada vuelta (`"a"`,
 `"b"`…), `:motif.rel` cómo se relaciona una vuelta con la exposición (`"in sequence, a step higher"`). La partitura
-los dibuja sobre las notas. `(quant :b1 {:describe true})` lo guarda para un freqt; `(motif/annotate tree)` describe
+los dibuja sobre las notas. En la raíz, `:compression` dice cuánto del árbol dicen sus propias fórmulas
+(`kairotic.compress`, la descripción más corta del Estudio 66, contada en bits tal como los oye quien escucha, como cuenta
+`bits.mjs` de `@kairotic/rules`): `{:bits :raw :ratio :rules [{:id "F1" :kind :figure :uses 32 :what "broken chord over 5
+notes: …"}]}` — el preludio en do mayor de Bach se dice en un 16 % de los bits de sus notas, una melodía popular en un 65 a
+98 %. `(quant :b1 {:describe true})` lo guarda para un freqt; `(motif/annotate tree)` describe
 cualquier árbol, y `api/motif-annotate` hace lo mismo para un componente.
 
 **Elegir otra división.** El cuantizador adivina; cuando se equivoca, **alt+clic en una nota** de la partitura:

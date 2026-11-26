@@ -205,6 +205,20 @@ señal constante, un string es código Faust tal cual, y un argumento puede ser 
 caja solo se escribe si ha cambiado (y se vuelve a compilar). `(faust-code …)` da el código, y la ventana de la caja lo
 muestra también como un patch de los elementos de Faust.
 
+Los nombres funcionan como en el patch: `{:lfo [:os.osc 5]}` define `lfo = os.osc(5);` una vez, y `:lfo` vuelve a ser
+esa señal después —una señal usada en dos sitios—. `[:rec a b]` es el `a ~ b` de Faust, un bucle de realimentación:
+`[:rec [:+] [:* 0.99]]`. Un primer mapa de opciones hace la caja polifónica: `{:nvoices 8}` declara las voces, y
+`:freq`, `:gain` y `:gate` son los de cada voz (los sliders y el botón que el asignador de Faust fija nota a nota);
+`:effect` se aplica una vez a su suma. Con un `player`, que deja juntos los Hz y los ids de voz, la toca un patrón:
+
+```clojure
+(=> [:loadbang] [:msg :start]
+    [:player 120 [:pbind 7 'loop {:degree #pat/shuffle [0 2 4 7] :dur [0.5 0.5 1]}]]
+    [:faust- {:nvoices 8 :effect [:ef.echo 1 0.33 0.45]}
+             [:os.sawtooth :freq] [:* :gain] [:* [:en.adsr 0.01 0.2 0.6 0.4 :gate]] [:* 0.1]]
+    [:_ :_] [:dac- 1 2])
+```
+
 **Patrones como datos.** Una caja que guarda una fuente la toma como su último argumento: un mapa para un `pbind` (y
 para cualquier caja de un paquete que aún no se ha cargado), un string para una caja de código (`script`, `pattern`).
 Los generadores de `@kairotic/patterns` se escriben en el código en vivo como en un pbind —`#pat/shuffle`, `#pat/euclid`,
