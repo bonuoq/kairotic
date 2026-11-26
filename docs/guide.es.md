@@ -199,6 +199,20 @@ señal constante, un string es código Faust tal cual, y un argumento puede ser 
 caja solo se escribe si ha cambiado (y se vuelve a compilar). `(faust-code …)` da el código, y la ventana de la caja lo
 muestra también como un patch de los elementos de Faust.
 
+Los nombres funcionan como en el patch: `{:lfo [:os.osc 5]}` define `lfo = os.osc(5);` una vez, y `:lfo` vuelve a ser
+esa señal después —una señal usada en dos sitios—. `[:rec a b]` es el `a ~ b` de Faust, un bucle de realimentación:
+`[:rec [:+] [:* 0.99]]`. Un primer mapa de opciones hace la caja polifónica: `{:nvoices 8}` declara las voces, y
+`:freq`, `:gain` y `:gate` son los de cada voz (los sliders y el botón que el asignador de Faust fija nota a nota);
+`:effect` se aplica una vez a su suma. Con un `player`, que deja juntos los Hz y los ids de voz, la toca un patrón:
+
+```clojure
+(=> [:loadbang] [:msg :start]
+    [:player 120 [:pbind 7 'loop {:degree #pat/shuffle [0 2 4 7] :dur [0.5 0.5 1]}]]
+    [:faust- {:nvoices 8 :effect [:ef.echo 1 0.33 0.45]}
+             [:os.sawtooth :freq] [:* :gain] [:* [:en.adsr 0.01 0.2 0.6 0.4 :gate]] [:* 0.1]]
+    [:_ :_] [:dac- 1 2])
+```
+
 **Patrones como datos.** Una caja que guarda una fuente la toma como su último argumento: un mapa para un `pbind` (y
 para cualquier caja de un paquete que aún no se ha cargado), un string para una caja de código (`script`, `pattern`).
 Los generadores de `@kairotic/patterns` se escriben en el código en vivo como en un pbind —`#pat/shuffle`, `#pat/euclid`,
@@ -649,7 +663,10 @@ la barra lo oculta o lo muestra. Este navegador recuerda cómo lo dejaste. Desde
   lo que cambian, como un evento), ⇧+Intro evalúa sola la forma del cursor. Las líneas que se siguen se
   escriben como cadenas —`(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, con los nombres en lugar de
   los ids—: la misma obra, en el mismo orden, leída como va la señal; con **-> chains** apagado se escribe un `connect`
-  por línea (este navegador recuerda la elección). Los enlaces, el portapapeles y Claude usan siempre la escritura plana. **Data** muestra la misma obra como datos (EDN): el estado que produce la
+  por línea (este navegador recuerda la elección). **[:=> data]** escribe las cajas y las líneas como un patch como
+  datos —`(=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]})`, cada caja por su id la primera vez y
+  `:b1` después, `[:to o caja i]` donde lo dicen los puertos, y `(places {:b1 [40 30] …})` para dónde están—: aplicado,
+  la misma obra; un texto que ningún vector vuelve a escribir exacto queda como string, `["osc~ 220.0"]`. Los enlaces, el portapapeles y Claude usan siempre la escritura plana. **Data** muestra la misma obra como datos (EDN): el estado que produce la
   historia, todas las claves de todas las cajas, en solo lectura, para inspeccionarlo (plegado y búsqueda
   con Ctrl/⌘+F). Lo que hayas editado sin ejecutar sigue en las llamadas mientras miras los datos.
 - **Components** — las clases que conoce esta obra. Las cajas que las definen (`component`) se guardan

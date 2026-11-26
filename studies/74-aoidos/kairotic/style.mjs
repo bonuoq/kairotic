@@ -21,11 +21,11 @@ export function codesOfMidi(key, midis, shift = 0) {
 
 /**
  * A piece of the corpus as the engine sees it: spec {piece (corpus.mjs's readPiece), key, shift (semitones to the
- * key's register), chromatic, ambitus, maxRepeat, weights} → {A (aoidos on the piece's own time), U (its melody, a
+ * key's register), chromatic, ambitus, maxRepeat, weights} (a fragment's start and end not the melody's) → {A (aoidos on the piece's own time), U (its melody, a
  * code a beat), skip (beats not to learn from: supplied notes, unreliable lines)}.
  */
 export function asEngine({ piece, key, shift = 0, chromatic = [], ambitus, maxRepeat = 8, turnAfterSmallLeap = true, weights }) {
-  const A = aoidos({ time: piece.syllables, key, chromatic, ambitus, maxRepeat, turnAfterSmallLeap, weights });
+  const A = aoidos({ time: piece.syllables, key, chromatic, ambitus, maxRepeat, turnAfterSmallLeap, weights, open: !!piece.fragments });
   const U = codesOfMidi(key, piece.beats, shift);
   const skip = [];
   piece.syllables.forEach((y) => { let t = y.at; for (const x of y.notes) { for (let j = 0; j < x.chronoi; j++) skip[t + j] = !y.reliable || x.supplied; t += x.chronoi; } });

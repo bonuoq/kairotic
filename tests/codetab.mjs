@@ -349,6 +349,21 @@ export async function codetab(page, check) {
   check("... a number changed: the code only", (await fsrc()).includes("os.osc(330)") && Number(await cljs(page, nEv)) === k6 + 2, await cljs(page, lastEv));
   await cljs(page, `(stop) (apply delete ${fz} (keep (fn [[a _ b _]] (when (= a ${fz}) b)) (:lines (current))))`);
 
+  // Faust: names, a feedback loop, polyphony
+  const has1 = (code, sub) => cljs(page, `(str/includes? (faust-code ${code}) ${JSON.stringify(sub)})`);
+  const named = "[:os.osc (=> {:lfo [:os.osc 5]} [:* 10] [:+ 440])] [:* :lfo]";
+  check("Faust names: {:lfo …} defines lfo once, :lfo is it after",
+        (await has1(named, "\nlfo = os.osc(5);\nprocess = os.osc((lfo : *(10) : +(440))) : *(lfo);")) === "true");
+  check("... two definitions of one name: said", (await cljs(page, '(try (faust-code {:a [:os.osc 5]} {:a [:os.osc 6]}) (catch :default e (.-message e)))')).includes("Two Faust definitions of a"));
+  check("... [:rec a b] is a ~ b", (await has1("[:rec [:+] [:* 0.5]]", "process = + ~ *(0.5);")) === "true");
+  const poly = "{:nvoices 8 :effect [:ef.echo 1 0.33 0.45]} [:os.sawtooth :freq] [:* :gain] [:* [:en.adsr 0.01 0.2 0.6 0.4 :gate]]";
+  check("... polyphonic: options declared, the voice's own freq, gain and gate, an effect for all",
+        (await has1(poly, "declare options")) === "true" && (await has1(poly, "[nvoices:8]")) === "true"
+        && (await has1(poly, "\ngate = button(")) === "true" && (await has1(poly, "process = os.sawtooth(freq) : *(gain) : *(en.adsr(0.01, 0.2, 0.6, 0.4, gate));")) === "true"
+        && (await has1(poly, "\neffect = ef.echo(1, 0.33, 0.45);")) === "true");
+  check("... a voice's own defined by a name is not defined twice",
+        (await cljs(page, '(count (re-seq #"freq =" (faust-code {:nvoices 2} [:os.osc {:freq [:hslider "f" 220 20 2000 1]}])))')) === "1");
+
   // #pat/… in live code; a pbind's source written as data; a player's two outlets at once
   check("#pat/… is read in live code as a tagged literal, printed as written",
         (await cljs(page, '[(= "{:d #pat/shuffle [0 2 4]}" (pr-str {:d #pat/shuffle [0 2 4]})) (= (tagged-literal (quote pat/euclid) [3 8]) #pat/euclid [3 8])]')) === "[true true]");
@@ -374,5 +389,22 @@ export async function codetab(page, check) {
         (await txt(pl)) === '"player 120"' && (await txt(pin)) === '"pbind 3"' && (await has(`[${pl} 0 ${pz} 0]`)) === "true" && (await has(`[${pl} 1 ${pz} 1]`)) === "true",
         `${await txt(pl)} ${await txt(pin)}`);
   await cljs(page, `(stop) (delete ${pp} ${pl} ${pz} ${pin})`);
+
+
+  // the work written as data (#407, plan step 5)
+  const tdata = await cljs(page, '[(text->data "osc~ 220") (text->data "map inc") (text->data "osc~ 220.0") (text->data "msg :freq 440")]');
+  check("a box's text as a vector, exactly, or as its text",
+        (await cljs(page, `(= [(text->data "osc~ 220") (text->data "map inc") (text->data "osc~ 220.0") (text->data "msg :freq 440")] ["[:osc- 220]" "[:map 'inc]" "[\\"osc~ 220.0\\"]" "[:msg :freq 440]"])`)) === "true", tdata);
+  const small = '(box :b1 \\"osc~ 220\\" 40 30) (box :b2 \\"gain~ 0.2\\" 40 90) (box :b3 \\"dac~ 1 2\\" 40 150) (box :b4 \\"mtof\\" 200 30) (box :b5 \\"player 120\\" 300 30) (box :b6 \\"+\\" 300 90) (connect :b1 0 :b2 0) (connect :b2 0 :b3 0) (connect :b2 0 :b3 1) (connect :b5 1 :b6 1) (connect :b5 0 :b6 0)';
+  const dcode = await cljs(page, `(patch->code (build "${small}") :data)`);
+  check("the work as data: chains of boxes by their ids, [:_ :_], [:to …] where ports say, boxes alone, places",
+        ["(=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]})", "(=> {:b5 [:player 120]} [:to 1 {:b6 [:+]} 1])", "(=> :b5 [:to 0 :b6 0])", "(=> {:b4 [:mtof]})", "(places {:b1 [40 30]"].every((x) => dcode.includes(x)), dcode);
+  check("... applied, it gives the same work", (await cljs(page, `(let [p (build "${small}")] (= (patch->code p) (patch->code (build (patch->code p :data)))))`)) === "true");
+  const whole = await cljs(page, "(run-code! (patch->code (current) :data))");
+  check("... the work on screen written as data and applied: nothing changes", whole === "0", whole);
+  await cljs(page, "(code-style! :data)");
+  check("[:=> data] writes the Code tab so", (await cljs(page, '(str/starts-with? (shown-code (current)) ";; boxes and lines, as data")')) === "true"
+        && (await page.evaluate(() => document.getElementById("code-asdata").getAttribute("aria-pressed"))) === "true");
+  await cljs(page, "(code-style! :chains)");
 
 }
