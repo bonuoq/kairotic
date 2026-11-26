@@ -128,6 +128,11 @@
   as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
   circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
 
+- **The Code tab writes the work as data** (discussion #407, plan step 5): **[:=> data]** writes the boxes and lines
+  as chains of box vectors — `(=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]})`, each box by its id
+  the first time, `[:to o box i]` for other ports, the boxes alone after — and `(places {…})`; applied, the same work.
+  A box's text a vector would not write again exactly stays a string. Applying code builds each chain or voices value
+  it gives (plain: no records of what live code made); `(code-style! :data)`.
 - **Patterns as data** (discussion #407): a box that keeps a source takes it as its last argument — a map for a `pbind`
   (`[:pbind 7 {:degree [0 2 4] :dur #pat/euclid [3 8]}]`), a string for a code box —, written only if it changed; the
   `#pat/…` generators are read in live code as tagged literals, printed as written; a `player` takes a nested pattern

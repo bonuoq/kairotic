@@ -308,14 +308,21 @@
 (.addEventListener ($ "view-data") "click" (fn [_] (show-code-view! :data)))
 (.addEventListener ($ "view-live") "click" (fn [_] (show-code-view! :live)))
 
+(defn code-style!
+  "How the Code tab writes the work (#407): :chains (->, doto, to), :flat (a connect each) or :data (chains of box
+   vectors, (=> {:b1 [:osc- 220]} …), and the places of the boxes)."
+  [k]
+  (when-not (#{:flat :chains :data} k) (fail "The Code tab writes the work :flat, as :chains or as :data"))
+  (reset! code-style k)
+  (try (.setItem js/localStorage "kairotic.code-style" (name k)) (catch :default _ nil))
+  (render-code (current))
+  k)
 (defn chains!
   "Writes the lines of the work in the Code tab as chains (true) or a connect each (false), #407."
   [on?]
-  (reset! code-style (if on? :chains :flat))
-  (try (.setItem js/localStorage "kairotic.code-style" (name @code-style)) (catch :default _ nil))
-  (render-code (current))
-  @code-style)
+  (code-style! (if on? :chains :flat)))
 (.addEventListener ($ "code-chains") "click" (fn [_] (chains! (not= :chains @code-style))))
+(.addEventListener ($ "code-asdata") "click" (fn [_] (code-style! (if (= :data @code-style) :chains :data))))
 
 ;; ───── the panel on the right (issue #40): hidden or shown, and as wide as you drag it ─────
 ;; {:open bool :w px-or-nil}: nil keeps the proportion of the page. It is a preference of this browser, kept in
