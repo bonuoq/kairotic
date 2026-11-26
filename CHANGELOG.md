@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos: the Greek pitch system** (#192). `greek.mjs`: `greekSystem({tonos, genera, synemmenon, shade})`
+  — the Immutable System in any of the fifteen tonoi, its genera in Aristoxenus's or Archytas's shade, notes named and
+  counted by their place; the Greek concords (unison, 4th, 5th, octave) and moves judged by size; the same answers as
+  `keySystem` (deg, codesIn, cents, midi, quality, melodicError…) so that aoidos can be written in it next. Tested
+  against the signs of Mesomedes (Lydian) and Seikilos (Iastian).
 - **Bach's own figures, and the chorales read as a figured bass** (Study 76 · continuo, #353). `studies/_shared/chorales/figures.json`:
   the figures of Bach's continuo parts for 562 of the corpus's phrases (93 chorales), from the Bach Chorales Figured Bass
   dataset (Ju et al., ISMIR 2020, after the NBA; CC BY 4.0), each phrase found in its chorale by its soprano and its bass
