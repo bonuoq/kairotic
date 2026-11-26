@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos: the Delphic paean of Athenaios in the corpus** (#192). `corpus.mjs` reads DAGM no. 20 as the
+  edition transcribes it, a note as its pitch, checked against the stone's signs: 16 fragments, 273 notes, the
+  melismas the stone writes as a doubled vowel; `runsOf` gives each fragment alone and `aoidos({open})` leaves a
+  fragment's start and end free. The hard rules refuse 28 notes (22 the chromatic genus); the Greek style, learned from
+  Mesomedes alone, makes the paean's notes more likely (the cheapest 144 → 187 of 317 times). Only the melodies and the
+  readings are kept, with their references.
 - **Chords that sing a syllable, and chords through the MEI and back** (#192, #217). A chord sings its syllable as a
   note does: on its attributes (`[:chord {:dur 1 :syl "Ἄν" :wordpos :i} …]`), written as the `<verse>` of the
   `<chord>` (not of one of its notes) and read back from it — or from one of its notes, in a MEI from elsewhere. A

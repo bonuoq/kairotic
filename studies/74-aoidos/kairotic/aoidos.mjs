@@ -140,8 +140,8 @@ export function planFromTime(syls) {
  * one a line, in turn), key ({tonic, mode}: a church mode, its tonic the final; ficta off: the mode's own scale),
  * ambitus ([lo, hi] in degrees from the final, [-1, 8]), starts (degrees, [0, 2, 3, 4, 7]), melisma (the most notes a
  * syllable, 3; 1: a note a syllable), strict (the peak and the circumflex hard), maxRepeat (3), chromatic (altered
- * notes allowed: [[degree, alteration]…]), time (the syllables and their beats given: planFromTime), weights (the melodic
- * and the accent's)} → solve()'s count, sample, engine, judge, fan, why (a code a beat), and the plan, the system,
+ * notes allowed: [[degree, alteration]…]), time (the syllables and their beats given: planFromTime), open (a fragment:
+ * neither its start nor its end the melody's), weights (the melodic and the accent's)} → solve()'s count, sample, engine, judge, fan, why (a code a beat), and the plan, the system,
  * names, midi, hz; notesOf (a melody's notes: [{code, at, beats, syl}]), lyricNotesOf (with the text they sing),
  * pitchesOf (each syllable's pitches),
  * accentReport, asDux.
@@ -208,7 +208,7 @@ export function aoidos(spec = {}) {
       let j = t; while (j > 0 && (j === t ? c : U[j]) === U[j - 1]) j--;
       return j > 0 && Math.abs(deg(U[j - 1]) - d) === 1 ? null : "the final is approached by step";
     } },
-  ];
+  ].filter((r) => !spec.open || (r.id !== "start" && r.id !== "final"));
   if (strict) rules.push(
     { id: "circumflex", check: ({ U, t, d, struck }) => (struck && !isStart(t) && Y[sylAt[t]].accent === "circumflex" && d > deg(U[t - 1]) ? "a circumflex does not rise" : null) },
     { id: "peak", check: ({ U, t, c, d, struck }) => {
