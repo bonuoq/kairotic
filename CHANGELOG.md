@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Bach's dissonant quarters, read** (Study 76, for the bass engine of #487). `@kairotic/rules` 0.24.0's `continuo.mjs`:
+  `dissonanceOf(phrase, t)` reads a quarter that is no chord as a chord and the one voice not of it, by how that voice
+  moves (`motionOf`: a suspension, up or down, a note held over a moving bass, a passing or neighbour note, an
+  appoggiatura, an escape, an anticipation); `BACH_DISSONANCES` counts each by voice, motion, interval and beat. Of
+  Bach's 17,941 quarters 1,719 are no chord: the alto's 958, the tenor's 438, the soprano's 174 (in 159 phrases — the
+  ones a bass under his soprano cannot yet follow: a 4–3 on a strong beat the commonest), the bass's 147.
+  `@kairotic/cac` 0.16.13 (its pin).
 - **Bach's own figures, and the chorales read as a figured bass** (Study 76 · continuo, #353). `studies/_shared/chorales/figures.json`:
   the figures of Bach's continuo parts for 562 of the corpus's phrases (93 chorales), from the Bach Chorales Figured Bass
   dataset (Ju et al., ISMIR 2020, after the NBA; CC BY 4.0), each phrase found in its chorale by its soprano and its bass

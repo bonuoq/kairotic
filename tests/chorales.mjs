@@ -74,7 +74,12 @@ is(`... figureOf writes ${(100 * fsame / fq).toFixed(1)}% of Bach's figures over
    fsame / fq > 0.84, `${fsame}/${fq}`);
 const T = count(P).tables;
 is("... the continuo tables, as tools/continuo.mjs counts them from the corpus (the chorales but every fifth)",
-   JSON.stringify(T) === JSON.stringify({ BACH_OUTER_VERTICAL: Co.BACH_OUTER_VERTICAL, BACH_OUTER_PAIR: Co.BACH_OUTER_PAIR, BACH_DEGREE_CHORD: Co.BACH_DEGREE_CHORD, BACH_CADENCES: Co.BACH_CADENCES }));
+   JSON.stringify(T) === JSON.stringify({ BACH_OUTER_VERTICAL: Co.BACH_OUTER_VERTICAL, BACH_OUTER_PAIR: Co.BACH_OUTER_PAIR, BACH_DEGREE_CHORD: Co.BACH_DEGREE_CHORD, BACH_DISSONANCES: Co.BACH_DISSONANCES, BACH_CADENCES: Co.BACH_CADENCES }));
+const p9 = P.find((p) => p.id === "chor009-1");
+const ds = P.map((p) => p.satb.map((_, t) => Co.dissonanceOf(p, t)).filter(Boolean)).flat(), byVoice = (v) => ds.filter((x) => x.voice === v).length;
+is(`dissonanceOf: the ${ds.length} quarters that are no chord, each a chord and the one voice not of it — the alto's ${byVoice("alto")}, the tenor's ${byVoice("tenor")}, the soprano's ${byVoice("soprano")}, the bass's ${byVoice("bass")} (${byVoice(null)} no one voice explains); chor009-1's 6th quarter a 4–3 in the soprano over a 5/3`,
+   JSON.stringify(Co.dissonanceOf(p9, 5)) === JSON.stringify({ voice: "soprano", motion: "suspension", interval: 4, chord: "5/3" }) && Co.dissonanceOf(p9, 0) === null &&
+   byVoice(null) <= 5 && byVoice("soprano") < byVoice("tenor") && Co.BACH_DISSONANCES["alto|suspension|2|strong"] > 100);
 const dc = Co.BACH_DEGREE_CHORD;
 is("... what they say: the 5th and the 3rd the soprano's commonest over the bass, contrary motion the commonest pair, a 5/3 on ① and ⑤ and a 6/3 on ⑦, ⑤–① the commonest cadence",
    Co.BACH_OUTER_VERTICAL[7] === 0 && Co.BACH_OUTER_PAIR[1 * 5 + 3] < 0.5 && dc.major.chord[0][0] === 0 && dc.major.chord[7][0] === 0 &&

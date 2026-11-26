@@ -7,7 +7,7 @@
 // one for the chords over a degree), 0.5 added to every cell, the lowest of a row 0; written between the
 // `@tables-begin` and `@tables-end` lines of continuo.mjs (default packages/rules/assets/continuo.mjs).
 import { readFileSync, writeFileSync } from "node:fs";
-import { chordOf, CHORDS } from "../../../../packages/rules/assets/continuo.mjs";
+import { chordOf, CHORDS, dissonanceOf } from "../../../../packages/rules/assets/continuo.mjs";
 
 const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const tonicOf = (k) => { const t = k.split(" ")[0]; return (PC[t[0]] + (t.match(/[#♯]/g) || []).length - (t.match(/[b♭]/g) || []).length + 12) % 12; };
@@ -24,7 +24,7 @@ const cost = (counts, alpha = 0.5) => {
 export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {
   const vertical = Array(12).fill(0), pair = Array.from({ length: 5 }, () => Array(5).fill(0));
   const deg = { major: Array.from({ length: 12 }, () => Array(COLS.length).fill(0)), minor: Array.from({ length: 12 }, () => Array(COLS.length).fill(0)) };
-  const cad = { major: {}, minor: {} };
+  const cad = { major: {}, minor: {} }, diss = {};
   let quarters = 0, used = 0;
   for (const p of phrases) {
     if (!keep(p)) continue;
@@ -37,6 +37,8 @@ export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {
       if (q) pair[move(S - p.satb[q - 1][0])][move(B - p.satb[q - 1][3])]++;
       const k = p.keys[q], d = (((B - tonicOf(k)) % 12) + 12) % 12;
       deg[modeOf(k)][d][COLS.indexOf(cls(p.names[q]))]++;
+      const x = dissonanceOf(p, q);
+      if (x) { const w = `${x.voice}|${x.motion}|${x.interval ?? "-"}|${p.strong[q] ? "strong" : "weak"}`; diss[w] = (diss[w] || 0) + 1; }
     }
     if (n >= 2) {
       const k = p.keys[n - 1], t = tonicOf(k);
@@ -52,6 +54,7 @@ export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {
       degree: cost(deg[m].map((r) => r.reduce((a, b) => a + b, 0))),
       chord: deg[m].map((r) => cost(r)),
     }])),
+    BACH_DISSONANCES: Object.fromEntries(Object.entries(diss).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))),
     BACH_CADENCES: Object.fromEntries(["major", "minor"].map((m) => {
       const tot = Object.values(cad[m]).reduce((a, b) => a + b, 0);
       return [m, Object.entries(cad[m]).sort((a, b) => b[1] - a[1]).slice(0, 16).map(([w, c]) => [w, +(c / tot).toFixed(3)])];
