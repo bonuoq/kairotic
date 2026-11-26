@@ -97,6 +97,11 @@ label { font: 13px var(--f-ui); color: var(--ink); }
     <section class="panel"><h2>The run <span>the model and the time it took</span></h2><dl class="facts" id="run"><dt>—</dt><dd>nothing heard yet</dd></dl></section>
     <section class="panel"><h2>Against what was written <span>the cadence only</span></h2><dl class="facts" id="score"><dt>—</dt><dd>play the cadence</dd></dl>
       <table class="chords" id="chords"></table></section>
+    <section class="panel"><h2>Followed <span>C and G in every register, played with rubato: the 88 keys against a chroma (#308)</span></h2>
+      <div class="toolbar"><button class="act" id="follow">▶ follow the registers</button>
+        <label>rubato <select id="rubato"><option value="0.2">±20%</option><option value="0.4" selected>±40%</option><option value="0.6">±60%</option></select></label></div>
+      <dl class="facts" id="followed"><dt>—</dt><dd>follow the registers</dd></dl>
+      <table class="chords" id="follow-table"></table></section>
     <section class="panel"><h2>About</h2><p class="about">The followers of discussion #308 hear a performer through
       <code>pitch~</code> (YIN: one pitch at a time), onsets and descriptors such as the chroma — which folds every octave
       into twelve pitch classes. A piano, a guitar or an ensemble needs more. <b>Basic Pitch</b> (Spotify, 2022; Apache-2.0,
@@ -108,8 +113,12 @@ label { font: 13px var(--f-ui); color: var(--ink); }
       (<code>kairotic/basicpitch.mjs</code>). <b>The cadence</b> is rendered here, so what was written is known: the notes
       found are scored against it, and each chord is heard against the same chord with one note an octave off — the
       keys tell them apart, a chroma cannot. A recording works too (<b>record</b> needs a page that may use the
-      microphone, as Kairotic Pages). Next: the 88 keys as a descriptor the followers take (<code>follow hmm notes</code>),
-      the profiles of a rehearsal with real pitches, and a take transcribed into a tree.</p></section>
+      microphone, as Kairotic Pages). <b>Followed</b>: sixteen chords of C and G in every
+      register, played with rubato, are followed by kairotic.follow's frame-by-frame follower (its dtw model, as it is,
+      in <code>kairotic/follow.mjs</code>) fed every 50 ms with what Basic Pitch heard — as 88 keys, or folded into the
+      chroma the followers hear today. The chroma hears runs of one chord and loses its place; the keys hear where each
+      one is. Next: the 88 keys as a descriptor the app's followers take, the profiles of a rehearsal with real pitches,
+      and a take transcribed into a tree.</p></section>
   </div>
 </div>
 </main>
@@ -120,8 +129,8 @@ label { font: 13px var(--f-ui); color: var(--ink); }
 // is read first, as window.kairoticPoly ({BP: basicpitch.mjs, L: listen.mjs, T: transcribe.mjs}).
 window.addEventListener("DOMContentLoaded", function () {
   function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
-  Promise.all([import("./kairotic/basicpitch.mjs"), import("./kairotic/listen.mjs"), import("./kairotic/transcribe.mjs")]).then(function (ms) {
-    window.kairoticPoly = { BP: ms[0], L: ms[1], T: ms[2] };
+  Promise.all([import("./kairotic/basicpitch.mjs"), import("./kairotic/listen.mjs"), import("./kairotic/transcribe.mjs"), import("./kairotic/follow.mjs")]).then(function (ms) {
+    window.kairoticPoly = { BP: ms[0], L: ms[1], T: ms[2], F: ms[3] };
     try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
   }).catch(show);
 });
@@ -328,9 +337,38 @@ window.addEventListener("DOMContentLoaded", function () {
              (reset! playing {:nodes nodes}) (follow-head! t0 (.-seconds (:res @st)))))))
 (.addEventListener ($ "stop") "click" stop!)
 
+;; ───── following by the 88 keys (#308) ─────
+;; kairotic.follow's frame-by-frame follower (dtw), fed every 50 ms with what Basic Pitch heard: as 88 keys, or folded
+;; into a chroma as the followers hear today; each chord entered against when it was played.
+(def F (.-F K))
+(defn follow! []
+  (let [ev (.written F)
+        P (.perform F ev #js {:rubato (js/parseFloat (.-value ($ "rubato"))) :seed 7})]
+    (-> (analyse! (.render L (.-notes P)) "the registers, with rubato" nil)
+        (.then (fn [res]
+                 (when res
+                   (let [ref (.reference F ev)
+                         obs (.observations F (.-frames res) (.-n res) (.-seconds res))
+                         k (.judge F (.-arrived (.dtwFollow F ref obs "keys")) (.-onsets P))
+                         c (.judge F (.-arrived (.dtwFollow F ref obs "chroma")) (.-onsets P))
+                         ms (fn [x] (if (nil? x) "skipped" (str (when (pos? x) "+") x " ms")))
+                         line (fn [j] (str/join " " (map note-name (aget ev j "midis"))))]
+                     (facts! "followed" [["by the 88 keys" (str "median " (.-median k) " ms · " (js/Math.round (* 100 (.-within k))) "% within 100 ms · " (.-skipped k) " skipped")]
+                                         ["by a chroma" (str "median " (or (.-median c) "—") " ms · " (js/Math.round (* 100 (.-within c))) "% within 100 ms · " (.-skipped c) " skipped")]])
+                     (set! (.-innerHTML ($ "follow-table"))
+                           (str "<tr><th>chord</th><th>keys</th><th>chroma</th></tr>"
+                                (apply str (for [j (range 1 (.-length ev))]
+                                             (let [ek (aget (.-errors k) (dec j)) ec (aget (.-errors c) (dec j))
+                                                   cls (fn [x] (if (and (some? x) (<= (js/Math.abs x) 100)) "ok" "bad"))]
+                                               (str "<tr><td>" (line j) "</td><td class='" (cls ek) "'>" (ms ek) "</td><td class='" (cls ec) "'>" (ms ec) "</td></tr>"))))))
+                     (swap! st assoc :followed #js {:keys k :chroma c})
+                     #js {:keys k :chroma c})))))))
+(.addEventListener ($ "follow") "click" follow!)
+
 ;; for the tests: the cadence heard, and the state
 (set! (.-kairoticStudy js/window)
       #js {:cadence cadence!
+           :follow follow!
            :state (fn [] (let [{:keys [res events written]} @st] #js {:res res :events events :written (clj->js written)}))
            :readNotes read-notes!})
 (status! "Ready: play the cadence, open a sound or record one.")

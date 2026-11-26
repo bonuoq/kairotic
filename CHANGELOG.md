@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 73 · polyphony: following by the 88 keys** (#137, #308). kairotic.follow's dtw follower, ported as it is
+  (`follow.mjs`), fed every 50 ms with Basic Pitch's posteriorgram as 88 keys or folded into a chroma. Sixteen chords
+  of C and G in every register played with rubato: by the keys each chord is found within tens of ms (on ideal
+  posteriorgrams a median of 6–14 ms, none skipped); a chroma hears runs of one chord and skips 10 of 15. On the
+  cadence, every chord another, both follow alike. In the page, and tested in CI with the model itself.
 - **Study 74 · aoidos written in the Greek system** (#192). `aoidos({system, final})`: a melody in a tonos of
   `greek.mjs`, its degrees counted by place from its final (`fromFinal`), the accent's rises and falls judged by pitch,
   a melisma by its size, the sound in cents; `style.mjs` reads the corpus there (`codesInSystem`). Mesomedes in the
