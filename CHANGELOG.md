@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Bach's own figures, and the chorales read as a figured bass** (Study 76 · continuo, #353). `studies/_shared/chorales/figures.json`:
+  the figures of Bach's continuo parts for 562 of the corpus's phrases (93 chorales), from the Bach Chorales Figured Bass
+  dataset (Ju et al., ISMIR 2020, after the NBA; CC BY 4.0), each phrase found in its chorale by its soprano and its bass
+  (`tools/bcfb.mjs`). `@kairotic/rules` 0.23.0's `continuo.mjs`: a quarter's chord over the bass (`chordOf`) and the figure
+  Bach would write for it (`figureOf`: 85% of his figures over a struck bass, the restated 5s and 8s aside; the rest
+  mostly what he left unfigured), and the tables counted from the chorales but every fifth (kept out to measure against;
+  `tools/continuo.mjs`): the soprano over the bass (`BACH_OUTER_VERTICAL`), their moves together (`BACH_OUTER_PAIR`), the
+  chord over each degree of the bass in the key the quarter is in (`BACH_DEGREE_CHORD`, major and minor), the cadences
+  (`BACH_CADENCES`). `@kairotic/cac` 0.16.12 (its pin).
 - **Lyrics in the app's MEI ↔ tree, drawn under the notes** (#192). `mt/->mei` writes a tree's syllables (the lyrics
   layer: `:syl`, `:wordpos`, `:con`, `:verses`) as MEI's `<verse n><syl wordpos con>` on the note that begins each one
   — the hyphen and the extender derived where `:con` is not written (`mt/with-cons`) — so Verovio engraves them under

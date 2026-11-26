@@ -26,6 +26,29 @@ The corpus the chorale studies read (#301, #399): **2,272 phrases from the 370 c
 **License:** `phrases.json` is CC BY-NC-SA 4.0, after Craig Sapp's edition — not the MPL-2.0 of the rest of the
 repository. See [LICENSE.md](LICENSE.md).
 
+## `figures.json` — Bach's own figures (Study 76)
+
+`{source, license, matched, phrases}`; `phrases` maps a phrase's id to `{file, transpose, differs?, figures}`: the figures of
+Bach's continuo part, as the **Bach Chorales Figured Bass** dataset has them (BCFB, Ju et al., ISMIR 2020: 139 chorales
+of the cantatas, after the Neue Bach-Ausgabe), for the 562 phrases of the corpus (93 chorales) found in it.
+- `figures` — a quarter at a time, the figures that begin in it: `{at, f}`, `at` the offset in the quarter (0, 0.5),
+  `f` the numbers as he wrote them, from the top (`"6"`, `"♯"` an accidental alone, `"6\\"` a raised 6 written with a
+  stroke, `"_"` a line holding the figure). An empty quarter has none: his bass struck unfigured (a 5/3) or a figure
+  held on.
+- `transpose` — semitones from the dataset to the edition (the Breitkopf edition transposes some chorales); `differs` —
+  the quarters where the two editions' basses are other notes (one in eight at most), their figures not to be trusted.
+- A phrase is matched to a dataset chorale by its Breitkopf number (the dataset's reference table), then found in it by
+  its soprano (the same notes, transposed alike) and its bass (the same pitch classes; the editions put a bass note an
+  octave apart now and then). Written by `node studies/_shared/chorales/tools/bcfb.mjs <FB_source/musicXML_master>
+  <reference_table.csv>`.
+
+`@kairotic/rules`' `continuo.mjs` reads the corpus's quarters as a figured bass (`chordOf`, `figureOf`), checked against
+these figures (`tests/chorales.mjs`), and keeps the tables counted from the corpus by `tools/continuo.mjs` (the
+chorales but every fifth, kept out to measure against).
+
+**License:** `figures.json` is CC BY 4.0, after the BCFB dataset. See [LICENSE.md](LICENSE.md).
+
+
 ## `bridges.json` — the outer voices for the blind test (Study 63)
 
 `{source, license, count, seed, bridges}`; a bridge is `{phrase, soprano, bass, key, keys, readIn, strong, layers, variant, fillable}`:
