@@ -23,7 +23,7 @@ B4 = hslider("B4 [unit:Hz]", 200, 30, 500, 1) : sm;
 res(f, bw) = fi.tf2(a, 0, 0, -b, -c) with {
   T = 1.0 / ma.SR;
   c = 0 - exp(-2 * ma.PI * bw * T);
-  b = 2 * exp(-ma.PI * bw * T) * cos(2 * ma.PI * f * T);
+  b = 2 * exp(0 - ma.PI * bw * T) * cos(2 * ma.PI * f * T);
   a = 1 - b - c;
 };
 tract = res(F1, B1) : res(F2, B2) : res(F3, B3) : res(F4, B4);
