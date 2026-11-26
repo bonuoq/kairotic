@@ -12,7 +12,8 @@
 //                the formants of the vowels next to it start from or go to; null: the neighbour's),
 //             AV voicing 0–1, AH aspiration 0–1, AF frication 0–1, FC FB the frication's centre and bandwidth Hz,
 //             ms its own duration (a consonant's; a vowel takes what the note leaves it),
-//             a stop also: closure ms, burst (0–1), vot ms (the aspiration after the burst; long: φ θ χ)}
+//             a stop also: closure ms, burst (0–1), vot ms (the aspiration after the burst; long: φ θ χ),
+//             a nasal also: FNZ Hz, its antiformant}
 
 import { wordSyllables } from "../../74-aoidos/kairotic/prosody.mjs";
 
@@ -43,10 +44,11 @@ export const CONSONANTS = {
   s: { kind: "fricative", F: [400, 1700, 2600, 3600], B: [200, 200, 250, 300], AV: 0, AH: 0, AF: 1, FC: 5500, FB: 2500, ms: 110 },
   z: { kind: "fricative", F: [300, 1700, 2600, 3600], B: [200, 200, 250, 300], AV: 0.35, AH: 0, AF: 0.6, FC: 5000, FB: 2500, ms: 80 },
   h: { kind: "h", F: [null, null, null, null], B: [300, 300, 300, 300], AV: 0, AH: 0.7, AF: 0, ms: 60 },
-  // nasals and liquids are voiced and sound through the tract; nasals still without their antiformant (later)
-  m: { kind: "nasal", F: [250, 1000, 2200, 3300], B: [100, 300, 300, 300], AV: 0.45, AH: 0, AF: 0, ms: 70 },
-  n: { kind: "nasal", F: [250, 1500, 2600, 3400], B: [100, 300, 300, 300], AV: 0.45, AH: 0, AF: 0, ms: 65 },
-  "ŋ": { kind: "nasal", F: [250, 2000, 2700, 3400], B: [100, 300, 300, 300], AV: 0.45, AH: 0, AF: 0, ms: 65 },
+  // nasals and liquids are voiced and sound through the tract; a nasal's antiformant at FNZ (the mouth closed: lower
+  // the longer the closed cavity, from the lips to the velum); elsewhere FNZ is the nose's own pole (270 Hz) and cancels
+  m: { kind: "nasal", F: [250, 1000, 2200, 3300], B: [100, 300, 300, 300], AV: 0.45, AH: 0, AF: 0, FNZ: 1000, ms: 70 },
+  n: { kind: "nasal", F: [250, 1500, 2600, 3400], B: [100, 300, 300, 300], AV: 0.45, AH: 0, AF: 0, FNZ: 1500, ms: 65 },
+  "ŋ": { kind: "nasal", F: [250, 2000, 2700, 3400], B: [100, 300, 300, 300], AV: 0.45, AH: 0, AF: 0, FNZ: 2500, ms: 65 },
   l: { kind: "liquid", F: [350, 1100, 2700, 3500], B: [100, 150, 200, 250], AV: 0.75, AH: 0, AF: 0, ms: 60 },
   r: { kind: "liquid", F: [400, 1400, 2000, 3300], B: [120, 150, 200, 250], AV: 0.5, AH: 0, AF: 0.05, FC: 3000, FB: 2000, ms: 35 },
 };
@@ -98,7 +100,7 @@ export function linePhonemes(texts, pron = "attic") {
 /** The table scaled for a voice of another size: every formant and frication centre × size (1 a middle voice). */
 export function scaled(table, size = 1) {
   const out = {};
-  for (const [k, ph] of Object.entries(table)) out[k] = { ...ph, F: ph.F.map((f) => (f == null ? null : Math.round(f * size))), FC: ph.FC ? Math.round(ph.FC * size) : ph.FC };
+  for (const [k, ph] of Object.entries(table)) out[k] = { ...ph, F: ph.F.map((f) => (f == null ? null : Math.round(f * size))), FC: ph.FC ? Math.round(ph.FC * size) : ph.FC, FNZ: ph.FNZ ? Math.round(ph.FNZ * size) : ph.FNZ };
   return out;
 }
 
@@ -106,7 +108,7 @@ export function scaled(table, size = 1) {
  *  (kind a keyword, nil a value left to the neighbours). */
 export function tableEdn(table = TABLE) {
   const v = (x) => (x === null || x === undefined ? "nil" : Array.isArray(x) ? "[" + x.map(v).join(" ") + "]" : typeof x === "string" ? ":" + x : String(x));
-  const order = ["kind", "F", "B", "AV", "AH", "AF", "FC", "FB", "ms", "closure", "burst", "vot"];
+  const order = ["kind", "F", "B", "AV", "AH", "AF", "FC", "FB", "FNZ", "ms", "closure", "burst", "vot"];
   return "{" + Object.entries(table).map(([k, ph]) =>
     JSON.stringify(k) + " {" + order.filter((f) => ph[f] !== undefined).map((f) => `:${f} ${v(ph[f])}`).join(" ") + "}").join("\n ") + "}";
 }

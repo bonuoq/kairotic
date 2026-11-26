@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Study 75 · voice, less of a machine** (#467): its pitch and loudness waver from cycle to cycle (jitter, shimmer),
+  its vibrato comes in as a note is held (`VD` in the curves), a singer's formant near 3 kHz (`ring`), and the nasals
+  open the nose: a pole at 270 Hz and a zero at each nasal's antiformant (`FNZ` in the table: μ 1000, ν 1500, ŋ 2500 Hz),
+  cancelling elsewhere. Jitter and the singer's formant on the page; the antiformant checked by its spectrum in CI.
 - **Study 74 · aoidos: the Delphic paean of Athenaios in the corpus** (#192). `corpus.mjs` reads DAGM no. 20 as the
   edition transcribes it, a note as its pitch, checked against the stone's signs: 16 fragments, 273 notes, the
   melismas the stone writes as a doubled vowel; `runsOf` gives each fragment alone and `aoidos({open})` leaves a
