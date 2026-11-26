@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos: the Greek pitch system** (#192). `greek.mjs`: `greekSystem({tonos, genera, synemmenon, shade})`
+  — the Immutable System in any of the fifteen tonoi, its genera in Aristoxenus's or Archytas's shade, notes named and
+  counted by their place; the Greek concords (unison, 4th, 5th, octave) and moves judged by size; the same answers as
+  `keySystem` (deg, codesIn, cents, midi, quality, melodicError…) so that aoidos can be written in it next. Tested
+  against the signs of Mesomedes (Lydian) and Seikilos (Iastian).
 - **Study 74 · aoidos: the Delphic paean of Athenaios in the corpus** (#192). `corpus.mjs` reads DAGM no. 20 as the
   edition transcribes it, a note as its pitch, checked against the stone's signs: 16 fragments, 273 notes, the
   melismas the stone writes as a doubled vowel; `runsOf` gives each fragment alone and `aoidos({open})` leaves a
