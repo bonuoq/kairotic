@@ -60,7 +60,7 @@ export async function db(page, check) {
   check("the schema says a tree's attributes' layers", (await cljs(page, "(get-in (schema :tree) [:tstamp.real :layer])")) === ":performance");
   check("... a note's :id is performative, a measure's is not",
     (await cljs(page, "[(mt/layer-of :note :id) (mt/layer-of :measure :id)]")) === "[:performance nil]");
-  check("... the layers' keys come from it", (await cljs(page, "(= mt/analysis-keys #{:fig :deg :local :why :harmony :motif :motif.rel})")) === "true");
+  check("... the layers' keys come from it", (await cljs(page, "(= mt/analysis-keys #{:fig :deg :local :why :harmony :motif :motif.rel :compression})")) === "true");
   check("... and what each event changes", (await cljs(page, "(mapv ev-op-kind [:move :box :mark :something-new])")) === "[:layout :work :mark :work]");
 
   // a transaction as the history's tooltips tell it

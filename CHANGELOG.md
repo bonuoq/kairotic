@@ -48,6 +48,13 @@
   36.5%), Bach's bass 2.39 bits a note under the model (no-keys 2.85); figures 5/3 61.5% (Bach 54.4), 6/3 15.9 (23.1),
   7 8.4 (5.1), 6/5 7.4 (5.1); held 7.7% (9.9), steps 30.2% (35.6), leaps 62.1% (54.5); ⑤–① ends 54.7% (57.3; no-keys
   38.0).
+- **The motive layer, step 3: compression in the core.** `kairotic.compress` is Study 66's shortest description of a piece
+  (figures, motifs and repeats as rules, minimum description length, always written out again the same notes), and
+  `kairotic.bits` the measure of `@kairotic/rules`' `bits.mjs`, so that a description is counted in bits as a listener
+  hears it (`code-length`). Describing a tree (`:describe true`, `motif/annotate`) now writes on its root, in the
+  analysis layer, `:compression {:bits :raw :ratio :rules}`: how much of what is written its own formulas say — a
+  diagnosis, not a preference. Bach's C major prelude: its five-note broken chord used in 32 bars, 16 % of the bits;
+  folk melodies 65 to 98 %. Tests: Study 66's, ported (`tests/cljs/compress.cljs`).
 - **Lyrics in the app's MEI ↔ tree, drawn under the notes** (#192). `mt/->mei` writes a tree's syllables (the lyrics
   layer: `:syl`, `:wordpos`, `:con`, `:verses`) as MEI's `<verse n><syl wordpos con>` on the note that begins each one
   — the hyphen and the extender derived where `:con` is not written (`mt/with-cons`) — so Verovio engraves them under
