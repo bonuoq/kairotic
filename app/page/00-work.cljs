@@ -160,8 +160,8 @@
                          (and (vector? (:present b)) (= 2 (count (:present b))) (every? number? (:present b)))
                          (assoc :present (:present b))
                          (keyword? (:view b)) (assoc :view (:view b))
-                         ;; the layers a tree box shows of its tree (discussion #323): [:analysis :performance]
-                         (sequential? (:shows b)) (assoc :shows (vec (filter #{:analysis :performance} (:shows b))))
+                         ;; the layers a tree box turned from their default (discussion #323): [:analysis :performance], [:lyrics] hidden
+                         (sequential? (:shows b)) (assoc :shows (vec (filter #{:analysis :performance :lyrics} (:shows b))))
                          ;; a `patch @name` pinned to a point of its line (#117)
                          (and (vector? (:pin b)) (= 2 (count (:pin b))) (string? (first (:pin b))) (number? (second (:pin b))))
                          (assoc :pin (:pin b))
@@ -202,8 +202,9 @@
                   (cond (not (get-in p [:boxes id])) p
                         (keyword? k) (assoc-in p [:boxes id :view] k)
                         :else (update-in p [:boxes id] dissoc :view)))
-    ;; [:shows :b3 [:analysis]]: the layers a tree box shows of its tree, in its score and its code window; [] or nil none
-    :shows      (let [[id ks] args ks (when (sequential? ks) (vec (sort (distinct (filter #{:analysis :performance} ks)))))]
+    ;; [:shows :b3 [:analysis]]: the layers a tree box turned from their default, in its score and its code window: the
+    ;; analysis and the performance shown, the lyrics (shown by default) hidden; [] or nil none (the lyrics shown)
+    :shows      (let [[id ks] args ks (when (sequential? ks) (vec (sort (distinct (filter #{:analysis :performance :lyrics} ks)))))]
                   (cond (not (get-in p [:boxes id])) p
                         (seq ks) (assoc-in p [:boxes id :shows] ks)
                         :else (update-in p [:boxes id] dissoc :shows)))
@@ -295,7 +296,7 @@
    :present    {:kind :layout :doc "where a box appears in presentation: [:present id x y]"}
    :view       {:kind :layout :doc "the view a box is shown in: [:view id :score]"}
    :size       {:kind :layout :doc "a box's own size: [:size id w h]"}
-   :shows      {:kind :work   :doc "the layers a tree box shows: [:shows id [:analysis]]"}
+   :shows      {:kind :work   :doc "the layers a tree box turns from their default: [:shows id [:analysis]] shows the analysis, [:lyrics] hides the lyrics"}
    :pin        {:kind :work   :doc "a `patch @name` pinned to a point of its line: [:pin id [node n]]"}
    :name       {:kind :work   :doc "the name live code calls a box by: [:name id :osc]"}
    :connect    {:kind :work   :doc "a line between two ports: [:connect a o b i]"}

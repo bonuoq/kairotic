@@ -92,6 +92,23 @@
 (defn- all [root nm] (array-seq (.getElementsByTagNameNS root "*" nm)))
 (defn- strip-hash [s] (when s (str/replace s #"^#" "")))
 
+(defn- verses-of
+  "The syllables of a <note> (its <verse>s, not the line of cents kairotic.mt writes, type=\"cents\"): [verse-1 …],
+   each {:syl :wordpos :con} (keywords), nil where a verse has none; nil when it has none."
+  [el]
+  (let [vs (keep (fn [[i v]]
+                   (when (and (= "verse" (lname v)) (not= "cents" (at v "type")))
+                     (let [ss (filter #(= "syl" (lname %)) (el-kids v))
+                           n (or (some-> (at v "n") (js/parseInt 10)) (inc i))]
+                       (when (seq ss)
+                         [n (cond-> {:syl (apply str (map #(.-textContent %) ss))}
+                              (at (first ss) "wordpos") (assoc :wordpos (keyword (at (first ss) "wordpos")))
+                              (at (last ss) "con") (assoc :con (keyword (at (last ss) "con"))))]))))
+                 (map-indexed vector (el-kids el)))
+        top (reduce max 0 (map first vs))]
+    (when (pos? top)
+      (let [m (into {} vs)] (mapv #(get m %) (range 1 (inc top)))))))
+
 (def accid-alter {"s" 1 "f" -1 "n" 0 "x" 2 "ss" 2 "ff" -2 "1qs" 0 "3qs" 1 "1qf" 0 "3qf" -1})
 (def accid-cents {"1qs" 50 "3qs" 50 "1qf" -50 "3qf" -50})
 (def letters ["c" "d" "e" "f" "g" "a" "b"])
@@ -174,8 +191,9 @@
                              _ (when acc (swap! mem assoc [step oct] alter))
                              [nm c] (or (and start (get @pitch-of start)) [(sp/->name {:step step :alter alter :oct oct}) cents])]
                          (swap! pitch-of assoc id [nm c])
-                         [{:kind :note :ids [id] :dur (beats-of x scale) :name nm :cents c
-                           :grace (some? (at x "grace")) :tie-out (contains? ties id) :tie-in (contains? tied-into id)}])
+                         [(cond-> {:kind :note :ids [id] :dur (beats-of x scale) :name nm :cents c
+                                   :grace (some? (at x "grace")) :tie-out (contains? ties id) :tie-in (contains? tied-into id)}
+                            (verses-of x) (assoc :lyr (verses-of x)))])
                 "chord" (let [ns (filter #(= "note" (lname %)) (el-kids x))
                               kids (vec (mapcat #(layer-segs (doto (.cloneNode %) (.setAttribute "dur" (or (at x "dur") "4"))) scale mem) ns))]
                           [{:kind :chord :ids [(at x "xml:id")] :dur (beats-of x scale) :kids kids}])
@@ -245,6 +263,9 @@
        :rest [:rest {:dur (:dur s)}]
        :note (with-meta [:note (cond-> {:pitch (:name s) :dur (:dur s)}
                                  (not (zero? (:cents s))) (assoc :cents (:cents s))
+                                 ;; its syllables (the lyrics layer): verse 1 on it, the others in :verses
+                                 (first (:lyr s)) (merge (first (:lyr s)))
+                                 (seq (rest (:lyr s))) (assoc :verses (vec (rest (:lyr s))))
                                  (:grace s) (-> (assoc :grace true) (dissoc :dur))
                                  (:tie-out s) (assoc :tie true)
                                  f (assoc :fig f))]
@@ -363,6 +384,11 @@
       (let [t (if (and (= 1 (count vkeys)) (not= :par (:root-tag ext)))
                 (voice (first vkeys))
                 (into [(or (:root-tag ext) :par) (or (:root ext) {})] (map voice vkeys)))
+            ;; (a syllable's :con only where it is not the one derived: the canonical tree)
+            t (if (some #(and (vector? %) (= :note (first %)) (mt/syllables-of (second %)) (seq (mt/syllables-of (second %))))
+                        (tree-seq vector? seq t))
+                (mt/without-derived-cons t)
+                t)
             ;; a MEI from elsewhere: its takes from its performance module (with the EDN, they are in the root's attributes)
             tks (when-not ext (read-takes doc))]
         (if (seq tks)
@@ -416,7 +442,7 @@
         notes (into (sorted-map)
                     (when same?
                       (keep (fn [[s n]]
-                              (let [a (second n) x (dissoc a :dur :tie :pitch :cents :grace)]
+                              (let [a (second n) x (apply dissoc a :dur :tie :pitch :cents :grace mt/lyrics-keys)]
                                 (when (seq x) [(first (:ids s)) x])))
                             (map vector (apply concat sn) (apply concat tn)))))
         by-id (into {} (for [x (all doc "note")] [(at x "xml:id") x]))

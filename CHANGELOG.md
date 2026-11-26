@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Lyrics in the app's MEI ↔ tree, drawn under the notes** (#192). `mt/->mei` writes a tree's syllables (the lyrics
+  layer: `:syl`, `:wordpos`, `:con`, `:verses`) as MEI's `<verse n><syl wordpos con>` on the note that begins each one
+  — the hyphen and the extender derived where `:con` is not written (`mt/with-cons`) — so Verovio engraves them under
+  the notes in a tree box's score. `kairotic.mei/<-mei` reads them back (a MEI from elsewhere, or a study's export, too;
+  the line of cents is not taken for a verse), leaving out each `:con` that is the derived one
+  (`mt/without-derived-cons`): tree → MEI → tree gives the tree, MEI → tree → MEI the MEI; the extMeta keeps nothing of
+  them. The layer is shown by default: a box hides it with its **lyrics** chip, the code window's **Lyrics** button or
+  `(show-layers :b3)` (and shows it with `(show-layers :b3 :lyrics)`); its `:shows` keeps the layers turned from their
+  default, so works saved before keep their layers.
 - **The lyrics layer, and the cents on a line of their own** (#192). `kairotic.mt`'s schema has a layer `:lyrics`:
   the text a voice sings, on its notes — `:syl` (the syllable a note begins, verse 1; the notes after it with none
   sing it on), `:wordpos` (`:i`, `:m`, `:t`), `:con` (where not derived), `:verses` (the verses after the first) —

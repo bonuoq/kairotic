@@ -1146,10 +1146,80 @@
                                             n)))))
             t names)))
 
+;; ───────── lyrics: the text a voice sings (discussion #192) ─────────
+;; A syllable is on the note that begins it (:syl, :wordpos, :con; the verses after the first in :verses); the notes
+;; after it with none sing it on (a melisma). Its :con is derived where it is not written: :d (a hyphen) after a word's
+;; first or middle syllable, :u (an extender) after its last one, or a word of one, when the next note struck sings it
+;; on (a note, not a rest, with no syllable of that verse; the piece a tie goes on into and a grace note are no new
+;; note). A canonical tree writes :con only where it is not the derived one.
+
+(defn syllables-of
+  "The syllables a note's attributes begin, a verse each: [verse-1 verse-2 …], nil where a verse has none here."
+  [a]
+  (let [v1 (when (some? (:syl a)) (select-keys a [:syl :wordpos :con]))
+        vs (into [v1] (:verses a))]
+    (loop [vs vs] (if (and (seq vs) (nil? (peek vs))) (recur (pop vs)) vs))))
+
+(defn- leaf-paths
+  "The paths of the leaves of a tree that take time (notes, rests, chords), in order."
+  [t]
+  (letfn [(go [n path]
+            (cond (not (node? n)) []
+                  (#{:note :rest :chord} (tag n)) [path]
+                  :else (let [off (if (map? (second n)) 2 1)]
+                          (vec (mapcat (fn [i k] (go k (conj path (+ i off)))) (range) (kids n))))))]
+    (go t [])))
+
+(defn- derived-con [syl nxt k]
+  (let [wp (some-> (:wordpos syl) name)]
+    (cond (#{"i" "m"} wp) :d
+          (and nxt (= :note (tag nxt)) (nil? (get (syllables-of (attrs nxt)) k))) :u)))
+
+(defn- map-cons
+  "Each syllable of each voice of t through (f syllable derived-con)."
+  [t f]
+  (let [voice (fn [v]
+                (let [ps (leaf-paths v)
+                      leaves (mapv #(get-in v %) ps)
+                      ;; the leaves struck: not a grace note, not the piece a tie goes on into
+                      struck (loop [i 0 prev-tie false out []]
+                               (if (= i (count leaves))
+                                 out
+                                 (let [n (nth leaves i) a (attrs n)]
+                                   (cond (:grace a) (recur (inc i) prev-tie out)
+                                         (and prev-tie (= :note (tag n))) (recur (inc i) (boolean (:tie a)) out)
+                                         :else (recur (inc i) (and (= :note (tag n)) (boolean (:tie a))) (conj out i))))))
+                      next-of (into {} (map vector struck (concat (rest struck) [nil])))]
+                  (reduce (fn [v i]
+                            (let [n (nth leaves i) a (attrs n) ss (syllables-of a)]
+                              (if (or (not= :note (tag n)) (empty? (remove nil? ss)))
+                                v
+                                (let [nxt (some->> (get next-of i) (nth leaves))
+                                      ss (vec (map-indexed (fn [k x] (when x (f x (derived-con x nxt k)))) ss))
+                                      a (cond-> (dissoc a :syl :wordpos :con :verses)
+                                          (first ss) (merge (first ss))
+                                          (seq (rest ss)) (assoc :verses (vec (rest ss))))]
+                                  (update-in v (nth ps i) with-attrs a)))))
+                          v (filter #(contains? next-of %) (range (count leaves))))))
+        go (fn go [n] (cond (not (node? n)) n
+                            (= :voice (tag n)) (voice n)
+                            :else (with-kids n (mapv go (kids n)))))]
+    (if (some #(and (node? %) (= :voice (tag %))) (tree-seq node? kids t)) (go t) (voice t))))
+
+(defn with-cons
+  "The tree with every syllable's :con where it is derived (as MEI writes it)."
+  [t]
+  (map-cons t (fn [x c] (if (or (:con x) (nil? c)) x (assoc x :con c)))))
+
+(defn without-derived-cons
+  "The tree with the :con of each syllable left out where it is the derived one (canonical)."
+  [t]
+  (map-cons t (fn [x c] (if (and (:con x) (= (name (:con x)) (some-> c name))) (dissoc x :con) x))))
+
 (defn ->mei
   "Measured notation of a tree. Returns {:mei text :pieces [{:id :t :staff}]} (ids → beats, for cursors)."
   [tree pre]
-  (let [t (with-meters (explicit (expand tree)))
+  (let [t (with-cons (with-meters (explicit (expand tree))))
         ;; names for the notes written as numbers (kairotic.spell), beside their pitch: :spelled
         t (reduce (fn [t [path s]] (update-at t path (fn [n] (update-attrs n assoc :spelled (sp/->name s)))))
                   t (spellings-for t))
@@ -1292,9 +1362,19 @@
                                 (and sym (not= sym "n")) (str " accid.ges=\"" sym "\""))
                           durattr
                           (when arts (str " artic=\"" (str/join " " arts) "\""))
-                          (if (>= (js/Math.abs dv) 5)
-                            (str "><verse n=\"" (inc (get staff-lines staff 0)) "\" type=\"cents\"><syl>" (when (pos? dv) "+") dv "</syl></verse></note>")
-                            "/>"))))
+                          (let [;; its syllables (the lyrics layer), on its first piece only; then its cents, on the line after them
+                                lyr (when art?
+                                      (apply str (map-indexed (fn [k x]
+                                                                (when x
+                                                                  (str "<verse n=\"" (inc k) "\"><syl"
+                                                                       (when-let [w (:wordpos x)] (str " wordpos=\"" (name w) "\""))
+                                                                       (when-let [c (:con x)] (str " con=\"" (name c) "\""))
+                                                                       ">" (esc-xml (:syl x)) "</syl></verse>")))
+                                                              (syllables-of a))))
+                                cts (when (>= (js/Math.abs dv) 5)
+                                      (str "<verse n=\"" (inc (get staff-lines staff 0)) "\" type=\"cents\"><syl>" (when (pos? dv) "+") dv "</syl></verse>"))
+                                inner (str lyr cts)]
+                            (if (seq inner) (str ">" inner "</note>") "/>")))))
         marks! (fn [a staff bar id]
                  (when-let [d (:dyn a)] (ctl! bar (str "<dynam staff=\"" staff "\" startid=\"#" id "\">" (esc-xml d) "</dynam>")))
                  (when-let [x (:text a)] (ctl! bar (str "<dir staff=\"" staff "\" startid=\"#" id "\"><rend fontstyle=\"italic\">" (esc-xml x) "</rend></dir>")))
@@ -1763,10 +1843,11 @@
 ;; keys (as with-performative does for one layer).
 
 (def analysis-keys (layer-keys :analysis))
-;; the text a voice sings (discussion #192): data on the notes, as the analysis is; not yet among layer-names (the code
-;; window and the boxes' :shows do not hide it), so for now it is always shown
+;; the text a voice sings (discussion #192): data on the notes, as the analysis is; a box shows it unless it hides it
+;; (a layer shown by default: shown-by-default)
 (def lyrics-keys (layer-keys :lyrics))
-(def layer-names [:performance :analysis])
+(def shown-by-default #{:lyrics})
+(def layer-names [:performance :analysis :lyrics])
 
 (defn- layer-key? [layer tg k] (= layer (layer-of tg k)))
 
