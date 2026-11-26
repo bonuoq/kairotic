@@ -90,6 +90,8 @@ select, label { font: 13px var(--f-ui); color: var(--ink); }
         <label for="bpm">tempo</label><input type="range" id="bpm" min="40" max="140" step="1" value="72"><output id="bpm-v">72</output>
         <label for="size">voice size</label><input type="range" id="size" min="0.8" max="1.25" step="0.01" value="1.1"><output id="size-v">1.1</output>
         <label for="vib">vibrato</label><input type="range" id="vib" min="0" max="80" step="1" value="25"><output id="vib-v">25 ¢</output>
+        <label for="jitter">jitter</label><input type="range" id="jitter" min="0" max="40" step="1" value="8"><output id="jitter-v">8 ¢</output>
+        <label for="ring">singer's formant</label><input type="range" id="ring" min="0" max="1" step="0.05" value="0.3"><output id="ring-v">0.3</output>
         <label for="noise">noise</label><input type="range" id="noise" min="0" max="3" step="0.05" value="1"><output id="noise-v">× 1</output>
         <span></span><label><input type="checkbox" id="tune" checked> raise F1 above a high pitch (as sopranos do)</label><span></span>
       </div>
@@ -114,7 +116,9 @@ select, label { font: 13px var(--f-ui); color: var(--ink); }
       consonant heard), the first formant raised over a high pitch. Two <b>faust~</b> follow the same curves: the
       <b>voice</b> (a glottal source through four formant resonators) and the <b>noise</b> (aspiration through the same
       four, frication and bursts at their own place). The sound is clearly synthetic — nearer CHANT than a singer — but
-      every part of it can be studied and changed. Nasals still lack their antiformant.</p></section>
+      every part of it can be studied and changed. And it is not a machine's line: its pitch and loudness waver a little from
+      cycle to cycle (<b>jitter</b>, shimmer), its vibrato comes in only as a note is held, a <b>singer's formant</b> near
+      3 kHz gives it ring, and a nasal opens the nose (an antiformant: μ's at 1000 Hz, ν's at 1500).</p></section>
   </div>
 </div>
 </main>
@@ -173,7 +177,8 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn opts []
   #js {:pron (.-value ($ "pron")) :size (js/parseFloat (.-value ($ "size"))) :tuneF1 (.-checked ($ "tune"))
        :table (:table @st) :noise (js/parseFloat (.-value ($ "noise")))
-       :fixed #js {:vibrato (js/parseFloat (.-value ($ "vib")))}})
+       :fixed #js {:vibrato (js/parseFloat (.-value ($ "vib"))) :jitter (js/parseFloat (.-value ($ "jitter")))
+                    :ring (js/parseFloat (.-value ($ "ring")))}})
 
 ;; ───── drawing ─────
 (def W 900)
@@ -253,7 +258,7 @@ window.addEventListener("DOMContentLoaded", function () {
        (catch :default e (set! (.-hidden ($ "table-err")) false) (set! (.-textContent ($ "table-err")) (str "Not applied: " (.-message e))) false)))
 
 ;; ───── wiring ─────
-(doseq [[id unit] [["bpm" ""] ["size" ""] ["vib" " ¢"] ["noise" ""]]]
+(doseq [[id unit] [["bpm" ""] ["size" ""] ["vib" " ¢"] ["jitter" " ¢"] ["ring" ""] ["noise" ""]]]
   (.addEventListener ($ id) "input" (fn [] (set! (.-textContent ($ (str id "-v"))) (str (when (= id "noise") "× ") (.-value ($ id)) unit)))))
 (.addEventListener ($ "source") "change" (fn [] (when (and (= "mei" (.-value ($ "source"))) (nil? (:mei @st))) (.click ($ "file")))))
 (.addEventListener ($ "file") "change"

@@ -10,11 +10,13 @@
 //     (long for φ θ χ); h is aspiration through the next vowel's formants; a diphthong is two vowel targets
 //   - a sung vowel's first formant is raised to just above the pitch where the pitch is higher (as sopranos tune it,
 //     after Sundberg): an i on a high e" would otherwise lose its fundamental (tuneF1, on by default)
+//   - the vibrato comes in once a note has lasted (VD: none for its first VIBRATO_DELAY, full after VIBRATO_RISE more)
+//   - a nasal opens the nose: its antiformant FNZ (elsewhere at the nose's pole, NOSE, where it cancels)
 //   - each target holds while its phoneme sounds; the formants move from one to the next over FORMANT_GLIDE (the
 //     transitions that make a consonant heard), the amplitudes over AMP_GLIDE, the pitch over PITCH_GLIDE
 //
 // notes: [{t, dur (seconds), midi, syl (the syllable as written; "" or null: the note goes on with the syllable before,
-// a melisma)}]  →  {hop, frames: [{pitch, AV, AH, AF, AB, F1…F4, B1…B4, FC, FB}], segments: [{p, kind, from, to, syl}],
+// a melisma)}]  →  {hop, frames: [{pitch, VD, AV, AH, AF, AB, F1…F4, B1…B4, FC, FB, FNZ}], segments: [{p, kind, from, to, syl}],
 // duration, offset (where the first note's time is in the curves: the first consonants come before it)}
 
 import { TABLE, scaled, linePhonemes } from "./phonemes.mjs";
@@ -24,9 +26,11 @@ export const CONSONANTS_MAX = 0.45;
 export const REST_GAP = 0.03;
 export const F1_TUNING = 1.05;
 export const FORMANT_GLIDE = 0.035, AMP_GLIDE = 0.015, PITCH_GLIDE = 0.025;
-export const PARAMS = ["pitch", "AV", "AH", "AF", "AB", "F1", "F2", "F3", "F4", "B1", "B2", "B3", "B4", "FC", "FB"];
+export const PARAMS = ["pitch", "VD", "AV", "AH", "AF", "AB", "F1", "F2", "F3", "F4", "B1", "B2", "B3", "B4", "FC", "FB", "FNZ"];
+export const NOSE = 270;                       // the nose's pole; a zero there cancels it (no nasal)
+export const VIBRATO_DELAY = 0.15, VIBRATO_RISE = 0.35;
 
-const SILENCE = { AV: 0, AH: 0, AF: 0, AB: 0, FC: 4000, FB: 2000 };
+const SILENCE = { AV: 0, AH: 0, AF: 0, AB: 0, FC: 4000, FB: 2000, FNZ: NOSE };
 
 /** The notes grouped into syllables: [{text, start, end, notes}] (a note without a syllable continues the one before). */
 export function syllables(notes) {
@@ -99,7 +103,7 @@ export function segments(notes, { table = TABLE, pron = "attic", size = 1 } = {}
 }
 
 function pick(t) {
-  return { F: t.F.slice(), B: t.B.slice(), AV: t.AV || 0, AH: t.AH || 0, AF: t.AF || 0, AB: 0, FC: t.FC || SILENCE.FC, FB: t.FB || SILENCE.FB };
+  return { F: t.F.slice(), B: t.B.slice(), AV: t.AV || 0, AH: t.AH || 0, AF: t.AF || 0, AB: 0, FC: t.FC || SILENCE.FC, FB: t.FB || SILENCE.FB, FNZ: t.FNZ || NOSE };
 }
 
 const valueOf = (s, k) => (/^F\d$/.test(k) ? s.F[+k[1] - 1] : /^B\d$/.test(k) ? s.B[+k[1] - 1] : s[k]);
@@ -126,7 +130,7 @@ export function curves(notes, opts = {}) {
   for (let i = 0, si = 0; i < n; i++) {
     const a = i * HOP, b = a + HOP;
     while (si < segs.length && segs[si].to <= a) last = segs[si++];
-    const acc = {}, keys = PARAMS.filter((k) => k !== "pitch");
+    const acc = {}, keys = PARAMS.filter((k) => k !== "pitch" && k !== "VD");
     for (const k of keys) acc[k] = 0;
     let covered = 0;
     for (let j = si; j < segs.length && segs[j].from < b; j++) {
@@ -148,6 +152,8 @@ export function curves(notes, opts = {}) {
     const t = i * HOP - G.offset;
     while (j + 1 < ns.length && ns[j + 1].t <= t) j++;
     cols.pitch[i] = ns.length ? ns[j].midi : 60;
+    // the vibrato comes in as a note is held: none for VIBRATO_DELAY, then rising over VIBRATO_RISE
+    cols.VD[i] = ns.length ? Math.min(1, Math.max(0, (t - ns[j].t - VIBRATO_DELAY) / VIBRATO_RISE)) : 0;
   }
   const W = (s) => Math.max(1, Math.round(s / HOP) | 1);
   for (const k of PARAMS) {
