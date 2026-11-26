@@ -127,6 +127,18 @@ export async function run() {
        return held.every((c) => c === held[0]) && ((Is.deg(held[0]) - Is.deg(Ui[end - 1])) % 7 + 7) % 7 === 0 && Is.deg(held[0]) < 0;
      }));
   is("the canon in the Greek style (its weights the dux's, its rules the canon's): 7823, as in the engine's", canonic({ text: O.text, metre: O.metre, key: O.key, strict: true, melisma: 1, style: "greek" }).count() === 7823n);
+  // in a Greek system (greek.mjs): the degrees by place, the accent by pitch, the sound in cents
+  const Gs = { text: Sk.text, metre: Sk.metre, system: Sk.system, final: Sk.final };
+  const GA = aoidos(Gs), GU = GA.engine({ temp: 0 });
+  is("in a Greek system: Seikilos's song in the Iastian tonos, diatonic, its final e the lichanos meson — 45,786,887,676,467,977,169,702,651,733,325,568,672 melodies on its eleven notes (d to f♯'), the engine's ending on e (329.63 Hz)",
+     GA.count() === 45786887676467977169702651733325568672n && GA.codes.length === 11 && GA.name(GU.at(-1)) === "e" && Math.abs(GA.hz(GU.at(-1)) - 329.63) < 0.01 && GA.judge(GU) === null);
+  const Ody = (system) => aoidos({ text: O.text, metre: O.metre, system, final: 0, melisma: 1 }).count();
+  is("... Odyssey 1.1 a note a syllable in the Lydian, its final the mese: diatonic 57,609,870,580,663; chromatic 2,844,577,477,911,816 (its lichanos a step below the mese, a minor 3rd away); enharmonic, in Archytas's ratios, 1,330,881,641,079,072",
+     Ody({ tonos: "lydian", genera: ["diatonic"] }) === 57609870580663n && Ody({ tonos: "lydian", genera: ["chromatic"] }) === 2844577477911816n
+     && Ody({ tonos: "lydian", genera: ["enharmonic"], shade: "archytas" }) === 1330881641079072n);
+  const Gd = aulos({ ...Gs, practice: "drone" });
+  is("... the aulos's drone on the final where the system has no octave below it (the Iastian's lowest note is f♯); the canon and the examiner wait for the Greek counterpoint",
+     Gd.name(Gd.comesOf(GU)[0]) === "e" && canonic(Gs).error && examine(GA, GU).length === 0);
   return { results, notes };
 }
 
