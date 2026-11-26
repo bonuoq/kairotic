@@ -50,7 +50,7 @@ export async function cac(page, check) {
   await cljs(page, `(show-layers ${out} :analysis)`);
   const on = await until(page, harms, (x) => x === "8", 10000);
   const other = await cljs(page, `(shown-layers (get-in (current) [:boxes ${tb}]))`);
-  const kept = await cljs(page, `(str/includes? (patch->code (current)) "(show-layers ${out} :analysis :lyrics)")`);
+  const kept = await cljs(page, `(str/includes? (patch->code (current)) "(show-layers ${out} :analysis)")`);
   await cljs(page, `(show-layers ${out})`);
   const off2 = await until(page, harms, (x) => x === "0", 10000);
   check("the layers are the box's: its score hides the figures by default, shows them with (show-layers … :analysis), hides them again",
@@ -130,7 +130,7 @@ export async function cac(page, check) {
   await cljs(page, `(tree! ${lb} ${LY})`);
   const syls = `(some-> (get @score-cache ${lb}) :node (.querySelectorAll "g.syl") .-length)`;
   const lyOn = await until(page, syls, (x) => x === "3", 10000);
-  const lyMei = await cljs(page, `(let [m (mei ${lb})] [(boolean (re-find #"<verse n=\"1\"><syl wordpos=\"i\" con=\"d\">Ἄν</syl></verse>" m)) (count (re-seq #"<verse " m))])`);
+  const lyMei = await cljs(page, `(let [m (mei ${lb})] [(boolean (re-find #"<verse n=\\"1\\"><syl wordpos=\\"i\\" con=\\"d\\">Ἄν</syl></verse>" m)) (count (re-seq #"<verse " m))])`);
   const lyChip = await cljs(page, `(boolean (some (fn [[k _ _ on]] (and (= k :lyrics) on)) (header-chips ${lb} (get-in (current) [:boxes ${lb}]))))`);
   await cljs(page, `(show-layers ${lb})`);
   const lyOff = await until(page, syls, (x) => x === "0", 10000);
