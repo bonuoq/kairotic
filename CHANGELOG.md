@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The bass under Bach's soprano reads the chorale thread's tables** (#353, after #485). Study 63's `under.mjs`
+  takes `continuo` (@kairotic/rules' continuo.mjs, or its tables): BACH_DEGREE_CHORD for the chord over a degree and
+  the degree, BACH_OUTER_VERTICAL, BACH_OUTER_PAIR for the two voices' moves together (in place of the motion, the
+  held bass and the step), BACH_CADENCES for the fermata's two quarters; which chord a figure is, a leap's size and the
+  key a phrase begins in stay under-tables.mjs's. On the 150 held-out phrases (`UNDER_COSTS=continuo
+  tools/under-measure.mjs`): Bach's bass 2.37 bits a note (2.39 with under-tables.mjs alone), note for note 22.6%
+  (21.7), leaps 55.4% (62.1; Bach 54.5), ⑤–① ends 60.0% (Bach 57.3); held 12.1% (Bach 9.9).
 - **Bach's own figures, and the chorales read as a figured bass** (Study 76 · continuo, #353). `studies/_shared/chorales/figures.json`:
   the figures of Bach's continuo parts for 562 of the corpus's phrases (93 chorales), from the Bach Chorales Figured Bass
   dataset (Ju et al., ISMIR 2020, after the NBA; CC BY 4.0), each phrase found in its chorale by its soprano and its bass
