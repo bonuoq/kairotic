@@ -20,8 +20,7 @@
 - **The lyrics layer, and the cents on a line of their own** (#192). `kairotic.mt`'s schema has a layer `:lyrics`:
   the text a voice sings, on its notes — `:syl` (the syllable a note begins, verse 1; the notes after it with none
   sing it on), `:wordpos` (`:i`, `:m`, `:t`), `:con` (where not derived), `:verses` (the verses after the first) —
-  read by `(schema :tree)`, `without-layers` and `with-layers` like the others (`mt/lyrics-keys`); the code window
-  and `:shows` do not hide it yet. A note's cents off its name, which `mt/->mei` writes under it, are now a verse of
+  read by `(schema :tree)`, `without-layers` and `with-layers` like the others (`mt/lyrics-keys`). A note's cents off its name, which `mt/->mei` writes under it, are now a verse of
   their own (`type="cents"`) on the line after its staff's lyrics, so they will not take a verse of the text.
 - **Study 71's deck with a sixth variant, `no-keys`** (#477: the bridges without tonicizations, every unit in the
   chorale's key): 240 trials, `bach-4` filling 40 of 53 `no-keys` phrases tried (the others 40 of 42–45). The deck
