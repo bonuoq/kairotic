@@ -2,7 +2,7 @@
 // Study 74 · aoidos: the kernel's tests. In the browser (tests/kernel.html) and in Node:
 //   node -e 'import("./studies/74-aoidos/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import { readText, scan, scansionText, timeOf, wordSyllables } from "../kairotic/prosody.mjs";
-import { aoidos, canonic, examine, TEXTS } from "../kairotic/aoidos.mjs";
+import { aoidos, canonic, aulos, examine, TEXTS } from "../kairotic/aoidos.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 const line = (t) => readText(t)[0];
@@ -112,6 +112,21 @@ export async function run() {
   is("... and its dux keeps the accent's peak (strict)", R.peak[0] === R.peak[1]);
   const S = TEXTS.seikilos, Cs = canonic({ text: S.text, metre: S.metre, key: S.key, strict: true, melisma: 1 });
   is("Seikilos's song in canon, in its own rhythm, strict, a note a syllable, E dorian: 175807", Cs.count() === 175807n);
+  // ─── the aulos ───
+  const H = aulos({ text: O.text, metre: O.metre, key: O.key, melisma: 1 });
+  is("with an aulos in heterophony (at once, within a 3rd, the counterpoint's rules between them): Odyssey 1.1, a note a syllable, 465209704599378834", H.count() === 465209704599378834n);
+  const Wh = H.engine({ temp: 0.5, r });
+  is("... the engine's: valid, the aulos within a 3rd of the voice at every beat, often on its note",
+     H.judge(Wh.dux, Wh.comes) === null && Wh.comes.every((c, t) => Math.abs(H.world.deg(c) - H.world.deg(Wh.dux[t])) <= 2) && Wh.comes.some((c, t) => c === Wh.dux[t]));
+  const Dr = aulos({ text: O.text, metre: O.metre, key: O.key, practice: "drone" }), Ud = Dr.engine({ temp: 0.5, r });
+  const Sk = TEXTS.seikilos, Is = aulos({ text: Sk.text, metre: Sk.metre, key: Sk.key, practice: "ison" }), Ui = Is.engine({ temp: 0.5, r }), I = Is.comesOf(Ui);
+  is("... as a drone the final an octave below; as an ison each line held on the note it ends on, below the voice",
+     Dr.comesOf(Ud).every((c) => Dr.deg(c) === -7) && [...new Set(Is.syllables.map((y) => y.line))].every((li) => {
+       const ys = Is.syllables.filter((y) => y.line === li), end = ys[ys.length - 1].at + ys[ys.length - 1].beats;
+       const held = I.slice(ys[0].at, end);
+       return held.every((c) => c === held[0]) && ((Is.deg(held[0]) - Is.deg(Ui[end - 1])) % 7 + 7) % 7 === 0 && Is.deg(held[0]) < 0;
+     }));
+  is("the canon in the Greek style (its weights the dux's, its rules the canon's): 7823, as in the engine's", canonic({ text: O.text, metre: O.metre, key: O.key, strict: true, melisma: 1, style: "greek" }).count() === 7823n);
   return { results, notes };
 }
 
