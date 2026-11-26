@@ -11,3 +11,13 @@ It is **not** under the MPL-2.0 that covers the rest of Kairotic: it may not be 
 from it is shared under the same license.
 
 The extractor, `tools/kern.mjs`, is Kairotic's code, under the MPL-2.0.
+
+## `figures.json`
+
+`figures.json` holds the figures of the **Bach Chorales Figured Bass dataset** (BCFB: Yaolong Ju, Sylvain Margot,
+Cory McKay, Luke Dahn and Ichiro Fujinaga, <https://github.com/juyaolongpaul/Bach_chorale_FB>,
+<https://zenodo.org/records/5084914>; *Automatic Figured Bass Annotation Using the New Bach Chorales Figured Bass
+Dataset*, ISMIR 2020), Bach's figures in the continuo parts of his cantatas' chorales after the Neue Bach-Ausgabe,
+licensed under **Creative Commons Attribution 4.0 International** (CC BY 4.0,
+<https://creativecommons.org/licenses/by/4.0/>). The changes: each figure placed on the quarter of a phrase of
+`phrases.json` it falls on (`tools/bcfb.mjs`, Kairotic's code, under the MPL-2.0).
