@@ -899,23 +899,44 @@
 ;; application, the rest its inputs); a chain, (=> …) or [:=> …], is : (<: before a vector, :> after one); a vector
 ;; that is not a box is , (in parallel); :_ is _ and :! is ! ; a number is a constant signal, a string is Faust code
 ;; as it is; an argument may be a signal itself: [:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])].
+;; Names, as in the patch: {:lfo [:os.osc 5]} defines lfo = os.osc(5); (once) and is it, :lfo after is it again.
+;; [:rec a b] is Faust's a ~ b, a feedback loop. A first map of options, {:nvoices 8 :effect …}, makes it polyphonic:
+;; :freq, :gain and :gate are the voice's own (the sliders and the button Faust's allocator sets), and :effect is applied
+;; once to the sum of the voices.
 
-(defn faust-box-vec? [v] (boolean (and (vector? v) (seq v) (let [h (first v)] (or (string? h) (and (or (keyword? h) (symbol? h)) (not (contains? #{:=> :_ :! :to} h))))))))
+(def ^:dynamic *faust-defs* nil)
+
+(defn faust-box-vec? [v] (boolean (and (vector? v) (seq v) (let [h (first v)] (or (string? h) (and (or (keyword? h) (symbol? h)) (not (contains? #{:=> :_ :! :to :rec} h))))))))
+
+(defn faust-name? [x] (and (map? x) (= 1 (count x)) (or (keyword? (ffirst x)) (symbol? (ffirst x)))))
+
+(defn unwrap "Faust code without the parentheses round all of it." [e]
+  (if (and (str/starts-with? e "(") (str/ends-with? e ")") (= 1 (count (top-forms e)))) (subs e 1 (dec (count e))) e))
 
 (defn faust-expr
-  "The Faust code of an element written as data."
+  "The Faust code of an element written as data; the names it defines are added to *faust-defs*."
   [x]
   (letfn [(wire [k] (case k :_ "_" :! "!" nil))
           (arg [a] (cond (number? a) (str a) (string? a) (pr-str a)
-                         (or (vector? a) (seq? a)) (faust-expr a)
+                         (or (vector? a) (seq? a) (faust-name? a)) (faust-expr a)
                          (or (keyword? a) (symbol? a)) (or (wire a) (name a))
                          :else (fail (str "Not a Faust argument: " (pr-str a)))))
-          (par? [e] (and (vector? e) (not (faust-box-vec? e)) (not (= :=> (first e)))))]
+          (par? [e] (and (vector? e) (not (faust-box-vec? e)) (not (#{:=> :rec} (first e)))))]
     (cond
       (number? x) (str x)
       (string? x) x
       (and (keyword? x) (wire x)) (wire x)
+      (or (keyword? x) (symbol? x)) (name x)
+      (faust-name? x)
+      (let [[[k v]] (seq x) nm (name k) e (unwrap (faust-expr v)) defs *faust-defs*]
+        (when defs
+          (let [had (some (fn [[n d]] (when (= n nm) d)) @defs)]
+            (cond (nil? had) (swap! defs conj [nm e])
+                  (not= had e) (fail (str "Two Faust definitions of " nm ": " had " and " e)))))
+        nm)
       (seq? x) (faust-expr (into [:=>] x))
+      (and (vector? x) (= :rec (first x)))
+      (let [[_ a b] x] (when-not (= 3 (count x)) (fail "[:rec a b] is a ~ b")) (str "(" (faust-expr a) " ~ " (faust-expr b) ")"))
       (and (vector? x) (= :=> (first x)))
       (let [es (vec (spliced (rest x)))]
         (when (empty? es) (fail "An empty chain"))
@@ -931,13 +952,31 @@
       (vector? x) (str "(" (str/join ", " (map faust-expr (spliced x))) ")")
       :else (fail (str "Not a part of a Faust process: " (pr-str x))))))
 
+(def faust-voice
+  "What a voice of a polyphonic faust~ has of its own, set note by note by Faust's allocator."
+  [["freq" "hslider(\"freq\", 440, 20, 20000, 0.01)"] ["gain" "hslider(\"gain\", 0.8, 0, 1, 0.01)"] ["gate" "button(\"gate\")"]])
+
+(defn faust-options? [m] (and (map? m) (seq m) (every? #{:nvoices :effect} (keys m))))
+
 (defn faust-code
   "The code of a faust~ box written as data, its process the chain of els: (faust-code [:os.osc 220] [:* 0.1])
-   writes process = os.osc(220) : *(0.1); after importing stdfaust.lib."
+   writes process = os.osc(220) : *(0.1); after importing stdfaust.lib, and the names it defines before it. A first
+   map of options, {:nvoices 8 :effect [:ef.echo 1 0.33 0.45]}, makes it polyphonic: :freq, :gain and :gate are its
+   voice's own."
   [& els]
-  (let [e (faust-expr (into [:=>] els))
-        e (if (and (str/starts-with? e "(") (= (count (top-forms e)) 1) (str/ends-with? e ")")) (subs e 1 (dec (count e))) e)]
-    (str "import(\"stdfaust.lib\");\nprocess = " e ";")))
+  (let [[opts els] (if (faust-options? (first els)) [(first els) (rest els)] [nil els])
+        defs (atom [])
+        e (binding [*faust-defs* defs] (unwrap (faust-expr (into [:=>] els))))
+        eff (when-let [x (:effect opts)] (binding [*faust-defs* defs] (unwrap (faust-expr x))))
+        n (:nvoices opts)
+        mine (set (map first @defs))]
+    (when (and n (not (pos-int? n))) (fail "nvoices is a whole number of voices"))
+    (str "import(\"stdfaust.lib\");\n"
+         (when n (str "declare options \"[nvoices:" n "]\";\n"
+                      (apply str (for [[nm d] faust-voice :when (not (mine nm))] (str nm " = " d ";\n")))))
+         (apply str (for [[nm d] @defs] (str nm " = " d ";\n")))
+         "process = " e ";"
+         (when eff (str "\neffect = " eff ";")))))
 
 (defn faust-vec? [v] (and (vector? v) (seq v) (or (keyword? (first v)) (symbol? (first v)) (string? (first v))) (= "faust~" (class-name (first v)))))
 

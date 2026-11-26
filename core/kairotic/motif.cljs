@@ -20,7 +20,8 @@
 (ns kairotic.motif
   (:require [clojure.string :as str]
             [kairotic.spell :as sp]
-            [kairotic.mt :as mt]))
+            [kairotic.mt :as mt]
+            [kairotic.compress :as cz]))
 
 (defn- sign [x] (cond (pos? x) 1 (neg? x) -1 :else 0))
 (defn- log2 [x] (/ (js/Math.log x) js/Math.LN2))
@@ -280,9 +281,14 @@
                                    (if (and (mt/node? n) (or (:motif (mt/attrs n)) (:motif.rel (mt/attrs n))))
                                      (mt/apply-op t [:attrs (:path e) (dissoc (mt/attrs n) :motif :motif.rel)]) t)))
                        x es)]
-     (reduce (fn [t {:keys [label at]}]
-               (reduce (fn [t {:keys [voice i rel]}]
-                         (let [path (:path (get-in voices [voice i])) n (mt/node-at t path)]
-                           (mt/apply-op t [:attrs path (cond-> (assoc (mt/attrs n) :motif label) rel (assoc :motif.rel rel))])))
-                       t at))
-             clean (motives voices o)))))
+     (cond-> (reduce (fn [t {:keys [label at]}]
+                       (reduce (fn [t {:keys [voice i rel]}]
+                                 (let [path (:path (get-in voices [voice i])) n (mt/node-at t path)]
+                                   (mt/apply-op t [:attrs path (cond-> (assoc (mt/attrs n) :motif label) rel (assoc :motif.rel rel))])))
+                               t at))
+                     clean (motives voices o))
+       ;; and how much of it its own formulas say (kairotic.compress, in bits as a listener hears them): on the root
+       (not (false? (:compression o)))
+       (as-> t2 (if-let [c (cz/of-notes (mapv (fn [e] [(:t e) (:dur e) (:pitch e)]) es))]
+                  (mt/update-attrs t2 assoc :compression c)
+                  (mt/update-attrs t2 dissoc :compression)))))))

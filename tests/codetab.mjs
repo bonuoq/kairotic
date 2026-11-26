@@ -349,6 +349,21 @@ export async function codetab(page, check) {
   check("... a number changed: the code only", (await fsrc()).includes("os.osc(330)") && Number(await cljs(page, nEv)) === k6 + 2, await cljs(page, lastEv));
   await cljs(page, `(stop) (apply delete ${fz} (keep (fn [[a _ b _]] (when (= a ${fz}) b)) (:lines (current))))`);
 
+  // Faust: names, a feedback loop, polyphony
+  const has1 = (code, sub) => cljs(page, `(str/includes? (faust-code ${code}) ${JSON.stringify(sub)})`);
+  const named = "[:os.osc (=> {:lfo [:os.osc 5]} [:* 10] [:+ 440])] [:* :lfo]";
+  check("Faust names: {:lfo …} defines lfo once, :lfo is it after",
+        (await has1(named, "\nlfo = os.osc(5);\nprocess = os.osc((lfo : *(10) : +(440))) : *(lfo);")) === "true");
+  check("... two definitions of one name: said", (await cljs(page, '(try (faust-code {:a [:os.osc 5]} {:a [:os.osc 6]}) (catch :default e (.-message e)))')).includes("Two Faust definitions of a"));
+  check("... [:rec a b] is a ~ b", (await has1("[:rec [:+] [:* 0.5]]", "process = + ~ *(0.5);")) === "true");
+  const poly = "{:nvoices 8 :effect [:ef.echo 1 0.33 0.45]} [:os.sawtooth :freq] [:* :gain] [:* [:en.adsr 0.01 0.2 0.6 0.4 :gate]]";
+  check("... polyphonic: options declared, the voice's own freq, gain and gate, an effect for all",
+        (await has1(poly, "declare options")) === "true" && (await has1(poly, "[nvoices:8]")) === "true"
+        && (await has1(poly, "\ngate = button(")) === "true" && (await has1(poly, "process = os.sawtooth(freq) : *(gain) : *(en.adsr(0.01, 0.2, 0.6, 0.4, gate));")) === "true"
+        && (await has1(poly, "\neffect = ef.echo(1, 0.33, 0.45);")) === "true");
+  check("... a voice's own defined by a name is not defined twice",
+        (await cljs(page, '(count (re-seq #"freq =" (faust-code {:nvoices 2} [:os.osc {:freq [:hslider "f" 220 20 2000 1]}])))')) === "1");
+
   // #pat/… in live code; a pbind's source written as data; a player's two outlets at once
   check("#pat/… is read in live code as a tagged literal, printed as written",
         (await cljs(page, '[(= "{:d #pat/shuffle [0 2 4]}" (pr-str {:d #pat/shuffle [0 2 4]})) (= (tagged-literal (quote pat/euclid) [3 8]) #pat/euclid [3 8])]')) === "[true true]");

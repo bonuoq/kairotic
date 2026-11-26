@@ -276,7 +276,10 @@ beat; `:repeat false` for none). `(as-tree :bN)` still reads a freqt's strokes e
 3 to 5 notes that come back repeated, transposed, in sequence or inverted, in the same voice or another) are written
 on its notes, in the analysis layer: `:motif` the label on the first note of each statement and return (`"a"`,
 `"b"`…), `:motif.rel` how a return is related to the statement (`"in sequence, a step higher"`). The score draws them
-above the notes. `(quant :b1 {:describe true})` keeps it for a freqt; `(motif/annotate tree)` describes any tree, and
+above the notes. On the root, `:compression` says how much of the tree its own formulas say (`kairotic.compress`,
+Study 66's shortest description, coded in bits as a listener hears them, as `@kairotic/rules`' `bits.mjs` counts):
+`{:bits :raw :ratio :rules [{:id "F1" :kind :figure :uses 32 :what "broken chord over 5 notes: …"}]}` — Bach's C major
+prelude is said in 16 % of its notes' bits, a folk melody in 65 to 98 %. `(quant :b1 {:describe true})` keeps it for a freqt; `(motif/annotate tree)` describes any tree, and
 `api/motif-annotate` is the same for a component.
 
 **Choosing another division.** The quantizer guesses; when it guesses wrong, **alt-click a note** of the
