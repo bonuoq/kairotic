@@ -28,6 +28,7 @@ import { melodicParts, defaultWeights, total, shape } from "./soft.mjs";
 import { imitation, canonVoices } from "./canon.mjs";
 import { readText, scan, timeOf, scansionText } from "./prosody.mjs";
 import { codeOf3 } from "./tonal.mjs";
+import { greekSystem } from "./greek.mjs";
 
 const sign = (x) => (x > 0) - (x < 0);
 const mod = (a, m) => ((a % m) + m) % m;
@@ -46,26 +47,28 @@ export const PROSODY = [
 export const prosodyWeights = () => Object.fromEntries(PROSODY.map((r) => [r.id, r.weight]));
 
 /**
- * The Greek style: the weights under which the reliable lines of Mesomedes's hymns (corpus.mjs; style.mjs's fit, 187
- * choices) are most likely, a note struck up to eight times in a row (a recitation tone), and no turn asked after a
- * 4th or a 5th (Fux's; Mesomedes goes on). Fitted once and kept here as data: tests/style.mjs fits it again.
+ * The Greek style: the weights under which what survives is most likely — Mesomedes's reliable lines and Athenaios's
+ * Delphic paean, read in the Greek system (greek.mjs: the Lydian and the Hyperdorian, diatonic and chromatic; style.mjs's
+ * fit, 530 choices) —, a note struck up to eight times in a row (a recitation tone), and no turn asked after a 4th or a
+ * 5th (Fux's; the hymns go on). Fitted once and kept here as data: tests/style.mjs fits it again.
  */
 export const GREEK = {
-  name: "greek", from: "Mesomedes, DAGM nos. 24, 25, 27.7–12 (the reliable lines)", maxRepeat: 8, turnAfterSmallLeap: false,
+  name: "greek", from: "Mesomedes, DAGM nos. 24, 25, 27.7–12 (the reliable lines); Athenaios, DAGM no. 20", maxRepeat: 8, turnAfterSmallLeap: false,
   // (every rule of soft.mjs and the accent's not listed keeps the engine's weight: none of the corpus's choices weighs it)
-  weights: { "acute-rise": 2.24, "after-accent": 0.47, "circumflex-fall": 2.38, "climax": 0, "contrary-after-leap": 0.51, "grave": 1.43, "hover": 0, "leap-after-leap": 0.13, "leap-size": 4.02, "line-end": 1.26, "melisma": 2.86, "memory": 0.25, "novelty": 0, "open": 0.78, "peak": 2.26, "repeat": 0, "return": 0.02, "run": 0.9, "sequence": 1.03, "step-back": 0.31 },
+  weights: { "acute-rise": 1.77, "after-accent": 0.7, "circumflex-fall": 2.16, "climax": 0, "contrary-after-leap": 1.03, "grave": 1.67, "hover": 0, "leap-after-leap": 0, "leap-size": 3.62, "line-end": 1.18, "melisma": 3.08, "memory": 0, "novelty": 0, "open": 0.68, "peak": 2.27, "repeat": 0, "return": 0, "run": 1.24, "sequence": 0.89, "step-back": 0 },
 };
 
-/** Example texts: lines of polytonic Greek, their metre, and a mode (a church mode of tonal.mjs: the final its tonic). */
+/** Example texts: lines of polytonic Greek, their metre, and a mode (a church mode of tonal.mjs: the final its tonic);
+ *  Seikilos's, the Greek system of his stele too (the Iastian, its final the lichanos meson e). */
 export const TEXTS = {
   iliad: { name: "Iliad 1.1–2", metre: "hexameter", key: { tonic: "D", mode: "dorian" },
            text: "μῆνιν ἄειδε θεὰ Πηληϊάδεω Ἀχιλῆος\nοὐλομένην, ἣ μυρί’ Ἀχαιοῖς ἄλγε’ ἔθηκε" },
   odyssey: { name: "Odyssey 1.1", metre: "hexameter", key: { tonic: "E", mode: "dorian" },
              text: "ἄνδρα μοι ἔννεπε, Μοῦσα, πολύτροπον, ὃς μάλα πολλὰ" },
   // (λῡποῦ: the υ of λύπη long, marked — the prosody cannot know it)
-  seikilos: { name: "Seikilos (the song)", metre: "seikilos", key: { tonic: "E", mode: "dorian" },
+  seikilos: { name: "Seikilos (the song)", metre: "seikilos", key: { tonic: "E", mode: "dorian" }, system: { tonos: "iastian", genera: ["diatonic"] }, final: -1,
               text: "Ὅσον ζῇς φαίνου\nμηδὲν ὅλως σὺ λῡποῦ·\nπρὸς ὀλίγον ἐστὶ τὸ ζῆν,\nτὸ τέλος ὁ χρόνος ἀπαιτεῖ." },
-  stele: { name: "Seikilos (the distich)", metre: ["hexameter", "pentameter"], key: { tonic: "E", mode: "dorian" },
+  stele: { name: "Seikilos (the distich)", metre: ["hexameter", "pentameter"], key: { tonic: "E", mode: "dorian" }, system: { tonos: "iastian", genera: ["diatonic"] }, final: -1,
            text: "Εἰκὼν ἡ λίθος εἰμί· τίθησί με Σείκιλος ἔνθα\nμνήμης ἀθανάτου σῆμα πολυχρόνιον." },
 };
 
@@ -136,8 +139,18 @@ export function planFromTime(syls) {
 }
 
 /**
+ * A Greek system (greek.mjs) with its degrees counted from a final (a degree of the system: 0 the mese, −1 the lichanos
+ * meson…), as aoidos counts a church mode's from its tonic: the same answers, deg, at and codesIn moved.
+ */
+export function fromFinal(G, final = 0) {
+  return { ...G, final, base: G, deg: (c) => G.deg(c) - final, at: (d) => G.at(d + final), codesIn: (lo, hi) => G.codesIn(lo + final, hi + final) };
+}
+
+/**
  * A melody for a text: spec {text, metre ("hexameter", "pentameter", "iambic-trimeter", "free", "seikilos"; a list:
- * one a line, in turn), key ({tonic, mode}: a church mode, its tonic the final; ficta off: the mode's own scale),
+ * one a line, in turn), key ({tonic, mode}: a church mode, its tonic the final; ficta off: the mode's own scale) or
+ * system (a Greek one: greekSystem's spec {tonos, genera, synemmenon, shade} or the system itself) and final (its
+ * degree the melody ends on, 0 the mese; the ambitus and the starts counted from it),
  * ambitus ([lo, hi] in degrees from the final, [-1, 8]), starts (degrees, [0, 2, 3, 4, 7]), melisma (the most notes a
  * syllable, 3; 1: a note a syllable), strict (the peak and the circumflex hard), maxRepeat (3), chromatic (altered
  * notes allowed: [[degree, alteration]…]), time (the syllables and their beats given: planFromTime), open (a fragment:
@@ -148,8 +161,13 @@ export function planFromTime(syls) {
  */
 export function aoidos(spec = {}) {
   const P = spec.time ? planFromTime(spec.time) : plan(spec.text, spec.metre || "hexameter");
-  const key = spec.key || { tonic: "E", mode: "dorian" };
-  const S = keySystem(key, { ficta: false }), deg = S.deg;
+  // (the pitch system: a church mode of 12-TET, or a Greek one — greek.mjs's, its degrees counted from the final)
+  const G = spec.system ? (spec.system.greek ? spec.system : greekSystem(spec.system)) : null;
+  const key = G ? null : spec.key || { tonic: "E", mode: "dorian" };
+  const S = G ? fromFinal(G, spec.final ?? 0) : keySystem(key, { ficta: false }), deg = S.deg;
+  // (how high a note is, for the accent's rises and falls: its degree in a church mode; in a Greek system its pitch,
+  // since two notes may share a place — the chromatic and the diatonic lichanos)
+  const h = G ? (c) => S.cents(c) : deg;
   const [lo, hi] = spec.ambitus || [-1, 8];
   const starts = spec.starts || [0, 2, 3, 4, 7];
   const finals = [0, 7].filter((f) => f >= lo && f <= hi);
@@ -167,13 +185,13 @@ export function aoidos(spec = {}) {
   const wordBeats = Math.max(1, ...Y.map((y, i) => y.at + y.beats - Y[wordFrom[i]].at));
   // (the mode's own notes, and the altered ones asked for — chromatic: [[degree, alteration]…], as Mesomedes's c♯')
   const codes = [...S.codesIn(lo, hi)];
-  for (const [d0, a] of spec.chromatic || []) for (let d = d0 - 21; d <= d0 + 21; d += 7) if (d >= lo && d <= hi) codes.push(codeOf3(d, a));
+  if (!G) for (const [d0, a] of spec.chromatic || []) for (let d = d0 - 21; d <= d0 + 21; d += 7) if (d >= lo && d <= hi) codes.push(codeOf3(d, a));
   const struckAt = (U, t) => t === 0 || isStart(t) || U[t] !== U[t - 1];
-  /** A syllable's pitches (degrees) as written up to beat t (exclusive), and c at t if given. */
+  /** A syllable's pitches (their heights: degrees, or cents) as written up to beat t (exclusive), and c at t if given. */
   const sylNotes = (U, s, t, c) => {
     const out = [], a = startOf(s);
-    for (let j = a; j < t; j++) if (j === a || U[j] !== U[j - 1]) out.push(deg(U[j]));
-    if (c !== undefined && (t === a || c !== U[t - 1])) out.push(deg(c));
+    for (let j = a; j < t; j++) if (j === a || U[j] !== U[j - 1]) out.push(h(U[j]));
+    if (c !== undefined && (t === a || c !== U[t - 1])) out.push(h(c));
     return out;
   };
 
@@ -183,7 +201,8 @@ export function aoidos(spec = {}) {
     { id: "melodic", check: ({ U, t, c, struck }) => (struck && t >= 1 ? S.melodicError(U[t - 1], c) : null) },
     { id: "melisma", check: ({ U, t, c, struck }) => {
       if (!struck || isStart(t)) return null;
-      if (Math.abs(deg(c) - deg(U[t - 1])) > 2) return "a melisma moves by step or a 3rd";
+      // (in a Greek system by size: a chromatic paranete to the mese is three places but a major 3rd)
+      if (G ? Math.abs(h(c) - h(U[t - 1])) > 420 : Math.abs(deg(c) - deg(U[t - 1])) > 2) return "a melisma moves by step or a 3rd";
       const s = sylAt[t], k = sylNotes(U, s, t, c).length;
       const most = Y[s].accent === "circumflex" ? Math.max(2, maxNotes) : maxNotes;
       return k > most ? (most === 1 ? "a note a syllable" : `${most} notes a syllable at most`) : null;
@@ -210,14 +229,14 @@ export function aoidos(spec = {}) {
     } },
   ].filter((r) => !spec.open || (r.id !== "start" && r.id !== "final"));
   if (strict) rules.push(
-    { id: "circumflex", check: ({ U, t, d, struck }) => (struck && !isStart(t) && Y[sylAt[t]].accent === "circumflex" && d > deg(U[t - 1]) ? "a circumflex does not rise" : null) },
+    { id: "circumflex", check: ({ U, t, c, struck }) => (struck && !isStart(t) && Y[sylAt[t]].accent === "circumflex" && h(c) > h(U[t - 1]) ? "a circumflex does not rise" : null) },
     { id: "peak", check: ({ U, t, c, d, struck }) => {
       const s = sylAt[t], p = peakOf[s];
       if (p < 0) return null;
-      if (s > p && struck && d > Math.max(...sylNotes(U, p, startOf(p) + Y[p].beats))) return "the accented syllable holds the word's highest note";
+      if (s > p && struck && h(c) > Math.max(...sylNotes(U, p, startOf(p) + Y[p].beats))) return "the accented syllable holds the word's highest note";
       if (s === p && isEnd(t)) {
         const top = Math.max(...sylNotes(U, s, t, c));
-        for (let j = startOf(wordFrom[s]); j < startOf(s); j++) if (deg(U[j]) > top) return "the accented syllable holds the word's highest note";
+        for (let j = startOf(wordFrom[s]); j < startOf(s); j++) if (h(U[j]) > top) return "the accented syllable holds the word's highest note";
       }
       return null;
     } });
@@ -234,17 +253,17 @@ export function aoidos(spec = {}) {
     if (strict) {
       const p = peakOf[s];
       if (p >= 0 && s > p) wi = Math.max(...sylNotes(U, p, startOf(p) + Y[p].beats));
-      else if (p >= 0) { let m = -99; for (let i = startOf(wordFrom[s]); i < Math.min(t, startOf(p)); i++) m = Math.max(m, deg(U[i])); wi = "<" + m; }
+      else if (p >= 0) { let m = -1e9; for (let i = startOf(wordFrom[s]); i < Math.min(t, startOf(p)); i++) m = Math.max(m, h(U[i])); wi = "<" + m; }
     }
     return t + "|" + U.slice(a, t).join(",") + "|" + U[t - 1] + "|" + (j >= 1 ? U[j - 1] : "") + "|" + Math.min(k, maxRepeat + 1) + "|" + wi;
   };
 
   // ─── the soft rules: the line's shape (soft.mjs) and the accent, a syllable's cost as it grows ───
-  const pen = (U, s, ps, final) => {
+  const pen = (U, s, ps, final, lastCode) => {
     const y = Y[s], parts = {}, k = ps.length;
     if (!k) return parts;
     const top = Math.max(...ps), first = ps[0], last = ps[k - 1];
-    const before = y.at >= 1 ? deg(U[y.at - 1]) : null, prevSyl = s >= 1 && Y[s - 1].line === y.line ? Y[s - 1] : null;
+    const before = y.at >= 1 ? h(U[y.at - 1]) : null, prevSyl = s >= 1 && Y[s - 1].line === y.line ? Y[s - 1] : null;
     if (y.accent === "acute" && before !== null) { if (top < before) parts["acute-rise"] = W["acute-rise"]; else if (top === before) parts["acute-rise"] = W["acute-rise"] / 2; }
     if (y.accent === "circumflex") {
       if (k === 1) { if (final) parts["circumflex-fall"] = W["circumflex-fall"] / 2; }
@@ -252,7 +271,7 @@ export function aoidos(spec = {}) {
       if (k > 2) parts.melisma = (k - 2) * W.melisma;
     } else if (k > 1) parts.melisma = (k - 1) * W.melisma;
     const p = peakOf[s];
-    if (p === s) { const above = []; for (let j = startOf(wordFrom[s]); j < y.at; j++) if (deg(U[j]) > top) above.push(j); if (above.length) parts.peak = above.length * W.peak; }
+    if (p === s) { const above = []; for (let j = startOf(wordFrom[s]); j < y.at; j++) if (h(U[j]) > top) above.push(j); if (above.length) parts.peak = above.length * W.peak; }
     else if (p >= 0 && s > p && top > Math.max(...sylNotes(U, p, startOf(p) + Y[p].beats))) parts.peak = W.peak;
     if (prevSyl && before !== null) {
       if ((prevSyl.accent === "acute" || prevSyl.accent === "circumflex") && y.accent !== "acute" && y.accent !== "circumflex") {
@@ -260,7 +279,7 @@ export function aoidos(spec = {}) {
       }
       if (prevSyl.accent === "grave" && first < before) parts.grave = W.grave;
     }
-    if (final && y.lineEnd && s < Y.length - 1 && ![0, 3, 4].includes(mod(last, 7))) parts["line-end"] = W["line-end"];
+    if (final && y.lineEnd && s < Y.length - 1 && ![0, 3, 4].includes(mod(deg(lastCode), 7))) parts["line-end"] = W["line-end"];
     return parts;
   };
   const diff = (a, b) => { const out = {}; for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) { const v = (a[id] || 0) - (b[id] || 0); if (v) out[id] = v; } return out; };
@@ -275,7 +294,7 @@ export function aoidos(spec = {}) {
       const s = sylAt[t], end = isEnd(t);
       if (!struck && !end) return {};
       const now = sylNotes(U, s, t, c), then = sylNotes(U, s, t);
-      return diff(pen(U, s, now, end), pen(U, s, then, false));
+      return diff(pen(U, s, now, end, c), pen(U, s, then, false));
     } },
   ];
   // one voice on solveVoices (the memo keyed by what the rules read, not by a window of beats)
@@ -344,6 +363,7 @@ export function canonic(spec = {}) {
   // (in canon a new syllable strikes a new pitch: a canon reads a pitch struck again as held, and the holds stay short)
   const A = aoidos({ ...spec, maxRepeat: spec.maxRepeat ?? 1 });
   const n = A.plan.beats, own = A.own, Y = A.syllables;
+  if (A.S.greek) return { error: "a canon in a Greek system waits for the Greek counterpoint", A, count: () => 0n, countWithin: () => 0n, beats: n };
   if (A.error || !n) return { error: A.error || "no text", A, count: () => 0n, countWithin: () => 0n, beats: n };
   const firstStrong = Y.find((x) => x.strong), phase = firstStrong ? firstStrong.at % 2 : 0;
   const maxHold = Math.max(2, own.maxSyl * (spec.maxRepeat ?? 1));
@@ -387,12 +407,14 @@ export function aulos(spec = {}) {
   const practice = spec.practice || "heterophony";
   if (practice === "heterophony") return { ...canonic({ ...spec, d: 0, k: spec.k ?? 0, imitation: spec.imitation ?? 0.6 }), practice };
   const A = aoidos(spec), Y = A.syllables, at7 = (d) => ((d % 7) + 7) % 7 - 7;
+  // (a degree an octave below, or the nearest octave up the system has: a Greek system ends at its proslambanomenos)
+  const below = (d) => { for (let x = d; x <= d + 14; x += 7) { try { return A.S.at(x); } catch (e) { /* not in the system */ } } return A.S.at(0); };
   const comesOf = (U) => {
-    if (practice === "drone") return U.map(() => A.S.at(-7));
+    if (practice === "drone") return U.map(() => below(-7));
     const lines = [...new Set(Y.map((y) => y.line))], out = [];
     for (const li of lines) {
       const ys = Y.filter((y) => y.line === li), last = ys[ys.length - 1], end = last.at + last.beats;
-      const held = A.S.at(at7(A.deg(U[end - 1])));
+      const held = below(at7(A.deg(U[end - 1])));
       for (let t = ys[0].at; t < end; t++) out[t] = held;
     }
     return out;
@@ -415,6 +437,7 @@ export function duxOf(Y, notes, midi) {
  * the best first.
  */
 export function examine(A, U, { ks = [-7, -4, -3, 7], ds = [2, 4], degrees = [1], ms = 1500, b = 2 } = {}) {
+  if (A.S.greek) return [];                          // (imitation spells its comes in a church mode)
   const notes = A.asDux(U);
   const maxHold = Math.max(2, ...runs(notes));
   const out = [];
@@ -448,4 +471,4 @@ function runs(notes) {
   return out;
 }
 
-export default { aoidos, canonic, aulos, plan, examine, judgeAccent, duxOf, PROSODY, TEXTS, prosodyWeights };
+export default { aoidos, canonic, aulos, plan, examine, judgeAccent, duxOf, fromFinal, PROSODY, TEXTS, prosodyWeights };

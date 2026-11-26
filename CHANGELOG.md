@@ -6,6 +6,18 @@
   its vibrato comes in as a note is held (`VD` in the curves), a singer's formant near 3 kHz (`ring`), and the nasals
   open the nose: a pole at 270 Hz and a zero at each nasal's antiformant (`FNZ` in the table: μ 1000, ν 1500, ŋ 2500 Hz),
   cancelling elsewhere. Jitter and the singer's formant on the page; the antiformant checked by its spectrum in CI.
+- **Study 74 · aoidos written in the Greek system** (#192). `aoidos({system, final})`: a melody in a tonos of
+  `greek.mjs`, its degrees counted by place from its final (`fromFinal`), the accent's rises and falls judged by pitch,
+  a melisma by its size, the sound in cents; `style.mjs` reads the corpus there (`codesInSystem`). Mesomedes in the
+  Lydian and Athenaios in the Hyperdorian lose their refusals of the chromatic genus; `GREEK` is fitted again to both
+  (530 choices; the written note the cheapest 221 → 345 times); Seikilos, in the Iastian (final e), not in the fit,
+  22 → 29 of 48 beats. The page: a Greek tonos, its genus and tuning, its final; the canon, the heterophony and the
+  examiner wait for the Greek counterpoint. The aulos's drone and ison stay inside the system's two octaves.
+- **Study 74 · aoidos: the Greek pitch system** (#192). `greek.mjs`: `greekSystem({tonos, genera, synemmenon, shade})`
+  — the Immutable System in any of the fifteen tonoi, its genera in Aristoxenus's or Archytas's shade, notes named and
+  counted by their place; the Greek concords (unison, 4th, 5th, octave) and moves judged by size; the same answers as
+  `keySystem` (deg, codesIn, cents, midi, quality, melodicError…) so that aoidos can be written in it next. Tested
+  against the signs of Mesomedes (Lydian) and Seikilos (Iastian).
 - **Study 74 · aoidos: the Delphic paean of Athenaios in the corpus** (#192). `corpus.mjs` reads DAGM no. 20 as the
   edition transcribes it, a note as its pitch, checked against the stone's signs: 16 fragments, 273 notes, the
   melismas the stone writes as a doubled vowel; `runsOf` gives each fragment alone and `aoidos({open})` leaves a
