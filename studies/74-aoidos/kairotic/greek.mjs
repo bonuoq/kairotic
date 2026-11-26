@@ -70,11 +70,13 @@ function catalogue() {
 }
 const CATALOGUE = catalogue();
 
-const NOTE_NAMES = ["c", "c♯", "d", "e♭", "e", "f", "f♯", "g", "a♭", "a", "b♭", "b"];
-/** A MIDI number (fractional) as the transcriptions name it: c' = 72, a = 69; and its deviation in cents. */
-export function midiName(m) {
+const FLATS = ["c", "c♯", "d", "e♭", "e", "f", "f♯", "g", "a♭", "a", "b♭", "b"];
+const SHARPS = ["c", "c♯", "d", "d♯", "e", "f", "f♯", "g", "g♯", "a", "b♭", "b"];
+/** A MIDI number (fractional) as the transcriptions name it: c' = 72, a = 69; and its deviation in cents (sharps:
+ *  d♯ and g♯ rather than e♭ and a♭, as in the tonoi whose mese is c♯, e, f♯, g♯ or b). */
+export function midiName(m, sharps = false) {
   const k = Math.round(m), dev = Math.round((m - k) * 100), oct = Math.floor(k / 12) - 5;
-  const name = NOTE_NAMES[mod(k, 12)] + (oct > 0 ? "'".repeat(oct) : oct < 0 ? "," .repeat(-oct) : "");
+  const name = (sharps ? SHARPS : FLATS)[mod(k, 12)] + (oct > 0 ? "'".repeat(oct) : oct < 0 ? "," .repeat(-oct) : "");
   return dev ? `${name} ${dev > 0 ? "+" : "−"}${Math.abs(dev)}¢` : name;
 }
 
@@ -127,7 +129,7 @@ export function greekSystem(spec = {}) {
   const sorted = [...notes.values()].sort((a, b) => a.deg - b.deg || a.rel - b.rel);
   const deg = (c) => Math.floor(c / 16), alt = (c) => mod(c, 16);
   const note = (c) => { const x = notes.get(c); if (!x) throw new Error(`no such note in this system: ${c}`); return x; };
-  const cents = (c) => (mese - 60) * 100 + note(c).rel;             // from middle c
+  const cents = (c) => (notes.has(c) ? (mese - 60) * 100 + notes.get(c).rel : NaN);             // from middle c
   const midi = (c) => mese + note(c).rel / 100;
   const hz = (c) => 440 * Math.pow(2, (midi(c) - 69) / 12);
   const codesIn = (lo, hi) => sorted.filter((x) => x.deg >= lo && x.deg <= hi).map((x) => x.code);
@@ -153,7 +155,7 @@ export function greekSystem(spec = {}) {
   };
   const quality = (a, b) => (concord(a, b) ? "perfect" : "dissonant");
   function melodicError(a, b) {
-    if (a === b) return null;
+    if (a === b || !notes.has(a) || !notes.has(b)) return null;      // (a note out of the system is said elsewhere)
     const s = Math.abs(note(b).rel - note(a).rel);
     if (s <= 520) return null;                                           // a step, a third, a fourth (or a change in place)
     if (s < 680) return "a tritone";
@@ -175,7 +177,7 @@ export function greekSystem(spec = {}) {
     tonos, genera, shade: shadeName, mese, notes: sorted.map((x) => x.code),
     deg, alt, shift, codesIn, at, cents, midi, hz, quality, concord, melodicError, intervalName, periodName: "octave",
     leaps: { small: 3, large: 5 }, suspensions: { upper: [], lower: [], compound: [] }, forbidCadence: [],
-    noteOf, nearest, pitchName: (c) => midiName(midi(c)), greekName: (c) => note(c).name + (note(c).genus ? ` (${note(c).genus})` : ""),
+    noteOf, nearest, pitchName: (c) => midiName(midi(c), [1, 4, 6, 8, 11].includes(mod(mese, 12))), greekName: (c) => note(c).name + (note(c).genus ? ` (${note(c).genus})` : ""),
   };
 }
 

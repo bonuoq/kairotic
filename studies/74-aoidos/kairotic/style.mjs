@@ -21,15 +21,34 @@ export function codesOfMidi(key, midis, shift = 0) {
 
 /**
  * A piece of the corpus as the engine sees it: spec {piece (corpus.mjs's readPiece), key, shift (semitones to the
- * key's register), chromatic, ambitus, maxRepeat, weights} (a fragment's start and end not the melody's) → {A (aoidos on the piece's own time), U (its melody, a
+ * key's register), chromatic, ambitus, maxRepeat, weights; or system and final, a Greek one: the pitches as they
+ * are} (a fragment's start and end not the melody's) → {A (aoidos on the piece's own time), U (its melody, a
  * code a beat), skip (beats not to learn from: supplied notes, unreliable lines)}.
  */
-export function asEngine({ piece, key, shift = 0, chromatic = [], ambitus, maxRepeat = 8, turnAfterSmallLeap = true, weights }) {
-  const A = aoidos({ time: piece.syllables, key, chromatic, ambitus, maxRepeat, turnAfterSmallLeap, weights, open: !!piece.fragments });
-  const U = codesOfMidi(key, piece.beats, shift);
+export function asEngine({ piece, key, system, final = 0, shift = 0, chromatic = [], ambitus, maxRepeat = 8, turnAfterSmallLeap = true, weights }) {
+  const A = aoidos({ time: piece.syllables, key, system, final, chromatic, ambitus, maxRepeat, turnAfterSmallLeap, weights, open: !!piece.fragments });
+  const U = system ? codesInSystem(A, piece.beats.map((m) => m + shift)) : codesOfMidi(key, piece.beats, shift);
   const skip = [];
   piece.syllables.forEach((y) => { let t = y.at; for (const x of y.notes) { for (let j = 0; j < x.chronoi; j++) skip[t + j] = !y.reliable || x.supplied; t += x.chronoi; } });
   return { A, U, skip, piece };
+}
+
+/**
+ * A melody a code a beat in a Greek system (aoidos's A on one), from MIDI numbers: each pitch the note of the system
+ * that sounds it (within 30 cents); where two places sound it (the chromatic paranete synemmenon and the paramese), the
+ * one nearest the note before by degree — the line read as it moves.
+ */
+export function codesInSystem(A, midis, tol = 30) {
+  const out = [];
+  midis.forEach((m, t) => {
+    const cands = A.codes.filter((c) => Math.abs(A.midi(c) - m) * 100 <= tol);
+    if (!cands.length) { out.push(undefined); return; }
+    const prev = t > 0 && midis[t - 1] === m ? out[t - 1] : undefined;
+    if (prev !== undefined && cands.includes(prev)) { out.push(prev); return; }
+    const before = out.slice(0, t).reverse().find((c) => c !== undefined);
+    out.push(before === undefined ? cands[0] : cands.reduce((b, c) => (Math.abs(A.deg(c) - A.deg(before)) < Math.abs(A.deg(b) - A.deg(before)) ? c : b)));
+  });
+  return out;
 }
 
 /**
@@ -83,4 +102,4 @@ export function fit(choices, { w0 = { ...defaultWeights(), ...prosodyWeights() }
   return { w, before, after: score(choices, w), ids };
 }
 
-export default { asEngine, choicesOf, score, fit, codesOfMidi };
+export default { asEngine, choicesOf, score, fit, codesOfMidi, codesInSystem };
