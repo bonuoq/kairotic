@@ -1206,6 +1206,8 @@
     (set! (.-hidden ($ "code-run")) (or data live))
     (set! (.-hidden ($ "code-chains")) (or data live))
     (.setAttribute ($ "code-chains") "aria-pressed" (str (= :chains @code-style)))
+    (set! (.-hidden ($ "code-asdata")) (or data live))
+    (.setAttribute ($ "code-asdata") "aria-pressed" (str (= :data @code-style)))
     (set! (.-hidden ($ "code-revert")) (or data live))
     (set! (.-disabled ($ "code-run")) (not dirty))
     (set! (.-disabled ($ "code-revert")) (not dirty))))

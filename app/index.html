@@ -559,6 +559,8 @@ pre.view { margin: 0; flex: 1; min-height: 300px; overflow: auto; padding: 10px 
 .code-views button.act:last-child { border-radius: 0 4px 4px 0; }
 .code-views button.act + button.act { margin-left: -1px; }
 #code-chains { font-family: var(--f-code); font-size: 11.5px; padding: 3px 8px; }
+#code-asdata { font-family: var(--f-code); font-size: 11.5px; padding: 3px 8px; margin-left: 4px; }
+#code-asdata[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
 #code-chains[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; }
 .code-views button.act[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); font-weight: 600; position: relative; }
 
@@ -948,7 +950,7 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
           <span class="code-views" role="group" aria-label="Show the work as">
             <button class="act" type="button" id="view-calls" aria-pressed="true" title="The work as calls (box, connect, …): edit it and run it">Calls</button><button class="act" type="button" id="view-live" aria-pressed="false" title="Your own code, to play the work live: ⇧+Enter evaluates a form, Ctrl/⌘+Enter a block. It is kept in this browser, not in the work">Live</button><button class="act" type="button" id="view-data" aria-pressed="false" title="The work as data (EDN): the state the history produces, to read">Data</button>
           </span>
-          <button class="act" type="button" id="code-chains" aria-pressed="false" title="Write the lines of the work as chains where they follow each other: (-> :b1 (to :b2) (to :b3)), (doto :b1 (to :b2) (to :b3))">-> chains</button>
+          <button class="act" type="button" id="code-chains" aria-pressed="false" title="Write the lines of the work as chains where they follow each other: (-> :b1 (to :b2) (to :b3)), (doto :b1 (to :b2) (to :b3))">-> chains</button><button class="act" type="button" id="code-asdata" aria-pressed="false" title="Write the boxes and lines of the work as data: chains of box vectors, (=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]}), and their places">[:=> data]</button>
           <span class="state" id="code-state">in sync with the patch</span>
           <span class="spacer"></span>
           <button class="act" id="code-revert" disabled>Discard changes</button>

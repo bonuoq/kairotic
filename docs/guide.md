@@ -623,7 +623,10 @@ the bar hides or shows it. This browser remembers how you left it. From the REPL
   they change, as one event), ⇧+Enter evaluates the form at the cursor alone. The lines that follow each other
   are written as chains — `(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, names in place of ids —
   the same work, in the same order, read as the signal goes; **-> chains** off writes a `connect` for each line
-  (this browser remembers the choice). Links, the clipboard and Claude always use the flat writing. **Data** shows the same work as data (EDN): the state the history produces, every key of
+  (this browser remembers the choice). **[:=> data]** writes the boxes and lines as a patch as data —
+  `(=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]})`, each box by its id the first time and `:b1`
+  after, `[:to o box i]` where the ports say, and `(places {:b1 [40 30] …})` for where they are —: applied, the same
+  work; a text no vector writes again exactly stays a string, `["osc~ 220.0"]`. Links, the clipboard and Claude always use the flat writing. **Data** shows the same work as data (EDN): the state the history produces, every key of
   every box, read-only, to inspect it (folding and search with Ctrl/⌘+F). Edits not run yet stay in the
   calls while you look at the data.
 - **Components** — the classes this work knows. The boxes that define them (`component`) are kept
