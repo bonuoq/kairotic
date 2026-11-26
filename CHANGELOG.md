@@ -7,7 +7,8 @@
   `<chord>` (not of one of its notes) and read back from it — or from one of its notes, in a MEI from elsewhere. A
   melisma goes on over chords too (the next chord struck with no syllable, a tied chord's piece no new one), so the
   extender is derived before them. Tested: a chord tied across the bar line, with and without text, tree → MEI → tree
-  and MEI → tree → MEI (there was no test of chords through the MEI before).
+  and MEI → tree → MEI (there was no test of chords through the MEI before). **Fixed:** a chord read from a MEI came
+  back with no notes (each note was read as a layer, its children: none); now its notes, their `<accid>`s too.
 - **Lyrics in the app's MEI ↔ tree, drawn under the notes** (#192). `mt/->mei` writes a tree's syllables (the lyrics
   layer: `:syl`, `:wordpos`, `:con`, `:verses`) as MEI's `<verse n><syl wordpos con>` on the note that begins each one
   — the hyphen and the extender derived where `:con` is not written (`mt/with-cons`) — so Verovio engraves them under

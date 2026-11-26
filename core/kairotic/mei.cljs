@@ -195,7 +195,18 @@
                                    :grace (some? (at x "grace")) :tie-out (contains? ties id) :tie-in (contains? tied-into id)}
                             (verses-of x) (assoc :lyr (verses-of x)))])
                 "chord" (let [ns (filter #(= "note" (lname %)) (el-kids x))
-                              kids (vec (mapcat #(layer-segs (doto (.cloneNode %) (.setAttribute "dur" (or (at x "dur") "4"))) scale mem) ns))]
+                              ;; each note read as the only child of a layer (layer-segs reads an element's children):
+                              ;; a whole copy (its <accid>s), with the chord's duration, without its <verse>s (the
+                              ;; syllable is the chord's)
+                              kids (vec (mapcat (fn [n]
+                                                  (let [c (.cloneNode n true)
+                                                        w (.createElementNS (.-ownerDocument x) mei-ns "layer")]
+                                                    (doseq [v (filter #(= "verse" (lname %)) (el-kids c))] (.removeChild c v))
+                                                    (.setAttribute c "dur" (or (at x "dur") "4"))
+                                                    (when-let [d (at x "dots")] (.setAttribute c "dots" d))
+                                                    (.appendChild w c)
+                                                    (layer-segs w scale mem)))
+                                                ns))]
                           ;; the syllable the chord sings: its own <verse>, or one of its notes' (a MEI from elsewhere)
                           [(cond-> {:kind :chord :ids [(at x "xml:id")] :dur (beats-of x scale) :kids kids}
                              (or (verses-of x) (some verses-of ns)) (assoc :lyr (or (verses-of x) (some verses-of ns))))])
