@@ -193,6 +193,21 @@ Faust code as it is, and an argument can be a signal itself, as the vibrato abov
 a control: `[:freq 440]` to the box sets it. Evaluated again, the box's code is written only if it changed (and
 compiled again). `(faust-code …)` gives the code, and the box's window shows it as a patch of Faust's elements too.
 
+**Patterns as data.** A box that keeps a source takes it as its last argument: a map for a `pbind` (and for any box
+of a package not loaded yet), a string for a code box (`script`, `pattern`). The generators of `@kairotic/patterns`
+are written in live code as in a pbind — `#pat/shuffle`, `#pat/euclid`, `#pat/necklace`… —, read as values that print
+as they were written. A `player` takes a pattern nested in it on its right inlet, and leaves the Hz and the voice ids
+together, for a `synth~` or a polyphonic `faust~` (a `keyboard` too):
+
+```clojure
+(=> [:loadbang] [:msg :start]
+    [:player 120 [:pbind 7 'loop {:degree #pat/shuffle [0 2 4 7] :dur #pat/euclid [5 8] :octave [4 5]}]]
+    [:synth-] [:_ :_] [:dac- 1 2])
+```
+
+Evaluated again, the pbind's source is written only if it changed (one event). For a change while it plays, without
+writing the box, send it a message: `(send! :lead [:set :dur [0.25 0.25 0.5]])`.
+
 **Voices.** A map of chains plays voices, each known by its key, as `d1` in Tidal:
 
 ```clojure

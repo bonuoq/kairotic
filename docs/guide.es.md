@@ -199,6 +199,21 @@ señal constante, un string es código Faust tal cual, y un argumento puede ser 
 caja solo se escribe si ha cambiado (y se vuelve a compilar). `(faust-code …)` da el código, y la ventana de la caja lo
 muestra también como un patch de los elementos de Faust.
 
+**Patrones como datos.** Una caja que guarda una fuente la toma como su último argumento: un mapa para un `pbind` (y
+para cualquier caja de un paquete que aún no se ha cargado), un string para una caja de código (`script`, `pattern`).
+Los generadores de `@kairotic/patterns` se escriben en el código en vivo como en un pbind —`#pat/shuffle`, `#pat/euclid`,
+`#pat/necklace`…—, leídos como valores que se escriben tal como estaban. Un `player` toma un patrón anidado en él por su
+entrada derecha, y deja los Hz y los ids de voz juntos, para un `synth~` o un `faust~` polifónico (un `keyboard` también):
+
+```clojure
+(=> [:loadbang] [:msg :start]
+    [:player 120 [:pbind 7 'loop {:degree #pat/shuffle [0 2 4 7] :dur #pat/euclid [5 8] :octave [4 5]}]]
+    [:synth-] [:_ :_] [:dac- 1 2])
+```
+
+Evaluada otra vez, la fuente del pbind solo se escribe si ha cambiado (un evento). Para cambiarlo mientras suena, sin
+escribir la caja, mándale un mensaje: `(send! :lead [:set :dur [0.25 0.25 0.5]])`.
+
 **Voces.** Un mapa de cadenas toca voces, cada una reconocida por su clave, como `d1` en Tidal:
 
 ```clojure

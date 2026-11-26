@@ -89,6 +89,10 @@
   as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
   circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
 
+- **Patterns as data** (discussion #407): a box that keeps a source takes it as its last argument — a map for a `pbind`
+  (`[:pbind 7 {:degree [0 2 4] :dur #pat/euclid [3 8]}]`), a string for a code box —, written only if it changed; the
+  `#pat/…` generators are read in live code as tagged literals, printed as written; a `player` takes a nested pattern
+  on its right inlet and, as a `keyboard`, leaves its Hz and voice ids together to the next box of a chain.
 - **Faust as data** (discussions #407, #115): `[:faust- …]` is a `faust~` box whose `process` the same grammar writes —
   `[:faust- [:os.osc (=> [:os.osc 5] [:* 10] [:+ 440])] [:* 0.1]]` is `process = os.osc((os.osc(5) : *(10) : +(440))) :
   *(0.1);` —: a box is a function with its first arguments given, a chain `:` (`<:` before a vector, `:>` after it), a

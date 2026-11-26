@@ -349,4 +349,30 @@ export async function codetab(page, check) {
   check("... a number changed: the code only", (await fsrc()).includes("os.osc(330)") && Number(await cljs(page, nEv)) === k6 + 2, await cljs(page, lastEv));
   await cljs(page, `(stop) (apply delete ${fz} (keep (fn [[a _ b _]] (when (= a ${fz}) b)) (:lines (current))))`);
 
+  // #pat/… in live code; a pbind's source written as data; a player's two outlets at once
+  check("#pat/… is read in live code as a tagged literal, printed as written",
+        (await cljs(page, '[(= "{:d #pat/shuffle [0 2 4]}" (pr-str {:d #pat/shuffle [0 2 4]})) (= (tagged-literal (quote pat/euclid) [3 8]) #pat/euclid [3 8])]')) === "[true true]");
+  check("... another tag is still an error", (await cljs(page, '(try (eval-str "#nope/x 1") (catch :default e (.-message e)))')).includes("No reader function"));
+  const pre = (await cljs(page, '(box "pbind 7" 9800 1900)')).trim();
+  const loaded = await until(page, '(boolean (and (comp/lookup "pbind") (comp/lookup "player")))', (x) => x === "true", 20000);
+  await cljs(page, `(delete ${pre})`);
+  check("(@kairotic/patterns brought)", loaded === "true", loaded);
+  const k7 = Number(await cljs(page, nEv));
+  await cljs(page, "(play (=> {:pp [:pbind 7 {:degree [0 2 4] :dur #pat/euclid [3 8]}]}))");
+  const pp = await cljs(page, "(rid :pp)");
+  const psrc = () => cljs(page, `(get-in (current) [:boxes ${pp} :data :source])`);
+  check("a pbind written as data: its map is its source, the rest its text, as one event",
+        (await txt(pp)) === '"pbind 7"' && (await psrc()) === '"{:degree [0 2 4], :dur #pat/euclid [3 8]}"' && Number(await cljs(page, nEv)) === k7 + 1, `${await txt(pp)} ${await psrc()}`);
+  await cljs(page, "(play (=> {:pp [:pbind 7 {:degree [0 2 4] :dur #pat/euclid [3 8]}]}))");
+  check("... evaluated again as it was: nothing changes", Number(await cljs(page, nEv)) === k7 + 1);
+  await cljs(page, "(play (=> {:pp [:pbind 7 {:degree [0 3 5] :dur #pat/euclid [3 8]}]}))");
+  check("... a value changed: its source only", (await psrc()).includes("[0 3 5]") && Number(await cljs(page, nEv)) === k7 + 2);
+  await cljs(page, "(play (=> {:pl [:player 120 [:pbind 3 {:degree [0 1]}]]} {:pz [:+]}))");
+  const pl = await cljs(page, "(rid :pl)"), pz = await cljs(page, "(rid :pz)");
+  const pin = await cljs(page, `(some (fn [[a _ b i]] (when (and (= b ${pl}) (= i 1)) a)) (:lines (current)))`);
+  check("a player: its pattern nested goes to its right inlet, and it leaves the Hz and the voice ids together",
+        (await txt(pl)) === '"player 120"' && (await txt(pin)) === '"pbind 3"' && (await has(`[${pl} 0 ${pz} 0]`)) === "true" && (await has(`[${pl} 1 ${pz} 1]`)) === "true",
+        `${await txt(pl)} ${await txt(pin)}`);
+  await cljs(page, `(stop) (delete ${pp} ${pl} ${pz} ${pin})`);
+
 }
