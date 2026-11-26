@@ -55,6 +55,10 @@ try {
   is("... the dux sings its text: Odyssey 1.1's 17 syllables under its notes, each on the first note of its melisma, its place in its word (ἄν-δρα μοι)",
      syls.length === 17 && syls.map((x) => x[0]).join(" ").startsWith("ἄν δρα μοι ἔν νε πε Μοῦ σα") && / wordpos="i" con="d"/.test(syls[0][1]) && / wordpos="t"/.test(syls[1][1]) && !/wordpos/.test(syls[2][1])
      && (saved[0].text.match(/<note [^>]*>(?!<verse)|<note [^>]*\/>/g) || []).length > 0);
+  d.getElementById("style").value = "greek";
+  P.set("odyssey", "melody");
+  await wait(() => total() === "1,035,536,158,789,085,949" && status() === "sung");
+  is("the Greek style (learned from Mesomedes): Odyssey 1.1, 1,035,536,158,789,085,949 melodies, sung, every rule kept", total() === "1,035,536,158,789,085,949" && /✓ every rule kept/.test(report()));
   is("no errors on the page", errors.length === 0 && !/^Error/.test(status()));
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);
