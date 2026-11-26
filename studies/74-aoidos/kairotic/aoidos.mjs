@@ -347,22 +347,57 @@ export function canonic(spec = {}) {
   if (A.error || !n) return { error: A.error || "no text", A, count: () => 0n, countWithin: () => 0n, beats: n };
   const firstStrong = Y.find((x) => x.strong), phase = firstStrong ? firstStrong.at % 2 : 0;
   const maxHold = Math.max(2, own.maxSyl * (spec.maxRepeat ?? 1));
-  const k = spec.k ?? -7, d = Math.min(spec.d ?? 4, Math.max(1, n - 1));
+  const k = spec.k ?? -7, d = Math.min(spec.d ?? 4, Math.max(0, n - 1));
   const cspec = { key: A.key, ficta: false, tonic: 0, k, d, b: 2, phase, n, lo: own.lo, hi: own.hi, imitation: spec.imitation ?? 1, maxHold,
                   invert: spec.invert || [], starts: own.starts, soft: true, weights: A.weights, on: { approach: false } };
-  const CV = canonVoices(cspec, spec.style || "canon-2");
+  const CV = canonVoices(cspec, spec.canonStyle || "canon-2");
   const duxCheck = (D, t, x) => A.check(D, t, x) || CV.voices[0].solver.check(D, t, x);
   const duxSolver = { codes: CV.voices[0].solver.codes.filter((c) => c !== null), check: duxCheck, costParts: (D, x) => A.costParts(D, x) };
   // the memo: the dux as far back as aoidos's rules look, the comes as the canon's
   const w = CV.world, aug = w.aug;
   const LD = Math.max(maxHold + 1, d + 1), LC = Math.max(maxHold * aug + 1, 2);
   const key = (W, t) => t + ":" + A.memoKey(W[0], t) + ":" + W[0].slice(Math.max(0, t - LD), t).join(",") + ":" + W[1].slice(Math.max(0, t - LC), t).join(",");
+  // (heterophony: the comes at once, d = 0 — the canon's rules read the dux's past, so the note it sings now is
+  // read here: within a 3rd of it, k steps away, near; the same note, a canon)
+  const now = d === 0 ? [{ id: "heterophony", check: ({ x: [x, c] }) => {
+    if (x === null || c === null) return null;
+    const m = w.deg(x) + k, band = w.bnd;
+    if (band === "canon" && w.deg(c) !== m) return "the aulos plays the voice's note";
+    if (band === "near" && Math.abs(w.deg(c) - m) > 2) return "the aulos keeps within a 3rd of the voice";
+    return null;
+  } }] : [];
+  const between = d === 0 ? CV.between.filter((r) => r.id !== "imitation") : CV.between;
   const SV = solveVoices({ n, voices: [{ name: "dux", solver: duxSolver }, { name: "comes", solver: CV.voices[1].solver }],
-                           between: CV.between, key, result: (W) => ({ dux: W[0], comes: W[1] }) });
+                           between: [...between, ...now], key, result: (W) => ({ dux: W[0], comes: W[1] }) });
   return { ...SV, A, beats: n, k, d, phase, world: w, name: A.name, midi: A.midi, hz: A.hz, key: A.key,
            count: () => SV.count(),
            countWithin: (ms) => { try { return within(ms, () => SV.count()); } catch (e) { if (e.tooLong) return null; throw e; } },
            judge: (D, C) => SV.judgeW([D, C], `the voices are not ${n} beats long`) };
+}
+
+/**
+ * The singer with an aulos (the double pipe that went with the voice): spec aoidos()'s, and practice —
+ *   heterophony  the aulos plays the voice's melody at once with its own deviations, within a 3rd (canonic(), d 0,
+ *                imitation 0.6, k 0 the same register; the counterpoint's rules between them, the two counted together)
+ *   drone        one pipe holds the final, an octave below (the ison the Byzantine chant kept)
+ *   ison         the held note follows the song: each line on the degree its last note ends on, below the voice
+ * → for heterophony canonic()'s; else aoidos()'s, and comesOf (a melody → the aulos, a code a beat).
+ */
+export function aulos(spec = {}) {
+  const practice = spec.practice || "heterophony";
+  if (practice === "heterophony") return { ...canonic({ ...spec, d: 0, k: spec.k ?? 0, imitation: spec.imitation ?? 0.6 }), practice };
+  const A = aoidos(spec), Y = A.syllables, at7 = (d) => ((d % 7) + 7) % 7 - 7;
+  const comesOf = (U) => {
+    if (practice === "drone") return U.map(() => A.S.at(-7));
+    const lines = [...new Set(Y.map((y) => y.line))], out = [];
+    for (const li of lines) {
+      const ys = Y.filter((y) => y.line === li), last = ys[ys.length - 1], end = last.at + last.beats;
+      const held = A.S.at(at7(A.deg(U[end - 1])));
+      for (let t = ys[0].at; t < end; t++) out[t] = held;
+    }
+    return out;
+  };
+  return { ...A, A, practice, comesOf };
 }
 
 /** A melody's notes [{midi, units}] for imitation(): a beat a unit; a rest first where the first strong beat is odd. */
@@ -413,4 +448,4 @@ function runs(notes) {
   return out;
 }
 
-export default { aoidos, canonic, plan, examine, judgeAccent, duxOf, PROSODY, TEXTS, prosodyWeights };
+export default { aoidos, canonic, aulos, plan, examine, judgeAccent, duxOf, PROSODY, TEXTS, prosodyWeights };

@@ -11,6 +11,12 @@
   them. The layer is shown by default: a box hides it with its **lyrics** chip, the code window's **Lyrics** button or
   `(show-layers :b3)` (and shows it with `(show-layers :b3 :lyrics)`); its `:shows` keeps the layers turned from their
   default, so works saved before keep their layers.
+- **Study 74 · aoidos: the singer with an aulos** (#192). `aulos()`: in heterophony the aulos plays the melody at once
+  with its own deviations, within a 3rd of the voice (`canonic()` with the comes entering at once — a rule of its own
+  reads the voice's note at the same beat —, imitation 0.6), the two counted together; as a drone, the final an octave
+  below; as an ison, each line held on the note it ends on. The page: three ways to sing with the aulos, heard as a
+  reed. Fixed: in canon the Greek style was passed to the canon's engine as one of its own styles.
+
 - **The lyrics layer, and the cents on a line of their own** (#192). `kairotic.mt`'s schema has a layer `:lyrics`:
   the text a voice sings, on its notes — `:syl` (the syllable a note begins, verse 1; the notes after it with none
   sing it on), `:wordpos` (`:i`, `:m`, `:t`), `:con` (where not derived), `:verses` (the verses after the first) —
