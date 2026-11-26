@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 75 · voice** (discussion #467): a sung line made of parts that can be read, instead of a neural voice.
+  Syllables (Seikilos's song, or an MEI from Study 74 with its text under the notes) → phonemes in a chosen
+  pronunciation (Attic or Koine) → each phoneme's targets from a table shown and edited as EDN → curves every 5 ms
+  (consonants before the beat, stops as closure, burst and aspiration, formant glides, F1 raised over a high pitch) →
+  two faust~ following them: the voice (a glottal source through four Klatt resonators) and the noise (aspiration
+  through the same formants, frication, bursts). Kernel tests in Node; the two faust~ checked by their spectra in CI.
 - **Study 74 · aoidos: the singer with an aulos** (#192). `aulos()`: in heterophony the aulos plays the melody at once
   with its own deviations, within a 3rd of the voice (`canonic()` with the comes entering at once — a rule of its own
   reads the voice's note at the same beat —, imitation 0.6), the two counted together; as a drone, the final an octave

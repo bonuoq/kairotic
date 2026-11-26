@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Study 75 · voice · the two faust~</title>
+<pre id="out">Running…</pre>
+<script type="module">
+// The two faust~ compiled from their files (faustwasm, from jsDelivr) and played along the curves; what comes out
+// is checked by its spectrum: the vowels where their formants are, σ high and unvoiced, a stop's aspiration after its
+// silence, the first formant raised over a high pitch.
+const results = [], notes = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const SR = 44100;
+// the energy of y around t (a 2048-sample Hann window) in a band of Hz, by a plain DFT every 20 Hz
+function band(y, t, lo, hi) {
+  const N = 2048, c = Math.round(t * SR), w = [];
+  for (let i = 0; i < N; i++) w.push((y[c - N / 2 + i] || 0) * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (N - 1))));
+  let e = 0;
+  for (let f = lo; f <= hi; f += 20) {
+    let re = 0, im = 0;
+    for (let i = 0; i < N; i++) { const a = (2 * Math.PI * f * i) / SR; re += w[i] * Math.cos(a); im -= w[i] * Math.sin(a); }
+    e += re * re + im * im;
+  }
+  return e;
+}
+function centroid(y, t) {
+  let s = 0, m = 0;
+  for (let f = 500; f <= 10000; f += 250) { const e = band(y, t, f, f + 240); s += e * (f + 120); m += e; }
+  return m ? s / m : 0;
+}
+const rms = (y, a, b) => { let s = 0; const i0 = Math.round(a * SR), i1 = Math.round(b * SR); for (let i = i0; i < i1; i++) s += (y[i] || 0) ** 2; return Math.sqrt(s / Math.max(1, i1 - i0)); };
+try {
+  const S = await import("../kairotic/sing.mjs");
+  const SK = await import("../../74-aoidos/kairotic/seikilos.mjs");
+  const [vc, nc] = await Promise.all(["voice.dsp", "noise.dsp"].map((f) => fetch(new URL("../kairotic/" + f, location.href)).then((r) => r.text())));
+  const V = await S.voices(vc, nc);
+  const labels = (j) => JSON.stringify(j.ui).match(/"label":"[^"]+"/g).map((s) => s.slice(9, -1));
+  notes.push("voice: " + labels(V.voice.json).join(" ") + " · noise: " + labels(V.noise.json).join(" "));
+  is("both faust~ compile, sharing the formants' sliders", ["F1", "F2", "F3", "F4", "B1"].every((l) => labels(V.voice.json).includes(l) && labels(V.noise.json).includes(l)));
+
+  // the vowels: α and ι on a low note, their spectra
+  const two = S.sing(V, [{ t: 0, dur: 0.6, midi: 48, syl: "ἀ" }, { t: 0.6, dur: 0.6, midi: 48, syl: "ἰ" }], {});
+  const o = two.curves.offset;
+  const ratio = (t) => band(two.voice, t, 1700, 3000) / band(two.voice, t, 200, 1000);
+  notes.push(`high/low energy: α ${ratio(o + 0.3).toExponential(2)}, ι ${ratio(o + 0.9).toExponential(2)}`);
+  is("ι has its energy high (F2 at 2300 Hz), α low (F1 750, F2 1300)", ratio(o + 0.9) > 4 * ratio(o + 0.3));
+
+  // σ: noise high, no voice
+  const ps = S.sing(V, [{ t: 0, dur: 0.5, midi: 52, syl: "πα" }, { t: 0.5, dur: 0.6, midi: 52, syl: "σα" }], {});
+  const sSeg = ps.curves.segments.find((s) => s.p === "s"), sMid = (sSeg.from + sSeg.to) / 2;
+  const aSeg = ps.curves.segments.find((s) => s.p === "a"), aMid = (aSeg.from + aSeg.to) / 2;
+  notes.push(`σ: centroid of the noise ${Math.round(centroid(ps.noise, sMid))} Hz; voice there ${rms(ps.voice, sMid - 0.02, sMid + 0.02).toFixed(4)} vs in α ${rms(ps.voice, aMid - 0.02, aMid + 0.02).toFixed(4)}`);
+  is("σ is a high noise (centroid above 3 kHz)", centroid(ps.noise, sMid) > 3000);
+  is("… and the voice is silent under it", rms(ps.voice, sMid - 0.02, sMid + 0.02) < 0.1 * rms(ps.voice, aMid - 0.02, aMid + 0.02));
+  const pSeg = ps.curves.segments.find((s) => s.p === "p" && s.kind === "closure");
+  is("π: its closure is a silence", rms(ps.sound, pSeg.from + 0.01, pSeg.to - 0.01) < 0.05 * rms(ps.sound, aMid - 0.02, aMid + 0.02));
+
+  // an aspirated stop: noise after the burst, through the vowel's formants
+  const ph = S.sing(V, [{ t: 0, dur: 0.6, midi: 52, syl: "φα" }], {});
+  const asp = ph.curves.segments.find((s) => s.kind === "aspiration"), clo = ph.curves.segments.find((s) => s.kind === "closure");
+  is("φ: aspiration after the burst, louder than the closure", rms(ph.noise, asp.from + 0.01, asp.to - 0.005) > 5 * rms(ph.noise, clo.from + 0.01, clo.to - 0.01));
+
+  // the first formant over a high pitch
+  const tuned = S.sing(V, [{ t: 0, dur: 0.6, midi: 76, syl: "ἰ" }], {}), flat = S.sing(V, [{ t: 0, dur: 0.6, midi: 76, syl: "ἰ" }], { tuneF1: false });
+  const ti = tuned.curves.offset + 0.3, fi = flat.curves.offset + 0.3;
+  notes.push(`ι on e'': voice ${rms(tuned.voice, ti - 0.05, ti + 0.05).toFixed(4)} with F1 raised, ${rms(flat.voice, fi - 0.05, fi + 0.05).toFixed(4)} without`);
+  is("ι on a high e: louder with its first formant raised above the pitch", rms(tuned.voice, ti - 0.05, ti + 0.05) > 1.5 * rms(flat.voice, fi - 0.05, fi + 0.05));
+
+  // the whole song
+  let t = 0;
+  const song = SK.notes().map((n) => { const x = { t, dur: n.chronoi * 0.4, midi: n.midi, syl: n.first ? n.text : "" }; t += n.chronoi * 0.4; return x; });
+  const t0 = performance.now(), R = S.sing(V, song, { pron: "koine" }), ms = performance.now() - t0;
+  let peak = 0; for (const x of R.sound) peak = Math.max(peak, Math.abs(x));
+  notes.push(`Seikilos's song: ${(R.sound.length / SR).toFixed(1)} s sung in ${Math.round(ms)} ms`);
+  is("Seikilos's song sung whole: as long as its curves, finite, brought to its peak",
+     Math.abs(R.sound.length - Math.round(R.curves.frames.length * R.curves.hop * SR)) <= 1 && R.sound.every(Number.isFinite) && Math.abs(peak - 0.8) < 1e-6);
+} catch (e) { results.push(["error: " + (e.message || e), false]); }
+const bad = results.filter((r) => !r[1]);
+// (on a failure the measurements go with it, so the runner prints them)
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(bad.length ? notes.map((n) => "(measured) " + n) : []) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` +
+  results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + "\n\n" + notes.map((s) => "  · " + s).join("\n");
+</script>

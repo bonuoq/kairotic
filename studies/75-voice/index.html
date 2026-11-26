@@ -1,0 +1,279 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Kairotic Study 75 · Voice</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px; padding: 14px 16px 28px; }
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+button.act:hover { border-color: var(--accent); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* Study 75: notes with their syllables → phonemes → curves → two faust~ (the voice and the noise) → a sung line.
+   Everything between the text and the sound is on the page: the score with its phonemes, the curves the two boxes
+   follow, the phoneme table as EDN and the two Faust codes, all editable. */
+.views { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 960px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.panel h2 { margin: 0; font: 600 13px var(--f-head); letter-spacing: 0.04em; text-transform: uppercase; display: flex; justify-content: space-between; gap: 8px; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); letter-spacing: 0; text-transform: none; }
+svg.lane { width: 100%; height: auto; background: var(--sheet); border: 1px solid var(--grid); border-radius: 6px; }
+svg text { font: 11px var(--f-code); fill: var(--ink); }
+svg .soft { fill: var(--ink-soft); }
+svg .note { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; }
+svg .seg { fill: none; stroke: var(--grid); }
+svg .F1 { stroke: var(--kairos); } svg .F2 { stroke: var(--accent); } svg .F3 { stroke: var(--ok); }
+svg .f { fill: none; stroke-width: 1.6; }
+svg .pitch { fill: none; stroke: var(--ink); stroke-dasharray: 3 2; stroke-width: 1.2; }
+svg .AV { fill: var(--accent); opacity: 0.5; } svg .AH { fill: var(--kairos); opacity: 0.5; } svg .AF { fill: var(--ok); opacity: 0.55; }
+svg line.head { stroke: var(--error); stroke-width: 1.5; }
+textarea { width: 100%; min-height: 160px; font: 11px var(--f-code); background: var(--sheet); color: var(--ink); border: 1px solid var(--grid); border-radius: 4px; padding: 6px; resize: vertical; }
+.controls { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; font-size: 13px; }
+.controls output { font-family: var(--f-code); font-size: 12px; min-width: 4.5em; text-align: right; }
+input[type=range] { width: 100%; }
+select, label { font: 13px var(--f-ui); color: var(--ink); }
+#status { font-size: 13px; color: var(--ink-soft); }
+.err { color: var(--error); font: 12px var(--f-code); white-space: pre-wrap; }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+</style>
+<main>
+<header>
+  <h1>Study 75 · voice</h1>
+  <span class="sub">a sung line made of parts that can be read: phonemes as data, curves, and two faust~ — the voice and the noise (discussion #467)</span>
+</header>
+<div class="toolbar">
+  <select id="source">
+    <option value="seikilos">Seikilos's song (the stele)</option>
+    <option value="vowels">the seven vowels</option>
+    <option value="mei">an MEI from Study 74…</option>
+  </select><input type="file" id="file" accept=".mei,.xml,.txt" hidden>
+  <select id="pron"><option value="attic">Attic (5th–4th c. BC)</option><option value="koine">Koine (1st c. AD)</option></select>
+  <button class="act" id="sing">▶ sing</button><button class="act" id="only-voice">▶ voice only</button><button class="act" id="only-noise">▶ noise only</button><button class="act" id="stop">■</button>
+  <span id="status">Loading…</span>
+</div>
+<div class="views">
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>The line <span id="line-sub">notes, syllables and their phonemes</span></h2>
+      <svg id="score" class="lane" viewBox="0 0 900 120"></svg></section>
+    <section class="panel"><h2>The curves <span>what the two faust~ follow: F1 F2 F3 and the pitch above; voicing (AV), aspiration (AH), frication (AF) below</span></h2>
+      <svg id="curves" class="lane" viewBox="0 0 900 300"></svg>
+      <div class="controls">
+        <label for="bpm">tempo</label><input type="range" id="bpm" min="40" max="140" step="1" value="72"><output id="bpm-v">72</output>
+        <label for="size">voice size</label><input type="range" id="size" min="0.8" max="1.25" step="0.01" value="1.1"><output id="size-v">1.1</output>
+        <label for="vib">vibrato</label><input type="range" id="vib" min="0" max="80" step="1" value="25"><output id="vib-v">25 ¢</output>
+        <label for="noise">noise</label><input type="range" id="noise" min="0" max="3" step="0.05" value="1"><output id="noise-v">× 1</output>
+        <span></span><label><input type="checkbox" id="tune" checked> raise F1 above a high pitch (as sopranos do)</label><span></span>
+      </div>
+    </section>
+  </div>
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>The phonemes <span>EDN: each sound's targets; edit and sing again</span></h2>
+      <textarea id="table" spellcheck="false" style="min-height:220px"></textarea><div class="err" id="table-err" hidden></div></section>
+    <section class="panel"><h2>voice.dsp <span>a faust~: the glottal source through four formants</span></h2>
+      <textarea id="voice" spellcheck="false"></textarea></section>
+    <section class="panel"><h2>noise.dsp <span>a faust~: aspiration through the same formants, frication and bursts</span></h2>
+      <textarea id="noise-code" spellcheck="false"></textarea>
+      <div><button class="act" id="compile">compile both</button></div><div class="err" id="dsp-err" hidden></div></section>
+    <section class="panel"><h2>About</h2><p class="about">A voice made of parts that can be read, after formant
+      synthesis (Klatt's cascade and parallel synthesizer, 1980; Rodet's CHANT) rather than a neural model whose voice is a
+      black box (discussion #467). <b>The line</b> comes with its syllables — Seikilos's song as the stele has it, or an
+      MEI that Study 74 (aoidos) wrote, with its text under the notes. Each syllable is read into phonemes in a
+      <b>pronunciation</b> chosen among reconstructions (Attic, after Allen's <i>Vox Graeca</i>; or the Koine of the
+      stele's own century). Each phoneme has its <b>targets</b> in the table — formants, voicing, aspiration, frication —,
+      editable here as EDN. The <b>curves</b> go from target to target: onset consonants just before the beat, a stop as
+      closure, burst and aspiration, the formants gliding between neighbours (that glide is most of what makes a
+      consonant heard), the first formant raised over a high pitch. Two <b>faust~</b> follow the same curves: the
+      <b>voice</b> (a glottal source through four formant resonators) and the <b>noise</b> (aspiration through the same
+      four, frication and bursts at their own place). The sound is clearly synthetic — nearer CHANT than a singer — but
+      every part of it can be studied and changed. Nasals still lack their antiformant.</p></section>
+  </div>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
+<script>
+// The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
+// is read first, as window.kairoticVoice ({P: phonemes, T: tract, M: mei, S: sing, SK: Study 74's Seikilos}).
+window.addEventListener("DOMContentLoaded", function () {
+  function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
+  Promise.all([import("./kairotic/phonemes.mjs"), import("./kairotic/tract.mjs"), import("./kairotic/mei.mjs"), import("./kairotic/sing.mjs"),
+               import("../74-aoidos/kairotic/seikilos.mjs"),
+               fetch(new URL("./kairotic/voice.dsp", location.href)).then(function (r) { return r.text(); }),
+               fetch(new URL("./kairotic/noise.dsp", location.href)).then(function (r) { return r.text(); })]).then(function (ms) {
+    window.kairoticVoice = { P: ms[0], T: ms[1], M: ms[2], S: ms[3], SK: ms[4], voiceDsp: ms[5], noiseDsp: ms[6] };
+    try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
+  }).catch(show);
+});
+</script>
+
+<script type="application/x-kairotic" id="page-cljs">
+;; SPDX-License-Identifier: MPL-2.0
+(ns voice-page (:require [clojure.string :as str] [clojure.edn :as edn]))
+
+;; Kairotic · Study 75 · voice: the page. A line (notes with syllables) → phonemes → curves → the two faust~ → sound.
+
+(def K (.-kairoticVoice js/window))
+(def P (.-P K)) (def T (.-T K)) (def M (.-M K)) (def S (.-S K)) (def SK (.-SK K))
+(defn $ [id] (js/document.getElementById id))
+(defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;")))
+(defn status! [s] (set! (.-textContent ($ "status")) s) (set! (.. ($ "status") -style -color) ""))
+(defn fail! [e] (set! (.-textContent ($ "status")) (str "Error: " (or (.-message e) e))) (set! (.. ($ "status") -style -color) "var(--error)") nil)
+(defn r2 [x] (/ (js/Math.round (* 100 x)) 100))
+
+(defonce st (atom {:V nil :table (.-TABLE P) :mei nil :result nil}))
+
+;; ───── the line ─────
+(defn bpm [] (js/parseFloat (.-value ($ "bpm"))))
+(defn seikilos-notes []
+  ;; a chronos an eighth note
+  (let [chronos (/ 30 (bpm))]
+    (loop [ns (array-seq (.notes SK)) t 0 out []]
+      (if-let [n (first ns)]
+        (let [d (* chronos (.-chronoi n))]
+          (recur (rest ns) (+ t d) (conj out #js {:t t :dur d :midi (.-midi n) :syl (if (.-first n) (.-text n) "")})))
+        (into-array out)))))
+(defn vowel-notes []
+  (let [d (/ 60 (bpm))]
+    (into-array (map-indexed (fn [i s] #js {:t (* i d) :dur (* 0.9 d) :midi 64 :syl s}) ["ἀ" "ἐ" "ἠ" "ἰ" "ὀ" "ὑ" "ὠ"]))))
+(defn line-notes []
+  (case (.-value ($ "source"))
+    "vowels" (vowel-notes)
+    "mei" (if-let [m (:mei @st)] (.-notes (.readMei M m #js {:bpm (bpm)})) (seikilos-notes))
+    (seikilos-notes)))
+
+(defn opts []
+  #js {:pron (.-value ($ "pron")) :size (js/parseFloat (.-value ($ "size"))) :tuneF1 (.-checked ($ "tune"))
+       :table (:table @st) :noise (js/parseFloat (.-value ($ "noise")))
+       :fixed #js {:vibrato (js/parseFloat (.-value ($ "vib")))}})
+
+;; ───── drawing ─────
+(def W 900)
+(defn draw! [C notes]
+  (let [frames (.-frames C) hop (.-hop C) dur (.-duration C) off (.-offset C)
+        x (fn [t] (* W (/ t dur)))
+        segs (array-seq (.-segments C))
+        ;; the score: each note a bar at its pitch, its syllable under it; the phonemes above
+        ms (map #(.-midi %) (array-seq notes)) lo (- (apply min ms) 2) hi (+ (apply max ms) 2)
+        ny (fn [m] (+ 30 (* 60 (/ (- hi m) (max 1 (- hi lo))))))
+        score (str (apply str (for [n (array-seq notes)]
+                                (str "<rect class='note' x='" (x (+ off (.-t n))) "' y='" (- (ny (.-midi n)) 3) "' width='" (max 1 (- (x (+ off (.-t n) (.-dur n))) (x (+ off (.-t n))) 1)) "' height='6'/>"
+                                     (when (seq (.-syl n)) (str "<text x='" (x (+ off (.-t n))) "' y='112'>" (esc (.-syl n)) "</text>")))))
+                   (apply str (for [s segs :when (not (#{"burst" "aspiration"} (.-kind s)))]
+                                (str "<text class='soft' x='" (x (.-from s)) "' y='14'>" (esc (.-p s)) "</text>")))
+                   "<line class='head' id='head1' x1='-5' x2='-5' y1='0' y2='120'/>")
+        n (.-length frames)
+        poly (fn [k sy] (str/join " " (for [i (range 0 n 2)] (str (r2 (x (* i hop))) "," (r2 (sy (aget (aget frames i) k)))))))
+        hz (fn [f] (- 200 (* 190 (/ f 4000))))
+        lane (fn [k y0] (str "M0," y0 " L" (str/join " L" (for [i (range 0 n 2)] (str (r2 (x (* i hop))) "," (r2 (- y0 (* 24 (min 1 (aget (aget frames i) k)))))))) " L" W "," y0 " Z"))
+        curves (str (apply str (for [s segs] (str "<line class='seg' x1='" (x (.-from s)) "' x2='" (x (.-from s)) "' y1='0' y2='200'/>")))
+                    (apply str (for [k ["F1" "F2" "F3"]] (str "<polyline class='f " k "' points='" (poly k hz) "'/>")))
+                    "<polyline class='pitch' points='" (poly "pitch" (fn [m] (- 200 (* 2.2 (- m 30))))) "'/>"
+                    "<path class='AV' d='" (lane "AV" 235) "'/><path class='AH' d='" (lane "AH" 265) "'/><path class='AF' d='" (lane "AF" 295) "'/>"
+                    "<text class='soft' x='4' y='12'>4 kHz</text><text class='soft' x='4' y='198'>0</text>"
+                    "<text class='soft' x='4' y='230'>AV</text><text class='soft' x='4' y='260'>AH</text><text class='soft' x='4' y='290'>AF</text>"
+                    "<line class='head' id='head2' x1='-5' x2='-5' y1='0' y2='300'/>")]
+    (set! (.-innerHTML ($ "score")) score)
+    (set! (.-innerHTML ($ "curves")) curves)
+    (set! (.-textContent ($ "line-sub")) (str (count (array-seq (.-syllables C))) " syllables, " (count segs) " phoneme segments, " (r2 dur) " s"))))
+
+;; ───── sound ─────
+(defonce actx (atom nil))
+(defonce playing (atom nil))
+(defn ctx [] (or @actx (reset! actx (js/AudioContext.))))
+(defn stop! []
+  (when-let [{:keys [src raf]} @playing] (try (.stop src) (catch :default _ nil)) (js/cancelAnimationFrame raf))
+  (reset! playing nil)
+  (doseq [id ["head1" "head2"]] (when-let [h ($ id)] (.setAttribute h "x1" -5) (.setAttribute h "x2" -5))))
+(defn play! [y dur]
+  (stop!)
+  (let [c (ctx) b (.createBuffer c 1 (.-length y) (.-SR S)) s (.createBufferSource c) t0 (+ (.-currentTime c) 0.05)]
+    (.copyToChannel b y 0) (set! (.-buffer s) b) (.connect s (.-destination c)) (.start s t0)
+    (reset! playing {:src s})
+    (letfn [(step [] (let [t (- (.-currentTime (ctx)) t0)]
+                       (if (or (nil? @playing) (> t dur)) (stop!)
+                           (do (doseq [id ["head1" "head2"]] (when-let [h ($ id)] (let [xx (* W (/ (max 0 t) dur))] (.setAttribute h "x1" xx) (.setAttribute h "x2" xx))))
+                               (swap! playing assoc :raf (js/requestAnimationFrame step))))))]
+      (swap! playing assoc :raf (js/requestAnimationFrame step)))))
+
+(defn compile! []
+  (set! (.-hidden ($ "dsp-err")) true)
+  (status! "Compiling the two faust~…")
+  (-> (.voices S (.-value ($ "voice")) (.-value ($ "noise-code")))
+      (.then (fn [V] (swap! st assoc :V V) (status! "Ready: sing the line.") V))
+      (.catch (fn [e] (set! (.-hidden ($ "dsp-err")) false) (set! (.-textContent ($ "dsp-err")) (.-message e)) (fail! e)))))
+
+(defn sing! [which]
+  (if-not (:V @st)
+    (js/Promise.resolve (status! "The two faust~ are not compiled yet."))
+    (let [notes (line-notes)
+          t0 (js/performance.now)
+          r (.sing S (:V @st) notes (opts))
+          C (.-curves r)]
+      (swap! st assoc :result r)
+      (draw! C notes)
+      (status! (str "Sung in " (js/Math.round (- (js/performance.now) t0)) " ms."))
+      (play! (case which :voice (.-voice r) :noise (.-noise r) (.-sound r)) (.-duration C))
+      (js/Promise.resolve r))))
+
+;; ───── the table, edited ─────
+(defn apply-table! []
+  (set! (.-hidden ($ "table-err")) true)
+  (try (let [m (edn/read-string (.-value ($ "table")))]
+         (when-not (map? m) (throw (js/Error. "the table is a map from each phoneme to its targets")))
+         (swap! st assoc :table (clj->js m)) true)
+       (catch :default e (set! (.-hidden ($ "table-err")) false) (set! (.-textContent ($ "table-err")) (str "Not applied: " (.-message e))) false)))
+
+;; ───── wiring ─────
+(doseq [[id unit] [["bpm" ""] ["size" ""] ["vib" " ¢"] ["noise" ""]]]
+  (.addEventListener ($ id) "input" (fn [] (set! (.-textContent ($ (str id "-v"))) (str (when (= id "noise") "× ") (.-value ($ id)) unit)))))
+(.addEventListener ($ "source") "change" (fn [] (when (and (= "mei" (.-value ($ "source"))) (nil? (:mei @st))) (.click ($ "file")))))
+(.addEventListener ($ "file") "change"
+  (fn [] (when-let [f (aget (.-files ($ "file")) 0)]
+           (-> (.text f) (.then (fn [t] (swap! st assoc :mei t) (status! (str "Read " (.-name f) ": " (.-length (.-notes (.readMei M t))) " notes.")))) (.catch fail!)))))
+(.addEventListener ($ "sing") "click" #(when (apply-table!) (sing! :both)))
+(.addEventListener ($ "only-voice") "click" #(when (apply-table!) (sing! :voice)))
+(.addEventListener ($ "only-noise") "click" #(when (apply-table!) (sing! :noise)))
+(.addEventListener ($ "stop") "click" stop!)
+(.addEventListener ($ "compile") "click" compile!)
+
+(set! (.-value ($ "table")) (.tableEdn P))
+(set! (.-value ($ "voice")) (.-voiceDsp K))
+(set! (.-value ($ "noise-code")) (.-noiseDsp K))
+
+;; for the tests
+(set! (.-kairoticStudy js/window)
+      #js {:ready (fn [] (some? (:V @st)))
+           :sing (fn [which] (when (apply-table!) (sing! (keyword (or which "both")))))
+           :state (fn [] (let [{:keys [result]} @st] #js {:result result}))
+           :setMei (fn [t] (swap! st assoc :mei t) (set! (.-value ($ "source")) "mei"))})
+(compile!)
+</script>
