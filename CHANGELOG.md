@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos: the Delphic paean of Athenaios in the corpus** (#192). `corpus.mjs` reads DAGM no. 20 as the
+  edition transcribes it, a note as its pitch, checked against the stone's signs: 16 fragments, 273 notes, the
+  melismas the stone writes as a doubled vowel; `runsOf` gives each fragment alone and `aoidos({open})` leaves a
+  fragment's start and end free. The hard rules refuse 28 notes (22 the chromatic genus); the Greek style, learned from
+  Mesomedes alone, makes the paean's notes more likely (the cheapest 144 → 187 of 317 times). Only the melodies and the
+  readings are kept, with their references.
 - **Lyrics in the app's MEI ↔ tree, drawn under the notes** (#192). `mt/->mei` writes a tree's syllables (the lyrics
   layer: `:syl`, `:wordpos`, `:con`, `:verses`) as MEI's `<verse n><syl wordpos con>` on the note that begins each one
   — the hyphen and the extender derived where `:con` is not written (`mt/with-cons`) — so Verovio engraves them under

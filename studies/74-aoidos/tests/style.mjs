@@ -2,11 +2,11 @@
 // Study 74 · aoidos: the Greek style learned from Mesomedes (corpus.mjs, style.mjs), and tried on Seikilos, which it has
 // not seen. In the browser (tests/style.html) and in Node:
 //   node -e 'import("./studies/74-aoidos/tests/style.mjs").then(async m => process.exit(m.report(await m.run())))'
-import { MESOMEDES, readPiece } from "../kairotic/corpus.mjs";
+import { MESOMEDES, DELPHIC, readPiece, runsOf } from "../kairotic/corpus.mjs";
 import { asEngine, choicesOf, fit, score } from "../kairotic/style.mjs";
-import { aoidos, TEXTS, GREEK, PROSODY } from "../kairotic/aoidos.mjs";
+import { aoidos, TEXTS, GREEK, PROSODY, prosodyWeights } from "../kairotic/aoidos.mjs";
 import { SONG, MIDI } from "../kairotic/seikilos.mjs";
-import { SOFT } from "../kairotic/soft.mjs";
+import { SOFT, defaultWeights } from "../kairotic/soft.mjs";
 
 export async function run() {
   const results = [], notes = [];
@@ -36,6 +36,26 @@ export async function run() {
   is("... and GREEK keeps those weights (within 0.02): leaps dear (4), a note struck again free, a melisma dear (2.9), the accent's rules as strong as the engine's or stronger, except the fall after it (0.5)",
      Object.entries(GREEK.weights).every(([id, v]) => Math.abs(F.w[id] - v) < 0.02) && GREEK.weights["leap-size"] > 3.5 && GREEK.weights.repeat === 0 && GREEK.weights["after-accent"] < 1);
   notes.push(`log-likelihood a choice: engine ${F.before.perChoice.toFixed(3)}, Greek ${F.after.perChoice.toFixed(3)}`);
+  // Athenaios's Delphic paean, 250 years older than Mesomedes, and not in the fit either
+  const R = runsOf(DELPHIC[0]), N = R.flatMap((Q) => Q.syllables.flatMap((y) => y.notes));
+  is("Athenaios's paean as read: 16 fragments, 246 syllables (27 with a melisma), 273 notes in 353 chronoi, 8 supplied, from e♭ to a♮'",
+     R.length === 16 && R.reduce((a, Q) => a + Q.syllables.length, 0) === 246 && R.flatMap((Q) => Q.syllables).filter((y) => y.notes.length > 1).length === 27
+     && N.length === 273 && R.reduce((a, Q) => a + Q.length, 0) === 353 && N.filter((x) => x.supplied).length === 8
+     && Math.min(...N.map((x) => x.midi)) === 63 && Math.max(...N.map((x) => x.midi)) === 81);
+  is("... its long fragments in bars of five chronoi (the paean's cretics): the one from line 3 eleven bars, the one from line 10 eighteen after its first three chronoi",
+     R.find((Q) => Q.lines[0].n === 3).length === 55 && R.find((Q) => Q.lines[0].n === 10).length === 93);
+  const dkey = { tonic: "C", mode: "phrygian" }, dchrom = [[1, 1], [6, 1], [3, 1], [5, 1]];
+  let dch = [], dref = [];
+  for (const Q of R) {
+    const c = choicesOf(asEngine({ piece: Q, key: dkey, shift: -24, chromatic: dchrom, ambitus: [-5, 5], maxRepeat: 8, turnAfterSmallLeap: false, weights: ones }));
+    dch.push(...c.choices); dref.push(...c.refused);
+  }
+  is("... against the hard rules: 28 of its notes refused, 22 of them the chromatic genus (16 chromatic steps, 6 augmented 2nds) that Fux's melodic intervals do not have",
+     dref.length === 28 && dref.filter((x) => x.why === "a chromatic step").length === 16 && dref.filter((x) => x.why === "an augmented 2nd").length === 6);
+  const dE = score(dch, { ...defaultWeights(), ...prosodyWeights() }), dG = score(dch, GREEK.weights), dF = fit(dch);
+  is("... and the Greek style, learned from Mesomedes alone, fits it: the note written the cheapest 144 → 187 of 317 times, a choice's log-likelihood −1.87 → −1.49, near what a fit on the paean itself reaches (−1.45)",
+     dch.length === 317 && dE.first === 144 && dG.first === 187 && Math.abs(dE.perChoice + 1.871) < 0.005 && Math.abs(dG.perChoice + 1.487) < 0.005 && Math.abs(dF.after.perChoice + 1.454) < 0.005);
+  notes.push(`Athenaios: log-likelihood a choice: engine ${dE.perChoice.toFixed(3)}, Greek ${dG.perChoice.toFixed(3)}, fitted to it ${dF.after.perChoice.toFixed(3)}`);
   // Seikilos, which the fit has not seen
   const T = TEXTS.seikilos;
   const seik = (style) => {
