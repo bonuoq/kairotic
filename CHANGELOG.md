@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Bach's dissonant quarters, read** (Study 76, for the bass engine of #487). `@kairotic/rules` 0.24.0's `continuo.mjs`:
+  `dissonanceOf(phrase, t)` reads a quarter that is no chord as a chord and the one voice not of it, by how that voice
+  moves (`motionOf`: a suspension, up or down, a note held over a moving bass, a passing or neighbour note, an
+  appoggiatura, an escape, an anticipation); `BACH_DISSONANCES` counts each by voice, motion, interval and beat. Of
+  Bach's 17,941 quarters 1,719 are no chord: the alto's 958, the tenor's 438, the soprano's 174 (in 159 phrases — the
+  ones a bass under his soprano cannot yet follow: a 4–3 on a strong beat the commonest), the bass's 147.
+  `@kairotic/cac` 0.16.13 (its pin).
 - **The bass under Bach's soprano reads the chorale thread's tables** (#353, after #485). Study 63's `under.mjs`
   takes `continuo` (@kairotic/rules' continuo.mjs, or its tables): BACH_DEGREE_CHORD for the chord over a degree and
   the degree, BACH_OUTER_VERTICAL, BACH_OUTER_PAIR for the two voices' moves together (in place of the motion, the

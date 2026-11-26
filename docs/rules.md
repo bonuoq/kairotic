@@ -232,6 +232,10 @@ where it does not go on up; weight 2); `passing` and `suspension-life` 0, `bach-
 over the bass, its chord (5/3, 6/3, 6/4, 7, 6/5, 4/3, 4/2, or a dissonance), Bach's figure for it in the key signature
 (`figureOf`, as he abbreviates in the BCFB dataset: 85% of his figures over a struck bass) — and the tables a bass under
 his soprano is weighed by: the soprano over the bass, their moves together, the chord over each degree, the cadences.
+`@kairotic/rules` 0.24.0: `continuo.mjs`' `dissonanceOf` and `motionOf`: a quarter that is no chord read as a chord and the
+one voice not of it, by how it moves (a suspension, a passing or neighbour note, a note held over a moving bass, an
+appoggiatura, an escape, an anticipation); `BACH_DISSONANCES`, how often each (the states the bass engine must allow
+under a soprano that is not a chord tone, #487).
 
 ## Next
 
