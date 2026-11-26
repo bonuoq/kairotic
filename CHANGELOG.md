@@ -23,6 +23,12 @@
   `tools/continuo.mjs`): the soprano over the bass (`BACH_OUTER_VERTICAL`), their moves together (`BACH_OUTER_PAIR`), the
   chord over each degree of the bass in the key the quarter is in (`BACH_DEGREE_CHORD`, major and minor), the cadences
   (`BACH_CADENCES`). `@kairotic/cac` 0.16.12 (its pin).
+- **Study 74 · aoidos: the Delphic paean of Athenaios in the corpus** (#192). `corpus.mjs` reads DAGM no. 20 as the
+  edition transcribes it, a note as its pitch, checked against the stone's signs: 16 fragments, 273 notes, the
+  melismas the stone writes as a doubled vowel; `runsOf` gives each fragment alone and `aoidos({open})` leaves a
+  fragment's start and end free. The hard rules refuse 28 notes (22 the chromatic genus); the Greek style, learned from
+  Mesomedes alone, makes the paean's notes more likely (the cheapest 144 → 187 of 317 times). Only the melodies and the
+  readings are kept, with their references.
 - **A bass under Bach's soprano: the engine of Study 76 · continuo** (#353). Study 63's `under.mjs`: the bridge of the
   outer voices with the soprano given at every quarter — each quarter's state (local key, bass note, chord over it),
   drawn exactly (backward messages) — `bassUnder({soprano, key, strong, fermata, costs, weights, variant})` →

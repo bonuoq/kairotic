@@ -10,6 +10,14 @@
 // segment of the Lydian scale (DAGM p. 109): ⌐ e, R f, Φ g, C a, P b♭, M c', I d', Z e', E f', Ʊ g', and an
 // enharmonic N c♯' (from the chromatic Hypolydian). `reliable: false` marks where N alone carries the notation (27.13
 // on, and no. 28): the edition advises not to rely on it for the accent (DAGM p. 114).
+//
+// The Delphic paean of Athenaios (no. 20, 128/7 BC) is older and a stone's: its signs survive where the stone does,
+// and are written only where the note changes; it is kept as the edition transcribes it (DAGM pp. 63–67), a note as
+// its pitch ("eb'2": e♭' for two chronoi; c' the c an octave above middle c, as Mesomedes's M; absolute, the
+// transcription's key signatures applied), checked against the signs where they survive. Only the stretches with
+// their notes are kept, each a fragment of its own (`fragments`): "…" a syllable lost at a word's edge, "*" a note
+// the editors supply (a sign lost, or doubtful). A vowel written twice (Φοι-οῖ-βον, the stone's way with a melisma) is
+// one syllable with its notes.
 
 export const LYDIAN = { "⌐": 64, R: 65, Φ: 67, C: 69, P: 70, M: 72, N: 73, I: 74, Z: 76, E: 77, Ʊ: 79 };
 
@@ -75,8 +83,44 @@ export const MESOMEDES = [
   ] },
 ];
 
+const A = (n, text) => ({ n, text });
+export const DELPHIC = [
+  { id: "athenaios", name: "Athenaios, Paean and hyporchema to the god", ref: "DAGM no. 20", notation: "pitch", fragments: true, lines: [
+    // col. i, lines 1–8 (three flats)
+    A(1, "βα=c'1-θύ=d'1-δεν=d'1-δρον=c'2 αἳ=ab1 λά=c'2-…"),
+    A(2, "…-βρό=eb'1-μου=d'1c'1 θύ=d'1-γα=c'1-τρες=ab1 εὐ=c'2-ώ=c'2-…"),
+    A(3, "μό=eb'1-λε=d'1*-τε=db'1* συν=eb'1-όμ=eb'1-αι=d'2-μον=c'1 ἵ=d'1-να=d'1 Φοῖ=d'1c'1-βον=ab1 ᾠ=c'2-δαῖ=c'1ab1-σι=ab1 "
+       + "μέλ=c'2-ψη=eb2-τε=eb1 χρυ=g2-σε=g1-ο=ab1-κό=ab1-μαν=eb2 ὃς=eb'1 ἀ=eb'1-νὰ=eb'1 δι=g'1-κό=ab'1-ρυμ=g'2-βα=eb'1 "
+       + "Παρ=g'2-νασ=g'2-σί=g'1-δος=eb'2 τᾶσ=eb'1c'1*-δε=c'1 πε=eb'1-τέ=eb'1-ρας=d'2 ἕ=d'1-δρα=c'1-ν'ἅμ'=ab1"),
+    A(6, "…-γα=ab1-κλυ=c'1-ταῖς=c'1ab1 Δελ=c'1d'1-φί=eb'1-σιν=d'1eb'1 Κα=f'2-στα=g'1-λί=ab'1-δος=f'1 εὐ=f'1g'1-ύ=ab'1-δρου=g'2 "
+       + "νά=g'2-ματ'=eb'1 ἐ=f'1-πι=f'1-νί=f'2-σε=db'1-ται=db'2 Δελ=c'2-φὸν=c'1 ἀ=c'1-νὰ=c'1 πρῶ=c'1ab1-να=ab1 "
+       + "μαν=c'1d'1-τεῖ=eb'1d'1-ον=c'1 ἐφ=c'1-έ=c'1-πων=g2 πά=g1-γον=g2"),
+    // lines 9–16 (four flats)
+    A(9, "με=f'1-γα=g'1-λό=ab'1-πο=g'1-λις=g'1 Ἀθ=g'2-θίς=g'1 εὐ=g'2-χαῖ=g'2-σι=d'1 φε=db'1-ρό=c'1-πλοι=b2-ο=b1 "
+       + "ναί=d'2-ου=db'2-σα=d'1 Τρι=f'2-τω=f'1g'1-νί=ab'1-δος=g'2 δά=g'1-…"),
+    A(10, "…-δον=eb'1 ἄ=f'2-θραυσ=c'2-τον=c'1 ἁ=f'1-γί=gb'1-οις=f'2 δὲ=db'1 βω=d'2-μοῖ=f'1b1-σιν=c'1 Ἅ=f'2-φαισ=d'2-τος=c'1 "
+       + "αἴ=db'1d'1-θει=db'2 νέ=db'1-ων=c'2 μῆ=c'2-ρα=c'1 ταύ=db'1c'1-ρων=b2 ὁ=b1-μοῦ=d'1db'1 δέ=f'1 νιν=c'1 Ἄ=g'1-ραψ=eb'2 "
+       + "ἀτ=d'2-μὸς=eb'1 ἐς=f'1 Ὄ=f'1*-λυμ=eb'2*-πον=ab1 ἀ=b1-να=c'1-κίδ=db'2-να=c'1*-ται=b2 λι=ab1-γὺ=b1 δὲ=b1 "
+       + "λω=b2-τὸς=b1c'1 βρέ=db'1-μων=c'2 αἰ=c'1db'1-όλ=d'1-οις=db'1c'1 μέ=db'1*-λε=c'1-σιν=ab1 ᾠ=b2-δὰν=b1c'1 "
+       + "κρέ=db'1-κει=c'2 χρυ=f'2-σέ=f'1-α=db'2 δ'ἁ=d'2-δύ=f'1-θρους=c'2"),
+    A(16, "…-θα=d'1-ρις=db'1 ὕμ=c'2-νοι=b2-σιν=ab1 ἀ=b1-να=c'1-μέλ=db'2-πε=c'1-ται=b2"),
+    // col. ii, lines 17–26 (three flats; the stone broken on the right)
+    A(17, "…-τῶν=ab'1f'1 πρό=g'1-πας=eb'2 ἐς=f'2-μὸς=f'1 Ἀθ=f'2-θί=ab'1-δα=ab'1 λα=g'1-χὼν=g'2"),
+    A(18, "…-ζει=eb'2 κλυ=f'1-τὸν=f'2 παῖ=ab'2-δα=g'1 με=g'1-γά=ab'1-λου=f'2"),
+    A(19, "ἀ=d'1-κρο=eb'1-νι=f'1-φῆ=g'2 τόν=ab'2-δε=g'1 πά=ab'1-γον=f'1 ἄμ=f'1g'1-…"),
+    A(20, "πᾶ=ab'2-σι=g'1 θνα=g'2-τοῖς=db'1f'1 προ=g'1-φαί=g'2-…"),
+    A(21, "τρί=c'1*-πο=ab1-δα=c'1 μαν=c'2-τεῖ=d'1c'1-ον=d'1 ὡς=eb'2"),
+    A(22, "…-ρει=f'1g'1 δρά=ab'1-κων=g'2 ὅ=g'1-τε=g1 τέ=g'1-…"),
+    A(23, "…-σας=f'1 αἰ=f'2-ό=ab'1-λον=ab'1 ἑ=g'1-λικ=g'2-τὰν=g'2"),
+    A(24, "…-μαθ'=c'1 ἵ=d'1eb'1-εἰς=f'2 ἀ=f'1-θώ=ab'2-…"),
+    A(25, "δὲ=g'1 Γα=g'1-λα=ab'1-τᾶν=a'1ab'1 ἄ=ab'1-ρης=g'2"),
+  ] },
+];
+
 const accentOf = (t) => { const s = t.normalize("NFD"); return /͂/.test(s) ? "circumflex" : /́/.test(s) ? "acute" : /̀/.test(s) ? "grave" : null; };
 const SIGN = /(⌐|Ʊ|[A-ZΦ])(\d)(\*?)/gu;
+const PITCH = /([a-g])(b|#)?('*)(\d)(\*?)/g, PC = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+const midiOf = (l, acc, oct) => 60 + PC[l] + (acc === "b" ? -1 : acc === "#" ? 1 : 0) + 12 * oct.length;
 
 /**
  * A piece read: its lines as syllables [{text, accent, word (in the piece), line, first, last (in its word), lineEnd,
@@ -86,19 +130,24 @@ const SIGN = /(⌐|Ʊ|[A-ZΦ])(\d)(\*?)/gu;
 export function readPiece(piece, table = LYDIAN) {
   const syllables = [];
   let word = 0;
+  const notesOf = (signs, where) => piece.notation === "pitch"
+    ? [...signs.matchAll(PITCH)].map(([sign, l, acc, oct, c, star]) => ({ sign: sign.replace("*", ""), midi: midiOf(l, acc, oct), chronoi: Number(c), supplied: !!star }))
+    : [...signs.matchAll(SIGN)].map(([, g, c, star]) => {
+      if (!(g in table)) throw new Error(`${piece.id} ${where}: no such sign ${g}`);
+      return { sign: g, midi: table[g], chronoi: Number(c), supplied: !!star };
+    });
   piece.lines.forEach((line, li) => {
     const reliable = line.reliable ?? piece.reliable ?? true;
     const words = line.text.split(" ");
     words.forEach((w, wi) => {
-      const syls = w.split("-");
+      // ("…": a syllable lost at the word's edge, the word going on beyond what is kept)
+      const all = w.split("-"), syls = all.filter((x) => x !== "…"), open0 = all[0] === "…", open1 = all.at(-1) === "…";
       syls.forEach((s, si) => {
         const [text, signs] = s.split("=");
-        const notes = [...signs.matchAll(SIGN)].map(([, g, c, star]) => {
-          if (!(g in table)) throw new Error(`${piece.id} ${line.n}: no such sign ${g}`);
-          return { sign: g, midi: table[g], chronoi: Number(c), supplied: !!star };
-        });
-        syllables.push({ text, accent: accentOf(text), word, line: li, lineNo: line.n, first: si === 0, last: si === syls.length - 1,
-                         lineEnd: wi === words.length - 1 && si === syls.length - 1, notes, beats: notes.reduce((a, x) => a + x.chronoi, 0), reliable });
+        const last = si === syls.length - 1 && !open1;
+        syllables.push({ text, accent: accentOf(text), word, line: li, lineNo: line.n, first: si === 0 && !open0, last,
+                         lineEnd: wi === words.length - 1 && si === syls.length - 1 && !open1, notes: notesOf(signs, line.n), reliable });
+        syllables.at(-1).beats = syllables.at(-1).notes.reduce((a, x) => a + x.chronoi, 0);
       });
       word++;
     });
@@ -110,4 +159,7 @@ export function readPiece(piece, table = LYDIAN) {
   return { ...piece, syllables, beats, struck, length: at };
 }
 
-export default { MESOMEDES, LYDIAN, readPiece };
+/** A piece as the runs of notes that follow one another: the piece itself, or each fragment of it alone. */
+export const runsOf = (piece) => (piece.fragments ? piece.lines.map((l) => readPiece({ ...piece, lines: [l] })) : [readPiece(piece)]);
+
+export default { MESOMEDES, DELPHIC, LYDIAN, readPiece, runsOf };
