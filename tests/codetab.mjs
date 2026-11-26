@@ -254,6 +254,23 @@ export async function codetab(page, check) {
         (await cljs(page, `(= #{[${pa} 0 ${pd} 0] [${pd} 0 ${pb} 0] [${pb} 0 ${pc} 0]} (get (owned-lines) ${pa}))`)) === "true");
   await cljs(page, `(delete ${pa} ${pb} ${pc} ${pd})`);
 
+  // PROBE (temporary): does Scittle's reader take #pat/… tags?
+  const probes = [
+    "(pr-str (quote #pat/shuffle [0 2 4]))",
+    "#pat/shuffle [0 2 4]",
+    "(pr-str (tagged-literal 'pat/shuffle [0 2 4]))",
+    "(pr-str (read-string \"#pat/shuffle [0 2 4]\"))",
+    "(set! *default-data-reader-fn* tagged-literal)",
+    "(pr-str (quote #pat/shuffle [0 2 4]))",
+    "(pr-str (cljs.reader/read-string \"#pat/shuffle [0 2 4]\"))",
+    "(alter-var-root #'*data-readers* assoc 'pat/choose (fn [x] [:gen x]))",
+    "(pr-str (quote #pat/choose [1 2]))",
+    "(pr-str (kairotic.patterns/read-spec \"{:degree #pat/shuffle [0 2 4]}\"))",
+  ];
+  const outs = await page.evaluate((ps) => ps.map((p) => { try { return "OK " + String(scittle.core.eval_string("(in-ns 'user) " + p)); } catch (e) { return "ERR " + (e.message || e); } }), probes);
+  probes.forEach((p, i) => console.log("PROBE", p, "=>", outs[i]));
+  check("PROBE ran", true, outs.join(" | "));
+
   // ── a patch as data (#407): => plays EDN ──
   check("a class with ~ written with -, a class ending in - itself", (await cljs(page, '[(class-name :osc-) (class-name :-) (class-name :!-) (class-name "osc~") (class-name :mtof)]'))
         === '["osc~" "-" "!-" "osc~" "mtof"]');
