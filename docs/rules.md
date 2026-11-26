@@ -228,6 +228,10 @@ costs less).
 and tenor sound it, `BACH_INNER_VERTICAL`; weight 1.5), `raised-sixth` (minor's raised ⑥ in an inner voice costs, more
 where it does not go on up; weight 2); `passing` and `suspension-life` 0, `bach-motion` 4, `voice-exchange` 4.
 `@kairotic/rules` 0.22.1: `bach-4` 1.6.1: `bach-vertical` 1, measured on bridges that tonicize (#466).
+`@kairotic/rules` 0.23.0: `continuo.mjs` (Study 76 · continuo): a chorale's quarter read as a figured bass — its intervals
+over the bass, its chord (5/3, 6/3, 6/4, 7, 6/5, 4/3, 4/2, or a dissonance), Bach's figure for it in the key signature
+(`figureOf`, as he abbreviates in the BCFB dataset: 85% of his figures over a struck bass) — and the tables a bass under
+his soprano is weighed by: the soprano over the bass, their moves together, the chord over each degree, the cadences.
 
 ## Next
 
