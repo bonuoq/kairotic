@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 71's deck with a sixth variant, `no-keys`** (#477: the bridges without tonicizations, every unit in the
+  chorale's key): 240 trials, `bach-4` filling 40 of 53 `no-keys` phrases tried (the others 40 of 42–45). The deck
+  carries when it was `drawn`, and each answer the deck it answered: the scores count the answers to this deck only,
+  those to earlier ones kept and said, not counted (a deck drawn again is other bridges).
+
 - **Study 74 · aoidos: a Greek style learned from Mesomedes** (#192). `corpus.mjs`: Mesomedes's hymns with music (DAGM
   nos. 24, 25, 27, 28), sign by sign with their chronoi, the notes the editors supply and the lines only N carries
   marked. `style.mjs`: the engine's choice as a softmax of −cost over the notes its hard rules allow, the weights fitted

@@ -14,7 +14,7 @@ const D = deckOf(P.phrases, B.bridges, { perVariant: per, seed, log: (s) => proc
 process.stderr.write("\n");
 const deck = {
   source: "Kairotic Study 71 · blind: Bach's phrases (phrases.json) and their bridges (bridges.json, Study 63), the inner voices by @kairotic/rules' fromOuter (bach-4)",
-  license: P.license, seed, perVariant: per, ...D,
+  license: P.license, seed, perVariant: per, drawn: new Date().toISOString().slice(0, 16) + "Z", ...D,
 };
 writeFileSync(out, JSON.stringify(deck));
 console.log(`${D.trials.length} trials in ${((Date.now() - t0) / 1000).toFixed(0)} s → ${out}`);
