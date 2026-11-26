@@ -8,6 +8,36 @@
   fragment's start and end free. The hard rules refuse 28 notes (22 the chromatic genus); the Greek style, learned from
   Mesomedes alone, makes the paean's notes more likely (the cheapest 144 → 187 of 317 times). Only the melodies and the
   readings are kept, with their references.
+- **Chords that sing a syllable, and chords through the MEI and back** (#192, #217). A chord sings its syllable as a
+  note does: on its attributes (`[:chord {:dur 1 :syl "Ἄν" :wordpos :i} …]`), written as the `<verse>` of the
+  `<chord>` (not of one of its notes) and read back from it — or from one of its notes, in a MEI from elsewhere. A
+  melisma goes on over chords too (the next chord struck with no syllable, a tied chord's piece no new one), so the
+  extender is derived before them. Tested: a chord tied across the bar line, with and without text, tree → MEI → tree
+  and MEI → tree → MEI (there was no test of chords through the MEI before). **Fixed:** a chord read from a MEI came
+  back with no notes (each note was read as a layer, its children: none); now its notes, their `<accid>`s too.
+- **Bach's dissonant quarters, read** (Study 76, for the bass engine of #487). `@kairotic/rules` 0.24.0's `continuo.mjs`:
+  `dissonanceOf(phrase, t)` reads a quarter that is no chord as a chord and the one voice not of it, by how that voice
+  moves (`motionOf`: a suspension, up or down, a note held over a moving bass, a passing or neighbour note, an
+  appoggiatura, an escape, an anticipation); `BACH_DISSONANCES` counts each by voice, motion, interval and beat. Of
+  Bach's 17,941 quarters 1,719 are no chord: the alto's 958, the tenor's 438, the soprano's 174 (in 159 phrases — the
+  ones a bass under his soprano cannot yet follow: a 4–3 on a strong beat the commonest), the bass's 147.
+  `@kairotic/cac` 0.16.13 (its pin).
+- **The bass under Bach's soprano reads the chorale thread's tables** (#353, after #485). Study 63's `under.mjs`
+  takes `continuo` (@kairotic/rules' continuo.mjs, or its tables): BACH_DEGREE_CHORD for the chord over a degree and
+  the degree, BACH_OUTER_VERTICAL, BACH_OUTER_PAIR for the two voices' moves together (in place of the motion, the
+  held bass and the step), BACH_CADENCES for the fermata's two quarters; which chord a figure is, a leap's size and the
+  key a phrase begins in stay under-tables.mjs's. On the 150 held-out phrases (`UNDER_COSTS=continuo
+  tools/under-measure.mjs`): Bach's bass 2.37 bits a note (2.39 with under-tables.mjs alone), note for note 22.6%
+  (21.7), leaps 55.4% (62.1; Bach 54.5), ⑤–① ends 60.0% (Bach 57.3); held 12.1% (Bach 9.9).
+- **Bach's own figures, and the chorales read as a figured bass** (Study 76 · continuo, #353). `studies/_shared/chorales/figures.json`:
+  the figures of Bach's continuo parts for 562 of the corpus's phrases (93 chorales), from the Bach Chorales Figured Bass
+  dataset (Ju et al., ISMIR 2020, after the NBA; CC BY 4.0), each phrase found in its chorale by its soprano and its bass
+  (`tools/bcfb.mjs`). `@kairotic/rules` 0.23.0's `continuo.mjs`: a quarter's chord over the bass (`chordOf`) and the figure
+  Bach would write for it (`figureOf`: 85% of his figures over a struck bass, the restated 5s and 8s aside; the rest
+  mostly what he left unfigured), and the tables counted from the chorales but every fifth (kept out to measure against;
+  `tools/continuo.mjs`): the soprano over the bass (`BACH_OUTER_VERTICAL`), their moves together (`BACH_OUTER_PAIR`), the
+  chord over each degree of the bass in the key the quarter is in (`BACH_DEGREE_CHORD`, major and minor), the cadences
+  (`BACH_CADENCES`). `@kairotic/cac` 0.16.12 (its pin).
 - **A bass under Bach's soprano: the engine of Study 76 · continuo** (#353). Study 63's `under.mjs`: the bridge of the
   outer voices with the soprano given at every quarter — each quarter's state (local key, bass note, chord over it),
   drawn exactly (backward messages) — `bassUnder({soprano, key, strong, fermata, costs, weights, variant})` →
@@ -24,6 +54,13 @@
   36.5%), Bach's bass 2.39 bits a note under the model (no-keys 2.85); figures 5/3 61.5% (Bach 54.4), 6/3 15.9 (23.1),
   7 8.4 (5.1), 6/5 7.4 (5.1); held 7.7% (9.9), steps 30.2% (35.6), leaps 62.1% (54.5); ⑤–① ends 54.7% (57.3; no-keys
   38.0).
+- **The motive layer, step 3: compression in the core.** `kairotic.compress` is Study 66's shortest description of a piece
+  (figures, motifs and repeats as rules, minimum description length, always written out again the same notes), and
+  `kairotic.bits` the measure of `@kairotic/rules`' `bits.mjs`, so that a description is counted in bits as a listener
+  hears it (`code-length`). Describing a tree (`:describe true`, `motif/annotate`) now writes on its root, in the
+  analysis layer, `:compression {:bits :raw :ratio :rules}`: how much of what is written its own formulas say — a
+  diagnosis, not a preference. Bach's C major prelude: its five-note broken chord used in 32 bars, 16 % of the bits;
+  folk melodies 65 to 98 %. Tests: Study 66's, ported (`tests/cljs/compress.cljs`).
 - **Lyrics in the app's MEI ↔ tree, drawn under the notes** (#192). `mt/->mei` writes a tree's syllables (the lyrics
   layer: `:syl`, `:wordpos`, `:con`, `:verses`) as MEI's `<verse n><syl wordpos con>` on the note that begins each one
   — the hyphen and the extender derived where `:con` is not written (`mt/with-cons`) — so Verovio engraves them under

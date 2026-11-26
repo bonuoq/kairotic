@@ -168,6 +168,16 @@ export async function run() {
   is("no-keys: every quarter in the chorale's key", Array.from({ length: 5 }, (_, i) => unk.draw(wr(i + 3))).every((x) => x.keys.every((k) => k === "C major")));
   is("figureText: the figures against the key signature — V6/5 \"6/5\", V/V \"5/♯3\" in C, \"5/♮3\" in F, I4/2 \"4/2\" over its B♭ in C",
      U.figureText(7, "7", "6/5", { tonic: "C" }) === "6/5" && U.figureText(2, "", "5/3", { tonic: "C" }) === "5/♯3" && U.figureText(7, "", "5/3", { tonic: "F" }) === "5/♮3" && U.figureText(0, "7", "4/2", { tonic: "C" }) === "4/2");
+  // (the chorale thread's tables, in continuo.mjs's shape — here flat ones, invented: any chord, any move, as likely)
+  const flatC = { BACH_OUTER_VERTICAL: Array(12).fill(0), BACH_OUTER_PAIR: Array(25).fill(0), BACH_CADENCES: { major: [["7:5/3 0:5/3", 0.5]], minor: [["7:5/3 0:5/3", 0.5]] },
+    BACH_DEGREE_CHORD: Object.fromEntries(["major", "minor"].map((m) => [m, { chords: ["5/3", "6/3", "6/4", "7", "6/5", "4/3", "4/2", "x"], degree: Array(12).fill(0), chord: Array.from({ length: 12 }, () => Array(8).fill(0)) }])) };
+  const UC = U.underBridge({ soprano: sop, key: { tonic: "C", mode: "major" }, strong: st, continuo: flatC });
+  const cl = Array.from({ length: 30 }, (_, i) => UC.draw(wr(i + 7))).filter(Boolean);
+  const UC0 = U.underBridge({ soprano: sop, key: { tonic: "C", mode: "major" }, strong: st, continuo: flatC, weights: { cadence: 0 } });
+  const c0 = Array.from({ length: 30 }, (_, i) => UC0.draw(wr(i + 7))).filter(Boolean);
+  const v1 = (xs) => xs.filter((x) => x.bass.at(-1) % 12 === 0 && x.bass.at(-2) % 12 === 7).length;
+  is("continuo: the chorale thread's tables (continuo.mjs's shape) in place of under-tables.mjs's — a bass by the same rules, ending more often on the cadence its table names (⑤–① 5/3) than without it",
+     UC.possible && cl.length === 30 && cl.every((x) => !par(x)) && v1(cl) > v1(c0));
   notes.push(`a bass under C D E F E D C: ${lines[0].bass.join(" ")} · ${lines[0].figures.join(" ")} · ${lines[0].keys.join(", ")}`);
 
   return { results, notes };
