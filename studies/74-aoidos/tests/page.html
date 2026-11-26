@@ -59,6 +59,14 @@ try {
   P.set("odyssey", "melody");
   await wait(() => total() === "1,035,536,158,789,085,949" && status() === "sung");
   is("the Greek style (learned from Mesomedes): Odyssey 1.1, 1,035,536,158,789,085,949 melodies, sung, every rule kept", total() === "1,035,536,158,789,085,949" && /✓ every rule kept/.test(report()));
+  d.getElementById("melisma").value = "1";
+  P.set("odyssey", "heterophony");
+  await wait(() => total() === "465,209,704,599,378,834" && status() === "sung");
+  is("with an aulos in heterophony (Greek style, a note a syllable): 465,209,704,599,378,834, the voice and the aulos drawn, every rule kept",
+     total() === "465,209,704,599,378,834" && d.querySelectorAll("#sheet rect.comes").length > 0 && /✓ every rule kept/.test(report()));
+  P.set("odyssey", "drone");
+  await wait(() => /^\d/.test(total()) && status() === "sung");
+  is("... and as a drone: the final held under the melody", d.querySelectorAll("#sheet rect.comes").length === 1 && /✓ every rule kept/.test(report()));
   is("no errors on the page", errors.length === 0 && !/^Error/.test(status()));
 } catch (e) { is("error: " + (e.message || e), false); }
 const bad = results.filter((r) => !r[1]);
