@@ -791,24 +791,60 @@
                (and (vector? a) (= :=> (first a)))
                (and (map? a) (= 1 (count a)) (keyword? (ffirst a)) (box-vec? (val (first a)))))))
 
+(defn code-class?
+  "Whether boxes of class cls keep a source (a code box — pbind, pattern, script —, or one with a model: a canvas…);
+   a class of a package not loaded yet is taken to."
+  [cls]
+  (let [d (comp/lookup cls)]
+    (if d (boolean (or (= :code (:display d)) (string? (:language d)) (:model d))) (boolean (lib/package-of cls)))))
+
+(defn source-of-vec
+  "[k a]: the argument of box vector v that is its source — its last, a map for a box that keeps a source
+   ([:pbind 7 {:degree [0 2 4]}]), or a string for one of a class loaded ([:script \"(fn …)\"]) —, or nil."
+  [v]
+  (let [cls (class-name (first v)) as (vec (rest v)) a (peek as)]
+    (when (and (seq as) (not= "faust~" cls) (code-class? cls)
+               (or (and (map? a) (not (source-arg? a))) (and (string? a) (comp/lookup cls))))
+      [(dec (count as)) a])))
+
 (defn box-text
   "The text of the box a vector writes: [:gain- 0.2] → \"gain~ 0.2\". An argument that is a part of the patch is not
-   written (0 holds its place if values follow it): it feeds the box."
+   written (0 holds its place if values follow it): it feeds the box; nor is its source."
   [v]
-  (let [kept (if (= "faust~" (class-name (first v))) [] (reverse (drop-while source-arg? (reverse (rest v)))))]
+  (let [as (if-let [[k] (source-of-vec v)] (subvec (vec (rest v)) 0 k) (rest v))
+        kept (if (= "faust~" (class-name (first v))) [] (reverse (drop-while source-arg? (reverse as))))]
     (str/join " " (cons (class-name (first v)) (map (fn [a] (if (source-arg? a) "0" (arg-text a))) kept)))))
+
+(defn source-data!
+  "Writes src as the source of box id, if it is not that already: with code once its class is loaded, or else as its
+   data, which the class reads when its package comes."
+  [id src]
+  (let [b (get-in (current) [:boxes id])]
+    (if (comp/lookup (klass (:text b)))
+      (when (not= src (comp/source-of b)) (code id src))
+      (when (not= src (get-in b [:data :source])) (dispatch! [:data id {:source src}])))))
 
 (def arg-inlets
   "The inlet each argument of a class sets, where it is not the one after the left (as + 1, gain~ 0.2, metro 500):
-   osc~ 220 sets the frequency, its left inlet."
-  {"osc~" [0] "phasor~" [0] "sig~" [0]})
+   osc~ 220 sets the frequency, its left inlet; a number, the inlet every argument that is a part of the patch
+   goes to (a player takes its pattern on the right)."
+  {"osc~" [0] "phasor~" [0] "sig~" [0] "player" 1})
 
 (defn arg-inlet
   "The inlet that argument k of a box of class cls sets: the class says it (:arg-inlets, or arg-inlets), or else the
    one after the left (k + 1), as Pd and Max give arguments to the cold inlets."
   [cls k]
   (let [m (or (:arg-inlets (comp/lookup cls)) (get arg-inlets cls))]
-    (if m (get m k) (inc k))))
+    (cond (number? m) m m (get m k) :else (inc k))))
+
+(def chain-outlets
+  "The outlets a box of a class leaves to the next one in a chain, where it is not its left one alone: a player and a
+   keyboard send the Hz and the voice ids together, to a synth~ or a polyphonic faust~."
+  {"player" [0 1] "keyboard" [0 1]})
+
+(defn ends-of "The ends box id leaves in a chain: its outlets, as its class says (chain-outlets), or its left one." [id]
+  (let [cls (klass (str (get-in (current) [:boxes id :text])))]
+    (mapv (fn [o] [id o]) (or (:chain-outlets (comp/lookup cls)) (get chain-outlets cls) [0]))))
 
 (defn spliced [xs] (mapcat (fn [x] (if (seq? x) x [x])) xs))
 
@@ -834,6 +870,16 @@
   "A box by a name: made the first time (where its chain puts it), the same box after, its text changed if it changed."
   [nm t [x y]]
   (if (get-in (current) [:boxes (rid nm)]) (named-box nm t nil nil) (named-box nm t x y)))
+
+;; ───── #pat/… in live code ─────
+;; The generators of @kairotic/patterns, written in a pattern as in a pbind's source — {:degree #pat/shuffle [0 2 4 7]
+;; :dur #pat/euclid [5 8]} —, are read by the code you evaluate as tagged literals: values that print as they were
+;; written, so a pbind written as data gets them in its source. Any other tag is still an error.
+
+(def pat-tags '[seq choose shuffle white walk series hold chord euclid pulses necklace chance])
+
+(alter-var-root #'*data-readers* merge
+                (into {} (for [g pat-tags :let [t (symbol "pat" (name g))]] [t (fn [x] (tagged-literal t x))])))
 
 ;; ───── Faust as data (discussion #407, #115) ─────
 ;; [:faust- …] is a faust~ box whose code is written by the same grammar: its arguments, a chain of Faust's own
@@ -897,11 +943,13 @@
   [ctx v id j]
   (let [cls (class-name (first v)) t (get-in (current) [:boxes id :text])
         n-in (first (comp/io {:text t}))]
+    (when-let [[_ src] (source-of-vec v)] (source-data! id (if (string? src) src (pr-str src))))
     (if (= "faust~" cls)
       (faust-source! id v)
     (doseq [[k a] (map-indexed vector (rest v)) :when (source-arg? a)]
       (let [i (arg-inlet cls k)]
-        (when-not (and i (< i n-in)) (fail (str cls " has no inlet for its argument " (inc k))))
+        (when-not (and i (or (< i n-in) (nil? (comp/lookup cls)) (comp/dynamic? {:text t})))
+          (fail (str cls " has no inlet for its argument " (inc k))))
         (doseq [[b o] (run-data ctx [] a (+ j k))]
           (connect b o id i)
           (swap! ctx update :wrote conj [b o id i])))))))
@@ -922,7 +970,7 @@
 (defn run-data
   "Runs an element of a patch written as data, fed by `ends` ([[box outlet] …]); returns the ends it leaves."
   [ctx ends x j]
-  (let [make (fn [id] (when (seq ends) (feed! ctx ends id)) [[id 0]])]
+  (let [make (fn [id] (when (seq ends) (feed! ctx ends id)) (ends-of id))]
     (cond
       (= x :_) (if (seq ends) ends (fail "A wire (:_) with nothing before it"))
       (or (keyword? x) (symbol? x)) (make (existing! x))
@@ -1010,7 +1058,8 @@
            (doseq [[nm b] (:frame m)]
              (when-not (box-vec? b) (fail (str "Not a box in :frame: " (pr-str b))))
              (let [id (named-data-box! (keyword (name nm)) (box-text b) [nil nil])]
-               (when (faust-vec? b) (faust-source! id b))))
+               (when (faust-vec? b) (faust-source! id b))
+               (when-let [[_ src] (source-of-vec b)] (source-data! id (if (string? src) src (pr-str src))))))
            (doseq [[k v] (dissoc m :frame)]
              (let [[_ rec] (run-owned! [::voice k] (rest v) records)] (swap! recs assoc [::voice k] rec)))
            (doseq [k prev :when (not (contains? m k))]
