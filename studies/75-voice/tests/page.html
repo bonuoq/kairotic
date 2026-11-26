@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Study 75 · voice · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1100px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the two faust~ compiled, Seikilos's song sung and drawn, the phoneme table
+// edited and sung again, an MEI from Study 74 read.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 90000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+try {
+  is("the page compiles its two faust~", await wait(() => w.kairoticStudy && w.kairoticStudy.ready()));
+  const S = w.kairoticStudy;
+  is("the phoneme table shown as EDN, the two codes in their boxes", d.getElementById("table").value.startsWith('{"i" {:kind :vowel') &&
+     /glottal/.test(d.getElementById("voice").value) && /aspiration/.test(d.getElementById("noise-code").value));
+  const r = await S.sing("both");
+  is("Seikilos's song sung: its sound, its curves drawn", r && r.sound.length > 44100 * 10 && d.querySelectorAll("#curves polyline").length === 4 &&
+     d.querySelectorAll("#score rect.note").length === 37);
+  const F2a = () => { const C = S.state().result.curves; const s = C.segments.find((x) => x.p === "a"); return C.frames[Math.round(((s.from + s.to) / 2) / C.hop)].F2; };
+  const before = F2a();
+  const ta = d.getElementById("table");
+  ta.value = ta.value.replace('"a" {:kind :vowel :F [750 1300 2600 3600]', '"a" {:kind :vowel :F [750 1100 2600 3600]');
+  await S.sing("both");
+  is("the table edited: α sung with the F2 written there", Math.abs(F2a() - Math.round(1100 * 1.1)) < 2 && Math.abs(before - Math.round(1300 * 1.1)) < 2);
+  ta.value = "{:not";
+  is("a table that is not EDN is not applied, and says why", !S.sing("both") && !d.getElementById("table-err").hidden);
+  const { exportMei } = await import("../../74-aoidos/kairotic/export.mjs");
+  S.setMei(exportMei({ title: "two", voices: [{ notes: [{ midi: 64, units: 1, syl: "Μῆ" }, { midi: 62, units: 1, syl: "νιν" }] }], unitDen: 4, unitsPerBar: 2 }).mei);
+  ta.value = w.kairoticVoice.P.tableEdn();
+  const m = await S.sing("both");
+  is("an MEI from Study 74 sung: its notes and syllables", m && d.querySelectorAll("#score rect.note").length === 2 && /Μῆ/.test(d.getElementById("score").textContent));
+} catch (e) { errors.push(String(e.message || e)); }
+const bad = results.filter((r) => !r[1]).map((r) => r[0]).concat(errors.map((e) => "error: " + e));
+window.kairoticResults = { total: results.length, failed: bad };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n` + results.map(([w2, ok]) => (ok ? "  ok   " : "  FAIL ") + w2).join("\n") + (errors.length ? "\n" + errors.join("\n") : "");
+</script>
