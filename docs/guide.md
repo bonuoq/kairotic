@@ -121,12 +121,18 @@ alone, a form at a time:
 If the tab held nothing else that was not applied, it is written again from the patch afterwards (the new box as
 `(box :b7 "osc~ 220" …)`), the cursor on its line.
 
-**Live**, the third view of the Code tab (beside Calls and Data), is a page of your own that the work never writes
+**Live**, the third view of the Code tab (beside Work and EDN), is a page of your own that the work never writes
 over: names (`def`) and chains stay as you wrote them. ⇧+Enter evaluates the form at the cursor, **Ctrl/⌘+Enter the
 block** it is in (the lines between two empty ones), and what was evaluated flashes. It is kept in this browser for
 each work, not in the work. **`to`** makes a box below another, fed by it, as one event, and returns its id, so a
 chain reads as the signal goes — `(-> (box "osc~ 220") (to "gain~ 0.2") (to "dac~ 1 2"))`, the whole chain one event
 when evaluated from the tab; `(to a o "text" i)` chooses the outlet and the inlet, and `(to :b3 :b9)` only connects.
+
+**Only the code.** ‹ under the splitter's › (or **Ctrl/⌘+Shift+L**, also from inside the Live view) hides the patch:
+the code takes the whole work, in the Live view, with a larger type for a projected screen. Meanwhile the patch is
+not drawn — the sound, the history and the REPL go on — and › brings it back, drawn as it is now. **⇆ work** shows
+beside your code the work as data as it is now: what exists and sounds, the patch without the patch.
+`(code-only true)`, `(live-mirror true)`.
 
 **Names.** `(box :osc "osc~ 220")` makes a box the code calls `:osc`: evaluated again it is the same box, its text
 changed if it changed (`(box :osc "osc~ 330")` changes the oscillator, as one event, and the sound goes on), so a
@@ -633,14 +639,14 @@ shows it too. Drag the bar between the patch and the panel to give it another wi
 the bar hides or shows it. This browser remembers how you left it. From the REPL: `(side-panel false)`,
 `(side-panel true)`, `(side-panel 480)`, `(side-panel :auto)`.
 
-- **Code** — the work as **Calls** (`box`, `connect`, …), editable: Ctrl/⌘+Enter applies them (only what
+- **Code** — the **Work** as code (`box`, `connect`, …, or as data), editable: Ctrl/⌘+Enter applies them (only what
   they change, as one event), ⇧+Enter evaluates the form at the cursor alone. The lines that follow each other
   are written as chains — `(-> :b1 (to :b2) (to 1 :b3 0))`, `(doto :b1 (to :b2) (to :b3))`, names in place of ids —
   the same work, in the same order, read as the signal goes; **-> chains** off writes a `connect` for each line
   (this browser remembers the choice). **[:=> data]** writes the boxes and lines as a patch as data —
   `(=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]})`, each box by its id the first time and `:b1`
   after, `[:to o box i]` where the ports say, and `(places {:b1 [40 30] …})` for where they are —: applied, the same
-  work; a text no vector writes again exactly stays a string, `["osc~ 220.0"]`. Links, the clipboard and Claude always use the flat writing. **Data** shows the same work as data (EDN): the state the history produces, every key of
+  work; a text no vector writes again exactly stays a string, `["osc~ 220.0"]`. Links, the clipboard and Claude always use the flat writing. **EDN** shows the same work as data (EDN): the state the history produces, every key of
   every box, read-only, to inspect it (folding and search with Ctrl/⌘+F). Edits not run yet stay in the
   calls while you look at the data.
 - **Components** — the classes this work knows. The boxes that define them (`component`) are kept

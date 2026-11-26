@@ -398,7 +398,7 @@ buffer is plain data, but **beside it the box keeps the recipe that made it** (t
 - `(remake! :bN)` writes the recipe's tree back into the buffer (one event), dropping the changes.
 - `:calls` is the code of the boxes upstream, so the recipe still says how it was made after those
   boxes are deleted or changed: paste it into the Code tab to build them again.
-- The work's code (Calls) writes each recipe as `(recipe :b5 {…})`, after the data; the Data view
+- The work's code (Work) writes each recipe as `(recipe :b5 {…})`, after the data; the EDN view
   shows it as `:recipe`, beside `:data`.
 
 ## History

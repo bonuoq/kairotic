@@ -365,11 +365,14 @@
     ;; the patch can use the room it gets (or gives back)
     (js/requestAnimationFrame (fn [_] (render-scene (current))))))
 
+(declare code-only)
 (defn side-panel
   "The panel on the right: (side-panel false) hides it, (side-panel true) shows it, (side-panel 480) shows it
    480 px wide, (side-panel :auto) back to its proportion of the page. Without arguments, how it is."
   ([] @side)
   ([x]
+   ;; the panel hidden with the patch hidden would leave nothing: the patch comes back
+   (when (and (false? x) @code-only?) (code-only false))
    (cond (boolean? x) (set-side! {:open x})
          (number? x) (set-side! {:open true :w x})
          (= x :auto) (set-side! {:open true :w nil})
@@ -377,6 +380,61 @@
    @side))
 
 (.addEventListener ($ "side-toggle") "click" (fn [e] (.stopPropagation e) (side-panel (not (:open @side)))))
+
+;; ───── the patch hidden: the code takes the whole work (live coding, discussion #407) ─────
+;; ‹ under the splitter's › (or Ctrl/⌘+Shift+L) hides the patch and shows the Live view as wide as the work; the
+;; patch is not drawn meanwhile — the sound, the history and the REPL go on — and comes back with ›. Beside your code,
+;; ⇆ work shows the work as data as it is now: what exists and sounds, the patch without the patch.
+
+(defonce live-mirror? (atom false))
+
+(defn render-mirror! []
+  (when (and @code-only? @live-mirror? (= :live (:code-view @ui)))
+    (let [m ($ "live-mirror") t (patch->code (current) :data)]
+      (when (not= t (.-textContent m)) (set! (.-textContent m) t)))))
+
+(defn render-code-only! []
+  (let [on @code-only? wk (.querySelector js/document ".work") t ($ "patch-toggle")
+        live? (= :live (:code-view @ui)) mirror (and on @live-mirror? live?)]
+    (when wk (.toggle (.-classList wk) "patch-off" on))
+    (when t
+      (set! (.-textContent t) (if on "›" "‹"))
+      (set! (.-title t) (if on "Show the patch again (Ctrl/⌘+Shift+L)" "Hide the patch: the code takes the whole work, in the Live view (Ctrl/⌘+Shift+L)"))
+      (.setAttribute t "aria-pressed" (str on)))
+    (.toggle (.-classList ($ "panel-code")) "mirror" mirror)
+    (set! (.-hidden ($ "live-mirror")) (not mirror))
+    (set! (.-hidden ($ "live-mirror-btn")) (not (and on live?)))
+    (.setAttribute ($ "live-mirror-btn") "aria-pressed" (str (boolean @live-mirror?)))
+    (render-mirror!)))
+
+(defn code-only
+  "Hides the patch: the code takes the whole work, in the Live view, to play it live (#407). Meanwhile the patch is not
+   drawn; the sound, the history and the REPL go on. (code-only false) shows it again; without arguments, whether it is."
+  ([] @code-only?)
+  ([on?]
+   (let [on (boolean on?)]
+     (when (not= on @code-only?)
+       (reset! code-only? on)
+       (if on
+         (do (side-panel true) (.click ($ "tab-code")) (show-code-view! :live))
+         (js/requestAnimationFrame (fn [_] (render-scene (current)) (render-overlay!))))
+       (render-code-only!))
+     on)))
+
+(defn live-mirror
+  "Beside the Live code, while the patch is hidden, the work as data as it is now (true), or not (false)."
+  [on?]
+  (reset! live-mirror? (boolean on?))
+  (render-code-only!)
+  @live-mirror?)
+
+(.addEventListener ($ "patch-toggle") "click" (fn [e] (.stopPropagation e) (code-only (not @code-only?))))
+(.addEventListener ($ "live-mirror-btn") "click" (fn [_] (live-mirror (not @live-mirror?))))
+(.addEventListener js/document "keydown"
+  (fn [e] (when (and (or (.-ctrlKey e) (.-metaKey e)) (.-shiftKey e) (= "l" (str/lower-case (str (.-key e)))))
+            (.preventDefault e) (code-only (not @code-only?)))))
+(add-watch ui ::code-only (fn [_ _ o n] (when (not= (:code-view o) (:code-view n)) (render-code-only!))))
+(add-watch hist ::mirror (fn [_ _ _ _] (when (and @code-only? @live-mirror?) (js/requestAnimationFrame (fn [_] (render-mirror!))))))
 (.addEventListener ($ "side-hide") "click" (fn [_] (side-panel false)))
 
 ;; dragging the splitter: the panel takes the width from there to the right edge of the work

@@ -1425,7 +1425,9 @@
           ed ((.-createEditor cm)
               #js {:parent host :doc (.-value ta) :language "clojurescript" :words (clj->js (command-words))
                    :onApply (fn [_] (eval-live! :block))
-                   :keys #js [#js {:key "Shift-Enter" :run (fn [] (eval-live! :form) true)}]
+                   :keys #js [#js {:key "Shift-Enter" :run (fn [] (eval-live! :form) true)}
+                              ;; the patch hidden or shown again, without leaving the code
+                              #js {:key "Mod-Shift-l" :run (fn [] (code-only (not @code-only?)) true)}]
                    :onChange (fn [_] (save-live!))})]
       (.setAttribute (.-contentDOM (.-view ed)) "aria-label" "Live code")
       (reset! live-ed ed))))
