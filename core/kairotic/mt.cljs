@@ -1784,6 +1784,7 @@
    :harmony     {:layer :analysis :doc "a chord's name"}
    :motif       {:layer :analysis :doc "the motive a note begins (a, b…; kairotic.motif)"}
    :motif.rel   {:layer :analysis :doc "how that return of the motive is related to its statement"}
+   :compression {:layer :analysis :doc "how much of the tree its own formulas say, in bits (kairotic.compress)"}
    :syl         {:layer :lyrics :doc "the syllable a note begins (verse 1); the notes after it with none sing it on: a melisma"}
    :wordpos     {:layer :lyrics :doc "the syllable's place in its word: :i, :m, :t (none: a word of one syllable)"}
    :con         {:layer :lyrics :doc "what follows the syllable, where it is not the one derived: :d a hyphen, :u an extender (MEI's @con)"}
