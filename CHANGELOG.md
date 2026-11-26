@@ -148,6 +148,11 @@
   as common (ὁ χρόνος); its melody keeps the accent rules 4/5 (rise to the acute), 9/10 (the word's highest), 3/4 (the
   circumflex falling), 5/6 (a fall after the accent), 4/6 (no fall after a grave). Tests: `tests/seikilos.html`.
 
+- **The Code tab writes the work as data** (discussion #407, plan step 5): **[:=> data]** writes the boxes and lines
+  as chains of box vectors — `(=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]})`, each box by its id
+  the first time, `[:to o box i]` for other ports, the boxes alone after — and `(places {…})`; applied, the same work.
+  A box's text a vector would not write again exactly stays a string. Applying code builds each chain or voices value
+  it gives (plain: no records of what live code made); `(code-style! :data)`.
 - **Faust as data: names, feedback, voices** (discussions #407, #115): in `[:faust- …]`, `{:lfo [:os.osc 5]}` defines
   `lfo` once and `:lfo` is it after; `[:rec a b]` is `a ~ b`; a first map `{:nvoices 8 :effect …}` makes it polyphonic,
   with `:freq`, `:gain` and `:gate` each voice's own and `:effect` applied to their sum — played by a `player`.

@@ -390,4 +390,21 @@ export async function codetab(page, check) {
         `${await txt(pl)} ${await txt(pin)}`);
   await cljs(page, `(stop) (delete ${pp} ${pl} ${pz} ${pin})`);
 
+
+  // the work written as data (#407, plan step 5)
+  const tdata = await cljs(page, '[(text->data "osc~ 220") (text->data "map inc") (text->data "osc~ 220.0") (text->data "msg :freq 440")]');
+  check("a box's text as a vector, exactly, or as its text",
+        (await cljs(page, `(= [(text->data "osc~ 220") (text->data "map inc") (text->data "osc~ 220.0") (text->data "msg :freq 440")] ["[:osc- 220]" "[:map 'inc]" "[\\"osc~ 220.0\\"]" "[:msg :freq 440]"])`)) === "true", tdata);
+  const small = '(box :b1 \\"osc~ 220\\" 40 30) (box :b2 \\"gain~ 0.2\\" 40 90) (box :b3 \\"dac~ 1 2\\" 40 150) (box :b4 \\"mtof\\" 200 30) (box :b5 \\"player 120\\" 300 30) (box :b6 \\"+\\" 300 90) (connect :b1 0 :b2 0) (connect :b2 0 :b3 0) (connect :b2 0 :b3 1) (connect :b5 1 :b6 1) (connect :b5 0 :b6 0)';
+  const dcode = await cljs(page, `(patch->code (build "${small}") :data)`);
+  check("the work as data: chains of boxes by their ids, [:_ :_], [:to …] where ports say, boxes alone, places",
+        ["(=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]})", "(=> {:b5 [:player 120]} [:to 1 {:b6 [:+]} 1])", "(=> :b5 [:to 0 :b6 0])", "(=> {:b4 [:mtof]})", "(places {:b1 [40 30]"].every((x) => dcode.includes(x)), dcode);
+  check("... applied, it gives the same work", (await cljs(page, `(let [p (build "${small}")] (= (patch->code p) (patch->code (build (patch->code p :data)))))`)) === "true");
+  const whole = await cljs(page, "(run-code! (patch->code (current) :data))");
+  check("... the work on screen written as data and applied: nothing changes", whole === "0", whole);
+  await cljs(page, "(code-style! :data)");
+  check("[:=> data] writes the Code tab so", (await cljs(page, '(str/starts-with? (shown-code (current)) ";; boxes and lines, as data")')) === "true"
+        && (await page.evaluate(() => document.getElementById("code-asdata").getAttribute("aria-pressed"))) === "true");
+  await cljs(page, "(code-style! :chains)");
+
 }

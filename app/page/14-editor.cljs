@@ -873,7 +873,13 @@
 (defn named-data-box!
   "A box by a name: made the first time (where its chain puts it), the same box after, its text changed if it changed."
   [nm t [x y]]
-  (if (get-in (current) [:boxes (rid nm)]) (named-box nm t nil nil) (named-box nm t x y)))
+  (cond
+    ;; a box id, as the Code tab writes the work as data: {:b3 [:osc- 220]} is the box :b3
+    (not (live-name? nm)) (if-let [b (get-in (current) [:boxes nm])]
+                            (do (when (not= t (:text b)) (text! nm t)) nm)
+                            (box nm t (or x 0) (or y 0)))
+    (get-in (current) [:boxes (rid nm)]) (named-box nm t nil nil)
+    :else (named-box nm t x y)))
 
 ;; ───── #pat/… in live code ─────
 ;; The generators of @kairotic/patterns, written in a pattern as in a pbind's source — {:degree #pat/shuffle [0 2 4 7]
@@ -977,8 +983,8 @@
 (defn faust-source!
   "The code of faust~ box id written by its vector v, if it is not that already."
   [id v]
-  (let [src (apply faust-code (rest v))]
-    (when (not= src (comp/source-of (get-in (current) [:boxes id]))) (code id src))))
+  (let [src (when (seq (rest v)) (apply faust-code (rest v)))]
+    (when (and src (not= src (comp/source-of (get-in (current) [:boxes id])))) (code id src))))
 
 (declare run-data)
 (defn feed-args!
@@ -1090,7 +1096,9 @@
                   (voices-map? v) [v]
                   (or (box-vec? v) (map? v)) [v]
                   :else (fail (str "Not a patch as data: " (pr-str v))))
-        records (made-records)
+        ;; in a scratch patch (the Code tab applied as data) a chain is plain: no records, nothing taken away
+        plain? (some? @scratch)
+        records (if plain? {} (made-records))
         voices? (and (= 1 (count els)) (voices-map? (first els)))
         out (atom nil) recs (atom records)]
     (as-one-event!
@@ -1112,7 +1120,7 @@
          (let [k (chain-key-of els) [ends rec] (run-owned! k els records)]
            (swap! recs assoc k rec)
            (reset! out (ffirst ends))))))
-    (keep-records! @recs)
+    (when-not plain? (keep-records! @recs))
     @out))
 
 (defn =>
@@ -1137,6 +1145,75 @@
               (let [r (play v)] (repl-print! "out" (esc (str "; ▶ " (if (vector? r) (str/join " " r) (pr-str r))))))
               (repl-print! "out" (esc (pr-str v))))))))
     (catch :default e (repl-print! "err" (esc (or (.-message e) (str e)))) nil)))
+
+;; ───── the work written as data (discussion #407, plan step 5) ─────
+;; The Code tab can write the boxes and lines of the work as data: chains of box vectors, each box by its id the first
+;; time ({:b1 [:osc- 220]}) and :b1 after, and the places of the boxes in a map, so applied it gives the same patch:
+;;   (=> {:b1 [:osc- 220]} {:b2 [:gain- 0.2]} [:_ :_] {:b3 [:dac- 1 2]})
+;;   (places {:b1 [40 30] :b2 [40 90] :b3 [40 150]})
+;; A box whose text a vector would not write again exactly is written as its text: ["osc~ 220.0"].
+
+(defn places
+  "Puts boxes where a map says: (places {:b1 [40 30] :b2 [40 90]}), as the Code tab writes the work as data."
+  [m]
+  (doseq [[id [x y]] m] (move id x y))
+  (count m))
+
+(defn plain-arg?
+  "Whether an argument read from a box's text can be written in a vector as it is: values with no names (a name at
+   the top is quoted) and no lists, and not a part of the patch."
+  [a top?]
+  (cond (symbol? a) top?
+        (seq? a) false
+        (or (map? a) (vector? a) (set? a)) (and (not (source-arg? a)) (every? (fn [x] (plain-arg? x false)) (if (map? a) (mapcat identity a) a)))
+        :else true))
+
+(defn text->data
+  "The vector, as code, that writes the text of a box again exactly — [:osc- 220], [:map 'inc] —, or else the text
+   itself in a vector: [\"osc~ 220.0\"]."
+  [t]
+  (let [k (klass t)
+        fallback (str "[" (pr-str t) "]")
+        args (when (str/starts-with? t k) (try (read-string (str "[" (subs t (count k)) "]")) (catch :default _ nil)))
+        h (if (and (str/ends-with? k "~") (> (count k) 1)) (keyword (str (subs k 0 (dec (count k))) "-")) (keyword k))]
+    (if (and (vector? args) (seq k) (= k (class-name h)) (every? (fn [a] (plain-arg? a true)) args)
+             (box-vec? [h]) (= t (box-text (into [h] args))))
+      (str "[" (str/join " " (cons (pr-str h) (map (fn [a] (if (symbol? a) (str "'" a) (pr-str a))) args))) "]")
+      fallback)))
+
+(defn work->data-lines
+  "The boxes and lines of patch p as data, in the order of its lines: a chain where each line leaves the box the one
+   before reached, [:_ :_] where one outlet goes to the first inlets of the next box, [:to o box i] for other ports;
+   the boxes with no line after; then their places."
+  [p]
+  (let [ls (vec (:lines p)) n (count ls) bs (:boxes p)
+        seen (atom #{})
+        ref (fn [id] (if (@seen id) (str id) (do (swap! seen conj id) (str "{" id " " (text->data (str (get-in bs [id :text]))) "}"))))
+        one-out? (fn [id] (let [cls (klass (str (get-in bs [id :text])))]
+                            (= [0] (or (:chain-outlets (comp/lookup cls)) (get chain-outlets cls) [0]))))
+        chains (loop [i 0 out []]
+                 (if (>= i n)
+                   out
+                   (let [[a] (nth ls i) head (ref a)
+                         [i steps] (loop [i i cur a steps []]
+                                     (if (and (< i n) (= cur (first (nth ls i))))
+                                       (let [[_ o b k] (nth ls i)
+                                             m (if (and (zero? o) (zero? k) (one-out? cur))
+                                                 (count (take-while (fn [[j [a2 o2 b2 k2]]] (and (= a2 cur) (zero? o2) (= b2 b) (= k2 j)))
+                                                                    (map vector (iterate inc 1) (subvec ls (inc i)))))
+                                                 0)]
+                                         (cond
+                                           (pos? m) (recur (+ i m 1) b (conj steps (str "[" (str/join " " (repeat (inc m) ":_")) "]") (ref b)))
+                                           (and (zero? o) (zero? k) (one-out? cur)) (recur (inc i) b (conj steps (ref b)))
+                                           :else (recur (inc i) b (conj steps (str "[:to " o " " (ref b) " " k "]")))))
+                                       [i steps]))]
+                     (recur i (conj out (str "(=> " head " " (str/join " " steps) ")"))))))
+        ids (sort-by box-num (keys bs))
+        alone (for [id ids :when (not (@seen id))] (str "(=> " (ref id) ")"))]
+    (concat chains alone
+            (when (seq ids)
+              ["" ";; places"
+               (str "(places {" (str/join "\n         " (for [id ids :let [{:keys [x y]} (get bs id)]] (str id " [" x " " y "]"))) "})")]))))
 
 (defn same-code? [a b]
   (= (str/replace (str/trim (str a)) #"\s+" " ") (str/replace (str/trim (str b)) #"\s+" " ")))
