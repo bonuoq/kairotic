@@ -1095,7 +1095,7 @@
 (defonce code-style
   ;; how the Code tab writes the lines of the work: :chains (->, doto, to; the default, #433) or :flat (a connect
   ;; each), #407. Links, the clipboard, Claude and the agents always read and write the work flat (patch->code).
-  (atom (or (try (some-> (.getItem js/localStorage "kairotic.code-style") keyword #{:flat :chains}) (catch :default _ nil)) :chains)))
+  (atom (or (try (some-> (.getItem js/localStorage "kairotic.code-style") keyword #{:flat :chains :data}) (catch :default _ nil)) :chains)))
 
 (defn lines->chains
   "The lines of patch p written as chains where they follow each other in the work's order (#407, #380, #399): a
@@ -1118,17 +1118,20 @@
             (> d i) (recur (inc d) (conj out (str "(doto " (nm a) " " (str/join " " (map step (subvec ls i (inc d)))) ")")))
             :else (recur (inc i) (conj out (str "(connect " (nm a) " " o " " (nm b) " " k ")")))))))))
 
-(declare patch->code)
-(defn shown-code "The work's code as the Code tab writes it (flat, or in chains)." [p] (patch->code p @code-style))
+(declare patch->code work->data-lines)
+(defn shown-code "The work's code as the Code tab writes it (flat, in chains, or as data)." [p] (patch->code p @code-style))
 
 (defn patch->code
   ([p] (patch->code p :flat))
   ([p style]
   (let [ids (sort-by box-num (keys (:boxes p)))]
     (str/join "\n"
-              (concat [";; boxes"]
-                      (for [id ids :let [{:keys [text x y]} (get-in p [:boxes id])]]
-                        (str "(box " id " " (pr-str text) " " x " " y ")"))
+              (concat (if (= style :data)
+                        ;; the boxes and lines as data, and their places (#407, plan step 5)
+                        (when (seq ids) (cons ";; boxes and lines, as data" (work->data-lines p)))
+                        (cons ";; boxes"
+                              (for [id ids :let [{:keys [text x y]} (get-in p [:boxes id])]]
+                                (str "(box " id " " (pr-str text) " " x " " y ")"))))
                       ;; the names live code calls boxes by (#407)
                       (let [nm (filter (fn [id] (:name (get-in p [:boxes id]))) ids)]
                         (when (seq nm)
@@ -1156,9 +1159,10 @@
                         (when (seq sz)
                           (concat ["" ";; sizes"]
                                   (for [id sz :let [[w h] (get-in p [:boxes id :size])]] (str "(resize " id " " w " " h ")")))))
-                      (when (seq (:lines p)) ["" ";; lines"])
-                      (if (= style :chains)
-                        (lines->chains p)
+                      (when (and (seq (:lines p)) (not= style :data)) ["" ";; lines"])
+                      (case style
+                        :data nil
+                        :chains (lines->chains p)
                         (for [[a o b i] (:lines p)]
                           (str "(connect " a " " o " " b " " i ")")))
                       (mapcat (fn [id]
@@ -1329,6 +1333,7 @@
 
 (defn box-num-e [k] (cv/id-num k))
 
+(declare top-forms playable? play-data!)
 (defn try-code
   "Evaluates code (a string: calls) or applies events (a vector of them) on patch p, in a scratch patch,
    without touching the history: [the patch after, the events made]. The base of `with` (29-db.cljs)."
@@ -1338,7 +1343,11 @@
     (reset! tried [])
     (try
       (if (string? code-or-evs)
-        (eval-str (str "(do " code-or-evs "\n nil)"))
+        (if (re-find #"\(=>|\[:=>" code-or-evs)
+          ;; a patch as data (#407): each form whose value is a chain or voices is put in the patch
+          (doseq [[a b] (top-forms code-or-evs)]
+            (let [v (eval-str (subs code-or-evs a b))] (when (playable? v) (play-data! v))))
+          (eval-str (str "(do " code-or-evs "\n nil)")))
         (doseq [ev code-or-evs] (when (vector? ev) (dispatch-root! ev))))
       [@scratch @tried]
       (finally (reset! scratch prev-s) (reset! tried prev-t)))))
