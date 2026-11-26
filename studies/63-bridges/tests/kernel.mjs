@@ -4,6 +4,7 @@
 import * as B from "../kairotic/bridge.mjs";
 import * as O from "../kairotic/outer.mjs";
 import * as R from "../kairotic/reduction.mjs";
+import * as U from "../kairotic/under.mjs";
 import { INCIPITS, check, rangeOf } from "../kairotic/incipit.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -149,6 +150,26 @@ export async function run() {
   is("… weighing the metre, the ways pass through rhythms with more onsets on the beats than without it", strongShare(metric.flat()) > strongShare(flat.flat()));
   notes.push(`on the beats: ${Math.round(100 * strongShare(flat.flat()))}% without the metre, ${Math.round(100 * strongShare(metric.flat()))}% with it`);
   is("… too few steps, or another number of onsets: no bridge", !B.bridgeRhythms(r1, r2, { steps: 2 }).possible && !B.bridgeRhythms(r1, B.rhythmOf("x...x...x...x..."), {}).possible);
+  // ─── a bass under a soprano (under.mjs: Study 76 · continuo, #353) ───
+  // (a soprano invented for the tests, in C major: not Bach's)
+  const sop = [72, 74, 76, 77, 76, 74, 72], st = [1, 0, 1, 0, 1, 0, 1].map(Boolean);
+  const UB = U.underBridge({ soprano: sop, key: { tonic: "C", mode: "major" }, strong: st });
+  const lines = Array.from({ length: 20 }, (_, i) => UB.draw(wr(i + 1))).filter(Boolean);
+  const pcsOf = (c) => { const root = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"].indexOf(c.root); return U.KIND_INTERVALS[c.kind].map((x) => (root + x) % 12); };
+  is("bassUnder: a bass, its figures and its keys a quarter under every note of the soprano, the soprano a tone of each chord, the bass below it in its range",
+     UB.possible && lines.length === 20 && lines.every((x) => x.bass.length === 7 && x.figures.length === 7 && x.keys.length === 7 && x.bass.every((b, t) => b >= U.UNDER_RANGE[0] && b <= U.UNDER_RANGE[1] && sop[t] - b >= 3 && pcsOf(x.chords[t]).includes(sop[t] % 12) && pcsOf(x.chords[t]).includes(b % 12))));
+  const par = (x) => x.bass.slice(1).some((b, t) => { const i0 = ((sop[t] - x.bass[t]) % 12 + 12) % 12, i1 = ((sop[t + 1] - b) % 12 + 12) % 12; return (i1 === 0 || i1 === 7) && i0 === i1 && Math.sign(sop[t + 1] - sop[t]) === Math.sign(b - x.bass[t]) && b !== x.bass[t]; });
+  is("… no parallel 5ths or octaves with the soprano, no leap of a tritone or a 7th, nor past the octave", lines.every((x) => !par(x) && x.bass.slice(1).every((b, t) => { const d = Math.abs(b - x.bass[t]); return d <= 12 && d !== 6 && d !== 10 && d !== 11; })));
+  const ends = lines.filter((x) => (x.bass.at(-1) % 12) === 0).length;
+  is("… the cadence into the fermata: the bass ending on the tonic in most draws (C major, the soprano ending on C)", ends >= 14);
+  const lp = UB.logProb(lines[0].bass);
+  is("logProb: a bass the bridge can draw has a probability (every chord and key under it summed), one it cannot has none", lp < 0 && lp > -Infinity && UB.logProb(sop.map(() => 30)) === -Infinity);
+  const unk = U.underBridge({ soprano: sop, key: { tonic: "C", mode: "major" }, strong: st, variant: "no-keys" });
+  is("no-keys: every quarter in the chorale's key", Array.from({ length: 5 }, (_, i) => unk.draw(wr(i + 3))).every((x) => x.keys.every((k) => k === "C major")));
+  is("figureText: the figures against the key signature — V6/5 \"6/5\", V/V \"5/♯3\" in C, \"5/♮3\" in F, I4/2 \"4/2\" over its B♭ in C",
+     U.figureText(7, "7", "6/5", { tonic: "C" }) === "6/5" && U.figureText(2, "", "5/3", { tonic: "C" }) === "5/♯3" && U.figureText(7, "", "5/3", { tonic: "F" }) === "5/♮3" && U.figureText(0, "7", "4/2", { tonic: "C" }) === "4/2");
+  notes.push(`a bass under C D E F E D C: ${lines[0].bass.join(" ")} · ${lines[0].figures.join(" ")} · ${lines[0].keys.join(", ")}`);
+
   return { results, notes };
 }
 
