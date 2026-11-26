@@ -71,6 +71,17 @@ header .status b.off { color: var(--kairos); }
 .side-off .splitter:hover::before { background: transparent; }
 .side-toggle { position: relative; z-index: 1; margin-top: 8px; width: 12px; height: 40px; padding: 0; border: 1px solid var(--rule); border-radius: 4px; background: var(--sheet); color: var(--ink-soft); font-size: 11px; line-height: 1; cursor: pointer; }
 .side-toggle:hover { color: var(--ink); border-color: var(--accent); }
+/* the patch hidden (#407): the code takes the whole work, the splitter's ‹ / › brings it back */
+#side-split { flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; }
+#patch-toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
+.work.patch-off, .work.patch-off.sized { grid-template-columns: 12px minmax(0, 1fr); }
+.work.patch-off > .pane:first-child { display: none; }
+.work.patch-off #side-toggle { display: none; }
+.work.patch-off .live-host, .work.patch-off #live { max-height: none; font-size: 15px; }
+.work.patch-off #panel-code.mirror { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 0 8px; }
+.work.patch-off #panel-code.mirror > .live-host, .work.patch-off #panel-code.mirror > #live { grid-column: 1; grid-row: 1; }
+.work.patch-off #panel-code.mirror > #live-mirror { grid-column: 2; grid-row: 1; margin: 0; overflow: auto; font-size: 12px; }
+.work.patch-off #panel-code.mirror > .code-bar { grid-column: 1 / span 2; grid-row: 2; }
 .side-hide { margin-left: auto; font: inherit; font-size: 13px; background: none; border: 0; color: var(--ink-soft); cursor: pointer; padding: 0 4px; }
 .side-hide:hover { color: var(--ink); }
 @media (max-width: 860px) {
@@ -927,6 +938,7 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
 
     <div class="splitter" id="side-split" role="separator" aria-orientation="vertical" aria-controls="side-pane" title="Drag to resize the panel · double-click to hide or show it">
       <button class="side-toggle" id="side-toggle" type="button" aria-expanded="true" title="Hide the panel">›</button>
+      <button class="side-toggle" id="patch-toggle" type="button" aria-pressed="false" title="Hide the patch: the code takes the whole work, in the Live view (Ctrl/⌘+Shift+L)">‹</button>
     </div>
 
     <section class="pane side-pane" id="side-pane" aria-label="Projections">
@@ -944,11 +956,13 @@ button.act.small { padding: 1px 8px; font-size: 12px; }
         <textarea id="code" spellcheck="false" aria-label="Patch code"></textarea>
         <pre class="view" id="edn" aria-label="The work as data (EDN)" hidden></pre>
         <textarea id="live" spellcheck="false" aria-label="Live code" hidden></textarea>
+        <pre class="view" id="live-mirror" aria-label="The work as data, as it is now" hidden></pre>
         <div class="code-bar">
           <span class="code-views" role="group" aria-label="Show the work as">
-            <button class="act" type="button" id="view-calls" aria-pressed="true" title="The work as calls (box, connect, …): edit it and run it">Calls</button><button class="act" type="button" id="view-live" aria-pressed="false" title="Your own code, to play the work live: ⇧+Enter evaluates a form, Ctrl/⌘+Enter a block. It is kept in this browser, not in the work">Live</button><button class="act" type="button" id="view-data" aria-pressed="false" title="The work as data (EDN): the state the history produces, to read">Data</button>
+            <button class="act" type="button" id="view-calls" aria-pressed="true" title="The work as code (box, connect, … or as data): edit it and run it">Work</button><button class="act" type="button" id="view-live" aria-pressed="false" title="Your own code, to play the work live: ⇧+Enter evaluates a form, Ctrl/⌘+Enter a block. It is kept in this browser, not in the work">Live</button><button class="act" type="button" id="view-data" aria-pressed="false" title="The state the history produces, every key of every box, as EDN: to read">EDN</button>
           </span>
           <button class="act" type="button" id="code-chains" aria-pressed="false" title="Write the lines of the work as chains where they follow each other: (-> :b1 (to :b2) (to :b3)), (doto :b1 (to :b2) (to :b3))">-> chains</button>
+          <button class="act" type="button" id="live-mirror-btn" aria-pressed="false" hidden title="Beside your code, the work as data as it is now: what exists and sounds, while the patch is hidden">⇆ work</button>
           <span class="state" id="code-state">in sync with the patch</span>
           <span class="spacer"></span>
           <button class="act" id="code-revert" disabled>Discard changes</button>

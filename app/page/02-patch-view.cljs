@@ -617,7 +617,11 @@
                         (.setAttribute ln k v))
                       (.insertBefore root ln (.-firstChild root)))))))))))))
 
-(defn render-overlay! []
+(defonce code-only?
+  ;; the patch hidden, the code taking the whole work (live coding, #407): while so, the patch is not drawn
+  (atom false))
+
+(defn render-overlay!* []
   (let [p (scene-of (current))
         on (eng/running?)
         ;; what each box draws over itself, in its own slot (issue #166)
@@ -661,6 +665,10 @@
                               (when-let [[_ {:keys [t from axis pt]}] (last-shown id)]
                                 (when-let [from (and from (number? t) (local-id from))]
                                   (cursor-at p from t "cur" true (or axis :x) pt))))))))))
+
+(defn render-overlay!
+  "What the boxes draw over themselves; nothing while the patch is hidden (code-only)."
+  [] (when-not @code-only? (render-overlay!*)))
 
 ;; ───── the header of a box with data: ⇄ shows it in its next view, { } opens its data as text in the
 ;;       code window (discussion #30) ─────
@@ -864,7 +872,7 @@
                 (.setAttribute g "transform" (str "translate(" (- 10 (* k cx)) " " (- top (* k (first ys))) ") scale(" k ")")))
               (.remove g))))))))
 
-(defn render-scene [p]
+(defn render-scene* [p]
   (let [p (scene-of p)
         {:keys [sel wire hover-in hover-out nsel ldrag]} @ui
         chosen (sel-ids)
@@ -1009,6 +1017,10 @@
     (place-preludes!)
     (render-overlay!)
     (render-inspector!)))
+
+(defn render-scene
+  "Draws patch p; nothing while the patch is hidden (code-only): the sound and the history go on."
+  [p] (when-not @code-only? (render-scene* p)))
 
 ;; ───── inspector: the selected box, editable from the patch ─────
 ;; Under a box opened with ⌘/Ctrl+click (a plain click only selects and moves it): its class and usage,
