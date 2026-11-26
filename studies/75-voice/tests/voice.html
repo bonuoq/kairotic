@@ -40,9 +40,10 @@ try {
   // the vowels: α and ι on a low note, their spectra
   const two = S.sing(V, [{ t: 0, dur: 0.6, midi: 48, syl: "ἀ" }, { t: 0.6, dur: 0.6, midi: 48, syl: "ἰ" }], {});
   const o = two.curves.offset;
-  const ratio = (t) => band(two.voice, t, 1700, 3000) / band(two.voice, t, 200, 1000);
-  notes.push(`high/low energy: α ${ratio(o + 0.3).toExponential(2)}, ι ${ratio(o + 0.9).toExponential(2)}`);
-  is("ι has its energy high (F2 at 2300 Hz), α low (F1 750, F2 1300)", ratio(o + 0.9) > 4 * ratio(o + 0.3));
+  // (the energy around ι's second formant against the energy around α's)
+  const ratio = (t) => band(two.voice, t, 2100, 2500) / band(two.voice, t, 1100, 1500);
+  notes.push(`energy at 2100–2500 Hz over 1100–1500 Hz: α ${ratio(o + 0.3).toExponential(2)}, ι ${ratio(o + 0.9).toExponential(2)}`);
+  is("each vowel's second formant where the table puts it: ι's at 2300 Hz, α's at 1300", ratio(o + 0.9) > 1 && ratio(o + 0.3) < 0.3 && ratio(o + 0.9) > 10 * ratio(o + 0.3));
 
   // σ: noise high, no voice
   const ps = S.sing(V, [{ t: 0, dur: 0.5, midi: 52, syl: "πα" }, { t: 0.5, dur: 0.6, midi: 52, syl: "σα" }], {});
