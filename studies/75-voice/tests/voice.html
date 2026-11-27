@@ -66,6 +66,21 @@ try {
   notes.push(`ι on e'': voice ${rms(tuned.voice, ti - 0.05, ti + 0.05).toFixed(4)} with F1 raised, ${rms(flat.voice, fi - 0.05, fi + 0.05).toFixed(4)} without`);
   is("ι on a high e: louder with its first formant raised above the pitch", rms(tuned.voice, ti - 0.05, ti + 0.05) > 1.5 * rms(flat.voice, fi - 0.05, fi + 0.05));
 
+  // a nasal: the antiformant takes the energy away around FNZ (μ's at 1000 Hz), against the same μ without it
+  const nasalTable = (fnz) => ({ ...w0table, m: { ...w0table.m, FNZ: fnz } });
+  const w0table = (await import("../kairotic/phonemes.mjs")).TABLE;
+  const withZ = S.sing(V, [{ t: 0, dur: 0.6, midi: 48, syl: "ἀμ" }, { t: 0.6, dur: 0.6, midi: 48, syl: "μα" }], { size: 1 });
+  const noZ = S.sing(V, [{ t: 0, dur: 0.6, midi: 48, syl: "ἀμ" }, { t: 0.6, dur: 0.6, midi: 48, syl: "μα" }], { size: 1, table: nasalTable(270) });
+  const mm = withZ.curves.segments.filter((s) => s.p === "m"), mFrom = mm[0].from, mTo = mm[mm.length - 1].to, mMid = (mFrom + mTo) / 2;
+  const dip = (y) => band(y, mMid, 900, 1100) / band(y, mMid, 1300, 1700);
+  notes.push(`μ: energy at 900–1100 Hz over 1300–1700 Hz, ${dip(withZ.voice).toExponential(2)} with its antiformant, ${dip(noZ.voice).toExponential(2)} without`);
+  is("μ's antiformant takes the energy away around 1000 Hz", dip(withZ.voice) < 0.5 * dip(noZ.voice));
+  // jitter: a voice that is not exactly periodic — two renders of the same note differ, but only a little
+  const j1 = S.sing(V, [{ t: 0, dur: 0.5, midi: 57, syl: "ἀ" }], { fixed: { jitter: 0 } }), j2 = S.sing(V, [{ t: 0, dur: 0.5, midi: 57, syl: "ἀ" }], { fixed: { jitter: 20 } });
+  const jt = j1.curves.offset + 0.25;
+  is("jitter: the voice wavers, its loudness about the same", rms(j1.voice, jt - 0.05, jt + 0.05) > 0 && j1.voice.some((x, i) => Math.abs(x - j2.voice[i]) > 1e-3) &&
+     Math.abs(Math.log(rms(j2.voice, jt - 0.05, jt + 0.05) / rms(j1.voice, jt - 0.05, jt + 0.05))) < 0.5);
+
   // the whole song
   let t = 0;
   const song = SK.notes().map((n) => { const x = { t, dur: n.chronoi * 0.4, midi: n.midi, syl: n.first ? n.text : "" }; t += n.chronoi * 0.4; return x; });

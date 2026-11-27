@@ -66,6 +66,14 @@ export async function run() {
   is("an ι sung on a high e: its first formant raised just above the pitch (659 Hz), unless asked not to",
      Math.abs(hiF.F1 - 659.26 * 1.05) < 1 && loF.F1 === 300 && Math.abs(at(0.8).F1 - 300) < 1);
 
+  const held = T.curves([{ t: 0, dur: 1.0, midi: 60, syl: "ἆ" }, { t: 1.0, dur: 1.0, midi: 62, syl: "μα" }]);
+  const hf = (t) => held.frames[Math.round((t + held.offset) / held.hop)];
+  is("the vibrato comes in as a note is held: none at its start, full after half a second, again none as the next begins",
+     hf(0.05).VD === 0 && hf(0.8).VD === 1 && hf(1.08).VD < 0.05);
+  const mSeg = held.segments.find((s) => s.p === "m"), mMid = held.frames[Math.round(((mSeg.from + mSeg.to) / 2) / held.hop)];
+  is("μ opens the nose: its antiformant at 1000 Hz; in the vowels the zero sits on the nose's pole (270 Hz)",
+     Math.abs(mMid.FNZ - 1000) < 1 && hf(0.5).FNZ === 270 && P.scaled(P.TABLE, 1.1).m.FNZ === 1100);
+
   // ── from aoidos's MEI ──
   const sk = S.notes().map((n) => ({ midi: n.midi, units: n.chronoi, syl: n.first ? n.text : null }));
   const { mei } = exportMei({ title: "Seikilos", voices: [{ notes: sk }], unitDen: 8, unitsPerBar: 6, meter: [6, 8] });
