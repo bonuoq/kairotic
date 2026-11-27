@@ -1057,9 +1057,22 @@ export const BETWEEN = {
 export const SOFT_BETWEEN = {
   /** the bass's figures as a wish (fourOverBass's figuresWeight): a unit whose bass asks a chord (`want`, CHORDS4's)
    *  pays weight for each tone of it the voices leave out and each voice sounding a tone not of it — Bach's figures
-   *  given to bach-4, whose hard rules would otherwise refuse half his phrases realized on them (Study 76). */
+   *  given to bach-4, whose hard rules would otherwise refuse half his phrases realized on them (Study 76). Where the
+   *  bass gives the chord's pitch classes too (a bass note's `pcs`, 0 a C: its accidentals, a ♯ that raises a 3rd), they are
+   *  what is asked: a tone of the chord left out, or a voice off them, pays — so a figured ♯ is played as one. */
   figures: (N, { weight = 3 } = {}) => ({ id: "figures", cost: ({ t, x }) => {
-    const ch = N.B[t].want && CHORDS4[N.B[t].want];
+    const u = N.B[t];
+    if (u.pcs) {
+      const tonic = mod(N.K.midi(0, 0), 12), want = u.pcs.map((c) => mod(c - tonic, 12)), have = x.map((c) => mod(N.semi(c), 12)), bass = mod(N.K.semi(u.d, u.r || 0), 12);
+      // (the chord's 5th, its third tone, may be left out, as CHORDS4's; every other tone asked — and a voice a semitone
+      // off a tone asked, the figure's ♯ or ♭ not taken, pays twice)
+      const all = [bass, ...have];
+      const missing = want.filter((c, i) => i !== 2 && !all.includes(c)).length;
+      const off = have.reduce((a, c) => a + (want.includes(c) ? 0 : want.some((w) => mod(w - c, 12) === 1 || mod(c - w, 12) === 1) ? 2 : 1), 0);
+      const cost = missing + off;
+      return cost ? { figures: weight * cost } : {};
+    }
+    const ch = u.want && CHORDS4[u.want];
     if (!ch) return {};
     const v = x.map((c, i) => N.V[i].vertical(t, c).cls);
     const off = ch.need.filter((c) => !v.includes(c)).length + v.filter((c) => !ch.ok.includes(c)).length;
@@ -1294,7 +1307,7 @@ export function bassFromNotes(notes, K, voices = 4, fill = false) {
     if (fig && !chord) unknown.push(`note ${i + 1}: ${fig}`);
     const key = parseKey(nt.key);
     for (let j = 0; j < Math.max(1, nt.units || 1); j++)
-      units.push({ d: dr.d, r: dr.r, struck: j === 0, strong: nt.strong ? !!nt.strong[j] : units.length % 2 === 0, chord, key,
+      units.push({ d: dr.d, r: dr.r, struck: j === 0, strong: nt.strong ? !!nt.strong[j] : units.length % 2 === 0, chord, key, ...(nt.pcs ? { pcs: nt.pcs } : {}),
                    fig: voices === 2 && chord ? CHORDS[chord] && chord.split("/").map(Number) : undefined, note: i,
                    dominant: mod(dr.d, 7) === 4 && (!next || isDominant(dr.d, next.d)) });
   });

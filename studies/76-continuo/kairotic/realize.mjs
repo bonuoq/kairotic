@@ -7,14 +7,15 @@
 //      counted from his chorales but every fifth); the soprano a chord tone, or a suspension, a passing or neighbour
 //      note, a note held over a moving bass, as his;
 //   2. the inner voices — @kairotic/rules' bach-4 (fromOuter), the bass's chords asked as a wish (figuresWeight): a
-//      realization that leaves out a tone of a chord or adds one pays for it, where as orders bach-4's hard rules would
-//      refuse half of Bach's phrases realized on his own chords.
+//      realization that leaves out a tone of a chord or adds one pays for it — the chord's own pitch classes, so a
+//      figured ♯ is played raised —, where as orders bach-4's hard rules would refuse half of Bach's phrases realized
+//      on his own chords.
 // The figures are written as Bach abbreviates them in his continuo parts (continuo.mjs's BACH_WRITES, from the Bach
 // Chorales Figured Bass dataset): nothing over a 5/3, 6 for a 6/3, 6/4/2 for a 4/2, an accidental alone for the 3rd.
 //
 // Pure data and functions; the page draws, plays and compares.
 
-import { underBridge, isHeldOut, UNDER_VARIANTS } from "./under.mjs";
+import { underBridge, isHeldOut, UNDER_VARIANTS, KIND_INTERVALS } from "./under.mjs";
 import * as CONTINUO from "./continuo.mjs";
 import { fromOuter } from "./rules.mjs";
 
@@ -27,6 +28,10 @@ export const rng = (seed = 76) => { let s = seed % 2147483647 || 1; return () =>
 
 // (the bass's chords as fourOverBass names them)
 const ENGINE = { "5/3": "5/3", "6/3": "6/3", "6/4": "6/4", "7": "7", "6/5": "6/5", "4/3": "6/4/3", "4/2": "4/2" };
+const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const pcOf = (name) => mod(PC[String(name)[0]] + (String(name).match(/[#♯]/g) || []).length - (String(name).match(/[b♭]/g) || []).length, 12);
+/** A chord's pitch classes (0 a C), from under.mjs's {root, kind}: what its figures ask, accidentals and all. */
+export const pcsOf = (ch) => (ch && ch.root !== undefined && KIND_INTERVALS[ch.kind] ? KIND_INTERVALS[ch.kind].map((i) => mod(pcOf(ch.root) + i, 12)) : null);
 const keyText = (k) => (typeof k === "string" ? k : `${k.tonic} ${k.mode || "major"}`).replace("♯", "#").replace("♭", "b");
 
 /**
@@ -63,9 +68,9 @@ export function realize(phrase, { variant = "all", r = Math.random, temp = 0, we
   const sameAs = (t) => t > 0 && d.bass[t] === d.bass[t - 1] && !phrase.strong[t] && out.figures[t] === out.figures[t - 1] && out.keys[t] === out.keys[t - 1];
   const bass = [], sop = [];
   d.bass.forEach((m, t) => {
-    const fig = ENGINE[d.chords[t] && d.chords[t].figure];
+    const fig = ENGINE[d.chords[t] && d.chords[t].figure], pcs = pcsOf(d.chords[t]);
     if (sameAs(t)) { const o = bass[bass.length - 1]; o.units++; o.strong.push(!!phrase.strong[t]); }
-    else bass.push({ midi: m, units: 1, strong: [!!phrase.strong[t]], key: out.keys[t], ...(fig ? { fig } : {}) });
+    else bass.push({ midi: m, units: 1, strong: [!!phrase.strong[t]], key: out.keys[t], ...(fig ? { fig } : {}), ...(pcs ? { pcs } : {}) });
   });
   S.forEach((m, t) => sop.push({ midi: m, ...(phrase.names ? { name: phrase.names[t][0] } : {}), units: 1, strong: [!!phrase.strong[t]] }));
   let ob;
