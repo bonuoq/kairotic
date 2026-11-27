@@ -21,7 +21,7 @@ const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483
   // the studies written on @kairotic/rules keep a copy of it beside their kernel (Study 65 on): the package's, as it is
   const { readdirSync, existsSync } = await import("node:fs");
   const copies = readdirSync(join(root, "studies")).filter((d) => existsSync(join(root, "studies", d, "kairotic", "rules.mjs")));
-  const off = copies.flatMap((d) => ["rules.mjs", "tonal.mjs", "soft.mjs", "functions.mjs"].filter((f) =>
+  const off = copies.flatMap((d) => ["rules.mjs", "tonal.mjs", "soft.mjs", "functions.mjs", "continuo.mjs"].filter((f) =>
     readFileSync(join(root, "studies", d, "kairotic", f), "utf8") !== readFileSync(join(root, "packages/rules/assets", f), "utf8")).map((f) => `${d}/${f}`));
   is(`the studies' copies of @kairotic/rules, as it is (${copies.join(", ")})`, copies.length && off.length === 0);
   // the measure of a description (bits.mjs): the studies that compose or analyse by it keep a copy, the package's

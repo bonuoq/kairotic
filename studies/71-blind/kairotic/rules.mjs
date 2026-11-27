@@ -15,6 +15,7 @@
 import { mod, sign, keyOf, codeOf3, codeDegree, codeAlter, localOf, localNote, FIG_CLASS, CLASS_FIG, isDominant, degreeOf, degreeIn, codeOf, parseKey, guessKey } from "./tonal.mjs";
 import { melodicParts, verticalParts, total, choose, temperature, defaultWeights } from "./soft.mjs";
 import { functionOf, grammarErrors } from "./functions.mjs";
+import { roleCost, chordOfIntervals, bassMoveOf } from "./continuo.mjs";
 
 // ─── a time limit for the count ───
 // The exact count runs where it is asked — in a page, on its only thread —, and a long bass without figures in four
@@ -1055,6 +1056,19 @@ export const BETWEEN = {
 };
 // soft rules between the voices: four parts, the bass doubled in a 5/3, a 6/4, a 5/4, a 7/3
 export const SOFT_BETWEEN = {
+  /** the inner voices as Bach's go over a figured bass (Study 76): each inner voice's role — its interval over the
+   *  bass — costs −log of how often his alto and tenor take it from the role before, the chord before and this one
+   *  (the chords the voices make, read as figures) and the bass's move between them (continuo.mjs' roleCost: 1.23
+   *  bits a role, against 1.64 knowing the chord alone) — the 7th of a 6/5 down to the 3rd as the bass rises to ①,
+   *  the 3rd kept as a common tone, the leading tone up. */
+  "bach-roles": (N, { weight = 1 } = {}) => ({ id: "bach-roles", cost: ({ W, t, x }) => {
+    if (t === 0) return {};
+    const now = x.map((c, i) => N.V[i].vertical(t, c).cls), was = [0, 1, 2].map((i) => N.V[i].vertical(t - 1, W[i][t - 1]).cls);
+    const c1 = chordOfIntervals(now.map((c) => c + 1)), c0 = chordOfIntervals(was.map((c) => c + 1));
+    const bm = bassMoveOf(N.B[t].d - N.B[t - 1].d);
+    const c = roleCost(c0, c1, bm, was[1], now[1]) + roleCost(c0, c1, bm, was[2], now[2]);
+    return { "bach-roles": weight * c };
+  } }),
   /** the bass's figures as a wish (fourOverBass's figuresWeight): a unit whose bass asks a chord (`want`, CHORDS4's)
    *  pays weight for each tone of it the voices leave out and each voice sounding a tone not of it — Bach's figures
    *  given to bach-4, whose hard rules would otherwise refuse half his phrases realized on them (Study 76). Where the
@@ -1158,10 +1172,10 @@ Object.assign(STYLES, {
   // bach-vertical, 1.5 —, the species' rewards for a passing note and a suspension off, the moves weighed more — 4 —
   // so a voice does not leap to keep consonant; minor's raised ⑥ as seldom as his in the inner voices — raised-sixth, 2:
   // 1.6.0; bach-vertical 1 in 1.6.1, the bridges tonicizing)
-  "bach-4": { style: "bach-4", version: "1.6.1", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
+  "bach-4": { style: "bach-4", version: "1.7.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
                                                                                           soft: [["bach-motion"], ["bach-vertical"], ["raised-sixth"]], weights: { "bach-motion": 4, "bach-vertical": 1, "raised-sixth": 2, passing: 0, "suspension-life": 0 } },
     between: [["order", { within: 7, unison: true }], ["functions", false]],
-    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"]], weights: { functions: 2, "voice-exchange": 4 },
+    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"], ["bach-roles"]], weights: { functions: 2, "voice-exchange": 4, "bach-roles": 2 },
     // (the voices' ranges as Bach's in the chorales, MIDI: the same in every key)
     ranges: { soprano: [57, 81], alto: [52, 74], tenor: [48, 69] } },
 });
