@@ -7,6 +7,11 @@
   voice off it pays, a voice a semitone off a tone asked (the ♯ of a raised 3rd not taken) twice. Study 76 passes
   `under.mjs`' chords as `pcsOf`. On 25 short phrases kept out, the quarters figured with an accidental whose voices
   played the note unaltered: 10 of 38 before, 1 after. `@kairotic/cac` 0.16.16 (its pin).
+- **Study 74 sings with Study 75's voice; Seikilos in the Greek system** (#467, #192). Study 74's melodies are sung by
+  the voice (its notes, syllables and pitches as the system has them — a Greek tonos's cents too —, Koine for
+  Seikilos's stele, Attic for Homer), the comes or the aulos played with it; a plain tone still on choice. Study 75
+  sings Seikilos's song in the Iastian diatonic of `greek.mjs`, in Aristoxenus's shade or in Archytas's (g and d' 37
+  and 35 cents low), the cents shown under the notes (`tuning.mjs`).
 - **Study 74 · aoidos: the Greek counterpoint** (#192). In a Greek tonos, `canonic()` (the canon and the heterophony)
   and the examiner (imitation-2 on a given dux, `imitationIn`) write the comes in the same system, by canon-2's rules
   with the Greek concords (unison, 4th, 5th, octave) and `GREEK_ON`: parallel concords, direct octaves, the same
