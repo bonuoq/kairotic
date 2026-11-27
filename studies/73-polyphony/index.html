@@ -130,7 +130,8 @@ label { font: 13px var(--f-ui); color: var(--ink); }
 window.addEventListener("DOMContentLoaded", function () {
   function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
   Promise.all([import("./kairotic/basicpitch.mjs"), import("./kairotic/listen.mjs"), import("./kairotic/transcribe.mjs"), import("./kairotic/follow.mjs")]).then(function (ms) {
-    window.kairoticPoly = { BP: ms[0], L: ms[1], T: ms[2], F: ms[3] };
+    // (follow.mjs as a plain object: Scittle stumbles on that module namespace, as Study 72 found with its own)
+    window.kairoticPoly = { BP: ms[0], L: ms[1], T: ms[2], F: { ...ms[3] } };
     try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
   }).catch(show);
 });
