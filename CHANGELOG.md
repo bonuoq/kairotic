@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 76 · continuo** (discussion #353): Bach's soprano given, a figured bass written under it and the voices that
+  play it, beside his. The bass and its local keys are Study 63's `under.mjs` on `continuo.mjs`' tables; the figures are
+  written as Bach abbreviates them (`abbreviate`, after BCFB); the inner voices are `bach-4`'s with the chords asked as
+  a wish (`figuresWeight` 8). On the phrases kept out of the tables: realize, compare against Bach (bass notes, pitch
+  classes, chords, inner notes), his own figures under his phrase where his continuo part survives. Kernel tests in
+  Node and the browser, a page test. Studies 71 and 76 in the studies' list.
 - **Where the bar starts** (issue #106). **⌥⌘-click a note** of a quantized score (alt-ctrl-click) — or
   `(downbeat! :bN t)` — says that it starts a bar: its time as played is kept in `:quant` as `:downbeat`, one event of
   the history. Tracked (`:time :track`), the beats are found again with it on a downbeat, and a kept map (`track!`) is
