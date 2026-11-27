@@ -7,6 +7,17 @@
   of C and G in every register played with rubato: by the keys each chord is found within tens of ms (on ideal
   posteriorgrams a median of 6–14 ms, none skipped); a chroma hears runs of one chord and skips 10 of 15. On the
   cadence, every chord another, both follow alike. In the page, and tested in CI with the model itself.
+- **The figures as a wish** (Study 76's step 2, #353). `@kairotic/rules` 0.25.0: `fourOverBass` and `fromOuter` take
+  `figuresWeight`: each bass unit's chord is asked, not ordered — a realization that leaves out a tone of it, or sounds a
+  tone not of it, pays the weight for each (`SOFT_BETWEEN`'s `figures`). Bach's soprano, bass and chords given to
+  `bach-4` on 60 short phrases: as orders 30 can be realized (his inner notes 56%, his chords 86%), as a wish 59
+  (weight 8: his inner notes 47%, his chords 68%; with no figures 32% and 38%). `@kairotic/cac` 0.16.15 (its pin).
+- **The continuo tables as a plain −log** (#353, the structural thread's suggestion). `@kairotic/rules` 0.24.1: every table
+  of `continuo.mjs` is −log of its frequency, no longer shifted so that each row's lowest is 0 — a shift a row of its own
+  that skewed the choice between degrees in Study 63's bass under a soprano, and made its `logProb` inexact. Measured
+  there (150 held-out phrases): Bach's bass 2.36 bits a note (2.37), its pitch class 38.2% (37.8%), the motion with the
+  soprano closer to his; the leaps 58.7% (55.4%, Bach 54.5%), the engine's weights set on the old scale.
+  `@kairotic/cac` 0.16.14 (its pin).
 - **Study 75 · voice, less of a machine** (#467): its pitch and loudness waver from cycle to cycle (jitter, shimmer),
   its vibrato comes in as a note is held (`VD` in the curves), a singer's formant near 3 kHz (`ring`), and the nasals
   open the nose: a pole at 270 Hz and a zero at each nasal's antiformant (`FNZ` in the table: μ 1000, ν 1500, ŋ 2500 Hz),

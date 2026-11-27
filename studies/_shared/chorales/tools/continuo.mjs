@@ -4,7 +4,7 @@
 // Every quarter of every phrase of every chorale but every fifth (number % 5 === 0, kept out to measure against):
 // the soprano over the bass, the two voices' moves together, the chord over each degree of the bass in the key the
 // quarter is in (phrases.json's `keys`), and the phrases' cadences. Each table is −log of a frequency (a conditional
-// one for the chords over a degree), 0.5 added to every cell, the lowest of a row 0; written between the
+// one for the chords over a degree), 0.5 added to every cell (a plain −log, so that costs summed are a probability's: Study 63's logProb); written between the
 // `@tables-begin` and `@tables-end` lines of continuo.mjs (default packages/rules/assets/continuo.mjs).
 import { readFileSync, writeFileSync } from "node:fs";
 import { chordOf, CHORDS, dissonanceOf } from "../../../../packages/rules/assets/continuo.mjs";
@@ -17,8 +17,7 @@ const cls = (names) => { const c = chordOf(names); return c.startsWith("x:") ? "
 const move = (d) => (d === 0 ? 2 : d < 0 ? (d >= -2 ? 1 : 0) : d <= 2 ? 3 : 4);
 const cost = (counts, alpha = 0.5) => {
   const tot = counts.reduce((a, b) => a + b, 0) + alpha * counts.length;
-  const c = counts.map((x) => -Math.log((x + alpha) / tot)), m = Math.min(...c);
-  return c.map((x) => +(x - m).toFixed(2));
+  return counts.map((x) => +(-Math.log((x + alpha) / tot)).toFixed(3));
 };
 
 export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {

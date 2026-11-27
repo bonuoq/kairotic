@@ -1055,6 +1055,16 @@ export const BETWEEN = {
 };
 // soft rules between the voices: four parts, the bass doubled in a 5/3, a 6/4, a 5/4, a 7/3
 export const SOFT_BETWEEN = {
+  /** the bass's figures as a wish (fourOverBass's figuresWeight): a unit whose bass asks a chord (`want`, CHORDS4's)
+   *  pays weight for each tone of it the voices leave out and each voice sounding a tone not of it — Bach's figures
+   *  given to bach-4, whose hard rules would otherwise refuse half his phrases realized on them (Study 76). */
+  figures: (N, { weight = 3 } = {}) => ({ id: "figures", cost: ({ t, x }) => {
+    const ch = N.B[t].want && CHORDS4[N.B[t].want];
+    if (!ch) return {};
+    const v = x.map((c, i) => N.V[i].vertical(t, c).cls);
+    const off = ch.need.filter((c) => !v.includes(c)).length + v.filter((c) => !ch.ok.includes(c)).length;
+    return off ? { figures: weight * off } : {};
+  } }),
   doubling: (N, { weight = 0.6 } = {}) => ({ id: "doubling", cost: ({ t, x }) => {
     const ch = N.B[t].chord;
     if (!["5/3", "6/4", "5/4", "7/3"].includes(ch) && N.figured) return {};
@@ -1189,7 +1199,11 @@ export function partsOverBass(spec = {}) {
  * soprano given — a melody harmonized, a bridge's outer voices —, its own line's rules off: it is given)}.
  */
 export function fourOverBass(spec = {}) {
-  const K = keyOf(spec.key || { tonic: "C" }), B = spec.bass, n = B.length, figured = spec.figured ?? true;
+  // (spec.figuresWeight: the bass's figures a wish, not an order — each unit's chord asked as `want`, a realization
+  // that does not make it paying the weight for each tone it lacks or adds; SOFT_BETWEEN's figures)
+  const soft = spec.figuresWeight > 0;
+  const K = keyOf(spec.key || { tonic: "C" }), B = soft ? spec.bass.map((u) => (u.chord ? { ...u, want: u.chord, chord: null } : u)) : spec.bass, n = B.length,
+        figured = soft ? false : spec.figured ?? true;
   const st = resolveStyle(typeof spec.style === "object" ? spec.style : STYLES[spec.style || "chorale-4"]);
   const asked = (t) => (figured && B[t].chord ? CHORDS4[B[t].chord] : null);
   let locB0 = null;
@@ -1228,7 +1242,8 @@ export function fourOverBass(spec = {}) {
   const between = st.between.map(([id, p]) => BETWEEN[id](N, { ...(params[id] || {}), ...(p || {}) }));
   // (a style's weights, then the spec's: the voices' soft rules and the doubling between them)
   const W = { doubling: 0.6, ...(st.weights || {}), ...(spec.weights || {}) };
-  const soft = (st.softBetween || []).map(([id, p]) => SOFT_BETWEEN[id](N, { ...(W[id] !== undefined ? { weight: W[id] } : {}), ...(p || {}) }));
+  const softs = (st.softBetween || []).map(([id, p]) => SOFT_BETWEEN[id](N, { ...(W[id] !== undefined ? { weight: W[id] } : {}), ...(p || {}) }));
+  if (soft) softs.push(SOFT_BETWEEN.figures(N, { weight: spec.figuresWeight }));
   const D = codeDegree;
   // (the order of the voices and their octave, at once: as partimento.mjs's triples)
   // (the voices in order as they are chosen — neighbours on one note where the style lets them meet)
@@ -1240,7 +1255,7 @@ export function fourOverBass(spec = {}) {
   const pin = (V, g, who) => (g ? { ...V, check: (U, t, c) => (t >= n ? "the work is finished" : g[t] === null || g[t] === undefined ? V.check(U, t, c) : c === g[t] ? null : `the ${who} is given`), costParts: (U, c) => (g[U.length] === null || g[U.length] === undefined ? V.costParts(U, c) : {}) } : V);
   const Sgiven = pin(Sv, spec.given && spec.given.soprano, "soprano");
   const SV = solveVoices({ n, voices: [{ name: "soprano", solver: Sgiven }, { name: "alto", solver: pin(Av, spec.given && spec.given.alto, "alto"), prefix: "alto/", weight: 0.6 }, { name: "tenor", solver: pin(Tv, spec.given && spec.given.tenor, "tenor"), prefix: "tenor/", weight: 0.6 }],
-                           between, soft, quick, result: (W_) => ({ soprano: W_[0], alto: W_[1], tenor: W_[2] }) });
+                           between, soft: softs, quick, result: (W_) => ({ soprano: W_[0], alto: W_[1], tenor: W_[2] }) });
   /** The chords a realization makes, unit by unit, as figures ("6/4/3", "(5)/3"…). */
   const chords = (R) => {
     const W_ = [R.soprano, R.alto, R.tenor], V = [Sv, Av, Tv];
@@ -1343,7 +1358,7 @@ export function fromNotes(spec = {}) {
     if (spec.inner[v].length !== units.length) throw new Error(`the ${v} is ${spec.inner[v].length} units long, the bass ${units.length}`);
     given[v] = spec.inner[v].map((x, t) => { if (x === null || x === undefined) return null; const o = typeof x === "number" ? { midi: x } : x; const dr = spelt(K, o.name); return dr ? codeOf3(dr.d, dr.r) : codeOfMidi(o.midi, t); });
   }
-  const make = (bass, fig) => (voices >= 4 ? fourOverBass({ key, bass, figured: fig, ro, style: spec.style, given })
+  const make = (bass, fig) => (voices >= 4 ? fourOverBass({ key, bass, figured: fig, ro, style: spec.style, given, figuresWeight: spec.figuresWeight })
     : voices === 3 ? partsOverBass({ key, bass, figured: fig, ro, style: spec.style })
     : overBass({ key, bass, figured: fig, ro, voice: "top", lo: 7, hi: 21, style: spec.style }));
   const P = make(units, figured);
