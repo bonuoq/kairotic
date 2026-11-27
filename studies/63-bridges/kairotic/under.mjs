@@ -4,8 +4,9 @@
 // as outer.mjs's bridges) under Bach's soprano.
 //
 //   the state      of each quarter: (local key, bass note, chord over it — its figure)
-//   the rules      always: the soprano a chord tone; the bass in its range, below the soprano, no leap of a tritone or
-//                  a 7th, no augmented 2nd, nor wider than the octave; no parallel 5ths or octaves between the outer
+//   the rules      always: the soprano a chord tone (or, with continuo.mjs's BACH_DISSONANCES, a suspension, passing,
+//                  neighbour or held note as Bach's); the bass in its range, below the soprano, no augmented 2nd, nor
+//                  wider than the octave (a tritone or a 7th as rare as his); no parallel 5ths or octaves between the outer
 //                  voices, nor direct ones with the soprano leaping
 //   the costs      −log of how often Bach does it (under-tables.mjs, counted on his chorales, or the `costs` given):
 //                  the chord over its bass degree (the rule of the octave as he plays it, by mode, in the local key),
@@ -138,7 +139,7 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
   const C = { major: costersOf(tables.major), minor: costersOf(tables.minor) }, INV = { major: inventoryOf(tables.major, min), minor: inventoryOf(tables.minor, min) };
   // (with `continuo`, the chorale thread's tables in place of the chord, the vertical, the moves and the cadence)
   const CC = continuo ? continuoCosters(continuo) : null, KC = CC ? { major: kindCoster(tables.major), minor: kindCoster(tables.minor) } : null;
-  if (CC) Object.assign(W, { chord: 0.7, kind: 1, vertical: 0.5, pair: 0.7, leap: 0.5, cadence: 1.5, sameChord: 1, ...weights });
+  if (CC) Object.assign(W, { chord: 0.6, kind: 1, vertical: 0.4, pair: 0.6, leap: 0.5, cadence: 1.5, sameChord: 1, dissonance: 1, ...weights });
   const fer = Array.from({ length: n }, (_, t) => (fermata ? !!fermata[t] : t === n - 1));
   // the local keys: the chorale's and those Bach goes to from it (KEY_MOVES), or the chorale's alone
   const M = KEY_MOVES[hm], rels = V.keys === false ? [hm === "minor" ? "0m" : "0M"] : Object.keys(M);
@@ -166,19 +167,50 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
     }
     return v;
   };
+  // (the soprano's own motion at each quarter, as continuo.mjs's motionOf reads it — it is given: held from the quarter
+  // before and down a step after, a suspension; in and out by step, passing or neighbour; held over the next…)
+  const STEP = (d) => Math.abs(d) >= 1 && Math.abs(d) <= 2;
+  const smotion = soprano.map((s, t) => {
+    const into = t ? s - soprano[t - 1] : null, out = t < n - 1 ? soprano[t + 1] - s : null, held = t > 0 && into === 0;
+    if (held && out !== null && out < 0 && STEP(out)) return "suspension";
+    if (held && out !== null && out > 0 && STEP(out)) return "suspension-up";
+    if (held && out === 0) return "held";
+    if (into !== null && out !== null && STEP(into) && STEP(out)) return Math.sign(into) === Math.sign(out) ? "passing" : "neighbour";
+    if (held) return "held";
+    return null;
+  });
+  // (the dissonances the soprano may be: continuo.mjs's BACH_DISSONANCES, "soprano|motion|interval|beat" → count;
+  // only those whose shape the bridge keeps — a suspension resolved over the same bass, a passing or neighbour quarter
+  // over the chord before or a 4/2, a note held over a moving bass into a 4/2 or a 7 — and never at a fermata)
+  const DIS = CC && continuo.BACH_DISSONANCES ? continuo.BACH_DISSONANCES : null;
+  // (−log of how often, of the soprano's quarters of that motion on that beat, Bach makes it this dissonance:
+  // BACH_DISSONANCES's count over under-tables.mjs's sopMotion)
+  const disCost = (motion, interval, beat) => {
+    const c = DIS && DIS[`soprano|${motion}|${interval}|${beat}`], z = tables.sopMotion && tables.sopMotion[`${motion}|${beat}`];
+    return c && z ? -Math.log(Math.min(c, z) / z) : Infinity;
+  };
+  const generic = (hi, lo, K) => { const g = (p) => { const x = mod(p - tonicPc(K), 12), sc = isMinor(K) ? MINOR : MAJOR; let i = 6; while (i > 0 && sc[i] > x) i--; return 7 * Math.floor((p - tonicPc(K)) / 12) + i; }; return mod(g(hi) - g(lo), 7) + 1; };
   const states = Array.from({ length: n }, (_, t) => {
     const s = soprano[t], out = [];
+    const sm = smotion[t], canDis = DIS && sm && !fer[t] && ["suspension", "passing", "neighbour", "held"].includes(sm);
     KEYS.forEach((_, ki) => {
       const mode = isMinor(KEYS[ki].key) ? "minor" : "major";
       for (const inv of INV[mode]) {
-        const ch = chordIn(ki, inv);
-        if (!ch.pcs.has(mod(s, 12))) continue;
+        const ch = chordIn(ki, inv), tone = ch.pcs.has(mod(s, 12));
+        if (!tone && !canDis) continue;
         for (let b = range[0]; b <= range[1]; b++) {
           if (mod(b, 12) !== ch.bass || s - b < 3 || s - b > 36) continue;
+          let dis = null;
+          if (!tone) {
+            const interval = generic(s, b, KEYS[ki].key), c = disCost(sm, interval, strong[t] ? "strong" : "weak");
+            if (c === Infinity) continue;
+            dis = { motion: sm, interval, cost: c };
+          }
           let u = W.chord * ch.cost + W.vertical * (CC ? CC[mode].vertical(mod(s - b, 12)) : C[mode].vertical(mod(s - b, 12)));
+          if (dis) u += W.dissonance * dis.cost;
           if (fer[t] && t > 0) u += W.endChord * ch.endCost;
           if (t === 0) u += W.start * C[hm].start(KEYS[ki].rel);
-          out.push({ ki, b, ch, u });
+          out.push({ ki, b, ch, u, dis });
         }
       }
     });
@@ -200,7 +232,16 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
   /** The cost of going from state a at t − 1 to z at t (Infinity: a rule broken). */
   const step = (t, a, z) => {
     const s0 = soprano[t - 1], s = soprano[t], d = z.b - a.b, ad = Math.abs(d);
-    if (ad > 12 || ad === 6 || ad === 10 || ad === 11) return Infinity;
+    // (a dissonance's shape: a suspension resolves over the same bass (or its octave); a passing or neighbour soprano over the chord
+    // before or a 4/2; a note held over a bass that moves, into a 4/2 or a 7)
+    if (a.dis && a.dis.motion === "suspension" && mod(z.b - a.b, 12) !== 0) return Infinity;
+    if (z.dis) {
+      const m = z.dis.motion, same = d === 0 && a.ch.root === z.ch.root && a.ch.kind === z.ch.kind;
+      if ((m === "passing" || m === "neighbour") && !same && z.ch.figure !== "4/2") return Infinity;
+      if (m === "held" && (d === 0 || !["4/2", "7"].includes(z.ch.figure))) return Infinity;
+    }
+    // (a tritone or a 7th as rare as Bach makes them — his table's cost —, past the octave never)
+    if (ad > 12) return Infinity;
     const K = KEYS[z.ki].key;
     if (isMinor(K) && ad === 3) { const r0 = mod(a.b - tonicPc(K), 12), r1 = mod(z.b - tonicPc(K), 12); if ((r0 === 8 && r1 === 11) || (r0 === 11 && r1 === 8)) return Infinity; }
     const ds = Math.sign(s - s0), db = Math.sign(d), iv = mod(s - z.b, 12);
@@ -248,10 +289,14 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
     return cs[cs.length - 1].j;
   };
   const word = (a, z) => `${z.b - a.b}|${z.ch.figure}`;
+  // (a suspension figured as Bach figures it, its number then its resolution's over the same bass: 4 3, 9 8, 7 6)
+  const RESOLVES = { 4: 3, 2: 8, 9: 8, 7: 6 };
   const out = (path) => ({
     bass: path.map((x) => x.b),
-    figures: path.map((x) => figureText(x.ch.root, x.ch.kind, x.ch.figure, home)),
-    chords: path.map((x) => ({ root: NAMES[x.ch.root], kind: x.ch.kind, figure: x.ch.figure })),
+    figures: path.map((x, t) => (x.dis && x.dis.motion === "suspension" ? String(x.dis.interval === 2 ? 9 : x.dis.interval)
+      : t > 0 && path[t - 1].dis && path[t - 1].dis.motion === "suspension" && mod(path[t - 1].b - x.b, 12) === 0 ? String(RESOLVES[path[t - 1].dis.interval] || "")
+      : figureText(x.ch.root, x.ch.kind, x.ch.figure, home))),
+    chords: path.map((x) => ({ root: NAMES[x.ch.root], kind: x.ch.kind, figure: x.ch.figure, ...(x.dis ? { dissonance: { motion: x.dis.motion, interval: x.dis.interval } } : {}) })),
     keys: path.map((x) => keyName(KEYS[x.ki].key)),
   });
   return {

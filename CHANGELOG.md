@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The bass under Bach's soprano: his soprano's dissonances, his tables in plain −log** (#353, after #491 and #499).
+  Study 63's `under.mjs` reads continuo.mjs's BACH_DISSONANCES: the soprano may be a suspension (held into the quarter,
+  down a step after, resolved over the same bass or its octave, figured 4 3, 9 8, 7 6), a passing or neighbour note
+  (over the chord before or a 4/2) or a note held over a moving bass (into a 4/2 or a 7) — each at −log of how often,
+  of the soprano's quarters of that motion on that beat (under-tables.mjs's `sopMotion`), Bach makes it that
+  dissonance; `chords[t].dissonance` says which. A tritone or a 7th in the bass is no longer refused, only as rare as
+  Bach's. The weights for continuo.mjs's tables set again on its plain −log (chorales ≡ 1 mod 5). On the 150 held-out
+  phrases: Bach's bass 2.37 bits a note, 6 phrases outside the model (13 before), note for note 22.3%, leaps 55.1%
+  (Bach 54.5), ⑤–① ends 60.7% (57.3).
 - **Study 73 · polyphony: following by the 88 keys** (#137, #308). kairotic.follow's dtw follower, ported as it is
   (`follow.mjs`), fed every 50 ms with Basic Pitch's posteriorgram as 88 keys or folded into a chroma. Sixteen chords
   of C and G in every register played with rubato: by the keys each chord is found within tens of ms (on ideal

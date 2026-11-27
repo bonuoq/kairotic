@@ -178,6 +178,14 @@ export async function run() {
   const v1 = (xs) => xs.filter((x) => x.bass.at(-1) % 12 === 0 && x.bass.at(-2) % 12 === 7).length;
   is("continuo: the chorale thread's tables (continuo.mjs's shape) in place of under-tables.mjs's — a bass by the same rules, ending more often on the cadence its table names (⑤–① 5/3) than without it",
      UC.possible && cl.length === 30 && cl.every((x) => !par(x)) && v1(cl) > v1(c0));
+  // (a soprano held into a strong quarter and down a step: with BACH_DISSONANCES, a 4–3 over the bass may be drawn)
+  const sus = [67, 72, 72, 71, 72], sst = [0, 1, 1, 0, 1].map(Boolean);
+  const UD = U.underBridge({ soprano: sus, key: { tonic: "C", mode: "major" }, strong: sst, continuo: { ...flatC, BACH_DISSONANCES: { "soprano|suspension|4|strong": 200 } } });
+  const dl = Array.from({ length: 40 }, (_, i) => UD.draw(wr(i + 11))).filter(Boolean), withSus = dl.filter((x) => x.chords[2].dissonance);
+  is("a suspension: the soprano held into a strong quarter a 4th over the bass, figured 4 and then 3 over the same bass, drawn where BACH_DISSONANCES has it",
+     withSus.length > 0 && withSus.every((x) => x.chords[2].dissonance.motion === "suspension" && x.figures[2] === "4" && x.figures[3] === "3" && (x.bass[2] - x.bass[3]) % 12 === 0)
+     && Array.from({ length: 40 }, (_, i) => U.underBridge({ soprano: sus, key: { tonic: "C", mode: "major" }, strong: sst, continuo: flatC }).draw(wr(i + 11))).every((x) => !x.chords[2].dissonance));
+  notes.push(`suspensions: ${withSus.length} of 40 draws hold C over G into a 4–3 · e.g. ${(withSus[0] || dl[0]).bass.join(" ")} · ${(withSus[0] || dl[0]).figures.join(" ")}`);
   notes.push(`a bass under C D E F E D C: ${lines[0].bass.join(" ")} · ${lines[0].figures.join(" ")} · ${lines[0].keys.join(", ")}`);
 
   return { results, notes };
