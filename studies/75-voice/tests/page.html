@@ -30,6 +30,12 @@ try {
   is("the table edited: α sung with the F2 written there", Math.abs(F2a() - Math.round(1100 * 1.1)) < 2 && Math.abs(before - Math.round(1300 * 1.1)) < 2);
   ta.value = "{:not";
   is("a table that is not EDN is not applied, and says why", !S.sing("both") && !d.getElementById("table-err").hidden);
+  d.getElementById("source").value = "seikilos-archytas";
+  ta.value = w.kairoticVoice.P.tableEdn();
+  const g = await S.sing("both");
+  const cents = [...d.querySelectorAll("#score text.cents")].map((t) => t.textContent);
+  is("Seikilos in Archytas's Iastian: sung, the cents off the transcription shown under the notes", g && cents.includes("-37") && cents.includes("-35"));
+  d.getElementById("source").value = "seikilos";
   const { exportMei } = await import("../../74-aoidos/kairotic/export.mjs");
   S.setMei(exportMei({ title: "two", voices: [{ notes: [{ midi: 64, units: 1, syl: "Μῆ" }, { midi: 62, units: 1, syl: "νιν" }] }], unitDen: 4, unitsPerBar: 2 }).mei);
   ta.value = w.kairoticVoice.P.tableEdn();
