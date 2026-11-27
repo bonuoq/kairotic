@@ -15,7 +15,8 @@
   before is a pickup). `(downbeat! :bN nil)` forgets it. The most common error on played material, the whole rhythm
   shifted by a beat or two, is now one click. Measured (`bench.mjs --asap --opts "{:downbeat :first}"`): one downbeat
   given lifts ASAP's downbeat F from 41.0 to 49.5 %; on Weimar, where the beat is mostly found at half the tempo, it
-  does not help.
+  does not help. A freqt's buffer now keeps the quantizer's newer options too (`:downbeat`, `:ref-bpm`, `:repeat`,
+  `:describe`): `(quant :b1 {:describe true})` was dropped before.
 - **The bass under Bach's soprano: his soprano's dissonances, his tables in plain −log** (#353, after #491 and #499).
   Study 63's `under.mjs` reads continuo.mjs's BACH_DISSONANCES: the soprano may be a suspension (held into the quarter,
   down a step after, resolved over the same bass or its octave, figured 4 3, 9 8, 7 6), a passing or neighbour note

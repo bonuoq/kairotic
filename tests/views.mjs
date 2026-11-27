@@ -248,6 +248,9 @@ export async function views(page, check) {
   check("(downbeat! :bN t): the note at t starts a bar, its time as played kept", /:downbeat 0\.9/.test(db) && (await cljs(page, `(some? (:downbeat (:quant (box-data ${f}))))`)) === "true", db);
   const bars = await cljs(page, `(let [q (quantize ${f}) ms (filter (fn [x] (and (vector? x) (= :measure (first x)))) (tree-seq vector? seq q))] (mapv :t (filter (fn [e] (= 0 (mod (:t e) 3))) (mt/notes q))))`);
   check("... the bars start on it: the note before is a pickup", (await cljs(page, `(:pitch (first (filter (fn [e] (= 3 (:t e))) (mt/notes (quantize ${f})))))`)) === "62", bars);
+  await cljs(page, `(quant ${f} {:describe true})`);
+  check("(quant :bN {:describe true}) is kept in the buffer", (await cljs(page, `(:describe (:quant (box-data ${f})))`)) === "true");
+  await cljs(page, `(quant ${f} {:meter "3/4"}) (downbeat! ${f} 1)`);
   check("(downbeat! :bN nil) forgets it", (await cljs(page, `(do (downbeat! ${f} nil) (:downbeat (:quant (box-data ${f}))))`)) === "nil");
   await cljs(page, `(quant ${f} nil)`);
   // ── another name for a note (issue #88) ──
