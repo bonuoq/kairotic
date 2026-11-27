@@ -432,6 +432,10 @@
     (cond
       (and piece (:src piece))
       (select-tree-note! id piece (:from c))
+      ;; ⌥⌘-click (alt-ctrl-click): this note starts a bar (issue #106)
+      (and qpiece (or (.-metaKey e) (.-ctrlKey e)))
+      (do (downbeat! id (:t qpiece))
+          (repl-print! "out" (esc (str "; " id " · the note at " (cv/fmt (:t qpiece)) " starts a bar ((downbeat! " id " nil) forgets it)"))))
       (and qpiece (.-shiftKey e) (:midi qpiece))
       (let [nm (enharmonic! id (:t qpiece) (:midi qpiece))]
         (repl-print! "out" (esc (str "; " id " · the note at " (cv/fmt (:t qpiece)) " written " nm " (shift-alt-click again: another name)"))))

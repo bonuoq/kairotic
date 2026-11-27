@@ -728,6 +728,31 @@
          (keep! (assoc q2 :time m))
          {:tempo (js/Math.round (tm/tempo-of-map m)) :beats (count m)})))))
 
+(defn downbeat!
+  "Says that the note of a quantized score (a freqt's, a free tree box's) that starts at beat t starts a bar (issue
+   #106): kept in its :quant as :downbeat (the note's own time, as played), one event of the history. Played freely and
+   tracked, the beats are found again with that note on a downbeat; in beats already, the bars move so that it starts
+   one (what comes before it is a pickup). (downbeat! :b1 2.5); (downbeat! :b1 nil) forgets it. → {:downbeat time}."
+  [id t]
+  (let [{:keys [q gx notes keep!]} (quant-src id)]
+    (if (nil? t)
+      (let [q2 (dissoc q :downbeat)
+            q2 (if (vector? (:time q)) (assoc q2 :time (or (qz/time-map-of notes (qz/options (assoc q2 :time :track) gx)) (:time q))) q2)]
+        (keep! (not-empty q2))
+        :forgotten)
+      (let [m (qz/time-map-of notes (qz/options q gx))
+            src (if m (tm/->time m t) t)
+            n (when (seq notes) (apply min-key (fn [n] (js/Math.abs (- (:on n) src))) notes))
+            _ (when-not n (fail (str id " has no notes")))
+            db (cv/round-to (:on n) 6)
+            q2 (assoc q :downbeat db)
+            ;; a time map kept (track!): found again, with the note on a downbeat
+            q2 (if (vector? (:time q))
+                 (assoc q2 :time (or (qz/time-map-of notes (qz/options (assoc q2 :time :track) gx)) (fail (str id ": too few notes to find a beat in"))))
+                 q2)]
+        (keep! q2)
+        {:downbeat db}))))
+
 (defn enharmonic!
   "Writes the note of a quantized score (a freqt's, or a free tree box's) that starts at beat t with MIDI
    pitch m another way (c#4 → db4 → b##3 → c#4 …), or with the name given; kept with its options (:quant

@@ -242,6 +242,13 @@ export async function views(page, check) {
   const played = await cljs(page, `(let [ns (mt/notes (quantize ${f}))] [(mapv :t ns) (butlast (mapv :dur ns))])`);
   check("... so its score is written on those beats", played === "[[0 1 2 3 4.5 5 6] (1 1 1 1.5 0.5 1)]", played);
   check("(track! :bN nil) forgets them", (await cljs(page, `(do (track! ${f} nil) (:time (:quant (box-data ${f}))))`)) === "nil");
+  // ── where the bar starts (issue #106): the note at beat 1 said to start a bar ──
+  await cljs(page, `(quant ${f} {:meter "3/4"})`);
+  const db = await cljs(page, `(downbeat! ${f} 1)`);
+  check("(downbeat! :bN t): the note at t starts a bar, its time as played kept", /:downbeat 0\.9/.test(db) && (await cljs(page, `(some? (:downbeat (:quant (box-data ${f}))))`)) === "true", db);
+  const bars = await cljs(page, `(let [q (quantize ${f}) ms (filter (fn [x] (and (vector? x) (= :measure (first x)))) (tree-seq vector? seq q))] (mapv :t (filter (fn [e] (= 0 (mod (:t e) 3))) (mt/notes q))))`);
+  check("... the bars start on it: the note before is a pickup", (await cljs(page, `(:pitch (first (filter (fn [e] (= 3 (:t e))) (mt/notes (quantize ${f})))))`)) === "62", bars);
+  check("(downbeat! :bN nil) forgets it", (await cljs(page, `(do (downbeat! ${f} nil) (:downbeat (:quant (box-data ${f}))))`)) === "nil");
   await cljs(page, `(quant ${f} nil)`);
   // ── another name for a note (issue #88) ──
   await cljs(page, `(send! ${f} [:clear]) (send! ${f} [:batch [[:note 0 61 1] [:note 1 62 1]]])`);
