@@ -1174,6 +1174,7 @@ Graphic buffer of frequency over time: Hz on a log scale, time from 0, tunings (
 - `(to-tree! :bN)`: a tree box beside it, with its strokes as notes: the drawing, now a tree
 - `(quant :bN {:meter "6/8" :key "eb"}) · [:quantize {…}]`: how its score is quantized and in which key, kept in its buffer (one event); (quant :bN nil): the defaults. {:meters ["3/4" "5/8[2+3]"]}: a meter for each bar, the last going on
 - `(track! :bN) · (quant :bN {:time :track})`: what was played freely (transcribe, at any tempo, with rubato) written on its beats: the tempo and the beats are found, and track! keeps them (the time map) so that the score stays as it is; if the bar starts in the wrong place, (track! :bN {:downbeat t}) with the time of a note that starts a bar; (track! :bN nil) forgets them
+- `shown as a score, ⌥⌘-click a note · (downbeat! :bN t)`: that note starts a bar: kept in the buffer as :downbeat (its time as played); the beats are found again with it on a downbeat, or the bars move to it (a pickup before); (downbeat! :bN nil) forgets it
 - `shown as a score, shift-alt-click a note · (enharmonic! :bN t midi)`: another name for that note (c#4 → db4), kept in the buffer
 - `shown as a score, click a note of a tree`: ↑ ↓ pitch (⇧ octave) · a…g the nearest note of that name · + − duration · ← → next · Delete → rest
 - `click a rest`: Enter → a note (the pitch of the one before) · ↑ ↓ a step above or below it · a…g that note
