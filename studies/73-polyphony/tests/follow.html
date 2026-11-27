@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<meta charset="utf-8">
+<title>Study 73 · polyphony · following by the 88 keys</title>
+<pre id="out">Running…</pre>
+<script type="module">
+// Basic Pitch hears sixteen chords of C and G in every register, played with rubato; kairotic.follow's dtw follower
+// follows them every 50 ms by the 88 keys and by a chroma. The keys keep their place; the chroma loses it.
+const results = [], notes = [];
+const is = (what, ok) => results.push([what, !!ok]);
+try {
+  const L = await import("../kairotic/listen.mjs");
+  const T = await import("../kairotic/transcribe.mjs");
+  const F = await import("../kairotic/follow.mjs");
+  const ev = F.written(), ref = F.reference(ev);
+  for (const [seed, rubato] of [[7, 0.4], [3, 0.6]]) {
+    const P = F.perform(ev, { seed, rubato });
+    const r = await T.transcribe(L.render(P.notes));
+    const obs = F.observations(r.frames, r.n, r.seconds);
+    const k = F.judge(F.dtwFollow(ref, obs, "keys").arrived, P.onsets), c = F.judge(F.dtwFollow(ref, obs, "chroma").arrived, P.onsets);
+    notes.push(`rubato ±${rubato * 100}%: keys median ${k.median} ms, mean ${k.mean}, ${Math.round(k.within * 100)}% within 100 ms, ${k.skipped} skipped · ` +
+               `chroma median ${c.median} ms, mean ${c.mean}, ${Math.round(c.within * 100)}% within 100 ms, ${c.skipped} skipped`);
+    is(`rubato ±${rubato * 100}%: the 88 keys follow (median under 80 ms, 8 in 10 within 100 ms, at most one skipped)`, k.median < 80 && k.within >= 0.8 && k.skipped <= 1);
+    is(`rubato ±${rubato * 100}%: … far better than a chroma`, c.skipped >= 5 || (c.mean !== null && c.mean > 3 * k.mean));
+  }
+} catch (e) { results.push(["error: " + (e.message || e), false]); }
+const bad = results.filter((r) => !r[1]);
+// (on a failure the measurements go with it, so the runner prints them)
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]).concat(bad.length ? notes.map((n) => "(measured) " + n) : []) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` +
+  results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + "\n\n" + notes.map((s) => "  · " + s).join("\n");
+</script>

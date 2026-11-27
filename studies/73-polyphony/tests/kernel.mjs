@@ -3,6 +3,7 @@
 //   node -e 'import("./studies/73-polyphony/tests/kernel.mjs").then(async m => process.exit(m.report(await m.run())))'
 import * as BP from "../kairotic/basicpitch.mjs";
 import * as L from "../kairotic/listen.mjs";
+import * as F from "../kairotic/follow.mjs";
 
 const B = BP.NOTES;
 // a posteriorgram of n frames drawn by hand: [bin, from, to, value]
@@ -88,6 +89,27 @@ export async function run() {
   notes.push(`the piece: ${(s1.length / BP.SR).toFixed(2)} s, peak ${peak.toFixed(3)}`);
   is("the piece rendered: 6.5 s at 22050 Hz, the same samples every time, never clipping",
      s1.length === Math.ceil(6.5 * BP.SR) && s1.every((x, i) => x === s2[i]) && peak > 0.1 && peak < 1);
+
+  // ── following by the 88 keys (#308), on ideal posteriorgrams ──
+  const reg = F.written(), refR = F.reference(reg);
+  is("the reference: each event for as long as it is written, every 50 ms, its keys and its chroma",
+     refR.length === 160 && refR[0].j === 0 && refR[159].j === 15 && refR[0].keys[48 - 21] === 1 && refR[0].chroma[0] === 1 && refR[0].chroma[4] === 1);
+  is("kairotic.follow's distance: 0 for the same keys, 3 for none shared, 1 for a silent frame",
+     F.dist(refR[0].keys, refR[0].keys) < 1e-9 && Math.abs(F.dist(refR[0].keys, refR[10].keys) - 3) < 1e-9 && F.dist(null, refR[0].keys) === 1);
+  const runs = [1, 2, 3].map((seed) => {
+    const P = F.perform(reg, { seed, rubato: 0.4 }), secs = Math.max(...P.notes.map((x) => x.t + x.dur)) + 0.3;
+    const { frames: fr2, n: n2 } = F.idealFrames(P.notes, secs), obs = F.observations(fr2, n2, secs);
+    return { keys: F.judge(F.dtwFollow(refR, obs, "keys").arrived, P.onsets), chroma: F.judge(F.dtwFollow(refR, obs, "chroma").arrived, P.onsets) };
+  });
+  notes.push("registers, rubato ±40%: " + runs.map((r) => `keys median ${r.keys.median} ms (${r.keys.within * 100}% within 100 ms) · chroma ${r.chroma.median} ms (${r.chroma.skipped} skipped)`).join("; "));
+  is("C and G in every register, played with rubato: the keys follow (median under 50 ms, 9 in 10 within 100 ms, none skipped)",
+     runs.every((r) => r.keys.median < 50 && r.keys.within >= 0.9 && r.keys.skipped === 0));
+  is("… a chroma cannot (it hears runs of the same chord: half or more of them skipped or a second off)",
+     runs.every((r) => r.chroma.skipped >= 7 || r.chroma.median > 1000));
+  const cad = L.PIECE.map(([t, d, m]) => ({ t, dur: d, midis: m })), Pc = F.perform(cad, { seed: 3 });
+  const sc2 = Math.max(...Pc.notes.map((x) => x.t + x.dur)) + 0.3, ic = F.idealFrames(Pc.notes, sc2), oc = F.observations(ic.frames, ic.n, sc2);
+  const kc = F.judge(F.dtwFollow(F.reference(cad), oc, "keys").arrived, Pc.onsets), cc = F.judge(F.dtwFollow(F.reference(cad), oc, "chroma").arrived, Pc.onsets);
+  is("the cadence, every chord another: keys and chroma follow it alike", kc.median < 50 && cc.median < 50 && kc.skipped === 0 && cc.skipped === 0);
 
   return { results, notes };
 }
