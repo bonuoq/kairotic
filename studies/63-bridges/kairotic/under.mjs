@@ -56,22 +56,37 @@ export const isHeldOut = (p) => Number(p.chorale) % 5 === 0;
 
 // (each chord tone's figure number by inversion: which of the chord's notes is the bass → the numbers of the others)
 const NUMBERS = { "5/3": [1, 3, 5], "6/3": [6, 1, 3], "6/4": [4, 6, 1], 7: [1, 3, 5, 7], "6/5": [6, 1, 3, 5], "4/3": [4, 6, 1, 3], "4/2": [2, 4, 6, 1] };
-const BLACK = new Set([1, 3, 6, 8, 10]);
-const flatKey = (k) => /b/.test(String(k.tonic).replace("♭", "b")) || (!isMinor(k) && tonicPc(k) === 5) || (isMinor(k) && [2, 7, 0, 5].includes(tonicPc(k)));
+const NATURAL = [0, 2, 4, 5, 7, 9, 11], LETTER = "CDEFGAB";
+/** The pitch class each letter (C … B) has in the key signature of `key`. */
+export function letterPcs(key) {
+  const t = LETTER.indexOf(String(key.tonic || "C")[0].toUpperCase()), sc = isMinor(key) ? MINOR : MAJOR, out = [];
+  for (let i = 0; i < 7; i++) out[(t + i) % 7] = mod(tonicPc(key) + sc[i], 12);
+  return out;
+}
+/** A chord's root as a letter (0 … 6) in `key`: the letter the signature gives it; a root out of the signature the
+ *  letter above lowered (♭VII, ♭VI), or the one below raised for a diminished chord (a leading tone's: ♯iv°). */
+function rootLetter(root, kind, sig) {
+  const i = sig.indexOf(root);
+  if (i >= 0) return i;
+  const up = sig.findIndex((pc) => mod(pc - 1, 12) === root), down = sig.findIndex((pc) => mod(pc + 1, 12) === root);
+  if (/°|ø/.test(kind)) return down >= 0 ? down : up;
+  return up >= 0 ? up : down;
+}
 /**
  * A chord's figure as a continuo player reads it against the key signature of `home`: the figure's numbers, top down,
  * a note out of the signature marked on its number (♯, ♭, or ♮ where it undoes the signature) — a number the figure
- * leaves out added where its note is altered ("6/5/♯3"). Not yet Bach's abbreviations (the chorale thread's, from
- * BCFB).
+ * leaves out added where its note is altered ("6/5/♯3"). Each note is spelt as the chord's letters have it (its root's
+ * letter, a 3rd, a 5th, a 7th above). Not yet Bach's abbreviations (continuo.mjs's BACH_WRITES do those).
  */
 export function figureText(root, kind, figure, home) {
-  const iv = KIND_INTERVALS[kind], nums = NUMBERS[figure], sc = new Set((isMinor(home) ? MINOR : MAJOR).map((x) => mod(tonicPc(home) + x, 12)));
+  const iv = KIND_INTERVALS[kind], nums = NUMBERS[figure], sig = letterPcs(home), r = rootLetter(root, kind, sig);
   const shown = figure.split("/").map(Number), marks = {};
   iv.forEach((x, i) => {
     const pc = mod(root + x, 12), num = nums[i];
-    if (num === 1 || sc.has(pc)) return;
-    const up = sc.has(mod(pc - 1, 12));
-    marks[num] = up ? (BLACK.has(mod(pc - 1, 12)) && flatKey(home) ? "♮" : "♯") : (BLACK.has(mod(pc + 1, 12)) && !flatKey(home) ? "♮" : "♭");
+    if (num === 1) return;
+    const L = (r + 2 * i) % 7, d = mod(pc - sig[L] + 6, 12) - 6;
+    if (!d) return;
+    marks[num] = mod(pc - NATURAL[L], 12) === 0 ? "♮" : d > 0 ? (d === 2 ? "𝄪" : "♯") : (d === -2 ? "𝄫" : "♭");
   });
   const all = [...new Set([...shown, ...Object.keys(marks).map(Number)])].sort((a, b) => b - a);
   return all.map((x) => (marks[x] || "") + x).join("/");

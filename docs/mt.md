@@ -326,6 +326,18 @@ forgets it.
 (quantize! :b2)                           ; a tree box with a kept map: its measures written on those beats
 ```
 
+**Where the bar starts.** The beat is found more often than the bar: the whole rhythm can come out shifted by a beat
+or two, a pickup misread. **⌥⌘-click a note** of the score (alt-ctrl-click) to say that it starts a bar: its time as
+played is kept as `:downbeat` in `:quant`, one event of the history. Tracked, the beats are found again with that note
+on a downbeat (a kept map is found again too); in beats already, the bars move so that it starts one, and what comes
+before it is a pickup.
+
+```clojure
+(downbeat! :b1 2.5)                       ; the note at beat 2.5 of the score starts a bar → {:downbeat 1.912}
+(downbeat! :b1 nil)                       ; forgotten
+(quant :b1 {:downbeat 0.5})               ; the same by hand, with the note's own time
+```
+
 ## How pitches are written: names, keys, accidentals
 
 A pitch is written as a **letter, an alteration and an octave** (issue [#88](https://github.com/bonuoq/kairotic/issues/88)):

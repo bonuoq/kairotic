@@ -208,7 +208,12 @@
    the quantizer finds (:time :track), its beats taken at the level of the annotated ones (as many to the bar),
    and compared with them: beat and downbeat F-measures (70 ms), and the tempo found over the one annotated."
   [{:keys [id notes beats downbeats meter]} qopts]
-  (let [ns (mapv (fn [[a b m v]] {:on a :off b :attrs (cond-> {:pitch m} v (assoc :vel v))}) notes)
+  (let [;; {:downbeat :first}: the first annotated downbeat given, as one ⌥⌘-click on its note would (issue #106)
+        qopts (if (= :first (:downbeat qopts))
+                (let [d (first downbeats) n (when d (apply min-key (fn [[a]] (js/Math.abs (- a d))) notes))]
+                  (if n (assoc qopts :downbeat (first n)) (dissoc qopts :downbeat)))
+                qopts)
+        ns (mapv (fn [[a b m v]] {:on a :off b :attrs (cond-> {:pitch m} v (assoc :vel v))}) notes)
         t0 (js/Date.now)
         o (qz/options (merge {:meter meter :time :track} qopts) nil)
         m (qz/time-map-of ns o)

@@ -32,7 +32,8 @@
 ;; is), :key the key the score is written in ("eb", "c#m", :none; without it no signature, and names
 ;; from the key the notes suggest), :time how the notes' time becomes beats (:track finds the beats of notes
 ;; played freely, in seconds or at any tempo: kairotic.tempo; a map [[time beat] …] is one found and kept;
-;; without it their time is already in beats), :w the weights of the cost; :voices (2) how many voices overlapping notes may take, :overlap how
+;; without it their time is already in beats), :downbeat the time of a note known to start a bar (it finds the phase of
+;; the beats tracked; with time already in beats, the bars are moved so that it starts one), :w the weights of the cost; :voices (2) how many voices overlapping notes may take, :overlap how
 ;; much a note may run into the next and stay in its voice, :nest false for no beats cut in parts, and
 ;; :meters a meter for each bar (the last going on: meter changes, issue #107), :fix {beat-start choice} the divisions chosen by hand (n, [n1 n2] or [:merge n]: see `choices`).
 ;; With :time (played time), :ref-bpm (100) weighs the error of a note in seconds rather than in beats: faster than
@@ -191,9 +192,14 @@
   "The time map notes in free time are quantized through (options :time): the one kept, the one found
    (:track, from the onsets and the meter), or nil (their time is already in beats)."
   [notes o]
-  (let [x (:time o)]
+  (let [x (:time o) db (:downbeat o)]
     (cond (vector? x) x
           (= x :track) (tracked (mapv (fn [n] (select-keys n [:on :off :attrs])) notes) (select-keys o [:meter :meters :w :divs :merge :nest :chord :prior-w :prior-bpm :downbeat :track]))
+          ;; time already in beats, and a note said to start a bar (issue #106): the beats moved so that it does
+          ;; (what comes before it is a pickup); none when it already does
+          (number? db) (let [BL (let [{[p q] :meter} (or (first (:meters o)) (:meter o))] (* p (/ 4 q)))
+                             off (mod (- BL (mod db BL)) BL)]
+                         (when (> off 1e-6) [[0 off] [1 (+ 1 off)]]))
           :else nil)))
 
 (defn timed

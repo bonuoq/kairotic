@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <style>
 /* Layout: Kairotic header; varying a phrase from a level by a bridge; a morph between two phrases; a bridge between two
-   rhythms; about. */
+   rhythms; a bass under Bach's soprano; about. */
 :root {
   --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
   --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
@@ -188,10 +188,30 @@ ol.steps li b { color: var(--ink); font-weight: 500; }
   <p class="facts" id="r-facts">—</p>
 </section>
 
+<section class="panel" aria-labelledby="h-under">
+  <h2 id="h-under">A bass under Bach's soprano <span>Study 76 · continuo, its engine (<code>under.mjs</code>): a bass a quarter, its figures and its local keys, drawn under the soprano of a phrase the tables never saw</span></h2>
+  <div class="row">
+    <label class="inline" for="u-ph">Phrase <select id="u-ph"><option>Loading…</option></select></label>
+    <label class="inline" for="u-costs" title="whose tables weigh the bass: the chorale thread's (continuo.mjs, with Bach's dissonances) or this study's first ones (under-tables.mjs)">Tables <select id="u-costs"><option value="continuo">continuo.mjs</option><option value="under">under-tables.mjs</option></select></label>
+    <label class="inline" for="u-var" title="a layer off, to hear what it does">Variant <select id="u-var"><option>all</option><option>no-functions</option><option>no-keys</option><option>no-economy</option></select></label>
+    <label class="inline" for="u-temp" title="1: as Bach's tables weigh; lower, the likelier ways more">Temperature <input type="number" id="u-temp" min="0.2" max="2" step="0.1" value="1"></label>
+    <button class="act primary" id="u-draw">Draw</button>
+    <button class="act" id="u-random" title="another phrase the tables never saw">Another phrase</button>
+    <button class="act" id="u-play-ours">▶ Soprano + our bass</button>
+    <button class="act" id="u-play-bach">▶ Soprano + Bach's bass</button>
+    <button class="act" id="u-play-four">▶ Bach's four voices</button>
+  </div>
+  <div class="score" id="u-score"><p class="note">Loading the phrases and the score engine…</p></div>
+  <p class="facts" id="u-keys">—</p>
+  <p class="facts" id="u-facts">—</p>
+  <p class="note">Staves: Bach's soprano; our bass, with its figures (in Bach's abbreviations: nothing over a 5/3, an accidental alone for a 3rd); Bach's bass, with the figures his four voices make (continuo.mjs's <code>figureOf</code>). The phrases are those of the chorales numbered a multiple of 5: neither table counted them. <em>Bits a note</em>: how surprised the model is by a bass — Bach's and ours —, every chord and key under it summed; the less, the better the model knows Bach.</p>
+</section>
+
 <section class="panel" aria-labelledby="h-about">
   <h2 id="h-about">About <span>discussion <a href="https://github.com/bonuoq/kairotic/discussions/341">#341</a></span></h2>
   <p class="about">A <em>Schrödinger bridge</em> is the most likely random process from a given start to a given end, relative to a reference process that says which moves are natural. On a layered graph — a state a unit — it is the product of two messages, one forwards from the start, one backwards from the end. The futuribles (Study 38) already count the ways to the end exactly: that is the backward message with every way weighing one. Here each way weighs exp(−cost / temperature), the cost being the soft rules of every engine (<code>soft.mjs</code>, through the kernel's own costs); the hard rules weigh nothing (refused), so whatever a bridge draws is legal, and it never gets stuck: every note it offers has a future.</p>
   <ul class="q">
+    <li>A bass under Bach's soprano (Study 76 · continuo, #353): the soprano pinned at every quarter, each quarter's state its local key, its bass and the chord over it; the costs are how often Bach does each thing (the chorale thread's <code>continuo.mjs</code>), so a bass drawn is as likely as his tables say, and Bach's own bass can be weighed under it, in bits a note.</li>
     <li>Varying from a level (Study 61) is a bridge through waypoints: the notes that survive are pinned, each span between them is drawn with its true probability — no backtracking.</li>
     <li>A morph keeps the beginning of one phrase and the end of another, and draws the way between them under the rules of every phrase.</li>
     <li>The economy (#342, #399): a bar's figure — its shape from its first note — is a word, and the forward draw prefers a figure the line has already said (<code>bits.mjs</code>, the measure Studies 61 and 64 share), so the way between two phrases is said with fewer figures, a sequence where it can: a morph from the C major incipit to the 7–6 chain goes from 62 bits in 8 different figures without it to 47 in 5 with it (20 draws). The facts say each line's figures in bits.</li>
@@ -216,6 +236,98 @@ window.addEventListener("DOMContentLoaded", function () {
     try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
   }).catch(show);
 });
+</script>
+
+
+<script type="module">
+// The bass under Bach's soprano (Study 76's engine, under.mjs): plain JS beside the page's ClojureScript, since the
+// score engine (Verovio) and the phrases (the shared corpus) arrive by themselves.
+const base = window.kairoticBaseURL || "./" + (window.kairoticBase || "kairotic/");
+const $ = (id) => document.getElementById(id);
+const facts = (id, s) => { $(id).textContent = s; };
+const st = { phrases: [], p: null, ours: null, U: null, vrv: null };
+let U, C, M;
+
+function loadVerovio() {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/verovio@5.7.0/dist/verovio-toolkit-wasm.js";
+    s.onload = () => { try { const m = verovio.module; if (m.calledRun) resolve(new verovio.toolkit()); else m.onRuntimeInitialized = () => resolve(new verovio.toolkit()); } catch (e) { reject(e); } };
+    s.onerror = () => reject(new Error("Verovio did not load"));
+    document.head.appendChild(s);
+  });
+}
+
+function render() {
+  if (!st.vrv || !st.p || !st.ours) return;
+  st.vrv.setOptions({ pageWidth: Math.max(900, ($("u-score").clientWidth - 16) * 2.2), adjustPageHeight: true, scale: 45, breaks: "auto", header: "none", footer: "none" });
+  st.vrv.loadData(M.meiOf(st.p, st.ours));
+  $("u-score").innerHTML = st.vrv.renderToSVG(1);
+}
+
+const bits = (lp, n) => (lp === -Infinity ? "outside the model" : `${(-lp / Math.LN2 / n).toFixed(2)} bits a note`);
+function draw() {
+  const p = st.p;
+  if (!p) return;
+  try {
+    const spec = { soprano: p.satb.map((c) => c[0]), key: p.key, strong: p.strong, variant: $("u-var").value, temp: Number($("u-temp").value) || 1,
+                   ...($("u-costs").value === "continuo" ? { continuo: C } : {}) };
+    const t0 = performance.now(), B = U.underBridge(spec), ms = Math.round(performance.now() - t0);
+    if (!B.possible) { st.ours = null; facts("u-facts", "No bass under this soprano by these rules."); $("u-score").innerHTML = ""; return; }
+    const ours = B.draw(), bach = p.satb.map((c) => c[3]), n = bach.length;
+    st.ours = ours; st.U = B;
+    const same = ours.bass.filter((b, t) => b === bach[t]).length, samePc = ours.bass.filter((b, t) => (b - bach[t]) % 12 === 0).length;
+    const dis = ours.chords.map((c, t) => (c.dissonance ? `${t + 1}: ${c.dissonance.motion} ${c.dissonance.interval}` : null)).filter(Boolean);
+    facts("u-facts", `${p.id} · ${p.title} · ${n} quarters · Bach's bass ${bits(B.logProb(bach), n)}, ours ${bits(B.logProb(ours.bass), n)} · ours as Bach's: ${same} of ${n} notes (${samePc} as pitch classes)` +
+      (dis.length ? ` · the soprano a dissonance at ${dis.join(", ")}` : "") + ` · drawn in ${ms} ms`);
+    facts("u-keys", "Local keys: " + ours.keys.map((k, t) => (t && k === ours.keys[t - 1] ? "·" : k)).join("  ") + "   ·   Bach's (phrases.json): " + p.keys.map((k, t) => (t && k === p.keys[t - 1] ? "·" : k)).join("  "));
+    render();
+  } catch (e) { facts("u-facts", "Error: " + (e.message || e)); console.error(e); }
+}
+
+// ─── sound ───
+let ac = null, playing = [];
+const halt = () => { for (const o of playing) try { o.stop(); } catch (_) {} playing = []; };
+function play(voices) {
+  halt();
+  ac = ac || new AudioContext();
+  const q = 0.5, t0 = ac.currentTime + 0.1;
+  voices.forEach((line, v) => line.forEach((m, t) => {
+    if (t && line[t - 1] === m && !(st.p.strong[t])) return;              // held into a weak quarter
+    let d = 1; while (t + d < line.length && line[t + d] === m && !st.p.strong[t + d]) d++;
+    const o = ac.createOscillator(), g = ac.createGain(), s = t0 + t * q, e = s + d * q;
+    o.type = "triangle"; o.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
+    g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(v === voices.length - 1 ? 0.13 : 0.08, s + 0.01); g.gain.setTargetAtTime(0, e - 0.05, 0.03);
+    o.connect(g).connect(ac.destination); o.start(s); o.stop(e + 0.3); playing.push(o);
+  }));
+}
+
+function choose(id) {
+  st.p = st.phrases.find((p) => p.id === id) || st.phrases[0];
+  $("u-ph").value = st.p.id;
+  draw();
+}
+
+(async () => {
+  try {
+    [U, C, M] = await Promise.all([import(base + "under.mjs"), import(base + "continuo.mjs"), import(base + "under-score.mjs")]);
+    const all = (await (await fetch((window.kairoticShared || "../_shared/") + "chorales/phrases.json")).json()).phrases;
+    st.phrases = all.filter((p) => U.isHeldOut(p) && p.satb.length >= 4 && p.satb.length <= 16);
+    $("u-ph").innerHTML = st.phrases.map((p) => `<option value="${p.id}">${p.id} · ${p.title.replace(/</g, "&lt;")}</option>`).join("");
+    st.vrv = await loadVerovio().catch((e) => { facts("u-facts", "No score: " + e.message); return null; });
+    choose("chor005-4");
+  } catch (e) { facts("u-facts", "Error: " + (e.message || e)); console.error(e); }
+  $("u-ph").addEventListener("change", (e) => choose(e.target.value));
+  for (const id of ["u-costs", "u-var"]) $(id).addEventListener("change", draw);
+  $("u-draw").addEventListener("click", draw);
+  $("u-random").addEventListener("click", () => choose(st.phrases[Math.floor(Math.random() * st.phrases.length)].id));
+  $("u-play-ours").addEventListener("click", () => st.ours && play([st.p.satb.map((c) => c[0]), st.ours.bass]));
+  $("u-play-bach").addEventListener("click", () => st.p && play([st.p.satb.map((c) => c[0]), st.p.satb.map((c) => c[3])]));
+  $("u-play-four").addEventListener("click", () => st.p && play([0, 1, 2, 3].map((v) => st.p.satb.map((c) => c[v]))));
+  window.addEventListener("resize", render);
+  // for the tests (tests/page.html)
+  window.kairoticUnder = { state: () => ({ phrase: st.p && st.p.id, bass: st.ours && st.ours.bass, figures: st.ours && st.ours.figures, keys: st.ours && st.ours.keys, score: !!$("u-score").querySelector("svg") }), draw, choose };
+})();
 </script>
 
 <script type="application/x-kairotic" id="page-cljs">

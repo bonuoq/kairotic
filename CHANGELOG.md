@@ -8,12 +8,29 @@
   concord on consecutive strong beats and an entry on the unison allowed. Odyssey 1.1 in the Lydian: 2,215 strict
   canons at the octave below. The aulos in heterophony keeps within a 4th of the voice (a 3rd in a church mode) and
   near it by a soft cost (`apart`, 0.3 a degree): as the engine plays it, about four beats in five in unison.
+- **Study 63's page: a bass under Bach's soprano** (#353). A new section draws Study 76's engine (`under.mjs`) under
+  the soprano of a phrase the tables never saw (the chorales numbered a multiple of 5): our bass and Bach's under his
+  soprano as a score (Verovio; `under-score.mjs` writes the MEI — a measure a quarter, our figures in Bach's
+  abbreviations, Bach's from his four voices by continuo.mjs's `figureOf`, the notes spelt by each quarter's local key),
+  the local keys ours and his, how many bits a note the model gives his bass and ours, and both played (with his four
+  voices too); the tables (continuo.mjs's or under-tables.mjs's), the variant and the temperature to choose. Study 63
+  keeps a copy of continuo.mjs (`tests/rules.mjs` checks it). `figureText` spells each chord's notes by its letters
+  (G7 in G "♮7", not "♯7").
 - **Study 76 · continuo** (discussion #353): Bach's soprano given, a figured bass written under it and the voices that
   play it, beside his. The bass and its local keys are Study 63's `under.mjs` on `continuo.mjs`' tables; the figures are
   written as Bach abbreviates them (`abbreviate`, after BCFB); the inner voices are `bach-4`'s with the chords asked as
   a wish (`figuresWeight` 8). On the phrases kept out of the tables: realize, compare against Bach (bass notes, pitch
   classes, chords, inner notes), his own figures under his phrase where his continuo part survives. Kernel tests in
   Node and the browser, a page test. Studies 71 and 76 in the studies' list.
+- **Where the bar starts** (issue #106). **⌥⌘-click a note** of a quantized score (alt-ctrl-click) — or
+  `(downbeat! :bN t)` — says that it starts a bar: its time as played is kept in `:quant` as `:downbeat`, one event of
+  the history. Tracked (`:time :track`), the beats are found again with it on a downbeat, and a kept map (`track!`) is
+  found again too; with time already in beats, the quantizer now moves the bars so that it starts one (what comes
+  before is a pickup). `(downbeat! :bN nil)` forgets it. The most common error on played material, the whole rhythm
+  shifted by a beat or two, is now one click. Measured (`bench.mjs --asap --opts "{:downbeat :first}"`): one downbeat
+  given lifts ASAP's downbeat F from 41.0 to 49.5 %; on Weimar, where the beat is mostly found at half the tempo, it
+  does not help. A freqt's buffer now keeps the quantizer's newer options too (`:downbeat`, `:ref-bpm`, `:repeat`,
+  `:describe`): `(quant :b1 {:describe true})` was dropped before.
 - **The bass under Bach's soprano: his soprano's dissonances, his tables in plain −log** (#353, after #491 and #499).
   Study 63's `under.mjs` reads continuo.mjs's BACH_DISSONANCES: the soprano may be a suspension (held into the quarter,
   down a step after, resolved over the same bass or its octave, figured 4 3, 9 8, 7 6), a passing or neighbour note

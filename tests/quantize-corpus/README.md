@@ -379,6 +379,22 @@ before at the same pitch, joined to it: what onsets could add at most. Two cavea
 `onset~` on the right is for instruments with attacks. `transcribe` now ignores an onset while the contour is away
 from the note and not settled yet (there the contour decides).
 
+### One click on a downbeat (issue #106)
+
+`--opts "{:downbeat :first}"` gives the tracker the first annotated downbeat (the note nearest to it), as one ⌥⌘-click on
+that note in the score would:
+
+| | beat F | any level | downbeat F | tempo |
+|---|---|---|---|---|
+| ASAP, nothing given | 57.5% | 71.8% | 41.0% | 40.0% |
+| ASAP, one downbeat given | 58.6% | 72.0% | **49.5%** | 37.5% |
+| Weimar, nothing given | 32.4% | 55.2% | 8.1% | 2.5% |
+| Weimar, one downbeat given | 33.0% | 55.6% | 7.5% | 5.0% |
+
+On piano the click puts the bar right in a fifth more of the performances. It cannot help where the beat is found at
+another level (half the tempo, most of Weimar's solos: the bars come out twice as long), nor where the beats drift
+away from the click later in the piece. A click further on, or a second one, is the next step.
+
 ### The delay of `onset~`
 
 Measured offline with `onset~`'s own detection (frames of 2048, hop 512, the flux of the first 256 bins) on sounds
