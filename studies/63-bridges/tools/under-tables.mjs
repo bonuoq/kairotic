@@ -15,6 +15,19 @@ const TON = { C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5, "F#": 6, G
 const mod = (a, m) => ((a % m) + m) % m, tp = (k) => TON[String(k.tonic).replace("♯", "#").replace("♭", "b")] ?? 0;
 const T = { major: newTables(), minor: newTables() };
 function newTables() { return { vertical: {}, motion: {}, move: {}, chord: {}, end: {}, endChord: {}, held: { strong: {}, weak: {} }, start: {} }; }
+// (the soprano's motion at each quarter, by beat, as under.mjs reads it: how often a dissonance of that motion is
+// one — BACH_DISSONANCES's counts over these)
+const STEP = (d) => Math.abs(d) >= 1 && Math.abs(d) <= 2;
+const smotion = (S, t) => {
+  const n = S.length, into = t ? S[t] - S[t - 1] : null, out = t < n - 1 ? S[t + 1] - S[t] : null, held = t > 0 && into === 0;
+  if (held && out !== null && out < 0 && STEP(out)) return "suspension";
+  if (held && out !== null && out > 0 && STEP(out)) return "suspension-up";
+  if (held && out === 0) return "held";
+  if (into !== null && out !== null && STEP(into) && STEP(out)) return Math.sign(into) === Math.sign(out) ? "passing" : "neighbour";
+  if (held) return "held";
+  return null;
+};
+const sopMotion = {};
 const inc = (o, k, v = 1) => { o[k] = (o[k] || 0) + v; };
 let used = 0, skipped = 0, phrases = 0;
 for (const p of P) {
@@ -25,6 +38,8 @@ for (const p of P) {
   inc(T[homeMode].start, mod(tp(keys[0]) - tp(home), 12) + (keys[0].mode === "minor" ? "m" : "M"));
   for (let t = 0; t < n; t++) {
     const k = keys[t], m = k.mode === "minor" ? "minor" : "major", tb = T[m], c = p.satb[t], s = c[0], b = c[3];
+    const sm = smotion(p.satb.map((x) => x[0]), t);
+    if (sm) inc(sopMotion, `${sm}|${p.strong[t] ? "strong" : "weak"}`);
     inc(tb.vertical, mod(s - b, 12));
     const ch = chordOf(c);
     const f = ch && ch.extra === null ? figureOf(ch) : null;
@@ -41,7 +56,7 @@ for (const p of P) {
     }
   }
 }
-const data = { source: "Bach's chorales, phrases.json (Sapp's edition), chorales whose number is not a multiple of 5", phrases, quarters: used + skipped, chords: used, ...T };
+const data = { source: "Bach's chorales, phrases.json (Sapp's edition), chorales whose number is not a multiple of 5", phrases, quarters: used + skipped, chords: used, sopMotion, ...T };
 writeFileSync(out, `// SPDX-License-Identifier: CC-BY-NC-SA-4.0
 // Written by tools/under-tables.mjs from studies/_shared/chorales/phrases.json (Sapp's edition of Bach's chorales,
 // CC BY-NC-SA 4.0): counts, quarter by quarter, each in its own key, the chorales whose number is a multiple of 5 left

@@ -35,7 +35,7 @@ const add = (st, S, B, figs, key) => {
   if (b1 === 0 && b0 === 7) st.end51++;
 };
 const ours = stat(), bach = stat();
-let same = 0, samePc = 0, sameFig = 0, notes = 0, bits = 0, bitsN = 0, none = 0, inf = 0;
+let same = 0, samePc = 0, sameFig = 0, notes = 0, bits = 0, bitsN = 0, none = 0, inf = 0, dis = 0, disBach = 0;
 const t0 = Date.now();
 for (const p of P) {
   const S = p.satb.map((c) => c[0]), Bb = p.satb.map((c) => c[3]), n = S.length;
@@ -45,6 +45,8 @@ for (const p of P) {
   const y = U.possible ? U.draw(r) : null;
   if (!y) { none++; continue; }
   add(ours, S, y.bass, y.chords.map((c) => c.figure), p.cadence || p.key);
+  dis += y.chords.filter((c) => c.dissonance).length;
+  if (continuo) disBach += p.satb.filter((_, t) => { const d = continuo.dissonanceOf(p, t); return d && d.voice === "soprano"; }).length;
   for (let t = 0; t < n; t++) { notes++; if (y.bass[t] === Bb[t]) same++; if ((y.bass[t] - Bb[t]) % 12 === 0) samePc++; if (bachFigs[t] && y.chords[t].figure === bachFigs[t] && (y.bass[t] - Bb[t]) % 12 === 0) sameFig++; }
   const lp = U.logProb(Bb);
   if (lp === -Infinity) inf++; else { bits += -lp / Math.LN2; bitsN += n; }
@@ -54,6 +56,7 @@ const dist = (o) => { const s = Object.values(o).reduce((a, b) => a + b, 0); ret
 console.log(`${variant}: ${P.length} phrases held out, ${none} without a bass, ${((Date.now() - t0) / 1000).toFixed(0)} s`);
 console.log(`  Bach's bass note for note ${pc(same, notes)}, its pitch class ${pc(samePc, notes)}, its pitch class and figure ${pc(sameFig, notes)}`);
 console.log(`  Bach's bass under the model: ${(bits / Math.max(1, bitsN)).toFixed(2)} bits a note (${inf} phrases outside it)`);
+console.log(`  the soprano a dissonance: ${dis} quarters of ${notes}${continuo ? ` (Bach ${disBach})` : ""}`);
 for (const [k, st] of [["ours", ours], ["Bach", bach]]) {
   console.log(`  ${k}: figures ${dist(st.fig)}`);
   console.log(`        motion ${dist(st.motion)} · held ${pc(st.held, st.moves)}, steps ${pc(st.steps, st.moves)}, leaps ${pc(st.leaps, st.moves)} · ⑤–① ends ${pc(st.end51, st.ends)}`);

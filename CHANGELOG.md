@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The bass under Bach's soprano: his soprano's dissonances, his tables in plain −log** (#353, after #491 and #499).
+  Study 63's `under.mjs` reads continuo.mjs's BACH_DISSONANCES: the soprano may be a suspension (held into the quarter,
+  down a step after, resolved over the same bass or its octave, figured 4 3, 9 8, 7 6), a passing or neighbour note
+  (over the chord before or a 4/2) or a note held over a moving bass (into a 4/2 or a 7) — each at −log of how often,
+  of the soprano's quarters of that motion on that beat (under-tables.mjs's `sopMotion`), Bach makes it that
+  dissonance; `chords[t].dissonance` says which. A tritone or a 7th in the bass is no longer refused, only as rare as
+  Bach's. The weights for continuo.mjs's tables set again on its plain −log (chorales ≡ 1 mod 5). On the 150 held-out
+  phrases: Bach's bass 2.37 bits a note, 6 phrases outside the model (13 before), note for note 22.3%, leaps 55.1%
+  (Bach 54.5), ⑤–① ends 60.7% (57.3).
 - **The figures as a wish** (Study 76's step 2, #353). `@kairotic/rules` 0.25.0: `fourOverBass` and `fromOuter` take
   `figuresWeight`: each bass unit's chord is asked, not ordered — a realization that leaves out a tone of it, or sounds a
   tone not of it, pays the weight for each (`SOFT_BETWEEN`'s `figures`). Bach's soprano, bass and chords given to
