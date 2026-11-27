@@ -48,6 +48,9 @@ const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483
   // tension (tension.mjs): Lerdahl's chord distance, the studies' copies
   const tCopies = readdirSync(join(root, "studies")).filter((d) => existsSync(join(root, "studies", d, "kairotic", "tension.mjs")));
   is(`the studies' copies of tension.mjs, as it is (${tCopies.join(", ")})`, tCopies.length >= 1 && tCopies.every((d) => readFileSync(join(root, "studies", d, "kairotic", "tension.mjs"), "utf8") === readFileSync(join(root, "packages/rules/assets/tension.mjs"), "utf8")));
+  // the continuo tables (continuo.mjs): the studies that keep a copy, the package's
+  const coCopies = readdirSync(join(root, "studies")).filter((d) => existsSync(join(root, "studies", d, "kairotic", "continuo.mjs")));
+  is(`the studies' copies of continuo.mjs, as it is (${coCopies.join(", ")})`, coCopies.length >= 1 && coCopies.every((d) => readFileSync(join(root, "studies", d, "kairotic", "continuo.mjs"), "utf8") === readFileSync(join(root, "packages/rules/assets/continuo.mjs"), "utf8")));
   const Tn = await import("../packages/rules/assets/tension.mjs"), I0 = Tn.placed([48, 52, 55], C), dd = (ps) => Tn.distance(I0, Tn.placed(ps, C)).d;
   is("tension.mjs: Lerdahl's δ from I in C — V 5, IV 5, vi 7, iii 7, ii 8, I 0; V → I 5; V/V in G's region (i 1)",
      dd([43, 47, 50]) === 5 && dd([41, 45, 48]) === 5 && dd([45, 48, 52]) === 7 && dd([40, 43, 47]) === 7 && dd([50, 53, 57]) === 8 && dd([48, 52, 55]) === 0 &&
