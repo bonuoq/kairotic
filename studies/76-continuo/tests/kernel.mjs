@@ -57,6 +57,15 @@ export async function run() {
   is(`of ${few.length} short phrases kept out, ${done.length} realized in four parts`, done.length >= few.length - 2);
   const mean = (k) => done.reduce((a, [x, y]) => a + C.compare(x, y)[k], 0) / done.length;
   notes.push(`against Bach: bass notes ${(100 * mean("bass")).toFixed(0)}%, pitch classes ${(100 * mean("bassPc")).toFixed(0)}%, chords ${(100 * mean("chords")).toFixed(0)}%, inner notes ${(100 * mean("inner")).toFixed(0)}%`);
+  // a figure's accidental played: no voice a semitone off a tone the chord asks (the ♯ of a raised 3rd not taken)
+  let accs = 0, offs = 0;
+  for (const [, y] of done) y.chords.forEach((ch, t) => {
+    const want = C.pcsOf(ch); if (!want || !/[♯♭♮]/.test(y.figures[t])) return; accs++;
+    const have = y.satb[t].map((m) => ((m % 12) + 12) % 12);
+    if (have.some((c) => !want.includes(c) && want.some((w) => ((w - c + 12) % 12) === 1 || ((c - w + 12) % 12) === 1))) offs++;
+  });
+  is(`the figures' accidentals played: of ${accs} quarters figured with one, ${offs} with a voice a semitone off the chord asked`, accs > 0 && offs <= 1);
+  is("pcsOf: A major's pitch classes, E7's", String(C.pcsOf({ root: "A", kind: "" })) === "9,1,4" && String(C.pcsOf({ root: "E", kind: "7" })) === "4,8,11,2");
   const snd = C.soundOf({ satb: [[67, 62, 59, 43], [67, 64, 60, 48]], held: [[false, false, false, false], [true, false, false, false]] }, { unit: 1, fermata: 2 });
   is("soundOf: the soprano held over two quarters, the last a fermata", snd.filter((x) => x.voice === "soprano").length === 1 && snd.find((x) => x.voice === "soprano").dur === 3);
   return { results, notes };

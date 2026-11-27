@@ -7,7 +7,7 @@
 // one for the chords over a degree), 0.5 added to every cell (a plain −log, so that costs summed are a probability's: Study 63's logProb); written between the
 // `@tables-begin` and `@tables-end` lines of continuo.mjs (default packages/rules/assets/continuo.mjs).
 import { readFileSync, writeFileSync } from "node:fs";
-import { chordOf, CHORDS, dissonanceOf } from "../../../../packages/rules/assets/continuo.mjs";
+import { chordOf, CHORDS, dissonanceOf, spelled, bassMoveOf } from "../../../../packages/rules/assets/continuo.mjs";
 
 const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const tonicOf = (k) => { const t = k.split(" ")[0]; return (PC[t[0]] + (t.match(/[#♯]/g) || []).length - (t.match(/[b♭]/g) || []).length + 12) % 12; };
@@ -23,7 +23,8 @@ const cost = (counts, alpha = 0.5) => {
 export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {
   const vertical = Array(12).fill(0), pair = Array.from({ length: 5 }, () => Array(5).fill(0));
   const deg = { major: Array.from({ length: 12 }, () => Array(COLS.length).fill(0)), minor: Array.from({ length: 12 }, () => Array(COLS.length).fill(0)) };
-  const cad = { major: {}, minor: {} }, diss = {};
+  const cad = { major: {}, minor: {} }, diss = {}, fine = {}, coarse = {};
+  const role = (nm, v) => ((((spelled(nm[v]).step - spelled(nm[3]).step) % 7) + 7) % 7);
   let quarters = 0, used = 0;
   for (const p of phrases) {
     if (!keep(p)) continue;
@@ -36,6 +37,12 @@ export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {
       if (q) pair[move(S - p.satb[q - 1][0])][move(B - p.satb[q - 1][3])]++;
       const k = p.keys[q], d = (((B - tonicOf(k)) % 12) + 12) % 12;
       deg[modeOf(k)][d][COLS.indexOf(cls(p.names[q]))]++;
+      if (q) for (const v of [1, 2]) {
+        const was = role(p.names[q - 1], v), now = role(p.names[q], v), c0 = cls(p.names[q - 1]), c1 = cls(p.names[q]);
+        const bm = bassMoveOf(spelled(p.names[q][3]).step - spelled(p.names[q - 1][3]).step);
+        (fine[`${c0}>${c1}|${bm}|${was}`] ||= Array(7).fill(0))[now]++;
+        (coarse[`${c1}|${was}`] ||= Array(7).fill(0))[now]++;
+      }
       const x = dissonanceOf(p, q);
       if (x) { const w = `${x.voice}|${x.motion}|${x.interval ?? "-"}|${p.strong[q] ? "strong" : "weak"}`; diss[w] = (diss[w] || 0) + 1; }
     }
@@ -53,6 +60,7 @@ export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {
       degree: cost(deg[m].map((r) => r.reduce((a, b) => a + b, 0))),
       chord: deg[m].map((r) => cost(r)),
     }])),
+    BACH_INNER_ROLES: { fine: Object.fromEntries(Object.keys(fine).sort().map((k) => [k, fine[k]])), coarse: Object.fromEntries(Object.keys(coarse).sort().map((k) => [k, coarse[k]])) },
     BACH_DISSONANCES: Object.fromEntries(Object.entries(diss).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))),
     BACH_CADENCES: Object.fromEntries(["major", "minor"].map((m) => {
       const tot = Object.values(cad[m]).reduce((a, b) => a + b, 0);

@@ -15,6 +15,7 @@
 import { mod, sign, keyOf, codeOf3, codeDegree, codeAlter, localOf, localNote, FIG_CLASS, CLASS_FIG, isDominant, degreeOf, degreeIn, codeOf, parseKey, guessKey } from "./tonal.mjs";
 import { melodicParts, verticalParts, total, choose, temperature, defaultWeights } from "./soft.mjs";
 import { functionOf, grammarErrors } from "./functions.mjs";
+import { roleCost, chordOfIntervals, bassMoveOf } from "./continuo.mjs";
 
 // ─── a time limit for the count ───
 // The exact count runs where it is asked — in a page, on its only thread —, and a long bass without figures in four
@@ -1055,11 +1056,37 @@ export const BETWEEN = {
 };
 // soft rules between the voices: four parts, the bass doubled in a 5/3, a 6/4, a 5/4, a 7/3
 export const SOFT_BETWEEN = {
+  /** the inner voices as Bach's go over a figured bass (Study 76): each inner voice's role — its interval over the
+   *  bass — costs −log of how often his alto and tenor take it from the role before, the chord before and this one
+   *  (the chords the voices make, read as figures) and the bass's move between them (continuo.mjs' roleCost: 1.23
+   *  bits a role, against 1.64 knowing the chord alone) — the 7th of a 6/5 down to the 3rd as the bass rises to ①,
+   *  the 3rd kept as a common tone, the leading tone up. */
+  "bach-roles": (N, { weight = 1 } = {}) => ({ id: "bach-roles", cost: ({ W, t, x }) => {
+    if (t === 0) return {};
+    const now = x.map((c, i) => N.V[i].vertical(t, c).cls), was = [0, 1, 2].map((i) => N.V[i].vertical(t - 1, W[i][t - 1]).cls);
+    const c1 = chordOfIntervals(now.map((c) => c + 1)), c0 = chordOfIntervals(was.map((c) => c + 1));
+    const bm = bassMoveOf(N.B[t].d - N.B[t - 1].d);
+    const c = roleCost(c0, c1, bm, was[1], now[1]) + roleCost(c0, c1, bm, was[2], now[2]);
+    return { "bach-roles": weight * c };
+  } }),
   /** the bass's figures as a wish (fourOverBass's figuresWeight): a unit whose bass asks a chord (`want`, CHORDS4's)
    *  pays weight for each tone of it the voices leave out and each voice sounding a tone not of it — Bach's figures
-   *  given to bach-4, whose hard rules would otherwise refuse half his phrases realized on them (Study 76). */
+   *  given to bach-4, whose hard rules would otherwise refuse half his phrases realized on them (Study 76). Where the
+   *  bass gives the chord's pitch classes too (a bass note's `pcs`, 0 a C: its accidentals, a ♯ that raises a 3rd), they are
+   *  what is asked: a tone of the chord left out, or a voice off them, pays — so a figured ♯ is played as one. */
   figures: (N, { weight = 3 } = {}) => ({ id: "figures", cost: ({ t, x }) => {
-    const ch = N.B[t].want && CHORDS4[N.B[t].want];
+    const u = N.B[t];
+    if (u.pcs) {
+      const tonic = mod(N.K.midi(0, 0), 12), want = u.pcs.map((c) => mod(c - tonic, 12)), have = x.map((c) => mod(N.semi(c), 12)), bass = mod(N.K.semi(u.d, u.r || 0), 12);
+      // (the chord's 5th, its third tone, may be left out, as CHORDS4's; every other tone asked — and a voice a semitone
+      // off a tone asked, the figure's ♯ or ♭ not taken, pays twice)
+      const all = [bass, ...have];
+      const missing = want.filter((c, i) => i !== 2 && !all.includes(c)).length;
+      const off = have.reduce((a, c) => a + (want.includes(c) ? 0 : want.some((w) => mod(w - c, 12) === 1 || mod(c - w, 12) === 1) ? 2 : 1), 0);
+      const cost = missing + off;
+      return cost ? { figures: weight * cost } : {};
+    }
+    const ch = u.want && CHORDS4[u.want];
     if (!ch) return {};
     const v = x.map((c, i) => N.V[i].vertical(t, c).cls);
     const off = ch.need.filter((c) => !v.includes(c)).length + v.filter((c) => !ch.ok.includes(c)).length;
@@ -1145,10 +1172,10 @@ Object.assign(STYLES, {
   // bach-vertical, 1.5 —, the species' rewards for a passing note and a suspension off, the moves weighed more — 4 —
   // so a voice does not leap to keep consonant; minor's raised ⑥ as seldom as his in the inner voices — raised-sixth, 2:
   // 1.6.0; bach-vertical 1 in 1.6.1, the bridges tonicizing)
-  "bach-4": { style: "bach-4", version: "1.6.1", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
+  "bach-4": { style: "bach-4", version: "1.7.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
                                                                                           soft: [["bach-motion"], ["bach-vertical"], ["raised-sixth"]], weights: { "bach-motion": 4, "bach-vertical": 1, "raised-sixth": 2, passing: 0, "suspension-life": 0 } },
     between: [["order", { within: 7, unison: true }], ["functions", false]],
-    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"]], weights: { functions: 2, "voice-exchange": 4 },
+    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"], ["bach-roles"]], weights: { functions: 2, "voice-exchange": 4, "bach-roles": 2 },
     // (the voices' ranges as Bach's in the chorales, MIDI: the same in every key)
     ranges: { soprano: [57, 81], alto: [52, 74], tenor: [48, 69] } },
 });
@@ -1294,7 +1321,7 @@ export function bassFromNotes(notes, K, voices = 4, fill = false) {
     if (fig && !chord) unknown.push(`note ${i + 1}: ${fig}`);
     const key = parseKey(nt.key);
     for (let j = 0; j < Math.max(1, nt.units || 1); j++)
-      units.push({ d: dr.d, r: dr.r, struck: j === 0, strong: nt.strong ? !!nt.strong[j] : units.length % 2 === 0, chord, key,
+      units.push({ d: dr.d, r: dr.r, struck: j === 0, strong: nt.strong ? !!nt.strong[j] : units.length % 2 === 0, chord, key, ...(nt.pcs ? { pcs: nt.pcs } : {}),
                    fig: voices === 2 && chord ? CHORDS[chord] && chord.split("/").map(Number) : undefined, note: i,
                    dominant: mod(dr.d, 7) === 4 && (!next || isDominant(dr.d, next.d)) });
   });

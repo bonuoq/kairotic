@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Study 71's deck: whole phrases** (Study 76). `tools/deck-continuo.mjs` draws a deck whose trials put Bach's phrase
+  against one written under his soprano alone — the figured bass and its voices of Study 76 — on the phrases the tables
+  were not counted on: 120 trials, 40 of each of `continuo`, `continuo-no-keys`, `continuo-no-functions` (40 of 43,
+  46 and 45 phrases realized). The page names them ("the continuo") and shows their figures in the reveal. Measured:
+  their inner voices move as Bach's within a few points, but dissonate against the bass half as often (9.2% of the
+  chords, Bach 20.9%) and trade notes less (2.9 exchanges per 100 chords, Bach 5.0).
+- **The inner voices go as Bach's over a figured bass** (Study 76, #353). `@kairotic/rules` 0.26.0: `continuo.mjs`'
+  `BACH_INNER_ROLES` counts where Bach's alto and tenor go — each one's interval over the bass, given the chord before,
+  this chord, the bass's move between them and its interval before (848 contexts, the chorales but every fifth) — and
+  `roleCost` reads it (1.23 bits a role on the chorales kept out, against 1.64 knowing the chord alone: the 7th of a 6/5
+  down to the 3rd as the bass rises to ①, a common tone kept, the leading tone up). `bach-4` 1.7.0 weighs its inner
+  voices so (`SOFT_BETWEEN`'s `bach-roles`, 2): on 39 of Bach's phrases realized on his bass and figures, the roles'
+  mean cost per move falls from 0.96 to 0.84 nats (his own: 0.86). The studies with a copy of `rules.mjs` keep one of
+  `continuo.mjs` beside it. `@kairotic/cac` 0.16.17 (its pin).
+- **A figured ♯ played as one** (Study 76; heard by the listener). `@kairotic/rules` 0.25.1: a bass note may give its
+  chord's pitch classes (`pcs`), and `figuresWeight` then asks those: a tone of the chord left out (its 5th may be) or a
+  voice off it pays, a voice a semitone off a tone asked (the ♯ of a raised 3rd not taken) twice. Study 76 passes
+  `under.mjs`' chords as `pcsOf`. On 25 short phrases kept out, the quarters figured with an accidental whose voices
+  played the note unaltered: 10 of 38 before, 1 after. `@kairotic/cac` 0.16.16 (its pin).
 - **Study 74 sings with Study 75's voice; Seikilos in the Greek system** (#467, #192). Study 74's melodies are sung by
   the voice (its notes, syllables and pitches as the system has them — a Greek tonos's cents too —, Koine for
   Seikilos's stele, Attic for Homer), the comes or the aulos played with it; a plain tone still on choice. Study 75

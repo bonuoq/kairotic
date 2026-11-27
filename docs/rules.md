@@ -240,6 +240,11 @@ under a soprano that is not a chord tone, #487).
 `@kairotic/rules` 0.25.0: `fourOverBass`'s and `fromOuter`'s `figuresWeight`: the bass's figures a wish — a chord asked
 and not made costs the weight for each tone left out or added (`SOFT_BETWEEN`'s `figures`) — where as orders `bach-4`'s
 hard rules refuse half of Bach's phrases realized on his own chords.
+`@kairotic/rules` 0.25.1: a bass note's `pcs` (its chord's pitch classes): with `figuresWeight` they are what is asked,
+accidentals and all — a voice a semitone off a tone asked (a figured ♯ not taken) paying twice.
+`@kairotic/rules` 0.26.0: `bach-4` 1.7.0: `bach-roles` (between the voices, weight 2): each inner voice's interval over the
+bass costs −log of how often Bach's alto and tenor take it after the one before, over that change of chord and that
+move of the bass (`continuo.mjs`' `roleCost`, `BACH_INNER_ROLES`).
 
 ## Next
 

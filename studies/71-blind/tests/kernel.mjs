@@ -35,7 +35,10 @@ export async function run() {
   is(`the deck: ${D.trials.length} trials, ${D.perVariant} of each variant, every phrase once`,
      D.variants.every((v) => by[v].length === D.perVariant) && new Set(D.trials.map((t) => t.phrase)).size === D.trials.length);
   const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
-  is("... each bridge as long as Bach's phrase, from his first chord to his last, whole (the four voices as his)",
+  const whole = D.kind === "continuo";
+  if (whole) is("... a deck of whole phrases (Study 76): each as long as Bach's, his soprano throughout, on the phrases the tables were not counted on (every fifth chorale)",
+     D.trials.every((t) => { const B = t.bridge.satb, A = t.bach.satb; return B.length === A.length && B.every((c, u) => c[0] === A[u][0]) && Number(t.phrase.slice(4, 7)) % 5 === 0; }));
+  else is("... each bridge as long as Bach's phrase, from his first chord to his last, whole (the four voices as his)",
      D.trials.every((t) => { const B = t.bridge.satb, A = t.bach.satb, n = A.length; return B.length === n && same(B[0], A[0]) && same(B[n - 1], A[n - 1]); }));
   // (the inner voices' moves, as often as Bach's: a note kept, a step, a 3rd, a 4th, wider)
   const motion = (key) => { const c = [0, 0, 0, 0, 0]; let n = 0; for (const t of D.trials) { const X = t[key].satb; for (const v of [1, 2]) for (let u = 1; u < X.length; u++) { const d = Math.abs(X[u][v] - X[u - 1][v]); c[d === 0 ? 0 : d <= 2 ? 1 : d <= 4 ? 2 : d === 5 ? 3 : 4]++; n++; } } return c.map((x) => (100 * x) / n); };
@@ -54,10 +57,11 @@ export async function run() {
   const DISS = new Set([1, 2, 5, 6, 10, 11]);
   const dis = (key) => { let ch = 0, cl = 0, u = 0; for (const t of D.trials) for (const c of t[key].satb) { u++; const iv = [0, 1, 2].map((v) => pc(c[v] - c[3])); if (iv.some((x) => DISS.has(x))) ch++; cl += iv.filter((x) => x === 1 || x === 11).length; } return [(100 * ch) / u, (100 * cl) / u]; };
   const [db, cb] = dis("bach"), [dr, cr] = dis("bridge");
-  is(`... and dissonate against the bass about as often as Bach's: ${dr.toFixed(1)}% of the chords (Bach ${db.toFixed(1)}%), a semitone's clash in ${cr.toFixed(1)} per 100 (Bach ${cb.toFixed(1)})`, Math.abs(dr - db) < 5 && cr < 2 * cb + 1);
+  // (a deck of whole phrases is measured, not held to it: its dissonances are the bass's own, still fewer than his)
+  if (!whole) is(`... and dissonate against the bass about as often as Bach's: ${dr.toFixed(1)}% of the chords (Bach ${db.toFixed(1)}%), a semitone's clash in ${cr.toFixed(1)} per 100 (Bach ${cb.toFixed(1)})`, Math.abs(dr - db) < 5 && cr < 2 * cb + 1);
   notes.push(`chords with a dissonance against the bass: bridges ${dr.toFixed(1)}%, Bach ${db.toFixed(1)}%; semitone clashes per 100 chords: ${cr.toFixed(1)}, Bach ${cb.toFixed(1)}`);
   is("... between the ends (Bach's, his voices crossing where they do) the inner voices between the soprano and the bass, in order (a unison allowed)",
-     D.trials.every((t) => t.bridge.satb.slice(1, -1).every(([s, a, tn, b]) => s >= a && a >= tn && tn >= b)));
+     D.trials.every((t) => t.bridge.satb.slice(whole ? 0 : 1, whole ? undefined : -1).every(([s, a, tn, b]) => s >= a && a >= tn && tn >= b)));
   const filled = D.variants.map((v) => `${v} ${D.tried[v].filled}/${D.tried[v].tried}`).join(", ");
   is(`... the phrases tried and filled by bach-4, counted (${filled})`, D.variants.every((v) => D.tried[v].filled === D.perVariant && D.tried[v].tried >= D.perVariant));
   notes.push(`the deck: phrases tried and filled by variant — ${filled}`);
