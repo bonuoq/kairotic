@@ -32,9 +32,10 @@ try {
   melodia.checked = false; melodia.dispatchEvent(new w.Event("change"));
   is("stricter thresholds: fewer notes, the model not run again",
      d.querySelectorAll("#roll rect.found").length < found && S.state().res === res);
-  const f = await S.follow();
-  is(`the registers followed: by the keys (median ${f && f.keys.median} ms) far better than by a chroma (${f && f.chroma.skipped} skipped)`,
-     f && f.keys.median < 80 && d.querySelectorAll("#follow-table tr").length === 16 && /by the 88 keys/.test(d.getElementById("followed").textContent));
+  // (the first eight chords only, to stay quick: tests/follow.html follows the whole piece)
+  const f = await S.follow(8);
+  is(`the registers followed in the page: each chord's error by the keys and by a chroma (keys median ${f && f.keys.median} ms)`,
+     f && f.keys.median < 80 && d.querySelectorAll("#follow-table tr").length === 8 && /by the 88 keys/.test(d.getElementById("followed").textContent));
 } catch (e) { errors.push(String(e.message || e)); }
 const bad = results.filter((r) => !r[1]).map((r) => r[0]).concat(errors.map((e) => "error: " + e));
 window.kairoticResults = { total: results.length, failed: bad };

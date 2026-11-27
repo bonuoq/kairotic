@@ -341,8 +341,9 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; kairotic.follow's frame-by-frame follower (dtw), fed every 50 ms with what Basic Pitch heard: as 88 keys, or folded
 ;; into a chroma as the followers hear today; each chord entered against when it was played.
 (def F (.-F K))
-(defn follow! []
-  (let [ev (.written F)
+(defn follow! [& [n]]
+  ;; (n: only the first n chords, as the page's test asks, to be quick)
+  (let [ev (cond-> (.written F) (number? n) (.slice 0 n))
         P (.perform F ev #js {:rubato (js/parseFloat (.-value ($ "rubato"))) :seed 7})]
     (-> (analyse! (.render L (.-notes P)) "the registers, with rubato" nil)
         (.then (fn [res]
@@ -363,7 +364,7 @@ window.addEventListener("DOMContentLoaded", function () {
                                                (str "<tr><td>" (line j) "</td><td class='" (cls ek) "'>" (ms ek) "</td><td class='" (cls ec) "'>" (ms ec) "</td></tr>"))))))
                      (swap! st assoc :followed #js {:keys k :chroma c})
                      #js {:keys k :chroma c})))))))
-(.addEventListener ($ "follow") "click" follow!)
+(.addEventListener ($ "follow") "click" #(follow!))
 
 ;; for the tests: the cadence heard, and the state
 (set! (.-kairoticStudy js/window)
