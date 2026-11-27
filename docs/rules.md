@@ -237,6 +237,9 @@ one voice not of it, by how it moves (a suspension, a passing or neighbour note,
 appoggiatura, an escape, an anticipation); `BACH_DISSONANCES`, how often each (the states the bass engine must allow
 under a soprano that is not a chord tone, #487).
 `@kairotic/rules` 0.24.1: the continuo tables a plain −log (no row's lowest set to 0: summed, a probability's).
+`@kairotic/rules` 0.25.0: `fourOverBass`'s and `fromOuter`'s `figuresWeight`: the bass's figures a wish — a chord asked
+and not made costs the weight for each tone left out or added (`SOFT_BETWEEN`'s `figures`) — where as orders `bach-4`'s
+hard rules refuse half of Bach's phrases realized on his own chords.
 
 ## Next
 

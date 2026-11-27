@@ -80,6 +80,19 @@ const ds = P.map((p) => p.satb.map((_, t) => Co.dissonanceOf(p, t)).filter(Boole
 is(`dissonanceOf: the ${ds.length} quarters that are no chord, each a chord and the one voice not of it — the alto's ${byVoice("alto")}, the tenor's ${byVoice("tenor")}, the soprano's ${byVoice("soprano")}, the bass's ${byVoice("bass")} (${byVoice(null)} no one voice explains); chor009-1's 6th quarter a 4–3 in the soprano over a 5/3`,
    JSON.stringify(Co.dissonanceOf(p9, 5)) === JSON.stringify({ voice: "soprano", motion: "suspension", interval: 4, chord: "5/3" }) && Co.dissonanceOf(p9, 0) === null &&
    byVoice(null) <= 5 && byVoice("soprano") < byVoice("tenor") && Co.BACH_DISSONANCES["alto|suspension|2|strong"] > 100);
+// Study 76's step 2: Bach's soprano, his bass and his chords given to bach-4 — as orders, or as a wish (figuresWeight)
+{
+  const ENG = { "5/3": "5/3", "6/3": "6/3", "6/4": "6/4", "7": "7", "6/5": "6/5", "4/3": "6/4/3", "4/2": "4/2" };
+  const kn = (k) => k.replace("♯", "#").replace("♭", "b");
+  const notesOf = (p, v, fig) => { const out = []; p.satb.forEach((c, t) => { if (t && p.held[t][v] && out.length) { const o = out.at(-1); o.units++; o.strong.push(!!p.strong[t]); return; }
+    const f = fig ? ENG[Co.chordOf(p.names[t])] : undefined; out.push({ midi: c[v], name: p.names[t][v], units: 1, strong: [!!p.strong[t]], key: kn(p.keys[t]), ...(f ? { fig: f } : {}) }); }); return out; };
+  const p = P.find((x) => x.id === "chor003-1"), spec = { bass: notesOf(p, 3, true), soprano: notesOf(p, 0, false), key: kn(`${p.key.tonic} ${p.key.mode}`) };
+  const hard = R.fromOuter(spec), soft = R.fromOuter({ ...spec, figuresWeight: 8 }), W = soft.count() > 0n ? soft.engine({ temp: 0 }) : null;
+  const pcs = (xs, b) => [...new Set(xs.map((m) => (((m - b) % 12) + 12) % 12))].sort((a, c) => a - c).join();
+  const same = W ? p.satb.filter((c, t) => pcs([c[0], soft.midi(W.alto[t]), soft.midi(W.tenor[t]), c[3]], c[3]) === pcs(c, c[3])).length : 0;
+  is(`fromOuter's figuresWeight: Ach Gott, wie manches Herzeleid's first phrase with Bach's chords as orders has no realization by bach-4; as a wish (weight 8) it has, its likeliest making ${same} of his 8 chords`,
+     hard.count() === 0n && soft.count() > 0n && same >= 6, String(same));
+}
 const dc = Co.BACH_DEGREE_CHORD, argmin = (a) => a.indexOf(Math.min(...a));
 is("... what they say: the 5th and the 3rd the soprano's commonest over the bass, contrary motion the commonest pair, a 5/3 on ① and ⑤ and a 6/3 on ⑦, ⑤–① the commonest cadence; each a plain −log (a row's probabilities add up to 1)",
    argmin(Co.BACH_OUTER_VERTICAL) === 7 && Co.BACH_OUTER_PAIR[1 * 5 + 3] - Math.min(...Co.BACH_OUTER_PAIR) < 0.5 && argmin(dc.major.chord[0]) === 0 && argmin(dc.major.chord[7]) === 0 &&

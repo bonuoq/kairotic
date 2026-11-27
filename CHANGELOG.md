@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The figures as a wish** (Study 76's step 2, #353). `@kairotic/rules` 0.25.0: `fourOverBass` and `fromOuter` take
+  `figuresWeight`: each bass unit's chord is asked, not ordered — a realization that leaves out a tone of it, or sounds a
+  tone not of it, pays the weight for each (`SOFT_BETWEEN`'s `figures`). Bach's soprano, bass and chords given to
+  `bach-4` on 60 short phrases: as orders 30 can be realized (his inner notes 56%, his chords 86%), as a wish 59
+  (weight 8: his inner notes 47%, his chords 68%; with no figures 32% and 38%). `@kairotic/cac` 0.16.15 (its pin).
 - **The continuo tables as a plain −log** (#353, the structural thread's suggestion). `@kairotic/rules` 0.24.1: every table
   of `continuo.mjs` is −log of its frequency, no longer shifted so that each row's lowest is 0 — a shift a row of its own
   that skewed the choice between degrees in Study 63's bass under a soprano, and made its `logProb` inexact. Measured
