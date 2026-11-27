@@ -137,8 +137,24 @@ export async function run() {
      Ody({ tonos: "lydian", genera: ["diatonic"] }) === 57609870580663n && Ody({ tonos: "lydian", genera: ["chromatic"] }) === 2844577477911816n
      && Ody({ tonos: "lydian", genera: ["enharmonic"], shade: "archytas" }) === 1330881641079072n);
   const Gd = aulos({ ...Gs, practice: "drone" });
-  is("... the aulos's drone on the final where the system has no octave below it (the Iastian's lowest note is f♯); the canon and the examiner wait for the Greek counterpoint",
-     Gd.name(Gd.comesOf(GU)[0]) === "e" && canonic(Gs).error && examine(GA, GU).length === 0);
+  is("... the aulos's drone on the final where the system has no octave below it (the Iastian's lowest note is f♯)", Gd.name(Gd.comesOf(GU)[0]) === "e");
+  // the Greek counterpoint (GREEK_ON): concords only the unison, 4th, 5th and octave; parallel concords allowed
+  const Lyd = { text: O.text, metre: O.metre, system: { tonos: "lydian", genera: ["diatonic"] }, final: 0, melisma: 1 };
+  is("the Greek counterpoint: Odyssey 1.1 in canon in the Lydian, the comes an octave below a foot later, a note a syllable — 2,215 strict canons, 310,795 free (in a church mode, 7,823 and 948,547)",
+     canonic({ ...Lyd, strict: true }).count() === 2215n && canonic(Lyd).count() === 310795n);
+  const GH = aulos({ ...Lyd, practice: "heterophony", style: "greek" });
+  let gr = 7; const rg = () => { gr = (gr * 16807) % 2147483647; return gr / 2147483647; };
+  let gUni = 0, gTot = 0, gDisc = 0, gStrong = true;
+  for (let i = 0; i < 20; i++) {
+    const E = GH.engine({ temp: 0.5, r: rg });
+    for (let t = 0; t < E.dux.length; t++) { const q = GH.A.S.concord(E.dux[t], E.comes[t]); gTot++; if (q === "unison") gUni++; if (!q) { gDisc++; if (GH.world.strong(t)) gStrong = false; } }
+  }
+  is("... the aulos in heterophony, within a 4th: 14,338,522,811,655,342,992 ways; as the engine plays it, mostly in unison with the voice (more than 70%), a discord only passing on a weak beat, every strong beat a concord",
+     GH.count() === 14338522811655342992n && gUni / gTot > 0.7 && gDisc > 0 && gStrong);
+  notes.push(`Greek heterophony, 20 engine's: ${gUni} of ${gTot} beats in unison, ${gDisc} discords (all on weak beats)`);
+  const GE = examine(GA, GU, { degrees: [1, 0.6], ms: 600 });
+  is("... and the examiner in a Greek tonos: the melody tried as the dux of imitation-2 by the Greek counterpoint, its comes in the same system",
+     GE.length === 16 && GE.every((e) => e.comes !== undefined) && GE.filter((e) => e.engine).every((e) => e.sound && e.sound.comes.some((m) => m !== null)));
   return { results, notes };
 }
 

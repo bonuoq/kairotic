@@ -42,7 +42,11 @@
       (t/is (str "... at its tempo: " (:tempo (mt/attrs q))) (<= 92 (:tempo (mt/attrs q)) 100))
       (t/eq "with the time of a downbeat (its second note), the pickup is where it was"
             (mapv :t (mt/notes (qz/quantize-tree perf {:meter [3 4] :time :track :downbeat (:on (nth (played 96 0.04 tune) 1))})))
-            (mapv first tune)))
+            (mapv first tune))
+      ;; in beats already: the bars moved so that the note said to start one does
+      (t/eq "time in beats and a note said to start a bar (its third, at 4): the two before are a pickup, the bars moved"
+            (mapv :t (mt/notes (qz/quantize-tree (into [:par] (map (fn [[b d]] [:note {:at b :dur d :pitch 60}]) (take 6 tune))) {:meter [3 4] :downbeat 4})))
+            [4 5 6 6.5 7 8]))
     (let [perf (into [:par] (map (fn [n] [:note {:at (:on n) :dur (- (:off n) (:on n)) :pitch 60}]) (played 96 0 tune)))
           m (qz/time-map-of (qz/tree-notes perf) (qz/options {:meter [3 4] :time :track} nil))]
       (t/eq "a map kept gives the same score as the one found"

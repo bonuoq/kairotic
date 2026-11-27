@@ -727,7 +727,7 @@
                         (live-tree id) (str "tree · " (mt/summary (live-tree id)) " · (keep! " id ")")
                         (kept-tree b) (str "kept · " (mt/summary (kept-tree b))
                                            (when-let [f (:from (:recipe b))] (str " · from " f)))
-                        :else (str (when (= :score (display-of b)) (if (cv/generic? (canvas-data b)) "approx. · " (str "quantized" (when (:quant (canvas-data b)) " (quant)") " · alt-click: divisions · "))) (cv/summary (canvas-data b))
+                        :else (str (when (= :score (display-of b)) (if (cv/generic? (canvas-data b)) "approx. · " (str "quantized" (when (:quant (canvas-data b)) " (quant)") " · alt-click: divisions, ⌥⌘: starts a bar · "))) (cv/summary (canvas-data b))
                                    (when (:recipe b) (str " · changed since kept (remake! " id ")")))))) "</text>"
          chips)))
 

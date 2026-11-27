@@ -162,8 +162,11 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
   <b>a Greek tonos</b> (<code>greek.mjs</code>) — the Immutable System of two octaves and its conjunct tetrachord in any
   of the fifteen tonoi, diatonic, chromatic or enharmonic, in Aristoxenus's tuning or Archytas's ratios, heard in cents;
   its notes counted by their place (the chromatic lichanos a step below the mese, a minor third away), its moves judged
-  by their size, the final any of its notes (Seikilos's is the Iastian's lichanos meson, e). The canon and the
-  heterophony wait for the Greek counterpoint (only the unison, the 4th, the 5th and the octave concords). <b>The Greek
+  by their size, the final any of its notes (Seikilos's is the Iastian's lichanos meson, e). There the canon, the
+  heterophony and the examiner follow the <b>Greek counterpoint</b>: the only concords the unison, the 4th, the 5th
+  and the octave, on every strong beat; a discord only passing, by step, on a weak one; parallel concords allowed (the
+  aulos with the voice, the octaves of the magadis). The aulos in heterophony keeps within a 4th of the voice and
+  near it by choice: mostly in unison, its deviations the exception. <b>The Greek
   style</b> is learned from Mesomedes's hymns (DAGM 24, 25, 27) and Athenaios's Delphic paean (DAGM 20), read in their
   tonoi (<code>corpus.mjs</code>, <code>style.mjs</code>): the weights under which what they wrote is most likely —
   leaps dear, a note struck again free (a recitation tone, up to eight times), a melisma dear, no turn asked after a 4th
@@ -231,18 +234,16 @@ window.addEventListener("DOMContentLoaded", function () {
 (defn aulos? [] (contains? #{"heterophony" "drone" "ison"} (val-of "form")))
 
 ;; the Greek system's controls: its finals named (a degree of the system, from the proslambanomenos to the nete
-;; hyperbolaion), and the forms that wait for the Greek counterpoint (a canon, the heterophony) set aside
+;; hyperbolaion)
 (defn finals! []
   (let [G0 (.greekSystem GR (clj->js (greek-spec))) cur (val-of "gfinal")]
     (set! (.-innerHTML ($ "gfinal"))
           (str/join (for [d (range -7 8)] (let [c (.at G0 d)] (str "<option value=\"" d "\">" (esc (.pitchName G0 c)) " · " (esc (.-name (.noteOf G0 c))) "</option>")))))
     (set! (.-value ($ "gfinal")) (if (str/blank? cur) "0" cur))))
 (defn sys! []
-  (let [g (greek?) opts (.-options ($ "form"))]
+  (let [g (greek?)]
     (set! (.-hidden ($ "church-opts")) g)
-    (set! (.-hidden ($ "greek-opts")) (not g))
-    (doseq [i (range (.-length opts))] (let [o (aget opts i)] (set! (.-disabled o) (and g (contains? #{"canon" "heterophony"} (.-value o))))))
-    (when (and g (canon?)) (set! (.-value ($ "form")) "melody") (set! (.-hidden ($ "canon-opts")) true))))
+    (set! (.-hidden ($ "greek-opts")) (not g))))
 
 ;; ───── reading and counting ─────
 (defn scansion! [made]
@@ -362,7 +363,7 @@ window.addEventListener("DOMContentLoaded", function () {
     (set! (.-textContent ($ "sheet-sub")) (cond (aulos?) "the voice (red) sings the text, the aulos (blue) goes with it · a beat a column" (canon?) "the dux (red) sings the text, the comes (blue) answers · a beat a column" :else "a beat a column, the strong beats shaded"))
     (set! (.-disabled ($ "play")) (nil? sung))
     (set! (.-disabled ($ "export")) (nil? sung))
-    (set! (.-disabled ($ "examine")) (or (nil? sung) (not= (val-of "form") "melody") (greek?)))
+    (set! (.-disabled ($ "examine")) (or (nil? sung) (not= (val-of "form") "melody")))
     (set! (.-hidden ($ "stele")) (not (and (not (canon?)) (= (val-of "metre") "seikilos")
                                            (if (greek?) (= (val-of "tonos") "iastian") (and (= (val-of "tonic") "E") (= (val-of "mode") "dorian")))
                                            (= (str/replace (val-of "text") #"\s+" " ") (str/replace (.-TEXT (.-K K)) #"\s+" " ")))))
