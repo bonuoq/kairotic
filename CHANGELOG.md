@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 71's deck: whole phrases** (Study 76). `tools/deck-continuo.mjs` draws a deck whose trials put Bach's phrase
+  against one written under his soprano alone — the figured bass and its voices of Study 76 — on the phrases the tables
+  were not counted on: 120 trials, 40 of each of `continuo`, `continuo-no-keys`, `continuo-no-functions` (40 of 43,
+  46 and 45 phrases realized). The page names them ("the continuo") and shows their figures in the reveal. Measured:
+  their inner voices move as Bach's within a few points, but dissonate against the bass half as often (9.2% of the
+  chords, Bach 20.9%) and trade notes less (2.9 exchanges per 100 chords, Bach 5.0).
 - **The inner voices go as Bach's over a figured bass** (Study 76, #353). `@kairotic/rules` 0.26.0: `continuo.mjs`'
   `BACH_INNER_ROLES` counts where Bach's alto and tenor go — each one's interval over the bass, given the chord before,
   this chord, the bass's move between them and its interval before (848 contexts, the chorales but every fifth) — and

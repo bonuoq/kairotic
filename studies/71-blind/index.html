@@ -144,7 +144,11 @@ input[type="text"] { font: 13px var(--f-ui); color: var(--ink); background: var(
       chance (50%), the bridges pass; a layer whose absence makes him easier to find is one listeners hear. The deck
       (drawn once) is the same for everyone: export your answers and pool them with others' by importing
       theirs. <b>The deck</b> also counts the bridges <code>bach-4</code> could not fill — no inner voices by its rules
-      over those outer voices — by variant. The phrases are from Craig Sapp's edition of the chorales (CC BY-NC-SA 4.0).</p></section>
+      over those outer voices — by variant. <b>A deck of whole phrases</b> (Study 76 · continuo) puts against Bach's phrase
+      one written under his soprano alone: a figured bass (Study 63's <code>under.mjs</code>) and its voices
+      (<code>bach-4</code>, the figures as a wish), its variants the bass's layers (<code>continuo</code> all on,
+      <code>continuo-no-keys</code>, <code>continuo-no-functions</code>); only the phrases its tables were not counted on.
+      The phrases are from Craig Sapp's edition of the chorales (CC BY-NC-SA 4.0).</p></section>
   </div>
 </div>
 </main>
@@ -155,7 +159,8 @@ const STORE = "kairotic.study71.answers";
 const load = () => { try { return JSON.parse(localStorage.getItem(STORE) || "[]"); } catch { return []; } };
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(st.mine)); } catch {} };
 const st = { deck: null, session: [], i: 0, answered: false, mine: load(), pooled: [], heard: [false, false] };
-// (the variants: the deck's, as the bridges were drawn)
+// (the variants: the deck's, as the bridges were drawn; a deck of kind "continuo" holds whole phrases, Study 76's)
+const other = () => (st.deck && st.deck.kind === "continuo" ? "the continuo" : "a bridge");
 const V = () => (st.deck && st.deck.variants) || Bl.VARIANTS;
 const thisDeck = (a) => !st.deck || !st.deck.drawn || a.deck === st.deck.drawn;
 const pct = (x) => (x === null || x === undefined ? "—" : `${Math.round(x * 100)}%`);
@@ -222,10 +227,10 @@ function answer(k) {
   st.mine.push({ who: $("who").value.trim() || "anonymous", deck: st.deck.drawn || null, id: t.id, variant: t.variant, phrase: t.phrase, bachFirst: tr.bachFirst, correct, sure: $("sure").checked, at: new Date().toISOString() });
   save(); st.answered = true;
   $(`side-${bachSide}`).classList.add("bach"); if (!correct) $(`side-${k}`).classList.add("wrong");
-  $(`who-${bachSide}`).textContent = "Bach"; $(`who-${1 - bachSide}`).textContent = `a bridge · ${t.variant}`;
+  $(`who-${bachSide}`).textContent = "Bach"; $(`who-${1 - bachSide}`).textContent = `${other()} · ${t.variant}`;
   roll($(`roll-${bachSide}`), t.bach); roll($(`roll-${1 - bachSide}`), t.bridge);
-  $("reveal").innerHTML = `${correct ? '<span class="ok">Found.</span>' : '<span class="bad">Not found:</span> the bridge was taken for Bach.'} ` +
-    `${t.title ? `<i>${t.title}</i>` : t.phrase}${t.bwv ? ` (${/^BWV/.test(t.bwv) ? t.bwv : "BWV " + t.bwv})` : ""}, ${t.key.tonic} ${t.key.mode}, phrase ${t.phrase.split("-").pop()} · the bridge's variant <code>${t.variant}</code>`;
+  $("reveal").innerHTML = `${correct ? '<span class="ok">Found.</span>' : `<span class="bad">Not found:</span> ${other() === "a bridge" ? "the bridge" : "the continuo"} was taken for Bach.`} ` +
+    `${t.title ? `<i>${t.title}</i>` : t.phrase}${t.bwv ? ` (${/^BWV/.test(t.bwv) ? t.bwv : "BWV " + t.bwv})` : ""}, ${t.key.tonic} ${t.key.mode}, phrase ${t.phrase.split("-").pop()} · ${other() === "a bridge" ? "the bridge's" : "the continuo's"} variant <code>${t.variant}</code>${t.bridge.figures ? ` · its figures ${t.bridge.figures.map((f) => f || "·").join(" ")}` : ""}`;
   enable(); showScore();
 }
 function next() { stop(); st.i++; showTrial(); }
@@ -246,7 +251,7 @@ function showScore() {
     return `<tr class="${v === "overall" ? "overall" : ""}"><td>${v}</td><td>${s.n}</td><td>${pct(s.rate)}</td><td>${s.n ? `${pct(s.ci[0])}–${pct(s.ci[1])}` : "—"}</td><td>${s.n ? s.p.toFixed(3) : "—"}</td><td>${s.sure.n ? `${s.sure.found}/${s.sure.n}` : "—"}</td></tr>`;
   });
   $("score").innerHTML = `<tr><th>variant</th><th>heard</th><th>Bach found</th><th>95%</th><th>p vs chance</th><th>sure</th></tr>${rows.join("")}`;
-  $("score-who").textContent = `${all.length} answer${all.length === 1 ? "" : "s"} · ${who.size} listener${who.size === 1 ? "" : "s"} · lower: the bridges sound as his`;
+  $("score-who").textContent = `${all.length} answer${all.length === 1 ? "" : "s"} · ${who.size} listener${who.size === 1 ? "" : "s"} · lower: ${other() === "a bridge" ? "the bridges sound" : "the continuo sounds"} as his`;
   // (each variant's rate with its interval, chance marked)
   const X = (p) => 90 + p * 250, rowsY = [...V(), "overall"];
   let g = `<line class="axis" x1="${X(0)}" y1="6" x2="${X(0)}" y2="${12 + rowsY.length * 20}"/><line class="chance" x1="${X(0.5)}" y1="6" x2="${X(0.5)}" y2="${12 + rowsY.length * 20}"/>`;
@@ -263,10 +268,10 @@ function showScore() {
 function showDeck() {
   const D = st.deck;
   $("deck-n").textContent = `${D.trials.length} trials, the same for every listener (seed ${D.seed})`;
-  $("deck").innerHTML = `<tr><th>variant</th><th>trials</th><th>phrases tried</th><th>filled by bach-4</th></tr>` +
+  $("deck").innerHTML = `<tr><th>variant</th><th>trials</th><th>phrases tried</th><th>${D.kind === "continuo" ? "realized" : "filled by bach-4"}</th></tr>` +
     V().map((v) => `<tr><td>${v}</td><td>${D.trials.filter((t) => t.variant === v).length}</td><td>${D.tried[v].tried}</td><td>${pct(D.tried[v].filled / D.tried[v].tried)}</td></tr>`).join("");
   const top = Object.entries(D.failures).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  $("deck-note").textContent = top.length ? `Why a bridge was not filled, most often: ${top.map(([w, n]) => `${w.replace(/^no inner voices: (unit #, )?/, "")} (${n})`).join("; ")}.` : "";
+  $("deck-note").textContent = top.length ? `Why ${D.kind === "continuo" ? "a phrase was not realized" : "a bridge was not filled"}, most often: ${top.map(([w, n]) => `${w.replace(/^no inner voices: (unit #, )?/, "")} (${n})`).join("; ")}.` : "";
 }
 
 // ── export and import
