@@ -7,6 +7,10 @@
   of C and G in every register played with rubato: by the keys each chord is found within tens of ms (on ideal
   posteriorgrams a median of 6–14 ms, none skipped); a chroma hears runs of one chord and skips 10 of 15. On the
   cadence, every chord another, both follow alike. In the page, and tested in CI with the model itself.
+- **Study 75 · voice, less of a machine** (#467): its pitch and loudness waver from cycle to cycle (jitter, shimmer),
+  its vibrato comes in as a note is held (`VD` in the curves), a singer's formant near 3 kHz (`ring`), and the nasals
+  open the nose: a pole at 270 Hz and a zero at each nasal's antiformant (`FNZ` in the table: μ 1000, ν 1500, ŋ 2500 Hz),
+  cancelling elsewhere. Jitter and the singer's formant on the page; the antiformant checked by its spectrum in CI.
 - **Study 74 · aoidos written in the Greek system** (#192). `aoidos({system, final})`: a melody in a tonos of
   `greek.mjs`, its degrees counted by place from its final (`fromFinal`), the accent's rises and falls judged by pitch,
   a melisma by its size, the sound in cents; `style.mjs` reads the corpus there (`codesInSystem`). Mesomedes in the
