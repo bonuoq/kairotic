@@ -223,6 +223,18 @@ como cualquier edición de un árbol.
 (to-tree! :b5)                     ; una caja tree nueva junto al freqt :b5, con sus trazos como notas
 ```
 
+**Dónde empieza el compás.** El pulso se encuentra más a menudo que el compás: todo el ritmo puede salir desplazado un
+pulso o dos, una anacrusa mal leída. **⌥⌘+clic en una nota** de la partitura (alt+ctrl+clic) dice que empieza un
+compás: su tiempo tal como se tocó se guarda como `:downbeat` en `:quant`, un evento de la historia. Con pulsos
+seguidos, se buscan de nuevo con esa nota en una parte fuerte (un mapa guardado también se busca de nuevo); en pulsos
+ya, los compases se mueven para que empiece uno en ella, y lo que va antes es una anacrusa.
+
+```clojure
+(downbeat! :b1 2.5)                       ; la nota en la parte 2.5 de la partitura empieza compás → {:downbeat 1.912}
+(downbeat! :b1 nil)                       ; olvidado
+(quant :b1 {:downbeat 0.5})               ; lo mismo a mano, con el tiempo propio de la nota
+```
+
 La misma cuantización como caja del patch: **`quantize`** toma un freqt en su entrada derecha (su segunda salida), o un árbol
 en tiempo libre por la izquierda, guarda las opciones que llegan como mensajes (`[:meter "3/4"]`, `[:divs [1 2 3 4]]`,
 `[:legato 0.25]`, `[:time :track]`…) y, con un bang, envía el árbol medido — a una caja `tree`, a un `mt`. Solo envía con un

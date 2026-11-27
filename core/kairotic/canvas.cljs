@@ -151,7 +151,7 @@
       (when (and (sequential? cs) (seq cs) (every? num? cs) (pos? (peek (vec cs))) (< (count cs) 400))
         {:name (str (or (:name gy) "scale")) :cents (vec cs) :ref (if (and (num? ref) (< 1 ref 20000)) ref default-ref)})))))
 
-(def quant-keys [:meter :groups :key :divs :merge :nest :grace :legato :chord :voices :overlap :tempo :w :fix :spell :time :meters])
+(def quant-keys [:meter :groups :key :divs :merge :nest :grace :legato :chord :voices :overlap :tempo :w :fix :spell :time :meters :downbeat :ref-bpm :repeat :describe])
 
 (defn sane-quant
   "How a freqt's score is quantized, as kept in its buffer: only the keys kairotic.quantize reads (their

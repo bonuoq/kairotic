@@ -16,6 +16,15 @@
   a wish (`figuresWeight` 8). On the phrases kept out of the tables: realize, compare against Bach (bass notes, pitch
   classes, chords, inner notes), his own figures under his phrase where his continuo part survives. Kernel tests in
   Node and the browser, a page test. Studies 71 and 76 in the studies' list.
+- **Where the bar starts** (issue #106). **⌥⌘-click a note** of a quantized score (alt-ctrl-click) — or
+  `(downbeat! :bN t)` — says that it starts a bar: its time as played is kept in `:quant` as `:downbeat`, one event of
+  the history. Tracked (`:time :track`), the beats are found again with it on a downbeat, and a kept map (`track!`) is
+  found again too; with time already in beats, the quantizer now moves the bars so that it starts one (what comes
+  before is a pickup). `(downbeat! :bN nil)` forgets it. The most common error on played material, the whole rhythm
+  shifted by a beat or two, is now one click. Measured (`bench.mjs --asap --opts "{:downbeat :first}"`): one downbeat
+  given lifts ASAP's downbeat F from 41.0 to 49.5 %; on Weimar, where the beat is mostly found at half the tempo, it
+  does not help. A freqt's buffer now keeps the quantizer's newer options too (`:downbeat`, `:ref-bpm`, `:repeat`,
+  `:describe`): `(quant :b1 {:describe true})` was dropped before.
 - **The bass under Bach's soprano: his soprano's dissonances, his tables in plain −log** (#353, after #491 and #499).
   Study 63's `under.mjs` reads continuo.mjs's BACH_DISSONANCES: the soprano may be a suspension (held into the quarter,
   down a step after, resolved over the same bass or its octave, figured 4 3, 9 8, 7 6), a passing or neighbour note
