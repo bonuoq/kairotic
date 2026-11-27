@@ -10,6 +10,12 @@
   voices too); the tables (continuo.mjs's or under-tables.mjs's), the variant and the temperature to choose. Study 63
   keeps a copy of continuo.mjs (`tests/rules.mjs` checks it). `figureText` spells each chord's notes by its letters
   (G7 in G "♮7", not "♯7").
+- **Study 76 · continuo** (discussion #353): Bach's soprano given, a figured bass written under it and the voices that
+  play it, beside his. The bass and its local keys are Study 63's `under.mjs` on `continuo.mjs`' tables; the figures are
+  written as Bach abbreviates them (`abbreviate`, after BCFB); the inner voices are `bach-4`'s with the chords asked as
+  a wish (`figuresWeight` 8). On the phrases kept out of the tables: realize, compare against Bach (bass notes, pitch
+  classes, chords, inner notes), his own figures under his phrase where his continuo part survives. Kernel tests in
+  Node and the browser, a page test. Studies 71 and 76 in the studies' list.
 - **The bass under Bach's soprano: his soprano's dissonances, his tables in plain −log** (#353, after #491 and #499).
   Study 63's `under.mjs` reads continuo.mjs's BACH_DISSONANCES: the soprano may be a suspension (held into the quarter,
   down a step after, resolved over the same bass or its octave, figured 4 3, 9 8, 7 6), a passing or neighbour note
