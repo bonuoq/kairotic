@@ -1056,6 +1056,12 @@ export const BETWEEN = {
 };
 // soft rules between the voices: four parts, the bass doubled in a 5/3, a 6/4, a 5/4, a 7/3
 export const SOFT_BETWEEN = {
+  /** the chord sounded whole, as Bach's are (97% of his quarters sound three pitch classes or more): four voices
+   *  sounding two pitch classes, or one, pay weight for each missing (Study 76: a listener heard ours emptier). */
+  complete: (N, { weight = 2 } = {}) => ({ id: "complete", cost: ({ t, x }) => {
+    const u = N.B[t], pcs = new Set([mod(N.K.semi(u.d, u.r || 0), 12), ...x.map((c) => mod(N.semi(c), 12))]);
+    return pcs.size < 3 ? { complete: weight * (3 - pcs.size) } : {};
+  } }),
   /** the inner voices as Bach's go over a figured bass (Study 76): each inner voice's role — its interval over the
    *  bass — costs −log of how often his alto and tenor take it from the role before, the chord before and this one
    *  (the chords the voices make, read as figures) and the bass's move between them (continuo.mjs' roleCost: 1.23
@@ -1074,7 +1080,7 @@ export const SOFT_BETWEEN = {
    *  given to bach-4, whose hard rules would otherwise refuse half his phrases realized on them (Study 76). Where the
    *  bass gives the chord's pitch classes too (a bass note's `pcs`, 0 a C: its accidentals, a ♯ that raises a 3rd), they are
    *  what is asked: a tone of the chord left out, or a voice off them, pays — so a figured ♯ is played as one. */
-  figures: (N, { weight = 3 } = {}) => ({ id: "figures", cost: ({ t, x }) => {
+  figures: (N, { weight = 3, passing = 0 } = {}) => ({ id: "figures", cost: ({ W, t, x }) => {
     const u = N.B[t];
     if (u.pcs) {
       const tonic = mod(N.K.midi(0, 0), 12), want = u.pcs.map((c) => mod(c - tonic, 12)), have = x.map((c) => mod(N.semi(c), 12)), bass = mod(N.K.semi(u.d, u.r || 0), 12);
@@ -1082,7 +1088,14 @@ export const SOFT_BETWEEN = {
       // off a tone asked, the figure's ♯ or ♭ not taken, pays twice)
       const all = [bass, ...have];
       const missing = want.filter((c, i) => i !== 2 && !all.includes(c)).length;
-      const off = have.reduce((a, c) => a + (want.includes(c) ? 0 : want.some((w) => mod(w - c, 12) === 1 || mod(c - w, 12) === 1) ? 2 : 1), 0);
+      // (a voice off the chord as Bach's are — held from the quarter before, a suspension or a note over a moving bass,
+      // or come to by step, a passing or neighbour note: the hard rules see to its resolution — pays only `passing` of
+      // it, nothing by default: Bach's inner voices dissonate on a fifth of his quarters)
+      const asBach = (i) => { if (t === 0 || i === 0) return false; const a = N.semi(W[i][t - 1]), b = N.semi(x[i]); return Math.abs(b - a) <= 2; };
+      // (but a note whose own degree, raised or lowered, is a tone asked — C for the C♯ the figure's ♯ asks — is the
+      // accidental not taken, as Bach's never are: it pays twice)
+      const semi = (i) => [1, -1].some((k) => want.includes(mod(N.K.semi(codeDegree(x[i]), codeAlter(x[i]) + k), 12)));
+      const off = have.reduce((a, c, i) => a + (want.includes(c) ? 0 : semi(i) ? 2 : asBach(i) ? passing : 1), 0);
       const cost = missing + off;
       return cost ? { figures: weight * cost } : {};
     }
@@ -1172,10 +1185,10 @@ Object.assign(STYLES, {
   // bach-vertical, 1.5 —, the species' rewards for a passing note and a suspension off, the moves weighed more — 4 —
   // so a voice does not leap to keep consonant; minor's raised ⑥ as seldom as his in the inner voices — raised-sixth, 2:
   // 1.6.0; bach-vertical 1 in 1.6.1, the bridges tonicizing)
-  "bach-4": { style: "bach-4", version: "1.7.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
+  "bach-4": { style: "bach-4", version: "1.8.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
                                                                                           soft: [["bach-motion"], ["bach-vertical"], ["raised-sixth"]], weights: { "bach-motion": 4, "bach-vertical": 1, "raised-sixth": 2, passing: 0, "suspension-life": 0 } },
     between: [["order", { within: 7, unison: true }], ["functions", false]],
-    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"], ["bach-roles"]], weights: { functions: 2, "voice-exchange": 4, "bach-roles": 2 },
+    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"], ["bach-roles"], ["complete"]], weights: { functions: 2, "voice-exchange": 4, "bach-roles": 2, complete: 6 },
     // (the voices' ranges as Bach's in the chorales, MIDI: the same in every key)
     ranges: { soprano: [57, 81], alto: [52, 74], tenor: [48, 69] } },
 });

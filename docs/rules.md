@@ -245,6 +245,9 @@ accidentals and all — a voice a semitone off a tone asked (a figured ♯ not t
 `@kairotic/rules` 0.26.0: `bach-4` 1.7.0: `bach-roles` (between the voices, weight 2): each inner voice's interval over the
 bass costs −log of how often Bach's alto and tenor take it after the one before, over that change of chord and that
 move of the bass (`continuo.mjs`' `roleCost`, `BACH_INNER_ROLES`).
+`@kairotic/rules` 0.27.0: `bach-4` 1.8.0: `complete` (between the voices, weight 6: a chord sounding fewer than three pitch
+classes pays for each missing); `figuresWeight` lets a voice off the chord be a dissonance as Bach's are (held, or by
+step), but not the figure's accidental left out.
 
 ## Next
 

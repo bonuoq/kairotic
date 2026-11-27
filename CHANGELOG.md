@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Fuller chords and Bach's inner dissonances** (Study 76; the listener found Bach by his inner voices' dissonances
+  and turns, and his fuller, well-led chords). Measured on the deck of whole phrases: Bach sounds three pitch classes or
+  more on 97% of his quarters, ours on 74%; his chords dissonate against the bass on 21%, ours on 9%.
+  `@kairotic/rules` 0.27.0: `bach-4` 1.8.0 adds `complete` (between the voices, weight 6: a chord of two pitch classes, or
+  one, pays for each missing); `figuresWeight` no longer charges a voice off the chord that comes as Bach's dissonances
+  come — held from the quarter before or reached by step, the hard rules seeing to its resolution — but still charges
+  twice a note whose own degree, altered, is the tone asked (the figure's accidental not taken). Study 76 realizes at
+  temperature 1, as `bach-4` was measured. On 30 phrases kept out: chords complete 76% → 88% (Bach 96%), dissonant
+  8% → 14% (Bach 22%). Study 71's deck of whole phrases drawn again on them. `@kairotic/cac` 0.16.18 (its pin).
 - **Study 71's deck: whole phrases** (Study 76). `tools/deck-continuo.mjs` draws a deck whose trials put Bach's phrase
   against one written under his soprano alone — the figured bass and its voices of Study 76 — on the phrases the tables
   were not counted on: 120 trials, 40 of each of `continuo`, `continuo-no-keys`, `continuo-no-functions` (40 of 43,

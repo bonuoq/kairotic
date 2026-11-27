@@ -51,11 +51,12 @@ export function abbreviate(full, figure) {
 
 /**
  * The bass under a phrase's soprano and the voices over it. phrase: the corpus's ({satb, names, strong, key}).
- * opts: {variant ("all", "no-functions", "no-keys", "no-economy"), r (a random), temp (the inner voices' engine: 0
- * the likeliest), weight (figuresWeight, 8)}. → {bass, figures (as Bach writes them), full (every number), chords,
+ * opts: {variant ("all", "no-functions", "no-keys", "no-economy"), r (a random), temp (the inner voices' engine: 1,
+ * as bach-4 was measured — its voices moving and dissonating nearly as often as Bach's —; 0 the likeliest), weight
+ * (figuresWeight, 8), style (bach-4 by default)}. → {bass, figures (as Bach writes them), full (every number), chords,
  * keys, satb: [[S, A, T, B]…] (MIDI), held, dissonances: [{t, motion, interval}]} or {fail: why, bass?}.
  */
-export function realize(phrase, { variant = "all", r = Math.random, temp = 0, weight = 8 } = {}) {
+export function realize(phrase, { variant = "all", r = Math.random, temp = 1, weight = 8, style = undefined } = {}) {
   const S = phrase.satb.map((c) => c[0]), n = S.length;
   const U = underBridge({ soprano: S, key: phrase.key, strong: phrase.strong, variant, continuo: CONTINUO });
   if (!U.possible) return { fail: "no bass under this soprano" };
@@ -74,7 +75,7 @@ export function realize(phrase, { variant = "all", r = Math.random, temp = 0, we
   });
   S.forEach((m, t) => sop.push({ midi: m, ...(phrase.names ? { name: phrase.names[t][0] } : {}), units: 1, strong: [!!phrase.strong[t]] }));
   let ob;
-  try { ob = fromOuter({ bass, soprano: sop, key: keyText(phrase.key), figuresWeight: weight }); } catch (e) { return { ...out, fail: e.message || String(e) }; }
+  try { ob = fromOuter({ bass, soprano: sop, key: keyText(phrase.key), figuresWeight: weight, ...(style ? { style } : {}) }); } catch (e) { return { ...out, fail: e.message || String(e) }; }
   if (ob.count() === 0n) {
     const dd = ob.deadEnd ? ob.deadEnd() : null, top = dd && dd.reasons ? dd.reasons.filter(([w]) => w !== "the soprano is given")[0] : null;
     return { ...out, fail: dd ? `no inner voices: quarter ${dd.unit + 1}${top ? `, ${top[0]}` : ""}` : "no inner voices" };
