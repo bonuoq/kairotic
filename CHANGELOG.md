@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos: the Greek counterpoint** (#192). In a Greek tonos, `canonic()` (the canon and the heterophony)
+  and the examiner (imitation-2 on a given dux, `imitationIn`) write the comes in the same system, by canon-2's rules
+  with the Greek concords (unison, 4th, 5th, octave) and `GREEK_ON`: parallel concords, direct octaves, the same
+  concord on consecutive strong beats and an entry on the unison allowed. Odyssey 1.1 in the Lydian: 2,215 strict
+  canons at the octave below. The aulos in heterophony keeps within a 4th of the voice (a 3rd in a church mode) and
+  near it by a soft cost (`apart`, 0.3 a degree): as the engine plays it, about four beats in five in unison.
 - **The bass under Bach's soprano: his soprano's dissonances, his tables in plain −log** (#353, after #491 and #499).
   Study 63's `under.mjs` reads continuo.mjs's BACH_DISSONANCES: the soprano may be a suspension (held into the quarter,
   down a step after, resolved over the same bass or its octave, figured 4 3, 9 8, 7 6), a passing or neighbour note

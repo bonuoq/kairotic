@@ -71,11 +71,21 @@ try {
   d.getElementById("melisma").value = "3"; d.getElementById("style").value = "engine"; d.getElementById("strict").checked = false;
   P.greek(true); P.set("seikilos", "melody");
   await wait(() => total() === "45,786,887,676,467,977,169,702,651,733,325,568,672" && status() === "sung" && !d.getElementById("stele").hidden);
-  is("in a Greek tonos: Seikilos's song in the Iastian, its final e (the lichanos meson) — 45,786,887,676,467,977,169,702,651,733,325,568,672 melodies, sung, every rule kept; the canon and the heterophony set aside",
+  is("in a Greek tonos: Seikilos's song in the Iastian, its final e (the lichanos meson) — 45,786,887,676,467,977,169,702,651,733,325,568,672 melodies, sung, every rule kept",
      total() === "45,786,887,676,467,977,169,702,651,733,325,568,672" && /✓ every rule kept/.test(report()) && d.getElementById("gfinal").value === "-1"
-     && d.querySelector('#form option[value="canon"]').disabled && d.getElementById("tonos").value === "iastian");
+     && d.getElementById("tonos").value === "iastian");
   P.stele();
   is("... the stele's melody as the stele has it (no octave down): every rule kept, six melismas", P.state().stele && /✓ every rule kept/.test(report()) && /melismas 6/.test(report()));
+  // the Greek counterpoint: Odyssey 1.1 with an aulos in heterophony, in the Lydian
+  d.getElementById("melisma").value = "1";
+  P.set("odyssey", "melody"); P.greek(true);
+  d.getElementById("tonos").value = "lydian"; d.getElementById("genus").value = "diatonic"; d.getElementById("tonos").dispatchEvent(new Event("change"));
+  await wait(() => /^\d/.test(total()) && status() === "sung");
+  d.getElementById("gfinal").value = "0";
+  P.set("odyssey", "heterophony");
+  await wait(() => total() === "14,338,522,811,655,342,992" && status() === "sung");
+  is("the Greek counterpoint: Odyssey 1.1 in the Lydian with an aulos in heterophony — 14,338,522,811,655,342,992 ways, the voice and the aulos drawn, every rule kept",
+     total() === "14,338,522,811,655,342,992" && d.querySelectorAll("#sheet rect.comes").length > 0 && /✓ every rule kept/.test(report()));
   P.greek(false);
   is("no errors on the page", errors.length === 0 && !/^Error/.test(status()));
 } catch (e) { is("error: " + (e.message || e), false); }

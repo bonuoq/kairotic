@@ -350,6 +350,15 @@ export function aoidos(spec = {}) {
 }
 
 /**
+ * The Greek counterpoint: the canon's rules (canon-2) on a Greek system, whose concords are the unison, the 4th, the
+ * 5th and the octave (greek.mjs) — every other interval a discord, on a strong beat never (no suspension: the system
+ * knows none), on a weak one passing by step —, and without the rules a Greek ear did not keep: parallel concords
+ * (the aulos with the voice, the octaves of the magadis), direct octaves, the same concord on consecutive strong
+ * beats, a comes entering on the unison.
+ */
+export const GREEK_ON = { parallels: false, "direct-octaves": false, "strong-parallels": false, "entry-unison": false };
+
+/**
  * The poem sung in canon (#192 as it was first thought: the singer choosing among the futuribles of the comes): the
  * dux sings the text — aoidos's voice, a beat a unit, with its rules and costs — and the comes answers it by canon.mjs's
  * rules (canon-2: the comes k steps away, d beats later, at a degree of imitation), the two counted together. spec:
@@ -363,13 +372,15 @@ export function canonic(spec = {}) {
   // (in canon a new syllable strikes a new pitch: a canon reads a pitch struck again as held, and the holds stay short)
   const A = aoidos({ ...spec, maxRepeat: spec.maxRepeat ?? 1 });
   const n = A.plan.beats, own = A.own, Y = A.syllables;
-  if (A.S.greek) return { error: "a canon in a Greek system waits for the Greek counterpoint", A, count: () => 0n, countWithin: () => 0n, beats: n };
   if (A.error || !n) return { error: A.error || "no text", A, count: () => 0n, countWithin: () => 0n, beats: n };
   const firstStrong = Y.find((x) => x.strong), phase = firstStrong ? firstStrong.at % 2 : 0;
   const maxHold = Math.max(2, own.maxSyl * (spec.maxRepeat ?? 1));
   const k = spec.k ?? -7, d = Math.min(spec.d ?? 4, Math.max(0, n - 1));
-  const cspec = { key: A.key, ficta: false, tonic: 0, k, d, b: 2, phase, n, lo: own.lo, hi: own.hi, imitation: spec.imitation ?? 1, maxHold,
-                  invert: spec.invert || [], starts: own.starts, soft: true, weights: A.weights, on: { approach: false } };
+  // (in a Greek system the canon's world is the system itself, its degrees from the final, and the Greek counterpoint:
+  // GREEK_ON)
+  const greek = !!A.S.greek;
+  const cspec = { key: A.key, ...(greek ? { system: A.S } : {}), ficta: false, tonic: 0, k, d, b: 2, phase, n, lo: own.lo, hi: own.hi, imitation: spec.imitation ?? 1, maxHold,
+                  invert: spec.invert || [], starts: own.starts, soft: true, weights: A.weights, on: { approach: false, ...(greek ? GREEK_ON : {}) } };
   const CV = canonVoices(cspec, spec.canonStyle || "canon-2");
   const duxCheck = (D, t, x) => A.check(D, t, x) || CV.voices[0].solver.check(D, t, x);
   const duxSolver = { codes: CV.voices[0].solver.codes.filter((c) => c !== null), check: duxCheck, costParts: (D, x) => A.costParts(D, x) };
@@ -378,17 +389,22 @@ export function canonic(spec = {}) {
   const LD = Math.max(maxHold + 1, d + 1), LC = Math.max(maxHold * aug + 1, 2);
   const key = (W, t) => t + ":" + A.memoKey(W[0], t) + ":" + W[0].slice(Math.max(0, t - LD), t).join(",") + ":" + W[1].slice(Math.max(0, t - LC), t).join(",");
   // (heterophony: the comes at once, d = 0 — the canon's rules read the dux's past, so the note it sings now is
-  // read here: within a 3rd of it, k steps away, near; the same note, a canon)
+  // read here: within a 3rd of it (in a Greek system a 4th: the concord below), k steps away, near; the same note, a
+  // canon)
+  const width = greek ? 3 : 2;
   const now = d === 0 ? [{ id: "heterophony", check: ({ x: [x, c] }) => {
     if (x === null || c === null) return null;
     const m = w.deg(x) + k, band = w.bnd;
     if (band === "canon" && w.deg(c) !== m) return "the aulos plays the voice's note";
-    if (band === "near" && Math.abs(w.deg(c) - m) > 2) return "the aulos keeps within a 3rd of the voice";
+    if (band === "near" && Math.abs(w.deg(c) - m) > width) return greek ? "the aulos keeps within a 4th of the voice" : "the aulos keeps within a 3rd of the voice";
     return null;
   } }] : [];
   const between = d === 0 ? CV.between.filter((r) => r.id !== "imitation") : CV.between;
+  // (and the aulos stays near the voice by choice too: a cost a degree away from its note — heterophony is the same
+  // melody, its deviations the exception)
+  const apart = d === 0 ? [{ id: "apart", cost: ({ x: [x, c] }) => (x === null || c === null ? {} : { apart: (spec.apart ?? 0.3) * Math.abs(w.deg(c) - w.deg(x) - k) }) }] : [];
   const SV = solveVoices({ n, voices: [{ name: "dux", solver: duxSolver }, { name: "comes", solver: CV.voices[1].solver }],
-                           between: [...between, ...now], key, result: (W) => ({ dux: W[0], comes: W[1] }) });
+                           between: [...between, ...now], soft: apart, key, result: (W) => ({ dux: W[0], comes: W[1] }) });
   return { ...SV, A, beats: n, k, d, phase, world: w, name: A.name, midi: A.midi, hz: A.hz, key: A.key,
            count: () => SV.count(),
            countWithin: (ms) => { try { return within(ms, () => SV.count()); } catch (e) { if (e.tooLong) return null; throw e; } },
@@ -437,12 +453,12 @@ export function duxOf(Y, notes, midi) {
  * the best first.
  */
 export function examine(A, U, { ks = [-7, -4, -3, 7], ds = [2, 4], degrees = [1], ms = 1500, b = 2 } = {}) {
-  if (A.S.greek) return [];                          // (imitation spells its comes in a church mode)
   const notes = A.asDux(U);
   const maxHold = Math.max(2, ...runs(notes));
   const out = [];
   for (const imitationDegree of degrees) for (const k of ks) for (const d of ds) {
-    const I = imitation({ notes, key: A.key, k, d, b, imitation: imitationDegree, maxHold });
+    const I = A.S.greek ? imitationIn(A, U, notes, { k, d, b, imitation: imitationDegree, maxHold })
+                        : imitation({ notes, key: A.key, k, d, b, imitation: imitationDegree, maxHold });
     const comes = I.unknown && I.unknown.length ? 0n : I.countWithin(ms);
     let engine = null, sound = null;
     if (comes) {
@@ -461,6 +477,20 @@ export function examine(A, U, { ks = [-7, -4, -3, 7], ds = [2, 4], degrees = [1]
   // (those with a comes first, the most first; then those too long to count; then those with none)
   const rank = (x) => (x.comes === null ? 1 : x.comes > 0n ? 2 : 0);
   return out.sort((x, y) => rank(y) - rank(x) || ((y.comes ?? 0n) > (x.comes ?? 0n) ? 1 : (y.comes ?? 0n) < (x.comes ?? 0n) ? -1 : 0));
+}
+
+/**
+ * cac imitation's, in a Greek system: the melody (its codes, a beat a unit; a rest first where asDux puts one) the
+ * given dux of imitation-2, the comes written in the same system by the Greek counterpoint (GREEK_ON).
+ */
+function imitationIn(A, U, notes, { k = -7, d = 2, b = 2, imitation: degree = 1, maxHold = 2 } = {}) {
+  const dux = [...(notes.length && notes[0].midi === null ? [null] : []), ...U];
+  const degs = U.map((c) => A.deg(c)), n = dux.length, dd = Math.min(d, Math.max(1, n - 1));
+  const cspec = { tonic: 0, system: A.S, k, d: dd, b, n, lo: Math.min(...degs), hi: Math.max(...degs), imitation: degree, maxHold, given: dux,
+                  starts: [...new Set([degs[0], 0, 4, 7])], soft: true, on: GREEK_ON };
+  const CV = canonVoices(cspec, "imitation-2");
+  return { ...CV, dux, unknown: [], spell: (c) => A.name(c), midi: (c) => A.midi(c),
+           countWithin: (ms) => { try { return within(ms, () => CV.count()); } catch (e) { if (e.tooLong) return null; throw e; } } };
 }
 
 // (the longest run of one pitch in units: a held note and the same note struck again read alike in a canon)
