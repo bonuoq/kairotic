@@ -5,6 +5,7 @@ import * as B from "../kairotic/bridge.mjs";
 import * as O from "../kairotic/outer.mjs";
 import * as R from "../kairotic/reduction.mjs";
 import * as U from "../kairotic/under.mjs";
+import * as US from "../kairotic/under-score.mjs";
 import { INCIPITS, check, rangeOf } from "../kairotic/incipit.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -166,8 +167,8 @@ export async function run() {
   is("logProb: a bass the bridge can draw has a probability (every chord and key under it summed), one it cannot has none", lp < 0 && lp > -Infinity && UB.logProb(sop.map(() => 30)) === -Infinity);
   const unk = U.underBridge({ soprano: sop, key: { tonic: "C", mode: "major" }, strong: st, variant: "no-keys" });
   is("no-keys: every quarter in the chorale's key", Array.from({ length: 5 }, (_, i) => unk.draw(wr(i + 3))).every((x) => x.keys.every((k) => k === "C major")));
-  is("figureText: the figures against the key signature — V6/5 \"6/5\", V/V \"5/♯3\" in C, \"5/♮3\" in F, I4/2 \"4/2\" over its B♭ in C",
-     U.figureText(7, "7", "6/5", { tonic: "C" }) === "6/5" && U.figureText(2, "", "5/3", { tonic: "C" }) === "5/♯3" && U.figureText(7, "", "5/3", { tonic: "F" }) === "5/♮3" && U.figureText(0, "7", "4/2", { tonic: "C" }) === "4/2");
+  is("figureText: the figures against the key signature, by the chord's letters — V6/5 \"6/5\", V/V \"5/♯3\" in C, \"5/♮3\" in F, I4/2 \"4/2\" over its B♭ in C, G7 \"♮7\" in G, ♯iv°7 \"♭7\" in C",
+     U.figureText(7, "7", "7", { tonic: "G" }) === "♮7" && U.figureText(6, "°7", "7", { tonic: "C" }) === "♭7" && U.figureText(7, "7", "6/5", { tonic: "C" }) === "6/5" && U.figureText(2, "", "5/3", { tonic: "C" }) === "5/♯3" && U.figureText(7, "", "5/3", { tonic: "F" }) === "5/♮3" && U.figureText(0, "7", "4/2", { tonic: "C" }) === "4/2");
   // (the chorale thread's tables, in continuo.mjs's shape — here flat ones, invented: any chord, any move, as likely)
   const flatC = { BACH_OUTER_VERTICAL: Array(12).fill(0), BACH_OUTER_PAIR: Array(25).fill(0), BACH_CADENCES: { major: [["7:5/3 0:5/3", 0.5]], minor: [["7:5/3 0:5/3", 0.5]] },
     BACH_DEGREE_CHORD: Object.fromEntries(["major", "minor"].map((m) => [m, { chords: ["5/3", "6/3", "6/4", "7", "6/5", "4/3", "4/2", "x"], degree: Array(12).fill(0), chord: Array.from({ length: 12 }, () => Array(8).fill(0)) }])) };
@@ -186,6 +187,16 @@ export async function run() {
      withSus.length > 0 && withSus.every((x) => x.chords[2].dissonance.motion === "suspension" && x.figures[2] === "4" && x.figures[3] === "3" && (x.bass[2] - x.bass[3]) % 12 === 0)
      && Array.from({ length: 40 }, (_, i) => U.underBridge({ soprano: sus, key: { tonic: "C", mode: "major" }, strong: sst, continuo: flatC }).draw(wr(i + 11))).every((x) => !x.chords[2].dissonance));
   notes.push(`suspensions: ${withSus.length} of 40 draws hold C over G into a 4–3 · e.g. ${(withSus[0] || dl[0]).bass.join(" ")} · ${(withSus[0] || dl[0]).figures.join(" ")}`);
+  // (the score the page draws: under-score.mjs's MEI, for Verovio)
+  const fake = { id: "test-c", key: { tonic: "C", mode: "major" }, keys: sop.map(() => "C major"), satb: sop.map((s, t) => [s, s - 5, s - 9, lines[0].bass[t]]),
+                 names: sop.map(() => ["C5", "G4", "E4", "C3"]) };
+  const mei = US.meiOf(fake, lines[0]);
+  is("the score (under-score.mjs): three staves, a measure a quarter, the fermata on the last, our figures in Bach's abbreviations (nothing over a 5/3)",
+     (mei.match(/<staffDef /g) || []).length === 3 && (mei.match(/<measure /g) || []).length === 7 && /<fermata staff="1" tstamp="1"\/><\/measure>\s*<\/section>/.test(mei) &&
+     US.abbreviate("5/3", "5/3").length === 0 && US.abbreviate("5/♯3", "5/3").join() === "♯" && US.abbreviate("6/♯4/2", "4/2").join() === "6,♯4,2" && US.abbreviate("4", "5/3").join() === "4");
+  is("… its notes spelt in the key signature, by the local key's letters: in F, B♭ by the signature, B♮ marked; in A minor its G♯",
+     US.speller({ tonic: "F" }).note(70) === 'pname="b" oct="4" accid.ges="f"' && US.speller({ tonic: "F" }).note(71) === 'pname="b" oct="4" accid="n"' &&
+     US.speller({ tonic: "A", mode: "minor" }).note(68) === 'pname="g" oct="4" accid="s"' && US.speller({ tonic: "F" }).note(66, { tonic: "G", mode: "minor" }) === 'pname="f" oct="4" accid="s"');
   notes.push(`a bass under C D E F E D C: ${lines[0].bass.join(" ")} · ${lines[0].figures.join(" ")} · ${lines[0].keys.join(", ")}`);
 
   return { results, notes };

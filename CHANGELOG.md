@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Study 63's page: a bass under Bach's soprano** (#353). A new section draws Study 76's engine (`under.mjs`) under
+  the soprano of a phrase the tables never saw (the chorales numbered a multiple of 5): our bass and Bach's under his
+  soprano as a score (Verovio; `under-score.mjs` writes the MEI — a measure a quarter, our figures in Bach's
+  abbreviations, Bach's from his four voices by continuo.mjs's `figureOf`, the notes spelt by each quarter's local key),
+  the local keys ours and his, how many bits a note the model gives his bass and ours, and both played (with his four
+  voices too); the tables (continuo.mjs's or under-tables.mjs's), the variant and the temperature to choose. Study 63
+  keeps a copy of continuo.mjs (`tests/rules.mjs` checks it). `figureText` spells each chord's notes by its letters
+  (G7 in G "♮7", not "♯7").
 - **The bass under Bach's soprano: his soprano's dissonances, his tables in plain −log** (#353, after #491 and #499).
   Study 63's `under.mjs` reads continuo.mjs's BACH_DISSONANCES: the soprano may be a suspension (held into the quarter,
   down a step after, resolved over the same bass or its octave, figured 4 3, 9 8, 7 6), a passing or neighbour note

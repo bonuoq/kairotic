@@ -49,6 +49,22 @@ await (async function () {
     change($("m-b"), "scale-76"); click($("m-draw"));
     $("v-mei").click(); $("m-mei").click();
     is("the variation and the morph exported as MEI: a melody and a bass each", await (async () => { for (let i = 0; i < 60 && saved.length < 2; i++) await new Promise((r) => setTimeout(r, 50)); return saved.length === 2 && saved.every((x) => /\.mei\.txt$/.test(x.filename) && /label="melody"/.test(x.text) && /label="bass"/.test(x.text)); })());
+    // the bass under Bach's soprano: the page's module, run as the page runs it (its kernel and the corpus from here)
+    window.kairoticBaseURL = new URL("../kairotic/", location.href).href;
+    window.kairoticShared = new URL("../../_shared/", location.href).href;
+    const src = [...doc.querySelectorAll('script[type="module"]')].map((x) => x.textContent).find((x) => /kairoticUnder/.test(x));
+    await import(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+    const wait = async (ok, ms) => { for (let i = 0; i < ms / 100 && !ok(); i++) await new Promise((r) => setTimeout(r, 100)); return ok(); };
+    const UN = () => window.kairoticUnder && window.kairoticUnder.state();
+    is("a bass under Bach's soprano on loading: chor005-4 (held out), a bass, its figures and its local keys a quarter", await wait(() => UN() && UN().bass, 30000) &&
+       UN().phrase === "chor005-4" && UN().bass.length === 8 && UN().figures.length === 8 && UN().keys.length === 8 && /bits a note/.test($("u-facts").textContent));
+    is("… drawn as a score, three staves (Verovio)", await wait(() => UN().score, 30000) && $("u-score").querySelectorAll("g.staff").length >= 3);
+    change($("u-var"), "no-keys");
+    is("… no-keys: every quarter in the chorale's key", UN().keys.every((k) => k === "G major"));
+    change($("u-costs"), "under");
+    is("… with this study's own tables too", UN().bass.length === 8 && /bits a note/.test($("u-facts").textContent));
+    change($("u-ph"), $("u-ph").options[3].value);
+    is("… another phrase chosen, drawn", UN().phrase === $("u-ph").options[3].value && UN().bass.length > 0);
     is("no error on the page", errors.length === 0);
   } catch (e) {
     is("the page ran: " + (e.message || e), false);
