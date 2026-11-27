@@ -76,6 +76,14 @@ try {
      && d.getElementById("tonos").value === "iastian");
   P.stele();
   is("... the stele's melody as the stele has it (no octave down): every rule kept, six melismas", P.state().stele && /✓ every rule kept/.test(report()) && /melismas 6/.test(report()));
+  // sung by Study 75's voice: the stele's melody, its syllables and its pitches as the Iastian has them, in Koine
+  d.getElementById("timbre").value = "voice";
+  const v = await P.play();
+  const ln = [...P.lyricNotes()];
+  is("sung by the voice (Study 75): every note with its syllable and its pitch in the system, in the stele's Koine",
+     v && v.notes.length === ln.length && v.pron === "koine" && v.seconds > 5 &&
+     [...v.notes].every((n, i) => n.midi === P.midiOf(ln[i].code) && (n.syl || "") === (ln[i].first ? ln[i].text : "")) && /sung by the voice/.test(status()));
+  d.getElementById("timbre").value = "tone";
   // the Greek counterpoint: Odyssey 1.1 with an aulos in heterophony, in the Lydian
   d.getElementById("melisma").value = "1";
   P.set("odyssey", "melody"); P.greek(true);

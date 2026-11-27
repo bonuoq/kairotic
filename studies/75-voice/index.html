@@ -72,7 +72,9 @@ select, label { font: 13px var(--f-ui); color: var(--ink); }
 </header>
 <div class="toolbar">
   <select id="source">
-    <option value="seikilos">Seikilos's song (the stele)</option>
+    <option value="seikilos">Seikilos's song, as transcribed</option>
+    <option value="seikilos-aristoxenus">Seikilos · Iastian diatonic, Aristoxenus</option>
+    <option value="seikilos-archytas">Seikilos · Iastian diatonic, Archytas</option>
     <option value="vowels">the seven vowels</option>
     <option value="mei">an MEI from Study 74…</option>
   </select><input type="file" id="file" accept=".mei,.xml,.txt" hidden>
@@ -110,7 +112,9 @@ select, label { font: 13px var(--f-ui); color: var(--ink); }
       black box (discussion #467). <b>The line</b> comes with its syllables — Seikilos's song as the stele has it, or an
       MEI that Study 74 (aoidos) wrote, with its text under the notes. Each syllable is read into phonemes in a
       <b>pronunciation</b> chosen among reconstructions (Attic, after Allen's <i>Vox Graeca</i>; or the Koine of the
-      stele's own century). Each phoneme has its <b>targets</b> in the table — formants, voicing, aspiration, frication —,
+      stele's own century). Seikilos's song can also be sung <b>in the Greek system</b> of Study 74: the Iastian
+      diatonic in Aristoxenus's shade (the transcription's own pitches) or in Archytas's (his tetrachord's ratios: the g
+      and the d' a third of a semitone low; the cents shown under the notes). Each phoneme has its <b>targets</b> in the table — formants, voicing, aspiration, frication —,
       editable here as EDN. The <b>curves</b> go from target to target: onset consonants just before the beat, a stop as
       closure, burst and aspiration, the formants gliding between neighbours (that glide is most of what makes a
       consonant heard), the first formant raised over a high pitch. Two <b>faust~</b> follow the same curves: the
@@ -130,10 +134,11 @@ select, label { font: 13px var(--f-ui); color: var(--ink); }
 window.addEventListener("DOMContentLoaded", function () {
   function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
   Promise.all([import("./kairotic/phonemes.mjs"), import("./kairotic/tract.mjs"), import("./kairotic/mei.mjs"), import("./kairotic/sing.mjs"),
-               import("../74-aoidos/kairotic/seikilos.mjs"),
+               import("../74-aoidos/kairotic/seikilos.mjs"), import("./kairotic/tuning.mjs"),
                fetch(new URL("./kairotic/voice.dsp", location.href)).then(function (r) { return r.text(); }),
                fetch(new URL("./kairotic/noise.dsp", location.href)).then(function (r) { return r.text(); })]).then(function (ms) {
-    window.kairoticVoice = { P: ms[0], T: ms[1], M: ms[2], S: ms[3], SK: ms[4], voiceDsp: ms[5], noiseDsp: ms[6] };
+    // (modules as plain objects: Scittle stumbles on some module namespaces)
+    window.kairoticVoice = { P: { ...ms[0] }, T: { ...ms[1] }, M: { ...ms[2] }, S: { ...ms[3] }, SK: { ...ms[4] }, TU: { ...ms[5] }, voiceDsp: ms[6], noiseDsp: ms[7] };
     try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
   }).catch(show);
 });
@@ -146,7 +151,7 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; Kairotic · Study 75 · voice: the page. A line (notes with syllables) → phonemes → curves → the two faust~ → sound.
 
 (def K (.-kairoticVoice js/window))
-(def P (.-P K)) (def T (.-T K)) (def M (.-M K)) (def S (.-S K)) (def SK (.-SK K))
+(def P (.-P K)) (def T (.-T K)) (def M (.-M K)) (def S (.-S K)) (def SK (.-SK K)) (def TU (.-TU K))
 (defn $ [id] (js/document.getElementById id))
 (defn esc [s] (-> (str s) (str/replace "&" "&amp;") (str/replace "<" "&lt;") (str/replace ">" "&gt;")))
 (defn status! [s] (set! (.-textContent ($ "status")) s) (set! (.. ($ "status") -style -color) ""))
@@ -165,12 +170,17 @@ window.addEventListener("DOMContentLoaded", function () {
         (let [d (* chronos (.-chronoi n))]
           (recur (rest ns) (+ t d) (conj out #js {:t t :dur d :midi (.-midi n) :syl (if (.-first n) (.-text n) "")})))
         (into-array out)))))
+(defn seikilos-tuned [shade]
+  ;; the song in Study 74's Greek system: the Iastian diatonic in a theorist's shade (tuning.mjs)
+  (.-notes (.seikilos TU #js {:shade shade :chronos (/ 30 (bpm))})))
 (defn vowel-notes []
   (let [d (/ 60 (bpm))]
     (into-array (map-indexed (fn [i s] #js {:t (* i d) :dur (* 0.9 d) :midi 64 :syl s}) ["ἀ" "ἐ" "ἠ" "ἰ" "ὀ" "ὑ" "ὠ"]))))
 (defn line-notes []
   (case (.-value ($ "source"))
     "vowels" (vowel-notes)
+    "seikilos-aristoxenus" (seikilos-tuned "aristoxenus")
+    "seikilos-archytas" (seikilos-tuned "archytas")
     "mei" (if-let [m (:mei @st)] (.-notes (.readMei M m #js {:bpm (bpm)})) (seikilos-notes))
     (seikilos-notes)))
 
@@ -191,7 +201,10 @@ window.addEventListener("DOMContentLoaded", function () {
         ny (fn [m] (+ 30 (* 60 (/ (- hi m) (max 1 (- hi lo))))))
         score (str (apply str (for [n (array-seq notes)]
                                 (str "<rect class='note' x='" (x (+ off (.-t n))) "' y='" (- (ny (.-midi n)) 3) "' width='" (max 1 (- (x (+ off (.-t n) (.-dur n))) (x (+ off (.-t n))) 1)) "' height='6'/>"
-                                     (when (seq (.-syl n)) (str "<text x='" (x (+ off (.-t n))) "' y='112'>" (esc (.-syl n)) "</text>")))))
+                                     (when (seq (.-syl n)) (str "<text x='" (x (+ off (.-t n))) "' y='112'>" (esc (.-syl n)) "</text>"))
+                                     ;; (a note of a Greek system off the transcription: its deviation, in cents)
+                                     (when (and (.-dev n) (not (zero? (.-dev n))))
+                                       (str "<text class='soft cents' x='" (x (+ off (.-t n))) "' y='" (+ (ny (.-midi n)) 14) "'>" (when (pos? (.-dev n)) "+") (.-dev n) "</text>")))))
                    (apply str (for [s segs :when (not (#{"burst" "aspiration"} (.-kind s)))]
                                 (str "<text class='soft' x='" (x (.-from s)) "' y='14'>" (esc (.-p s)) "</text>")))
                    "<line class='head' id='head1' x1='-5' x2='-5' y1='0' y2='120'/>")

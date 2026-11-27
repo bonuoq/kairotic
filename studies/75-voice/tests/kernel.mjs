@@ -6,6 +6,7 @@ import * as T from "../kairotic/tract.mjs";
 import { readMei } from "../kairotic/mei.mjs";
 import { exportMei } from "../../74-aoidos/kairotic/export.mjs";
 import * as S from "../../74-aoidos/kairotic/seikilos.mjs";
+import * as TU from "../kairotic/tuning.mjs";
 
 const J = (x) => JSON.stringify(x);
 const ph = (t, pron) => { const s = P.syllablePhonemes(t, pron); return [...s.onset, "|", ...s.nucleus, "|", ...s.coda].join(" "); };
@@ -83,6 +84,19 @@ export async function run() {
   is("… 28 syllables, as the song has", T.syllables(R.notes).length === S.SONG.flat().length);
   const tie = readMei(exportMei({ voices: [{ notes: [{ midi: 64, units: 3, syl: "ὦ" }, { midi: 62, units: 1, syl: "δε" }] }], unitDen: 2, unitsPerBar: 2 }).mei, { bpm: 60 });
   is("a note tied over the bar line is one note (three half notes: 6 s at 60)", tie.notes.length === 2 && Math.abs(tie.notes[0].dur - 6) < 1e-9 && tie.notes[1].syl === "δε");
+
+  // ── Seikilos in Study 74's Greek system ──
+  const ax = TU.seikilos({ shade: "aristoxenus" }), ar = TU.seikilos({ shade: "archytas" });
+  const bySign = (r) => Object.fromEntries(r.notes.map((n) => [n.sign, n]));
+  const XA = bySign(ax), XR = bySign(ar);
+  notes.push("Archytas: " + Object.values(XR).map((n) => `${n.sign} ${n.midi.toFixed(2)} ${n.name} (${n.dev > 0 ? "+" : ""}${n.dev} ¢)`).join(", "));
+  is("in Aristoxenus's Iastian diatonic, the song keeps the transcription's pitches: its notes named in the system (e the lichanos meson, f♯ the mese)",
+     ax.notes.every((n, i) => n.dev === 0 && n.midi === S.notes()[i].midi) && XA.E.name.startsWith("lichanos meson") && XA.X.name === "mese");
+  is("in Archytas's, his ratios: g and d' a third of a semitone low, a a little, the mese and c♯' as they were",
+     XR["Φ"].dev === -37 && XR.I.dev === -35 && XR.C.dev === -6 && XR.X.dev === 0 && Math.abs(XR.K.dev) <= 2);
+  is("… every note of the song a note of the system, its syllables and times as the stele's",
+     ar.notes.every((n) => n.name !== "(not in the system)") && ar.notes.length === 37 && ar.notes[3].syl === "φαί" && ar.notes[4].syl === "" &&
+     Math.abs(ar.notes[1].t - 0.42) < 1e-9);
 
   return { results, notes };
 }
