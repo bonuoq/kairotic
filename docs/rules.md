@@ -236,6 +236,7 @@ his soprano is weighed by: the soprano over the bass, their moves together, the 
 one voice not of it, by how it moves (a suspension, a passing or neighbour note, a note held over a moving bass, an
 appoggiatura, an escape, an anticipation); `BACH_DISSONANCES`, how often each (the states the bass engine must allow
 under a soprano that is not a chord tone, #487).
+`@kairotic/rules` 0.24.1: the continuo tables a plain −log (no row's lowest set to 0: summed, a probability's).
 
 ## Next
 

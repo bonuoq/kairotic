@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The continuo tables as a plain −log** (#353, the structural thread's suggestion). `@kairotic/rules` 0.24.1: every table
+  of `continuo.mjs` is −log of its frequency, no longer shifted so that each row's lowest is 0 — a shift a row of its own
+  that skewed the choice between degrees in Study 63's bass under a soprano, and made its `logProb` inexact. Measured
+  there (150 held-out phrases): Bach's bass 2.36 bits a note (2.37), its pitch class 38.2% (37.8%), the motion with the
+  soprano closer to his; the leaps 58.7% (55.4%, Bach 54.5%), the engine's weights set on the old scale.
+  `@kairotic/cac` 0.16.14 (its pin).
 - **Study 74 · aoidos written in the Greek system** (#192). `aoidos({system, final})`: a melody in a tonos of
   `greek.mjs`, its degrees counted by place from its final (`fromFinal`), the accent's rises and falls judged by pitch,
   a melisma by its size, the sound in cents; `style.mjs` reads the corpus there (`codesInSystem`). Mesomedes in the

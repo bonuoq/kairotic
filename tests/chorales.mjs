@@ -80,10 +80,11 @@ const ds = P.map((p) => p.satb.map((_, t) => Co.dissonanceOf(p, t)).filter(Boole
 is(`dissonanceOf: the ${ds.length} quarters that are no chord, each a chord and the one voice not of it — the alto's ${byVoice("alto")}, the tenor's ${byVoice("tenor")}, the soprano's ${byVoice("soprano")}, the bass's ${byVoice("bass")} (${byVoice(null)} no one voice explains); chor009-1's 6th quarter a 4–3 in the soprano over a 5/3`,
    JSON.stringify(Co.dissonanceOf(p9, 5)) === JSON.stringify({ voice: "soprano", motion: "suspension", interval: 4, chord: "5/3" }) && Co.dissonanceOf(p9, 0) === null &&
    byVoice(null) <= 5 && byVoice("soprano") < byVoice("tenor") && Co.BACH_DISSONANCES["alto|suspension|2|strong"] > 100);
-const dc = Co.BACH_DEGREE_CHORD;
-is("... what they say: the 5th and the 3rd the soprano's commonest over the bass, contrary motion the commonest pair, a 5/3 on ① and ⑤ and a 6/3 on ⑦, ⑤–① the commonest cadence",
-   Co.BACH_OUTER_VERTICAL[7] === 0 && Co.BACH_OUTER_PAIR[1 * 5 + 3] < 0.5 && dc.major.chord[0][0] === 0 && dc.major.chord[7][0] === 0 &&
-   dc.major.chord[11][1] === 0 && dc.major.chords[1] === "6/3" && dc.major.chord[11][1] === 0 && Co.BACH_CADENCES.major[0][0] === "7:5/3 0:5/3" && Co.BACH_CADENCES.minor[0][0] === "7:5/3 0:5/3");
+const dc = Co.BACH_DEGREE_CHORD, argmin = (a) => a.indexOf(Math.min(...a));
+is("... what they say: the 5th and the 3rd the soprano's commonest over the bass, contrary motion the commonest pair, a 5/3 on ① and ⑤ and a 6/3 on ⑦, ⑤–① the commonest cadence; each a plain −log (a row's probabilities add up to 1)",
+   argmin(Co.BACH_OUTER_VERTICAL) === 7 && Co.BACH_OUTER_PAIR[1 * 5 + 3] - Math.min(...Co.BACH_OUTER_PAIR) < 0.5 && argmin(dc.major.chord[0]) === 0 && argmin(dc.major.chord[7]) === 0 &&
+   argmin(dc.major.chord[11]) === 1 && dc.major.chords[1] === "6/3" && Co.BACH_CADENCES.major[0][0] === "7:5/3 0:5/3" && Co.BACH_CADENCES.minor[0][0] === "7:5/3 0:5/3" &&
+   Math.abs(Co.BACH_OUTER_VERTICAL.reduce((a, c) => a + Math.exp(-c), 0) - 1) < 0.01 && dc.major.chord.every((r) => Math.abs(r.reduce((a, c) => a + Math.exp(-c), 0) - 1) < 0.01));
 
 const bad = results.filter((r) => !r[1]);
 console.log(`${results.length - bad.length} / ${results.length} passed`);
