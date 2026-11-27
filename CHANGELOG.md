@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 74 sings with Study 75's voice; Seikilos in the Greek system** (#467, #192). Study 74's melodies are sung by
+  the voice (its notes, syllables and pitches as the system has them — a Greek tonos's cents too —, Koine for
+  Seikilos's stele, Attic for Homer), the comes or the aulos played with it; a plain tone still on choice. Study 75
+  sings Seikilos's song in the Iastian diatonic of `greek.mjs`, in Aristoxenus's shade or in Archytas's (g and d' 37
+  and 35 cents low), the cents shown under the notes (`tuning.mjs`).
 - **Study 63's page: a bass under Bach's soprano** (#353). A new section draws Study 76's engine (`under.mjs`) under
   the soprano of a phrase the tables never saw (the chorales numbered a multiple of 5): our bass and Bach's under his
   soprano as a score (Verovio; `under-score.mjs` writes the MEI — a measure a quarter, our figures in Bach's

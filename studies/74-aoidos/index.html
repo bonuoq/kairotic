@@ -112,6 +112,7 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
   <label>temperature <input type="number" id="temp" min="0" max="3" step="0.1" value="0.5"></label>
   <button class="act primary" id="engine">the engine sings</button><button class="act" id="uniform">any valid one</button>
   <button class="act" id="stele" hidden title="the melody of the stele (Pöhlmann–West, DAGM 23), an octave lower">the stele's melody</button>
+  <select id="timbre" aria-label="sung by"><option value="voice" selected>sung by the voice (Study 75)</option><option value="tone">a plain tone</option></select>
   <button class="act" id="play">▶ play</button><button class="act" id="export">export MEI</button>
   <span id="status">loading…</span>
 </div>
@@ -173,11 +174,14 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
 <script src="https://cdn.jsdelivr.net/npm/scittle@0.7.30/dist/scittle.js" type="application/javascript"></script>
 <script>
 // The page (below, ClojureScript) is evaluated here so that an error arrives with its message; the kernel (plain JS)
-// is read first, as window.kairoticAoidos ({A: aoidos.mjs, X: export.mjs, K: seikilos.mjs, G: greek.mjs}).
+// is read first, as window.kairoticAoidos ({A: aoidos.mjs, X: export.mjs, K: seikilos.mjs, G: greek.mjs, V: Study 75's
+// voice — sing.mjs and the codes of its two faust~, compiled when it first sings}).
 window.addEventListener("DOMContentLoaded", function () {
   function show(e) { var st = document.getElementById("status"); st.textContent = "Error: " + ((e && e.message) || e); st.style.color = "var(--error)"; console.error(e); }
-  Promise.all([import("./kairotic/aoidos.mjs"), import("./kairotic/export.mjs"), import("./kairotic/seikilos.mjs"), import("./kairotic/greek.mjs")]).then(function (ms) {
-    window.kairoticAoidos = { A: { ...ms[0] }, X: { ...ms[1] }, K: { ...ms[2] }, G: { ...ms[3] } };
+  var dsp = function (f) { return fetch(new URL("../75-voice/kairotic/" + f, location.href)).then(function (r) { return r.text(); }); };
+  Promise.all([import("./kairotic/aoidos.mjs"), import("./kairotic/export.mjs"), import("./kairotic/seikilos.mjs"), import("./kairotic/greek.mjs"),
+               import("../75-voice/kairotic/sing.mjs"), dsp("voice.dsp"), dsp("noise.dsp")]).then(function (ms) {
+    window.kairoticAoidos = { A: { ...ms[0] }, X: { ...ms[1] }, K: { ...ms[2] }, G: { ...ms[3] }, V: { sing: { ...ms[4] }, voiceDsp: ms[5], noiseDsp: ms[6] } };
     try { scittle.core.eval_string(document.getElementById("page-cljs").textContent); } catch (e) { show(e); }
   }).catch(show);
 });
@@ -398,11 +402,27 @@ window.addEventListener("DOMContentLoaded", function () {
        20))))
 
 ;; ───── sound ─────
+;; The melody sung by Study 75's voice (its two faust~, compiled the first time): its notes with their syllables and
+;; their pitches as the system has them (a Greek tonos's cents too), the pronunciation the text's age asks for (Koine
+;; for Seikilos's stele, Attic for Homer); the comes or the aulos played with it, as before. Or a plain tone.
+(def VO (.-V K))
 (defonce ctx (atom nil))
+(defonce voice (atom nil))     ; the compiled voice: a promise
+(defonce voiced (atom nil))    ; what it last sang, for the tests
+(defn compiled-voice []
+  (or @voice
+      (reset! voice (-> (.voices (.-sing VO) (.-voiceDsp VO) (.-noiseDsp VO))
+                        (.catch (fn [e] (reset! voice nil) (throw e)))))))
+(defn pron-of [text-id] (if (#{"seikilos" "stele"} text-id) "koine" "attic"))
+(defn voice-notes [A sung beat]
+  (into-array (for [n (array-seq (.lyricNotesOf A (beats-of sung)))]
+                #js {:t (* beat (.-at n)) :dur (* beat (.-beats n)) :midi (.midi A (.-code n)) :syl (if (.-first n) (.-text n) "")})))
+
 (defn play! []
-  (let [{:keys [made sung]} @S]
+  (let [{:keys [made sung text-id]} @S]
     (when sung
-      (let [ac (or @ctx (reset! ctx (js/AudioContext.))) A (.-A made) beat 0.26 t0 (+ (.-currentTime ac) 0.1)
+      (let [ac (or @ctx (reset! ctx (js/AudioContext.))) A (.-A made) beat 0.26
+            by-voice (= "voice" (val-of "timbre"))
             ;; (the aulos a reed: a sawtooth through a low-pass, a slow vibrato)
             tone (fn [hz s e g0 reed]
                    (let [o (.createOscillator ac) g (.createGain ac) f (.createBiquadFilter ac)]
@@ -414,13 +434,35 @@ window.addEventListener("DOMContentLoaded", function () {
                          (.connect (.connect l lg) (.-frequency o)) (.start l s) (.stop l (+ e 0.3))))
                      (.setValueAtTime (.-gain g) 0 s) (.linearRampToValueAtTime (.-gain g) g0 (+ s 0.02)) (.setTargetAtTime (.-gain g) 0 (- e 0.04) 0.03)
                      (.connect (.connect (.connect o f) g) (.-destination ac)) (.start o s) (.stop o (+ e 0.3))))
-            NS (notes-of A sung)]
-        (doseq [n NS]
-          (tone (.hz A (.-code n)) (+ t0 (* beat (.-at n))) (+ t0 (* beat (+ (.-at n) (.-beats n)))) 0.12 false))
-        (when-let [C (comes-line made sung)]
-          (doseq [[b c] (map-indexed vector C) :when (and (some? c) (or (zero? b) (not= c (nth C (dec b)))))]
-            (let [len (count (take-while #(= % c) (drop b C)))]
-              (tone (.hz A c) (+ t0 (* beat b)) (+ t0 (* beat (+ b len))) (if (aulos?) 0.05 0.08) (aulos?)))))))))
+            others (fn [t0]
+                     (when-let [C (comes-line made sung)]
+                       (doseq [[b c] (map-indexed vector C) :when (and (some? c) (or (zero? b) (not= c (nth C (dec b)))))]
+                         (let [len (count (take-while #(= % c) (drop b C)))]
+                           (tone (.hz A c) (+ t0 (* beat b)) (+ t0 (* beat (+ b len))) (if (aulos?) 0.05 0.08) (aulos?))))))]
+        (if-not by-voice
+          (let [t0 (+ (.-currentTime ac) 0.1)]
+            (doseq [n (notes-of A sung)]
+              (tone (.hz A (.-code n)) (+ t0 (* beat (.-at n))) (+ t0 (* beat (+ (.-at n) (.-beats n)))) 0.12 false))
+            (others t0)
+            (js/Promise.resolve nil))
+          (do (status! "the voice: compiling its two faust~…")
+              (-> (compiled-voice)
+                  (.then (fn [V]
+                           (let [notes (voice-notes A sung beat)
+                                 r (.sing (.-sing VO) V notes #js {:pron (pron-of text-id) :size 1.1 :noise 0.8})
+                                 y (.-sound r) off (.. r -curves -offset)
+                                 b (.createBuffer ac 1 (.-length y) (.. VO -sing -SR)) src (.createBufferSource ac)
+                                 ;; (the voice's first consonants come before the beat: its buffer starts that much earlier)
+                                 t0 (+ (.-currentTime ac) 0.1 off)]
+                             (.copyToChannel b y 0) (set! (.-buffer src) b)
+                             (let [g (.createGain ac)] (set! (.. g -gain -value) (if (comes-line made sung) 0.7 0.9))
+                               (.connect (.connect src g) (.-destination ac)))
+                             (.start src (- t0 off))
+                             (others t0)
+                             (reset! voiced #js {:notes notes :pron (pron-of text-id) :seconds (/ (.-length y) (.. VO -sing -SR))})
+                             (status! (str "sung by the voice (" (pron-of text-id) ")"))
+                             @voiced)))
+                  (.catch (fn [e] (status! (str "the voice could not sing: " (.-message e))) nil)))))))))
 
 ;; an examiner's row heard: the melody and the comes the engine chose for it, a unit a beat (the dux struck where its
 ;; syllables begin, the comes a note held while its pitch stays)
@@ -525,6 +567,9 @@ window.addEventListener("DOMContentLoaded", function () {
 ;; for the page's tests
 (set! (.-kairoticAoidosPage js/window)
       #js {:state (fn [] (clj->js (select-keys @S [:text-id :count :stele]))) :rebuild rebuild! :sing sing! :examine examine! :stele stele!
+           :play play! :voiced (fn [] @voiced)
+           :lyricNotes (fn [] (let [{:keys [made sung]} @S] (when sung (.lyricNotesOf (.-A made) (beats-of sung)))))
+           :midiOf (fn [c] (.midi (.-A (:made @S)) c))
            :greek (fn [on] (set! (.-value ($ "sys")) (if on "greek" "church")) (sys!))
            :set (fn [id form] (set! (.-value ($ "text-id")) id) (load-text! id) (set! (.-value ($ "form")) form) (set! (.-hidden ($ "canon-opts")) (not= form "canon")) (rebuild!))})
 
