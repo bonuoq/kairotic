@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Study 76 · continuo · page tests</title>
+<pre id="out">Running…</pre>
+<iframe id="page" src="../index.html" style="width:1280px;height:1000px;border:0"></iframe>
+<script type="module">
+// The study's page itself, in a frame: the chorales loaded, a phrase with Bach's figures drawn, a bass written under it
+// and its voices, both drawn and played, the comparison.
+const results = [], errors = [];
+const is = (what, ok) => results.push([what, !!ok]);
+const frame = document.getElementById("page");
+await new Promise((r) => frame.addEventListener("load", r, { once: true }));
+const w = frame.contentWindow, d = frame.contentDocument;
+w.addEventListener("error", (e) => errors.push(String(e.message || e)));
+const wait = async (ok, ms = 60000) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { try { if (ok()) return true; } catch (e) {} await new Promise((r) => setTimeout(r, 50)); } return false; };
+try {
+  await wait(() => w.kairoticStudy);
+  await w.kairoticStudy.ready;
+  const K = w.kairoticStudy, st = K.state();
+  is(`the chorales loaded: ${st.phrases.length} phrases kept out of the tables, a list of them`, st.phrases.length > 200 && d.querySelectorAll("#phrase option").length === st.phrases.length);
+  K.choose("chor010-1");
+  is("a phrase with Bach's own figures: his voices drawn, his figures under them", d.querySelectorAll("#roll-0 rect").length > 0 && d.querySelectorAll("#roll-0 text.fig").length > 0 && /BCFB/.test(d.getElementById("note-0").textContent));
+  d.getElementById("draw").click();
+  await wait(() => st.real && !st.busy);
+  is("the bass written: its voices drawn, its figures and keys under them", !!st.real.bass && d.querySelectorAll("#roll-1 rect").length > 0 && d.querySelectorAll("#roll-1 text.key").length > 0);
+  is("... the comparison: this draw and the mean", d.querySelectorAll("#compare tr").length === 5 && /%/.test(d.querySelector("#compare tr:nth-child(2) td:nth-child(2)").textContent));
+  if (st.real.satb) { K.play(1); is("played", d.getElementById("side-1").classList.contains("playing")); K.stop(); }
+  K.play(0); K.stop();
+  is("no errors on the page", errors.length === 0);
+} catch (e) { errors.push(String(e.message || e)); is("ran: " + e.message, false); }
+const bad = results.filter((r) => !r[1]);
+window.kairoticResults = { total: results.length, failed: bad.map((r) => r[0]) };
+document.getElementById("out").textContent = `${results.length - bad.length} / ${results.length} passed\n\n` + results.map(([w, ok]) => (ok ? "  ok   " : "  FAIL ") + w).join("\n") + (errors.length ? "\n\nerrors:\n" + errors.join("\n") : "");
+</script>

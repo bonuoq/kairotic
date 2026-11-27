@@ -1,0 +1,245 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kairotic Study 76 · Continuo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #eef1f4; --sheet: #f8f9fb; --grid: #d9dfe6; --ink: #1b2430; --ink-soft: #5a6676;
+  --rule: #c3ccd6; --box: #ffffff; --accent: #2f55d4; --accent-soft: rgba(47, 85, 212, 0.12);
+  --kairos: #b4472e; --kairos-soft: rgba(180, 71, 46, 0.1); --error: #b42318; --ok: #2e7d4f;
+  --f-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --f-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+    --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+    --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #171c23; --grid: #2a323d; --ink: #e3e8ee; --ink-soft: #95a1b0;
+  --rule: #333c48; --box: #1e252e; --accent: #7d9bff; --accent-soft: rgba(125, 155, 255, 0.16);
+  --kairos: #e58a6f; --kairos-soft: rgba(229, 138, 111, 0.14); --error: #ff8a80; --ok: #7fd1a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+main { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+header h1 { margin: 0; font-family: var(--f-head); font-weight: 600; font-size: 20px; letter-spacing: 0.01em; }
+header .sub { color: var(--ink-soft); font-size: 13px; }
+header .status { margin-left: auto; font-family: var(--f-code); font-size: 12px; color: var(--ink-soft); }
+code { font-family: var(--f-code); font-size: 0.95em; }
+button.act { border: 1px solid var(--rule); background: var(--box); color: var(--ink); font: 500 13px var(--f-ui); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+button.act:hover { border-color: var(--accent); }
+button.act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.act.primary { color: #0e1420; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.act.primary { color: #0e1420; } }
+button.act:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="number"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+input[type="number"] { width: 4.6em; font-family: var(--f-code); font-size: 12.5px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.toolbar .group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sep { flex: 1 1 auto; }
+.toolbar .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.busy { opacity: 0.4; transition: opacity 0.2s; pointer-events: none; }
+.msg { font: 12px var(--f-code); color: var(--ink-soft); min-height: 1.4em; overflow-wrap: anywhere; }
+/* Study 71: a trial at a time — the two phrases to hear, the answer, then what they were; beside it the scores by
+   variant and the deck */
+.views { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .views { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--sheet); border: 1px solid var(--grid); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.panel h2 { margin: 0 0 10px; font: 600 14px var(--f-head); letter-spacing: 0.02em; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.panel h2 span { font: 400 12px var(--f-ui); color: var(--ink-soft); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.side { border: 1px solid var(--rule); border-radius: 8px; background: var(--box); padding: 10px; display: grid; gap: 8px; justify-items: start; min-width: 0; }
+.side .lab { font: 600 12px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.side.playing { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.side.bach { border-color: var(--ok); } .side.wrong { border-color: var(--error); }
+.side .who { font: 600 13px var(--f-ui); }
+.side svg { width: 100%; height: auto; background: var(--sheet); border-radius: 4px; }
+.roll rect { rx: 1.5; } .roll .soprano { fill: var(--accent); } .roll .alto { fill: var(--kairos); } .roll .tenor { fill: var(--ok); } .roll .bass { fill: var(--ink-soft); }
+.roll line { stroke: var(--grid); stroke-width: 1; }
+.answer { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 10px; }
+.answer button.act { padding: 8px 14px; font-size: 14px; }
+.reveal { margin-top: 10px; font-size: 13px; line-height: 1.5; min-height: 1.5em; }
+.progress { height: 4px; background: var(--grid); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+.progress div { height: 100%; background: var(--accent); width: 0; transition: width 0.2s; }
+table.score { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.score th, table.score td { text-align: right; padding: 4px 5px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+table.score th:first-child, table.score td:first-child { text-align: left; }
+table.score th { font: 600 11px var(--f-head); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+table.score td { font-family: var(--f-code); font-size: 12.5px; }
+table.score tr.overall td { font-weight: 600; }
+.ci svg { width: 100%; max-width: 440px; height: auto; display: block; margin-top: 8px; }
+.scroll { overflow-x: auto; }
+.ci .chance { stroke: var(--kairos); stroke-dasharray: 3 3; } .ci .bar { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+.ci .dot { fill: var(--accent); } .ci text { font: 11px var(--f-code); fill: var(--ink-soft); dominant-baseline: central; } .ci .axis { stroke: var(--rule); }
+.about { margin: 0; font-size: 13px; line-height: 1.55; }
+.ok { color: var(--ok); } .bad { color: var(--error); }
+.answer .tag { font: 600 11px var(--f-head); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+.small { font-size: 12px; color: var(--ink-soft); }
+input[type="text"] { font: 13px var(--f-ui); color: var(--ink); background: var(--box); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; width: 9em; }
+.roll .fig { font: 10px var(--f-code); fill: var(--ink); text-anchor: middle; }
+.roll .key { font: 8.5px var(--f-ui); fill: var(--ink-soft); text-anchor: start; }
+.roll .dis { fill: var(--kairos); }
+.views.two { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+@media (max-width: 900px) { .views.two { grid-template-columns: minmax(0, 1fr); } }
+.pair.stack { grid-template-columns: 1fr; }
+select#phrase { max-width: 22em; }
+</style>
+<main>
+<header>
+  <h1>Study 76 · continuo</h1>
+  <span class="sub">a chorale's soprano given: a figured bass written under it, then the voices that play it — beside Bach's (discussion #353)</span>
+  <span class="status" id="status">loading the chorales…</span>
+</header>
+<div class="toolbar">
+  <label>phrase <select id="phrase"></select></label>
+  <button class="act" id="random">another phrase</button>
+  <label>variant <select id="variant"></select></label>
+  <label>seed <input type="number" id="seed" value="76" min="1"></label>
+  <button class="act primary" id="draw">write the bass</button>
+  <span class="sep"></span>
+  <label>tempo <select id="tempo"><option value="0.8">slow</option><option value="0.62" selected>moderate</option><option value="0.48">flowing</option></select></label>
+  <button class="act" id="stop">■</button>
+</div>
+<div class="msg" id="msg"></div>
+<div class="views two">
+  <section class="panel">
+    <h2>The phrase <span id="title"></span></h2>
+    <div class="pair stack">
+      <div class="side" id="side-0"><span class="lab">Bach</span><button class="act" id="play-0" disabled>▶ hear Bach's</button>
+        <svg class="roll" id="roll-0" viewBox="0 0 600 170"></svg><span class="small" id="note-0"></span></div>
+      <div class="side" id="side-1"><span class="lab">the continuo</span><button class="act" id="play-1" disabled>▶ hear this one</button>
+        <svg class="roll" id="roll-1" viewBox="0 0 600 170"></svg><span class="small" id="note-1"></span></div>
+    </div>
+  </section>
+  <div style="display:grid; gap:12px; min-width:0">
+    <section class="panel"><h2>Against Bach <span>this draw · and the mean of the draws so far</span></h2>
+      <div class="scroll"><table class="score" id="compare"></table></div><p class="small" id="compare-note"></p></section>
+    <section class="panel"><h2>About</h2><p class="about">The phrases are the ones the tables were not counted on (every
+      fifth chorale). <b>The bass</b> is Study 63's <code>under.mjs</code>: an exact bridge under the soprano, each
+      quarter a local key, a bass note and a chord over it, its costs how often Bach does each thing in the other
+      chorales (<code>@kairotic/rules</code>' <code>continuo.mjs</code>) — the chord over each degree of the bass, the
+      soprano over the bass, their moves together, the cadence —, the tonal functions read in the local keys; the soprano a
+      chord tone, or a suspension, a passing note or a note held over a moving bass, as his are. <b>The figures</b> are
+      written as Bach abbreviates them in his continuo parts (the Bach Chorales Figured Bass dataset): nothing over a 5/3,
+      6 for a 6/3, 6/4/2 for a 4/2, an accidental alone for the 3rd; under Bach's own phrase, his figures where his
+      continuo part survives (BCFB), else read from his four voices. <b>The inner voices</b> are <code>bach-4</code>'s,
+      the bass's chords asked as a wish. The variants turn a layer of the bass off: <code>no-functions</code>,
+      <code>no-keys</code> (every quarter in the chorale's key), <code>no-economy</code>. The phrases are from Craig Sapp's
+      edition (CC BY-NC-SA 4.0), Bach's figures from the BCFB dataset (CC BY 4.0).</p></section>
+  </div>
+</div>
+</main>
+<script type="module">
+import * as C from "./kairotic/realize.mjs";
+const $ = (id) => document.getElementById(id);
+const st = { phrases: [], figures: null, phrase: null, real: null, draws: [], busy: false };
+const pct = (x) => (x === null || x === undefined ? "—" : `${Math.round(x * 100)}%`);
+const msg = (s) => ($("msg").textContent = s || "");
+
+// ── a piano roll, the figures under the bass, the local keys where they change
+function roll(svg, item, figures, keys, dis = []) {
+  const n = item.satb.length, unit = 1, notes = C.soundOf(item, { unit, fermata: 2 }), end = n - 1 + 2;
+  const lo = Math.min(...notes.map((x) => x.midi)) - 1, hi = Math.max(...notes.map((x) => x.midi)) + 1;
+  const W = 600, H = 130, x = (t) => 6 + (t / end) * (W - 12), y = (m) => 4 + ((hi - m) / (hi - lo)) * (H - 10);
+  let out = "";
+  for (let t = 0; t <= n; t++) out += `<line x1="${x(Math.min(t, end))}" y1="0" x2="${x(Math.min(t, end))}" y2="${H}"/>`;
+  for (const nt of notes) out += `<rect class="${nt.voice}" x="${x(nt.on) + 0.5}" y="${y(nt.midi) - 2.5}" width="${Math.max(2, x(nt.on + nt.dur) - x(nt.on) - 1.5)}" height="5"/>`;
+  const dset = new Set(dis);
+  (figures || []).forEach((f, t) => {
+    const parts = String(f || "").split("/").filter(Boolean), cx = x(t) + (x(t + 1) - x(t)) / 2;
+    parts.forEach((p, i) => (out += `<text class="fig${dset.has(t) ? " dis" : ""}" x="${cx}" y="${H + 10 + i * 10}">${p}</text>`));
+  });
+  if (keys) keys.forEach((k, t) => { if (!t || k !== keys[t - 1]) out += `<text class="key" x="${x(t) + 2}" y="${H + 38}">${k.replace("#", "♯").replace(/b /, "♭ ")}</text>`; });
+  svg.innerHTML = out;
+}
+
+// ── sound: a soft organ, the outer voices a little louder
+let ac = null, nodes = [], timer = null;
+function stop() { for (const o of nodes) try { o.stop(); } catch {} nodes = []; clearTimeout(timer); ["side-0", "side-1"].forEach((s) => $(s).classList.remove("playing")); }
+function play(k) {
+  const item = k === 0 ? st.phrase : st.real; if (!item || !item.satb) return;
+  stop(); ac = ac || new AudioContext(); if (ac.state === "suspended") ac.resume();
+  const unit = +$("tempo").value, notes = C.soundOf(item, { unit }), t0 = ac.currentTime + 0.08;
+  const gainOf = { soprano: 0.075, alto: 0.055, tenor: 0.055, bass: 0.08 };
+  for (const n of notes) {
+    const f = 440 * Math.pow(2, (n.midi - 69) / 12), g = ac.createGain(), s = t0 + n.on, e = s + n.dur;
+    g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(gainOf[n.voice], s + 0.03); g.gain.setValueAtTime(gainOf[n.voice], e - 0.05); g.gain.linearRampToValueAtTime(0, e);
+    g.connect(ac.destination);
+    for (const [type, mul, amp] of [["triangle", 1, 1], ["sine", 2, 0.35]]) {
+      const o = ac.createOscillator(), a = ac.createGain(); o.type = type; o.frequency.value = f * mul; a.gain.value = amp;
+      o.connect(a).connect(g); o.start(s); o.stop(e + 0.05); nodes.push(o);
+    }
+  }
+  $(`side-${k}`).classList.add("playing");
+  timer = setTimeout(() => $(`side-${k}`).classList.remove("playing"), (C.lengthOf(item, { unit }) + 0.2) * 1000);
+}
+
+// ── the phrase and the draw
+function showPhrase() {
+  const p = st.phrase; if (!p) return;
+  $("title").textContent = `${p.title || p.id}${p.bwv ? ` (${p.bwv})` : ""}, ${p.key.tonic} ${p.key.mode}, phrase ${p.id.split("-").pop()} · ${p.satb.length} quarters`;
+  const written = C.writtenFigures(p, st.figures);
+  roll($("roll-0"), p, written || C.bachFigures(p), p.keys);
+  $("note-0").textContent = written ? "his figures as his continuo part has them (BCFB)" : "his figures read from his four voices (no continuo part of his in the dataset)";
+  $("play-0").disabled = false;
+  $("roll-1").innerHTML = ""; $("note-1").textContent = ""; $("play-1").disabled = true; st.real = null; showCompare();
+}
+function draw() {
+  const p = st.phrase; if (!p || st.busy) return;
+  st.busy = true; $("draw").disabled = true; msg("writing the bass…");
+  setTimeout(() => {
+    try {
+      const real = C.realize(p, { variant: $("variant").value, r: C.rng(+$("seed").value || 76) });
+      st.real = real;
+      if (!real.bass) { msg(real.fail); return; }
+      roll($("roll-1"), real.satb ? real : { satb: p.satb.map((c, t) => [c[0], c[0], c[0], real.bass[t]]) }, real.figures, real.keys, real.dissonances.map((d) => d.t));
+      $("play-1").disabled = !real.satb;
+      const c = C.compare(p, real);
+      st.draws.push(c);
+      $("note-1").textContent = (real.fail ? `the bass and its figures; ${real.fail}` : "the bass and its figures, the inner voices by bach-4") +
+        (real.dissonances.length ? ` · the soprano a dissonance on ${real.dissonances.map((d) => `quarter ${d.t + 1} (${d.motion})`).join(", ")}` : "");
+      msg(""); showCompare(c);
+      $("seed").value = (+$("seed").value || 76) + 1;
+    } catch (e) { msg("error: " + (e.message || e)); }
+    finally { st.busy = false; $("draw").disabled = false; }
+  }, 20);
+}
+function showCompare(c = null) {
+  const mean = (k) => { const xs = st.draws.map((d) => d[k]).filter((x) => x !== null); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null; };
+  const rows = [["bass notes his", "bass"], ["bass pitch classes his", "bassPc"], ["chords his", "chords"], ["inner notes his", "inner"]];
+  $("compare").innerHTML = `<tr><th></th><th>this draw</th><th>mean (${st.draws.length})</th></tr>` + rows.map(([l, k]) => `<tr><td>${l}</td><td>${c ? pct(c[k]) : "—"}</td><td>${pct(mean(k))}</td></tr>`).join("");
+  $("compare-note").textContent = "a chord his: the same pitch classes over the same bass class; inner notes: the alto's and the tenor's, note for note.";
+}
+function choose(id) { st.phrase = st.phrases.find((p) => p.id === id) || st.phrases[0]; $("phrase").value = st.phrase.id; showPhrase(); }
+
+$("variant").innerHTML = C.VARIANTS.map((v) => `<option>${v}</option>`).join("");
+$("phrase").onchange = () => choose($("phrase").value);
+$("random").onclick = () => choose(st.phrases[Math.floor(Math.random() * st.phrases.length)].id);
+$("draw").onclick = draw; $("stop").onclick = stop;
+$("play-0").onclick = () => play(0); $("play-1").onclick = () => play(1);
+
+const ready = (async () => {
+  const [ph, fg] = await Promise.all([fetch("../_shared/chorales/phrases.json").then((r) => r.json()), fetch("../_shared/chorales/figures.json").then((r) => r.json())]);
+  st.phrases = ph.phrases.filter((p) => C.isHeldOut(p) && p.satb.length <= 16);
+  st.figures = fg.phrases;
+  $("phrase").innerHTML = st.phrases.map((p) => `<option value="${p.id}">${(p.title || p.id).slice(0, 38)} · ${p.id.split("-").pop()}${st.figures[p.id] ? " · figured" : ""}</option>`).join("");
+  $("status").textContent = `${st.phrases.length} phrases kept out of the tables · ${st.phrases.filter((p) => st.figures[p.id]).length} with Bach's own figures`;
+  choose(st.phrases.find((p) => st.figures[p.id])?.id || st.phrases[0].id);
+})();
+window.kairoticStudy = { ready, state: () => st, choose, draw, play, stop };
+</script>
