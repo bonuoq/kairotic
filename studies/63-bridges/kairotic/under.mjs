@@ -118,6 +118,12 @@ const kindCoster = (T) => {
  * begins in stay under-tables.mjs's.
  */
 function continuoCosters(K) {
+  // (the last three steps into the fermata, each its own table of pairs: BACH_CADENCE_STEPS, counts — −log P(pair |
+  // step), an unseen pair as one seen half a time)
+  const steps = K.BACH_CADENCE_STEPS ? Object.fromEntries(["major", "minor"].map((m) => [m, Object.fromEntries([1, 2, 3].map((k) => {
+    const T = (K.BACH_CADENCE_STEPS[m] || {})[k] || {}, z = Object.values(T).reduce((a, b) => a + b, 0), V = Object.keys(T).length + 1;
+    return [k, (w) => -Math.log(((T[w] || 0) + 0.5) / (z + 0.5 * V))];
+  }))])) : null;
   const D = K.BACH_DEGREE_CHORD, cls = (d) => (d === 0 ? 2 : d < 0 ? (d >= -2 ? 1 : 0) : d <= 2 ? 3 : 4);
   const cad = Object.fromEntries(["major", "minor"].map((m) => {
     const rows = K.BACH_CADENCES[m] || [], floor = -Math.log(Math.min(...rows.map(([, x]) => x), 0.01) / 2);
@@ -129,6 +135,7 @@ function continuoCosters(K) {
     vertical: (iv) => K.BACH_OUTER_VERTICAL[iv],
     pair: (ds, db) => K.BACH_OUTER_PAIR[cls(ds) * 5 + cls(db)],
     cadence: cad[m],
+    steps: steps && steps[m],
   }]));
 }
 const inventoryOf = (T, min) => Object.entries(T.chord).filter(([, c]) => c >= min).map(([k]) => { const [b, figure, kind] = k.split("|"); return { bassRel: Number(b), figure, kind }; });
@@ -160,8 +167,19 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
     const pz = Object.values(part || {}).reduce((a, b) => a + b, 0), wz = Object.values(whole || {}).reduce((a, b) => a + b, 0), V = Object.keys(whole || {}).length + 1;
     return (k) => (pz && wz ? -Math.log(((part[k] || 0) + alpha) / (pz + alpha * V)) + Math.log(((whole[k] || 0) + alpha) / (wz + alpha * V)) : 0);
   };
+  // (continuo.mjs's BACH_DEGREE_BY_POSITION where given — [tenth][degree][chord] counts —, under-tables.mjs's otherwise)
+  const posOf = (m) => {
+    const D = continuo && continuo.BACH_DEGREE_BY_POSITION && continuo.BACH_DEGREE_CHORD;
+    if (!D) return (tables[m] && tables[m].position) || [];
+    const cols = continuo.BACH_DEGREE_CHORD[m].chords;
+    return continuo.BACH_DEGREE_BY_POSITION[m].map((tenthRows) => {
+      const o = {};
+      tenthRows.forEach((row, deg) => row.forEach((c, j) => { if (c) o[`${deg}|${cols[j]}`] = c; }));
+      return o;
+    });
+  };
   const POS = Object.fromEntries(["major", "minor"].map((m) => {
-    const P = (tables[m] && tables[m].position) || [], all = {};
+    const P = posOf(m), all = {};
     for (const d of P) for (const [k, c] of Object.entries(d)) all[k] = (all[k] || 0) + c;
     return [m, P.map((d) => ratio(d, all))];
   }));
@@ -175,7 +193,7 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
   const tenth = (t) => Math.min(9, Math.floor(10 * t / Math.max(1, n - 1)));
   // (with `continuo`, the chorale thread's tables in place of the chord, the vertical, the moves and the cadence)
   const CC = continuo ? continuoCosters(continuo) : null, KC = CC ? { major: kindCoster(tables.major), minor: kindCoster(tables.minor) } : null;
-  if (CC) Object.assign(W, { chord: 0.6, kind: 1, vertical: 0.4, pair: 0.6, leap: 0.5, cadence: 1.5, sameChord: 1, dissonance: 1, ...weights });
+  if (CC) Object.assign(W, { chord: 0.6, kind: 1, vertical: 0.4, pair: 0.6, leap: 0.5, cadence: 0.7, cadenceSteps: 0.5, sameChord: 1, dissonance: 1, ...weights });
   const fer = Array.from({ length: n }, (_, t) => (fermata ? !!fermata[t] : t === n - 1));
   // the local keys: the chorale's and those Bach goes to from it (KEY_MOVES), or the chorale's alone
   const M = KEY_MOVES[hm], rels = V.keys === false ? [hm === "minor" ? "0m" : "0M"] : Object.keys(M);
@@ -301,8 +319,12 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
     if (a.ch.root === z.ch.root && a.ch.kind === z.ch.kind && a.ki === z.ki) c += W.sameChord;
     // (the leading tone in the bass of a dominant goes up)
     if (a.ch.fn && a.ch.fn.fn === "D" && mod(a.b - tonicPc(KEYS[a.ki].key), 12) === 11 && d !== 1) c += W.leading;
-    if (fer[t]) c += CC ? W.cadence * CC[mode].cadence(`${mod(a.b - tonicPc(K), 12)}:${a.ch.figure} ${mod(z.b - tonicPc(K), 12)}:${z.ch.figure}`)
-                        : W.end * Cm.end(`${mod(a.b - tonicPc(K), 12)}>${mod(z.b - tonicPc(K), 12)}`);
+    // (the cadence: with BACH_CADENCE_STEPS each of the last three steps into the fermata by its own pairs — degrees
+    // over the key of the quarter it goes to, a dissonant quarter "x" —; else the last step alone)
+    const lab = (x) => (x.dis ? "x" : x.ch.figure), k = n - t;
+    if (CC && CC[mode].steps && k <= 3 && fer[n - 1]) c += (k === 1 ? W.cadence : W.cadenceSteps) * CC[mode].steps[k](`${mod(a.b - tonicPc(K), 12)}:${lab(a)} ${mod(z.b - tonicPc(K), 12)}:${lab(z)}`);
+    else if (fer[t]) c += CC ? W.cadence * CC[mode].cadence(`${mod(a.b - tonicPc(K), 12)}:${a.ch.figure} ${mod(z.b - tonicPc(K), 12)}:${z.ch.figure}`)
+                             : W.end * Cm.end(`${mod(a.b - tonicPc(K), 12)}>${mod(z.b - tonicPc(K), 12)}`);
     return c;
   };
   // the backward messages
