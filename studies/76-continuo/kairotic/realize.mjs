@@ -18,6 +18,7 @@
 import { underBridge, isHeldOut, UNDER_VARIANTS, KIND_INTERVALS } from "./under.mjs";
 import * as CONTINUO from "./continuo.mjs";
 import { fromOuter } from "./rules.mjs";
+import { derives, parallels } from "./diminish.mjs";
 
 export { isHeldOut, UNDER_VARIANTS };
 export const VARIANTS = UNDER_VARIANTS.map((v) => v.name);
@@ -127,3 +128,33 @@ export function soundOf(item, { unit = 0.6, fermata = 2 } = {}) {
   return out;
 }
 export const lengthOf = (item, { unit = 0.6, fermata = 2 } = {}) => (item.satb.length - 1 + fermata) * unit;
+
+// ─── judging at two levels: the quarters as the frame, a voice's eighths as the derivation (#353) ───
+const DIM_VOICES = ["soprano", "alto", "tenor", "bass"];
+const kn = (k) => String(k).replace("♯", "#").replace("♭", "b");
+const quarterNotes = (p, v) => { const out = []; p.satb.forEach((c, t) => { if (t && p.held && p.held[t][v] && out.length) { const o = out[out.length - 1]; o.units++; o.strong.push(!!p.strong[t]); return; }
+  out.push({ midi: c[v], ...(p.names ? { name: p.names[t][v] } : {}), units: 1, strong: [!!p.strong[t]], ...(p.keys ? { key: kn(p.keys[t]) } : {}) }); }); return out; };
+/**
+ * The licence a phrase's eighths give its quarters (fromOuter's `licence`): a dissonance the quarters refuse is let
+ * through where a voice's line derives its note (Study 63's derives: resolved on the eighth, passing, neighbour,
+ * anticipation, held), and parallel 5ths or octaves where the lines themselves have none (the eighths between them).
+ * lines: {soprano, alto, tenor, bass: [[onset in quarters, MIDI, quarters]…]}, onset 0 the phrase's first quarter.
+ */
+export function licenceOf(lines, satb) {
+  return (t, who, why) => {
+    if (/parallel/.test(String(why))) {
+      if (t < 1) return false;
+      for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) if (parallels(lines[DIM_VOICES[i]], lines[DIM_VOICES[j]], t - 1, t) !== null) return false;
+      return true;
+    }
+    return (who ? [who] : DIM_VOICES).some((v) => derives(lines, t, v, satb[t][DIM_VOICES.indexOf(v)]) !== null);
+  };
+}
+/** bach-4's judgement of a phrase of four voices ({satb, names, held, strong, keys, key, lines?}): the first rule it breaks,
+ *  or null — in quarters, or at two levels where it has its eighths (levels: 2, the phrase's `lines`). */
+export function judge(p, { levels = 1, lines = p.lines } = {}) {
+  const L = lines && Object.fromEntries(Object.entries(lines).map(([v, xs]) => [v, xs.map(([on, m, d]) => [on, m, d])]));
+  const ob = fromOuter({ bass: quarterNotes(p, 3), soprano: quarterNotes(p, 0), key: `${kn(p.key.tonic)} ${p.key.mode || "major"}`, ...(levels === 2 && L ? { licence: licenceOf(L, p.satb) } : {}) });
+  const code = (v) => p.satb.map((c, t) => (p.names ? ob.code(p.names[t][v], t) : ob.code(c[v], t)));
+  return ob.judge({ soprano: code(0), alto: code(1), tenor: code(2) });
+}

@@ -7,7 +7,7 @@
 // one for the chords over a degree), 0.5 added to every cell (a plain −log, so that costs summed are a probability's: Study 63's logProb); written between the
 // `@tables-begin` and `@tables-end` lines of continuo.mjs (default packages/rules/assets/continuo.mjs).
 import { readFileSync, writeFileSync } from "node:fs";
-import { chordOf, CHORDS, dissonanceOf, spelled, bassMoveOf, moveClassOf, appliedOf, normalFigure } from "../../../../packages/rules/assets/continuo.mjs";
+import { chordOf, CHORDS, dissonanceOf, spelled, bassMoveOf, moveClassOf, appliedOf, normalFigure, kindOf } from "../../../../packages/rules/assets/continuo.mjs";
 
 const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const tonicOf = (k) => { const t = k.split(" ")[0]; return (PC[t[0]] + (t.match(/[#♯]/g) || []).length - (t.match(/[b♭]/g) || []).length + 12) % 12; };
@@ -26,6 +26,7 @@ export function count(phrases, keep = (p) => p.chorale % 5 !== 0, figures = null
   const pos = { major: Array.from({ length: 10 }, () => Array.from({ length: 12 }, () => Array(COLS.length).fill(0))), minor: Array.from({ length: 10 }, () => Array.from({ length: 12 }, () => Array(COLS.length).fill(0))) };
   const pairs = { major: { 3: {}, 2: {}, 1: {} }, minor: { 3: {}, 2: {}, 1: {} } };
   const applied = { major: {}, minor: {} }, written = { major: {}, minor: {} };
+  const dkind = { major: Array.from({ length: 12 }, () => Array.from({ length: COLS.length }, () => ({}))), minor: Array.from({ length: 12 }, () => Array.from({ length: COLS.length }, () => ({}))) };
   const cad = { major: {}, minor: {} }, cad4 = { major: {}, minor: {} }, diss = {}, fine = {}, coarse = {}, tri = {}, bi = {};
   const dmap = { strong: Array.from({ length: 10 }, () => [0, 0]), weak: Array.from({ length: 10 }, () => [0, 0]) }, DISS = new Set([1, 2, 5, 6, 10, 11]);
   const role = (nm, v) => ((((spelled(nm[v]).step - spelled(nm[3]).step) % 7) + 7) % 7);
@@ -41,6 +42,7 @@ export function count(phrases, keep = (p) => p.chorale % 5 !== 0, figures = null
       if (q) pair[move(S - p.satb[q - 1][0])][move(B - p.satb[q - 1][3])]++;
       const k = p.keys[q], d = (((B - tonicOf(k)) % 12) + 12) % 12;
       deg[modeOf(k)][d][COLS.indexOf(cls(p.names[q]))]++;
+      { const kd = kindOf(p.satb[q]) ?? "x", cell = dkind[modeOf(k)][d][COLS.indexOf(cls(p.names[q]))]; cell[kd] = (cell[kd] || 0) + 1; }
       pos[modeOf(k)][Math.min(9, Math.floor((10 * q) / Math.max(1, n - 1)))][d][COLS.indexOf(cls(p.names[q]))]++;
       if (q) for (const v of [1, 2]) {
         const was = role(p.names[q - 1], v), now = role(p.names[q], v), c0 = cls(p.names[q - 1]), c1 = cls(p.names[q]);
@@ -86,6 +88,7 @@ export function count(phrases, keep = (p) => p.chorale % 5 !== 0, figures = null
     BACH_INNER_ROLES: { fine: Object.fromEntries(Object.keys(fine).sort().map((k) => [k, fine[k]])), coarse: Object.fromEntries(Object.keys(coarse).sort().map((k) => [k, coarse[k]])) },
     BACH_INNER_TURNS: { tri: Object.fromEntries(Object.keys(tri).sort().map((k) => [k, tri[k]])), bi: Object.fromEntries(Object.keys(bi).sort().map((k) => [k, bi[k]])) },
     BACH_DISSONANCE_MAP: dmap,
+    BACH_DEGREE_CHORD_KIND: Object.fromEntries(["major", "minor"].map((m) => [m, dkind[m].map((row) => row.map((c) => Object.fromEntries(Object.keys(c).sort().map((k) => [k, c[k]])))) ])),
     BACH_DEGREE_BY_POSITION: pos,
     BACH_CADENCE_STEPS: Object.fromEntries(["major", "minor"].map((m) => [m, Object.fromEntries([3, 2, 1].map((j) => [j, Object.fromEntries(Object.keys(pairs[m][j]).sort().map((w) => [w, pairs[m][j][w]]))]))])),
     BACH_APPLIED: Object.fromEntries(["major", "minor"].map((m) => [m, ((o) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]])))(applied[m])])),

@@ -19,7 +19,7 @@ export async function run() {
   const is = (what, ok) => results.push([what, !!ok]);
 
   // the copies beside the kernel: @kairotic/rules' and Study 63's, as they are
-  const pkg = ["rules", "tonal", "soft", "functions", "tension", "bits", "continuo"], s63 = ["under", "under-tables", "outer"];
+  const pkg = ["rules", "tonal", "soft", "functions", "tension", "bits", "continuo"], s63 = ["under", "under-tables", "outer", "diminish", "diminution-tables"];
   const off = [];
   for (const f of pkg) if ((await text(`../kairotic/${f}.mjs`)) !== (await text(`../../../packages/rules/assets/${f}.mjs`))) off.push(f);
   for (const f of s63) if ((await text(`../kairotic/${f}.mjs`)) !== (await text(`../../63-bridges/kairotic/${f}.mjs`))) off.push(f);
@@ -66,6 +66,10 @@ export async function run() {
   });
   is(`the figures' accidentals played: of ${accs} quarters figured with one, ${offs} with a voice a semitone off the chord asked`, accs > 0 && offs <= 1);
   is("pcsOf: A major's pitch classes, E7's", String(C.pcsOf({ root: "A", kind: "" })) === "9,1,4" && String(C.pcsOf({ root: "E", kind: "7" })) === "4,8,11,2");
+  // judging at two levels: Bach's own phrases, read with their eighths
+  const some = phrases.filter((x) => x.chorale % 7 === 0);
+  const one = some.filter((x) => C.judge(x) === null).length, two = some.filter((x) => C.judge(x, { levels: 2 }) === null).length;
+  is(`judge at two levels: of ${some.length} of Bach's phrases bach-4 keeps ${one} read in quarters, ${two} read with their eighths (a dissonance or a parallel his eighths explain let through)`, two > 2 * one);
   const snd = C.soundOf({ satb: [[67, 62, 59, 43], [67, 64, 60, 48]], held: [[false, false, false, false], [true, false, false, false]] }, { unit: 1, fermata: 2 });
   is("soundOf: the soprano held over two quarters, the last a fermata", snd.filter((x) => x.voice === "soprano").length === 1 && snd.find((x) => x.voice === "soprano").dur === 3);
   return { results, notes };
