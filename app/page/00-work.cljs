@@ -3,7 +3,7 @@
 ;; The page's ClojureScript, in the order it is evaluated (app/index.html lists the files).
 
 (ns user (:require [clojure.string :as str] [clojure.set] [kairotic.score :as sc] [kairotic.canvas :as cv]
-                   [kairotic.components :as comp] [kairotic.api :as api] [kairotic.code :as cbox] [kairotic.faust] [kairotic.library :as lib] [kairotic.help :as hlp] [kairotic.mt :as mt] [kairotic.quantize :as qz] [kairotic.tempo :as tm] [kairotic.spell :as sp] [kairotic.treecanvas :as tc] [kairotic.mei :as mei] [kairotic.continuum :as ct] [kairotic.follow :as fl] [kairotic.mtboxes :as mtb] [kairotic.hiccup :as hic] [kairotic.assistant :as ai] [kairotic.engine :as eng] [kairotic.presets :as pst] [kairotic.release :as rel] [kairotic.sounds :as snd] [kairotic.talk :as tk]
+                   [kairotic.components :as comp] [kairotic.api :as api] [kairotic.code :as cbox] [kairotic.faust] [kairotic.library :as lib] [kairotic.help :as hlp] [kairotic.mt :as mt] [kairotic.quantize :as qz] [kairotic.tempo :as tm] [kairotic.spell :as sp] [kairotic.treecanvas :as tc] [kairotic.mei :as mei] [kairotic.optics :as optics] [kairotic.lens :as ln] [kairotic.continuum :as ct] [kairotic.follow :as fl] [kairotic.mtboxes :as mtb] [kairotic.hiccup :as hic] [kairotic.assistant :as ai] [kairotic.engine :as eng] [kairotic.presets :as pst] [kairotic.release :as rel] [kairotic.sounds :as snd] [kairotic.talk :as tk]
                    [kairotic.shapes :as shp] [kairotic.signal] [kairotic.links :as links] [clojure.edn]))
 
 (def version "0.2.0-alpha")
@@ -148,6 +148,15 @@
   "Whether k can be a box's live-code name: a keyword that is not a box id (:osc, :lead; not :b7)."
   [k] (boolean (and (keyword? k) (nil? (namespace k)) (not (re-matches #"b\d+" (name k))))))
 
+(defn sane-lens
+  "A lens as a box keeps it (discussion #380): a known name other than the default, or [name {params}]; else nil."
+  [x]
+  (let [[k m] (cond (keyword? x) [x {}]
+                    (and (vector? x) (keyword? (first x)) (<= (count x) 2) (or (nil? (second x)) (map? (second x)))) [(first x) (or (second x) {})]
+                    :else nil)]
+    (when (and k (contains? ln/lenses k) (not (and (= k :open) (empty? m))))
+      (if (empty? m) k [k m]))))
+
 (defn sane-patch
   "Events may come from other people: whatever arrives is normalized."
   [x]
@@ -162,6 +171,8 @@
                          (keyword? (:view b)) (assoc :view (:view b))
                          ;; the layers a tree box turned from their default (discussion #323): [:analysis :performance], [:lyrics] hidden
                          (sequential? (:shows b)) (assoc :shows (vec (filter #{:analysis :performance :lyrics} (:shows b))))
+                         ;; the lens a tree box shows its tree through (discussion #380): :closed, [:closed {:upper 1}]
+                         (sane-lens (:lens b)) (assoc :lens (sane-lens (:lens b)))
                          ;; a `patch @name` pinned to a point of its line (#117)
                          (and (vector? (:pin b)) (= 2 (count (:pin b))) (string? (first (:pin b))) (number? (second (:pin b))))
                          (assoc :pin (:pin b))
@@ -208,6 +219,12 @@
                   (cond (not (get-in p [:boxes id])) p
                         (seq ks) (assoc-in p [:boxes id :shows] ks)
                         :else (update-in p [:boxes id] dissoc :shows)))
+    ;; [:lens :b3 :closed]: the lens a tree box shows its tree through (#380), its name or [name {params}]; nil the
+    ;; default (the open score)
+    :lens       (let [[id x] args x (sane-lens x)]
+                  (cond (not (get-in p [:boxes id])) p
+                        x (assoc-in p [:boxes id :lens] x)
+                        :else (update-in p [:boxes id] dissoc :lens)))
     ;; [:pin :b3 [node n]]: a `patch @name` reads its line at that point (#117); nil follows its front again
     :pin        (let [[id pos] args]
                   (cond (not (get-in p [:boxes id])) p
@@ -297,6 +314,7 @@
    :view       {:kind :layout :doc "the view a box is shown in: [:view id :score]"}
    :size       {:kind :layout :doc "a box's own size: [:size id w h]"}
    :shows      {:kind :work   :doc "the layers a tree box turns from their default: [:shows id [:analysis]] shows the analysis, [:lyrics] hides the lyrics"}
+   :lens       {:kind :work   :doc "the lens a tree box shows its tree through: [:lens id :closed], [:lens id [:closed {:upper 1}]]"}
    :pin        {:kind :work   :doc "a `patch @name` pinned to a point of its line: [:pin id [node n]]"}
    :name       {:kind :work   :doc "the name live code calls a box by: [:name id :osc]"}
    :connect    {:kind :work   :doc "a line between two ports: [:connect a o b i]"}

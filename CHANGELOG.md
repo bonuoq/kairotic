@@ -7,6 +7,16 @@
   practice `over` (the drone the final an octave below, the voice over it) and `bass` (`isonBass`: the voice and an
   ison written together, the ison changing only where a line begins, on a fixed note of the Greek system or the final,
   ending on the final, below the voice). The page: two more ways to sing with the aulos.
+- **Lenses: how a tree is written on staves, as a choice** (discussion #380, steps 1–3). A tree holds only music;
+  the staves, the order of the voices on them and the clefs are a lens's (`kairotic.lens`), a pure function tree →
+  layout, and a tree box keeps only which lens it shows: `(lens :b3 :closed)`, `[:closed {:upper 1}]`, kept in the work
+  as `[:lens id …]`. `:open` (the default): each voice on its own staff, from the highest to the lowest, its clef by
+  its range — treble, bass, or the treble an octave down where it saves the ledger lines a tenor needs on both —,
+  `{:order :tree}` keeping the tree's order. `:closed`: the upper voices on a treble staff, the lower ones on a bass
+  staff (SA · TB). The `:staff` and `:clef` older trees carry (cac partimento's) are hints the open lens keeps. Under
+  them, **optics** (`kairotic.optics`): paths into a tree — `:voices`, `[:voice "alto"]`, `[:measures 3 5]`, `:notes`,
+  `[:id x]`, a predicate — to read a part (`view`) or change it in place (`over`, `put`, `over-attrs`), with the lens
+  laws as tests: `(over t [[:voice "soprano"] [:measures 3 5]] #(mt/transpose 2 %))` moves those measures and nothing else.
 - **Fuller chords and Bach's inner dissonances** (Study 76; the listener found Bach by his inner voices' dissonances
   and turns, and his fuller, well-led chords). Measured on the deck of whole phrases: Bach sounds three pitch classes or
   more on 97% of his quarters, ours on 74%; his chords dissonate against the bass on 21%, ours on 9%.
