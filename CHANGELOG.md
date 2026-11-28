@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The bass under Bach's soprano reads the chorale thread's position and cadence tables** (#353, after #515).
+  Study 63's `under.mjs`, with `continuo`, takes its harmonic map from BACH_DEGREE_BY_POSITION (in place of
+  under-tables.mjs's `position`) and its cadence from BACH_CADENCE_STEPS: each of the last three steps into the
+  fermata weighed by its own pairs (degrees over the key of the quarter it goes to; a dissonant quarter "x"), cadence
+  0.7 and the two before 0.5 (set on chorales ≡ 1 mod 5). On the 150 held-out phrases: Bach's bass 2.34 bits a note
+  (2.38), note for note 25.9% (23.0), ⑤–① ends 60.0% (64.7; Bach 57.3). Study 76's copy synced.
 - **The harmonic map and the cadence as steps, for the bass engine** (#353, in the shapes the structural thread asked).
   `@kairotic/rules` 0.29.0: `continuo.mjs`' `BACH_DEGREE_BY_POSITION` — counts of the chord over each degree by tenth of
   the phrase, in the quarter's local key — and `BACH_CADENCE_STEPS` — counts of every pair of quarters at each of the

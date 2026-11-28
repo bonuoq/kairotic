@@ -182,11 +182,11 @@ export async function run() {
   // (a soprano held into a strong quarter and down a step: with BACH_DISSONANCES, a 4–3 over the bass may be drawn)
   const sus = [67, 72, 72, 71, 72], sst = [0, 1, 1, 0, 1].map(Boolean);
   const UD = U.underBridge({ soprano: sus, key: { tonic: "C", mode: "major" }, strong: sst, continuo: { ...flatC, BACH_DISSONANCES: { "soprano|suspension|4|strong": 200 } } });
-  const dl = Array.from({ length: 40 }, (_, i) => UD.draw(wr(i + 11))).filter(Boolean), withSus = dl.filter((x) => x.chords[2].dissonance);
+  const dl = Array.from({ length: 150 }, (_, i) => UD.draw(wr(i + 11))).filter(Boolean), withSus = dl.filter((x) => x.chords[2].dissonance);
   is("a suspension: the soprano held into a strong quarter a 4th over the bass, figured 4 and then 3 over the same bass, drawn where BACH_DISSONANCES has it",
      withSus.length > 0 && withSus.every((x) => x.chords[2].dissonance.motion === "suspension" && x.figures[2] === "4" && x.figures[3] === "3" && (x.bass[2] - x.bass[3]) % 12 === 0)
      && Array.from({ length: 40 }, (_, i) => U.underBridge({ soprano: sus, key: { tonic: "C", mode: "major" }, strong: sst, continuo: flatC }).draw(wr(i + 11))).every((x) => !x.chords[2].dissonance));
-  notes.push(`suspensions: ${withSus.length} of 40 draws hold C over G into a 4–3 · e.g. ${(withSus[0] || dl[0]).bass.join(" ")} · ${(withSus[0] || dl[0]).figures.join(" ")}`);
+  notes.push(`suspensions: ${withSus.length} of 150 draws hold C over G into a 4–3 · e.g. ${(withSus[0] || dl[0]).bass.join(" ")} · ${(withSus[0] || dl[0]).figures.join(" ")}`);
   // (the score the page draws: under-score.mjs's MEI, for Verovio)
   const fake = { id: "test-c", key: { tonic: "C", mode: "major" }, keys: sop.map(() => "C major"), satb: sop.map((s, t) => [s, s - 5, s - 9, lines[0].bass[t]]),
                  names: sop.map(() => ["C5", "G4", "E4", "C3"]) };
