@@ -9,6 +9,12 @@
 ;;                             its range (treble, treble an octave down, bass) — {:order :tree} keeps the tree's order
 ;;   :closed                   closed score: two staves, the upper voices on a treble staff, the lower ones on a bass
 ;;                             staff (SA · TB) — {:upper 1} how many go on the upper one (half, by default)
+;;   :grand                    the grand staff of a keyboard (Bach's inventions, suites, fugues): two staves joined by a
+;;                             brace, the upper voices at home on the upper one and the lower ones on the lower one, as
+;;                             in the closed score; a voice keeps its identity (its layer, its stems) and crosses to the
+;;                             other staff only where it needs to — where its notes would need {:ledgers 2} or more
+;;                             ledger lines on their own staff and fewer on the other —, a whole beat at a time (or a
+;;                             tuplet, a chord), so that it does not jump staff note by note: MEI's cross-staff notes
 ;;   [:closed {:upper 1}]      a lens with its parameters
 ;; (layout t lens) says what a lens makes of a tree; (through t lens) is the tree as that lens writes it, the staves
 ;; and clefs on its voices (:staff, :clef: what kairotic.mt writes in MEI), to be engraved; the tree itself is left
@@ -17,7 +23,8 @@
 ;; What older trees carry of their layout (cac partimento's :staff and :clef on its voices, that quantize keeps) is
 ;; read by the open lens as a hint: a voice with a :staff or a :clef keeps it.
 ;;
-;; To come (#380): the grand staff with cross-staff notes, the ottava systems, hand corrections by note :id, a lens
+;; To come (#380): in the grand staff, a clef change where a voice stays long in the other register, and voices that
+;; move together merged into chords; the ottava systems, hand corrections by note :id, a lens
 ;; fixed as an edition, and the MEI written through the lens chosen.
 
 (ns kairotic.lens
@@ -101,11 +108,68 @@
         (vec (concat (map (fn [v] {:voice (:name v) :i (:i v) :staff hi-name :clef "G"}) up)
                      (map (fn [v] {:voice (:name v) :i (:i v) :staff lo-name :clef "F"}) lo)))))))
 
+(defn- grand-layout [vs m]
+  (mapv (fn [v up?] (assoc v :staff (if up? "upper" "lower") :clef (if up? "G" "F") :label false))
+        (closed-layout vs m)
+        (let [n (count vs) u (if (< n 2) (if (and (seq vs) (< (or (:mean (first vs)) 60) 57)) 0 1)
+                                 (max 1 (min (dec n) (or (:upper m) (js/Math.ceil (/ n 2))))))]
+          (concat (repeat u true) (repeat false)))))
+
+;; ───────── crossing staves (the grand staff) ─────────
+
+(defn- beat-of [meter]
+  (let [[p q] (or meter [4 4])] (if (and (= q 8) (zero? (mod p 3)) (> p 3)) 1.5 (/ 4 q))))
+
+(defn- events
+  "The events of a voice that may cross, with where they start: [{:path :onset :group :midi}] — a note, or a chord
+   (its notes' mean), or a tuplet's notes together (one group); onsets in beats from the voice's start."
+  [v]
+  (let [out (atom []) gid (atom 0)]
+    (letfn [(dur [n] (or (:dur (mt/attrs n)) 1))
+            (go [n path t meter mstart scale tg]
+              (let [tag (mt/tag n) a (mt/attrs n)]
+                (case tag
+                  (:voice :seq :measure)
+                  (let [meter (or (:meter a) meter) mstart (if (= tag :measure) t mstart)]
+                    (reduce (fn [t [i k]] (go k (conj path i) t meter mstart scale tg)) t (map-indexed vector (mt/kids n))))
+                  :tuplet
+                  (let [[p q] (or (:ratio a) [3 2]) g (swap! gid inc)]
+                    (reduce (fn [t [i k]] (go k (conj path i) t meter mstart (* scale (/ q p)) [:t g])) t (map-indexed vector (mt/kids n))))
+                  :note
+                  (let [m (mt/midi-of a)]
+                    (when (and m (not (:grace a)))
+                      (swap! out conj {:path path :onset t :midi m
+                                       :group (or tg [:b mstart (js/Math.floor (/ (- t mstart) (beat-of meter)))])}))
+                    (if (:grace a) t (+ t (* scale (dur n)))))
+                  :chord
+                  (let [ms (keep (fn [k] (when (= :note (mt/tag k)) (mt/midi-of (mt/attrs k)))) (mt/kids n))]
+                    (when (seq ms)
+                      (swap! out conj {:path path :onset t :midi (/ (reduce + ms) (count ms))
+                                       :group (or tg [:b mstart (js/Math.floor (/ (- t mstart) (beat-of meter)))])}))
+                    (+ t (* scale (dur n))))
+                  :rest (+ t (* scale (dur n)))
+                  t)))]
+      (go v [] 0 [4 4] 0 1 nil)
+      @out)))
+
+(defn crossings
+  "Where a voice at home on a staff (clef G or F) crosses to the other one: the paths (inside the voice) of the
+   notes and chords drawn there. A note is a candidate where it needs `ledgers` or more ledger lines on its own staff
+   and fewer on the other; a beat (or a tuplet) crosses when most of its notes are candidates, all of them together."
+  [v home ledgers-max]
+  (let [other ({"G" "F" "F" "G"} home)
+        evs (events v)
+        cand? (fn [{:keys [midi]}] (let [h (ledgers home midi)] (and (>= h ledgers-max) (< (ledgers other midi) h))))]
+    (vec (mapcat (fn [[_ es]] (if (> (count (filter cand? es)) (/ (count es) 2)) (map :path es) []))
+                 (sort-by (comp :onset first second) (group-by :group evs))))))
+
 (def lenses
   {:open   {:doc "open score: each voice on its own staff, from the highest to the lowest, its clef by its range"
             :layout open-layout}
    :closed {:doc "closed score: the upper voices on a treble staff, the lower ones on a bass staff"
-            :layout closed-layout}})
+            :layout closed-layout}
+   :grand  {:doc "a keyboard's grand staff: two staves in a brace, a voice crossing to the other where it needs to"
+            :layout grand-layout :cross true}})
 
 (defn spec
   "A lens as [name params]: nil is the open score; a name, or [name {params}]. Throws on a lens that is not known."
@@ -138,16 +202,29 @@
    it (what kairotic.mt writes in MEI). A tree that is one voice without a :voice node is left as it is."
   ([t] (through t nil))
   ([t lens]
-   (let [{vs :voices} (layout t lens)
-         ps (o/paths t :voices)]
+   (let [[k m] (spec lens)
+         cross? (get-in lenses [k :cross])
+         ;; crossing staves needs every note's place in time: durations and meters written out
+         t (if cross? (mt/with-meters (mt/explicit (mt/expand t))) t)
+         {vs :voices} (layout t lens)
+         ps (o/paths t :voices)
+         ;; the notes a voice draws on the other staff, :cross with that staff's name
+         t (if cross?
+             (reduce (fn [t {:keys [i staff clef]}]
+                       (let [p (nth ps i) other (if (= staff "upper") "lower" "upper")]
+                         (reduce (fn [t q] (o/update-in-node t (into p q) (fn [n] (mt/update-attrs n assoc :cross other))))
+                                 t (crossings (o/get-in-node t p) clef (or (:ledgers m) 2)))))
+                     t vs)
+             t)]
      (if (or (empty? vs) (= ps [[]]))
        t
        (let [by-i (into {} (map (fn [v] [(:i v) v]) vs))
              rank (into {} (map-indexed (fn [r v] [(:i v) r]) vs))
              ;; each voice with its staff and clef
              t2 (reduce (fn [t [i p]]
-                          (let [{:keys [staff clef]} (get by-i i)]
+                          (let [{:keys [staff clef label]} (get by-i i)]
                             (o/update-in-node t p (fn [n] (mt/update-attrs n (fn [a] (cond-> (assoc a :clef clef)
+                                                                                        (false? label) (assoc :staff-label false)
                                                                                         (not= staff (str (or (:name a) (str "voice " (inc i))))) (assoc :staff staff)
                                                                                         (= staff (str (or (:name a) (str "voice " (inc i))))) (dissoc :staff))))))))
                         t (map-indexed vector ps))

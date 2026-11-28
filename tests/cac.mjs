@@ -75,8 +75,15 @@ export async function cac(page, check) {
   await cljs(page, `(lens ${out} :closed)`);
   const closed = await until(page, staves, (x) => Number(x) > 0 && Number(x) < Number(four), 10000);
   const keptLens = await cljs(page, `[(lens ${out}) (str/includes? (patch->code (current)) "(lens ${out} :closed)") (= lens-tree0 (tree-data ${out}))]`);
+  const meiClosed = await cljs(page, `[(vec (map second (re-seq #"<staffDef[^>]*label=\\"([^\\"]*)\\"" (mei ${out})))) (do (def lens-back (mei/<-mei (mei ${out}))) true)]`);
+  await cljs(page, `(lens ${out} :grand)`);
+  const grand = await cljs(page, `(let [m (mei ${out})] [(boolean (re-find #"symbol=\\"brace\\"" m)) (count (re-seq #"<staffDef " m))])`);
+  check("(lens … :grand): a keyboard's grand staff in its MEI, two staves in a brace", grand === "[true 2]", grand);
   await cljs(page, `(lens ${out} nil)`);
   const back4 = await until(page, staves, (x) => x === four, 10000);
+  const same = await cljs(page, `(= lens-back (mei/<-mei (mei ${out})))`);
+  check("... its MEI written through the lens (two staves, SA and TB), the tree read back from it the same as without a lens",
+        meiClosed === '[["S A" "T B"] true]' && same === "true", meiClosed + " " + same);
   check("(lens … :closed): its score in closed score (fewer staves), the tree unchanged, the work's code keeps it; nil the open score again",
         Number(closed) < Number(four) && keptLens === "[[:closed {}] true true]" && back4 === four, `${four} ${closed} ${keptLens} ${back4}`);
   const hidden = await cljs(page, `(str/includes? (editor-source (get-in (current) [:boxes ${out}])) ":fig")`);

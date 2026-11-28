@@ -27,6 +27,9 @@
 ;; tied in the score); :grace true is a grace note before the next one (it takes no time in its container).
 ;; A :voice with :staff "name" is written as a layer of that staff (voices that share it, layers 1, 2 …).
 ;; A :voice with :clef "G", "F", "G8" (the tenor's treble clef an octave down), "C3" or "C4" sets its staff's clef.
+;; A note or a chord with :cross "name" is drawn on that other staff while it stays in its voice (cross-staff notation,
+;; MEI's @staff on the note); a voice with :staff-label false leaves its staff unnamed, and two such staves are joined by
+;; a brace, as a keyboard's grand staff. (These are what a lens writes, kairotic.lens: not kept in a tree.)
 ;; A note may carry the text it sings (the lyrics layer, #192): :syl the syllable it begins, :wordpos :i :m :t (its place
 ;; in its word), :con (:d, :u, where not derived), :verses [{:syl …} …] the verses after the first; the notes after it
 ;; with no :syl sing it on (a melisma), and the piece a tie goes on into never has one.
@@ -1335,6 +1338,9 @@
                               (nil? i) (recur (rest xs) [] nil (str (flush-run out run) (:xml x)))
                               (or (empty? run) (= i sp)) (recur (rest xs) (conj run x) i out)
                               :else (recur (rest xs) [x] i (flush-run out run))))))))
+        ;; a note or chord drawn on another staff (:cross, a staff's name): MEI's @staff
+        cross-attr (fn [a staff] (when-let [c (:cross a)]
+                                   (when-let [n (staff-of (str c))] (when (not= n staff) (str " staff=\"" n "\"")))))
         where (fn [abs]                      ; absolute beat → [bar beat-in-bar]
                 (let [bar (or (last (filter (fn [i] (<= (get @bar-start i) (+ abs 1e-6))) (range nbars))) 0)]
                   [bar (- abs (get @bar-start bar))]))
@@ -1375,6 +1381,7 @@
                                            (seq (keep (fn [k] (get artic-names (keyword k))) xs))))]
                      (swap! pieces conj {:id id :t abs :staff staff :src src :midi m :name (sp/->name base)})
                      (str "<note xml:id=\"" id "\" pname=\"" (sp/letters (:step base)) "\" oct=\"" (:oct base) "\""
+                          (cross-attr a staff)
                           (cond show? (str " accid=\"" sym "\"")
                                 (and sym (not= sym "n")) (str " accid.ges=\"" sym "\""))
                           durattr
@@ -1482,7 +1489,7 @@
                                                   :chord (let [cid (nid)
                                                                ns chord-ns
                                                                ids (mapv (fn [_] (nid)) ns)]
-                                                           [(str "<chord xml:id=\"" cid "\"" durattr
+                                                           [(str "<chord xml:id=\"" cid "\"" durattr (cross-attr a staff)
                                                                  (let [x (:art a) xs (if (sequential? x) x (when x [x]))
                                                                        arts (seq (keep (fn [kk] (get artic-names (keyword kk))) xs))]
                                                                    (when (and first? arts) (str " artic=\"" (str/join " " arts) "\"")))
@@ -1561,12 +1568,16 @@
                "<meiHead><fileDesc><titleStmt><title>Kairotic</title></titleStmt><pubStmt/></fileDesc></meiHead>"
                "<music><body><mdiv><score>"
                "<scoreDef meter.count=\"" (meter-count 0) "\" meter.unit=\"" q0 "\" key.sig=\"" (sp/mei-key-sig (:sig (key-at 0))) "\">"
-               "<staffGrp" (when (> (count staves) 1) " bar.thru=\"false\"") ">"
+               (let [unnamed (fn [k] (some (fn [[kk v]] (and (= (voice-staff kk) k) (false? (:staff-label (attrs v))))) (apply concat sec-voices)))
+                     grand? (and (= 2 (count staves)) (every? unnamed staves))]
+                 (str "<staffGrp" (cond grand? " symbol=\"brace\" bar.thru=\"true\"" (> (count staves) 1) " bar.thru=\"false\"") ">"))
                (apply str (for [[i [shape line dis]] (map-indexed vector clefs)
                                 :let [k (nth staves i)]]
                             (str "<staffDef n=\"" (inc i) "\" lines=\"5\" clef.shape=\"" shape "\" clef.line=\"" line "\""
                                  (when dis " clef.dis=\"8\" clef.dis.place=\"below\"")
-                                 (when (or (> (count staves) 1) (not (str/starts-with? k "voice "))) (str " label=\"" (esc-xml k) "\""))
+                                 (when (and (or (> (count staves) 1) (not (str/starts-with? k "voice ")))
+                                            (not (some (fn [[kk v]] (and (= (voice-staff kk) k) (false? (:staff-label (attrs v))))) (apply concat sec-voices))))
+                                   (str " label=\"" (esc-xml k) "\""))
                                  "/>")))
                "</staffGrp></scoreDef><section>"
                (apply str

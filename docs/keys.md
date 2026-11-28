@@ -21,7 +21,9 @@ How to edit, select, play and draw in the patch. (It used to be the line under t
   hides what an analysis wrote on it (the figures under the bass), for that box only — `(show-layers :b3 :analysis)`; **lyrics**, on a tree that sings a text, shows or hides its syllables
   under the notes (shown until the box hides them: `(show-layers :b3)` hides them, `(show-layers :b3 :lyrics)` shows them). Its score is written through a lens, chosen for that box only: the open
   score by default (each voice on its staff, from the highest to the lowest, its clef by its range), `(lens :b3 :closed)`
-  the closed score (SA on a treble staff, TB on a bass one); the tree itself does not change.
+  the closed score (SA on a treble staff, TB on a bass one), `(lens :b3 :grand)` a keyboard's grand staff (a voice
+  crossing to the other staff where it needs to); the tree itself does not change, and its MEI is written through the
+  same lens.
 
 ## Canvas
 
