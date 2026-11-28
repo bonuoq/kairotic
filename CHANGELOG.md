@@ -7,6 +7,11 @@
   it is read in (Athenaios the Hyperdorian, Limenios the Hyperlydian). Unseen, Limenios is explained by the style
   learned from Mesomedes and Athenaios (his note the cheapest 228 → 342 of 482 times); `GREEK` is fitted again to the
   three (1012 choices). Seikilos, held out, 22 → 26 of 48 beats (29 with the two-source style).
+- **Study 74 · aoidos: the ison as a bass** (#192). `aoidos({pedal})`: the voice written over a held note, every
+  strong beat a concord with it (the Greek concords in a tonos, any consonance in a church mode); `aulos()`'s
+  practice `over` (the drone the final an octave below, the voice over it) and `bass` (`isonBass`: the voice and an
+  ison written together, the ison changing only where a line begins, on a fixed note of the Greek system or the final,
+  ending on the final, below the voice). The page: two more ways to sing with the aulos.
 - **Fuller chords and Bach's inner dissonances** (Study 76; the listener found Bach by his inner voices' dissonances
   and turns, and his fuller, well-led chords). Measured on the deck of whole phrases: Bach sounds three pitch classes or
   more on 97% of his quarters, ours on 74%; his chords dissonate against the bass on 21%, ours on 9%.

@@ -103,7 +103,7 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
   <label>style <select id="style"><option value="engine" selected>the engine's</option><option value="greek">Greek (Mesomedes, the Delphic paeans)</option></select></label>
   <label><input type="checkbox" id="strict"> strict accent</label>
   <span class="tag">sung</span>
-  <select id="form" aria-label="alone or in canon"><option value="melody" selected>alone</option><option value="canon">in canon</option><option value="heterophony">with aulos · heterophony</option><option value="drone">with aulos · drone</option><option value="ison">with aulos · ison</option></select>
+  <select id="form" aria-label="alone or in canon"><option value="melody" selected>alone</option><option value="canon">in canon</option><option value="heterophony">with aulos · heterophony</option><option value="drone">with aulos · drone</option><option value="ison">with aulos · ison</option><option value="over">with aulos · drone, the voice over it</option><option value="bass">with aulos · ison as a bass</option></select>
   <span id="canon-opts" hidden>
     <label>comes <select id="k"><option value="-7" selected>an octave below</option><option value="-4">a 5th below</option><option value="-3">a 4th below</option><option value="7">an octave above</option><option value="4">a 5th above</option></select></label>
     <label>after <select id="d"><option value="2">2 beats</option><option value="4" selected>4 beats (a foot)</option><option value="6">6 beats</option><option value="8">8 beats</option></select></label>
@@ -158,7 +158,10 @@ table.exam td.yes { color: var(--ok); } table.exam td.no { color: var(--ink-soft
   aoidos may sing; the engine would choose its note at 21 of its 48 beats. <b>With an aulos</b>, the double pipe that went with the voice: in <b>heterophony</b> it plays the melody
   at once with its own deviations, within a 3rd (the two counted together under the counterpoint's rules, as Plato's
   <i>Laws</i> describe the lyre doing what they would forbid the young); as a <b>drone</b>, the final held an octave
-  below; as an <b>ison</b> that follows the song, each line held on the note it ends on. <b>Pitch</b>: a church mode in 12-TET, or
+  below; as an <b>ison</b> that follows the song, each line held on the note it ends on; <b>the voice over the drone</b>, written
+  against it, every strong beat a concord with it; and <b>the ison as a bass</b>, the voice and the ison written
+  together — the ison changing only where a line begins, on a fixed note of the system (a hestos, the frame of the
+  tetrachords) or the final, and ending on the final, the voice concording with it on every strong beat. <b>Pitch</b>: a church mode in 12-TET, or
   <b>a Greek tonos</b> (<code>greek.mjs</code>) — the Immutable System of two octaves and its conjunct tetrachord in any
   of the fifteen tonoi, diatonic, chromatic or enharmonic, in Aristoxenus's tuning or Archytas's ratios, heard in cents;
   its notes counted by their place (the chromatic lichanos a step below the mese, a minor third away), its moves judged
@@ -225,13 +228,13 @@ window.addEventListener("DOMContentLoaded", function () {
                (not (greek?)) (assoc :key {:tonic (val-of "tonic") :mode (val-of "mode")})
                (= (val-of "style") "greek") (assoc :style "greek")
                (= form "canon") (assoc :k (js/Number (val-of "k")) :d (js/Number (val-of "d")) :imitation (js/Number (val-of "imitation")))
-               (#{"heterophony" "drone" "ison"} form) (assoc :practice form)))))
+               (#{"heterophony" "drone" "ison" "over" "bass"} form) (assoc :practice form)))))
 
 ;; two voices the engine writes together (a canon, or the voice and its aulos in heterophony); a held aulos (a drone, an
 ;; ison) is drawn from the melody
-(defn canon? [] (contains? #{"canon" "heterophony"} (val-of "form")))
-(defn held? [] (contains? #{"drone" "ison"} (val-of "form")))
-(defn aulos? [] (contains? #{"heterophony" "drone" "ison"} (val-of "form")))
+(defn canon? [] (contains? #{"canon" "heterophony" "bass"} (val-of "form")))
+(defn held? [] (contains? #{"drone" "ison" "over"} (val-of "form")))
+(defn aulos? [] (contains? #{"heterophony" "drone" "ison" "over" "bass"} (val-of "form")))
 
 ;; the Greek system's controls: its finals named (a degree of the system, from the proslambanomenos to the nete
 ;; hyperbolaion)
@@ -262,7 +265,7 @@ window.addEventListener("DOMContentLoaded", function () {
   (let [{:keys [made count ms other]} @S
         A (.-A made)]
     (set! (.-innerHTML ($ "counts"))
-          (str "<dt>" (case (val-of "form") "canon" "canons" "heterophony" "voice and aulos" "melodies") "</dt><dd id=\"total\">" (fmt count) "</dd>"
+          (str "<dt>" (case (val-of "form") "canon" "canons" "heterophony" "voice and aulos" "bass" "voice and ison" "over" "melodies over the drone" "melodies") "</dt><dd id=\"total\">" (fmt count) "</dd>"
                "<dt>syllables</dt><dd>" (.-length (.-syllables A)) " (" (.. A -plan -beats) " beats)</dd>"
                (when other (str "<dt>" (if (.-strict A) "free" "strict") "</dt><dd>" (fmt other) "</dd>"))
                "<dt>counted in</dt><dd>" ms " ms</dd>"))))
@@ -278,12 +281,13 @@ window.addEventListener("DOMContentLoaded", function () {
              ;; (alone, the melody's own solver; in canon, the two voices' — each knows the melody as .A)
              made (case (val-of "form")
                     "canon" (.canonic AO sp)
-                    ("heterophony" "drone" "ison") (.aulos AO sp)
+                    ("heterophony" "drone" "ison" "over" "bass") (.aulos AO sp)
                     (let [a (.aoidos AO sp)] (set! (.-A a) a) a))
              t0 (js/performance.now)
              c (.countWithin made COUNT-MS)
              ms (js/Math.round (- (js/performance.now) t0))
-             other (when-not (canon?)
+             ;; (the other count, strict or free, for a melody alone: the voice over the drone has its own rule)
+             other (when (contains? #{"melody" "drone" "ison"} (val-of "form"))
                      (let [o (.aoidos AO (doto sp (aset "strict" (not (.-strict sp)))))] (.countWithin o 1500)))]
          (swap! S assoc :made made :count c :ms ms :other other :sung nil :stele false)
          (scansion! made)
