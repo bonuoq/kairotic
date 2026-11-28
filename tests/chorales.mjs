@@ -74,7 +74,7 @@ is(`... figureOf writes ${(100 * fsame / fq).toFixed(1)}% of Bach's figures over
    fsame / fq > 0.84, `${fsame}/${fq}`);
 const T = count(P).tables;
 is("... the continuo tables, as tools/continuo.mjs counts them from the corpus (the chorales but every fifth)",
-   JSON.stringify(T) === JSON.stringify({ BACH_OUTER_VERTICAL: Co.BACH_OUTER_VERTICAL, BACH_OUTER_PAIR: Co.BACH_OUTER_PAIR, BACH_DEGREE_CHORD: Co.BACH_DEGREE_CHORD, BACH_INNER_ROLES: Co.BACH_INNER_ROLES, BACH_INNER_TURNS: Co.BACH_INNER_TURNS, BACH_DISSONANCE_MAP: Co.BACH_DISSONANCE_MAP, BACH_CADENCES_4: Co.BACH_CADENCES_4, BACH_DISSONANCES: Co.BACH_DISSONANCES, BACH_CADENCES: Co.BACH_CADENCES }));
+   JSON.stringify(T) === JSON.stringify({ BACH_OUTER_VERTICAL: Co.BACH_OUTER_VERTICAL, BACH_OUTER_PAIR: Co.BACH_OUTER_PAIR, BACH_DEGREE_CHORD: Co.BACH_DEGREE_CHORD, BACH_INNER_ROLES: Co.BACH_INNER_ROLES, BACH_INNER_TURNS: Co.BACH_INNER_TURNS, BACH_DISSONANCE_MAP: Co.BACH_DISSONANCE_MAP, BACH_DEGREE_BY_POSITION: Co.BACH_DEGREE_BY_POSITION, BACH_CADENCE_STEPS: Co.BACH_CADENCE_STEPS, BACH_CADENCES_4: Co.BACH_CADENCES_4, BACH_DISSONANCES: Co.BACH_DISSONANCES, BACH_CADENCES: Co.BACH_CADENCES }));
 const p9 = P.find((p) => p.id === "chor009-1");
 const ds = P.map((p) => p.satb.map((_, t) => Co.dissonanceOf(p, t)).filter(Boolean)).flat(), byVoice = (v) => ds.filter((x) => x.voice === v).length;
 is(`dissonanceOf: the ${ds.length} quarters that are no chord, each a chord and the one voice not of it — the alto's ${byVoice("alto")}, the tenor's ${byVoice("tenor")}, the soprano's ${byVoice("soprano")}, the bass's ${byVoice("bass")} (${byVoice(null)} no one voice explains); chor009-1's 6th quarter a 4–3 in the soprano over a 5/3`,
@@ -99,6 +99,11 @@ is("roleCost: over a 6/5 rising to its 5/3 by step, an inner voice on the 5th (t
 is("turnCost and dissonanceMapCost: a leap down taken back by step up cheaper than a second leap down; a dissonance on a strong beat dearer at the phrase's start than in its middle; Bach's commonest four-quarter cadence in major ii6/5 or IV6/5 – V – I; bach-4 1.9.0 weighs them (bach-turns 1, dissonance-map 2)",
    Co.turnCost(4, 0, false, 6) < Co.turnCost(4, 0, false, 0) && Co.dissonanceMapCost(true, 0, true) > Co.dissonanceMapCost(true, 5, true) &&
    / 5:6\/5 7:5\/3 0:5\/3$/.test(Co.BACH_CADENCES_4.major[0][0]) && R.resolveStyle("bach-4").weights["bach-turns"] === 1 && R.resolveStyle("bach-4").weights["dissonance-map"] === 2);
+{ const DP = Co.BACH_DEGREE_BY_POSITION, CS = Co.BACH_CADENCE_STEPS.major, top = (o) => Object.entries(o).sort((a, b) => b[1] - a[1])[0][0];
+  const sum = (m) => DP[m].flat(2).reduce((a, b) => a + b, 0), all = (m) => Co.BACH_DEGREE_CHORD[m] && sum(m);
+  is("the harmonic map by tenth of the phrase (counts, the bass engine's): ① a 5/3 commonest where the phrase begins; the cadence as three steps, in major IV6/5 → V, V → I",
+     DP.major.length === 10 && DP.major[0].length === 12 && DP.major[0][0].length === 8 && DP.major[0][0][0] === Math.max(...DP.major[0].map((r) => r[0])) &&
+     sum("major") + sum("minor") === 14518 && top(CS[2]) === "5:6/5 7:5/3" && top(CS[1]) === "7:5/3 0:5/3" && Object.keys(CS[3]).length > 50); }
 const dc = Co.BACH_DEGREE_CHORD, argmin = (a) => a.indexOf(Math.min(...a));
 is("... what they say: the 5th and the 3rd the soprano's commonest over the bass, contrary motion the commonest pair, a 5/3 on ① and ⑤ and a 6/3 on ⑦, ⑤–① the commonest cadence; each a plain −log (a row's probabilities add up to 1)",
    argmin(Co.BACH_OUTER_VERTICAL) === 7 && Co.BACH_OUTER_PAIR[1 * 5 + 3] - Math.min(...Co.BACH_OUTER_PAIR) < 0.5 && argmin(dc.major.chord[0]) === 0 && argmin(dc.major.chord[7]) === 0 &&

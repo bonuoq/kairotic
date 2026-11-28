@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The harmonic map and the cadence as steps, for the bass engine** (#353, in the shapes the structural thread asked).
+  `@kairotic/rules` 0.29.0: `continuo.mjs`' `BACH_DEGREE_BY_POSITION` — counts of the chord over each degree by tenth of
+  the phrase, in the quarter's local key — and `BACH_CADENCE_STEPS` — counts of every pair of quarters at each of the
+  last three steps into the fermata (in major IV6/5 → V and V → I first). `@kairotic/cac` 0.16.20 (its pin).
 - **The inner voices' turns, and where they dissonate in the phrase; Bach's four-quarter cadences** (Study 76; the
   listener hears Bach in the leading of the voices and in dissonance weighed against metre and the phrase's climax).
   `@kairotic/rules` 0.28.0: `continuo.mjs`' `BACH_INNER_TURNS` / `turnCost` (an inner voice's move after its two

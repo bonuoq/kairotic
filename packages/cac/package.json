@@ -1,6 +1,6 @@
 {
   "name": "@kairotic/cac",
-  "version": "0.16.19",
+  "version": "0.16.20",
   "description": "Kairotic composition assisted by computer: comes, counterpoint live — you play the dux and the comes answers, reading it at a speed (a canon, an augmentation, a crab or table canon written from both ends to the middle), with its futuribles; and the kernels every engine shares (counterpoint.mjs, mirror.mjs, soft.mjs, partimento.mjs: a given bass in two or three parts)",
   "author": "bonuoq",
   "license": "MPL-2.0",
