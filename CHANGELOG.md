@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **The harmonic map and the cadence as steps, for the bass engine** (#353, in the shapes the structural thread asked).
+  `@kairotic/rules` 0.29.0: `continuo.mjs`' `BACH_DEGREE_BY_POSITION` — counts of the chord over each degree by tenth of
+  the phrase, in the quarter's local key — and `BACH_CADENCE_STEPS` — counts of every pair of quarters at each of the
+  last three steps into the fermata (in major IV6/5 → V and V → I first). `@kairotic/cac` 0.16.20 (its pin).
+- **The inner voices' turns, and where they dissonate in the phrase; Bach's four-quarter cadences** (Study 76; the
+  listener hears Bach in the leading of the voices and in dissonance weighed against metre and the phrase's climax).
+  `@kairotic/rules` 0.28.0: `continuo.mjs`' `BACH_INNER_TURNS` / `turnCost` (an inner voice's move after its two
+  before, on that beat: 2.73 bits a move on the chorales kept out, 2.92 knowing nothing before), `BACH_DISSONANCE_MAP` /
+  `dissonanceMapCost` (Bach's inner dissonances by beat and tenth of the phrase — his strong beats consonant at the start
+  and the cadence, dissonant on a third of them in the middle — against the engine's own, `ENGINE_DISSONANCE_MAP`, a
+  step of iterative scaling), and `BACH_CADENCES_4` (the last four quarters: ii6/5 or IV6/5 – V – I first). `bach-4`
+  1.9.0 weighs `bach-turns` (1) and `dissonance-map` (2). Fixed: the tables' writer put a space into keys with a comma.
+  On 30 phrases kept out the inner moves come to kept / step / 3rd 25/44/20 (Bach 28/41/19); the dissonances move
+  little (15%, Bach 22%): what refuses them is the hard rules. Study 71's deck of whole phrases drawn again.
+  `@kairotic/cac` 0.16.19 (its pin).
 - **Study 74 · aoidos: Limenios's paean in the corpus, the Greek style fitted to the three** (#192). `corpus.mjs`
   reads DAGM no. 21 as the edition transcribes it (38 fragments, 367 notes), each Delphic paean with the Greek system
   it is read in (Athenaios the Hyperdorian, Limenios the Hyperlydian). Unseen, Limenios is explained by the style

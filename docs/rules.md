@@ -248,6 +248,10 @@ move of the bass (`continuo.mjs`' `roleCost`, `BACH_INNER_ROLES`).
 `@kairotic/rules` 0.27.0: `bach-4` 1.8.0: `complete` (between the voices, weight 6: a chord sounding fewer than three pitch
 classes pays for each missing); `figuresWeight` lets a voice off the chord be a dissonance as Bach's are (held, or by
 step), but not the figure's accidental left out.
+`@kairotic/rules` 0.28.0: `bach-4` 1.9.0: `bach-turns` (an inner voice's move after its two before, as Bach's: `turnCost`)
+and `dissonance-map` (its dissonances by beat and place in the phrase, as Bach's against the engine's: `dissonanceMapCost`);
+`continuo.mjs`' `BACH_CADENCES_4`.
+`@kairotic/rules` 0.29.0: `continuo.mjs`' `BACH_DEGREE_BY_POSITION` and `BACH_CADENCE_STEPS` (counts, for the bass engine).
 
 ## Next
 
