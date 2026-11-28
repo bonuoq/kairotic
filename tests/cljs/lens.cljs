@@ -3,6 +3,7 @@
 ;; and change a part of it, and the open and closed scores of one tree
 (ns kairotic.test.lens
   (:require [kairotic.optics :as o]
+            [kairotic.mei :as mei]
             [kairotic.lens :as lens]
             [kairotic.mt :as mt]
             [kairotic.test :as t]))
@@ -61,4 +62,45 @@
             (:clef (first (filter #(= "tenor" (:voice %)) (:voices (lens/layout hinted))))) "F"))
     (t/eq "a melody without voices is left as it is" (lens/through "c4 e4 g4" :closed) "c4 e4 g4")
     (t/eq "clefs by range: a soprano, a tenor, a bass" (mapv lens/clef-by-range [[72 74 76] [55 57 59 62] [40 43 48]]) ["G" "G8" "F"])
-    (t/is "an unknown lens says which there are" (try (lens/spec :grand) false (catch :default e (boolean (re-find #":closed" (.-message e))))))))
+    (t/is "an unknown lens says which there are" (try (lens/spec :ottava) false (catch :default e (boolean (re-find #":closed" (.-message e))))))))
+
+(def invention
+  ;; the right hand runs down into the left hand's register for a beat; the left hand climbs for one note only
+  [:par
+   [:voice {:name "right"}
+    [:measure {:meter [4 4]}
+     [:note {:pitch "e5" :dur 0.5}] [:note {:pitch "d5" :dur 0.5}]
+     [:note {:pitch "a3" :dur 0.5 :id :x1}] [:note {:pitch "f3" :dur 0.5 :id :x2}]
+     [:note {:pitch "c5" :dur 0.5}] [:note {:pitch "a3" :dur 0.5 :id :lone}] [:note {:pitch "b4" :dur 1}]]]
+   [:voice {:name "left"}
+    [:measure {:meter [4 4]}
+     [:note {:pitch "c3" :dur 1}] [:note {:pitch "e3" :dur 1}] [:note {:pitch "g3" :dur 1}] [:note {:pitch "c3" :dur 1}]]]])
+
+(t/run! "lenses: the grand staff, crossing staves"
+  (fn []
+    (let [w (lens/through invention :grand)
+          crossed (fn [w] (vec (for [n (o/view w [:notes]) :when (:cross (mt/attrs n))] [(:id (mt/attrs n)) (:cross (mt/attrs n))])))
+          mei (:mei (mt/->mei w "g-"))]
+      (t/eq "the upper voice crosses to the lower staff for the beat it spends there, a whole beat; a lone low note does not"
+            (crossed w) [[:x1 "lower"] [:x2 "lower"]])
+      (t/eq "... the voices at home on their staves, unnamed" (mapv (fn [v] (select-keys (mt/attrs v) [:staff :clef :staff-label])) (o/view w [:voices]))
+            [{:staff "upper" :clef "G" :staff-label false} {:staff "lower" :clef "F" :staff-label false}])
+      (t/is "... in the MEI: a brace, no labels, the crossing notes on staff 2 inside staff 1's layer"
+            (and (re-find #"<staffGrp symbol=\"brace\"" mei) (not (re-find #"label=" mei))
+                 (= 2 (count (re-seq #"<note [^>]*staff=\"2\"" mei)))
+                 (re-find #"<staff n=\"1\"><layer n=\"1\">(?:(?!</layer>).)*staff=\"2\"" mei)))
+      (t/eq "... {:ledgers 4}: only notes further away cross" (crossed (lens/through invention [:grand {:ledgers 4}])) [])
+      (t/eq "... the tree itself has no :cross" (crossed invention) []))))
+
+(t/run! "lenses: the MEI written through a lens"
+  (fn []
+    (let [plain (mei/<-mei (mei/->mei chorale))]
+      (doseq [l [:closed :grand [:open {:order :tree}]]]
+        (let [m (mei/->mei chorale l)]
+          (t/eq (str "through " (pr-str l) ": read back, the same tree as without a lens") (mei/<-mei m) plain)))
+      (let [m (mei/->mei chorale :closed)]
+        (t/eq "... its notation the lens's: two staves, SA and TB" (mapv second (re-seq #"<staffDef[^>]*label=\"([^\"]*)\"" m)) ["S A" "T B"])
+        (t/is "... and its EDN names the lens" (re-find #":lens \{:spec \[:closed \{\}\]" m))))
+    (let [m (mei/->mei invention :grand)]
+      (t/is "the grand staff: the crossing notes on the other staff in the MEI" (= 2 (count (re-seq #"<note [^>]*staff=\"2\"" m))))
+      (t/eq "... read back without :cross, as the tree is" (o/view (mei/<-mei m) [[:id :x1]]) (o/view (mei/<-mei (mei/->mei invention)) [[:id :x1]])))))

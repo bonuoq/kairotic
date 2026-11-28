@@ -276,14 +276,15 @@
 (defn mei
   "The MEI of a tree box, as text: (mei :b3). Its tree as it is when it is written in measures, quantized first when
    it is in free time. (mei :b3 :written): only what is written — no real times, velocities, wires, takes,
-   continuum — for notation programs and exchange (discussion #308)."
+   continuum — for notation programs and exchange (discussion #308). Its notation is written through the lens the box
+   shows (discussion #380: (lens :b3 :closed)); the tree inside it is the box's, whatever the lens."
   ([id] (mei id :all))
   ([id which]
    (let [t (tree-data id)]
      (when (nil? t) (fail (str id " holds no tree")))
      (when-not (#{:all :written} which) (fail "(mei :bN) or (mei :bN :written)"))
      (let [m (if (mt/measured? t) (qz/measure-free-voices t) (qz/quantize-tree t))]
-       (mei/->mei (if (= which :written) (mt/descriptive m) m))))))
+       (mei/->mei (if (= which :written) (mt/descriptive m) m) (:lens (get-in (current) [:boxes id])))))))
 
 (defn export-mei!
   "Downloads the MEI of a tree box: (export-mei! :b3), or only what is written: (export-mei! :b3 :written)."
