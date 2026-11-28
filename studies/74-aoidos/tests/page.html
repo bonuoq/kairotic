@@ -94,6 +94,14 @@ try {
   await wait(() => total() === "14,338,522,811,655,342,992" && status() === "sung");
   is("the Greek counterpoint: Odyssey 1.1 in the Lydian with an aulos in heterophony — 14,338,522,811,655,342,992 ways, the voice and the aulos drawn, every rule kept",
      total() === "14,338,522,811,655,342,992" && d.querySelectorAll("#sheet rect.comes").length > 0 && /✓ every rule kept/.test(report()));
+  // the ison as a bass: Seikilos in the Iastian, the voice and the ison written together (a note a syllable)
+  P.set("seikilos", "bass");
+  await wait(() => total() === "1,995,346,557,551,214,295" && status() === "sung");
+  is("the ison as a bass: Seikilos's song in the Iastian, a note a syllable, the voice and an ison that changes only where a line begins — 1,995,346,557,551,214,295 ways, both drawn, every rule kept",
+     total() === "1,995,346,557,551,214,295" && d.querySelectorAll("#sheet rect.comes").length >= 1 && d.querySelectorAll("#sheet rect.comes").length <= 4 && /✓ every rule kept/.test(report()));
+  P.set("seikilos", "over");
+  await wait(() => total() === "264,609,347,386,261,837" && status() === "sung");
+  is("... and the voice over the drone: 264,609,347,386,261,837 melodies, every strong beat a concord with it", total() === "264,609,347,386,261,837" && d.querySelectorAll("#sheet rect.comes").length === 1 && /✓ every rule kept/.test(report()));
   P.greek(false);
   is("no errors on the page", errors.length === 0 && !/^Error/.test(status()));
 } catch (e) { is("error: " + (e.message || e), false); }
