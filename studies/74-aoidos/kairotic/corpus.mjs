@@ -11,7 +11,7 @@
 // enharmonic N c♯' (from the chromatic Hypolydian). `reliable: false` marks where N alone carries the notation (27.13
 // on, and no. 28): the edition advises not to rely on it for the accent (DAGM p. 114).
 //
-// The Delphic paean of Athenaios (no. 20, 128/7 BC) is older and a stone's: its signs survive where the stone does,
+// The Delphic paeans of Athenaios and of Limenios (nos. 20 and 21, 128/7 BC) are older and a stone's: its signs survive where the stone does,
 // and are written only where the note changes; it is kept as the edition transcribes it (DAGM pp. 63–67), a note as
 // its pitch ("eb'2": e♭' for two chronoi; c' the c an octave above middle c, as Mesomedes's M; absolute, the
 // transcription's key signatures applied), checked against the signs where they survive. Only the stretches with
@@ -85,7 +85,9 @@ export const MESOMEDES = [
 
 const A = (n, text) => ({ n, text });
 export const DELPHIC = [
-  { id: "athenaios", name: "Athenaios, Paean and hyporchema to the god", ref: "DAGM no. 20", notation: "pitch", fragments: true, lines: [
+  { id: "athenaios", name: "Athenaios, Paean and hyporchema to the god", ref: "DAGM no. 20", notation: "pitch", fragments: true,
+    // (the Greek system its notes are read in: the tonos that holds them all but the a♮' of Γαλατᾶν)
+    system: { tonos: "hyperdorian", genera: ["diatonic", "chromatic"] }, lines: [
     // col. i, lines 1–8 (three flats)
     A(1, "βα=c'1-θύ=d'1-δεν=d'1-δρον=c'2 αἳ=ab1 λά=c'2-…"),
     A(2, "…-βρό=eb'1-μου=d'1c'1 θύ=d'1-γα=c'1-τρες=ab1 εὐ=c'2-ώ=c'2-…"),
@@ -114,6 +116,57 @@ export const DELPHIC = [
     A(23, "…-σας=f'1 αἰ=f'2-ό=ab'1-λον=ab'1 ἑ=g'1-λικ=g'2-τὰν=g'2"),
     A(24, "…-μαθ'=c'1 ἵ=d'1eb'1-εἰς=f'2 ἀ=f'1-θώ=ab'2-…"),
     A(25, "δὲ=g'1 Γα=g'1-λα=ab'1-τᾶν=a'1ab'1 ἄ=ab'1-ρης=g'2"),
+  ] },
+  // Limenios's paean and prosodion (no. 21, 128/7 BC), in the instrumental notation; DAGM pp. 75–83, as the
+  // transcription has it (its key signatures — one flat, none — applied), its long fragments in cretic bars of five
+  { id: "limenios", name: "Limenios, Paean and prosodion to the god", ref: "DAGM no. 21", notation: "pitch", fragments: true,
+    // (the tonos that holds every note: the Hyperlydian, the Lydian a fourth up — the Lydian with its conjunct
+    // tetrachord's e♭' and b♭', as the edition hears the paean modulate)
+    system: { tonos: "hyperlydian", genera: ["diatonic", "chromatic"] }, lines: [
+    A(1, "ἐ=f'1-πὶ=f'1 τη=f'2-λέσ=f'2-κο=e'1-πον=e'2 τάν=e'1d'1-δε=d'1 Παρ=a2-…"),
+    A(2, "δι=d'1-κό=e'1-ρυ=d'1-φον=f'2 κλει=d'1bb1-τύν=d'1 ὕμ=e'2-νων=e'1bb1"),
+    A(3, "…-δες=f'1 αἳ=g'2 νι=g'1-φο=g'1-βό=g'1-λους=eb'2 πέ=eb'1-τρας=d'2 ναί=eb'2-…"),
+    A(4, "μέλ=f'2-πε=bb1-τε=f'1 δὲ=f'1 Πύ=f'2-θι=e'1-ον=e'2 Χρυ=d'1-σε=d'1-ο=e'1-χαί=f'2-ταν=e'2 ἕ=e'1-…"),
+    A(5, "…-ραν=bb2 Φοῖ=f'2-βον=bb1 ὃν=bb1 ἔ=f'1-τικ=e'2-τε=e'1 Λα=e'2-τὼ=e'2 μά=e'1-και=d'2-ρα=d'1 πα=d'1-…"),
+    A(6, "χερ=f'2-σὶ=f'1 γλαυ=f'2-κᾶς=g'1eb'1* ἐ=d'1-λαί=e'2-ας=d'2 θι=d'1-γοῦσ'=d'1bb1"),
+    // (no key signature from line 8)
+    A(8, "γά=e'1-θη=f'1-σε=d'1 πό=e'2-λος=e'1 οὐ=d'1-ρά=c'1-…"),
+    A(9, "νη=d'2*-νέ=f'1-μους=e2 δ'ἔσ=f'2-χεν=d'1 αἰ=d'2-θὴρ=d'1e'1 ἀ=f'1-ελ=f'2*-…"),
+    A(10, "…-μους=e2 λῆ=e'2-ξε=c'1 δὲ=c'1 βα=b1-ρύ=b2-βρο=e1-μον=e2 Νη=c'1f'1-…"),
+    A(11, "…-δμ'=a2 ἠ=a1-δὲ=d'1 μέ=c'1-γας=d'2 Ὠ=d'1-κε=d'1-α=d'1-νός=d'2 ὃς=f'1 πέ=f'2-…"),
+    A(12, "…-κά=f'1-λαις=d'2 ἀμπ=d'1e'1-έ=f'1-χει=e'2"),
+    A(13, "Τό=e'1-τε=c'1 λι=d'1-πὼγ=d'2 Κυν=d'1e'1-θί=f'1-αν=e'2 νᾶ=e'1e1-σον=e1 ἐπ=e1-έ=b1*-…"),
+    A(14, "…-καρ=b1c'1-πογ=d'2 κλυ=d'1-τὰν=e'2 Ἀτ=e'2-θίδ'=a'1 ἐ=e'1-πὶ=f'1 γᾶ=f'1e'1-λό=f'1*-…"),
+    // (one flat, lines 15–17)
+    A(15, "με=a1-λί=d'1-πνο=b1-ον=d'2 δὲ=eb'1 Λί=g'1-βυς=eb'1 αὐ=d'2-δὰγ=d'2 χέ=eb'1-…"),
+    A(16, "…-αν=bb1 ὄ=bb1-πα=a1 μει=a2-γνύ=e'1-με=a1-νος=a1 αἰ=a1bb1-όλ=b1-…"),
+    A(17, "…-μα=bb1 δ'ἴ=d'2-α=d'1-χεμ=bb2 πε=a1-τρο=a1-κατ=bb1-οί=b1-κη=bb2-τος=a1 ἀ=a2-…"),
+    // (none, lines 18–23)
+    A(18, "ὅ=f'1-τι=d'1 νό=f'1-ωι=f'2 δε=d'2-ξά=d'1-με=b1-νος=c'1 ἀμ=d'1e'1-βρό=f'1-ταν=e'2 Δι=f'1-…"),
+    A(19, "ὧν=c'1b1 ἐ=c'1-κεί=d'2-νας=c'2 ἀπ'=d'1 ἀρ=d'2-…"),
+    A(19, "Παι=e'1-ή=f'2-ο=d'1-να=d'1 κι=e'1-κλήι=f'2-σκο=e'1-…"),
+    A(20, "…-χθό=e'1-νων=e2 ἠ=c'2-δὲ=c'1 Βάκ=e'2-χου=c'2 μέ=c'1-γας=b2 θυρ=f1-σο=f1-πλὴξ=a2-…"),
+    A(21, "…-ε=c'1-ρὸς=d'2 τε=d'1-χνι=e'2-τῶν=f'1e'1 ἔν=f'1-οι=d'2-κος=d'1e'1 πό=f'1-λει=f'2 Κε=e'1-κρο=e'1-πί=e'1-αι=e2"),
+    A(22, "ἔ=f'1-χεῖς=d'1e'1 τρί=f'1-πο=e'1-δα=e'1 βαῖν'=f2 ἐ=e'1-πὶ=e'1 θε=e'1-ο=e'2-στι=e'1-βέ=f'1*-…"),
+    A(23, "…-σί=f#'1-αν=f#'2 δει=e'2-ρά=f'1-δα=d'1 φιλ=e'1-έν=e'2-θε=e1-ον=e2"),
+    // (one flat, lines 23–25)
+    A(24, "δάφ=b2-νας=bb2 κλά=bb1-δον=a2 πλε=a2-ξά=e'1-με=a1-νος=a1 ἀ=a1bb1-…"),
+    A(25, "ἀμ=g1a1-βρό=bb1-ται=a2 χει=g2-ρὶ=g1 σύ=b2-ρων=bb2 ἄ=bb1-ναξ=a2"),
+    // (none, lines 27–30)
+    A(27, "Ἀλ=e2-λὰ=e'1 Λᾶ=e'1f'1-τοῦς=f'2 ἐ=f'1-ρα=f'1-το=f'1-γλέ=f'1*-…"),
+    A(27, "τ'ἔ=f#'1-πεφ=d'1-νες=d'1 ἰ=e'2-οῖς=e'2 ὁ=e'1-…"),
+    A(28, "πό=f'1-θον=e'1 ἔσ=f'2-χε=d'1 ματ=e'2-ρὸς=e'2-…"),
+    A(29, "…-θῆρ'=f'1d'1 ᾶι=d'2 κατ=e'1-έ=f'2-…"),
+    // (one flat, lines 31–40: the prosodion)
+    A(32, "…-βα=g'1-ρος=a'1 Ἄ=bb'1-ρης=a'2 ὅ=a'1-τε=f'1"),
+    A(32, "…-ὸμ=g'2 μαν=a'2-τό=bb'1-…"),
+    A(33, "ληι=d'2-ζό=f'1-με=e'1-νος=f'1 ὤ=g'2-λεθ'=f'1 ὑ=g'2-γρᾶι=bb'2 χι=a'1-…"),
+    A(34, "σῶι=f'2-ζε=e'1 θε=f'1-ό=f'1-κτισ=e'2-τον=e'2 Παλ=e'2-λά=f'1-δος=d'1"),
+    A(35, "τε=bb1 θε=d'1-ά=e'2 τόξ=f'2-ων=d'2 δεσ=d'2-πό=d'1-τι=bb1 Κρη=d'2-σί=eb'1-ων=a2"),
+    A(36, "κυ=a2-δίσ=bb2-τα=bb2 καὶ=d'2 να=d'1-έ=eb'1-τας=eb'2 Δελ=d'2-φῶν=d'2"),
+    A(37, "…-οις=a2 δώ=d'2-μα=bb1-σιν=bb1 ἀ=a2-πταί=bb2-στους=bb2 Βάκ=f'2-χου=e'2"),
+    A(38, "μό=g'1-λε=eb'1*-τε=eb'2 προσ=eb'2-πό=eb'1-λοι=d'2-σι=d'1 τάν=d'2 τε=bb1 δο=d'1-ρί=d'2-…"),
+    A(39, "Ῥω=d'2-μαί=d'2-ων=bb2* ἀρ=a2-χὰν=a2 αὔξ=bb2-ετ'=g1 ἀ=g1-γη=bb2-ρά=bb1-τωι=a2 θάλλ=d'2-…"),
   ] },
 ];
 

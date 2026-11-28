@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos: Limenios's paean in the corpus, the Greek style fitted to the three** (#192). `corpus.mjs`
+  reads DAGM no. 21 as the edition transcribes it (38 fragments, 367 notes), each Delphic paean with the Greek system
+  it is read in (Athenaios the Hyperdorian, Limenios the Hyperlydian). Unseen, Limenios is explained by the style
+  learned from Mesomedes and Athenaios (his note the cheapest 228 → 342 of 482 times); `GREEK` is fitted again to the
+  three (1012 choices). Seikilos, held out, 22 → 26 of 48 beats (29 with the two-source style).
 - **Fuller chords and Bach's inner dissonances** (Study 76; the listener found Bach by his inner voices' dissonances
   and turns, and his fuller, well-led chords). Measured on the deck of whole phrases: Bach sounds three pitch classes or
   more on 97% of his quarters, ours on 74%; his chords dissonate against the bass on 21%, ours on 9%.

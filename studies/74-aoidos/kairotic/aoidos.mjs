@@ -47,15 +47,16 @@ export const PROSODY = [
 export const prosodyWeights = () => Object.fromEntries(PROSODY.map((r) => [r.id, r.weight]));
 
 /**
- * The Greek style: the weights under which what survives is most likely — Mesomedes's reliable lines and Athenaios's
- * Delphic paean, read in the Greek system (greek.mjs: the Lydian and the Hyperdorian, diatonic and chromatic; style.mjs's
- * fit, 530 choices) —, a note struck up to eight times in a row (a recitation tone), and no turn asked after a 4th or a
- * 5th (Fux's; the hymns go on). Fitted once and kept here as data: tests/style.mjs fits it again.
+ * The Greek style: the weights under which what survives is most likely — Mesomedes's reliable lines and the two
+ * Delphic paeans, Athenaios's and Limenios's, read in the Greek system (greek.mjs: the Lydian, the Hyperdorian and the
+ * Hyperlydian, diatonic and chromatic; style.mjs's fit, 1012 choices) —, a note struck up to eight times in a row (a
+ * recitation tone), and no turn asked after a 4th or a 5th (Fux's; the hymns go on). Fitted once and kept here as
+ * data: tests/style.mjs fits it again.
  */
 export const GREEK = {
-  name: "greek", from: "Mesomedes, DAGM nos. 24, 25, 27.7–12 (the reliable lines); Athenaios, DAGM no. 20", maxRepeat: 8, turnAfterSmallLeap: false,
+  name: "greek", from: "Mesomedes, DAGM nos. 24, 25, 27.7–12 (the reliable lines); Athenaios, DAGM no. 20; Limenios, DAGM no. 21", maxRepeat: 8, turnAfterSmallLeap: false,
   // (every rule of soft.mjs and the accent's not listed keeps the engine's weight: none of the corpus's choices weighs it)
-  weights: { "acute-rise": 1.77, "after-accent": 0.7, "circumflex-fall": 2.16, "climax": 0, "contrary-after-leap": 1.03, "grave": 1.67, "hover": 0, "leap-after-leap": 0, "leap-size": 3.62, "line-end": 1.18, "melisma": 3.08, "memory": 0, "novelty": 0, "open": 0.68, "peak": 2.27, "repeat": 0, "return": 0, "run": 1.24, "sequence": 0.89, "step-back": 0 },
+  weights: { "acute-rise": 1.52, "after-accent": 1.05, "circumflex-fall": 2.18, "climax": 0, "contrary-after-leap": 1.04, "grave": 1.56, "hover": 0, "leap-after-leap": 0, "leap-size": 3.81, "line-end": 1.12, "melisma": 3.37, "memory": 0, "novelty": 0.01, "open": 0.61, "peak": 2.18, "repeat": 0, "return": 0, "run": 1.35, "sequence": 1.16, "step-back": 0 },
 };
 
 /** Example texts: lines of polytonic Greek, their metre, and a mode (a church mode of tonal.mjs: the final its tonic);
