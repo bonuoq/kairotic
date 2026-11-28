@@ -16,6 +16,15 @@
   held-out phrases: secondary dominants 7.0 a 100 quarters (Bach 8.0), resolved 75.6% (no-functions 31.6%; Bach's
   51.1% by the same strict count); figures 5/3 52.8 (Bach 54.4), 6/3 21.1 (23.1); held 10.2% (9.9); ⑤–① ends 64.7%
   (57.3); Bach's bass 2.38 bits a note. Study 76's copies of under.mjs and under-tables.mjs synced.
+- **The grand staff, and the MEI through a lens** (discussion #380, steps 4–5). `(lens :b3 :grand)`: a keyboard's
+  grand staff, two staves in a brace, the upper voices at home above and the lower ones below; a voice keeps its
+  identity (its layer, its stems) and crosses to the other staff only where its notes would need two or more ledger
+  lines on their own and fewer there (`{:ledgers n}`), a whole beat at a time (a tuplet, a chord), so it does not jump
+  note by note — MEI's cross-staff notes (`@staff`), which Verovio engraves. `kairotic.mt` writes a note's or a chord's
+  `:cross` as `@staff`, and leaves unnamed (and braced, two of them) the staves of voices with `:staff-label false`:
+  what a lens writes, never kept in a tree. `(mei :b3)` and Export MEI write the notation through the lens the box
+  shows, the EDN keeping the tree as it is (`:lens {:spec … :order …}`): read back, the same tree as without a lens.
+  To come: a clef change where a voice stays long in the other register, voices moving together merged into chords.
 - **Study 74 · aoidos: the ison as a bass** (#192). `aoidos({pedal})`: the voice written over a held note, every
   strong beat a concord with it (the Greek concords in a tonos, any consonance in a church mode); `aulos()`'s
   practice `over` (the drone the final an octave below, the voice over it) and `bass` (`isonBass`: the voice and an

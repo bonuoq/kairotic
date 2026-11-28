@@ -23,6 +23,11 @@
 ;; written to its performance module (<performance>/<recording>/<when absolute data="#note">), which a MEI from
 ;; elsewhere is read from; the EDN keeps them exactly.
 ;;
+;; Through a lens (kairotic.lens, discussion #380): (->mei tree lens) writes the notation as that lens lays it out —
+;; its staves, the order of the voices on them, their clefs, the notes drawn on another staff (@staff) — while the EDN
+;; keeps the tree as it is (its voices' own attributes, in its own order: :lens {:spec … :order […]}), so that reading
+;; it back gives the same tree: (<-mei (->mei t lens)) = (<-mei (->mei t)).
+;;
 ;; line->tree and tree->line: a line of events in seconds and Hz ({:t :dur :hz :hz2 :amp}, as Study 52 draws it) as
 ;; a canonical voice on a grid, and back.
 
@@ -31,7 +36,9 @@
             [clojure.edn :as edn]
             [kairotic.canvas :as cv]
             [kairotic.spell :as sp]
-            [kairotic.mt :as mt]))
+            [kairotic.mt :as mt]
+            [kairotic.optics :as o]
+            [kairotic.lens :as lens]))
 
 (def mei-ns "http://www.music-encoding.org/ns/mei")
 
@@ -398,9 +405,15 @@
                                  (with-rests (with-ext (into [:measure attrs] (map #(seg->node figs %) (get voices k []))) (:notes ext))
                                    (keep (fn [[v m b x]] (when (and (= v i) (= m mi)) [b x])) (:rests ext))))
                                (range) measures))))]
-      (let [t (if (and (= 1 (count vkeys)) (not= :par (:root-tag ext)))
-                (voice (first vkeys))
-                (into [(or (:root-tag ext) :par) (or (:root ext) {})] (map voice vkeys)))
+      (let [vs (mapv voice vkeys)
+            ;; written through a lens: the voices back in the tree's own order
+            order (get-in ext [:lens :order])
+            vs (if (and (= (count order) (count vs)) (= (set order) (set (range (count vs)))))
+                 (mapv second (sort-by first (map vector order vs)))
+                 vs)
+            t (if (and (= 1 (count vkeys)) (not= :par (:root-tag ext)))
+                (first vs)
+                (into [(or (:root-tag ext) :par) (or (:root ext) {})] vs))
             ;; (a syllable's :con only where it is not the one derived: the canonical tree)
             t (if (some #(and (vector? %) (#{:note :chord} (first %)) (map? (second %)) (seq (mt/syllables-of (second %))))
                         (tree-seq vector? seq t))
@@ -446,8 +459,18 @@
   "The MEI of a tree: kairotic.mt's notation, with @tstamp.real, @dur.real and @vel on the notes that sound where they
    were really played, and an <extMeta type=\"kairotic\"> holding, as EDN, the voice's attributes and what each note
    has beyond its written name, duration and tie (by the xml:id of its first written note). Deterministic."
-  [tree]
-  (let [{:keys [mei]} (mt/->mei tree "k-")
+  ([tree] (->mei tree nil))
+  ([tree0 lens-spec]
+  (let [;; through a lens: the notation as it lays the tree out, the EDN the tree's own (its voices' attributes, and their
+        ;; order: which voice of the tree each written one is)
+        tagged (reduce (fn [t [i p]] (o/update-in-node t p #(mt/update-attrs % assoc ::ix i)))
+                       tree0 (map-indexed vector (o/paths tree0 :voices)))
+        own (mapv mt/attrs (o/view tree0 :voices))
+        lensed (when lens-spec (lens/through tagged lens-spec))
+        tree (if lensed (o/over-attrs lensed [:voices] dissoc ::ix) tree0)
+        order (when lensed (mapv (comp ::ix mt/attrs) (o/view lensed :voices)))
+        lens-keys [:cross]
+        {:keys [mei]} (mt/->mei tree "k-")
         doc (.parseFromString (js/DOMParser.) mei "application/xml")
         segs (segments doc)
         sn (seg-notes segs)
@@ -459,12 +482,13 @@
         notes (into (sorted-map)
                     (when same?
                       (keep (fn [[s n]]
-                              (let [a (second n) x (apply dissoc a :dur :tie :pitch :cents :grace mt/lyrics-keys)]
+                              (let [a (second n) x (apply dissoc a :dur :tie :pitch :cents :grace (concat lens-keys mt/lyrics-keys))]
                                 (when (seq x) [(first (:ids s)) x])))
                             (map vector (apply concat sn) (apply concat tn)))))
         by-id (into {} (for [x (all doc "note")] [(at x "xml:id") x]))
         rests (vec (mapcat (fn [vi v] (map (fn [[mi b a]] [vi mi b a]) (rest-extras v))) (range) voices))
-        ext (cond-> {:kairotic 1 :voices (mapv mt/attrs voices) :notes notes}
+        ext (cond-> {:kairotic 1 :voices (if order (mapv own order) (mapv mt/attrs voices)) :notes notes}
+              order (assoc :lens {:spec (lens/spec lens-spec) :order order})
               (seq rests) (assoc :rests rests)
               (not= rtag :voice) (assoc :root-tag rtag :root rattrs))]
     ;; MEI's own gestural attributes, as a mirror of the EDN (what other software can read)
@@ -505,7 +529,7 @@
       (.appendChild em (.createCDATASection doc (pr-str ext)))
       (.appendChild head em))
     (let [s (.serializeToString (js/XMLSerializer.) doc)]
-      (if (str/starts-with? s "<?xml") s (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" s)))))
+      (if (str/starts-with? s "<?xml") s (str "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" s))))))
 
 ;; ───────── tree → line ─────────
 

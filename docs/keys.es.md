@@ -22,7 +22,9 @@ Cómo editar, seleccionar, tocar y dibujar en el patch. (Era la línea bajo la c
   `(show-layers :b3 :analysis)`; **lyrics**, en un árbol que canta un texto, muestra u oculta sus sílabas bajo las notas
   (se ven hasta que la caja las oculta: `(show-layers :b3)` las oculta, `(show-layers :b3 :lyrics)` las muestra). Su partitura se escribe a través de una lente, elegida solo para esa
   caja: la partitura abierta por defecto (cada voz en su pentagrama, de la más aguda a la más grave, con la clave por su
-  registro), `(lens :b3 :closed)` la partitura cerrada (SA en un pentagrama de sol, TB en uno de fa); el árbol no cambia.
+  registro), `(lens :b3 :closed)` la partitura cerrada (SA en un pentagrama de sol, TB en uno de fa), `(lens :b3 :grand)` el gran
+  pentagrama de un teclado (una voz cruza al otro pentagrama donde lo necesita); el árbol no cambia, y su MEI se escribe
+  a través de la misma lente.
 
 ## Lienzo
 
