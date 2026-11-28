@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The bass under Bach's soprano: a harmonic map, secondary dominants that resolve** (#353: what the listener
+  heard in Study 71's whole phrases — the functions most). Study 63's `under.mjs` weighs each quarter's chord over its
+  degree by where it falls in the phrase (a tenth of it, as PROFILE): −log P(degree, figure | tenth) + log P(degree,
+  figure), counted by `tools/under-tables.mjs` (`position`), so the position says only what the chord table does not;
+  and a secondary dominant — an applied dominant in the chorale's key, whatever the local key — costs `resolve` (1.5)
+  where it does not go to its chord (off with no-functions). `tools/under-measure.mjs` counts them. On the 150
+  held-out phrases: secondary dominants 7.0 a 100 quarters (Bach 8.0), resolved 75.6% (no-functions 31.6%; Bach's
+  51.1% by the same strict count); figures 5/3 52.8 (Bach 54.4), 6/3 21.1 (23.1); held 10.2% (9.9); ⑤–① ends 64.7%
+  (57.3); Bach's bass 2.38 bits a note. Study 76's copies of under.mjs and under-tables.mjs synced.
 - **Study 74 · aoidos: the ison as a bass** (#192). `aoidos({pedal})`: the voice written over a held note, every
   strong beat a concord with it (the Greek concords in a tonos, any consonance in a church mode); `aulos()`'s
   practice `over` (the drone the final an octave below, the voice over it) and `bass` (`isonBass`: the voice and an

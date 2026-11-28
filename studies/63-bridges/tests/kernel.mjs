@@ -197,6 +197,27 @@ export async function run() {
   is("… its notes spelt in the key signature, by the local key's letters: in F, B♭ by the signature, B♮ marked; in A minor its G♯",
      US.speller({ tonic: "F" }).note(70) === 'pname="b" oct="4" accid.ges="f"' && US.speller({ tonic: "F" }).note(71) === 'pname="b" oct="4" accid="n"' &&
      US.speller({ tonic: "A", mode: "minor" }).note(68) === 'pname="g" oct="4" accid="s"' && US.speller({ tonic: "F" }).note(66, { tonic: "G", mode: "minor" }) === 'pname="f" oct="4" accid="s"');
+  // (secondary dominants: an applied dominant in the chorale's key goes to its chord — functions on — far more often)
+  const sop2 = [67, 69, 71, 72, 74, 72, 71, 72, 74, 76, 74, 72], st2 = sop2.map((_, t) => t % 2 === 0);
+  const resolvedShare = (variant) => {
+    let n = 0, ok = 0;
+    const B2 = U.underBridge({ soprano: sop2, key: { tonic: "C", mode: "major" }, strong: st2, variant });
+    for (let i = 0; i < 40; i++) {
+      const x = B2.draw(wr(i + 21));
+      x.chords.forEach((c, t) => {
+        const root = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"].indexOf(c.root);
+        const isA = c.kind && ["", "7", "°", "°7"].includes(c.kind) && ![7, 11].includes(root) && !(root === 0 && c.kind === "") && t < 11 && [2, 4, 9, 6, 1, 8].includes(root) && c.kind !== "m";
+        if (!isA) return;
+        n++;
+        const nx = x.chords[t + 1], nr = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"].indexOf(nx.root);
+        if (nr === (root + 5) % 12 || (nx.root === c.root && nx.kind === c.kind)) ok++;
+      });
+    }
+    return n ? ok / n : 1;
+  };
+  const rOn = resolvedShare("all"), rOff = resolvedShare("no-functions");
+  is("secondary dominants (a major chord or a 7th on ②, ③, ⑥… in C) go to their chord more often with the functions than without", rOn > rOff);
+  notes.push(`secondary dominants resolved: ${(100 * rOn).toFixed(0)}% with the functions, ${(100 * rOff).toFixed(0)}% without (40 draws)`);
   notes.push(`a bass under C D E F E D C: ${lines[0].bass.join(" ")} · ${lines[0].figures.join(" ")} · ${lines[0].keys.join(", ")}`);
 
   return { results, notes };

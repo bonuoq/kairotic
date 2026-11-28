@@ -6,7 +6,7 @@
 // A first calibration, so the engine runs; the chorale thread's tables (rules.mjs, with Bach's own figures from BCFB)
 // replace it through bassUnder's `costs`.
 import { readFileSync, writeFileSync } from "node:fs";
-import { chordOf } from "../kairotic/functions.mjs";
+import { chordOf, functionOf } from "../kairotic/functions.mjs";
 import { figureOf, keyOfName, isHeldOut } from "../kairotic/under.mjs";
 
 const src = process.argv[2] || "studies/_shared/chorales/phrases.json", out = process.argv[3] || "studies/63-bridges/kairotic/under-tables.mjs";
@@ -14,7 +14,10 @@ const P = JSON.parse(readFileSync(src, "utf8")).phrases;
 const TON = { C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11 };
 const mod = (a, m) => ((a % m) + m) % m, tp = (k) => TON[String(k.tonic).replace("♯", "#").replace("♭", "b")] ?? 0;
 const T = { major: newTables(), minor: newTables() };
-function newTables() { return { vertical: {}, motion: {}, move: {}, chord: {}, end: {}, endChord: {}, held: { strong: {}, weak: {} }, start: {} }; }
+function newTables() { return { vertical: {}, motion: {}, move: {}, chord: {}, end: {}, endChord: {}, held: { strong: {}, weak: {} }, start: {}, position: Array.from({ length: 10 }, () => ({})) }; }
+// (the secondary dominants: a chord whose function in the chorale's key is an applied dominant, by its figure; and
+// every chord's figure, to weigh them against)
+const applied = { figure: {}, all: {}, resolved: 0, n: 0 };
 // (the soprano's motion at each quarter, by beat, as under.mjs reads it: how often a dissonance of that motion is
 // one — BACH_DISSONANCES's counts over these)
 const STEP = (d) => Math.abs(d) >= 1 && Math.abs(d) <= 2;
@@ -43,7 +46,18 @@ for (const p of P) {
     inc(tb.vertical, mod(s - b, 12));
     const ch = chordOf(c);
     const f = ch && ch.extra === null ? figureOf(ch) : null;
-    if (f) { inc(tb.chord, `${mod(b - tp(k), 12)}|${f}|${ch.kind}`); used++; } else skipped++;
+    if (f) {
+      inc(tb.chord, `${mod(b - tp(k), 12)}|${f}|${ch.kind}`); used++;
+      // (the harmonic map: the chord over its degree by tenth of the phrase, as PROFILE's tenths)
+      inc(tb.position[Math.min(9, Math.floor(10 * t / Math.max(1, n - 1)))], `${mod(b - tp(k), 12)}|${f}`);
+      inc(applied.all, f);
+      const fn = functionOf(c, home);
+      if (fn && fn.fn === "A") {
+        inc(applied.figure, f); applied.n++;
+        const nx = t < n - 1 ? chordOf(p.satb[t + 1]) : null;
+        if (nx && (fn.targets || [fn.target]).includes(nx.root)) applied.resolved++;
+      }
+    } else skipped++;
     if (t > 0) {
       const s0 = p.satb[t - 1][0], b0 = p.satb[t - 1][3], ds = Math.sign(s - s0), db = Math.sign(b - b0);
       inc(tb.motion, !ds && !db ? "static" : !ds || !db ? "oblique" : ds === db ? "similar" : "contrary");
@@ -56,7 +70,7 @@ for (const p of P) {
     }
   }
 }
-const data = { source: "Bach's chorales, phrases.json (Sapp's edition), chorales whose number is not a multiple of 5", phrases, quarters: used + skipped, chords: used, sopMotion, ...T };
+const data = { source: "Bach's chorales, phrases.json (Sapp's edition), chorales whose number is not a multiple of 5", phrases, quarters: used + skipped, chords: used, sopMotion, applied, ...T };
 writeFileSync(out, `// SPDX-License-Identifier: CC-BY-NC-SA-4.0
 // Written by tools/under-tables.mjs from studies/_shared/chorales/phrases.json (Sapp's edition of Bach's chorales,
 // CC BY-NC-SA 4.0): counts, quarter by quarter, each in its own key, the chorales whose number is a multiple of 5 left
