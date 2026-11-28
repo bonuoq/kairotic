@@ -71,10 +71,10 @@ export async function cac(page, check) {
   // a lens (#380): the same tree in closed score in this box's score, the tree itself unchanged; the work keeps it
   const staves = `(some-> (get @score-cache ${out}) :node (.querySelectorAll "g.staff") .-length)`;
   const four = await until(page, staves, (x) => Number(x) >= 4, 10000);
-  const tree0 = await cljs(page, `(pr-str (tree-data ${out}))`);
+  await cljs(page, `(def lens-tree0 (tree-data ${out}))`);
   await cljs(page, `(lens ${out} :closed)`);
   const closed = await until(page, staves, (x) => Number(x) > 0 && Number(x) < Number(four), 10000);
-  const keptLens = await cljs(page, `[(lens ${out}) (str/includes? (patch->code (current)) "(lens ${out} :closed)") (= ${JSON.stringify(tree0)} (pr-str (tree-data ${out})))]`);
+  const keptLens = await cljs(page, `[(lens ${out}) (str/includes? (patch->code (current)) "(lens ${out} :closed)") (= lens-tree0 (tree-data ${out}))]`);
   await cljs(page, `(lens ${out} nil)`);
   const back4 = await until(page, staves, (x) => x === four, 10000);
   check("(lens … :closed): its score in closed score (fewer staves), the tree unchanged, the work's code keeps it; nil the open score again",
