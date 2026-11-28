@@ -605,6 +605,25 @@
       (let [kept (layers-toggled (set ks))] (dispatch! [:shows id (when (seq kept) (vec (sort kept)))])))
     (set ks)))
 
+;; ───────── lenses (discussion #380): how a tree box writes its tree on staves ─────────
+;; A tree holds only music; the staves, the order of the voices on them and the clefs are the lens's (kairotic.lens),
+;; and the box keeps only which lens it shows. Its score is engraved through it.
+
+(defn box-lens "The lens a box shows its tree through, as [name params] (the open score by default)." [b] (ln/spec (:lens b)))
+
+(defn lens
+  "The lens a tree box shows its tree through: (lens :b3 :closed) closed score (SA · TB), (lens :b3 [:closed {:upper 1}])
+   with its parameters, (lens :b3 :open) or (lens :b3 nil) the open score again (each voice on its staff, from the
+   highest to the lowest, its clef by its range), (lens :b3) the one it shows. Each box its own, kept in the work; the
+   tree is not changed. (ln/layout tree lens) says what a lens makes of a tree."
+  ([id] (box-lens (need-box id)))
+  ([id x]
+   (let [b (need-box id)]
+     (when-not (= "tree" (klass (:text b))) (fail (str id " is not a tree box: only a tree is written through a lens")))
+     (let [sp (try (ln/spec x) (catch :default e (fail (.-message e))))]
+       (when-not (= sp (box-lens b)) (dispatch! [:lens id (sane-lens x)]))
+       sp))))
+
 ;; musical trees (Study 19): mt/… are the functions on trees (mt/transpose, mt/events, mt/pp …)
 ;; A tree box keeps its tree and its history is made of node edits (Study 20): tree! writes the
 ;; difference with what it had; tree-edit! writes exact edits.
@@ -1175,6 +1194,10 @@
                         (when (seq sh)
                           (concat ["" ";; layers shown"]
                                   (for [id sh] (str "(show-layers " id (apply str (map #(str " " (pr-str %)) (sort (shown-layers (get-in p [:boxes id]))))) ")")))))
+                      (let [ls (filter (fn [id] (get-in p [:boxes id :lens])) ids)]
+                        (when (seq ls)
+                          (concat ["" ";; lenses"]
+                                  (for [id ls] (str "(lens " id " " (pr-str (get-in p [:boxes id :lens])) ")")))))
                       ;; the `patch @name` boxes pinned to a point of their line (#117)
                       (let [pn (filter (fn [id] (:pin (get-in p [:boxes id]))) ids)]
                         (when (seq pn)

@@ -9,7 +9,8 @@
 // cadence's bass).
 import { readFileSync } from "node:fs";
 import { underBridge, isHeldOut, figureOf } from "../kairotic/under.mjs";
-import { chordOf } from "../kairotic/functions.mjs";
+import { chordOf, functionOf } from "../kairotic/functions.mjs";
+import { KIND_INTERVALS } from "../kairotic/under.mjs";
 import * as CONTINUO from "../../../packages/rules/assets/continuo.mjs";
 
 const variant = process.argv[2] || "all", N = Number(process.argv[3] || 1e9), seed = Number(process.argv[4] || 1);
@@ -35,17 +36,36 @@ const add = (st, S, B, figs, key) => {
   if (b1 === 0 && b0 === 7) st.end51++;
 };
 const ours = stat(), bach = stat();
+// (secondary dominants: a chord whose function in the chorale's key is an applied dominant — whatever local key a
+// reading gives it —, resolved where the next quarter's chord is its target; and its figure)
+const PCN = { C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11 };
+const sec = () => ({ n: 0, resolved: 0, quarters: 0, fig: {} });
+const secOurs = sec(), secBach = sec();
+const pitchesOfChord = (root, kind, bass) => { const r = PCN[root] ?? root; return [36 + bass, ...KIND_INTERVALS[kind].map((x) => 48 + ((r + x) % 12))]; };
+const secondary = (acc, chords, key) => {
+  acc.quarters += chords.length;
+  chords.forEach((c, t) => {
+    if (!c) return;
+    const f = functionOf(c.pitches, key);
+    if (!f || f.fn !== "A") return;
+    acc.n++; acc.fig[c.figure] = (acc.fig[c.figure] || 0) + 1;
+    const nx = chords[t + 1];
+    if (nx && (f.targets || [f.target]).includes(nx.root % 12)) acc.resolved++;
+  });
+};
 let same = 0, samePc = 0, sameFig = 0, notes = 0, bits = 0, bitsN = 0, none = 0, inf = 0, dis = 0, disBach = 0;
 const t0 = Date.now();
 for (const p of P) {
   const S = p.satb.map((c) => c[0]), Bb = p.satb.map((c) => c[3]), n = S.length;
   const bachFigs = p.satb.map((c) => { const ch = chordOf(c); return ch && ch.extra === null ? figureOf(ch) : null; });
   add(bach, S, Bb, bachFigs, p.cadence || p.key);
+  secondary(secBach, p.satb.map((c) => { const ch = chordOf(c); return ch && ch.extra === null ? { pitches: c, root: ch.root, figure: figureOf(ch) } : null; }), p.key);
   const U = underBridge({ soprano: S, key: p.key, strong: p.strong, variant, weights, continuo });
   const y = U.possible ? U.draw(r) : null;
   if (!y) { none++; continue; }
   add(ours, S, y.bass, y.chords.map((c) => c.figure), p.cadence || p.key);
   dis += y.chords.filter((c) => c.dissonance).length;
+  secondary(secOurs, y.chords.map((c, t) => ({ pitches: pitchesOfChord(c.root, c.kind, y.bass[t] % 12), root: PCN[c.root], figure: c.figure })), p.key);
   if (continuo) disBach += p.satb.filter((_, t) => { const d = continuo.dissonanceOf(p, t); return d && d.voice === "soprano"; }).length;
   for (let t = 0; t < n; t++) { notes++; if (y.bass[t] === Bb[t]) same++; if ((y.bass[t] - Bb[t]) % 12 === 0) samePc++; if (bachFigs[t] && y.chords[t].figure === bachFigs[t] && (y.bass[t] - Bb[t]) % 12 === 0) sameFig++; }
   const lp = U.logProb(Bb);
@@ -57,6 +77,7 @@ console.log(`${variant}: ${P.length} phrases held out, ${none} without a bass, $
 console.log(`  Bach's bass note for note ${pc(same, notes)}, its pitch class ${pc(samePc, notes)}, its pitch class and figure ${pc(sameFig, notes)}`);
 console.log(`  Bach's bass under the model: ${(bits / Math.max(1, bitsN)).toFixed(2)} bits a note (${inf} phrases outside it)`);
 console.log(`  the soprano a dissonance: ${dis} quarters of ${notes}${continuo ? ` (Bach ${disBach})` : ""}`);
+for (const [k, a] of [["ours", secOurs], ["Bach", secBach]]) console.log(`  ${k}: secondary dominants ${(100 * a.n / Math.max(1, a.quarters)).toFixed(1)} a 100 quarters, ${pc(a.resolved, a.n)} resolved · ${dist(a.fig)}`);
 for (const [k, st] of [["ours", ours], ["Bach", bach]]) {
   console.log(`  ${k}: figures ${dist(st.fig)}`);
   console.log(`        motion ${dist(st.motion)} · held ${pc(st.held, st.moves)}, steps ${pc(st.steps, st.moves)}, leaps ${pc(st.leaps, st.moves)} · ⑤–① ends ${pc(st.end51, st.ends)}`);

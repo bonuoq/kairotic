@@ -20,7 +20,9 @@ Cómo editar, seleccionar, tocar y dibujar en el patch. (Era la línea bajo la c
   altura, Supr la vuelve silencio, Enter otra vez nota). Las fichas de su cabecera: **⇄** otra vista, **{ }** su código,
   **analysis** muestra u oculta lo que un análisis escribió en él (las cifras bajo el bajo), solo en esa caja —
   `(show-layers :b3 :analysis)`; **lyrics**, en un árbol que canta un texto, muestra u oculta sus sílabas bajo las notas
-  (se ven hasta que la caja las oculta: `(show-layers :b3)` las oculta, `(show-layers :b3 :lyrics)` las muestra).
+  (se ven hasta que la caja las oculta: `(show-layers :b3)` las oculta, `(show-layers :b3 :lyrics)` las muestra). Su partitura se escribe a través de una lente, elegida solo para esa
+  caja: la partitura abierta por defecto (cada voz en su pentagrama, de la más aguda a la más grave, con la clave por su
+  registro), `(lens :b3 :closed)` la partitura cerrada (SA en un pentagrama de sol, TB en uno de fa); el árbol no cambia.
 
 ## Lienzo
 
