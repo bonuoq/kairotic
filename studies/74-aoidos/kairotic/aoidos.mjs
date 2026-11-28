@@ -150,7 +150,8 @@ export function fromFinal(G, final = 0) {
  * A melody for a text: spec {text, metre ("hexameter", "pentameter", "iambic-trimeter", "free", "seikilos"; a list:
  * one a line, in turn), key ({tonic, mode}: a church mode, its tonic the final; ficta off: the mode's own scale) or
  * system (a Greek one: greekSystem's spec {tonos, genera, synemmenon, shade} or the system itself) and final (its
- * degree the melody ends on, 0 the mese; the ambitus and the starts counted from it),
+ * degree the melody ends on, 0 the mese; the ambitus and the starts counted from it), pedal (a degree from the final
+ * held under the voice — an ison —: every strong beat concords with it),
  * ambitus ([lo, hi] in degrees from the final, [-1, 8]), starts (degrees, [0, 2, 3, 4, 7]), melisma (the most notes a
  * syllable, 3; 1: a note a syllable), strict (the peak and the circumflex hard), maxRepeat (3), chromatic (altered
  * notes allowed: [[degree, alteration]…]), time (the syllables and their beats given: planFromTime), open (a fragment:
@@ -228,6 +229,16 @@ export function aoidos(spec = {}) {
       return j > 0 && Math.abs(deg(U[j - 1]) - d) === 1 ? null : "the final is approached by step";
     } },
   ].filter((r) => !spec.open || (r.id !== "start" && r.id !== "final"));
+  // (over an ison — spec.pedal, a degree from the final held under the voice, as the aulos's drone: where the system
+  // has no such note, the nearest octave up —, every strong beat concords with it: in a Greek system the unison, the
+  // 4th, the 5th or the octave; in a church mode any consonance. The strong beats a beat in two, from the first long
+  // syllable's, as the canon has them)
+  const atOr = (d) => { for (let x = d; x <= d + 14; x += 7) { try { return S.at(x); } catch (e) { /* not in the system */ } } return S.at(0); };
+  const pedal = spec.pedal === undefined || spec.pedal === null ? null : atOr(spec.pedal);
+  const firstStrong = Y.find((y) => y.strong), phase0 = firstStrong ? firstStrong.at % 2 : 0;
+  const strongAt = (t) => mod(t - phase0, 2) === 0;
+  const concordsWith = (c, p) => (G ? !!S.concord(c, p) : S.quality(c, p) !== "dissonant");
+  if (pedal !== null) rules.push({ id: "pedal", check: ({ t, c }) => (strongAt(t) && !concordsWith(c, pedal) ? `on a strong beat the voice concords with the ison (${S.pitchName(pedal)})` : null) });
   if (strict) rules.push(
     { id: "circumflex", check: ({ U, t, c, struck }) => (struck && !isStart(t) && Y[sylAt[t]].accent === "circumflex" && h(c) > h(U[t - 1]) ? "a circumflex does not rise" : null) },
     { id: "peak", check: ({ U, t, c, d, struck }) => {
@@ -324,7 +335,7 @@ export function aoidos(spec = {}) {
   };
   const pitchesOf = (U) => Y.map((y, s) => sylNotes(U, s, y.at + y.beats));
   return {
-    ...core, plan: P, syllables: Y, S, key, deg, name, midi: (c) => S.midi(c), hz: (c) => S.hz(c), strict, weights: W, error: P.error, memoKey,
+    ...core, plan: P, syllables: Y, S, key, deg, name, pedal, strongAt, midi: (c) => S.midi(c), hz: (c) => S.hz(c), strict, weights: W, error: P.error, memoKey,
     // (for canonic(): the hard rules and the costs a beat, as the dux takes them)
     own: { finals, starts, lo, hi, maxSyl },
     count: (U = []) => (P.error || !n ? 0n : core.count(U)),
@@ -417,11 +428,20 @@ export function canonic(spec = {}) {
  *                imitation 0.6, k 0 the same register; the counterpoint's rules between them, the two counted together)
  *   drone        one pipe holds the final, an octave below (the ison the Byzantine chant kept)
  *   ison         the held note follows the song: each line on the degree its last note ends on, below the voice
+ *   over         the voice written over the drone (the ison as a bass): every strong beat concords with it (pedal,
+ *                −7 the final an octave below, or spec.pedal)
+ *   bass         the voice and an ison that changes where a line begins, written together (isonBass)
  * → for heterophony canonic()'s; else aoidos()'s, and comesOf (a melody → the aulos, a code a beat).
  */
 export function aulos(spec = {}) {
   const practice = spec.practice || "heterophony";
   if (practice === "heterophony") return { ...canonic({ ...spec, d: 0, k: spec.k ?? 0, imitation: spec.imitation ?? 0.6 }), practice };
+  // (over the ison: the drone below, and the voice written against it, concording on every strong beat)
+  if (practice === "over") {
+    const A = aoidos({ ...spec, pedal: spec.pedal ?? -7 });
+    return { ...A, A, practice, comesOf: (U) => U.map(() => A.pedal) };
+  }
+  if (practice === "bass") return isonBass(spec);
   const A = aoidos(spec), Y = A.syllables, at7 = (d) => ((d % 7) + 7) % 7 - 7;
   // (a degree an octave below, or the nearest octave up the system has: a Greek system ends at its proslambanomenos)
   const below = (d) => { for (let x = d; x <= d + 14; x += 7) { try { return A.S.at(x); } catch (e) { /* not in the system */ } } return A.S.at(0); };
@@ -436,6 +456,36 @@ export function aulos(spec = {}) {
     return out;
   };
   return { ...A, A, practice, comesOf };
+}
+
+/**
+ * The ison as a bass: the voice and its ison written together (solveVoices), the ison held below the voice and
+ * changing only where a line begins — on a fixed note of the Greek system (a hestos: the frame of the tetrachords) or
+ * the final, in a church mode on the final, its 4th or its 5th — and ending on the final; every strong beat of the voice
+ * concords with it. spec aoidos()'s → count, sample, engine (→ {dux: the voice, comes: the ison}), judge, A.
+ */
+export function isonBass(spec = {}) {
+  const A = aoidos(spec), Y = A.syllables, n = A.plan.beats, S = A.S, G = !!S.greek;
+  if (A.error || !n) return { error: A.error || "no text", A, count: () => 0n, countWithin: () => 0n, beats: n };
+  const lineStart = new Set(Y.filter((y, i) => i === 0 || Y[i - 1].line !== y.line).map((y) => y.at));
+  const fixed = (c) => (G ? S.noteOf(c).genus === null : [0, 3, 4].includes(mod(A.deg(c), 7)));
+  // (and the final itself, fixed or not: Seikilos's is a lichanos)
+  const codes = S.codesIn(-7, 0).filter((c) => fixed(c) || mod(A.deg(c), 7) === 0);
+  const finals = codes.filter((c) => mod(A.deg(c), 7) === 0);
+  const concords = (c, p) => (G ? !!S.concord(c, p) : S.quality(c, p) !== "dissonant");
+  const isonSolver = { codes, costParts: () => ({}), check: (U, t, c) => {
+    if (t >= 1 && !lineStart.has(t) && c !== U[t - 1]) return "the ison changes only where a line begins";
+    if (t === n - 1 && !finals.includes(c)) return "the ison ends on the final";
+    return null;
+  } };
+  const between = [{ id: "over-the-ison", check: ({ t, x: [v, p] }) => (A.strongAt(t) && !concords(v, p) ? "on a strong beat the voice concords with the ison" : null) },
+                   { id: "below", check: ({ x: [v, p] }) => (A.midi(p) > A.midi(v) ? "the ison is held below the voice" : null) }];
+  const SV = solveVoices({ n, voices: [{ name: "voice", solver: { codes: A.codes, check: A.check, costParts: A.costParts } }, { name: "ison", solver: isonSolver }],
+                           between, key: (W, t) => A.memoKey(W[0], t) + "|" + (t ? W[1][t - 1] : ""), result: (W) => ({ dux: W[0], comes: W[1] }) });
+  return { ...SV, A, beats: n, name: A.name, midi: A.midi, hz: A.hz, practice: "bass",
+           count: () => SV.count(),
+           countWithin: (ms) => { try { return within(ms, () => SV.count()); } catch (e) { if (e.tooLong) return null; throw e; } },
+           judge: (D, C) => SV.judgeW([D, C], `the voices are not ${n} beats long`) };
 }
 
 /** A melody's notes [{midi, units}] for imitation(): a beat a unit; a rest first where the first strong beat is odd. */
@@ -501,4 +551,4 @@ function runs(notes) {
   return out;
 }
 
-export default { aoidos, canonic, aulos, plan, examine, judgeAccent, duxOf, fromFinal, PROSODY, TEXTS, prosodyWeights };
+export default { aoidos, canonic, aulos, isonBass, plan, examine, judgeAccent, duxOf, fromFinal, PROSODY, TEXTS, prosodyWeights };

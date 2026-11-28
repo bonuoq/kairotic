@@ -145,13 +145,34 @@ export const UNDER_VARIANTS = [{ name: "all" }, { name: "no-functions", function
  */
 export function underBridge({ soprano, key, strong = [], fermata = null, costs = null, continuo = null, weights = {}, variant = "all", temp = 1, min = 3, range = UNDER_RANGE }) {
   const V = typeof variant === "string" ? UNDER_VARIANTS.find((v) => v.name === variant) || UNDER_VARIANTS[0] : variant;
-  const W = { chord: 0.7, vertical: 0.5, motion: 0.5, move: 1.2, held: 1, end: 1, endChord: 1, keys: 1, start: 1, functions: 3, sameChord: 0.7, leading: 2, economy: 1, ...weights };
-  if (V.functions === 0) W.functions = 0;
+  const W = { chord: 0.7, vertical: 0.5, motion: 0.5, move: 1.2, held: 1, end: 1, endChord: 1, keys: 1, start: 1, functions: 3, sameChord: 0.7, leading: 2, economy: 1,
+              position: 1, applied: 0, resolve: 1.5, ...weights };
+  if (V.functions === 0) { W.functions = 0; W.resolve = 0; }
   if (V.economy === 0) W.economy = 0;
   const tables = costs || UNDER_TABLES;
   if (!tables) throw new Error("bassUnder: no tables (run tools/under-tables.mjs, or give costs)");
   const n = soprano.length, T = Math.max(1e-3, temp), home = key, hm = isMinor(home) ? "minor" : "major";
   const C = { major: costersOf(tables.major), minor: costersOf(tables.minor) }, INV = { major: inventoryOf(tables.major, min), minor: inventoryOf(tables.minor, min) };
+  // (the harmonic map: what the chord over its degree costs at this tenth of the phrase beyond what it costs anywhere —
+  // −log P(degree|figure | tenth) + log P(degree|figure), so the chord is not counted twice; and an applied dominant's
+  // figure as Bach's secondary dominants have it)
+  const ratio = (part, whole, alpha = 0.5) => {
+    const pz = Object.values(part || {}).reduce((a, b) => a + b, 0), wz = Object.values(whole || {}).reduce((a, b) => a + b, 0), V = Object.keys(whole || {}).length + 1;
+    return (k) => (pz && wz ? -Math.log(((part[k] || 0) + alpha) / (pz + alpha * V)) + Math.log(((whole[k] || 0) + alpha) / (wz + alpha * V)) : 0);
+  };
+  const POS = Object.fromEntries(["major", "minor"].map((m) => {
+    const P = (tables[m] && tables[m].position) || [], all = {};
+    for (const d of P) for (const [k, c] of Object.entries(d)) all[k] = (all[k] || 0) + c;
+    return [m, P.map((d) => ratio(d, all))];
+  }));
+  // (−log P(figure | a secondary dominant), its likeliest 0: it shapes which figure, never makes one likelier)
+  const APPLIED = (() => {
+    const F = tables.applied && tables.applied.figure;
+    if (!F) return () => 0;
+    const z = Object.values(F).reduce((a, b) => a + b, 0), c = (k) => -Math.log(((F[k] || 0) + 0.5) / (z + 4)), m = Math.min(...Object.keys(F).map(c));
+    return (k) => c(k) - m;
+  })();
+  const tenth = (t) => Math.min(9, Math.floor(10 * t / Math.max(1, n - 1)));
   // (with `continuo`, the chorale thread's tables in place of the chord, the vertical, the moves and the cadence)
   const CC = continuo ? continuoCosters(continuo) : null, KC = CC ? { major: kindCoster(tables.major), minor: kindCoster(tables.minor) } : null;
   if (CC) Object.assign(W, { chord: 0.6, kind: 1, vertical: 0.4, pair: 0.6, leap: 0.5, cadence: 1.5, sameChord: 1, dissonance: 1, ...weights });
@@ -177,7 +198,7 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
       v = { ki, inv, bass, root, pcs: new Set(pcs), kind: inv.kind, figure: inv.figure, pitches, mode,
             cost: CC ? CC[mode].chord(inv.bassRel, inv.figure) + W.kind * KC[mode](inv.bassRel, inv.figure, inv.kind) / W.chord : C[mode].chord(`${inv.bassRel}|${inv.figure}|${inv.kind}`),
             endCost: CC ? 0 : C[mode].endChord(`${inv.bassRel}|${inv.figure}|${inv.kind}`),
-            fn: functionOf(pitches, K), fnIn: new Map() };
+            fn: functionOf(pitches, K), fnHome: functionOf(pitches, home), fnIn: new Map() };
       chordMemo.set(k, v);
     }
     return v;
@@ -223,6 +244,8 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
           }
           let u = W.chord * ch.cost + W.vertical * (CC ? CC[mode].vertical(mod(s - b, 12)) : C[mode].vertical(mod(s - b, 12)));
           if (dis) u += W.dissonance * dis.cost;
+          if (W.position && POS[mode][tenth(t)]) u += W.position * POS[mode][tenth(t)](`${inv.bassRel}|${inv.figure}`);
+          if (W.applied && ch.fnHome && ch.fnHome.fn === "A") u += W.applied * APPLIED(inv.figure);
           if (fer[t] && t > 0) u += W.endChord * ch.endCost;
           if (t === 0) u += W.start * C[hm].start(KEYS[ki].rel);
           out.push({ ki, b, ch, u, dis });
@@ -272,6 +295,9 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
     if (a.ki !== z.ki) { const km = keyMove[a.ki][z.ki]; if (km === Infinity) return Infinity; c += W.keys * km; }
     else c += W.keys * keyMove[a.ki][a.ki];
     if (W.functions) c += W.functions * fnErrors(a, z);
+    // (a secondary dominant — an applied dominant in the chorale's key — goes to its chord, or stays itself)
+    if (W.resolve && a.ch.fnHome && a.ch.fnHome.fn === "A" && !(a.ch.root === z.ch.root && a.ch.kind === z.ch.kind) &&
+        !(a.ch.fnHome.targets || [a.ch.fnHome.target]).includes(z.ch.root)) c += W.resolve;
     if (a.ch.root === z.ch.root && a.ch.kind === z.ch.kind && a.ki === z.ki) c += W.sameChord;
     // (the leading tone in the bass of a dominant goes up)
     if (a.ch.fn && a.ch.fn.fn === "D" && mod(a.b - tonicPc(KEYS[a.ki].key), 12) === 11 && d !== 1) c += W.leading;

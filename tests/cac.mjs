@@ -68,6 +68,17 @@ export async function cac(page, check) {
   check("[:staves 2]: short score, soprano and alto on one staff, tenor and bass on another", two === '["S A" "T B"]', two);
   await cljs(page, `(send! ${cb} [:staves 4])`);
   await until(page, `(count (re-seq #"<staffDef" (mei ${out})))`, (x) => x === "4", 30000);
+  // a lens (#380): the same tree in closed score in this box's score, the tree itself unchanged; the work keeps it
+  const staves = `(some-> (get @score-cache ${out}) :node (.querySelectorAll "g.staff") .-length)`;
+  const four = await until(page, staves, (x) => Number(x) >= 4, 10000);
+  await cljs(page, `(def lens-tree0 (tree-data ${out}))`);
+  await cljs(page, `(lens ${out} :closed)`);
+  const closed = await until(page, staves, (x) => Number(x) > 0 && Number(x) < Number(four), 10000);
+  const keptLens = await cljs(page, `[(lens ${out}) (str/includes? (patch->code (current)) "(lens ${out} :closed)") (= lens-tree0 (tree-data ${out}))]`);
+  await cljs(page, `(lens ${out} nil)`);
+  const back4 = await until(page, staves, (x) => x === four, 10000);
+  check("(lens … :closed): its score in closed score (fewer staves), the tree unchanged, the work's code keeps it; nil the open score again",
+        Number(closed) < Number(four) && keptLens === "[[:closed {}] true true]" && back4 === four, `${four} ${closed} ${keptLens} ${back4}`);
   const hidden = await cljs(page, `(str/includes? (editor-source (get-in (current) [:boxes ${out}])) ":fig")`);
   check("... its code window hides the analysis (the box does not show it)", hidden === "false", hidden);
   await cljs(page, `(show-layers ${out} :analysis)`);

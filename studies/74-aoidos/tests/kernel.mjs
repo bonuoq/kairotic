@@ -155,6 +155,18 @@ export async function run() {
   const GE = examine(GA, GU, { degrees: [1, 0.6], ms: 600 });
   is("... and the examiner in a Greek tonos: the melody tried as the dux of imitation-2 by the Greek counterpoint, its comes in the same system",
      GE.length === 16 && GE.every((e) => e.comes !== undefined) && GE.filter((e) => e.engine).every((e) => e.sound && e.sound.comes.some((m) => m !== null)));
+  // the ison as a bass: the voice over the drone, and the voice and an ison written together
+  const OverG = aulos({ ...Lyd, melisma: 3, practice: "over" }), OverC = aulos({ text: O.text, metre: O.metre, key: O.key, practice: "over" });
+  const UO = OverG.engine({ temp: 0.5, r: rg });
+  is("the voice over the drone (the final an octave below): Odyssey 1.1 in the Lydian, 19,691,663,393,233 melodies of the 1,744,451,647,718,654,456; in E dorian 22,588,545,252,607; every strong beat a concord with it",
+     OverG.count() === 19691663393233n && OverC.count() === 22588545252607n && UO.every((c, t) => !OverG.strongAt(t) || OverG.S.concord(c, OverG.pedal)));
+  const BS = aulos({ text: Sk.text, metre: Sk.metre, system: Sk.system, final: Sk.final, practice: "bass", style: "greek" });
+  const BE = BS.engine({ temp: 0.7, r: rg }), starts = new Set(BS.A.syllables.filter((y, i) => i === 0 || BS.A.syllables[i - 1].line !== y.line).map((y) => y.at));
+  is("the ison as a bass: Seikilos in the Iastian, Greek style, the voice and the ison written together — 7,680,200,566,319,157,400,963,234,687,687 ways; the ison changes only where a line begins, on a fixed note or the final, ends on the final (e), below the voice, every strong beat a concord",
+     BS.count() === 7680200566319157400963234687687n && BS.judge(BE.dux, BE.comes) === null
+     && BE.comes.every((c, t) => t === 0 || starts.has(t) || c === BE.comes[t - 1]) && BS.name(BE.comes.at(-1)) === "e"
+     && BE.comes.every((c, t) => BS.midi(c) <= BS.midi(BE.dux[t])) && BE.dux.every((c, t) => !BS.A.strongAt(t) || BS.A.S.concord(c, BE.comes[t])));
+  notes.push("the ison as a bass, Seikilos: " + BE.comes.filter((c, t) => t === 0 || c !== BE.comes[t - 1]).map((c) => BS.name(c)).join(" → "));
   return { results, notes };
 }
 

@@ -226,7 +226,9 @@
         hide (when lt (set (filter #(and (not (an %)) (mt/has-layer? lt %)) [:analysis :lyrics])))
         lt (if (seq hide) (mt/without-layers lt hide) lt)
         sw (first (box-size id b))
-        d [d0 lt sw an] c (get @score-cache id)]
+        ;; the staves, the order of its voices and their clefs: the lens the box shows (discussion #380)
+        lz (when tree-box? (:lens b))
+        d [d0 lt sw an lz] c (get @score-cache id)]
     (cond
       (and c (= (:key c) d)) c
       (nil? @vrv) nil
@@ -235,7 +237,7 @@
         (let [tk @vrv scale 30
               ;; a measured tree as it is; a tree without measures, or the strokes of the buffer, quantized (#86)
               {:keys [mei pieces]} (cond
-                                     lt (qz/->score lt (str (name id) "-"))
+                                     lt (qz/->score (try (ln/through lt lz) (catch :default _ lt)) (str (name id) "-"))
                                      (cv/generic? d0) (sc/->mei-voice (cv/->voice d0) (str (name id) "-"))
                                      :else (qz/->score d0 (str (name id) "-") (:quant d0)))
               g (js/document.createElementNS "http://www.w3.org/2000/svg" "g")]

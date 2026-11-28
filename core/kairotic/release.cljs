@@ -15,7 +15,7 @@
 
 (def box-keys
   "What a box keeps besides its text and place, and the event that sets each (nil removes it)."
-  [:present :view :size :recipe :shows :pin :name])
+  [:present :view :size :recipe :shows :lens :pin :name])
 
 (defn- set-ev [k id v]
   (case k
@@ -24,6 +24,7 @@
     :size (if v (into [:size id] v) [:size id nil])
     :recipe [:recipe id v]
     :shows [:shows id v]
+    :lens [:lens id v]
     :pin [:pin id v]
     :name [:name id v]))
 
