@@ -227,13 +227,22 @@ export async function run() {
   const fst = frame.map((_, t) => t % 2 === 0);
   const dims = Array.from({ length: 20 }, (_, i) => DM.diminish({ satb: frame, strong: fst, key: { tonic: "C", mode: "major" }, r: wr(i + 31) }));
   const sumLen = (line) => line.reduce((a, [, , d]) => a + d, 0);
-  is("diminish: each voice a line filling the phrase, its quarters' notes where the frame has them, the last quarter whole",
-     dims.every((d) => DM.VOICES.every((v, vi) => Math.abs(sumLen(d.lines[v]) - frame.length) < 1e-9 && frame.every((c, q) => DM.soundingAt(d.lines[v], q) === c[vi]) && d.lines[v].at(-1)[2] === 1)));
+  is("diminish: each voice a line filling the phrase, its quarters' notes where the frame has them (a note tied over too)",
+     dims.every((d) => DM.VOICES.every((v, vi) => Math.abs(sumLen(d.lines[v]) - frame.length) < 1e-9 && frame.every((c, q) => DM.soundingAt(d.lines[v], q) === c[vi]) && Math.abs(d.lines[v].at(-1)[0] + d.lines[v].at(-1)[2] - frame.length) < 1e-9)));
   is("… the soprano kept as given, the bass, the tenor and the alto diminished now and then, every note in C major",
      dims.every((d) => d.lines.soprano.length === frame.length) && dims.some((d) => d.figures.bass.some((f) => f !== "-")) &&
      dims.every((d) => ["alto", "tenor", "bass"].every((v) => d.lines[v].every(([, m]) => [0, 2, 4, 5, 7, 9, 11].includes(((m % 12) + 12) % 12)))));
   const parCount = (L) => { let k = 0; for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) for (let q = 1; q < frame.length; q++) if (DM.parallels(L[DM.VOICES[i]], L[DM.VOICES[j]], q - 1, q) !== null) k++; return k; };
   is("… no parallel 5ths or octaves the frame has not (20 draws)", dims.every((d) => parCount(d.lines) <= parCount(Object.fromEntries(DM.VOICES.map((v, vi) => [v, DM.quartersOf(frame.map((c) => c[vi]))])))));
+  // (the judge: a quarter's note the eighths around it explain)
+  const jl = { alto: [[0, 65, 1], [1, 65, 0.5], [1.5, 64, 0.5], [2, 62, 0.5], [2.5, 64, 0.5], [3, 65, 1], [4, 67, 1], [5, 69, 0.5], [5.5, 71, 0.5], [6, 72, 1]] };
+  is("derives: the eighths explain a quarter's note — held and resolved on its eighth (F tied, E), a neighbour (E–D–E), passing (A–B, C–D–E), resolved (an appoggiatura leapt to), none where they do not",
+     DM.derives(jl, 1, "alto", 65) === "held" && DM.derives(jl, 2, "alto", 62) === "neighbour" && DM.derives(jl, 5, "alto", 69) === "passing" &&
+     DM.derives({ alto: [[0, 60, 1], [1, 62, 0.5], [1.5, 64, 0.5], [2, 64, 1]] }, 1, "alto", 62) === "passing" &&
+     DM.derives({ alto: [[0, 60, 1], [1, 65, 0.5], [1.5, 64, 0.5], [2, 64, 1]] }, 1, "alto", 65) === "resolved" && DM.derives(jl, 0, "alto", 64) === null);
+  is("… a note the frame repeats tied over now and then (the bass on a weak quarter, as Bach ties half the time)",
+     Array.from({ length: 30 }, (_, i) => DM.diminish({ satb: [[72, 67, 64, 48], [72, 67, 64, 48], [71, 67, 62, 55], [72, 67, 64, 48]], strong: [true, false, true, false], key: { tonic: "C" }, r: wr(i + 51) }))
+       .some((d) => d.figures.bass[1] === "tie" && d.lines.bass[0][2] === 2));
   notes.push(`eighths over I IV V I: bass ${dims[0].figures.bass.join(" ")} · tenor ${dims[0].figures.tenor.join(" ")}`);
 
   return { results, notes };

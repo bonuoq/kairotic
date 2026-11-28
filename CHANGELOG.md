@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The judge of a diminution, ties, and Bach's applied dominants read** (#353). Study 63's `diminish.mjs`:
+  `derives(lines, q, voice, note)` says how the eighths around a quarter explain its note — resolved on its eighth,
+  passing, neighbour, anticipation, held over and then left by step — or null, for a rule that reads the quarters
+  (bach-4 at two levels): of Bach's dissonant quarters in the soprano, alto and tenor, his own eighths derive 61%
+  (passing 110 of 121, escape 114/117, neighbour 64/68, anticipation 87/102; the suspensions resolved on the next
+  quarter, 257 of 586, are not the eighths' to explain). And a note the frame repeats, kept whole, is tied over as
+  often as Bach ties in that voice on that beat (diminution-tables.mjs's `ties`: the bass on a weak quarter 57%).
+  `under.mjs` reads continuo.mjs's BACH_APPLIED (−log P(kind, inversion | the degree it leads to)), weight `applied`,
+  off by default: on, it drew fewer secondary dominants and more of them in root position. Study 63's copy of
+  continuo.mjs and Study 76's of under.mjs synced.
 - **Bach's applied dominants, counted** (#353, for the bass engine's `applied` cost). `@kairotic/rules` 0.30.0:
   `continuo.mjs`' `appliedOf(chord, key)` reads a chord as a V, V7, vii°, vii°7 or viiø7 of a degree of the chorale's key
   other than its tonic, with a tone out of the scale: its target, kind and inversion. `BACH_APPLIED` counts them by mode
