@@ -197,7 +197,7 @@
    one box (most do): the same facts, without going through every box of the work."
   [p0 p1 ev]
   (let [[op id] ev]
-    (if (and (#{:box :text :move :present :view :size :pin :recipe :data :kept :delete :in :shows} op) (keyword? id))
+    (if (and (#{:box :text :move :present :view :size :pin :recipe :data :kept :delete :in :shows :lens} op) (keyword? id))
       (vec (concat (box-facts [] id (get-in p0 [:boxes id]) (get-in p1 [:boxes id])) (around-facts [] p0 p1)))
       (patch-datoms p0 p1))))
 

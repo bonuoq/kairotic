@@ -19,7 +19,9 @@ How to edit, select, play and draw in the patch. (It used to be the line under t
 - **Tree boxes**: click a note of the score to select it (↑ ↓ move it, a letter gives it that pitch, Delete makes it a
   rest, Enter a note again). The chips in their header: **⇄** another view, **{ }** its code, **analysis** shows or
   hides what an analysis wrote on it (the figures under the bass), for that box only — `(show-layers :b3 :analysis)`; **lyrics**, on a tree that sings a text, shows or hides its syllables
-  under the notes (shown until the box hides them: `(show-layers :b3)` hides them, `(show-layers :b3 :lyrics)` shows them).
+  under the notes (shown until the box hides them: `(show-layers :b3)` hides them, `(show-layers :b3 :lyrics)` shows them). Its score is written through a lens, chosen for that box only: the open
+  score by default (each voice on its staff, from the highest to the lowest, its clef by its range), `(lens :b3 :closed)`
+  the closed score (SA on a treble staff, TB on a bass one); the tree itself does not change.
 
 ## Canvas
 
