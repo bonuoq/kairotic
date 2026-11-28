@@ -1299,7 +1299,12 @@ export function fourOverBass(spec = {}) {
   const NAMES = ["soprano", "alto", "tenor"];
   const N = voicesWorld(K, B, [Sv.world, Av.world, Tv.world], NAMES, { figured, ro: spec.ro ?? true, asked, sevenths });
   const params = { seventh: { free: !!spec.freeSevenths } };
-  const between = st.between.map(([id, p]) => BETWEEN[id](N, { ...(params[id] || {}), ...(p || {}) }));
+  // (spec.licence(t, who, why) → true: a dissonance the quarters refuse that a level below explains — the eighths of a
+  // voice's line deriving it, Study 76's two levels — is let through, at its quarter or the one before, where a rule
+  // that looks back reports it)
+  const LICENSABLE = /dissonan|suspension|prepared|held into|held note|resolves|7th|passes by step|passing|neighbour|parallel/;
+  const lic = (t, who, why) => !!(spec.licence && why && LICENSABLE.test(String(why)) && (spec.licence(t, who, why) || (t > 0 && spec.licence(t - 1, who, why))));
+  const between = st.between.map(([id, p]) => BETWEEN[id](N, { ...(params[id] || {}), ...(p || {}) })).map((b) => (spec.licence ? { ...b, check: (X) => { const w = b.check(X); return w && lic(X.t, null, w) ? null : w; } } : b));
   // (a style's weights, then the spec's: the voices' soft rules and the doubling between them)
   const W = { doubling: 0.6, ...(st.weights || {}), ...(spec.weights || {}) };
   const softs = (st.softBetween || []).map(([id, p]) => SOFT_BETWEEN[id](N, { ...(W[id] !== undefined ? { weight: W[id] } : {}), ...(p || {}) }));
@@ -1313,8 +1318,9 @@ export function fourOverBass(spec = {}) {
   // (and the alto or the tenor given where a unit has a note for it — a bridge's ends, Bach's chords —: there its note
   // and nothing else, its own rules off there; elsewhere free)
   const pin = (V, g, who) => (g ? { ...V, check: (U, t, c) => (t >= n ? "the work is finished" : g[t] === null || g[t] === undefined ? V.check(U, t, c) : c === g[t] ? null : `the ${who} is given`), costParts: (U, c) => (g[U.length] === null || g[U.length] === undefined ? V.costParts(U, c) : {}) } : V);
-  const Sgiven = pin(Sv, spec.given && spec.given.soprano, "soprano");
-  const SV = solveVoices({ n, voices: [{ name: "soprano", solver: Sgiven }, { name: "alto", solver: pin(Av, spec.given && spec.given.alto, "alto"), prefix: "alto/", weight: 0.6 }, { name: "tenor", solver: pin(Tv, spec.given && spec.given.tenor, "tenor"), prefix: "tenor/", weight: 0.6 }],
+  const licensed = (V, who) => (spec.licence ? { ...V, check: (U, t, c) => { const w = V.check(U, t, c); return w && lic(t, who, w) ? null : w; } } : V);
+  const Sgiven = pin(licensed(Sv, "soprano"), spec.given && spec.given.soprano, "soprano");
+  const SV = solveVoices({ n, voices: [{ name: "soprano", solver: Sgiven }, { name: "alto", solver: pin(licensed(Av, "alto"), spec.given && spec.given.alto, "alto"), prefix: "alto/", weight: 0.6 }, { name: "tenor", solver: pin(licensed(Tv, "tenor"), spec.given && spec.given.tenor, "tenor"), prefix: "tenor/", weight: 0.6 }],
                            between, soft: softs, quick, result: (W_) => ({ soprano: W_[0], alto: W_[1], tenor: W_[2] }) });
   /** The chords a realization makes, unit by unit, as figures ("6/4/3", "(5)/3"…). */
   const chords = (R) => {
@@ -1418,7 +1424,7 @@ export function fromNotes(spec = {}) {
     if (spec.inner[v].length !== units.length) throw new Error(`the ${v} is ${spec.inner[v].length} units long, the bass ${units.length}`);
     given[v] = spec.inner[v].map((x, t) => { if (x === null || x === undefined) return null; const o = typeof x === "number" ? { midi: x } : x; const dr = spelt(K, o.name); return dr ? codeOf3(dr.d, dr.r) : codeOfMidi(o.midi, t); });
   }
-  const make = (bass, fig) => (voices >= 4 ? fourOverBass({ key, bass, figured: fig, ro, style: spec.style, given, figuresWeight: spec.figuresWeight })
+  const make = (bass, fig) => (voices >= 4 ? fourOverBass({ key, bass, figured: fig, ro, style: spec.style, given, figuresWeight: spec.figuresWeight, licence: spec.licence })
     : voices === 3 ? partsOverBass({ key, bass, figured: fig, ro, style: spec.style })
     : overBass({ key, bass, figured: fig, ro, voice: "top", lo: 7, hi: 21, style: spec.style }));
   const P = make(units, figured);

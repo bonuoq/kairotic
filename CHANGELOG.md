@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Judging Bach at two levels** (Study 76, #353). `@kairotic/rules` 0.31.0: `fourOverBass` / `fromOuter` take `licence(t,
+  who, why)`: a dissonance, a passing or held note, or parallel 5ths or octaves that the quarters refuse is let through
+  where the licence says a level below explains it (at its quarter, or the one before, where a rule looking back reports
+  it). Study 76's `licenceOf(lines, satb)` gives it from a phrase's eighths — Study 63's `derives` (resolved on the
+  eighth, passing, neighbour, anticipation, held) and the lines' own parallels (none between the eighths) — and `judge(p,
+  {levels: 2})` reads a phrase so. Bach's phrases kept by `bach-4`: **508 of 2,272 read in quarters, 1,302 read with
+  their eighths**; what is left is mostly his doubled leading tones, crossed voices and wide spacings. Also
+  `continuo.mjs`' `kindOf` and `BACH_DEGREE_CHORD_KIND` (the chord over each degree by its kind, for the bass engine's
+  applied dominants). Study 76 keeps copies of Study 63's `diminish.mjs` and `diminution-tables.mjs`.
+  `@kairotic/cac` 0.16.22 (its pin).
 - **The judge of a diminution, ties, and Bach's applied dominants read** (#353). Study 63's `diminish.mjs`:
   `derives(lines, q, voice, note)` says how the eighths around a quarter explain its note — resolved on its eighth,
   passing, neighbour, anticipation, held over and then left by step — or null, for a rule that reads the quarters
