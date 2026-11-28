@@ -38,7 +38,9 @@ export async function run() {
   const whole = D.kind === "continuo";
   if (whole) is("... a deck of whole phrases (Study 76): each as long as Bach's, his soprano throughout, on the phrases the tables were not counted on (every fifth chorale)",
      D.trials.every((t) => { const B = t.bridge.satb, A = t.bach.satb; return B.length === A.length && B.every((c, u) => c[0] === A[u][0]) && Number(t.phrase.slice(4, 7)) % 5 === 0; }));
-  else is("... each bridge as long as Bach's phrase, from his first chord to his last, whole (the four voices as his)",
+  if (whole && D.unresolved) is(`... Bach's phrases whose quarters leave a dissonance unresolved (its resolution in the eighths the deck does not play) left out: ${D.unresolved.length}, listed, none in the deck`,
+     D.unresolved.length > 0 && D.unresolved.every((u) => u.phrase && u.why) && !D.trials.some((t) => D.unresolved.some((u) => u.phrase === t.phrase)));
+  else if (!whole) is("... each bridge as long as Bach's phrase, from his first chord to his last, whole (the four voices as his)",
      D.trials.every((t) => { const B = t.bridge.satb, A = t.bach.satb, n = A.length; return B.length === n && same(B[0], A[0]) && same(B[n - 1], A[n - 1]); }));
   // (the inner voices' moves, as often as Bach's: a note kept, a step, a 3rd, a 4th, wider)
   const motion = (key) => { const c = [0, 0, 0, 0, 0]; let n = 0; for (const t of D.trials) { const X = t[key].satb; for (const v of [1, 2]) for (let u = 1; u < X.length; u++) { const d = Math.abs(X[u][v] - X[u - 1][v]); c[d === 0 ? 0 : d <= 2 ? 1 : d <= 4 ? 2 : d === 5 ? 3 : 4]++; n++; } } return c.map((x) => (100 * x) / n); };

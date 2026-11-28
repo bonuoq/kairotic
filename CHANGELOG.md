@@ -12,6 +12,11 @@
   `under.mjs` reads continuo.mjs's BACH_APPLIED (−log P(kind, inversion | the degree it leads to)), weight `applied`,
   off by default: on, it drew fewer secondary dominants and more of them in root position. Study 63's copy of
   continuo.mjs and Study 76's of under.mjs synced.
+- **Study 71's deck without Bach's phrases that sound wrong in quarters.** A phrase whose quarters leave a dissonance
+  unresolved — `bach-4` refuses it, read in quarters, on a dissonance rule: its resolution is in the eighths the deck does
+  not play — is left out (166 of the 434 phrases kept out of the tables), so Bach is not taken for the imitation for lack
+  of them. The deck lists them (`unresolved`) and `tools/deck-continuo.mjs … keep` puts them back, for when both sides have
+  their eighths. The deck drawn again.
 - **Bach's applied dominants, counted** (#353, for the bass engine's `applied` cost). `@kairotic/rules` 0.30.0:
   `continuo.mjs`' `appliedOf(chord, key)` reads a chord as a V, V7, vii°, vii°7 or viiø7 of a degree of the chorale's key
   other than its tonic, with a tone out of the scale: its target, kind and inversion. `BACH_APPLIED` counts them by mode
