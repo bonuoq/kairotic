@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Study 74 · aoidos: Limenios's paean in the corpus, the Greek style fitted to the three** (#192). `corpus.mjs`
+  reads DAGM no. 21 as the edition transcribes it (38 fragments, 367 notes), each Delphic paean with the Greek system
+  it is read in (Athenaios the Hyperdorian, Limenios the Hyperlydian). Unseen, Limenios is explained by the style
+  learned from Mesomedes and Athenaios (his note the cheapest 228 → 342 of 482 times); `GREEK` is fitted again to the
+  three (1012 choices). Seikilos, held out, 22 → 26 of 48 beats (29 with the two-source style).
 - **The bass under Bach's soprano: a harmonic map, secondary dominants that resolve** (#353: what the listener
   heard in Study 71's whole phrases — the functions most). Study 63's `under.mjs` weighs each quarter's chord over its
   degree by where it falls in the phrase (a tenth of it, as PROFILE): −log P(degree, figure | tenth) + log P(degree,
