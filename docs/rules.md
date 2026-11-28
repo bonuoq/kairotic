@@ -252,6 +252,7 @@ step), but not the figure's accidental left out.
 and `dissonance-map` (its dissonances by beat and place in the phrase, as Bach's against the engine's: `dissonanceMapCost`);
 `continuo.mjs`' `BACH_CADENCES_4`.
 `@kairotic/rules` 0.29.0: `continuo.mjs`' `BACH_DEGREE_BY_POSITION` and `BACH_CADENCE_STEPS` (counts, for the bass engine).
+`@kairotic/rules` 0.30.0: `continuo.mjs`' `appliedOf`, `BACH_APPLIED` and `BACH_APPLIED_WRITTEN` (the applied dominants by target, kind and inversion, and Bach's figures for them).
 
 ## Next
 

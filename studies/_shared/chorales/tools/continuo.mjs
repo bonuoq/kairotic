@@ -7,7 +7,7 @@
 // one for the chords over a degree), 0.5 added to every cell (a plain −log, so that costs summed are a probability's: Study 63's logProb); written between the
 // `@tables-begin` and `@tables-end` lines of continuo.mjs (default packages/rules/assets/continuo.mjs).
 import { readFileSync, writeFileSync } from "node:fs";
-import { chordOf, CHORDS, dissonanceOf, spelled, bassMoveOf, moveClassOf } from "../../../../packages/rules/assets/continuo.mjs";
+import { chordOf, CHORDS, dissonanceOf, spelled, bassMoveOf, moveClassOf, appliedOf, normalFigure } from "../../../../packages/rules/assets/continuo.mjs";
 
 const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const tonicOf = (k) => { const t = k.split(" ")[0]; return (PC[t[0]] + (t.match(/[#♯]/g) || []).length - (t.match(/[b♭]/g) || []).length + 12) % 12; };
@@ -20,11 +20,12 @@ const cost = (counts, alpha = 0.5) => {
   return counts.map((x) => +(-Math.log((x + alpha) / tot)).toFixed(3));
 };
 
-export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {
+export function count(phrases, keep = (p) => p.chorale % 5 !== 0, figures = null) {
   const vertical = Array(12).fill(0), pair = Array.from({ length: 5 }, () => Array(5).fill(0));
   const deg = { major: Array.from({ length: 12 }, () => Array(COLS.length).fill(0)), minor: Array.from({ length: 12 }, () => Array(COLS.length).fill(0)) };
   const pos = { major: Array.from({ length: 10 }, () => Array.from({ length: 12 }, () => Array(COLS.length).fill(0))), minor: Array.from({ length: 10 }, () => Array.from({ length: 12 }, () => Array(COLS.length).fill(0))) };
   const pairs = { major: { 3: {}, 2: {}, 1: {} }, minor: { 3: {}, 2: {}, 1: {} } };
+  const applied = { major: {}, minor: {} }, written = { major: {}, minor: {} };
   const cad = { major: {}, minor: {} }, cad4 = { major: {}, minor: {} }, diss = {}, fine = {}, coarse = {}, tri = {}, bi = {};
   const dmap = { strong: Array.from({ length: 10 }, () => [0, 0]), weak: Array.from({ length: 10 }, () => [0, 0]) }, DISS = new Set([1, 2, 5, 6, 10, 11]);
   const role = (nm, v) => ((((spelled(nm[v]).step - spelled(nm[3]).step) % 7) + 7) % 7);
@@ -53,6 +54,11 @@ export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {
         (bi[`${m(q - 1)}|${b}`] ||= Array(9).fill(0))[m(q)]++;
         if (q >= 3) (tri[`${m(q - 2)},${m(q - 1)}|${b}`] ||= Array(9).fill(0))[m(q)]++;
       }
+      { const a = appliedOf(p.satb[q], p.key);
+        if (a) { const m = p.key.mode === "minor" ? "minor" : "major", w = `${a.target}|${a.kind}|${a.inversion}`; applied[m][w] = (applied[m][w] || 0) + 1;
+          const f = figures && figures[p.id];
+          if (f && !p.held[q][3] && !(f.differs || []).includes(q)) { const at0 = f.figures[q].find((x) => x.at === 0), fig = normalFigure(at0 ? at0.f : []).join("/") || "·";
+            (written[m][w] ||= {})[fig] = (written[m][w][fig] || 0) + 1; } } }
       const x = dissonanceOf(p, q);
       if (x) { const w = `${x.voice}|${x.motion}|${x.interval ?? "-"}|${p.strong[q] ? "strong" : "weak"}`; diss[w] = (diss[w] || 0) + 1; }
     }
@@ -82,6 +88,8 @@ export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {
     BACH_DISSONANCE_MAP: dmap,
     BACH_DEGREE_BY_POSITION: pos,
     BACH_CADENCE_STEPS: Object.fromEntries(["major", "minor"].map((m) => [m, Object.fromEntries([3, 2, 1].map((j) => [j, Object.fromEntries(Object.keys(pairs[m][j]).sort().map((w) => [w, pairs[m][j][w]]))]))])),
+    BACH_APPLIED: Object.fromEntries(["major", "minor"].map((m) => [m, ((o) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]])))(applied[m])])),
+    BACH_APPLIED_WRITTEN: Object.fromEntries(["major", "minor"].map((m) => [m, Object.fromEntries(Object.keys(written[m]).sort().map((k) => [k, ((o) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]])))(written[m][k])]))])),
     BACH_CADENCES_4: Object.fromEntries(["major", "minor"].map((m) => {
       const tot = Object.values(cad4[m]).reduce((a, b) => a + b, 0);
       return [m, Object.entries(cad4[m]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, 24).map(([w, c]) => [w, +(c / tot).toFixed(4)])];
@@ -98,7 +106,8 @@ export function count(phrases, keep = (p) => p.chorale % 5 !== 0) {
 const main = () => {
   const [phrasesFile = "studies/_shared/chorales/phrases.json", target = "packages/rules/assets/continuo.mjs"] = process.argv.slice(2);
   const { phrases } = JSON.parse(readFileSync(phrasesFile, "utf8"));
-  const { tables, quarters, phrases: used } = count(phrases);
+  const figs = JSON.parse(readFileSync(phrasesFile.replace(/phrases\.json$/, "figures.json"), "utf8")).phrases;
+  const { tables, quarters, phrases: used } = count(phrases, undefined, figs);
   // (keys that are identifiers unquoted, a space after each comma — outside the strings, whose commas are theirs)
   const js = (v) => JSON.stringify(v).replace(/"((?:[^"\\]|\\.)*)"(:?)|,(?=\S)/g, (m, str, colon) => (str === undefined ? ", " : colon && /^[A-Za-z_]\w*$/.test(str) ? `${str}: ` : `"${str}"${colon ? ": " : ""}`));
   const body = [`// ${used} phrases, ${quarters} quarters (the chorales but every fifth)`,

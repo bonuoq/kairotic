@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Bach's applied dominants, counted** (#353, for the bass engine's `applied` cost). `@kairotic/rules` 0.30.0:
+  `continuo.mjs`' `appliedOf(chord, key)` reads a chord as a V, V7, vii°, vii°7 or viiø7 of a degree of the chorale's key
+  other than its tonic, with a tone out of the scale: its target, kind and inversion. `BACH_APPLIED` counts them by mode
+  (`"target|kind|inversion"`) on the calibration quarters — 1,885, 13 per 100 quarters: 46% in root position, 40% over
+  their 3rd, 11% over their 7th — and `BACH_APPLIED_WRITTEN` the figures Bach wrote over them in the BCFB phrases.
+  `@kairotic/cac` 0.16.21 (its pin).
 - **The eighths over a frame of quarters, as Bach writes them** (#353; the florid idea of #342 for the chorales).
   Study 63's `diminish.mjs`: each voice's quarters diminished by a figure Bach uses — the onsets inside the quarter,
   their lengths and their pitches over its note —, drawn as often as he does it in that voice, on that beat, toward
