@@ -46,7 +46,7 @@ notes.push(`bach-4 keeps ${kept} of Bach's ${P.length} phrases as he wrote them;
   Object.entries(why).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} (${v})`).join(" · "));
 // (pinned: a change of bach-4's rules changes it — say why, and pin it again)
 is(`... bach-4 ${R.STYLES["bach-4"].version} keeps 504 of them (its soft rules — his own moves among them — weigh, they do not refuse), each note as Bach spelt it, the functions read in his local keys a cost (1.2.0: 494, the functions a refusal in the chorale's key; 486 spelt from its MIDI in its key; 1.1.0: 426, 234 in the chorale's key; 1.0.0: 112) — Bach's ranges, his passing and neighbour notes over a moving bass, a note held into a dissonance, direct 5ths and octaves free in the inner voices, his 7ths held into a consonance, rising as the bass takes their note's resolution, passed into the bass`,
-   R.STYLES["bach-4"].version === "1.8.0" && kept === 504, String(kept));
+   R.STYLES["bach-4"].version === "1.9.0" && kept === 504, String(kept));
 
 // Bach's own figures (figures.json, from the BCFB dataset) and the continuo tables (Study 76)
 const FB = JSON.parse(readFileSync(join(here, "../studies/_shared/chorales/figures.json"), "utf8"));
@@ -74,7 +74,7 @@ is(`... figureOf writes ${(100 * fsame / fq).toFixed(1)}% of Bach's figures over
    fsame / fq > 0.84, `${fsame}/${fq}`);
 const T = count(P).tables;
 is("... the continuo tables, as tools/continuo.mjs counts them from the corpus (the chorales but every fifth)",
-   JSON.stringify(T) === JSON.stringify({ BACH_OUTER_VERTICAL: Co.BACH_OUTER_VERTICAL, BACH_OUTER_PAIR: Co.BACH_OUTER_PAIR, BACH_DEGREE_CHORD: Co.BACH_DEGREE_CHORD, BACH_INNER_ROLES: Co.BACH_INNER_ROLES, BACH_DISSONANCES: Co.BACH_DISSONANCES, BACH_CADENCES: Co.BACH_CADENCES }));
+   JSON.stringify(T) === JSON.stringify({ BACH_OUTER_VERTICAL: Co.BACH_OUTER_VERTICAL, BACH_OUTER_PAIR: Co.BACH_OUTER_PAIR, BACH_DEGREE_CHORD: Co.BACH_DEGREE_CHORD, BACH_INNER_ROLES: Co.BACH_INNER_ROLES, BACH_INNER_TURNS: Co.BACH_INNER_TURNS, BACH_DISSONANCE_MAP: Co.BACH_DISSONANCE_MAP, BACH_CADENCES_4: Co.BACH_CADENCES_4, BACH_DISSONANCES: Co.BACH_DISSONANCES, BACH_CADENCES: Co.BACH_CADENCES }));
 const p9 = P.find((p) => p.id === "chor009-1");
 const ds = P.map((p) => p.satb.map((_, t) => Co.dissonanceOf(p, t)).filter(Boolean)).flat(), byVoice = (v) => ds.filter((x) => x.voice === v).length;
 is(`dissonanceOf: the ${ds.length} quarters that are no chord, each a chord and the one voice not of it — the alto's ${byVoice("alto")}, the tenor's ${byVoice("tenor")}, the soprano's ${byVoice("soprano")}, the bass's ${byVoice("bass")} (${byVoice(null)} no one voice explains); chor009-1's 6th quarter a 4–3 in the soprano over a 5/3`,
@@ -96,6 +96,9 @@ is(`dissonanceOf: the ${ds.length} quarters that are no chord, each a chord and 
 is("roleCost: over a 6/5 rising to its 5/3 by step, an inner voice on the 5th (the 7th of the chord) goes to the 3rd, not kept; bach-4 1.7.0 weighs its inner voices so (bach-roles, 2)",
    Co.roleCost("6/5", "5/3", "+1", 4, 2) < 0.1 && Co.roleCost("6/5", "5/3", "+1", 4, 4) > 4 && Object.keys(Co.BACH_INNER_ROLES.fine).length > 500 &&
    JSON.stringify(R.resolveStyle("bach-4").softBetween).includes("bach-roles") && R.resolveStyle("bach-4").weights["bach-roles"] === 2);
+is("turnCost and dissonanceMapCost: a leap down taken back by step up cheaper than a second leap down; a dissonance on a strong beat dearer at the phrase's start than in its middle; Bach's commonest four-quarter cadence in major ii6/5 or IV6/5 – V – I; bach-4 1.9.0 weighs them (bach-turns 1, dissonance-map 2)",
+   Co.turnCost(4, 0, false, 6) < Co.turnCost(4, 0, false, 0) && Co.dissonanceMapCost(true, 0, true) > Co.dissonanceMapCost(true, 5, true) &&
+   / 5:6\/5 7:5\/3 0:5\/3$/.test(Co.BACH_CADENCES_4.major[0][0]) && R.resolveStyle("bach-4").weights["bach-turns"] === 1 && R.resolveStyle("bach-4").weights["dissonance-map"] === 2);
 const dc = Co.BACH_DEGREE_CHORD, argmin = (a) => a.indexOf(Math.min(...a));
 is("... what they say: the 5th and the 3rd the soprano's commonest over the bass, contrary motion the commonest pair, a 5/3 on ① and ⑤ and a 6/3 on ⑦, ⑤–① the commonest cadence; each a plain −log (a row's probabilities add up to 1)",
    argmin(Co.BACH_OUTER_VERTICAL) === 7 && Co.BACH_OUTER_PAIR[1 * 5 + 3] - Math.min(...Co.BACH_OUTER_PAIR) < 0.5 && argmin(dc.major.chord[0]) === 0 && argmin(dc.major.chord[7]) === 0 &&

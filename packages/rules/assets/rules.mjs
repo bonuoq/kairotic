@@ -15,7 +15,7 @@
 import { mod, sign, keyOf, codeOf3, codeDegree, codeAlter, localOf, localNote, FIG_CLASS, CLASS_FIG, isDominant, degreeOf, degreeIn, codeOf, parseKey, guessKey } from "./tonal.mjs";
 import { melodicParts, verticalParts, total, choose, temperature, defaultWeights } from "./soft.mjs";
 import { functionOf, grammarErrors } from "./functions.mjs";
-import { roleCost, chordOfIntervals, bassMoveOf } from "./continuo.mjs";
+import { roleCost, chordOfIntervals, bassMoveOf, moveClassOf, turnCost, dissonanceMapCost } from "./continuo.mjs";
 
 // ─── a time limit for the count ───
 // The exact count runs where it is asked — in a page, on its only thread —, and a long bass without figures in four
@@ -1056,6 +1056,26 @@ export const BETWEEN = {
 };
 // soft rules between the voices: four parts, the bass doubled in a 5/3, a 6/4, a 5/4, a 7/3
 export const SOFT_BETWEEN = {
+  /** an inner voice's turns as Bach's (continuo.mjs' turnCost): each move costs −log of how often his alto and tenor make
+   *  it after the two moves before, on that beat — a leap taken back by step, a passing line going on (Study 76). */
+  "bach-turns": (N, { weight = 1 } = {}) => ({ id: "bach-turns", cost: ({ W, t, x }) => {
+    if (t < 2) return {};
+    let c = 0;
+    for (const i of [1, 2]) {
+      const s = (u) => (u === t ? N.semi(x[i]) : N.semi(W[i][u]));
+      const m = (u) => moveClassOf(s(u) - s(u - 1));
+      c += turnCost(t >= 3 ? m(t - 2) : null, m(t - 1), !!N.B[t].strong, m(t));
+    }
+    return { "bach-turns": weight * c };
+  } }),
+  /** where in the phrase the inner voices dissonate (continuo.mjs' dissonanceMapCost): a quarter whose alto or tenor
+   *  dissonates against the bass, or does not, costs −log of how often Bach's do on that beat at that tenth of the
+   *  phrase — his strong beats consonant at the start and at the cadence, dissonant on a third of them in the middle. */
+  "dissonance-map": (N, { weight = 1 } = {}) => ({ id: "dissonance-map", cost: ({ t, x }) => {
+    const u = N.B[t], b = N.K.semi(u.d, u.r || 0), DIS = [1, 2, 5, 6, 10, 11];
+    const dis = [1, 2].some((i) => DIS.includes(mod(N.semi(x[i]) - b, 12)));
+    return { "dissonance-map": weight * dissonanceMapCost(!!u.strong, Math.floor((10 * t) / N.B.length), dis) };
+  } }),
   /** the chord sounded whole, as Bach's are (97% of his quarters sound three pitch classes or more): four voices
    *  sounding two pitch classes, or one, pay weight for each missing (Study 76: a listener heard ours emptier). */
   complete: (N, { weight = 2 } = {}) => ({ id: "complete", cost: ({ t, x }) => {
@@ -1185,10 +1205,10 @@ Object.assign(STYLES, {
   // bach-vertical, 1.5 —, the species' rewards for a passing note and a suspension off, the moves weighed more — 4 —
   // so a voice does not leap to keep consonant; minor's raised ⑥ as seldom as his in the inner voices — raised-sixth, 2:
   // 1.6.0; bach-vertical 1 in 1.6.1, the bridges tonicizing)
-  "bach-4": { style: "bach-4", version: "1.8.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
+  "bach-4": { style: "bach-4", version: "1.9.0", parts: 4, extends: ["chorale-4", "1.4.0"], voice: { extends: "partimento-1", rules: [["from-bass", { unison: "any" }], ["dissonance", { overStruck: true, neighbour: true, weakHeld: true, bachSevenths: true }], ["parallels", { direct: "outer" }]],
                                                                                           soft: [["bach-motion"], ["bach-vertical"], ["raised-sixth"]], weights: { "bach-motion": 4, "bach-vertical": 1, "raised-sixth": 2, passing: 0, "suspension-life": 0 } },
     between: [["order", { within: 7, unison: true }], ["functions", false]],
-    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"], ["bach-roles"], ["complete"]], weights: { functions: 2, "voice-exchange": 4, "bach-roles": 2, complete: 6 },
+    softBetween: [["functions", { local: true, passing: true }], ["voice-exchange"], ["bach-roles"], ["complete"], ["bach-turns"], ["dissonance-map"]], weights: { functions: 2, "voice-exchange": 4, "bach-roles": 2, complete: 6, "bach-turns": 1, "dissonance-map": 2 },
     // (the voices' ranges as Bach's in the chorales, MIDI: the same in every key)
     ranges: { soprano: [57, 81], alto: [52, 74], tenor: [48, 69] } },
 });

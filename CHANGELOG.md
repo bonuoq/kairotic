@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **The inner voices' turns, and where they dissonate in the phrase; Bach's four-quarter cadences** (Study 76; the
+  listener hears Bach in the leading of the voices and in dissonance weighed against metre and the phrase's climax).
+  `@kairotic/rules` 0.28.0: `continuo.mjs`' `BACH_INNER_TURNS` / `turnCost` (an inner voice's move after its two
+  before, on that beat: 2.73 bits a move on the chorales kept out, 2.92 knowing nothing before), `BACH_DISSONANCE_MAP` /
+  `dissonanceMapCost` (Bach's inner dissonances by beat and tenth of the phrase — his strong beats consonant at the start
+  and the cadence, dissonant on a third of them in the middle — against the engine's own, `ENGINE_DISSONANCE_MAP`, a
+  step of iterative scaling), and `BACH_CADENCES_4` (the last four quarters: ii6/5 or IV6/5 – V – I first). `bach-4`
+  1.9.0 weighs `bach-turns` (1) and `dissonance-map` (2). Fixed: the tables' writer put a space into keys with a comma.
+  On 30 phrases kept out the inner moves come to kept / step / 3rd 25/44/20 (Bach 28/41/19); the dissonances move
+  little (15%, Bach 22%): what refuses them is the hard rules. Study 71's deck of whole phrases drawn again.
+  `@kairotic/cac` 0.16.19 (its pin).
 - **Fuller chords and Bach's inner dissonances** (Study 76; the listener found Bach by his inner voices' dissonances
   and turns, and his fuller, well-led chords). Measured on the deck of whole phrases: Bach sounds three pitch classes or
   more on 97% of his quarters, ours on 74%; his chords dissonate against the bass on 21%, ours on 9%.
