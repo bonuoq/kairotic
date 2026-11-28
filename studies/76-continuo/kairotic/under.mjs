@@ -184,6 +184,23 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
     return [m, P.map((d) => ratio(d, all))];
   }));
   // (−log P(figure | a secondary dominant), its likeliest 0: it shapes which figure, never makes one likelier)
+  // (with continuo.mjs's BACH_APPLIED: −log P(kind, inversion | the degree it leads to), the likeliest for that degree 0)
+  const DEG = { major: { 2: "ii", 4: "iii", 5: "IV", 7: "V", 9: "vi", 11: "vii" }, minor: { 2: "ii", 3: "iii", 5: "IV", 7: "V", 8: "vi", 10: "vii" } };
+  const KIND = { "": "V", 7: "V7", "°": "vii", "°7": "vii7", "ø7": "vii7" }, INVERSION = { "5/3": "root", 7: "root", "6/3": "3rd", "6/5": "3rd", "6/4": "5th", "4/3": "5th", "4/2": "7th" };
+  const BA = continuo && continuo.BACH_APPLIED ? (() => {
+    const T = continuo.BACH_APPLIED[hm] || {}, byT = {};
+    for (const [k, c] of Object.entries(T)) { const [tg] = k.split("|"); (byT[tg] ??= {})[k] = c; }
+    const cost = {};
+    for (const [tg, row] of Object.entries(byT)) {
+      const z = Object.values(row).reduce((a, b) => a + b, 0), cs = Object.fromEntries(Object.entries(row).map(([k, c]) => [k, -Math.log((c + 0.5) / (z + 0.5 * (Object.keys(row).length + 1)))]));
+      const m = Math.min(...Object.values(cs)), floor = -Math.log(0.5 / (z + 0.5 * (Object.keys(row).length + 1))) - m;
+      cost[tg] = (k) => (k in cs ? cs[k] - m : floor);
+    }
+    return (fnHome, kind, figure) => {
+      const tg = DEG[hm][mod((fnHome.target ?? -99) - tonicPc(home), 12)], kk = KIND[kind], inv = INVERSION[figure];
+      return tg && kk && inv && cost[tg] ? cost[tg](`${tg}|${kk}|${inv}`) : 0;
+    };
+  })() : null;
   const APPLIED = (() => {
     const F = tables.applied && tables.applied.figure;
     if (!F) return () => 0;
@@ -263,7 +280,7 @@ export function underBridge({ soprano, key, strong = [], fermata = null, costs =
           let u = W.chord * ch.cost + W.vertical * (CC ? CC[mode].vertical(mod(s - b, 12)) : C[mode].vertical(mod(s - b, 12)));
           if (dis) u += W.dissonance * dis.cost;
           if (W.position && POS[mode][tenth(t)]) u += W.position * POS[mode][tenth(t)](`${inv.bassRel}|${inv.figure}`);
-          if (W.applied && ch.fnHome && ch.fnHome.fn === "A") u += W.applied * APPLIED(inv.figure);
+          if (W.applied && ch.fnHome && ch.fnHome.fn === "A") u += W.applied * (BA ? BA(ch.fnHome, inv.kind, inv.figure) : APPLIED(inv.figure));
           if (fer[t] && t > 0) u += W.endChord * ch.endCost;
           if (t === 0) u += W.start * C[hm].start(KEYS[ki].rel);
           out.push({ ki, b, ch, u, dis });

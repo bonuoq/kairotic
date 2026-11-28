@@ -58,7 +58,8 @@ export function parallels(a, b, t0, t1) {
  * quarter, "G major", or `key` for all), voices (those to diminish, in order — default the bass, the tenor, the
  * alto), lines (voices already written, e.g. Bach's soprano, kept as they are), temp (1: as often as Bach; lower,
  * his likeliest figures more), min (a figure's fewest counts to be offered), r}. → {lines: {soprano, alto, tenor,
- * bass} as [[onset, MIDI, length]], figures: {voice: [figure a quarter]}}.
+ * bass} as [[onset, MIDI, length]], figures: {voice: [figure a quarter, "tie" a quarter tied over]}}. A quarter kept
+ * whole whose note the quarter before ends on is tied over as often as Bach ties in that voice on that beat.
  */
 export function diminish({ satb, strong = [], keys = null, key = null, voices = ["bass", "tenor", "alto"], lines = {}, temp = 1, min = 2, r = Math.random, tables = DIMINUTION_TABLES }) {
   const n = satb.length, T = Math.max(1e-3, temp);
@@ -84,10 +85,41 @@ export function diminish({ satb, strong = [], keys = null, key = null, voices = 
       // (nothing allowed: the quarter whole, as the frame has it)
       const pick = cands.length ? (() => { let u = r() * cands.reduce((a, x) => a + x.w, 0); for (const x of cands) { u -= x.w; if (u <= 0) return x; } return cands[cands.length - 1]; })()
                                 : { f: "-", notes: [[q, frame, 1]] };
+      // (a note the frame repeats, kept whole, tied over from the quarter before as often as Bach ties it there)
+      const prev = line[line.length - 1], tieP = tables.ties && tables.ties[`${v}|${strong[q] ? "strong" : "weak"}`];
+      if (pick.f === "-" && q > 0 && prev && prev[1] === frame && Math.abs(prev[0] + prev[2] - q) < EPS && tieP && r() < tieP.tied / (tieP.tied + tieP.struck)) {
+        prev[2] += 1; figs[v].push("tie"); continue;
+      }
       line.push(...pick.notes);
       figs[v].push(pick.f);
     }
     out[v] = line;
   }
   return { lines: out, figures: figs };
+}
+
+const STEPS = (d) => Math.abs(d) >= 1 && Math.abs(d) <= 2;
+/**
+ * Whether the eighths around a quarter derive its note in a voice — the judge of a diminution, for a rule that reads
+ * the quarters (#353: bach-4 at two levels). lines: {voice: [[onset, MIDI, length]]} (the chorale's `lines`, or
+ * diminish's); q the quarter; voice; the note the quarter's frame has there (satb). → how the eighths explain it —
+ * "resolved" (left by step within the quarter: a suspension or appoggiatura resolved on its eighth), "passing" (in
+ * and out by step the same way), "neighbour" (in and out by step, back), "anticipation" (the next quarter's note,
+ * reached by step), "held" (tied over, its next eighth by step) — or null where they do not.
+ */
+export function derives(lines, q, voice, note) {
+  const L = lines[voice] || [], at = (t) => soundingAt(L, t);
+  const before = at(q - 0.5 + EPS) ?? at(q - 0.25 + EPS), inside = L.filter(([on]) => on > q + EPS && on < q + 1 - EPS).map(([, m]) => m), after = at(q + 1);
+  const first = at(q);
+  if (first === null || first !== note) return null;
+  // (left by step inside the quarter: resolved on its eighth)
+  if (inside.length && STEPS(inside[0] - note)) {
+    if (before !== null && STEPS(note - before) && Math.sign(note - before) === Math.sign(inside[0] - note)) return "passing";
+    if (before !== null && STEPS(note - before)) return "neighbour";
+    if (before === note) return "held";
+    return "resolved";
+  }
+  if (!inside.length && after !== null && before !== null && STEPS(note - before) && STEPS(after - note)) return Math.sign(note - before) === Math.sign(after - note) ? "passing" : "neighbour";
+  if (!inside.length && after === note && before !== null && STEPS(note - before)) return "anticipation";
+  return null;
 }
