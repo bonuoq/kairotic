@@ -271,7 +271,8 @@ function showDeck() {
   $("deck").innerHTML = `<tr><th>variant</th><th>trials</th><th>phrases tried</th><th>${D.kind === "continuo" ? "realized" : "filled by bach-4"}</th></tr>` +
     V().map((v) => `<tr><td>${v}</td><td>${D.trials.filter((t) => t.variant === v).length}</td><td>${D.tried[v].tried}</td><td>${pct(D.tried[v].filled / D.tried[v].tried)}</td></tr>`).join("");
   const top = Object.entries(D.failures).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  $("deck-note").textContent = top.length ? `Why ${D.kind === "continuo" ? "a phrase was not realized" : "a bridge was not filled"}, most often: ${top.map(([w, n]) => `${w.replace(/^no inner voices: (unit #, )?/, "")} (${n})`).join("; ")}.` : "";
+  const left = D.unresolved && D.unresolved.length ? `${D.unresolved.length} of Bach's phrases left out: read in quarters they leave a dissonance unresolved (its resolution is in the eighths the deck does not play). ` : "";
+  $("deck-note").textContent = left + (top.length ? `Why ${D.kind === "continuo" ? "a phrase was not realized" : "a bridge was not filled"}, most often: ${top.map(([w, n]) => `${w.replace(/^no inner voices: (unit #, )?/, "")} (${n})`).join("; ")}.` : "");
 }
 
 // ── export and import
