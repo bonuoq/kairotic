@@ -6,6 +6,7 @@ import * as O from "../kairotic/outer.mjs";
 import * as R from "../kairotic/reduction.mjs";
 import * as U from "../kairotic/under.mjs";
 import * as US from "../kairotic/under-score.mjs";
+import * as DM from "../kairotic/diminish.mjs";
 import { INCIPITS, check, rangeOf } from "../kairotic/incipit.mjs";
 
 const rng = (seed) => () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -219,6 +220,21 @@ export async function run() {
   is("secondary dominants (a major chord or a 7th on ②, ③, ⑥… in C) go to their chord more often with the functions than without", rOn > rOff);
   notes.push(`secondary dominants resolved: ${(100 * rOn).toFixed(0)}% with the functions, ${(100 * rOff).toFixed(0)}% without (40 draws)`);
   notes.push(`a bass under C D E F E D C: ${lines[0].bass.join(" ")} · ${lines[0].figures.join(" ")} · ${lines[0].keys.join(", ")}`);
+
+  // ─── the eighths over a frame of quarters (diminish.mjs: Bach's diminutions, #353) ───
+  // (a frame invented for the tests: I IV V I in C, four voices)
+  const frame = [[72, 67, 64, 48], [72, 69, 65, 53], [71, 67, 62, 55], [72, 67, 64, 48], [74, 65, 62, 55], [72, 64, 60, 48]];
+  const fst = frame.map((_, t) => t % 2 === 0);
+  const dims = Array.from({ length: 20 }, (_, i) => DM.diminish({ satb: frame, strong: fst, key: { tonic: "C", mode: "major" }, r: wr(i + 31) }));
+  const sumLen = (line) => line.reduce((a, [, , d]) => a + d, 0);
+  is("diminish: each voice a line filling the phrase, its quarters' notes where the frame has them, the last quarter whole",
+     dims.every((d) => DM.VOICES.every((v, vi) => Math.abs(sumLen(d.lines[v]) - frame.length) < 1e-9 && frame.every((c, q) => DM.soundingAt(d.lines[v], q) === c[vi]) && d.lines[v].at(-1)[2] === 1)));
+  is("… the soprano kept as given, the bass, the tenor and the alto diminished now and then, every note in C major",
+     dims.every((d) => d.lines.soprano.length === frame.length) && dims.some((d) => d.figures.bass.some((f) => f !== "-")) &&
+     dims.every((d) => ["alto", "tenor", "bass"].every((v) => d.lines[v].every(([, m]) => [0, 2, 4, 5, 7, 9, 11].includes(((m % 12) + 12) % 12)))));
+  const parCount = (L) => { let k = 0; for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) for (let q = 1; q < frame.length; q++) if (DM.parallels(L[DM.VOICES[i]], L[DM.VOICES[j]], q - 1, q) !== null) k++; return k; };
+  is("… no parallel 5ths or octaves the frame has not (20 draws)", dims.every((d) => parCount(d.lines) <= parCount(Object.fromEntries(DM.VOICES.map((v, vi) => [v, DM.quartersOf(frame.map((c) => c[vi]))])))));
+  notes.push(`eighths over I IV V I: bass ${dims[0].figures.bass.join(" ")} · tenor ${dims[0].figures.tenor.join(" ")}`);
 
   return { results, notes };
 }

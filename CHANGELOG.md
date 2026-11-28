@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The eighths over a frame of quarters, as Bach writes them** (#353; the florid idea of #342 for the chorales).
+  Study 63's `diminish.mjs`: each voice's quarters diminished by a figure Bach uses — the onsets inside the quarter,
+  their lengths and their pitches over its note —, drawn as often as he does it in that voice, on that beat, toward
+  that next note (`diminution-tables.mjs`, counted by `tools/diminution-tables.mjs` on the chorales' `lines`, those
+  numbered a multiple of 5 left out), never one that makes parallel 5ths or octaves with another voice or leaves the
+  quarter's scale; the voices one after another (default the bass, the tenor, the alto), a voice given kept as it is
+  (Bach's soprano). `tools/diminution-measure.mjs`, over Bach's own quarters in 400 held-out phrases: quarters
+  diminished alto 23.0% (Bach 27.9), tenor 24.9 (31.0), bass 32.0 (36.2); the bass note to note steps 62.1% (68.9),
+  leaps 32.0 (29.2); parallel 5ths or octaves 65 (Bach's quarters read plainly have about twice as many; his lines
+  hide them by ties and eighths: 3). For Study 76's two levels: the quarters first, then these eighths.
 - **The bass under Bach's soprano reads the chorale thread's position and cadence tables** (#353, after #515).
   Study 63's `under.mjs`, with `continuo`, takes its harmonic map from BACH_DEGREE_BY_POSITION (in place of
   under-tables.mjs's `position`) and its cadence from BACH_CADENCE_STEPS: each of the last three steps into the
